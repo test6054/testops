@@ -1,26 +1,25 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {
-  PortfolioDevelopmentRecordStatusCode,
-} from '@/apis/portfolio/enums'
-import type { PortfolioDevelopmentRecordVO } from '@/apis/portfolio/teacher-platform'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
+import type { PortfolioDevelopmentRecordStatusCode } from '@/apis/portfolio/enums'
 import {
   PortfolioDevelopmentRecordStatusDescription,
   PortfolioDevelopmentRecordTypeCode,
   PortfolioDevelopmentRecordTypeDescription,
 } from '@/apis/portfolio/enums'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref } from 'vue'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
+import { useQueryTable } from '@/composables/useQueryTable'
 import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -37,11 +36,25 @@ const RECORD_TABS = RECORD_TAB_KEYS.map((key) => ({
 type RecordType = (typeof RECORD_TAB_KEYS)[number]
 
 const activeType = ref<RecordType>(PortfolioDevelopmentRecordTypeCode.ACHIEVEMENT)
-const loading = ref(false)
 const importModalOpen = ref(false)
-const rows = ref<PortfolioDevelopmentRecordVO[]>([])
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
-  = usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
+  usePortfolioTeacherSearch()
+const { loading, rows, pageNum, pageSize, pageTotal, loadPage, search, handlePageChange } =
+  useQueryTable(
+    (params) =>
+      portfolioDevelopmentRecordApi.page({
+        ...params,
+        recordType: activeType.value,
+      }),
+    {
+      onLoaded: (list) => {
+        const userIds = list
+          .map((row) => row.teacherUserId)
+          .filter((id): id is string => Boolean(id))
+        void hydrateTeacherLabels([...new Set(userIds)])
+      },
+    },
+  )
 interface DevelopmentRecordForm {
   recordTitle: string
   descriptionText: string
@@ -54,7 +67,9 @@ const form = reactive<DevelopmentRecordForm>({
   teacherUserId: '',
 })
 
-const requiresTeacher = computed(() => activeType.value === PortfolioDevelopmentRecordTypeCode.ACHIEVEMENT)
+const requiresTeacher = computed(
+  () => activeType.value === PortfolioDevelopmentRecordTypeCode.ACHIEVEMENT,
+)
 
 const columns = computed<ColumnsType>(() => {
   const base: ColumnsType = [{ title: '标题', dataIndex: 'recordTitle', key: 'recordTitle' }]
@@ -83,26 +98,6 @@ function resetForm() {
   form.recordTitle = ''
   form.descriptionText = ''
   form.teacherUserId = ''
-}
-
-async function loadPage() {
-  loading.value = true
-  try {
-    const page = await portfolioDevelopmentRecordApi.page({
-      pageNum: 1,
-      pageSize: 50,
-      recordType: activeType.value,
-    })
-    rows.value = page.list
-    const userIds = rows.value
-      .map((row) => row.teacherUserId)
-      .filter((id): id is string => Boolean(id))
-    await hydrateTeacherLabels([...new Set(userIds)])
-  } catch (error) {
-    showUserError(error)
-  } finally {
-    loading.value = false
-  }
 }
 
 async function saveRecord() {
@@ -152,10 +147,8 @@ async function exportExcel() {
 function switchTab(type: RecordType) {
   activeType.value = type
   resetForm()
-  void loadPage()
+  search()
 }
-
-onMounted(loadPage)
 </script>
 
 <template>
@@ -198,11 +191,16 @@ onMounted(loadPage)
       </div>
       <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无发展记录" />
       <UiDataTable
+        v-model:current="pageNum"
+        v-model:page-size="pageSize"
+        pagination-mode="server"
+        :total="pageTotal"
         :columns="columns"
         :data-source="rows"
         :loading="loading"
         row-key="id"
         style="margin-top: 16px"
+        @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherUserId'">
@@ -212,7 +210,11 @@ onMounted(loadPage)
             {{ recordStatusLabel(record.recordStatus) }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiButton size="sm" @click="removeRecord(record.id)"> 删除 </UiButton>
+            <UiTableActions
+              :items="[{ key: 'delete', label: '删除', tone: 'danger' }]"
+              split
+              @action="() => removeRecord(record.id)"
+            />
           </template>
         </template>
       </UiDataTable>

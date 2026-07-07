@@ -1,16 +1,13 @@
-import type { InjectionKey, Ref } from 'vue'
+import type { ComputedRef, InjectionKey, Ref } from 'vue'
+import { computed, inject, provide, ref, watch } from 'vue'
 import type { AiAnalysisCenterOverviewResponse } from '@/apis/mark/analysis-center'
+import { loadAiAnalysisCenterOverview } from '@/apis/mark/analysis-center'
 import type { ExamSummaryResponse } from '@/apis/mark/exam'
+import { pageExams } from '@/apis/mark/exam'
 import type { MarkClassOption } from '@/composables/useMarkExamRoster'
 import type { SemesterCode } from '@/types/enums/semester-enum'
-import { computed, inject, provide, ref, watch } from 'vue'
-import { loadAiAnalysisCenterOverview } from '@/apis/mark/analysis-center'
-import { pageExams } from '@/apis/mark/exam'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
-import {
-  generateAcademicYearOptions,
-  getDefaultAcademicYearAndSemester,
-} from '@/utils/academic-year'
+import { generateAcademicYearOptions, getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
 import { showUserError } from '@/utils/error-handler'
 import { readAllPages } from '@/utils/page-result'
 
@@ -26,6 +23,12 @@ export const AI_ANALYSIS_CLASS_ID_KEY: InjectionKey<Ref<string | undefined>> = S
 /** 趋势/校级 Tab 与顶栏概览共享的课程 scope */
 export const AI_ANALYSIS_COURSE_ID_KEY: InjectionKey<Ref<string | undefined>> = Symbol('aiAnalysisCourseId')
 
+/** 趋势/校级 Tab 院系只读展示名 */
+export const AI_ANALYSIS_REFERENCE_DEPARTMENT_LABEL_KEY: InjectionKey<Ref<string>> = Symbol('aiAnalysisReferenceDepartmentLabel')
+
+/** 趋势/校级 Tab 课程只读展示名 */
+export const AI_ANALYSIS_SCOPE_COURSE_LABEL_KEY: InjectionKey<Ref<string>> = Symbol('aiAnalysisScopeCourseLabel')
+
 /** 趋势 Tab 面包屑展示用班级名称 */
 export const AI_ANALYSIS_CLASS_LABEL_KEY: InjectionKey<Ref<string>> = Symbol('aiAnalysisClassLabel')
 
@@ -34,9 +37,21 @@ export interface AiAnalysisLockTerm {
   academicYear?: string
   semester?: SemesterCode
   courseId?: string
+  referenceDepartmentId?: string
+  referenceDepartmentName?: string
+  courseName?: string
 }
 
 export const AI_ANALYSIS_LOCK_TERM_KEY: InjectionKey<Ref<AiAnalysisLockTerm | null>> = Symbol('aiAnalysisLockTerm')
+
+/** 顶栏学年，趋势/校级卡片与 SignalBand 同源 */
+export const AI_ANALYSIS_ACADEMIC_YEAR_KEY: InjectionKey<Ref<string>> = Symbol('aiAnalysisAcademicYear')
+
+/** 顶栏学期，趋势/校级卡片与 SignalBand 同源 */
+export const AI_ANALYSIS_SEMESTER_KEY: InjectionKey<Ref<SemesterCode>> = Symbol('aiAnalysisSemester')
+
+/** 是否处于考试工作台锁定上下文 */
+export const AI_ANALYSIS_EXAM_LOCKED_KEY: InjectionKey<ComputedRef<boolean>> = Symbol('aiAnalysisExamLocked')
 
 /** 工作台内覆盖 AI 分析页 ContextBar 标题 */
 export interface AiAnalysisWorkspaceChrome {
@@ -54,15 +69,25 @@ export function useAiAnalysisScope() {
   const defaultTerm = getDefaultAcademicYearAndSemester()
   const academicYear = ref(defaultTerm.academicYear)
   const semester = ref(defaultTerm.semester)
-  const courseId = ref<string | undefined>(undefined)
+  /** 教学/聚类顶栏：按考试列表课程筛考试 */
+  const examFilterCourseId = ref<string | undefined>(undefined)
+  /** 趋势/校级 org scope：单院系单课程，禁止跨域 */
+  const scopeCourseId = ref<string | undefined>(undefined)
+  const referenceDepartmentLabel = ref('')
+  const scopeCourseLabel = ref('')
   const examId = ref<string | undefined>(undefined)
   const classId = ref<string | undefined>(undefined)
   const classLabel = ref('')
   const referenceDepartmentId = ref<string | undefined>(undefined)
   provide(AI_ANALYSIS_REFERENCE_DEPARTMENT_ID_KEY, referenceDepartmentId)
-  provide(AI_ANALYSIS_COURSE_ID_KEY, courseId)
+  provide(AI_ANALYSIS_COURSE_ID_KEY, scopeCourseId)
+  provide(AI_ANALYSIS_REFERENCE_DEPARTMENT_LABEL_KEY, referenceDepartmentLabel)
+  provide(AI_ANALYSIS_SCOPE_COURSE_LABEL_KEY, scopeCourseLabel)
   provide(AI_ANALYSIS_CLASS_ID_KEY, classId)
   provide(AI_ANALYSIS_CLASS_LABEL_KEY, classLabel)
+  provide(AI_ANALYSIS_ACADEMIC_YEAR_KEY, academicYear)
+  provide(AI_ANALYSIS_SEMESTER_KEY, semester)
+  provide(AI_ANALYSIS_EXAM_LOCKED_KEY, examLocked)
   const examsLoading = ref(false)
   const exams = ref<ExamSummaryResponse[]>([])
   const overview = ref<AiAnalysisCenterOverviewResponse | null>(null)
@@ -103,10 +128,10 @@ export function useAiAnalysisScope() {
   })
 
   const filteredExams = computed(() => {
-    if (!courseId.value) {
+    if (!examFilterCourseId.value) {
       return exams.value
     }
-    return exams.value.filter(exam => exam.courseId === courseId.value)
+    return exams.value.filter(exam => exam.courseId === examFilterCourseId.value)
   })
 
   const filteredExamOptions = computed(() =>
@@ -132,14 +157,11 @@ export function useAiAnalysisScope() {
   const scopeSummary = computed(() => {
     const semesterLabel = semesterOptions.value.find(item => item.value === semester.value)?.label ?? semester.value
     const parts = [`${academicYear.value} · ${semesterLabel}`]
-    if (courseId.value) {
-      const courseName = courseOptions.value.find(item => item.value === courseId.value)?.label
+    if (examFilterCourseId.value) {
+      const courseName = courseOptions.value.find(item => item.value === examFilterCourseId.value)?.label
       if (courseName) {
         parts.push(courseName)
       }
-    }
-    if (selectedExamLabel.value) {
-      parts.push(selectedExamLabel.value)
     }
     if (classLabel.value) {
       parts.push(classLabel.value)
@@ -152,6 +174,32 @@ export function useAiAnalysisScope() {
     classLabel.value = option?.className ?? ''
   }
 
+  /** 从考试列表项同步趋势/校级 org scope，禁止跨院系跨课程分析 */
+  function syncOrgScopeFromExam(exam: ExamSummaryResponse): void {
+    if (exam.referenceDepartmentId) {
+      referenceDepartmentId.value = exam.referenceDepartmentId
+      const departmentName = exam.departmentName?.trim()
+      if (departmentName) {
+        referenceDepartmentLabel.value = departmentName
+      }
+    }
+    if (exam.courseId) {
+      scopeCourseId.value = exam.courseId
+      examFilterCourseId.value = exam.courseId
+      const courseName = exam.courseName?.trim()
+      if (courseName) {
+        scopeCourseLabel.value = courseName
+      }
+    }
+  }
+
+  function clearOrgScope(): void {
+    referenceDepartmentId.value = undefined
+    referenceDepartmentLabel.value = ''
+    scopeCourseId.value = undefined
+    scopeCourseLabel.value = ''
+  }
+
   function buildExamPageQuery(pageNum: number) {
     const query: Parameters<typeof pageExams>[0] = {
       academicYear: academicYear.value,
@@ -159,7 +207,7 @@ export function useAiAnalysisScope() {
       pageNum,
       pageSize: 100,
     }
-    const scopedCourseId = courseId.value?.trim()
+    const scopedCourseId = examFilterCourseId.value?.trim()
     if (scopedCourseId) {
       query.courseId = scopedCourseId
     }
@@ -181,7 +229,7 @@ export function useAiAnalysisScope() {
       overview.value = await loadAiAnalysisCenterOverview({
         academicYear: academicYear.value,
         semester: semester.value,
-        courseId: courseId.value,
+        courseId: examFilterCourseId.value ?? scopeCourseId.value,
         classId: classId.value,
         referenceDepartmentId: referenceDepartmentId.value,
         examId: examId.value,
@@ -209,8 +257,8 @@ export function useAiAnalysisScope() {
           examId.value = undefined
         }
       }
-      if (courseId.value && !exams.value.some(exam => exam.courseId === courseId.value)) {
-        courseId.value = undefined
+      if (examFilterCourseId.value && !exams.value.some(exam => exam.courseId === examFilterCourseId.value)) {
+        examFilterCourseId.value = undefined
       }
     }
     catch (error) {
@@ -244,9 +292,61 @@ export function useAiAnalysisScope() {
       semester.value = term.semester
     }
     if (term.courseId) {
-      courseId.value = term.courseId
+      scopeCourseId.value = term.courseId
+      examFilterCourseId.value = term.courseId
+    }
+    if (term.referenceDepartmentId) {
+      referenceDepartmentId.value = term.referenceDepartmentId
+    }
+    if (term.referenceDepartmentName) {
+      referenceDepartmentLabel.value = term.referenceDepartmentName
+    }
+    if (term.courseName) {
+      scopeCourseLabel.value = term.courseName
     }
   }, { immediate: true, deep: true })
+
+  watch(academicYear, (value) => {
+    const lockedYear = lockTerm?.value?.academicYear
+    if (examLocked.value && lockedYear && value !== lockedYear) {
+      academicYear.value = lockedYear
+    }
+  })
+
+  watch(semester, (value) => {
+    const lockedSemester = lockTerm?.value?.semester
+    if (examLocked.value && lockedSemester && value !== lockedSemester) {
+      semester.value = lockedSemester
+    }
+  })
+
+  watch(examFilterCourseId, (value) => {
+    const lockedCourseId = lockTerm?.value?.courseId
+    if (examLocked.value && lockedCourseId && value !== lockedCourseId) {
+      examFilterCourseId.value = lockedCourseId
+      return
+    }
+    if (examLocked.value) {
+      return
+    }
+    if (examId.value && !filteredExams.value.some(exam => exam.examId === examId.value)) {
+      examId.value = undefined
+    }
+  })
+
+  watch(scopeCourseId, (value) => {
+    const lockedCourseId = lockTerm?.value?.courseId
+    if (examLocked.value && lockedCourseId && value !== lockedCourseId) {
+      scopeCourseId.value = lockedCourseId
+    }
+  })
+
+  watch(referenceDepartmentId, (value) => {
+    const lockedDepartmentId = lockTerm?.value?.referenceDepartmentId
+    if (examLocked.value && lockedDepartmentId && value !== lockedDepartmentId) {
+      referenceDepartmentId.value = lockedDepartmentId
+    }
+  })
 
   watch(() => lockExamId?.value, (id) => {
     if (id) {
@@ -254,11 +354,11 @@ export function useAiAnalysisScope() {
     }
   }, { immediate: true })
 
-  watch([courseId, examId], () => {
+  watch([examFilterCourseId, examId, scopeCourseId, referenceDepartmentId], () => {
     void loadOverview()
   })
 
-  watch(courseId, () => {
+  watch(examFilterCourseId, () => {
     if (examLocked.value) {
       return
     }
@@ -274,12 +374,35 @@ export function useAiAnalysisScope() {
     }
     classId.value = undefined
     classLabel.value = ''
+    if (!id) {
+      if (!examLocked.value) {
+        clearOrgScope()
+      }
+      return
+    }
+    const exam = exams.value.find(item => item.examId === id)
+    if (exam) {
+      syncOrgScopeFromExam(exam)
+    }
+  })
+
+  watch([examId, exams], () => {
+    if (!examId.value) {
+      return
+    }
+    const exam = exams.value.find(item => item.examId === examId.value)
+    if (exam) {
+      syncOrgScopeFromExam(exam)
+    }
   })
 
   return {
     academicYear,
     semester,
-    courseId,
+    examFilterCourseId,
+    scopeCourseId,
+    referenceDepartmentLabel,
+    scopeCourseLabel,
     examId,
     classId,
     classLabel,

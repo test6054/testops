@@ -1,23 +1,9 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        :title="contextBarTitle"
-        :subtitle="contextBarSubtitle"
-      >
+      <ContextBar v-if="isTrialTaskPool" layout="workbench">
         <template #status>
-          <UiTag v-if="examDetail?.status" :tone="examStatusTone(examDetail.status)" size="sm">
-            {{ examStatusLabel(examDetail.status) }}
-          </UiTag>
-          <UiTag v-if="isTrialTaskPool" tone="orange" size="sm">试评阶段</UiTag>
-        </template>
-        <template #actions>
-          <UiButton variant="outline" size="sm" :loading="loading" @click="() => loadTasks()">
-            <template #icon><ReloadOutlined /></template>
-            刷新任务
-          </UiButton>
+          <UiTag tone="orange" size="sm">试评阶段</UiTag>
         </template>
       </ContextBar>
     </template>
@@ -35,13 +21,6 @@
       description="暂停期间无法领取新任务，请等待组长恢复。"
       dense
     />
-
-    <UiAlertStrip v-if="isGroupLeader" tone="info" title="题组批阅进度" dense>
-      <template #default>
-        待处理 {{ groupLeaderProgress?.pendingCount ?? 0 }} · 已提交
-        {{ groupLeaderProgress?.submittedCount ?? 0 }}
-      </template>
-    </UiAlertStrip>
 
     <div class="marking-task-pool-page">
       <WorkbenchSurfaceCard class="marking-task-pool-page__claim">
@@ -90,15 +69,6 @@
               <UiButton :disabled="!canClaim" :loading="claiming" @click="submitClaim">
                 <template #icon><PlusOutlined /></template>
                 批量领取一批
-              </UiButton>
-              <UiButton
-                variant="outline"
-                size="sm"
-                :loading="claimContextLoading"
-                @click="loadClaimContext"
-              >
-                <template #icon><ReloadOutlined /></template>
-                刷新可领取题组
               </UiButton>
             </a-space>
           </a-form-item>
@@ -166,69 +136,69 @@
           @selection-change="handleSelectionChange"
           class="student-detail-table__data-table"
         >
-          <template #bodyCell="{ column, index }">
+          <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'question'">
               <a-space direction="vertical" :size="2">
-                <a-typography-text v-if="tasks[index].taskUnit === 'WHOLE_PAPER'" strong>
+                <a-typography-text v-if="record.taskUnit === 'WHOLE_PAPER'" strong>
                   整卷批阅
                 </a-typography-text>
                 <a-typography-text v-else strong>
-                  第 {{ tasks[index].questionNo }} 题 · {{ tasks[index].questionTypeMessage }}
+                  第 {{ record.questionNo }} 题 · {{ record.questionTypeMessage }}
                 </a-typography-text>
               </a-space>
             </template>
             <template v-else-if="column.key === 'anonymityMode'">
-              <UiTag :tone="tasks[index].anonymityMode === 'ANONYMOUS' ? 'blue' : 'gray'" size="sm">
-                {{ anonymityModeLabel(tasks[index].anonymityMode) }}
+              <UiTag :tone="record.anonymityMode === 'ANONYMOUS' ? 'blue' : 'gray'" size="sm">
+                {{ anonymityModeLabel(record.anonymityMode) }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'paperDisplay'">
               <a-space direction="vertical" :size="2">
                 <a-typography-text strong>
-                  {{ tasks[index].paperDisplay.primaryText }}
+                  {{ record.paperDisplay.primaryText }}
                 </a-typography-text>
-                <span v-if="tasks[index].paperDisplay.secondaryText" class="muted">
-                  {{ tasks[index].paperDisplay.secondaryText }}
+                <span v-if="record.paperDisplay.secondaryText" class="muted">
+                  {{ record.paperDisplay.secondaryText }}
                 </span>
               </a-space>
             </template>
             <template v-else-if="column.key === 'groupName'">
-              <span>{{ tasks[index].groupName }}</span>
+              <span>{{ record.groupName }}</span>
             </template>
             <template v-else-if="column.key === 'reviewerName'">
-              <span>{{ tasks[index].reviewerName }}</span>
+              <span>{{ record.reviewerName }}</span>
             </template>
             <template v-else-if="column.key === 'session'">
               <a-space direction="vertical" :size="2">
-                <UiTag :tone="tasks[index].markingPhase === 'TRIAL' ? 'orange' : 'green'" size="sm">
-                  {{ tasks[index].sessionStatusMessage }}
+                <UiTag :tone="record.markingPhase === 'TRIAL' ? 'orange' : 'green'" size="sm">
+                  {{ record.sessionStatusMessage }}
                 </UiTag>
-                <span class="muted">{{ formatDateTime(tasks[index].sessionStartTime) }}</span>
+                <span class="muted">{{ formatDateTime(record.sessionStartTime) }}</span>
               </a-space>
             </template>
             <template v-else-if="column.key === 'taskStatus'">
-              <UiTag :tone="taskStatusTone(tasks[index].taskStatus)" size="sm">
-                {{ taskStatusLabel(tasks[index].taskStatus) }}
+              <UiTag :tone="taskStatusTone(record.taskStatus)" size="sm">
+                {{ taskStatusLabel(record.taskStatus) }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'allocatedTime'">
-              {{ formatDateTime(tasks[index].allocatedTime) }}
+              {{ formatDateTime(record.allocatedTime) }}
             </template>
             <template v-else-if="column.key === 'submittedTime'">
-              {{ formatDateTime(tasks[index].submittedTime) }}
+              {{ formatDateTime(record.submittedTime) }}
             </template>
             <template v-else-if="column.key === 'score'">
-              <span v-if="tasks[index].score !== undefined && tasks[index].score !== null">{{
-                tasks[index].score
+              <span v-if="record.score !== undefined && record.score !== null">{{
+                record.score
               }}</span>
               <span v-else class="muted">-</span>
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
-                v-if="buildMarkingTaskRowActions(tasks[index]).length"
-                :items="buildMarkingTaskRowActions(tasks[index])"
+                v-if="buildMarkingTaskRowActions(record).length"
+                :items="buildMarkingTaskRowActions(record)"
                 split
-                @action="() => goDetail(tasks[index])"
+                @action="() => goDetail(record)"
               />
               <span v-else class="muted">已结束</span>
             </template>
@@ -252,9 +222,6 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
-import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
-import type { ExamStatusCode } from '@/apis/mark/exam'
-import { EXAM_STATUS_TONE, ExamStatusDescription } from '@/apis/mark/exam'
 import type {
   FormalSessionResponse,
   MarkingTaskClaimRequest,
@@ -263,6 +230,16 @@ import type {
   TeacherClaimContextResponse,
   TrialSessionResponse,
 } from '@/apis/mark/marking-organization'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import TableOutlined from '@ant-design/icons-vue/TableOutlined'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { storeToRefs } from 'pinia'
+import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
 import {
   FormalSessionStatusDescription,
   getMarkingQuestionView,
@@ -272,16 +249,6 @@ import {
   MarkingTaskStatusDescription,
   TrialSessionStatusDescription,
 } from '@/apis/mark/marking-organization'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import TableOutlined from '@ant-design/icons-vue/TableOutlined'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { storeToRefs } from 'pinia'
-import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { MarkingTaskStreamSubscribeScopeCode } from '@/apis/mark/marking-task-stream'
 import MarkingBatchScoreDrawer from '@/components/mark/MarkingBatchScoreDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -298,7 +265,6 @@ import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJour
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
-import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkingTaskStream } from '@/composables/useMarkingTaskStream'
 import {
@@ -345,9 +311,6 @@ const taskTableEmptyDescription = computed(() =>
 
 const { selectedExamId } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
-
-const taskPoolStageLabel = computed(() => String(route.meta.title ?? '阅卷任务池'))
-const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar(taskPoolStageLabel)
 
 const examDetail = computed(() => workbenchContext?.examDetail?.value ?? null)
 
@@ -403,7 +366,6 @@ const batchGroupId = ref('')
 const tasksLoadError = ref('')
 const sessionPausedAlert = ref(false)
 const isGroupLeader = ref(false)
-const groupLeaderProgress = ref<{ pendingCount?: number; submittedCount?: number } | null>(null)
 
 const selectedTasks = computed(() =>
   tasks.value.filter((task) => selectedRowKeys.value.includes(task.id)),
@@ -411,8 +373,8 @@ const selectedTasks = computed(() =>
 
 function isBatchSelectable(task: MarkingTaskResponse): boolean {
   return (
-    task.taskStatus === MarkingTaskStatusCode.ALLOCATED ||
-    task.taskStatus === MarkingTaskStatusCode.IN_PROGRESS
+    task.taskStatus === MarkingTaskStatusCode.ALLOCATED
+    || task.taskStatus === MarkingTaskStatusCode.IN_PROGRESS
   )
 }
 
@@ -429,8 +391,8 @@ function handleSelectionChange(keys: (string | number)[]): void {
     clearBatchSelection()
     return
   }
-  const anchor =
-    batchSelectionAnchor.value ?? tasks.value.find((task) => task.id === typedKeys[0]) ?? null
+  const anchor
+    = batchSelectionAnchor.value ?? tasks.value.find((task) => task.id === typedKeys[0]) ?? null
   if (!anchor || !isBatchSelectable(anchor)) {
     clearBatchSelection()
     return
@@ -533,9 +495,9 @@ const groupLeaderStream = useMarkingTaskStream({
     }
     // exam Topic 事件携带单 session 计数，须回源 claimContext 做 exam 级聚合
     if (
-      event.eventType === 'SESSION_PROGRESS' ||
-      event.eventType === 'SESSION_PAUSED' ||
-      event.eventType === 'SESSION_RESUMED'
+      event.eventType === 'SESSION_PROGRESS'
+      || event.eventType === 'SESSION_PAUSED'
+      || event.eventType === 'SESSION_RESUMED'
     ) {
       void loadClaimContext()
     }
@@ -551,8 +513,8 @@ function getPollingIntervalMs(): number {
   }
   const hasPending = tasks.value.some(
     (task) =>
-      task.taskStatus === MarkingTaskStatusCode.ALLOCATED ||
-      task.taskStatus === MarkingTaskStatusCode.IN_PROGRESS,
+      task.taskStatus === MarkingTaskStatusCode.ALLOCATED
+      || task.taskStatus === MarkingTaskStatusCode.IN_PROGRESS,
   )
   if (hasPending) {
     return 5000
@@ -823,26 +785,9 @@ async function loadClaimContext(): Promise<void> {
       examId: selectedExamId.value,
       markingPhase: markingPhase.value,
     })
-    syncGroupLeaderProgressFromClaimContext()
   } catch (error) {
     showUserError(error, '领取条件加载失败')
   }
-}
-
-/** 从 claimContext 正评会话聚合进度，弥补 exam Topic 仅在 SESSION_* 时推送计数的空窗 */
-function syncGroupLeaderProgressFromClaimContext(): void {
-  if (!isGroupLeader.value || isTrialTaskPool.value) return
-  const ctx = claimContext.value
-  if (!ctx) return
-  let pendingCount = 0
-  let submittedCount = 0
-  for (const group of ctx.groups) {
-    for (const session of group.activeSessions ?? []) {
-      pendingCount += session.pendingTaskCount ?? 0
-      submittedCount += session.finalizedTaskCount ?? 0
-    }
-  }
-  groupLeaderProgress.value = { pendingCount, submittedCount }
 }
 
 function onClaimGroupChange(): void {
@@ -910,14 +855,6 @@ function goMarkingOrg(): void {
   navigateToJourneyStep(router, MarkTeacherDashboardJourneyKeyCode.ASSIGN, selectedExamId.value)
 }
 
-function examStatusLabel(status: ExamStatusCode): string {
-  return strictEnumLabel(ExamStatusDescription, status, '考试状态')
-}
-
-function examStatusTone(status: ExamStatusCode): BadgeTone {
-  return strictEnumTone(EXAM_STATUS_TONE, status, '考试状态')
-}
-
 /**
  * 把 record.taskStatus 渲染成中文标签，未知枚举直接暴露契约错误。
  */
@@ -944,7 +881,6 @@ watch(
     claimForm.markingPhase = markingPhase.value
     sessionPausedAlert.value = false
     tasksLoadError.value = ''
-    groupLeaderProgress.value = null
     clearBatchSelection()
     batchMode.value = false
     void loadTasks()

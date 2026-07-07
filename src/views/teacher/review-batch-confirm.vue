@@ -1,12 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        :title="contextBarTitle"
-        :subtitle="contextBarSubtitle"
-      >
+      <ContextBar layout="workbench">
         <template #status>
           <UiTag tone="blue" size="sm">
             待复核 {{ pagination.total }} 条
@@ -18,10 +13,6 @@
         <template #actions>
           <UiButton variant="outline" size="sm" @click="goSingleReview">
             OCR/AI 单题复核
-          </UiButton>
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadTasks">
-            <template #icon><ReloadOutlined /></template>
-            刷新
           </UiButton>
           <UiButton
             size="sm"
@@ -139,7 +130,6 @@ import type {
 } from '@/apis/mark/exam-review-task'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -165,6 +155,7 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkWorkbenchContext, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'TeacherReviewBatchConfirm' })
@@ -184,7 +175,7 @@ const selectedRowKeys = ref<string[]>([])
 
 const pagination = reactive({
   current: 1,
-  pageSize: 20,
+  pageSize: DEFAULT_LIST_PAGE_SIZE,
   total: 0,
 })
 
@@ -266,7 +257,7 @@ async function loadTasks(): Promise<void> {
     })
     const records = result.list
     rows.value = records
-    pagination.total = Number(result.total)
+    pagination.total = result.total
     initScoreDraft(records)
     selectedRowKeys.value = selectedRowKeys.value.filter((id) =>
       records.some((row) => row.gradeResultId === id),

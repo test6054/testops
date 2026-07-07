@@ -1,14 +1,8 @@
 <template>
   <AiAnalysisSection title="AI 学期能力成长曲线">
     <template #actions>
-      <AiAnalysisHistorySelect
-        v-model="historySelectedId"
-        :rows="historyRows"
-        :loading="loading"
-      />
-      <UiButton variant="outline" size="sm" :loading="loading" @click="reload">
-        查看历史
-      </UiButton>
+      <AiAnalysisHistorySelect v-model="historySelectedId" :rows="historyRows" :loading="loading" />
+      <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 查看历史 </UiButton>
       <UiButton variant="primary" size="sm" :loading="generating" @click="handleGenerate">
         生成成长曲线
       </UiButton>
@@ -33,7 +27,11 @@
             </a-radio-group>
           </a-form-item>
           <a-form-item v-if="form.examScopeMode === 'AUTO'" label="课程">
+            <span v-if="scopeOrgCourseId?.trim()" class="scope-hint">{{
+              scopeCourseLabel || form.courseId || '—'
+            }}</span>
             <CatalogCourseSelector
+              v-else
               v-model:value="form.courseId"
               placeholder="请选择课程"
               :allow-clear="false"
@@ -116,7 +114,9 @@
         <div class="ai-profile-diagnosis-list">
           <div v-for="(item, index) in growthItems" :key="index" class="ai-profile-diagnosis-item">
             <div class="diagnosis-header">
-              <span class="diagnosis-type">{{ item.dimensionLabel || item.dimension || '能力点' }}</span>
+              <span class="diagnosis-type">{{
+                item.dimensionLabel || item.dimension || '能力点'
+              }}</span>
               <span v-if="item.changeRate != null" class="diagnosis-rate">
                 变化 {{ formatRate(item.changeRate) }}
               </span>
@@ -150,12 +150,6 @@ import type {
   SemesterAbilityGrowthResponse,
   SemesterGrowthTrendCode,
 } from '@/apis/mark/cross-exam-analysis'
-import type { ExamSummaryResponse } from '@/apis/mark/exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { AnalysisScopeTypeCode, AnalysisScopeTypeDescription } from '@/apis/mark/analysis-scope-type'
 import {
   generateClassGrowth,
   listCommonClassScopes,
@@ -163,6 +157,16 @@ import {
   SEMESTER_GROWTH_TREND_TONE,
   SemesterGrowthTrendDescription,
 } from '@/apis/mark/cross-exam-analysis'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { formatSemester } from '@/types/enums/semester-enum'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import {
+  AnalysisScopeTypeCode,
+  AnalysisScopeTypeDescription,
+} from '@/apis/mark/analysis-scope-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisConfigCollapse from '@/components/mark/analysis/AiAnalysisConfigCollapse.vue'
@@ -179,7 +183,6 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { formatSemester } from '@/types/enums/semester-enum'
 import {
   buildRequiredAcademicYearSemesterQuery,
   ensureRequiredAcademicYearSemester,
@@ -211,6 +214,11 @@ const props = withDefaults(
     scopeReferenceDepartmentId?: string | null
     scopeOrgCourseId?: string | null
     scopeOrgClassId?: string | null
+    scopeAcademicYear?: string
+    scopeSemester?: SemesterCode
+    examScopeLocked?: boolean
+    scopeTermLabel?: string
+    scopeCourseLabel?: string
   }>(),
   {
     defaultRecentSemesterCount: 0,
@@ -219,6 +227,11 @@ const props = withDefaults(
     scopeReferenceDepartmentId: null,
     scopeOrgCourseId: null,
     scopeOrgClassId: null,
+    scopeAcademicYear: undefined,
+    scopeSemester: undefined,
+    examScopeLocked: false,
+    scopeTermLabel: '',
+    scopeCourseLabel: '',
   },
 )
 
@@ -262,7 +275,7 @@ const historyRows = computed(() =>
 )
 
 const selectedExams = ref<ExamSummaryResponse[]>([])
-const classOptions = ref<{ label: string, value: string }[]>([])
+const classOptions = ref<{ label: string; value: string }[]>([])
 const classLoading = ref(false)
 const loading = ref(false)
 const generating = ref(false)
@@ -309,7 +322,7 @@ const { chartOption: growthBarChartOption } = useChartOption(() =>
 const selectedCourseIds = computed(() => {
   const courseIds = new Set<string>()
   for (const examId of form.examIds) {
-    const matched = selectedExams.value.find(exam => exam.examId === examId)
+    const matched = selectedExams.value.find((exam) => exam.examId === examId)
     if (matched?.courseId) {
       courseIds.add(matched.courseId)
     }
@@ -340,8 +353,8 @@ const examSelectScopeCourseId = computed(() => {
   return form.courseId?.trim() || undefined
 })
 
-const examSelectScopeReferenceDepartmentId = computed(() =>
-  props.scopeReferenceDepartmentId?.trim() || undefined,
+const examSelectScopeReferenceDepartmentId = computed(
+  () => props.scopeReferenceDepartmentId?.trim() || undefined,
 )
 
 const effectiveClassId = computed(() => examSelectScopeClassId.value?.trim() || '')
@@ -376,7 +389,10 @@ function examScopeSummary(value: SemesterAbilityGrowthResponse): string {
     return '无考试范围'
   }
   return value.exams
-    .map(exam => `${exam.examName ?? exam.examId}${exam.examTime ? ` · ${formatDateTime(exam.examTime)}` : ''}`)
+    .map(
+      (exam) =>
+        `${exam.examName ?? exam.examId}${exam.examTime ? ` · ${formatDateTime(exam.examTime)}` : ''}`,
+    )
     .join('；')
 }
 
@@ -386,7 +402,7 @@ function applyDrillClassSelection(): void {
   if (!classId) {
     return
   }
-  if (classOptions.value.some(option => option.value === classId)) {
+  if (classOptions.value.some((option) => option.value === classId)) {
     form.classId = classId
     return
   }
@@ -396,6 +412,17 @@ function applyDrillClassSelection(): void {
     form.classId = classId
   }
 }
+
+watch(
+  () => props.scopeOrgCourseId,
+  (courseId) => {
+    if (!courseId?.trim()) {
+      return
+    }
+    form.courseId = courseId.trim()
+  },
+  { immediate: true },
+)
 
 watch(
   () => props.drillClassId,
@@ -465,7 +492,7 @@ watch(
     classLoading.value = true
     try {
       const classRefs = await listCommonClassScopes(examIds)
-      classOptions.value = classRefs.map(classRef => ({
+      classOptions.value = classRefs.map((classRef) => ({
         value: classRef.classId,
         label: classRef.className,
       }))
@@ -485,7 +512,10 @@ async function reload(): Promise<void> {
   if (!ensureRequiredAcademicYearSemester(form.teachingAcademicYear, form.teachingSemester)) {
     return
   }
-  const termQuery = buildRequiredAcademicYearSemesterQuery(form.teachingAcademicYear, form.teachingSemester)
+  const termQuery = buildRequiredAcademicYearSemesterQuery(
+    form.teachingAcademicYear,
+    form.teachingSemester,
+  )
   if (!termQuery) {
     return
   }
@@ -514,7 +544,10 @@ async function handleGenerate(): Promise<void> {
   if (!ensureRequiredAcademicYearSemester(form.teachingAcademicYear, form.teachingSemester)) {
     return
   }
-  const termQuery = buildRequiredAcademicYearSemesterQuery(form.teachingAcademicYear, form.teachingSemester)
+  const termQuery = buildRequiredAcademicYearSemesterQuery(
+    form.teachingAcademicYear,
+    form.teachingSemester,
+  )
   if (!termQuery) {
     return
   }
@@ -646,6 +679,3 @@ function growthValueText(value: number | undefined): string {
   color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
 }
 </style>
-
-
-

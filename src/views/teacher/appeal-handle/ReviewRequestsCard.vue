@@ -16,9 +16,7 @@
           @search="handleSearch"
           @reset="handleFilterReset"
         />
-        <span v-if="pagination.total > 0" class="appeal-section__count"
-          >{{ pagination.total }} 条</span
-        >
+        <span v-if="pagination.total > 0" class="appeal-section__count">{{ pagination.total }} 条</span>
       </div>
 
       <UiDataTable
@@ -139,6 +137,9 @@ import type {
   GradeReviewReasonTypeCode,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   getReviewSummary,
   GradeReviewReasonTypeDescription,
@@ -150,9 +151,6 @@ import {
   REVIEW_REQUEST_STATUS_OPTIONS,
   REVIEW_REQUEST_STATUS_TONE,
 } from '@/apis/mark/grade-review'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -160,13 +158,14 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ReviewRequestsCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number }>()
+const props = defineProps<{ examId: string, reloadToken: number }>()
 const emit = defineEmits<{
   (e: 'handled'): void
   (e: 'pending-change', count: number): void
@@ -178,11 +177,11 @@ const pendingCount = ref(0)
 
 const pagination = reactive({
   current: 1,
-  pageSize: 20,
+  pageSize: DEFAULT_LIST_PAGE_SIZE,
   total: 0,
 })
 
-const filterForm = reactive<{ status?: GradeReviewRequestStatusCode; keyword: string }>({
+const filterForm = reactive<{ status?: GradeReviewRequestStatusCode, keyword: string }>({
   keyword: '',
 })
 
@@ -296,7 +295,7 @@ async function reload(): Promise<void> {
       pageSize: pagination.pageSize,
     })
     rows.value = result.list
-    pagination.total = Number(result.total)
+    pagination.total = result.total
     pagination.current = result.pageNum ?? pagination.current
     pagination.pageSize = result.pageSize ?? pagination.pageSize
     await loadPendingCount()
@@ -321,7 +320,7 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()

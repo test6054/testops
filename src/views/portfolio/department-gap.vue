@@ -1,17 +1,18 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioGapTaskStatusCode } from '@/apis/portfolio/enums'
+import { PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import type { PortfolioGapTaskSummaryVO } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import { portfolioGapApi } from '@/apis/portfolio/gap'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -47,7 +48,7 @@ async function loadPage() {
       pageSize: pageSize.value,
     })
     rows.value = page.list
-    pageTotal.value = Number(page.total)
+    pageTotal.value = page.total
   } catch (error) {
     showUserError(error, '加载补采任务失败')
   } finally {
@@ -72,6 +73,11 @@ function openTask(row: PortfolioGapTaskSummaryVO) {
     path: `/portfolio/teacher/gap/${row.id}`,
     query: { teacherId: row.teacherId },
   })
+}
+
+function handleGapRowAction(key: string, row: PortfolioGapTaskSummaryVO) {
+  if (key === 'view') openTask(row)
+  else if (key === 'urge') void urgeTask(row)
 }
 
 void loadPage()
@@ -103,15 +109,14 @@ void loadPage()
             <UiTag>{{ gapStatusLabel(record.taskStatus) }}</UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiButton variant="ghost" size="sm" @click="openTask(record)"> 查看 </UiButton>
-            <UiButton
-              variant="outline"
-              size="sm"
-              :loading="urgingId === record.id"
-              @click="() => void urgeTask(record)"
-            >
-              催办
-            </UiButton>
+            <UiTableActions
+              :items="[
+                { key: 'view', label: '查看' },
+                { key: 'urge', label: '催办', disabled: urgingId === record.id },
+              ]"
+              split
+              @action="(key) => handleGapRowAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>

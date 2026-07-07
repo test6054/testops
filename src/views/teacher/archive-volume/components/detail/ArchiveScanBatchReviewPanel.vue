@@ -17,6 +17,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { getUserErrorMessage } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -33,7 +34,7 @@ const emit = defineEmits<{
 const loading = ref(false)
 const actionLoading = ref(false)
 const errorMessage = ref('')
-const pagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
+const pagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 const rows = ref<ArchiveScanBatchSnapshotItemVO[]>([])
 const selectedRowKeys = ref<string[]>([])
 
@@ -75,7 +76,7 @@ async function loadRows() {
       pageSize: pagination.pageSize,
     })
     rows.value = result.list
-    pagination.total = Number(result.total)
+    pagination.total = result.total
     pagination.pageNum = result.pageNum
     pagination.pageSize = result.pageSize
     selectedRowKeys.value = []

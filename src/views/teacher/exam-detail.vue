@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template v-if="detail" #context>
-      <ContextBar layout="workbench" show-title :title="contextBarTitle || detail.examName" :subtitle="contextBarSubtitle">
+      <ContextBar layout="workbench" show-title :title="contextBarTitle" :subtitle="contextBarSubtitle">
         <template #status>
           <UiTag v-if="chromeExamStatusLabel" :tone="chromeExamStatusTone" size="sm">
             {{ chromeExamStatusLabel }}
@@ -9,7 +9,7 @@
           <UiTag v-if="detail.examKind" :tone="examKindTone(detail.examKind)" size="sm">
             {{ examKindLabel(detail) }}
           </UiTag>
-          <UiTag v-if="detail.confidential" tone="red" size="sm">涉密考试</UiTag>
+          <UiTag v-if="detail.confidential" tone="purple" size="sm">涉密考试</UiTag>
         </template>
         <template v-if="suggestedStage" #actions>
           <UiButton size="sm" variant="primary" @click="goSuggestedStage">
@@ -100,7 +100,7 @@ const {
   contextBarSubtitle,
   examStatusLabel: chromeExamStatusLabel,
   examStatusTone: chromeExamStatusTone,
-} = useExamJourneyContextBar('考试概览')
+} = useExamJourneyContextBar('考试概览', 'hub')
 
 const markStageStore = useMarkStageStore()
 const { suggestedStageKey, orderedStages } = storeToRefs(markStageStore)

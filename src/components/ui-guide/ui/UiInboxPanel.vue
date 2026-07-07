@@ -53,7 +53,7 @@ const props = withDefaults(
     title?: string
     description?: string
     eyebrow?: string
-    total?: string | number
+    total?: number
     countTone?: BadgeTone
     compact?: boolean
     bodyScrollable?: boolean

@@ -13,6 +13,7 @@ import type {
 } from '@/apis/portfolio/types'
 import type { PageResult } from '@/types'
 import http from '@/config/axios'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 
 const BASE = '/api/portfolio/evaluation'
 
@@ -23,8 +24,12 @@ export const portfolioEvaluationPublicityApi = {
     http.post<string>(`${BASE}/publicity/publish`, data),
   submitObjection: (data: PortfolioEvaluationObjectionSubmitRequest) =>
     http.post<string>(`${BASE}/objection/submit`, data),
-  pageObjections: (data: PortfolioEvaluationObjectionPageRequest = { pageNum: 1, pageSize: 20 }) =>
-    http.post<PageResult<PortfolioEvaluationObjectionSummaryVO>>(`${BASE}/objection/page`, data),
+  pageObjections: (
+    data: PortfolioEvaluationObjectionPageRequest = {
+      pageNum: 1,
+      pageSize: DEFAULT_LIST_PAGE_SIZE,
+    },
+  ) => http.post<PageResult<PortfolioEvaluationObjectionSummaryVO>>(`${BASE}/objection/page`, data),
   handleObjection: (data: PortfolioEvaluationObjectionHandleRequest) =>
     http.post<PortfolioEvaluationObjectionSummaryVO>(`${BASE}/objection/handle`, data),
   summarizeTeacherResult: (data: PortfolioEvaluationResultSummaryRequest) =>

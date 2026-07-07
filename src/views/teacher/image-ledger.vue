@@ -1,12 +1,7 @@
 <template>
   <StageWorkbenchShell class="ledger-page">
     <template #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        :title="contextBarTitle"
-        :subtitle="contextBarSubtitle"
-      >
+      <ContextBar layout="workbench">
         <template #status>
           <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
             {{ examStatusLabel }}
@@ -16,7 +11,12 @@
     </template>
 
     <template v-if="selectedExamId && ledger" #signal>
-      <SignalBand variant="tiles" compact :metrics="ledgerSignalMetrics" />
+      <SignalBand
+        variant="tiles"
+        compact
+        :metrics="ledgerSignalMetrics"
+        @metric-click="handleLedgerMetricClick"
+      />
     </template>
 
     <UiEmpty v-if="!selectedExamId" description="未进入考试工作台" class="ledger-page__empty" />
@@ -53,6 +53,7 @@ import type { ExamPaperDuplicateResolutionVO, ImageLedgerDetailResponse } from '
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   executeImageLedgerBalance,
   getImageLedgerDetail,
@@ -78,6 +79,7 @@ import LedgerSummaryCard from './image-ledger/LedgerSummaryCard.vue'
 defineOptions({ name: 'TeacherImageLedger' })
 
 const { selectedExamId } = useMarkExamContext()
+const router = useRouter()
 const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
   = useExamJourneyContextBar('影像账本')
 const { refreshSnapshot } = useWorkspaceExamId()
@@ -99,6 +101,8 @@ const ledgerSignalMetrics = computed((): SignalMetric[] => {
       value: data.scannedPageCount,
       unit: ` / ${data.expectedPageCount}`,
       tone: data.scannedPageCount >= data.expectedPageCount ? 'green' : 'blue',
+      clickable: data.scannedPageCount < data.expectedPageCount,
+      helper: data.scannedPageCount < data.expectedPageCount ? '前往手动补录' : undefined,
     },
     {
       key: 'bound',
@@ -123,6 +127,16 @@ const ledgerSignalMetrics = computed((): SignalMetric[] => {
     },
   ]
 })
+
+function handleLedgerMetricClick(key: string): void {
+  if (key !== 'scanned' || !selectedExamId.value) return
+  const data = ledger.value
+  if (!data || data.scannedPageCount >= data.expectedPageCount) return
+  void router.push({
+    name: 'TeacherExamWorkspaceScanManualEntry',
+    params: { examId: selectedExamId.value },
+  })
+}
 
 async function loadDetail(): Promise<void> {
   if (!selectedExamId.value) return

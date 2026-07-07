@@ -255,7 +255,7 @@ async function loadList(options?: { refreshSignals?: boolean }) {
     issueList.value = page.list
     issueQuery.pageNum = page.pageNum
     issueQuery.pageSize = page.pageSize
-    issueTotal.value = Number(page.total)
+    issueTotal.value = page.total
     if (issueList.value.length === 0 && issueTotal.value > 0 && issueQuery.pageNum > 1) {
       issueQuery.pageNum -= 1
       await loadList(options)

@@ -10,16 +10,16 @@ import {
   isExamConfidentialFlag,
 } from '@/composables/useConfidentialWatermark'
 
-export type MarkStageKey
-  = | 'EXAM_PREP'
-    | 'PAPER_TEMPLATE'
-    | 'CANDIDATE_ROSTER'
-    | 'SCAN'
-    | 'MARKING_ORG'
-    | 'TRIAL_MARKING'
-    | 'FORMAL_MARKING'
-    | 'SCORE_PUBLISH'
-    | 'ARCHIVE'
+export type MarkStageKey =
+  | 'EXAM_PREP'
+  | 'PAPER_TEMPLATE'
+  | 'CANDIDATE_ROSTER'
+  | 'SCAN'
+  | 'MARKING_ORG'
+  | 'TRIAL_MARKING'
+  | 'FORMAL_MARKING'
+  | 'SCORE_PUBLISH'
+  | 'ARCHIVE'
 
 export interface SelectedExamMeta {
   examId: string
@@ -108,9 +108,6 @@ export const useMarkStageStore = defineStore('markStage', () => {
 
   const prepAdvisoryReasons = computed(() => snapshot.value?.prepAdvisoryReasons ?? [])
   const prepBlockingReasons = computed(() => snapshot.value?.prepBlockingReasons ?? [])
-  const experienceAssistBlockingReasons = computed(
-    () => snapshot.value?.experienceAssistBlockingReasons ?? [],
-  )
   const manualFinalScoreConfirmRequired = computed(
     () => snapshot.value?.manualFinalScoreConfirmRequired,
   )
@@ -166,7 +163,6 @@ export const useMarkStageStore = defineStore('markStage', () => {
     suggestedStageKey,
     prepAdvisoryReasons,
     prepBlockingReasons,
-    experienceAssistBlockingReasons,
     manualFinalScoreConfirmRequired,
     delayedFinalScoreConfirmMinutes,
     isExamConfidential,

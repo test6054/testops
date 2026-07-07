@@ -16,7 +16,7 @@
           allow-clear
           @change="reload"
         />
-        <UiButton variant="outline" size="sm" :loading="generatingAll" @click="handleGenerateAll">
+        <UiButton variant="outline" size="sm" :loading="generating" @click="handleGenerateAll">
           全量生成
         </UiButton>
         <UiButton variant="outline" size="sm" :loading="loading" @click="reload">
@@ -37,148 +37,158 @@
         allow-clear
         @change="reload"
       />
-      <UiButton variant="outline" size="sm" :loading="generatingAll" @click="handleGenerateAll">
+      <UiButton variant="outline" size="sm" :loading="generating" @click="handleGenerateAll">
         全量生成
       </UiButton>
-      <UiButton variant="outline" size="sm" :loading="loading" @click="reload">
-        刷新
-      </UiButton>
+      <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 刷新 </UiButton>
     </template>
 
     <div class="question-analysis-card" :class="{ 'question-analysis-card--embedded': embedded }">
       <UiAlertStrip
-        v-if="layoutRoiGap > 0"
+        v-if="layoutRoiGap > 0 && !generating"
         tone="warning"
         class="question-analysis-card__roi-gap-strip"
         :title="`制卷识别区域未就绪（${layoutRoiGap} 道题）`"
         description="未配置 ROI 的题目无法生成按题质量分析，请先在制卷工作台补全识别区域。"
         dense
       />
-      <MarkScatterSection
-        ref="scatterSectionRef"
-        title="难度-区分度分布"
-        :hint="scatterChartHint"
-        :point-count="scatterPointCount"
-        :option="scatterChartOption"
-        height="300px"
-        :aria-label="scatterChartAriaLabel"
-        :visible="!chartLoading"
-        class="question-analysis-card__chart"
-        @brush-selected="handleScatterBrushSelected"
-      />
-
-      <section
-        v-if="brushSelectedRows.length > 0"
-        class="question-analysis-card__brush-list"
-      >
-        <header class="question-analysis-card__brush-head">
-          <strong>框选区域题目（{{ brushSelectedRows.length }}）</strong>
-          <UiTextAction @click="clearBrushSelection">清除选区</UiTextAction>
-        </header>
-        <ul class="question-analysis-card__brush-items">
-          <li
-            v-for="item in brushSelectedRows"
-            :key="item.layoutQuestionId"
-            class="question-analysis-card__brush-item"
-          >
-            <span>题{{ item.questionNo }} · {{ questionTypeLabel(item.questionType) }}</span>
-            <span class="question-analysis-card__brush-meta">
-              难度 {{ fmtNum(item.difficultyIndex) }} · 区分度 {{ fmtNum(item.discriminationIndex) }}
-            </span>
-          </li>
-        </ul>
-      </section>
-
-      <MarkBarSection
-        title="各题正确率"
-        :hint="correctRatioChartHint"
-        :item-count="correctRatioBarItems.length"
-        :option="correctRatioChartOption"
-        height="300px"
-        :aria-label="correctRatioChartAriaLabel"
-        :visible="!chartLoading"
-        class="question-analysis-card__chart"
-      />
 
       <AiGenerationProgressPanel
-        v-if="generatingAll || generatingId"
+        v-if="generating"
         title="题目质量分析生成中"
-        :waiting-text="generatingAll ? '正在等待后端返回全部题目的真实质量分析。' : '正在等待后端返回当前题目的真实质量分析。'"
+        :waiting-text="
+          generatingAllMode
+            ? '正在等待后端返回全部题目的真实质量分析。'
+            : '正在等待后端返回当前题目的真实质量分析。'
+        "
       />
 
-      <a-typography-paragraph v-if="generationSummary" class="question-analysis-card__generation-summary">
-        {{ generationSummary }}
-      </a-typography-paragraph>
+      <template v-else>
+        <MarkScatterSection
+          ref="scatterSectionRef"
+          title="难度-区分度分布"
+          :hint="scatterChartHint"
+          :point-count="scatterPointCount"
+          :option="scatterChartOption"
+          height="300px"
+          :aria-label="scatterChartAriaLabel"
+          :visible="!chartLoading"
+          class="question-analysis-card__chart"
+          @brush-selected="handleScatterBrushSelected"
+        />
 
-      <UiDataTable
-        class="student-detail-table__data-table"
-        :columns="columns"
-        :data-source="tableRows"
-        :loading="tableLoading"
-        row-key="id"
-        size="small"
-        pagination-mode="server"
-        v-model:current="tablePageNum"
-        v-model:page-size="tablePageSize"
-        :total="tableTotal"
-        :empty-kind="tableEmptyKind"
-        :empty-description="tableEmptyDescription"
-        flat
-        @page-change="handleTablePageChange"
-      >
-        <template #empty-action>
-          <UiButton
-            v-if="tableEmptyKind === 'first-run'"
-            variant="outline"
-            size="sm"
-            :loading="generatingAll"
-            @click="handleGenerateAll"
-          >
-            全量生成
-          </UiButton>
-          <UiButton
-            v-else-if="tableEmptyKind === 'no-result'"
-            variant="outline"
-            size="sm"
-            @click="clearQuestionFilter"
-          >
-            清除题目筛选
-          </UiButton>
-        </template>
-        <template #bodyCell="{ column, record: item }">
-          <template v-if="column.key === 'question'">
-            <div class="question-analysis-card__question-cell">
-              <div class="question-analysis-card__question-title">
-                题{{ item.questionNo }} · {{ questionTypeLabel(item.questionType) }} ·
-                {{ fmtNum(item.fullScore) }} 分
+        <section v-if="brushSelectedRows.length > 0" class="question-analysis-card__brush-list">
+          <header class="question-analysis-card__brush-head">
+            <strong>框选区域题目（{{ brushSelectedRows.length }}）</strong>
+            <UiTextAction @click="clearBrushSelection">清除选区</UiTextAction>
+          </header>
+          <ul class="question-analysis-card__brush-items">
+            <li
+              v-for="item in brushSelectedRows"
+              :key="item.layoutQuestionId"
+              class="question-analysis-card__brush-item"
+            >
+              <span>题{{ item.questionNo }} · {{ questionTypeLabel(item.questionType) }}</span>
+              <span class="question-analysis-card__brush-meta">
+                难度 {{ fmtNum(item.difficultyIndex) }} · 区分度
+                {{ fmtNum(item.discriminationIndex) }}
+              </span>
+            </li>
+          </ul>
+        </section>
+
+        <MarkBarSection
+          title="各题正确率"
+          :hint="correctRatioChartHint"
+          :item-count="correctRatioBarItems.length"
+          :option="correctRatioChartOption"
+          height="300px"
+          :aria-label="correctRatioChartAriaLabel"
+          :visible="!chartLoading"
+          class="question-analysis-card__chart"
+        />
+
+        <a-typography-paragraph
+          v-if="generationSummary"
+          class="question-analysis-card__generation-summary"
+        >
+          {{ generationSummary }}
+        </a-typography-paragraph>
+
+        <UiDataTable
+          class="student-detail-table__data-table"
+          :columns="columns"
+          :data-source="tableRows"
+          :loading="tableLoading"
+          row-key="id"
+          size="small"
+          pagination-mode="server"
+          v-model:current="tablePageNum"
+          v-model:page-size="tablePageSize"
+          :total="tableTotal"
+          :empty-kind="tableEmptyKind"
+          :empty-description="tableEmptyDescription"
+          flat
+          @page-change="handleTablePageChange"
+        >
+          <template #empty-action>
+            <UiButton
+              v-if="tableEmptyKind === 'first-run'"
+              variant="outline"
+              size="sm"
+              :loading="generating"
+              @click="handleGenerateAll"
+            >
+              全量生成
+            </UiButton>
+            <UiButton
+              v-else-if="tableEmptyKind === 'no-result'"
+              variant="outline"
+              size="sm"
+              @click="clearQuestionFilter"
+            >
+              清除题目筛选
+            </UiButton>
+          </template>
+          <template #bodyCell="{ column, record: item }">
+            <template v-if="column.key === 'question'">
+              <div class="question-analysis-card__question-cell">
+                <div class="question-analysis-card__question-title">
+                  题{{ item.questionNo }} · {{ questionTypeLabel(item.questionType) }} ·
+                  {{ fmtNum(item.fullScore) }} 分
+                </div>
+                <div v-if="item.questionStem" class="question-analysis-card__question-stem">
+                  {{ formatQuestionStemPreview(item.questionStem) }}
+                </div>
               </div>
-              <div v-if="item.questionStem" class="question-analysis-card__question-stem">
-                {{ formatQuestionStemPreview(item.questionStem) }}
-              </div>
-            </div>
+            </template>
+            <template v-else-if="column.key === 'difficultyIndex'">
+              {{ fmtNum(item.difficultyIndex) }}
+            </template>
+            <template v-else-if="column.key === 'discriminationIndex'">
+              {{ fmtNum(item.discriminationIndex) }}
+            </template>
+            <template v-else-if="column.key === 'avgScore'">
+              {{ fmtNum(item.avgScore) }} / {{ fmtNum(item.fullScore) }}
+            </template>
+            <template v-else-if="column.key === 'correctRatio'">
+              <a-typography-text :type="getCorrectRatioType(item)">
+                {{ correctRatio(item) }}
+              </a-typography-text>
+            </template>
+            <template v-else-if="column.key === 'snapshotTime'">
+              {{ formatDateTime(item.snapshotTime) }}
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiTableActions
+                :items="[{ key: 'regenerate', label: '重新生成' }]"
+                split
+                @action="() => handleGenerateOne(item.layoutQuestionId)"
+              />
+            </template>
           </template>
-          <template v-else-if="column.key === 'difficultyIndex'">
-            {{ fmtNum(item.difficultyIndex) }}
-          </template>
-          <template v-else-if="column.key === 'discriminationIndex'">
-            {{ fmtNum(item.discriminationIndex) }}
-          </template>
-          <template v-else-if="column.key === 'avgScore'">
-            {{ fmtNum(item.avgScore) }} / {{ fmtNum(item.fullScore) }}
-          </template>
-          <template v-else-if="column.key === 'correctRatio'">
-            <a-typography-text :type="getCorrectRatioType(item)">
-              {{ correctRatio(item) }}
-            </a-typography-text>
-          </template>
-          <template v-else-if="column.key === 'snapshotTime'">
-            {{ formatDateTime(item.snapshotTime) }}
-          </template>
-          <template v-else-if="column.key === 'actions'">
-            <UiTextAction @click="handleGenerateOne(item.layoutQuestionId)">重新生成</UiTextAction>
-          </template>
-        </template>
-      </UiDataTable>
+        </UiDataTable>
+      </template>
     </div>
   </component>
 </template>
@@ -186,12 +196,19 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamTemplateResponse } from '@/apis/mark/exam-layout-question'
-import type { ExamQuestionAnalysisRecordResponse, QuestionAnalysisListQueryRequest } from '@/apis/mark/question-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
-import { fetchAllQuestionAnalysisRows, generateAllQuestionAnalysis, generateQuestionAnalysis, pageQuestionAnalysis } from '@/apis/mark/question-analysis'
+import type {
+  ExamQuestionAnalysisRecordResponse,
+  QuestionAnalysisListQueryRequest,
+} from '@/apis/mark/question-analysis'
+import {
+  fetchAllQuestionAnalysisRows,
+  generateAllQuestionAnalysis,
+  generateQuestionAnalysis,
+  pageQuestionAnalysis,
+} from '@/apis/mark/question-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { computed, ref, watch } from 'vue'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkScatterSection from '@/components/chart/MarkScatterSection.vue'
@@ -200,8 +217,9 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { buildNumericColumn } from '@/components/ui-guide/ui/data-table'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useAiAnalysisGenerationFeedback } from '@/composables/useAiAnalysisGenerationFeedback'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -235,9 +253,7 @@ const props = withDefaults(
 const emit = defineEmits<{ (e: 'generated'): void }>()
 
 const shellProps = computed(() =>
-  props.embedded
-    ? { title: '题目质量分析', context: props.examLabel }
-    : { class: 'stats-card' },
+  props.embedded ? { title: '题目质量分析' } : { class: 'stats-card' },
 )
 
 const chartRows = ref<ExamQuestionAnalysisRecordResponse[]>([])
@@ -245,11 +261,14 @@ const tableRows = ref<ExamQuestionAnalysisRecordResponse[]>([])
 const chartLoading = ref(false)
 const tableLoading = ref(false)
 const loading = computed(() => chartLoading.value || tableLoading.value)
-const generatingAll = ref(false)
+const { generating, runGeneration } = useAiAnalysisGenerationFeedback()
+const generatingAllMode = ref(false)
 const generatingId = ref<string>('')
 const selectedLayoutQuestionId = ref<string>()
 const questionLoading = ref(false)
-const questionOptions = ref<Array<{ value: string, label: string, disabled?: boolean, title?: string }>>([])
+const questionOptions = ref<
+  Array<{ value: string; label: string; disabled?: boolean; title?: string }>
+>([])
 const layoutSummary = ref<ExamTemplateResponse | null>(null)
 const layoutRoiGap = computed(() => {
   if (!layoutSummary.value?.configured) {
@@ -297,7 +316,12 @@ const columns: ColumnType<ExamQuestionAnalysisRecordResponse>[] = [
   { title: '题目', key: 'question', width: 260 },
   buildNumericColumn({ title: '总人数', dataIndex: 'totalCount', key: 'totalCount', width: 90 }),
   { title: '正确率', key: 'correctRatio', width: 110, align: 'right' },
-  buildNumericColumn({ title: '需复核', dataIndex: 'needReviewCount', key: 'needReviewCount', width: 90 }),
+  buildNumericColumn({
+    title: '需复核',
+    dataIndex: 'needReviewCount',
+    key: 'needReviewCount',
+    width: 90,
+  }),
   buildNumericColumn({ title: '难度系数', key: 'difficultyIndex', width: 110 }),
   buildNumericColumn({ title: '区分度', key: 'discriminationIndex', width: 100 }),
   { title: '平均分/满分', key: 'avgScore', width: 140, align: 'right' },
@@ -332,7 +356,10 @@ async function loadChartRows(): Promise<void> {
   }
 }
 
-async function loadTablePage(pageNum = tablePageNum.value, pageSize = tablePageSize.value): Promise<void> {
+async function loadTablePage(
+  pageNum = tablePageNum.value,
+  pageSize = tablePageSize.value,
+): Promise<void> {
   if (!props.examId) {
     tableRows.value = []
     tableTotal.value = 0
@@ -345,10 +372,8 @@ async function loadTablePage(pageNum = tablePageNum.value, pageSize = tablePageS
       pageNum,
       pageSize,
     })
-    tableRows.value = acceptQuestionAnalysisRows(
-      page.list,
-    )
-    tableTotal.value = Number(page.total)
+    tableRows.value = acceptQuestionAnalysisRows(page.list)
+    tableTotal.value = page.total
     tablePageNum.value = page.pageNum
     tablePageSize.value = page.pageSize
   } catch (e) {
@@ -366,7 +391,7 @@ async function reload(): Promise<void> {
   await Promise.all([loadChartRows(), loadTablePage(1, tablePageSize.value)])
 }
 
-function handleTablePageChange(event: { current: number, pageSize: number }): void {
+function handleTablePageChange(event: { current: number; pageSize: number }): void {
   void loadTablePage(event.current, event.pageSize)
 }
 
@@ -384,8 +409,12 @@ async function loadQuestionOptions(): Promise<void> {
       return
     }
     questionOptions.value = buildExamLayoutQuestionOptions(template.questions)
-    if (selectedLayoutQuestionId.value
-      && !template.questions.some(q => q.layoutQuestionId === selectedLayoutQuestionId.value && q.roiReady)) {
+    if (
+      selectedLayoutQuestionId.value &&
+      !template.questions.some(
+        (q) => q.layoutQuestionId === selectedLayoutQuestionId.value && q.roiReady,
+      )
+    ) {
       selectedLayoutQuestionId.value = undefined
     }
   } catch (e) {
@@ -398,45 +427,51 @@ async function loadQuestionOptions(): Promise<void> {
 
 async function handleGenerateAll(): Promise<void> {
   generationSummary.value = ''
-  generatingAll.value = true
-  try {
-    await generateAllQuestionAnalysis({
-      examId: props.examId,
-      classId: props.classId || undefined,
-    })
-    await reload()
-    generationSummary.value = `已生成 ${chartRows.value.length} 道题目质量分析，可查看难度、区分度与正确率。`
-    message.success('已生成全部题目质量分析')
-    emit('generated')
-  } catch (e) {
-    showUserError(e, '全部题目质量分析生成失败')
-  } finally {
-    generatingAll.value = false
-  }
+  generatingAllMode.value = true
+  await runGeneration(
+    () =>
+      generateAllQuestionAnalysis({
+        examId: props.examId,
+        classId: props.classId || undefined,
+      }),
+    {
+      successMessage: '已生成全部题目质量分析',
+      onSuccess: async () => {
+        await reload()
+        generationSummary.value = `已生成 ${chartRows.value.length} 道题目质量分析，可查看难度、区分度与正确率。`
+        emit('generated')
+      },
+    },
+  )
+  generatingAllMode.value = false
 }
 
 async function handleGenerateOne(layoutQuestionId: string): Promise<void> {
   generationSummary.value = ''
+  generatingAllMode.value = false
   generatingId.value = layoutQuestionId
-  try {
-    await generateQuestionAnalysis({
-      examId: props.examId,
-      layoutQuestionId,
-      classId: props.classId || undefined,
-    })
-    message.success('已重新生成')
-    await reload()
-    const matched = tableRows.value.find((item) => item.layoutQuestionId === layoutQuestionId)
-      ?? chartRows.value.find((item) => item.layoutQuestionId === layoutQuestionId)
-    generationSummary.value = matched
-      ? `已生成题 ${matched.questionNo} 的质量分析，可查看难度、区分度与正确率。`
-      : '已生成该题质量分析，可查看难度、区分度与正确率。'
-    emit('generated')
-  } catch (e) {
-    showUserError(e, '题目质量分析重新生成失败')
-  } finally {
-    generatingId.value = ''
-  }
+  await runGeneration(
+    () =>
+      generateQuestionAnalysis({
+        examId: props.examId,
+        layoutQuestionId,
+        classId: props.classId || undefined,
+      }),
+    {
+      successMessage: '已重新生成',
+      onSuccess: async () => {
+        await reload()
+        const matched =
+          tableRows.value.find((item) => item.layoutQuestionId === layoutQuestionId) ??
+          chartRows.value.find((item) => item.layoutQuestionId === layoutQuestionId)
+        generationSummary.value = matched
+          ? `已生成题 ${matched.questionNo} 的质量分析，可查看难度、区分度与正确率。`
+          : '已生成该题质量分析，可查看难度、区分度与正确率。'
+        emit('generated')
+      },
+    },
+  )
+  generatingId.value = ''
 }
 
 function acceptQuestionAnalysisRows(
@@ -462,7 +497,9 @@ function correctRatio(r: ExamQuestionAnalysisRecordResponse): string {
   return `${ratio.toFixed(1)}%`
 }
 
-function getCorrectRatioType(r: ExamQuestionAnalysisRecordResponse): 'danger' | 'warning' | undefined {
+function getCorrectRatioType(
+  r: ExamQuestionAnalysisRecordResponse,
+): 'danger' | 'warning' | undefined {
   const total = r.totalCount
   if (total <= 0) return undefined
   const ratio = r.correctCount / total
@@ -471,25 +508,33 @@ function getCorrectRatioType(r: ExamQuestionAnalysisRecordResponse): 'danger' | 
   return undefined
 }
 
-function questionTypeLabel(questionType: ExamQuestionAnalysisRecordResponse['questionType']): string {
+function questionTypeLabel(
+  questionType: ExamQuestionAnalysisRecordResponse['questionType'],
+): string {
   return strictEnumLabel(QuestionTypeDescription, questionType, '题型')
 }
 
-const questionQualityScatterSeries = computed(() => buildQuestionQualityScatterSeries(chartRows.value))
+const questionQualityScatterSeries = computed(() =>
+  buildQuestionQualityScatterSeries(chartRows.value),
+)
 const scatterPointCount = computed(() =>
   questionQualityScatterSeries.value.reduce((sum, series) => sum + series.points.length, 0),
 )
 const correctRatioBarItems = computed(() => correctRatioToBarItems(chartRows.value))
 
-const scatterChartHint = computed(() => mergeChartHint(
-  '理想区间：难度 0.3-0.8 且 区分度 ≥ 0.4；可使用右上角工具框选题目查看清单。',
-  buildScatterChartInsight(questionQualityScatterSeries.value),
-))
+const scatterChartHint = computed(() =>
+  mergeChartHint(
+    '理想区间：难度 0.3-0.8 且 区分度 ≥ 0.4；可使用右上角工具框选题目查看清单。',
+    buildScatterChartInsight(questionQualityScatterSeries.value),
+  ),
+)
 
-const correctRatioChartHint = computed(() => mergeChartHint(
-  '按题号展示已批阅学生的正确率',
-  buildBarChartInsight(correctRatioBarItems.value, { passLine: 60, passLineLabel: '及格线' }),
-))
+const correctRatioChartHint = computed(() =>
+  mergeChartHint(
+    '按题号展示已批阅学生的正确率',
+    buildBarChartInsight(correctRatioBarItems.value, { passLine: 60, passLineLabel: '及格线' }),
+  ),
+)
 
 const { chartOption: scatterChartOption } = useChartOption(() =>
   buildScatterChartOption(questionQualityScatterSeries.value, {
@@ -504,12 +549,14 @@ const { chartOption: scatterChartOption } = useChartOption(() =>
 function handleScatterBrushSelected(params: unknown): void {
   const payload = params as ScatterBrushSelectedEvent
   const selected = payload.batch?.[0]?.selected ?? []
-  const hasSelection = selected.some(item => (item.dataIndex?.length ?? 0) > 0)
+  const hasSelection = selected.some((item) => (item.dataIndex?.length ?? 0) > 0)
   if (!hasSelection) {
     brushSelectedRows.value = []
     return
   }
-  const visibleSeries = questionQualityScatterSeries.value.filter(series => series.points.length > 0)
+  const visibleSeries = questionQualityScatterSeries.value.filter(
+    (series) => series.points.length > 0,
+  )
   const selectedQuestionIds = new Set<string>()
   for (const item of selected) {
     const series = visibleSeries[item.seriesIndex ?? -1]
@@ -521,7 +568,9 @@ function handleScatterBrushSelected(params: unknown): void {
       }
     }
   }
-  brushSelectedRows.value = chartRows.value.filter(row => selectedQuestionIds.has(row.layoutQuestionId))
+  brushSelectedRows.value = chartRows.value.filter((row) =>
+    selectedQuestionIds.has(row.layoutQuestionId),
+  )
 }
 
 function clearBrushSelection(): void {

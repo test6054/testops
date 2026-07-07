@@ -73,125 +73,137 @@
       </div>
     </template>
 
-    <UiSkeletonState v-if="loading && !generating" variant="card" compact />
-    <AiGenerationProgressPanel
-      v-else-if="generating"
-      title="AI 学生学情分析生成中"
-      waiting-text="正在等待后端返回该学生的真实学情画像。"
-    />
+    <AiAnalysisCardBody
+      :loading="loading"
+      :generating="generating"
+      :has-content="record != null"
+      :empty-description="emptyDescription"
+      progress-title="AI 学生学情分析生成中"
+      progress-waiting-text="正在等待后端返回该学生的真实学情画像。"
+    >
+      <div v-if="record != null" class="ai-analysis-section__body ai-analysis-section__body--flush">
+        <p v-if="record.overallSummary" class="ai-analysis-summary">
+          {{ record.overallSummary }}
+        </p>
 
-    <UiEmpty v-else-if="!record" description="请选择学生后查看学情分析" />
-    <div v-else-if="record" class="ai-analysis-section__body ai-analysis-section__body--flush">
-      <p v-if="record.overallSummary" class="ai-analysis-summary">
-        {{ record.overallSummary }}
-      </p>
-
-      <div v-if="scoreComposition" class="ai-profile-score-grid">
-        <div class="ai-profile-score-item">
-          <span class="ai-profile-score-label">卷面得分</span>
-          <span class="ai-profile-score-value">
-            {{ formatScore(scoreComposition.examScore) }}
-            <span v-if="scoreComposition.paperFullScore != null" class="score-full">
-              / {{ formatScore(scoreComposition.paperFullScore) }}
+        <div v-if="record.scoreComposition" class="ai-profile-score-grid">
+          <div class="ai-profile-score-item">
+            <span class="ai-profile-score-label">卷面得分</span>
+            <span class="ai-profile-score-value">
+              {{ formatScore(record.scoreComposition.examScore) }}
+              <span v-if="record.scoreComposition.paperFullScore != null" class="score-full">
+                / {{ formatScore(record.scoreComposition.paperFullScore) }}
+              </span>
             </span>
-          </span>
-        </div>
-        <div class="ai-profile-score-item">
-          <span class="ai-profile-score-label">平时成绩</span>
-          <span class="ai-profile-score-value">
-            <template v-if="hasDailyScoreConfig">
-              {{ formatScore(scoreComposition.dailyScore) }}
-              <span v-if="scoreComposition.dailyScoreFull != null" class="score-full">
-                / {{ formatScore(scoreComposition.dailyScoreFull) }}
-              </span>
-            </template>
-            <span v-else class="text-muted">未配置</span>
-          </span>
-        </div>
-        <div class="ai-profile-score-item">
-          <span class="ai-profile-score-label">总成绩</span>
-          <span class="ai-profile-score-value">
-            <template v-if="scoreComposition.totalScore != null">
-              {{ formatScore(scoreComposition.totalScore) }} 分
-              <UiTag
-                v-if="scoreComposition.finalScoreStatus"
-                size="sm"
-                :tone="finalScoreTone(scoreComposition.finalScoreStatus)"
-              >
-                {{ finalScoreLabel(scoreComposition.finalScoreStatus) }}
-              </UiTag>
-            </template>
-            <span v-else class="text-muted">未录入</span>
-          </span>
-        </div>
-      </div>
-
-      <div v-if="suggestions.length > 0" class="ai-profile-block">
-        <h5 class="ai-profile-block__title">学习建议</h5>
-        <ul class="ai-profile-suggestion-list">
-          <li v-for="(item, index) in suggestions" :key="index">{{ item }}</li>
-        </ul>
-      </div>
-
-      <div v-if="diagnosisItems.length > 0" class="ai-profile-block">
-        <h5 class="ai-profile-block__title">知识掌握分析</h5>
-        <div class="ai-profile-diagnosis-list">
-          <div v-for="(item, index) in diagnosisItems" :key="index" class="ai-profile-diagnosis-item">
-            <div class="diagnosis-header">
-              <UiTag :tone="masteryColor(item.masteryLevel)">
-                {{ masteryLabel(item.masteryLevel) }}
-              </UiTag>
-              <span v-if="item.questionType" class="diagnosis-type">
-                {{ questionTypeLabel(item.questionType) }}
-              </span>
-              <span class="diagnosis-rate">得分率 {{ formatRate(item.scoreRate) }}</span>
-            </div>
-            <p v-if="item.causeAnalysis" class="diagnosis-text">{{ item.causeAnalysis }}</p>
-            <p v-if="item.suggestion" class="diagnosis-text diagnosis-text--hint">{{ item.suggestion }}</p>
-            <p
-              v-if="item.lostQuestionNos && item.lostQuestionNos.length"
-              class="diagnosis-text diagnosis-text--muted"
-            >
-              失分题号：{{ item.lostQuestionNos.join('、') }}
-            </p>
+          </div>
+          <div class="ai-profile-score-item">
+            <span class="ai-profile-score-label">平时成绩</span>
+            <span class="ai-profile-score-value">
+              <template v-if="record.scoreComposition.dailyScoreFull != null">
+                {{ formatScore(record.scoreComposition.dailyScore) }}
+                <span v-if="record.scoreComposition.dailyScoreFull != null" class="score-full">
+                  / {{ formatScore(record.scoreComposition.dailyScoreFull) }}
+                </span>
+              </template>
+              <span v-else class="text-muted">未配置</span>
+            </span>
+          </div>
+          <div class="ai-profile-score-item">
+            <span class="ai-profile-score-label">总成绩</span>
+            <span class="ai-profile-score-value">
+              <template v-if="record.scoreComposition.totalScore != null">
+                {{ formatScore(record.scoreComposition.totalScore) }} 分
+                <UiTag
+                  v-if="record.scoreComposition.finalScoreStatus"
+                  size="sm"
+                  :tone="finalScoreTone(record.scoreComposition.finalScoreStatus)"
+                >
+                  {{ finalScoreLabel(record.scoreComposition.finalScoreStatus) }}
+                </UiTag>
+              </template>
+              <span v-else class="text-muted">未录入</span>
+            </span>
           </div>
         </div>
-      </div>
 
-      <AiAnalysisMetaCollapse
-        :record="record"
-        failure-fallback="AI 学生学情分析未完成，请稍后重新生成"
-      />
-    </div>
+        <div v-if="record.suggestions && record.suggestions.length > 0" class="ai-profile-block">
+          <h5 class="ai-profile-block__title">学习建议</h5>
+          <ul class="ai-profile-suggestion-list">
+            <li v-for="(item, index) in record.suggestions" :key="index">{{ item }}</li>
+          </ul>
+        </div>
+
+        <div
+          v-if="record.diagnosisItems && record.diagnosisItems.length > 0"
+          class="ai-profile-block"
+        >
+          <h5 class="ai-profile-block__title">知识掌握分析</h5>
+          <div class="ai-profile-diagnosis-list">
+            <div
+              v-for="(item, index) in record.diagnosisItems"
+              :key="index"
+              class="ai-profile-diagnosis-item"
+            >
+              <div class="diagnosis-header">
+                <UiTag :tone="masteryColor(item.masteryLevel)">
+                  {{ masteryLabel(item.masteryLevel) }}
+                </UiTag>
+                <span v-if="item.questionType" class="diagnosis-type">
+                  {{ questionTypeLabel(item.questionType) }}
+                </span>
+                <span class="diagnosis-rate">得分率 {{ formatRate(item.scoreRate) }}</span>
+              </div>
+              <p v-if="item.causeAnalysis" class="diagnosis-text">{{ item.causeAnalysis }}</p>
+              <p v-if="item.suggestion" class="diagnosis-text diagnosis-text--hint">
+                {{ item.suggestion }}
+              </p>
+              <p
+                v-if="item.lostQuestionNos && item.lostQuestionNos.length"
+                class="diagnosis-text diagnosis-text--muted"
+              >
+                失分题号：{{ item.lostQuestionNos.join('、') }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <AiAnalysisMetaCollapse
+          :record="record"
+          failure-fallback="AI 学生学情分析未完成，请稍后重新生成"
+        />
+      </div>
+    </AiAnalysisCardBody>
   </component>
 </template>
 
 <script lang="ts" setup>
 import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
+import {
+  FINAL_SCORE_STATUS_TONE,
+  FinalScoreStatusDescription,
+} from '@/apis/mark/final-score-status'
 import type { MasteryLevelCode } from '@/apis/mark/student-mastery-level'
+import { MASTERY_LEVEL_TONE, MasteryLevelDescription } from '@/apis/mark/student-mastery-level'
 import type { TeachingAnalysisRecordResponse } from '@/apis/mark/teaching-analysis'
+import {
+  generateStudentLearningProfile,
+  getLatestStudentLearningProfile,
+} from '@/apis/mark/teaching-analysis'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { MarkStudentOption } from '@/composables/useMarkExamRoster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
-import { FINAL_SCORE_STATUS_TONE, FinalScoreStatusDescription } from '@/apis/mark/final-score-status'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
-import { MASTERY_LEVEL_TONE, MasteryLevelDescription } from '@/apis/mark/student-mastery-level'
-import {
-  generateStudentLearningProfile,
-  getLatestStudentLearningProfile,
-} from '@/apis/mark/teaching-analysis'
+import AiAnalysisCardBody from '@/components/mark/analysis/AiAnalysisCardBody.vue'
 import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCollapse.vue'
 import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useAiAnalysisGenerationFeedback } from '@/composables/useAiAnalysisGenerationFeedback'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import AiGenerationProgressPanel from './AiGenerationProgressPanel.vue'
 
 defineOptions({ name: 'StudentLearningProfileCard' })
 
@@ -212,36 +224,24 @@ const emit = defineEmits<{ (e: 'student-change', studentUserId: string): void }>
 
 const record = ref<TeachingAnalysisRecordResponse | null>(null)
 const loading = ref(false)
-const generating = ref(false)
+const { generating, runGeneration } = useAiAnalysisGenerationFeedback()
 const selectedStudentUserId = ref<string | undefined>(undefined)
 const hasQueried = ref(false)
 
 const shellProps = computed(() =>
-  props.embedded
-    ? { title: '学生个体学情画像', context: props.examLabel }
-    : { class: 'stats-card' },
+  props.embedded ? { title: '学生个体学情画像' } : { class: 'stats-card' },
 )
 
 const filteredStudentOptions = computed<MarkStudentOption[]>(() => {
   if (props.classIdHint) {
-    return props.studentOptions.filter(opt => opt.classId === props.classIdHint)
+    return props.studentOptions.filter((opt) => opt.classId === props.classIdHint)
   }
   return props.studentOptions
 })
 
-const diagnosisItems = computed(() => record.value?.diagnosisItems ?? [])
-const scoreComposition = computed(() => record.value?.scoreComposition)
-const suggestions = computed(() => record.value?.suggestions ?? [])
-const hasDailyScoreConfig = computed(() => scoreComposition.value?.dailyScoreFull != null)
-
-function acceptStudentLearningProfileRecord(
-  value: TeachingAnalysisRecordResponse | null,
-  expectedStudentUserId: string,
-): TeachingAnalysisRecordResponse | null {
-  void expectedStudentUserId
-  if (!value) return null
-  return value
-}
+const emptyDescription = computed(() =>
+  selectedStudentUserId.value ? '暂无学情分析，可点击重新生成' : '请选择学生后查看学情分析',
+)
 
 async function reload(): Promise<void> {
   const studentUserId = selectedStudentUserId.value
@@ -250,7 +250,7 @@ async function reload(): Promise<void> {
   loading.value = true
   try {
     const latest = await getLatestStudentLearningProfile({ examId: props.examId, studentUserId })
-    record.value = acceptStudentLearningProfileRecord(latest, studentUserId)
+    record.value = latest
     emit('student-change', studentUserId)
   } catch (e) {
     record.value = null
@@ -267,18 +267,19 @@ async function handleGenerate(): Promise<void> {
     return
   }
   hasQueried.value = true
-  generating.value = true
-  try {
-    const generated = await generateStudentLearningProfile({ examId: props.examId, studentUserId })
-    record.value = acceptStudentLearningProfileRecord(generated, studentUserId)
-    message.success('已生成最新学情分析')
-    emit('student-change', studentUserId)
-  } catch (e) {
-    record.value = null
-    showUserError(e, '学生学情分析生成失败')
-  } finally {
-    generating.value = false
-  }
+  await runGeneration(
+    () => generateStudentLearningProfile({ examId: props.examId, studentUserId }),
+    {
+      successMessage: '已生成最新学情分析',
+      onSuccess: (generated) => {
+        record.value = generated
+        emit('student-change', studentUserId)
+      },
+      onFailure: () => {
+        record.value = null
+      },
+    },
+  )
 }
 
 function formatRate(rate: string): string {
@@ -327,8 +328,8 @@ watch(
   () => props.studentOptions,
   (next) => {
     if (
-      selectedStudentUserId.value
-      && !next.some(opt => opt.value === selectedStudentUserId.value)
+      selectedStudentUserId.value &&
+      !next.some((opt) => opt.value === selectedStudentUserId.value)
     ) {
       selectedStudentUserId.value = undefined
       hasQueried.value = false
@@ -341,8 +342,8 @@ watch(
   () => props.classIdHint,
   () => {
     if (
-      selectedStudentUserId.value
-      && !filteredStudentOptions.value.some(opt => opt.value === selectedStudentUserId.value)
+      selectedStudentUserId.value &&
+      !filteredStudentOptions.value.some((opt) => opt.value === selectedStudentUserId.value)
     ) {
       selectedStudentUserId.value = undefined
       hasQueried.value = false

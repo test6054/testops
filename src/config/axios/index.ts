@@ -9,6 +9,7 @@
  */
 
 import type { BlobDownloadResponse, ExtendedAxiosRequestConfig, RequestOptions } from './types'
+import { normalizePageResultPayload } from '@/utils/page-result'
 import { config } from './config'
 import service from './service'
 
@@ -42,7 +43,7 @@ async function request<TResponse, TData = unknown, TParams = unknown>(
     }
 
     const response = await service<ResultInfo<TResponse>>(axiosConfig)
-    return response.data.data
+    return normalizePageResultPayload(response.data.data)
 }
 
 /**

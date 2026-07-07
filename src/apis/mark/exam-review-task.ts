@@ -12,10 +12,7 @@ import type { PageResult, QueryDto } from '@/types'
 import type { ReviewTaskTypeCode } from '@/types/enums/review-task-type-enum'
 import http from '@/config/axios'
 import { GradeSourceCode } from '@/types/enums/grade-source-enum'
-import {
-  ReviewTaskStatusCode,
-  ReviewTaskStatusDescription,
-} from '@/types/enums/review-task-status-enum'
+import { ReviewTaskStatusCode, ReviewTaskStatusDescription } from '@/types/enums/review-task-status-enum'
 
 /** 匿名批阅任务查询请求 - 对应 ReviewTaskQueryRequest */
 export interface ReviewTaskQueryRequest extends QueryDto {
@@ -29,6 +26,12 @@ export interface ReviewTaskQueryRequest extends QueryDto {
   gradeSource?: GradeSourceCode
   /** 是否排除题目复核仲裁任务 */
   excludeArbitration?: boolean
+  /** 指派教师用户 ID */
+  assignedTeacherUserId?: string
+  /** 是否仅查询已结案任务 */
+  completedOnly?: boolean
+  /** 题号精确匹配 */
+  questionNo?: string
 }
 
 export {
@@ -177,11 +180,30 @@ export const GRADE_SOURCE_TONE: Record<GradeSourceCode, BadgeTone> = {
   [GradeSourceCode.TEACHER]: 'orange',
 }
 
+/** 题目复核仲裁工作台 KPI 汇总 */
+export interface ReviewArbitrationSummaryResponse {
+  totalCount: string
+  pendingCount: string
+  inProgressMineCount: string
+  completedCount: string
+  avgAiRatioPercent?: number | null
+}
+
 /** 查询匿名批阅任务列表。 */
 export function listReviewTasks(
   request: ReviewTaskQueryRequest,
 ): Promise<PageResult<ReviewTaskItemResponse>> {
   return http.post<PageResult<ReviewTaskItemResponse>>('/api/mark/exams/review-tasks', request)
+}
+
+/** 查询题目复核仲裁工作台 KPI 汇总。 */
+export function getReviewArbitrationSummary(request: {
+  examId: string
+}): Promise<ReviewArbitrationSummaryResponse> {
+  return http.post<ReviewArbitrationSummaryResponse>(
+    '/api/mark/exams/review-tasks/arbitration-summary',
+    request,
+  )
 }
 
 /** 查询匿名批阅任务详情。 */

@@ -6,10 +6,6 @@ import type {
   AccreditationEvidenceSaveRequest,
   AccreditationEvidenceVO,
 } from '@/apis/quality/accreditation'
-import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   accreditationApi,
   AccreditationEvidenceAnchorTypeCode,
@@ -18,8 +14,12 @@ import {
   AccreditationEvidenceCategoryDescription,
   ALL_ACCREDITATION_EVIDENCE_CATEGORY_CODES,
 } from '@/apis/quality/accreditation'
-import { archiveApi } from '@/apis/quality/archive'
+import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
 import { assessmentItemApi } from '@/apis/quality/assessment-item'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { archiveApi } from '@/apis/quality/archive'
 import { qualityCourseApi } from '@/apis/quality/quality-course'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import { CourseSelector } from '@/components/quality/selectors'
@@ -27,6 +27,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import {
   canExportExpertPackage,
   canMutateAccreditationEvidence,
@@ -46,11 +47,11 @@ const props = defineProps<{
   cockpit?: AccreditationCockpitVO
 }>()
 
-const emit = defineEmits<{ 'count-change': [count: number], "exported": [] }>()
+const emit = defineEmits<{ 'count-change': [count: number]; exported: [] }>()
 
-const CATEGORY_TABS: { key: '' | AccreditationEvidenceCategoryCode, label: string }[] = [
+const CATEGORY_TABS: { key: '' | AccreditationEvidenceCategoryCode; label: string }[] = [
   { key: '', label: '全部' },
-  ...ALL_ACCREDITATION_EVIDENCE_CATEGORY_CODES.map(key => ({
+  ...ALL_ACCREDITATION_EVIDENCE_CATEGORY_CODES.map((key) => ({
     key,
     label: AccreditationEvidenceCategoryDescription[key],
   })),
@@ -74,7 +75,7 @@ const categoryFilter = ref<'' | AccreditationEvidenceCategoryCode>('')
 const evidenceOpen = ref(false)
 const evidenceDrawerTitle = ref('登记认证证据')
 const markImportOpen = ref(false)
-const linkedExams = ref<{ examId: string, label: string }[]>([])
+const linkedExams = ref<{ examId: string; label: string }[]>([])
 const selectedExamIds = ref<string[]>([])
 
 const evidenceForm = reactive<AccreditationEvidenceSaveRequest>({
@@ -138,7 +139,7 @@ async function loadEvidences() {
       pageSize: evidenceQuery.pageSize,
     })
     evidences.value = result.list
-    evidenceTotal.value = Number(result.total)
+    evidenceTotal.value = result.total
     evidenceQuery.pageNum = result.pageNum
     evidenceQuery.pageSize = result.pageSize
     if (evidences.value.length === 0 && evidenceTotal.value > 0 && evidenceQuery.pageNum > 1) {
@@ -196,7 +197,8 @@ function resetEvidenceForm(category?: AccreditationEvidenceCategoryCode) {
   evidenceForm.anchorId = undefined
   evidenceForm.markScannedPageId = undefined
   evidenceForm.markPaperInstanceId = undefined
-  evidenceForm.evidenceCategory = category || categoryFilter.value || AccreditationEvidenceCategoryCode.HOMEWORK
+  evidenceForm.evidenceCategory =
+    category || categoryFilter.value || AccreditationEvidenceCategoryCode.HOMEWORK
   evidenceForm.anchorType = AccreditationEvidenceAnchorTypeCode.MANUAL
   evidenceForm.evidenceCode = ''
   evidenceForm.evidenceTitle = ''
@@ -319,6 +321,12 @@ async function deleteEvidence(id: string) {
   }
 }
 
+function handleEvidenceRowAction(key: string, record: AccreditationEvidenceVO) {
+  if (key === 'download') void downloadEvidence(record)
+  else if (key === 'edit') openEvidenceEdit(record)
+  else if (key === 'delete') void deleteEvidence(record.id)
+}
+
 async function openMarkImport() {
   if (!canMutateEvidence.value) {
     message.error(evidenceMutationHint.value || '当前不可同步 mark 扫描页证据')
@@ -372,7 +380,7 @@ async function exportExpertPackage() {
   }
 }
 
-async function handleEvidencePageChange(pageEvent: { current: number, pageSize: number }) {
+async function handleEvidencePageChange(pageEvent: { current: number; pageSize: number }) {
   evidenceQuery.pageNum = pageEvent.current
   evidenceQuery.pageSize = pageEvent.pageSize
   await loadEvidences()
@@ -459,24 +467,15 @@ defineExpose({ loadEvidences })
           }}
         </template>
         <template v-else-if="column.key === 'actions'">
-          <UiButton size="sm" variant="ghost" @click="downloadEvidence(record)">下载</UiButton>
-          <UiButton
-            size="sm"
-            variant="outline"
-            :disabled="!canMutateEvidence"
-            @click="openEvidenceEdit(record)"
-          >
-            编辑
-          </UiButton>
-          <UiButton
-            size="sm"
-            status="danger"
-            variant="ghost"
-            :disabled="!canMutateEvidence"
-            @click="deleteEvidence(record.id)"
-          >
-            删除
-          </UiButton>
+          <UiTableActions
+            :items="[
+              { key: 'download', label: '下载' },
+              { key: 'edit', label: '编辑', disabled: !canMutateEvidence },
+              { key: 'delete', label: '删除', tone: 'danger', disabled: !canMutateEvidence },
+            ]"
+            split
+            @action="(key) => handleEvidenceRowAction(key, record)"
+          />
         </template>
       </template>
       <template #empty>

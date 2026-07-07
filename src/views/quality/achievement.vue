@@ -353,7 +353,7 @@ async function loadList() {
     list.value = page.list
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
-    total.value = Number(page.total)
+    total.value = page.total
     if (list.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadList()

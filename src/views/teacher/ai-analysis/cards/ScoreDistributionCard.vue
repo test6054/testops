@@ -43,11 +43,11 @@
 <script lang="ts" setup>
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ExamScoreDistributionResponse } from '@/apis/mark/exam-score'
+import { getExamScoreDistribution } from '@/apis/mark/exam-score'
 import type { MarkClassOption } from '@/composables/useMarkExamRoster'
 import type { SignalMetric } from '@/types/workbench'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, ref, watch } from 'vue'
-import { getExamScoreDistribution } from '@/apis/mark/exam-score'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -55,7 +55,6 @@ import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { showUserError } from '@/utils/error-handler'
 import { buildBarChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
 import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
 import { scoreHistogramToBarItems } from '@/utils/mark-statistics-chart'
@@ -144,25 +143,42 @@ const distributionMetrics = computed((): SignalMetric[] => {
       value: data.stdDev.toFixed(2),
     },
     ...(data.medianScore != null
-      ? [{ key: 'medianScore', label: '中位数', value: data.medianScore.toFixed(2) } satisfies SignalMetric]
+      ? [
+          {
+            key: 'medianScore',
+            label: '中位数',
+            value: data.medianScore.toFixed(2),
+          } satisfies SignalMetric,
+        ]
       : []),
     ...(data.excellentRate != null
-      ? [{ key: 'excellentRate', label: '优秀率', value: `${data.excellentRate}%`, tone: 'blue' } satisfies SignalMetric]
+      ? [
+          {
+            key: 'excellentRate',
+            label: '优秀率',
+            value: `${data.excellentRate}%`,
+            tone: 'blue',
+          } satisfies SignalMetric,
+        ]
       : []),
   ]
 })
+
+function isEmptyScoreDistribution(data: ExamScoreDistributionResponse): boolean {
+  return data.participantCount <= 0
+}
 
 async function reload(): Promise<void> {
   if (!props.examId) return
   loading.value = true
   try {
-    distribution.value = await getExamScoreDistribution({
+    const result = await getExamScoreDistribution({
       examId: props.examId,
       classId: props.classId || undefined,
     })
+    distribution.value = isEmptyScoreDistribution(result) ? null : result
   } catch (e) {
     distribution.value = null
-    showUserError(e, '分数分布加载失败')
   } finally {
     loading.value = false
   }

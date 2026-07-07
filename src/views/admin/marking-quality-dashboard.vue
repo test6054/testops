@@ -1238,7 +1238,7 @@ async function loadExamSpotCheckRecords(): Promise<void> {
       pageSize: examSpotCheckPagination.pageSize,
     })
     examSpotCheckItems.value = result.list
-    examSpotCheckPagination.total = Number(result.total)
+    examSpotCheckPagination.total = result.total
   } catch (error) {
     examSpotCheckItems.value = []
     examSpotCheckPagination.total = 0
@@ -1293,7 +1293,7 @@ async function loadMyPendingSpotChecks(): Promise<void> {
       pageSize: mySpotCheckPagination.pageSize,
     })
     mySpotCheckItems.value = result.list
-    mySpotCheckPagination.total = Number(result.total)
+    mySpotCheckPagination.total = result.total
   } catch (error) {
     mySpotCheckItems.value = []
     mySpotCheckPagination.total = 0

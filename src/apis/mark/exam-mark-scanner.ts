@@ -12,31 +12,25 @@ import type { PageResult, QueryDto } from '@/types'
 import type { ScannerActivationCodeStatusCode } from '@/types/enums/scanner-activation-code-status-enum'
 import type { ScannerAgentDiagnosticStatusCode } from '@/types/enums/scanner-agent-diagnostic-status-enum'
 import type { ScannerColorModeCode } from '@/types/enums/scanner-color-mode-enum'
+import { ALL_SCANNER_COLOR_MODE_CODES, ScannerColorModeDescription } from '@/types/enums/scanner-color-mode-enum'
 import type { ScannerDuplexModeCode } from '@/types/enums/scanner-duplex-mode-enum'
+import { ALL_SCANNER_DUPLEX_MODE_CODES, ScannerDuplexModeDescription } from '@/types/enums/scanner-duplex-mode-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 import {
-  ALL_SCANNER_COLOR_MODE_CODES,
-  ScannerColorModeDescription,
-} from '@/types/enums/scanner-color-mode-enum'
-import {
   ALL_SCANNER_DEVICE_STATUS_CODES,
   ScannerDeviceStatusCode,
-  ScannerDeviceStatusDescription,
+  ScannerDeviceStatusDescription
 } from '@/types/enums/scanner-device-status-enum'
-import {
-  ALL_SCANNER_DUPLEX_MODE_CODES,
-  ScannerDuplexModeDescription,
-} from '@/types/enums/scanner-duplex-mode-enum'
 import {
   ALL_SCANNER_ENDPOINT_ONLINE_STATUS_CODES,
   ScannerEndpointOnlineStatusCode,
-  ScannerEndpointOnlineStatusDescription,
+  ScannerEndpointOnlineStatusDescription
 } from '@/types/enums/scanner-endpoint-online-status-enum'
 import {
   ALL_SCANNER_INTERFACE_MODE_CODES,
   ScannerInterfaceModeCode,
-  ScannerInterfaceModeDescription,
+  ScannerInterfaceModeDescription
 } from '@/types/enums/scanner-interface-mode-enum'
 /** 扫描 Agent 激活码状态编码 */
 export {
@@ -177,6 +171,7 @@ export interface ExamScannerDeviceResponse {
   lastHeartbeatTime?: string
   kioskLockEnabled: boolean
   remark?: string
+  webSupplementEnabled?: boolean
   createTime?: string
   updateTime?: string
 }
@@ -247,6 +242,7 @@ export interface ExamScannerDeviceUpdateRequest {
   location?: string
   remark?: string
   kioskLockEnabled: boolean
+  webSupplementEnabled: boolean
 }
 
 // ScanAttentionQueryRequest / ScanAttentionItemResponse 定义在 @/apis/mark/exam-scan，避免重复
@@ -461,7 +457,7 @@ export async function listActiveScannerDevices(): Promise<ExamScannerDeviceRespo
       status: ScannerDeviceStatusCode.ACTIVE,
     })
     items.push(...result.list)
-    if (items.length >= Number(result.total)) {
+    if (items.length >= result.total) {
       break
     }
     pageNum += 1

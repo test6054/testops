@@ -57,17 +57,20 @@
           />
         </template>
         <template v-else-if="column.key === 'actions'">
-          <UiTextAction tone="primary" :loading="record.saving" @click="saveRow(record)">
-            保存
-          </UiTextAction>
-          <UiTextAction
-            v-if="record.mappingId"
-            tone="danger"
-            :loading="record.deleting"
-            @click="deleteRow(record)"
-          >
-            清除
-          </UiTextAction>
+          <UiTableActions
+            :items="[
+              { key: 'save', label: '保存', tone: 'primary', disabled: record.saving },
+              {
+                key: 'clear',
+                label: '清除',
+                tone: 'danger',
+                hidden: !record.mappingId,
+                disabled: record.deleting,
+              },
+            ]"
+            split
+            @action="(key) => handleMappingRowAction(key, record)"
+          />
         </template>
       </template>
     </UiDataTable>
@@ -80,22 +83,22 @@ import type {
   ExamQuestionCourseGoalMappingVO,
   QualityCourseGoalForMarkVO,
 } from '@/apis/mark/exam-question-course-goal-mapping'
-import type { ExamQuestionAnalysisRecordResponse } from '@/apis/mark/question-analysis'
-import { message } from 'ant-design-vue'
-import { computed, ref, watch } from 'vue'
 import {
   deleteExamQuestionCourseGoalMapping,
   listExamCourseGoalsForMapping,
   listExamQuestionCourseGoalMappings,
   saveExamQuestionCourseGoalMapping,
 } from '@/apis/mark/exam-question-course-goal-mapping'
+import type { ExamQuestionAnalysisRecordResponse } from '@/apis/mark/question-analysis'
 import { fetchAllQuestionAnalysisRows } from '@/apis/mark/question-analysis'
+import { message } from 'ant-design-vue'
+import { computed, ref, watch } from 'vue'
 import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
 
@@ -113,7 +116,10 @@ const props = withDefaults(
 
 const shellProps = computed(() =>
   props.embedded
-    ? { title: '试题-课程目标映射', context: props.examLabel, class: 'exam-goal-mapping-card exam-goal-mapping-card--section' }
+    ? {
+        title: '试题-课程目标映射',
+        class: 'exam-goal-mapping-card exam-goal-mapping-card--section',
+      }
     : { class: 'exam-goal-mapping-card' },
 )
 
@@ -135,7 +141,7 @@ const questions = ref<ExamQuestionAnalysisRecordResponse[]>([])
 const rows = ref<MappingRow[]>([])
 
 const goalOptions = computed(() =>
-  courseGoals.value.map(goal => ({
+  courseGoals.value.map((goal) => ({
     value: goal.goalId,
     label: `${goal.goalCode} ${goal.goalName}`,
   })),
@@ -235,6 +241,11 @@ async function deleteRow(row: MappingRow) {
   } finally {
     row.deleting = false
   }
+}
+
+function handleMappingRowAction(key: string, row: MappingRow) {
+  if (key === 'save') void saveRow(row)
+  else if (key === 'clear') void deleteRow(row)
 }
 
 watch(

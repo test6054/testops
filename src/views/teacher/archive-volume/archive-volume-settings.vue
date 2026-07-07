@@ -94,7 +94,11 @@
                   </a-checkbox>
                 </template>
                 <template v-else-if="column.key === 'actions'">
-                  <UiTextAction tone="danger" @click="removeDutyRow(index)">删除</UiTextAction>
+                  <UiTableActions
+                    :items="[{ key: 'delete', label: '删除', tone: 'danger' }]"
+                    split
+                    @action="() => removeDutyRow(index)"
+                  />
                 </template>
               </template>
             </UiDataTable>
@@ -161,7 +165,11 @@
                   />
                 </template>
                 <template v-else-if="column.key === 'actions'">
-                  <UiTextAction tone="danger" @click="removePolicyRow(index)">删除</UiTextAction>
+                  <UiTableActions
+                    :items="[{ key: 'delete', label: '删除', tone: 'danger' }]"
+                    split
+                    @action="() => removePolicyRow(index)"
+                  />
                 </template>
               </template>
             </UiDataTable>
@@ -253,7 +261,11 @@
                   />
                 </template>
                 <template v-else-if="column.key === 'actions'">
-                  <UiTextAction tone="danger" @click="removeCatalogRow(index)">删除</UiTextAction>
+                  <UiTableActions
+                    :items="[{ key: 'delete', label: '删除', tone: 'danger' }]"
+                    split
+                    @action="() => removeCatalogRow(index)"
+                  />
                 </template>
               </template>
             </UiDataTable>
@@ -302,7 +314,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'

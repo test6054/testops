@@ -183,6 +183,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
 import {
@@ -249,7 +250,7 @@ const destructionFilterModel = computed<Record<string, unknown>>({
   },
 })
 
-const destructionPagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
+const destructionPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 
 const scopedDepartmentOptions = computed(() => filterListDepartmentOptions(departmentOptions.value))
 
@@ -494,7 +495,7 @@ async function loadDestructionLedger() {
       pageSize: destructionPagination.pageSize,
     })
     destructionRows.value = result.list
-    destructionPagination.total = Number(result.total)
+    destructionPagination.total = result.total
     destructionPagination.pageNum = result.pageNum
     destructionPagination.pageSize = result.pageSize
   } catch (error) {

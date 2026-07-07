@@ -235,7 +235,7 @@ const effectiveTotal = computed(() => {
   if (props.paginationMode === 'client') {
     return props.dataSource.length
   }
-  return props.total
+  return props.total ?? 0
 })
 
 const resolvedDataSource = computed(() => {

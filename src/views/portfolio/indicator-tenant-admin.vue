@@ -6,13 +6,6 @@ import type {
   PortfolioIndustryPackVO,
   PortfolioTenantIndicatorConfigVO,
 } from '@/apis/portfolio/indicator-types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import {
-  portfolioIndicatorPlatformApi,
-  portfolioIndicatorTenantApi,
-} from '@/apis/portfolio/indicator'
 import {
   PF_SCENE_CODE_OPTIONS,
   PfIndicatorStatusDescription,
@@ -20,10 +13,18 @@ import {
   PfSceneCode,
   PfSceneCodeDescription,
 } from '@/apis/portfolio/indicator-types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  portfolioIndicatorPlatformApi,
+  portfolioIndicatorTenantApi,
+} from '@/apis/portfolio/indicator'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -78,8 +79,8 @@ const filteredConfigs = computed(() => {
   }
   return configRows.value.filter(
     (row) =>
-      row.indicatorCode.toLowerCase().includes(keyword)
-      || row.indicatorName.toLowerCase().includes(keyword),
+      row.indicatorCode.toLowerCase().includes(keyword) ||
+      row.indicatorName.toLowerCase().includes(keyword),
   )
 })
 
@@ -355,7 +356,11 @@ onMounted(loadConfig)
                 />
               </template>
               <template v-else-if="column.key === 'actions'">
-                <a @click="openEdit(record)">编辑</a>
+                <UiTableActions
+                  :items="[{ key: 'edit', label: '编辑' }]"
+                  split
+                  @action="() => openEdit(record)"
+                />
               </template>
             </template>
           </UiDataTable>

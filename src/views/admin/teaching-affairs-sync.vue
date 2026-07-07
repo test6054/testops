@@ -836,7 +836,7 @@ async function loadPassbackRecords(options?: { quiet?: boolean }): Promise<void>
     passbackRecords.value = page.list
     passbackPagination.pageNum = page.pageNum
     passbackPagination.pageSize = page.pageSize
-    passbackPagination.total = Number(page.total)
+    passbackPagination.total = page.total
   } catch (error) {
     if (!options?.quiet) {
       passbackRecords.value = []

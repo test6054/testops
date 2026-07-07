@@ -257,7 +257,7 @@ async function loadList(options?: { refreshSignals?: boolean }) {
     supList.value = page.list
     supQuery.pageNum = page.pageNum
     supQuery.pageSize = page.pageSize
-    supTotal.value = Number(page.total)
+    supTotal.value = page.total
     if (supList.value.length === 0 && supTotal.value > 0 && supQuery.pageNum > 1) {
       supQuery.pageNum -= 1
       await loadList(options)

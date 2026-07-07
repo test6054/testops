@@ -193,24 +193,11 @@
             </div>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiTextAction tone="primary" @click="goDetail(record.volumeId)">查看卷</UiTextAction>
-            <UiTextAction tone="primary" @click="goDetailOcrSearch(record.volumeId)">
-              跳转检索 Tab
-            </UiTextAction>
-            <UiTextAction
-              v-if="canViewMaterialOcr(record)"
-              tone="primary"
-              @click="openMaterialOcrPreview(record)"
-            >
-              {{ record.matchPageNo ? `预览第 ${record.matchPageNo} 页` : '预览原文' }}
-            </UiTextAction>
-            <UiTextAction
-              v-if="canViewMaterialOcr(record)"
-              tone="primary"
-              @click="openMaterialOcr(record)"
-            >
-              查看 OCR
-            </UiTextAction>
+            <UiTableActions
+              :items="buildArchiveSearchRowActions(record)"
+              split
+              @action="(key) => handleArchiveSearchAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>
@@ -272,7 +259,7 @@ import type {
   ArchiveVolumeSearchResponse,
 } from '@/apis/mark/archive-volume'
 import type { CourseListVO, TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { SignalMetric } from '@/types/workbench'
 import type { MarkExamSelectOption } from '@/utils/mark-exam-option'
@@ -300,11 +287,12 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearOptions } from '@/utils/academic-year'
 import {
@@ -385,7 +373,7 @@ const filterModel = computed<Record<string, unknown>>({
     Object.assign(filterForm, value)
   },
 })
-const pagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
+const pagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 
 const signalMetrics = computed<SignalMetric[]>(() => {
   if (pagination.total <= 0) {
@@ -608,7 +596,7 @@ async function loadExamOptions(keyword?: string) {
   try {
     const page = await pageExams({
       pageNum: 1,
-      pageSize: 20,
+      pageSize: DEFAULT_LIST_PAGE_SIZE,
       status: ExamStatusCode.ACTIVE,
       keyword: keyword?.trim() || undefined,
     })
@@ -689,7 +677,7 @@ async function loadHits() {
   try {
     const result = await searchArchiveVolumes(buildSearchRequest())
     hits.value = result.list
-    pagination.total = Number(result.total)
+    pagination.total = result.total
     pagination.pageNum = result.pageNum
     pagination.pageSize = result.pageSize
   } catch (error) {
@@ -743,6 +731,39 @@ function handleReset() {
 
 function highlightSnippet(snippet: string): string {
   return highlightArchiveSearchSnippet(snippet, filterForm.keyword)
+}
+
+function buildArchiveSearchRowActions(record: ArchiveVolumeSearchResponse): UiTableRowActionItem[] {
+  const actions: UiTableRowActionItem[] = [
+    { key: 'detail', label: '查看卷', tone: 'primary' },
+    { key: 'ocr-tab', label: '跳转检索 Tab', tone: 'primary' },
+  ]
+  if (canViewMaterialOcr(record)) {
+    actions.push({
+      key: 'preview',
+      label: record.matchPageNo ? `预览第 ${record.matchPageNo} 页` : '预览原文',
+      tone: 'primary',
+    })
+    actions.push({ key: 'ocr', label: '查看 OCR', tone: 'primary' })
+  }
+  return actions
+}
+
+function handleArchiveSearchAction(key: string, record: ArchiveVolumeSearchResponse): void {
+  switch (key) {
+    case 'detail':
+      goDetail(record.volumeId)
+      break
+    case 'ocr-tab':
+      goDetailOcrSearch(record.volumeId)
+      break
+    case 'preview':
+      openMaterialOcrPreview(record)
+      break
+    case 'ocr':
+      openMaterialOcr(record)
+      break
+  }
 }
 
 function canViewMaterialOcr(record: ArchiveVolumeSearchResponse): boolean {

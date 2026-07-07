@@ -38,9 +38,6 @@
           <UiTag v-if="organization?.anonymousMode" tone="green" size="sm">匿名阅卷</UiTag>
         </template>
         <template #actions>
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadOrganization">
-            刷新
-          </UiButton>
           <UiButton
             v-if="organization && canManageExamOwner"
             variant="outline"
@@ -61,14 +58,9 @@
               删除组织
             </UiButton>
           </a-popconfirm>
-          <UiButton size="sm" @click="goSessions">试评 / 正评</UiButton>
-          <UiButton
-            v-if="isExamWorkspaceRoute && canManageExamOwner"
-            size="sm"
-            variant="primary"
-            @click="focusLaunchPanel"
-          >
-            启动正评
+          <UiButton variant="outline" size="sm" @click="goTrialSessions"> 试评定标 </UiButton>
+          <UiButton v-if="canManageExamOwner" variant="primary" size="sm" @click="goFormalSessions">
+            正评会话
           </UiButton>
         </template>
       </ContextBar>
@@ -131,39 +123,15 @@
           @refresh="loadWorkbenchPanels"
         />
 
-        <div ref="secondaryPanelRef">
-          <WorkbenchSurfaceCard
-            v-if="workspaceSecondaryTabItems.length > 0"
-            flush
-            class="org-detail__secondary"
-          >
-            <template #head>
-              <UiSectionTabs
-                v-model="workspaceSecondaryTab"
-                :items="workspaceSecondaryTabItems"
-                compact
-                divided
-              />
-            </template>
-            <RecycledTaskReassignPanel
-              v-if="workspaceSecondaryTab === 'recycled'"
-              :exam-id="examId"
-              :groups="groups"
-              :view-all-recycled="canViewAllRecycledTasks"
-              :leader-group-ids="leaderGroupIds"
-            />
-            <FormalSessionPanel
-              v-else-if="workspaceSecondaryTab === 'launch'"
-              :organization-id="organizationId"
-              :exam-id="examId"
-              :group-options="groupSelectOptions"
-              :group-allocation-units="groupAllocationUnitMap"
-              :sessions="formalSessions"
-              :can-manage="canManageExamOwner"
-              @refresh="loadFormalSessions"
-            />
-          </WorkbenchSurfaceCard>
-        </div>
+        <WorkbenchSurfaceCard v-if="canReassignRecycledTasks" flush class="org-detail__secondary">
+          <template #head>回收待分配</template>
+          <RecycledTaskReassignPanel
+            :exam-id="examId"
+            :groups="groups"
+            :view-all-recycled="canViewAllRecycledTasks"
+            :leader-group-ids="leaderGroupIds"
+          />
+        </WorkbenchSurfaceCard>
       </template>
 
       <WorkbenchSurfaceCard v-else flush class="org-detail__surface">
@@ -294,52 +262,20 @@
                 {{ formatDateTime(record.createTime) }}
               </template>
               <template v-else-if="column.key === 'action'">
-                <a-space size="small">
-                  <UiButton
-                    v-if="canEditGroup(record)"
-                    variant="outline"
-                    size="sm"
-                    @click="openGroupEdit(record)"
-                  >
-                    编辑
-                  </UiButton>
-                  <a-popconfirm
-                    v-if="canDeleteGroup(record)"
-                    title="确认删除该题组？"
-                    ok-text="删除"
-                    cancel-text="取消"
-                    :ok-button-props="{
-                      danger: true,
-                      loading: groupActionLoadingId === record.id,
-                    }"
-                    @confirm="submitGroupDelete(record)"
-                  >
-                    <UiButton
-                      variant="outline"
-                      size="sm"
-                      status="danger"
-                      :loading="groupActionLoadingId === record.id"
-                    >
-                      删除
-                    </UiButton>
-                  </a-popconfirm>
-                  <a-popconfirm
-                    v-if="canCloseGroup(record)"
-                    title="确认关闭该题组？"
-                    ok-text="关闭"
-                    cancel-text="取消"
-                    :ok-button-props="{ loading: groupActionLoadingId === record.id }"
-                    @confirm="submitGroupClose(record)"
-                  >
-                    <UiButton
-                      variant="outline"
-                      size="sm"
-                      :loading="groupActionLoadingId === record.id"
-                    >
-                      关闭
-                    </UiButton>
-                  </a-popconfirm>
-                </a-space>
+                <UiTableActions
+                  :items="[
+                    { key: 'edit', label: '编辑', hidden: !canEditGroup(record) },
+                    {
+                      key: 'delete',
+                      label: '删除',
+                      tone: 'danger',
+                      hidden: !canDeleteGroup(record),
+                    },
+                    { key: 'close', label: '关闭', hidden: !canCloseGroup(record) },
+                  ]"
+                  split
+                  @action="(key) => handleGroupRowAction(key, record)"
+                />
               </template>
             </template>
           </UiDataTable>
@@ -550,18 +486,6 @@
             :groups="groups"
             :view-all-recycled="canViewAllRecycledTasks"
             :leader-group-ids="leaderGroupIds"
-          />
-        </template>
-
-        <template v-else-if="activeTab === 'launch'">
-          <FormalSessionPanel
-            :organization-id="organizationId"
-            :exam-id="examId"
-            :group-options="groupSelectOptions"
-            :group-allocation-units="groupAllocationUnitMap"
-            :sessions="formalSessions"
-            :can-manage="canManageExamOwner"
-            @refresh="loadFormalSessions"
           />
         </template>
       </WorkbenchSurfaceCard>
@@ -787,9 +711,13 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
+import { adminGetUserPage } from '@/apis/edu/admin-user'
 import type { ExamDetailResponse } from '@/apis/mark/exam'
+import { getExamDetail } from '@/apis/mark/exam'
 import type { ExamTemplateResponse } from '@/apis/mark/exam-layout-question'
+import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import type { ExamWorkbenchMarkingProgressPanelResponse } from '@/apis/mark/exam-progress'
+import { getMarkingProgressPanel } from '@/apis/mark/exam-progress'
 import type {
   AllocationPolicyResponse,
   AllocationPolicySaveRequest,
@@ -801,19 +729,6 @@ import type {
   RecyclePolicyResponse,
   RecyclePolicySaveRequest,
 } from '@/apis/mark/marking-organization'
-import type { ReviewerQualityMetricResponse } from '@/apis/mark/marking-quality'
-import type { BadgeTone, UiSectionTabItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, nextTick, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { adminGetUserPage } from '@/apis/edu/admin-user'
-import { ANONYMITY_MODE_OPTIONS } from '@/apis/mark/anonymity-mode'
-import { getExamDetail } from '@/apis/mark/exam'
-import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
-import { getMarkingProgressPanel } from '@/apis/mark/exam-progress'
 import {
   ALLOCATION_UNIT_OPTIONS,
   ANONYMOUS_TOKEN_POLICY_OPTIONS,
@@ -835,7 +750,16 @@ import {
   saveRecyclePolicy,
   updateOrganization,
 } from '@/apis/mark/marking-organization'
+import type { ReviewerQualityMetricResponse } from '@/apis/mark/marking-quality'
 import { listReviewerMetrics } from '@/apis/mark/marking-quality'
+import type { BadgeTone, UiSectionTabItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ANONYMITY_MODE_OPTIONS } from '@/apis/mark/anonymity-mode'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInfoGrid from '@/components/ui-guide/ui/InfoGrid.vue'
@@ -848,11 +772,13 @@ import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useOptionalExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkingOrgPermission } from '@/composables/useMarkingOrgPermission'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
@@ -868,12 +794,12 @@ import { formatDateTime } from '@/utils/format'
 import { buildExamLayoutQuestionOptions } from '@/utils/format-exam-layout-question-summary'
 import {
   resolveMarkingOrganizationDetailRoute,
+  resolveMarkingOrganizationFormalSessionsRoute,
   resolveMarkingOrganizationIndexRoute,
-  resolveMarkingOrganizationSessionsRoute,
+  resolveMarkingOrganizationTrialSessionsRoute,
 } from '@/utils/marking-organization-navigation'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import FormalSessionPanel from '@/views/admin/marking-organization/components/FormalSessionPanel.vue'
 import MarkingOrgAssignmentTable from '@/views/admin/marking-organization/components/MarkingOrgAssignmentTable.vue'
 import MarkingOrgGroupProgressList from '@/views/admin/marking-organization/components/MarkingOrgGroupProgressList.vue'
 import MarkingOrgReviewerRosterTable from '@/views/admin/marking-organization/components/MarkingOrgReviewerRosterTable.vue'
@@ -884,8 +810,8 @@ defineOptions({ name: 'AdminMarkingOrganizationDetail' })
 
 const MARKING_TEACHER_OPTION_PAGE_SIZE = 100
 
-const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
-  = useOptionalExamJourneyContextBar('阅卷安排')
+const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useOptionalExamJourneyContextBar('阅卷安排')
 
 const route = useRoute()
 const router = useRouter()
@@ -908,11 +834,10 @@ const workspaceExamId = computed(() => {
 const activeExamId = computed(() => examId.value || workspaceExamId.value)
 const loading = ref(false)
 // 加载失败：toast 提示，主区保持空态/列表壳
-const activeTab = ref<'info' | 'policy' | 'recycled' | 'launch'>('info')
-const workspaceSecondaryTab = ref<'recycled' | 'launch'>('launch')
+const activeTab = ref<'info' | 'policy' | 'recycled'>('info')
 const policyDrawerOpen = ref(false)
-const secondaryPanelRef = ref<HTMLElement | null>(null)
 const markingProgressPanel = ref<ExamWorkbenchMarkingProgressPanelResponse | null>(null)
+const formalSessionsForGroupProgress = ref<FormalSessionResponse[]>([])
 const reviewerMetrics = ref<ReviewerQualityMetricResponse[]>([])
 const reviewerMetricsLoading = ref(false)
 
@@ -948,16 +873,16 @@ function matchesGroupSearch(group: QuestionMarkingGroupResponse, keyword: string
   if (
     group.reviewers.some(
       (reviewer) =>
-        reviewer.reviewerUserName?.toLowerCase().includes(keyword)
-        || reviewer.reviewerTeacherNo?.toLowerCase().includes(keyword),
+        reviewer.reviewerUserName?.toLowerCase().includes(keyword) ||
+        reviewer.reviewerTeacherNo?.toLowerCase().includes(keyword),
     )
   ) {
     return true
   }
   return group.questions.some(
     (question) =>
-      String(question.questionNo).includes(keyword)
-      || question.questionTypeMessage?.toLowerCase().includes(keyword),
+      String(question.questionNo).includes(keyword) ||
+      question.questionTypeMessage?.toLowerCase().includes(keyword),
   )
 }
 
@@ -998,8 +923,8 @@ const orgSignalMetrics = computed((): SignalMetric[] => {
     return []
   }
   const summary = markingProgressPanel.value?.markingTaskSummary
-  const overallPercent
-    = summary && summary.totalTaskCount > 0
+  const overallPercent =
+    summary && summary.totalTaskCount > 0
       ? Math.round((summary.finalizedTaskCount * 100) / summary.totalTaskCount)
       : null
   const metrics: SignalMetric[] = [
@@ -1067,7 +992,7 @@ const orgDefaultRecyclePolicy = computed(() =>
 
 const groupProgressById = computed((): Record<string, GroupProgressSnapshot> => {
   const map: Record<string, GroupProgressSnapshot> = {}
-  for (const session of markingProgressPanel.value?.formalSessions ?? []) {
+  for (const session of formalSessionsForGroupProgress.value) {
     if (!session.groupId) continue
     const current = map[session.groupId] ?? { total: 0, finalized: 0 }
     current.total += session.totalTaskCount
@@ -1075,17 +1000,6 @@ const groupProgressById = computed((): Record<string, GroupProgressSnapshot> => 
     map[session.groupId] = current
   }
   return map
-})
-
-const workspaceSecondaryTabItems = computed((): UiSectionTabItem[] => {
-  const items: UiSectionTabItem[] = []
-  if (canReassignRecycledTasks.value) {
-    items.push({ key: 'recycled', label: '回收待分配' })
-  }
-  if (canManageExamOwner.value) {
-    items.push({ key: 'launch', label: '快速启动' })
-  }
-  return items
 })
 
 const examCreateUserId = computed(
@@ -1099,31 +1013,17 @@ function guardExamOwnerAction(): boolean {
   return false
 }
 
-const formalSessions = ref<FormalSessionResponse[]>([])
-
-async function loadFormalSessions(): Promise<void> {
-  if (!organizationId.value) {
-    formalSessions.value = []
-    return
-  }
-  try {
-    formalSessions.value = await listFormalSessions({ organizationId: organizationId.value })
-  } catch (error) {
-    formalSessions.value = []
-    showUserError(error, '正评会话加载失败')
-  }
-}
-
 /** 工作台双栏布局：加载题组进度与教师质量指标真源。 */
 async function loadWorkbenchPanels(): Promise<void> {
   if (!isExamWorkspaceRoute.value || !activeExamId.value || !organizationId.value) {
     markingProgressPanel.value = null
+    formalSessionsForGroupProgress.value = []
     reviewerMetrics.value = []
     return
   }
   reviewerMetricsLoading.value = true
   try {
-    const [panel, metricsResult] = await Promise.all([
+    const [panel, metricsResult, formalSessions] = await Promise.all([
       getMarkingProgressPanel(activeExamId.value),
       listReviewerMetrics({
         examId: activeExamId.value,
@@ -1131,11 +1031,14 @@ async function loadWorkbenchPanels(): Promise<void> {
         pageNum: 1,
         pageSize: 200,
       }),
+      listFormalSessions({ organizationId: organizationId.value }),
     ])
     markingProgressPanel.value = panel
+    formalSessionsForGroupProgress.value = formalSessions
     reviewerMetrics.value = metricsResult.list ?? []
   } catch (error) {
     markingProgressPanel.value = null
+    formalSessionsForGroupProgress.value = []
     reviewerMetrics.value = []
     showUserError(error, '阅卷组织看板数据加载失败')
   } finally {
@@ -1166,9 +1069,6 @@ const detailTabItems = computed((): UiSectionTabItem[] => {
   ]
   if (canReassignRecycledTasks.value) {
     items.push({ key: 'recycled', label: '回收待分配' })
-  }
-  if (canManageExamOwner.value) {
-    items.push({ key: 'launch', label: '快速启动' })
   }
   return items
 })
@@ -1242,7 +1142,6 @@ async function loadOrganization(): Promise<void> {
     organization.value = nextOrganization
     examDetail.value = await getExamDetail(nextOrganization.examId)
     await loadMarkingPolicies()
-    await loadFormalSessions()
     await loadWorkbenchPanels()
   } catch (error) {
     organization.value = null
@@ -1457,12 +1356,6 @@ function openPolicyDrawer(): void {
   policyDrawerOpen.value = true
 }
 
-async function focusLaunchPanel(): Promise<void> {
-  workspaceSecondaryTab.value = 'launch'
-  await nextTick()
-  secondaryPanelRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
-
 async function submitGroup(): Promise<void> {
   if (!guardExamOwnerAction()) return
   if (!organizationId.value || !groupFormRef.value) return
@@ -1509,10 +1402,28 @@ function canDeleteGroup(record: QuestionMarkingGroupResponse): boolean {
 
 function canCloseGroup(record: QuestionMarkingGroupResponse): boolean {
   return (
-    canManageExamOwner.value
-    && (record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_ACTIVE
-      || record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_CONFIGURED)
+    canManageExamOwner.value &&
+    (record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_ACTIVE ||
+      record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_CONFIGURED)
   )
+}
+
+async function handleGroupRowAction(key: string, record: QuestionMarkingGroupResponse) {
+  if (key === 'edit') {
+    openGroupEdit(record)
+    return
+  }
+  if (key === 'delete') {
+    if (!(await confirmAsync({ content: '确认删除该题组？', okText: '删除', type: 'warning' })))
+      return
+    await submitGroupDelete(record)
+    return
+  }
+  if (key === 'close') {
+    if (!(await confirmAsync({ content: '确认关闭该题组？', okText: '关闭', type: 'warning' })))
+      return
+    await submitGroupClose(record)
+  }
 }
 
 async function submitGroupDelete(record: QuestionMarkingGroupResponse): Promise<void> {
@@ -1736,7 +1647,7 @@ const groupAllocationUnitMap = computed(() => {
 })
 
 function policyOptionLabel(
-  options: Array<{ value: string, label: string }>,
+  options: Array<{ value: string; label: string }>,
   value?: string | null,
 ): string {
   if (!value) {
@@ -1806,13 +1717,22 @@ async function submitRecycle(): Promise<void> {
   }
 }
 
-function goSessions(): void {
+function goTrialSessions(): void {
   const examId = activeExamId.value
-  if (!examId) {
-    showUserError(new Error('缺少考试上下文'), '无法进入试评 / 正评')
+  if (!examId || !organizationId.value) {
+    showUserError(new Error('缺少考试上下文'), '无法进入试评定标')
     return
   }
-  void router.push(resolveMarkingOrganizationSessionsRoute(organizationId.value, examId))
+  void router.push(resolveMarkingOrganizationTrialSessionsRoute(organizationId.value, examId))
+}
+
+function goFormalSessions(): void {
+  const examId = activeExamId.value
+  if (!examId || !organizationId.value) {
+    showUserError(new Error('缺少考试上下文'), '无法进入正评会话')
+    return
+  }
+  void router.push(resolveMarkingOrganizationFormalSessionsRoute(organizationId.value, examId))
 }
 
 // 严格 typed helper：题组 groupStatus 是后端合同必返枚举。
@@ -1833,19 +1753,12 @@ watch(
 )
 
 watch(
-  () => ({ canManage: canManageExamOwner.value, tab: route.query.tab }),
-  (routeState) => {
-    if (typeof routeState.tab !== 'string') {
+  () => route.query.tab,
+  (tab) => {
+    if (typeof tab !== 'string') {
       return
     }
-    if (routeState.tab === 'launch' && !routeState.canManage) {
-      activeTab.value = 'info'
-      return
-    }
-    activeTab.value
-      = routeState.tab === 'launch' || routeState.tab === 'policy' || routeState.tab === 'recycled'
-        ? routeState.tab
-        : 'info'
+    activeTab.value = tab === 'policy' || tab === 'recycled' ? tab : 'info'
   },
   { immediate: true },
 )

@@ -21,8 +21,8 @@
           aria-hidden="true"
         />
         <div class="todo-feed__content">
-          <div class="todo-feed__title">{{ todo.label }}</div>
-          <div v-if="todoMeta(todo)" class="todo-feed__meta">{{ todoMeta(todo) }}</div>
+          <div class="todo-feed__title">{{ resolveRowTitle(todo) }}</div>
+          <div class="todo-feed__meta">{{ resolveRowMeta(todo) }}</div>
         </div>
         <UiButton
           :variant="resolveTodoUrgency(todo) === 'urgent' ? 'primary' : 'outline'"
@@ -42,21 +42,27 @@ import type {
   MarkTeacherDashboardPendingTodoItemVO,
   MarkTeacherDashboardTodoTypeCode,
 } from '@/apis/mark/teacher-dashboard'
+import { MarkTeacherDashboardTodoTypeDescription } from '@/apis/mark/teacher-dashboard'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import { resolveTodoUrgency } from '@/utils/mark-dashboard-todo'
+import {
+  MARK_DASHBOARD_TODO_COUNT_UNIT,
+  resolveTodoRowMeta,
+  resolveTodoRowTitle,
+  resolveTodoUrgency,
+} from '@/utils/mark-dashboard-todo'
 
 defineOptions({ name: 'PendingTodoFeed' })
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     todos: MarkTeacherDashboardPendingTodoItemVO[]
-    /** 空态说明，默认面向教师待处理语义。 */
+    titleSource?: 'exam' | 'todo-type'
     emptyDescription?: string
-    /** 空态主操作文案；传入时在空态展示跳转按钮。 */
     emptyActionLabel?: string
   }>(),
   {
+    titleSource: 'exam',
     emptyDescription: '当前筛选下暂无待处理事项',
   },
 )
@@ -66,24 +72,26 @@ const emit = defineEmits<{
   'empty-action': []
 }>()
 
-const TODO_COUNT_UNIT: Record<MarkTeacherDashboardTodoTypeCode, string> = {
-  SCAN_ATTENTION: '份',
-  REVIEW_PENDING: '份试卷',
-  GRADE_PENDING: '题',
-  PROCESSING_OPEN: '项',
-  SCORE_UNPUBLISHED: '份',
-  CANDIDATE_UNBOUND: '项',
-  ARBITRATION_PENDING: '项',
-  SPOT_CHECK_PENDING: '项',
-  EXPERIENCE_ASSIST_PENDING: '项',
+function resolveRowTitle(todo: MarkTeacherDashboardPendingTodoItemVO): string {
+  if (props.titleSource === 'todo-type') {
+    return MarkTeacherDashboardTodoTypeDescription[todo.todoType]
+  }
+  return resolveTodoRowTitle(todo)
 }
 
-function todoMeta(todo: MarkTeacherDashboardPendingTodoItemVO): string {
+function resolveRowMeta(todo: MarkTeacherDashboardPendingTodoItemVO): string {
+  if (props.titleSource !== 'todo-type') {
+    return resolveTodoRowMeta(todo)
+  }
   const parts: string[] = []
   if (todo.count > 0) {
-    parts.push(`${todo.count.toLocaleString('zh-CN')} ${TODO_COUNT_UNIT[todo.todoType]}`)
+    parts.push(
+      `${todo.count.toLocaleString('zh-CN')} ${MARK_DASHBOARD_TODO_COUNT_UNIT[todo.todoType]}`,
+    )
   }
-  if (todo.examName) parts.push(todo.examName)
+  if (todo.blocking) {
+    parts.push('阻断')
+  }
   return parts.join(' · ')
 }
 

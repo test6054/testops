@@ -5,8 +5,9 @@ import type {
   PortfolioDualTeacherEligibilityFreezeVO,
 } from '@/apis/portfolio/teacher-platform'
 import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { message, Modal } from 'ant-design-vue'
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { PortfolioDualTeacherApplicationStatusDescription } from '@/apis/portfolio/enums'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
@@ -15,9 +16,10 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { useQueryTable } from '@/composables/useQueryTable'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
@@ -40,9 +42,10 @@ function statusLabel(status: PortfolioDualTeacherApplicationVO['applicationStatu
   return PortfolioDualTeacherApplicationStatusDescription[status]
 }
 
-const loading = ref(false)
-const rows = ref<PortfolioDualTeacherApplicationVO[]>([])
 const importModalOpen = ref(false)
+const { loading, rows, pageNum, pageSize, pageTotal, loadPage, handlePageChange } = useQueryTable(
+  portfolioDualTeacherApi.page,
+)
 
 const columns: ColumnsType = [
   { title: '申请单号', dataIndex: 'applicationNo', key: 'applicationNo' },
@@ -59,18 +62,6 @@ const columns: ColumnsType = [
   { title: '认定资格', key: 'eligibilityFreeze', width: 120 },
   { title: '操作', key: 'actions', width: 260 },
 ]
-
-async function loadPage() {
-  loading.value = true
-  try {
-    const page = await portfolioDualTeacherApi.page({ pageNum: 1, pageSize: 50 })
-    rows.value = page.list
-  } catch (error) {
-    showUserError(error)
-  } finally {
-    loading.value = false
-  }
-}
 
 async function previewEligibility(id: string) {
   try {
@@ -105,6 +96,52 @@ function canAcademicApprove(record: PortfolioDualTeacherApplicationVO): boolean 
     return false
   }
   return record.eligibilityFreeze.eligible === true
+}
+
+function buildDualTeacherRowActions(
+  record: PortfolioDualTeacherApplicationVO,
+): UiTableRowActionItem[] {
+  const actions: UiTableRowActionItem[] = []
+  if (
+    record.applicationStatus === 'DRAFT' ||
+    record.applicationStatus === 'COLLEGE_RETURNED' ||
+    record.applicationStatus === 'ACADEMIC_RETURNED'
+  ) {
+    actions.push({ key: 'submit', label: '提交' })
+  }
+  if (canCollegeReview.value && record.applicationStatus === 'COLLEGE_PENDING') {
+    actions.push({ key: 'preview', label: '预览资格' })
+  }
+  if (canCollegeReview.value && canCollegeApprove(record)) {
+    actions.push({ key: 'collegeApprove', label: '院审通过', tone: 'primary' })
+  }
+  if (canCollegeReview.value && record.applicationStatus === 'COLLEGE_PENDING') {
+    actions.push({ key: 'collegeReturn', label: '院审退回' })
+  }
+  if (canAcademicReview.value && canAcademicApprove(record)) {
+    actions.push({ key: 'academicApprove', label: '教务通过', tone: 'primary' })
+  }
+  if (canAcademicReview.value && record.applicationStatus === 'ACADEMIC_PENDING') {
+    actions.push({ key: 'academicReturn', label: '教务退回' })
+    actions.push({ key: 'academicReject', label: '教务驳回', tone: 'danger' })
+  }
+  return actions
+}
+
+type DualTeacherWorkflowAction =
+  | 'submit'
+  | 'collegeApprove'
+  | 'collegeReturn'
+  | 'academicApprove'
+  | 'academicReturn'
+  | 'academicReject'
+
+function handleDualTeacherRowAction(key: string, record: PortfolioDualTeacherApplicationVO): void {
+  if (key === 'preview') {
+    void previewEligibility(record.id)
+    return
+  }
+  void runWorkflow(key as DualTeacherWorkflowAction, record.id)
 }
 
 async function runWorkflow(
@@ -152,8 +189,6 @@ async function handleImportSuccess() {
   importModalOpen.value = false
   await loadPage()
 }
-
-onMounted(loadPage)
 </script>
 
 <template>
@@ -177,11 +212,16 @@ onMounted(loadPage)
       </div>
       <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无双师认定记录" />
       <UiDataTable
+        v-model:current="pageNum"
+        v-model:page-size="pageSize"
+        pagination-mode="server"
+        :total="pageTotal"
         :columns="columns"
         :data-source="rows"
         :loading="loading"
         row-key="id"
         style="margin-top: 16px"
+        @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'applicationStatus'">
@@ -197,52 +237,11 @@ onMounted(loadPage)
             <span v-else-if="record.applicationStatus === 'COLLEGE_PENDING'">待院审冻结</span>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiTextAction
-              v-if="
-                record.applicationStatus === 'DRAFT' ||
-                record.applicationStatus === 'COLLEGE_RETURNED' ||
-                record.applicationStatus === 'ACADEMIC_RETURNED'
-              "
-              @click="runWorkflow('submit', record.id)"
-            >
-              提交
-            </UiTextAction>
-            <UiTextAction
-              v-if="canCollegeReview && record.applicationStatus === 'COLLEGE_PENDING'"
-              @click="previewEligibility(record.id)"
-            >
-              预览资格
-            </UiTextAction>
-            <UiTextAction
-              v-if="canCollegeReview && canCollegeApprove(record)"
-              @click="runWorkflow('collegeApprove', record.id)"
-            >
-              院审通过
-            </UiTextAction>
-            <UiTextAction
-              v-if="canCollegeReview && record.applicationStatus === 'COLLEGE_PENDING'"
-              @click="runWorkflow('collegeReturn', record.id)"
-            >
-              院审退回
-            </UiTextAction>
-            <UiTextAction
-              v-if="canAcademicReview && canAcademicApprove(record)"
-              @click="runWorkflow('academicApprove', record.id)"
-            >
-              教务通过
-            </UiTextAction>
-            <UiTextAction
-              v-if="canAcademicReview && record.applicationStatus === 'ACADEMIC_PENDING'"
-              @click="runWorkflow('academicReturn', record.id)"
-            >
-              教务退回
-            </UiTextAction>
-            <UiTextAction
-              v-if="canAcademicReview && record.applicationStatus === 'ACADEMIC_PENDING'"
-              @click="runWorkflow('academicReject', record.id)"
-            >
-              教务驳回
-            </UiTextAction>
+            <UiTableActions
+              :items="buildDualTeacherRowActions(record)"
+              split
+              @action="(key) => handleDualTeacherRowAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>

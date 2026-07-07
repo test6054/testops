@@ -5,9 +5,6 @@ import type {
   AnnualReportMaterialSaveRequest,
   AnnualReportMaterialVO,
 } from '@/apis/quality/accreditation'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   accreditationApi,
   ALL_ANNUAL_REPORT_MATERIAL_STATUS_CODES,
@@ -19,6 +16,9 @@ import {
   AnnualReportMaterialStatusCode,
   AnnualReportMaterialStatusDescription,
 } from '@/apis/quality/accreditation'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import { CourseSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -26,6 +26,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import {
   annualReportMaterialPhaseHint,
   canMutateAnnualReportMaterial,
@@ -46,8 +47,8 @@ const emit = defineEmits<{ refresh: [] }>()
 
 const MATERIAL_CATEGORY_OPTIONS = ANNUAL_REPORT_MATERIAL_CATEGORY_OPTIONS
 
-const MATERIAL_STATUS_OPTIONS: { label: string, value: AnnualReportMaterialStatusCode }[]
-  = ALL_ANNUAL_REPORT_MATERIAL_STATUS_CODES.map(value => ({
+const MATERIAL_STATUS_OPTIONS: { label: string; value: AnnualReportMaterialStatusCode }[] =
+  ALL_ANNUAL_REPORT_MATERIAL_STATUS_CODES.map((value) => ({
     value,
     label: AnnualReportMaterialStatusDescription[value],
   }))
@@ -118,17 +119,17 @@ const canMutateMaterial = computed(() => canMutateAnnualReportMaterial(props.act
 
 function canEdit(record: AnnualReportMaterialVO) {
   return (
-    canMutateMaterial.value
-    && (record.reportStatus === AnnualReportMaterialStatusCode.DRAFT
-      || record.reportStatus === AnnualReportMaterialStatusCode.REJECTED)
+    canMutateMaterial.value &&
+    (record.reportStatus === AnnualReportMaterialStatusCode.DRAFT ||
+      record.reportStatus === AnnualReportMaterialStatusCode.REJECTED)
   )
 }
 
 function canSubmit(record: AnnualReportMaterialVO) {
   return (
-    canMutateMaterial.value
-    && (record.reportStatus === AnnualReportMaterialStatusCode.DRAFT
-      || record.reportStatus === AnnualReportMaterialStatusCode.REJECTED)
+    canMutateMaterial.value &&
+    (record.reportStatus === AnnualReportMaterialStatusCode.DRAFT ||
+      record.reportStatus === AnnualReportMaterialStatusCode.REJECTED)
   )
 }
 
@@ -171,7 +172,7 @@ async function loadMaterials() {
     materials.value = page.list
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
-    total.value = Number(page.total)
+    total.value = page.total
     if (materials.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadMaterials()
@@ -317,9 +318,10 @@ function openReview(record: AnnualReportMaterialVO, status: AnnualReportMaterial
     message.error('仅已提交材料可审核')
     return
   }
-  reviewDrawerTitle.value = status === AnnualReportMaterialReviewStatusCode.APPROVED
-    ? '审核通过年度报备材料'
-    : '退回年度报备材料'
+  reviewDrawerTitle.value =
+    status === AnnualReportMaterialReviewStatusCode.APPROVED
+      ? '审核通过年度报备材料'
+      : '退回年度报备材料'
   reviewForm.id = record.id
   reviewForm.reviewStatus = status
   reviewForm.reviewComment = record.reviewComment || ''
@@ -335,7 +337,10 @@ async function submitReview() {
     message.error('年度报备材料审核对象缺失，请关闭后重新打开')
     return
   }
-  if (reviewForm.reviewStatus === AnnualReportMaterialReviewStatusCode.REJECTED && !reviewForm.reviewComment.trim()) {
+  if (
+    reviewForm.reviewStatus === AnnualReportMaterialReviewStatusCode.REJECTED &&
+    !reviewForm.reviewComment.trim()
+  ) {
     message.error('退回材料必须填写审核意见')
     return
   }
@@ -346,7 +351,11 @@ async function submitReview() {
       reviewStatus: reviewForm.reviewStatus,
       reviewComment: reviewForm.reviewComment.trim() || undefined,
     })
-    message.success(reviewForm.reviewStatus === AnnualReportMaterialReviewStatusCode.APPROVED ? '材料已审核通过' : '材料已退回')
+    message.success(
+      reviewForm.reviewStatus === AnnualReportMaterialReviewStatusCode.APPROVED
+        ? '材料已审核通过'
+        : '材料已退回',
+    )
     reviewDrawerOpen.value = false
     await loadMaterials()
     emit('refresh')
@@ -382,6 +391,15 @@ async function downloadMaterial(record: AnnualReportMaterialVO) {
   await handleDownloadFile({ fileId: record.storageFileId, fileName: record.materialName })
 }
 
+function handleMaterialRowAction(key: string, record: AnnualReportMaterialVO) {
+  if (key === 'download') void downloadMaterial(record)
+  else if (key === 'edit') openEdit(record)
+  else if (key === 'submit') void submitForReview(record)
+  else if (key === 'approve') openReview(record, AnnualReportMaterialReviewStatusCode.APPROVED)
+  else if (key === 'reject') openReview(record, AnnualReportMaterialReviewStatusCode.REJECTED)
+  else if (key === 'delete') void removeMaterial(record)
+}
+
 function searchMaterials() {
   query.pageNum = 1
   loadMaterials()
@@ -396,7 +414,7 @@ function resetFilters() {
   loadMaterials()
 }
 
-function handlePageChange(pageEvent: { current: number, pageSize: number }) {
+function handlePageChange(pageEvent: { current: number; pageSize: number }) {
   query.pageNum = pageEvent.current
   query.pageSize = pageEvent.pageSize
   loadMaterials()
@@ -517,51 +535,18 @@ defineExpose({ loadMaterials, openCreate })
           </UiTag>
         </template>
         <template v-else-if="column.key === 'actions'">
-          <UiButton
-            size="sm"
-            variant="ghost"
-            :disabled="!record.storageFileId"
-            @click="downloadMaterial(record)"
-          >
-            下载
-          </UiButton>
-          <UiButton v-if="canEdit(record)" size="sm" variant="outline" @click="openEdit(record)">
-            编辑
-          </UiButton>
-          <UiButton
-            v-if="canSubmit(record)"
-            size="sm"
-            variant="primary"
-            @click="submitForReview(record)"
-          >
-            提交
-          </UiButton>
-          <UiButton
-            v-if="canReview(record)"
-            size="sm"
-            variant="primary"
-            @click="openReview(record, AnnualReportMaterialReviewStatusCode.APPROVED)"
-          >
-            通过
-          </UiButton>
-          <UiButton
-            v-if="canReview(record)"
-            size="sm"
-            status="danger"
-            variant="ghost"
-            @click="openReview(record, AnnualReportMaterialReviewStatusCode.REJECTED)"
-          >
-            退回
-          </UiButton>
-          <UiButton
-            v-if="canEdit(record)"
-            size="sm"
-            status="danger"
-            variant="ghost"
-            @click="removeMaterial(record)"
-          >
-            删除
-          </UiButton>
+          <UiTableActions
+            :items="[
+              { key: 'download', label: '下载', disabled: !record.storageFileId },
+              { key: 'edit', label: '编辑', hidden: !canEdit(record) },
+              { key: 'submit', label: '提交', hidden: !canSubmit(record) },
+              { key: 'approve', label: '通过', hidden: !canReview(record) },
+              { key: 'reject', label: '退回', tone: 'danger', hidden: !canReview(record) },
+              { key: 'delete', label: '删除', tone: 'danger', hidden: !canEdit(record) },
+            ]"
+            split
+            @action="(key) => handleMaterialRowAction(key, record)"
+          />
         </template>
       </template>
       <template #empty>
@@ -649,7 +634,10 @@ defineExpose({ loadMaterials, openCreate })
             <a-select-option value="REJECTED">退回</a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="审核意见" :required="reviewForm.reviewStatus === AnnualReportMaterialReviewStatusCode.REJECTED">
+        <a-form-item
+          label="审核意见"
+          :required="reviewForm.reviewStatus === AnnualReportMaterialReviewStatusCode.REJECTED"
+        >
           <a-textarea
             v-model:value="reviewForm.reviewComment"
             :rows="4"

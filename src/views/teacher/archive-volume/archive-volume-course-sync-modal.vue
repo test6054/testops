@@ -67,7 +67,11 @@
             <a-input v-model:value="rows[index].studentNo" placeholder="可选" />
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiTextAction tone="danger" @click="removeRow(index)">删除</UiTextAction>
+            <UiTableActions
+              :items="[{ key: 'delete', label: '删除', tone: 'danger' }]"
+              split
+              @action="() => removeRow(index)"
+            />
           </template>
         </template>
       </UiDataTable>
@@ -91,7 +95,7 @@ import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { showUserError } from '@/utils/error-handler'

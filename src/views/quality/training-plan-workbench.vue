@@ -66,8 +66,8 @@ import {
   CivicDimensionDescription,
   ConfirmationStatusDescription,
 } from '@/apis/quality/types'
-import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/matrix-types'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/matrix-types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
@@ -80,6 +80,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
@@ -1274,13 +1275,19 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
       </QualityPageContextBar>
     </template>
 
-    <UiEmpty
+    <UiAlertStrip
       v-if="!qualityStore.currentTrainingPlanId"
-      description="请选择培养方案"
-      class="tpw__empty"
+      tone="info"
+      title="请选择培养方案"
+      description="在页头质量评价范围中选择培养方案后，方可维护培养目标、毕业要求与观测点映射。"
+      dense
+      class="tpw__scope-hint"
     />
 
-    <template v-else>
+    <div
+      class="tpw__body"
+      :class="[{ 'tpw__body--scoped-out': !qualityStore.currentTrainingPlanId }]"
+    >
       <SignalBand :metrics="signals" compact class="tpw__signals" />
 
       <div class="tpw__tabs">
@@ -1623,7 +1630,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
           </a-col>
         </a-row>
       </div>
-    </template>
+    </div>
 
     <!-- 培养方案编辑 Drawer -->
     <UiDrawer
@@ -1961,8 +1968,21 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
     color: var(--dp-text-secondary);
   }
 
-  &__empty {
-    margin-top: 32px;
+  &__scope-hint {
+    margin-bottom: 12px;
+  }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+
+    &--scoped-out {
+      opacity: 0.55;
+      pointer-events: none;
+      user-select: none;
+    }
   }
 
   &__signals {

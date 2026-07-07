@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import type { ExamDistinctTermItemResponse } from '@/apis/mark/exam'
+import { listDistinctExamTerms, listDistinctTeachingExamTerms } from '@/apis/mark/exam'
 import type { SemesterCode } from '@/types/enums/semester-enum'
+import { getSemesterDescription } from '@/types/enums/semester-enum'
 import { ReloadOutlined } from '@ant-design/icons-vue'
 import { computed, onMounted, ref, watch } from 'vue'
-import { listDistinctExamTerms, listDistinctTeachingExamTerms } from '@/apis/mark/exam'
-import { getSemesterDescription } from '@/types/enums/semester-enum'
-import { showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'AnalysisSemesterSelect' })
 
@@ -43,7 +42,7 @@ const defaultScopeApplied = ref(false)
 
 const yearOptions = computed(() => {
   const seen = new Set<string>()
-  const options: { label: string, value: string }[] = []
+  const options: { label: string; value: string }[] = []
   for (const item of distinctTerms.value) {
     if (seen.has(item.academicYear)) {
       continue
@@ -60,8 +59,8 @@ const semesterOptions = computed(() => {
     return []
   }
   return distinctTerms.value
-    .filter(item => item.academicYear === year)
-    .map(item => ({
+    .filter((item) => item.academicYear === year)
+    .map((item) => ({
       label: getSemesterDescription(item.semester),
       value: item.semester,
     }))
@@ -69,10 +68,10 @@ const semesterOptions = computed(() => {
 
 function applyDefaultScope(): void {
   if (
-    defaultScopeApplied.value
-    || props.defaultRecentSemesterCount <= 0
-    || academicYear.value
-    || distinctTerms.value.length === 0
+    defaultScopeApplied.value ||
+    props.defaultRecentSemesterCount <= 0 ||
+    academicYear.value ||
+    distinctTerms.value.length === 0
   ) {
     return
   }
@@ -92,16 +91,19 @@ async function loadSemesterOptions(applyDefaultScopeOnLoad = false): Promise<voi
     const request = {
       ...(props.courseId ? { courseId: props.courseId } : {}),
       ...(props.classId ? { classId: props.classId } : {}),
-      ...(props.referenceDepartmentId ? { referenceDepartmentId: props.referenceDepartmentId } : {}),
+      ...(props.referenceDepartmentId
+        ? { referenceDepartmentId: props.referenceDepartmentId }
+        : {}),
     }
-    distinctTerms.value = props.termSource === 'TEACHING'
-      ? await listDistinctTeachingExamTerms(request)
-      : await listDistinctExamTerms(request)
+    distinctTerms.value =
+      props.termSource === 'TEACHING'
+        ? await listDistinctTeachingExamTerms(request)
+        : await listDistinctExamTerms(request)
     if (applyDefaultScopeOnLoad) {
       applyDefaultScope()
     }
-  } catch (error) {
-    showUserError(error, '学年学期列表加载失败')
+  } catch {
+    /* 拦截器已统一 Message 提示 */
   } finally {
     loading.value = false
   }
@@ -129,8 +131,10 @@ watch(academicYear, (year, prev) => {
     return
   }
   if (
-    semester.value
-    && !distinctTerms.value.some(item => item.academicYear === year && item.semester === semester.value)
+    semester.value &&
+    !distinctTerms.value.some(
+      (item) => item.academicYear === year && item.semester === semester.value,
+    )
   ) {
     semester.value = undefined
   }

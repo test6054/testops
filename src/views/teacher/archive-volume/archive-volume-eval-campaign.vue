@@ -65,8 +65,8 @@
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
                 v-if="
-                  record.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE &&
-                  canExportCampaign
+                  record.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE
+                    && canExportCampaign
                 "
                 :items="buildCampaignActions(record)"
                 split
@@ -176,13 +176,6 @@ import type {
   ArchiveEvaluationCampaignResponse,
   ArchiveEvaluationVolumeReadinessResponse,
 } from '@/apis/mark/archive-volume'
-import {
-  ArchiveEvaluationCampaignStatusCode,
-  ArchiveEvaluationCampaignStatusDescription,
-  exportEvaluationArchivePackage,
-  getEvaluationCampaignReadinessPanel,
-  listEvaluationCampaigns,
-} from '@/apis/mark/archive-volume'
 import type {
   BadgeTone,
   UiSectionTabItem,
@@ -194,6 +187,13 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
 import { ArchiveDutyTypeCode } from '@/apis/mark/archive-config'
+import {
+  ArchiveEvaluationCampaignStatusCode,
+  ArchiveEvaluationCampaignStatusDescription,
+  exportEvaluationArchivePackage,
+  getEvaluationCampaignReadinessPanel,
+  listEvaluationCampaigns,
+} from '@/apis/mark/archive-volume'
 import ArchiveReadinessRateBar from '@/components/archive-volume/ArchiveReadinessRateBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -206,6 +206,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import {
   ArchiveEvaluationDimensionReadyCode,
   ArchiveEvaluationDimensionReadyDescription,
@@ -232,7 +233,7 @@ const exportingCampaignId = ref('')
 const campaigns = ref<ArchiveEvaluationCampaignResponse[]>([])
 const selectedCampaignId = ref<string>()
 const readinessRows = ref<ArchiveEvaluationVolumeReadinessResponse[]>([])
-const readinessPagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
+const readinessPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 
 const canExportCampaign = computed(() => hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR))
 
@@ -402,7 +403,7 @@ async function loadReadinessVolumes(): Promise<void> {
       pageSize: readinessPagination.pageSize,
     })
     readinessRows.value = result.list
-    readinessPagination.total = Number(result.total)
+    readinessPagination.total = result.total
     readinessPagination.pageNum = result.pageNum
     readinessPagination.pageSize = result.pageSize
   } catch (error) {

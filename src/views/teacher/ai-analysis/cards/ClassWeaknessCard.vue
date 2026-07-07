@@ -17,10 +17,22 @@
           :disabled="!props.examId"
           @change="handleClassSelectChange"
         />
-        <UiButton variant="outline" size="sm" :loading="loading" :disabled="!props.classId" @click="reload">
+        <UiButton
+          variant="outline"
+          size="sm"
+          :loading="loading"
+          :disabled="!props.classId"
+          @click="reload"
+        >
           刷新
         </UiButton>
-        <UiButton variant="outline" size="sm" :loading="generating" :disabled="!props.classId" @click="handleGenerate">
+        <UiButton
+          variant="outline"
+          size="sm"
+          :loading="generating"
+          :disabled="!props.classId"
+          @click="handleGenerate"
+        >
           重新生成
         </UiButton>
       </div>
@@ -40,38 +52,49 @@
           :disabled="!props.examId"
           @change="handleClassSelectChange"
         />
-        <UiButton variant="outline" size="sm" :loading="generating" :disabled="!props.classId" @click="handleGenerate">
+        <UiButton
+          variant="outline"
+          size="sm"
+          :loading="generating"
+          :disabled="!props.classId"
+          @click="handleGenerate"
+        >
           重新生成
         </UiButton>
       </div>
     </template>
 
-    <UiSkeletonState v-if="loading && !generating" variant="card" compact />
-    <AiGenerationProgressPanel
-      v-else-if="generating"
-      title="AI 班级薄弱题型分析生成中"
-      waiting-text="正在等待后端返回该班级的真实薄弱题型分析。"
-    />
+    <AiAnalysisCardBody
+      :loading="loading"
+      :generating="generating"
+      :has-content="record != null"
+      :empty-description="emptyDescription"
+      progress-title="AI 班级薄弱题型分析生成中"
+      progress-waiting-text="正在等待后端返回该班级的真实薄弱题型分析。"
+    >
+      <div v-if="record != null" class="ai-analysis-section__body ai-analysis-section__body--flush">
+        <p v-if="classContextLabel" class="ai-analysis-summary">{{ classContextLabel }}</p>
+        <p v-if="record.overallSummary" class="ai-analysis-summary">
+          {{ record.overallSummary }}
+        </p>
 
-    <UiEmpty v-else-if="!record" description="请选择班级后查看薄弱题型" />
-    <div v-else-if="record" class="ai-analysis-section__body ai-analysis-section__body--flush">
-      <p v-if="classContextLabel" class="ai-analysis-summary">{{ classContextLabel }}</p>
-      <p v-if="record.overallSummary" class="ai-analysis-summary">{{ record.overallSummary }}</p>
+        <AiWeaknessRow
+          v-for="(item, index) in record.weaknessItems ?? []"
+          :key="`${item.questionType ?? 'weak'}-${index}`"
+          :title="item.questionType ? questionTypeLabel(item.questionType) : '薄弱题型'"
+          :weakness-level="deriveWeaknessLevel(item.errorRate, item.avgScoreRate)"
+          :metric-text="
+            item.avgScoreRate != null ? `得分率 ${formatRate(item.avgScoreRate)}` : undefined
+          "
+        />
 
-      <AiWeaknessRow
-        v-for="(item, index) in weaknessItems"
-        :key="`${item.questionType ?? 'weak'}-${index}`"
-        :title="item.questionType ? questionTypeLabel(item.questionType) : '薄弱题型'"
-        :weakness-level="deriveWeaknessLevel(item.errorRate, item.avgScoreRate)"
-        :metric-text="item.avgScoreRate != null ? `得分率 ${formatRate(item.avgScoreRate)}` : undefined"
-      />
-
-      <AiAnalysisMetaCollapse
-        :record="record"
-        failure-fallback="AI 班级薄弱题型分析未完成，请稍后重新生成"
-        :extra-items="metaExtraItems"
-      />
-    </div>
+        <AiAnalysisMetaCollapse
+          :record="record"
+          failure-fallback="AI 班级薄弱题型分析未完成，请稍后重新生成"
+          :extra-items="record.scopeId ? [{ label: '班级编号', value: record.scopeId }] : []"
+        />
+      </div>
+    </AiAnalysisCardBody>
   </component>
 </template>
 
@@ -81,25 +104,24 @@ import type {
   ClassWeaknessItemResponse,
   TeachingAnalysisRecordResponse,
 } from '@/apis/mark/teaching-analysis'
-import type { MarkClassOption } from '@/composables/useMarkExamRoster'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
-import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import {
   generateClassWeaknessAnalysis,
   getLatestClassWeaknessAnalysis,
 } from '@/apis/mark/teaching-analysis'
+import type { MarkClassOption } from '@/composables/useMarkExamRoster'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import { QuestionTypeDescription } from '@/apis/mark/question-type'
+import AiAnalysisCardBody from '@/components/mark/analysis/AiAnalysisCardBody.vue'
 import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCollapse.vue'
 import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'
 import AiWeaknessRow from '@/components/mark/analysis/AiWeaknessRow.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useAiAnalysisGenerationFeedback } from '@/composables/useAiAnalysisGenerationFeedback'
 import { deriveWeaknessLevel } from '@/utils/ai-analysis-display'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import AiGenerationProgressPanel from './AiGenerationProgressPanel.vue'
 
 defineOptions({ name: 'ClassWeaknessCard' })
 
@@ -120,43 +142,30 @@ const emit = defineEmits<{ (e: 'class-change', classId?: string): void }>()
 
 const record = ref<TeachingAnalysisRecordResponse | null>(null)
 const loading = ref(false)
-const generating = ref(false)
+const { generating, runGeneration } = useAiAnalysisGenerationFeedback()
 
 const shellProps = computed(() =>
   props.embedded
-    ? { title: '班级薄弱知识点', context: classContextLabel.value || props.examLabel }
+    ? { title: '班级薄弱知识点', context: classContextLabel.value || undefined }
     : { class: 'stats-card' },
 )
 
-const weaknessItems = computed<ClassWeaknessItemResponse[]>(() => record.value?.weaknessItems ?? [])
+const emptyDescription = computed(() =>
+  props.classId ? '暂无薄弱题型分析，可点击重新生成' : '请选择班级后查看薄弱题型',
+)
 
 const classContextLabel = computed(() => {
   if (!props.classId) return ''
-  const option = props.classOptions.find(item => item.value === props.classId)
+  const option = props.classOptions.find((item) => item.value === props.classId)
   return option?.className ? `班级：${option.className}` : ''
 })
-
-const metaExtraItems = computed(() => {
-  if (!record.value?.scopeId) return []
-  return [{ label: '班级编号', value: record.value.scopeId }]
-})
-
-function acceptClassWeaknessRecord(
-  value: TeachingAnalysisRecordResponse | null,
-  expectedClassId: string,
-): TeachingAnalysisRecordResponse | null {
-  void expectedClassId
-  if (!value) return null
-  return value
-}
 
 async function reload(): Promise<void> {
   const classId = props.classId
   if (!props.examId || !classId) return
   loading.value = true
   try {
-    const latest = await getLatestClassWeaknessAnalysis({ examId: props.examId, classId })
-    record.value = acceptClassWeaknessRecord(latest, classId)
+    record.value = await getLatestClassWeaknessAnalysis({ examId: props.examId, classId })
   } catch (e) {
     record.value = null
     showUserError(e, '班级薄弱题型分析加载失败')
@@ -171,17 +180,15 @@ async function handleGenerate(): Promise<void> {
     message.warning('请先选择班级')
     return
   }
-  generating.value = true
-  try {
-    const generated = await generateClassWeaknessAnalysis({ examId: props.examId, classId })
-    record.value = acceptClassWeaknessRecord(generated, classId)
-    message.success('已生成最新分析')
-  } catch (e) {
-    record.value = null
-    showUserError(e, '班级薄弱题型分析生成失败')
-  } finally {
-    generating.value = false
-  }
+  await runGeneration(() => generateClassWeaknessAnalysis({ examId: props.examId, classId }), {
+    successMessage: '已生成最新分析',
+    onSuccess: (generated) => {
+      record.value = generated
+    },
+    onFailure: () => {
+      record.value = null
+    },
+  })
 }
 
 function handleClassSelectChange(value?: SelectValue): void {

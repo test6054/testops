@@ -158,6 +158,7 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { ExamScorePolicyCode } from '@/types/enums/exam-score-policy-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -181,7 +182,7 @@ const approvedReviewRequests = ref<GradeReviewRequestItemResponse[]>([])
 const reviewRequestLoading = ref(false)
 const pagination = reactive({
   current: 1,
-  pageSize: 20,
+  pageSize: DEFAULT_LIST_PAGE_SIZE,
   total: 0,
 })
 
@@ -325,7 +326,7 @@ async function reload(): Promise<void> {
     })
 
     rows.value = result.list
-    pagination.total = Number(result.total)
+    pagination.total = result.total
     pagination.current = result.pageNum ?? pagination.current
     pagination.pageSize = result.pageSize ?? pagination.pageSize
     if (rows.value.length === 0 && pagination.total > 0 && pagination.current > 1) {

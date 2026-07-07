@@ -607,7 +607,7 @@ async function loadTasks() {
     tasks.value = page.list
     taskQuery.pageNum = page.pageNum
     taskQuery.pageSize = page.pageSize
-    taskTotal.value = Number(page.total)
+    taskTotal.value = page.total
     if (tasks.value.length === 0 && taskTotal.value > 0 && taskQuery.pageNum > 1) {
       taskQuery.pageNum -= 1
       await loadTasks()
@@ -647,7 +647,7 @@ async function loadTasksQuietly(): Promise<void> {
     tasks.value = page.list
     taskQuery.pageNum = page.pageNum
     taskQuery.pageSize = page.pageSize
-    taskTotal.value = Number(page.total)
+    taskTotal.value = page.total
     taskPolling.syncPolling()
   } catch {
     // 轮询刷新失败时不打断当前页面操作

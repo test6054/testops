@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioDoubleDutyRegistryVO } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
+import { reactive } from 'vue'
 import { portfolioDoubleDutyApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
+import { useQueryTable } from '@/composables/useQueryTable'
 import {
   PortfolioKeyTeacherRegistryStatusCode,
   PortfolioKeyTeacherRegistryStatusDescription,
@@ -20,8 +20,6 @@ import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-const loading = ref(false)
-const rows = ref<PortfolioDoubleDutyRegistryVO[]>([])
 const form = reactive({
   teacherUserId: '',
   adminPostName: '',
@@ -30,6 +28,9 @@ const form = reactive({
   dutyScope: '',
 })
 const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
+const { loading, rows, pageNum, pageSize, pageTotal, loadPage, handlePageChange } = useQueryTable(
+  portfolioDoubleDutyApi.page,
+)
 
 const columns: ColumnsType = [
   { title: '教师', key: 'teacher', width: 120 },
@@ -42,18 +43,6 @@ const columns: ColumnsType = [
 
 function registryStatusLabel(status: PortfolioKeyTeacherRegistryStatusCode): string {
   return strictEnumLabel(PortfolioKeyTeacherRegistryStatusDescription, status, '双肩挑台账状态')
-}
-
-async function loadPage() {
-  loading.value = true
-  try {
-    const page = await portfolioDoubleDutyApi.page({ pageNum: 1, pageSize: 50 })
-    rows.value = page.list
-  } catch (error) {
-    showUserError(error)
-  } finally {
-    loading.value = false
-  }
 }
 
 async function saveRegistry() {
@@ -102,8 +91,6 @@ async function exportRoster() {
     showUserError(error)
   }
 }
-
-onMounted(loadPage)
 </script>
 
 <template>
@@ -134,11 +121,16 @@ onMounted(loadPage)
       </div>
       <UiEmpty v-if="!loading && rows.length === 0" description="暂无双肩挑台账记录" />
       <UiDataTable
+        v-model:current="pageNum"
+        v-model:page-size="pageSize"
+        pagination-mode="server"
+        :total="pageTotal"
         :columns="columns"
         :data-source="rows"
         :loading="loading"
         row-key="id"
         style="margin-top: 16px"
+        @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacher'">
@@ -148,13 +140,13 @@ onMounted(loadPage)
           <template v-else-if="column.key === 'registryStatus'">
             {{ registryStatusLabel(record.registryStatus) }}
           </template>
-          <template
-            v-else-if="
-              column.key === 'actions'
-                && record.registryStatus === PortfolioKeyTeacherRegistryStatusCode.ACTIVE
-            "
-          >
-            <UiTextAction @click="revokeRegistry(record.id)"> 作废 </UiTextAction>
+          <template v-else-if="column.key === 'actions'">
+            <UiTableActions
+              v-if="record.registryStatus === PortfolioKeyTeacherRegistryStatusCode.ACTIVE"
+              :items="[{ key: 'revoke', label: '作废', tone: 'danger' }]"
+              split
+              @action="() => revokeRegistry(record.id)"
+            />
           </template>
         </template>
       </UiDataTable>

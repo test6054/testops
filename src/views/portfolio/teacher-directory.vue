@@ -7,7 +7,7 @@ import type {
   PortfolioTeacherPageRequest,
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { UserStatusEnum } from '@/types/enums/user-status'
 import { getUserStatusLabel, USER_STATUS_FILTER_OPTIONS } from '@/types/enums/user-status'
 import { message } from 'ant-design-vue'
@@ -33,7 +33,7 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
@@ -176,7 +176,7 @@ async function loadPage() {
   try {
     const page = await portfolioTeacherApi.page({ ...query })
     list.value = page.list
-    total.value = Number(page.total)
+    total.value = page.total
   } catch (error) {
     showUserError(error, '加载教师名册失败')
   } finally {
@@ -199,6 +199,49 @@ function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadPage()
+}
+
+function buildTeacherDirectoryRowActions(
+  record: PortfolioTeacherSummaryVO,
+): UiTableRowActionItem[] {
+  const actions: UiTableRowActionItem[] = [
+    { key: 'detail', label: '详情' },
+    { key: 'home', label: '首页' },
+    { key: 'archive', label: '档案' },
+    { key: 'one-table', label: '一张表' },
+  ]
+  if (canManageTeacherAi(record.userId)) {
+    actions.push({ key: 'ai-confirm', label: 'AI 确认' })
+  }
+  actions.push({ key: 'identity', label: '身份' })
+  return actions
+}
+
+function handleTeacherDirectoryAction(key: string, record: PortfolioTeacherSummaryVO): void {
+  switch (key) {
+    case 'detail':
+      void openDetail(record)
+      break
+    case 'home':
+      openTeacherHome(record.userId)
+      break
+    case 'archive':
+      openTeacherArchive(record.userId)
+      break
+    case 'one-table':
+      openOneTable(record.userId)
+      break
+    case 'ai-confirm':
+      openAiCandidateConfirm(record.userId)
+      break
+    case 'identity':
+      openIdentityCreate({
+        userId: record.userId,
+        nickName: record.nickName,
+        departmentId: record.departmentId,
+      })
+      break
+  }
 }
 
 async function openDetail(row: PortfolioTeacherSummaryVO) {
@@ -401,27 +444,11 @@ onMounted(async () => {
             <span v-else>—</span>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiTextAction @click="openDetail(record)"> 详情 </UiTextAction>
-            <UiTextAction @click="openTeacherHome(record.userId)"> 首页 </UiTextAction>
-            <UiTextAction @click="openTeacherArchive(record.userId)"> 档案 </UiTextAction>
-            <UiTextAction @click="openOneTable(record.userId)"> 一张表 </UiTextAction>
-            <UiTextAction
-              v-if="canManageTeacherAi(record.userId)"
-              @click="openAiCandidateConfirm(record.userId)"
-            >
-              AI 确认
-            </UiTextAction>
-            <UiTextAction
-              @click="
-                openIdentityCreate({
-                  userId: record.userId,
-                  nickName: record.nickName,
-                  departmentId: record.departmentId,
-                })
-              "
-            >
-              身份
-            </UiTextAction>
+            <UiTableActions
+              :items="buildTeacherDirectoryRowActions(record)"
+              split
+              @action="(key) => handleTeacherDirectoryAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>
@@ -497,7 +524,11 @@ onMounted(async () => {
               </UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiTextAction @click="openIdentityEdit(record)"> 编辑 </UiTextAction>
+              <UiTableActions
+                :items="[{ key: 'edit', label: '编辑' }]"
+                split
+                @action="() => openIdentityEdit(record)"
+              />
             </template>
           </template>
           <template #empty>

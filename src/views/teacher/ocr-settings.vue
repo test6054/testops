@@ -3,23 +3,11 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamDetailResponse } from '@/apis/mark/exam'
-import { getExamDetail } from '@/apis/mark/exam'
 import type { ExamScoreSummaryItemResponse } from '@/apis/mark/exam-score'
-import { pageExamScoreSummary } from '@/apis/mark/exam-score'
 import type { MarkOcrConfigResponse } from '@/apis/mark/ocr-config'
-import { checkMarkOcrHealth, getCurrentMarkOcrConfig } from '@/apis/mark/ocr-config'
 import type { PaddleOcrInstanceResponse } from '@/apis/mark/ocr-paddle-instance'
-import { listPaddleOcrInstances } from '@/apis/mark/ocr-paddle-instance'
 import type { MarkOcrPaperSliceVO, MarkOcrRecognizeResponse } from '@/apis/mark/ocr-recognition'
-import { listMarkOcrPaperSlices, recognizeMarkOcr } from '@/apis/mark/ocr-recognition'
 import type { MarkOcrHealthStatusCode, MarkOcrProviderTypeCode } from '@/apis/mark/ocr-types'
-import {
-  MARK_OCR_HEALTH_STATUS_TONE,
-  MARK_OCR_PAPER_CUT_CAPABILITY,
-  MARK_OCR_PROVIDER_DESCRIPTION,
-  MarkOcrHealthStatusDescription,
-  MarkOcrProviderTypeDescription,
-} from '@/apis/mark/ocr-types'
 import type { SignalMetric } from '@/types/workbench'
 import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
 import ClusterOutlined from '@ant-design/icons-vue/ClusterOutlined'
@@ -27,8 +15,20 @@ import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { getExamDetail } from '@/apis/mark/exam'
 import { BindingStatusDescription } from '@/apis/mark/exam-binding'
+import { pageExamScoreSummary } from '@/apis/mark/exam-score'
 import { FinalScoreStatusDescription } from '@/apis/mark/final-score-status'
+import { checkMarkOcrHealth, getCurrentMarkOcrConfig } from '@/apis/mark/ocr-config'
+import { listPaddleOcrInstances } from '@/apis/mark/ocr-paddle-instance'
+import { listMarkOcrPaperSlices, recognizeMarkOcr } from '@/apis/mark/ocr-recognition'
+import {
+  MARK_OCR_HEALTH_STATUS_TONE,
+  MARK_OCR_PAPER_CUT_CAPABILITY,
+  MARK_OCR_PROVIDER_DESCRIPTION,
+  MarkOcrHealthStatusDescription,
+  MarkOcrProviderTypeDescription,
+} from '@/apis/mark/ocr-types'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -68,8 +68,8 @@ const currentConfig = ref<MarkOcrConfigResponse | null>(null)
 const recognizeResult = ref<MarkOcrRecognizeResponse | null>(null)
 const debugForm = ref<DebugFormState>({})
 const { selectedExamId } = useMarkExamContext()
-const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
-  useExamJourneyContextBar('OCR 识别配置')
+const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
+  = useExamJourneyContextBar('OCR 识别配置')
 const authStore = useAuthStore()
 
 /** 同步调试仅平台管理员可用，教师工作台路径不暴露识别试跑入口。 */
@@ -172,11 +172,11 @@ const paperCutCapability = computed(() => {
 
 const canRecognize = computed(() =>
   Boolean(
-    ocrDebugReady.value &&
-    currentConfig.value?.providerType &&
-    currentConfig.value.enabled &&
-    debugForm.value.paperInstanceId &&
-    debugForm.value.responseSliceId,
+    ocrDebugReady.value
+    && currentConfig.value?.providerType
+    && currentConfig.value.enabled
+    && debugForm.value.paperInstanceId
+    && debugForm.value.responseSliceId,
   ),
 )
 const currentPaperSlice = computed(() =>
@@ -465,12 +465,7 @@ onBeforeUnmount(() => {
 <template>
   <StageWorkbenchShell class="ocr-settings">
     <template v-if="selectedExamId && currentConfig" #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        :title="contextBarTitle"
-        :subtitle="contextBarSubtitle"
-      >
+      <ContextBar layout="workbench">
         <template #status>
           <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
             {{ examStatusLabel }}

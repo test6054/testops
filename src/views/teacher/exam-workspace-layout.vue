@@ -33,7 +33,7 @@
         </div>
       </div>
       <div class="exam-detail-layout__header-gap" />
-      <HeaderRightBar class="exam-detail-layout__header-right" />
+      <HeaderRightBar variant="workbench" class="exam-detail-layout__header-right" />
     </header>
 
     <div class="exam-detail-layout__body">
@@ -87,7 +87,10 @@
           <template v-else>
             <UiAlertStrip
               v-if="
-                prepBlockingReasons.length > 0 && !isImmersiveWorkspace && !isPrepSelfManagedPage
+                activeJourneyKey === 'prep'
+                  && prepBlockingReasons.length > 0
+                  && !isImmersiveWorkspace
+                  && !isPrepSelfManagedPage
               "
               tone="warning"
               title="考试准备硬阻断"
@@ -95,60 +98,22 @@
               dense
               class="exam-detail-layout__prep-blocking"
             />
-            <UiAlertStrip
-              v-if="experienceAssistBlockingReasons.length > 0 && !isImmersiveWorkspace"
-              tone="warning"
-              title="经验定标待完成"
-              :description="experienceAssistBlockingReasons.join('；')"
-              dense
-              class="exam-detail-layout__experience-assist-blocking"
-            >
-              <template #actions>
-                <UiButton size="sm" variant="primary" @click="goExperienceAssistPolicy">
-                  前往定标
-                </UiButton>
-              </template>
-            </UiAlertStrip>
-            <UiAlertStrip
+            <ConfidentialStatusBar
               v-if="isExamConfidential && !isImmersiveWorkspace"
-              tone="error"
-              title="涉密资料，禁止传播"
-              description="涉密页面，请勿截屏外传"
-              :closable="false"
-              dense
               class="exam-detail-layout__confidential-strip"
             />
-            <UiAlertStrip
-              v-if="showStageSuggestionBanner && !isImmersiveWorkspace"
-              tone="info"
-              :title="stageSuggestionTitle"
-              :description="stageSuggestionDescription"
-              dense
-              class="exam-detail-layout__stage-suggestion"
-            >
-              <template #actions>
-                <UiButton
-                  size="sm"
-                  variant="primary"
-                  @click="workspaceChrome.goSuggestedStageByKey"
-                >
-                  {{ workspaceChrome.suggestedStageActionLabel }}
-                </UiButton>
-              </template>
-            </UiAlertStrip>
+            <ExamWorkflowTaskDock
+              v-if="showTaskDock"
+              :task="activeTask"
+              class="exam-detail-layout__task-dock"
+              @dismiss="dismissActiveTask"
+              @action="runActiveTaskAction"
+            />
             <ExamWorkspaceChrome
               v-if="showWorkspaceChrome"
               :page-title="workspacePageTitle"
               :show-journey-rail="false"
               :show-signal-band="false"
-            />
-            <ExamWorkspaceFlowBar
-              v-if="showFlowContextBar"
-              :chain-steps="flowSteps"
-              :active-menu-key="flowActiveMenuKey"
-              :title="flowTitle"
-              :subtitle="flowSubtitle"
-              @step-change="navigateToFlowStep"
             />
             <UiEmpty
               v-if="isImmersiveWorkspace && !isDesktopMarkingViewport"
@@ -213,18 +178,19 @@ import { useBreakpoints } from '@vueuse/core'
 import { computed, provide, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { EXAM_STATUS_TONE, ExamStatusDescription } from '@/apis/mark/exam'
+import ConfidentialStatusBar from '@/components/mark/ConfidentialStatusBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ExamSubSidebar from '@/components/workbench/ExamSubSidebar.vue'
 import ExamSwitcher from '@/components/workbench/ExamSwitcher.vue'
+import ExamWorkflowTaskDock from '@/components/workbench/ExamWorkflowTaskDock.vue'
 import ExamWorkspaceChildFrame from '@/components/workbench/ExamWorkspaceChildFrame.vue'
 import ExamWorkspaceChrome from '@/components/workbench/ExamWorkspaceChrome.vue'
-import ExamWorkspaceFlowBar from '@/components/workbench/ExamWorkspaceFlowBar.vue'
 import { useExamJourneySteps } from '@/composables/useExamJourneySteps'
+import { useExamWorkflowTaskDock } from '@/composables/useExamWorkflowTaskDock'
 import { useExamWorkspaceChrome } from '@/composables/useExamWorkspaceChrome'
-import { useExamWorkspaceFlowContext } from '@/composables/useExamWorkspaceFlowContext'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import {
   EXAM_WORKSPACE_CHROME_KEY,
@@ -237,7 +203,6 @@ import {
   findExamWorkspaceMenuItem,
   resolveExamWorkspaceMenuKey,
 } from '@/constants/exam-workspace-menu'
-import { MARK_STAGE_TITLE, shouldShowStageSuggestionBanner } from '@/constants/mark-workspace-nav'
 import HeaderRightBar from '@/layout/components/HeaderRightBar/index.vue'
 import { useAppStore } from '@/stores/modules/app'
 import { MarkTeacherDashboardJourneyKeyCode } from '@/types/enums/mark-teacher-dashboard-journey-key-enum'
@@ -259,6 +224,8 @@ const menuIconMap: Record<ExamWorkspaceMenuKey, Component> = {
   'scan-devices': SettingOutlined,
   'scan-ocr': ScanOutlined,
   'marking-org': EditOutlined,
+  'marking-org-trial': HighlightOutlined,
+  'marking-org-formal': CheckCircleOutlined,
   'trial-pool': HighlightOutlined,
   'trial-progress': LineChartOutlined,
   'marking-experience-assist': AimOutlined,
@@ -309,19 +276,6 @@ const showWorkspaceChrome = computed(
     Boolean(examId.value) && !isImmersiveWorkspace.value && route.meta.hasWorkbenchShell !== true,
 )
 
-const {
-  flowSteps,
-  flowTitle,
-  flowSubtitle,
-  activeMenuKey: flowActiveMenuKey,
-  showFlowBar,
-  navigateToStep: navigateToFlowStep,
-} = useExamWorkspaceFlowContext()
-
-const showFlowContextBar = computed(
-  () => Boolean(examId.value) && !isImmersiveWorkspace.value && showFlowBar.value,
-)
-
 const workspacePageTitle = computed(() => {
   const title = route.meta.title
   return typeof title === 'string' ? title : ''
@@ -349,7 +303,6 @@ const {
   orderedStages,
   suggestedStageKey,
   prepBlockingReasons,
-  experienceAssistBlockingReasons,
   refreshSnapshot,
 } = useMarkWorkbenchSnapshot(() => examId.value)
 
@@ -395,23 +348,6 @@ const activeMarkStageKey = computed<MarkStageKey | null>(() => {
   return typeof key === 'string' ? (key as MarkStageKey) : null
 })
 
-const showStageSuggestionBanner = computed(() => {
-  const suggested = suggestedStageKey.value
-  const active = activeMarkStageKey.value
-  if (!suggested || !active) {
-    return false
-  }
-  return shouldShowStageSuggestionBanner(active, suggested)
-})
-
-const stageSuggestionTitle = computed(() => {
-  const key = suggestedStageKey.value
-  if (!key) {
-    return ''
-  }
-  return `建议下一步：${MARK_STAGE_TITLE[key]}`
-})
-
 const stageSuggestionDescription = computed(() => {
   const key = suggestedStageKey.value
   if (!key) {
@@ -419,6 +355,26 @@ const stageSuggestionDescription = computed(() => {
   }
   const stage = snapshot.value?.stages.find((item) => item.key === key)
   return stage?.hint ?? '主链仍有待推进阶段，可继续向前处理。'
+})
+
+const nextActions = computed(() => snapshot.value?.nextActions ?? [])
+
+const {
+  activeTask,
+  showTaskDock,
+  dismissActiveTask,
+  runActiveTaskAction,
+} = useExamWorkflowTaskDock({
+  examId,
+  route,
+  isImmersiveWorkspace,
+  nextActions,
+  prepBlockingReasons,
+  suggestedStageKey,
+  activeMarkStageKey,
+  stageSuggestionDescription,
+  suggestedStageActionLabel: computed(() => workspaceChrome.suggestedStageActionLabel.value),
+  goSuggestedStageByKey: workspaceChrome.goSuggestedStageByKey,
 })
 
 const mobileNavLabel = computed(() => {
@@ -482,16 +438,6 @@ const examSwitcherOptions = computed<ExamSwitcherOption[]>(() => {
 
 function goExamList(): void {
   void router.push({ name: 'TeacherExamList' })
-}
-
-function goExperienceAssistPolicy(): void {
-  if (!examId.value) {
-    return
-  }
-  void router.push({
-    name: 'TeacherExamWorkspaceMarkingExperienceAssistPolicy',
-    params: { examId: examId.value },
-  })
 }
 
 /** 识别详情页对象 ID 参数，切换考试时不得复用 */
@@ -740,8 +686,11 @@ watch(isImmersiveWorkspace, (immersive) => {
   }
 
   &__prep-blocking,
-  &__confidential-strip,
-  &__stage-suggestion {
+  &__confidential-strip {
+    margin-bottom: 16px;
+  }
+
+  &__task-dock {
     margin-bottom: 16px;
   }
 

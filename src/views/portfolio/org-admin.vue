@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TreeProps } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PortfolioOrgAliasSaveRequest,
@@ -9,7 +10,6 @@ import type {
   PortfolioOrgTreeNodeVO,
   PortfolioOrgUnitSaveRequest,
 } from '@/apis/portfolio/types'
-import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
   PORTFOLIO_ORG_UNIT_TYPE_OPTIONS,
@@ -26,7 +26,7 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -47,11 +47,13 @@ interface TreeNode {
 }
 
 function isTreeNode(value: unknown): value is TreeNode {
-  return typeof value === 'object'
-    && value !== null
-    && 'key' in value
-    && 'title' in value
-    && 'raw' in value
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'key' in value &&
+    'title' in value &&
+    'raw' in value
+  )
 }
 
 const aliasColumns: ColumnsType = [
@@ -106,7 +108,9 @@ function nodeTypeLabel(nodeType?: PortfolioOrgTreeNodeVO['nodeType']) {
     case PortfolioEduUserOrgTreeNodeTypeCode.SCHOOL:
       return PortfolioEduUserOrgTreeNodeTypeDescription[PortfolioEduUserOrgTreeNodeTypeCode.SCHOOL]
     case PortfolioEduUserOrgTreeNodeTypeCode.DEPARTMENT:
-      return PortfolioEduUserOrgTreeNodeTypeDescription[PortfolioEduUserOrgTreeNodeTypeCode.DEPARTMENT]
+      return PortfolioEduUserOrgTreeNodeTypeDescription[
+        PortfolioEduUserOrgTreeNodeTypeCode.DEPARTMENT
+      ]
     case PortfolioEduUserOrgTreeNodeTypeCode.MAJOR:
       return PortfolioEduUserOrgTreeNodeTypeDescription[PortfolioEduUserOrgTreeNodeTypeCode.MAJOR]
     case PortfolioEduUserOrgTreeNodeTypeCode.CLASS:
@@ -229,7 +233,10 @@ function resolveAliasTarget(
     return { targetType: PortfolioOrgAliasTargetTypeCode.EDU_USER_MAJOR, targetId: node.id }
   }
   if (node.portfolioOrgId) {
-    return { targetType: PortfolioOrgAliasTargetTypeCode.PORTFOLIO_ORG_UNIT, targetId: node.portfolioOrgId }
+    return {
+      targetType: PortfolioOrgAliasTargetTypeCode.PORTFOLIO_ORG_UNIT,
+      targetId: node.portfolioOrgId,
+    }
   }
   return null
 }
@@ -260,11 +267,13 @@ function openUnitEditor(mode: 'create' | 'edit') {
     unitEditor.orgName = ''
     unitEditor.orgCode = ''
     unitEditor.parentPortfolioOrgId = selectedNode.value?.portfolioOrgId
-    unitEditor.anchorDepartmentId
-      = selectedRaw.value?.anchorDepartmentId
-        ?? (selectedRaw.value?.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.DEPARTMENT ? selectedRaw.value.id : undefined)
-    unitEditor.anchorMajorId
-      = selectedRaw.value?.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.MAJOR
+    unitEditor.anchorDepartmentId =
+      selectedRaw.value?.anchorDepartmentId ??
+      (selectedRaw.value?.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.DEPARTMENT
+        ? selectedRaw.value.id
+        : undefined)
+    unitEditor.anchorMajorId =
+      selectedRaw.value?.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.MAJOR
         ? selectedRaw.value.id
         : selectedRaw.value?.anchorMajorId
     unitEditor.sortOrder = 0
@@ -312,6 +321,16 @@ async function deleteSelectedUnit() {
     await refreshTree()
   } catch (error) {
     showUserError(error, '删除失败')
+  }
+}
+
+function handleOrgAliasAction(key: string, row: PortfolioOrgAliasVO): void {
+  if (key === 'edit') {
+    openAliasEditor('edit', row)
+    return
+  }
+  if (key === 'delete') {
+    void deleteAlias(row)
   }
 }
 
@@ -488,10 +507,15 @@ onMounted(async () => {
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'actions'">
-                <template v-if="canManageTenant">
-                  <UiTextAction @click="openAliasEditor('edit', record)"> 编辑 </UiTextAction>
-                  <UiTextAction @click="deleteAlias(record)"> 删除 </UiTextAction>
-                </template>
+                <UiTableActions
+                  v-if="canManageTenant"
+                  :items="[
+                    { key: 'edit', label: '编辑' },
+                    { key: 'delete', label: '删除', tone: 'danger' },
+                  ]"
+                  split
+                  @action="(key) => handleOrgAliasAction(key, record)"
+                />
               </template>
             </template>
             <template #empty>

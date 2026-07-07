@@ -1,25 +1,12 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { AchievementResultVO } from '@/apis/quality/achievement-result'
-import type { AiTaskVO } from '@/apis/quality/ai-task'
-import type { ImprovementTaskVO } from '@/apis/quality/improvement-task'
-import type {
-  AchievementTargetTypeCode,
-  AiTaskTypeCode} from '@/apis/quality/types';
-/**
- * 质量评价 - 年度工作台
- *
- * 阶段：专业配置 -> 培养方案 -> 数据接入 -> 计算 -> 审核 -> 改进 -> 归档
- */
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
-import type { QualityChartGroup } from '@/utils/quality-workbench-charts'
-import { storeToRefs } from 'pinia'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { achievementResultApi } from '@/apis/quality/achievement-result'
+import type { AiTaskVO } from '@/apis/quality/ai-task'
 import { aiTaskApi } from '@/apis/quality/ai-task'
+import type { ImprovementTaskVO } from '@/apis/quality/improvement-task'
 import { improvementTaskApi } from '@/apis/quality/improvement-task'
+import type { AchievementTargetTypeCode, AiTaskTypeCode } from '@/apis/quality/types'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_STATUS_COLOR,
@@ -37,6 +24,18 @@ import {
   ImprovementTaskStatusCode,
   ImprovementTaskStatusDescription,
 } from '@/apis/quality/types'
+/**
+ * 质量评价 - 年度工作台
+ *
+ * 阶段：专业配置 -> 培养方案 -> 数据接入 -> 计算 -> 审核 -> 改进 -> 归档
+ */
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
+import type { QualityChartGroup } from '@/utils/quality-workbench-charts'
+import { buildStatusChartGroup } from '@/utils/quality-workbench-charts'
+import { storeToRefs } from 'pinia'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import QualityWorkbenchCharts from '@/components/quality/QualityWorkbenchCharts.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -52,7 +51,6 @@ import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { useQualityTaskStore } from '@/stores/modules/qualityTask'
 import { showUserError } from '@/utils/error-handler'
-import { buildStatusChartGroup } from '@/utils/quality-workbench-charts'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const recentAchievementColumns: ColumnsType = [
@@ -127,18 +125,20 @@ const planConfirmationStatus = computed(() => {
 
 const planConfirmationLabel = computed(() => {
   const status = planConfirmationStatus.value
-  return status ? strictEnumLabel(ConfirmationStatusDescription, status, '培养方案确认状态') : '未提交'
+  return status
+    ? strictEnumLabel(ConfirmationStatusDescription, status, '培养方案确认状态')
+    : '未提交'
 })
 
 // 年度评价阶段推断：依据培养方案确认状态与各能力块计数
 const stages = computed<WorkbenchStage[]>(() => {
   const planSelected = !!trainingPlanId.value
   const planConfirmed = planConfirmationStatus.value === 'CONFIRMED'
-  const dataReached
-    = achievementCounts.calculated > 0
-      || achievementCounts.submitted > 0
-      || achievementCounts.confirmed > 0
-      || achievementCounts.archived > 0
+  const dataReached =
+    achievementCounts.calculated > 0 ||
+    achievementCounts.submitted > 0 ||
+    achievementCounts.confirmed > 0 ||
+    achievementCounts.archived > 0
   const calcDone = dataReached
   const auditDone = achievementCounts.confirmed > 0 || achievementCounts.archived > 0
   const improvementActive = improvementCounts.total > 0
@@ -294,7 +294,7 @@ async function loadAchievement() {
       trainingPlanId: trainingPlanId.value,
     })
     recentAchievements.value = page.list
-    achievementCounts.total = Number(page.total)
+    achievementCounts.total = page.total
 
     const [calculated, submitted, confirmed, archived, notAchieved] = await Promise.all([
       achievementResultApi.page({
@@ -328,11 +328,11 @@ async function loadAchievement() {
         achievementStatus: AchievementStatusCode.NOT_ACHIEVED,
       }),
     ])
-    achievementCounts.calculated = Number(calculated.total)
-    achievementCounts.submitted = Number(submitted.total)
-    achievementCounts.confirmed = Number(confirmed.total)
-    achievementCounts.archived = Number(archived.total)
-    achievementCounts.notAchieved = Number(notAchieved.total)
+    achievementCounts.calculated = calculated.total
+    achievementCounts.submitted = submitted.total
+    achievementCounts.confirmed = confirmed.total
+    achievementCounts.archived = archived.total
+    achievementCounts.notAchieved = notAchieved.total
   } catch (error) {
     showUserError(error, '达成度数据加载失败')
   } finally {
@@ -350,7 +350,7 @@ async function loadImprovement() {
       trainingPlanId: trainingPlanId.value,
     })
     recentImprovements.value = page.list
-    improvementCounts.total = Number(page.total)
+    improvementCounts.total = page.total
 
     const [open, inProgress, submitted, closed] = await Promise.all([
       improvementTaskApi.page({
@@ -378,10 +378,10 @@ async function loadImprovement() {
         status: ImprovementTaskStatusCode.CLOSED,
       }),
     ])
-    improvementCounts.open = Number(open.total)
-    improvementCounts.inProgress = Number(inProgress.total)
-    improvementCounts.submitted = Number(submitted.total)
-    improvementCounts.closed = Number(closed.total)
+    improvementCounts.open = open.total
+    improvementCounts.inProgress = inProgress.total
+    improvementCounts.submitted = submitted.total
+    improvementCounts.closed = closed.total
   } catch (error) {
     showUserError(error, '改进任务数据加载失败')
   } finally {
@@ -400,18 +400,38 @@ async function loadAiTasks() {
       trainingPlanId: plan,
     })
     recentAiTasks.value = page.list
-    aiCounts.total = Number(page.total)
+    aiCounts.total = page.total
 
     const [pending, processing, succeeded, failed] = await Promise.all([
-      aiTaskApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: plan, status: AiTaskStatusCode.PENDING }),
-      aiTaskApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: plan, status: AiTaskStatusCode.PROCESSING }),
-      aiTaskApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: plan, status: AiTaskStatusCode.SUCCEEDED }),
-      aiTaskApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: plan, status: AiTaskStatusCode.FAILED }),
+      aiTaskApi.page({
+        pageNum: 1,
+        pageSize: 1,
+        trainingPlanId: plan,
+        status: AiTaskStatusCode.PENDING,
+      }),
+      aiTaskApi.page({
+        pageNum: 1,
+        pageSize: 1,
+        trainingPlanId: plan,
+        status: AiTaskStatusCode.PROCESSING,
+      }),
+      aiTaskApi.page({
+        pageNum: 1,
+        pageSize: 1,
+        trainingPlanId: plan,
+        status: AiTaskStatusCode.SUCCEEDED,
+      }),
+      aiTaskApi.page({
+        pageNum: 1,
+        pageSize: 1,
+        trainingPlanId: plan,
+        status: AiTaskStatusCode.FAILED,
+      }),
     ])
-    aiCounts.pending = Number(pending.total)
-    aiCounts.processing = Number(processing.total)
-    aiCounts.succeeded = Number(succeeded.total)
-    aiCounts.failed = Number(failed.total)
+    aiCounts.pending = pending.total
+    aiCounts.processing = processing.total
+    aiCounts.succeeded = succeeded.total
+    aiCounts.failed = failed.total
   } catch (error) {
     showUserError(error, 'AI 任务数据加载失败')
   } finally {
@@ -637,9 +657,9 @@ function handleTodoAction(key: string) {
                 <span
                   class="quality-dashboard__value"
                   :class="[
-                    record.finalValue !== null
-                      && record.thresholdValue !== null
-                      && record.finalValue >= record.thresholdValue
+                    record.finalValue !== null &&
+                    record.thresholdValue !== null &&
+                    record.finalValue >= record.thresholdValue
                       ? 'quality-dashboard__value--ok'
                       : 'quality-dashboard__value--bad',
                   ]"

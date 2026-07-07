@@ -18,6 +18,7 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -35,7 +36,7 @@ const emit = defineEmits<{
 }>()
 const loading = ref(false)
 const logs = ref<ScanOperationLogItemVO[]>([])
-const pagination = reactive({ current: 1, pageSize: 20, total: 0 })
+const pagination = reactive({ current: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 
 const logSignalMetrics = computed((): SignalMetric[] => [
   {
@@ -73,7 +74,7 @@ const filterFields = computed<FilterField[]>(() => [
 
 const columns: ColumnsType<ScanOperationLogItemVO> = [
   { title: '时间', dataIndex: 'createTime', key: 'createTime', width: 168 },
-  { title: '操作', dataIndex: 'action', key: 'action', width: 120 },
+  { title: '操作类型', dataIndex: 'action', key: 'operationAction', width: 120 },
   { title: '派单', dataIndex: 'ticketId', key: 'ticketId', width: 120 },
   { title: '工单', dataIndex: 'workOrderId', key: 'workOrderId', width: 120 },
   { title: '工位', dataIndex: 'scannerStationId', key: 'scannerStationId', width: 120 },
@@ -99,7 +100,7 @@ async function loadLogs() {
       pageSize: pagination.pageSize,
     })
     logs.value = result.list
-    pagination.total = Number(result.total)
+    pagination.total = result.total
   }
   catch (error) {
     logs.value = []
@@ -202,7 +203,7 @@ onMounted(() => {
           <template v-if="column.key === 'createTime'">
             {{ record.createTime ? formatDateTime(record.createTime) : '—' }}
           </template>
-          <template v-else-if="column.key === 'action'">
+          <template v-else-if="column.key === 'operationAction'">
             {{ actionLabel(record.action) }}
           </template>
           <template v-else-if="column.key === 'ticketId'">

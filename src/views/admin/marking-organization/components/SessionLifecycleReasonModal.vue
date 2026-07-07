@@ -60,7 +60,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "success": []
+  success: []
 }>()
 
 const reason = ref('')
@@ -115,7 +115,7 @@ async function confirm(): Promise<void> {
     return
   }
   if (!props.canManage) {
-    message.warning('仅考试创建人可分配批阅任务')
+    message.warning('仅考试主考老师可管理试评 / 正评会话')
     return
   }
   const trimmed = reason.value.trim()

@@ -34,8 +34,8 @@ declare global {
 interface PageResult<T> {
     /** 数据列表 */
     list: T[]
-    /** 总记录数（后端Long -> 前端string） */
-    total: string
+    /** 总记录数（后端 PageResult.total 为 long；HTTP 层 normalizePageResultPayload 统一为 number） */
+    total: number
     /** 当前页码 */
     pageNum: number
     /** 页大小 */

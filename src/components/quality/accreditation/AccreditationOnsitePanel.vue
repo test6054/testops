@@ -7,8 +7,6 @@ import type {
   OnsiteVisitPlanSaveRequest,
   OnsiteVisitPlanVO,
 } from '@/apis/quality/accreditation'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   accreditationApi,
   OnsiteChecklistCategoryCode,
@@ -16,11 +14,14 @@ import {
   OnsiteChecklistItemStatusCode,
   OnsiteChecklistItemStatusDescription,
 } from '@/apis/quality/accreditation'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { ArchiveSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -51,7 +52,7 @@ const checklistColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 100 },
 ]
 
-const CATEGORY_TABS: { key: '' | OnsiteChecklistCategoryCode, label: string }[] = [
+const CATEGORY_TABS: { key: '' | OnsiteChecklistCategoryCode; label: string }[] = [
   { key: '', label: '全部' },
   { key: OnsiteChecklistCategoryCode.FACILITY, label: '设施' },
   { key: OnsiteChecklistCategoryCode.PAPER_SAMPLE, label: '样本' },
@@ -72,8 +73,8 @@ const checklistCategoryFilter = ref<'' | OnsiteChecklistCategoryCode>('')
 
 const canMutateOnsitePlan = computed(
   () =>
-    props.activeCycle?.cycleStatus === 'ACTIVE'
-    && props.activeCycle?.currentPhase === 'ONSITE_VISIT',
+    props.activeCycle?.cycleStatus === 'ACTIVE' &&
+    props.activeCycle?.currentPhase === 'ONSITE_VISIT',
 )
 
 const canCreatePlan = computed(() => canMutateOnsitePlan.value && !!props.activeCycleId)
@@ -82,9 +83,9 @@ const checklistProgress = computed(() => {
   const items = selectedPlan.value?.checklistItems || []
   if (items.length === 0) return 0
   const done = items.filter(
-    i =>
-      i.itemStatus === OnsiteChecklistItemStatusCode.COMPLETED
-      || i.itemStatus === OnsiteChecklistItemStatusCode.NOT_APPLICABLE,
+    (i) =>
+      i.itemStatus === OnsiteChecklistItemStatusCode.COMPLETED ||
+      i.itemStatus === OnsiteChecklistItemStatusCode.NOT_APPLICABLE,
   ).length
   return Math.round((done / items.length) * 100)
 })
@@ -244,6 +245,12 @@ async function removePlan(id: string) {
   }
 }
 
+function handleOnsitePlanRowAction(key: string, record: OnsiteVisitPlanVO) {
+  if (key === 'checklist') void selectPlan(record.id)
+  else if (key === 'edit') openEdit(record)
+  else if (key === 'delete') void removePlan(record.id)
+}
+
 function openChecklistItem(item: OnsiteChecklistItemVO) {
   editingItem.value = item
   checklistForm.id = item.id
@@ -258,11 +265,17 @@ async function submitChecklistItem() {
     message.error('仅现场考查阶段可更新检查项')
     return
   }
-  if (checklistForm.itemStatus === OnsiteChecklistItemStatusCode.COMPLETED && !checklistForm.evidenceArchiveId) {
+  if (
+    checklistForm.itemStatus === OnsiteChecklistItemStatusCode.COMPLETED &&
+    !checklistForm.evidenceArchiveId
+  ) {
     message.error('已完成检查项必须关联证据归档')
     return
   }
-  if (checklistForm.itemStatus === OnsiteChecklistItemStatusCode.NOT_APPLICABLE && !checklistForm.remark?.trim()) {
+  if (
+    checklistForm.itemStatus === OnsiteChecklistItemStatusCode.NOT_APPLICABLE &&
+    !checklistForm.remark?.trim()
+  ) {
     message.error('不适用检查项必须填写说明')
     return
   }
@@ -313,8 +326,8 @@ defineExpose({ openCreate, loadPlans })
             :percent="
               record.totalChecklistCount
                 ? Math.round(
-                  ((record.completedChecklistCount ?? 0) / record.totalChecklistCount) * 100,
-                )
+                    ((record.completedChecklistCount ?? 0) / record.totalChecklistCount) * 100,
+                  )
                 : 0
             "
             size="small"
@@ -324,24 +337,15 @@ defineExpose({ openCreate, loadPlans })
           </span>
         </template>
         <template v-else-if="column.key === 'actions'">
-          <UiButton size="sm" variant="ghost" @click="selectPlan(record.id)">清单</UiButton>
-          <UiButton
-            size="sm"
-            variant="outline"
-            :disabled="!canMutateOnsitePlan"
-            @click="openEdit(record)"
-          >
-            编辑
-          </UiButton>
-          <UiButton
-            size="sm"
-            status="danger"
-            variant="ghost"
-            :disabled="!canMutateOnsitePlan"
-            @click="removePlan(record.id)"
-          >
-            删除
-          </UiButton>
+          <UiTableActions
+            :items="[
+              { key: 'checklist', label: '清单' },
+              { key: 'edit', label: '编辑', disabled: !canMutateOnsitePlan },
+              { key: 'delete', label: '删除', tone: 'danger', disabled: !canMutateOnsitePlan },
+            ]"
+            split
+            @action="(key) => handleOnsitePlanRowAction(key, record)"
+          />
         </template>
       </template>
       <template #empty>
@@ -382,18 +386,19 @@ defineExpose({ openCreate, loadPlans })
           </template>
           <template v-else-if="column.key === 'itemStatus'">
             {{
-              strictEnumLabel(OnsiteChecklistItemStatusDescription, record.itemStatus, '现场考查清单状态')
+              strictEnumLabel(
+                OnsiteChecklistItemStatusDescription,
+                record.itemStatus,
+                '现场考查清单状态',
+              )
             }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiButton
-              size="sm"
-              variant="outline"
-              :disabled="!canMutateOnsitePlan"
-              @click="openChecklistItem(record)"
-            >
-              更新
-            </UiButton>
+            <UiTableActions
+              :items="[{ key: 'update', label: '更新', disabled: !canMutateOnsitePlan }]"
+              split
+              @action="() => openChecklistItem(record)"
+            />
           </template>
         </template>
       </UiDataTable>
@@ -442,16 +447,30 @@ defineExpose({ openCreate, loadPlans })
         <a-form layout="vertical">
           <a-form-item label="状态" required>
             <a-select v-model:value="checklistForm.itemStatus">
-              <a-select-option :value="OnsiteChecklistItemStatusCode.PENDING">待准备</a-select-option>
-              <a-select-option :value="OnsiteChecklistItemStatusCode.IN_PROGRESS">准备中</a-select-option>
-              <a-select-option :value="OnsiteChecklistItemStatusCode.COMPLETED">已完成</a-select-option>
-              <a-select-option :value="OnsiteChecklistItemStatusCode.NOT_APPLICABLE">不适用</a-select-option>
+              <a-select-option :value="OnsiteChecklistItemStatusCode.PENDING"
+                >待准备</a-select-option
+              >
+              <a-select-option :value="OnsiteChecklistItemStatusCode.IN_PROGRESS"
+                >准备中</a-select-option
+              >
+              <a-select-option :value="OnsiteChecklistItemStatusCode.COMPLETED"
+                >已完成</a-select-option
+              >
+              <a-select-option :value="OnsiteChecklistItemStatusCode.NOT_APPLICABLE"
+                >不适用</a-select-option
+              >
             </a-select>
           </a-form-item>
-          <a-form-item label="证据归档" :required="checklistForm.itemStatus === OnsiteChecklistItemStatusCode.COMPLETED">
+          <a-form-item
+            label="证据归档"
+            :required="checklistForm.itemStatus === OnsiteChecklistItemStatusCode.COMPLETED"
+          >
             <ArchiveSelector v-model:value="checklistForm.evidenceArchiveId" />
           </a-form-item>
-          <a-form-item label="备注" :required="checklistForm.itemStatus === OnsiteChecklistItemStatusCode.NOT_APPLICABLE">
+          <a-form-item
+            label="备注"
+            :required="checklistForm.itemStatus === OnsiteChecklistItemStatusCode.NOT_APPLICABLE"
+          >
             <a-textarea v-model:value="checklistForm.remark" :rows="3" />
           </a-form-item>
         </a-form>

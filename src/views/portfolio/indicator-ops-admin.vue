@@ -8,20 +8,21 @@ import type {
   PortfolioIndicatorComputeLogVO,
   PortfolioIndicatorScoreComputeResult,
   PortfolioPublishImpactReportVO,
-
-  PortfolioTenantConfigAuditLogVO} from '@/apis/portfolio/indicator-types'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
+  PortfolioTenantConfigAuditLogVO,
+} from '@/apis/portfolio/indicator-types'
 import {
   PF_IMPACT_REPORT_STATUS_TONE,
   PF_SCORE_RULE_TYPE_OPTIONS,
   PfImpactReportStatusDescription,
   PfSceneCodeDescription,
 } from '@/apis/portfolio/indicator-types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
+import { defaultTemplateParams, serializeTemplateParams } from '@/utils/indicator-template-params'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import PortfolioIndicatorExplainDrawer from '@/components/portfolio/PortfolioIndicatorExplainDrawer.vue'
 import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/PortfolioIndicatorTemplateParamsForm.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -29,10 +30,11 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
-import { defaultTemplateParams, serializeTemplateParams } from '@/utils/indicator-template-params'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -66,9 +68,12 @@ const trialForm = reactive({
 })
 const trialParams = ref<PortfolioIndicatorTemplateParams>(defaultTemplateParams('THRESHOLD'))
 
-watch(() => trialForm.ruleType, (ruleType) => {
-  trialParams.value = defaultTemplateParams(ruleType)
-})
+watch(
+  () => trialForm.ruleType,
+  (ruleType) => {
+    trialParams.value = defaultTemplateParams(ruleType)
+  },
+)
 
 const snapshotForm = reactive({
   teacherId: '',
@@ -83,7 +88,7 @@ const computeLogs = ref<PortfolioIndicatorComputeLogVO[]>([])
 const auditLogs = ref<PortfolioTenantConfigAuditLogVO[]>([])
 const evalLogs = ref<PortfolioEligibilityEvalLogVO[]>([])
 const impactReports = ref<PortfolioPublishImpactReportVO[]>([])
-const pageQuery = reactive({ pageNum: 1, pageSize: 20 })
+const pageQuery = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
 const computeTotal = ref(0)
 const auditTotal = ref(0)
 const evalTotal = ref(0)
@@ -143,12 +148,12 @@ async function runTrial() {
       paramsJson: serializeTemplateParams(trialParams.value),
     })
     showComputeResult(result)
-    message.success(result.finalScore != null ? `试算得分 ${result.finalScore}` : '试算完成，待审核')
-  }
-  catch (error) {
+    message.success(
+      result.finalScore != null ? `试算得分 ${result.finalScore}` : '试算完成，待审核',
+    )
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     computing.value = false
   }
 }
@@ -158,13 +163,13 @@ async function runSnapshotCompute() {
   try {
     const result = await portfolioIndicatorTenantApi.computeSnapshot({ ...snapshotForm })
     showComputeResult(result)
-    message.success(result.finalScore != null ? `正式计分 ${result.finalScore}` : '计分完成，待审核')
+    message.success(
+      result.finalScore != null ? `正式计分 ${result.finalScore}` : '计分完成，待审核',
+    )
     await loadComputeLogs()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     computing.value = false
   }
 }
@@ -174,12 +179,10 @@ async function loadComputeLogs() {
   try {
     const page = await portfolioIndicatorTenantApi.pageComputeLog(pageQuery)
     computeLogs.value = page.list
-    computeTotal.value = Number(page.total)
-  }
-  catch (error) {
+    computeTotal.value = page.total
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -189,12 +192,10 @@ async function loadAuditLogs() {
   try {
     const page = await portfolioIndicatorTenantApi.pageAuditLog(pageQuery)
     auditLogs.value = page.list
-    auditTotal.value = Number(page.total)
-  }
-  catch (error) {
+    auditTotal.value = page.total
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -204,12 +205,10 @@ async function loadEvalLogs() {
   try {
     const page = await portfolioIndicatorTenantApi.pageEvalLog(pageQuery)
     evalLogs.value = page.list
-    evalTotal.value = Number(page.total)
-  }
-  catch (error) {
+    evalTotal.value = page.total
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -219,24 +218,30 @@ async function loadImpactReports() {
   try {
     const page = await portfolioIndicatorTenantApi.pageImpactReport(pageQuery)
     impactReports.value = page.list
-    impactTotal.value = Number(page.total)
-  }
-  catch (error) {
+    impactTotal.value = page.total
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
 
-async function openExplain(logId: string, logType: 'SCORE' | 'ELIGIBILITY', teacherId: string, text?: string) {
+async function openExplain(
+  logId: string,
+  logType: 'SCORE' | 'ELIGIBILITY',
+  teacherId: string,
+  text?: string,
+) {
   explainText.value = text ?? ''
   explainStructJson.value = ''
   try {
-    explainStructJson.value = await portfolioIndicatorTenantApi.getExplain({ logId, logType, teacherId })
+    explainStructJson.value = await portfolioIndicatorTenantApi.getExplain({
+      logId,
+      logType,
+      teacherId,
+    })
     explainOpen.value = true
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -253,8 +258,7 @@ async function exportSnapshotDiff() {
     })
     await downloadPortfolioIndicatorExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条差异`)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -264,8 +268,7 @@ async function exportImpact(id: string) {
     const result = await portfolioIndicatorTenantApi.exportImpactReport({ id })
     await downloadPortfolioIndicatorExcelExport(result)
     message.success('影响报告已导出')
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
   }
 }
@@ -282,11 +285,9 @@ async function runAutoCollect() {
     })
     collectResult.value = result
     message.success(`采集 ${result.collectedCount} 条，跳过 ${result.skippedCount} 条`)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -296,14 +297,11 @@ function onTabChange(key: string | number) {
   pageQuery.pageNum = 1
   if (activeTab.value === 'compute-log') {
     loadComputeLogs()
-  }
-  else if (activeTab.value === 'audit-log') {
+  } else if (activeTab.value === 'audit-log') {
     loadAuditLogs()
-  }
-  else if (activeTab.value === 'eval-log') {
+  } else if (activeTab.value === 'eval-log') {
     loadEvalLogs()
-  }
-  else if (activeTab.value === 'impact') {
+  } else if (activeTab.value === 'impact') {
     loadImpactReports()
   }
 }
@@ -334,9 +332,21 @@ onMounted(() => {
               style="width: 160px"
             />
             <a-input v-model:value="trialForm.indicatorCode" placeholder="指标编码" />
-            <a-input-number v-model:value="trialForm.rawValue" placeholder="原始值" style="width: 120px" />
-            <a-switch v-model:checked="trialForm.auditRequired" checked-children="需审核" un-checked-children="免审" />
-            <a-switch v-model:checked="trialForm.auditApproved" checked-children="已通过" un-checked-children="未通过" />
+            <a-input-number
+              v-model:value="trialForm.rawValue"
+              placeholder="原始值"
+              style="width: 120px"
+            />
+            <a-switch
+              v-model:checked="trialForm.auditRequired"
+              checked-children="需审核"
+              un-checked-children="免审"
+            />
+            <a-switch
+              v-model:checked="trialForm.auditApproved"
+              checked-children="已通过"
+              un-checked-children="未通过"
+            />
           </div>
           <PortfolioIndicatorTemplateParamsForm
             :rule-type="trialForm.ruleType"
@@ -344,7 +354,12 @@ onMounted(() => {
             style="margin-top: 12px"
             @update:params="trialParams = $event"
           />
-          <UiButton variant="primary" :loading="computing" style="margin-top: 12px" @click="runTrial">
+          <UiButton
+            variant="primary"
+            :loading="computing"
+            style="margin-top: 12px"
+            @click="runTrial"
+          >
             执行试算
           </UiButton>
         </a-tab-pane>
@@ -356,9 +371,18 @@ onMounted(() => {
             <a-input v-model:value="snapshotForm.teacherId" placeholder="教师 ID" />
             <a-input v-model:value="snapshotForm.snapshotId" placeholder="快照 ID" />
             <a-input v-model:value="snapshotForm.indicatorCode" placeholder="指标编码" />
-            <a-input-number v-model:value="snapshotForm.rawValue" placeholder="原始值" style="width: 120px" />
+            <a-input-number
+              v-model:value="snapshotForm.rawValue"
+              placeholder="原始值"
+              style="width: 120px"
+            />
           </div>
-          <UiButton variant="primary" :loading="computing" style="margin-top: 12px" @click="runSnapshotCompute">
+          <UiButton
+            variant="primary"
+            :loading="computing"
+            style="margin-top: 12px"
+            @click="runSnapshotCompute"
+          >
             正式计分
           </UiButton>
         </a-tab-pane>
@@ -366,17 +390,26 @@ onMounted(() => {
           <div class="form-grid">
             <a-input v-model:value="diffForm.snapshotIdA" placeholder="快照 A ID" />
             <a-input v-model:value="diffForm.snapshotIdB" placeholder="快照 B ID" />
-            <UiButton @click="exportSnapshotDiff">
-              导出差异 CSV
-            </UiButton>
+            <UiButton @click="exportSnapshotDiff"> 导出差异 CSV </UiButton>
           </div>
         </a-tab-pane>
         <a-tab-pane key="compute-log" tab="计分日志">
           <UiEmpty v-if="!loading && computeLogs.length === 0" description="当前筛选无运维任务" />
-          <UiDataTable :columns="computeColumns" :data-source="computeLogs" :loading="loading" row-key="id">
+          <UiDataTable
+            :columns="computeColumns"
+            :data-source="computeLogs"
+            :loading="loading"
+            row-key="id"
+          >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'actions'">
-                <a @click="openExplain(record.id, 'SCORE', record.teacherId, record.explainText)">解释</a>
+                <UiTableActions
+                  :items="[{ key: 'explain', label: '解释' }]"
+                  split
+                  @action="
+                    () => openExplain(record.id, 'SCORE', record.teacherId, record.explainText)
+                  "
+                />
               </template>
             </template>
           </UiDataTable>
@@ -390,7 +423,12 @@ onMounted(() => {
         </a-tab-pane>
         <a-tab-pane key="audit-log" tab="配置审计">
           <UiEmpty v-if="!loading && auditLogs.length === 0" description="当前筛选无运维任务" />
-          <UiDataTable :columns="auditColumns" :data-source="auditLogs" :loading="loading" row-key="id" />
+          <UiDataTable
+            :columns="auditColumns"
+            :data-source="auditLogs"
+            :loading="loading"
+            row-key="id"
+          />
           <a-pagination
             v-model:current="pageQuery.pageNum"
             :total="auditTotal"
@@ -401,7 +439,12 @@ onMounted(() => {
         </a-tab-pane>
         <a-tab-pane key="eval-log" tab="资格评估日志">
           <UiEmpty v-if="!loading && evalLogs.length === 0" description="当前筛选无运维任务" />
-          <UiDataTable :columns="evalColumns" :data-source="evalLogs" :loading="loading" row-key="id">
+          <UiDataTable
+            :columns="evalColumns"
+            :data-source="evalLogs"
+            :loading="loading"
+            row-key="id"
+          >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'eligible'">
                 <UiTag :tone="record.eligible ? 'green' : 'red'">
@@ -409,7 +452,14 @@ onMounted(() => {
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <a @click="openExplain(record.id, 'ELIGIBILITY', record.teacherId, record.explainText)">解释</a>
+                <UiTableActions
+                  :items="[{ key: 'explain', label: '解释' }]"
+                  split
+                  @action="
+                    () =>
+                      openExplain(record.id, 'ELIGIBILITY', record.teacherId, record.explainText)
+                  "
+                />
               </template>
             </template>
           </UiDataTable>
@@ -449,7 +499,12 @@ onMounted(() => {
         </a-tab-pane>
         <a-tab-pane key="impact" tab="影响报告">
           <UiEmpty v-if="!loading && impactReports.length === 0" description="当前筛选无运维任务" />
-          <UiDataTable :columns="impactColumns" :data-source="impactReports" :loading="loading" row-key="id">
+          <UiDataTable
+            :columns="impactColumns"
+            :data-source="impactReports"
+            :loading="loading"
+            row-key="id"
+          >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'sceneCode'">
                 {{ sceneCodeLabel(record.sceneCode) }}
@@ -460,7 +515,11 @@ onMounted(() => {
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <a @click="exportImpact(record.id)">导出</a>
+                <UiTableActions
+                  :items="[{ key: 'export', label: '导出' }]"
+                  split
+                  @action="() => exportImpact(record.id)"
+                />
               </template>
             </template>
           </UiDataTable>
@@ -477,16 +536,10 @@ onMounted(() => {
         <p>
           计算分 {{ computeResult.calcScore ?? '—' }} → 最终分 {{ computeResult.finalScore ?? '—' }}
         </p>
-        <p v-if="computeResult.finalScore == null">
-          待审核
-        </p>
-        <p v-if="computeResult.hitSegment">
-          命中：{{ computeResult.hitSegment }}
-        </p>
+        <p v-if="computeResult.finalScore == null">待审核</p>
+        <p v-if="computeResult.hitSegment">命中：{{ computeResult.hitSegment }}</p>
         <p>{{ computeResult.explainText }}</p>
-        <UiButton @click="explainOpen = true">
-          结构化解释
-        </UiButton>
+        <UiButton @click="explainOpen = true"> 结构化解释 </UiButton>
       </div>
     </UiCard>
     <PortfolioIndicatorExplainDrawer

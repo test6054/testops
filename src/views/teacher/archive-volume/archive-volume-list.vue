@@ -11,9 +11,6 @@
           <UiTag tone="blue" size="sm">{{ currentListTabLabel }}</UiTag>
         </template>
         <template #actions>
-          <UiButton variant="ghost" size="sm" :loading="loading" @click="handleRefresh">
-            刷新
-          </UiButton>
           <UiButton variant="outline" size="sm" @click="goSearch"> 全文检索 </UiButton>
           <UiButton variant="outline" size="sm" @click="goEvalCampaign"> 评估迎评 </UiButton>
           <UiButton variant="outline" size="sm" @click="goAccessPending"> 待审批查阅 </UiButton>
@@ -262,7 +259,6 @@
 <script setup lang="ts">
 import type { ColumnsType, TableProps } from 'ant-design-vue/es/table'
 import type { LocationQueryRaw } from 'vue-router'
-import { useRoute, useRouter } from 'vue-router'
 import type {
   ArchiveAppraisalStatusCode,
   ArchiveIntegrityStatusCode,
@@ -271,6 +267,14 @@ import type {
   ArchiveVolumeResponse,
   ArchiveVolumeSourceTypeCode,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { ArchiveVolumeScenarioKey } from '@/composables/useArchiveVolumeFilterPresets'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ArchiveDutyTypeCode } from '@/apis/mark/archive-config'
 import {
   ARCHIVE_APPRAISAL_STATUS_OPTIONS,
   ARCHIVE_INTEGRITY_STATUS_OPTIONS,
@@ -288,15 +292,6 @@ import {
   pageOverdueArchiveVolumes,
   remindArchiveDue,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { ArchiveVolumeScenarioKey } from '@/composables/useArchiveVolumeFilterPresets'
-import { useArchiveVolumeFilterPresets } from '@/composables/useArchiveVolumeFilterPresets'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { ArchiveDutyTypeCode } from '@/apis/mark/archive-config'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import ArchiveDimPill from '@/components/archive-volume/ArchiveDimPill.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -314,8 +309,11 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { useArchiveTenantSetupReadiness } from '@/composables/useArchiveTenantSetupReadiness'
+import { useArchiveVolumeFilterPresets } from '@/composables/useArchiveVolumeFilterPresets'
 import { canSubmitArchiveVolumeRow } from '@/composables/useArchiveVolumeSubmitGate'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useUserStore } from '@/stores/modules/user'
+import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import {
   generateAcademicYearOptions,
   getDefaultAcademicYearAndSemester,
@@ -411,8 +409,8 @@ const openRemediationVolumeIdSet = computed(
   () => new Set(openRemediationTasks.value.map((task) => task.volumeId)),
 )
 const selectedVolumeIds = ref<string[]>([])
-const pagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
-const allDepartmentOptions = ref<Array<{ value: string; label: string }>>([])
+const pagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
+const allDepartmentOptions = ref<Array<{ value: string, label: string }>>([])
 const kpiCollectingCount = ref<number | string>('—')
 const kpiPendingTransferCount = ref<number | string>('—')
 const kpiMissingCount = ref<number | string>('—')
@@ -464,7 +462,7 @@ const filterModel = computed<Record<string, unknown>>({
 })
 
 const visibleListTabs = computed(() => {
-  const tabs: Array<{ key: ListTabKey; label: string; count?: number; badgeTone?: BadgeTone }> = [
+  const tabs: Array<{ key: ListTabKey, label: string, count?: number, badgeTone?: BadgeTone }> = [
     {
       key: 'mine',
       label: '我的归档卷',
@@ -487,9 +485,9 @@ const visibleListTabs = computed(() => {
     tabs.push({ key: 'supervision', label: '督导抽查' })
   }
   if (
-    canViewCollegeBoard.value ||
-    canViewSupervision.value ||
-    hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN)
+    canViewCollegeBoard.value
+    || canViewSupervision.value
+    || hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN)
   ) {
     tabs.push({
       key: 'remediation',
@@ -517,7 +515,7 @@ const contextBarSubtitle = computed(() => {
   return parts.join(' · ')
 })
 
-const volumeScopeTabs: Array<{ key: VolumeScopeKey; label: string }> = [
+const volumeScopeTabs: Array<{ key: VolumeScopeKey, label: string }> = [
   { key: 'all', label: '全部' },
   { key: 'mine', label: '我的' },
 ]
@@ -564,13 +562,13 @@ const showSignalBand = computed(() => showVolumeListPanel.value)
 
 const hasActiveListFilters = computed(() =>
   Boolean(
-    archiveListQuickFilter.value ||
-    filterForm.volumeStatus ||
-    filterForm.integrityStatus ||
-    filterForm.transferStatus ||
-    filterForm.appraisalStatus ||
-    filterExtras.integrityFailedOnly ||
-    filterExtras.archiveOverdueOnly,
+    archiveListQuickFilter.value
+    || filterForm.volumeStatus
+    || filterForm.integrityStatus
+    || filterForm.transferStatus
+    || filterForm.appraisalStatus
+    || filterExtras.integrityFailedOnly
+    || filterExtras.archiveOverdueOnly,
   ),
 )
 
@@ -910,8 +908,8 @@ function applyScopedDepartmentDefault() {
     return
   }
   if (
-    filterForm.departmentId &&
-    !visibleDepartmentOptions.value.some((item) => item.value === filterForm.departmentId)
+    filterForm.departmentId
+    && !visibleDepartmentOptions.value.some((item) => item.value === filterForm.departmentId)
   ) {
     filterForm.departmentId = undefined
   }
@@ -930,8 +928,8 @@ async function loadListOverviewKpis(): Promise<void> {
     delete countBase.transferStatus
     delete countBase.appraisalStatus
     if (listTab.value === 'college' || listTab.value === 'archive') {
-      const scopeIds =
-        listTab.value === 'college' ? scopedDepartmentIds.value : listScopedDepartmentIds.value
+      const scopeIds
+        = listTab.value === 'college' ? scopedDepartmentIds.value : listScopedDepartmentIds.value
       if (scopeIds.length === 1) {
         countBase.departmentId = scopeIds[0]
       }
@@ -971,12 +969,12 @@ async function loadListOverviewKpis(): Promise<void> {
         pageSize: 1,
       }),
     ])
-    kpiTotalCount.value = Number(totalResult.total)
-    kpiStoredCount.value = Number(storedResult.total)
-    kpiSubmittedCount.value = Number(submittedResult.total)
-    kpiCollectingCount.value = Number(collectingResult.total)
-    kpiDueAppraisalCount.value = Number(dueAppraisalResult.total)
-    kpiPendingTransferCount.value = Number(pendingResult.total)
+    kpiTotalCount.value = totalResult.total
+    kpiStoredCount.value = storedResult.total
+    kpiSubmittedCount.value = submittedResult.total
+    kpiCollectingCount.value = collectingResult.total
+    kpiDueAppraisalCount.value = dueAppraisalResult.total
+    kpiPendingTransferCount.value = pendingResult.total
     if (canViewStatisticsKpi.value) {
       const statsRequest: { departmentId?: string } = {}
       if (countBase.departmentId) {
@@ -1002,9 +1000,9 @@ async function loadListOverviewKpis(): Promise<void> {
 
 async function loadRemediationTabCount(): Promise<void> {
   if (
-    !canViewCollegeBoard.value &&
-    !canViewSupervision.value &&
-    !hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN)
+    !canViewCollegeBoard.value
+    && !canViewSupervision.value
+    && !hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN)
   ) {
     remediationTabCount.value = 0
     return
@@ -1131,7 +1129,7 @@ async function loadVolumes() {
       ? await pageOverdueArchiveVolumes(request)
       : await pageArchiveVolumes(request)
     volumes.value = filterScenarioRows(result.list)
-    pagination.total = Number(result.total)
+    pagination.total = result.total
     pagination.pageNum = result.pageNum
     pagination.pageSize = result.pageSize
     if (showVolumeListPanel.value) {
@@ -1238,8 +1236,8 @@ function goDetail(volumeId: string) {
   const record = volumes.value.find((item) => item.volumeId === volumeId)
   const query: LocationQueryRaw = {}
   if (
-    archiveListQuickFilter.value === 'pending-transfer' ||
-    record?.transferStatus === 'PENDING_REVIEW'
+    archiveListQuickFilter.value === 'pending-transfer'
+    || record?.transferStatus === 'PENDING_REVIEW'
   ) {
     query.tab = 'transfer'
   }
@@ -1340,16 +1338,6 @@ function goAccessPending(): void {
 
 function goSearch() {
   void router.push({ name: 'TeacherArchiveVolumeSearch' })
-}
-
-function handleRefresh(): void {
-  if (listTab.value === 'mine' && volumeScope.value === 'mine') {
-    void loadOpenRemediationTasks()
-  }
-  if (showVolumeListPanel.value && !setupBlocking.value) {
-    void loadVolumes()
-    void loadListOverviewKpis()
-  }
 }
 
 function goCreateSupplement() {

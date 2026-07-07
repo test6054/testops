@@ -20,17 +20,21 @@
 </template>
 
 <script lang="ts" setup>
+import type { ExamWorkspaceJourneyKey } from '@/constants/exam-journey'
 import type { ExamWorkspaceMenuItem } from '@/constants/exam-workspace-menu'
-import { computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import UiButton from '@/components/ui-guide/ui/Button.vue'
-import { useExperienceAssistTrialPendingCount } from '@/composables/useExperienceAssistTrialPendingCount'
-import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import {
-  EXAM_WORKSPACE_MENU_GROUPS,
+  getMenuGroupsForJourney,
   resolveExamWorkspaceMenuGroupKey,
   resolveExamWorkspaceMenuKey,
 } from '@/constants/exam-workspace-menu'
+import { computed, inject } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import { useExperienceAssistTrialPendingCount } from '@/composables/useExperienceAssistTrialPendingCount'
+import {
+  MARK_WORKBENCH_CONTEXT_KEY,
+  useWorkspaceExamId,
+} from '@/composables/useMarkWorkbenchContext'
 
 defineOptions({ name: 'ExamWorkspaceJourneySubNav' })
 
@@ -44,6 +48,7 @@ const EXPERIENCE_ASSIST_MENU_KEY = 'marking-experience-assist'
 const router = useRouter()
 const route = useRoute()
 const { examId } = useWorkspaceExamId()
+const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
 const { pendingCount: experienceAssistPendingCount } = useExperienceAssistTrialPendingCount()
 
 const resolvedGroupKey = computed(
@@ -54,11 +59,16 @@ const items = computed((): ExamWorkspaceMenuItem[] => {
   if (!resolvedGroupKey.value) {
     return []
   }
-  const group = EXAM_WORKSPACE_MENU_GROUPS.find(entry => entry.key === resolvedGroupKey.value)
-  return group?.items ?? []
+  const groups = getMenuGroupsForJourney(resolvedGroupKey.value as ExamWorkspaceJourneyKey, {
+    experienceAssistPendingCount: experienceAssistPendingCount.value,
+    tenantExperienceAssistEnabled: workbenchContext?.snapshot.value?.tenantExperienceAssistEnabled,
+  })
+  return (
+    groups.find((entry) => entry.key === resolvedGroupKey.value)?.items ?? groups[0]?.items ?? []
+  )
 })
 
-const visible = computed(() => Boolean(examId.value) && items.value.length > 1)
+const visible = computed(() => Boolean(examId.value) && items.value.length > 1 && !workbenchContext)
 
 const activeMenuKey = computed(() => resolveExamWorkspaceMenuKey(String(route.name ?? '')))
 

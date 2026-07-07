@@ -1,7 +1,6 @@
 import type { ExamStatusCode } from './exam'
 import type { ReviewTaskStatusCode } from './exam-review-task'
 import type { FinalScoreRiskOverviewResponse } from './exam-score'
-import type { FormalSessionResponse, TrialSessionResponse } from './marking-organization'
 /**
  * 阅卷考试进度与工作台阶段快照 API - 对接 /api/mark/exams/marking-progress 与 workbench-stage-snapshot。
  */
@@ -93,6 +92,10 @@ export interface ExamWorkbenchNextActionResponse {
   enabled: boolean
   disabledReason?: string
   targetStageKey: ExamWorkbenchStageKeyCode
+  /** 可行动时的任务说明条目，首条供任务条主文案 */
+  actionPrompts?: string[]
+  /** 待办项数量，供任务条角标 */
+  pendingItemCount?: number
 }
 
 /** 阅卷任务状态汇总 - 对应 ExamWorkbenchMarkingTaskSummaryResponse */
@@ -173,8 +176,8 @@ export interface ExamWorkbenchStageSnapshotResponse {
   prepSteps: ExamWorkbenchPrepStepResponse[]
   prepAdvisoryReasons: string[]
   prepBlockingReasons: string[]
-  /** 试评阶段经验辅助定标阻断原因 */
-  experienceAssistBlockingReasons: string[]
+  /** 租户是否启用经验辅助评阅 */
+  tenantExperienceAssistEnabled: boolean
   markingProgress: MarkingProgressResponse
   markingOrgConfigured: boolean
   trialSessionActive: boolean
@@ -196,8 +199,12 @@ export interface MarkingProgressBatchResponse {
 }
 
 /** 查询考试工作台阶段快照。 */
-export function getWorkbenchStageSnapshot(examId: string): Promise<ExamWorkbenchStageSnapshotResponse> {
-  return http.post<ExamWorkbenchStageSnapshotResponse>('/api/mark/exams/workbench-stage-snapshot', { examId })
+export function getWorkbenchStageSnapshot(
+  examId: string,
+): Promise<ExamWorkbenchStageSnapshotResponse> {
+  return http.post<ExamWorkbenchStageSnapshotResponse>('/api/mark/exams/workbench-stage-snapshot', {
+    examId,
+  })
 }
 
 /** 查询阅卷进度。 */
@@ -206,7 +213,9 @@ export function getMarkingProgress(examId: string): Promise<MarkingProgressRespo
 }
 
 /** 批量查询阅卷进度（考试工作台列表聚合，一次请求）。 */
-export async function batchGetMarkingProgress(examIds: string[]): Promise<MarkingProgressResponse[]> {
+export async function batchGetMarkingProgress(
+  examIds: string[],
+): Promise<MarkingProgressResponse[]> {
   const response = await http.post<MarkingProgressBatchResponse>(
     '/api/mark/exams/marking-progress/batch',
     { examIds },
@@ -220,20 +229,30 @@ export interface ExamWorkbenchMarkingProgressPanelResponse {
   organizationId?: string
   markingOrgConfigured: boolean
   markingTaskSummary: ExamWorkbenchMarkingTaskSummaryResponse
-  formalSessions: FormalSessionResponse[]
-  trialSessions: TrialSessionResponse[]
 }
 
 /** 查询阅卷进度看板（正评 / 试评进度页真源）。 */
-export function getMarkingProgressPanel(examId: string): Promise<ExamWorkbenchMarkingProgressPanelResponse> {
-  return http.post<ExamWorkbenchMarkingProgressPanelResponse>('/api/mark/exams/marking-progress-panel', {
-    examId,
-  })
+export function getMarkingProgressPanel(
+  examId: string,
+): Promise<ExamWorkbenchMarkingProgressPanelResponse> {
+  return http.post<ExamWorkbenchMarkingProgressPanelResponse>(
+    '/api/mark/exams/marking-progress-panel',
+    {
+      examId,
+    },
+  )
 }
 
 /** 查询考试质量看板（质控页考试级 Signal 真源）。 */
 export function getQualityPanel(examId: string): Promise<ExamWorkbenchQualityPanelResponse> {
   return http.post<ExamWorkbenchQualityPanelResponse>('/api/mark/exams/quality-panel', { examId })
+}
+
+/** 考生名册看板查询 - 对应 ExamWorkbenchCandidateRosterPanelQueryRequest */
+export interface ExamWorkbenchCandidateRosterPanelQueryRequest {
+  examId: string
+  classId?: string
+  keyword?: string
 }
 
 /** 考生名册看板面板 - 对应 ExamWorkbenchCandidateRosterPanelResponse */
@@ -244,13 +263,23 @@ export interface ExamWorkbenchCandidateRosterPanelResponse {
   absentCount: number
   classCount: number
   attendanceRate: number | null
+  notScannedCount: number
+  scannedUnboundCount: number
+  boundCount: number
+  conflictCount: number
+  attentionOpenCount: number
+  discardedCount: number
+  filterScopeApplied: boolean
 }
 
-/** 查询考生名册看板（名册页 Signal 真源）。 */
-export function getCandidateRosterPanel(examId: string): Promise<ExamWorkbenchCandidateRosterPanelResponse> {
-  return http.post<ExamWorkbenchCandidateRosterPanelResponse>('/api/mark/exams/candidate-roster-panel', {
-    examId,
-  })
+/** 查询考生名册看板（名册页 Signal 与扫描进度 chip 计数真源）。 */
+export function getCandidateRosterPanel(
+  request: ExamWorkbenchCandidateRosterPanelQueryRequest,
+): Promise<ExamWorkbenchCandidateRosterPanelResponse> {
+  return http.post<ExamWorkbenchCandidateRosterPanelResponse>(
+    '/api/mark/exams/candidate-roster-panel',
+    request,
+  )
 }
 
 /** 印刷包看板面板 - 对应 ExamWorkbenchPrintPackagePanelResponse */
@@ -265,8 +294,12 @@ export interface ExamWorkbenchPrintPackagePanelResponse {
 }
 
 /** 查询印刷包看板（印刷包页 Signal 真源）。 */
-export function getPrintPackagePanel(examId: string): Promise<ExamWorkbenchPrintPackagePanelResponse> {
-  return http.post<ExamWorkbenchPrintPackagePanelResponse>('/api/mark/exams/print-package-panel', { examId })
+export function getPrintPackagePanel(
+  examId: string,
+): Promise<ExamWorkbenchPrintPackagePanelResponse> {
+  return http.post<ExamWorkbenchPrintPackagePanelResponse>('/api/mark/exams/print-package-panel', {
+    examId,
+  })
 }
 
 /** 成绩看板面板 - 对应 ExamWorkbenchScorePanelResponse */
@@ -289,6 +322,8 @@ export interface ExamWorkbenchScorePanelResponse {
   delayedFinalScoreConfirmMinutes: number
   pendingDelayedFinalScoreConfirmCount: number
   blockedDelayedFinalScoreConfirmCount: number
+  /** 制卷未完成等前置阻塞说明；非空时页面内联展示，不弹全局错误 */
+  panelBlockedReason?: string
 }
 
 /** 查询考试成绩看板（成绩确认 / 发布页 Signal 真源）。 */
@@ -312,6 +347,53 @@ export interface ExamWorkbenchScanMonitorPanelResponse {
 }
 
 /** 查询扫描监控看板（扫描监控页 Signal 真源）。 */
-export function getScanMonitorPanel(examId: string): Promise<ExamWorkbenchScanMonitorPanelResponse> {
-  return http.post<ExamWorkbenchScanMonitorPanelResponse>('/api/mark/exams/scan-monitor-panel', { examId })
+export function getScanMonitorPanel(
+  examId: string,
+): Promise<ExamWorkbenchScanMonitorPanelResponse> {
+  return http.post<ExamWorkbenchScanMonitorPanelResponse>('/api/mark/exams/scan-monitor-panel', {
+    examId,
+  })
+}
+
+/** 考试扫描监控在线设备 - 对应 ExamScanMonitorDeviceResponse */
+export interface ExamScanMonitorDeviceResponse {
+  id?: string
+  scannerDeviceId: string
+  scannerStationId?: string
+  scannerIp?: string
+  deviceName?: string
+  status?: string
+  interfaceMode?: string
+  endpointOnlineStatus?: string
+  endpointMachineCode?: string
+  endpointName?: string
+  agentVersion?: string
+  clientVersion?: string
+  scannerConnected?: boolean
+  pendingJobCount?: number
+  pendingUploadPageCount?: number
+  diagnosticStatus?: string
+  diagnosticMessage?: string
+  lastHeartbeatTime?: string
+  location?: string
+  activeScanBatchId?: string
+  activeScanBatchNo?: string
+  activeScanBatchStatus?: import('@/types/enums/scan-batch-status-enum').ScanBatchStatusCode
+  activeScanBatchPageCount?: number
+  kioskBoundToCurrentExam?: boolean
+}
+
+/** 考试扫描监控在线设备列表 - 对应 ExamScanMonitorDeviceListResponse */
+export interface ExamScanMonitorDeviceListResponse {
+  examId: string
+  items: ExamScanMonitorDeviceResponse[]
+}
+
+/** 查询与当前考试关联且 Agent 在线的扫描监控设备。 */
+export function listExamScanMonitorDevices(
+  examId: string,
+): Promise<ExamScanMonitorDeviceListResponse> {
+  return http.post<ExamScanMonitorDeviceListResponse>('/api/mark/exams/scan-monitor-devices/list', {
+    examId,
+  })
 }

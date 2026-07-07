@@ -42,16 +42,11 @@
               <span v-else>—</span>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiTextAction tone="primary" @click="openPlatformTemplate(record)">
-                {{ findTenantSetByPlatformSource(record.templateSetCode) ? '编辑' : '预览' }}
-              </UiTextAction>
-              <UiTextAction
-                v-if="canManageConfig && !findTenantSetByPlatformSource(record.templateSetCode)"
-                tone="primary"
-                @click="openCopyModal(record)"
-              >
-                复制到本校
-              </UiTextAction>
+              <UiTableActions
+                :items="buildPlatformTemplateRowActions(record)"
+                split
+                @action="(key) => handlePlatformTemplateRowAction(key, record)"
+              />
             </template>
           </template>
         </UiDataTable>
@@ -103,14 +98,11 @@
               <UiTag v-if="canResyncTenantSet(record)" tone="orange" size="sm">可重新同步</UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiTextAction v-if="canManageConfig" tone="primary" @click.stop="openEditDrawer(record.templateSetCode)">编辑</UiTextAction>
-              <UiTextAction
-                v-if="canManageConfig && canResyncTenantSet(record)"
-                tone="primary"
-                @click.stop="openResyncModal(record)"
-              >
-                重新同步
-              </UiTextAction>
+              <UiTableActions
+                :items="buildTenantTemplateRowActions(record)"
+                split
+                @action="(key) => handleTenantTemplateRowAction(key, record)"
+              />
             </template>
           </template>
         </UiDataTable>
@@ -259,6 +251,7 @@ import type {
 import type {
   ArchiveExamFormCode,
 } from '@/apis/mark/archive-volume'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type {
   ArchiveTemplateMaterialEditRow,
   ArchiveTemplateSelfCheckEditRow,
@@ -289,7 +282,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { showUserError } from '@/utils/error-handler'
@@ -626,6 +619,41 @@ function openResyncModal(record: ArchiveTenantTemplateSetResponse) {
   resyncTarget.value = record
   resyncConfirmCode.value = ''
   resyncOpen.value = true
+}
+
+function buildPlatformTemplateRowActions(
+  record: ArchiveTenantTemplateSetResponse,
+): UiTableRowActionItem[] {
+  const tenantSet = findTenantSetByPlatformSource(record.templateSetCode)
+  return [
+    { key: 'open', label: tenantSet ? '编辑' : '预览' },
+    { key: 'copy', label: '复制到本校', hidden: !canManageConfig.value || !!tenantSet },
+  ]
+}
+
+function handlePlatformTemplateRowAction(
+  key: string,
+  record: ArchiveTenantTemplateSetResponse,
+) {
+  if (key === 'open') void openPlatformTemplate(record)
+  else if (key === 'copy') openCopyModal(record)
+}
+
+function buildTenantTemplateRowActions(
+  record: ArchiveTenantTemplateSetResponse,
+): UiTableRowActionItem[] {
+  return [
+    { key: 'edit', label: '编辑', hidden: !canManageConfig.value },
+    { key: 'resync', label: '重新同步', hidden: !canManageConfig.value || !canResyncTenantSet(record) },
+  ]
+}
+
+function handleTenantTemplateRowAction(
+  key: string,
+  record: ArchiveTenantTemplateSetResponse,
+) {
+  if (key === 'edit') void openEditDrawer(record.templateSetCode)
+  else if (key === 'resync') openResyncModal(record)
 }
 
 async function submitResync() {

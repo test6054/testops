@@ -10,11 +10,22 @@
       <UiEmpty v-if="!batchDetail && !detailLoading" description="扫描批次详情加载失败" />
 
       <template v-else-if="batchDetail">
-        <UiSectionTabs v-model="activeTab" :items="tabItems" compact class="scan-batch-detail__tabs">
+        <UiSectionTabs
+          v-model="activeTab"
+          :items="tabItems"
+          compact
+          class="scan-batch-detail__tabs"
+        >
           <section v-if="activeTab === 'overview'" class="scan-batch-detail__panel">
             <dl class="scan-batch-detail__meta">
-              <div><dt>批次号</dt><dd>{{ batchDetail.batchNo }}</dd></div>
-              <div v-if="batchDetail.batchExternalNo"><dt>外部批次号</dt><dd>{{ batchDetail.batchExternalNo }}</dd></div>
+              <div>
+                <dt>批次号</dt>
+                <dd>{{ batchDetail.batchNo }}</dd>
+              </div>
+              <div v-if="batchDetail.batchExternalNo">
+                <dt>外部批次号</dt>
+                <dd>{{ batchDetail.batchExternalNo }}</dd>
+              </div>
               <div>
                 <dt>状态</dt>
                 <dd>
@@ -23,23 +34,52 @@
                   </UiTag>
                 </dd>
               </div>
-              <div><dt>扫描设备</dt><dd>{{ batchDetail.scannerDeviceId || '—' }} · {{ batchDetail.scannerStationId || '—' }}</dd></div>
-              <div><dt>扫描时间</dt><dd>{{ formatDateTimeWithSeconds(batchDetail.scanStartTime) }} 至 {{ formatDateTimeWithSeconds(batchDetail.scanEndTime) }}</dd></div>
-              <div><dt>事件数</dt><dd>{{ batchDetail.eventCount }} 条</dd></div>
-              <div><dt>来源文件</dt><dd>{{ batchDetail.sourceFileCount }} 份</dd></div>
-              <div><dt>落库进度</dt><dd>{{ batchDetail.receivedPageCount ?? 0 }} / {{ batchDetail.pageCount }} 页</dd></div>
-              <div><dt>异常项</dt><dd>{{ batchDetail.attentionItemCount ?? 0 }} 项</dd></div>
+              <div>
+                <dt>扫描设备</dt>
+                <dd>
+                  {{ batchDetail.scannerDeviceId || '—' }} ·
+                  {{ batchDetail.scannerStationId || '—' }}
+                </dd>
+              </div>
+              <div>
+                <dt>扫描时间</dt>
+                <dd>
+                  {{ formatDateTimeWithSeconds(batchDetail.scanStartTime) }} 至
+                  {{ formatDateTimeWithSeconds(batchDetail.scanEndTime) }}
+                </dd>
+              </div>
+              <div>
+                <dt>事件数</dt>
+                <dd>{{ batchDetail.eventCount }} 条</dd>
+              </div>
+              <div>
+                <dt>来源文件</dt>
+                <dd>{{ batchDetail.sourceFileCount }} 份</dd>
+              </div>
+              <div>
+                <dt>落库进度</dt>
+                <dd>{{ batchDetail.receivedPageCount ?? 0 }} / {{ batchDetail.pageCount }} 页</dd>
+              </div>
+              <div>
+                <dt>异常项</dt>
+                <dd>{{ batchDetail.attentionItemCount ?? 0 }} 项</dd>
+              </div>
               <div>
                 <dt>顺序审计</dt>
                 <dd>
                   <UiTag v-if="batchDetail.orderAuditPassed === false" tone="red" size="sm">
                     {{ batchDetail.orderAuditIssueCount ?? 0 }} 项异常
                   </UiTag>
-                  <UiTag v-else-if="batchDetail.orderAuditPassed === true" tone="green" size="sm">通过</UiTag>
+                  <UiTag v-else-if="batchDetail.orderAuditPassed === true" tone="green" size="sm"
+                    >通过</UiTag
+                  >
                   <span v-else class="muted">待审计</span>
                 </dd>
               </div>
-              <div v-if="batchDetail.diagnostic"><dt>诊断</dt><dd>{{ batchDetail.diagnostic }}</dd></div>
+              <div v-if="batchDetail.diagnostic">
+                <dt>诊断</dt>
+                <dd>{{ batchDetail.diagnostic }}</dd>
+              </div>
             </dl>
           </section>
 
@@ -59,13 +99,30 @@
             >
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'qualityStatus'">
-                  <UiTag :tone="strictEnumTone(QUALITY_DECISION_TONE, record.qualityStatus, '扫描页质量判定')" size="sm">
-                    {{ strictEnumLabel(QualityDecisionDescription, record.qualityStatus, '扫描页质量判定') }}
+                  <UiTag
+                    :tone="
+                      strictEnumTone(QUALITY_DECISION_TONE, record.qualityStatus, '扫描页质量判定')
+                    "
+                    size="sm"
+                  >
+                    {{
+                      strictEnumLabel(
+                        QualityDecisionDescription,
+                        record.qualityStatus,
+                        '扫描页质量判定',
+                      )
+                    }}
                   </UiTag>
                 </template>
                 <template v-else-if="column.key === 'effectiveStatus'">
                   <UiTag tone="gray" size="sm">
-                    {{ strictEnumLabel(EffectiveStatusDescription, record.effectiveStatus, '扫描页生效状态') }}
+                    {{
+                      strictEnumLabel(
+                        EffectiveStatusDescription,
+                        record.effectiveStatus,
+                        '扫描页生效状态',
+                      )
+                    }}
                   </UiTag>
                 </template>
               </template>
@@ -109,8 +166,19 @@
             >
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'attentionType'">
-                  <UiTag :tone="strictEnumTone(SCAN_ATTENTION_TYPE_TONE, record.attentionType, '扫描异常类型')" size="sm">
-                    {{ strictEnumLabel(ScanAttentionTypeDescription, record.attentionType, '扫描异常类型') }}
+                  <UiTag
+                    :tone="
+                      strictEnumTone(SCAN_ATTENTION_TYPE_TONE, record.attentionType, '扫描异常类型')
+                    "
+                    size="sm"
+                  >
+                    {{
+                      strictEnumLabel(
+                        ScanAttentionTypeDescription,
+                        record.attentionType,
+                        '扫描异常类型',
+                      )
+                    }}
                   </UiTag>
                 </template>
               </template>
@@ -121,14 +189,12 @@
             <p class="scan-batch-detail__hint">
               教师 Web 端仅支持在已 commit 批次内指定页补扫，设备与批次上下文自动锁定。
             </p>
-            <UiButton
-              size="sm"
-              :disabled="!canSupplement"
-              @click="supplementModalOpen = true"
-            >
+            <UiButton size="sm" :disabled="!canSupplement" @click="supplementModalOpen = true">
               打开补扫表单
             </UiButton>
-            <p v-if="supplementBlockReason" class="scan-batch-detail__warn muted">{{ supplementBlockReason }}</p>
+            <p v-if="supplementBlockReason" class="scan-batch-detail__warn muted">
+              {{ supplementBlockReason }}
+            </p>
           </section>
 
           <section v-else-if="activeTab === 'dispose'" class="scan-batch-detail__panel">
@@ -164,7 +230,11 @@
                 size="sm"
                 variant="outline"
                 status="danger"
-                :disabled="batchDetail.status === 'DISCARDED' || Boolean(batchDetail.sealedTime) || discarding"
+                :disabled="
+                  batchDetail.status === 'DISCARDED' ||
+                  Boolean(batchDetail.sealedTime) ||
+                  discarding
+                "
                 :loading="discarding"
                 @click="onDiscardBatch"
               >
@@ -234,10 +304,6 @@ import type {
   ScanBatchOrderAuditIssueResponse,
   ScanBatchOrderAuditResponse,
 } from '@/apis/mark/exam-scan'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { EffectiveStatusDescription } from '@/apis/mark/effective-status'
 import {
   getScanBatchOrderAudit,
   getScannerBatchDetail,
@@ -253,6 +319,10 @@ import {
   ScanBatchStatusDescription,
   sealScanBatchByTeacher,
 } from '@/apis/mark/exam-scan'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { EffectiveStatusDescription } from '@/apis/mark/effective-status'
 import { discardScanJob, listScanJobs } from '@/apis/mark/scanner-agent-local'
 import { discardScannerKioskBatch } from '@/apis/mark/scanner-kiosk'
 import ScanBatchDiscardDialog from '@/components/mark/ScanBatchDiscardDialog.vue'
@@ -287,7 +357,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "updated": []
+  updated: []
 }>()
 
 const { isExamConfidential } = useWorkspaceConfidentialContext()
@@ -446,7 +516,7 @@ async function loadPages(): Promise<void> {
       pageSize: pageQuery.pageSize,
     })
     pages.value = result.list
-    pageTotal.value = Number(result.total)
+    pageTotal.value = result.total
   } catch (error) {
     pages.value = []
     pageTotal.value = 0
@@ -471,7 +541,7 @@ async function loadAttentions(): Promise<void> {
       pageSize: attentionQuery.pageSize,
     })
     attentions.value = result.list
-    attentionTotal.value = Number(result.total)
+    attentionTotal.value = result.total
   } catch (error) {
     attentions.value = []
     attentionTotal.value = 0
@@ -481,13 +551,13 @@ async function loadAttentions(): Promise<void> {
   }
 }
 
-function onPageChange(page: { current: number, pageSize: number }): void {
+function onPageChange(page: { current: number; pageSize: number }): void {
   pageQuery.pageNum = page.current
   pageQuery.pageSize = page.pageSize
   void loadPages()
 }
 
-function onAttentionPageChange(page: { current: number, pageSize: number }): void {
+function onAttentionPageChange(page: { current: number; pageSize: number }): void {
   attentionQuery.pageNum = page.current
   attentionQuery.pageSize = page.pageSize
   void loadAttentions()

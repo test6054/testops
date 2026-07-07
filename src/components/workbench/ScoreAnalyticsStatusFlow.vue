@@ -1,10 +1,20 @@
 <template>
-  <div class="score-analytics-status-flow">
-    <span class="score-analytics-status-flow__label">分数状态流转</span>
+  <div
+    class="score-analytics-status-flow"
+    :class="{ 'score-analytics-status-flow--standalone': standalone }"
+  >
+    <span v-if="!standalone" class="score-analytics-status-flow__label">分数状态流转</span>
     <div class="score-analytics-status-flow__tags">
       <template v-for="(step, index) in steps" :key="step.code">
-        <UiTag :tone="step.tone" size="sm" :class="step.emphasis ? 'score-analytics-status-flow__tag--emphasis' : undefined">
-          {{ step.label }}<span v-if="step.count > 0" class="score-analytics-status-flow__count">{{ step.count }}</span>
+        <UiTag
+          :tone="step.tone"
+          size="sm"
+          :class="step.emphasis ? 'score-analytics-status-flow__tag--emphasis' : undefined"
+        >
+          {{ step.label
+          }}<span v-if="step.count > 0" class="score-analytics-status-flow__count">{{
+            step.count
+          }}</span>
         </UiTag>
         <span v-if="index < steps.length - 1" class="score-analytics-status-flow__arrow">→</span>
       </template>
@@ -20,6 +30,8 @@ defineOptions({ name: 'ScoreAnalyticsStatusFlow' })
 
 defineProps<{
   steps: ScoreAnalyticsFlowStep[]
+  /** 作为独立卡片主体展示时去掉顶部分隔线与重复标题 */
+  standalone?: boolean
 }>()
 </script>
 
@@ -28,6 +40,12 @@ defineProps<{
   margin-top: var(--dp-space-4, 16px);
   padding-top: var(--dp-space-3, 12px);
   border-top: 1px solid var(--dp-border, #e2e8f0);
+
+  &--standalone {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+  }
 
   &__label {
     display: block;

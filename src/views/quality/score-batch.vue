@@ -432,7 +432,7 @@ async function loadBatches() {
     batchStatusCounts.value = counts
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
-    total.value = Number(page.total)
+    total.value = page.total
     if (batches.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadBatches()
@@ -477,7 +477,7 @@ async function loadBatchesQuietly(): Promise<void> {
     batchStatusCounts.value = counts
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
-    total.value = Number(page.total)
+    total.value = page.total
     batchPolling.syncPolling()
   } catch {
     // 轮询刷新失败时不打断当前页面操作

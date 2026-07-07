@@ -1,12 +1,7 @@
 <template>
   <StageWorkbenchShell class="print-package-page">
     <template v-if="selectedExamId" #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        :title="contextBarTitle"
-        :subtitle="contextBarSubtitle"
-      >
+      <ContextBar layout="workbench">
         <template #status>
           <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
             {{ examStatusLabel }}
@@ -28,13 +23,10 @@
       </ContextBar>
     </template>
 
-    <UiAlertStrip
-      v-if="selectedExamId && prepBlockingReasons.length > 0"
-      tone="warning"
-      title="考试准备硬阻断"
-      :description="prepBlockingReasons.join('；')"
-      dense
-      class="print-package-page__blocking-strip"
+    <WorkflowReadinessPanel
+      v-if="selectedExamId && printPackagePrepWorkflowSteps.length"
+      title="完成以下准备步骤后可生成印刷包"
+      :steps="printPackagePrepWorkflowSteps"
     />
 
     <template v-if="selectedExamId" #signal>
@@ -172,8 +164,15 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamWorkbenchPrintPackagePanelResponse } from '@/apis/mark/exam-progress'
-import { getPrintPackagePanel } from '@/apis/mark/exam-progress'
 import type { ExamPrintPackageResponse, PrintPackageItemVO } from '@/apis/mark/print-package'
+import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { downloadFile, getFileArrayBuffer } from '@/apis/edu/file-management'
+import { getExamDetail } from '@/apis/mark/exam'
+import { getPrintPackagePanel } from '@/apis/mark/exam-progress'
 import {
   generatePrintPackage,
   getPrintPackage,
@@ -183,16 +182,9 @@ import {
   PRINT_PACKAGE_STATUS_TONE,
   PrintPackageStatusDescription,
 } from '@/apis/mark/print-package'
-import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { downloadFile, getFileArrayBuffer } from '@/apis/edu/file-management'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
@@ -202,28 +194,56 @@ import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJour
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import WorkflowReadinessPanel from '@/components/workbench/workflow-readiness/WorkflowReadinessPanel.vue'
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkWorkbenchContext, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
-import { hasPrepHardBlocking } from '@/utils/exam-workspace-entry-gates'
+import { buildPrepStepCards } from '@/utils/exam-prep-step-ui'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import { resolvePrintPackageGenerateGate } from '@/utils/workflow-readiness/print-package-prep-readiness'
 
 defineOptions({ name: 'TeacherPrintPackage' })
 
 const { selectedExamId } = useMarkExamContext()
 const workbenchContext = useMarkWorkbenchContext()
-const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
-  useExamJourneyContextBar('印刷包')
+const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
+  = useExamJourneyContextBar('印刷包')
 const { refreshSnapshot } = useWorkspaceExamId()
 
 const prepBlockingReasons = computed(
   () => workbenchContext.snapshot.value?.prepBlockingReasons ?? [],
 )
-const generateBlocked = computed(() => hasPrepHardBlocking(prepBlockingReasons.value))
-const generateDisabledReason = computed(() =>
-  generateBlocked.value ? prepBlockingReasons.value.join('；') : undefined,
-)
+const examDetail = ref<Awaited<ReturnType<typeof getExamDetail>> | null>(null)
+
+const prepStepCards = computed(() => {
+  const backendSteps = workbenchContext.snapshot.value?.prepSteps
+  const detail = examDetail.value
+  if (!backendSteps?.length || !detail) {
+    return []
+  }
+  return buildPrepStepCards(backendSteps, detail)
+})
+
+const printPackageGenerateGate = computed(() => {
+  if (!selectedExamId.value) {
+    return {
+      generateBlocked: false,
+      panelSteps: [],
+      disabledTooltip: undefined,
+    }
+  }
+  return resolvePrintPackageGenerateGate({
+    examId: selectedExamId.value,
+    prepBlockingReasons: prepBlockingReasons.value,
+    backendPrepSteps: workbenchContext.snapshot.value?.prepSteps,
+    prepStepCards: prepStepCards.value.length > 0 ? prepStepCards.value : undefined,
+  })
+})
+
+const generateBlocked = computed(() => printPackageGenerateGate.value.generateBlocked)
+const printPackagePrepWorkflowSteps = computed(() => printPackageGenerateGate.value.panelSteps)
+const generateDisabledReason = computed(() => printPackageGenerateGate.value.disabledTooltip)
 
 // ─── 印刷包分页列表 ─────────────────────────────────────────────────
 
@@ -320,7 +340,7 @@ async function loadPackageList() {
     packageList.value = res.list
     pagination.pageNum = res.pageNum
     pagination.pageSize = res.pageSize
-    pagination.total = Number(res.total)
+    pagination.total = res.total
   } catch (e) {
     packageList.value = []
     pagination.total = 0
@@ -330,7 +350,7 @@ async function loadPackageList() {
   }
 }
 
-function handlePackagePageChange(pageEvent: { current: number; pageSize: number }): void {
+function handlePackagePageChange(pageEvent: { current: number, pageSize: number }): void {
   pagination.pageNum = pageEvent.current
   pagination.pageSize = pageEvent.pageSize
   loadPackageList()
@@ -493,13 +513,23 @@ const detailColumns: ColumnType[] = [
 
 // ─── 初始化 ──────────────────────────────────────────────────────────
 
+async function loadExamDetailForPrep(examId: string): Promise<void> {
+  try {
+    examDetail.value = await getExamDetail(examId)
+  } catch (error) {
+    examDetail.value = null
+    showUserError(error, '考试详情加载失败')
+  }
+}
+
 watch(
   selectedExamId,
   (val) => {
     pagination.pageNum = 1
     if (val) {
-      void Promise.all([loadPackageList(), loadPrintPackagePanel()])
+      void Promise.all([loadPackageList(), loadPrintPackagePanel(), loadExamDetailForPrep(val)])
     } else {
+      examDetail.value = null
       packageList.value = []
       printPackagePanel.value = null
       pagination.total = 0

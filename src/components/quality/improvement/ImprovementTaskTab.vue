@@ -265,7 +265,7 @@ async function loadList(options?: { refreshSignals?: boolean }): Promise<void> {
     improvementList.value = page.list
     improvementQuery.pageNum = page.pageNum
     improvementQuery.pageSize = page.pageSize
-    improvementTotal.value = Number(page.total)
+    improvementTotal.value = page.total
     if (
       improvementList.value.length === 0 &&
       improvementTotal.value > 0 &&

@@ -2,42 +2,51 @@ import type { QualityDecisionCode } from './exam-scan'
 import type { PaperInstanceDisplayVO } from './exam-score'
 import type { QuestionTypeCode } from './question-type'
 import type { MarkAiReferenceExperienceAuditResponse } from '@/apis/mark/grading-experience-assist'
+import type { WorkflowBlockingItem } from '@/components/workbench/workflow-readiness/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { AllocationUnitCode } from '@/types/enums/allocation-unit-enum'
+import {
+  ALL_ALLOCATION_UNIT_CODES,
+  AllocationUnitDescription,
+} from '@/types/enums/allocation-unit-enum'
 import type { AnonymityModeCode } from '@/types/enums/anonymity-mode-enum'
 import type { AnonymousTokenPolicyCode } from '@/types/enums/anonymous-token-policy-enum'
-import type { EffectiveStatusCode } from '@/types/enums/effective-status-enum'
-import type { MarkingAllocationModeCode } from '@/types/enums/marking-allocation-mode-enum'
-import type { MarkingReassignModeCode } from '@/types/enums/marking-reassign-mode-enum'
-import type { MarkingSessionPhaseCode } from '@/types/enums/marking-session-phase-enum'
-import http from '@/config/axios'
-import { ALL_ALLOCATION_UNIT_CODES, AllocationUnitDescription } from '@/types/enums/allocation-unit-enum'
 import {
   ALL_ANONYMOUS_TOKEN_POLICY_CODES,
-  AnonymousTokenPolicyDescription
+  AnonymousTokenPolicyDescription,
 } from '@/types/enums/anonymous-token-policy-enum'
-import { FormalSessionStatusCode, FormalSessionStatusDescription } from '@/types/enums/formal-session-status-enum'
+import type { EffectiveStatusCode } from '@/types/enums/effective-status-enum'
+import type { MarkingAllocationModeCode } from '@/types/enums/marking-allocation-mode-enum'
 import {
   ALL_MARKING_ALLOCATION_MODE_CODES,
-  MarkingAllocationModeDescription
+  MarkingAllocationModeDescription,
 } from '@/types/enums/marking-allocation-mode-enum'
-import { MarkingOrganizationStatusCode } from '@/types/enums/marking-organization-status-enum'
+import type { MarkingReassignModeCode } from '@/types/enums/marking-reassign-mode-enum'
 import {
   ALL_MARKING_REASSIGN_MODE_CODES,
-  MarkingReassignModeDescription
+  MarkingReassignModeDescription,
 } from '@/types/enums/marking-reassign-mode-enum'
+import type { MarkingSessionPhaseCode } from '@/types/enums/marking-session-phase-enum'
+import http from '@/config/axios'
+import {
+  FormalSessionStatusCode,
+  FormalSessionStatusDescription,
+} from '@/types/enums/formal-session-status-enum'
+import { MarkingOrganizationStatusCode } from '@/types/enums/marking-organization-status-enum'
 import {
   ALL_MARKING_TASK_STATUS_CODES,
   MarkingTaskStatusCode,
-  MarkingTaskStatusDescription
+  MarkingTaskStatusDescription,
 } from '@/types/enums/marking-task-status-enum'
 import { QuestionMarkingGroupStatusCode } from '@/types/enums/question-marking-group-status-enum'
 import {
   TRIAL_SESSION_MAIN_FLOW_STATUS_CODES,
   TrialSessionStatusCode,
-  TrialSessionStatusDescription
+  TrialSessionStatusDescription,
 } from '@/types/enums/trial-session-status-enum'
 import { readAllPages } from '@/utils/page-result'
+/** 阅卷组织列表默认分页大小（SessionListQuery / MarkingTaskQuery 缺省时使用） */
+import { EXPORT_PAGE_SIZE } from '@/constants/pagination'
 
 export { ALL_ALLOCATION_UNIT_CODES, AllocationUnitCode } from '@/types/enums/allocation-unit-enum'
 export { AllocationUnitDescription } from '@/types/enums/allocation-unit-enum'
@@ -103,9 +112,6 @@ export const MARKING_ORGANIZATION_STATUS_TONE: Record<
   [MarkingOrganizationStatusCode.CLOSED]: 'red',
 }
 
-/** 阅卷组织列表默认分页大小（SessionListQuery / MarkingTaskQuery 缺省时使用） */
-const MARK_ORG_LIST_PAGE_SIZE = 100
-
 export const QUESTION_GROUP_STATUS_TONE: Record<
   QuestionMarkingGroupStatusCode,
   'gray' | 'blue' | 'green' | 'red'
@@ -124,8 +130,8 @@ export const MARKING_ALLOCATION_MODE_OPTIONS: Array<{
   label: MarkingAllocationModeDescription[value],
 }))
 
-export const ALLOCATION_UNIT_OPTIONS: Array<{ value: AllocationUnitCode, label: string }>
-  = ALL_ALLOCATION_UNIT_CODES.map((value) => ({
+export const ALLOCATION_UNIT_OPTIONS: Array<{ value: AllocationUnitCode; label: string }> =
+  ALL_ALLOCATION_UNIT_CODES.map((value) => ({
     value,
     label: AllocationUnitDescription[value],
   }))
@@ -497,7 +503,6 @@ export const FORMAL_SESSION_STATUS_TONE: Record<
   [FormalSessionStatusCode.SESSION_CLOSED]: 'red',
 }
 
-
 /** 试评会话主流程 hint，文案与 TrialSessionStatusDescription 一致 */
 export const TRIAL_SESSION_FLOW_HINT = TRIAL_SESSION_MAIN_FLOW_STATUS_CODES.map(
   (status) => TrialSessionStatusDescription[status],
@@ -514,6 +519,69 @@ export interface SessionListQueryRequest extends QueryDto {
   organizationId: string
   /** 题组ID，留空表示返回组织下所有题组的会话 */
   groupId?: string
+  /** 试评会话状态筛选，仅试评列表生效 */
+  trialSessionStatus?: TrialSessionStatusCode
+  /** 正评会话状态筛选，仅正评列表生效 */
+  formalSessionStatus?: FormalSessionStatusCode
+  /** 关键词，匹配题组名称与会话文本字段 */
+  keyword?: string
+}
+
+/** 会话工作台 KPI 汇总查询请求 - 对应后端 SessionSummaryQueryRequest */
+export interface SessionSummaryQueryRequest {
+  organizationId: string
+  /** 题组ID，留空时汇总组织下全部题组 */
+  groupId?: string
+}
+
+/** 会话创建就绪度查询请求 - 对应后端 SessionCreateReadinessQueryRequest */
+export interface SessionCreateReadinessQueryRequest {
+  organizationId: string
+  markingPhase: MarkingSessionPhaseCode
+  groupId?: string
+}
+
+/** 题组会话创建就绪度 - 对应后端 SessionGroupCreateReadinessResponse */
+export interface SessionGroupCreateReadinessResponse {
+  groupId: string
+  groupName: string
+  canCreate: boolean
+  blockingItems: WorkflowBlockingItem[]
+  allocationPolicyReady: boolean
+  activeReviewerCount: number
+  registeredSliceCount?: number
+  allocationUnit?: AllocationUnitCode
+}
+
+/** 会话创建就绪度 - 对应后端 SessionCreateReadinessResponse */
+export interface SessionCreateReadinessResponse {
+  examId: string
+  organizationId: string
+  markingPhase: MarkingSessionPhaseCode
+  canCreate: boolean
+  blockingItems: WorkflowBlockingItem[]
+  gradablePaperCount: number
+  scanBatchCount: number
+  openReviewTaskCount?: number
+  groups: SessionGroupCreateReadinessResponse[]
+}
+
+/** 试评会话工作台 KPI 汇总 - 对应后端 TrialSessionWorkbenchSummaryResponse */
+export interface TrialSessionWorkbenchSummaryResponse {
+  totalCount: number
+  /** 待启动（TRIAL_CREATED） */
+  createdCount: number
+  pendingCalibrateCount: number
+  calibratedCount: number
+  closedCount: number
+}
+
+/** 正评会话工作台 KPI 汇总 - 对应后端 FormalSessionWorkbenchSummaryResponse */
+export interface FormalSessionWorkbenchSummaryResponse {
+  totalCount: number
+  activeCount: number
+  createdCount: number
+  completedCount: number
 }
 
 /** 试评会话详情响应 - 对应后端 TrialSessionResponse */
@@ -770,13 +838,39 @@ export function pageTrialSessions(
 }
 
 /**
+ * 试评会话工作台 KPI 汇总。
+ * POST /api/mark/organization/trial/summary
+ */
+export function getTrialSessionWorkbenchSummary(
+  request: SessionSummaryQueryRequest,
+): Promise<TrialSessionWorkbenchSummaryResponse> {
+  return http.post<TrialSessionWorkbenchSummaryResponse>(
+    '/api/mark/organization/trial/summary',
+    request,
+  )
+}
+
+/**
+ * 查询试评 / 正评会话创建就绪度。
+ * POST /api/mark/organization/session/create-readiness
+ */
+export function getSessionCreateReadiness(
+  request: SessionCreateReadinessQueryRequest,
+): Promise<SessionCreateReadinessResponse> {
+  return http.post<SessionCreateReadinessResponse>(
+    '/api/mark/organization/session/create-readiness',
+    request,
+  )
+}
+
+/**
  * 查询试评会话列表（自动分页拉全）。
  * POST /api/mark/organization/trial/list
  */
 export async function listTrialSessions(
   request: SessionListQueryRequest,
 ): Promise<TrialSessionResponse[]> {
-  const pageSize = request.pageSize ?? MARK_ORG_LIST_PAGE_SIZE
+  const pageSize = request.pageSize ?? EXPORT_PAGE_SIZE
   return readAllPages(
     (pageNum) => pageTrialSessions({ ...request, pageNum, pageSize }),
     '试评会话列表加载失败，请稍后重试',
@@ -820,13 +914,26 @@ export function pageFormalSessions(
 }
 
 /**
+ * 正评会话工作台 KPI 汇总。
+ * POST /api/mark/organization/formal/summary
+ */
+export function getFormalSessionWorkbenchSummary(
+  request: SessionSummaryQueryRequest,
+): Promise<FormalSessionWorkbenchSummaryResponse> {
+  return http.post<FormalSessionWorkbenchSummaryResponse>(
+    '/api/mark/organization/formal/summary',
+    request,
+  )
+}
+
+/**
  * 查询正评会话列表（自动分页拉全）。
  * POST /api/mark/organization/formal/list
  */
 export async function listFormalSessions(
   request: SessionListQueryRequest,
 ): Promise<FormalSessionResponse[]> {
-  const pageSize = request.pageSize ?? MARK_ORG_LIST_PAGE_SIZE
+  const pageSize = request.pageSize ?? EXPORT_PAGE_SIZE
   return readAllPages(
     (pageNum) => pageFormalSessions({ ...request, pageNum, pageSize }),
     '正评会话列表加载失败，请稍后重试',
@@ -839,7 +946,9 @@ export async function listFormalSessions(
  * 教师领取阅卷任务（CAS 守门，按当前组织分配策略批量分配）。
  * POST /api/mark/organization/task/claim
  */
-export function claimMarkingTasks(request: MarkingTaskClaimRequest): Promise<MarkingTaskResponse[]> {
+export function claimMarkingTasks(
+  request: MarkingTaskClaimRequest,
+): Promise<MarkingTaskResponse[]> {
   return http.post<MarkingTaskResponse[]>('/api/mark/organization/task/claim', request)
 }
 
@@ -882,8 +991,10 @@ export function pageMarkingTasks(
  * 查询阅卷任务列表（自动分页拉全）。
  * POST /api/mark/organization/task/list
  */
-export async function listMarkingTasks(request: MarkingTaskQueryRequest): Promise<MarkingTaskResponse[]> {
-  const pageSize = request.pageSize ?? MARK_ORG_LIST_PAGE_SIZE
+export async function listMarkingTasks(
+  request: MarkingTaskQueryRequest,
+): Promise<MarkingTaskResponse[]> {
+  const pageSize = request.pageSize ?? EXPORT_PAGE_SIZE
   return readAllPages(
     (pageNum) => pageMarkingTasks({ ...request, pageNum, pageSize }),
     '阅卷任务列表加载失败，请稍后重试',
@@ -952,7 +1063,10 @@ export interface TeacherClaimContextResponse {
 export function getTeacherClaimContext(
   request: TeacherClaimContextQueryRequest,
 ): Promise<TeacherClaimContextResponse> {
-  return http.post<TeacherClaimContextResponse>('/api/mark/organization/task/claim-context', request)
+  return http.post<TeacherClaimContextResponse>(
+    '/api/mark/organization/task/claim-context',
+    request,
+  )
 }
 
 // ===================== 整卷视图 / 解匿名（P1.5 + P1.6） =====================
@@ -1064,7 +1178,10 @@ export function getWholePaperView(request: WholePaperViewRequest): Promise<Whole
 export function getMarkingQuestionView(
   request: MarkingQuestionViewRequest,
 ): Promise<MarkingQuestionViewResponse> {
-  return http.post<MarkingQuestionViewResponse>('/api/mark/organization/task/question-view', request)
+  return http.post<MarkingQuestionViewResponse>(
+    '/api/mark/organization/task/question-view',
+    request,
+  )
 }
 
 /** 匿名整卷扫描页遮罩展示请求 - 对应后端 MarkingScanPageDisplayRequest */
@@ -1086,8 +1203,8 @@ export async function getMarkingScanPageDisplayBlobUrl(
     request,
   )
   const rawContentType = response.headers['content-type']
-  const contentType
-    = typeof rawContentType === 'string'
+  const contentType =
+    typeof rawContentType === 'string'
       ? rawContentType
       : Array.isArray(rawContentType)
         ? rawContentType.join(';')

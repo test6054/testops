@@ -46,8 +46,8 @@
 
 <script lang="ts" setup>
 import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
-import { computed, ref, watch } from 'vue'
 import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
+import { computed, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -64,17 +64,20 @@ const props = withDefaults(
     compact?: boolean
     /** 是否在 Banner 下展示按班进度表；与 compact 独立，发布页可紧凑条 + 小表 */
     showClassProgressTable?: boolean
+    /** 全场 riskOverview + 门禁联合口径；未传时回退 gate.allScoresPublished */
+    scoresFullyPublished?: boolean
   }>(),
   {
     examId: null,
     compact: false,
     showClassProgressTable: true,
+    scoresFullyPublished: undefined,
   },
 )
 
 const emit = defineEmits<{
   'go-close-exam': []
-  "loaded": [ArchiveVolumeExamGateResponse]
+  loaded: [ArchiveVolumeExamGateResponse]
 }>()
 
 const loading = ref(false)
@@ -83,6 +86,16 @@ const gate = ref<ArchiveVolumeExamGateResponse | null>(null)
 
 const { gateProgressHint, gateAnomaly, incompleteClasses } = useExamArchiveGateHint(gate)
 
+const closeExamReady = computed(() => {
+  if (props.scoresFullyPublished === true) {
+    return true
+  }
+  if (props.scoresFullyPublished === false) {
+    return false
+  }
+  return gate.value?.allScoresPublished === true
+})
+
 const bannerTone = computed(() => {
   if (gateAnomaly.value) {
     return 'error'
@@ -90,10 +103,10 @@ const bannerTone = computed(() => {
   if (gate.value?.gateOpen) {
     return 'success'
   }
-  if (gate.value?.allScoresPublished && !gate.value.examClosed) {
+  if (closeExamReady.value && !gate.value?.examClosed) {
     return 'success'
   }
-  if ((gate.value?.unpublishedBoundPaperCount ?? 0) > 0) {
+  if ((gate.value?.unpublishedBoundPaperCount ?? 0) > 0 || props.scoresFullyPublished === false) {
     return 'warning'
   }
   return 'info'
@@ -110,10 +123,10 @@ const bannerTitle = computed(() => {
   if (gateAnomaly.value) {
     return '考试状态异常'
   }
-  if (current.allScoresPublished && !current.examClosed) {
+  if (closeExamReady.value && !current.examClosed) {
     return '成绩已全部发布'
   }
-  if ((current.unpublishedBoundPaperCount ?? 0) > 0) {
+  if ((current.unpublishedBoundPaperCount ?? 0) > 0 || props.scoresFullyPublished === false) {
     return '尚有成绩未发布'
   }
   return '归档前置条件'
@@ -124,7 +137,7 @@ const bannerDescription = computed(() => {
   if (!current) {
     return '—'
   }
-  if (current.allScoresPublished && !current.examClosed) {
+  if (closeExamReady.value && !current.examClosed) {
     return buildCloseExamReadyContent(current)
   }
   if (incompleteClasses.value.length > 0) {
@@ -138,13 +151,13 @@ const bannerDescription = computed(() => {
 })
 
 const showCloseReadyAction = computed(
-  () => props.compact && gate.value?.allScoresPublished === true && gate.value?.examClosed !== true,
+  () => props.compact && closeExamReady.value && gate.value?.examClosed !== true,
 )
 
 const showClassTable = computed(
   () =>
-    (gate.value?.classPublishProgress?.length ?? 0) > 0
-    && (gate.value?.unpublishedBoundPaperCount ?? 0) > 0,
+    (gate.value?.classPublishProgress?.length ?? 0) > 0 &&
+    (gate.value?.unpublishedBoundPaperCount ?? 0) > 0,
 )
 
 const classColumns = [

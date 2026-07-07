@@ -1,7 +1,7 @@
 import type { ExamDetailResponse } from '@/apis/mark/exam'
+import { ExamMaterialLayoutModeDescription, ExamPrintSourceModeDescription } from '@/apis/mark/exam'
 import type { ExamWorkbenchPrepStepResponse } from '@/apis/mark/exam-progress'
 import type { WorkbenchStageStatus } from '@/types/workbench'
-import { ExamMaterialLayoutModeDescription, ExamPrintSourceModeDescription } from '@/apis/mark/exam'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 /** 考试准备页步骤卡片：后端诊断步骤 + 前端路由与操作文案 */
@@ -22,6 +22,18 @@ const PREP_STEP_ROUTES: Record<string, string> = {
   paperTemplate: 'TeacherExamWorkspaceLayoutDesigner',
   layoutDesign: 'TeacherExamWorkspaceLayoutDesigner',
   printPackage: 'TeacherExamWorkspacePrintPackage',
+  experienceAssist: 'TeacherExamWorkspaceMarkingExperienceAssistPolicy',
+}
+
+/** 准备步骤 key → 工作台路由名真源，供 snapshot 级 workflow 映射复用。 */
+export const PREP_STEP_ROUTE_BY_KEY: Readonly<Record<string, string>> = PREP_STEP_ROUTES
+
+export function resolvePrepStepRouteName(stepKey: string): string {
+  const routeName = PREP_STEP_ROUTE_BY_KEY[stepKey]
+  if (!routeName) {
+    throw new Error(`未知准备步骤键：${stepKey}`)
+  }
+  return routeName
 }
 
 function resolvePrepStepDescription(step: ExamWorkbenchPrepStepResponse, detail: ExamDetailResponse): string {
@@ -79,6 +91,10 @@ function resolvePrepStepDescription(step: ExamWorkbenchPrepStepResponse, detail:
       return (detail.printPackageCount ?? 0) > 0
         ? `已生成 ${detail.printPackageCount} 个印刷包`
         : '按考生名册生成个性化印刷 PDF'
+    case 'experienceAssist':
+      return step.status === 'completed'
+        ? '本场经验辅助评阅策略已配置'
+        : '试评完成后定标，正考同课相似题可自动匹配历史定标经验'
     default:
       return step.statusText
   }
@@ -104,6 +120,8 @@ function resolvePrimaryAction(step: ExamWorkbenchPrepStepResponse, detail: ExamD
       return completed ? '打开制卷设计器' : '配置制卷设计'
     case 'printPackage':
       return completed ? '查看 / 调整' : '生成印刷包'
+    case 'experienceAssist':
+      return completed ? '查看策略' : '配置经验辅助'
     default:
       return completed ? '查看 / 调整' : '前往配置'
   }

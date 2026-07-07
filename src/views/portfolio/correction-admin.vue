@@ -7,6 +7,7 @@ import {
 } from '@/apis/portfolio/enums'
 import type { PortfolioCorrectionSummaryVO } from '@/apis/portfolio/types'
 import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { Input, message } from 'ant-design-vue'
 import { reactive, ref } from 'vue'
 import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
@@ -15,9 +16,8 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -58,7 +58,7 @@ async function loadPage() {
       pageSize: pageSize.value,
     })
     rows.value = page.list
-    pageTotal.value = Number(page.total)
+    pageTotal.value = page.total
   } catch (error) {
     showUserError(error, '加载纠错工单失败')
   } finally {

@@ -1,16 +1,8 @@
 <template>
   <StageWorkbenchShell class="scan-monitor">
     <template v-if="selectedExamId" #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        :title="contextBarTitle"
-        :subtitle="scanMonitorContextSubtitle"
-      >
+      <ContextBar layout="workbench" :subtitle="scanMonitorContextSubtitle">
         <template #status>
-          <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
-            {{ examStatusLabel }}
-          </UiTag>
           <UiTag
             :tone="connectionTone"
             size="sm"
@@ -36,6 +28,9 @@
           </UiButton>
           <UiButton size="sm" variant="outline" :disabled="!selectedExamId" @click="goToScanLedger">
             影像账本
+          </UiButton>
+          <UiButton size="sm" variant="outline" :disabled="!selectedExamId" @click="goToManualEntry">
+            手动补录
           </UiButton>
         </template>
       </ContextBar>
@@ -73,21 +68,11 @@
       />
 
       <WorkbenchSurfaceCard flush class="scan-monitor__surface">
-        <template #head>
-          <UiSectionTabs
-            v-model="activeTab"
-            :items="monitorTabs"
-            compact
-            divided
-            class="scan-monitor__tabs"
-          />
-        </template>
-
-        <template #toolbar>
-          <span class="scan-monitor__flow-hint">{{ SCAN_MONITOR_FLOW_HINT }}</span>
+        <div class="scan-monitor__table-shell">
           <UiFilterBar
             v-model="filterModel"
             :fields="monitorFilterFields"
+            variant="plain"
             show-labels
             search-text="查询"
             @search="handleMonitorFilterSearch"
@@ -120,149 +105,156 @@
               />
             </template>
           </UiFilterBar>
-        </template>
 
-        <section v-if="activeTab === 'normal'" class="scan-monitor__normal-panel">
-          <UiDataTable
-            v-model:current="monitorBatchPagination.current"
-            v-model:page-size="monitorBatchPagination.pageSize"
-            class="student-detail-table__data-table"
-            :columns="monitorBatchColumns"
-            :data-source="monitorBatches"
-            :loading="monitorBatchLoading"
-            :total="monitorBatchPagination.total"
-            :scroll="{ x: 1340 }"
-            row-key="scanBatchId"
-            flat
-            empty-kind="first-run"
-            :empty-description="normalTableEmptyDescription"
-            @page-change="handleMonitorBatchPageChange"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'batchNo'">
-                <a-typography-text strong :content="record.batchNo" />
-                <div v-if="record.batchExternalNo" class="scan-monitor__hint">
-                  {{ record.batchExternalNo }}
-                </div>
-              </template>
-              <template v-else-if="column.key === 'status'">
-                <UiTag :tone="monitorBatchStatusTone(record)" size="sm">
-                  {{ monitorBatchStatusLabel(record) }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'pageCount'">
-                {{ record.pageCount ?? 0 }}
-              </template>
-              <template v-else-if="column.key === 'boundPaperCount'">
-                {{ record.boundPaperCount ?? 0 }}
-              </template>
-              <template v-else-if="column.key === 'pageProgress'">
-                {{ record.receivedPageCount ?? 0 }} / {{ record.pageCount ?? 0 }}
-              </template>
-              <template v-else-if="column.key === 'scannerDevice'">
-                {{ formatMonitorBatchDeviceLabel(record.scannerDeviceId) }}
-              </template>
-              <template v-else-if="column.key === 'operatorDisplayName'">
-                {{ record.operatorDisplayName ?? '—' }}
-              </template>
-              <template v-else-if="column.key === 'dpi'">
-                {{ record.scanConfig?.dpi ? `${record.scanConfig.dpi} DPI` : '—' }}
-              </template>
-              <template v-else-if="column.key === 'scanStartTime'">
-                {{ formatDateTimeWithSeconds(record.scanStartTime) }}
-              </template>
-              <template v-else-if="column.key === 'scanEndTime'">
-                {{ record.scanEndTime ? formatDateTimeWithSeconds(record.scanEndTime) : '—' }}
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <UiTableActions
-                  :items="buildMonitorBatchActions(record)"
-                  split
-                  @action="(key) => handleMonitorBatchAction(key, record)"
-                />
-              </template>
-            </template>
-          </UiDataTable>
-        </section>
-        <section v-else class="scan-monitor__attention-panel">
-          <UiDataTable
-            class="student-detail-table__data-table"
-            v-model:current="attentionPagination.current"
-            v-model:page-size="attentionPagination.pageSize"
-            :columns="columns"
-            :data-source="activeAttentionRows"
-            :loading="loading"
-            :total="attentionPagination.total"
-            row-key="id"
-            :enable-selection="activeTab === 'abnormal'"
-            :selected-row-keys="selectedRowKeys"
-            flat
-            empty-kind="first-run"
-            :empty-description="attentionTableEmptyDescription"
-            v-bind="activeTab === 'abnormal' ? { rowSelection } : {}"
-            @page-change="handleAttentionPageChange"
-          >
-            <template #toolbar-right>
-              <UiButton
-                v-if="activeTab === 'abnormal'"
-                size="sm"
-                :disabled="selectedRowKeys.length === 0"
-                :loading="batchBinding"
-                @click="handleBatchBind"
-              >
-                批量绑定 ({{ selectedRowKeys.length }})
-              </UiButton>
-            </template>
+          <UiSectionTabs
+            v-model="activeTab"
+            :items="monitorTabs"
+            compact
+            class="scan-monitor__status-tabs"
+          />
 
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'attentionType'">
-                <UiTag :tone="attentionTypeTone(record.attentionType)" size="sm">
-                  {{ attentionTypeLabel(record.attentionType) }}
-                </UiTag>
+          <section v-if="activeTab === 'normal'" class="scan-monitor__normal-panel">
+            <UiDataTable
+              v-model:current="monitorBatchPagination.current"
+              v-model:page-size="monitorBatchPagination.pageSize"
+              class="student-detail-table__data-table"
+              :columns="monitorBatchColumns"
+              :data-source="monitorBatches"
+              :loading="monitorBatchLoading"
+              :total="monitorBatchPagination.total"
+              :scroll="{ x: 1340 }"
+              row-key="scanBatchId"
+              flat
+              empty-kind="first-run"
+              :empty-description="normalTableEmptyDescription"
+              @page-change="handleMonitorBatchPageChange"
+            >
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'batchNo'">
+                  <a-typography-text strong :content="record.batchNo" />
+                  <div v-if="record.batchExternalNo" class="scan-monitor__hint">
+                    {{ record.batchExternalNo }}
+                  </div>
+                </template>
+                <template v-else-if="column.key === 'status'">
+                  <UiTag :tone="monitorBatchStatusTone(record)" size="sm">
+                    {{ monitorBatchStatusLabel(record) }}
+                  </UiTag>
+                </template>
+                <template v-else-if="column.key === 'pageCount'">
+                  {{ record.pageCount ?? 0 }}
+                </template>
+                <template v-else-if="column.key === 'boundPaperCount'">
+                  {{ record.boundPaperCount ?? 0 }}
+                </template>
+                <template v-else-if="column.key === 'pageProgress'">
+                  {{ record.receivedPageCount ?? 0 }} / {{ record.pageCount ?? 0 }}
+                </template>
+                <template v-else-if="column.key === 'scannerDevice'">
+                  {{ formatMonitorBatchDeviceLabel(record.scannerDeviceId) }}
+                </template>
+                <template v-else-if="column.key === 'operatorDisplayName'">
+                  {{ record.operatorDisplayName ?? '—' }}
+                </template>
+                <template v-else-if="column.key === 'dpi'">
+                  {{ record.scanConfig?.dpi ? `${record.scanConfig.dpi} DPI` : '—' }}
+                </template>
+                <template v-else-if="column.key === 'scanStartTime'">
+                  {{ formatDateTimeWithSeconds(record.scanStartTime) }}
+                </template>
+                <template v-else-if="column.key === 'scanEndTime'">
+                  {{ record.scanEndTime ? formatDateTimeWithSeconds(record.scanEndTime) : '—' }}
+                </template>
+                <template v-else-if="column.key === 'actions'">
+                  <UiTableActions
+                    :items="buildMonitorBatchActions(record)"
+                    split
+                    @action="(key) => handleMonitorBatchAction(key, record)"
+                  />
+                </template>
               </template>
-              <template v-else-if="column.key === 'sourceInfo'">
-                <div class="scan-monitor__source-cell">
-                  <span>
-                    <b>{{ sourceTypeLabel(record.sourceType) }}</b>
-                  </span>
-                  <span class="scan-monitor__hint">{{ record.sourceDisplayName }}</span>
-                </div>
+            </UiDataTable>
+          </section>
+          <section v-else class="scan-monitor__attention-panel">
+            <UiDataTable
+              class="student-detail-table__data-table"
+              v-model:current="attentionPagination.current"
+              v-model:page-size="attentionPagination.pageSize"
+              :columns="columns"
+              :data-source="activeAttentionRows"
+              :loading="loading"
+              :total="attentionPagination.total"
+              row-key="id"
+              :enable-selection="activeTab === 'abnormal'"
+              :selected-row-keys="selectedRowKeys"
+              flat
+              empty-kind="first-run"
+              :empty-description="attentionTableEmptyDescription"
+              v-bind="activeTab === 'abnormal' ? { rowSelection } : {}"
+              @page-change="handleAttentionPageChange"
+            >
+              <template #toolbar-right>
+                <UiButton
+                  v-if="activeTab === 'abnormal'"
+                  size="sm"
+                  :disabled="selectedRowKeys.length === 0"
+                  :loading="batchBinding"
+                  @click="handleBatchBind"
+                >
+                  批量绑定 ({{ selectedRowKeys.length }})
+                </UiButton>
               </template>
-              <template v-else-if="column.key === 'scanBatch'">
-                <span>{{ record.scanBatchDisplayName }}</span>
+
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'attentionType'">
+                  <UiTag :tone="attentionTypeTone(record.attentionType)" size="sm">
+                    {{ attentionTypeLabel(record.attentionType) }}
+                  </UiTag>
+                </template>
+                <template v-else-if="column.key === 'sourceInfo'">
+                  <div class="scan-monitor__source-cell">
+                    <span>
+                      <b>{{ sourceTypeLabel(record.sourceType) }}</b>
+                    </span>
+                    <span class="scan-monitor__hint">{{ record.sourceDisplayName }}</span>
+                  </div>
+                </template>
+                <template v-else-if="column.key === 'scanBatch'">
+                  <span>{{ record.scanBatchDisplayName }}</span>
+                </template>
+                <template v-else-if="column.key === 'paperDisplay'">
+                  <div class="scan-monitor__paper-cell">
+                    <span>{{ record.paperDisplay.primaryText }}</span>
+                    <span v-if="record.paperDisplay.secondaryText" class="scan-monitor__hint">
+                      {{ record.paperDisplay.secondaryText }}
+                    </span>
+                  </div>
+                </template>
+                <template v-else-if="column.key === 'status'">
+                  <UiTag :tone="scanAttentionStatusTone(record)" size="sm">
+                    {{ scanAttentionStatusLabel(record) }}
+                  </UiTag>
+                </template>
+                <template v-else-if="column.key === 'diagnostic'">
+                  <a-typography-text
+                    :content="scanAttentionDiagnosticText(record.diagnostic)"
+                    :ellipsis="{ tooltip: true }"
+                  />
+                </template>
+                <template v-else-if="column.key === 'updateTime'">
+                  {{ formatDateTimeWithSeconds(record.updateTime) }}
+                </template>
+                <template v-else-if="column.key === 'actions'">
+                  <UiTableActions
+                    :items="buildAttentionActions(record)"
+                    split
+                    @action="(key) => handleAttentionAction(key, record)"
+                  />
+                </template>
               </template>
-              <template v-else-if="column.key === 'paperDisplay'">
-                <div class="scan-monitor__paper-cell">
-                  <span>{{ record.paperDisplay.primaryText }}</span>
-                  <span v-if="record.paperDisplay.secondaryText" class="scan-monitor__hint">
-                    {{ record.paperDisplay.secondaryText }}
-                  </span>
-                </div>
-              </template>
-              <template v-else-if="column.key === 'status'">
-                <UiTag :tone="scanAttentionStatusTone(record)" size="sm">
-                  {{ scanAttentionStatusLabel(record) }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'diagnostic'">
-                <a-typography-text
-                  :content="scanAttentionDiagnosticText(record.diagnostic)"
-                  :ellipsis="{ tooltip: true }"
-                />
-              </template>
-              <template v-else-if="column.key === 'updateTime'">
-                {{ formatDateTimeWithSeconds(record.updateTime) }}
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <UiTableActions
-                  :items="buildAttentionActions(record)"
-                  split
-                  @action="(key) => handleAttentionAction(key, record)"
-                />
-              </template>
-            </template>
-          </UiDataTable>
-        </section>
+            </UiDataTable>
+          </section>
+        </div>
       </WorkbenchSurfaceCard>
 
       <ScanBatchDetailDrawer
@@ -484,9 +476,11 @@
           <a-descriptions-item label="答题卡">
             {{ detailRecord.paperDisplay.primaryText }}
           </a-descriptions-item>
-          <a-descriptions-item label="扫描页">{{
-            detailRecord.pageDisplayName
-          }}</a-descriptions-item>
+          <a-descriptions-item label="扫描页">
+            {{
+              detailRecord.pageDisplayName
+            }}
+          </a-descriptions-item>
           <a-descriptions-item label="题目">
             {{ detailRecord.questionDisplayName }}
           </a-descriptions-item>
@@ -536,55 +530,24 @@
 </template>
 
 <script lang="ts" setup>
-/**
- * 阅卷交付 - 扫描监控中控台
- *
- * 后端契约：
- * - listScanAttentions(examId, pageNum, pageSize, queryGroup?, attentionType?, scanBatchId?, paperInstanceId?)
- * - bindPaper(...)、batchBindPapers(...)、listExamCandidates(examId)
- *
- * attentionType 枚举：QUALITY_BLOCK / PROCESSING_BLOCK / DUPLICATE_PENDING / RECOGNITION_REVIEW / BINDING_CONFLICT / MISSING_CANDIDATE_ROSTER
- */
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   ExamPaperBatchBindResponse,
-  ExamScannerDeviceResponse,
 } from '@/apis/mark/exam-mark-scanner'
-import {
-  batchBindPapers,
-  isScannerDeviceOnline,
-  listActiveScannerDevices,
-} from '@/apis/mark/exam-mark-scanner'
-import type { ExamWorkbenchScanMonitorPanelResponse } from '@/apis/mark/exam-progress'
-import { getScanMonitorPanel } from '@/apis/mark/exam-progress'
+import type {
+  ExamScanMonitorDeviceResponse,
+  ExamWorkbenchScanMonitorPanelResponse,
+} from '@/apis/mark/exam-progress'
 import type {
   ExamScannerBatchResponse,
   ScanAttentionItemResponse,
   ScanAttentionSourceTypeCode,
   ScanBatchStatusCode,
 } from '@/apis/mark/exam-scan'
-import {
-  listScanAttentions,
-  pageScannerBatches,
-  QUALITY_DECISION_TONE,
-  QualityDecisionDescription,
-  SCAN_ATTENTION_TYPE_OPTIONS,
-  SCAN_ATTENTION_TYPE_TONE,
-  SCAN_BATCH_STATUS_OPTIONS,
-  SCAN_BATCH_STATUS_TONE,
-  SCAN_MONITOR_FLOW_HINT,
-  ScanAttentionQueryGroupCode,
-  ScanAttentionSourceTypeDescription,
-  ScanAttentionTypeCode,
-  ScanAttentionTypeDescription,
-  ScanBatchStatusDescription,
-} from '@/apis/mark/exam-scan'
 import type { CandidateStatusCode, ExamCandidateResponse } from '@/apis/mark/exam-scope'
-import { CandidateStatusDescription, listExamCandidates } from '@/apis/mark/exam-scope'
 import type { ExamScoreSummaryItemResponse } from '@/apis/mark/exam-score'
-import { pageExamScoreSummary } from '@/apis/mark/exam-score'
 import type {
   BadgeTone,
   FilterField,
@@ -602,6 +565,27 @@ import {
   DuplicateResolutionStatusDescription,
 } from '@/apis/mark/duplicate-resolution-status'
 import { BindingStatusDescription, bindPaper } from '@/apis/mark/exam-binding'
+import {
+  batchBindPapers, ScannerEndpointOnlineStatusCode 
+} from '@/apis/mark/exam-mark-scanner'
+import { getScanMonitorPanel, listExamScanMonitorDevices } from '@/apis/mark/exam-progress'
+import {
+  listScanAttentions,
+  pageScannerBatches,
+  QUALITY_DECISION_TONE,
+  QualityDecisionDescription,
+  SCAN_ATTENTION_TYPE_OPTIONS,
+  SCAN_ATTENTION_TYPE_TONE,
+  SCAN_BATCH_STATUS_OPTIONS,
+  SCAN_BATCH_STATUS_TONE,
+  ScanAttentionQueryGroupCode,
+  ScanAttentionSourceTypeDescription,
+  ScanAttentionTypeCode,
+  ScanAttentionTypeDescription,
+  ScanBatchStatusDescription,
+} from '@/apis/mark/exam-scan'
+import { CandidateStatusDescription, listExamCandidates } from '@/apis/mark/exam-scope'
+import { pageExamScoreSummary } from '@/apis/mark/exam-score'
 import { FinalScoreStatusDescription } from '@/apis/mark/final-score-status'
 import { GRADE_STATUS_TONE, GradeStatusDescription } from '@/apis/mark/grade-status'
 import { discardScannedPage } from '@/apis/mark/scanner-kiosk'
@@ -630,6 +614,16 @@ import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
 import { useWorkspaceConfidentialContext } from '@/composables/useWorkspaceConfidentialContext'
+/**
+ * 阅卷交付 - 扫描监控中控台
+ *
+ * 后端契约：
+ * - listScanAttentions(examId, pageNum, pageSize, queryGroup?, attentionType?, scanBatchId?, paperInstanceId?)
+ * - bindPaper(...)、batchBindPapers(...)、listExamCandidates(examId)
+ *
+ * attentionType 枚举：QUALITY_BLOCK / PROCESSING_BLOCK / DUPLICATE_PENDING / RECOGNITION_REVIEW / BINDING_CONFLICT / MISSING_CANDIDATE_ROSTER
+ */
+import { DEFAULT_LIST_PAGE_SIZE, REMOTE_SEARCH_PAGE_SIZE } from '@/constants/pagination'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
 import mittBus from '@/utils/mitt'
@@ -638,9 +632,9 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScanLiveMonitor' })
 
-const SCAN_BATCH_FILTER_PAGE_SIZE = 50
-const MONITOR_BATCH_PAGE_SIZE = 10
-const PAPER_CANDIDATE_FILTER_PAGE_SIZE = 50
+const SCAN_BATCH_FILTER_PAGE_SIZE = REMOTE_SEARCH_PAGE_SIZE
+const MONITOR_BATCH_PAGE_SIZE = DEFAULT_LIST_PAGE_SIZE
+const PAPER_CANDIDATE_FILTER_PAGE_SIZE = REMOTE_SEARCH_PAGE_SIZE
 
 const router = useRouter()
 const route = useRoute()
@@ -653,15 +647,15 @@ enum ScanMonitorTabQuery {
 
 function isScanMonitorTabQuery(value: unknown): value is ScanMonitorTabQuery {
   return (
-    value === ScanMonitorTabQuery.NORMAL ||
-    value === ScanMonitorTabQuery.ABNORMAL ||
-    value === ScanMonitorTabQuery.DUPLICATE
+    value === ScanMonitorTabQuery.NORMAL
+    || value === ScanMonitorTabQuery.ABNORMAL
+    || value === ScanMonitorTabQuery.DUPLICATE
   )
 }
 
 const { selectedExamId } = useMarkExamContext()
-const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
-  useExamJourneyContextBar('扫描监控')
+const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
+  = useExamJourneyContextBar('扫描监控')
 
 const scanMonitorContextSubtitle = computed(() => {
   const journeySubtitle = contextBarSubtitle.value
@@ -671,8 +665,8 @@ const scanMonitorContextSubtitle = computed(() => {
   return journeySubtitle
 })
 const { refreshSnapshot } = useWorkspaceExamId()
-const { isExamConfidential, examConfidentialLabel, watermarkLines } =
-  useWorkspaceConfidentialContext()
+const { isExamConfidential, examConfidentialLabel, watermarkLines }
+  = useWorkspaceConfidentialContext()
 
 /** 扫描链写操作后同步 StageRail 与本页数据。 */
 async function syncScanWorkbenchState(): Promise<void> {
@@ -696,19 +690,24 @@ const filterForm = reactive<{
   monitorDeviceId: '',
 })
 
-const scannerDevices = ref<ExamScannerDeviceResponse[]>([])
+const scannerDevices = ref<ExamScanMonitorDeviceResponse[]>([])
 const scannerDevicesLoading = ref(false)
 const scanMonitorPanel = ref<ExamWorkbenchScanMonitorPanelResponse | null>(null)
 const scanMonitorPanelLoadFailed = ref(false)
 const SCANNER_DEVICE_POLL_INTERVAL_MS = 60_000
-let scannerDevicePollTimer: ReturnType<typeof setInterval> | null = null
+const ATTENTION_FALLBACK_POLL_INTERVAL_MS = 15_000
+let monitorFallbackPollTimer: ReturnType<typeof setInterval> | null = null
 
-const connectedDevices = computed(() => scannerDevices.value.filter(isScannerDeviceOnline))
-
-function formatMonitorDeviceLabel(device: ExamScannerDeviceResponse): string {
+function formatMonitorDeviceLabel(device: ExamScanMonitorDeviceResponse): string {
   const name = device.deviceName || device.scannerDeviceId
   return device.scannerIp ? `${name}（${device.scannerIp}）` : name
 }
+
+const onlineScannerDeviceCount = computed(() =>
+  scannerDevices.value.filter(
+    (device) => device.endpointOnlineStatus === ScannerEndpointOnlineStatusCode.ONLINE,
+  ).length,
+)
 
 const normalFilterApplied = reactive<{
   keyword: string
@@ -733,12 +732,34 @@ const activeTab = ref<'normal' | 'abnormal' | 'duplicate'>('normal')
 
 function syncActiveTabFromRoute(): void {
   const tab = route.query.tab
+  if (tab === 'attention') {
+    activeTab.value = 'abnormal'
+    return
+  }
   if (isScanMonitorTabQuery(tab)) {
     activeTab.value = tab
     return
   }
   if (tab === undefined || tab === null || tab === '') {
     activeTab.value = 'normal'
+  }
+}
+
+function syncAttentionFiltersFromRoute(): void {
+  const paperInstanceId = route.query.paperInstanceId
+  if (typeof paperInstanceId === 'string' && paperInstanceId.trim()) {
+    filterForm.paperInstanceId = paperInstanceId.trim()
+    return
+  }
+  filterForm.paperInstanceId = ''
+}
+
+/** 从路由同步 Tab 与异常筛选，并在需要时刷新异常列表。 */
+function applyScanMonitorRouteState(reloadAttentions: boolean): void {
+  syncAttentionFiltersFromRoute()
+  syncActiveTabFromRoute()
+  if (reloadAttentions && activeTab.value !== 'normal' && selectedExamId.value) {
+    reloadAttentionsFromFirstPage()
   }
 }
 
@@ -761,27 +782,27 @@ const normalTableEmptyDescription = computed(() => {
 
 const hasActiveNormalFilters = computed(() =>
   Boolean(
-    normalFilterApplied.keyword ||
-    normalFilterApplied.scanBatchId ||
-    normalFilterApplied.batchStatus ||
-    normalFilterApplied.scannerDeviceId,
+    normalFilterApplied.keyword
+    || normalFilterApplied.scanBatchId
+    || normalFilterApplied.batchStatus
+    || normalFilterApplied.scannerDeviceId,
   ),
 )
 
 const normalFilterFields = computed<FilterField[]>(() => {
   const fields: FilterField[] = []
-  if (connectedDevices.value.length > 0) {
+  if (scannerDevices.value.length > 0) {
     fields.push({
       key: 'monitorDeviceId',
       type: 'select',
-      label: '在线扫描仪',
-      placeholder: '选择监控设备',
-      allowClear: false,
+      label: '扫描端',
+      placeholder: '全部扫描端',
+      allowClear: true,
       width: 220,
       minWidth: 200,
       maxWidth: 280,
       triggerSearchOnChange: false,
-      options: connectedDevices.value
+      options: scannerDevices.value
         .filter((device) => !!device.scannerDeviceId)
         .map((device) => ({
           value: device.scannerDeviceId,
@@ -926,7 +947,7 @@ function handleMonitorBatchUpdated(): void {
   void loadScanOverview(selectedExamId.value!)
 }
 
-function handleMonitorBatchPageChange(pageEvent: { current: number; pageSize: number }): void {
+function handleMonitorBatchPageChange(pageEvent: { current: number, pageSize: number }): void {
   monitorBatchPagination.current = pageEvent.current
   monitorBatchPagination.pageSize = pageEvent.pageSize
   void loadMonitorBatches()
@@ -951,7 +972,7 @@ async function loadMonitorBatches(): Promise<void> {
       includeDiscarded: false,
     })
     monitorBatches.value = result.list
-    monitorBatchPagination.total = Number(result.total)
+    monitorBatchPagination.total = result.total
   } catch (error) {
     monitorBatches.value = []
     monitorBatchPagination.total = 0
@@ -974,7 +995,7 @@ const attentions = ref<ScanAttentionItemResponse[]>([])
 const loading = ref(false)
 const attentionPagination = reactive({
   current: 1,
-  pageSize: 20,
+  pageSize: DEFAULT_LIST_PAGE_SIZE,
   total: 0,
 })
 const scanBatches = ref<ExamScannerBatchResponse[]>([])
@@ -1039,7 +1060,7 @@ function scheduleMonitorBatchReload(): void {
     void loadConnectedScannerDevices()
     if (activeTab.value === 'normal') {
       void loadMonitorBatches()
-    } else if (activeTab.value === 'abnormal') {
+    } else if (activeTab.value === 'abnormal' || activeTab.value === 'duplicate') {
       void loadAttentions()
     }
   }, 800)
@@ -1053,7 +1074,7 @@ const connectionTone = computed<BadgeTone>(() => {
   if (phase === 'reconnecting' || phase === 'connecting') {
     return 'orange'
   }
-  return connectedDevices.value.length > 0 ? 'gray' : 'gray'
+  return scannerDevices.value.length > 0 ? 'gray' : 'gray'
 })
 
 const connectionLabel = computed(() => {
@@ -1065,13 +1086,13 @@ const connectionLabel = computed(() => {
     return '重连中'
   }
   if (phase === 'connecting') {
-    return connectedDevices.value.length > 0
-      ? `连接中 · ${connectedDevices.value.length} 台在线`
+    return scannerDevices.value.length > 0
+      ? `连接中 · ${scannerDevices.value.length} 台在线`
       : '连接中'
   }
-  return connectedDevices.value.length > 0
-    ? `${connectedDevices.value.length} 台在线（轮询）`
-    : '无在线设备'
+  return scannerDevices.value.length > 0
+    ? `${scannerDevices.value.length} 台在线（轮询）`
+    : '无在线扫描端'
 })
 
 const connectionPulsing = computed(
@@ -1085,7 +1106,7 @@ watch(
   },
 )
 
-function handleMonitorDeviceSelect(device: ExamScannerDeviceResponse): void {
+function handleMonitorDeviceSelect(device: ExamScanMonitorDeviceResponse): void {
   filterForm.monitorDeviceId = device.scannerDeviceId
   if (activeTab.value === 'normal') {
     applyNormalFilters()
@@ -1243,20 +1264,17 @@ async function loadConnectedScannerDevices(): Promise<void> {
   }
   scannerDevicesLoading.value = true
   try {
-    scannerDevices.value = await listActiveScannerDevices()
-    const online = connectedDevices.value
-    if (online.length === 0) {
+    const response = await listExamScanMonitorDevices(selectedExamId.value)
+    scannerDevices.value = response.items ?? []
+    if (scannerDevices.value.length === 0) {
       filterForm.monitorDeviceId = ''
       return
     }
-    const previousDeviceId = filterForm.monitorDeviceId
-    const nextDeviceId = online.some(
-      (device) => device.scannerDeviceId === filterForm.monitorDeviceId,
-    )
-      ? filterForm.monitorDeviceId
-      : online[0].scannerDeviceId
-    if (nextDeviceId !== previousDeviceId) {
-      filterForm.monitorDeviceId = nextDeviceId
+    if (
+      filterForm.monitorDeviceId
+      && !scannerDevices.value.some((device) => device.scannerDeviceId === filterForm.monitorDeviceId)
+    ) {
+      filterForm.monitorDeviceId = ''
     }
   } catch (error) {
     scannerDevices.value = []
@@ -1267,20 +1285,43 @@ async function loadConnectedScannerDevices(): Promise<void> {
   }
 }
 
-function startScannerDevicePolling(): void {
-  stopScannerDevicePolling()
-  scannerDevicePollTimer = setInterval(() => {
-    if (!selectedExamId.value || activeTab.value !== 'normal') {
-      return
-    }
-    void loadConnectedScannerDevices()
-  }, SCANNER_DEVICE_POLL_INTERVAL_MS)
+function isScanLiveStreamReady(): boolean {
+  return scanLiveStream.connectionPhase.value === 'ready' && scanLiveStream.ready.value
 }
 
-function stopScannerDevicePolling(): void {
-  if (scannerDevicePollTimer) {
-    clearInterval(scannerDevicePollTimer)
-    scannerDevicePollTimer = null
+function isAttentionMonitorTab(): boolean {
+  return activeTab.value === 'abnormal' || activeTab.value === 'duplicate'
+}
+
+function tickMonitorFallbackPoll(): void {
+  if (!selectedExamId.value) {
+    return
+  }
+  if (activeTab.value === 'normal') {
+    void loadConnectedScannerDevices()
+    if (!isScanLiveStreamReady()) {
+      void loadMonitorBatches()
+      void loadScanOverview(selectedExamId.value)
+    }
+    return
+  }
+  if (isAttentionMonitorTab() && !isScanLiveStreamReady()) {
+    void loadAttentions()
+  }
+}
+
+function startMonitorFallbackPolling(): void {
+  stopMonitorFallbackPolling()
+  const intervalMs = activeTab.value === 'normal'
+    ? SCANNER_DEVICE_POLL_INTERVAL_MS
+    : ATTENTION_FALLBACK_POLL_INTERVAL_MS
+  monitorFallbackPollTimer = setInterval(tickMonitorFallbackPoll, intervalMs)
+}
+
+function stopMonitorFallbackPolling(): void {
+  if (monitorFallbackPollTimer) {
+    clearInterval(monitorFallbackPollTimer)
+    monitorFallbackPollTimer = null
   }
 }
 
@@ -1303,6 +1344,28 @@ function goToScanLedger(): void {
   void router.push({
     name: 'TeacherExamWorkspaceScanLedger',
     params: { examId: selectedExamId.value },
+  })
+}
+
+function goToManualEntry(): void {
+  if (!selectedExamId.value) return
+  void router.push({
+    name: 'TeacherExamWorkspaceScanManualEntry',
+    params: { examId: selectedExamId.value },
+  })
+}
+
+function goToManualSupplementFromAttention(record: ScanAttentionItemResponse): void {
+  if (!selectedExamId.value || !record.paperInstanceId) return
+  void router.push({
+    name: 'TeacherExamWorkspaceScanManualEntry',
+    params: { examId: selectedExamId.value },
+    query: {
+      scenario: 'replace',
+      paperInstanceId: record.paperInstanceId,
+      ...(record.scanBatchId ? { scanBatchId: record.scanBatchId } : {}),
+      ...(record.candidateRosterId ? { candidateRosterId: record.candidateRosterId } : {}),
+    },
   })
 }
 
@@ -1392,11 +1455,14 @@ async function loadAttentionCounters(): Promise<void> {
       queryGroup: ScanAttentionQueryGroupCode.DUPLICATE,
     }),
   ])
-  abnormalAttentionTotal.value = Number(abnormalResult.total)
-  duplicateAttentionTotal.value = Number(duplicateResult.total)
+  abnormalAttentionTotal.value = abnormalResult.total
+  duplicateAttentionTotal.value = duplicateResult.total
 }
 
+let attentionLoadGeneration = 0
+
 async function loadAttentionPage(queryGroup: ScanAttentionQueryGroupCode): Promise<void> {
+  const loadGeneration = ++attentionLoadGeneration
   const examId = selectedExamId.value
   if (!examId) {
     attentions.value = []
@@ -1412,7 +1478,10 @@ async function loadAttentionPage(queryGroup: ScanAttentionQueryGroupCode): Promi
     scanBatchId: filterForm.scanBatchId?.trim() || undefined,
     paperInstanceId: filterForm.paperInstanceId?.trim() || undefined,
   })
-  const total = Number(result.total)
+  if (loadGeneration !== attentionLoadGeneration) {
+    return
+  }
+  const total = result.total
   const rows = result.list
   if (rows.length === 0 && total > 0 && attentionPagination.current > 1) {
     attentionPagination.current = Math.ceil(total / attentionPagination.pageSize)
@@ -1435,7 +1504,7 @@ function reloadAttentionsFromFirstPage(): void {
   void loadAttentions()
 }
 
-function handleAttentionPageChange(pageEvent: { current: number; pageSize: number }): void {
+function handleAttentionPageChange(pageEvent: { current: number, pageSize: number }): void {
   attentionPagination.current = pageEvent.current
   attentionPagination.pageSize = pageEvent.pageSize
   selectedRowKeys.value = []
@@ -1451,14 +1520,14 @@ async function loadScanBatches(keyword = scanBatchKeyword.value): Promise<void> 
   const normalizedKeyword = keyword.trim()
   scanBatchesLoading.value = true
   try {
-    const result = await pageScannerBatches({
+    const page = await pageScannerBatches({
       examId,
       pageNum: 1,
       pageSize: SCAN_BATCH_FILTER_PAGE_SIZE,
       keyword: normalizedKeyword || undefined,
       includeDiscarded: false,
     })
-    scanBatches.value = result.list
+    scanBatches.value = page.list
   } catch (error) {
     scanBatches.value = []
     showUserError(error, '扫描批次加载失败')
@@ -1476,13 +1545,13 @@ async function loadPaperCandidates(keyword = paperCandidateKeyword.value): Promi
   const normalizedKeyword = keyword.trim()
   paperCandidatesLoading.value = true
   try {
-    const result = await pageExamScoreSummary({
+    const page = await pageExamScoreSummary({
       examId,
       pageNum: 1,
       pageSize: PAPER_CANDIDATE_FILTER_PAGE_SIZE,
       keyword: normalizedKeyword || undefined,
     })
-    paperCandidates.value = result.list.filter((item) => item.paperInstanceId)
+    paperCandidates.value = page.list.filter((item) => item.paperInstanceId)
   } catch (error) {
     paperCandidates.value = []
     showUserError(error, '答题卡列表加载失败')
@@ -1607,8 +1676,7 @@ function resetFilter(): void {
   filterForm.batchStatus = undefined
   filterForm.scanBatchId = ''
   if (activeTab.value === 'normal') {
-    const firstOnline = connectedDevices.value[0]
-    filterForm.monitorDeviceId = firstOnline?.scannerDeviceId ?? ''
+    filterForm.monitorDeviceId = ''
     applyNormalFilters()
     return
   }
@@ -1796,8 +1864,8 @@ function filterCandidate(input: string, option?: DefaultOptionType): boolean {
   const candidate = candidates.value.find((item) => item.candidateRosterId === option.value)
   if (!candidate) return false
   return (
-    (candidate.studentName ?? '').toLowerCase().includes(kw) ||
-    (candidate.studentNo ?? '').toLowerCase().includes(kw)
+    (candidate.studentName ?? '').toLowerCase().includes(kw)
+    || (candidate.studentNo ?? '').toLowerCase().includes(kw)
   )
 }
 
@@ -1978,10 +2046,13 @@ function buildAttentionActions(record: ScanAttentionItemResponse): UiTableRowAct
   } else if (record.attentionType === ScanAttentionTypeCode.DUPLICATE_PENDING) {
     actions.push({ key: 'ledger', label: '去影像账本处置', tone: 'primary' })
   } else if (
-    record.attentionType === ScanAttentionTypeCode.QUALITY_BLOCK ||
-    record.attentionType === ScanAttentionTypeCode.PROCESSING_BLOCK
+    record.attentionType === ScanAttentionTypeCode.QUALITY_BLOCK
+    || record.attentionType === ScanAttentionTypeCode.PROCESSING_BLOCK
   ) {
     actions.push({ key: 'dispose', label: '查看处置', tone: 'primary' })
+    if (record.paperInstanceId && record.scanBatchId) {
+      actions.push({ key: 'supplement', label: '去补扫', tone: 'primary' })
+    }
   }
   if (record.sourceType === 'SCANNED_PAGE' && record.pageId) {
     actions.push({
@@ -2011,6 +2082,9 @@ function handleAttentionAction(key: string, record: ScanAttentionItemResponse): 
     case 'dispose':
       openDetail(record)
       break
+    case 'supplement':
+      goToManualSupplementFromAttention(record)
+      break
     case 'discard':
       void onDiscardPage(record)
       break
@@ -2029,7 +2103,7 @@ const batchBindDrawerOpen = ref(false)
 const batchBindResult = ref<ExamPaperBatchBindResponse | null>(null)
 type BatchBindAttemptStatus = 'NORMAL' | 'MAKEUP' | 'RETAKE'
 
-const batchAttemptStatusOptions: Array<{ label: string; value: BatchBindAttemptStatus }> = [
+const batchAttemptStatusOptions: Array<{ label: string, value: BatchBindAttemptStatus }> = [
   { label: '普通答卷', value: 'NORMAL' },
   { label: '补考答卷', value: 'MAKEUP' },
   { label: '重考答卷', value: 'RETAKE' },
@@ -2091,10 +2165,10 @@ async function handleBatchBind(): Promise<void> {
   }
   const selected = attentions.value.filter(
     (item) =>
-      selectedRowKeys.value.includes(item.id) &&
-      item.attentionType === 'BINDING_CONFLICT' &&
-      item.paperInstanceId &&
-      item.scanBatchId,
+      selectedRowKeys.value.includes(item.id)
+      && item.attentionType === 'BINDING_CONFLICT'
+      && item.paperInstanceId
+      && item.scanBatchId,
   )
   if (selected.length === 0) {
     message.error('请选择可身份绑定的绑定冲突异常项')
@@ -2236,21 +2310,22 @@ watch(
     scanMonitorPanel.value = null
     scanMonitorPanelLoadFailed.value = false
     if (value) {
+      syncAttentionFiltersFromRoute()
+      syncActiveTabFromRoute()
       void loadScanOverview(value)
       void loadScanBatches()
       void loadPaperCandidates()
       void loadAttentions()
       void loadConnectedScannerDevices()
-      startScannerDevicePolling()
+      startMonitorFallbackPolling()
       void scanLiveStream.start()
       if (activeTab.value === 'normal') {
         void loadMonitorBatches()
       }
     } else {
-      stopScannerDevicePolling()
+      stopMonitorFallbackPolling()
       scanLiveStream.stop()
       scannerDevices.value = []
-      attentions.value = []
     }
   },
   { immediate: true },
@@ -2275,14 +2350,30 @@ watch(activeTab, (value) => {
     filterForm.attentionType = ''
   }
   if (value === 'normal') {
-    startScannerDevicePolling()
+    startMonitorFallbackPolling()
     void loadConnectedScannerDevices()
     void loadMonitorBatches()
     return
   }
-  stopScannerDevicePolling()
+  startMonitorFallbackPolling()
   void loadAttentions()
+  if (!isScanLiveStreamReady()) {
+    tickMonitorFallbackPoll()
+  }
 })
+
+watch(
+  () => scanLiveStream.connectionPhase.value,
+  () => {
+    if (!selectedExamId.value || !isAttentionMonitorTab()) {
+      return
+    }
+    startMonitorFallbackPolling()
+    if (!isScanLiveStreamReady()) {
+      tickMonitorFallbackPoll()
+    }
+  },
+)
 
 watch(bindDrawerOpen, (open) => {
   if (!open) {
@@ -2302,20 +2393,28 @@ function onWorkbenchRefresh(): void {
 }
 
 onMounted(() => {
-  syncActiveTabFromRoute()
+  applyScanMonitorRouteState(true)
   mittBus.on('scan-workbench:refresh', onWorkbenchRefresh)
 })
 
 watch(
   () => route.query.tab,
   () => {
-    syncActiveTabFromRoute()
+    applyScanMonitorRouteState(true)
   },
+)
+
+watch(
+  () => route.query.paperInstanceId,
+  () => {
+    applyScanMonitorRouteState(true)
+  },
+  { immediate: true },
 )
 
 onBeforeUnmount(() => {
   mittBus.off('scan-workbench:refresh', onWorkbenchRefresh)
-  stopScannerDevicePolling()
+  stopMonitorFallbackPolling()
   scanLiveStream.stop()
   if (monitorBatchReloadTimer) {
     clearTimeout(monitorBatchReloadTimer)
@@ -2377,23 +2476,26 @@ onBeforeUnmount(() => {
     font-size: 12px;
   }
 
-  &__tabs {
+  &__surface {
     margin-top: 0;
-    padding: 16px;
-    border: 1px solid var(--dp-border, #e2e8f0);
-    border-radius: var(--dp-radius-panel, 8px);
-    background: var(--dp-surface, #fff);
+  }
+
+  &__table-shell {
+    display: flex;
+    flex-direction: column;
+    gap: var(--dp-space-4, 16px);
+    padding: var(--dp-space-4, 16px) var(--dp-space-5, 20px) var(--dp-space-5, 20px);
+  }
+
+  &__status-tabs {
+    :deep(.ui-section-tabs__nav) {
+      align-self: stretch;
+      width: 100%;
+    }
   }
 
   &__panel-alert {
     margin-bottom: var(--dp-space-4, 16px);
-  }
-
-  &__flow-hint {
-    width: 100%;
-    font-size: 12px;
-    color: var(--dp-text-muted, #64748b);
-    line-height: 1.5;
   }
 
   &__normal-panel,

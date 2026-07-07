@@ -1,18 +1,12 @@
 <template>
   <AiAnalysisSection title="AI 跨考试趋势分析">
     <template #actions>
-      <AiAnalysisHistorySelect
-        v-model="historySelectedId"
-        :rows="historyRows"
-        :loading="loading"
-      />
+      <AiAnalysisHistorySelect v-model="historySelectedId" :rows="historyRows" :loading="loading" />
       <a-radio-group v-model:value="scopeMode" size="small" button-style="solid">
         <a-radio-button :value="AnalysisScopeTypeCode.COURSE">课程维度</a-radio-button>
         <a-radio-button :value="AnalysisScopeTypeCode.CLASS">班级维度</a-radio-button>
       </a-radio-group>
-      <UiButton variant="outline" size="sm" :loading="loading" @click="reload">
-        查看历史
-      </UiButton>
+      <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 查看历史 </UiButton>
       <UiButton variant="primary" size="sm" :loading="generating" @click="handleGenerate">
         生成分析
       </UiButton>
@@ -22,7 +16,9 @@
       <div class="ai-form">
         <a-form layout="inline" :model="form" size="small">
           <a-form-item label="学年">
+            <span v-if="scopeTermLabel" class="scope-hint">{{ scopeTermLabel }}</span>
             <AnalysisSemesterSelect
+              v-else
               v-model:academic-year="form.academicYear"
               v-model:semester="form.semester"
               :course-id="examSelectScopeCourseId"
@@ -94,7 +90,9 @@
             </p>
             <p v-if="item.description" class="diagnosis-text">{{ item.description }}</p>
             <p v-if="item.possibleCause" class="diagnosis-text">{{ item.possibleCause }}</p>
-            <p v-if="item.suggestion" class="diagnosis-text diagnosis-text--hint">{{ item.suggestion }}</p>
+            <p v-if="item.suggestion" class="diagnosis-text diagnosis-text--hint">
+              {{ item.suggestion }}
+            </p>
           </div>
         </div>
       </div>
@@ -110,17 +108,20 @@
 
 <script lang="ts" setup>
 import type { CrossExamTrendAnalysisResponse } from '@/apis/mark/cross-exam-analysis'
-import type { ExamSummaryResponse } from '@/apis/mark/exam'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { AnalysisScopeTypeCode, AnalysisScopeTypeDescription } from '@/apis/mark/analysis-scope-type'
 import {
   generateClassTrend,
   generateCourseTrend,
   listCommonClassScopes,
   listTrends,
 } from '@/apis/mark/cross-exam-analysis'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import {
+  AnalysisScopeTypeCode,
+  AnalysisScopeTypeDescription,
+} from '@/apis/mark/analysis-scope-type'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisConfigCollapse from '@/components/mark/analysis/AiAnalysisConfigCollapse.vue'
 import AiAnalysisHistorySelect from '@/components/mark/analysis/AiAnalysisHistorySelect.vue'
@@ -135,7 +136,6 @@ import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { ensureRequiredAcademicYearSemester } from '@/utils/academic-year-semester-query'
-import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { buildTrendChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
 import { buildTrendLineChartOption } from '@/utils/mark-echarts-options'
@@ -151,6 +151,10 @@ const props = withDefaults(
     scopeReferenceDepartmentId?: string | null
     scopeOrgCourseId?: string | null
     scopeOrgClassId?: string | null
+    scopeAcademicYear?: string
+    scopeSemester?: SemesterCode
+    examScopeLocked?: boolean
+    scopeTermLabel?: string
   }>(),
   {
     drillClassId: null,
@@ -158,6 +162,10 @@ const props = withDefaults(
     scopeReferenceDepartmentId: null,
     scopeOrgCourseId: null,
     scopeOrgClassId: null,
+    scopeAcademicYear: undefined,
+    scopeSemester: undefined,
+    examScopeLocked: false,
+    scopeTermLabel: '',
   },
 )
 
@@ -197,7 +205,7 @@ const historyRows = computed(() =>
 )
 
 const selectedExams = ref<ExamSummaryResponse[]>([])
-const classOptions = ref<{ label: string, value: string }[]>([])
+const classOptions = ref<{ label: string; value: string }[]>([])
 const classLoading = ref(false)
 const loading = ref(false)
 const generating = ref(false)
@@ -231,7 +239,7 @@ const { chartOption: examTrendChartOption } = useChartOption(() =>
 const selectedCourseIds = computed(() => {
   const courseIds = new Set<string>()
   for (const examId of form.examIds) {
-    const matched = selectedExams.value.find(exam => exam.examId === examId)
+    const matched = selectedExams.value.find((exam) => exam.examId === examId)
     if (matched?.courseId) {
       courseIds.add(matched.courseId)
     }
@@ -256,14 +264,14 @@ const examSelectScopeClassId = computed(() => {
 
 const examSelectScopeCourseId = computed(() => props.scopeOrgCourseId?.trim() || undefined)
 
-const examSelectScopeReferenceDepartmentId = computed(() =>
-  props.scopeReferenceDepartmentId?.trim() || undefined,
+const examSelectScopeReferenceDepartmentId = computed(
+  () => props.scopeReferenceDepartmentId?.trim() || undefined,
 )
 
 const effectiveClassId = computed(() => examSelectScopeClassId.value?.trim() || '')
 
-const examSelectAutoSelectLargestCluster = computed(() =>
-  scopeMode.value === AnalysisScopeTypeCode.COURSE || Boolean(examSelectScopeClassId.value),
+const examSelectAutoSelectLargestCluster = computed(
+  () => scopeMode.value === AnalysisScopeTypeCode.COURSE || Boolean(examSelectScopeClassId.value),
 )
 
 const examSelectPlaceholder = computed(() => {
@@ -292,7 +300,10 @@ function examScopeSummary(value: CrossExamTrendAnalysisResponse): string {
     return '无考试范围'
   }
   return value.exams
-    .map(exam => `${exam.examName ?? exam.examId}${exam.examTime ? ` · ${formatDateTime(exam.examTime)}` : ''}`)
+    .map(
+      (exam) =>
+        `${exam.examName ?? exam.examId}${exam.examTime ? ` · ${formatDateTime(exam.examTime)}` : ''}`,
+    )
     .join('；')
 }
 
@@ -303,7 +314,7 @@ function applyDrillClassSelection(): void {
     return
   }
   scopeMode.value = AnalysisScopeTypeCode.CLASS
-  if (classOptions.value.some(option => option.value === classId)) {
+  if (classOptions.value.some((option) => option.value === classId)) {
     form.classId = classId
     return
   }
@@ -314,8 +325,8 @@ function applyDrillClassSelection(): void {
   }
 }
 
-function mapClassRefsToOptions(classRefs: Array<{ classId: string, className: string }>) {
-  return classRefs.map(classRef => ({
+function mapClassRefsToOptions(classRefs: Array<{ classId: string; className: string }>) {
+  return classRefs.map((classRef) => ({
     value: classRef.classId,
     label: classRef.className,
   }))
@@ -347,12 +358,25 @@ async function refreshCommonClassOptions(): Promise<void> {
       message.warning('所选考试没有共同班级，请调整考试范围')
     }
     applyDrillClassSelection()
-  } catch (e) {
-    showUserError(e, '考试班级范围加载失败')
+  } catch {
+    classOptions.value = []
   } finally {
     classLoading.value = false
   }
 }
+
+watch(
+  () => [props.scopeAcademicYear, props.scopeSemester] as const,
+  ([year, semesterCode]) => {
+    if (year) {
+      form.academicYear = year
+    }
+    if (semesterCode) {
+      form.semester = semesterCode
+    }
+  },
+  { immediate: true },
+)
 
 watch(
   () => props.drillClassId,
@@ -413,12 +437,14 @@ async function reload(): Promise<void> {
     const list = await listTrends({
       scopeType: scopeMode.value,
       courseId,
-      ...(scopeMode.value === AnalysisScopeTypeCode.CLASS ? { classId: effectiveClassId.value } : {}),
+      ...(scopeMode.value === AnalysisScopeTypeCode.CLASS
+        ? { classId: effectiveClassId.value }
+        : {}),
     })
     const count = applyLoadedList(list)
     if (count === 0) message.info('暂无历史记录')
-  } catch (e) {
-    showUserError(e, '跨考试趋势分析加载失败')
+  } catch {
+    /* 拦截器已统一 Message 提示 */
   } finally {
     loading.value = false
   }
@@ -455,25 +481,25 @@ async function handleGenerate(): Promise<void> {
   }
   generating.value = true
   try {
-    const generated
-      = scopeMode.value === AnalysisScopeTypeCode.COURSE
+    const generated =
+      scopeMode.value === AnalysisScopeTypeCode.COURSE
         ? await generateCourseTrend({
-          courseId,
-          academicYear,
-          semester,
-          examIds,
-        })
+            courseId,
+            academicYear,
+            semester,
+            examIds,
+          })
         : await generateClassTrend({
-          courseId,
-          classId,
-          academicYear,
-          semester,
-          examIds,
-        })
+            courseId,
+            classId,
+            academicYear,
+            semester,
+            examIds,
+          })
     adoptGenerated(generated)
     message.success('已生成趋势分析')
-  } catch (e) {
-    showUserError(e, '跨考试趋势分析生成失败')
+  } catch {
+    /* 拦截器已统一 Message 提示 */
   } finally {
     generating.value = false
   }

@@ -293,7 +293,7 @@ async function loadForms() {
     forms.value = page.list
     formQuery.pageNum = page.pageNum
     formQuery.pageSize = page.pageSize
-    formsTotal.value = Number(page.total)
+    formsTotal.value = page.total
     if (forms.value.length === 0 && formsTotal.value > 0 && formQuery.pageNum > 1) {
       formQuery.pageNum -= 1
       await loadForms()

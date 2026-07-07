@@ -25,6 +25,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useAuthStore } from '@/stores/modules/auth'
 import { RoleEnum } from '@/types/enums'
 import { showUserError } from '@/utils/error-handler'
@@ -41,7 +42,7 @@ const loading = ref(false)
 const saving = ref(false)
 const publishing = ref(false)
 const releases = ref<ScannerAgentReleaseResponse[]>([])
-const pagination = reactive({ current: 1, pageSize: 20, total: 0 })
+const pagination = reactive({ current: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 const filters = reactive({ keyword: '' })
 
 const registerOpen = ref(false)
@@ -136,7 +137,7 @@ async function loadReleases() {
       pageSize: pagination.pageSize,
     })
     releases.value = result.list
-    pagination.total = Number(result.total)
+    pagination.total = result.total
     const publishedInPage = releases.value.find(item => item.published === true)
     if (publishedInPage) {
       publishedReleaseSnapshot.value = publishedInPage
@@ -295,9 +296,6 @@ onMounted(() => {
             @click="openRegisterModal"
           >
             注册新版本
-          </UiButton>
-          <UiButton size="sm" variant="outline" :loading="loading" @click="() => loadReleases()">
-            刷新
           </UiButton>
         </template>
       </ContextBar>

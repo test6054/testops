@@ -94,9 +94,26 @@ export interface ScoreRecordValidQueryRequest extends QueryDto {
   qualityCourseId: string
 }
 
+export interface ScoreRecordPageRequest extends QueryDto {
+  batchId: string
+  validFlag?: boolean
+}
+
+export interface ScoreRecordBatchSummaryVO {
+  totalCount: string
+  validCount: string
+  invalidCount: string
+  erroredCount: string
+  avgScoreRatioPercent?: number | null
+}
+
 export const scoreRecordApi = {
   listByBatch: (batchId: string) =>
     http.post<ScoreRecordVO[]>(`${BASE}/list-by-batch`, { id: batchId }),
+  pageByBatch: (data: ScoreRecordPageRequest) =>
+    http.post<PageResult<ScoreRecordVO>>(`${BASE}/page-by-batch`, data),
+  getBatchSummary: (batchId: string) =>
+    http.post<ScoreRecordBatchSummaryVO>(`${BASE}/batch-summary`, { id: batchId }),
   /** 查询某考核环节下批次已确认且样本有效的全部成绩，用于达成度计算 */
   listValidByItem: (request: ScoreRecordValidQueryRequest) =>
     http.post<PageResult<ScoreRecordVO>>(`${BASE}/list-valid-by-item`, request),

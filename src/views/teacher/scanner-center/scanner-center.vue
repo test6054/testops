@@ -9,7 +9,6 @@ import {
   ScanDispatchTicketStatusCode,
   ScanDispatchTicketStatusDescription,
 } from '@/apis/mark/scanner-dispatch'
-import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -418,13 +417,7 @@ watch(
         show-title
         title="扫描中心"
         subtitle="异常处理、运营统计、操作日志与派单调度"
-      >
-        <template #actions>
-          <UiButton size="sm" variant="outline" :loading="overviewLoading" @click="() => loadOverview()">
-            刷新概览
-          </UiButton>
-        </template>
-      </ContextBar>
+      />
     </template>
 
     <template #signal>

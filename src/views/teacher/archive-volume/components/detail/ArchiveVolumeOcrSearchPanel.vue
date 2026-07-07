@@ -139,20 +139,15 @@
             <span v-else>—</span>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiTextAction
-              v-if="canViewMaterialOcrMaterial(record)"
-              tone="primary"
-              @click="openMaterialOcr(record.materialId)"
-            >
-              查看文本
-            </UiTextAction>
-            <UiTextAction
-              v-else-if="canTriggerMaterialOcr(record)"
-              tone="primary"
-              @click="confirmTriggerOcr(record)"
-            >
-              触发 OCR
-            </UiTextAction>
+            <UiTableActions
+              v-if="canViewMaterialOcrMaterial(record) || canTriggerMaterialOcr(record)"
+              :items="[
+                { key: 'view', label: '查看文本', hidden: !canViewMaterialOcrMaterial(record) },
+                { key: 'trigger', label: '触发 OCR', hidden: !canTriggerMaterialOcr(record) },
+              ]"
+              split
+              @action="(key) => handleOcrMaterialRowAction(key, record)"
+            />
             <span v-else class="archive-volume-ocr-search__muted">—</span>
           </template>
         </template>
@@ -192,7 +187,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { highlightArchiveSearchSnippet } from '@/utils/archive-search-snippet'
@@ -321,7 +316,7 @@ async function loadHits(): Promise<void> {
       pageSize: pagination.pageSize,
     })
     hits.value = result.list
-    pagination.total = Number(result.total)
+    pagination.total = result.total
     pagination.pageNum = result.pageNum
     pagination.pageSize = result.pageSize
     searched.value = true
@@ -395,6 +390,14 @@ function confirmTriggerOcr(material: ArchiveVolumeMaterialResponse): void {
       }
     },
   })
+}
+
+function handleOcrMaterialRowAction(
+  key: string,
+  material: ArchiveVolumeMaterialResponse,
+) {
+  if (key === 'view') openMaterialOcr(material.materialId)
+  else if (key === 'trigger') confirmTriggerOcr(material)
 }
 </script>
 

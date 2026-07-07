@@ -27,8 +27,12 @@
         </template>
         <template v-else-if="column.key === 'questions'">
           <div class="org-assignment__chips">
-            <span v-for="q in record.questionLabels" :key="q" class="org-assignment__chip">{{ q }}</span>
-            <span v-if="record.questionLabels.length === 0" class="org-assignment__muted">整卷题组</span>
+            <span v-for="q in record.questionLabels" :key="q" class="org-assignment__chip">{{
+              q
+            }}</span>
+            <span v-if="record.questionLabels.length === 0" class="org-assignment__muted"
+              >整卷题组</span
+            >
           </div>
         </template>
         <template v-else-if="column.key === 'questionType'">
@@ -41,14 +45,12 @@
           <UiTag :tone="record.anonymityTone" size="sm">{{ record.anonymityLabel }}</UiTag>
         </template>
         <template v-else-if="column.key === 'action'">
-          <UiButton
+          <UiTableActions
             v-if="canManage && record.editable"
-            variant="ghost"
-            size="sm"
-            @click="emit('edit-group', record.groupId)"
-          >
-            编辑
-          </UiButton>
+            :items="[{ key: 'edit', label: '编辑' }]"
+            split
+            @action="() => emit('edit-group', record.groupId)"
+          />
         </template>
       </template>
       <template v-if="rows.length > 0" #summary>
@@ -84,17 +86,18 @@ import type {
   AllocationPolicyResponse,
   QuestionMarkingGroupResponse,
 } from '@/apis/mark/marking-organization'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import { computed } from 'vue'
-import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
 import {
   AllocationUnitDescription,
   MarkingAllocationModeDescription,
 } from '@/apis/mark/marking-organization'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import { computed } from 'vue'
+import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { AnonymityModeCode } from '@/types/enums/anonymity-mode-enum'
 import { QuestionMarkingGroupStatusCode } from '@/types/enums/question-marking-group-status-enum'
@@ -133,7 +136,13 @@ const columns: ColumnType<AssignmentRow>[] = [
   { title: '题目类型', key: 'questionType', width: 100 },
   { title: '分值合计', key: 'totalScore', dataIndex: 'totalScore', width: 88, align: 'right' },
   { title: '分配策略', key: 'strategy', width: 160 },
-  { title: '评阅人数', key: 'reviewerCount', dataIndex: 'reviewerCount', width: 88, align: 'right' },
+  {
+    title: '评阅人数',
+    key: 'reviewerCount',
+    dataIndex: 'reviewerCount',
+    width: 88,
+    align: 'right',
+  },
   { title: '匿名阅卷', key: 'anonymity', width: 96 },
   { title: '操作', key: 'action', width: 72 },
 ]
@@ -152,7 +161,7 @@ function isEditable(status: QuestionMarkingGroupStatusCode): boolean {
   return status !== QuestionMarkingGroupStatusCode.GROUP_CLOSED
 }
 
-function resolveTypeLabel(group: QuestionMarkingGroupResponse): { label: string, tone: BadgeTone } {
+function resolveTypeLabel(group: QuestionMarkingGroupResponse): { label: string; tone: BadgeTone } {
   if (group.questions.length === 0) {
     return { label: '整卷', tone: 'gray' }
   }
@@ -176,7 +185,8 @@ const rows = computed((): AssignmentRow[] =>
     const anonymityLabel = policy
       ? strictEnumLabel(AnonymityModeDescription, policy.anonymityMode, '匿名模式')
       : '—'
-    const anonymityTone: BadgeTone = policy?.anonymityMode === AnonymityModeCode.ANONYMOUS ? 'green' : 'gray'
+    const anonymityTone: BadgeTone =
+      policy?.anonymityMode === AnonymityModeCode.ANONYMOUS ? 'green' : 'gray'
     return {
       groupId: group.id,
       groupName: group.groupName,
@@ -197,9 +207,7 @@ const summaryQuestionCount = computed(() =>
   props.groups.reduce((sum, group) => sum + group.questions.length, 0),
 )
 
-const summaryTotalScore = computed(() =>
-  rows.value.reduce((sum, row) => sum + row.totalScore, 0),
-)
+const summaryTotalScore = computed(() => rows.value.reduce((sum, row) => sum + row.totalScore, 0))
 
 const summaryReviewerCount = computed(() => {
   const ids = new Set<string>()

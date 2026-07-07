@@ -1,16 +1,16 @@
 import type { Ref } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import type {
   MarkingPageAnnotationSubmitItem,
   MarkingQuestionScoreSubmitItem,
   QuestionMarkingGroupQuestionResponse,
   ScannedPageRef,
 } from '@/apis/mark/marking-organization'
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
-import { getImageBlobUrl } from '@/apis/edu/file-management'
 import {
   getMarkingScanPageDisplayBlobUrl,
   getWholePaperView,
 } from '@/apis/mark/marking-organization'
+import { getImageBlobUrl } from '@/apis/edu/file-management'
 import { showUserError, toUserError } from '@/utils/error-handler'
 
 const WHOLE_PAGE_ESTIMATED_HEIGHT = 1180
@@ -67,7 +67,9 @@ export interface UseWholePaperGalleryReturn {
 /**
  * 整卷影像画廊：消费 WholePaperViewResponse，按 pageId 虚拟窗口渲染 ScannedPageRef。
  */
-export function useWholePaperGallery(options: UseWholePaperGalleryOptions): UseWholePaperGalleryReturn {
+export function useWholePaperGallery(
+  options: UseWholePaperGalleryOptions,
+): UseWholePaperGalleryReturn {
   const wholePages = ref<ScannedPageRef[]>([])
   const wholeQuestions = ref<QuestionMarkingGroupQuestionResponse[]>([])
   const wholePagesLoaded = ref(false)
@@ -83,6 +85,7 @@ export function useWholePaperGallery(options: UseWholePaperGalleryOptions): UseW
   const wholePageViewportHeight = ref(900)
   const currentWholePageIndex = ref(0)
   let wholePageImageLoadBatch = 0
+  let wholePageViewGeneration = 0
 
   const visibleWholePageRange = computed(() => {
     if (wholePages.value.length === 0) return { start: 0, end: -1 }
@@ -105,9 +108,9 @@ export function useWholePaperGallery(options: UseWholePaperGalleryOptions): UseW
     }))
   })
 
-  const wholePageTopSpacerHeight = computed(() => (
-    visibleWholePageRange.value.start * WHOLE_PAGE_ESTIMATED_HEIGHT
-  ))
+  const wholePageTopSpacerHeight = computed(
+    () => visibleWholePageRange.value.start * WHOLE_PAGE_ESTIMATED_HEIGHT,
+  )
 
   const wholePageBottomSpacerHeight = computed(() => {
     const range = visibleWholePageRange.value
@@ -169,7 +172,11 @@ export function useWholePaperGallery(options: UseWholePaperGalleryOptions): UseW
     }
   }
 
-  async function loadWholePageImage(page: ScannedPageRef, examId: string, taskId: string): Promise<string> {
+  async function loadWholePageImage(
+    page: ScannedPageRef,
+    examId: string,
+    taskId: string,
+  ): Promise<string> {
     if (page.identityMaskedView) {
       return getMarkingScanPageDisplayBlobUrl({
         examId,
@@ -183,14 +190,17 @@ export function useWholePaperGallery(options: UseWholePaperGalleryOptions): UseW
     return getImageBlobUrl(page.fileId)
   }
 
-  async function loadWholePageImageByPage(page: ScannedPageRef, batch = wholePageImageLoadBatch): Promise<void> {
+  async function loadWholePageImageByPage(
+    page: ScannedPageRef,
+    batch = wholePageImageLoadBatch,
+  ): Promise<void> {
     const examId = options.getExamId()
     const taskId = options.getTaskId()
     if (
-      !examId
-      || !taskId
-      || wholePageImageUrls[page.pageId]
-      || wholePageImageLoading[page.pageId]
+      !examId ||
+      !taskId ||
+      wholePageImageUrls[page.pageId] ||
+      wholePageImageLoading[page.pageId]
     ) {
       return
     }
@@ -238,10 +248,14 @@ export function useWholePaperGallery(options: UseWholePaperGalleryOptions): UseW
     if (!examId || !taskId) {
       return
     }
+    const generation = ++wholePageViewGeneration
     wholePagesLoading.value = true
     wholePagesError.value = null
     try {
       const view = await getWholePaperView({ examId, taskId })
+      if (generation !== wholePageViewGeneration) {
+        return
+      }
       wholePages.value = view.pages
       wholeQuestions.value = view.questions
       currentWholePageIndex.value = 0
@@ -255,10 +269,15 @@ export function useWholePaperGallery(options: UseWholePaperGalleryOptions): UseW
         void preloadWholePageImagesForWindow()
       })
     } catch (error) {
+      if (generation !== wholePageViewGeneration) {
+        return
+      }
       wholePagesError.value = toUserError(error, '阅卷影像加载失败')
       showUserError(error, '影像工作区加载失败')
     } finally {
-      wholePagesLoading.value = false
+      if (generation === wholePageViewGeneration) {
+        wholePagesLoading.value = false
+      }
     }
   }
 
@@ -301,33 +320,34 @@ export function useWholePaperGallery(options: UseWholePaperGalleryOptions): UseW
     if (wholeQuestions.value.length === 0) {
       throw new Error('当前任务负责题目未加载，请刷新后重试')
     }
-    const questionScores: MarkingQuestionScoreSubmitItem[] = wholeQuestions.value.map((question) => {
-      const questionForm = getWholeQuestionForm(question.layoutQuestionId)
-      if (questionForm.score === undefined) {
-        throw new Error(`请填写第 ${question.questionNo} 题给分`)
-      }
-      return {
-        layoutQuestionId: question.layoutQuestionId,
-        score: questionForm.score,
-        annotationText: questionForm.annotationText.trim() || undefined,
-        correlationId: questionForm.correlationId,
-      }
-    })
+    const questionScores: MarkingQuestionScoreSubmitItem[] = wholeQuestions.value.map(
+      (question) => {
+        const questionForm = getWholeQuestionForm(question.layoutQuestionId)
+        if (questionForm.score === undefined) {
+          throw new Error(`请填写第 ${question.questionNo} 题给分`)
+        }
+        return {
+          layoutQuestionId: question.layoutQuestionId,
+          score: questionForm.score,
+          annotationText: questionForm.annotationText.trim() || undefined,
+          correlationId: questionForm.correlationId,
+        }
+      },
+    )
     const pageAnnotations: MarkingPageAnnotationSubmitItem[] = options.isWholePaperTask()
       ? wholePages.value
-          .map(
-            (page): MarkingPageAnnotationSubmitItem => ({
-              pageId: page.pageId,
-              annotationText: wholePageAnnotationForms[page.pageId]?.trim() || '',
-              correlationId: createCorrelationId('page', page.pageId),
-            }),
-          )
+          .map((page): MarkingPageAnnotationSubmitItem => ({
+            pageId: page.pageId,
+            annotationText: wholePageAnnotationForms[page.pageId]?.trim() || '',
+            correlationId: createCorrelationId('page', page.pageId),
+          }))
           .filter((item) => item.annotationText.length > 0)
       : []
     return { questionScores, pageAnnotations }
   }
 
   function resetWholePaperState(): void {
+    wholePageViewGeneration++
     releaseWholePageImages()
     wholePages.value = []
     wholeQuestions.value = []

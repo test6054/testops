@@ -1,1020 +1,648 @@
 <template>
-  <StageWorkbenchShell>
-    <template #signal>
-      <SignalBand :metrics="summaryMetrics" compact @metric-click="handleMetricClick" />
+  <StageWorkbenchShell class="scan-manual-entry">
+    <template v-if="selectedExamId" #context>
+      <ContextBar layout="workbench" :subtitle="contextBarSubtitle">
+        <template #status>
+          <UiTag
+            v-if="workbench"
+            :tone="workbench.missingPageCandidateCount > 0 ? 'orange' : 'green'"
+            size="sm"
+          >
+            {{ workbench.missingPageCandidateCount > 0
+              ? `${workbench.missingPageCandidateCount} 名缺页`
+              : '无缺页考生' }}
+          </UiTag>
+          <UiTag
+            v-if="workbench"
+            :tone="workbench.webSupplementDeviceCount > 0 ? 'blue' : 'orange'"
+            size="sm"
+          >
+            Web 工位 {{ workbench.webSupplementDeviceCount }}
+          </UiTag>
+        </template>
+        <template #actions>
+          <UiButton size="sm" variant="outline" @click="goScanLedger">
+            影像账本
+          </UiButton>
+          <UiButton size="sm" variant="primary" @click="openFileImportWizard">
+            文件补入
+          </UiButton>
+        </template>
+      </ContextBar>
     </template>
 
-    <UiEmpty v-if="!selectedExamId" description="请选择考试" />
+    <template v-if="selectedExamId" #signal>
+      <SignalBand
+        variant="tiles"
+        compact
+        :metrics="signalMetrics"
+        class="scan-manual-entry__stats"
+        @metric-click="handleMetricClick"
+      />
+    </template>
+
+    <UiEmpty v-if="!selectedExamId" description="未进入考试工作台" class="scan-manual-entry__empty" />
 
     <template v-else>
+      <ExamWorkspaceJourneySubNav />
+
       <UiAlertStrip
-        v-if="prepBlockReason"
-        tone="warning"
-        :message="prepBlockReason"
+        v-if="workbenchLoadFailed"
+        tone="error"
+        title="补录工作台指标加载失败"
+        description="缺页统计与补录记录暂不可用，请刷新后重试。"
+        dense
         class="scan-manual-entry__alert"
       />
 
-      <UiSectionTabs
-        v-model="activeTab"
-        :items="tabItems"
-        compact
-        class="scan-manual-entry__tabs"
+      <UiAlertStrip
+        v-if="classScopeWarning"
+        tone="warning"
+        :title="classScopeWarning"
+        dense
+        class="scan-manual-entry__alert"
       />
 
-      <!-- 首次文件导入 -->
-      <a-form
-        v-if="activeTab === 'direct'"
-        ref="directFormRef"
-        :model="directForm"
-        :rules="directRules"
-        layout="vertical"
-        class="scan-manual-entry__form"
-      >
-        <a-row :gutter="16">
-          <a-col :xs="24" :md="12">
-            <a-form-item label="扫描设备" name="deviceKey" required>
-              <a-select
-                v-model:value="directForm.deviceKey"
-                placeholder="选择启用中的扫描设备"
-                :options="deviceOptions"
-                :loading="devicesLoading"
-                show-search
-                option-filter-prop="label"
-                @change="handleDirectDeviceChange"
-              />
-            </a-form-item>
-          </a-col>
-          <a-col :xs="24" :md="12">
-            <a-form-item label="起始模板页号" name="startTemplatePageNo">
-              <a-input-number
-                v-model:value="directForm.startTemplatePageNo"
-                :min="1"
-                placeholder="默认从第 1 页起"
-                style="width: 100%"
-              />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="扫描来源文件（PDF 或多页图片）" name="sourceFileId" required>
-          <UiPlatformFileField
-            v-model:file-node-id="directForm.sourceFileId"
-            v-model:file-name="directForm.sourceFileName"
-            :scene-key="FileUploadSceneKey.MARK_EXAM_SCAN_SOURCE"
-            accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff"
-            button-text="选择文件"
+      <WorkbenchSurfaceCard flush class="scan-manual-entry__surface">
+        <div class="scan-manual-entry__table-shell">
+          <UiFilterBar
+            v-if="activeTab === 'candidates'"
+            v-model="candidateFilterModel"
+            :fields="candidateFilterFields"
+            variant="plain"
+            show-labels
+            search-text="查询"
+            @search="reloadCandidatesFromFirstPage"
+            @reset="resetCandidateFilter"
           />
-        </a-form-item>
-        <p v-if="directPrepareHint" class="scan-manual-entry__hint">{{ directPrepareHint }}</p>
-        <UiButton
-          variant="primary"
-          :loading="directSubmitting"
-          :disabled="directSubmitDisabled"
-          @click="submitDirect"
-        >
-          提交首次导入
-        </UiButton>
-      </a-form>
 
-      <!-- 指定页补扫 -->
-      <a-form
-        v-else-if="activeTab === 'supplement'"
-        ref="supplementFormRef"
-        :model="supplementForm"
-        :rules="supplementRules"
-        layout="vertical"
-        class="scan-manual-entry__form"
-      >
-        <a-row :gutter="16">
-          <a-col :xs="24" :md="12">
-            <a-form-item label="目标批次" name="scanBatchId" required>
-              <a-select
-                v-model:value="supplementForm.scanBatchId"
-                placeholder="选择已 commit 的批次"
-                :options="supplementBatchOptions"
-                :loading="batchesLoading"
-                show-search
-                option-filter-prop="label"
-                @change="handleSupplementBatchChange"
-              />
-            </a-form-item>
-          </a-col>
-          <a-col :xs="24" :md="12">
-            <a-form-item label="补扫试卷" name="paperInstanceId" required>
-              <a-select
-                v-model:value="supplementForm.paperInstanceId"
-                placeholder="选择本设备已绑定试卷"
-                :options="boundPaperOptions"
-                :loading="supplementPrepareLoading"
-                show-search
-                option-filter-prop="label"
-                allow-clear
-              />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="16">
-          <a-col :xs="24" :md="8">
-            <a-form-item label="补扫目标页" name="targetPageNo" required>
-              <a-input-number
-                v-model:value="supplementForm.targetPageNo"
-                :min="1"
-                style="width: 100%"
-              />
-            </a-form-item>
-          </a-col>
-          <a-col :xs="24" :md="16">
-            <a-form-item label="补扫原因" name="supplementReason" required>
-              <a-input v-model:value="supplementForm.supplementReason" :maxlength="255" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item name="replaceTargetPage">
-          <a-checkbox v-model:checked="supplementForm.replaceTargetPage">
-            替换目标页（勾选后旧页标记为 SUPERSEDED）
-          </a-checkbox>
-        </a-form-item>
-        <a-form-item label="补扫文件（单张图片）" name="sourceFileId" required>
-          <UiPlatformFileField
-            v-model:file-node-id="supplementForm.sourceFileId"
-            v-model:file-name="supplementForm.sourceFileName"
-            :scene-key="FileUploadSceneKey.MARK_EXAM_SCAN_SOURCE"
-            accept=".png,.jpg,.jpeg,.tif,.tiff"
-            button-text="选择文件"
+          <UiSectionTabs
+            v-model="activeTab"
+            :items="tabItems"
+            compact
+            class="scan-manual-entry__tabs"
+            @change="handleTabChange"
           />
-        </a-form-item>
-        <p v-if="supplementPrepareHint" class="scan-manual-entry__hint">
-          {{ supplementPrepareHint }}
-        </p>
-        <UiButton
-          variant="primary"
-          :loading="supplementSubmitting"
-          :disabled="supplementSubmitDisabled"
-          @click="submitSupplement"
-        >
-          提交指定页补扫
-        </UiButton>
-      </a-form>
 
-      <!-- 批次页维护 -->
-      <a-form
-        v-else-if="activeTab === 'maintenance'"
-        ref="maintenanceFormRef"
-        :model="maintenanceForm"
-        :rules="maintenanceRules"
-        layout="vertical"
-        class="scan-manual-entry__form"
-      >
-        <a-form-item label="目标批次（须 RECEIVED）" name="scanBatchId" required>
-          <a-select
-            v-model:value="maintenanceForm.scanBatchId"
-            placeholder="选择已接收状态的批次"
-            :options="receivedBatchOptions"
-            :loading="batchesLoading"
-            show-search
-            option-filter-prop="label"
+          <ManualSupplementCandidateTable
+            v-if="activeTab === 'candidates'"
+            :items="candidates"
+            :loading="candidatesLoading"
+            :current="candidateQuery.pageNum"
+            :page-size="candidateQuery.pageSize"
+            :total="candidateQuery.total"
+            :empty-description="candidateEmptyDescription"
+            @page-change="handleCandidatePageChange"
+            @supplement-missing="openMissingPageWizard"
+            @replace-page="openReplaceWizard"
+            @handle-attention="goScanMonitorForAttention"
           />
-        </a-form-item>
-        <a-radio-group v-model:value="maintenanceForm.mode" class="scan-manual-entry__mode">
-          <a-radio value="register">单页登记</a-radio>
-          <a-radio value="import">来源文件导入</a-radio>
-        </a-radio-group>
-        <template v-if="maintenanceForm.mode === 'register'">
-          <a-row :gutter="16">
-            <a-col :xs="24" :md="8">
-              <a-form-item label="扫描页序号" name="pageSeq" required>
-                <a-input-number
-                  v-model:value="maintenanceForm.pageSeq"
-                  :min="1"
-                  style="width: 100%"
-                />
-              </a-form-item>
-            </a-col>
-            <a-col :xs="24" :md="8">
-              <a-form-item label="模板页号" name="templatePageNo" required>
-                <a-input-number
-                  v-model:value="maintenanceForm.templatePageNo"
-                  :min="1"
-                  style="width: 100%"
-                />
-              </a-form-item>
-            </a-col>
-            <a-col :xs="24" :md="8">
-              <a-form-item label="已有试卷实例 ID">
-                <a-input
-                  v-model:value="maintenanceForm.paperInstanceId"
-                  placeholder="可选，续扫时填写"
-                />
-              </a-form-item>
-            </a-col>
-          </a-row>
-          <a-form-item label="扫描页文件" name="fileId" required>
-            <UiPlatformFileField
-              v-model:file-node-id="maintenanceForm.fileId"
-              v-model:file-name="maintenanceForm.fileName"
-              :scene-key="FileUploadSceneKey.MARK_EXAM_SCAN_SOURCE"
-              accept=".png,.jpg,.jpeg,.tif,.tiff"
-              button-text="选择单页图片"
-            />
-          </a-form-item>
-          <UiButton variant="primary" :loading="maintenanceSubmitting" @click="submitRegister">
-            登记扫描页
-          </UiButton>
-        </template>
-        <template v-else>
-          <a-row :gutter="16">
-            <a-col :xs="24" :md="8">
-              <a-form-item label="起始扫描页序号" name="startPageSeq">
-                <a-input-number
-                  v-model:value="maintenanceForm.startPageSeq"
-                  :min="1"
-                  style="width: 100%"
-                />
-              </a-form-item>
-            </a-col>
-            <a-col :xs="24" :md="8">
-              <a-form-item label="起始模板页号" name="startTemplatePageNo">
-                <a-input-number
-                  v-model:value="maintenanceForm.startTemplatePageNo"
-                  :min="1"
-                  style="width: 100%"
-                />
-              </a-form-item>
-            </a-col>
-            <a-col :xs="24" :md="8">
-              <a-form-item label="已有试卷实例 ID">
-                <a-input v-model:value="maintenanceForm.paperInstanceId" placeholder="可选" />
-              </a-form-item>
-            </a-col>
-          </a-row>
-          <a-form-item label="来源文件（PDF 或图片）" name="sourceFileId" required>
-            <UiPlatformFileField
-              v-model:file-node-id="maintenanceForm.sourceFileId"
-              v-model:file-name="maintenanceForm.sourceFileName"
-              :scene-key="FileUploadSceneKey.MARK_EXAM_SCAN_SOURCE"
-              accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff"
-              button-text="选择文件"
-            />
-          </a-form-item>
-          <UiButton variant="primary" :loading="maintenanceSubmitting" @click="submitImport">
-            导入并登记
-          </UiButton>
-        </template>
-      </a-form>
 
-      <!-- 识别提交 -->
-      <template v-else>
-        <UiFilterBar
-          v-model="recognitionFilter"
-          :fields="recognitionFilterFields"
-          variant="plain"
-          search-text="加载切片"
-          @search="loadPaperSlices"
-        />
-        <UiDataTable
-          :columns="sliceColumns"
-          :data-source="paperSlices"
-          :loading="slicesLoading"
-          row-key="responseSliceId"
-          size="small"
-          flat
-          :pagination="false"
-          empty-kind="first-run"
-        >
-          <template #empty>
-            <UiEmpty description="请选择已绑定卷面后加载作答切片" />
-          </template>
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'questionType'">
-              {{ strictEnumLabel(QuestionTypeDescription, record.questionType, '题型') }}
+          <UiDataTable
+            v-else
+            v-model:current="recordPagination.current"
+            v-model:page-size="recordPagination.pageSize"
+            :columns="recordColumns"
+            :data-source="records"
+            :loading="recordsLoading"
+            :total="recordPagination.total"
+            :scroll="{ x: 1080 }"
+            row-key="recordKey"
+            flat
+            empty-kind="first-run"
+            empty-description="暂无补录记录"
+            @page-change="handleRecordPageChange"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'scanMode'">
+                {{ scanModeLabel(record.scanMode) }}
+              </template>
+              <template v-else-if="column.key === 'student'">
+                <span v-if="record.studentNo">{{ record.studentNo }} · {{ record.studentName }}</span>
+                <span v-else class="scan-manual-entry__muted">—</span>
+              </template>
+              <template v-else-if="column.key === 'createTime'">
+                {{ formatDateTime(record.createTime) }}
+              </template>
             </template>
-            <template v-else-if="column.key === 'ocrScene'">
-              {{ strictEnumLabel(MARK_OCR_SCENE_LABEL, record.ocrScene, 'OCR 识别场景') }}
-            </template>
-            <template v-else-if="column.key === 'actions'">
-              <UiTableActions
-                :items="buildSliceRowActions(record)"
-                split
-                @action="(key) => handleSliceRowAction(key, record)"
-              />
-            </template>
-          </template>
-        </UiDataTable>
-        <UiCard
-          v-if="lastRecognizePreview"
-          title="最近识别结果"
-          class="scan-manual-entry__recognize-card"
-        >
-          <p class="scan-manual-entry__recognize-text">
-            {{ lastRecognizePreview.recognizedText || '（空作答）' }}
-          </p>
-          <p v-if="lastRecognizePreview.diagnostic" class="scan-manual-entry__hint">
-            {{ lastRecognizePreview.diagnostic }}
-          </p>
-        </UiCard>
-      </template>
+          </UiDataTable>
+        </div>
+      </WorkbenchSurfaceCard>
     </template>
+
+    <ManualSupplementWizardDrawer
+      v-model:open="wizardOpen"
+      :context="wizardContext"
+      @success="handleWizardSuccess"
+      @continue-next="handleContinueNext"
+    />
   </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
-import type { FormInstance, Rule } from 'ant-design-vue/es/form'
+import type { Key } from 'ant-design-vue/es/_util/type'
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ExamScannerDeviceResponse } from '@/apis/mark/exam-mark-scanner'
-import { listActiveScannerDevices } from '@/apis/mark/exam-mark-scanner'
-import type { ExamScannerBatchResponse } from '@/apis/mark/exam-scan'
-import { pageScannerBatches, QualityDecisionCode } from '@/apis/mark/exam-scan'
-import type { MarkOcrPaperSliceVO, MarkOcrRecognizeResponse } from '@/apis/mark/ocr-recognition'
-import {
-  listMarkOcrPaperSlices,
-  recognizeMarkOcr,
-  submitRecognition,
-} from '@/apis/mark/ocr-recognition'
-import type { ExamTeacherScanSupplementPrepareResponse } from '@/apis/mark/scan-source'
-import {
-  importScanSource,
-  prepareTeacherScanSupplement,
-  registerScannedPage,
-  teacherSupplementScanSource,
-} from '@/apis/mark/scan-source'
-import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
+import type {
+  ExamManualSupplementCandidateItemResponse,
+  ExamManualSupplementRecordItemResponse,
+  ExamManualSupplementWorkbenchResponse,
+} from '@/apis/mark/manual-supplement'
+import type { ManualSupplementScenario, ManualSupplementWizardContext } from '@/components/mark/manual-supplement/ManualSupplementWizardDrawer.vue'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type {ScannerKioskScanModeCode} from '@/types/enums/scanner-kiosk-scan-mode-enum';
 import type { SignalMetric } from '@/types/workbench'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { getExamDetail } from '@/apis/mark/exam'
-import { pageExamScoreSummary } from '@/apis/mark/exam-score'
-import { MARK_OCR_SCENE_LABEL } from '@/apis/mark/ocr-scene'
-import { QuestionTypeDescription } from '@/apis/mark/question-type'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
+import {
+  getManualSupplementWorkbench,
+  pageManualSupplementCandidates,
+  pageManualSupplementRecords,
+} from '@/apis/mark/manual-supplement'
+import ManualSupplementCandidateTable from '@/components/mark/manual-supplement/ManualSupplementCandidateTable.vue'
+import ManualSupplementWizardDrawer from '@/components/mark/manual-supplement/ManualSupplementWizardDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
-import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
-import { ScannerColorModeCode } from '@/types/enums/scanner-color-mode-enum'
-import { ScannerDuplexModeCode } from '@/types/enums/scanner-duplex-mode-enum'
-import { ScannerKioskScanModeCode } from '@/types/enums/scanner-kiosk-scan-mode-enum'
+import {
+
+  ScannerKioskScanModeDescription
+} from '@/types/enums/scanner-kiosk-scan-mode-enum'
 import { showUserError } from '@/utils/error-handler'
+import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScanManualEntry' })
 
-type ManualEntryTab = 'direct' | 'supplement' | 'maintenance' | 'recognition'
-type MaintenanceMode = 'register' | 'import'
+type ManualEntryTab = 'candidates' | 'records'
 
-const DEFAULT_SCAN_CONFIG: ExamScannerScanConfigVO = {
-  dpi: 300,
-  colorMode: ScannerColorModeCode.COLOR,
-  duplexMode: ScannerDuplexModeCode.SIMPLEX,
-  blankPageDetectionEnabled: true,
+interface RecordRow extends ExamManualSupplementRecordItemResponse {
+  recordKey: string
 }
 
 const router = useRouter()
+const route = useRoute()
 const { selectedExamId } = useMarkExamContext()
+const { contextBarSubtitle } = useExamJourneyContextBar('手动补录')
 
-const activeTab = ref<ManualEntryTab>('direct')
+const activeTab = ref<ManualEntryTab>('candidates')
 const tabItems = [
-  { key: 'direct', label: '首次文件导入' },
-  { key: 'supplement', label: '指定页补扫' },
-  { key: 'maintenance', label: '批次页维护' },
-  { key: 'recognition', label: '识别提交' },
+  { key: 'candidates', label: '待补名单' },
+  { key: 'records', label: '补录记录' },
 ]
 
+const workbench = ref<ExamManualSupplementWorkbenchResponse | null>(null)
+const workbenchLoadFailed = ref(false)
 const declaredClassIds = ref<string[]>([])
-const prepBlockReason = ref('')
-const devices = ref<ExamScannerDeviceResponse[]>([])
-const devicesLoading = ref(false)
-const batches = ref<ExamScannerBatchResponse[]>([])
-const batchesLoading = ref(false)
+const classOptions = ref<Array<{ value: string, label: string }>>([])
 
-const directFormRef = ref<FormInstance>()
-const supplementFormRef = ref<FormInstance>()
-const maintenanceFormRef = ref<FormInstance>()
-
-const directForm = reactive({
-  deviceKey: undefined as string | undefined,
-  startTemplatePageNo: 1 as number | undefined,
-  sourceFileId: undefined as string | undefined,
-  sourceFileName: undefined as string | undefined,
+const candidateFilterModel = reactive({
+  classId: undefined as string | undefined,
+  keyword: '',
 })
-const directPrepare = ref<ExamTeacherScanSupplementPrepareResponse | null>(null)
-const directPrepareLoading = ref(false)
-const directSubmitting = ref(false)
-
-const supplementForm = reactive({
-  scanBatchId: undefined as string | undefined,
-  paperInstanceId: undefined as string | undefined,
-  targetPageNo: undefined as number | undefined,
-  supplementReason: '',
-  replaceTargetPage: false,
-  sourceFileId: undefined as string | undefined,
-  sourceFileName: undefined as string | undefined,
+const candidateQuery = reactive({
+  pageNum: 1,
+  pageSize: 20,
+  total: 0,
+  classId: undefined as string | undefined,
+  keyword: undefined as string | undefined,
 })
-const supplementPrepare = ref<ExamTeacherScanSupplementPrepareResponse | null>(null)
-const supplementPrepareLoading = ref(false)
-const supplementSubmitting = ref(false)
+const candidates = ref<ExamManualSupplementCandidateItemResponse[]>([])
+const candidatesLoading = ref(false)
 
-const maintenanceForm = reactive({
-  scanBatchId: undefined as string | undefined,
-  mode: 'register' as MaintenanceMode,
-  pageSeq: 1 as number | undefined,
-  templatePageNo: 1 as number | undefined,
-  paperInstanceId: undefined as string | undefined,
-  fileId: undefined as string | undefined,
-  fileName: undefined as string | undefined,
-  startPageSeq: 1 as number | undefined,
-  startTemplatePageNo: 1 as number | undefined,
-  sourceFileId: undefined as string | undefined,
-  sourceFileName: undefined as string | undefined,
-})
-const maintenanceSubmitting = ref(false)
+const recordPagination = reactive({ current: 1, pageSize: 20, total: 0 })
+const records = ref<RecordRow[]>([])
+const recordsLoading = ref(false)
 
-const recognitionFilter = reactive({ paperInstanceId: undefined as string | undefined })
-const paperCandidateOptions = ref<Array<{ value: string; label: string }>>([])
-const paperSlices = ref<MarkOcrPaperSliceVO[]>([])
-const slicesLoading = ref(false)
-const recognizingSliceId = ref<string | null>(null)
-const submittingSliceId = ref<string | null>(null)
-const sliceRecognizeMap = reactive<Record<string, MarkOcrRecognizeResponse>>({})
-const lastRecognizePreview = ref<MarkOcrRecognizeResponse | null>(null)
+const wizardOpen = ref(false)
+const wizardContext = ref<ManualSupplementWizardContext | null>(null)
+const pendingDeepLink = ref(false)
 
-const deviceOptions = computed(() =>
-  devices.value.map((item) => ({
-    value: `${item.scannerDeviceId}::${item.scannerStationId}`,
-    label: `${item.scannerDeviceId} · ${item.scannerStationId}${item.deviceName ? ` · ${item.deviceName}` : ''}`,
-    device: item,
-  })),
+const classScopeWarning = computed(() =>
+  declaredClassIds.value.length === 0 ? '请先在考生名册维护考试班级范围' : '',
 )
 
-const supplementBatchOptions = computed(() =>
-  batches.value
-    .filter((item) => item.status !== 'DISCARDED' && item.status !== 'IN_PROGRESS')
-    .map((item) => ({
-      value: item.scanBatchId,
-      label: `${item.batchNo}${item.batchExternalNo ? ` · ${item.batchExternalNo}` : ''} · ${item.scannerDeviceId}`,
-      batch: item,
-    })),
-)
-
-const receivedBatchOptions = computed(() =>
-  batches.value
-    .filter((item) => item.status === 'RECEIVED')
-    .map((item) => ({
-      value: item.scanBatchId,
-      label: `${item.batchNo}${item.batchExternalNo ? ` · ${item.batchExternalNo}` : ''}`,
-    })),
-)
-
-const boundPaperOptions = computed(() =>
-  (supplementPrepare.value?.boundPapers ?? []).map((item) => ({
-    value: item.paperInstanceId,
-    label: `${item.studentNo} · ${item.studentName} · ${item.scanBatchDisplayName}`,
-  })),
-)
-
-function resolveDeviceFromKey(
-  deviceKey?: string,
-): { scannerDeviceId: string; scannerStationId: string } | null {
-  if (!deviceKey) return null
-  const [scannerDeviceId, scannerStationId] = deviceKey.split('::')
-  if (!scannerDeviceId || !scannerStationId) return null
-  return { scannerDeviceId, scannerStationId }
-}
-
-function resolveBatch(scanBatchId?: string): ExamScannerBatchResponse | null {
-  if (!scanBatchId) return null
-  return batches.value.find((item) => item.scanBatchId === scanBatchId) ?? null
-}
-
-function buildPrepareHint(context: ExamTeacherScanSupplementPrepareResponse | null): string {
-  if (!context || context.canSubmitManualSupplement) return ''
-  if (context.hasActiveScanSession) {
-    const batchText = context.activeBatchExternalNo ? `（${context.activeBatchExternalNo}）` : ''
-    return `${context.activeScanSessionReason ?? context.blockReason ?? '当前设备存在未结束扫描进程'}${batchText}。请先在扫描监控结束该批次后再提交。`
+const candidateEmptyDescription = computed(() => {
+  if (workbench.value && workbench.value.missingPageCandidateCount === 0) {
+    return '当前无缺页考生，可前往影像账本核对'
   }
-  return context.blockReason ?? context.supplementBlockReason ?? '当前设备或考试状态不允许提交'
-}
+  return '暂无待补考生'
+})
 
-const directPrepareHint = computed(() => buildPrepareHint(directPrepare.value))
-const supplementPrepareHint = computed(() => buildPrepareHint(supplementPrepare.value))
-
-const directSubmitDisabled = computed(
-  () =>
-    declaredClassIds.value.length === 0 ||
-    directPrepareLoading.value ||
-    directPrepare.value?.canSubmitManualSupplement === false,
-)
-
-const supplementSubmitDisabled = computed(
-  () =>
-    declaredClassIds.value.length === 0 ||
-    supplementPrepareLoading.value ||
-    supplementPrepare.value?.canSubmitManualSupplement === false,
-)
-
-const summaryMetrics = computed<SignalMetric[]>(() => [
+const candidateFilterFields = computed((): FilterField[] => [
   {
-    key: 'devices',
-    label: '可用设备',
-    value: String(devices.value.length),
-    tone: devices.value.length > 0 ? 'blue' : 'orange',
-    clickable: true,
-  },
-  {
-    key: 'received-batches',
-    label: 'RECEIVED 批次',
-    value: String(receivedBatchOptions.value.length),
-    tone: receivedBatchOptions.value.length > 0 ? 'green' : 'gray',
-    clickable: true,
-  },
-  {
-    key: 'batches',
-    label: '全部批次',
-    value: String(batches.value.length),
-    tone: 'blue',
-    clickable: true,
-  },
-])
-
-const recognitionFilterFields = computed(() => [
-  {
-    key: 'paperInstanceId',
-    label: '已绑定卷面',
-    type: 'select' as const,
-    options: paperCandidateOptions.value,
+    key: 'classId',
+    label: '班级',
+    type: 'select',
+    options: classOptions.value,
     allowSearch: true,
-    placeholder: '选择已绑定卷面',
+    placeholder: '全部班级',
+  },
+  {
+    key: 'keyword',
+    label: '考生',
+    type: 'input',
+    placeholder: '学号或姓名',
   },
 ])
 
-const sliceColumns: ColumnType<MarkOcrPaperSliceVO>[] = [
-  { title: '题号', dataIndex: 'questionNo', key: 'questionNo', width: 80 },
-  { title: '题型', key: 'questionType', width: 100 },
-  { title: 'OCR 场景', key: 'ocrScene', width: 120 },
-  { title: '页号', dataIndex: 'pageNo', key: 'pageNo', width: 72, align: 'right' },
-  { title: '满分', dataIndex: 'fullScore', key: 'fullScore', width: 72, align: 'right' },
-  { title: '操作', key: 'actions', width: 180 },
+const signalMetrics = computed((): SignalMetric[] => {
+  if (workbenchLoadFailed.value) {
+    return [{ key: 'load-failed', label: '补录 KPI', value: '加载失败', tone: 'red' }]
+  }
+  const data = workbench.value
+  if (!data) {
+    return [{ key: 'loading', label: '补录 KPI', value: '—', tone: 'gray' }]
+  }
+  return [
+    {
+      key: 'missing-page',
+      label: '缺页考生',
+      value: String(data.missingPageCandidateCount),
+      unit: '人',
+      tone: data.missingPageCandidateCount > 0 ? 'orange' : 'green',
+      clickable: true,
+    },
+    {
+      key: 'eligible-batch',
+      label: '可补扫批次',
+      value: String(data.supplementEligibleBatchCount),
+      tone: 'blue',
+      clickable: true,
+    },
+    {
+      key: 'attention',
+      label: '待处置异常',
+      value: String(data.pendingAttentionCount),
+      tone: data.pendingAttentionCount > 0 ? 'orange' : 'green',
+      clickable: true,
+    },
+    {
+      key: 'web-device',
+      label: 'Web 工位',
+      value: String(data.webSupplementDeviceCount),
+      tone: data.webSupplementDeviceCount > 0 ? 'blue' : 'orange',
+      clickable: true,
+    },
+  ]
+})
+
+const recordColumns: ColumnType<RecordRow>[] = [
+  { title: '模式', key: 'scanMode', width: 80 },
+  { title: '目标页', dataIndex: 'targetPageNo', key: 'targetPageNo', width: 80, align: 'right' },
+  { title: '考生', key: 'student', width: 180 },
+  { title: '补扫原因', dataIndex: 'supplementReason', key: 'supplementReason', width: 200 },
+  { title: '批次', dataIndex: 'batchNo', key: 'batchNo', width: 120 },
+  { title: '提交时间', key: 'createTime', width: 160 },
 ]
 
-const directRules: Record<string, Rule[]> = {
-  deviceKey: [{ required: true, message: '请选择扫描设备' }],
-  sourceFileId: [
-    {
-      validator: async () => {
-        if (!directForm.sourceFileId) {
-          return Promise.reject(new Error('请选择扫描来源文件'))
-        }
-      },
-    },
-  ],
+function scanModeLabel(mode: ScannerKioskScanModeCode): string {
+  return strictEnumLabel(ScannerKioskScanModeDescription, mode, '扫描模式')
 }
 
-const supplementRules: Record<string, Rule[]> = {
-  scanBatchId: [{ required: true, message: '请选择目标批次' }],
-  paperInstanceId: [{ required: true, message: '请选择已绑定试卷' }],
-  targetPageNo: [{ required: true, type: 'number', min: 1, message: '请填写补扫目标页号' }],
-  supplementReason: [{ required: true, message: '请填写补扫原因' }],
-  sourceFileId: [
-    {
-      validator: async () => {
-        if (!supplementForm.sourceFileId) {
-          return Promise.reject(new Error('请选择补扫文件'))
-        }
-      },
-    },
-  ],
+function goScanLedger(): void {
+  if (!selectedExamId.value) return
+  void router.push({
+    name: 'TeacherExamWorkspaceScanLedger',
+    params: { examId: selectedExamId.value },
+  })
 }
 
-const maintenanceRules: Record<string, Rule[]> = {
-  scanBatchId: [{ required: true, message: '请选择 RECEIVED 批次' }],
+function goScanMonitor(): void {
+  if (!selectedExamId.value) return
+  void router.push({
+    name: 'TeacherExamWorkspaceScanMonitor',
+    params: { examId: selectedExamId.value },
+  })
+}
+
+function goScanMonitorForAttention(record: ExamManualSupplementCandidateItemResponse): void {
+  if (!selectedExamId.value) return
+  void router.push({
+    name: 'TeacherExamWorkspaceScanMonitor',
+    params: { examId: selectedExamId.value },
+    query: {
+      tab: 'abnormal',
+      ...(record.paperInstanceId ? { paperInstanceId: record.paperInstanceId } : {}),
+    },
+  })
+}
+
+function goScanDevices(): void {
+  if (!selectedExamId.value) return
+  void router.push({
+    name: 'TeacherExamWorkspaceScanDevices',
+    params: { examId: selectedExamId.value },
+  })
+}
+
+function goScanBatches(): void {
+  if (!selectedExamId.value) return
+  void router.push({
+    name: 'TeacherExamWorkspaceScanBatches',
+    params: { examId: selectedExamId.value },
+  })
 }
 
 function handleMetricClick(key: string): void {
-  if (key === 'batches' || key === 'received-batches') {
-    void router.push({
-      name: 'TeacherExamWorkspaceScanBatches',
-      params: { examId: selectedExamId.value },
-    })
+  if (key === 'missing-page') {
+    activeTab.value = 'candidates'
+    void reloadCandidatesFromFirstPage()
+    return
+  }
+  if (key === 'eligible-batch') {
+    goScanBatches()
+    return
+  }
+  if (key === 'attention') {
+    goScanMonitor()
+    return
+  }
+  if (key === 'web-device') {
+    goScanDevices()
+  }
+}
+
+function handleTabChange(tab: Key): void {
+  if (tab === 'records') {
+    void loadRecords()
   }
 }
 
 async function loadExamContext(): Promise<void> {
   if (!selectedExamId.value) {
     declaredClassIds.value = []
-    prepBlockReason.value = ''
+    classOptions.value = []
     return
   }
   try {
     const detail = await getExamDetail(selectedExamId.value)
     declaredClassIds.value = (detail.classRefs ?? []).map((item) => item.classId)
-    prepBlockReason.value =
-      declaredClassIds.value.length === 0 ? '请先在考生名册维护考试班级范围' : ''
+    classOptions.value = (detail.classRefs ?? []).map((item) => ({
+      value: item.classId,
+      label: item.className || item.classId,
+    }))
   } catch (error) {
     declaredClassIds.value = []
+    classOptions.value = []
     showUserError(error, '考试详情加载失败')
   }
 }
 
-async function loadDevices(): Promise<void> {
-  devicesLoading.value = true
-  try {
-    devices.value = await listActiveScannerDevices()
-  } catch (error) {
-    devices.value = []
-    showUserError(error, '扫描设备加载失败')
-  } finally {
-    devicesLoading.value = false
-  }
-}
-
-async function loadBatches(): Promise<void> {
+async function loadWorkbench(): Promise<void> {
   if (!selectedExamId.value) {
-    batches.value = []
+    workbench.value = null
     return
   }
-  batchesLoading.value = true
+  workbenchLoadFailed.value = false
   try {
-    const result = await pageScannerBatches({
-      examId: selectedExamId.value,
-      pageNum: 1,
-      pageSize: 200,
-    })
-    batches.value = result.list
+    workbench.value = await getManualSupplementWorkbench(selectedExamId.value)
   } catch (error) {
-    batches.value = []
-    showUserError(error, '扫描批次加载失败')
-  } finally {
-    batchesLoading.value = false
+    workbench.value = null
+    workbenchLoadFailed.value = true
+    showUserError(error, '补录工作台加载失败')
   }
 }
 
-async function loadPaperCandidates(): Promise<void> {
+async function loadCandidates(): Promise<void> {
   if (!selectedExamId.value) {
-    paperCandidateOptions.value = []
+    candidates.value = []
     return
   }
+  candidatesLoading.value = true
   try {
-    const result = await pageExamScoreSummary({
+    const result = await pageManualSupplementCandidates({
       examId: selectedExamId.value,
-      pageNum: 1,
-      pageSize: 100,
+      pageNum: candidateQuery.pageNum,
+      pageSize: candidateQuery.pageSize,
+      classId: candidateQuery.classId,
+      keyword: candidateQuery.keyword,
     })
-    paperCandidateOptions.value = result.list
-      .filter((item) => item.paperInstanceId && item.bindingStatus === 'BOUND')
-      .map((item) => ({
-        value: item.paperInstanceId!,
-        label: `${item.studentNo} · ${item.studentName}`,
-      }))
+    candidates.value = result.list
+    candidateQuery.total = result.total
   } catch (error) {
-    paperCandidateOptions.value = []
-    showUserError(error, '卷面候选加载失败')
-  }
-}
-
-async function loadDirectPrepare(): Promise<void> {
-  directPrepare.value = null
-  const examId = selectedExamId.value
-  const device = resolveDeviceFromKey(directForm.deviceKey)
-  if (!examId || !device) return
-  directPrepareLoading.value = true
-  try {
-    directPrepare.value = await prepareTeacherScanSupplement({
-      examId,
-      scannerDeviceId: device.scannerDeviceId,
-      scannerStationId: device.scannerStationId,
-      scanMode: ScannerKioskScanModeCode.DIRECT,
-    })
-  } catch (error) {
-    directPrepare.value = null
-    showUserError(error, '首次导入预检失败')
+    candidates.value = []
+    showUserError(error, '待补名单加载失败')
   } finally {
-    directPrepareLoading.value = false
+    candidatesLoading.value = false
   }
 }
 
-async function loadSupplementPrepare(): Promise<void> {
-  supplementPrepare.value = null
-  const examId = selectedExamId.value
-  const batch = resolveBatch(supplementForm.scanBatchId)
-  if (!examId || !batch?.scannerDeviceId || !batch.scannerStationId || !batch.scanBatchId) return
-  supplementPrepareLoading.value = true
-  try {
-    supplementPrepare.value = await prepareTeacherScanSupplement({
-      examId,
-      scannerDeviceId: batch.scannerDeviceId,
-      scannerStationId: batch.scannerStationId,
-      scanMode: ScannerKioskScanModeCode.SUPPLEMENT,
-      scanBatchId: batch.scanBatchId,
-    })
-  } catch (error) {
-    supplementPrepare.value = null
-    showUserError(error, '补扫预检失败')
-  } finally {
-    supplementPrepareLoading.value = false
-  }
-}
-
-function handleDirectDeviceChange(): void {
-  void loadDirectPrepare()
-}
-
-function handleSupplementBatchChange(): void {
-  supplementForm.paperInstanceId = undefined
-  void loadSupplementPrepare()
-}
-
-async function submitDirect(): Promise<void> {
-  if (directSubmitDisabled.value) {
-    message.warning(directPrepareHint.value || '当前不可提交首次导入')
+async function loadRecords(): Promise<void> {
+  if (!selectedExamId.value) {
+    records.value = []
     return
   }
-  await directFormRef.value?.validate()
-  const examId = selectedExamId.value
-  const device = resolveDeviceFromKey(directForm.deviceKey)
-  if (!examId || !device || !directForm.sourceFileId) return
-  directSubmitting.value = true
+  recordsLoading.value = true
   try {
-    const response = await teacherSupplementScanSource({
-      examId,
-      scannerDeviceId: device.scannerDeviceId,
-      scannerStationId: device.scannerStationId,
-      declaredClassIds: declaredClassIds.value,
-      scanMode: ScannerKioskScanModeCode.DIRECT,
-      replaceTargetPage: false,
-      scanConfig: DEFAULT_SCAN_CONFIG,
-      sourceFileId: directForm.sourceFileId,
-      startTemplatePageNo: directForm.startTemplatePageNo,
+    const result = await pageManualSupplementRecords({
+      examId: selectedExamId.value,
+      pageNum: recordPagination.current,
+      pageSize: recordPagination.pageSize,
     })
-    message.success(
-      `首次导入成功，批次 ${response.batchExternalNo}，登记 ${response.registeredPageCount} 页`,
-    )
-    directForm.sourceFileId = undefined
-    directForm.sourceFileName = undefined
-    void loadBatches()
+    records.value = result.list.map((item, index) => ({
+      ...item,
+      recordKey: `${item.scanBatchId}-${item.createTime ?? index}`,
+    }))
+    recordPagination.total = result.total
   } catch (error) {
-    showUserError(error, '首次文件导入失败')
+    records.value = []
+    showUserError(error, '补录记录加载失败')
   } finally {
-    directSubmitting.value = false
+    recordsLoading.value = false
   }
 }
 
-async function submitSupplement(): Promise<void> {
-  if (supplementSubmitDisabled.value) {
-    message.warning(supplementPrepareHint.value || '当前不可提交补扫')
+function reloadCandidatesFromFirstPage(): void {
+  candidateQuery.pageNum = 1
+  candidateQuery.classId = candidateFilterModel.classId
+  candidateQuery.keyword = candidateFilterModel.keyword.trim() || undefined
+  void loadCandidates()
+}
+
+function resetCandidateFilter(): void {
+  candidateFilterModel.classId = undefined
+  candidateFilterModel.keyword = ''
+  reloadCandidatesFromFirstPage()
+}
+
+function handleCandidatePageChange(pageNum: number, pageSize: number): void {
+  candidateQuery.pageNum = pageNum
+  candidateQuery.pageSize = pageSize
+  void loadCandidates()
+}
+
+function handleRecordPageChange(pageEvent: { current: number, pageSize: number }): void {
+  recordPagination.current = pageEvent.current
+  recordPagination.pageSize = pageEvent.pageSize
+  void loadRecords()
+}
+
+function buildWizardContext(
+  scenario: ManualSupplementScenario,
+  record: Partial<ExamManualSupplementCandidateItemResponse> & {
+    targetPageNo?: number
+  },
+): ManualSupplementWizardContext {
+  return {
+    scenario,
+    examId: selectedExamId.value!,
+    paperInstanceId: record.paperInstanceId,
+    scanBatchId: record.scanBatchId,
+    targetPageNo: record.targetPageNo,
+    candidateRosterId: record.candidateRosterId,
+    studentNo: record.studentNo,
+    studentName: record.studentName,
+    className: record.className,
+    missingTemplatePageNos: record.missingTemplatePageNos,
+    blockReason: record.blockReason,
+    replaceBlockReason: record.replaceBlockReason,
+    supplementEligible: record.supplementEligible,
+    replaceEligible: record.replaceEligible,
+  }
+}
+
+function openMissingPageWizard(
+  record: ExamManualSupplementCandidateItemResponse,
+  targetPageNo?: number,
+): void {
+  if (!record.supplementEligible) {
     return
   }
-  await supplementFormRef.value?.validate()
-  const examId = selectedExamId.value
-  const batch = resolveBatch(supplementForm.scanBatchId)
-  if (
-    !examId ||
-    !batch?.scanBatchId ||
-    !batch.scannerDeviceId ||
-    !batch.scannerStationId ||
-    !supplementForm.sourceFileId
-  ) {
+  wizardContext.value = buildWizardContext('missing-page', {
+    ...record,
+    targetPageNo: targetPageNo ?? record.missingTemplatePageNos[0],
+  })
+  wizardOpen.value = true
+}
+
+function openReplaceWizard(
+  record: ExamManualSupplementCandidateItemResponse,
+): void {
+  if (!record.replaceEligible) {
     return
   }
-  supplementSubmitting.value = true
-  try {
-    const response = await teacherSupplementScanSource({
-      examId,
-      scannerDeviceId: batch.scannerDeviceId,
-      scannerStationId: batch.scannerStationId,
-      declaredClassIds: declaredClassIds.value,
-      scanMode: ScannerKioskScanModeCode.SUPPLEMENT,
-      scanBatchId: batch.scanBatchId,
-      targetPageNo: supplementForm.targetPageNo,
-      supplementReason: supplementForm.supplementReason.trim(),
-      replaceTargetPage: supplementForm.replaceTargetPage,
-      scanConfig: DEFAULT_SCAN_CONFIG,
-      sourceFileId: supplementForm.sourceFileId,
-      paperInstanceId: supplementForm.paperInstanceId,
-    })
-    message.success(`补扫成功，登记 ${response.registeredPageCount} 页`)
-    supplementForm.sourceFileId = undefined
-    supplementForm.sourceFileName = undefined
-    void loadBatches()
-  } catch (error) {
-    showUserError(error, '指定页补扫失败')
-  } finally {
-    supplementSubmitting.value = false
+  wizardContext.value = buildWizardContext('replace', { ...record, targetPageNo: undefined })
+  wizardOpen.value = true
+}
+
+function openFileImportWizard(): void {
+  if (!selectedExamId.value) return
+  wizardContext.value = {
+    scenario: 'file-import',
+    examId: selectedExamId.value,
+  }
+  wizardOpen.value = true
+}
+
+function handleWizardSuccess(): void {
+  void loadWorkbench()
+  void loadCandidates()
+  if (activeTab.value === 'records') {
+    void loadRecords()
   }
 }
 
-async function submitRegister(): Promise<void> {
-  await maintenanceFormRef.value?.validate()
-  const examId = selectedExamId.value
-  if (!examId || !maintenanceForm.scanBatchId || !maintenanceForm.fileId) return
-  maintenanceSubmitting.value = true
-  try {
-    const response = await registerScannedPage({
-      examId,
-      scanBatchId: maintenanceForm.scanBatchId,
-      paperInstanceId: maintenanceForm.paperInstanceId || undefined,
-      pageSeq: maintenanceForm.pageSeq ?? 1,
-      templatePageNo: maintenanceForm.templatePageNo ?? 1,
-      fileId: maintenanceForm.fileId,
-      qualityStatus: QualityDecisionCode.PASS,
-    })
-    message.success(`登记成功，页 ID ${response.pageId}，试卷 ${response.paperInstanceId}`)
-    maintenanceForm.fileId = undefined
-    maintenanceForm.fileName = undefined
-    if (!maintenanceForm.paperInstanceId) {
-      maintenanceForm.paperInstanceId = response.paperInstanceId
-    }
-  } catch (error) {
-    showUserError(error, '单页登记失败')
-  } finally {
-    maintenanceSubmitting.value = false
-  }
+function handleContinueNext(): void {
+  wizardOpen.value = false
+  activeTab.value = 'candidates'
+  void loadCandidates()
 }
 
-async function submitImport(): Promise<void> {
-  await maintenanceFormRef.value?.validate()
-  const examId = selectedExamId.value
-  if (!examId || !maintenanceForm.scanBatchId || !maintenanceForm.sourceFileId) return
-  maintenanceSubmitting.value = true
-  try {
-    const response = await importScanSource({
-      examId,
-      scanBatchId: maintenanceForm.scanBatchId,
-      sourceFileId: maintenanceForm.sourceFileId,
-      paperInstanceId: maintenanceForm.paperInstanceId || undefined,
-      startPageSeq: maintenanceForm.startPageSeq,
-      startTemplatePageNo: maintenanceForm.startTemplatePageNo,
-    })
-    message.success(`导入成功，登记 ${response.registeredPageCount} 页`)
-    maintenanceForm.sourceFileId = undefined
-    maintenanceForm.sourceFileName = undefined
-    if (response.paperInstanceId) {
-      maintenanceForm.paperInstanceId = response.paperInstanceId
-    }
-  } catch (error) {
-    showUserError(error, '来源文件导入失败')
-  } finally {
-    maintenanceSubmitting.value = false
+function parseScenario(value: unknown): ManualSupplementScenario | null {
+  if (value === 'missing-page' || value === 'replace' || value === 'file-import') {
+    return value
   }
+  return null
 }
 
-async function loadPaperSlices(): Promise<void> {
-  const examId = selectedExamId.value
-  const paperInstanceId = recognitionFilter.paperInstanceId
-  if (!examId || !paperInstanceId) {
-    message.warning('请选择已绑定卷面')
+function applyRouteDeepLink(): void {
+  const scenario = parseScenario(route.query.scenario)
+  if (!scenario || !selectedExamId.value) return
+  pendingDeepLink.value = true
+  if (scenario === 'file-import') {
+    wizardContext.value = { scenario, examId: selectedExamId.value }
+    wizardOpen.value = true
+    pendingDeepLink.value = false
     return
   }
-  slicesLoading.value = true
-  try {
-    paperSlices.value = await listMarkOcrPaperSlices({ examId, paperInstanceId })
-  } catch (error) {
-    paperSlices.value = []
-    showUserError(error, '作答切片加载失败')
-  } finally {
-    slicesLoading.value = false
+  const targetPageNo = route.query.targetPageNo
+    ? Number(route.query.targetPageNo)
+    : undefined
+  wizardContext.value = {
+    scenario,
+    examId: selectedExamId.value,
+    paperInstanceId: typeof route.query.paperInstanceId === 'string'
+      ? route.query.paperInstanceId
+      : undefined,
+    scanBatchId: typeof route.query.scanBatchId === 'string'
+      ? route.query.scanBatchId
+      : undefined,
+    candidateRosterId: typeof route.query.candidateRosterId === 'string'
+      ? route.query.candidateRosterId
+      : undefined,
+    targetPageNo: Number.isFinite(targetPageNo) ? targetPageNo : undefined,
   }
+  wizardOpen.value = true
+  pendingDeepLink.value = false
 }
 
-function buildSliceRowActions(slice: MarkOcrPaperSliceVO): UiTableRowActionItem[] {
-  return [
-    {
-      key: 'recognize',
-      label: 'OCR 识别',
-      disabled: recognizingSliceId.value === slice.responseSliceId,
-    },
-    {
-      key: 'submit',
-      label: '提交识别',
-      disabled:
-        submittingSliceId.value === slice.responseSliceId ||
-        !sliceRecognizeMap[slice.responseSliceId],
-    },
-  ]
+async function loadAll(): Promise<void> {
+  await loadExamContext()
+  await loadWorkbench()
+  await loadCandidates()
 }
 
-function handleSliceRowAction(key: string, slice: MarkOcrPaperSliceVO): void {
-  if (key === 'recognize') {
-    void handleRecognizeSlice(slice)
-    return
-  }
-  if (key === 'submit') {
-    void handleSubmitRecognition(slice)
-  }
-}
-
-async function handleRecognizeSlice(slice: MarkOcrPaperSliceVO): Promise<void> {
-  const examId = selectedExamId.value
-  if (!examId) return
-  recognizingSliceId.value = slice.responseSliceId
-  try {
-    const result = await recognizeMarkOcr({
-      examId,
-      paperInstanceId: slice.paperInstanceId,
-      responseSliceId: slice.responseSliceId,
-      layoutQuestionId: slice.layoutQuestionId,
-    })
-    sliceRecognizeMap[slice.responseSliceId] = result
-    lastRecognizePreview.value = result
-    message.success(`题 ${slice.questionNo} OCR 识别完成`)
-  } catch (error) {
-    showUserError(error, 'OCR 识别失败')
-  } finally {
-    recognizingSliceId.value = null
-  }
-}
-
-async function handleSubmitRecognition(slice: MarkOcrPaperSliceVO): Promise<void> {
-  const examId = selectedExamId.value
-  const recognizeResult = sliceRecognizeMap[slice.responseSliceId]
-  if (!examId || !recognizeResult) return
-  const ocrScene = recognizeResult.ocrScene ?? slice.ocrScene
-  if (!ocrScene) {
-    message.error('OCR 识别结果缺少识别场景，请重新识别')
-    return
-  }
-  if (recognizeResult.manualReviewRequired == null || recognizeResult.emptyAnswer == null) {
-    message.error('OCR 识别结果缺少提交所需字段，请重新识别')
-    return
-  }
-  submittingSliceId.value = slice.responseSliceId
-  try {
-    await submitRecognition({
-      examId,
-      paperInstanceId: slice.paperInstanceId,
-      layoutQuestionId: slice.layoutQuestionId,
-      responseSliceId: slice.responseSliceId,
-      recognizedAnswer: recognizeResult.recognizedText,
-      engineTraceId: recognizeResult.engineTraceId,
-      diagnostic: recognizeResult.diagnostic,
-      diagnosticCode: recognizeResult.diagnosticCode,
-      diagnosticMessage: recognizeResult.diagnosticMessage,
-      preprocessSummary: recognizeResult.preprocessSummary,
-      ocrScene,
-      manualReviewRequired: recognizeResult.manualReviewRequired,
-      emptyAnswer: recognizeResult.emptyAnswer,
-    })
-    message.success(`题 ${slice.questionNo} 识别结果已提交`)
-  } catch (error) {
-    showUserError(error, '识别结果提交失败')
-  } finally {
-    submittingSliceId.value = null
-  }
-}
+watch(selectedExamId, () => {
+  void loadAll()
+})
 
 watch(
-  selectedExamId,
+  () => route.query,
   () => {
-    void loadExamContext()
-    void loadBatches()
-    void loadPaperCandidates()
+    if (!pendingDeepLink.value) {
+      applyRouteDeepLink()
+    }
   },
-  { immediate: true },
 )
 
 onMounted(() => {
-  void loadDevices()
+  void loadAll().then(() => applyRouteDeepLink())
 })
 </script>
 
 <style lang="scss" scoped>
+.scan-manual-entry__empty,
 .scan-manual-entry__alert {
-  margin-bottom: var(--dp-space-4);
+  margin-bottom: 16px;
+}
+
+.scan-manual-entry__surface {
+  margin-top: 0;
+}
+
+.scan-manual-entry__table-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .scan-manual-entry__tabs {
-  margin-bottom: var(--dp-space-4);
+  padding: 0 16px;
 }
 
-.scan-manual-entry__form {
-  max-width: 880px;
-}
-
-.scan-manual-entry__hint {
-  margin: 0 0 var(--dp-space-4);
-  color: var(--ant-color-text-tertiary);
-  font-size: 13px;
-}
-
-.scan-manual-entry__mode {
-  margin-bottom: var(--dp-space-4);
-}
-
-.scan-manual-entry__recognize-card {
-  margin-top: var(--dp-space-4);
-}
-
-.scan-manual-entry__recognize-text {
-  margin: 0;
-  white-space: pre-wrap;
-  font-size: 14px;
-  line-height: 1.5;
+.scan-manual-entry__muted {
+  color: var(--ant-color-text-secondary);
 }
 </style>

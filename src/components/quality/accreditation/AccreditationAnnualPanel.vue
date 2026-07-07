@@ -4,13 +4,14 @@ import type {
   AnnualEvaluationPlanSaveRequest,
   AnnualEvaluationPlanVO,
 } from '@/apis/quality/accreditation'
+import { accreditationApi } from '@/apis/quality/accreditation'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
-import { accreditationApi } from '@/apis/quality/accreditation'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { canMutateAnnualEvaluationPlan } from '@/composables/useAccreditationWorkbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
@@ -220,6 +221,17 @@ async function updateCourseStatus(courseRowId: string, evaluationCompleted: bool
   }
 }
 
+function handleAnnualPlanRowAction(key: string, record: AnnualEvaluationPlanVO) {
+  if (key === 'courses') void selectPlan(record.id)
+  else if (key === 'edit') openEdit(record)
+  else if (key === 'delete') void removePlan(record.id)
+}
+
+function handleAnnualCourseRowAction(key: string, courseRowId: string) {
+  if (key === 'mark-done') void updateCourseStatus(courseRowId, true)
+  else if (key === 'undo-done') void updateCourseStatus(courseRowId, false)
+}
+
 watch(() => props.trainingPlanId, loadPlans, { immediate: true })
 
 defineExpose({ openCreate, loadPlans })
@@ -248,26 +260,15 @@ defineExpose({ openCreate, loadPlans })
           </div>
         </template>
         <template v-else-if="column.key === 'actions'">
-          <UiButton size="sm" variant="ghost" @click.stop="selectPlan(record.id)">
-            课程明细
-          </UiButton>
-          <UiButton
-            size="sm"
-            variant="outline"
-            :disabled="!canMutatePlan"
-            @click.stop="openEdit(record)"
-          >
-            编辑
-          </UiButton>
-          <UiButton
-            size="sm"
-            status="danger"
-            variant="ghost"
-            :disabled="!canMutatePlan"
-            @click.stop="removePlan(record.id)"
-          >
-            删除
-          </UiButton>
+          <UiTableActions
+            :items="[
+              { key: 'courses', label: '课程明细' },
+              { key: 'edit', label: '编辑', disabled: !canMutatePlan },
+              { key: 'delete', label: '删除', tone: 'danger', disabled: !canMutatePlan },
+            ]"
+            split
+            @action="(key) => handleAnnualPlanRowAction(key, record)"
+          />
         </template>
       </template>
       <template #empty>
@@ -297,24 +298,24 @@ defineExpose({ openCreate, loadPlans })
             {{ record.evaluationCompleted ? '是' : '否' }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiButton
-              v-if="record.evaluationRequired && !record.evaluationCompleted"
-              size="sm"
-              variant="primary"
-              :disabled="!canMutatePlan"
-              @click="updateCourseStatus(record.id, true)"
-            >
-              登记完成
-            </UiButton>
-            <UiButton
-              v-else-if="record.evaluationCompleted"
-              size="sm"
-              variant="outline"
-              :disabled="!canMutatePlan"
-              @click="updateCourseStatus(record.id, false)"
-            >
-              撤销完成
-            </UiButton>
+            <UiTableActions
+              :items="[
+                {
+                  key: 'mark-done',
+                  label: '登记完成',
+                  hidden: !(record.evaluationRequired && !record.evaluationCompleted),
+                  disabled: !canMutatePlan,
+                },
+                {
+                  key: 'undo-done',
+                  label: '撤销完成',
+                  hidden: !record.evaluationCompleted,
+                  disabled: !canMutatePlan,
+                },
+              ]"
+              split
+              @action="(key) => handleAnnualCourseRowAction(key, record.id)"
+            />
           </template>
         </template>
       </UiDataTable>

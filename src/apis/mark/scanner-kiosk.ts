@@ -548,6 +548,8 @@ export interface ExamScannerBoundPaperItemVO {
   classId?: string
   className?: string
   registeredPageCount: number
+  registeredTemplatePageNos?: number[]
+  missingTemplatePageNos?: number[]
   boundTime: string
 }
 

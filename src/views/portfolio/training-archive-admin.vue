@@ -1,21 +1,24 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioArchiveRecordStatusCode } from '@/apis/portfolio/enums'
-import type { PortfolioArchiveRecordSummaryVO } from '@/apis/portfolio/types'
-import { onMounted, ref } from 'vue'
-import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { PortfolioArchiveRecordStatusDescription } from '@/apis/portfolio/enums'
+import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { showUserError } from '@/utils/error-handler'
+import { useQueryTable } from '@/composables/useQueryTable'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-const loading = ref(false)
-const rows = ref<PortfolioArchiveRecordSummaryVO[]>([])
+const { loading, rows, pageNum, pageSize, pageTotal, loadPage, handlePageChange } = useQueryTable(
+  (params) =>
+    portfolioArchiveApi.pageRecords({
+      ...params,
+      materialType: 'CERTIFICATE',
+    }),
+)
 
 const columns: ColumnsType = [
   { title: '教师', dataIndex: 'teacherId', key: 'teacherId', width: 100 },
@@ -28,24 +31,6 @@ const columns: ColumnsType = [
 function recordStatusLabel(status: PortfolioArchiveRecordStatusCode): string {
   return strictEnumLabel(PortfolioArchiveRecordStatusDescription, status, '档案记录状态')
 }
-
-async function loadPage() {
-  loading.value = true
-  try {
-    const page = await portfolioArchiveApi.pageRecords({
-      pageNum: 1,
-      pageSize: 50,
-      materialType: 'CERTIFICATE',
-    })
-    rows.value = page.list
-  } catch (error) {
-    showUserError(error)
-  } finally {
-    loading.value = false
-  }
-}
-
-onMounted(loadPage)
 </script>
 
 <template>
@@ -57,11 +42,16 @@ onMounted(loadPage)
       <UiButton @click="loadPage"> 刷新 </UiButton>
       <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无培训档案" />
       <UiDataTable
+        v-model:current="pageNum"
+        v-model:page-size="pageSize"
+        pagination-mode="server"
+        :total="pageTotal"
         :columns="columns"
         :data-source="rows"
         :loading="loading"
         row-key="id"
         style="margin-top: 16px"
+        @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'recordStatus'">

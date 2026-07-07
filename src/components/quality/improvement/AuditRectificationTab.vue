@@ -188,7 +188,7 @@ async function loadList(options?: { refreshSignals?: boolean }) {
     rectList.value = page.list
     rectQuery.pageNum = page.pageNum
     rectQuery.pageSize = page.pageSize
-    rectTotal.value = Number(page.total)
+    rectTotal.value = page.total
     if (rectList.value.length === 0 && rectTotal.value > 0 && rectQuery.pageNum > 1) {
       rectQuery.pageNum -= 1
       await loadList(options)

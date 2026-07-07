@@ -98,6 +98,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import {
   archiveVolumeEventTypeLabel,
   archiveVolumeEventTypeTone,
@@ -112,7 +113,7 @@ const router = useRouter()
 const loading = ref(false)
 const loadFailed = ref(false)
 const events = ref<ArchiveVolumeAuditEventResponse[]>([])
-const pagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
+const pagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 
 const signalMetrics = computed<SignalMetric[]>(() =>
   pagination.total > 0 ? [{ key: 'events', label: '审计事件', value: pagination.total }] : [],
@@ -165,7 +166,7 @@ async function loadEvents() {
       pageSize: pagination.pageSize,
     })
     events.value = result.list
-    pagination.total = Number(result.total)
+    pagination.total = result.total
     pagination.pageNum = result.pageNum
     pagination.pageSize = result.pageSize
   } catch (error) {

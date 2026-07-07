@@ -1,12 +1,7 @@
 <template>
   <StageWorkbenchShell class="appeal-page">
     <template #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        :title="contextBarTitle"
-        :subtitle="contextBarSubtitle"
-      >
+      <ContextBar layout="workbench">
         <template #status>
           <UiTag tone="blue" size="sm">阶段 成绩复核</UiTag>
           <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">

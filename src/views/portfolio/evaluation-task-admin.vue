@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationTaskStatusCode } from '@/apis/portfolio/enums'
-import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
-import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import {
   PORTFOLIO_EVALUATION_MODE_OPTIONS,
   PORTFOLIO_EVALUATION_TASK_STATUS_OPTIONS,
@@ -13,22 +9,24 @@ import {
   PortfolioEvaluationModeDescription,
   PortfolioEvaluationTaskStatusDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
+import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
 import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
+import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { useQueryTable } from '@/composables/useQueryTable'
 import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
-const loading = ref(false)
-const rows = ref<PortfolioEvaluationTaskVO[]>([])
-const total = ref(0)
 const workgroups = ref<EvaluationWorkgroupVO[]>([])
 interface PortfolioEvaluationTaskForm {
   taskName: string
@@ -40,12 +38,6 @@ interface PortfolioEvaluationTaskForm {
 
 type PortfolioEvaluationTaskStatusFilter = '' | PortfolioEvaluationTaskStatusCode
 
-interface PortfolioEvaluationTaskQuery {
-  pageNum: number
-  pageSize: number
-  taskStatus: PortfolioEvaluationTaskStatusFilter
-}
-
 const form = reactive<PortfolioEvaluationTaskForm>({
   taskName: '',
   evaluationMode: PortfolioEvaluationModeCode.BY_PERSON,
@@ -53,11 +45,27 @@ const form = reactive<PortfolioEvaluationTaskForm>({
   startTime: '',
   endTime: '',
 })
-const query = reactive<PortfolioEvaluationTaskQuery>({
-  pageNum: 1,
-  pageSize: 20,
-  taskStatus: '',
-})
+const {
+  loading,
+  rows,
+  pageNum,
+  pageSize,
+  pageTotal,
+  filters: query,
+  loadPage,
+  search,
+  handlePageChange,
+} = useQueryTable(
+  (params) =>
+    portfolioEvaluationTaskApi.page({
+      ...params,
+      taskStatus: params.taskStatus || undefined,
+    }),
+  {
+    defaultFilters: () => ({ taskStatus: '' as PortfolioEvaluationTaskStatusFilter }),
+    immediate: false,
+  },
+)
 
 const evaluationModeOptions = PORTFOLIO_EVALUATION_MODE_OPTIONS
 
@@ -98,23 +106,6 @@ async function loadWorkgroups() {
     workgroups.value = page.list ?? []
   } catch (error) {
     showUserError(error)
-  }
-}
-
-async function loadPage() {
-  loading.value = true
-  try {
-    const page = await portfolioEvaluationTaskApi.page({
-      pageNum: query.pageNum,
-      pageSize: query.pageSize,
-      taskStatus: query.taskStatus || undefined,
-    })
-    rows.value = page.list
-    total.value = Number(page.total)
-  } catch (error) {
-    showUserError(error)
-  } finally {
-    loading.value = false
   }
 }
 
@@ -224,12 +215,22 @@ onMounted(async () => {
           placeholder="任务状态"
           style="width: 120px"
           :options="taskStatusOptions"
-          @change="loadPage"
+          @change="search"
         />
-        <UiButton @click="loadPage"> 查询 </UiButton>
+        <UiButton @click="search"> 查询 </UiButton>
       </div>
       <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无评价任务" />
-      <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id">
+      <UiDataTable
+        v-model:current="pageNum"
+        v-model:page-size="pageSize"
+        pagination-mode="server"
+        :total="pageTotal"
+        :columns="columns"
+        :data-source="rows"
+        :loading="loading"
+        row-key="id"
+        @page-change="handlePageChange"
+      >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'evaluationMode'">
             {{ evaluationModeLabel(record.evaluationMode) }}
@@ -249,20 +250,20 @@ onMounted(async () => {
             <span v-else>—</span>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <a
-              v-if="record.taskStatus !== 'PUBLISHED' && record.taskStatus !== 'CLOSED'"
-              @click="publishTask(record.id)"
-            >发布</a>
+            <UiTableActions
+              :items="[
+                {
+                  key: 'publish',
+                  label: '发布',
+                  hidden: record.taskStatus === 'PUBLISHED' || record.taskStatus === 'CLOSED',
+                },
+              ]"
+              split
+              @action="() => publishTask(record.id)"
+            />
           </template>
         </template>
       </UiDataTable>
-      <a-pagination
-        v-model:current="query.pageNum"
-        :total="total"
-        :page-size="query.pageSize"
-        style="margin-top: 12px"
-        @change="loadPage"
-      />
     </UiCard>
   </StageWorkbenchShell>
 </template>

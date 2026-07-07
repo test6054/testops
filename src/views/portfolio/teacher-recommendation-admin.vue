@@ -2,12 +2,13 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PortfolioTeacherPkCompareVO,
-  PortfolioTeacherRecommendCandidateVO,
   PortfolioTeacherRecommendExplainStatusVO,
   PortfolioTeacherRecommendRuleVO,
   PortfolioTeacherRecommendRunVO,
 } from '@/apis/portfolio/teacher-platform'
+import { portfolioTeacherRecommendationApi } from '@/apis/portfolio/teacher-platform'
 import type { AiTaskStatusCode } from '@/apis/quality/types'
+import { AiTaskStatusDescription } from '@/apis/quality/types'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -18,15 +19,15 @@ import {
   PortfolioTeacherRecommendSceneCode,
   PortfolioTeacherRecommendSceneDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioTeacherRecommendationApi } from '@/apis/portfolio/teacher-platform'
 import { aiTaskApi } from '@/apis/quality/ai-task'
-import { AiTaskStatusDescription } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { useQueryTable } from '@/composables/useQueryTable'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -36,13 +37,10 @@ function readRouteStringParam(value: unknown): string {
 
 const activeTab = ref('execute')
 const rules = ref<PortfolioTeacherRecommendRuleVO[]>([])
-const candidates = ref<PortfolioTeacherRecommendCandidateVO[]>([])
-const runs = ref<PortfolioTeacherRecommendRunVO[]>([])
 const pkResult = ref<PortfolioTeacherPkCompareVO | null>(null)
 const selectedRuleId = ref('')
 const lastRunId = ref('')
 const loading = ref(false)
-const runsLoading = ref(false)
 
 const ruleForm = reactive({
   ruleName: '',
@@ -80,6 +78,46 @@ const explainStatus = ref<PortfolioTeacherRecommendExplainStatusVO | null>(null)
 const explainRunId = ref('')
 const route = useRoute()
 const router = useRouter()
+const {
+  loading: runsLoading,
+  rows: runs,
+  pageNum: runsPageNum,
+  pageSize: runsPageSize,
+  pageTotal: runsPageTotal,
+  loadPage: loadRuns,
+  search: searchRuns,
+  handlePageChange: handleRunsPageChange,
+} = useQueryTable(
+  (params) =>
+    portfolioTeacherRecommendationApi.pageRuns({
+      ...params,
+      ruleId: selectedRuleId.value || undefined,
+    }),
+  { immediate: false },
+)
+const {
+  loading: candidatesLoading,
+  rows: candidates,
+  pageNum,
+  pageSize,
+  pageTotal,
+  loadPage: loadCandidatesPage,
+  handlePageChange,
+} = useQueryTable(
+  (params) =>
+    portfolioTeacherRecommendationApi.pageCandidates({
+      ...params,
+      runId: lastRunId.value,
+    }),
+  { immediate: false },
+)
+
+async function loadCandidates() {
+  if (!lastRunId.value) {
+    return
+  }
+  await loadCandidatesPage()
+}
 
 function aiTaskStatusLabel(status?: AiTaskStatusCode): string {
   if (!status) {
@@ -212,22 +250,6 @@ async function executeAiExplain() {
   }
 }
 
-async function loadRuns() {
-  runsLoading.value = true
-  try {
-    const page = await portfolioTeacherRecommendationApi.pageRuns({
-      ruleId: selectedRuleId.value || undefined,
-      pageNum: 1,
-      pageSize: 50,
-    })
-    runs.value = page.list
-  } catch (error) {
-    showUserError(error)
-  } finally {
-    runsLoading.value = false
-  }
-}
-
 function viewRunCandidates(runId: string) {
   lastRunId.value = runId
   activeTab.value = 'execute'
@@ -245,22 +267,6 @@ async function loadExplainStatus(runId: string) {
     showUserError(error)
   } finally {
     explainLoading.value = false
-  }
-}
-
-async function loadCandidates() {
-  if (!lastRunId.value) {
-    return
-  }
-  try {
-    const page = await portfolioTeacherRecommendationApi.pageCandidates({
-      runId: lastRunId.value,
-      pageNum: 1,
-      pageSize: 50,
-    })
-    candidates.value = page.list
-  } catch (error) {
-    showUserError(error)
   }
 }
 
@@ -285,7 +291,7 @@ async function runPkCompare() {
 
 watch(selectedRuleId, () => {
   if (activeTab.value === 'runs') {
-    void loadRuns()
+    void searchRuns()
   }
 })
 
@@ -336,11 +342,16 @@ onMounted(async () => {
           </div>
           <UiEmpty v-if="!loading && candidates.length === 0" description="当前筛选无推荐记录" />
           <UiDataTable
+            v-model:current="pageNum"
+            v-model:page-size="pageSize"
+            pagination-mode="server"
+            :total="pageTotal"
             :columns="candidateColumns"
             :data-source="candidates"
-            :loading="loading"
+            :loading="candidatesLoading"
             row-key="id"
             style="margin-top: 16px"
+            @page-change="handlePageChange"
           />
         </UiCard>
       </a-tab-pane>
@@ -349,11 +360,16 @@ onMounted(async () => {
           <UiButton :loading="runsLoading" @click="loadRuns"> 刷新历史 </UiButton>
           <UiEmpty v-if="!runsLoading && runs.length === 0" description="当前筛选无推荐记录" />
           <UiDataTable
+            v-model:current="runsPageNum"
+            v-model:page-size="runsPageSize"
+            pagination-mode="server"
+            :total="runsPageTotal"
             :columns="runColumns"
             :data-source="runs"
             :loading="runsLoading"
             row-key="id"
             style="margin-top: 16px"
+            @page-change="handleRunsPageChange"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'runMode'">
@@ -366,7 +382,11 @@ onMounted(async () => {
                 <a @click="loadExplainStatus(record.id)">查看</a>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <a @click="viewRunCandidates(record.id)">查看候选</a>
+                <UiTableActions
+                  :items="[{ key: 'candidates', label: '查看候选' }]"
+                  split
+                  @action="() => viewRunCandidates(record.id)"
+                />
               </template>
             </template>
           </UiDataTable>

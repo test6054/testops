@@ -6,10 +6,9 @@ import {
   PortfolioKeyTeacherRegistryStatusDescription,
   PortfolioKeyTeacherRegistryTypeCode,
 } from '@/apis/portfolio/enums'
-import type { PortfolioKeyTeacherRegistryVO } from '@/apis/portfolio/teacher-platform'
-import { portfolioKeyTeacherApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
+import { reactive, ref } from 'vue'
+import { portfolioKeyTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -18,6 +17,7 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
+import { useQueryTable } from '@/composables/useQueryTable'
 import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 
@@ -29,8 +29,6 @@ const REGISTRY_TABS = PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_OPTIONS.map((item) => 
 const activeType = ref<PortfolioKeyTeacherRegistryTypeCode>(
   PortfolioKeyTeacherRegistryTypeCode.PROGRAM_LEADER,
 )
-const loading = ref(false)
-const rows = ref<PortfolioKeyTeacherRegistryVO[]>([])
 const form = reactive({
   teacherUserId: '',
   specialtyName: '',
@@ -40,6 +38,19 @@ const form = reactive({
 })
 const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
   usePortfolioTeacherSearch()
+const { loading, rows, pageNum, pageSize, pageTotal, loadPage, search, handlePageChange } =
+  useQueryTable(
+    (params) =>
+      portfolioKeyTeacherApi.page({
+        ...params,
+        registryType: activeType.value,
+      }),
+    {
+      onLoaded: (list) => {
+        void hydrateTeacherLabels(list.map((row) => row.teacherUserId ?? ''))
+      },
+    },
+  )
 
 const columns: ColumnsType = [
   { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },
@@ -52,23 +63,6 @@ const columns: ColumnsType = [
 
 function registryStatusLabel(status: PortfolioKeyTeacherRegistryStatusCode): string {
   return PortfolioKeyTeacherRegistryStatusDescription[status]
-}
-
-async function loadPage() {
-  loading.value = true
-  try {
-    const page = await portfolioKeyTeacherApi.page({
-      pageNum: 1,
-      pageSize: 50,
-      registryType: activeType.value,
-    })
-    rows.value = page.list
-    await hydrateTeacherLabels(rows.value.map((row) => row.teacherUserId ?? ''))
-  } catch (error) {
-    showUserError(error)
-  } finally {
-    loading.value = false
-  }
 }
 
 async function saveRegistry() {
@@ -126,10 +120,8 @@ function switchType(key: string | number) {
       activeType.value = PortfolioKeyTeacherRegistryTypeCode.KEY_TEACHER
       break
   }
-  void loadPage()
+  search()
 }
-
-onMounted(loadPage)
 </script>
 
 <template>
@@ -161,11 +153,16 @@ onMounted(loadPage)
       </div>
       <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无骨干教师记录" />
       <UiDataTable
+        v-model:current="pageNum"
+        v-model:page-size="pageSize"
+        pagination-mode="server"
+        :total="pageTotal"
         :columns="columns"
         :data-source="rows"
         :loading="loading"
         row-key="id"
         style="margin-top: 16px"
+        @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherUserId'">

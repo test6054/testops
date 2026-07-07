@@ -1,7 +1,7 @@
 import type { ExamWorkbenchStageSnapshotResponse } from '@/apis/mark/exam-progress'
+import { getWorkbenchStageSnapshot } from '@/apis/mark/exam-progress'
 import { storeToRefs } from 'pinia'
 import { onBeforeUnmount, ref, watch } from 'vue'
-import { getWorkbenchStageSnapshot } from '@/apis/mark/exam-progress'
 import { usePolling } from '@/composables/usePolling'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 import { showUserError } from '@/utils/error-handler'
@@ -23,7 +23,6 @@ export function useMarkWorkbenchSnapshot(examId: () => string) {
     suggestedStageKey,
     prepAdvisoryReasons,
     prepBlockingReasons,
-    experienceAssistBlockingReasons,
     selectedExamLabel,
   } = storeToRefs(markStageStore)
   const refreshing = ref(false)
@@ -149,7 +148,6 @@ export function useMarkWorkbenchSnapshot(examId: () => string) {
     suggestedStageKey,
     prepAdvisoryReasons,
     prepBlockingReasons,
-    experienceAssistBlockingReasons,
     selectedExamLabel,
     refreshSnapshot,
     syncSnapshotPolling: polling.syncPolling,

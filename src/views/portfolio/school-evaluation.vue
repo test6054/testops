@@ -2,6 +2,7 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
 import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { Input, message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -20,7 +21,6 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -109,7 +109,7 @@ async function loadPage() {
       pageSize: pageSize.value,
     })
     rows.value = page.list
-    pageTotal.value = Number(page.total)
+    pageTotal.value = page.total
   } catch (error) {
     showUserError(error, '加载评价任务失败')
   } finally {

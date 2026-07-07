@@ -1,26 +1,20 @@
 <template>
   <StageWorkbenchShell class="score-finalize-page">
-    <template #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        :title="contextBarTitle"
-        :subtitle="contextBarSubtitle"
-      >
+    <template
+      v-if="effectiveRiskOverview?.readyToPublish || blockingRiskReasons.length > 0 || canBatchConfirmSafe"
+      #context
+    >
+      <ContextBar layout="workbench">
         <template #status>
-          <UiTag tone="blue" size="sm">阶段 成绩确认</UiTag>
-          <UiTag v-if="riskOverview?.readyToPublish" tone="green" size="sm">可进入发布</UiTag>
+          <UiTag v-if="effectiveRiskOverview?.readyToPublish" tone="green" size="sm">可进入发布</UiTag>
           <UiTag v-else-if="blockingRiskReasons.length > 0" tone="orange" size="sm">存在阻塞风险</UiTag>
         </template>
         <template #actions>
-          <UiButton variant="ghost" size="sm" @click="goExportTasks">
-            导出任务
-          </UiButton>
           <UiButton
-            v-if="riskOverview?.readyToPublish"
+            v-if="effectiveRiskOverview?.readyToPublish"
             variant="outline"
             size="sm"
-            @click="goScorePublish"
+            @click="handleGoScorePublish"
           >
             前往成绩发布
           </UiButton>
@@ -46,7 +40,24 @@
     <template v-else>
       <ExamWorkspaceJourneySubNav />
 
-      <ScoreReleaseStepPipeline :overview="riskOverview" />
+      <ScoreReleaseStepPipeline :overview="effectiveRiskOverview" />
+
+      <WorkbenchNoticeBanner
+        v-if="panelNotice"
+        :title="panelNotice.title"
+        :description="panelNotice.description"
+        :tone="panelNotice.tone"
+        class="score-finalize__notice-banner"
+      >
+        <UiButton
+          v-if="panelNotice.action === 'layout'"
+          variant="outline"
+          size="sm"
+          @click="goLayoutDesigner"
+        >
+          前往制卷设计
+        </UiButton>
+      </WorkbenchNoticeBanner>
 
       <UiAlertStrip
         v-if="blockingRiskReasons.length > 0"
@@ -85,7 +96,7 @@
         </template>
       </UiAlertStrip>
       <UiAlertStrip
-        v-else-if="riskOverview?.readyToPublish"
+        v-else-if="effectiveRiskOverview?.readyToPublish"
         tone="success"
         title="全场成绩已具备发布条件"
         description="确认环节已完成，可进入成绩发布页面向学生侧下发。"
@@ -93,21 +104,24 @@
         class="score-finalize__alert"
       >
         <template #actions>
-          <UiButton variant="primary" size="sm" @click="goScorePublish">
+          <UiButton variant="primary" size="sm" @click="handleGoScorePublish">
             前往成绩发布
           </UiButton>
         </template>
       </UiAlertStrip>
 
-      <ScoreWorkbenchAnalyticsSection
-        :panel="scorePanel"
-        :loading="riskOverviewLoading"
-        mode="confirm"
-      />
-
       <WorkbenchSurfaceCard flush class="score-finalize__table-section">
-        <template #head>考生成绩</template>
-        <template #toolbar>
+        <div class="score-finalize__table-shell">
+          <h3 class="score-finalize__table-title">考生成绩</h3>
+          <a-skeleton v-if="riskOverviewLoading" active :paragraph="{ rows: 1 }" />
+          <UiSectionTabs
+            v-else
+            v-model="statusTabKey"
+            :items="statusTabItems"
+            compact
+            class="score-finalize__status-tabs"
+            @change="handleStatusTabChange"
+          />
           <div class="score-finalize__table-toolbar">
             <UiButton
               v-if="blockingRiskReasons.length > 0"
@@ -117,89 +131,92 @@
             >
               集中复核异常成绩
             </UiButton>
-            <UiFilterBar
-              v-model="scoreFilterModel"
-              :fields="scoreFilterFields"
-              variant="plain"
-              show-labels
-              search-text="查询"
-              @search="handleSearch"
-              @reset="handleReset"
-            />
-          </div>
-        </template>
-
-        <UiDataTable
-          v-model:current="pagination.current"
-          v-model:page-size="pagination.pageSize"
-          :columns="columns"
-          :data-source="candidates"
-          :loading="loading"
-          :total="pagination.total"
-          row-key="candidateRosterId"
-          size="middle"
-          flat
-          class="score-finalize__table student-detail-table__data-table"
-          @page-change="handlePageChange"
-        >
-          <template #bodyCell="{ column, index }">
-            <template v-if="column.key === 'studentNo'">
-              <span class="score-summary-table__mono">{{ candidates[index].studentNo || '—' }}</span>
-            </template>
-            <template v-else-if="column.key === 'studentName'">
-              {{ candidates[index].studentName || '—' }}
-            </template>
-            <template v-else-if="column.key === 'examScore'">
-              <span v-if="candidates[index].examScore != null" class="score-summary-table__score">
-                {{ candidates[index].examScore }}
-              </span>
-              <span v-else class="score-finalize__hint">—</span>
-            </template>
-            <template v-else-if="column.key === 'dailyScore'">
-              <span v-if="candidates[index].dailyScore != null" class="score-summary-table__score">
-                {{ candidates[index].dailyScore }}
-              </span>
-              <span v-else class="score-finalize__hint">—</span>
-            </template>
-            <template v-else-if="column.key === 'finalScore'">
-              <span v-if="candidates[index].finalScore != null" class="score-summary-table__score score-summary-table__score--total">
-                {{ candidates[index].finalScore }}
-              </span>
-              <span v-else class="score-finalize__hint">—</span>
-            </template>
-            <template v-else-if="column.key === 'bias'">
-              <div class="score-finalize__bias-cell">
-                <UiTag :tone="biasLevelTone(classifyScoreBias(candidates[index].finalScore, pageScoreStats))" size="sm">
-                  {{ biasLevelLabel(classifyScoreBias(candidates[index].finalScore, pageScoreStats)) }}
-                </UiTag>
-                <span
-                  v-if="formatScoreBiasDelta(candidates[index].finalScore, pageScoreStats)"
-                  class="score-finalize__bias-delta"
-                >
-                  {{ formatScoreBiasDelta(candidates[index].finalScore, pageScoreStats) }}
-                </span>
-              </div>
-            </template>
-            <template v-else-if="column.key === 'finalScoreStatus'">
-              <UiTag :tone="finalScoreStatusTone(candidates[index].finalScoreStatus)" size="sm">
-                {{ finalScoreStatusLabel(candidates[index].finalScoreStatus) }}
-              </UiTag>
-            </template>
-            <template v-else-if="column.key === 'confirmedTime'">
-              {{ formatDateTime(candidates[index].confirmedTime) }}
-            </template>
-            <template v-else-if="column.key === 'actions'">
-              <UiTableActions
-                :items="buildFinalizeActions(candidates[index])"
-                split
-                @action="(key) => handleFinalizeRowAction(key, candidates[index])"
+            <div class="score-finalize__table-toolbar-main">
+              <UiFilterBar
+                v-model="scoreFilterModel"
+                :fields="scoreFilterFields"
+                variant="plain"
+                show-labels
+                search-text="查询"
+                @search="handleSearch"
+                @reset="handleReset"
               />
-            </template>
-          </template>
-        </UiDataTable>
-      </WorkbenchSurfaceCard>
+              <UiButton variant="outline" size="sm" @click="goExportTasks">
+                导出任务
+              </UiButton>
+            </div>
+          </div>
 
-      <ScorePublishRelatedLinksCard variant="confirm" />
+          <UiDataTable
+            v-model:current="pagination.current"
+            v-model:page-size="pagination.pageSize"
+            :columns="columns"
+            :data-source="candidates"
+            :loading="loading"
+            :total="pagination.total"
+            row-key="candidateRosterId"
+            size="middle"
+            flat
+            class="score-finalize__table student-detail-table__data-table"
+            @page-change="handlePageChange"
+          >
+            <template #bodyCell="{ column, index }">
+              <template v-if="column.key === 'studentNo'">
+                <span class="score-summary-table__mono">{{ candidates[index].studentNo || '—' }}</span>
+              </template>
+              <template v-else-if="column.key === 'studentName'">
+                {{ candidates[index].studentName || '—' }}
+              </template>
+              <template v-else-if="column.key === 'examScore'">
+                <span v-if="candidates[index].examScore != null" class="score-summary-table__score">
+                  {{ candidates[index].examScore }}
+                </span>
+                <span v-else class="score-finalize__hint">—</span>
+              </template>
+              <template v-else-if="column.key === 'dailyScore'">
+                <span v-if="candidates[index].dailyScore != null" class="score-summary-table__score">
+                  {{ candidates[index].dailyScore }}
+                </span>
+                <span v-else class="score-finalize__hint">—</span>
+              </template>
+              <template v-else-if="column.key === 'finalScore'">
+                <span v-if="candidates[index].finalScore != null" class="score-summary-table__score score-summary-table__score--total">
+                  {{ candidates[index].finalScore }}
+                </span>
+                <span v-else class="score-finalize__hint">—</span>
+              </template>
+              <template v-else-if="column.key === 'bias'">
+                <div class="score-finalize__bias-cell">
+                  <UiTag :tone="biasLevelTone(classifyScoreBias(candidates[index].finalScore, pageScoreStats))" size="sm">
+                    {{ biasLevelLabel(classifyScoreBias(candidates[index].finalScore, pageScoreStats)) }}
+                  </UiTag>
+                  <span
+                    v-if="formatScoreBiasDelta(candidates[index].finalScore, pageScoreStats)"
+                    class="score-finalize__bias-delta"
+                  >
+                    {{ formatScoreBiasDelta(candidates[index].finalScore, pageScoreStats) }}
+                  </span>
+                </div>
+              </template>
+              <template v-else-if="column.key === 'finalScoreStatus'">
+                <UiTag :tone="finalScoreStatusTone(candidates[index].finalScoreStatus)" size="sm">
+                  {{ finalScoreStatusLabel(candidates[index].finalScoreStatus) }}
+                </UiTag>
+              </template>
+              <template v-else-if="column.key === 'confirmedTime'">
+                {{ formatDateTime(candidates[index].confirmedTime) }}
+              </template>
+              <template v-else-if="column.key === 'actions'">
+                <UiTableActions
+                  :items="buildFinalizeActions(candidates[index])"
+                  split
+                  @action="(key) => handleFinalizeRowAction(key, candidates[index])"
+                />
+              </template>
+            </template>
+          </UiDataTable>
+        </div>
+      </WorkbenchSurfaceCard>
     </template>
 
     <!-- 成绩明细 Drawer -->
@@ -475,6 +492,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { Key } from 'ant-design-vue/es/_util/type'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
 import type { OperationLogResponse, OperationTypeCode } from '@/apis/mark/admin-audit'
@@ -506,13 +524,13 @@ import { getScorePanel } from '@/apis/mark/exam-progress'
 import {
   batchConfirmSafeFinalScores,
   confirmFinalScore,
+  getFinalScoreRiskOverview,
   pageExamScoreSummary,
   publishFinalScore,
   saveFinalScoreRiskReview,
   withdrawFinalScore,
 } from '@/apis/mark/exam-score'
 import {
-  FINAL_SCORE_STATUS_OPTIONS,
   FINAL_SCORE_STATUS_TONE,
   FinalScoreStatusDescription,
 } from '@/apis/mark/final-score-status'
@@ -532,21 +550,21 @@ import UiActivityTimeline from '@/components/ui-guide/ui/UiActivityTimeline.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
-import ScorePublishRelatedLinksCard from '@/components/workbench/ScorePublishRelatedLinksCard.vue'
 import ScoreReleaseStepPipeline from '@/components/workbench/ScoreReleaseStepPipeline.vue'
-import ScoreWorkbenchAnalyticsSection from '@/components/workbench/ScoreWorkbenchAnalyticsSection.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchNoticeBanner from '@/components/workbench/WorkbenchNoticeBanner.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
-import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useScorePublishPreconditions } from '@/composables/useScorePublishPreconditions'
 import { useScoreReleaseNavigation } from '@/composables/useScoreReleaseNavigation'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { buildExamScoreSummaryTableColumns } from '@/utils/exam-score-summary-table-columns'
@@ -555,6 +573,10 @@ import { formatTrendAriaLabel, MARK_CHART_EMPTY } from '@/utils/mark-chart-acces
 import { buildTrendChartInsight } from '@/utils/mark-chart-insights'
 import { buildTrendLineChartOption } from '@/utils/mark-echarts-options'
 import { readAllPages } from '@/utils/page-result'
+import {
+  buildScoreConfirmStatusTabItems,
+  SCORE_STATUS_TAB_ALL,
+} from '@/utils/score-workbench-analytics'
 import { buildScoreFinalizeSignalMetrics } from '@/utils/score-workbench-signal'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -570,18 +592,16 @@ function finalScoreStatusLabel(value: FinalScoreStatusCode): string {
   return strictEnumLabel(FinalScoreStatusDescription, value, '最终成绩状态')
 }
 
-const finalStatusOptions = FINAL_SCORE_STATUS_OPTIONS
-
 interface ScoreFilterForm {
   [key: string]: unknown
   keyword: string
-  statusFilter?: FinalScoreStatusCode
 }
 
 const scoreFilterForm = reactive<ScoreFilterForm>({
   keyword: '',
-  statusFilter: undefined,
 })
+
+const statusTabKey = ref<Key>(SCORE_STATUS_TAB_ALL)
 
 const scoreFilterModel = computed<Record<string, unknown>>({
   get: () => scoreFilterForm,
@@ -600,21 +620,22 @@ const scoreFilterFields: FilterField[] = [
     inputPrefixIcon: 'search',
     triggerSearchOnChange: false,
   },
-  {
-    key: 'statusFilter',
-    type: 'select',
-    placeholder: '按最终状态过滤',
-    allowClear: true,
-    width: 200,
-    options: finalStatusOptions.map((item) => ({ label: item.label, value: item.value })),
-  },
 ]
 
 const router = useRouter()
 const { goScorePublish, goExportTasks } = useScoreReleaseNavigation()
 
+function goLayoutDesigner(): void {
+  if (!selectedExamId.value) {
+    return
+  }
+  void router.push({
+    name: 'TeacherExamWorkspaceLayoutDesigner',
+    params: { examId: selectedExamId.value },
+  })
+}
+
 const { selectedExamId } = useMarkExamContext()
-const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar('成绩确认')
 const { refreshSnapshot } = useWorkspaceExamId()
 
 const examDetail = ref<ExamDetailResponse | null>(null)
@@ -626,8 +647,9 @@ async function loadExamDetail(): Promise<void> {
   }
   try {
     examDetail.value = await getExamDetail(selectedExamId.value)
-  } catch {
+  } catch (error) {
     examDetail.value = null
+    showUserError(error, '考试详情加载失败')
   }
 }
 
@@ -637,10 +659,37 @@ const loading = ref(false)
 const riskOverview = ref<FinalScoreRiskOverviewResponse | null>(null)
 const scorePanel = ref<ExamWorkbenchScorePanelResponse | null>(null)
 const riskOverviewLoading = ref(false)
+const panelLoadError = ref('')
+
+const statusTabItems = computed(() => buildScoreConfirmStatusTabItems(effectiveRiskOverview.value))
+
+const effectiveRiskOverview = computed(
+  () => riskOverview.value ?? scorePanel.value?.riskOverview ?? null,
+)
+
+const panelNotice = computed(() => {
+  if (scorePanel.value?.panelBlockedReason) {
+    return {
+      title: '制卷前置条件未满足',
+      description: scorePanel.value.panelBlockedReason,
+      tone: 'warning' as const,
+      action: 'layout' as const,
+    }
+  }
+  if (panelLoadError.value && !effectiveRiskOverview.value) {
+    return {
+      title: '成绩风险概览暂不可用',
+      description: panelLoadError.value,
+      tone: 'info' as const,
+      action: null,
+    }
+  }
+  return null
+})
 
 const { ensureScorePublishPreconditions } = useScorePublishPreconditions({
   examId: selectedExamId,
-  riskOverview,
+  riskOverview: effectiveRiskOverview,
   scorePanel,
 })
 
@@ -655,7 +704,7 @@ const HARD_BLOCKING_RISK_REASON_CODES = new Set<FinalScoreRiskReasonCode>([
 
 const pagination = reactive<TablePaginationConfig>({
   current: 1,
-  pageSize: 20,
+  pageSize: DEFAULT_LIST_PAGE_SIZE,
   total: 0,
   showSizeChanger: true,
   showTotal: (t: number) => `共 ${t} 条`,
@@ -675,12 +724,12 @@ async function loadCandidates(): Promise<void> {
     const result = await pageExamScoreSummary({
       examId: selectedExamId.value,
       keyword: scoreFilterForm.keyword.trim() || undefined,
-      finalScoreStatus: scoreFilterForm.statusFilter,
+      finalScoreStatus: resolveStatusTabFilter(statusTabKey.value),
       pageNum: pagination.current ?? 1,
-      pageSize: pagination.pageSize ?? 20,
+      pageSize: pagination.pageSize ?? DEFAULT_LIST_PAGE_SIZE,
     })
     candidates.value = result.list
-    pagination.total = Number(result.total)
+    pagination.total = result.total
     if (result.pageNum != null) {
       pagination.current = result.pageNum
     }
@@ -697,28 +746,41 @@ async function loadCandidates(): Promise<void> {
 async function loadRiskOverview(): Promise<void> {
   if (!selectedExamId.value) {
     riskOverview.value = null
-    scorePanel.value = null
+    panelLoadError.value = ''
     return
   }
   riskOverviewLoading.value = true
+  panelLoadError.value = ''
   try {
-    const panel = await getScorePanel(selectedExamId.value)
-    scorePanel.value = panel
-    riskOverview.value = panel.riskOverview
+    riskOverview.value = await getFinalScoreRiskOverview({ examId: selectedExamId.value })
     const validReasonCodes = new Set(blockingRiskReasons.value.map((reason) => reason.reasonCode))
     reviewedRiskReasonCodes.value = new Set(
       (riskOverview.value.reviewedReasonCodes ?? []).filter((reasonCode) => validReasonCodes.has(reasonCode)),
     )
   } catch (error) {
     riskOverview.value = null
-    scorePanel.value = null
-    showUserError(error, '成绩风险概览加载失败')
+    if (!scorePanel.value?.riskOverview) {
+      panelLoadError.value = getUserErrorMessage(error, '成绩风险概览加载失败')
+    }
   } finally {
     riskOverviewLoading.value = false
   }
 }
 
+async function loadScorePanel(): Promise<void> {
+  if (!selectedExamId.value) {
+    scorePanel.value = null
+    return
+  }
+  try {
+    scorePanel.value = await getScorePanel(selectedExamId.value)
+  } catch {
+    scorePanel.value = null
+  }
+}
+
 async function refreshScoreFinalizeData(): Promise<void> {
+  await loadScorePanel()
   await Promise.all([loadCandidates(), loadRiskOverview()])
 }
 
@@ -737,6 +799,21 @@ function handleSearch(): void {
 }
 
 function handleReset(): void {
+  scoreFilterForm.keyword = ''
+  statusTabKey.value = SCORE_STATUS_TAB_ALL
+  pagination.current = 1
+  void loadCandidates()
+}
+
+function resolveStatusTabFilter(tabKey: Key): FinalScoreStatusCode | undefined {
+  if (tabKey === SCORE_STATUS_TAB_ALL) {
+    return undefined
+  }
+  return tabKey as FinalScoreStatusCode
+}
+
+function handleStatusTabChange(tabKey: Key): void {
+  statusTabKey.value = tabKey
   pagination.current = 1
   void loadCandidates()
 }
@@ -770,7 +847,7 @@ function publishButtonLabel(record: ExamScoreSummaryItemResponse): string {
 }
 
 const blockingRiskReasons = computed(() => {
-  const reasons = riskOverview.value?.riskReasons ?? []
+  const reasons = effectiveRiskOverview.value?.riskReasons ?? []
   return reasons.filter((reason) => reason.reasonCode !== 'SAFE_CONFIRMABLE' && reason.count > 0)
 })
 
@@ -861,7 +938,7 @@ function warnUnreviewedBlockingRisks(): boolean {
 }
 
 const canBatchConfirmSafe = computed(() => {
-  const overview = riskOverview.value
+  const overview = effectiveRiskOverview.value
   return Boolean(
     overview
     && overview.safeConfirmableCount > 0
@@ -873,7 +950,7 @@ const canBatchConfirmSafe = computed(() => {
 })
 
 async function handleBatchConfirmSafe(): Promise<void> {
-  if (!selectedExamId.value || !riskOverview.value) return
+  if (!selectedExamId.value || !effectiveRiskOverview.value) return
   if (warnUnreviewedBlockingRisks()) return
   batchConfirming.value = true
   try {
@@ -900,7 +977,7 @@ async function handleBatchConfirmSafe(): Promise<void> {
 }
 
 const statMetrics = computed((): SignalMetric[] =>
-  buildScoreFinalizeSignalMetrics(scorePanel.value, riskOverview.value),
+  buildScoreFinalizeSignalMetrics(scorePanel.value, effectiveRiskOverview.value),
 )
 
 const delayedAutoConfirmNotice = computed(() => {
@@ -1384,7 +1461,7 @@ function closeNextStep(): void {
  * - 若当前页无待确认但全场仍有 PENDING/CALCULATED → 提示翻页
  */
 function deriveNextStepSuggestion(): void {
-  const overview = riskOverview.value
+  const overview = effectiveRiskOverview.value
   const b = candidateBuckets.value
   if (overview?.readyToPublish) {
     nextStep.value = {
@@ -1431,6 +1508,14 @@ function handleNextStepConfirmContinue(): void {
 
 function handleNextStepGoPublish(): void {
   closeNextStep()
+  void handleGoScorePublish()
+}
+
+async function handleGoScorePublish(): Promise<void> {
+  const canContinue = await ensureScorePublishPreconditions()
+  if (!canContinue) {
+    return
+  }
   goScorePublish()
 }
 
@@ -1533,11 +1618,15 @@ async function handleWithdraw(): Promise<void> {
 // ─── 初始化 ─────────────────────────────────────
 watch(selectedExamId, (value) => {
   pagination.current = 1
+  statusTabKey.value = SCORE_STATUS_TAB_ALL
+  scoreFilterForm.keyword = ''
   reviewedRiskReasonCodes.value = new Set()
   riskReviewDrawerOpen.value = false
   examDetail.value = null
   candidates.value = []
   riskOverview.value = null
+  scorePanel.value = null
+  panelLoadError.value = ''
   pagination.total = 0
   if (value) {
     void Promise.all([loadExamDetail(), refreshScoreFinalizeData()])
@@ -1551,6 +1640,10 @@ watch(selectedExamId, (value) => {
 }
 
 .score-finalize {
+  &__notice-banner {
+    margin-top: var(--dp-space-3, 12px);
+  }
+
   &__alert {
     margin-top: var(--dp-space-3, 12px);
   }
@@ -1568,13 +1661,36 @@ watch(selectedExamId, (value) => {
   }
 
   &__table-section {
-    margin-top: 8px;
+    margin-top: var(--dp-space-3, 12px);
+  }
+
+  &__table-shell {
+    display: flex;
+    flex-direction: column;
+    gap: var(--dp-space-4, 16px);
+    padding: var(--dp-space-4, 16px) var(--dp-space-5, 20px) var(--dp-space-5, 20px);
+  }
+
+  &__status-tabs {
+    :deep(.ui-section-tabs__nav) {
+      align-self: stretch;
+      width: 100%;
+    }
   }
 
   &__table-toolbar {
     display: flex;
     flex-direction: column;
     gap: var(--dp-space-3, 12px);
+    width: 100%;
+  }
+
+  &__table-toolbar-main {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--dp-space-3, 12px);
+    flex-wrap: wrap;
     width: 100%;
   }
 

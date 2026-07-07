@@ -1,8 +1,8 @@
 import type { Ref } from 'vue'
+import { ref } from 'vue'
 import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
 import type { FinalScoreRiskOverviewResponse } from '@/apis/mark/exam-score'
 import message from 'ant-design-vue/es/message'
-import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { AbsenceStatusCode, listAbsenceRecords } from '@/apis/mark/absence'
 import { useScoreReleaseNavigation } from '@/composables/useScoreReleaseNavigation'
@@ -41,7 +41,7 @@ export function useScorePublishPreconditions(options: {
         pageNum: 1,
         pageSize: 1,
       })
-      pendingAbsenceCount.value = Number(result.total)
+      pendingAbsenceCount.value = result.total
     } catch (error) {
       pendingAbsenceCount.value = null
       showUserError(error, '待确认缺考记录查询失败')
@@ -73,11 +73,17 @@ export function useScorePublishPreconditions(options: {
       return false
     }
     if (overview && !overview.readyToPublish && overview.blockedCount > 0) {
-      message.warning(`仍有 ${overview.blockedCount} 项成绩风险未处置，请先完成确认或风险复核后再发布`)
+      message.warning(
+        `仍有 ${overview.blockedCount} 项成绩风险未处置，请先完成确认或风险复核后再发布`,
+      )
       return false
     }
     const panel = options.scorePanel.value
-    if (panel && !panel.manualFinalScoreConfirmRequired && panel.blockedDelayedFinalScoreConfirmCount > 0) {
+    if (
+      panel &&
+      !panel.manualFinalScoreConfirmRequired &&
+      panel.blockedDelayedFinalScoreConfirmCount > 0
+    ) {
       message.warning(
         `仍有 ${panel.blockedDelayedFinalScoreConfirmCount} 份答卷延迟自动确认失败，请先在成绩确认页逐份确认后再发布`,
       )

@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
+import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   ALL_SCAN_DISPATCH_TICKET_STATUS_CODES,
   cancelScanDispatch,
@@ -10,12 +15,7 @@ import {
   ScanDispatchTicketStatusCode,
   ScanDispatchTicketStatusDescription,
 } from '@/apis/mark/scanner-dispatch'
-import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import { SCAN_TASK_KIND_OPTIONS, ScanTaskKindDescription } from '@/apis/mark/scanner-work-order'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -25,6 +25,7 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { DispatchQueueStatusFilterCode } from '@/types/enums/dispatch-queue-status-filter-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -72,8 +73,11 @@ const forceReleaseOpen = ref(false)
 const forceReleaseTicket = ref<{ ticketId: string } | null>(null)
 const tickets = ref<ScanDispatchTicketVO[]>([])
 const queueSummary = ref<Awaited<ReturnType<typeof loadScanDispatchQueueSummary>> | null>(null)
-const pagination = reactive({ current: 1, pageSize: 20, total: 0 })
+const pagination = reactive({ current: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 const queueFilter = ref<DispatchQueueStatusFilterCode>(DispatchQueueStatusFilterCode.ALL)
+/** 丢弃过期派单列表/概览请求，避免快切队列或并发刷新覆盖。 */
+let ticketsLoadGeneration = 0
+let summaryLoadGeneration = 0
 
 interface DispatchFilters {
   status?: ScanDispatchTicketStatusCode
@@ -299,18 +303,29 @@ function contextVolumeId(record: ScanDispatchTicketVO) {
 }
 
 async function loadSummary() {
+  const generation = ++summaryLoadGeneration
   summaryLoading.value = true
   try {
-    queueSummary.value = await loadScanDispatchQueueSummary()
+    const summary = await loadScanDispatchQueueSummary()
+    if (generation !== summaryLoadGeneration) {
+      return
+    }
+    queueSummary.value = summary
   } catch (error) {
+    if (generation !== summaryLoadGeneration) {
+      return
+    }
     queueSummary.value = null
     showUserError(error, '派单队列概览加载失败')
   } finally {
-    summaryLoading.value = false
+    if (generation === summaryLoadGeneration) {
+      summaryLoading.value = false
+    }
   }
 }
 
 async function loadTickets() {
+  const generation = ++ticketsLoadGeneration
   loading.value = true
   try {
     const filter = queueFilter.value
@@ -321,19 +336,27 @@ async function loadTickets() {
       pageSize: pagination.pageSize,
       failureOnly: filter === DispatchQueueStatusFilterCode.FAILED ? true : undefined,
       excludeFailed:
-        filter === DispatchQueueStatusFilterCode.ALL ||
-        filter === DispatchQueueStatusFilterCode.PENDING
+        filter === DispatchQueueStatusFilterCode.ALL
+        || filter === DispatchQueueStatusFilterCode.PENDING
           ? true
           : undefined,
     })
+    if (generation !== ticketsLoadGeneration) {
+      return
+    }
     tickets.value = result.list
-    pagination.total = Number(result.total)
+    pagination.total = result.total
   } catch (error) {
+    if (generation !== ticketsLoadGeneration) {
+      return
+    }
     tickets.value = []
     pagination.total = 0
     showUserError(error, '派单列表加载失败')
   } finally {
-    loading.value = false
+    if (generation === ticketsLoadGeneration) {
+      loading.value = false
+    }
   }
 }
 
@@ -366,7 +389,7 @@ function handleResetSearch() {
   void loadTickets()
 }
 
-function handlePageChange(pageEvent: { current: number; pageSize: number }) {
+function handlePageChange(pageEvent: { current: number, pageSize: number }) {
   pagination.current = pageEvent.current
   pagination.pageSize = pageEvent.pageSize
   void loadTickets()
@@ -441,9 +464,9 @@ function canCancelTicket(record: ScanDispatchTicketVO) {
 
 function canForceReleaseTicket(record: ScanDispatchTicketVO) {
   return (
-    Boolean(record.ticketId) &&
-    (record.status === ScanDispatchTicketStatusCode.PROCESSING ||
-      record.status === ScanDispatchTicketStatusCode.SUSPENDED)
+    Boolean(record.ticketId)
+    && (record.status === ScanDispatchTicketStatusCode.PROCESSING
+      || record.status === ScanDispatchTicketStatusCode.SUSPENDED)
   )
 }
 
@@ -501,8 +524,8 @@ watch(
     const lifecycle = resolveLifecycleFilter(dispatchQuery.statusRaw)
     if (lifecycle !== undefined) {
       if (
-        queueFilter.value === lifecycle &&
-        filters.status === lifecycleFilterToStatus(lifecycle)
+        queueFilter.value === lifecycle
+        && filters.status === lifecycleFilterToStatus(lifecycle)
       ) {
         return
       }

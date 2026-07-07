@@ -1,12 +1,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {
-  PortfolioTeacherLibraryBorrowStatsVO,
-  PortfolioTeacherLibraryBorrowVO,
-} from '@/apis/portfolio/teacher-platform'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
+import type { PortfolioTeacherLibraryBorrowStatsVO } from '@/apis/portfolio/teacher-platform'
 import { portfolioTeacherLibraryApi } from '@/apis/portfolio/teacher-platform'
+import { message } from 'ant-design-vue'
+import { reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -14,19 +11,27 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
+import { useQueryTable } from '@/composables/useQueryTable'
 import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 
-const loading = ref(false)
-const rows = ref<PortfolioTeacherLibraryBorrowVO[]>([])
 const stats = ref<PortfolioTeacherLibraryBorrowStatsVO | null>(null)
 const form = reactive({
   teacherUserId: '',
   bookTitle: '',
   bookIsbn: '',
 })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
-  = usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
+  usePortfolioTeacherSearch()
+const { loading, rows, pageNum, pageSize, pageTotal, loadPage, handlePageChange } = useQueryTable(
+  portfolioTeacherLibraryApi.page,
+  {
+    onLoaded: async (list) => {
+      await hydrateTeacherLabels(list.map((row) => row.teacherUserId ?? ''))
+      stats.value = await portfolioTeacherLibraryApi.stats()
+    },
+  },
+)
 
 const columns: ColumnsType = [
   { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },
@@ -36,20 +41,6 @@ const columns: ColumnsType = [
   { title: '应还时间', dataIndex: 'dueTime', key: 'dueTime', width: 160 },
   { title: '逾期天数', dataIndex: 'overdueDays', key: 'overdueDays', width: 88, align: 'right' },
 ]
-
-async function loadPage() {
-  loading.value = true
-  try {
-    const page = await portfolioTeacherLibraryApi.page({ pageNum: 1, pageSize: 50 })
-    rows.value = page.list
-    await hydrateTeacherLabels(rows.value.map((row) => row.teacherUserId ?? ''))
-    stats.value = await portfolioTeacherLibraryApi.stats()
-  } catch (error) {
-    showUserError(error)
-  } finally {
-    loading.value = false
-  }
-}
 
 async function saveBorrow() {
   if (!form.teacherUserId || !form.bookTitle.trim()) {
@@ -82,8 +73,6 @@ async function exportCsv() {
     showUserError(error)
   }
 }
-
-onMounted(loadPage)
 </script>
 
 <template>
@@ -113,11 +102,16 @@ onMounted(loadPage)
       </div>
       <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无教师库条目" />
       <UiDataTable
+        v-model:current="pageNum"
+        v-model:page-size="pageSize"
+        pagination-mode="server"
+        :total="pageTotal"
         :columns="columns"
         :data-source="rows"
         :loading="loading"
         row-key="id"
         style="margin-top: 16px"
+        @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherUserId'">

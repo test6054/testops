@@ -1,19 +1,13 @@
 <template>
   <StageWorkbenchShell class="score-publish-page">
     <template #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        :title="contextBarTitle"
-        :subtitle="contextBarSubtitle"
-      >
+      <ContextBar layout="workbench">
         <template #status>
-          <UiTag tone="blue" size="sm">阶段 成绩发布</UiTag>
-          <UiTag v-if="examArchiveGate?.allScoresPublished" tone="green" size="sm">已全部发布</UiTag>
+          <UiTag v-if="scoresFullyPublished" tone="green" size="sm">已全部发布</UiTag>
           <UiTag v-else-if="hasPendingAbsence" tone="orange" size="sm">缺考待确认</UiTag>
         </template>
         <template #actions>
-          <UiButton variant="ghost" size="sm" @click="goExportTasks">
+          <UiButton variant="outline" size="sm" @click="goExportTasks">
             导出任务
           </UiButton>
           <UiButton variant="ghost" size="sm" @click="goScoreConfirm">
@@ -42,8 +36,8 @@
       <ExamWorkspaceJourneySubNav />
 
       <ScoreReleaseStepPipeline
-        :overview="finalScoreOverview"
-        :all-scores-published="examArchiveGate?.allScoresPublished === true"
+        :overview="effectiveFinalScoreOverview"
+        :all-scores-published="scoresFullyPublished"
       />
 
       <UiAlertStrip
@@ -65,7 +59,7 @@
         v-if="publishRiskBlocked"
         tone="warning"
         title="仍有成绩风险未复核"
-        :description="`当前有 ${finalScoreOverview?.blockedCount ?? 0} 项成绩风险未处置，须先在成绩确认页完成集中复核后再发布。`"
+        :description="`当前有 ${effectiveFinalScoreOverview?.blockedCount ?? 0} 项成绩风险未处置，须先在成绩确认页完成集中复核后再发布。`"
         dense
         class="score-publish__alert"
       >
@@ -109,105 +103,107 @@
         </template>
       </UiAlertStrip>
 
-      <ScoreWorkbenchAnalyticsSection
-        :panel="scorePanel"
-        :loading="finalScoreOverviewLoading"
-        mode="publish"
-        :publishable-count="publishableOverviewCount"
-        :gate="examArchiveGate"
-      />
-
       <ExamArchiveGateBanner
         ref="gateBannerRef"
         :exam-id="selectedExamId"
         compact
         show-class-progress-table
+        :scores-fully-published="scoresFullyPublished"
         @go-close-exam="goExamListForClose"
         @loaded="onExamArchiveGateLoaded"
       />
 
       <WorkbenchSurfaceCard flush class="score-publish__table-section">
-        <template #head>考生成绩</template>
-        <template #toolbar>
-          <UiFilterBar
-            v-model="scoreFilterModel"
-            :fields="scoreFilterFields"
-            search-text="查询"
-            @search="handleSearch"
-            @reset="handleReset"
+        <div class="score-publish__table-shell">
+          <h3 class="score-publish__table-title">考生成绩</h3>
+          <a-skeleton v-if="finalScoreOverviewLoading" active :paragraph="{ rows: 1 }" />
+          <UiSectionTabs
+            v-else
+            v-model="statusTabKey"
+            :items="statusTabItems"
+            compact
+            class="score-publish__status-tabs"
+            @change="handleStatusTabChange"
           />
-          <div v-if="showIncompleteClassChip" class="score-publish__filter-chips">
-            <button
-              type="button"
-              class="score-publish__filter-chip"
-              :class="{ 'score-publish__filter-chip--active': scoreFilterForm.unpublishedBoundOnly }"
-              @click="toggleIncompleteClassFilter"
-            >
-              仅看未齐班级
-            </button>
+          <div class="score-publish__table-toolbar">
+            <UiFilterBar
+              v-model="scoreFilterModel"
+              :fields="scoreFilterFields"
+              search-text="查询"
+              @search="handleSearch"
+              @reset="handleReset"
+            />
+            <div v-if="showIncompleteClassChip" class="score-publish__filter-chips">
+              <button
+                type="button"
+                class="score-publish__filter-chip"
+                :class="{ 'score-publish__filter-chip--active': scoreFilterForm.unpublishedBoundOnly }"
+                @click="toggleIncompleteClassFilter"
+              >
+                仅看未齐班级
+              </button>
+            </div>
           </div>
-        </template>
 
-        <UiDataTable
-          v-model:current="pagination.current"
-          v-model:page-size="pagination.pageSize"
-          :columns="columns"
-          :data-source="candidates"
-          :loading="loading"
-          :total="pagination.total"
-          flat
-          row-key="candidateRosterId"
-          size="middle"
-          class="score-publish__table student-detail-table__data-table"
-          @page-change="handlePageChange"
-        >
-          <template #bodyCell="{ column, index }">
-            <template v-if="column.key === 'studentNo'">
-              <span class="score-summary-table__mono">{{ candidates[index].studentNo || '—' }}</span>
+          <UiDataTable
+            v-model:current="pagination.current"
+            v-model:page-size="pagination.pageSize"
+            :columns="columns"
+            :data-source="candidates"
+            :loading="loading"
+            :total="pagination.total"
+            flat
+            row-key="candidateRosterId"
+            size="middle"
+            class="score-publish__table student-detail-table__data-table"
+            @page-change="handlePageChange"
+          >
+            <template #bodyCell="{ column, index }">
+              <template v-if="column.key === 'studentNo'">
+                <span class="score-summary-table__mono">{{ candidates[index].studentNo || '—' }}</span>
+              </template>
+              <template v-else-if="column.key === 'studentName'">
+                {{ candidates[index].studentName || '—' }}
+              </template>
+              <template v-else-if="column.key === 'examScore'">
+                <span v-if="candidates[index].examScore != null" class="score-summary-table__score">
+                  {{ candidates[index].examScore }}
+                </span>
+                <span v-else class="score-publish__hint">—</span>
+              </template>
+              <template v-else-if="column.key === 'dailyScore'">
+                <span v-if="candidates[index].dailyScore != null" class="score-summary-table__score">
+                  {{ candidates[index].dailyScore }}
+                </span>
+                <span v-else class="score-publish__hint">—</span>
+              </template>
+              <template v-else-if="column.key === 'finalScore'">
+                <span v-if="candidates[index].finalScore != null" class="score-summary-table__score score-summary-table__score--total">
+                  {{ candidates[index].finalScore }}
+                </span>
+                <span v-else class="score-publish__hint">—</span>
+              </template>
+              <template v-else-if="column.key === 'finalScoreStatus'">
+                <UiTag :tone="finalScoreStatusTone(candidates[index].finalScoreStatus)" size="sm">
+                  {{ finalScoreStatusLabel(candidates[index].finalScoreStatus) }}
+                </UiTag>
+              </template>
+              <template v-else-if="column.key === 'confirmedTime'">
+                {{ formatDateTime(candidates[index].confirmedTime) }}
+              </template>
+              <template v-else-if="column.key === 'actions'">
+                <UiTableActions
+                  v-if="candidates[index].paperInstanceId"
+                  :items="buildPublishActions(candidates[index])"
+                  split
+                  @action="(key) => handlePublishRowAction(key, candidates[index])"
+                />
+                <span v-else class="score-publish__hint">—</span>
+              </template>
             </template>
-            <template v-else-if="column.key === 'studentName'">
-              {{ candidates[index].studentName || '—' }}
-            </template>
-            <template v-else-if="column.key === 'examScore'">
-              <span v-if="candidates[index].examScore != null" class="score-summary-table__score">
-                {{ candidates[index].examScore }}
-              </span>
-              <span v-else class="score-publish__hint">—</span>
-            </template>
-            <template v-else-if="column.key === 'dailyScore'">
-              <span v-if="candidates[index].dailyScore != null" class="score-summary-table__score">
-                {{ candidates[index].dailyScore }}
-              </span>
-              <span v-else class="score-publish__hint">—</span>
-            </template>
-            <template v-else-if="column.key === 'finalScore'">
-              <span v-if="candidates[index].finalScore != null" class="score-summary-table__score score-summary-table__score--total">
-                {{ candidates[index].finalScore }}
-              </span>
-              <span v-else class="score-publish__hint">—</span>
-            </template>
-            <template v-else-if="column.key === 'finalScoreStatus'">
-              <UiTag :tone="finalScoreStatusTone(candidates[index].finalScoreStatus)" size="sm">
-                {{ finalScoreStatusLabel(candidates[index].finalScoreStatus) }}
-              </UiTag>
-            </template>
-            <template v-else-if="column.key === 'confirmedTime'">
-              {{ formatDateTime(candidates[index].confirmedTime) }}
-            </template>
-            <template v-else-if="column.key === 'actions'">
-              <UiTableActions
-                v-if="candidates[index].paperInstanceId"
-                :items="buildPublishActions(candidates[index])"
-                split
-                @action="(key) => handlePublishRowAction(key, candidates[index])"
-              />
-              <span v-else class="score-publish__hint">—</span>
-            </template>
-          </template>
-        </UiDataTable>
+          </UiDataTable>
+        </div>
       </WorkbenchSurfaceCard>
-
-      <ScorePublishRelatedLinksCard variant="publish" />
     </template>
 
     <!-- 成绩明细 Drawer -->
@@ -380,6 +376,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { Key } from 'ant-design-vue/es/_util/type'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
 import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
@@ -405,12 +402,12 @@ import { getPaperScore } from '@/apis/mark/exam-grade'
 import { getScorePanel } from '@/apis/mark/exam-progress'
 import {
   batchPublishFinalScores,
+  getFinalScoreRiskOverview,
   pageExamScoreSummary,
   publishFinalScore,
   withdrawFinalScore,
 } from '@/apis/mark/exam-score'
 import {
-  FINAL_SCORE_STATUS_OPTIONS,
   FINAL_SCORE_STATUS_TONE,
   FinalScoreStatusCode,
   FinalScoreStatusDescription,
@@ -423,13 +420,12 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
-import ScorePublishRelatedLinksCard from '@/components/workbench/ScorePublishRelatedLinksCard.vue'
 import ScoreReleaseStepPipeline from '@/components/workbench/ScoreReleaseStepPipeline.vue'
-import ScoreWorkbenchAnalyticsSection from '@/components/workbench/ScoreWorkbenchAnalyticsSection.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -438,10 +434,12 @@ import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useScorePublishPreconditions } from '@/composables/useScorePublishPreconditions'
 import { useScoreReleaseNavigation } from '@/composables/useScoreReleaseNavigation'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
 import { buildExamScoreSummaryTableColumns } from '@/utils/exam-score-summary-table-columns'
 import { formatDateTime } from '@/utils/format'
-import { buildScoreBulkPublishModalStatItems } from '@/utils/score-workbench-analytics'
+import { isExamScoresFullyPublished } from '@/utils/score-release-readiness'
+import { buildScoreBulkPublishModalStatItems, buildScoreConfirmStatusTabItems, SCORE_STATUS_TAB_ALL } from '@/utils/score-workbench-analytics'
 import { buildScorePublishSignalMetrics } from '@/utils/score-workbench-signal'
 import { toSignalMetrics } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -456,19 +454,17 @@ function finalScoreStatusLabel(value: FinalScoreStatusCode): string {
   return strictEnumLabel(FinalScoreStatusDescription, value, '最终成绩状态')
 }
 
-const statusOptions = FINAL_SCORE_STATUS_OPTIONS
-
 const scoreFilterForm = reactive<{
   keyword: string
-  statusFilter?: FinalScoreStatusCode
   classId?: string
   unpublishedBoundOnly: boolean
 }>({
   keyword: '',
-  statusFilter: undefined,
   classId: undefined,
   unpublishedBoundOnly: false,
 })
+
+const statusTabKey = ref<Key>(SCORE_STATUS_TAB_ALL)
 
 const examArchiveGate = ref<ArchiveVolumeExamGateResponse | null>(null)
 
@@ -494,14 +490,6 @@ const scoreFilterFields = computed<FilterField[]>(() => {
       width: 240,
       inputPrefixIcon: 'search',
       triggerSearchOnChange: false,
-    },
-    {
-      key: 'statusFilter',
-      type: 'select',
-      placeholder: '按最终状态过滤',
-      allowClear: true,
-      width: 200,
-      options: statusOptions.map((item) => ({ label: item.label, value: item.value })),
     },
   ]
   if (classOptions.length > 0) {
@@ -542,7 +530,7 @@ const blockedDelayedAutoConfirmNotice = computed(() => {
 })
 
 function filterCorrectedOnly(): void {
-  scoreFilterForm.statusFilter = FinalScoreStatusCode.CORRECTED
+  statusTabKey.value = FinalScoreStatusCode.CORRECTED
   scoreFilterForm.unpublishedBoundOnly = false
   pagination.current = 1
   void loadCandidates()
@@ -616,6 +604,16 @@ const finalScoreOverview = ref<FinalScoreRiskOverviewResponse | null>(null)
 const scorePanel = ref<ExamWorkbenchScorePanelResponse | null>(null)
 const finalScoreOverviewLoading = ref(false)
 
+const effectiveFinalScoreOverview = computed(
+  () => finalScoreOverview.value ?? scorePanel.value?.riskOverview ?? null,
+)
+
+const statusTabItems = computed(() => buildScoreConfirmStatusTabItems(effectiveFinalScoreOverview.value))
+
+const scoresFullyPublished = computed(() =>
+  isExamScoresFullyPublished(effectiveFinalScoreOverview.value, examArchiveGate.value),
+)
+
 const {
   pendingAbsenceCount,
   refreshPendingAbsenceCount,
@@ -623,7 +621,7 @@ const {
   goToAbsenceConfirm: goAbsenceConfirm,
 } = useScorePublishPreconditions({
   examId: selectedExamId,
-  riskOverview: finalScoreOverview,
+  riskOverview: effectiveFinalScoreOverview,
   scorePanel,
 })
 
@@ -632,7 +630,7 @@ const hasPendingAbsence = computed(() => pendingAbsenceCountForDisplay.value > 0
 
 const pagination = reactive<TablePaginationConfig>({
   current: 1,
-  pageSize: 20,
+  pageSize: DEFAULT_LIST_PAGE_SIZE,
   total: 0,
   showSizeChanger: true,
   showTotal: (t: number) => `共 ${t} 条`,
@@ -645,14 +643,14 @@ async function loadCandidates(): Promise<void> {
     const result = await pageExamScoreSummary({
       examId: selectedExamId.value,
       keyword: scoreFilterForm.keyword.trim() || undefined,
-      finalScoreStatus: scoreFilterForm.statusFilter,
+      finalScoreStatus: resolveStatusTabFilter(statusTabKey.value),
       classId: scoreFilterForm.classId,
       unpublishedBoundOnly: scoreFilterForm.unpublishedBoundOnly || undefined,
       pageNum: pagination.current ?? 1,
-      pageSize: pagination.pageSize ?? 20,
+      pageSize: pagination.pageSize ?? DEFAULT_LIST_PAGE_SIZE,
     })
     candidates.value = result.list
-    pagination.total = Number(result.total)
+    pagination.total = result.total
     if (result.pageNum != null) {
       pagination.current = result.pageNum
     }
@@ -674,13 +672,18 @@ async function loadFinalScoreOverview(): Promise<void> {
   }
   finalScoreOverviewLoading.value = true
   try {
-    const panel = await getScorePanel(selectedExamId.value)
+    const [overview, panel] = await Promise.all([
+      getFinalScoreRiskOverview({ examId: selectedExamId.value }),
+      getScorePanel(selectedExamId.value),
+    ])
+    finalScoreOverview.value = overview
     scorePanel.value = panel
-    finalScoreOverview.value = panel.riskOverview
   } catch (error) {
     finalScoreOverview.value = null
-    scorePanel.value = null
-    showUserError(error, '全场成绩概览加载失败')
+    if (!scorePanel.value?.riskOverview) {
+      scorePanel.value = null
+      showUserError(error, '全场成绩概览加载失败')
+    }
   } finally {
     finalScoreOverviewLoading.value = false
   }
@@ -693,9 +696,22 @@ function handleSearch(): void {
 
 function handleReset(): void {
   scoreFilterForm.keyword = ''
-  scoreFilterForm.statusFilter = undefined
+  statusTabKey.value = SCORE_STATUS_TAB_ALL
   scoreFilterForm.classId = undefined
   scoreFilterForm.unpublishedBoundOnly = false
+  pagination.current = 1
+  void loadCandidates()
+}
+
+function resolveStatusTabFilter(tabKey: Key): FinalScoreStatusCode | undefined {
+  if (tabKey === SCORE_STATUS_TAB_ALL) {
+    return undefined
+  }
+  return tabKey as FinalScoreStatusCode
+}
+
+function handleStatusTabChange(tabKey: Key): void {
+  statusTabKey.value = tabKey
   pagination.current = 1
   void loadCandidates()
 }
@@ -707,18 +723,18 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 }
 // ─── 全场发布 ─────────────────────────────
 const publishableOverviewCount = computed(() => {
-  const overview = finalScoreOverview.value
+  const overview = effectiveFinalScoreOverview.value
   if (!overview) return 0
   return overview.confirmedCount + overview.withdrawnCount + overview.correctedCount
 })
 
 const publishRiskBlocked = computed(() => {
-  const overview = finalScoreOverview.value
+  const overview = effectiveFinalScoreOverview.value
   return Boolean(overview && !overview.readyToPublish && (overview.blockedCount ?? 0) > 0)
 })
 
 const bulkModalStatItems = computed(() => {
-  const overview = finalScoreOverview.value
+  const overview = effectiveFinalScoreOverview.value
   if (!overview) {
     return []
   }
@@ -814,7 +830,7 @@ const publishSignalMetrics = computed(() =>
   toSignalMetrics(
     buildScorePublishSignalMetrics(
       scorePanel.value,
-      finalScoreOverview.value,
+      effectiveFinalScoreOverview.value,
       examArchiveGate.value,
       publishableOverviewCount.value,
       pagination.total ?? 0,
@@ -825,7 +841,7 @@ const publishSignalMetrics = computed(() =>
 // ─── 状态机按钮 ─────────────────────────────
 function canPublish(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
-  const overview = finalScoreOverview.value
+  const overview = effectiveFinalScoreOverview.value
   if (overview && (!overview.readyToPublish || overview.blockedCount > 0)) {
     return false
   }
@@ -970,6 +986,10 @@ async function openDetailDrawer(record: ExamScoreSummaryItemResponse): Promise<v
 // ─── 初始化 ─────────────────────────────────────
 watch(selectedExamId, (value) => {
   pagination.current = 1
+  statusTabKey.value = SCORE_STATUS_TAB_ALL
+  scoreFilterForm.keyword = ''
+  scoreFilterForm.classId = undefined
+  scoreFilterForm.unpublishedBoundOnly = false
   if (value) {
     void Promise.all([
       loadExamDetail(),
@@ -1003,6 +1023,39 @@ watch(selectedExamId, (value) => {
 
   &__empty {
     padding: 60px 0;
+  }
+
+  &__table-section {
+    margin-top: var(--dp-space-3, 12px);
+  }
+
+  &__table-shell {
+    display: flex;
+    flex-direction: column;
+    gap: var(--dp-space-4, 16px);
+    padding: var(--dp-space-4, 16px) var(--dp-space-5, 20px) var(--dp-space-5, 20px);
+  }
+
+  &__table-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: var(--dp-font-weight-title, 600);
+    line-height: 1.5;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__status-tabs {
+    :deep(.ui-section-tabs__nav) {
+      align-self: stretch;
+      width: 100%;
+    }
+  }
+
+  &__table-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--dp-space-3, 12px);
+    width: 100%;
   }
 
   &__table-card {

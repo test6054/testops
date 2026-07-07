@@ -1,0 +1,197 @@
+<template>
+  <UiDialog
+    :open="open"
+    title="创建正评会话"
+    :width="560"
+    :confirm-loading="submitting"
+    ok-text="创建"
+    @update:open="emit('update:open', $event)"
+    @ok="submit"
+  >
+    <UiAlertStrip
+      tone="info"
+      dense
+      title="正评会话启动后教师批阅生效"
+      description="创建后在列表中启动正评；题目范围与任务单元在启动时按策略固化。"
+      class="formal-create-dialog__hint"
+    />
+    <a-form layout="vertical">
+      <a-form-item label="选择题组" required>
+        <UiSelect v-model="groupId" placeholder="选择参加正评的题组" :options="groupOptions" />
+      </a-form-item>
+      <SessionGroupCreateSummary
+        v-if="groupId"
+        phase="formal"
+        :policy="selectedGroupPolicy"
+        :group-readiness="selectedGroupReadiness"
+        :session-readiness="sessionReadiness"
+      />
+      <WorkflowReadinessPanel
+        v-if="groupId && !selectedGroupCanCreate && selectedGroupWorkflowSteps.length"
+        title="该题组创建前还需完成"
+        :steps="selectedGroupWorkflowSteps"
+      />
+      <a-form-item label="批阅任务单元" required>
+        <UiSelect
+          v-model="allocationUnit"
+          placeholder="选择正评任务拆分方式"
+          :options="ALLOCATION_UNIT_OPTIONS"
+          :disabled="!selectedGroupCanCreate"
+        />
+      </a-form-item>
+    </a-form>
+  </UiDialog>
+</template>
+
+<script lang="ts" setup>
+import type {
+  AllocationPolicyResponse,
+  AllocationUnitCode,
+  SessionCreateReadinessResponse,
+  SessionGroupCreateReadinessResponse,
+} from '@/apis/mark/marking-organization'
+import { ALLOCATION_UNIT_OPTIONS, createFormalSession } from '@/apis/mark/marking-organization'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import { blockingItemsToWorkflowSteps } from '@/components/workbench/workflow-readiness/workflow-blocking-items'
+import WorkflowReadinessPanel from '@/components/workbench/workflow-readiness/WorkflowReadinessPanel.vue'
+import { showUserError } from '@/utils/error-handler'
+import SessionGroupCreateSummary from './SessionGroupCreateSummary.vue'
+
+interface GroupOption {
+  value: string
+  label: string
+}
+
+defineOptions({ name: 'FormalSessionCreateDialog' })
+
+const props = defineProps<{
+  open: boolean
+  organizationId: string
+  groupOptions: GroupOption[]
+  groupAllocationUnits?: Record<string, AllocationUnitCode>
+  groupCreateReadinessMap?: Record<string, SessionGroupCreateReadinessResponse>
+  groupAllocationPolicyMap?: Record<string, AllocationPolicyResponse>
+  sessionReadiness?: SessionCreateReadinessResponse | null
+  canManage: boolean
+}>()
+
+const emit = defineEmits<{
+  'update:open': [value: boolean]
+  success: [sessionId: string]
+}>()
+
+const groupId = ref<string | undefined>(undefined)
+const allocationUnit = ref<AllocationUnitCode | undefined>(undefined)
+const submitting = ref(false)
+
+const selectedGroupHasAllocationPolicy = computed(() =>
+  Boolean(groupId.value && props.groupAllocationUnits?.[groupId.value]),
+)
+
+const selectedGroupReadiness = computed(() =>
+  groupId.value ? props.groupCreateReadinessMap?.[groupId.value] : undefined,
+)
+
+const selectedGroupPolicy = computed(() =>
+  groupId.value ? props.groupAllocationPolicyMap?.[groupId.value] : undefined,
+)
+
+const selectedGroupCanCreate = computed(() =>
+  selectedGroupReadiness.value
+    ? selectedGroupReadiness.value.canCreate
+    : selectedGroupHasAllocationPolicy.value,
+)
+
+const selectedGroupWorkflowSteps = computed(() => {
+  const items = selectedGroupReadiness.value?.blockingItems
+  if (!items?.length) {
+    return []
+  }
+  const routeParams: Record<string, string> = { organizationId: props.organizationId }
+  const examId = props.sessionReadiness?.examId
+  if (examId) {
+    routeParams.examId = examId
+  }
+  const routeQuery = examId ? { examId } : undefined
+  return blockingItemsToWorkflowSteps(items, {
+    routeParams,
+    routeQuery,
+    actionLabelPrefix: '去',
+  })
+})
+
+function syncAllocationUnitFromGroup(nextGroupId?: string): void {
+  if (!nextGroupId) {
+    allocationUnit.value = undefined
+    return
+  }
+  allocationUnit.value = props.groupAllocationUnits?.[nextGroupId]
+}
+
+watch(
+  () => props.open,
+  (nextOpen) => {
+    if (!nextOpen) {
+      groupId.value = undefined
+      allocationUnit.value = undefined
+      return
+    }
+    if (props.groupOptions.length === 1) {
+      groupId.value = props.groupOptions[0].value
+      syncAllocationUnitFromGroup(props.groupOptions[0].value)
+    }
+  },
+)
+
+watch(groupId, (nextGroupId) => {
+  syncAllocationUnitFromGroup(nextGroupId)
+})
+
+watch(
+  () => props.groupAllocationUnits,
+  () => {
+    syncAllocationUnitFromGroup(groupId.value)
+  },
+  { deep: true },
+)
+
+async function submit(): Promise<void> {
+  if (!props.canManage) {
+    message.warning('仅考试主考老师可管理正评会话')
+    return
+  }
+  if (
+    !props.organizationId ||
+    !groupId.value ||
+    !allocationUnit.value ||
+    !selectedGroupCanCreate.value
+  ) {
+    return
+  }
+  submitting.value = true
+  try {
+    const sessionId = await createFormalSession({
+      organizationId: props.organizationId,
+      groupId: groupId.value,
+      allocationUnit: allocationUnit.value,
+    })
+    message.success('正评会话已创建')
+    emit('update:open', false)
+    emit('success', sessionId)
+  } catch (error) {
+    showUserError(error, '创建正评会话失败')
+  } finally {
+    submitting.value = false
+  }
+}
+</script>
+
+<style lang="scss" scoped>
+.formal-create-dialog__hint {
+  margin-bottom: 12px;
+}
+</style>

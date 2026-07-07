@@ -21,7 +21,7 @@ import type {
   ScanJobListResponse,
   ScanJobResponse,
   ScannerDeviceInfo,
-  ScannerListResponse,
+  ScannerListResponse
 } from '@/apis/mark/scanner-agent-local'
 import {
   AgentHealthStatusDescription,
@@ -54,7 +54,7 @@ import {
   ScannerOutputContainerFormat,
   ScannerPageImageFormat,
   setPreferredLocalScanner,
-  startScanJob,
+  startScanJob
 } from '@/apis/mark/scanner-agent-local'
 import type {
   ExamScannerBatchResponse,
@@ -65,7 +65,7 @@ import type {
   ExamScannerKioskExamOptionVO,
   ExamScannerPageLedgerVO,
   ExamScannerScanConfigOptionsVO,
-  ExamScannerScanConfigVO,
+  ExamScannerScanConfigVO
 } from '@/apis/mark/scanner-kiosk'
 import {
   bindScannerKioskExam,
@@ -82,13 +82,13 @@ import {
   pageScannerKioskExamOptions,
   retryKioskScanBatchPageRegister,
   ScannerKioskScanModeCode,
-  ScannerKioskScanModeDescription,
+  ScannerKioskScanModeDescription
 } from '@/apis/mark/scanner-kiosk'
 import type { ScanWorkOrderLifecycleVO } from '@/apis/mark/scanner-work-order'
 import {
   commitExamScanWorkOrder,
   discardExamScanWorkOrder,
-  startExamScanWorkOrder,
+  startExamScanWorkOrder
 } from '@/apis/mark/scanner-work-order'
 import type { SemesterCode } from '@/types/enums'
 import { getSemesterDescription, SemesterOptions } from '@/types/enums'
@@ -98,7 +98,7 @@ import {
   ScannerColorModeDescription,
   ScannerDuplexModeCode,
   ScannerDuplexModeDescription,
-  ScannerEndpointOnlineStatusDescription,
+  ScannerEndpointOnlineStatusDescription
 } from '@/apis/mark/exam-mark-scanner'
 import { ScanAttentionTypeCode, ScanAttentionTypeDescription } from '@/apis/mark/exam-scan'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -107,7 +107,7 @@ import { useScanLiveStream } from '@/composables/useScanLiveStream'
 import { ExamScannerPageUploadStatusCode } from '@/types/enums/exam-scanner-page-upload-status-enum'
 import {
   KioskActivationGateReasonCode,
-  KioskActivationGateReasonDescription,
+  KioskActivationGateReasonDescription
 } from '@/types/enums/kiosk-activation-gate-reason-enum'
 import { ScanBatchStatusCode } from '@/types/enums/scan-batch-status-enum'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
@@ -120,20 +120,20 @@ import {
   KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE,
   KIOSK_BROWSER_SESSION_SYNC_MESSAGE,
   needsKioskBrowserSessionSync,
-  recoverKioskBrowserSessionFromAgent,
+  recoverKioskBrowserSessionFromAgent
 } from '@/utils/kiosk-auth'
 import {
   kioskMaterialKindLabel,
   kioskScanModeAdvisory,
   resolveKioskClassScopeAdvisory,
-  resolveKioskScanMaterialAdvisory,
+  resolveKioskScanMaterialAdvisory
 } from '@/utils/scanner-kiosk-ui'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { fetchPagedHistoryLedgerSnapshot } from '@/views/scanner-kiosk/composables/ledgerMerge'
 import { useKioskDeviceActivation } from '@/views/scanner-kiosk/composables/useKioskDeviceActivation'
 import {
   isAgentWorkspaceBlocked,
-  resolveKioskActivationGuardMessage,
+  resolveKioskActivationGuardMessage
 } from '@/views/scanner-kiosk/utils/kioskActivationGuard'
 
 type KioskWorkStateTone = 'success' | 'running' | 'danger' | 'muted'
@@ -1834,7 +1834,7 @@ export function useExamKioskWorkflow() {
       examOptions.value = result.list
       examOptionFilter.pageNum = result.pageNum
       examOptionFilter.pageSize = result.pageSize
-      examOptionTotal.value = Number(result.total)
+      examOptionTotal.value = result.total
     } catch (error) {
       showUserError(error, '考试列表加载失败')
       examOptions.value = []
@@ -1925,7 +1925,7 @@ export function useExamKioskWorkflow() {
       batchHistoryList.value = result.list
       batchHistoryFilter.pageNum = result.pageNum
       batchHistoryFilter.pageSize = result.pageSize
-      batchHistoryTotal.value = Number(result.total)
+      batchHistoryTotal.value = result.total
     } catch (error) {
       handleError(error)
       batchHistoryList.value = []

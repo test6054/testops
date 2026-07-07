@@ -1,12 +1,7 @@
 <template>
   <StageWorkbenchShell class="printer-management-page">
     <template #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        :title="contextBarTitle"
-        :subtitle="contextBarSubtitle"
-      >
+      <ContextBar layout="workbench">
         <template #status>
           <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
             {{ examStatusLabel }}
@@ -150,6 +145,15 @@
               />
             </a-form-item>
           </a-col>
+          <a-col v-if="formMode === 'edit'" :span="12">
+            <a-form-item name="webSupplementEnabled" label="Web 补录工位">
+              <a-switch
+                v-model:checked="formData.webSupplementEnabled"
+                checked-children="启用"
+                un-checked-children="关闭"
+              />
+            </a-form-item>
+          </a-col>
         </a-row>
 
         <a-divider orientation="left">运维信息（可选）</a-divider>
@@ -204,6 +208,11 @@
         <a-descriptions-item label="Kiosk 防误触锁">
           <UiTag :tone="!detailInfo.kioskLockEnabled ? 'orange' : 'green'">
             {{ detailInfo.kioskLockEnabled === false ? '已关闭' : '已启用' }}
+          </UiTag>
+        </a-descriptions-item>
+        <a-descriptions-item label="Web 补录工位">
+          <UiTag :tone="detailInfo.webSupplementEnabled ? 'blue' : 'gray'">
+            {{ detailInfo.webSupplementEnabled ? '已启用' : '未启用' }}
           </UiTag>
         </a-descriptions-item>
         <a-descriptions-item label="扫描组件在线状态">
@@ -299,6 +308,12 @@ import type {
   ScannerAgentDiagnosticStatusCode,
   ScannerEndpointOnlineStatusCode,
 } from '@/apis/mark/exam-mark-scanner'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import AQrcode from 'ant-design-vue/es/qrcode'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
   createScannerActivationCode,
   createScannerDevice,
@@ -318,18 +333,12 @@ import {
   unbindScannerDeviceAgent,
   updateScannerDevice,
 } from '@/apis/mark/exam-mark-scanner'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import AQrcode from 'ant-design-vue/es/qrcode'
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -338,6 +347,7 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import mittBus from '@/utils/mitt'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -345,8 +355,8 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'PrinterManagement' })
 
 const { refreshSnapshot } = useWorkspaceExamId()
-const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
-  useExamJourneyContextBar('扫描设备')
+const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
+  = useExamJourneyContextBar('扫描设备')
 
 /** 扫描设备写操作后刷新列表，并同步工作台 SCAN 段快照与 OCR 配置页。 */
 async function syncAfterDeviceMutation(): Promise<void> {
@@ -370,7 +380,7 @@ const searchForm = reactive<
 >({})
 const pagination = reactive({
   current: 1,
-  pageSize: 20,
+  pageSize: DEFAULT_LIST_PAGE_SIZE,
   total: 0,
 })
 
@@ -398,7 +408,7 @@ const deviceSignalMetrics = computed((): SignalMetric[] => [
   },
 ])
 
-const locationOptions = ref<Array<{ label: string; value: string }>>([])
+const locationOptions = ref<Array<{ label: string, value: string }>>([])
 
 function syncSearchForm(next: Record<string, unknown>): void {
   Object.assign(searchForm, next)
@@ -545,7 +555,7 @@ async function loadDevices(): Promise<void> {
     ])
     devices.value = result.list
     deviceSummary.value = summary
-    pagination.total = Number(result.total)
+    pagination.total = result.total
     if (result.pageNum != null) {
       pagination.current = result.pageNum
     }
@@ -572,7 +582,7 @@ function handleResetSearch(): void {
   void loadDevices()
 }
 
-function handleUiPageChange(page: { current: number; pageSize: number }): void {
+function handleUiPageChange(page: { current: number, pageSize: number }): void {
   pagination.current = page.current
   pagination.pageSize = page.pageSize
   void loadDevices()
@@ -595,6 +605,7 @@ interface FormState {
   model?: string
   location?: string
   kioskLockEnabled: boolean
+  webSupplementEnabled: boolean
   remark?: string
 }
 
@@ -606,6 +617,7 @@ function defaultFormState(): FormState {
     scannerIp: '',
     status: ScannerDeviceStatusCode.ACTIVE,
     kioskLockEnabled: true,
+    webSupplementEnabled: false,
   }
 }
 
@@ -642,6 +654,7 @@ function handleEdit(record: ExamScannerDeviceResponse): void {
     model: record.model ?? '',
     location: record.location ?? '',
     kioskLockEnabled: record.kioskLockEnabled,
+    webSupplementEnabled: record.webSupplementEnabled === true,
     remark: record.remark ?? '',
   })
   showFormModal.value = true
@@ -683,6 +696,7 @@ async function handleFormSubmit(): Promise<void> {
         model: emptyToUndefined(formData.model),
         location: emptyToUndefined(formData.location),
         kioskLockEnabled: formData.kioskLockEnabled,
+        webSupplementEnabled: formData.webSupplementEnabled,
         remark: emptyToUndefined(formData.remark),
       }
       const handoff = await updateScannerDevice(request)

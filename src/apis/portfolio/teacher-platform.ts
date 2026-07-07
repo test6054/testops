@@ -27,6 +27,14 @@ import type {
 import type { AiTaskStatusCode } from '@/apis/quality/types'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import type { PortfolioArchiveScoreRuleTypeCode } from '@/types/enums/portfolio-archive-score-rule-type-enum'
+import {
+  ALL_PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_CODES,
+  PortfolioArchiveScoreRuleTypeDescription,
+} from '@/types/enums/portfolio-archive-score-rule-type-enum'
+import type { PortfolioPortraitTemplateStatusCode } from '@/types/enums/portfolio-portrait-template-status-enum'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 
 export const portfolioArchiveBagApi = {
   assemble: (data: PortfolioArchiveBagTeacherRequest = {}) =>
@@ -41,26 +49,20 @@ export const portfolioArchiveBagApi = {
     http.post<PortfolioArchiveScoreResultVO>('/api/portfolio/archive-score/compute', data),
 }
 
-export type { PortfolioEvaluationModeCode, PortfolioEvaluationTaskStatusCode } from '@/apis/portfolio/enums'
+export type {
+  PortfolioEvaluationModeCode,
+  PortfolioEvaluationTaskStatusCode,
+} from '@/apis/portfolio/enums'
 export {
   ALL_PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_CODES,
   PortfolioArchiveScoreRuleTypeCode,
   PortfolioArchiveScoreRuleTypeDescription,
 } from '@/types/enums/portfolio-archive-score-rule-type-enum'
 
-import type {
-  PortfolioArchiveScoreRuleTypeCode,
-} from '@/types/enums/portfolio-archive-score-rule-type-enum'
-import type {
-  PortfolioPortraitTemplateStatusCode,
-} from '@/types/enums/portfolio-portrait-template-status-enum'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import {
-  ALL_PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_CODES,
-  PortfolioArchiveScoreRuleTypeDescription,
-} from '@/types/enums/portfolio-archive-score-rule-type-enum'
-
-export const PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_OPTIONS: Array<{ value: PortfolioArchiveScoreRuleTypeCode, label: string }> = [
+export const PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_OPTIONS: Array<{
+  value: PortfolioArchiveScoreRuleTypeCode
+  label: string
+}> = [
   ...ALL_PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_CODES.map((value) => ({
     value,
     label: PortfolioArchiveScoreRuleTypeDescription[value],
@@ -491,7 +493,7 @@ export const portfolioDevelopmentPlanApi = {
       '/api/portfolio/development-plan/history-import/confirm',
       data,
     ),
-  historyImportBatchPage: (data: QueryDto = { pageNum: 1, pageSize: 20 }) =>
+  historyImportBatchPage: (data: QueryDto = { pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE }) =>
     http.post<PageResult<PortfolioDevelopmentPlanHistoryImportBatchVO>>(
       '/api/portfolio/development-plan/history-import/import-batch/page',
       data,

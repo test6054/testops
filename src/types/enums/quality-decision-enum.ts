@@ -14,3 +14,7 @@ export const QualityDecisionDescription: Record<QualityDecisionCode, string> = {
   [QualityDecisionCode.BLOCKED]: '质量阻断',
 }
 
+export function isQualityDecisionCode(value: string): value is QualityDecisionCode {
+  return (ALL_QUALITY_DECISION_CODES as readonly string[]).includes(value)
+}
+

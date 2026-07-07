@@ -53,6 +53,16 @@ export interface ExamGradingExperienceAssistPolicyResponse {
   frozenTime?: string
 }
 
+export interface ExamGradingExperienceAssistPolicyEnableRequest {
+  examId: string
+  minConsistencyRate: number
+  maxHammingDistance: number
+  maxExperienceItems: number
+}
+
+export type ExamGradingExperienceAssistPolicySaveRequest =
+  ExamGradingExperienceAssistPolicyEnableRequest
+
 export interface ExamQuestionExperienceAssistBindingResponse {
   id?: string
   examId: string
@@ -102,6 +112,7 @@ export interface GradingExperienceAssistReadinessResponse {
   readyForFormalMarking?: boolean
   baselineMissingCount?: number
   assistUnresolvedCount?: number
+  subjectiveQuestionCount?: number
   questions?: GradingExperienceAssistReadinessQuestionResponse[]
 }
 
@@ -165,12 +176,23 @@ export function getExamGradingExperienceAssistPolicy(
 }
 
 export function enableExamGradingExperienceAssistPolicy(
-  examId: string,
+  request: ExamGradingExperienceAssistPolicyEnableRequest,
   config?: ExtendedAxiosRequestConfig,
 ): Promise<ExamGradingExperienceAssistPolicyResponse> {
   return http.post<ExamGradingExperienceAssistPolicyResponse>(
     '/api/mark/exam/grading-experience-assist/policy/enable',
-    { examId },
+    request,
+    config,
+  )
+}
+
+export function saveExamGradingExperienceAssistPolicy(
+  request: ExamGradingExperienceAssistPolicySaveRequest,
+  config?: ExtendedAxiosRequestConfig,
+): Promise<ExamGradingExperienceAssistPolicyResponse> {
+  return http.post<ExamGradingExperienceAssistPolicyResponse>(
+    '/api/mark/exam/grading-experience-assist/policy/save',
+    request,
     config,
   )
 }

@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import type {
-  ArchiveSelfCheckStatusCode} from '@/apis/mark/archive-volume';
+import type { ArchiveSelfCheckStatusCode } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, onMounted } from 'vue'
 import {

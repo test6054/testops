@@ -1,22 +1,11 @@
 <template>
   <StageWorkbenchShell class="arbitration-page">
     <template v-if="selectedExamId" #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        :title="contextBarTitle"
-        :subtitle="contextBarSubtitle"
-      >
+      <ContextBar layout="workbench">
         <template #status>
           <UiTag :tone="actionableCount > 0 ? 'orange' : 'green'" size="sm">
             {{ actionableCount > 0 ? `待处理 ${actionableCount}` : '暂无待办' }}
           </UiTag>
-        </template>
-        <template #actions>
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadTasks">
-            <template #icon><ReloadOutlined /></template>
-            刷新
-          </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -61,13 +50,14 @@
         </template>
 
         <UiDataTable
-          pagination-mode="client"
+          v-model:current="pageNum"
+          v-model:page-size="pageSize"
+          pagination-mode="server"
           flat
           :columns="columns"
-          :data-source="filteredTasks"
+          :data-source="taskRows"
           :loading="loading"
-          :page-size="20"
-          :total="filteredTasks.length"
+          :total="pageTotal"
           row-key="reviewTaskId"
           size="middle"
           :expanded-row-keys="expandedRowKeys"
@@ -75,6 +65,7 @@
           empty-description="当前筛选下暂无仲裁任务"
           class="arbitration-table student-detail-table__data-table"
           @expand="handleExpandChange"
+          @page-change="handlePageChange"
         >
           <template
             #bodyCell="{
@@ -182,14 +173,8 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
+import type {ReviewQuestionProgressItemResponse} from '@/apis/mark/exam-progress';
 import type { ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
-import {
-  listReviewTasks,
-  REVIEW_TASK_STATUS_TONE,
-  ReviewTaskStatusCode,
-  ReviewTaskStatusDescription,
-  ReviewTaskTypeCode,
-} from '@/apis/mark/exam-review-task'
 import type {
   BadgeTone,
   FilterField,
@@ -197,9 +182,17 @@ import type {
   UiTableRowActionItem,
 } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, onActivated, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { getMarkingProgress } from '@/apis/mark/exam-progress'
+import {
+  getReviewArbitrationSummary,
+  listReviewTasks,
+  REVIEW_TASK_STATUS_TONE,
+  ReviewTaskStatusCode,
+  ReviewTaskStatusDescription,
+  ReviewTaskTypeCode,
+} from '@/apis/mark/exam-review-task'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -215,10 +208,11 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readAllPages } from '@/utils/page-result'
 
 defineOptions({ name: 'TeacherReviewArbitration' })
 
@@ -232,48 +226,38 @@ const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar('仲裁
 const { refreshSnapshot } = useWorkspaceExamId()
 
 const currentUserId = computed(() => userStore.userInfo.userId || '')
-const allTasks = ref<ReviewTaskItemResponse[]>([])
+const taskRows = ref<ReviewTaskItemResponse[]>([])
 const loading = ref(false)
+const pageNum = ref(1)
+const pageSize = ref(DEFAULT_LIST_PAGE_SIZE)
+const pageTotal = ref(0)
+const summaryLoading = ref(false)
+const totalCount = ref(0)
+const pendingCount = ref(0)
+const inProgressMineCount = ref(0)
+const completedCount = ref(0)
+const avgAiRatioPercent = ref<number | null>(null)
 const statusTab = ref<StatusTabKey>('pending')
 const filterQuestion = ref('')
-const filterTeacher = ref('')
+const filterTeacherUserId = ref('')
 const expandedRowKeys = ref<string[]>([])
+const questionOptions = ref<Array<{ label: string, value: string }>>([])
+const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
 
-const actionableCount = computed(() => {
-  return allTasks.value.filter((item) => isActionableTask(item)).length
-})
-
-const pendingCount = computed(
-  () => allTasks.value.filter((item) => item.status === 'PENDING').length,
-)
-
-const inProgressMineCount = computed(() => {
-  return allTasks.value.filter(
-    (item) => item.status === 'IN_PROGRESS' && item.assignedTeacherUserId === currentUserId.value,
-  ).length
-})
-
-const completedCount = computed(() => {
-  return allTasks.value.filter((item) => item.status === 'APPROVED' || item.status === 'REJECTED')
-    .length
-})
+const actionableCount = computed(() => pendingCount.value + inProgressMineCount.value)
 
 const avgAiRatio = computed(() => {
-  const ratios = allTasks.value
-    .map((item) => getSuggestedRatio(item))
-    .filter((value): value is number => value !== null)
-  if (ratios.length === 0) {
+  if (avgAiRatioPercent.value == null) {
     return '—'
   }
-  const sum = ratios.reduce((acc, value) => acc + value, 0)
-  return `${Math.round(sum / ratios.length)}%`
+  return `${avgAiRatioPercent.value}%`
 })
 
 const signalMetrics = computed((): SignalMetric[] => [
   {
     key: 'total',
     label: '仲裁总数',
-    value: allTasks.value.length,
+    value: totalCount.value,
     tone: 'blue',
   },
   {
@@ -306,7 +290,7 @@ const signalMetrics = computed((): SignalMetric[] => [
 ])
 
 const statusTabItems = computed<UiSectionTabItem[]>(() => [
-  { key: 'all', label: '全部', count: allTasks.value.length },
+  { key: 'all', label: '全部', count: totalCount.value },
   { key: 'pending', label: '待处理', count: pendingCount.value, badgeTone: 'orange' },
   {
     key: 'in-progress',
@@ -316,25 +300,6 @@ const statusTabItems = computed<UiSectionTabItem[]>(() => [
   },
   { key: 'completed', label: '已结案', count: completedCount.value, badgeTone: 'green' },
 ])
-
-const questionOptions = computed(() => {
-  const values = new Set<string>()
-  allTasks.value.forEach((item) => values.add(item.questionNo))
-  return Array.from(values)
-    .sort((a, b) => a.localeCompare(b, 'zh-CN', { numeric: true }))
-    .map((value) => ({ label: `第 ${value} 题`, value }))
-})
-
-const teacherOptions = computed(() => {
-  const names = new Set<string>()
-  allTasks.value.forEach((item) => {
-    const label = formatAssignedTeacher(item)
-    if (label) {
-      names.add(label)
-    }
-  })
-  return Array.from(names).map((value) => ({ label: value, value }))
-})
 
 const filterFields = computed((): FilterField[] => [
   {
@@ -348,13 +313,14 @@ const filterFields = computed((): FilterField[] => [
     options: questionOptions.value,
   },
   {
-    key: 'teacher',
+    key: 'teacherUserId',
     type: 'select',
     label: '教师',
-    placeholder: '全部教师',
-    width: 160,
-    minWidth: 160,
+    placeholder: '搜索教师',
+    width: 180,
+    minWidth: 180,
     allowClear: true,
+    allowSearch: true,
     options: teacherOptions.value,
   },
 ])
@@ -362,32 +328,12 @@ const filterFields = computed((): FilterField[] => [
 const filterModel = computed({
   get: () => ({
     questionNo: filterQuestion.value,
-    teacher: filterTeacher.value,
+    teacherUserId: filterTeacherUserId.value,
   }),
   set: (value: Record<string, unknown>) => {
     filterQuestion.value = String(value.questionNo ?? '')
-    filterTeacher.value = String(value.teacher ?? '')
+    filterTeacherUserId.value = String(value.teacherUserId ?? '')
   },
-})
-
-const filteredTasks = computed(() => {
-  let rows = allTasks.value
-  if (statusTab.value === 'pending') {
-    rows = rows.filter((item) => item.status === 'PENDING')
-  } else if (statusTab.value === 'in-progress') {
-    rows = rows.filter(
-      (item) => item.status === 'IN_PROGRESS' && item.assignedTeacherUserId === currentUserId.value,
-    )
-  } else if (statusTab.value === 'completed') {
-    rows = rows.filter((item) => item.status === 'APPROVED' || item.status === 'REJECTED')
-  }
-  if (filterQuestion.value) {
-    rows = rows.filter((item) => item.questionNo === filterQuestion.value)
-  }
-  if (filterTeacher.value) {
-    rows = rows.filter((item) => formatAssignedTeacher(item) === filterTeacher.value)
-  }
-  return rows
 })
 
 const columns: ColumnType<ReviewTaskItemResponse>[] = [
@@ -496,11 +442,119 @@ function handleSignalClick(key: string): void {
 
 function handleStatusTabChange(): void {
   expandedRowKeys.value = []
+  pageNum.value = 1
+  void loadTasks()
 }
 
 function resetFilters(): void {
   filterQuestion.value = ''
-  filterTeacher.value = ''
+  filterTeacherUserId.value = ''
+  pageNum.value = 1
+  void loadTasks()
+}
+
+function handlePageChange(event: { current: number, pageSize: number }): void {
+  pageNum.value = event.current
+  pageSize.value = event.pageSize
+  void loadTasks()
+}
+
+function buildListQuery() {
+  const examId = selectedExamId.value
+  if (!examId) {
+    throw new Error('examId missing')
+  }
+  const query = {
+    examId,
+    reviewType: ReviewTaskTypeCode.QUESTION_REVIEW_ARBITRATION,
+    pageNum: pageNum.value,
+    pageSize: pageSize.value,
+    questionNo: filterQuestion.value || undefined,
+  } as Parameters<typeof listReviewTasks>[0]
+  if (statusTab.value !== 'in-progress' && filterTeacherUserId.value) {
+    query.assignedTeacherUserId = filterTeacherUserId.value
+  }
+  if (statusTab.value === 'pending') {
+    query.status = ReviewTaskStatusCode.PENDING
+  } else if (statusTab.value === 'in-progress') {
+    query.status = ReviewTaskStatusCode.IN_PROGRESS
+    query.assignedTeacherUserId = currentUserId.value
+  } else if (statusTab.value === 'completed') {
+    query.completedOnly = true
+  }
+  return query
+}
+
+async function loadSummary(): Promise<void> {
+  if (!selectedExamId.value) {
+    totalCount.value = 0
+    pendingCount.value = 0
+    inProgressMineCount.value = 0
+    completedCount.value = 0
+    avgAiRatioPercent.value = null
+    return
+  }
+  summaryLoading.value = true
+  try {
+    const summary = await getReviewArbitrationSummary({ examId: selectedExamId.value })
+    totalCount.value = Number(summary.totalCount)
+    pendingCount.value = Number(summary.pendingCount)
+    inProgressMineCount.value = Number(summary.inProgressMineCount)
+    completedCount.value = Number(summary.completedCount)
+    avgAiRatioPercent.value = summary.avgAiRatioPercent ?? null
+  } catch (error) {
+    showUserError(error, '仲裁汇总加载失败')
+  } finally {
+    summaryLoading.value = false
+  }
+}
+
+async function loadQuestionOptions(): Promise<void> {
+  if (!selectedExamId.value) {
+    questionOptions.value = []
+    return
+  }
+  try {
+    const progress = await getMarkingProgress(selectedExamId.value)
+    questionOptions.value = (progress.reviewQuestionProgressList ?? [])
+      .map((item: ReviewQuestionProgressItemResponse) => item.questionNo)
+      .filter((questionNo): questionNo is string => questionNo.trim().length > 0)
+      .sort((a, b) => a.localeCompare(b, 'zh-CN', { numeric: true }))
+      .map((questionNo) => ({ label: `第 ${questionNo} 题`, value: questionNo }))
+  } catch (error) {
+    questionOptions.value = []
+    showUserError(error, '题号筛选项加载失败')
+  }
+}
+
+async function loadTasks(): Promise<void> {
+  if (!selectedExamId.value) {
+    taskRows.value = []
+    pageTotal.value = 0
+    return
+  }
+  loading.value = true
+  try {
+    const page = await listReviewTasks(buildListQuery())
+    taskRows.value = page.list
+    pageTotal.value = page.total
+    if (page.pageNum != null) {
+      pageNum.value = page.pageNum
+    }
+    if (page.pageSize != null) {
+      pageSize.value = page.pageSize
+    }
+  } catch (error) {
+    taskRows.value = []
+    pageTotal.value = 0
+    showUserError(error, '题目复核仲裁任务加载失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+async function reloadAll(): Promise<void> {
+  await Promise.all([loadSummary(), loadQuestionOptions(), loadTasks()])
 }
 
 function handleExpandChange(expanded: boolean, record: ReviewTaskItemResponse): void {
@@ -511,93 +565,34 @@ function handleExpandChange(expanded: boolean, record: ReviewTaskItemResponse): 
   expandedRowKeys.value = []
 }
 
-/**
- * 拉取题目复核仲裁全量任务：保留 PENDING 全量 + IN_PROGRESS 仅当前教师可见的业务规则，
- * 并补充已结案任务供 Tab 筛选。
- */
-async function loadQuestionArbitrationTasks(): Promise<void> {
-  if (!selectedExamId.value) {
-    allTasks.value = []
-    return
-  }
-  const examId = selectedExamId.value
-  const [pendingItems, inProgressItems, approvedItems, rejectedItems] = await Promise.all([
-    readAllPages(
-      (pageNum) =>
-        listReviewTasks({
-          examId,
-          reviewType: ReviewTaskTypeCode.QUESTION_REVIEW_ARBITRATION,
-          status: ReviewTaskStatusCode.PENDING,
-          pageNum,
-          pageSize: 100,
-        }),
-      '题目复核仲裁任务加载失败',
-    ),
-    readAllPages(
-      (pageNum) =>
-        listReviewTasks({
-          examId,
-          reviewType: ReviewTaskTypeCode.QUESTION_REVIEW_ARBITRATION,
-          status: ReviewTaskStatusCode.IN_PROGRESS,
-          pageNum,
-          pageSize: 100,
-        }),
-      '题目复核仲裁任务加载失败',
-    ),
-    readAllPages(
-      (pageNum) =>
-        listReviewTasks({
-          examId,
-          reviewType: ReviewTaskTypeCode.QUESTION_REVIEW_ARBITRATION,
-          status: ReviewTaskStatusCode.APPROVED,
-          pageNum,
-          pageSize: 100,
-        }),
-      '题目复核仲裁任务加载失败',
-    ),
-    readAllPages(
-      (pageNum) =>
-        listReviewTasks({
-          examId,
-          reviewType: ReviewTaskTypeCode.QUESTION_REVIEW_ARBITRATION,
-          status: ReviewTaskStatusCode.REJECTED,
-          pageNum,
-          pageSize: 100,
-        }),
-      '题目复核仲裁任务加载失败',
-    ),
-  ])
-  const merged = new Map<string, ReviewTaskItemResponse>()
-  pendingItems.forEach((item) => {
-    merged.set(item.reviewTaskId, item)
-  })
-  inProgressItems.forEach((item) => {
-    if (item.assignedTeacherUserId === currentUserId.value) {
-      merged.set(item.reviewTaskId, item)
+watch(
+  selectedExamId,
+  (value) => {
+    if (value) {
+      pageNum.value = 1
+      void reloadAll()
+    } else {
+      taskRows.value = []
+      pageTotal.value = 0
     }
-  })
-  approvedItems.forEach((item) => {
-    merged.set(item.reviewTaskId, item)
-  })
-  rejectedItems.forEach((item) => {
-    merged.set(item.reviewTaskId, item)
-  })
-  allTasks.value = Array.from(merged.values())
-}
+  },
+  { immediate: true },
+)
 
-async function loadTasks(): Promise<void> {
+watch([filterQuestion, filterTeacherUserId], () => {
   if (!selectedExamId.value) {
     return
   }
-  loading.value = true
-  try {
-    await loadQuestionArbitrationTasks()
-  } catch (error) {
-    showUserError(error, '题目复核仲裁任务加载失败')
-  } finally {
-    loading.value = false
+  pageNum.value = 1
+  void loadTasks()
+})
+
+onActivated(() => {
+  if (selectedExamId.value) {
+    void reloadAll()
+    void refreshSnapshot()
   }
-}
+})
 
 function goReviewWorkspace(record: ReviewTaskItemResponse): void {
   if (!selectedExamId.value) {
@@ -620,25 +615,6 @@ function goReviewDetail(record: ReviewTaskItemResponse): void {
     query: { source: 'arbitration' },
   })
 }
-
-watch(
-  selectedExamId,
-  (value) => {
-    if (value) {
-      void loadTasks()
-    } else {
-      allTasks.value = []
-    }
-  },
-  { immediate: true },
-)
-
-onActivated(() => {
-  if (selectedExamId.value) {
-    void loadTasks()
-    void refreshSnapshot()
-  }
-})
 </script>
 
 <style lang="scss" scoped>

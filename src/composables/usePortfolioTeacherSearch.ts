@@ -1,6 +1,7 @@
 import type { PortfolioTeacherDetailVO, PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
 import { ref } from 'vue'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
+import { REMOTE_SEARCH_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
 import {
   formatPortfolioTeacherDetailSelectLabel,
@@ -36,7 +37,7 @@ export function usePortfolioTeacherSearch() {
       return
     }
     try {
-      const page = await portfolioTeacherApi.page({ pageNum: 1, pageSize: 20, searchText: text })
+      const page = await portfolioTeacherApi.page({ pageNum: 1, pageSize: REMOTE_SEARCH_PAGE_SIZE, searchText: text })
       teacherOptions.value = page.list.flatMap((teacher) => {
         rememberTeacherSummaryOption(teacher)
         const option = toPortfolioTeacherSelectOption(teacher)

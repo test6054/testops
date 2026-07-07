@@ -499,7 +499,7 @@ async function loadList() {
     taskStatusCounts.value = counts
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
-    total.value = Number(page.total)
+    total.value = page.total
     if (list.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadList()
@@ -563,7 +563,7 @@ async function loadListQuietly(): Promise<void> {
     taskStatusCounts.value = counts
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
-    total.value = Number(page.total)
+    total.value = page.total
     if (detailRecord.value?.id && detailVisible.value) {
       const updated = list.value.find((item) => item.id === detailRecord.value!.id)
       if (updated) {

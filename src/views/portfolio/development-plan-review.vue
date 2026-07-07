@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentPlanVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -11,17 +12,18 @@ import {
   PortfolioDevelopmentPlanStatusCode,
   PortfolioDevelopmentPlanStatusDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -107,13 +109,13 @@ async function loadPage() {
   try {
     const page = await portfolioDevelopmentPlanApi.page({
       pageNum: pageNum.value,
-      pageSize: 20,
+      pageSize: DEFAULT_LIST_PAGE_SIZE,
       planYear: filterForm.planYear,
       planStatus: filterForm.planStatus,
       portfolioOrgId: filterForm.portfolioOrgId,
     })
     rows.value = page.list
-    pageTotal.value = Number(page.total)
+    pageTotal.value = page.total
   } catch (error) {
     showUserError(error)
   } finally {
@@ -142,6 +144,11 @@ function openReview(id: string, action: 'approve' | 'return') {
   reviewAction.value = action
   auditOpinion.value = ''
   reviewModalOpen.value = true
+}
+
+function handlePlanReviewRowAction(key: string, planId: string) {
+  if (key === 'approve') openReview(planId, 'approve')
+  else if (key === 'return') openReview(planId, 'return')
 }
 
 async function confirmReview() {
@@ -215,14 +222,24 @@ onMounted(async () => {
             </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <template
-              v-if="record.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_PENDING"
-            >
-              <UiButton size="sm" @click="openReview(record.id, 'approve')"> 通过 </UiButton>
-              <UiButton size="sm" style="margin-left: 8px" @click="openReview(record.id, 'return')">
-                退回
-              </UiButton>
-            </template>
+            <UiTableActions
+              :items="[
+                {
+                  key: 'approve',
+                  label: '通过',
+                  hidden:
+                    record.planStatus !== PortfolioDevelopmentPlanStatusCode.DEPARTMENT_PENDING,
+                },
+                {
+                  key: 'return',
+                  label: '退回',
+                  hidden:
+                    record.planStatus !== PortfolioDevelopmentPlanStatusCode.DEPARTMENT_PENDING,
+                },
+              ]"
+              split
+              @action="(key) => handlePlanReviewRowAction(key, record.id)"
+            />
           </template>
         </template>
       </UiDataTable>

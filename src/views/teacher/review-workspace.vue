@@ -57,11 +57,6 @@
                 同题进度 {{ currentQueueIndex }} / {{ queueTotal }}
               </UiTag>
             </template>
-            <template #actions>
-              <UiButton variant="outline" size="sm" :loading="loading" @click="loadTask">
-                刷新
-              </UiButton>
-            </template>
           </GradingImmersionChrome>
 
           <div

@@ -23,7 +23,7 @@
         </div>
       </div>
       <div class="archive-volume-detail-layout__header-gap" />
-      <HeaderRightBar class="archive-volume-detail-layout__header-right" />
+      <HeaderRightBar variant="workbench" class="archive-volume-detail-layout__header-right" />
     </header>
 
     <div class="archive-volume-detail-layout__body">

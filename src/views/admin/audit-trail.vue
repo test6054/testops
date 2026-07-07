@@ -116,7 +116,7 @@
           v-model="incidentFilter"
           :fields="incidentFilterFields"
           search-text="查询"
-          @search="loadIncidents"
+          @search="searchIncidents"
         >
           <template #field-unresolvedOnly="{ update }">
             <a-checkbox
@@ -129,16 +129,18 @@
         </UiFilterBar>
 
         <UiDataTable
-          pagination-mode="client"
+          pagination-mode="server"
           :columns="incidentColumns"
           :data-source="incidents"
           :loading="incidentLoading"
           row-key="id"
           size="middle"
           class="audit-table student-detail-table__data-table"
-          :page-size="20"
-          :total="incidents.length"
+          v-model:current="incidentPagination.current"
+          v-model:page-size="incidentPagination.pageSize"
+          :total="incidentPagination.total"
           flat
+          @page-change="handleIncidentPageChange"
         >
           <template #bodyCell="{ column, index }">
             <template v-if="column.key === 'incidentLevel'">
@@ -332,9 +334,9 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useOptionalExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
-import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminAuditTrail' })
@@ -358,9 +360,9 @@ const {
 
 const activeTab = ref<'logs' | 'incidents' | 'diagnostic-samples'>('logs')
 
-const unresolvedIncidentCount = computed(
-  () => incidents.value.filter((item) => !item.resolved).length,
-)
+const unresolvedIncidentTotal = ref(0)
+
+const unresolvedIncidentCount = computed(() => unresolvedIncidentTotal.value)
 
 const auditTabItems = computed((): UiSectionTabItem[] => [
   {
@@ -371,7 +373,7 @@ const auditTabItems = computed((): UiSectionTabItem[] => [
   {
     key: 'incidents',
     label: '重大事件',
-    count: incidents.value.length || undefined,
+    count: incidentPagination.total || undefined,
     badgeTone: unresolvedIncidentCount.value > 0 ? 'orange' : undefined,
   },
   {
@@ -392,7 +394,7 @@ const auditSignalMetrics = computed((): SignalMetric[] => [
   {
     key: 'incidents',
     label: '重大事件',
-    value: incidents.value.length,
+    value: incidentPagination.total ?? 0,
     unit: '条',
     tone: unresolvedIncidentCount.value > 0 ? 'orange' : 'gray',
   },
@@ -418,7 +420,7 @@ const operationLogs = ref<OperationLogResponse[]>([])
 const logFilter = reactive<{ operationType?: OperationTypeCode }>({})
 const logPagination = reactive<TablePaginationConfig>({
   current: 1,
-  pageSize: 20,
+  pageSize: DEFAULT_LIST_PAGE_SIZE,
   total: 0,
   showSizeChanger: true,
   showTotal: (total: number) => `共 ${total} 条`,
@@ -459,12 +461,12 @@ async function loadLogs() {
       examId: selectedExamId.value,
       operationType: logFilter.operationType,
       pageNum: logPagination.current ?? 1,
-      pageSize: logPagination.pageSize ?? 20,
+      pageSize: logPagination.pageSize ?? DEFAULT_LIST_PAGE_SIZE,
     })
     operationLogs.value = page.list
     logPagination.current = page.pageNum
     logPagination.pageSize = page.pageSize
-    logPagination.total = Number(page.total)
+    logPagination.total = page.total
   } catch (error) {
     operationLogs.value = []
     logPagination.total = 0
@@ -489,6 +491,13 @@ function handleLogPageChange(pageInfo: { current: number; pageSize: number }) {
 const incidentLoading = ref(false)
 const incidents = ref<ExamIncidentRecord[]>([])
 const incidentFilter = reactive({ unresolvedOnly: false })
+const incidentPagination = reactive<TablePaginationConfig>({
+  current: 1,
+  pageSize: DEFAULT_LIST_PAGE_SIZE,
+  total: 0,
+  showSizeChanger: true,
+  showTotal: (total: number) => `共 ${total} 条`,
+})
 
 const incidentFilterFields: FilterField[] = [
   {
@@ -518,22 +527,42 @@ async function loadIncidents() {
   if (!examId) return
   incidentLoading.value = true
   try {
-    incidents.value = await readAllPages(
-      (pageNum) =>
-        listIncidents({
-          examId,
-          unresolvedOnly: incidentFilter.unresolvedOnly,
-          pageNum,
-          pageSize: 100,
-        }),
-      '重大事件加载失败，请稍后重试',
-    )
+    const page = await listIncidents({
+      examId,
+      unresolvedOnly: incidentFilter.unresolvedOnly,
+      pageNum: incidentPagination.current ?? 1,
+      pageSize: incidentPagination.pageSize ?? DEFAULT_LIST_PAGE_SIZE,
+    })
+    incidents.value = page.list
+    incidentPagination.current = page.pageNum
+    incidentPagination.pageSize = page.pageSize
+    incidentPagination.total = page.total
+    const unresolvedPage = await listIncidents({
+      examId,
+      unresolvedOnly: true,
+      pageNum: 1,
+      pageSize: 1,
+    })
+    unresolvedIncidentTotal.value = unresolvedPage.total
   } catch (error) {
     incidents.value = []
+    incidentPagination.total = 0
+    unresolvedIncidentTotal.value = 0
     showUserError(error, '重大事件加载失败')
   } finally {
     incidentLoading.value = false
   }
+}
+
+function searchIncidents() {
+  incidentPagination.current = 1
+  void loadIncidents()
+}
+
+function handleIncidentPageChange(pageInfo: { current: number; pageSize: number }): void {
+  incidentPagination.current = pageInfo.current
+  incidentPagination.pageSize = pageInfo.pageSize
+  void loadIncidents()
 }
 
 // ─── 解决重大事件弹窗 ──────────────────────────────────
@@ -594,7 +623,7 @@ const diagnosticSamples = ref<DiagnosticSampleResponse[]>([])
 const sampleFilter = reactive<{ sampleType?: DiagnosticSampleTypeCode }>({})
 const samplePagination = reactive<TablePaginationConfig>({
   current: 1,
-  pageSize: 20,
+  pageSize: DEFAULT_LIST_PAGE_SIZE,
   total: 0,
   showSizeChanger: true,
   showTotal: (total: number) => `共 ${total} 条`,
@@ -634,12 +663,12 @@ async function loadDiagnosticSamples() {
       examId,
       sampleType: sampleFilter.sampleType,
       pageNum: samplePagination.current ?? 1,
-      pageSize: samplePagination.pageSize ?? 20,
+      pageSize: samplePagination.pageSize ?? DEFAULT_LIST_PAGE_SIZE,
     })
     diagnosticSamples.value = page.list
     samplePagination.current = page.pageNum
     samplePagination.pageSize = page.pageSize
-    samplePagination.total = Number(page.total)
+    samplePagination.total = page.total
   } catch (error) {
     diagnosticSamples.value = []
     samplePagination.total = 0

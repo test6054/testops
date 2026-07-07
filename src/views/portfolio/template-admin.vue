@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TreeProps } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
@@ -12,7 +13,13 @@ import type {
   PortfolioArchiveTemplateDiffSummary,
   PortfolioArchiveTemplateVersionVO,
 } from '@/apis/portfolio/types'
-import { message } from 'ant-design-vue'
+import {
+  PORTFOLIO_ARCHIVE_CATEGORY_SCOPE_OPTIONS,
+  PORTFOLIO_ARCHIVE_CATEGORY_STATUS_OPTIONS,
+  PORTFOLIO_ARCHIVE_FIELD_SOURCE_TYPE_OPTIONS,
+  PORTFOLIO_ARCHIVE_FIELD_TYPE_OPTIONS,
+  PORTFOLIO_DEFAULT_AUDIT_FLOW_CODE,
+} from '@/apis/portfolio/types'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import {
@@ -25,19 +32,13 @@ import {
   PortfolioArchiveFieldTypeDescription,
   PortfolioArchiveTemplateVersionStatusDescription,
 } from '@/apis/portfolio/enums'
-import {
-  PORTFOLIO_ARCHIVE_CATEGORY_SCOPE_OPTIONS,
-  PORTFOLIO_ARCHIVE_CATEGORY_STATUS_OPTIONS,
-  PORTFOLIO_ARCHIVE_FIELD_SOURCE_TYPE_OPTIONS,
-  PORTFOLIO_ARCHIVE_FIELD_TYPE_OPTIONS,
-  PORTFOLIO_DEFAULT_AUDIT_FLOW_CODE,
-} from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -56,22 +57,26 @@ interface TreeNode {
 }
 
 function isTreeNode(value: unknown): value is TreeNode {
-  return typeof value === 'object'
-    && value !== null
-    && 'key' in value
-    && 'title' in value
-    && 'raw' in value
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'key' in value &&
+    'title' in value &&
+    'raw' in value
+  )
 }
 
 function isArchiveFieldRecord(record: unknown): record is PortfolioArchiveFieldDefVO {
-  return typeof record === 'object'
-    && record !== null
-    && 'id' in record
-    && 'templateVersionId' in record
-    && 'fieldCode' in record
-    && 'fieldLabel' in record
-    && 'fieldType' in record
-    && 'sourceType' in record
+  return (
+    typeof record === 'object' &&
+    record !== null &&
+    'id' in record &&
+    'templateVersionId' in record &&
+    'fieldCode' in record &&
+    'fieldLabel' in record &&
+    'fieldType' in record &&
+    'sourceType' in record
+  )
 }
 
 function archiveFieldRecord(record: unknown): PortfolioArchiveFieldDefVO {
@@ -81,14 +86,18 @@ function archiveFieldRecord(record: unknown): PortfolioArchiveFieldDefVO {
   return record
 }
 
-function isArchiveTemplateVersionRecord(record: unknown): record is PortfolioArchiveTemplateVersionVO {
-  return typeof record === 'object'
-    && record !== null
-    && 'id' in record
-    && 'categoryId' in record
-    && 'templateCode' in record
-    && 'versionNo' in record
-    && 'status' in record
+function isArchiveTemplateVersionRecord(
+  record: unknown,
+): record is PortfolioArchiveTemplateVersionVO {
+  return (
+    typeof record === 'object' &&
+    record !== null &&
+    'id' in record &&
+    'categoryId' in record &&
+    'templateCode' in record &&
+    'versionNo' in record &&
+    'status' in record
+  )
 }
 
 function archiveTemplateVersionRecord(record: unknown): PortfolioArchiveTemplateVersionVO {
@@ -186,7 +195,7 @@ const activeVersion = computed(
 
 const versionOptions = computed(() =>
   versionHistory.value.map(
-    (item): { value: PortfolioArchiveTemplateVersionVO['id'], label: string } => ({
+    (item): { value: PortfolioArchiveTemplateVersionVO['id']; label: string } => ({
       value: item.id,
       label: `${item.versionNo} (${strictEnumLabel(PortfolioArchiveTemplateVersionStatusDescription, item.status, '模板版本状态')})`,
     }),
@@ -225,7 +234,7 @@ const parsedChangeLogs = computed(() =>
 )
 
 function flattenCategoryOptions(nodes: TreeNode[], excludeId?: string) {
-  const options: { value: string, label: string }[] = []
+  const options: { value: string; label: string }[] = []
   for (const node of nodes) {
     if (excludeId && node.key === excludeId) continue
     options.push({ value: node.key, label: node.title })
@@ -370,8 +379,8 @@ async function loadFields() {
     return
   }
   try {
-    fields.value
-      = (await portfolioArchiveTemplateApi.listFieldDefs({
+    fields.value =
+      (await portfolioArchiveTemplateApi.listFieldDefs({
         templateVersionId: activeVersionId.value,
       })) ?? []
   } catch (error) {
@@ -387,8 +396,8 @@ async function loadHistory() {
   }
   try {
     const categoryId = selectedCategory.value.id
-    versionHistory.value
-      = (await portfolioArchiveTemplateApi.listVersionHistory({ categoryId })) ?? []
+    versionHistory.value =
+      (await portfolioArchiveTemplateApi.listVersionHistory({ categoryId })) ?? []
     changeLogs.value = (await portfolioArchiveTemplateApi.listChangeHistory({ categoryId })) ?? []
   } catch (error) {
     showUserError(error, '加载版本历史失败')
@@ -440,14 +449,18 @@ function openEditCategory() {
 }
 
 async function deactivateCategory() {
-  if (!selectedCategory.value || selectedCategory.value.status === PortfolioArchiveCategoryStatusCode.INACTIVE) return
+  if (
+    !selectedCategory.value ||
+    selectedCategory.value.status === PortfolioArchiveCategoryStatusCode.INACTIVE
+  )
+    return
   if (
     !(await confirmAsync({
       content: `确认停用分类「${selectedCategory.value.categoryName}」？停用后 AI 将无法解析该分类。`,
     }))
   ) {
     return
-}
+  }
   try {
     await portfolioArchiveTemplateApi.saveCategory({
       id: selectedCategory.value.id,
@@ -474,7 +487,7 @@ async function deleteCategory() {
     }))
   ) {
     return
-}
+  }
   try {
     await portfolioArchiveTemplateApi.deleteCategory({ categoryId: selectedCategory.value.id })
     message.success('分类已删除')
@@ -524,7 +537,7 @@ async function runSeedDefaults() {
     }))
   ) {
     return
-}
+  }
   seeding.value = true
   try {
     const result = await portfolioArchiveTemplateApi.seedDefaultTemplates()
@@ -609,6 +622,11 @@ async function removeField(record: PortfolioArchiveFieldDefVO) {
   } catch (error) {
     showUserError(error, '删除字段失败')
   }
+}
+
+function handleArchiveFieldAction(key: string, record: PortfolioArchiveFieldDefVO) {
+  if (key === 'edit') openEditField(record)
+  else if (key === 'delete') void removeField(record)
 }
 
 async function submitField() {
@@ -858,16 +876,16 @@ onMounted(async () => {
               <template v-else-if="column.key === 'readonly'">
                 {{ archiveFieldRecord(record).readonly ? '是' : '否' }}
               </template>
-              <template v-else-if="column.key === 'actions' && canManageTenant && canEditFields">
-                <UiTextAction @click="openEditField(archiveFieldRecord(record))">
-                  编辑
-                </UiTextAction>
-                <UiTextAction
-                  tone="danger"
-                  @click="removeField(archiveFieldRecord(record))"
-                >
-                  删除
-                </UiTextAction>
+              <template v-else-if="column.key === 'actions'">
+                <UiTableActions
+                  v-if="canManageTenant && canEditFields"
+                  :items="[
+                    { key: 'edit', label: '编辑' },
+                    { key: 'delete', label: '删除', tone: 'danger' },
+                  ]"
+                  split
+                  @action="(key) => handleArchiveFieldAction(key, archiveFieldRecord(record))"
+                />
               </template>
             </template>
           </UiDataTable>
@@ -971,11 +989,11 @@ onMounted(async () => {
             }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiTextAction
-              @click="selectVersionFromHistory(archiveTemplateVersionRecord(record))"
-            >
-              查看
-            </UiTextAction>
+            <UiTableActions
+              :items="[{ key: 'view', label: '查看' }]"
+              split
+              @action="() => selectVersionFromHistory(archiveTemplateVersionRecord(record))"
+            />
           </template>
         </template>
       </UiDataTable>

@@ -201,6 +201,7 @@ export function useMarkingTaskDetailState() {
   const loadTaskHolder: { run: () => Promise<void> } = {
     run: async () => {},
   }
+  let loadTaskGeneration = 0
 
   function clearWithdrawToastTimer(): void {
     if (withdrawToastTimer !== null) {
@@ -234,6 +235,7 @@ export function useMarkingTaskDetailState() {
     nextTaskId: navigation.nextTaskId,
     goToTask: navigation.goToTask,
     loadTask: () => loadTaskHolder.run(),
+    ensureBatchLoaded: navigation.ensureBatchLoaded,
     tenantId,
     form,
     wholeQuestions,
@@ -424,19 +426,26 @@ export function useMarkingTaskDetailState() {
 
   async function loadTask(): Promise<void> {
     if (!taskId.value) return
+    const loadGeneration = ++loadTaskGeneration
     loading.value = true
     try {
       const detail = await getMarkingTaskDetail({ taskId: taskId.value })
+      if (loadGeneration !== loadTaskGeneration) {
+        return
+      }
       task.value = detail
       taskRecycledBlocked.value = detail.taskStatus === 'RECYCLED'
       examDetail.value = await getExamDetail(detail.examId)
+      if (loadGeneration !== loadTaskGeneration) {
+        return
+      }
       if (form.score === undefined && detail.score !== undefined && detail.score !== null) {
         form.score = Number(detail.score)
       }
       if (!form.annotationNote && detail.annotationNote) {
         form.annotationNote = detail.annotationNote
       }
-      void navigation.ensureBatchLoaded(detail.examId)
+      await navigation.ensureBatchLoaded(detail.examId)
       if (detail.submittedQuestionScores?.length) {
         applySubmittedQuestionScores(detail.submittedQuestionScores)
       } else {
@@ -444,14 +453,20 @@ export function useMarkingTaskDetailState() {
       }
       if (usesWholePaperWorkspace.value) {
         await openWholePaperView()
+        if (loadGeneration !== loadTaskGeneration) {
+          return
+        }
         syncWholeQuestionAccordion()
         if (isWholePaperTask.value && detail.taskStatus === 'FINALIZED') {
           await loadSubmittedPageAnnotations()
         }
       } else {
-        await openQuestionView(detail)
+        await openQuestionView(detail, loadGeneration)
       }
     } catch (error) {
+      if (loadGeneration !== loadTaskGeneration) {
+        return
+      }
       task.value = null
       showUserError(error, '阅卷任务详情加载失败')
     } finally {
@@ -460,7 +475,10 @@ export function useMarkingTaskDetailState() {
   }
   loadTaskHolder.run = loadTask
 
-  async function openQuestionView(currentTask = task.value): Promise<void> {
+  async function openQuestionView(
+    currentTask = task.value,
+    loadGeneration = loadTaskGeneration,
+  ): Promise<void> {
     if (!currentTask?.examId || !currentTask.id) return
     questionViewLoading.value = true
     try {
@@ -468,6 +486,9 @@ export function useMarkingTaskDetailState() {
         examId: currentTask.examId,
         taskId: currentTask.id,
       })
+      if (loadGeneration !== loadTaskGeneration) {
+        return
+      }
       questionViewLoaded.value = true
       syncExperienceAssistMetaFromQuestionView(questionView.value)
       focusPrimaryScoreInput()
@@ -529,7 +550,7 @@ export function useMarkingTaskDetailState() {
     consistencyRate?: number,
     matchMode?: GradingExperienceReferenceMatchModeCode,
   ): void {
-    if (applied && sourceExamName) {
+    if (applied) {
       lastExperienceAssistMeta.value = {
         applied: true,
         sourceExamName,

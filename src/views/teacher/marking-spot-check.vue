@@ -1,22 +1,11 @@
 <template>
   <StageWorkbenchShell class="spot-check-page">
     <template #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        :title="contextBarTitle"
-        :subtitle="contextBarSubtitle"
-      >
+      <ContextBar layout="workbench">
         <template #status>
           <UiTag :tone="pendingCount > 0 ? 'orange' : 'green'" size="sm">
             {{ pendingCount > 0 ? `${pendingCount} 条待处理` : '暂无待办' }}
           </UiTag>
-        </template>
-        <template #actions>
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">
-            <template #icon><ReloadOutlined /></template>
-            刷新
-          </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -179,6 +168,10 @@ import type {
   MyPendingSpotCheckItemResponse,
   SpotCheckStatusCode,
 } from '@/apis/mark/marking-quality'
+import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import {
   countMyPendingSpotChecks,
   handleSpotCheck,
@@ -187,11 +180,6 @@ import {
   SpotCheckConclusionCode,
   SpotCheckStatusDescription,
 } from '@/apis/mark/marking-quality'
-import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -206,6 +194,7 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -221,7 +210,7 @@ const pendingCount = ref(0)
 const loading = ref(false)
 const pagination = reactive({
   pageNum: 1,
-  pageSize: 20,
+  pageSize: DEFAULT_LIST_PAGE_SIZE,
   total: 0,
 })
 
@@ -258,7 +247,7 @@ async function loadList(): Promise<void> {
       loadPendingCount(),
     ])
     pendingItems.value = page.list
-    pagination.total = Number(page.total)
+    pagination.total = page.total
     pagination.pageNum = page.pageNum ?? pagination.pageNum
     pagination.pageSize = page.pageSize ?? pagination.pageSize
   } catch (error) {
@@ -271,7 +260,7 @@ async function loadList(): Promise<void> {
   }
 }
 
-function handlePageChange(page: { current: number; pageSize: number }): void {
+function handlePageChange(page: { current: number, pageSize: number }): void {
   pagination.pageNum = page.current
   pagination.pageSize = page.pageSize
   void loadList()

@@ -2,12 +2,14 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioCorrectionRequestStatusCode } from '@/apis/portfolio/enums'
+import { PortfolioCorrectionRequestStatusDescription } from '@/apis/portfolio/enums'
 import type {
   PortfolioCorrectionDetailVO,
   PortfolioCorrectionSummaryVO,
   PortfolioTargetFieldDefinition,
   PortfolioTeacherOneTableCategoryVO,
 } from '@/apis/portfolio/types'
+import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
@@ -15,15 +17,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
-import { PortfolioCorrectionRequestStatusDescription } from '@/apis/portfolio/enums'
-import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import {
@@ -104,8 +103,8 @@ const fieldOptions = computed(() =>
 
 function applyRoutePrefill() {
   const categoryId = typeof route.query.categoryId === 'string' ? route.query.categoryId : ''
-  const archiveRecordId
-    = typeof route.query.archiveRecordId === 'string' ? route.query.archiveRecordId : ''
+  const archiveRecordId =
+    typeof route.query.archiveRecordId === 'string' ? route.query.archiveRecordId : ''
   const fieldCode = typeof route.query.fieldCode === 'string' ? route.query.fieldCode : ''
   const fieldLabel = typeof route.query.fieldLabel === 'string' ? route.query.fieldLabel : ''
   const wrongValue = typeof route.query.wrongValue === 'string' ? route.query.wrongValue : ''
@@ -170,7 +169,7 @@ async function loadCorrections() {
       pageSize: pageSize.value,
     })
     rows.value = page.list
-    pageTotal.value = Number(page.total)
+    pageTotal.value = page.total
   } catch (error) {
     showUserError(error, '加载纠错列表失败')
   } finally {
@@ -225,7 +224,7 @@ async function handleSubmit() {
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   pageNum.value = page.current
   pageSize.value = page.pageSize
   void loadCorrections()
@@ -349,7 +348,11 @@ watch(
               </UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiTextAction @click="openCorrectionDetail(record)"> 详情 </UiTextAction>
+              <UiTableActions
+                :items="[{ key: 'detail', label: '详情' }]"
+                split
+                @action="() => openCorrectionDetail(record)"
+              />
             </template>
           </template>
         </UiDataTable>

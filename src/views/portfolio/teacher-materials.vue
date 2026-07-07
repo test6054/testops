@@ -146,7 +146,7 @@ async function loadPage() {
       pageSize: pageSize.value,
     })
     rows.value = page.list
-    pageTotal.value = Number(page.total)
+    pageTotal.value = page.total
   } catch (error) {
     showUserError(error, '加载材料库失败')
   } finally {
@@ -171,7 +171,7 @@ async function searchOcr() {
       pageSize: searchPageSize.value,
     })
     searchRows.value = page.list
-    searchPageTotal.value = Number(page.total)
+    searchPageTotal.value = page.total
   } catch (error) {
     showUserError(error, 'OCR 检索失败')
   } finally {

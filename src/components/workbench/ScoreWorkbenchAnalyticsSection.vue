@@ -42,26 +42,24 @@
       <template #head>
         <h3 class="score-workbench-analytics__title">{{ overviewTitle }}</h3>
       </template>
-      <a-skeleton v-if="loading" active :paragraph="{ rows: 3 }" />
-      <template v-else-if="overview">
-        <div class="analytics-stats score-workbench-analytics__workflow-stats">
-          <div v-for="item in statItems" :key="item.key" class="analytics-stats__card">
-            <div class="analytics-stats__value" :class="workflowValueClass(item.valClass)">
-              {{ item.value }}
-            </div>
-            <div class="analytics-stats__label">{{ item.label }}</div>
-          </div>
-        </div>
-        <ScoreAnalyticsStatusFlow :steps="flowSteps" />
-      </template>
+      <a-skeleton v-if="loading" active :paragraph="{ rows: 2 }" />
+      <ScoreAnalyticsStatusFlow
+        v-else-if="overview && flowSteps.length > 0"
+        :steps="flowSteps"
+        standalone
+      />
     </WorkbenchSurfaceCard>
   </section>
 </template>
 
 <script lang="ts" setup>
-import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
 import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
-import type {ScoreWorkbenchAnalyticsMode} from '@/utils/score-workbench-analytics';
+import type { ScoreWorkbenchAnalyticsMode } from '@/utils/score-workbench-analytics'
+import {
+  buildScoreAnalyticsFlowSteps,
+  buildScoreDistributionStatItems,
+  resolveScoreAnalyticsOverviewTitle,
+} from '@/utils/score-workbench-analytics'
 import { computed } from 'vue'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import ScoreAnalyticsStatusFlow from '@/components/workbench/ScoreAnalyticsStatusFlow.vue'
@@ -70,14 +68,6 @@ import { useChartOption } from '@/hooks/modules/useChartOption'
 import { buildBarChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
 import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
 import { scoreHistogramToBarItems } from '@/utils/mark-statistics-chart'
-import {
-  buildScoreAnalyticsFlowSteps,
-  buildScoreConfirmWorkflowStatItems,
-  buildScoreDistributionStatItems,
-  buildScorePublishWorkflowStatItems,
-  resolveScoreAnalyticsOverviewTitle
-  
-} from '@/utils/score-workbench-analytics'
 
 defineOptions({ name: 'ScoreWorkbenchAnalyticsSection' })
 
@@ -87,13 +77,11 @@ const props = withDefaults(
     loading?: boolean
     mode?: ScoreWorkbenchAnalyticsMode
     publishableCount?: number
-    gate?: ArchiveVolumeExamGateResponse | null
   }>(),
   {
     loading: false,
     mode: 'confirm',
     publishableCount: 0,
-    gate: null,
   },
 )
 
@@ -108,16 +96,10 @@ const overviewTitle = computed(() =>
 const statItems = computed(() => {
   const panel = props.panel
   const riskOverview = overview.value
-  if (!panel || !riskOverview) {
+  if (!panel || !riskOverview || !hasDistribution.value) {
     return []
   }
-  if (hasDistribution.value) {
-    return buildScoreDistributionStatItems(panel, props.mode, props.publishableCount)
-  }
-  if (props.mode === 'publish') {
-    return buildScorePublishWorkflowStatItems(riskOverview, props.publishableCount, props.gate)
-  }
-  return buildScoreConfirmWorkflowStatItems(riskOverview)
+  return buildScoreDistributionStatItems(panel, props.mode, props.publishableCount)
 })
 
 const flowSteps = computed(() => {
@@ -142,7 +124,10 @@ const histogramBarItems = computed(() => {
 const chartHint = computed(() => {
   const panel = props.panel
   if (!panel?.participantCount) {
-    return mergeChartHint(undefined, buildBarChartInsight(histogramBarItems.value, { valueUnit: ' 人' }))
+    return mergeChartHint(
+      undefined,
+      buildBarChartInsight(histogramBarItems.value, { valueUnit: ' 人' }),
+    )
   }
   const passRate = panel.passRate != null ? `${panel.passRate}%` : '—'
   return `${panel.participantCount} 人参考，及格率 ${passRate}`
@@ -169,16 +154,6 @@ const participantLabel = computed(() => {
   const count = props.panel?.participantCount
   return count != null && count > 0 ? `${count} 人参考` : ''
 })
-
-function workflowValueClass(valClass?: string): string | undefined {
-  if (valClass === 'stat-card__val--ok') {
-    return 'analytics-stats__value--green'
-  }
-  if (valClass === 'stat-card__val--warn') {
-    return 'analytics-stats__value--warn'
-  }
-  return undefined
-}
 </script>
 
 <style lang="scss" scoped>
@@ -216,11 +191,5 @@ function workflowValueClass(valClass?: string): string | undefined {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--dp-space-3, 12px);
   }
-
-  &__workflow-stats {
-    margin-bottom: var(--dp-space-4, 16px);
-  }
 }
 </style>
-
-

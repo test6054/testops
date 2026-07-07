@@ -416,7 +416,7 @@ async function loadMessages(page = messagePageState.pageNum) {
     messages.value = result.list
     messagePageState.pageNum = result.pageNum
     messagePageState.pageSize = result.pageSize
-    messagePageState.total = Number(result.total)
+    messagePageState.total = result.total
   } catch (error) {
     showUserError(error, '站内信加载失败')
   } finally {
@@ -460,7 +460,7 @@ async function loadAnnouncements(page = announcementPageState.pageNum) {
     announcements.value = result.list
     announcementPageState.pageNum = result.pageNum
     announcementPageState.pageSize = result.pageSize
-    announcementPageState.total = Number(result.total)
+    announcementPageState.total = result.total
   } catch (error) {
     showUserError(error, '系统公告加载失败')
   } finally {

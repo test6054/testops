@@ -136,6 +136,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -155,7 +156,7 @@ const props = withDefaults(
 const emit = defineEmits<{ changed: [] }>()
 
 const shellProps = computed(() =>
-  props.embedded ? { title: '重判计划', context: props.examLabel } : { class: 'stats-card' },
+  props.embedded ? { title: '重判计划' } : { class: 'stats-card' },
 )
 
 const rows = ref<ExamRejudgePlan[]>([])
@@ -163,7 +164,7 @@ const loading = ref(false)
 
 const pagination = reactive({
   current: 1,
-  pageSize: 20,
+  pageSize: DEFAULT_LIST_PAGE_SIZE,
   total: 0,
 })
 
@@ -232,7 +233,7 @@ async function reload(): Promise<void> {
       pageSize: pagination.pageSize,
     })
     rows.value = result.list
-    pagination.total = Number(result.total)
+    pagination.total = result.total
     pagination.current = result.pageNum ?? pagination.current
     pagination.pageSize = result.pageSize ?? pagination.pageSize
   } catch (e) {

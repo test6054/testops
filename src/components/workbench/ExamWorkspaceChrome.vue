@@ -9,12 +9,7 @@
     />
   </div>
   <div v-else-if="snapshot" class="exam-workspace-chrome">
-    <ContextBar layout="workbench" show-title :title="displayTitle" :subtitle="contextSubtitle">
-      <template #status>
-        <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
-          {{ examStatusLabel }}
-        </UiTag>
-      </template>
+    <ContextBar layout="workbench">
       <template #actions>
         <UiButton v-if="showPrimaryAction" variant="primary" size="sm" @click="goSuggestedStage">
           {{ primaryActionLabel }}
@@ -46,9 +41,7 @@
 <script lang="ts" setup>
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { storeToRefs } from 'pinia'
-import { computed } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamJourneyRail from '@/components/workbench/ExamJourneyRail.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -83,10 +76,6 @@ const { orderedStages } = storeToRefs(markStageStore)
 const { journeyStages, activeJourneyKey } = useExamJourneySteps(orderedStages)
 
 const {
-  contextTitle,
-  contextSubtitle,
-  examStatusLabel,
-  examStatusTone,
   primaryActionLabel,
   showPrimaryAction,
   examSignalMetrics,
@@ -95,8 +84,6 @@ const {
   navigateMetric,
   refreshChrome,
 } = useExamWorkspaceChromeContext()
-
-const displayTitle = computed(() => props.pageTitle || contextTitle.value)
 
 function handleRefresh(): void {
   void refreshChrome()

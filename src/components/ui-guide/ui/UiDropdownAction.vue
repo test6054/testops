@@ -79,8 +79,11 @@ const emit = defineEmits<{
 
 const dropdownRoot = ref<HTMLElement>()
 
-const getPopupContainer = (triggerNode?: HTMLElement) => {
-  return dropdownRoot.value ?? resolvePopupContainer(triggerNode)
+const getPopupContainer = () => {
+  if (typeof document !== 'undefined') {
+    return document.body
+  }
+  return dropdownRoot.value ?? resolvePopupContainer()
 }
 
 const handleMenuClick = (info: { key: string | number }) => {

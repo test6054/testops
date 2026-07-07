@@ -1,9 +1,5 @@
 <template>
   <StageWorkbenchShell>
-    <template #context>
-      <ContextBar layout="workbench" show-title title="经验辅助评阅" :subtitle="pageSubtitle" />
-    </template>
-
     <ExamWorkspaceJourneySubNav />
 
     <UiEmpty v-if="!examId" description="缺少考试上下文" />
@@ -14,6 +10,14 @@
         tone="warning"
         title="本场定标策略已冻结"
         description="正评任务已生成，不能再变更启用状态或题目绑定；已生效的定标经验仍会在 AI 复评中引用。"
+        dense
+        class="experience-assist-policy__alert"
+      />
+      <UiAlertStrip
+        v-else-if="subjectiveQuestionCount === 0 && policy?.enabled"
+        tone="warning"
+        title="待主观题入库"
+        description="本场已启用经验辅助评阅，但尚无主观题；请完成制卷录入或扫描推导后再做定标绑定，正评前将校验就绪。"
         dense
         class="experience-assist-policy__alert"
       />
@@ -53,32 +57,48 @@
       <WorkbenchSurfaceCard>
         <template #head>
           <div class="experience-assist-policy__head">
-            <h3 class="experience-assist-policy__title">本场策略</h3>
-            <UiTag :tone="policyTone" size="sm">{{ policyStatusLabel }}</UiTag>
+            <div class="experience-assist-policy__head-main">
+              <h3 class="experience-assist-policy__title">经验辅助评阅策略</h3>
+              <UiTag :tone="policyTone" size="sm">{{ policyStatusLabel }}</UiTag>
+            </div>
+            <div
+              v-if="policy?.tenantExperienceAssistEnabled"
+              class="experience-assist-policy__head-actions"
+            >
+              <UiButton
+                size="sm"
+                :disabled="!canEnable || policy?.enabled"
+                @click="openPolicyConfigModal('enable')"
+              >
+                启用本场
+              </UiButton>
+              <UiButton
+                v-if="canEditConfig"
+                size="sm"
+                variant="outline"
+                @click="openPolicyConfigModal('edit')"
+              >
+                编辑配置
+              </UiButton>
+              <UiButton
+                size="sm"
+                variant="outline"
+                :disabled="!canDisable"
+                :loading="saving"
+                @click="handleDisable"
+              >
+                禁用本场
+              </UiButton>
+            </div>
           </div>
         </template>
 
         <p v-if="!policy?.tenantExperienceAssistEnabled" class="experience-assist-policy__hint">
           租户未启用经验辅助评阅，请联系教务管理员在「租户阅卷策略」中开启后再回到本页配置。
         </p>
-        <dl v-else class="experience-assist-policy__meta">
-          <div>
-            <dt>一致率阈值</dt>
-            <dd>{{ formatRate(policy?.effectiveMinConsistencyRate) }}</dd>
-          </div>
-          <div>
-            <dt>签名距离上限</dt>
-            <dd>{{ policy?.effectiveMaxHammingDistance ?? '—' }}</dd>
-          </div>
-          <div>
-            <dt>经验条目上限</dt>
-            <dd>{{ policy?.effectiveMaxExperienceItems ?? '—' }}</dd>
-          </div>
-        </dl>
-
-        <div class="experience-assist-policy__actions">
+        <template v-else>
           <p
-            v-if="policy?.tenantExperienceAssistEnabled && unresolvedSubjectiveCount > 0"
+            v-if="unresolvedSubjectiveCount > 0"
             class="experience-assist-policy__hint"
           >
             <template v-if="baselineMissingCount > 0">
@@ -93,24 +113,21 @@
               {{ needsExplicitBindingCount }} 道主观题无法自动匹配，须显式绑定定标经验后方可启用。
             </template>
           </p>
-          <UiButton
-            size="sm"
-            :disabled="!canEnable || policy?.enabled"
-            :loading="saving"
-            @click="handleEnable"
-          >
-            启用本场
-          </UiButton>
-          <UiButton
-            size="sm"
-            variant="outline"
-            :disabled="!canDisable"
-            :loading="saving"
-            @click="handleDisable"
-          >
-            禁用本场
-          </UiButton>
-        </div>
+          <dl class="experience-assist-policy__meta">
+            <div>
+              <dt>一致率阈值</dt>
+              <dd>{{ formatRate(policy?.effectiveMinConsistencyRate) }}</dd>
+            </div>
+            <div>
+              <dt>签名距离上限</dt>
+              <dd>{{ policy?.effectiveMaxHammingDistance ?? '—' }}</dd>
+            </div>
+            <div>
+              <dt>经验条目上限</dt>
+              <dd>{{ policy?.effectiveMaxExperienceItems ?? '—' }}</dd>
+            </div>
+          </dl>
+        </template>
       </WorkbenchSurfaceCard>
 
       <WorkbenchSurfaceCard
@@ -123,38 +140,51 @@
         <p class="experience-assist-policy__hint">
           {{ bindingGuideText }}
         </p>
+        <UiFilterBar
+          :model-value="bindingFilterModel"
+          :fields="bindingFilterFields"
+          variant="plain"
+          show-labels
+          search-text="查询"
+          class="experience-assist-policy__binding-filter"
+          @update:model-value="syncBindingFilterForm"
+          @search="handleBindingFilterSearch"
+          @reset="handleBindingFilterReset"
+        />
         <UiDataTable
+          v-model:current="bindingPagination.current"
+          v-model:page-size="bindingPagination.pageSize"
           pagination-mode="client"
           :columns="bindingColumns"
-          :data-source="bindings"
+          :data-source="filteredBindings"
           :loading="bindingsLoading"
           flat
           row-key="layoutQuestionId"
           size="small"
         >
-          <template #bodyCell="{ column, index }">
+          <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'baselineReady'">
-              <UiTag :tone="bindings[index].baselineReady ? 'green' : 'red'" size="sm">
-                {{ bindings[index].baselineReady ? '已锁定' : '未锁定' }}
+              <UiTag :tone="record.baselineReady ? 'green' : 'red'" size="sm">
+                {{ record.baselineReady ? '已锁定' : '未锁定' }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'assistResolutionStatus'">
               <UiTag
-                v-if="bindings[index].assistResolutionStatus"
-                :tone="resolutionTone(bindings[index].assistResolutionStatus)"
+                v-if="record.assistResolutionStatus"
+                :tone="resolutionTone(record.assistResolutionStatus)"
                 size="sm"
               >
-                {{ resolutionLabel(bindings[index].assistResolutionStatus, bindings[index]) }}
+                {{ resolutionLabel(record.assistResolutionStatus, record) }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'consistencyRate'">
-              {{ formatRate(bindings[index].consistencyRate) }}
+              {{ formatRate(record.consistencyRate) }}
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
-                :items="buildBindingRowActions(bindings[index])"
+                :items="buildBindingRowActions(record)"
                 split
-                @action="(key) => handleBindingRowAction(key, bindings[index])"
+                @action="(key) => handleBindingRowAction(key, record)"
               />
             </template>
           </template>
@@ -169,6 +199,15 @@
       :question-no="bindingTarget?.questionNo"
       @saved="handleBindingSaved"
     />
+    <ExamExperienceAssistPolicyEnableModal
+      v-model:open="policyConfigModalOpen"
+      :mode="policyConfigModalMode"
+      :exam-id="examId"
+      :effective-min-consistency-rate="policy?.effectiveMinConsistencyRate"
+      :effective-max-hamming-distance="policy?.effectiveMaxHammingDistance"
+      :effective-max-experience-items="policy?.effectiveMaxExperienceItems"
+      @saved="handlePolicySaved"
+    />
   </StageWorkbenchShell>
 </template>
 
@@ -179,26 +218,28 @@ import type {
   ExamQuestionExperienceAssistBindingResponse,
   GradingExperienceAssistReadinessResponse,
 } from '@/apis/mark/grading-experience-assist'
+import type { ExamExperienceAssistPolicyConfigMode } from '@/components/mark/ExamExperienceAssistPolicyEnableModal.vue'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type {ExperienceAssistBindingFilterQuery} from '@/utils/experience-assist-binding-filter';
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   disableExamGradingExperienceAssistPolicy,
-  enableExamGradingExperienceAssistPolicy,
   getExamGradingExperienceAssistPolicy,
   getExamGradingExperienceAssistReadiness,
   listExamExperienceAssistBindings,
   saveExamExperienceAssistBinding,
 } from '@/apis/mark/grading-experience-assist'
-import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, ref, watch } from 'vue'
+import ExamExperienceAssistPolicyEnableModal from '@/components/mark/ExamExperienceAssistPolicyEnableModal.vue'
 import QuestionExperienceAssistBindingModal from '@/components/mark/QuestionExperienceAssistBindingModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
-import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -212,6 +253,10 @@ import {
   isGradingExperienceAssistQuestionReady,
 } from '@/types/enums/grading-experience-assist-question-resolution-enum'
 import { showUserError } from '@/utils/error-handler'
+import {
+  
+  filterExperienceAssistBindings
+} from '@/utils/experience-assist-binding-filter'
 
 defineOptions({ name: 'TeacherExamWorkspaceMarkingExperienceAssistPolicy' })
 
@@ -226,6 +271,58 @@ const readiness = ref<GradingExperienceAssistReadinessResponse | null>(null)
 const bindings = ref<ExamQuestionExperienceAssistBindingResponse[]>([])
 const bindingModalOpen = ref(false)
 const bindingTarget = ref<ExamQuestionExperienceAssistBindingResponse | null>(null)
+const policyConfigModalOpen = ref(false)
+const policyConfigModalMode = ref<ExamExperienceAssistPolicyConfigMode>('enable')
+
+const bindingFilterForm = reactive<ExperienceAssistBindingFilterQuery>({
+  keyword: '',
+  assistResolutionStatus: undefined,
+})
+
+const bindingFilterModel = computed<Record<string, unknown>>({
+  get: () => bindingFilterForm,
+  set: (value) => {
+    Object.assign(bindingFilterForm, value)
+  },
+})
+
+const bindingResolutionOptions = Object.values(GradingExperienceAssistQuestionResolutionCode).map(
+  (code) => ({
+    label: GradingExperienceAssistQuestionResolutionDescription[code],
+    value: code,
+  }),
+)
+
+const bindingFilterFields: FilterField[] = [
+  {
+    key: 'keyword',
+    type: 'input',
+    label: '关键词',
+    placeholder: '题号 / 来源考试 / 经验摘要',
+    allowClear: true,
+    width: 260,
+    inputPrefixIcon: 'search',
+    triggerSearchOnChange: false,
+  },
+  {
+    key: 'assistResolutionStatus',
+    type: 'select',
+    label: '定标状态',
+    placeholder: '全部状态',
+    allowClear: true,
+    width: 160,
+    options: bindingResolutionOptions,
+  },
+]
+
+const bindingPagination = reactive({
+  current: 1,
+  pageSize: 10,
+})
+
+const filteredBindings = computed(() =>
+  filterExperienceAssistBindings(bindings.value, bindingFilterForm),
+)
 
 const bindingColumns: ColumnType<ExamQuestionExperienceAssistBindingResponse>[] = [
   { title: '题号', key: 'questionNo', dataIndex: 'questionNo', width: 80 },
@@ -244,13 +341,6 @@ const examKindLabel = computed(() => {
   const kind = policy.value?.examKind
   if (!kind) return '本场考试'
   return ExamKindDescription[kind]
-})
-
-const pageSubtitle = computed(() => {
-  if (requiresExplicitBinding.value) {
-    return `${examKindLabel.value}须在试评完成后、正评任务生成前完成逐题定标；正评启动后自动冻结`
-  }
-  return '试评完成后定标，正考同课相似题可自动匹配；正评任务生成后自动冻结'
 })
 
 const explicitBindingHint = computed(
@@ -279,10 +369,10 @@ const policyTone = computed((): BadgeTone => {
 
 const canEnable = computed(() =>
   Boolean(
-    policy.value?.tenantExperienceAssistEnabled &&
-    policy.value?.policyStatus !== 'FROZEN' &&
-    !bindingsLoading.value &&
-    unresolvedSubjectiveCount.value === 0,
+    policy.value?.tenantExperienceAssistEnabled
+    && policy.value?.policyStatus !== 'FROZEN'
+    && !bindingsLoading.value
+    && unresolvedSubjectiveCount.value === 0,
   ),
 )
 
@@ -290,19 +380,27 @@ const canDisable = computed(() =>
   Boolean(policy.value?.enabled && policy.value?.policyStatus !== 'FROZEN'),
 )
 
+const canEditConfig = computed(() =>
+  Boolean(
+    policy.value?.tenantExperienceAssistEnabled
+    && policy.value?.enabled
+    && policy.value?.policyStatus !== 'FROZEN',
+  ),
+)
+
 const baselineMissingCount = computed(
   () =>
-    readiness.value?.baselineMissingCount ??
-    bindings.value.filter((row) => row.baselineReady === false).length,
+    readiness.value?.baselineMissingCount
+    ?? bindings.value.filter((row) => row.baselineReady === false).length,
 )
 
 const unboundSubjectiveCount = computed(
   () =>
-    readiness.value?.assistUnresolvedCount ??
-    bindings.value.filter(
+    readiness.value?.assistUnresolvedCount
+    ?? bindings.value.filter(
       (row) =>
-        row.assistResolutionStatus ===
-        GradingExperienceAssistQuestionResolutionCode.NEEDS_EXPLICIT_BINDING,
+        row.assistResolutionStatus
+        === GradingExperienceAssistQuestionResolutionCode.NEEDS_EXPLICIT_BINDING,
     ).length,
 )
 
@@ -319,14 +417,16 @@ const unresolvedSubjectiveCount = computed(() => {
 
 const needsExplicitBindingCount = unboundSubjectiveCount
 
+const subjectiveQuestionCount = computed(() => readiness.value?.subjectiveQuestionCount ?? 0)
+
 function resolutionLabel(
   status?: GradingExperienceAssistQuestionResolutionCode,
   row?: ExamQuestionExperienceAssistBindingResponse,
 ): string {
   if (!status) return '—'
   if (
-    status === GradingExperienceAssistQuestionResolutionCode.NEEDS_EXPLICIT_BINDING &&
-    row?.experienceCaseId
+    status === GradingExperienceAssistQuestionResolutionCode.NEEDS_EXPLICIT_BINDING
+    && row?.experienceCaseId
   ) {
     return '定标引用失效'
   }
@@ -341,6 +441,25 @@ function resolutionTone(status?: GradingExperienceAssistQuestionResolutionCode) 
 function formatRate(rate?: number): string {
   if (rate == null) return '—'
   return `${Math.round(rate * 1000) / 10}%`
+}
+
+function openPolicyConfigModal(mode: ExamExperienceAssistPolicyConfigMode): void {
+  policyConfigModalMode.value = mode
+  policyConfigModalOpen.value = true
+}
+
+function syncBindingFilterForm(next: Record<string, unknown>): void {
+  Object.assign(bindingFilterForm, next)
+}
+
+function handleBindingFilterSearch(): void {
+  bindingPagination.current = 1
+}
+
+function handleBindingFilterReset(): void {
+  bindingFilterForm.keyword = ''
+  bindingFilterForm.assistResolutionStatus = undefined
+  bindingPagination.current = 1
 }
 
 async function syncWorkbenchPendingTodos(): Promise<void> {
@@ -383,17 +502,12 @@ async function loadBindings(): Promise<void> {
   }
 }
 
-async function handleEnable(): Promise<void> {
-  if (!examId.value) return
-  saving.value = true
-  try {
-    policy.value = await enableExamGradingExperienceAssistPolicy(examId.value)
+async function handlePolicySaved(
+  nextPolicy: ExamGradingExperienceAssistPolicyResponse,
+): Promise<void> {
+  policy.value = nextPolicy
+  if (policyConfigModalMode.value === 'enable') {
     await loadBindings()
-    message.success('已启用本场经验辅助评阅')
-  } catch (error) {
-    showUserError(error, '启用失败')
-  } finally {
-    saving.value = false
   }
 }
 
@@ -486,8 +600,19 @@ async function handleBindingSaved(): Promise<void> {
 }
 
 watch(
+  () => filteredBindings.value.length,
+  (total) => {
+    const maxPage = Math.max(1, Math.ceil(total / bindingPagination.pageSize))
+    if (bindingPagination.current > maxPage) {
+      bindingPagination.current = maxPage
+    }
+  },
+)
+
+watch(
   examId,
   () => {
+    handleBindingFilterReset()
     void loadPolicy()
   },
   { immediate: true },
@@ -513,7 +638,24 @@ watch(
 .experience-assist-policy__head {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: var(--dp-space-3);
+  width: 100%;
+}
+
+.experience-assist-policy__head-main {
+  display: flex;
+  align-items: center;
   gap: var(--dp-space-2);
+  min-width: 0;
+}
+
+.experience-assist-policy__head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--dp-space-2);
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .experience-assist-policy__title {
@@ -532,7 +674,7 @@ watch(
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--dp-space-3);
-  margin: 0 0 var(--dp-space-4);
+  margin: 0;
 
   dt {
     margin: 0;
@@ -547,13 +689,12 @@ watch(
   }
 }
 
-.experience-assist-policy__actions {
-  display: flex;
-  gap: var(--dp-space-2);
-}
-
 .experience-assist-policy__bindings {
   margin-top: var(--dp-space-4);
+}
+
+.experience-assist-policy__binding-filter {
+  margin-bottom: var(--dp-space-3);
 }
 
 .experience-assist-policy__row-actions {

@@ -73,9 +73,12 @@
               </UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiTextAction v-if="isCourseAuditMutable(record)" @click="openEdit(record)">
-                {{ record.hasAuditRecord ? '编辑审核' : '新建审核' }}
-              </UiTextAction>
+              <UiTableActions
+                v-if="isCourseAuditMutable(record)"
+                :items="[{ key: 'edit', label: record.hasAuditRecord ? '编辑审核' : '新建审核' }]"
+                split
+                @action="() => openEdit(record)"
+              />
               <span v-else class="rationality-audit__locked-hint">已通过</span>
             </template>
           </template>
@@ -139,16 +142,17 @@ import type {
   RationalityAuditCourseLedgerOverviewVO,
   RationalityAuditSaveRequest,
 } from '@/apis/quality/rationality-audit'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import SafetyCertificateOutlined from '@ant-design/icons-vue/SafetyCertificateOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import {
   createRationalityAudit,
   getRationalityAuditCourseLedger,
   updateRationalityAudit,
 } from '@/apis/quality/rationality-audit'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { ALL_SEMESTER_CODES, SemesterOptions } from '@/types/enums/semester-enum'
+import SafetyCertificateOutlined from '@ant-design/icons-vue/SafetyCertificateOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import {
   AssessmentRationalityAuditStatusCode,
   AssessmentRationalityAuditStatusDescription,
@@ -160,11 +164,10 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
-import { ALL_SEMESTER_CODES, SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -359,10 +362,10 @@ async function submitAudit(
     return
   }
   if (
-    status === 'APPROVED'
-    && (!editForm.value.contentAligned
-      || !editForm.value.rubricMeasurable
-      || !editForm.value.methodReasonable)
+    status === 'APPROVED' &&
+    (!editForm.value.contentAligned ||
+      !editForm.value.rubricMeasurable ||
+      !editForm.value.methodReasonable)
   ) {
     message.error('审核通过必须同时满足三项合理性检查')
     return

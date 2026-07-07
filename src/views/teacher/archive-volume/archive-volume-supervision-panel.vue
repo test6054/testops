@@ -73,8 +73,14 @@
               </UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiTextAction @click="openDetail(record.volumeId)">详情</UiTextAction>
-              <UiTextAction @click="openMarkProblem(record.volumeId)">标记问题</UiTextAction>
+              <UiTableActions
+                :items="[
+                  { key: 'detail', label: '详情' },
+                  { key: 'mark', label: '标记问题' },
+                ]"
+                split
+                @action="(key) => handleSupervisionVolumeRowAction(key, record.volumeId)"
+              />
             </template>
           </template>
         </UiDataTable>
@@ -181,7 +187,11 @@
               </UiTextAction>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiTextAction @click="goRemediationTaskDetail(record)">去处理</UiTextAction>
+              <UiTableActions
+                :items="[{ key: 'handle', label: '去处理' }]"
+                split
+                @action="() => goRemediationTaskDetail(record)"
+              />
             </template>
           </template>
         </UiDataTable>
@@ -368,10 +378,11 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearOptions } from '@/utils/academic-year'
 import {
@@ -464,7 +475,7 @@ const volumeFilter = computed<Record<string, unknown>>({
     Object.assign(volumeFilterForm, value)
   },
 })
-const volumePagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
+const volumePagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 interface SupervisionStatsFilter {
   academicYear: string
   semester: SemesterCode | undefined
@@ -726,7 +737,7 @@ async function loadVolumes() {
       pageSize: volumePagination.pageSize,
     })
     volumes.value = result.list
-    volumePagination.total = Number(result.total)
+    volumePagination.total = result.total
     volumePagination.pageNum = result.pageNum
     volumePagination.pageSize = result.pageSize
   } catch (error) {
@@ -820,6 +831,11 @@ function openMarkProblem(volumeId: string) {
     void loadCampaigns()
   }
   markProblemOpen.value = true
+}
+
+function handleSupervisionVolumeRowAction(key: string, volumeId: string) {
+  if (key === 'detail') void openDetail(volumeId)
+  else if (key === 'mark') openMarkProblem(volumeId)
 }
 
 async function submitMarkProblem() {

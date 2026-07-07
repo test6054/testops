@@ -7,7 +7,6 @@ import RejudgePlanCard from '@/views/teacher/ai-analysis/cards/RejudgePlanCard.v
 
 defineProps<{
   examId?: string
-  examLabel?: string
   reloadToken: number
   classId?: string
 }>()
@@ -18,27 +17,23 @@ defineProps<{
   <div v-else class="ai-analysis-cluster-tab">
     <ErrorCauseClusterCard
       :exam-id="examId"
-      :exam-label="examLabel"
       :reload-token="reloadToken"
       :class-id="classId"
       embedded
     />
     <QuestionAnalysisCard
       :exam-id="examId"
-      :exam-label="examLabel"
       :reload-token="reloadToken"
       :class-id="classId"
       embedded
     />
     <ExamQuestionCourseGoalMappingCard
       :exam-id="examId"
-      :exam-label="examLabel"
       :reload-token="reloadToken"
       embedded
     />
     <RejudgePlanCard
       :exam-id="examId"
-      :exam-label="examLabel"
       :reload-token="reloadToken"
       embedded
     />

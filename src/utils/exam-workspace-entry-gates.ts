@@ -2,9 +2,9 @@ import type {
   ExamWorkbenchNextActionResponse,
   MarkingProgressResponse,
 } from '@/apis/mark/exam-progress'
+import { WorkbenchNextActionKeyCode } from '@/apis/mark/exam-progress'
 import type { ExamJourneyKey } from '@/constants/exam-journey'
 import type { MarkStageKey } from '@/stores/modules/markStage'
-import { WorkbenchNextActionKeyCode } from '@/apis/mark/exam-progress'
 import { MarkTeacherDashboardJourneyKeyCode } from '@/types/enums/mark-teacher-dashboard-journey-key-enum'
 import { resolveScanStageEntryRouteName } from '@/utils/resolve-scan-stage-entry'
 
@@ -12,6 +12,8 @@ const NEXT_ACTION_ROUTE: Record<WorkbenchNextActionKeyCode, string> = {
   [WorkbenchNextActionKeyCode.START_SCAN]: 'TeacherExamWorkspaceScanBatches',
   [WorkbenchNextActionKeyCode.ENTER_REVIEW]: 'TeacherExamWorkspaceReviewBatchConfirm',
   [WorkbenchNextActionKeyCode.ENTER_MARKING]: 'TeacherExamWorkspaceMarkingTaskPool',
+  [WorkbenchNextActionKeyCode.EXPERIENCE_ASSIST_CALIBRATION]:
+    'TeacherExamWorkspaceMarkingExperienceAssistPolicy',
 }
 
 /** 是否存在扫描登记硬阻断 */

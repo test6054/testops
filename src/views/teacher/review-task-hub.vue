@@ -1,18 +1,9 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        :title="contextBarTitle"
-        :subtitle="contextBarSubtitle"
-      >
+      <ContextBar layout="workbench">
         <template #actions>
           <UiButton variant="outline" size="sm" @click="goBatchConfirm"> 批量复核确认 </UiButton>
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadTasks">
-            <template #icon><ReloadOutlined /></template>
-            刷新
-          </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -134,6 +125,10 @@ import type {
   ReviewTaskItemResponse,
   ReviewTaskTypeCode,
 } from '@/apis/mark/exam-review-task'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   GRADE_SOURCE_TONE,
   GradeSourceDescription,
@@ -144,11 +139,6 @@ import {
   ReviewTaskTypeDescription,
   ReviewTaskTypeTone,
 } from '@/apis/mark/exam-review-task'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -162,6 +152,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkWorkbenchContext, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { ReviewTaskStatusCode } from '@/types/enums/review-task-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -179,7 +170,7 @@ const statusFilter = ref<ReviewTaskStatusCode>(ReviewTaskStatusCode.PENDING)
 
 const pagination = reactive({
   current: 1,
-  pageSize: 20,
+  pageSize: DEFAULT_LIST_PAGE_SIZE,
   total: 0,
 })
 
@@ -199,11 +190,11 @@ const filterModel = computed<Record<string, unknown>>({
   get: () => ({ status: statusFilter.value }),
   set: (value) => {
     if (
-      value.status === ReviewTaskStatusCode.PENDING ||
-      value.status === ReviewTaskStatusCode.IN_PROGRESS ||
-      value.status === ReviewTaskStatusCode.APPROVED ||
-      value.status === ReviewTaskStatusCode.REJECTED ||
-      value.status === ReviewTaskStatusCode.INVALIDATED
+      value.status === ReviewTaskStatusCode.PENDING
+      || value.status === ReviewTaskStatusCode.IN_PROGRESS
+      || value.status === ReviewTaskStatusCode.APPROVED
+      || value.status === ReviewTaskStatusCode.REJECTED
+      || value.status === ReviewTaskStatusCode.INVALIDATED
     ) {
       statusFilter.value = value.status
     }
@@ -251,8 +242,8 @@ function handleHubSignalClick(key: string): void {
     return
   }
   if (
-    key === 'in-progress' &&
-    (snapshot.value?.markingProgress?.inProgressReviewTaskCount ?? 0) > 0
+    key === 'in-progress'
+    && (snapshot.value?.markingProgress?.inProgressReviewTaskCount ?? 0) > 0
   ) {
     statusFilter.value = ReviewTaskStatusCode.IN_PROGRESS
     onFilterChange()
@@ -323,7 +314,7 @@ async function loadTasks(): Promise<void> {
       pageSize: pagination.pageSize,
     })
     rows.value = result.list
-    pagination.total = Number(result.total)
+    pagination.total = result.total
   } catch (error) {
     rows.value = []
     pagination.total = 0
@@ -333,7 +324,7 @@ async function loadTasks(): Promise<void> {
   }
 }
 
-function onPageChange(page: { current: number; pageSize: number }): void {
+function onPageChange(page: { current: number, pageSize: number }): void {
   pagination.current = page.current
   pagination.pageSize = page.pageSize
   void loadTasks()

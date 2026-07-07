@@ -5,6 +5,7 @@ import {
   PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
   PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE,
 } from '@/apis/portfolio/types'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { Input, InputNumber, message, Select } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -22,9 +23,8 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -156,7 +156,7 @@ async function loadPage() {
       pageSize: pageSize.value,
     })
     rows.value = page.list
-    pageTotal.value = Number(page.total)
+    pageTotal.value = page.total
   } catch (error) {
     showUserError(error, '加载公示异议失败')
   } finally {

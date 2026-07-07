@@ -1,10 +1,10 @@
 import type { Ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { Options } from '@/hooks'
+import { useBreakpoint, usePagination } from '@/hooks'
 import type { PageResult, QueryDto } from '@/types'
 import message from 'ant-design-vue/es/message'
-import { computed, ref } from 'vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useBreakpoint, usePagination } from '@/hooks'
 import { showUserError } from '@/utils/error-handler'
 
 interface UseTableOptions<T, U> {
@@ -40,17 +40,12 @@ export function useTable<T extends U, U = T>(api: Api<T>, options?: UseTableOpti
       // 直接使用响应数据（HTTP客户端已经解包了ResultInfo）
       const actualData = await api(params)
 
-      // 处理分页响应数据
       if (Array.isArray(actualData)) {
-        // 如果返回的是数组，直接使用
-        tableData.value = formatResult ? formatResult(actualData) : actualData
-        setTotal(actualData.length)
-      } else {
-        // 如果返回的是PageResult格式
-        const data = actualData.list
-        tableData.value = formatResult ? formatResult(data) : data
-        setTotal(Number(actualData.total))
+        throw new TypeError('列表接口必须返回 PageResult，禁止返回裸数组')
       }
+      const data = actualData.list
+      tableData.value = formatResult ? formatResult(data) : data
+      setTotal(actualData.total)
 
       onSuccess && onSuccess()
     } catch (err) {

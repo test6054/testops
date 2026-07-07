@@ -4,17 +4,18 @@ import type {
   ProgramSupportProfileSaveRequest,
   ProgramSupportProfileVO,
 } from '@/apis/quality/accreditation'
+import { accreditationApi } from '@/apis/quality/accreditation'
 import type { FacultyProfileSaveRequest, FacultyProfileVO } from '@/apis/quality/faculty-profile'
+import { facultyProfileApi } from '@/apis/quality/faculty-profile'
 import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
-import { accreditationApi } from '@/apis/quality/accreditation'
-import { facultyProfileApi } from '@/apis/quality/faculty-profile'
 import { TeacherSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
 
@@ -137,7 +138,9 @@ async function loadProfile() {
   }
   loading.value = true
   try {
-    profile.value = await accreditationApi.currentSupportProfile({ trainingPlanId: props.trainingPlanId })
+    profile.value = await accreditationApi.currentSupportProfile({
+      trainingPlanId: props.trainingPlanId,
+    })
     syncFormFromProfile(profile.value)
   } catch (e) {
     showUserError(e)
@@ -165,7 +168,7 @@ async function loadFacultyProfiles() {
     facultyProfiles.value = page.list
     facultyQuery.pageNum = page.pageNum
     facultyQuery.pageSize = page.pageSize
-    facultyTotal.value = Number(page.total)
+    facultyTotal.value = page.total
     if (facultyProfiles.value.length === 0 && facultyTotal.value > 0 && facultyQuery.pageNum > 1) {
       facultyQuery.pageNum -= 1
       await loadFacultyProfiles()
@@ -303,8 +306,8 @@ function validateFacultyForm() {
   }
   if (facultyForm.hasTeachingEthicsTraining !== true) missing.push('师德师风培训完成状态')
   if (
-    typeof facultyForm.ethicsTrainingDate !== 'string'
-    || !facultyForm.ethicsTrainingDate.trim()
+    typeof facultyForm.ethicsTrainingDate !== 'string' ||
+    !facultyForm.ethicsTrainingDate.trim()
   ) {
     missing.push('培训日期')
   }
@@ -312,38 +315,38 @@ function validateFacultyForm() {
     missing.push('承担课程')
   }
   if (
-    typeof facultyForm.teachingEvaluation !== 'string'
-    || !facultyForm.teachingEvaluation.trim()
+    typeof facultyForm.teachingEvaluation !== 'string' ||
+    !facultyForm.teachingEvaluation.trim()
   ) {
     missing.push('教学评价结果')
   }
   if (
-    typeof facultyForm.engineeringPracticeExperience !== 'string'
-    || !facultyForm.engineeringPracticeExperience.trim()
+    typeof facultyForm.engineeringPracticeExperience !== 'string' ||
+    !facultyForm.engineeringPracticeExperience.trim()
   ) {
     missing.push('工程实践经历')
   }
   if (
-    typeof facultyForm.engineeringAbilityEvidence !== 'string'
-    || !facultyForm.engineeringAbilityEvidence.trim()
+    typeof facultyForm.engineeringAbilityEvidence !== 'string' ||
+    !facultyForm.engineeringAbilityEvidence.trim()
   ) {
     missing.push('工程能力支撑证据')
   }
   if (
-    typeof facultyForm.teacherDevelopmentRecord !== 'string'
-    || !facultyForm.teacherDevelopmentRecord.trim()
+    typeof facultyForm.teacherDevelopmentRecord !== 'string' ||
+    !facultyForm.teacherDevelopmentRecord.trim()
   ) {
     missing.push('教师发展记录')
   }
   if (
-    typeof facultyForm.teachingReformContribution !== 'string'
-    || !facultyForm.teachingReformContribution.trim()
+    typeof facultyForm.teachingReformContribution !== 'string' ||
+    !facultyForm.teachingReformContribution.trim()
   ) {
     missing.push('教学改革与持续改进记录')
   }
   if (
-    typeof facultyForm.graduationDesignGuidance !== 'string'
-    || !facultyForm.graduationDesignGuidance.trim()
+    typeof facultyForm.graduationDesignGuidance !== 'string' ||
+    !facultyForm.graduationDesignGuidance.trim()
   ) {
     missing.push('毕业设计或工程项目指导情况')
   }
@@ -412,6 +415,11 @@ async function deleteFacultyProfile(record: FacultyProfileVO) {
   }
 }
 
+function handleFacultyRowAction(key: string, record: FacultyProfileVO) {
+  if (key === 'edit') openFacultyEdit(record)
+  else if (key === 'delete') void deleteFacultyProfile(record)
+}
+
 function searchFacultyProfiles() {
   facultyQuery.pageNum = 1
   loadFacultyProfiles()
@@ -425,7 +433,7 @@ function resetFacultyFilters() {
   loadFacultyProfiles()
 }
 
-function handleFacultyPageChange(pageEvent: { current: number, pageSize: number }) {
+function handleFacultyPageChange(pageEvent: { current: number; pageSize: number }) {
   facultyQuery.pageNum = pageEvent.current
   facultyQuery.pageSize = pageEvent.pageSize
   loadFacultyProfiles()
@@ -600,23 +608,14 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
             </div>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiButton
-              size="sm"
-              variant="outline"
-              :disabled="isProfileLocked"
-              @click="openFacultyEdit(record)"
-            >
-              编辑
-            </UiButton>
-            <UiButton
-              size="sm"
-              status="danger"
-              variant="ghost"
-              :disabled="isProfileLocked"
-              @click="deleteFacultyProfile(record)"
-            >
-              删除
-            </UiButton>
+            <UiTableActions
+              :items="[
+                { key: 'edit', label: '编辑', disabled: isProfileLocked },
+                { key: 'delete', label: '删除', tone: 'danger', disabled: isProfileLocked },
+              ]"
+              split
+              @action="(key) => handleFacultyRowAction(key, record)"
+            />
           </template>
         </template>
         <template #empty>

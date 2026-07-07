@@ -63,6 +63,12 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
         routeName: 'TeacherExamWorkspacePrintPackage',
         markStageKey: 'EXAM_PREP',
       },
+      {
+        key: 'marking-experience-assist',
+        label: '经验辅助评阅',
+        routeName: 'TeacherExamWorkspaceMarkingExperienceAssistPolicy',
+        markStageKey: 'EXAM_PREP',
+      },
     ],
   },
   {
@@ -117,8 +123,20 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
     items: [
       {
         key: 'marking-org',
-        label: '阅卷设置',
+        label: '阅卷组织',
         routeName: 'TeacherExamWorkspaceMarkingOrg',
+        markStageKey: 'MARKING_ORG',
+      },
+      {
+        key: 'marking-org-trial',
+        label: '试评定标',
+        routeName: 'TeacherExamWorkspaceMarkingOrgTrialHub',
+        markStageKey: 'MARKING_ORG',
+      },
+      {
+        key: 'marking-org-formal',
+        label: '正评会话',
+        routeName: 'TeacherExamWorkspaceMarkingOrgFormalHub',
         markStageKey: 'MARKING_ORG',
       },
     ],
@@ -129,12 +147,6 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
     journeyKey: MarkTeacherDashboardJourneyKeyCode.MARK,
     stageKeys: ['TRIAL_MARKING'],
     items: [
-      {
-        key: 'marking-experience-assist',
-        label: '经验辅助评阅',
-        routeName: 'TeacherExamWorkspaceMarkingExperienceAssistPolicy',
-        markStageKey: 'TRIAL_MARKING',
-      },
       {
         key: 'trial-pool',
         label: '试评任务池',
@@ -259,7 +271,7 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
     items: [
       {
         key: 'archive-package',
-        label: '本考试归档进度',
+        label: '归档复盘',
         routeName: 'TeacherExamWorkspaceArchivePackage',
         markStageKey: 'ARCHIVE',
       },
@@ -306,7 +318,9 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
 /** 详情子路由高亮回退到所属菜单项 */
 export const EXAM_WORKSPACE_MENU_ROUTE_FALLBACK: Record<string, string> = {
   TeacherExamWorkspaceMarkingOrgDetail: 'marking-org',
-  TeacherExamWorkspaceMarkingOrgSessions: 'marking-org',
+  TeacherExamWorkspaceMarkingOrgTrialSessions: 'marking-org-trial',
+  TeacherExamWorkspaceMarkingOrgFormalSessions: 'marking-org-formal',
+  TeacherExamWorkspaceMarkingOrgSessions: 'marking-org-trial',
   TeacherExamWorkspaceMarkingTaskDetail: 'marking-pool',
   TeacherExamWorkspaceReviewWorkspace: 'marking-review',
   TeacherExamWorkspaceReviewTaskDetail: 'marking-review',
@@ -325,7 +339,9 @@ for (const group of EXAM_WORKSPACE_MENU_GROUPS) {
 }
 
 /** 由路由名解析所属菜单 group.key；详情页走 EXAM_WORKSPACE_MENU_ROUTE_FALLBACK */
-export function resolveExamWorkspaceMenuGroupKey(routeName: string | undefined): string | undefined {
+export function resolveExamWorkspaceMenuGroupKey(
+  routeName: string | undefined,
+): string | undefined {
   if (!routeName) {
     return undefined
   }
@@ -340,31 +356,51 @@ export function resolveExamWorkspaceMenuGroupKey(routeName: string | undefined):
   return MENU_GROUP_KEY_BY_ITEM_KEY.get(fallbackItemKey)
 }
 
+const EXPERIENCE_ASSIST_MENU_KEY = 'marking-experience-assist'
+
+function filterMenuItems(
+  items: ExamWorkspaceMenuItem[],
+  options?: { tenantExperienceAssistEnabled?: boolean },
+): ExamWorkspaceMenuItem[] {
+  if (options?.tenantExperienceAssistEnabled === false) {
+    return items.filter((item) => item.key !== EXPERIENCE_ASSIST_MENU_KEY)
+  }
+  return items
+}
+
 export function getMenuGroupsForJourney(
   journeyKey: ExamWorkspaceJourneyKey,
-  options?: { experienceAssistPendingCount?: number },
+  options?: { experienceAssistPendingCount?: number; tenantExperienceAssistEnabled?: boolean },
 ): ExamWorkspaceMenuGroup[] {
   if (journeyKey === 'overview') {
     const groups = EXAM_WORKSPACE_MENU_GROUPS.filter((group) => group.journeyKey === 'overview')
     const pending = options?.experienceAssistPendingCount ?? 0
-    if (pending > 0) {
-      return [
-        ...groups,
-        {
-          key: 'mark-trial-shortcut',
-          title: '试评定标',
-          journeyKey: 'overview',
-          stageKeys: ['TRIAL_MARKING'],
-          items: EXAM_WORKSPACE_MENU_GROUPS
-            .find((group) => group.key === 'mark-trial')
-            ?.items
-            .filter((item) => item.key === 'marking-experience-assist') ?? [],
-        },
-      ]
+    if (pending > 0 && options?.tenantExperienceAssistEnabled !== false) {
+      const prepGroup = EXAM_WORKSPACE_MENU_GROUPS.find((group) => group.key === 'prep')
+      const experienceAssistItem = prepGroup?.items.find(
+        (item) => item.key === EXPERIENCE_ASSIST_MENU_KEY,
+      )
+      if (experienceAssistItem) {
+        return [
+          ...groups,
+          {
+            key: 'prep-experience-assist-shortcut',
+            title: '准备定标',
+            journeyKey: 'overview',
+            stageKeys: ['EXAM_PREP'],
+            items: [experienceAssistItem],
+          },
+        ]
+      }
     }
     return groups
   }
-  return EXAM_WORKSPACE_MENU_GROUPS.filter((group) => group.journeyKey === journeyKey)
+  return EXAM_WORKSPACE_MENU_GROUPS.filter((group) => group.journeyKey === journeyKey).map(
+    (group) => ({
+      ...group,
+      items: filterMenuItems(group.items, options),
+    }),
+  )
 }
 
 export function resolveExamWorkspaceMenuKey(routeName: string | undefined): string {
@@ -393,5 +429,5 @@ export function findExamWorkspaceMenuItem(menuKey: string): ExamWorkspaceMenuIte
 }
 
 /** 所有菜单项 key，供侧栏图标映射使用 */
-export type ExamWorkspaceMenuKey
-  = (typeof EXAM_WORKSPACE_MENU_GROUPS)[number]['items'][number]['key']
+export type ExamWorkspaceMenuKey =
+  (typeof EXAM_WORKSPACE_MENU_GROUPS)[number]['items'][number]['key']

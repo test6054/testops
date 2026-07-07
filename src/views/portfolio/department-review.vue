@@ -6,18 +6,6 @@ import type {
   PortfolioMaterialRiskLevelCode,
   PortfolioReviewActionTypeCode,
 } from '@/apis/portfolio/enums'
-import type {
-  PortfolioAiAnalysisDetailVO,
-  PortfolioArchiveCategoryTreeNodeVO,
-  PortfolioReviewArchiveRecordDetailVO,
-  PortfolioReviewLogVO,
-  PortfolioReviewTaskPageRequest,
-  PortfolioReviewTaskSummaryVO,
-} from '@/apis/portfolio/types'
-import type { BadgeTone, FilterField, FilterOption } from '@/components/ui-guide/ui/types'
-import { Input, message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import {
   PortfolioArchiveRecordSourceTypeDescription,
   PortfolioArchiveRecordStatusDescription,
@@ -26,7 +14,14 @@ import {
   PortfolioReviewTaskStatusCode,
   PortfolioReviewTaskStatusDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioReviewApi } from '@/apis/portfolio/review'
+import type {
+  PortfolioAiAnalysisDetailVO,
+  PortfolioArchiveCategoryTreeNodeVO,
+  PortfolioReviewArchiveRecordDetailVO,
+  PortfolioReviewLogVO,
+  PortfolioReviewTaskPageRequest,
+  PortfolioReviewTaskSummaryVO,
+} from '@/apis/portfolio/types'
 import {
   PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
   PORTFOLIO_DEFAULT_AUDIT_FLOW_CODE,
@@ -34,6 +29,11 @@ import {
   PORTFOLIO_REVIEW_TASK_STATUS_TONE,
   PORTFOLIO_SCHOOL_REVIEW_FLOW_CODE,
 } from '@/apis/portfolio/types'
+import type { BadgeTone, FilterField, FilterOption } from '@/components/ui-guide/ui/types'
+import { Input, message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
+import { portfolioReviewApi } from '@/apis/portfolio/review'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
@@ -42,11 +42,11 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { ResultCode } from '@/types/enums/result-code'
 import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -77,7 +77,11 @@ function materialRiskLevelTone(riskLevel: PortfolioMaterialRiskLevelCode): Badge
 }
 
 function archiveRecordSourceTypeLabel(sourceType: PortfolioArchiveRecordSourceTypeCode): string {
-  return strictEnumLabel(PortfolioArchiveRecordSourceTypeDescription, sourceType, '档案记录来源类型')
+  return strictEnumLabel(
+    PortfolioArchiveRecordSourceTypeDescription,
+    sourceType,
+    '档案记录来源类型',
+  )
 }
 
 function archiveRecordStatusLabel(status: PortfolioArchiveRecordStatusCode): string {
@@ -151,7 +155,7 @@ const filterModel = computed<Record<string, unknown>>({
   },
 })
 
-const categoryOptions = ref<{ label: string, value: string }[]>([])
+const categoryOptions = ref<{ label: string; value: string }[]>([])
 
 const filterFields = computed<FilterField[]>(() => [
   {
@@ -238,8 +242,8 @@ async function loadCategories() {
 
 function flattenCategoryTree(
   nodes: PortfolioArchiveCategoryTreeNodeVO[],
-): { label: string, value: string }[] {
-  const options: { label: string, value: string }[] = []
+): { label: string; value: string }[] {
+  const options: { label: string; value: string }[] = []
   for (const node of nodes) {
     options.push({ label: node.categoryName, value: node.id })
     if (node.children?.length) {
@@ -254,7 +258,7 @@ async function loadPage() {
   try {
     const result = await portfolioReviewApi.pageTasks({
       pageNum: pageNum.value,
-      pageSize: 20,
+      pageSize: DEFAULT_LIST_PAGE_SIZE,
       departmentId: filterForm.departmentId,
       categoryId: filterForm.categoryId,
       teacherId: filterForm.teacherId,
@@ -262,7 +266,7 @@ async function loadPage() {
       reviewStatus: filterForm.reviewStatus,
     })
     rows.value = result.list
-    pageTotal.value = Number(result.total)
+    pageTotal.value = result.total
     selectedRowKeys.value = selectedRowKeys.value.filter((id) =>
       batchSelectableKeys.value.includes(id),
     )
@@ -562,9 +566,16 @@ onMounted(async () => {
             </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiTextAction @click="openDetail(record)">
-              {{ record.riskLevel === 'SENSITIVE' ? '单条复核' : '复核' }}
-            </UiTextAction>
+            <UiTableActions
+              :items="[
+                {
+                  key: 'review',
+                  label: record.riskLevel === 'SENSITIVE' ? '单条复核' : '复核',
+                },
+              ]"
+              split
+              @action="() => openDetail(record)"
+            />
           </template>
         </template>
       </UiDataTable>

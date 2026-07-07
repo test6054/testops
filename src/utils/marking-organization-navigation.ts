@@ -20,12 +20,46 @@ export function resolveMarkingOrganizationDetailRoute(
 }
 
 /** 试评 / 正评会话页：仅考试工作台 layout 内入口 */
-export function resolveMarkingOrganizationSessionsRoute(
+export function resolveMarkingOrganizationTrialSessionsRoute(
   organizationId: string,
   examId: string,
 ): RouteLocationRaw {
   return {
-    name: 'TeacherExamWorkspaceMarkingOrgSessions',
+    name: 'TeacherExamWorkspaceMarkingOrgTrialSessions',
     params: { examId, organizationId },
   }
+}
+
+/** 正评会话页：仅考试工作台 layout 内入口 */
+export function resolveMarkingOrganizationFormalSessionsRoute(
+  organizationId: string,
+  examId: string,
+): RouteLocationRaw {
+  return {
+    name: 'TeacherExamWorkspaceMarkingOrgFormalSessions',
+    params: { examId, organizationId },
+  }
+}
+
+/** 试评 / 正评 hub：侧栏菜单无 organizationId 时先解析组织再跳转 */
+export function resolveMarkingOrganizationTrialHubRoute(examId: string): RouteLocationRaw {
+  return {
+    name: 'TeacherExamWorkspaceMarkingOrgTrialHub',
+    params: { examId },
+  }
+}
+
+export function resolveMarkingOrganizationFormalHubRoute(examId: string): RouteLocationRaw {
+  return {
+    name: 'TeacherExamWorkspaceMarkingOrgFormalHub',
+    params: { examId },
+  }
+}
+
+/** 兼容旧入口，默认进入试评定标 */
+export function resolveMarkingOrganizationSessionsRoute(
+  organizationId: string,
+  examId: string,
+): RouteLocationRaw {
+  return resolveMarkingOrganizationTrialSessionsRoute(organizationId, examId)
 }

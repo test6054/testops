@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { ExamMaterialLayoutModeCode } from '@/apis/mark/exam'
+import { ExamMaterialLayoutModeDescription } from '@/apis/mark/exam'
 import type {
   ExamLayoutDocument,
   ExamLayoutGenerateQuestionRequest,
 } from '@/apis/mark/exam-layout-design'
+import { fetchExamLayoutPageUploadMeta } from '@/apis/mark/exam-layout-design'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
-import { ExamMaterialLayoutModeDescription } from '@/apis/mark/exam'
-import { fetchExamLayoutPageUploadMeta } from '@/apis/mark/exam-layout-design'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -21,6 +21,7 @@ import {
   ExamLayoutPaperSpecOptions,
   getExamLayoutPaperSpecDescription,
 } from '@/types/enums/exam-layout-paper-spec-enum'
+import { createClientUuid } from '@/utils/client-uuid'
 import { showUserError } from '@/utils/error-handler'
 import { layoutHasSourceFileDetectResult } from '@/utils/exam-layout-designer'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -50,7 +51,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'generate-sheet': [paperSpec: string, questions: ExamLayoutGenerateQuestionRequest[]]
   'auto-detect': [sourcePdfFileId: string]
-  "patch": [document: ExamLayoutDocument]
+  patch: [document: ExamLayoutDocument]
 }>()
 
 const OCR_SCENE_OPTIONS = [
@@ -96,7 +97,8 @@ const sourceFileCanAutoDetect = computed(() => {
   return /\.(pdf|doc|docx|png|jpe?g)$/i.test(sourcePdfFileName.value)
 })
 const paperSpec = ref<ExamLayoutPaperSpecCode>(
-  ALL_EXAM_LAYOUT_PAPER_SPEC_CODES.find((code) => code === props.document?.paperSpec) ?? defaultBlankSheetPaperSpec(),
+  ALL_EXAM_LAYOUT_PAPER_SPEC_CODES.find((code) => code === props.document?.paperSpec) ??
+    defaultBlankSheetPaperSpec(),
 )
 const layoutName = ref(props.document?.layoutName ?? '')
 const printSafeMarginMm = ref(props.document?.printSafeMarginMm ?? 5)
@@ -131,20 +133,14 @@ watch(
 
 const isAnswerSheetMode = computed(() => props.materialLayoutMode === 'ANSWER_SHEET')
 const isFullPaperMode = computed(() => props.materialLayoutMode === 'FULL_PAPER')
-const entryReadonly = computed(
-  () => props.readonly || !props.materialLayoutMode || props.detecting,
-)
+const entryReadonly = computed(() => props.readonly || !props.materialLayoutMode || props.detecting)
 
 const materialLayoutModeLabel = computed(() => {
   if (props.materialLayoutModeMessage) {
     return props.materialLayoutModeMessage
   }
   if (props.materialLayoutMode) {
-    return strictEnumLabel(
-      ExamMaterialLayoutModeDescription,
-      props.materialLayoutMode,
-      '制卷形态',
-    )
+    return strictEnumLabel(ExamMaterialLayoutModeDescription, props.materialLayoutMode, '制卷形态')
   }
   return '制卷形态未选择'
 })
@@ -251,7 +247,7 @@ function createDefaultQuestionRows(): LayoutQuestionDraft[] {
 
 function createQuestionDraft(ocrScene: string, sortNo: number): LayoutQuestionDraft {
   return {
-    id: crypto.randomUUID(),
+    id: createClientUuid(),
     questionNo: String(sortNo),
     ocrScene,
     questionType: deriveQuestionType(ocrScene),
@@ -271,7 +267,12 @@ function defaultFullScore(ocrScene: string): number {
   if (ocrScene === 'CHOICE' || ocrScene === 'FILL_BLANK' || ocrScene === 'NUMERIC') {
     return 2
   }
-  if (ocrScene === 'CALCULATION' || ocrScene === 'PROOF' || ocrScene === 'PROGRAMMING' || ocrScene === 'DRAWING') {
+  if (
+    ocrScene === 'CALCULATION' ||
+    ocrScene === 'PROOF' ||
+    ocrScene === 'PROGRAMMING' ||
+    ocrScene === 'DRAWING'
+  ) {
     return 10
   }
   return 8
@@ -373,7 +374,7 @@ async function syncUploadedPageMeta(fileId: string): Promise<void> {
         )
       : [
           {
-            id: crypto.randomUUID(),
+            id: createClientUuid(),
             pageNo: 1,
             backgroundFileId: fileId,
             naturalWidthPx: meta.naturalWidthPx,
@@ -496,7 +497,11 @@ function onSourcePdfChange(fileId: string | undefined): void {
         <a-divider />
         <h3 class="layout-entry-gateway__section">纸型规格（答题卡）</h3>
         <a-form-item label="纸型">
-          <a-select v-model:value="paperSpec" :options="paperSpecOptions" :disabled="entryReadonly" />
+          <a-select
+            v-model:value="paperSpec"
+            :options="paperSpecOptions"
+            :disabled="entryReadonly"
+          />
         </a-form-item>
         <a-form-item label="题目结构">
           <div class="layout-entry-gateway__quick-actions">

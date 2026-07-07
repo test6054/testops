@@ -11,7 +11,10 @@ import { prefersReducedMotion } from '@/utils/motion-preference'
 import { shouldEnforcePasswordChange } from '@/utils/password-change-enforcement'
 import { isValidRole } from '@/utils/permission'
 import { isQualityEvaluationRoute } from '@/utils/portfolio-route'
-import { ensureQualityPlanConfirmedForNavigation } from '@/utils/quality-plan-guard'
+import {
+  ensureQualityPlanConfirmedForNavigation,
+  routeRequiresPlanConfirmed,
+} from '@/utils/quality-plan-guard'
 import { getRoutePreloadManager } from './preload-strategy'
 import 'nprogress/nprogress.css'
 
@@ -192,7 +195,7 @@ export const setupRouterGuard = (router: Router) => {
       return portfolioRedirect
     }
 
-    if (isQualityEvaluationRoute(to.path)) {
+    if (isQualityEvaluationRoute(to.path) && routeRequiresPlanConfirmed(to.matched)) {
       const planOk = await ensureQualityPlanConfirmedForNavigation(to.matched)
       if (!planOk) {
         return { path: '/quality/training-plan-workbench' }

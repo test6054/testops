@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import type {
-  ArchiveRemediationTaskResponse,
-} from '@/apis/mark/archive-volume'
+import type { ArchiveRemediationTaskResponse } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed } from 'vue'
 import {

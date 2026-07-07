@@ -14,6 +14,7 @@ import { PortfolioAiAnalysisTypeCode } from '@/apis/portfolio/enums'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
 import { parsePortfolioCockpitAskPayload } from '@/utils/portfolio-cockpit-payload'
@@ -236,10 +237,11 @@ async function openTaskResult(taskId: string) {
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'action'">
-          <a
-            class="cockpit-ask__link"
-            @click="() => void openHistoryRow(record)"
-          >查看</a>
+          <UiTableActions
+            :items="[{ key: 'view', label: '查看' }]"
+            split
+            @action="() => void openHistoryRow(record)"
+          />
         </template>
       </template>
     </UiDataTable>

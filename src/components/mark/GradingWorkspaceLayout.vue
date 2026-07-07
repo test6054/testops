@@ -5,15 +5,13 @@
 
  * 配合路由 meta.layoutWide 使用，对标行业「左卷右分」批阅工作台。
 
- * 涉密场次：强制平铺水印 + 顶部 UiAlertStrip。
+ * 涉密场次：强制平铺水印；密级状态条由 exam-workspace-layout 统一展示。
 
  */
 
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import ConfidentialWatermarkLayer from '@/components/mark/ConfidentialWatermarkLayer.vue'
-
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 
 import {
   buildConfidentialWatermarkLines,
@@ -24,7 +22,7 @@ defineOptions({ name: 'GradingWorkspaceLayout' })
 
 const props = withDefaults(
   defineProps<{
-    /** 涉密统考场次；为 true 时启用强制水印与警示条 */
+    /** 涉密统考场次；为 true 时启用强制水印 */
 
     confidential?: boolean
 
@@ -164,16 +162,6 @@ onBeforeUnmount(() => {
       'grading-workspace--dragging': isDragging,
     }"
   >
-    <UiAlertStrip
-      v-if="isConfidential"
-      tone="error"
-      title="涉密资料，禁止传播"
-      description="涉密页面，请勿截屏外传"
-      :closable="false"
-      dense
-      class="grading-workspace__confidential-strip"
-    />
-
     <div
       class="grading-workspace__shielded"
       :class="{ 'grading-workspace__shielded--active': isConfidential }"

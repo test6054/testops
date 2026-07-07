@@ -1,12 +1,12 @@
 import type { ComputedRef, InjectionKey, Ref } from 'vue'
+import { computed, inject, provide, ref, watch } from 'vue'
 import type {
   ArchiveVolumeDetailResponse,
   ArchiveVolumeNavChainStepVO,
   ArchiveVolumeNextStepActionVO,
 } from '@/apis/mark/archive-volume'
-import { computed, inject, provide, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { getArchiveVolumeDetail } from '@/apis/mark/archive-volume'
+import { useRoute, useRouter } from 'vue-router'
 import {
   ARCHIVE_VOLUME_DETAIL_SECTION_TABS,
   ARCHIVE_VOLUME_DETAIL_TAB_KEYS,
@@ -34,9 +34,8 @@ export interface ArchiveVolumeWorkbenchContext {
   syncActiveTabFromNavigation: (options?: { preserveUserTab?: boolean }) => void
 }
 
-export const ARCHIVE_VOLUME_WORKBENCH_CONTEXT_KEY: InjectionKey<ArchiveVolumeWorkbenchContext> = Symbol(
-  'archiveVolumeWorkbenchContext',
-)
+export const ARCHIVE_VOLUME_WORKBENCH_CONTEXT_KEY: InjectionKey<ArchiveVolumeWorkbenchContext> =
+  Symbol('archiveVolumeWorkbenchContext')
 
 export function provideArchiveVolumeWorkbenchContext(): ArchiveVolumeWorkbenchContext {
   const route = useRoute()
@@ -46,14 +45,15 @@ export function provideArchiveVolumeWorkbenchContext(): ArchiveVolumeWorkbenchCo
   const detail = ref<ArchiveVolumeDetailResponse | null>(null)
   const loading = ref(true)
   const activeTab = ref<string>('materials')
+  let loadDetailGeneration = 0
+  let silentRefreshFailureCount = 0
+  const SILENT_REFRESH_FAILURE_THRESHOLD = 2
 
   const navigationChainSteps = computed(() => detail.value?.navigationSummary?.chainSteps ?? [])
   const navigationFlowChainSteps = computed(
     () => detail.value?.navigationSummary?.flowChainSteps ?? [],
   )
-  const nextStepActions = computed(
-    () => detail.value?.navigationSummary?.nextStepActions ?? [],
-  )
+  const nextStepActions = computed(() => detail.value?.navigationSummary?.nextStepActions ?? [])
 
   const sidebarTabs = computed((): ArchiveVolumeSidebarTab[] => {
     const chain = navigationChainSteps.value
@@ -121,21 +121,35 @@ export function provideArchiveVolumeWorkbenchContext(): ArchiveVolumeWorkbenchCo
       loading.value = false
       return
     }
+    const loadGeneration = ++loadDetailGeneration
     if (!options?.silent) {
       loading.value = true
     }
     try {
-      detail.value = await getArchiveVolumeDetail(volumeId.value)
+      const nextDetail = await getArchiveVolumeDetail(volumeId.value)
+      if (loadGeneration !== loadDetailGeneration) {
+        return
+      }
+      detail.value = nextDetail
+      silentRefreshFailureCount = 0
       syncActiveTabFromNavigation({ preserveUserTab: options?.silent === true })
-    }
-    catch (error) {
+    } catch (error) {
+      if (loadGeneration !== loadDetailGeneration) {
+        return
+      }
       if (!options?.silent) {
         showUserError(error, getUserErrorMessage(error, '加载归档卷详情失败'))
         detail.value = null
+      } else {
+        silentRefreshFailureCount += 1
+        if (silentRefreshFailureCount >= SILENT_REFRESH_FAILURE_THRESHOLD) {
+          showUserError(error, getUserErrorMessage(error, '归档卷材料状态刷新失败'))
+        }
       }
-    }
-    finally {
-      loading.value = false
+    } finally {
+      if (loadGeneration === loadDetailGeneration) {
+        loading.value = false
+      }
     }
   }
 
@@ -181,7 +195,9 @@ export function provideArchiveVolumeWorkbenchContext(): ArchiveVolumeWorkbenchCo
 export function useArchiveVolumeWorkbenchContext(): ArchiveVolumeWorkbenchContext {
   const context = inject(ARCHIVE_VOLUME_WORKBENCH_CONTEXT_KEY, null)
   if (!context) {
-    throw new Error('useArchiveVolumeWorkbenchContext 必须在 archive-volume-detail-layout 子树内使用')
+    throw new Error(
+      'useArchiveVolumeWorkbenchContext 必须在 archive-volume-detail-layout 子树内使用',
+    )
   }
   return context
 }

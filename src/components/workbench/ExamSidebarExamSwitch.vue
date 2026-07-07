@@ -11,16 +11,12 @@
     </div>
     <p v-if="displayNo" class="exam-sidebar-exam-switch__no">编号 {{ displayNo }}</p>
     <p v-if="examContextLine" class="exam-sidebar-exam-switch__context">{{ examContextLine }}</p>
-    <div v-if="examStatusLabel" class="exam-sidebar-exam-switch__meta">
-      <UiTag :tone="examStatusTone" size="sm">{{ examStatusLabel }}</UiTag>
-    </div>
   </div>
 </template>
 
 <script lang="ts" setup>
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed } from 'vue'
-import UiTag from '@/components/ui-guide/ui/Tag.vue'
 
 defineOptions({
   name: 'ExamSidebarExamSwitch',
@@ -103,12 +99,6 @@ const statusDotClass = computed(() => {
     line-height: 1.4;
     color: var(--ant-color-text-secondary);
     word-break: break-word;
-  }
-
-  &__meta {
-    display: flex;
-    align-items: center;
-    gap: 8px;
   }
 }
 </style>

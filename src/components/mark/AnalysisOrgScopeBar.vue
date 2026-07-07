@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ClassInfoDto } from '@/apis/edu/class'
 import type { CourseListVO, TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
-import { watch } from 'vue'
+import { computed, watch } from 'vue'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
 import DepartmentSelector from '@/components/quality/selectors/DepartmentSelector.vue'
@@ -12,7 +12,7 @@ const departmentId = defineModel<string | null>('departmentId')
 const courseId = defineModel<string | null>('courseId')
 const classId = defineModel<string | null>('classId')
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     departmentPlaceholder?: string
     coursePlaceholder?: string
@@ -20,6 +20,14 @@ withDefaults(
     showDepartment?: boolean
     showCourse?: boolean
     showClass?: boolean
+    /** 院系已选定后只读展示，禁止跨院系 */
+    departmentLocked?: boolean
+    /** 课程已选定后只读展示，禁止跨课程 */
+    courseLocked?: boolean
+    departmentLabel?: string
+    courseLabel?: string
+    /** 独立入口：须选定单院系单课程，不允许「全部」 */
+    requireOrgScope?: boolean
   }>(),
   {
     departmentPlaceholder: '全部院系',
@@ -28,6 +36,11 @@ withDefaults(
     showDepartment: true,
     showCourse: true,
     showClass: true,
+    departmentLocked: false,
+    courseLocked: false,
+    departmentLabel: '',
+    courseLabel: '',
+    requireOrgScope: false,
   },
 )
 
@@ -37,11 +50,28 @@ const emit = defineEmits<{
   (e: 'class-change', value: string | null, option?: ClassInfoDto): void
 }>()
 
+const departmentReadonly = computed(
+  () => props.departmentLocked && Boolean(departmentId.value?.trim()),
+)
+const courseReadonly = computed(() => props.courseLocked && Boolean(courseId.value?.trim()))
+const resolvedDepartmentPlaceholder = computed(() =>
+  props.requireOrgScope ? '请选择院系' : props.departmentPlaceholder,
+)
+const resolvedCoursePlaceholder = computed(() =>
+  props.requireOrgScope ? '请选择课程' : props.coursePlaceholder,
+)
+const courseSelectorDisabled = computed(
+  () => props.requireOrgScope && !departmentId.value?.trim() && !props.courseLocked,
+)
+
 watch(departmentId, (next, prev) => {
   if (next === prev) {
     return
   }
   classId.value = null
+  if (!props.courseLocked) {
+    courseId.value = null
+  }
 })
 
 function handleDepartmentChange(value: string | null, option?: TenantSchoolDepartmentDto) {
@@ -60,17 +90,28 @@ function handleClassChange(value: string | null, option?: ClassInfoDto) {
 <template>
   <div class="analysis-org-scope-bar">
     <a-form-item v-if="showDepartment" label="院系" class="analysis-org-scope-bar__item">
+      <span v-if="departmentReadonly" class="analysis-org-scope-bar__fixed">{{
+        departmentLabel || '—'
+      }}</span>
       <DepartmentSelector
+        v-else
         v-model:value="departmentId"
-        :placeholder="departmentPlaceholder"
+        :placeholder="resolvedDepartmentPlaceholder"
+        :allow-clear="!requireOrgScope"
         width="180px"
         @change="handleDepartmentChange"
       />
     </a-form-item>
     <a-form-item v-if="showCourse" label="课程" class="analysis-org-scope-bar__item">
+      <span v-if="courseReadonly" class="analysis-org-scope-bar__fixed">{{
+        courseLabel || '—'
+      }}</span>
       <CatalogCourseSelector
+        v-else
         v-model:value="courseId"
-        :placeholder="coursePlaceholder"
+        :placeholder="resolvedCoursePlaceholder"
+        :allow-clear="!requireOrgScope"
+        :disabled="courseSelectorDisabled"
         width="200px"
         @change="handleCourseChange"
       />
@@ -97,5 +138,14 @@ function handleClassChange(value: string | null, option?: ClassInfoDto) {
 
 .analysis-org-scope-bar__item {
   margin-bottom: 0;
+}
+
+.analysis-org-scope-bar__fixed {
+  display: inline-block;
+  min-width: 120px;
+  max-width: 280px;
+  font-size: 14px;
+  line-height: 32px;
+  color: var(--dp-text-primary, rgba(0, 0, 0, 0.88));
 }
 </style>

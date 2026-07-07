@@ -30,15 +30,6 @@
           />
         </template>
         <template #actions>
-          <UiButton
-            variant="outline"
-            size="sm"
-            :loading="dashboardRefreshing"
-            @click="() => load()"
-          >
-            <template #icon><ReloadOutlined /></template>
-            刷新
-          </UiButton>
           <UiButton size="sm" @click="goExamList"> 查看全部考试 </UiButton>
         </template>
       </ContextBar>
@@ -101,7 +92,12 @@
           >
             <template #head>
               <div class="marking-overview__panel-head">
-                <h3 class="marking-overview__panel-title">待处理事项</h3>
+                <div class="marking-overview__panel-head-main">
+                  <h3 class="marking-overview__panel-title">待处理事项</h3>
+                  <p v-if="hasPendingTodos" class="marking-overview__panel-desc">
+                    {{ pendingTodoHint }}
+                  </p>
+                </div>
                 <UiButton
                   v-if="hasPendingTodos"
                   variant="ghost"
@@ -117,12 +113,20 @@
               :class="{ 'marking-overview__panel-body--empty': !todosLoading && !hasPendingTodos }"
             >
               <UiSkeletonState v-if="todosLoading" variant="list" :rows="5" compact />
-              <PendingTodoFeed
-                v-else
-                :todos="overview?.pendingTodos ?? []"
-                empty-description="当前筛选范围内无阻断事项"
-                @navigate="goExamWorkspace"
-              />
+              <template v-else>
+                <UiSectionTabs
+                  v-if="hasPendingTodos"
+                  v-model="pendingTodoTabKey"
+                  :items="pendingTodoTabItems"
+                  compact
+                  class="marking-overview__todo-tabs"
+                />
+                <PendingTodoFeed
+                  :todos="filteredPendingTodos"
+                  :empty-description="pendingTodoEmptyDescription"
+                  @navigate="goExamWorkspace"
+                />
+              </template>
             </div>
           </WorkbenchSurfaceCard>
         </aside>
@@ -176,14 +180,14 @@ import type {
   MarkTeacherDashboardOverviewVO,
   MarkTeacherDashboardQuery,
 } from '@/apis/mark/teacher-dashboard'
+import type { MarkDashboardPendingTodoTabKey } from '@/utils/mark-dashboard-todo'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { EXAM_STATUS_FILTER_OPTIONS, ExamStatusCode } from '@/apis/mark/exam'
 import {
   loadTeacherDashboardOverviewOnce,
   loadTeacherDashboardOverviewSilent,
 } from '@/apis/mark/teacher-dashboard'
-import { ReloadOutlined } from '@ant-design/icons-vue'
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { EXAM_STATUS_FILTER_OPTIONS, ExamStatusCode } from '@/apis/mark/exam'
 import MarkingOverviewAnalytics from '@/components/mark/dashboard/MarkingOverviewAnalytics.vue'
 import MarkingOverviewSignalBand from '@/components/mark/dashboard/MarkingOverviewSignalBand.vue'
 import MarkingOverviewStageRail from '@/components/mark/dashboard/MarkingOverviewStageRail.vue'
@@ -193,6 +197,7 @@ import PublishedExamInsightChart from '@/components/mark/dashboard/PublishedExam
 import PublishedExamInsightTable from '@/components/mark/dashboard/PublishedExamInsightTable.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -209,6 +214,12 @@ import {
 } from '@/utils/academic-year-semester-query'
 import { showUserError } from '@/utils/error-handler'
 import { buildExamListRoute } from '@/utils/exam-list-navigation'
+import {
+  buildPendingTodoHint,
+  buildPendingTodoTabItems,
+  filterPendingTodosByTab,
+  resolveDefaultPendingTodoTab,
+} from '@/utils/mark-dashboard-todo'
 
 defineOptions({ name: 'TeacherMarkingOverview' })
 
@@ -267,7 +278,35 @@ const pageSubtitle = computed(() => {
 })
 
 const hasOngoingExams = computed(() => (overview.value?.ongoingExams.length ?? 0) > 0)
-const hasPendingTodos = computed(() => (overview.value?.pendingTodos.length ?? 0) > 0)
+const pendingTodos = computed(() => overview.value?.pendingTodos ?? [])
+const hasPendingTodos = computed(() => pendingTodos.value.length > 0)
+const pendingTodoTabKey = ref<MarkDashboardPendingTodoTabKey>('all')
+const pendingTodoTabItems = computed(() => buildPendingTodoTabItems(pendingTodos.value))
+const filteredPendingTodos = computed(() =>
+  filterPendingTodosByTab(pendingTodos.value, pendingTodoTabKey.value),
+)
+const pendingTodoHint = computed(() => buildPendingTodoHint(pendingTodos.value))
+const pendingTodoEmptyDescription = computed(() => {
+  if (!hasPendingTodos.value) return '当前筛选范围内无阻断事项'
+  if (pendingTodoTabKey.value === 'urgent') return '当前筛选下暂无紧急待办'
+  if (pendingTodoTabKey.value === 'attention') return '当前筛选下暂无需关注待办'
+  return '当前筛选下暂无待处理事项'
+})
+
+watch(
+  pendingTodos,
+  (todos) => {
+    if (!todos.length) {
+      pendingTodoTabKey.value = 'all'
+      return
+    }
+    const currentItems = filterPendingTodosByTab(todos, pendingTodoTabKey.value)
+    if (currentItems.length === 0) {
+      pendingTodoTabKey.value = resolveDefaultPendingTodoTab(todos)
+    }
+  },
+  { immediate: true },
+)
 
 function isFilterRangeError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : ''
@@ -508,6 +547,23 @@ onMounted(() => {
 
 .marking-overview__panel--todos :deep(.workbench-surface-card__body--flush) {
   padding: 0;
+}
+
+.marking-overview__panel-head-main {
+  min-width: 0;
+}
+
+.marking-overview__todo-tabs {
+  padding: 0 var(--dp-space-4);
+  border-bottom: 1px solid var(--dp-border);
+}
+
+.marking-overview__todo-tabs :deep(.ui-section-tabs__head) {
+  margin-bottom: 0;
+}
+
+.marking-overview__todo-tabs :deep(.ui-section-tabs__helper) {
+  margin-bottom: var(--dp-space-2);
 }
 
 .marking-overview__analytics-row,

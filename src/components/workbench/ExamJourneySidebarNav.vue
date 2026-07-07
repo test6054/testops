@@ -16,7 +16,9 @@
       <button
         type="button"
         class="exam-journey-sidebar-nav__item exam-journey-sidebar-nav__item--overview"
-        :class="{ 'exam-journey-sidebar-nav__item--active': activeJourneyKey() === 'overview' }"
+        :class="{
+          'exam-journey-sidebar-nav__item--active': resolvedActiveJourneyKey === 'overview',
+        }"
         @click="emit('overview-select')"
       >
         <DashboardOutlined class="exam-journey-sidebar-nav__icon" />
@@ -31,7 +33,7 @@
         type="button"
         class="exam-journey-sidebar-nav__item"
         :class="{
-          'exam-journey-sidebar-nav__item--active': activeJourneyKey() === stage.key,
+          'exam-journey-sidebar-nav__item--active': resolvedActiveJourneyKey === stage.key,
           'exam-journey-sidebar-nav__item--completed': stage.status === 'completed',
           'exam-journey-sidebar-nav__item--suggested': showSuggestionBadge(stage.key),
         }"
@@ -39,14 +41,18 @@
         @click="handleJourneySelect(stage.key)"
       >
         <span class="exam-journey-sidebar-nav__index" :class="statusClass(stage.status)">
-          <CheckOutlined v-if="stage.status === 'completed'" class="exam-journey-sidebar-nav__check" />
+          <CheckOutlined
+            v-if="stage.status === 'completed'"
+            class="exam-journey-sidebar-nav__check"
+          />
           <template v-else>{{ index + 1 }}</template>
         </span>
         <span v-if="!collapsed" class="exam-journey-sidebar-nav__title">{{ stage.title }}</span>
         <span
           v-if="!collapsed && showSuggestionBadge(stage.key)"
           class="exam-journey-sidebar-nav__badge"
-        >下一步</span>
+          >下一步</span
+        >
       </button>
     </template>
   </nav>
@@ -54,12 +60,12 @@
 
 <script lang="ts" setup>
 import type { ExamJourneyKey, ExamWorkspaceJourneyKey } from '@/constants/exam-journey'
+import { isExamWorkspaceJourneyKey, resolveJourneyKeyByStage } from '@/constants/exam-journey'
 import type { MarkStageKey } from '@/stores/modules/markStage'
 import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
 import CheckOutlined from '@ant-design/icons-vue/CheckOutlined'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import { computed } from 'vue'
-import { isExamWorkspaceJourneyKey, resolveJourneyKeyByStage } from '@/constants/exam-journey'
 import { shouldShowJourneySuggestion } from '@/constants/mark-workspace-nav'
 
 defineOptions({
@@ -98,22 +104,19 @@ function showSuggestionBadge(journeyKey: string): boolean {
   if (suggestedJourneyKey.value !== key) {
     return false
   }
-  return shouldShowJourneySuggestion(
-    activeJourneyKey(),
-    props.suggestedStageKey,
-  )
+  return shouldShowJourneySuggestion(resolvedActiveJourneyKey.value, props.suggestedStageKey)
 }
 
 function handleJourneySelect(journeyKey: string): void {
   emit('select', requireExamJourneyKey(journeyKey))
 }
 
-function activeJourneyKey(): ExamWorkspaceJourneyKey {
+const resolvedActiveJourneyKey = computed((): ExamWorkspaceJourneyKey => {
   if (!isExamWorkspaceJourneyKey(props.activeJourneyKey)) {
     throw new Error(`未知考试旅程键：${props.activeJourneyKey}`)
   }
   return props.activeJourneyKey
-}
+})
 
 function statusClass(status: WorkbenchStageStatus): string {
   return `exam-journey-sidebar-nav__index--${status}`

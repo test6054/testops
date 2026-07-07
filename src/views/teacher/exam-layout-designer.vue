@@ -150,7 +150,6 @@ const scanPaperStyleLabel = computed(() => examDetail.value?.scanPaperStyleText 
 const materialLayoutMode = computed(() => examDetail.value?.materialLayoutMode)
 
 const snapshot = computed(() => workbenchContext?.snapshot.value ?? null)
-const prepBlockingReasons = computed(() => snapshot.value?.prepBlockingReasons ?? [])
 const prepAdvisoryReasons = computed(() => snapshot.value?.prepAdvisoryReasons ?? [])
 
 const designerPrepSteps = computed<PrepStepCard[]>(() => {
@@ -183,6 +182,9 @@ const isSourceFileLayout = computed(
   () => document.value?.layoutEntryKind === ExamLayoutEntryKindCode.SOURCE_FILE,
 )
 
+/** 识别进行中与后端写锁同时禁止画布编辑，避免与 Worker 落库竞态。 */
+const layoutCanvasReadonly = computed(() => !layoutWritable.value || detecting.value)
+
 const layoutRoiStats = computed(() => computeLayoutRoiStats(document.value))
 
 const identitySetupPending = computed(
@@ -196,8 +198,54 @@ const pageLoading = computed(
   () => loading.value || (examDetailLoading.value && !examDetail.value),
 )
 const saveBlockingReasons = computed(() => validateLayoutDocumentForSave(document.value))
+const saveButtonDisabled = computed(
+  () => !layoutWritable.value || detecting.value || saveBlockingReasons.value.length > 0,
+)
+const saveButtonTooltip = computed((): string | undefined => {
+  if (detecting.value) {
+    return '题目识别进行中，请等待完成后再保存'
+  }
+  if (!layoutWritable.value && writeLockReason.value) {
+    return writeLockReason.value
+  }
+  if (saveBlockingReasons.value.length > 0) {
+    return saveBlockingReasons.value.slice(0, 4).join('；')
+  }
+  return undefined
+})
+
+/** 准备步骤区轻量提示：软建议 + 当前页保存/配置缺口，替代顶部 Alert 条。 */
+const designerPipelineHint = computed((): string => {
+  const parts: string[] = []
+  const layoutStep = designerPrepSteps.value.find((step) => step.key === 'layoutDesign')
+  if (layoutStep?.advisoryReason?.trim()) {
+    parts.push(layoutStep.advisoryReason.trim())
+  }
+  for (const reason of prepAdvisoryReasons.value) {
+    const trimmed = reason.trim()
+    if (trimmed && !parts.includes(trimmed)) {
+      parts.push(trimmed)
+    }
+  }
+  if (detecting.value) {
+    return parts.slice(0, 2).join('；')
+  }
+  if (identitySetupPending.value) {
+    parts.push('保存前须先配置身份识别区')
+  } else if (layoutRoiStats.value.notReadyQuestionNos.length > 0) {
+    parts.push(`${layoutRoiStats.value.notReadyQuestionNos.length} 道题尚未配置作答区`)
+  } else if (saveBlockingReasons.value.length > 0) {
+    parts.push(saveBlockingReasons.value[0])
+  } else if (!layoutWritable.value && writeLockReason.value) {
+    parts.push(writeLockReason.value)
+  }
+  return parts.slice(0, 2).join('；')
+})
 const previewDisabled = computed(() => {
   if (!materialLayoutMode.value || !document.value) {
+    return true
+  }
+  if (detecting.value) {
     return true
   }
   return saveBlockingReasons.value.length > 0
@@ -266,7 +314,7 @@ async function reload(): Promise<void> {
 }
 
 async function handleSave(): Promise<void> {
-  if (!document.value || !examId.value || !layoutWritable.value) {
+  if (!document.value || !examId.value || !layoutWritable.value || detecting.value) {
     return
   }
   if (saveBlockingReasons.value.length > 0) {
@@ -292,6 +340,10 @@ async function handlePreview(): Promise<void> {
   if (!examId.value || !document.value) {
     return
   }
+  if (detecting.value) {
+    message.warning('识别进行中，请等待完成后再预览')
+    return
+  }
   if (saveBlockingReasons.value.length > 0) {
     message.warning(saveBlockingReasons.value[0])
     return
@@ -315,7 +367,7 @@ async function handleGenerateSheet(
   paperSpec: string,
   questions: ExamLayoutGenerateQuestionRequest[],
 ): Promise<void> {
-  if (!examId.value || !layoutWritable.value) {
+  if (!examId.value || !layoutWritable.value || detecting.value) {
     return
   }
   generating.value = true
@@ -533,11 +585,14 @@ function handleBlockFocusFromOutline(block: ExamLayoutBlockDto | null, pageNo: n
 }
 
 function handleDocumentPatch(next: ExamLayoutDocument): void {
+  if (layoutCanvasReadonly.value) {
+    return
+  }
   document.value = next
 }
 
 function handleAddIdentityBlock(block: ExamLayoutBlockDto): void {
-  if (!document.value || !layoutWritable.value) {
+  if (!document.value || layoutCanvasReadonly.value) {
     return
   }
   handleDocumentPatch({
@@ -586,12 +641,7 @@ onBeforeUnmount(() => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        :title="contextBarTitle"
-        :subtitle="layoutDesignerContextSubtitle"
-      >
+      <ContextBar layout="workbench" :subtitle="layoutDesignerContextSubtitle">
         <template #status>
           <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
             {{ examStatusLabel }}
@@ -620,14 +670,16 @@ onBeforeUnmount(() => {
           >
             预览 PDF
           </UiButton>
-          <UiButton
-            variant="primary"
-            :loading="saving"
-            :disabled="!layoutWritable || saveBlockingReasons.length > 0"
-            @click="handleSave"
-          >
-            保存设计
-          </UiButton>
+          <a-tooltip :title="saveButtonTooltip">
+            <UiButton
+              variant="primary"
+              :loading="saving"
+              :disabled="saveButtonDisabled"
+              @click="handleSave"
+            >
+              保存设计
+            </UiButton>
+          </a-tooltip>
         </template>
       </ContextBar>
     </template>
@@ -639,29 +691,13 @@ onBeforeUnmount(() => {
     <template v-else>
       <ExamWorkspaceJourneySubNav />
 
-      <UiAlertStrip
-        v-if="prepBlockingReasons.length > 0"
-        tone="warning"
-        title="考试准备硬阻断"
-        :description="prepBlockingReasons.join('；')"
-        dense
-        class="layout-designer-alert"
-      />
-      <UiAlertStrip
-        v-else-if="prepAdvisoryReasons.length > 0"
-        tone="info"
-        title="准备建议"
-        :description="prepAdvisoryReasons.join('；')"
-        dense
-        class="layout-designer-alert"
-      />
-
       <PrepStepPipelineRow
         v-if="examDetail && designerPrepSteps.length > 0"
         class="layout-designer-pipeline"
         :steps="designerPrepSteps"
         current-step-key="layoutDesign"
         :locked="!examDetail.materialLayoutMode"
+        :hint="designerPipelineHint || undefined"
         @select="goDesignerPrepStep"
       />
 
@@ -690,36 +726,10 @@ onBeforeUnmount(() => {
         v-if="!detecting && identitySetupPending"
         :document="document"
         :detecting="detecting"
-        :readonly="!layoutWritable"
+        :readonly="layoutCanvasReadonly"
         class="layout-designer-lock-banner"
         @add-identity-block="handleAddIdentityBlock"
         @focus-layers="handleFocusIdentityLayers"
-      />
-      <UiAlertStrip
-        v-if="!detecting && layoutRoiStats.notReadyQuestionNos.length > 0"
-        tone="warning"
-        :closable="false"
-        dense
-        :title="`${layoutRoiStats.notReadyQuestionNos.length} 道题未配置 ROI`"
-        :description="`第 ${layoutRoiStats.notReadyQuestionNos.slice(0, 8).join('、')} 题缺少主作答区，保存前须补全或重新识别。`"
-        class="layout-designer-lock-banner"
-      />
-      <UiAlertStrip
-        v-else-if="!layoutWritable && writeLockReason"
-        tone="warning"
-        :closable="false"
-        dense
-        :title="writeLockReason"
-        class="layout-designer-lock-banner"
-      />
-      <UiAlertStrip
-        v-else-if="saveBlockingReasons.length > 0 && !identitySetupPending && layoutRoiStats.notReadyQuestionNos.length === 0"
-        tone="warning"
-        :closable="false"
-        dense
-        title="制卷设计尚未满足保存条件"
-        :description="saveBlockingReasons.slice(0, 4).join('；')"
-        class="layout-designer-lock-banner"
       />
 
       <WorkbenchSurfaceCard flush class="layout-designer__surface">
@@ -743,7 +753,7 @@ onBeforeUnmount(() => {
               :layout-paper-spec-message="layoutPaperLabel"
               :generating="generating"
               :detecting="detecting"
-              :readonly="!layoutWritable"
+              :readonly="layoutCanvasReadonly"
               @generate-sheet="handleGenerateSheet"
               @auto-detect="handleAutoDetect"
               @patch="handleDocumentPatch"
@@ -835,7 +845,7 @@ onBeforeUnmount(() => {
       :exam-id="examId"
       :document="document"
       :page-no="currentPageNo"
-      :readonly="!layoutWritable"
+      :readonly="layoutCanvasReadonly"
       @patch="handleDocumentPatch"
       @saved="handleReviewSaved"
     />
@@ -843,7 +853,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped lang="scss">
-.layout-designer-alert,
 .layout-designer-pipeline,
 .layout-designer-lock-banner {
   margin-bottom: 12px;

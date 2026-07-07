@@ -4,8 +4,8 @@ import type { PortfolioTenantIndicatorConfigVO } from '@/apis/portfolio/indicato
 import type {
   PortfolioDevelopmentPlanItemSaveRequest,
   PortfolioDevelopmentPlanItemVO,
-  PortfolioDevelopmentPlanVO,
 } from '@/apis/portfolio/teacher-platform'
+import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
@@ -18,23 +18,22 @@ import {
   PortfolioDevelopmentPlanTypeCode,
 } from '@/apis/portfolio/enums'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
-import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
+import { useQueryTable } from '@/composables/useQueryTable'
 import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const { loadTree, portfolioOrgOptions } = usePortfolioOrgTree()
-const loading = ref(false)
 const activeTab = ref('plans')
-const rows = ref<PortfolioDevelopmentPlanVO[]>([])
 const selectedPlanId = ref('')
 const itemLoading = ref(false)
 const itemSaving = ref(false)
@@ -58,6 +57,23 @@ const form = reactive<DevelopmentPlanDepartmentForm>({
   planSummary: '',
   portfolioOrgId: '',
 })
+const {
+  loading,
+  rows,
+  pageNum,
+  pageSize,
+  pageTotal,
+  loadPage: loadPlansPage,
+  handlePageChange,
+} = useQueryTable(
+  (params) =>
+    portfolioDevelopmentPlanApi.page({
+      ...params,
+      planYear: form.planYear,
+      planType: PortfolioDevelopmentPlanTypeCode.DEPARTMENT,
+    }),
+  { immediate: false },
+)
 
 const columns: ColumnsType = [
   { title: '标题', dataIndex: 'planTitle', key: 'planTitle' },
@@ -103,8 +119,10 @@ const selectedPlan = computed(
 
 const planItemEditable = computed(() => {
   const status = selectedPlan.value?.planStatus
-  return status === PortfolioDevelopmentPlanStatusCode.DRAFT
-    || status === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
+  return (
+    status === PortfolioDevelopmentPlanStatusCode.DRAFT ||
+    status === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
+  )
 })
 
 const planOptions = computed(() =>
@@ -123,26 +141,13 @@ function planStatusTone(status: PortfolioDevelopmentPlanStatusCode) {
 }
 
 async function loadPage() {
-  loading.value = true
-  try {
-    const page = await portfolioDevelopmentPlanApi.page({
-      pageNum: 1,
-      pageSize: 50,
-      planYear: form.planYear,
-      planType: PortfolioDevelopmentPlanTypeCode.DEPARTMENT,
-    })
-    rows.value = page.list
-    if (!rows.value.some((item) => item.id === selectedPlanId.value)) {
-      selectedPlanId.value = rows.value[0]?.id ?? ''
-      planItems.value = []
-    }
-    if (selectedPlanId.value && activeTab.value === 'items') {
-      await loadPlanItems()
-    }
-  } catch (error) {
-    showUserError(error)
-  } finally {
-    loading.value = false
+  await loadPlansPage()
+  if (!rows.value.some((item) => item.id === selectedPlanId.value)) {
+    selectedPlanId.value = rows.value[0]?.id ?? ''
+    planItems.value = []
+  }
+  if (selectedPlanId.value && activeTab.value === 'items') {
+    await loadPlanItems()
   }
 }
 
@@ -200,6 +205,11 @@ function openPlanItems(planId: string) {
   void loadPlanItems()
 }
 
+function handleDepartmentPlanRowAction(key: string, planId: string) {
+  if (key === 'submit') void submitPlan(planId)
+  else if (key === 'items') openPlanItems(planId)
+}
+
 function createEmptyPlanItem(): DevelopmentPlanItemEditorRow {
   return {
     rowKey: `new-${Date.now()}-${planItems.value.length}`,
@@ -212,9 +222,7 @@ function createEmptyPlanItem(): DevelopmentPlanItemEditorRow {
   }
 }
 
-function toEditableItem(
-  item: PortfolioDevelopmentPlanItemVO,
-): DevelopmentPlanItemEditorRow {
+function toEditableItem(item: PortfolioDevelopmentPlanItemVO): DevelopmentPlanItemEditorRow {
   return {
     rowKey: item.id ?? `item-${item.sortOrder ?? 0}-${item.itemTitle}`,
     itemTitle: item.itemTitle,
@@ -326,11 +334,16 @@ onMounted(async () => {
           </UiCard>
           <UiEmpty v-if="!loading && rows.length === 0" description="当前年度暂无部门规划" />
           <UiDataTable
+            v-model:current="pageNum"
+            v-model:page-size="pageSize"
+            pagination-mode="server"
+            :total="pageTotal"
             :columns="columns"
             :data-source="rows"
             :loading="loading"
             row-key="id"
             style="margin-top: 16px"
+            @page-change="handlePageChange"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'planStatus'">
@@ -339,17 +352,21 @@ onMounted(async () => {
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <UiButton
-                  v-if="
-                    record.planStatus === PortfolioDevelopmentPlanStatusCode.DRAFT
-                      || record.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
-                  "
-                  size="sm"
-                  @click="submitPlan(record.id)"
-                >
-                  提交
-                </UiButton>
-                <UiButton size="sm" @click="openPlanItems(record.id)"> 明细 </UiButton>
+                <UiTableActions
+                  :items="[
+                    {
+                      key: 'submit',
+                      label: '提交',
+                      hidden:
+                        record.planStatus !== PortfolioDevelopmentPlanStatusCode.DRAFT &&
+                        record.planStatus !==
+                          PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED,
+                    },
+                    { key: 'items', label: '明细' },
+                  ]"
+                  split
+                  @action="(key) => handleDepartmentPlanRowAction(key, record.id)"
+                />
               </template>
             </template>
           </UiDataTable>

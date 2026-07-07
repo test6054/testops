@@ -3,13 +3,9 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PfImpactReportStatusCode,
   PfModelStatusCode,
-
   PortfolioPublishImpactReportVO,
-  PortfolioRulePublishSnapshotVO} from '@/apis/portfolio/indicator-types'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
+  PortfolioRulePublishSnapshotVO,
+} from '@/apis/portfolio/indicator-types'
 import {
   PF_IMPACT_REPORT_STATUS_TONE,
   PF_SCENE_CODE_OPTIONS,
@@ -18,13 +14,19 @@ import {
   PfSceneCode,
   PfSceneCodeDescription,
 } from '@/apis/portfolio/indicator-types'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -56,7 +58,7 @@ const retroactive = ref<PortfolioRulePublishSnapshotVO | null>(null)
 const impactDetail = ref<PortfolioPublishImpactReportVO | null>(null)
 const selectedSnapshotId = ref('')
 const diffSnapshotIdB = ref('')
-const impactQuery = reactive({ pageNum: 1, pageSize: 20 })
+const impactQuery = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
 
 const columns: ColumnsType = [
   { title: '版本', dataIndex: 'versionNo', key: 'versionNo', width: 64 },
@@ -91,7 +93,7 @@ async function loadImpactReports() {
   try {
     const page = await portfolioIndicatorTenantApi.pageImpactReport(impactQuery)
     impactRows.value = page.list
-    impactTotal.value = Number(page.total)
+    impactTotal.value = page.total
   } catch (error) {
     showUserError(error)
   } finally {
@@ -152,6 +154,25 @@ function goOps(snapshotId: string) {
   router.push({ name: 'PortfolioIndicatorOps', query: { snapshotId } })
 }
 
+function handleSnapshotRowAction(key: string, snapshotId: string) {
+  if (key === 'view') {
+    selectedSnapshotId.value = snapshotId
+    void loadRetroactive()
+  } else if (key === 'export-diff') {
+    void exportDiff(snapshotId)
+  } else if (key === 'score') {
+    goOps(snapshotId)
+  }
+}
+
+function handleImpactRowAction(key: string, reportId: string) {
+  if (key === 'detail') {
+    void loadImpactDetail(reportId)
+  } else if (key === 'export') {
+    void exportImpact(reportId)
+  }
+}
+
 function onTabChange(key: string | number) {
   activeTab.value = String(key)
   if (activeTab.value === 'impact') {
@@ -206,15 +227,15 @@ onMounted(loadHistory)
                 {{ modelStatusLabel(record.modelStatus) }}
               </template>
               <template v-else-if="column.key === 'actions'">
-                <a
-                  style="margin-right: 8px"
-                  @click="
-                    selectedSnapshotId = record.id
-                    loadRetroactive()
-                  "
-                >查看</a>
-                <a style="margin-right: 8px" @click="exportDiff(record.id)">导出 diff</a>
-                <a @click="goOps(record.id)">计分</a>
+                <UiTableActions
+                  :items="[
+                    { key: 'view', label: '查看' },
+                    { key: 'export-diff', label: '导出 diff' },
+                    { key: 'score', label: '计分' },
+                  ]"
+                  split
+                  @action="(key) => handleSnapshotRowAction(key, record.id)"
+                />
               </template>
             </template>
           </UiDataTable>
@@ -237,8 +258,14 @@ onMounted(loadHistory)
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <a style="margin-right: 8px" @click="loadImpactDetail(record.id)">详情</a>
-                <a @click="exportImpact(record.id)">导出</a>
+                <UiTableActions
+                  :items="[
+                    { key: 'detail', label: '详情' },
+                    { key: 'export', label: '导出' },
+                  ]"
+                  split
+                  @action="(key) => handleImpactRowAction(key, record.id)"
+                />
               </template>
             </template>
           </UiDataTable>

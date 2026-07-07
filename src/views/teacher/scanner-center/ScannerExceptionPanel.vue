@@ -7,6 +7,13 @@ import type {
   ScannerExceptionDashboardVO,
   SuspectedMixedBatchItemVO,
 } from '@/apis/mark/scanner-dispatch'
+import type { ScanTaskKindCode, ScanWorkOrderStatusCode } from '@/apis/mark/scanner-work-order'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { retryScanBatchPageRegister, ScanBatchStatusCode } from '@/apis/mark/exam-scan'
 import {
   cancelScanDispatch,
   loadScannerExceptionDashboard,
@@ -14,14 +21,7 @@ import {
   ScanDispatchTicketStatusCode,
   ScanDispatchTicketStatusDescription,
 } from '@/apis/mark/scanner-dispatch'
-import type { ScanTaskKindCode, ScanWorkOrderStatusCode } from '@/apis/mark/scanner-work-order'
 import { ScanWorkOrderStatusDescription } from '@/apis/mark/scanner-work-order'
-import type { SignalMetric } from '@/types/workbench'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { retryScanBatchPageRegister, ScanBatchStatusCode } from '@/apis/mark/exam-scan'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -40,12 +40,12 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'open-log': [payload: { ticketId?: string; volumeId?: string }]
+  'open-log': [payload: { ticketId?: string, volumeId?: string }]
   'metrics-changed': []
 }>()
 
-type ExceptionDashboardRowKind =
-  'TICKET' | 'WORK_ORDER' | 'COMMITTING' | 'MIXED_BATCH' | 'PAGE_REGISTER_BLOCKED'
+type ExceptionDashboardRowKind
+  = 'TICKET' | 'WORK_ORDER' | 'COMMITTING' | 'MIXED_BATCH' | 'PAGE_REGISTER_BLOCKED'
 
 interface ExceptionDashboardBaseRow {
   rowKey: string
@@ -72,20 +72,20 @@ interface ExceptionDashboardBaseRow {
   pageCount?: number
 }
 
-type ExceptionDashboardRow =
-  | (ExceptionDashboardBaseRow & {
+type ExceptionDashboardRow
+  = | (ExceptionDashboardBaseRow & {
       itemKind: 'TICKET'
       status?: ScanDispatchTicketStatusCode
     })
-  | (ExceptionDashboardBaseRow & {
+    | (ExceptionDashboardBaseRow & {
       itemKind: 'WORK_ORDER' | 'COMMITTING'
       status?: ScanWorkOrderStatusCode
     })
-  | (ExceptionDashboardBaseRow & {
+    | (ExceptionDashboardBaseRow & {
       itemKind: 'PAGE_REGISTER_BLOCKED'
       status: ScanBatchStatusCode
     })
-  | (ExceptionDashboardBaseRow & {
+    | (ExceptionDashboardBaseRow & {
       itemKind: 'MIXED_BATCH'
     })
 
@@ -306,11 +306,11 @@ function handleSignalMetricClick(key: string) {
 function applyRouteKindFilter() {
   const kind = props.initialKind ?? route.query.kind
   if (
-    kind === 'TICKET' ||
-    kind === 'WORK_ORDER' ||
-    kind === 'COMMITTING' ||
-    kind === 'MIXED_BATCH' ||
-    kind === 'PAGE_REGISTER_BLOCKED'
+    kind === 'TICKET'
+    || kind === 'WORK_ORDER'
+    || kind === 'COMMITTING'
+    || kind === 'MIXED_BATCH'
+    || kind === 'PAGE_REGISTER_BLOCKED'
   ) {
     itemKindFilter.value = kind
     return
@@ -375,18 +375,18 @@ function rowDetail(row: ExceptionDashboardRow) {
 
 function canForceReleaseTicket(row: ExceptionDashboardRow) {
   return (
-    row.itemKind === 'TICKET' &&
-    Boolean(row.ticketId) &&
-    (row.status === ScanDispatchTicketStatusCode.PROCESSING ||
-      row.status === ScanDispatchTicketStatusCode.SUSPENDED)
+    row.itemKind === 'TICKET'
+    && Boolean(row.ticketId)
+    && (row.status === ScanDispatchTicketStatusCode.PROCESSING
+      || row.status === ScanDispatchTicketStatusCode.SUSPENDED)
   )
 }
 
 function canCancelTicket(row: ExceptionDashboardRow) {
   return (
-    row.itemKind === 'TICKET' &&
-    Boolean(row.ticketId) &&
-    row.status === ScanDispatchTicketStatusCode.PENDING
+    row.itemKind === 'TICKET'
+    && Boolean(row.ticketId)
+    && row.status === ScanDispatchTicketStatusCode.PENDING
   )
 }
 
@@ -427,9 +427,9 @@ function buildExceptionRowActions(row: ExceptionDashboardRow): UiTableRowActionI
     actions.push({ key: 'view-dispatch', label: '查看派单', tone: 'primary' })
   }
   if (
-    row.itemKind === 'WORK_ORDER' ||
-    row.itemKind === 'MIXED_BATCH' ||
-    row.itemKind === 'PAGE_REGISTER_BLOCKED'
+    row.itemKind === 'WORK_ORDER'
+    || row.itemKind === 'MIXED_BATCH'
+    || row.itemKind === 'PAGE_REGISTER_BLOCKED'
   ) {
     actions.push({ key: 'goto-handle', label: '前往处理', tone: 'primary' })
   }

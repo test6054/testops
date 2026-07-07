@@ -30,7 +30,6 @@ import type { RequirementIndicatorVO } from '@/apis/quality/requirement-indicato
 import { requirementIndicatorApi } from '@/apis/quality/requirement-indicator'
 import type { RubricItemSaveRequest, RubricItemVO } from '@/apis/quality/rubric-item'
 import { rubricItemApi } from '@/apis/quality/rubric-item'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 /**
  * 质量评价课程 - 支撑矩阵工作台（3-in-1）
  *
@@ -56,6 +55,7 @@ import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
  *   - Rubric 满分加总 = (item, goal) 的 fullScore
  */
 import type { CourseListVO } from '@/apis/quality/user-catalog'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/matrix-types'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, reactive, ref } from 'vue'

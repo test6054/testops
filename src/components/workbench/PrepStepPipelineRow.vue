@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import type { Component } from 'vue'
 import type { PrepStepCard } from '@/utils/exam-prep-step-ui'
+import AimOutlined from '@ant-design/icons-vue/AimOutlined'
 import ContainerOutlined from '@ant-design/icons-vue/ContainerOutlined'
 import FilePdfOutlined from '@ant-design/icons-vue/FilePdfOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
@@ -16,6 +17,8 @@ const props = defineProps<{
   steps: PrepStepCard[]
   currentStepKey?: string | null
   locked?: boolean
+  /** 准备步骤区轻量提示：软建议、保存前置条件等，不用 Alert 条。 */
+  hint?: string
 }>()
 
 const emit = defineEmits<{
@@ -28,6 +31,7 @@ const ICON_MAP: Record<string, Component> = {
   paperTemplate: ProfileOutlined,
   layoutDesign: FilePdfOutlined,
   printPackage: ContainerOutlined,
+  experienceAssist: AimOutlined,
 }
 
 function resolveIcon(key: string): Component {
@@ -49,11 +53,20 @@ function handleSelect(step: PrepStepCard): void {
 <template>
   <WorkbenchSurfaceCard class="prep-step-pipeline">
     <template #head>
-      <span class="prep-step-pipeline__title">准备步骤</span>
-      <span class="prep-step-pipeline__meta">
-        {{ steps.filter((item) => item.status === 'completed').length }} / {{ steps.length }} 已完成
-      </span>
+      <div class="prep-step-pipeline__head">
+        <div class="prep-step-pipeline__head-main">
+          <span class="prep-step-pipeline__title">准备步骤</span>
+          <span class="prep-step-pipeline__meta">
+            {{ steps.filter((item) => item.status === 'completed').length }} /
+            {{ steps.length }} 已完成
+          </span>
+        </div>
+        <div v-if="$slots.actions" class="prep-step-pipeline__head-actions">
+          <slot name="actions" />
+        </div>
+      </div>
     </template>
+    <p v-if="hint" class="prep-step-pipeline__hint">{{ hint }}</p>
     <div class="prep-step-pipeline__track">
       <button
         v-for="(step, index) in steps"
@@ -69,7 +82,11 @@ function handleSelect(step: PrepStepCard): void {
         ]"
         @click="handleSelect(step)"
       >
-        <span v-if="index < steps.length - 1" class="prep-step-pipeline__connector" aria-hidden="true" />
+        <span
+          v-if="index < steps.length - 1"
+          class="prep-step-pipeline__connector"
+          aria-hidden="true"
+        />
         <span class="prep-step-pipeline__step-head">
           <component :is="resolveIcon(step.key)" class="prep-step-pipeline__icon" />
           <span class="prep-step-pipeline__label">{{ step.title }}</span>
@@ -83,6 +100,29 @@ function handleSelect(step: PrepStepCard): void {
 
 <style scoped lang="scss">
 .prep-step-pipeline {
+  &__head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    width: 100%;
+  }
+
+  &__head-main {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  &__head-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-left: auto;
+  }
+
   &__title {
     font-size: 14px;
     font-weight: 600;
@@ -91,6 +131,13 @@ function handleSelect(step: PrepStepCard): void {
   &__meta {
     font-size: 12px;
     color: var(--dp-text-muted, #64748b);
+  }
+
+  &__hint {
+    margin: 0 0 12px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--dp-text-secondary, #475569);
   }
 
   &__track {

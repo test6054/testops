@@ -24,13 +24,23 @@ const props = withDefaults(
   },
 )
 
-const displayTitle = computed(() => props.showTitle || Boolean(props.title))
+const hasHeading = computed(() => Boolean(props.title?.trim()))
+const showTitleBlock = computed(() => (props.showTitle || hasHeading.value) && hasHeading.value)
+const isCompactToolbar = computed(
+  () => props.layout === 'workbench' && !showTitleBlock.value && !props.subtitle?.trim(),
+)
 </script>
 
 <template>
-  <div class="context-bar" :class="`context-bar--${layout}`">
-    <div class="context-bar__info">
-      <h2 v-if="displayTitle && title" class="context-bar__title">
+  <div
+    class="context-bar"
+    :class="[`context-bar--${layout}`, { 'context-bar--compact-toolbar': isCompactToolbar }]"
+  >
+    <div
+      v-if="showTitleBlock || subtitle || $slots.status || $slots.info"
+      class="context-bar__info"
+    >
+      <h2 v-if="showTitleBlock" class="context-bar__title">
         {{ title }}
       </h2>
       <p v-if="subtitle" class="context-bar__subtitle">
@@ -64,6 +74,15 @@ const displayTitle = computed(() => props.showTitle || Boolean(props.title))
     align-items: center;
     flex-wrap: nowrap;
     margin-bottom: var(--dp-space-5, 20px);
+  }
+
+  &--compact-toolbar {
+    margin-bottom: var(--dp-space-2, 8px);
+    justify-content: flex-end;
+
+    &:has(.context-bar__info) {
+      justify-content: space-between;
+    }
   }
 
   &__info {

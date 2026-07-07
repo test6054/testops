@@ -1,34 +1,50 @@
 <script lang="ts" setup>
-import type { ExamScannerDeviceResponse } from '@/apis/mark/exam-mark-scanner'
-import { isScannerDeviceOnline } from '@/apis/mark/exam-mark-scanner'
+import type { ExamScanMonitorDeviceResponse } from '@/apis/mark/exam-progress'
+import { ScannerEndpointOnlineStatusCode } from '@/apis/mark/exam-mark-scanner'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { ScanBatchStatusDescription } from '@/types/enums/scan-batch-status-enum'
 import { formatDateTimeWithSeconds } from '@/utils/format'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ScanDeviceCardGrid' })
 
-const props = defineProps<{
-  devices: ExamScannerDeviceResponse[]
+defineProps<{
+  devices: ExamScanMonitorDeviceResponse[]
   loading?: boolean
   selectedDeviceId?: string
 }>()
 
 const emit = defineEmits<{
-  select: [device: ExamScannerDeviceResponse]
+  select: [device: ExamScanMonitorDeviceResponse]
 }>()
 
-function deviceOnline(device: ExamScannerDeviceResponse): boolean {
-  return isScannerDeviceOnline(device)
+function deviceOnline(device: ExamScanMonitorDeviceResponse): boolean {
+  return device.endpointOnlineStatus === ScannerEndpointOnlineStatusCode.ONLINE
 }
 
-function heartbeatLabel(device: ExamScannerDeviceResponse): string {
+function heartbeatLabel(device: ExamScanMonitorDeviceResponse): string {
   if (!device.lastHeartbeatTime) {
     return '无心跳记录'
   }
   return formatDateTimeWithSeconds(device.lastHeartbeatTime)
 }
 
-function handleSelect(device: ExamScannerDeviceResponse): void {
+function activeBatchLabel(device: ExamScanMonitorDeviceResponse): string | null {
+  if (!device.activeScanBatchStatus) {
+    return null
+  }
+  const statusLabel = strictEnumLabel(
+    ScanBatchStatusDescription,
+    device.activeScanBatchStatus,
+    '扫描批次状态',
+  )
+  const pageCount = device.activeScanBatchPageCount ?? 0
+  const batchNo = device.activeScanBatchNo || device.activeScanBatchId
+  return [batchNo, statusLabel, `${pageCount} 页`].filter(Boolean).join(' · ')
+}
+
+function handleSelect(device: ExamScanMonitorDeviceResponse): void {
   emit('select', device)
 }
 </script>
@@ -36,10 +52,10 @@ function handleSelect(device: ExamScannerDeviceResponse): void {
 <template>
   <WorkbenchSurfaceCard class="scan-device-grid" :class="{ 'scan-device-grid--loading': loading }">
     <template #head>
-      <span class="scan-device-grid__title">扫描设备</span>
+      <span class="scan-device-grid__title">本考试扫描端</span>
       <span class="scan-device-grid__meta">{{ devices.length }} 台</span>
     </template>
-    <div v-if="devices.length === 0" class="scan-device-grid__empty">暂无扫描设备</div>
+    <div v-if="devices.length === 0" class="scan-device-grid__empty">当前无扫描端参与本考试</div>
     <div v-else class="scan-device-grid__list">
       <button
         v-for="device in devices"
@@ -48,6 +64,7 @@ function handleSelect(device: ExamScannerDeviceResponse): void {
         class="scan-device-grid__card"
         :class="{
           'scan-device-grid__card--online': deviceOnline(device),
+          'scan-device-grid__card--offline': !deviceOnline(device),
           'scan-device-grid__card--selected': selectedDeviceId === device.scannerDeviceId,
         }"
         @click="handleSelect(device)"
@@ -57,12 +74,18 @@ function handleSelect(device: ExamScannerDeviceResponse): void {
             class="scan-device-grid__pulse"
             :class="{ 'scan-device-grid__pulse--online': deviceOnline(device) }"
           />
-          <span class="scan-device-grid__name">{{ device.deviceName }}</span>
+          <span class="scan-device-grid__name">{{
+            device.deviceName || device.scannerDeviceId
+          }}</span>
           <UiTag :tone="deviceOnline(device) ? 'green' : 'orange'" size="sm">
             {{ deviceOnline(device) ? '在线' : '离线' }}
           </UiTag>
+          <UiTag v-if="device.kioskBoundToCurrentExam" tone="blue" size="sm">一体机</UiTag>
         </div>
         <div class="scan-device-grid__id">{{ device.scannerDeviceId }}</div>
+        <div v-if="activeBatchLabel(device)" class="scan-device-grid__batch">
+          {{ activeBatchLabel(device) }}
+        </div>
         <div class="scan-device-grid__stats">
           <div>
             <div class="scan-device-grid__stat-label">待上传页</div>
@@ -135,12 +158,17 @@ function handleSelect(device: ExamScannerDeviceResponse): void {
     &--online {
       background: var(--ant-color-success-bg, #f0fdf4);
     }
+
+    &--offline {
+      background: var(--ant-color-warning-bg, #fffbeb);
+    }
   }
 
   &__card-head {
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-wrap: wrap;
   }
 
   &__pulse {
@@ -167,6 +195,11 @@ function handleSelect(device: ExamScannerDeviceResponse): void {
     font-size: 12px;
     font-family: var(--dp-font-mono, ui-monospace, monospace);
     color: var(--dp-text-muted, #64748b);
+  }
+
+  &__batch {
+    font-size: 12px;
+    color: var(--dp-text-secondary, #475569);
   }
 
   &__stats {

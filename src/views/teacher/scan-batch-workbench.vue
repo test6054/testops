@@ -1,20 +1,5 @@
 <template>
   <StageWorkbenchShell>
-    <template #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        :title="contextBarTitle"
-        :subtitle="scanBatchContextSubtitle"
-      >
-        <template #status>
-          <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
-            {{ examStatusLabel }}
-          </UiTag>
-        </template>
-      </ContextBar>
-    </template>
-
     <template #signal>
       <SignalBand
         v-if="selectedExamId"
@@ -114,17 +99,7 @@
               action-label="重试"
               @action="() => loadBatches()"
             />
-            <UiEmpty v-else description="暂无扫描批次">
-              <p class="scan-batch-workbench__empty-guide">
-                扫描批次由扫描一体机或扫描终端自动创建。请先在
-                <UiTextAction @click="goScannerKiosk">扫描一体机</UiTextAction>
-                登录本考试并完成扫描，或在
-                <UiTextAction @click="goScanDevices">扫描设备</UiTextAction>
-                绑定 Agent 后通过
-                <UiTextAction @click="goScanMonitor">扫描监控</UiTextAction>
-                查看实时进度。
-              </p>
-            </UiEmpty>
+            <UiEmpty v-else description="暂无扫描批次" />
           </template>
 
           <template #bodyCell="{ column, record }">
@@ -159,9 +134,9 @@
               <UiTag v-if="record.orderAuditPassed === false" tone="red" size="sm">
                 {{ record.orderAuditIssueCount ?? 0 }} 项异常
               </UiTag>
-              <UiTag v-else-if="record.orderAuditPassed === true" tone="green" size="sm"
-                >通过</UiTag
-              >
+              <UiTag v-else-if="record.orderAuditPassed === true" tone="green" size="sm">
+                通过
+              </UiTag>
               <span v-else class="muted">待审计</span>
             </template>
             <template v-else-if="column.key === 'actions'">
@@ -189,14 +164,19 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamScannerDeviceResponse } from '@/apis/mark/exam-mark-scanner'
-import { listActiveScannerDevices } from '@/apis/mark/exam-mark-scanner'
 import type { MarkingProgressResponse } from '@/apis/mark/exam-progress'
-import { getMarkingProgress } from '@/apis/mark/exam-progress'
 import type {
   ExamScannerBatchQueryRequest,
   ExamScannerBatchResponse,
   ExamScannerBatchWorkbenchSummaryResponse,
 } from '@/apis/mark/exam-scan'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { listActiveScannerDevices } from '@/apis/mark/exam-mark-scanner'
+import { getMarkingProgress } from '@/apis/mark/exam-progress'
 import {
   getScannerBatchWorkbenchSummary,
   pageScannerBatches,
@@ -204,11 +184,6 @@ import {
   ScanBatchStatusCode,
   ScanBatchStatusDescription,
 } from '@/apis/mark/exam-scan'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import ScanBatchDetailDrawer from '@/components/mark/ScanBatchDetailDrawer.vue'
 import ScanOrphanRecoveryAlert from '@/components/mark/ScanOrphanRecoveryAlert.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -219,7 +194,6 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
-import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -239,8 +213,8 @@ type StatusTabKey = 'ALL' | ScanBatchStatusCode
 const route = useRoute()
 const router = useRouter()
 const { selectedExamId } = useMarkExamContext()
-const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
-  useExamJourneyContextBar('扫描批次')
+const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
+  = useExamJourneyContextBar('扫描批次')
 
 const scanBatchContextSubtitle = computed(() => {
   const journeySubtitle = contextBarSubtitle.value
@@ -267,7 +241,7 @@ const scanAttentionAlertDescription = computed(() => {
 const batches = ref<ExamScannerBatchResponse[]>([])
 const batchTotal = ref(0)
 const batchLoading = ref(false)
-const batchQuery = reactive<{ pageNum: number; pageSize: number }>({
+const batchQuery = reactive<{ pageNum: number, pageSize: number }>({
   pageNum: 1,
   pageSize: 10,
 })
@@ -430,17 +404,17 @@ function formatDeviceLabel(deviceId?: string): string {
 
 function syncFilterForm(next: Record<string, unknown>): void {
   filterForm.keyword = String(next.keyword ?? '')
-  filterForm.scannerDeviceId =
-    typeof next.scannerDeviceId === 'string' ? next.scannerDeviceId : undefined
+  filterForm.scannerDeviceId
+    = typeof next.scannerDeviceId === 'string' ? next.scannerDeviceId : undefined
   filterForm.scanWindow = isScanWindow(next.scanWindow) ? next.scanWindow : undefined
 }
 
 function isScanWindow(value: unknown): value is [string, string] {
   return (
-    Array.isArray(value) &&
-    value.length === 2 &&
-    typeof value[0] === 'string' &&
-    typeof value[1] === 'string'
+    Array.isArray(value)
+    && value.length === 2
+    && typeof value[0] === 'string'
+    && typeof value[1] === 'string'
   )
 }
 
@@ -500,7 +474,7 @@ async function loadBatches(pageNum?: number): Promise<void> {
   try {
     const result = await pageScannerBatches(buildBatchQuery())
     batches.value = result.list
-    batchTotal.value = Number(result.total)
+    batchTotal.value = result.total
   } catch (error) {
     batches.value = []
     batchTotal.value = 0
@@ -547,7 +521,7 @@ function handleStatusTabChange(): void {
   void loadBatches()
 }
 
-function onBatchPageChange(page: { current: number; pageSize: number }): void {
+function onBatchPageChange(page: { current: number, pageSize: number }): void {
   batchQuery.pageNum = page.current
   batchQuery.pageSize = page.pageSize
   void loadBatches()
@@ -647,20 +621,6 @@ async function handleDetailUpdated(): Promise<void> {
   await syncScanWorkbenchState()
 }
 
-function goScannerKiosk(): void {
-  void router.push({ name: 'ScannerKioskHub' })
-}
-
-function goScanDevices(): void {
-  if (!selectedExamId.value) {
-    return
-  }
-  void router.push({
-    name: 'TeacherExamWorkspaceScanDevices',
-    params: { examId: selectedExamId.value },
-  })
-}
-
 function goScanMonitor(): void {
   if (!selectedExamId.value) {
     return
@@ -720,15 +680,6 @@ onBeforeUnmount(() => {
 .scan-batch-workbench__attention-alert,
 .scan-batch-workbench__orphan-alert {
   margin-bottom: 12px;
-}
-
-.scan-batch-workbench__empty-guide {
-  margin: 8px 0 0;
-  max-width: 420px;
-  color: var(--ant-color-text-secondary);
-  font-size: 14px;
-  line-height: 1.6;
-  text-align: center;
 }
 
 .scan-batch-workbench__warn {

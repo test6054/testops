@@ -1,6 +1,6 @@
 import type { Ref } from 'vue'
-import type { PageResult, QueryDto } from '@/types'
 import { computed, ref } from 'vue'
+import type { PageResult, QueryDto } from '@/types'
 import { showUserError } from '@/utils/error-handler'
 
 interface InfiniteScrollOptions<T, U> {
@@ -66,7 +66,7 @@ export function useInfiniteScroll<T extends U, U = T>(
         hasMore.value = res.length === pageSize
       } else {
         newData = res.list
-        totalCount = Number(res.total)
+        totalCount = res.total
 
         // 计算是否还有更多数据
         const currentTotal = isLoadMore ? dataList.value.length + newData.length : newData.length

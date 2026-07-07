@@ -1,55 +1,89 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {
-  PortfolioExternalTeacherImportBatchStatusCode,
-} from '@/apis/portfolio/enums'
-import type {
-  PortfolioExternalTeacherImportBatchVO,
-  PortfolioExternalTeacherSaveRequest,
-  PortfolioExternalTeacherStatsVO,
-  PortfolioExternalTeacherVO,
-} from '@/apis/portfolio/teacher-platform'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
-import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import type { PortfolioExternalTeacherImportBatchStatusCode } from '@/apis/portfolio/enums'
 import {
   PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS,
   PortfolioExternalTeacherDataStatusCode,
   PortfolioExternalTeacherDataStatusDescription,
   PortfolioExternalTeacherImportBatchStatusDescription,
 } from '@/apis/portfolio/enums'
+import type {
+  PortfolioExternalTeacherImportBatchVO,
+  PortfolioExternalTeacherPageRequest,
+  PortfolioExternalTeacherSaveRequest,
+  PortfolioExternalTeacherStatsVO,
+  PortfolioExternalTeacherVO,
+} from '@/apis/portfolio/teacher-platform'
 import { portfolioExternalTeacherApi } from '@/apis/portfolio/teacher-platform'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
+import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useQueryTable } from '@/composables/useQueryTable'
 import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const activeTab = ref('roster')
-const loading = ref(false)
 const statsLoading = ref(false)
-const batchLoading = ref(false)
 const saving = ref(false)
-const rows = ref<PortfolioExternalTeacherVO[]>([])
 const stats = ref<PortfolioExternalTeacherStatsVO | null>(null)
-const batchRows = ref<PortfolioExternalTeacherImportBatchVO[]>([])
 const drawerOpen = ref(false)
 const batchDetailOpen = ref(false)
 const batchDetail = ref<PortfolioExternalTeacherImportBatchVO | null>(null)
 const importModalOpen = ref(false)
-const dataStatusFilter = ref<PortfolioExternalTeacherDataStatusCode | ''>('')
-const teachSubjectFilter = ref('')
-const teacherSourceFilter = ref('')
-const contractStatusFilter = ref('')
+
+type ExternalTeacherFilters = Pick<
+  PortfolioExternalTeacherPageRequest,
+  'dataStatus' | 'teachSubject' | 'teacherSource' | 'contractStatus'
+> &
+  Record<string, unknown>
+
+const { loading, rows, pageNum, pageSize, pageTotal, filters, loadPage, search, handlePageChange } =
+  useQueryTable<PortfolioExternalTeacherVO, ExternalTeacherFilters>(
+    (params) =>
+      portfolioExternalTeacherApi.page({
+        pageNum: params.pageNum,
+        pageSize: params.pageSize,
+        dataStatus: params.dataStatus,
+        teachSubject: params.teachSubject?.trim() || undefined,
+        teacherSource: params.teacherSource?.trim() || undefined,
+        contractStatus: params.contractStatus?.trim() || undefined,
+      }),
+    {
+      defaultFilters: (): ExternalTeacherFilters => ({
+        dataStatus: undefined,
+        teachSubject: '',
+        teacherSource: '',
+        contractStatus: '',
+      }),
+      immediate: false,
+    },
+  )
+const {
+  loading: batchLoading,
+  rows: batchRows,
+  pageNum: batchPageNum,
+  pageSize: batchPageSize,
+  pageTotal: batchPageTotal,
+  loadPage: loadImportBatches,
+  handlePageChange: handleBatchPageChange,
+} = useQueryTable<PortfolioExternalTeacherImportBatchVO>(
+  portfolioExternalTeacherApi.importBatchPage,
+  { immediate: false },
+)
 
 interface AttachmentItem {
   fileNodeId: string
@@ -86,7 +120,7 @@ const form = reactive<PortfolioExternalTeacherSaveRequest>({
 
 const dataStatusOptions = PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS
 
-const columns: ColumnsType = [
+const columns: ColumnsType<PortfolioExternalTeacherVO> = [
   { title: '姓名', dataIndex: 'fullName', key: 'fullName', width: 88 },
   { title: '性别', dataIndex: 'gender', key: 'gender', width: 56 },
   { title: '专业', dataIndex: 'major', key: 'major', width: 88 },
@@ -100,7 +134,7 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 100, fixed: 'right' },
 ]
 
-const batchColumns: ColumnsType = [
+const batchColumns: ColumnsType<PortfolioExternalTeacherImportBatchVO> = [
   { title: '文件名', dataIndex: 'fileName', key: 'fileName' },
   { title: '成功', dataIndex: 'successRows', key: 'successRows', width: 64 },
   { title: '失败', dataIndex: 'failedRows', key: 'failedRows', width: 64 },
@@ -185,25 +219,6 @@ function removeAttachment(fileNodeId: string) {
   attachmentItems.value = attachmentItems.value.filter((item) => item.fileNodeId !== fileNodeId)
 }
 
-async function loadPage() {
-  loading.value = true
-  try {
-    const page = await portfolioExternalTeacherApi.page({
-      pageNum: 1,
-      pageSize: 50,
-      dataStatus: dataStatusFilter.value || undefined,
-      teachSubject: teachSubjectFilter.value.trim() || undefined,
-      teacherSource: teacherSourceFilter.value.trim() || undefined,
-      contractStatus: contractStatusFilter.value.trim() || undefined,
-    })
-    rows.value = page.list
-  } catch (error) {
-    showUserError(error)
-  } finally {
-    loading.value = false
-  }
-}
-
 async function loadStats() {
   statsLoading.value = true
   try {
@@ -215,21 +230,29 @@ async function loadStats() {
   }
 }
 
-async function loadImportBatches() {
-  batchLoading.value = true
-  try {
-    const page = await portfolioExternalTeacherApi.importBatchPage({ pageNum: 1, pageSize: 50 })
-    batchRows.value = page.list
-  } catch (error) {
-    showUserError(error)
-  } finally {
-    batchLoading.value = false
-  }
-}
-
 function openCreate() {
   resetForm()
   drawerOpen.value = true
+}
+
+function buildExternalTeacherRowActions(
+  record: PortfolioExternalTeacherVO,
+): UiTableRowActionItem[] {
+  const actions: UiTableRowActionItem[] = [{ key: 'edit', label: '编辑' }]
+  if (record.dataStatus === PortfolioExternalTeacherDataStatusCode.ACTIVE) {
+    actions.push({ key: 'revoke', label: '停用', tone: 'danger' })
+  }
+  return actions
+}
+
+function handleExternalTeacherAction(key: string, record: PortfolioExternalTeacherVO): void {
+  if (key === 'edit') {
+    void openEdit(record.id)
+    return
+  }
+  if (key === 'revoke') {
+    void revokeRecord(record.id)
+  }
 }
 
 async function openEdit(id: string) {
@@ -381,53 +404,75 @@ onMounted(async () => {
         <UiCard>
           <div class="toolbar">
             <a-select
-              v-model:value="dataStatusFilter"
+              v-model:value="filters.dataStatus"
               allow-clear
               placeholder="数据状态"
               style="width: 120px"
               :options="dataStatusOptions"
-              @change="loadPage"
+              @change="search"
             />
             <a-input
-              v-model:value="teachSubjectFilter"
+              v-model:value="filters.teachSubject"
               allow-clear
               placeholder="任教科目"
               style="width: 120px"
-              @press-enter="loadPage"
+              @press-enter="search"
             />
             <a-input
-              v-model:value="teacherSourceFilter"
+              v-model:value="filters.teacherSource"
               allow-clear
               placeholder="教师来源"
               style="width: 120px"
-              @press-enter="loadPage"
+              @press-enter="search"
             />
             <a-input
-              v-model:value="contractStatusFilter"
+              v-model:value="filters.contractStatus"
               allow-clear
               placeholder="合同状态"
               style="width: 120px"
-              @press-enter="loadPage"
+              @press-enter="search"
             />
             <UiButton @click="loadPage"> 刷新 </UiButton>
             <UiButton variant="outline" @click="exportRoster"> 导出台账 </UiButton>
           </div>
           <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无外聘教师" />
-          <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id">
-            <template #bodyCell="{ column, record }">
+          <UiDataTable
+            v-model:current="pageNum"
+            v-model:page-size="pageSize"
+            pagination-mode="server"
+            :total="pageTotal"
+            :columns="columns"
+            :data-source="rows"
+            :loading="loading"
+            row-key="id"
+            @page-change="handlePageChange"
+          >
+            <template
+              #bodyCell="{
+                column,
+                record,
+              }: {
+                column: { key?: string }
+                record: PortfolioExternalTeacherVO
+              }"
+            >
               <template v-if="column.key === 'dataStatus'">
-                <UiTag :tone="record.dataStatus === 'ACTIVE' ? 'green' : 'gray'">
+                <UiTag
+                  :tone="
+                    record.dataStatus === PortfolioExternalTeacherDataStatusCode.ACTIVE
+                      ? 'green'
+                      : 'gray'
+                  "
+                >
                   {{ dataStatusLabel(record.dataStatus) }}
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <UiTextAction @click="openEdit(record.id)"> 编辑 </UiTextAction>
-                <UiTextAction
-                  v-if="record.dataStatus === 'ACTIVE'"
-                  @click="revokeRecord(record.id)"
-                >
-                  停用
-                </UiTextAction>
+                <UiTableActions
+                  :items="buildExternalTeacherRowActions(record)"
+                  split
+                  @action="(key) => handleExternalTeacherAction(key, record)"
+                />
               </template>
             </template>
           </UiDataTable>
@@ -473,18 +518,35 @@ onMounted(async () => {
         <UiCard>
           <UiButton :loading="batchLoading" @click="loadImportBatches"> 刷新批次 </UiButton>
           <UiDataTable
+            v-model:current="batchPageNum"
+            v-model:page-size="batchPageSize"
+            pagination-mode="server"
+            :total="batchPageTotal"
             :columns="batchColumns"
             :data-source="batchRows"
             :loading="batchLoading"
             row-key="id"
             style="margin-top: 16px"
+            @page-change="handleBatchPageChange"
           >
-            <template #bodyCell="{ column, record }">
+            <template
+              #bodyCell="{
+                column,
+                record,
+              }: {
+                column: { key?: string }
+                record: PortfolioExternalTeacherImportBatchVO
+              }"
+            >
               <template v-if="column.key === 'batchStatus'">
                 {{ batchStatusLabel(record.batchStatus) }}
               </template>
               <template v-else-if="column.key === 'actions'">
-                <UiTextAction @click="openBatchDetail(record.id)"> 详情 </UiTextAction>
+                <UiTableActions
+                  :items="[{ key: 'detail', label: '详情' }]"
+                  split
+                  @action="() => openBatchDetail(record.id)"
+                />
               </template>
             </template>
           </UiDataTable>
@@ -589,9 +651,7 @@ onMounted(async () => {
     <a-drawer v-model:open="batchDetailOpen" title="导入批次详情" width="480">
       <template v-if="batchDetail">
         <p>文件 {{ batchDetail.fileName ?? '—' }}</p>
-        <p>
-          成功 {{ batchDetail.successRows ?? 0 }} · 失败 {{ batchDetail.failedRows ?? 0 }}
-        </p>
+        <p>成功 {{ batchDetail.successRows ?? 0 }} · 失败 {{ batchDetail.failedRows ?? 0 }}</p>
         <p>状态 {{ batchStatusLabel(batchDetail.batchStatus) }}</p>
         <p v-if="batchDetail.createTime">创建时间 {{ batchDetail.createTime }}</p>
       </template>

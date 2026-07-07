@@ -1,11 +1,11 @@
 import type { ComputedRef, MaybeRefOrGetter } from 'vue'
+import { computed, inject, toValue } from 'vue'
 import type { ExamDetailResponse } from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { computed, inject, toValue } from 'vue'
-import {
-  EXAM_WORKSPACE_CHROME_KEY,
-  MARK_WORKBENCH_CONTEXT_KEY,
-} from '@/composables/useMarkWorkbenchContext'
+import { EXAM_WORKSPACE_CHROME_KEY, MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
+
+/** hub：考试名 +「阶段 · #编号」；page：仅页面名（侧栏已承载考试上下文） */
+export type ExamJourneyContextBarVariant = 'hub' | 'page'
 
 export interface ExamJourneyContextBarState {
   contextBarTitle: ComputedRef<string>
@@ -21,11 +21,32 @@ export interface OptionalExamJourneyContextBarState extends ExamJourneyContextBa
   isJourneyChrome: ComputedRef<boolean>
 }
 
+function resolveContextBarCopy(
+  variant: ExamJourneyContextBarVariant,
+  stageLabel: string,
+  examName: string,
+  examNo: string,
+): { title: string, subtitle: string } {
+  if (variant === 'hub') {
+    return {
+      title: examName,
+      subtitle: examNo ? `${stageLabel} · #${examNo}` : stageLabel,
+    }
+  }
+  return {
+    title: '',
+    subtitle: '',
+  }
+}
+
 /**
- * 旅程子页 ContextBar：考试名为标题、阶段+编号为副标题，数据同源 exam-workspace-layout Chrome。
+ * 旅程子页 ContextBar，对齐 exam-prototype.html L1 子页：
+ * - hub（准备工作台/概览）：副标题「阶段 · #编号」+ 标题考试名
+ * - page（扫描批次等）：侧栏已承载页面名与考试上下文，ContextBar 仅保留状态标签与操作
  */
 export function useExamJourneyContextBar(
   stageLabel: MaybeRefOrGetter<string>,
+  variant: ExamJourneyContextBarVariant = 'page',
 ): ExamJourneyContextBarState {
   const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
   const chrome = inject(EXAM_WORKSPACE_CHROME_KEY, null)
@@ -36,14 +57,18 @@ export function useExamJourneyContextBar(
   const examDetail = computed(() => workbenchContext.examDetail?.value ?? null)
   const examDetailLoading = computed(() => workbenchContext.examDetailLoading?.value ?? false)
 
-  const contextBarTitle = computed(
-    () => chrome.contextTitle.value || workbenchContext.snapshot.value?.examName || '',
-  )
+  const contextBarTitle = computed(() => {
+    const label = toValue(stageLabel)
+    const examName = chrome.contextTitle.value || workbenchContext.snapshot.value?.examName || ''
+    const examNo = workbenchContext.snapshot.value?.examNo ?? examDetail.value?.examNo ?? ''
+    return resolveContextBarCopy(variant, label, examName, examNo).title
+  })
 
   const contextBarSubtitle = computed(() => {
-    const examNo = workbenchContext.snapshot.value?.examNo ?? examDetail.value?.examNo
     const label = toValue(stageLabel)
-    return examNo ? `${label} · ${examNo}` : label
+    const examName = chrome.contextTitle.value || workbenchContext.snapshot.value?.examName || ''
+    const examNo = workbenchContext.snapshot.value?.examNo ?? examDetail.value?.examNo ?? ''
+    return resolveContextBarCopy(variant, label, examName, examNo).subtitle
   })
 
   const examStatusLabel = computed(() => chrome.examStatusLabel.value)
@@ -64,6 +89,7 @@ export function useExamJourneyContextBar(
  */
 export function useOptionalExamJourneyContextBar(
   stageLabel: MaybeRefOrGetter<string>,
+  variant: ExamJourneyContextBarVariant = 'page',
 ): OptionalExamJourneyContextBarState {
   const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
   const chrome = inject(EXAM_WORKSPACE_CHROME_KEY, null)
@@ -73,19 +99,23 @@ export function useOptionalExamJourneyContextBar(
   const examDetailLoading = computed(() => workbenchContext?.examDetailLoading?.value ?? false)
 
   const contextBarTitle = computed(() => {
-    if (!chrome) {
-      return ''
+    const label = toValue(stageLabel)
+    if (!isJourneyChrome.value) {
+      return variant === 'hub' ? '' : label
     }
-    return chrome.contextTitle.value || workbenchContext?.snapshot.value?.examName || ''
+    const examName = chrome?.contextTitle.value || workbenchContext?.snapshot.value?.examName || ''
+    const examNo = workbenchContext?.snapshot.value?.examNo ?? examDetail.value?.examNo ?? ''
+    return resolveContextBarCopy(variant, label, examName, examNo).title
   })
 
   const contextBarSubtitle = computed(() => {
     const label = toValue(stageLabel)
     if (!isJourneyChrome.value) {
-      return label
+      return variant === 'hub' ? label : ''
     }
-    const examNo = workbenchContext?.snapshot.value?.examNo ?? examDetail.value?.examNo
-    return examNo ? `${label} · ${examNo}` : label
+    const examName = chrome?.contextTitle.value || workbenchContext?.snapshot.value?.examName || ''
+    const examNo = workbenchContext?.snapshot.value?.examNo ?? examDetail.value?.examNo ?? ''
+    return resolveContextBarCopy(variant, label, examName, examNo).subtitle
   })
 
   const examStatusLabel = computed(() => chrome?.examStatusLabel.value ?? '')

@@ -310,15 +310,23 @@ function formatErrorCode(_error: HandledError): string {
  */
 function toHandledError(error: unknown): HandledError {
   if (error instanceof Error) {
-    return { message: error.message }
+    const extended = error as HandledError
+    return {
+      message: error.message,
+      code: extended.code,
+      response: extended.response,
+      _handledByInterceptor: extended._handledByInterceptor,
+    }
   }
   if (error != null && typeof error === 'object') {
     const code = readProperty(error, 'code')
     const response = readProperty(error, 'response')
+    const handledByInterceptor = readProperty(error, '_handledByInterceptor')
     return {
       message: readMessage(error),
       code: typeof code === 'number' || typeof code === 'string' ? code : undefined,
       response: isHandledErrorResponse(response) ? response : undefined,
+      _handledByInterceptor: handledByInterceptor === true,
     }
   }
   if (typeof error === 'string') return { message: '操作未完成，请稍后重试' }

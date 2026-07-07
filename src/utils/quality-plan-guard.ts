@@ -20,7 +20,7 @@ export async function ensureQualityPlanConfirmedForNavigation(
   const qualityStore = useQualityStore()
   const planId = qualityStore.currentTrainingPlanId
   if (!planId) {
-    message.error('请先选择培养方案并完成确认后再进入该页面')
+    message.warning('请先在培养方案体系工作台选择并确认培养方案')
     return false
   }
   if (qualityStore.currentProgramId && !qualityStore.currentPlan) {
@@ -34,7 +34,7 @@ export async function ensureQualityPlanConfirmedForNavigation(
   }
   const plan = qualityStore.currentPlan
   if (!plan || plan.confirmationStatus !== 'CONFIRMED') {
-    message.error('培养方案尚未确认，请先在「培养方案体系工作台」完成确认')
+    message.warning('培养方案尚未确认，请先在「培养方案体系工作台」完成确认')
     return false
   }
   return true

@@ -66,7 +66,11 @@
           {{ record.fileName }}
         </template>
         <template v-else-if="column.key === 'actions'">
-          <UiTextAction tone="danger" @click="removeRow(record.uid)">移除</UiTextAction>
+          <UiTableActions
+            :items="[{ key: 'remove', label: '移除', tone: 'danger' }]"
+            split
+            @action="() => removeRow(record.uid)"
+          />
         </template>
       </template>
     </UiDataTable>
@@ -90,7 +94,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { normalizeMaterialTagsForRegister } from '@/utils/archive-material-tag'
 import { showUserError } from '@/utils/error-handler'

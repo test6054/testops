@@ -1,16 +1,9 @@
 <template>
   <StageWorkbenchShell class="roster-page">
-    <template v-if="selectedExamId" #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        :title="contextBarTitle"
-        :subtitle="contextBarSubtitle"
-      >
+    <template v-if="selectedExamId && showRosterContextBar" #context>
+      <ContextBar layout="workbench">
         <template #status>
-          <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
-            {{ examStatusLabel }}
-          </UiTag>
+          <UiTag v-if="rosterPanel?.filterScopeApplied" tone="blue" size="sm">筛选范围内</UiTag>
           <UiTag v-if="rosterLocked" tone="orange" size="sm">已有扫描</UiTag>
           <UiTag v-else-if="archiveClassScopeRecoveryAllowed" tone="orange" size="sm">
             关考后可修正
@@ -70,9 +63,7 @@
         <div class="exam-scope-classes">
           <div class="exam-scope-classes__head">
             <span class="exam-scope-classes__title">参考班级</span>
-            <span v-if="scopedClassTags.length" class="exam-scope-classes__count"
-              >{{ scopedClassTags.length }} 个</span
-            >
+            <span v-if="scopedClassTags.length" class="exam-scope-classes__count">{{ scopedClassTags.length }} 个</span>
           </div>
           <div v-if="scopedClassTags.length" class="exam-scope-classes__tags">
             <UiTag v-for="item in scopedClassTags" :key="item.classId" tone="blue" size="sm">
@@ -151,6 +142,19 @@
               @search="handleRosterSearch"
               @reset="handleRosterReset"
             />
+            <div class="roster-page__filter-chips">
+              <button
+                v-for="chip in rosterScanFilterChips"
+                :key="chip.value ?? 'all'"
+                type="button"
+                class="roster-page__filter-chip"
+                :class="{ 'roster-page__filter-chip--active': scanProgressFilter === chip.value }"
+                @click="toggleScanProgressFilter(chip.value)"
+              >
+                {{ chip.label }}
+                <span v-if="chip.count != null" class="roster-page__filter-chip-count">{{ chip.count }}</span>
+              </button>
+            </div>
           </div>
         </template>
         <template v-else #toolbar>
@@ -163,52 +167,31 @@
             @search="handleRosterSearch"
             @reset="handleRosterReset"
           />
+          <div class="roster-page__filter-chips">
+            <button
+              v-for="chip in rosterScanFilterChips"
+              :key="chip.value ?? 'all'"
+              type="button"
+              class="roster-page__filter-chip"
+              :class="{ 'roster-page__filter-chip--active': scanProgressFilter === chip.value }"
+              @click="toggleScanProgressFilter(chip.value)"
+            >
+              {{ chip.label }}
+              <span v-if="chip.count != null" class="roster-page__filter-chip-count">{{ chip.count }}</span>
+            </button>
+          </div>
         </template>
 
-        <UiDataTable
+        <ExamCandidateWorkbenchTable
           v-model:current="pagination.current"
           v-model:page-size="pagination.pageSize"
-          :columns="columns"
-          :data-source="tableCandidates"
+          :items="tableCandidates"
           :loading="tableLoading"
-          :total="pagination.total"
-          row-key="rowKey"
-          size="middle"
-          flat
-          class="roster-table student-detail-table__data-table"
-          bordered
+          :total="pagination.total ?? 0"
+          :show-remove-action="allowsManualCandidateEdit && candidateRosterWriteAllowed"
           @page-change="handlePageChange"
-        >
-          <template #bodyCell="{ column, index }">
-            <template v-if="column.key === 'student'">
-              <div class="roster-student">
-                <span class="roster-student__name">{{ tableCandidates[index].studentName }}</span>
-                <span class="roster-student__no">{{ tableCandidates[index].studentNo }}</span>
-              </div>
-            </template>
-            <template v-else-if="column.key === 'className'">
-              <span class="roster-cell roster-cell--muted">
-                {{ tableCandidates[index].className }}
-              </span>
-            </template>
-            <template v-else-if="column.key === 'actions'">
-              <UiTableActions
-                v-if="canRemoveCandidate(tableCandidates[index])"
-                :items="buildRosterActions(tableCandidates[index])"
-                split
-                @action="(key) => handleRosterAction(key, tableCandidates[index])"
-              />
-              <span
-                v-else-if="!tableCandidates[index].removable"
-                class="muted"
-                :title="tableCandidates[index].removalBlockReason"
-              >
-                不可移除
-              </span>
-              <span v-else class="muted">—</span>
-            </template>
-          </template>
-        </UiDataTable>
+          @action="handleWorkbenchAction"
+        />
       </WorkbenchSurfaceCard>
     </template>
 
@@ -289,18 +272,35 @@
         </a-form-item>
       </a-form>
     </UiDrawer>
+
+    <ExamCandidatePaperImagesDrawer
+      v-model:open="paperImagesOpen"
+      :exam-id="selectedExamId ?? undefined"
+      :candidate="paperImagesCandidate"
+    />
   </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
-import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
-import type { CandidateRow } from './candidate-roster/types'
+import type { TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { ClassStudentTreeConfirmPayload } from '@/apis/edu/class'
 import type { ExamClassRefVO, ExamRosterScopeModeCode } from '@/apis/mark/exam'
-import { ExamRosterScopeModeDescription, getExamDetail } from '@/apis/mark/exam'
-import type { ExamWorkbenchCandidateRosterPanelResponse } from '@/apis/mark/exam-progress'
-import { getCandidateRosterPanel } from '@/apis/mark/exam-progress'
+import type { ExamCandidateRosterWorkbenchItemResponse } from '@/apis/mark/exam-candidate-roster'
+import type { ExamWorkbenchCandidateRosterPanelQueryRequest, ExamWorkbenchCandidateRosterPanelResponse } from '@/apis/mark/exam-progress'
 import type { ExamCandidateRosterRequest } from '@/apis/mark/exam-scope'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { UserDto } from '@/types/api-types.d'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
+import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
+import UserAddOutlined from '@ant-design/icons-vue/UserAddOutlined'
+import message from 'ant-design-vue/es/message'
+import { useRouter } from 'vue-router'
+import { ExamRosterScopeModeDescription, getExamDetail } from '@/apis/mark/exam'
+import { pageCandidateRosterWorkbench } from '@/apis/mark/exam-candidate-roster'
+import { getCandidateRosterPanel } from '@/apis/mark/exam-progress'
+import { pageScannerBatches } from '@/apis/mark/exam-scan'
 import {
   listExamCandidates,
   mergeExamCandidates,
@@ -310,18 +310,10 @@ import {
   saveExamClassScope,
   saveExamScope,
 } from '@/apis/mark/exam-scope'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { UserDto } from '@/types/api-types.d'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
-import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
-import UserAddOutlined from '@ant-design/icons-vue/UserAddOutlined'
-import message from 'ant-design-vue/es/message'
-import { useRouter } from 'vue-router'
-import { pageScannerBatches } from '@/apis/mark/exam-scan'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import ClassStudentTreeSelectorDrawer from '@/components/edu/ClassStudentTreeSelectorDrawer.vue'
+import ExamCandidatePaperImagesDrawer from '@/components/exam-workbench/ExamCandidatePaperImagesDrawer.vue'
+import ExamCandidateWorkbenchTable from '@/components/exam-workbench/ExamCandidateWorkbenchTable.vue'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import StudentSelector from '@/components/quality/selectors/StudentSelector.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -329,8 +321,6 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
-import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -340,15 +330,15 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useExamDepartmentClassScope } from '@/composables/useExamDepartmentClassScope'
-import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { CandidateScanProgressStatusCode } from '@/types/enums/candidate-scan-progress-status-enum'
 import { ErrorType, handleError, showUserError } from '@/utils/error-handler'
 import { readAllPages } from '@/utils/page-result'
 import { buildScopedClassTags } from './candidate-roster/class-scope'
 import {
   buildExamCandidateMergeRequests,
-  candidateRowFromExamCandidate,
   examCandidateRosterRequestFromUser,
 } from './candidate-roster/roster-merge'
 
@@ -357,8 +347,6 @@ defineOptions({ name: 'TeacherCandidateRoster' })
 const ROSTER_CANDIDATE_EXPORT_PAGE_SIZE = 100
 
 const { selectedExamId } = useMarkExamContext()
-const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
-  useExamJourneyContextBar('考生名册')
 const { refreshSnapshot } = useWorkspaceExamId()
 const router = useRouter()
 
@@ -379,8 +367,8 @@ let classScopeSaveTimer: ReturnType<typeof setTimeout> | null = null
 let loadContextSeq = 0
 let loadTableSeq = 0
 
-const { departmentId, classOptionsLoading, classSelectOptions, loadClassesForDepartment } =
-  useExamDepartmentClassScope({
+const { departmentId, classOptionsLoading, classSelectOptions, loadClassesForDepartment }
+  = useExamDepartmentClassScope({
     selectedClassIds: classIds,
     seedOptions: computed(() =>
       examClassRefs.value.flatMap((item) => {
@@ -392,7 +380,10 @@ const { departmentId, classOptionsLoading, classSelectOptions, loadClassesForDep
     ),
   })
 
-const tableCandidates = ref<CandidateRow[]>([])
+const tableCandidates = ref<ExamCandidateRosterWorkbenchItemResponse[]>([])
+const scanProgressFilter = ref<CandidateScanProgressStatusCode | undefined>(undefined)
+const paperImagesOpen = ref(false)
+const paperImagesCandidate = ref<ExamCandidateRosterWorkbenchItemResponse | null>(null)
 const rosterStudentUserIds = ref<string[]>([])
 const contextLoading = ref(false)
 const fullScopeSaving = ref(false)
@@ -415,7 +406,7 @@ function syncRosterFilterForm(next: Record<string, unknown>): void {
 
 const pagination = reactive<TablePaginationConfig>({
   current: 1,
-  pageSize: 20,
+  pageSize: DEFAULT_LIST_PAGE_SIZE,
   total: 0,
   showSizeChanger: true,
   showTotal: (total: number) => `共 ${total} 条`,
@@ -424,10 +415,11 @@ const pagination = reactive<TablePaginationConfig>({
 const rosterSignalMetrics = computed((): SignalMetric[] => {
   const panel = rosterPanel.value
   if (panel) {
+    const scoped = panel.filterScopeApplied
     const metrics: SignalMetric[] = [
       {
         key: 'total',
-        label: '总人数',
+        label: scoped ? '筛选人数' : '总人数',
         value: panel.totalCount,
         unit: '人',
         tone: 'blue',
@@ -440,6 +432,20 @@ const rosterSignalMetrics = computed((): SignalMetric[] => {
         tone: 'green',
       },
       {
+        key: 'not-scanned',
+        label: '未扫描',
+        value: panel.notScannedCount,
+        unit: '人',
+        tone: panel.notScannedCount > 0 ? 'orange' : 'gray',
+      },
+      {
+        key: 'bound',
+        label: '已绑定',
+        value: panel.boundCount,
+        unit: '人',
+        tone: 'blue',
+      },
+      {
         key: 'absent',
         label: '缺考',
         value: panel.absentCount,
@@ -448,7 +454,7 @@ const rosterSignalMetrics = computed((): SignalMetric[] => {
       },
       {
         key: 'classes',
-        label: '参考班级',
+        label: scoped ? '涉及班级' : '参考班级',
         value: panel.classCount,
         unit: '个',
         tone: 'gray',
@@ -512,6 +518,10 @@ const classScopeReadOnly = computed(() => {
   return false
 })
 
+const showRosterContextBar = computed(
+  () => rosterLocked.value || archiveClassScopeRecoveryAllowed.value || classScopeReadOnly.value,
+)
+
 const candidateRosterWriteAllowed = computed(
   () => examStatus.value !== 'CLOSED' && !classScopeReadOnly.value && !rosterLocked.value,
 )
@@ -546,6 +556,54 @@ const rosterClassFilterOptions = computed(() =>
   })),
 )
 
+const rosterScanFilterChips = computed(() => {
+  const panel = rosterPanel.value
+  return [
+    { label: '全部', value: undefined as CandidateScanProgressStatusCode | undefined, count: panel?.totalCount },
+    {
+      label: '未扫描',
+      value: CandidateScanProgressStatusCode.NOT_SCANNED,
+      count: panel?.notScannedCount,
+    },
+    {
+      label: '已扫未绑',
+      value: CandidateScanProgressStatusCode.SCANNED_UNBOUND,
+      count: panel?.scannedUnboundCount,
+    },
+    {
+      label: '已绑定',
+      value: CandidateScanProgressStatusCode.BOUND,
+      count: panel?.boundCount,
+    },
+    {
+      label: '绑定冲突',
+      value: CandidateScanProgressStatusCode.CONFLICT,
+      count: panel?.conflictCount,
+    },
+    {
+      label: '缺考',
+      value: CandidateScanProgressStatusCode.ABSENT,
+      count: panel?.absentCount,
+    },
+    {
+      label: '待处理异常',
+      value: CandidateScanProgressStatusCode.ATTENTION_OPEN,
+      count: panel?.attentionOpenCount,
+    },
+    {
+      label: '答卷废弃',
+      value: CandidateScanProgressStatusCode.DISCARDED,
+      count: panel?.discardedCount,
+    },
+  ]
+})
+
+function toggleScanProgressFilter(value: CandidateScanProgressStatusCode | undefined): void {
+  scanProgressFilter.value = scanProgressFilter.value === value ? undefined : value
+  pagination.current = 1
+  void loadCandidatePage()
+}
+
 const rosterFilterFields = computed<FilterField[]>(() => [
   {
     key: 'keyword',
@@ -569,17 +627,6 @@ const rosterFilterFields = computed<FilterField[]>(() => [
     })),
   },
 ])
-
-const columns = computed<ColumnType<CandidateRow>[]>(() => {
-  const cols: ColumnType<CandidateRow>[] = [
-    { title: '考生', key: 'student', width: 220 },
-    { title: '班级', key: 'className', width: 200 },
-  ]
-  if (allowsManualCandidateEdit.value) {
-    cols.push({ title: '操作', key: 'actions', width: 80, fixed: 'right' })
-  }
-  return cols
-})
 
 const importExcelContext = computed(() => ({
   examId: selectedExamId.value,
@@ -614,7 +661,7 @@ function buildClassScopeSavePayload(classIdList: string[]) {
 
 async function probeRosterLocked(examId: string): Promise<boolean> {
   const result = await pageScannerBatches({ examId, pageNum: 1, pageSize: 1 })
-  return Number(result.total) > 0
+  return result.total > 0
 }
 
 async function loadClassOptionsForExam(_examId: string): Promise<void> {
@@ -671,18 +718,19 @@ async function loadCandidatePage(): Promise<void> {
   const seq = ++loadTableSeq
   tableLoading.value = true
   try {
-    const result = await pageExamCandidates({
+    const result = await pageCandidateRosterWorkbench({
       examId,
       keyword: rosterFilterForm.keyword.trim() || undefined,
       classId: rosterFilterForm.classId,
+      scanProgressStatus: scanProgressFilter.value,
       pageNum: pagination.current ?? 1,
-      pageSize: pagination.pageSize ?? 20,
+      pageSize: pagination.pageSize ?? DEFAULT_LIST_PAGE_SIZE,
     })
     if (seq !== loadTableSeq) {
       return
     }
-    tableCandidates.value = result.list.map(candidateRowFromExamCandidate)
-    pagination.total = Number(result.total)
+    tableCandidates.value = result.list
+    pagination.total = result.total
     if (result.pageNum != null) {
       pagination.current = result.pageNum
     }
@@ -701,6 +749,24 @@ async function loadCandidatePage(): Promise<void> {
   }
 }
 
+function buildRosterPanelQuery(examId: string): ExamWorkbenchCandidateRosterPanelQueryRequest {
+  return {
+    examId,
+    classId: rosterFilterForm.classId,
+    keyword: rosterFilterForm.keyword.trim() || undefined,
+  }
+}
+
+async function reloadRosterData(): Promise<void> {
+  if (!selectedExamId.value) {
+    return
+  }
+  await Promise.all([
+    loadRosterPanel(selectedExamId.value),
+    loadCandidatePage(),
+  ])
+}
+
 async function reloadExamContext(): Promise<void> {
   if (!selectedExamId.value) {
     return
@@ -712,19 +778,11 @@ async function reloadExamContext(): Promise<void> {
 
 async function loadRosterPanel(examId: string): Promise<void> {
   try {
-    rosterPanel.value = await getCandidateRosterPanel(examId)
+    rosterPanel.value = await getCandidateRosterPanel(buildRosterPanelQuery(examId))
   } catch (error) {
     rosterPanel.value = null
     showUserError(error, '名册看板加载失败')
   }
-}
-
-async function refreshRosterPanel(): Promise<void> {
-  if (!selectedExamId.value) {
-    rosterPanel.value = null
-    return
-  }
-  await loadRosterPanel(selectedExamId.value)
 }
 
 async function loadExamContext(): Promise<void> {
@@ -745,8 +803,8 @@ async function loadExamContext(): Promise<void> {
     rosterLocked.value = locked
     examStatus.value = detail.status
     rosterScopeMode.value = detail.rosterScopeMode
-    archiveClassScopeRecoveryAllowed.value =
-      detail.archiveAutoCreateClassScopeRecoveryAllowed === true
+    archiveClassScopeRecoveryAllowed.value
+      = detail.archiveAutoCreateClassScopeRecoveryAllowed === true
     examClassRefs.value = [...(detail.classRefs ?? [])]
     candidateTotal.value = detail.candidateCount ?? 0
     classIds.value = [...new Set(detail.classIds ?? [])]
@@ -794,15 +852,16 @@ async function persistInferredClassScope(): Promise<void> {
 
 function handleRosterSearch(): void {
   pagination.current = 1
-  void loadCandidatePage()
+  void reloadRosterData()
 }
 
 function handleRosterReset(): void {
+  scanProgressFilter.value = undefined
   pagination.current = 1
-  void loadCandidatePage()
+  void reloadRosterData()
 }
 
-function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void loadCandidatePage()
@@ -972,27 +1031,53 @@ async function handleSingleAddSubmit(): Promise<void> {
   }
 }
 
-function buildRosterActions(_record: CandidateRow): UiTableRowActionItem[] {
-  return [{ key: 'remove', label: '移除', tone: 'danger' }]
-}
-
-function handleRosterAction(key: string, record: CandidateRow): void {
-  if (key !== 'remove') {
+function handleWorkbenchAction(key: string, record: ExamCandidateRosterWorkbenchItemResponse): void {
+  if (key === 'view-images') {
+    if (!record.paperInstanceId) {
+      return
+    }
+    paperImagesCandidate.value = record
+    paperImagesOpen.value = true
     return
   }
-  void confirmAsync({
-    title: '确认移除该考生？',
-    content: '移除后需重新加入名册。',
-    type: 'warning',
-    onOk: () => removeCandidate(record.studentUserId),
-  })
-}
-
-function canRemoveCandidate(record: CandidateRow): boolean {
-  if (!allowsManualCandidateEdit.value || !candidateRosterWriteAllowed.value) {
-    return false
+  if (key === 'handle-attention') {
+    if (!selectedExamId.value) {
+      return
+    }
+    void router.push({
+      name: 'TeacherExamWorkspaceScanMonitor',
+      params: { examId: selectedExamId.value },
+      query: {
+        tab: 'abnormal',
+        ...(record.paperInstanceId ? { paperInstanceId: record.paperInstanceId } : {}),
+      },
+    })
+    return
   }
-  return record.removable !== false
+  if (key === 'supplement-missing') {
+    if (!selectedExamId.value) {
+      return
+    }
+    void router.push({
+      name: 'TeacherExamWorkspaceScanManualEntry',
+      params: { examId: selectedExamId.value },
+      query: {
+        scenario: 'missing-page',
+        ...(record.paperInstanceId ? { paperInstanceId: record.paperInstanceId } : {}),
+        ...(record.scanBatchId ? { scanBatchId: record.scanBatchId } : {}),
+        candidateRosterId: record.candidateRosterId,
+      },
+    })
+    return
+  }
+  if (key === 'remove') {
+    void confirmAsync({
+      title: '确认移除该考生？',
+      content: '移除后需重新加入名册。',
+      type: 'warning',
+      onOk: () => removeCandidate(record.studentUserId),
+    })
+  }
 }
 
 async function removeCandidate(studentUserId: string): Promise<void> {
@@ -1072,12 +1157,14 @@ watch(
     }
     rosterLocked.value = false
     rosterWriteForbidden.value = false
+    scanProgressFilter.value = undefined
     rosterFilterForm.keyword = ''
     rosterFilterForm.classId = undefined
     pagination.current = 1
     if (value) {
       void loadExamContext().then(() => loadCandidatePage())
     } else {
+      rosterPanel.value = null
       classIds.value = []
       examClassRefs.value = []
       lastSavedClassIds.value = []
@@ -1117,6 +1204,37 @@ watch(
 
   &__actions-row {
     flex-wrap: wrap;
+  }
+
+  &__filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  &__filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 10px;
+    border: 1px solid var(--ant-color-border);
+    border-radius: 4px;
+    background: var(--ant-color-bg-container);
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--ant-color-text-secondary);
+    cursor: pointer;
+
+    &--active {
+      border-color: var(--ant-color-primary);
+      color: var(--ant-color-primary);
+      font-weight: 600;
+    }
+  }
+
+  &__filter-chip-count {
+    font-variant-numeric: tabular-nums;
+    color: inherit;
   }
 
   display: flex;

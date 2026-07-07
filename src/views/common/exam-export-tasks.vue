@@ -330,6 +330,7 @@ import { useOptionalExamJourneyContextBar } from '@/composables/useExamJourneyCo
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { buildExamLayoutQuestionOptions } from '@/utils/format-exam-layout-question-summary'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -386,7 +387,7 @@ const layoutRoiGap = computed(() => {
 const questionLoading = ref(false)
 const taskPagination = reactive({
   pageNum: 1,
-  pageSize: 20,
+  pageSize: DEFAULT_LIST_PAGE_SIZE,
   total: 0,
 })
 
@@ -547,7 +548,7 @@ async function typeFilterHidesActiveTasks(examId: string): Promise<boolean> {
     const page = await listExportTasks({
       examId,
       pageNum: 1,
-      pageSize: 20,
+      pageSize: DEFAULT_LIST_PAGE_SIZE,
       taskStatus,
     })
     const activeTasks = page.list
@@ -770,7 +771,7 @@ async function loadTasks(options?: { quiet?: boolean }): Promise<void> {
       }
     }
     tasks.value = taskList
-    taskPagination.total = Number(page.total)
+    taskPagination.total = page.total
     await refreshOpenDetailIfNeeded()
     syncExportPolling()
   } catch (error) {

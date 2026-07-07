@@ -4,19 +4,19 @@ import type {
   PortfolioArchiveScoreRuleSaveRequest,
   PortfolioArchiveScoreRuleVO,
 } from '@/apis/portfolio/teacher-platform'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import {
   PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_OPTIONS,
   portfolioArchiveScoreApi,
   PortfolioArchiveScoreRuleTypeCode,
   PortfolioArchiveScoreRuleTypeDescription,
 } from '@/apis/portfolio/teacher-platform'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -76,6 +76,16 @@ async function loadRules() {
 function openCreate() {
   resetForm()
   modalOpen.value = true
+}
+
+function handleArchiveScoreRuleAction(key: string, row: PortfolioArchiveScoreRuleVO): void {
+  if (key === 'edit') {
+    openEdit(row)
+    return
+  }
+  if (key === 'delete') {
+    void handleDelete(row.id)
+  }
 }
 
 function openEdit(row: PortfolioArchiveScoreRuleVO) {
@@ -156,8 +166,14 @@ onMounted(loadRules)
             {{ ruleTypeLabel(record.ruleType) }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiTextAction @click="openEdit(record)"> 编辑 </UiTextAction>
-            <UiTextAction tone="danger" @click="handleDelete(record.id)"> 删除 </UiTextAction>
+            <UiTableActions
+              :items="[
+                { key: 'edit', label: '编辑' },
+                { key: 'delete', label: '删除', tone: 'danger' },
+              ]"
+              split
+              @action="(key) => handleArchiveScoreRuleAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>

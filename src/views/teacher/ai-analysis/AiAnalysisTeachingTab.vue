@@ -11,7 +11,6 @@ import TeachingImprovementCard from '@/views/teacher/ai-analysis/cards/TeachingI
 
 const props = defineProps<{
   examId?: string
-  examLabel?: string
   reloadToken: number
   classId?: string
 }>()
@@ -51,14 +50,12 @@ function handleClassChange(value?: SelectValue): void {
   <div v-else class="ai-analysis-teaching-tab">
     <TeachingImprovementCard
       :exam-id="examId"
-      :exam-label="examLabel"
       :reload-token="reloadToken"
       :class-id="classId"
       embedded
     />
     <ClassWeaknessCard
       :exam-id="examId"
-      :exam-label="examLabel"
       :reload-token="reloadToken"
       :class-id="classId"
       :class-options="classOptions"
@@ -68,7 +65,6 @@ function handleClassChange(value?: SelectValue): void {
     />
     <StudentLearningProfileCard
       :exam-id="examId"
-      :exam-label="examLabel"
       :reload-token="reloadToken"
       :class-id-hint="classId"
       :student-options="studentOptions"
@@ -77,7 +73,6 @@ function handleClassChange(value?: SelectValue): void {
     />
     <PaperQualityCard
       :exam-id="examId"
-      :exam-label="examLabel"
       :reload-token="reloadToken"
       :class-id="classId"
       embedded

@@ -5,9 +5,14 @@ import type {
   PortfolioArchiveBagPreviewVO,
   PortfolioArchiveScoreResultVO,
 } from '@/apis/portfolio/bag-types'
+import { PortfolioArchiveBagSourceTypeDescription } from '@/apis/portfolio/bag-types'
 import type {
   PortfolioArchiveRecordSourceTypeCode,
   PortfolioArchiveRecordStatusCode,
+} from '@/apis/portfolio/enums'
+import {
+  PortfolioArchiveRecordSourceTypeDescription,
+  PortfolioArchiveRecordStatusDescription,
 } from '@/apis/portfolio/enums'
 import type {
   PortfolioArchiveRecordDetailVO,
@@ -15,19 +20,15 @@ import type {
   PortfolioArchiveTimelineItemVO,
   PortfolioTeacherOneTableCategoryVO,
 } from '@/apis/portfolio/types'
+import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
-import { PortfolioArchiveBagSourceTypeDescription } from '@/apis/portfolio/bag-types'
-import {
-  PortfolioArchiveRecordSourceTypeDescription,
-  PortfolioArchiveRecordStatusDescription,
-} from '@/apis/portfolio/enums'
 import { portfolioArchiveBagApi } from '@/apis/portfolio/teacher-platform'
-import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -35,14 +36,13 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
-import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -56,7 +56,11 @@ function archiveRecordStatusTone(status: PortfolioArchiveRecordStatusCode): Badg
 }
 
 function archiveRecordSourceTypeLabel(sourceType: PortfolioArchiveRecordSourceTypeCode): string {
-  return strictEnumLabel(PortfolioArchiveRecordSourceTypeDescription, sourceType, '档案记录来源类型')
+  return strictEnumLabel(
+    PortfolioArchiveRecordSourceTypeDescription,
+    sourceType,
+    '档案记录来源类型',
+  )
 }
 
 function bagSourceTypeLabel(
@@ -195,7 +199,7 @@ async function loadRecords() {
       pageSize: pageSize.value,
     })
     records.value = page.list
-    pageTotal.value = Number(page.total)
+    pageTotal.value = page.total
   } catch (error) {
     showUserError(error, '加载档案记录失败')
   } finally {
@@ -251,7 +255,7 @@ function selectCategory(categoryId: string) {
   void loadRecords()
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   pageNum.value = page.current
   pageSize.value = page.pageSize
   void loadRecords()
@@ -575,7 +579,11 @@ watch(
               {{ record.evaluationIncluded ? '是' : '否' }}
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiTextAction @click="openRecord(record)"> 详情 </UiTextAction>
+              <UiTableActions
+                :items="[{ key: 'detail', label: '详情' }]"
+                split
+                @action="() => openRecord(record)"
+              />
             </template>
           </template>
         </UiDataTable>
@@ -642,11 +650,13 @@ watch(
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <UiTextAction
-                  @click="goFieldCorrection(record.fieldCode, record.fieldLabel, record.fieldValue)"
-                >
-                  发起纠错
-                </UiTextAction>
+                <UiTableActions
+                  :items="[{ key: 'correct', label: '发起纠错' }]"
+                  split
+                  @action="
+                    () => goFieldCorrection(record.fieldCode, record.fieldLabel, record.fieldValue)
+                  "
+                />
               </template>
             </template>
           </UiDataTable>

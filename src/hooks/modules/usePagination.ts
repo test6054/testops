@@ -1,4 +1,5 @@
 import { reactive, toRefs, watch } from 'vue'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useBreakpoint } from '@/hooks'
 
 type Callback = () => void
@@ -23,7 +24,7 @@ interface PaginationState {
 export function usePagination(
   callback: Callback,
   options: Options = {
-    defaultPageSize: 10,
+    defaultPageSize: DEFAULT_LIST_PAGE_SIZE,
     defaultSizeOptions: ['10', '20', '30', '40', '50'],
   },
 ) {

@@ -1,8 +1,10 @@
 import type { ExportJobQueryRequest, ExportJobStatusVO } from '@/apis/edu/export'
+import { deleteExportJob, queryExportJobs } from '@/apis/edu/export'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
-import { deleteExportJob, queryExportJobs } from '@/apis/edu/export'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
+
 /**
  * 导出任务中心 Store
  * 统一管理导出任务状态以及可见性（自动轮询模式）
@@ -11,8 +13,11 @@ export const useExportTaskStore = defineStore('export-task', () => {
   const tasks = ref<ExportJobStatusVO[]>([])
   const loading = ref(false)
   const visible = ref(false)
-  const lastFetchParams = ref<ExportJobQueryRequest>({ pageNum: 1, pageSize: 20 })
-  const pagination = ref<{ total: number, pages: number }>({ total: 0, pages: 0 })
+  const lastFetchParams = ref<ExportJobQueryRequest>({
+    pageNum: 1,
+    pageSize: DEFAULT_LIST_PAGE_SIZE,
+  })
+  const pagination = ref<{ total: number; pages: number }>({ total: 0, pages: 0 })
 
   // 轮询定时器ID
   let pollingTimer: ReturnType<typeof setInterval> | null = null
@@ -20,7 +25,9 @@ export const useExportTaskStore = defineStore('export-task', () => {
   const POLLING_INTERVAL = 3000
 
   const runningCount = computed(
-    () => tasks.value.filter(task => task.status === 'PENDING' || task.status === 'PROCESSING').length,
+    () =>
+      tasks.value.filter((task) => task.status === 'PENDING' || task.status === 'PROCESSING')
+        .length,
   )
 
   // 监听进行中任务数量和抽屉可见性，自动控制轮询
@@ -46,7 +53,7 @@ export const useExportTaskStore = defineStore('export-task', () => {
         tasks.value = result.list
         lastFetchParams.value.pageNum = result.pageNum
         lastFetchParams.value.pageSize = result.pageSize
-        pagination.value = { total: Number(result.total), pages: result.pages }
+        pagination.value = { total: result.total, pages: result.pages }
       } catch (error) {
         stopPolling()
         showUserError(error, '导出任务状态刷新失败，请稍后重试')
@@ -74,8 +81,12 @@ export const useExportTaskStore = defineStore('export-task', () => {
       tasks.value = result.list
       lastFetchParams.value.pageNum = result.pageNum
       lastFetchParams.value.pageSize = result.pageSize
-      pagination.value = { total: Number(result.total), pages: result.pages }
-      if (tasks.value.length === 0 && pagination.value.total > 0 && lastFetchParams.value.pageNum > 1) {
+      pagination.value = { total: result.total, pages: result.pages }
+      if (
+        tasks.value.length === 0 &&
+        pagination.value.total > 0 &&
+        lastFetchParams.value.pageNum > 1
+      ) {
         lastFetchParams.value.pageNum -= 1
         await fetchTasks()
       }

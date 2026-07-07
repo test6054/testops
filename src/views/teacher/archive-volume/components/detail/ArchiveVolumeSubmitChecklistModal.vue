@@ -110,13 +110,11 @@ async function handleConfirm() {
     materialCompleteConfirmed: materialCompleteConfirmed.value,
     gradingNormConfirmed: gradingNormConfirmed.value,
     reason: reason.value.trim() || undefined,
-    signOffItems: ALL_ARCHIVE_VOLUME_SIGN_OFF_ROLE_CODES.map(
-      (role) => ({
-        role,
-        confirmed: signOffState.value[role].confirmed,
-        signatoryName: signOffState.value[role].signatoryName.trim() || undefined,
-      }),
-    ),
+    signOffItems: ALL_ARCHIVE_VOLUME_SIGN_OFF_ROLE_CODES.map((role) => ({
+      role,
+      confirmed: signOffState.value[role].confirmed,
+      signatoryName: signOffState.value[role].signatoryName.trim() || undefined,
+    })),
   }
   submitting.value = true
   try {

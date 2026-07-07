@@ -11,7 +11,7 @@
     @ok="handleSubmit"
     @cancel="handleCancel"
   >
-    <a-form ref="formRef" :model="form" :rules="formRules" layout="vertical">
+    <a-form layout="vertical">
       <a-row :gutter="16">
         <a-col :xs="24" :md="12">
           <a-form-item label="扫描批次">
@@ -24,85 +24,32 @@
           </a-form-item>
         </a-col>
       </a-row>
-
-      <a-row :gutter="16">
-        <a-col :xs="24" :md="12">
-          <a-form-item label="补扫试卷" name="paperInstanceId" required>
-            <a-select
-              v-model:value="form.paperInstanceId"
-              placeholder="选择本设备已绑定试卷"
-              :options="boundPaperOptions"
-              :loading="prepareLoading"
-              :disabled="prepareLoading"
-              show-search
-              option-filter-prop="label"
-              allow-clear
-            />
-          </a-form-item>
-        </a-col>
-        <a-col :xs="24" :md="6">
-          <a-form-item label="补扫目标页" name="targetPageNo" required>
-            <a-input-number
-              v-model:value="form.targetPageNo"
-              :min="1"
-              placeholder="模板页号"
-              style="width: 100%"
-            />
-          </a-form-item>
-        </a-col>
-        <a-col :xs="24" :md="6">
-          <a-form-item label="补扫原因" name="supplementReason" required>
-            <a-input
-              v-model:value="form.supplementReason"
-              placeholder="说明补扫原因"
-              :maxlength="255"
-            />
-          </a-form-item>
-        </a-col>
-      </a-row>
-
-      <a-form-item name="replaceTargetPage">
-        <a-checkbox v-model:checked="form.replaceTargetPage">
-          替换目标页（勾选后旧页标记为 SUPERSEDED）
-        </a-checkbox>
-      </a-form-item>
-
-      <a-form-item label="补扫文件（单张图片）" name="sourceFileId" required>
-        <UiPlatformFileField
-          v-model:file-node-id="form.sourceFileId"
-          v-model:file-name="form.sourceFileName"
-          :scene-key="FileUploadSceneKey.MARK_EXAM_SCAN_SOURCE"
-          accept=".png,.jpg,.jpeg,.tif,.tiff"
-          button-text="选择文件"
-        />
-      </a-form-item>
-
-      <p v-if="prepareBlockDescription" class="scan-batch-supplement-modal__warn muted">
-        {{ prepareBlockDescription }}
-      </p>
-      <p v-if="declaredClassIds.length === 0" class="scan-batch-supplement-modal__warn muted">
-        请先在考生名册维护考试班级范围
-      </p>
     </a-form>
+
+    <ManualSupplementFormCore
+      ref="formCoreRef"
+      mode="supplement"
+      :model="form"
+      :bound-paper-options="boundPaperOptions"
+      :prepare-loading="prepareLoading"
+      :prepare-block-description="prepareBlockDescription"
+      :class-scope-warning="declaredClassIds.length === 0 ? '请先在考生名册维护考试班级范围' : ''"
+    />
   </UiConfirmModal>
 </template>
 
 <script lang="ts" setup>
-import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ExamScannerBatchResponse } from '@/apis/mark/exam-scan'
 import type { ExamTeacherScanSupplementPrepareResponse } from '@/apis/mark/scan-source'
+import { prepareTeacherScanSupplement, teacherSupplementScanSource } from '@/apis/mark/scan-source'
 import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { getExamDetail } from '@/apis/mark/exam'
-import { ScannerColorModeCode, ScannerDuplexModeCode } from '@/apis/mark/exam-mark-scanner'
-import {
-  prepareTeacherScanSupplement,
-  teacherSupplementScanSource,
-} from '@/apis/mark/scan-source'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
+import ManualSupplementFormCore from '@/components/mark/manual-supplement/ManualSupplementFormCore.vue'
 import UiConfirmModal from '@/components/ui-guide/ui/ConfirmModal.vue'
+import { ScannerColorModeCode } from '@/types/enums/scanner-color-mode-enum'
+import { ScannerDuplexModeCode } from '@/types/enums/scanner-duplex-mode-enum'
 import { ScannerKioskScanModeCode } from '@/types/enums/scanner-kiosk-scan-mode-enum'
 import { showUserError } from '@/utils/error-handler'
 
@@ -116,7 +63,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "success": []
+  success: []
 }>()
 
 const DEFAULT_SCAN_CONFIG: ExamScannerScanConfigVO = {
@@ -126,28 +73,19 @@ const DEFAULT_SCAN_CONFIG: ExamScannerScanConfigVO = {
   blankPageDetectionEnabled: true,
 }
 
-const formRef = ref<FormInstance>()
+const formCoreRef = ref<InstanceType<typeof ManualSupplementFormCore> | null>(null)
 const submitting = ref(false)
 const prepareLoading = ref(false)
 const prepareContext = ref<ExamTeacherScanSupplementPrepareResponse | null>(null)
 const declaredClassIds = ref<string[]>([])
 
-interface ScanBatchSupplementForm {
-  paperInstanceId: string | undefined
-  targetPageNo: number | undefined
-  supplementReason: string
-  replaceTargetPage: boolean
-  sourceFileId: string | undefined
-  sourceFileName: string | undefined
-}
-
-const form = reactive<ScanBatchSupplementForm>({
-  paperInstanceId: undefined,
-  targetPageNo: undefined,
+const form = reactive({
+  paperInstanceId: undefined as string | undefined,
+  targetPageNo: undefined as number | undefined,
   supplementReason: '',
   replaceTargetPage: false,
-  sourceFileId: undefined,
-  sourceFileName: undefined,
+  sourceFileId: undefined as string | undefined,
+  sourceFileName: undefined as string | undefined,
 })
 
 const batchLabel = computed(() => {
@@ -179,30 +117,20 @@ const prepareBlockDescription = computed(() => {
     return ''
   }
   if (context.hasActiveScanSession) {
-    const batchLabelText = context.activeBatchExternalNo ? `（${context.activeBatchExternalNo}）` : ''
+    const batchLabelText = context.activeBatchExternalNo
+      ? `（${context.activeBatchExternalNo}）`
+      : ''
     return `${context.activeScanSessionReason ?? context.blockReason ?? '当前设备存在未结束扫描进程'}${batchLabelText}。请先在一体机或扫描监控结束该批次后再提交 Web 补扫。`
   }
   return context.blockReason ?? context.supplementBlockReason ?? '当前设备或考试状态不允许提交补扫'
 })
 
-const submitDisabled = computed(() =>
-  declaredClassIds.value.length === 0
-  || prepareLoading.value
-  || prepareContext.value?.canSubmitManualSupplement === false,
+const submitDisabled = computed(
+  () =>
+    declaredClassIds.value.length === 0 ||
+    prepareLoading.value ||
+    prepareContext.value?.canSubmitManualSupplement === false,
 )
-
-const formRules: Record<string, Rule[]> = {
-  paperInstanceId: [{ required: true, message: '请选择已绑定试卷' }],
-  targetPageNo: [{ required: true, type: 'number', min: 1, message: '请填写补扫目标页号' }],
-  supplementReason: [{ required: true, message: '请填写补扫原因' }],
-  sourceFileId: [{
-    validator: async () => {
-      if (!form.sourceFileId) {
-        return Promise.reject(new Error('请选择补扫文件'))
-      }
-    },
-  }],
-}
 
 function resetForm(): void {
   form.paperInstanceId = undefined
@@ -259,9 +187,14 @@ async function handleSubmit(): Promise<void> {
     message.warning(prepareBlockDescription.value || '当前不可提交补扫')
     return
   }
-  await formRef.value?.validate()
+  await formCoreRef.value?.validate()
   const batch = props.batch
-  if (!batch?.scanBatchId || !batch.scannerDeviceId || !batch.scannerStationId || !form.sourceFileId) {
+  if (
+    !batch?.scanBatchId ||
+    !batch.scannerDeviceId ||
+    !batch.scannerStationId ||
+    !form.sourceFileId
+  ) {
     return
   }
   submitting.value = true
@@ -302,14 +235,3 @@ watch(
   },
 )
 </script>
-
-<style lang="scss" scoped>
-.scan-batch-supplement-modal__warn {
-  margin-top: 8px;
-}
-
-.muted {
-  color: var(--ant-color-text-tertiary);
-  font-size: 13px;
-}
-</style>

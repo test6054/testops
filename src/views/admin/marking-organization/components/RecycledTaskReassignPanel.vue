@@ -36,14 +36,17 @@
           />
         </template>
         <template v-else-if="column.key === 'action'">
-          <UiButton
-            size="sm"
-            :loading="reassigningId === record.id"
-            :disabled="!targetReviewerByTaskId[record.id]"
-            @click="submitReassign(record)"
-          >
-            再分配
-          </UiButton>
+          <UiTableActions
+            :items="[
+              {
+                key: 'reassign',
+                label: '再分配',
+                disabled: !targetReviewerByTaskId[record.id] || reassigningId === record.id,
+              },
+            ]"
+            split
+            @action="() => submitReassign(record)"
+          />
         </template>
       </template>
     </UiDataTable>
@@ -51,17 +54,18 @@
 </template>
 
 <script lang="ts" setup>
-import type { MarkingTaskResponse, QuestionMarkingGroupResponse } from '@/apis/mark/marking-organization'
+import type {
+  MarkingTaskResponse,
+  QuestionMarkingGroupResponse,
+} from '@/apis/mark/marking-organization'
+import { pageMarkingTasks, reassignRecycledMarkingTask } from '@/apis/mark/marking-organization'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
-import {
-  pageMarkingTasks,
-  reassignRecycledMarkingTask,
-} from '@/apis/mark/marking-organization'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { MarkingTaskStatusCode } from '@/types/enums/marking-task-status-enum'
 import { showUserError } from '@/utils/error-handler'
@@ -84,7 +88,7 @@ const tasks = ref<MarkingTaskResponse[]>([])
 const targetReviewerByTaskId = reactive<Record<string, string>>({})
 
 const reviewerOptionsByGroupId = computed(() => {
-  const map: Record<string, Array<{ value: string, label: string }>> = {}
+  const map: Record<string, Array<{ value: string; label: string }>> = {}
   for (const group of props.groups) {
     map[group.id] = group.reviewers.map((reviewer) => ({
       value: reviewer.reviewerUserId,
@@ -111,17 +115,15 @@ async function loadTasks() {
   loading.value = true
   try {
     if (props.viewAllRecycled) {
-      tasks.value = (
-        await readAllPages(
-          (pageNum) =>
-            pageMarkingTasks({
-              examId: props.examId,
-              taskStatus: MarkingTaskStatusCode.RECYCLED,
-              pageNum,
-              pageSize: 100,
-            }),
-          '回收待分配任务加载失败，请稍后重试',
-        )
+      tasks.value = await readAllPages(
+        (pageNum) =>
+          pageMarkingTasks({
+            examId: props.examId,
+            taskStatus: MarkingTaskStatusCode.RECYCLED,
+            pageNum,
+            pageSize: 100,
+          }),
+        '回收待分配任务加载失败，请稍后重试',
       )
       return
     }

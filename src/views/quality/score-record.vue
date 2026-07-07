@@ -5,7 +5,7 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 质量评价 - 成绩明细管理
  *
  * 后端契约：
- * - /api/quality/score-records: list-by-batch / list-valid-by-item / detail / create / batch-create / update / delete
+ * - /api/quality/score-records: page-by-batch / batch-summary / list-valid-by-item / detail / create / batch-create / update / delete
  * - /api/quality/score-batches: page（按 qualityCourseId 拉批次列表）
  */
 import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
@@ -15,6 +15,7 @@ import { rubricItemApi } from '@/apis/quality/rubric-item'
 import type { ScoreBatchVO } from '@/apis/quality/score-batch'
 import { scoreBatchApi } from '@/apis/quality/score-batch'
 import type {
+  ScoreRecordBatchSummaryVO,
   ScoreRecordRubricScoreRequest,
   ScoreRecordSaveRequest,
   ScoreRecordUpdateRequest,
@@ -48,14 +49,11 @@ import { usePolling } from '@/composables/usePolling'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityTableExport } from '@/composables/useQualityTableExport'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useQualityStore } from '@/stores/modules/quality'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { formatScore } from '@/utils/format'
-import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-
-const SCORE_BATCH_OPTION_PAGE_SIZE = 100
-const VALID_SCORE_RECORD_PAGE_SIZE = 100
 
 const batchColumns: ColumnsType = [
   { title: '编码', dataIndex: 'batchCode', key: 'batchCode', width: 120 },
@@ -100,6 +98,9 @@ const qualityStore = useQualityStore()
 
 const batches = ref<ScoreBatchVO[]>([])
 const batchesLoading = ref(false)
+const batchPageNum = ref(1)
+const batchPageSize = ref(DEFAULT_LIST_PAGE_SIZE)
+const batchTotal = ref(0)
 const selectedBatch = ref<ScoreBatchVO | null>(null)
 const { exporting: scoreRecordExporting, exportExcel: exportScoreRecordExcel } =
   useQualityTableExport()
@@ -125,31 +126,53 @@ function selectBatch(batch: ScoreBatchVO) {
 async function loadBatches() {
   if (!qualityStore.currentQualityCourseId) {
     batches.value = []
+    batchTotal.value = 0
     batchStatusPolling.syncPolling()
     return
   }
   const scope = beginQualityScopeRequest()
   batchesLoading.value = true
   try {
-    const nextBatches = await readAllPages(
-      (pageNum) =>
-        scoreBatchApi.page({
-          pageNum,
-          pageSize: SCORE_BATCH_OPTION_PAGE_SIZE,
-          qualityCourseId: qualityStore.currentQualityCourseId,
-        }),
-      '成绩批次列表加载失败，请稍后重试',
-    )
+    const page = await scoreBatchApi.page({
+      pageNum: batchPageNum.value,
+      pageSize: batchPageSize.value,
+      qualityCourseId: qualityStore.currentQualityCourseId,
+    })
     if (scope.isStale()) {
       return
     }
-    batches.value = nextBatches
+    batches.value = page.list
+    batchTotal.value = page.total
+    batchPageNum.value = page.pageNum ?? batchPageNum.value
+    batchPageSize.value = page.pageSize ?? batchPageSize.value
+    if (selectedBatch.value) {
+      const updated = page.list.find((item) => item.id === selectedBatch.value!.id)
+      if (updated) {
+        selectedBatch.value = updated
+      }
+    }
+    if (batches.value.length === 0 && batchTotal.value > 0 && batchPageNum.value > 1) {
+      batchPageNum.value -= 1
+      await loadBatches()
+      return
+    }
+  } catch (error) {
+    if (scope.isStale()) {
+      return
+    }
+    showUserError(error, '成绩批次列表加载失败，请稍后重试')
   } finally {
     if (!scope.isStale()) {
       batchesLoading.value = false
     }
   }
   batchStatusPolling.syncPolling()
+}
+
+function handleBatchPageChange(page: { current: number; pageSize: number }): void {
+  batchPageNum.value = page.current
+  batchPageSize.value = page.pageSize
+  void loadBatches()
 }
 
 const batchStatusPolling = usePolling(() => refreshBatchesQuietly(), {
@@ -168,21 +191,20 @@ async function refreshBatchesQuietly(): Promise<void> {
   }
   const scope = beginQualityScopeRequest()
   try {
-    const nextBatches = await readAllPages(
-      (pageNum) =>
-        scoreBatchApi.page({
-          pageNum,
-          pageSize: SCORE_BATCH_OPTION_PAGE_SIZE,
-          qualityCourseId: qualityStore.currentQualityCourseId,
-        }),
-      '成绩批次列表加载失败，请稍后重试',
-    )
+    const page = await scoreBatchApi.page({
+      pageNum: batchPageNum.value,
+      pageSize: batchPageSize.value,
+      qualityCourseId: qualityStore.currentQualityCourseId,
+    })
     if (scope.isStale()) {
       return
     }
-    batches.value = nextBatches
+    batches.value = page.list
+    batchTotal.value = page.total
+    batchPageNum.value = page.pageNum ?? batchPageNum.value
+    batchPageSize.value = page.pageSize ?? batchPageSize.value
     if (selectedBatch.value) {
-      const updated = nextBatches.find((item) => item.id === selectedBatch.value!.id)
+      const updated = page.list.find((item) => item.id === selectedBatch.value!.id)
       if (updated) {
         selectedBatch.value = updated
         if (updated.status !== 'PARSING') {
@@ -200,6 +222,10 @@ async function refreshBatchesQuietly(): Promise<void> {
 
 const records = ref<ScoreRecordVO[]>([])
 const recordsLoading = ref(false)
+const recordPageNum = ref(1)
+const recordPageSize = ref(DEFAULT_LIST_PAGE_SIZE)
+const recordTotal = ref(0)
+const recordSummary = ref<ScoreRecordBatchSummaryVO | null>(null)
 const validFilter = ref<boolean | undefined>(undefined)
 const assessmentItems = ref<AssessmentItemVO[]>([])
 
@@ -245,11 +271,15 @@ function syncFilterToView() {
 
 function handleSearch() {
   syncFilterToView()
+  recordPageNum.value = 1
+  void loadRecords()
 }
 
 function handleReset() {
   filterForm.validFlag = undefined
   syncFilterToView()
+  recordPageNum.value = 1
+  void loadRecords()
 }
 
 function handleExportScoreRecords(): void {
@@ -268,22 +298,38 @@ function handleExportScoreRecords(): void {
   })
 }
 
-const filteredRecords = computed(() => {
-  if (validFilter.value === undefined) return records.value
-  return records.value.filter((r) => Boolean(r.validFlag) === validFilter.value)
-})
-
 async function loadRecords() {
   if (!selectedBatch.value) {
     records.value = []
+    recordTotal.value = 0
+    recordSummary.value = null
     return
   }
   recordsLoading.value = true
   try {
-    records.value = await scoreRecordApi.listByBatch(selectedBatch.value.id)
+    const [page, summary] = await Promise.all([
+      scoreRecordApi.pageByBatch({
+        batchId: selectedBatch.value.id,
+        validFlag: validFilter.value,
+        pageNum: recordPageNum.value,
+        pageSize: recordPageSize.value,
+      }),
+      scoreRecordApi.getBatchSummary(selectedBatch.value.id),
+    ])
+    records.value = page.list
+    recordTotal.value = page.total
+    recordPageNum.value = page.pageNum ?? recordPageNum.value
+    recordPageSize.value = page.pageSize ?? recordPageSize.value
+    recordSummary.value = summary
   } finally {
     recordsLoading.value = false
   }
+}
+
+function handleRecordPageChange(page: { current: number; pageSize: number }): void {
+  recordPageNum.value = page.current
+  recordPageSize.value = page.pageSize
+  void loadRecords()
 }
 
 async function loadAssessmentItems() {
@@ -297,21 +343,14 @@ async function loadAssessmentItems() {
 /* ========== 信号指标带（SignalBand） ========== */
 
 const signals = computed<SignalMetric[]>(() => {
-  const list = filteredRecords.value
-  const valid = list.filter((r) => r.validFlag).length
-  const invalid = list.length - valid
-  const errored = list.filter((r) => r.errorCodes && r.errorCodes.length > 0).length
-  const totalScore = list.reduce((sum, r) => {
-    if (!Number.isFinite(r.score)) return sum
-    return sum + r.score
-  }, 0)
-  const totalFull = list.reduce((sum, r) => {
-    if (!Number.isFinite(r.fullScore)) return sum
-    return sum + r.fullScore
-  }, 0)
-  const ratio = totalFull > 0 ? Math.round((totalScore / totalFull) * 100) : 0
+  const summary = recordSummary.value
+  const total = summary ? Number(summary.totalCount) : 0
+  const valid = summary ? Number(summary.validCount) : 0
+  const invalid = summary ? Number(summary.invalidCount) : 0
+  const errored = summary ? Number(summary.erroredCount) : 0
+  const ratio = summary?.avgScoreRatioPercent != null ? Math.round(summary.avgScoreRatioPercent) : 0
   return [
-    { key: 'total', label: '当前明细', value: list.length, tone: 'blue', trendPolarity: 'neutral' },
+    { key: 'total', label: '当前明细', value: total, tone: 'blue', trendPolarity: 'neutral' },
     { key: 'valid', label: '有效', value: valid, tone: 'green', trendPolarity: 'positive' },
     {
       key: 'invalid',
@@ -337,7 +376,7 @@ const signals = computed<SignalMetric[]>(() => {
     {
       key: 'batches',
       label: '批次总数',
-      value: batches.value.length,
+      value: batchTotal.value,
       tone: 'gray',
       trendPolarity: 'neutral',
     },
@@ -601,34 +640,54 @@ const validByItemVisible = ref(false)
 const validByItemLoading = ref(false)
 const validByItemId = ref<string>('')
 const validByItemRecords = ref<ScoreRecordVO[]>([])
+const validByItemPageNum = ref(1)
+const validByItemPageSize = ref(DEFAULT_LIST_PAGE_SIZE)
+const validByItemTotal = ref(0)
 
 function openValidByItem() {
   if (!qualityStore.currentQualityCourseId) return
   validByItemId.value = ''
   validByItemRecords.value = []
+  validByItemPageNum.value = 1
+  validByItemTotal.value = 0
   validByItemVisible.value = true
 }
 
-async function queryValidByItem() {
+async function loadValidByItemPage() {
   if (!validByItemId.value) {
     message.warning('请选择考核环节')
     return
   }
   validByItemLoading.value = true
   try {
-    validByItemRecords.value = await readAllPages(
-      (pageNum) =>
-        scoreRecordApi.listValidByItem({
-          assessmentItemId: validByItemId.value,
-          qualityCourseId: qualityStore.currentQualityCourseId,
-          pageNum,
-          pageSize: VALID_SCORE_RECORD_PAGE_SIZE,
-        }),
-      '有效成绩明细加载失败，请稍后重试',
-    )
+    const page = await scoreRecordApi.listValidByItem({
+      assessmentItemId: validByItemId.value,
+      qualityCourseId: qualityStore.currentQualityCourseId,
+      pageNum: validByItemPageNum.value,
+      pageSize: validByItemPageSize.value,
+    })
+    validByItemRecords.value = page.list
+    validByItemTotal.value = page.total
+    validByItemPageNum.value = page.pageNum ?? validByItemPageNum.value
+    validByItemPageSize.value = page.pageSize ?? validByItemPageSize.value
+  } catch (error) {
+    validByItemRecords.value = []
+    validByItemTotal.value = 0
+    showUserError(error, '有效成绩明细加载失败，请稍后重试')
   } finally {
     validByItemLoading.value = false
   }
+}
+
+async function queryValidByItem() {
+  validByItemPageNum.value = 1
+  await loadValidByItemPage()
+}
+
+function handleValidByItemPageChange(page: { current: number; pageSize: number }): void {
+  validByItemPageNum.value = page.current
+  validByItemPageSize.value = page.pageSize
+  void loadValidByItemPage()
 }
 
 /* ========== 上下文联动 ========== */
@@ -638,6 +697,9 @@ watch(
   async () => {
     selectedBatch.value = null
     records.value = []
+    recordSummary.value = null
+    batchPageNum.value = 1
+    recordPageNum.value = 1
     await Promise.all([loadBatches(), loadAssessmentItems()])
   },
 )
@@ -647,21 +709,28 @@ watch(
   () => {
     selectedBatch.value = null
     batches.value = []
+    batchTotal.value = 0
     records.value = []
+    recordSummary.value = null
     assessmentItems.value = []
   },
 )
 
 watch(selectedBatch, () => {
+  recordPageNum.value = 1
   void loadRecords()
   batchStatusPolling.syncPolling()
 })
 
 async function handleScopeReload(): Promise<void> {
   selectedBatch.value = null
+  batchPageNum.value = 1
+  recordPageNum.value = 1
   if (!qualityStore.currentTrainingPlanId) {
     batches.value = []
+    batchTotal.value = 0
     records.value = []
+    recordSummary.value = null
     assessmentItems.value = []
     return
   }
@@ -669,7 +738,9 @@ async function handleScopeReload(): Promise<void> {
     await Promise.all([loadBatches(), loadAssessmentItems()])
   } else {
     batches.value = []
+    batchTotal.value = 0
     records.value = []
+    recordSummary.value = null
     assessmentItems.value = []
   }
 }
@@ -720,20 +791,22 @@ function handleCourseChange(courseId: string | null) {
         <UiCard class="detail-table-card score-record__batch-card">
           <template #title>
             成绩批次
-            <span class="score-record__panel-meta">{{ batches.length }} 批</span>
+            <span class="score-record__panel-meta">{{ batchTotal }} 批</span>
           </template>
 
           <UiDataTable
-            pagination-mode="none"
+            pagination-mode="server"
             class="score-record__batches-table student-detail-table__data-table"
             :columns="batchColumns"
             :data-source="batches"
             :loading="batchesLoading"
             row-key="id"
             size="middle"
-            :show-pagination="false"
+            v-model:current="batchPageNum"
+            v-model:page-size="batchPageSize"
+            :total="batchTotal"
             flat
-            :total="batches.length"
+            @page-change="handleBatchPageChange"
             :row-class-name="(r: ScoreBatchVO) => (selectedBatch?.id === r.id ? 'is-selected' : '')"
             :custom-row="
               (record: ScoreBatchVO) => ({
@@ -803,16 +876,18 @@ function handleCourseChange(courseId: string | null) {
             />
 
             <UiDataTable
-              pagination-mode="client"
+              pagination-mode="server"
               class="score-record__records-table student-detail-table__data-table"
               :columns="recordColumns"
-              :data-source="filteredRecords"
+              :data-source="records"
               :loading="recordsLoading"
               row-key="id"
               size="middle"
-              :page-size="20"
-              :total="filteredRecords.length"
+              v-model:current="recordPageNum"
+              v-model:page-size="recordPageSize"
+              :total="recordTotal"
               flat
+              @page-change="handleRecordPageChange"
             >
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'studentNumber'">
@@ -1003,16 +1078,18 @@ function handleCourseChange(courseId: string | null) {
         </UiButton>
       </div>
       <UiDataTable
-        pagination-mode="client"
+        pagination-mode="server"
         class="student-detail-table__data-table"
         :columns="validByItemColumns"
         :data-source="validByItemRecords"
         :loading="validByItemLoading"
         row-key="id"
         size="small"
-        :page-size="20"
-        :total="validByItemRecords.length"
+        v-model:current="validByItemPageNum"
+        v-model:page-size="validByItemPageSize"
+        :total="validByItemTotal"
         flat
+        @page-change="handleValidByItemPageChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'batchRef'">

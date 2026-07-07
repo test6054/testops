@@ -45,7 +45,7 @@
           </template>
 
           <p class="tenant-policy__hint">
-            首次进入将自动写入租户默认策略行（经验辅助默认关闭）；开启后各场考试可在试评完成后启用经验辅助；正考同课相似题可自动匹配，补考等非正考须逐题绑定定标经验。
+            首次进入将自动写入租户默认策略行（经验辅助默认开启）；关闭后各场考试不再展示经验辅助配置；正考同课相似题可自动匹配，补考等非正考须逐题绑定定标经验。
           </p>
 
           <form class="tenant-policy__form" @submit.prevent="handleSave">
@@ -166,7 +166,7 @@ const opsLoading = ref(false)
 const opsOverview = ref<MarkTenantGradingOpsOverviewResponse | null>(null)
 
 const form = reactive<MarkTenantGradingPolicySaveRequest>({
-  experienceAssistEnabled: false,
+  experienceAssistEnabled: true,
   minConsistencyRate: 0.75,
   maxHammingDistance: 16,
   maxExperienceItems: 5,

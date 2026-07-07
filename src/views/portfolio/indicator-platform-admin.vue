@@ -9,12 +9,6 @@ import type {
   PortfolioIndicatorSourceMappingVO,
   PortfolioIndustryPackVO,
 } from '@/apis/portfolio/indicator-types'
-import type { PortfolioIndustryPackDefForm } from '@/utils/indicator-industry-pack-def'
-import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
-import { portfolioIndicatorPlatformApi } from '@/apis/portfolio/indicator'
 import {
   PF_INDICATOR_DATA_SOURCE_CHANNEL_OPTIONS,
   PF_INDICATOR_STATUS_OPTIONS,
@@ -26,6 +20,22 @@ import {
   PfScoreRuleTypeCode,
   PfScoreRuleTypeDescription,
 } from '@/apis/portfolio/indicator-types'
+import type { PortfolioIndustryPackDefForm } from '@/utils/indicator-industry-pack-def'
+import {
+  buildNewIndustryPackDefJson,
+  mergeIndustryPackDefJson,
+  parseIndustryPackDefJson,
+} from '@/utils/indicator-industry-pack-def'
+import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
+import {
+  defaultTemplateParams,
+  parseTemplateParamsJson,
+  serializeTemplateParams,
+} from '@/utils/indicator-template-params'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioIndicatorPlatformApi } from '@/apis/portfolio/indicator'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/PortfolioIndicatorTemplateParamsForm.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -33,20 +43,12 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { PortfolioIndicatorDefinitionTreeNodeTypeCode } from '@/types/enums/portfolio-indicator-definition-tree-node-type-enum'
 import { showUserError } from '@/utils/error-handler'
-import {
-  buildNewIndustryPackDefJson,
-  mergeIndustryPackDefJson,
-  parseIndustryPackDefJson,
-} from '@/utils/indicator-industry-pack-def'
-import {
-  defaultTemplateParams,
-  parseTemplateParamsJson,
-  serializeTemplateParams,
-} from '@/utils/indicator-template-params'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 function dataSourceLabel(value: PfIndicatorDataSourceChannelCode): string {
@@ -94,7 +96,12 @@ const editForm = reactive({
   sortOrder: 0,
   status: PfIndicatorStatusCode.ACTIVE,
 })
-const query = reactive({ pageNum: 1, pageSize: 20, indicatorCode: '', indicatorName: '' })
+const query = reactive({
+  pageNum: 1,
+  pageSize: DEFAULT_LIST_PAGE_SIZE,
+  indicatorCode: '',
+  indicatorName: '',
+})
 interface TemplateQueryForm {
   pageNum: number
   pageSize: number
@@ -105,7 +112,7 @@ interface TemplateQueryForm {
 
 const templateQuery = reactive<TemplateQueryForm>({
   pageNum: 1,
-  pageSize: 20,
+  pageSize: DEFAULT_LIST_PAGE_SIZE,
   templateCode: '',
 })
 
@@ -154,7 +161,9 @@ const templateForm = reactive({
   description: '',
   status: PfIndicatorStatusCode.ACTIVE,
 })
-const templateParams = ref<PortfolioIndicatorTemplateParams>(defaultTemplateParams(PfScoreRuleTypeCode.THRESHOLD))
+const templateParams = ref<PortfolioIndicatorTemplateParams>(
+  defaultTemplateParams(PfScoreRuleTypeCode.THRESHOLD),
+)
 const packForm = reactive({
   id: '',
   packCode: '',
@@ -236,7 +245,7 @@ async function loadTemplates() {
   try {
     const page = await portfolioIndicatorPlatformApi.pageTemplate(templateQuery)
     templates.value = page.list
-    templateTotal.value = Number(page.total)
+    templateTotal.value = page.total
   } catch (error) {
     showUserError(error)
   } finally {
@@ -298,6 +307,11 @@ async function openDetail(indicatorCode: string, openAsEdit = false) {
   } finally {
     detailLoading.value = false
   }
+}
+
+function handleIndicatorRowAction(key: string, indicatorCode: string) {
+  if (key === 'detail') void openDetail(indicatorCode)
+  else if (key === 'edit') void openDetail(indicatorCode, true)
 }
 
 function fillEditForm(record: PortfolioIndicatorDefinitionVO) {
@@ -558,11 +572,16 @@ onMounted(async () => {
           >
             <template #title="{ nodeTitle, nodeType, defaultDataSource, indicatorCode, status }">
               <span>{{ nodeTitle }}</span>
-              <span v-if="nodeType === PortfolioIndicatorDefinitionTreeNodeTypeCode.OBSERVATION" class="obs-meta">
+              <span
+                v-if="nodeType === PortfolioIndicatorDefinitionTreeNodeTypeCode.OBSERVATION"
+                class="obs-meta"
+              >
                 {{ indicatorCode }} ·
                 {{ defaultDataSource ? dataSourceLabel(defaultDataSource) : '—' }} ·
                 {{ status ? indicatorStatusLabel(status) : '—' }}
-                <a v-if="indicatorCode" class="detail-link" @click.stop="openDetail(indicatorCode)">详情</a>
+                <a v-if="indicatorCode" class="detail-link" @click.stop="openDetail(indicatorCode)"
+                  >详情</a
+                >
               </span>
             </template>
           </a-tree>
@@ -602,8 +621,14 @@ onMounted(async () => {
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <a @click="openDetail(record.indicatorCode)">详情</a>
-                <a style="margin-left: 8px" @click="openDetail(record.indicatorCode, true)">编辑</a>
+                <UiTableActions
+                  :items="[
+                    { key: 'detail', label: '详情' },
+                    { key: 'edit', label: '编辑' },
+                  ]"
+                  split
+                  @action="(key) => handleIndicatorRowAction(key, record.indicatorCode)"
+                />
               </template>
             </template>
           </UiDataTable>
@@ -649,7 +674,11 @@ onMounted(async () => {
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <a @click="openTemplateEdit(record)">编辑</a>
+                <UiTableActions
+                  :items="[{ key: 'edit', label: '编辑' }]"
+                  split
+                  @action="() => openTemplateEdit(record)"
+                />
               </template>
             </template>
           </UiDataTable>
@@ -678,7 +707,11 @@ onMounted(async () => {
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <a @click="openPackEdit(record)">编辑</a>
+                <UiTableActions
+                  :items="[{ key: 'edit', label: '编辑' }]"
+                  split
+                  @action="() => openPackEdit(record)"
+                />
               </template>
             </template>
           </UiDataTable>

@@ -25,7 +25,7 @@ import { ARCHIVE_EXAM_FORM_OPTIONS, ArchiveExamFormDescription } from '@/apis/ma
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -278,7 +278,11 @@ onMounted(loadPlatformSets)
               <span v-else>—</span>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiTextAction tone="primary" @click="openEditEditor(record.setCode)">编辑</UiTextAction>
+              <UiTableActions
+                :items="[{ key: 'edit', label: '编辑' }]"
+                split
+                @action="() => openEditEditor(record.setCode)"
+              />
             </template>
           </template>
         </UiDataTable>

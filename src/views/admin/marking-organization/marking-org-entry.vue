@@ -13,9 +13,7 @@
           </UiTag>
         </template>
         <template v-if="canManageExamOwner && !resolving" #actions>
-          <UiButton variant="primary" size="sm" @click="openCreateDrawer">
-            创建阅卷组织
-          </UiButton>
+          <UiButton variant="primary" size="sm" @click="openCreateDrawer"> 创建阅卷组织 </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -24,24 +22,26 @@
       <SignalBand variant="tiles" :metrics="entrySignalMetrics" compact />
     </template>
 
-    <ExamWorkspaceJourneySubNav v-if="selectedExamId" />
+    <ExamWorkspaceJourneySubNav v-if="selectedExamId && !resolving" />
 
     <UiSkeletonState v-if="resolving" variant="card" compact />
 
     <UiEmpty
-      v-else
+      v-else-if="selectedExamId"
       description="本考试尚未创建阅卷组织"
       class="org-entry__panel--empty"
     >
       <p class="org-entry__empty-desc">
         阅卷组织是组织教师批改试卷的核心实体；创建后可编排题组、配置分配策略并启动试评 / 正评。
       </p>
+      <p v-if="!canManageExamOwner" class="org-entry__empty-desc">
+        该考试的阅卷组织由考试主考老师创建和分配。
+      </p>
       <template v-if="canManageExamOwner" #action>
         <UiButton variant="primary" size="md" @click="openCreateDrawer">
           立即创建阅卷组织
         </UiButton>
       </template>
-      <p v-else class="org-entry__empty-desc">该考试的阅卷组织由考试主考老师创建和分配。</p>
     </UiEmpty>
 
     <UiDrawer
@@ -78,14 +78,11 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { OrganizationCreateRequest } from '@/apis/mark/marking-organization'
+import { createOrganization, getOrganization } from '@/apis/mark/marking-organization'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  createOrganization,
-  getOrganization,
-} from '@/apis/mark/marking-organization'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -100,16 +97,15 @@ import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkingOrgPermission } from '@/composables/useMarkingOrgPermission'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
-import { resolveMarkingOrganizationDetailRoute } from '@/utils/marking-organization-navigation'
+import {
+  resolveMarkingOrganizationDetailRoute,
+  resolveMarkingOrganizationFormalHubRoute,
+} from '@/utils/marking-organization-navigation'
 
 defineOptions({ name: 'MarkingOrgWorkspaceEntry' })
 
-const {
-  contextBarTitle,
-  contextBarSubtitle,
-  examStatusLabel,
-  examStatusTone,
-} = useExamJourneyContextBar('阅卷组织')
+const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useExamJourneyContextBar('阅卷组织')
 
 const route = useRoute()
 const router = useRouter()
@@ -154,12 +150,13 @@ async function redirectToDetailIfConfigured(): Promise<void> {
   try {
     const org = await getOrganization({ examId })
     if (org.configured && org.id) {
+      if (route.query.setupTab === 'launch') {
+        await router.replace(resolveMarkingOrganizationFormalHubRoute(examId))
+        return
+      }
       const target = resolveMarkingOrganizationDetailRoute(org.id, examId)
       const query = { ...route.query }
-      if (query.setupTab === 'launch') {
-        query.tab = 'launch'
-        delete query.setupTab
-      }
+      delete query.setupTab
       await router.replace(typeof target === 'string' ? target : { ...target, query })
     }
   } catch (error) {
@@ -237,9 +234,13 @@ async function submitCreate(): Promise<void> {
   }
 }
 
-watch(selectedExamId, () => {
-  void redirectToDetailIfConfigured()
-}, { immediate: true })
+watch(
+  selectedExamId,
+  () => {
+    void redirectToDetailIfConfigured()
+  },
+  { immediate: true },
+)
 
 onActivated(() => {
   void redirectToDetailIfConfigured()

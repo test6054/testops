@@ -30,7 +30,12 @@
             <div class="portfolio-ai-candidate-panel__field-code">{{ record.fieldCode }}</div>
           </template>
           <template v-else-if="column.key === 'candidateValue'">
-            <template v-if="rowNeedsManualFill(record) && record.confirmStatus !== PortfolioCandidateConfirmStatusCode.CONFIRMED">
+            <template
+              v-if="
+                rowNeedsManualFill(record) &&
+                record.confirmStatus !== PortfolioCandidateConfirmStatusCode.CONFIRMED
+              "
+            >
               <a-input
                 v-model:value="correctedValues[record.id]"
                 placeholder="补全真实值（不可含 [姓名] 等占位符）"
@@ -47,20 +52,26 @@
             </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiTextAction
-              :disabled="!canConfirmRow(record) || confirming"
-              @click="confirmCandidate(record)"
-            >
-              确认
-            </UiTextAction>
-            <UiTextAction
-              v-if="record.confirmStatus !== PortfolioCandidateConfirmStatusCode.CONFIRMED && record.confirmStatus !== PortfolioCandidateConfirmStatusCode.REJECTED"
-              tone="danger"
-              :disabled="confirming"
-              @click="rejectCandidate(record)"
-            >
-              驳回
-            </UiTextAction>
+            <UiTableActions
+              :items="[
+                {
+                  key: 'confirm',
+                  label: '确认',
+                  disabled: !canConfirmRow(record) || confirming,
+                },
+                {
+                  key: 'reject',
+                  label: '驳回',
+                  tone: 'danger',
+                  hidden:
+                    record.confirmStatus === PortfolioCandidateConfirmStatusCode.CONFIRMED ||
+                    record.confirmStatus === PortfolioCandidateConfirmStatusCode.REJECTED,
+                  disabled: confirming,
+                },
+              ]"
+              split
+              @action="(key) => handleCandidateRowAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>
@@ -75,20 +86,23 @@
 <script lang="ts" setup>
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioCandidateFieldVO } from '@/apis/portfolio/types'
+import { PORTFOLIO_CANDIDATE_CONFIRM_STATUS_TONE } from '@/apis/portfolio/types'
 import type { AiTaskStatusCode } from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
-import { PortfolioCandidateConfirmStatusCode, PortfolioCandidateConfirmStatusDescription } from '@/apis/portfolio/enums'
-import { PORTFOLIO_CANDIDATE_CONFIRM_STATUS_TONE } from '@/apis/portfolio/types'
+import {
+  PortfolioCandidateConfirmStatusCode,
+  PortfolioCandidateConfirmStatusDescription,
+} from '@/apis/portfolio/enums'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePolling } from '@/composables/usePolling'
 import { showUserError } from '@/utils/error-handler'
@@ -123,7 +137,9 @@ const taskStatus = ref<AiTaskStatusCode>()
 const manualFillPendingCount = computed(
   () =>
     candidateRows.value.filter(
-      (item) => item.manualFillRequired || item.confirmStatus === PortfolioCandidateConfirmStatusCode.NEEDS_MANUAL_FILL,
+      (item) =>
+        item.manualFillRequired ||
+        item.confirmStatus === PortfolioCandidateConfirmStatusCode.NEEDS_MANUAL_FILL,
     ).length,
 )
 
@@ -148,7 +164,10 @@ function candidateStatusTone(row: PortfolioCandidateFieldVO): BadgeTone {
 }
 
 function rowNeedsManualFill(row: PortfolioCandidateFieldVO): boolean {
-  return Boolean(row.manualFillRequired) || row.confirmStatus === PortfolioCandidateConfirmStatusCode.NEEDS_MANUAL_FILL
+  return (
+    Boolean(row.manualFillRequired) ||
+    row.confirmStatus === PortfolioCandidateConfirmStatusCode.NEEDS_MANUAL_FILL
+  )
 }
 
 function correctedValueFor(row: PortfolioCandidateFieldVO): string {
@@ -159,7 +178,10 @@ function canConfirmRow(row: PortfolioCandidateFieldVO): boolean {
   if (props.readonly) {
     return false
   }
-  if (row.confirmStatus === PortfolioCandidateConfirmStatusCode.CONFIRMED || row.confirmStatus === PortfolioCandidateConfirmStatusCode.REJECTED) {
+  if (
+    row.confirmStatus === PortfolioCandidateConfirmStatusCode.CONFIRMED ||
+    row.confirmStatus === PortfolioCandidateConfirmStatusCode.REJECTED
+  ) {
     return false
   }
   if (rowNeedsManualFill(row)) {
@@ -243,6 +265,11 @@ async function rejectCandidate(row: PortfolioCandidateFieldVO) {
       }
     },
   })
+}
+
+function handleCandidateRowAction(key: string, row: PortfolioCandidateFieldVO) {
+  if (key === 'confirm') void confirmCandidate(row)
+  else if (key === 'reject') void rejectCandidate(row)
 }
 
 async function confirmAllEligible() {

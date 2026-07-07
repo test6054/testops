@@ -1,3 +1,19 @@
+import type {
+  InboxMessageListItemDTO,
+  InboxMessageListQuery,
+  InboxMessageMarkRequest,
+  InboxUnreadCountResponse,
+} from '@/apis/edu/message'
+import {
+  getInboxMessages,
+  getUnreadCount,
+  markAllAsRead,
+  MessageFolderEnum,
+  MessageOperationTypeEnum,
+  updateMessageStatus,
+} from '@/apis/edu/message'
+import { defineStore } from 'pinia'
+import { computed, ref } from 'vue'
 /**
  * 通知统一 Store
  *
@@ -16,22 +32,7 @@
  *
  * 不持久化：未读数与列表对实时性敏感，每次启动重新拉取。
  */
-import type {
-  InboxMessageListItemDTO,
-  InboxMessageListQuery,
-  InboxMessageMarkRequest,
-  InboxUnreadCountResponse,
-} from '@/apis/edu/message'
-import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
-import {
-  getInboxMessages,
-  getUnreadCount,
-  markAllAsRead,
-  MessageFolderEnum,
-  MessageOperationTypeEnum,
-  updateMessageStatus,
-} from '@/apis/edu/message'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { getValidToken } from '@/utils/auth'
 
 const DEFAULT_POLL_INTERVAL_MS = 60_000
@@ -56,9 +57,8 @@ export const useNotificationStore = defineStore('notification', () => {
 
   const unreadCount = computed(() => unreadData.value?.unreadCount ?? 0)
   const unreadSystemCount = computed(() => unreadData.value?.unreadSystemNotificationCount ?? 0)
-  const totalUnreadCount = computed(() =>
-    unreadData.value?.totalUnreadCount
-    ?? (unreadCount.value + unreadSystemCount.value),
+  const totalUnreadCount = computed(
+    () => unreadData.value?.totalUnreadCount ?? unreadCount.value + unreadSystemCount.value,
   )
 
   const hasUnread = computed(() => totalUnreadCount.value > 0)
@@ -85,29 +85,29 @@ export const useNotificationStore = defineStore('notification', () => {
         lastFetchedAt.value = Date.now()
       }
       return unreadData.value
-    }
-    finally {
+    } finally {
       unreadLoading.value = false
     }
   }
 
   /**
-   * 拉取最近收件箱预览，默认前 20 条，仅 INBOX 文件夹。
+   * 拉取最近收件箱预览，默认前 10 条，仅 INBOX 文件夹。
    */
-  async function loadRecentMessages(query: Partial<InboxMessageListQuery> = {}): Promise<InboxMessageListItemDTO[]> {
+  async function loadRecentMessages(
+    query: Partial<InboxMessageListQuery> = {},
+  ): Promise<InboxMessageListItemDTO[]> {
     if (!isAuthenticated()) return []
     recentLoading.value = true
     try {
       const result = await getInboxMessages({
         pageNum: query.pageNum ?? 1,
-        pageSize: query.pageSize ?? 20,
+        pageSize: query.pageSize ?? DEFAULT_LIST_PAGE_SIZE,
         folder: query.folder ?? MessageFolderEnum.INBOX,
         messageType: query.messageType,
       })
       recentMessages.value = result.list
       return recentMessages.value
-    }
-    finally {
+    } finally {
       recentLoading.value = false
     }
   }
@@ -118,10 +118,11 @@ export const useNotificationStore = defineStore('notification', () => {
   async function updateStatus(request: InboxMessageMarkRequest): Promise<void> {
     await updateMessageStatus(request)
     // 已读 / 归档 / 删除都会减少未读数；统一刷新
-    if (request.operationType === MessageOperationTypeEnum.MARK_READ
-      || request.operationType === MessageOperationTypeEnum.ARCHIVE
-      || request.operationType === MessageOperationTypeEnum.TRASH
-      || request.operationType === MessageOperationTypeEnum.PURGE
+    if (
+      request.operationType === MessageOperationTypeEnum.MARK_READ ||
+      request.operationType === MessageOperationTypeEnum.ARCHIVE ||
+      request.operationType === MessageOperationTypeEnum.TRASH ||
+      request.operationType === MessageOperationTypeEnum.PURGE
     ) {
       await loadUnreadCount()
     }

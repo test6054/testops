@@ -155,7 +155,8 @@
         <UiButton v-if="canManageExamOwner" size="sm" variant="outline" @click="openEditDrawer">
           编辑组织
         </UiButton>
-        <UiButton size="sm" variant="outline" @click="goSessions"> 试评 / 正评会话 </UiButton>
+        <UiButton size="sm" variant="outline" @click="goTrialSessions">试评定标</UiButton>
+        <UiButton size="sm" variant="outline" @click="goFormalSessions">正评会话</UiButton>
         <a-popconfirm
           v-if="canManageExamOwner"
           title="确认删除该阅卷组织？"
@@ -257,16 +258,12 @@
  */
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { RouteLocationRaw } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import type {
   MarkingOrganizationResponse,
   OrganizationCreateRequest,
   OrganizationUpdateRequest,
 } from '@/apis/mark/marking-organization'
-import type { SignalMetric } from '@/types/workbench'
-import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, inject, onActivated, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   createOrganization,
   deleteOrganization,
@@ -276,6 +273,10 @@ import {
   requireMarkingOrganizationId,
   updateOrganization,
 } from '@/apis/mark/marking-organization'
+import type { SignalMetric } from '@/types/workbench'
+import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, inject, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -297,7 +298,9 @@ import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import {
   resolveMarkingOrganizationDetailRoute,
-  resolveMarkingOrganizationSessionsRoute,
+  resolveMarkingOrganizationFormalHubRoute,
+  resolveMarkingOrganizationFormalSessionsRoute,
+  resolveMarkingOrganizationTrialSessionsRoute,
 } from '@/utils/marking-organization-navigation'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -306,8 +309,8 @@ defineOptions({ name: 'AdminMarkingOrganizationIndex' })
 const router = useRouter()
 const route = useRoute()
 
-const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
-  = useOptionalExamJourneyContextBar('阅卷安排')
+const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useOptionalExamJourneyContextBar('阅卷安排')
 
 const {
   examOptions,
@@ -572,20 +575,30 @@ function goDetail(): void {
   void router.push(buildDetailRoute())
 }
 
-function goDetailTab(tab: string): void {
-  if (!organization.value) return
-  void router.push(buildDetailRoute(tab))
-}
-
-function goSessions(): void {
+function goTrialSessions(): void {
   if (!organization.value) return
   const examId = organization.value.examId ?? selectedExamId.value
   if (!examId) {
-    showUserError(new Error('缺少考试上下文'), '无法进入试评 / 正评')
+    showUserError(new Error('缺少考试上下文'), '无法进入试评定标')
     return
   }
   void router.push(
-    resolveMarkingOrganizationSessionsRoute(
+    resolveMarkingOrganizationTrialSessionsRoute(
+      requireMarkingOrganizationId(organization.value),
+      examId,
+    ),
+  )
+}
+
+function goFormalSessions(): void {
+  if (!organization.value) return
+  const examId = organization.value.examId ?? selectedExamId.value
+  if (!examId) {
+    showUserError(new Error('缺少考试上下文'), '无法进入正评会话')
+    return
+  }
+  void router.push(
+    resolveMarkingOrganizationFormalSessionsRoute(
       requireMarkingOrganizationId(organization.value),
       examId,
     ),
@@ -604,12 +617,13 @@ watch(
   () => ({
     organizationId: organization.value?.id,
     setupTab: route.query.setupTab,
-    tab: route.query.tab,
   }),
   (routeState) => {
-    const launchTab = routeState.tab === 'launch' || routeState.setupTab === 'launch'
-    if (launchTab && routeState.organizationId) {
-      goDetailTab('launch')
+    if (routeState.setupTab === 'launch' && routeState.organizationId) {
+      const examId = organization.value?.examId ?? selectedExamId.value
+      if (examId) {
+        void router.replace(resolveMarkingOrganizationFormalHubRoute(examId))
+      }
     }
   },
   { immediate: true },

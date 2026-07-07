@@ -162,7 +162,11 @@
               </UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiTextAction tone="primary" @click="downloadEvidence(record.fileId)">下载</UiTextAction>
+              <UiTableActions
+                :items="[{ key: 'download', label: '下载' }]"
+                split
+                @action="() => downloadEvidence(record.fileId)"
+              />
             </template>
           </template>
         </UiDataTable>
@@ -374,6 +378,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'

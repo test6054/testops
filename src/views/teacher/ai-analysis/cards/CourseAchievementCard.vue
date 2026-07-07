@@ -1,14 +1,8 @@
 <template>
   <AiAnalysisSection title="AI 课程目标达成度分析">
     <template #actions>
-      <AiAnalysisHistorySelect
-        v-model="historySelectedId"
-        :rows="historyRows"
-        :loading="loading"
-      />
-      <UiButton variant="outline" size="sm" :loading="loading" @click="reload">
-        查看历史
-      </UiButton>
+      <AiAnalysisHistorySelect v-model="historySelectedId" :rows="historyRows" :loading="loading" />
+      <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 查看历史 </UiButton>
       <UiButton variant="primary" size="sm" :loading="generating" @click="handleGenerate">
         生成达成度分析
       </UiButton>
@@ -18,7 +12,11 @@
       <div class="ai-form">
         <a-form layout="inline" :model="form" size="small">
           <a-form-item label="课程">
+            <span v-if="scopeOrgCourseId?.trim()" class="scope-hint">{{
+              scopeCourseLabel || effectiveCourseId || '—'
+            }}</span>
             <CatalogCourseSelector
+              v-else
               v-model:value="form.courseId"
               placeholder="请选择课程"
               :allow-clear="false"
@@ -26,8 +24,9 @@
             />
           </a-form-item>
           <a-form-item label="学年">
+            <span v-if="scopeTermLabel" class="scope-hint">{{ scopeTermLabel }}</span>
             <AnalysisSemesterSelect
-              v-if="effectiveCourseId"
+              v-else-if="effectiveCourseId"
               v-model:academic-year="form.academicYear"
               v-model:semester="form.semester"
               :course-id="effectiveCourseId"
@@ -49,9 +48,7 @@
                 auto-select-scoped-exams
                 placeholder="已自动纳入本课程本学期全部考试，可减选"
               />
-              <p class="scope-hint">
-                默认统计评价规则内已挂接的全部考核；可取消勾选以排除某次考试
-              </p>
+              <p class="scope-hint">默认统计评价规则内已挂接的全部考核；可取消勾选以排除某次考试</p>
             </template>
             <span v-else class="scope-hint">选定课程与学年、学期后自动纳入考核环节</span>
           </a-form-item>
@@ -64,7 +61,9 @@
     <div v-else-if="record" class="ai-analysis-section__body ai-analysis-section__body--flush">
       <SignalBand :metrics="achievementSignalMetrics" compact variant="inline" />
 
-      <p v-if="record.achievementSummary" class="ai-analysis-summary">{{ record.achievementSummary }}</p>
+      <p v-if="record.achievementSummary" class="ai-analysis-summary">
+        {{ record.achievementSummary }}
+      </p>
 
       <MarkTrendSection
         title="参与考试得分走势"
@@ -93,11 +92,15 @@
               :achievement-rate="item.achievementRate"
               :status="item.status"
             />
-            <p v-if="item.objectiveDescription" class="diagnosis-text">{{ item.objectiveDescription }}</p>
+            <p v-if="item.objectiveDescription" class="diagnosis-text">
+              {{ item.objectiveDescription }}
+            </p>
             <p v-if="item.evidenceNote" class="diagnosis-text diagnosis-text--muted">
               依据：{{ item.evidenceNote }}
             </p>
-            <p v-if="item.suggestion" class="diagnosis-text diagnosis-text--hint">{{ item.suggestion }}</p>
+            <p v-if="item.suggestion" class="diagnosis-text diagnosis-text--hint">
+              {{ item.suggestion }}
+            </p>
           </div>
         </div>
       </div>
@@ -116,16 +119,17 @@ import type {
   CourseAchievementItemResponse,
   CourseObjectiveAchievementResponse,
 } from '@/apis/mark/cross-exam-analysis'
-import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   CourseObjectiveDimensionDescription,
   generateAchievement,
   listAchievements,
 } from '@/apis/mark/cross-exam-analysis'
+import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { formatSemester } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisConfigCollapse from '@/components/mark/analysis/AiAnalysisConfigCollapse.vue'
@@ -142,7 +146,6 @@ import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { formatSemester } from '@/types/enums/semester-enum'
 import {
   buildOptionalAcademicYearSemesterQuery,
   buildRequiredAcademicYearSemesterQuery,
@@ -175,11 +178,21 @@ const props = withDefaults(
     scopeReferenceDepartmentId?: string | null
     scopeOrgCourseId?: string | null
     scopeOrgClassId?: string | null
+    scopeAcademicYear?: string
+    scopeSemester?: SemesterCode
+    examScopeLocked?: boolean
+    scopeTermLabel?: string
+    scopeCourseLabel?: string
   }>(),
   {
     scopeReferenceDepartmentId: null,
     scopeOrgCourseId: null,
     scopeOrgClassId: null,
+    scopeAcademicYear: undefined,
+    scopeSemester: undefined,
+    examScopeLocked: false,
+    scopeTermLabel: '',
+    scopeCourseLabel: '',
   },
 )
 
@@ -197,14 +210,14 @@ const form = reactive<CourseAchievementForm>({
   examIds: [],
 })
 
-const effectiveCourseId = computed(() =>
-  form.courseId.trim() || props.scopeOrgCourseId?.trim() || '',
+const effectiveCourseId = computed(
+  () => form.courseId.trim() || props.scopeOrgCourseId?.trim() || '',
 )
 
 const examSelectScopeClassId = computed(() => props.scopeOrgClassId?.trim() || undefined)
 
-const examSelectScopeReferenceDepartmentId = computed(() =>
-  props.scopeReferenceDepartmentId?.trim() || undefined,
+const examSelectScopeReferenceDepartmentId = computed(
+  () => props.scopeReferenceDepartmentId?.trim() || undefined,
 )
 
 const {
@@ -215,6 +228,22 @@ const {
   applyLoadedList,
   adoptGenerated,
 } = useAiAnalysisHistoryPicker<CourseObjectiveAchievementResponse>()
+
+watch(
+  () => [props.scopeOrgCourseId, props.scopeAcademicYear, props.scopeSemester] as const,
+  ([courseId, year, semesterCode]) => {
+    if (courseId?.trim()) {
+      form.courseId = courseId.trim()
+    }
+    if (year) {
+      form.academicYear = year
+    }
+    if (semesterCode) {
+      form.semester = semesterCode
+    }
+  },
+  { immediate: true },
+)
 
 watch(
   () => form.courseId,
@@ -361,7 +390,10 @@ function examScopeSummary(value: CourseObjectiveAchievementResponse): string {
     return '无考试范围'
   }
   return value.exams
-    .map(exam => `${exam.examName ?? exam.examId}${exam.examTime ? ` · ${formatDateTime(exam.examTime)}` : ''}`)
+    .map(
+      (exam) =>
+        `${exam.examName ?? exam.examId}${exam.examTime ? ` · ${formatDateTime(exam.examTime)}` : ''}`,
+    )
     .join('；')
 }
 

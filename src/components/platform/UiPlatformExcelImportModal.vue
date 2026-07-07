@@ -13,7 +13,9 @@
   >
     <div v-if="phase === 'upload'" class="platform-excel-import-modal__upload">
       <div v-if="!props.hideTemplateDownload" class="platform-excel-import-modal__template">
-        <span class="platform-excel-import-modal__template-text">请先下载模板，按格式填写后上传</span>
+        <span class="platform-excel-import-modal__template-text"
+          >请先下载模板，按格式填写后上传</span
+        >
         <UiButton
           variant="outline"
           size="sm"
@@ -41,7 +43,9 @@
       >
         <UploadOutlined class="platform-excel-import-modal__dropzone-icon" />
         <p class="platform-excel-import-modal__dropzone-hint">
-          拖拽文件到此处，或<span class="platform-excel-import-modal__dropzone-link">点击选择文件</span>
+          拖拽文件到此处，或<span class="platform-excel-import-modal__dropzone-link"
+            >点击选择文件</span
+          >
         </p>
         <p class="platform-excel-import-modal__dropzone-desc">
           支持 .xlsx、.xls，单文件不超过 30MB
@@ -102,7 +106,7 @@
           <template v-else-if="column.key === 'className'">
             <span>{{ record.resolvedClassName || record.className }}</span>
           </template>
-          <template v-else-if="column.key === 'action'">
+          <template v-else-if="column.key === 'importActionDisplay'">
             <UiTag
               v-if="record.valid"
               :tone="record.importAction === 'CREATE_STUDENT' ? 'orange' : 'blue'"
@@ -126,7 +130,9 @@
         <div class="platform-excel-import-modal__summary-stats">
           <span>总计 {{ result?.totalRows ?? 0 }}</span>
           <span class="is-success">成功 {{ result?.successRows ?? 0 }}</span>
-          <span v-if="result?.createdCount != null" class="is-success">新建 {{ result.createdCount }}</span>
+          <span v-if="result?.createdCount != null" class="is-success"
+            >新建 {{ result.createdCount }}</span
+          >
           <span v-if="result?.updatedCount != null">更新 {{ result.updatedCount }}</span>
           <span class="is-fail">失败 {{ result?.errorRows ?? 0 }}</span>
         </div>
@@ -144,7 +150,10 @@
         size="small"
         flat
       />
-      <p v-if="result?.executionMode === ExcelImportExecutionMode.ASYNC" class="platform-excel-import-modal__async-hint">
+      <p
+        v-if="result?.executionMode === ExcelImportExecutionMode.ASYNC"
+        class="platform-excel-import-modal__async-hint"
+      >
         已提交解析任务，请在列表中预览确认。
       </p>
     </div>
@@ -154,20 +163,20 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
+import { resolveFileStageSceneForExcel } from '@/apis/platform/scene-keys'
 import type {
   ExcelImportResult,
   ExcelImportRosterPreviewRow,
   ExcelImportRowDiagnostic,
   PlatformJsonObject,
 } from '@/apis/platform/types'
+import { ExcelImportExecutionMode } from '@/apis/platform/types'
 import { FileOutlined, UploadOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { downloadFile } from '@/apis/edu/file-management'
 import { downloadExcelImportTemplate, submitExcelImport } from '@/apis/platform/excel-import'
 import { stagePlatformFile } from '@/apis/platform/file'
-import { resolveFileStageSceneForExcel } from '@/apis/platform/scene-keys'
-import { ExcelImportExecutionMode } from '@/apis/platform/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -256,7 +265,7 @@ const rosterPreviewColumns: ColumnsType<ExcelImportRosterPreviewRow> = [
   { title: '行号', dataIndex: 'rowNo', key: 'rowNo', width: 72 },
   { title: '班级', key: 'className', width: 180 },
   { title: '考生', key: 'student', width: 180 },
-  { title: '导入动作', key: 'action', width: 150 },
+  { title: '导入动作', key: 'importActionDisplay', width: 150 },
   { title: '诊断', key: 'message' },
 ]
 
@@ -438,7 +447,10 @@ async function handleOk() {
     }
     result.value = importResult
     phase.value = 'result'
-    if ((importResult.successRows ?? 0) > 0 || importResult.executionMode === ExcelImportExecutionMode.ASYNC) {
+    if (
+      (importResult.successRows ?? 0) > 0 ||
+      importResult.executionMode === ExcelImportExecutionMode.ASYNC
+    ) {
       emit('success', importResult)
     }
     if (importResult.executionMode === ExcelImportExecutionMode.ASYNC) {

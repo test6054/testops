@@ -9,10 +9,6 @@ import type {
   AccreditationCycleVO,
   SelfAssessmentReviewDecisionRequest,
 } from '@/apis/quality/accreditation'
-import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
-import { DownOutlined } from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   accreditationApi,
   AccreditationConclusionTypeCode,
@@ -21,12 +17,17 @@ import {
   AccreditationCycleStatusDescription,
   SelfAssessmentReviewDecisionCode,
 } from '@/apis/quality/accreditation'
+import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
 import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import {
   canDeleteCycle,
   canEditCycle,
@@ -47,7 +48,7 @@ const props = defineProps<{
   cockpit?: AccreditationCockpitVO
 }>()
 
-const emit = defineEmits<{ "refresh": [], 'go-ai-report': [] }>()
+const emit = defineEmits<{ refresh: []; 'go-ai-report': [] }>()
 
 type AccreditationCycleMenuAction = 'application' | 'self' | 'review' | 'conclusion' | 'delete'
 
@@ -267,7 +268,10 @@ function openReview(row: AccreditationCycleVO) {
 
 async function submitReview() {
   if (!activeRow.value) return
-  if (reviewForm.reviewDecision === SelfAssessmentReviewDecisionCode.SUPPLEMENT_REQUIRED && !reviewForm.supplementDeadline) {
+  if (
+    reviewForm.reviewDecision === SelfAssessmentReviewDecisionCode.SUPPLEMENT_REQUIRED &&
+    !reviewForm.supplementDeadline
+  ) {
     message.error('需补正时必须填写补正截止日期')
     return
   }
@@ -353,10 +357,28 @@ function buildMenuItems(row: AccreditationCycleVO): AccreditationCycleMenuItem[]
   return items
 }
 
-function bindCycleMenuClick(row: AccreditationCycleVO): (event: MenuInfo) => void {
-  return (event: MenuInfo) => {
-    void handleCycleMenuClick(row, event)
+function buildCycleRowActions(record: AccreditationCycleVO): UiTableRowActionItem[] {
+  return [
+    { key: 'detail', label: '详情' },
+    { key: 'edit', label: '编辑', hidden: !canEditCycle(record) },
+    ...buildMenuItems(record).map((item) => ({
+      key: item.key,
+      label: item.label,
+      tone: item.danger ? ('danger' as const) : ('default' as const),
+    })),
+  ]
+}
+
+async function handleCycleRowAction(key: string, record: AccreditationCycleVO) {
+  if (key === 'detail') {
+    openDetail(record)
+    return
   }
+  if (key === 'edit') {
+    openEdit(record)
+    return
+  }
+  await handleCycleMenuClick(record, { key } as MenuInfo)
 }
 
 async function handleCycleMenuClick(row: AccreditationCycleVO, event: MenuInfo) {
@@ -489,33 +511,21 @@ defineExpose({ openCreate, loadCycles })
         <template v-else-if="column.key === 'conclusionType'">
           <span v-if="record.conclusionType">
             {{
-              strictEnumLabel(AccreditationConclusionTypeDescription, record.conclusionType, '认证结论类型')
+              strictEnumLabel(
+                AccreditationConclusionTypeDescription,
+                record.conclusionType,
+                '认证结论类型',
+              )
             }}
           </span>
           <span v-else class="muted">—</span>
         </template>
         <template v-else-if="column.key === 'actions'">
-          <UiButton size="sm" variant="ghost" @click="openDetail(record)">详情</UiButton>
-          <UiButton v-if="canEditCycle(record)" size="sm" variant="ghost" @click="openEdit(record)">
-            编辑
-          </UiButton>
-          <a-dropdown v-if="buildMenuItems(record).length" trigger="click">
-            <UiButton size="sm" variant="outline">
-              流程操作
-              <DownOutlined />
-            </UiButton>
-            <template #overlay>
-              <a-menu @click="bindCycleMenuClick(record)">
-                <a-menu-item
-                  v-for="item in buildMenuItems(record)"
-                  :key="item.key"
-                  :danger="item.danger"
-                >
-                  {{ item.label }}
-                </a-menu-item>
-              </a-menu>
-            </template>
-          </a-dropdown>
+          <UiTableActions
+            :items="buildCycleRowActions(record)"
+            split
+            @action="(key) => handleCycleRowAction(key, record)"
+          />
         </template>
       </template>
       <template #empty>
@@ -546,8 +556,8 @@ defineExpose({ openCreate, loadCycles })
         <a-form-item v-else-if="form.accreditationStandardId" label="绑定认证标准">
           <a-input
             :value="
-              standards.find((item) => item.id === form.accreditationStandardId)?.standardName
-                || form.accreditationStandardId
+              standards.find((item) => item.id === form.accreditationStandardId)?.standardName ||
+              form.accreditationStandardId
             "
             disabled
           />
@@ -604,10 +614,10 @@ defineExpose({ openCreate, loadCycles })
           {{
             detailRecord.conclusionType
               ? strictEnumLabel(
-                AccreditationConclusionTypeDescription,
-                detailRecord.conclusionType,
-                '认证结论类型',
-              )
+                  AccreditationConclusionTypeDescription,
+                  detailRecord.conclusionType,
+                  '认证结论类型',
+                )
               : '—'
           }}
         </dd>

@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioTeacherSalaryVO } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
+import { reactive } from 'vue'
 import { portfolioTeacherSalaryApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -11,11 +10,10 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
+import { useQueryTable } from '@/composables/useQueryTable'
 import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 
-const loading = ref(false)
-const rows = ref<PortfolioTeacherSalaryVO[]>([])
 const form = reactive<{
   teacherUserId: string
   salaryMonth: string
@@ -29,8 +27,16 @@ const form = reactive<{
   performanceAmount: undefined,
   allowanceAmount: undefined,
 })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
-  = usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
+  usePortfolioTeacherSearch()
+const { loading, rows, pageNum, pageSize, pageTotal, loadPage, handlePageChange } = useQueryTable(
+  portfolioTeacherSalaryApi.page,
+  {
+    onLoaded: (list) => {
+      void hydrateTeacherLabels(list.map((row) => row.teacherUserId ?? ''))
+    },
+  },
+)
 
 const columns: ColumnsType = [
   { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },
@@ -58,19 +64,6 @@ const columns: ColumnsType = [
   },
   { title: '来源', dataIndex: 'dataSource', key: 'dataSource', width: 100 },
 ]
-
-async function loadPage() {
-  loading.value = true
-  try {
-    const page = await portfolioTeacherSalaryApi.page({ pageNum: 1, pageSize: 50 })
-    rows.value = page.list
-    await hydrateTeacherLabels(rows.value.map((row) => row.teacherUserId ?? ''))
-  } catch (error) {
-    showUserError(error)
-  } finally {
-    loading.value = false
-  }
-}
 
 async function saveSalary() {
   if (!form.teacherUserId || !form.salaryMonth.trim()) {
@@ -107,8 +100,6 @@ async function exportCsv() {
     showUserError(error)
   }
 }
-
-onMounted(loadPage)
 </script>
 
 <template>
@@ -129,23 +120,36 @@ onMounted(loadPage)
           @search="searchTeachers"
         />
         <a-input v-model:value="form.salaryMonth" placeholder="月份 yyyy-MM" style="width: 120px" />
-        <a-input-number v-model:value="form.baseAmount" placeholder="基本工资" style="width: 100px" />
+        <a-input-number
+          v-model:value="form.baseAmount"
+          placeholder="基本工资"
+          style="width: 100px"
+        />
         <a-input-number
           v-model:value="form.performanceAmount"
           placeholder="绩效工资"
           style="width: 100px"
         />
-        <a-input-number v-model:value="form.allowanceAmount" placeholder="津贴" style="width: 100px" />
+        <a-input-number
+          v-model:value="form.allowanceAmount"
+          placeholder="津贴"
+          style="width: 100px"
+        />
         <UiButton variant="primary" @click="saveSalary"> 录入 </UiButton>
         <UiButton @click="exportCsv"> 导出 </UiButton>
       </div>
       <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无薪酬档案" />
       <UiDataTable
+        v-model:current="pageNum"
+        v-model:page-size="pageSize"
+        pagination-mode="server"
+        :total="pageTotal"
         :columns="columns"
         :data-source="rows"
         :loading="loading"
         row-key="id"
         style="margin-top: 16px"
+        @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherUserId'">

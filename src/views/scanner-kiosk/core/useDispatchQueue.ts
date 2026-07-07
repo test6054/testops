@@ -1,7 +1,7 @@
 import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
+import { pageScanDispatchTickets } from '@/apis/mark/scanner-dispatch'
 import type { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { computed, ref } from 'vue'
-import { pageScanDispatchTickets } from '@/apis/mark/scanner-dispatch'
 import { DispatchQueueStatusFilterCode } from '@/types/enums/dispatch-queue-status-filter-enum'
 import { ScanDispatchTicketStatusCode } from '@/types/enums/scan-dispatch-ticket-status-enum'
 import { getUserErrorMessage } from '@/utils/error-handler'
@@ -35,8 +35,9 @@ export function useDispatchQueue() {
   const scannerStationId = ref('')
   const taskKind = ref<ScanTaskKindCode | undefined>()
 
-  const pendingCount = computed(() =>
-    tickets.value.filter(item => item.status === ScanDispatchTicketStatusCode.PENDING).length,
+  const pendingCount = computed(
+    () =>
+      tickets.value.filter((item) => item.status === ScanDispatchTicketStatusCode.PENDING).length,
   )
 
   async function loadQueue() {
@@ -52,20 +53,19 @@ export function useDispatchQueue() {
         scannerDeviceId: scannerDeviceId.value || undefined,
         scannerStationId: scannerStationId.value || undefined,
         failureOnly: filter === DispatchQueueStatusFilterCode.FAILED ? true : undefined,
-        excludeFailed: filter === DispatchQueueStatusFilterCode.ALL
-          || filter === DispatchQueueStatusFilterCode.PENDING
-          ? true
-          : undefined,
+        excludeFailed:
+          filter === DispatchQueueStatusFilterCode.ALL ||
+          filter === DispatchQueueStatusFilterCode.PENDING
+            ? true
+            : undefined,
       })
       tickets.value = page.list
-      total.value = Number(page.total)
-    }
-    catch (error) {
+      total.value = page.total
+    } catch (error) {
       errorMessage.value = getUserErrorMessage(error)
       tickets.value = []
       total.value = 0
-    }
-    finally {
+    } finally {
       loading.value = false
     }
   }

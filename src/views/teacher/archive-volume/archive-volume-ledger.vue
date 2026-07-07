@@ -167,6 +167,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import {
   archiveAccessApplicantLabel,
   archiveAccessApprovalCardClass,
@@ -221,7 +222,7 @@ const tenantFilterModel = computed<Record<string, unknown>>({
     Object.assign(tenantFilterForm, value)
   },
 })
-const tenantPagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
+const tenantPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 
 const signalMetrics = computed<SignalMetric[]>(() => {
   if (ledgerTab.value === 'volume') {
@@ -325,7 +326,7 @@ async function loadTenantLedger() {
       pageSize: tenantPagination.pageSize,
     })
     tenantRows.value = result.list
-    tenantPagination.total = Number(result.total)
+    tenantPagination.total = result.total
     tenantPagination.pageNum = result.pageNum
     tenantPagination.pageSize = result.pageSize
   } catch (error) {

@@ -478,8 +478,12 @@
   background: var(--dp-red-500);
 }
 
-:global(.todo-feed__dot--normal) {
+:global(.todo-feed__dot--attention) {
   background: var(--dp-orange-500);
+}
+
+:global(.todo-feed__dot--normal) {
+  background: var(--dp-gray-400);
 }
 
 :global(.todo-feed__dot--info) {
@@ -532,10 +536,6 @@
 :global(.grading-workspace--dragging) {
   cursor: col-resize;
   user-select: none;
-}
-
-:global(.grading-workspace__confidential-strip) {
-  flex-shrink: 0;
 }
 
 :global(.grading-workspace__shielded) {

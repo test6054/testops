@@ -1,22 +1,26 @@
 <template>
   <a-tooltip v-if="collapsed" :title="label" placement="right">
     <span class="exam-sub-sidebar-menu-icon">
-      <component :is="icon" />
+      <component :is="resolvedIcon" />
     </span>
   </a-tooltip>
-  <component v-else :is="icon" />
+  <component v-else :is="resolvedIcon" />
 </template>
 
 <script lang="ts" setup>
 import type { Component } from 'vue'
+import { computed } from 'vue'
+import AppstoreOutlined from '@ant-design/icons-vue/AppstoreOutlined'
 
 defineOptions({ name: 'ExamSubSidebarMenuIcon' })
 
-defineProps<{
-  icon: Component
+const props = defineProps<{
+  icon: Component | undefined
   label: string
   collapsed: boolean
 }>()
+
+const resolvedIcon = computed(() => props.icon ?? AppstoreOutlined)
 </script>
 
 <style scoped lang="scss">

@@ -25,6 +25,7 @@ import {
   PORTFOLIO_EVALUATION_PUBLICITY_STATUS_TONE,
   PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE,
 } from '@/apis/portfolio/types'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { Input, message, Select } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -38,7 +39,6 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import {
@@ -183,7 +183,7 @@ async function loadNotices() {
       pageSize: pageSize.value,
     })
     notices.value = page.list
-    pageTotal.value = Number(page.total)
+    pageTotal.value = page.total
     const routeNoticeId = typeof route.query.noticeId === 'string' ? route.query.noticeId : ''
     const matched = routeNoticeId
       ? notices.value.find((item) => item.id === routeNoticeId)

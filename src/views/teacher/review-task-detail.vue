@@ -46,18 +46,6 @@
                 题{{ detail.questionNo }} · 满分{{ detail.fullScore }}
               </UiTag>
             </template>
-            <template #actions>
-              <UiButton
-                variant="outline"
-                size="sm"
-                :disabled="!hasParams"
-                :loading="loading"
-                @click="loadTask"
-              >
-                <template #icon><ReloadOutlined /></template>
-                刷新
-              </UiButton>
-            </template>
           </GradingImmersionChrome>
         </template>
 
@@ -230,7 +218,6 @@ import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import PictureOutlined from '@ant-design/icons-vue/PictureOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'

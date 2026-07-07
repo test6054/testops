@@ -22,47 +22,48 @@
       </div>
     </template>
 
-    <UiSkeletonState v-if="loading && !generating" variant="card" compact />
-    <AiGenerationProgressPanel
-      v-else-if="generating"
-      title="AI 错因聚类分析生成中"
-      :waiting-text="
+    <AiAnalysisCardBody
+      :loading="loading"
+      :generating="generating"
+      :has-content="record != null"
+      empty-description="暂无数据，可点击重新生成"
+      progress-title="AI 错因聚类分析生成中"
+      :progress-waiting-text="
         props.classId
           ? '正在等待后端返回当前班级的真实错因聚类结果。'
           : '正在等待后端返回本场考试的真实错因聚类结果。'
       "
-    />
+    >
+      <div v-if="record != null" class="ai-analysis-section__body ai-analysis-section__body--flush">
+        <p v-if="record.overallSummary" class="ai-analysis-summary">{{ record.overallSummary }}</p>
 
-    <UiEmpty v-else-if="!record" description="暂无数据" />
-    <div v-else-if="record" class="ai-analysis-section__body ai-analysis-section__body--flush">
-      <p v-if="record.overallSummary" class="ai-analysis-summary">{{ record.overallSummary }}</p>
+        <MarkBarSection
+          title="错因占比分布"
+          :hint="clusterChartHint"
+          :item-count="clusterBarItems.length"
+          :option="clusterChartOption"
+          height="280px"
+        />
 
-      <MarkBarSection
-        title="错因占比分布"
-        :hint="clusterChartHint"
-        :item-count="clusterBarItems.length"
-        :option="clusterChartOption"
-        height="280px"
-      />
+        <div v-if="(record.clusterItems?.length ?? 0) > 0" class="ai-cluster-grid">
+          <AiClusterTile
+            v-for="(item, index) in record.clusterItems"
+            :key="`${item.causeName ?? 'cluster'}-${index}`"
+            :label="clusterItemTitle(item)"
+            :proportion-text="item.proportion != null ? formatPercent(item.proportion) : '—'"
+            :description="item.causeDescription"
+            :question-nos="formatExamples(item.typicalExamples)"
+            :suggestion="item.suggestion"
+          />
+        </div>
 
-      <div v-if="clusterItems.length > 0" class="ai-cluster-grid">
-        <AiClusterTile
-          v-for="(item, index) in clusterItems"
-          :key="`${item.causeName ?? 'cluster'}-${index}`"
-          :label="clusterItemTitle(item)"
-          :proportion-text="item.proportion != null ? formatPercent(item.proportion) : '—'"
-          :description="item.causeDescription"
-          :question-nos="formatExamples(item.typicalExamples)"
-          :suggestion="item.suggestion"
+        <AiAnalysisMetaCollapse
+          :record="record"
+          failure-fallback="AI 错因聚类分析未完成，请稍后重新生成"
+          :extra-items="[{ label: '聚类数', value: clusterCountText(record) }]"
         />
       </div>
-
-      <AiAnalysisMetaCollapse
-        :record="record"
-        failure-fallback="AI 错因聚类分析未完成，请稍后重新生成"
-        :extra-items="[{ label: '聚类数', value: clusterCountText(record) }]"
-      />
-    </div>
+    </AiAnalysisCardBody>
   </component>
 </template>
 
@@ -71,29 +72,27 @@ import type {
   ErrorCauseClusterItemVO,
   ErrorCauseClusterResponse,
 } from '@/apis/mark/error-cause-cluster'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import {
   generateErrorCauseCluster,
   getLatestErrorCauseCluster,
 } from '@/apis/mark/error-cause-cluster'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { computed, ref, watch } from 'vue'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
+import AiAnalysisCardBody from '@/components/mark/analysis/AiAnalysisCardBody.vue'
 import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCollapse.vue'
 import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'
 import AiClusterTile from '@/components/mark/analysis/AiClusterTile.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useAiAnalysisGenerationFeedback } from '@/composables/useAiAnalysisGenerationFeedback'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError } from '@/utils/error-handler'
 import { buildBarChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
 import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
 import { errorCauseToBarItems } from '@/utils/mark-statistics-chart'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import AiGenerationProgressPanel from './AiGenerationProgressPanel.vue'
 
 defineOptions({ name: 'ErrorCauseClusterCard' })
 
@@ -110,15 +109,12 @@ const props = withDefaults(
 
 const record = ref<ErrorCauseClusterResponse | null>(null)
 const loading = ref(false)
-const generating = ref(false)
+const { generating, runGeneration } = useAiAnalysisGenerationFeedback()
 
 const shellProps = computed(() =>
-  props.embedded
-    ? { title: 'AI 错因聚类分析', context: props.examLabel }
-    : { class: 'stats-card' },
+  props.embedded ? { title: 'AI 错因聚类分析' } : { class: 'stats-card' },
 )
 
-const clusterItems = computed(() => record.value?.clusterItems ?? [])
 const clusterBarItems = computed(() => errorCauseToBarItems(record.value?.clusterItems ?? []))
 
 const clusterChartHint = computed(() =>
@@ -137,18 +133,14 @@ const { chartOption: clusterChartOption } = useChartOption(() =>
 
 function clusterItemTitle(item: ErrorCauseClusterItemVO): string {
   if (item.causeName?.trim()) return item.causeName
-  if (item.questionType) return strictEnumLabel(QuestionTypeDescription, item.questionType, '题目类型')
+  if (item.questionType)
+    return strictEnumLabel(QuestionTypeDescription, item.questionType, '题目类型')
   return '错因聚类'
 }
 
 function formatExamples(examples?: string[]): string | undefined {
   if (!examples?.length) return undefined
   return examples.join('、')
-}
-
-function acceptErrorCauseClusterRecord(value: ErrorCauseClusterResponse | null): ErrorCauseClusterResponse | null {
-  if (!value) return null
-  return value
 }
 
 function clusterCountText(value: ErrorCauseClusterResponse): string {
@@ -169,7 +161,7 @@ async function reload(): Promise<void> {
       examId: props.examId,
       classId: props.classId || undefined,
     })
-    record.value = acceptErrorCauseClusterRecord(latest)
+    record.value = latest
   } catch (e) {
     record.value = null
     showUserError(e, '错因聚类分析加载失败')
@@ -179,20 +171,22 @@ async function reload(): Promise<void> {
 }
 
 async function handleGenerate(): Promise<void> {
-  generating.value = true
-  try {
-    const generated = await generateErrorCauseCluster({
-      examId: props.examId,
-      classId: props.classId || undefined,
-    })
-    record.value = acceptErrorCauseClusterRecord(generated)
-    message.success('已生成最新错因聚类')
-  } catch (e) {
-    record.value = null
-    showUserError(e, '错因聚类分析生成失败')
-  } finally {
-    generating.value = false
-  }
+  await runGeneration(
+    () =>
+      generateErrorCauseCluster({
+        examId: props.examId,
+        classId: props.classId || undefined,
+      }),
+    {
+      successMessage: '已生成最新错因聚类',
+      onSuccess: (generated) => {
+        record.value = generated
+      },
+      onFailure: () => {
+        record.value = null
+      },
+    },
+  )
 }
 
 watch(

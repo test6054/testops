@@ -1,14 +1,5 @@
 <template>
   <StageWorkbenchShell class="experience-page">
-    <template #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        :title="contextBarTitle"
-        :subtitle="contextBarSubtitle"
-      />
-    </template>
-
     <template v-if="selectedExamId" #signal>
       <SignalBand variant="tiles" compact :metrics="experienceSignalMetrics" />
     </template>
@@ -39,15 +30,6 @@
                 EXPERIENCE_ASSIST_CALIBRATION_HINT
               }}</span>
               <span class="experience-page__flow-hint">{{ EXPERIENCE_CASE_FLOW_HINT }}</span>
-              <UiButton
-                size="sm"
-                variant="outline"
-                :loading="signaturesLoading"
-                @click="loadSignatures"
-              >
-                <template #icon><ReloadOutlined /></template>
-                刷新
-              </UiButton>
               <UiButton size="sm" :loading="generatingSignatures" @click="handleGenerateSignatures">
                 <template #icon><ThunderboltOutlined /></template>
                 生成 / 重算签名
@@ -443,17 +425,29 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
-import {
-  AI_ANALYSIS_FLOW_HINT,
-  AI_ANALYSIS_STATUS_TONE,
-  AiAnalysisStatusDescription,
-} from '@/apis/mark/ai-analysis-status'
 import type {
   AnswerClusterRecordResponse,
   ExperienceCaseStatusCode,
   GradingExperienceCaseResponse,
   QuestionSignatureResponse,
 } from '@/apis/mark/grading-experience'
+import type { QuestionTypeCode } from '@/apis/mark/question-type'
+import type {
+  BadgeTone,
+  FilterField,
+  UiSectionTabItem,
+  UiTableRowActionItem,
+} from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import Modal from 'ant-design-vue/es/modal'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import {
+  AI_ANALYSIS_FLOW_HINT,
+  AI_ANALYSIS_STATUS_TONE,
+  AiAnalysisStatusDescription,
+} from '@/apis/mark/ai-analysis-status'
 import {
   confirmExperienceCase,
   deprecateExperienceCase,
@@ -470,20 +464,7 @@ import {
   listSignatures,
   searchSimilar,
 } from '@/apis/mark/grading-experience'
-import type { QuestionTypeCode } from '@/apis/mark/question-type'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
-import type {
-  BadgeTone,
-  FilterField,
-  UiSectionTabItem,
-  UiTableRowActionItem,
-} from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import Modal from 'ant-design-vue/es/modal'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -493,7 +474,6 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
-import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -763,16 +743,16 @@ const deprecatingExperience = ref(false)
 
 const canConfirmExperience = computed(
   () =>
-    detailExperience.value?.caseStatus === 'DRAFT' &&
-    detailExperience.value?.analysisStatus === 'SUCCESS' &&
-    Boolean(detailExperience.value?.id),
+    detailExperience.value?.caseStatus === 'DRAFT'
+    && detailExperience.value?.analysisStatus === 'SUCCESS'
+    && Boolean(detailExperience.value?.id),
 )
 
 const canDeprecateExperience = computed(
   () =>
-    detailExperience.value?.caseStatus === 'CONFIRMED' &&
-    detailExperience.value?.analysisStatus === 'SUCCESS' &&
-    Boolean(detailExperience.value?.id),
+    detailExperience.value?.caseStatus === 'CONFIRMED'
+    && detailExperience.value?.analysisStatus === 'SUCCESS'
+    && Boolean(detailExperience.value?.id),
 )
 
 async function handleConfirmExperience(): Promise<void> {

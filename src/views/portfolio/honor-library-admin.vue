@@ -1,49 +1,26 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {
-  PortfolioDevelopmentRecordVO,
-  PortfolioHonorStatsVO,
-} from '@/apis/portfolio/teacher-platform'
+import type { PortfolioHonorStatsVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
+import { reactive, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { PortfolioDevelopmentRecordTypeCode } from '@/apis/portfolio/enums'
-import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
+import { useQueryTable } from '@/composables/useQueryTable'
 import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 
-const loading = ref(false)
 const importModalOpen = ref(false)
-const rows = ref<PortfolioDevelopmentRecordVO[]>([])
 const stats = ref<PortfolioHonorStatsVO | null>(null)
-const query = reactive({
-  levelCode: '',
-  awardUnit: '',
-  recordDateFrom: '',
-  recordDateTo: '',
-  categoryCode: '',
-})
-const form = reactive({
-  recordTitle: '',
-  teacherUserId: '',
-  levelCode: '',
-  awardUnit: '',
-  recordDate: '',
-  categoryCode: '',
-  descriptionText: '',
-})
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
-  = usePortfolioTeacherSearch()
-
 const honorImportContext = { defaultRecordType: PortfolioDevelopmentRecordTypeCode.HONOR }
 const honorImportRequirements = [
   'recordType 须为 HONOR（模板已预填）',
@@ -59,37 +36,59 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 80 },
 ]
 
-async function loadPage() {
-  loading.value = true
-  try {
-    const page = await portfolioDevelopmentRecordApi.page({
-      pageNum: 1,
-      pageSize: 50,
+const form = reactive({
+  recordTitle: '',
+  teacherUserId: '',
+  levelCode: '',
+  awardUnit: '',
+  recordDate: '',
+  categoryCode: '',
+  descriptionText: '',
+})
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
+  usePortfolioTeacherSearch()
+const {
+  loading,
+  rows,
+  pageNum,
+  pageSize,
+  pageTotal,
+  filters: query,
+  loadPage,
+  search,
+  handlePageChange,
+} = useQueryTable(
+  (params) =>
+    portfolioDevelopmentRecordApi.page({
+      ...params,
       recordType: PortfolioDevelopmentRecordTypeCode.HONOR,
-      levelCode: query.levelCode || undefined,
-      awardUnit: query.awardUnit || undefined,
-      recordDateFrom: query.recordDateFrom || undefined,
-      recordDateTo: query.recordDateTo || undefined,
-      categoryCode: query.categoryCode || undefined,
-    })
-    rows.value = page.list
-    const userIds = rows.value
-      .map((row) => row.teacherUserId)
-      .filter((id): id is string => Boolean(id))
-    await hydrateTeacherLabels([...new Set(userIds)])
-    stats.value = await portfolioDevelopmentRecordApi.honorStats({
-      levelCode: query.levelCode || undefined,
-      awardUnit: query.awardUnit || undefined,
-      recordDateFrom: query.recordDateFrom || undefined,
-      recordDateTo: query.recordDateTo || undefined,
-      categoryCode: query.categoryCode || undefined,
-    })
-  } catch (error) {
-    showUserError(error)
-  } finally {
-    loading.value = false
-  }
-}
+      levelCode: params.levelCode || undefined,
+      awardUnit: params.awardUnit || undefined,
+      recordDateFrom: params.recordDateFrom || undefined,
+      recordDateTo: params.recordDateTo || undefined,
+      categoryCode: params.categoryCode || undefined,
+    }),
+  {
+    defaultFilters: () => ({
+      levelCode: '',
+      awardUnit: '',
+      recordDateFrom: '',
+      recordDateTo: '',
+      categoryCode: '',
+    }),
+    onLoaded: async (list) => {
+      const userIds = list.map((row) => row.teacherUserId).filter((id): id is string => Boolean(id))
+      await hydrateTeacherLabels([...new Set(userIds)])
+      stats.value = await portfolioDevelopmentRecordApi.honorStats({
+        levelCode: query.value.levelCode || undefined,
+        awardUnit: query.value.awardUnit || undefined,
+        recordDateFrom: query.value.recordDateFrom || undefined,
+        recordDateTo: query.value.recordDateTo || undefined,
+        categoryCode: query.value.categoryCode || undefined,
+      })
+    },
+  },
+)
 
 async function saveRecord() {
   if (!form.recordTitle.trim()) {
@@ -138,11 +137,11 @@ async function removeRecord(id: string) {
 async function exportHonor() {
   try {
     const result = await portfolioDevelopmentRecordApi.honorExport({
-      levelCode: query.levelCode || undefined,
-      awardUnit: query.awardUnit || undefined,
-      recordDateFrom: query.recordDateFrom || undefined,
-      recordDateTo: query.recordDateTo || undefined,
-      categoryCode: query.categoryCode || undefined,
+      levelCode: query.value.levelCode || undefined,
+      awardUnit: query.value.awardUnit || undefined,
+      recordDateFrom: query.value.recordDateFrom || undefined,
+      recordDateTo: query.value.recordDateTo || undefined,
+      categoryCode: query.value.categoryCode || undefined,
     })
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
@@ -150,8 +149,6 @@ async function exportHonor() {
     showUserError(error)
   }
 }
-
-onMounted(loadPage)
 </script>
 
 <template>
@@ -182,7 +179,7 @@ onMounted(loadPage)
           value-format="YYYY-MM-DD"
           placeholder="截止日期"
         />
-        <UiButton @click="loadPage"> 查询 </UiButton>
+        <UiButton @click="search"> 查询 </UiButton>
         <UiButton @click="exportHonor"> 导出 </UiButton>
         <UiButton @click="importModalOpen = true"> 批量导入 </UiButton>
       </div>
@@ -212,18 +209,27 @@ onMounted(loadPage)
         description="当前筛选无荣誉记录，请调整条件或新建"
       />
       <UiDataTable
+        v-model:current="pageNum"
+        v-model:page-size="pageSize"
+        pagination-mode="server"
+        :total="pageTotal"
         :columns="columns"
         :data-source="rows"
         :loading="loading"
         row-key="id"
         style="margin-top: 16px"
+        @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherUserId'">
             {{ teacherLabel(record.teacherUserId) }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiTextAction @click="removeRecord(record.id)"> 删除 </UiTextAction>
+            <UiTableActions
+              :items="[{ key: 'delete', label: '删除', tone: 'danger' }]"
+              split
+              @action="() => removeRecord(record.id)"
+            />
           </template>
         </template>
       </UiDataTable>

@@ -1,25 +1,26 @@
 <script lang="ts" setup>
 import type { TableColumnsType } from 'ant-design-vue'
 import type { ExamWorkbenchMarkingProgressPanelResponse } from '@/apis/mark/exam-progress'
-import { getMarkingProgressPanel } from '@/apis/mark/exam-progress'
 import type {
   FormalSessionResponse,
   FormalSessionStatusCode,
   TrialSessionResponse,
   TrialSessionStatusCode,
 } from '@/apis/mark/marking-organization'
+import type { SignalMetric } from '@/types/workbench'
+import { TableOutlined } from '@ant-design/icons-vue'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getMarkingProgressPanel } from '@/apis/mark/exam-progress'
 import {
   FORMAL_SESSION_STATUS_TONE,
   FormalSessionStatusDescription,
   TRIAL_SESSION_STATUS_TONE,
   TrialSessionStatusDescription,
 } from '@/apis/mark/marking-organization'
-import type { SignalMetric } from '@/types/workbench'
-import { ReloadOutlined, TableOutlined } from '@ant-design/icons-vue'
-import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
@@ -30,12 +31,14 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
+import { useExamMarkingProgressSessionList } from '@/composables/useExamMarkingProgressSessionList'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import {
+  resolveMarkingOrganizationFormalSessionsRoute,
   resolveMarkingOrganizationIndexRoute,
-  resolveMarkingOrganizationSessionsRoute,
+  resolveMarkingOrganizationTrialSessionsRoute,
 } from '@/utils/marking-organization-navigation'
 
 defineOptions({ name: 'TeacherExamWorkspaceMarkingProgressDashboard' })
@@ -45,12 +48,45 @@ const router = useRouter()
 const { examId } = useWorkspaceExamId()
 
 const isTrialPhase = computed(() => route.name === 'TeacherExamWorkspaceTrialProgress')
+const sessionPhase = computed(() => (isTrialPhase.value ? 'trial' as const : 'formal' as const))
 const stageLabel = computed(() => (isTrialPhase.value ? '试评进度' : '进度看板'))
 const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar(stageLabel)
 
 const loading = ref(false)
 const loadFailed = ref(false)
 const panel = ref<ExamWorkbenchMarkingProgressPanelResponse | null>(null)
+
+const organizationId = computed(() => panel.value?.organizationId)
+
+const {
+  sessionRows,
+  sessionsLoading,
+  sessionPagination,
+  sessionFilterModel,
+  filterFields,
+  sessionTableEmptyDescription,
+  applySessionFilter,
+  resetSessionFilter,
+  handleSessionPageChange,
+} = useExamMarkingProgressSessionList(sessionPhase, organizationId)
+
+const draftFilterModel = ref<Record<string, unknown>>({
+  keyword: '',
+  status: undefined,
+  groupId: undefined,
+})
+
+watch(
+  sessionFilterModel,
+  (model) => {
+    draftFilterModel.value = {
+      keyword: model.keyword,
+      status: model.status,
+      groupId: model.groupId,
+    }
+  },
+  { deep: true, immediate: true },
+)
 
 const taskSummary = computed(() => panel.value?.markingTaskSummary ?? null)
 const progressPercent = computed(() => {
@@ -70,11 +106,6 @@ const signalMetrics = computed<SignalMetric[]>(() => {
     { key: 'pending', label: '待完成', value: summary.pendingTaskCount, tone: 'orange' },
     { key: 'recycled', label: '已回收', value: summary.recycledTaskCount, tone: 'gray' },
   ]
-})
-
-const sessionRows = computed(() => {
-  if (!panel.value) return []
-  return isTrialPhase.value ? panel.value.trialSessions : panel.value.formalSessions
 })
 
 const formalColumns: TableColumnsType<FormalSessionResponse> = [
@@ -178,12 +209,18 @@ function goMarkingOrg() {
 
 function goSessionManage(record: FormalSessionResponse | TrialSessionResponse) {
   if (!examId.value || !record.organizationId) return
-  router.push(resolveMarkingOrganizationSessionsRoute(record.organizationId, examId.value))
+  const target = isTrialPhase.value
+    ? resolveMarkingOrganizationTrialSessionsRoute(record.organizationId, examId.value)
+    : resolveMarkingOrganizationFormalSessionsRoute(record.organizationId, examId.value)
+  router.push(target)
 }
 
-function goSessionsPage(organizationId: string) {
+function goSessionsPage(organizationIdValue: string) {
   if (!examId.value) return
-  router.push(resolveMarkingOrganizationSessionsRoute(organizationId, examId.value))
+  const target = isTrialPhase.value
+    ? resolveMarkingOrganizationTrialSessionsRoute(organizationIdValue, examId.value)
+    : resolveMarkingOrganizationFormalSessionsRoute(organizationIdValue, examId.value)
+  router.push(target)
 }
 
 watch(examId, () => loadPanel(), { immediate: true })
@@ -192,12 +229,7 @@ watch(examId, () => loadPanel(), { immediate: true })
 <template>
   <StageWorkbenchShell class="marking-progress-dash">
     <template v-if="examId" #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        :title="contextBarTitle"
-        :subtitle="contextBarSubtitle"
-      >
+      <ContextBar layout="workbench">
         <template #status>
           <UiTag :tone="progressPercent >= 100 ? 'green' : 'blue'" size="sm">
             任务完成 {{ progressPercent }}%
@@ -206,10 +238,6 @@ watch(examId, () => loadPanel(), { immediate: true })
         <template #actions>
           <UiButton variant="outline" size="sm" @click="goTaskPool">
             {{ isTrialPhase ? '试评任务池' : '阅卷任务池' }}
-          </UiButton>
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadPanel">
-            <template #icon><ReloadOutlined /></template>
-            刷新
           </UiButton>
         </template>
       </ContextBar>
@@ -254,27 +282,42 @@ watch(examId, () => loadPanel(), { immediate: true })
           </div>
         </template>
         <template #toolbar>
-          <UiButton
-            v-if="panel.organizationId"
-            variant="ghost"
-            size="sm"
-            @click="goSessionsPage(panel.organizationId)"
-          >
-            会话管理
-          </UiButton>
+          <div class="marking-progress-dash__toolbar">
+            <UiFilterBar
+              v-model="draftFilterModel"
+              :fields="filterFields"
+              variant="plain"
+              search-text="查询"
+              reset-text="重置"
+              actions-align="end"
+              @search="applySessionFilter"
+              @reset="resetSessionFilter"
+            />
+            <UiButton
+              v-if="panel.organizationId"
+              variant="ghost"
+              size="sm"
+              @click="goSessionsPage(panel.organizationId)"
+            >
+              会话管理
+            </UiButton>
+          </div>
         </template>
 
         <UiDataTable
           v-if="isTrialPhase"
-          pagination-mode="none"
+          :current="sessionPagination.current"
+          :page-size="sessionPagination.pageSize"
+          pagination-mode="server"
           :columns="trialColumns"
           :data-source="sessionRows as TrialSessionResponse[]"
-          :loading="loading"
-          :show-pagination="false"
+          :loading="sessionsLoading"
           flat
-          :total="sessionRows.length"
+          :total="sessionPagination.total"
+          :empty-description="sessionTableEmptyDescription"
           row-key="id"
           size="middle"
+          @page-change="handleSessionPageChange"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'status'">
@@ -310,15 +353,18 @@ watch(examId, () => loadPanel(), { immediate: true })
 
         <UiDataTable
           v-else
-          pagination-mode="none"
+          :current="sessionPagination.current"
+          :page-size="sessionPagination.pageSize"
+          pagination-mode="server"
           :columns="formalColumns"
           :data-source="sessionRows as FormalSessionResponse[]"
-          :loading="loading"
-          :show-pagination="false"
+          :loading="sessionsLoading"
           flat
-          :total="sessionRows.length"
+          :total="sessionPagination.total"
+          :empty-description="sessionTableEmptyDescription"
           row-key="id"
           size="middle"
+          @page-change="handleSessionPageChange"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'status'">
@@ -351,16 +397,6 @@ watch(examId, () => loadPanel(), { immediate: true })
             </template>
           </template>
         </UiDataTable>
-
-        <UiEmpty
-          v-if="!sessionRows.length"
-          :description="isTrialPhase ? '暂无试评会话' : '暂无正评会话'"
-          class="marking-progress-dash__table-empty"
-        >
-          <template #extra>
-            <UiButton variant="primary" size="sm" @click="goMarkingOrg">创建会话</UiButton>
-          </template>
-        </UiEmpty>
       </WorkbenchSurfaceCard>
     </template>
   </StageWorkbenchShell>
@@ -378,12 +414,17 @@ watch(examId, () => loadPanel(), { immediate: true })
   font-weight: 600;
 }
 
+.marking-progress-dash__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
 .marking-progress-dash__mono {
   font-variant-numeric: tabular-nums;
   font-size: 13px;
-}
-
-.marking-progress-dash__table-empty {
-  padding: 24px 0;
 }
 </style>

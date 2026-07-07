@@ -5,7 +5,7 @@
         <p class="exam-flow-ctx-bar__subtitle">{{ subtitle }}</p>
         <h2 class="exam-flow-ctx-bar__title">{{ title }}</h2>
       </div>
-      <div class="exam-flow-ctx-bar__nav">
+      <div v-if="chainSteps.length <= 1" class="exam-flow-ctx-bar__nav">
         <UiButton
           v-if="prevStep"
           variant="ghost"

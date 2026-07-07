@@ -3,7 +3,6 @@
     <template #context>
       <ContextBar layout="workbench" show-title title="待审批查阅" subtitle="跨卷借阅审批">
         <template #actions>
-          <UiButton variant="ghost" size="sm" :loading="loading" @click="loadRecords">刷新</UiButton>
           <UiButton variant="outline" size="sm" @click="goList">返回归档工作台</UiButton>
         </template>
       </ContextBar>

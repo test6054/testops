@@ -1,56 +1,74 @@
 <template>
   <a-spin :spinning="loading">
     <div v-if="gate" class="archive-exam-score-gate-panel">
-      <div class="score-gate">
+      <div v-for="row in gateRows" :key="row.key" class="archive-exam-score-gate-panel__row">
         <span
-          class="score-gate__check"
-          :class="gate.examClosed ? 'score-gate__check--pass' : 'score-gate__check--fail'"
+          class="archive-exam-score-gate-panel__check"
+          :class="`archive-exam-score-gate-panel__check--${row.state}`"
+          aria-hidden="true"
         >
-          {{ gate.examClosed ? '✓' : '✗' }}
+          <CheckOutlined v-if="row.state === 'pass'" />
+          <ClockCircleOutlined v-else-if="row.state === 'pending'" />
+          <CloseOutlined v-else />
         </span>
-        <div>
-          <div class="score-gate__title">考试已关闭</div>
-          <div class="score-gate__hint">POST /api/mark/exams/close</div>
+        <div class="archive-exam-score-gate-panel__body">
+          <div class="archive-exam-score-gate-panel__title-row">
+            <span class="archive-exam-score-gate-panel__title">{{ row.title }}</span>
+            <UiTag v-if="row.state === 'pass'" tone="green" size="sm">已完成</UiTag>
+            <UiTag v-else-if="row.state === 'pending'" tone="orange" size="sm">待处理</UiTag>
+            <UiTag v-else tone="red" size="sm">异常</UiTag>
+          </div>
+          <p class="archive-exam-score-gate-panel__hint">{{ row.hint }}</p>
         </div>
       </div>
-      <div class="score-gate">
-        <span
-          class="score-gate__check"
-          :class="gate.allScoresPublished ? 'score-gate__check--pass' : 'score-gate__check--fail'"
-        >
-          {{ gate.allScoresPublished ? '✓' : '✗' }}
-        </span>
-        <div>
-          <div class="score-gate__title">成绩已发布</div>
-          <div class="score-gate__hint">POST /api/mark/exams/final-scores/publish</div>
+
+      <div v-if="showStats && hasGradablePapers" class="archive-exam-score-gate-panel__stats">
+        <div class="archive-exam-score-gate-panel__stat">
+          <div class="archive-exam-score-gate-panel__stat-val">
+            {{ gate.gradablePaperCount ?? 0 }}
+          </div>
+          <div class="archive-exam-score-gate-panel__stat-label">考生总数</div>
         </div>
-      </div>
-      <div v-if="showStats" class="archive-exam-score-gate-panel__stats">
-        <div class="stat-card">
-          <div class="stat-card__val">{{ gate.gradablePaperCount ?? 0 }}</div>
-          <div class="stat-card__label">考生总数</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-card__val stat-card__val--ok">{{ gate.publishedScoreCount ?? 0 }}</div>
-          <div class="stat-card__label">成绩已录入</div>
-        </div>
-        <div class="stat-card">
+        <div class="archive-exam-score-gate-panel__stat">
           <div
-            class="stat-card__val"
-            :class="missingStudents > 0 ? 'stat-card__val--danger' : 'stat-card__val--ok'"
+            class="archive-exam-score-gate-panel__stat-val archive-exam-score-gate-panel__stat-val--ok"
+          >
+            {{ gate.publishedScoreCount ?? 0 }}
+          </div>
+          <div class="archive-exam-score-gate-panel__stat-label">成绩已录入</div>
+        </div>
+        <div class="archive-exam-score-gate-panel__stat">
+          <div
+            class="archive-exam-score-gate-panel__stat-val"
+            :class="
+              missingStudents > 0
+                ? 'archive-exam-score-gate-panel__stat-val--danger'
+                : 'archive-exam-score-gate-panel__stat-val--ok'
+            "
           >
             {{ missingStudents }}
           </div>
-          <div class="stat-card__label">缺失考生</div>
+          <div class="archive-exam-score-gate-panel__stat-label">缺失考生</div>
         </div>
       </div>
+      <p v-else-if="showStats" class="archive-exam-score-gate-panel__empty-papers">
+        本场考试无可评阅试卷，成绩门禁已按零卷口径满足；完成关考后即可进入建卷。
+      </p>
     </div>
   </a-spin>
 </template>
 
 <script setup lang="ts">
 import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
+import CheckOutlined from '@ant-design/icons-vue/CheckOutlined'
+import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
+import CloseOutlined from '@ant-design/icons-vue/CloseOutlined'
 import { computed } from 'vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import {
+  buildExamClosedGateHint,
+  buildScoresPublishedGateHint,
+} from '@/composables/useExamArchiveGateHint'
 
 defineOptions({ name: 'ArchiveExamScoreGatePanel' })
 
@@ -66,23 +84,182 @@ const props = withDefaults(
   },
 )
 
+type GateCheckState = 'pass' | 'pending' | 'fail'
+
+const gateAnomaly = computed(
+  () => props.gate?.examClosed === true && props.gate?.allScoresPublished !== true,
+)
+
+const hasGradablePapers = computed(() => (props.gate?.gradablePaperCount ?? 0) > 0)
+
+const examClosedHint = computed(() => (props.gate ? buildExamClosedGateHint(props.gate) : ''))
+
+const scoresPublishedHint = computed(() =>
+  props.gate ? buildScoresPublishedGateHint(props.gate) : '',
+)
+
 const missingStudents = computed(() => {
   const total = props.gate?.gradablePaperCount ?? 0
   const published = props.gate?.publishedScoreCount ?? 0
   return Math.max(total - published, 0)
 })
+
+/** 双门禁单项：已满足为 pass，流程中待办为 pending，状态矛盾为 fail。 */
+function resolveExamClosedState(gate: ArchiveVolumeExamGateResponse): GateCheckState {
+  if (gate.examClosed) {
+    return gate.allScoresPublished ? 'pass' : 'fail'
+  }
+  return 'pending'
+}
+
+function resolveScoresPublishedState(gate: ArchiveVolumeExamGateResponse): GateCheckState {
+  if (gate.allScoresPublished) {
+    return 'pass'
+  }
+  if (gate.examClosed) {
+    return 'fail'
+  }
+  return 'pending'
+}
+
+const gateRows = computed(() => {
+  const gate = props.gate
+  if (!gate) {
+    return []
+  }
+  return [
+    {
+      key: 'exam-closed',
+      state: resolveExamClosedState(gate),
+      title: '考试已关闭',
+      hint: examClosedHint.value,
+    },
+    {
+      key: 'scores-published',
+      state: resolveScoresPublishedState(gate),
+      title: '成绩已发布',
+      hint: scoresPublishedHint.value,
+    },
+  ]
+})
+
+defineExpose({
+  gateAnomaly,
+})
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .archive-exam-score-gate-panel {
   display: flex;
   flex-direction: column;
   gap: var(--dp-space-3, 12px);
 }
 
+.archive-exam-score-gate-panel__row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--dp-space-3, 12px);
+  padding: var(--dp-space-3, 12px);
+  border-radius: var(--dp-radius-md, 8px);
+  background: var(--dp-surface-sunken, #f8fafc);
+}
+
+.archive-exam-score-gate-panel__check {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 11px;
+
+  &--pass {
+    color: #fff;
+    background: var(--dp-green-600, #16a34a);
+  }
+
+  &--pending {
+    color: var(--dp-orange-700, #c2410c);
+    background: var(--dp-orange-50, #fff7ed);
+    border: 1.5px solid var(--dp-orange-200, #fed7aa);
+  }
+
+  &--fail {
+    color: var(--dp-red-700, #b91c1c);
+    background: var(--dp-red-50, #fef2f2);
+    border: 1.5px solid var(--dp-red-200, #fecaca);
+  }
+}
+
+.archive-exam-score-gate-panel__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.archive-exam-score-gate-panel__title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--dp-space-2, 8px);
+}
+
+.archive-exam-score-gate-panel__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dp-text-primary, #0f172a);
+}
+
+.archive-exam-score-gate-panel__hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dp-text-secondary, #64748b);
+}
+
 .archive-exam-score-gate-panel__stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--dp-space-3, 12px);
+  margin-top: var(--dp-space-1, 4px);
+}
+
+.archive-exam-score-gate-panel__stat {
+  padding: var(--dp-space-3, 12px);
+  border: 1px solid var(--dp-border-light, #eef0f3);
+  border-radius: var(--dp-radius-md, 8px);
+  background: var(--dp-surface, #fff);
+}
+
+.archive-exam-score-gate-panel__stat-val {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  color: var(--dp-text-primary, #0f172a);
+
+  &--ok {
+    color: var(--dp-green-700, #15803d);
+  }
+
+  &--danger {
+    color: var(--dp-red-700, #b91c1c);
+  }
+}
+
+.archive-exam-score-gate-panel__stat-label {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--dp-text-secondary, #64748b);
+}
+
+.archive-exam-score-gate-panel__empty-papers {
+  margin: 0;
+  padding: var(--dp-space-3, 12px);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--dp-text-secondary, #64748b);
+  border-radius: var(--dp-radius-md, 8px);
+  background: var(--dp-surface-sunken, #f8fafc);
 }
 </style>

@@ -7,9 +7,8 @@
         <WorkbenchSurfaceCard flush class="exam-overview-dash__status-card">
           <article class="exam-status-card">
             <header class="exam-status-card__head">
-              <div>
-                <h2 class="exam-status-card__title">{{ detail.examName }}</h2>
-                <p v-if="examMeta" class="exam-status-card__meta">{{ examMeta }}</p>
+              <div class="exam-status-card__head-main">
+                <p v-if="examMeta" class="exam-status-card__meta exam-status-card__meta--lead">{{ examMeta }}</p>
               </div>
               <UiTag v-if="stageTagLabel" :tone="stageTagTone" size="sm">{{ stageTagLabel }}</UiTag>
             </header>
@@ -37,11 +36,11 @@
                 </div>
                 <div class="exam-status-card__stat-label">可阅卷</div>
               </div>
-              <div>
+              <div v-if="markingPercent > 0 || (markingProgress?.totalQuestionGradeCount ?? 0) > 0">
                 <div class="exam-status-card__stat-value exam-status-card__stat-value--blue">{{ markingPercent }}%</div>
                 <div class="exam-status-card__stat-label">批阅进度</div>
               </div>
-              <div>
+              <div v-if="(markingProgress?.scanAttentionCount ?? 0) > 0">
                 <div
                   class="exam-status-card__stat-value"
                   :class="{ 'exam-status-card__stat-value--orange': (markingProgress?.scanAttentionCount ?? 0) > 0 }"
@@ -58,14 +57,14 @@
           </article>
         </WorkbenchSurfaceCard>
 
-        <div v-if="taskSummary" class="analytics-stats">
-          <div class="analytics-stats__card">
-            <div class="analytics-stats__value">{{ taskSummary.totalTaskCount }}</div>
+        <div v-if="showTaskAnalyticsRow" class="analytics-stats">
+          <div v-if="(taskSummary?.totalTaskCount ?? 0) > 0" class="analytics-stats__card">
+            <div class="analytics-stats__value">{{ taskSummary!.totalTaskCount }}</div>
             <div class="analytics-stats__label">总任务数</div>
           </div>
-          <div class="analytics-stats__card">
+          <div v-if="(taskSummary?.finalizedTaskCount ?? 0) > 0" class="analytics-stats__card">
             <div class="analytics-stats__value analytics-stats__value--green">
-              {{ taskSummary.finalizedTaskCount }}
+              {{ taskSummary!.finalizedTaskCount }}
             </div>
             <div class="analytics-stats__label">已完成</div>
           </div>
@@ -81,9 +80,9 @@
             </div>
             <div class="analytics-stats__label">评阅一致性</div>
           </div>
-          <div v-else class="analytics-stats__card">
+          <div v-else-if="(taskSummary?.pendingTaskCount ?? 0) > 0" class="analytics-stats__card">
             <div class="analytics-stats__value analytics-stats__value--warn">
-              {{ taskSummary.pendingTaskCount }}
+              {{ taskSummary!.pendingTaskCount }}
             </div>
             <div class="analytics-stats__label">待完成</div>
           </div>
@@ -135,6 +134,7 @@
           </template>
           <PendingTodoFeed
             :todos="pendingTodos"
+            title-source="todo-type"
             empty-description="当前考试暂无待处理事项"
             @navigate="(route, id) => emit('todo-navigate', route, id)"
           />
@@ -218,6 +218,19 @@ const { chartOption: qualityRadarOption } = useChartOption(() =>
 
 const examConsistencyRate = computed(() => props.dashboardPanel?.qualitySummary?.examConsistencyRate ?? null)
 
+const showTaskAnalyticsRow = computed(() => {
+  const summary = taskSummary.value
+  if (!summary) {
+    return false
+  }
+  if (examConsistencyRate.value != null) {
+    return true
+  }
+  return summary.totalTaskCount > 0
+    || summary.finalizedTaskCount > 0
+    || summary.pendingTaskCount > 0
+})
+
 const consistencyValueClass = computed(() => {
   const rate = examConsistencyRate.value
   if (rate == null) return ''
@@ -261,6 +274,14 @@ function qualityFillClass(rate: number): string {
 .exam-overview-dash {
   &__status-card {
     margin-bottom: var(--dp-space-4);
+  }
+
+  :deep(.exam-status-card__meta--lead) {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--dp-text-secondary);
+    line-height: 1.5;
   }
 
   &__quality { margin-bottom: var(--dp-space-4); }

@@ -8,10 +8,7 @@
     >
       <template v-for="group in menuGroups" :key="group.key">
         <a-menu-item-group v-if="!collapsed" :title="group.title">
-          <a-menu-item
-            v-for="item in group.items"
-            :key="item.key"
-          >
+          <a-menu-item v-for="item in group.items" :key="item.key">
             <template #icon>
               <ExamSubSidebarMenuIcon
                 :icon="menuIconMap[item.key]"
@@ -29,10 +26,7 @@
           </a-menu-item>
         </a-menu-item-group>
         <template v-else>
-          <a-menu-item
-            v-for="item in group.items"
-            :key="item.key"
-          >
+          <a-menu-item v-for="item in group.items" :key="item.key">
             <template #icon>
               <ExamSubSidebarMenuIcon
                 :icon="menuIconMap[item.key]"
@@ -50,12 +44,13 @@
 <script lang="ts" setup>
 import type { MenuInfo } from 'ant-design-vue/es/menu/src/interface'
 import type { Component } from 'vue'
+import { computed, inject } from 'vue'
 import type { ExamWorkspaceJourneyKey } from '@/constants/exam-journey'
 import type { ExamWorkspaceMenuKey } from '@/constants/exam-workspace-menu'
-import { computed } from 'vue'
+import { getMenuGroupsForJourney } from '@/constants/exam-workspace-menu'
 import ExamSubSidebarMenuIcon from '@/components/workbench/ExamSubSidebarMenuIcon.vue'
 import { useExperienceAssistTrialPendingCount } from '@/composables/useExperienceAssistTrialPendingCount'
-import { getMenuGroupsForJourney } from '@/constants/exam-workspace-menu'
+import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
 
 defineOptions({
   name: 'ExamSubSidebarNav',
@@ -74,9 +69,12 @@ const emit = defineEmits<{
 
 const EXPERIENCE_ASSIST_MENU_KEY = 'marking-experience-assist'
 
+const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
+
 const menuGroups = computed(() =>
   getMenuGroupsForJourney(props.activeJourneyKey, {
     experienceAssistPendingCount: experienceAssistPendingCount.value,
+    tenantExperienceAssistEnabled: workbenchContext?.snapshot.value?.tenantExperienceAssistEnabled,
   }),
 )
 const { pendingCount: experienceAssistPendingCount } = useExperienceAssistTrialPendingCount()

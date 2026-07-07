@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import type { PortfolioGapTaskSummaryInternalVO } from '@/apis/mark/scanner-kiosk'
+import { createAdhocDispatchTicket, pageKioskPortfolioGapTasks } from '@/apis/mark/scanner-kiosk'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { createAdhocDispatchTicket, pageKioskPortfolioGapTasks } from '@/apis/mark/scanner-kiosk'
 import { PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { PortfolioCollectModeCode } from '@/types/enums/portfolio-collect-mode-enum'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
@@ -34,9 +35,7 @@ const pageSize = ref(20)
 const total = ref(0)
 const tasks = ref<PortfolioGapTaskSummaryInternalVO[]>([])
 
-const canPick = computed(() =>
-  Boolean(props.scannerDeviceId && props.scannerStationId),
-)
+const canPick = computed(() => Boolean(props.scannerDeviceId && props.scannerStationId))
 
 const columns = [
   { title: '分类', key: 'categoryName', dataIndex: 'categoryName', width: 120 },
@@ -49,7 +48,7 @@ const columns = [
 
 watch(
   () => props.open,
-  open => {
+  (open) => {
     if (open) {
       pageNum.value = 1
       keyword.value = ''
@@ -69,19 +68,17 @@ async function loadTasks() {
       keyword: keyword.value.trim() || undefined,
     })
     tasks.value = page.list
-    total.value = Number(page.total)
-  }
-  catch (error) {
+    total.value = page.total
+  } catch (error) {
     errorMessage.value = getUserErrorMessage(error)
     tasks.value = []
     total.value = 0
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
 
-function handlePageChange(pageEvent: { current: number, pageSize: number }) {
+function handlePageChange(pageEvent: { current: number; pageSize: number }) {
   pageNum.value = pageEvent.current
   pageSize.value = pageEvent.pageSize
   void loadTasks()
@@ -113,11 +110,9 @@ async function openGapScan(row: PortfolioGapTaskSummaryInternalVO) {
     }
     emit('update:open', false)
     void router.push(`/scanner-kiosk/dispatch/${created.ticket.ticketId}`)
-  }
-  catch (error) {
+  } catch (error) {
     message.error(getUserErrorMessage(error))
-  }
-  finally {
+  } finally {
     pickingTaskId.value = ''
   }
 }
@@ -141,7 +136,12 @@ async function openGapScan(row: PortfolioGapTaskSummaryInternalVO) {
           placeholder="搜索任务标题"
           allow-clear
           class="kiosk-portfolio-pick__search"
-          @search="() => { pageNum = 1; loadTasks() }"
+          @search="
+            () => {
+              pageNum = 1
+              loadTasks()
+            }
+          "
         />
         <UiButton size="sm" variant="outline" :disabled="loading" @click="loadTasks">
           刷新
@@ -170,15 +170,13 @@ async function openGapScan(row: PortfolioGapTaskSummaryInternalVO) {
             <UiTag tone="blue" size="sm">{{ gapStatusLabel(record.taskStatus) }}</UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiButton
-              size="sm"
-              variant="primary"
-              :loading="pickingTaskId === record.id"
-              :disabled="!canPick"
-              @click="openGapScan(record)"
-            >
-              开单
-            </UiButton>
+            <UiTableActions
+              :items="[
+                { key: 'pick', label: '开单', disabled: !canPick || pickingTaskId === record.id },
+              ]"
+              split
+              @action="() => openGapScan(record)"
+            />
           </template>
         </template>
       </UiDataTable>

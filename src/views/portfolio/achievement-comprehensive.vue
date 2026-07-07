@@ -4,11 +4,11 @@ import type {
   PortfolioAchievementStatsVO,
   PortfolioDevelopmentRecordVO,
 } from '@/apis/portfolio/teacher-platform'
+import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import {
   PortfolioDevelopmentRecordTypeCode,
   PortfolioDevelopmentRecordTypeDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -16,6 +16,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -35,7 +36,7 @@ const stats = ref<PortfolioAchievementStatsVO | null>(null)
 const { hydrateTeacherLabels, teacherLabel } = usePortfolioTeacherSearch()
 const query = reactive({
   pageNum: 1,
-  pageSize: 20,
+  pageSize: DEFAULT_LIST_PAGE_SIZE,
   searchText: '',
   levelCode: '',
   nationalOnly: false,

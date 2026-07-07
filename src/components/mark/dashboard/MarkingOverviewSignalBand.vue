@@ -53,7 +53,6 @@ const metrics = computed<SignalMetric[]>(() => {
 
   const activeExamCount = m?.activeExamCount ?? dash
   const unpublishedCount = m?.confirmedUnpublishedScoreCount ?? 0
-
   const arbitrationCount = m?.arbitrationPendingCount ?? 0
   const spotCheckCount = m?.spotCheckPendingCount ?? 0
 
@@ -83,50 +82,64 @@ const metrics = computed<SignalMetric[]>(() => {
     })
   }
 
-  tiles.push(
-    {
+  if (typeof pendingExceptionCount === 'number' && pendingExceptionCount > 0) {
+    tiles.push({
+      key: 'exceptions',
+      label: '待处理异常',
+      value: pendingExceptionCount,
+      unit: '项',
+      tone: 'red',
+      trendPolarity: 'negative',
+      clickable: true,
+    })
+  }
+
+  if (unpublishedCount > 0) {
+    tiles.push({
+      key: 'unpublished',
+      label: '待发布成绩',
+      value: unpublishedCount,
+      unit: '份',
+      tone: 'orange',
+      trendPolarity: 'negative',
+      clickable: true,
+    })
+  }
+
+  if (typeof activeExamCount === 'number' && activeExamCount > 0) {
+    tiles.push({
       key: 'active',
       label: '进行中考试',
       value: activeExamCount,
       unit: m ? '场' : undefined,
       tone: 'blue',
-      clickable: typeof activeExamCount === 'number' && activeExamCount > 0,
-    },
-    {
-      key: 'graded-questions',
-      label: '已评题目',
-      value: progress?.confirmedQuestionGradeCount ?? dash,
-      unit: progress ? '题' : undefined,
-      tone: 'green',
-    },
-    {
+      clickable: true,
+    })
+  }
+
+  if (progress && totalQuestions > 0) {
+    tiles.push({
       key: 'marking-progress',
       label: '阅卷进度',
-      value: progress ? markingPercent : dash,
-      unit: progress ? '%' : undefined,
+      value: markingPercent,
+      unit: '%',
       tone: 'blue',
       trendPolarity: 'positive',
-    },
-    {
-      key: 'exceptions',
-      label: '待处理异常',
-      value: pendingExceptionCount,
-      unit: progress ? '项' : undefined,
-      tone: typeof pendingExceptionCount === 'number' && pendingExceptionCount > 0 ? 'red' : 'gray',
-      trendPolarity: 'negative',
-      clickable: typeof pendingExceptionCount === 'number' && pendingExceptionCount > 0,
-    },
-    {
-      key: 'unpublished',
-      label: '待发布成绩',
-      value: m?.confirmedUnpublishedScoreCount ?? dash,
-      unit: m ? '份' : undefined,
-      tone: unpublishedCount > 0 ? 'orange' : 'gray',
-      trendPolarity: 'negative',
-      clickable: unpublishedCount > 0,
-    },
-  )
+      helper: `${confirmedQuestions.toLocaleString('zh-CN')} / ${totalQuestions.toLocaleString('zh-CN')} 题`,
+    })
+  }
 
-  return tiles
+  if (!tiles.length && !props.placeholder && (props.filterContext?.filteredExamCount ?? 0) > 0) {
+    tiles.push({
+      key: 'active',
+      label: '筛选范围内考试',
+      value: props.filterContext?.filteredExamCount ?? 0,
+      unit: '场',
+      tone: 'gray',
+      clickable: typeof activeExamCount === 'number' && activeExamCount > 0,
+    })
+  }
+
+  return tiles.slice(0, 6)
 })
 </script>

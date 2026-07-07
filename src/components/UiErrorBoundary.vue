@@ -15,8 +15,8 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onErrorCaptured, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onErrorCaptured, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import Icon404 from '@/components/icons/Icon404.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { useAuthStore } from '@/stores'
@@ -26,12 +26,23 @@ defineOptions({ name: 'UiErrorBoundary' })
 
 const hasError = ref(false)
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
-onErrorCaptured(() => {
+onErrorCaptured((error) => {
+  if (import.meta.env.DEV) {
+    console.error('[UiErrorBoundary]', error)
+  }
   hasError.value = true
   return false
 })
+
+watch(
+  () => route.fullPath,
+  () => {
+    hasError.value = false
+  },
+)
 
 function resolveHomePath(): string {
   const role = authStore.userRole

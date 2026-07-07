@@ -1,46 +1,50 @@
 <template>
-  <div class="message-popup">
-    <!-- 标题栏 -->
-    <div class="popup-header">
-      <span class="header-title">未读消息（{{ totalUnreadCount }}）</span>
+  <div class="notif-panel" :class="`notif-panel--${variant}`">
+    <div class="notif-head">
+      <span class="notif-head-title">通知</span>
+      <div class="notif-head-actions">
+        <button
+          type="button"
+          class="notif-mark-all"
+          :class="{ 'notif-mark-all--disabled': !hasUnreadMessages || readAllLoading }"
+          :disabled="!hasUnreadMessages || readAllLoading"
+          @click="handleReadAll"
+        >
+          {{ readAllLoading ? '处理中...' : '全部已读' }}
+        </button>
+      </div>
     </div>
 
-    <!-- 消息列表 -->
-    <div class="popup-body">
-      <a-spin :spinning="loading" style="width: 100%">
-        <div v-if="!messageList || messageList.length === 0" class="empty-state">
-          <span>暂无未读消息</span>
+    <a-spin :spinning="loading">
+      <div class="notif-list">
+        <div v-if="loadError" class="notif-empty notif-empty--error">
+          <span>加载失败，</span>
+          <button type="button" class="notif-retry" @click="getMessageData">点击重试</button>
         </div>
 
-        <div v-else class="message-list">
+        <div v-else-if="!messageList.length" class="notif-empty">暂无未读消息</div>
+
+        <template v-else>
           <div
             v-for="item in messageList"
             :key="item.id"
-            class="message-item"
+            class="notif-item notif-item--unread"
             @click="handleItemClick(item)"
           >
-            <div class="item-title">{{ item.subject }}</div>
-            <div v-if="item.content" class="item-content">{{ item.content }}</div>
-            <div class="item-time">{{ formatRelativeTime(item.sendTime) }}</div>
+            <div class="notif-icon" :class="`notif-icon--${item.tone}`">{{ item.iconText }}</div>
+            <div class="notif-body">
+              <div class="notif-title">{{ item.subject }}</div>
+              <div v-if="item.content" class="notif-desc">{{ item.content }}</div>
+              <div class="notif-time">{{ formatRelativeTime(item.sendTime) }}</div>
+            </div>
+            <div class="notif-unread-dot" />
           </div>
-        </div>
-      </a-spin>
-    </div>
+        </template>
+      </div>
+    </a-spin>
 
-    <!-- 底部操作栏 -->
-    <div class="popup-footer">
-      <a class="footer-link" @click="goToMessageCenter">
-        查看更多
-        <ExportOutlined class="link-icon" />
-      </a>
-      <span class="footer-divider">|</span>
-      <a
-        class="footer-link"
-        :class="{ disabled: !hasUnreadMessages || readAllLoading }"
-        @click="handleReadAll"
-      >
-        {{ readAllLoading ? '处理中...' : '全部已读' }}
-      </a>
+    <div class="notif-foot">
+      <button type="button" class="notif-more" @click="goToMessageCenter">查看更多</button>
     </div>
   </div>
 </template>
@@ -50,59 +54,123 @@ import type {
   InboxMessageListItemDTO,
   PublishedSystemAnnouncementResponse,
 } from '@/apis/edu/message'
-import ExportOutlined from '@ant-design/icons-vue/ExportOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { storeToRefs } from 'pinia'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   getInboxMessages,
   getPublishedAnnouncementList,
   markAllAnnouncementsAsRead,
   markAllAsRead,
+  MessageFolderEnum,
 } from '@/apis/edu/message'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { storeToRefs } from 'pinia'
+import { computed, onMounted, reactive, ref } from 'vue'
 import router from '@/router'
 import { useNotificationStore } from '@/stores/modules/notification'
-import { showUserError } from '@/utils/error-handler'
+import { isErrorHandled, showUserError } from '@/utils/error-handler'
+
+const props = withDefaults(
+  defineProps<{
+    variant?: 'default' | 'workbench'
+  }>(),
+  {
+    variant: 'default',
+  },
+)
 
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'readall-success'): void
 }>()
 
-// 常量定义
 const MESSAGE_LIST_PAGE_SIZE = 5
 const MESSAGE_CONTENT_MAX_LENGTH = 50
 
-// 统一的消息列表项类型
+type NotifTone = 'warn' | 'success' | 'error' | 'info'
+
 interface UnifiedMessageItem {
   id: string
   subject: string
   content?: string
   sendTime: string
   type: 'inbox' | 'announcement'
+  tone: NotifTone
+  iconText: string
   metadata?: { jumpUrl?: string }
 }
 
-// 状态定义
+const NOTIF_ICON: Record<NotifTone, string> = {
+  warn: '⚠',
+  error: '✕',
+  success: '✓',
+  info: '◉',
+}
+
 const messageList = ref<UnifiedMessageItem[]>([])
 const loading = ref(false)
+const loadError = ref(false)
 const readAllLoading = ref(false)
 
 const inboxQueryParam = reactive({
+  folder: MessageFolderEnum.INBOX,
   isRead: false,
   sort: ['createTime,desc'],
   pageNum: 1,
   pageSize: MESSAGE_LIST_PAGE_SIZE,
 })
 
-// 使用通知 Store 的统一未读计数（后端已合并站内信 + 系统公告）
 const notificationStore = useNotificationStore()
 const { totalUnreadCount } = storeToRefs(notificationStore)
 
-// 是否有未读消息（用于控制「全部已读」按钮状态）
 const hasUnreadMessages = computed(() => messageList.value.length > 0 || totalUnreadCount.value > 0)
-// 格式化相对时间：今天 HH:mm / 昨天 HH:mm / 今年 MM-DD HH:mm / 更早 YYYY-MM-DD
+
+/** 按通知类型映射原型图标语义色 */
+function resolveNotifTone(
+  messageTypeCode?: string,
+  itemType?: UnifiedMessageItem['type'],
+): NotifTone {
+  if (itemType === 'announcement') return 'info'
+  if (!messageTypeCode) return 'info'
+  const code = messageTypeCode.toUpperCase()
+  if (
+    code.includes('FAILED') ||
+    code.includes('ERROR') ||
+    code.includes('OVERDUE') ||
+    code.includes('INCONSISTENCY')
+  ) {
+    return 'error'
+  }
+  if (
+    code.includes('REMINDER') ||
+    code.includes('PENDING') ||
+    code.includes('WARNING') ||
+    code.includes('UPCOMING')
+  ) {
+    return 'warn'
+  }
+  if (
+    code.includes('COMPLETED') ||
+    code.includes('PUBLISHED') ||
+    code.includes('CONFIRMED') ||
+    code.includes('SUCCESS')
+  ) {
+    return 'success'
+  }
+  return 'info'
+}
+
+function buildMessageItem(
+  base: Omit<UnifiedMessageItem, 'tone' | 'iconText'>,
+  messageTypeCode?: string,
+): UnifiedMessageItem {
+  const tone = resolveNotifTone(messageTypeCode, base.type)
+  return {
+    ...base,
+    tone,
+    iconText: NOTIF_ICON[tone],
+  }
+}
+
 const formatRelativeTime = (time?: string): string => {
   if (!time) return ''
 
@@ -111,23 +179,25 @@ const formatRelativeTime = (time?: string): string => {
 
   if (!date.isValid()) return time
 
+  const diffMinutes = now.diff(date, 'minute')
+  if (diffMinutes < 1) return '刚刚'
+  if (diffMinutes < 60) return `${diffMinutes}分钟前`
   if (date.isSame(now, 'day')) return date.format('HH:mm')
   if (date.isSame(now.subtract(1, 'day'), 'day')) return `昨天 ${date.format('HH:mm')}`
   if (date.isSame(now, 'year')) return date.format('MM-DD HH:mm')
   return date.format('YYYY-MM-DD')
 }
 
-// 去除HTML标签并截取内容
 const stripHtmlAndTruncate = (html?: string, maxLength = MESSAGE_CONTENT_MAX_LENGTH): string => {
   if (!html) return ''
   const text = html.replace(/<[^>]*>/g, '').trim()
-  return text.length > maxLength ? text.substring(0, maxLength) + '...' : text
+  return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text
 }
 
-// 查询消息数据（同时获取站内信和系统公告，单个失败不影响另一个）
 const getMessageData = async () => {
   try {
     loading.value = true
+    loadError.value = false
 
     const results = await Promise.allSettled([
       getInboxMessages(inboxQueryParam),
@@ -142,41 +212,64 @@ const getMessageData = async () => {
     const inboxResult = results[0]
     const announcementResult = results[1]
 
-    // 两个接口都失败才展示错误状态
     if (inboxResult.status === 'rejected' && announcementResult.status === 'rejected') {
+      loadError.value = true
       messageList.value = []
-      showUserError(inboxResult.reason, '未读消息加载失败，请稍后重试')
+      if (!isErrorHandled(inboxResult.reason)) {
+        showUserError(inboxResult.reason, '未读消息加载失败，请稍后重试')
+      }
       return
     }
 
-    const inboxMessages: UnifiedMessageItem[]
-      = inboxResult.status === 'fulfilled'
-        ? inboxResult.value.list.map((item: InboxMessageListItemDTO) => ({
-            id: item.id,
-            subject: item.subject,
-            content: stripHtmlAndTruncate(item.contentHtml),
-            sendTime: item.sendTime,
-            type: 'inbox',
-            metadata: item.metadata,
-          }))
+    const inboxMessages: UnifiedMessageItem[] =
+      inboxResult.status === 'fulfilled'
+        ? inboxResult.value.list.map((item: InboxMessageListItemDTO) =>
+            buildMessageItem(
+              {
+                id: item.id,
+                subject: item.subject,
+                content: stripHtmlAndTruncate(item.contentHtml),
+                sendTime: item.sendTime,
+                type: 'inbox',
+                metadata: item.metadata,
+              },
+              item.messageType,
+            ),
+          )
         : []
 
-    const announcementMessages: UnifiedMessageItem[]
-      = announcementResult.status === 'fulfilled'
-        ? announcementResult.value.list.map((item: PublishedSystemAnnouncementResponse) => ({
-            id: item.id,
-            subject: `【公告】${item.title}`,
-            content: stripHtmlAndTruncate(item.content),
-            sendTime: item.publishTime,
-            type: 'announcement',
-            metadata: { jumpUrl: `/messages?tab=notice&id=${item.id}` },
-          }))
+    const announcementMessages: UnifiedMessageItem[] =
+      announcementResult.status === 'fulfilled'
+        ? announcementResult.value.list.map((item: PublishedSystemAnnouncementResponse) =>
+            buildMessageItem({
+              id: item.id,
+              subject: item.title,
+              content: stripHtmlAndTruncate(item.content),
+              sendTime: item.publishTime,
+              type: 'announcement',
+              metadata: { jumpUrl: `/messages?tab=notice&id=${item.id}` },
+            }),
+          )
         : []
+
+    if (
+      inboxResult.status === 'rejected' &&
+      inboxMessages.length === 0 &&
+      announcementMessages.length === 0
+    ) {
+      loadError.value = true
+      messageList.value = []
+      if (!isErrorHandled(inboxResult.reason)) {
+        showUserError(inboxResult.reason, '未读消息加载失败，请稍后重试')
+      }
+      return
+    }
 
     const allMessages = [...inboxMessages, ...announcementMessages]
     allMessages.sort((a, b) => new Date(b.sendTime).getTime() - new Date(a.sendTime).getTime())
     messageList.value = allMessages.slice(0, MESSAGE_LIST_PAGE_SIZE)
   } catch (error) {
+    loadError.value = true
     messageList.value = []
     showUserError(error, '未读消息加载失败，请稍后重试')
   } finally {
@@ -184,7 +277,6 @@ const getMessageData = async () => {
   }
 }
 
-// 点击消息项
 const handleItemClick = (item: UnifiedMessageItem) => {
   emit('close')
   if (item.metadata?.jumpUrl) {
@@ -195,13 +287,11 @@ const handleItemClick = (item: UnifiedMessageItem) => {
   }
 }
 
-// 跳转到消息中心
 const goToMessageCenter = () => {
   emit('close')
   router.push({ path: '/messages', query: { tab: 'msg' } })
 }
 
-// 全部已读操作（只 emit，由父组件统一刷新计数，避免双重请求）
 const handleReadAll = async () => {
   if (!hasUnreadMessages.value || readAllLoading.value) return
 
@@ -209,7 +299,6 @@ const handleReadAll = async () => {
     readAllLoading.value = true
     await Promise.all([markAllAsRead(), markAllAnnouncementsAsRead()])
     message.success('已全部标记为已读')
-    // 清空当前列表，计数由父组件刷新
     messageList.value = []
     emit('readall-success')
   } catch (error) {
@@ -218,137 +307,215 @@ const handleReadAll = async () => {
     readAllLoading.value = false
   }
 }
+
 onMounted(() => {
   getMessageData()
 })
 </script>
 
 <style lang="scss" scoped>
-.message-popup {
+.notif-panel {
   width: 320px;
-  background: var(--ant-color-bg-elevated);
-  border-radius: var(--dp-radius-xs);
+  max-height: 440px;
+  background: var(--ant-color-bg-container);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 
-  // 标题栏
-  .popup-header {
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--ant-color-border-secondary);
+  &--workbench {
+    width: 360px;
+  }
+}
 
-    .header-title {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--ant-color-text);
-    }
+.notif-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+}
+
+.notif-head-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ant-color-text);
+}
+
+.notif-head-actions {
+  margin-left: auto;
+}
+
+.notif-mark-all {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 11px;
+  color: var(--ant-color-primary);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    color: var(--ant-color-primary-hover);
   }
 
-  // 消息列表区域
-  .popup-body {
-    max-height: 380px;
-    overflow-y: auto;
+  &--disabled,
+  &:disabled {
+    color: var(--ant-color-text-quaternary);
+    cursor: not-allowed;
+  }
+}
 
-    &::-webkit-scrollbar {
-      width: 4px;
-    }
+.notif-list {
+  flex: 1;
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 4px;
 
-    &::-webkit-scrollbar-thumb {
-      background-color: var(--ant-color-fill-secondary);
-      border-radius: var(--dp-radius-xs);
-    }
-
-    .empty-state {
-      padding: 40px 16px;
-      text-align: center;
-      color: var(--ant-color-text-tertiary);
-      font-size: 13px;
-    }
-
-    .message-list {
-      .message-item {
-        padding: 12px 16px;
-        cursor: pointer;
-        transition: background-color 0.2s;
-        border-bottom: 1px solid var(--ant-color-border);
-
-        &:last-child {
-          border-bottom: none;
-        }
-
-        &:hover {
-          background-color: var(--ant-color-fill-quaternary);
-        }
-
-        .item-title {
-          font-size: 13px;
-          font-weight: 500;
-          color: var(--ant-color-text);
-          line-height: 1.5;
-          margin-bottom: 4px;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        .item-content {
-          font-size: 12px;
-          color: var(--ant-color-text-secondary);
-          line-height: 1.5;
-          margin-bottom: 4px;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          line-clamp: 2;
-          -webkit-box-orient: vertical;
-        }
-
-        .item-time {
-          font-size: 12px;
-          color: var(--ant-color-text-tertiary);
-        }
-      }
-    }
+  &::-webkit-scrollbar {
+    width: 4px;
   }
 
-  // 底部操作栏
-  .popup-footer {
-    padding: 10px 16px;
-    border-top: 1px solid var(--ant-color-border-secondary);
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  &::-webkit-scrollbar-thumb {
+    background: var(--ant-color-fill-secondary);
+    border-radius: 4px;
+  }
+}
 
-    .footer-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 2px;
-      font-size: 12px;
-      color: var(--ant-color-primary);
-      cursor: pointer;
-      transition: color 0.2s;
+.notif-empty {
+  padding: 40px 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ant-color-text-tertiary);
 
-      .link-icon {
-        font-size: 12px;
-      }
+  &--error {
+    color: var(--ant-color-error);
+  }
+}
 
-      &:hover {
-        color: var(--ant-color-primary-hover);
-      }
+.notif-retry {
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--ant-color-primary);
+  cursor: pointer;
+  font-size: inherit;
 
-      // 禁用状态
-      &.disabled {
-        color: var(--dp-text-disabled);
-        cursor: not-allowed;
+  &:hover {
+    color: var(--ant-color-primary-hover);
+  }
+}
 
-        &:hover {
-          color: var(--dp-text-disabled);
-        }
-      }
+.notif-item {
+  display: flex;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: var(--ant-color-fill-quaternary);
+  }
+
+  &--unread {
+    background: var(--ant-color-primary-bg);
+
+    &:hover {
+      background: color-mix(
+        in srgb,
+        var(--ant-color-primary-bg) 80%,
+        var(--ant-color-fill-quaternary) 20%
+      );
     }
+  }
+}
 
-    .footer-divider {
-      color: var(--ant-color-split);
-      font-size: 12px;
-    }
+.notif-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+
+  &--warn {
+    background: #fef3e2;
+    color: #e67e22;
+  }
+
+  &--success {
+    background: #ecfdf5;
+    color: #10b981;
+  }
+
+  &--error {
+    background: #fef2f2;
+    color: #ef4444;
+  }
+
+  &--info {
+    background: #eff6ff;
+    color: #3b82f6;
+  }
+}
+
+.notif-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.notif-title {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ant-color-text);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notif-desc {
+  font-size: 11px;
+  color: var(--ant-color-text-tertiary);
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notif-time {
+  font-size: 10px;
+  color: var(--ant-color-text-quaternary);
+  margin-top: 2px;
+}
+
+.notif-unread-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ant-color-primary);
+  flex-shrink: 0;
+  margin-top: 8px;
+}
+
+.notif-foot {
+  padding: 8px 20px 12px;
+  border-top: 1px solid var(--ant-color-border-secondary);
+  text-align: center;
+}
+
+.notif-more {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 12px;
+  color: var(--ant-color-primary);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--ant-color-primary-hover);
   }
 }
 </style>
