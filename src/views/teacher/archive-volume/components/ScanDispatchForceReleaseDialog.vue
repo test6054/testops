@@ -74,7 +74,7 @@ async function handleSubmit() {
       卷：{{ ticket.archiveSnapshot.archiveTitle }}
     </p>
     <p class="scan-dispatch-force-release__warn">
-      将释放设备锁并把派单退回待处理，操作写入审计日志。
+      将释放设备锁并把派单退回待处理；若已绑定进行中扫描工单，将同步废弃该工单并清除未提交页，操作写入审计日志。
     </p>
     <a-form layout="vertical">
       <a-form-item label="解锁原因" required>

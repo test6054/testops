@@ -27,6 +27,7 @@ export function useMarkWorkbenchSnapshot(examId: () => string) {
   } = storeToRefs(markStageStore)
   const refreshing = ref(false)
   const pollIntervalMs = ref(SNAPSHOT_POLL_BASE_MS)
+  let refreshGeneration = 0
 
   function shouldPollSnapshot(current: ExamWorkbenchStageSnapshotResponse | null): boolean {
     if (!current) {
@@ -56,18 +57,23 @@ export function useMarkWorkbenchSnapshot(examId: () => string) {
     const id = examId()
     const quiet = options?.quiet === true
     if (!id) {
+      refreshGeneration += 1
       markStageStore.reset()
       pollIntervalMs.value = SNAPSHOT_POLL_BASE_MS
       syncPollingRef?.()
       return
     }
     markStageStore.observeExam(id)
+    const generation = ++refreshGeneration
     if (!quiet) {
       markStageStore.setLoading(true)
       refreshing.value = true
     }
     try {
       const response = await getWorkbenchStageSnapshot(id)
+      if (generation !== refreshGeneration) {
+        return
+      }
       quietFailureCount = 0
       markStageStore.applySnapshot(response)
       if (shouldPollSnapshot(response)) {
@@ -80,6 +86,9 @@ export function useMarkWorkbenchSnapshot(examId: () => string) {
       }
       syncPollingRef?.()
     } catch (err) {
+      if (generation !== refreshGeneration) {
+        return
+      }
       if (quiet) {
         quietFailureCount += 1
         if (quietFailureCount >= 2) {
@@ -128,6 +137,7 @@ export function useMarkWorkbenchSnapshot(examId: () => string) {
       if (next === prev) {
         return
       }
+      refreshGeneration += 1
       quietFailureCount = 0
       pollIntervalMs.value = SNAPSHOT_POLL_BASE_MS
       void refreshSnapshot()

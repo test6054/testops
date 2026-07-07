@@ -72,10 +72,8 @@ export function useScorePublishPreconditions(options: {
       goToAbsenceConfirm()
       return false
     }
-    if (overview && !overview.readyToPublish && overview.blockedCount > 0) {
-      message.warning(
-        `仍有 ${overview.blockedCount} 项成绩风险未处置，请先完成确认或风险复核后再发布`,
-      )
+    if (overview && !overview.readyToPublish) {
+      message.warning('当前考试尚未满足发布前置条件，请先完成成绩确认或风险复核后再发布')
       return false
     }
     const panel = options.scorePanel.value
