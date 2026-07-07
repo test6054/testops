@@ -193,10 +193,18 @@ async function handleSubmit(): Promise<void> {
       },
     )
 
+    const submittedTaskIds = results.flatMap((item) => item.submittedTaskIds ?? [])
     const failed = results.find((item) => item.outcome === 'FAILED')
     if (failed) {
       progressFailed.value = true
-      message.error(failed.failureMessage ?? '批量提交失败')
+      message.error(
+        submittedTaskIds.length > 0
+          ? `${failed.failureMessage ?? '批量提交失败'}（已成功提交 ${submittedTaskIds.length} 份，请刷新后重试剩余任务）`
+          : (failed.failureMessage ?? '批量提交失败'),
+      )
+      if (submittedTaskIds.length > 0) {
+        emit('submitted')
+      }
       return
     }
 
@@ -205,7 +213,7 @@ async function handleSubmit(): Promise<void> {
       annotationWarning.value = warn.annotationWarning
       message.warning(warn.annotationWarning)
     } else {
-      message.success(`已成功提交 ${selectedTaskIds.value.length} 份任务`)
+      message.success(`已成功提交 ${submittedTaskIds.length} 份任务`)
     }
     emit('submitted')
     emit('update:open', false)

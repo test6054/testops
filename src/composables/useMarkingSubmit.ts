@@ -275,32 +275,40 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
       const results = await batchSubmitMarkingTasksInChunks(baseRequest, taskIds, (done, total) => {
         batchApplyProgress.value = { done, total }
       })
+      const submittedTaskIds = results.flatMap((item) => item.submittedTaskIds ?? [])
       const failed = results.find((item) => item.outcome === 'FAILED')
+      if (submittedTaskIds.length > 0) {
+        for (const submittedTaskId of submittedTaskIds) {
+          recordSubmit({
+            taskId: submittedTaskId,
+            examId: currentTask.examId,
+            groupId: currentTask.groupId,
+            score,
+            withdrawWindowMinutes: requireWithdrawWindowMinutes(),
+          })
+        }
+        await refreshSnapshot()
+        await options.loadTask()
+      }
       if (failed) {
         const failureMessage = failed.failureMessage ?? '批量提交失败'
         if (messageIncludesConflictHint(failureMessage, MarkingConflictHint.MULTI_RESPONSE_SLICE)) {
           promptMultiResponseSliceConflict(currentTask.examId, failureMessage)
           return
         }
-        message.error(failureMessage)
+        message.error(
+          submittedTaskIds.length > 0
+            ? `${failureMessage}（已成功提交 ${submittedTaskIds.length} 份，请刷新后重试剩余任务）`
+            : failureMessage,
+        )
         return
       }
       const warn = results.find((item) => item.outcome === 'WARN')
       if (warn?.annotationWarning) {
         message.warning(warn.annotationWarning)
       } else {
-        message.success(`已将 ${taskIds.length} 份同类卷应用 ${score} 分`)
+        message.success(`已将 ${submittedTaskIds.length} 份同类卷应用 ${score} 分`)
       }
-      for (const submittedTaskId of taskIds) {
-        recordSubmit({
-          taskId: submittedTaskId,
-          examId: currentTask.examId,
-          groupId: currentTask.groupId,
-          score,
-          withdrawWindowMinutes: requireWithdrawWindowMinutes(),
-        })
-      }
-      await refreshSnapshot()
     } catch (error) {
       handleSubmitFailure(error, currentTask.examId, '批量应用给分失败')
     } finally {
