@@ -1,4 +1,10 @@
 import type { AgentWireJsonObject } from './scanner-agent-local-wire'
+import type {
+  ExamScannerKioskContextVO,
+  ExamScannerScanConfigVO,
+  ScannerKioskScanMode,
+} from './scanner-kiosk'
+import { runContractGuard, throwUserFacing } from '@/utils/contract-guard'
 import {
   LOCAL_AGENT_WIRE_ERROR,
   requireAgentWireBoolean,
@@ -11,20 +17,14 @@ import {
   requireOptionalAgentWireInt32,
   requireOptionalAgentWireString,
 } from './scanner-agent-local-wire'
-import type {
-  ExamScannerKioskContextVO,
-  ExamScannerScanConfigVO,
-  ScannerKioskScanMode,
-} from './scanner-kiosk'
-import { runContractGuard, throwUserFacing } from '@/utils/contract-guard'
 
 const DEFAULT_AGENT_BASE_URL = 'http://127.0.0.1:18761'
 export const LOCAL_AGENT_UNAVAILABLE_ERROR = '本地扫描服务未连接，请确认一体机组件已启动'
 const LOCAL_AGENT_RESPONSE_ERROR = LOCAL_AGENT_WIRE_ERROR
 const LOCAL_AGENT_REQUEST_ERROR = '本地扫描服务处理失败，请检查扫描服务后重试'
 
-type LocalAgentJsonValue =
-  string | number | boolean | null | LocalAgentJsonObject | LocalAgentJsonValue[]
+type LocalAgentJsonValue
+  = string | number | boolean | null | LocalAgentJsonObject | LocalAgentJsonValue[]
 
 interface LocalAgentJsonObject {
   [key: string]: LocalAgentJsonValue | undefined
@@ -93,8 +93,8 @@ export const AGENT_HEALTH_STATUS_LABEL: Record<AgentHealthStatus, string> = {
 
 export type AgentDiagnosticStatus = 'OK' | 'WARNING'
 
-export type AgentUpdateStatus =
-  'NONE' | 'AVAILABLE' | 'DOWNLOADING' | 'DOWNLOADED' | 'INSTALLING' | 'INSTALLED' | 'FAILED'
+export type AgentUpdateStatus
+  = 'NONE' | 'AVAILABLE' | 'DOWNLOADING' | 'DOWNLOADED' | 'INSTALLING' | 'INSTALLED' | 'FAILED'
 
 export const AGENT_UPDATE_STATUS_LABEL: Record<AgentUpdateStatus, string> = {
   NONE: '无更新',
@@ -637,8 +637,8 @@ function requireObject(value: LocalAgentJsonValue): AgentWireJsonObject {
 
 function isLocalAgentJsonValue(value: unknown): value is LocalAgentJsonValue {
   if (
-    value === null ||
-    typeof value === 'string' ||
+    value === null
+    || typeof value === 'string' ||
     typeof value === 'number' ||
     typeof value === 'boolean'
   ) {
