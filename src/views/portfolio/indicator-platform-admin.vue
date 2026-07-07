@@ -9,6 +9,12 @@ import type {
   PortfolioIndicatorSourceMappingVO,
   PortfolioIndustryPackVO,
 } from '@/apis/portfolio/indicator-types'
+import type { PortfolioIndustryPackDefForm } from '@/utils/indicator-industry-pack-def'
+import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioIndicatorPlatformApi } from '@/apis/portfolio/indicator'
 import {
   PF_INDICATOR_DATA_SOURCE_CHANNEL_OPTIONS,
   PF_INDICATOR_STATUS_OPTIONS,
@@ -20,22 +26,6 @@ import {
   PfScoreRuleTypeCode,
   PfScoreRuleTypeDescription,
 } from '@/apis/portfolio/indicator-types'
-import type { PortfolioIndustryPackDefForm } from '@/utils/indicator-industry-pack-def'
-import {
-  buildNewIndustryPackDefJson,
-  mergeIndustryPackDefJson,
-  parseIndustryPackDefJson,
-} from '@/utils/indicator-industry-pack-def'
-import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
-import {
-  defaultTemplateParams,
-  parseTemplateParamsJson,
-  serializeTemplateParams,
-} from '@/utils/indicator-template-params'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
-import { portfolioIndicatorPlatformApi } from '@/apis/portfolio/indicator'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/PortfolioIndicatorTemplateParamsForm.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -49,6 +39,16 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { PortfolioIndicatorDefinitionTreeNodeTypeCode } from '@/types/enums/portfolio-indicator-definition-tree-node-type-enum'
 import { showUserError } from '@/utils/error-handler'
+import {
+  buildNewIndustryPackDefJson,
+  mergeIndustryPackDefJson,
+  parseIndustryPackDefJson,
+} from '@/utils/indicator-industry-pack-def'
+import {
+  defaultTemplateParams,
+  parseTemplateParamsJson,
+  serializeTemplateParams,
+} from '@/utils/indicator-template-params'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 function dataSourceLabel(value: PfIndicatorDataSourceChannelCode): string {
@@ -407,7 +407,7 @@ function openTemplateEdit(record?: PortfolioIndicatorRuleTemplateVO) {
     templateForm.templateCode = record.templateCode
     templateForm.templateName = record.templateName
     templateForm.ruleType = record.ruleType
-    templateParams.value = parseTemplateParamsJson(record.paramsJson)
+    templateParams.value = parseTemplateParamsJson(record.paramsJson) ?? defaultTemplateParams(record.ruleType)
     templateForm.description = ''
     templateForm.status = record.status
   } else {
@@ -451,15 +451,16 @@ function openPackEdit(record?: PortfolioIndustryPackVO) {
     packForm.packName = record.packName
     packForm.packVersion = record.packVersion ?? '1.0.0'
     packDefExistingJson.value = record.packDefJson ?? '{}'
-    Object.assign(
-      packDefForm,
-      parseIndustryPackDefJson(
-        record.packCode,
-        record.packName,
-        record.packVersion ?? '1.0.0',
-        packDefExistingJson.value,
-      ),
+    const parsedPackDef = parseIndustryPackDefJson(
+      record.packCode,
+      record.packName,
+      record.packVersion ?? '1.0.0',
+      packDefExistingJson.value,
     )
+    if (!parsedPackDef) {
+      return
+    }
+    Object.assign(packDefForm, parsedPackDef)
     packForm.status = record.status
   } else {
     packForm.id = ''
@@ -499,6 +500,9 @@ async function savePackForm() {
           packName: packForm.packName,
           version: packForm.packVersion,
         })
+    if (!packDefJson) {
+      return
+    }
     await portfolioIndicatorPlatformApi.saveIndustryPack({
       id: packForm.id || undefined,
       packCode: packForm.packCode,
@@ -579,9 +583,7 @@ onMounted(async () => {
                 {{ indicatorCode }} ·
                 {{ defaultDataSource ? dataSourceLabel(defaultDataSource) : '—' }} ·
                 {{ status ? indicatorStatusLabel(status) : '—' }}
-                <a v-if="indicatorCode" class="detail-link" @click.stop="openDetail(indicatorCode)"
-                  >详情</a
-                >
+                <a v-if="indicatorCode" class="detail-link" @click.stop="openDetail(indicatorCode)">详情</a>
               </span>
             </template>
           </a-tree>

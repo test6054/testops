@@ -60,14 +60,14 @@
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamManualSupplementCandidateItemResponse } from '@/apis/mark/manual-supplement'
 import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { CandidateScanProgressStatusCode } from '@/types/enums/candidate-scan-progress-status-enum'
-import {
-  CANDIDATE_SCAN_PROGRESS_STATUS_TONE,
-  CandidateScanProgressStatusDescription,
-} from '@/types/enums/candidate-scan-progress-status-enum'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import {
+  CANDIDATE_SCAN_PROGRESS_STATUS_TONE,
+  CandidateScanProgressStatusCode,
+  CandidateScanProgressStatusDescription,
+} from '@/types/enums/candidate-scan-progress-status-enum'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ManualSupplementCandidateTable' })
@@ -104,8 +104,8 @@ function scanProgressLabel(status: CandidateScanProgressStatusCode): string {
 function formatScanProgressLabel(record: ExamManualSupplementCandidateItemResponse): string {
   const label = scanProgressLabel(record.scanProgressStatus)
   if (
-    record.scanProgressStatus === CandidateScanProgressStatusCode.ATTENTION_OPEN &&
-    record.openAttentionCount > 0
+    record.scanProgressStatus === CandidateScanProgressStatusCode.ATTENTION_OPEN
+    && record.openAttentionCount > 0
   ) {
     return `${label} (${record.openAttentionCount})`
   }
@@ -119,8 +119,8 @@ function scanProgressTone(status: CandidateScanProgressStatusCode): BadgeTone {
 function buildActions(record: ExamManualSupplementCandidateItemResponse): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = []
   if (
-    record.scanProgressStatus === CandidateScanProgressStatusCode.ATTENTION_OPEN ||
-    record.scanProgressStatus === CandidateScanProgressStatusCode.CONFLICT
+    record.scanProgressStatus === CandidateScanProgressStatusCode.ATTENTION_OPEN
+    || record.scanProgressStatus === CandidateScanProgressStatusCode.CONFLICT
   ) {
     actions.push({ key: 'handle-attention', label: '处理异常', tone: 'danger' })
   }

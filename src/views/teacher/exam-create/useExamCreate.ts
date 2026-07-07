@@ -26,7 +26,7 @@ import {
 } from '@/apis/mark/exam'
 import { useUserStore } from '@/stores/modules/user'
 import { getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
-import { showUserError } from '@/utils/error-handler'
+import { rejectFormValidation, showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { EXAM_CREATE_SECTION_ORDER } from './exam-create-context'
 import { mergePreviewCandidates, requirePreviewCandidates } from './exam-create-roster'
 
@@ -128,7 +128,7 @@ export function useExamCreate() {
         validator: async (): Promise<void> => {
           if (!examKindRequiresSource(examForm.examKind)) return
           if (!examForm.sourceExamId) {
-            throw new Error('请选择原考试')
+            return rejectFormValidation('请选择原考试')
           }
         },
         trigger: 'change',
@@ -148,11 +148,11 @@ export function useExamCreate() {
         validator: async (_rule, value: string): Promise<void> => {
           const academicYear = value?.trim()
           if (!academicYear) {
-            throw new Error('请输入学年')
+            return rejectFormValidation('请输入学年')
           }
           const match = /^(\d{4})-(\d{4})$/.exec(academicYear)
           if (!match || Number(match[2]) !== Number(match[1]) + 1) {
-            throw new Error('学年格式应为 2024-2025')
+            return rejectFormValidation('学年格式应为 2024-2025')
           }
         },
         trigger: 'blur',
@@ -166,10 +166,10 @@ export function useExamCreate() {
         validator: async (): Promise<void> => {
           const [startTime, endTime] = examForm.examWindow ?? []
           if (!startTime || !endTime) {
-            throw new Error('请选择考试时间窗')
+            return rejectFormValidation('请选择考试时间窗')
           }
           if (startTime >= endTime) {
-            throw new Error('考试开始时间必须早于结束时间')
+            return rejectFormValidation('考试开始时间必须早于结束时间')
           }
         },
         trigger: 'change',
@@ -182,10 +182,10 @@ export function useExamCreate() {
           if (examForm.scoreCompositionMode !== 'EXAM_WITH_DAILY') return
           const value = examForm.dailyScoreFull
           if (value == null || value <= 0) {
-            throw new Error('请填写平时成绩满分（须大于 0）')
+            return rejectFormValidation('请填写平时成绩满分（须大于 0）')
           }
           if (value > 1000) {
-            throw new Error('平时成绩满分不能超过 1000')
+            return rejectFormValidation('平时成绩满分不能超过 1000')
           }
         },
         trigger: 'change',
@@ -200,11 +200,11 @@ export function useExamCreate() {
       {
         validator: async (): Promise<void> => {
           if (markingTeamForm.reviewerUserIds.length < 1) {
-            throw new Error('请至少选择一名阅卷教师')
+            return rejectFormValidation('请至少选择一名阅卷教师')
           }
           const chiefId = markingTeamForm.chiefExaminerUserId
           if (chiefId && !markingTeamForm.reviewerUserIds.includes(chiefId)) {
-            throw new Error('主考须为阅卷教师之一')
+            return rejectFormValidation('主考须为阅卷教师之一')
           }
         },
         trigger: 'change',
@@ -220,7 +220,7 @@ export function useExamCreate() {
         validator: async (): Promise<void> => {
           if (rosterForm.candidates.length === 0 && rosterForm.classIds.length === 0) return
           if (!rosterForm.classIds.length) {
-            throw new Error('请选择参考班级')
+            return rejectFormValidation('请选择参考班级')
           }
         },
         trigger: 'change',
@@ -230,7 +230,7 @@ export function useExamCreate() {
           if (rosterForm.scopeMode !== ExamRosterScopeModeCode.BY_CLASS) return
           if (!rosterForm.classIds.length) return
           if (rosterForm.candidates.length === 0) {
-            throw new Error('整班纳入须包含所选班级的全部学生')
+            return rejectFormValidation('整班纳入须包含所选班级的全部学生')
           }
         },
         trigger: 'change',
@@ -240,7 +240,7 @@ export function useExamCreate() {
           if (rosterForm.scopeMode !== ExamRosterScopeModeCode.BY_STUDENT) return
           if (rosterForm.candidates.length === 0) return
           if (!rosterForm.classIds.length) {
-            throw new Error('按人勾选须先选择参考班级')
+            return rejectFormValidation('按人勾选须先选择参考班级')
           }
         },
         trigger: 'change',
@@ -255,7 +255,7 @@ export function useExamCreate() {
             candidate => !candidate.classId || !classSet.has(candidate.classId),
           )
           if (invalid) {
-            throw new Error('存在考生班级不在参考班级范围内')
+            return rejectFormValidation('存在考生班级不在参考班级范围内')
           }
         },
         trigger: 'change',
@@ -447,17 +447,20 @@ export function useExamCreate() {
       return undefined
     }
     if (!rosterForm.referenceDepartmentId) {
-      throw new Error('请选择院系')
+      showFormValidationMessage('请选择院系')
+      return undefined
     }
-    const candidates: ExamCandidateRosterRequest[] = rosterForm.candidates.map((candidate) => {
+    const candidates: ExamCandidateRosterRequest[] = []
+    for (const candidate of rosterForm.candidates) {
       if (!candidate.classId) {
-        throw new Error('存在缺少班级的考生预览')
+        showFormValidationMessage('存在缺少班级的考生预览')
+        return undefined
       }
-      return {
+      candidates.push({
         classId: candidate.classId,
         studentUserId: candidate.studentUserId,
-      }
-    })
+      })
+    }
     return {
       scopeMode: rosterForm.scopeMode,
       classIds: [...rosterForm.classIds],
@@ -473,11 +476,8 @@ export function useExamCreate() {
       void message.error('请选择主考教师')
       return null
     }
-    let roster: ExamRosterCreateRequest | undefined
-    try {
-      roster = buildRosterRequest()
-    } catch (error) {
-      void message.error(error instanceof Error ? error.message : '考生名册不完整')
+    const roster = buildRosterRequest()
+    if (rosterForm.candidates.length > 0 && !roster) {
       return null
     }
     return {
@@ -615,7 +615,11 @@ export function useExamCreate() {
         scopeMode: ExamRosterScopeModeCode.BY_CLASS,
         classIds: [...rosterForm.classIds],
       })
-      rosterForm.candidates = requirePreviewCandidates(preview.candidates)
+      const validatedCandidates = requirePreviewCandidates(preview.candidates)
+      if (!validatedCandidates) {
+        return false
+      }
+      rosterForm.candidates = validatedCandidates
       return true
     } catch (error) {
       showUserError(error, '提交前名册预览失败，请重新选择参考班级')

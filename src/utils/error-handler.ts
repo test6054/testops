@@ -297,6 +297,37 @@ export function showUserError(error: unknown, fallback = '操作失败，请稍�
 }
 
 /**
+ * 表单 / 步骤校验提示：统一走 feedback message.warning。
+ */
+export function showFormValidationMessage(text: string): void {
+  message.warning(text)
+}
+
+/**
+ * async-validator 规则内校验失败：toast + reject，禁止 throw。
+ */
+export function rejectFormValidation(text: string): Promise<never> {
+  showFormValidationMessage(text)
+  return Promise.reject(text)
+}
+
+/**
+ * 同步构建 / 提交前校验失败：toast 并返回 false，便于 early return。
+ */
+export function failFormValidation(text: string): false {
+  showFormValidationMessage(text)
+  return false
+}
+
+/**
+ * 用户可见失败（error 级）：toast 并 reject，供 async 链路中断。
+ */
+export function rejectUserError(text: string): Promise<never> {
+  showUserError(null, text)
+  return Promise.reject(text)
+}
+
+/**
  * 格式化错误码显示。
  * 不向用户显示错误码，只依赖后端返回的业务消息。
  */

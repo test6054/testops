@@ -89,17 +89,17 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TrialSessionResponse } from '@/apis/mark/marking-organization'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { WorkflowPrerequisiteEmptyViewModel } from '@/components/workbench/workflow-readiness/types'
+import type { MarkingOrgSessionFilterModel } from '@/composables/useMarkingOrgSessionWorkspace'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import {
   deleteTrialSession,
   startTrialSession,
   TRIAL_SESSION_STATUS_TONE,
   TrialSessionStatusDescription,
 } from '@/apis/mark/marking-organization'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { WorkflowPrerequisiteEmptyViewModel } from '@/components/workbench/workflow-readiness/types'
-import type { MarkingOrgSessionFilterModel } from '@/composables/useMarkingOrgSessionWorkspace'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -141,10 +141,10 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  refresh: []
-  search: [model: Record<string, unknown>]
-  reset: []
-  'page-change': [page: { current: number; pageSize: number }]
+  "refresh": []
+  "search": [model: Record<string, unknown>]
+  "reset": []
+  'page-change': [page: { current: number, pageSize: number }]
   'open-lifecycle': [action: 'closeTrial', sessionId: string]
 }>()
 
@@ -219,9 +219,9 @@ const filterFields = computed((): FilterField[] => [
 
 const hasActiveFilter = computed(
   () =>
-    Boolean(props.filterModel.keyword.trim()) ||
-    Boolean(props.filterModel.status) ||
-    Boolean(props.filterModel.groupId),
+    Boolean(props.filterModel.keyword.trim())
+    || Boolean(props.filterModel.status)
+    || Boolean(props.filterModel.groupId),
 )
 
 const sessionTableEmptyDescription = computed(() => {
@@ -264,7 +264,7 @@ function emitReset(): void {
   emit('reset')
 }
 
-function emitPageChange(page: { current: number; pageSize: number }): void {
+function emitPageChange(page: { current: number, pageSize: number }): void {
   emit('page-change', page)
 }
 
@@ -274,18 +274,18 @@ function canStart(status: TrialSessionStatusCode): boolean {
 
 function canCalibrate(status: TrialSessionStatusCode): boolean {
   return (
-    props.canManage &&
-    (status === TrialSessionStatusCode.TRIAL_ASSIGNED ||
-      status === TrialSessionStatusCode.TRIAL_SUBMITTED)
+    props.canManage
+    && (status === TrialSessionStatusCode.TRIAL_ASSIGNED
+      || status === TrialSessionStatusCode.TRIAL_SUBMITTED)
   )
 }
 
 function canClose(status: TrialSessionStatusCode): boolean {
   return (
-    props.canManage &&
-    (status === TrialSessionStatusCode.TRIAL_ASSIGNED ||
-      status === TrialSessionStatusCode.TRIAL_SUBMITTED ||
-      status === TrialSessionStatusCode.CALIBRATED)
+    props.canManage
+    && (status === TrialSessionStatusCode.TRIAL_ASSIGNED
+      || status === TrialSessionStatusCode.TRIAL_SUBMITTED
+      || status === TrialSessionStatusCode.CALIBRATED)
   )
 }
 

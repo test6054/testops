@@ -157,11 +157,10 @@ async function reload(): Promise<void> {
   if (!props.examId) return
   loading.value = true
   try {
-    const latest = await getLatestErrorCauseCluster({
+    record.value = await getLatestErrorCauseCluster({
       examId: props.examId,
       classId: props.classId || undefined,
     })
-    record.value = latest
   } catch (e) {
     record.value = null
     showUserError(e, '错因聚类分析加载失败')

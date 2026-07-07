@@ -78,11 +78,11 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { OrganizationCreateRequest } from '@/apis/mark/marking-organization'
-import { createOrganization, getOrganization } from '@/apis/mark/marking-organization'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { createOrganization, getOrganization } from '@/apis/mark/marking-organization'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -104,8 +104,8 @@ import {
 
 defineOptions({ name: 'MarkingOrgWorkspaceEntry' })
 
-const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
-  useExamJourneyContextBar('阅卷组织')
+const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
+  = useExamJourneyContextBar('阅卷组织')
 
 const route = useRoute()
 const router = useRouter()

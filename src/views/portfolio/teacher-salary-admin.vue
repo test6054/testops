@@ -27,8 +27,8 @@ const form = reactive<{
   performanceAmount: undefined,
   allowanceAmount: undefined,
 })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
-  usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
+  = usePortfolioTeacherSearch()
 const { loading, rows, pageNum, pageSize, pageTotal, loadPage, handlePageChange } = useQueryTable(
   portfolioTeacherSalaryApi.page,
   {

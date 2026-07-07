@@ -11,6 +11,7 @@ import type { ExtractArchiveTaskStatusCode } from '@/types/enums/extract-archive
 import type { FileSystemNodeTypeCode } from '@/types/enums/file-system-node-type-enum'
 import http from '@/config/axios'
 import { STORAGE_TOKEN } from '@/constants/storage-keys'
+import { rejectUserError } from '@/utils/error-handler'
 import { getTraceHeaders } from '@/utils/trace'
 
 
@@ -258,7 +259,7 @@ export async function getFileArrayBuffer(data: DownloadFileRequestDTO): Promise<
   // 从localStorage获取token
   const token = localStorage.getItem(STORAGE_TOKEN)
   if (!token) {
-    throw new Error('未登录或登录已过期，请重新登录')
+    return rejectUserError('未登录或登录已过期，请重新登录')
   }
 
   const requestUrl = new URL('/api/storage/filesystem/download', window.location.origin)
@@ -274,13 +275,13 @@ export async function getFileArrayBuffer(data: DownloadFileRequestDTO): Promise<
   })
 
   if (!response.ok) {
-    throw new Error('文件下载失败，请稍后重试')
+    return rejectUserError('文件下载失败，请稍后重试')
   }
 
   // 检查响应类型，确保不是接口错误响应
   const contentType = response.headers.get('content-type')
   if (contentType?.includes('application/json')) {
-    throw new Error('文件下载失败，请稍后重试')
+    return rejectUserError('文件下载失败，请稍后重试')
   }
 
   return await response.arrayBuffer()
@@ -295,7 +296,7 @@ export async function convertLegacyOfficeArrayBuffer(
 ): Promise<ArrayBuffer> {
   const token = localStorage.getItem(STORAGE_TOKEN)
   if (!token) {
-    throw new Error('未登录或登录已过期，请重新登录')
+    return rejectUserError('未登录或登录已过期，请重新登录')
   }
 
   const response = await fetch('/api/cad/office/convert-legacy-office', {
@@ -313,15 +314,15 @@ export async function convertLegacyOfficeArrayBuffer(
     const contentType = response.headers.get('content-type')
     if (contentType?.includes('application/json')) {
       const errorData = await response.json()
-      throw new Error(errorData.msg || `旧版 Office 转换失败: HTTP ${response.status}`)
+      return rejectUserError(errorData.msg || `旧版 Office 转换失败: HTTP ${response.status}`)
     }
-    throw new Error(`旧版 Office 转换失败: HTTP ${response.status}`)
+    return rejectUserError(`旧版 Office 转换失败: HTTP ${response.status}`)
   }
 
   const contentType = response.headers.get('content-type')
   if (contentType?.includes('application/json')) {
     const errorData = await response.json()
-    throw new Error(errorData.msg || '旧版 Office 转换失败：服务器返回 JSON 错误')
+    return rejectUserError(errorData.msg || '旧版 Office 转换失败：服务器返回 JSON 错误')
   }
 
   return await response.arrayBuffer()
@@ -338,7 +339,7 @@ export async function getImageBlobUrl(nodeId: string): Promise<string> {
 
   const token = localStorage.getItem(STORAGE_TOKEN)
   if (!token) {
-    throw new Error('未登录或登录已过期')
+    return rejectUserError('未登录或登录已过期')
   }
 
   const response = await fetch(requestUrl.toString(), {
@@ -351,7 +352,7 @@ export async function getImageBlobUrl(nodeId: string): Promise<string> {
   })
 
   if (!response.ok) {
-    throw new Error('图片加载失败，请稍后重试')
+    return rejectUserError('图片加载失败，请稍后重试')
   }
 
   const blob = await response.blob()

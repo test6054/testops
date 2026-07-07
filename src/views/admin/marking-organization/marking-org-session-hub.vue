@@ -69,8 +69,8 @@ async function redirectToSessionPage(): Promise<void> {
   try {
     const org = await getOrganization({ examId })
     if (org.configured && org.id) {
-      const target =
-        phase.value === 'formal'
+      const target
+        = phase.value === 'formal'
           ? resolveMarkingOrganizationFormalSessionsRoute(org.id, examId)
           : resolveMarkingOrganizationTrialSessionsRoute(org.id, examId)
       await router.replace(target)

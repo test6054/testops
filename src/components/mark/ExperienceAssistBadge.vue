@@ -8,8 +8,7 @@
     :title="clickable ? '查看 AI 历史并定位本次定标引用' : undefined"
     @click="handleClick"
   >
-    参考定标经验<template v-if="displaySourceExamName"> · {{ displaySourceExamName }}</template
-    ><template v-if="consistencyLabel"> · 一致率 {{ consistencyLabel }}</template>
+    参考定标经验<template v-if="displaySourceExamName"> · {{ displaySourceExamName }}</template><template v-if="consistencyLabel"> · 一致率 {{ consistencyLabel }}</template>
   </UiTag>
 </template>
 

@@ -1,6 +1,6 @@
 import type { ExamWorkbenchNextActionResponse } from '@/apis/mark/exam-progress'
-import { WorkbenchNextActionKeyCode } from '@/apis/mark/exam-progress'
 import type { ExamWorkflowTaskDockView } from '@/types/exam-workflow-task-dock'
+import { WorkbenchNextActionKeyCode } from '@/apis/mark/exam-progress'
 import { findWorkbenchNextAction } from '@/utils/exam-workspace-entry-gates'
 
 /** 试评经验定标 nextAction 是否处于可行动待办态。 */

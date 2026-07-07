@@ -32,7 +32,7 @@ import { commitScanWorkOrder, discardScanWorkOrder } from '@/apis/mark/scanner-w
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { ScanWorkOrderStatusCode } from '@/types/enums/scan-work-order-status-enum'
-import { getUserErrorMessage } from '@/utils/error-handler'
+import { getUserErrorMessage, rejectUserError } from '@/utils/error-handler'
 
 export interface WorkOrderScanFlowOptions {
   taskKind: ScanTaskKindCode
@@ -335,7 +335,7 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
   async function startLocalScanAfterWorkOrder(workOrder: ScanWorkOrderLifecycleVO) {
     lifecycle.value = workOrder
     if (!workOrder.batchExternalNo || !workOrder.reportId || !workOrder.resolvedScanConfig) {
-      throw new Error('扫描工单缺少 batchExternalNo、reportId 或冻结扫描参数')
+      return rejectUserError('扫描工单缺少 batchExternalNo、reportId 或冻结扫描参数')
     }
     const request: DocumentStartScanJobRequest = {
       taskKind: options.taskKind,

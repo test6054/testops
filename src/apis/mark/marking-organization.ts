@@ -5,34 +5,36 @@ import type { MarkAiReferenceExperienceAuditResponse } from '@/apis/mark/grading
 import type { WorkflowBlockingItem } from '@/components/workbench/workflow-readiness/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { AllocationUnitCode } from '@/types/enums/allocation-unit-enum'
+import type { AnonymityModeCode } from '@/types/enums/anonymity-mode-enum'
+import type { AnonymousTokenPolicyCode } from '@/types/enums/anonymous-token-policy-enum'
+import type { EffectiveStatusCode } from '@/types/enums/effective-status-enum'
+import type { MarkingAllocationModeCode } from '@/types/enums/marking-allocation-mode-enum'
+import type { MarkingReassignModeCode } from '@/types/enums/marking-reassign-mode-enum'
+import type { MarkingSessionPhaseCode } from '@/types/enums/marking-session-phase-enum'
+import http from '@/config/axios'
+/** 阅卷组织列表默认分页大小（SessionListQuery / MarkingTaskQuery 缺省时使用） */
+import { EXPORT_PAGE_SIZE } from '@/constants/pagination'
 import {
   ALL_ALLOCATION_UNIT_CODES,
   AllocationUnitDescription,
 } from '@/types/enums/allocation-unit-enum'
-import type { AnonymityModeCode } from '@/types/enums/anonymity-mode-enum'
-import type { AnonymousTokenPolicyCode } from '@/types/enums/anonymous-token-policy-enum'
 import {
   ALL_ANONYMOUS_TOKEN_POLICY_CODES,
   AnonymousTokenPolicyDescription,
 } from '@/types/enums/anonymous-token-policy-enum'
-import type { EffectiveStatusCode } from '@/types/enums/effective-status-enum'
-import type { MarkingAllocationModeCode } from '@/types/enums/marking-allocation-mode-enum'
-import {
-  ALL_MARKING_ALLOCATION_MODE_CODES,
-  MarkingAllocationModeDescription,
-} from '@/types/enums/marking-allocation-mode-enum'
-import type { MarkingReassignModeCode } from '@/types/enums/marking-reassign-mode-enum'
-import {
-  ALL_MARKING_REASSIGN_MODE_CODES,
-  MarkingReassignModeDescription,
-} from '@/types/enums/marking-reassign-mode-enum'
-import type { MarkingSessionPhaseCode } from '@/types/enums/marking-session-phase-enum'
-import http from '@/config/axios'
 import {
   FormalSessionStatusCode,
   FormalSessionStatusDescription,
 } from '@/types/enums/formal-session-status-enum'
+import {
+  ALL_MARKING_ALLOCATION_MODE_CODES,
+  MarkingAllocationModeDescription,
+} from '@/types/enums/marking-allocation-mode-enum'
 import { MarkingOrganizationStatusCode } from '@/types/enums/marking-organization-status-enum'
+import {
+  ALL_MARKING_REASSIGN_MODE_CODES,
+  MarkingReassignModeDescription,
+} from '@/types/enums/marking-reassign-mode-enum'
 import {
   ALL_MARKING_TASK_STATUS_CODES,
   MarkingTaskStatusCode,
@@ -44,9 +46,8 @@ import {
   TrialSessionStatusCode,
   TrialSessionStatusDescription,
 } from '@/types/enums/trial-session-status-enum'
+import { rejectUserError } from '@/utils/error-handler'
 import { readAllPages } from '@/utils/page-result'
-/** 阅卷组织列表默认分页大小（SessionListQuery / MarkingTaskQuery 缺省时使用） */
-import { EXPORT_PAGE_SIZE } from '@/constants/pagination'
 
 export { ALL_ALLOCATION_UNIT_CODES, AllocationUnitCode } from '@/types/enums/allocation-unit-enum'
 export { AllocationUnitDescription } from '@/types/enums/allocation-unit-enum'
@@ -130,8 +131,8 @@ export const MARKING_ALLOCATION_MODE_OPTIONS: Array<{
   label: MarkingAllocationModeDescription[value],
 }))
 
-export const ALLOCATION_UNIT_OPTIONS: Array<{ value: AllocationUnitCode; label: string }> =
-  ALL_ALLOCATION_UNIT_CODES.map((value) => ({
+export const ALLOCATION_UNIT_OPTIONS: Array<{ value: AllocationUnitCode, label: string }>
+  = ALL_ALLOCATION_UNIT_CODES.map((value) => ({
     value,
     label: AllocationUnitDescription[value],
   }))
@@ -1203,14 +1204,14 @@ export async function getMarkingScanPageDisplayBlobUrl(
     request,
   )
   const rawContentType = response.headers['content-type']
-  const contentType =
-    typeof rawContentType === 'string'
+  const contentType
+    = typeof rawContentType === 'string'
       ? rawContentType
       : Array.isArray(rawContentType)
         ? rawContentType.join(';')
         : ''
   if (contentType.includes('application/json')) {
-    throw new Error('扫描页遮罩展示加载失败')
+    return rejectUserError('扫描页遮罩展示加载失败')
   }
   return URL.createObjectURL(response.data)
 }

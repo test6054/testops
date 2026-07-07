@@ -131,11 +131,10 @@ async function reload(): Promise<void> {
   if (!props.examId) return
   loading.value = true
   try {
-    const latest = await getLatestTeachingImprovement({
+    record.value = await getLatestTeachingImprovement({
       examId: props.examId,
       classId: props.classId || undefined,
     })
-    record.value = latest
   } catch (e) {
     record.value = null
     showUserError(e, '教学改进方案加载失败')

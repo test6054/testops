@@ -10,6 +10,7 @@ import type { IdRequest, PageResult, QueryDto } from '@/types'
 import type { UserDto } from '@/types/api-types.d'
 import type { ExamClassStudentTreeNodeTypeCode } from '@/types/enums/exam-class-student-tree-node-type-enum'
 import http from '@/config/axios'
+import { showFormValidationMessage } from '@/utils/error-handler'
 
 
 /** 班级信息DTO - 与后端ClassInfoDto完全对齐 */
@@ -151,7 +152,8 @@ export function createClass(data: ClassInfoDto) {
 export function updateClass(data: ClassInfoDto) {
   // 确保data中包含id字段
   if (!data.id) {
-    throw new Error('班级信息保存失败，请刷新后重试')
+    showFormValidationMessage('班级信息保存失败，请刷新后重试')
+    return Promise.reject(new Error('班级信息保存失败，请刷新后重试'))
   }
   return http.post<void>(`/api/user/admin/classes/update`, data)
 }

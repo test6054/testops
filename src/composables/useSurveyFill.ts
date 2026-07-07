@@ -10,7 +10,7 @@ import { publicSurveyApi } from '@/apis/public-survey'
 import {
   IndirectEvaluationItemTypeCode,
 } from '@/types/enums/indirect-evaluation-item-type-enum'
-import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
 export function useSurveyFill() {
   const route = useRoute()
@@ -62,7 +62,8 @@ export function useSurveyFill() {
     if (item.itemType === IndirectEvaluationItemTypeCode.OPEN_TEXT) {
       return !!(openTexts[item.itemToken] && openTexts[item.itemToken].trim())
     }
-    throw new Error('问卷题项配置异常，请联系发布方')
+    showFormValidationMessage('问卷题项配置异常，请联系发布方')
+    return false
   }
 
   function getScaleOptions(item: PublicSurveyItemVO) {
@@ -120,7 +121,8 @@ export function useSurveyFill() {
         } else if (item.itemType === IndirectEvaluationItemTypeCode.OPEN_TEXT) {
           openText = openTexts[item.itemToken]
         } else {
-          throw new Error('问卷题项配置异常，请联系发布方')
+          showFormValidationMessage('问卷题项配置异常，请联系发布方')
+          return null
         }
 
         return {
@@ -132,11 +134,13 @@ export function useSurveyFill() {
         }
       })
       .filter(
-        (answer) =>
-          answer.scaleValue != null
-          || !!answer.singleChoiceValue
-          || !!answer.multipleChoiceValues?.length
-          || !!answer.openText?.trim(),
+        (answer): answer is NonNullable<typeof answer> =>
+          answer != null && (
+            answer.scaleValue != null
+            || !!answer.singleChoiceValue
+            || !!answer.multipleChoiceValues?.length
+            || !!answer.openText?.trim()
+          ),
       )
   }
 

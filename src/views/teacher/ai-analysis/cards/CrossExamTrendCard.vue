@@ -108,12 +108,6 @@
 
 <script lang="ts" setup>
 import type { CrossExamTrendAnalysisResponse } from '@/apis/mark/cross-exam-analysis'
-import {
-  generateClassTrend,
-  generateCourseTrend,
-  listCommonClassScopes,
-  listTrends,
-} from '@/apis/mark/cross-exam-analysis'
 import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import message from 'ant-design-vue/es/message'
@@ -122,6 +116,12 @@ import {
   AnalysisScopeTypeCode,
   AnalysisScopeTypeDescription,
 } from '@/apis/mark/analysis-scope-type'
+import {
+  generateClassTrend,
+  generateCourseTrend,
+  listCommonClassScopes,
+  listTrends,
+} from '@/apis/mark/cross-exam-analysis'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisConfigCollapse from '@/components/mark/analysis/AiAnalysisConfigCollapse.vue'
 import AiAnalysisHistorySelect from '@/components/mark/analysis/AiAnalysisHistorySelect.vue'
@@ -205,7 +205,7 @@ const historyRows = computed(() =>
 )
 
 const selectedExams = ref<ExamSummaryResponse[]>([])
-const classOptions = ref<{ label: string; value: string }[]>([])
+const classOptions = ref<{ label: string, value: string }[]>([])
 const classLoading = ref(false)
 const loading = ref(false)
 const generating = ref(false)
@@ -325,7 +325,7 @@ function applyDrillClassSelection(): void {
   }
 }
 
-function mapClassRefsToOptions(classRefs: Array<{ classId: string; className: string }>) {
+function mapClassRefsToOptions(classRefs: Array<{ classId: string, className: string }>) {
   return classRefs.map((classRef) => ({
     value: classRef.classId,
     label: classRef.className,
@@ -481,8 +481,8 @@ async function handleGenerate(): Promise<void> {
   }
   generating.value = true
   try {
-    const generated =
-      scopeMode.value === AnalysisScopeTypeCode.COURSE
+    const generated
+      = scopeMode.value === AnalysisScopeTypeCode.COURSE
         ? await generateCourseTrend({
             courseId,
             academicYear,

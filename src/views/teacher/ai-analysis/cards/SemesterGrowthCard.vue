@@ -150,6 +150,15 @@ import type {
   SemesterAbilityGrowthResponse,
   SemesterGrowthTrendCode,
 } from '@/apis/mark/cross-exam-analysis'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import {
+  AnalysisScopeTypeCode,
+  AnalysisScopeTypeDescription,
+} from '@/apis/mark/analysis-scope-type'
 import {
   generateClassGrowth,
   listCommonClassScopes,
@@ -157,16 +166,6 @@ import {
   SEMESTER_GROWTH_TREND_TONE,
   SemesterGrowthTrendDescription,
 } from '@/apis/mark/cross-exam-analysis'
-import type { ExamSummaryResponse } from '@/apis/mark/exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { formatSemester } from '@/types/enums/semester-enum'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import {
-  AnalysisScopeTypeCode,
-  AnalysisScopeTypeDescription,
-} from '@/apis/mark/analysis-scope-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisConfigCollapse from '@/components/mark/analysis/AiAnalysisConfigCollapse.vue'
@@ -183,6 +182,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
 import { useChartOption } from '@/hooks/modules/useChartOption'
+import { formatSemester } from '@/types/enums/semester-enum'
 import {
   buildRequiredAcademicYearSemesterQuery,
   ensureRequiredAcademicYearSemester,
@@ -275,7 +275,7 @@ const historyRows = computed(() =>
 )
 
 const selectedExams = ref<ExamSummaryResponse[]>([])
-const classOptions = ref<{ label: string; value: string }[]>([])
+const classOptions = ref<{ label: string, value: string }[]>([])
 const classLoading = ref(false)
 const loading = ref(false)
 const generating = ref(false)

@@ -233,10 +233,10 @@ export function cancelExamLayoutDetect(data: ExamLayoutDetectCancelRequest) {
 /** 解析 detect-status 轮询 deadline；优先使用后端下发的 clientPollDeadlineMs。 */
 export function resolveExamLayoutDetectPollDeadlineMs(
   policy: ExamLayoutDetectPollingPolicy | null | undefined,
-): number {
+): number | null {
   const deadline = policy?.clientPollDeadlineMs
   if (deadline == null || !Number.isFinite(deadline) || deadline < 60_000) {
-    throw new Error('制卷识别轮询策略缺失或无效，请刷新页面后重试')
+    return null
   }
   return deadline
 }

@@ -1,6 +1,6 @@
 import type { Ref } from 'vue'
-import { computed } from 'vue'
 import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
+import { computed } from 'vue'
 
 export function useExamArchiveGateHint(gate: Ref<ArchiveVolumeExamGateResponse | null>) {
   const gateProgressHint = computed(() => resolveGateProgressHint(gate.value))
@@ -37,9 +37,9 @@ function resolveGateProgressHint(gate: ArchiveVolumeExamGateResponse | null): st
   if (gate.allScoresPublished) {
     return (gate.gradablePaperCount ?? 0) <= 0 ? '无可评阅试卷，成绩门禁已满足' : '成绩已全部发布'
   }
-  const unpublished =
-    gate.unpublishedBoundPaperCount ??
-    Math.max(0, (gate.gradablePaperCount ?? 0) - (gate.publishedScoreCount ?? 0))
+  const unpublished
+    = gate.unpublishedBoundPaperCount
+      ?? Math.max(0, (gate.gradablePaperCount ?? 0) - (gate.publishedScoreCount ?? 0))
   return unpublished > 0
     ? `尚有 ${unpublished} 份试卷未发布成绩（${gate.publishedScoreCount ?? 0}/${gate.gradablePaperCount ?? 0}）`
     : `成绩发布 ${gate.publishedScoreCount ?? 0}/${gate.gradablePaperCount ?? 0}`

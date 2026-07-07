@@ -59,11 +59,11 @@
 
     <WorkflowReadinessPanel
       v-if="
-        organization &&
-        canManageOrganization &&
-        !canCreateSession &&
-        !sessionCreateReadinessLoadFailed &&
-        sessionCreateWorkflow.steps.length
+        organization
+          && canManageOrganization
+          && !canCreateSession
+          && !sessionCreateReadinessLoadFailed
+          && sessionCreateWorkflow.steps.length
       "
       :title="sessionCreateWorkflow.panelTitle"
       :steps="sessionCreateWorkflow.steps"
@@ -117,7 +117,6 @@
 
 <script lang="ts" setup>
 import type { LifecycleAction } from './components/SessionLifecycleReasonModal.vue'
-import SessionLifecycleReasonModal from './components/SessionLifecycleReasonModal.vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -140,11 +139,12 @@ import { resolveMarkingOrganizationTrialSessionsRoute } from '@/utils/marking-or
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import FormalSessionCreateDialog from './components/FormalSessionCreateDialog.vue'
 import FormalSessionWorkbench from './components/FormalSessionWorkbench.vue'
+import SessionLifecycleReasonModal from './components/SessionLifecycleReasonModal.vue'
 
 defineOptions({ name: 'AdminMarkingOrganizationFormalSessions' })
 
-const { isJourneyChrome, examStatusLabel, examStatusTone } =
-  useOptionalExamJourneyContextBar('正评会话')
+const { isJourneyChrome, examStatusLabel, examStatusTone }
+  = useOptionalExamJourneyContextBar('正评会话')
 
 const router = useRouter()
 const {

@@ -41,11 +41,11 @@
 <script lang="ts" setup>
 import type { ExamScannerBatchResponse } from '@/apis/mark/exam-scan'
 import type { ExamTeacherScanSupplementPrepareResponse } from '@/apis/mark/scan-source'
-import { prepareTeacherScanSupplement, teacherSupplementScanSource } from '@/apis/mark/scan-source'
 import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { getExamDetail } from '@/apis/mark/exam'
+import { prepareTeacherScanSupplement, teacherSupplementScanSource } from '@/apis/mark/scan-source'
 import ManualSupplementFormCore from '@/components/mark/manual-supplement/ManualSupplementFormCore.vue'
 import UiConfirmModal from '@/components/ui-guide/ui/ConfirmModal.vue'
 import { ScannerColorModeCode } from '@/types/enums/scanner-color-mode-enum'
@@ -63,7 +63,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  success: []
+  "success": []
 }>()
 
 const DEFAULT_SCAN_CONFIG: ExamScannerScanConfigVO = {
@@ -127,9 +127,9 @@ const prepareBlockDescription = computed(() => {
 
 const submitDisabled = computed(
   () =>
-    declaredClassIds.value.length === 0 ||
-    prepareLoading.value ||
-    prepareContext.value?.canSubmitManualSupplement === false,
+    declaredClassIds.value.length === 0
+    || prepareLoading.value
+    || prepareContext.value?.canSubmitManualSupplement === false,
 )
 
 function resetForm(): void {
@@ -190,10 +190,10 @@ async function handleSubmit(): Promise<void> {
   await formCoreRef.value?.validate()
   const batch = props.batch
   if (
-    !batch?.scanBatchId ||
-    !batch.scannerDeviceId ||
-    !batch.scannerStationId ||
-    !form.sourceFileId
+    !batch?.scanBatchId
+    || !batch.scannerDeviceId
+    || !batch.scannerStationId
+    || !form.sourceFileId
   ) {
     return
   }

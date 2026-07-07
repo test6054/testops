@@ -42,13 +42,13 @@ const metrics = computed<SignalMetric[]>(() => {
 
   const totalQuestions = progress?.totalQuestionGradeCount ?? 0
   const confirmedQuestions = progress?.confirmedQuestionGradeCount ?? 0
-  const markingPercent =
-    totalQuestions > 0 ? Math.round((confirmedQuestions / totalQuestions) * 1000) / 10 : 0
+  const markingPercent
+    = totalQuestions > 0 ? Math.round((confirmedQuestions / totalQuestions) * 1000) / 10 : 0
 
   const pendingExceptionCount = progress
-    ? (progress.scanAttentionCount ?? 0) +
-      (progress.pendingReviewTaskCount ?? 0) +
-      (progress.pendingGradeCount ?? 0)
+    ? (progress.scanAttentionCount ?? 0)
+    + (progress.pendingReviewTaskCount ?? 0)
+    + (progress.pendingGradeCount ?? 0)
     : dash
 
   const activeExamCount = m?.activeExamCount ?? dash

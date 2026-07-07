@@ -16,14 +16,14 @@ import type {
   SessionCreateReadinessResponse,
   SessionGroupCreateReadinessResponse,
 } from '@/apis/mark/marking-organization'
-import {
-  AllocationUnitDescription,
-  MarkingAllocationModeDescription,
-} from '@/apis/mark/marking-organization'
 import type { UiDescriptionItem } from '@/components/ui-guide/ui/types'
 import type { MarkingOrgSessionPhase } from '@/composables/useMarkingOrgSessionWorkspace'
 import { computed } from 'vue'
 import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
+import {
+  AllocationUnitDescription,
+  MarkingAllocationModeDescription,
+} from '@/apis/mark/marking-organization'
 import UiDescriptionGrid from '@/components/ui-guide/ui/UiDescriptionGrid.vue'
 import { AllocationUnitCode } from '@/types/enums/allocation-unit-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -111,9 +111,9 @@ const items = computed((): UiDescriptionItem[] => {
 
   const allocationUnit = props.policy?.allocationUnit ?? props.groupReadiness?.allocationUnit
   if (
-    allocationUnit &&
-    allocationUnit !== AllocationUnitCode.WHOLE_PAPER &&
-    props.groupReadiness?.registeredSliceCount != null
+    allocationUnit
+    && allocationUnit !== AllocationUnitCode.WHOLE_PAPER
+    && props.groupReadiness?.registeredSliceCount != null
   ) {
     rows.push({
       key: 'registered-slice-count',

@@ -139,7 +139,7 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { useExamDepartmentClassScope } from '@/composables/useExamDepartmentClassScope'
-import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
+import { readBusinessResultCode, showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { useInjectedExamCreateRosterForm } from './exam-create-context'
 import {
   buildRosterRequestsFromDrawerSelection,
@@ -216,7 +216,8 @@ async function loadClassOptions(): Promise<void> {
 
 function handleScopeModeChange(val: string | number): void {
   if (val !== ExamRosterScopeModeCode.BY_CLASS && val !== ExamRosterScopeModeCode.BY_STUDENT) {
-    throw new Error(`无效考生纳入模式: ${String(val)}`)
+    showFormValidationMessage(`无效考生纳入模式: ${String(val)}`)
+    return
   }
   const mode: ExamRosterScopeModeCode = val
   if (mode === rosterForm.scopeMode) return
@@ -277,6 +278,7 @@ function syncByClassScope(addedClassIds: string[]): void {
     .then((preview) => {
       if (syncSeq !== classScopeSyncSeq) return
       const previewCandidates = requirePreviewCandidates(preview.candidates)
+      if (!previewCandidates) return
       const nextCandidates
         = scopeMode === ExamRosterScopeModeCode.BY_CLASS
           ? previewCandidates
@@ -333,7 +335,9 @@ function handleStudentsSelected(data: {
     .then((preview) => {
       if (syncSeq !== studentPreviewSeq) return
       rosterPreviewError.value = ''
-      emit('add-candidates', requirePreviewCandidates(preview.candidates))
+      const validatedCandidates = requirePreviewCandidates(preview.candidates)
+      if (!validatedCandidates) return
+      emit('add-candidates', validatedCandidates)
     })
     .catch((error) => {
       if (syncSeq !== studentPreviewSeq) return

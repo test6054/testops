@@ -41,9 +41,9 @@ import type {
   SessionCreateReadinessResponse,
   SessionGroupCreateReadinessResponse,
 } from '@/apis/mark/marking-organization'
-import { createTrialSession } from '@/apis/mark/marking-organization'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
+import { createTrialSession } from '@/apis/mark/marking-organization'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
@@ -72,7 +72,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  success: [sessionId: string]
+  "success": [sessionId: string]
 }>()
 
 const groupId = ref<string | undefined>(undefined)

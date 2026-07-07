@@ -104,14 +104,14 @@ import type {
   ClassWeaknessItemResponse,
   TeachingAnalysisRecordResponse,
 } from '@/apis/mark/teaching-analysis'
-import {
-  generateClassWeaknessAnalysis,
-  getLatestClassWeaknessAnalysis,
-} from '@/apis/mark/teaching-analysis'
 import type { MarkClassOption } from '@/composables/useMarkExamRoster'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
+import {
+  generateClassWeaknessAnalysis,
+  getLatestClassWeaknessAnalysis,
+} from '@/apis/mark/teaching-analysis'
 import AiAnalysisCardBody from '@/components/mark/analysis/AiAnalysisCardBody.vue'
 import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCollapse.vue'
 import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'

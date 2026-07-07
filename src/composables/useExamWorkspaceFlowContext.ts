@@ -1,10 +1,10 @@
 import type { Ref } from 'vue'
-import { computed } from 'vue'
 import type { ExamWorkbenchStageSnapshotResponse } from '@/apis/mark/exam-progress'
 import type { ExamWorkspaceJourneyKey } from '@/constants/exam-journey'
-import { EXAM_JOURNEY_STEPS, isExamWorkspaceJourneyKey } from '@/constants/exam-journey'
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
+import { EXAM_JOURNEY_STEPS, isExamWorkspaceJourneyKey } from '@/constants/exam-journey'
 import {
   EXAM_WORKSPACE_MENU_GROUPS,
   findExamWorkspaceMenuItem,
@@ -35,8 +35,6 @@ export function useExamWorkspaceFlowContext(options?: UseExamWorkspaceFlowContex
   const router = useRouter()
   const injected = options ?? useMarkWorkbenchContext()
   const examId = injected.examId
-  const snapshot = injected.snapshot
-
   const journeyKey = computed<ExamWorkspaceJourneyKey>(() => {
     const key = route.meta.journeyKey
     if (key === undefined) {

@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioKeyTeacherRegistryStatusCode } from '@/apis/portfolio/enums'
+import { message } from 'ant-design-vue'
+import { reactive, ref } from 'vue'
 import {
   PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_OPTIONS,
   PortfolioKeyTeacherRegistryStatusDescription,
   PortfolioKeyTeacherRegistryTypeCode,
 } from '@/apis/portfolio/enums'
-import { message } from 'ant-design-vue'
-import { reactive, ref } from 'vue'
 import { portfolioKeyTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -36,10 +36,10 @@ const form = reactive({
   appointYear: '',
   dutyScope: '',
 })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
-  usePortfolioTeacherSearch()
-const { loading, rows, pageNum, pageSize, pageTotal, loadPage, search, handlePageChange } =
-  useQueryTable(
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
+  = usePortfolioTeacherSearch()
+const { loading, rows, pageNum, pageSize, pageTotal, loadPage, search, handlePageChange }
+  = useQueryTable(
     (params) =>
       portfolioKeyTeacherApi.page({
         ...params,

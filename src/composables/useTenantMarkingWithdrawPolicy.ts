@@ -5,6 +5,7 @@ import {
   resolveMarkingWithdrawWindowMs,
 } from '@/apis/mark/marking-withdraw'
 import { useMarkStageStore } from '@/stores/modules/markStage'
+import { showUserError } from '@/utils/error-handler'
 
 /**
  * 从工作台快照读取租户阅卷撤回窗口 / 延迟自动确认策略（后端真源）。
@@ -47,10 +48,11 @@ export function useTenantMarkingWithdrawPolicy() {
     return `提交后可在 ${minutes} 分钟内撤销`
   })
 
-  function requireWithdrawWindowMinutes(): number {
+  function requireWithdrawWindowMinutes(): number | null {
     const minutes = withdrawWindowMinutes.value
     if (minutes == null) {
-      throw new Error('工作台快照缺少租户撤回窗口配置，请刷新后重试')
+      showUserError(null, '工作台快照缺少租户撤回窗口配置，请刷新后重试')
+      return null
     }
     return minutes
   }

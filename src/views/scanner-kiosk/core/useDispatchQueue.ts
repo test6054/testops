@@ -1,7 +1,7 @@
 import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
-import { pageScanDispatchTickets } from '@/apis/mark/scanner-dispatch'
 import type { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { computed, ref } from 'vue'
+import { pageScanDispatchTickets } from '@/apis/mark/scanner-dispatch'
 import { DispatchQueueStatusFilterCode } from '@/types/enums/dispatch-queue-status-filter-enum'
 import { ScanDispatchTicketStatusCode } from '@/types/enums/scan-dispatch-ticket-status-enum'
 import { getUserErrorMessage } from '@/utils/error-handler'
@@ -54,8 +54,8 @@ export function useDispatchQueue() {
         scannerStationId: scannerStationId.value || undefined,
         failureOnly: filter === DispatchQueueStatusFilterCode.FAILED ? true : undefined,
         excludeFailed:
-          filter === DispatchQueueStatusFilterCode.ALL ||
-          filter === DispatchQueueStatusFilterCode.PENDING
+          filter === DispatchQueueStatusFilterCode.ALL
+          || filter === DispatchQueueStatusFilterCode.PENDING
             ? true
             : undefined,
       })

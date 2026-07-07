@@ -1,10 +1,10 @@
 import type { Ref } from 'vue'
-import { computed, ref } from 'vue'
 import type { Options } from '@/hooks'
-import { useBreakpoint, usePagination } from '@/hooks'
 import type { PageResult, QueryDto } from '@/types'
 import message from 'ant-design-vue/es/message'
+import { computed, ref } from 'vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useBreakpoint, usePagination } from '@/hooks'
 import { showUserError } from '@/utils/error-handler'
 
 interface UseTableOptions<T, U> {
@@ -41,7 +41,12 @@ export function useTable<T extends U, U = T>(api: Api<T>, options?: UseTableOpti
       const actualData = await api(params)
 
       if (Array.isArray(actualData)) {
-        throw new TypeError('列表接口必须返回 PageResult，禁止返回裸数组')
+        const contractError = new TypeError('列表接口必须返回 PageResult，禁止返回裸数组')
+        tableError.value = contractError
+        tableData.value = []
+        setTotal(0)
+        showUserError(contractError, '数据加载失败，请稍后重试')
+        return
       }
       const data = actualData.list
       tableData.value = formatResult ? formatResult(data) : data
@@ -82,7 +87,18 @@ export function useTable<T extends U, U = T>(api: Api<T>, options?: UseTableOpti
   const selectAll: OnSelectAll = (checked: boolean) => {
     const key = rowKey ?? 'id'
     const rows = tableData.value.filter((item) => !isDisabledTableRow(item))
-    selectedKeys.value = checked ? rows.map((item) => resolveSelectedRowKey(item, key)) : []
+    if (!checked) {
+      selectedKeys.value = []
+      return
+    }
+    const keys: (string | number)[] = []
+    for (const item of rows) {
+      const rowKeyValue = resolveSelectedRowKey(item, key)
+      if (rowKeyValue != null) {
+        keys.push(rowKeyValue)
+      }
+    }
+    selectedKeys.value = keys
   }
 
   function isDisabledTableRow(item: U): boolean {
@@ -92,13 +108,15 @@ export function useTable<T extends U, U = T>(api: Api<T>, options?: UseTableOpti
     return item.disabled === true
   }
 
-  function resolveSelectedRowKey(item: U, key: keyof T | 'id'): string | number {
+  function resolveSelectedRowKey(item: U, key: keyof T | 'id'): string | number | null {
     if (typeof item !== 'object' || item === null || !(key in item)) {
-      throw new Error(`表格行缺少选择键：${String(key)}`)
+      showUserError(null, `表格行缺少选择键：${String(key)}`)
+      return null
     }
     const value = Object.getOwnPropertyDescriptor(item, key)?.value
     if (typeof value !== 'string' && typeof value !== 'number') {
-      throw new TypeError(`表格行选择键不是字符串或数字：${String(key)}`)
+      showUserError(null, `表格行选择键不是字符串或数字：${String(key)}`)
+      return null
     }
     return value
   }

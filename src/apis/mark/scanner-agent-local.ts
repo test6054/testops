@@ -9,6 +9,7 @@ import type { LocalScanPageStatusCode } from '@/types/enums/local-scan-page-stat
 import type { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import type { ScannerBusinessSceneCode } from '@/types/enums/scanner-business-scene-enum'
 import { ScannerKioskScanModeCode } from '@/types/enums/scanner-kiosk-scan-mode-enum'
+import { rejectUserError } from '@/utils/error-handler'
 import {
   readAgentHealthResponse,
   readAgentSetupContextResponse,
@@ -25,8 +26,8 @@ import {
 const DEFAULT_AGENT_BASE_URL = 'http://127.0.0.1:18761'
 export const LOCAL_AGENT_UNAVAILABLE_ERROR = '本地扫描服务未连接，请确认一体机组件已启动'
 
-export type LocalAgentJsonValue =
-  string | number | boolean | null | LocalAgentJsonObject | LocalAgentJsonValue[]
+export type LocalAgentJsonValue
+  = string | number | boolean | null | LocalAgentJsonObject | LocalAgentJsonValue[]
 
 export interface LocalAgentJsonObject {
   [key: string]: LocalAgentJsonValue | undefined
@@ -450,7 +451,7 @@ export async function getScanJob(scanJobId: string): Promise<ScanJobResponse> {
 
 export async function listScanJobs(params: ListScanJobsParams): Promise<ScanJobListResponse> {
   if (!params.examId.trim() || !params.scannerDeviceId.trim() || !params.scannerStationId.trim()) {
-    throw new Error('当前考试、扫描设备或扫描站点缺失，无法恢复本地扫描任务')
+    return rejectUserError('当前考试、扫描设备或扫描站点缺失，无法恢复本地扫描任务')
   }
   const query = new URLSearchParams()
   query.set('examId', params.examId.trim())
@@ -468,7 +469,7 @@ export async function listDocumentScanJobs(
   params: ListDocumentScanJobsParams,
 ): Promise<ScanJobListResponse> {
   if (!params.scannerDeviceId.trim() || !params.scannerStationId.trim()) {
-    throw new Error('扫描设备或扫描站点缺失，无法恢复本地文档采集任务')
+    return rejectUserError('扫描设备或扫描站点缺失，无法恢复本地文档采集任务')
   }
   const query = new URLSearchParams()
   query.set('taskKind', params.taskKind)

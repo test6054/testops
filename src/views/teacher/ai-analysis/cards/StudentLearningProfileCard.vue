@@ -101,7 +101,7 @@
             <span class="ai-profile-score-value">
               <template v-if="record.scoreComposition.dailyScoreFull != null">
                 {{ formatScore(record.scoreComposition.dailyScore) }}
-                <span v-if="record.scoreComposition.dailyScoreFull != null" class="score-full">
+                <span class="score-full">
                   / {{ formatScore(record.scoreComposition.dailyScoreFull) }}
                 </span>
               </template>
@@ -178,23 +178,23 @@
 
 <script lang="ts" setup>
 import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
-import {
-  FINAL_SCORE_STATUS_TONE,
-  FinalScoreStatusDescription,
-} from '@/apis/mark/final-score-status'
 import type { MasteryLevelCode } from '@/apis/mark/student-mastery-level'
-import { MASTERY_LEVEL_TONE, MasteryLevelDescription } from '@/apis/mark/student-mastery-level'
 import type { TeachingAnalysisRecordResponse } from '@/apis/mark/teaching-analysis'
-import {
-  generateStudentLearningProfile,
-  getLatestStudentLearningProfile,
-} from '@/apis/mark/teaching-analysis'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { MarkStudentOption } from '@/composables/useMarkExamRoster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
+import {
+  FINAL_SCORE_STATUS_TONE,
+  FinalScoreStatusDescription,
+} from '@/apis/mark/final-score-status'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
+import { MASTERY_LEVEL_TONE, MasteryLevelDescription } from '@/apis/mark/student-mastery-level'
+import {
+  generateStudentLearningProfile,
+  getLatestStudentLearningProfile,
+} from '@/apis/mark/teaching-analysis'
 import AiAnalysisCardBody from '@/components/mark/analysis/AiAnalysisCardBody.vue'
 import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCollapse.vue'
 import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'
@@ -249,8 +249,7 @@ async function reload(): Promise<void> {
   hasQueried.value = true
   loading.value = true
   try {
-    const latest = await getLatestStudentLearningProfile({ examId: props.examId, studentUserId })
-    record.value = latest
+    record.value = await getLatestStudentLearningProfile({ examId: props.examId, studentUserId })
     emit('student-change', studentUserId)
   } catch (e) {
     record.value = null
@@ -328,8 +327,8 @@ watch(
   () => props.studentOptions,
   (next) => {
     if (
-      selectedStudentUserId.value &&
-      !next.some((opt) => opt.value === selectedStudentUserId.value)
+      selectedStudentUserId.value
+      && !next.some((opt) => opt.value === selectedStudentUserId.value)
     ) {
       selectedStudentUserId.value = undefined
       hasQueried.value = false
@@ -342,8 +341,8 @@ watch(
   () => props.classIdHint,
   () => {
     if (
-      selectedStudentUserId.value &&
-      !filteredStudentOptions.value.some((opt) => opt.value === selectedStudentUserId.value)
+      selectedStudentUserId.value
+      && !filteredStudentOptions.value.some((opt) => opt.value === selectedStudentUserId.value)
     ) {
       selectedStudentUserId.value = undefined
       hasQueried.value = false

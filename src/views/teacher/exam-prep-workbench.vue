@@ -3,14 +3,15 @@
  * 考试准备聚合工作台：Signal 五 KPI、信息双栏、横向步骤流水线（含主操作）、制卷形态配置。
  */
 import type { ExamPrintSourceModeCode } from '@/apis/mark/exam'
+import { ExamMaterialLayoutModeCode, saveMaterialLayout } from '@/apis/mark/exam'
 import type { SignalMetric } from '@/types/workbench'
 import type { PrepStepCard } from '@/utils/exam-prep-step-ui'
+import { buildPrepStepCards } from '@/utils/exam-prep-step-ui'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import ScanOutlined from '@ant-design/icons-vue/ScanOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, inject, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ExamMaterialLayoutModeCode, saveMaterialLayout } from '@/apis/mark/exam'
 import { loadExamLayoutDesign } from '@/apis/mark/exam-layout-design'
 import { WorkbenchNextActionKeyCode } from '@/apis/mark/exam-progress'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -26,7 +27,6 @@ import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
-import { buildPrepStepCards } from '@/utils/exam-prep-step-ui'
 import {
   canEnterReviewBatch,
   canStartScanRegistration,
@@ -40,10 +40,7 @@ defineOptions({ name: 'TeacherExamPrepWorkbench' })
 const router = useRouter()
 const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
 const { selectedExamId } = useMarkExamContext()
-const {
-  examDetail,
-  examDetailLoading,
-} = useExamJourneyContextBar('考试准备', 'hub')
+const { examDetail, examDetailLoading } = useExamJourneyContextBar('考试准备', 'hub')
 
 const layoutSaving = ref(false)
 const layoutModalOpen = ref(false)
@@ -70,8 +67,8 @@ const scanEntryEnabled = computed(() =>
 )
 const scanEntryDisabledReason = computed(
   () =>
-    resolveNextActionDisabledReason(nextActions.value, WorkbenchNextActionKeyCode.START_SCAN)
-    ?? prepBlockingReasons.value[0],
+    resolveNextActionDisabledReason(nextActions.value, WorkbenchNextActionKeyCode.START_SCAN) ??
+    prepBlockingReasons.value[0],
 )
 const reviewEntryEnabled = computed(() =>
   canEnterReviewBatch(nextActions.value, markingProgress.value),
@@ -111,7 +108,8 @@ const prepSignalMetrics = computed((): SignalMetric[] => {
   if (!detail) {
     return []
   }
-  const metrics: SignalMetric[] = [
+
+  return [
     {
       key: 'candidates',
       label: '考生数',
@@ -143,7 +141,6 @@ const prepSignalMetrics = computed((): SignalMetric[] => {
       tone: completedPrepCount.value >= total && total > 0 ? 'green' : 'blue',
     },
   ]
-  return metrics
 })
 
 const contextPrimaryAction = computed(() => {
@@ -185,18 +182,14 @@ const layoutDirty = computed(() => {
     return false
   }
   return (
-    draftLayoutMode.value !== detail.materialLayoutMode
-    || (
-      draftLayoutMode.value === ExamMaterialLayoutModeCode.FULL_PAPER
-      && draftPrintSource.value !== detail.printSourceMode
-    )
+    draftLayoutMode.value !== detail.materialLayoutMode ||
+    (draftLayoutMode.value === ExamMaterialLayoutModeCode.FULL_PAPER &&
+      draftPrintSource.value !== detail.printSourceMode)
   )
 })
 
 const pageLoading = computed(
-  () =>
-    examDetailLoading.value
-    || (workbenchContext?.loading.value && !snapshot.value),
+  () => examDetailLoading.value || (workbenchContext?.loading.value && !snapshot.value),
 )
 
 async function loadExamFullScore(examId: string): Promise<void> {
@@ -226,9 +219,10 @@ async function handleSaveLayoutMode(): Promise<void> {
     await saveMaterialLayout({
       examId: selectedExamId.value,
       materialLayoutMode: draftLayoutMode.value,
-      printSourceMode: draftLayoutMode.value === ExamMaterialLayoutModeCode.FULL_PAPER
-        ? draftPrintSource.value
-        : undefined,
+      printSourceMode:
+        draftLayoutMode.value === ExamMaterialLayoutModeCode.FULL_PAPER
+          ? draftPrintSource.value
+          : undefined,
     })
     message.success('制卷形态已保存')
     layoutModalOpen.value = false
@@ -327,13 +321,14 @@ watch(
     <UiSkeletonState v-if="pageLoading" variant="card" compact />
 
     <template v-else>
-      <UiEmpty
-        v-if="!snapshot?.prepSteps?.length"
-        description="准备诊断加载失败，请刷新后重试"
-      />
+      <UiEmpty v-if="!snapshot?.prepSteps?.length" description="准备诊断加载失败，请刷新后重试" />
 
       <template v-else-if="examDetail && prepSteps.length > 0">
-        <ExamPrepInfoPanels :detail="examDetail" :exam-full-score="examFullScore" class="exam-prep__info" />
+        <ExamPrepInfoPanels
+          :detail="examDetail"
+          :exam-full-score="examFullScore"
+          class="exam-prep__info"
+        />
 
         <PrepStepPipelineRow
           class="exam-prep__pipeline-row"
@@ -349,8 +344,8 @@ watch(
             </UiButton>
             <a-tooltip
               :title="
-                contextPrimaryAction?.tooltip
-                  ?? (contextPrimaryAction?.disabled ? scanEntryDisabledReason : undefined)
+                contextPrimaryAction?.tooltip ??
+                (contextPrimaryAction?.disabled ? scanEntryDisabledReason : undefined)
               "
             >
               <UiButton

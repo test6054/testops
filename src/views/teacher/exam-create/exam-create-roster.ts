@@ -1,4 +1,5 @@
 import type { ExamCandidateResponse, ExamCandidateRosterRequest } from '@/apis/mark/exam-scope'
+import { showFormValidationMessage } from '@/utils/error-handler'
 
 /** 班级学生树抽屉勾选结果，与 ClassStudentTreeSelectorDrawer confirm 事件一致。 */
 export interface ClassStudentDrawerSelectionInfo {
@@ -10,10 +11,11 @@ export interface ClassStudentDrawerSelectionInfo {
 }
 
 /** 校验 preview API 返回的 ExamCandidateResponse 是否具备名册展示与提交所需字段。 */
-export function requirePreviewCandidates(candidates: ExamCandidateResponse[]): ExamCandidateResponse[] {
+export function requirePreviewCandidates(candidates: ExamCandidateResponse[]): ExamCandidateResponse[] | null {
   for (const candidate of candidates) {
     if (!candidate.classId) {
-      throw new Error('名册预览返回缺少班级信息')
+      showFormValidationMessage('名册预览返回缺少班级信息')
+      return null
     }
   }
   return candidates

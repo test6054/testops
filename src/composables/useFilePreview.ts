@@ -2,7 +2,7 @@ import type { AttachmentPreviewTarget, FilePreviewKind } from '@/utils/file-prev
 import antMessage from 'ant-design-vue/es/message'
 import { computed, ref } from 'vue'
 import { convertLegacyOfficeArrayBuffer, getFileArrayBuffer, previewFile } from '@/apis/edu/file-management'
-import { ErrorHandler } from '@/utils/error-handler'
+import { ErrorHandler, showFormValidationMessage } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import {
   formatFileSize,
@@ -62,7 +62,8 @@ export function useFilePreview() {
 
   async function loadArrayBufferForTarget(target: AttachmentPreviewTarget) {
     if (!target.fileId) {
-      throw new Error('当前文件暂不支持预览')
+      showFormValidationMessage('当前文件暂不支持预览')
+      return Promise.reject(new Error('当前文件暂不支持预览'))
     }
     return await getFileArrayBuffer({
       nodeId: String(target.fileId),
@@ -89,7 +90,8 @@ export function useFilePreview() {
       return await convertLegacyOfficeForTarget(target)
     }
     if (!isZipOoxmlFormat(arrayBuffer)) {
-      throw new Error('文件格式无法识别，请下载后查看')
+      showFormValidationMessage('文件格式无法识别，请下载后查看')
+      return Promise.reject(new Error('文件格式无法识别，请下载后查看'))
     }
     return arrayBuffer
   }

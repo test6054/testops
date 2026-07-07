@@ -44,22 +44,6 @@ const ARCHIVE_PACKAGE_LIFECYCLE_DEFINITIONS: Array<{
   },
   { key: 'destroyed', label: '已销毁', statuses: [ArchivePackageStatusCode.DESTROYED] },
 ]
-
-const ARCHIVE_PACKAGE_STATUS_ORDER: ArchivePackageStatusCode[] = [
-  ArchivePackageStatusCode.DRAFT,
-  ArchivePackageStatusCode.PACKAGING,
-  ArchivePackageStatusCode.PACKAGING_FAILED,
-  ArchivePackageStatusCode.STORED,
-  ArchivePackageStatusCode.ACTIVE,
-  ArchivePackageStatusCode.APPRAISAL_PENDING,
-  ArchivePackageStatusCode.APPRAISAL_DECIDED,
-  ArchivePackageStatusCode.DESTRUCTION_PENDING,
-  ArchivePackageStatusCode.DESTRUCTION_APPROVED,
-  ArchivePackageStatusCode.DESTRUCTION_EXECUTING,
-  ArchivePackageStatusCode.DESTRUCTION_FAILED,
-  ArchivePackageStatusCode.DESTROYED,
-]
-
 /** 由考后归档包状态推导原型 lifecycle-pipe 步骤。 */
 export function buildArchivePackageLifecycleSteps(
   status?: ArchivePackageStatusCode,
@@ -73,9 +57,9 @@ export function buildArchivePackageLifecycleSteps(
   if (activeDefinitionIndex < 0) {
     return []
   }
-  const isFailed =
-    status === ArchivePackageStatusCode.PACKAGING_FAILED ||
-    status === ArchivePackageStatusCode.DESTRUCTION_FAILED
+  const isFailed
+    = status === ArchivePackageStatusCode.PACKAGING_FAILED
+      || status === ArchivePackageStatusCode.DESTRUCTION_FAILED
   return ARCHIVE_PACKAGE_LIFECYCLE_DEFINITIONS.map((definition, index) => {
     let stepStatus: ArchiveLifecycleStep['status']
     if (status === ArchivePackageStatusCode.DESTROYED) {

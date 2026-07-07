@@ -38,12 +38,12 @@ const scanFlow = useWorkOrderScanFlow({
 
 const canStart = computed(() =>
   Boolean(
-    session.collectMode.value &&
-    session.teacherId.value &&
-    bootstrap.selectedScannerId.value &&
-    session.portfolioContext.value != null &&
-    session.portfolioContext.value.scanAllowed === true &&
-    !lease.leaseLost.value,
+    session.collectMode.value
+    && session.teacherId.value
+    && bootstrap.selectedScannerId.value
+    && session.portfolioContext.value != null
+    && session.portfolioContext.value.scanAllowed === true
+    && !lease.leaseLost.value,
   ),
 )
 const leaseLostMessage = '派单租约已失效，扫描会话可能已被中断，请返回队列'
@@ -262,9 +262,9 @@ function goBack() {
       <p>采集模式：{{ session.collectModeLabel.value }}</p>
       <p>
         教师：{{
-          session.portfolioContext.value.teacherName ||
-          session.portfolioContext.value.teacherId ||
-          '—'
+          session.portfolioContext.value.teacherName
+            || session.portfolioContext.value.teacherId
+            || '—'
         }}
       </p>
       <p v-if="session.portfolioContext.value.categoryName">
@@ -379,8 +379,7 @@ function goBack() {
       {{ scanFlow.currentJob.value?.status ?? '等待 Agent' }}； 已扫
       {{ scanFlow.currentJob.value?.scannedPages ?? 0 }} 页
       <span v-if="scanFlow.lifecycle.value.diagnostic">
-        — {{ scanFlow.lifecycle.value.diagnostic }}</span
-      >
+        — {{ scanFlow.lifecycle.value.diagnostic }}</span>
       <span v-else-if="jobMessage"> — {{ jobMessage }}</span>
     </p>
     <p v-if="scanFlow.errorMessage.value" class="portfolio-scan-session__error">

@@ -4,12 +4,12 @@ import type {
   PortfolioDualTeacherApplicationVO,
   PortfolioDualTeacherEligibilityFreezeVO,
 } from '@/apis/portfolio/teacher-platform'
-import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { message, Modal } from 'ant-design-vue'
 import { computed, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { PortfolioDualTeacherApplicationStatusDescription } from '@/apis/portfolio/enums'
+import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -103,9 +103,9 @@ function buildDualTeacherRowActions(
 ): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = []
   if (
-    record.applicationStatus === 'DRAFT' ||
-    record.applicationStatus === 'COLLEGE_RETURNED' ||
-    record.applicationStatus === 'ACADEMIC_RETURNED'
+    record.applicationStatus === 'DRAFT'
+    || record.applicationStatus === 'COLLEGE_RETURNED'
+    || record.applicationStatus === 'ACADEMIC_RETURNED'
   ) {
     actions.push({ key: 'submit', label: '提交' })
   }
@@ -128,13 +128,13 @@ function buildDualTeacherRowActions(
   return actions
 }
 
-type DualTeacherWorkflowAction =
-  | 'submit'
-  | 'collegeApprove'
-  | 'collegeReturn'
-  | 'academicApprove'
-  | 'academicReturn'
-  | 'academicReject'
+type DualTeacherWorkflowAction
+  = | 'submit'
+    | 'collegeApprove'
+    | 'collegeReturn'
+    | 'academicApprove'
+    | 'academicReturn'
+    | 'academicReject'
 
 function handleDualTeacherRowAction(key: string, record: PortfolioDualTeacherApplicationVO): void {
   if (key === 'preview') {

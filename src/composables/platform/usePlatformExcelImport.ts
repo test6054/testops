@@ -1,6 +1,7 @@
 import type { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import type { ExcelImportResult, PlatformJsonObject } from '@/apis/platform/types'
 import { getExcelImportBatch, submitExcelImport } from '@/apis/platform/excel-import'
+import { showFormValidationMessage } from '@/utils/error-handler'
 
 const ASYNC_POLL_INTERVAL_MS = 2000
 const ASYNC_POLL_MAX_ATTEMPTS = 60
@@ -16,7 +17,7 @@ export interface SubmitPlatformExcelImportOptions {
 /** 提交平台 Excel 导入；异步 scene 可选轮询 get 直至终态。 */
 export async function submitPlatformExcelImport(
   options: SubmitPlatformExcelImportOptions,
-): Promise<ExcelImportResult> {
+): Promise<ExcelImportResult | null> {
   const result = await submitExcelImport({
     sceneKey: options.sceneKey,
     fileNodeId: options.fileNodeId,
@@ -32,7 +33,7 @@ export async function submitPlatformExcelImport(
 export async function pollPlatformExcelImportBatch(
   sceneKey: ExcelImportSceneKey,
   batchId: string,
-): Promise<ExcelImportResult> {
+): Promise<ExcelImportResult | null> {
   for (let attempt = 0; attempt < ASYNC_POLL_MAX_ATTEMPTS; attempt += 1) {
     const batch = await getExcelImportBatch({ sceneKey, batchId })
     const status = batch.asyncStatus ?? batch.batchStatus
@@ -44,7 +45,8 @@ export async function pollPlatformExcelImportBatch(
     }
     await sleep(ASYNC_POLL_INTERVAL_MS)
   }
-  throw new Error('成绩导入解析超时，请稍后在批次列表中查看')
+  showFormValidationMessage('成绩导入解析超时，请稍后在批次列表中查看')
+  return null
 }
 
 function sleep(ms: number): Promise<void> {

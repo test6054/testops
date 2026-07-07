@@ -120,8 +120,7 @@ function onSeparatorPointerDown(event: PointerEvent): void {
 
   function onPointerMove(moveEvent: PointerEvent): void {
     const delta = startX - moveEvent.clientX
-    const nextWidth = clampAsideWidth(startWidth + delta)
-    asideWidth.value = nextWidth
+    asideWidth.value = clampAsideWidth(startWidth + delta)
   }
 
   function onPointerUp(): void {

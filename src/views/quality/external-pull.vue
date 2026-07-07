@@ -7,22 +7,27 @@ import type {
   ExternalSourceFieldScopeRequest,
   ExternalSourceFieldScopeVO,
 } from '@/apis/quality/external-data-source'
-import { externalDataSourceApi } from '@/apis/quality/external-data-source'
 import type { ExternalPullAuditVO } from '@/apis/quality/external-pull-audit'
-import { externalPullAuditApi } from '@/apis/quality/external-pull-audit'
 import type { ExternalPullResultVO } from '@/apis/quality/external-pull-result'
-import { externalPullResultApi } from '@/apis/quality/external-pull-result'
 import type {
   ExternalPullTaskQueryRequest,
   ExternalPullTaskSaveRequest,
   ExternalPullTaskVO,
 } from '@/apis/quality/external-pull-task'
-import { externalPullTaskApi } from '@/apis/quality/external-pull-task'
 import type {
   ExternalPullAuditCheckStatusCode,
   ExternalPullAuditEventCode,
   ExternalPullConfirmationStatusCode,
 } from '@/apis/quality/types'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { BusinessAnchorCode } from '@/types/enums/business-anchor-code-enum'
+import type { SignalMetric, TaskResultItem } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { externalDataSourceApi } from '@/apis/quality/external-data-source'
+import { externalPullAuditApi } from '@/apis/quality/external-pull-audit'
+import { externalPullResultApi } from '@/apis/quality/external-pull-result'
+import { externalPullTaskApi } from '@/apis/quality/external-pull-task'
 import {
   EXTERNAL_PULL_CONFIRMATION_STATUS_COLOR,
   EXTERNAL_PULL_TASK_STATUS_COLOR,
@@ -35,16 +40,6 @@ import {
   ExternalSourceTypeCode,
   ExternalSourceTypeDescription,
 } from '@/apis/quality/types'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { BusinessAnchorCode } from '@/types/enums/business-anchor-code-enum'
-import {
-  ALL_BUSINESS_ANCHOR_CODES,
-  BUSINESS_ANCHOR_OPTIONS,
-  BusinessAnchorCodeDescription,
-} from '@/types/enums/business-anchor-code-enum'
-import type { SignalMetric, TaskResultItem } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
 import {
   AchievementResultSelector,
@@ -70,6 +65,11 @@ import { usePolling } from '@/composables/usePolling'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
+import {
+  ALL_BUSINESS_ANCHOR_CODES,
+  BUSINESS_ANCHOR_OPTIONS,
+  BusinessAnchorCodeDescription,
+} from '@/types/enums/business-anchor-code-enum'
 import {
   EXTERNAL_PULL_FILTER_OPERATOR_OPTIONS,
   ExternalPullFilterOperatorCode,
@@ -361,8 +361,8 @@ const taskRuleSummaryLines = computed(() => {
   }
   const activeFilters = taskFilters.value.filter(
     (item) =>
-      item.fieldName &&
-      (item.operator === ExternalPullFilterOperatorCode.IN
+      item.fieldName
+      && (item.operator === ExternalPullFilterOperatorCode.IN
         ? item.multipleValues.length > 0
         : Boolean(item.singleValue.trim())),
   )
@@ -370,8 +370,8 @@ const taskRuleSummaryLines = computed(() => {
     lines.push(
       `筛选条件：${activeFilters
         .map((item) => {
-          const valueText =
-            item.operator === ExternalPullFilterOperatorCode.IN
+          const valueText
+            = item.operator === ExternalPullFilterOperatorCode.IN
               ? item.multipleValues.join('、')
               : item.singleValue.trim()
           return `${item.fieldName}${filterOperatorText(item.operator)}${valueText}`
@@ -501,7 +501,7 @@ function handleFilterOperatorChange(entry: PullFilterEditorRow) {
   entry.multipleValues = []
 }
 
-function handleTaskPageChange(page: { current: number; pageSize: number }) {
+function handleTaskPageChange(page: { current: number, pageSize: number }) {
   taskQuery.pageNum = page.current
   taskQuery.pageSize = page.pageSize
   loadTasks()
@@ -697,9 +697,9 @@ async function openSourceEdit(record: ExternalDataSourceVO) {
 
 async function submitSource() {
   if (
-    !sourceForm.sourceCode.trim() ||
-    !sourceForm.sourceName.trim() ||
-    !sourceForm.jdbcUrl.trim()
+    !sourceForm.sourceCode.trim()
+    || !sourceForm.sourceName.trim()
+    || !sourceForm.jdbcUrl.trim()
   ) {
     message.error('请填写编码 / 名称 / 连接地址')
     return
@@ -813,12 +813,12 @@ function openTaskCreate() {
 
 async function submitTask() {
   if (
-    !taskForm.taskName.trim() ||
-    !taskForm.taskCode.trim() ||
-    !taskForm.sourceId ||
-    !taskForm.businessAnchor ||
-    !taskForm.businessId ||
-    !taskForm.sourceObjectName
+    !taskForm.taskName.trim()
+    || !taskForm.taskCode.trim()
+    || !taskForm.sourceId
+    || !taskForm.businessAnchor
+    || !taskForm.businessId
+    || !taskForm.sourceObjectName
   ) {
     message.error('请填写任务编码、名称，选择数据源，并补全业务归属和来源对象')
     return
@@ -835,8 +835,8 @@ async function submitTask() {
   const filters: NonNullable<ExternalPullTaskSaveRequest['filters']> = []
   for (let index = 0; index < taskFilters.value.length; index += 1) {
     const row = taskFilters.value[index]
-    const hasValue =
-      row.operator === ExternalPullFilterOperatorCode.IN
+    const hasValue
+      = row.operator === ExternalPullFilterOperatorCode.IN
         ? row.multipleValues.length > 0
         : Boolean(row.singleValue.trim())
     if (!row.fieldName && !hasValue) continue
@@ -973,7 +973,7 @@ async function reloadDetail(taskId: string) {
   }
 }
 
-function handlePullResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
+function handlePullResultAction(actionEvent: { item: TaskResultItem, action: { key: string } }) {
   const record = tasks.value.find((t) => t.id === actionEvent.item.id)
   if (record && actionEvent.action.key === 'detail') openDetail(record)
 }
@@ -1598,18 +1598,18 @@ onMounted(async () => {
           </a-descriptions-item>
           <a-descriptions-item label="开始时间">
             {{
-              detailRecord.startedTime ||
-              (detailRecord.status === 'PENDING' ? '尚未开始执行' : '缺失开始时间')
+              detailRecord.startedTime
+                || (detailRecord.status === 'PENDING' ? '尚未开始执行' : '缺失开始时间')
             }}
           </a-descriptions-item>
           <a-descriptions-item label="结束时间">
             {{
-              detailRecord.finishedTime ||
-              (detailRecord.status === 'RUNNING'
-                ? '执行中'
-                : detailRecord.status === 'PENDING'
-                  ? '尚未开始执行'
-                  : '缺失结束时间')
+              detailRecord.finishedTime
+                || (detailRecord.status === 'RUNNING'
+                  ? '执行中'
+                  : detailRecord.status === 'PENDING'
+                    ? '尚未开始执行'
+                    : '缺失结束时间')
             }}
           </a-descriptions-item>
           <a-descriptions-item v-if="detailRecord.failureReason" label="处理说明" :span="2">

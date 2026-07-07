@@ -4,6 +4,8 @@ import type {
   InboxMessageMarkRequest,
   InboxUnreadCountResponse,
 } from '@/apis/edu/message'
+import { defineStore } from 'pinia'
+import { computed, ref } from 'vue'
 import {
   getInboxMessages,
   getUnreadCount,
@@ -12,8 +14,6 @@ import {
   MessageOperationTypeEnum,
   updateMessageStatus,
 } from '@/apis/edu/message'
-import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
 /**
  * 通知统一 Store
  *
@@ -119,10 +119,10 @@ export const useNotificationStore = defineStore('notification', () => {
     await updateMessageStatus(request)
     // 已读 / 归档 / 删除都会减少未读数；统一刷新
     if (
-      request.operationType === MessageOperationTypeEnum.MARK_READ ||
-      request.operationType === MessageOperationTypeEnum.ARCHIVE ||
-      request.operationType === MessageOperationTypeEnum.TRASH ||
-      request.operationType === MessageOperationTypeEnum.PURGE
+      request.operationType === MessageOperationTypeEnum.MARK_READ
+      || request.operationType === MessageOperationTypeEnum.ARCHIVE
+      || request.operationType === MessageOperationTypeEnum.TRASH
+      || request.operationType === MessageOperationTypeEnum.PURGE
     ) {
       await loadUnreadCount()
     }

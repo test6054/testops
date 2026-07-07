@@ -9,8 +9,8 @@
 
 <script lang="ts" setup>
 import type { Component } from 'vue'
-import { computed } from 'vue'
 import AppstoreOutlined from '@ant-design/icons-vue/AppstoreOutlined'
+import { computed } from 'vue'
 
 defineOptions({ name: 'ExamSubSidebarMenuIcon' })
 

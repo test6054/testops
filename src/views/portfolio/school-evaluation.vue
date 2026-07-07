@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
-import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { Input, message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
@@ -14,6 +13,7 @@ import {
   PortfolioEvaluationTaskStatusDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
+import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -41,8 +41,8 @@ const ADVANCE_ACTIONS: Partial<
 
 function canArchiveTask(status: PortfolioEvaluationTaskStatusCode): boolean {
   return (
-    status === PortfolioEvaluationTaskStatusCode.PUBLICITY ||
-    status === PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING
+    status === PortfolioEvaluationTaskStatusCode.PUBLICITY
+    || status === PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING
   )
 }
 

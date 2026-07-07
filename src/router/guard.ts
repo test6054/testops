@@ -1,6 +1,5 @@
 import type { Router } from 'vue-router'
 import type { SeoMeta } from '@/utils/seo'
-import { applySeoMeta } from '@/utils/seo'
 import NProgress from 'nprogress'
 import { runPortfolioTeacherReadinessGuard } from '@/router/guards/portfolio-teacher-readiness'
 import { getDefaultRoute, hasRoutePermission, requiresAuth } from '@/router/permission'
@@ -15,6 +14,7 @@ import {
   ensureQualityPlanConfirmedForNavigation,
   routeRequiresPlanConfirmed,
 } from '@/utils/quality-plan-guard'
+import { applySeoMeta } from '@/utils/seo'
 import { getRoutePreloadManager } from './preload-strategy'
 import 'nprogress/nprogress.css'
 
@@ -153,9 +153,9 @@ export const setupRouterGuard = (router: Router) => {
       return getDefaultRoute(authStore.userRole)
     }
 
-    const needsSecurityRefresh =
-      to.path !== '/change-password' &&
-      (!userStore.userInfo.forcePasswordChange || !userStore.userInfo.currentLoginProviderType)
+    const needsSecurityRefresh
+      = to.path !== '/change-password'
+        && (!userStore.userInfo.forcePasswordChange || !userStore.userInfo.currentLoginProviderType)
 
     if (needsSecurityRefresh) {
       try {

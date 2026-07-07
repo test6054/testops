@@ -428,7 +428,7 @@ import {
   buildOptionalAcademicYearSemesterQuery,
   ensureAcademicYearSemesterPair,
 } from '@/utils/academic-year-semester-query'
-import { showUserError } from '@/utils/error-handler'
+import { rejectFormValidation, showUserError } from '@/utils/error-handler'
 import { readExamListDeepLinkQuery } from '@/utils/exam-list-navigation'
 import {
   countBlockingScanAttention,
@@ -1189,11 +1189,11 @@ const examFormRules: Record<string, Rule[]> = {
         const academicYear = examForm.academicYear?.trim()
         if (!academicYear && !examForm.semester) return
         if (!academicYear || !examForm.semester) {
-          throw new Error('学年与学期必须同时填写或同时留空')
+          return rejectFormValidation('学年与学期必须同时填写或同时留空')
         }
         const match = /^(\d{4})-(\d{4})$/.exec(academicYear)
         if (!match || Number(match[2]) !== Number(match[1]) + 1) {
-          throw new Error('学年格式应为 2024-2025')
+          return rejectFormValidation('学年格式应为 2024-2025')
         }
       },
       trigger: 'blur',
@@ -1205,7 +1205,7 @@ const examFormRules: Record<string, Rule[]> = {
         const academicYear = examForm.academicYear?.trim()
         if (!academicYear && !examForm.semester) return
         if (!academicYear || !examForm.semester) {
-          throw new Error('学年与学期必须同时填写或同时留空')
+          return rejectFormValidation('学年与学期必须同时填写或同时留空')
         }
       },
       trigger: 'change',
@@ -1216,7 +1216,7 @@ const examFormRules: Record<string, Rule[]> = {
       validator: async (): Promise<void> => {
         const [startTime, endTime] = examForm.examWindow ?? []
         if (!startTime || !endTime) {
-          throw new Error('请选择考试时间窗')
+          return rejectFormValidation('请选择考试时间窗')
         }
       },
       trigger: 'change',
@@ -1228,10 +1228,10 @@ const examFormRules: Record<string, Rule[]> = {
         if (examForm.scoreCompositionMode !== 'EXAM_WITH_DAILY') return
         const value = examForm.dailyScoreFull
         if (value == null || value <= 0) {
-          throw new Error('请填写平时成绩满分（须大于 0）')
+          return rejectFormValidation('请填写平时成绩满分（须大于 0）')
         }
         if (value > 1000) {
-          throw new Error('平时成绩满分不能超过 1000')
+          return rejectFormValidation('平时成绩满分不能超过 1000')
         }
       },
       trigger: 'change',

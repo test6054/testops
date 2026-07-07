@@ -180,14 +180,20 @@ import type {
   MarkTeacherDashboardOverviewVO,
   MarkTeacherDashboardQuery,
 } from '@/apis/mark/teacher-dashboard'
-import type { MarkDashboardPendingTodoTabKey } from '@/utils/mark-dashboard-todo'
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { EXAM_STATUS_FILTER_OPTIONS, ExamStatusCode } from '@/apis/mark/exam'
 import {
   loadTeacherDashboardOverviewOnce,
   loadTeacherDashboardOverviewSilent,
 } from '@/apis/mark/teacher-dashboard'
+import type { MarkDashboardPendingTodoTabKey } from '@/utils/mark-dashboard-todo'
+import {
+  buildPendingTodoHint,
+  buildPendingTodoTabItems,
+  filterPendingTodosByTab,
+  resolveDefaultPendingTodoTab,
+} from '@/utils/mark-dashboard-todo'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { EXAM_STATUS_FILTER_OPTIONS, ExamStatusCode } from '@/apis/mark/exam'
 import MarkingOverviewAnalytics from '@/components/mark/dashboard/MarkingOverviewAnalytics.vue'
 import MarkingOverviewSignalBand from '@/components/mark/dashboard/MarkingOverviewSignalBand.vue'
 import MarkingOverviewStageRail from '@/components/mark/dashboard/MarkingOverviewStageRail.vue'
@@ -214,12 +220,6 @@ import {
 } from '@/utils/academic-year-semester-query'
 import { showUserError } from '@/utils/error-handler'
 import { buildExamListRoute } from '@/utils/exam-list-navigation'
-import {
-  buildPendingTodoHint,
-  buildPendingTodoTabItems,
-  filterPendingTodosByTab,
-  resolveDefaultPendingTodoTab,
-} from '@/utils/mark-dashboard-todo'
 
 defineOptions({ name: 'TeacherMarkingOverview' })
 
@@ -342,8 +342,7 @@ async function loadOverviewWithFallback(
   options?: { rollbackFilterOnError?: boolean },
 ): Promise<MarkTeacherDashboardOverviewVO> {
   try {
-    const data = await loadTeacherDashboardOverviewOnce({ ...query })
-    return data
+    return await loadTeacherDashboardOverviewOnce({ ...query })
   } catch (error) {
     if (isFilterRangeError(error) && (query.academicYear || query.semester)) {
       const bootstrap = await loadTeacherDashboardOverviewSilent({})
@@ -353,8 +352,7 @@ async function loadOverviewWithFallback(
         academicYear: reconciled.academicYear,
         semester: reconciled.semester,
       }
-      const data = await loadTeacherDashboardOverviewOnce({ ...filter.value })
-      return data
+      return await loadTeacherDashboardOverviewOnce({ ...filter.value })
     }
     if (options?.rollbackFilterOnError) {
       filter.value = { ...committedFilter.value }

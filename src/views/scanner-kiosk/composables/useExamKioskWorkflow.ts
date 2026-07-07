@@ -14,7 +14,6 @@
  */
 
 import type { LocationQueryValue } from 'vue-router'
-import { useRoute, useRouter } from 'vue-router'
 import type {
   AgentHealthStatusCode,
   LocalScanPageSide,
@@ -23,6 +22,29 @@ import type {
   ScannerDeviceInfo,
   ScannerListResponse
 } from '@/apis/mark/scanner-agent-local'
+import type {
+  ExamScannerBatchResponse,
+  ExamScannerBoundPaperItemVO,
+  ExamScannerKioskBatchHistoryRequest,
+  ExamScannerKioskContextVO,
+  ExamScannerKioskExamOptionRequest,
+  ExamScannerKioskExamOptionVO,
+  ExamScannerPageLedgerVO,
+  ExamScannerScanConfigOptionsVO,
+  ExamScannerScanConfigVO
+} from '@/apis/mark/scanner-kiosk'
+import type { ScanWorkOrderLifecycleVO } from '@/apis/mark/scanner-work-order'
+import type { SemesterCode } from '@/types/enums'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  ScannerColorModeCode,
+  ScannerColorModeDescription,
+  ScannerDuplexModeCode,
+  ScannerDuplexModeDescription,
+  ScannerEndpointOnlineStatusDescription
+} from '@/apis/mark/exam-mark-scanner'
+import { ScanAttentionTypeCode, ScanAttentionTypeDescription } from '@/apis/mark/exam-scan'
 import {
   AgentHealthStatusDescription,
   AgentUpdateStatusCode,
@@ -56,17 +78,6 @@ import {
   setPreferredLocalScanner,
   startScanJob
 } from '@/apis/mark/scanner-agent-local'
-import type {
-  ExamScannerBatchResponse,
-  ExamScannerBoundPaperItemVO,
-  ExamScannerKioskBatchHistoryRequest,
-  ExamScannerKioskContextVO,
-  ExamScannerKioskExamOptionRequest,
-  ExamScannerKioskExamOptionVO,
-  ExamScannerPageLedgerVO,
-  ExamScannerScanConfigOptionsVO,
-  ExamScannerScanConfigVO
-} from '@/apis/mark/scanner-kiosk'
 import {
   bindScannerKioskExam,
   discardScannedPage,
@@ -84,26 +95,15 @@ import {
   ScannerKioskScanModeCode,
   ScannerKioskScanModeDescription
 } from '@/apis/mark/scanner-kiosk'
-import type { ScanWorkOrderLifecycleVO } from '@/apis/mark/scanner-work-order'
 import {
   commitExamScanWorkOrder,
   discardExamScanWorkOrder,
   startExamScanWorkOrder
 } from '@/apis/mark/scanner-work-order'
-import type { SemesterCode } from '@/types/enums'
-import { getSemesterDescription, SemesterOptions } from '@/types/enums'
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import {
-  ScannerColorModeCode,
-  ScannerColorModeDescription,
-  ScannerDuplexModeCode,
-  ScannerDuplexModeDescription,
-  ScannerEndpointOnlineStatusDescription
-} from '@/apis/mark/exam-mark-scanner'
-import { ScanAttentionTypeCode, ScanAttentionTypeDescription } from '@/apis/mark/exam-scan'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
+import { getSemesterDescription, SemesterOptions } from '@/types/enums'
 import { ExamScannerPageUploadStatusCode } from '@/types/enums/exam-scanner-page-upload-status-enum'
 import {
   KioskActivationGateReasonCode,
@@ -111,7 +111,7 @@ import {
 } from '@/types/enums/kiosk-activation-gate-reason-enum'
 import { ScanBatchStatusCode } from '@/types/enums/scan-batch-status-enum'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
-import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showFormValidationMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
 import {
   clearKioskAuthSession,
@@ -1577,22 +1577,26 @@ export function useExamKioskWorkflow() {
   function clampScanConfigToOptions(
     config: ExamScannerScanConfigVO,
     options: ExamScannerScanConfigOptionsVO,
-  ): ExamScannerScanConfigVO {
+  ): ExamScannerScanConfigVO | null {
     const allowedDpis = options.allowedDpis
     const colorModes = options.colorModes
     const duplexModes = options.duplexModes
     const defaultConfig = options.defaultScanConfig
     if (allowedDpis.length === 0) {
-      throw new Error('扫描仪未上报可用分辨率')
+      showFormValidationMessage('扫描仪未上报可用分辨率')
+      return null
     }
     if (colorModes.length === 0) {
-      throw new Error('扫描参数缺少色彩模式选项')
+      showFormValidationMessage('扫描参数缺少色彩模式选项')
+      return null
     }
     if (duplexModes.length === 0) {
-      throw new Error('扫描参数缺少单面/双面扫描选项')
+      showFormValidationMessage('扫描参数缺少单面/双面扫描选项')
+      return null
     }
     if (!defaultConfig?.dpi || !defaultConfig.colorMode || !defaultConfig.duplexMode) {
-      throw new Error('扫描参数缺少服务端默认建议值')
+      showFormValidationMessage('扫描参数缺少服务端默认建议值')
+      return null
     }
     let dpi = config.dpi
     if (!allowedDpis.includes(dpi)) {
@@ -1621,7 +1625,12 @@ export function useExamKioskWorkflow() {
     const examChanged = scanConfigSourceExamId.value !== examId.value
     if (!examChanged && !force) return
     try {
-      scanConfig.value = clampScanConfigToOptions(options.defaultScanConfig, options)
+      const clamped = clampScanConfigToOptions(options.defaultScanConfig, options)
+      if (!clamped) {
+        errorMessage.value = '扫描参数契约不完整'
+        return
+      }
+      scanConfig.value = clamped
     } catch (error) {
       errorMessage.value = error instanceof Error ? error.message : '扫描参数契约不完整'
       return
@@ -1677,8 +1686,13 @@ export function useExamKioskWorkflow() {
     const scanConfigOptions = kioskContext.value.scanConfigOptions
     if (activeBatchConfig && scanConfigOptions) {
       try {
-        scanConfig.value = clampScanConfigToOptions(activeBatchConfig, scanConfigOptions)
-        scanConfigSourceExamId.value = examId.value
+        const clamped = clampScanConfigToOptions(activeBatchConfig, scanConfigOptions)
+        if (!clamped) {
+          errorMessage.value = '扫描参数契约不完整'
+        } else {
+          scanConfig.value = clamped
+          scanConfigSourceExamId.value = examId.value
+        }
       } catch (error) {
         errorMessage.value = error instanceof Error ? error.message : '扫描参数契约不完整'
       }

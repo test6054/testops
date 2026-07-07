@@ -136,7 +136,11 @@ async function confirmExtremeScore(): Promise<boolean> {
   if (score.value === undefined) return false
   if (score.value !== 0 && score.value !== props.fullScore) return true
   const isZero = score.value === 0
-  const withdrawHint = withdrawConfirmHint.value ?? `提交后可在 ${requireWithdrawWindowMinutes()} 分钟内撤销`
+  const withdrawMinutes = requireWithdrawWindowMinutes()
+  if (withdrawMinutes == null) {
+    return false
+  }
+  const withdrawHint = withdrawConfirmHint.value ?? `提交后可在 ${withdrawMinutes} 分钟内撤销`
   return confirmAsync({
     title: isZero ? '确认批量零分？' : '确认批量满分？',
     content: isZero

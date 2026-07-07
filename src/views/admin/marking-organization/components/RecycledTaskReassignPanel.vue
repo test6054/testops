@@ -58,9 +58,9 @@ import type {
   MarkingTaskResponse,
   QuestionMarkingGroupResponse,
 } from '@/apis/mark/marking-organization'
-import { pageMarkingTasks, reassignRecycledMarkingTask } from '@/apis/mark/marking-organization'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
+import { pageMarkingTasks, reassignRecycledMarkingTask } from '@/apis/mark/marking-organization'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -88,7 +88,7 @@ const tasks = ref<MarkingTaskResponse[]>([])
 const targetReviewerByTaskId = reactive<Record<string, string>>({})
 
 const reviewerOptionsByGroupId = computed(() => {
-  const map: Record<string, Array<{ value: string; label: string }>> = {}
+  const map: Record<string, Array<{ value: string, label: string }>> = {}
   for (const group of props.groups) {
     map[group.id] = group.reviewers.map((reviewer) => ({
       value: reviewer.reviewerUserId,

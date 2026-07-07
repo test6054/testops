@@ -13,11 +13,6 @@ import type {
   EvaluationWorkgroupVO,
   WorkgroupMember,
 } from '@/apis/quality/evaluation-workgroup'
-import {
-  evaluationWorkgroupApi,
-  WorkgroupMemberRoleCode,
-  WorkgroupMemberRoleDescription,
-} from '@/apis/quality/evaluation-workgroup'
 import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -25,6 +20,11 @@ import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
+import {
+  evaluationWorkgroupApi,
+  WorkgroupMemberRoleCode,
+  WorkgroupMemberRoleDescription,
+} from '@/apis/quality/evaluation-workgroup'
 import {
   WORKGROUP_LEVEL_OPTIONS,
   WorkgroupLevelCode,
@@ -61,8 +61,8 @@ const route = useRoute()
 /** 教学档案袋 /portfolio 域独立壳层；质量评价 /quality 仍走 OBE scope 加载 */
 const isPortfolioDomain = computed(
   () =>
-    props.domainShell === 'portfolio' ||
-    (props.domainShell !== 'quality' && Boolean(route.meta.portfolioDomain)),
+    props.domainShell === 'portfolio'
+    || (props.domainShell !== 'quality' && Boolean(route.meta.portfolioDomain)),
 )
 
 interface EvaluationWorkgroupFilterModel {
@@ -128,7 +128,7 @@ const query = reactive<EvaluationWorkgroupQueryRequest>({
 
 const levelOptions = WORKGROUP_LEVEL_OPTIONS
 
-const memberRoleOptions: Array<{ value: WorkgroupMemberRoleCode; label: string }> = [
+const memberRoleOptions: Array<{ value: WorkgroupMemberRoleCode, label: string }> = [
   { value: WorkgroupMemberRoleCode.CONVENER, label: '召集人' },
   { value: WorkgroupMemberRoleCode.MEMBER, label: '成员' },
   { value: WorkgroupMemberRoleCode.EXTERNAL_EXPERT, label: '外部专家' },
@@ -178,7 +178,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -254,8 +254,8 @@ function handleEditorProgramChange(value: string | null) {
 
 function getEditorConvenerId(): string | null {
   return (
-    editor.members.find((member) => member.role === WorkgroupMemberRoleCode.CONVENER)?.userId ??
-    null
+    editor.members.find((member) => member.role === WorkgroupMemberRoleCode.CONVENER)?.userId
+    ?? null
   )
 }
 
@@ -440,9 +440,9 @@ function memberCountOf(record: EvaluationWorkgroupVO): number {
 
 function convenerNameOf(record: EvaluationWorkgroupVO): string {
   return (
-    record.convenerUserName ??
-    record.members?.find((member) => member.role === WorkgroupMemberRoleCode.CONVENER)?.userName ??
-    '—'
+    record.convenerUserName
+    ?? record.members?.find((member) => member.role === WorkgroupMemberRoleCode.CONVENER)?.userName
+    ?? '—'
   )
 }
 

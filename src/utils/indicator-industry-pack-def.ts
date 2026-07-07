@@ -1,3 +1,5 @@
+import { showFormValidationMessage } from '@/utils/error-handler'
+
 /** 行业包定义的可视化编辑模型（对应 packDefJson 核心可维护字段） */
 export interface PortfolioIndustryPackDefForm {
   packId: string
@@ -60,7 +62,7 @@ export function parseIndustryPackDefJson(
   packName: string,
   packVersion: string,
   json: string,
-): PortfolioIndustryPackDefForm {
+): PortfolioIndustryPackDefForm | null {
   const form: PortfolioIndustryPackDefForm = {
     packId: packCode,
     packName,
@@ -74,7 +76,8 @@ export function parseIndustryPackDefJson(
   }
   const raw: unknown = JSON.parse(json)
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
-    throw new Error('行业包定义 JSON 必须是对象')
+    showFormValidationMessage('行业包定义 JSON 必须是对象')
+    return null
   }
   const weights = readObjectProperty(raw, 'weights')
   const materialChecklist = readObjectProperty(raw, 'materialChecklist')
@@ -94,12 +97,13 @@ export function parseIndustryPackDefJson(
 }
 
 /** 保留种子 dictionary / assessmentTemplate，仅更新表单可维护字段 */
-export function mergeIndustryPackDefJson(form: PortfolioIndustryPackDefForm, existingJson: string): string {
+export function mergeIndustryPackDefJson(form: PortfolioIndustryPackDefForm, existingJson: string): string | null {
   const base: Record<string, unknown> = {}
   if (existingJson.trim()) {
     const parsed: unknown = JSON.parse(existingJson)
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-      throw new Error('行业包定义 JSON 必须是对象')
+      showFormValidationMessage('行业包定义 JSON 必须是对象')
+      return null
     }
     for (const key of Object.keys(parsed)) {
       base[key] = Object.getOwnPropertyDescriptor(parsed, key)?.value
@@ -157,6 +161,6 @@ export function mergeIndustryPackDefJson(form: PortfolioIndustryPackDefForm, exi
   return JSON.stringify(payload)
 }
 
-export function buildNewIndustryPackDefJson(form: PortfolioIndustryPackDefForm): string {
+export function buildNewIndustryPackDefJson(form: PortfolioIndustryPackDefForm): string | null {
   return mergeIndustryPackDefJson(form, '{}')
 }

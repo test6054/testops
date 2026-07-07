@@ -89,6 +89,9 @@ import type {
   UiDataTableEmptyKind,
   UiDataTablePaginationMode,
 } from './data-table'
+import { useBreakpoints } from '@vueuse/core'
+import { computed, getCurrentInstance, ref, useAttrs, useSlots, watch } from 'vue'
+import UiCard from './Card.vue'
 import {
   filterResponsiveDataTableColumns,
   normalizeDataTableColumns,
@@ -97,9 +100,6 @@ import {
   UI_DATA_TABLE_EMPTY_PRESETS,
   UI_DATA_TABLE_VIEWPORT,
 } from './data-table'
-import { useBreakpoints } from '@vueuse/core'
-import { computed, getCurrentInstance, ref, useAttrs, useSlots, watch } from 'vue'
-import UiCard from './Card.vue'
 import UiEmpty from './Empty.vue'
 import UiPagination from './Pagination.vue'
 import { resolvePopupContainer } from './popup-container'
@@ -179,7 +179,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (e: 'change', changeEvent: UiDataTableChangeEvent): void
-  (e: 'page-change', pageEvent: { current: number; pageSize: number }): void
+  (e: 'page-change', pageEvent: { current: number, pageSize: number }): void
   (e: 'selection-change', rowKeys: Key[]): void
 }>()
 
@@ -305,9 +305,9 @@ const effectiveShowPagination = computed(() => {
     return false
   }
   if (
-    props.paginationMode === 'server' &&
-    effectiveTotal.value > pageSize.value &&
-    !hasPageChangeListener.value
+    props.paginationMode === 'server'
+    && effectiveTotal.value > pageSize.value
+    && !hasPageChangeListener.value
   ) {
     return false
   }
@@ -316,11 +316,11 @@ const effectiveShowPagination = computed(() => {
 
 const hasTopBar = computed(() => {
   return (
-    !!props.title ||
-    !!props.description ||
-    !!props.sortedInfo ||
-    !!slots['toolbar-left'] ||
-    !!slots['toolbar-right']
+    !!props.title
+    || !!props.description
+    || !!props.sortedInfo
+    || !!slots['toolbar-left']
+    || !!slots['toolbar-right']
   )
 })
 
@@ -369,8 +369,8 @@ watch(
     }
     missingPageChangeWarned = true
     console.warn(
-      '[UiDataTable] paginationMode="server" 且 total 大于 pageSize，但未监听 @page-change；分页栏已自动隐藏。' +
-        '请绑定 @page-change 走服务端分页，或改用 paginationMode="client" / "none"。',
+      '[UiDataTable] paginationMode="server" 且 total 大于 pageSize，但未监听 @page-change；分页栏已自动隐藏。'
+      + '请绑定 @page-change 走服务端分页，或改用 paginationMode="client" / "none"。',
     )
   },
   { immediate: true },

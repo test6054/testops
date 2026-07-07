@@ -1,6 +1,6 @@
 import type { Ref } from 'vue'
-import { computed, ref } from 'vue'
 import type { PageResult, QueryDto } from '@/types'
+import { computed, ref } from 'vue'
 import { showUserError } from '@/utils/error-handler'
 
 interface InfiniteScrollOptions<T, U> {

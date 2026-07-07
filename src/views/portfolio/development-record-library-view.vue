@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentRecordStatusCode } from '@/apis/portfolio/enums'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
   PortfolioDevelopmentRecordStatusDescription,
   PortfolioDevelopmentRecordTypeCode,
 } from '@/apis/portfolio/enums'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
-import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -35,10 +35,10 @@ const props = defineProps<{
 
 const importModalOpen = ref(false)
 const form = reactive({ recordTitle: '', descriptionText: '', teacherUserId: '' })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
-  usePortfolioTeacherSearch()
-const { loading, rows, pageNum, pageSize, pageTotal, loadPage, search, handlePageChange } =
-  useQueryTable(
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
+  = usePortfolioTeacherSearch()
+const { loading, rows, pageNum, pageSize, pageTotal, loadPage, search, handlePageChange }
+  = useQueryTable(
     (params) =>
       portfolioDevelopmentRecordApi.page({
         ...params,

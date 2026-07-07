@@ -7,6 +7,8 @@ import type {
   OnsiteVisitPlanSaveRequest,
   OnsiteVisitPlanVO,
 } from '@/apis/quality/accreditation'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   accreditationApi,
   OnsiteChecklistCategoryCode,
@@ -14,8 +16,6 @@ import {
   OnsiteChecklistItemStatusCode,
   OnsiteChecklistItemStatusDescription,
 } from '@/apis/quality/accreditation'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
 import { ArchiveSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -52,7 +52,7 @@ const checklistColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 100 },
 ]
 
-const CATEGORY_TABS: { key: '' | OnsiteChecklistCategoryCode; label: string }[] = [
+const CATEGORY_TABS: { key: '' | OnsiteChecklistCategoryCode, label: string }[] = [
   { key: '', label: '全部' },
   { key: OnsiteChecklistCategoryCode.FACILITY, label: '设施' },
   { key: OnsiteChecklistCategoryCode.PAPER_SAMPLE, label: '样本' },
@@ -73,8 +73,8 @@ const checklistCategoryFilter = ref<'' | OnsiteChecklistCategoryCode>('')
 
 const canMutateOnsitePlan = computed(
   () =>
-    props.activeCycle?.cycleStatus === 'ACTIVE' &&
-    props.activeCycle?.currentPhase === 'ONSITE_VISIT',
+    props.activeCycle?.cycleStatus === 'ACTIVE'
+    && props.activeCycle?.currentPhase === 'ONSITE_VISIT',
 )
 
 const canCreatePlan = computed(() => canMutateOnsitePlan.value && !!props.activeCycleId)
@@ -84,8 +84,8 @@ const checklistProgress = computed(() => {
   if (items.length === 0) return 0
   const done = items.filter(
     (i) =>
-      i.itemStatus === OnsiteChecklistItemStatusCode.COMPLETED ||
-      i.itemStatus === OnsiteChecklistItemStatusCode.NOT_APPLICABLE,
+      i.itemStatus === OnsiteChecklistItemStatusCode.COMPLETED
+      || i.itemStatus === OnsiteChecklistItemStatusCode.NOT_APPLICABLE,
   ).length
   return Math.round((done / items.length) * 100)
 })
@@ -266,15 +266,15 @@ async function submitChecklistItem() {
     return
   }
   if (
-    checklistForm.itemStatus === OnsiteChecklistItemStatusCode.COMPLETED &&
-    !checklistForm.evidenceArchiveId
+    checklistForm.itemStatus === OnsiteChecklistItemStatusCode.COMPLETED
+    && !checklistForm.evidenceArchiveId
   ) {
     message.error('已完成检查项必须关联证据归档')
     return
   }
   if (
-    checklistForm.itemStatus === OnsiteChecklistItemStatusCode.NOT_APPLICABLE &&
-    !checklistForm.remark?.trim()
+    checklistForm.itemStatus === OnsiteChecklistItemStatusCode.NOT_APPLICABLE
+    && !checklistForm.remark?.trim()
   ) {
     message.error('不适用检查项必须填写说明')
     return
@@ -326,8 +326,8 @@ defineExpose({ openCreate, loadPlans })
             :percent="
               record.totalChecklistCount
                 ? Math.round(
-                    ((record.completedChecklistCount ?? 0) / record.totalChecklistCount) * 100,
-                  )
+                  ((record.completedChecklistCount ?? 0) / record.totalChecklistCount) * 100,
+                )
                 : 0
             "
             size="small"
@@ -447,18 +447,18 @@ defineExpose({ openCreate, loadPlans })
         <a-form layout="vertical">
           <a-form-item label="状态" required>
             <a-select v-model:value="checklistForm.itemStatus">
-              <a-select-option :value="OnsiteChecklistItemStatusCode.PENDING"
-                >待准备</a-select-option
-              >
-              <a-select-option :value="OnsiteChecklistItemStatusCode.IN_PROGRESS"
-                >准备中</a-select-option
-              >
-              <a-select-option :value="OnsiteChecklistItemStatusCode.COMPLETED"
-                >已完成</a-select-option
-              >
-              <a-select-option :value="OnsiteChecklistItemStatusCode.NOT_APPLICABLE"
-                >不适用</a-select-option
-              >
+              <a-select-option :value="OnsiteChecklistItemStatusCode.PENDING">
+                待准备
+              </a-select-option>
+              <a-select-option :value="OnsiteChecklistItemStatusCode.IN_PROGRESS">
+                准备中
+              </a-select-option>
+              <a-select-option :value="OnsiteChecklistItemStatusCode.COMPLETED">
+                已完成
+              </a-select-option>
+              <a-select-option :value="OnsiteChecklistItemStatusCode.NOT_APPLICABLE">
+                不适用
+              </a-select-option>
             </a-select>
           </a-form-item>
           <a-form-item

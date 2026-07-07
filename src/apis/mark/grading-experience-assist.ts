@@ -60,8 +60,8 @@ export interface ExamGradingExperienceAssistPolicyEnableRequest {
   maxExperienceItems: number
 }
 
-export type ExamGradingExperienceAssistPolicySaveRequest =
-  ExamGradingExperienceAssistPolicyEnableRequest
+export type ExamGradingExperienceAssistPolicySaveRequest
+  = ExamGradingExperienceAssistPolicyEnableRequest
 
 export interface ExamQuestionExperienceAssistBindingResponse {
   id?: string

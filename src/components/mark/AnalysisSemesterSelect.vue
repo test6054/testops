@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { ExamDistinctTermItemResponse } from '@/apis/mark/exam'
-import { listDistinctExamTerms, listDistinctTeachingExamTerms } from '@/apis/mark/exam'
 import type { SemesterCode } from '@/types/enums/semester-enum'
-import { getSemesterDescription } from '@/types/enums/semester-enum'
 import { ReloadOutlined } from '@ant-design/icons-vue'
 import { computed, onMounted, ref, watch } from 'vue'
+import { listDistinctExamTerms, listDistinctTeachingExamTerms } from '@/apis/mark/exam'
+import { getSemesterDescription } from '@/types/enums/semester-enum'
 
 defineOptions({ name: 'AnalysisSemesterSelect' })
 
@@ -42,7 +42,7 @@ const defaultScopeApplied = ref(false)
 
 const yearOptions = computed(() => {
   const seen = new Set<string>()
-  const options: { label: string; value: string }[] = []
+  const options: { label: string, value: string }[] = []
   for (const item of distinctTerms.value) {
     if (seen.has(item.academicYear)) {
       continue
@@ -68,10 +68,10 @@ const semesterOptions = computed(() => {
 
 function applyDefaultScope(): void {
   if (
-    defaultScopeApplied.value ||
-    props.defaultRecentSemesterCount <= 0 ||
-    academicYear.value ||
-    distinctTerms.value.length === 0
+    defaultScopeApplied.value
+    || props.defaultRecentSemesterCount <= 0
+    || academicYear.value
+    || distinctTerms.value.length === 0
   ) {
     return
   }
@@ -95,8 +95,8 @@ async function loadSemesterOptions(applyDefaultScopeOnLoad = false): Promise<voi
         ? { referenceDepartmentId: props.referenceDepartmentId }
         : {}),
     }
-    distinctTerms.value =
-      props.termSource === 'TEACHING'
+    distinctTerms.value
+      = props.termSource === 'TEACHING'
         ? await listDistinctTeachingExamTerms(request)
         : await listDistinctExamTerms(request)
     if (applyDefaultScopeOnLoad) {
@@ -131,8 +131,8 @@ watch(academicYear, (year, prev) => {
     return
   }
   if (
-    semester.value &&
-    !distinctTerms.value.some(
+    semester.value
+    && !distinctTerms.value.some(
       (item) => item.academicYear === year && item.semester === semester.value,
     )
   ) {

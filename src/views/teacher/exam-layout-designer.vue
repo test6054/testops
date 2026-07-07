@@ -51,7 +51,7 @@ import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContex
 import { ExamLayoutDetectTaskStatusCode, isExamLayoutDetectInFlightStatus, requireExamLayoutDetectTaskStatusCode } from '@/types/enums/exam-layout-detect-task-status-enum'
 import { ExamLayoutEntryKindCode } from '@/types/enums/exam-layout-entry-kind-enum'
 import { ALL_EXAM_LAYOUT_PAPER_SPEC_CODES } from '@/types/enums/exam-layout-paper-spec-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { computeLayoutRoiStats, hasIdentityBlock, resolvePaperSpecLabel, validateLayoutDocumentForSave } from '@/utils/exam-layout-designer'
 import {
   buildLayoutDesignerSignalMetrics,
@@ -386,7 +386,12 @@ async function handleGenerateSheet(
 }
 
 async function pollDetectStatus(detectTaskId: string, session: number): Promise<void> {
-  const deadline = Date.now() + resolveExamLayoutDetectPollDeadlineMs(detectPollingPolicy.value)
+  const pollMs = resolveExamLayoutDetectPollDeadlineMs(detectPollingPolicy.value)
+  if (pollMs == null) {
+    showUserError(null, '制卷识别轮询策略缺失或无效，请刷新页面后重试')
+    return
+  }
+  const deadline = Date.now() + pollMs
   while (Date.now() < deadline) {
     if (session !== detectSessionSeq) {
       return
@@ -408,7 +413,8 @@ async function pollDetectStatus(detectTaskId: string, session: number): Promise<
     const taskStatus = requireExamLayoutDetectTaskStatusCode(status.status)
     if (taskStatus === ExamLayoutDetectTaskStatusCode.SUCCEEDED) {
       if (!status.document?.pages?.length) {
-        throw new Error('识别完成但未返回制卷文档')
+        showFormValidationMessage('识别完成但未返回制卷文档')
+        return
       }
       if (session !== detectSessionSeq) {
         return
@@ -422,7 +428,8 @@ async function pollDetectStatus(detectTaskId: string, session: number): Promise<
       return
     }
     if (taskStatus === ExamLayoutDetectTaskStatusCode.FAILED) {
-      throw new Error(status.errorMessage || '自动预划区失败')
+      showFormValidationMessage(status.errorMessage || '自动预划区失败')
+      return
     }
     if (taskStatus === ExamLayoutDetectTaskStatusCode.CANCELLED) {
       if (session === detectSessionSeq) {
@@ -435,7 +442,7 @@ async function pollDetectStatus(detectTaskId: string, session: number): Promise<
       window.setTimeout(resolve, 1200)
     })
   }
-  throw new Error('识别超时，请点击重新识别')
+  showFormValidationMessage('识别超时，请点击重新识别')
 }
 
 async function resumeActiveDetectPolling(

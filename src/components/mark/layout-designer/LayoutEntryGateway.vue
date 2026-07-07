@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { ExamMaterialLayoutModeCode } from '@/apis/mark/exam'
-import { ExamMaterialLayoutModeDescription } from '@/apis/mark/exam'
 import type {
   ExamLayoutDocument,
   ExamLayoutGenerateQuestionRequest,
 } from '@/apis/mark/exam-layout-design'
-import { fetchExamLayoutPageUploadMeta } from '@/apis/mark/exam-layout-design'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
+import { ExamMaterialLayoutModeDescription } from '@/apis/mark/exam'
+import { fetchExamLayoutPageUploadMeta } from '@/apis/mark/exam-layout-design'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -51,7 +51,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'generate-sheet': [paperSpec: string, questions: ExamLayoutGenerateQuestionRequest[]]
   'auto-detect': [sourcePdfFileId: string]
-  patch: [document: ExamLayoutDocument]
+  "patch": [document: ExamLayoutDocument]
 }>()
 
 const OCR_SCENE_OPTIONS = [
@@ -97,8 +97,8 @@ const sourceFileCanAutoDetect = computed(() => {
   return /\.(pdf|doc|docx|png|jpe?g)$/i.test(sourcePdfFileName.value)
 })
 const paperSpec = ref<ExamLayoutPaperSpecCode>(
-  ALL_EXAM_LAYOUT_PAPER_SPEC_CODES.find((code) => code === props.document?.paperSpec) ??
-    defaultBlankSheetPaperSpec(),
+  ALL_EXAM_LAYOUT_PAPER_SPEC_CODES.find((code) => code === props.document?.paperSpec)
+  ?? defaultBlankSheetPaperSpec(),
 )
 const layoutName = ref(props.document?.layoutName ?? '')
 const printSafeMarginMm = ref(props.document?.printSafeMarginMm ?? 5)
@@ -268,10 +268,10 @@ function defaultFullScore(ocrScene: string): number {
     return 2
   }
   if (
-    ocrScene === 'CALCULATION' ||
-    ocrScene === 'PROOF' ||
-    ocrScene === 'PROGRAMMING' ||
-    ocrScene === 'DRAWING'
+    ocrScene === 'CALCULATION'
+    || ocrScene === 'PROOF'
+    || ocrScene === 'PROGRAMMING'
+    || ocrScene === 'DRAWING'
   ) {
     return 10
   }

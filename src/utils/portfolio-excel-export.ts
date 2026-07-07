@@ -1,5 +1,6 @@
 import type { PortfolioArchiveBagExportResultVO } from '@/apis/portfolio/bag-types'
 import type { PortfolioIndicatorExportResultVO } from '@/apis/portfolio/indicator-types'
+import { rejectUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 
 export type PortfolioExcelDownloadPayload = Pick<
@@ -15,7 +16,7 @@ export type PortfolioIndicatorExcelDownloadPayload = Pick<
 /** 下载 portfolio 域 Excel 导出结果（edu-storage fileNodeId） */
 export async function downloadPortfolioExcelExport(result: PortfolioExcelDownloadPayload) {
   if (!result.fileNodeId) {
-    throw new Error('导出结果缺少 fileNodeId')
+    return rejectUserError('导出结果缺少 fileNodeId')
   }
   await handleDownloadFile({
     fileId: result.fileNodeId,
@@ -28,7 +29,7 @@ export async function downloadPortfolioIndicatorExcelExport(
   result: PortfolioIndicatorExcelDownloadPayload,
 ) {
   if (!result.fileNodeId) {
-    throw new Error('导出结果缺少 fileNodeId')
+    return rejectUserError('导出结果缺少 fileNodeId')
   }
   await handleDownloadFile({
     fileId: result.fileNodeId,

@@ -76,7 +76,7 @@ export function resolvePaperSpecLabel(paperSpec: string | undefined): string {
 export function resolvePaperMm(
   paperSpec: string | undefined,
   page: ExamLayoutPageDto,
-): { widthMm: number; heightMm: number } {
+): { widthMm: number, heightMm: number } {
   const code = ALL_EXAM_LAYOUT_PAPER_SPEC_CODES.find((item) => item === paperSpec)
   if (code) {
     return ExamLayoutPaperSpecMm[code]
@@ -123,7 +123,7 @@ export function normToStageRect(
   rectNorm: ExamLayoutRectNorm,
   page: ExamLayoutPageDto,
   stageWidth: number,
-): { x: number; y: number; width: number; height: number } {
+): { x: number, y: number, width: number, height: number } {
   const stageHeight = Math.round(stageWidth * (page.naturalHeightPx / page.naturalWidthPx))
   return {
     x: rectNorm.x * stageWidth,
@@ -290,9 +290,9 @@ export function findPrimaryBlockForQuestion(
       return 2
     }
     return (
-      typeOrder(a.blockType) - typeOrder(b.blockType) ||
-      a.pageNo - b.pageNo ||
-      (a.layer ?? 0) - (b.layer ?? 0)
+      typeOrder(a.blockType) - typeOrder(b.blockType)
+      || a.pageNo - b.pageNo
+      || (a.layer ?? 0) - (b.layer ?? 0)
     )
   })[0]
 }
@@ -360,13 +360,13 @@ export function validateLayoutDocumentForSave(document: ExamLayoutDocument | nul
       reasons.push('整卷试卷尚未完成分页解析，请等待题目识别完成')
     }
     const sourcePageNos = new Set<number>()
-    const sourceTotalPages =
-      document.totalPages && document.totalPages > 0 ? document.totalPages : document.pages?.length
+    const sourceTotalPages
+      = document.totalPages && document.totalPages > 0 ? document.totalPages : document.pages?.length
     for (const page of document.pages ?? []) {
       if (
-        !page.pageNo ||
-        page.pageNo <= 0 ||
-        (sourceTotalPages && page.pageNo > sourceTotalPages)
+        !page.pageNo
+        || page.pageNo <= 0
+        || (sourceTotalPages && page.pageNo > sourceTotalPages)
       ) {
         reasons.push('整卷试卷页号必须在 1 到总页数之间')
         continue
@@ -424,9 +424,9 @@ export function validateLayoutDocumentForSave(document: ExamLayoutDocument | nul
   const pageNos = new Set<number>()
   for (const page of document.pages ?? []) {
     if (
-      !page.pageNo ||
-      page.pageNo <= 0 ||
-      (document.totalPages && page.pageNo > document.totalPages)
+      !page.pageNo
+      || page.pageNo <= 0
+      || (document.totalPages && page.pageNo > document.totalPages)
     ) {
       reasons.push('制卷页号必须在 1 到总页数之间')
       continue
@@ -506,10 +506,10 @@ export function validateLayoutDocumentForSave(document: ExamLayoutDocument | nul
       reasons.push('书写作答区必须关联制卷题目')
     }
     if (
-      block.blockType === ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER &&
-      block.layoutQuestionId &&
-      expectedAnswerBlockTypeForOcrScene(questionOcrSceneById.get(block.layoutQuestionId)) !==
-        ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER
+      block.blockType === ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER
+      && block.layoutQuestionId
+      && expectedAnswerBlockTypeForOcrScene(questionOcrSceneById.get(block.layoutQuestionId))
+      !== ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER
     ) {
       reasons.push('书写作答区只能关联填空、数值、简答等非填涂题')
     }
@@ -517,10 +517,10 @@ export function validateLayoutDocumentForSave(document: ExamLayoutDocument | nul
       reasons.push('客观填涂矩阵必须关联制卷题目')
     }
     if (
-      block.blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX &&
-      block.layoutQuestionId &&
-      expectedAnswerBlockTypeForOcrScene(questionOcrSceneById.get(block.layoutQuestionId)) !==
-        ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX
+      block.blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX
+      && block.layoutQuestionId
+      && expectedAnswerBlockTypeForOcrScene(questionOcrSceneById.get(block.layoutQuestionId))
+      !== ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX
     ) {
       reasons.push('客观填涂矩阵只能关联选择题或判断题')
     }
@@ -566,8 +566,8 @@ export function validateLayoutDocumentForSave(document: ExamLayoutDocument | nul
 /** 有源整卷是否已有识别结果（重新识别会覆盖题单/ROI/身份区）。 */
 export function layoutHasSourceFileDetectResult(document: ExamLayoutDocument | null): boolean {
   return (
-    document?.layoutEntryKind === ExamLayoutEntryKindCode.SOURCE_FILE &&
-    (document.questions?.length ?? 0) > 0
+    document?.layoutEntryKind === ExamLayoutEntryKindCode.SOURCE_FILE
+    && (document.questions?.length ?? 0) > 0
   )
 }
 
@@ -583,8 +583,8 @@ function validateIdentityAreaTypes(document: ExamLayoutDocument | null): string[
       continue
     }
     if (
-      ALL_PAPER_MASTER_IDENTITY_AREA_TYPE_CODES.find((code) => code === block.identityAreaType) ==
-      null
+      ALL_PAPER_MASTER_IDENTITY_AREA_TYPE_CODES.find((code) => code === block.identityAreaType)
+      == null
     ) {
       reasons.push('身份填涂区类型无效，请选择学号、班级或姓名填涂区')
     }
@@ -658,8 +658,8 @@ export function snapStageValue(
   const paperMm = resolvePaperMm(paperSpec, page)
   const natural = axis === 'x' ? page.naturalWidthPx : page.naturalHeightPx
   const mmReference = axis === 'x' ? paperMm.widthMm : paperMm.heightMm
-  const stageSize =
-    axis === 'x'
+  const stageSize
+    = axis === 'x'
       ? stageWidth
       : Math.round(stageWidth * (page.naturalHeightPx / page.naturalWidthPx))
   const gridStagePx = (gridMm / mmReference) * natural * (stageSize / natural)

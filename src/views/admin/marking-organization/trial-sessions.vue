@@ -59,11 +59,11 @@
 
     <WorkflowReadinessPanel
       v-if="
-        organization &&
-        canManageOrganization &&
-        !canCreateSession &&
-        !sessionCreateReadinessLoadFailed &&
-        sessionCreateWorkflow.steps.length
+        organization
+          && canManageOrganization
+          && !canCreateSession
+          && !sessionCreateReadinessLoadFailed
+          && sessionCreateWorkflow.steps.length
       "
       :title="sessionCreateWorkflow.panelTitle"
       :steps="sessionCreateWorkflow.steps"
@@ -115,7 +115,6 @@
 
 <script lang="ts" setup>
 import type { LifecycleAction } from './components/SessionLifecycleReasonModal.vue'
-import SessionLifecycleReasonModal from './components/SessionLifecycleReasonModal.vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -136,13 +135,14 @@ import { useOptionalExamJourneyContextBar } from '@/composables/useExamJourneyCo
 import { useMarkingOrgSessionWorkspace } from '@/composables/useMarkingOrgSessionWorkspace'
 import { resolveMarkingOrganizationFormalSessionsRoute } from '@/utils/marking-organization-navigation'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import SessionLifecycleReasonModal from './components/SessionLifecycleReasonModal.vue'
 import TrialSessionCreateDialog from './components/TrialSessionCreateDialog.vue'
 import TrialSessionWorkbench from './components/TrialSessionWorkbench.vue'
 
 defineOptions({ name: 'AdminMarkingOrganizationTrialSessions' })
 
-const { isJourneyChrome, examStatusLabel, examStatusTone } =
-  useOptionalExamJourneyContextBar('试评定标')
+const { isJourneyChrome, examStatusLabel, examStatusTone }
+  = useOptionalExamJourneyContextBar('试评定标')
 
 const router = useRouter()
 const {

@@ -70,9 +70,9 @@
                   <UiTag v-if="batchDetail.orderAuditPassed === false" tone="red" size="sm">
                     {{ batchDetail.orderAuditIssueCount ?? 0 }} 项异常
                   </UiTag>
-                  <UiTag v-else-if="batchDetail.orderAuditPassed === true" tone="green" size="sm"
-                    >通过</UiTag
-                  >
+                  <UiTag v-else-if="batchDetail.orderAuditPassed === true" tone="green" size="sm">
+                    通过
+                  </UiTag>
                   <span v-else class="muted">待审计</span>
                 </dd>
               </div>
@@ -231,9 +231,9 @@
                 variant="outline"
                 status="danger"
                 :disabled="
-                  batchDetail.status === 'DISCARDED' ||
-                  Boolean(batchDetail.sealedTime) ||
-                  discarding
+                  batchDetail.status === 'DISCARDED'
+                    || Boolean(batchDetail.sealedTime)
+                    || discarding
                 "
                 :loading="discarding"
                 @click="onDiscardBatch"
@@ -304,6 +304,10 @@ import type {
   ScanBatchOrderAuditIssueResponse,
   ScanBatchOrderAuditResponse,
 } from '@/apis/mark/exam-scan'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { EffectiveStatusDescription } from '@/apis/mark/effective-status'
 import {
   getScanBatchOrderAudit,
   getScannerBatchDetail,
@@ -319,10 +323,6 @@ import {
   ScanBatchStatusDescription,
   sealScanBatchByTeacher,
 } from '@/apis/mark/exam-scan'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { EffectiveStatusDescription } from '@/apis/mark/effective-status'
 import { discardScanJob, listScanJobs } from '@/apis/mark/scanner-agent-local'
 import { discardScannerKioskBatch } from '@/apis/mark/scanner-kiosk'
 import ScanBatchDiscardDialog from '@/components/mark/ScanBatchDiscardDialog.vue'
@@ -357,7 +357,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  updated: []
+  "updated": []
 }>()
 
 const { isExamConfidential } = useWorkspaceConfidentialContext()
@@ -551,13 +551,13 @@ async function loadAttentions(): Promise<void> {
   }
 }
 
-function onPageChange(page: { current: number; pageSize: number }): void {
+function onPageChange(page: { current: number, pageSize: number }): void {
   pageQuery.pageNum = page.current
   pageQuery.pageSize = page.pageSize
   void loadPages()
 }
 
-function onAttentionPageChange(page: { current: number; pageSize: number }): void {
+function onAttentionPageChange(page: { current: number, pageSize: number }): void {
   attentionQuery.pageNum = page.current
   attentionQuery.pageSize = page.pageSize
   void loadAttentions()

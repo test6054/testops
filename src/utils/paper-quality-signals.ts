@@ -11,14 +11,14 @@ export function buildPaperQualitySignalMetrics(
   data: ExamPaperAnalysisResponse | null | undefined,
 ): SignalMetric[] {
   if (!data) return []
-  const hasAnyMetric =
-    data.cronbachAlpha != null ||
-    data.paperDiscriminationIndex != null ||
-    data.paperDifficultyIndex != null ||
-    (data.reliabilitySampleCount != null && data.reliabilitySampleCount > 0)
+  const hasAnyMetric
+    = data.cronbachAlpha != null
+      || data.paperDiscriminationIndex != null
+      || data.paperDifficultyIndex != null
+      || (data.reliabilitySampleCount != null && data.reliabilitySampleCount > 0)
   if (!hasAnyMetric) return []
-  const alphaMetric: SignalMetric =
-    data.cronbachAlpha == null
+  const alphaMetric: SignalMetric
+    = data.cronbachAlpha == null
       ? {
           key: 'cronbachAlpha',
           label: 'Cronbach α',

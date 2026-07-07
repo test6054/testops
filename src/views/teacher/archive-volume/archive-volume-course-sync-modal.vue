@@ -81,7 +81,7 @@
 
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
+import type { ArchiveMaterialTypeCode, ArchiveVolumeMaterialRegisterRequest } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
 import { ref, watch } from 'vue'
 import {
@@ -226,19 +226,12 @@ async function handleSubmit() {
   }
   submitting.value = true
   try {
-    const materials = rows.value.map((row) => {
-      if (!row.materialType) {
-        throw new Error('材料类型无效，请重新选择')
-      }
-      if (!row.fileId) {
-        throw new Error('每行须上传文件')
-      }
-      return {
+    const materials: ArchiveVolumeMaterialRegisterRequest[] = rows.value.map((row) => ({
       volumeId: props.volumeId,
-      materialType: row.materialType,
+      materialType: row.materialType!,
       catalogCode: row.catalogCode.trim() || undefined,
       requiredFlag: true,
-      fileId: row.fileId,
+      fileId: row.fileId!,
       mediaType: ArchiveMaterialMediaTypeCode.ELECTRONIC,
       sortRule: row.studentNo.trim()
         ? ArchiveMaterialSortRuleCode.STUDENT_NO
@@ -246,7 +239,7 @@ async function handleSubmit() {
       electronicOriginalStatus: ArchiveElectronicOriginalStatusCode.SCANNED,
       studentNo: row.studentNo.trim() || undefined,
       triggerOcr: false,
-    } })
+    }))
     await syncArchiveCoursePlatform({
       idempotencyKey: form.value.idempotencyKey.trim(),
       volumeId: props.volumeId,

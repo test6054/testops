@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioArchiveRecordStatusCode } from '@/apis/portfolio/enums'
-import { PortfolioArchiveRecordStatusDescription } from '@/apis/portfolio/enums'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
+import { PortfolioArchiveRecordStatusDescription } from '@/apis/portfolio/enums'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'

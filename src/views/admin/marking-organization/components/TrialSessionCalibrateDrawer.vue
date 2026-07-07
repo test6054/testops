@@ -42,13 +42,13 @@
 
 <script lang="ts" setup>
 import type { TrialSessionResponse } from '@/apis/mark/marking-organization'
+import message from 'ant-design-vue/es/message'
+import { ref, watch } from 'vue'
 import {
   calibrateTrialSession,
   TRIAL_SESSION_STATUS_TONE,
   TrialSessionStatusDescription,
 } from '@/apis/mark/marking-organization'
-import message from 'ant-design-vue/es/message'
-import { ref, watch } from 'vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -64,7 +64,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  success: []
+  "success": []
 }>()
 
 const calibrationSummary = ref('')

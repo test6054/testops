@@ -5,7 +5,6 @@ import type {
   PortfolioDevelopmentPlanItemSaveRequest,
   PortfolioDevelopmentPlanItemVO,
 } from '@/apis/portfolio/teacher-platform'
-import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
@@ -18,6 +17,7 @@ import {
   PortfolioDevelopmentPlanTypeCode,
 } from '@/apis/portfolio/enums'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
+import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -120,8 +120,8 @@ const selectedPlan = computed(
 const planItemEditable = computed(() => {
   const status = selectedPlan.value?.planStatus
   return (
-    status === PortfolioDevelopmentPlanStatusCode.DRAFT ||
-    status === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
+    status === PortfolioDevelopmentPlanStatusCode.DRAFT
+    || status === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
   )
 })
 
@@ -358,9 +358,9 @@ onMounted(async () => {
                       key: 'submit',
                       label: '提交',
                       hidden:
-                        record.planStatus !== PortfolioDevelopmentPlanStatusCode.DRAFT &&
-                        record.planStatus !==
-                          PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED,
+                        record.planStatus !== PortfolioDevelopmentPlanStatusCode.DRAFT
+                        && record.planStatus
+                          !== PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED,
                     },
                     { key: 'items', label: '明细' },
                   ]"

@@ -4,18 +4,18 @@ import type {
   IndirectEvaluationFormSaveRequest,
   IndirectEvaluationFormVO,
 } from '@/apis/quality/indirect-form'
-import { indirectFormApi } from '@/apis/quality/indirect-form'
 import type {
   IndirectEvaluationItemSaveRequest,
   IndirectEvaluationItemVO,
 } from '@/apis/quality/indirect-item'
-import { indirectItemApi } from '@/apis/quality/indirect-item'
 import type { ScaleConversionRuleVO } from '@/apis/quality/scale-conversion-rule'
-import { scaleConversionRuleApi } from '@/apis/quality/scale-conversion-rule'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
+import { indirectFormApi } from '@/apis/quality/indirect-form'
+import { indirectItemApi } from '@/apis/quality/indirect-item'
 import { indirectResponseApi } from '@/apis/quality/indirect-response'
+import { scaleConversionRuleApi } from '@/apis/quality/scale-conversion-rule'
 import { AchievementTargetTypeCode, IndirectFormTypeCode } from '@/apis/quality/types'
 import {
   CourseGoalSelector,
@@ -67,10 +67,10 @@ const selectedForm = defineModel<IndirectEvaluationFormVO | null>('selectedForm'
 const selectedItem = defineModel<IndirectEvaluationItemVO | null>('selectedItem', { default: null })
 
 const emit = defineEmits<{
-  publish: [record: IndirectEvaluationFormVO]
-  close: [record: IndirectEvaluationFormVO]
-  progress: [record: IndirectEvaluationFormVO]
-  statistics: [record: IndirectEvaluationFormVO]
+  "publish": [record: IndirectEvaluationFormVO]
+  "close": [record: IndirectEvaluationFormVO]
+  "progress": [record: IndirectEvaluationFormVO]
+  "statistics": [record: IndirectEvaluationFormVO]
   'copy-link': [record: IndirectEvaluationFormVO]
   'form-deleted': [formId: string]
 }>()
@@ -189,9 +189,9 @@ function handleFormTargetTypeChange() {
   formEditorTrainingPlanId.value = ''
   formEditorGraduationRequirementId.value = ''
   if (
-    formEditor.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY ||
-    formEditor.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE ||
-    formEditor.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
+    formEditor.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY
+    || formEditor.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE
+    || formEditor.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
   ) {
     formEditor.targetId = formEditor.programId || ''
   }
@@ -223,9 +223,9 @@ function handleFormProgramChange(value: string | null | undefined) {
   formEditorTrainingPlanId.value = ''
   formEditorGraduationRequirementId.value = ''
   if (
-    formEditor.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY ||
-    formEditor.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE ||
-    formEditor.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
+    formEditor.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY
+    || formEditor.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE
+    || formEditor.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
   ) {
     formEditor.targetId = id
   } else if (formEditor.targetType !== AchievementTargetTypeCode.COURSE_GOAL) {
@@ -239,9 +239,9 @@ function handleItemTargetTypeChange() {
   itemEditorTrainingPlanId.value = ''
   itemEditorGraduationRequirementId.value = ''
   if (
-    itemEditor.value.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY ||
-    itemEditor.value.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE ||
-    itemEditor.value.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
+    itemEditor.value.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY
+    || itemEditor.value.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE
+    || itemEditor.value.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
   ) {
     itemEditor.value.targetId = formEditor.programId || qualityStore.currentProgramId
   }
@@ -275,9 +275,9 @@ function handleItemProgramChange(value: string | null | undefined) {
   itemEditorTrainingPlanId.value = ''
   itemEditorGraduationRequirementId.value = ''
   if (
-    itemEditor.value.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY ||
-    itemEditor.value.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE ||
-    itemEditor.value.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
+    itemEditor.value.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY
+    || itemEditor.value.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE
+    || itemEditor.value.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
   ) {
     itemEditor.value.targetId = value ?? ''
   } else if (itemEditor.value.targetType !== AchievementTargetTypeCode.COURSE_GOAL) {
@@ -417,7 +417,7 @@ async function handleFormDelete(record: IndirectEvaluationFormVO) {
   })
 }
 
-function handleFormPageChange(page: { current: number; pageSize: number }) {
+function handleFormPageChange(page: { current: number, pageSize: number }) {
   formQuery.pageNum = page.current
   formQuery.pageSize = page.pageSize
   loadForms()
@@ -466,10 +466,10 @@ function openItemCreate() {
     return
   }
   itemEditorMode.value = 'create'
-  itemEditorQualityCourseId.value =
-    formEditorQualityCourseId.value || qualityStore.currentQualityCourseId
-  itemEditorTrainingPlanId.value =
-    formEditorTrainingPlanId.value || qualityStore.currentTrainingPlanId
+  itemEditorQualityCourseId.value
+    = formEditorQualityCourseId.value || qualityStore.currentQualityCourseId
+  itemEditorTrainingPlanId.value
+    = formEditorTrainingPlanId.value || qualityStore.currentTrainingPlanId
   itemEditorGraduationRequirementId.value = formEditorGraduationRequirementId.value
   itemEditor.value = {
     formId: selectedForm.value.id,
@@ -496,10 +496,10 @@ function openItemEdit(record: IndirectEvaluationItemVO) {
     return
   }
   itemEditorMode.value = 'edit'
-  itemEditorQualityCourseId.value =
-    formEditorQualityCourseId.value || qualityStore.currentQualityCourseId
-  itemEditorTrainingPlanId.value =
-    formEditorTrainingPlanId.value || qualityStore.currentTrainingPlanId
+  itemEditorQualityCourseId.value
+    = formEditorQualityCourseId.value || qualityStore.currentQualityCourseId
+  itemEditorTrainingPlanId.value
+    = formEditorTrainingPlanId.value || qualityStore.currentTrainingPlanId
   itemEditorGraduationRequirementId.value = ''
   itemEditor.value = {
     id: record.id,
@@ -568,8 +568,8 @@ async function submitItem() {
   } else if (isSingleChoiceItemType(v.itemType) || isMultiChoiceItemType(v.itemType)) {
     const options = v.choiceOptions ?? []
     if (
-      options.length < 2 ||
-      options.some((option) => !option.optionValue.trim() || !option.optionLabel.trim())
+      options.length < 2
+      || options.some((option) => !option.optionValue.trim() || !option.optionLabel.trim())
     ) {
       message.error('选择题至少配置 2 个完整选项')
       return
@@ -938,10 +938,10 @@ defineExpose({
         </a-col>
         <a-col
           v-if="
-            formEditor.targetType === AchievementTargetTypeCode.COURSE_GOAL ||
-            formEditor.targetType === AchievementTargetTypeCode.GRADUATION_REQUIREMENT ||
-            formEditor.targetType === AchievementTargetTypeCode.REQUIREMENT_INDICATOR ||
-            formEditor.targetType === AchievementTargetTypeCode.TRAINING_OBJECTIVE
+            formEditor.targetType === AchievementTargetTypeCode.COURSE_GOAL
+              || formEditor.targetType === AchievementTargetTypeCode.GRADUATION_REQUIREMENT
+              || formEditor.targetType === AchievementTargetTypeCode.REQUIREMENT_INDICATOR
+              || formEditor.targetType === AchievementTargetTypeCode.TRAINING_OBJECTIVE
           "
           :span="8"
         >
@@ -972,9 +972,9 @@ defineExpose({
         <a-col :span="8">
           <a-form-item
             :label="
-              formEditor.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY ||
-              formEditor.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE ||
-              formEditor.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
+              formEditor.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY
+                || formEditor.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE
+                || formEditor.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
                 ? '所属专业'
                 : '目标对象'
             "
@@ -1028,9 +1028,9 @@ defineExpose({
         </a-col>
         <a-col
           v-if="
-            formEditor.targetType !== AchievementTargetTypeCode.PROGRAM_SUMMARY &&
-            formEditor.targetType !== AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE &&
-            formEditor.targetType !== AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
+            formEditor.targetType !== AchievementTargetTypeCode.PROGRAM_SUMMARY
+              && formEditor.targetType !== AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE
+              && formEditor.targetType !== AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
           "
           :span="8"
         >
@@ -1125,9 +1125,9 @@ defineExpose({
             />
             <ProgramSelector
               v-else-if="
-                itemEditor.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY ||
-                itemEditor.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE ||
-                itemEditor.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
+                itemEditor.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY
+                  || itemEditor.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE
+                  || itemEditor.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
               "
               :value="itemEditor.targetId || null"
               placeholder="选择专业"
@@ -1145,10 +1145,10 @@ defineExpose({
       </a-row>
       <a-form-item
         v-if="
-          itemEditor.targetType === AchievementTargetTypeCode.COURSE_GOAL ||
-          itemEditor.targetType === AchievementTargetTypeCode.GRADUATION_REQUIREMENT ||
-          itemEditor.targetType === AchievementTargetTypeCode.REQUIREMENT_INDICATOR ||
-          itemEditor.targetType === AchievementTargetTypeCode.TRAINING_OBJECTIVE
+          itemEditor.targetType === AchievementTargetTypeCode.COURSE_GOAL
+            || itemEditor.targetType === AchievementTargetTypeCode.GRADUATION_REQUIREMENT
+            || itemEditor.targetType === AchievementTargetTypeCode.REQUIREMENT_INDICATOR
+            || itemEditor.targetType === AchievementTargetTypeCode.TRAINING_OBJECTIVE
         "
         label="目标对象"
         required

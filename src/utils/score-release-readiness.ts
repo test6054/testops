@@ -12,11 +12,11 @@ export function isExamScoresFullyPublished(
   if (!overview || overview.totalCandidateCount <= 0) {
     return false
   }
-  const awaitingRelease =
-    (overview.pendingCount ?? 0) +
-    (overview.calculatedCount ?? 0) +
-    (overview.confirmedCount ?? 0) +
-    (overview.correctedCount ?? 0)
+  const awaitingRelease
+    = (overview.pendingCount ?? 0)
+      + (overview.calculatedCount ?? 0)
+      + (overview.confirmedCount ?? 0)
+      + (overview.correctedCount ?? 0)
   if (awaitingRelease > 0) {
     return false
   }
@@ -28,8 +28,5 @@ export function isExamScoresFullyPublished(
     return false
   }
   const gradablePaperCount = gate.gradablePaperCount ?? 0
-  if (gradablePaperCount > 0 && gate.allScoresPublished !== true) {
-    return false
-  }
-  return true
+  return !(gradablePaperCount > 0 && gate.allScoresPublished !== true);
 }

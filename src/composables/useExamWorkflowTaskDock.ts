@@ -1,13 +1,13 @@
 import type { ComputedRef } from 'vue'
-import { computed, ref, watch } from 'vue'
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
-import { useRouter } from 'vue-router'
 import type { ExamWorkbenchNextActionResponse } from '@/apis/mark/exam-progress'
 import type { MarkStageKey } from '@/stores/modules/markStage'
 import type {
   ExamWorkflowTaskDockKind,
   ExamWorkflowTaskDockView,
 } from '@/types/exam-workflow-task-dock'
+import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { MARK_STAGE_TITLE, shouldShowStageSuggestionBanner } from '@/constants/mark-workspace-nav'
 import { WorkbenchNextActionKeyCode } from '@/types/enums/exam-workbench-next-action-key-enum'
 import { MarkTeacherDashboardTodoTypeCode } from '@/types/enums/mark-teacher-dashboard-todo-type-enum'
@@ -26,7 +26,7 @@ export type {
 
 /** 从工作台快照 pendingTodos 读取试评经验定标待办数（兼容旧调用方）。 */
 export function resolveExperienceAssistPendingCount(
-  pendingTodos: { todoType: string; count?: number }[] | null | undefined,
+  pendingTodos: { todoType: string, count?: number }[] | null | undefined,
   nextActions?: ExamWorkbenchNextActionResponse[] | null | undefined,
 ): number {
   const fromNextAction = resolveExperienceAssistCalibrationPendingCount(nextActions)

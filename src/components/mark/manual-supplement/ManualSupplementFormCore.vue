@@ -123,16 +123,16 @@ const props = withDefaults(
   defineProps<{
     mode: 'direct' | 'supplement'
     model: ManualSupplementDirectFormModel | ManualSupplementSupplementFormModel
-    deviceOptions?: Array<{ value: string; label: string }>
+    deviceOptions?: Array<{ value: string, label: string }>
     deviceLoading?: boolean
-    boundPaperOptions?: Array<{ value: string; label: string }>
+    boundPaperOptions?: Array<{ value: string, label: string }>
     prepareLoading?: boolean
     prepareBlockDescription?: string
     classScopeWarning?: string
     showPaperSelect?: boolean
     paperSelectDisabled?: boolean
     targetPageDisabled?: boolean
-    targetPageOptions?: Array<{ value: number; label: string }>
+    targetPageOptions?: Array<{ value: number, label: string }>
     showReplaceCheckbox?: boolean
     replaceForced?: boolean
   }>(),

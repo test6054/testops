@@ -5,13 +5,11 @@ import type {
   ProcessEvaluationNodeUpdateRequest,
   ProcessEvaluationNodeVO,
 } from '@/apis/quality/process-evaluation'
-import { processNodeApi } from '@/apis/quality/process-evaluation'
 import type {
   ProcessEvaluationRecordSaveRequest,
   ProcessEvaluationRecordUpdateRequest,
   ProcessEvaluationRecordVO,
 } from '@/apis/quality/process-evaluation-record'
-import { processRecordApi } from '@/apis/quality/process-evaluation-record'
 /**
  * 过程性评价节点配置 + 节点记录管理
  *
@@ -31,6 +29,8 @@ import type { SignalMetric } from '@/types/workbench'
 import { message, Modal } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { processNodeApi } from '@/apis/quality/process-evaluation'
+import { processRecordApi } from '@/apis/quality/process-evaluation-record'
 import {
   CONFIRMATION_STATUS_COLOR,
   CONFIRMATION_STATUS_TRANSIT_MAP,
@@ -114,8 +114,8 @@ function isNodeMutable(node: ProcessEvaluationNodeVO): boolean {
 
 function isRecordMutable(record: ProcessEvaluationRecordVO): boolean {
   return (
-    record.confirmationStatus === ConfirmationStatusCode.DRAFT ||
-    record.confirmationStatus === ConfirmationStatusCode.RETURNED
+    record.confirmationStatus === ConfirmationStatusCode.DRAFT
+    || record.confirmationStatus === ConfirmationStatusCode.RETURNED
   )
 }
 
@@ -621,7 +621,7 @@ function handleProcessRecordAction(key: string, record: ProcessEvaluationRecordV
 const importExcelVisible = ref(false)
 const importConfirmationStatus = ref<ConfirmationStatusCode>(ConfirmationStatusCode.SUBMITTED)
 
-const importConfirmationStatusOptions: { label: string; value: ConfirmationStatusCode }[] = [
+const importConfirmationStatusOptions: { label: string, value: ConfirmationStatusCode }[] = [
   { label: ConfirmationStatusDescription.DRAFT, value: ConfirmationStatusCode.DRAFT },
   { label: ConfirmationStatusDescription.SUBMITTED, value: ConfirmationStatusCode.SUBMITTED },
   { label: ConfirmationStatusDescription.CONFIRMED, value: ConfirmationStatusCode.CONFIRMED },

@@ -370,7 +370,7 @@ function filterMenuItems(
 
 export function getMenuGroupsForJourney(
   journeyKey: ExamWorkspaceJourneyKey,
-  options?: { experienceAssistPendingCount?: number; tenantExperienceAssistEnabled?: boolean },
+  options?: { experienceAssistPendingCount?: number, tenantExperienceAssistEnabled?: boolean },
 ): ExamWorkspaceMenuGroup[] {
   if (journeyKey === 'overview') {
     const groups = EXAM_WORKSPACE_MENU_GROUPS.filter((group) => group.journeyKey === 'overview')
@@ -429,5 +429,5 @@ export function findExamWorkspaceMenuItem(menuKey: string): ExamWorkspaceMenuIte
 }
 
 /** 所有菜单项 key，供侧栏图标映射使用 */
-export type ExamWorkspaceMenuKey =
-  (typeof EXAM_WORKSPACE_MENU_GROUPS)[number]['items'][number]['key']
+export type ExamWorkspaceMenuKey
+  = (typeof EXAM_WORKSPACE_MENU_GROUPS)[number]['items'][number]['key']

@@ -1,3 +1,5 @@
+import { showFormValidationMessage } from '@/utils/error-handler'
+
 /** 规则模板参数（对应后端 PortfolioIndicatorSeedTemplateParamsDto） */
 export interface PortfolioIndicatorTemplateParams {
   passValue?: number
@@ -67,13 +69,14 @@ export function templateParamLabel(key: keyof PortfolioIndicatorTemplateParams):
   return PortfolioIndicatorTemplateParamDescription[key]
 }
 
-export function parseTemplateParamsJson(json: string): PortfolioIndicatorTemplateParams {
+export function parseTemplateParamsJson(json: string): PortfolioIndicatorTemplateParams | null {
   if (!json.trim()) {
     return {}
   }
   const raw: unknown = JSON.parse(json)
   if (typeof raw !== 'object' || raw === null) {
-    throw new Error('指标模板参数 JSON 必须是对象')
+    showFormValidationMessage('指标模板参数 JSON 必须是对象')
+    return null
   }
   const params: PortfolioIndicatorTemplateParams = {}
   for (const key of ALL_TEMPLATE_PARAM_KEYS) {

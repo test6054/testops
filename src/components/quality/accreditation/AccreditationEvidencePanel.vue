@@ -6,6 +6,10 @@ import type {
   AccreditationEvidenceSaveRequest,
   AccreditationEvidenceVO,
 } from '@/apis/quality/accreditation'
+import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   accreditationApi,
   AccreditationEvidenceAnchorTypeCode,
@@ -14,12 +18,8 @@ import {
   AccreditationEvidenceCategoryDescription,
   ALL_ACCREDITATION_EVIDENCE_CATEGORY_CODES,
 } from '@/apis/quality/accreditation'
-import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
-import { assessmentItemApi } from '@/apis/quality/assessment-item'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { archiveApi } from '@/apis/quality/archive'
+import { assessmentItemApi } from '@/apis/quality/assessment-item'
 import { qualityCourseApi } from '@/apis/quality/quality-course'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import { CourseSelector } from '@/components/quality/selectors'
@@ -47,9 +47,9 @@ const props = defineProps<{
   cockpit?: AccreditationCockpitVO
 }>()
 
-const emit = defineEmits<{ 'count-change': [count: number]; exported: [] }>()
+const emit = defineEmits<{ 'count-change': [count: number], "exported": [] }>()
 
-const CATEGORY_TABS: { key: '' | AccreditationEvidenceCategoryCode; label: string }[] = [
+const CATEGORY_TABS: { key: '' | AccreditationEvidenceCategoryCode, label: string }[] = [
   { key: '', label: '全部' },
   ...ALL_ACCREDITATION_EVIDENCE_CATEGORY_CODES.map((key) => ({
     key,
@@ -75,7 +75,7 @@ const categoryFilter = ref<'' | AccreditationEvidenceCategoryCode>('')
 const evidenceOpen = ref(false)
 const evidenceDrawerTitle = ref('登记认证证据')
 const markImportOpen = ref(false)
-const linkedExams = ref<{ examId: string; label: string }[]>([])
+const linkedExams = ref<{ examId: string, label: string }[]>([])
 const selectedExamIds = ref<string[]>([])
 
 const evidenceForm = reactive<AccreditationEvidenceSaveRequest>({
@@ -197,8 +197,8 @@ function resetEvidenceForm(category?: AccreditationEvidenceCategoryCode) {
   evidenceForm.anchorId = undefined
   evidenceForm.markScannedPageId = undefined
   evidenceForm.markPaperInstanceId = undefined
-  evidenceForm.evidenceCategory =
-    category || categoryFilter.value || AccreditationEvidenceCategoryCode.HOMEWORK
+  evidenceForm.evidenceCategory
+    = category || categoryFilter.value || AccreditationEvidenceCategoryCode.HOMEWORK
   evidenceForm.anchorType = AccreditationEvidenceAnchorTypeCode.MANUAL
   evidenceForm.evidenceCode = ''
   evidenceForm.evidenceTitle = ''
@@ -380,7 +380,7 @@ async function exportExpertPackage() {
   }
 }
 
-async function handleEvidencePageChange(pageEvent: { current: number; pageSize: number }) {
+async function handleEvidencePageChange(pageEvent: { current: number, pageSize: number }) {
   evidenceQuery.pageNum = pageEvent.current
   evidenceQuery.pageSize = pageEvent.pageSize
   await loadEvidences()

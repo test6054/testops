@@ -13,18 +13,18 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  *   quality 文本任务和 mark 其他 AI 能力使用 DEEPSEEK。
  */
 import type { AiModelProfileSaveRequest, AiModelProfileVO } from '@/apis/quality/ai-model-profile'
-import { aiModelProfileApi } from '@/apis/quality/ai-model-profile'
 import type { AiHealthStatusCode } from '@/apis/quality/types'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { aiModelProfileApi } from '@/apis/quality/ai-model-profile'
 import {
   AI_HEALTH_STATUS_COLOR,
   AiHealthStatusDescription,
   AiProviderTypeCode,
   AiProviderTypeDescription,
 } from '@/apis/quality/types'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'

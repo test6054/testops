@@ -4,7 +4,6 @@ import type {
   PortfolioTeacherWorkbenchSummaryVO,
   PortfolioTodoSummaryVO,
 } from '@/apis/portfolio/types'
-import { PORTFOLIO_COMPLETENESS_LEVEL_TONE } from '@/apis/portfolio/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
@@ -12,6 +11,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import { PortfolioCompletenessLevelDescription } from '@/apis/portfolio/enums'
 import { portfolioTodoApi } from '@/apis/portfolio/todo'
+import { PORTFOLIO_COMPLETENESS_LEVEL_TONE } from '@/apis/portfolio/types'
 import PortfolioProgressCockpitBand from '@/components/portfolio/PortfolioProgressCockpitBand.vue'
 import PortfolioProgressCompareDrawer from '@/components/portfolio/PortfolioProgressCompareDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -77,8 +77,8 @@ const portraitDataInsufficient = computed(() => {
     return false
   }
   return (
-    portrait.value.officialRecordCount === 0 &&
-    portrait.value.dimensions.every((item) => item.readiness === 'PENDING')
+    portrait.value.officialRecordCount === 0
+    && portrait.value.dimensions.every((item) => item.readiness === 'PENDING')
   )
 })
 
@@ -147,8 +147,8 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     ? { teacherId: targetTeacherId.value }
     : {}
   if (
-    item.archiveRecordId &&
-    (item.todoType === 'ARCHIVE_RETURNED' || item.todoType === 'ARCHIVE_DRAFT')
+    item.archiveRecordId
+    && (item.todoType === 'ARCHIVE_RETURNED' || item.todoType === 'ARCHIVE_DRAFT')
   ) {
     query.recordId = item.archiveRecordId
   }
@@ -177,8 +177,8 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     return
   }
   if (
-    item.todoType === 'EVALUATION_MATERIAL_CONFIRM' ||
-    item.todoType === 'EVALUATION_RETURNED_SUPPLEMENT'
+    item.todoType === 'EVALUATION_MATERIAL_CONFIRM'
+    || item.todoType === 'EVALUATION_RETURNED_SUPPLEMENT'
   ) {
     void router.push({
       path: '/portfolio/teacher/evaluation',
@@ -382,8 +382,8 @@ onUnmounted(() => {
             </p>
             <p
               v-if="
-                workbenchSummary.completenessPercent === 0 &&
-                (workbenchSummary.requiredCategoryDone ?? 0) === 0
+                workbenchSummary.completenessPercent === 0
+                  && (workbenchSummary.requiredCategoryDone ?? 0) === 0
               "
               class="teacher-home__onboarding"
             >

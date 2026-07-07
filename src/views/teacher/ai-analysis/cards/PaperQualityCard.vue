@@ -25,10 +25,10 @@
 
 <script lang="ts" setup>
 import type { ExamPaperAnalysisResponse } from '@/apis/mark/question-analysis'
-import { getExamPaperAnalysis } from '@/apis/mark/question-analysis'
 import type { SignalMetric } from '@/types/workbench'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, ref, watch } from 'vue'
+import { getExamPaperAnalysis } from '@/apis/mark/question-analysis'
 import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'

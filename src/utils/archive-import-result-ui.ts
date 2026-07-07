@@ -5,6 +5,7 @@ import type { ExcelImportResult } from '@/apis/platform/types'
 import type { UiAlertStripTone } from '@/components/ui-guide/ui/types'
 import { ArchiveImportBatchStatusDescription } from '@/apis/mark/archive-volume'
 import { ArchiveImportBatchStatusCode } from '@/types/enums/archive-import-batch-status-enum'
+import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export function archiveImportResultTone(status: ArchiveImportBatchStatusCode): UiAlertStripTone {
@@ -30,6 +31,9 @@ export function mapExcelImportResultToArchiveBatch(
     return null
   }
   const batchStatus = resolveArchiveImportBatchStatus(result.batchStatus)
+  if (!batchStatus) {
+    return null
+  }
   return {
     batchId: result.batchId,
     batchNo: result.batchNo ?? result.batchId,
@@ -56,12 +60,15 @@ export function buildArchiveImportResultDescription(
   return text
 }
 
-function resolveArchiveImportBatchStatus(status: string | undefined): ArchiveImportBatchStatusCode {
+function resolveArchiveImportBatchStatus(
+  status: string | undefined,
+): ArchiveImportBatchStatusCode | null {
   if (status === ArchiveImportBatchStatusCode.PROCESSING) return ArchiveImportBatchStatusCode.PROCESSING
   if (status === ArchiveImportBatchStatusCode.SUCCESS) return ArchiveImportBatchStatusCode.SUCCESS
   if (status === ArchiveImportBatchStatusCode.PARTIAL_FAILED) return ArchiveImportBatchStatusCode.PARTIAL_FAILED
   if (status === ArchiveImportBatchStatusCode.FAILED) return ArchiveImportBatchStatusCode.FAILED
-  throw new Error('归档导入批次状态异常，请刷新后重试')
+  showUserError(null, '归档导入批次状态异常，请刷新后重试')
+  return null
 }
 
 export function buildMissingBatchImportFailure(): {

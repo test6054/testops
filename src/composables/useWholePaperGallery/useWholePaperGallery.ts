@@ -1,17 +1,17 @@
 import type { Ref } from 'vue'
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import type {
   MarkingPageAnnotationSubmitItem,
   MarkingQuestionScoreSubmitItem,
   QuestionMarkingGroupQuestionResponse,
   ScannedPageRef,
 } from '@/apis/mark/marking-organization'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { getImageBlobUrl } from '@/apis/edu/file-management'
 import {
   getMarkingScanPageDisplayBlobUrl,
   getWholePaperView,
 } from '@/apis/mark/marking-organization'
-import { getImageBlobUrl } from '@/apis/edu/file-management'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { failFormValidation, showFormValidationMessage, showUserError, toUserError } from '@/utils/error-handler'
 
 const WHOLE_PAGE_ESTIMATED_HEIGHT = 1180
 const WHOLE_PAGE_RENDER_BUFFER = 2
@@ -61,7 +61,7 @@ export interface UseWholePaperGalleryReturn {
   buildWholePaperSubmitRequest: () => {
     questionScores: MarkingQuestionScoreSubmitItem[]
     pageAnnotations: MarkingPageAnnotationSubmitItem[]
-  }
+  } | null
 }
 
 /**
@@ -185,7 +185,8 @@ export function useWholePaperGallery(
       })
     }
     if (!page.fileId) {
-      throw new Error('扫描页缺少展示文件ID')
+      showFormValidationMessage('扫描页缺少展示文件ID')
+      return Promise.reject(new Error('扫描页缺少展示文件ID'))
     }
     return getImageBlobUrl(page.fileId)
   }
@@ -197,10 +198,10 @@ export function useWholePaperGallery(
     const examId = options.getExamId()
     const taskId = options.getTaskId()
     if (
-      !examId ||
-      !taskId ||
-      wholePageImageUrls[page.pageId] ||
-      wholePageImageLoading[page.pageId]
+      !examId
+      || !taskId
+      || wholePageImageUrls[page.pageId]
+      || wholePageImageLoading[page.pageId]
     ) {
       return
     }
@@ -316,24 +317,25 @@ export function useWholePaperGallery(
   function buildWholePaperSubmitRequest(): {
     questionScores: MarkingQuestionScoreSubmitItem[]
     pageAnnotations: MarkingPageAnnotationSubmitItem[]
-  } {
+  } | null {
     if (wholeQuestions.value.length === 0) {
-      throw new Error('当前任务负责题目未加载，请刷新后重试')
+      failFormValidation('当前任务负责题目未加载，请刷新后重试')
+      return null
     }
-    const questionScores: MarkingQuestionScoreSubmitItem[] = wholeQuestions.value.map(
-      (question) => {
-        const questionForm = getWholeQuestionForm(question.layoutQuestionId)
-        if (questionForm.score === undefined) {
-          throw new Error(`请填写第 ${question.questionNo} 题给分`)
-        }
-        return {
-          layoutQuestionId: question.layoutQuestionId,
-          score: questionForm.score,
-          annotationText: questionForm.annotationText.trim() || undefined,
-          correlationId: questionForm.correlationId,
-        }
-      },
-    )
+    const questionScores: MarkingQuestionScoreSubmitItem[] = []
+    for (const question of wholeQuestions.value) {
+      const questionForm = getWholeQuestionForm(question.layoutQuestionId)
+      if (questionForm.score === undefined) {
+        failFormValidation(`请填写第 ${question.questionNo} 题给分`)
+        return null
+      }
+      questionScores.push({
+        layoutQuestionId: question.layoutQuestionId,
+        score: questionForm.score,
+        annotationText: questionForm.annotationText.trim() || undefined,
+        correlationId: questionForm.correlationId,
+      })
+    }
     const pageAnnotations: MarkingPageAnnotationSubmitItem[] = options.isWholePaperTask()
       ? wholePages.value
           .map((page): MarkingPageAnnotationSubmitItem => ({

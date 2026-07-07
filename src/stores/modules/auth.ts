@@ -5,11 +5,11 @@ import type {
   PhoneLoginRequest,
   StudentLoginRequest,
 } from '@/apis/auth'
-import { passwordLogin, phoneLogin, refreshToken, studentLogin, wechatCallback } from '@/apis/auth'
 import type { RefreshTokenResponse } from '@/types/auth'
 import { jwtDecode } from 'jwt-decode'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { passwordLogin, phoneLogin, refreshToken, studentLogin, wechatCallback } from '@/apis/auth'
 import { clearAllGradingDrafts } from '@/composables/useGradingDraftPersist'
 import { resetAuthState } from '@/config/axios/auth-state'
 import {
@@ -22,6 +22,7 @@ import { resetHasMenuFlag } from '@/router/guard'
 import { RoleEnum } from '@/types/enums'
 import { clearToken, getToken, getValidToken, healTokenExpiresAt, setToken } from '@/utils/auth'
 import { getDeviceId } from '@/utils/device'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { syncRememberedAccountOnLogout } from '@/utils/login-remember'
 import mittBus from '@/utils/mitt'
 import { useTenantStore } from './tenant'
@@ -126,26 +127,34 @@ export const useAuthStore = defineStore(
     })
 
     // JWT相关方法
-    const decodeToken = (tokenStr?: string): JwtClaims => {
+    const parseTokenClaims = (tokenStr?: string): JwtClaims | null => {
       const targetToken = tokenStr || token.value
       if (!targetToken) {
-        throw new Error('登录状态已失效，请重新登录')
+        return null
       }
       try {
         return jwtDecode<JwtClaims>(targetToken)
       } catch {
-        throw new Error('登录状态已失效，请重新登录')
+        return null
       }
     }
 
+    const decodeToken = (tokenStr?: string): JwtClaims | null => {
+      const claims = parseTokenClaims(tokenStr)
+      if (!claims) {
+        showUserError(new Error('登录状态已失效，请重新登录'))
+        return null
+      }
+      return claims
+    }
+
     const isTokenExpiredCheck = (tokenStr?: string): boolean => {
-      try {
-        const tokenClaims = decodeToken(tokenStr)
-        const now = Date.now() / 1000
-        return tokenClaims.exp <= now
-      } catch {
+      const tokenClaims = parseTokenClaims(tokenStr)
+      if (!tokenClaims) {
         return true
       }
+      const now = Date.now() / 1000
+      return tokenClaims.exp <= now
     }
 
     const hasRole = (targetRole: string): boolean => {
@@ -184,7 +193,11 @@ export const useAuthStore = defineStore(
       }
 
       try {
-        const tokenClaims = decodeToken(newToken)
+        const tokenClaims = parseTokenClaims(newToken)
+        if (!tokenClaims) {
+          resetToken()
+          return
+        }
         token.value = newToken
         setToken(newToken)
 
@@ -229,7 +242,8 @@ export const useAuthStore = defineStore(
             localStorage.setItem(STORAGE_TOKEN_EXPIRES_AT, storedTokenExpiresAt)
           } else {
             try {
-              const claims = decodeToken(token.value)
+              const claims = parseTokenClaims(token.value)
+              if (!claims) return
               tokenExpiresAt.value = claims.exp
               storedTokenExpiresAt = claims.exp.toString()
               localStorage.setItem(STORAGE_TOKEN_EXPIRES_AT, storedTokenExpiresAt)
@@ -241,12 +255,12 @@ export const useAuthStore = defineStore(
       }
 
       const parsedExpiresAt = storedTokenExpiresAt ? Number.parseInt(storedTokenExpiresAt) : null
-      const normalizedExpiresAt =
-        parsedExpiresAt !== null && !Number.isNaN(parsedExpiresAt) ? parsedExpiresAt : null
-      const hasChanged =
-        token.value !== storedToken ||
-        refreshTokenState.value !== storedRefreshToken ||
-        tokenExpiresAt.value !== normalizedExpiresAt
+      const normalizedExpiresAt
+        = parsedExpiresAt !== null && !Number.isNaN(parsedExpiresAt) ? parsedExpiresAt : null
+      const hasChanged
+        = token.value !== storedToken
+          || refreshTokenState.value !== storedRefreshToken
+          || tokenExpiresAt.value !== normalizedExpiresAt
 
       if (!hasChanged) {
         return false
@@ -260,7 +274,11 @@ export const useAuthStore = defineStore(
         scheduleTokenRefresh(normalizedExpiresAt * 1000)
       } else if (storedToken) {
         try {
-          const claims = decodeToken(storedToken)
+          const claims = parseTokenClaims(storedToken)
+          if (!claims) {
+            clearRefreshTimer()
+            return true
+          }
           tokenExpiresAt.value = claims.exp
           localStorage.setItem(STORAGE_TOKEN_EXPIRES_AT, claims.exp.toString())
           scheduleTokenRefresh(claims.exp * 1000)
@@ -383,8 +401,8 @@ export const useAuthStore = defineStore(
             }
             return true
           } catch (error) {
-            const refreshError: RefreshTokenError =
-              error instanceof Error ? error : new Error(String(error))
+            const refreshError: RefreshTokenError
+              = error instanceof Error ? error : new Error(String(error))
             lastError = refreshError
 
             if (hasValidAccessToken()) {
@@ -435,18 +453,17 @@ export const useAuthStore = defineStore(
 
     const checkAndRefreshToken = async (): Promise<boolean> => {
       if (!token.value) return false
-      try {
-        const tokenClaims = decodeToken(token.value)
-        const now = Date.now() / 1000
-        if (tokenClaims.exp <= now) return await refreshTokenAutomatically()
-        const timeUntilExpiry = tokenClaims.exp - now
-        if (timeUntilExpiry <= 300 && !refreshingToken.value) {
-          return await refreshTokenAutomatically()
-        }
-        return true
-      } catch {
+      const tokenClaims = parseTokenClaims(token.value)
+      if (!tokenClaims) {
         return await refreshTokenAutomatically()
       }
+      const now = Date.now() / 1000
+      if (tokenClaims.exp <= now) return await refreshTokenAutomatically()
+      const timeUntilExpiry = tokenClaims.exp - now
+      if (timeUntilExpiry <= 300 && !refreshingToken.value) {
+        return await refreshTokenAutomatically()
+      }
+      return true
     }
 
     const applyLoginUserData = (res: LoginSuccessResponse) => {
@@ -517,7 +534,7 @@ export const useAuthStore = defineStore(
       }
     }
 
-    const phoneLoginMethod = async (req: { phone: string; captcha: string }) => {
+    const phoneLoginMethod = async (req: { phone: string, captcha: string }) => {
       try {
         isLoading.value = true
         const phoneLoginReq: PhoneLoginRequest = {
@@ -552,7 +569,7 @@ export const useAuthStore = defineStore(
      * 邮箱验证码登录
      * 登录后需调用方通过 userStore.getInfo() 获取完整用户信息
      */
-    const emailLogin = async (req: { email: string; captcha: string }) => {
+    const emailLogin = async (req: { email: string, captcha: string }) => {
       try {
         isLoading.value = true
         const loginReq: LoginRequest = {
@@ -620,14 +637,15 @@ export const useAuthStore = defineStore(
       }
     }
 
-    const queryStringValue = (value: LocationQuery[string]) => {
+    const queryStringValue = (value: LocationQuery[string]): string | null => {
       if (typeof value === 'string' && value.trim()) {
         return value.trim()
       }
       if (Array.isArray(value) && typeof value[0] === 'string' && value[0].trim()) {
         return value[0].trim()
       }
-      throw new Error('微信登录失败，请重新发起授权')
+      showFormValidationMessage('微信登录失败，请重新发起授权')
+      return null
     }
 
     const socialLogin = async (source: string, req: LocationQuery) => {
@@ -636,13 +654,22 @@ export const useAuthStore = defineStore(
           isLoading.value = true
           resetAuthState()
 
+          const code = queryStringValue(req.code)
+          const state = queryStringValue(req.state)
+          if (!code || !state) {
+            return
+          }
+
           const result = await wechatCallback({
-            code: queryStringValue(req.code),
-            state: queryStringValue(req.state),
+            code,
+            state,
           })
 
           if (result.status !== 'success' || !result.accessToken) {
-            throw new Error(result.errorMessage || result.message || '微信账号尚未绑定平台账号')
+            showFormValidationMessage(
+              result.errorMessage || result.message || '微信账号尚未绑定平台账号',
+            )
+            return
           }
 
           setTokenWithExpiry(result.accessToken)
@@ -656,7 +683,7 @@ export const useAuthStore = defineStore(
         }
         return
       }
-      throw new Error('当前登录方式暂不可用，请重新选择')
+      showFormValidationMessage('当前登录方式暂不可用，请重新选择')
     }
 
     const logoutCallBack = async () => {
@@ -713,7 +740,8 @@ export const useAuthStore = defineStore(
           setRefreshToken(refreshData.refreshToken)
         }
       } else {
-        throw new Error('登录状态已失效，请重新登录')
+        showUserError(new Error('登录状态已失效，请重新登录'))
+        return null
       }
       return refreshData
     }
@@ -735,10 +763,10 @@ export const useAuthStore = defineStore(
     const handleStorageChange = (event: StorageEvent) => {
       if (event.storageArea !== localStorage) return
       if (
-        event.key !== null &&
-        event.key !== STORAGE_TOKEN &&
-        event.key !== STORAGE_REFRESH_TOKEN &&
-        event.key !== STORAGE_TOKEN_EXPIRES_AT
+        event.key !== null
+        && event.key !== STORAGE_TOKEN
+        && event.key !== STORAGE_REFRESH_TOKEN
+        && event.key !== STORAGE_TOKEN_EXPIRES_AT
       ) {
         return
       }

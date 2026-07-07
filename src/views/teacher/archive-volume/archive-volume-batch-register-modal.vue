@@ -208,12 +208,9 @@ async function handleSubmit() {
         row.file,
       )
       const tags = normalizeMaterialTagsForRegister(row.tags)
-      if (!row.materialType) {
-        throw new Error('材料类型无效，请重新选择')
-      }
       materials.push({
         volumeId: props.volumeId,
-        materialType: row.materialType,
+        materialType: row.materialType!,
         catalogCode: props.catalogCode,
         fileId: String(node.id),
         mediaType: ArchiveMaterialMediaTypeCode.ELECTRONIC,

@@ -1,6 +1,5 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { Ref } from 'vue'
-import { computed, ref } from 'vue'
 import type {
   MarkingPageAnnotationSubmitItem,
   MarkingQuestionScoreSubmitItem,
@@ -8,15 +7,16 @@ import type {
   MarkingTaskResponse,
   QuestionMarkingGroupQuestionResponse,
 } from '@/apis/mark/marking-organization'
-import { submitMarkingTask } from '@/apis/mark/marking-organization'
 import type { WholeQuestionForm } from '@/composables/useWholePaperGallery'
 import message from 'ant-design-vue/es/message'
 import Modal from 'ant-design-vue/es/modal'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   batchSubmitMarkingTasksInChunks,
   precheckMarkingTaskBatch,
 } from '@/apis/mark/marking-batch'
+import { submitMarkingTask } from '@/apis/mark/marking-organization'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
   buildGradingDraftKey,
@@ -48,15 +48,15 @@ export interface UseMarkingSubmitOptions {
   loadTask: () => Promise<void>
   ensureBatchLoaded: (examId: string) => Promise<void>
   tenantId: Ref<string>
-  form: { score?: number; annotationNote?: string }
+  form: { score?: number, annotationNote?: string }
   wholeQuestions: Ref<QuestionMarkingGroupQuestionResponse[]>
   getWholeQuestionForm: (layoutQuestionId: string) => WholeQuestionForm
   wholePageAnnotationForms: Record<string, string>
   buildWholePaperSubmitRequest: () => {
     questionScores: MarkingQuestionScoreSubmitItem[]
     pageAnnotations: MarkingPageAnnotationSubmitItem[]
-  }
-  onSubmitSuccess?: (payload: { taskId: string; score: number }) => void
+  } | null
+  onSubmitSuccess?: (payload: { taskId: string, score: number }) => void
 }
 
 export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
@@ -171,7 +171,7 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   }
 
   function buildDraftPayload() {
-    const wholeQuestionForms: Record<string, { score?: number; annotationText: string }> = {}
+    const wholeQuestionForms: Record<string, { score?: number, annotationText: string }> = {}
     for (const question of options.wholeQuestions.value) {
       const qForm = options.getWholeQuestionForm(question.layoutQuestionId)
       if (qForm.score !== undefined || qForm.annotationText.trim()) {
@@ -226,8 +226,8 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   async function applyScoreToRemaining(): Promise<void> {
     const currentTask = options.task.value
     const score = submittedScoreSnapshot.value
-    const layoutQuestionId =
-      pendingBatchLayoutQuestionId.value || options.questionView.value?.layoutQuestionId
+    const layoutQuestionId
+      = pendingBatchLayoutQuestionId.value || options.questionView.value?.layoutQuestionId
     if (!currentTask?.examId || !currentTask.groupId || score === undefined || !layoutQuestionId) {
       closeApplyModal()
       return
@@ -290,12 +290,16 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
         message.success(`已将 ${taskIds.length} 份同类卷应用 ${score} 分`)
       }
       for (const submittedTaskId of taskIds) {
+        const withdrawWindowMinutes = requireWithdrawWindowMinutes()
+        if (withdrawWindowMinutes == null) {
+          continue
+        }
         recordSubmit({
           taskId: submittedTaskId,
           examId: currentTask.examId,
           groupId: currentTask.groupId,
           score,
-          withdrawWindowMinutes: requireWithdrawWindowMinutes(),
+          withdrawWindowMinutes,
         })
       }
       await refreshSnapshot()
@@ -376,8 +380,8 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
     onGradingDraftSubmitStart()
     submitting.value = true
     const currentTask = options.task.value
-    const draftKey =
-      options.tenantId.value && currentTask
+    const draftKey
+      = options.tenantId.value && currentTask
         ? buildGradingDraftKey(options.tenantId.value, currentTask.examId, currentTask.id)
         : null
     try {
@@ -404,15 +408,18 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
       if (score === null) {
         return
       }
-      recordSubmit({
-        taskId: currentTask.id,
-        examId: currentTask.examId,
-        groupId: currentTask.groupId ?? null,
-        score,
-        withdrawWindowMinutes: requireWithdrawWindowMinutes(),
-        batchIndex: options.batchTasks.value.findIndex((item) => item.id === currentTask.id) + 1,
-        batchTotal: options.batchTasks.value.length,
-      })
+      const withdrawWindowMinutes = requireWithdrawWindowMinutes()
+      if (withdrawWindowMinutes != null) {
+        recordSubmit({
+          taskId: currentTask.id,
+          examId: currentTask.examId,
+          groupId: currentTask.groupId ?? null,
+          score,
+          withdrawWindowMinutes,
+          batchIndex: options.batchTasks.value.findIndex((item) => item.id === currentTask.id) + 1,
+          batchTotal: options.batchTasks.value.length,
+        })
+      }
       options.onSubmitSuccess?.({ taskId: currentTask.id, score })
       await refreshSnapshot()
       await options.ensureBatchLoaded(currentTask.examId)
@@ -443,8 +450,8 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
       const hasQuestionDraft = options.wholeQuestions.value.some((question) => {
         const questionForm = options.getWholeQuestionForm(question.layoutQuestionId)
         return (
-          (questionForm.score !== undefined && questionForm.score !== null) ||
-          (questionForm.annotationText?.trim() ?? '') !== ''
+          (questionForm.score !== undefined && questionForm.score !== null)
+          || (questionForm.annotationText?.trim() ?? '') !== ''
         )
       })
       if (hasQuestionDraft) return true
