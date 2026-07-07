@@ -1,9 +1,10 @@
 import type {
-  AchievementStatus,
-  AchievementTargetType,
-  AggregationFunction,
-  EvaluationMethod,
+  AchievementStatusCode,
+  AchievementTargetTypeCode,
+  AggregationFunctionCode,
+  EvaluationMethodCode,
 } from './types'
+import type { QueryDto } from '@/types'
 /**
  * 达成度计算 API - 对齐 AchievementCalculationController
  *
@@ -30,12 +31,32 @@ export interface ComputeCourseGoalRequest {
   schoolYear?: string
   semester?: SemesterCode
   classId?: string
-  evaluationMethod?: EvaluationMethod
+  evaluationMethod?: EvaluationMethodCode
   professionProfileId?: string
 }
 
-/** 达成度计算公共范围请求 - 对齐 AchievementComputeScopeRequest */
-export interface AchievementComputeScopeRequest {
+/** 专业达成度汇总请求 - 严格对齐 ComputeProgramRequest */
+export interface ComputeProgramRequest {
+  programId: string
+  trainingPlanId: string
+  gradeLevel?: string
+  schoolYear?: string
+  semester?: SemesterCode
+  professionProfileId?: string
+}
+
+/** 课程思政独立达成度聚合请求 - 严格对齐 ComputeCivicGoalRequest */
+export interface ComputeCivicGoalRequest {
+  programId: string
+  trainingPlanId: string
+  gradeLevel?: string
+  schoolYear?: string
+  semester?: SemesterCode
+  professionProfileId?: string
+}
+
+/** 复杂工程问题专项达成度聚合请求 - 严格对齐 ComputeComplexEngineeringRequest */
+export interface ComputeComplexEngineeringRequest {
   programId: string
   trainingPlanId: string
   gradeLevel?: string
@@ -45,13 +66,25 @@ export interface AchievementComputeScopeRequest {
 }
 
 /** 毕业要求 / 观测点聚合请求 */
-export interface ComputeRequirementRequest extends AchievementComputeScopeRequest {
+export interface ComputeRequirementRequest {
+  programId: string
+  trainingPlanId: string
   requirementId?: string
+  gradeLevel?: string
+  schoolYear?: string
+  semester?: SemesterCode
+  professionProfileId?: string
 }
 
 /** 培养目标聚合请求 */
-export interface ComputeTrainingObjectiveRequest extends AchievementComputeScopeRequest {
+export interface ComputeTrainingObjectiveRequest {
+  programId: string
+  trainingPlanId: string
   trainingObjectiveId: string
+  gradeLevel?: string
+  schoolYear?: string
+  semester?: SemesterCode
+  professionProfileId?: string
 }
 
 /** 课程目标达成度计算摘要 - 严格对齐后端 CourseGoalAchievementSummaryVO */
@@ -62,13 +95,13 @@ export interface CourseGoalAchievementSummaryVO {
   indirectValue?: number
   finalValue?: number
   thresholdValue?: number
-  achievementStatus?: AchievementStatus
-  evaluationMethod: EvaluationMethod
+  achievementStatus?: AchievementStatusCode
+  evaluationMethod?: EvaluationMethodCode
   directWeight?: number
   indirectWeight?: number
-  assessmentItemCount: number
-  directSampleCount: number
-  indirectValidSampleCount: number
+  assessmentItemCount?: number
+  directSampleCount?: number
+  indirectValidSampleCount?: number
   indirectCoverage?: number
   evidenceGap?: string
 }
@@ -76,14 +109,14 @@ export interface CourseGoalAchievementSummaryVO {
 /** 单条毕业要求 / 观测点摘要 - 严格对齐 RequirementAchievementSummaryVO */
 export interface RequirementAchievementSummaryVO {
   achievementResultId?: string
-  targetType: AchievementTargetType
+  targetType: AchievementTargetTypeCode
   targetId?: string
   targetCode?: string
   targetName?: string
   finalValue?: number
   thresholdValue?: number
-  achievementStatus?: AchievementStatus
-  aggregation?: AggregationFunction
+  achievementStatus?: AchievementStatusCode
+  aggregation?: AggregationFunctionCode
   inputCount?: number
 }
 
@@ -100,7 +133,7 @@ export interface ProgramAchievementSummaryVO {
   trainingPlanId?: string
   finalValue?: number
   thresholdValue?: number
-  achievementStatus?: AchievementStatus
+  achievementStatus?: AchievementStatusCode
   aggregation?: string
   requirementCount?: number
 }
@@ -114,7 +147,7 @@ export interface TrainingObjectiveAchievementSummaryVO {
   trainingPlanId?: string
   finalValue?: number
   thresholdValue?: number
-  achievementStatus?: AchievementStatus
+  achievementStatus?: AchievementStatusCode
   aggregation?: string
   requirementCount?: number
 }
@@ -126,9 +159,9 @@ export interface CivicGoalAchievementSummaryVO {
   trainingPlanId?: string
   finalValue?: number
   thresholdValue?: number
-  achievementStatus?: AchievementStatus
-  aggregation?: AggregationFunction
-  dimensionCount?: number
+  achievementStatus?: AchievementStatusCode
+  aggregation?: AggregationFunctionCode
+  civicGoalCount?: number
 }
 
 /** 复杂工程问题专项 VO - 严格对齐 ComplexEngineeringGoalAchievementSummaryVO */
@@ -138,13 +171,13 @@ export interface ComplexEngineeringGoalAchievementSummaryVO {
   trainingPlanId?: string
   finalValue?: number
   thresholdValue?: number
-  achievementStatus?: AchievementStatus
-  aggregation?: AggregationFunction
-  indicatorCount?: number
+  achievementStatus?: AchievementStatusCode
+  aggregation?: AggregationFunctionCode
+  complexEngineeringGoalCount?: number
 }
 
 /** 计算就绪查询 - 严格对齐 AchievementComputeReadinessRequest */
-export interface AchievementComputeReadinessRequest {
+export interface AchievementComputeReadinessRequest extends QueryDto {
   programId?: string
   trainingPlanId?: string
   qualityCourseId?: string
@@ -171,13 +204,13 @@ export const achievementApi = {
     http.post<CourseGoalAchievementSummaryVO>(`${CALC}/compute-course-goal`, data),
   computeRequirement: (data: ComputeRequirementRequest) =>
     http.post<RequirementAggregateVO[]>(`${CALC}/compute-requirement`, data),
-  computeProgram: (data: AchievementComputeScopeRequest) =>
+  computeProgram: (data: ComputeProgramRequest) =>
     http.post<ProgramAchievementSummaryVO>(`${CALC}/compute-program`, data),
   computeTrainingObjective: (data: ComputeTrainingObjectiveRequest) =>
     http.post<TrainingObjectiveAchievementSummaryVO>(`${CALC}/compute-training-objective`, data),
-  computeCivicGoalAggregate: (data: AchievementComputeScopeRequest) =>
+  computeCivicGoalAggregate: (data: ComputeCivicGoalRequest) =>
     http.post<CivicGoalAchievementSummaryVO>(`${CALC}/compute-civic-goal-aggregate`, data),
-  computeComplexEngineeringAggregate: (data: AchievementComputeScopeRequest) =>
+  computeComplexEngineeringAggregate: (data: ComputeComplexEngineeringRequest) =>
     http.post<ComplexEngineeringGoalAchievementSummaryVO>(
       `${CALC}/compute-complex-engineering-aggregate`,
       data,

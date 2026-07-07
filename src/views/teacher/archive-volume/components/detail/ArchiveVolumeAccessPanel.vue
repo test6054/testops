@@ -1,96 +1,163 @@
 <template>
-  <section class="archive-volume-access-panel">
-    <UiButton v-if="canRequestAccess" size="sm" @click="openAccessRequest">申请查阅</UiButton>
-    <UiDataTable
-      pagination-mode="none"
-      :columns="accessColumns"
-      :data-source="accessRecords"
-      :loading="accessLoading"
-      :show-pagination="false"
-      flat
-      row-key="accessRecordId"
-      size="middle"
-      empty-description="暂无查阅记录"
-      class="archive-volume-access-panel__table"
-    >
-      <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'accessStatus'">
-          <UiTag :tone="accessStatusTone(record.accessStatus)" size="sm">
-            {{ accessStatusLabel(record.accessStatus) }}
-          </UiTag>
-        </template>
-        <template v-else-if="column.key === 'approvedTime'">
-          {{ formatDateTime(record.approvedTime) }}
-        </template>
-        <template v-else-if="column.key === 'actions'">
-          <UiTextAction
-            v-if="record.accessStatus === 'PENDING' && canApproveAccessRecord(record)"
-            tone="primary"
-            @click="handleApproveAccess(record.accessRecordId)"
-          >
-            批准
-          </UiTextAction>
-          <UiTextAction
-            v-if="record.accessStatus === 'PENDING' && canApproveAccessRecord(record)"
-            @click="handleRejectAccess(record.accessRecordId)"
-          >
-            驳回
-          </UiTextAction>
-          <UiTextAction
-            v-if="record.accessStatus === 'ACTIVE' && record.applicantUserId === currentUserId"
-            tone="primary"
-            @click="handleAccessDownload(record)"
-          >
-            下载材料
-          </UiTextAction>
-          <UiTextAction
-            v-if="record.accessStatus === 'ACTIVE' && record.applicantUserId === currentUserId"
-            @click="handleAccessPreview(record)"
-          >
-            在线预览
-          </UiTextAction>
-        </template>
-      </template>
-    </UiDataTable>
+  <WorkbenchSurfaceCard flush class="archive-volume-access-panel">
+    <template #head>
+      <div class="archive-volume-access-panel__head">
+        <h3 class="archive-volume-access-panel__title">查阅/借阅审批</h3>
+        <UiButton v-if="canRequestAccess" size="sm" @click="openAccessRequest">发起借阅</UiButton>
+      </div>
+    </template>
 
-    <a-modal
-      v-model:open="accessModalOpen"
-      title="申请查阅"
+    <UiSkeletonState v-if="accessLoading" variant="card" compact />
+    <UiEmpty v-else-if="accessRecords.length === 0" description="暂无查阅记录" />
+    <div v-else class="archive-volume-access-panel__list">
+      <article
+        v-for="record in accessRecords"
+        :key="record.accessRecordId"
+        class="approval-card"
+        :class="archiveAccessApprovalCardClass(record.accessStatus)"
+      >
+        <div class="approval-card__head">
+          <span class="approval-card__applicant">
+            {{ archiveAccessApplicantLabel(
+              record.applicantNickName,
+              record.applicantIdentifier,
+              record.applicantUserId,
+            ) }}
+          </span>
+          <UiTag :tone="archiveAccessStatusTone(record.accessStatus)" size="sm">
+            {{ archiveAccessStatusLabel(record.accessStatus) }}
+          </UiTag>
+          <span class="approval-card__time">{{ formatDateTime(record.createTime) }}</span>
+        </div>
+        <p v-if="record.accessReason" class="approval-card__reason">{{ record.accessReason }}</p>
+        <p class="approval-card__meta">
+          <span v-if="record.departmentName">{{ record.departmentName }}</span>
+          <span v-if="record.approverNickName"> · 审批: {{ record.approverNickName }}</span>
+          <span v-if="record.expireTime"> · 到期: {{ formatDateTime(record.expireTime) }}</span>
+          <span v-if="record.watermarkApplied"> · 含水印</span>
+        </p>
+        <p v-if="record.decisionComment && record.accessStatus === 'REJECTED'" class="approval-card__reject">
+          拒绝原因: {{ record.decisionComment }}
+        </p>
+        <p
+          v-else-if="record.decisionComment && record.accessStatus === 'ACTIVE'"
+          class="approval-card__meta"
+        >
+          审批意见: {{ record.decisionComment }}
+        </p>
+        <p
+          v-if="record.accessStatus === 'ACTIVE' && record.lastReadPage != null"
+          class="approval-card__meta"
+        >
+          最后阅读: 第 {{ record.lastReadPage }} 页
+          <span v-if="record.downloadCount != null"> · 下载次数: {{ record.downloadCount }}</span>
+        </p>
+        <p
+          v-else-if="record.accessStatus === 'ACTIVE' && record.downloadCount != null"
+          class="approval-card__meta"
+        >
+          下载次数: {{ record.downloadCount }}
+        </p>
+
+        <div
+          v-if="record.accessStatus === 'PENDING' && canApproveAccessRecord(record)"
+          class="approval-card__actions"
+        >
+          <template v-if="rejectingRecordId === record.accessRecordId">
+            <a-textarea
+              v-model:value="rejectAccessComment"
+              :rows="2"
+              placeholder="填写驳回原因"
+              class="approval-card__reject-input"
+            />
+            <div class="approval-card__action-row">
+              <UiButton
+                size="sm"
+                variant="outline"
+                :loading="rejectAccessSubmitting"
+                @click="cancelReject"
+              >
+                取消
+              </UiButton>
+              <UiButton
+                size="sm"
+                variant="outline"
+                :loading="rejectAccessSubmitting"
+                @click="submitRejectAccess(record.accessRecordId)"
+              >
+                确认驳回
+              </UiButton>
+            </div>
+          </template>
+          <template v-else-if="approvingRecordId === record.accessRecordId">
+            <a-textarea
+              v-model:value="approveAccessComment"
+              :rows="2"
+              placeholder="可选审批意见"
+              class="approval-card__reject-input"
+            />
+            <div class="approval-card__action-row">
+              <UiButton size="sm" variant="outline" @click="cancelApprove">取消</UiButton>
+              <UiButton
+                size="sm"
+                :loading="approveAccessSubmitting"
+                @click="submitApproveAccess(record.accessRecordId)"
+              >
+                确认批准
+              </UiButton>
+            </div>
+          </template>
+          <template v-else>
+            <UiButton size="sm" @click="startApprove(record.accessRecordId)">批准</UiButton>
+            <UiButton size="sm" variant="outline" @click="startReject(record.accessRecordId)">
+              拒绝
+            </UiButton>
+          </template>
+        </div>
+
+        <div
+          v-if="record.accessStatus === 'ACTIVE' && record.applicantUserId === currentUserId"
+          class="approval-card__actions"
+        >
+          <UiButton size="sm" variant="outline" @click="handleAccessDownload(record)">
+            下载材料
+          </UiButton>
+          <UiButton size="sm" variant="outline" @click="handleAccessPreview(record)">
+            在线预览
+          </UiButton>
+        </div>
+      </article>
+    </div>
+
+    <UiDrawer
+      :open="accessModalOpen"
+      title="发起借阅"
+      :width="520"
       :confirm-loading="accessSubmitting"
       ok-text="提交"
-      cancel-text="取消"
-      @ok="submitAccessRequest"
+      :hide-footer="false"
+      @update:open="(v: boolean) => (accessModalOpen = v)"
+      @close="accessModalOpen = false"
+      @confirm="submitAccessRequest"
     >
       <a-form layout="vertical">
         <a-form-item label="查阅原因" required>
           <a-textarea v-model:value="accessReason" :rows="3" placeholder="说明查阅用途" />
         </a-form-item>
       </a-form>
-    </a-modal>
+    </UiDrawer>
 
-    <a-modal
-      v-model:open="rejectAccessOpen"
-      title="驳回查阅"
-      :confirm-loading="rejectAccessSubmitting"
-      ok-text="确认驳回"
-      cancel-text="取消"
-      @ok="submitRejectAccess"
-    >
-      <a-form layout="vertical">
-        <a-form-item label="驳回原因" required>
-          <a-textarea v-model:value="rejectAccessComment" :rows="3" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
-
-    <a-modal
-      v-model:open="readPageModalOpen"
+    <UiDrawer
+      :open="readPageModalOpen"
       title="记录阅读页码"
+      :width="520"
       :confirm-loading="readPageSubmitting"
       ok-text="保存"
       cancel-text="跳过"
-      @ok="submitReadPage"
-      @cancel="closeReadPageModal"
+      :hide-footer="false"
+      @update:open="(v: boolean) => (readPageModalOpen = v)"
+      @close="closeReadPageModal"
+      @confirm="submitReadPage"
     >
       <a-form layout="vertical">
         <a-form-item label="最近阅读页" required>
@@ -103,24 +170,19 @@
           />
         </a-form-item>
       </a-form>
-    </a-modal>
-  </section>
+    </UiDrawer>
+  </WorkbenchSurfaceCard>
 </template>
 
 <script setup lang="ts">
-import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  ArchiveAccessStatusCode,
   ArchiveVolumeAccessReadPageRequest,
-  ArchiveVolumeAccessRecordVO,
+  ArchiveVolumeAccessRecordResponse,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
 import {
   approveArchiveVolumeAccess,
-  ARCHIVE_ACCESS_STATUS_LABEL,
-  ARCHIVE_ACCESS_STATUS_TONE,
   downloadArchiveAccessMaterial,
   listArchiveVolumeAccessRecords,
   previewArchiveAccessMaterial,
@@ -129,54 +191,47 @@ import {
   requestArchiveVolumeAccess,
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import {
+  archiveAccessApplicantLabel,
+  archiveAccessApprovalCardClass,
+  archiveAccessStatusLabel,
+  archiveAccessStatusTone,
+} from '@/utils/archive-access-record-ui'
 import { showUserError } from '@/utils/error-handler'
 import { handleBlobDownload } from '@/utils/file-download'
 import { formatDateTime } from '@/utils/format'
-import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ArchiveVolumeAccessPanel' })
 
 const props = defineProps<{
   volumeId: string
   canRequestAccess: boolean
-  canApproveAccessRecord: (record: ArchiveVolumeAccessRecordVO) => boolean
+  canApproveAccessRecord: (record: ArchiveVolumeAccessRecordResponse) => boolean
   currentUserId: string
 }>()
 
 const accessLoading = ref(false)
 const accessSubmitting = ref(false)
-const rejectAccessOpen = ref(false)
+const approvingRecordId = ref('')
+const rejectingRecordId = ref('')
 const rejectAccessSubmitting = ref(false)
+const approveAccessSubmitting = ref(false)
 const rejectAccessComment = ref('')
-const rejectAccessRecordId = ref('')
+const approveAccessComment = ref('')
 const readPageModalOpen = ref(false)
 const readPageSubmitting = ref(false)
 const readPageForm = reactive<ArchiveVolumeAccessReadPageRequest>({
   accessRecordId: '',
   lastReadPage: 1,
 })
-const accessRecords = ref<ArchiveVolumeAccessRecordVO[]>([])
+const accessRecords = ref<ArchiveVolumeAccessRecordResponse[]>([])
 const accessModalOpen = ref(false)
 const accessReason = ref('')
-
-const accessColumns: ColumnsType<ArchiveVolumeAccessRecordVO> = [
-  { title: '状态', key: 'accessStatus', width: 100 },
-  { title: '原因', dataIndex: 'accessReason' },
-  { title: '最近阅读页', dataIndex: 'lastReadPage', width: 100 },
-  { title: '批准时间', key: 'approvedTime', width: 160 },
-  { title: '操作', key: 'actions', width: 180 },
-]
-
-function accessStatusLabel(code: ArchiveAccessStatusCode) {
-  return strictEnumLabel(ARCHIVE_ACCESS_STATUS_LABEL, code, 'accessStatus')
-}
-
-function accessStatusTone(code: ArchiveAccessStatusCode): BadgeTone {
-  return strictEnumTone(ARCHIVE_ACCESS_STATUS_TONE, code, 'accessStatus')
-}
 
 async function loadAccessRecords() {
   if (!props.volumeId) return
@@ -190,7 +245,7 @@ async function loadAccessRecords() {
   }
 }
 
-async function handleAccessDownload(record: ArchiveVolumeAccessRecordVO) {
+async function handleAccessDownload(record: ArchiveVolumeAccessRecordResponse) {
   const materialId = record.materialId
   const downloadToken = record.downloadToken
   if (!materialId) {
@@ -211,9 +266,10 @@ async function handleAccessDownload(record: ArchiveVolumeAccessRecordVO) {
     'archive-access-material',
     { showSuccessMessage: true, successMessage: '材料下载已开始' },
   )
+  await loadAccessRecords()
 }
 
-async function handleAccessPreview(record: ArchiveVolumeAccessRecordVO) {
+async function handleAccessPreview(record: ArchiveVolumeAccessRecordResponse) {
   const materialId = record.materialId
   const downloadToken = record.downloadToken
   if (!materialId) {
@@ -315,23 +371,49 @@ async function submitAccessRequest() {
   }
 }
 
-async function handleApproveAccess(accessRecordId: string) {
+function startApprove(accessRecordId: string) {
+  approvingRecordId.value = accessRecordId
+  approveAccessComment.value = ''
+  rejectingRecordId.value = ''
+  rejectAccessComment.value = ''
+}
+
+function cancelApprove() {
+  approvingRecordId.value = ''
+  approveAccessComment.value = ''
+}
+
+async function submitApproveAccess(accessRecordId: string) {
+  approveAccessSubmitting.value = true
   try {
-    await approveArchiveVolumeAccess({ accessRecordId })
+    const decisionComment = approveAccessComment.value.trim()
+    await approveArchiveVolumeAccess({
+      accessRecordId,
+      decisionComment: decisionComment || undefined,
+    })
     message.success('已批准查阅')
+    cancelApprove()
     await loadAccessRecords()
   } catch (error) {
     showUserError(error)
+  } finally {
+    approveAccessSubmitting.value = false
   }
 }
 
-async function handleRejectAccess(accessRecordId: string) {
-  rejectAccessRecordId.value = accessRecordId
+function startReject(accessRecordId: string) {
+  rejectingRecordId.value = accessRecordId
   rejectAccessComment.value = ''
-  rejectAccessOpen.value = true
+  approvingRecordId.value = ''
+  approveAccessComment.value = ''
 }
 
-async function submitRejectAccess() {
+function cancelReject() {
+  rejectingRecordId.value = ''
+  rejectAccessComment.value = ''
+}
+
+async function submitRejectAccess(accessRecordId: string) {
   if (!rejectAccessComment.value.trim()) {
     message.warning('请填写驳回原因')
     return
@@ -339,11 +421,11 @@ async function submitRejectAccess() {
   rejectAccessSubmitting.value = true
   try {
     await rejectArchiveVolumeAccess({
-      accessRecordId: rejectAccessRecordId.value,
+      accessRecordId,
       decisionComment: rejectAccessComment.value.trim(),
     })
     message.success('已驳回查阅')
-    rejectAccessOpen.value = false
+    cancelReject()
     await loadAccessRecords()
   } catch (error) {
     showUserError(error)
@@ -360,13 +442,44 @@ defineExpose({ loadAccessRecords })
 </script>
 
 <style scoped>
-.archive-volume-access-panel {
+.archive-volume-access-panel__head {
   display: flex;
-  flex-direction: column;
-  gap: var(--dp-space-4, 16px);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dp-space-3, 12px);
+  width: 100%;
 }
 
-.archive-volume-access-panel__table {
+.archive-volume-access-panel__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--dp-text, #1a1d21);
+}
+
+.archive-volume-access-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-2, 8px);
+  padding: var(--dp-space-3, 12px) 0;
+}
+
+:deep(.approval-card__actions) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dp-space-2, 8px);
   margin-top: var(--dp-space-3, 12px);
+}
+
+:deep(.approval-card__action-row) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dp-space-2, 8px);
+}
+
+:deep(.approval-card__reject-input) {
+  width: 100%;
+  margin-bottom: var(--dp-space-2, 8px);
 }
 </style>

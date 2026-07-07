@@ -22,7 +22,7 @@
         :disabled="item.meta?.disabled"
       >
         <template #icon>
-          <MenuIcon :icon="(item.meta?.icon as string) || 'unordered-list'" />
+          <MenuIcon :icon="routeIcon(item, 'unordered-list')" />
         </template>
         <span>{{ item.meta?.title }}</span>
       </a-menu-item>
@@ -42,7 +42,7 @@
           :disabled="item.meta?.disabled"
         >
           <template #icon>
-            <MenuIcon :icon="(item.meta?.icon as string) || 'folder'" />
+            <MenuIcon :icon="routeIcon(item, 'folder')" />
           </template>
           <span>{{ item.meta?.title }}</span>
         </a-menu-item>
@@ -62,7 +62,7 @@
         :disabled="item.meta?.disabled"
       >
         <template #icon>
-          <MenuIcon :icon="(item.meta?.icon as string) || 'dashboard'" />
+          <MenuIcon :icon="routeIcon(item, 'dashboard')" />
         </template>
         <span>{{ item.meta?.title }}</span>
       </a-menu-item>
@@ -82,7 +82,7 @@
           :disabled="item.meta?.disabled"
         >
           <template #icon>
-            <MenuIcon :icon="(item.meta?.icon as string) || 'folder'" />
+            <MenuIcon :icon="routeIcon(item, 'folder')" />
           </template>
           <span>{{ item.meta?.title }}</span>
         </a-menu-item>
@@ -102,7 +102,7 @@
         :disabled="item.meta?.disabled"
       >
         <template #icon>
-          <MenuIcon :icon="(item.meta?.icon as string) || 'folder'" />
+          <MenuIcon :icon="routeIcon(item, 'folder')" />
         </template>
         <span>{{ item.meta?.title }}</span>
       </a-menu-item>
@@ -122,7 +122,7 @@
           :disabled="item.meta?.disabled"
         >
           <template #icon>
-            <MenuIcon :icon="(item.meta?.icon as string) || 'folder'" />
+            <MenuIcon :icon="routeIcon(item, 'folder')" />
           </template>
           <span>{{ item.meta?.title }}</span>
         </a-menu-item>
@@ -181,10 +181,25 @@ interface MenuGroup {
 const route = useRoute()
 const router = useRouter()
 
+function stringMetaValue(value: unknown): string | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+  if (typeof value !== 'string') {
+    throw new TypeError('三域侧栏路由 meta 字符串契约异常')
+  }
+  return value
+}
+
+function routeIcon(item: RouteRecordRaw, fallback: string): string {
+  return stringMetaValue(item.meta?.icon) || fallback
+}
+
 const activeMenuKeys = computed<Key[]>(() => {
   const { meta, path } = route
   if (meta?.activeMenu) {
-    return [meta.activeMenu as string]
+    const activeMenu = stringMetaValue(meta.activeMenu)
+    return activeMenu ? [activeMenu] : [path]
   }
   return [path]
 })
@@ -241,7 +256,7 @@ function resolveDefaultOpenKeys(): Key[] {
     return []
   }
   const keys: Key[] = []
-  const groupKey = route.meta?.menuGroup as string | undefined
+  const groupKey = stringMetaValue(route.meta?.menuGroup)
 
   if (route.path.startsWith('/teacher')) {
     keys.push(MARKING_DOMAIN_KEY)
@@ -274,7 +289,7 @@ function resolveDefaultOpenKeys(): Key[] {
 }
 
 watch(
-  () => [route.path, route.meta?.menuGroup, props.collapsed] as const,
+  () => [route.path, route.meta?.menuGroup, props.collapsed],
   () => {
     openMenuKeys.value = resolveDefaultOpenKeys()
   },

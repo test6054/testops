@@ -6,11 +6,11 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { AuditIssueVO } from '@/apis/quality/audit-issue'
-import type { AuditIssueStatus } from '@/apis/quality/types'
+import type { AuditIssueStatusCode } from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { onMounted, ref, watch } from 'vue'
 import { auditIssueApi } from '@/apis/quality/audit-issue'
-import { AUDIT_ISSUE_STATUS_COLOR, AUDIT_ISSUE_STATUS_LABEL } from '@/apis/quality/types'
+import { AUDIT_ISSUE_STATUS_COLOR, AuditIssueStatusDescription } from '@/apis/quality/types'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -21,7 +21,7 @@ interface Props {
   programId?: string | null
   trainingPlanId?: string | null
   qualityCourseId?: string | null
-  status?: AuditIssueStatus
+  status?: AuditIssueStatusCode
   auditYear?: string | null
   placeholder?: string
   allowClear?: boolean
@@ -86,11 +86,11 @@ async function loadOptions() {
   }
 }
 
-function auditIssueStatusLabel(value: AuditIssueStatus): string {
-  return strictEnumLabel(AUDIT_ISSUE_STATUS_LABEL, value, '审核评估问题状态')
+function auditIssueStatusLabel(value: AuditIssueStatusCode): string {
+  return strictEnumLabel(AuditIssueStatusDescription, value, '审核评估问题状态')
 }
 
-function auditIssueStatusColor(value: AuditIssueStatus): BadgeTone {
+function auditIssueStatusColor(value: AuditIssueStatusCode): BadgeTone {
   return strictEnumTone(AUDIT_ISSUE_STATUS_COLOR, value, '审核评估问题状态')
 }
 

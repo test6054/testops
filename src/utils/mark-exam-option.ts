@@ -1,4 +1,4 @@
-import type { ExamDetailVO, ExamSummaryVO } from '@/apis/mark/exam'
+import type { ExamDetailResponse, ExamSummaryResponse } from '@/apis/mark/exam'
 import { formatSemester } from '@/types/enums/semester-enum'
 
 export interface MarkExamSelectOption {
@@ -7,19 +7,19 @@ export interface MarkExamSelectOption {
 }
 
 export function formatMarkExamOptionLabel(
-  exam: Pick<ExamSummaryVO, 'examName' | 'examNo'>,
+  exam: Pick<ExamSummaryResponse, 'examName' | 'examNo'>,
 ): string {
   if (!exam.examNo) return exam.examName
   return `${exam.examName} (${exam.examNo})`
 }
 
 export function formatMarkExamAcademicTerm(
-  exam: Pick<ExamSummaryVO, 'academicYear' | 'semester'>,
+  exam: Pick<ExamSummaryResponse, 'academicYear' | 'semester'>,
 ): string {
   return [exam.academicYear, formatSemester(exam.semester)].filter(Boolean).join(' · ')
 }
 
-export function toMarkExamSelectOption(exam: ExamSummaryVO): MarkExamSelectOption {
+export function toMarkExamSelectOption(exam: ExamSummaryResponse): MarkExamSelectOption {
   return {
     value: exam.examId,
     label: [formatMarkExamOptionLabel(exam), formatMarkExamAcademicTerm(exam)]
@@ -29,7 +29,7 @@ export function toMarkExamSelectOption(exam: ExamSummaryVO): MarkExamSelectOptio
 }
 
 /** 详情转列表项，供 URL 预选考试补全下拉标签 */
-export function examSummaryFromDetail(detail: ExamDetailVO): ExamSummaryVO {
+export function examSummaryFromDetail(detail: ExamDetailResponse): ExamSummaryResponse {
   return {
     examId: detail.examId,
     courseId: detail.courseId,
@@ -42,23 +42,15 @@ export function examSummaryFromDetail(detail: ExamDetailVO): ExamSummaryVO {
     examStartTime: detail.examStartTime,
     examEndTime: detail.examEndTime,
     gradingStrategy: detail.gradingStrategy,
+    examKind: detail.examKind,
     remark: detail.remark,
     createUser: detail.createUser,
     createTime: detail.createTime,
-  }
-}
-
-/** 工作台 snapshot meta 转列表项，仅用于 Select 标签占位；完整字段仍走详情接口 */
-export function examSummaryFromMeta(
-  meta: Pick<ExamSummaryVO, 'examId' | 'examName' | 'examNo'>,
-): ExamSummaryVO {
-  return {
-    examId: meta.examId,
-    examName: meta.examName,
-    examNo: meta.examNo,
-    status: 'ACTIVE',
-    statusMessage: '',
-    gradingStrategy: 'SINGLE',
-    createUser: '',
+    dailyScoreFull: detail.dailyScoreFull,
+    examKindMessage: detail.examKindMessage,
+    sourceExamId: detail.sourceExamId,
+    scorePolicy: detail.scorePolicy,
+    teachingAcademicYear: detail.teachingAcademicYear,
+    teachingSemester: detail.teachingSemester,
   }
 }

@@ -1,3 +1,4 @@
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { MarkScannerStationAuthSource } from '@/utils/kiosk-auth'
 /**
  * 扫描实时看板 API - 对接 edu-mark 模块 ScanLiveStreamController
@@ -11,6 +12,7 @@ import type { MarkScannerStationAuthSource } from '@/utils/kiosk-auth'
  */
 import { fetchEventSource } from '@microsoft/fetch-event-source'
 import http from '@/config/axios'
+import { ScanEventStatusCode } from '@/types/enums/scan-event-status-enum'
 import {
   ensureScannerStationTeacherJwt,
   hasMarkScannerKioskAuth,
@@ -18,8 +20,9 @@ import {
   isScannerKioskBrowserPage,
   KIOSK_BROWSER_PUSH_TOKEN_REJECTED_MESSAGE,
   KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE,
-  resolveMarkScannerStationAuthHeaders
+  resolveMarkScannerStationAuthHeaders,
 } from '@/utils/kiosk-auth'
+import { readScanLiveEvent } from '@/wire/mark/scan-live-wire'
 
 /** SSE 鉴权不可恢复失败：一体机 push_token 无效或缺失，禁止自动重连。 */
 export class ScanLiveFatalAuthError extends Error {
@@ -31,24 +34,17 @@ export class ScanLiveFatalAuthError extends Error {
   }
 }
 
-/** SSE 扫描事件状态码 - 对应后端 ScanEventStatus 枚举 */
-export type ScanEventStatusCode = 'PENDING' | 'BATCHED' | 'INVALID'
-
-/** 扫描 SSE 事件状态文案 - 与后端 ScanEventStatus.message 一致 */
-export const SCAN_EVENT_STATUS_LABEL: Record<ScanEventStatusCode, string> = {
-  PENDING: '待入账',
-  BATCHED: '已入账',
-  INVALID: '无效事件',
-}
+export {
+  ALL_SCAN_EVENT_STATUS_CODES,
+  ScanEventStatusCode,
+  ScanEventStatusDescription,
+} from '@/types/enums/scan-event-status-enum'
 
 /** 扫描 SSE 事件状态徽标色调 */
-export const SCAN_EVENT_STATUS_TONE: Record<
-  ScanEventStatusCode,
-  import('@/components/ui-guide/ui/types').BadgeTone
-> = {
-  PENDING: 'blue',
-  BATCHED: 'green',
-  INVALID: 'red',
+export const SCAN_EVENT_STATUS_TONE: Record<ScanEventStatusCode, BadgeTone> = {
+  [ScanEventStatusCode.PENDING]: 'blue',
+  [ScanEventStatusCode.BATCHED]: 'green',
+  [ScanEventStatusCode.INVALID]: 'red',
 }
 
 /** 来源文件引用 - 对应后端 ExamFileRefVO */
@@ -118,9 +114,7 @@ export interface ScanLiveStreamHandler {
  * 增量查询最近扫描事件
  * POST /api/mark/scan-live/recent
  */
-export function listRecentScanEvents(
-  request: ScanLiveQueryRequest,
-): Promise<ScanLiveEventVO[]> {
+export function listRecentScanEvents(request: ScanLiveQueryRequest): Promise<ScanLiveEventVO[]> {
   return http.post<ScanLiveEventVO[]>('/api/mark/scan-live/recent', request)
 }
 
@@ -248,10 +242,8 @@ export function subscribeScanLive(
       }
       if (message.event === 'scan') {
         try {
-          const parsed: ScanLiveEventVO = JSON.parse(message.data)
-          handler.onEvent(parsed)
-        }
-        catch (err) {
+          handler.onEvent(readScanLiveEvent(message.data))
+        } catch (err) {
           handler.onError?.(new Error('扫描实时消息读取失败，正在等待下一次更新'))
         }
       }

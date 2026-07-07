@@ -110,7 +110,11 @@
       <template #footer>
         <a-space>
           <UiButton variant="outline" @click="editOpen = false">取消</UiButton>
-          <UiButton status="danger" :loading="editing" @click="submitAudit('REJECTED')">
+          <UiButton
+            status="danger"
+            :loading="editing"
+            @click="submitAudit(AssessmentRationalityAuditStatusCode.REJECTED)"
+          >
             驳回
           </UiButton>
           <UiButton
@@ -119,7 +123,7 @@
             :disabled="
               !editForm.contentAligned || !editForm.rubricMeasurable || !editForm.methodReasonable
             "
-            @click="submitAudit('APPROVED')"
+            @click="submitAudit(AssessmentRationalityAuditStatusCode.APPROVED)"
           >
             审核通过
           </UiButton>
@@ -135,7 +139,6 @@ import type {
   RationalityAuditCourseLedgerOverviewVO,
   RationalityAuditSaveRequest,
 } from '@/apis/quality/rationality-audit'
-import type { AssessmentRationalityAuditStatus } from '@/apis/quality/types'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import SafetyCertificateOutlined from '@ant-design/icons-vue/SafetyCertificateOutlined'
@@ -146,7 +149,10 @@ import {
   getRationalityAuditCourseLedger,
   updateRationalityAudit,
 } from '@/apis/quality/rationality-audit'
-import { ASSESSMENT_RATIONALITY_AUDIT_STATUS_LABEL } from '@/apis/quality/types'
+import {
+  AssessmentRationalityAuditStatusCode,
+  AssessmentRationalityAuditStatusDescription,
+} from '@/apis/quality/types'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -158,7 +164,7 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
-import { isValidSemesterCode, SemesterOptions } from '@/types/enums/semester-enum'
+import { ALL_SEMESTER_CODES, SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -175,6 +181,7 @@ interface RationalityAuditEditForm {
 }
 
 interface RationalityAuditFilterModel {
+  [key: string]: unknown
   schoolYear: string
   semester?: SemesterCode
 }
@@ -187,7 +194,7 @@ const filterForm = reactive<RationalityAuditFilterModel>({
 })
 
 const filterModel = computed<Record<string, unknown>>({
-  get: () => filterForm as Record<string, unknown>,
+  get: () => filterForm,
   set: (value) => {
     Object.assign(filterForm, value)
   },
@@ -228,12 +235,12 @@ const columns = [
   { title: '操作', key: 'actions', width: 120 },
 ]
 
-function auditStatusTone(s: AssessmentRationalityAuditStatus) {
+function auditStatusTone(s: AssessmentRationalityAuditStatusCode) {
   return s === 'APPROVED' ? 'green' : s === 'REJECTED' ? 'red' : 'orange'
 }
 
-function auditStatusLabel(s: AssessmentRationalityAuditStatus) {
-  return strictEnumLabel(ASSESSMENT_RATIONALITY_AUDIT_STATUS_LABEL, s, '考核评价依据审核状态')
+function auditStatusLabel(s: AssessmentRationalityAuditStatusCode) {
+  return strictEnumLabel(AssessmentRationalityAuditStatusDescription, s, '考核评价依据审核状态')
 }
 
 function isCourseAuditMutable(record: RationalityAuditCourseLedgerItemVO): boolean {
@@ -310,8 +317,9 @@ onMounted(async () => {
   if (!filterForm.schoolYear && qualityStore.currentSchoolYear) {
     filterForm.schoolYear = qualityStore.currentSchoolYear
   }
-  if (!filterForm.semester && isValidSemesterCode(qualityStore.currentSemester)) {
-    filterForm.semester = qualityStore.currentSemester
+  const currentSemester = ALL_SEMESTER_CODES.find((code) => code === qualityStore.currentSemester)
+  if (!filterForm.semester && currentSemester) {
+    filterForm.semester = currentSemester
   }
   if (filterForm.schoolYear && filterForm.semester && qualityStore.currentTrainingPlanId) {
     await loadList()
@@ -340,7 +348,7 @@ function openEdit(record: RationalityAuditCourseLedgerItemVO) {
 }
 
 async function submitAudit(
-  status: Extract<AssessmentRationalityAuditStatus, 'APPROVED' | 'REJECTED'>,
+  status: Extract<AssessmentRationalityAuditStatusCode, 'APPROVED' | 'REJECTED'>,
 ) {
   if (!editForm.value.qualityCourseId) {
     message.error('缺少课程信息，无法提交审核')

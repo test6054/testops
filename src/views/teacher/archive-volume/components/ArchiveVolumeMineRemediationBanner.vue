@@ -19,10 +19,13 @@
       <UiTag :tone="remediationStatusTone(tasks[0].taskStatus)" size="sm">
         {{ remediationStatusLabel(tasks[0].taskStatus) }}
       </UiTag>
+      <UiTag v-if="tasks[0].diagnosticCode" tone="red" size="sm">
+        {{ remediationDiagnosticLabel(tasks[0].diagnosticCode) }}
+      </UiTag>
     </template>
     <template #actions>
       <UiButton size="sm" variant="primary" @click="emit('go', tasks[0])">
-        去处理
+        {{ isSecurityRemediationDiagnostic(tasks[0].diagnosticCode) ? '去定密确认' : '去处理' }}
       </UiButton>
     </template>
   </UiAlertStrip>
@@ -45,39 +48,48 @@
           <UiTag :tone="remediationStatusTone(task.taskStatus)" size="sm">
             {{ remediationStatusLabel(task.taskStatus) }}
           </UiTag>
+          <UiTag v-if="task.diagnosticCode" tone="red" size="sm">
+            {{ remediationDiagnosticLabel(task.diagnosticCode) }}
+          </UiTag>
           <span v-if="task.dueTime" class="archive-volume-mine-remediation-banner__due">
             截止 {{ formatDateTime(task.dueTime) }}
           </span>
         </div>
-        <UiTextAction tone="primary" @click="emit('go', task)">去处理</UiTextAction>
+        <UiTextAction tone="primary" @click="emit('go', task)">
+          {{ isSecurityRemediationDiagnostic(task.diagnosticCode) ? '去定密确认' : '去处理' }}
+        </UiTextAction>
       </li>
     </ul>
   </UiAlertStrip>
 </template>
 
 <script lang="ts" setup>
-import type {ArchiveRemediationStatusCode, ArchiveRemediationTaskVO} from '@/apis/mark/archive-volume';
+import type {ArchiveRemediationStatusCode, ArchiveRemediationTaskResponse} from '@/apis/mark/archive-volume';
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed } from 'vue'
 import {
-  ARCHIVE_REMEDIATION_STATUS_LABEL
+  ArchiveRemediationStatusDescription
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import {
+  isSecurityRemediationDiagnostic,
+  remediationDiagnosticLabel,
+} from '@/utils/archive-remediation-diagnostic'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ArchiveVolumeMineRemediationBanner' })
 
 const props = defineProps<{
-  tasks: ArchiveRemediationTaskVO[]
+  tasks: ArchiveRemediationTaskResponse[]
   loading: boolean
 }>()
 
 const emit = defineEmits<{
-  go: [task: ArchiveRemediationTaskVO]
+  go: [task: ArchiveRemediationTaskResponse]
 }>()
 
 const singleTaskDescription = computed(() => {
@@ -97,7 +109,7 @@ const singleTaskDescription = computed(() => {
 })
 
 function remediationStatusLabel(code: ArchiveRemediationStatusCode) {
-  return strictEnumLabel(ARCHIVE_REMEDIATION_STATUS_LABEL, code, 'taskStatus')
+  return strictEnumLabel(ArchiveRemediationStatusDescription, code, 'taskStatus')
 }
 
 function remediationStatusTone(code: ArchiveRemediationStatusCode): BadgeTone {

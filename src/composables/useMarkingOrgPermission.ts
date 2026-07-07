@@ -1,12 +1,12 @@
 import type { Ref } from 'vue'
-import type { MarkingOrganizationVO } from '@/apis/mark/marking-organization'
+import type { MarkingOrganizationResponse } from '@/apis/mark/marking-organization'
 import { computed } from 'vue'
 import { useUserStore } from '@/stores/modules/user'
 
 /** 阅卷组织权限：与后端 ExamMarkPermissionService.isExamOwner 对齐，仅考试主考老师可写。 */
 export function useMarkingOrgPermission(
   examCreateUserId: Ref<string | undefined>,
-  organization: Ref<MarkingOrganizationVO | null | undefined>,
+  organization: Ref<MarkingOrganizationResponse | null | undefined>,
 ) {
   const userStore = useUserStore()
   const currentUserId = computed(() => userStore.userInfo.userId)

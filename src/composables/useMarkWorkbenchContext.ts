@@ -1,6 +1,6 @@
 import type { InjectionKey, Ref } from 'vue'
-import type { ExamDetailVO } from '@/apis/mark/exam'
-import type { MarkingProgressVO, WorkbenchStageSnapshotVO } from '@/apis/mark/exam-progress'
+import type { ExamDetailResponse } from '@/apis/mark/exam'
+import type { ExamWorkbenchStageSnapshotResponse, MarkingProgressResponse } from '@/apis/mark/exam-progress'
 import type { useExamWorkspaceChrome } from '@/composables/useExamWorkspaceChrome'
 import type { MarkStageKey } from '@/stores/modules/markStage'
 import { computed, inject, provide } from 'vue'
@@ -11,15 +11,15 @@ export type ExamWorkspaceChromeContext = ReturnType<typeof useExamWorkspaceChrom
 export interface MarkWorkbenchContext {
   examId: Ref<string>
   selectedExamId: Ref<string>
-  snapshot: Ref<WorkbenchStageSnapshotVO | null>
+  snapshot: Ref<ExamWorkbenchStageSnapshotResponse | null>
   loading: Ref<boolean>
   refreshing: Ref<boolean>
   refreshSnapshot: () => Promise<void>
   /** 布局级加载的考试详情，子页可复用避免重复请求 */
-  examDetail?: Ref<ExamDetailVO | null>
+  examDetail?: Ref<ExamDetailResponse | null>
   examDetailLoading?: Ref<boolean>
   /** 阅卷进度：优先 snapshot 内嵌，与布局 Chrome 同源 */
-  markingProgress?: Ref<MarkingProgressVO | null>
+  markingProgress?: Ref<MarkingProgressResponse | null>
   refreshChrome?: () => Promise<void>
   /** 子页未保存提示；非空时离开工作台需确认 */
   workspaceUnsavedHint?: Ref<string | null>

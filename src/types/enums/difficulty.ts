@@ -34,26 +34,18 @@ export const DIFFICULTY_CONFIG: Record<DifficultyEnum, {
   },
 }
 
-function requireDifficultyConfig(difficulty: DifficultyEnum): {
-  label: string
-  color: string
-  level: number
-} {
-  return strictEnumValue(DIFFICULTY_CONFIG, difficulty, '难度等级')
-}
-
 /**
  * 获取难度标签
  */
 export function getDifficultyLabel(difficulty: DifficultyEnum): string {
-  return requireDifficultyConfig(difficulty).label
+  return DIFFICULTY_CONFIG[difficulty].label
 }
 
 /**
  * 获取难度颜色
  */
 export function getDifficultyColor(difficulty: DifficultyEnum): string {
-  return requireDifficultyConfig(difficulty).color
+  return DIFFICULTY_CONFIG[difficulty].color
 }
 
 /**
@@ -63,4 +55,4 @@ export const DIFFICULTY_OPTIONS = Object.entries(DIFFICULTY_CONFIG).map(([value,
   value,
   label: config.label,
 }))
-import { strictEnumValue } from '@/utils/strict-enum'
+

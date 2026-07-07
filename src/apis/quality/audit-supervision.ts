@@ -3,51 +3,58 @@
  *
  * 后端路径：/api/quality/audit-evaluation/supervisions
  */
-import type { QualityAuditEvidenceItem } from './audit-evidence'
-import type { AuditSupervisionType } from './types'
+import type { AuditEvidenceItemRequest, AuditEvidenceItemVO } from './audit-evidence'
+import type { AuditSupervisionTypeCode } from './types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { AuditSupervisionScopeCode } from '@/types/enums/audit-supervision-scope-enum'
 import http from '@/config/axios'
+import {
+  ALL_AUDIT_SUPERVISION_CONCLUSION_CODES,
+  AuditSupervisionConclusionCode,
+  AuditSupervisionConclusionDescription,
+} from '@/types/enums/audit-supervision-conclusion-enum'
+import {
+  ALL_AUDIT_SUPERVISION_SCOPE_CODES,
+  AuditSupervisionScopeDescription,
+} from '@/types/enums/audit-supervision-scope-enum'
 
 const BASE = '/api/quality/audit-evaluation/supervisions'
 
-/** 督导复查范围 - 对应后端 AuditSupervisionScopeEnum */
-export type AuditSupervisionScope = 'COURSE' | 'PROGRAM' | 'TRAINING_PLAN' | 'COMPREHENSIVE'
+export {
+  ALL_AUDIT_SUPERVISION_CONCLUSION_CODES,
+  AuditSupervisionConclusionCode,
+  AuditSupervisionConclusionDescription,
+} from '@/types/enums/audit-supervision-conclusion-enum'
 
-/** 督导复查结论 - 对应后端 AuditSupervisionConclusionEnum */
-export type AuditSupervisionConclusion = 'PASS' | 'NEEDS_IMPROVEMENT' | 'FAIL'
-
-/** 督导复查范围文案 */
-export const AUDIT_SUPERVISION_SCOPE_LABEL: Record<AuditSupervisionScope, string> = {
-  COURSE: '课程',
-  PROGRAM: '专业',
-  TRAINING_PLAN: '培养方案',
-  COMPREHENSIVE: '综合',
-}
-
-/** 督导复查结论文案 */
-export const AUDIT_SUPERVISION_CONCLUSION_LABEL: Record<AuditSupervisionConclusion, string> = {
-  PASS: '通过',
-  NEEDS_IMPROVEMENT: '需改进',
-  FAIL: '不通过',
-}
+export {
+  ALL_AUDIT_SUPERVISION_SCOPE_CODES,
+  AuditSupervisionScopeCode,
+  AuditSupervisionScopeDescription,
+} from '@/types/enums/audit-supervision-scope-enum'
 
 /** 督导复查结论徽标色调 */
-export const AUDIT_SUPERVISION_CONCLUSION_TONE: Record<AuditSupervisionConclusion, BadgeTone> = {
-  PASS: 'green',
-  NEEDS_IMPROVEMENT: 'orange',
-  FAIL: 'red',
+export const AUDIT_SUPERVISION_CONCLUSION_TONE: Record<AuditSupervisionConclusionCode, BadgeTone> = {
+  [AuditSupervisionConclusionCode.PASS]: 'green',
+  [AuditSupervisionConclusionCode.NEEDS_IMPROVEMENT]: 'orange',
+  [AuditSupervisionConclusionCode.FAIL]: 'red',
 }
 
-export const AUDIT_SUPERVISION_SCOPE_OPTIONS = (Object.keys(AUDIT_SUPERVISION_SCOPE_LABEL) as AuditSupervisionScope[])
-  .map(value => ({ value, label: AUDIT_SUPERVISION_SCOPE_LABEL[value] }))
-
-export const AUDIT_SUPERVISION_CONCLUSION_OPTIONS = (Object.keys(AUDIT_SUPERVISION_CONCLUSION_LABEL) as AuditSupervisionConclusion[])
-  .map(value => ({
+export const AUDIT_SUPERVISION_SCOPE_OPTIONS: Array<{ value: AuditSupervisionScopeCode, label: string }>
+  = ALL_AUDIT_SUPERVISION_SCOPE_CODES.map((value) => ({
     value,
-    label: AUDIT_SUPERVISION_CONCLUSION_LABEL[value],
-    tone: AUDIT_SUPERVISION_CONCLUSION_TONE[value],
+    label: AuditSupervisionScopeDescription[value],
   }))
+
+export const AUDIT_SUPERVISION_CONCLUSION_OPTIONS: Array<{
+  value: AuditSupervisionConclusionCode
+  label: string
+  tone: BadgeTone
+}> = ALL_AUDIT_SUPERVISION_CONCLUSION_CODES.map((value) => ({
+  value,
+  label: AuditSupervisionConclusionDescription[value],
+  tone: AUDIT_SUPERVISION_CONCLUSION_TONE[value],
+}))
 
 export interface AuditSupervisionVO {
   id: string
@@ -59,15 +66,15 @@ export interface AuditSupervisionVO {
   qualityCourseId?: string
   supervisionCode: string
   supervisionTitle: string
-  supervisionType: AuditSupervisionType
-  supervisionScope?: AuditSupervisionScope
+  supervisionType: AuditSupervisionTypeCode
+  supervisionScope?: AuditSupervisionScopeCode
   supervisorUserId?: string
   supervisedTime?: string
   summary?: string
-  findingItems?: AuditSupervisionFindingItem[]
-  conclusion?: AuditSupervisionConclusion
+  findingItems?: AuditSupervisionFindingItemVO[]
+  conclusion?: AuditSupervisionConclusionCode
   archiveId?: string
-  evidenceItems?: QualityAuditEvidenceItem[]
+  evidenceItems?: AuditEvidenceItemVO[]
   createUser?: string
   updateUser?: string
   createTime?: string
@@ -83,18 +90,28 @@ export interface AuditSupervisionSaveRequest {
   qualityCourseId?: string
   supervisionCode: string
   supervisionTitle: string
-  supervisionType: AuditSupervisionType
-  supervisionScope?: AuditSupervisionScope
+  supervisionType: AuditSupervisionTypeCode
+  supervisionScope?: AuditSupervisionScopeCode
   supervisorUserId?: string
   supervisedTime?: string
   summary?: string
-  findingItems?: AuditSupervisionFindingItem[]
-  conclusion?: AuditSupervisionConclusion
+  findingItems?: AuditSupervisionFindingItemRequest[]
+  conclusion?: AuditSupervisionConclusionCode
   archiveId?: string
-  evidenceItems?: QualityAuditEvidenceItem[]
+  evidenceItems?: AuditEvidenceItemRequest[]
 }
 
-export interface AuditSupervisionFindingItem {
+export interface AuditSupervisionFindingItemRequest {
+  findingType?: string
+  findingTitle?: string
+  findingDescription?: string
+  severity?: string
+  responsibleUnit?: string
+  improvementSuggestion?: string
+}
+
+export interface AuditSupervisionFindingItemVO {
+  id?: string
   findingType?: string
   findingTitle?: string
   findingDescription?: string
@@ -107,7 +124,8 @@ export interface AuditSupervisionQueryRequest extends QueryDto {
   auditIssueId?: string
   programId?: string
   trainingPlanId?: string
-  supervisionType?: AuditSupervisionType
+  qualityCourseId?: string
+  supervisionType?: AuditSupervisionTypeCode
   conclusion?: string
   supervisorUserId?: string
   keyword?: string

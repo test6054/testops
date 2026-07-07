@@ -12,7 +12,7 @@ export interface PortfolioIndicatorTemplateParams {
   weight?: number
 }
 
-const PARAM_LABEL: Record<keyof PortfolioIndicatorTemplateParams, string> = {
+const PortfolioIndicatorTemplateParamDescription: Record<keyof PortfolioIndicatorTemplateParams, string> = {
   passValue: '达标值',
   standardScore: '标准分',
   minValue: '分段下限',
@@ -24,6 +24,20 @@ const PARAM_LABEL: Record<keyof PortfolioIndicatorTemplateParams, string> = {
   subScore: '减分',
   weight: '权重',
 }
+
+/** 全部模板参数字段键（显式枚举成员列表，禁止 Object.keys 反射推导） */
+const ALL_TEMPLATE_PARAM_KEYS: readonly (keyof PortfolioIndicatorTemplateParams)[] = [
+  'passValue',
+  'standardScore',
+  'minValue',
+  'maxValue',
+  'targetRatio',
+  'cumulativeCap',
+  'capScore',
+  'addScore',
+  'subScore',
+  'weight',
+]
 
 /** 按规则类型展示可编辑参数字段 */
 export function templateParamFieldsForRuleType(ruleType: string): (keyof PortfolioIndicatorTemplateParams)[] {
@@ -50,17 +64,20 @@ export function templateParamFieldsForRuleType(ruleType: string): (keyof Portfol
 }
 
 export function templateParamLabel(key: keyof PortfolioIndicatorTemplateParams): string {
-  return PARAM_LABEL[key]
+  return PortfolioIndicatorTemplateParamDescription[key]
 }
 
 export function parseTemplateParamsJson(json: string): PortfolioIndicatorTemplateParams {
   if (!json.trim()) {
     return {}
   }
-  const raw = JSON.parse(json) as Record<string, unknown>
+  const raw: unknown = JSON.parse(json)
+  if (typeof raw !== 'object' || raw === null) {
+    throw new Error('指标模板参数 JSON 必须是对象')
+  }
   const params: PortfolioIndicatorTemplateParams = {}
-  for (const key of Object.keys(PARAM_LABEL) as (keyof PortfolioIndicatorTemplateParams)[]) {
-    const value = raw[key]
+  for (const key of ALL_TEMPLATE_PARAM_KEYS) {
+    const value = Object.getOwnPropertyDescriptor(raw, key)?.value
     if (value === null || value === undefined || value === '') {
       continue
     }
@@ -75,7 +92,7 @@ export function parseTemplateParamsJson(json: string): PortfolioIndicatorTemplat
 /** 序列化模板参数；空对象返回 "{}" 以兼容后端契约 */
 export function serializeTemplateParams(params: PortfolioIndicatorTemplateParams): string {
   const payload: Record<string, number> = {}
-  for (const key of Object.keys(PARAM_LABEL) as (keyof PortfolioIndicatorTemplateParams)[]) {
+  for (const key of ALL_TEMPLATE_PARAM_KEYS) {
     const value = params[key]
     if (value !== undefined && value !== null && !Number.isNaN(value)) {
       payload[key] = value

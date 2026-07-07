@@ -1,8 +1,9 @@
-import type { ArchiveVolumeSelfCheckItemVO, ArchiveVolumeSelfCheckListVO } from '@/apis/mark/archive-volume'
+import type { ArchiveVolumeSelfCheckItemVO, ArchiveVolumeSelfCheckListResponse } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
 import { computed, ref } from 'vue'
 import { downloadFile } from '@/apis/edu/file-management'
 import {
+  ArchiveSelfCheckStatusCode,
   checkArchiveVolumeSelfCheckItem,
   exportArchiveVolumeSelfCheck,
   listArchiveVolumeSelfCheckItems
@@ -16,11 +17,16 @@ export function useArchiveVolumeSelfCheck(volumeId: () => string) {
   const loading = ref(false)
   const checking = ref(false)
   const exporting = ref(false)
-  const selfCheck = ref<ArchiveVolumeSelfCheckListVO | null>(null)
+  const selfCheck = ref<ArchiveVolumeSelfCheckListResponse | null>(null)
 
   const items = computed(() => selfCheck.value?.items ?? [])
-  const selfCheckStatus = computed(() => selfCheck.value?.selfCheckStatus ?? 'NOT_STARTED')
-  const allRequiredChecked = computed(() => selfCheck.value?.allRequiredChecked === true)
+  const selfCheckStatus = computed(() => {
+    if (!selfCheck.value) return ArchiveSelfCheckStatusCode.NOT_STARTED
+    if (selfCheck.value.completed) return ArchiveSelfCheckStatusCode.COMPLETED
+    if ((selfCheck.value.requiredChecked ?? 0) > 0) return ArchiveSelfCheckStatusCode.IN_PROGRESS
+    return ArchiveSelfCheckStatusCode.NOT_STARTED
+  })
+  const allRequiredChecked = computed(() => selfCheck.value?.completed === true)
 
   async function loadSelfCheck() {
     const id = volumeId()
@@ -43,11 +49,12 @@ export function useArchiveVolumeSelfCheck(volumeId: () => string) {
     if (!id) return
     checking.value = true
     try {
-      selfCheck.value = await checkArchiveVolumeSelfCheckItem({
+      await checkArchiveVolumeSelfCheckItem({
         volumeId: id,
         templateItemId: item.templateItemId,
         checked,
       })
+      selfCheck.value = await listArchiveVolumeSelfCheckItems(id)
     }
     catch (error) {
       showUserError(error)

@@ -8,6 +8,18 @@ export interface Options {
   defaultSizeOptions: string[]
 }
 
+interface PaginationState {
+  showSizeChanger: boolean
+  showTotal?: (total: number) => string
+  current: number
+  pageSize: number
+  pageSizeOptions: string[]
+  total: number
+  simple: boolean
+  onChange: (page: number) => void
+  onShowSizeChange: (_current: number, size: number) => void
+}
+
 export function usePagination(
   callback: Callback,
   options: Options = {
@@ -17,9 +29,9 @@ export function usePagination(
 ) {
   const { breakpoint } = useBreakpoint()
 
-  const pagination = reactive({
+  const pagination = reactive<PaginationState>({
     showSizeChanger: true,
-    showTotal: ((total: number) => `共 ${total} 条`) as ((total: number) => string) | undefined,
+    showTotal: (total: number) => `共 ${total} 条`,
     current: 1,
     pageSize: options.defaultPageSize,
     pageSizeOptions: options.defaultSizeOptions,

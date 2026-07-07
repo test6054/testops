@@ -1,8 +1,8 @@
 import type { Ref } from 'vue'
-import type { ArchiveVolumeExamGateVO } from '@/apis/mark/archive-volume'
+import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
 import { computed } from 'vue'
 
-export function useExamArchiveGateHint(gate: Ref<ArchiveVolumeExamGateVO | null>) {
+export function useExamArchiveGateHint(gate: Ref<ArchiveVolumeExamGateResponse | null>) {
   const gateProgressHint = computed(() => resolveGateProgressHint(gate.value))
   const gateAnomaly = computed(() => resolveGateAnomaly(gate.value))
   const incompleteClasses = computed(() => resolveIncompleteClasses(gate.value))
@@ -14,7 +14,7 @@ export function useExamArchiveGateHint(gate: Ref<ArchiveVolumeExamGateVO | null>
   }
 }
 
-function resolveGateProgressHint(gate: ArchiveVolumeExamGateVO | null): string {
+function resolveGateProgressHint(gate: ArchiveVolumeExamGateResponse | null): string {
   if (!gate) {
     return '—'
   }
@@ -45,11 +45,11 @@ function resolveGateProgressHint(gate: ArchiveVolumeExamGateVO | null): string {
     : `成绩发布 ${gate.publishedScoreCount ?? 0}/${gate.gradablePaperCount ?? 0}`
 }
 
-function resolveGateAnomaly(gate: ArchiveVolumeExamGateVO | null): boolean {
+function resolveGateAnomaly(gate: ArchiveVolumeExamGateResponse | null): boolean {
   return gate?.examClosed === true && gate.allScoresPublished !== true
 }
 
-function resolveIncompleteClasses(gate: ArchiveVolumeExamGateVO | null) {
+function resolveIncompleteClasses(gate: ArchiveVolumeExamGateResponse | null) {
   const progress = gate?.classPublishProgress ?? []
   return progress
     .filter((item) => (item.unpublishedBoundPaperCount ?? 0) > 0)
@@ -60,7 +60,7 @@ function resolveIncompleteClasses(gate: ArchiveVolumeExamGateVO | null) {
     }))
 }
 
-export function buildCloseExamBlockedContent(gate: ArchiveVolumeExamGateVO): string {
+export function buildCloseExamBlockedContent(gate: ArchiveVolumeExamGateResponse): string {
   const unpublished = gate.unpublishedBoundPaperCount ?? 0
   const incomplete = resolveIncompleteClasses(gate)
   const lines = [`尚有 ${unpublished} 份试卷未发布最终成绩，请先完成成绩发布再关考。`]
@@ -73,7 +73,7 @@ export function buildCloseExamBlockedContent(gate: ArchiveVolumeExamGateVO): str
   return lines.join('\n')
 }
 
-export function buildCloseExamReadyContent(gate: ArchiveVolumeExamGateVO): string {
+export function buildCloseExamReadyContent(gate: ArchiveVolumeExamGateResponse): string {
   if ((gate.gradablePaperCount ?? 0) <= 0) {
     return '本场考试无可评阅试卷。关考后系统将自动创建归档卷，关闭后不可再编辑考试主信息。'
   }

@@ -2,13 +2,14 @@
 /**
  * 阅卷考后讲评页：质量评价同步状态芯片与跳转。
  */
-import type { ExamSummaryVO } from '@/apis/mark/exam'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import type { MarkExamSyncStatusVO } from '@/apis/quality/mark-exam-sync'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  MARK_EXAM_QUALITY_SYNC_STATUS_LABEL,
   MARK_EXAM_QUALITY_SYNC_STATUS_TONE,
+  MarkExamQualitySyncStatusDescription,
   markExamSyncApi,
 } from '@/apis/quality/mark-exam-sync'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -19,7 +20,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'MarkQualitySyncChip' })
 
 const props = defineProps<{
-  exam?: ExamSummaryVO | null
+  exam?: ExamSummaryResponse | null
 }>()
 
 const router = useRouter()
@@ -33,15 +34,15 @@ const canQuery = computed(
 const statusLabel = computed(() => {
   if (!syncStatus.value?.status) return '质量同步：加载中'
   const label = strictEnumLabel(
-    MARK_EXAM_QUALITY_SYNC_STATUS_LABEL,
+    MarkExamQualitySyncStatusDescription,
     syncStatus.value.status,
     '质量同步状态',
   )
   return `质量评价同步：${label}`
 })
 
-const statusTone = computed(() => {
-  if (!syncStatus.value?.status) return 'gray' as const
+const statusTone = computed<BadgeTone>(() => {
+  if (!syncStatus.value?.status) return 'gray'
   return strictEnumTone(MARK_EXAM_QUALITY_SYNC_STATUS_TONE, syncStatus.value.status, '质量同步状态')
 })
 

@@ -7,867 +7,550 @@
  * - 后端 Long ID 全部以 string 表达到前端，避免 JS Number 精度丢失
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import {
+  AccreditationTypeCode,
+  AccreditationTypeDescription,
+  ALL_ACCREDITATION_TYPE_CODES,
+} from '@/types/enums/accreditation-type-enum'
+import {
+  AchievementAuditStatusCode,
+  AchievementAuditStatusDescription,
+  ALL_ACHIEVEMENT_AUDIT_STATUS_CODES,
+} from '@/types/enums/achievement-audit-status-enum'
+import {
+  AchievementDetailTypeCode,
+  AchievementDetailTypeDescription,
+  ALL_ACHIEVEMENT_DETAIL_TYPE_CODES,
+} from '@/types/enums/achievement-detail-type-enum'
+import {
+  AchievementStatusCode,
+  AchievementStatusDescription,
+  ALL_ACHIEVEMENT_STATUS_CODES,
+} from '@/types/enums/achievement-status-enum'
+import {
+  AchievementTargetTypeCode,
+  AchievementTargetTypeDescription,
+  ALL_ACHIEVEMENT_TARGET_TYPE_CODES,
+} from '@/types/enums/achievement-target-type-enum'
+import {
+  AggregationFunctionCode,
+  AggregationFunctionDescription,
+  ALL_AGGREGATION_FUNCTION_CODES,
+} from '@/types/enums/aggregation-function-enum'
+import {
+  AiHealthStatusCode,
+  AiHealthStatusDescription,
+  ALL_AI_HEALTH_STATUS_CODES,
+} from '@/types/enums/ai-health-status-enum'
+import {
+  AiManualHandlingStatusCode,
+  AiManualHandlingStatusDescription,
+  ALL_AI_MANUAL_HANDLING_STATUS_CODES,
+} from '@/types/enums/ai-manual-handling-status-enum'
+import {
+  AiOutputValidationCode,
+  AiOutputValidationDescription,
+  ALL_AI_OUTPUT_VALIDATION_CODES,
+} from '@/types/enums/ai-output-validation-enum'
+import {
+  AiProviderTypeCode,
+  AiProviderTypeDescription,
+  ALL_AI_PROVIDER_TYPE_CODES,
+} from '@/types/enums/ai-provider-type-enum'
+import {
+  AiTaskBusinessTypeCode,
+  AiTaskBusinessTypeDescription,
+  ALL_AI_TASK_BUSINESS_TYPE_CODES,
+} from '@/types/enums/ai-task-business-type-enum'
+import {
+  AiTaskStatusCode,
+  AiTaskStatusDescription,
+  ALL_AI_TASK_STATUS_CODES,
+} from '@/types/enums/ai-task-status-enum'
+import {
+  AiTaskTypeCode,
+  AiTaskTypeDescription,
+  ALL_AI_TASK_TYPE_CODES,
+} from '@/types/enums/ai-task-type-enum'
+import {
+  ALL_ARCHIVE_BUSINESS_TYPE_CODES,
+  ArchiveBusinessTypeCode,
+  ArchiveBusinessTypeDescription,
+} from '@/types/enums/archive-business-type-enum'
+import {
+  ALL_ASSESSMENT_ITEM_TYPE_CODES,
+  AssessmentItemTypeCode,
+  AssessmentItemTypeDescription,
+} from '@/types/enums/assessment-item-type-enum'
+import {
+  ALL_ASSESSMENT_RATIONALITY_AUDIT_STATUS_CODES,
+  AssessmentRationalityAuditStatusCode,
+  AssessmentRationalityAuditStatusDescription,
+} from '@/types/enums/assessment-rationality-audit-status-enum'
+import {
+  ALL_AUDIT_ISSUE_STATUS_CODES,
+  AuditIssueStatusCode,
+  AuditIssueStatusDescription,
+} from '@/types/enums/audit-issue-status-enum'
+import {
+  ALL_AUDIT_RECTIFICATION_STATUS_CODES,
+  AuditRectificationStatusCode,
+  AuditRectificationStatusDescription,
+} from '@/types/enums/audit-rectification-status-enum'
+import {
+  ALL_AUDIT_SUPERVISION_TYPE_CODES,
+  AuditSupervisionTypeCode,
+  AuditSupervisionTypeDescription,
+} from '@/types/enums/audit-supervision-type-enum'
+import {
+  ALL_CIVIC_DIMENSION_CODES,
+  CivicDimensionCode,
+  CivicDimensionDescription,
+} from '@/types/enums/civic-dimension-enum'
+import {
+  ALL_CONFIRMATION_STATUS_CODES,
+  ConfirmationStatusCode,
+  ConfirmationStatusDescription,
+} from '@/types/enums/confirmation-status-enum'
+import {
+  ALL_DATA_SOURCE_MODE_CODES,
+  DataSourceModeCode,
+  DataSourceModeDescription,
+} from '@/types/enums/data-source-mode-enum'
+import {
+  ALL_EVALUATION_CYCLE_CODES,
+  EvaluationCycleCode,
+  EvaluationCycleDescription,
+} from '@/types/enums/evaluation-cycle-enum'
+import {
+  ALL_EVALUATION_METHOD_CODES,
+  EvaluationMethodCode,
+  EvaluationMethodDescription,
+} from '@/types/enums/evaluation-method-enum'
+import {
+  ALL_EXPERT_PACKAGE_TYPE_CODES,
+  ExpertPackageTypeCode,
+  ExpertPackageTypeDescription,
+} from '@/types/enums/expert-package-type-enum'
+import {
+  ALL_EXTERNAL_PULL_AUDIT_CHECK_STATUS_CODES,
+  ExternalPullAuditCheckStatusCode,
+  ExternalPullAuditCheckStatusDescription,
+} from '@/types/enums/external-pull-audit-check-status-enum'
+import {
+  ALL_EXTERNAL_PULL_AUDIT_EVENT_CODES,
+  ExternalPullAuditEventCode,
+  ExternalPullAuditEventDescription,
+} from '@/types/enums/external-pull-audit-event-enum'
+import {
+  ALL_EXTERNAL_PULL_CONFIRMATION_STATUS_CODES,
+  ExternalPullConfirmationStatusCode,
+  ExternalPullConfirmationStatusDescription,
+} from '@/types/enums/external-pull-confirmation-status-enum'
+import {
+  ALL_EXTERNAL_PULL_TASK_STATUS_CODES,
+  ExternalPullTaskStatusCode,
+  ExternalPullTaskStatusDescription,
+} from '@/types/enums/external-pull-task-status-enum'
+import {
+  ALL_EXTERNAL_SOURCE_TYPE_CODES,
+  ExternalSourceTypeCode,
+  ExternalSourceTypeDescription,
+} from '@/types/enums/external-source-type-enum'
+import {
+  ALL_IMPROVEMENT_TASK_STATUS_CODES,
+  ImprovementTaskStatusCode,
+  ImprovementTaskStatusDescription,
+} from '@/types/enums/improvement-task-status-enum'
+import {
+  ALL_INDIRECT_FORM_ACCESS_MODE_CODES,
+  IndirectFormAccessModeCode,
+  IndirectFormAccessModeDescription,
+} from '@/types/enums/indirect-form-access-mode-enum'
+import {
+  ALL_INDIRECT_FORM_STATUS_CODES,
+  IndirectFormStatusCode,
+  IndirectFormStatusDescription,
+} from '@/types/enums/indirect-form-status-enum'
+import {
+  ALL_INDIRECT_FORM_TYPE_CODES,
+  IndirectFormTypeCode,
+  IndirectFormTypeDescription,
+} from '@/types/enums/indirect-form-type-enum'
+import {
+  ALL_MANUAL_REVIEW_DECISION_CODES,
+  ManualReviewDecisionCode,
+  ManualReviewDecisionDescription,
+} from '@/types/enums/manual-review-decision-enum'
+import {
+  ALL_PROCESS_NODE_TYPE_CODES,
+  ProcessNodeTypeCode,
+  ProcessNodeTypeDescription,
+} from '@/types/enums/process-node-type-enum'
+import {
+  ALL_REPORT_EXPORT_STATUS_CODES,
+  ReportExportStatusCode,
+  ReportExportStatusDescription,
+} from '@/types/enums/report-export-status-enum'
+import {
+  ALL_REPORT_STATUS_CODES,
+  ReportStatusCode,
+  ReportStatusDescription,
+} from '@/types/enums/report-status-enum'
+import {
+  ALL_REPORT_TYPE_CODES,
+  ReportTypeCode,
+  ReportTypeDescription,
+} from '@/types/enums/report-type-enum'
+import {
+  ALL_SCALE_TYPE_CODES,
+  ScaleTypeCode,
+  ScaleTypeDescription,
+} from '@/types/enums/scale-type-enum'
+import {
+  ALL_SCORE_BATCH_STATUS_CODES,
+  ScoreBatchStatusCode,
+  ScoreBatchStatusDescription,
+} from '@/types/enums/score-batch-status-enum'
+import {
+  ALL_SQL_SAFETY_STATUS_CODES,
+  SqlSafetyStatusCode,
+  SqlSafetyStatusDescription,
+} from '@/types/enums/sql-safety-status-enum'
+import {
+  ALL_SUPPORT_LEVEL_CODES,
+  SupportLevelCode,
+  SupportLevelDescription,
+} from '@/types/enums/support-level-enum'
+import {
+  ALL_WORKGROUP_LEVEL_CODES,
+  WorkgroupLevelCode,
+  WorkgroupLevelDescription,
+} from '@/types/enums/workgroup-level-enum'
 
-/** 达成度计算目标类型 - 对应 AchievementTargetTypeEnum */
-export type AchievementTargetType
-  = | 'COURSE_GOAL'
-    | 'REQUIREMENT_INDICATOR'
-    | 'GRADUATION_REQUIREMENT'
-    | 'TRAINING_OBJECTIVE'
-    | 'PROGRAM_SUMMARY'
-    | 'CIVIC_GOAL_AGGREGATE'
-    | 'COMPLEX_ENGINEERING_AGGREGATE'
-
-export const ACHIEVEMENT_TARGET_TYPE_LABEL: Record<AchievementTargetType, string> = {
-  COURSE_GOAL: '课程目标',
-  REQUIREMENT_INDICATOR: '毕业要求观测点',
-  GRADUATION_REQUIREMENT: '毕业要求',
-  TRAINING_OBJECTIVE: '培养目标',
-  PROGRAM_SUMMARY: '专业级汇总',
-  CIVIC_GOAL_AGGREGATE: '课程思政独立汇总',
-  COMPLEX_ENGINEERING_AGGREGATE: '复杂工程问题专项汇总',
+export {
+  AccreditationTypeCode,
+  AccreditationTypeDescription,
+  AchievementAuditStatusCode,
+  AchievementAuditStatusDescription,
+  AchievementDetailTypeCode,
+  AchievementDetailTypeDescription,
+  AchievementStatusCode,
+  AchievementStatusDescription,
+  AchievementTargetTypeCode,
+  AchievementTargetTypeDescription,
+  AggregationFunctionCode,
+  AggregationFunctionDescription,
+  AiHealthStatusCode,
+  AiHealthStatusDescription,
+  AiManualHandlingStatusCode,
+  AiManualHandlingStatusDescription,
+  AiOutputValidationCode,
+  AiOutputValidationDescription,
+  AiProviderTypeCode,
+  AiProviderTypeDescription,
+  AiTaskBusinessTypeCode,
+  AiTaskBusinessTypeDescription,
+  AiTaskStatusCode,
+  AiTaskStatusDescription,
+  AiTaskTypeCode,
+  AiTaskTypeDescription,
+  ALL_ACCREDITATION_TYPE_CODES,
+  ALL_ACHIEVEMENT_AUDIT_STATUS_CODES,
+  ALL_ACHIEVEMENT_DETAIL_TYPE_CODES,
+  ALL_ACHIEVEMENT_STATUS_CODES,
+  ALL_ACHIEVEMENT_TARGET_TYPE_CODES,
+  ALL_AGGREGATION_FUNCTION_CODES,
+  ALL_AI_HEALTH_STATUS_CODES,
+  ALL_AI_MANUAL_HANDLING_STATUS_CODES,
+  ALL_AI_OUTPUT_VALIDATION_CODES,
+  ALL_AI_PROVIDER_TYPE_CODES,
+  ALL_AI_TASK_BUSINESS_TYPE_CODES,
+  ALL_AI_TASK_STATUS_CODES,
+  ALL_AI_TASK_TYPE_CODES,
+  ALL_ARCHIVE_BUSINESS_TYPE_CODES,
+  ALL_ASSESSMENT_ITEM_TYPE_CODES,
+  ALL_ASSESSMENT_RATIONALITY_AUDIT_STATUS_CODES,
+  ALL_AUDIT_ISSUE_STATUS_CODES,
+  ALL_AUDIT_RECTIFICATION_STATUS_CODES,
+  ALL_AUDIT_SUPERVISION_TYPE_CODES,
+  ALL_CIVIC_DIMENSION_CODES,
+  ALL_CONFIRMATION_STATUS_CODES,
+  ALL_DATA_SOURCE_MODE_CODES,
+  ALL_EVALUATION_CYCLE_CODES,
+  ALL_EVALUATION_METHOD_CODES,
+  ALL_EXPERT_PACKAGE_TYPE_CODES,
+  ALL_EXTERNAL_PULL_AUDIT_CHECK_STATUS_CODES,
+  ALL_EXTERNAL_PULL_AUDIT_EVENT_CODES,
+  ALL_EXTERNAL_PULL_CONFIRMATION_STATUS_CODES,
+  ALL_EXTERNAL_PULL_TASK_STATUS_CODES,
+  ALL_EXTERNAL_SOURCE_TYPE_CODES,
+  ALL_IMPROVEMENT_TASK_STATUS_CODES,
+  ALL_INDIRECT_FORM_ACCESS_MODE_CODES,
+  ALL_INDIRECT_FORM_STATUS_CODES,
+  ALL_INDIRECT_FORM_TYPE_CODES,
+  ALL_MANUAL_REVIEW_DECISION_CODES,
+  ALL_PROCESS_NODE_TYPE_CODES,
+  ALL_REPORT_EXPORT_STATUS_CODES,
+  ALL_REPORT_STATUS_CODES,
+  ALL_REPORT_TYPE_CODES,
+  ALL_SCALE_TYPE_CODES,
+  ALL_SCORE_BATCH_STATUS_CODES,
+  ALL_SQL_SAFETY_STATUS_CODES,
+  ALL_SUPPORT_LEVEL_CODES,
+  ALL_WORKGROUP_LEVEL_CODES,
+  ArchiveBusinessTypeCode,
+  ArchiveBusinessTypeDescription,
+  AssessmentItemTypeCode,
+  AssessmentItemTypeDescription,
+  AssessmentRationalityAuditStatusCode,
+  AssessmentRationalityAuditStatusDescription,
+  AuditIssueStatusCode,
+  AuditIssueStatusDescription,
+  AuditRectificationStatusCode,
+  AuditRectificationStatusDescription,
+  AuditSupervisionTypeCode,
+  AuditSupervisionTypeDescription,
+  CivicDimensionCode,
+  CivicDimensionDescription,
+  ConfirmationStatusCode,
+  ConfirmationStatusDescription,
+  DataSourceModeCode,
+  DataSourceModeDescription,
+  EvaluationCycleCode,
+  EvaluationCycleDescription,
+  EvaluationMethodCode,
+  EvaluationMethodDescription,
+  ExpertPackageTypeCode,
+  ExpertPackageTypeDescription,
+  ExternalPullAuditCheckStatusCode,
+  ExternalPullAuditCheckStatusDescription,
+  ExternalPullAuditEventCode,
+  ExternalPullAuditEventDescription,
+  ExternalPullConfirmationStatusCode,
+  ExternalPullConfirmationStatusDescription,
+  ExternalPullTaskStatusCode,
+  ExternalPullTaskStatusDescription,
+  ExternalSourceTypeCode,
+  ExternalSourceTypeDescription,
+  ImprovementTaskStatusCode,
+  ImprovementTaskStatusDescription,
+  IndirectFormAccessModeCode,
+  IndirectFormAccessModeDescription,
+  IndirectFormStatusCode,
+  IndirectFormStatusDescription,
+  IndirectFormTypeCode,
+  IndirectFormTypeDescription,
+  ManualReviewDecisionCode,
+  ManualReviewDecisionDescription,
+  ProcessNodeTypeCode,
+  ProcessNodeTypeDescription,
+  ReportExportStatusCode,
+  ReportExportStatusDescription,
+  ReportStatusCode,
+  ReportStatusDescription,
+  ReportTypeCode,
+  ReportTypeDescription,
+  ScaleTypeCode,
+  ScaleTypeDescription,
+  ScoreBatchStatusCode,
+  ScoreBatchStatusDescription,
+  SqlSafetyStatusCode,
+  SqlSafetyStatusDescription,
+  SupportLevelCode,
+  SupportLevelDescription,
+  WorkgroupLevelCode,
+  WorkgroupLevelDescription,
 }
 
-/** 达成度审核状态 - AchievementAuditStatusEnum */
-export type AchievementAuditStatus
-  = | 'DRAFT'
-    | 'CALCULATED'
-    | 'SUBMITTED'
-    | 'CONFIRMED'
-    | 'RETURNED'
-    | 'ARCHIVED'
-
-export const ACHIEVEMENT_AUDIT_STATUS_LABEL: Record<AchievementAuditStatus, string> = {
-  DRAFT: '起草中',
-  CALCULATED: '已计算',
-  SUBMITTED: '已提交',
-  CONFIRMED: '已确认',
-  RETURNED: '已退回',
-  ARCHIVED: '已归档',
+export const ACHIEVEMENT_AUDIT_STATUS_COLOR: Record<AchievementAuditStatusCode, BadgeTone> = {
+  [AchievementAuditStatusCode.DRAFT]: 'gray',
+  [AchievementAuditStatusCode.CALCULATED]: 'blue',
+  [AchievementAuditStatusCode.SUBMITTED]: 'blue',
+  [AchievementAuditStatusCode.CONFIRMED]: 'green',
+  [AchievementAuditStatusCode.RETURNED]: 'orange',
+  [AchievementAuditStatusCode.ARCHIVED]: 'yellow',
 }
 
-export const ACHIEVEMENT_AUDIT_STATUS_COLOR: Record<AchievementAuditStatus, BadgeTone> = {
-  DRAFT: 'gray',
-  CALCULATED: 'blue',
-  SUBMITTED: 'blue',
-  CONFIRMED: 'green',
-  RETURNED: 'orange',
-  ARCHIVED: 'yellow',
+export const MANUAL_REVIEW_DECISION_COLOR: Record<ManualReviewDecisionCode, BadgeTone> = {
+  [ManualReviewDecisionCode.CONFIRMED]: 'green',
+  [ManualReviewDecisionCode.RETURNED]: 'orange',
+  [ManualReviewDecisionCode.ARCHIVED]: 'yellow',
 }
 
-/** 达成度结论 - AchievementStatusEnum */
-export type AchievementStatus
-  = | 'ACHIEVED'
-    | 'PARTIALLY_ACHIEVED'
-    | 'NOT_ACHIEVED'
-    | 'INSUFFICIENT_EVIDENCE'
-
-export const ACHIEVEMENT_STATUS_LABEL: Record<AchievementStatus, string> = {
-  ACHIEVED: '已达成',
-  PARTIALLY_ACHIEVED: '部分达成',
-  NOT_ACHIEVED: '未达成',
-  INSUFFICIENT_EVIDENCE: '证据不足',
+export const ACHIEVEMENT_STATUS_COLOR: Record<AchievementStatusCode, BadgeTone> = {
+  [AchievementStatusCode.ACHIEVED]: 'green',
+  [AchievementStatusCode.PARTIALLY_ACHIEVED]: 'orange',
+  [AchievementStatusCode.NOT_ACHIEVED]: 'red',
+  [AchievementStatusCode.INSUFFICIENT_EVIDENCE]: 'gray',
 }
 
-/** 达成度明细类型 - AchievementDetailTypeEnum */
-export type AchievementDetailType
-  = | 'ASSESSMENT_ITEM'
-    | 'INDIRECT_AGGREGATE'
-    | 'COURSE_GOAL'
-    | 'REQUIREMENT_INDICATOR'
-    | 'GRADUATION_REQUIREMENT'
-
-export const ACHIEVEMENT_DETAIL_TYPE_LABEL: Record<AchievementDetailType, string> = {
-  ASSESSMENT_ITEM: '考核环节',
-  INDIRECT_AGGREGATE: '间接评价聚合',
-  COURSE_GOAL: '课程目标',
-  REQUIREMENT_INDICATOR: '毕业要求观测点',
-  GRADUATION_REQUIREMENT: '毕业要求',
+export const AI_TASK_STATUS_COLOR: Record<AiTaskStatusCode, BadgeTone> = {
+  [AiTaskStatusCode.PENDING]: 'gray',
+  [AiTaskStatusCode.PROCESSING]: 'blue',
+  [AiTaskStatusCode.SUCCEEDED]: 'green',
+  [AiTaskStatusCode.FAILED]: 'red',
+  [AiTaskStatusCode.CANCELLED]: 'orange',
 }
 
-/** 达成度人工复核决定 - ManualReviewDecisionEnum */
-export type ManualReviewDecision = 'CONFIRMED' | 'RETURNED' | 'ARCHIVED'
-
-export const MANUAL_REVIEW_DECISION_LABEL: Record<ManualReviewDecision, string> = {
-  CONFIRMED: '复核通过',
-  RETURNED: '退回修改',
-  ARCHIVED: '归档保留',
+export const AI_OUTPUT_VALIDATION_COLOR: Record<AiOutputValidationCode, BadgeTone> = {
+  [AiOutputValidationCode.PASSED]: 'green',
+  [AiOutputValidationCode.REJECTED]: 'red',
+  [AiOutputValidationCode.WARN]: 'orange',
 }
 
-export const MANUAL_REVIEW_DECISION_COLOR: Record<ManualReviewDecision, BadgeTone> = {
-  CONFIRMED: 'green',
-  RETURNED: 'orange',
-  ARCHIVED: 'yellow',
+export const AI_HEALTH_STATUS_COLOR: Record<AiHealthStatusCode, BadgeTone> = {
+  [AiHealthStatusCode.UNKNOWN]: 'gray',
+  [AiHealthStatusCode.HEALTHY]: 'green',
+  [AiHealthStatusCode.FAILED]: 'red',
 }
 
-export const ACHIEVEMENT_STATUS_COLOR: Record<AchievementStatus, BadgeTone> = {
-  ACHIEVED: 'green',
-  PARTIALLY_ACHIEVED: 'orange',
-  NOT_ACHIEVED: 'red',
-  INSUFFICIENT_EVIDENCE: 'gray',
+export const SCORE_BATCH_STATUS_COLOR: Record<ScoreBatchStatusCode, BadgeTone> = {
+  [ScoreBatchStatusCode.PENDING]: 'gray',
+  [ScoreBatchStatusCode.PARSING]: 'blue',
+  [ScoreBatchStatusCode.PREVIEW_READY]: 'orange',
+  [ScoreBatchStatusCode.VALIDATED]: 'blue',
+  [ScoreBatchStatusCode.CONFIRMED]: 'green',
+  [ScoreBatchStatusCode.FAILED]: 'red',
+  [ScoreBatchStatusCode.CANCELLED]: 'gray',
 }
 
-/** AI 任务状态 - AiTaskStatusEnum */
-export type AiTaskStatus
-  = | 'PENDING'
-    | 'PROCESSING'
-    | 'SUCCEEDED'
-    | 'FAILED'
-    | 'CANCELLED'
-
-export const AI_TASK_STATUS_LABEL: Record<AiTaskStatus, string> = {
-  PENDING: '待处理',
-  PROCESSING: '处理中',
-  SUCCEEDED: '已完成',
-  FAILED: '已失败',
-  CANCELLED: '已取消',
+export const IMPROVEMENT_TASK_STATUS_COLOR: Record<ImprovementTaskStatusCode, BadgeTone> = {
+  [ImprovementTaskStatusCode.OPEN]: 'orange',
+  [ImprovementTaskStatusCode.IN_PROGRESS]: 'blue',
+  [ImprovementTaskStatusCode.SUBMITTED]: 'blue',
+  [ImprovementTaskStatusCode.REVIEWED]: 'purple',
+  [ImprovementTaskStatusCode.CLOSED]: 'green',
+  [ImprovementTaskStatusCode.RETURNED]: 'red',
 }
 
-export const AI_TASK_STATUS_COLOR: Record<AiTaskStatus, BadgeTone> = {
-  PENDING: 'gray',
-  PROCESSING: 'blue',
-  SUCCEEDED: 'green',
-  FAILED: 'red',
-  CANCELLED: 'orange',
+export const IMPROVEMENT_TASK_STATUS_OPTIONS: Array<{ value: ImprovementTaskStatusCode, label: string }>
+  = ALL_IMPROVEMENT_TASK_STATUS_CODES.map(value => ({
+    value,
+    label: ImprovementTaskStatusDescription[value],
+  }))
+
+export const REPORT_STATUS_COLOR: Record<ReportStatusCode, BadgeTone> = {
+  [ReportStatusCode.DRAFT]: 'gray',
+  [ReportStatusCode.SUBMITTED]: 'blue',
+  [ReportStatusCode.RETURNED]: 'orange',
+  [ReportStatusCode.CONFIRMED]: 'green',
+  [ReportStatusCode.ARCHIVED]: 'yellow',
 }
 
-/** AI 任务类型 - AiTaskTypeEnum */
-export type AiTaskType
-  = | 'SYLLABUS_PARSE'
-    | 'TRAINING_PLAN_PARSE'
-    | 'ACHIEVEMENT_DIAGNOSIS'
-    | 'COURSE_REPORT_GENERATE'
-    | 'PROGRAM_REPORT_GENERATE'
-    | 'IMPROVEMENT_SUGGESTION_GENERATE'
-    | 'MATERIAL_QA'
-    | 'INDIRECT_RESPONSE_DOC_PARSE'
-    | 'PORTFOLIO_CERTIFICATE_OCR'
-    | 'PORTFOLIO_DOCUMENT_PARSE'
-    | 'PORTFOLIO_POLICY_MATCH'
-    | 'PORTFOLIO_MATERIAL_QA'
-    | 'PORTFOLIO_COCKPIT_ASK'
-    | 'PORTFOLIO_REPORT_GENERATE'
-    | 'PORTFOLIO_TEACHER_RECOMMEND_EXPLAIN'
-
-export const AI_TASK_TYPE_LABEL: Record<AiTaskType, string> = {
-  SYLLABUS_PARSE: '课程大纲解析',
-  TRAINING_PLAN_PARSE: '培养方案解析',
-  ACHIEVEMENT_DIAGNOSIS: '达成度诊断',
-  COURSE_REPORT_GENERATE: '课程目标达成报告生成',
-  PROGRAM_REPORT_GENERATE: '专业质量分析报告生成',
-  IMPROVEMENT_SUGGESTION_GENERATE: '改进措施生成',
-  MATERIAL_QA: '材料问答',
-  INDIRECT_RESPONSE_DOC_PARSE: '间接评价答卷文档解析',
-  PORTFOLIO_CERTIFICATE_OCR: '档案袋证书 OCR 抽取',
-  PORTFOLIO_DOCUMENT_PARSE: '档案袋文档结构化抽取',
-  PORTFOLIO_POLICY_MATCH: '档案袋政策条款匹配',
-  PORTFOLIO_MATERIAL_QA: '档案袋材料智能问数',
-  PORTFOLIO_COCKPIT_ASK: '档案袋驾驶舱指标问数',
-  PORTFOLIO_REPORT_GENERATE: '档案袋报告初稿生成',
-  PORTFOLIO_TEACHER_RECOMMEND_EXPLAIN: '优秀教师推荐 AI 解释',
+export const REPORT_EXPORT_STATUS_COLOR: Record<ReportExportStatusCode, BadgeTone> = {
+  [ReportExportStatusCode.IDLE]: 'gray',
+  [ReportExportStatusCode.PENDING]: 'blue',
+  [ReportExportStatusCode.PROCESSING]: 'blue',
+  [ReportExportStatusCode.COMPLETED]: 'green',
+  [ReportExportStatusCode.FAILED]: 'red',
 }
 
-/** AI 任务业务类型 - AiTaskSubmitRequest.businessType */
-export type AiTaskBusinessType
-  = | 'ACHIEVEMENT_RESULT'
-    | 'QUALITY_COURSE'
-    | 'TRAINING_PLAN'
-    | 'REPORT'
-    | 'INDIRECT_FORM'
-    | 'PORTFOLIO_MATERIAL'
-    | 'PORTFOLIO_EVALUATION'
-
-export const AI_TASK_BUSINESS_TYPE_LABEL: Record<AiTaskBusinessType, string> = {
-  ACHIEVEMENT_RESULT: '达成度计算结果',
-  QUALITY_COURSE: '质量评价课程',
-  TRAINING_PLAN: '培养方案',
-  REPORT: '质量报告',
-  INDIRECT_FORM: '间接评价问卷',
-  PORTFOLIO_MATERIAL: '教学档案袋材料',
-  PORTFOLIO_EVALUATION: '教学档案袋评价任务',
+export const SUPPORT_LEVEL_COLOR: Record<SupportLevelCode, BadgeTone> = {
+  [SupportLevelCode.HIGH]: 'red',
+  [SupportLevelCode.MEDIUM]: 'orange',
+  [SupportLevelCode.LOW]: 'blue',
 }
 
-/** AI 输出校验结果 - AiOutputValidationEnum */
-export type AiOutputValidation = 'PASSED' | 'REJECTED' | 'WARN'
-
-export const AI_OUTPUT_VALIDATION_LABEL: Record<AiOutputValidation, string> = {
-  PASSED: '通过',
-  REJECTED: '拒绝',
-  WARN: '警告',
+export const SUPPORT_LEVEL_DEFAULT_FACTOR: Record<SupportLevelCode, number> = {
+  [SupportLevelCode.HIGH]: 1.0,
+  [SupportLevelCode.MEDIUM]: 0.8,
+  [SupportLevelCode.LOW]: 0.6,
 }
 
-export const AI_OUTPUT_VALIDATION_COLOR: Record<AiOutputValidation, BadgeTone> = {
-  PASSED: 'green',
-  REJECTED: 'red',
-  WARN: 'orange',
+export const AUDIT_ISSUE_STATUS_COLOR: Record<AuditIssueStatusCode, BadgeTone> = {
+  [AuditIssueStatusCode.OPEN]: 'orange',
+  [AuditIssueStatusCode.IN_RECTIFICATION]: 'blue',
+  [AuditIssueStatusCode.RECTIFIED]: 'blue',
+  [AuditIssueStatusCode.VERIFIED]: 'purple',
+  [AuditIssueStatusCode.CLOSED]: 'green',
 }
 
-/** AI 人工干预状态 - AiManualHandlingStatusEnum */
-export type AiManualHandlingStatus
-  = | 'NONE'
-    | 'PENDING'
-    | 'IN_PROGRESS'
-    | 'RESOLVED'
-    | 'IGNORED'
-    | 'RESET_TO_PENDING'
+export const AUDIT_ISSUE_STATUS_OPTIONS: Array<{ value: AuditIssueStatusCode, label: string }>
+  = ALL_AUDIT_ISSUE_STATUS_CODES.map(value => ({
+    value,
+    label: AuditIssueStatusDescription[value],
+  }))
 
-export const AI_MANUAL_HANDLING_STATUS_LABEL: Record<AiManualHandlingStatus, string> = {
-  NONE: '无需干预',
-  PENDING: '待处置',
-  IN_PROGRESS: '处置中',
-  RESOLVED: '已解决',
-  IGNORED: '已忽略',
-  RESET_TO_PENDING: '已重置为待处理',
+export const AUDIT_RECTIFICATION_STATUS_COLOR: Record<AuditRectificationStatusCode, BadgeTone> = {
+  [AuditRectificationStatusCode.PLANNED]: 'gray',
+  [AuditRectificationStatusCode.IN_PROGRESS]: 'blue',
+  [AuditRectificationStatusCode.SUBMITTED]: 'blue',
+  [AuditRectificationStatusCode.VERIFIED]: 'purple',
+  [AuditRectificationStatusCode.RETURNED]: 'orange',
+  [AuditRectificationStatusCode.CLOSED]: 'green',
 }
 
-/** AI 模型健康状态 - edu-common AiHealthStatus */
-export type AiHealthStatus = 'UNKNOWN' | 'HEALTHY' | 'FAILED'
+export const AUDIT_RECTIFICATION_STATUS_OPTIONS: Array<{ value: AuditRectificationStatusCode, label: string }>
+  = ALL_AUDIT_RECTIFICATION_STATUS_CODES.map(value => ({
+    value,
+    label: AuditRectificationStatusDescription[value],
+  }))
 
-export const AI_HEALTH_STATUS_LABEL: Record<AiHealthStatus, string> = {
-  UNKNOWN: '未知',
-  HEALTHY: '健康',
-  FAILED: '失败',
+export const AUDIT_SUPERVISION_TYPE_OPTIONS: Array<{ value: AuditSupervisionTypeCode, label: string }>
+  = ALL_AUDIT_SUPERVISION_TYPE_CODES.map(value => ({
+    value,
+    label: AuditSupervisionTypeDescription[value],
+  }))
+
+export const WORKGROUP_LEVEL_OPTIONS: Array<{ label: string, value: WorkgroupLevelCode }>
+  = ALL_WORKGROUP_LEVEL_CODES.map(value => ({
+    value,
+    label: WorkgroupLevelDescription[value],
+  }))
+
+export const EXTERNAL_SOURCE_TYPE_OPTIONS: Array<{ label: string, value: ExternalSourceTypeCode }>
+  = ALL_EXTERNAL_SOURCE_TYPE_CODES.map(value => ({
+    value,
+    label: ExternalSourceTypeDescription[value],
+  }))
+
+export const EXTERNAL_PULL_TASK_STATUS_COLOR: Record<ExternalPullTaskStatusCode, BadgeTone> = {
+  [ExternalPullTaskStatusCode.PENDING]: 'gray',
+  [ExternalPullTaskStatusCode.RUNNING]: 'blue',
+  [ExternalPullTaskStatusCode.SUCCEEDED]: 'green',
+  [ExternalPullTaskStatusCode.FAILED]: 'red',
+  [ExternalPullTaskStatusCode.CANCELLED]: 'orange',
 }
 
-export const AI_HEALTH_STATUS_COLOR: Record<AiHealthStatus, BadgeTone> = {
-  UNKNOWN: 'gray',
-  HEALTHY: 'green',
-  FAILED: 'red',
+export const EXTERNAL_PULL_TASK_STATUS_OPTIONS: Array<{ label: string, value: ExternalPullTaskStatusCode }>
+  = ALL_EXTERNAL_PULL_TASK_STATUS_CODES.map(value => ({
+    value,
+    label: ExternalPullTaskStatusDescription[value],
+  }))
+
+export const EXTERNAL_PULL_CONFIRMATION_STATUS_COLOR: Record<ExternalPullConfirmationStatusCode, BadgeTone> = {
+  [ExternalPullConfirmationStatusCode.PREVIEW]: 'orange',
+  [ExternalPullConfirmationStatusCode.CONFIRMED]: 'green',
+  [ExternalPullConfirmationStatusCode.REJECTED]: 'red',
 }
 
-/** 成绩批次状态 - ScoreBatchStatusEnum */
-export type ScoreBatchStatus
-  = | 'PENDING'
-    | 'PARSING'
-    | 'PREVIEW_READY'
-    | 'VALIDATED'
-    | 'CONFIRMED'
-    | 'FAILED'
-    | 'CANCELLED'
-
-export const SCORE_BATCH_STATUS_LABEL: Record<ScoreBatchStatus, string> = {
-  PENDING: '待处理',
-  PARSING: '解析中',
-  PREVIEW_READY: '预览就绪',
-  VALIDATED: '已校验',
-  CONFIRMED: '已确认',
-  FAILED: '失败',
-  CANCELLED: '已取消',
-}
-
-export const SCORE_BATCH_STATUS_COLOR: Record<ScoreBatchStatus, BadgeTone> = {
-  PENDING: 'gray',
-  PARSING: 'blue',
-  PREVIEW_READY: 'orange',
-  VALIDATED: 'blue',
-  CONFIRMED: 'green',
-  FAILED: 'red',
-  CANCELLED: 'gray',
-}
-
-/** 持续改进任务状态 - ImprovementTaskStatusEnum */
-export type ImprovementTaskStatus
-  = | 'OPEN'
-    | 'IN_PROGRESS'
-    | 'SUBMITTED'
-    | 'REVIEWED'
-    | 'CLOSED'
-    | 'RETURNED'
-
-export const IMPROVEMENT_TASK_STATUS_LABEL: Record<ImprovementTaskStatus, string> = {
-  OPEN: '已开启',
-  IN_PROGRESS: '进行中',
-  SUBMITTED: '已提交整改证据',
-  REVIEWED: '已复评',
-  CLOSED: '已闭环',
-  RETURNED: '已退回',
-}
-
-export const IMPROVEMENT_TASK_STATUS_COLOR: Record<ImprovementTaskStatus, BadgeTone> = {
-  OPEN: 'orange',
-  IN_PROGRESS: 'blue',
-  SUBMITTED: 'blue',
-  REVIEWED: 'purple',
-  CLOSED: 'green',
-  RETURNED: 'red',
-}
-
-/** 报告状态 - ReportStatusEnum */
-export type ReportStatus = 'DRAFT' | 'SUBMITTED' | 'RETURNED' | 'CONFIRMED' | 'ARCHIVED'
-
-export const REPORT_STATUS_LABEL: Record<ReportStatus, string> = {
-  DRAFT: '起草中',
-  SUBMITTED: '已提交',
-  RETURNED: '已退回',
-  CONFIRMED: '已确认',
-  ARCHIVED: '已归档',
-}
-
-export const REPORT_STATUS_COLOR: Record<ReportStatus, BadgeTone> = {
-  DRAFT: 'gray',
-  SUBMITTED: 'blue',
-  RETURNED: 'orange',
-  CONFIRMED: 'green',
-  ARCHIVED: 'yellow',
-}
-
-/** 报告三格式导出状态 - ReportExportStatusEnum */
-export type ReportExportStatus = 'IDLE' | 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
-
-export const REPORT_EXPORT_STATUS_LABEL: Record<ReportExportStatus, string> = {
-  IDLE: '未导出',
-  PENDING: '待导出',
-  PROCESSING: '导出中',
-  COMPLETED: '已导出',
-  FAILED: '导出失败',
-}
-
-export const REPORT_EXPORT_STATUS_COLOR: Record<ReportExportStatus, BadgeTone> = {
-  IDLE: 'gray',
-  PENDING: 'blue',
-  PROCESSING: 'blue',
-  COMPLETED: 'green',
-  FAILED: 'red',
-}
-
-/** 报告类型 - ReportTypeEnum */
-export type ReportType
-  = | 'COURSE_ACHIEVEMENT'
-    | 'PROGRAM_QUALITY'
-    | 'IMPROVEMENT'
-    | 'AUDIT_EVALUATION_RECTIFICATION'
-
-export const REPORT_TYPE_LABEL: Record<ReportType, string> = {
-  COURSE_ACHIEVEMENT: '课程目标达成情况评价报告',
-  PROGRAM_QUALITY: '专业质量分析报告',
-  IMPROVEMENT: '持续改进报告',
-  AUDIT_EVALUATION_RECTIFICATION: '审核评估整改报告',
-}
-
-/** 报告类型编码全集，筛选项与后端 ReportTypeEnum 逐值对齐 */
-export const REPORT_TYPE_CODES: ReportType[] = [
-  'COURSE_ACHIEVEMENT',
-  'PROGRAM_QUALITY',
-  'IMPROVEMENT',
-  'AUDIT_EVALUATION_RECTIFICATION',
-]
-
-/** 归档业务类型 - ArchiveBusinessTypeEnum */
-export type ArchiveBusinessType
-  = | 'TRAINING_PLAN'
-    | 'GRADUATION_REQUIREMENT'
-    | 'COURSE_GOAL'
-    | 'SCORE_BATCH'
-    | 'ACHIEVEMENT_RESULT'
-    | 'AI_RESULT'
-    | 'REPORT'
-    | 'IMPROVEMENT_TASK'
-    | 'EXPERT_PACKAGE'
-    | 'AUDIT_RECTIFICATION'
-
-export const ARCHIVE_BUSINESS_TYPE_LABEL: Record<ArchiveBusinessType, string> = {
-  TRAINING_PLAN: '培养方案',
-  GRADUATION_REQUIREMENT: '毕业要求',
-  COURSE_GOAL: '课程目标',
-  SCORE_BATCH: '成绩导入批次',
-  ACHIEVEMENT_RESULT: '达成度计算结果',
-  AI_RESULT: 'AI 结果',
-  REPORT: '报告',
-  IMPROVEMENT_TASK: '持续改进任务',
-  EXPERT_PACKAGE: '行业专家评审材料包',
-  AUDIT_RECTIFICATION: '审核评估整改材料',
-}
-
-/** 归档业务类型编码全集，筛选项与后端 ArchiveBusinessType 逐值对齐 */
-export const ARCHIVE_BUSINESS_TYPE_CODES: ArchiveBusinessType[] = [
-  'TRAINING_PLAN',
-  'GRADUATION_REQUIREMENT',
-  'COURSE_GOAL',
-  'SCORE_BATCH',
-  'ACHIEVEMENT_RESULT',
-  'AI_RESULT',
-  'REPORT',
-  'IMPROVEMENT_TASK',
-  'EXPERT_PACKAGE',
-  'AUDIT_RECTIFICATION',
-]
-
-/** 专家材料包类型 */
-export type ExpertPackageType = 'REQUIREMENT' | 'PROGRAM_ACCREDITATION'
-
-export const EXPERT_PACKAGE_TYPE_LABEL: Record<ExpertPackageType, string> = {
-  REQUIREMENT: '按毕业要求整包',
-  PROGRAM_ACCREDITATION: '按专业认证整包',
-}
-
-/** 课程目标支撑等级 - 对应 SupportLevelEnum */
-export type SupportLevel = 'HIGH' | 'MEDIUM' | 'LOW'
-
-export const SUPPORT_LEVEL_LABEL: Record<SupportLevel, string> = {
-  HIGH: '强支撑 H',
-  MEDIUM: '中支撑 M',
-  LOW: '弱支撑 L',
-}
-
-export const SUPPORT_LEVEL_COLOR: Record<SupportLevel, BadgeTone> = {
-  HIGH: 'red',
-  MEDIUM: 'orange',
-  LOW: 'blue',
-}
-
-export const SUPPORT_LEVEL_DEFAULT_FACTOR: Record<SupportLevel, number> = {
-  HIGH: 1.0,
-  MEDIUM: 0.8,
-  LOW: 0.6,
-}
-
-/** 认证类型 - AccreditationTypeEnum */
-export type AccreditationType
-  = | 'ENGINEERING_ACCREDITATION'
-    | 'TEACHER_ACCREDITATION'
-    | 'MEDICAL_HEALTH_ACCREDITATION'
-    | 'ART_DESIGN_QUALITY_EVALUATION'
-    | 'ECONOMICS_FINANCE_QUALITY_EVALUATION'
-    | 'LAW_QUALITY_EVALUATION'
-    | 'AGRICULTURE_ACCREDITATION'
-    | 'GENERAL_QUALITY_EVALUATION'
-
-export const ACCREDITATION_TYPE_LABEL: Record<AccreditationType, string> = {
-  ENGINEERING_ACCREDITATION: '工程教育专业认证',
-  TEACHER_ACCREDITATION: '师范类专业认证',
-  MEDICAL_HEALTH_ACCREDITATION: '医学健康类专业认证',
-  ART_DESIGN_QUALITY_EVALUATION: '艺术与设计类专业质量评价',
-  ECONOMICS_FINANCE_QUALITY_EVALUATION: '财经类专业质量评价',
-  LAW_QUALITY_EVALUATION: '法学类专业质量评价',
-  AGRICULTURE_ACCREDITATION: '农学类专业认证或质量评价',
-  GENERAL_QUALITY_EVALUATION: '普通高等学校教学质量评价',
-}
-
-/** 评价方法 - EvaluationMethodEnum */
-export type EvaluationMethod
-  = | 'DIRECT_ONLY'
-    | 'DIRECT_INDIRECT_WEIGHTED'
-    | 'MANUAL_REVIEW_CONFIRMED'
-
-export const EVALUATION_METHOD_LABEL: Record<EvaluationMethod, string> = {
-  DIRECT_ONLY: '仅直接评价',
-  DIRECT_INDIRECT_WEIGHTED: '直接评价与间接评价加权',
-  MANUAL_REVIEW_CONFIRMED: '人工审核确认',
-}
-
-/** 评价周期 - EvaluationCycleEnum */
-export type EvaluationCycle
-  = | 'SEMESTER'
-    | 'YEAR'
-    | 'BIENNIAL'
-    | 'TRIENNIAL'
-    | 'PROGRAM_CYCLE'
-
-export const EVALUATION_CYCLE_LABEL: Record<EvaluationCycle, string> = {
-  SEMESTER: '按学期',
-  YEAR: '按学年',
-  BIENNIAL: '每两年',
-  TRIENNIAL: '每三年',
-  PROGRAM_CYCLE: '按培养周期',
-}
-
-/** 聚合函数 - AggregationFunctionEnum */
-export type AggregationFunction
-  = | 'WEIGHTED_SUM'
-    | 'MINIMUM'
-    | 'DIRECT_INDIRECT_WEIGHTED'
-
-export const AGGREGATION_FUNCTION_LABEL: Record<AggregationFunction, string> = {
-  WEIGHTED_SUM: '加权平均',
-  MINIMUM: '取最小值',
-  DIRECT_INDIRECT_WEIGHTED: '直接间接加权',
-}
-
-/** 聚合函数编码全集，与后端 AggregationFunctionEnum 逐值对齐 */
-export const AGGREGATION_FUNCTION_CODES: AggregationFunction[] = [
-  'WEIGHTED_SUM',
-  'MINIMUM',
-  'DIRECT_INDIRECT_WEIGHTED',
-]
-
-/** 考核评价依据合理性审核状态 - AssessmentRationalityAuditStatusEnum */
-export type AssessmentRationalityAuditStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
-
-export const ASSESSMENT_RATIONALITY_AUDIT_STATUS_LABEL: Record<AssessmentRationalityAuditStatus, string> = {
-  PENDING: '待审核',
-  APPROVED: '已通过',
-  REJECTED: '已驳回',
-}
-
-/** 评价工作组层级 - WorkgroupLevelEnum */
-export type WorkgroupLevel = 'UNIVERSITY' | 'COLLEGE' | 'PROGRAM' | 'INDUSTRY'
-
-export const WORKGROUP_LEVEL_LABEL: Record<WorkgroupLevel, string> = {
-  UNIVERSITY: '学校级',
-  COLLEGE: '学院级',
-  PROGRAM: '专业级',
-  INDUSTRY: '行业企业专家组',
-}
-
-/** 评价工作组层级下拉选项，值必须与后端 WorkgroupLevelEnum 完全一致 */
-export const WORKGROUP_LEVEL_OPTIONS: Array<{
-  label: string
-  value: WorkgroupLevel
-}> = [
-  { value: 'UNIVERSITY', label: WORKGROUP_LEVEL_LABEL.UNIVERSITY },
-  { value: 'COLLEGE', label: WORKGROUP_LEVEL_LABEL.COLLEGE },
-  { value: 'PROGRAM', label: WORKGROUP_LEVEL_LABEL.PROGRAM },
-  { value: 'INDUSTRY', label: WORKGROUP_LEVEL_LABEL.INDUSTRY },
-]
-
-/** 审核评估问题状态 - AuditIssueStatusEnum */
-export type AuditIssueStatus
-  = | 'OPEN'
-    | 'IN_RECTIFICATION'
-    | 'RECTIFIED'
-    | 'VERIFIED'
-    | 'CLOSED'
-
-export const AUDIT_ISSUE_STATUS_LABEL: Record<AuditIssueStatus, string> = {
-  OPEN: '待整改',
-  IN_RECTIFICATION: '整改中',
-  RECTIFIED: '已整改',
-  VERIFIED: '已复核',
-  CLOSED: '已闭环',
-}
-
-export const AUDIT_ISSUE_STATUS_COLOR: Record<AuditIssueStatus, BadgeTone> = {
-  OPEN: 'orange',
-  IN_RECTIFICATION: 'blue',
-  RECTIFIED: 'blue',
-  VERIFIED: 'purple',
-  CLOSED: 'green',
-}
-
-/** 审核评估整改任务状态 - AuditRectificationStatusEnum */
-export type AuditRectificationStatus
-  = | 'PLANNED'
-    | 'IN_PROGRESS'
-    | 'SUBMITTED'
-    | 'VERIFIED'
-    | 'RETURNED'
-    | 'CLOSED'
-
-export const AUDIT_RECTIFICATION_STATUS_LABEL: Record<AuditRectificationStatus, string> = {
-  PLANNED: '已规划',
-  IN_PROGRESS: '进行中',
-  SUBMITTED: '已提交',
-  VERIFIED: '复核通过',
-  RETURNED: '已退回',
-  CLOSED: '已闭环',
-}
-
-export const AUDIT_RECTIFICATION_STATUS_COLOR: Record<AuditRectificationStatus, BadgeTone> = {
-  PLANNED: 'gray',
-  IN_PROGRESS: 'blue',
-  SUBMITTED: 'blue',
-  VERIFIED: 'purple',
-  RETURNED: 'orange',
-  CLOSED: 'green',
-}
-
-/** 督导复查类型 - 与 AuditSupervisionSaveRequest.supervisionType 一致 */
-export type AuditSupervisionType
-  = | 'DAILY'
-    | 'SPECIAL'
-    | 'ACCREDITATION_PRE'
-    | 'ACCREDITATION_AUDIT'
-
-export const AUDIT_SUPERVISION_TYPE_LABEL: Record<AuditSupervisionType, string> = {
-  DAILY: '日常督导',
-  SPECIAL: '专项检查',
-  ACCREDITATION_PRE: '认证预审',
-  ACCREDITATION_AUDIT: '认证现场检查',
-}
-
-/** 量表类型 - ScaleTypeEnum */
-export type ScaleType
-  = | 'FIVE_LEVEL'
-    | 'FOUR_LEVEL'
-    | 'TEN_POINT'
-    | 'PERCENTAGE'
-    | 'CUSTOM'
-
-export const SCALE_TYPE_LABEL: Record<ScaleType, string> = {
-  FIVE_LEVEL: '五级量表',
-  FOUR_LEVEL: '四级量表',
-  TEN_POINT: '十分量表',
-  PERCENTAGE: '百分量表',
-  CUSTOM: '自定义量表',
-}
-
-/** 考核环节类型 - AssessmentItemTypeEnum */
-export type AssessmentItemType
-  = | 'FINAL_EXAM'
-    | 'HOMEWORK'
-    | 'EXPERIMENT'
-    | 'COURSE_DESIGN'
-    | 'INTERNSHIP'
-    | 'DISSERTATION'
-    | 'PROCESS_NODE'
-    | 'PROJECT_MILESTONE'
-    | 'CASE_STUDY'
-    | 'DEFENSE'
-    | 'WORK_PORTFOLIO'
-    | 'FIELD_TRIAL'
-    | 'CLINICAL_PRACTICE'
-    | 'EXAM'
-
-export const ASSESSMENT_ITEM_TYPE_LABEL: Record<AssessmentItemType, string> = {
-  FINAL_EXAM: '期末考试',
-  HOMEWORK: '作业',
-  EXPERIMENT: '实验',
-  COURSE_DESIGN: '课程设计',
-  INTERNSHIP: '实习实训',
-  DISSERTATION: '毕业论文或设计',
-  PROCESS_NODE: '过程性评价节点',
-  PROJECT_MILESTONE: '项目里程碑',
-  CASE_STUDY: '案例研讨',
-  DEFENSE: '答辩',
-  WORK_PORTFOLIO: '作品集',
-  FIELD_TRIAL: '田间或现场试验',
-  CLINICAL_PRACTICE: '临床实习与轮转',
-  EXAM: '考试（edu-mark 同步）',
-}
-
-/** 五育维度标签 */
-export type CivicDimension = 'MORAL' | 'INTELLECTUAL' | 'PHYSICAL' | 'AESTHETIC' | 'LABOR'
-
-export const CIVIC_DIMENSION_LABEL: Record<CivicDimension, string> = {
-  MORAL: '德',
-  INTELLECTUAL: '智',
-  PHYSICAL: '体',
-  AESTHETIC: '美',
-  LABOR: '劳',
-}
-
-/** AI 供应商类型 - edu-common AiProviderType */
-export type AiProviderType = 'DEEPSEEK' | 'QWEN'
-
-export const AI_PROVIDER_TYPE_LABEL: Record<AiProviderType, string> = {
-  DEEPSEEK: 'DeepSeek',
-  QWEN: '通义千问',
-}
-
-/** 外部数据源类型 - ExternalSourceTypeEnum */
-export type ExternalSourceType
-  = | 'POSTGRESQL'
-    | 'MYSQL'
-    | 'ORACLE'
-    | 'SQLSERVER'
-    | 'DM'
-    | 'KINGBASE'
-
-export const EXTERNAL_SOURCE_TYPE_LABEL: Record<ExternalSourceType, string> = {
-  POSTGRESQL: 'PostgreSQL',
-  MYSQL: 'MySQL',
-  ORACLE: 'Oracle',
-  SQLSERVER: 'SQL Server',
-  DM: '达梦',
-  KINGBASE: '人大金仓',
-}
-
-/** 外部数据源类型下拉选项，值必须与后端 ExternalSourceTypeEnum 完全一致 */
-export const EXTERNAL_SOURCE_TYPE_OPTIONS: Array<{
-  label: string
-  value: ExternalSourceType
-}> = [
-  { value: 'POSTGRESQL', label: EXTERNAL_SOURCE_TYPE_LABEL.POSTGRESQL },
-  { value: 'MYSQL', label: EXTERNAL_SOURCE_TYPE_LABEL.MYSQL },
-  { value: 'ORACLE', label: EXTERNAL_SOURCE_TYPE_LABEL.ORACLE },
-  { value: 'SQLSERVER', label: EXTERNAL_SOURCE_TYPE_LABEL.SQLSERVER },
-  { value: 'DM', label: EXTERNAL_SOURCE_TYPE_LABEL.DM },
-  { value: 'KINGBASE', label: EXTERNAL_SOURCE_TYPE_LABEL.KINGBASE },
-]
-
-/** 外部拔取任务状态 - ExternalPullTaskStatusEnum */
-export type ExternalPullTaskStatus
-  = | 'PENDING'
-    | 'RUNNING'
-    | 'SUCCEEDED'
-    | 'FAILED'
-    | 'CANCELLED'
-
-export const EXTERNAL_PULL_TASK_STATUS_LABEL: Record<ExternalPullTaskStatus, string> = {
-  PENDING: '待处理',
-  RUNNING: '执行中',
-  SUCCEEDED: '成功',
-  FAILED: '失败',
-  CANCELLED: '已取消',
-}
-
-export const EXTERNAL_PULL_TASK_STATUS_COLOR: Record<ExternalPullTaskStatus, BadgeTone> = {
-  PENDING: 'gray',
-  RUNNING: 'blue',
-  SUCCEEDED: 'green',
-  FAILED: 'red',
-  CANCELLED: 'orange',
-}
-
-/** 外部拔取任务状态下拉选项，值必须与后端 ExternalPullTaskStatusEnum 完全一致 */
-export const EXTERNAL_PULL_TASK_STATUS_OPTIONS: Array<{
-  label: string
-  value: ExternalPullTaskStatus
-}> = [
-  { value: 'PENDING', label: EXTERNAL_PULL_TASK_STATUS_LABEL.PENDING },
-  { value: 'RUNNING', label: EXTERNAL_PULL_TASK_STATUS_LABEL.RUNNING },
-  { value: 'SUCCEEDED', label: EXTERNAL_PULL_TASK_STATUS_LABEL.SUCCEEDED },
-  { value: 'FAILED', label: EXTERNAL_PULL_TASK_STATUS_LABEL.FAILED },
-  { value: 'CANCELLED', label: EXTERNAL_PULL_TASK_STATUS_LABEL.CANCELLED },
-]
-
-/** 外部数据拔取审计事件 - ExternalPullAuditEventEnum */
-export type ExternalPullAuditEvent
-  = | 'QUERY_SCOPE_CHECK'
-    | 'FIELD_SCOPE_CHECK'
-    | 'MASK_PREVIEW_CHECK'
-    | 'QUERY_TIMEOUT'
-    | 'ROW_LIMIT_EXCEEDED'
-    | 'TASK_FAILED'
-    | 'TASK_SUCCEEDED'
-    | 'MANUAL_REJECT'
-    | 'MANUAL_CONFIRM'
-    | 'TASK_CANCELLED'
-
-export const EXTERNAL_PULL_AUDIT_EVENT_LABEL: Record<ExternalPullAuditEvent, string> = {
-  QUERY_SCOPE_CHECK: '查询范围检查',
-  FIELD_SCOPE_CHECK: '字段范围检查',
-  MASK_PREVIEW_CHECK: '脱敏预览检查',
-  QUERY_TIMEOUT: '查询超时',
-  ROW_LIMIT_EXCEEDED: '返回行数超限',
-  TASK_FAILED: '任务执行失败',
-  TASK_SUCCEEDED: '任务执行完成',
-  MANUAL_REJECT: '人工驳回',
-  MANUAL_CONFIRM: '人工确认',
-  TASK_CANCELLED: '任务取消',
-}
-
-/** 外部数据拔取审计检查状态 */
-export type ExternalPullAuditCheckStatus = 'PASSED' | 'REJECTED' | 'WARNING'
-
-export const EXTERNAL_PULL_AUDIT_CHECK_STATUS_LABEL: Record<ExternalPullAuditCheckStatus, string> = {
-  PASSED: '通过',
-  REJECTED: '拒绝',
-  WARNING: '预警',
-}
-
-/** 外部拔取结果确认状态 - ExternalPullConfirmationStatusEnum */
-export type ExternalPullConfirmationStatus = 'PREVIEW' | 'CONFIRMED' | 'REJECTED'
-
-export const EXTERNAL_PULL_CONFIRMATION_STATUS_LABEL: Record<ExternalPullConfirmationStatus, string> = {
-  PREVIEW: '预览中',
-  CONFIRMED: '已确认',
-  REJECTED: '已驳回',
-}
-
-export const EXTERNAL_PULL_CONFIRMATION_STATUS_COLOR: Record<ExternalPullConfirmationStatus, BadgeTone> = {
-  PREVIEW: 'orange',
-  CONFIRMED: 'green',
-  REJECTED: 'red',
-}
-
-/** SQL 安全检测状态 - SqlSafetyStatusEnum */
-export type SqlSafetyStatus = 'PASSED' | 'REJECTED' | 'ERROR'
-
-export const SQL_SAFETY_STATUS_LABEL: Record<SqlSafetyStatus, string> = {
-  PASSED: '通过',
-  REJECTED: '拒绝',
-  ERROR: '检测异常',
-}
-
-export const SQL_SAFETY_STATUS_COLOR: Record<SqlSafetyStatus, BadgeTone> = {
-  PASSED: 'green',
-  REJECTED: 'red',
-  ERROR: 'orange',
-}
-
-/**
- * 通用配置 / 数据确认状态 - 对应 ConfirmationStatusEnum
- *  覆盖培养方案、专业算法实例、过程性评价节点、达成度计算输入等场景
- */
-export type ConfirmationStatus = 'DRAFT' | 'SUBMITTED' | 'CONFIRMED' | 'RETURNED'
-
-export const CONFIRMATION_STATUS_LABEL: Record<ConfirmationStatus, string> = {
-  DRAFT: '起草',
-  SUBMITTED: '已提交',
-  CONFIRMED: '已确认',
-  RETURNED: '已退回',
+export const SQL_SAFETY_STATUS_COLOR: Record<SqlSafetyStatusCode, BadgeTone> = {
+  [SqlSafetyStatusCode.PASSED]: 'green',
+  [SqlSafetyStatusCode.REJECTED]: 'red',
+  [SqlSafetyStatusCode.ERROR]: 'orange',
 }
 
 /** 过程性评价节点/记录共用确认状态流转表，与后端 ConfirmationStatusEnum.canTransitTo 一致 */
-export const CONFIRMATION_STATUS_TRANSIT_MAP: Record<ConfirmationStatus, ConfirmationStatus[]> = {
-  DRAFT: ['SUBMITTED'],
-  SUBMITTED: ['CONFIRMED', 'RETURNED'],
-  RETURNED: ['DRAFT', 'SUBMITTED'],
-  CONFIRMED: [],
+export const CONFIRMATION_STATUS_TRANSIT_MAP: Record<ConfirmationStatusCode, ConfirmationStatusCode[]> = {
+  [ConfirmationStatusCode.DRAFT]: [ConfirmationStatusCode.SUBMITTED],
+  [ConfirmationStatusCode.SUBMITTED]: [ConfirmationStatusCode.CONFIRMED, ConfirmationStatusCode.RETURNED],
+  [ConfirmationStatusCode.RETURNED]: [ConfirmationStatusCode.DRAFT, ConfirmationStatusCode.SUBMITTED],
+  [ConfirmationStatusCode.CONFIRMED]: [],
 }
 
-export const CONFIRMATION_STATUS_COLOR: Record<ConfirmationStatus, BadgeTone> = {
-  DRAFT: 'gray',
-  SUBMITTED: 'blue',
-  CONFIRMED: 'green',
-  RETURNED: 'orange',
+export const CONFIRMATION_STATUS_COLOR: Record<ConfirmationStatusCode, BadgeTone> = {
+  [ConfirmationStatusCode.DRAFT]: 'gray',
+  [ConfirmationStatusCode.SUBMITTED]: 'blue',
+  [ConfirmationStatusCode.CONFIRMED]: 'green',
+  [ConfirmationStatusCode.RETURNED]: 'orange',
 }
 
-/** 数据接入模式 - 对应 DataSourceModeEnum */
-export type DataSourceMode
-  = | 'EXCEL_IMPORT'
-    | 'EXTERNAL_AI_CONNECTOR'
-    | 'READ_ONLY_DATABASE_PULL'
-    | 'MANUAL_CONFIRMATION'
-    | 'EDU_MARK_EXAM'
-    | 'EDU_MARK_FINAL_SCORE'
-
-export const DATA_SOURCE_MODE_LABEL: Record<DataSourceMode, string> = {
-  EXCEL_IMPORT: 'Excel 异步导入',
-  EXTERNAL_AI_CONNECTOR: '外部 AI 解析草稿',
-  READ_ONLY_DATABASE_PULL: '只读数据库主动拔取',
-  MANUAL_CONFIRMATION: '人工录入与确认',
-  EDU_MARK_EXAM: '考试阅卷环节',
-  EDU_MARK_FINAL_SCORE: '考试阅卷最终成绩',
-}
-
-/** 过程性评价节点类型 - 对应 ProcessNodeTypeEnum */
-export type ProcessNodeType
-  = | 'CLASS_INTERACTION'
-    | 'STAGE_HOMEWORK'
-    | 'PROJECT_MILESTONE'
-    | 'LAB_RECORD'
-    | 'PRACTICE_LOG'
-    | 'WORK_ITERATION'
-    | 'CASE_DISCUSSION'
-    | 'INTERNSHIP_EVALUATION'
-
-export const PROCESS_NODE_TYPE_LABEL: Record<ProcessNodeType, string> = {
-  CLASS_INTERACTION: '课堂互动',
-  STAGE_HOMEWORK: '阶段作业',
-  PROJECT_MILESTONE: '项目里程碑',
-  LAB_RECORD: '实验记录',
-  PRACTICE_LOG: '实践日志',
-  WORK_ITERATION: '作品迭代',
-  CASE_DISCUSSION: '案例研讨',
-  INTERNSHIP_EVALUATION: '实习过程评价',
-}
-
-/** 过程性评价节点类型下拉选项，值必须与后端 ProcessNodeTypeEnum 完全一致 */
-export const PROCESS_NODE_TYPE_OPTIONS: Array<{
-  label: string
-  value: ProcessNodeType
-}> = [
-  { value: 'CLASS_INTERACTION', label: PROCESS_NODE_TYPE_LABEL.CLASS_INTERACTION },
-  { value: 'STAGE_HOMEWORK', label: PROCESS_NODE_TYPE_LABEL.STAGE_HOMEWORK },
-  { value: 'PROJECT_MILESTONE', label: PROCESS_NODE_TYPE_LABEL.PROJECT_MILESTONE },
-  { value: 'LAB_RECORD', label: PROCESS_NODE_TYPE_LABEL.LAB_RECORD },
-  { value: 'PRACTICE_LOG', label: PROCESS_NODE_TYPE_LABEL.PRACTICE_LOG },
-  { value: 'WORK_ITERATION', label: PROCESS_NODE_TYPE_LABEL.WORK_ITERATION },
-  { value: 'CASE_DISCUSSION', label: PROCESS_NODE_TYPE_LABEL.CASE_DISCUSSION },
-  { value: 'INTERNSHIP_EVALUATION', label: PROCESS_NODE_TYPE_LABEL.INTERNSHIP_EVALUATION },
-]
+export const PROCESS_NODE_TYPE_OPTIONS: Array<{ label: string, value: ProcessNodeTypeCode }>
+  = ALL_PROCESS_NODE_TYPE_CODES.map(value => ({
+    value,
+    label: ProcessNodeTypeDescription[value],
+  }))
 
 /** 间接评价应答人类型 - 对应 RespondentTypeEnum */
 export {
@@ -875,43 +558,6 @@ export {
   isRespondentType,
   isSystemCollectedRespondentType,
   MANUAL_RESPONDENT_TYPE_OPTIONS,
-  RESPONDENT_TYPE_LABEL,
-  RespondentType,
+  RespondentTypeCode,
+  RespondentTypeDescription,
 } from '@/types/enums/respondent-type-enum'
-
-/** 间接评价问卷类型 - 对应 IndirectFormTypeEnum */
-export type IndirectFormType
-  = | 'STUDENT_SELF'
-    | 'GRADUATE_TRACKING'
-    | 'EMPLOYER_FEEDBACK'
-    | 'TEACHER_EVALUATION'
-    | 'EXPERT_EVALUATION'
-    | 'SUPERVISOR_EVALUATION'
-
-export const INDIRECT_FORM_TYPE_LABEL: Record<IndirectFormType, string> = {
-  STUDENT_SELF: '学生自评',
-  GRADUATE_TRACKING: '毕业生跟踪',
-  EMPLOYER_FEEDBACK: '用人单位反馈',
-  TEACHER_EVALUATION: '教师评价',
-  EXPERT_EVALUATION: '行业或校外专家评价',
-  SUPERVISOR_EVALUATION: '教学督导评价',
-}
-
-/** 间接评价问卷状态 - 对应后端 form.status */
-export type IndirectFormStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED' | 'ARCHIVED'
-
-export const INDIRECT_FORM_STATUS_LABEL: Record<IndirectFormStatus, string> = {
-  DRAFT: '草稿',
-  PUBLISHED: '已发布',
-  CLOSED: '已关闭',
-  ARCHIVED: '已归档',
-}
-
-/** 间接评价问卷访问模式 - 对应后端 accessMode */
-export type IndirectFormAccessMode = 'PUBLIC_LINK' | 'AUTHENTICATED' | 'BOTH'
-
-export const INDIRECT_FORM_ACCESS_MODE_LABEL: Record<IndirectFormAccessMode, string> = {
-  PUBLIC_LINK: '公开链接',
-  AUTHENTICATED: '登录用户',
-  BOTH: '公开链接或登录',
-}

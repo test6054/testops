@@ -1,48 +1,75 @@
 <script setup lang="ts">
-import type { DispatchQueueStatusFilter } from './core/useDispatchQueue'
-import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
+import type {ScanDispatchTicketVO} from '@/apis/mark/scanner-dispatch';
+import type {
+  DispatchQueueStatusFilterCode} from '@/types/enums/dispatch-queue-status-filter-enum';
+import type {
+  PortfolioCollectModeCode} from '@/types/enums/portfolio-collect-mode-enum';
 import { message } from 'ant-design-vue'
 import { computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { SCAN_DISPATCH_TICKET_STATUS_LABEL } from '@/apis/mark/scanner-dispatch'
+import {
+  ALL_SCAN_DISPATCH_TICKET_STATUS_CODES,
+  ScanDispatchTicketStatusDescription
+  
+} from '@/apis/mark/scanner-dispatch'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import {
+  ALL_DISPATCH_QUEUE_STATUS_FILTER_CODES,
+  DispatchQueueStatusFilterDescription,
+} from '@/types/enums/dispatch-queue-status-filter-enum'
+import {
+  PortfolioCollectModeDescription,
+} from '@/types/enums/portfolio-collect-mode-enum'
+import {
+  ALL_KIOSK_DISPATCH_SCAN_TASK_KIND_CODES,
+  KioskDispatchScanTaskKindDescription,
+  ScanTaskKindCode,
+} from '@/types/enums/scan-task-kind-enum'
 import DocumentKioskActivationGate from './components/DocumentKioskActivationGate.vue'
 import { useDocumentKioskBootstrap } from './composables/useDocumentKioskBootstrap'
 import { useDispatchQueue } from './core/useDispatchQueue'
+
+function portfolioCollectModeLabel(value: PortfolioCollectModeCode | undefined): string {
+  if (!value) {
+    return '档案袋派单'
+  }
+  return PortfolioCollectModeDescription[value]
+}
+
+function ticketStatusLabel(item: { status?: string, failureReason?: string }) {
+  if (item.failureReason) {
+    return '失败待办'
+  }
+  const status = ALL_SCAN_DISPATCH_TICKET_STATUS_CODES.find((code) => code === item.status)
+  if (!status) {
+    return '—'
+  }
+  return ScanDispatchTicketStatusDescription[status]
+}
 
 const router = useRouter()
 const route = useRoute()
 const queue = useDispatchQueue()
 const bootstrap = useDocumentKioskBootstrap()
 
-const statusTabs: { key: DispatchQueueStatusFilter, label: string }[] = [
-  { key: 'ALL', label: '全部' },
-  { key: 'PENDING', label: '待处理' },
-  { key: 'PROCESSING', label: '处理中' },
-  { key: 'SUSPENDED', label: '已挂起' },
-  { key: 'FAILED', label: '失败' },
-]
+const statusTabs = ALL_DISPATCH_QUEUE_STATUS_FILTER_CODES.map((key) => ({
+  key,
+  label: DispatchQueueStatusFilterDescription[key],
+}))
 
-const TASK_KIND_LABEL: Record<
-  Extract<ScanTaskKindCode, 'EXAM_ARCHIVE' | 'PORTFOLIO_COLLECT'>,
-  string
-> = {
-  EXAM_ARCHIVE: '考后归档',
-  PORTFOLIO_COLLECT: '教师档案袋',
+function resolveTaskKindFilter(value: unknown) {
+  return ALL_KIOSK_DISPATCH_SCAN_TASK_KIND_CODES.find((code) => code === value)
 }
 
-function resolveTaskKindFilter(value: unknown): ScanTaskKindCode | undefined {
-  if (value === 'EXAM_ARCHIVE' || value === 'PORTFOLIO_COLLECT') {
-    return value
-  }
-  return undefined
+function resolveStatusFilter(value: unknown): DispatchQueueStatusFilterCode | undefined {
+  return ALL_DISPATCH_QUEUE_STATUS_FILTER_CODES.find((code) => code === value)
 }
 
 const queueScopeLabel = computed(() => {
   const kind = queue.taskKind.value
-  if (kind === 'EXAM_ARCHIVE' || kind === 'PORTFOLIO_COLLECT') {
-    return TASK_KIND_LABEL[kind]
+  if (kind) {
+    return KioskDispatchScanTaskKindDescription[kind]
   }
   return '归档卷 / 档案袋'
 })
@@ -55,14 +82,8 @@ onMounted(async () => {
       bootstrap.setup.value.scannerStationId,
     )
   }
-  const tab = route.query.tab
-  if (
-    tab === 'FAILED'
-    || tab === 'SUSPENDED'
-    || tab === 'PROCESSING'
-    || tab === 'PENDING'
-    || tab === 'ALL'
-  ) {
+  const tab = resolveStatusFilter(route.query.tab)
+  if (tab) {
     queue.setStatusFilter(tab)
   }
   queue.setTaskKindFilter(resolveTaskKindFilter(route.query.taskKind))
@@ -71,7 +92,16 @@ onMounted(async () => {
   }
   if (route.query.scanCommitted === '1') {
     message.success('扫描已提交，可继续处理下一单')
-    void router.replace({ path: '/scanner-kiosk/queue' })
+    const nextQuery: Record<string, string> = {}
+    const tab = resolveStatusFilter(route.query.tab)
+    if (tab) {
+      nextQuery.tab = tab
+    }
+    const taskKind = resolveTaskKindFilter(route.query.taskKind)
+    if (taskKind) {
+      nextQuery.taskKind = taskKind
+    }
+    void router.replace({ path: '/scanner-kiosk/queue', query: nextQuery })
   }
 })
 
@@ -84,12 +114,13 @@ watch(
   },
 )
 
-function openTicket(ticketId?: string, preview = false) {
-  if (!ticketId) {
+function openTicket(ticket?: ScanDispatchTicketVO, preview = false) {
+  if (!ticket?.ticketId) {
     return
   }
+  const path = ticket.kioskDispatchUrl || `/scanner-kiosk/dispatch/${ticket.ticketId}`
   void router.push({
-    path: `/scanner-kiosk/dispatch/${ticketId}`,
+    path,
     query: preview ? { mode: 'preview' } : undefined,
   })
 }
@@ -98,8 +129,19 @@ function goHub() {
   void router.push('/scanner-kiosk')
 }
 
-async function changeStatusFilter(filter: DispatchQueueStatusFilter) {
+async function changeStatusFilter(filter: DispatchQueueStatusFilterCode) {
   queue.setStatusFilter(filter)
+  const query: Record<string, string> = { tab: filter }
+  const taskKind = queue.taskKind.value
+  if (taskKind) {
+    query.taskKind = taskKind
+  }
+  void router.replace({ path: '/scanner-kiosk/queue', query })
+  await queue.loadQueue()
+}
+
+async function changePage(page: number) {
+  queue.pageNum.value = page
   await queue.loadQueue()
 }
 </script>
@@ -145,9 +187,9 @@ async function changeStatusFilter(filter: DispatchQueueStatusFilter) {
     <a-skeleton v-if="queue.loading.value" active :paragraph="{ rows: 6 }" />
     <ul v-else class="dispatch-queue__list">
       <li v-for="item in queue.tickets.value" :key="item.ticketId">
-        <button type="button" class="dispatch-queue__item" @click="openTicket(item.ticketId)">
+        <button type="button" class="dispatch-queue__item" @click="openTicket(item)">
           <div class="dispatch-queue__item-top">
-            <strong v-if="item.taskKind === 'PORTFOLIO_COLLECT'">
+            <strong v-if="item.taskKind === ScanTaskKindCode.PORTFOLIO_COLLECT">
               {{
                 item.portfolioSnapshot?.gapTaskTitle
                   || item.portfolioSnapshot?.teacherName
@@ -155,14 +197,15 @@ async function changeStatusFilter(filter: DispatchQueueStatusFilter) {
               }}
             </strong>
             <strong v-else>{{ item.archiveSnapshot?.archiveTitle || '归档卷派单' }}</strong>
-            <UiTag v-if="item.status" tone="blue" size="sm">
-              {{ SCAN_DISPATCH_TICKET_STATUS_LABEL[item.status] }}
+            <UiTag v-if="item.status || item.failureReason" tone="blue" size="sm">
+              {{ ticketStatusLabel(item) }}
             </UiTag>
           </div>
-          <p v-if="item.taskKind === 'PORTFOLIO_COLLECT'">
-            {{
-              item.portfolioSnapshot?.collectMode === 'GAP_ATTACHMENT' ? '补采附件' : 'AI 候选提交'
-            }}
+          <p v-if="item.failureReason" class="dispatch-queue__failure">
+            {{ item.failureReason }}
+          </p>
+          <p v-if="item.taskKind === ScanTaskKindCode.PORTFOLIO_COLLECT">
+            {{ portfolioCollectModeLabel(item.portfolioSnapshot?.collectMode) }}
             <span v-if="item.portfolioSnapshot?.categoryName">
               · {{ item.portfolioSnapshot.categoryName }}</span>
           </p>
@@ -177,6 +220,28 @@ async function changeStatusFilter(filter: DispatchQueueStatusFilter) {
     >
       暂无待办派单
     </p>
+    <div
+      v-if="!queue.loading.value && queue.total.value > queue.pageSize.value"
+      class="dispatch-queue__pager"
+    >
+      <UiButton
+        size="sm"
+        variant="outline"
+        :disabled="queue.pageNum.value <= 1 || queue.loading.value"
+        @click="changePage(queue.pageNum.value - 1)"
+      >
+        上一页
+      </UiButton>
+      <span>{{ queue.pageNum.value }} / {{ Math.ceil(queue.total.value / queue.pageSize.value) }}</span>
+      <UiButton
+        size="sm"
+        variant="outline"
+        :disabled="queue.pageNum.value >= Math.ceil(queue.total.value / queue.pageSize.value) || queue.loading.value"
+        @click="changePage(queue.pageNum.value + 1)"
+      >
+        下一页
+      </UiButton>
+    </div>
   </div>
 </template>
 
@@ -241,6 +306,18 @@ async function changeStatusFilter(filter: DispatchQueueStatusFilter) {
   margin: 4px 0 0;
   font-size: 12px;
   color: var(--nybc-text-secondary, #8c8c8c);
+}
+.dispatch-queue__failure {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #cf1322;
+}
+.dispatch-queue__pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
 }
 .dispatch-queue__empty {
   color: var(--nybc-text-secondary, #8c8c8c);

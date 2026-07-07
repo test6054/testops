@@ -27,12 +27,12 @@ import KioskSideRail from './components/KioskSideRail.vue'
 import KioskStageBar from './components/KioskStageBar.vue'
 import KioskWorkbenchTabs from './components/KioskWorkbenchTabs.vue'
 import { KIOSK_CTX_KEY } from './composables/kioskInjection'
+import { useExamKioskWorkflow } from './composables/useExamKioskWorkflow'
 import { useKioskMutex } from './composables/useKioskMutex'
 import { useKioskShortcuts } from './composables/useKioskShortcuts'
-import { useKioskWorkflow } from './composables/useKioskWorkflow'
 import { useStageMachine } from './composables/useStageMachine'
 
-const workflow = useKioskWorkflow()
+const workflow = useExamKioskWorkflow()
 const mutex = useKioskMutex(workflow)
 const stage = useStageMachine(workflow)
 

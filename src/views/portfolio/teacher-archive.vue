@@ -6,9 +6,11 @@ import type {
   PortfolioArchiveScoreResultVO,
 } from '@/apis/portfolio/bag-types'
 import type {
+  PortfolioArchiveRecordSourceTypeCode,
+  PortfolioArchiveRecordStatusCode,
+} from '@/apis/portfolio/enums'
+import type {
   PortfolioArchiveRecordDetailVO,
-  PortfolioArchiveRecordSourceType,
-  PortfolioArchiveRecordStatus,
   PortfolioArchiveRecordSummaryVO,
   PortfolioArchiveTimelineItemVO,
   PortfolioTeacherOneTableCategoryVO,
@@ -19,13 +21,13 @@ import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
-import { PORTFOLIO_ARCHIVE_BAG_SOURCE_TYPE_LABEL } from '@/apis/portfolio/bag-types'
-import { portfolioArchiveBagApi } from '@/apis/portfolio/teacher-platform'
+import { PortfolioArchiveBagSourceTypeDescription } from '@/apis/portfolio/bag-types'
 import {
-  PORTFOLIO_ARCHIVE_RECORD_SOURCE_TYPE_LABEL,
-  PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL,
-  PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
-} from '@/apis/portfolio/types'
+  PortfolioArchiveRecordSourceTypeDescription,
+  PortfolioArchiveRecordStatusDescription,
+} from '@/apis/portfolio/enums'
+import { portfolioArchiveBagApi } from '@/apis/portfolio/teacher-platform'
+import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -43,25 +45,24 @@ import {
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
-function archiveRecordStatusLabel(status: PortfolioArchiveRecordStatus): string {
-  return strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL, status, '档案记录状态')
+function archiveRecordStatusLabel(status: PortfolioArchiveRecordStatusCode): string {
+  return strictEnumLabel(PortfolioArchiveRecordStatusDescription, status, '档案记录状态')
 }
 
-function archiveRecordStatusTone(status: PortfolioArchiveRecordStatus): BadgeTone {
+function archiveRecordStatusTone(status: PortfolioArchiveRecordStatusCode): BadgeTone {
   return strictEnumTone(PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE, status, '档案记录状态')
 }
 
-function archiveRecordSourceTypeLabel(sourceType: PortfolioArchiveRecordSourceType): string {
-  return strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_SOURCE_TYPE_LABEL, sourceType, '档案记录来源类型')
+function archiveRecordSourceTypeLabel(sourceType: PortfolioArchiveRecordSourceTypeCode): string {
+  return strictEnumLabel(PortfolioArchiveRecordSourceTypeDescription, sourceType, '档案记录来源类型')
 }
 
 function bagSourceTypeLabel(
   sourceType: PortfolioArchiveBagPreviewVO['catalogItems'][number]['sourceType'],
 ): string {
-  return strictEnumLabel(PORTFOLIO_ARCHIVE_BAG_SOURCE_TYPE_LABEL, sourceType, '档案袋来源类型')
+  return strictEnumLabel(PortfolioArchiveBagSourceTypeDescription, sourceType, '档案袋来源类型')
 }
 
 const bagFilterFields: FilterField[] = [
@@ -193,8 +194,8 @@ async function loadRecords() {
       pageNum: pageNum.value,
       pageSize: pageSize.value,
     })
-    records.value = readPageList(page, '加载档案记录失败')
-    pageTotal.value = readPageTotal(page, '加载档案记录失败')
+    records.value = page.list
+    pageTotal.value = Number(page.total)
   } catch (error) {
     showUserError(error, '加载档案记录失败')
   } finally {

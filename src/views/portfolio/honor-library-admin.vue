@@ -7,6 +7,7 @@ import type {
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
+import { PortfolioDevelopmentRecordTypeCode } from '@/apis/portfolio/enums'
 import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -18,7 +19,6 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 
 const loading = ref(false)
@@ -44,7 +44,7 @@ const form = reactive({
 const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
   = usePortfolioTeacherSearch()
 
-const honorImportContext = { defaultRecordType: 'HONOR' }
+const honorImportContext = { defaultRecordType: PortfolioDevelopmentRecordTypeCode.HONOR }
 const honorImportRequirements = [
   'recordType 须为 HONOR（模板已预填）',
   'teacherUserId 必填，须为租户内真实教师',
@@ -65,14 +65,14 @@ async function loadPage() {
     const page = await portfolioDevelopmentRecordApi.page({
       pageNum: 1,
       pageSize: 50,
-      recordType: 'HONOR',
+      recordType: PortfolioDevelopmentRecordTypeCode.HONOR,
       levelCode: query.levelCode || undefined,
       awardUnit: query.awardUnit || undefined,
       recordDateFrom: query.recordDateFrom || undefined,
       recordDateTo: query.recordDateTo || undefined,
       categoryCode: query.categoryCode || undefined,
     })
-    rows.value = readPageList(page, '加载荣誉库失败')
+    rows.value = page.list
     const userIds = rows.value
       .map((row) => row.teacherUserId)
       .filter((id): id is string => Boolean(id))
@@ -102,7 +102,7 @@ async function saveRecord() {
   }
   try {
     await portfolioDevelopmentRecordApi.save({
-      recordType: 'HONOR',
+      recordType: PortfolioDevelopmentRecordTypeCode.HONOR,
       recordTitle: form.recordTitle.trim(),
       teacherUserId: form.teacherUserId,
       levelCode: form.levelCode.trim() || undefined,

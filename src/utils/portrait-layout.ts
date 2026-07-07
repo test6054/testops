@@ -1,34 +1,50 @@
-import type { PortfolioPortraitDimension } from '@/apis/portfolio/enums'
-import { PORTFOLIO_PORTRAIT_DIMENSION_LABEL } from '@/apis/portfolio/enums'
+import {
+  ALL_PORTFOLIO_PORTRAIT_DIMENSION_CODES,
+  PortfolioPortraitDimensionCode,
+  PortfolioPortraitDimensionDescription,
+} from '@/apis/portfolio/enums'
+import {
+  ALL_PORTRAIT_WIDGET_TYPE_CODES,
+  PortraitWidgetTypeCode,
+  PortraitWidgetTypeDescription,
+} from '@/types/enums/portrait-widget-type-enum'
 
-/** 画像模板布局组件类型 */
-export type PortraitWidgetType = 'radar' | 'timeline' | 'bar' | 'score_card'
+export {
+  ALL_PORTRAIT_WIDGET_TYPE_CODES,
+  PortraitWidgetTypeCode,
+  PortraitWidgetTypeDescription,
+} from '@/types/enums/portrait-widget-type-enum'
 
-export const PORTRAIT_WIDGET_TYPE_LABEL: Record<PortraitWidgetType, string> = {
-  radar: '雷达图',
-  timeline: '成长时间轴',
-  bar: '柱状图',
-  score_card: '得分卡片',
-}
+export const PORTRAIT_WIDGET_TYPE_OPTIONS: Array<{ value: PortraitWidgetTypeCode, label: string }>
+  = ALL_PORTRAIT_WIDGET_TYPE_CODES.map((value) => ({
+    value,
+    label: PortraitWidgetTypeDescription[value],
+  }))
 
 export interface PortfolioPortraitLayoutWidget {
-  widget: PortraitWidgetType
+  widget: PortraitWidgetTypeCode
   x: number
   y: number
   w: number
   h: number
-  dimensionCode?: PortfolioPortraitDimension
+  dimensionCode?: PortfolioPortraitDimensionCode
 }
 
 export interface PortfolioPortraitChartConfigEntry {
   widgetIndex: number
-  dimensionCode: PortfolioPortraitDimension
+  dimensionCode: PortfolioPortraitDimensionCode
 }
 
-const WIDGET_TYPES = new Set<string>(Object.keys(PORTRAIT_WIDGET_TYPE_LABEL))
-const DIMENSION_CODES = new Set<string>(Object.keys(PORTFOLIO_PORTRAIT_DIMENSION_LABEL))
+const DIMENSION_CODES = new Set<string>(ALL_PORTFOLIO_PORTRAIT_DIMENSION_CODES)
 
-function isPortraitDimension(value: string): value is PortfolioPortraitDimension {
+function isPortraitWidget(value: string): value is PortraitWidgetTypeCode {
+  return value === PortraitWidgetTypeCode.RADAR
+    || value === PortraitWidgetTypeCode.TIMELINE
+    || value === PortraitWidgetTypeCode.BAR
+    || value === PortraitWidgetTypeCode.SCORE_CARD
+}
+
+function isPortraitDimension(value: string): value is PortfolioPortraitDimensionCode {
   return DIMENSION_CODES.has(value)
 }
 
@@ -37,28 +53,39 @@ export function parsePortraitLayoutJson(json: string): PortfolioPortraitLayoutWi
   if (!json.trim()) {
     return []
   }
-  const raw = JSON.parse(json) as unknown
+  const raw: unknown = JSON.parse(json)
   const list = Array.isArray(raw)
     ? raw
-    : (raw as { widgets?: unknown[] }).widgets ?? []
+    : readUnknownArrayProperty(raw, 'widgets')
   const widgets: PortfolioPortraitLayoutWidget[] = []
   for (const item of list) {
-    const row = item as Record<string, unknown>
-    const widget = String(row.widget ?? '')
-    if (!WIDGET_TYPES.has(widget)) {
+    if (typeof item !== 'object' || item === null) {
       continue
     }
-    const dimensionRaw = row.dimensionCode != null ? String(row.dimensionCode) : undefined
+    const widget = String(Object.getOwnPropertyDescriptor(item, 'widget')?.value ?? '')
+    if (!isPortraitWidget(widget)) {
+      continue
+    }
+    const dimensionValue = Object.getOwnPropertyDescriptor(item, 'dimensionCode')?.value
+    const dimensionRaw = dimensionValue != null ? String(dimensionValue) : undefined
     widgets.push({
-      widget: widget as PortraitWidgetType,
-      x: Number(row.x ?? 0),
-      y: Number(row.y ?? 0),
-      w: Number(row.w ?? 6),
-      h: Number(row.h ?? 4),
+      widget,
+      x: Number(Object.getOwnPropertyDescriptor(item, 'x')?.value ?? 0),
+      y: Number(Object.getOwnPropertyDescriptor(item, 'y')?.value ?? 0),
+      w: Number(Object.getOwnPropertyDescriptor(item, 'w')?.value ?? 6),
+      h: Number(Object.getOwnPropertyDescriptor(item, 'h')?.value ?? 4),
       dimensionCode: dimensionRaw && isPortraitDimension(dimensionRaw) ? dimensionRaw : undefined,
     })
   }
   return widgets
+}
+
+function readUnknownArrayProperty(source: unknown, key: string): unknown[] {
+  if (typeof source !== 'object' || source === null) {
+    return []
+  }
+  const value = Object.getOwnPropertyDescriptor(source, key)?.value
+  return Array.isArray(value) ? value : []
 }
 
 /** 序列化为后端 layoutJson 契约（不含 chartConfigJson 部分） */
@@ -89,17 +116,19 @@ export function parsePortraitChartConfigJson(json: string): PortfolioPortraitCha
   if (!json.trim()) {
     return []
   }
-  const raw = JSON.parse(json) as unknown
+  const raw: unknown = JSON.parse(json)
   const list = Array.isArray(raw) ? raw : []
   const entries: PortfolioPortraitChartConfigEntry[] = []
   for (const item of list) {
-    const row = item as Record<string, unknown>
-    const dimensionRaw = String(row.dimensionCode ?? '')
+    if (typeof item !== 'object' || item === null) {
+      continue
+    }
+    const dimensionRaw = String(Object.getOwnPropertyDescriptor(item, 'dimensionCode')?.value ?? '')
     if (!isPortraitDimension(dimensionRaw)) {
       continue
     }
     entries.push({
-      widgetIndex: Number(row.widgetIndex ?? 0),
+      widgetIndex: Number(Object.getOwnPropertyDescriptor(item, 'widgetIndex')?.value ?? 0),
       dimensionCode: dimensionRaw,
     })
   }
@@ -119,11 +148,15 @@ export function serializePortraitChartConfig(widgets: PortfolioPortraitLayoutWid
 
 export function defaultPortraitLayout(): PortfolioPortraitLayoutWidget[] {
   return [
-    { widget: 'radar', x: 0, y: 0, w: 6, h: 4, dimensionCode: 'TEACHING' },
-    { widget: 'timeline', x: 6, y: 0, w: 6, h: 4, dimensionCode: 'DEVELOPMENT_CORE' },
+    { widget: PortraitWidgetTypeCode.RADAR, x: 0, y: 0, w: 6, h: 4, dimensionCode: PortfolioPortraitDimensionCode.TEACHING },
+    { widget: PortraitWidgetTypeCode.TIMELINE, x: 6, y: 0, w: 6, h: 4, dimensionCode: PortfolioPortraitDimensionCode.DEVELOPMENT_CORE },
   ]
 }
 
-export const PORTRAIT_DIMENSION_OPTIONS = (
-  Object.keys(PORTFOLIO_PORTRAIT_DIMENSION_LABEL) as PortfolioPortraitDimension[]
-).map(value => ({ value, label: PORTFOLIO_PORTRAIT_DIMENSION_LABEL[value] }))
+export const PORTRAIT_DIMENSION_OPTIONS: Array<{ value: PortfolioPortraitDimensionCode, label: string }> = [
+  { value: PortfolioPortraitDimensionCode.DEVELOPMENT_CORE, label: PortfolioPortraitDimensionDescription.DEVELOPMENT_CORE },
+  { value: PortfolioPortraitDimensionCode.TEACHING, label: PortfolioPortraitDimensionDescription.TEACHING },
+  { value: PortfolioPortraitDimensionCode.RESEARCH, label: PortfolioPortraitDimensionDescription.RESEARCH },
+  { value: PortfolioPortraitDimensionCode.TRAINING, label: PortfolioPortraitDimensionDescription.TRAINING },
+  { value: PortfolioPortraitDimensionCode.PRACTICE, label: PortfolioPortraitDimensionDescription.PRACTICE },
+]

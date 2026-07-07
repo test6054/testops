@@ -2,11 +2,13 @@ import type { PortfolioArchiveBagExportResultVO } from '@/apis/portfolio/bag-typ
 import type {
   PortfolioTeacherDetailVO,
   PortfolioTeacherIdentitySaveRequest,
-  PortfolioTeacherIdentityType,
+  PortfolioTeacherIdentityTypeCode,
+  PortfolioTeacherOneTableCategoryVO,
+  PortfolioTeacherOneTableGetRequest,
   PortfolioTeacherPageRequest,
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
-import type { PageResult } from '@/types'
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 export interface PortfolioTeacherOneTableSummaryVO {
@@ -15,17 +17,12 @@ export interface PortfolioTeacherOneTableSummaryVO {
   nickName?: string
   departmentName?: string
   title?: string
-  identityTags: PortfolioTeacherIdentityType[]
+  identityTags: PortfolioTeacherIdentityTypeCode[]
   achievementCount?: number
   honorCount?: number
   correctionPending?: boolean
   recentChangeSummary: string[]
-  categories: Array<{
-    categoryId: string
-    categoryName: string
-    recordCount: number
-    officialRecordId?: string
-  }>
+  categories: PortfolioTeacherOneTableCategoryVO[]
 }
 
 export interface PortfolioDeptOneTableSummaryVO {
@@ -61,16 +58,33 @@ export interface PortfolioDeptOneTableTeacherRowVO {
   honorCount?: number
   planYear?: string
   developmentPlanStatus?: string
-  developmentPlanItemCompletionPercent?: string
+  developmentPlanItemCompletionPercent?: number
 }
 
 export interface PortfolioDeptStructureStatVO {
   totalTeacherCount: number
-  departments: Array<{
-    departmentId: string
-    departmentName?: string
-    teacherCount: number
-  }>
+  departments: PortfolioDeptStructureStatItemVO[]
+}
+
+export interface PortfolioDeptStructureStatItemVO {
+  departmentId: string
+  departmentName?: string
+  teacherCount: number
+}
+
+export interface PortfolioDeptOneTableGetRequest {
+  departmentId: string
+  planYear?: string
+}
+
+export interface PortfolioDeptOneTableExportRequest {
+  departmentId: string
+  planYear?: string
+}
+
+export interface PortfolioDeptOneTableTeacherPageRequest extends QueryDto {
+  departmentId: string
+  planYear?: string
 }
 
 const BASE = '/api/portfolio/teacher'
@@ -81,24 +95,19 @@ export const portfolioTeacherApi = {
   get: (id: string) => http.post<PortfolioTeacherDetailVO>(`${BASE}/get`, { id }),
   saveIdentity: (data: PortfolioTeacherIdentitySaveRequest) =>
     http.post<string>(`${BASE}/identity/save`, data),
-  getOneTableSummary: (data: { teacherId?: string } = {}) =>
+  getOneTableSummary: (data: PortfolioTeacherOneTableGetRequest = {}) =>
     http.post<PortfolioTeacherOneTableSummaryVO>(`${BASE}/one-table/summary/get`, data),
-  exportOneTable: (data: { teacherId?: string } = {}) =>
+  exportOneTable: (data: PortfolioTeacherOneTableGetRequest = {}) =>
     http.post<PortfolioArchiveBagExportResultVO>(`${BASE}/one-table/export`, data),
   exportRoster: (data: PortfolioTeacherPageRequest = { pageNum: 1, pageSize: 5000 }) =>
     http.post<PortfolioArchiveBagExportResultVO>(`${BASE}/export-roster`, data),
   deptStructureStats: () =>
     http.post<PortfolioDeptStructureStatVO>(`${BASE}/dept-structure/stats`, {}),
-  getDeptOneTableSummary: (data: { departmentId: string, planYear?: string }) =>
+  getDeptOneTableSummary: (data: PortfolioDeptOneTableGetRequest) =>
     http.post<PortfolioDeptOneTableSummaryVO>(`${BASE}/dept-one-table/summary/get`, data),
-  exportDeptOneTable: (data: { departmentId: string, planYear?: string }) =>
+  exportDeptOneTable: (data: PortfolioDeptOneTableExportRequest) =>
     http.post<PortfolioArchiveBagExportResultVO>(`${BASE}/dept-one-table/export`, data),
-  pageDeptOneTableTeachers: (data: {
-    departmentId: string
-    planYear?: string
-    pageNum?: number
-    pageSize?: number
-  }) =>
+  pageDeptOneTableTeachers: (data: PortfolioDeptOneTableTeacherPageRequest) =>
     http.post<PageResult<PortfolioDeptOneTableTeacherRowVO>>(
       `${BASE}/dept-one-table/teacher/page`,
       data,
@@ -108,6 +117,8 @@ export const portfolioTeacherApi = {
 export type {
   PortfolioTeacherDetailVO,
   PortfolioTeacherIdentitySaveRequest,
+  PortfolioTeacherOneTableCategoryVO,
+  PortfolioTeacherOneTableGetRequest,
   PortfolioTeacherPageRequest,
   PortfolioTeacherSummaryVO,
 }

@@ -4,7 +4,7 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   AccreditationCockpitVO,
   AccreditationConclusionRegisterRequest,
-  AccreditationCyclePhase,
+  AccreditationCyclePhaseCode,
   AccreditationCycleSaveRequest,
   AccreditationCycleVO,
   SelfAssessmentReviewDecisionRequest,
@@ -14,10 +14,12 @@ import { DownOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import {
-  ACCREDITATION_CONCLUSION_LABEL,
-  ACCREDITATION_CYCLE_PHASE_LABEL,
-  ACCREDITATION_CYCLE_STATUS_LABEL,
   accreditationApi,
+  AccreditationConclusionTypeCode,
+  AccreditationConclusionTypeDescription,
+  AccreditationCyclePhaseDescription,
+  AccreditationCycleStatusDescription,
+  SelfAssessmentReviewDecisionCode,
 } from '@/apis/quality/accreditation'
 import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -36,7 +38,7 @@ import {
 } from '@/composables/useAccreditationWorkbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
-import { readAllPages, readPageList } from '@/utils/page-result'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const props = defineProps<{
@@ -87,7 +89,7 @@ const reviewForm = reactive<
     'reviewDecision' | 'reviewRemark' | 'supplementDeadline'
   >
 >({
-  reviewDecision: 'ACCEPTED',
+  reviewDecision: SelfAssessmentReviewDecisionCode.ACCEPTED,
   reviewRemark: '',
   supplementDeadline: '',
 })
@@ -98,7 +100,7 @@ const conclusionForm = reactive<
     'conclusionType' | 'validFrom' | 'validUntil' | 'conditionalDueDate' | 'conclusionRemark'
   >
 >({
-  conclusionType: 'FULL_6Y',
+  conclusionType: AccreditationConclusionTypeCode.FULL_6Y,
   validFrom: '',
   validUntil: '',
   conditionalDueDate: '',
@@ -154,7 +156,7 @@ async function loadCycles() {
       pageNum: 1,
       pageSize: 50,
     })
-    cycles.value = readPageList(page, '认证周期列表加载失败，请刷新后重试')
+    cycles.value = page.list
   } catch (e) {
     showUserError(e)
   } finally {
@@ -207,11 +209,23 @@ async function submitCycle() {
     message.error('请选择绑定的认证标准')
     return
   }
+  const request: AccreditationCycleSaveRequest = {
+    id: form.id,
+    programId: form.programId,
+    trainingPlanId: form.trainingPlanId,
+    accreditationStandardId: form.accreditationStandardId,
+    cycleCode: form.cycleCode.trim(),
+    cycleName: form.cycleName.trim(),
+    remark: form.remark?.trim() || undefined,
+    onsiteVisitStart: form.onsiteVisitStart,
+    onsiteVisitEnd: form.onsiteVisitEnd,
+    onsiteReportDueDate: form.onsiteReportDueDate,
+  }
   try {
     if (form.id) {
-      await accreditationApi.cycleUpdate(form)
+      await accreditationApi.cycleUpdate(request)
     } else {
-      await accreditationApi.cycleCreate(form)
+      await accreditationApi.cycleCreate(request)
     }
     message.success('已保存')
     drawerOpen.value = false
@@ -245,7 +259,7 @@ async function removeCycle(row: AccreditationCycleVO) {
 
 function openReview(row: AccreditationCycleVO) {
   activeRow.value = row
-  reviewForm.reviewDecision = 'ACCEPTED'
+  reviewForm.reviewDecision = SelfAssessmentReviewDecisionCode.ACCEPTED
   reviewForm.reviewRemark = ''
   reviewForm.supplementDeadline = ''
   reviewOpen.value = true
@@ -253,7 +267,7 @@ function openReview(row: AccreditationCycleVO) {
 
 async function submitReview() {
   if (!activeRow.value) return
-  if (reviewForm.reviewDecision === 'SUPPLEMENT_REQUIRED' && !reviewForm.supplementDeadline) {
+  if (reviewForm.reviewDecision === SelfAssessmentReviewDecisionCode.SUPPLEMENT_REQUIRED && !reviewForm.supplementDeadline) {
     message.error('需补正时必须填写补正截止日期')
     return
   }
@@ -278,7 +292,7 @@ function openConclusion(row: AccreditationCycleVO) {
     return
   }
   activeRow.value = row
-  conclusionForm.conclusionType = 'FULL_6Y'
+  conclusionForm.conclusionType = AccreditationConclusionTypeCode.FULL_6Y
   conclusionForm.validFrom = ''
   conclusionForm.validUntil = ''
   conclusionForm.conditionalDueDate = ''
@@ -315,8 +329,8 @@ async function submitConclusion() {
   conclusionOpen.value = false
 }
 
-function phaseLabel(phase: AccreditationCyclePhase) {
-  return strictEnumLabel(ACCREDITATION_CYCLE_PHASE_LABEL, phase, '认证周期阶段')
+function phaseLabel(phase: AccreditationCyclePhaseCode) {
+  return strictEnumLabel(AccreditationCyclePhaseDescription, phase, '认证周期阶段')
 }
 
 function buildMenuItems(row: AccreditationCycleVO): AccreditationCycleMenuItem[] {
@@ -469,13 +483,13 @@ defineExpose({ openCreate, loadCycles })
         </template>
         <template v-else-if="column.key === 'cycleStatus'">
           {{
-            strictEnumLabel(ACCREDITATION_CYCLE_STATUS_LABEL, record.cycleStatus, '认证周期状态')
+            strictEnumLabel(AccreditationCycleStatusDescription, record.cycleStatus, '认证周期状态')
           }}
         </template>
         <template v-else-if="column.key === 'conclusionType'">
           <span v-if="record.conclusionType">
             {{
-              strictEnumLabel(ACCREDITATION_CONCLUSION_LABEL, record.conclusionType, '认证结论类型')
+              strictEnumLabel(AccreditationConclusionTypeDescription, record.conclusionType, '认证结论类型')
             }}
           </span>
           <span v-else class="muted">—</span>
@@ -571,7 +585,7 @@ defineExpose({ openCreate, loadCycles })
         <dd>
           {{
             strictEnumLabel(
-              ACCREDITATION_CYCLE_STATUS_LABEL,
+              AccreditationCycleStatusDescription,
               detailRecord.cycleStatus,
               '认证周期状态',
             )
@@ -590,7 +604,7 @@ defineExpose({ openCreate, loadCycles })
           {{
             detailRecord.conclusionType
               ? strictEnumLabel(
-                ACCREDITATION_CONCLUSION_LABEL,
+                AccreditationConclusionTypeDescription,
                 detailRecord.conclusionType,
                 '认证结论类型',
               )

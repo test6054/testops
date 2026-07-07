@@ -1,5 +1,5 @@
 /** 与后端 QualityPiiRedactor 占位符口径一致，用于前端确认门禁 */
-export const PORTFOLIO_PII_PLACEHOLDERS = ['[姓名]', '[手机号]', '[身份证]', '[邮箱]', '[编号]'] as const
+export const PORTFOLIO_PII_PLACEHOLDERS: string[] = ['[姓名]', '[手机号]', '[身份证]', '[邮箱]', '[编号]']
 
 export function containsPortfolioPiiPlaceholder(text: string | undefined | null): boolean {
   if (!text) {

@@ -18,10 +18,16 @@ import {
   SyncOutlined,
   WarningFilled,
 } from '@ant-design/icons-vue'
-import { computed, watch } from 'vue'
-import { TASK_STATUS_LABEL } from '@/apis/mark/task-status'
+import { computed, ref, watch } from 'vue'
+import { LocalScanPageStatusCode } from '@/apis/mark/scanner-agent-local'
+import { TaskStatusDescription } from '@/apis/mark/task-status'
+import {
+  ExamScannerPageRegistrationStatusCode,
+} from '@/types/enums/exam-scanner-page-registration-status-enum'
+import { ScanAttentionTypeCode } from '@/types/enums/scan-attention-type-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import KioskBoundStudentsPanel from '../components/KioskBoundStudentsPanel.vue'
+import KioskScanExceptionPanel from '../components/KioskScanExceptionPanel.vue'
 import { useKioskCtx } from '../composables/kioskInjection'
 
 const { workflow } = useKioskCtx()
@@ -37,7 +43,11 @@ interface ReviewItem {
   processingStatus?: TaskStatusCode
   source: 'job' | 'ledger'
   localPageId?: string
+  paperInstanceId?: string
+  attentionType?: ScanAttentionTypeCode
 }
+
+const selectedBindingPaperInstanceId = ref('')
 
 /** 澶辫触椤碉紙鐩存帴浠?currentJob.pages 涓瓫閫夛級 */
 const failedPages = computed<ReviewItem[]>(() =>
@@ -46,7 +56,7 @@ const failedPages = computed<ReviewItem[]>(() =>
     pageNo: page.pageNo,
     type: 'page-failed',
     title: workflow.scanPageDisplayTitleByNo(page.pageNo),
-    description: page.status === 'FAILED' ? '上传失败' : '页处理异常',
+    description: page.status === LocalScanPageStatusCode.FAILED ? '上传失败' : '页处理异常',
     detail:
       typeof page.diagnostic === 'string'
         ? workflow.scannerDiagnosticText(page.diagnostic)
@@ -56,28 +66,32 @@ const failedPages = computed<ReviewItem[]>(() =>
   })),
 )
 
-/** 璐︽湰寮傚父寰呭姙锛坅ttentionItems + ledger 寮傚父椤碉級 */
+/** 账本页级异常待办；回填 attentionItems 的 paperInstanceId，供身份绑定处置入口。 */
 const ledgerAttentions = computed<ReviewItem[]>(() => {
   const ledger = workflow.pageLedger.value
   if (!ledger) return []
   const ledgerItems = ledger.items.filter((item) => Boolean(item.attentionType))
-  return ledgerItems.map((item): ReviewItem => ({
-    key: `ledger-${workflow.ledgerItemKey(item)}`,
-    pageNo: item.pageNo,
-    type: 'attention',
-    title: `${workflow.scanPageDisplayTitleByNo(item.pageNo)} 路 ${workflow.attentionTypeText(item.attentionType!)}`,
-    description: item.attentionMessage || workflow.registrationStatusText(item.registrationStatus),
-    detail: item.operatorName
-      ? `鎿嶄綔浜?${item.operatorName} 路 ${workflow.formatTime(item.occurredAt)}`
-      : workflow.formatTime(item.occurredAt),
-    processingStatus: ledger.attentionItems.find((att) => att.pageId === item.localPageId)
-      ?.processingStatus,
-    source: 'ledger',
-    localPageId: item.localPageId,
-  }))
+  return ledgerItems.map((item): ReviewItem => {
+    const linkedAttention = ledger.attentionItems.find((att) => att.pageId === item.localPageId)
+    return {
+      key: `ledger-${workflow.ledgerItemKey(item)}`,
+      pageNo: item.pageNo,
+      type: 'attention',
+      title: `${workflow.scanPageDisplayTitleByNo(item.pageNo)} · ${workflow.attentionTypeText(item.attentionType!)}`,
+      description: item.attentionMessage || workflow.registrationStatusText(item.registrationStatus),
+      detail: item.operatorName
+        ? `操作人 ${item.operatorName} · ${workflow.formatTime(item.occurredAt)}`
+        : workflow.formatTime(item.occurredAt),
+      processingStatus: linkedAttention?.processingStatus,
+      source: 'ledger',
+      localPageId: item.localPageId,
+      paperInstanceId: linkedAttention?.paperInstanceId,
+      attentionType: item.attentionType as ScanAttentionTypeCode,
+    }
+  })
 })
 
-/** 璐︽湰 attentionItems锛堝韬唤缁戝畾鍐茬獊锛夛紝涓?items.attentionType 浜掕ˉ */
+/** 账本 attentionItems（如身份绑定冲突），与 items.attentionType 互补；无 pageId 的 BINDING_CONFLICT 仍须展示。 */
 const ledgerAttentionTodos = computed<ReviewItem[]>(() => {
   const ledger = workflow.pageLedger.value
   if (!ledger?.attentionItems.length) return []
@@ -87,19 +101,28 @@ const ledgerAttentionTodos = computed<ReviewItem[]>(() => {
       ? ledger.items.find((item) => item.localPageId === att.pageId)
       : undefined
     const pageNo = pageItem?.pageNo ?? 0
-    if (pageNo <= 0) continue
+    const bindingConflictWithoutPage
+      = !att.pageId && att.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT
+    if (pageNo <= 0 && !bindingConflictWithoutPage) continue
+    const titlePrefix = pageNo > 0
+      ? workflow.scanPageDisplayTitleByNo(pageNo)
+      : `答卷 ${att.paperInstanceId ?? '未知'}`
     items.push({
       key: `attention-${att.id}`,
       pageNo,
       type: 'attention',
-      title: `${workflow.scanPageDisplayTitleByNo(pageNo)} 路 ${workflow.attentionTypeText(att.attentionType)}`,
+      title: `${titlePrefix} · ${workflow.attentionTypeText(att.attentionType)}`,
       description:
         att.diagnostic
-        || workflow.registrationStatusText(pageItem?.registrationStatus ?? 'PENDING'),
+        || workflow.registrationStatusText(
+          pageItem?.registrationStatus ?? ExamScannerPageRegistrationStatusCode.PENDING,
+        ),
       detail: workflow.formatTime(att.updateTime),
       processingStatus: att.processingStatus,
       source: 'ledger',
       localPageId: att.pageId,
+      paperInstanceId: att.paperInstanceId,
+      attentionType: att.attentionType,
     })
   }
   return items
@@ -107,7 +130,7 @@ const ledgerAttentionTodos = computed<ReviewItem[]>(() => {
 
 function processingStatusLabel(status?: TaskStatusCode) {
   if (!status) return ''
-  return strictEnumLabel(TASK_STATUS_LABEL, status, '处理任务状态')
+  return strictEnumLabel(TaskStatusDescription, status, '处理任务状态')
 }
 
 const reviewItems = computed(() => {
@@ -124,10 +147,14 @@ const reviewItems = computed(() => {
 const registeredPages = computed<ReviewItem[]>(() => {
   const ledger = workflow.pageLedger.value
   if (!ledger?.items.length) return []
-  const issuePageNos = new Set(reviewItems.value.map((item) => item.pageNo))
+  const issuePageNos = new Set(
+    reviewItems.value.filter((item) => item.pageNo > 0).map((item) => item.pageNo),
+  )
   return ledger.items
     .filter(
-      (item) => item.registrationStatus !== 'DISCARDED' && item.registrationStatus !== 'SUPERSEDED',
+      (item) =>
+        item.registrationStatus !== ExamScannerPageRegistrationStatusCode.DISCARDED
+        && item.registrationStatus !== ExamScannerPageRegistrationStatusCode.SUPERSEDED,
     )
     .filter((item) => !issuePageNos.has(item.pageNo))
     .map((item): ReviewItem => ({
@@ -145,6 +172,13 @@ const registeredPages = computed<ReviewItem[]>(() => {
 })
 
 const selectedItem = computed<ReviewItem | null>(() => {
+  if (selectedBindingPaperInstanceId.value) {
+    return (
+      reviewItems.value.find(
+        (item) => item.paperInstanceId === selectedBindingPaperInstanceId.value,
+      ) ?? null
+    )
+  }
   if (!workflow.previewPageNo.value) return null
   const pageNo = workflow.previewPageNo.value
   return (
@@ -155,29 +189,57 @@ const selectedItem = computed<ReviewItem | null>(() => {
   )
 })
 
-const selectedPreviewTitle = computed(() =>
-  selectedItem.value ? workflow.scanPageDisplayTitleByNo(selectedItem.value.pageNo) : '',
+const showBindingPanel = computed(
+  () =>
+    selectedItem.value?.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT
+    && Boolean(selectedItem.value?.paperInstanceId),
 )
 
+function isReviewItemActive(item: ReviewItem): boolean {
+  if (item.paperInstanceId && item.pageNo <= 0) {
+    return selectedBindingPaperInstanceId.value === item.paperInstanceId
+  }
+  return workflow.previewPageNo.value === item.pageNo
+}
+
 function selectItem(item: ReviewItem) {
+  if (item.paperInstanceId && item.pageNo <= 0) {
+    selectedBindingPaperInstanceId.value = item.paperInstanceId
+    workflow.previewPageNo.value = 0
+    return
+  }
+  selectedBindingPaperInstanceId.value
+    = item.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT
+      ? (item.paperInstanceId ?? '')
+      : ''
   workflow.previewPageNo.value = item.pageNo
 }
 
-/** 鏈満 Agent 宸叉壂鎻忛〉锛堣处鏈湭杩斿洖鏃朵粛鍙湪澶嶆牳闃舵娴忚鏈湴褰卞儚锛夈€? */
+function onBindingPanelClose() {
+  selectedBindingPaperInstanceId.value = ''
+}
+
+const selectedPreviewTitle = computed(() => {
+  if (!selectedItem.value) return ''
+  if (selectedItem.value.pageNo > 0) {
+    return workflow.scanPageDisplayTitleByNo(selectedItem.value.pageNo)
+  }
+  return selectedItem.value.title
+})
 const localBrowsablePages = computed<ReviewItem[]>(() => {
   const job = workflow.reviewScanJob.value
   if (!job) return []
   const issuePageNos = new Set(reviewItems.value.map((item) => item.pageNo))
   const registeredPageNos = new Set(registeredPages.value.map((item) => item.pageNo))
   return job.pages
-    .filter((page) => page.status !== 'DELETED')
+    .filter((page) => page.status !== LocalScanPageStatusCode.DELETED)
     .filter((page) => !issuePageNos.has(page.pageNo) && !registeredPageNos.has(page.pageNo))
     .map((page): ReviewItem => ({
       key: `local-${page.pageNo}`,
       pageNo: page.pageNo,
       type: 'page-registered',
       title: workflow.scanPageDisplayTitleByNo(page.pageNo),
-      description: page.status === 'UPLOADED' ? '本机已上传' : '本机已扫描',
+      description: page.status === LocalScanPageStatusCode.UPLOADED ? '本机已上传' : '本机已扫描',
       detail: page.uploadedFileId ? `鏂囦欢 ${page.uploadedFileId}` : undefined,
       status: page.status,
       source: 'job',
@@ -194,20 +256,36 @@ watch(
   ([issues, pages, localPages]) => {
     if (issues.length === 0 && pages.length === 0 && localPages.length === 0) {
       workflow.previewPageNo.value = 0
+      selectedBindingPaperInstanceId.value = ''
       return
+    }
+    if (selectedBindingPaperInstanceId.value) {
+      const stillExists = issues.some(
+        (item) => item.paperInstanceId === selectedBindingPaperInstanceId.value,
+      )
+      if (stillExists) return
+      selectedBindingPaperInstanceId.value = ''
     }
     const currentPageNo = workflow.previewPageNo.value
     const browsable = [...issues, ...pages, ...localPages]
     if (currentPageNo > 0 && browsable.some((item) => item.pageNo === currentPageNo)) {
       return
     }
-    workflow.previewPageNo.value = (issues[0] ?? pages[0] ?? localPages[0]).pageNo
+    const first = issues[0] ?? pages[0] ?? localPages[0]
+    if (first.paperInstanceId && first.pageNo <= 0) {
+      selectedBindingPaperInstanceId.value = first.paperInstanceId
+      workflow.previewPageNo.value = 0
+      return
+    }
+    selectedBindingPaperInstanceId.value = ''
+    workflow.previewPageNo.value = first.pageNo
   },
   { immediate: true },
 )
 
 function discardSelected() {
   if (!selectedItem.value || selectedItem.value.source !== 'ledger') return
+  if (selectedItem.value.pageNo <= 0 || !selectedItem.value.localPageId) return
   if (!workflow.canDiscardLedgerPage.value) return
   workflow.discardLedgerPage({
     pageNo: selectedItem.value.pageNo,
@@ -266,7 +344,7 @@ const reviewBoundBatchId = computed(
           :key="item.key"
           class="issue-item"
           :class="{
-            'active': workflow.previewPageNo.value === item.pageNo,
+            'active': isReviewItemActive(item),
             'item-failed': item.type === 'page-failed',
             'item-attention': item.type === 'attention',
           }"
@@ -355,6 +433,11 @@ const reviewBoundBatchId = computed(
           <p v-else>无可预览影像</p>
           <small v-if="totalIssues > 0">点击列表条目展示对应页面</small>
         </div>
+        <div v-else-if="selectedItem.pageNo <= 0" class="preview-empty">
+          <WarningFilled class="preview-empty-icon" />
+          <p>身份绑定冲突无关联扫描页</p>
+          <small>请在右侧面板从考生名册确认身份并绑定</small>
+        </div>
         <div v-else-if="!workflow.previewImageUrl.value" class="preview-empty">
           <FileTextOutlined class="preview-empty-icon" />
           <p>影像未就绪</p>
@@ -389,6 +472,14 @@ const reviewBoundBatchId = computed(
         :scan-batch-id="reviewBoundBatchId"
       />
 
+      <KioskScanExceptionPanel
+        v-if="showBindingPanel"
+        :open="showBindingPanel"
+        :page-no="selectedItem?.pageNo && selectedItem.pageNo > 0 ? selectedItem.pageNo : undefined"
+        :paper-instance-id="selectedItem?.paperInstanceId"
+        @close="onBindingPanelClose"
+      />
+
       <section class="panel-section">
         <header><h4>处置操作</h4></header>
         <button
@@ -419,13 +510,17 @@ const reviewBoundBatchId = computed(
           :disabled="
             !selectedItem
               || selectedItem.source !== 'ledger'
+              || selectedItem.pageNo <= 0
+              || !selectedItem.localPageId
               || !workflow.canDiscardLedgerPage.value
           "
           :title="
             selectedItem
-              ? selectedItem.source === 'ledger'
-                ? '将选中项标记为废弃，需要补扫'
-                : '失败页可走重试上传，不需要废弃'
+              ? selectedItem.pageNo <= 0
+                ? '无关联扫描页的身份绑定冲突不能废弃页'
+                : selectedItem.source === 'ledger'
+                  ? '将选中项标记为废弃，需要补扫'
+                  : '失败页可走重试上传，不需要废弃'
               : '请先在左侧选择待复核项'
           "
           @click="discardSelected"

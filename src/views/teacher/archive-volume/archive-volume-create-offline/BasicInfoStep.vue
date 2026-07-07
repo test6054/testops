@@ -1,105 +1,108 @@
 <template>
-  <section id="archive-create-basic" class="form-section archive-create-form">
-    <header class="section-header">
-      <h2 class="section-title">卷宗信息</h2>
-    </header>
-    <p class="section-desc">填写课程、学年学期与归档标题；带 * 为必填。</p>
-    <a-form
-      ref="formRef"
-      :model="basicForm"
-      :rules="basicRules"
-      layout="vertical"
-      class="archive-create-form__body"
-    >
-      <div class="archive-create-form__grid">
-        <a-form-item label="课程" name="courseId" class="archive-create-form__full">
-          <CatalogCourseSelector
-            v-model:value="basicForm.courseId"
-            placeholder="选择课程"
-            :allow-clear="false"
-            @change="handleCourseChange"
-          />
-        </a-form-item>
-        <a-form-item label="归档标题" name="archiveTitle" class="archive-create-form__full">
-          <a-input
-            v-model:value="basicForm.archiveTitle"
-            placeholder="如 2024-2025 高等数学期末考查"
-            :maxlength="512"
-            show-count
-          />
-        </a-form-item>
-        <a-form-item label="档案编号">
-          <a-input
-            v-model:value="basicForm.archiveNo"
-            placeholder="不填则自动生成"
-            :maxlength="64"
-          />
-        </a-form-item>
-        <a-form-item label="学年" name="academicYear">
-          <a-input v-model:value="basicForm.academicYear" placeholder="2024-2025" :maxlength="9" />
-        </a-form-item>
-        <a-form-item label="学期" name="semester">
-          <a-select
-            v-model:value="basicForm.semester"
-            :options="semesterOptions"
-            placeholder="选择学期"
-          />
-        </a-form-item>
-        <a-form-item label="院系" name="departmentId">
-          <a-select
-            v-model:value="departmentIdSelectValue"
-            :options="departmentOptions"
-            :loading="departmentLoading"
-            placeholder="请选择院系"
-            show-search
-            option-filter-prop="label"
-            allow-clear
-            @change="handleDepartmentChange"
-          />
-        </a-form-item>
-        <a-form-item label="授课班级" name="teachingClassId">
-          <ClassSelector
-            v-model:value="basicForm.teachingClassId"
-            :department-id="basicForm.departmentId"
-            :disabled="!basicForm.departmentId"
-            :placeholder="basicForm.departmentId ? '请选择授课班级' : '请先选择院系'"
-            @change="handleClassChange"
-          />
-        </a-form-item>
-        <a-form-item label="关联考试">
-          <a-select
-            v-model:value="relatedExamIdSelectValue"
-            :options="relatedExamOptions"
-            :loading="relatedExamLoading"
-            :disabled="!canLoadRelatedExams"
-            :placeholder="relatedExamPlaceholder"
-            show-search
-            allow-clear
-            option-filter-prop="label"
-            @search="handleRelatedExamSearch"
-            @change="handleRelatedExamChange"
-          />
-        </a-form-item>
-      </div>
-    </a-form>
-  </section>
+  <div id="archive-create-basic" class="archive-create-step">
+    <WorkbenchSurfaceCard flush class="archive-create-form">
+      <template #head>
+        <div class="archive-create-step__head">
+          <h2 class="archive-create-step__title">卷宗信息</h2>
+          <p class="archive-create-step__desc">填写课程、学年学期与归档标题；带 * 为必填。</p>
+        </div>
+      </template>
+      <a-form
+        ref="formRef"
+        :model="basicForm"
+        :rules="basicRules"
+        layout="vertical"
+        class="archive-create-form__body"
+      >
+        <div class="archive-create-form__grid">
+          <a-form-item label="课程" name="courseId" class="archive-create-form__full">
+            <CatalogCourseSelector
+              v-model:value="basicForm.courseId"
+              placeholder="选择课程"
+              :allow-clear="false"
+              @change="handleCourseChange"
+            />
+          </a-form-item>
+          <a-form-item label="归档标题" name="archiveTitle" class="archive-create-form__full">
+            <a-input
+              v-model:value="basicForm.archiveTitle"
+              placeholder="如 2024-2025 高等数学期末考查"
+              :maxlength="512"
+              show-count
+            />
+          </a-form-item>
+          <a-form-item label="档案编号">
+            <a-input
+              v-model:value="basicForm.archiveNo"
+              placeholder="不填则自动生成"
+              :maxlength="64"
+            />
+          </a-form-item>
+          <a-form-item label="学年" name="academicYear">
+            <a-input v-model:value="basicForm.academicYear" placeholder="2024-2025" :maxlength="9" />
+          </a-form-item>
+          <a-form-item label="学期" name="semester">
+            <a-select
+              v-model:value="basicForm.semester"
+              :options="SemesterOptions"
+              placeholder="选择学期"
+            />
+          </a-form-item>
+          <a-form-item label="院系" name="departmentId">
+            <a-select
+              v-model:value="departmentIdSelectValue"
+              :options="departmentOptions"
+              :loading="departmentLoading"
+              placeholder="请选择院系"
+              show-search
+              option-filter-prop="label"
+              allow-clear
+              @change="handleDepartmentChange"
+            />
+          </a-form-item>
+          <a-form-item label="授课班级" name="teachingClassId">
+            <ClassSelector
+              v-model:value="basicForm.teachingClassId"
+              :department-id="basicForm.departmentId"
+              :disabled="!basicForm.departmentId"
+              :placeholder="basicForm.departmentId ? '请选择授课班级' : '请先选择院系'"
+              @change="handleClassChange"
+            />
+          </a-form-item>
+          <a-form-item label="关联考试">
+            <a-select
+              v-model:value="relatedExamIdSelectValue"
+              :options="relatedExamOptions"
+              :loading="relatedExamLoading"
+              :disabled="!canLoadRelatedExams"
+              :placeholder="relatedExamPlaceholder"
+              show-search
+              allow-clear
+              option-filter-prop="label"
+              @search="handleRelatedExamSearch"
+              @change="handleRelatedExamChange"
+            />
+          </a-form-item>
+        </div>
+      </a-form>
+    </WorkbenchSurfaceCard>
+  </div>
 </template>
 
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ClassInfoDto } from '@/apis/edu/class'
-import type { ExamSummaryVO } from '@/apis/mark/exam'
-import type { CourseListVO, TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
+import type { CourseListVO } from '@/apis/quality/user-catalog'
 import { computed, onMounted, ref, watch } from 'vue'
 import { pageExams } from '@/apis/mark/exam'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
-import { requireArrayResult } from '@/components/quality/selectors/page-contract'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { useInjectedArchiveVolumeCreateBasicForm } from './archive-volume-create-context'
 import { nullableStringToSelectValue, selectValueToNullableString } from './select-value-bridge'
 
@@ -121,8 +124,6 @@ const emit = defineEmits<{
 
 const basicForm = useInjectedArchiveVolumeCreateBasicForm()
 const formRef = ref<FormInstance>()
-const semesterOptions = SemesterOptions
-
 const departmentIdSelectValue = computed({
   get: () => nullableStringToSelectValue(basicForm.departmentId),
   set: (value: SelectValue) => {
@@ -179,7 +180,7 @@ function handleClassChange(classId: string | null, option?: ClassInfoDto) {
   )
 }
 
-function formatRelatedExamLabel(exam: ExamSummaryVO): string {
+function formatRelatedExamLabel(exam: ExamSummaryResponse): string {
   return exam.examNo ? `${exam.examName}（${exam.examNo}）` : exam.examName
 }
 
@@ -203,7 +204,7 @@ async function loadRelatedExamOptions(keyword?: string): Promise<void> {
       semester: basicForm.semester,
       keyword: keyword?.trim() || undefined,
     })
-    relatedExamOptions.value = readPageList(result, '关联考试列表加载失败').map((exam) => ({
+    relatedExamOptions.value = result.list.map((exam) => ({
       label: formatRelatedExamLabel(exam),
       value: exam.examId,
     }))
@@ -244,10 +245,7 @@ function handleRelatedExamChange(value: SelectValue): void {
 async function loadDepartments() {
   departmentLoading.value = true
   try {
-    const departments = requireArrayResult<TenantSchoolDepartmentDto>(
-      await departmentCatalogApi.list(),
-      '院系',
-    )
+    const departments = await departmentCatalogApi.list()
     departmentOptions.value = departments.map((item) => ({
       value: item.id,
       label: item.deptName,
@@ -261,7 +259,7 @@ async function loadDepartments() {
 }
 
 watch(
-  () => [basicForm.academicYear, basicForm.semester] as const,
+  () => [basicForm.academicYear, basicForm.semester],
   () => {
     clearRelatedExamSelection()
     void loadRelatedExamOptions()

@@ -6,23 +6,32 @@ import http from '@/config/axios'
 
 const BASE = '/api/portfolio/teacher/onboarding'
 
-export interface PortfolioTeacherOnboardingTeacherRequest {
+export interface PortfolioTeacherOnboardingGetStateRequest {
   teacherId?: string
 }
 
-export interface PortfolioTeacherOnboardingSaveProgressRequest extends PortfolioTeacherOnboardingTeacherRequest {
+export interface PortfolioTeacherOnboardingCompleteRequest {
+  teacherId?: string
+}
+
+export interface PortfolioTeacherOnboardingDismissRequest {
+  teacherId?: string
+}
+
+export interface PortfolioTeacherOnboardingSaveProgressRequest {
+  teacherId?: string
   currentStep: number
 }
 
 export const portfolioOnboardingApi = {
-  getState: (data: PortfolioTeacherOnboardingTeacherRequest = {}) =>
+  getState: (data: PortfolioTeacherOnboardingGetStateRequest = {}) =>
     http.post<PortfolioTeacherOnboardingStateVO>(`${BASE}/get-state`, data),
   saveProgress: (data: PortfolioTeacherOnboardingSaveProgressRequest) =>
-    http.post<void>(`${BASE}/save-progress`, data),
-  complete: (data: PortfolioTeacherOnboardingTeacherRequest = {}) =>
-    http.post<void>(`${BASE}/complete`, data),
-  dismiss: (data: PortfolioTeacherOnboardingTeacherRequest = {}) =>
-    http.post<void>(`${BASE}/dismiss`, data),
-  getReviewContent: (data: PortfolioTeacherOnboardingTeacherRequest = {}) =>
+    http.post<PortfolioTeacherOnboardingStateVO>(`${BASE}/save-progress`, data),
+  complete: (data: PortfolioTeacherOnboardingCompleteRequest = {}) =>
+    http.post<PortfolioTeacherOnboardingStateVO>(`${BASE}/complete`, data),
+  dismiss: (data: PortfolioTeacherOnboardingDismissRequest = {}) =>
+    http.post<PortfolioTeacherOnboardingStateVO>(`${BASE}/dismiss`, data),
+  getReviewContent: (data: PortfolioTeacherOnboardingGetStateRequest = {}) =>
     http.post<PortfolioTeacherOnboardingReviewContentVO>(`${BASE}/get-review-content`, data),
 }

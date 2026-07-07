@@ -84,6 +84,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
   (e: 'ok'): void
+  (e: 'confirm'): void
   (e: 'close'): void
 }>()
 const slots = useSlots()
@@ -96,6 +97,7 @@ const handleClose = () => {
 
 const handleOk = () => {
   emit('ok')
+  emit('confirm')
 }
 </script>
 

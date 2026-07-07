@@ -2,10 +2,7 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   AccreditationCycleVO,
-  AnnualReportMaterialCategory,
-  AnnualReportMaterialReviewStatus,
   AnnualReportMaterialSaveRequest,
-  AnnualReportMaterialStatus,
   AnnualReportMaterialVO,
 } from '@/apis/quality/accreditation'
 import { message } from 'ant-design-vue'
@@ -13,9 +10,14 @@ import { computed, reactive, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   accreditationApi,
-  ANNUAL_REPORT_MATERIAL_CATEGORY_LABEL,
-  ANNUAL_REPORT_MATERIAL_STATUS_LABEL,
+  ALL_ANNUAL_REPORT_MATERIAL_STATUS_CODES,
+  ANNUAL_REPORT_MATERIAL_CATEGORY_OPTIONS,
   ANNUAL_REPORT_MATERIAL_STATUS_TONE,
+  AnnualReportMaterialCategoryCode,
+  AnnualReportMaterialCategoryDescription,
+  AnnualReportMaterialReviewStatusCode,
+  AnnualReportMaterialStatusCode,
+  AnnualReportMaterialStatusDescription,
 } from '@/apis/quality/accreditation'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import { CourseSelector } from '@/components/quality/selectors'
@@ -31,7 +33,6 @@ import {
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const props = defineProps<{
@@ -43,20 +44,15 @@ const props = defineProps<{
 
 const emit = defineEmits<{ refresh: [] }>()
 
-const MATERIAL_CATEGORY_OPTIONS: { label: string, value: AnnualReportMaterialCategory }[]
-  = Object.entries(ANNUAL_REPORT_MATERIAL_CATEGORY_LABEL).map(([value, label]) => ({
-    label,
-    value: value as AnnualReportMaterialCategory,
+const MATERIAL_CATEGORY_OPTIONS = ANNUAL_REPORT_MATERIAL_CATEGORY_OPTIONS
+
+const MATERIAL_STATUS_OPTIONS: { label: string, value: AnnualReportMaterialStatusCode }[]
+  = ALL_ANNUAL_REPORT_MATERIAL_STATUS_CODES.map(value => ({
+    value,
+    label: AnnualReportMaterialStatusDescription[value],
   }))
 
-const MATERIAL_STATUS_OPTIONS: { label: string, value: AnnualReportMaterialStatus }[] = [
-  { label: '草稿', value: 'DRAFT' },
-  { label: '已提交', value: 'SUBMITTED' },
-  { label: '已通过', value: 'APPROVED' },
-  { label: '已退回', value: 'REJECTED' },
-]
-
-const COURSE_EVALUATION_MATERIAL: AnnualReportMaterialCategory = 'COURSE_QUALITY_EVALUATION'
+const COURSE_EVALUATION_MATERIAL = AnnualReportMaterialCategoryCode.COURSE_QUALITY_EVALUATION
 
 const columns: ColumnsType<AnnualReportMaterialVO> = [
   { title: '年度', dataIndex: 'reportYear', key: 'reportYear', width: 88 },
@@ -84,8 +80,8 @@ const query = reactive<{
   pageNum: number
   pageSize: number
   reportYear: string
-  materialCategory: AnnualReportMaterialCategory | undefined
-  reportStatus: AnnualReportMaterialStatus | undefined
+  materialCategory: AnnualReportMaterialCategoryCode | undefined
+  reportStatus: AnnualReportMaterialStatusCode | undefined
   keyword: string
 }>({
   pageNum: 1,
@@ -100,7 +96,7 @@ const form = reactive<AnnualReportMaterialSaveRequest>({
   accreditationCycleId: '',
   trainingPlanId: '',
   reportYear: '',
-  materialCategory: 'CONTINUOUS_IMPROVEMENT_REPORT',
+  materialCategory: AnnualReportMaterialCategoryCode.CONTINUOUS_IMPROVEMENT_REPORT,
   materialName: '',
   materialDescription: '',
   storageFileId: undefined,
@@ -108,11 +104,11 @@ const form = reactive<AnnualReportMaterialSaveRequest>({
 
 const reviewForm = reactive<{
   id: string
-  reviewStatus: AnnualReportMaterialReviewStatus
+  reviewStatus: AnnualReportMaterialReviewStatusCode
   reviewComment: string
 }>({
   id: '',
-  reviewStatus: 'APPROVED',
+  reviewStatus: AnnualReportMaterialReviewStatusCode.APPROVED,
   reviewComment: '',
 })
 
@@ -123,22 +119,24 @@ const canMutateMaterial = computed(() => canMutateAnnualReportMaterial(props.act
 function canEdit(record: AnnualReportMaterialVO) {
   return (
     canMutateMaterial.value
-    && (record.reportStatus === 'DRAFT' || record.reportStatus === 'REJECTED')
+    && (record.reportStatus === AnnualReportMaterialStatusCode.DRAFT
+      || record.reportStatus === AnnualReportMaterialStatusCode.REJECTED)
   )
 }
 
 function canSubmit(record: AnnualReportMaterialVO) {
   return (
     canMutateMaterial.value
-    && (record.reportStatus === 'DRAFT' || record.reportStatus === 'REJECTED')
+    && (record.reportStatus === AnnualReportMaterialStatusCode.DRAFT
+      || record.reportStatus === AnnualReportMaterialStatusCode.REJECTED)
   )
 }
 
 function canReview(record: AnnualReportMaterialVO) {
-  return canMutateMaterial.value && record.reportStatus === 'SUBMITTED'
+  return canMutateMaterial.value && record.reportStatus === AnnualReportMaterialStatusCode.SUBMITTED
 }
 
-function isCourseEvaluationMaterial(category?: AnnualReportMaterialCategory) {
+function isCourseEvaluationMaterial(category?: AnnualReportMaterialCategoryCode) {
   return category === COURSE_EVALUATION_MATERIAL
 }
 
@@ -170,10 +168,10 @@ async function loadMaterials() {
       pageNum: query.pageNum,
       pageSize: query.pageSize,
     })
-    materials.value = readPageList(page, '年度报备材料列表加载失败，请刷新后重试')
+    materials.value = page.list
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
-    total.value = readPageTotal(page)
+    total.value = Number(page.total)
     if (materials.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadMaterials()
@@ -190,7 +188,7 @@ function resetForm(accreditationCycleId: string) {
   form.accreditationCycleId = accreditationCycleId
   form.trainingPlanId = props.trainingPlanId
   form.reportYear = String(new Date().getFullYear())
-  form.materialCategory = 'CONTINUOUS_IMPROVEMENT_REPORT'
+  form.materialCategory = AnnualReportMaterialCategoryCode.CONTINUOUS_IMPROVEMENT_REPORT
   form.qualityCourseId = undefined
   form.materialName = ''
   form.materialDescription = ''
@@ -265,11 +263,22 @@ async function submitMaterial() {
   }
   saving.value = true
   try {
+    const request: AnnualReportMaterialSaveRequest = {
+      id: form.id,
+      accreditationCycleId: form.accreditationCycleId,
+      trainingPlanId: form.trainingPlanId,
+      reportYear: form.reportYear.trim(),
+      materialCategory: form.materialCategory,
+      qualityCourseId: form.qualityCourseId || undefined,
+      materialName: form.materialName.trim(),
+      materialDescription: form.materialDescription?.trim() || undefined,
+      storageFileId: form.storageFileId || undefined,
+    }
     if (form.id) {
-      await accreditationApi.annualReportMaterialUpdate(form)
+      await accreditationApi.annualReportMaterialUpdate(request)
       message.success('年度报备材料已更新')
     } else {
-      form.id = await accreditationApi.annualReportMaterialCreate(form)
+      form.id = await accreditationApi.annualReportMaterialCreate(request)
       message.success('年度报备材料已创建')
     }
     materialDrawerOpen.value = false
@@ -303,12 +312,14 @@ async function submitForReview(record: AnnualReportMaterialVO) {
   }
 }
 
-function openReview(record: AnnualReportMaterialVO, status: AnnualReportMaterialReviewStatus) {
+function openReview(record: AnnualReportMaterialVO, status: AnnualReportMaterialReviewStatusCode) {
   if (!canReview(record)) {
     message.error('仅已提交材料可审核')
     return
   }
-  reviewDrawerTitle.value = status === 'APPROVED' ? '审核通过年度报备材料' : '退回年度报备材料'
+  reviewDrawerTitle.value = status === AnnualReportMaterialReviewStatusCode.APPROVED
+    ? '审核通过年度报备材料'
+    : '退回年度报备材料'
   reviewForm.id = record.id
   reviewForm.reviewStatus = status
   reviewForm.reviewComment = record.reviewComment || ''
@@ -324,7 +335,7 @@ async function submitReview() {
     message.error('年度报备材料审核对象缺失，请关闭后重新打开')
     return
   }
-  if (reviewForm.reviewStatus === 'REJECTED' && !reviewForm.reviewComment.trim()) {
+  if (reviewForm.reviewStatus === AnnualReportMaterialReviewStatusCode.REJECTED && !reviewForm.reviewComment.trim()) {
     message.error('退回材料必须填写审核意见')
     return
   }
@@ -333,9 +344,9 @@ async function submitReview() {
     await accreditationApi.annualReportMaterialReview({
       id: reviewForm.id,
       reviewStatus: reviewForm.reviewStatus,
-      reviewComment: reviewForm.reviewComment || undefined,
+      reviewComment: reviewForm.reviewComment.trim() || undefined,
     })
-    message.success(reviewForm.reviewStatus === 'APPROVED' ? '材料已审核通过' : '材料已退回')
+    message.success(reviewForm.reviewStatus === AnnualReportMaterialReviewStatusCode.APPROVED ? '材料已审核通过' : '材料已退回')
     reviewDrawerOpen.value = false
     await loadMaterials()
     emit('refresh')
@@ -474,7 +485,7 @@ defineExpose({ loadMaterials, openCreate })
         <template v-else-if="column.key === 'materialCategory'">
           {{
             strictEnumLabel(
-              ANNUAL_REPORT_MATERIAL_CATEGORY_LABEL,
+              AnnualReportMaterialCategoryDescription,
               record.materialCategory,
               '年度报备材料类别',
             )
@@ -498,7 +509,7 @@ defineExpose({ loadMaterials, openCreate })
           >
             {{
               strictEnumLabel(
-                ANNUAL_REPORT_MATERIAL_STATUS_LABEL,
+                AnnualReportMaterialStatusDescription,
                 record.reportStatus,
                 '年度报备材料状态',
               )
@@ -529,7 +540,7 @@ defineExpose({ loadMaterials, openCreate })
             v-if="canReview(record)"
             size="sm"
             variant="primary"
-            @click="openReview(record, 'APPROVED')"
+            @click="openReview(record, AnnualReportMaterialReviewStatusCode.APPROVED)"
           >
             通过
           </UiButton>
@@ -538,7 +549,7 @@ defineExpose({ loadMaterials, openCreate })
             size="sm"
             status="danger"
             variant="ghost"
-            @click="openReview(record, 'REJECTED')"
+            @click="openReview(record, AnnualReportMaterialReviewStatusCode.REJECTED)"
           >
             退回
           </UiButton>
@@ -638,7 +649,7 @@ defineExpose({ loadMaterials, openCreate })
             <a-select-option value="REJECTED">退回</a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="审核意见" :required="reviewForm.reviewStatus === 'REJECTED'">
+        <a-form-item label="审核意见" :required="reviewForm.reviewStatus === AnnualReportMaterialReviewStatusCode.REJECTED">
           <a-textarea
             v-model:value="reviewForm.reviewComment"
             :rows="4"

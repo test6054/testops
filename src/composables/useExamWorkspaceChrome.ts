@@ -1,13 +1,14 @@
 import type { ComputedRef, Ref } from 'vue'
-import type { ExamDetailVO } from '@/apis/mark/exam'
-import type { MarkingProgressVO, WorkbenchStageSnapshotVO } from '@/apis/mark/exam-progress'
+import type { ExamDetailResponse } from '@/apis/mark/exam'
+import type { ExamWorkbenchStageSnapshotResponse, MarkingProgressResponse } from '@/apis/mark/exam-progress'
 import type { ExamJourneyKey } from '@/constants/exam-journey'
 import type { MarkStageKey } from '@/stores/modules/markStage'
 import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE, getExamDetail } from '@/apis/mark/exam'
+import { EXAM_STATUS_TONE, ExamStatusDescription, getExamDetail } from '@/apis/mark/exam'
 import { MARK_STAGE_TITLE } from '@/constants/mark-workspace-nav'
+import { MarkTeacherDashboardJourneyKeyCode } from '@/types/enums/mark-teacher-dashboard-journey-key-enum'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import {
@@ -20,7 +21,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 export interface UseExamWorkspaceChromeOptions {
   examId: ComputedRef<string>
-  snapshot: Ref<WorkbenchStageSnapshotVO | null>
+  snapshot: Ref<ExamWorkbenchStageSnapshotResponse | null>
   journeyStages: ComputedRef<WorkbenchStage[]>
   activeJourneyKey: ComputedRef<ExamJourneyKey | 'overview'>
   suggestedStageKey: ComputedRef<MarkStageKey | null | undefined>
@@ -32,10 +33,10 @@ export interface UseExamWorkspaceChromeOptions {
  */
 export function useExamWorkspaceChrome(options: UseExamWorkspaceChromeOptions) {
   const router = useRouter()
-  const examDetail = ref<ExamDetailVO | null>(null)
+  const examDetail = ref<ExamDetailResponse | null>(null)
   const detailLoading = ref(false)
 
-  const markingProgress = computed<MarkingProgressVO | null>(
+  const markingProgress = computed<MarkingProgressResponse | null>(
     () => options.snapshot.value?.markingProgress ?? null,
   )
 
@@ -71,12 +72,33 @@ export function useExamWorkspaceChrome(options: UseExamWorkspaceChromeOptions) {
     return parts.join(' · ')
   })
 
+  /** 侧栏考试信息副标题：课程与学年学期，不含编号（编号单独展示）。 */
+  const sidebarContextLine = computed(() => {
+    const detail = examDetail.value
+    const parts: string[] = []
+    if (detail?.courseName) {
+      parts.push(detail.courseName)
+    }
+    if (detail?.departmentName && !detail?.courseName) {
+      parts.push(detail.departmentName)
+    }
+    if (detail?.academicYear || detail?.semester) {
+      const term = [detail.academicYear, formatSemester(detail.semester)]
+        .filter(Boolean)
+        .join(' ')
+      if (term) {
+        parts.push(term)
+      }
+    }
+    return parts.join(' · ')
+  })
+
   const examStatusLabel = computed(() => {
     const status = options.snapshot.value?.examStatus ?? examDetail.value?.status
     if (!status) {
       return ''
     }
-    return strictEnumLabel(EXAM_STATUS_LABEL, status, '考试状态')
+    return strictEnumLabel(ExamStatusDescription, status, '考试状态')
   })
 
   const examStatusTone = computed(() => {
@@ -177,10 +199,10 @@ export function useExamWorkspaceChrome(options: UseExamWorkspaceChromeOptions) {
         navigateToMarkStage(router, 'SCAN', examId, scanOpts)
         break
       case 'gradable':
-        navigateToJourneyStep(router, 'scan', examId, scanOpts)
+        navigateToJourneyStep(router, MarkTeacherDashboardJourneyKeyCode.SCAN, examId, scanOpts)
         break
       case 'grade-rate':
-        navigateToJourneyStep(router, 'mark', examId, scanOpts)
+        navigateToJourneyStep(router, MarkTeacherDashboardJourneyKeyCode.MARK, examId, scanOpts)
         break
       case 'review-tasks':
         void router.push({ name: 'TeacherExamWorkspaceMarkingReview', params: { examId } })
@@ -190,11 +212,11 @@ export function useExamWorkspaceChrome(options: UseExamWorkspaceChromeOptions) {
         break
       case 'prep-done':
       case 'prep-block':
-        navigateToJourneyStep(router, 'prep', examId, scanOpts)
+        navigateToJourneyStep(router, MarkTeacherDashboardJourneyKeyCode.PREP, examId, scanOpts)
         break
       case 'org-pending':
       case 'org-ready':
-        navigateToJourneyStep(router, 'assign', examId, scanOpts)
+        navigateToJourneyStep(router, MarkTeacherDashboardJourneyKeyCode.ASSIGN, examId, scanOpts)
         break
       default:
         break
@@ -245,6 +267,7 @@ export function useExamWorkspaceChrome(options: UseExamWorkspaceChromeOptions) {
     markingProgress,
     contextTitle,
     contextSubtitle,
+    sidebarContextLine,
     examStatusLabel,
     examStatusTone,
     primaryActionLabel,

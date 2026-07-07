@@ -10,8 +10,11 @@
     flat
   >
     <template #bodyCell="{ column, record }">
-      <template v-if="column.key === 'academicTerm'">
-        {{ formatAcademicTerm(record) || '—' }}
+      <template v-if="column.key === 'academicYear'">
+        {{ record.academicYear || '—' }}
+      </template>
+      <template v-else-if="column.key === 'semester'">
+        {{ record.semester ? formatSemester(record.semester) : '—' }}
       </template>
       <template v-else-if="column.key === 'passRate'">
         {{ formatPassRate(record.passRate) }}
@@ -58,7 +61,8 @@ const emit = defineEmits<{
 
 const columns: TableColumnsType<MarkTeacherDashboardPublishedExamInsightItemVO> = [
   { title: '考试', dataIndex: 'examName', ellipsis: true, width: 160 },
-  { title: '学年学期', key: 'academicTerm', width: 120 },
+  { title: '学年', key: 'academicYear', width: 96 },
+  { title: '学期', key: 'semester', width: 88 },
   { title: '参考人数', dataIndex: 'participantCount', width: 80 },
   { title: '平均分', dataIndex: 'averageScore', width: 72 },
   { title: '分数段', key: 'scoreRange', width: 96 },
@@ -67,15 +71,8 @@ const columns: TableColumnsType<MarkTeacherDashboardPublishedExamInsightItemVO> 
   { title: '操作', key: 'actions', width: 72, fixed: 'right' },
 ]
 
-function formatAcademicTerm(record: MarkTeacherDashboardPublishedExamInsightItemVO): string {
-  if (!record.academicYear && !record.semester) return ''
-  return [record.academicYear, formatSemester(record.semester)].filter(Boolean).join(' · ')
-}
-
-function formatPassRate(value?: string): string {
-  if (value == null || value === '') return '—'
-  const rate = Number(value)
-  if (!Number.isFinite(rate)) return '—'
-  return `${(rate * 100).toFixed(1)}%`
+function formatPassRate(value?: number): string {
+  if (value == null) return '—'
+  return `${(value * 100).toFixed(1)}%`
 }
 </script>

@@ -1,0 +1,342 @@
+<script lang="ts" setup>
+import type { TableColumnsType } from 'ant-design-vue'
+import type { ExamWorkbenchMarkingProgressPanelResponse } from '@/apis/mark/exam-progress'
+import type {
+  FormalSessionResponse,
+  FormalSessionStatusCode,
+  TrialSessionResponse,
+  TrialSessionStatusCode,
+} from '@/apis/mark/marking-organization'
+import type { SignalMetric } from '@/types/workbench'
+import { ReloadOutlined, TableOutlined } from '@ant-design/icons-vue'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getMarkingProgressPanel } from '@/apis/mark/exam-progress'
+import {
+  FORMAL_SESSION_STATUS_TONE,
+  FormalSessionStatusDescription,
+  TRIAL_SESSION_STATUS_TONE,
+  TrialSessionStatusDescription,
+} from '@/apis/mark/marking-organization'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { showUserError } from '@/utils/error-handler'
+import { formatDateTime } from '@/utils/format'
+import {
+  resolveMarkingOrganizationIndexRoute,
+  resolveMarkingOrganizationSessionsRoute,
+} from '@/utils/marking-organization-navigation'
+
+defineOptions({ name: 'TeacherExamWorkspaceMarkingProgressDashboard' })
+
+const route = useRoute()
+const router = useRouter()
+const { examId } = useWorkspaceExamId()
+
+const isTrialPhase = computed(() => route.name === 'TeacherExamWorkspaceTrialProgress')
+const stageLabel = computed(() => (isTrialPhase.value ? '试评进度' : '进度看板'))
+const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar(stageLabel)
+
+const loading = ref(false)
+const loadFailed = ref(false)
+const panel = ref<ExamWorkbenchMarkingProgressPanelResponse | null>(null)
+
+const taskSummary = computed(() => panel.value?.markingTaskSummary ?? null)
+const progressPercent = computed(() => {
+  const summary = taskSummary.value
+  if (!summary || summary.totalTaskCount <= 0) return 0
+  return Math.round((summary.finalizedTaskCount * 100) / summary.totalTaskCount)
+})
+
+const signalMetrics = computed<SignalMetric[]>(() => {
+  const summary = taskSummary.value
+  if (!summary) {
+    return [{ key: 'total', label: '总任务', value: '—', tone: 'gray' }]
+  }
+  return [
+    { key: 'total', label: '总任务', value: summary.totalTaskCount, tone: 'blue' },
+    { key: 'done', label: '已完成', value: summary.finalizedTaskCount, tone: 'green' },
+    { key: 'pending', label: '待完成', value: summary.pendingTaskCount, tone: 'orange' },
+    { key: 'recycled', label: '已回收', value: summary.recycledTaskCount, tone: 'gray' },
+  ]
+})
+
+const sessionRows = computed(() => {
+  if (!panel.value) return []
+  return isTrialPhase.value ? panel.value.trialSessions : panel.value.formalSessions
+})
+
+const formalColumns: TableColumnsType<FormalSessionResponse> = [
+  { title: '题组', dataIndex: 'groupName', key: 'groupName', width: 160 },
+  { title: '状态', key: 'status', width: 120 },
+  { title: '总任务', dataIndex: 'totalTaskCount', key: 'totalTaskCount', width: 88, align: 'right' },
+  { title: '已完成', dataIndex: 'finalizedTaskCount', key: 'finalizedTaskCount', width: 88, align: 'right' },
+  { title: '进度', key: 'progress', width: 180 },
+  { title: '创建时间', key: 'createTime', width: 168 },
+  { title: '操作', key: 'action', width: 100 },
+]
+
+const trialColumns: TableColumnsType<TrialSessionResponse> = [
+  { title: '题组', dataIndex: 'groupName', key: 'groupName', width: 160 },
+  { title: '状态', key: 'status', width: 120 },
+  { title: '样卷数', dataIndex: 'totalTaskCount', key: 'totalTaskCount', width: 88, align: 'right' },
+  { title: '已完成', dataIndex: 'finalizedTaskCount', key: 'finalizedTaskCount', width: 88, align: 'right' },
+  { title: '进度', key: 'progress', width: 180 },
+  { title: '校准结论', dataIndex: 'calibrationSummary', key: 'calibrationSummary', ellipsis: true },
+  { title: '关闭时间', key: 'closeTime', width: 168 },
+  { title: '操作', key: 'action', width: 100 },
+]
+
+function trialSessionStatusTone(status: TrialSessionStatusCode) {
+  return TRIAL_SESSION_STATUS_TONE[status]
+}
+
+function trialSessionStatusLabel(status: TrialSessionStatusCode) {
+  return TrialSessionStatusDescription[status]
+}
+
+function formalSessionStatusTone(status: FormalSessionStatusCode) {
+  return FORMAL_SESSION_STATUS_TONE[status]
+}
+
+function formalSessionStatusLabel(status: FormalSessionStatusCode) {
+  return FormalSessionStatusDescription[status]
+}
+
+function sessionProgressPercent(total: number, finalized: number): number {
+  if (total <= 0) return 0
+  return Math.round((finalized * 100) / total)
+}
+
+async function loadPanel() {
+  if (!examId.value) {
+    panel.value = null
+    return
+  }
+  loading.value = true
+  loadFailed.value = false
+  try {
+    panel.value = await getMarkingProgressPanel(examId.value)
+  } catch (error) {
+    panel.value = null
+    loadFailed.value = true
+    showUserError(error, '加载阅卷进度失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+function goTaskPool() {
+  if (!examId.value) return
+  router.push({
+    name: isTrialPhase.value ? 'TeacherExamWorkspaceTrialTaskPool' : 'TeacherExamWorkspaceMarkingTaskPool',
+    params: { examId: examId.value },
+  })
+}
+
+function goMarkingOrg() {
+  if (!examId.value) return
+  router.push(resolveMarkingOrganizationIndexRoute(examId.value))
+}
+
+function goSessionManage(record: FormalSessionResponse | TrialSessionResponse) {
+  if (!examId.value || !record.organizationId) return
+  router.push(resolveMarkingOrganizationSessionsRoute(record.organizationId, examId.value))
+}
+
+function goSessionsPage(organizationId: string) {
+  if (!examId.value) return
+  router.push(resolveMarkingOrganizationSessionsRoute(organizationId, examId.value))
+}
+
+watch(examId, () => loadPanel(), { immediate: true })
+</script>
+
+<template>
+  <StageWorkbenchShell class="marking-progress-dash">
+    <template v-if="examId" #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        :title="contextBarTitle"
+        :subtitle="contextBarSubtitle"
+      >
+        <template #status>
+          <UiTag :tone="progressPercent >= 100 ? 'green' : 'blue'" size="sm">
+            任务完成 {{ progressPercent }}%
+          </UiTag>
+        </template>
+        <template #actions>
+          <UiButton variant="outline" size="sm" @click="goTaskPool">
+            {{ isTrialPhase ? '试评任务池' : '阅卷任务池' }}
+          </UiButton>
+          <UiButton variant="outline" size="sm" :loading="loading" @click="loadPanel">
+            <template #icon><ReloadOutlined /></template>
+            刷新
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
+
+    <template v-if="examId && panel" #signal>
+      <SignalBand variant="tiles" compact :metrics="signalMetrics" />
+    </template>
+
+    <UiEmpty v-if="!examId" description="请选择考试" class="marking-progress-dash__empty" />
+
+    <UiEmpty
+      v-else-if="loadFailed"
+      description="阅卷进度加载失败"
+      action-label="重试"
+      class="marking-progress-dash__empty"
+      @action="loadPanel"
+    />
+
+    <UiSkeletonState v-else-if="loading && !panel" variant="card" compact />
+
+    <UiEmpty v-else-if="!panel" description="暂无进度数据" class="marking-progress-dash__empty" />
+
+    <template v-else>
+      <ExamWorkspaceJourneySubNav />
+
+      <UiEmpty
+        v-if="!panel.markingOrgConfigured"
+        description="阅卷组织尚未配置完成"
+        class="marking-progress-dash__empty"
+      >
+        <template #extra>
+          <UiButton variant="primary" size="sm" @click="goMarkingOrg">前往阅卷设置</UiButton>
+        </template>
+      </UiEmpty>
+
+      <WorkbenchSurfaceCard v-else flush class="marking-progress-dash__table-card">
+        <template #head>
+          <div class="marking-progress-dash__head">
+            <TableOutlined />
+            <span>{{ isTrialPhase ? '试评会话' : '正评会话' }}</span>
+          </div>
+        </template>
+        <template #toolbar>
+          <UiButton
+            v-if="panel.organizationId"
+            variant="ghost"
+            size="sm"
+            @click="goSessionsPage(panel.organizationId)"
+          >
+            会话管理
+          </UiButton>
+        </template>
+
+        <UiDataTable
+          v-if="isTrialPhase"
+          pagination-mode="none"
+          :columns="trialColumns"
+          :data-source="sessionRows as TrialSessionResponse[]"
+          :loading="loading"
+          :show-pagination="false"
+          flat
+          :total="sessionRows.length"
+          row-key="id"
+          size="middle"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'status'">
+              <UiTag :tone="trialSessionStatusTone(record.sessionStatus)" size="sm">
+                {{ trialSessionStatusLabel(record.sessionStatus) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'progress'">
+              <a-progress
+                :percent="sessionProgressPercent(record.totalTaskCount, record.finalizedTaskCount)"
+                size="small"
+                :stroke-color="record.finalizedTaskCount >= record.totalTaskCount && record.totalTaskCount > 0 ? '#52c41a' : '#1677ff'"
+              />
+            </template>
+            <template v-else-if="column.key === 'closeTime'">
+              <span class="marking-progress-dash__mono">{{ formatDateTime(record.closeTime) || '—' }}</span>
+            </template>
+            <template v-else-if="column.key === 'action'">
+              <UiButton variant="ghost" size="sm" @click="goSessionManage(record)">管理</UiButton>
+            </template>
+          </template>
+        </UiDataTable>
+
+        <UiDataTable
+          v-else
+          pagination-mode="none"
+          :columns="formalColumns"
+          :data-source="sessionRows as FormalSessionResponse[]"
+          :loading="loading"
+          :show-pagination="false"
+          flat
+          :total="sessionRows.length"
+          row-key="id"
+          size="middle"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'status'">
+              <UiTag :tone="formalSessionStatusTone(record.sessionStatus)" size="sm">
+                {{ formalSessionStatusLabel(record.sessionStatus) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'progress'">
+              <a-progress
+                :percent="sessionProgressPercent(record.totalTaskCount, record.finalizedTaskCount)"
+                size="small"
+                :stroke-color="record.finalizedTaskCount >= record.totalTaskCount && record.totalTaskCount > 0 ? '#52c41a' : '#1677ff'"
+              />
+            </template>
+            <template v-else-if="column.key === 'createTime'">
+              <span class="marking-progress-dash__mono">{{ formatDateTime(record.createTime) || '—' }}</span>
+            </template>
+            <template v-else-if="column.key === 'action'">
+              <UiButton variant="ghost" size="sm" @click="goSessionManage(record)">管理</UiButton>
+            </template>
+          </template>
+        </UiDataTable>
+
+        <UiEmpty
+          v-if="!sessionRows.length"
+          :description="isTrialPhase ? '暂无试评会话' : '暂无正评会话'"
+          class="marking-progress-dash__table-empty"
+        >
+          <template #extra>
+            <UiButton variant="primary" size="sm" @click="goMarkingOrg">创建会话</UiButton>
+          </template>
+        </UiEmpty>
+      </WorkbenchSurfaceCard>
+    </template>
+  </StageWorkbenchShell>
+</template>
+
+<style scoped>
+.marking-progress-dash__empty {
+  margin-top: 48px;
+}
+
+.marking-progress-dash__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.marking-progress-dash__mono {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+}
+
+.marking-progress-dash__table-empty {
+  padding: 24px 0;
+}
+</style>

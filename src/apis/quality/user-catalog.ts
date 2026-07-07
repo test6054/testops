@@ -38,8 +38,8 @@ export interface MajorVO {
   majorName: string
   departmentId?: string
   departmentName?: string
+  tenantId?: string
   description?: string
-  status?: string
   createTime?: string
   updateTime?: string
 }
@@ -91,6 +91,19 @@ export interface TeacherUserInfoDto {
   status?: string
 }
 
+export interface ManagedClassDto {
+  classId: string
+  className: string
+  relationType?: string
+  studentCount?: number
+}
+
+export interface TaughtCourseDto {
+  courseId: string
+  courseName: string
+  courseCode?: string
+}
+
 /** 批量教师详情（用于选择器回显） */
 export interface TeacherDetailsDto {
   id: string
@@ -101,7 +114,18 @@ export interface TeacherDetailsDto {
   teacherNumber?: string
   department?: string
   title?: string
+  schoolId?: string
+  schoolName?: string
+  departmentId?: string
+  departmentName?: string
+  role?: string
   status?: string
+  createTime?: string
+  studentCount?: number
+  classCount?: number
+  teacherDetailId?: string
+  managedClasses?: ManagedClassDto[]
+  taughtCourses?: TaughtCourseDto[]
 }
 
 export interface TeacherQueryRequest extends QueryDto {
@@ -110,6 +134,7 @@ export interface TeacherQueryRequest extends QueryDto {
   status?: string
   roleKey?: string
   schoolId?: string
+  title?: string
 }
 
 /* ========== API 实现 ========== */

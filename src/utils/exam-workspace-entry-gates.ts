@@ -1,16 +1,17 @@
 import type {
-  MarkingProgressVO,
-  WorkbenchNextActionKeyCode,
-  WorkbenchNextActionVO,
+  ExamWorkbenchNextActionResponse,
+  MarkingProgressResponse,
 } from '@/apis/mark/exam-progress'
 import type { ExamJourneyKey } from '@/constants/exam-journey'
 import type { MarkStageKey } from '@/stores/modules/markStage'
+import { WorkbenchNextActionKeyCode } from '@/apis/mark/exam-progress'
+import { MarkTeacherDashboardJourneyKeyCode } from '@/types/enums/mark-teacher-dashboard-journey-key-enum'
 import { resolveScanStageEntryRouteName } from '@/utils/resolve-scan-stage-entry'
 
 const NEXT_ACTION_ROUTE: Record<WorkbenchNextActionKeyCode, string> = {
-  START_SCAN: 'TeacherExamWorkspaceScanBatches',
-  ENTER_REVIEW: 'TeacherExamWorkspaceReviewBatchConfirm',
-  ENTER_MARKING: 'TeacherExamWorkspaceMarkingTaskPool',
+  [WorkbenchNextActionKeyCode.START_SCAN]: 'TeacherExamWorkspaceScanBatches',
+  [WorkbenchNextActionKeyCode.ENTER_REVIEW]: 'TeacherExamWorkspaceReviewBatchConfirm',
+  [WorkbenchNextActionKeyCode.ENTER_MARKING]: 'TeacherExamWorkspaceMarkingTaskPool',
 }
 
 /** 是否存在扫描登记硬阻断 */
@@ -19,9 +20,9 @@ export function hasPrepHardBlocking(prepBlockingReasons: string[] | null | undef
 }
 
 export function findWorkbenchNextAction(
-  nextActions: WorkbenchNextActionVO[] | null | undefined,
+  nextActions: ExamWorkbenchNextActionResponse[] | null | undefined,
   actionKey: WorkbenchNextActionKeyCode,
-): WorkbenchNextActionVO | undefined {
+): ExamWorkbenchNextActionResponse | undefined {
   return nextActions?.find((item) => item.actionKey === actionKey)
 }
 
@@ -30,9 +31,9 @@ export function findWorkbenchNextAction(
  */
 export function canStartScanRegistration(
   prepBlockingReasons: string[] | null | undefined,
-  nextActions?: WorkbenchNextActionVO[] | null,
+  nextActions?: ExamWorkbenchNextActionResponse[] | null,
 ): boolean {
-  const action = findWorkbenchNextAction(nextActions, 'START_SCAN')
+  const action = findWorkbenchNextAction(nextActions, WorkbenchNextActionKeyCode.START_SCAN)
   if (action) {
     return action.enabled
   }
@@ -41,10 +42,10 @@ export function canStartScanRegistration(
 
 /** 是否允许进入批量复核：消费后端 nextActions.ENTER_REVIEW */
 export function canEnterReviewBatch(
-  nextActions?: WorkbenchNextActionVO[] | null,
-  progress?: MarkingProgressVO | null,
+  nextActions?: ExamWorkbenchNextActionResponse[] | null,
+  progress?: MarkingProgressResponse | null,
 ): boolean {
-  const action = findWorkbenchNextAction(nextActions, 'ENTER_REVIEW')
+  const action = findWorkbenchNextAction(nextActions, WorkbenchNextActionKeyCode.ENTER_REVIEW)
   if (action) {
     return action.enabled
   }
@@ -60,7 +61,7 @@ export function canEnterReviewBatch(
 }
 
 export function resolveNextActionDisabledReason(
-  nextActions: WorkbenchNextActionVO[] | null | undefined,
+  nextActions: ExamWorkbenchNextActionResponse[] | null | undefined,
   actionKey: WorkbenchNextActionKeyCode,
 ): string | undefined {
   const action = findWorkbenchNextAction(nextActions, actionKey)
@@ -72,9 +73,9 @@ export function resolveNextActionDisabledReason(
 
 /** 首个 enabled 的 nextAction；若传入 suggestedStageKey 则优先匹配目标阶段对应动作。 */
 export function resolvePrimaryEnabledNextAction(
-  nextActions: WorkbenchNextActionVO[] | null | undefined,
+  nextActions: ExamWorkbenchNextActionResponse[] | null | undefined,
   suggestedStageKey?: MarkStageKey | null,
-): WorkbenchNextActionVO | undefined {
+): ExamWorkbenchNextActionResponse | undefined {
   if (!nextActions?.length) {
     return undefined
   }
@@ -94,7 +95,7 @@ export function resolveNextActionRouteName(
   examId?: string,
   scanAttentionCount?: number,
 ): string {
-  if (actionKey === 'START_SCAN' && examId) {
+  if (actionKey === WorkbenchNextActionKeyCode.START_SCAN && examId) {
     return resolveScanStageEntryRouteName({ scanAttentionCount })
   }
   return NEXT_ACTION_ROUTE[actionKey]
@@ -153,6 +154,13 @@ export function resolveSmartExamEntryRouteName(exam: {
 }
 
 export function resolveJourneyIndex(journeyKey: ExamJourneyKey): number {
-  const order: ExamJourneyKey[] = ['prep', 'scan', 'assign', 'mark', 'publish', 'archive']
+  const order: ExamJourneyKey[] = [
+    MarkTeacherDashboardJourneyKeyCode.PREP,
+    MarkTeacherDashboardJourneyKeyCode.SCAN,
+    MarkTeacherDashboardJourneyKeyCode.ASSIGN,
+    MarkTeacherDashboardJourneyKeyCode.MARK,
+    MarkTeacherDashboardJourneyKeyCode.PUBLISH,
+    MarkTeacherDashboardJourneyKeyCode.ARCHIVE,
+  ]
   return order.indexOf(journeyKey)
 }

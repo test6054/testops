@@ -1,10 +1,11 @@
 <template>
-  <a-modal
+  <UiDialog
     :open="open"
     title="处置重复影像"
+    :width="600"
     :confirm-loading="submitting"
     :mask-closable="false"
-    width="600px"
+    ok-text="提交"
     @update:open="$emit('update:open', $event)"
     @ok="handleOk"
   >
@@ -28,7 +29,7 @@
         <a-textarea v-model:value="resolutionReason" :rows="3" :max-length="200" show-count />
       </a-form-item>
     </a-form>
-  </a-modal>
+  </UiDialog>
 </template>
 
 <script lang="ts" setup>
@@ -36,6 +37,7 @@ import type { ExamPaperDuplicateResolutionVO } from '@/apis/mark/image-ledger'
 import message from 'ant-design-vue/es/message'
 import { ref, watch } from 'vue'
 import { resolveDuplicate } from '@/apis/mark/image-ledger'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'DuplicateResolveModal' })

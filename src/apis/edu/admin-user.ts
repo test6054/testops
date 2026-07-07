@@ -329,7 +329,7 @@ export function adminUpdateUser(data: AdminUpdateUserRequest): Promise<void> {
  */
 export function adminGetUserPage(
   data: UserQueryDto,
-  config?: Partial<ExtendedAxiosRequestConfig>,
+  config?: ExtendedAxiosRequestConfig,
 ): Promise<PageResult<UserListItemDto>> {
   return http.post<PageResult<UserListItemDto>>('/api/admin/users/page', data, config)
 }

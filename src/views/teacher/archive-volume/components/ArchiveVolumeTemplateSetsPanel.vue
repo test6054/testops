@@ -8,109 +8,114 @@
       dense
     />
 
-    <a-tabs v-model:active-key="activeScopeTab" class="archive-template-sets-panel__tabs">
-      <a-tab-pane key="PLATFORM" tab="平台模板（只读）">
-        <UiFormSection>
-          <UiDataTable
-            pagination-mode="none"
-            :columns="platformColumns"
-            :data-source="platformSets"
-            :loading="templateSetsLoading"
-            :show-pagination="false"
-            flat
-            row-key="templateSetCode"
-            size="middle"
-            empty-description="暂无平台模板套"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'templateScope'">
-                <UiTag :tone="archiveTemplateScopeTone(record.templateScope)" size="sm">
-                  {{ archiveTemplateScopeLabel(record.templateScope) }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'examForm'">
-                {{ examFormLabel(record.examForm) }}
-              </template>
-              <template v-else-if="column.key === 'releaseTag'">
-                <UiTag v-if="record.releaseTag" tone="blue" size="sm">{{ record.releaseTag }}</UiTag>
-                <span v-else>—</span>
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <UiTextAction tone="primary" @click="openPlatformTemplate(record)">
-                  {{ findTenantSetByPlatformSource(record.templateSetCode) ? '编辑' : '预览' }}
-                </UiTextAction>
-                <UiTextAction
-                  v-if="canManageConfig && !findTenantSetByPlatformSource(record.templateSetCode)"
-                  tone="primary"
-                  @click="openCopyModal(record)"
-                >
-                  复制到本校
-                </UiTextAction>
-              </template>
-            </template>
-          </UiDataTable>
-          <UiFormActions v-if="canManageConfig" align="between">
-            <div class="archive-template-sets-panel__copy-all">
-              <span class="archive-template-sets-panel__copy-all-label">目标前缀</span>
-              <a-input
-                v-model:value="copyAllPrefix"
-                placeholder="如 DEFAULT_"
-                style="width: 160px"
-                :disabled="copyAllLoading"
-              />
-              <a-checkbox v-model:checked="copyAllOverride">覆盖已存在</a-checkbox>
-            </div>
-            <UiButton size="sm" variant="primary" :loading="copyAllLoading" @click="submitCopyAll">
-              一键复制全部模板
-            </UiButton>
-          </UiFormActions>
-        </UiFormSection>
-      </a-tab-pane>
+    <UiSectionTabs
+      v-model="activeScopeTab"
+      :items="scopeTabItems"
+      compact
+      class="archive-template-sets-panel__tabs"
+    />
 
-      <a-tab-pane key="TENANT" tab="本校模板（可维护）">
-        <UiFormSection>
-          <UiDataTable
-            pagination-mode="none"
-            :columns="tenantColumns"
-            :data-source="tenantSets"
-            :loading="templateSetsLoading"
-            :show-pagination="false"
-            flat
-            row-key="templateSetCode"
-            size="middle"
-            empty-description="尚未复制任何模板集，请从平台模板复制"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'templateScope'">
-                <UiTag :tone="archiveTemplateScopeTone(record.templateScope)" size="sm">
-                  {{ archiveTemplateScopeLabel(record.templateScope) }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'examForm'">
-                {{ examFormLabel(record.examForm) }}
-              </template>
-              <template v-else-if="column.key === 'release'">
-                <span v-if="record.forkSourceReleaseTag" class="archive-template-sets-panel__release">
-                  {{ record.forkSourceReleaseTag }}
-                </span>
-                <span v-else>—</span>
-                <UiTag v-if="canResyncTenantSet(record)" tone="orange" size="sm">可重新同步</UiTag>
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <UiTextAction v-if="canManageConfig" tone="primary" @click.stop="openEditDrawer(record.templateSetCode)">编辑</UiTextAction>
-                <UiTextAction
-                  v-if="canManageConfig && canResyncTenantSet(record)"
-                  tone="primary"
-                  @click.stop="openResyncModal(record)"
-                >
-                  重新同步
-                </UiTextAction>
-              </template>
+    <section v-if="activeScopeTab === 'PLATFORM'" class="archive-template-sets-panel__section">
+      <WorkbenchSurfaceCard flush>
+        <UiDataTable
+          pagination-mode="none"
+          :columns="platformColumns"
+          :data-source="platformSets"
+          :loading="templateSetsLoading"
+          :show-pagination="false"
+          flat
+          row-key="templateSetCode"
+          size="middle"
+          empty-description="暂无平台模板套"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'templateScope'">
+              <UiTag :tone="archiveTemplateScopeTone(record.templateScope)" size="sm">
+                {{ archiveTemplateScopeLabel(record.templateScope) }}
+              </UiTag>
             </template>
-          </UiDataTable>
-        </UiFormSection>
-      </a-tab-pane>
-    </a-tabs>
+            <template v-else-if="column.key === 'examForm'">
+              {{ examFormLabel(record.examForm) }}
+            </template>
+            <template v-else-if="column.key === 'releaseTag'">
+              <UiTag v-if="record.releaseTag" tone="blue" size="sm">{{ record.releaseTag }}</UiTag>
+              <span v-else>—</span>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiTextAction tone="primary" @click="openPlatformTemplate(record)">
+                {{ findTenantSetByPlatformSource(record.templateSetCode) ? '编辑' : '预览' }}
+              </UiTextAction>
+              <UiTextAction
+                v-if="canManageConfig && !findTenantSetByPlatformSource(record.templateSetCode)"
+                tone="primary"
+                @click="openCopyModal(record)"
+              >
+                复制到本校
+              </UiTextAction>
+            </template>
+          </template>
+        </UiDataTable>
+        <div v-if="canManageConfig" class="archive-template-sets-panel__copy-bar">
+          <div class="archive-template-sets-panel__copy-all">
+            <span class="archive-template-sets-panel__copy-all-label">目标前缀</span>
+            <a-input
+              v-model:value="copyAllPrefix"
+              placeholder="如 DEFAULT_"
+              style="width: 160px"
+              :disabled="copyAllLoading"
+            />
+            <a-checkbox v-model:checked="copyAllOverride">覆盖已存在</a-checkbox>
+          </div>
+          <UiButton size="sm" variant="primary" :loading="copyAllLoading" @click="submitCopyAll">
+            一键复制全部模板
+          </UiButton>
+        </div>
+      </WorkbenchSurfaceCard>
+    </section>
+
+    <section v-else class="archive-template-sets-panel__section">
+      <WorkbenchSurfaceCard flush>
+        <UiDataTable
+          pagination-mode="none"
+          :columns="tenantColumns"
+          :data-source="tenantSets"
+          :loading="templateSetsLoading"
+          :show-pagination="false"
+          flat
+          row-key="templateSetCode"
+          size="middle"
+          empty-description="尚未复制任何模板集，请从平台模板复制"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'templateScope'">
+              <UiTag :tone="archiveTemplateScopeTone(record.templateScope)" size="sm">
+                {{ archiveTemplateScopeLabel(record.templateScope) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'examForm'">
+              {{ examFormLabel(record.examForm) }}
+            </template>
+            <template v-else-if="column.key === 'release'">
+              <span v-if="record.forkSourceReleaseTag" class="archive-template-sets-panel__release">
+                {{ record.forkSourceReleaseTag }}
+              </span>
+              <span v-else>—</span>
+              <UiTag v-if="canResyncTenantSet(record)" tone="orange" size="sm">可重新同步</UiTag>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiTextAction v-if="canManageConfig" tone="primary" @click.stop="openEditDrawer(record.templateSetCode)">编辑</UiTextAction>
+              <UiTextAction
+                v-if="canManageConfig && canResyncTenantSet(record)"
+                tone="primary"
+                @click.stop="openResyncModal(record)"
+              >
+                重新同步
+              </UiTextAction>
+            </template>
+          </template>
+        </UiDataTable>
+      </WorkbenchSurfaceCard>
+    </section>
 
     <ArchiveTemplateSetEditorDrawer
       v-model:open="editorDrawerOpen"
@@ -148,48 +153,52 @@
       </template>
     </ArchiveTemplateSetEditorDrawer>
 
-    <a-modal
-      v-model:open="previewOpen"
+    <UiDrawer
+      :open="previewOpen"
       :title="previewTitle"
-      width="720px"
-      :footer="null"
+      :width="720"
+      hide-footer
+      @update:open="(v: boolean) => (previewOpen = v)"
+      @close="previewOpen = false"
     >
-      <a-spin :spinning="previewLoading">
-        <template v-if="previewData">
-          <p v-if="previewData.templateSet.description" class="archive-template-sets-panel__preview-desc">
-            {{ previewData.templateSet.description }}
-          </p>
-          <h4 class="archive-template-sets-panel__subsection">材料目录（{{ previewData.materialItems.length }} 项）</h4>
-          <div
-            v-for="group in previewGroupedMaterials"
-            :key="group.groupName"
-            class="archive-template-sets-panel__preview-group"
-          >
-            <div class="archive-template-sets-panel__group-title">{{ group.groupName }}</div>
-            <ul class="archive-template-sets-panel__preview-list">
-              <li v-for="item in group.items" :key="`${item.materialType}-${item.catalogCode}`">
-                {{ item.catalogName }}
-                <UiTag v-if="item.requiredFlag" tone="orange" size="sm">建议必交</UiTag>
-              </li>
-            </ul>
-          </div>
-          <h4 class="archive-template-sets-panel__subsection">自查项（{{ previewData.selfCheckItems.length }} 项）</h4>
+      <UiSkeletonState v-if="previewLoading" variant="card" compact />
+      <template v-else-if="previewData">
+        <p v-if="previewData.templateSet.description" class="archive-template-sets-panel__preview-desc">
+          {{ previewData.templateSet.description }}
+        </p>
+        <h4 class="archive-template-sets-panel__subsection">材料目录（{{ previewData.materialItems.length }} 项）</h4>
+        <div
+          v-for="group in previewGroupedMaterials"
+          :key="group.groupName"
+          class="archive-template-sets-panel__preview-group"
+        >
+          <div class="archive-template-sets-panel__group-title">{{ group.groupName }}</div>
           <ul class="archive-template-sets-panel__preview-list">
-            <li v-for="(item, index) in previewData.selfCheckItems" :key="index">
-              {{ item.itemText }}
+            <li v-for="item in group.items" :key="`${item.materialType}-${item.catalogCode}`">
+              {{ item.catalogName }}
+              <UiTag v-if="item.requiredFlag" tone="orange" size="sm">建议必交</UiTag>
             </li>
           </ul>
-        </template>
-      </a-spin>
-    </a-modal>
+        </div>
+        <h4 class="archive-template-sets-panel__subsection">自查项（{{ previewData.selfCheckItems.length }} 项）</h4>
+        <ul class="archive-template-sets-panel__preview-list">
+          <li v-for="(item, index) in previewData.selfCheckItems" :key="index">
+            {{ item.itemText }}
+          </li>
+        </ul>
+      </template>
+    </UiDrawer>
 
-    <a-modal
-      v-model:open="copyOpen"
+    <UiDrawer
+      :open="copyOpen"
       title="复制平台模板到本校"
+      :width="520"
       :confirm-loading="copyLoading"
       ok-text="确认复制"
-      cancel-text="取消"
-      @ok="submitCopy"
+      :hide-footer="false"
+      @update:open="(v: boolean) => (copyOpen = v)"
+      @close="copyOpen = false"
+      @confirm="submitCopy"
     >
       <a-form layout="vertical">
         <a-form-item label="平台模板套">
@@ -202,16 +211,15 @@
           <a-checkbox v-model:checked="copyOverride">覆盖已存在的同名套</a-checkbox>
         </a-form-item>
       </a-form>
-    </a-modal>
+    </UiDrawer>
 
-    <a-modal
-      v-model:open="resyncOpen"
+    <UiDrawer
+      :open="resyncOpen"
       title="重新同步平台模板"
-      :confirm-loading="resyncLoading"
-      ok-text="确认同步"
-      cancel-text="取消"
-      :ok-button-props="{ disabled: !canSubmitResync }"
-      @ok="submitResync"
+      :width="520"
+      :hide-footer="false"
+      @update:open="(v: boolean) => (resyncOpen = v)"
+      @close="resyncOpen = false"
     >
       <UiAlertStrip
         tone="warning"
@@ -231,21 +239,30 @@
           />
         </a-form-item>
       </a-form>
-    </a-modal>
+      <template #footer>
+        <UiButton variant="outline" @click="resyncOpen = false">取消</UiButton>
+        <UiButton :loading="resyncLoading" :disabled="!canSubmitResync" @click="submitResync">
+          确认同步
+        </UiButton>
+      </template>
+    </UiDrawer>
   </div>
 </template>
 
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  ArchivePlatformMaterialItemVO,
-  ArchivePlatformTemplatePreviewVO,
-  ArchiveTemplateMaterialEditRow, ArchiveTemplateSelfCheckEditRow, ArchiveTenantTemplateSetVO
+  ArchivePlatformMaterialItemResponse,
+  ArchivePlatformTemplatePreviewResponse,
+  ArchiveTenantTemplateSetResponse,
 } from '@/apis/mark/archive-platform-template'
-import type { ArchiveTemplateScopeCode } from '@/apis/mark/archive-template-scope'
 import type {
   ArchiveExamFormCode,
 } from '@/apis/mark/archive-volume'
+import type {
+  ArchiveTemplateMaterialEditRow,
+  ArchiveTemplateSelfCheckEditRow,
+} from '@/views/teacher/archive-volume/components/archive-template-editor-types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
@@ -258,19 +275,22 @@ import {
   saveArchiveTenantTemplateSet,
 } from '@/apis/mark/archive-platform-template'
 import {
+  ArchiveTemplateScopeCode,
   archiveTemplateScopeLabel,
   archiveTemplateScopeTone,
 } from '@/apis/mark/archive-template-scope'
 import {
-  ARCHIVE_EXAM_FORM_LABEL,
+  ArchiveExamFormDescription,
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiFormActions from '@/components/ui-guide/ui/UiFormActions.vue'
-import UiFormSection from '@/components/ui-guide/ui/UiFormSection.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -280,8 +300,12 @@ defineOptions({ name: 'ArchiveVolumeTemplateSetsPanel' })
 
 const { canManageConfig, loadGrants } = useArchiveDutyAccess()
 
-const activeScopeTab = ref<ArchiveTemplateScopeCode>('PLATFORM')
-const templateSets = ref<ArchiveTenantTemplateSetVO[]>([])
+const activeScopeTab = ref<ArchiveTemplateScopeCode>(ArchiveTemplateScopeCode.PLATFORM)
+const scopeTabItems = [
+  { key: ArchiveTemplateScopeCode.PLATFORM, label: '平台模板（只读）' },
+  { key: ArchiveTemplateScopeCode.TENANT, label: '本校模板（可维护）' },
+]
+const templateSets = ref<ArchiveTenantTemplateSetResponse[]>([])
 const templateSetsLoading = ref(false)
 const platformSets = computed(() => templateSets.value.filter(item => item.templateScope === 'PLATFORM'))
 const tenantSets = computed(() => templateSets.value.filter(item => item.templateScope === 'TENANT'))
@@ -301,19 +325,24 @@ const copyOverride = ref(false)
 const resyncConfirmCode = ref('')
 const selectedSetCode = ref('')
 const editorDrawerOpen = ref(false)
-const copySource = ref<ArchiveTenantTemplateSetVO | null>(null)
-const resyncTarget = ref<ArchiveTenantTemplateSetVO | null>(null)
-const previewData = ref<ArchivePlatformTemplatePreviewVO | null>(null)
+const copySource = ref<ArchiveTenantTemplateSetResponse | null>(null)
+const resyncTarget = ref<ArchiveTenantTemplateSetResponse | null>(null)
+const previewData = ref<ArchivePlatformTemplatePreviewResponse | null>(null)
 const categoryGroupMap = ref<Map<string, string>>(new Map())
 const materialRows = ref<ArchiveTemplateMaterialEditRow[]>([])
 const selfCheckRows = ref<ArchiveTemplateSelfCheckEditRow[]>([])
-const editorMeta = reactive({
+interface ArchiveVolumeTemplateEditorMeta {
+  templateSetName: string
+  examForm?: ArchiveExamFormCode
+  forkSourceSetCode?: string
+}
+
+const editorMeta = reactive<ArchiveVolumeTemplateEditorMeta>({
   templateSetName: '',
-  examForm: undefined as ArchiveExamFormCode | undefined,
-  forkSourceSetCode: undefined as string | undefined,
+  forkSourceSetCode: undefined,
 })
 
-const platformColumns: ColumnsType<ArchiveTenantTemplateSetVO> = [
+const platformColumns: ColumnsType<ArchiveTenantTemplateSetResponse> = [
   { title: '作用域', key: 'templateScope', width: 100, align: 'center' },
   { title: '模板编码', dataIndex: 'templateSetCode', key: 'templateSetCode', width: 180 },
   { title: '名称', dataIndex: 'templateSetName', key: 'templateSetName', width: 160 },
@@ -322,7 +351,7 @@ const platformColumns: ColumnsType<ArchiveTenantTemplateSetVO> = [
   { title: '操作', key: 'actions', width: 140 },
 ]
 
-const tenantColumns: ColumnsType<ArchiveTenantTemplateSetVO> = [
+const tenantColumns: ColumnsType<ArchiveTenantTemplateSetResponse> = [
   { title: '作用域', key: 'templateScope', width: 100, align: 'center' },
   { title: '套编码', dataIndex: 'templateSetCode', key: 'templateSetCode', width: 180 },
   { title: '名称', dataIndex: 'templateSetName', key: 'templateSetName', width: 160 },
@@ -364,8 +393,8 @@ function materialKey(materialType: string, catalogCode?: string) {
   return `${materialType}:${catalogCode ?? ''}`
 }
 
-function groupPlatformMaterials(items: ArchivePlatformMaterialItemVO[]) {
-  const groups = new Map<string, ArchivePlatformMaterialItemVO[]>()
+function groupPlatformMaterials(items: ArchivePlatformMaterialItemResponse[]) {
+  const groups = new Map<string, ArchivePlatformMaterialItemResponse[]>()
   for (const item of items) {
     const groupName = item.categoryGroup?.trim() || '未分组'
     const bucket = groups.get(groupName) ?? []
@@ -380,7 +409,7 @@ function groupPlatformMaterials(items: ArchivePlatformMaterialItemVO[]) {
     }))
 }
 
-function buildCategoryGroupMap(preview: ArchivePlatformTemplatePreviewVO | null) {
+function buildCategoryGroupMap(preview: ArchivePlatformTemplatePreviewResponse | null) {
   const map = new Map<string, string>()
   for (const item of preview?.materialItems ?? []) {
     map.set(
@@ -393,7 +422,7 @@ function buildCategoryGroupMap(preview: ArchivePlatformTemplatePreviewVO | null)
 
 function examFormLabel(code?: ArchiveExamFormCode) {
   if (!code) return '—'
-  return strictEnumLabel(ARCHIVE_EXAM_FORM_LABEL, code, 'examForm')
+  return strictEnumLabel(ArchiveExamFormDescription, code, 'examForm')
 }
 
 function platformReleaseTag(setCode?: string) {
@@ -456,7 +485,7 @@ async function openReadOnlyPreview(templateSetCode: string) {
   }
 }
 
-function canResyncTenantSet(record: ArchiveTenantTemplateSetVO) {
+function canResyncTenantSet(record: ArchiveTenantTemplateSetResponse) {
   if (!record.forkSourceSetCode || !record.forkSourceReleaseTag) return false
   const latestTag = platformReleaseTag(record.forkSourceSetCode)
   if (!latestTag) return false
@@ -522,7 +551,7 @@ function findTenantSetByPlatformSource(sourceSetCode: string) {
 }
 
 /** 模板套入口：本校副本可编辑；平台母版引导复制后编辑。 */
-async function openPlatformTemplate(record: ArchiveTenantTemplateSetVO) {
+async function openPlatformTemplate(record: ArchiveTenantTemplateSetResponse) {
   const tenantSet = findTenantSetByPlatformSource(record.templateSetCode)
   if (tenantSet) {
     await openEditDrawer(tenantSet.templateSetCode)
@@ -536,7 +565,7 @@ async function openPlatformTemplate(record: ArchiveTenantTemplateSetVO) {
   await openReadOnlyPreview(record.templateSetCode)
 }
 
-function openCopyModal(record: ArchiveTenantTemplateSetVO, defaultTargetSetCode = '') {
+function openCopyModal(record: ArchiveTenantTemplateSetResponse, defaultTargetSetCode = '') {
   copySource.value = record
   copyTargetSetCode.value = defaultTargetSetCode
   copyOverride.value = false
@@ -593,7 +622,7 @@ async function submitCopyAll() {
   }
 }
 
-function openResyncModal(record: ArchiveTenantTemplateSetVO) {
+function openResyncModal(record: ArchiveTenantTemplateSetResponse) {
   resyncTarget.value = record
   resyncConfirmCode.value = ''
   resyncOpen.value = true
@@ -652,8 +681,19 @@ async function saveTenantSet() {
       templateSetCode: selectedSetCode.value,
       templateSetName: editorMeta.templateSetName,
       examForm: editorMeta.examForm,
-      materialItems: materialRows.value.map(({ rowKey, categoryGroup, ...item }) => item),
-      selfCheckItems: selfCheckRows.value.map(({ rowKey, sortOrder, ...item }) => item),
+      materialItems: materialRows.value.map((item) => ({
+        materialType: item.materialType,
+        catalogCode: item.catalogCode?.trim() || undefined,
+        catalogName: item.catalogName.trim(),
+        requiredFlag: item.requiredFlag,
+        delayAllowedFlag: item.delayAllowedFlag,
+        sortOrder: item.sortOrder,
+      })),
+      selfCheckItems: selfCheckRows.value.map((item) => ({
+        itemText: item.itemText.trim(),
+        requiredFlag: item.requiredFlag,
+        itemOrder: item.itemOrder,
+      })),
     })
     message.success('模板集已保存')
     await loadTemplateSets()
@@ -682,6 +722,17 @@ onMounted(() => {
 
 .archive-template-sets-panel__tabs {
   margin-top: 16px;
+}
+
+.archive-template-sets-panel__copy-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--dp-space-3, 12px);
+  padding: var(--dp-space-4, 16px) var(--dp-space-5, 20px);
+  border-top: 1px solid var(--dp-border, #e2e8f0);
+  background: var(--dp-surface-subtle, #f8fafc);
 }
 
 .archive-template-sets-panel__copy-all {

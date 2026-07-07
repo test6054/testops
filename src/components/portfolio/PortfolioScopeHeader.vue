@@ -10,7 +10,6 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { usePortfolioStore } from '@/stores/modules/portfolio'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { resolvePortfolioTeacherDisplayName } from '@/utils/portfolio-teacher-display'
 
 defineOptions({ name: 'PortfolioScopeHeader' })
@@ -54,7 +53,7 @@ async function loadTeacherOptions(keyword?: string) {
       pageSize: 50,
       searchText: keyword || undefined,
     })
-    teacherOptions.value = readPageList(page, '加载教师名册失败')
+    teacherOptions.value = page.list
   } catch (error) {
     showUserError(error, '加载教师名册失败')
   } finally {

@@ -1,9 +1,9 @@
-@use '../var.scss' as *;
+@use '../var.scss';
 
 // 通用盒子
 .gi_box {
   background: var(--ant-color-bg-container);
-  border-radius: $radius-box;
+  border-radius: var.$radius-box;
   overflow: hidden;
   box-shadow: var(--dp-shadow-card);
 }
@@ -64,7 +64,7 @@
 // 普通页面（使用场景，页面内容超出高度会自动滚动）
 .gi_page {
   flex: 1;
-  padding: $margin;
+  padding: var.$margin;
   box-sizing: border-box;
   overflow-y: auto;
   overflow-x: hidden;
@@ -74,14 +74,14 @@
 .gi_table_page {
   flex: 1;
   overflow: hidden;
-  margin: $margin;
+  margin: var.$margin;
   background: var(--ant-color-bg-container);
-  padding: $padding;
+  padding: var.$padding;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   position: relative;
-  border-radius: $radius-box;
+  border-radius: var.$radius-box;
   box-shadow: var(--dp-shadow-card);
 
   .header {
@@ -220,10 +220,10 @@
     overflow: auto;
     display: flex;
     flex-direction: column;
-    padding: $padding;
-    margin: $margin;
+    padding: var.$padding;
+    margin: var.$margin;
     background: var(--ant-color-bg-container);
-    border-radius: $radius-box;
+    border-radius: var.$radius-box;
     box-shadow: var(--dp-shadow-card);
   }
 }

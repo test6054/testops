@@ -14,9 +14,10 @@ import type { ScoreBatchVO } from '@/apis/quality/score-batch'
 import type {
   ScoreRecordRubricScoreRequest,
   ScoreRecordSaveRequest,
+  ScoreRecordUpdateRequest,
   ScoreRecordVO,
 } from '@/apis/quality/score-record'
-import type { ScoreBatchStatus } from '@/apis/quality/types'
+import type { ScoreBatchStatusCode } from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { UserDto } from '@/types/api-types.d'
 import type { SignalMetric } from '@/types/workbench'
@@ -28,7 +29,7 @@ import { assessmentItemApi } from '@/apis/quality/assessment-item'
 import { rubricItemApi } from '@/apis/quality/rubric-item'
 import { scoreBatchApi } from '@/apis/quality/score-batch'
 import { scoreRecordApi } from '@/apis/quality/score-record'
-import { SCORE_BATCH_STATUS_COLOR, SCORE_BATCH_STATUS_LABEL } from '@/apis/quality/types'
+import { SCORE_BATCH_STATUS_COLOR, ScoreBatchStatusDescription } from '@/apis/quality/types'
 import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import { ClassSelector, CourseSelector, StudentSelector } from '@/components/quality/selectors'
@@ -77,11 +78,11 @@ const validByItemColumns: ColumnsType = [
   { title: '得分 / 满分', key: 'score', width: 140 },
 ]
 
-function batchStatusLabel(value: ScoreBatchStatus): string {
-  return strictEnumLabel(SCORE_BATCH_STATUS_LABEL, value, '成绩批次状态')
+function batchStatusLabel(value: ScoreBatchStatusCode): string {
+  return strictEnumLabel(ScoreBatchStatusDescription, value, '成绩批次状态')
 }
 
-function batchStatusColor(value: ScoreBatchStatus): BadgeTone {
+function batchStatusColor(value: ScoreBatchStatusCode): BadgeTone {
   return strictEnumTone(SCORE_BATCH_STATUS_COLOR, value, '成绩批次状态')
 }
 
@@ -202,6 +203,7 @@ const validFilter = ref<boolean | undefined>(undefined)
 const assessmentItems = ref<AssessmentItemVO[]>([])
 
 interface ScoreRecordFilterModel {
+  [key: string]: unknown
   validFlag?: 'true' | 'false'
 }
 
@@ -210,7 +212,7 @@ const filterForm = reactive<ScoreRecordFilterModel>({
 })
 
 const filterModel = computed<Record<string, unknown>>({
-  get: () => filterForm as Record<string, unknown>,
+  get: () => filterForm,
   set: (value) => {
     Object.assign(filterForm, value)
   },
@@ -349,7 +351,9 @@ const editorSubmitting = ref(false)
 const editorRubrics = ref<RubricItemVO[]>([])
 const editorRubricsLoading = ref(false)
 const editorRubricScores = ref<ScoreRecordRubricScoreRequest[]>([])
-const editor = ref<ScoreRecordSaveRequest>({
+
+const editor = ref<ScoreRecordUpdateRequest>({
+  id: '',
   batchId: '',
   assessmentItemId: '',
   qualityCourseId: '',
@@ -435,6 +439,7 @@ async function openCreate() {
   }
   editorMode.value = 'create'
   editor.value = {
+    id: '',
     batchId: selectedBatch.value.id,
     assessmentItemId: '',
     qualityCourseId: qualityStore.currentQualityCourseId,
@@ -469,7 +474,25 @@ async function openEdit(record: ScoreRecordVO) {
     return
   }
   editorMode.value = 'edit'
-  editor.value = { ...record }
+  editor.value = {
+    id: record.id,
+    batchId: record.batchId,
+    assessmentItemId: record.assessmentItemId,
+    qualityCourseId: record.qualityCourseId,
+    studentUserId: record.studentUserId,
+    studentNumber: record.studentNumber,
+    studentName: record.studentName,
+    classId: record.classId,
+    score: record.score,
+    fullScore: record.fullScore,
+    validFlag: record.validFlag,
+    invalidReason: record.invalidReason,
+    rubricScores: record.rubricScores.map((rubricScore) => ({
+      rubricItemId: rubricScore.rubricItemId,
+      score: rubricScore.score,
+    })),
+    errorCodes: record.errorCodes,
+  }
   await loadEditorRubrics(record.assessmentItemId, record)
   editorVisible.value = true
 }
@@ -486,24 +509,46 @@ async function submitEditor() {
   }
   editorSubmitting.value = true
   try {
-    const request: ScoreRecordSaveRequest = {
-      id: v.id,
-      batchId: v.batchId,
-      assessmentItemId: v.assessmentItemId,
-      qualityCourseId: v.qualityCourseId,
-      studentUserId: v.studentUserId,
-      studentNumber: v.studentNumber,
-      studentName: v.studentName,
-      classId: v.classId,
-      score: v.score,
-      fullScore: v.fullScore,
-      validFlag: v.validFlag,
-      invalidReason: v.invalidReason,
-      rubricScores: editorRubricScores.value,
-      errorCodes: '',
+    if (editorMode.value === 'create') {
+      const request: ScoreRecordSaveRequest = {
+        batchId: v.batchId,
+        assessmentItemId: v.assessmentItemId,
+        qualityCourseId: v.qualityCourseId,
+        studentUserId: v.studentUserId,
+        studentNumber: v.studentNumber,
+        studentName: v.studentName,
+        classId: v.classId,
+        score: v.score,
+        fullScore: v.fullScore,
+        validFlag: v.validFlag,
+        invalidReason: v.invalidReason,
+        rubricScores: editorRubricScores.value,
+        errorCodes: '',
+      }
+      await scoreRecordApi.create(request)
+    } else {
+      if (!v.id) {
+        message.error('成绩明细 ID 缺失，无法更新')
+        return
+      }
+      const request: ScoreRecordUpdateRequest = {
+        id: v.id,
+        batchId: v.batchId,
+        assessmentItemId: v.assessmentItemId,
+        qualityCourseId: v.qualityCourseId,
+        studentUserId: v.studentUserId,
+        studentNumber: v.studentNumber,
+        studentName: v.studentName,
+        classId: v.classId,
+        score: v.score,
+        fullScore: v.fullScore,
+        validFlag: v.validFlag,
+        invalidReason: v.invalidReason,
+        rubricScores: editorRubricScores.value,
+        errorCodes: '',
+      }
+      await scoreRecordApi.update(request)
     }
-    if (editorMode.value === 'create') await scoreRecordApi.create(request)
-    else await scoreRecordApi.update(request)
     message.success('已保存')
     editorVisible.value = false
     await loadRecords()

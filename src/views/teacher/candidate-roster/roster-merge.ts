@@ -1,6 +1,6 @@
 import type { CandidateDraft, CandidateRow } from './types'
 import type { ClassStudentTreeSelectedStudentVO } from '@/apis/edu/class'
-import type { ExamCandidateRosterRequest, ExamCandidateVO } from '@/apis/mark/exam-scope'
+import type { ExamCandidateResponse, ExamCandidateRosterRequest } from '@/apis/mark/exam-scope'
 import type { UserDto } from '@/types/api-types.d'
 
 export function toCandidateRow(draft: CandidateDraft, candidateRosterId?: string): CandidateRow {
@@ -19,7 +19,7 @@ export function toCandidateRow(draft: CandidateDraft, candidateRosterId?: string
 }
 
 /** 将分页考生 API 响应映射为表格行模型 */
-export function candidateRowFromExamCandidate(item: ExamCandidateVO): CandidateRow {
+export function candidateRowFromExamCandidate(item: ExamCandidateResponse): CandidateRow {
   return toCandidateRow(
     {
       studentUserId: item.studentUserId,

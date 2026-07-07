@@ -1,46 +1,48 @@
 import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
-import type { ExamDetailVO } from '@/apis/mark/exam'
+import type { ExamDetailResponse } from '@/apis/mark/exam'
 import type {
   AiAbilityCode,
   AiExecutionStatusCode,
-  ExamQuestionAiExecutionItemVO,
+  ExamQuestionAiExecutionItemResponse,
 } from '@/apis/mark/exam-grade'
 import type { QualityDecisionCode } from '@/apis/mark/exam-scan'
 import type { PaperInstanceDisplayVO } from '@/apis/mark/exam-score'
+import type { MarkAiReferenceExperienceAuditResponse } from '@/apis/mark/grading-experience-assist'
 import type {
   AllocationUnitCode,
-  AnonymousRevealVO,
-  MarkingQuestionViewVO,
-  MarkingTaskStatusCode,
-  MarkingTaskSubmittedQuestionScoreVO,
-  MarkingTaskVO,
-  QuestionMarkingGroupQuestionVO,
+  AnonymousRevealResponse,
+  MarkingQuestionViewResponse,
+  MarkingTaskResponse,
+  MarkingTaskSubmittedQuestionScoreResponse,
+  QuestionMarkingGroupQuestionResponse,
 } from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { GradingExperienceReferenceMatchModeCode } from '@/types/enums/grading-experience-reference-match-mode-enum'
 import message from 'ant-design-vue/es/message'
 import { storeToRefs } from 'pinia'
 import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { ANONYMITY_MODE_LABEL } from '@/apis/mark/anonymity-mode'
+import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
 import { getExamDetail } from '@/apis/mark/exam'
-import { listAnnotations, validateAnnotationContract } from '@/apis/mark/exam-annotation'
+import { listAnnotations } from '@/apis/mark/exam-annotation'
 import {
-  AI_ABILITY_LABEL,
   AI_ABILITY_TONE,
-  AI_EXECUTION_STATUS_LABEL,
   AI_EXECUTION_STATUS_TONE,
+  AiAbilityDescription,
+  AiExecutionStatusDescription,
   listAiExecutionsForQuestion,
   rescoreQuestionByAi,
 } from '@/apis/mark/exam-grade'
-import { QUALITY_DECISION_LABEL, QUALITY_DECISION_TONE } from '@/apis/mark/exam-scan'
+import { QUALITY_DECISION_TONE, QualityDecisionDescription } from '@/apis/mark/exam-scan'
 import {
-  ALLOCATION_UNIT_LABEL,
+  AllocationUnitDescription,
   getMarkingQuestionView,
   getMarkingTaskDetail,
-  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
-  MARKING_TASK_STATUS_TONE as STATUS_TONE,
-  validateMarkingTaskContract,
+  MARKING_TASK_STATUS_TONE,
+  MarkingTaskStatusCode,
+  MarkingTaskStatusDescription,
 } from '@/apis/mark/marking-organization'
+import { MarkingTaskStreamSubscribeScopeCode } from '@/apis/mark/marking-task-stream'
 import { MARKING_WITHDRAW_TOAST_MS } from '@/apis/mark/marking-withdraw'
 import {
   buildConfidentialWatermarkLines,
@@ -60,10 +62,10 @@ import { useMarkingSubmit } from '@/composables/useMarkingSubmit'
 import { useMarkingTaskNavigation } from '@/composables/useMarkingTaskNavigation'
 import { useMarkingTaskStream } from '@/composables/useMarkingTaskStream'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
+import { useTenantMarkingWithdrawPolicy } from '@/composables/useTenantMarkingWithdrawPolicy'
 import { useWholePaperGallery } from '@/composables/useWholePaperGallery'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useTenantStore } from '@/stores/modules/tenant'
-import { useUserStore } from '@/stores/modules/user'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readAllPages } from '@/utils/page-result'
@@ -72,23 +74,23 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 const SUBMITTED_PAGE_ANNOTATION_PAGE_SIZE = 100
 
 function taskStatusTone(status: MarkingTaskStatusCode): BadgeTone {
-  return strictEnumTone(STATUS_TONE, status, '阅卷任务状态')
+  return strictEnumTone(MARKING_TASK_STATUS_TONE, status, '阅卷任务状态')
 }
 
 function taskStatusLabel(status: MarkingTaskStatusCode): string {
-  return strictEnumLabel(STATUS_LABEL, status, '阅卷任务状态')
+  return strictEnumLabel(MarkingTaskStatusDescription, status, '阅卷任务状态')
 }
 
 function allocationUnitLabel(unit: AllocationUnitCode): string {
-  return strictEnumLabel(ALLOCATION_UNIT_LABEL, unit, '批阅任务单元')
+  return strictEnumLabel(AllocationUnitDescription, unit, '批阅任务单元')
 }
 
 function anonymityModeLabel(mode: AnonymityModeCode): string {
-  return strictEnumLabel(ANONYMITY_MODE_LABEL, mode, '匿名模式')
+  return strictEnumLabel(AnonymityModeDescription, mode, '匿名模式')
 }
 
 function scanPageQualityLabel(status: QualityDecisionCode): string {
-  return strictEnumLabel(QUALITY_DECISION_LABEL, status, '扫描页质量判定')
+  return strictEnumLabel(QualityDecisionDescription, status, '扫描页质量判定')
 }
 
 function scanPageQualityTone(status: QualityDecisionCode): BadgeTone {
@@ -107,16 +109,16 @@ export function useMarkingTaskDetailState() {
   const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
   const tenantStore = useTenantStore()
   const markTaskStore = useMarkTaskStore()
-  const userStore = useUserStore()
   const { tasks: batchTasks } = storeToRefs(markTaskStore)
   const { latestWithdrawable, recentList, canWithdrawEntry, withdrawEntry, withdrawLatest }
     = useMarkingRecentSubmit()
+  const { withdrawWindowLabel, withdrawConfirmHint } = useTenantMarkingWithdrawPolicy()
 
   const taskId = computed(() => (route.params.taskId ? String(route.params.taskId) : ''))
   const tenantId = computed(() => tenantStore.tenantId ?? '')
 
-  const task = ref<MarkingTaskVO | null>(null)
-  const examDetail = ref<ExamDetailVO | null>(null)
+  const task = ref<MarkingTaskResponse | null>(null)
+  const examDetail = ref<ExamDetailResponse | null>(null)
   const loading = ref(false)
   const taskRecycledBlocked = ref(false)
   const sessionPausedAlert = ref(false)
@@ -144,6 +146,9 @@ export function useMarkingTaskDetailState() {
   )
   const canSubmit = computed(() => {
     if (taskRecycledBlocked.value) return false
+    if (sessionPausedAlert.value) {
+      return task.value?.taskStatus === 'IN_PROGRESS'
+    }
     const status = task.value?.taskStatus
     return status === 'ALLOCATED' || status === 'IN_PROGRESS'
   })
@@ -155,7 +160,7 @@ export function useMarkingTaskDetailState() {
 
   const navigation = useMarkingTaskNavigation({ task, isWholePaperTask })
 
-  const questionView = ref<MarkingQuestionViewVO | null>(null)
+  const questionView = ref<MarkingQuestionViewResponse | null>(null)
   const questionViewLoaded = ref(false)
   const questionViewLoading = ref(false)
   const scoreInputRef = ref<{ focus?: () => void } | null>(null)
@@ -242,7 +247,7 @@ export function useMarkingTaskDetailState() {
     filter: () => ({
       examId: task.value?.examId ?? '',
       sessionId: task.value?.sessionId,
-      scope: 'teacher',
+      scope: MarkingTaskStreamSubscribeScopeCode.TEACHER,
     }),
     when: () => Boolean(task.value?.examId),
     onEvent: (event) => {
@@ -257,10 +262,10 @@ export function useMarkingTaskDetailState() {
       if (event.eventType === 'TASK_RECYCLED' && event.taskId === taskId.value) {
         taskRecycledBlocked.value = true
         if (task.value && event.taskStatus) {
-          strictEnumLabel(STATUS_LABEL, event.taskStatus, '阅卷任务状态')
+          strictEnumLabel(MarkingTaskStatusDescription, event.taskStatus, '阅卷任务状态')
           task.value = { ...task.value, taskStatus: event.taskStatus }
         } else if (task.value) {
-          task.value = { ...task.value, taskStatus: 'RECYCLED' }
+          task.value = { ...task.value, taskStatus: MarkingTaskStatusCode.RECYCLED }
         }
         return
       }
@@ -270,7 +275,6 @@ export function useMarkingTaskDetailState() {
           void markTaskStore.loadTasks(
             {
               examId: task.value.examId,
-              reviewerUserId: navigationBatchReviewerId(),
             },
             { silent: true },
           )
@@ -279,15 +283,11 @@ export function useMarkingTaskDetailState() {
         return
       }
       if (event.eventType === 'TASK_WITHDRAWN' && event.taskId === taskId.value && task.value) {
-        task.value = { ...task.value, taskStatus: 'IN_PROGRESS' }
+        task.value = { ...task.value, taskStatus: MarkingTaskStatusCode.IN_PROGRESS }
         taskRecycledBlocked.value = false
       }
     },
   })
-
-  function navigationBatchReviewerId(): string {
-    return userStore.userInfo.userId ?? task.value?.reviewerUserId ?? ''
-  }
 
   async function handleWithdrawLatest(): Promise<void> {
     await withdrawLatest((withdrawnTask) => {
@@ -363,11 +363,11 @@ export function useMarkingTaskDetailState() {
     },
   )
 
-  function applySubmittedQuestionScores(scores: MarkingTaskSubmittedQuestionScoreVO[]): void {
+  function applySubmittedQuestionScores(scores: MarkingTaskSubmittedQuestionScoreResponse[]): void {
     if (!scores.length) return
     if (usesWholePaperWorkspace.value) {
       for (const item of scores) {
-        const questionForm = getWholeQuestionForm(item.questionTemplateId)
+        const questionForm = getWholeQuestionForm(item.layoutQuestionId)
         questionForm.score = Number(item.score)
         questionForm.annotationText = item.annotationText || ''
       }
@@ -393,14 +393,13 @@ export function useMarkingTaskDetailState() {
       '批注列表加载失败，请刷新后重试',
     )
     for (const annotation of pageAnnotations) {
-      validateAnnotationContract(annotation)
       if (annotation.annotationScope !== 'PAGE') continue
       if (!annotation.pageId || !annotation.annotationText) continue
       wholePageAnnotationForms[annotation.pageId] = annotation.annotationText
     }
   }
 
-  async function applyLocalDraftIfNeeded(detail: MarkingTaskVO): Promise<void> {
+  async function applyLocalDraftIfNeeded(detail: MarkingTaskResponse): Promise<void> {
     if (!canSubmit.value || !tenantId.value) return
     const key = buildGradingDraftKey(tenantId.value, detail.examId, detail.id)
     const draft = await loadGradingDraft(key)
@@ -428,7 +427,6 @@ export function useMarkingTaskDetailState() {
     loading.value = true
     try {
       const detail = await getMarkingTaskDetail({ taskId: taskId.value })
-      validateMarkingTaskContract(detail)
       task.value = detail
       taskRecycledBlocked.value = detail.taskStatus === 'RECYCLED'
       examDetail.value = await getExamDetail(detail.examId)
@@ -471,10 +469,12 @@ export function useMarkingTaskDetailState() {
         taskId: currentTask.id,
       })
       questionViewLoaded.value = true
+      syncExperienceAssistMetaFromQuestionView(questionView.value)
       focusPrimaryScoreInput()
     } catch (error) {
       questionView.value = null
       questionViewLoaded.value = false
+      lastExperienceAssistMeta.value = null
       showUserError(error, '题目级批阅视图加载失败')
     } finally {
       questionViewLoading.value = false
@@ -495,7 +495,7 @@ export function useMarkingTaskDetailState() {
     () => `半分 (${calcHalfScore(questionView.value?.fullScore)})`,
   )
 
-  function expectsQuestionViewAiScore(view: MarkingQuestionViewVO | null | undefined): boolean {
+  function expectsQuestionViewAiScore(view: MarkingQuestionViewResponse | null | undefined): boolean {
     if (!view || view.aiScore != null) return false
     if (view.questionType === 'SUBJECTIVE') return true
     return view.comparePolicy === 'AI_GRADE'
@@ -507,24 +507,79 @@ export function useMarkingTaskDetailState() {
     return !view?.aiDiagnostic
   })
 
-  function isWholeQuestionAiScorePending(question: QuestionMarkingGroupQuestionVO): boolean {
+  function isWholeQuestionAiScorePending(question: QuestionMarkingGroupQuestionResponse): boolean {
     if (question.aiScore != null) return false
     if (question.questionType !== 'SUBJECTIVE') return false
     return !question.aiDiagnostic
   }
 
   const rescoringGradeResultId = ref<string | null>(null)
+  const lastExperienceAssistMeta = ref<{
+    applied?: boolean
+    sourceExamName?: string
+    consistencyRate?: number
+    matchMode?: GradingExperienceReferenceMatchModeCode
+  } | null>(null)
+
+  function syncExperienceAssistMeta(
+    applied?: boolean,
+    sourceExamName?: string,
+    consistencyRate?: number,
+    matchMode?: GradingExperienceReferenceMatchModeCode,
+  ): void {
+    if (applied && sourceExamName) {
+      lastExperienceAssistMeta.value = {
+        applied: true,
+        sourceExamName,
+        consistencyRate,
+        matchMode,
+      }
+      return
+    }
+    lastExperienceAssistMeta.value = null
+  }
+
+  function syncExperienceAssistMetaFromAudit(audit?: MarkAiReferenceExperienceAuditResponse | null): void {
+    syncExperienceAssistMeta(
+      audit?.referenceExperienceApplied,
+      audit?.referenceExperienceSourceExamName,
+      audit?.referenceExperienceConsistencyRate,
+      audit?.referenceExperienceMatchMode,
+    )
+  }
+
+  function syncExperienceAssistMetaFromQuestionView(view: MarkingQuestionViewResponse | null): void {
+    syncExperienceAssistMetaFromAudit(view?.referenceExperienceAudit)
+  }
+
+  function syncExperienceAssistMetaFromWholeQuestion(
+    question: QuestionMarkingGroupQuestionResponse | null | undefined,
+  ): void {
+    syncExperienceAssistMetaFromAudit(question?.referenceExperienceAudit)
+  }
+
+  function syncExperienceAssistMetaForExpandedWholeQuestion(): void {
+    if (!usesWholePaperWorkspace.value || wholeQuestions.value.length === 0) {
+      lastExperienceAssistMeta.value = null
+      return
+    }
+    const question = wholeQuestions.value.find(
+      (item) => item.layoutQuestionId === expandedWholeQuestionKey.value,
+    )
+    syncExperienceAssistMetaFromWholeQuestion(question ?? wholeQuestions.value[0])
+  }
   const executionsDrawerOpen = ref(false)
   const executionsLoading = ref(false)
-  const aiExecutions = ref<ExamQuestionAiExecutionItemVO[]>([])
+  const aiExecutions = ref<ExamQuestionAiExecutionItemResponse[]>([])
   const executionsGradeResultId = ref<string | null>(null)
+  const highlightExecutionTraceId = ref<string | null>(null)
 
   const canRescoreQuestionView = computed(() => {
     if (isReadOnly.value || submitCtx.submitting.value || rescoringGradeResultId.value) return false
     return !!questionView.value?.gradeResultId && !!task.value?.examId
   })
 
-  function canRescoreWholeQuestion(question: QuestionMarkingGroupQuestionVO): boolean {
+  function canRescoreWholeQuestion(question: QuestionMarkingGroupQuestionResponse): boolean {
     if (isReadOnly.value || submitCtx.submitting.value) return false
     if (!question.gradeResultId || !task.value?.examId) return false
     return question.questionType === 'SUBJECTIVE'
@@ -545,6 +600,7 @@ export function useMarkingTaskDetailState() {
     rescoringGradeResultId.value = gradeResultId
     try {
       const result = await rescoreQuestionByAi({ examId, gradeResultId })
+      syncExperienceAssistMetaFromAudit(result.referenceExperienceAudit)
       if (Boolean(result.scored) && result.aiScore != null) {
         message.success(`AI 复评完成，AI 评分 ${result.aiScore} 分`)
       } else {
@@ -575,7 +631,7 @@ export function useMarkingTaskDetailState() {
     })
   }
 
-  function openRescoreConfirmForWholeQuestion(question: QuestionMarkingGroupQuestionVO): void {
+  function openRescoreConfirmForWholeQuestion(question: QuestionMarkingGroupQuestionResponse): void {
     if (!canRescoreWholeQuestion(question) || !task.value?.examId || !question.gradeResultId) return
     void confirmAsync({
       title: `重新生成第 ${question.questionNo} 题 AI 复评？`,
@@ -587,12 +643,21 @@ export function useMarkingTaskDetailState() {
     })
   }
 
-  function openExecutionsDrawerForQuestionView(): void {
+  function openExecutionsDrawerForQuestionView(highlightTraceId?: string | null): void {
     const gradeResultId = questionView.value?.gradeResultId
     if (!gradeResultId) return
+    highlightExecutionTraceId.value = highlightTraceId ?? questionView.value?.aiTraceId ?? null
     executionsGradeResultId.value = gradeResultId
     executionsDrawerOpen.value = true
     void loadAiExecutions(gradeResultId)
+  }
+
+  function openExecutionsDrawerForWholeQuestion(question: QuestionMarkingGroupQuestionResponse): void {
+    if (!question.gradeResultId) return
+    highlightExecutionTraceId.value = question.aiTraceId ?? null
+    executionsGradeResultId.value = question.gradeResultId
+    executionsDrawerOpen.value = true
+    void loadAiExecutions(question.gradeResultId)
   }
 
   async function loadAiExecutions(gradeResultId: string): Promise<void> {
@@ -604,8 +669,8 @@ export function useMarkingTaskDetailState() {
         gradeResultId,
       })
       aiExecutions.value.forEach((record) => {
-        strictEnumLabel(AI_ABILITY_LABEL, record.abilityCode, 'AI 能力编码')
-        strictEnumLabel(AI_EXECUTION_STATUS_LABEL, record.status, 'AI 执行状态')
+        strictEnumLabel(AiAbilityDescription, record.abilityCode, 'AI 能力编码')
+        strictEnumLabel(AiExecutionStatusDescription, record.status, 'AI 执行状态')
       })
     } catch (error) {
       showUserError(error, 'AI 复评历史加载失败')
@@ -616,7 +681,7 @@ export function useMarkingTaskDetailState() {
   }
 
   function aiAbilityLabel(code: AiAbilityCode): string {
-    return strictEnumLabel(AI_ABILITY_LABEL, code, 'AI 能力编码')
+    return strictEnumLabel(AiAbilityDescription, code, 'AI 能力编码')
   }
 
   function aiAbilityTone(code: AiAbilityCode) {
@@ -624,7 +689,7 @@ export function useMarkingTaskDetailState() {
   }
 
   function aiExecutionStatusLabel(status: AiExecutionStatusCode): string {
-    return strictEnumLabel(AI_EXECUTION_STATUS_LABEL, status, 'AI 执行状态')
+    return strictEnumLabel(AiExecutionStatusDescription, status, 'AI 执行状态')
   }
 
   function aiExecutionStatusTone(status: AiExecutionStatusCode) {
@@ -635,18 +700,18 @@ export function useMarkingTaskDetailState() {
     return strictEnumTone(AI_EXECUTION_STATUS_TONE, status, 'AI 执行状态')
   }
 
-  function isWholeQuestionScored(questionTemplateId: string): boolean {
-    const score = getWholeQuestionForm(questionTemplateId).score
+  function isWholeQuestionScored(layoutQuestionId: string): boolean {
+    const score = getWholeQuestionForm(layoutQuestionId).score
     return score !== undefined && score !== null
   }
 
   function resolveDefaultExpandedQuestionKey(): string {
     const firstUnscored = wholeQuestions.value.find(
-      (question) => !isWholeQuestionScored(question.questionTemplateId),
+      (question) => !isWholeQuestionScored(question.layoutQuestionId),
     )
-    if (firstUnscored) return firstUnscored.questionTemplateId
+    if (firstUnscored) return firstUnscored.layoutQuestionId
     const lastQuestion = wholeQuestions.value[wholeQuestions.value.length - 1]
-    return lastQuestion?.questionTemplateId ?? ''
+    return lastQuestion?.layoutQuestionId ?? ''
   }
 
   function syncWholeQuestionAccordion(): void {
@@ -655,15 +720,23 @@ export function useMarkingTaskDetailState() {
       return
     }
     expandedWholeQuestionKey.value = resolveDefaultExpandedQuestionKey()
+    syncExperienceAssistMetaForExpandedWholeQuestion()
   }
 
   function expandWholeQuestion(index: number): void {
     const question = wholeQuestions.value[index]
-    if (question) expandedWholeQuestionKey.value = question.questionTemplateId
+    if (question) {
+      expandedWholeQuestionKey.value = question.layoutQuestionId
+      syncExperienceAssistMetaFromWholeQuestion(question)
+    }
   }
 
   function setWholeQuestionScoreInputRef(el: unknown, index: number): void {
-    wholeQuestionScoreInputRefs.value[index] = (el as { focus?: () => void } | null) ?? null
+    wholeQuestionScoreInputRefs.value[index] = isFocusableElement(el) ? el : null
+  }
+
+  function isFocusableElement(el: unknown): el is { focus?: () => void } {
+    return typeof el === 'object' && el !== null && (!('focus' in el) || typeof el.focus === 'function')
   }
 
   function handleGalleryViewportReady(element: HTMLElement | null): void {
@@ -675,7 +748,7 @@ export function useMarkingTaskDetailState() {
       if (usesWholePaperWorkspace.value) {
         syncWholeQuestionAccordion()
         const index = wholeQuestions.value.findIndex(
-          (question) => question.questionTemplateId === expandedWholeQuestionKey.value,
+          (question) => question.layoutQuestionId === expandedWholeQuestionKey.value,
         )
         focusWholeQuestionScoreInput(index >= 0 ? index : 0)
         return
@@ -691,7 +764,7 @@ export function useMarkingTaskDetailState() {
     })
   }
 
-  function focusWholeQuestionPage(question: QuestionMarkingGroupQuestionVO): void {
+  function focusWholeQuestionPage(question: QuestionMarkingGroupQuestionResponse): void {
     const pageIndex = wholePages.value.findIndex((page) => page.pageId === question.pageId)
     if (pageIndex < 0) {
       message.error(`第 ${question.questionNo} 题未找到对应答题页`)
@@ -704,7 +777,7 @@ export function useMarkingTaskDetailState() {
     if (submitCtx.submitting.value || !canSubmit.value) return
     const question = wholeQuestions.value[questionIndex]
     if (!question) return
-    const questionForm = getWholeQuestionForm(question.questionTemplateId)
+    const questionForm = getWholeQuestionForm(question.layoutQuestionId)
     if (questionForm.score === undefined || questionForm.score === null) {
       message.warning(`请先填写第 ${question.questionNo} 题给分`)
       return
@@ -716,18 +789,18 @@ export function useMarkingTaskDetailState() {
     void submitCtx.submit()
   }
 
-  function fillWholeQuestionAiScore(question: QuestionMarkingGroupQuestionVO): void {
+  function fillWholeQuestionAiScore(question: QuestionMarkingGroupQuestionResponse): void {
     if (question.aiScore == null) return
-    getWholeQuestionForm(question.questionTemplateId).score = question.aiScore
+    getWholeQuestionForm(question.layoutQuestionId).score = question.aiScore
     message.success(`已填入第 ${question.questionNo} 题 AI 建议分`)
   }
 
   async function acceptWholeQuestionAiScore(
-    question: QuestionMarkingGroupQuestionVO,
+    question: QuestionMarkingGroupQuestionResponse,
     questionIndex: number,
   ): Promise<void> {
     if (question.aiScore == null || submitCtx.submitting.value) return
-    getWholeQuestionForm(question.questionTemplateId).score = question.aiScore
+    getWholeQuestionForm(question.layoutQuestionId).score = question.aiScore
     if (questionIndex < wholeQuestions.value.length - 1) {
       focusWholeQuestionScoreInput(questionIndex + 1)
       message.success(`已采纳第 ${question.questionNo} 题 AI 分`)
@@ -737,15 +810,15 @@ export function useMarkingTaskDetailState() {
   }
 
   function applyQuickScoreToWholeQuestion(
-    question: QuestionMarkingGroupQuestionVO,
+    question: QuestionMarkingGroupQuestionResponse,
     score: number,
   ): void {
     if (score > question.fullScore) return
-    getWholeQuestionForm(question.questionTemplateId).score = score
+    getWholeQuestionForm(question.layoutQuestionId).score = score
   }
 
   const revealOpen = ref(false)
-  const revealedIdentity = ref<AnonymousRevealVO | null>(null)
+  const revealedIdentity = ref<AnonymousRevealResponse | null>(null)
   let revealExpireTimer: ReturnType<typeof window.setTimeout> | null = null
 
   function openRevealDialog(): void {
@@ -760,7 +833,7 @@ export function useMarkingTaskDetailState() {
     revealedIdentity.value = null
   }
 
-  function handleAnonymousRevealed(result: AnonymousRevealVO): void {
+  function handleAnonymousRevealed(result: AnonymousRevealResponse): void {
     revealedIdentity.value = result
     if (revealExpireTimer) {
       window.clearTimeout(revealExpireTimer)
@@ -779,10 +852,10 @@ export function useMarkingTaskDetailState() {
       form.score,
       form.annotationNote,
       wholeQuestions.value.map((question) => {
-        const qForm = getWholeQuestionForm(question.questionTemplateId)
-        return [qForm.score, qForm.annotationText] as const
+        const qForm = getWholeQuestionForm(question.layoutQuestionId)
+        return [qForm.score, qForm.annotationText]
       }),
-      Object.entries(wholePageAnnotationForms).map(([pageId, text]) => [pageId, text] as const),
+      Object.entries(wholePageAnnotationForms).map(([pageId, text]) => [pageId, text]),
     ],
     () => submitCtx.persistDraftIfNeeded(),
     { deep: true },
@@ -847,6 +920,8 @@ export function useMarkingTaskDetailState() {
     sessionPausedAlert,
     withdrawToastVisible,
     latestWithdrawable,
+    withdrawWindowLabel,
+    withdrawConfirmHint,
     recentList,
     canWithdrawEntry,
     handleWithdrawLatest,
@@ -884,7 +959,9 @@ export function useMarkingTaskDetailState() {
     executionsDrawerOpen,
     executionsLoading,
     aiExecutions,
+    highlightExecutionTraceId,
     rescoringGradeResultId,
+    lastExperienceAssistMeta,
     formRef: submitCtx.formRef,
     submitting: submitCtx.submitting,
     rules: submitCtx.rules,
@@ -920,6 +997,7 @@ export function useMarkingTaskDetailState() {
     openRescoreConfirmForQuestionView,
     openRescoreConfirmForWholeQuestion,
     openExecutionsDrawerForQuestionView,
+    openExecutionsDrawerForWholeQuestion,
     openRevealDialog,
     handleAnonymousRevealed,
     aiAbilityLabel,

@@ -35,23 +35,26 @@
 <script lang="ts" setup>
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  PortfolioArchiveRecordStatus,
-  PortfolioReviewTaskStatus,
+  PortfolioArchiveRecordStatusCode,
+  PortfolioReviewTaskStatusCode,
+} from '@/apis/portfolio/enums'
+import type {
   PortfolioTeacherReviewStatusRowVO,
 } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { ref, watch } from 'vue'
+import {
+  PortfolioArchiveRecordStatusDescription,
+  PortfolioReviewTaskStatusDescription,
+} from '@/apis/portfolio/enums'
 import { portfolioReviewStatusApi } from '@/apis/portfolio/review-status'
 import {
-  PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL,
   PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
-  PORTFOLIO_REVIEW_TASK_STATUS_LABEL,
   PORTFOLIO_REVIEW_TASK_STATUS_TONE,
 } from '@/apis/portfolio/types'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'PortfolioTeacherReviewStatusTable' })
@@ -59,7 +62,7 @@ defineOptions({ name: 'PortfolioTeacherReviewStatusTable' })
 const props = defineProps<{
   teacherId?: string
   academicYear?: string
-  recordStatus?: PortfolioArchiveRecordStatus
+  recordStatus?: PortfolioArchiveRecordStatusCode
   highlightRecordId?: string
 }>()
 
@@ -77,19 +80,19 @@ const pageNum = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
 
-function archiveRecordStatusLabel(status: PortfolioArchiveRecordStatus): string {
-  return strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL, status, '档案记录状态')
+function archiveRecordStatusLabel(status: PortfolioArchiveRecordStatusCode): string {
+  return strictEnumLabel(PortfolioArchiveRecordStatusDescription, status, '档案记录状态')
 }
 
-function archiveRecordStatusTone(status: PortfolioArchiveRecordStatus): BadgeTone {
+function archiveRecordStatusTone(status: PortfolioArchiveRecordStatusCode): BadgeTone {
   return strictEnumTone(PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE, status, '档案记录状态')
 }
 
-function reviewTaskStatusLabel(status: PortfolioReviewTaskStatus): string {
-  return strictEnumLabel(PORTFOLIO_REVIEW_TASK_STATUS_LABEL, status, '审核任务状态')
+function reviewTaskStatusLabel(status: PortfolioReviewTaskStatusCode): string {
+  return strictEnumLabel(PortfolioReviewTaskStatusDescription, status, '审核任务状态')
 }
 
-function reviewTaskStatusTone(status: PortfolioReviewTaskStatus): BadgeTone {
+function reviewTaskStatusTone(status: PortfolioReviewTaskStatusCode): BadgeTone {
   return strictEnumTone(PORTFOLIO_REVIEW_TASK_STATUS_TONE, status, '审核任务状态')
 }
 
@@ -109,8 +112,8 @@ async function loadPage() {
       pageNum: pageNum.value,
       pageSize: pageSize.value,
     })
-    rows.value = readPageList(page, '加载审核进度失败')
-    total.value = readPageTotal(page, '加载审核进度失败')
+    rows.value = page.list
+    total.value = Number(page.total)
   } catch (error) {
     showUserError(error, '加载审核进度失败')
   } finally {

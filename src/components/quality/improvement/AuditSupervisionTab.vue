@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { QualityAuditEvidenceItem } from '@/apis/quality/audit-evidence'
+import type { AuditEvidenceItemRequest } from '@/apis/quality/audit-evidence'
 import type {
-  AuditSupervisionConclusion,
-  AuditSupervisionFindingItem,
+  AuditSupervisionConclusionCode,
+  AuditSupervisionFindingItemRequest,
   AuditSupervisionQueryRequest,
   AuditSupervisionSaveRequest,
-  AuditSupervisionScope,
-  AuditSupervisionVO,
-} from '@/apis/quality/audit-supervision'
-import type { AuditSupervisionType } from '@/apis/quality/types'
+
+  AuditSupervisionVO} from '@/apis/quality/audit-supervision'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type {
   QualitySelectorChangeValue,
@@ -18,14 +16,15 @@ import type {
 import { message } from 'ant-design-vue'
 import { reactive, ref } from 'vue'
 import {
-  AUDIT_SUPERVISION_CONCLUSION_LABEL,
   AUDIT_SUPERVISION_CONCLUSION_OPTIONS,
   AUDIT_SUPERVISION_CONCLUSION_TONE,
-  AUDIT_SUPERVISION_SCOPE_LABEL,
   AUDIT_SUPERVISION_SCOPE_OPTIONS,
   auditSupervisionApi,
+  AuditSupervisionConclusionDescription,
+  AuditSupervisionScopeCode,
+  AuditSupervisionScopeDescription,
 } from '@/apis/quality/audit-supervision'
-import { AUDIT_SUPERVISION_TYPE_LABEL } from '@/apis/quality/types'
+import { AuditSupervisionTypeCode, AuditSupervisionTypeDescription } from '@/apis/quality/types'
 import ImprovementWorkbenchPanel from '@/components/quality/improvement/ImprovementWorkbenchPanel.vue'
 import {
   ArchiveSelector,
@@ -51,7 +50,6 @@ import {
 } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError, toUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AuditSupervisionTab' })
@@ -73,28 +71,34 @@ const supColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 160, fixed: 'right' },
 ]
 
-const supervisionTypeOptions: Array<{ value: AuditSupervisionType, label: string }> = [
-  { value: 'DAILY', label: AUDIT_SUPERVISION_TYPE_LABEL.DAILY },
-  { value: 'SPECIAL', label: AUDIT_SUPERVISION_TYPE_LABEL.SPECIAL },
-  { value: 'ACCREDITATION_PRE', label: AUDIT_SUPERVISION_TYPE_LABEL.ACCREDITATION_PRE },
-  { value: 'ACCREDITATION_AUDIT', label: AUDIT_SUPERVISION_TYPE_LABEL.ACCREDITATION_AUDIT },
+const supervisionTypeOptions: Array<{ value: AuditSupervisionTypeCode, label: string }> = [
+  { value: AuditSupervisionTypeCode.DAILY, label: AuditSupervisionTypeDescription.DAILY },
+  { value: AuditSupervisionTypeCode.SPECIAL, label: AuditSupervisionTypeDescription.SPECIAL },
+  {
+    value: AuditSupervisionTypeCode.ACCREDITATION_PRE,
+    label: AuditSupervisionTypeDescription.ACCREDITATION_PRE,
+  },
+  {
+    value: AuditSupervisionTypeCode.ACCREDITATION_AUDIT,
+    label: AuditSupervisionTypeDescription.ACCREDITATION_AUDIT,
+  },
 ]
 const supScopeOptions = AUDIT_SUPERVISION_SCOPE_OPTIONS
 const supConclusionOptions = AUDIT_SUPERVISION_CONCLUSION_OPTIONS
 
-function supervisionTypeLabel(value: AuditSupervisionType): string {
-  return strictEnumLabel(AUDIT_SUPERVISION_TYPE_LABEL, value, '督导类型')
+function supervisionTypeLabel(value: AuditSupervisionTypeCode): string {
+  return strictEnumLabel(AuditSupervisionTypeDescription, value, '督导类型')
 }
 
-function supervisionScopeLabel(value: AuditSupervisionScope): string {
-  return strictEnumLabel(AUDIT_SUPERVISION_SCOPE_LABEL, value, '督导范围')
+function supervisionScopeLabel(value: AuditSupervisionScopeCode): string {
+  return strictEnumLabel(AuditSupervisionScopeDescription, value, '督导范围')
 }
 
-function supervisionConclusionLabel(value: AuditSupervisionConclusion): string {
-  return strictEnumLabel(AUDIT_SUPERVISION_CONCLUSION_LABEL, value, '督导结论')
+function supervisionConclusionLabel(value: AuditSupervisionConclusionCode): string {
+  return strictEnumLabel(AuditSupervisionConclusionDescription, value, '督导结论')
 }
 
-function supervisionConclusionColor(value: AuditSupervisionConclusion): BadgeTone {
+function supervisionConclusionColor(value: AuditSupervisionConclusionCode): BadgeTone {
   return strictEnumTone(AUDIT_SUPERVISION_CONCLUSION_TONE, value, '督导结论')
 }
 
@@ -110,9 +114,13 @@ const supQuery = reactive<AuditSupervisionQueryRequest>({
   keyword: '',
 })
 
-const supFilterForm = reactive({
-  supervisionType: undefined as AuditSupervisionType | undefined,
-  conclusion: undefined as AuditSupervisionConclusion | undefined,
+interface SupFilterForm {
+  supervisionType?: AuditSupervisionTypeCode
+  conclusion?: AuditSupervisionConclusionCode
+  keyword: string
+}
+
+const supFilterForm = reactive<SupFilterForm>({
   keyword: '',
 })
 
@@ -173,8 +181,8 @@ const supFindingSeverityOptions = [
 const supEditorVisible = ref(false)
 const supEditorMode = ref<'create' | 'edit'>('create')
 type AuditSupervisionEditorState = AuditSupervisionSaveRequest & {
-  findingItems: AuditSupervisionFindingItem[]
-  evidenceItems: QualityAuditEvidenceItem[]
+  findingItems: AuditSupervisionFindingItemRequest[]
+  evidenceItems: AuditEvidenceItemRequest[]
 }
 
 const supEditor = reactive<AuditSupervisionEditorState>({
@@ -185,8 +193,8 @@ const supEditor = reactive<AuditSupervisionEditorState>({
   qualityCourseId: '',
   supervisionCode: '',
   supervisionTitle: '',
-  supervisionType: 'DAILY',
-  supervisionScope: 'COURSE',
+  supervisionType: AuditSupervisionTypeCode.DAILY,
+  supervisionScope: AuditSupervisionScopeCode.COURSE,
   supervisorUserId: '',
   supervisedTime: '',
   summary: '',
@@ -246,10 +254,10 @@ async function loadList(options?: { refreshSignals?: boolean }) {
       keyword: supQuery.keyword?.trim() || undefined,
     })
     assertQualityScopeFresh(scope)
-    supList.value = readPageList(page, '督导复查记录加载失败，请稍后重试')
+    supList.value = page.list
     supQuery.pageNum = page.pageNum
     supQuery.pageSize = page.pageSize
-    supTotal.value = readPageTotal(page, '督导复查记录加载失败，请稍后重试')
+    supTotal.value = Number(page.total)
     if (supList.value.length === 0 && supTotal.value > 0 && supQuery.pageNum > 1) {
       supQuery.pageNum -= 1
       await loadList(options)
@@ -300,8 +308,8 @@ function openSupCreate() {
     qualityCourseId: '',
     supervisionCode: '',
     supervisionTitle: '',
-    supervisionType: 'DAILY',
-    supervisionScope: 'COURSE',
+    supervisionType: AuditSupervisionTypeCode.DAILY,
+    supervisionScope: AuditSupervisionScopeCode.COURSE,
     supervisorUserId: '',
     supervisedTime: '',
     summary: '',
@@ -329,10 +337,25 @@ function openSupEdit(record: AuditSupervisionVO) {
     supervisorUserId: record.supervisorUserId || '',
     supervisedTime: record.supervisedTime || '',
     summary: record.summary || '',
-    findingItems: record.findingItems?.map((item) => ({ ...item })) || [],
+    findingItems: record.findingItems?.map((item) => ({
+      findingType: item.findingType,
+      findingTitle: item.findingTitle,
+      findingDescription: item.findingDescription,
+      severity: item.severity,
+      responsibleUnit: item.responsibleUnit,
+      improvementSuggestion: item.improvementSuggestion,
+    })) || [],
     conclusion: record.conclusion || '',
     archiveId: record.archiveId || '',
-    evidenceItems: record.evidenceItems?.map((item) => ({ ...item })) || [],
+    evidenceItems: record.evidenceItems?.map((item) => ({
+      evidenceType: item.evidenceType,
+      evidenceTitle: item.evidenceTitle,
+      evidenceCode: item.evidenceCode,
+      archiveId: item.archiveId,
+      fileNodeId: item.fileNodeId,
+      reportId: item.reportId,
+      remark: item.remark,
+    })) || [],
   })
   supEditorVisible.value = true
 }

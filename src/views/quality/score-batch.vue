@@ -14,12 +14,13 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
 import type { QualityCourseVO } from '@/apis/quality/quality-course'
 import type {
+  QualityStatusCountsResponse,
   ScoreBatchQueryRequest,
   ScoreBatchSaveRequest,
+  ScoreBatchUpdateRequest,
   ScoreBatchVO,
   ScoreImportRowDiagnostic,
 } from '@/apis/quality/score-batch'
-import type { DataSourceMode, ScoreBatchStatus } from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type {
   AuditTimelineEvent,
@@ -31,15 +32,21 @@ import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ExportBusinessType } from '@/apis/edu/export'
+import { downloadFile } from '@/apis/edu/file-management'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
+import { downloadExcelImportTemplate } from '@/apis/platform/excel-import'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { assessmentItemApi } from '@/apis/quality/assessment-item'
 import { qualityCourseApi } from '@/apis/quality/quality-course'
 import { scoreBatchApi } from '@/apis/quality/score-batch'
 import {
-  DATA_SOURCE_MODE_LABEL,
+  ALL_DATA_SOURCE_MODE_CODES,
+  ALL_SCORE_BATCH_STATUS_CODES,
+  DataSourceModeCode,
+  DataSourceModeDescription,
   SCORE_BATCH_STATUS_COLOR,
-  SCORE_BATCH_STATUS_LABEL,
+  ScoreBatchStatusCode,
+  ScoreBatchStatusDescription,
 } from '@/apis/quality/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
@@ -65,19 +72,21 @@ import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
-import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const qualityStore = useQualityStore()
 
 const batches = ref<ScoreBatchVO[]>([])
 const total = ref(0)
+const batchStatusCounts = ref<QualityStatusCountsResponse | null>(null)
 const loading = ref(false)
 const { exporting: scoreBatchExporting, exportExcel: exportScoreBatchExcel }
   = useQualityTableExport()
 const uploading = ref(false)
 const uploadFileNodeId = ref<string>()
 const uploadFileName = ref<string>()
+const templateLoading = ref(false)
 
 const previewVisible = ref(false)
 const previewLoading = ref(false)
@@ -105,7 +114,7 @@ const uploadAssessmentLoading = ref(false)
 const queryAssessmentItems = ref<AssessmentItemVO[]>([])
 const queryAssessmentLoading = ref(false)
 
-const query = reactive<ScoreBatchQueryRequest>({
+const query = reactive<ScoreBatchQueryRequest & Record<string, unknown>>({
   pageNum: 1,
   pageSize: 10,
   qualityCourseId: '',
@@ -115,16 +124,9 @@ const query = reactive<ScoreBatchQueryRequest>({
   keyword: '',
 })
 
-const DATA_SOURCE_MODES: DataSourceMode[] = [
-  'EXCEL_IMPORT',
-  'EXTERNAL_AI_CONNECTOR',
-  'READ_ONLY_DATABASE_PULL',
-  'MANUAL_CONFIRMATION',
-]
-
-const SOURCE_MODE_OPTIONS = DATA_SOURCE_MODES.map((value) => ({
+const SOURCE_MODE_OPTIONS = ALL_DATA_SOURCE_MODE_CODES.map((value) => ({
   value,
-  label: strictEnumLabel(DATA_SOURCE_MODE_LABEL, value, '数据来源模式'),
+  label: strictEnumLabel(DataSourceModeDescription, value, '数据来源模式'),
 }))
 
 const uploadForm = reactive<ScoreBatchSaveRequest & { fileName?: string }>({
@@ -132,29 +134,19 @@ const uploadForm = reactive<ScoreBatchSaveRequest & { fileName?: string }>({
   assessmentItemId: '',
   batchCode: '',
   batchName: '',
-  sourceMode: 'EXCEL_IMPORT',
+  sourceMode: DataSourceModeCode.EXCEL_IMPORT,
   schoolYear: qualityStore.currentSchoolYear,
   semester: qualityStore.currentSemester || undefined,
   fileName: '',
 })
 
-const SCORE_BATCH_STATUSES: ScoreBatchStatus[] = [
-  'PENDING',
-  'PARSING',
-  'PREVIEW_READY',
-  'VALIDATED',
-  'CONFIRMED',
-  'FAILED',
-  'CANCELLED',
-]
-
-const statusOptions = SCORE_BATCH_STATUSES.map((value) => ({
+const statusOptions = ALL_SCORE_BATCH_STATUS_CODES.map((value) => ({
   value,
-  label: strictEnumLabel(SCORE_BATCH_STATUS_LABEL, value, '成绩批次状态'),
+  label: strictEnumLabel(ScoreBatchStatusDescription, value, '成绩批次状态'),
 }))
 
 const filterModel = computed<Record<string, unknown>>({
-  get: () => query as Record<string, unknown>,
+  get: () => query,
   set: (value) => {
     Object.assign(query, value)
   },
@@ -215,16 +207,43 @@ function handleExportScoreBatch(): void {
   })
 }
 
-function statusLabel(value: ScoreBatchStatus): string {
-  return strictEnumLabel(SCORE_BATCH_STATUS_LABEL, value, '成绩批次状态')
+async function handleDownloadScoreTemplate(): Promise<void> {
+  templateLoading.value = true
+  try {
+    const template = await downloadExcelImportTemplate({
+      sceneKey: ExcelImportSceneKey.QUALITY_SCORE_BATCH,
+    })
+    const blobResponse = await downloadFile({ nodeId: String(template.fileNodeId) })
+    const blob = blobResponse.data
+    if (!blob) {
+      message.error('模板文件暂不可下载，请稍后重试')
+      return
+    }
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = template.fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  } catch (error) {
+    showUserError(error, '成绩导入模板下载失败')
+  } finally {
+    templateLoading.value = false
+  }
 }
 
-function statusColor(value: ScoreBatchStatus): BadgeTone {
+function statusLabel(value: ScoreBatchStatusCode): string {
+  return strictEnumLabel(ScoreBatchStatusDescription, value, '成绩批次状态')
+}
+
+function statusColor(value: ScoreBatchStatusCode): BadgeTone {
   return strictEnumTone(SCORE_BATCH_STATUS_COLOR, value, '成绩批次状态')
 }
 
-function sourceModeLabel(value: DataSourceMode): string {
-  return strictEnumLabel(DATA_SOURCE_MODE_LABEL, value, '数据来源模式')
+function sourceModeLabel(value: DataSourceModeCode): string {
+  return strictEnumLabel(DataSourceModeDescription, value, '数据来源模式')
 }
 
 function hasGeneratedRowStatistics(
@@ -238,10 +257,14 @@ function hasGeneratedRowStatistics(
 }
 
 function scoreBatchRowStatisticsText(record: ScoreBatchVO): string {
-  if (record.status === 'PENDING' || record.status === 'PARSING' || record.status === 'CANCELLED') {
+  if (
+    record.status === ScoreBatchStatusCode.PENDING
+    || record.status === ScoreBatchStatusCode.PARSING
+    || record.status === ScoreBatchStatusCode.CANCELLED
+  ) {
     return '未生成'
   }
-  if (record.status === 'FAILED' && !hasGeneratedRowStatistics(record)) {
+  if (record.status === ScoreBatchStatusCode.FAILED && !hasGeneratedRowStatistics(record)) {
     return '解析失败，未生成行统计'
   }
   if (!hasGeneratedRowStatistics(record)) {
@@ -251,35 +274,54 @@ function scoreBatchRowStatisticsText(record: ScoreBatchVO): string {
 }
 
 // ─── 阶段状态分布（用于 StageRail） ─────────────────────────────
-const statusBuckets = computed(() => {
-  const buckets: Record<ScoreBatchStatus, number> = {
-    PENDING: 0,
-    PARSING: 0,
-    PREVIEW_READY: 0,
-    VALIDATED: 0,
-    CONFIRMED: 0,
-    FAILED: 0,
-    CANCELLED: 0,
+function buildBatchListQuery(): ScoreBatchQueryRequest {
+  return {
+    ...query,
+    trainingPlanId: qualityStore.currentTrainingPlanId,
+    qualityCourseId: query.qualityCourseId || undefined,
+    assessmentItemId: query.assessmentItemId || undefined,
+    status: query.status || undefined,
+    sourceMode: query.sourceMode || undefined,
+    keyword: query.keyword?.trim() || undefined,
   }
-  for (const b of batches.value) {
-    buckets[b.status] += 1
+}
+
+function buildScoreBatchStatusBuckets(
+  counts: QualityStatusCountsResponse | null,
+): Record<ScoreBatchStatusCode, number> {
+  const buckets: Record<ScoreBatchStatusCode, number> = {
+    [ScoreBatchStatusCode.PENDING]: 0,
+    [ScoreBatchStatusCode.PARSING]: 0,
+    [ScoreBatchStatusCode.PREVIEW_READY]: 0,
+    [ScoreBatchStatusCode.VALIDATED]: 0,
+    [ScoreBatchStatusCode.CONFIRMED]: 0,
+    [ScoreBatchStatusCode.FAILED]: 0,
+    [ScoreBatchStatusCode.CANCELLED]: 0,
+  }
+  if (!counts) {
+    return buckets
+  }
+  for (const row of counts.statusCounts) {
+    buckets[row.status] = row.recordCount
   }
   return buckets
-})
+}
+
+const statusBuckets = computed(() => buildScoreBatchStatusBuckets(batchStatusCounts.value))
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const stageOrder: Array<{ key: ScoreBatchStatus, title: string }> = [
-    { key: 'PENDING', title: '待处理' },
-    { key: 'PARSING', title: '解析中' },
-    { key: 'PREVIEW_READY', title: '预览就绪' },
-    { key: 'VALIDATED', title: '已校验' },
-    { key: 'CONFIRMED', title: '已确认' },
+  const stageOrder: Array<{ key: ScoreBatchStatusCode, title: string }> = [
+    { key: ScoreBatchStatusCode.PENDING, title: '待处理' },
+    { key: ScoreBatchStatusCode.PARSING, title: '解析中' },
+    { key: ScoreBatchStatusCode.PREVIEW_READY, title: '预览就绪' },
+    { key: ScoreBatchStatusCode.VALIDATED, title: '已校验' },
+    { key: ScoreBatchStatusCode.CONFIRMED, title: '已确认' },
   ]
   return stageOrder.map((stage) => {
     const count = b[stage.key]
     let status: WorkbenchStage['status'] = 'pending'
-    if (stage.key === 'CONFIRMED' && count > 0) status = 'completed'
+    if (stage.key === ScoreBatchStatusCode.CONFIRMED && count > 0) status = 'completed'
     else if (count > 0) status = 'active'
     return {
       key: stage.key,
@@ -292,8 +334,9 @@ const stages = computed<WorkbenchStage[]>(() => {
 
 const signals = computed<SignalMetric[]>(() => {
   const b = statusBuckets.value
+  const totalCount = batchStatusCounts.value?.totalCount ?? 0
   return [
-    { key: 'total', label: '本页批次', value: batches.value.length, tone: 'blue' },
+    { key: 'total', label: '批次总数', value: totalCount, tone: 'blue' },
     { key: 'confirmed', label: '已确认', value: b.CONFIRMED, tone: 'green' },
     { key: 'validated', label: '已校验', value: b.VALIDATED, tone: 'blue' },
     { key: 'previewReady', label: '预览就绪', value: b.PREVIEW_READY, tone: 'orange' },
@@ -370,28 +413,26 @@ async function loadBatches() {
   if (!qualityStore.currentTrainingPlanId) {
     batches.value = []
     total.value = 0
+    batchStatusCounts.value = null
     batchPolling.syncPolling()
     return
   }
   const scope = beginQualityScopeRequest()
   loading.value = true
   try {
-    const page = await scoreBatchApi.page({
-      ...query,
-      trainingPlanId: qualityStore.currentTrainingPlanId,
-      qualityCourseId: query.qualityCourseId || undefined,
-      assessmentItemId: query.assessmentItemId || undefined,
-      status: query.status || undefined,
-      sourceMode: query.sourceMode || undefined,
-      keyword: query.keyword?.trim() || undefined,
-    })
+    const listQuery = buildBatchListQuery()
+    const [page, counts] = await Promise.all([
+      scoreBatchApi.page(listQuery),
+      scoreBatchApi.statusCounts(listQuery),
+    ])
     if (scope.isStale()) {
       return
     }
-    batches.value = readPageList(page, '成绩批次加载失败，请稍后重试')
+    batches.value = page.list
+    batchStatusCounts.value = counts
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
-    total.value = readPageTotal(page, '成绩批次加载失败，请稍后重试')
+    total.value = Number(page.total)
     if (batches.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadBatches()
@@ -413,7 +454,7 @@ async function loadBatches() {
 const batchPolling = usePolling(() => loadBatchesQuietly(), {
   getOptions: () => ({
     intervalMs: 3000,
-    when: batches.value.some((batch) => batch.status === 'PARSING'),
+    when: batches.value.some((batch) => batch.status === ScoreBatchStatusCode.PARSING),
   }),
   pauseWhenDocumentHidden: true,
 })
@@ -424,22 +465,19 @@ async function loadBatchesQuietly(): Promise<void> {
   }
   const scope = beginQualityScopeRequest()
   try {
-    const page = await scoreBatchApi.page({
-      ...query,
-      trainingPlanId: qualityStore.currentTrainingPlanId,
-      qualityCourseId: query.qualityCourseId || undefined,
-      assessmentItemId: query.assessmentItemId || undefined,
-      status: query.status || undefined,
-      sourceMode: query.sourceMode || undefined,
-      keyword: query.keyword?.trim() || undefined,
-    })
+    const listQuery = buildBatchListQuery()
+    const [page, counts] = await Promise.all([
+      scoreBatchApi.page(listQuery),
+      scoreBatchApi.statusCounts(listQuery),
+    ])
     if (scope.isStale()) {
       return
     }
-    batches.value = readPageList(page, '成绩批次加载失败，请稍后重试')
+    batches.value = page.list
+    batchStatusCounts.value = counts
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
-    total.value = readPageTotal(page, '成绩批次加载失败，请稍后重试')
+    total.value = Number(page.total)
     batchPolling.syncPolling()
   } catch {
     // 轮询刷新失败时不打断当前页面操作
@@ -558,7 +596,7 @@ async function openPreview(record: ScoreBatchVO) {
       }
     }
     diagnostics.value = preview.diagnostics
-    if (preview.status !== 'FAILED' && !hasGeneratedRowStatistics(preview)) {
+    if (preview.status !== ScoreBatchStatusCode.FAILED && !hasGeneratedRowStatistics(preview)) {
       message.error('成绩预览结果异常，请重新导入后再试')
       return
     }
@@ -610,7 +648,7 @@ async function handleCancel(record: ScoreBatchVO) {
     onOk: async () => {
       await scoreBatchApi.updateStatus({
         id: record.id,
-        status: 'CANCELLED',
+        status: ScoreBatchStatusCode.CANCELLED,
       })
       message.success('批次已取消')
       await loadBatches()
@@ -635,13 +673,13 @@ async function handleReParse(record: ScoreBatchVO) {
 
 const editorVisible = ref(false)
 const editorSubmitting = ref(false)
-const editor = reactive<ScoreBatchSaveRequest>({
-  id: undefined,
+const editor = reactive<ScoreBatchUpdateRequest>({
+  id: '',
   qualityCourseId: '',
   assessmentItemId: '',
   batchCode: '',
   batchName: '',
-  sourceMode: 'EXCEL_IMPORT',
+  sourceMode: DataSourceModeCode.EXCEL_IMPORT,
   sourceFileId: undefined,
   externalPullTaskId: undefined,
   schoolYear: '',
@@ -680,12 +718,21 @@ async function submitEditor() {
     message.error('课程与考核环节不能为空')
     return
   }
+  if (!editor.id) {
+    message.error('批次 ID 不能为空')
+    return
+  }
   editorSubmitting.value = true
   try {
     await scoreBatchApi.update({
-      ...editor,
+      id: editor.id,
+      qualityCourseId: editor.qualityCourseId,
+      assessmentItemId: editor.assessmentItemId,
       batchCode: editor.batchCode.trim(),
       batchName: editor.batchName.trim(),
+      sourceMode: editor.sourceMode,
+      sourceFileId: editor.sourceFileId,
+      externalPullTaskId: editor.externalPullTaskId,
       schoolYear: editor.schoolYear?.trim() || undefined,
       semester: editor.semester || undefined,
     })
@@ -697,8 +744,12 @@ async function submitEditor() {
   }
 }
 
-function canEdit(status: ScoreBatchStatus) {
-  return status === 'PENDING' || status === 'FAILED' || status === 'CANCELLED'
+function canEdit(status: ScoreBatchStatusCode) {
+  return (
+    status === ScoreBatchStatusCode.PENDING
+    || status === ScoreBatchStatusCode.FAILED
+    || status === ScoreBatchStatusCode.CANCELLED
+  )
 }
 
 const auditDrawerOpen = ref(false)
@@ -717,7 +768,7 @@ async function openAuditDrawer(record: ScoreBatchVO) {
       category: 'QUALITY',
       bizId: record.id,
     })
-    auditEvents.value = readPageList(page, '成绩批次审计记录加载失败，请稍后重试').map((log) => {
+    auditEvents.value = page.list.map((log) => {
       return {
         id: log.id,
         operatorName: log.userDto.nickName,
@@ -736,14 +787,17 @@ async function openAuditDrawer(record: ScoreBatchVO) {
 
 const batchResultItems = computed<TaskResultItem[]>(() => {
   return batches.value
-    .filter((b) => b.status === 'FAILED' || b.status === 'PARSING')
+    .filter(
+      (b) => b.status === ScoreBatchStatusCode.FAILED || b.status === ScoreBatchStatusCode.PARSING,
+    )
     .slice(0, 5)
     .map((b) => ({
       id: b.id,
       title: `${b.batchCode} - ${b.batchName}`,
       statusLabel: statusLabel(b.status),
-      statusTone: b.status === 'FAILED' ? 'red' : 'blue',
-      description: b.status === 'FAILED' ? scoreBatchRowStatisticsText(b) : `解析中…`,
+      statusTone: b.status === ScoreBatchStatusCode.FAILED ? 'red' : 'blue',
+      description:
+        b.status === ScoreBatchStatusCode.FAILED ? scoreBatchRowStatisticsText(b) : `解析中…`,
       time: b.createTime || undefined,
       actions: canPreview(b.status) ? [{ key: 'preview', label: '预览' }] : [],
     }))
@@ -754,8 +808,12 @@ function handleBatchResultAction(actionEvent: { item: TaskResultItem, action: { 
   if (record && actionEvent.action.key === 'preview') openPreview(record)
 }
 
-function canDelete(status: ScoreBatchStatus) {
-  return status === 'PENDING' || status === 'FAILED' || status === 'CANCELLED'
+function canDelete(status: ScoreBatchStatusCode) {
+  return (
+    status === ScoreBatchStatusCode.PENDING
+    || status === ScoreBatchStatusCode.FAILED
+    || status === ScoreBatchStatusCode.CANCELLED
+  )
 }
 
 async function handleDelete(record: ScoreBatchVO) {
@@ -773,22 +831,26 @@ async function handleDelete(record: ScoreBatchVO) {
 
 function canValidate(record: ScoreBatchVO) {
   return (
-    record.status === 'PREVIEW_READY'
+    record.status === ScoreBatchStatusCode.PREVIEW_READY
     && (record.errorRows ?? 0) === 0
     && (record.successRows ?? 0) > 0
   )
 }
-function canConfirm(status: ScoreBatchStatus) {
-  return status === 'VALIDATED'
+function canConfirm(status: ScoreBatchStatusCode) {
+  return status === ScoreBatchStatusCode.VALIDATED
 }
-function canPreview(status: ScoreBatchStatus) {
-  return status === 'PREVIEW_READY' || status === 'VALIDATED' || status === 'FAILED'
+function canPreview(status: ScoreBatchStatusCode) {
+  return (
+    status === ScoreBatchStatusCode.PREVIEW_READY
+    || status === ScoreBatchStatusCode.VALIDATED
+    || status === ScoreBatchStatusCode.FAILED
+  )
 }
-function canCancel(status: ScoreBatchStatus) {
-  return status === 'PENDING' || status === 'FAILED'
+function canCancel(status: ScoreBatchStatusCode) {
+  return status === ScoreBatchStatusCode.PENDING || status === ScoreBatchStatusCode.FAILED
 }
-function canReParse(status: ScoreBatchStatus) {
-  return status === 'PENDING' || status === 'FAILED'
+function canReParse(status: ScoreBatchStatusCode) {
+  return status === ScoreBatchStatusCode.PENDING || status === ScoreBatchStatusCode.FAILED
 }
 
 watch(
@@ -867,7 +929,18 @@ onMounted(async () => {
 
       <div class="score-batch__upload">
         <header class="score-batch__upload-header">
-          <h3 class="score-batch__upload-title">Excel 成绩导入</h3>
+          <div class="score-batch__upload-heading">
+            <h3 class="score-batch__upload-title">Excel 成绩导入</h3>
+            <UiButton
+              variant="outline"
+              size="sm"
+              :loading="templateLoading"
+              @click="handleDownloadScoreTemplate"
+            >
+              <template #icon><DownloadOutlined /></template>
+              下载导入模板
+            </UiButton>
+          </div>
           <p class="score-batch__upload-hint">
             表头需包含：学号 / 姓名 / 班级 / 最终成绩。上传后进入成绩批次校验，由
             <strong>预览、校验、确认</strong> 完成闭环。
@@ -909,7 +982,7 @@ onMounted(async () => {
           </a-form-item>
           <a-form-item label="接入模式">
             <a-input
-              :value="sourceModeLabel('EXCEL_IMPORT')"
+              :value="sourceModeLabel(DataSourceModeCode.EXCEL_IMPORT)"
               disabled
               class="score-batch__filter score-batch__filter--lg"
             />
@@ -1278,8 +1351,16 @@ onMounted(async () => {
     margin-bottom: 16px;
   }
 
+  &__upload-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+  }
+
   &__upload-title {
-    margin: 0 0 6px;
+    margin: 0;
     font-size: 16px;
     font-weight: 600;
     color: var(--dp-text-primary);

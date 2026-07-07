@@ -9,7 +9,6 @@ import type { MajorCategoryVO } from '@/apis/quality/user-catalog'
 import { onMounted, ref, watch } from 'vue'
 import { majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
 import { showUserError } from '@/utils/error-handler'
-import { requireArrayResult } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -46,7 +45,7 @@ watch(
 async function loadOptions() {
   loading.value = true
   try {
-    options.value = requireArrayResult(await majorCategoryCatalogApi.listAll(), '专业大类')
+    options.value = await majorCategoryCatalogApi.listAll()
   } catch (e) {
     showUserError(e, '专业大类列表加载失败')
   } finally {

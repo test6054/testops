@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { QualityAuditEvidenceItem } from '@/apis/quality/audit-evidence'
+import type { AuditEvidenceItemRequest } from '@/apis/quality/audit-evidence'
 import type { AuditIssueVO } from '@/apis/quality/audit-issue'
 import type {
   AuditRectificationQueryRequest,
   AuditRectificationSaveRequest,
   AuditRectificationVO,
 } from '@/apis/quality/audit-rectification'
-import type { AuditRectificationStatus } from '@/apis/quality/types'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type {
   QualitySelectorChangeValue,
@@ -19,7 +18,8 @@ import { auditIssueApi } from '@/apis/quality/audit-issue'
 import { auditRectificationApi } from '@/apis/quality/audit-rectification'
 import {
   AUDIT_RECTIFICATION_STATUS_COLOR,
-  AUDIT_RECTIFICATION_STATUS_LABEL,
+  AuditRectificationStatusCode,
+  AuditRectificationStatusDescription,
 } from '@/apis/quality/types'
 import ImprovementWorkbenchPanel from '@/components/quality/improvement/ImprovementWorkbenchPanel.vue'
 import {
@@ -41,8 +41,8 @@ import {
   beginQualityScopeRequest,
   isQualityScopeStaleError,
 } from '@/composables/useScopeRequestGuard'
+import { AuditRectificationVerifyDecisionCode } from '@/types/enums/audit-rectification-verify-decision-enum'
 import { showUserError, toUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AuditRectificationTab' })
@@ -61,11 +61,11 @@ const rectColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 340, fixed: 'right' },
 ]
 
-function rectificationStatusLabel(value: AuditRectificationStatus): string {
-  return strictEnumLabel(AUDIT_RECTIFICATION_STATUS_LABEL, value, '整改任务状态')
+function rectificationStatusLabel(value: AuditRectificationStatusCode): string {
+  return strictEnumLabel(AuditRectificationStatusDescription, value, '整改任务状态')
 }
 
-function rectificationStatusColor(value: AuditRectificationStatus) {
+function rectificationStatusColor(value: AuditRectificationStatusCode) {
   return strictEnumTone(AUDIT_RECTIFICATION_STATUS_COLOR, value, '整改任务状态')
 }
 
@@ -81,18 +81,24 @@ const rectQuery = reactive<AuditRectificationQueryRequest>({
   status: undefined,
   keyword: '',
 })
-const rectStatusOptions: AuditRectificationStatus[] = [
-  'PLANNED',
-  'IN_PROGRESS',
-  'SUBMITTED',
-  'VERIFIED',
-  'RETURNED',
-  'CLOSED',
+const rectStatusOptions: AuditRectificationStatusCode[] = [
+  AuditRectificationStatusCode.PLANNED,
+  AuditRectificationStatusCode.IN_PROGRESS,
+  AuditRectificationStatusCode.SUBMITTED,
+  AuditRectificationStatusCode.VERIFIED,
+  AuditRectificationStatusCode.RETURNED,
+  AuditRectificationStatusCode.CLOSED,
 ]
 
-const rectFilterForm = reactive({
-  status: undefined as AuditRectificationStatus | undefined,
-  auditIssueId: undefined as string | undefined,
+interface RectFilterForm {
+  [key: string]: unknown
+  status?: AuditRectificationStatusCode
+  auditIssueId?: string
+  keyword: string
+}
+
+const rectFilterForm = reactive<RectFilterForm>({
+  auditIssueId: undefined,
   keyword: '',
 })
 
@@ -156,7 +162,7 @@ const rectEvidenceEditorSubmitting = ref(false)
 const rectEvidenceEditorRecord = ref<AuditRectificationVO | null>(null)
 const rectEvidenceEditor = reactive<{
   progressRemark: string
-  evidenceItems: QualityAuditEvidenceItem[]
+  evidenceItems: AuditEvidenceItemRequest[]
 }>({
   progressRemark: '',
   evidenceItems: [],
@@ -179,10 +185,10 @@ async function loadList(options?: { refreshSignals?: boolean }) {
       keyword: rectQuery.keyword?.trim() || undefined,
     })
     assertQualityScopeFresh(scope)
-    rectList.value = readPageList(page, '整改任务加载失败，请稍后重试')
+    rectList.value = page.list
     rectQuery.pageNum = page.pageNum
     rectQuery.pageSize = page.pageSize
-    rectTotal.value = readPageTotal(page, '整改任务加载失败，请稍后重试')
+    rectTotal.value = Number(page.total)
     if (rectList.value.length === 0 && rectTotal.value > 0 && rectQuery.pageNum > 1) {
       rectQuery.pageNum -= 1
       await loadList(options)
@@ -321,8 +327,10 @@ async function handleRectDelete(record: AuditRectificationVO) {
   })
 }
 
-function canEditAuditRectification(status: AuditRectificationStatus): boolean {
-  return status === 'PLANNED' || status === 'IN_PROGRESS' || status === 'RETURNED'
+function canEditAuditRectification(status: AuditRectificationStatusCode): boolean {
+  return status === AuditRectificationStatusCode.PLANNED
+    || status === AuditRectificationStatusCode.IN_PROGRESS
+    || status === AuditRectificationStatusCode.RETURNED
 }
 
 function addRectEvidenceItem() {
@@ -362,7 +370,7 @@ async function submitRectEvidenceEditor() {
   try {
     await auditRectificationApi.updateProgress({
       id: record.id,
-      targetStatus: 'SUBMITTED',
+      targetStatus: AuditRectificationStatusCode.SUBMITTED,
       progressRemark: rectEvidenceEditor.progressRemark.trim(),
       evidenceItems: rectEvidenceEditor.evidenceItems.map((item) => ({
         evidenceType: item.evidenceType || undefined,
@@ -385,9 +393,9 @@ async function submitRectEvidenceEditor() {
 
 async function advanceRectProgress(
   record: AuditRectificationVO,
-  target: 'IN_PROGRESS' | 'SUBMITTED',
+  target: AuditRectificationStatusCode.IN_PROGRESS | AuditRectificationStatusCode.SUBMITTED,
 ) {
-  if (target === 'SUBMITTED') {
+  if (target === AuditRectificationStatusCode.SUBMITTED) {
     rectEvidenceEditorRecord.value = record
     rectEvidenceEditor.progressRemark = ''
     rectEvidenceEditor.evidenceItems.splice(0, rectEvidenceEditor.evidenceItems.length, {
@@ -417,15 +425,15 @@ async function advanceRectProgress(
   await loadList({ refreshSignals: true })
 }
 
-async function verifyRect(record: AuditRectificationVO, decision: 'APPROVED' | 'REJECTED') {
+async function verifyRect(record: AuditRectificationVO, decision: AuditRectificationVerifyDecisionCode) {
   const remark = await promptInputAsync({
-    title: decision === 'APPROVED' ? '复核通过' : '复核退回',
+    title: decision === AuditRectificationVerifyDecisionCode.APPROVED ? '复核通过' : '复核退回',
     placeholder: '请填写复核说明',
-    required: decision === 'REJECTED',
+    required: decision === AuditRectificationVerifyDecisionCode.REJECTED,
     emptyErrorMessage: '退回必须填写原因',
-    okType: decision === 'REJECTED' ? 'danger' : 'primary',
+    okType: decision === AuditRectificationVerifyDecisionCode.REJECTED ? 'danger' : 'primary',
   })
-  if (decision === 'REJECTED' && !remark) return
+  if (decision === AuditRectificationVerifyDecisionCode.REJECTED && !remark) return
   await auditRectificationApi.verify({
     id: record.id,
     decision,
@@ -547,49 +555,49 @@ defineExpose({
               编辑
             </UiTextAction>
             <UiTextAction
-              v-if="record.status === 'PLANNED'"
+              v-if="record.status === AuditRectificationStatusCode.PLANNED"
               tone="primary"
-              @click="advanceRectProgress(record, 'IN_PROGRESS')"
+              @click="advanceRectProgress(record, AuditRectificationStatusCode.IN_PROGRESS)"
             >
               开始
             </UiTextAction>
             <UiTextAction
-              v-if="record.status === 'IN_PROGRESS'"
+              v-if="record.status === AuditRectificationStatusCode.IN_PROGRESS"
               tone="primary"
-              @click="advanceRectProgress(record, 'SUBMITTED')"
+              @click="advanceRectProgress(record, AuditRectificationStatusCode.SUBMITTED)"
             >
               提交复核
             </UiTextAction>
             <UiTextAction
-              v-if="record.status === 'RETURNED'"
+              v-if="record.status === AuditRectificationStatusCode.RETURNED"
               tone="primary"
-              @click="advanceRectProgress(record, 'IN_PROGRESS')"
+              @click="advanceRectProgress(record, AuditRectificationStatusCode.IN_PROGRESS)"
             >
               重新整改
             </UiTextAction>
             <UiTextAction
-              v-if="record.status === 'SUBMITTED'"
+              v-if="record.status === AuditRectificationStatusCode.SUBMITTED"
               tone="primary"
-              @click="verifyRect(record, 'APPROVED')"
+              @click="verifyRect(record, AuditRectificationVerifyDecisionCode.APPROVED)"
             >
               通过
             </UiTextAction>
             <UiTextAction
-              v-if="record.status === 'SUBMITTED'"
+              v-if="record.status === AuditRectificationStatusCode.SUBMITTED"
               tone="danger"
-              @click="verifyRect(record, 'REJECTED')"
+              @click="verifyRect(record, AuditRectificationVerifyDecisionCode.REJECTED)"
             >
               退回
             </UiTextAction>
             <UiTextAction
-              v-if="record.status === 'VERIFIED'"
+              v-if="record.status === AuditRectificationStatusCode.VERIFIED"
               tone="primary"
               @click="closeRect(record)"
             >
               闭环
             </UiTextAction>
             <UiTextAction
-              v-if="record.status === 'PLANNED'"
+              v-if="record.status === AuditRectificationStatusCode.PLANNED"
               tone="danger"
               @click="handleRectDelete(record)"
             >

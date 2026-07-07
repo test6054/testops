@@ -12,17 +12,22 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 
 const loading = ref(false)
 const rows = ref<PortfolioTeacherSalaryVO[]>([])
-const form = reactive({
+const form = reactive<{
+  teacherUserId: string
+  salaryMonth: string
+  baseAmount?: number
+  performanceAmount?: number
+  allowanceAmount?: number
+}>({
   teacherUserId: '',
   salaryMonth: '',
-  baseAmount: '',
-  performanceAmount: '',
-  allowanceAmount: '',
+  baseAmount: undefined,
+  performanceAmount: undefined,
+  allowanceAmount: undefined,
 })
 const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
   = usePortfolioTeacherSearch()
@@ -58,7 +63,7 @@ async function loadPage() {
   loading.value = true
   try {
     const page = await portfolioTeacherSalaryApi.page({ pageNum: 1, pageSize: 50 })
-    rows.value = readPageList(page, '加载薪酬记录失败')
+    rows.value = page.list
     await hydrateTeacherLabels(rows.value.map((row) => row.teacherUserId ?? ''))
   } catch (error) {
     showUserError(error)
@@ -76,17 +81,17 @@ async function saveSalary() {
     await portfolioTeacherSalaryApi.save({
       teacherUserId: form.teacherUserId,
       salaryMonth: form.salaryMonth.trim(),
-      baseAmount: form.baseAmount || undefined,
-      performanceAmount: form.performanceAmount || undefined,
-      allowanceAmount: form.allowanceAmount || undefined,
+      baseAmount: form.baseAmount,
+      performanceAmount: form.performanceAmount,
+      allowanceAmount: form.allowanceAmount,
       dataSource: 'MANUAL',
     })
     message.success('已保存')
     form.teacherUserId = ''
     form.salaryMonth = ''
-    form.baseAmount = ''
-    form.performanceAmount = ''
-    form.allowanceAmount = ''
+    form.baseAmount = undefined
+    form.performanceAmount = undefined
+    form.allowanceAmount = undefined
     await loadPage()
   } catch (error) {
     showUserError(error)
@@ -124,13 +129,13 @@ onMounted(loadPage)
           @search="searchTeachers"
         />
         <a-input v-model:value="form.salaryMonth" placeholder="月份 yyyy-MM" style="width: 120px" />
-        <a-input v-model:value="form.baseAmount" placeholder="基本工资" style="width: 100px" />
-        <a-input
+        <a-input-number v-model:value="form.baseAmount" placeholder="基本工资" style="width: 100px" />
+        <a-input-number
           v-model:value="form.performanceAmount"
           placeholder="绩效工资"
           style="width: 100px"
         />
-        <a-input v-model:value="form.allowanceAmount" placeholder="津贴" style="width: 100px" />
+        <a-input-number v-model:value="form.allowanceAmount" placeholder="津贴" style="width: 100px" />
         <UiButton variant="primary" @click="saveSalary"> 录入 </UiButton>
         <UiButton @click="exportCsv"> 导出 </UiButton>
       </div>

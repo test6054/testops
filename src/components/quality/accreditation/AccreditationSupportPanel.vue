@@ -17,7 +17,6 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 
 const props = defineProps<{
   programId: string
@@ -138,7 +137,7 @@ async function loadProfile() {
   }
   loading.value = true
   try {
-    profile.value = await accreditationApi.currentSupportProfile(props.trainingPlanId)
+    profile.value = await accreditationApi.currentSupportProfile({ trainingPlanId: props.trainingPlanId })
     syncFormFromProfile(profile.value)
   } catch (e) {
     showUserError(e)
@@ -163,10 +162,10 @@ async function loadFacultyProfiles() {
       department: facultyQuery.department || undefined,
       title: facultyQuery.title || undefined,
     })
-    facultyProfiles.value = readPageList(page, '教师档案列表加载失败，请刷新后重试')
+    facultyProfiles.value = page.list
     facultyQuery.pageNum = page.pageNum
     facultyQuery.pageSize = page.pageSize
-    facultyTotal.value = readPageTotal(page)
+    facultyTotal.value = Number(page.total)
     if (facultyProfiles.value.length === 0 && facultyTotal.value > 0 && facultyQuery.pageNum > 1) {
       facultyQuery.pageNum -= 1
       await loadFacultyProfiles()
@@ -185,7 +184,20 @@ async function saveProfile() {
   }
   saving.value = true
   try {
-    form.id = await accreditationApi.saveSupportProfile(form)
+    const request: ProgramSupportProfileSaveRequest = {
+      id: form.id,
+      programId: form.programId,
+      trainingPlanId: form.trainingPlanId,
+      facultySummary: form.facultySummary?.trim() || undefined,
+      facultyStructureRemark: form.facultyStructureRemark?.trim() || undefined,
+      supportFacilitySummary: form.supportFacilitySummary?.trim() || undefined,
+      supportLibraryRemark: form.supportLibraryRemark?.trim() || undefined,
+      supportItRemark: form.supportItRemark?.trim() || undefined,
+      industryCoopRemark: form.industryCoopRemark?.trim() || undefined,
+      studentDevelopmentRemark: form.studentDevelopmentRemark?.trim() || undefined,
+      qualityAssuranceRemark: form.qualityAssuranceRemark?.trim() || undefined,
+    }
+    form.id = await accreditationApi.saveSupportProfile(request)
     message.success('师资与支持条件档案已保存')
     await loadProfile()
     emit('refresh')
@@ -346,12 +358,30 @@ async function submitFacultyProfile() {
   if (!validateFacultyForm()) return
   facultySaving.value = true
   try {
-    facultyForm.trainingPlanId = props.trainingPlanId
+    const request: FacultyProfileSaveRequest = {
+      id: facultyForm.id,
+      trainingPlanId: props.trainingPlanId,
+      teacherUserId: facultyForm.teacherUserId,
+      teacherName: facultyForm.teacherName.trim(),
+      teacherNo: facultyForm.teacherNo.trim(),
+      title: facultyForm.title.trim(),
+      department: facultyForm.department.trim(),
+      hasTeachingEthicsTraining: facultyForm.hasTeachingEthicsTraining,
+      ethicsTrainingDate: facultyForm.ethicsTrainingDate.trim(),
+      teachingEvaluation: facultyForm.teachingEvaluation.trim(),
+      researchDirection: facultyForm.researchDirection?.trim() || undefined,
+      courses: facultyForm.courses.trim(),
+      engineeringPracticeExperience: facultyForm.engineeringPracticeExperience.trim(),
+      engineeringAbilityEvidence: facultyForm.engineeringAbilityEvidence.trim(),
+      teacherDevelopmentRecord: facultyForm.teacherDevelopmentRecord.trim(),
+      teachingReformContribution: facultyForm.teachingReformContribution.trim(),
+      graduationDesignGuidance: facultyForm.graduationDesignGuidance.trim(),
+    }
     if (facultyForm.id) {
-      await facultyProfileApi.update(facultyForm)
+      await facultyProfileApi.update(request)
       message.success('教师档案已更新')
     } else {
-      facultyForm.id = await facultyProfileApi.create(facultyForm)
+      facultyForm.id = await facultyProfileApi.create(request)
       message.success('教师档案已创建')
     }
     facultyDrawerOpen.value = false

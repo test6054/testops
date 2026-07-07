@@ -1,6 +1,6 @@
 import type { Ref } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
-import { cloneDeep, omit } from 'lodash-es'
+import { cloneDeep } from 'lodash-es'
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import XEUtils from 'xe-utils'
@@ -17,6 +17,12 @@ function isSidebarMenuRoute(route: RouteRecordRaw): boolean {
   return !route.meta?.hideInMenu && !(route.redirect && !route.component && !route.components)
 }
 
+function withoutChildren(route: RouteRecordRaw): RouteRecordRaw {
+  const nextRoute: RouteRecordRaw = { ...route }
+  delete nextRoute.children
+  return nextRoute
+}
+
 /** 判断路由层级是否大于 2 */
 export const isMultipleRoute = (route: RouteRecordRaw) => {
   return route.children?.some((child) => child.children?.length) ?? false
@@ -29,11 +35,22 @@ export const flatMultiLevelRoutes = (routes: RouteRecordRaw[]) => {
 
     return {
       ...route,
-      children: XEUtils.toTreeArray(route.children).map((item) =>
-        omit(item, 'children'),
-      ) as RouteRecordRaw[],
+      children: XEUtils.toTreeArray<RouteRecordRaw>(route.children ?? []).map<RouteRecordRaw>((item) =>
+        withoutChildren(item),
+      ),
     }
   })
+}
+
+function resolveRouteRoles(route: RouteRecordRaw): string[] | null {
+  const roles = route.meta?.roles
+  if (roles === undefined) {
+    return null
+  }
+  if (Array.isArray(roles) && roles.every((role) => typeof role === 'string')) {
+    return roles
+  }
+  throw new Error(`路由 ${String(route.name ?? route.path)} 的 roles 契约不是字符串数组`)
 }
 
 interface RouteStoreState {
@@ -82,7 +99,9 @@ const storeSetup = (): RouteStoreState => {
       // 超管：考试阅卷（含 SaaS 监管）+ 质量评价
       roleRoutes = [...teacherRoutes, ...qualityRoutes, ...portfolioRoutes, ...commonRoutes]
     } else if (
-      [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER].includes(userRole as RoleEnum)
+      userRole === RoleEnum.SCH_TECH
+      || userRole === RoleEnum.CROP_ADMIN
+      || userRole === RoleEnum.CROP_USER
     ) {
       // 教师角色：阅卷工作台 + 教学质量评价 + 教学档案袋
       roleRoutes = [...teacherRoutes, ...qualityRoutes, ...portfolioRoutes, ...commonRoutes]
@@ -114,17 +133,19 @@ const storeSetup = (): RouteStoreState => {
         }
 
         // 检查路由权限
-        if (route.meta?.roles) {
-          const roles = route.meta.roles as string[]
-          const hasRolePermission = Array.isArray(roles) && roles.includes(userRole)
+        const roles = resolveRouteRoles(route)
+        if (roles) {
+          const hasRolePermission = roles.includes(userRole)
           if (!hasRolePermission) {
             return false
           }
         }
 
-        // 检查租户管理员权限
+        // 检查租户管理员权限（企业管理员 CROP_ADMIN 与后端策略维护口径一致）
         if (route.meta?.requireTenantAdmin && !userIsTenantAdmin) {
-          return false
+          if (userRole !== RoleEnum.CROP_ADMIN) {
+            return false
+          }
         }
 
         // 档案审核台：院系负责人 / 租户管理员 / 超管

@@ -69,7 +69,7 @@ const appStore = useAppStore()
 const routeStore = useRouteStore()
 const qualityStore = useQualityStore()
 
-const ROLE_LAYOUT_PREFIXES = ['/teacher', '/student', '/quality', PORTFOLIO_ROUTE_PREFIX] as const
+const ROLE_LAYOUT_PREFIXES: string[] = ['/teacher', '/student', '/quality', PORTFOLIO_ROUTE_PREFIX]
 /** 质量域侧栏中的超管租户级配置分组，展示时归入考试阅卷域。 */
 const QUALITY_ADMIN_MENU_GROUP = 'quality-admin'
 
@@ -130,21 +130,45 @@ interface MenuGroup {
   items: RouteRecordRaw[]
 }
 
+function stringMetaValue(value: unknown): string | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+  if (typeof value !== 'string') {
+    throw new TypeError('菜单路由 meta 字符串契约异常')
+  }
+  return value
+}
+
+function numberMetaValue(value: unknown): number | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+  if (typeof value !== 'number') {
+    throw new TypeError('菜单路由 meta 数字契约异常')
+  }
+  return value
+}
+
+function emptyMenuGroups(): { ungrouped: RouteRecordRaw[], groups: MenuGroup[] } {
+  return { ungrouped: [], groups: [] }
+}
+
 function groupRoutes(routes: RouteRecordRaw[]): { ungrouped: RouteRecordRaw[], groups: MenuGroup[] } {
   const ungrouped: RouteRecordRaw[] = []
   const groupMap = new Map<string, MenuGroup>()
 
   for (const item of routes) {
-    const groupKey = item.meta?.menuGroup as string | undefined
+    const groupKey = stringMetaValue(item.meta?.menuGroup)
     if (!groupKey) {
       ungrouped.push(item)
     } else {
       if (!groupMap.has(groupKey)) {
         groupMap.set(groupKey, {
           key: groupKey,
-          title: (item.meta?.menuGroupTitle as string) || groupKey,
-          icon: (item.meta?.menuGroupIcon as string) || 'folder',
-          order: (item.meta?.menuGroupOrder as number) || 99,
+          title: stringMetaValue(item.meta?.menuGroupTitle) || groupKey,
+          icon: stringMetaValue(item.meta?.menuGroupIcon) || 'folder',
+          order: numberMetaValue(item.meta?.menuGroupOrder) || 99,
           items: [],
         })
       }
@@ -234,10 +258,10 @@ const sidebarRoutes = computed(() => {
 
 const groupedMenus = computed(() => {
   if (!isRoleLayoutRoute.value && !isDualTeacherQualityMenu.value) {
-    return { ungrouped: [] as RouteRecordRaw[], groups: [] as MenuGroup[] }
+    return emptyMenuGroups()
   }
   if (isDualTeacherQualityMenu.value) {
-    return { ungrouped: [] as RouteRecordRaw[], groups: [] as MenuGroup[] }
+    return emptyMenuGroups()
   }
   return groupRoutes(sidebarRoutes.value)
 })
@@ -269,7 +293,8 @@ function resolveMenuSelectedKey(raw: string): string {
 const activeMenu = computed<Key[]>(() => {
   const { meta, path } = route
   if (meta?.activeMenu) {
-    return [resolveMenuSelectedKey(meta.activeMenu as string)]
+    const activeMenu = stringMetaValue(meta.activeMenu)
+    return activeMenu ? [resolveMenuSelectedKey(activeMenu)] : [path]
   }
   return [path]
 })
@@ -350,7 +375,7 @@ const onMenuItemClick = ({ key }: { key: Key }) => {
 const openKeys = ref<Key[]>([])
 
 const currentGroupKey = computed<Key | null>(() => {
-  return (route.meta?.menuGroup as string | undefined) ?? null
+  return stringMetaValue(route.meta?.menuGroup) ?? null
 })
 
 watch(

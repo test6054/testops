@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioDevelopmentPlanStatus } from '@/apis/portfolio/enums'
 import type { PortfolioDevelopmentPlanVO } from '@/apis/portfolio/teacher-platform'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import {
-  PORTFOLIO_DEVELOPMENT_PLAN_STATUS_LABEL,
+  PORTFOLIO_DEVELOPMENT_PLAN_STATUS_OPTIONS,
   PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
+  PortfolioDevelopmentPlanStatusCode,
+  PortfolioDevelopmentPlanStatusDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -22,21 +23,20 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
-interface ReviewFilterModel {
+interface ReviewFilterModel extends Record<string, unknown> {
   portfolioOrgId?: string
-  planStatus?: PortfolioDevelopmentPlanStatus
+  planStatus?: PortfolioDevelopmentPlanStatusCode
   planYear?: string
 }
 
-function planStatusLabel(status: PortfolioDevelopmentPlanStatus): string {
-  return strictEnumLabel(PORTFOLIO_DEVELOPMENT_PLAN_STATUS_LABEL, status, '发展规划状态')
+function planStatusLabel(status: PortfolioDevelopmentPlanStatusCode): string {
+  return strictEnumLabel(PortfolioDevelopmentPlanStatusDescription, status, '发展规划状态')
 }
 
-function planStatusTone(status: PortfolioDevelopmentPlanStatus): BadgeTone {
+function planStatusTone(status: PortfolioDevelopmentPlanStatusCode): BadgeTone {
   return strictEnumTone(PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE, status, '发展规划状态')
 }
 
@@ -45,12 +45,12 @@ const { canPickTeachers } = usePortfolioTeacherAccess()
 const route = useRoute()
 
 const filterForm = reactive<ReviewFilterModel>({
-  planStatus: 'DEPARTMENT_PENDING',
+  planStatus: PortfolioDevelopmentPlanStatusCode.DEPARTMENT_PENDING,
   planYear: String(new Date().getFullYear()),
 })
 
 const filterModel = computed<Record<string, unknown>>({
-  get: () => filterForm as Record<string, unknown>,
+  get: () => filterForm,
   set: (value) => {
     Object.assign(filterForm, value)
   },
@@ -78,9 +78,10 @@ const filterFields = computed<FilterField[]>(() => [
     label: '规划状态',
     allowClear: true,
     width: 160,
-    options: (
-      Object.keys(PORTFOLIO_DEVELOPMENT_PLAN_STATUS_LABEL) as PortfolioDevelopmentPlanStatus[]
-    ).map((value) => ({ value, label: planStatusLabel(value) })),
+    options: PORTFOLIO_DEVELOPMENT_PLAN_STATUS_OPTIONS.map((item) => ({
+      value: item.value,
+      label: planStatusLabel(item.value),
+    })),
   },
 ])
 
@@ -111,8 +112,8 @@ async function loadPage() {
       planStatus: filterForm.planStatus,
       portfolioOrgId: filterForm.portfolioOrgId,
     })
-    rows.value = readPageList(page, '加载待审规划失败')
-    pageTotal.value = readPageTotal(page)
+    rows.value = page.list
+    pageTotal.value = Number(page.total)
   } catch (error) {
     showUserError(error)
   } finally {
@@ -126,7 +127,7 @@ function openPlanFromQuery() {
     return
   }
   const target = rows.value.find((item) => item.id === planId)
-  if (target?.planStatus === 'DEPARTMENT_PENDING') {
+  if (target?.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_PENDING) {
     openReview(planId, 'approve')
   }
 }
@@ -214,7 +215,9 @@ onMounted(async () => {
             </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <template v-if="record.planStatus === 'DEPARTMENT_PENDING'">
+            <template
+              v-if="record.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_PENDING"
+            >
               <UiButton size="sm" @click="openReview(record.id, 'approve')"> 通过 </UiButton>
               <UiButton size="sm" style="margin-left: 8px" @click="openReview(record.id, 'return')">
                 退回

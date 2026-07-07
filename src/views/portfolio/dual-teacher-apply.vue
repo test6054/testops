@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import type { PortfolioDualTeacherApplicationStatus } from '@/apis/portfolio/enums'
 import type { PortfolioDualTeacherApplicationVO } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL } from '@/apis/portfolio/enums'
+import { PortfolioDualTeacherApplicationStatusDescription } from '@/apis/portfolio/enums'
 import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -13,7 +12,6 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { showUserError } from '@/utils/error-handler'
-import { strictEnumLabel } from '@/utils/strict-enum'
 
 const { currentUserId } = usePortfolioTeacherAccess()
 const saving = ref(false)
@@ -35,12 +33,8 @@ const form = reactive({
   enterprisePracticeDays: 0,
 })
 
-function statusLabel(status: string) {
-  return strictEnumLabel(
-    PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL,
-    status as PortfolioDualTeacherApplicationStatus,
-    '双师申请状态',
-  )
+function statusLabel(status: PortfolioDualTeacherApplicationVO['applicationStatus']) {
+  return PortfolioDualTeacherApplicationStatusDescription[status]
 }
 
 const canEdit = () => {
@@ -100,7 +94,10 @@ function openAttachmentPicker() {
 }
 
 async function onAttachmentPick(event: Event) {
-  const input = event.target as HTMLInputElement
+  if (!(event.target instanceof HTMLInputElement)) {
+    return
+  }
+  const input = event.target
   const files = input.files
   if (!files?.length) {
     return
@@ -132,12 +129,9 @@ function attachmentFileIds(): string[] {
 }
 
 function buildDraftPayload() {
-  if (!currentUserId.value) {
-    throw new Error('未获取当前用户')
-  }
   return {
     id: form.id || undefined,
-    teacherUserId: currentUserId.value,
+    teacherUserId: currentUserId.value!,
     certLevel: form.certLevel.trim() || undefined,
     certYear: form.certYear.trim() || undefined,
     enterprisePracticeDays: form.enterprisePracticeDays ?? undefined,

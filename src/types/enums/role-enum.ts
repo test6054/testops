@@ -51,22 +51,16 @@ export const ROLE_CONFIG: Record<RoleEnum, { name: string, description: string, 
   },
 }
 
-function requireRoleConfig(role: RoleEnum): { name: string, description: string, color: string } {
-  return strictEnumValue(ROLE_CONFIG, role, '角色')
-}
-
 /**
  * 获取角色显示名称
  */
 export function getRoleName(role: RoleEnum): string {
-  return requireRoleConfig(role).name
+  return ROLE_CONFIG[role].name
 }
 
 /**
  * 获取角色颜色
  */
 export function getRoleColor(role: RoleEnum): string {
-  return requireRoleConfig(role).color
+  return ROLE_CONFIG[role].color
 }
-
-import { strictEnumValue } from '@/utils/strict-enum'

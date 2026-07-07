@@ -1,173 +1,175 @@
 <template>
-  <div class="task-detail-page">
-    <div class="task-detail-page__toolbar">
-      <div class="task-detail-page__toolbar-main">
-        <UiTag v-if="detail" :tone="reviewStatusTone(detail.status)" size="sm">
-          {{ reviewStatusLabel(detail.status) }}
-        </UiTag>
-        <UiTag v-if="detail" tone="gray" size="sm">{{ detail.paperDisplay.primaryText }}</UiTag>
-        <UiTag v-if="detail" tone="blue" size="sm">
-          题{{ detail.questionNo }} · 满分{{ detail.fullScore }}
-        </UiTag>
-      </div>
-      <div class="task-detail-page__toolbar-actions">
-        <UiButton v-if="canEnterWorkspace" size="sm" @click="goWorkspace">
-          <template #icon><EditOutlined /></template>
-          进入复核
-        </UiButton>
-        <UiButton
-          variant="outline"
-          size="sm"
-          :disabled="!hasParams"
-          :loading="loading"
-          @click="loadTask"
-        >
-          <template #icon><ReloadOutlined /></template>
-          刷新
-        </UiButton>
-      </div>
-    </div>
-
+  <div class="review-task-detail-page grading-immersion-page grading-workspace-page">
     <UiEmpty
       v-if="!hasParams"
       description="暂无数据"
-      class="task-detail-page__empty"
+      class="review-task-detail-page__empty"
     />
 
+    <UiSkeletonState
+      v-else-if="loading && !detail"
+      variant="card"
+      :card-count="2"
+      compact
+      class="review-task-detail-page__loading"
+    />
 
+    <UiEmpty
+      v-else-if="!loading && !detail"
+      description="复核任务加载失败或不存在"
+      class="review-task-detail-page__empty"
+    >
+      <UiButton size="sm" variant="outline" @click="loadTask">重试</UiButton>
+    </UiEmpty>
 
-    <a-spin v-else :spinning="loading" tip="正在加载任务...">
-      <UiAlertStrip
-        v-if="isExamConfidential"
-        tone="error"
-        title="涉密资料，禁止传播"
-        description="涉密页面，请勿截屏外传"
-        :closable="false"
-        dense
-        class="task-detail-page__confidential-strip"
-      />
-      <div v-if="detail?.status === 'INVALIDATED'" class="task-detail-page__invalidated-banner">
-        <div class="task-detail-page__invalidated-title">当前复核任务已失效</div>
-        <div class="task-detail-page__invalidated-text">
+    <template v-else-if="detail">
+      <div v-if="detail.status === 'INVALIDATED'" class="review-task-detail-page__invalidated-banner">
+        <div class="review-task-detail-page__invalidated-title">当前复核任务已失效</div>
+        <div class="review-task-detail-page__invalidated-text">
           原作答影像已因补扫替换失效，系统正在重新执行识别与切片，请等待新复核任务生成。
         </div>
       </div>
-      <UiCard v-if="detail" class="info-card">
-        <template #title>
-          <ProfileOutlined />
-          <span>题目与评分摘要</span>
-        </template>
-        <a-descriptions :column="{ xs: 1, sm: 2, md: 3 }" :label-style="labelStyle" size="small">
-          <a-descriptions-item label="答卷">
-            {{ detail.paperDisplay.primaryText }}
-          </a-descriptions-item>
-          <a-descriptions-item label="题目">
-            题{{ detail.questionNo }} · {{ detail.questionType }}
-          </a-descriptions-item>
-          <a-descriptions-item label="满分">
-            {{ detail.fullScore }}
-          </a-descriptions-item>
-          <a-descriptions-item label="AI 评分">
-            <span v-if="detail.aiScore !== undefined && detail.aiScore !== null">
-              {{ detail.aiScore }}
-            </span>
-            <span v-else class="muted">-</span>
-          </a-descriptions-item>
-          <a-descriptions-item label="AI 来源">
-            <UiTag v-if="currentAiSourceLabel" :tone="currentAiSourceTone" size="sm">
-              {{ currentAiSourceLabel }}
-            </UiTag>
-            <span v-else class="muted">-</span>
-          </a-descriptions-item>
-          <a-descriptions-item label="处理追踪编号">
-            <a-typography-text v-if="detail.aiTraceId" copyable>{{ detail.aiTraceId }}</a-typography-text>
-            <span v-else class="muted">-</span>
-          </a-descriptions-item>
-          <a-descriptions-item label="AI 限流">
-            <UiTag v-if="detail.aiLimited" tone="orange" size="sm">限流/阻断</UiTag>
-            <span v-else class="muted">否</span>
-          </a-descriptions-item>
-          <a-descriptions-item label="评分细则" :span="3">
-            <a-typography-text v-if="detail.evaluationCriteria" :content="detail.evaluationCriteria" />
-            <span v-else class="muted">-</span>
-          </a-descriptions-item>
-          <a-descriptions-item label="评语" :span="3">
-            <a-typography-text v-if="detail.commentText" :content="detail.commentText" />
-            <span v-else class="muted">-</span>
-          </a-descriptions-item>
-        </a-descriptions>
-      </UiCard>
 
-      <a-row :gutter="16" class="detail-row">
-        <a-col :xs="24" :lg="16">
-          <UiCard class="info-card">
-            <template #title>
-              <PictureOutlined />
-              <span>阅卷影像</span>
+      <GradingWorkspaceLayout
+        :confidential="isExamConfidential"
+        :exam-label="examConfidentialLabel"
+        :watermark-lines="watermarkLines"
+      >
+        <template #queue>
+          <GradingImmersionChrome>
+            <template #status>
+              <UiTag :tone="reviewStatusTone(detail.status)" size="sm">
+                {{ reviewStatusLabel(detail.status) }}
+              </UiTag>
+              <UiTag tone="gray" size="sm">{{ detail.paperDisplay.primaryText }}</UiTag>
+              <UiTag tone="blue" size="sm">
+                题{{ detail.questionNo }} · 满分{{ detail.fullScore }}
+              </UiTag>
             </template>
-            <UiEmpty v-if="!detail?.sliceFileId && !detail?.sourceScanPage" description="暂无数据" />
+            <template #actions>
+              <UiButton
+                variant="outline"
+                size="sm"
+                :disabled="!hasParams"
+                :loading="loading"
+                @click="loadTask"
+              >
+                <template #icon><ReloadOutlined /></template>
+                刷新
+              </UiButton>
+            </template>
+          </GradingImmersionChrome>
+        </template>
+
+        <template #main>
+          <GradingImmersionSection
+            v-if="detail.questionStem"
+            :title="`题目题干 · 第 ${detail.questionNo} 题 · 满分 ${detail.fullScore}`"
+          >
+            <template #icon><FileTextOutlined /></template>
+            <a-typography-paragraph :ellipsis="{ rows: 4, expandable: true, symbol: '展开' }">
+              {{ detail.questionStem }}
+            </a-typography-paragraph>
+          </GradingImmersionSection>
+
+          <GradingImmersionSection title="阅卷影像">
+            <template #icon><PictureOutlined /></template>
+            <UiEmpty v-if="!detail.sliceFileId && !detail.sourceScanPage" description="暂无数据" />
             <MarkingScanMaterialPanel
               v-else
-              :slice-file-id="detail?.sliceFileId"
-              :source-scan-page="detail?.sourceScanPage"
-              :master-paper-page="detail?.masterPaperPage"
+              :slice-file-id="detail.sliceFileId"
+              :source-scan-page="detail.sourceScanPage"
+              :layout-paper-page="detail.layoutPaperPage"
               :confidential="isExamConfidential"
               :exam-label="examConfidentialLabel"
               :watermark-lines="watermarkLines"
             />
-          </UiCard>
+          </GradingImmersionSection>
 
-          <UiCard class="info-card">
-            <template #title>
-              <FileTextOutlined />
-              <span>识别答案</span>
-            </template>
-            <UiEmpty v-if="!detail?.recognizedAnswer" description="暂无数据" />
-            <div v-else class="text-block">{{ detail.recognizedAnswer }}</div>
-          </UiCard>
+          <GradingImmersionSection title="识别答案">
+            <template #icon><FileTextOutlined /></template>
+            <UiEmpty v-if="!detail.recognizedAnswer" description="暂无数据" />
+            <div v-else class="review-task-detail-page__text-block">{{ detail.recognizedAnswer }}</div>
+          </GradingImmersionSection>
 
-          <UiCard class="info-card">
-            <template #title>
-              <RobotOutlined />
-              <span>AI 评分说明</span>
+          <GradingImmersionSection title="AI 评分说明">
+            <template #icon><RobotOutlined /></template>
+            <template #tags>
               <UiTag v-if="currentAiSourceLabel" :tone="currentAiSourceTone" size="sm">
                 {{ currentAiSourceLabel }}
               </UiTag>
-              <UiTag v-if="detail?.aiLimited" tone="orange" size="sm">AI 限流/阻断</UiTag>
+              <UiTag v-if="detail.aiLimited" tone="orange" size="sm">AI 限流/阻断</UiTag>
+              <ExperienceAssistBadge
+                clickable
+                :applied="lastExperienceAssistMeta?.applied"
+                :source-exam-name="lastExperienceAssistMeta?.sourceExamName"
+                :consistency-rate="lastExperienceAssistMeta?.consistencyRate"
+                @open-ai-history="openExecutionsDrawer(detail.aiTraceId)"
+              />
             </template>
-            <template #extra>
-              <a-space>
-                <UiButton
-                  size="sm"
-                  variant="ghost"
-                  :disabled="!detail?.gradeResultId"
-                  :loading="executionsLoading"
-                  @click="openExecutionsDrawer"
-                >
-                  查看 AI 历史
-                </UiButton>
-                <UiButton
-                  size="sm"
-                  variant="outline"
-                  :disabled="!canRescoreByAi"
-                  :loading="rescoring"
-                  @click="openRescoreConfirm"
-                >
-                  重新 AI 复评
-                </UiButton>
-              </a-space>
+            <template #actions>
+              <UiButton
+                size="sm"
+                variant="ghost"
+                :disabled="!detail.gradeResultId"
+                :loading="executionsLoading"
+                @click="() => openExecutionsDrawer()"
+              >
+                查看 AI 历史
+              </UiButton>
+              <UiButton
+                size="sm"
+                variant="outline"
+                :disabled="!canRescoreByAi"
+                :loading="rescoring"
+                @click="openRescoreConfirm"
+              >
+                重新 AI 复评
+              </UiButton>
             </template>
-            <UiEmpty v-if="!detail?.aiDiagnostic" description="暂无数据" />
-            <div v-else class="text-block">{{ aiReviewDiagnosticText(detail.aiDiagnostic) }}</div>
-          </UiCard>
-        </a-col>
+            <UiEmpty v-if="!detail.aiDiagnostic" description="暂无数据" />
+            <div v-else class="review-task-detail-page__text-block">
+              {{ aiReviewDiagnosticText(detail.aiDiagnostic) }}
+            </div>
+          </GradingImmersionSection>
+        </template>
 
-        <a-col :xs="24" :lg="8">
-          <UiCard class="info-card">
-            <template #title>
-              <CommentOutlined />
-              <span>批注历史</span>
-            </template>
+        <template #aside>
+          <GradingImmersionSection title="题目与评分摘要">
+            <template #icon><ProfileOutlined /></template>
+            <a-descriptions :column="1" :label-style="labelStyle" size="small" bordered>
+              <a-descriptions-item label="答卷">
+                {{ detail.paperDisplay.primaryText }}
+              </a-descriptions-item>
+              <a-descriptions-item label="题目">
+                题{{ detail.questionNo }} · {{ detail.questionType }}
+              </a-descriptions-item>
+              <a-descriptions-item label="满分">
+                {{ detail.fullScore }}
+              </a-descriptions-item>
+              <a-descriptions-item label="AI 评分">
+                <span v-if="detail.aiScore !== undefined && detail.aiScore !== null">
+                  {{ detail.aiScore }}
+                </span>
+                <span v-else class="muted">-</span>
+              </a-descriptions-item>
+              <a-descriptions-item label="处理追踪编号">
+                <a-typography-text v-if="detail.aiTraceId" copyable>
+                  {{ detail.aiTraceId }}
+                </a-typography-text>
+                <span v-else class="muted">-</span>
+              </a-descriptions-item>
+              <a-descriptions-item v-if="detail.evaluationCriteria" label="评分细则">
+                <a-typography-text :content="detail.evaluationCriteria" />
+              </a-descriptions-item>
+              <a-descriptions-item v-if="detail.commentText" label="评语">
+                <a-typography-text :content="detail.commentText" />
+              </a-descriptions-item>
+            </a-descriptions>
+          </GradingImmersionSection>
+
+          <GradingImmersionSection title="批注历史">
+            <template #icon><CommentOutlined /></template>
             <UiEmpty v-if="annotations.length === 0" description="暂无数据" />
             <a-list v-else :data-source="annotations" size="small">
               <template #renderItem="{ item }">
@@ -183,46 +185,45 @@
                 </a-list-item>
               </template>
             </a-list>
-          </UiCard>
-        </a-col>
-      </a-row>
-    </a-spin>
+          </GradingImmersionSection>
+        </template>
 
-    <a-drawer
+        <template #footer>
+          <div class="review-task-detail-page__footer-main">
+            <span class="review-task-detail-page__footer-hint">
+              {{ detail.paperDisplay.primaryText }} · 题 {{ detail.questionNo }}
+            </span>
+          </div>
+          <div class="review-task-detail-page__footer-actions">
+            <UiButton variant="ghost" size="md" @click="goBack">返回</UiButton>
+            <UiButton v-if="canEnterWorkspace" size="md" @click="goWorkspace">
+              <template #icon><EditOutlined /></template>
+              进入复核
+            </UiButton>
+          </div>
+        </template>
+      </GradingWorkspaceLayout>
+    </template>
+
+    <MarkingAiAssistDrawer
       v-model:open="executionsDrawerOpen"
-      title="本题 AI 历次执行记录"
-      width="720"
-      placement="right"
-      destroy-on-close
-    >
-      <a-spin :spinning="executionsLoading" tip="加载 AI 历史...">
-        <UiEmpty v-if="!executionsLoading && aiExecutions.length === 0" description="暂无数据" />
-        <a-timeline v-else>
-          <a-timeline-item
-            v-for="(item, index) in aiExecutions"
-            :key="`${item.traceId}-${index}`"
-            :color="timelineColor(item.status)"
-          >
-            <div class="task-detail-page__execution-item">
-              <div class="task-detail-page__execution-head">
-                <UiTag :tone="statusTone(item.status)" size="sm">{{ statusLabel(item.status) }}</UiTag>
-                <UiTag :tone="abilityTone(item.abilityCode)" size="sm">{{ abilityLabel(item.abilityCode) }}</UiTag>
-                <span class="muted">{{ item.createTime }}</span>
-              </div>
-              <div v-if="item.diagnostic" class="muted">{{ item.diagnostic }}</div>
-            </div>
-          </a-timeline-item>
-        </a-timeline>
-      </a-spin>
-    </a-drawer>
+      :loading="executionsLoading"
+      :executions="aiExecutions"
+      :highlight-trace-id="highlightExecutionTraceId"
+      :status-label="statusLabel"
+      :status-tone="statusTone"
+      :ability-label="abilityLabel"
+      :ability-tone="abilityTone"
+      :timeline-color="timelineColor"
+    />
   </div>
 </template>
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import type { AnnotationVO } from '@/apis/mark/exam-annotation'
-import type {AiAbilityCode, AiExecutionStatusCode, ExamQuestionAiExecutionItemVO} from '@/apis/mark/exam-grade';
-import type { ReviewTaskDetailVO, ReviewTaskStatusCode } from '@/apis/mark/exam-review-task'
+import type { AnnotationResponse } from '@/apis/mark/exam-annotation'
+import type { AiAbilityCode, AiExecutionStatusCode, ExamQuestionAiExecutionItemResponse } from '@/apis/mark/exam-grade'
+import type { ReviewTaskDetailResponse, ReviewTaskStatusCode } from '@/apis/mark/exam-review-task'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
@@ -234,33 +235,31 @@ import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { listAnnotations } from '@/apis/mark/exam-annotation'
 import {
-  listAnnotations,
-  validateAnnotationContract,
-} from '@/apis/mark/exam-annotation'
-import {
-  AI_ABILITY_LABEL,
   AI_ABILITY_TONE,
-  AI_EXECUTION_STATUS_LABEL,
   AI_EXECUTION_STATUS_TONE,
-  
-  
-  
+  AiAbilityDescription,
+  AiExecutionStatusDescription,
   listAiExecutionsForQuestion,
-  rescoreQuestionByAi
+  rescoreQuestionByAi,
 } from '@/apis/mark/exam-grade'
 import {
   getReviewTaskDetail,
-  REVIEW_TASK_STATUS_LABEL,
   REVIEW_TASK_STATUS_TONE,
+  ReviewTaskStatusDescription,
 } from '@/apis/mark/exam-review-task'
+import ExperienceAssistBadge from '@/components/mark/ExperienceAssistBadge.vue'
+import GradingImmersionChrome from '@/components/mark/GradingImmersionChrome.vue'
+import GradingImmersionSection from '@/components/mark/GradingImmersionSection.vue'
+import GradingWorkspaceLayout from '@/components/mark/GradingWorkspaceLayout.vue'
+import MarkingAiAssistDrawer from '@/components/mark/MarkingAiAssistDrawer.vue'
 import MarkingScanMaterialPanel from '@/components/mark/MarkingScanMaterialPanel.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import { useExamConfidential } from '@/composables/useConfidentialWatermark'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import { isExamConfidentialFlag, useExamConfidential } from '@/composables/useConfidentialWatermark'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -276,10 +275,9 @@ function reviewStatusTone(value: ReviewTaskStatusCode): BadgeTone {
 }
 
 function reviewStatusLabel(value: ReviewTaskStatusCode): string {
-  return strictEnumLabel(REVIEW_TASK_STATUS_LABEL, value, '复核任务状态')
+  return strictEnumLabel(ReviewTaskStatusDescription, value, '复核任务状态')
 }
 
-/** 将 AI 评分诊断转为教师可处理的评分提示，避免展示模型或接口内部细节。 */
 function aiReviewDiagnosticText(diagnostic?: string): string {
   return getUserErrorMessage(
     { message: diagnostic },
@@ -296,23 +294,42 @@ const {
   examLabel: examConfidentialLabelRef,
   watermarkLines,
 } = useExamConfidential(examId)
-const isExamConfidential = computed(() => examConfidentialRef.value)
+const isExamConfidential = computed(() => isExamConfidentialFlag(examConfidentialRef.value))
 const examConfidentialLabel = computed(() => examConfidentialLabelRef.value)
 const taskId = computed(() => (route.params.taskId ? String(route.params.taskId) : ''))
 const hasParams = computed(() => !!examId.value && !!taskId.value)
 const taskSource = computed(() => (route.query.source === 'arbitration' ? 'arbitration' : 'review'))
 
-const detail = ref<ReviewTaskDetailVO | null>(null)
+const detail = ref<ReviewTaskDetailResponse | null>(null)
 const loading = ref(false)
 const rescoring = ref(false)
 const executionsDrawerOpen = ref(false)
 const executionsLoading = ref(false)
-const aiExecutions = ref<ExamQuestionAiExecutionItemVO[]>([])
+const aiExecutions = ref<ExamQuestionAiExecutionItemResponse[]>([])
+const highlightExecutionTraceId = ref<string | null>(null)
+const lastExperienceAssistMeta = ref<{
+  applied?: boolean
+  sourceExamName?: string
+  consistencyRate?: number
+} | null>(null)
+
+function syncExperienceAssistMetaFromDetail(taskDetail: ReviewTaskDetailResponse | null): void {
+  const audit = taskDetail?.referenceExperienceAudit
+  if (audit?.referenceExperienceApplied && audit.referenceExperienceSourceExamName) {
+    lastExperienceAssistMeta.value = {
+      applied: true,
+      sourceExamName: audit.referenceExperienceSourceExamName,
+      consistencyRate: audit.referenceExperienceConsistencyRate,
+    }
+    return
+  }
+  lastExperienceAssistMeta.value = null
+}
 
 const currentAiSourceLabel = computed(() => {
   const abilityCode = detail.value?.aiAbilityCode
   if (!abilityCode) return ''
-  return strictEnumLabel(AI_ABILITY_LABEL, abilityCode, 'AI 能力编码')
+  return strictEnumLabel(AiAbilityDescription, abilityCode, 'AI 能力编码')
 })
 
 const currentAiSourceTone = computed<BadgeTone>(() => {
@@ -326,11 +343,42 @@ const canRescoreByAi = computed(() => {
   return detail.value.status === 'PENDING' || detail.value.status === 'IN_PROGRESS'
 })
 
+const canEnterWorkspace = computed(() => {
+  const status = detail.value?.status
+  return status === 'PENDING' || status === 'IN_PROGRESS'
+})
+
 function executionDiagnosticText(diagnostic?: string): string {
   return getUserErrorMessage(
     { message: diagnostic },
     'AI 复评暂未生成可采纳评分，请按题目评分细则继续人工复核',
   )
+}
+
+function resolveReviewTaskPoolRouteName():
+  'TeacherExamWorkspaceMarkingArbitration' | 'TeacherExamWorkspaceReviewBatchConfirm' {
+  return taskSource.value === 'arbitration'
+    ? 'TeacherExamWorkspaceMarkingArbitration'
+    : 'TeacherExamWorkspaceReviewBatchConfirm'
+}
+
+function reviewTaskDetailSourceQuery(): Record<string, string> | undefined {
+  if (taskSource.value !== 'arbitration') {
+    return undefined
+  }
+  return { source: 'arbitration' }
+}
+
+function goBack(): void {
+  if (!examId.value) {
+    void router.push({ name: 'TeacherExamList' })
+    return
+  }
+  void router.push({
+    name: resolveReviewTaskPoolRouteName(),
+    params: { examId: examId.value },
+    query: reviewTaskDetailSourceQuery(),
+  })
 }
 
 function openRescoreConfirm(): void {
@@ -369,8 +417,9 @@ async function doRescoreByAi(): Promise<void> {
   }
 }
 
-function openExecutionsDrawer(): void {
+function openExecutionsDrawer(highlightTraceId?: string | null): void {
   if (!detail.value?.gradeResultId) return
+  highlightExecutionTraceId.value = highlightTraceId ?? detail.value.aiTraceId ?? null
   executionsDrawerOpen.value = true
   void loadAiExecutions()
 }
@@ -384,8 +433,8 @@ async function loadAiExecutions(): Promise<void> {
       gradeResultId: detail.value.gradeResultId,
     })
     aiExecutions.value.forEach((record) => {
-      strictEnumLabel(AI_ABILITY_LABEL, record.abilityCode, 'AI 能力编码')
-      strictEnumLabel(AI_EXECUTION_STATUS_LABEL, record.status, 'AI 执行状态')
+      strictEnumLabel(AiAbilityDescription, record.abilityCode, 'AI 能力编码')
+      strictEnumLabel(AiExecutionStatusDescription, record.status, 'AI 执行状态')
     })
   } catch (error) {
     showUserError(error, 'AI 复评历史加载失败')
@@ -396,7 +445,7 @@ async function loadAiExecutions(): Promise<void> {
 }
 
 function abilityLabel(code: AiAbilityCode): string {
-  return strictEnumLabel(AI_ABILITY_LABEL, code, 'AI 能力编码')
+  return strictEnumLabel(AiAbilityDescription, code, 'AI 能力编码')
 }
 
 function abilityTone(code: AiAbilityCode): BadgeTone {
@@ -404,7 +453,7 @@ function abilityTone(code: AiAbilityCode): BadgeTone {
 }
 
 function statusLabel(status: AiExecutionStatusCode): string {
-  return strictEnumLabel(AI_EXECUTION_STATUS_LABEL, status, 'AI 执行状态')
+  return strictEnumLabel(AiExecutionStatusDescription, status, 'AI 执行状态')
 }
 
 function statusTone(status: AiExecutionStatusCode): BadgeTone {
@@ -417,32 +466,24 @@ function timelineColor(status: AiExecutionStatusCode): string {
 
 const labelStyle: CSSProperties = { color: 'var(--ant-color-text-tertiary)', width: '100px' }
 
-const canEnterWorkspace = computed(() => {
-  // detail.value?.status 是 string | undefined，字面值 === 比较会自动缩窄类型，无需 cast。
-  const status = detail.value?.status
-  return status === 'PENDING' || status === 'IN_PROGRESS'
-})
-
-// 批注
-const annotations = ref<AnnotationVO[]>([])
+const annotations = ref<AnnotationResponse[]>([])
 
 async function loadAnnotations(): Promise<void> {
   if (!examId.value || !detail.value) return
   const currentExamId = examId.value
-  const { paperInstanceId, questionTemplateId, gradeResultId } = detail.value
+  const { paperInstanceId, layoutQuestionId, gradeResultId } = detail.value
   try {
     annotations.value = await readAllPages(
       (pageNum) => listAnnotations({
         examId: currentExamId,
         paperInstanceId,
-        questionTemplateId,
+        layoutQuestionId,
         gradeResultId,
         pageNum,
         pageSize: REVIEW_TASK_DETAIL_PAGE_SIZE,
       }),
       '批注记录加载失败，请刷新后重试',
     )
-    annotations.value.forEach(validateAnnotationContract)
   } catch (error) {
     showUserError(error, '批注记录加载失败')
   }
@@ -456,8 +497,11 @@ async function loadTask(): Promise<void> {
       examId: examId.value,
       reviewTaskId: taskId.value,
     })
+    syncExperienceAssistMetaFromDetail(detail.value)
     await loadAnnotations()
   } catch (error) {
+    detail.value = null
+    annotations.value = []
     showUserError(error, '复核任务详情加载失败')
   } finally {
     loading.value = false
@@ -469,7 +513,7 @@ function goWorkspace(): void {
   void router.push({
     name: 'TeacherExamWorkspaceReviewWorkspace',
     params: { examId: examId.value, taskId: taskId.value },
-    query: { source: taskSource.value },
+    query: reviewTaskDetailSourceQuery(),
   })
 }
 
@@ -483,36 +527,18 @@ watch(
 </script>
 
 <style lang="scss" scoped>
-.task-detail-page {
-  &__toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 12px 16px;
-    border: 1px solid var(--ant-color-border-secondary);
-    border-radius: var(--dp-radius-panel);
-    background: var(--ant-color-bg-container);
-  }
-
-  &__toolbar-main,
-  &__toolbar-actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-  }
+.review-task-detail-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 
   &__empty {
     padding: 60px 0;
   }
 
-  &__confidential-strip {
-    margin-bottom: 16px;
-  }
-
   &__invalidated-banner {
+    margin-bottom: 12px;
     padding: 12px 16px;
     border: 1px solid var(--dp-border, #e2e8f0);
     border-radius: 8px;
@@ -532,6 +558,36 @@ watch(
     color: var(--dp-text-secondary, #475569);
   }
 
+  &__text-block {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    color: var(--ant-color-text);
+    background: var(--ant-color-fill-quaternary);
+    padding: 12px;
+    border-radius: var(--dp-radius-panel, 6px);
+  }
+
+  &__footer-main {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    color: var(--dp-text-secondary, #475569);
+  }
+
+  &__footer-hint {
+    min-width: 0;
+  }
+
+  &__footer-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
   &__execution-head {
     display: flex;
     flex-wrap: wrap;
@@ -539,64 +595,9 @@ watch(
     gap: 8px;
     margin-bottom: 4px;
   }
-
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 8px 10px;
-}
-
-.info-card {
-  margin-bottom: 16px;
-
-  &:last-child {
-    margin-bottom: 0;
-  }
-}
-
-.detail-row {
-  row-gap: 16px;
-}
-
-.slice-viewer {
-  min-height: 300px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--ant-color-fill-quaternary);
-  border-radius: var(--dp-radius-panel, 6px);
-  padding: 16px;
-}
-
-.slice-image {
-  max-width: 100%;
-  max-height: 800px;
-  object-fit: contain;
-}
-
-.text-block {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  color: var(--ant-color-text);
-  background: var(--ant-color-fill-quaternary);
-  padding: 12px;
-  border-radius: var(--dp-radius-panel, 6px);
-}
-
-.annotation-meta {
-  display: flex;
-  gap: 12px;
-  font-size: 12px;
 }
 
 .muted {
   color: var(--ant-color-text-tertiary);
-}
-
-.empty-block {
-  padding: 60px 0;
 }
 </style>

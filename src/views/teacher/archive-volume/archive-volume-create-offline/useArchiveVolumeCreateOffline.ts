@@ -4,15 +4,19 @@ import type {
   ArchiveVolumeCreateConfigForm,
   ArchiveVolumeCreateSectionKey,
 } from './archive-volume-create-context'
-import type { ArchiveTenantTemplateSetVO } from '@/apis/mark/archive-platform-template'
+import type { ArchiveTenantTemplateSetResponse } from '@/apis/mark/archive-platform-template'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
-import { createOfflineArchiveVolume } from '@/apis/mark/archive-volume'
+import {
+  ArchiveScoreSourceCode,
+  ArchiveSecurityLevelCode,
+  createOfflineArchiveVolume,
+} from '@/apis/mark/archive-volume'
 import { useUserStore } from '@/stores/modules/user'
 import { getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
-import { showUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { ARCHIVE_VOLUME_CREATE_SECTION_ORDER } from './archive-volume-create-context'
 
 export type {
@@ -33,8 +37,9 @@ export function useArchiveVolumeCreateOffline() {
   const router = useRouter()
   const userStore = useUserStore()
   const submitting = ref(false)
+  const submitErrorMessage = ref('')
   const templateLoading = ref(false)
-  const templateSets = ref<ArchiveTenantTemplateSetVO[]>([])
+  const templateSets = ref<ArchiveTenantTemplateSetResponse[]>([])
   const activeSection = ref<ArchiveVolumeCreateSectionKey>('archive-create-basic')
   const basicFormRef = ref<FormInstance>()
   const configFormRef = ref<FormInstance>()
@@ -65,8 +70,8 @@ export function useArchiveVolumeCreateOffline() {
     templateSetCode: null,
     templateSetName: '',
     examForm: undefined,
-    scoreSource: 'OFFLINE_CONFIRMED',
-    securityLevel: 'INTERNAL',
+    scoreSource: ArchiveScoreSourceCode.OFFLINE_CONFIRMED,
+    securityLevel: ArchiveSecurityLevelCode.INTERNAL,
     retentionYears: 10,
     permanentRetention: false,
     responsibleUserId: normalizeTeacherUserId(userStore.userInfo?.userId),
@@ -207,6 +212,7 @@ export function useArchiveVolumeCreateOffline() {
   }
 
   async function handleCreateVolume(): Promise<void> {
+    submitErrorMessage.value = ''
     if (!(await validateBasicStep())) {
       activeSection.value = 'archive-create-basic'
       void message.warning('请先完善卷宗信息')
@@ -245,6 +251,7 @@ export function useArchiveVolumeCreateOffline() {
       void message.success('归档卷创建成功')
       void router.push({ name: 'TeacherArchiveVolumeDetail', params: { volumeId } })
     } catch (error) {
+      submitErrorMessage.value = getUserErrorMessage(error, '创建归档卷失败')
       showUserError(error)
     } finally {
       submitting.value = false
@@ -263,6 +270,7 @@ export function useArchiveVolumeCreateOffline() {
 
   return {
     submitting,
+    submitErrorMessage,
     templateLoading,
     templateSetOptions,
     activeSection,

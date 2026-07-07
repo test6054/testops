@@ -8,6 +8,7 @@ import type { SelectValue } from 'ant-design-vue/es/select'
 import type { TrainingPlanVO } from '@/apis/quality/training-plan'
 import { onMounted, ref, watch } from 'vue'
 import { trainingPlanApi } from '@/apis/quality/training-plan'
+import { ConfirmationStatusCode } from '@/apis/quality/types'
 import { showUserError } from '@/utils/error-handler'
 import { requireAllPages } from './page-contract'
 
@@ -66,7 +67,7 @@ async function loadOptions() {
           pageSize: 100,
           programId: props.programId || undefined,
           enabled: props.onlyEnabled ? true : undefined,
-          confirmationStatus: props.onlyConfirmed ? 'CONFIRMED' : undefined,
+          confirmationStatus: props.onlyConfirmed ? ConfirmationStatusCode.CONFIRMED : undefined,
         }),
       '培养方案',
     )

@@ -118,22 +118,26 @@
         <UiButton :loading="submitting" @click="handleSubmit"> 提交审核 </UiButton>
       </div>
     </UiCard>
+    <ScanDispatchResultDialog
+      v-model:open="dispatchResultOpen"
+      :payload="dispatchResult"
+      :task-kind="ScanTaskKindCode.PORTFOLIO_COLLECT"
+    />
   </div>
 </template>
 
 <script lang="ts" setup>
 import type { BadgeTone, UiAlertStripTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
+import type {ScanDispatchResultPayload} from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue';
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { createScanDispatch } from '@/apis/mark/scanner-dispatch'
+import { useRoute } from 'vue-router'
+import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scanner-dispatch'
+import { PortfolioCollectModeCode, ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import {
-  PORTFOLIO_MATERIAL_INTAKE_STAGE_LABEL,
-  PORTFOLIO_MATERIAL_INTAKE_STAGE_TONE,
-  PORTFOLIO_TEMPLATE_CODE_CERTIFICATE,
-} from '@/apis/portfolio/types'
+import { PortfolioMaterialIntakeStageDescription } from '@/apis/portfolio/enums'
+import { PORTFOLIO_MATERIAL_INTAKE_STAGE_TONE, PORTFOLIO_TEMPLATE_CODE_CERTIFICATE } from '@/apis/portfolio/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import PortfolioAiCandidateConfirmPanel from '@/components/portfolio/PortfolioAiCandidateConfirmPanel.vue'
 import PortfolioCategoryTreePicker from '@/components/portfolio/PortfolioCategoryTreePicker.vue'
@@ -152,6 +156,7 @@ import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 
 defineOptions({ name: 'PortfolioMaterialIntakePanel' })
 
@@ -160,13 +165,14 @@ const emit = defineEmits<{
 }>()
 
 const route = useRoute()
-const router = useRouter()
 const { targetTeacherId } = usePortfolioPageScope()
 
 const fileNodeId = ref<string>()
 const fileName = ref<string>()
 const materialTitle = ref('')
 const scanOpening = ref(false)
+const dispatchResultOpen = ref(false)
+const dispatchResult = ref<ScanDispatchResultPayload | null>(null)
 const starting = ref(false)
 const retryingAi = ref(false)
 
@@ -253,7 +259,7 @@ const stageLabel = computed(() => {
   if (!status.value?.stage) {
     return '尚未开始采集'
   }
-  return strictEnumLabel(PORTFOLIO_MATERIAL_INTAKE_STAGE_LABEL, status.value.stage, '材料采集阶段')
+  return strictEnumLabel(PortfolioMaterialIntakeStageDescription, status.value.stage, '材料采集阶段')
 })
 
 /** BadgeTone 与 UiAlertStrip 四色语义不一致，展示前映射到 alert strip 合同。 */
@@ -406,23 +412,26 @@ async function openScan() {
       query.recordId = archiveRecordId.value
     }
     const created = await createScanDispatch({
-      taskKind: 'PORTFOLIO_COLLECT',
-      collectMode: 'AI_SUBMIT',
+      taskKind: ScanTaskKindCode.PORTFOLIO_COLLECT,
+      collectMode: PortfolioCollectModeCode.AI_SUBMIT,
       teacherId: targetTeacherId.value,
       taskType: 'PORTFOLIO_CERTIFICATE_OCR',
       templateCode: PORTFOLIO_TEMPLATE_CODE_CERTIFICATE,
       archiveRecordId: archiveRecordId.value || undefined,
     })
-    if (!created.ticket?.ticketId) {
+    const ticket = created.ticket
+    if (!ticket?.ticketId) {
       showUserError(new Error('创建档案袋派单失败'), '创建档案袋扫描派单失败')
       return
     }
-    void router.push({
-      path: `/scanner-kiosk/dispatch/${created.ticket.ticketId}`,
-      query: {
-        returnTo: buildPortfolioIntakeScanReturnTo(query),
-      },
-    })
+    dispatchResult.value = {
+      ticketId: ticket.ticketId,
+      kioskUrl: buildScanDispatchKioskUrl(ticket, buildPortfolioIntakeScanReturnTo(query)),
+      status: ticket.status,
+      taskKind: ScanTaskKindCode.PORTFOLIO_COLLECT,
+      contextLabel: ticket.portfolioSnapshot?.categoryName ?? materialTitle.value,
+    }
+    dispatchResultOpen.value = true
   } catch (error) {
     showUserError(error, '创建档案袋扫描派单失败')
   } finally {

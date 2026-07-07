@@ -1,11 +1,11 @@
 import type { RadarSeriesOption } from 'echarts/charts'
 import type { EChartsCoreOption } from 'echarts/core'
 import type {
-  PortfolioPortraitCohortDisplayMode,
   PortfolioTeacherPortraitCohortCompareVO,
   PortfolioTeacherPortraitTrendPointVO,
   PortfolioTeacherPortraitVO,
 } from '@/apis/portfolio/types'
+import { PortfolioPortraitCohortDisplayModeCode } from '@/apis/portfolio/types'
 import {
   buildTrendLineChartOption,
   emptyChartOption,
@@ -52,7 +52,7 @@ export function buildPortraitRadarChartOption(
     },
   ]
   const showCohortMedian = cohort
-    && cohort.displayMode !== 'INSUFFICIENT'
+    && cohort.displayMode !== PortfolioPortraitCohortDisplayModeCode.INSUFFICIENT
     && cohort.dimensions.some(item => item.cohortMedian != null)
   if (showCohortMedian) {
     const cohortMedianValues = dimensions.map((item) => {
@@ -99,7 +99,7 @@ export function buildPortraitRadarChartOption(
 export function buildPortraitCohortRangeChartOption(
   cohort: PortfolioTeacherPortraitCohortCompareVO,
 ): EChartsCoreOption {
-  if (cohort.displayMode === 'INSUFFICIENT') {
+  if (cohort.displayMode === PortfolioPortraitCohortDisplayModeCode.INSUFFICIENT) {
     return emptyChartOption('同院系样本不足，暂不展示群体区间')
   }
   const rows = cohort.dimensions.filter(item =>
@@ -210,13 +210,13 @@ export function buildPortraitCompositeTrendChartOption(
 }
 
 export function resolveCohortHint(
-  displayMode: PortfolioPortraitCohortDisplayMode,
+  displayMode: PortfolioPortraitCohortDisplayModeCode,
   sampleSize: number,
   cohortLabel?: string,
 ): string {
   const label = cohortLabel ? `「${cohortLabel}」` : '同院系'
   const sampleText = `已有画像快照的同院系教师 ${sampleSize} 人`
-  if (displayMode === 'INSUFFICIENT') {
+  if (displayMode === PortfolioPortraitCohortDisplayModeCode.INSUFFICIENT) {
     return `${label}${sampleText}，少于 5 人时不展示群体分位（§8.55）`
   }
   if (displayMode === 'LIMITED') {

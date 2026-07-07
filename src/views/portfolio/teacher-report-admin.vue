@@ -1,21 +1,24 @@
 <script setup lang="ts">
 import type {
   PortfolioAiAnalysisDetailVO,
-  PortfolioReportScene,
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
-import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
+import { PortfolioMaterialTypeCode } from '@/apis/portfolio/enums'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
-import { PORTFOLIO_REPORT_SCENE_OPTIONS } from '@/apis/portfolio/types'
+import {
+  PORTFOLIO_REPORT_SCENE_OPTIONS,
+  PortfolioAiTaskTypeCode,
+  PortfolioReportSceneCode,
+} from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
+import { message } from '@/utils/feedback'
 import {
   portfolioTeacherSelectOptionsFromSummaries,
   resolvePortfolioTeacherDisplayName,
@@ -32,7 +35,7 @@ const teachers = ref<PortfolioTeacherSummaryVO[]>([])
 const reportDetail = ref<PortfolioAiAnalysisDetailVO | null>(null)
 const form = reactive({
   teacherId: '',
-  reportScene: 'ANNUAL_SUMMARY' as PortfolioReportScene,
+  reportScene: PortfolioReportSceneCode.ANNUAL_SUMMARY,
   reportPeriodLabel: `${new Date().getFullYear()} 年度`,
 })
 
@@ -47,7 +50,7 @@ function sleep(ms: number) {
 async function loadTeachers() {
   try {
     const page = await portfolioTeacherApi.page({ pageNum: 1, pageSize: 100 })
-    teachers.value = readPageList(page, '加载教师名册失败')
+    teachers.value = page.list
     if (!form.teacherId) {
       const firstOption = portfolioTeacherSelectOptionsFromSummaries(teachers.value)[0]
       if (firstOption) {
@@ -59,30 +62,34 @@ async function loadTeachers() {
   }
 }
 
-function selectedTeacherName(): string {
+function selectedTeacherName(): string | null {
   const teacher = teachers.value.find((item) => item.userId === form.teacherId)
   if (!teacher) {
-    throw new Error('所选教师不存在')
+    showUserError(null, '所选教师不存在')
+    return null
   }
   const displayName = resolvePortfolioTeacherDisplayName(teacher)
   if (!displayName) {
-    throw new Error('所选教师缺少可展示姓名')
+    showUserError(null, '所选教师缺少可展示姓名')
+    return null
   }
   return displayName
 }
 
-async function pollAnalysis(taskId: string) {
+async function pollAnalysis(taskId: string): Promise<PortfolioAiAnalysisDetailVO | null> {
   for (let attempt = 0; attempt < 60; attempt++) {
     const task = await portfolioAiJobApi.get(taskId)
     if (task.status === 'SUCCEEDED') {
       return portfolioAiJobApi.getAnalysisByTask(taskId)
     }
     if (task.status === 'FAILED' || task.status === 'CANCELLED') {
-      throw new Error(`报告生成失败：${task.status}`)
+      showUserError(null, '报告生成失败，请稍后重试')
+      return null
     }
     await sleep(2000)
   }
-  throw new Error('报告生成超时，请稍后重试')
+  showUserError(null, '报告生成超时，请稍后重试')
+  return null
 }
 
 async function submitReport() {
@@ -98,18 +105,25 @@ async function submitReport() {
   polling.value = true
   reportDetail.value = null
   try {
+    const teacherName = selectedTeacherName()
+    if (!teacherName) {
+      return
+    }
     const submitResult = await portfolioAiJobApi.submit({
-      taskType: 'PORTFOLIO_REPORT_GENERATE',
+      taskType: PortfolioAiTaskTypeCode.PORTFOLIO_REPORT_GENERATE,
       teacherId: form.teacherId,
-      materialType: 'REPORT',
+      materialType: PortfolioMaterialTypeCode.REPORT,
       context: {
         reportScene: form.reportScene,
         reportPeriodLabel: form.reportPeriodLabel.trim(),
-        teacherName: selectedTeacherName(),
+        teacherName,
       },
     })
     message.info('报告生成任务已提交，正在等待结果…')
     reportDetail.value = await pollAnalysis(submitResult.taskId)
+    if (!reportDetail.value) {
+      return
+    }
     message.success('报告生成完成')
   } catch (error) {
     showUserError(error)

@@ -20,6 +20,12 @@
               />
             </template>
             {{ item.label }}
+            <span
+              v-if="item.key === EXPERIENCE_ASSIST_MENU_KEY && experienceAssistPendingCount > 0"
+              class="exam-sub-sidebar-nav__badge"
+            >
+              {{ experienceAssistPendingCount }}
+            </span>
           </a-menu-item>
         </a-menu-item-group>
         <template v-else>
@@ -48,6 +54,7 @@ import type { ExamWorkspaceJourneyKey } from '@/constants/exam-journey'
 import type { ExamWorkspaceMenuKey } from '@/constants/exam-workspace-menu'
 import { computed } from 'vue'
 import ExamSubSidebarMenuIcon from '@/components/workbench/ExamSubSidebarMenuIcon.vue'
+import { useExperienceAssistTrialPendingCount } from '@/composables/useExperienceAssistTrialPendingCount'
 import { getMenuGroupsForJourney } from '@/constants/exam-workspace-menu'
 
 defineOptions({
@@ -65,7 +72,14 @@ const emit = defineEmits<{
   (e: 'menu-click', key: string): void
 }>()
 
-const menuGroups = computed(() => getMenuGroupsForJourney(props.activeJourneyKey))
+const EXPERIENCE_ASSIST_MENU_KEY = 'marking-experience-assist'
+
+const menuGroups = computed(() =>
+  getMenuGroupsForJourney(props.activeJourneyKey, {
+    experienceAssistPendingCount: experienceAssistPendingCount.value,
+  }),
+)
+const { pendingCount: experienceAssistPendingCount } = useExperienceAssistTrialPendingCount()
 
 function onMenuClick(info: MenuInfo): void {
   emit('menu-click', String(info.key))
@@ -88,6 +102,8 @@ function onMenuClick(info: MenuInfo): void {
   :deep(.ant-menu-item) {
     border-radius: var(--dp-radius-panel);
     font-weight: 500;
+    display: flex;
+    align-items: center;
   }
 
   :deep(.ant-menu-item-selected) {
@@ -100,6 +116,19 @@ function onMenuClick(info: MenuInfo): void {
 
   :deep(.ant-menu-inline-collapsed > .ant-menu-item) {
     padding-inline: calc(50% - 14px);
+  }
+
+  &__badge {
+    margin-left: auto;
+    min-width: 18px;
+    padding: 0 6px;
+    border-radius: 9px;
+    background: var(--ant-color-warning-bg);
+    color: var(--ant-color-warning);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 18px;
+    text-align: center;
   }
 }
 </style>

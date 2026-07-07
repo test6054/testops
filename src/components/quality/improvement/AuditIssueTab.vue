@@ -4,26 +4,29 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   AuditIssueQueryRequest,
   AuditIssueSaveRequest,
-  AuditIssueSeverity,
-  AuditIssueSource,
   AuditIssueVO,
 } from '@/apis/quality/audit-issue'
-import type { AuditIssueStatus } from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { WorkbenchSignalRefreshHandler } from '@/composables/quality/improvement'
 import type { QualityScopeRequestToken } from '@/composables/useScopeRequestGuard'
 import { message } from 'ant-design-vue'
 import { reactive, ref } from 'vue'
 import {
-  AUDIT_ISSUE_SEVERITY_LABEL,
   AUDIT_ISSUE_SEVERITY_OPTIONS,
   AUDIT_ISSUE_SEVERITY_TONE,
-  AUDIT_ISSUE_SOURCE_LABEL,
   AUDIT_ISSUE_SOURCE_OPTIONS,
   auditIssueApi,
+  AuditIssueSeverityCode,
+  AuditIssueSeverityDescription,
+  AuditIssueSourceCode,
+  AuditIssueSourceDescription,
 } from '@/apis/quality/audit-issue'
 import { auditRectificationApi } from '@/apis/quality/audit-rectification'
-import { AUDIT_ISSUE_STATUS_COLOR, AUDIT_ISSUE_STATUS_LABEL } from '@/apis/quality/types'
+import {
+  AUDIT_ISSUE_STATUS_COLOR,
+  AuditIssueStatusCode,
+  AuditIssueStatusDescription,
+} from '@/apis/quality/types'
 import ImprovementWorkbenchPanel from '@/components/quality/improvement/ImprovementWorkbenchPanel.vue'
 import {
   AchievementResultSelector,
@@ -48,7 +51,7 @@ import {
 } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError, toUserError } from '@/utils/error-handler'
-import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AuditIssueTab' })
@@ -70,31 +73,31 @@ const issueColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 260, fixed: 'right' },
 ]
 
-const issueStatusOptions: AuditIssueStatus[] = [
-  'OPEN',
-  'IN_RECTIFICATION',
-  'RECTIFIED',
-  'VERIFIED',
-  'CLOSED',
+const issueStatusOptions: AuditIssueStatusCode[] = [
+  AuditIssueStatusCode.OPEN,
+  AuditIssueStatusCode.IN_RECTIFICATION,
+  AuditIssueStatusCode.RECTIFIED,
+  AuditIssueStatusCode.VERIFIED,
+  AuditIssueStatusCode.CLOSED,
 ]
 
-function issueStatusLabel(value: AuditIssueStatus): string {
-  return strictEnumLabel(AUDIT_ISSUE_STATUS_LABEL, value, '审核问题状态')
+function issueStatusLabel(value: AuditIssueStatusCode): string {
+  return strictEnumLabel(AuditIssueStatusDescription, value, '审核问题状态')
 }
 
-function issueStatusColor(value: AuditIssueStatus): BadgeTone {
+function issueStatusColor(value: AuditIssueStatusCode): BadgeTone {
   return strictEnumTone(AUDIT_ISSUE_STATUS_COLOR, value, '审核问题状态')
 }
 
-function issueSourceLabel(value: AuditIssueSource): string {
-  return strictEnumLabel(AUDIT_ISSUE_SOURCE_LABEL, value, '审核问题来源')
+function issueSourceLabel(value: AuditIssueSourceCode): string {
+  return strictEnumLabel(AuditIssueSourceDescription, value, '审核问题来源')
 }
 
-function severityLabel(value: AuditIssueSeverity): string {
-  return strictEnumLabel(AUDIT_ISSUE_SEVERITY_LABEL, value, '审核问题严重度')
+function severityLabel(value: AuditIssueSeverityCode): string {
+  return strictEnumLabel(AuditIssueSeverityDescription, value, '审核问题严重度')
 }
 
-function severityColor(value: AuditIssueSeverity): BadgeTone {
+function severityColor(value: AuditIssueSeverityCode): BadgeTone {
   return strictEnumTone(AUDIT_ISSUE_SEVERITY_TONE, value, '审核问题严重度')
 }
 
@@ -114,10 +117,15 @@ const issueQuery = reactive<AuditIssueQueryRequest>({
   keyword: '',
 })
 
-const issueFilterForm = reactive({
-  issueSource: undefined as AuditIssueSource | undefined,
-  severity: undefined as AuditIssueSeverity | undefined,
-  status: undefined as AuditIssueStatus | undefined,
+interface IssueFilterForm {
+  issueSource?: AuditIssueSourceCode
+  severity?: AuditIssueSeverityCode
+  status?: AuditIssueStatusCode
+  auditYear: string
+  keyword: string
+}
+
+const issueFilterForm = reactive<IssueFilterForm>({
   auditYear: '',
   keyword: '',
 })
@@ -168,12 +176,12 @@ function handleIssueFilterSearch() {
   loadList()
 }
 
-const issueTransitMap: Record<AuditIssueStatus, AuditIssueStatus[]> = {
-  OPEN: ['IN_RECTIFICATION'],
-  IN_RECTIFICATION: ['RECTIFIED'],
-  RECTIFIED: ['VERIFIED'],
-  VERIFIED: ['CLOSED'],
-  CLOSED: [],
+const issueTransitMap: Record<AuditIssueStatusCode, AuditIssueStatusCode[]> = {
+  [AuditIssueStatusCode.OPEN]: [AuditIssueStatusCode.IN_RECTIFICATION],
+  [AuditIssueStatusCode.IN_RECTIFICATION]: [AuditIssueStatusCode.RECTIFIED],
+  [AuditIssueStatusCode.RECTIFIED]: [AuditIssueStatusCode.VERIFIED],
+  [AuditIssueStatusCode.VERIFIED]: [AuditIssueStatusCode.CLOSED],
+  [AuditIssueStatusCode.CLOSED]: [],
 }
 
 const issueEditorVisible = ref(false)
@@ -188,8 +196,8 @@ const issueEditor = reactive<AuditIssueSaveRequest>({
   issueCode: '',
   issueTitle: '',
   issueDescription: '',
-  issueSource: 'SELF_AUDIT',
-  severity: 'MINOR',
+  issueSource: AuditIssueSourceCode.SELF_AUDIT,
+  severity: AuditIssueSeverityCode.MINOR,
   auditRound: '',
   auditYear: '',
   raisedUserId: '',
@@ -245,10 +253,10 @@ async function loadList(options?: { refreshSignals?: boolean }) {
       keyword: issueQuery.keyword?.trim() || undefined,
     })
     assertQualityScopeFresh(scope)
-    issueList.value = readPageList(page, '审核评估问题加载失败，请稍后重试')
+    issueList.value = page.list
     issueQuery.pageNum = page.pageNum
     issueQuery.pageSize = page.pageSize
-    issueTotal.value = readPageTotal(page, '审核评估问题加载失败，请稍后重试')
+    issueTotal.value = Number(page.total)
     if (issueList.value.length === 0 && issueTotal.value > 0 && issueQuery.pageNum > 1) {
       issueQuery.pageNum -= 1
       await loadList(options)
@@ -304,8 +312,8 @@ function openIssueCreate() {
     issueCode: '',
     issueTitle: '',
     issueDescription: '',
-    issueSource: 'SELF_AUDIT',
-    severity: 'MINOR',
+    issueSource: AuditIssueSourceCode.SELF_AUDIT,
+    severity: AuditIssueSeverityCode.MINOR,
     auditRound: '',
     auditYear: new Date().getFullYear().toString(),
     raisedUserId: '',
@@ -402,16 +410,17 @@ async function handleIssueDelete(record: AuditIssueVO) {
   })
 }
 
-function canEditAuditIssue(status: AuditIssueStatus): boolean {
-  return status === 'OPEN' || status === 'IN_RECTIFICATION'
+function canEditAuditIssue(status: AuditIssueStatusCode): boolean {
+  return status === AuditIssueStatusCode.OPEN
+    || status === AuditIssueStatusCode.IN_RECTIFICATION
 }
 
-function nextAuditIssueStatuses(status: AuditIssueStatus): AuditIssueStatus[] {
+function nextAuditIssueStatuses(status: AuditIssueStatusCode): AuditIssueStatusCode[] {
   return strictEnumValue(issueTransitMap, status, '审核问题状态')
 }
 
-async function changeIssueStatus(record: AuditIssueVO, target: AuditIssueStatus) {
-  await auditIssueApi.transitStatus(record.id, target)
+async function changeIssueStatus(record: AuditIssueVO, target: AuditIssueStatusCode) {
+  await auditIssueApi.transitStatus({ id: record.id, targetStatus: target })
   message.success(`已切换到「${issueStatusLabel(target)}」`)
   await loadList({ refreshSignals: true })
 }
@@ -421,11 +430,12 @@ function handleIssueStatusMenuClick(record: AuditIssueVO, event: MenuInfo) {
     showUserError(null, '状态切换无效，请重新操作')
     return
   }
-  if (!nextAuditIssueStatuses(record.status).includes(event.key as AuditIssueStatus)) {
-    showUserError(null, `当前状态无法切换到「${issueStatusLabel(event.key as AuditIssueStatus)}」`)
+  const targetStatus = nextAuditIssueStatuses(record.status).find(status => status === event.key)
+  if (!targetStatus) {
+    showUserError(null, '当前状态无法切换到所选状态')
     return
   }
-  changeIssueStatus(record, event.key as AuditIssueStatus)
+  changeIssueStatus(record, targetStatus)
 }
 
 function handleIssueProgramChange(value: string | null | undefined) {
@@ -532,7 +542,7 @@ defineExpose({
               </template>
             </a-dropdown>
             <UiTextAction
-              v-if="record.status === 'OPEN' && !hasLinkedRectification(record.id)"
+              v-if="record.status === AuditIssueStatusCode.OPEN && !hasLinkedRectification(record.id)"
               tone="danger"
               @click="handleIssueDelete(record)"
             >

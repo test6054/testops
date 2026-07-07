@@ -1,4 +1,4 @@
-import type { AccreditationType, AggregationFunction, ConfirmationStatus } from './types'
+import type { AccreditationTypeCode, AggregationFunctionCode, ConfirmationStatusCode } from './types'
 /**
  * 专业算法实例 API - 对应 ProfessionAlgorithmProfileController
  * 后端路径：/api/quality/profession-algorithm-profiles
@@ -21,12 +21,12 @@ export interface ProfessionAlgorithmProfileVO {
   programId: string
   programName: string
   standardId?: string
-  accreditationType: AccreditationType
+  accreditationType: AccreditationTypeCode
   accreditationLevel?: string
   standardYear?: string
-  courseGoalAggregation: AggregationFunction
-  indicatorAggregation: AggregationFunction
-  requirementAggregation: AggregationFunction
+  courseGoalAggregation: AggregationFunctionCode
+  indicatorAggregation: AggregationFunctionCode
+  requirementAggregation: AggregationFunctionCode
   directWeight: number
   indirectWeight: number
   indirectMinValidSampleCount?: number
@@ -41,7 +41,7 @@ export interface ProfessionAlgorithmProfileVO {
   overrideWeightStrategy?: boolean
   overrideThresholdStrategy?: boolean
   overrideReason?: string
-  confirmationStatus: ConfirmationStatus
+  confirmationStatus: ConfirmationStatusCode
   confirmedUserId?: string
   confirmedTime?: string
   enabled: boolean
@@ -56,12 +56,12 @@ export interface ProfessionAlgorithmProfileSaveRequest {
   templateId: string
   programId: string
   standardId?: string
-  accreditationType: AccreditationType
+  accreditationType: AccreditationTypeCode
   accreditationLevel?: string
   standardYear?: string
-  courseGoalAggregation: AggregationFunction
-  indicatorAggregation: AggregationFunction
-  requirementAggregation: AggregationFunction
+  courseGoalAggregation: AggregationFunctionCode
+  indicatorAggregation: AggregationFunctionCode
+  requirementAggregation: AggregationFunctionCode
   directWeight: number
   indirectWeight: number
   indirectMinValidSampleCount?: number
@@ -81,8 +81,8 @@ export interface ProfessionAlgorithmProfileSaveRequest {
 
 export interface ProfessionAlgorithmProfileQueryRequest extends QueryDto {
   programId?: string
-  accreditationType?: AccreditationType
-  confirmationStatus?: ConfirmationStatus
+  accreditationType?: AccreditationTypeCode
+  confirmationStatus?: ConfirmationStatusCode
   enabled?: boolean
   keyword?: string
 }

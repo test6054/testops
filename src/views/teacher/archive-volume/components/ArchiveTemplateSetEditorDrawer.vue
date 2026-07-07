@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
 import type {
   ArchiveTemplateMaterialEditRow,
   ArchiveTemplateSelfCheckEditRow,
-} from '@/apis/mark/archive-platform-template'
-import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
+} from '@/views/teacher/archive-volume/components/archive-template-editor-types'
 import MenuOutlined from '@ant-design/icons-vue/MenuOutlined'
 import { computed, ref, watch } from 'vue'
-import { ARCHIVE_MATERIAL_TYPE_LABEL } from '@/apis/mark/archive-volume'
+import { ArchiveMaterialTypeDescription } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { useArchiveTemplateDragReorder } from '@/composables/useArchiveTemplateDragReorder'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ArchiveTemplateSortableTableShell from '@/views/teacher/archive-volume/components/ArchiveTemplateSortableTableShell.vue'
@@ -73,7 +74,7 @@ const {
 })
 
 const materialColumns = computed<ColumnsType<ArchiveTemplateMaterialEditRow>>(() => {
-  const dragCol = { title: '', key: 'drag', width: 44, align: 'center' as const }
+  const dragCol: ColumnsType<ArchiveTemplateMaterialEditRow>[number] = { title: '', key: 'drag', width: 44, align: 'center' }
   if (props.mode === 'platform') {
     return [
       dragCol,
@@ -140,7 +141,7 @@ function materialGroupTabLabel(group: MaterialGroupTab) {
 }
 
 function materialTypeLabel(code: ArchiveMaterialTypeCode) {
-  return strictEnumLabel(ARCHIVE_MATERIAL_TYPE_LABEL, code, 'materialType')
+  return strictEnumLabel(ArchiveMaterialTypeDescription, code, 'materialType')
 }
 
 function syncMaterialGroupLists() {
@@ -217,7 +218,8 @@ defineExpose({
     @update:open="emit('update:open', $event)"
     @close="handleClose"
   >
-    <a-spin :spinning="loading">
+    <UiSkeletonState v-if="loading" variant="card" compact />
+    <template v-else>
       <p class="archive-template-editor__tip">拖拽左侧手柄调整材料与自查项顺序</p>
       <slot name="meta" />
 
@@ -306,7 +308,7 @@ defineExpose({
         </a-tabs>
       </div>
       <p v-else class="archive-template-editor__empty">{{ emptyDescription }}</p>
-    </a-spin>
+    </template>
 
     <template #footer>
       <UiButton size="sm" variant="outline" :disabled="saving" @click="handleClose">取消</UiButton>
@@ -325,8 +327,8 @@ defineExpose({
 :deep(.archive-template-editor__meta) {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px 16px;
-  margin-bottom: 16px;
+  gap: 8px 12px;
+  margin-bottom: 12px;
 }
 
 :deep(.archive-template-editor__field) {
@@ -345,7 +347,11 @@ defineExpose({
 }
 
 .archive-template-editor__tabs :deep(.ant-tabs-nav) {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
+}
+
+.archive-template-editor__tabs :deep(.ant-table) {
+  font-size: 13px;
 }
 
 .archive-template-editor__drag-handle {

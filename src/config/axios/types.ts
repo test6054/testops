@@ -73,5 +73,5 @@ export interface RequestOptions<TData = unknown, TParams = unknown> {
   /** 响应类型 */
   responseType?: 'json' | 'blob' | 'arraybuffer' | 'text'
   /** 扩展配置 */
-  config?: Partial<ExtendedAxiosRequestConfig>
+  config?: ExtendedAxiosRequestConfig
 }

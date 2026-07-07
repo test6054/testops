@@ -1,56 +1,101 @@
 <template>
-  <div class="stats-page">
-    <div class="stats-page__linkage">
-      <div class="stats-page__linkage-main">
-        <span class="stats-page__linkage-label">联动范围</span>
-        <a-select
-          :value="activeClassId"
-          class="stats-page__class-select"
-          placeholder="全部班级"
-          allow-clear
-          show-search
-          option-filter-prop="label"
-          :options="classOptions"
-          :loading="rosterLoading"
-          @change="handleClassChange"
-        />
-        <UiTag v-if="activeClassName" tone="blue" size="sm">{{ activeClassName }}</UiTag>
-        <UiTag v-if="activeStudentText" tone="purple" size="sm">{{ activeStudentText }}</UiTag>
-      </div>
-      <UiButton
-        variant="ghost"
-        size="sm"
-        :disabled="!hasLinkageContext"
-        @click="clearLinkage"
+  <StageWorkbenchShell class="stats-page">
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        :title="contextBarTitle"
+        :subtitle="contextBarSubtitle"
       >
-        清空联动
-      </UiButton>
-    </div>
+        <template #actions>
+          <UiButton
+            variant="primary"
+            size="sm"
+            :disabled="!currentExamId"
+            @click="exportTeachingLecture"
+          >
+            导出讲评讲义
+          </UiButton>
+          <UiButton
+            variant="ghost"
+            size="sm"
+            :disabled="!currentExamId"
+            @click="scrollToTeachingImprovement"
+          >
+            定位到教学改进方案
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
 
+    <template v-if="currentExamId" #signal>
+      <UiSkeletonState
+        v-if="paperAnalysisLoading"
+        variant="card"
+        :card-count="3"
+        compact
+      />
+      <SignalBand v-else variant="tiles" compact :metrics="statsSignalMetrics" />
+    </template>
 
+    <UiEmpty v-if="!currentExamId" description="请选择考试" class="stats-page__empty" />
 
-    <div v-if="currentExamId" class="stats-page__export-bar">
-      <span class="stats-page__export-label">考后讲评</span>
-      <MarkQualitySyncChip :exam="selectedExam" />
-      <UiButton variant="primary" size="sm" @click="exportTeachingLecture">
-        导出讲评讲义
-      </UiButton>
-      <UiButton variant="ghost" size="sm" @click="scrollToTeachingImprovement">
-        定位到教学改进方案
-      </UiButton>
-    </div>
+    <UiEmpty
+      v-else-if="loadFailed"
+      description="考后统计数据加载失败"
+      action-label="重试"
+      class="stats-page__empty"
+      @action="reloadAll"
+    />
 
-    <div class="stats-page__sections">
-      <section class="stats-page__section">
-        <header class="stats-page__section-header">
-          <div class="stats-page__section-copy">
-            <h3 class="stats-page__section-title">考试统计与质量治理</h3>
-            <p class="stats-page__section-desc">
-              围绕本场考试的成绩分布、题目质量、重判计划与错因结构，支撑考后质量校准。
-            </p>
+    <template v-else>
+      <ExamWorkspaceJourneySubNav />
+
+      <WorkbenchSurfaceCard class="stats-page__linkage-card">
+        <template #toolbar>
+          <div class="stats-page__linkage">
+            <div class="stats-page__linkage-main">
+              <span class="stats-page__linkage-label">联动范围</span>
+              <a-select
+                :value="activeClassId"
+                class="stats-page__class-select"
+                placeholder="全部班级"
+                allow-clear
+                show-search
+                option-filter-prop="label"
+                :options="classOptions"
+                :loading="rosterLoading"
+                @change="handleClassChange"
+              />
+              <UiTag v-if="activeClassName" tone="blue" size="sm">{{ activeClassName }}</UiTag>
+              <UiTag v-if="activeStudentText" tone="blue" size="sm">{{ activeStudentText }}</UiTag>
+              <MarkQualitySyncChip :exam="selectedExam" />
+            </div>
+            <UiButton
+              variant="ghost"
+              size="sm"
+              :disabled="!hasLinkageContext"
+              @click="clearLinkage"
+            >
+              清空联动
+            </UiButton>
           </div>
-          <UiTag tone="blue" size="sm">考试后治理</UiTag>
-        </header>
+        </template>
+      </WorkbenchSurfaceCard>
+
+      <WorkbenchSurfaceCard class="stats-page__section">
+        <template #head>
+          <header class="stats-page__section-header">
+            <div class="stats-page__section-copy">
+              <span class="stats-page__flow-hint">{{ EXAM_STATISTICS_FLOW_HINT }}</span>
+              <h3 class="stats-page__section-title">考试统计与质量治理</h3>
+              <p class="stats-page__section-desc">
+                围绕本场考试的成绩分布、题目质量、重判计划与错因结构，支撑考后质量校准。
+              </p>
+            </div>
+            <UiTag tone="blue" size="sm">考试后治理</UiTag>
+          </header>
+        </template>
         <div class="stats-page__cards">
           <ScoreDistributionCard
             :exam-id="currentExamId"
@@ -64,6 +109,7 @@
             :exam-id="currentExamId"
             :reload-token="paperQualityToken"
             :class-id="activeClassId"
+            :show-signal-band="false"
           />
           <QuestionAnalysisCard
             :exam-id="currentExamId"
@@ -86,18 +132,20 @@
             :class-id="activeClassId"
           />
         </div>
-      </section>
+      </WorkbenchSurfaceCard>
 
-      <section class="stats-page__section">
-        <header class="stats-page__section-header">
-          <div class="stats-page__section-copy">
-            <h3 class="stats-page__section-title">教学改进与学情洞察</h3>
-            <p class="stats-page__section-desc">
-              围绕班级薄弱点、学生个体画像与教学建议，支持教师把考试结果转化为后续教学动作。
-            </p>
-          </div>
-          <UiTag tone="purple" size="sm">教学支持</UiTag>
-        </header>
+      <WorkbenchSurfaceCard class="stats-page__section">
+        <template #head>
+          <header class="stats-page__section-header">
+            <div class="stats-page__section-copy">
+              <h3 class="stats-page__section-title">教学改进与学情洞察</h3>
+              <p class="stats-page__section-desc">
+                围绕班级薄弱点、学生个体画像与教学建议，支持教师把考试结果转化为后续教学动作。
+              </p>
+            </div>
+            <UiTag tone="blue" size="sm">教学支持</UiTag>
+          </header>
+        </template>
         <div class="stats-page__cards">
           <TeachingImprovementCard
             ref="teachingImprovementRef"
@@ -122,36 +170,50 @@
             @student-change="handleStudentChange"
           />
         </div>
-      </section>
-    </div>
-  </div>
+      </WorkbenchSurfaceCard>
+    </template>
+  </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
 import type { SelectValue } from 'ant-design-vue/es/select'
+import type { ExamPaperAnalysisResponse } from '@/apis/mark/question-analysis'
+import type { SignalMetric } from '@/types/workbench'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { EXAM_STATISTICS_FLOW_HINT, getExamPaperAnalysis } from '@/apis/mark/question-analysis'
 import MarkQualitySyncChip from '@/components/quality/MarkQualitySyncChip.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useWorkspaceConfidentialContext } from '@/composables/useWorkspaceConfidentialContext'
+import { showUserError } from '@/utils/error-handler'
 import mittBus from '@/utils/mitt'
-import ClassWeaknessCard from './statistics/ClassWeaknessCard.vue'
-import ErrorCauseClusterCard from './statistics/ErrorCauseClusterCard.vue'
-import ExamQuestionCourseGoalMappingCard from './statistics/ExamQuestionCourseGoalMappingCard.vue'
-import PaperQualityCard from './statistics/PaperQualityCard.vue'
-import QuestionAnalysisCard from './statistics/QuestionAnalysisCard.vue'
-import RejudgePlanCard from './statistics/RejudgePlanCard.vue'
-import ScoreDistributionCard from './statistics/ScoreDistributionCard.vue'
-import StudentLearningProfileCard from './statistics/StudentLearningProfileCard.vue'
-import TeachingImprovementCard from './statistics/TeachingImprovementCard.vue'
+import { buildPaperQualitySignalMetrics } from '@/utils/paper-quality-signals'
+import ClassWeaknessCard from '@/views/teacher/ai-analysis/cards/ClassWeaknessCard.vue'
+import ErrorCauseClusterCard from '@/views/teacher/ai-analysis/cards/ErrorCauseClusterCard.vue'
+import ExamQuestionCourseGoalMappingCard from '@/views/teacher/ai-analysis/cards/ExamQuestionCourseGoalMappingCard.vue'
+import PaperQualityCard from '@/views/teacher/ai-analysis/cards/PaperQualityCard.vue'
+import QuestionAnalysisCard from '@/views/teacher/ai-analysis/cards/QuestionAnalysisCard.vue'
+import RejudgePlanCard from '@/views/teacher/ai-analysis/cards/RejudgePlanCard.vue'
+import ScoreDistributionCard from '@/views/teacher/ai-analysis/cards/ScoreDistributionCard.vue'
+import StudentLearningProfileCard from '@/views/teacher/ai-analysis/cards/StudentLearningProfileCard.vue'
+import TeachingImprovementCard from '@/views/teacher/ai-analysis/cards/TeachingImprovementCard.vue'
 
 defineOptions({ name: 'TeacherStatistics' })
 
 const { selectedExamId, selectedExam } = useMarkExamContext()
+const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar('考后统计')
 const { refreshSnapshot } = useWorkspaceExamId()
 const { isExamConfidential } = useWorkspaceConfidentialContext()
 const currentExamId = computed(() => selectedExamId.value || '')
@@ -173,6 +235,16 @@ const improvementToken = ref(0)
 const weaknessToken = ref(0)
 const errorCauseToken = ref(0)
 const profileToken = ref(0)
+
+const paperAnalysis = ref<ExamPaperAnalysisResponse | null>(null)
+const paperAnalysisLoading = ref(false)
+const loadFailed = ref(false)
+
+const PAPER_QUALITY_SIGNAL_PLACEHOLDERS: SignalMetric[] = [
+  { key: 'cronbachAlpha', label: 'Cronbach α', value: '—', tone: 'gray' },
+  { key: 'paperDiscriminationIndex', label: '平均区分度', value: '—', tone: 'gray' },
+  { key: 'paperDifficultyIndex', label: '平均难度', value: '—', tone: 'gray' },
+]
 
 const teachingImprovementRef = ref<InstanceType<typeof TeachingImprovementCard> | null>(null)
 
@@ -205,6 +277,33 @@ const activeStudentText = computed(() => {
   return ''
 })
 
+const statsSignalMetrics = computed((): SignalMetric[] => {
+  const metrics = buildPaperQualitySignalMetrics(paperAnalysis.value)
+  return metrics.length > 0 ? metrics : PAPER_QUALITY_SIGNAL_PLACEHOLDERS
+})
+
+async function loadPaperAnalysis(): Promise<void> {
+  if (!currentExamId.value) {
+    paperAnalysis.value = null
+    paperAnalysisLoading.value = false
+    return
+  }
+  paperAnalysisLoading.value = true
+  try {
+    paperAnalysis.value = await getExamPaperAnalysis({
+      examId: currentExamId.value,
+      classId: activeClassId.value || undefined,
+    })
+    loadFailed.value = false
+  } catch (error) {
+    paperAnalysis.value = null
+    loadFailed.value = true
+    showUserError(error, '整卷质量数据加载失败')
+  } finally {
+    paperAnalysisLoading.value = false
+  }
+}
+
 function handleClassChange(value?: SelectValue): void {
   activeClassId.value = typeof value === 'string' ? value : ''
   if (
@@ -216,6 +315,7 @@ function handleClassChange(value?: SelectValue): void {
   ) {
     activeStudentUserId.value = ''
   }
+  void loadPaperAnalysis()
 }
 
 function handleStudentChange(studentUserId: string): void {
@@ -227,9 +327,17 @@ function clearLinkage(): void {
   activeStudentUserId.value = ''
 }
 
-function reloadAll(): void {
+async function reloadAll(): Promise<void> {
+  loadFailed.value = false
   if (currentExamId.value) {
-    void loadRoster(currentExamId.value)
+    try {
+      await loadRoster(currentExamId.value)
+    } catch (error) {
+      loadFailed.value = true
+      showUserError(error, '考生名册加载失败')
+      return
+    }
+    await loadPaperAnalysis()
   }
   scoreDistToken.value += 1
   paperQualityToken.value += 1
@@ -308,18 +416,11 @@ onBeforeUnmount(() => {
   }
 
   &__linkage {
-    position: sticky;
-    top: var(--dp-space-3, 12px);
-    z-index: var(--dp-z-sticky, 1020);
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    margin-bottom: 12px;
-    padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
-    border: 1px solid var(--dp-border, #e5e7eb);
-    border-radius: var(--dp-radius-panel, 8px);
-    background: var(--dp-surface, #fff);
+    min-width: 0;
   }
 
   &__linkage-main {
@@ -340,43 +441,12 @@ onBeforeUnmount(() => {
     width: 240px;
   }
 
-  &__export-bar {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 16px;
-    padding: 10px 12px;
-    border: 1px solid var(--ant-color-primary-border);
-    border-radius: var(--dp-radius-panel, 8px);
-    background: var(--ant-color-primary-bg);
-  }
-
-  &__export-label {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--ant-color-primary);
-    margin-right: 4px;
-  }
-
-  &__sections {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-  }
-
-  &__section {
-    padding-top: 4px;
-  }
-
   &__section-header {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 16px;
-    margin-bottom: 12px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--dp-border, #e5e7eb);
+    width: 100%;
   }
 
   &__section-copy {
@@ -384,6 +454,12 @@ onBeforeUnmount(() => {
     flex-direction: column;
     gap: 4px;
     min-width: 0;
+  }
+
+  &__flow-hint {
+    font-size: 12px;
+    color: var(--c-text-4);
+    white-space: nowrap;
   }
 
   &__section-title {
@@ -410,12 +486,11 @@ onBeforeUnmount(() => {
       box-shadow: var(--dp-shadow-sm);
     }
 
-    :deep(.stats-card.dp-card--compact .dp-card__header) {
-      padding: var(--dp-space-4, 16px) var(--dp-space-5, 20px);
-    }
-
-    :deep(.stats-card.dp-card--compact .dp-card__body) {
-      padding: var(--dp-space-4, 16px) var(--dp-space-5, 20px);
+    :deep(.stats-card__title) {
+      margin: 0;
+      font-size: 16px;
+      font-weight: var(--dp-font-weight-title, 600);
+      line-height: 1.5;
     }
 
     :deep(.stats-card .stats-card__select--class) {

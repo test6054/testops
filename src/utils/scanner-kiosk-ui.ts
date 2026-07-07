@@ -1,24 +1,26 @@
-import type { ExamMaterialLayoutModeCode } from '@/apis/mark/exam'
-import type { ExamScannerKioskTaskContractVO, ScannerKioskScanMode } from '@/apis/mark/scanner-kiosk'
+import type { ExamScannerKioskTaskContractVO } from '@/apis/mark/scanner-kiosk'
+import { ExamMaterialLayoutModeCode } from '@/apis/mark/exam'
+import { ScannerKioskScanModeCode } from '@/apis/mark/scanner-kiosk'
+import {
+  KioskScanMaterialKindCode,
+  KioskScanMaterialKindDescription,
+} from '@/types/enums/kiosk-scan-material-kind-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
-
-/** 一体机送纸物类型（扫描员视角，区别于制卷形态配置文案） */
-export const KIOSK_SCAN_MATERIAL_KIND_LABEL: Record<ExamMaterialLayoutModeCode, string> = {
-  ANSWER_SHEET: '答卷页',
-  FULL_PAPER: '试卷',
-}
 
 export function kioskMaterialKindLabel(mode?: ExamMaterialLayoutModeCode): string {
   if (!mode) return '未配置'
-  return strictEnumLabel(KIOSK_SCAN_MATERIAL_KIND_LABEL, mode, '扫描材料类型')
+  const materialKind = mode === ExamMaterialLayoutModeCode.ANSWER_SHEET
+    ? KioskScanMaterialKindCode.ANSWER_SHEET
+    : KioskScanMaterialKindCode.FULL_PAPER
+  return strictEnumLabel(KioskScanMaterialKindDescription, materialKind, '扫描材料类型')
 }
 
 export const KIOSK_SUPPLEMENT_SCAN_MODE_ADVISORY
   = '补扫每次仅登记单页，须选择本工位已绑定试卷、指定目标页号并填写补扫原因；'
     + '开启「替换目标页」时旧扫描页失效并重新识别。'
 
-export function kioskScanModeAdvisory(mode: ScannerKioskScanMode): string {
-  return mode === 'SUPPLEMENT' ? KIOSK_SUPPLEMENT_SCAN_MODE_ADVISORY : ''
+export function kioskScanModeAdvisory(mode: ScannerKioskScanModeCode): string {
+  return mode === ScannerKioskScanModeCode.SUPPLEMENT ? KIOSK_SUPPLEMENT_SCAN_MODE_ADVISORY : ''
 }
 
 /**

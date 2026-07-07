@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import type { PortfolioArchiveRecordStatus } from '@/apis/portfolio/types'
+import type { PortfolioArchiveRecordStatusCode } from '@/apis/portfolio/enums'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { PortfolioTeacherJourneyKey } from '@/constants/portfolio-teacher-journey'
 import type { WorkbenchStage } from '@/types/workbench'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL } from '@/apis/portfolio/types'
+import {
+  ALL_PORTFOLIO_ARCHIVE_RECORD_STATUS_CODES,
+  PORTFOLIO_ARCHIVE_RECORD_STATUS_OPTIONS,
+  PortfolioArchiveRecordStatusDescription,
+} from '@/apis/portfolio/enums'
 import PortfolioTeacherJourneyRail from '@/components/portfolio/PortfolioTeacherJourneyRail.vue'
 import PortfolioTeacherReviewStatusTable from '@/components/portfolio/PortfolioTeacherReviewStatusTable.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -23,23 +27,23 @@ const route = useRoute()
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 
-const filterForm = reactive<{
+interface TeacherReviewStatusFilterForm extends Record<string, unknown> {
   academicYear?: string
-  recordStatus?: PortfolioArchiveRecordStatus
-}>({})
+  recordStatus?: PortfolioArchiveRecordStatusCode
+}
+
+const filterForm = reactive<TeacherReviewStatusFilterForm>({})
 
 const filterModel = computed<Record<string, unknown>>({
-  get: () => filterForm as Record<string, unknown>,
+  get: () => filterForm,
   set: (value) => {
     Object.assign(filterForm, value)
   },
 })
 
-const recordStatusOptions = (
-  Object.keys(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL) as PortfolioArchiveRecordStatus[]
-).map((value) => ({
-  value,
-  label: strictEnumLabel(PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL, value, '档案记录状态'),
+const recordStatusOptions = PORTFOLIO_ARCHIVE_RECORD_STATUS_OPTIONS.map((item) => ({
+  value: item.value,
+  label: strictEnumLabel(PortfolioArchiveRecordStatusDescription, item.value, '档案记录状态'),
 }))
 
 const filterFields = computed<FilterField[]>(() => [
@@ -75,14 +79,11 @@ const journeyStages = computed((): WorkbenchStage[] =>
 
 const tableRef = ref<InstanceType<typeof PortfolioTeacherReviewStatusTable> | null>(null)
 
-function readRecordStatusFromQuery(value: unknown): PortfolioArchiveRecordStatus | undefined {
+function readRecordStatusFromQuery(value: unknown): PortfolioArchiveRecordStatusCode | undefined {
   if (typeof value !== 'string') {
     return undefined
   }
-  if (!(value in PORTFOLIO_ARCHIVE_RECORD_STATUS_LABEL)) {
-    return undefined
-  }
-  return value as PortfolioArchiveRecordStatus
+  return ALL_PORTFOLIO_ARCHIVE_RECORD_STATUS_CODES.find((code) => code === value)
 }
 
 function syncFiltersFromRoute() {

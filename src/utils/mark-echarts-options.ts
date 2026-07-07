@@ -16,7 +16,28 @@ const DP_FONT_FAMILY_SANS
   = '-apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif'
 
 /** mark-vue ECharts 色板：与 --dp/--ant 主题对齐的十六进制真源 */
-export const MARK_ECHARTS_PALETTE = {
+interface MarkEchartsPalette {
+  primary: string
+  success: string
+  warning: string
+  danger: string
+  purple: string
+  muted: string
+  axisLabel: string
+  axisLine: string
+  splitLine: string
+  text: string
+}
+
+interface MarkChartAxisLabelStyle {
+  color: string
+  fontSize: number
+  lineHeight: number
+  fontFamily: string
+  fontWeight: number
+}
+
+export const MARK_ECHARTS_PALETTE: MarkEchartsPalette = {
   primary: '#2563eb',
   success: '#16a34a',
   warning: '#f59e0b',
@@ -27,16 +48,16 @@ export const MARK_ECHARTS_PALETTE = {
   axisLine: '#cbd5e1',
   splitLine: '#e2e8f0',
   text: '#0f172a',
-} as const
+}
 
 /** ECharts 轴标签：与全局 sans + hint 字阶对齐 */
-export const MARK_CHART_AXIS_LABEL_STYLE = {
+export const MARK_CHART_AXIS_LABEL_STYLE: MarkChartAxisLabelStyle = {
   color: MARK_ECHARTS_PALETTE.axisLabel,
   fontSize: 12,
   lineHeight: 18,
   fontFamily: DP_FONT_FAMILY_SANS,
   fontWeight: 400,
-} as const
+}
 
 const TONE_HEX: Record<BadgeTone, string> = {
   gray: MARK_ECHARTS_PALETTE.muted,
@@ -286,12 +307,12 @@ export function buildCategoryBarChartOption(
     name: line.name,
     yAxis: orientation === 'vertical' ? line.value : undefined,
     xAxis: orientation === 'horizontal' ? line.value : undefined,
-    lineStyle: { color: line.color || MARK_ECHARTS_PALETTE.warning, type: 'dashed' as const },
+    lineStyle: { color: line.color || MARK_ECHARTS_PALETTE.warning, type: 'dashed' },
     label: { formatter: line.name, color: MARK_ECHARTS_PALETTE.axisLabel, fontSize: 11 },
   }))
 
   const categoryAxis = {
-    type: 'category' as const,
+    type: 'category',
     data: categories,
     axisLabel: {
       ...MARK_CHART_AXIS_LABEL_STYLE,
@@ -302,7 +323,7 @@ export function buildCategoryBarChartOption(
     axisLine: { lineStyle: { color: MARK_ECHARTS_PALETTE.axisLine } },
   }
   const valueAxis = {
-    type: 'value' as const,
+    type: 'value',
     max: maxValue > 0 ? maxValue : undefined,
     name: orientation === 'vertical' ? config.yAxisName : config.xAxisName,
     minInterval: maxValue <= 100 ? undefined : 1,
@@ -522,7 +543,7 @@ export function buildScatterChartOption(
 
   const scatterSeries = visibleSeries.map((series, index) => ({
     name: series.name,
-    type: 'scatter' as const,
+    type: 'scatter',
     symbolSize: (dataItem: { weight?: number }) => {
       const weight = dataItem?.weight
       if (weight == null) return 10
@@ -626,11 +647,17 @@ export interface MarkGaugeChartConfig extends MarkChartToolboxConfig {
   reduceMotion?: boolean
 }
 
-const GAUGE_SIZE_MAP = {
+interface GaugeSizeSpec {
+  detailFontSize: number
+  axisLineWidth: number
+  titleFontSize: number
+}
+
+const GAUGE_SIZE_MAP: Record<NonNullable<MarkGaugeChartConfig['size']>, GaugeSizeSpec> = {
   sm: { detailFontSize: 20, axisLineWidth: 8, titleFontSize: 11 },
   md: { detailFontSize: 24, axisLineWidth: 10, titleFontSize: 12 },
   lg: { detailFontSize: 28, axisLineWidth: 12, titleFontSize: 13 },
-} as const
+}
 
 /** 环形进度：已确认率、绑定率、出勤率等 */
 export function buildGaugeChartOption(

@@ -53,14 +53,14 @@ export function useScanLiveStream(
   const initialLimit = options.initialLimit ?? 50
   const maxEvents = options.maxEvents ?? 200
 
-  const events = ref<ScanLiveEventVO[]>([]) as Ref<ScanLiveEventVO[]>
+  const events = ref<ScanLiveEventVO[]>([])
   const ready = ref(false)
   const isStreaming = ref(false)
   const connectionPhase = ref<ScanLiveConnectionPhase>('idle')
   const error = ref<Error | null>(null)
   const lastEventId = ref<string | undefined>(undefined)
 
-  const ledger = ref<ExamScannerPageLedgerVO | null>(null) as Ref<ExamScannerPageLedgerVO | null>
+  const ledger = ref<ExamScannerPageLedgerVO | null>(null)
   const ledgerError = ref<Error | null>(null)
   const ledgerLoading = ref(false)
   let ledgerRequestToken = 0
@@ -305,8 +305,8 @@ export function useScanLiveStream(
 
   return {
     events,
-    ready: computed(() => ready.value) as Ref<boolean>,
-    isStreaming: computed(() => isStreaming.value) as Ref<boolean>,
+    ready: computed(() => ready.value),
+    isStreaming: computed(() => isStreaming.value),
     connectionPhase,
     error,
     lastEventId,

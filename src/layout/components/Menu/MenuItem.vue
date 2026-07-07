@@ -38,7 +38,7 @@ function isVisibleMenuChild(route: RouteRecordRaw): boolean {
 
 // 计算可见的子路由
 const visibleChildren = computed((): RouteRecordRaw[] => {
-  const children = props.item.children as RouteRecordRaw[] | undefined
+  const children = props.item.children
   if (!children) return []
   return children.filter(isVisibleMenuChild)
 })
@@ -56,10 +56,11 @@ const menuData = computed(() => {
     isOneShowing = true
   } else if (children.length === 0) {
     // 没有子路由时，显示父路由
-    onlyChild = {
+    const parentAsLeaf: RouteRecordRaw = {
       ...props.item,
       meta: { ...props.item.meta, noShowingChildren: true },
-    } as RouteRecordRaw
+    }
+    onlyChild = parentAsLeaf
     isOneShowing = true
   }
 

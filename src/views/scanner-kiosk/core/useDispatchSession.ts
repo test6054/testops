@@ -8,6 +8,7 @@ import {
   resumeScanDispatch,
   suspendScanDispatch,
 } from '@/apis/mark/scanner-dispatch'
+import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { getUserErrorMessage } from '@/utils/error-handler'
 import { useDocumentKioskBootstrap } from '../composables/useDocumentKioskBootstrap'
 import { useCognitiveConfirm } from './useCognitiveConfirm'
@@ -33,7 +34,7 @@ export function useDispatchSession() {
   const scannerStationId = computed(() => bootstrap.setup.value?.scannerStationId ?? '')
 
   const canClaimTicket = computed(() => {
-    if (ticket.value?.taskKind === 'PORTFOLIO_COLLECT') {
+    if (ticket.value?.taskKind === ScanTaskKindCode.PORTFOLIO_COLLECT) {
       const snapshot = ticket.value.portfolioSnapshot
       return Boolean(snapshot?.teacherId && snapshot.collectMode)
     }
@@ -116,7 +117,7 @@ export function useDispatchSession() {
         scannerStationId: scannerStationId.value,
       })
       cognitive.clearConfirm()
-      if (ticket.value.taskKind === 'PORTFOLIO_COLLECT') {
+      if (ticket.value.taskKind === ScanTaskKindCode.PORTFOLIO_COLLECT) {
         const snapshot = ticket.value.portfolioSnapshot
         await router.replace({
           path: '/scanner-kiosk/portfolio/session',
@@ -142,6 +143,7 @@ export function useDispatchSession() {
           materialType: ticket.value.archiveSnapshot?.materialType,
           batchMode: ticket.value.archiveSnapshot?.archiveBatchMode,
           dispatchTicketId: ticketId.value,
+          ...(returnTo.value ? { returnTo: returnTo.value } : {}),
         },
       })
       return true
@@ -180,7 +182,7 @@ export function useDispatchSession() {
     if (!ticketId.value) {
       return false
     }
-    if (ticket.value?.taskKind === 'PORTFOLIO_COLLECT') {
+    if (ticket.value?.taskKind === ScanTaskKindCode.PORTFOLIO_COLLECT) {
       const snapshot = ticket.value.portfolioSnapshot
       if (!snapshot?.teacherId) {
         return false
@@ -213,6 +215,7 @@ export function useDispatchSession() {
         materialType: snapshot.materialType,
         batchMode: snapshot.archiveBatchMode,
         dispatchTicketId: ticketId.value,
+        ...(returnTo.value ? { returnTo: returnTo.value } : {}),
       },
     })
     return true

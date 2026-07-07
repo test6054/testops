@@ -158,7 +158,7 @@
 
               <!-- 量表题 -->
               <div
-                v-if="item.itemType === IndirectEvaluationItemType.SCALE"
+                v-if="item.itemType === IndirectEvaluationItemTypeCode.SCALE"
                 class="d-survey__scale"
               >
                 <div class="d-survey__scale-labels">
@@ -182,7 +182,7 @@
 
               <!-- 单选题 -->
               <div
-                v-else-if="item.itemType === IndirectEvaluationItemType.SINGLE_CHOICE"
+                v-else-if="item.itemType === IndirectEvaluationItemTypeCode.SINGLE_CHOICE"
                 class="d-survey__choices"
               >
                 <button
@@ -220,7 +220,7 @@
 
               <!-- 多选题 -->
               <div
-                v-else-if="item.itemType === IndirectEvaluationItemType.MULTI_CHOICE"
+                v-else-if="item.itemType === IndirectEvaluationItemTypeCode.MULTI_CHOICE"
                 class="d-survey__choices"
               >
                 <button
@@ -260,7 +260,7 @@
 
               <!-- 开放文本 -->
               <div
-                v-else-if="item.itemType === IndirectEvaluationItemType.OPEN_TEXT"
+                v-else-if="item.itemType === IndirectEvaluationItemTypeCode.OPEN_TEXT"
                 class="d-survey__open"
               >
                 <textarea
@@ -295,11 +295,10 @@
 
 <script setup lang="ts">
 import type { ComponentPublicInstance } from 'vue'
-import type { PublicSurveyItemType } from '@/apis/public-survey'
 import { nextTick, ref } from 'vue'
 import { formatPublicSurveyItemType } from '@/apis/public-survey'
 import { useSurveyFill } from '@/composables/useSurveyFill'
-import { IndirectEvaluationItemType } from '@/types/enums/indirect-evaluation-item-type-enum'
+import { IndirectEvaluationItemTypeCode } from '@/types/enums/indirect-evaluation-item-type-enum'
 
 const {
   loading,
@@ -347,7 +346,7 @@ function toggleMulti(itemId: string, opt: string) {
   }
 }
 
-function itemTypeLabel(type: PublicSurveyItemType): string {
+function itemTypeLabel(type: IndirectEvaluationItemTypeCode): string {
   return formatPublicSurveyItemType(type)
 }
 

@@ -1,28 +1,36 @@
 import type {
-  PortfolioArchiveRecordStatus,
   PortfolioIntakeReassignRouteQuery,
-  PortfolioMaterialIntakeStage,
-  PortfolioMaterialStatus,
   PortfolioMaterialVO
+} from '@/apis/portfolio/types'
+import {
+  PortfolioArchiveRecordStatusCode,
+  PortfolioMaterialIntakeStageCode,
+  PortfolioMaterialStatusCode,
 } from '@/apis/portfolio/types'
 
 /** 材料库行是否可进入 Intake 重分类：仅 ACTIVE + 已绑定 DRAFT/RETURNED 档案且异步处理未阻塞。 */
 export function canReassignPortfolioMaterial(row: PortfolioMaterialVO): boolean {
-  if (row.status !== 'ACTIVE') {
+  if (row.status !== PortfolioMaterialStatusCode.ACTIVE) {
     return false
   }
   if (!row.archiveRecordId) {
     return false
   }
   const recordStatus = row.recordStatus
-  if (recordStatus !== 'DRAFT' && recordStatus !== 'RETURNED') {
+  if (
+    recordStatus !== PortfolioArchiveRecordStatusCode.DRAFT
+    && recordStatus !== PortfolioArchiveRecordStatusCode.RETURNED
+  ) {
     return false
   }
-  return !isReassignBlockedByIntakeStage(row.intakeStage);
+  return !isReassignBlockedByIntakeStage(row.intakeStage)
 }
 
-function isReassignBlockedByIntakeStage(stage: PortfolioMaterialIntakeStage | undefined): boolean {
-  return stage === 'OCR_PENDING' || stage === 'AI_PROCESSING'
+function isReassignBlockedByIntakeStage(stage: PortfolioMaterialIntakeStageCode | undefined): boolean {
+  return (
+    stage === PortfolioMaterialIntakeStageCode.OCR_PENDING
+    || stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
+  )
 }
 
 /** 材料库「重分类」行操作跳转 Intake 采集页 query。 */
@@ -44,13 +52,16 @@ export function buildPortfolioIntakeReassignQuery(
 }
 
 export function isEditableArchiveRecordStatus(
-  status: PortfolioArchiveRecordStatus | undefined,
+  status: PortfolioArchiveRecordStatusCode | undefined,
 ): boolean {
-  return status === 'DRAFT' || status === 'RETURNED'
+  return (
+    status === PortfolioArchiveRecordStatusCode.DRAFT
+    || status === PortfolioArchiveRecordStatusCode.RETURNED
+  )
 }
 
-export function isActiveMaterialStatus(status: PortfolioMaterialStatus | undefined): boolean {
-  return status === 'ACTIVE'
+export function isActiveMaterialStatus(status: PortfolioMaterialStatusCode | undefined): boolean {
+  return status === PortfolioMaterialStatusCode.ACTIVE
 }
 
 /** Intake 页分类选择器与已绑定档案分类不一致，须先走 reassignCategory。 */

@@ -1,21 +1,26 @@
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import {
+  ALL_MASTERY_LEVEL_CODES,
+  MasteryLevelCode,
+  MasteryLevelDescription,
+} from '@/types/enums/mastery-level-enum'
 
-/** 学生知识掌握等级 - 与后端 StudentMasteryLevel 枚举完全一致 */
-export type MasteryLevelCode = 'EXCELLENT' | 'GOOD' | 'MEDIUM' | 'WEAK' | 'CRITICAL'
-
-/** 掌握等级文案 - 与后端 StudentMasteryLevel.message 完全一致 */
-export const MASTERY_LEVEL_LABEL: Record<MasteryLevelCode, string> = {
-  EXCELLENT: '优秀',
-  GOOD: '良好',
-  MEDIUM: '中等',
-  WEAK: '薄弱',
-  CRITICAL: '严重薄弱',
-}
+export {
+  ALL_MASTERY_LEVEL_CODES,
+  MasteryLevelCode,
+  MasteryLevelDescription,
+} from '@/types/enums/mastery-level-enum'
 
 export const MASTERY_LEVEL_TONE: Record<MasteryLevelCode, BadgeTone> = {
-  EXCELLENT: 'green',
-  GOOD: 'blue',
-  MEDIUM: 'blue',
-  WEAK: 'orange',
-  CRITICAL: 'red',
+  [MasteryLevelCode.EXCELLENT]: 'green',
+  [MasteryLevelCode.GOOD]: 'blue',
+  [MasteryLevelCode.MEDIUM]: 'blue',
+  [MasteryLevelCode.WEAK]: 'orange',
+  [MasteryLevelCode.CRITICAL]: 'red',
 }
+
+export const MASTERY_LEVEL_OPTIONS: Array<{ label: string, value: MasteryLevelCode }>
+  = ALL_MASTERY_LEVEL_CODES.map((value) => ({
+    value,
+    label: MasteryLevelDescription[value],
+  }))

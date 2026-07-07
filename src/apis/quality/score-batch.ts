@@ -1,4 +1,4 @@
-import type { DataSourceMode, ScoreBatchStatus } from './types'
+import type { DataSourceModeCode, ScoreBatchStatusCode } from './types'
 /**
  * 成绩导入批次 API - 对接 edu-quality / ScoreBatchController
  *
@@ -32,12 +32,12 @@ export interface ScoreBatchVO {
   batchCode: string
   batchName: string
   /** 取值见后端 DataSourceModeEnum */
-  sourceMode: DataSourceMode
+  sourceMode: DataSourceModeCode
   sourceFileId?: string
   externalPullTaskId?: string
   schoolYear?: string
   semester?: SemesterCode
-  status: ScoreBatchStatus
+  status: ScoreBatchStatusCode
   totalRows?: number
   successRows?: number
   errorRows?: number
@@ -63,7 +63,7 @@ export interface ScoreImportRowDiagnostic {
 /** 成绩导入预览 VO - 严格对齐后端 ScoreImportPreviewVO */
 export interface ScoreImportPreviewVO {
   batchId: string
-  status: ScoreBatchStatus
+  status: ScoreBatchStatusCode
   totalRows?: number
   successRows?: number
   errorRows?: number
@@ -76,20 +76,33 @@ export interface ScoreBatchQueryRequest extends QueryDto {
   trainingPlanId?: string
   qualityCourseId?: string
   assessmentItemId?: string
-  status?: ScoreBatchStatus
-  sourceMode?: DataSourceMode
+  status?: ScoreBatchStatusCode
+  sourceMode?: DataSourceModeCode
   keyword?: string
 }
 
-/** 创建 / 更新批次请求 - 严格对齐 ScoreBatchSaveRequest */
+/** 创建批次请求 - 严格对齐 ScoreBatchSaveRequest */
 export interface ScoreBatchSaveRequest {
-  id?: string
   qualityCourseId: string
   /** 后端 ScoreBatchServiceImpl.ensureRelationsExist 强校验考核环节存在 */
   assessmentItemId: string
   batchCode: string
   batchName: string
-  sourceMode: DataSourceMode
+  sourceMode: DataSourceModeCode
+  sourceFileId?: string
+  externalPullTaskId?: string
+  schoolYear?: string
+  semester?: SemesterCode
+}
+
+/** 更新批次请求 - 严格对齐 ScoreBatchUpdateRequest */
+export interface ScoreBatchUpdateRequest {
+  id: string
+  qualityCourseId: string
+  assessmentItemId: string
+  batchCode: string
+  batchName: string
+  sourceMode: DataSourceModeCode
   sourceFileId?: string
   externalPullTaskId?: string
   schoolYear?: string
@@ -99,22 +112,38 @@ export interface ScoreBatchSaveRequest {
 /** 取消请求 - 前端仅用于 PENDING / FAILED → CANCELLED */
 export interface ScoreBatchStatusUpdateRequest {
   id: string
-  status: ScoreBatchStatus
+  status: ScoreBatchStatusCode
   totalRows?: number
   successRows?: number
   errorRows?: number
   errorSummary?: string
 }
 
+/** 按状态分组统计 - 对齐后端 QualityStatusStatRow */
+export interface QualityStatusStatRow {
+  status: ScoreBatchStatusCode
+  recordCount: number
+}
+
+/** 按状态分组统计响应 - 对齐后端 QualityStatusCountsResponse */
+export interface QualityStatusCountsResponse {
+  totalCount: number
+  statusCounts: QualityStatusStatRow[]
+}
+
 export const scoreBatchApi = {
-  page: (data: ScoreBatchQueryRequest) => http.post<PageResult<ScoreBatchVO>>(`${BASE}/page`, data),
-  detail: (id: string) => http.post<ScoreBatchVO>(`${BASE}/detail`, { id }),
+  page: (data: ScoreBatchQueryRequest) =>
+    http.post<PageResult<ScoreBatchVO>>(`${BASE}/page`, data),
+  statusCounts: (data: ScoreBatchQueryRequest) =>
+    http.post<QualityStatusCountsResponse>(`${BASE}/status-counts`, data),
+  detail: (id: string) =>
+    http.post<ScoreBatchVO>(`${BASE}/detail`, { id }),
   preview: (id: string) => http.post<ScoreImportPreviewVO>(`${BASE}/preview`, { id }),
   /**
    * 注册成绩批次（platform Excel 导入由 ScoreBatchExcelImportSceneHandler 内部调用，页面不直调）。
    */
   create: (data: ScoreBatchSaveRequest) => http.post<string>(`${BASE}/create`, data),
-  update: (data: ScoreBatchSaveRequest) => http.post<void>(`${BASE}/update`, data),
+  update: (data: ScoreBatchUpdateRequest) => http.post<void>(`${BASE}/update`, data),
   delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),
   /** 触发解析（PENDING / FAILED 状态可用） */
   enqueueParse: (id: string) => http.post<void>(`${BASE}/enqueue-parse`, { id }),

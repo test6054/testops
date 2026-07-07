@@ -2,9 +2,6 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { DataNode } from 'ant-design-vue/es/tree'
 import type {
-  PfIndicatorDataSourceChannel,
-  PfIndicatorStatus,
-  PfScoreRuleType,
   PortfolioIndicatorDefinitionTreeNodeVO,
   PortfolioIndicatorDefinitionVO,
   PortfolioIndicatorPlatformSummaryVO,
@@ -19,12 +16,15 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioIndicatorPlatformApi } from '@/apis/portfolio/indicator'
 import {
-  PF_INDICATOR_DATA_SOURCE_CHANNEL_LABEL,
   PF_INDICATOR_DATA_SOURCE_CHANNEL_OPTIONS,
-  PF_INDICATOR_STATUS_LABEL,
   PF_INDICATOR_STATUS_OPTIONS,
-  PF_SCORE_RULE_TYPE_LABEL,
   PF_SCORE_RULE_TYPE_OPTIONS,
+  PfIndicatorDataSourceChannelCode,
+  PfIndicatorDataSourceChannelDescription,
+  PfIndicatorStatusCode,
+  PfIndicatorStatusDescription,
+  PfScoreRuleTypeCode,
+  PfScoreRuleTypeDescription,
 } from '@/apis/portfolio/indicator-types'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/PortfolioIndicatorTemplateParamsForm.vue'
@@ -35,6 +35,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { PortfolioIndicatorDefinitionTreeNodeTypeCode } from '@/types/enums/portfolio-indicator-definition-tree-node-type-enum'
 import { showUserError } from '@/utils/error-handler'
 import {
   buildNewIndustryPackDefJson,
@@ -46,19 +47,18 @@ import {
   parseTemplateParamsJson,
   serializeTemplateParams,
 } from '@/utils/indicator-template-params'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-function dataSourceLabel(value: PfIndicatorDataSourceChannel): string {
-  return strictEnumLabel(PF_INDICATOR_DATA_SOURCE_CHANNEL_LABEL, value, '数据来源')
+function dataSourceLabel(value: PfIndicatorDataSourceChannelCode): string {
+  return strictEnumLabel(PfIndicatorDataSourceChannelDescription, value, '数据来源')
 }
 
-function indicatorStatusLabel(value: PfIndicatorStatus): string {
-  return strictEnumLabel(PF_INDICATOR_STATUS_LABEL, value, '指标状态')
+function indicatorStatusLabel(value: PfIndicatorStatusCode): string {
+  return strictEnumLabel(PfIndicatorStatusDescription, value, '指标状态')
 }
 
-function scoreRuleTypeLabel(value: PfScoreRuleType): string {
-  return strictEnumLabel(PF_SCORE_RULE_TYPE_LABEL, value, '规则类型')
+function scoreRuleTypeLabel(value: PfScoreRuleTypeCode): string {
+  return strictEnumLabel(PfScoreRuleTypeDescription, value, '规则类型')
 }
 
 const loading = ref(false)
@@ -85,22 +85,28 @@ const editForm = reactive({
   dimensionL1Name: '',
   dimensionL2Name: '',
   definitionText: '',
-  defaultDataSource: 'MANUAL_ENTRY' as PfIndicatorDataSourceChannel,
+  defaultDataSource: PfIndicatorDataSourceChannelCode.MANUAL_ENTRY,
   defaultRuleTemplateId: '',
   policyAlign: '',
   applicableTeachers: '',
   auditRequired: false,
   redLineFlag: false,
   sortOrder: 0,
-  status: 'ACTIVE' as PfIndicatorStatus,
+  status: PfIndicatorStatusCode.ACTIVE,
 })
 const query = reactive({ pageNum: 1, pageSize: 20, indicatorCode: '', indicatorName: '' })
-const templateQuery = reactive({
+interface TemplateQueryForm {
+  pageNum: number
+  pageSize: number
+  templateCode: string
+  ruleType?: PfScoreRuleTypeCode
+  status?: PfIndicatorStatusCode
+}
+
+const templateQuery = reactive<TemplateQueryForm>({
   pageNum: 1,
   pageSize: 20,
   templateCode: '',
-  ruleType: undefined as PfScoreRuleType | undefined,
-  status: undefined as PfIndicatorStatus | undefined,
 })
 
 const definitionColumns: ColumnsType = [
@@ -144,17 +150,17 @@ const templateForm = reactive({
   id: '',
   templateCode: '',
   templateName: '',
-  ruleType: 'THRESHOLD' as PfScoreRuleType,
+  ruleType: PfScoreRuleTypeCode.THRESHOLD,
   description: '',
-  status: 'ACTIVE' as PfIndicatorStatus,
+  status: PfIndicatorStatusCode.ACTIVE,
 })
-const templateParams = ref<PortfolioIndicatorTemplateParams>(defaultTemplateParams('THRESHOLD'))
+const templateParams = ref<PortfolioIndicatorTemplateParams>(defaultTemplateParams(PfScoreRuleTypeCode.THRESHOLD))
 const packForm = reactive({
   id: '',
   packCode: '',
   packName: '',
   packVersion: '1.0.0',
-  status: 'ACTIVE' as PfIndicatorStatus,
+  status: PfIndicatorStatusCode.ACTIVE,
 })
 const packDefExistingJson = ref('{}')
 const packDefForm = reactive<PortfolioIndustryPackDefForm>({
@@ -166,15 +172,23 @@ const packDefForm = reactive<PortfolioIndustryPackDefForm>({
   materialOptionalText: '',
 })
 
-const treeFieldNames = { title: 'nodeTitle', key: 'nodeKey', children: 'children' }
+const treeFieldNames = { title: 'title', key: 'key', children: 'children' }
 
-const treeNodes = computed<DataNode[]>(() => treeData.value as unknown as DataNode[])
+const treeNodes = computed<DataNode[]>(() => treeData.value.map(toIndicatorDataNode))
+
+function toIndicatorDataNode(node: PortfolioIndicatorDefinitionTreeNodeVO): DataNode {
+  return {
+    key: node.nodeKey,
+    title: node.nodeTitle,
+    children: node.children?.map(toIndicatorDataNode),
+  }
+}
 
 const observationCount = computed(() => {
   let count = 0
   function walk(nodes: PortfolioIndicatorDefinitionTreeNodeVO[]) {
     for (const node of nodes) {
-      if (node.nodeType === 'OBSERVATION') {
+      if (node.nodeType === PortfolioIndicatorDefinitionTreeNodeTypeCode.OBSERVATION) {
         count++
       }
       if (node.children?.length) {
@@ -198,7 +212,7 @@ async function loadPage() {
   loading.value = true
   try {
     const page = await portfolioIndicatorPlatformApi.pageDefinition(query)
-    rows.value = readPageList(page, '指标分页数据异常')
+    rows.value = page.list
   } catch (error) {
     showUserError(error)
   } finally {
@@ -221,8 +235,8 @@ async function loadTemplates() {
   loading.value = true
   try {
     const page = await portfolioIndicatorPlatformApi.pageTemplate(templateQuery)
-    templates.value = readPageList(page, '规则模板分页数据异常')
-    templateTotal.value = readPageTotal(page)
+    templates.value = page.list
+    templateTotal.value = Number(page.total)
   } catch (error) {
     showUserError(error)
   } finally {
@@ -361,14 +375,14 @@ function openNewIndicator() {
   editForm.dimensionL1Name = ''
   editForm.dimensionL2Name = ''
   editForm.definitionText = ''
-  editForm.defaultDataSource = 'MANUAL_ENTRY'
+  editForm.defaultDataSource = PfIndicatorDataSourceChannelCode.MANUAL_ENTRY
   editForm.defaultRuleTemplateId = ''
   editForm.policyAlign = ''
   editForm.applicableTeachers = ''
   editForm.auditRequired = false
   editForm.redLineFlag = false
   editForm.sortOrder = 0
-  editForm.status = 'ACTIVE'
+  editForm.status = PfIndicatorStatusCode.ACTIVE
   detailOpen.value = true
   editMode.value = true
 }
@@ -386,10 +400,10 @@ function openTemplateEdit(record?: PortfolioIndicatorRuleTemplateVO) {
     templateForm.id = ''
     templateForm.templateCode = ''
     templateForm.templateName = ''
-    templateForm.ruleType = 'THRESHOLD'
-    templateParams.value = defaultTemplateParams('THRESHOLD')
+    templateForm.ruleType = PfScoreRuleTypeCode.THRESHOLD
+    templateParams.value = defaultTemplateParams(PfScoreRuleTypeCode.THRESHOLD)
     templateForm.description = ''
-    templateForm.status = 'ACTIVE'
+    templateForm.status = PfIndicatorStatusCode.ACTIVE
   }
   templateDrawerOpen.value = true
 }
@@ -447,7 +461,7 @@ function openPackEdit(record?: PortfolioIndustryPackVO) {
       materialRequiredText: '',
       materialOptionalText: '',
     })
-    packForm.status = 'ACTIVE'
+    packForm.status = PfIndicatorStatusCode.ACTIVE
   }
   packDrawerOpen.value = true
 }
@@ -544,7 +558,7 @@ onMounted(async () => {
           >
             <template #title="{ nodeTitle, nodeType, defaultDataSource, indicatorCode, status }">
               <span>{{ nodeTitle }}</span>
-              <span v-if="nodeType === 'OBSERVATION'" class="obs-meta">
+              <span v-if="nodeType === PortfolioIndicatorDefinitionTreeNodeTypeCode.OBSERVATION" class="obs-meta">
                 {{ indicatorCode }} ·
                 {{ defaultDataSource ? dataSourceLabel(defaultDataSource) : '—' }} ·
                 {{ status ? indicatorStatusLabel(status) : '—' }}
@@ -583,7 +597,7 @@ onMounted(async () => {
                 {{ dataSourceLabel(record.defaultDataSource) }}
               </template>
               <template v-else-if="column.key === 'status'">
-                <UiTag :tone="record.status === 'ACTIVE' ? 'green' : 'gray'">
+                <UiTag :tone="record.status === PfIndicatorStatusCode.ACTIVE ? 'green' : 'gray'">
                   {{ indicatorStatusLabel(record.status) }}
                 </UiTag>
               </template>
@@ -630,7 +644,7 @@ onMounted(async () => {
                 {{ scoreRuleTypeLabel(record.ruleType) }}
               </template>
               <template v-else-if="column.key === 'status'">
-                <UiTag :tone="record.status === 'ACTIVE' ? 'green' : 'gray'">
+                <UiTag :tone="record.status === PfIndicatorStatusCode.ACTIVE ? 'green' : 'gray'">
                   {{ indicatorStatusLabel(record.status) }}
                 </UiTag>
               </template>
@@ -659,7 +673,7 @@ onMounted(async () => {
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'status'">
-                <UiTag :tone="record.status === 'ACTIVE' ? 'green' : 'gray'">
+                <UiTag :tone="record.status === PfIndicatorStatusCode.ACTIVE ? 'green' : 'gray'">
                   {{ indicatorStatusLabel(record.status) }}
                 </UiTag>
               </template>
@@ -706,7 +720,7 @@ onMounted(async () => {
             <UiTag tone="blue">
               {{ dataSourceLabel(detail.defaultDataSource) }}
             </UiTag>
-            <UiTag :tone="detail.status === 'ACTIVE' ? 'green' : 'gray'">
+            <UiTag :tone="detail.status === PfIndicatorStatusCode.ACTIVE ? 'green' : 'gray'">
               {{ indicatorStatusLabel(detail.status) }}
             </UiTag>
             <UiTag v-if="detail.redLineFlag" tone="red"> 红线 </UiTag>

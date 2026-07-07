@@ -36,7 +36,7 @@ product
 
 ## Component Rules
 
-- 页面外层沿用 `GiPageLayout`，标题区使用 `PageHeader`，基础控件优先使用 Ant Design Vue 和 `components/ui-guide/ui`。
+- 教师阅卷页外层使用 `StageWorkbenchShell` + `ContextBar`（`#status` / `#actions`）+ 可选 `SignalBand`；考试详情使用 `exam-workspace-layout.vue` + `ExamSubSidebar`。基础控件优先 `components/ui-guide/ui` 的 `Ui*`，Ant Design Vue 仅补缺口。
 - 表格状态必须明确区分加载中、真实空结果、接口失败、权限不足、未知枚举、合同缺字段和待人工处理。
 - 批量操作要靠近表格选择状态，危险动作要有明确确认和结果反馈。
 - OCR、影像、评分、仲裁和复核相关信息应保留证据入口、时间、操作人和业务锚点。

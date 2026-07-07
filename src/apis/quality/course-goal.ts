@@ -1,4 +1,4 @@
-import type { AggregationFunction } from './types'
+import type { AggregationFunctionCode } from './types'
 /**
  * 课程目标 API。
  * 后端对象：CourseGoalController /api/quality/course-goals。
@@ -16,10 +16,9 @@ export interface CourseGoalVO {
   thresholdValue?: number
   directWeight?: number
   indirectWeight?: number
-  aggregation?: AggregationFunction
+  aggregation?: AggregationFunctionCode
   civicObjectiveFlag?: boolean
   aiLiteracyFlag?: boolean
-  complexEngineeringFlag?: boolean
   sortOrder?: number
   createTime?: string
   updateTime?: string
@@ -34,10 +33,9 @@ export interface CourseGoalSaveRequest {
   thresholdValue?: number
   directWeight?: number
   indirectWeight?: number
-  aggregation?: AggregationFunction
+  aggregation?: AggregationFunctionCode
   civicObjectiveFlag?: boolean
   aiLiteracyFlag?: boolean
-  complexEngineeringFlag?: boolean
   sortOrder?: number
 }
 

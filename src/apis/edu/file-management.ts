@@ -7,6 +7,8 @@
  */
 
 import type { BlobDownloadResponse, ExtendedAxiosRequestConfig } from '@/config/axios/types'
+import type { ExtractArchiveTaskStatusCode } from '@/types/enums/extract-archive-task-status-enum'
+import type { FileSystemNodeTypeCode } from '@/types/enums/file-system-node-type-enum'
 import http from '@/config/axios'
 import { STORAGE_TOKEN } from '@/constants/storage-keys'
 import { getTraceHeaders } from '@/utils/trace'
@@ -29,7 +31,7 @@ export interface FileSystemNodeResponseDTO {
   id: string
   parentId?: string
   nodeName: string
-  nodeType: 'FILE' | 'FOLDER'
+  nodeType: FileSystemNodeTypeCode
   fileMetadataId?: string
   fileSize?: number
   fileType?: string
@@ -77,8 +79,10 @@ export interface DownloadFileRequestDTO {
 /** 预览文件请求DTO */
 export interface PreviewFileRequestDTO {
   nodeId: string
-  tenantId: string
-  userId: string
+  /** 后端从当前登录态注入租户 */
+  tenantId?: string
+  /** 后端从当前登录态注入用户 */
+  userId?: string
 }
 
 /** 旧版 Office 转 OOXML 预览请求 - 对应 edu-cad /api/cad/office/convert-legacy-office */
@@ -99,7 +103,7 @@ export interface RenameNodeRequestDTO {
 /** 异步解压任务状态 */
 export interface ExtractArchiveTaskStatusDTO {
   taskId: string
-  status: 'PENDING' | 'RUNNING' | 'SUCCESS' | 'FAILED'
+  status: ExtractArchiveTaskStatusCode
   progress: number
   message?: string
   newlyExtracted?: boolean
@@ -126,8 +130,15 @@ export interface BatchUploadResponseDTO {
 /** 目录树节点DTO */
 export interface DirectoryTreeNodeDTO {
   id: string
-  name: string
-  type: 'FILE' | 'FOLDER'
+  parentId?: string
+  nodeName: string
+  nodeType: FileSystemNodeTypeCode
+  fileSize?: number
+  fileType?: string
+  createTime?: string
+  updateTime?: string
+  hasChildren?: boolean
+  fullPath?: string
   children?: DirectoryTreeNodeDTO[]
 }
 
@@ -232,7 +243,7 @@ export function uploadFolder(files: File[], data: {
  */
 export function downloadFile(
   data: DownloadFileRequestDTO,
-  config?: Partial<ExtendedAxiosRequestConfig>
+  config?: ExtendedAxiosRequestConfig
 ): Promise<BlobDownloadResponse> {
   return http.download('/api/storage/filesystem/download', {
     nodeId: data.nodeId,

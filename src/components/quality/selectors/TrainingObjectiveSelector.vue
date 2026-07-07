@@ -9,7 +9,6 @@ import type { TrainingObjectiveVO } from '@/apis/quality/training-objective'
 import { computed, onMounted, ref, watch } from 'vue'
 import { trainingObjectiveApi } from '@/apis/quality/training-objective'
 import { showUserError } from '@/utils/error-handler'
-import { requireArrayResult } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -69,10 +68,7 @@ async function loadOptions() {
   }
   loading.value = true
   try {
-    options.value = requireArrayResult(
-      await trainingObjectiveApi.listByPlan(props.trainingPlanId),
-      '培养目标',
-    )
+    options.value = await trainingObjectiveApi.listByPlan(props.trainingPlanId)
   } catch (e) {
     showUserError(e, '培养目标列表加载失败')
   } finally {

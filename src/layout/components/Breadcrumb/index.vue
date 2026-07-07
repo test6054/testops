@@ -52,7 +52,7 @@ const breadcrumbs = computed<BreadcrumbItem[]>(() => {
 
   // 添加路由匹配的层级
   matched.forEach((item, index) => {
-    const title = item.meta?.title as string
+    const title = typeof item.meta?.title === 'string' ? item.meta.title : ''
     const path = item.path
 
     if (path === '/' || !title || item.meta?.hideInBreadcrumb) {

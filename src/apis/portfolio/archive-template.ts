@@ -10,13 +10,13 @@ import type {
   PortfolioArchiveFieldDeleteRequest,
   PortfolioArchiveFieldListRequest,
   PortfolioArchivePublishedFieldsRequest,
+  PortfolioArchivePublishedFieldsVO,
   PortfolioArchiveTeacherReadinessVO,
   PortfolioArchiveTemplateChangeLogVO,
   PortfolioArchiveTemplateSeedResultVO,
   PortfolioArchiveTemplateVersionVO,
   PortfolioArchiveVersionActionRequest,
   PortfolioArchiveVersionMutationRequest,
-  PortfolioPublishedTemplateSnapshot,
 } from '@/apis/portfolio/types'
 import http from '@/config/axios'
 
@@ -50,7 +50,7 @@ export const portfolioArchiveTemplateApi = {
   listChangeHistory: (data: PortfolioArchiveVersionActionRequest) =>
     http.post<PortfolioArchiveTemplateChangeLogVO[]>(`${BASE}/history/change-log`, data),
   listPublishedFields: (data: PortfolioArchivePublishedFieldsRequest) =>
-    http.post<PortfolioPublishedTemplateSnapshot>(`${BASE}/published/fields`, data),
+    http.post<PortfolioArchivePublishedFieldsVO>(`${BASE}/published/fields`, data),
   seedDefaultTemplates: () =>
     http.post<PortfolioArchiveTemplateSeedResultVO>(`${BASE}/seed/defaults`, {}),
   bindAuditFlow: (data: PortfolioArchiveAuditFlowBindRequest) =>

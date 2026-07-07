@@ -20,75 +20,74 @@ import type { QuestionTypeCode } from '@/apis/mark/question-type'
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { BatchReprocessScopeCode } from '@/types/enums/batch-reprocess-scope-enum'
+import type { SpotCheckConclusionCode } from '@/types/enums/spot-check-conclusion-enum'
 import http from '@/config/axios'
+import { ProgressRiskLevelCode } from '@/types/enums/progress-risk-level-enum'
+import {
+  ALL_REVIEWER_METRIC_STATUS_CODES,
+  ReviewerMetricStatusCode,
+  ReviewerMetricStatusDescription,
+} from '@/types/enums/reviewer-metric-status-enum'
+import { SpotCheckStatusCode } from '@/types/enums/spot-check-status-enum'
 
-// ─── 状态枚举 ─────────────────────────────────
+export {
+  ALL_BATCH_REPROCESS_SCOPE_CODES,
+  BatchReprocessScopeCode,
+  BatchReprocessScopeDescription,
+} from '@/types/enums/batch-reprocess-scope-enum'
 
-/** 教师质量指标状态 - 对应 ReviewerMetricStatus */
-export type ReviewerMetricStatusCode = 'NORMAL' | 'WARNING' | 'SUSPENDED'
+export {
+  ALL_PROGRESS_RISK_LEVEL_CODES,
+  ProgressRiskLevelCode,
+  ProgressRiskLevelDescription,
+} from '@/types/enums/progress-risk-level-enum'
 
-export const REVIEWER_METRIC_STATUS_LABEL: Record<ReviewerMetricStatusCode, string> = {
-  NORMAL: '正常',
-  WARNING: '预警',
-  SUSPENDED: '已暂停',
-}
+export {
+  ALL_REVIEWER_METRIC_STATUS_CODES,
+  ReviewerMetricStatusCode,
+  ReviewerMetricStatusDescription,
+} from '@/types/enums/reviewer-metric-status-enum'
+
+export {
+  ALL_SPOT_CHECK_CONCLUSION_CODES,
+  SpotCheckConclusionCode,
+  SpotCheckConclusionDescription,
+} from '@/types/enums/spot-check-conclusion-enum'
+
+export {
+  ALL_SPOT_CHECK_STATUS_CODES,
+  SpotCheckStatusCode,
+  SpotCheckStatusDescription,
+} from '@/types/enums/spot-check-status-enum'
 
 export const REVIEWER_METRIC_STATUS_TONE: Record<ReviewerMetricStatusCode, BadgeTone> = {
-  NORMAL: 'green',
-  WARNING: 'orange',
-  SUSPENDED: 'red',
+  [ReviewerMetricStatusCode.NORMAL]: 'green',
+  [ReviewerMetricStatusCode.WARNING]: 'orange',
+  [ReviewerMetricStatusCode.SUSPENDED]: 'red',
 }
 
-/** 进度风险等级 - 对应 ProgressRiskLevel */
-export type ProgressRiskLevelCode = 'NORMAL' | 'LOW_RISK' | 'MEDIUM_RISK' | 'HIGH_RISK'
-
-export const PROGRESS_RISK_LEVEL_LABEL: Record<ProgressRiskLevelCode, string> = {
-  NORMAL: '正常',
-  LOW_RISK: '低风险',
-  MEDIUM_RISK: '中风险',
-  HIGH_RISK: '高风险',
-}
+export const REVIEWER_METRIC_STATUS_OPTIONS: Array<{
+  value: ReviewerMetricStatusCode
+  label: string
+}> = ALL_REVIEWER_METRIC_STATUS_CODES.map((value) => ({
+  value,
+  label: ReviewerMetricStatusDescription[value],
+}))
 
 export const PROGRESS_RISK_LEVEL_TONE: Record<ProgressRiskLevelCode, BadgeTone> = {
-  NORMAL: 'green',
-  LOW_RISK: 'blue',
-  MEDIUM_RISK: 'orange',
-  HIGH_RISK: 'red',
-}
-
-/** 抽检结论 */
-export type SpotCheckConclusionCode = 'PASSED' | 'ABNORMAL'
-
-export const SPOT_CHECK_CONCLUSION_LABEL: Record<SpotCheckConclusionCode, string> = {
-  PASSED: '一致通过',
-  ABNORMAL: '判分异常',
-}
-
-/** 抽检任务状态 - 与后端 SpotCheckStatus enum 对齐 */
-export type SpotCheckStatusCode = 'PENDING' | 'IN_PROGRESS' | 'PASSED' | 'ABNORMAL' | 'HANDLED'
-
-export const SPOT_CHECK_STATUS_LABEL: Record<SpotCheckStatusCode, string> = {
-  PENDING: '待抽检',
-  IN_PROGRESS: '抽检中',
-  PASSED: '通过',
-  ABNORMAL: '异常',
-  HANDLED: '已处理',
+  [ProgressRiskLevelCode.NORMAL]: 'green',
+  [ProgressRiskLevelCode.LOW_RISK]: 'blue',
+  [ProgressRiskLevelCode.MEDIUM_RISK]: 'orange',
+  [ProgressRiskLevelCode.HIGH_RISK]: 'red',
 }
 
 export const SPOT_CHECK_STATUS_TONE: Record<SpotCheckStatusCode, BadgeTone> = {
-  PENDING: 'orange',
-  IN_PROGRESS: 'blue',
-  PASSED: 'green',
-  ABNORMAL: 'red',
-  HANDLED: 'purple',
-}
-
-/** 异常批次重处理范围 */
-export type BatchReprocessScopeCode = 'ALL' | 'FAILED_ONLY'
-
-export const BATCH_REPROCESS_SCOPE_LABEL: Record<BatchReprocessScopeCode, string> = {
-  ALL: '整批次',
-  FAILED_ONLY: '仅失败页',
+  [SpotCheckStatusCode.PENDING]: 'orange',
+  [SpotCheckStatusCode.IN_PROGRESS]: 'blue',
+  [SpotCheckStatusCode.PASSED]: 'green',
+  [SpotCheckStatusCode.ABNORMAL]: 'red',
+  [SpotCheckStatusCode.HANDLED]: 'purple',
 }
 
 // ─── DTO ─────────────────────────────────
@@ -164,14 +163,14 @@ export interface ReviewerQualityMetricResponse {
 }
 
 /** 进度监控记录 VO - 对应 ProgressMonitorRecordResponse */
-export interface ProgressRiskItemVO {
+export interface ProgressRiskItemResponse {
   riskCode: string
   riskLabel: string
   riskDescription: string
   riskLevel: ProgressRiskLevelCode
 }
 
-export interface ProgressMonitorRecordVO {
+export interface ProgressMonitorRecordResponse {
   id?: string
   tenantId?: string
   examId: string
@@ -187,7 +186,7 @@ export interface ProgressMonitorRecordVO {
   estimatedRemainingMinutes?: number
   riskLevel: ProgressRiskLevelCode
   /** latest / snapshot 返回；历史 list 接口不返回明细 */
-  riskItems?: ProgressRiskItemVO[]
+  riskItems?: ProgressRiskItemResponse[]
   snapshotTime: string
 }
 
@@ -220,8 +219,8 @@ export function refreshReviewerMetrics(request: ProgressSnapshotRequest): Promis
  */
 export function getLatestProgress(
   request: ProgressSnapshotRequest,
-): Promise<ProgressMonitorRecordVO | null> {
-  return http.post<ProgressMonitorRecordVO | null>('/api/mark/quality/progress/latest', request)
+): Promise<ProgressMonitorRecordResponse | null> {
+  return http.post<ProgressMonitorRecordResponse | null>('/api/mark/quality/progress/latest', request)
 }
 
 /**
@@ -230,12 +229,15 @@ export function getLatestProgress(
  */
 export function takeProgressSnapshot(
   request: ProgressSnapshotRequest,
-): Promise<ProgressMonitorRecordVO> {
-  return http.post<ProgressMonitorRecordVO>('/api/mark/quality/progress/snapshot', request)
+): Promise<ProgressMonitorRecordResponse> {
+  return http.post<ProgressMonitorRecordResponse>('/api/mark/quality/progress/snapshot', request)
 }
 
 /** 历史进度快照查询请求 */
-export interface ProgressSnapshotListRequest extends ProgressSnapshotRequest {
+export interface ProgressSnapshotListRequest {
+  examId: string
+  organizationId: string
+  groupId?: string
   /** 返回最近快照条数，默认 30，最大 100 */
   limit?: number
 }
@@ -246,8 +248,8 @@ export interface ProgressSnapshotListRequest extends ProgressSnapshotRequest {
  */
 export function listProgressSnapshots(
   request: ProgressSnapshotListRequest,
-): Promise<ProgressMonitorRecordVO[]> {
-  return http.post<ProgressMonitorRecordVO[]>('/api/mark/quality/progress/list', request)
+): Promise<ProgressMonitorRecordResponse[]> {
+  return http.post<ProgressMonitorRecordResponse[]>('/api/mark/quality/progress/list', request)
 }
 
 /**
@@ -277,9 +279,6 @@ export function reprocessBatch(request: BatchReprocessRequest): Promise<boolean>
 
 // ─── B-9 当前教师待处理抽检 ─────────────────────────────────
 
-/** 抽检状态（仅 PENDING / IN_PROGRESS 会出现在「我的待处理」列表中） */
-export type MyPendingSpotCheckStatusCode = Extract<SpotCheckStatusCode, 'PENDING' | 'IN_PROGRESS'>
-
 /** 待处理抽检列表查询请求 - 对应 MyPendingSpotCheckQueryRequest */
 export interface MyPendingSpotCheckQueryRequest extends QueryDto {
   /** 考试ID（可选，为空时跨考试聚合） */
@@ -299,7 +298,7 @@ export interface MyPendingSpotCheckItemResponse {
   groupId: string
   groupName: string
   markingTaskId: string
-  questionTemplateId: string
+  layoutQuestionId: string
   questionNo: string
   questionType: QuestionTypeCode
   questionTypeMessage: string
@@ -315,7 +314,8 @@ export interface MyPendingSpotCheckItemResponse {
   reviewerUserId: string
   /** 教师复核评分 */
   originalScore: number
-  spotCheckStatus: MyPendingSpotCheckStatusCode
+  /** 抽检状态，后端当前返回 PENDING / IN_PROGRESS */
+  spotCheckStatus: SpotCheckStatusCode
   /** 抽检创建时间，用于展示「分派多久前」 */
   createTime: string
 }
@@ -330,6 +330,67 @@ export function listMyPendingSpotChecks(
 ): Promise<PageResult<MyPendingSpotCheckItemResponse>> {
   return http.post<PageResult<MyPendingSpotCheckItemResponse>>(
     '/api/mark/quality/spotcheck/my-pending',
+    request,
+  )
+}
+
+/** 当前教师待处理抽检计数 - 对齐 MyPendingSpotCheckCountResponse */
+export interface MyPendingSpotCheckCountResponse {
+  pendingCount: number
+}
+
+export interface MyPendingSpotCheckCountRequest {
+  examId?: string
+}
+
+/**
+ * 统计当前教师待处理抽检数量；谓词与 listMyPendingSpotChecks 一致。
+ * POST /api/mark/quality/spotcheck/my-pending-count
+ */
+export function countMyPendingSpotChecks(
+  request: MyPendingSpotCheckCountRequest,
+): Promise<MyPendingSpotCheckCountResponse> {
+  return http.post<MyPendingSpotCheckCountResponse>(
+    '/api/mark/quality/spotcheck/my-pending-count',
+    request,
+  )
+}
+
+/** 全场抽检记录查询 - 对应 ExamSpotCheckRecordQueryRequest */
+export interface ExamSpotCheckRecordQueryRequest extends QueryDto {
+  examId: string
+  groupId?: string
+  spotCheckStatus?: SpotCheckStatusCode
+}
+
+/** 全场抽检记录列表项 - 对应 ExamSpotCheckRecordItemResponse */
+export interface ExamSpotCheckRecordItemResponse {
+  id: string
+  groupName: string
+  reviewerUserId: string
+  reviewerDisplayName: string
+  questionNo: string
+  questionType?: QuestionTypeCode
+  questionTypeMessage: string
+  originalScore: number
+  reviewScore?: number
+  spotCheckStatus: SpotCheckStatusCode
+  spotCheckStatusMessage: string
+  checkerUserId?: string
+  checkerDisplayName?: string
+  checkedTime?: string
+  createTime: string
+}
+
+/**
+ * 分页查询单场考试全场抽检记录台账。
+ * POST /api/mark/quality/spotcheck/list
+ */
+export function listExamSpotCheckRecords(
+  request: ExamSpotCheckRecordQueryRequest,
+): Promise<PageResult<ExamSpotCheckRecordItemResponse>> {
+  return http.post<PageResult<ExamSpotCheckRecordItemResponse>>(
+    '/api/mark/quality/spotcheck/list',
     request,
   )
 }

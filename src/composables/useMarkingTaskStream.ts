@@ -258,7 +258,7 @@ export function useMarkingTaskStream(
   })
 
   return {
-    ready: computed(() => ready.value) as Ref<boolean>,
+    ready: computed(() => ready.value),
     connectionPhase,
     error,
     lastEventId,

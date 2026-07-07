@@ -1,9 +1,14 @@
 <script setup lang="ts">
-import type { PortfolioPortraitDimension } from '@/apis/portfolio/enums'
-import type { PortfolioPortraitLayoutWidget, PortraitWidgetType } from '@/utils/portrait-layout'
+import type { PortfolioPortraitDimensionCode } from '@/apis/portfolio/enums'
+import type { PortfolioPortraitLayoutWidget } from '@/utils/portrait-layout'
 import { computed, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import { PORTRAIT_DIMENSION_OPTIONS, PORTRAIT_WIDGET_TYPE_LABEL } from '@/utils/portrait-layout'
+import {
+  PORTRAIT_DIMENSION_OPTIONS,
+  PORTRAIT_WIDGET_TYPE_OPTIONS,
+  PortraitWidgetTypeCode,
+  PortraitWidgetTypeDescription,
+} from '@/utils/portrait-layout'
 
 const props = defineProps<{
   widgets: PortfolioPortraitLayoutWidget[]
@@ -17,9 +22,32 @@ const GRID_ROWS = 8
 const dragIndex = ref<number | null>(null)
 const selectedIndex = ref<number | null>(null)
 
-const widgetOptions = (Object.keys(PORTRAIT_WIDGET_TYPE_LABEL) as PortraitWidgetType[]).map(
-  (value) => ({ value, label: PORTRAIT_WIDGET_TYPE_LABEL[value] }),
-)
+const widgetOptions = PORTRAIT_WIDGET_TYPE_OPTIONS
+
+function selectPortraitWidget(value: unknown): PortraitWidgetTypeCode | undefined {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+  return widgetOptions.find(option => option.value === value)?.value
+}
+
+function selectPortraitDimension(value: unknown): PortfolioPortraitDimensionCode | undefined {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+  return PORTRAIT_DIMENSION_OPTIONS.find(option => option.value === value)?.value
+}
+
+function updateSelectedWidget(index: number, value: unknown) {
+  const widget = selectPortraitWidget(value)
+  if (widget) {
+    patch(index, { widget })
+  }
+}
+
+function updateSelectedDimension(index: number, value: unknown) {
+  patch(index, { dimensionCode: selectPortraitDimension(value) })
+}
 
 const canvasCells = computed(() => {
   const cells: Array<{ col: number, row: number, key: string }> = []
@@ -39,7 +67,7 @@ function patch(index: number, patchValue: Partial<PortfolioPortraitLayoutWidget>
 function addWidget() {
   emit('update:widgets', [
     ...props.widgets,
-    { widget: 'radar', x: 0, y: props.widgets.length * 2, w: 6, h: 2 },
+    { widget: PortraitWidgetTypeCode.RADAR, x: 0, y: props.widgets.length * 2, w: 6, h: 2 },
   ])
 }
 
@@ -122,7 +150,7 @@ function selectWidget(index: number) {
         @dragstart="onDragStart(index, $event)"
         @dragend="dragIndex = null"
       >
-        <span class="layout-widget__label">{{ PORTRAIT_WIDGET_TYPE_LABEL[row.widget] }}</span>
+        <span class="layout-widget__label">{{ PortraitWidgetTypeDescription[row.widget] }}</span>
         <span v-if="row.dimensionCode" class="layout-widget__dim">{{ row.dimensionCode }}</span>
         <div class="layout-widget__mock" />
       </div>
@@ -132,7 +160,7 @@ function selectWidget(index: number) {
         :value="widgets[selectedIndex].widget"
         :options="widgetOptions"
         style="width: 120px"
-        @update:value="patch(selectedIndex, { widget: $event as PortraitWidgetType })"
+        @update:value="updateSelectedWidget(selectedIndex, $event)"
       />
       <a-select
         :value="widgets[selectedIndex].dimensionCode"
@@ -140,9 +168,7 @@ function selectWidget(index: number) {
         placeholder="绑定维度"
         style="width: 160px"
         :options="PORTRAIT_DIMENSION_OPTIONS"
-        @update:value="
-          patch(selectedIndex, { dimensionCode: $event as PortfolioPortraitDimension | undefined })
-        "
+        @update:value="updateSelectedDimension(selectedIndex, $event)"
       />
       <a-input-number
         :value="widgets[selectedIndex].w"

@@ -11,35 +11,35 @@ export type ContentType
 /**
  * HTTP状态码映射
  */
-export const HTTP_STATUS = {
-    OK: 200,
-    CREATED: 201,
-    NO_CONTENT: 204,
-    BAD_REQUEST: 400,
-    UNAUTHORIZED: 401,
-    FORBIDDEN: 403,
-    NOT_FOUND: 404,
-    METHOD_NOT_ALLOWED: 405,
-    INTERNAL_SERVER_ERROR: 500,
-    BAD_GATEWAY: 502,
-    SERVICE_UNAVAILABLE: 503,
-    GATEWAY_TIMEOUT: 504,
-} as const
+export enum HTTP_STATUS {
+    OK = 200,
+    CREATED = 201,
+    NO_CONTENT = 204,
+    BAD_REQUEST = 400,
+    UNAUTHORIZED = 401,
+    FORBIDDEN = 403,
+    NOT_FOUND = 404,
+    METHOD_NOT_ALLOWED = 405,
+    INTERNAL_SERVER_ERROR = 500,
+    BAD_GATEWAY = 502,
+    SERVICE_UNAVAILABLE = 503,
+    GATEWAY_TIMEOUT = 504,
+}
 
 /**
  * 业务响应码
  */
-export const BUSINESS_CODE = {
-    SUCCESS: 200,
-    UNAUTHORIZED: 401,
-    FORBIDDEN: 403,
-    NOT_FOUND: 404,
-    METHOD_NOT_ALLOWED: 405,
-    VALIDATION_ERROR: 400,
-    BUSINESS_ERROR: 500,
-    AI_QUOTA_EXCEEDED: 4003, // AI配额不足
-    TOKEN_KICKED: 4007, // 多点登录被踢出
-} as const
+export enum BUSINESS_CODE {
+    SUCCESS = 200,
+    UNAUTHORIZED = 401,
+    FORBIDDEN = 403,
+    NOT_FOUND = 404,
+    METHOD_NOT_ALLOWED = 405,
+    VALIDATION_ERROR = 400,
+    BUSINESS_ERROR = 500,
+    AI_QUOTA_EXCEEDED = 4003,
+    TOKEN_KICKED = 4007,
+}
 
 /**
  * 需要重新登录的状态码
@@ -68,7 +68,15 @@ export const AUTH_FAILURE_BUSINESS_CODES: number[] = [
 /**
  * 主配置对象
  */
-export const config = {
+interface AxiosRuntimeConfig {
+    baseURL: string
+    timeout: number
+    defaultContentType: ContentType
+    successCode: BUSINESS_CODE
+    enableLogging: boolean
+}
+
+export const config: AxiosRuntimeConfig = {
     /**
      * API请求基础路径
      * 开发环境: 使用Vite代理，直接使用相对路径
@@ -85,7 +93,7 @@ export const config = {
     /**
      * 默认Content-Type
      */
-    defaultContentType: 'application/json' as ContentType,
+    defaultContentType: 'application/json',
 
     /**
      * 成功响应码
@@ -97,4 +105,4 @@ export const config = {
      */
     enableLogging: true,
 
-} as const
+}

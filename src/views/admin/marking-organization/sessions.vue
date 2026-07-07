@@ -2,13 +2,17 @@
   <StageWorkbenchShell>
     <template #context>
       <ContextBar
+        layout="workbench"
         show-title
-        title="阅卷会话"
-        :subtitle="organizationExamLabel"
+        :title="isJourneyChrome ? contextBarTitle : organizationExamLabel"
+        :subtitle="isJourneyChrome ? contextBarSubtitle : MARKING_SESSIONS_SCOPE_HINT"
       >
         <template #status>
-          <a-select
-            v-model:value="filterGroupId"
+          <UiTag v-if="isJourneyChrome && examStatusLabel" :tone="examStatusTone" size="sm">
+            {{ examStatusLabel }}
+          </UiTag>
+          <UiSelect
+            v-model="filterGroupId"
             class="org-sessions__group-select"
             placeholder="按题组过滤（留空显示全部）"
             :options="groupOptions"
@@ -28,7 +32,7 @@
           >
             {{
               strictEnumLabel(
-                MARKING_ORGANIZATION_STATUS_LABEL,
+                MarkingOrganizationStatusDescription,
                 organization.organizationStatus,
                 '阅卷组织状态',
               )
@@ -43,17 +47,17 @@
       </ContextBar>
     </template>
 
-    <a-skeleton v-if="loading" active :paragraph="{ rows: 4 }" />
+    <template v-if="organization && signalMetrics.length > 0" #signal>
+      <SignalBand variant="tiles" :metrics="signalMetrics" compact />
+    </template>
 
-    <UiEmpty
-      v-else-if="!organization"
-      description="暂无数据"
-      class="org-sessions__empty"
-    />
+    <ExamWorkspaceJourneySubNav v-if="isExamWorkspaceRoute" />
 
-    <a-spin v-else :spinning="loading">
-      <SignalBand :metrics="signalMetrics" compact class="org-sessions__signals" />
+    <UiSkeletonState v-if="loading" variant="card" compact />
 
+    <UiEmpty v-else-if="!organization" description="暂无阅卷组织数据" class="org-sessions__empty" />
+
+    <div v-else class="org-sessions__panels">
       <a-row :gutter="16">
         <a-col :xs="24" :lg="12">
           <TrialSessionPanel
@@ -69,6 +73,7 @@
         <a-col :xs="24" :lg="12">
           <FormalSessionPanel
             :organization-id="organizationId"
+            :exam-id="organization?.examId"
             :group-options="groupOptions"
             :group-allocation-units="groupAllocationUnitMap"
             :sessions="formalSessions"
@@ -78,7 +83,7 @@
           />
         </a-col>
       </a-row>
-    </a-spin>
+    </div>
 
     <SessionLifecycleReasonModal
       v-model:open="lifecycleModalOpen"
@@ -92,13 +97,13 @@
 
 <script lang="ts" setup>
 import type { LifecycleAction } from './components/SessionLifecycleReasonModal.vue'
-import type { ExamDetailVO } from '@/apis/mark/exam'
+import type { ExamDetailResponse } from '@/apis/mark/exam'
 import type {
-  AllocationPolicyVO,
+  AllocationPolicyResponse,
   AllocationUnitCode,
-  FormalSessionVO,
-  MarkingOrganizationVO,
-  TrialSessionVO,
+  FormalSessionResponse,
+  MarkingOrganizationResponse,
+  TrialSessionResponse,
 } from '@/apis/mark/marking-organization'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
@@ -110,18 +115,21 @@ import {
   listFormalSessions,
   listMarkingPolicies,
   listTrialSessions,
-  MARKING_ORGANIZATION_STATUS_LABEL,
   MARKING_ORGANIZATION_STATUS_TONE,
+  MARKING_SESSIONS_SCOPE_HINT,
+  MarkingOrganizationStatusDescription,
   requireMarkingOrganizationId,
-  validateFormalSessionContract,
-  validateMarkingOrganizationContract,
-  validateTrialSessionContract,
 } from '@/apis/mark/marking-organization'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { useOptionalExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkingOrgPermission } from '@/composables/useMarkingOrgPermission'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
@@ -133,6 +141,9 @@ import TrialSessionPanel from './components/TrialSessionPanel.vue'
 
 defineOptions({ name: 'AdminMarkingOrganizationSessions' })
 
+const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
+  = useOptionalExamJourneyContextBar('试评 / 正评')
+
 const route = useRoute()
 const router = useRouter()
 const { refreshSnapshot } = useWorkspaceExamId()
@@ -141,11 +152,11 @@ const organizationId = computed(() => String(route.params.organizationId || ''))
 const routeExamId = computed(() => String(route.params.examId || ''))
 const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
 
-const organization = ref<MarkingOrganizationVO | null>(null)
-const examDetail = ref<ExamDetailVO | null>(null)
-const trialSessions = ref<TrialSessionVO[]>([])
-const formalSessions = ref<FormalSessionVO[]>([])
-const allocationPolicies = ref<AllocationPolicyVO[]>([])
+const organization = ref<MarkingOrganizationResponse | null>(null)
+const examDetail = ref<ExamDetailResponse | null>(null)
+const trialSessions = ref<TrialSessionResponse[]>([])
+const formalSessions = ref<FormalSessionResponse[]>([])
+const allocationPolicies = ref<AllocationPolicyResponse[]>([])
 const loading = ref(false)
 const filterGroupId = ref<string | undefined>(undefined)
 
@@ -158,7 +169,9 @@ const groupOptions = computed(() =>
 
 const groupAllocationUnitMap = computed(() => {
   const map: Record<string, AllocationUnitCode> = {}
-  const defaultAllocationUnit = allocationPolicies.value.find((policy) => policy.groupId == null)?.allocationUnit
+  const defaultAllocationUnit = allocationPolicies.value.find(
+    (policy) => policy.groupId == null,
+  )?.allocationUnit
   for (const group of organization.value?.groups ?? []) {
     const groupPolicy = allocationPolicies.value.find((policy) => policy.groupId === group.id)
     const allocationUnit = groupPolicy?.allocationUnit ?? defaultAllocationUnit
@@ -186,8 +199,13 @@ const organizationExamLabel = computed(() => {
   return '阅卷组织'
 })
 
-const examCreateUserId = computed(() => examDetail.value?.createUser ?? organization.value?.examCreateUserId)
-const { canManageExamOwner: canManageOrganization } = useMarkingOrgPermission(examCreateUserId, organization)
+const examCreateUserId = computed(
+  () => examDetail.value?.createUser ?? organization.value?.examCreateUserId,
+)
+const { canManageExamOwner: canManageOrganization } = useMarkingOrgPermission(
+  examCreateUserId,
+  organization,
+)
 
 function guardOrganizationOwnerAction(): boolean {
   if (canManageOrganization.value) return true
@@ -206,11 +224,13 @@ function resetSessionState(): void {
 /**
  * 会话页必须绑定到组织真实 examId，对齐后工作台阶段与会话操作才属于同一考试。
  */
-async function alignWorkspaceRouteExamId(nextOrganization: MarkingOrganizationVO): Promise<boolean> {
-  if (!isExamWorkspaceRoute.value) {
+async function alignWorkspaceRouteExamId(
+  nextOrganization: MarkingOrganizationResponse,
+): Promise<boolean> {
+  if (!nextOrganization.examId) {
     return true
   }
-  if (!nextOrganization.examId || routeExamId.value === nextOrganization.examId) {
+  if (isExamWorkspaceRoute.value && routeExamId.value === nextOrganization.examId) {
     return true
   }
   await router.replace(
@@ -229,7 +249,6 @@ async function loadOrganization(): Promise<boolean> {
   }
   try {
     const nextOrganization = await getOrganizationById({ organizationId: organizationId.value })
-    validateMarkingOrganizationContract(nextOrganization)
     if (!(await alignWorkspaceRouteExamId(nextOrganization))) {
       return false
     }
@@ -246,12 +265,10 @@ async function loadOrganization(): Promise<boolean> {
 async function loadTrialSessions(): Promise<void> {
   if (!organizationId.value) return
   try {
-    const records = await listTrialSessions({
+    trialSessions.value = await listTrialSessions({
       organizationId: organizationId.value,
       groupId: filterGroupId.value,
     })
-    records.forEach(validateTrialSessionContract)
-    trialSessions.value = records
   } catch (error) {
     trialSessions.value = []
     showUserError(error, '试评会话列表加载失败')
@@ -261,12 +278,10 @@ async function loadTrialSessions(): Promise<void> {
 async function loadFormalSessions(): Promise<void> {
   if (!organizationId.value) return
   try {
-    const records = await listFormalSessions({
+    formalSessions.value = await listFormalSessions({
       organizationId: organizationId.value,
       groupId: filterGroupId.value,
     })
-    records.forEach(validateFormalSessionContract)
-    formalSessions.value = records
   } catch (error) {
     formalSessions.value = []
     showUserError(error, '正评会话列表加载失败')
@@ -324,7 +339,7 @@ const signalMetrics = computed<SignalMetric[]>(() => [
     label: '组织状态',
     value: organization.value?.organizationStatus
       ? strictEnumLabel(
-          MARKING_ORGANIZATION_STATUS_LABEL,
+          MarkingOrganizationStatusDescription,
           organization.value.organizationStatus,
           '阅卷组织状态',
         )
@@ -369,9 +384,13 @@ async function onLifecycleSuccess(): Promise<void> {
   await refreshSnapshot()
 }
 
-watch(() => [organizationId.value, routeExamId.value] as const, () => {
-  void reloadAll()
-}, { immediate: true })
+watch(
+  () => ({ organizationId: organizationId.value, routeExamId: routeExamId.value }),
+  () => {
+    void reloadAll()
+  },
+  { immediate: true },
+)
 </script>
 
 <style lang="scss" scoped>
@@ -386,6 +405,17 @@ watch(() => [organizationId.value, routeExamId.value] as const, () => {
 
   &__empty {
     padding: 48px 0;
+  }
+
+  &__panels {
+    :deep(.ant-col) {
+      display: flex;
+    }
+
+    :deep(.ant-col > *) {
+      flex: 1;
+      min-width: 0;
+    }
   }
 }
 </style>

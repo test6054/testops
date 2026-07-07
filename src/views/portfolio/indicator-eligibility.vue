@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import type { PfEligibilityRuleTreeNodeDto, PfSceneCode } from '@/apis/portfolio/indicator-types'
+import type { PfEligibilityRuleTreeNodeDto } from '@/apis/portfolio/indicator-types'
 import { message } from 'ant-design-vue'
 import { onMounted, ref } from 'vue'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import {
   PF_ELIGIBILITY_PRESET_OPTIONS,
   PF_SCENE_CODE_OPTIONS,
+  PfSceneCode,
 } from '@/apis/portfolio/indicator-types'
 import PortfolioEligibilityTreeEditor from '@/components/portfolio/PortfolioEligibilityTreeEditor.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -19,7 +20,7 @@ import {
 } from '@/utils/eligibility-tree'
 import { showUserError } from '@/utils/error-handler'
 
-const sceneCode = ref<PfSceneCode>('DUAL_TEACHER')
+const sceneCode = ref<PfSceneCode>(PfSceneCode.DUAL_TEACHER)
 const eligibilityCode = ref('DUAL_TEACHER_APPLY')
 const eligibilityName = ref('双师认定申请')
 const treeRoot = ref<PfEligibilityRuleTreeNodeDto>({ nodeType: 'AND', children: [] })

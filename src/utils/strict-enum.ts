@@ -1,36 +1,35 @@
-import { throwUserFacing } from '@/utils/contract-guard'
-
-const ENUM_DATA_FALLBACK = '数据异常，请刷新后重试'
-
 export function strictEnumLabel<TCode extends string>(
   labels: Record<TCode, string>,
-  code: TCode | undefined | null,
-  _fieldName: string,
+  code: TCode,
+  fieldName: string,
 ): string {
-  if (!code || !labels[code]) {
-    throwUserFacing(ENUM_DATA_FALLBACK)
+  const label = labels[code]
+  if (label === undefined) {
+    throw new Error(`枚举合同不同步：${fieldName}=${code}`)
   }
-  return labels[code]
+  return label
 }
 
 export function strictEnumTone<TCode extends string, TTone extends string>(
   tones: Record<TCode, TTone>,
-  code: TCode | undefined | null,
-  _fieldName: string,
+  code: TCode,
+  fieldName: string,
 ): TTone {
-  if (!code || tones[code] === undefined) {
-    throwUserFacing(ENUM_DATA_FALLBACK)
+  const tone = tones[code]
+  if (tone === undefined) {
+    throw new Error(`枚举合同不同步：${fieldName}=${code}`)
   }
-  return tones[code]
+  return tone
 }
 
 export function strictEnumValue<TCode extends string, TValue>(
   values: Record<TCode, TValue>,
-  code: TCode | undefined | null,
-  _fieldName: string,
+  code: TCode,
+  fieldName: string,
 ): TValue {
-  if (!code || values[code] === undefined) {
-    throwUserFacing(ENUM_DATA_FALLBACK)
+  const value = values[code]
+  if (value === undefined) {
+    throw new Error(`枚举合同不同步：${fieldName}=${code}`)
   }
-  return values[code]
+  return value
 }

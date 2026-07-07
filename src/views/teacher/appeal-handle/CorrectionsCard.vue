@@ -1,177 +1,181 @@
 <template>
-  <section class="appeal-section">
-    <UiAlertStrip
-      v-if="republishGuideVisible"
-      tone="warning"
-      title="成绩已更正，学生侧暂不可见"
-      description="更正后最终成绩状态为「已更正」，须前往「成绩发布」重新发布，学生才能看到更新后的分数。"
-      :closable="false"
-      dense
-    >
-      <template #actions>
-        <UiButton size="sm" variant="outline" @click="goScorePublish">前往成绩发布</UiButton>
-      </template>
-    </UiAlertStrip>
-    <div class="appeal-section__header">
-      <a-button type="primary" @click="openCreateModal">
-        <template #icon><PlusOutlined /></template>新建更正
-      </a-button>
-    </div>
+  <WorkbenchSurfaceCard flush class="appeal-section">
+    <template #head>
+      <div class="appeal-section__header">
+        <UiButton size="sm" variant="primary" @click="openCreateModal"> 新建纠正 </UiButton>
+      </div>
+    </template>
 
-    <UiFilterBar
-      variant="plain"
-      v-model="filterModel"
-      :fields="filterFields"
-      search-text="查询"
-      @search="handleSearch"
-      @reset="handleFilterReset"
-    />
+    <template #toolbar>
+      <UiFilterBar
+        variant="plain"
+        v-model="filterModel"
+        :fields="filterFields"
+        search-text="查询"
+        @search="handleSearch"
+        @reset="handleFilterReset"
+      />
 
-    <UiDataTable
-      v-model:current="pagination.current"
-      v-model:page-size="pagination.pageSize"
-      class="student-detail-table__data-table"
-      :columns="columns"
-      :data-source="rows"
-      :loading="loading"
-      row-key="id"
-      size="small"
-      :total="pagination.total"
-      flat
-      @page-change="handlePageChange"
-    >
-      <template #bodyCell="{ column, index }">
-        <template v-if="column.key === 'student'">
-          {{ correctionStudentLabel(rows[index]) }}
+      <UiDataTable
+        v-model:current="pagination.current"
+        v-model:page-size="pagination.pageSize"
+        class="student-detail-table__data-table"
+        :columns="columns"
+        :data-source="rows"
+        :loading="loading"
+        row-key="id"
+        size="small"
+        :total="pagination.total"
+        flat
+        @page-change="handlePageChange"
+      >
+        <template #bodyCell="{ column, index }">
+          <template v-if="column.key === 'studentNo'">
+            <span class="score-summary-table__mono">{{ rows[index].studentNo }}</span>
+          </template>
+          <template v-else-if="column.key === 'studentName'">
+            {{ rows[index].studentName }}
+          </template>
+          <template v-else-if="column.key === 'questionNo'">
+            {{ rows[index].questionNo ? `第${rows[index].questionNo}题` : '—' }}
+          </template>
+          <template v-else-if="column.key === 'beforeScore'">
+            <span class="score-summary-table__score">{{ rows[index].beforeScore }}</span>
+          </template>
+          <template v-else-if="column.key === 'afterScore'">
+            <span class="score-summary-table__score score-summary-table__score--total">
+              {{ rows[index].afterScore }}
+            </span>
+          </template>
+          <template v-else-if="column.key === 'effectiveTime'">
+            {{ formatDateTime(rows[index].effectiveTime) }}
+          </template>
         </template>
-        <template v-else-if="column.key === 'question'">
-          {{ correctionQuestionLabel(rows[index]) }}
-        </template>
-        <template v-else-if="column.key === 'scoreChange'">
-          {{ correctionScoreChangeLabel(rows[index]) }}
-        </template>
-        <template v-else-if="column.key === 'correctionType'">
-          {{ correctionTypeLabel(rows[index]) }}
-        </template>
-        <template v-else-if="column.key === 'correctionStatus'">
-          <UiTag :tone="correctionStatusColor(rows[index])">
-            {{ correctionStatusLabel(rows[index]) }}
-          </UiTag>
-        </template>
-        <template v-else-if="column.key === 'effectiveTime'">
-          {{ formatDateTime(rows[index].effectiveTime) }}
-        </template>
-        <template v-else-if="column.key === 'createTime'">
-          {{ formatDateTime(rows[index].createTime) }}
-        </template>
-      </template>
-    </UiDataTable>
+      </UiDataTable>
 
-    <a-modal
-      v-model:open="createOpen"
-      title="新建成绩更正"
-      :confirm-loading="submitting"
-      :mask-closable="false"
-      width="560px"
-      @ok="submit"
-    >
-      <a-form layout="vertical" :model="form">
-        <a-row :gutter="12">
-          <a-col :span="14">
-            <a-form-item label="复核申请" required>
-              <a-select
-                v-model:value="form.reviewRequestId"
-                :loading="reviewRequestLoading"
-                :options="reviewRequestOptions"
-                placeholder="选择已通过的复核申请"
-                show-search
-                option-filter-prop="label"
-                @change="handleReviewRequestChange"
-              />
-            </a-form-item>
-          </a-col>
-          <a-col :span="10">
-            <a-form-item label="更正类型">
-              <a-input :value="selectedReviewRequestScope" disabled />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="14">
-            <a-form-item label="更正题目">
-              <a-select
-                v-model:value="form.questionTemplateId"
-                :disabled="selectedReviewQuestionOptions.length === 0"
-                :options="selectedReviewQuestionOptions"
-                placeholder="总分更正无需选择题目"
-                allow-clear
-              />
-            </a-form-item>
-          </a-col>
-          <a-col :span="10">
-            <a-form-item label="更正后分数" required>
-              <a-input-number
-                v-model:value="form.afterScore"
-                :min="0"
-                :precision="2"
-                style="width: 100%"
-              />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="申请学生">
-          <a-input :value="selectedReviewStudentLabel" disabled />
-        </a-form-item>
-        <a-form-item label="更正原因" required>
-          <a-textarea v-model:value="form.reason" :rows="3" :max-length="200" show-count />
-        </a-form-item>
-      </a-form>
-    </a-modal>
-  </section>
+      <UiDrawer
+        v-model:open="createOpen"
+        title="新建成绩更正"
+        :width="560"
+        :confirm-loading="submitting"
+        :mask-closable="false"
+        :hide-footer="false"
+        ok-text="提交"
+        @confirm="submit"
+      >
+        <a-form layout="vertical" :model="form">
+          <a-row :gutter="12">
+            <a-col :span="14">
+              <a-form-item label="复核申请" required>
+                <a-select
+                  v-model:value="form.reviewRequestId"
+                  :loading="reviewRequestLoading"
+                  :options="reviewRequestOptions"
+                  placeholder="选择已通过的复核申请"
+                  show-search
+                  option-filter-prop="label"
+                  @change="handleReviewRequestChange"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :span="10">
+              <a-form-item label="更正类型">
+                <a-input :value="selectedReviewRequestScope" disabled />
+              </a-form-item>
+            </a-col>
+          </a-row>
+          <a-row :gutter="12">
+            <a-col :span="14">
+              <a-form-item label="更正题目">
+                <a-select
+                  v-model:value="form.layoutQuestionId"
+                  :disabled="selectedReviewQuestionOptions.length === 0"
+                  :options="selectedReviewQuestionOptions"
+                  placeholder="总分更正无需选择题目"
+                  allow-clear
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :span="10">
+              <a-form-item label="更正后分数" required>
+                <a-input-number
+                  v-model:value="form.afterScore"
+                  :min="0"
+                  :max="totalCorrectionScoreMax"
+                  :precision="2"
+                  style="width: 100%"
+                />
+              </a-form-item>
+            </a-col>
+          </a-row>
+          <a-alert
+            v-if="makeupCap60Hint"
+            type="info"
+            show-icon
+            :message="makeupCap60AlertMessage"
+            style="margin-bottom: 12px"
+          />
+          <a-alert
+            v-if="singleQuestionProjectionHint"
+            type="warning"
+            show-icon
+            :message="singleQuestionProjectionHint"
+            style="margin-bottom: 12px"
+          />
+          <a-form-item label="申请学生">
+            <a-input :value="selectedReviewStudentLabel" disabled />
+          </a-form-item>
+          <a-form-item label="更正原因" required>
+            <a-textarea v-model:value="form.reason" :rows="3" :max-length="200" show-count />
+          </a-form-item>
+        </a-form>
+      </UiDrawer>
+    </template>
+  </WorkbenchSurfaceCard>
 </template>
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
-  ExamGradeCorrectionRecordVO,
-  GradeCorrectionTypeCode,
+  ExamGradeCorrectionRecordResponse,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
+import Modal from 'ant-design-vue/es/modal'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
+  computeSingleQuestionCorrectionCompositeTotal,
   createCorrection,
-  GRADE_CORRECTION_STATUS_LABEL,
-  GRADE_CORRECTION_STATUS_TONE,
-  GRADE_CORRECTION_TYPE_LABEL,
+  GradeReviewRequestStatusCode,
+  isMakeupCap60SingleQuestionCorrectionExceeded,
   listCorrections,
   listReviewRequests,
 } from '@/apis/mark/grade-review'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
-import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import { assertUserFacing } from '@/utils/contract-guard'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { ExamScorePolicyCode } from '@/types/enums/exam-score-policy-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
-import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import { readAllPages } from '@/utils/page-result'
 
 defineOptions({ name: 'CorrectionsCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
-const emit = defineEmits<{ (e: 'created'): void, (e: 'republish-required'): void }>()
-
+const props = defineProps<{
+  examId: string
+  reloadToken: number
+  scorePolicy?: ExamScorePolicyCode
+}>()
+const emit = defineEmits<{ (e: 'created'): void }>()
 const router = useRouter()
-const republishGuideVisible = ref(false)
 
 const APPROVED_REVIEW_REQUEST_PAGE_SIZE = 100
 
-const rows = ref<ExamGradeCorrectionRecordVO[]>([])
+const rows = ref<ExamGradeCorrectionRecordResponse[]>([])
 const loading = ref(false)
 const approvedReviewRequests = ref<GradeReviewRequestItemResponse[]>([])
 const reviewRequestLoading = ref(false)
@@ -202,26 +206,25 @@ const filterFields: FilterField[] = [
   },
 ]
 
-const columns: ColumnType<ExamGradeCorrectionRecordVO>[] = [
-  { title: '学生', key: 'student', width: 150 },
-  { title: '题目', key: 'question', width: 180 },
-  { title: '类型', key: 'correctionType', width: 110 },
-  { title: '分数变化', key: 'scoreChange', width: 120 },
-  { title: '原因', dataIndex: 'reason', key: 'reason', ellipsis: true },
-  { title: '状态', key: 'correctionStatus', width: 100 },
-  { title: '生效时间', key: 'effectiveTime', width: 160 },
-  { title: '创建时间', key: 'createTime', width: 160 },
+const columns: ColumnType<ExamGradeCorrectionRecordResponse>[] = [
+  { title: '学号', key: 'studentNo', width: 120 },
+  { title: '姓名', key: 'studentName', dataIndex: 'studentName', width: 96 },
+  { title: '题号', key: 'questionNo', width: 88 },
+  { title: '原分', key: 'beforeScore', width: 72, align: 'right' },
+  { title: '纠正分', key: 'afterScore', width: 72, align: 'right' },
+  { title: '纠正原因', dataIndex: 'reason', key: 'reason', ellipsis: true },
+  { title: '时间', key: 'effectiveTime', width: 160 },
 ]
 
 const createOpen = ref(false)
 const submitting = ref(false)
 const form = reactive<{
-  questionTemplateId: string
+  layoutQuestionId: string
   afterScore: number
   reason: string
   reviewRequestId: string
 }>({
-  questionTemplateId: '',
+  layoutQuestionId: '',
   afterScore: 0,
   reason: '',
   reviewRequestId: '',
@@ -241,7 +244,7 @@ const reviewRequestOptions = computed(() =>
 const selectedReviewQuestionOptions = computed(
   () =>
     selectedReviewRequest.value?.questionRefs.map((question) => ({
-      value: question.questionTemplateId,
+      value: question.layoutQuestionId,
       label: `第 ${question.questionNo} 题 · ${question.questionType} · 满分 ${question.fullScore} 分`,
     })) ?? [],
 )
@@ -254,19 +257,59 @@ const selectedReviewStudentLabel = computed(() =>
   selectedReviewRequest.value ? reviewRequestStudentLabel(selectedReviewRequest.value) : '',
 )
 
+/** 总分更正且补考封顶60时限制输入上限 */
+const isTotalScoreCorrection = computed(
+  () => !!selectedReviewRequest.value && selectedReviewRequest.value.questionRefs.length === 0,
+)
+
+const makeupCap60Hint = computed(
+  () => props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60,
+)
+
+const makeupCap60AlertMessage = computed(() =>
+  isTotalScoreCorrection.value
+    ? '本场为补考封顶60分：更正后总成绩不得超过60分'
+    : '本场为补考封顶60分：单题更正后合成总成绩不得超过60分',
+)
+
+const projectedCompositeTotal = computed(() => {
+  if (!selectedReviewRequest.value || !form.layoutQuestionId) {
+    return null
+  }
+  return computeSingleQuestionCorrectionCompositeTotal(
+    selectedReviewRequest.value,
+    form.layoutQuestionId,
+    form.afterScore,
+  )
+})
+
+const singleQuestionProjectionHint = computed(() => {
+  if (!makeupCap60Hint.value || !form.layoutQuestionId || !selectedReviewRequest.value) {
+    return ''
+  }
+  const projected = projectedCompositeTotal.value
+  if (projected == null) {
+    return '当前成绩快照未就绪，提交前请确认最终成绩已确认'
+  }
+  const currentTotal = selectedReviewRequest.value.currentTotalScore
+  const currentPart = currentTotal != null ? `当前总分 ${currentTotal}，` : ''
+  if (projected > 60) {
+    return `${currentPart}更正后合成总分 ${projected} 超过60分，无法提交`
+  }
+  return `${currentPart}更正后合成总分 ${projected}`
+})
+
+const totalCorrectionScoreMax = computed(
+  () => (isTotalScoreCorrection.value && makeupCap60Hint.value ? 60 : undefined),
+)
+
 async function openCreateModal(): Promise<void> {
-  form.questionTemplateId = ''
+  form.layoutQuestionId = ''
   form.afterScore = 0
   form.reason = ''
   form.reviewRequestId = ''
-  republishGuideVisible.value = false
   createOpen.value = true
   await loadApprovedReviewRequests()
-}
-
-function goScorePublish(): void {
-  if (!props.examId) return
-  void router.push({ name: 'TeacherExamWorkspaceScoreRelease', params: { examId: props.examId } })
 }
 
 async function reload(): Promise<void> {
@@ -280,10 +323,9 @@ async function reload(): Promise<void> {
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
     })
-    const records = readPageList(result, '成绩更正记录加载失败')
-    validateCorrectionDisplayContracts(records)
-    rows.value = records
-    pagination.total = readPageTotal(result, '成绩更正记录加载失败')
+
+    rows.value = result.list
+    pagination.total = Number(result.total)
     pagination.current = result.pageNum ?? pagination.current
     pagination.pageSize = result.pageSize ?? pagination.pageSize
     if (rows.value.length === 0 && pagination.total > 0 && pagination.current > 1) {
@@ -320,18 +362,16 @@ async function loadApprovedReviewRequests(): Promise<void> {
   if (!props.examId) return
   reviewRequestLoading.value = true
   try {
-    const requests = await readAllPages(
+    approvedReviewRequests.value = await readAllPages(
       (pageNum) =>
         listReviewRequests({
           examId: props.examId,
-          requestStatus: 'APPROVED',
+          requestStatus: GradeReviewRequestStatusCode.APPROVED,
           pageNum,
           pageSize: APPROVED_REVIEW_REQUEST_PAGE_SIZE,
         }),
       '已通过复核申请加载失败',
     )
-    validateReviewRequestDisplayContracts(requests)
-    approvedReviewRequests.value = requests
   } catch (e) {
     approvedReviewRequests.value = []
     showUserError(e, '已通过复核申请加载失败')
@@ -340,32 +380,8 @@ async function loadApprovedReviewRequests(): Promise<void> {
   }
 }
 
-/** 校验成绩更正记录列表所需展示字段，缺失时进入组件错误态。 */
-function validateCorrectionDisplayContracts(list: ExamGradeCorrectionRecordVO[]): void {
-  const dataError = '成绩更正记录加载失败，请刷新后重试'
-  for (const row of list) {
-    assertUserFacing(Boolean(row.studentName?.trim()) && Boolean(row.studentNo?.trim()), dataError)
-    if (row.correctionType !== 'TOTAL_SCORE') {
-      const hasQuestionDisplay
-        = row.questionNo?.trim() && row.questionType?.trim() && typeof row.fullScore === 'number'
-      assertUserFacing(Boolean(hasQuestionDisplay), dataError)
-    }
-  }
-}
-
-/** 校验可更正复核申请所需学生展示字段，缺失时中断弹窗数据源。 */
-function validateReviewRequestDisplayContracts(list: GradeReviewRequestItemResponse[]): void {
-  const dataError = '复核申请加载失败，请刷新后重试'
-  for (const request of list) {
-    assertUserFacing(
-      Boolean(request.studentName?.trim()) && Boolean(request.studentNo?.trim()),
-      dataError,
-    )
-  }
-}
-
 function handleReviewRequestChange(): void {
-  form.questionTemplateId = ''
+  form.layoutQuestionId = ''
 }
 
 async function submit(): Promise<void> {
@@ -378,80 +394,66 @@ async function submit(): Promise<void> {
     message.warning('更正原因必填')
     return
   }
-  if (request.questionRefs.length > 0 && !form.questionTemplateId) {
+  if (request.questionRefs.length > 0 && !form.layoutQuestionId) {
     message.warning('单题复核申请必须选择更正题目')
     return
   }
   if (
-    form.questionTemplateId
-    && !request.questionRefs.some(
-      (question) => question.questionTemplateId === form.questionTemplateId,
-    )
+    form.layoutQuestionId
+    && !request.questionRefs.some((question) => question.layoutQuestionId === form.layoutQuestionId)
   ) {
     message.warning('更正题目必须来自选中的复核申请')
     return
   }
+  if (
+    request.questionRefs.length === 0
+    && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60
+    && form.afterScore > 60
+  ) {
+    message.warning('补考成绩策略为封顶60分，更正后总成绩不能超过60分')
+    return
+  }
+  if (
+    form.layoutQuestionId
+    && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60
+    && isMakeupCap60SingleQuestionCorrectionExceeded(request, form.layoutQuestionId, form.afterScore)
+  ) {
+    message.warning('补考成绩策略为封顶60分，单题更正后合成总成绩不能超过60分')
+    return
+  }
   submitting.value = true
   try {
-    await createCorrection({
+    const result = await createCorrection({
       examId: props.examId,
-      questionTemplateId: form.questionTemplateId || undefined,
+      layoutQuestionId: form.layoutQuestionId || undefined,
       afterScore: form.afterScore,
       reason: form.reason.trim(),
       reviewRequestId: request.id,
     })
-    const successMessage = form.questionTemplateId
+    const successMessage = form.layoutQuestionId
       ? '单题更正已执行，题目统计已同步刷新'
       : '总分更正已执行'
     message.success(successMessage)
     createOpen.value = false
-    republishGuideVisible.value = true
     await reload()
     emit('created')
-    emit('republish-required')
+    if (result.requiresRepublish) {
+      Modal.confirm({
+        title: '需重新发布成绩',
+        content: '更正前成绩已发布，学生端暂不可见最新分数。请前往成绩发布页重新发布。',
+        okText: '前往发布',
+        cancelText: '稍后处理',
+        onOk: () => router.push({
+          name: 'TeacherExamWorkspaceScoreRelease',
+          params: { examId: props.examId },
+        }),
+      })
+    }
   } catch (e) {
     showUserError(e, '成绩更正提交失败')
   } finally {
     submitting.value = false
   }
-}
-
-function correctionStudentLabel(row: ExamGradeCorrectionRecordVO): string {
-  const name = row.studentName.trim()
-  const no = row.studentNo.trim()
-  return `${name}（${no}）`
-}
-
-function correctionQuestionLabel(row: ExamGradeCorrectionRecordVO): string {
-  if (row.correctionType === 'TOTAL_SCORE') {
-    return '总分'
-  }
-  const questionNo = row.questionNo?.trim()
-  const questionType = row.questionType?.trim()
-  const fullScore = row.fullScore
-  if (questionNo && questionType && typeof fullScore === 'number') {
-    return `第 ${questionNo} 题 · ${questionType} · 满分 ${fullScore} 分`
-  }
-  return ''
-}
-
-function correctionScoreChangeLabel(row: ExamGradeCorrectionRecordVO): string {
-  const beforeScore = typeof row.beforeScore === 'number' ? row.beforeScore : '-'
-  const afterScore = typeof row.afterScore === 'number' ? row.afterScore : '-'
-  return `${beforeScore} → ${afterScore}`
-}
-
-function correctionTypeLabel(row: ExamGradeCorrectionRecordVO): string {
-  const code: GradeCorrectionTypeCode | undefined = row.correctionType
-  return strictEnumLabel(GRADE_CORRECTION_TYPE_LABEL, code, '成绩更正类型')
-}
-
-function correctionStatusLabel(row: ExamGradeCorrectionRecordVO): string {
-  return strictEnumLabel(GRADE_CORRECTION_STATUS_LABEL, row.correctionStatus, '成绩更正状态')
-}
-
-function correctionStatusColor(row: ExamGradeCorrectionRecordVO): BadgeTone {
-  return strictEnumTone(GRADE_CORRECTION_STATUS_TONE, row.correctionStatus, '成绩更正状态')
 }
 
 function reviewRequestStudentLabel(request: GradeReviewRequestItemResponse): string {
@@ -477,7 +479,6 @@ watch(
   () => {
     if (props.examId) {
       pagination.current = 1
-      republishGuideVisible.value = false
       void reload()
     }
   },

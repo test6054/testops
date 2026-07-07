@@ -1,4 +1,4 @@
-import type { ConfirmationStatus } from './types'
+import type { ConfirmationStatusCode } from './types'
 /**
  * 培养方案 API - 对接 edu-quality / TrainingPlanController
  *
@@ -21,7 +21,7 @@ export interface TrainingPlanVO {
   accreditationProfileId?: string
   storageFileId?: string
   enabled: boolean
-  confirmationStatus?: ConfirmationStatus
+  confirmationStatus?: ConfirmationStatusCode
   confirmedUserId?: string
   confirmedTime?: string
   createTime?: string
@@ -33,7 +33,7 @@ export interface TrainingPlanQueryRequest extends QueryDto {
   programId?: string
   schoolYear?: string
   gradeLevel?: string
-  confirmationStatus?: ConfirmationStatus
+  confirmationStatus?: ConfirmationStatusCode
   enabled?: boolean
   keyword?: string
 }

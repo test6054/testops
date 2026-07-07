@@ -1,119 +1,130 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="复核任务">
-        <template #toolbar>
-          <UiFilterBar
-            v-if="examId"
-            v-model="filterModel"
-            :fields="statusFilterFields"
-            variant="panel"
-            show-labels
-            search-text="查询"
-            actions-align="end"
-            @search="onFilterChange"
-            @reset="resetStatusFilter"
-          >
-            <template #actions>
-              <UiButton variant="outline" size="sm" @click="goBatchConfirm">
-                批量复核确认
-              </UiButton>
-              <UiButton variant="outline" size="sm" :loading="loading" @click="loadTasks">
-                <template #icon><ReloadOutlined /></template>
-                刷新
-              </UiButton>
-            </template>
-          </UiFilterBar>
+      <ContextBar
+        layout="workbench"
+        show-title
+        :title="contextBarTitle"
+        :subtitle="contextBarSubtitle"
+      >
+        <template #actions>
+          <UiButton variant="outline" size="sm" @click="goBatchConfirm"> 批量复核确认 </UiButton>
+          <UiButton variant="outline" size="sm" :loading="loading" @click="loadTasks">
+            <template #icon><ReloadOutlined /></template>
+            刷新
+          </UiButton>
         </template>
       </ContextBar>
     </template>
 
     <template v-if="examId" #signal>
-      <SignalBand :metrics="hubSignalMetrics" compact @metric-click="handleHubSignalClick" />
+      <SignalBand
+        variant="tiles"
+        :metrics="hubSignalMetrics"
+        compact
+        @metric-click="handleHubSignalClick"
+      />
     </template>
 
     <UiEmpty v-if="!examId" description="缺少考试上下文，请从考试列表进入" />
 
-    <UiCard v-else bordered>
-      <UiEmpty
-        v-if="!loading && rows.length === 0"
-        description="当前筛选下暂无复核任务"
-        class="review-task-hub__empty"
-      />
-      <UiDataTable
-        pagination-mode="server"
-        row-key="reviewTaskId"
-        :columns="columns"
-        :data-source="rows"
-        :loading="loading"
-        :total="pagination.total"
-        :page-num="pagination.current"
-        :page-size="pagination.pageSize"
-        flat
-        size="middle"
-        @page-change="onPageChange"
-      >
-        <template
-          #bodyCell="{
-            column,
-            record,
-          }: {
-            column: ColumnType<ReviewTaskItemVO>
-            record: ReviewTaskItemVO
-          }"
-        >
-          <template v-if="column.key === 'paper'">
-            <div class="review-task-hub__paper-cell">
-              <span class="review-task-hub__paper-primary">{{
-                record.paperDisplay.primaryText
-              }}</span>
-              <span
-                v-if="record.paperDisplay.secondaryText"
-                class="review-task-hub__paper-secondary"
-              >
-                {{ record.paperDisplay.secondaryText }}
-              </span>
-            </div>
-          </template>
-          <template v-else-if="column.key === 'question'">
-            <UiTag tone="blue" size="sm">题 {{ record.questionNo }}</UiTag>
-          </template>
-          <template v-else-if="column.key === 'reviewType'">
-            <UiTag :tone="reviewTypeTone(record.reviewType)" size="sm">
-              {{ reviewTypeLabel(record.reviewType) }}
-            </UiTag>
-          </template>
-          <template v-else-if="column.key === 'gradeSource'">
-            <UiTag :tone="gradeSourceTone(record.gradeSource)" size="sm">
-              {{ gradeSourceLabel(record.gradeSource) }}
-            </UiTag>
-          </template>
-          <template v-else-if="column.key === 'aiScore'">
-            <span v-if="record.aiScore != null">{{ record.aiScore }}</span>
-            <UiTag v-else tone="gray" size="sm">未派生</UiTag>
-          </template>
-          <template v-else-if="column.key === 'status'">
-            <UiTag :tone="reviewStatusTone(record.status)" size="sm">
-              {{ reviewStatusLabel(record.status) }}
-            </UiTag>
-          </template>
-          <template v-else-if="column.key === 'assignedTeacherName'">
-            {{ record.assignedTeacherName || '未指派' }}
-          </template>
-          <template v-else-if="column.key === 'updateTime'">
-            {{ formatDateTime(record.updateTime) }}
-          </template>
-          <template v-else-if="column.key === 'actions'">
-            <UiTextAction
-              :tone="record.status === 'INVALIDATED' ? 'default' : 'primary'"
-              @click="enterReview(record)"
-            >
-              {{ record.status === 'INVALIDATED' ? '查看详情' : '进入复核' }}
-            </UiTextAction>
-          </template>
+    <template v-else>
+      <ExamWorkspaceJourneySubNav />
+
+      <WorkbenchSurfaceCard flush>
+        <template #toolbar>
+          <UiFilterBar
+            v-model="filterModel"
+            :fields="statusFilterFields"
+            variant="plain"
+            show-labels
+            search-text="查询"
+            actions-align="end"
+            @search="onFilterChange"
+            @reset="resetStatusFilter"
+          />
         </template>
-      </UiDataTable>
-    </UiCard>
+
+        <UiEmpty
+          v-if="!loading && rows.length === 0"
+          description="当前筛选下暂无复核任务"
+          class="review-task-hub__empty"
+        />
+        <UiDataTable
+          pagination-mode="server"
+          row-key="reviewTaskId"
+          :columns="columns"
+          :data-source="rows"
+          :loading="loading"
+          :total="pagination.total"
+          :page-num="pagination.current"
+          :page-size="pagination.pageSize"
+          flat
+          size="middle"
+          @page-change="onPageChange"
+        >
+          <template
+            #bodyCell="{
+              column,
+              record,
+            }: {
+              column: ColumnType<ReviewTaskItemResponse>
+              record: ReviewTaskItemResponse
+            }"
+          >
+            <template v-if="column.key === 'paper'">
+              <div class="review-task-hub__paper-cell">
+                <span class="review-task-hub__paper-primary">{{
+                  record.paperDisplay.primaryText
+                }}</span>
+                <span
+                  v-if="record.paperDisplay.secondaryText"
+                  class="review-task-hub__paper-secondary"
+                >
+                  {{ record.paperDisplay.secondaryText }}
+                </span>
+              </div>
+            </template>
+            <template v-else-if="column.key === 'question'">
+              <UiTag tone="blue" size="sm">题 {{ record.questionNo }}</UiTag>
+            </template>
+            <template v-else-if="column.key === 'reviewType'">
+              <UiTag :tone="reviewTypeTone(record.reviewType)" size="sm">
+                {{ reviewTypeLabel(record.reviewType) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'gradeSource'">
+              <UiTag :tone="gradeSourceTone(record.gradeSource)" size="sm">
+                {{ gradeSourceLabel(record.gradeSource) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'aiScore'">
+              <span v-if="record.aiScore != null">{{ record.aiScore }}</span>
+              <UiTag v-else tone="gray" size="sm">未派生</UiTag>
+            </template>
+            <template v-else-if="column.key === 'status'">
+              <UiTag :tone="reviewStatusTone(record.status)" size="sm">
+                {{ reviewStatusLabel(record.status) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'assignedTeacherName'">
+              {{ record.assignedTeacherName || '未指派' }}
+            </template>
+            <template v-else-if="column.key === 'updateTime'">
+              {{ formatDateTime(record.updateTime) }}
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiTextAction
+                :tone="record.status === 'INVALIDATED' ? 'default' : 'primary'"
+                @click="enterReview(record)"
+              >
+                {{ record.status === 'INVALIDATED' ? '查看详情' : '进入复核' }}
+              </UiTextAction>
+            </template>
+          </template>
+        </UiDataTable>
+      </WorkbenchSurfaceCard>
+    </template>
   </StageWorkbenchShell>
 </template>
 
@@ -121,8 +132,7 @@
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   GradeSourceCode,
-  ReviewTaskItemVO,
-  ReviewTaskStatusCode,
+  ReviewTaskItemResponse,
   ReviewTaskTypeCode,
 } from '@/apis/mark/exam-review-task'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
@@ -131,51 +141,48 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  GRADE_SOURCE_LABEL,
   GRADE_SOURCE_TONE,
+  GradeSourceDescription,
   listReviewTasks,
-  REVIEW_TASK_STATUS_LABEL,
+  REVIEW_TASK_HUB_STATUS_FILTER_OPTIONS,
   REVIEW_TASK_STATUS_TONE,
-  REVIEW_TASK_TYPE_META,
-  validateReviewTaskItemContract,
+  ReviewTaskStatusDescription,
+  ReviewTaskTypeDescription,
+  ReviewTaskTypeTone,
 } from '@/apis/mark/exam-review-task'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkWorkbenchContext, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { ReviewTaskStatusCode } from '@/types/enums/review-task-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readPageList, readPageTotal } from '@/utils/page-result'
-import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ReviewTaskHub' })
 
 const router = useRouter()
 const { examId } = useWorkspaceExamId()
+const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar('复核任务')
 const { refreshing: workbenchRefreshing, snapshot } = useMarkWorkbenchContext()
 
 const loading = ref(false)
-const rows = ref<ReviewTaskItemVO[]>([])
-const statusFilter = ref<ReviewTaskStatusCode>('PENDING')
+const rows = ref<ReviewTaskItemResponse[]>([])
+const statusFilter = ref<ReviewTaskStatusCode>(ReviewTaskStatusCode.PENDING)
 
 const pagination = reactive({
   current: 1,
   pageSize: 20,
   total: 0,
 })
-
-const statusFilterOptions = [
-  { label: '待复核', value: 'PENDING' as ReviewTaskStatusCode },
-  { label: '复核中', value: 'IN_PROGRESS' as ReviewTaskStatusCode },
-  { label: '已失效', value: 'INVALIDATED' as ReviewTaskStatusCode },
-]
 
 const statusFilterFields: FilterField[] = [
   {
@@ -185,14 +192,22 @@ const statusFilterFields: FilterField[] = [
     placeholder: '任务状态',
     width: 160,
     minWidth: 160,
-    options: statusFilterOptions,
+    options: REVIEW_TASK_HUB_STATUS_FILTER_OPTIONS,
   },
 ]
 
 const filterModel = computed<Record<string, unknown>>({
   get: () => ({ status: statusFilter.value }),
   set: (value) => {
-    statusFilter.value = value.status as ReviewTaskStatusCode
+    if (
+      value.status === ReviewTaskStatusCode.PENDING
+      || value.status === ReviewTaskStatusCode.IN_PROGRESS
+      || value.status === ReviewTaskStatusCode.APPROVED
+      || value.status === ReviewTaskStatusCode.REJECTED
+      || value.status === ReviewTaskStatusCode.INVALIDATED
+    ) {
+      statusFilter.value = value.status
+    }
   },
 })
 
@@ -232,7 +247,7 @@ const hubSignalMetrics = computed((): SignalMetric[] => {
 
 function handleHubSignalClick(key: string): void {
   if (key === 'pending' && (snapshot.value?.markingProgress?.pendingReviewTaskCount ?? 0) > 0) {
-    statusFilter.value = 'PENDING'
+    statusFilter.value = ReviewTaskStatusCode.PENDING
     onFilterChange()
     return
   }
@@ -240,17 +255,17 @@ function handleHubSignalClick(key: string): void {
     key === 'in-progress'
     && (snapshot.value?.markingProgress?.inProgressReviewTaskCount ?? 0) > 0
   ) {
-    statusFilter.value = 'IN_PROGRESS'
+    statusFilter.value = ReviewTaskStatusCode.IN_PROGRESS
     onFilterChange()
   }
 }
 
 function resetStatusFilter(): void {
-  statusFilter.value = 'PENDING'
+  statusFilter.value = ReviewTaskStatusCode.PENDING
   onFilterChange()
 }
 
-const columns: ColumnType<ReviewTaskItemVO>[] = [
+const columns: ColumnType<ReviewTaskItemResponse>[] = [
   { title: '答卷', key: 'paper', width: 200 },
   { title: '题号', key: 'question', width: 88 },
   { title: '复核类型', key: 'reviewType', width: 140 },
@@ -265,19 +280,19 @@ const columns: ColumnType<ReviewTaskItemVO>[] = [
 const statusFilterLabel = computed(() => reviewStatusLabel(statusFilter.value))
 
 function reviewStatusTone(value: ReviewTaskStatusCode): BadgeTone {
-  return strictEnumTone(REVIEW_TASK_STATUS_TONE, value, '复核任务状态')
+  return REVIEW_TASK_STATUS_TONE[value]
 }
 
 function reviewStatusLabel(value: ReviewTaskStatusCode): string {
-  return strictEnumLabel(REVIEW_TASK_STATUS_LABEL, value, '复核任务状态')
+  return ReviewTaskStatusDescription[value]
 }
 
 function reviewTypeLabel(value: ReviewTaskTypeCode): string {
-  return REVIEW_TASK_TYPE_META[value].label
+  return ReviewTaskTypeDescription[value]
 }
 
 function reviewTypeTone(value: ReviewTaskTypeCode): BadgeTone {
-  const color = REVIEW_TASK_TYPE_META[value].color
+  const color = ReviewTaskTypeTone[value]
   if (color === 'green') {
     return 'green'
   }
@@ -288,7 +303,7 @@ function reviewTypeTone(value: ReviewTaskTypeCode): BadgeTone {
 }
 
 function gradeSourceLabel(source: GradeSourceCode): string {
-  return strictEnumLabel(GRADE_SOURCE_LABEL, source, '批改来源')
+  return GradeSourceDescription[source]
 }
 
 function gradeSourceTone(source: GradeSourceCode): BadgeTone {
@@ -308,10 +323,8 @@ async function loadTasks(): Promise<void> {
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
     })
-    const records = readPageList(result, '复核任务列表加载失败')
-    records.forEach(validateReviewTaskItemContract)
-    rows.value = records
-    pagination.total = readPageTotal(result)
+    rows.value = result.list
+    pagination.total = Number(result.total)
   } catch (error) {
     rows.value = []
     pagination.total = 0
@@ -332,7 +345,7 @@ function onFilterChange(): void {
   void loadTasks()
 }
 
-function enterReview(record: ReviewTaskItemVO): void {
+function enterReview(record: ReviewTaskItemResponse): void {
   if (!examId.value) {
     return
   }

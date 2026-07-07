@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioDevelopmentPlanStatus } from '@/apis/portfolio/enums'
+import type { PortfolioDevelopmentPlanStatusCode } from '@/apis/portfolio/enums'
 import type {
   PortfolioDeptOneTableSummaryVO,
   PortfolioDeptOneTableTeacherRowVO,
 } from '@/apis/portfolio/teacher'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
-  PORTFOLIO_DEVELOPMENT_PLAN_STATUS_LABEL,
   PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
+  PortfolioDevelopmentPlanStatusDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import MarkChart from '@/components/chart/MarkChart.vue'
@@ -23,7 +24,6 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -35,8 +35,13 @@ const exporting = ref(false)
 const summary = ref<PortfolioDeptOneTableSummaryVO | null>(null)
 const teacherRows = ref<PortfolioDeptOneTableTeacherRowVO[]>([])
 const teacherTotal = ref(0)
-const filter = reactive({
-  departmentId: '' as string,
+interface PortfolioDepartmentOneTableFilter {
+  departmentId: string
+  planYear: string
+}
+
+const filter = reactive<PortfolioDepartmentOneTableFilter>({
+  departmentId: '',
   planYear: String(new Date().getFullYear()),
 })
 const teacherQuery = reactive({
@@ -44,13 +49,21 @@ const teacherQuery = reactive({
   pageSize: 10,
 })
 
-const titleStructureRows = [
+const titleStructureRows: Array<{
+  key:
+    | 'titleSeniorCount'
+    | 'titleAssociateCount'
+    | 'titleMiddleCount'
+    | 'titleJuniorCount'
+    | 'titleUnclassifiedCount'
+  label: string
+}> = [
   { key: 'titleSeniorCount', label: '高级职称' },
   { key: 'titleAssociateCount', label: '副高级' },
   { key: 'titleMiddleCount', label: '中级' },
   { key: 'titleJuniorCount', label: '初级' },
   { key: 'titleUnclassifiedCount', label: '未分类' },
-] as const
+]
 
 const teacherColumns: ColumnsType = [
   { title: '姓名', dataIndex: 'nickName', key: 'nickName', width: 100 },
@@ -120,10 +133,10 @@ async function loadTeachers() {
       pageNum: teacherQuery.pageNum,
       pageSize: teacherQuery.pageSize,
     })
-    teacherRows.value = readPageList(page, '加载教师明细失败')
+    teacherRows.value = page.list
     teacherQuery.pageNum = page.pageNum
     teacherQuery.pageSize = page.pageSize
-    teacherTotal.value = readPageTotal(page, '加载教师明细失败')
+    teacherTotal.value = Number(page.total)
   } catch (error) {
     showUserError(error)
   } finally {
@@ -170,16 +183,16 @@ function boolLabel(value?: boolean) {
   return value ? '是' : '—'
 }
 
-function planStatusLabel(status?: PortfolioDevelopmentPlanStatus): string {
+function planStatusLabel(status?: PortfolioDevelopmentPlanStatusCode): string {
   if (!status) {
     return '—'
   }
-  return strictEnumLabel(PORTFOLIO_DEVELOPMENT_PLAN_STATUS_LABEL, status, '教师发展规划状态')
+  return strictEnumLabel(PortfolioDevelopmentPlanStatusDescription, status, '教师发展规划状态')
 }
 
-function planStatusTone(status?: PortfolioDevelopmentPlanStatus) {
+function planStatusTone(status?: PortfolioDevelopmentPlanStatusCode): BadgeTone {
   if (!status) {
-    return 'gray' as const
+    return 'gray'
   }
   return PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE[status]
 }
@@ -192,7 +205,7 @@ onMounted(async () => {
 })
 
 watch(
-  () => [filter.departmentId, filter.planYear] as const,
+  () => [filter.departmentId, filter.planYear],
   () => {
     void reloadAll()
   },

@@ -17,7 +17,7 @@ const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const authStore = useAuthStore()
-const source = route.query.source as string
+const source = queryString(route.query.source)
 const loading = ref(false)
 
 // 三方账号登录
@@ -28,7 +28,7 @@ const handleSocialLogin = () => {
   authStore
     .socialLogin(source, othersQuery)
     .then(() => {
-      const safePath = getSafeRedirect(redirect as string, '/')
+      const safePath = getSafeRedirect(queryString(redirect), '/')
       router.push({
         path: safePath,
         query: {
@@ -58,7 +58,7 @@ const handleBindSocial = () => {
 
   // 已登录用户绑定三方账号，使用 state 参数关联微信授权回调
   const bindData = {
-    state: (othersQuery.state as string) || '',
+    state: queryString(othersQuery.state),
   }
 
   bindWechatAccount(bindData)
@@ -76,6 +76,10 @@ const handleBindSocial = () => {
     .finally(() => {
       loading.value = false
     })
+}
+
+function queryString(value: unknown): string {
+  return typeof value === 'string' ? value : ''
 }
 
 if (isLogin()) {

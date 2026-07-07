@@ -1,7 +1,7 @@
 import type { MarkOcrHealthStatusCode, MarkOcrProviderTypeCode } from './ocr-types'
 import http from '@/config/axios'
 
-export interface MarkOcrConfigVO {
+export interface MarkOcrConfigResponse {
   id?: string
   tenantId?: string
   providerType?: MarkOcrProviderTypeCode
@@ -22,20 +22,20 @@ export interface MarkOcrConfigHealthCheckRequest {
   tenantId: string
 }
 
-export interface MarkOcrConfigHealthCheckVO {
+export interface MarkOcrConfigHealthCheckResponse {
   providerType: MarkOcrProviderTypeCode
   healthStatus: MarkOcrHealthStatusCode
   healthMessage: string
 }
 
-export function getCurrentMarkOcrConfig(tenantId?: string): Promise<MarkOcrConfigVO> {
-  return http.post<MarkOcrConfigVO>('/api/mark/ocr/config/current', tenantId ? { tenantId } : {})
+export function getCurrentMarkOcrConfig(tenantId?: string): Promise<MarkOcrConfigResponse> {
+  return http.post<MarkOcrConfigResponse>('/api/mark/ocr/config/current', tenantId ? { tenantId } : {})
 }
 
 export function saveMarkOcrConfig(request: MarkOcrConfigSaveRequest): Promise<string> {
   return http.post<string>('/api/mark/ocr/config/save', request)
 }
 
-export function checkMarkOcrHealth(tenantId: string): Promise<MarkOcrConfigHealthCheckVO> {
-  return http.post<MarkOcrConfigHealthCheckVO>('/api/mark/ocr/config/health-check', { tenantId })
+export function checkMarkOcrHealth(tenantId: string): Promise<MarkOcrConfigHealthCheckResponse> {
+  return http.post<MarkOcrConfigHealthCheckResponse>('/api/mark/ocr/config/health-check', { tenantId })
 }

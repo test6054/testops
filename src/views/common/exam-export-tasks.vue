@@ -1,10 +1,16 @@
 <template>
-  <StageWorkbenchShell>
+  <StageWorkbenchShell class="export-page">
     <template #context>
       <ContextBar
-        title="导出任务"
+        layout="workbench"
+        show-title
+        :title="isJourneyChrome ? contextBarTitle : '导出任务'"
+        :subtitle="isJourneyChrome ? contextBarSubtitle : '考后归档'"
       >
         <template #status>
+          <UiTag v-if="isJourneyChrome && chromeExamStatusLabel" :tone="chromeExamStatusTone" size="sm">
+            {{ chromeExamStatusLabel }}
+          </UiTag>
           <MarkExamSelect
             v-if="!isExamWorkspaceRoute"
             :selected-exam-id="selectedExamId"
@@ -17,139 +23,158 @@
             @change="handleExamChange"
             @search="onExamSearch"
           />
-          <UiTag v-if="counts.total > 0" tone="blue" size="sm">总 {{ counts.total }}</UiTag>
-          <UiTag v-if="counts.pending > 0" tone="orange" size="sm">
-            待执行 {{ counts.pending }}
-          </UiTag>
-          <UiTag v-if="counts.generating > 0" tone="purple" size="sm">
-            生成中 {{ counts.generating }}
-          </UiTag>
-          <UiTag v-if="counts.completed > 0" tone="green" size="sm">
-            已完成 {{ counts.completed }}
-          </UiTag>
-          <UiTag v-if="counts.failed > 0" tone="red" size="sm">失败 {{ counts.failed }}</UiTag>
         </template>
       </ContextBar>
     </template>
 
+    <template v-if="selectedExamId" #signal>
+      <SignalBand variant="tiles" compact :metrics="exportSignalMetrics" />
+    </template>
+
     <UiEmpty v-if="!selectedExamId" description="请选择考试" class="export-page__empty" />
 
-    <a-card v-else :bordered="false" class="detail-table-card info-card export-page__table-card">
-      <template #title>
-        <CloudDownloadOutlined />
-        <span>当前考试导出任务</span>
-      </template>
-      <template #extra>
-        <UiButton size="sm" @click="openCreateModal">
-          <template #icon><PlusOutlined /></template>
-          创建导出任务
-        </UiButton>
-      </template>
+    <UiEmpty
+      v-else-if="loadFailed"
+      description="导出任务加载失败"
+      action-label="重试"
+      class="export-page__empty"
+      @action="() => loadTasks()"
+    />
+
+    <template v-else>
+      <ExamWorkspaceJourneySubNav v-if="isExamWorkspaceRoute" />
+
       <UiAlertStrip
-        v-if="activeTaskFilterAutoSync"
+        v-if="layoutRoiGap > 0"
         tone="warning"
-        title="进行中导出任务已同步到列表"
-        :description="activeTaskFilterAutoSyncText"
-        dense
-        class="export-page__active-sync-strip"
-        @close="activeTaskFilterAutoSync = false"
+        class="export-page__roi-gap-strip"
+        :title="`制卷识别区域未就绪（${layoutRoiGap} 道题）`"
+        description="按题导出仅可选择已配置识别区域的题目；请先在制卷工作台补全 ROI。"
       />
 
-      <UiFilterBar
-        v-model="exportFilterForm"
-        :fields="exportFilterFields"
-        variant="plain"
-        search-text="查询"
-        @search="handleTaskFilterSearch"
-        @reset="handleTaskFilterReset"
-      />
-
-      <UiDataTable
-        v-model:current="taskPagination.pageNum"
-        v-model:page-size="taskPagination.pageSize"
-        pagination-mode="server"
-        class="student-detail-table__data-table"
-        :columns="columns"
-        :data-source="tasks"
-        :loading="loading"
-        :total="taskPagination.total"
-        flat
-        row-key="taskId"
-        size="middle"
-        @page-change="handleTaskPageChange"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'exportType'">
-            {{ exportTypeLabel(record.exportType) }}
-          </template>
-          <template v-else-if="column.key === 'exportScope'">
-            {{ exportScopeLabel(record.exportScope) }}
-          </template>
-          <template v-else-if="column.key === 'scopeSummary'">
-            {{ record.scopeSummary }}
-          </template>
-          <template v-else-if="column.key === 'taskStatus'">
-            <UiTag :tone="statusTone(record.taskStatus)" size="sm">
-              {{ exportStatusLabel(record.taskStatus) }}
-            </UiTag>
-          </template>
-          <template v-else-if="column.key === 'fileSize'">
-            {{ exportTaskFileSizeText(record) }}
-          </template>
-          <template v-else-if="column.key === 'errorMessage'">
-            <a-tooltip
-              v-if="exportTaskFailureMessageText(record)"
-              :title="exportTaskFailureMessageText(record)"
-            >
-              <span class="error-text">{{
-                clippedExportTaskFailureMessage(record)
-              }}</span>
-            </a-tooltip>
-            <span v-else class="hint-text">{{
-              exportTaskProcessingText(record)
-            }}</span>
-          </template>
-          <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell" @click.stop>
-              <UiTextAction
-                v-if="canDownloadExportTask(record)"
-                tone="primary"
-                :disabled="downloadingId === record.taskId"
-                @click="handleDownload(record)"
-              >
-                下载
-              </UiTextAction>
-              <UiTextAction @click="openDetailDrawer(record)">详情</UiTextAction>
-            </div>
-          </template>
+      <WorkbenchSurfaceCard flush class="export-page__table-card">
+        <template #head>
+          <div class="export-page__card-head">
+            <span class="export-page__flow-hint">{{ EXPORT_FLOW_HINT }}</span>
+            <span class="export-page__card-title">
+              <CloudDownloadOutlined />
+              当前考试导出任务
+            </span>
+            <UiButton size="sm" @click="openCreateModal">
+              <template #icon><PlusOutlined /></template>
+              创建导出任务
+            </UiButton>
+          </div>
         </template>
-      </UiDataTable>
-    </a-card>
+        <template #toolbar>
+          <UiAlertStrip
+            v-if="activeTaskFilterAutoSync"
+            tone="warning"
+            title="进行中导出任务已同步到列表"
+            :description="activeTaskFilterAutoSyncText"
+            dense
+            class="export-page__active-sync-strip"
+            @close="activeTaskFilterAutoSync = false"
+          />
+          <UiFilterBar
+            v-model="exportFilterForm"
+            :fields="exportFilterFields"
+            variant="plain"
+            search-text="查询"
+            @search="handleTaskFilterSearch"
+            @reset="handleTaskFilterReset"
+          />
+        </template>
+
+        <UiDataTable
+          v-model:current="taskPagination.pageNum"
+          v-model:page-size="taskPagination.pageSize"
+          pagination-mode="server"
+          class="student-detail-table__data-table"
+          :columns="columns"
+          :data-source="tasks"
+          :loading="loading"
+          :total="taskPagination.total"
+          flat
+          row-key="taskId"
+          size="middle"
+          @page-change="handleTaskPageChange"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'exportType'">
+              {{ exportTypeLabel(record.exportType) }}
+            </template>
+            <template v-else-if="column.key === 'exportScope'">
+              {{ exportScopeLabel(record.exportScope) }}
+            </template>
+            <template v-else-if="column.key === 'scopeSummary'">
+              {{ record.scopeSummary }}
+            </template>
+            <template v-else-if="column.key === 'taskStatus'">
+              <UiTag :tone="statusTone(record.taskStatus)" size="sm">
+                {{ exportStatusLabel(record.taskStatus) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'fileSize'">
+              {{ exportTaskFileSizeText(record) }}
+            </template>
+            <template v-else-if="column.key === 'errorMessage'">
+              <a-tooltip
+                v-if="exportTaskFailureMessageText(record)"
+                :title="exportTaskFailureMessageText(record)"
+              >
+                <span class="error-text">{{
+                  clippedExportTaskFailureMessage(record)
+                }}</span>
+              </a-tooltip>
+              <span v-else class="hint-text">{{
+                exportTaskProcessingText(record)
+              }}</span>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <div class="operations-cell" @click.stop>
+                <UiTextAction
+                  v-if="canDownloadExportTask(record)"
+                  tone="primary"
+                  :disabled="downloadingId === record.taskId"
+                  @click="handleDownload(record)"
+                >
+                  下载
+                </UiTextAction>
+                <UiTextAction @click="openDetailDrawer(record)">详情</UiTextAction>
+              </div>
+            </template>
+          </template>
+        </UiDataTable>
+      </WorkbenchSurfaceCard>
+    </template>
   </StageWorkbenchShell>
 
   <!-- 创建导出任务 Modal -->
-  <a-modal
+  <UiDialog
     v-model:open="createModalOpen"
     title="创建导出任务"
-    :destroy-on-close="true"
+    :width="640"
     :confirm-loading="creating"
-    :ok-button-props="{ disabled: !createValid }"
     ok-text="创建"
-    width="640px"
     @ok="handleCreate"
   >
+    <template #footer>
+      <UiButton variant="outline" @click="createModalOpen = false">取消</UiButton>
+      <UiButton :loading="creating" :disabled="!createValid" @click="handleCreate">创建</UiButton>
+    </template>
     <a-form layout="vertical">
       <a-form-item label="导出类型" required>
         <a-radio-group v-model:value="createForm.exportType">
-          <a-radio-button v-for="(label, code) in EXPORT_TYPE_LABEL" :key="code" :value="code">
-            {{ label }}
+          <a-radio-button v-for="option in exportTypeOptions" :key="option.value" :value="option.value">
+            {{ option.label }}
           </a-radio-button>
         </a-radio-group>
       </a-form-item>
       <a-form-item label="导出范围" required>
         <a-radio-group v-model:value="createForm.exportScope">
-          <a-radio-button v-for="(label, code) in EXPORT_SCOPE_LABEL" :key="code" :value="code">
-            {{ label }}
+          <a-radio-button v-for="option in exportScopeOptions" :key="option.value" :value="option.value">
+            {{ option.label }}
           </a-radio-button>
         </a-radio-group>
       </a-form-item>
@@ -169,7 +194,7 @@
       </a-form-item>
       <a-form-item v-else-if="createForm.exportScope === 'QUESTION'" label="选择题目" required>
         <a-select
-          v-model:value="createForm.questionTemplateIds"
+          v-model:value="createForm.layoutQuestionIds"
           mode="multiple"
           placeholder="选择需要导出的题目"
           :options="questionOptions"
@@ -190,66 +215,65 @@
         />
       </a-form-item>
     </a-form>
-  </a-modal>
+  </UiDialog>
 
   <!-- 详情抽屉 -->
-  <a-drawer
+  <UiDrawer
     v-model:open="detailDrawerOpen"
     title="导出任务详情"
-    width="540"
-    :destroy-on-close="true"
+    :width="540"
+    hide-footer
   >
-    <a-spin :spinning="detailLoading" tip="加载任务详情…">
-      <a-descriptions v-if="detailTask" :column="1" bordered size="small">
-        <a-descriptions-item label="当前考试">{{ formatTaskExam(detailTask) }}</a-descriptions-item>
-        <a-descriptions-item label="类型">
-          {{ exportTypeLabel(detailTask.exportType) }}
-        </a-descriptions-item>
-        <a-descriptions-item label="范围">
-          {{ exportScopeLabel(detailTask.exportScope) }}
-        </a-descriptions-item>
-        <a-descriptions-item label="范围条件">
-          {{ detailTask.scopeSummary }}
-        </a-descriptions-item>
-        <a-descriptions-item v-if="detailTask.scopeItems.length > 0" label="范围明细">
-          <div class="scope-items">
-            <UiTag
-              v-for="item in detailTask.scopeItems"
-              :key="`${item.scopeType}-${item.targetId}`"
-              tone="blue"
-              size="sm"
-            >
-              {{ formatScopeItem(item) }}
-            </UiTag>
-          </div>
-        </a-descriptions-item>
-        <a-descriptions-item label="状态">
-          <UiTag :tone="statusTone(detailTask.taskStatus)" size="sm">
-            {{ exportStatusLabel(detailTask.taskStatus) }}
+    <UiSkeletonState v-if="detailLoading" variant="card" compact />
+    <a-descriptions v-else-if="detailTask" :column="1" bordered size="small">
+      <a-descriptions-item label="当前考试">{{ formatTaskExam(detailTask) }}</a-descriptions-item>
+      <a-descriptions-item label="类型">
+        {{ exportTypeLabel(detailTask.exportType) }}
+      </a-descriptions-item>
+      <a-descriptions-item label="范围">
+        {{ exportScopeLabel(detailTask.exportScope) }}
+      </a-descriptions-item>
+      <a-descriptions-item label="范围条件">
+        {{ detailTask.scopeSummary }}
+      </a-descriptions-item>
+      <a-descriptions-item v-if="detailTask.scopeItems.length > 0" label="范围明细">
+        <div class="scope-items">
+          <UiTag
+            v-for="item in detailTask.scopeItems"
+            :key="`${item.scopeType}-${item.targetId}`"
+            tone="blue"
+            size="sm"
+          >
+            {{ formatScopeItem(item) }}
           </UiTag>
-        </a-descriptions-item>
-        <a-descriptions-item label="文件名">
-          {{ exportTaskFileNameText(detailTask) }}
-        </a-descriptions-item>
-        <a-descriptions-item label="文件大小">
-          {{ exportTaskFileSizeText(detailTask) }}
-        </a-descriptions-item>
-        <a-descriptions-item label="开始时间">
-          {{ exportTaskStartedTimeText(detailTask) }}
-        </a-descriptions-item>
-        <a-descriptions-item label="完成时间">
-          {{ exportTaskCompletedTimeText(detailTask) }}
-        </a-descriptions-item>
-        <a-descriptions-item label="导出处理说明">
-          <span v-if="exportTaskFailureMessageText(detailTask)" class="error-text">
-            {{ exportTaskFailureMessageText(detailTask) }}
-          </span>
-          <span v-else class="hint-text">{{ exportTaskProcessingText(detailTask) }}</span>
-        </a-descriptions-item>
-      </a-descriptions>
-      <UiEmpty v-if="detailError" description="暂无数据" />
-    </a-spin>
-  </a-drawer>
+        </div>
+      </a-descriptions-item>
+      <a-descriptions-item label="状态">
+        <UiTag :tone="statusTone(detailTask.taskStatus)" size="sm">
+          {{ exportStatusLabel(detailTask.taskStatus) }}
+        </UiTag>
+      </a-descriptions-item>
+      <a-descriptions-item label="文件名">
+        {{ exportTaskFileNameText(detailTask) }}
+      </a-descriptions-item>
+      <a-descriptions-item label="文件大小">
+        {{ exportTaskFileSizeText(detailTask) }}
+      </a-descriptions-item>
+      <a-descriptions-item label="开始时间">
+        {{ exportTaskStartedTimeText(detailTask) }}
+      </a-descriptions-item>
+      <a-descriptions-item label="完成时间">
+        {{ exportTaskCompletedTimeText(detailTask) }}
+      </a-descriptions-item>
+      <a-descriptions-item label="导出处理说明">
+        <span v-if="exportTaskFailureMessageText(detailTask)" class="error-text">
+          {{ exportTaskFailureMessageText(detailTask) }}
+        </span>
+        <span v-else class="hint-text">{{ exportTaskProcessingText(detailTask) }}</span>
+      </a-descriptions-item>
+    </a-descriptions>
+    <UiEmpty v-else-if="detailError" description="暂无数据" />
+  </UiDrawer>
 </template>
 
 <script lang="ts" setup>
@@ -257,17 +281,14 @@ import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   ExportCreateRequest,
-  ExportScopeCode,
-  ExportScopeItemVO,
-  ExportTaskCompletedVO,
+  ExportScopeItemResponse,
   ExportTaskQueryRequest,
-  ExportTaskStatusCode,
-  ExportTaskStatusSummaryVO,
-  ExportTaskVO,
-  ExportTypeCode,
+  ExportTaskResponse,
+  ExportTaskStatusSummaryResponse,
 } from '@/apis/mark/exam-export'
-import type { ExamQuestionTemplateVO } from '@/apis/mark/exam-template'
+import type { ExamTemplateResponse } from '@/apis/mark/exam-layout-question'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import message from 'ant-design-vue/es/message'
@@ -275,18 +296,23 @@ import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch
 import { useRoute } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
 import {
+  ALL_EXPORT_SCOPE_CODES,
+  ALL_EXPORT_TASK_STATUS_CODES,
+  ALL_EXPORT_TYPE_CODES,
   createExportTask,
-  EXPORT_SCOPE_LABEL,
-  EXPORT_STATUS_CODES,
-  EXPORT_STATUS_LABEL,
+  EXPORT_FLOW_HINT,
   EXPORT_STATUS_TONE,
-  EXPORT_TYPE_CODES,
-  EXPORT_TYPE_LABEL,
+  ExportScopeCode,
+  ExportScopeDescription,
+  ExportTaskStatusCode,
+  ExportTaskStatusDescription,
+  ExportTypeCode,
+  ExportTypeDescription,
   getExportTask,
   getExportTaskStatusSummary,
   listExportTasks,
 } from '@/apis/mark/exam-export'
-import { getExamTemplate } from '@/apis/mark/exam-template'
+import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -294,14 +320,21 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useOptionalExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
+import { buildExamLayoutQuestionOptions } from '@/utils/format-exam-layout-question-summary'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ExamExportTasks' })
@@ -309,6 +342,14 @@ defineOptions({ name: 'ExamExportTasks' })
 const route = useRoute()
 const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
 const { refreshSnapshot } = useWorkspaceExamId()
+
+const {
+  isJourneyChrome,
+  contextBarTitle,
+  contextBarSubtitle,
+  examStatusLabel: chromeExamStatusLabel,
+  examStatusTone: chromeExamStatusTone,
+} = useOptionalExamJourneyContextBar('导出任务')
 
 const {
   examOptions,
@@ -329,10 +370,20 @@ const {
   reset: resetRoster,
 } = useMarkExamRoster()
 
-const tasks = ref<ExportTaskVO[]>([])
+const tasks = ref<ExportTaskResponse[]>([])
 const loading = ref(false)
+const loadFailed = ref(false)
 const downloadingId = ref<string | undefined>(undefined)
-const questionOptions = ref<Array<{ value: string, label: string }>>([])
+const questionOptions = ref<Array<{ value: string, label: string, disabled?: boolean, title?: string }>>([])
+const layoutSummary = ref<ExamTemplateResponse | null>(null)
+const layoutRoiGap = computed(() => {
+  if (!layoutSummary.value?.configured) {
+    return 0
+  }
+  const total = layoutSummary.value.totalQuestionCount ?? 0
+  const ready = layoutSummary.value.roiReadyQuestionCount ?? 0
+  return Math.max(0, total - ready)
+})
 const questionLoading = ref(false)
 const taskPagination = reactive({
   pageNum: 1,
@@ -356,6 +407,14 @@ const counts = reactive({
   failed: 0,
 })
 
+const exportSignalMetrics = computed((): SignalMetric[] => [
+  { key: 'total', label: '总任务', value: counts.total, unit: '个', tone: 'blue' },
+  { key: 'pending', label: '待执行', value: counts.pending, unit: '个', tone: counts.pending > 0 ? 'orange' : 'gray' },
+  { key: 'generating', label: '生成中', value: counts.generating, unit: '个', tone: counts.generating > 0 ? 'blue' : 'gray' },
+  { key: 'completed', label: '已完成', value: counts.completed, unit: '个', tone: counts.completed > 0 ? 'green' : 'gray' },
+  { key: 'failed', label: '失败', value: counts.failed, unit: '个', tone: counts.failed > 0 ? 'red' : 'gray' },
+])
+
 function resetStatusCounts(): void {
   counts.total = 0
   counts.pending = 0
@@ -371,9 +430,9 @@ const exportFilterFields: FilterField[] = [
     placeholder: '全部状态',
     allowClear: true,
     width: 160,
-    options: EXPORT_STATUS_CODES.map((value) => ({
+    options: ALL_EXPORT_TASK_STATUS_CODES.map((value) => ({
       value,
-      label: strictEnumLabel(EXPORT_STATUS_LABEL, value, '导出任务状态'),
+      label: strictEnumLabel(ExportTaskStatusDescription, value, '导出任务状态'),
     })),
   },
   {
@@ -382,9 +441,9 @@ const exportFilterFields: FilterField[] = [
     placeholder: '全部类型',
     allowClear: true,
     width: 160,
-    options: EXPORT_TYPE_CODES.map((value) => ({
+    options: ALL_EXPORT_TYPE_CODES.map((value) => ({
       value,
-      label: strictEnumLabel(EXPORT_TYPE_LABEL, value, '导出类型'),
+      label: strictEnumLabel(ExportTypeDescription, value, '导出类型'),
     })),
   },
 ]
@@ -428,12 +487,12 @@ function activeTasksHiddenByStatusFilter(): boolean {
   return counts.generating > 0 && statusFilter !== 'GENERATING';
 }
 
-function listHasActiveExportTask(taskList: ExportTaskVO[]): boolean {
+function listHasActiveExportTask(taskList: ExportTaskResponse[]): boolean {
   return taskList.some((task) => task.taskStatus === 'PENDING' || task.taskStatus === 'GENERATING')
 }
 
 /** 无筛选时若全局仍有进行中任务但当前页看不到，应回到第 1 页。 */
-function shouldReloadFirstPageForActiveTasks(taskList: ExportTaskVO[]): boolean {
+function shouldReloadFirstPageForActiveTasks(taskList: ExportTaskResponse[]): boolean {
   if (counts.pending === 0 && counts.generating === 0) {
     return false
   }
@@ -454,10 +513,10 @@ async function typeFilterHidesActiveTasks(examId: string): Promise<boolean> {
   }
   const probeStatuses: ExportTaskStatusCode[] = []
   if (counts.pending > 0) {
-    probeStatuses.push('PENDING')
+    probeStatuses.push(ExportTaskStatusCode.PENDING)
   }
   if (counts.generating > 0) {
-    probeStatuses.push('GENERATING')
+    probeStatuses.push(ExportTaskStatusCode.GENERATING)
   }
   for (const taskStatus of probeStatuses) {
     const page = await listExportTasks({
@@ -466,7 +525,7 @@ async function typeFilterHidesActiveTasks(examId: string): Promise<boolean> {
       pageSize: 20,
       taskStatus,
     })
-    const activeTasks = readPageList(page, '导出任务加载失败，请稍后重试')
+    const activeTasks = page.list
     if (activeTasks.some((task) => task.exportType !== typeFilter)) {
       return true
     }
@@ -494,20 +553,12 @@ async function reconcileExportFiltersForActiveTasks(examId: string): Promise<voi
   }
 }
 
-function applyStatusSummary(summary: ExportTaskStatusSummaryVO): void {
-  const totalCount = Number(summary.totalCount)
-  const pendingCount = Number(summary.pendingCount)
-  const generatingCount = Number(summary.generatingCount)
-  const completedCount = Number(summary.completedCount)
-  const failedCount = Number(summary.failedCount)
-  if (![totalCount, pendingCount, generatingCount, completedCount, failedCount].every(Number.isFinite)) {
-    throw new Error('导出任务状态汇总字段非法')
-  }
-  counts.total = totalCount
-  counts.pending = pendingCount
-  counts.generating = generatingCount
-  counts.completed = completedCount
-  counts.failed = failedCount
+function applyStatusSummary(summary: ExportTaskStatusSummaryResponse): void {
+  counts.total = summary.totalCount
+  counts.pending = summary.pendingCount
+  counts.generating = summary.generatingCount
+  counts.completed = summary.completedCount
+  counts.failed = summary.failedCount
 }
 
 async function loadStatusCounts(examId: string): Promise<void> {
@@ -538,7 +589,7 @@ function handleTaskPageChange(page: { current: number, pageSize: number }): void
   void loadTasks()
 }
 
-const columns: ColumnType<ExportTaskVO>[] = [
+const columns: ColumnType<ExportTaskResponse>[] = [
   { title: '类型', key: 'exportType', width: 120 },
   { title: '范围', key: 'exportScope', width: 100 },
   { title: '范围条件', key: 'scopeSummary', width: 160 },
@@ -555,16 +606,26 @@ function statusTone(status: ExportTaskStatusCode): BadgeTone {
   return strictEnumTone(EXPORT_STATUS_TONE, status, '导出任务状态')
 }
 
+const exportTypeOptions = ALL_EXPORT_TYPE_CODES.map((code) => ({
+  value: code,
+  label: ExportTypeDescription[code],
+}))
+
+const exportScopeOptions = ALL_EXPORT_SCOPE_CODES.map((code) => ({
+  value: code,
+  label: ExportScopeDescription[code],
+}))
+
 function exportTypeLabel(code: ExportTypeCode): string {
-  return strictEnumLabel(EXPORT_TYPE_LABEL, code, '导出类型')
+  return strictEnumLabel(ExportTypeDescription, code, '导出类型')
 }
 
 function exportScopeLabel(code: ExportScopeCode): string {
-  return strictEnumLabel(EXPORT_SCOPE_LABEL, code, '导出范围')
+  return strictEnumLabel(ExportScopeDescription, code, '导出范围')
 }
 
 function exportStatusLabel(code: ExportTaskStatusCode): string {
-  return strictEnumLabel(EXPORT_STATUS_LABEL, code, '导出任务状态')
+  return strictEnumLabel(ExportTaskStatusDescription, code, '导出任务状态')
 }
 
 function formatBytes(size: number): string {
@@ -574,14 +635,14 @@ function formatBytes(size: number): string {
   return `${(size / 1024 / 1024 / 1024).toFixed(2)} GB`
 }
 
-function exportTaskFileNameText(task: ExportTaskVO): string {
-  if (task.taskStatus === 'COMPLETED') return task.fileName
+function exportTaskFileNameText(task: ExportTaskResponse): string {
+  if (task.taskStatus === 'COMPLETED') return task.fileName || '导出文件'
   if (task.taskStatus === 'FAILED') return '导出失败，未生成文件'
   if (task.taskStatus === 'GENERATING') return '文件生成中'
   return '等待任务执行'
 }
 
-function exportTaskFileSizeText(task: ExportTaskVO): string {
+function exportTaskFileSizeText(task: ExportTaskResponse): string {
   if (task.taskStatus === 'COMPLETED') {
     const fileSize = Number(task.fileSize)
     if (!Number.isFinite(fileSize)) {
@@ -594,37 +655,37 @@ function exportTaskFileSizeText(task: ExportTaskVO): string {
   return '等待任务执行'
 }
 
-function exportTaskStartedTimeText(task: ExportTaskVO): string {
+function exportTaskStartedTimeText(task: ExportTaskResponse): string {
   if (task.taskStatus === 'PENDING') return '等待任务执行'
-  return task.startedTime
+  return task.startedTime || '—'
 }
 
-function exportTaskCompletedTimeText(task: ExportTaskVO): string {
-  if (task.taskStatus === 'COMPLETED') return task.completedTime
+function exportTaskCompletedTimeText(task: ExportTaskResponse): string {
+  if (task.taskStatus === 'COMPLETED') return task.completedTime || '—'
   if (task.taskStatus === 'FAILED') return '导出失败，未完成'
   if (task.taskStatus === 'GENERATING') return '生成中，未完成'
   return '等待任务执行'
 }
 
-function exportTaskProcessingText(task: ExportTaskVO): string {
-  if (task.taskStatus === 'FAILED') return task.errorMessage
+function exportTaskProcessingText(task: ExportTaskResponse): string {
+  if (task.taskStatus === 'FAILED') return task.errorMessage || '导出失败'
   if (task.taskStatus === 'COMPLETED') return '导出完成'
   if (task.taskStatus === 'GENERATING') return '文件生成中'
   return '等待任务执行'
 }
 
-function exportTaskFailureMessageText(task: ExportTaskVO): string | undefined {
+function exportTaskFailureMessageText(task: ExportTaskResponse): string | undefined {
   if (task.taskStatus !== 'FAILED') return undefined
   return getUserProcessFailureMessage(task.errorMessage, '导出任务未完成，请稍后重试或重新发起导出')
 }
 
-function clippedExportTaskFailureMessage(task: ExportTaskVO): string {
+function clippedExportTaskFailureMessage(task: ExportTaskResponse): string {
   const messageText
     = exportTaskFailureMessageText(task) ?? '导出任务未完成，请稍后重试或重新发起导出'
   return messageText.length > 24 ? `${messageText.slice(0, 24)}…` : messageText
 }
 
-function canDownloadExportTask(task: ExportTaskVO): task is ExportTaskCompletedVO {
+function canDownloadExportTask(task: ExportTaskResponse): boolean {
   return task.taskStatus === 'COMPLETED'
 }
 
@@ -640,6 +701,7 @@ async function loadTasks(options?: { quiet?: boolean }): Promise<void> {
   }
   if (!options?.quiet) {
     loading.value = true
+    loadFailed.value = false
   }
   try {
     await loadStatusCounts(examId)
@@ -652,17 +714,17 @@ async function loadTasks(options?: { quiet?: boolean }): Promise<void> {
       return
     }
     let page = await listExportTasks(request)
-    let taskList = readPageList(page, '导出任务加载失败，请稍后重试')
+    let taskList = page.list
     if (shouldReloadFirstPageForActiveTasks(taskList)) {
       taskPagination.pageNum = 1
       const firstPageRequest = buildExportTaskListRequest(1)
       if (firstPageRequest) {
         page = await listExportTasks(firstPageRequest)
-        taskList = readPageList(page, '导出任务加载失败，请稍后重试')
+        taskList = page.list
       }
     }
     tasks.value = taskList
-    taskPagination.total = readPageTotal(page, '导出任务加载失败，请稍后重试')
+    taskPagination.total = Number(page.total)
     await refreshOpenDetailIfNeeded()
     syncExportPolling()
   } catch (error) {
@@ -670,6 +732,7 @@ async function loadTasks(options?: { quiet?: boolean }): Promise<void> {
       tasks.value = []
       taskPagination.total = 0
       resetStatusCounts()
+      loadFailed.value = true
       showUserError(error, '导出任务加载失败')
     }
   } finally {
@@ -721,29 +784,29 @@ const createForm = reactive<{
   exportType: ExportTypeCode
   exportScope: ExportScopeCode
   classIds: string[]
-  questionTemplateIds: string[]
+  layoutQuestionIds: string[]
   studentUserIds: string[]
 }>({
-  exportType: 'SCORE_EXCEL',
-  exportScope: 'EXAM',
+  exportType: ExportTypeCode.SCORE_EXCEL,
+  exportScope: ExportScopeCode.EXAM,
   classIds: [],
-  questionTemplateIds: [],
+  layoutQuestionIds: [],
   studentUserIds: [],
 })
 
 const createValid = computed(() => {
   if (!selectedExamId.value || !createForm.exportType || !createForm.exportScope) return false
-  if (createForm.exportScope === 'CLASS') return createForm.classIds.length > 0
-  if (createForm.exportScope === 'QUESTION') return createForm.questionTemplateIds.length > 0
-  if (createForm.exportScope === 'STUDENT') return createForm.studentUserIds.length > 0
+  if (createForm.exportScope === ExportScopeCode.CLASS) return createForm.classIds.length > 0
+  if (createForm.exportScope === ExportScopeCode.QUESTION) return createForm.layoutQuestionIds.length > 0
+  if (createForm.exportScope === ExportScopeCode.STUDENT) return createForm.studentUserIds.length > 0
   return true
 })
 
 function resetCreateForm(): void {
-  createForm.exportType = 'SCORE_EXCEL'
-  createForm.exportScope = 'EXAM'
+  createForm.exportType = ExportTypeCode.SCORE_EXCEL
+  createForm.exportScope = ExportScopeCode.EXAM
   createForm.classIds = []
-  createForm.questionTemplateIds = []
+  createForm.layoutQuestionIds = []
   createForm.studentUserIds = []
 }
 
@@ -754,23 +817,21 @@ async function loadQuestionOptions(examId: string | undefined): Promise<void> {
   }
   questionLoading.value = true
   try {
-    const template = await getExamTemplate(examId)
+    const template = await getExamLayoutQuestionSummary(examId)
+    layoutSummary.value = template
     if (!template.configured) {
       questionOptions.value = []
       return
     }
-    questionOptions.value = [...template.questions]
-      .sort(
-        (left: ExamQuestionTemplateVO, right: ExamQuestionTemplateVO) =>
-          (left.sortNo ?? 0) - (right.sortNo ?? 0),
-      )
-      .map((question) => ({
-        value: question.questionTemplateId,
-        label: `第 ${question.questionNo} 题 · ${question.fullScore} 分`,
-      }))
+    questionOptions.value = [...buildExamLayoutQuestionOptions(template.questions)]
+      .sort((left, right) => {
+        const leftSort = template.questions.find(q => q.layoutQuestionId === left.value)?.sortNo ?? 0
+        const rightSort = template.questions.find(q => q.layoutQuestionId === right.value)?.sortNo ?? 0
+        return leftSort - rightSort
+      })
   } catch (error) {
     questionOptions.value = []
-    showUserError(error, '题目模板加载失败')
+    showUserError(error, '制卷题目加载失败')
   } finally {
     questionLoading.value = false
   }
@@ -796,7 +857,7 @@ async function handleCreate(): Promise<void> {
     if (createForm.exportScope === 'CLASS') {
       request.scopeCondition = { classIds: createForm.classIds }
     } else if (createForm.exportScope === 'QUESTION') {
-      request.scopeCondition = { questionTemplateIds: createForm.questionTemplateIds }
+      request.scopeCondition = { layoutQuestionIds: createForm.layoutQuestionIds }
     } else if (createForm.exportScope === 'STUDENT') {
       request.scopeCondition = { studentUserIds: createForm.studentUserIds }
     }
@@ -823,13 +884,13 @@ async function handleCreate(): Promise<void> {
 // ─── 详情抽屉 ─────────────────────────────────
 
 const detailDrawerOpen = ref(false)
-const detailTask = ref<ExportTaskVO | null>(null)
+const detailTask = ref<ExportTaskResponse | null>(null)
 const detailLoading = ref(false)
 const detailError = ref<Error | null>(null)
 /** 当前正在获取详情的任务 ID，用于关闭后重开另一条时覆盖 */
 let pendingDetailTaskId: string | null = null
 
-async function openDetailDrawer(record: ExportTaskVO): Promise<void> {
+async function openDetailDrawer(record: ExportTaskResponse): Promise<void> {
   detailTask.value = null
   detailError.value = null
   detailDrawerOpen.value = true
@@ -855,23 +916,27 @@ async function openDetailDrawer(record: ExportTaskVO): Promise<void> {
   }
 }
 
-function formatTaskExam(task: ExportTaskVO): string {
+function formatTaskExam(task: ExportTaskResponse): string {
   return task.examNo ? `${task.examName}（${task.examNo}）` : task.examName
 }
 
-function formatScopeItem(item: ExportScopeItemVO): string {
+function formatScopeItem(item: ExportScopeItemResponse): string {
   return item.targetCode ? `${item.targetName}（${item.targetCode}）` : item.targetName
 }
 
 // ─── 下载 ─────────────────────────────────────
 
-async function handleDownload(record: ExportTaskVO): Promise<void> {
+async function handleDownload(record: ExportTaskResponse): Promise<void> {
   if (!canDownloadExportTask(record)) {
     message.warning('该任务尚未生成文件')
     return
   }
   downloadingId.value = record.taskId
   try {
+    if (!record.fileId) {
+      message.error('导出任务缺少文件引用，暂不可下载')
+      return
+    }
     const blobResp = await downloadFile({ nodeId: record.fileId })
     const blob = blobResp.data
     if (!blob) {
@@ -881,7 +946,7 @@ async function handleDownload(record: ExportTaskVO): Promise<void> {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = record.fileName
+    link.download = record.fileName || '导出文件'
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -914,7 +979,7 @@ watch(
   () => createForm.exportScope,
   () => {
     createForm.classIds = []
-    createForm.questionTemplateIds = []
+    createForm.layoutQuestionIds = []
     createForm.studentUserIds = []
   },
 )
@@ -956,11 +1021,34 @@ onBeforeUnmount(() => {
   gap: 16px;
 }
 
-.info-card {
-  :deep(.ant-card-head-title) {
+.export-page {
+  &__empty {
+    padding: 60px 0;
+  }
+
+  &__card-head {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    width: 100%;
+  }
+
+  &__flow-hint {
+    margin-right: auto;
+    font-size: 12px;
+    color: var(--c-text-4);
+    white-space: nowrap;
+  }
+
+  &__card-title {
+    display: inline-flex;
+    align-items: center;
     gap: 8px;
+  }
+
+  &__active-sync-strip {
+    margin-bottom: 0;
   }
 }
 

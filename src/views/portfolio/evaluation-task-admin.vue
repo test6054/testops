@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioEvaluationMode, PortfolioEvaluationTaskStatus } from '@/apis/portfolio/enums'
+import type { PortfolioEvaluationTaskStatusCode } from '@/apis/portfolio/enums'
 import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
 import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
 import {
-  PORTFOLIO_EVALUATION_MODE_LABEL,
-  PORTFOLIO_EVALUATION_TASK_STATUS_LABEL,
+  PORTFOLIO_EVALUATION_MODE_OPTIONS,
+  PORTFOLIO_EVALUATION_TASK_STATUS_OPTIONS,
   PORTFOLIO_EVALUATION_TASK_STATUS_TONE,
+  PortfolioEvaluationModeCode,
+  PortfolioEvaluationModeDescription,
+  PortfolioEvaluationTaskStatusDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
 import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
@@ -20,7 +23,6 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -28,26 +30,38 @@ const loading = ref(false)
 const rows = ref<PortfolioEvaluationTaskVO[]>([])
 const total = ref(0)
 const workgroups = ref<EvaluationWorkgroupVO[]>([])
-const form = reactive({
+interface PortfolioEvaluationTaskForm {
+  taskName: string
+  evaluationMode: PortfolioEvaluationModeCode
+  workgroupId: string
+  startTime: string
+  endTime: string
+}
+
+type PortfolioEvaluationTaskStatusFilter = '' | PortfolioEvaluationTaskStatusCode
+
+interface PortfolioEvaluationTaskQuery {
+  pageNum: number
+  pageSize: number
+  taskStatus: PortfolioEvaluationTaskStatusFilter
+}
+
+const form = reactive<PortfolioEvaluationTaskForm>({
   taskName: '',
-  evaluationMode: 'BY_PERSON' as PortfolioEvaluationMode,
-  workgroupId: '' as string,
+  evaluationMode: PortfolioEvaluationModeCode.BY_PERSON,
+  workgroupId: '',
   startTime: '',
   endTime: '',
 })
-const query = reactive({
+const query = reactive<PortfolioEvaluationTaskQuery>({
   pageNum: 1,
   pageSize: 20,
-  taskStatus: '' as '' | PortfolioEvaluationTaskStatus,
+  taskStatus: '',
 })
 
-const evaluationModeOptions = (
-  Object.keys(PORTFOLIO_EVALUATION_MODE_LABEL) as PortfolioEvaluationMode[]
-).map((value) => ({ value, label: PORTFOLIO_EVALUATION_MODE_LABEL[value] }))
+const evaluationModeOptions = PORTFOLIO_EVALUATION_MODE_OPTIONS
 
-const taskStatusOptions = (
-  Object.keys(PORTFOLIO_EVALUATION_TASK_STATUS_LABEL) as PortfolioEvaluationTaskStatus[]
-).map((value) => ({ value, label: PORTFOLIO_EVALUATION_TASK_STATUS_LABEL[value] }))
+const taskStatusOptions = PORTFOLIO_EVALUATION_TASK_STATUS_OPTIONS
 
 const columns: ColumnsType = [
   { title: '任务名称', dataIndex: 'taskName', key: 'taskName' },
@@ -59,15 +73,15 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 72 },
 ]
 
-function evaluationModeLabel(mode: PortfolioEvaluationMode): string {
-  return strictEnumLabel(PORTFOLIO_EVALUATION_MODE_LABEL, mode, '多元评价模式')
+function evaluationModeLabel(mode: PortfolioEvaluationModeCode): string {
+  return strictEnumLabel(PortfolioEvaluationModeDescription, mode, '多元评价模式')
 }
 
-function taskStatusLabel(status: PortfolioEvaluationTaskStatus): string {
-  return strictEnumLabel(PORTFOLIO_EVALUATION_TASK_STATUS_LABEL, status, '多元评价任务状态')
+function taskStatusLabel(status: PortfolioEvaluationTaskStatusCode): string {
+  return strictEnumLabel(PortfolioEvaluationTaskStatusDescription, status, '多元评价任务状态')
 }
 
-function taskStatusTone(status: PortfolioEvaluationTaskStatus) {
+function taskStatusTone(status: PortfolioEvaluationTaskStatusCode) {
   return strictEnumTone(PORTFOLIO_EVALUATION_TASK_STATUS_TONE, status, '多元评价任务状态')
 }
 
@@ -80,7 +94,7 @@ function workgroupName(id?: string) {
 
 async function loadWorkgroups() {
   try {
-    const page = await evaluationWorkgroupApi.page({ pageNum: 1, pageSize: 100, enabled: true })
+    const page = await evaluationWorkgroupApi.page({ pageNum: 1, pageSize: 100 })
     workgroups.value = page.list ?? []
   } catch (error) {
     showUserError(error)
@@ -95,8 +109,8 @@ async function loadPage() {
       pageSize: query.pageSize,
       taskStatus: query.taskStatus || undefined,
     })
-    rows.value = readPageList(page, '加载评价任务失败')
-    total.value = readPageTotal(page)
+    rows.value = page.list
+    total.value = Number(page.total)
   } catch (error) {
     showUserError(error)
   } finally {

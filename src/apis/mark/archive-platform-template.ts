@@ -1,8 +1,9 @@
 import type { ArchiveTemplateScopeCode } from '@/apis/mark/archive-template-scope'
 import type { ArchiveExamFormCode, ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
+import type { ArchiveSetupActionLinkCode } from '@/types/enums/archive-setup-action-link-enum'
 import http from '@/config/axios'
 
-export interface ArchivePlatformTemplateSetVO {
+export interface ArchivePlatformTemplateSetResponse {
   setCode: string
   setName: string
   examForm?: ArchiveExamFormCode
@@ -12,7 +13,7 @@ export interface ArchivePlatformTemplateSetVO {
   templateScope: ArchiveTemplateScopeCode
 }
 
-export interface ArchivePlatformMaterialItemVO {
+export interface ArchivePlatformMaterialItemResponse {
   materialType: ArchiveMaterialTypeCode
   catalogCode?: string
   catalogName?: string
@@ -21,16 +22,16 @@ export interface ArchivePlatformMaterialItemVO {
   categoryGroup?: string
 }
 
-export interface ArchivePlatformSelfCheckItemVO {
+export interface ArchivePlatformSelfCheckItemResponse {
   itemText: string
   requiredFlag?: boolean
   sortOrder?: number
 }
 
-export interface ArchivePlatformTemplatePreviewVO {
-  templateSet: ArchivePlatformTemplateSetVO
-  materialItems: ArchivePlatformMaterialItemVO[]
-  selfCheckItems: ArchivePlatformSelfCheckItemVO[]
+export interface ArchivePlatformTemplatePreviewResponse {
+  templateSet: ArchivePlatformTemplateSetResponse
+  materialItems: ArchivePlatformMaterialItemResponse[]
+  selfCheckItems: ArchivePlatformSelfCheckItemResponse[]
 }
 
 export interface ArchivePlatformTemplatePreviewRequest {
@@ -53,7 +54,7 @@ export interface ArchivePlatformTemplateResyncRequest {
   confirmSetCode: string
 }
 
-export interface ArchiveTenantTemplateSetVO {
+export interface ArchiveTenantTemplateSetResponse {
   templateSetCode: string
   templateSetName: string
   examForm?: ArchiveExamFormCode
@@ -63,11 +64,11 @@ export interface ArchiveTenantTemplateSetVO {
   description?: string
   /** 模板作用域：PLATFORM 平台母版 / TENANT 本校副本 */
   templateScope: ArchiveTemplateScopeCode
-  materialItems?: ArchiveMaterialCatalogTemplateItemVO[]
-  selfCheckItems?: ArchiveSelfCheckTemplateItemVO[]
+  materialItems?: ArchiveMaterialCatalogTemplateResponse[]
+  selfCheckItems?: ArchiveSelfCheckTemplateResponse[]
 }
 
-export interface ArchiveMaterialCatalogTemplateItemVO {
+export interface ArchiveMaterialCatalogTemplateResponse {
   templateItemId?: string
   examForm?: ArchiveExamFormCode
   materialType: ArchiveMaterialTypeCode
@@ -78,7 +79,7 @@ export interface ArchiveMaterialCatalogTemplateItemVO {
   sortOrder?: number
 }
 
-export interface ArchiveSelfCheckTemplateItemVO {
+export interface ArchiveSelfCheckTemplateResponse {
   selfCheckItemId?: string
   itemText: string
   requiredFlag?: boolean
@@ -137,44 +138,36 @@ export interface ArchivePlatformTemplateSetSaveRequest {
   selfCheckItems: ArchivePlatformTemplateSelfCheckItemRequest[]
 }
 
-/** 模板材料编辑行：平台 / 租户 SaveRequest 合同字段 + 表格 rowKey */
-export type ArchiveTemplateMaterialEditRow = ArchivePlatformTemplateMaterialItemRequest
-  & ArchiveTenantTemplateMaterialItemRequest & {
-    rowKey: string
-  }
-
-/** 模板自查项编辑行：平台 sortOrder / 租户 itemOrder 与 SaveRequest 一致 + 表格 rowKey */
-export type ArchiveTemplateSelfCheckEditRow = ArchivePlatformTemplateSelfCheckItemRequest
-  & ArchiveTenantTemplateSelfCheckItemRequest & {
-    rowKey: string
-  }
-
-export interface ArchivePlatformTemplateInitializeVO {
+export interface ArchivePlatformTemplateInitializeResponse {
   beforeSetCount?: number
   afterSetCount?: number
   seeded?: boolean
 }
 
-export type ArchiveSetupActionLinkCode = 'ROLES' | 'TEMPLATES' | 'DUTIES'
+export {
+  ALL_ARCHIVE_SETUP_ACTION_LINK_CODES,
+  ArchiveSetupActionLinkCode,
+  ArchiveSetupActionLinkDescription,
+} from '@/types/enums/archive-setup-action-link-enum'
 
-export interface ArchiveSetupActionLinkVO {
+export interface ArchiveSetupActionLinkResponse {
   linkCode: ArchiveSetupActionLinkCode
   linkName: string
   linkTarget: string
 }
 
-export interface ArchiveTenantSetupReadinessVO {
+export interface ArchiveTenantSetupReadinessResponse {
   rolesReady?: boolean
   templatesReady?: boolean
   dutiesReady?: boolean
   overallReady?: boolean
   historicalVolumeExists?: boolean
   missingItems?: string[]
-  actionLinks?: ArchiveSetupActionLinkVO[]
+  actionLinks?: ArchiveSetupActionLinkResponse[]
 }
 
-export function listArchivePlatformTemplateSets(): Promise<ArchivePlatformTemplateSetVO[]> {
-  return http.post<ArchivePlatformTemplateSetVO[]>(
+export function listArchivePlatformTemplateSets(): Promise<ArchivePlatformTemplateSetResponse[]> {
+  return http.post<ArchivePlatformTemplateSetResponse[]>(
     '/api/mark/archive-volumes/platform-template/list-sets',
     {},
   )
@@ -182,8 +175,8 @@ export function listArchivePlatformTemplateSets(): Promise<ArchivePlatformTempla
 
 export function previewArchivePlatformTemplateSet(
   request: ArchivePlatformTemplatePreviewRequest,
-): Promise<ArchivePlatformTemplatePreviewVO> {
-  return http.post<ArchivePlatformTemplatePreviewVO>(
+): Promise<ArchivePlatformTemplatePreviewResponse> {
+  return http.post<ArchivePlatformTemplatePreviewResponse>(
     '/api/mark/archive-volumes/platform-template/preview',
     request,
   )
@@ -207,8 +200,8 @@ export function resyncArchiveTenantTemplateSet(
   return http.post<void>('/api/mark/archive-volumes/platform-template/resync-tenant-set', request)
 }
 
-export function listArchiveTenantTemplateSets(): Promise<ArchiveTenantTemplateSetVO[]> {
-  return http.post<ArchiveTenantTemplateSetVO[]>(
+export function listArchiveTenantTemplateSets(): Promise<ArchiveTenantTemplateSetResponse[]> {
+  return http.post<ArchiveTenantTemplateSetResponse[]>(
     '/api/mark/archive-volumes/tenant/template-set/list',
     {},
   )
@@ -216,8 +209,8 @@ export function listArchiveTenantTemplateSets(): Promise<ArchiveTenantTemplateSe
 
 export function getArchiveTenantTemplateSetDetail(
   request: ArchiveTenantTemplateSetQueryRequest,
-): Promise<ArchiveTenantTemplateSetVO> {
-  return http.post<ArchiveTenantTemplateSetVO>(
+): Promise<ArchiveTenantTemplateSetResponse> {
+  return http.post<ArchiveTenantTemplateSetResponse>(
     '/api/mark/archive-volumes/tenant/template-set/detail',
     request,
   )
@@ -235,15 +228,15 @@ export function saveArchivePlatformTemplateSet(
   return http.post<void>('/api/mark/archive-volumes/platform-template/save', request)
 }
 
-export function initializeArchivePlatformTemplateDefaults(): Promise<ArchivePlatformTemplateInitializeVO> {
-  return http.post<ArchivePlatformTemplateInitializeVO>(
+export function initializeArchivePlatformTemplateDefaults(): Promise<ArchivePlatformTemplateInitializeResponse> {
+  return http.post<ArchivePlatformTemplateInitializeResponse>(
     '/api/mark/archive-volumes/platform-template/initialize-defaults',
     {},
   )
 }
 
-export function getArchiveTenantSetupReadiness(): Promise<ArchiveTenantSetupReadinessVO> {
-  return http.post<ArchiveTenantSetupReadinessVO>(
+export function getArchiveTenantSetupReadiness(): Promise<ArchiveTenantSetupReadinessResponse> {
+  return http.post<ArchiveTenantSetupReadinessResponse>(
     '/api/mark/archive-volumes/tenant/setup-readiness',
     {},
   )

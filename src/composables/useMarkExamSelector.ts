@@ -7,20 +7,15 @@ import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
  * - 输入关键词走后端 keyword 模糊搜索（exam_name / exam_no），不客户端全量过滤
  * - URL / Store 预选考试若不在当前页，通过详情接口补全标签，避免 Select 展示裸 ID
  */
-import type { ExamSummaryVO } from '@/apis/mark/exam'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import type { MarkExamSelectOption } from '@/utils/mark-exam-option'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getExamDetail, pageExams } from '@/apis/mark/exam'
-import { useAuthStore } from '@/stores/modules/auth'
+import { ExamStatusCode, getExamDetail, pageExams } from '@/apis/mark/exam'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 import { useMarkStageStore } from '@/stores/modules/markStage'
-import { useUserStore } from '@/stores/modules/user'
-import { RoleEnum } from '@/types/enums'
 import { showUserError } from '@/utils/error-handler'
-import { examSummaryFromDetail, examSummaryFromMeta, toMarkExamSelectOption } from '@/utils/mark-exam-option'
-import { readPageList } from '@/utils/page-result'
-
+import { examSummaryFromDetail, toMarkExamSelectOption } from '@/utils/mark-exam-option'
 /** 下拉默认展示条数（与后端分页一致，不做全量 readAllPages） */
 export const MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE = 20
 
@@ -38,17 +33,15 @@ export type { MarkExamSelectOption }
 export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
   const route = useRoute()
   const router = useRouter()
-  const authStore = useAuthStore()
-  const userStore = useUserStore()
   const examContext = useMarkExamContextStore()
   const markStageStore = useMarkStageStore()
 
   const syncUrl = options.syncUrl ?? true
   const pageSize = options.pageSize ?? MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE
 
-  const exams = ref<ExamSummaryVO[]>([])
+  const exams = ref<ExamSummaryResponse[]>([])
   /** 当前选中考试：不在分页结果内时由详情补全，保证 Select 有 label */
-  const pinnedExam = ref<ExamSummaryVO | null>(null)
+  const pinnedExam = ref<ExamSummaryResponse | null>(null)
   const loading = ref(false)
   const searching = ref(false)
   const resolvingPinned = ref(false)
@@ -79,7 +72,7 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
     },
   )
 
-  const selectedExam = computed<ExamSummaryVO | null>(() => {
+  const selectedExam = computed<ExamSummaryResponse | null>(() => {
     const id = selectedExamId.value
     if (!id) return null
     return exams.value.find((item) => item.examId === id)
@@ -115,26 +108,18 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
     return exam.examNo ? `${exam.examName}（${exam.examNo}）` : exam.examName
   })
 
-  const isAdminView = computed(() => {
-    const role = authStore.userRole
-    return (
-      role === RoleEnum.SUPER_ADMIN || role === RoleEnum.CROP_ADMIN || role === RoleEnum.CROP_USER
-    )
-  })
-
   function buildPageRequest(keyword?: string) {
     return {
       pageNum: 1,
       pageSize,
-      status: 'ACTIVE' as const,
+      status: ExamStatusCode.ACTIVE,
       keyword: keyword?.trim() || undefined,
-      createUserId: isAdminView.value ? null : userStore.userInfo.userId || undefined,
     }
   }
 
-  async function fetchExamPage(keyword?: string): Promise<ExamSummaryVO[]> {
+  async function fetchExamPage(keyword?: string): Promise<ExamSummaryResponse[]> {
     const result = await pageExams(buildPageRequest(keyword))
-    return readPageList(result, '考试列表加载失败，请稍后重试')
+    return result.list
   }
 
   async function loadExams(keyword?: string): Promise<void> {
@@ -208,12 +193,6 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
       return
     }
 
-    const meta = markStageStore.selectedExamMeta
-    if (meta?.examId === examId && markStageStore.selectedExamLabel) {
-      pinnedExam.value = examSummaryFromMeta(meta)
-      return
-    }
-
     resolvingPinned.value = true
     try {
       pinnedExam.value = examSummaryFromDetail(await getExamDetail(examId))
@@ -262,7 +241,6 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
     selectedExamSelectValue,
     selectedExam,
     selectedExamLabel,
-    isAdminView,
     loadExams,
     searchExams,
     onExamSearch,

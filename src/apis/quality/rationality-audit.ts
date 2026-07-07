@@ -2,7 +2,7 @@
  * 考核评价依据合理性审核 API（CEEAA 2025强制要求）
  * 后端 Controller: AssessmentRationalityAuditController
  */
-import type { AssessmentRationalityAuditStatus } from './types'
+import type { AssessmentRationalityAuditStatusCode } from './types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
@@ -18,7 +18,7 @@ export interface RationalityAuditSaveRequest {
   assessmentItemId?: string
   schoolYear?: string
   semester?: SemesterCode
-  auditStatus?: AssessmentRationalityAuditStatus
+  auditStatus?: AssessmentRationalityAuditStatusCode
   auditOpinion?: string
   contentAligned?: boolean
   rubricMeasurable?: boolean
@@ -35,7 +35,7 @@ export interface RationalityAuditCourseLedgerItemVO {
   schoolYear?: string
   semester?: SemesterCode
   hasAuditRecord: boolean
-  auditStatus: AssessmentRationalityAuditStatus
+  auditStatus: AssessmentRationalityAuditStatusCode
   auditorUserId?: string
   auditOpinion?: string
   auditedTime?: string

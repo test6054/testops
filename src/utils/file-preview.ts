@@ -1,3 +1,4 @@
+import type { Component } from 'vue'
 import AudioOutlined from '@ant-design/icons-vue/AudioOutlined'
 import CodeOutlined from '@ant-design/icons-vue/CodeOutlined'
 import FileExcelOutlined from '@ant-design/icons-vue/FileExcelOutlined'
@@ -127,7 +128,7 @@ export function resolveFileIconTheme(fileName?: string, fallbackExtension?: stri
 /** 根据文件名 / 扩展 / mime 返回对应的 ant-design 图标组件 */
 export function resolveFileIcon(fileName?: string, fallbackExtension?: string, mimeType?: string) {
   const theme = resolveFileIconTheme(fileName, fallbackExtension, mimeType)
-  const iconMap = {
+  const iconMap: Record<string, Component> = {
     audio: AudioOutlined,
     code: CodeOutlined,
     document: FileTextOutlined,
@@ -141,8 +142,8 @@ export function resolveFileIcon(fileName?: string, fallbackExtension?: string, m
     video: VideoCameraOutlined,
     word: FileWordOutlined,
     zip: FileZipOutlined,
-  } as const
-  return iconMap[theme as keyof typeof iconMap] || FileOutlined
+  }
+  return iconMap[theme] || FileOutlined
 }
 
 /** 文件大小格式化 */

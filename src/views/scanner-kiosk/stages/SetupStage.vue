@@ -4,7 +4,9 @@
  */
 import { PlayCircleFilled, ReloadOutlined, SettingOutlined } from '@ant-design/icons-vue'
 import { computed, ref } from 'vue'
+import { ScannerKioskScanModeCode } from '@/apis/mark/scanner-kiosk'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { ExamMaterialLayoutModeCode } from '@/types/enums/exam-material-layout-mode-enum'
 import KioskSessionBatchPanel from '../components/KioskSessionBatchPanel.vue'
 import { useKioskCtx } from '../composables/kioskInjection'
 
@@ -53,7 +55,7 @@ const scanModeLabel = computed(() => workflow.scanModeText(workflow.scanMode.val
 
 const scanModeTone = computed(() => {
   const mode = workflow.scanMode.value
-  if (mode === 'SUPPLEMENT') return 'supplement'
+  if (mode === ScannerKioskScanModeCode.SUPPLEMENT) return 'supplement'
   return 'direct'
 })
 
@@ -90,8 +92,8 @@ const materialKindLabel = computed(() => workflow.materialKindLabel.value)
 
 const templateReviewLinkText = computed(() => {
   const mode = contract.value?.materialLayoutMode
-  if (mode === 'FULL_PAPER') return '试卷核对 →'
-  if (mode === 'ANSWER_SHEET') return '答卷页校验 →'
+  if (mode === ExamMaterialLayoutModeCode.FULL_PAPER) return '试卷核对 →'
+  if (mode === ExamMaterialLayoutModeCode.ANSWER_SHEET) return '答卷页校验 →'
   return '制卷核对 →'
 })
 
@@ -137,18 +139,18 @@ function buildFirstScanCalibrationDialog() {
   const mode = contract.value?.materialLayoutMode
   const paperStyle = contract.value?.paperStyleText || '未配置'
   const kind = materialKindLabel.value
-  if (mode === 'FULL_PAPER') {
+  if (mode === ExamMaterialLayoutModeCode.FULL_PAPER) {
     return {
       title: '试卷首次扫描核对',
       content:
         `当前考试为整卷作答，纸型 ${paperStyle}。`
         + '首张送纸后请在「扫描中」预览整卷切分与页序是否正常；'
-        + '若偏差，请暂停并在 Web 端调整试卷母版后再继续批量扫描。',
+        + '若偏差，请暂停并在 Web 端调整制卷设计后再继续批量扫描。',
       okText: '已了解，开始扫描',
       cancelText: '先查看制卷摘要',
     }
   }
-  if (mode === 'ANSWER_SHEET') {
+  if (mode === ExamMaterialLayoutModeCode.ANSWER_SHEET) {
     return {
       title: '答卷页首次扫描核对',
       content:
@@ -170,7 +172,7 @@ function buildFirstScanCalibrationDialog() {
 }
 
 async function confirmCalibrationIfNeeded(): Promise<boolean> {
-  if (workflow.scanMode.value !== 'DIRECT') return true
+  if (workflow.scanMode.value !== ScannerKioskScanModeCode.DIRECT) return true
   if (hasCalibrationAck() || !contract.value) return true
   const dialog = buildFirstScanCalibrationDialog()
   const confirmed = await confirmAsync({
@@ -493,6 +495,10 @@ function continueActiveBatch() {
   color: var(--kiosk-ink-secondary);
   cursor: pointer;
   list-style: none;
+  min-height: var(--kiosk-h-icon-button);
+  display: flex;
+  align-items: center;
+  padding: var(--kiosk-space-1) 0;
 }
 
 .template-fold summary::-webkit-details-marker {

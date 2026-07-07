@@ -50,7 +50,8 @@ import type {
   TrainingObjectiveRequirementVO,
 } from '@/apis/quality/training-objective-requirement'
 import type { TrainingPlanSaveRequest, TrainingPlanVO } from '@/apis/quality/training-plan'
-import type { CivicDimension, ConfirmationStatus } from '@/apis/quality/types'
+import type { CivicDimensionCode,
+  ConfirmationStatusCode} from '@/apis/quality/types'
 import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/matrix-types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
@@ -64,9 +65,12 @@ import { trainingObjectiveApi } from '@/apis/quality/training-objective'
 import { trainingObjectiveRequirementApi } from '@/apis/quality/training-objective-requirement'
 import { trainingPlanApi } from '@/apis/quality/training-plan'
 import {
-  AGGREGATION_FUNCTION_LABEL,
-  CIVIC_DIMENSION_LABEL,
-  CONFIRMATION_STATUS_LABEL,
+  AggregationFunctionCode,
+  AggregationFunctionDescription,
+  ALL_AGGREGATION_FUNCTION_CODES,
+  ALL_CIVIC_DIMENSION_CODES,
+  CivicDimensionDescription,
+  ConfirmationStatusDescription,
 } from '@/apis/quality/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
@@ -361,7 +365,7 @@ const totalIndicators = computed(() =>
   Array.from(indicatorsByReq.value.values()).reduce((acc, list) => acc + list.length, 0),
 )
 
-const planConfirmationStatus = computed<ConfirmationStatus | undefined>(() => {
+const planConfirmationStatus = computed<ConfirmationStatusCode | undefined>(() => {
   return currentPlan.value?.confirmationStatus
 })
 
@@ -390,7 +394,7 @@ const signals = computed<SignalMetric[]>(() => [
     key: 'plan',
     label: '当前方案状态',
     value: planConfirmationStatus.value
-      ? strictEnumLabel(CONFIRMATION_STATUS_LABEL, planConfirmationStatus.value, '培养方案确认状态')
+      ? strictEnumLabel(ConfirmationStatusDescription, planConfirmationStatus.value, '培养方案确认状态')
       : '未提交',
     tone:
       planConfirmationStatus.value === 'CONFIRMED'
@@ -539,13 +543,25 @@ async function submitPlan() {
   }
   planSubmitting.value = true
   try {
+    const request: TrainingPlanSaveRequest = {
+      id: planEditor.id,
+      programId: planEditor.programId,
+      planCode: planEditor.planCode.trim(),
+      planName: planEditor.planName.trim(),
+      schoolYear: planEditor.schoolYear.trim(),
+      gradeLevel: planEditor.gradeLevel?.trim() || undefined,
+      description: planEditor.description?.trim() || undefined,
+      accreditationProfileId: planEditor.accreditationProfileId || undefined,
+      storageFileId: planEditor.storageFileId || undefined,
+      enabled: planEditor.enabled,
+    }
     if (planEditorMode.value === 'create') {
-      const newId = await trainingPlanApi.create(planEditor)
+      const newId = await trainingPlanApi.create(request)
       message.success('培养方案已创建')
       qualityStore.setTrainingPlan(newId)
       await qualityStore.loadTrainingPlanOptions({ programId: planEditor.programId })
     } else {
-      await trainingPlanApi.update(planEditor)
+      await trainingPlanApi.update(request)
       message.success('培养方案已更新')
     }
     planEditorVisible.value = false
@@ -646,7 +662,14 @@ function openObjectiveCreate() {
 function openObjectiveEdit(record: TrainingObjectiveVO) {
   if (!guardPlanStructureEditable('编辑培养目标')) return
   objectiveEditorMode.value = 'edit'
-  Object.assign(objectiveEditor, record)
+  Object.assign(objectiveEditor, {
+    id: record.id,
+    trainingPlanId: record.trainingPlanId,
+    objectiveCode: record.objectiveCode,
+    objectiveName: record.objectiveName,
+    description: record.description || '',
+    sortOrder: record.sortOrder ?? 0,
+  })
   objectiveEditorVisible.value = true
 }
 
@@ -815,7 +838,7 @@ const requirementEditor = reactive<GraduationRequirementSaveRequest>({
   description: '',
   civicDimensions: [],
   thresholdValue: 0.7,
-  aggregation: 'WEIGHTED_SUM',
+  aggregation: AggregationFunctionCode.WEIGHTED_SUM,
   sortOrder: 0,
 })
 const requirementSubmitting = ref(false)
@@ -835,7 +858,7 @@ function openRequirementCreate() {
     description: '',
     civicDimensions: [],
     thresholdValue: 0.7,
-    aggregation: 'WEIGHTED_SUM',
+    aggregation: AggregationFunctionCode.WEIGHTED_SUM,
     sortOrder: (requirements.value.length + 1) * 10,
   })
   requirementEditorVisible.value = true
@@ -1100,19 +1123,16 @@ onActivated(async () => {
 
 /* ========== 字典 ========== */
 
-const aggregationOptions = [
-  { value: 'WEIGHTED_SUM', label: AGGREGATION_FUNCTION_LABEL.WEIGHTED_SUM },
-  { value: 'MINIMUM', label: AGGREGATION_FUNCTION_LABEL.MINIMUM },
-  { value: 'DIRECT_INDIRECT_WEIGHTED', label: AGGREGATION_FUNCTION_LABEL.DIRECT_INDIRECT_WEIGHTED },
-]
+const aggregationOptions = ALL_AGGREGATION_FUNCTION_CODES.map((value) => ({
+  value,
+  label: strictEnumLabel(AggregationFunctionDescription, value, '聚合函数'),
+}))
 
-const civicDimensionOptions: Array<{ value: CivicDimension, label: string }> = [
-  { value: 'MORAL', label: CIVIC_DIMENSION_LABEL.MORAL },
-  { value: 'INTELLECTUAL', label: CIVIC_DIMENSION_LABEL.INTELLECTUAL },
-  { value: 'PHYSICAL', label: CIVIC_DIMENSION_LABEL.PHYSICAL },
-  { value: 'AESTHETIC', label: CIVIC_DIMENSION_LABEL.AESTHETIC },
-  { value: 'LABOR', label: CIVIC_DIMENSION_LABEL.LABOR },
-]
+const civicDimensionOptions: Array<{ value: CivicDimensionCode, label: string }>
+  = ALL_CIVIC_DIMENSION_CODES.map((value) => ({
+    value,
+    label: strictEnumLabel(CivicDimensionDescription, value, '课程思政维度'),
+  }))
 
 function handlePlanProgramChange(value: string | null): void {
   planEditor.programId = value ?? ''
@@ -1438,7 +1458,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                     <template v-else-if="column.key === 'civicDimensions'">
                       <a-space size="small" wrap>
                         <UiTag v-for="d in record.civicDimensions ?? []" :key="d" tone="purple">
-                          {{ strictEnumLabel(CIVIC_DIMENSION_LABEL, d, '课程思政维度') }}
+                          {{ strictEnumLabel(CivicDimensionDescription, d, '课程思政维度') }}
                         </UiTag>
                         <span v-if="!(record.civicDimensions ?? []).length" class="tpw__muted">-</span>
                       </a-space>

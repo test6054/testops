@@ -1,19 +1,23 @@
 <script setup lang="ts">
-import type { CandidateStatusCode, ExamCandidateVO } from '@/apis/mark/exam-scope'
+import type { ExamCandidateResponse } from '@/apis/mark/exam-scope'
 /**
  * 扫描中异常修正面板：边扫边处理，占用缩略图列（非遮罩叠加）。
  */
 import { CloseOutlined, ReloadOutlined } from '@ant-design/icons-vue'
 import { computed, ref, watch } from 'vue'
 import { bindPaper } from '@/apis/mark/exam-binding'
-import { CANDIDATE_STATUS_LABEL, listExamCandidates } from '@/apis/mark/exam-scope'
-import { TASK_STATUS_LABEL } from '@/apis/mark/task-status'
+import { CandidateStatusDescription, listExamCandidates } from '@/apis/mark/exam-scope'
+import { LocalScanPageStatusCode } from '@/apis/mark/scanner-agent-local'
+import { TaskStatusDescription } from '@/apis/mark/task-status'
+import { CandidateStatusCode } from '@/types/enums/candidate-status-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { useKioskCtx } from '../composables/kioskInjection'
 
 const props = defineProps<{
   open: boolean
-  pageNo: number
+  pageNo?: number
+  /** 无 pageId 的 BINDING_CONFLICT 待办须显式传入 paperInstanceId */
+  paperInstanceId?: string
 }>()
 
 const emit = defineEmits<{
@@ -24,20 +28,29 @@ const { workflow, stage } = useKioskCtx()
 
 const studentNo = ref('')
 const candidateRosterId = ref('')
-const candidates = ref<ExamCandidateVO[]>([])
+const candidates = ref<ExamCandidateResponse[]>([])
 const candidatesLoading = ref(false)
 const candidatesLoadError = ref('')
 const binding = ref(false)
 
-const currentPage = computed(
-  () => workflow.visiblePages.value.find((p) => p.pageNo === props.pageNo) ?? null,
-)
+const currentPage = computed(() => {
+  if (props.pageNo == null || props.pageNo <= 0) return null
+  return workflow.visiblePages.value.find((p) => p.pageNo === props.pageNo) ?? null
+})
 
-const ledgerItem = computed(
-  () => workflow.pageLedger.value?.items.find((item) => item.pageNo === props.pageNo) ?? null,
-)
+const ledgerItem = computed(() => {
+  if (props.pageNo == null || props.pageNo <= 0) return null
+  return workflow.pageLedger.value?.items.find((item) => item.pageNo === props.pageNo) ?? null
+})
 
-const pageTitle = computed(() => workflow.scanPageDisplayTitleByNo(props.pageNo))
+const pageTitle = computed(() => {
+  const pageNo = props.pageNo
+  if (pageNo != null && pageNo > 0) {
+    return workflow.scanPageDisplayTitleByNo(pageNo)
+  }
+  if (props.paperInstanceId) return `答卷 ${props.paperInstanceId}`
+  return '身份绑定'
+})
 
 const scanBatchId = computed(
   () =>
@@ -47,8 +60,9 @@ const scanBatchId = computed(
     || '',
 )
 
-/** 仅通过页级 localPageId 与 attentionItems.pageId 精确关联，禁止回退到首个 paperInstanceId。 */
-const paperInstanceId = computed(() => {
+/** 优先显式 paperInstanceId；否则通过页级 localPageId 与 attentionItems.pageId 精确关联。 */
+const resolvedPaperInstanceId = computed(() => {
+  if (props.paperInstanceId) return props.paperInstanceId
   const ledger = workflow.pageLedger.value
   const localPageId = ledgerItem.value?.localPageId
   if (!ledger || !localPageId) return undefined
@@ -58,42 +72,56 @@ const paperInstanceId = computed(() => {
 
 const attentionItem = computed(() => {
   const ledger = workflow.pageLedger.value
+  if (!ledger) return undefined
+  if (props.paperInstanceId) {
+    return ledger.attentionItems.find((item) => item.paperInstanceId === props.paperInstanceId)
+  }
   const localPageId = ledgerItem.value?.localPageId
-  if (!ledger || !localPageId) return undefined
+  if (!localPageId) return undefined
   return ledger.attentionItems.find((item) => item.pageId === localPageId)
 })
 
 const processingStatusText = computed(() => {
   const status = attentionItem.value?.processingStatus
   if (!status) return ''
-  return strictEnumLabel(TASK_STATUS_LABEL, status, '处理任务状态')
+  return strictEnumLabel(TaskStatusDescription, status, '处理任务状态')
+})
+
+const attentionTypeLabel = computed(() => {
+  const attentionType = ledgerItem.value?.attentionType || attentionItem.value?.attentionType
+  if (!attentionType) return ''
+  return workflow.attentionTypeText(attentionType)
 })
 
 const canBindCandidate = computed(() =>
-  Boolean(scanBatchId.value && paperInstanceId.value && workflow.examId.value),
+  Boolean(scanBatchId.value && resolvedPaperInstanceId.value && workflow.examId.value),
 )
 
 const diagnosticText = computed(() => {
   if (currentPage.value?.diagnostic) {
     return workflow.scannerDiagnosticText(currentPage.value.diagnostic)
   }
+  if (attentionItem.value?.diagnostic) return attentionItem.value.diagnostic
   if (ledgerItem.value?.attentionMessage) return ledgerItem.value.attentionMessage
   if (ledgerItem.value?.attentionType) {
     return workflow.attentionTypeText(ledgerItem.value.attentionType)
   }
-  if (currentPage.value?.status === 'FAILED') return '页面上传失败，可重试上传后继续扫描'
+  if (attentionItem.value?.attentionType) {
+    return workflow.attentionTypeText(attentionItem.value.attentionType)
+  }
+  if (currentPage.value?.status === LocalScanPageStatusCode.FAILED) return '页面上传失败，可重试上传后继续扫描'
   return '页面处理异常，请核对影像与考号'
 })
 
-const showRetryUpload = computed(() => currentPage.value?.status === 'FAILED')
+const showRetryUpload = computed(() => currentPage.value?.status === LocalScanPageStatusCode.FAILED)
 
-function isCandidateBindable(candidate: ExamCandidateVO): boolean {
-  return candidate.status === 'ACTIVE'
+function isCandidateBindable(candidate: ExamCandidateResponse): boolean {
+  return candidate.status === CandidateStatusCode.ACTIVE
 }
 
 function candidateStatusLabel(status: CandidateStatusCode | undefined): string {
-  if (!status || !CANDIDATE_STATUS_LABEL[status]) return '状态异常'
-  return CANDIDATE_STATUS_LABEL[status]
+  if (!status || !CandidateStatusDescription[status]) return '状态异常'
+  return CandidateStatusDescription[status]
 }
 
 function candidateBindingBlockReason(rosterId: string): string {
@@ -136,7 +164,11 @@ watch(
   },
 )
 
-function onCandidateChange(rosterId: string) {
+function onCandidateChange(event: Event) {
+  if (!(event.target instanceof HTMLSelectElement)) {
+    return
+  }
+  const rosterId = event.target.value
   candidateRosterId.value = rosterId
   const hit = candidates.value.find((c) => c.candidateRosterId === rosterId)
   if (hit) studentNo.value = hit.studentNo
@@ -157,7 +189,7 @@ async function submitBind() {
     await bindPaper({
       examId,
       scanBatchId: scanBatchId.value,
-      paperInstanceId: paperInstanceId.value!,
+      paperInstanceId: resolvedPaperInstanceId.value!,
       recognizedStudentNo: studentNo.value.trim() || undefined,
       confirmedCandidateRosterId: candidateRosterId.value,
       attemptStatus: 'NORMAL',
@@ -196,9 +228,11 @@ function gotoReview() {
 
     <p class="exception-panel__diag">{{ diagnosticText }}</p>
 
-    <div v-if="ledgerItem?.attentionType" class="exception-panel__meta">
-      <span>{{ workflow.attentionTypeText(ledgerItem.attentionType) }}</span>
-      <small>{{ workflow.registrationStatusText(ledgerItem.registrationStatus) }}</small>
+    <div v-if="attentionTypeLabel" class="exception-panel__meta">
+      <span>{{ attentionTypeLabel }}</span>
+      <small v-if="ledgerItem">{{
+        workflow.registrationStatusText(ledgerItem.registrationStatus)
+      }}</small>
       <small v-if="processingStatusText">处理任务：{{ processingStatusText }}</small>
     </div>
 
@@ -218,7 +252,7 @@ function gotoReview() {
           v-model="candidateRosterId"
           class="field__input"
           :disabled="candidatesLoading"
-          @change="onCandidateChange(($event.target as HTMLSelectElement).value)"
+          @change="onCandidateChange"
         >
           <option value="">请选择考生</option>
           <option
@@ -236,8 +270,12 @@ function gotoReview() {
         确认考号并绑定
       </button>
     </div>
-    <p v-else-if="ledgerItem?.attentionType" class="exception-panel__hint">
-      页面尚未完成落库绑定，上传完成后可在复核阶段修正考号。
+    <p v-else-if="attentionItem || ledgerItem?.attentionType" class="exception-panel__hint">
+      {{
+        attentionItem?.paperInstanceId
+          ? '当前批次或考试上下文未就绪，刷新账本后再绑定。'
+          : '页面尚未完成落库绑定，上传完成后可在复核阶段修正考号。'
+      }}
     </p>
 
     <div class="exception-panel__actions">

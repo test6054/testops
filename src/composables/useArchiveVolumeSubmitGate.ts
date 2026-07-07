@@ -1,16 +1,18 @@
 import type {
-  ArchiveVolumeDetailVO,
+  ArchiveVolumeDetailResponse,
+  ArchiveVolumeResponse,
   ArchiveVolumeRoleCode,
-  ArchiveVolumeVO,
+  ArchiveVolumeSubmitChecklistItemVO,
 } from '@/apis/mark/archive-volume'
 
 interface SubmitGateInput {
   volume: Pick<
-    ArchiveVolumeVO,
+    ArchiveVolumeResponse,
     | 'volumeStatus'
     | 'responsibleUserId'
     | 'integrityStatus'
     | 'submitReady'
+    | 'submitBlockHint'
     | 'hasBlockingRemediationForSubmit'
     | 'scoreSubmitReady'
     | 'scoreSource'
@@ -18,6 +20,7 @@ interface SubmitGateInput {
     | 'scoreProofFileId'
     | 'examGateOpen'
     | 'fourPropertyStale'
+    | 'securityMarkPending'
     | 'requireSelfCheckConfirm'
     | 'selfCheckConfirmed'
     | 'signOffReady'
@@ -28,6 +31,22 @@ interface SubmitGateInput {
   fourPropertyStale?: boolean
   fourPropertyPassed?: boolean
   hasBlockingRemediationForSubmit?: boolean
+  /** 详情页 checklist/preview 阻塞项，与后端 blockingItems 同源 */
+  blockingItems?: ArchiveVolumeSubmitChecklistItemVO[]
+}
+
+function findFirstBlockingMessage(
+  blockingItems?: ArchiveVolumeSubmitChecklistItemVO[],
+): string | null {
+  if (!blockingItems?.length) {
+    return null
+  }
+  for (const item of blockingItems) {
+    if (item.passed !== true && item.message) {
+      return item.message
+    }
+  }
+  return null
 }
 
 function canActAsSubmitOwner(input: SubmitGateInput): boolean {
@@ -50,15 +69,22 @@ export function canSubmitArchiveVolume(input: SubmitGateInput): boolean {
   if (volume.submitReady === true) return true
   if (volume.submitReady === false) return false
   if (fourPropertyStale) return false
+  if (volume.securityMarkPending) return false
   if (!fourPropertyPassed) return false
   if (volume.integrityStatus !== 'PASSED' && volume.integrityStatus !== 'WAIVED') return false
-  return isScoreSubmitReady(volume)
+  if (!isScoreSubmitReady(volume)) return false
+  if (volume.requireSelfCheckConfirm) {
+    if (!volume.selfCheckConfirmed || volume.signOffReady !== true) {
+      return false
+    }
+  }
+  return true
 }
 
 /** 与后端 assertScoreProof / submitReady 成绩分支一致 */
 export function isScoreSubmitReady(
   volume: Pick<
-    ArchiveVolumeVO,
+    ArchiveVolumeResponse,
     | 'scoreSource'
     | 'scoreCompletionStatus'
     | 'scoreProofFileId'
@@ -90,14 +116,33 @@ export function describeSubmitBlockReason(input: SubmitGateInput): string | null
     return '存在未关闭整改任务，须关闭后再提交'
   }
   if (!canActAsSubmitOwner(input)) return null
+
+  const checklistMessage = findFirstBlockingMessage(input.blockingItems)
+  if (checklistMessage) {
+    return checklistMessage
+  }
+  if (volume.submitBlockHint) {
+    return volume.submitBlockHint
+  }
+
   if (volume.submitReady === false) {
+    if (volume.requireSelfCheckConfirm && !volume.selfCheckConfirmed) {
+      return '请先完成提交前自查确认'
+    }
+    if (volume.requireSelfCheckConfirm && volume.signOffReady === false) {
+      return '签字核查项未全部确认'
+    }
     return '提交前置未满足，请完成编目、自查与完整性/四性/成绩检查'
   }
+
   if (volume.integrityStatus !== 'PASSED' && volume.integrityStatus !== 'WAIVED') {
     return '完整性未通过，请先执行完整性检查或授权豁免'
   }
   if (input.fourPropertyStale ?? volume.fourPropertyStale) {
     return '四性结论已失效，请重新检测'
+  }
+  if (volume.securityMarkPending) {
+    return '密级定密待确认，请先完成定密确认并重新执行四性检测'
   }
   const fourPassed = input.fourPropertyPassed ?? (volume.submitReady === true ? true : undefined)
   if (fourPassed === false) {
@@ -118,7 +163,7 @@ export function describeSubmitBlockReason(input: SubmitGateInput): string | null
   return null
 }
 
-export function canSubmitArchiveVolumeRow(record: ArchiveVolumeVO, currentUserId: string): boolean {
+export function canSubmitArchiveVolumeRow(record: ArchiveVolumeResponse, currentUserId: string): boolean {
   return canSubmitArchiveVolume({
     volume: record,
     currentUserId,
@@ -129,7 +174,7 @@ export function canSubmitArchiveVolumeRow(record: ArchiveVolumeVO, currentUserId
 }
 
 export function canSubmitArchiveVolumeDetail(
-  detail: ArchiveVolumeDetailVO,
+  detail: ArchiveVolumeDetailResponse,
   currentUserId: string,
 ): boolean {
   return canSubmitArchiveVolume({
@@ -139,5 +184,21 @@ export function canSubmitArchiveVolumeDetail(
     fourPropertyStale: detail.fourPropertyStale,
     fourPropertyPassed: detail.latestFourPropertyCheck?.overallPassed,
     hasBlockingRemediationForSubmit: detail.hasBlockingRemediationForSubmit,
+  })
+}
+
+export function describeSubmitBlockReasonForDetail(
+  detail: ArchiveVolumeDetailResponse,
+  currentUserId: string,
+  blockingItems?: ArchiveVolumeSubmitChecklistItemVO[],
+): string | null {
+  return describeSubmitBlockReason({
+    volume: detail.volume,
+    currentUserId,
+    volumeRole: detail.volumeRole,
+    fourPropertyStale: detail.fourPropertyStale,
+    fourPropertyPassed: detail.latestFourPropertyCheck?.overallPassed,
+    hasBlockingRemediationForSubmit: detail.hasBlockingRemediationForSubmit,
+    blockingItems,
   })
 }

@@ -66,6 +66,8 @@ export interface SignalMetric {
   helper?: string
   /** 为 true 时 SignalBand 渲染为可点击项并触发 metric-click */
   clickable?: boolean
+  /** 为 true 时高亮当前 KPI 筛选态 */
+  active?: boolean
 }
 
 // ─── 任务结果面板（TaskResultPanel）──────────────────────
@@ -92,7 +94,7 @@ export interface TaskResultItem {
 
 // ─── 审计时间线抽屉（AuditTimelineDrawer）────────────────
 
-/** 审计事件项 - 与后端 OperationLogVO 字段对齐 */
+/** 审计事件项 - 与后端 OperationLogResponse 字段对齐 */
 export interface AuditTimelineEvent {
   /** 审计日志ID */
   id: string

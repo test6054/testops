@@ -12,47 +12,62 @@ const TEACHER_ROLES = [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USE
 const ALL_ROLES = [RoleEnum.SUPER_ADMIN, ...TEACHER_ROLES]
 const SUPER_ADMIN_ROLES = [RoleEnum.SUPER_ADMIN]
 
-const SCOPE_NONE = { scopeProfile: 'none' as QualityScopeProfile }
-const SCOPE_PLAN = { scopeProfile: 'plan' as QualityScopeProfile }
-const SCOPE_PLAN_PERIOD = { scopeProfile: 'plan-period' as QualityScopeProfile }
-const SCOPE_PLAN_COURSE = { scopeProfile: 'plan-course' as QualityScopeProfile }
-const SCOPE_ACCREDITATION = { scopeProfile: 'accreditation' as QualityScopeProfile }
-const GATE_PLAN_CONFIRMED = { qualityGate: 'plan-confirmed' as QualityGate }
+interface QualityScopeMeta {
+  scopeProfile: QualityScopeProfile
+}
 
-const WORKBENCH_GROUP = {
+interface QualityGateMeta {
+  qualityGate: QualityGate
+}
+
+interface QualityMenuGroupMeta {
+  menuGroup: string
+  menuGroupTitle: string
+  menuGroupIcon: string
+  menuGroupOrder: number
+}
+
+const SCOPE_NONE: QualityScopeMeta = { scopeProfile: 'none' }
+const SCOPE_PLAN: QualityScopeMeta = { scopeProfile: 'plan' }
+const SCOPE_PLAN_PERIOD: QualityScopeMeta = { scopeProfile: 'plan-period' }
+const SCOPE_PLAN_COURSE: QualityScopeMeta = { scopeProfile: 'plan-course' }
+const SCOPE_ACCREDITATION: QualityScopeMeta = { scopeProfile: 'accreditation' }
+const GATE_PLAN_CONFIRMED: QualityGateMeta = { qualityGate: 'plan-confirmed' }
+
+const WORKBENCH_GROUP: QualityMenuGroupMeta = {
   menuGroup: 'quality-workbench',
   menuGroupTitle: '工作台',
   menuGroupIcon: 'dashboard',
   menuGroupOrder: 1,
-} as const
+}
 
-const SYSTEM_GROUP = {
+const SYSTEM_GROUP: QualityMenuGroupMeta = {
   menuGroup: 'quality-system',
   menuGroupTitle: '体系与矩阵',
   menuGroupIcon: 'database',
   menuGroupOrder: 2,
-} as const
+}
 
-const DATA_GROUP = {
+const DATA_GROUP: QualityMenuGroupMeta = {
   menuGroup: 'quality-data',
   menuGroupTitle: '数据与达成',
   menuGroupIcon: 'inbox',
   menuGroupOrder: 3,
-} as const
+}
 
-const OUTPUT_GROUP = {
+const OUTPUT_GROUP: QualityMenuGroupMeta = {
   menuGroup: 'quality-output',
   menuGroupTitle: '改进与输出',
   menuGroupIcon: 'file-text',
   menuGroupOrder: 4,
-} as const
+}
 
-const ADMIN_GROUP = {
+const ADMIN_GROUP: QualityMenuGroupMeta = {
   menuGroup: 'quality-admin',
   menuGroupTitle: '平台管理',
   menuGroupIcon: 'setting',
   menuGroupOrder: 5,
-} as const
+}
 
 const qualityWorkspaceChildren: RouteRecordRaw[] = [
   {
@@ -474,7 +489,10 @@ export function listQualityLeafRouteMetas(): Array<{ name?: string, meta: RouteR
         walk(route.children)
       }
       else if (route.component && route.meta) {
-        leaves.push({ name: route.name as string | undefined, meta: route.meta })
+        leaves.push({
+          name: typeof route.name === 'string' ? route.name : undefined,
+          meta: route.meta,
+        })
       }
     }
   }

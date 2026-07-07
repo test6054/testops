@@ -1,19 +1,18 @@
+import type {
+  IndirectEvaluationItemTypeCode,
+} from '@/types/enums/indirect-evaluation-item-type-enum'
 /**
  * 公开问卷填写 API（无需认证）。
  *
  * 后端路径：/api/public/survey/:token
  */
-import type { IndirectEvaluationItemType } from '@/types/enums/indirect-evaluation-item-type-enum'
 import http from '@/config/axios'
 import {
   formatPublicSurveyItemType,
-  PUBLIC_SURVEY_ITEM_TYPE_LABEL
+  IndirectEvaluationItemTypeDescription,
 } from '@/types/enums/indirect-evaluation-item-type-enum'
 
-/** 公开 / 间接评价共用题项类型 */
-export type PublicSurveyItemType = IndirectEvaluationItemType
-
-export { formatPublicSurveyItemType, PUBLIC_SURVEY_ITEM_TYPE_LABEL }
+export { formatPublicSurveyItemType, IndirectEvaluationItemTypeDescription }
 
 export interface PublicSurveyVO {
   formName: string
@@ -34,7 +33,19 @@ export interface SurveyIdentityFieldVO {
   required: boolean
 }
 
+export interface SurveyIdentityFieldRequest {
+  fieldKey: string
+  fieldLabel: string
+  fieldType: string
+  required?: boolean
+}
+
 export interface SurveyScaleLabelVO {
+  scaleValue: number
+  label: string
+}
+
+export interface SurveyScaleLabelRequest {
   scaleValue: number
   label: string
 }
@@ -44,20 +55,31 @@ export interface SurveyChoiceOptionVO {
   optionLabel: string
 }
 
+export interface SurveyChoiceOptionRequest {
+  optionValue: string
+  optionLabel: string
+}
+
 export interface SurveyRespondentIdentityItemVO {
+  fieldKey: string
+  fieldLabel: string
+  fieldValue: string
+}
+
+export interface SurveyRespondentIdentityItemRequest {
   fieldKey: string
   fieldValue: string
 }
 
-export interface SurveyRespondentIdentityVO {
-  fields: SurveyRespondentIdentityItemVO[]
+export interface SurveyRespondentIdentityRequest {
+  fields: SurveyRespondentIdentityItemRequest[]
 }
 
 export interface PublicSurveyItemVO {
   itemToken: string
   itemCode: string
   itemText: string
-  itemType: PublicSurveyItemType
+  itemType: IndirectEvaluationItemTypeCode
   scaleMin?: number
   scaleMax?: number
   scaleLabels?: SurveyScaleLabelVO[]
@@ -67,11 +89,11 @@ export interface PublicSurveyItemVO {
 }
 
 export interface PublicSurveySubmitRequest {
-  respondentIdentity?: SurveyRespondentIdentityVO
-  answers: PublicSurveyAnswerItem[]
+  respondentIdentity?: SurveyRespondentIdentityRequest
+  answers: PublicSurveyAnswerSubmitRequest[]
 }
 
-export interface PublicSurveyAnswerItem {
+export interface PublicSurveyAnswerSubmitRequest {
   itemToken: string
   scaleValue?: number
   singleChoiceValue?: string

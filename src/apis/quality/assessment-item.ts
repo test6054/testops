@@ -1,4 +1,4 @@
-import type { AssessmentItemType } from './types'
+import type { AssessmentItemTypeCode } from './types'
 /**
  * 考核环节 API。
  * 后端对象：AssessmentItemController /api/quality/assessment-items。
@@ -12,7 +12,7 @@ export interface AssessmentItemVO {
   qualityCourseId: string
   itemCode: string
   itemName: string
-  itemType: AssessmentItemType
+  itemType: AssessmentItemTypeCode
   fullScore: number
   passScore?: number
   weightInCourse?: number
@@ -30,7 +30,7 @@ export interface AssessmentItemSaveRequest {
   qualityCourseId: string
   itemCode: string
   itemName: string
-  itemType: AssessmentItemType
+  itemType: AssessmentItemTypeCode
   fullScore: number
   passScore?: number
   weightInCourse?: number

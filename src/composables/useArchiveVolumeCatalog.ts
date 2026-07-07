@@ -1,12 +1,13 @@
 import type {
   ArchiveVolumeCatalogLineSaveRequest,
   ArchiveVolumeCatalogLineVO,
-  ArchiveVolumeCatalogVO
+  ArchiveVolumeCatalogResponse
 } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
 import { computed, ref } from 'vue'
 import { downloadFile } from '@/apis/edu/file-management'
 import {
+  ArchiveCatalogStatusCode,
   confirmArchiveVolumeCatalog,
   exportArchiveVolumeCatalog,
   generateArchiveVolumeCatalogDraft,
@@ -23,12 +24,12 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
   const saving = ref(false)
   const confirming = ref(false)
   const exporting = ref(false)
-  const catalog = ref<ArchiveVolumeCatalogVO | null>(null)
+  const catalog = ref<ArchiveVolumeCatalogResponse | null>(null)
   const editableLines = ref<ArchiveVolumeCatalogLineVO[]>([])
 
-  const catalogStatus = computed(() => catalog.value?.catalogStatus ?? 'NOT_STARTED')
-  const isConfirmed = computed(() => catalogStatus.value === 'CONFIRMED')
-  const isDraft = computed(() => catalogStatus.value === 'DRAFT')
+  const catalogStatus = computed(() => catalog.value?.catalogStatus ?? ArchiveCatalogStatusCode.NOT_STARTED)
+  const isConfirmed = computed(() => catalogStatus.value === ArchiveCatalogStatusCode.CONFIRMED)
+  const isDraft = computed(() => catalogStatus.value === ArchiveCatalogStatusCode.DRAFT)
 
   async function loadCatalog() {
     const id = volumeId()
@@ -80,6 +81,7 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
       pageRange: line.pageRange?.trim() || undefined,
       fileDate: line.fileDate?.trim() || undefined,
       remark: line.remark?.trim() || undefined,
+      materialId: line.materialId,
     }))
   }
 
@@ -92,10 +94,11 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
     }
     saving.value = true
     try {
-      catalog.value = await saveArchiveVolumeCatalog({
+      await saveArchiveVolumeCatalog({
         volumeId: id,
         lines: buildSaveLines(),
       })
+      catalog.value = await getArchiveVolumeCatalog(id)
       editableLines.value = (catalog.value.lines ?? []).map(line => ({ ...line }))
       message.success('目录已保存')
     }
@@ -112,7 +115,8 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
     if (!id) return
     confirming.value = true
     try {
-      catalog.value = await confirmArchiveVolumeCatalog(id)
+      await confirmArchiveVolumeCatalog(id)
+      catalog.value = await getArchiveVolumeCatalog(id)
       editableLines.value = (catalog.value.lines ?? []).map(line => ({ ...line }))
       message.success('目录已确认')
     }

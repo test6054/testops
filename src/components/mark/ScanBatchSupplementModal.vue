@@ -89,12 +89,13 @@
 
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
-import type { ExamScannerBatchVO } from '@/apis/mark/exam-scan'
+import type { ExamScannerBatchResponse } from '@/apis/mark/exam-scan'
 import type { ExamTeacherScanSupplementPrepareResponse } from '@/apis/mark/scan-source'
 import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { getExamDetail } from '@/apis/mark/exam'
+import { ScannerColorModeCode, ScannerDuplexModeCode } from '@/apis/mark/exam-mark-scanner'
 import {
   prepareTeacherScanSupplement,
   teacherSupplementScanSource,
@@ -102,6 +103,7 @@ import {
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiConfirmModal from '@/components/ui-guide/ui/ConfirmModal.vue'
+import { ScannerKioskScanModeCode } from '@/types/enums/scanner-kiosk-scan-mode-enum'
 import { showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'ScanBatchSupplementModal' })
@@ -109,7 +111,7 @@ defineOptions({ name: 'ScanBatchSupplementModal' })
 const props = defineProps<{
   open: boolean
   examId: string
-  batch: ExamScannerBatchVO | null
+  batch: ExamScannerBatchResponse | null
 }>()
 
 const emit = defineEmits<{
@@ -119,8 +121,8 @@ const emit = defineEmits<{
 
 const DEFAULT_SCAN_CONFIG: ExamScannerScanConfigVO = {
   dpi: 300,
-  colorMode: 'COLOR',
-  duplexMode: 'SIMPLEX',
+  colorMode: ScannerColorModeCode.COLOR,
+  duplexMode: ScannerDuplexModeCode.SIMPLEX,
   blankPageDetectionEnabled: true,
 }
 
@@ -130,13 +132,22 @@ const prepareLoading = ref(false)
 const prepareContext = ref<ExamTeacherScanSupplementPrepareResponse | null>(null)
 const declaredClassIds = ref<string[]>([])
 
-const form = reactive({
-  paperInstanceId: undefined as string | undefined,
-  targetPageNo: undefined as number | undefined,
+interface ScanBatchSupplementForm {
+  paperInstanceId: string | undefined
+  targetPageNo: number | undefined
+  supplementReason: string
+  replaceTargetPage: boolean
+  sourceFileId: string | undefined
+  sourceFileName: string | undefined
+}
+
+const form = reactive<ScanBatchSupplementForm>({
+  paperInstanceId: undefined,
+  targetPageNo: undefined,
   supplementReason: '',
   replaceTargetPage: false,
-  sourceFileId: undefined as string | undefined,
-  sourceFileName: undefined as string | undefined,
+  sourceFileId: undefined,
+  sourceFileName: undefined,
 })
 
 const batchLabel = computed(() => {
@@ -187,7 +198,7 @@ const formRules: Record<string, Rule[]> = {
   sourceFileId: [{
     validator: async () => {
       if (!form.sourceFileId) {
-        throw new Error('请选择补扫文件')
+        return Promise.reject(new Error('请选择补扫文件'))
       }
     },
   }],
@@ -228,7 +239,7 @@ async function loadPrepareContext(): Promise<void> {
       examId: props.examId,
       scannerDeviceId: batch.scannerDeviceId,
       scannerStationId: batch.scannerStationId,
-      scanMode: 'SUPPLEMENT',
+      scanMode: ScannerKioskScanModeCode.SUPPLEMENT,
       scanBatchId: batch.scanBatchId,
     })
   } catch (error) {
@@ -260,7 +271,7 @@ async function handleSubmit(): Promise<void> {
       scannerDeviceId: batch.scannerDeviceId,
       scannerStationId: batch.scannerStationId,
       declaredClassIds: declaredClassIds.value,
-      scanMode: 'SUPPLEMENT',
+      scanMode: ScannerKioskScanModeCode.SUPPLEMENT,
       scanBatchId: batch.scanBatchId,
       targetPageNo: form.targetPageNo,
       supplementReason: form.supplementReason.trim(),
@@ -275,14 +286,13 @@ async function handleSubmit(): Promise<void> {
     emit('success')
   } catch (error) {
     showUserError(error, '指定页补扫失败')
-    throw error
   } finally {
     submitting.value = false
   }
 }
 
 watch(
-  () => [props.open, props.batch?.scanBatchId, props.examId] as const,
+  () => [props.open, props.batch?.scanBatchId, props.examId],
   ([open]) => {
     if (open) {
       resetForm()

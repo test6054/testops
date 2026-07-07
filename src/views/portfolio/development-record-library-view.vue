@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  PortfolioDevelopmentRecordStatus,
-  PortfolioDevelopmentRecordType,
+  PortfolioDevelopmentRecordStatusCode,
 } from '@/apis/portfolio/enums'
 import type { PortfolioDevelopmentRecordVO } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
-import { PORTFOLIO_DEVELOPMENT_RECORD_STATUS_LABEL } from '@/apis/portfolio/enums'
+import {
+  PortfolioDevelopmentRecordStatusDescription,
+  PortfolioDevelopmentRecordTypeCode,
+} from '@/apis/portfolio/enums'
 import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -19,14 +21,13 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const props = defineProps<{
   title: string
   subtitle: string
-  recordType: PortfolioDevelopmentRecordType
+  recordType: PortfolioDevelopmentRecordTypeCode
   categoryCode?: string
   levelCode?: string
   nationalOnly?: boolean
@@ -40,7 +41,7 @@ const form = reactive({ recordTitle: '', descriptionText: '', teacherUserId: '' 
 const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
   = usePortfolioTeacherSearch()
 
-const requiresTeacher = computed(() => props.recordType === 'ACHIEVEMENT')
+const requiresTeacher = computed(() => props.recordType === PortfolioDevelopmentRecordTypeCode.ACHIEVEMENT)
 const showEditor = computed(() => !props.readonly)
 
 const importContext = computed(() => ({
@@ -64,8 +65,8 @@ const columns = computed<ColumnsType>(() => {
   return base
 })
 
-function recordStatusLabel(status: PortfolioDevelopmentRecordStatus): string {
-  return strictEnumLabel(PORTFOLIO_DEVELOPMENT_RECORD_STATUS_LABEL, status, '发展档案条目状态')
+function recordStatusLabel(status: PortfolioDevelopmentRecordStatusCode): string {
+  return strictEnumLabel(PortfolioDevelopmentRecordStatusDescription, status, '发展档案条目状态')
 }
 
 function resetForm() {
@@ -84,7 +85,7 @@ async function loadPage() {
       categoryCode: props.categoryCode,
       levelCode: props.levelCode ?? (props.nationalOnly ? 'NATIONAL' : undefined),
     })
-    rows.value = readPageList(page, '加载发展记录失败')
+    rows.value = page.list
     if (requiresTeacher.value) {
       const userIds = rows.value
         .map((row) => row.teacherUserId)

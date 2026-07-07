@@ -1,4 +1,15 @@
+import type { ExamLayoutStatusCode } from '@/apis/mark/exam-layout-status'
+import type {
+  ExamQuestionDeclaredOptionRequest,
+  ExamQuestionStandardAnswerOptionRequest,
+  ObjectiveComparePolicyCode,
+} from '@/apis/mark/exam-standard-answer'
+import type { MarkOcrSceneCode } from '@/apis/mark/ocr-scene'
+import type { QuestionTypeCode } from '@/apis/mark/question-type'
 import http from '@/config/axios'
+
+/** 制卷设计主流程 hint：整卷直接上传源文件，答题卡生成识别版式后保存并预览 */
+export const EXAM_LAYOUT_DESIGN_FLOW_HINT = '确定制卷形态 → 整卷上传资料异步识别题单 / 答题卡生成版式 → 核对 ROI 后保存并预览'
 
 export interface ExamLayoutRectNorm {
   x: number
@@ -19,12 +30,29 @@ export interface ExamLayoutQuestionDto {
   id: string
   questionNo: string
   normalizedQuestionNo?: string
-  questionType: string
-  ocrScene?: string
+  questionType: QuestionTypeCode
+  ocrScene?: MarkOcrSceneCode
   fullScore?: number
   sortNo?: number
   questionStem?: string
   knowledgeId?: string
+  answer?: ExamLayoutQuestionAnswerDto
+}
+
+export interface ExamLayoutQuestionAnswerDto {
+  standardAnswerId?: string
+  standardAnswer?: string
+  answerExplain?: string
+  comparePolicy?: ObjectiveComparePolicyCode
+  numericExpectedValue?: number
+  numericTolerance?: number
+  numericUnit?: string
+  gradingRubric?: string
+  aiHint?: string
+  effectiveStatus?: string
+  effectiveNow?: boolean
+  declaredOptions?: ExamQuestionDeclaredOptionRequest[]
+  choiceOptions?: ExamQuestionStandardAnswerOptionRequest[]
 }
 
 export interface ExamLayoutBlockDto {
@@ -48,8 +76,12 @@ export interface ExamLayoutBlockOptionDto {
 }
 
 export interface ExamLayoutDocument {
+  /** 制卷布局 ID - 对应 ExamLayoutDocument.layoutId */
+  layoutId?: string
   examId?: string
   layoutName?: string
+  /** 制卷状态 - 对应 ExamLayoutDocument.status */
+  status?: ExamLayoutStatusCode
   layoutEntryKind?: string
   totalPages?: number
   paperSpec?: string
@@ -70,6 +102,10 @@ export interface ExamLayoutDesignLoadResponse {
   document: ExamLayoutDocument | null
   writable: boolean
   writeLockReason?: string
+  /** 进行中的自动预划区任务；QUEUED/RUNNING 时有值，刷新后续轮询 */
+  activeDetect?: ExamLayoutDetectStatusResponse
+  /** 与后端僵死回收阈值同源的轮询 deadline 策略 */
+  detectPollingPolicy: ExamLayoutDetectPollingPolicy
 }
 
 export interface ExamLayoutDesignLoadRequest {
@@ -83,6 +119,7 @@ export interface ExamLayoutDesignSaveRequest {
 
 export interface ExamLayoutDesignPreviewRequest {
   examId: string
+  document?: ExamLayoutDocument
 }
 
 export interface ExamLayoutPreviewResponse {
@@ -93,6 +130,26 @@ export interface ExamLayoutGenerateSheetRequest {
   examId: string
   paperSpec?: string
   identityNumberMode?: string
+  questions?: ExamLayoutGenerateQuestionRequest[]
+}
+
+export interface ExamLayoutGenerateQuestionRequest {
+  questionNo: string
+  questionType: 'OBJECTIVE' | 'SUBJECTIVE'
+  ocrScene: string
+  fullScore: number
+  sortNo: number
+  optionCount?: number
+}
+
+export type { ExamLayoutDetectTaskStatusCode } from '@/types/enums/exam-layout-detect-task-status-enum'
+
+/** 制卷异步识别任务 UUID（32 位十六进制）；与 auto-detect 返回一致，非 exam/layout 等数据库主键 */
+export type ExamLayoutDetectTaskId = string
+
+export interface ExamLayoutDetectCancelRequest {
+  examId: string
+  detectTaskId: ExamLayoutDetectTaskId
 }
 
 export interface ExamLayoutAutoDetectRequest {
@@ -100,9 +157,36 @@ export interface ExamLayoutAutoDetectRequest {
   sourcePdfFileId: string
 }
 
-export interface ExamLayoutPageUploadMetaRequest {
+/** 制卷自动预划区轮询策略；字段须与 ExamLayoutDetectPollingPolicyResponse 一致 */
+export interface ExamLayoutDetectPollingPolicy {
+  queuedStaleMs: number
+  runningStaleMs: number
+  clientPollDeadlineMs: number
+}
+
+export interface ExamLayoutDetectTaskResponse {
+  detectTaskId: ExamLayoutDetectTaskId
   examId: string
-  pageNo: number
+  status: ExamLayoutDetectTaskStatusCode
+  detectPollingPolicy?: ExamLayoutDetectPollingPolicy
+}
+
+export interface ExamLayoutDetectStatusRequest {
+  examId: string
+  detectTaskId: ExamLayoutDetectTaskId
+}
+
+export interface ExamLayoutDetectStatusResponse {
+  detectTaskId: ExamLayoutDetectTaskId
+  examId: string
+  status: ExamLayoutDetectTaskStatusCode
+  progressPageNo?: number
+  progressTotalPages?: number
+  errorMessage?: string
+  document?: ExamLayoutDocument
+}
+
+export interface ExamLayoutPageUploadMetaRequest {
   backgroundFileId: string
 }
 
@@ -134,7 +218,26 @@ export function generateExamLayoutSheet(data: ExamLayoutGenerateSheetRequest) {
 }
 
 export function autoDetectExamLayout(data: ExamLayoutAutoDetectRequest) {
-  return http.post<ExamLayoutDocument>('/api/mark/exams/layout-design/auto-detect', data)
+  return http.post<ExamLayoutDetectTaskResponse>('/api/mark/exams/layout-design/auto-detect', data)
+}
+
+export function fetchExamLayoutDetectStatus(data: ExamLayoutDetectStatusRequest) {
+  return http.post<ExamLayoutDetectStatusResponse>('/api/mark/exams/layout-design/detect-status', data)
+}
+
+export function cancelExamLayoutDetect(data: ExamLayoutDetectCancelRequest) {
+  return http.post<ExamLayoutDetectStatusResponse>('/api/mark/exams/layout-design/cancel-detect', data)
+}
+
+/** 解析 detect-status 轮询 deadline；优先使用后端下发的 clientPollDeadlineMs。 */
+export function resolveExamLayoutDetectPollDeadlineMs(
+  policy: ExamLayoutDetectPollingPolicy | null | undefined,
+): number {
+  const deadline = policy?.clientPollDeadlineMs
+  if (deadline == null || !Number.isFinite(deadline) || deadline < 60_000) {
+    throw new Error('制卷识别轮询策略缺失或无效，请刷新页面后重试')
+  }
+  return deadline
 }
 
 export function fetchExamLayoutPageUploadMeta(data: ExamLayoutPageUploadMetaRequest) {
@@ -145,5 +248,5 @@ export function fetchExamLayoutPageUploadMeta(data: ExamLayoutPageUploadMetaRequ
 }
 
 export function adjustExamLayoutQuestionRegion(data: ExamLayoutQuestionRegionAdjustRequest) {
-  return http.post<void>('/api/mark/exams/layout-design/question-region/adjust', data)
+  return http.post<boolean>('/api/mark/exams/layout-design/question-region/adjust', data)
 }

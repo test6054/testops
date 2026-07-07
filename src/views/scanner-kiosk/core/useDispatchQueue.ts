@@ -1,22 +1,27 @@
-import type { ScanDispatchTicketStatusCode, ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
-import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
+import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
+import type { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { computed, ref } from 'vue'
 import { pageScanDispatchTickets } from '@/apis/mark/scanner-dispatch'
+import { DispatchQueueStatusFilterCode } from '@/types/enums/dispatch-queue-status-filter-enum'
+import { ScanDispatchTicketStatusCode } from '@/types/enums/scan-dispatch-ticket-status-enum'
 import { getUserErrorMessage } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 
-export type DispatchQueueStatusFilter = 'ALL' | ScanDispatchTicketStatusCode | 'FAILED'
-
-const STATUS_FILTER_MAP: Record<DispatchQueueStatusFilter, ScanDispatchTicketStatusCode[]> = {
-  ALL: ['PENDING', 'PROCESSING', 'SUSPENDED'],
-  PENDING: ['PENDING'],
-  PROCESSING: ['PROCESSING'],
-  SUSPENDED: ['SUSPENDED'],
-  DONE: ['DONE'],
-  EXPIRED: ['EXPIRED'],
-  CANCELLED: ['CANCELLED'],
-  FAILED: ['PENDING'],
+const STATUS_FILTER_MAP: Record<DispatchQueueStatusFilterCode, ScanDispatchTicketStatusCode[]> = {
+  [DispatchQueueStatusFilterCode.ALL]: [
+    ScanDispatchTicketStatusCode.PENDING,
+    ScanDispatchTicketStatusCode.PROCESSING,
+    ScanDispatchTicketStatusCode.SUSPENDED,
+  ],
+  [DispatchQueueStatusFilterCode.PENDING]: [ScanDispatchTicketStatusCode.PENDING],
+  [DispatchQueueStatusFilterCode.PROCESSING]: [ScanDispatchTicketStatusCode.PROCESSING],
+  [DispatchQueueStatusFilterCode.SUSPENDED]: [ScanDispatchTicketStatusCode.SUSPENDED],
+  [DispatchQueueStatusFilterCode.FAILED]: [ScanDispatchTicketStatusCode.PENDING],
 }
+
+export {
+  DispatchQueueStatusFilterCode,
+  DispatchQueueStatusFilterDescription,
+} from '@/types/enums/dispatch-queue-status-filter-enum'
 
 export function useDispatchQueue() {
   const loading = ref(false)
@@ -25,13 +30,13 @@ export function useDispatchQueue() {
   const pageNum = ref(1)
   const pageSize = ref(20)
   const total = ref(0)
-  const statusFilter = ref<DispatchQueueStatusFilter>('ALL')
+  const statusFilter = ref<DispatchQueueStatusFilterCode>(DispatchQueueStatusFilterCode.ALL)
   const scannerDeviceId = ref('')
   const scannerStationId = ref('')
   const taskKind = ref<ScanTaskKindCode | undefined>()
 
   const pendingCount = computed(() =>
-    tickets.value.filter(item => item.status === 'PENDING').length,
+    tickets.value.filter(item => item.status === ScanDispatchTicketStatusCode.PENDING).length,
   )
 
   async function loadQueue() {
@@ -46,11 +51,14 @@ export function useDispatchQueue() {
         taskKind: taskKind.value,
         scannerDeviceId: scannerDeviceId.value || undefined,
         scannerStationId: scannerStationId.value || undefined,
-        failureOnly: filter === 'FAILED' ? true : undefined,
-        excludeFailed: filter === 'ALL' || filter === 'PENDING' ? true : undefined,
+        failureOnly: filter === DispatchQueueStatusFilterCode.FAILED ? true : undefined,
+        excludeFailed: filter === DispatchQueueStatusFilterCode.ALL
+          || filter === DispatchQueueStatusFilterCode.PENDING
+          ? true
+          : undefined,
       })
-      tickets.value = readPageList(page, '派单队列加载失败，请稍后重试')
-      total.value = readPageTotal(page, '派单队列总数加载失败，请稍后重试')
+      tickets.value = page.list
+      total.value = Number(page.total)
     }
     catch (error) {
       errorMessage.value = getUserErrorMessage(error)
@@ -67,7 +75,7 @@ export function useDispatchQueue() {
     scannerStationId.value = stationId
   }
 
-  function setStatusFilter(filter: DispatchQueueStatusFilter) {
+  function setStatusFilter(filter: DispatchQueueStatusFilterCode) {
     statusFilter.value = filter
     pageNum.value = 1
   }
@@ -85,6 +93,8 @@ export function useDispatchQueue() {
     pageSize,
     total,
     statusFilter,
+    scannerDeviceId,
+    scannerStationId,
     taskKind,
     pendingCount,
     loadQueue,

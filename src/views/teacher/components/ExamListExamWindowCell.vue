@@ -17,7 +17,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { ExamWorkbenchSummaryVO } from '@/apis/mark/exam'
+import type { ExamWorkbenchSummaryResponse } from '@/apis/mark/exam'
 import { computed } from 'vue'
 import {
   formatExamWindowCompactRange,
@@ -29,7 +29,7 @@ import {
 defineOptions({ name: 'ExamListExamWindowCell' })
 
 const props = defineProps<{
-  exam: ExamWorkbenchSummaryVO
+  exam: ExamWorkbenchSummaryResponse
 }>()
 
 /** 列表考试时间窗单元格：紧凑区间 + 相对阶段 + hover 完整时间。 */

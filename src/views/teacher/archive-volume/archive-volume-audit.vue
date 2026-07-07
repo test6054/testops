@@ -1,94 +1,137 @@
 <template>
-  <StageWorkbenchShell>
+  <StageWorkbenchShell class="archive-audit-page">
     <template #context>
-      <ContextBar show-title title="归档审计事件" />
+      <ContextBar layout="workbench" show-title title="归档审计事件" subtitle="历史归档">
+        <template #actions>
+          <UiButton variant="ghost" size="sm" @click="goList">返回列表</UiButton>
+        </template>
+      </ContextBar>
     </template>
 
-    <UiFilterBar
-      v-model="filterModel"
-      :fields="filterFields"
-      variant="panel"
-      show-labels
-      search-text="查询"
-      @search="handleSearch"
-      @reset="handleReset"
+    <template #signal>
+      <SignalBand variant="tiles" :metrics="signalMetrics" compact />
+    </template>
+
+    <UiEmpty
+      v-if="loadFailed"
+      description="审计事件加载失败"
+      action-label="重试"
+      @action="() => loadEvents()"
     />
 
-    <UiDataTable
-      v-model:current="pagination.pageNum"
-      v-model:page-size="pagination.pageSize"
-      :columns="columns"
-      :data-source="events"
-      :loading="loading"
-      :total="pagination.total"
-      flat
-      row-key="eventId"
-      size="middle"
-      empty-description="暂无审计事件"
-      @page-change="loadEvents"
-    >
-      <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'eventType'">
-          {{ eventTypeLabel(record.eventType) }}
-        </template>
-        <template v-else-if="column.key === 'volumeId'">
-          <button
-            v-if="record.volumeId"
-            type="button"
-            class="link-cell"
-            @click="goVolumeDetail(record.volumeId)"
-          >
-            {{ record.volumeId }}
-          </button>
-        </template>
-        <template v-else-if="column.key === 'createTime'">
-          {{ formatDateTime(record.createTime) }}
-        </template>
+    <WorkbenchSurfaceCard v-else flush>
+      <template #toolbar>
+        <UiFilterBar
+          v-model="filterModel"
+          :fields="filterFields"
+          variant="panel"
+          show-labels
+          search-text="查询"
+          @search="handleSearch"
+          @reset="handleReset"
+        />
       </template>
-    </UiDataTable>
+
+      <UiDataTable
+        v-model:current="pagination.pageNum"
+        v-model:page-size="pagination.pageSize"
+        :columns="columns"
+        :data-source="events"
+        :loading="loading"
+        :total="pagination.total"
+        flat
+        row-key="eventId"
+        size="middle"
+        empty-description="暂无审计事件"
+        @page-change="loadEvents"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'eventType'">
+            <UiTag :tone="archiveVolumeEventTypeTone(record.eventType)" size="sm">
+              {{ archiveVolumeEventTypeLabel(record.eventType) }}
+            </UiTag>
+          </template>
+          <template v-else-if="column.key === 'volumeId'">
+            <button
+              v-if="record.volumeId"
+              type="button"
+              class="link-cell"
+              @click="goVolumeDetail(record.volumeId)"
+            >
+              {{ record.volumeId }}
+            </button>
+          </template>
+          <template v-else-if="column.key === 'operatorUserId'">
+            {{ record.operatorNickName || record.operatorUserId || '—' }}
+          </template>
+          <template v-else-if="column.key === 'createTime'">
+            {{ formatDateTime(record.createTime) }}
+          </template>
+        </template>
+      </UiDataTable>
+    </WorkbenchSurfaceCard>
+
+    <ArchiveVolumeListNextStepsPanel variant="audit" />
   </StageWorkbenchShell>
 </template>
 
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  ArchiveVolumeAuditEventVO,
+  ArchiveVolumeAuditEventResponse,
   ArchiveVolumeEventTypeCode,
 } from '@/apis/mark/archive-volume'
 import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ARCHIVE_VOLUME_EVENT_TYPE_LABEL, pageArchiveAuditEvents } from '@/apis/mark/archive-volume'
+import {
+  ARCHIVE_VOLUME_EVENT_TYPE_OPTIONS,
+  pageArchiveAuditEvents,
+} from '@/apis/mark/archive-volume'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import {
+  archiveVolumeEventTypeLabel,
+  archiveVolumeEventTypeTone,
+} from '@/utils/archive-volume-event-ui'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readPageList, readPageTotal } from '@/utils/page-result'
-import { strictEnumLabel } from '@/utils/strict-enum'
+import ArchiveVolumeListNextStepsPanel from '@/views/teacher/archive-volume/components/ArchiveVolumeListNextStepsPanel.vue'
 
 defineOptions({ name: 'TeacherArchiveVolumeAudit' })
 
 const router = useRouter()
 const loading = ref(false)
-const events = ref<ArchiveVolumeAuditEventVO[]>([])
+const loadFailed = ref(false)
+const events = ref<ArchiveVolumeAuditEventResponse[]>([])
 const pagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
-const filterForm = reactive({
+
+const signalMetrics = computed<SignalMetric[]>(() =>
+  pagination.total > 0 ? [{ key: 'events', label: '审计事件', value: pagination.total }] : [],
+)
+
+interface ArchiveVolumeAuditFilterForm extends Record<string, unknown> {
+  volumeId: string
+  eventType?: ArchiveVolumeEventTypeCode
+}
+
+const filterForm = reactive<ArchiveVolumeAuditFilterForm>({
   volumeId: '',
-  eventType: undefined as ArchiveVolumeEventTypeCode | undefined,
 })
 const filterModel = computed<Record<string, unknown>>({
-  get: () => filterForm as Record<string, unknown>,
+  get: () => filterForm,
   set: (value) => {
     Object.assign(filterForm, value)
   },
 })
-
-const eventTypeOptions = Object.entries(ARCHIVE_VOLUME_EVENT_TYPE_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
 
 const filterFields: FilterField[] = [
   { key: 'volumeId', label: '卷ID', type: 'input', placeholder: '归档卷 ID' },
@@ -96,28 +139,24 @@ const filterFields: FilterField[] = [
     key: 'eventType',
     label: '事件类型',
     type: 'select',
-    options: eventTypeOptions,
+    options: ARCHIVE_VOLUME_EVENT_TYPE_OPTIONS,
     allowClear: true,
   },
 ]
 
-const columns: ColumnsType<ArchiveVolumeAuditEventVO> = [
+const columns: ColumnsType<ArchiveVolumeAuditEventResponse> = [
   { title: '事件类型', key: 'eventType', dataIndex: 'eventType', width: 160 },
   { title: '卷ID', key: 'volumeId', dataIndex: 'volumeId', width: 120 },
-  { title: '操作人', dataIndex: 'operatorUserId', key: 'operatorUserId', width: 100 },
+  { title: '操作人', key: 'operatorUserId', width: 120 },
   { title: '说明', dataIndex: 'reason', key: 'reason', ellipsis: true },
   { title: '前状态', dataIndex: 'beforeStatus', key: 'beforeStatus', width: 100 },
   { title: '后状态', dataIndex: 'afterStatus', key: 'afterStatus', width: 100 },
   { title: '时间', key: 'createTime', dataIndex: 'createTime', width: 168 },
 ]
 
-function eventTypeLabel(code: ArchiveVolumeEventTypeCode | undefined) {
-  if (!code) return '—'
-  return strictEnumLabel(ARCHIVE_VOLUME_EVENT_TYPE_LABEL, code, 'eventType')
-}
-
 async function loadEvents() {
   loading.value = true
+  loadFailed.value = false
   try {
     const result = await pageArchiveAuditEvents({
       volumeId: filterForm.volumeId.trim() || undefined,
@@ -125,9 +164,14 @@ async function loadEvents() {
       pageNum: pagination.pageNum,
       pageSize: pagination.pageSize,
     })
-    events.value = readPageList(result, '审计事件列表异常')
-    pagination.total = readPageTotal(result)
+    events.value = result.list
+    pagination.total = Number(result.total)
+    pagination.pageNum = result.pageNum
+    pagination.pageSize = result.pageSize
   } catch (error) {
+    events.value = []
+    pagination.total = 0
+    loadFailed.value = true
     showUserError(error, '加载审计事件失败')
   } finally {
     loading.value = false
@@ -151,6 +195,10 @@ function goVolumeDetail(volumeId: string) {
     name: 'TeacherArchiveVolumeDetail',
     params: { volumeId },
   })
+}
+
+function goList() {
+  void router.push({ name: 'TeacherArchiveVolumeList' })
 }
 
 onMounted(() => {

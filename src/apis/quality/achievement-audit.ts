@@ -1,4 +1,5 @@
-import type { AchievementAuditStatus } from './types'
+import type { AuditEvidenceItemRequest, AuditEvidenceItemVO } from './audit-evidence'
+import type { AchievementAuditStatusCode } from './types'
 /**
  * 达成度审核责任链事件 API。
  * 后端对象：AchievementAuditController /api/quality/achievement-audits。
@@ -9,40 +10,30 @@ const AUDIT = '/api/quality/achievement-audits'
 
 export interface AchievementAuditVO {
   id: string
-  achievementResultId: string
-  auditorUserId: string
-  auditorNickName: string
+  achievementResultId?: string
+  auditorUserId?: string
+  auditorNickName?: string
   auditorRole?: string
-  auditEvent: AchievementAuditStatus
-  auditStatusFrom: AchievementAuditStatus
-  auditStatusTo: AchievementAuditStatus
+  auditEvent?: string
+  auditStatusFrom?: AchievementAuditStatusCode
+  auditStatusTo?: AchievementAuditStatusCode
   auditOpinion?: string
   returnReason?: string
-  evidenceItems?: AchievementAuditEvidenceItem[]
-  auditedTime: string
+  evidenceItems?: AuditEvidenceItemVO[]
+  auditedTime?: string
   createTime?: string
   updateTime?: string
-}
-
-export interface AchievementAuditEvidenceItem {
-  evidenceType?: string
-  evidenceTitle?: string
-  evidenceCode?: string
-  archiveId?: string
-  fileNodeId?: string
-  reportId?: string
-  remark?: string
 }
 
 export interface AchievementAuditCreateRequest {
   achievementResultId: string
   auditorRole?: string
-  auditEvent: AchievementAuditStatus
-  auditStatusFrom: AchievementAuditStatus
-  auditStatusTo: AchievementAuditStatus
+  auditEvent: string
+  auditStatusFrom?: AchievementAuditStatusCode
+  auditStatusTo?: AchievementAuditStatusCode
   auditOpinion?: string
   returnReason?: string
-  evidenceItems?: AchievementAuditEvidenceItem[]
+  evidenceItems?: AuditEvidenceItemRequest[]
 }
 
 export const achievementAuditApi = {

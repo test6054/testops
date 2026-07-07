@@ -1,0 +1,186 @@
+<script lang="ts" setup>
+import type { Component } from 'vue'
+import type { PrepStepCard } from '@/utils/exam-prep-step-ui'
+import ContainerOutlined from '@ant-design/icons-vue/ContainerOutlined'
+import FilePdfOutlined from '@ant-design/icons-vue/FilePdfOutlined'
+import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
+import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { WORKSPACE_STAGE_STATUS_TONE } from '@/constants/mark-workspace-nav'
+import { strictEnumTone } from '@/utils/strict-enum'
+
+defineOptions({ name: 'PrepStepPipelineRow' })
+
+const props = defineProps<{
+  steps: PrepStepCard[]
+  currentStepKey?: string | null
+  locked?: boolean
+}>()
+
+const emit = defineEmits<{
+  select: [step: PrepStepCard]
+}>()
+
+const ICON_MAP: Record<string, Component> = {
+  materialLayout: ContainerOutlined,
+  candidateRoster: TeamOutlined,
+  paperTemplate: ProfileOutlined,
+  layoutDesign: FilePdfOutlined,
+  printPackage: ContainerOutlined,
+}
+
+function resolveIcon(key: string): Component {
+  return ICON_MAP[key] ?? ProfileOutlined
+}
+
+function stepTone(step: PrepStepCard) {
+  return strictEnumTone(WORKSPACE_STAGE_STATUS_TONE, step.status, '考试准备阶段状态')
+}
+
+function handleSelect(step: PrepStepCard): void {
+  if (props.locked && step.key !== 'materialLayout') {
+    return
+  }
+  emit('select', step)
+}
+</script>
+
+<template>
+  <WorkbenchSurfaceCard class="prep-step-pipeline">
+    <template #head>
+      <span class="prep-step-pipeline__title">准备步骤</span>
+      <span class="prep-step-pipeline__meta">
+        {{ steps.filter((item) => item.status === 'completed').length }} / {{ steps.length }} 已完成
+      </span>
+    </template>
+    <div class="prep-step-pipeline__track">
+      <button
+        v-for="(step, index) in steps"
+        :key="step.key"
+        type="button"
+        class="prep-step-pipeline__step"
+        :class="[
+          `prep-step-pipeline__step--${step.status}`,
+          {
+            'prep-step-pipeline__step--current': currentStepKey === step.key,
+            'prep-step-pipeline__step--locked': locked && step.key !== 'materialLayout',
+          },
+        ]"
+        @click="handleSelect(step)"
+      >
+        <span v-if="index < steps.length - 1" class="prep-step-pipeline__connector" aria-hidden="true" />
+        <span class="prep-step-pipeline__step-head">
+          <component :is="resolveIcon(step.key)" class="prep-step-pipeline__icon" />
+          <span class="prep-step-pipeline__label">{{ step.title }}</span>
+        </span>
+        <p class="prep-step-pipeline__desc">{{ step.description }}</p>
+        <UiTag :tone="stepTone(step)" size="sm">{{ step.statusText }}</UiTag>
+      </button>
+    </div>
+  </WorkbenchSurfaceCard>
+</template>
+
+<style scoped lang="scss">
+.prep-step-pipeline {
+  &__title {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  &__meta {
+    font-size: 12px;
+    color: var(--dp-text-muted, #64748b);
+  }
+
+  &__track {
+    display: flex;
+    gap: 12px;
+    align-items: stretch;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  &__step {
+    position: relative;
+    flex: 1;
+    min-width: 160px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    text-align: left;
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    background: var(--dp-surface, #fff);
+    cursor: pointer;
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease;
+
+    &:hover:not(:disabled) {
+      border-color: var(--ant-color-primary, #1677ff);
+    }
+
+    &--completed {
+      border-color: var(--ant-color-success-border, #86efac);
+      background: var(--ant-color-success-bg, #f0fdf4);
+    }
+
+    &--active,
+    &--warning {
+      border-color: var(--ant-color-primary-border, #93c5fd);
+      background: var(--ant-color-primary-bg, #eff6ff);
+    }
+
+    &--current {
+      border-color: var(--ant-color-primary, #1677ff);
+      box-shadow: 0 0 0 1px var(--ant-color-primary, #1677ff);
+    }
+
+    &--locked {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+  }
+
+  &__connector {
+    position: absolute;
+    right: -10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 2px;
+    background: var(--dp-border, #e2e8f0);
+    z-index: 1;
+  }
+
+  &__step-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__icon {
+    font-size: 16px;
+    color: var(--ant-color-primary, #1677ff);
+  }
+
+  &__label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__desc {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--dp-text-muted, #64748b);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+</style>

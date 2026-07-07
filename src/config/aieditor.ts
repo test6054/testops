@@ -48,7 +48,6 @@ export function createOptimizedAiEditorConfig(baseConfig: Partial<AiEditorOption
     placeholder: baseConfig.placeholder || '请输入内容',
     toolbarKeys,
     // 工具栏位置：顶部
-    // @ts-ignore - AiEditor 支持此配置但类型定义可能缺失
     textSelectionBubbleMenu: { enable: true },
     onChange: baseConfig.onChange && createDebouncedCallback(baseConfig.onChange, perfConfig.debounceDelay),
     onFocus: baseConfig.onFocus,

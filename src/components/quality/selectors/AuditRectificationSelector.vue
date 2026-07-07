@@ -6,13 +6,13 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { AuditRectificationVO } from '@/apis/quality/audit-rectification'
-import type { AuditRectificationStatus } from '@/apis/quality/types'
+import type { AuditRectificationStatusCode } from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { onMounted, ref, watch } from 'vue'
 import { auditRectificationApi } from '@/apis/quality/audit-rectification'
 import {
   AUDIT_RECTIFICATION_STATUS_COLOR,
-  AUDIT_RECTIFICATION_STATUS_LABEL,
+  AuditRectificationStatusDescription,
 } from '@/apis/quality/types'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -23,7 +23,7 @@ interface Props {
   value?: string | null
   auditIssueId?: string | null
   ownerUserId?: string | null
-  status?: AuditRectificationStatus
+  status?: AuditRectificationStatusCode
   placeholder?: string
   allowClear?: boolean
   disabled?: boolean
@@ -79,11 +79,11 @@ async function loadOptions() {
   }
 }
 
-function auditRectificationStatusLabel(value: AuditRectificationStatus): string {
-  return strictEnumLabel(AUDIT_RECTIFICATION_STATUS_LABEL, value, '审核评估整改状态')
+function auditRectificationStatusLabel(value: AuditRectificationStatusCode): string {
+  return strictEnumLabel(AuditRectificationStatusDescription, value, '审核评估整改状态')
 }
 
-function auditRectificationStatusColor(value: AuditRectificationStatus): BadgeTone {
+function auditRectificationStatusColor(value: AuditRectificationStatusCode): BadgeTone {
   return strictEnumTone(AUDIT_RECTIFICATION_STATUS_COLOR, value, '审核评估整改状态')
 }
 

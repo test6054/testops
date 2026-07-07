@@ -19,15 +19,15 @@
  * - 终态任务（SUCCEEDED / FAILED / CANCELLED）轮询自动 stop；调用方通过 watch(getTaskStatus(id)) 感知
  */
 import type { AiTaskVO } from '@/apis/quality/ai-task'
-import type { AiTaskStatus } from '@/apis/quality/types'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { aiTaskApi } from '@/apis/quality/ai-task'
+import { AiTaskStatusCode } from '@/apis/quality/types'
 
-const TERMINAL_STATUSES: ReadonlySet<AiTaskStatus> = new Set<AiTaskStatus>([
-  'SUCCEEDED',
-  'FAILED',
-  'CANCELLED',
+const TERMINAL_STATUSES: ReadonlySet<AiTaskStatusCode> = new Set<AiTaskStatusCode>([
+  AiTaskStatusCode.SUCCEEDED,
+  AiTaskStatusCode.FAILED,
+  AiTaskStatusCode.CANCELLED,
 ])
 
 const DEFAULT_POLL_INTERVAL_MS = 3000
@@ -60,7 +60,7 @@ export const useAiTaskStore = defineStore('aiTask', () => {
     pollingIds.value = new Set(pollingHandles.keys())
   }
 
-  function isTerminal(status: AiTaskStatus): boolean {
+  function isTerminal(status: AiTaskStatusCode): boolean {
     return TERMINAL_STATUSES.has(status)
   }
 
@@ -137,8 +137,8 @@ export const useAiTaskStore = defineStore('aiTask', () => {
   /**
    * 取消任务；后端置为 CANCELLED，前端立即停止轮询并刷新缓存。
    */
-  async function cancelTask(taskId: string, reason?: string): Promise<void> {
-    await aiTaskApi.cancel(taskId, reason)
+  async function cancelTask(taskId: string, reason: string): Promise<void> {
+    await aiTaskApi.cancel({ id: taskId, reason })
     stopPolling(taskId)
     await fetchTask(taskId)
   }

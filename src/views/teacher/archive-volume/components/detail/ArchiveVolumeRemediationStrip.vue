@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type {
-  ArchiveRemediationStatusCode,
-  ArchiveRemediationTaskVO,
+  ArchiveRemediationTaskResponse,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed } from 'vue'
 import {
-  ARCHIVE_REMEDIATION_STATUS_LABEL,
   ARCHIVE_REMEDIATION_STATUS_TONE,
+  ArchiveRemediationStatusCode,
+  ArchiveRemediationStatusDescription,
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -19,7 +19,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'ArchiveVolumeRemediationStrip' })
 
 const props = defineProps<{
-  task: ArchiveRemediationTaskVO | null
+  task: ArchiveRemediationTaskResponse | null
   currentUserId: string
   canAdvance: boolean
   canManageCoordinator: boolean
@@ -55,7 +55,7 @@ const description = computed(() => {
 })
 
 function remediationStatusLabel(code: ArchiveRemediationStatusCode) {
-  return strictEnumLabel(ARCHIVE_REMEDIATION_STATUS_LABEL, code, 'taskStatus')
+  return strictEnumLabel(ArchiveRemediationStatusDescription, code, 'taskStatus')
 }
 
 function remediationStatusTone(code: ArchiveRemediationStatusCode): BadgeTone {
@@ -85,47 +85,47 @@ function remediationStatusTone(code: ArchiveRemediationStatusCode): BadgeTone {
         登记补正材料
       </UiButton>
       <UiButton
-        v-if="canAdvance && task.taskStatus === 'OPEN'"
+        v-if="canAdvance && task.taskStatus === ArchiveRemediationStatusCode.OPEN"
         size="sm"
         variant="outline"
         :loading="updating"
-        @click="emit('advance', 'IN_PROGRESS')"
+        @click="emit('advance', ArchiveRemediationStatusCode.IN_PROGRESS)"
       >
         开始处理
       </UiButton>
       <UiButton
-        v-if="canAdvance && task.taskStatus === 'IN_PROGRESS'"
+        v-if="canAdvance && task.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS"
         size="sm"
         variant="outline"
         :loading="updating"
-        @click="emit('advance', 'RESUBMITTED')"
+        @click="emit('advance', ArchiveRemediationStatusCode.RESUBMITTED)"
       >
         标记已重提
       </UiButton>
       <UiButton
-        v-if="canManageCoordinator && task.taskStatus === 'OPEN'"
+        v-if="canManageCoordinator && task.taskStatus === ArchiveRemediationStatusCode.OPEN"
         size="sm"
         variant="outline"
         :loading="updating"
-        @click="emit('advance', 'IN_PROGRESS')"
+        @click="emit('advance', ArchiveRemediationStatusCode.IN_PROGRESS)"
       >
         开始处理
       </UiButton>
       <UiButton
-        v-if="canManageCoordinator && task.taskStatus === 'IN_PROGRESS'"
+        v-if="canManageCoordinator && task.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS"
         size="sm"
         variant="outline"
         :loading="updating"
-        @click="emit('advance', 'RESUBMITTED')"
+        @click="emit('advance', ArchiveRemediationStatusCode.RESUBMITTED)"
       >
         标记已重提
       </UiButton>
       <UiButton
-        v-if="canManageCoordinator && task.taskStatus === 'RESUBMITTED'"
+        v-if="canManageCoordinator && task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED"
         size="sm"
         variant="outline"
         :loading="updating"
-        @click="emit('advance', 'CLOSED')"
+        @click="emit('advance', ArchiveRemediationStatusCode.CLOSED)"
       >
         复检关闭
       </UiButton>

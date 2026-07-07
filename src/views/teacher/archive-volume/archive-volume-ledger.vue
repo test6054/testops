@@ -1,18 +1,23 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title title="查阅台账">
-        <template #status>
-          <UiTag tone="blue" size="sm">查阅台账</UiTag>
-        </template>
+      <ContextBar layout="workbench" show-title title="查阅台账" subtitle="历史归档">
         <template #actions>
           <UiButton variant="ghost" size="sm" @click="goList">返回列表</UiButton>
         </template>
       </ContextBar>
     </template>
 
-    <a-tabs v-model:active-key="ledgerTab" class="archive-volume-ledger__tabs">
-      <a-tab-pane key="volume" tab="单卷台账">
+    <template #signal>
+      <SignalBand variant="tiles" :metrics="signalMetrics" compact />
+    </template>
+
+    <WorkbenchSurfaceCard flush class="archive-volume-ledger__surface">
+      <template #head>
+        <UiSectionTabs v-model="ledgerTab" :items="ledgerTabs" compact />
+      </template>
+
+      <div v-if="ledgerTab === 'volume'" class="archive-volume-ledger__pane">
         <UiFilterBar
           v-model="volumeFilterModel"
           :fields="volumeFilterFields"
@@ -34,35 +39,52 @@
             <UiButton variant="outline" size="sm" @click="goDetail">打开卷详情</UiButton>
           </div>
 
-          <UiDataTable
-            pagination-mode="none"
-            :columns="volumeAccessColumns"
-            :data-source="accessRecords"
-            :loading="volumeLoading"
-            :show-pagination="false"
-            flat
-            row-key="accessRecordId"
-            size="middle"
-            empty-description="该卷暂无查阅记录"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'accessStatus'">
-                <UiTag :tone="accessStatusTone(record.accessStatus)" size="sm">
-                  {{ accessStatusLabel(record.accessStatus) }}
+          <UiEmpty v-if="!volumeLoading && accessRecords.length === 0" description="该卷暂无查阅记录" />
+          <div v-else class="archive-volume-ledger__cards">
+            <article
+              v-for="record in accessRecords"
+              :key="record.accessRecordId"
+              class="approval-card"
+              :class="archiveAccessApprovalCardClass(record.accessStatus)"
+            >
+              <div class="approval-card__head">
+                <span class="approval-card__applicant">
+                  {{ archiveAccessApplicantLabel(
+                    record.applicantNickName,
+                    record.applicantIdentifier,
+                    record.applicantUserId,
+                  ) }}
+                </span>
+                <UiTag :tone="archiveAccessStatusTone(record.accessStatus)" size="sm">
+                  {{ archiveAccessStatusLabel(record.accessStatus) }}
                 </UiTag>
-              </template>
-              <template v-else-if="column.key === 'approvedTime'">
-                {{ formatDateTime(record.approvedTime) }}
-              </template>
-              <template v-else-if="column.key === 'expireTime'">
-                {{ formatDateTime(record.expireTime) }}
-              </template>
-            </template>
-          </UiDataTable>
+                <span class="approval-card__time">{{ formatDateTime(record.createTime) }}</span>
+              </div>
+              <p v-if="record.accessReason" class="approval-card__reason">{{ record.accessReason }}</p>
+              <p class="approval-card__meta">
+                <span v-if="record.departmentName">{{ record.departmentName }}</span>
+                <span v-if="record.approverNickName"> · 审批: {{ record.approverNickName }}</span>
+                <span v-if="record.expireTime"> · 到期: {{ formatDateTime(record.expireTime) }}</span>
+              </p>
+              <p
+                v-if="record.decisionComment && record.accessStatus === 'REJECTED'"
+                class="approval-card__reject"
+              >
+                拒绝原因: {{ record.decisionComment }}
+              </p>
+              <p
+                v-if="record.accessStatus === 'ACTIVE' && record.lastReadPage != null"
+                class="approval-card__meta"
+              >
+                最后阅读: 第 {{ record.lastReadPage }} 页
+                <span v-if="record.downloadCount != null"> · 下载次数: {{ record.downloadCount }}</span>
+              </p>
+            </article>
+          </div>
         </template>
-      </a-tab-pane>
+      </div>
 
-      <a-tab-pane key="tenant" tab="租户台账">
+      <div v-else class="archive-volume-ledger__pane">
         <UiFilterBar
           v-model="tenantFilterModel"
           :fields="tenantFilterFields"
@@ -88,17 +110,29 @@
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'accessStatus'">
-              <UiTag :tone="accessStatusTone(record.accessStatus)" size="sm">
-                {{ accessStatusLabel(record.accessStatus) }}
+              <UiTag :tone="archiveAccessStatusTone(record.accessStatus)" size="sm">
+                {{ archiveAccessStatusLabel(record.accessStatus) }}
               </UiTag>
+            </template>
+            <template v-else-if="column.key === 'applicant'">
+              {{ archiveAccessApplicantLabel(
+                record.applicantNickName,
+                record.applicantIdentifier,
+                record.applicantUserId,
+              ) }}
+            </template>
+            <template v-else-if="column.key === 'approver'">
+              {{ record.approverNickName || record.approverUserId || '—' }}
             </template>
             <template v-else-if="column.key === 'createTime'">
               {{ formatDateTime(record.createTime) }}
             </template>
           </template>
         </UiDataTable>
-      </a-tab-pane>
-    </a-tabs>
+      </div>
+    </WorkbenchSurfaceCard>
+
+    <ArchiveVolumeListNextStepsPanel variant="ledger" />
   </StageWorkbenchShell>
 </template>
 
@@ -106,36 +140,42 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchiveAccessStatusCode,
-  ArchiveVolumeAccessLedgerRowVO,
-  ArchiveVolumeAccessRecordVO,
-  ArchiveVolumeVO,
+  ArchiveVolumeAccessLedgerRowResponse,
+  ArchiveVolumeAccessRecordResponse,
+  ArchiveVolumeResponse,
 } from '@/apis/mark/archive-volume'
-import type { TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  ARCHIVE_ACCESS_STATUS_LABEL,
-  ARCHIVE_ACCESS_STATUS_TONE,
+  ARCHIVE_ACCESS_STATUS_OPTIONS,
   listArchiveVolumeAccessRecords,
   pageAccessLedger,
   pageArchiveVolumes,
 } from '@/apis/mark/archive-volume'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
-import { requireArrayResult } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
+import {
+  archiveAccessApplicantLabel,
+  archiveAccessApprovalCardClass,
+  archiveAccessStatusLabel,
+  archiveAccessStatusTone,
+} from '@/utils/archive-access-record-ui'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readPageList, readPageTotal } from '@/utils/page-result'
-import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import ArchiveVolumeListNextStepsPanel from '@/views/teacher/archive-volume/components/ArchiveVolumeListNextStepsPanel.vue'
 
 defineOptions({ name: 'TeacherArchiveVolumeLedger' })
 
@@ -144,32 +184,54 @@ const { grantsLoadFailed, listScopedDepartmentIds, filterListDepartmentOptions, 
   = useArchiveDutyAccess()
 
 const ledgerTab = ref('volume')
+const ledgerTabs = [
+  { key: 'volume', label: '单卷台账' },
+  { key: 'tenant', label: '租户台账' },
+]
 const volumeLoading = ref(false)
 const tenantLoading = ref(false)
 const selectedVolumeId = ref('')
 const selectedArchiveNo = ref('')
-const accessRecords = ref<ArchiveVolumeAccessRecordVO[]>([])
-const tenantRows = ref<ArchiveVolumeAccessLedgerRowVO[]>([])
+const accessRecords = ref<ArchiveVolumeAccessRecordResponse[]>([])
+const tenantRows = ref<ArchiveVolumeAccessLedgerRowResponse[]>([])
 const departmentOptions = ref<Array<{ value: string, label: string }>>([])
 
-const volumeFilterForm = reactive({ keyword: '' })
+interface ArchiveVolumeAccessLedgerVolumeFilterForm extends Record<string, unknown> {
+  keyword: string
+}
+
+const volumeFilterForm = reactive<ArchiveVolumeAccessLedgerVolumeFilterForm>({ keyword: '' })
 const volumeFilterModel = computed<Record<string, unknown>>({
-  get: () => volumeFilterForm as Record<string, unknown>,
+  get: () => volumeFilterForm,
   set: (value) => {
     Object.assign(volumeFilterForm, value)
   },
 })
-const tenantFilterForm = reactive({
-  departmentId: undefined as string | undefined,
-  accessStatus: undefined as ArchiveAccessStatusCode | undefined,
+interface TenantFilterForm extends Record<string, unknown> {
+  departmentId: string | undefined
+  accessStatus?: ArchiveAccessStatusCode
+}
+
+const tenantFilterForm = reactive<TenantFilterForm>({
+  departmentId: undefined,
 })
 const tenantFilterModel = computed<Record<string, unknown>>({
-  get: () => tenantFilterForm as Record<string, unknown>,
+  get: () => tenantFilterForm,
   set: (value) => {
     Object.assign(tenantFilterForm, value)
   },
 })
 const tenantPagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
+
+const signalMetrics = computed<SignalMetric[]>(() => {
+  if (ledgerTab.value === 'volume') {
+    if (!selectedVolumeId.value) return []
+    return [{ key: 'records', label: '查阅记录', value: accessRecords.value.length }]
+  }
+  return tenantPagination.total > 0
+    ? [{ key: 'records', label: '租户记录', value: tenantPagination.total }]
+    : []
+})
 
 const volumeFilterFields: FilterField[] = [
   { key: 'keyword', label: '档案号 / 标题', type: 'input', placeholder: '关键词' },
@@ -192,38 +254,22 @@ const tenantFilterFields = computed<FilterField[]>(() => [
     key: 'accessStatus',
     label: '查阅状态',
     type: 'select',
-    options: Object.entries(ARCHIVE_ACCESS_STATUS_LABEL).map(([value, label]) => ({
-      value,
-      label,
-    })),
+    options: ARCHIVE_ACCESS_STATUS_OPTIONS,
     allowClear: true,
   },
 ])
 
-const volumeAccessColumns: ColumnsType<ArchiveVolumeAccessRecordVO> = [
-  { title: '状态', key: 'accessStatus', width: 100 },
-  { title: '查阅原因', dataIndex: 'accessReason' },
-  { title: '最近阅读页', dataIndex: 'lastReadPage', width: 100 },
-  { title: '批准时间', key: 'approvedTime', width: 160 },
-  { title: '过期时间', key: 'expireTime', width: 160 },
-]
-
-const tenantAccessColumns: ColumnsType<ArchiveVolumeAccessLedgerRowVO> = [
+const tenantAccessColumns: ColumnsType<ArchiveVolumeAccessLedgerRowResponse> = [
   { title: '档案号', dataIndex: 'archiveNo', width: 140 },
   { title: '院系', dataIndex: 'departmentName', width: 140 },
+  { title: '申请人', key: 'applicant', width: 120 },
+  { title: '审批人', key: 'approver', width: 120 },
   { title: '最近阅读页', dataIndex: 'lastReadPage', width: 100 },
   { title: '状态', key: 'accessStatus', width: 100 },
   { title: '查阅原因', dataIndex: 'accessReason' },
+  { title: '审批意见', dataIndex: 'decisionComment', ellipsis: true },
   { title: '申请时间', key: 'createTime', width: 160 },
 ]
-
-function accessStatusLabel(code: ArchiveAccessStatusCode) {
-  return strictEnumLabel(ARCHIVE_ACCESS_STATUS_LABEL, code, 'accessStatus')
-}
-
-function accessStatusTone(code: ArchiveAccessStatusCode): BadgeTone {
-  return strictEnumTone(ARCHIVE_ACCESS_STATUS_TONE, code, 'accessStatus')
-}
 
 function applyScopedDepartmentDefault() {
   const scopeIds = listScopedDepartmentIds.value
@@ -233,10 +279,7 @@ function applyScopedDepartmentDefault() {
 }
 
 async function loadDepartments() {
-  const departments = requireArrayResult<TenantSchoolDepartmentDto>(
-    await departmentCatalogApi.list(),
-    '院系',
-  )
+  const departments = await departmentCatalogApi.list()
   departmentOptions.value = departments.map((item) => ({
     value: item.id,
     label: item.deptName,
@@ -253,8 +296,8 @@ async function locateVolume() {
   volumeLoading.value = true
   try {
     const page = await pageArchiveVolumes({ keyword, pageNum: 1, pageSize: 1 })
-    const list = readPageList(page, '归档卷查询异常')
-    const volume: ArchiveVolumeVO | undefined = list[0]
+    const list = page.list
+    const volume: ArchiveVolumeResponse | undefined = list[0]
     if (!volume) {
       message.warning('未找到匹配的归档卷')
       selectedVolumeId.value = ''
@@ -281,8 +324,10 @@ async function loadTenantLedger() {
       pageNum: tenantPagination.pageNum,
       pageSize: tenantPagination.pageSize,
     })
-    tenantRows.value = readPageList(result, '查阅利用台账异常')
-    tenantPagination.total = readPageTotal(result)
+    tenantRows.value = result.list
+    tenantPagination.total = Number(result.total)
+    tenantPagination.pageNum = result.pageNum
+    tenantPagination.pageSize = result.pageSize
   } catch (error) {
     showUserError(error, '加载查阅台账失败')
   } finally {
@@ -353,5 +398,11 @@ onMounted(() => {
 .archive-volume-ledger__title {
   font-weight: 600;
   font-size: 16px;
+}
+
+.archive-volume-ledger__cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-2, 8px);
 }
 </style>

@@ -2,10 +2,6 @@
  * 答辩相关状态枚举
  * 统一管理答辩系统中的各种状态类型
  */
-
-import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
-
-
 /** 答辩会话状态（后端原始状态，用于详细场景） */
 export enum DefenseSessionStatus {
   /** 未开始 */
@@ -114,7 +110,7 @@ export const DEFENSE_TASK_STATUS_COLOR: Record<DefenseTaskStatus, string> = {
 }
 
 export function getDefenseTaskStatusColor(status: DefenseTaskStatus): string {
-  return strictEnumTone(DEFENSE_TASK_STATUS_COLOR, status, '答辩任务状态')
+  return DEFENSE_TASK_STATUS_COLOR[status]
 }
 
 
@@ -163,21 +159,21 @@ export enum AnswerStatus {
  * 获取会话状态文本
  */
 export function getSessionStatusText(status: DefenseSessionStatus): string {
-  return strictEnumValue(DEFENSE_SESSION_STATUS_CONFIG, status, '答辩会话状态').text
+  return DEFENSE_SESSION_STATUS_CONFIG[status].text
 }
 
 /**
  * 获取会话状态颜色
  */
 export function getSessionStatusColor(status: DefenseSessionStatus): string {
-  return strictEnumValue(DEFENSE_SESSION_STATUS_CONFIG, status, '答辩会话状态').color
+  return DEFENSE_SESSION_STATUS_CONFIG[status].color
 }
 
 /**
  * 获取会话状态描述
  */
 export function getSessionStatusDescription(status: DefenseSessionStatus): string {
-  return strictEnumValue(DEFENSE_SESSION_STATUS_CONFIG, status, '答辩会话状态').description
+  return DEFENSE_SESSION_STATUS_CONFIG[status].description
 }
 
 /**
@@ -188,7 +184,7 @@ export function getQuestionTypeText(type: DefenseQuestionType): string {
     OPEN_ENDED: '问答题',
     MULTIPLE_CHOICE: '选择题'
   }
-  return strictEnumLabel(textMap, type, '答辩题目类型')
+  return textMap[type]
 }
 
 /**
@@ -199,7 +195,7 @@ export function getQuestionTypeColor(type: DefenseQuestionType): string {
     MULTIPLE_CHOICE: 'blue',
     OPEN_ENDED: 'purple'
   }
-  return strictEnumTone(colorMap, type, '答辩题目类型')
+  return colorMap[type]
 }
 
 /**
@@ -211,7 +207,7 @@ export function getDifficultyText(difficulty: DefenseDifficulty): string {
     MEDIUM: '中等',
     HARD: '困难'
   }
-  return strictEnumLabel(textMap, difficulty, '答辩难度')
+  return textMap[difficulty]
 }
 
 /**
@@ -223,7 +219,7 @@ export function getDifficultyColor(difficulty: DefenseDifficulty): string {
     MEDIUM: 'orange',
     HARD: 'red'
   }
-  return strictEnumTone(colorMap, difficulty, '答辩难度')
+  return colorMap[difficulty]
 }
 
 /**
@@ -237,7 +233,7 @@ export function getDefenseResultText(result: DefenseResult): string {
     EXPIRED: '过期未参加',
     RESUBMITTED: '有新提交，可重新答辩'
   }
-  return strictEnumLabel(textMap, result, '答辩结果')
+  return textMap[result]
 }
 
 /**
@@ -251,7 +247,7 @@ export function getDefenseResultColor(result: DefenseResult): string {
     EXPIRED: 'gray',
     RESUBMITTED: 'blue'
   }
-  return strictEnumTone(colorMap, result, '答辩结果')
+  return colorMap[result]
 }
 
 /**

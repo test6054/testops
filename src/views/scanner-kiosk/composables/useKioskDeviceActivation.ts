@@ -11,6 +11,11 @@ import {
   LocalAgentUnavailableError,
 } from '@/apis/mark/scanner-agent-local'
 import { bindScannerOperator } from '@/apis/mark/scanner-operator-bind'
+import { AgentDiagnosticStatusCode } from '@/types/enums/agent-diagnostic-status-enum'
+import {
+  KioskActivationGateReasonCode,
+  KioskActivationGateReasonDescription,
+} from '@/types/enums/kiosk-activation-gate-reason-enum'
 import { getUserErrorMessage } from '@/utils/error-handler'
 import {
   clearKioskAuthSession,
@@ -71,17 +76,21 @@ function createKioskDeviceActivation() {
   const kioskBrowserSessionSyncNeeded = computed(() =>
     needsKioskBrowserSessionSync(health.value?.bound),
   )
-  const activationGateReason = computed(() => {
-    if (!health.value?.bound) return 'UNBOUND'
-    if (health.value.rebindRequired) return 'REBIND_REQUIRED'
-    if (health.value.tokenResetRequired) return 'TOKEN_RESET_REQUIRED'
-    return 'NONE'
+  const activationGateReason = computed((): KioskActivationGateReasonCode => {
+    if (!health.value?.bound) return KioskActivationGateReasonCode.UNBOUND
+    if (health.value.rebindRequired) return KioskActivationGateReasonCode.REBIND_REQUIRED
+    if (health.value.tokenResetRequired) return KioskActivationGateReasonCode.TOKEN_RESET_REQUIRED
+    return KioskActivationGateReasonCode.NONE
   })
 
   const activationTitle = computed(() => {
     const reason = activationGateReason.value
-    if (reason === 'REBIND_REQUIRED') return '设备身份已变更，请重新激活'
-    if (reason === 'TOKEN_RESET_REQUIRED') return '浏览器会话失效，请重新激活'
+    if (reason === KioskActivationGateReasonCode.REBIND_REQUIRED) {
+      return KioskActivationGateReasonDescription[KioskActivationGateReasonCode.REBIND_REQUIRED]
+    }
+    if (reason === KioskActivationGateReasonCode.TOKEN_RESET_REQUIRED) {
+      return KioskActivationGateReasonDescription[KioskActivationGateReasonCode.TOKEN_RESET_REQUIRED]
+    }
     return isDeviceBound.value ? '重新激活一体机' : '激活扫描一体机'
   })
 
@@ -99,13 +108,13 @@ function createKioskDeviceActivation() {
       }
     }
     if (needsActivationGate.value) {
-      if (activationGateReason.value === 'REBIND_REQUIRED') {
+      if (activationGateReason.value === KioskActivationGateReasonCode.REBIND_REQUIRED) {
         return {
           headline: '需要重新激活一体机',
           detail: '本机设备身份与平台记录不一致，请重新输入激活码（一次激活，三类采集共用）。',
         }
       }
-      if (activationGateReason.value === 'TOKEN_RESET_REQUIRED') {
+      if (activationGateReason.value === KioskActivationGateReasonCode.TOKEN_RESET_REQUIRED) {
         return {
           headline: '需要重新激活一体机',
           detail: 'push_token 已变更，请重新输入激活码（一次激活，三类采集共用）。',
@@ -163,7 +172,7 @@ function createKioskDeviceActivation() {
       health.value = {
         ...health.value,
         scannerConnected: false,
-        diagnosticStatus: 'WARNING',
+        diagnosticStatus: AgentDiagnosticStatusCode.WARNING,
         diagnosticMessage: LOCAL_AGENT_UNAVAILABLE_ERROR,
       }
     }

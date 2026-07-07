@@ -1,16 +1,24 @@
-import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
 import type { ScanDispatchArchiveSnapshotVO } from '@/apis/mark/scanner-dispatch'
 import type {
-  ArchiveScanBatchModeCode,
   ScanWorkOrderArchiveContextVO,
   ScanWorkOrderLifecycleVO,
 } from '@/apis/mark/scanner-work-order'
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { ARCHIVE_MATERIAL_TYPE_LABEL } from '@/apis/mark/archive-volume'
+import {
+  ALL_ARCHIVE_MATERIAL_TYPE_CODES,
+  ArchiveMaterialTypeDescription,
+} from '@/apis/mark/archive-volume'
+import { ScannerColorModeCode, ScannerDuplexModeCode } from '@/apis/mark/exam-mark-scanner'
 import { getAgentSetupContext } from '@/apis/mark/scanner-agent-local'
 import { previewScanDispatch } from '@/apis/mark/scanner-dispatch'
 import { getScanWorkOrderContext, startScanWorkOrder } from '@/apis/mark/scanner-work-order'
+import {
+  ALL_ARCHIVE_SCAN_BATCH_MODE_CODES,
+  ArchiveScanBatchModeCode,
+} from '@/types/enums/archive-scan-batch-mode-enum'
+import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
+import { ScanWorkOrderStatusCode } from '@/types/enums/scan-work-order-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -24,26 +32,26 @@ export function useArchiveScanSession() {
 
   const volumeId = computed(() => String(route.query.volumeId ?? ''))
   const catalogCode = computed(() => String(route.query.catalogCode ?? ''))
-  const materialType = computed(
-    () => route.query.materialType as ArchiveMaterialTypeCode | undefined,
+  const materialType = computed(() =>
+    ALL_ARCHIVE_MATERIAL_TYPE_CODES.find((code) => code === route.query.materialType),
   )
   const returnTo = computed(() => String(route.query.returnTo ?? ''))
   const dispatchTicketId = computed(() => String(route.query.dispatchTicketId ?? ''))
   const batchMode = computed<ArchiveScanBatchModeCode>(() => {
-    const queryMode = route.query.batchMode
-    if (queryMode === 'PER_PAGE' || queryMode === 'MERGED') {
-      return queryMode
+    const parsedQuery = ALL_ARCHIVE_SCAN_BATCH_MODE_CODES.find((code) => code === route.query.batchMode)
+    if (parsedQuery) {
+      return parsedQuery
     }
-    const snapshotMode = route.query.archiveBatchMode
-    if (snapshotMode === 'PER_PAGE' || snapshotMode === 'MERGED') {
-      return snapshotMode
+    const parsedSnapshot = ALL_ARCHIVE_SCAN_BATCH_MODE_CODES.find((code) => code === route.query.archiveBatchMode)
+    if (parsedSnapshot) {
+      return parsedSnapshot
     }
-    return 'MERGED'
+    return ArchiveScanBatchModeCode.MERGED
   })
 
   const materialTypeLabel = computed(() =>
     materialType.value
-      ? strictEnumLabel(ARCHIVE_MATERIAL_TYPE_LABEL, materialType.value, 'materialType')
+      ? strictEnumLabel(ArchiveMaterialTypeDescription, materialType.value, 'materialType')
       : '未指定',
   )
 
@@ -65,7 +73,8 @@ export function useArchiveScanSession() {
 
   async function loadContext() {
     if (!volumeId.value) {
-      throw new Error('缺少 volumeId')
+      showUserError(null, '缺少归档卷 ID')
+      return
     }
     loading.value = true
     try {
@@ -76,7 +85,7 @@ export function useArchiveScanSession() {
         return
       }
       const context = await getScanWorkOrderContext({
-        taskKind: 'EXAM_ARCHIVE',
+        taskKind: ScanTaskKindCode.EXAM_ARCHIVE,
         scannerDeviceId: setup.scannerDeviceId,
         scannerStationId: setup.scannerStationId,
         volumeId: volumeId.value,
@@ -85,17 +94,23 @@ export function useArchiveScanSession() {
       archiveContext.value = context.archiveContext ?? null
       const batchNo = context.activeBatchExternalNo ?? context.archiveContext?.activeBatchExternalNo
       const status = context.activeWorkOrderStatus ?? context.archiveContext?.activeWorkOrderStatus
-      if (batchNo && status === 'IN_PROGRESS') {
+      if (
+        batchNo
+        && (
+          status === ScanWorkOrderStatusCode.COMMITTING
+          || status === ScanWorkOrderStatusCode.FAILED
+          || status === ScanWorkOrderStatusCode.IN_PROGRESS
+        )
+      ) {
         lifecycle.value = {
           workOrderId: context.activeWorkOrderId ?? context.archiveContext?.activeWorkOrderId,
           batchExternalNo: batchNo,
           status,
-          taskKind: 'EXAM_ARCHIVE',
+          taskKind: ScanTaskKindCode.EXAM_ARCHIVE,
         }
       }
     } catch (error) {
       showUserError(error, '加载归档扫描上下文失败')
-      throw error
     } finally {
       loading.value = false
     }
@@ -103,19 +118,22 @@ export function useArchiveScanSession() {
 
   async function startSession() {
     if (!volumeId.value || !materialType.value) {
-      throw new Error('缺少卷或材料类型')
+      showUserError(null, '缺少卷或材料类型')
+      return null
     }
     if (archiveContext.value?.canRegisterMaterial !== true) {
-      throw new Error('当前卷状态不允许登记材料')
+      showUserError(null, '当前卷状态不允许登记材料')
+      return null
     }
     loading.value = true
     try {
       const setup = await getAgentSetupContext()
       if (!setup.bound || !setup.scannerDeviceId || !setup.scannerStationId) {
-        throw new Error('扫描设备未绑定，请先激活一体机')
+        showUserError(null, '扫描设备未绑定，请先激活一体机')
+        return null
       }
       lifecycle.value = await startScanWorkOrder({
-        taskKind: 'EXAM_ARCHIVE',
+        taskKind: ScanTaskKindCode.EXAM_ARCHIVE,
         volumeId: volumeId.value,
         catalogCode: catalogCode.value || undefined,
         materialType: materialType.value,
@@ -125,8 +143,8 @@ export function useArchiveScanSession() {
         scannerStationId: setup.scannerStationId,
         scanConfig: {
           dpi: 300,
-          colorMode: 'COLOR',
-          duplexMode: 'SIMPLEX',
+          colorMode: ScannerColorModeCode.COLOR,
+          duplexMode: ScannerDuplexModeCode.SIMPLEX,
           blankPageDetectionEnabled: true,
         },
       })

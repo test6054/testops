@@ -15,12 +15,12 @@
  *
  * 持久化：仅保留 currentExamId，避免缓存陈旧 detail 与 list。
  */
-import type { ExamDetailVO, ExamPageQueryRequest, ExamSummaryVO } from '@/apis/mark/exam'
+import type { ExamDetailResponse, ExamPageQueryRequest, ExamSummaryResponse } from '@/apis/mark/exam'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { getExamDetail, pageExams } from '@/apis/mark/exam'
 import { useMarkStageStore } from '@/stores/modules/markStage'
-import { formatSemester } from '@/types/enums/semester-enum'
+import { formatAcademicYearSemester } from '@/types/enums/semester-enum'
 import { readAllPages } from '@/utils/page-result'
 
 export const useMarkExamContextStore = defineStore(
@@ -30,27 +30,27 @@ export const useMarkExamContextStore = defineStore(
     const currentExamId = ref<string>('')
 
     /** 已加载的考试列表（仅内存） */
-    const exams = ref<ExamSummaryVO[]>([])
+    const exams = ref<ExamSummaryResponse[]>([])
     const examsLoading = ref(false)
 
-    /** 当前考试详情缓存：examId → ExamDetailVO（仅内存） */
-    const detailCache = ref<Map<string, ExamDetailVO>>(new Map())
+    /** 当前考试详情缓存：examId → ExamDetailResponse（仅内存） */
+    const detailCache = ref<Map<string, ExamDetailResponse>>(new Map())
     const detailLoading = ref(false)
 
     /* ---------- Computed ---------- */
 
-    const currentExam = computed<ExamSummaryVO | null>(
+    const currentExam = computed<ExamSummaryResponse | null>(
       () => exams.value.find((e) => e.examId === currentExamId.value) ?? null,
     )
 
-    const currentExamDetail = computed<ExamDetailVO | null>(
+    const currentExamDetail = computed<ExamDetailResponse | null>(
       () => detailCache.value.get(currentExamId.value) ?? null,
     )
 
     const examOptions = computed(() =>
       exams.value.map((e) => ({
         value: e.examId,
-        label: [formatExamOptionLabel(e), formatAcademicTerm(e)].filter(Boolean).join(' · '),
+        label: [formatExamOptionLabel(e), formatAcademicYearSemester(e.academicYear, e.semester)].filter(Boolean).join(' · '),
       })),
     )
 
@@ -68,8 +68,7 @@ export const useMarkExamContextStore = defineStore(
     /* ---------- Actions ---------- */
 
     /**
-     * 加载当前用户可见的完整考试列表。
-     * 业务用 createUserId 过滤教师本人创建的考试；管理员场景需调用方在 request 中显式置空。
+     * 加载当前用户可见的完整考试列表；可见性由后端按当前登录身份注入。
      */
     async function loadExams(request?: Partial<ExamPageQueryRequest>): Promise<void> {
       examsLoading.value = true
@@ -82,7 +81,6 @@ export const useMarkExamContextStore = defineStore(
               pageSize,
               status: request?.status,
               keyword: request?.keyword,
-              createUserId: request?.createUserId,
               startTime: request?.startTime,
               endTime: request?.endTime,
             }),
@@ -112,7 +110,7 @@ export const useMarkExamContextStore = defineStore(
     /**
      * 加载指定考试详情；强制刷新覆盖缓存。
      */
-    async function loadDetail(examId: string): Promise<ExamDetailVO> {
+    async function loadDetail(examId: string): Promise<ExamDetailResponse> {
       detailLoading.value = true
       try {
         const detail = await getExamDetail(examId)
@@ -143,11 +141,7 @@ export const useMarkExamContextStore = defineStore(
       useMarkStageStore().reset()
     }
 
-    function formatAcademicTerm(exam: ExamSummaryVO): string {
-      return [exam.academicYear, formatSemester(exam.semester)].filter(Boolean).join(' · ')
-    }
-
-    function formatExamOptionLabel(exam: ExamSummaryVO): string {
+    function formatExamOptionLabel(exam: ExamSummaryResponse): string {
       return exam.examNo ? `${exam.examName}（${exam.examNo}）` : exam.examName
     }
 

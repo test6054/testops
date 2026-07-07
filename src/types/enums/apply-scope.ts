@@ -23,7 +23,5 @@ export const ApplyScopeLabel: Record<ApplyScopeCode, string> = {
  * 根据code获取标签
  */
 export function getApplyScopeLabel(code: ApplyScopeCode): string {
-  return strictEnumLabel(ApplyScopeLabel, code, '格式规范适用范围')
+  return ApplyScopeLabel[code]
 }
-
-import { strictEnumLabel } from '@/utils/strict-enum'

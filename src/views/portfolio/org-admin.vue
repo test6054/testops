@@ -11,13 +11,16 @@ import type {
 } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { portfolioOrgApi } from '@/apis/portfolio/org'
 import {
-  PORTFOLIO_ORG_ALIAS_TARGET_TYPE_LABEL,
-  PORTFOLIO_ORG_TREE_NODE_TYPE_LABEL,
   PORTFOLIO_ORG_UNIT_TYPE_OPTIONS,
-  PORTFOLIO_PORTFOLIO_UNIT_NODE_TYPES,
-} from '@/apis/portfolio/types'
+  PortfolioEduUserOrgTreeNodeTypeCode,
+  PortfolioEduUserOrgTreeNodeTypeDescription,
+  PortfolioOrgAliasTargetTypeCode,
+  PortfolioOrgAliasTargetTypeDescription,
+  PortfolioOrgUnitTypeCode,
+  PortfolioOrgUnitTypeDescription,
+} from '@/apis/portfolio/enums'
+import { portfolioOrgApi } from '@/apis/portfolio/org'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -33,15 +36,22 @@ import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
 import { hasTeacherTenantPermission } from '@/utils/permission'
-import { strictEnumLabel } from '@/utils/strict-enum'
 
 interface TreeNode {
   key: string
   title: string
-  nodeType: string
+  nodeType: PortfolioOrgTreeNodeVO['nodeType']
   portfolioOrgId?: string
   raw: PortfolioOrgTreeNodeVO
   children?: TreeNode[]
+}
+
+function isTreeNode(value: unknown): value is TreeNode {
+  return typeof value === 'object'
+    && value !== null
+    && 'key' in value
+    && 'title' in value
+    && 'raw' in value
 }
 
 const aliasColumns: ColumnsType = [
@@ -71,7 +81,7 @@ const selectedNode = ref<TreeNode | null>(null)
 const unitVisible = ref(false)
 const unitMode = ref<'create' | 'edit'>('create')
 const unitEditor = reactive<PortfolioOrgUnitSaveRequest>({
-  orgType: 'TEACHING_RESEARCH_OFFICE',
+  orgType: PortfolioOrgUnitTypeCode.TEACHING_RESEARCH_OFFICE,
   orgName: '',
   orgCode: '',
   sortOrder: 0,
@@ -82,21 +92,32 @@ const unitEditor = reactive<PortfolioOrgUnitSaveRequest>({
 const aliasVisible = ref(false)
 const aliasMode = ref<'create' | 'edit'>('create')
 const aliasEditor = reactive<PortfolioOrgAliasSaveRequest>({
-  targetType: 'EDU_USER_DEPARTMENT',
+  targetType: PortfolioOrgAliasTargetTypeCode.EDU_USER_DEPARTMENT,
   targetId: '',
   aliasName: '',
   remark: '',
 })
 
-function nodeTypeLabel(nodeType?: string) {
+function nodeTypeLabel(nodeType?: PortfolioOrgTreeNodeVO['nodeType']) {
   if (!nodeType) {
     return '—'
   }
-  return strictEnumLabel(
-    PORTFOLIO_ORG_TREE_NODE_TYPE_LABEL,
-    nodeType as keyof typeof PORTFOLIO_ORG_TREE_NODE_TYPE_LABEL,
-    '组织节点类型',
-  )
+  switch (nodeType) {
+    case PortfolioEduUserOrgTreeNodeTypeCode.SCHOOL:
+      return PortfolioEduUserOrgTreeNodeTypeDescription[PortfolioEduUserOrgTreeNodeTypeCode.SCHOOL]
+    case PortfolioEduUserOrgTreeNodeTypeCode.DEPARTMENT:
+      return PortfolioEduUserOrgTreeNodeTypeDescription[PortfolioEduUserOrgTreeNodeTypeCode.DEPARTMENT]
+    case PortfolioEduUserOrgTreeNodeTypeCode.MAJOR:
+      return PortfolioEduUserOrgTreeNodeTypeDescription[PortfolioEduUserOrgTreeNodeTypeCode.MAJOR]
+    case PortfolioEduUserOrgTreeNodeTypeCode.CLASS:
+      return PortfolioEduUserOrgTreeNodeTypeDescription[PortfolioEduUserOrgTreeNodeTypeCode.CLASS]
+    case PortfolioOrgUnitTypeCode.MAJOR_GROUP:
+      return PortfolioOrgUnitTypeDescription[PortfolioOrgUnitTypeCode.MAJOR_GROUP]
+    case PortfolioOrgUnitTypeCode.TEACHING_RESEARCH_OFFICE:
+      return PortfolioOrgUnitTypeDescription[PortfolioOrgUnitTypeCode.TEACHING_RESEARCH_OFFICE]
+    case PortfolioOrgUnitTypeCode.CAMPUS:
+      return PortfolioOrgUnitTypeDescription[PortfolioOrgUnitTypeCode.CAMPUS]
+  }
 }
 
 function mapTree(nodes: PortfolioOrgTreeNodeVO[]): TreeNode[] {
@@ -177,7 +198,14 @@ function findTreeNode(nodes: TreeNode[], key: string): TreeNode | null {
 }
 
 const onSelect: TreeProps['onSelect'] = (_keys, info) => {
-  selectedNode.value = (info.node as unknown as TreeNode) ?? null
+  if (!info.node) {
+    selectedNode.value = null
+    return
+  }
+  if (!isTreeNode(info.node)) {
+    throw new Error('组织树节点契约异常')
+  }
+  selectedNode.value = info.node
 }
 
 const selectedRaw = computed(() => selectedNode.value?.raw ?? null)
@@ -194,14 +222,14 @@ const canManageAlias = computed(() => {
 function resolveAliasTarget(
   node: PortfolioOrgTreeNodeVO,
 ): Pick<PortfolioOrgAliasSaveRequest, 'targetType' | 'targetId'> | null {
-  if (node.nodeType === 'DEPARTMENT') {
-    return { targetType: 'EDU_USER_DEPARTMENT', targetId: node.id }
+  if (node.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.DEPARTMENT) {
+    return { targetType: PortfolioOrgAliasTargetTypeCode.EDU_USER_DEPARTMENT, targetId: node.id }
   }
-  if (node.nodeType === 'MAJOR') {
-    return { targetType: 'EDU_USER_MAJOR', targetId: node.id }
+  if (node.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.MAJOR) {
+    return { targetType: PortfolioOrgAliasTargetTypeCode.EDU_USER_MAJOR, targetId: node.id }
   }
   if (node.portfolioOrgId) {
-    return { targetType: 'PORTFOLIO_ORG_UNIT', targetId: node.portfolioOrgId }
+    return { targetType: PortfolioOrgAliasTargetTypeCode.PORTFOLIO_ORG_UNIT, targetId: node.portfolioOrgId }
   }
   return null
 }
@@ -211,15 +239,12 @@ function openUnitEditor(mode: 'create' | 'edit') {
   if (mode === 'edit' && selectedRaw.value && canManageUnit.value) {
     const node = selectedRaw.value
     unitEditor.id = node.portfolioOrgId
-    unitEditor.orgType = node.nodeType as PortfolioOrgUnitSaveRequest['orgType']
+    if (isPortfolioUnitNode(node.nodeType)) {
+      unitEditor.orgType = node.nodeType
+    }
     unitEditor.orgName = node.name
     unitEditor.orgCode = node.code
-    if (
-      node.parentNodeType
-      && PORTFOLIO_PORTFOLIO_UNIT_NODE_TYPES.includes(
-        node.parentNodeType as (typeof PORTFOLIO_PORTFOLIO_UNIT_NODE_TYPES)[number],
-      )
-    ) {
+    if (isPortfolioUnitNode(node.parentNodeType)) {
       unitEditor.parentPortfolioOrgId = node.parentId
     } else {
       unitEditor.parentPortfolioOrgId = undefined
@@ -231,15 +256,15 @@ function openUnitEditor(mode: 'create' | 'edit') {
     unitEditor.leaderUserId = node.leaderUserId ?? ''
   } else {
     unitEditor.id = undefined
-    unitEditor.orgType = 'TEACHING_RESEARCH_OFFICE'
+    unitEditor.orgType = PortfolioOrgUnitTypeCode.TEACHING_RESEARCH_OFFICE
     unitEditor.orgName = ''
     unitEditor.orgCode = ''
     unitEditor.parentPortfolioOrgId = selectedNode.value?.portfolioOrgId
     unitEditor.anchorDepartmentId
       = selectedRaw.value?.anchorDepartmentId
-        ?? (selectedRaw.value?.nodeType === 'DEPARTMENT' ? selectedRaw.value.id : undefined)
+        ?? (selectedRaw.value?.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.DEPARTMENT ? selectedRaw.value.id : undefined)
     unitEditor.anchorMajorId
-      = selectedRaw.value?.nodeType === 'MAJOR'
+      = selectedRaw.value?.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.MAJOR
         ? selectedRaw.value.id
         : selectedRaw.value?.anchorMajorId
     unitEditor.sortOrder = 0
@@ -252,7 +277,15 @@ function openUnitEditor(mode: 'create' | 'edit') {
 async function submitUnit() {
   try {
     await portfolioOrgApi.saveUnit({
-      ...unitEditor,
+      id: unitEditor.id,
+      orgType: unitEditor.orgType,
+      orgCode: unitEditor.orgCode?.trim() || undefined,
+      orgName: unitEditor.orgName.trim(),
+      parentPortfolioOrgId: unitEditor.parentPortfolioOrgId,
+      anchorDepartmentId: unitEditor.anchorDepartmentId,
+      anchorMajorId: unitEditor.anchorMajorId,
+      sortOrder: unitEditor.sortOrder,
+      status: unitEditor.status,
       leaderUserId: unitEditor.leaderUserId?.trim() || undefined,
     })
     message.success(unitMode.value === 'edit' ? '扩展组织已更新' : '扩展组织已创建')
@@ -314,7 +347,15 @@ function openAliasEditor(mode: 'create' | 'edit', row?: PortfolioOrgAliasVO) {
 
 async function submitAlias() {
   try {
-    await portfolioOrgApi.saveAlias({ ...aliasEditor })
+    await portfolioOrgApi.saveAlias({
+      id: aliasEditor.id,
+      targetType: aliasEditor.targetType,
+      targetId: aliasEditor.targetId,
+      aliasName: aliasEditor.aliasName.trim(),
+      effectiveFrom: aliasEditor.effectiveFrom,
+      effectiveTo: aliasEditor.effectiveTo,
+      remark: aliasEditor.remark?.trim() || undefined,
+    })
     message.success(aliasMode.value === 'edit' ? '历史名称已更新' : '历史名称已添加')
     aliasVisible.value = false
     await refreshTree()
@@ -507,13 +548,7 @@ onMounted(async () => {
       <a-form layout="vertical">
         <a-form-item label="目标类型">
           <a-input
-            :value="
-              strictEnumLabel(
-                PORTFOLIO_ORG_ALIAS_TARGET_TYPE_LABEL,
-                aliasEditor.targetType,
-                'alias 目标类型',
-              )
-            "
+            :value="PortfolioOrgAliasTargetTypeDescription[aliasEditor.targetType]"
             disabled
           />
         </a-form-item>

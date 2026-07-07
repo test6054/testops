@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  PortfolioDevelopmentRecordStatus,
-  PortfolioDevelopmentRecordType,
+  PortfolioDevelopmentRecordStatusCode,
 } from '@/apis/portfolio/enums'
 import type { PortfolioDevelopmentRecordVO } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
-  PORTFOLIO_DEVELOPMENT_RECORD_STATUS_LABEL,
-  PORTFOLIO_DEVELOPMENT_RECORD_TYPE_LABEL,
+  PortfolioDevelopmentRecordStatusDescription,
+  PortfolioDevelopmentRecordTypeCode,
+  PortfolioDevelopmentRecordTypeDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
@@ -22,31 +22,39 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-const RECORD_TAB_KEYS: PortfolioDevelopmentRecordType[] = ['ACHIEVEMENT', 'POLICY']
+const RECORD_TAB_KEYS: PortfolioDevelopmentRecordTypeCode[] = [
+  PortfolioDevelopmentRecordTypeCode.ACHIEVEMENT,
+  PortfolioDevelopmentRecordTypeCode.POLICY,
+]
 const RECORD_TABS = RECORD_TAB_KEYS.map((key) => ({
   key,
-  label: PORTFOLIO_DEVELOPMENT_RECORD_TYPE_LABEL[key],
+  label: PortfolioDevelopmentRecordTypeDescription[key],
 }))
 
 type RecordType = (typeof RECORD_TAB_KEYS)[number]
 
-const activeType = ref<RecordType>('ACHIEVEMENT')
+const activeType = ref<RecordType>(PortfolioDevelopmentRecordTypeCode.ACHIEVEMENT)
 const loading = ref(false)
 const importModalOpen = ref(false)
 const rows = ref<PortfolioDevelopmentRecordVO[]>([])
 const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
   = usePortfolioTeacherSearch()
-const form = reactive({
+interface DevelopmentRecordForm {
+  recordTitle: string
+  descriptionText: string
+  teacherUserId: string
+}
+
+const form = reactive<DevelopmentRecordForm>({
   recordTitle: '',
   descriptionText: '',
-  teacherUserId: '' as string,
+  teacherUserId: '',
 })
 
-const requiresTeacher = computed(() => activeType.value === 'ACHIEVEMENT')
+const requiresTeacher = computed(() => activeType.value === PortfolioDevelopmentRecordTypeCode.ACHIEVEMENT)
 
 const columns = computed<ColumnsType>(() => {
   const base: ColumnsType = [{ title: '标题', dataIndex: 'recordTitle', key: 'recordTitle' }]
@@ -67,8 +75,8 @@ const tabLabel = computed(
 
 const importContext = computed(() => ({ defaultRecordType: activeType.value }))
 
-function recordStatusLabel(status: PortfolioDevelopmentRecordStatus): string {
-  return strictEnumLabel(PORTFOLIO_DEVELOPMENT_RECORD_STATUS_LABEL, status, '发展档案条目状态')
+function recordStatusLabel(status: PortfolioDevelopmentRecordStatusCode): string {
+  return strictEnumLabel(PortfolioDevelopmentRecordStatusDescription, status, '发展档案条目状态')
 }
 
 function resetForm() {
@@ -85,7 +93,7 @@ async function loadPage() {
       pageSize: 50,
       recordType: activeType.value,
     })
-    rows.value = readPageList(page, '加载发展记录失败')
+    rows.value = page.list
     const userIds = rows.value
       .map((row) => row.teacherUserId)
       .filter((id): id is string => Boolean(id))

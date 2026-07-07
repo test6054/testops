@@ -5,7 +5,7 @@ const BASE = '/api/mark/exams/question-course-goal-mappings'
 export interface ExamQuestionCourseGoalMappingVO {
   id: string
   examId: string
-  questionTemplateId: string
+  layoutQuestionId: string
   qualityCourseGoalId: string
   weight: number
   questionNo?: string
@@ -28,7 +28,7 @@ export interface QualityCourseGoalForMarkVO {
 export interface ExamQuestionCourseGoalMappingSaveRequest {
   id?: string
   examId: string
-  questionTemplateId: string
+  layoutQuestionId: string
   qualityCourseGoalId: string
   weight: number
 }

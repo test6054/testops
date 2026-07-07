@@ -18,6 +18,7 @@ import {
   WarningFilled,
 } from '@ant-design/icons-vue'
 import { computed, watch } from 'vue'
+import { AgentUpdateStatusCode } from '@/apis/mark/scanner-agent-local'
 import { getKioskBindingProfile } from '@/utils/kiosk-auth'
 import { useKioskCtx } from '../composables/kioskInjection'
 
@@ -104,13 +105,15 @@ const upgradeRequired = computed(() => Boolean(health.value?.upgradeRequired))
 const tokenResetRequired = computed(() => Boolean(health.value?.tokenResetRequired))
 const rebindRequired = computed(() => Boolean(health.value?.rebindRequired))
 const kioskBrowserSessionSyncNeeded = computed(() => workflow.kioskBrowserSessionSyncNeeded.value)
-const agentUpdateStatus = computed(() => health.value?.updateStatus ?? 'NONE')
+const agentUpdateStatus = computed(() => health.value?.updateStatus ?? AgentUpdateStatusCode.NONE)
 const agentUpdateAvailable = computed(() => Boolean(health.value?.updateAvailable))
 const agentUpdateInstallable = computed(() => Boolean(health.value?.updateInstallable))
 const agentUpdateInProgress = computed(
-  () => agentUpdateStatus.value === 'DOWNLOADING' || agentUpdateStatus.value === 'INSTALLING',
+  () =>
+    agentUpdateStatus.value === AgentUpdateStatusCode.DOWNLOADING
+    || agentUpdateStatus.value === AgentUpdateStatusCode.INSTALLING,
 )
-const agentUpdateFailed = computed(() => agentUpdateStatus.value === 'FAILED')
+const agentUpdateFailed = computed(() => agentUpdateStatus.value === AgentUpdateStatusCode.FAILED)
 const showMaintenanceSection = computed(
   () =>
     upgradeRequired.value

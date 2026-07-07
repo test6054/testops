@@ -4,9 +4,15 @@
       <ContextBar
         layout="workbench"
         show-title
-        :title="organization ? organizationExamLabel : '阅卷组织详情'"
+        :title="
+          isJourneyChrome ? contextBarTitle : organization ? organizationExamLabel : '阅卷组织详情'
+        "
+        :subtitle="isJourneyChrome ? contextBarSubtitle : '阅卷安排'"
       >
         <template #status>
+          <UiTag v-if="isJourneyChrome && examStatusLabel" :tone="examStatusTone" size="sm">
+            {{ examStatusLabel }}
+          </UiTag>
           <UiTag
             v-if="organization"
             :tone="
@@ -20,7 +26,7 @@
           >
             {{
               strictEnumLabel(
-                MARKING_ORGANIZATION_STATUS_LABEL,
+                MarkingOrganizationStatusDescription,
                 organization.organizationStatus,
                 '阅卷组织状态',
               )
@@ -56,416 +62,523 @@
             </UiButton>
           </a-popconfirm>
           <UiButton size="sm" @click="goSessions">试评 / 正评</UiButton>
+          <UiButton
+            v-if="isExamWorkspaceRoute && canManageExamOwner"
+            size="sm"
+            variant="primary"
+            @click="focusLaunchPanel"
+          >
+            启动正评
+          </UiButton>
         </template>
       </ContextBar>
     </template>
 
-    <a-skeleton v-if="loading" active :paragraph="{ rows: 4 }" />
+    <template v-if="organization" #signal>
+      <SignalBand variant="tiles" compact :metrics="orgSignalMetrics" />
+    </template>
 
-    <UiEmpty
-      v-else-if="!organization"
-      description="暂无数据"
-      class="org-detail__empty"
-    />
+    <ExamWorkspaceJourneySubNav v-if="isExamWorkspaceRoute" />
 
-    <a-spin v-else :spinning="loading">
-      <section v-if="organization" class="org-detail__panel">
-        <a-alert
-          v-if="!canManageExamOwner"
-          type="info"
-          show-icon
+    <UiSkeletonState v-if="loading && !organization" variant="card" compact />
+
+    <UiEmpty v-else-if="!organization" description="暂无数据" class="org-detail__empty" />
+
+    <template v-else-if="organization">
+      <template v-if="isExamWorkspaceRoute">
+        <UiAlertStrip
+          v-if="layoutRoiGap > 0"
+          tone="warning"
           class="org-detail__readonly-banner"
-          message="当前为只读视图"
+          :title="`制卷识别区域未就绪（${layoutRoiGap} 道题）`"
+          description="未配置 ROI 的题目无法分配题组、按题导出或生成按题学情，请先在制卷工作台补全识别区域。"
+        />
+        <UiAlertStrip
+          v-if="!canManageExamOwner"
+          tone="info"
+          class="org-detail__readonly-banner"
+          title="当前为只读视图"
           description="题组、策略与正评启动由考试主考老师配置。"
         />
-        <a-tabs v-model:active-key="activeTab" class="detail-tabs">
-          <a-tab-pane key="info" tab="基本信息 + 题组">
-            <section class="org-detail__info">
-              <h4 class="org-detail__info-title">基本信息</h4>
-              <UiInfoGrid :columns="3">
-                <UiInfoGridItem label="当前考试">
-                  {{ organizationExamLabel }}
-                </UiInfoGridItem>
-                <UiInfoGridItem label="主考老师">
-                  {{ organization.leaderUserName }}（{{ organization.leaderTeacherNo }}）
-                </UiInfoGridItem>
-                <UiInfoGridItem label="题组数量">
-                  {{ organization.groups.length }} 组
-                </UiInfoGridItem>
-                <UiInfoGridItem label="匿名阅卷">
-                  <UiTag :tone="organization.anonymousMode ? 'green' : 'gray'" size="sm">
-                    {{ organization.anonymousMode ? '启用' : '关闭' }}
-                  </UiTag>
-                </UiInfoGridItem>
-                <UiInfoGridItem label="创建时间">
-                  {{ formatDateTime(organization.createTime) }}
-                </UiInfoGridItem>
-                <UiInfoGridItem label="更新时间">
-                  {{ formatDateTime(organization.updateTime) }}
-                </UiInfoGridItem>
-              </UiInfoGrid>
-              <div class="org-detail__remark">
-                <span class="org-detail__remark-label">备注</span>
-                <span class="org-detail__remark-value">
-                  {{ organization.remark || '未填写组织备注' }}
-                </span>
-              </div>
-            </section>
 
-            <UiDataTable
-              title="题组列表"
-              pagination-mode="none"
-              :columns="groupColumns"
-              :data-source="filteredGroups"
-              row-key="id"
-              size="middle"
-              :show-pagination="false"
-              flat
-              :total="filteredGroups.length"
-              :sorted-info="groupTableSortedInfo"
-              :empty-description="groupTableEmptyDescription"
-              class="group-table student-detail-table__data-table org-detail__group-table"
-            >
-              <template #toolbar-left>
-                <UiSearchBox
-                  v-model="groupSearchKeyword"
-                  class="org-detail__group-search"
-                  placeholder="搜索题组名称、组长、阅卷教师、题号"
-                  size="small"
-                />
-              </template>
-              <template v-if="canManageExamOwner" #toolbar-right>
-                <UiButton size="sm" @click="openGroupModal">
-                  <template #icon><PlusOutlined /></template>
-                  新建题组
-                </UiButton>
-              </template>
-              <template v-if="canManageExamOwner" #empty-action>
-                <UiButton size="sm" @click="openGroupModal">
-                  <template #icon><PlusOutlined /></template>
-                  新建题组
-                </UiButton>
-              </template>
-              <template #bodyCell="{ column, record }">
-                <template v-if="column.key === 'groupName'">
-                  <a-typography-text strong>
-                    {{ record.groupName }}
-                  </a-typography-text>
-                </template>
-                <template v-else-if="column.key === 'questions'">
-                  <div class="group-table__stack">
-                    <UiTag tone="blue" size="sm"> {{ record.questions.length }} 题 </UiTag>
-                    <span
-                      v-for="question in record.questions.slice(0, 3)"
-                      :key="question.questionTemplateId"
-                      class="group-table__item"
-                    >
-                      第 {{ question.questionNo }} 题 · {{ question.questionTypeMessage }} ·
-                      {{ question.fullScore }} 分
-                    </span>
-                    <span v-if="record.questions.length > 3" class="group-table__more">
-                      另 {{ record.questions.length - 3 }} 题
-                    </span>
-                  </div>
-                </template>
-                <template v-else-if="column.key === 'reviewers'">
-                  <div class="group-table__stack">
-                    <UiTag tone="purple" size="sm"> {{ record.reviewers.length }} 人 </UiTag>
-                    <span
-                      v-for="reviewer in record.reviewers.slice(0, 3)"
-                      :key="reviewer.reviewerUserId"
-                      class="group-table__item"
-                    >
-                      {{ reviewer.reviewerUserName }}（{{ reviewer.reviewerTeacherNo }}）
-                    </span>
-                    <span v-if="record.reviewers.length > 3" class="group-table__more">
-                      另 {{ record.reviewers.length - 3 }} 人
-                    </span>
-                  </div>
-                </template>
-                <template v-else-if="column.key === 'leaderUser'">
-                  {{ record.leaderUserName }}（{{ record.leaderTeacherNo }}）
-                </template>
-                <template v-else-if="column.key === 'groupStatus'">
-                  <UiTag :tone="groupStatusTone(record.groupStatus)" size="sm">
-                    {{ groupStatusLabel(record.groupStatus) }}
-                  </UiTag>
-                </template>
-                <template v-else-if="column.key === 'createTime'">
-                  {{ formatDateTime(record.createTime) }}
-                </template>
-                <template v-else-if="column.key === 'action'">
-                  <a-space size="small">
-                    <UiButton
-                      v-if="canEditGroup(record)"
-                      variant="outline"
-                      size="sm"
-                      @click="openGroupEdit(record)"
-                    >
-                      编辑
-                    </UiButton>
-                    <a-popconfirm
-                      v-if="canDeleteGroup(record)"
-                      title="确认删除该题组？"
-                      ok-text="删除"
-                      cancel-text="取消"
-                      :ok-button-props="{
-                        danger: true,
-                        loading: groupActionLoadingId === record.id,
-                      }"
-                      @confirm="submitGroupDelete(record)"
-                    >
-                      <UiButton
-                        variant="outline"
-                        size="sm"
-                        status="danger"
-                        :loading="groupActionLoadingId === record.id"
-                      >
-                        删除
-                      </UiButton>
-                    </a-popconfirm>
-                    <a-popconfirm
-                      v-if="canCloseGroup(record)"
-                      title="确认关闭该题组？"
-                      ok-text="关闭"
-                      cancel-text="取消"
-                      :ok-button-props="{ loading: groupActionLoadingId === record.id }"
-                      @confirm="submitGroupClose(record)"
-                    >
-                      <UiButton
-                        variant="outline"
-                        size="sm"
-                        :loading="groupActionLoadingId === record.id"
-                      >
-                        关闭
-                      </UiButton>
-                    </a-popconfirm>
-                  </a-space>
-                </template>
-              </template>
-            </UiDataTable>
-          </a-tab-pane>
+        <MarkingOrgAssignmentTable
+          :groups="groups"
+          :allocation-policies="allocationPolicies"
+          :can-manage="canManageExamOwner"
+          @create-group="openGroupModal"
+          @edit-group="openGroupEditById"
+        />
 
-          <a-tab-pane key="policy" tab="任务策略">
-            <a-form v-if="canManageExamOwner" :model="policyForm" layout="vertical" class="policy-form">
-              <a-row :gutter="16">
-                <a-col :xs="24" :lg="12">
-                  <h4 class="subsection-title">任务分配策略</h4>
-                  <a-form-item label="策略适用范围">
-                    <a-select
-                      v-model:value="policyForm.allocationGroupId"
-                      placeholder="选择题组（留空表示组织级默认）"
-                      :options="groupSelectOptions"
-                      allow-clear
-                      :disabled="!canManageExamOwner"
-                    />
-                  </a-form-item>
-                  <a-form-item label="分配模式" required>
-                    <a-select
-                      v-model:value="policyForm.allocationMode"
-                      :options="ALLOCATION_MODE_OPTIONS"
-                      :disabled="!canManageExamOwner"
-                    />
-                  </a-form-item>
-                  <a-form-item label="批阅任务单元" required>
-                    <a-select
-                      v-model:value="policyForm.allocationUnit"
-                      :options="ALLOCATION_UNIT_OPTIONS"
-                      :disabled="!canManageExamOwner"
-                    />
-                  </a-form-item>
-                  <a-form-item label="匿名模式" required>
-                    <a-select
-                      v-model:value="policyForm.anonymityMode"
-                      :options="ANONYMITY_MODE_OPTIONS"
-                      :disabled="!canManageExamOwner"
-                    />
-                  </a-form-item>
-                  <a-form-item
-                    v-if="policyForm.allocationUnit === 'RANDOM_QUESTIONS'"
-                    label="随机题目抽样数量"
-                    required
-                  >
-                    <a-input-number
-                      v-model:value="policyForm.randomQuestionSampleSize"
-                      :min="1"
-                      :max="100"
-                      style="width: 100%"
-                      :disabled="!canManageExamOwner"
-                    />
-                    <div class="policy-hint">
-                      抽样题池来自当前题组题目范围；正评启动后会固化本次随机抽题结果，后续可在正评会话列表审计复盘。
-                    </div>
-                  </a-form-item>
-                  <a-form-item label="每批分配任务数">
-                    <a-input-number
-                      v-model:value="policyForm.batchSize"
-                      :min="1"
-                      :max="500"
-                      style="width: 100%"
-                      :disabled="!canManageExamOwner"
-                    />
-                  </a-form-item>
-                  <a-form-item label="教师最大待处理任务数">
-                    <a-input-number
-                      v-model:value="policyForm.loadLimit"
-                      :min="1"
-                      :max="500"
-                      style="width: 100%"
-                      :disabled="!canManageExamOwner"
-                    />
-                  </a-form-item>
-                  <a-form-item label="匿名令牌策略">
-                    <a-select
-                      v-model:value="policyForm.anonymousTokenPolicy"
-                      :options="ANONYMOUS_TOKEN_OPTIONS"
-                      allow-clear
-                      :disabled="!canManageExamOwner"
-                    />
-                  </a-form-item>
-                  <UiButton
-                    v-if="canManageExamOwner"
-                    :loading="savingAllocation"
-                    @click="submitAllocation"
-                  >
-                    <template #icon><SaveOutlined /></template>
-                    保存分配策略
-                  </UiButton>
-                </a-col>
+        <div class="org-workbench__grid">
+          <MarkingOrgGroupProgressList
+            :groups="groups"
+            :group-progress-by-id="groupProgressById"
+            :can-manage="canManageExamOwner"
+            @edit-group="openGroupEditById"
+          />
+          <MarkingOrgStrategySummaryCard
+            :allocation-policy="orgDefaultAllocationPolicy"
+            :recycle-policy="orgDefaultRecyclePolicy"
+            :can-manage="canManageExamOwner"
+            @edit-policy="openPolicyDrawer"
+          />
+        </div>
 
-                <a-col :xs="24" :lg="12">
-                  <h4 class="subsection-title">任务回收策略</h4>
-                  <a-form-item label="策略适用范围">
-                    <a-select
-                      v-model:value="policyForm.recycleGroupId"
-                      placeholder="选择题组（留空表示组织级默认）"
-                      :options="groupSelectOptions"
-                      allow-clear
-                      :disabled="!canManageExamOwner"
-                    />
-                  </a-form-item>
-                  <a-form-item label="超时时间（分钟）">
-                    <a-input-number
-                      v-model:value="policyForm.timeoutMinutes"
-                      :min="1"
-                      :max="1440"
-                      style="width: 100%"
-                      :disabled="!canManageExamOwner"
-                    />
-                  </a-form-item>
-                  <a-form-item label="教师最大待处理任务数">
-                    <a-input-number
-                      v-model:value="policyForm.maxPendingCount"
-                      :min="1"
-                      :max="500"
-                      style="width: 100%"
-                      :disabled="!canManageExamOwner"
-                    />
-                  </a-form-item>
-                  <a-form-item label="再分配模式">
-                    <a-select
-                      v-model:value="policyForm.reassignMode"
-                      :options="REASSIGN_MODE_OPTIONS"
-                      allow-clear
-                      :disabled="!canManageExamOwner"
-                    />
-                  </a-form-item>
-                  <UiButton
-                    v-if="canManageExamOwner"
-                    :loading="savingRecycle"
-                    @click="submitRecycle"
-                  >
-                    <template #icon><SaveOutlined /></template>
-                    保存回收策略
-                  </UiButton>
-                </a-col>
-              </a-row>
-            </a-form>
-            <a-row v-else :gutter="16" class="policy-form">
-              <a-col :xs="24" :lg="12">
-                <h4 class="subsection-title">任务分配策略</h4>
-                <a-descriptions bordered size="small" :column="1">
-                  <a-descriptions-item label="策略适用范围">
-                    {{ policyScopeLabel(policyForm.allocationGroupId) }}
-                  </a-descriptions-item>
-                  <a-descriptions-item label="分配模式">
-                    {{ policyOptionLabel(ALLOCATION_MODE_OPTIONS, policyForm.allocationMode) }}
-                  </a-descriptions-item>
-                  <a-descriptions-item label="批阅任务单元">
-                    {{ policyOptionLabel(ALLOCATION_UNIT_OPTIONS, policyForm.allocationUnit) }}
-                  </a-descriptions-item>
-                  <a-descriptions-item label="匿名模式">
-                    {{ policyOptionLabel(ANONYMITY_MODE_OPTIONS, policyForm.anonymityMode) }}
-                  </a-descriptions-item>
-                  <a-descriptions-item
-                    v-if="policyForm.allocationUnit === 'RANDOM_QUESTIONS'"
-                    label="随机题目抽样数量"
-                  >
-                    {{ policyForm.randomQuestionSampleSize ?? '—' }}
-                  </a-descriptions-item>
-                  <a-descriptions-item label="每批分配任务数">
-                    {{ policyForm.batchSize }}
-                  </a-descriptions-item>
-                  <a-descriptions-item label="教师最大待处理任务数">
-                    {{ policyForm.loadLimit }}
-                  </a-descriptions-item>
-                  <a-descriptions-item label="匿名令牌策略">
-                    {{ policyOptionLabel(ANONYMOUS_TOKEN_OPTIONS, policyForm.anonymousTokenPolicy) }}
-                  </a-descriptions-item>
-                </a-descriptions>
-              </a-col>
-              <a-col :xs="24" :lg="12">
-                <h4 class="subsection-title">任务回收策略</h4>
-                <a-descriptions bordered size="small" :column="1">
-                  <a-descriptions-item label="策略适用范围">
-                    {{ policyScopeLabel(policyForm.recycleGroupId) }}
-                  </a-descriptions-item>
-                  <a-descriptions-item label="超时时间（分钟）">
-                    {{ policyForm.timeoutMinutes ?? '—' }}
-                  </a-descriptions-item>
-                  <a-descriptions-item label="教师最大待处理任务数">
-                    {{ policyForm.maxPendingCount ?? '—' }}
-                  </a-descriptions-item>
-                  <a-descriptions-item label="再分配模式">
-                    {{ policyOptionLabel(REASSIGN_MODE_OPTIONS, policyForm.reassignMode) }}
-                  </a-descriptions-item>
-                </a-descriptions>
-              </a-col>
-            </a-row>
-          </a-tab-pane>
+        <MarkingOrgReviewerRosterTable
+          :groups="groups"
+          :reviewer-metrics="reviewerMetrics"
+          :loading="reviewerMetricsLoading"
+          @refresh="loadWorkbenchPanels"
+        />
 
-          <a-tab-pane v-if="canReassignRecycledTasks" key="recycled" tab="回收待分配">
+        <div ref="secondaryPanelRef">
+          <WorkbenchSurfaceCard
+            v-if="workspaceSecondaryTabItems.length > 0"
+            flush
+            class="org-detail__secondary"
+          >
+            <template #head>
+              <UiSectionTabs
+                v-model="workspaceSecondaryTab"
+                :items="workspaceSecondaryTabItems"
+                compact
+                divided
+              />
+            </template>
             <RecycledTaskReassignPanel
+              v-if="workspaceSecondaryTab === 'recycled'"
               :exam-id="examId"
               :groups="groups"
               :view-all-recycled="canViewAllRecycledTasks"
               :leader-group-ids="leaderGroupIds"
             />
-          </a-tab-pane>
-
-          <a-tab-pane v-if="canManageExamOwner" key="launch" tab="快速启动">
             <FormalSessionPanel
+              v-else-if="workspaceSecondaryTab === 'launch'"
               :organization-id="organizationId"
+              :exam-id="examId"
               :group-options="groupSelectOptions"
               :group-allocation-units="groupAllocationUnitMap"
               :sessions="formalSessions"
               :can-manage="canManageExamOwner"
               @refresh="loadFormalSessions"
             />
-          </a-tab-pane>
-        </a-tabs>
-      </section>
-    </a-spin>
+          </WorkbenchSurfaceCard>
+        </div>
+      </template>
 
-    <a-modal
+      <WorkbenchSurfaceCard v-else flush class="org-detail__surface">
+        <UiAlertStrip
+          v-if="!canManageExamOwner"
+          tone="info"
+          class="org-detail__readonly-banner"
+          title="当前为只读视图"
+          description="题组、策略与正评启动由考试主考老师配置。"
+        />
+        <template #head>
+          <UiSectionTabs v-model="activeTab" :items="detailTabItems" compact divided />
+        </template>
+
+        <template v-if="activeTab === 'info'">
+          <section class="org-detail__info">
+            <h4 class="org-detail__info-title">基本信息</h4>
+            <UiInfoGrid :columns="3">
+              <UiInfoGridItem label="当前考试">
+                {{ organizationExamLabel }}
+              </UiInfoGridItem>
+              <UiInfoGridItem label="主考老师">
+                {{ organization.leaderUserName }}（{{ organization.leaderTeacherNo }}）
+              </UiInfoGridItem>
+              <UiInfoGridItem label="题组数量">
+                {{ organization.groups.length }} 组
+              </UiInfoGridItem>
+              <UiInfoGridItem label="匿名阅卷">
+                <UiTag :tone="organization.anonymousMode ? 'green' : 'gray'" size="sm">
+                  {{ organization.anonymousMode ? '启用' : '关闭' }}
+                </UiTag>
+              </UiInfoGridItem>
+              <UiInfoGridItem label="创建时间">
+                {{ formatDateTime(organization.createTime) }}
+              </UiInfoGridItem>
+              <UiInfoGridItem label="更新时间">
+                {{ formatDateTime(organization.updateTime) }}
+              </UiInfoGridItem>
+            </UiInfoGrid>
+            <div class="org-detail__remark">
+              <span class="org-detail__remark-label">备注</span>
+              <span class="org-detail__remark-value">
+                {{ organization.remark || '未填写组织备注' }}
+              </span>
+            </div>
+          </section>
+
+          <UiDataTable
+            title="题组列表"
+            pagination-mode="none"
+            :columns="groupColumns"
+            :data-source="filteredGroups"
+            row-key="id"
+            size="middle"
+            :show-pagination="false"
+            flat
+            :total="filteredGroups.length"
+            :sorted-info="groupTableSortedInfo"
+            :empty-description="groupTableEmptyDescription"
+            class="group-table student-detail-table__data-table org-detail__group-table"
+          >
+            <template #toolbar-left>
+              <UiSearchBox
+                v-model="groupSearchKeyword"
+                class="org-detail__group-search"
+                placeholder="搜索题组名称、组长、阅卷教师、题号"
+                size="small"
+              />
+            </template>
+            <template v-if="canManageExamOwner" #toolbar-right>
+              <UiButton size="sm" @click="openGroupModal">
+                <template #icon><PlusOutlined /></template>
+                新建题组
+              </UiButton>
+            </template>
+            <template v-if="canManageExamOwner" #empty-action>
+              <UiButton size="sm" @click="openGroupModal">
+                <template #icon><PlusOutlined /></template>
+                新建题组
+              </UiButton>
+            </template>
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'groupName'">
+                <a-typography-text strong>
+                  {{ record.groupName }}
+                </a-typography-text>
+              </template>
+              <template v-else-if="column.key === 'questions'">
+                <div class="group-table__stack">
+                  <UiTag tone="blue" size="sm"> {{ record.questions.length }} 题 </UiTag>
+                  <span
+                    v-for="question in record.questions.slice(0, 3)"
+                    :key="question.layoutQuestionId"
+                    class="group-table__item"
+                  >
+                    第 {{ question.questionNo }} 题 · {{ question.questionTypeMessage }} ·
+                    {{ question.fullScore }} 分
+                  </span>
+                  <span v-if="record.questions.length > 3" class="group-table__more">
+                    另 {{ record.questions.length - 3 }} 题
+                  </span>
+                </div>
+              </template>
+              <template v-else-if="column.key === 'reviewers'">
+                <div class="group-table__stack">
+                  <UiTag tone="blue" size="sm"> {{ record.reviewers.length }} 人 </UiTag>
+                  <span
+                    v-for="reviewer in record.reviewers.slice(0, 3)"
+                    :key="reviewer.reviewerUserId"
+                    class="group-table__item"
+                  >
+                    {{ reviewer.reviewerUserName }}（{{ reviewer.reviewerTeacherNo }}）
+                  </span>
+                  <span v-if="record.reviewers.length > 3" class="group-table__more">
+                    另 {{ record.reviewers.length - 3 }} 人
+                  </span>
+                </div>
+              </template>
+              <template v-else-if="column.key === 'leaderUser'">
+                {{ record.leaderUserName }}（{{ record.leaderTeacherNo }}）
+              </template>
+              <template v-else-if="column.key === 'groupStatus'">
+                <UiTag :tone="groupStatusTone(record.groupStatus)" size="sm">
+                  {{ groupStatusLabel(record.groupStatus) }}
+                </UiTag>
+              </template>
+              <template v-else-if="column.key === 'createTime'">
+                {{ formatDateTime(record.createTime) }}
+              </template>
+              <template v-else-if="column.key === 'action'">
+                <a-space size="small">
+                  <UiButton
+                    v-if="canEditGroup(record)"
+                    variant="outline"
+                    size="sm"
+                    @click="openGroupEdit(record)"
+                  >
+                    编辑
+                  </UiButton>
+                  <a-popconfirm
+                    v-if="canDeleteGroup(record)"
+                    title="确认删除该题组？"
+                    ok-text="删除"
+                    cancel-text="取消"
+                    :ok-button-props="{
+                      danger: true,
+                      loading: groupActionLoadingId === record.id,
+                    }"
+                    @confirm="submitGroupDelete(record)"
+                  >
+                    <UiButton
+                      variant="outline"
+                      size="sm"
+                      status="danger"
+                      :loading="groupActionLoadingId === record.id"
+                    >
+                      删除
+                    </UiButton>
+                  </a-popconfirm>
+                  <a-popconfirm
+                    v-if="canCloseGroup(record)"
+                    title="确认关闭该题组？"
+                    ok-text="关闭"
+                    cancel-text="取消"
+                    :ok-button-props="{ loading: groupActionLoadingId === record.id }"
+                    @confirm="submitGroupClose(record)"
+                  >
+                    <UiButton
+                      variant="outline"
+                      size="sm"
+                      :loading="groupActionLoadingId === record.id"
+                    >
+                      关闭
+                    </UiButton>
+                  </a-popconfirm>
+                </a-space>
+              </template>
+            </template>
+          </UiDataTable>
+        </template>
+
+        <template v-else-if="activeTab === 'policy'">
+          <a-form
+            v-if="canManageExamOwner"
+            :model="policyForm"
+            layout="vertical"
+            class="policy-form"
+          >
+            <a-row :gutter="16">
+              <a-col :xs="24" :lg="12">
+                <h4 class="subsection-title">任务分配策略</h4>
+                <a-form-item label="策略适用范围">
+                  <a-select
+                    v-model:value="policyForm.allocationGroupId"
+                    placeholder="选择题组（留空表示组织级默认）"
+                    :options="groupSelectOptions"
+                    allow-clear
+                    :disabled="!canManageExamOwner"
+                  />
+                </a-form-item>
+                <a-form-item label="分配模式" required>
+                  <a-select
+                    v-model:value="policyForm.allocationMode"
+                    :options="MARKING_ALLOCATION_MODE_OPTIONS"
+                    :disabled="!canManageExamOwner"
+                  />
+                </a-form-item>
+                <a-form-item label="批阅任务单元" required>
+                  <a-select
+                    v-model:value="policyForm.allocationUnit"
+                    :options="ALLOCATION_UNIT_OPTIONS"
+                    :disabled="!canManageExamOwner"
+                  />
+                </a-form-item>
+                <a-form-item label="匿名模式" required>
+                  <a-select
+                    v-model:value="policyForm.anonymityMode"
+                    :options="effectiveAnonymityModeOptions"
+                    :disabled="true"
+                  />
+                  <div class="policy-hint">
+                    匿名模式由阅卷组织主配置统一裁决，题组策略只继承当前组织模式。
+                  </div>
+                </a-form-item>
+                <a-form-item
+                  v-if="policyForm.allocationUnit === AllocationUnitCode.RANDOM_QUESTIONS"
+                  label="随机题目抽样数量"
+                  required
+                >
+                  <a-input-number
+                    v-model:value="policyForm.randomQuestionSampleSize"
+                    :min="1"
+                    :max="100"
+                    style="width: 100%"
+                    :disabled="!canManageExamOwner"
+                  />
+                  <div class="policy-hint">
+                    抽样题池来自当前题组题目范围；正评启动后会固化本次随机抽题结果，后续可在正评会话列表审计复盘。
+                  </div>
+                </a-form-item>
+                <a-form-item label="每批分配任务数">
+                  <a-input-number
+                    v-model:value="policyForm.batchSize"
+                    :min="1"
+                    :max="500"
+                    style="width: 100%"
+                    :disabled="!canManageExamOwner"
+                  />
+                </a-form-item>
+                <a-form-item label="教师最大待处理任务数">
+                  <a-input-number
+                    v-model:value="policyForm.loadLimit"
+                    :min="1"
+                    :max="500"
+                    style="width: 100%"
+                    :disabled="!canManageExamOwner"
+                  />
+                </a-form-item>
+                <a-form-item label="匿名令牌策略">
+                  <a-select
+                    v-model:value="policyForm.anonymousTokenPolicy"
+                    :options="ANONYMOUS_TOKEN_POLICY_OPTIONS"
+                    allow-clear
+                    :disabled="!canManageExamOwner"
+                  />
+                </a-form-item>
+                <UiButton
+                  v-if="canManageExamOwner"
+                  :loading="savingAllocation"
+                  @click="submitAllocation"
+                >
+                  <template #icon><SaveOutlined /></template>
+                  保存分配策略
+                </UiButton>
+              </a-col>
+
+              <a-col :xs="24" :lg="12">
+                <h4 class="subsection-title">任务回收策略</h4>
+                <a-form-item label="策略适用范围">
+                  <a-select
+                    v-model:value="policyForm.recycleGroupId"
+                    placeholder="选择题组（留空表示组织级默认）"
+                    :options="groupSelectOptions"
+                    allow-clear
+                    :disabled="!canManageExamOwner"
+                  />
+                </a-form-item>
+                <a-form-item label="超时时间（分钟）">
+                  <a-input-number
+                    v-model:value="policyForm.timeoutMinutes"
+                    :min="1"
+                    :max="1440"
+                    style="width: 100%"
+                    :disabled="!canManageExamOwner"
+                  />
+                </a-form-item>
+                <a-form-item label="教师最大待处理任务数">
+                  <a-input-number
+                    v-model:value="policyForm.maxPendingCount"
+                    :min="1"
+                    :max="500"
+                    style="width: 100%"
+                    :disabled="!canManageExamOwner"
+                  />
+                </a-form-item>
+                <a-form-item label="再分配模式">
+                  <a-select
+                    v-model:value="policyForm.reassignMode"
+                    :options="MARKING_REASSIGN_MODE_OPTIONS"
+                    allow-clear
+                    :disabled="!canManageExamOwner"
+                  />
+                </a-form-item>
+                <UiButton v-if="canManageExamOwner" :loading="savingRecycle" @click="submitRecycle">
+                  <template #icon><SaveOutlined /></template>
+                  保存回收策略
+                </UiButton>
+              </a-col>
+            </a-row>
+          </a-form>
+          <a-row v-else :gutter="16" class="policy-form">
+            <a-col :xs="24" :lg="12">
+              <h4 class="subsection-title">任务分配策略</h4>
+              <a-descriptions bordered size="small" :column="1">
+                <a-descriptions-item label="策略适用范围">
+                  {{ policyScopeLabel(policyForm.allocationGroupId) }}
+                </a-descriptions-item>
+                <a-descriptions-item label="分配模式">
+                  {{
+                    policyOptionLabel(MARKING_ALLOCATION_MODE_OPTIONS, policyForm.allocationMode)
+                  }}
+                </a-descriptions-item>
+                <a-descriptions-item label="批阅任务单元">
+                  {{ policyOptionLabel(ALLOCATION_UNIT_OPTIONS, policyForm.allocationUnit) }}
+                </a-descriptions-item>
+                <a-descriptions-item label="匿名模式">
+                  {{ policyOptionLabel(ANONYMITY_MODE_OPTIONS, policyForm.anonymityMode) }}
+                </a-descriptions-item>
+                <a-descriptions-item
+                  v-if="policyForm.allocationUnit === AllocationUnitCode.RANDOM_QUESTIONS"
+                  label="随机题目抽样数量"
+                >
+                  {{ policyForm.randomQuestionSampleSize ?? '—' }}
+                </a-descriptions-item>
+                <a-descriptions-item label="每批分配任务数">
+                  {{ policyForm.batchSize }}
+                </a-descriptions-item>
+                <a-descriptions-item label="教师最大待处理任务数">
+                  {{ policyForm.loadLimit }}
+                </a-descriptions-item>
+                <a-descriptions-item label="匿名令牌策略">
+                  {{
+                    policyOptionLabel(
+                      ANONYMOUS_TOKEN_POLICY_OPTIONS,
+                      policyForm.anonymousTokenPolicy,
+                    )
+                  }}
+                </a-descriptions-item>
+              </a-descriptions>
+            </a-col>
+            <a-col :xs="24" :lg="12">
+              <h4 class="subsection-title">任务回收策略</h4>
+              <a-descriptions bordered size="small" :column="1">
+                <a-descriptions-item label="策略适用范围">
+                  {{ policyScopeLabel(policyForm.recycleGroupId) }}
+                </a-descriptions-item>
+                <a-descriptions-item label="超时时间（分钟）">
+                  {{ policyForm.timeoutMinutes ?? '—' }}
+                </a-descriptions-item>
+                <a-descriptions-item label="教师最大待处理任务数">
+                  {{ policyForm.maxPendingCount ?? '—' }}
+                </a-descriptions-item>
+                <a-descriptions-item label="再分配模式">
+                  {{ policyOptionLabel(MARKING_REASSIGN_MODE_OPTIONS, policyForm.reassignMode) }}
+                </a-descriptions-item>
+              </a-descriptions>
+            </a-col>
+          </a-row>
+        </template>
+
+        <template v-else-if="activeTab === 'recycled'">
+          <RecycledTaskReassignPanel
+            :exam-id="examId"
+            :groups="groups"
+            :view-all-recycled="canViewAllRecycledTasks"
+            :leader-group-ids="leaderGroupIds"
+          />
+        </template>
+
+        <template v-else-if="activeTab === 'launch'">
+          <FormalSessionPanel
+            :organization-id="organizationId"
+            :exam-id="examId"
+            :group-options="groupSelectOptions"
+            :group-allocation-units="groupAllocationUnitMap"
+            :sessions="formalSessions"
+            :can-manage="canManageExamOwner"
+            @refresh="loadFormalSessions"
+          />
+        </template>
+      </WorkbenchSurfaceCard>
+    </template>
+
+    <UiDialog
       v-model:open="groupModalOpen"
       :title="groupModalTitle"
+      :width="640"
       :confirm-loading="savingGroup"
       ok-text="提交"
-      cancel-text="取消"
-      :width="640"
       @ok="submitGroup"
     >
+      <template #footer>
+        <UiButton variant="outline" @click="groupModalOpen = false">取消</UiButton>
+        <UiButton :loading="savingGroup" @click="submitGroup">提交</UiButton>
+      </template>
       <a-form ref="groupFormRef" :model="groupForm" :rules="groupRules" layout="vertical">
         <a-form-item label="题组名称" name="groupName" required>
           <a-input
@@ -487,11 +600,11 @@
         <a-form-item
           v-if="!groupForm.wholePaperGroup"
           label="负责题目"
-          name="questionTemplateIds"
+          name="layoutQuestionIds"
           required
         >
           <a-select
-            v-model:value="groupForm.questionTemplateIds"
+            v-model:value="groupForm.layoutQuestionIds"
             mode="multiple"
             :options="questionOptions"
             :loading="templateLoading"
@@ -512,7 +625,7 @@
           />
         </a-form-item>
       </a-form>
-    </a-modal>
+    </UiDialog>
 
     <UiDrawer
       :open="editDrawerOpen"
@@ -542,6 +655,131 @@
         </a-form-item>
       </a-form>
     </UiDrawer>
+
+    <UiDrawer
+      :open="policyDrawerOpen"
+      title="编辑分配策略"
+      :width="720"
+      @update:open="(v: boolean) => (policyDrawerOpen = v)"
+      @close="policyDrawerOpen = false"
+    >
+      <template v-if="canManageExamOwner">
+        <a-form :model="policyForm" layout="vertical" class="policy-form">
+          <a-row :gutter="16">
+            <a-col :xs="24" :lg="12">
+              <h4 class="subsection-title">任务分配策略</h4>
+              <a-form-item label="策略适用范围">
+                <a-select
+                  v-model:value="policyForm.allocationGroupId"
+                  placeholder="选择题组（留空表示组织级默认）"
+                  :options="groupSelectOptions"
+                  allow-clear
+                />
+              </a-form-item>
+              <a-form-item label="分配模式" required>
+                <a-select
+                  v-model:value="policyForm.allocationMode"
+                  :options="MARKING_ALLOCATION_MODE_OPTIONS"
+                />
+              </a-form-item>
+              <a-form-item label="批阅任务单元" required>
+                <a-select
+                  v-model:value="policyForm.allocationUnit"
+                  :options="ALLOCATION_UNIT_OPTIONS"
+                />
+              </a-form-item>
+              <a-form-item label="匿名模式" required>
+                <a-select
+                  v-model:value="policyForm.anonymityMode"
+                  :options="effectiveAnonymityModeOptions"
+                  :disabled="true"
+                />
+                <div class="policy-hint">
+                  匿名模式由阅卷组织主配置统一裁决，题组策略只继承当前组织模式。
+                </div>
+              </a-form-item>
+              <a-form-item
+                v-if="policyForm.allocationUnit === AllocationUnitCode.RANDOM_QUESTIONS"
+                label="随机题目抽样数量"
+                required
+              >
+                <a-input-number
+                  v-model:value="policyForm.randomQuestionSampleSize"
+                  :min="1"
+                  :max="100"
+                  style="width: 100%"
+                />
+              </a-form-item>
+              <a-form-item label="每批分配任务数">
+                <a-input-number
+                  v-model:value="policyForm.batchSize"
+                  :min="1"
+                  :max="500"
+                  style="width: 100%"
+                />
+              </a-form-item>
+              <a-form-item label="教师最大待处理任务数">
+                <a-input-number
+                  v-model:value="policyForm.loadLimit"
+                  :min="1"
+                  :max="500"
+                  style="width: 100%"
+                />
+              </a-form-item>
+              <a-form-item label="匿名令牌策略">
+                <a-select
+                  v-model:value="policyForm.anonymousTokenPolicy"
+                  :options="ANONYMOUS_TOKEN_POLICY_OPTIONS"
+                  allow-clear
+                />
+              </a-form-item>
+              <UiButton :loading="savingAllocation" @click="submitAllocation">
+                <template #icon><SaveOutlined /></template>
+                保存分配策略
+              </UiButton>
+            </a-col>
+            <a-col :xs="24" :lg="12">
+              <h4 class="subsection-title">任务回收策略</h4>
+              <a-form-item label="策略适用范围">
+                <a-select
+                  v-model:value="policyForm.recycleGroupId"
+                  placeholder="选择题组（留空表示组织级默认）"
+                  :options="groupSelectOptions"
+                  allow-clear
+                />
+              </a-form-item>
+              <a-form-item label="超时时间（分钟）">
+                <a-input-number
+                  v-model:value="policyForm.timeoutMinutes"
+                  :min="1"
+                  :max="1440"
+                  style="width: 100%"
+                />
+              </a-form-item>
+              <a-form-item label="教师最大待处理任务数">
+                <a-input-number
+                  v-model:value="policyForm.maxPendingCount"
+                  :min="1"
+                  :max="500"
+                  style="width: 100%"
+                />
+              </a-form-item>
+              <a-form-item label="再分配模式">
+                <a-select
+                  v-model:value="policyForm.reassignMode"
+                  :options="MARKING_REASSIGN_MODE_OPTIONS"
+                  allow-clear
+                />
+              </a-form-item>
+              <UiButton :loading="savingRecycle" @click="submitRecycle">
+                <template #icon><SaveOutlined /></template>
+                保存回收策略
+              </UiButton>
+            </a-col>
+          </a-row>
+        </a-form>
+      </template>
+    </UiDrawer>
   </StageWorkbenchShell>
 </template>
 
@@ -549,49 +787,85 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
-import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
-import type { ExamDetailVO } from '@/apis/mark/exam'
+import type { ExamDetailResponse } from '@/apis/mark/exam'
+import type { ExamTemplateResponse } from '@/apis/mark/exam-layout-question'
+import type { ExamWorkbenchMarkingProgressPanelResponse } from '@/apis/mark/exam-progress'
 import type {
+  AllocationPolicyResponse,
   AllocationPolicySaveRequest,
-  AllocationPolicyVO,
-  AllocationUnitCode,
-  AnonymousTokenPolicyCode,
-  FormalSessionVO,
-  MarkingAllocationModeCode,
-  MarkingOrganizationVO,
-  MarkingReassignModeCode,
+  FormalSessionResponse,
+  MarkingOrganizationResponse,
   OrganizationUpdateRequest,
   QuestionGroupSaveRequest,
-  QuestionMarkingGroupStatusCode,
-  QuestionMarkingGroupVO,
-  RecyclePolicySaveRequest, RecyclePolicyVO
+  QuestionMarkingGroupResponse,
+  RecyclePolicyResponse,
+  RecyclePolicySaveRequest,
 } from '@/apis/mark/marking-organization'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { ReviewerQualityMetricResponse } from '@/apis/mark/marking-quality'
+import type { BadgeTone, UiSectionTabItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { adminGetUserPage } from '@/apis/edu/admin-user'
 import { ANONYMITY_MODE_OPTIONS } from '@/apis/mark/anonymity-mode'
 import { getExamDetail } from '@/apis/mark/exam'
-import { getExamTemplate } from '@/apis/mark/exam-template'
-import { ALLOCATION_UNIT_LABEL, ANONYMOUS_TOKEN_POLICY_LABEL, closeQuestionGroup, deleteOrganization, deleteQuestionGroup, getOrganizationById, listFormalSessions, listMarkingPolicies, MARKING_ALLOCATION_MODE_LABEL, MARKING_ORGANIZATION_STATUS_LABEL, MARKING_ORGANIZATION_STATUS_TONE, MARKING_REASSIGN_MODE_LABEL, QUESTION_GROUP_STATUS_LABEL, QUESTION_GROUP_STATUS_TONE, requireMarkingOrganizationId, saveAllocationPolicy, saveQuestionGroup, saveRecyclePolicy, updateOrganization, validateFormalSessionContract, validateMarkingOrganizationContract, validateMarkingPolicyListContract } from '@/apis/mark/marking-organization'
-import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
+import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
+import { getMarkingProgressPanel } from '@/apis/mark/exam-progress'
+import {
+  ALLOCATION_UNIT_OPTIONS,
+  ANONYMOUS_TOKEN_POLICY_OPTIONS,
+  closeQuestionGroup,
+  deleteOrganization,
+  deleteQuestionGroup,
+  getOrganizationById,
+  listFormalSessions,
+  listMarkingPolicies,
+  MARKING_ALLOCATION_MODE_OPTIONS,
+  MARKING_ORGANIZATION_STATUS_TONE,
+  MARKING_REASSIGN_MODE_OPTIONS,
+  MarkingOrganizationStatusDescription,
+  QUESTION_GROUP_STATUS_TONE,
+  QuestionMarkingGroupStatusDescription,
+  requireMarkingOrganizationId,
+  saveAllocationPolicy,
+  saveQuestionGroup,
+  saveRecyclePolicy,
+  updateOrganization,
+} from '@/apis/mark/marking-organization'
+import { listReviewerMetrics } from '@/apis/mark/marking-quality'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInfoGrid from '@/components/ui-guide/ui/InfoGrid.vue'
 import UiInfoGridItem from '@/components/ui-guide/ui/InfoGridItem.vue'
 import UiSearchBox from '@/components/ui-guide/ui/SearchBox.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useOptionalExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkingOrgPermission } from '@/composables/useMarkingOrgPermission'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useUserStore } from '@/stores/modules/user'
+import { AllocationUnitCode } from '@/types/enums/allocation-unit-enum'
+import { AnonymityModeCode } from '@/types/enums/anonymity-mode-enum'
+import { AnonymousTokenPolicyCode } from '@/types/enums/anonymous-token-policy-enum'
+import { MarkingAllocationModeCode } from '@/types/enums/marking-allocation-mode-enum'
+import { MarkingReassignModeCode } from '@/types/enums/marking-reassign-mode-enum'
+import { QuestionMarkingGroupStatusCode } from '@/types/enums/question-marking-group-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { buildExamLayoutQuestionOptions } from '@/utils/format-exam-layout-question-summary'
 import {
   resolveMarkingOrganizationDetailRoute,
   resolveMarkingOrganizationIndexRoute,
@@ -600,11 +874,18 @@ import {
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import FormalSessionPanel from '@/views/admin/marking-organization/components/FormalSessionPanel.vue'
+import MarkingOrgAssignmentTable from '@/views/admin/marking-organization/components/MarkingOrgAssignmentTable.vue'
+import MarkingOrgGroupProgressList from '@/views/admin/marking-organization/components/MarkingOrgGroupProgressList.vue'
+import MarkingOrgReviewerRosterTable from '@/views/admin/marking-organization/components/MarkingOrgReviewerRosterTable.vue'
+import MarkingOrgStrategySummaryCard from '@/views/admin/marking-organization/components/MarkingOrgStrategySummaryCard.vue'
 import RecycledTaskReassignPanel from '@/views/admin/marking-organization/components/RecycledTaskReassignPanel.vue'
 
 defineOptions({ name: 'AdminMarkingOrganizationDetail' })
 
 const MARKING_TEACHER_OPTION_PAGE_SIZE = 100
+
+const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
+  = useOptionalExamJourneyContextBar('阅卷安排')
 
 const route = useRoute()
 const router = useRouter()
@@ -615,8 +896,8 @@ const organizationId = computed(() => String(route.params.organizationId || ''))
 const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
 const routeExamId = computed(() => String(route.params.examId || ''))
 
-const organization = ref<MarkingOrganizationVO | null>(null)
-const examDetail = ref<ExamDetailVO | null>(null)
+const organization = ref<MarkingOrganizationResponse | null>(null)
+const examDetail = ref<ExamDetailResponse | null>(null)
 const examId = computed(() => String(organization.value?.examId || ''))
 const workspaceExamId = computed(() => {
   if (isExamWorkspaceRoute.value && routeExamId.value) {
@@ -628,13 +909,26 @@ const activeExamId = computed(() => examId.value || workspaceExamId.value)
 const loading = ref(false)
 // 加载失败：toast 提示，主区保持空态/列表壳
 const activeTab = ref<'info' | 'policy' | 'recycled' | 'launch'>('info')
+const workspaceSecondaryTab = ref<'recycled' | 'launch'>('launch')
+const policyDrawerOpen = ref(false)
+const secondaryPanelRef = ref<HTMLElement | null>(null)
+const markingProgressPanel = ref<ExamWorkbenchMarkingProgressPanelResponse | null>(null)
+const reviewerMetrics = ref<ReviewerQualityMetricResponse[]>([])
+const reviewerMetricsLoading = ref(false)
 
-const groups = computed<QuestionMarkingGroupVO[]>(() => organization.value?.groups ?? [])
+interface GroupProgressSnapshot {
+  total: number
+  finalized: number
+}
+
+const reviewerCount = computed(() => organization.value?.uniqueReviewerCount ?? 0)
+
+const groups = computed<QuestionMarkingGroupResponse[]>(() => organization.value?.groups ?? [])
 const groupSearchKeyword = ref('')
 const normalizedGroupSearchKeyword = computed(() => groupSearchKeyword.value.trim().toLowerCase())
 
 /** 题组列表前端筛选：匹配名称、组长、阅卷教师、题号与题型 */
-function matchesGroupSearch(group: QuestionMarkingGroupVO, keyword: string): boolean {
+function matchesGroupSearch(group: QuestionMarkingGroupResponse, keyword: string): boolean {
   if (group.groupName?.toLowerCase().includes(keyword)) {
     return true
   }
@@ -645,7 +939,7 @@ function matchesGroupSearch(group: QuestionMarkingGroupVO, keyword: string): boo
     return true
   }
   if (
-    strictEnumLabel(QUESTION_GROUP_STATUS_LABEL, group.groupStatus, '题组状态')
+    strictEnumLabel(QuestionMarkingGroupStatusDescription, group.groupStatus, '题组状态')
       .toLowerCase()
       .includes(keyword)
   ) {
@@ -664,7 +958,7 @@ function matchesGroupSearch(group: QuestionMarkingGroupVO, keyword: string): boo
     (question) =>
       String(question.questionNo).includes(keyword)
       || question.questionTypeMessage?.toLowerCase().includes(keyword),
-  );
+  )
 }
 
 const filteredGroups = computed(() => {
@@ -697,7 +991,106 @@ const organizationExamLabel = computed(() => {
     ? `${organization.value.examName}（${organization.value.examNo}）`
     : organization.value.examName
 })
-const examCreateUserId = computed(() => examDetail.value?.createUser ?? organization.value?.examCreateUserId)
+
+const orgSignalMetrics = computed((): SignalMetric[] => {
+  const org = organization.value
+  if (!org) {
+    return []
+  }
+  const summary = markingProgressPanel.value?.markingTaskSummary
+  const overallPercent
+    = summary && summary.totalTaskCount > 0
+      ? Math.round((summary.finalizedTaskCount * 100) / summary.totalTaskCount)
+      : null
+  const metrics: SignalMetric[] = [
+    {
+      key: 'leader',
+      label: '阅卷组长',
+      value: org.leaderUserName || '—',
+      tone: 'blue',
+    },
+    {
+      key: 'groups',
+      label: '题组',
+      value: org.groupCount ?? org.groups.length,
+      unit: '组',
+      tone: 'green',
+    },
+    {
+      key: 'reviewers',
+      label: '教师数',
+      value: reviewerCount.value,
+      unit: '人',
+      tone: 'blue',
+    },
+    {
+      key: 'anonymous',
+      label: '匿名模式',
+      value: org.anonymousMode ? '启用' : '关闭',
+      tone: org.anonymousMode ? 'green' : 'gray',
+    },
+  ]
+  if (overallPercent != null) {
+    metrics.push({
+      key: 'progress',
+      label: '整体进度',
+      value: overallPercent,
+      unit: '%',
+      tone: overallPercent >= 60 ? 'green' : 'orange',
+    })
+  } else {
+    metrics.push({
+      key: 'status',
+      label: '组织状态',
+      value: strictEnumLabel(
+        MarkingOrganizationStatusDescription,
+        org.organizationStatus,
+        '阅卷组织状态',
+      ),
+      tone: strictEnumTone(
+        MARKING_ORGANIZATION_STATUS_TONE,
+        org.organizationStatus,
+        '阅卷组织状态',
+      ),
+    })
+  }
+  return metrics
+})
+
+const orgDefaultAllocationPolicy = computed(() =>
+  allocationPolicies.value.find((policy) => policy.groupId == null),
+)
+
+const orgDefaultRecyclePolicy = computed(() =>
+  recyclePolicies.value.find((policy) => policy.groupId == null),
+)
+
+const groupProgressById = computed((): Record<string, GroupProgressSnapshot> => {
+  const map: Record<string, GroupProgressSnapshot> = {}
+  for (const session of markingProgressPanel.value?.formalSessions ?? []) {
+    if (!session.groupId) continue
+    const current = map[session.groupId] ?? { total: 0, finalized: 0 }
+    current.total += session.totalTaskCount
+    current.finalized += session.finalizedTaskCount
+    map[session.groupId] = current
+  }
+  return map
+})
+
+const workspaceSecondaryTabItems = computed((): UiSectionTabItem[] => {
+  const items: UiSectionTabItem[] = []
+  if (canReassignRecycledTasks.value) {
+    items.push({ key: 'recycled', label: '回收待分配' })
+  }
+  if (canManageExamOwner.value) {
+    items.push({ key: 'launch', label: '快速启动' })
+  }
+  return items
+})
+
+const examCreateUserId = computed(
+  () => examDetail.value?.createUser ?? organization.value?.examCreateUserId,
+)
 const { canManageExamOwner } = useMarkingOrgPermission(examCreateUserId, organization)
 
 function guardExamOwnerAction(): boolean {
@@ -706,7 +1099,7 @@ function guardExamOwnerAction(): boolean {
   return false
 }
 
-const formalSessions = ref<FormalSessionVO[]>([])
+const formalSessions = ref<FormalSessionResponse[]>([])
 
 async function loadFormalSessions(): Promise<void> {
   if (!organizationId.value) {
@@ -714,12 +1107,39 @@ async function loadFormalSessions(): Promise<void> {
     return
   }
   try {
-    const sessions = await listFormalSessions({ organizationId: organizationId.value })
-    sessions.forEach(validateFormalSessionContract)
-    formalSessions.value = sessions
+    formalSessions.value = await listFormalSessions({ organizationId: organizationId.value })
   } catch (error) {
     formalSessions.value = []
     showUserError(error, '正评会话加载失败')
+  }
+}
+
+/** 工作台双栏布局：加载题组进度与教师质量指标真源。 */
+async function loadWorkbenchPanels(): Promise<void> {
+  if (!isExamWorkspaceRoute.value || !activeExamId.value || !organizationId.value) {
+    markingProgressPanel.value = null
+    reviewerMetrics.value = []
+    return
+  }
+  reviewerMetricsLoading.value = true
+  try {
+    const [panel, metricsResult] = await Promise.all([
+      getMarkingProgressPanel(activeExamId.value),
+      listReviewerMetrics({
+        examId: activeExamId.value,
+        organizationId: organizationId.value,
+        pageNum: 1,
+        pageSize: 200,
+      }),
+    ])
+    markingProgressPanel.value = panel
+    reviewerMetrics.value = metricsResult.list ?? []
+  } catch (error) {
+    markingProgressPanel.value = null
+    reviewerMetrics.value = []
+    showUserError(error, '阅卷组织看板数据加载失败')
+  } finally {
+    reviewerMetricsLoading.value = false
   }
 }
 
@@ -734,6 +1154,25 @@ const canReassignRecycledTasks = computed(() => {
   return groups.value.some((group) => group.leaderUserId === userId)
 })
 const canViewAllRecycledTasks = computed(() => canManageExamOwner.value)
+
+const detailTabItems = computed((): UiSectionTabItem[] => {
+  const items: UiSectionTabItem[] = [
+    {
+      key: 'info',
+      label: '基本信息 + 题组',
+      count: organization.value?.groups.length,
+    },
+    { key: 'policy', label: '任务策略' },
+  ]
+  if (canReassignRecycledTasks.value) {
+    items.push({ key: 'recycled', label: '回收待分配' })
+  }
+  if (canManageExamOwner.value) {
+    items.push({ key: 'launch', label: '快速启动' })
+  }
+  return items
+})
+
 const leaderGroupIds = computed(() => {
   const userId = userStore.userInfo.userId
   return groups.value.filter((group) => group.leaderUserId === userId).map((group) => group.id)
@@ -768,11 +1207,13 @@ function resetPolicyState(): void {
 /**
  * 工作台详情路由必须与组织真实 examId 对齐，否则阶段快照、回跳目标与当前操作对象会错位。
  */
-async function alignWorkspaceRouteExamId(nextOrganization: MarkingOrganizationVO): Promise<boolean> {
-  if (!isExamWorkspaceRoute.value) {
+async function alignWorkspaceRouteExamId(
+  nextOrganization: MarkingOrganizationResponse,
+): Promise<boolean> {
+  if (!nextOrganization.examId) {
     return true
   }
-  if (!nextOrganization.examId || routeExamId.value === nextOrganization.examId) {
+  if (isExamWorkspaceRoute.value && routeExamId.value === nextOrganization.examId) {
     return true
   }
   await router.replace(
@@ -802,6 +1243,7 @@ async function loadOrganization(): Promise<void> {
     examDetail.value = await getExamDetail(nextOrganization.examId)
     await loadMarkingPolicies()
     await loadFormalSessions()
+    await loadWorkbenchPanels()
   } catch (error) {
     organization.value = null
     examDetail.value = null
@@ -812,7 +1254,7 @@ async function loadOrganization(): Promise<void> {
   }
 }
 
-const groupColumns: ColumnType<QuestionMarkingGroupVO>[] = [
+const groupColumns: ColumnType<QuestionMarkingGroupResponse>[] = [
   { title: '题组名称', key: 'groupName', dataIndex: 'groupName', width: 220 },
   { title: '负责题目', key: 'questions', width: 280 },
   { title: '阅卷教师', key: 'reviewers', width: 240 },
@@ -837,11 +1279,12 @@ async function loadTeachers(): Promise<void> {
   teacherLoading.value = true
   try {
     teacherList.value = await readAllPages(
-      (pageNum) => adminGetUserPage({
-        pageNum,
-        pageSize: MARKING_TEACHER_OPTION_PAGE_SIZE,
-        roleKey: 'SCH_TECH',
-      }),
+      (pageNum) =>
+        adminGetUserPage({
+          pageNum,
+          pageSize: MARKING_TEACHER_OPTION_PAGE_SIZE,
+          roleKey: 'SCH_TECH',
+        }),
       '阅卷教师列表加载失败，请稍后重试',
     )
   } catch (error) {
@@ -854,32 +1297,40 @@ async function loadTeachers(): Promise<void> {
 interface QuestionOption {
   value: string
   label: string
+  disabled?: boolean
+  title?: string
 }
 
 const questionOptions = ref<QuestionOption[]>([])
-const loadedQuestionTemplateExamId = ref<string | null>(null)
+const layoutSummary = ref<ExamTemplateResponse | null>(null)
+const layoutRoiGap = computed(() => {
+  if (!layoutSummary.value?.configured) {
+    return 0
+  }
+  const total = layoutSummary.value.totalQuestionCount ?? 0
+  const ready = layoutSummary.value.roiReadyQuestionCount ?? 0
+  return Math.max(0, total - ready)
+})
+const loadedLayoutQuestionExamId = ref<string | null>(null)
 const templateLoading = ref(false)
 
-async function loadQuestionTemplates(): Promise<void> {
+async function loadLayoutQuestions(): Promise<void> {
   const currentExamId = examId.value
   if (!currentExamId) return
-  if (loadedQuestionTemplateExamId.value === currentExamId && questionOptions.value.length > 0)
-    return
+  if (loadedLayoutQuestionExamId.value === currentExamId && questionOptions.value.length > 0) return
   templateLoading.value = true
   try {
-    const tpl = await getExamTemplate(currentExamId)
+    const tpl = await getExamLayoutQuestionSummary(currentExamId)
+    layoutSummary.value = tpl
     if (!tpl.configured) {
       questionOptions.value = []
-      loadedQuestionTemplateExamId.value = currentExamId
+      loadedLayoutQuestionExamId.value = currentExamId
       return
     }
-    questionOptions.value = tpl.questions.map((q) => ({
-      value: q.questionTemplateId,
-      label: `第 ${q.questionNo} 题（${strictEnumLabel(QUESTION_TYPE_LABEL, q.questionType, '题型')}，满分 ${q.fullScore}）`,
-    }))
-    loadedQuestionTemplateExamId.value = currentExamId
+    questionOptions.value = buildExamLayoutQuestionOptions(tpl.questions)
+    loadedLayoutQuestionExamId.value = currentExamId
   } catch (error) {
-    showUserError(error, '考试题目模板加载失败')
+    showUserError(error, '考试制卷题目加载失败')
   } finally {
     templateLoading.value = false
   }
@@ -893,7 +1344,7 @@ interface GroupForm {
   groupId?: string
   groupName: string
   leaderUserId?: string
-  questionTemplateIds: string[]
+  layoutQuestionIds: string[]
   reviewerUserIds: string[]
   wholePaperGroup: boolean
 }
@@ -902,7 +1353,7 @@ const groupForm = reactive<GroupForm>({
   groupId: undefined,
   groupName: '',
   leaderUserId: undefined,
-  questionTemplateIds: [],
+  layoutQuestionIds: [],
   reviewerUserIds: [],
   wholePaperGroup: false,
 })
@@ -915,7 +1366,7 @@ const groupRules: Record<string, Rule[]> = {
     { max: 50, message: '题组名称最多 50 字', trigger: 'blur' },
   ],
   leaderUserId: [{ required: true, message: '请选择题组组长', trigger: 'change' }],
-  questionTemplateIds: [
+  layoutQuestionIds: [
     {
       validator: (_rule, value: string[]) => {
         if (groupForm.wholePaperGroup) {
@@ -967,25 +1418,49 @@ function openGroupModal(): void {
   groupForm.groupId = undefined
   groupForm.groupName = ''
   groupForm.leaderUserId = undefined
-  groupForm.questionTemplateIds = []
+  groupForm.layoutQuestionIds = []
   groupForm.reviewerUserIds = examCreateUserId.value ? [examCreateUserId.value] : []
   groupForm.wholePaperGroup = false
   groupModalOpen.value = true
   void loadTeachers()
-  void loadQuestionTemplates()
+  void loadLayoutQuestions()
 }
 
-function openGroupEdit(record: QuestionMarkingGroupVO): void {
+function openGroupEdit(record: QuestionMarkingGroupResponse): void {
   if (!guardExamOwnerAction()) return
   groupForm.groupId = record.id
   groupForm.groupName = record.groupName
   groupForm.leaderUserId = record.leaderUserId
-  groupForm.questionTemplateIds = record.questions.map((question) => question.questionTemplateId)
+  groupForm.layoutQuestionIds = record.questions.map((question) => question.layoutQuestionId)
   groupForm.reviewerUserIds = record.reviewers.map((reviewer) => reviewer.reviewerUserId)
   groupForm.wholePaperGroup = record.questions.length === 0 && record.groupName.includes('整卷')
   groupModalOpen.value = true
   void loadTeachers()
-  void loadQuestionTemplates()
+  void loadLayoutQuestions()
+}
+
+function openGroupEditById(groupId: string): void {
+  const record = groups.value.find((group) => group.id === groupId)
+  if (!record) {
+    showUserError(new Error(`题组不存在 groupId=${groupId}`), '题组不存在或已删除')
+    return
+  }
+  openGroupEdit(record)
+}
+
+function openPolicyDrawer(): void {
+  if (!guardExamOwnerAction()) return
+  policyForm.allocationGroupId = undefined
+  policyForm.recycleGroupId = undefined
+  applyAllocationPolicyToForm()
+  applyRecyclePolicyToForm()
+  policyDrawerOpen.value = true
+}
+
+async function focusLaunchPanel(): Promise<void> {
+  workspaceSecondaryTab.value = 'launch'
+  await nextTick()
+  secondaryPanelRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 async function submitGroup(): Promise<void> {
@@ -1003,7 +1478,7 @@ async function submitGroup(): Promise<void> {
       groupId: groupForm.groupId,
       groupName: groupForm.groupName,
       leaderUserId: groupForm.leaderUserId!,
-      questionTemplateIds: groupForm.wholePaperGroup ? [] : groupForm.questionTemplateIds,
+      layoutQuestionIds: groupForm.wholePaperGroup ? [] : groupForm.layoutQuestionIds,
       wholePaperGroup: groupForm.wholePaperGroup || undefined,
       reviewerUserIds: groupForm.reviewerUserIds,
     }
@@ -1020,22 +1495,27 @@ async function submitGroup(): Promise<void> {
   }
 }
 
-function canEditGroup(record: QuestionMarkingGroupVO): boolean {
-  return canManageExamOwner.value && record.groupStatus !== 'GROUP_CLOSED'
-}
-
-function canDeleteGroup(record: QuestionMarkingGroupVO): boolean {
-  return canManageExamOwner.value && record.groupStatus === 'GROUP_DRAFT'
-}
-
-function canCloseGroup(record: QuestionMarkingGroupVO): boolean {
+function canEditGroup(record: QuestionMarkingGroupResponse): boolean {
   return (
-    canManageExamOwner.value
-    && (record.groupStatus === 'GROUP_ACTIVE' || record.groupStatus === 'GROUP_CONFIGURED')
+    canManageExamOwner.value && record.groupStatus !== QuestionMarkingGroupStatusCode.GROUP_CLOSED
   )
 }
 
-async function submitGroupDelete(record: QuestionMarkingGroupVO): Promise<void> {
+function canDeleteGroup(record: QuestionMarkingGroupResponse): boolean {
+  return (
+    canManageExamOwner.value && record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_DRAFT
+  )
+}
+
+function canCloseGroup(record: QuestionMarkingGroupResponse): boolean {
+  return (
+    canManageExamOwner.value
+    && (record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_ACTIVE
+      || record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_CONFIGURED)
+  )
+}
+
+async function submitGroupDelete(record: QuestionMarkingGroupResponse): Promise<void> {
   if (!guardExamOwnerAction()) return
   groupActionLoadingId.value = record.id
   try {
@@ -1050,7 +1530,7 @@ async function submitGroupDelete(record: QuestionMarkingGroupVO): Promise<void> 
   }
 }
 
-async function submitGroupClose(record: QuestionMarkingGroupVO): Promise<void> {
+async function submitGroupClose(record: QuestionMarkingGroupResponse): Promise<void> {
   if (!guardExamOwnerAction()) return
   groupActionLoadingId.value = record.id
   try {
@@ -1089,9 +1569,7 @@ async function submitUpdate(): Promise<void> {
       anonymousMode: editForm.anonymousMode,
       remark: editForm.remark?.trim() || undefined,
     }
-    const nextOrganization = await updateOrganization(request)
-    validateMarkingOrganizationContract(nextOrganization)
-    organization.value = nextOrganization
+    organization.value = await updateOrganization(request)
     message.success('阅卷组织已更新')
     editDrawerOpen.value = false
     await refreshSnapshot()
@@ -1135,36 +1613,44 @@ interface PolicyForm {
 
 const policyForm = reactive<PolicyForm>({
   allocationGroupId: undefined,
-  allocationMode: 'BY_QUESTION',
-  allocationUnit: 'SELECTED_QUESTIONS',
-  anonymityMode: 'ANONYMOUS',
+  allocationMode: MarkingAllocationModeCode.BY_QUESTION,
+  allocationUnit: AllocationUnitCode.SELECTED_QUESTIONS,
+  anonymityMode: AnonymityModeCode.ANONYMOUS,
   randomQuestionSampleSize: undefined,
   batchSize: 20,
   loadLimit: 50,
-  anonymousTokenPolicy: 'PER_EXAM',
+  anonymousTokenPolicy: AnonymousTokenPolicyCode.PER_EXAM,
   recycleGroupId: undefined,
   timeoutMinutes: 60,
   maxPendingCount: 30,
-  reassignMode: 'AUTO',
+  reassignMode: MarkingReassignModeCode.AUTO,
 })
 
-const allocationPolicies = ref<AllocationPolicyVO[]>([])
-const recyclePolicies = ref<RecyclePolicyVO[]>([])
+const allocationPolicies = ref<AllocationPolicyResponse[]>([])
+const recyclePolicies = ref<RecyclePolicyResponse[]>([])
+
+const effectiveAnonymityMode = computed(() =>
+  organization.value?.anonymousMode ? AnonymityModeCode.ANONYMOUS : AnonymityModeCode.NAMED,
+)
+
+const effectiveAnonymityModeOptions = computed(() =>
+  ANONYMITY_MODE_OPTIONS.filter((option) => option.value === effectiveAnonymityMode.value),
+)
 
 const DEFAULT_ALLOCATION_POLICY_FIELDS = {
-  allocationMode: 'BY_QUESTION' as MarkingAllocationModeCode,
-  allocationUnit: 'SELECTED_QUESTIONS' as AllocationUnitCode,
-  anonymityMode: 'ANONYMOUS' as AnonymityModeCode,
-  randomQuestionSampleSize: undefined as number | undefined,
+  allocationMode: MarkingAllocationModeCode.BY_QUESTION,
+  allocationUnit: AllocationUnitCode.SELECTED_QUESTIONS,
+  anonymityMode: AnonymityModeCode.ANONYMOUS,
+  randomQuestionSampleSize: undefined,
   batchSize: 20,
   loadLimit: 50,
-  anonymousTokenPolicy: 'PER_EXAM' as AnonymousTokenPolicyCode,
+  anonymousTokenPolicy: AnonymousTokenPolicyCode.PER_EXAM,
 }
 
 const DEFAULT_RECYCLE_POLICY_FIELDS = {
   timeoutMinutes: 60,
   maxPendingCount: 30,
-  reassignMode: 'AUTO' as MarkingReassignModeCode,
+  reassignMode: MarkingReassignModeCode.AUTO,
 }
 
 function findPolicyByGroup<T extends { groupId?: string | null }>(
@@ -1182,7 +1668,7 @@ function applyAllocationPolicyToForm(): void {
   if (saved) {
     policyForm.allocationMode = saved.allocationMode
     policyForm.allocationUnit = saved.allocationUnit
-    policyForm.anonymityMode = saved.anonymityMode
+    policyForm.anonymityMode = effectiveAnonymityMode.value
     policyForm.randomQuestionSampleSize = saved.randomQuestionSampleSize
     policyForm.batchSize = saved.batchSize
     policyForm.loadLimit = saved.loadLimit
@@ -1190,6 +1676,7 @@ function applyAllocationPolicyToForm(): void {
     return
   }
   Object.assign(policyForm, DEFAULT_ALLOCATION_POLICY_FIELDS)
+  policyForm.anonymityMode = effectiveAnonymityMode.value
 }
 
 function applyRecyclePolicyToForm(): void {
@@ -1213,7 +1700,6 @@ async function loadMarkingPolicies(): Promise<void> {
   }
   try {
     const response = await listMarkingPolicies({ organizationId: organizationId.value })
-    validateMarkingPolicyListContract(response)
     allocationPolicies.value = response.allocationPolicies ?? []
     recyclePolicies.value = response.recyclePolicies ?? []
     applyAllocationPolicyToForm()
@@ -1226,6 +1712,9 @@ async function loadMarkingPolicies(): Promise<void> {
 
 watch(() => policyForm.allocationGroupId, applyAllocationPolicyToForm)
 watch(() => policyForm.recycleGroupId, applyRecyclePolicyToForm)
+watch(effectiveAnonymityMode, (mode) => {
+  policyForm.anonymityMode = mode
+})
 
 const groupSelectOptions = computed(() => [
   ...groups.value.map((g) => ({ value: g.id, label: g.groupName })),
@@ -1233,7 +1722,9 @@ const groupSelectOptions = computed(() => [
 
 const groupAllocationUnitMap = computed(() => {
   const map: Record<string, AllocationUnitCode> = {}
-  const defaultAllocationUnit = allocationPolicies.value.find((policy) => policy.groupId == null)?.allocationUnit
+  const defaultAllocationUnit = allocationPolicies.value.find(
+    (policy) => policy.groupId == null,
+  )?.allocationUnit
   for (const group of groups.value) {
     const groupPolicy = allocationPolicies.value.find((policy) => policy.groupId === group.id)
     const allocationUnit = groupPolicy?.allocationUnit ?? defaultAllocationUnit
@@ -1243,25 +1734,6 @@ const groupAllocationUnitMap = computed(() => {
   }
   return map
 })
-
-// 从后端枚举 LABEL 对象直接派生 select options。
-const ALLOCATION_MODE_OPTIONS = Object.entries(MARKING_ALLOCATION_MODE_LABEL).map(
-  ([value, label]) => ({ value, label }),
-)
-
-const ALLOCATION_UNIT_OPTIONS = Object.entries(ALLOCATION_UNIT_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
-
-const REASSIGN_MODE_OPTIONS = Object.entries(MARKING_REASSIGN_MODE_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
-
-const ANONYMOUS_TOKEN_OPTIONS = Object.entries(ANONYMOUS_TOKEN_POLICY_LABEL).map(
-  ([value, label]) => ({ value, label }),
-)
 
 function policyOptionLabel(
   options: Array<{ value: string, label: string }>,
@@ -1291,7 +1763,7 @@ async function submitAllocation(): Promise<void> {
       groupId: policyForm.allocationGroupId,
       allocationMode: policyForm.allocationMode,
       allocationUnit: policyForm.allocationUnit,
-      anonymityMode: policyForm.anonymityMode,
+      anonymityMode: effectiveAnonymityMode.value,
       randomQuestionSampleSize: policyForm.randomQuestionSampleSize,
       batchSize: policyForm.batchSize,
       loadLimit: policyForm.loadLimit,
@@ -1299,6 +1771,7 @@ async function submitAllocation(): Promise<void> {
     }
     await saveAllocationPolicy(request)
     message.success('分配策略已保存')
+    policyDrawerOpen.value = false
     await loadMarkingPolicies()
     await refreshSnapshot()
   } catch (error) {
@@ -1323,6 +1796,7 @@ async function submitRecycle(): Promise<void> {
     }
     await saveRecyclePolicy(request)
     message.success('回收策略已保存')
+    policyDrawerOpen.value = false
     await loadMarkingPolicies()
     await refreshSnapshot()
   } catch (error) {
@@ -1333,10 +1807,12 @@ async function submitRecycle(): Promise<void> {
 }
 
 function goSessions(): void {
-  void router.push(resolveMarkingOrganizationSessionsRoute(
-    organizationId.value,
-    activeExamId.value || undefined,
-  ))
+  const examId = activeExamId.value
+  if (!examId) {
+    showUserError(new Error('缺少考试上下文'), '无法进入试评 / 正评')
+    return
+  }
+  void router.push(resolveMarkingOrganizationSessionsRoute(organizationId.value, examId))
 }
 
 // 严格 typed helper：题组 groupStatus 是后端合同必返枚举。
@@ -1345,24 +1821,31 @@ function groupStatusTone(status: QuestionMarkingGroupStatusCode): BadgeTone {
 }
 
 function groupStatusLabel(status: QuestionMarkingGroupStatusCode): string {
-  return strictEnumLabel(QUESTION_GROUP_STATUS_LABEL, status, '题组状态')
+  return strictEnumLabel(QuestionMarkingGroupStatusDescription, status, '题组状态')
 }
 
-watch(() => [organizationId.value, routeExamId.value] as const, () => {
-  void loadOrganization()
-}, { immediate: true })
+watch(
+  () => ({ organizationId: organizationId.value, routeExamId: routeExamId.value }),
+  () => {
+    void loadOrganization()
+  },
+  { immediate: true },
+)
 
 watch(
-  () => [route.query.tab, canManageExamOwner.value] as const,
-  ([tab, canManage]) => {
-    if (typeof tab !== 'string') {
+  () => ({ canManage: canManageExamOwner.value, tab: route.query.tab }),
+  (routeState) => {
+    if (typeof routeState.tab !== 'string') {
       return
     }
-    if (tab === 'launch' && !canManage) {
+    if (routeState.tab === 'launch' && !routeState.canManage) {
       activeTab.value = 'info'
       return
     }
-    activeTab.value = tab === 'launch' || tab === 'policy' || tab === 'recycled' ? tab : 'info'
+    activeTab.value
+      = routeState.tab === 'launch' || routeState.tab === 'policy' || routeState.tab === 'recycled'
+        ? routeState.tab
+        : 'info'
   },
   { immediate: true },
 )
@@ -1372,6 +1855,10 @@ watch(
 .org-detail {
   &__readonly-banner {
     margin-bottom: 12px;
+  }
+
+  &__secondary {
+    margin-top: var(--dp-space-3);
   }
 
   &__panel {
@@ -1479,5 +1966,20 @@ watch(
 
 .status-form {
   max-width: 480px;
+}
+
+.org-workbench__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--dp-space-3);
+  margin-top: var(--dp-space-3);
+
+  @media (max-width: 960px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+:deep(.org-roster) {
+  margin-top: var(--dp-space-3);
 }
 </style>

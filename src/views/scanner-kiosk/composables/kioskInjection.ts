@@ -7,10 +7,10 @@
  */
 
 import type { InjectionKey, Ref } from 'vue'
+import type { ExamKioskWorkflow } from './useExamKioskWorkflow'
 import type { KioskMutex } from './useKioskMutex'
-import type { KioskWorkflow } from './useKioskWorkflow'
 import type { KioskStageMachine } from './useStageMachine'
-import type { ExamScannerKioskBatchHistoryItem } from '@/apis/mark/scanner-kiosk'
+import type { ExamScannerBatchResponse } from '@/apis/mark/scanner-kiosk'
 import { inject } from 'vue'
 
 /**
@@ -33,7 +33,7 @@ export interface KioskUiState {
   openScanParams: () => void
   closeScanParams: () => void
   /** 触发查看历史批次 ledger（先关闭其它抽屉再调用 workflow.viewBatchHistoryLedger） */
-  viewHistoryLedger: (item: ExamScannerKioskBatchHistoryItem) => void
+  viewHistoryLedger: (item: ExamScannerBatchResponse) => void
   /** 关闭历史批次 ledger 抽屉（清空 workflow.historyLedgerBatch） */
   closeHistoryLedger: () => void
   openShortcutHints: () => void
@@ -41,7 +41,7 @@ export interface KioskUiState {
 }
 
 export interface KioskCtx {
-  workflow: KioskWorkflow
+  workflow: ExamKioskWorkflow
   mutex: KioskMutex
   stage: KioskStageMachine
   ui: KioskUiState

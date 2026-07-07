@@ -23,7 +23,7 @@
         >
           <a-collapse-panel
             v-for="(question, questionIndex) in wholeQuestions"
-            :key="question.questionTemplateId"
+            :key="question.layoutQuestionId"
           >
             <template #header>
               <div class="marking-score-panel__question-header">
@@ -31,11 +31,11 @@
                 <UiTag tone="gray" size="sm">{{ question.questionTypeMessage }}</UiTag>
                 <UiTag tone="green" size="sm">满分 {{ question.fullScore }}</UiTag>
                 <UiTag
-                  v-if="isWholeQuestionScored(question.questionTemplateId)"
+                  v-if="isWholeQuestionScored(question.layoutQuestionId)"
                   tone="green"
                   size="sm"
                 >
-                  已给 {{ getWholeQuestionForm(question.questionTemplateId).score }} 分
+                  已给 {{ getWholeQuestionForm(question.layoutQuestionId).score }} 分
                 </UiTag>
                 <UiTag v-else tone="orange" size="sm">待评分</UiTag>
                 <UiButton
@@ -48,6 +48,13 @@
                 </UiButton>
               </div>
             </template>
+            <a-typography-paragraph
+              v-if="question.questionStem"
+              class="marking-score-panel__question-stem"
+              :ellipsis="{ rows: 3, expandable: true, symbol: '展开' }"
+            >
+              {{ question.questionStem }}
+            </a-typography-paragraph>
             <a-typography-paragraph
               v-if="question.recognizedAnswer"
               class="marking-score-panel__recognized-answer"
@@ -63,7 +70,7 @@
               正式 OCR 未识别出可展示答案
             </a-typography-text>
             <a-input-number
-              v-model:value="getWholeQuestionForm(question.questionTemplateId).score"
+              v-model:value="getWholeQuestionForm(question.layoutQuestionId).score"
               :ref="(el: unknown) => emit('set-score-input-ref', el, questionIndex)"
               :min="0"
               :max="question.fullScore"
@@ -116,6 +123,19 @@
                 >
                   重新 AI 复评
                 </UiButton>
+                <ExperienceAssistBadge
+                  clickable
+                  :applied="question.referenceExperienceAudit?.referenceExperienceApplied"
+                  :source-exam-name="question.referenceExperienceAudit?.referenceExperienceSourceExamName"
+                  :consistency-rate="question.referenceExperienceAudit?.referenceExperienceConsistencyRate"
+                  @open-ai-history="emit('open-ai-history-from-whole-question', question)"
+                />
+                <p
+                  v-if="question.referenceExperienceAudit?.referenceExperienceApplied && question.referenceExperienceAudit?.referenceExperienceMatchMode"
+                  class="marking-score-panel__match-mode"
+                >
+                  定标方式：{{ matchModeLabel(question.referenceExperienceAudit.referenceExperienceMatchMode) }}
+                </p>
               </a-space>
               <a-typography-paragraph
                 v-if="question.aiDiagnostic"
@@ -132,7 +152,7 @@
               <a-typography-text type="secondary">AI 评分加载中...</a-typography-text>
             </div>
             <a-textarea
-              v-model:value="getWholeQuestionForm(question.questionTemplateId).annotationText"
+              v-model:value="getWholeQuestionForm(question.layoutQuestionId).annotationText"
               :rows="3"
               :maxlength="1000"
               :disabled="isReadOnly"
@@ -220,6 +240,19 @@
           >
             AI 历史
           </UiButton>
+          <ExperienceAssistBadge
+            clickable
+            :applied="experienceAssistApplied"
+            :source-exam-name="experienceAssistSourceExamName"
+            :consistency-rate="experienceAssistConsistencyRate"
+            @open-ai-history="emit('open-ai-history-from-badge')"
+          />
+          <p
+            v-if="experienceAssistApplied && experienceAssistMatchMode"
+            class="marking-score-panel__match-mode"
+          >
+            定标方式：{{ matchModeLabel(experienceAssistMatchMode) }}
+          </p>
         </a-space>
         <div
           v-if="!isReadOnly && canSubmit && questionView?.fullScore != null"
@@ -262,16 +295,20 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type {
-  MarkingQuestionViewVO,
-  QuestionMarkingGroupQuestionVO,
+  MarkingQuestionViewResponse,
+  QuestionMarkingGroupQuestionResponse,
 } from '@/apis/mark/marking-organization'
 import type { WholeQuestionForm } from '@/composables/useWholePaperGallery'
+import type { GradingExperienceReferenceMatchModeCode } from '@/types/enums/grading-experience-reference-match-mode-enum'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import { ref, watch } from 'vue'
+import ExperienceAssistBadge from '@/components/mark/ExperienceAssistBadge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import { GradingExperienceReferenceMatchModeDescription } from '@/types/enums/grading-experience-reference-match-mode-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'MarkingScorePanel' })
 
@@ -291,16 +328,20 @@ const props = defineProps<{
   isReadOnly: boolean
   canSubmit: boolean
   submitting: boolean
-  questionView: MarkingQuestionViewVO | null
+  questionView: MarkingQuestionViewResponse | null
   questionViewHalfScoreLabel: string
   isQuestionViewAiScorePending: boolean
   canRescoreQuestionView: boolean
-  wholeQuestions: QuestionMarkingGroupQuestionVO[]
+  wholeQuestions: QuestionMarkingGroupQuestionResponse[]
   rescoringGradeResultId: string | null
-  getWholeQuestionForm: (questionTemplateId: string) => WholeQuestionForm
-  isWholeQuestionScored: (questionTemplateId: string) => boolean
-  isWholeQuestionAiScorePending: (question: QuestionMarkingGroupQuestionVO) => boolean
-  canRescoreWholeQuestion: (question: QuestionMarkingGroupQuestionVO) => boolean
+  getWholeQuestionForm: (layoutQuestionId: string) => WholeQuestionForm
+  isWholeQuestionScored: (layoutQuestionId: string) => boolean
+  isWholeQuestionAiScorePending: (question: QuestionMarkingGroupQuestionResponse) => boolean
+  canRescoreWholeQuestion: (question: QuestionMarkingGroupQuestionResponse) => boolean
+  experienceAssistApplied?: boolean
+  experienceAssistSourceExamName?: string
+  experienceAssistConsistencyRate?: number
+  experienceAssistMatchMode?: GradingExperienceReferenceMatchModeCode
 }>()
 
 const emit = defineEmits<{
@@ -311,16 +352,23 @@ const emit = defineEmits<{
   (e: 'quick-zero-score'): void
   (e: 'quick-ai-score'): void
   (e: 'quick-digit-score', digit: number): void
-  (e: 'whole-quick-score', question: QuestionMarkingGroupQuestionVO, digit: number): void
+  (e: 'whole-quick-score', question: QuestionMarkingGroupQuestionResponse, digit: number): void
   (e: 'rescore-question'): void
-  (e: 'rescore-whole', question: QuestionMarkingGroupQuestionVO): void
+  (e: 'rescore-whole', question: QuestionMarkingGroupQuestionResponse): void
   (e: 'open-ai-history'): void
-  (e: 'fill-ai-score', question: QuestionMarkingGroupQuestionVO): void
-  (e: 'accept-ai-score', question: QuestionMarkingGroupQuestionVO, index: number): void
-  (e: 'focus-page', question: QuestionMarkingGroupQuestionVO): void
+  (e: 'open-ai-history-from-badge'): void
+  (e: 'open-ai-history-from-whole-question', question: QuestionMarkingGroupQuestionResponse): void
+  (e: 'fill-ai-score', question: QuestionMarkingGroupQuestionResponse): void
+  (e: 'accept-ai-score', question: QuestionMarkingGroupQuestionResponse, index: number): void
+  (e: 'focus-page', question: QuestionMarkingGroupQuestionResponse): void
   (e: 'whole-question-enter', index: number): void
   (e: 'set-score-input-ref', el: unknown, index: number): void
 }>()
+
+function matchModeLabel(mode: GradingExperienceReferenceMatchModeCode): string {
+  return strictEnumLabel(GradingExperienceReferenceMatchModeDescription, mode, '定标匹配方式')
+}
+
 const innerFormRef = ref<FormInstance>()
 const innerScoreInputRef = ref<{ focus?: () => void } | null>(null)
 
@@ -397,6 +445,15 @@ function quickDigitScores(fullScore: number): number[] {
     width: 100%;
   }
 
+  &__question-stem {
+    margin: 0 0 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--dp-border-subtle, #e2e8f0);
+    border-radius: var(--dp-radius-panel, 8px);
+    color: var(--dp-text-primary, #0f172a);
+    background: var(--ant-color-bg-container, #fff);
+  }
+
   &__recognized-answer {
     margin-bottom: 8px;
   }
@@ -439,6 +496,12 @@ function quickDigitScores(fullScore: number): number[] {
   &__ai-pending {
     margin-bottom: 8px;
     font-size: 13px;
+  }
+
+  &__match-mode {
+    margin: 0;
+    font-size: 12px;
+    color: var(--dp-text-secondary, #64748b);
   }
 }
 </style>

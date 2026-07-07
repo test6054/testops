@@ -3,13 +3,15 @@ import type { Ref } from 'vue'
 import type {
   MarkingPageAnnotationSubmitItem,
   MarkingQuestionScoreSubmitItem,
-  MarkingQuestionViewVO,
-  MarkingTaskVO,
-  QuestionMarkingGroupQuestionVO,
+  MarkingQuestionViewResponse,
+  MarkingTaskResponse,
+  QuestionMarkingGroupQuestionResponse,
 } from '@/apis/mark/marking-organization'
 import type { WholeQuestionForm } from '@/composables/useWholePaperGallery'
 import message from 'ant-design-vue/es/message'
+import Modal from 'ant-design-vue/es/modal'
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   batchSubmitMarkingTasksInChunks,
   precheckMarkingTaskBatch,
@@ -24,13 +26,19 @@ import {
 } from '@/composables/useGradingDraftPersist'
 import { useMarkingRecentSubmit } from '@/composables/useMarkingRecentSubmit'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
-import { showUserError } from '@/utils/error-handler'
+import { useTenantMarkingWithdrawPolicy } from '@/composables/useTenantMarkingWithdrawPolicy'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import {
+  isMultiResponseSliceConflict,
+  MarkingConflictHint,
+  messageIncludesConflictHint,
+} from '@/utils/marking-workflow-conflict'
 
 export interface UseMarkingSubmitOptions {
   taskId: Ref<string>
-  task: Ref<MarkingTaskVO | null>
-  batchTasks: Ref<MarkingTaskVO[]>
-  questionView: Ref<MarkingQuestionViewVO | null>
+  task: Ref<MarkingTaskResponse | null>
+  batchTasks: Ref<MarkingTaskResponse[]>
+  questionView: Ref<MarkingQuestionViewResponse | null>
   usesWholePaperWorkspace: Ref<boolean>
   isWholePaperTask: Ref<boolean>
   isReadOnly: Ref<boolean>
@@ -40,8 +48,8 @@ export interface UseMarkingSubmitOptions {
   loadTask: () => Promise<void>
   tenantId: Ref<string>
   form: { score?: number, annotationNote?: string }
-  wholeQuestions: Ref<QuestionMarkingGroupQuestionVO[]>
-  getWholeQuestionForm: (questionTemplateId: string) => WholeQuestionForm
+  wholeQuestions: Ref<QuestionMarkingGroupQuestionResponse[]>
+  getWholeQuestionForm: (layoutQuestionId: string) => WholeQuestionForm
   wholePageAnnotationForms: Record<string, string>
   buildWholePaperSubmitRequest: () => {
     questionScores: MarkingQuestionScoreSubmitItem[]
@@ -51,8 +59,10 @@ export interface UseMarkingSubmitOptions {
 }
 
 export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
+  const router = useRouter()
   const { refreshSnapshot } = useWorkspaceExamId()
   const { recordSubmit } = useMarkingRecentSubmit()
+  const { requireWithdrawWindowMinutes } = useTenantMarkingWithdrawPolicy()
   const formRef = ref<FormInstance>()
   const submitting = ref(false)
   const applyModalOpen = ref(false)
@@ -63,9 +73,29 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   const submittedScoreSnapshot = ref<number | undefined>(undefined)
   const remainingSameQuestionCount = ref(0)
   const pendingBatchTaskIds = ref<string[]>([])
-  const pendingBatchQuestionTemplateId = ref('')
+  const pendingBatchLayoutQuestionId = ref('')
   const pendingBatchGroupId = ref('')
   const pendingBatchFullScore = ref(0)
+
+  function promptMultiResponseSliceConflict(examId: string, detail: string): void {
+    Modal.warning({
+      title: '无法提交给分',
+      content: `${detail}。请先到扫描监控清理重复作答切片后再提交。`,
+      okText: '前往扫描监控',
+      onOk: () => router.push({
+        name: 'TeacherExamWorkspaceScanMonitor',
+        params: { examId },
+      }),
+    })
+  }
+
+  function handleSubmitFailure(error: unknown, examId: string, fallback: string): void {
+    if (isMultiResponseSliceConflict(error)) {
+      promptMultiResponseSliceConflict(examId, getUserErrorMessage(error, fallback))
+      return
+    }
+    showUserError(error, fallback)
+  }
 
   const rules: Record<string, Rule[]> = {
     score: [
@@ -74,6 +104,10 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
         validator(_rule, value) {
           if (value === undefined || value === null) return Promise.resolve()
           if (Number(value) < 0) return Promise.reject(new Error('给分不能为负'))
+          const fullScore = options.questionView.value?.fullScore
+          if (fullScore != null && Number(value) > fullScore) {
+            return Promise.reject(new Error(`给分不能超过满分 ${fullScore}`))
+          }
           return Promise.resolve()
         },
         trigger: 'change',
@@ -86,38 +120,41 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
     return `${scope}-${id}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
   }
 
-  function buildQuestionSubmitRequest(): MarkingQuestionScoreSubmitItem {
+  function buildQuestionSubmitRequest(): MarkingQuestionScoreSubmitItem | null {
     if (!options.questionView.value) {
-      throw new Error('题目视图未加载，请刷新后重试')
+      showUserError(null, '题目视图未加载，请刷新后重试')
+      return null
     }
     if (options.form.score === undefined) {
-      throw new Error('请填写教师给分')
+      showUserError(null, '请填写教师给分')
+      return null
     }
     return {
-      questionTemplateId: options.questionView.value.questionTemplateId,
+      layoutQuestionId: options.questionView.value.layoutQuestionId,
       score: options.form.score,
       annotationText: options.form.annotationNote?.trim() || undefined,
-      correlationId: createCorrelationId('question', options.questionView.value.questionTemplateId),
+      correlationId: createCorrelationId('question', options.questionView.value.layoutQuestionId),
     }
   }
 
   function resolveSubmittedScore(submitRequest: {
     questionScores: MarkingQuestionScoreSubmitItem[]
     pageAnnotations: MarkingPageAnnotationSubmitItem[]
-  }): number {
+  }): number | null {
     const firstScore = submitRequest.questionScores[0]?.score
     if (firstScore === undefined) {
-      throw new Error('提交给分缺失')
+      showUserError(null, '提交给分缺失')
+      return null
     }
     return firstScore
   }
 
-  function resolveSameQuestionRemainingTasks(currentTask: MarkingTaskVO): MarkingTaskVO[] {
+  function resolveSameQuestionRemainingTasks(currentTask: MarkingTaskResponse): MarkingTaskResponse[] {
     if (currentTask.taskUnit === 'WHOLE_PAPER') {
       return []
     }
-    const questionTemplateId = options.questionView.value?.questionTemplateId
-    if (!questionTemplateId) {
+    const layoutQuestionId = options.questionView.value?.layoutQuestionId
+    if (!layoutQuestionId) {
       return []
     }
     return options.batchTasks.value.filter((item) => {
@@ -125,17 +162,16 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
       if (item.taskStatus !== 'ALLOCATED' && item.taskStatus !== 'IN_PROGRESS') return false
       if (item.groupId !== currentTask.groupId) return false
       if (item.taskUnit === 'WHOLE_PAPER') return false
-      if (item.questionNo !== currentTask.questionNo) return false
-      return true
+      return item.questionNo === currentTask.questionNo;
     })
   }
 
   function buildDraftPayload() {
     const wholeQuestionForms: Record<string, { score?: number, annotationText: string }> = {}
     for (const question of options.wholeQuestions.value) {
-      const qForm = options.getWholeQuestionForm(question.questionTemplateId)
+      const qForm = options.getWholeQuestionForm(question.layoutQuestionId)
       if (qForm.score !== undefined || qForm.annotationText.trim()) {
-        wholeQuestionForms[question.questionTemplateId] = {
+        wholeQuestionForms[question.layoutQuestionId] = {
           score: qForm.score,
           annotationText: qForm.annotationText,
         }
@@ -186,13 +222,13 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   async function applyScoreToRemaining(): Promise<void> {
     const currentTask = options.task.value
     const score = submittedScoreSnapshot.value
-    const questionTemplateId
-      = pendingBatchQuestionTemplateId.value || options.questionView.value?.questionTemplateId
+    const layoutQuestionId
+      = pendingBatchLayoutQuestionId.value || options.questionView.value?.layoutQuestionId
     if (
       !currentTask?.examId
       || !currentTask.groupId
       || score === undefined
-      || !questionTemplateId
+      || !layoutQuestionId
     ) {
       closeApplyModal()
       return
@@ -216,10 +252,10 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
 
     const questionScores: MarkingQuestionScoreSubmitItem[] = [
       {
-        questionTemplateId,
+        layoutQuestionId,
         score,
         annotationText: options.form.annotationNote?.trim() || undefined,
-        correlationId: createCorrelationId('question', questionTemplateId),
+        correlationId: createCorrelationId('question', layoutQuestionId),
       },
     ]
 
@@ -240,7 +276,12 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
       })
       const failed = results.find((item) => item.outcome === 'FAILED')
       if (failed) {
-        message.error(failed.failureMessage ?? '批量提交失败')
+        const failureMessage = failed.failureMessage ?? '批量提交失败'
+        if (messageIncludesConflictHint(failureMessage, MarkingConflictHint.MULTI_RESPONSE_SLICE)) {
+          promptMultiResponseSliceConflict(currentTask.examId, failureMessage)
+          return
+        }
+        message.error(failureMessage)
         return
       }
       const warn = results.find((item) => item.outcome === 'WARN')
@@ -255,11 +296,12 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
           examId: currentTask.examId,
           groupId: currentTask.groupId,
           score,
+          withdrawWindowMinutes: requireWithdrawWindowMinutes(),
         })
       }
       await refreshSnapshot()
     } catch (error) {
-      showUserError(error, '批量应用给分失败')
+      handleSubmitFailure(error, currentTask.examId, '批量应用给分失败')
     } finally {
       batchApplying.value = false
     }
@@ -287,18 +329,18 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   }
 
   function openApplyModalIfNeeded(
-    currentTask: MarkingTaskVO,
+    currentTask: MarkingTaskResponse,
     score: number,
-    remainingTasks: MarkingTaskVO[],
+    remainingTasks: MarkingTaskResponse[],
   ): void {
-    if (remainingTasks.length === 0 || !options.questionView.value?.questionTemplateId) {
+    if (remainingTasks.length === 0 || !options.questionView.value?.layoutQuestionId) {
       continueAfterSubmit()
       return
     }
     submittedScoreSnapshot.value = score
     remainingSameQuestionCount.value = remainingTasks.length
     pendingBatchTaskIds.value = remainingTasks.map((item) => item.id)
-    pendingBatchQuestionTemplateId.value = options.questionView.value.questionTemplateId
+    pendingBatchLayoutQuestionId.value = options.questionView.value.layoutQuestionId
     pendingBatchGroupId.value = currentTask.groupId ?? ''
     pendingBatchFullScore.value = options.questionView.value.fullScore
     applyModalOpen.value = true
@@ -342,20 +384,33 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
     try {
       const submitRequest = options.usesWholePaperWorkspace.value
         ? options.buildWholePaperSubmitRequest()
-        : {
-            questionScores: [buildQuestionSubmitRequest()],
-            pageAnnotations: [],
-          }
+        : (() => {
+            const questionScore = buildQuestionSubmitRequest()
+            if (!questionScore) {
+              return null
+            }
+            return {
+              questionScores: [questionScore],
+              pageAnnotations: [],
+            }
+          })()
+      if (!submitRequest) {
+        return
+      }
       await submitMarkingTask({ taskId: options.taskId.value, ...submitRequest })
       if (draftKey) {
         await onGradingDraftSubmitSuccess(draftKey)
       }
       const score = resolveSubmittedScore(submitRequest)
+      if (score === null) {
+        return
+      }
       recordSubmit({
         taskId: currentTask.id,
         examId: currentTask.examId,
         groupId: currentTask.groupId ?? null,
         score,
+        withdrawWindowMinutes: requireWithdrawWindowMinutes(),
         batchIndex: options.batchTasks.value.findIndex((item) => item.id === currentTask.id) + 1,
         batchTotal: options.batchTasks.value.length,
       })
@@ -368,7 +423,7 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
       }
       continueAfterSubmit()
     } catch (error) {
-      showUserError(error, '提交阅卷任务失败')
+      handleSubmitFailure(error, currentTask.examId, '提交阅卷任务失败')
     } finally {
       submitting.value = false
     }
@@ -386,7 +441,7 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
     }
     if (options.usesWholePaperWorkspace.value) {
       const hasQuestionDraft = options.wholeQuestions.value.some((question) => {
-        const questionForm = options.getWholeQuestionForm(question.questionTemplateId)
+        const questionForm = options.getWholeQuestionForm(question.layoutQuestionId)
         return (
           (questionForm.score !== undefined && questionForm.score !== null)
           || (questionForm.annotationText?.trim() ?? '') !== ''

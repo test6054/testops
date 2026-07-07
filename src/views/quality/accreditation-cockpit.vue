@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import type { AccreditationCyclePhase } from '@/apis/quality/accreditation'
 import { SafetyCertificateOutlined } from '@ant-design/icons-vue'
 import { computed, onActivated, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  
+  ALL_ACCREDITATION_CYCLE_PHASE_CODES
+} from '@/apis/quality/accreditation'
 import AccreditationAnnualPanel from '@/components/quality/accreditation/AccreditationAnnualPanel.vue'
 import AccreditationAnnualReportMaterialPanel from '@/components/quality/accreditation/AccreditationAnnualReportMaterialPanel.vue'
 import AccreditationCyclePanel from '@/components/quality/accreditation/AccreditationCyclePanel.vue'
@@ -143,7 +146,10 @@ async function refreshAll() {
 }
 
 function onPhaseSelect(stage: { key: string }) {
-  activeTab.value = tabForPhase(stage.key as AccreditationCyclePhase)
+  const phase = ALL_ACCREDITATION_CYCLE_PHASE_CODES.find(code => code === stage.key)
+  if (phase) {
+    activeTab.value = tabForPhase(phase)
+  }
 }
 
 function onCreateCycle() {

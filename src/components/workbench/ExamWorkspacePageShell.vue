@@ -37,6 +37,8 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 
 defineOptions({ name: 'ExamWorkspacePageShell' })
 
+/** 当 workspace 子路由 meta.hasWorkbenchShell !== true 时，由 ExamWorkspaceChildFrame 包裹本壳层。 */
+
 const props = withDefaults(
   defineProps<{
     pageTitle?: string

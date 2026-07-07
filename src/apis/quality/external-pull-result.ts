@@ -4,7 +4,8 @@
  * 后端路径：/api/quality/external-pull-results
  * 关键：「确认 / 驳回」流程是对拔取结果批次操作，不是对任务操作。
  */
-import type { ExternalPullConfirmationStatus } from './types'
+import type { ExternalPullConfirmationStatusCode } from './types'
+import type { BusinessAnchorCode } from '@/types/enums/business-anchor-code-enum'
 import http from '@/config/axios'
 
 const BASE = '/api/quality/external-pull-results'
@@ -13,18 +14,27 @@ export interface ExternalPullResultVO {
   id: string
   tenantId?: string
   pullTaskId: string
-  businessAnchor: string
+  businessAnchor: BusinessAnchorCode
   businessId: string
   businessLabel: string
   previewRows?: number
   confirmedRows?: number
-  confirmationStatus: ExternalPullConfirmationStatus
+  confirmationStatus: ExternalPullConfirmationStatusCode
   confirmedUserId?: string
   confirmedTime?: string
   resultFileNodeId?: string
   notes?: string
   createTime?: string
   updateTime?: string
+}
+
+export interface ExternalPullResultSaveRequest {
+  pullTaskId: string
+  businessAnchor: BusinessAnchorCode
+  businessId: string
+  previewRows: number
+  resultFileNodeId: string
+  notes?: string
 }
 
 export interface ExternalPullResultConfirmRequest {
@@ -42,6 +52,8 @@ export const externalPullResultApi = {
   listByTask: (pullTaskId: string) =>
     http.post<ExternalPullResultVO[]>(`${BASE}/list-by-task`, { id: pullTaskId }),
   detail: (id: string) => http.post<ExternalPullResultVO>(`${BASE}/detail`, { id }),
+  /** 登记结果批次：初始化为 PREVIEW */
+  create: (data: ExternalPullResultSaveRequest) => http.post<string>(`${BASE}/create`, data),
   /** 确认结果批次：PREVIEW -> CONFIRMED */
   confirm: (data: ExternalPullResultConfirmRequest) => http.post<void>(`${BASE}/confirm`, data),
   /** 驳回结果批次：PREVIEW -> REJECTED */

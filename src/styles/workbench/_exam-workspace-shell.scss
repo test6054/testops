@@ -1,0 +1,87 @@
+// 考试工作台侧栏：旅程轨 + 功能菜单（对齐 exam-prototype journey-nav / menu-nav）
+
+.exam-journey-sidebar-nav__item {
+  position: relative;
+
+  &--active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2.5px;
+    height: 18px;
+    border-radius: 0 2px 2px 0;
+    background: var(--ant-color-primary);
+  }
+
+  & + & {
+    &::after {
+      content: '';
+      position: absolute;
+      left: 19px;
+      top: -2px;
+      width: 1.5px;
+      height: 8px;
+      background: var(--ant-color-border-secondary);
+      pointer-events: none;
+    }
+  }
+
+  &--completed + &::after {
+    background: var(--ant-color-success-border);
+  }
+}
+
+.exam-journey-sidebar-nav__index--completed {
+  background: var(--ant-color-success);
+  color: #fff;
+}
+
+.exam-sub-sidebar-nav {
+  :deep(.ant-menu-item-selected) {
+    position: relative;
+    font-weight: 600;
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 2.5px;
+      height: 18px;
+      border-radius: 0 2px 2px 0;
+      background: var(--ant-color-primary);
+    }
+  }
+}
+
+.exam-sub-sidebar__progress {
+  padding: 8px 16px 0;
+  flex-shrink: 0;
+}
+
+.exam-sub-sidebar__progress-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 11px;
+  color: var(--ant-color-text-tertiary);
+}
+
+.exam-sub-sidebar__progress-bar {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--ant-color-border-secondary);
+  overflow: hidden;
+}
+
+.exam-sub-sidebar__progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--ant-color-success);
+  transition: width 0.2s ease;
+}

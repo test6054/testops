@@ -45,7 +45,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { ArchiveVolumeExamGateVO } from '@/apis/mark/archive-volume'
+import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
 import { computed, ref, watch } from 'vue'
 import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -74,12 +74,12 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   'go-close-exam': []
-  "loaded": [ArchiveVolumeExamGateVO]
+  "loaded": [ArchiveVolumeExamGateResponse]
 }>()
 
 const loading = ref(false)
 const loadFailed = ref(false)
-const gate = ref<ArchiveVolumeExamGateVO | null>(null)
+const gate = ref<ArchiveVolumeExamGateResponse | null>(null)
 
 const { gateProgressHint, gateAnomaly, incompleteClasses } = useExamArchiveGateHint(gate)
 

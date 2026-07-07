@@ -4,12 +4,12 @@
  * 后端路径：/api/quality/indirect-forms
  */
 import type {
-  AchievementTargetType,
-  IndirectFormAccessMode,
-  IndirectFormStatus,
-  IndirectFormType,
+  AchievementTargetTypeCode,
+  IndirectFormAccessModeCode,
+  IndirectFormStatusCode,
+  IndirectFormTypeCode,
 } from './types'
-import type { SurveyIdentityFieldVO } from '@/apis/public-survey'
+import type { SurveyIdentityFieldRequest, SurveyIdentityFieldVO } from '@/apis/public-survey'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
@@ -19,18 +19,18 @@ export interface IndirectEvaluationFormVO {
   id: string
   formCode: string
   formName: string
-  formType: IndirectFormType
-  targetType: AchievementTargetType
+  formType: IndirectFormTypeCode
+  targetType: AchievementTargetTypeCode
   targetId: string
   programId?: string
   description?: string
   expectedSample?: number
-  enabled: boolean
-  status?: IndirectFormStatus
+  enabled?: boolean
+  status?: IndirectFormStatusCode
   accessToken?: string
   startTime?: string
   endTime?: string
-  accessMode?: IndirectFormAccessMode
+  accessMode?: IndirectFormAccessModeCode
   allowAnonymous?: boolean
   requireIdentityFields?: SurveyIdentityFieldVO[]
   maxSubmissionsPerRespondent?: number
@@ -44,8 +44,8 @@ export interface IndirectEvaluationFormSaveRequest {
   id?: string
   formCode: string
   formName: string
-  formType: IndirectFormType
-  targetType: AchievementTargetType
+  formType: IndirectFormTypeCode
+  targetType: AchievementTargetTypeCode
   targetId: string
   programId?: string
   description?: string
@@ -54,8 +54,8 @@ export interface IndirectEvaluationFormSaveRequest {
 }
 
 export interface IndirectEvaluationFormQueryRequest extends QueryDto {
-  formType?: IndirectFormType
-  targetType?: AchievementTargetType
+  formType?: IndirectFormTypeCode
+  targetType?: AchievementTargetTypeCode
   targetId?: string
   programId?: string
   enabled?: boolean
@@ -65,9 +65,9 @@ export interface IndirectEvaluationFormPublishRequest {
   id: string
   startTime: string
   endTime: string
-  accessMode: IndirectFormAccessMode
+  accessMode: IndirectFormAccessModeCode
   allowAnonymous?: boolean
-  requireIdentityFields?: SurveyIdentityFieldVO[]
+  requireIdentityFields?: SurveyIdentityFieldRequest[]
   maxSubmissionsPerRespondent: number
   welcomeMessage?: string
   thankYouMessage?: string
@@ -81,7 +81,7 @@ export interface IndirectEvaluationPublishResultVO {
 export interface IndirectEvaluationProgressVO {
   formId: string
   formName: string
-  status: string
+  status: IndirectFormStatusCode
   submissionCount: number
   validCount: number
   itemCount?: number
@@ -102,14 +102,14 @@ export interface IndirectEvaluationStatisticsVO {
   overallScore?: number
   overallScoredCount?: number
   pendingConversionCount?: number
-  items: IndirectEvaluationItemStatistics[]
+  items: IndirectEvaluationItemStatisticsVO[]
 }
 
-export interface IndirectEvaluationItemStatistics {
+export interface IndirectEvaluationItemStatisticsVO {
   itemId: string
   itemCode: string
   itemText: string
-  targetType: AchievementTargetType
+  targetType: AchievementTargetTypeCode
   targetId: string
   sampleCount: number
   validCount: number
@@ -118,19 +118,19 @@ export interface IndirectEvaluationItemStatistics {
   mean?: number
   median?: number
   stdDev?: number
-  distributionBuckets?: ScaleDistributionBucketVO[]
-  openTextSummaries?: OpenTextSummaryVO[]
+  distributionBuckets?: IndirectEvaluationScaleDistributionBucketVO[]
+  openTextSummaries?: IndirectEvaluationOpenTextSummaryVO[]
   convertedScore?: number
 }
 
-export interface ScaleDistributionBucketVO {
+export interface IndirectEvaluationScaleDistributionBucketVO {
   scaleValue?: number
   label?: string
   count: number
   ratio?: number
 }
 
-export interface OpenTextSummaryVO {
+export interface IndirectEvaluationOpenTextSummaryVO {
   content: string
   count: number
 }

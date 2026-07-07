@@ -1,15 +1,13 @@
 import type { TaskStatusCode } from './task-status'
 import type { ProcessingTaskTypeCode } from './task-type'
-import type { PageResult } from '@/types'
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 /** 批改处理任务分页查询请求 - 对应 ExamProcessingTaskQueryRequest */
-export interface ExamProcessingTaskQueryRequest {
+export interface ExamProcessingTaskQueryRequest extends QueryDto {
   examId: string
   paperInstanceId?: string
   taskType?: ProcessingTaskTypeCode
-  pageNum?: number
-  pageSize?: number
 }
 
 /** 整卷 AI 批阅重试请求 - 对应 ExamPaperGradeRetryRequest */
@@ -19,12 +17,12 @@ export interface ExamPaperGradeRetryRequest {
 }
 
 /** 批改处理任务列表条目 - 对应 ExamProcessingTaskItemResponse */
-export interface ExamProcessingTaskItemVO {
+export interface ExamProcessingTaskItemResponse {
   id: string
   examId: string
   scanBatchId?: string
   paperInstanceId?: string
-  questionTemplateId?: string
+  layoutQuestionId?: string
   taskType: ProcessingTaskTypeCode
   status: TaskStatusCode
   retryCount?: number
@@ -36,8 +34,8 @@ export interface ExamProcessingTaskItemVO {
 /** 分页查询考试批改处理任务 */
 export function pageExamProcessingTasks(
   request: ExamProcessingTaskQueryRequest,
-): Promise<PageResult<ExamProcessingTaskItemVO>> {
-  return http.post<PageResult<ExamProcessingTaskItemVO>>(
+): Promise<PageResult<ExamProcessingTaskItemResponse>> {
+  return http.post<PageResult<ExamProcessingTaskItemResponse>>(
     '/api/mark/exams/processing-tasks/page',
     request,
   )

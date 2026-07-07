@@ -5,7 +5,7 @@
  * 明细是达成度结果的拆解数据，
  * 记录每个子对象（课程目标/观测点/毕业要求）参与本次正式计算的权重、样本、平均分与达成值。
  */
-import type { AchievementDetailType } from './types'
+import type { AchievementDetailTypeCode } from './types'
 import http from '@/config/axios'
 
 const BASE = '/api/quality/achievement-details'
@@ -13,7 +13,7 @@ const BASE = '/api/quality/achievement-details'
 export interface AchievementDetailVO {
   id: string
   achievementResultId: string
-  detailType: AchievementDetailType
+  detailType: AchievementDetailTypeCode
   referenceId: string
   referenceCode?: string
   referenceName: string

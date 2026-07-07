@@ -7,15 +7,7 @@ import type {
 } from '@/apis/mark/teacher-dashboard'
 import type { UiBarChartItem } from '@/components/ui-guide/ui/types'
 import { EXAM_JOURNEY_STEPS } from '@/constants/exam-journey'
-
-const TODO_TYPE_LABEL: Record<MarkTeacherDashboardTodoTypeCode, string> = {
-  SCAN_ATTENTION: '扫描需关注',
-  PROCESSING_OPEN: '识别处理中',
-  GRADE_PENDING: '待确认题目',
-  REVIEW_PENDING: '待复核',
-  SCORE_UNPUBLISHED: '成绩待发布',
-  CANDIDATE_UNBOUND: '考生未绑定',
-}
+import { MarkTeacherDashboardTodoTypeDescription } from '@/types/enums/mark-teacher-dashboard-todo-type-enum'
 
 const TODO_TYPE_TONE: Record<MarkTeacherDashboardTodoTypeCode, UiBarChartItem['tone']> = {
   SCAN_ATTENTION: 'orange',
@@ -24,13 +16,16 @@ const TODO_TYPE_TONE: Record<MarkTeacherDashboardTodoTypeCode, UiBarChartItem['t
   REVIEW_PENDING: 'purple',
   SCORE_UNPUBLISHED: 'orange',
   CANDIDATE_UNBOUND: 'red',
+  ARBITRATION_PENDING: 'red',
+  SPOT_CHECK_PENDING: 'blue',
+  EXPERIENCE_ASSIST_PENDING: 'purple',
 }
 
 /** 筛选域六步旅程阶段分布柱图项 */
 export function buildJourneyStageChartItems(
   summary: MarkTeacherDashboardJourneyStageSummaryItemVO[],
 ): UiBarChartItem[] {
-  const countByKey = new Map(summary.map(item => [item.journeyKey, item.examCount]))
+  const countByKey = new Map(summary.map((item) => [item.journeyKey, item.examCount]))
   return EXAM_JOURNEY_STEPS.map((step) => {
     const count = countByKey.get(step.key) ?? 0
     return {
@@ -80,11 +75,36 @@ export function buildMarkingProgressChartItems(
       tone: 'purple',
     })
   }
-  const pipelineDefs: Array<{ key: string, label: string, value: number, tone: UiBarChartItem['tone'] }> = [
-    { key: 'scan-attention', label: '扫描需关注', value: summary.scanAttentionCount, tone: 'orange' },
-    { key: 'processing-open', label: '识别处理中', value: summary.openProcessingTaskCount, tone: 'blue' },
-    { key: 'review-pending', label: '待复核', value: summary.pendingReviewTaskCount, tone: 'purple' },
-    { key: 'score-unpublished', label: '待发布成绩', value: summary.confirmedUnpublishedScoreCount, tone: 'orange' },
+  const pipelineDefs: Array<{
+    key: string
+    label: string
+    value: number
+    tone: UiBarChartItem['tone']
+  }> = [
+    {
+      key: 'scan-attention',
+      label: '扫描需关注',
+      value: summary.scanAttentionCount,
+      tone: 'orange',
+    },
+    {
+      key: 'processing-open',
+      label: '识别处理中',
+      value: summary.openProcessingTaskCount,
+      tone: 'blue',
+    },
+    {
+      key: 'review-pending',
+      label: '待复核',
+      value: summary.pendingReviewTaskCount,
+      tone: 'purple',
+    },
+    {
+      key: 'score-unpublished',
+      label: '待发布成绩',
+      value: summary.confirmedUnpublishedScoreCount,
+      tone: 'orange',
+    },
   ]
   for (const def of pipelineDefs) {
     if (def.value > 0) {
@@ -103,9 +123,9 @@ export function buildMarkingProgressChartItems(
 export function buildTodoTypeChartItems(
   summary: MarkTeacherDashboardTodoTypeSummaryItemVO[],
 ): UiBarChartItem[] {
-  return summary.map(item => ({
+  return summary.map((item) => ({
     key: item.todoType,
-    label: TODO_TYPE_LABEL[item.todoType],
+    label: MarkTeacherDashboardTodoTypeDescription[item.todoType],
     value: item.count,
     tone: TODO_TYPE_TONE[item.todoType],
   }))
@@ -122,20 +142,14 @@ export interface PublishedInsightChartExam {
 export function buildPublishedInsightChartExams(
   insights: MarkTeacherDashboardPublishedExamInsightItemVO[],
 ): PublishedInsightChartExam[] {
-  return insights.map((insight) => {
-    const averageScore = insight.averageScore != null && insight.averageScore !== ''
-      ? Number(insight.averageScore)
-      : null
-    const passRatePercent = insight.passRate != null && insight.passRate !== ''
-      ? Number(insight.passRate) * 100
-      : null
-    return {
+  return insights
+    .map((insight) => ({
       examId: insight.examId,
       examName: insight.examName,
-      averageScore: Number.isFinite(averageScore) ? averageScore : null,
-      passRatePercent: Number.isFinite(passRatePercent) ? passRatePercent : null,
-    }
-  }).filter(exam => exam.averageScore != null || exam.passRatePercent != null)
+      averageScore: insight.averageScore ?? null,
+      passRatePercent: insight.passRate != null ? insight.passRate * 100 : null,
+    }))
+    .filter((exam) => exam.averageScore != null || exam.passRatePercent != null)
 }
 
 export function filterScopeHint(filteredCount: number): string {

@@ -8,11 +8,8 @@ import type { UserListItemDto } from './admin-user'
 import type { PageResult, QueryDto } from '@/types'
 // 从统一枚举导入，避免分散定义
 import type { TenantStatusEnum, TenantTypeEnum } from '@/types/enums'
+import type { TenantRenewalTypeCode } from '@/types/enums/tenant-renewal-type-enum'
 import http from '@/config/axios'
-
-
-/** 续期类型枚举 - 与后端TenantRenewalRequest.RenewalType保持一致 */
-export type RenewalType = 'TRIAL_EXTEND' | 'FORMAL_RENEW' | 'UPGRADE'
 
 
 /** 租户信息 - 与后端TenantInfoDto保持一致 */
@@ -190,7 +187,7 @@ export interface TenantRenewalRequest {
     /** 租户ID */
     tenantId: string
     /** 续期类型：TRIAL_EXTEND/FORMAL_RENEW/UPGRADE */
-    renewalType: RenewalType
+    renewalType: TenantRenewalTypeCode
     /** 延长天数（仅适用于TRIAL_EXTEND） */
     extensionDays?: number
     /** 新的到期日期（仅适用于FORMAL_RENEW和UPGRADE，格式：yyyy-MM-dd） */

@@ -60,12 +60,12 @@
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'qualityStatus'">
                   <UiTag :tone="strictEnumTone(QUALITY_DECISION_TONE, record.qualityStatus, '扫描页质量判定')" size="sm">
-                    {{ strictEnumLabel(QUALITY_DECISION_LABEL, record.qualityStatus, '扫描页质量判定') }}
+                    {{ strictEnumLabel(QualityDecisionDescription, record.qualityStatus, '扫描页质量判定') }}
                   </UiTag>
                 </template>
                 <template v-else-if="column.key === 'effectiveStatus'">
                   <UiTag tone="gray" size="sm">
-                    {{ strictEnumLabel(EFFECTIVE_STATUS_LABEL, record.effectiveStatus, '扫描页生效状态') }}
+                    {{ strictEnumLabel(EffectiveStatusDescription, record.effectiveStatus, '扫描页生效状态') }}
                   </UiTag>
                 </template>
               </template>
@@ -110,7 +110,7 @@
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'attentionType'">
                   <UiTag :tone="strictEnumTone(SCAN_ATTENTION_TYPE_TONE, record.attentionType, '扫描异常类型')" size="sm">
-                    {{ strictEnumLabel(SCAN_ATTENTION_TYPE_LABEL, record.attentionType, '扫描异常类型') }}
+                    {{ strictEnumLabel(ScanAttentionTypeDescription, record.attentionType, '扫描异常类型') }}
                   </UiTag>
                 </template>
               </template>
@@ -229,28 +229,28 @@ import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamFileRefVO } from '@/apis/mark/exam'
 import type {
   ExamScannerBatchPageItemVO,
-  ExamScannerBatchVO,
-  ScanAttentionItemVO,
-  ScanBatchOrderAuditIssueVO,
-  ScanBatchOrderAuditVO,
+  ExamScannerBatchResponse,
+  ScanAttentionItemResponse,
+  ScanBatchOrderAuditIssueResponse,
+  ScanBatchOrderAuditResponse,
 } from '@/apis/mark/exam-scan'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
-import { EFFECTIVE_STATUS_LABEL } from '@/apis/mark/effective-status'
+import { EffectiveStatusDescription } from '@/apis/mark/effective-status'
 import {
   getScanBatchOrderAudit,
   getScannerBatchDetail,
   listScanAttentions,
   pageScannerBatchPages,
-  QUALITY_DECISION_LABEL,
   QUALITY_DECISION_TONE,
+  QualityDecisionDescription,
   retryScanBatchPageRegister,
-  SCAN_ATTENTION_TYPE_LABEL,
   SCAN_ATTENTION_TYPE_TONE,
-  SCAN_BATCH_ORDER_AUDIT_CODE_LABEL,
-  SCAN_BATCH_STATUS_LABEL,
   SCAN_BATCH_STATUS_TONE,
+  ScanAttentionTypeDescription,
+  ScanBatchOrderAuditDescription,
+  ScanBatchStatusDescription,
   sealScanBatchByTeacher,
 } from '@/apis/mark/exam-scan'
 import { discardScanJob, listScanJobs } from '@/apis/mark/scanner-agent-local'
@@ -269,7 +269,6 @@ import { useWorkspaceConfidentialContext } from '@/composables/useWorkspaceConfi
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { formatDateTimeWithSeconds } from '@/utils/format'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import {
   batchSealBlockedReason,
   canSealBatch,
@@ -283,7 +282,7 @@ const props = defineProps<{
   open: boolean
   examId: string
   scanBatchId: string | null
-  batchSummary: ExamScannerBatchVO | null
+  batchSummary: ExamScannerBatchResponse | null
 }>()
 
 const emit = defineEmits<{
@@ -294,7 +293,7 @@ const emit = defineEmits<{
 const { isExamConfidential } = useWorkspaceConfidentialContext()
 
 const activeTab = ref('overview')
-const batchDetail = ref<ExamScannerBatchVO | null>(null)
+const batchDetail = ref<ExamScannerBatchResponse | null>(null)
 const detailLoading = ref(false)
 
 const pages = ref<ExamScannerBatchPageItemVO[]>([])
@@ -302,7 +301,7 @@ const pageTotal = ref(0)
 const pagesLoading = ref(false)
 const pageQuery = reactive({ pageNum: 1, pageSize: 10 })
 
-const attentions = ref<ScanAttentionItemVO[]>([])
+const attentions = ref<ScanAttentionItemResponse[]>([])
 const attentionTotal = ref(0)
 const attentionsLoading = ref(false)
 const attentionQuery = reactive({ pageNum: 1, pageSize: 10 })
@@ -316,7 +315,7 @@ const supplementModalOpen = ref(false)
 
 const orderAuditDrawerOpen = ref(false)
 const orderAuditLoading = ref(false)
-const orderAuditDetail = ref<ScanBatchOrderAuditVO | null>(null)
+const orderAuditDetail = ref<ScanBatchOrderAuditResponse | null>(null)
 
 const drawerTitle = computed(() => {
   const batch = batchDetail.value ?? props.batchSummary
@@ -379,38 +378,38 @@ const pageColumns: ColumnType<ExamScannerBatchPageItemVO>[] = [
   { title: '诊断', dataIndex: 'diagnostic', key: 'diagnostic', ellipsis: true },
 ]
 
-const attentionColumns: ColumnType<ScanAttentionItemVO>[] = [
+const attentionColumns: ColumnType<ScanAttentionItemResponse>[] = [
   { title: '类型', key: 'attentionType', width: 120 },
   { title: '来源', dataIndex: 'sourceDisplayName', key: 'sourceDisplayName', ellipsis: true },
   { title: '页', dataIndex: 'pageDisplayName', key: 'pageDisplayName', width: 120 },
   { title: '诊断', dataIndex: 'diagnostic', key: 'diagnostic', ellipsis: true },
 ]
 
-const orderAuditIssueColumns: ColumnType<ScanBatchOrderAuditIssueVO>[] = [
+const orderAuditIssueColumns: ColumnType<ScanBatchOrderAuditIssueResponse>[] = [
   {
     title: '异常码',
     key: 'auditCode',
     width: 140,
     customRender: ({ record }) =>
-      strictEnumLabel(SCAN_BATCH_ORDER_AUDIT_CODE_LABEL, record.auditCode, '顺序审计异常码'),
+      strictEnumLabel(ScanBatchOrderAuditDescription, record.auditCode, '顺序审计异常码'),
   },
   { title: '说明', dataIndex: 'message', key: 'message', ellipsis: true },
   { title: '进纸序', dataIndex: 'pageSeq', key: 'pageSeq', width: 72 },
   { title: '模板页', dataIndex: 'templatePageNo', key: 'templatePageNo', width: 72 },
 ]
 
-function batchStatusTone(batch: ExamScannerBatchVO): BadgeTone {
+function batchStatusTone(batch: ExamScannerBatchResponse): BadgeTone {
   if (batch.sealedTime) {
     return 'green'
   }
   return strictEnumTone(SCAN_BATCH_STATUS_TONE, batch.status, '扫描批次状态')
 }
 
-function batchStatusLabel(batch: ExamScannerBatchVO): string {
+function batchStatusLabel(batch: ExamScannerBatchResponse): string {
   if (batch.sealedTime) {
     return '已封存'
   }
-  return strictEnumLabel(SCAN_BATCH_STATUS_LABEL, batch.status, '扫描批次状态')
+  return strictEnumLabel(ScanBatchStatusDescription, batch.status, '扫描批次状态')
 }
 
 async function loadDetail(): Promise<void> {
@@ -446,8 +445,8 @@ async function loadPages(): Promise<void> {
       pageNum: pageQuery.pageNum,
       pageSize: pageQuery.pageSize,
     })
-    pages.value = readPageList(result, '扫描页列表加载失败')
-    pageTotal.value = readPageTotal(result, '扫描页列表加载失败')
+    pages.value = result.list
+    pageTotal.value = Number(result.total)
   } catch (error) {
     pages.value = []
     pageTotal.value = 0
@@ -471,8 +470,8 @@ async function loadAttentions(): Promise<void> {
       pageNum: attentionQuery.pageNum,
       pageSize: attentionQuery.pageSize,
     })
-    attentions.value = readPageList(result, '扫描异常列表加载失败')
-    attentionTotal.value = readPageTotal(result, '扫描异常列表加载失败')
+    attentions.value = result.list
+    attentionTotal.value = Number(result.total)
   } catch (error) {
     attentions.value = []
     attentionTotal.value = 0
@@ -611,7 +610,7 @@ function onDiscardBatch(): void {
 }
 
 async function cleanupLocalAgentScanJobForDiscardedBatch(
-  batch: ExamScannerBatchVO,
+  batch: ExamScannerBatchResponse,
   discardReason: string,
 ): Promise<string> {
   const scannerDeviceId = batch.scannerDeviceId?.trim()
@@ -692,7 +691,7 @@ async function refreshAll(): Promise<void> {
 }
 
 watch(
-  () => [props.open, props.scanBatchId, props.examId] as const,
+  () => [props.open, props.scanBatchId, props.examId],
   ([open, scanBatchId]) => {
     if (open && scanBatchId) {
       activeTab.value = 'overview'

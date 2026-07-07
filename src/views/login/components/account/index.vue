@@ -247,7 +247,7 @@ const doLogin = async () => {
     const dashboardPath = getDefaultRoute(authStore.userRole)
 
     // 如果有重定向参数，优先使用重定向路径（校验安全性）
-    const finalPath = getSafeRedirect(redirect as string, dashboardPath)
+    const finalPath = getSafeRedirect(queryString(redirect), dashboardPath)
 
     await router.push({
       path: finalPath,
@@ -268,6 +268,10 @@ const doLogin = async () => {
   } finally {
     loading.value = false
   }
+}
+
+function queryString(value: unknown): string {
+  return typeof value === 'string' ? value : ''
 }
 
 onMounted(() => {

@@ -41,6 +41,16 @@ const service: AxiosInstance = axios.create({
   withCredentials: false,
 })
 
+type RuntimeAxiosRequestConfig = InternalAxiosRequestConfig & ExtendedAxiosRequestConfig
+
+function runtimeRequestConfig(requestConfig: InternalAxiosRequestConfig): RuntimeAxiosRequestConfig {
+  return requestConfig
+}
+
+function markInterceptorHandled(error: InterceptorError): void {
+  error._handledByInterceptor = true
+}
+
 /** 一体机未激活时，扫描工位 API 的失败属于预期状态，不弹全局「网络异常」。 */
 function shouldSuppressKioskPreActivationAxiosError(
   error: AxiosError<ResultInfo<unknown>>,
@@ -138,7 +148,7 @@ function cancelAllPendingRequests(): void {
 
 service.interceptors.request.use(
   async (requestConfig: InternalAxiosRequestConfig) => {
-    const extendedConfig = requestConfig as ExtendedAxiosRequestConfig
+    const extendedConfig = runtimeRequestConfig(requestConfig)
 
     const url = requestConfig.url || ''
     const isAuthRequest = url.includes('/login') || url.includes('/oauth2/refresh') || url.includes('/oauth2/token')
@@ -280,7 +290,7 @@ function processFailedQueue(success: boolean): void {
 async function retryKioskRequestAfterAgentSync(
   requestConfig: InternalAxiosRequestConfig,
 ): Promise<AxiosResponse<ResultInfo<unknown>> | null> {
-  const extended = requestConfig as ExtendedAxiosRequestConfig
+  const extended = runtimeRequestConfig(requestConfig)
   if (extended.kioskAuthRetried || !isScannerKioskBrowserPage()) {
     return null
   }
@@ -318,7 +328,7 @@ service.interceptors.response.use(
     }
 
     // 处理空响应体的情况（如logout返回204或200但无内容）
-    if (!response.data || (response.data as unknown) === '' || typeof response.data !== 'object') {
+    if (!response.data || typeof response.data !== 'object') {
       return Promise.reject(new Error('服务响应异常，请稍后重试'))
     }
 
@@ -348,7 +358,7 @@ service.interceptors.response.use(
         const url = response.config?.url || ''
         const isAuthRequest = url.includes('/login') || url.includes('/oauth2/refresh') || url.includes('/oauth2/token')
         const isScannerStationApi = isMarkScannerStationApiUrl(url)
-        const scannerStationAuthSource = (response.config as ExtendedAxiosRequestConfig).markScannerStationAuthSource
+        const scannerStationAuthSource = runtimeRequestConfig(response.config).markScannerStationAuthSource
 
         if (isAuthRequest) {
           const authError: InterceptorError = new Error(response.data.msg || '认证失败')
@@ -411,7 +421,7 @@ service.interceptors.response.use(
       businessError.code = businessCode
       businessError.response = response
 
-      const extendedConfig = response.config as ExtendedAxiosRequestConfig
+      const extendedConfig = runtimeRequestConfig(response.config)
       const skipErrorHandler = extendedConfig.skipErrorHandler === true
       const suppressErrorMessage = extendedConfig.showErrorMessage === false
       if (!skipErrorHandler && !suppressErrorMessage) {
@@ -429,32 +439,33 @@ service.interceptors.response.use(
   },
   async (error: AxiosError<ResultInfo<unknown>>) => {
     if (error.config) {
-      removePendingRequest(error.config as InternalAxiosRequestConfig)
+      removePendingRequest(error.config)
     }
 
     const response = error.response
     const statusCode = response?.status
 
     // 处理 HTTP 401: 尝试用 refresh token 自动续期
-    if (statusCode && AUTH_FAILURE_STATUS.includes(statusCode)) {
-      const originalConfig = error.config as InternalAxiosRequestConfig
+    if (statusCode && response && error.config && AUTH_FAILURE_STATUS.includes(statusCode)) {
+      const originalConfig = error.config
       const url = originalConfig?.url || ''
       const isAuthRequest = url.includes('/login') || url.includes('/oauth2/refresh') || url.includes('/oauth2/token')
       const isLogoutRequest = url.includes('/logout')
       const isPublicApi = url.includes('/public/')
       const isScannerStationApi = isMarkScannerStationApiUrl(url)
-      const scannerStationAuthSource = (originalConfig as ExtendedAxiosRequestConfig).markScannerStationAuthSource
+      const scannerStationAuthSource = runtimeRequestConfig(originalConfig).markScannerStationAuthSource
 
       if (isAuthRequest || isLogoutRequest || isPublicApi) {
         const backendMsg = response?.data?.msg
         if (backendMsg) {
           const authError: InterceptorError = new Error(backendMsg)
           authError.code = response?.data?.code || statusCode
-          authError.response = response as AxiosResponse<ResultInfo<unknown>>
-          authError._handledByInterceptor = true
+          authError.response = response
+          markInterceptorHandled(authError)
           return Promise.reject(authError)
         }
-        ;(error as InterceptorError)._handledByInterceptor = true
+        const interceptorError: InterceptorError = error
+        markInterceptorHandled(interceptorError)
         return Promise.reject(error)
       }
 
@@ -466,15 +477,15 @@ service.interceptors.response.use(
           if (isScannerKioskBrowserPage() && hasMarkScannerKioskAuth()) {
             const kioskAuthError: InterceptorError = new Error(KIOSK_BROWSER_PUSH_TOKEN_REJECTED_MESSAGE)
             kioskAuthError.code = response?.data?.code || statusCode
-            kioskAuthError.response = response as AxiosResponse<ResultInfo<unknown>>
-            kioskAuthError._handledByInterceptor = true
+            kioskAuthError.response = response
+            markInterceptorHandled(kioskAuthError)
             return Promise.reject(kioskAuthError)
           }
           clearKioskAuthSession()
           const kioskAuthError: InterceptorError = new Error(KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE)
           kioskAuthError.code = response?.data?.code || statusCode
-          kioskAuthError.response = response as AxiosResponse<ResultInfo<unknown>>
-          kioskAuthError._handledByInterceptor = true
+          kioskAuthError.response = response
+          markInterceptorHandled(kioskAuthError)
           return Promise.reject(kioskAuthError)
         })
       }
@@ -548,7 +559,8 @@ service.interceptors.response.use(
             useNotification: shouldUseNotification(errorStatusCode, isNetworkError)
           });
         }
-        (error as InterceptorError)._handledByInterceptor = true
+        const interceptorError: InterceptorError = error
+        markInterceptorHandled(interceptorError)
       }
     }
 

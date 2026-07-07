@@ -1,4 +1,4 @@
-import type { MarkingProgressVO } from '@/apis/mark/exam-progress'
+import type { MarkingProgressResponse } from '@/apis/mark/exam-progress'
 import type { SignalMetric } from '@/types/workbench'
 
 /** 考试工作台顶部 SignalBand 指标点击回调 */
@@ -14,7 +14,7 @@ export interface ExamWorkspaceSignalMetricHandlers {
  * 从阅卷进度合同构建考试级 KPI；零值槽位隐藏，指标可点击跳转子页。
  */
 export function buildExamWorkspaceSignalMetrics(
-  progress: MarkingProgressVO | null | undefined,
+  progress: MarkingProgressResponse | null | undefined,
   handlers?: ExamWorkspaceSignalMetricHandlers,
 ): SignalMetric[] {
   if (!progress) {

@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { ExcelImportRowDiagnostic } from '@/apis/platform/types'
 import type {
-  PortfolioExternalTeacherDataStatus,
-  PortfolioExternalTeacherImportBatchStatus,
+  PortfolioExternalTeacherImportBatchStatusCode,
 } from '@/apis/portfolio/enums'
 import type {
   PortfolioExternalTeacherImportBatchVO,
@@ -12,11 +10,13 @@ import type {
   PortfolioExternalTeacherVO,
 } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
-  PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_LABEL,
-  PORTFOLIO_EXTERNAL_TEACHER_IMPORT_BATCH_STATUS_LABEL,
+  PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS,
+  PortfolioExternalTeacherDataStatusCode,
+  PortfolioExternalTeacherDataStatusDescription,
+  PortfolioExternalTeacherImportBatchStatusDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioExternalTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
@@ -31,7 +31,6 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -47,7 +46,7 @@ const drawerOpen = ref(false)
 const batchDetailOpen = ref(false)
 const batchDetail = ref<PortfolioExternalTeacherImportBatchVO | null>(null)
 const importModalOpen = ref(false)
-const dataStatusFilter = ref<PortfolioExternalTeacherDataStatus | ''>('')
+const dataStatusFilter = ref<PortfolioExternalTeacherDataStatusCode | ''>('')
 const teachSubjectFilter = ref('')
 const teacherSourceFilter = ref('')
 const contractStatusFilter = ref('')
@@ -71,7 +70,7 @@ const form = reactive<PortfolioExternalTeacherSaveRequest>({
   idCardNo: '',
   hireTerm: '',
   teachSubject: '',
-  teachHours: '',
+  teachHours: undefined,
   employerUnit: '',
   teachMajor: '',
   teacherSource: '',
@@ -82,12 +81,10 @@ const form = reactive<PortfolioExternalTeacherSaveRequest>({
   contactEmail: '',
   hireStartDate: undefined,
   hireEndDate: undefined,
-  dataStatus: 'ACTIVE',
+  dataStatus: PortfolioExternalTeacherDataStatusCode.ACTIVE,
 })
 
-const dataStatusOptions = (
-  Object.keys(PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_LABEL) as PortfolioExternalTeacherDataStatus[]
-).map((value) => ({ value, label: PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_LABEL[value] }))
+const dataStatusOptions = PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS
 
 const columns: ColumnsType = [
   { title: '姓名', dataIndex: 'fullName', key: 'fullName', width: 88 },
@@ -104,9 +101,7 @@ const columns: ColumnsType = [
 ]
 
 const batchColumns: ColumnsType = [
-  { title: '批次号', dataIndex: 'batchNo', key: 'batchNo', width: 120 },
   { title: '文件名', dataIndex: 'fileName', key: 'fileName' },
-  { title: '总行数', dataIndex: 'totalRows', key: 'totalRows', width: 72 },
   { title: '成功', dataIndex: 'successRows', key: 'successRows', width: 64 },
   { title: '失败', dataIndex: 'failedRows', key: 'failedRows', width: 64 },
   { title: '状态', key: 'batchStatus', width: 96 },
@@ -114,13 +109,13 @@ const batchColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 72 },
 ]
 
-function dataStatusLabel(status: PortfolioExternalTeacherDataStatus): string {
-  return strictEnumLabel(PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_LABEL, status, '外聘教师数据状态')
+function dataStatusLabel(status: PortfolioExternalTeacherDataStatusCode): string {
+  return strictEnumLabel(PortfolioExternalTeacherDataStatusDescription, status, '外聘教师数据状态')
 }
 
-function batchStatusLabel(status: PortfolioExternalTeacherImportBatchStatus): string {
+function batchStatusLabel(status: PortfolioExternalTeacherImportBatchStatusCode): string {
   return strictEnumLabel(
-    PORTFOLIO_EXTERNAL_TEACHER_IMPORT_BATCH_STATUS_LABEL,
+    PortfolioExternalTeacherImportBatchStatusDescription,
     status,
     '外聘教师导入批次状态',
   )
@@ -136,7 +131,7 @@ function resetForm() {
   form.idCardNo = ''
   form.hireTerm = ''
   form.teachSubject = ''
-  form.teachHours = ''
+  form.teachHours = undefined
   form.employerUnit = ''
   form.teachMajor = ''
   form.teacherSource = ''
@@ -147,7 +142,7 @@ function resetForm() {
   form.contactEmail = ''
   form.hireStartDate = undefined
   form.hireEndDate = undefined
-  form.dataStatus = 'ACTIVE'
+  form.dataStatus = PortfolioExternalTeacherDataStatusCode.ACTIVE
   attachmentItems.value = []
 }
 
@@ -160,7 +155,10 @@ function openAttachmentPicker() {
 }
 
 async function onAttachmentPick(event: Event) {
-  const input = event.target as HTMLInputElement
+  if (!(event.target instanceof HTMLInputElement)) {
+    return
+  }
+  const input = event.target
   const files = input.files
   if (!files?.length) {
     return
@@ -198,7 +196,7 @@ async function loadPage() {
       teacherSource: teacherSourceFilter.value.trim() || undefined,
       contractStatus: contractStatusFilter.value.trim() || undefined,
     })
-    rows.value = readPageList(page, '加载外聘教师失败')
+    rows.value = page.list
   } catch (error) {
     showUserError(error)
   } finally {
@@ -221,7 +219,7 @@ async function loadImportBatches() {
   batchLoading.value = true
   try {
     const page = await portfolioExternalTeacherApi.importBatchPage({ pageNum: 1, pageSize: 50 })
-    batchRows.value = readPageList(page, '加载导入批次失败')
+    batchRows.value = page.list
   } catch (error) {
     showUserError(error)
   } finally {
@@ -248,7 +246,7 @@ async function openEdit(id: string) {
     form.idCardNo = detail.idCardNo ?? ''
     form.hireTerm = detail.hireTerm ?? ''
     form.teachSubject = detail.teachSubject ?? ''
-    form.teachHours = detail.teachHours ?? ''
+    form.teachHours = detail.teachHours
     form.employerUnit = detail.employerUnit ?? ''
     form.teachMajor = detail.teachMajor ?? ''
     form.teacherSource = detail.teacherSource ?? ''
@@ -277,9 +275,28 @@ async function saveRecord() {
   saving.value = true
   try {
     await portfolioExternalTeacherApi.save({
-      ...form,
+      id: form.id,
       fullName: form.fullName.trim(),
+      gender: form.gender?.trim() || undefined,
+      major: form.major?.trim() || undefined,
+      title: form.title?.trim() || undefined,
+      age: form.age,
+      idCardNo: form.idCardNo?.trim() || undefined,
+      hireTerm: form.hireTerm?.trim() || undefined,
+      teachSubject: form.teachSubject?.trim() || undefined,
+      teachHours: form.teachHours,
+      employerUnit: form.employerUnit?.trim() || undefined,
+      teachMajor: form.teachMajor?.trim() || undefined,
+      teacherSource: form.teacherSource?.trim() || undefined,
+      trialScore: form.trialScore?.trim() || undefined,
+      industryExperience: form.industryExperience?.trim() || undefined,
+      contractStatus: form.contractStatus?.trim() || undefined,
+      contactPhone: form.contactPhone?.trim() || undefined,
+      contactEmail: form.contactEmail?.trim() || undefined,
+      hireStartDate: form.hireStartDate,
+      hireEndDate: form.hireEndDate,
       attachmentFileIds: attachmentFileIds().length ? attachmentFileIds() : undefined,
+      dataStatus: form.dataStatus,
     })
     message.success('外聘教师已保存')
     drawerOpen.value = false
@@ -333,32 +350,6 @@ async function exportRoster() {
     showUserError(error)
   }
 }
-
-const batchDiagnosticColumns: ColumnsType<ExcelImportRowDiagnostic> = [
-  { title: '行号', dataIndex: 'rowIndex', key: 'rowIndex', width: 72 },
-  { title: '处理说明', dataIndex: 'invalidReason', key: 'invalidReason' },
-]
-
-const batchDetailDiagnostics = computed<ExcelImportRowDiagnostic[]>(() => {
-  const raw = batchDetail.value?.errorReportJson
-  if (!raw) {
-    return []
-  }
-  try {
-    const parsed = JSON.parse(raw) as Array<{
-      rowIndex?: number
-      invalidReason?: string
-      errorMessage?: string
-    }>
-    return parsed.map((item, index) => ({
-      rowIndex: item.rowIndex ?? index + 1,
-      valid: false,
-      invalidReason: item.invalidReason ?? item.errorMessage ?? '导入失败',
-    }))
-  } catch {
-    return []
-  }
-})
 
 onMounted(async () => {
   await loadPage()
@@ -531,7 +522,7 @@ onMounted(async () => {
           <a-input v-model:value="form.teachSubject" />
         </a-form-item>
         <a-form-item label="授课学时">
-          <a-input v-model:value="form.teachHours" />
+          <a-input-number v-model:value="form.teachHours" style="width: 100%" />
         </a-form-item>
         <a-form-item label="任职单位">
           <a-input v-model:value="form.employerUnit" />
@@ -597,27 +588,12 @@ onMounted(async () => {
     </a-drawer>
     <a-drawer v-model:open="batchDetailOpen" title="导入批次详情" width="480">
       <template v-if="batchDetail">
-        <p>批次号 {{ batchDetail.batchNo }}</p>
         <p>文件 {{ batchDetail.fileName ?? '—' }}</p>
         <p>
-          总行 {{ batchDetail.totalRows ?? 0 }} · 成功 {{ batchDetail.successRows ?? 0 }} · 失败
-          {{ batchDetail.failedRows ?? 0 }}
+          成功 {{ batchDetail.successRows ?? 0 }} · 失败 {{ batchDetail.failedRows ?? 0 }}
         </p>
         <p>状态 {{ batchStatusLabel(batchDetail.batchStatus) }}</p>
         <p v-if="batchDetail.createTime">创建时间 {{ batchDetail.createTime }}</p>
-        <UiDataTable
-          v-if="batchDetailDiagnostics.length"
-          pagination-mode="client"
-          :columns="batchDiagnosticColumns"
-          :data-source="batchDetailDiagnostics"
-          :show-pagination="false"
-          row-key="rowIndex"
-          size="small"
-          flat
-        />
-        <pre v-else-if="batchDetail.errorReportJson" class="error-report">{{
-          batchDetail.errorReportJson
-        }}</pre>
       </template>
     </a-drawer>
   </StageWorkbenchShell>

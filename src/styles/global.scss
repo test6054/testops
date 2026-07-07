@@ -26,6 +26,10 @@
 
 // 工作台原型壳层（ContextBar / SignalBand / FilterBar）
 @use './global/workbench';
+@use './global/prototype-workbench';
+@use './workbench/exam-workspace-shell';
+@use './workbench/analysis-center';
+@use './workbench/scanner-center';
 
 // 键盘 focus-visible baseline（workbench / mark 原生控件）
 @use './global/focus';

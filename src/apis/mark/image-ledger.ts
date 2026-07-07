@@ -13,6 +13,20 @@
 import type { DuplicateResolutionStatusCode } from './duplicate-resolution-status'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'
+import { LedgerStatusCode } from '@/types/enums/ledger-status-enum'
+
+export {
+  ALL_LEDGER_STATUS_CODES,
+  LedgerStatusCode,
+  LedgerStatusDescription,
+} from '@/types/enums/ledger-status-enum'
+
+/** 账本状态徽标颜色（统一 BadgeTone） */
+export const LEDGER_STATUS_TONE: Record<LedgerStatusCode, BadgeTone> = {
+  [LedgerStatusCode.BALANCING]: 'blue',
+  [LedgerStatusCode.BALANCED]: 'green',
+  [LedgerStatusCode.INCIDENT_OPEN]: 'red',
+}
 
 // ─── 影像账本详情与对账 ─────────────────────────────────
 
@@ -22,7 +36,7 @@ export interface ImageLedgerDetailRequest {
 }
 
 /** 影像账本详情响应 - 对应 ImageLedgerDetailResponse */
-export interface ImageLedgerDetailVO {
+export interface ImageLedgerDetailResponse {
   ledgerId: string
   examId: string
   ledgerStatus: LedgerStatusCode
@@ -42,37 +56,10 @@ export interface ImageLedgerDetailVO {
  * 归一化影像账本详情：后端在未初始化账本时仅返回 examId 占位，不得当作有效账本渲染。
  */
 export function normalizeImageLedgerDetail(
-  detail: ImageLedgerDetailVO | null | undefined,
-): ImageLedgerDetailVO | null {
+  detail: ImageLedgerDetailResponse | null | undefined,
+): ImageLedgerDetailResponse | null {
   if (!detail?.ledgerId) return null
   return detail
-}
-
-/** 账本页数是否已形成可对账统计 */
-export function hasImageLedgerPageStats(
-  ledger: Pick<ImageLedgerDetailVO, 'scannedPageCount' | 'expectedPageCount'>,
-): boolean {
-  return typeof ledger.scannedPageCount === 'number'
-    && Number.isFinite(ledger.scannedPageCount)
-    && typeof ledger.expectedPageCount === 'number'
-    && Number.isFinite(ledger.expectedPageCount)
-}
-
-/** 影像账本状态 - 对应后端 LedgerStatus 枚举 */
-export type LedgerStatusCode = 'BALANCING' | 'BALANCED' | 'INCIDENT_OPEN'
-
-/** 账本状态文案映射 */
-export const LEDGER_STATUS_LABEL: Record<LedgerStatusCode, string> = {
-  BALANCING: '对账中',
-  BALANCED: '已平账',
-  INCIDENT_OPEN: '存在异常',
-}
-
-/** 账本状态徽标颜色（统一 BadgeTone） */
-export const LEDGER_STATUS_TONE: Record<LedgerStatusCode, BadgeTone> = {
-  BALANCING: 'blue',
-  BALANCED: 'green',
-  INCIDENT_OPEN: 'red',
 }
 
 /**
@@ -81,8 +68,8 @@ export const LEDGER_STATUS_TONE: Record<LedgerStatusCode, BadgeTone> = {
  */
 export function getImageLedgerDetail(
   request: ImageLedgerDetailRequest,
-): Promise<ImageLedgerDetailVO | null> {
-  return http.post<ImageLedgerDetailVO | null>('/api/mark/exams/image-ledger/detail', request)
+): Promise<ImageLedgerDetailResponse | null> {
+  return http.post<ImageLedgerDetailResponse | null>('/api/mark/exams/image-ledger/detail', request)
 }
 
 /** 影像账本对账请求 - 对应 ImageLedgerBalanceRequest */
@@ -96,8 +83,8 @@ export interface ImageLedgerBalanceRequest {
  */
 export function executeImageLedgerBalance(
   request: ImageLedgerBalanceRequest,
-): Promise<ImageLedgerDetailVO> {
-  return http.post<ImageLedgerDetailVO>('/api/mark/exams/image-ledger/balance', request)
+): Promise<ImageLedgerDetailResponse> {
+  return http.post<ImageLedgerDetailResponse>('/api/mark/exams/image-ledger/balance', request)
 }
 
 // ─── 重复影像处置 ─────────────────────────────────────

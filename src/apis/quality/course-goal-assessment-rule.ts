@@ -1,4 +1,4 @@
-import type { AggregationFunction } from './types'
+import type { AggregationFunctionCode } from './types'
 /**
  * 课程目标达成度计算规则 API。
  * 后端对象：CourseGoalAssessmentRuleController /api/quality/course-goal-assessment-rules。
@@ -10,7 +10,7 @@ const RULE = '/api/quality/course-goal-assessment-rules'
 export interface CourseGoalAssessmentRuleVO {
   id: string
   courseGoalId: string
-  aggregation: AggregationFunction
+  aggregation: AggregationFunctionCode
   directWeight?: number
   indirectWeight?: number
   thresholdValue: number
@@ -25,7 +25,7 @@ export interface CourseGoalAssessmentRuleVO {
 export interface CourseGoalAssessmentRuleSaveRequest {
   id?: string
   courseGoalId: string
-  aggregation: AggregationFunction
+  aggregation: AggregationFunctionCode
   directWeight?: number
   indirectWeight?: number
   thresholdValue: number

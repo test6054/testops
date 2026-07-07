@@ -1,49 +1,32 @@
 <template>
-  <UiActivityTimeline
-    :groups="timelineGroups"
-    compact
-    empty-title="暂无事件流水"
-    empty-description="归档卷操作与状态变更将在此按时间展示"
+  <UiEmpty
+    v-if="sortedEvents.length === 0"
+    title="暂无事件流水"
+    description="归档卷操作与状态变更将在此按时间展示"
   />
+  <div v-else class="audit-timeline">
+    <article v-for="event in sortedEvents" :key="event.eventId" class="audit-item">
+      <div class="audit-time">{{ formatEventTime(event.createTime) }}</div>
+      <div class="audit-body">
+        <div class="audit-title">{{ archiveVolumeEventTypeLabel(event.eventType) }}</div>
+        <div v-if="formatEventDesc(event)" class="audit-desc">{{ formatEventDesc(event) }}</div>
+      </div>
+    </article>
+  </div>
 </template>
 
 <script setup lang="ts">
-import type { ArchiveVolumeDetailVO, ArchiveVolumeEventTypeCode } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { ArchiveVolumeDetailResponse, ArchiveVolumeEventVO } from '@/apis/mark/archive-volume'
 import { computed } from 'vue'
-import { ARCHIVE_VOLUME_EVENT_TYPE_LABEL } from '@/apis/mark/archive-volume'
-import UiActivityTimeline from '@/components/ui-guide/ui/UiActivityTimeline.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import { archiveVolumeEventTypeLabel } from '@/utils/archive-volume-event-ui'
 import { formatDateTime } from '@/utils/format'
-import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ArchiveVolumeEventsTimeline' })
 
 const props = defineProps<{
-  events: ArchiveVolumeDetailVO['events']
+  events: ArchiveVolumeDetailResponse['events']
 }>()
-
-const EVENT_TYPE_TONE: Partial<Record<ArchiveVolumeEventTypeCode, BadgeTone>> = {
-  VOLUME_CREATED: 'blue',
-  VOLUME_AUTO_CREATED: 'blue',
-  AUTO_CREATE_FAILED: 'red',
-  MATERIAL_REGISTERED: 'green',
-  IMPORT_BATCH: 'blue',
-  INTEGRITY_CHECKED: 'blue',
-  SCORE_CONFIRMED: 'green',
-  SUBMITTED: 'purple',
-  TRANSFER_APPROVED: 'green',
-  TRANSFER_REJECTED: 'red',
-  FOUR_PROPERTY_CHECKED: 'blue',
-  ACCESS_REQUESTED: 'orange',
-  ACCESS_APPROVED: 'green',
-  ACCESS_REJECTED: 'red',
-  REMEDIATION_ASSIGNED: 'orange',
-  REMEDIATION_CLOSED: 'gray',
-  ARCHIVE_DUE_REMINDER: 'red',
-  DELAY_SUBMISSION_OVERDUE: 'red',
-  SELF_CHECK_CONFIRMED: 'green',
-  VOLUME_RECOLLECTING: 'orange',
-}
 
 const sortedEvents = computed(() =>
   [...(props.events ?? [])].sort((left, right) => {
@@ -53,33 +36,22 @@ const sortedEvents = computed(() =>
   }),
 )
 
-const timelineGroups = computed(() => {
-  const items = sortedEvents.value.map((event) => ({
-    key: event.eventId,
-    title: eventTypeLabel(event.eventType),
-    time: event.createTime ? formatDateTime(event.createTime) : undefined,
-    content: event.reason?.trim() || undefined,
-    tone: resolveEventTone(event.eventType),
-  }))
-  if (items.length === 0) {
-    return []
-  }
-  return [
-    {
-      key: 'archive-volume-events',
-      label: '事件流水',
-      items,
-    },
-  ]
-})
-
-function eventTypeLabel(code?: ArchiveVolumeEventTypeCode) {
-  if (!code) return '—'
-  return strictEnumLabel(ARCHIVE_VOLUME_EVENT_TYPE_LABEL, code, 'eventType')
+function formatEventTime(value?: string): string {
+  return value ? formatDateTime(value) : '—'
 }
 
-function resolveEventTone(code?: ArchiveVolumeEventTypeCode): BadgeTone {
-  if (!code) return 'gray'
-  return EVENT_TYPE_TONE[code] ?? 'blue'
+/** 组装 audit-desc：优先 reason，其次状态变更摘要。 */
+function formatEventDesc(event: ArchiveVolumeEventVO): string {
+  const reason = event.reason?.trim()
+  if (reason) {
+    return reason
+  }
+  if (event.beforeStatus && event.afterStatus) {
+    return `${event.beforeStatus} → ${event.afterStatus}`
+  }
+  if (event.afterStatus) {
+    return event.afterStatus
+  }
+  return ''
 }
 </script>

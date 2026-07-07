@@ -77,14 +77,23 @@ export function getKioskAuthSession(): KioskAuthSession | null {
     return null
   }
   try {
-    const parsed = JSON.parse(raw) as KioskAuthSession
-    if (!parsed?.authorizationHeader) {
+    const parsed: unknown = JSON.parse(raw)
+    if (!isKioskAuthSession(parsed)) {
       return null
     }
     return parsed
   } catch {
     return null
   }
+}
+
+function isKioskAuthSession(value: unknown): value is KioskAuthSession {
+  return typeof value === 'object'
+    && value !== null
+    && 'authorizationHeader' in value
+    && typeof value.authorizationHeader === 'string'
+    && 'tenantId' in value
+    && typeof value.tenantId === 'string'
 }
 
 export function saveKioskBindingProfile(profile: KioskBindingProfile): void {
@@ -97,14 +106,31 @@ export function getKioskBindingProfile(): KioskBindingProfile | null {
     return null
   }
   try {
-    const parsed = JSON.parse(raw) as KioskBindingProfile
-    if (!parsed?.scannerDeviceId || !parsed?.scannerStationId) {
+    const parsed: unknown = JSON.parse(raw)
+    if (!isKioskBindingProfile(parsed)) {
       return null
     }
     return parsed
   } catch {
     return null
   }
+}
+
+function isKioskBindingProfile(value: unknown): value is KioskBindingProfile {
+  return typeof value === 'object'
+    && value !== null
+    && 'scannerDeviceId' in value
+    && typeof value.scannerDeviceId === 'string'
+    && value.scannerDeviceId.length > 0
+    && 'scannerStationId' in value
+    && typeof value.scannerStationId === 'string'
+    && value.scannerStationId.length > 0
+    && 'endpointName' in value
+    && typeof value.endpointName === 'string'
+    && 'gatewayBaseUrl' in value
+    && typeof value.gatewayBaseUrl === 'string'
+    && 'deviceName' in value
+    && typeof value.deviceName === 'string'
 }
 
 export function clearKioskAuthSession(): void {

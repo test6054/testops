@@ -45,9 +45,8 @@ interface PageResult<T> {
 }
 
 /**
- * 分页查询参数（与后端QueryDto完全匹配）
- * 注意：searchTerm, searchText, keyword, statusFilter 等搜索字段
- * 不属于基础QueryDto，而是在具体的查询DTO中定义
+ * 前端公开分页查询参数。
+ * 注意：tenantId 等租户上下文字段由后端从会话注入，页面不得构造；业务筛选字段在具体查询 DTO 中定义。
  */
 interface QueryDto {
     /** 实体ID（后端Long -> 前端string） */
@@ -62,8 +61,6 @@ interface QueryDto {
     createTime?: string
     /** 开始时间（后端LocalDateTime -> 前端string） */
     startTime?: string
-    /** 租户ID（后端Long -> 前端string） */
-    tenantId?: string
     /** 结束时间（后端LocalDateTime -> 前端string） */
     endTime?: string
 }

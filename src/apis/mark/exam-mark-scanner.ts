@@ -6,82 +6,136 @@
  * - 租户与操作人从 UserHold 注入，前端只传业务字段
  * - 后端 Long ID 统一用 string 表达到前端（保持与其他模块一致）
  */
-import type { ExamStatusCode } from './exam'
+import type { ExamStatusCode, ExamSummaryResponse } from './exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { ScannerActivationCodeStatusCode } from '@/types/enums/scanner-activation-code-status-enum'
+import type { ScannerAgentDiagnosticStatusCode } from '@/types/enums/scanner-agent-diagnostic-status-enum'
+import type { ScannerColorModeCode } from '@/types/enums/scanner-color-mode-enum'
+import type { ScannerDuplexModeCode } from '@/types/enums/scanner-duplex-mode-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
-import { readPageList, readPageTotal } from '@/utils/page-result'
+import {
+  ALL_SCANNER_COLOR_MODE_CODES,
+  ScannerColorModeDescription,
+} from '@/types/enums/scanner-color-mode-enum'
+import {
+  ALL_SCANNER_DEVICE_STATUS_CODES,
+  ScannerDeviceStatusCode,
+  ScannerDeviceStatusDescription,
+} from '@/types/enums/scanner-device-status-enum'
+import {
+  ALL_SCANNER_DUPLEX_MODE_CODES,
+  ScannerDuplexModeDescription,
+} from '@/types/enums/scanner-duplex-mode-enum'
+import {
+  ALL_SCANNER_ENDPOINT_ONLINE_STATUS_CODES,
+  ScannerEndpointOnlineStatusCode,
+  ScannerEndpointOnlineStatusDescription,
+} from '@/types/enums/scanner-endpoint-online-status-enum'
+import {
+  ALL_SCANNER_INTERFACE_MODE_CODES,
+  ScannerInterfaceModeCode,
+  ScannerInterfaceModeDescription,
+} from '@/types/enums/scanner-interface-mode-enum'
+/** 扫描 Agent 激活码状态编码 */
+export {
+  ALL_SCANNER_ACTIVATION_CODE_STATUS_CODES,
+  ScannerActivationCodeStatusCode,
+  ScannerActivationCodeStatusDescription,
+} from '@/types/enums/scanner-activation-code-status-enum'
 
-/** 接入模式编码 - 对应后端 ScannerInterfaceMode 枚举 */
-export type ScannerInterfaceModeCode = 'HTTP_PUSH'
+/** 扫描 Agent 诊断状态编码 */
+export {
+  ALL_SCANNER_AGENT_DIAGNOSTIC_STATUS_CODES,
+  ScannerAgentDiagnosticStatusCode,
+  ScannerAgentDiagnosticStatusDescription,
+} from '@/types/enums/scanner-agent-diagnostic-status-enum'
 
-/** 接入模式文案映射 */
-export const SCANNER_INTERFACE_MODE_LABEL: Record<ScannerInterfaceModeCode, string> = {
-  HTTP_PUSH: '一体机 Agent',
-}
+export {
+  ALL_SCANNER_COLOR_MODE_CODES,
+  ScannerColorModeCode,
+  ScannerColorModeDescription,
+} from '@/types/enums/scanner-color-mode-enum'
+
+export {
+  ALL_SCANNER_DEVICE_STATUS_CODES,
+  ScannerDeviceStatusCode,
+  ScannerDeviceStatusDescription,
+} from '@/types/enums/scanner-device-status-enum'
+
+export {
+  ALL_SCANNER_DUPLEX_MODE_CODES,
+  ScannerDuplexModeCode,
+  ScannerDuplexModeDescription,
+} from '@/types/enums/scanner-duplex-mode-enum'
 
 /** 接入模式徽标颜色（统一 BadgeTone） */
 export const SCANNER_INTERFACE_MODE_TONE: Record<ScannerInterfaceModeCode, BadgeTone> = {
-  HTTP_PUSH: 'blue',
+  [ScannerInterfaceModeCode.HTTP_PUSH]: 'blue',
 }
 
-/** 设备状态编码 */
-export type ScannerDeviceStatusCode = 'ACTIVE' | 'INACTIVE' | 'DISABLED'
+export const SCANNER_INTERFACE_MODE_OPTIONS: Array<{
+  value: ScannerInterfaceModeCode
+  label: string
+}> = ALL_SCANNER_INTERFACE_MODE_CODES.map((value) => ({
+  value,
+  label: ScannerInterfaceModeDescription[value],
+}))
 
-/** 扫描 Agent 激活码状态编码 */
-export type ScannerActivationCodeStatusCode = 'UNUSED' | 'USED' | 'EXPIRED'
+export {
+  ALL_SCANNER_ENDPOINT_ONLINE_STATUS_CODES,
+  ScannerEndpointOnlineStatusCode,
+  ScannerEndpointOnlineStatusDescription,
+} from '@/types/enums/scanner-endpoint-online-status-enum'
 
-/** 设备状态文案 */
-export const SCANNER_DEVICE_STATUS_LABEL: Record<ScannerDeviceStatusCode, string> = {
-  ACTIVE: '启用',
-  INACTIVE: '停用',
-  DISABLED: '禁用',
+export {
+  ALL_SCANNER_INTERFACE_MODE_CODES,
+  ScannerInterfaceModeCode,
+  ScannerInterfaceModeDescription,
+} from '@/types/enums/scanner-interface-mode-enum'
+export const SCANNER_DEVICE_STATUS_TONE: Record<ScannerDeviceStatusCode, BadgeTone> = {
+  [ScannerDeviceStatusCode.ACTIVE]: 'green',
+  [ScannerDeviceStatusCode.INACTIVE]: 'orange',
+  [ScannerDeviceStatusCode.DISABLED]: 'red',
 }
+
+export const SCANNER_DEVICE_STATUS_OPTIONS: Array<{
+  value: ScannerDeviceStatusCode
+  label: string
+}> = ALL_SCANNER_DEVICE_STATUS_CODES.map((value) => ({
+  value,
+  label: ScannerDeviceStatusDescription[value],
+}))
 
 /** 设备状态颜色（统一 BadgeTone） */
-export const SCANNER_DEVICE_STATUS_TONE: Record<ScannerDeviceStatusCode, BadgeTone> = {
-  ACTIVE: 'green',
-  INACTIVE: 'orange',
-  DISABLED: 'red',
+export const SCANNER_ENDPOINT_ONLINE_STATUS_TONE: Record<
+  ScannerEndpointOnlineStatusCode,
+  BadgeTone
+> = {
+  [ScannerEndpointOnlineStatusCode.ONLINE]: 'green',
+  [ScannerEndpointOnlineStatusCode.OFFLINE]: 'orange',
 }
 
-/** Agent 在线状态编码 */
-export type ScannerEndpointOnlineStatusCode = 'ONLINE' | 'OFFLINE'
+export const SCANNER_ENDPOINT_ONLINE_STATUS_OPTIONS: Array<{
+  value: ScannerEndpointOnlineStatusCode
+  label: string
+}> = ALL_SCANNER_ENDPOINT_ONLINE_STATUS_CODES.map((value) => ({
+  value,
+  label: ScannerEndpointOnlineStatusDescription[value],
+}))
 
-/** 扫描 Agent 诊断状态编码 */
-export type ScannerAgentDiagnosticStatusCode = 'OK' | 'WARNING' | 'ERROR' | 'AGENT_OFFLINE'
+export const SCANNER_COLOR_MODE_OPTIONS: Array<{ value: ScannerColorModeCode, label: string }>
+  = ALL_SCANNER_COLOR_MODE_CODES.map((value) => ({
+    value,
+    label: ScannerColorModeDescription[value],
+  }))
 
-/** Agent 在线状态文案 */
-export const SCANNER_ENDPOINT_ONLINE_STATUS_LABEL: Record<ScannerEndpointOnlineStatusCode, string> = {
-  ONLINE: '在线',
-  OFFLINE: '离线',
-}
-
-/** Agent 在线状态颜色 */
-export const SCANNER_ENDPOINT_ONLINE_STATUS_TONE: Record<ScannerEndpointOnlineStatusCode, BadgeTone> = {
-  ONLINE: 'green',
-  OFFLINE: 'orange',
-}
-
-/** 色彩模式 */
-export type ScannerColorModeCode = 'COLOR' | 'GRAY' | 'LINEART'
-
-/** 双面模式 */
-export type ScannerDuplexModeCode = 'SIMPLEX' | 'DUPLEX'
-
-/** 扫描色彩模式文案 */
-export const SCANNER_COLOR_MODE_LABEL: Record<ScannerColorModeCode, string> = {
-  COLOR: '彩色',
-  GRAY: '灰度',
-  LINEART: '黑白',
-}
-
-/** 单面/双面扫描方式文案 */
-export const SCANNER_DUPLEX_MODE_LABEL: Record<ScannerDuplexModeCode, string> = {
-  SIMPLEX: '单面扫描',
-  DUPLEX: '双面扫描',
-}
+export const SCANNER_DUPLEX_MODE_OPTIONS: Array<{ value: ScannerDuplexModeCode, label: string }>
+  = ALL_SCANNER_DUPLEX_MODE_CODES.map((value) => ({
+    value,
+    label: ScannerDuplexModeDescription[value],
+  }))
 
 /** 扫描设备分页查询请求 - 对应 ExamScannerDeviceQueryRequest */
 export interface ExamScannerDeviceQueryRequest extends QueryDto {
@@ -92,12 +146,12 @@ export interface ExamScannerDeviceQueryRequest extends QueryDto {
 }
 
 /** 扫描设备物理位置筛选项 - 对应 ExamScannerDeviceLocationOptionResponse */
-export interface ExamScannerDeviceLocationOptionVO {
+export interface ExamScannerDeviceLocationOptionResponse {
   location: string
 }
 
 /** 扫描设备视图 - 对应 ExamScannerDeviceResponse */
-export interface ExamScannerDeviceVO {
+export interface ExamScannerDeviceResponse {
   id: string
   scannerDeviceId: string
   scannerStationId: string
@@ -134,7 +188,7 @@ export interface ExamScannerActivationCodeCreateRequest {
 }
 
 /** 扫描 Agent 激活码响应 */
-export interface ExamScannerActivationCodeVO {
+export interface ExamScannerActivationCodeResponse {
   id: string
   scannerDeviceId: string
   scannerStationId: string
@@ -144,14 +198,14 @@ export interface ExamScannerActivationCodeVO {
 }
 
 /** 扫描设备详情视图 - 对应 ExamScannerDeviceDetailResponse */
-export interface ExamScannerDeviceDetailVO extends ExamScannerDeviceVO {
+export interface ExamScannerDeviceDetailResponse extends ExamScannerDeviceResponse {
   pushToken?: string
   pushUrl?: string
   authorizationHeader?: string
 }
 
 /** 扫描设备激活码交接响应 - 对应 ExamScannerDeviceActivationHandoffResponse */
-export interface ExamScannerDeviceActivationHandoffVO {
+export interface ExamScannerDeviceActivationHandoffResponse {
   id: string
   scannerDeviceId: string
   scannerStationId: string
@@ -195,7 +249,7 @@ export interface ExamScannerDeviceUpdateRequest {
   kioskLockEnabled: boolean
 }
 
-// ScanAttentionQueryRequest / ScanAttentionItemVO 定义在 @/apis/mark/exam-scan，避免重复
+// ScanAttentionQueryRequest / ScanAttentionItemResponse 定义在 @/apis/mark/exam-scan，避免重复
 
 /** 试卷身份批量绑定单项请求 - 对应 ExamPaperBatchBindItemRequest */
 export interface ExamPaperBatchBindItemRequest {
@@ -214,23 +268,17 @@ export interface ExamPaperBatchBindRequest {
 }
 
 /** 试卷身份批量绑定单项结果 - 对应 ExamPaperBatchBindItemResponse */
-export type ExamPaperBatchBindItemResultVO
-  = | {
-    paperInstanceId: string
-    success: true
-    errorMessage?: undefined
-  }
-  | {
+export interface ExamPaperBatchBindItemResponse {
   paperInstanceId: string
-    success: false
-    errorMessage: string
-  }
+  success: boolean
+  errorMessage?: string
+}
 
 /** 试卷身份批量绑定结果 - 对应 ExamPaperBatchBindResponse */
-export interface ExamPaperBatchBindResultVO {
+export interface ExamPaperBatchBindResponse {
   successCount: number
   failureCount: number
-  items: ExamPaperBatchBindItemResultVO[]
+  items: ExamPaperBatchBindItemResponse[]
 }
 
 /**
@@ -239,16 +287,36 @@ export interface ExamPaperBatchBindResultVO {
  */
 export function pageScannerDevices(
   request: ExamScannerDeviceQueryRequest,
-): Promise<PageResult<ExamScannerDeviceVO>> {
-  return http.post<PageResult<ExamScannerDeviceVO>>('/api/mark/exams/scan-devices/list', request)
+): Promise<PageResult<ExamScannerDeviceResponse>> {
+  return http.post<PageResult<ExamScannerDeviceResponse>>('/api/mark/exams/scan-devices/list', request)
+}
+
+/** 扫描设备汇总统计 - 对齐 ExamScannerDeviceSummaryResponse */
+export interface ExamScannerDeviceSummaryResponse {
+  totalCount: number
+  onlineCount: number
+  agentActivatedCount: number
+}
+
+/**
+ * 按与 list 相同的筛选条件汇总扫描设备在线与 Agent 激活计数
+ * POST /api/mark/exams/scan-devices/summary
+ */
+export function summarizeScannerDevices(
+  request: ExamScannerDeviceQueryRequest,
+): Promise<ExamScannerDeviceSummaryResponse> {
+  return http.post<ExamScannerDeviceSummaryResponse>('/api/mark/exams/scan-devices/summary', request)
 }
 
 /**
  * 查询当前租户扫描设备物理位置选项
  * POST /api/mark/exams/scan-devices/locations
  */
-export function listScannerDeviceLocations(): Promise<ExamScannerDeviceLocationOptionVO[]> {
-  return http.post<ExamScannerDeviceLocationOptionVO[]>('/api/mark/exams/scan-devices/locations', {})
+export function listScannerDeviceLocations(): Promise<ExamScannerDeviceLocationOptionResponse[]> {
+  return http.post<ExamScannerDeviceLocationOptionResponse[]>(
+    '/api/mark/exams/scan-devices/locations',
+    {},
+  )
 }
 
 /**
@@ -257,8 +325,11 @@ export function listScannerDeviceLocations(): Promise<ExamScannerDeviceLocationO
  */
 export function createScannerDevice(
   request: ExamScannerDeviceCreateRequest,
-): Promise<ExamScannerDeviceActivationHandoffVO> {
-  return http.post<ExamScannerDeviceActivationHandoffVO>('/api/mark/exams/scan-devices/create', request)
+): Promise<ExamScannerDeviceActivationHandoffResponse> {
+  return http.post<ExamScannerDeviceActivationHandoffResponse>(
+    '/api/mark/exams/scan-devices/create',
+    request,
+  )
 }
 
 /**
@@ -267,8 +338,11 @@ export function createScannerDevice(
  */
 export function updateScannerDevice(
   request: ExamScannerDeviceUpdateRequest,
-): Promise<ExamScannerDeviceActivationHandoffVO> {
-  return http.post<ExamScannerDeviceActivationHandoffVO>('/api/mark/exams/scan-devices/update', request)
+): Promise<ExamScannerDeviceActivationHandoffResponse> {
+  return http.post<ExamScannerDeviceActivationHandoffResponse>(
+    '/api/mark/exams/scan-devices/update',
+    request,
+  )
 }
 
 /**
@@ -291,16 +365,21 @@ export function unbindScannerDeviceAgent(id: string): Promise<boolean> {
  * 查询扫描设备详情（HTTP_PUSH 模式包含明文 push_token 与推荐推送 URL）
  * POST /api/mark/exams/scan-devices/detail
  */
-export function getScannerDeviceDetail(id: string): Promise<ExamScannerDeviceDetailVO> {
-  return http.post<ExamScannerDeviceDetailVO>('/api/mark/exams/scan-devices/detail', { id })
+export function getScannerDeviceDetail(id: string): Promise<ExamScannerDeviceDetailResponse> {
+  return http.post<ExamScannerDeviceDetailResponse>('/api/mark/exams/scan-devices/detail', { id })
 }
 
 /**
  * 重置扫描设备 push_token（仅 HTTP_PUSH 模式可用）
  * POST /api/mark/exams/scan-devices/reset-token
  */
-export function resetScannerDevicePushToken(id: string): Promise<ExamScannerDeviceActivationHandoffVO> {
-  return http.post<ExamScannerDeviceActivationHandoffVO>('/api/mark/exams/scan-devices/reset-token', { id })
+export function resetScannerDevicePushToken(
+  id: string,
+): Promise<ExamScannerDeviceActivationHandoffResponse> {
+  return http.post<ExamScannerDeviceActivationHandoffResponse>(
+    '/api/mark/exams/scan-devices/reset-token',
+    { id },
+  )
 }
 
 /**
@@ -309,8 +388,8 @@ export function resetScannerDevicePushToken(id: string): Promise<ExamScannerDevi
  */
 export function createScannerActivationCode(
   request: ExamScannerActivationCodeCreateRequest,
-): Promise<ExamScannerActivationCodeVO> {
-  return http.post<ExamScannerActivationCodeVO>(
+): Promise<ExamScannerActivationCodeResponse> {
+  return http.post<ExamScannerActivationCodeResponse>(
     '/api/mark/exams/scan-devices/activation-code/create',
     request,
   )
@@ -326,25 +405,11 @@ export function createScannerActivationCode(
  */
 export function batchBindPapers(
   request: ExamPaperBatchBindRequest,
-): Promise<ExamPaperBatchBindResultVO> {
-  return http.post<ExamPaperBatchBindResultVO>('/api/mark/exams/papers/batch-bind', request)
+): Promise<ExamPaperBatchBindResponse> {
+  return http.post<ExamPaperBatchBindResponse>('/api/mark/exams/papers/batch-bind', request)
 }
 
 // ─── 考试列表（供设备管理选择关联考试） ─────────────────────────────────
-
-/** 考试列表项 - 对应 ExamSummaryResponse */
-export interface MarkExamSummaryVO {
-  examId: string
-  examName: string
-  examNo: string
-  academicYear?: string
-  semester?: SemesterCode
-  status: ExamStatusCode
-  statusMessage: string
-  examStartTime?: string
-  examEndTime?: string
-  createTime?: string
-}
 
 /** 考试分页查询请求 - 对应 ExamPageQueryRequest */
 export interface MarkExamPageQueryRequest extends QueryDto {
@@ -353,7 +418,18 @@ export interface MarkExamPageQueryRequest extends QueryDto {
   status?: ExamStatusCode
   academicYear?: string
   semester?: SemesterCode
-  createUserId?: string | null
+  /** 班级 ID；按考试参考班级范围过滤 */
+  classId?: string
+  /** 参考院系 ID；按考试参考院系过滤 */
+  referenceDepartmentId?: string
+  /** 开课学年；用于跨考试分析按课程实际开课周期过滤 */
+  teachingAcademicYear?: string
+  /** 创建时间范围下界 */
+  startTime?: string
+  /** 创建时间范围上界 */
+  endTime?: string
+  /** 开课学期；用于跨考试分析按课程实际开课周期过滤 */
+  teachingSemester?: SemesterCode
   keyword?: string
 }
 
@@ -363,29 +439,29 @@ export interface MarkExamPageQueryRequest extends QueryDto {
  */
 export function pageMarkExams(
   request: MarkExamPageQueryRequest,
-): Promise<PageResult<MarkExamSummaryVO>> {
-  return http.post<PageResult<MarkExamSummaryVO>>('/api/mark/exams/page', request)
+): Promise<PageResult<ExamSummaryResponse>> {
+  return http.post<PageResult<ExamSummaryResponse>>('/api/mark/exams/page', request)
 }
 
 const ACTIVE_SCANNER_DEVICE_PAGE_SIZE = 100
 
 /** 扫描 Agent 端点在线（最近心跳在服务端超时窗口内）；scannerConnected 仅表示物理扫描仪连接，不能替代端点在线。 */
-export function isScannerDeviceOnline(device: ExamScannerDeviceVO): boolean {
-  return device.endpointOnlineStatus === 'ONLINE'
+export function isScannerDeviceOnline(device: ExamScannerDeviceResponse): boolean {
+  return device.endpointOnlineStatus === ScannerEndpointOnlineStatusCode.ONLINE
 }
 
 /** 分页拉取当前租户全部 ACTIVE 扫描设备。 */
-export async function listActiveScannerDevices(): Promise<ExamScannerDeviceVO[]> {
-  const items: ExamScannerDeviceVO[] = []
+export async function listActiveScannerDevices(): Promise<ExamScannerDeviceResponse[]> {
+  const items: ExamScannerDeviceResponse[] = []
   let pageNum = 1
   while (true) {
     const result = await pageScannerDevices({
       pageNum,
       pageSize: ACTIVE_SCANNER_DEVICE_PAGE_SIZE,
-      status: 'ACTIVE',
+      status: ScannerDeviceStatusCode.ACTIVE,
     })
-    items.push(...readPageList(result, '扫描设备列表加载失败'))
-    if (items.length >= readPageTotal(result, '扫描设备列表加载失败')) {
+    items.push(...result.list)
+    if (items.length >= Number(result.total)) {
       break
     }
     pageNum += 1

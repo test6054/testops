@@ -2,10 +2,12 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ProcessEvaluationNodeSaveRequest,
+  ProcessEvaluationNodeUpdateRequest,
   ProcessEvaluationNodeVO,
 } from '@/apis/quality/process-evaluation'
 import type {
   ProcessEvaluationRecordSaveRequest,
+  ProcessEvaluationRecordUpdateRequest,
   ProcessEvaluationRecordVO,
 } from '@/apis/quality/process-evaluation-record'
 /**
@@ -22,7 +24,6 @@ import type {
  * - 记录确认状态机与节点对称：DRAFT→SUBMITTED→CONFIRMED/RETURNED
  * - 已确认记录才进入达成度计算
  */
-import type { ConfirmationStatus, ProcessNodeType } from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message, Modal } from 'ant-design-vue'
@@ -32,11 +33,14 @@ import { processNodeApi } from '@/apis/quality/process-evaluation'
 import { processRecordApi } from '@/apis/quality/process-evaluation-record'
 import {
   CONFIRMATION_STATUS_COLOR,
-  CONFIRMATION_STATUS_LABEL,
   CONFIRMATION_STATUS_TRANSIT_MAP,
-  DATA_SOURCE_MODE_LABEL,
-  PROCESS_NODE_TYPE_LABEL,
+  ConfirmationStatusCode,
+  ConfirmationStatusDescription,
+  DataSourceModeCode,
+  DataSourceModeDescription,
   PROCESS_NODE_TYPE_OPTIONS,
+  ProcessNodeTypeCode,
+  ProcessNodeTypeDescription,
 } from '@/apis/quality/types'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
@@ -92,41 +96,39 @@ const confirmedByGoalColumns: ColumnsType = [
 
 const qualityStore = useQualityStore()
 
-function confirmationStatusLabel(value: ConfirmationStatus): string {
-  return strictEnumLabel(CONFIRMATION_STATUS_LABEL, value, '确认状态')
+function confirmationStatusLabel(value: ConfirmationStatusCode): string {
+  return strictEnumLabel(ConfirmationStatusDescription, value, '确认状态')
 }
 
-function confirmationStatusColor(value: ConfirmationStatus): BadgeTone {
+function confirmationStatusColor(value: ConfirmationStatusCode): BadgeTone {
   return strictEnumTone(CONFIRMATION_STATUS_COLOR, value, '确认状态')
 }
 
-function allowedConfirmationTransitions(current: ConfirmationStatus): ConfirmationStatus[] {
+function allowedConfirmationTransitions(current: ConfirmationStatusCode): ConfirmationStatusCode[] {
   return CONFIRMATION_STATUS_TRANSIT_MAP[current] ?? []
 }
 
 function isNodeMutable(node: ProcessEvaluationNodeVO): boolean {
-  return node.confirmationStatus !== 'CONFIRMED'
+  return node.confirmationStatus !== ConfirmationStatusCode.CONFIRMED
 }
 
 function isRecordMutable(record: ProcessEvaluationRecordVO): boolean {
-  return record.confirmationStatus === 'DRAFT' || record.confirmationStatus === 'RETURNED'
+  return record.confirmationStatus === ConfirmationStatusCode.DRAFT
+    || record.confirmationStatus === ConfirmationStatusCode.RETURNED
 }
 
-function processNodeTypeLabel(value: ProcessNodeType): string {
-  return strictEnumLabel(PROCESS_NODE_TYPE_LABEL, value, '过程节点类型')
+function processNodeTypeLabel(value: ProcessNodeTypeCode): string {
+  return strictEnumLabel(ProcessNodeTypeDescription, value, '过程节点类型')
 }
 
 function dataSourceModeLabel(record: ProcessEvaluationRecordVO): string {
-  return strictEnumLabel(DATA_SOURCE_MODE_LABEL, record.sourceMode, '数据来源模式')
+  if (!record.sourceMode) return '-'
+  return strictEnumLabel(DataSourceModeDescription, record.sourceMode, '数据来源模式')
 }
 
 function studentDisplay(record: ProcessEvaluationRecordVO): string {
   if (!record.studentUserId) return ''
   return record.studentName?.trim() ?? ''
-}
-
-function isRecordStudentContractValid(items: ProcessEvaluationRecordVO[]): boolean {
-  return items.every((item) => item.sourceMode && (!item.studentUserId || item.studentName?.trim()))
 }
 
 /* ========== 节点列表 ========== */
@@ -172,11 +174,13 @@ useQualityScopedLoader(handleScopeChange, {
 
 const nodeEditorVisible = ref(false)
 const nodeEditorMode = ref<'create' | 'edit'>('create')
-const nodeEditor = ref<ProcessEvaluationNodeSaveRequest>({
+
+const nodeEditor = ref<ProcessEvaluationNodeUpdateRequest>({
+  id: '',
   qualityCourseId: '',
   nodeCode: '',
   nodeName: '',
-  nodeType: 'CLASS_INTERACTION',
+  nodeType: ProcessNodeTypeCode.CLASS_INTERACTION,
   evidenceType: '',
   semester: undefined,
   weight: 0.2,
@@ -204,10 +208,11 @@ function openNodeCreate() {
   }
   nodeEditorMode.value = 'create'
   nodeEditor.value = {
+    id: '',
     qualityCourseId: qualityStore.currentQualityCourseId,
     nodeCode: '',
     nodeName: '',
-    nodeType: 'CLASS_INTERACTION',
+    nodeType: ProcessNodeTypeCode.CLASS_INTERACTION,
     evidenceType: '',
     semester: qualityStore.currentSemester || undefined,
     weight: 0.2,
@@ -224,7 +229,22 @@ function openNodeEdit(record: ProcessEvaluationNodeVO) {
     return
   }
   nodeEditorMode.value = 'edit'
-  nodeEditor.value = { ...record }
+  nodeEditor.value = {
+    id: record.id,
+    qualityCourseId: record.qualityCourseId,
+    assessmentItemId: record.assessmentItemId,
+    courseGoalId: record.courseGoalId,
+    indicatorId: record.indicatorId,
+    nodeCode: record.nodeCode,
+    nodeName: record.nodeName,
+    nodeType: record.nodeType,
+    evidenceType: record.evidenceType,
+    semester: record.semester,
+    weight: record.weight,
+    fullScore: record.fullScore,
+    coverageRequired: record.coverageRequired,
+    description: record.description,
+  }
   nodeEditorVisible.value = true
 }
 
@@ -242,8 +262,46 @@ async function submitNode() {
     }
   }
   try {
-    if (nodeEditorMode.value === 'create') await processNodeApi.create(v)
-    else await processNodeApi.update(v)
+    if (nodeEditorMode.value === 'create') {
+      const request: ProcessEvaluationNodeSaveRequest = {
+        qualityCourseId: v.qualityCourseId,
+        assessmentItemId: v.assessmentItemId,
+        courseGoalId: v.courseGoalId,
+        indicatorId: v.indicatorId,
+        nodeCode: v.nodeCode,
+        nodeName: v.nodeName,
+        nodeType: v.nodeType,
+        evidenceType: v.evidenceType,
+        semester: v.semester,
+        weight: v.weight,
+        fullScore: v.fullScore,
+        coverageRequired: v.coverageRequired,
+        description: v.description,
+      }
+      await processNodeApi.create(request)
+    } else {
+      if (!v.id) {
+        message.error('过程性评价节点 ID 缺失，无法更新')
+        return
+      }
+      const request: ProcessEvaluationNodeUpdateRequest = {
+        id: v.id,
+        qualityCourseId: v.qualityCourseId,
+        assessmentItemId: v.assessmentItemId,
+        courseGoalId: v.courseGoalId,
+        indicatorId: v.indicatorId,
+        nodeCode: v.nodeCode,
+        nodeName: v.nodeName,
+        nodeType: v.nodeType,
+        evidenceType: v.evidenceType,
+        semester: v.semester,
+        weight: v.weight,
+        fullScore: v.fullScore,
+        coverageRequired: v.coverageRequired,
+        description: v.description,
+      }
+      await processNodeApi.update(request)
+    }
     message.success('已保存')
     nodeEditorVisible.value = false
     await loadNodes()
@@ -269,7 +327,7 @@ async function handleNodeDelete(record: ProcessEvaluationNodeVO) {
   })
 }
 
-async function changeNodeStatus(record: ProcessEvaluationNodeVO, target: ConfirmationStatus) {
+async function changeNodeStatus(record: ProcessEvaluationNodeVO, target: ConfirmationStatusCode) {
   if (!allowedConfirmationTransitions(record.confirmationStatus).includes(target)) {
     message.warning(
       `禁止由 ${confirmationStatusLabel(record.confirmationStatus)} 流转到 ${confirmationStatusLabel(target)}`,
@@ -277,7 +335,7 @@ async function changeNodeStatus(record: ProcessEvaluationNodeVO, target: Confirm
     return
   }
   try {
-    await processNodeApi.updateConfirmationStatus(record.id, target)
+    await processNodeApi.updateConfirmationStatus({ id: record.id, confirmationStatus: target })
     message.success(`已切换到 ${confirmationStatusLabel(target)}`)
     await loadNodes()
   } catch (error) {
@@ -289,7 +347,7 @@ async function changeNodeStatus(record: ProcessEvaluationNodeVO, target: Confirm
 
 const records = ref<ProcessEvaluationRecordVO[]>([])
 const recordsLoading = ref(false)
-const recordFilterForm = reactive<{ status?: ConfirmationStatus }>({
+const recordFilterForm = reactive<{ status?: ConfirmationStatusCode }>({
   status: undefined,
 })
 
@@ -302,10 +360,10 @@ const recordFilterFields: FilterField[] = [
     allowClear: true,
     width: 140,
     options: [
-      { value: 'DRAFT', label: '起草' },
-      { value: 'SUBMITTED', label: '已提交' },
-      { value: 'CONFIRMED', label: '已确认' },
-      { value: 'RETURNED', label: '已退回' },
+      { value: ConfirmationStatusCode.DRAFT, label: '起草' },
+      { value: ConfirmationStatusCode.SUBMITTED, label: '已提交' },
+      { value: ConfirmationStatusCode.CONFIRMED, label: '已确认' },
+      { value: ConfirmationStatusCode.RETURNED, label: '已退回' },
     ],
   },
 ]
@@ -317,13 +375,10 @@ async function loadRecords() {
   }
   recordsLoading.value = true
   try {
-    const result = await processRecordApi.listByNode(selectedNode.value.id, recordFilterForm.status)
-    if (!isRecordStudentContractValid(result)) {
-      records.value = []
-      showUserError(null, '过程性评价数据异常，请刷新后重试')
-      return
-    }
-    records.value = result
+    records.value = await processRecordApi.listByNode({
+      nodeId: selectedNode.value.id,
+      confirmationStatus: recordFilterForm.status,
+    })
   } catch (err) {
     records.value = []
     showUserError(err, '过程性评价记录加载失败')
@@ -334,7 +389,9 @@ async function loadRecords() {
 
 const recordEditorVisible = ref(false)
 const recordEditorMode = ref<'create' | 'edit'>('create')
-const recordEditor = ref<ProcessEvaluationRecordSaveRequest>({
+
+const recordEditor = ref<ProcessEvaluationRecordUpdateRequest>({
+  id: '',
   nodeId: '',
   qualityCourseId: '',
   studentUserId: '',
@@ -342,7 +399,7 @@ const recordEditor = ref<ProcessEvaluationRecordSaveRequest>({
   score: 0,
   convertedScore: undefined,
   evidenceFileId: '',
-  sourceMode: 'MANUAL_CONFIRMATION',
+  sourceMode: DataSourceModeCode.MANUAL_CONFIRMATION,
   notes: '',
 })
 const evidenceFileName = ref('')
@@ -353,12 +410,13 @@ function handleRecordStudentChange(value: string | null): void {
 
 function openRecordCreate() {
   if (!selectedNode.value) return
-  if (selectedNode.value.confirmationStatus !== 'CONFIRMED') {
+  if (selectedNode.value.confirmationStatus !== ConfirmationStatusCode.CONFIRMED) {
     message.warning('节点未确认，无法录入记录')
     return
   }
   recordEditorMode.value = 'create'
   recordEditor.value = {
+    id: '',
     nodeId: selectedNode.value.id,
     qualityCourseId: qualityStore.currentQualityCourseId,
     studentUserId: '',
@@ -366,7 +424,7 @@ function openRecordCreate() {
     score: 0,
     convertedScore: undefined,
     evidenceFileId: '',
-    sourceMode: 'MANUAL_CONFIRMATION',
+    sourceMode: DataSourceModeCode.MANUAL_CONFIRMATION,
     notes: '',
   }
   evidenceFileName.value = ''
@@ -379,7 +437,20 @@ function openRecordEdit(record: ProcessEvaluationRecordVO) {
     return
   }
   recordEditorMode.value = 'edit'
-  recordEditor.value = { ...record }
+  recordEditor.value = {
+    id: record.id,
+    nodeId: record.nodeId,
+    qualityCourseId: record.qualityCourseId,
+    studentUserId: record.studentUserId,
+    studentNumber: record.studentNumber,
+    score: record.score,
+    convertedScore: record.convertedScore,
+    evidenceFileId: record.evidenceFileId,
+    sourceBatchId: record.sourceBatchId,
+    sourceMode: record.sourceMode,
+    validationResult: record.validationResult,
+    notes: record.notes,
+  }
   evidenceFileName.value = record.evidenceFileId ? '已关联证据文件' : ''
   recordEditorVisible.value = true
 }
@@ -398,8 +469,42 @@ async function submitRecord() {
     }
   }
   try {
-    if (recordEditorMode.value === 'create') await processRecordApi.create(v)
-    else await processRecordApi.update(v)
+    if (recordEditorMode.value === 'create') {
+      const request: ProcessEvaluationRecordSaveRequest = {
+        nodeId: v.nodeId,
+        qualityCourseId: v.qualityCourseId,
+        studentUserId: v.studentUserId,
+        studentNumber: v.studentNumber,
+        score: v.score,
+        convertedScore: v.convertedScore,
+        evidenceFileId: v.evidenceFileId,
+        sourceBatchId: v.sourceBatchId,
+        sourceMode: v.sourceMode,
+        validationResult: v.validationResult,
+        notes: v.notes,
+      }
+      await processRecordApi.create(request)
+    } else {
+      if (!v.id) {
+        message.error('过程性评价记录 ID 缺失，无法更新')
+        return
+      }
+      const request: ProcessEvaluationRecordUpdateRequest = {
+        id: v.id,
+        nodeId: v.nodeId,
+        qualityCourseId: v.qualityCourseId,
+        studentUserId: v.studentUserId,
+        studentNumber: v.studentNumber,
+        score: v.score,
+        convertedScore: v.convertedScore,
+        evidenceFileId: v.evidenceFileId,
+        sourceBatchId: v.sourceBatchId,
+        sourceMode: v.sourceMode,
+        validationResult: v.validationResult,
+        notes: v.notes,
+      }
+      await processRecordApi.update(request)
+    }
     message.success('已保存')
     recordEditorVisible.value = false
     await loadRecords()
@@ -408,7 +513,7 @@ async function submitRecord() {
   }
 }
 
-async function changeRecordStatus(record: ProcessEvaluationRecordVO, target: ConfirmationStatus) {
+async function changeRecordStatus(record: ProcessEvaluationRecordVO, target: ConfirmationStatusCode) {
   if (!allowedConfirmationTransitions(record.confirmationStatus).includes(target)) {
     message.warning(
       `禁止由 ${confirmationStatusLabel(record.confirmationStatus)} 流转到 ${confirmationStatusLabel(target)}`,
@@ -416,7 +521,7 @@ async function changeRecordStatus(record: ProcessEvaluationRecordVO, target: Con
     return
   }
   try {
-    await processRecordApi.updateConfirmationStatus(record.id, target)
+    await processRecordApi.updateConfirmationStatus({ id: record.id, confirmationStatus: target })
     message.success(`已切换到 ${confirmationStatusLabel(target)}`)
     await loadRecords()
   } catch (error) {
@@ -443,12 +548,12 @@ async function deleteRecord(record: ProcessEvaluationRecordVO) {
 /* ========== 节点记录 Excel 导入（同步） ========== */
 
 const importExcelVisible = ref(false)
-const importConfirmationStatus = ref<ConfirmationStatus>('SUBMITTED')
+const importConfirmationStatus = ref<ConfirmationStatusCode>(ConfirmationStatusCode.SUBMITTED)
 
-const importConfirmationStatusOptions: { label: string, value: ConfirmationStatus }[] = [
-  { label: CONFIRMATION_STATUS_LABEL.DRAFT, value: 'DRAFT' },
-  { label: CONFIRMATION_STATUS_LABEL.SUBMITTED, value: 'SUBMITTED' },
-  { label: CONFIRMATION_STATUS_LABEL.CONFIRMED, value: 'CONFIRMED' },
+const importConfirmationStatusOptions: { label: string, value: ConfirmationStatusCode }[] = [
+  { label: ConfirmationStatusDescription.DRAFT, value: ConfirmationStatusCode.DRAFT },
+  { label: ConfirmationStatusDescription.SUBMITTED, value: ConfirmationStatusCode.SUBMITTED },
+  { label: ConfirmationStatusDescription.CONFIRMED, value: ConfirmationStatusCode.CONFIRMED },
 ]
 
 const importRecordContext = computed(() => ({
@@ -458,11 +563,11 @@ const importRecordContext = computed(() => ({
 
 function openImportExcel() {
   if (!selectedNode.value) return
-  if (selectedNode.value.confirmationStatus !== 'CONFIRMED') {
+  if (selectedNode.value.confirmationStatus !== ConfirmationStatusCode.CONFIRMED) {
     message.warning('节点未确认，无法导入数据')
     return
   }
-  if (importConfirmationStatus.value === 'CONFIRMED') {
+  if (importConfirmationStatus.value === ConfirmationStatusCode.CONFIRMED) {
     Modal.confirm({
       title: '以「已确认」状态导入',
       content:
@@ -507,16 +612,10 @@ async function queryConfirmedByGoal() {
   }
   confirmedByGoalLoading.value = true
   try {
-    const result = await processRecordApi.listConfirmedByCourseGoal(
-      qualityStore.currentQualityCourseId,
-      confirmedByGoalId.value,
-    )
-    if (!isRecordStudentContractValid(result)) {
-      confirmedByGoalRecords.value = []
-      showUserError(null, '课程目标已确认记录数据异常，请刷新后重试')
-      return
-    }
-    confirmedByGoalRecords.value = result
+    confirmedByGoalRecords.value = await processRecordApi.listConfirmedByCourseGoal({
+      qualityCourseId: qualityStore.currentQualityCourseId,
+      courseGoalId: confirmedByGoalId.value,
+    })
   } catch (err) {
     confirmedByGoalRecords.value = []
     showUserError(err, '课程目标已确认记录加载失败')
@@ -528,7 +627,7 @@ async function queryConfirmedByGoal() {
 /* ========== 信号指标：节点 + 记录健康度 ========== */
 
 const signals = computed<SignalMetric[]>(() => {
-  const buckets: Record<ConfirmationStatus, number> = {
+  const buckets: Record<ConfirmationStatusCode, number> = {
     DRAFT: 0,
     SUBMITTED: 0,
     CONFIRMED: 0,
@@ -551,7 +650,7 @@ const signals = computed<SignalMetric[]>(() => {
       coverageCount += 1
     }
   }
-  const recordBuckets: Record<ConfirmationStatus, number> = {
+  const recordBuckets: Record<ConfirmationStatusCode, number> = {
     DRAFT: 0,
     SUBMITTED: 0,
     CONFIRMED: 0,
@@ -757,7 +856,7 @@ function handleCourseChange(courseId: string | null) {
               <UiButton
                 variant="primary"
                 size="sm"
-                :disabled="selectedNode.confirmationStatus !== 'CONFIRMED'"
+                :disabled="selectedNode.confirmationStatus !== ConfirmationStatusCode.CONFIRMED"
                 @click="openRecordCreate"
               >
                 录入记录
@@ -766,14 +865,14 @@ function handleCourseChange(courseId: string | null) {
               <a-select
                 v-model:value="importConfirmationStatus"
                 :options="importConfirmationStatusOptions"
-                :disabled="selectedNode.confirmationStatus !== 'CONFIRMED'"
+                :disabled="selectedNode.confirmationStatus !== ConfirmationStatusCode.CONFIRMED"
                 size="small"
                 style="width: 112px"
               />
               <UiButton
                 variant="outline"
                 size="sm"
-                :disabled="selectedNode.confirmationStatus !== 'CONFIRMED'"
+                :disabled="selectedNode.confirmationStatus !== ConfirmationStatusCode.CONFIRMED"
                 @click="openImportExcel"
               >
                 Excel 导入
@@ -1011,7 +1110,7 @@ function handleCourseChange(courseId: string | null) {
           <a-col :span="8">
             <a-form-item label="数据来源">
               <a-select v-model:value="recordEditor.sourceMode">
-                <a-select-option v-for="(v, k) in DATA_SOURCE_MODE_LABEL" :key="k" :value="k">
+                <a-select-option v-for="(v, k) in DataSourceModeDescription" :key="k" :value="k">
                   {{ v }}
                 </a-select-option>
               </a-select>

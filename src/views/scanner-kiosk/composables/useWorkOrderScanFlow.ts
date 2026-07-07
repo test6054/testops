@@ -2,12 +2,11 @@ import type { Ref } from 'vue'
 import type {
   DocumentStartScanJobRequest,
   ScanJobResponse,
-  ScannerBusinessScene,
+  ScannerBusinessSceneCode,
 } from '@/apis/mark/scanner-agent-local'
 import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
 import type {
   ArchiveScanBatchModeCode,
-  ScanTaskKindCode,
   ScanWorkOrderDiscardRequest,
   ScanWorkOrderLifecycleVO,
 } from '@/apis/mark/scanner-work-order'
@@ -17,24 +16,26 @@ import {
   deleteScanJob,
   endBatch,
   getScanJob,
-  listDocumentScanJobs,
+  LocalScanJobStatusCode,
+  LocalScanPageStatusCode,
   pauseScanJob,
   resumeScanJob,
   retryCommit,
   retryUpload,
+  ScannerBlankPagePolicyCode,
+  ScannerOutputContainerFormat,
+  ScannerPageImageFormat,
   startDocumentScanJob,
 } from '@/apis/mark/scanner-agent-local'
 import { commitScanWorkOrder, discardScanWorkOrder } from '@/apis/mark/scanner-work-order'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
+import { ScanWorkOrderStatusCode } from '@/types/enums/scan-work-order-status-enum'
 import { getUserErrorMessage } from '@/utils/error-handler'
 
-const DEFAULT_OUTPUT_CONTAINER_FORMAT = 'PDF' as const
-const DEFAULT_PAGE_IMAGE_FORMAT = 'PNG' as const
-const DEFAULT_BLANK_PAGE_POLICY = 'BACK_BLANK' as const
-
 export interface WorkOrderScanFlowOptions {
-  taskKind: Extract<ScanTaskKindCode, 'EXAM_ARCHIVE' | 'PORTFOLIO_COLLECT'>
-  businessScene: ScannerBusinessScene
+  taskKind: ScanTaskKindCode
+  businessScene: ScannerBusinessSceneCode
   getBusinessRefId: () => string
   getArchiveBatchMode?: () => ArchiveScanBatchModeCode | undefined
   getScanConfig: () => ExamScannerScanConfigVO
@@ -50,8 +51,8 @@ export interface WorkOrderScanFlowOptions {
  *
  * commit 重试分工：
  * - 有 local scan job 时：统一走 Agent retryCommit（组装 container/sourceFileIds）。
- * - 档案袋工单 COMMITTING/FAILED 且无 local job：走浏览器 commitScanWorkOrder 读 DB 快照续做 quality（后端 PortfolioScanWorkOrderCommitHandler）。
- * - 考试卷 / 归档卷：无浏览器 commit 兜底，commit 失败仅 Agent 侧重试。
+ * - 档案袋 / 归档 MERGED 工单 COMMITTING/FAILED 且无 local job：走浏览器 commitScanWorkOrder 读 DB 快照续做（后端分阶段 commit）。
+ * - 考试卷 PER_PAGE：无浏览器 commit 兜底，commit 失败仅 Agent 侧重试。
  */
 export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
   const lifecycle = options.lifecycle ?? ref<ScanWorkOrderLifecycleVO | null>(null)
@@ -62,30 +63,42 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
   let pollTimer: ReturnType<typeof setInterval> | null = null
 
   const isScanning = computed(
-    () => currentJob.value?.status === 'SCANNING' || currentJob.value?.status === 'PAUSED',
+    () => currentJob.value?.status === LocalScanJobStatusCode.SCANNING
+      || currentJob.value?.status === LocalScanJobStatusCode.PAUSED,
   )
   const isUploading = computed(
     () =>
-      currentJob.value?.status === 'UPLOADING'
-      || currentJob.value?.status === 'RETRYING'
-      || currentJob.value?.status === 'READYTOUPLOAD',
+      currentJob.value?.status === LocalScanJobStatusCode.UPLOADING
+      || currentJob.value?.status === LocalScanJobStatusCode.RETRYING
+      || currentJob.value?.status === LocalScanJobStatusCode.READYTOUPLOAD,
   )
   const isReported = computed(
-    () => currentJob.value?.reported === true || currentJob.value?.status === 'REPORTED',
+    () => currentJob.value?.reported === true
+      || currentJob.value?.status === LocalScanJobStatusCode.REPORTED,
   )
   const canEndBatch = computed(
-    () => currentJob.value?.status === 'SCANNING' || currentJob.value?.status === 'PAUSED',
+    () => currentJob.value?.status === LocalScanJobStatusCode.SCANNING
+      || currentJob.value?.status === LocalScanJobStatusCode.PAUSED,
   )
   const canDiscard = computed(() => {
     if (!lifecycle.value?.batchExternalNo) return false
     const status = lifecycle.value.status
-    if (status === 'COMMITTING' || status === 'FAILED') return true
+    if (status === ScanWorkOrderStatusCode.COMMITTING) {
+      return false
+    }
+    if (status === ScanWorkOrderStatusCode.FAILED) {
+      return true
+    }
     return !isReported.value
   })
   const canRetryUpload = computed(() => {
     const job = currentJob.value
     if (!job || job.reported) return false
-    if (job.status === 'FAILED' || job.status === 'RETRYING' || job.status === 'READYTOUPLOAD') {
+    if (
+      job.status === LocalScanJobStatusCode.FAILED
+      || job.status === LocalScanJobStatusCode.RETRYING
+      || job.status === LocalScanJobStatusCode.READYTOUPLOAD
+    ) {
       return job.scannedPages > 0 || job.uploadedPages > 0
     }
     return false
@@ -95,28 +108,32 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
     if (!job || job.reported) return false
     const status = job.status
     if (
-      status === 'SCANNING'
-      || status === 'PAUSED'
-      || status === 'UPLOADING'
-      || status === 'CANCELLED'
-      || status === 'REPORTED'
+      status === LocalScanJobStatusCode.SCANNING
+      || status === LocalScanJobStatusCode.PAUSED
+      || status === LocalScanJobStatusCode.UPLOADING
+      || status === LocalScanJobStatusCode.CANCELLED
+      || status === LocalScanJobStatusCode.REPORTED
     ) {
       return false
     }
-    const uploadablePages = job.pages.filter((page) => page.status !== 'DELETED')
+    const uploadablePages = job.pages.filter((page) => page.status !== LocalScanPageStatusCode.DELETED)
     if (uploadablePages.length === 0 || job.uploadedPages <= 0) return false
     return uploadablePages.every(
-      (page) => page.status === 'UPLOADED' && Boolean(page.uploadedFileId),
+      (page) => page.status === LocalScanPageStatusCode.UPLOADED && Boolean(page.uploadedFileId),
     )
   })
 
   const canRetryWorkOrderCommit = computed(() => {
-    if (options.taskKind !== 'PORTFOLIO_COLLECT') {
+    if (
+      options.taskKind !== ScanTaskKindCode.PORTFOLIO_COLLECT
+      && options.taskKind !== ScanTaskKindCode.EXAM_ARCHIVE
+    ) {
       return false
     }
     const status = lifecycle.value?.status
     return (
-      Boolean(lifecycle.value?.batchExternalNo) && (status === 'COMMITTING' || status === 'FAILED')
+      Boolean(lifecycle.value?.batchExternalNo)
+      && (status === ScanWorkOrderStatusCode.COMMITTING || status === ScanWorkOrderStatusCode.FAILED)
     )
   })
 
@@ -137,87 +154,16 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
   async function pollJob(scanJobId: string) {
     try {
       currentJob.value = await getScanJob(scanJobId)
-      if (currentJob.value.reported || currentJob.value.status === 'REPORTED') {
+      if (currentJob.value.reported || currentJob.value.status === LocalScanJobStatusCode.REPORTED) {
         stopPolling()
         successMessage.value = '扫描批次已提交'
       }
-      if (currentJob.value.status === 'FAILED') {
+      if (currentJob.value.status === LocalScanJobStatusCode.FAILED) {
         stopPolling()
       }
     } catch (error) {
       errorMessage.value = getUserErrorMessage(error, '刷新扫描任务失败')
     }
-  }
-
-  function isRecoverableLocalJob(job: ScanJobResponse) {
-    return [
-      'CREATED',
-      'SCANNING',
-      'PAUSED',
-      'READYTOUPLOAD',
-      'UPLOADING',
-      'RETRYING',
-      'FAILED',
-    ].includes(job.status)
-  }
-
-  function shouldPollRecoveredJob(job: ScanJobResponse) {
-    return [
-      'CREATED',
-      'SCANNING',
-      'PAUSED',
-      'READYTOUPLOAD',
-      'UPLOADING',
-      'RETRYING',
-      'FAILED',
-    ].includes(job.status)
-  }
-
-  /**
-   * 归档 / 档案袋 Kiosk 刷新后恢复 Agent 本地未完成任务，避免磁盘残留任务阻断新开扫。
-   */
-  async function recoverLocalScanJob() {
-    const deviceId = options.getScannerDeviceId().trim()
-    const stationId = options.getScannerStationId().trim()
-    if (!deviceId || !stationId) {
-      return
-    }
-    const batchExternalNo = lifecycle.value?.batchExternalNo?.trim()
-    let response
-    try {
-      response = await listDocumentScanJobs({
-        taskKind: options.taskKind,
-        scannerDeviceId: deviceId,
-        scannerStationId: stationId,
-        batchExternalNo: batchExternalNo || undefined,
-        includeTerminal: false,
-      })
-    } catch (error) {
-      errorMessage.value = getUserErrorMessage(error, '恢复本地扫描任务失败')
-      return
-    }
-    const currentJobId = currentJob.value?.scanJobId?.trim() ?? ''
-    const recoverableJobs = response.jobs.filter(isRecoverableLocalJob)
-    const recoverableJob
-      = (currentJobId ? recoverableJobs.find((job) => job.scanJobId === currentJobId) : undefined)
-        || (batchExternalNo
-        ? recoverableJobs.find((job) => job.batchExternalNo === batchExternalNo)
-        : undefined)
-      || recoverableJobs[0]
-    if (!recoverableJob) {
-      return
-    }
-    if (currentJob.value?.scanJobId === recoverableJob.scanJobId) {
-      if (shouldPollRecoveredJob(recoverableJob)) {
-        startPolling(recoverableJob.scanJobId)
-      }
-      return
-    }
-    currentJob.value = await getScanJob(recoverableJob.scanJobId)
-    if (shouldPollRecoveredJob(currentJob.value)) {
-      startPolling(currentJob.value.scanJobId)
-    }
-    successMessage.value = '已恢复本地未完成扫描任务'
   }
 
   async function startLocalScanAfterWorkOrder(workOrder: ScanWorkOrderLifecycleVO) {
@@ -235,9 +181,9 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
       scannerDeviceId: options.getScannerDeviceId(),
       scannerStationId: options.getScannerStationId(),
       archiveBatchMode: options.getArchiveBatchMode?.(),
-      outputContainerFormat: DEFAULT_OUTPUT_CONTAINER_FORMAT,
-      pageImageFormat: DEFAULT_PAGE_IMAGE_FORMAT,
-      blankPagePolicy: DEFAULT_BLANK_PAGE_POLICY,
+      outputContainerFormat: ScannerOutputContainerFormat.PDF,
+      pageImageFormat: ScannerPageImageFormat.PNG,
+      blankPagePolicy: ScannerBlankPagePolicyCode.BACK_BLANK,
       resolvedScanConfig: workOrder.resolvedScanConfig,
     }
     loading.value = true
@@ -287,9 +233,12 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
     startPolling(currentJob.value.scanJobId)
   }
 
-  /** 档案袋 quality 失败后无 local job 时，凭工单 DB 快照续做 commit（非考试/归档路径）。 */
+  /** 档案袋 quality / 归档 MERGED 失败后无 local job 时，凭工单 DB 快照续做 commit。 */
   async function retryWorkOrderCommit() {
-    if (options.taskKind !== 'PORTFOLIO_COLLECT') {
+    if (
+      options.taskKind !== ScanTaskKindCode.PORTFOLIO_COLLECT
+      && options.taskKind !== ScanTaskKindCode.EXAM_ARCHIVE
+    ) {
       return
     }
     if (!lifecycle.value?.batchExternalNo || !canRetryWorkOrderCommit.value) return
@@ -302,7 +251,7 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
         pageCount: lifecycle.value.pageCount,
         scanEndTime: new Date().toISOString(),
       })
-      if (lifecycle.value.status === 'COMMITTED') {
+      if (lifecycle.value.status === ScanWorkOrderStatusCode.COMMITTED) {
         successMessage.value = '扫描工单已提交'
       }
     } catch (error) {
@@ -325,7 +274,10 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
     errorMessage.value = ''
     try {
       if (currentJob.value && !currentJob.value.reported) {
-        if (currentJob.value.status === 'SCANNING' || currentJob.value.status === 'PAUSED') {
+        if (
+          currentJob.value.status === LocalScanJobStatusCode.SCANNING
+          || currentJob.value.status === LocalScanJobStatusCode.PAUSED
+        ) {
           await cancelScanJob(currentJob.value.scanJobId)
         }
         await deleteScanJob(currentJob.value.scanJobId)
@@ -374,7 +326,6 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
     retryCurrentCommit,
     retryWorkOrderCommit,
     discardCurrentSession,
-    recoverLocalScanJob,
     stopPolling,
   }
 }

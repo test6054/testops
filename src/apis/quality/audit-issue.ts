@@ -1,4 +1,4 @@
-import type { AuditIssueStatus } from './types'
+import type { AuditIssueStatusCode } from './types'
 /**
  * 审核评估问题 API - 对接 AuditIssueController
  *
@@ -7,46 +7,50 @@ import type { AuditIssueStatus } from './types'
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { AuditIssueSourceCode } from '@/types/enums/audit-issue-source-enum'
 import http from '@/config/axios'
+import {
+  ALL_AUDIT_ISSUE_SEVERITY_CODES,
+  AuditIssueSeverityCode,
+  AuditIssueSeverityDescription,
+} from '@/types/enums/audit-issue-severity-enum'
+import {
+  ALL_AUDIT_ISSUE_SOURCE_CODES,
+  AuditIssueSourceDescription,
+} from '@/types/enums/audit-issue-source-enum'
 
 const BASE = '/api/quality/audit-evaluation/issues'
 
-/** 审核评估问题来源 - 对应后端 AuditIssueSourceEnum */
-export type AuditIssueSource
-  = 'SELF_AUDIT' | 'EXPERT_AUDIT' | 'ACCREDITATION_AUDIT' | 'EXTERNAL_INSPECTION'
+export {
+  ALL_AUDIT_ISSUE_SEVERITY_CODES,
+  AuditIssueSeverityCode,
+  AuditIssueSeverityDescription,
+} from '@/types/enums/audit-issue-severity-enum'
 
-/** 审核评估问题严重度 - 对应后端 AuditIssueSeverityEnum */
-export type AuditIssueSeverity = 'MINOR' | 'MAJOR' | 'CRITICAL'
-
-/** 审核问题来源文案 */
-export const AUDIT_ISSUE_SOURCE_LABEL: Record<AuditIssueSource, string> = {
-  SELF_AUDIT: '自评自查',
-  EXPERT_AUDIT: '专家审核',
-  ACCREDITATION_AUDIT: '认证审核',
-  EXTERNAL_INSPECTION: '外部检查',
-}
-
-/** 审核问题严重度文案 */
-export const AUDIT_ISSUE_SEVERITY_LABEL: Record<AuditIssueSeverity, string> = {
-  MINOR: '轻微',
-  MAJOR: '严重',
-  CRITICAL: '重大',
-}
+export {
+  ALL_AUDIT_ISSUE_SOURCE_CODES,
+  AuditIssueSourceCode,
+  AuditIssueSourceDescription,
+} from '@/types/enums/audit-issue-source-enum'
 
 /** 审核问题严重度徽标色调 */
-export const AUDIT_ISSUE_SEVERITY_TONE: Record<AuditIssueSeverity, BadgeTone> = {
-  MINOR: 'gray',
-  MAJOR: 'orange',
-  CRITICAL: 'red',
+export const AUDIT_ISSUE_SEVERITY_TONE: Record<AuditIssueSeverityCode, BadgeTone> = {
+  [AuditIssueSeverityCode.MINOR]: 'gray',
+  [AuditIssueSeverityCode.MAJOR]: 'orange',
+  [AuditIssueSeverityCode.CRITICAL]: 'red',
 }
 
-export const AUDIT_ISSUE_SOURCE_OPTIONS = (
-  Object.keys(AUDIT_ISSUE_SOURCE_LABEL) as AuditIssueSource[]
-).map((value) => ({ value, label: AUDIT_ISSUE_SOURCE_LABEL[value] }))
+export const AUDIT_ISSUE_SOURCE_OPTIONS: Array<{ value: AuditIssueSourceCode, label: string }>
+  = ALL_AUDIT_ISSUE_SOURCE_CODES.map((value) => ({
+    value,
+    label: AuditIssueSourceDescription[value],
+  }))
 
-export const AUDIT_ISSUE_SEVERITY_OPTIONS = (
-  Object.keys(AUDIT_ISSUE_SEVERITY_LABEL) as AuditIssueSeverity[]
-).map((value) => ({ value, label: AUDIT_ISSUE_SEVERITY_LABEL[value] }))
+export const AUDIT_ISSUE_SEVERITY_OPTIONS: Array<{ value: AuditIssueSeverityCode, label: string }>
+  = ALL_AUDIT_ISSUE_SEVERITY_CODES.map((value) => ({
+    value,
+    label: AuditIssueSeverityDescription[value],
+  }))
 
 export interface AuditIssueVO {
   id: string
@@ -60,11 +64,11 @@ export interface AuditIssueVO {
   issueCode: string
   issueTitle: string
   issueDescription?: string
-  issueSource: AuditIssueSource
-  severity: AuditIssueSeverity
+  issueSource: AuditIssueSourceCode
+  severity: AuditIssueSeverityCode
   auditRound?: string
   auditYear?: string
-  status: AuditIssueStatus
+  status: AuditIssueStatusCode
   raisedUserId?: string
   raisedTime?: string
   closedTime?: string
@@ -85,8 +89,8 @@ export interface AuditIssueSaveRequest {
   issueCode: string
   issueTitle: string
   issueDescription?: string
-  issueSource: AuditIssueSource
-  severity: AuditIssueSeverity
+  issueSource: AuditIssueSourceCode
+  severity: AuditIssueSeverityCode
   auditRound?: string
   auditYear?: string
   raisedUserId?: string
@@ -97,11 +101,16 @@ export interface AuditIssueQueryRequest extends QueryDto {
   programId?: string
   trainingPlanId?: string
   qualityCourseId?: string
-  issueSource?: AuditIssueSource
-  severity?: AuditIssueSeverity
-  status?: AuditIssueStatus
+  issueSource?: AuditIssueSourceCode
+  severity?: AuditIssueSeverityCode
+  status?: AuditIssueStatusCode
   auditYear?: string
   keyword?: string
+}
+
+export interface AuditIssueStatusUpdateRequest {
+  id: string
+  targetStatus: AuditIssueStatusCode
 }
 
 export const auditIssueApi = {
@@ -110,6 +119,6 @@ export const auditIssueApi = {
   create: (data: AuditIssueSaveRequest) => http.post<string>(`${BASE}/create`, data),
   update: (data: AuditIssueSaveRequest) => http.post<void>(`${BASE}/update`, data),
   delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),
-  transitStatus: (id: string, targetStatus: AuditIssueStatus) =>
-    http.post<void>(`${BASE}/transit-status`, { id, targetStatus }),
+  transitStatus: (data: AuditIssueStatusUpdateRequest) =>
+    http.post<void>(`${BASE}/transit-status`, data),
 }

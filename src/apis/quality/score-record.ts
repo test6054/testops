@@ -20,7 +20,7 @@ export interface ScoreRecordVO {
   qualityCourseId: string
   qualityCourseCode: string
   qualityCourseName: string
-  studentUserId: string
+  studentUserId?: string
   studentNumber: string
   studentName: string
   classId?: string
@@ -47,7 +47,6 @@ export interface ScoreRecordRubricScoreVO {
 }
 
 export interface ScoreRecordSaveRequest {
-  id?: string
   batchId: string
   assessmentItemId: string
   qualityCourseId: string
@@ -61,6 +60,28 @@ export interface ScoreRecordSaveRequest {
   invalidReason?: string
   rubricScores?: ScoreRecordRubricScoreRequest[]
   errorCodes?: string
+}
+
+export interface ScoreRecordUpdateRequest {
+  id: string
+  batchId: string
+  assessmentItemId: string
+  qualityCourseId: string
+  studentUserId?: string
+  studentNumber?: string
+  studentName?: string
+  classId?: string
+  score: number
+  fullScore: number
+  validFlag?: boolean
+  invalidReason?: string
+  rubricScores?: ScoreRecordRubricScoreRequest[]
+  errorCodes?: string
+}
+
+export interface ScoreRecordBatchSaveRequest {
+  batchId: string
+  records: ScoreRecordSaveRequest[]
 }
 
 export interface ScoreRecordRubricScoreRequest {
@@ -83,7 +104,9 @@ export const scoreRecordApi = {
     http.post<ScoreRecordVO>(`${BASE}/detail`, { id }),
   create: (data: ScoreRecordSaveRequest) =>
     http.post<string>(`${BASE}/create`, data),
-  update: (data: ScoreRecordSaveRequest) =>
+  batchCreate: (data: ScoreRecordBatchSaveRequest) =>
+    http.post<void>(`${BASE}/batch-create`, data),
+  update: (data: ScoreRecordUpdateRequest) =>
     http.post<void>(`${BASE}/update`, data),
   delete: (id: string) =>
     http.post<void>(`${BASE}/delete`, { id }),

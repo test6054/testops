@@ -41,11 +41,11 @@ export const STORAGE_DEVICE_ID = 'deviceId'
  * 认证相关的所有 key 列表
  * 用于清除认证状态时批量移除
  */
-export const AUTH_STORAGE_KEYS = [
+export const AUTH_STORAGE_KEYS: string[] = [
   STORAGE_TOKEN,
   STORAGE_REFRESH_TOKEN,
   STORAGE_TOKEN_EXPIRES_AT,
   STORAGE_USER,
   STORAGE_TENANT_ID,
   STORAGE_TENANT,
-] as const
+]

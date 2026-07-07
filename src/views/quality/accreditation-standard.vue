@@ -12,13 +12,16 @@ import type {
   AccreditationStandardSummaryVO,
   AccreditationStandardVO,
 } from '@/apis/quality/accreditation-standard'
-import type { AccreditationType } from '@/apis/quality/types'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
-import { ACCREDITATION_TYPE_LABEL } from '@/apis/quality/types'
+import {
+  AccreditationTypeCode,
+  AccreditationTypeDescription,
+  ALL_ACCREDITATION_TYPE_CODES,
+} from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -30,7 +33,6 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const list = ref<AccreditationStandardVO[]>([])
@@ -56,7 +58,7 @@ const editorMode = ref<'create' | 'edit'>('create')
 const editor = reactive<AccreditationStandardSaveRequest>({
   standardCode: '',
   standardName: '',
-  accreditationType: 'ENGINEERING_ACCREDITATION',
+  accreditationType: AccreditationTypeCode.ENGINEERING_ACCREDITATION,
   standardYear: '',
   issuingAuthority: '',
   documentNumber: '',
@@ -68,25 +70,14 @@ const editor = reactive<AccreditationStandardSaveRequest>({
 const submitting = ref(false)
 
 interface AccreditationStandardFilterModel {
-  accreditationType?: AccreditationType
+  accreditationType?: AccreditationTypeCode
   enabled?: 'enabled' | 'disabled'
   keyword: string
 }
 
-const ACCREDITATION_TYPES: AccreditationType[] = [
-  'ENGINEERING_ACCREDITATION',
-  'TEACHER_ACCREDITATION',
-  'MEDICAL_HEALTH_ACCREDITATION',
-  'ART_DESIGN_QUALITY_EVALUATION',
-  'ECONOMICS_FINANCE_QUALITY_EVALUATION',
-  'LAW_QUALITY_EVALUATION',
-  'AGRICULTURE_ACCREDITATION',
-  'GENERAL_QUALITY_EVALUATION',
-]
-
-const accreditationOptions = ACCREDITATION_TYPES.map((value) => ({
+const accreditationOptions = ALL_ACCREDITATION_TYPE_CODES.map((value) => ({
   value,
-  label: strictEnumLabel(ACCREDITATION_TYPE_LABEL, value, '认证类型'),
+  label: strictEnumLabel(AccreditationTypeDescription, value, '认证类型'),
 }))
 
 const columns: ColumnsType<AccreditationStandardVO> = [
@@ -138,8 +129,8 @@ const filterFields: FilterField[] = [
   },
 ]
 
-function accreditationTypeLabel(value: AccreditationType): string {
-  return strictEnumLabel(ACCREDITATION_TYPE_LABEL, value, '认证类型')
+function accreditationTypeLabel(value: AccreditationTypeCode): string {
+  return strictEnumLabel(AccreditationTypeDescription, value, '认证类型')
 }
 
 async function loadList() {
@@ -149,10 +140,10 @@ async function loadList() {
       ...query,
       keyword: query.keyword?.trim() || undefined,
     })
-    list.value = readPageList(page, '认证标准加载失败，请稍后重试')
+    list.value = page.list
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
-    total.value = readPageTotal(page, '认证标准加载失败，请稍后重试')
+    total.value = Number(page.total)
     if (list.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadList()
@@ -227,7 +218,19 @@ function openCreate() {
 
 function openEdit(record: AccreditationStandardVO) {
   editorMode.value = 'edit'
-  Object.assign(editor, record)
+  Object.assign(editor, {
+    id: record.id,
+    standardCode: record.standardCode,
+    standardName: record.standardName,
+    accreditationType: record.accreditationType,
+    standardYear: record.standardYear,
+    issuingAuthority: record.issuingAuthority,
+    documentNumber: record.documentNumber,
+    sourceUrl: record.sourceUrl,
+    summary: record.summary,
+    enabled: record.enabled,
+    isPilotOnly: record.isPilotOnly,
+  })
   editorVisible.value = true
 }
 
@@ -238,8 +241,21 @@ async function submitEditor() {
   }
   submitting.value = true
   try {
-    if (editorMode.value === 'create') await accreditationStandardApi.create(editor)
-    else await accreditationStandardApi.update(editor)
+    const request: AccreditationStandardSaveRequest = {
+      id: editor.id,
+      standardCode: editor.standardCode.trim(),
+      standardName: editor.standardName.trim(),
+      accreditationType: editor.accreditationType,
+      standardYear: editor.standardYear?.trim() || undefined,
+      issuingAuthority: editor.issuingAuthority?.trim() || undefined,
+      documentNumber: editor.documentNumber?.trim() || undefined,
+      sourceUrl: editor.sourceUrl?.trim() || undefined,
+      summary: editor.summary?.trim() || undefined,
+      enabled: editor.enabled,
+      isPilotOnly: editor.isPilotOnly,
+    }
+    if (editorMode.value === 'create') await accreditationStandardApi.create(request)
+    else await accreditationStandardApi.update(request)
     message.success('已保存')
     editorVisible.value = false
     await loadPageData()
@@ -306,9 +322,9 @@ onActivated(() => {
 
 <template>
   <StageWorkbenchShell>
-    <SignalBand :metrics="signals" compact class="as__signals" />
+    <SignalBand :metrics="signals" compact class="accreditation-standard__signals" />
 
-    <UiCard class="detail-table-card as__table-card">
+    <UiCard class="detail-table-card accreditation-standard__table-card">
       <template #title>认证标准台账</template>
       <template #extra>
         <UiButton variant="primary" size="sm" @click="openCreate">新建认证标准</UiButton>
@@ -419,7 +435,7 @@ onActivated(() => {
 </template>
 
 <style scoped lang="scss">
-.as {
+.accreditation-standard {
   &__signals {
     margin-bottom: 12px;
   }

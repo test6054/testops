@@ -34,13 +34,13 @@ async function loadPreview(fileId: string): Promise<void> {
 }
 
 watch(
-  () => [open.value, props.previewPdfFileId] as const,
-  ([visible, fileId]) => {
-    if (visible && fileId) {
-      void loadPreview(fileId)
+  () => ({ fileId: props.previewPdfFileId, visible: open.value }),
+  (previewState) => {
+    if (previewState.visible && previewState.fileId) {
+      void loadPreview(previewState.fileId)
       return
     }
-    if (!visible) {
+    if (!previewState.visible) {
       revokePreviewUrl()
     }
   },

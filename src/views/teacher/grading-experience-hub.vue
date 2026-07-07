@@ -1,36 +1,42 @@
 <template>
-  <StageWorkbenchShell>
+  <StageWorkbenchShell class="experience-page">
     <template #context>
       <ContextBar
+        layout="workbench"
         show-title
-        title="阅卷经验库"
-      >
-        <template #status>
-          <UiTag v-if="signatures.length > 0" tone="blue" size="sm">
-            签名 {{ signatures.length }}
-          </UiTag>
-          <UiTag v-if="experiences.length > 0" tone="green" size="sm">
-            经验案例 {{ experiences.length }}
-          </UiTag>
-        </template>
-      </ContextBar>
+        :title="contextBarTitle"
+        :subtitle="contextBarSubtitle"
+      />
+    </template>
+
+    <template v-if="selectedExamId" #signal>
+      <SignalBand variant="tiles" compact :metrics="experienceSignalMetrics" />
     </template>
 
     <UiEmpty v-if="!selectedExamId" description="请选择考试" class="experience-page__empty" />
 
-    <a-tabs v-else v-model:active-key="activeTab">
-      <!-- ─── Tab 1: 题目签名与相似题 ─── -->
-      <a-tab-pane key="signature">
-        <template #tab>
-          <span><FileSearchOutlined /> 题目签名 / 相似题</span>
+    <UiEmpty
+      v-else-if="loadFailed"
+      description="阅卷经验库加载失败"
+      action-label="重试"
+      class="experience-page__empty"
+      @action="reloadActiveTab"
+    />
+
+    <template v-else>
+      <ExamWorkspaceJourneySubNav />
+
+      <WorkbenchSurfaceCard flush class="experience-page__tabs-card">
+        <template #head>
+          <UiSectionTabs v-model="activeTab" :items="tabItems" compact divided />
         </template>
 
-        <UiCard class="info-card">
-          <template #title>
-            <span>考试题目签名</span>
-          </template>
-          <template #extra>
-            <a-space>
+        <div v-if="activeTab === 'signature'" class="experience-page__tab-panel">
+          <div class="experience-page__panel-head">
+            <span class="experience-page__panel-title">考试题目签名</span>
+            <div class="experience-page__panel-actions">
+              <span class="experience-page__flow-hint">{{ EXPERIENCE_ASSIST_CALIBRATION_HINT }}</span>
+              <span class="experience-page__flow-hint">{{ EXPERIENCE_CASE_FLOW_HINT }}</span>
               <UiButton
                 size="sm"
                 variant="outline"
@@ -44,10 +50,8 @@
                 <template #icon><ThunderboltOutlined /></template>
                 生成 / 重算签名
               </UiButton>
-            </a-space>
-          </template>
-
-
+            </div>
+          </div>
 
           <UiDataTable
             pagination-mode="client"
@@ -58,12 +62,18 @@
             flat
             :total="signatures.length"
             :page-size="20"
-            row-key="id"
-            size="middle"
+            row-key="layoutQuestionId"
+            size="small"
           >
             <template #bodyCell="{ column, index }">
-              <template v-if="column.key === 'questionType'">
+              <template v-if="column.key === 'questionNo'">
+                <span class="score-summary-table__mono">{{ signatures[index].questionNo }}</span>
+              </template>
+              <template v-else-if="column.key === 'questionType'">
                 {{ questionTypeLabel(signatures[index].questionType) }}
+              </template>
+              <template v-else-if="column.key === 'experienceCount'">
+                <span class="score-summary-table__mono">{{ experienceCountForQuestion(signatures[index].layoutQuestionId) }}</span>
               </template>
               <template v-else-if="column.key === 'questionDigest'">
                 <a-tooltip :title="signatures[index].questionDigest">
@@ -79,30 +89,25 @@
               </template>
             </template>
           </UiDataTable>
-        </UiCard>
-      </a-tab-pane>
+        </div>
 
-      <!-- ─── Tab 2: AI 经验案例 ─── -->
-      <a-tab-pane key="experience">
-        <template #tab>
-          <span><BulbOutlined /> AI 阅卷经验</span>
-        </template>
-
-        <UiCard class="info-card">
-          <template #title>
-            <span class="section-title">阅卷经验案例</span>
-          </template>
-          <template #extra>
-            <UiButton
-              size="sm"
-              :disabled="!experienceFilterForm.questionTemplateId"
-              :loading="extracting"
-              @click="handleExtract"
-            >
-              <template #icon><ThunderboltOutlined /></template>
-              AI 提炼经验
-            </UiButton>
-          </template>
+        <div v-else-if="activeTab === 'experience'" class="experience-page__tab-panel">
+          <div class="experience-page__panel-head">
+            <span class="experience-page__panel-title">阅卷经验案例</span>
+            <div class="experience-page__panel-actions">
+              <span class="experience-page__flow-hint">{{ EXPERIENCE_ASSIST_CALIBRATION_HINT }}</span>
+              <span class="experience-page__flow-hint">{{ EXPERIENCE_CASE_FLOW_HINT }}</span>
+              <UiButton
+                size="sm"
+                :disabled="!experienceFilterForm.layoutQuestionId"
+                :loading="extracting"
+                @click="handleExtract"
+              >
+                <template #icon><ThunderboltOutlined /></template>
+                AI 提炼经验
+              </UiButton>
+            </div>
+          </div>
 
           <UiFilterBar
             :model-value="experienceFilterForm"
@@ -115,8 +120,6 @@
             @reset="handleExperienceFilterReset"
           />
 
-
-
           <UiDataTable
             pagination-mode="client"
             class="student-detail-table__data-table"
@@ -127,10 +130,13 @@
             :total="experiences.length"
             :page-size="20"
             row-key="id"
-            size="middle"
+            size="small"
           >
             <template #bodyCell="{ column, index }">
-              <template v-if="column.key === 'questionType'">
+              <template v-if="column.key === 'questionNo'">
+                <span class="score-summary-table__mono">{{ experiences[index].questionNo }}</span>
+              </template>
+              <template v-else-if="column.key === 'questionType'">
                 {{ questionTypeLabel(experiences[index].questionType) }}
               </template>
               <template v-else-if="column.key === 'analysisStatus'">
@@ -143,10 +149,33 @@
                   {{ caseStatusLabel(experiences[index].caseStatus) }}
                 </UiTag>
               </template>
+              <template v-else-if="column.key === 'assistEligible'">
+                <UiTag
+                  v-if="experiences[index].assistEligible"
+                  tone="green"
+                  size="sm"
+                >
+                  可定标
+                </UiTag>
+                <UiTag
+                  v-else-if="experiences[index].caseStatus === 'CONFIRMED'"
+                  tone="orange"
+                  size="sm"
+                >
+                  待评估
+                </UiTag>
+                <span v-else>—</span>
+              </template>
+              <template v-else-if="column.key === 'reuseCount'">
+                {{ experiences[index].reuseCount ?? 0 }}
+              </template>
               <template v-else-if="column.key === 'experienceSummary'">
                 <a-tooltip :title="experiences[index].experienceSummary">
                   <span>{{ ellipsis(experiences[index].experienceSummary, 80) }}</span>
                 </a-tooltip>
+              </template>
+              <template v-else-if="column.key === 'createTime'">
+                {{ formatDateTime(experiences[index].createTime) }}
               </template>
               <template v-else-if="column.key === 'actions'">
                 <div class="operations-cell" @click.stop>
@@ -155,33 +184,29 @@
               </template>
             </template>
           </UiDataTable>
-        </UiCard>
-      </a-tab-pane>
+        </div>
 
-      <!-- ─── Tab 3: AI 答案聚类 ─── -->
-      <a-tab-pane key="cluster">
-        <template #tab>
-          <span><PartitionOutlined /> AI 答案聚类</span>
-        </template>
-
-        <UiCard class="info-card">
-          <template #title>
-            <span>答案聚类</span>
-            <UiBadge v-if="latestCluster" :tone="aiStatusTone(latestCluster.analysisStatus)">
-              {{ aiStatusLabel(latestCluster.analysisStatus) }}
-            </UiBadge>
-          </template>
-          <template #extra>
-            <UiButton
-              size="sm"
-              :disabled="!clusterFilterForm.questionTemplateId"
-              :loading="clustering"
-              @click="handleGenerateCluster"
-            >
-              <template #icon><ThunderboltOutlined /></template>
-              AI 聚类
-            </UiButton>
-          </template>
+        <div v-else class="experience-page__tab-panel">
+          <div class="experience-page__panel-head">
+            <span class="experience-page__panel-title">
+              答案聚类
+              <UiTag v-if="latestCluster" :tone="aiStatusTone(latestCluster.analysisStatus)" size="sm">
+                {{ aiStatusLabel(latestCluster.analysisStatus) }}
+              </UiTag>
+            </span>
+            <div class="experience-page__panel-actions">
+              <span class="experience-page__flow-hint">{{ AI_ANALYSIS_FLOW_HINT }}</span>
+              <UiButton
+                size="sm"
+                :disabled="!clusterFilterForm.layoutQuestionId"
+                :loading="clustering"
+                @click="handleGenerateCluster"
+              >
+                <template #icon><ThunderboltOutlined /></template>
+                AI 聚类
+              </UiButton>
+            </div>
+          </div>
 
           <UiFilterBar
             :model-value="clusterFilterForm"
@@ -194,15 +219,15 @@
             @reset="handleClusterFilterReset"
           />
 
-
-
           <UiEmpty
             v-if="!clusterLoading && !latestCluster"
-            description="暂无数据"
+            description="请选择题目并查询最新聚类结果"
           />
 
+          <UiSkeletonState v-else-if="clusterLoading" variant="card" compact />
+
           <template v-else-if="latestCluster">
-            <a-descriptions :column="3" bordered size="small" style="margin-bottom: 12px">
+            <a-descriptions :column="3" bordered size="small" class="experience-page__cluster-meta">
               <a-descriptions-item label="分组数">
                 <b>{{ clusterGroupCountText(latestCluster) }}</b>
               </a-descriptions-item>
@@ -270,43 +295,46 @@
               </template>
             </a-list>
           </template>
-        </UiCard>
-      </a-tab-pane>
-    </a-tabs>
+        </div>
+      </WorkbenchSurfaceCard>
+    </template>
   </StageWorkbenchShell>
 
   <!-- 相似题抽屉 -->
-  <a-drawer
-    v-model:open="similarDrawerOpen"
+  <UiDrawer
+    :open="similarDrawerOpen"
     :title="`相似题检索 - ${similarSourceQuestionNo ? `题号 ${similarSourceQuestionNo}` : ''}`"
-    width="640"
-    :destroy-on-close="true"
+    :width="640"
+    hide-footer
+    @update:open="(v: boolean) => (similarDrawerOpen = v)"
+    @close="similarDrawerOpen = false"
   >
-    <a-spin :spinning="similarLoading">
-      <UiEmpty v-if="!similarLoading && similarResults.length === 0" description="暂无数据" />
-      <a-list v-else :data-source="similarResults" item-layout="vertical">
-        <template #renderItem="{ item }: { item: QuestionSignatureVO }">
-          <a-list-item>
-            <a-space size="small">
-              <UiTag tone="blue" size="sm">{{ item.examName }} · {{ item.examNo }}</UiTag>
-              <UiTag tone="blue" size="sm">
-                {{ questionTypeLabel(item.questionType) }}
-              </UiTag>
-              <UiTag tone="gray" size="sm">题号 {{ item.questionNo }}</UiTag>
-            </a-space>
-            <p v-if="item.questionDigest" class="similar-digest">{{ item.questionDigest }}</p>
-          </a-list-item>
-        </template>
-      </a-list>
-    </a-spin>
-  </a-drawer>
+    <UiSkeletonState v-if="similarLoading" variant="card" compact />
+    <UiEmpty v-else-if="similarResults.length === 0" description="暂无相似题" />
+    <a-list v-else :data-source="similarResults" item-layout="vertical">
+      <template #renderItem="{ item }: { item: QuestionSignatureResponse }">
+        <a-list-item>
+          <a-space size="small">
+            <UiTag tone="blue" size="sm">{{ item.examName }} · {{ item.examNo }}</UiTag>
+            <UiTag tone="blue" size="sm">
+              {{ questionTypeLabel(item.questionType) }}
+            </UiTag>
+            <UiTag tone="gray" size="sm">题号 {{ item.questionNo }}</UiTag>
+          </a-space>
+          <p v-if="item.questionDigest" class="similar-digest">{{ item.questionDigest }}</p>
+        </a-list-item>
+      </template>
+    </a-list>
+  </UiDrawer>
 
   <!-- 经验案例详情抽屉 -->
-  <a-drawer
-    v-model:open="experienceDrawerOpen"
+  <UiDrawer
+    :open="experienceDrawerOpen"
     title="阅卷经验详情"
-    width="720"
-    :destroy-on-close="true"
+    :width="720"
+    hide-footer
+    @update:open="(v: boolean) => (experienceDrawerOpen = v)"
+    @close="experienceDrawerOpen = false"
   >
     <a-descriptions v-if="detailExperience" :column="1" bordered size="small">
       <a-descriptions-item label="来源考试">
@@ -397,34 +425,34 @@
         </UiButton>
       </a-space>
     </template>
-  </a-drawer>
+  </UiDrawer>
 </template>
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
 import type {
-  AnswerClusterRecordVO,
+  AnswerClusterRecordResponse,
   ExperienceCaseStatusCode,
-  GradingExperienceCaseVO,
-  QuestionSignatureVO,
+  GradingExperienceCaseResponse,
+  QuestionSignatureResponse,
 } from '@/apis/mark/grading-experience'
 import type { QuestionTypeCode } from '@/apis/mark/question-type'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import PartitionOutlined from '@ant-design/icons-vue/PartitionOutlined'
+import type { BadgeTone, FilterField, UiSectionTabItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import Modal from 'ant-design-vue/es/modal'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { AI_ANALYSIS_STATUS_LABEL, AI_ANALYSIS_STATUS_TONE } from '@/apis/mark/ai-analysis-status'
+import { AI_ANALYSIS_FLOW_HINT, AI_ANALYSIS_STATUS_TONE, AiAnalysisStatusDescription } from '@/apis/mark/ai-analysis-status'
 import {
   confirmExperienceCase,
   deprecateExperienceCase,
-  EXPERIENCE_CASE_STATUS_LABEL,
+  EXPERIENCE_ASSIST_CALIBRATION_HINT,
+  EXPERIENCE_CASE_FLOW_HINT,
   EXPERIENCE_CASE_STATUS_TONE,
+  ExperienceCaseStatusDescription,
   extractExperience,
   generateAnswerCluster,
   generateSignatures,
@@ -434,39 +462,54 @@ import {
   listSignatures,
   searchSimilar,
 } from '@/apis/mark/grading-experience'
-import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
-import UiBadge from '@/components/ui-guide/ui/Badge.vue'
+import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
+import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherGradingExperienceHub' })
 
 // 考试工作台内由 useMarkExamContext 注入当前考试
 const { selectedExamId } = useMarkExamContext()
+const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar('阅卷经验库')
 const { refreshSnapshot } = useWorkspaceExamId()
 
 const activeTab = ref<'signature' | 'experience' | 'cluster'>('signature')
+const loadFailed = ref(false)
+
+const tabItems: UiSectionTabItem[] = [
+  { key: 'signature', label: '题目签名 / 相似题' },
+  { key: 'experience', label: 'AI 阅卷经验' },
+  { key: 'cluster', label: 'AI 答案聚类' },
+]
 
 // ─── 题目签名 ─────────────────────────────────
 
-const signatures = ref<QuestionSignatureVO[]>([])
+const signatures = ref<QuestionSignatureResponse[]>([])
 const signaturesLoading = ref(false)
 const generatingSignatures = ref(false)
 
-const signatureColumns: ColumnType<QuestionSignatureVO>[] = [
-  { title: '题号', key: 'questionNo', dataIndex: 'questionNo', width: 80 },
+const signatureColumns: ColumnType<QuestionSignatureResponse>[] = [
+  { title: '题号', key: 'questionNo', width: 80 },
   { title: '题型', key: 'questionType', width: 100 },
+  { title: '经验案例', key: 'experienceCount', width: 88, align: 'right' },
   { title: '题干摘要', key: 'questionDigest', width: 320 },
   { title: '操作', key: 'actions', width: 120, fixed: 'right' },
 ]
@@ -474,11 +517,11 @@ const signatureColumns: ColumnType<QuestionSignatureVO>[] = [
 const questionOptions = computed(() =>
   signatures.value.map((item) => ({
     label: `题号 ${item.questionNo} · ${questionTypeLabel(item.questionType)}`,
-    value: item.questionTemplateId,
+    value: item.layoutQuestionId,
   })),
 )
 
-const experienceFilterForm = reactive<{ questionTemplateId?: string }>({})
+const experienceFilterForm = reactive<{ layoutQuestionId?: string }>({})
 
 function syncExperienceFilterForm(next: Record<string, unknown>): void {
   Object.assign(experienceFilterForm, next)
@@ -486,7 +529,7 @@ function syncExperienceFilterForm(next: Record<string, unknown>): void {
 
 const experienceFilterFields = computed<FilterField[]>(() => [
   {
-    key: 'questionTemplateId',
+    key: 'layoutQuestionId',
     type: 'select',
     placeholder: '选择题目',
     width: 220,
@@ -496,7 +539,7 @@ const experienceFilterFields = computed<FilterField[]>(() => [
   },
 ])
 
-const clusterFilterForm = reactive<{ questionTemplateId?: string }>({})
+const clusterFilterForm = reactive<{ layoutQuestionId?: string }>({})
 
 function syncClusterFilterForm(next: Record<string, unknown>): void {
   Object.assign(clusterFilterForm, next)
@@ -504,7 +547,7 @@ function syncClusterFilterForm(next: Record<string, unknown>): void {
 
 const clusterFilterFields = computed<FilterField[]>(() => [
   {
-    key: 'questionTemplateId',
+    key: 'layoutQuestionId',
     type: 'select',
     placeholder: '选择题目',
     width: 220,
@@ -518,9 +561,12 @@ const clusterFilterFields = computed<FilterField[]>(() => [
 async function loadSignatures(): Promise<void> {
   if (!selectedExamId.value) return
   signaturesLoading.value = true
+  loadFailed.value = false
   try {
     signatures.value = await listSignatures(selectedExamId.value)
   } catch (error) {
+    signatures.value = []
+    loadFailed.value = true
     showUserError(error, '题目特征加载失败')
   } finally {
     signaturesLoading.value = false
@@ -546,10 +592,10 @@ async function handleGenerateSignatures(): Promise<void> {
 
 const similarDrawerOpen = ref(false)
 const similarLoading = ref(false)
-const similarResults = ref<QuestionSignatureVO[]>([])
+const similarResults = ref<QuestionSignatureResponse[]>([])
 const similarSourceQuestionNo = ref<string | undefined>(undefined)
 
-async function openSimilarDrawer(record: QuestionSignatureVO): Promise<void> {
+async function openSimilarDrawer(record: QuestionSignatureResponse): Promise<void> {
   if (!selectedExamId.value) return
   similarSourceQuestionNo.value = record.questionNo
   similarDrawerOpen.value = true
@@ -558,7 +604,7 @@ async function openSimilarDrawer(record: QuestionSignatureVO): Promise<void> {
   try {
     similarResults.value = await searchSimilar({
       examId: selectedExamId.value,
-      questionTemplateId: record.questionTemplateId,
+      layoutQuestionId: record.layoutQuestionId,
       limit: 20,
     })
   } catch (error) {
@@ -570,16 +616,60 @@ async function openSimilarDrawer(record: QuestionSignatureVO): Promise<void> {
 
 // ─── AI 经验提取 ─────────────────────────────────
 
-const experiences = ref<GradingExperienceCaseVO[]>([])
+const experiences = ref<GradingExperienceCaseResponse[]>([])
 const experienceLoading = ref(false)
 const extracting = ref(false)
 
-const experienceColumns: ColumnType<GradingExperienceCaseVO>[] = [
+const experienceSignalMetrics = computed((): SignalMetric[] => {
+  const confirmedCount = experiences.value.filter((item) => item.caseStatus === 'CONFIRMED').length
+  const pendingAnalysisCount = experiences.value.filter((item) => item.analysisStatus === 'PENDING').length
+  return [
+    {
+      key: 'signatures',
+      label: '题目签名',
+      value: signatures.value.length,
+      unit: '条',
+      tone: signatures.value.length > 0 ? 'blue' : 'gray',
+    },
+    {
+      key: 'confirmed',
+      label: '已确认案例',
+      value: confirmedCount,
+      unit: '条',
+      tone: confirmedCount > 0 ? 'green' : 'gray',
+    },
+    {
+      key: 'pending-analysis',
+      label: '待分析',
+      value: pendingAnalysisCount,
+      unit: '条',
+      tone: pendingAnalysisCount > 0 ? 'orange' : 'gray',
+    },
+      {
+        key: 'assist-ready',
+        label: '可定标',
+        value: experiences.value.filter((item) => item.assistEligible).length,
+        unit: '条',
+        tone: experiences.value.some((item) => item.assistEligible) ? 'green' : 'gray',
+      },
+      {
+        key: 'experiences',
+      label: '经验案例',
+      value: experiences.value.length,
+      unit: '条',
+      tone: experiences.value.length > 0 ? 'purple' : 'gray',
+    },
+  ]
+})
+
+const experienceColumns: ColumnType<GradingExperienceCaseResponse>[] = [
   { title: '题号', key: 'questionNo', dataIndex: 'questionNo', width: 100 },
   { title: '题型', key: 'questionType', width: 100 },
   { title: 'AI 状态', key: 'analysisStatus', width: 100 },
   { title: '案例状态', key: 'caseStatus', width: 100 },
-  { title: '经验总结', key: 'experienceSummary', width: 360 },
+  { title: '定标', key: 'assistEligible', width: 88 },
+  { title: '引用', key: 'reuseCount', width: 72, align: 'right' },
+  { title: '经验总结', key: 'experienceSummary', width: 300 },
   { title: '创建时间', key: 'createTime', dataIndex: 'createTime', width: 160 },
   { title: '操作', key: 'actions', width: 90, fixed: 'right' },
 ]
@@ -588,15 +678,16 @@ async function loadExperiences(): Promise<void> {
   if (!selectedExamId.value) return
   experienceLoading.value = true
   try {
-    if (experienceFilterForm.questionTemplateId) {
-      experiences.value = await listExperiencesByQuestion(
-        selectedExamId.value,
-        experienceFilterForm.questionTemplateId,
-      )
+    if (experienceFilterForm.layoutQuestionId) {
+      experiences.value = await listExperiencesByQuestion({
+        examId: selectedExamId.value,
+        layoutQuestionId: experienceFilterForm.layoutQuestionId,
+      })
     } else {
       experiences.value = await listExperiences(selectedExamId.value)
     }
   } catch (error) {
+    experiences.value = []
     showUserError(error, '评分经验加载失败')
   } finally {
     experienceLoading.value = false
@@ -604,10 +695,13 @@ async function loadExperiences(): Promise<void> {
 }
 
 async function handleExtract(): Promise<void> {
-  if (!selectedExamId.value || !experienceFilterForm.questionTemplateId) return
+  if (!selectedExamId.value || !experienceFilterForm.layoutQuestionId) return
   extracting.value = true
   try {
-    await extractExperience(selectedExamId.value, experienceFilterForm.questionTemplateId)
+    await extractExperience({
+      examId: selectedExamId.value,
+      layoutQuestionId: experienceFilterForm.layoutQuestionId,
+    })
     message.success('AI 经验已提取')
     await loadExperiences()
     await refreshSnapshot()
@@ -621,7 +715,7 @@ async function handleExtract(): Promise<void> {
 // ─── 经验详情抽屉 ─────────────────────────────────
 
 const experienceDrawerOpen = ref(false)
-const detailExperience = ref<GradingExperienceCaseVO | null>(null)
+const detailExperience = ref<GradingExperienceCaseResponse | null>(null)
 const confirmingExperience = ref(false)
 const deprecatingExperience = ref(false)
 
@@ -676,31 +770,32 @@ function handleDeprecateExperience(): void {
   })
 }
 
-function openExperienceDrawer(record: GradingExperienceCaseVO): void {
+function openExperienceDrawer(record: GradingExperienceCaseResponse): void {
   detailExperience.value = record
   experienceDrawerOpen.value = true
 }
 
 function handleExperienceFilterReset(): void {
-  experienceFilterForm.questionTemplateId = undefined
+  experienceFilterForm.layoutQuestionId = undefined
   void loadExperiences()
 }
 
 // ─── AI 答案聚类 ─────────────────────────────────
 
-const latestCluster = ref<AnswerClusterRecordVO | null>(null)
+const latestCluster = ref<AnswerClusterRecordResponse | null>(null)
 const clusterLoading = ref(false)
 const clustering = ref(false)
 
 async function loadLatestCluster(): Promise<void> {
-  if (!selectedExamId.value || !clusterFilterForm.questionTemplateId) return
+  if (!selectedExamId.value || !clusterFilterForm.layoutQuestionId) return
   clusterLoading.value = true
   try {
-    latestCluster.value = await getLatestAnswerCluster(
-      selectedExamId.value,
-      clusterFilterForm.questionTemplateId,
-    )
+    latestCluster.value = await getLatestAnswerCluster({
+      examId: selectedExamId.value,
+      layoutQuestionId: clusterFilterForm.layoutQuestionId,
+    })
   } catch (error) {
+    latestCluster.value = null
     showUserError(error, '错误簇加载失败')
   } finally {
     clusterLoading.value = false
@@ -708,13 +803,13 @@ async function loadLatestCluster(): Promise<void> {
 }
 
 async function handleGenerateCluster(): Promise<void> {
-  if (!selectedExamId.value || !clusterFilterForm.questionTemplateId) return
+  if (!selectedExamId.value || !clusterFilterForm.layoutQuestionId) return
   clustering.value = true
   try {
-    latestCluster.value = await generateAnswerCluster(
-      selectedExamId.value,
-      clusterFilterForm.questionTemplateId,
-    )
+    latestCluster.value = await generateAnswerCluster({
+      examId: selectedExamId.value,
+      layoutQuestionId: clusterFilterForm.layoutQuestionId,
+    })
     message.success('AI 答案聚类已完成')
     await refreshSnapshot()
   } catch (error) {
@@ -725,7 +820,7 @@ async function handleGenerateCluster(): Promise<void> {
 }
 
 function handleClusterFilterReset(): void {
-  clusterFilterForm.questionTemplateId = undefined
+  clusterFilterForm.layoutQuestionId = undefined
   latestCluster.value = null
 }
 
@@ -741,68 +836,72 @@ function caseStatusTone(status: ExperienceCaseStatusCode): BadgeTone {
 }
 
 function aiStatusLabel(status: AiAnalysisStatusCode): string {
-  return strictEnumLabel(AI_ANALYSIS_STATUS_LABEL, status, 'AI 分析状态')
+  return strictEnumLabel(AiAnalysisStatusDescription, status, 'AI 分析状态')
 }
 
 function caseStatusLabel(status: ExperienceCaseStatusCode): string {
-  return strictEnumLabel(EXPERIENCE_CASE_STATUS_LABEL, status, '经验案例状态')
+  return strictEnumLabel(ExperienceCaseStatusDescription, status, '经验案例状态')
 }
 
 function questionTypeLabel(value: QuestionTypeCode): string {
-  return strictEnumLabel(QUESTION_TYPE_LABEL, value, '题型')
+  return strictEnumLabel(QuestionTypeDescription, value, '题型')
+}
+
+function experienceCountForQuestion(layoutQuestionId: string): number {
+  return experiences.value.filter((item) => item.layoutQuestionId === layoutQuestionId).length
 }
 
 function ellipsis(
-  text: QuestionSignatureVO['questionDigest'] | GradingExperienceCaseVO['experienceSummary'],
+  text: QuestionSignatureResponse['questionDigest'] | GradingExperienceCaseResponse['experienceSummary'],
   len = 60,
 ): string {
-  if (!text) return '-'
+  if (!text) return '—'
   return text.length > len ? `${text.slice(0, len)}…` : text
 }
 
-function clusterLatencyText(item: AnswerClusterRecordVO): string {
+function clusterLatencyText(item: AnswerClusterRecordResponse): string {
   if (item.analysisStatus === 'PENDING') return '待分析，尚未生成耗时'
   if (item.analysisStatus === 'SUCCESS' && item.latencyMs != null) return `${item.latencyMs} ms`
   return '处理失败，未生成耗时'
 }
 
-function clusterTraceText(item: AnswerClusterRecordVO): string {
+function clusterTraceText(item: AnswerClusterRecordResponse): string {
   if (item.analysisStatus === 'PENDING') return '待分析，尚未生成追踪编号'
   if (item.analysisStatus === 'SUCCESS') return item.aiTraceId ?? '—'
   return '处理失败，未生成追踪编号'
 }
 
-function clusterSummaryText(item: AnswerClusterRecordVO): string {
+function clusterSummaryText(item: AnswerClusterRecordResponse): string {
   if (item.analysisStatus === 'PENDING') return 'AI 答案聚类待分析，完成后展示聚类总结'
   if (item.analysisStatus === 'SUCCESS') return item.clusterSummary ?? '—'
   return aiClusterFailureMessage(item.errorMessage)
 }
 
-function clusterGroupCountText(item: AnswerClusterRecordVO): string {
+function clusterGroupCountText(item: AnswerClusterRecordResponse): string {
   if (item.analysisStatus === 'PENDING') return '待分析'
   if (item.analysisStatus === 'SUCCESS' && item.groupCount != null) return String(item.groupCount)
   return '处理失败'
 }
 
-function experienceTraceText(item: GradingExperienceCaseVO): string {
+function experienceTraceText(item: GradingExperienceCaseResponse): string {
   if (item.analysisStatus === 'PENDING') return '待分析，尚未生成追踪编号'
   if (item.analysisStatus === 'SUCCESS') return item.aiTraceId ?? '—'
   return '处理失败，未生成追踪编号'
 }
 
-function experienceLatencyText(item: GradingExperienceCaseVO): string {
+function experienceLatencyText(item: GradingExperienceCaseResponse): string {
   if (item.analysisStatus === 'PENDING') return '待分析，尚未生成耗时'
   if (item.analysisStatus === 'SUCCESS' && item.latencyMs != null) return `${item.latencyMs} ms`
   return '处理失败，未生成耗时'
 }
 
-function experienceSummaryText(item: GradingExperienceCaseVO): string {
+function experienceSummaryText(item: GradingExperienceCaseResponse): string {
   if (item.analysisStatus === 'PENDING') return 'AI 阅卷经验提炼待分析，完成后展示经验总结'
   if (item.analysisStatus === 'SUCCESS') return item.experienceSummary ?? '—'
   return gradingExperienceFailureMessage(item.errorMessage)
 }
 
-function experienceApplicableScopeText(item: GradingExperienceCaseVO): string {
+function experienceApplicableScopeText(item: GradingExperienceCaseResponse): string {
   if (item.analysisStatus === 'PENDING') return '待分析，尚未生成适用边界'
   if (item.analysisStatus === 'SUCCESS') return item.applicableScope ?? '—'
   return '处理失败，未生成适用边界'
@@ -816,17 +915,28 @@ function gradingExperienceFailureMessage(errorMessage?: string): string {
   return getUserProcessFailureMessage(errorMessage, '阅卷经验提取未完成，请稍后重新提取')
 }
 
+async function loadPageSummary(): Promise<void> {
+  if (!selectedExamId.value) return
+  await Promise.all([loadSignatures(), loadExperiences()])
+}
+
 async function reloadActiveTab(): Promise<void> {
   if (!selectedExamId.value) return
+  loadFailed.value = false
   if (activeTab.value === 'signature') {
-    await loadSignatures()
+    await loadPageSummary()
   } else if (activeTab.value === 'experience') {
     if (signatures.value.length === 0) {
       await loadSignatures()
     }
     await loadExperiences()
-  } else if (activeTab.value === 'cluster' && signatures.value.length === 0) {
-    await loadSignatures()
+  } else if (activeTab.value === 'cluster') {
+    if (signatures.value.length === 0) {
+      await loadSignatures()
+    }
+    if (clusterFilterForm.layoutQuestionId) {
+      await loadLatestCluster()
+    }
   }
 }
 
@@ -838,8 +948,8 @@ watch(selectedExamId, (value) => {
   signatures.value = []
   experiences.value = []
   latestCluster.value = null
-  experienceFilterForm.questionTemplateId = undefined
-  clusterFilterForm.questionTemplateId = undefined
+  experienceFilterForm.layoutQuestionId = undefined
+  clusterFilterForm.layoutQuestionId = undefined
   if (value) {
     void reloadActiveTab()
   }
@@ -866,16 +976,49 @@ onActivated(() => {
     padding: 60px 0;
   }
 
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
+  &__tabs-card {
+    min-width: 0;
+  }
 
-.info-card {
-  :deep(.ant-card-head-title) {
+  &__tab-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+    padding: 0 16px 16px;
+  }
+
+  &__panel-head {
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 12px;
+    min-width: 0;
+  }
+
+  &__panel-title {
+    display: inline-flex;
+    align-items: center;
     gap: 8px;
+    font-weight: 600;
+  }
+
+  &__panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  &__flow-hint {
+    font-size: 12px;
+    color: var(--c-text-4);
+    white-space: nowrap;
+  }
+
+  &__cluster-meta {
+    margin-bottom: 12px;
   }
 }
 

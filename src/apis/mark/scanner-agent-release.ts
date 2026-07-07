@@ -25,7 +25,7 @@ export interface ScannerAgentReleaseDeleteRequest {
 }
 
 /** 一体机 Agent 发布包 - 对应 ScannerAgentReleaseResponse */
-export interface ScannerAgentReleaseVO {
+export interface ScannerAgentReleaseResponse {
   id: string
   version: string
   fileId: string
@@ -45,22 +45,25 @@ export interface ScannerAgentReleaseVO {
 /** POST /api/mark/scanner-agent/releases/list */
 export function pageScannerAgentReleases(
   request: ScannerAgentReleaseQueryRequest,
-): Promise<PageResult<ScannerAgentReleaseVO>> {
-  return http.post<PageResult<ScannerAgentReleaseVO>>('/api/mark/scanner-agent/releases/list', request)
+): Promise<PageResult<ScannerAgentReleaseResponse>> {
+  return http.post<PageResult<ScannerAgentReleaseResponse>>(
+    '/api/mark/scanner-agent/releases/list',
+    request,
+  )
 }
 
 /** POST /api/mark/scanner-agent/releases/register */
 export function registerScannerAgentRelease(
   request: ScannerAgentReleaseCreateRequest,
-): Promise<ScannerAgentReleaseVO> {
-  return http.post<ScannerAgentReleaseVO>('/api/mark/scanner-agent/releases/register', request)
+): Promise<ScannerAgentReleaseResponse> {
+  return http.post<ScannerAgentReleaseResponse>('/api/mark/scanner-agent/releases/register', request)
 }
 
 /** POST /api/mark/scanner-agent/releases/publish */
 export function publishScannerAgentRelease(
   request: ScannerAgentReleasePublishRequest,
-): Promise<ScannerAgentReleaseVO> {
-  return http.post<ScannerAgentReleaseVO>('/api/mark/scanner-agent/releases/publish', request)
+): Promise<ScannerAgentReleaseResponse> {
+  return http.post<ScannerAgentReleaseResponse>('/api/mark/scanner-agent/releases/publish', request)
 }
 
 /** POST /api/mark/scanner-agent/releases/delete */

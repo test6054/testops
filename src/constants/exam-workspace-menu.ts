@@ -1,5 +1,6 @@
 import type { ExamWorkspaceJourneyKey } from '@/constants/exam-journey'
 import type { MarkStageKey } from '@/stores/modules/markStage'
+import { MarkTeacherDashboardJourneyKeyCode } from '@/types/enums/mark-teacher-dashboard-journey-key-enum'
 
 export interface ExamWorkspaceMenuItem {
   key: string
@@ -16,7 +17,7 @@ export interface ExamWorkspaceMenuGroup {
   items: ExamWorkspaceMenuItem[]
 }
 
-/** 9 个 group、34 个 menu item；侧栏按 activeJourneyKey 过滤 group */
+/** 8 个 group、34 个 menu item；侧栏按 activeJourneyKey 过滤 group */
 export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
   {
     key: 'overview',
@@ -35,7 +36,7 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
   {
     key: 'prep',
     title: '准备项进度',
-    journeyKey: 'prep',
+    journeyKey: MarkTeacherDashboardJourneyKeyCode.PREP,
     stageKeys: ['EXAM_PREP', 'PAPER_TEMPLATE', 'CANDIDATE_ROSTER'],
     items: [
       {
@@ -67,7 +68,7 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
   {
     key: 'scan',
     title: '扫描识别',
-    journeyKey: 'scan',
+    journeyKey: MarkTeacherDashboardJourneyKeyCode.SCAN,
     stageKeys: ['SCAN'],
     items: [
       {
@@ -111,7 +112,7 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
   {
     key: 'assign',
     title: '阅卷设置',
-    journeyKey: 'assign',
+    journeyKey: MarkTeacherDashboardJourneyKeyCode.ASSIGN,
     stageKeys: ['MARKING_ORG'],
     items: [
       {
@@ -125,9 +126,15 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
   {
     key: 'mark-trial',
     title: '试评',
-    journeyKey: 'mark',
+    journeyKey: MarkTeacherDashboardJourneyKeyCode.MARK,
     stageKeys: ['TRIAL_MARKING'],
     items: [
+      {
+        key: 'marking-experience-assist',
+        label: '经验辅助评阅',
+        routeName: 'TeacherExamWorkspaceMarkingExperienceAssistPolicy',
+        markStageKey: 'TRIAL_MARKING',
+      },
       {
         key: 'trial-pool',
         label: '试评任务池',
@@ -145,7 +152,7 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
   {
     key: 'mark-formal',
     title: '正评',
-    journeyKey: 'mark',
+    journeyKey: MarkTeacherDashboardJourneyKeyCode.MARK,
     stageKeys: ['FORMAL_MARKING'],
     items: [
       {
@@ -158,6 +165,12 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
         key: 'marking-progress',
         label: '进度看板',
         routeName: 'TeacherExamWorkspaceMarkingProgress',
+        markStageKey: 'FORMAL_MARKING',
+      },
+      {
+        key: 'marking-review-progress',
+        label: '复核进度',
+        routeName: 'TeacherExamWorkspaceMarkingReviewProgress',
         markStageKey: 'FORMAL_MARKING',
       },
       {
@@ -177,7 +190,7 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
   {
     key: 'mark-qc',
     title: '质控',
-    journeyKey: 'mark',
+    journeyKey: MarkTeacherDashboardJourneyKeyCode.MARK,
     stageKeys: ['FORMAL_MARKING'],
     items: [
       {
@@ -209,7 +222,7 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
   {
     key: 'publish',
     title: '成绩发布',
-    journeyKey: 'publish',
+    journeyKey: MarkTeacherDashboardJourneyKeyCode.PUBLISH,
     stageKeys: ['SCORE_PUBLISH'],
     items: [
       {
@@ -240,14 +253,26 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
   },
   {
     key: 'archive',
-    title: '归档',
-    journeyKey: 'archive',
+    title: '课程考核归档',
+    journeyKey: MarkTeacherDashboardJourneyKeyCode.ARCHIVE,
     stageKeys: ['ARCHIVE'],
     items: [
       {
         key: 'archive-package',
-        label: '归档列表',
+        label: '本考试归档进度',
         routeName: 'TeacherExamWorkspaceArchivePackage',
+        markStageKey: 'ARCHIVE',
+      },
+      {
+        key: 'archive-ai-analysis',
+        label: 'AI 分析',
+        routeName: 'TeacherExamWorkspaceArchiveAiAnalysis',
+        markStageKey: 'ARCHIVE',
+      },
+      {
+        key: 'archive-question-analysis',
+        label: '题目分析',
+        routeName: 'TeacherExamWorkspaceArchiveQuestionAnalysis',
         markStageKey: 'ARCHIVE',
       },
       {
@@ -288,17 +313,56 @@ export const EXAM_WORKSPACE_MENU_ROUTE_FALLBACK: Record<string, string> = {
 }
 
 const MENU_ITEM_BY_ROUTE = new Map<string, ExamWorkspaceMenuItem>()
+const MENU_GROUP_KEY_BY_ROUTE = new Map<string, string>()
+const MENU_GROUP_KEY_BY_ITEM_KEY = new Map<string, string>()
 for (const group of EXAM_WORKSPACE_MENU_GROUPS) {
+  MENU_GROUP_KEY_BY_ITEM_KEY.set(group.key, group.key)
   for (const item of group.items) {
     MENU_ITEM_BY_ROUTE.set(item.routeName, item)
+    MENU_GROUP_KEY_BY_ROUTE.set(item.routeName, group.key)
+    MENU_GROUP_KEY_BY_ITEM_KEY.set(item.key, group.key)
   }
+}
+
+/** 由路由名解析所属菜单 group.key；详情页走 EXAM_WORKSPACE_MENU_ROUTE_FALLBACK */
+export function resolveExamWorkspaceMenuGroupKey(routeName: string | undefined): string | undefined {
+  if (!routeName) {
+    return undefined
+  }
+  const direct = MENU_GROUP_KEY_BY_ROUTE.get(routeName)
+  if (direct) {
+    return direct
+  }
+  const fallbackItemKey = EXAM_WORKSPACE_MENU_ROUTE_FALLBACK[routeName]
+  if (!fallbackItemKey) {
+    return undefined
+  }
+  return MENU_GROUP_KEY_BY_ITEM_KEY.get(fallbackItemKey)
 }
 
 export function getMenuGroupsForJourney(
   journeyKey: ExamWorkspaceJourneyKey,
+  options?: { experienceAssistPendingCount?: number },
 ): ExamWorkspaceMenuGroup[] {
   if (journeyKey === 'overview') {
-    return EXAM_WORKSPACE_MENU_GROUPS.filter((group) => group.journeyKey === 'overview')
+    const groups = EXAM_WORKSPACE_MENU_GROUPS.filter((group) => group.journeyKey === 'overview')
+    const pending = options?.experienceAssistPendingCount ?? 0
+    if (pending > 0) {
+      return [
+        ...groups,
+        {
+          key: 'mark-trial-shortcut',
+          title: '试评定标',
+          journeyKey: 'overview',
+          stageKeys: ['TRIAL_MARKING'],
+          items: EXAM_WORKSPACE_MENU_GROUPS
+            .find((group) => group.key === 'mark-trial')
+            ?.items
+            .filter((item) => item.key === 'marking-experience-assist') ?? [],
+        },
+      ]
+    }
+    return groups
   }
   return EXAM_WORKSPACE_MENU_GROUPS.filter((group) => group.journeyKey === journeyKey)
 }

@@ -1,7 +1,7 @@
-import type { ExamDetailVO } from '@/apis/mark/exam'
-import type { ExamWorkbenchPrepStepVO } from '@/apis/mark/exam-progress'
+import type { ExamDetailResponse } from '@/apis/mark/exam'
+import type { ExamWorkbenchPrepStepResponse } from '@/apis/mark/exam-progress'
 import type { WorkbenchStageStatus } from '@/types/workbench'
-import { EXAM_MATERIAL_LAYOUT_MODE_LABEL, EXAM_PRINT_SOURCE_MODE_LABEL } from '@/apis/mark/exam'
+import { ExamMaterialLayoutModeDescription, ExamPrintSourceModeDescription } from '@/apis/mark/exam'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 /** 考试准备页步骤卡片：后端诊断步骤 + 前端路由与操作文案 */
@@ -24,15 +24,15 @@ const PREP_STEP_ROUTES: Record<string, string> = {
   printPackage: 'TeacherExamWorkspacePrintPackage',
 }
 
-function resolvePrepStepDescription(step: ExamWorkbenchPrepStepVO, detail: ExamDetailVO): string {
+function resolvePrepStepDescription(step: ExamWorkbenchPrepStepResponse, detail: ExamDetailResponse): string {
   switch (step.key) {
     case 'materialLayout':
       if (!detail.materialLayoutMode) {
         return '先确定答卷页或整卷作答形态，后续扫描、身份识别与印刷包都按该形态执行'
       }
-      return `${strictEnumLabel(EXAM_MATERIAL_LAYOUT_MODE_LABEL, detail.materialLayoutMode, '制卷形态')}，${
+      return `${strictEnumLabel(ExamMaterialLayoutModeDescription, detail.materialLayoutMode, '制卷形态')}，${
         detail.printSourceMode
-          ? strictEnumLabel(EXAM_PRINT_SOURCE_MODE_LABEL, detail.printSourceMode, '印刷来源')
+          ? strictEnumLabel(ExamPrintSourceModeDescription, detail.printSourceMode, '印刷来源')
           : '无需系统印刷'
       }`
     case 'candidateRoster':
@@ -65,12 +65,12 @@ function resolvePrepStepDescription(step: ExamWorkbenchPrepStepVO, detail: ExamD
           : '上传答卷页并完成制卷设计，供扫描对齐与坐标缩放'
       }
       {
-        const masterReady = detail.masterConfigured === true && detail.masterRegionReady === true
+        const layoutReady = detail.layoutConfigured === true && detail.layoutRegionReady === true
         const pageSynced = detail.pageTemplateReady === true
-        if (masterReady && pageSynced) {
-          return `制卷设计「${detail.masterName ?? ''}」已就绪，${detail.totalPages ?? 0} 页已同步`
+        if (layoutReady && pageSynced) {
+          return `制卷设计「${detail.layoutName ?? ''}」已就绪，${detail.totalPages ?? 0} 页已同步`
         }
-        if (masterReady) {
+        if (layoutReady) {
           return '整卷 PDF 已上传，请确认身份区 / 客观填涂区并等待拆页同步'
         }
         return '上传整卷 PDF 并完成制卷设计，配置身份区与客观题填涂区'
@@ -84,7 +84,7 @@ function resolvePrepStepDescription(step: ExamWorkbenchPrepStepVO, detail: ExamD
   }
 }
 
-function resolvePrimaryAction(step: ExamWorkbenchPrepStepVO, detail: ExamDetailVO): string {
+function resolvePrimaryAction(step: ExamWorkbenchPrepStepResponse, detail: ExamDetailResponse): string {
   const completed = step.status === 'completed'
   switch (step.key) {
     case 'materialLayout':
@@ -113,8 +113,8 @@ function resolvePrimaryAction(step: ExamWorkbenchPrepStepVO, detail: ExamDetailV
  * 将后端工作台准备诊断步骤映射为准备页卡片模型；状态与建议项以服务端为准。
  */
 export function buildPrepStepCards(
-  backendSteps: ExamWorkbenchPrepStepVO[],
-  detail: ExamDetailVO,
+  backendSteps: ExamWorkbenchPrepStepResponse[],
+  detail: ExamDetailResponse,
 ): PrepStepCard[] {
   return backendSteps.map((step) => {
     const routeName = PREP_STEP_ROUTES[step.key]

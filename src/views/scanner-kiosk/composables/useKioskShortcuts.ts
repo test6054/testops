@@ -1,4 +1,6 @@
 import type { KioskCtx } from './kioskInjection'
+import { notification } from 'ant-design-vue'
+import { onBeforeUnmount, onMounted } from 'vue'
 /**
  * useKioskShortcuts - 全局键盘快捷键绑定
  *
@@ -22,8 +24,7 @@ import type { KioskCtx } from './kioskInjection'
  *   Alt+3    切到 review
  *   Alt+1..3 切 stage（Alt+4 已移除；历史页从侧栏进入）
  */
-import { notification } from 'ant-design-vue'
-import { onBeforeUnmount, onMounted } from 'vue'
+import { LocalScanJobStatusCode } from '@/apis/mark/scanner-agent-local'
 import { KIOSK_NOTICE_KEY } from '../constants/kioskNotice'
 import { KIOSK_STAGES } from './useStageMachine'
 
@@ -32,11 +33,11 @@ import { KIOSK_STAGES } from './useStageMachine'
  * 命中以下任一即跳过：input / textarea / select / contenteditable=true。
  */
 function shouldIgnoreKey(event: KeyboardEvent): boolean {
-  const target = event.target as HTMLElement | null
-  if (!target) return false
+  if (!(event.target instanceof HTMLElement)) return false
+  const target = event.target
   const tag = target.tagName
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
-  return (target as HTMLElement).isContentEditable;
+  return target.isContentEditable;
 }
 
 /**
@@ -44,8 +45,8 @@ function shouldIgnoreKey(event: KeyboardEvent): boolean {
  * 我们的全局 listener 必须避开这些 case，否则会出现 BottomBar 「暂停」按钮 + 全局 Space 双触发。
  */
 function isSpaceOnButton(event: KeyboardEvent): boolean {
-  const target = event.target as HTMLElement | null
-  if (!target) return false
+  if (!(event.target instanceof HTMLElement)) return false
+  const target = event.target
   if (target.tagName === 'BUTTON') return true
   return target.getAttribute && target.getAttribute('role') === 'button';
 }
@@ -96,9 +97,9 @@ export function useKioskShortcuts(ctx: KioskCtx): void {
     const job = workflow.currentJob.value
     if (!job) return
     // 仅在可暂停 / 可继续的状态下响应
-    if (job.status === 'PAUSED') {
+    if (job.status === LocalScanJobStatusCode.PAUSED) {
       workflow.resumeCurrentJob()
-    } else if (job.status === 'SCANNING') {
+    } else if (job.status === LocalScanJobStatusCode.SCANNING) {
       workflow.pauseCurrentJob()
     }
   }
@@ -179,7 +180,7 @@ export function useKioskShortcuts(ctx: KioskCtx): void {
     if (cur === 'scanning' && (event.key === ' ' || event.code === 'Space')) {
       if (isSpaceOnButton(event)) return
       const job = workflow.currentJob.value
-      if (job && (job.status === 'SCANNING' || job.status === 'PAUSED')) {
+      if (job && (job.status === LocalScanJobStatusCode.SCANNING || job.status === LocalScanJobStatusCode.PAUSED)) {
         event.preventDefault()
         toggleScanPauseResume()
       }

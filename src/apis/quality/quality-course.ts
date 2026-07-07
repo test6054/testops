@@ -65,8 +65,24 @@ export interface QualityCourseSaveRequest {
 }
 
 /** 课程编辑表单：学期未选时为 undefined，提交前须显式选择，禁止静默默认 */
-export type QualityCourseEditorForm = Omit<QualityCourseSaveRequest, 'semester'> & {
+export interface QualityCourseEditorForm {
+  id?: string
+  trainingPlanId: string
+  programId: string
+  courseId: string
+  courseCode: string
+  courseName: string
+  courseCategory?: string
+  courseNature?: string
+  schoolYear: string
   semester?: SemesterCode
+  teacherUserId?: string
+  classId?: string
+  creditHours?: number
+  creditValue?: number
+  civicObjective?: string
+  syllabusFileId?: string
+  enabled?: boolean
 }
 
 export const qualityCourseApi = {

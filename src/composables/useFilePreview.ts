@@ -1,11 +1,9 @@
-import type { FilePreviewResponseDTO } from '@/apis/edu/file-management'
 import type { AttachmentPreviewTarget, FilePreviewKind } from '@/utils/file-preview'
 import antMessage from 'ant-design-vue/es/message'
 import { computed, ref } from 'vue'
 import { convertLegacyOfficeArrayBuffer, getFileArrayBuffer, previewFile } from '@/apis/edu/file-management'
-import { useUserStore } from '@/stores/modules/user'
 import { ErrorHandler } from '@/utils/error-handler'
-import { handleDownloadFile as downloadFileUtil } from '@/utils/file-download'
+import { handleDownloadFile } from '@/utils/file-download'
 import {
   formatFileSize,
   getMimeTypeForPreview,
@@ -22,8 +20,6 @@ import {
  * 弹窗状态交给 <FilePreviewDialog> 渲染；支持 edu-storage 节点与旧版 Office（.doc/.xls/.ppt）转 OOXML 预览。
  */
 export function useFilePreview() {
-  const userStore = useUserStore()
-
   const filePreviewOpen = ref(false)
   const filePreviewLoading = ref(false)
   const filePreviewError = ref('')
@@ -76,8 +72,6 @@ export function useFilePreview() {
   async function convertLegacyOfficeForTarget(target: AttachmentPreviewTarget): Promise<ArrayBuffer> {
     return await convertLegacyOfficeArrayBuffer({
       nodeId: String(target.fileId),
-      tenantId: userStore.userInfo.tenantId,
-      userId: userStore.userInfo.userId,
     })
   }
 
@@ -105,9 +99,7 @@ export function useFilePreview() {
       try {
         const response = await previewFile({
           nodeId: String(target.fileId),
-          tenantId: userStore.userInfo.tenantId,
-          userId: userStore.userInfo.userId,
-        }) as FilePreviewResponseDTO
+        })
         if (response.previewable && response.content) {
           filePreviewText.value = response.content
           return
@@ -128,7 +120,7 @@ export function useFilePreview() {
         antMessage.warning('当前文件暂不支持下载')
         return
       }
-      await downloadFileUtil(
+      await handleDownloadFile(
         { fileId: String(target.fileId), fileName: target.fileName },
         { showSuccessMessage: false },
       )

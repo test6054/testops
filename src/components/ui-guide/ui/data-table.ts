@@ -271,6 +271,10 @@ export function normalizeDataTableColumns<RecordType = Record<string, unknown>>(
   return columns.map((column) => normalizeDataTableColumn(column))
 }
 
+function isLeafTableColumn(column: ColumnsType[number]): column is ColumnType {
+  return !('children' in column && column.children?.length)
+}
+
 /**
  * 当存在 fixed 列且列宽可求和时，计算横向滚动宽度，避免固定列与操作按钮错位溢出。
  */
@@ -280,20 +284,19 @@ export function resolveDataTableScrollX(columns: ColumnsType): number | undefine
   let hasFixed = false
 
   for (const column of columns) {
-    if ('children' in column && column.children?.length) {
+    if (!isLeafTableColumn(column)) {
       continue
     }
-    const col = column as ColumnType
-    if (col.fixed === 'left' || col.fixed === 'right' || col.fixed === true) {
+    if (column.fixed === 'left' || column.fixed === 'right' || column.fixed === true) {
       hasFixed = true
     }
-    if (typeof col.width === 'number') {
-      totalWidth += col.width
+    if (typeof column.width === 'number') {
+      totalWidth += column.width
       hasNumericWidth = true
       continue
     }
-    if (typeof col.width === 'string') {
-      const parsed = Number.parseInt(col.width, 10)
+    if (typeof column.width === 'string') {
+      const parsed = Number.parseInt(column.width, 10)
       if (!Number.isNaN(parsed)) {
         totalWidth += parsed
         hasNumericWidth = true

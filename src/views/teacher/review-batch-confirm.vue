@@ -2,8 +2,10 @@
   <StageWorkbenchShell>
     <template #context>
       <ContextBar
+        layout="workbench"
         show-title
-        title="批量复核确认"
+        :title="contextBarTitle"
+        :subtitle="contextBarSubtitle"
       >
         <template #status>
           <UiTag tone="blue" size="sm">
@@ -41,81 +43,87 @@
       </ContextBar>
     </template>
 
+    <template v-if="selectedExamId" #signal>
+      <SignalBand variant="tiles" compact :metrics="batchSignalMetrics" />
+    </template>
+
     <UiEmpty v-if="!selectedExamId" description="缺少考试上下文，请从考试列表进入" />
 
+    <template v-else>
+      <ExamWorkspaceJourneySubNav />
 
-
-    <UiCard v-else>
-      <UiEmpty
-        v-if="!loading && rows.length === 0"
-        description="当前暂无待批量确认的复核任务"
-        class="batch-confirm__empty"
-      />
-      <UiDataTable
-        pagination-mode="server"
-        row-key="gradeResultId"
-        :columns="columns"
-        :data-source="rows"
-        :loading="loading"
-        :total="pagination.total"
-        :page-num="pagination.current"
-        :page-size="pagination.pageSize"
-        :row-selection="rowSelection"
-        flat
-        size="middle"
-        @page-change="onPageChange"
-      >
-        <template #bodyCell="{ column, record }: { column: ColumnType<ReviewTaskItemVO>, record: ReviewTaskItemVO }">
-          <template v-if="column.key === 'paper'">
-            {{ record.paperDisplay.primaryText }}
+      <WorkbenchSurfaceCard flush>
+        <UiEmpty
+          v-if="!loading && rows.length === 0"
+          description="当前暂无待批量确认的复核任务"
+          class="batch-confirm__empty"
+        />
+        <UiDataTable
+          pagination-mode="server"
+          row-key="gradeResultId"
+          :columns="columns"
+          :data-source="rows"
+          :loading="loading"
+          :total="pagination.total"
+          :page-num="pagination.current"
+          :page-size="pagination.pageSize"
+          :row-selection="rowSelection"
+          flat
+          size="middle"
+          @page-change="onPageChange"
+        >
+          <template #bodyCell="{ column, record }: { column: ColumnType<ReviewTaskItemResponse>, record: ReviewTaskItemResponse }">
+            <template v-if="column.key === 'paper'">
+              {{ record.paperDisplay.primaryText }}
+            </template>
+            <template v-else-if="column.key === 'question'">
+              <UiTag tone="blue" size="sm">题 {{ record.questionNo }}</UiTag>
+            </template>
+            <template v-else-if="column.key === 'gradeSource'">
+              <UiTag :tone="gradeSourceTone(record.gradeSource)" size="sm">
+                {{ gradeSourceLabel(record.gradeSource) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'aiScore'">
+              <span v-if="record.aiScore != null">{{ record.aiScore }}</span>
+              <UiTag v-else tone="gray" size="sm">未派生</UiTag>
+            </template>
+            <template v-else-if="column.key === 'teacherReviewScore'">
+              <a-input-number
+                :value="scoreDraftMap[record.gradeResultId]"
+                :min="0"
+                :max="record.fullScore"
+                :step="0.5"
+                size="small"
+                style="width: 88px"
+                @update:value="(v) => updateScore(record.gradeResultId, v)"
+              />
+              <span class="batch-confirm__full-score">/ {{ record.fullScore }}</span>
+            </template>
           </template>
-          <template v-else-if="column.key === 'question'">
-            <UiTag tone="blue" size="sm">题 {{ record.questionNo }}</UiTag>
+        </UiDataTable>
+        <a-list
+          v-if="batchFailures.length"
+          size="small"
+          :data-source="batchFailures"
+          class="batch-confirm__failures"
+        >
+          <template #renderItem="{ item }">
+            <a-list-item>
+              <a-list-item-meta>
+                <template #title>
+                  成绩记录 {{ item.gradeResultId }}
+                </template>
+                <template #description>
+                  <UiTag tone="red" size="sm">{{ item.code }}</UiTag>
+                  {{ item.message }}
+                </template>
+              </a-list-item-meta>
+            </a-list-item>
           </template>
-          <template v-else-if="column.key === 'gradeSource'">
-            <UiTag :tone="gradeSourceTone(record.gradeSource)" size="sm">
-              {{ gradeSourceLabel(record.gradeSource) }}
-            </UiTag>
-          </template>
-          <template v-else-if="column.key === 'aiScore'">
-            <span v-if="record.aiScore != null">{{ record.aiScore }}</span>
-            <UiTag v-else tone="gray" size="sm">未派生</UiTag>
-          </template>
-          <template v-else-if="column.key === 'teacherReviewScore'">
-            <a-input-number
-              :value="scoreDraftMap[record.gradeResultId]"
-              :min="0"
-              :max="record.fullScore"
-              :step="0.5"
-              size="small"
-              style="width: 88px"
-              @update:value="(v) => updateScore(record.gradeResultId, v)"
-            />
-            <span class="batch-confirm__full-score">/ {{ record.fullScore }}</span>
-          </template>
-        </template>
-      </UiDataTable>
-      <a-list
-        v-if="batchFailures.length"
-        size="small"
-        :data-source="batchFailures"
-        class="batch-confirm__failures"
-      >
-        <template #renderItem="{ item }">
-          <a-list-item>
-            <a-list-item-meta>
-              <template #title>
-                成绩记录 {{ item.gradeResultId }}
-              </template>
-              <template #description>
-                <UiTag tone="red" size="sm">{{ item.code }}</UiTag>
-                {{ item.message }}
-              </template>
-            </a-list-item-meta>
-          </a-list-item>
-        </template>
-      </a-list>
-    </UiCard>
+        </a-list>
+      </WorkbenchSurfaceCard>
+    </template>
   </StageWorkbenchShell>
 </template>
 
@@ -127,9 +135,10 @@ import type {
 } from '@/apis/mark/exam-grade'
 import type {
   GradeSourceCode,
-  ReviewTaskItemVO,
+  ReviewTaskItemResponse,
 } from '@/apis/mark/exam-review-task'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
@@ -138,36 +147,38 @@ import {
   batchConfirmQuestionGrades,
 } from '@/apis/mark/exam-grade'
 import {
-  GRADE_SOURCE_LABEL,
   GRADE_SOURCE_TONE,
+  GradeSourceDescription,
   listReviewTasks,
-  validateReviewTaskItemContract,
+  ReviewTaskStatusCode,
 } from '@/apis/mark/exam-review-task'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkWorkbenchContext, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
-import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherReviewBatchConfirm' })
 
 const router = useRouter()
 const { selectedExamId } = useMarkExamContext()
+const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar('批量复核确认')
 const { refreshSnapshot } = useWorkspaceExamId()
 const { refreshing: workbenchRefreshing } = useMarkWorkbenchContext()
 
 const loading = ref(false)
 const submitting = ref(false)
 const batchFailures = ref<ExamGradeBatchConfirmFailureItem[]>([])
-const rows = ref<ReviewTaskItemVO[]>([])
+const rows = ref<ReviewTaskItemResponse[]>([])
 const scoreDraftMap = reactive<Record<string, number>>({})
 const selectedRowKeys = ref<string[]>([])
 
@@ -177,7 +188,24 @@ const pagination = reactive({
   total: 0,
 })
 
-const columns: ColumnType<ReviewTaskItemVO>[] = [
+const batchSignalMetrics = computed((): SignalMetric[] => [
+  {
+    key: 'pending',
+    label: '待复核',
+    value: pagination.total,
+    unit: '条',
+    tone: pagination.total > 0 ? 'orange' : 'green',
+  },
+  {
+    key: 'selected',
+    label: '已选',
+    value: selectedRowKeys.value.length,
+    unit: '条',
+    tone: selectedRowKeys.value.length > 0 ? 'blue' : 'gray',
+  },
+])
+
+const columns: ColumnType<ReviewTaskItemResponse>[] = [
   { title: '答卷', key: 'paper', width: 200 },
   { title: '题号', key: 'question', width: 100 },
   { title: '来源', key: 'gradeSource', width: 110 },
@@ -193,14 +221,14 @@ const rowSelection = computed(() => ({
 }))
 
 function gradeSourceLabel(source: GradeSourceCode): string {
-  return strictEnumLabel(GRADE_SOURCE_LABEL, source, '批改来源')
+  return GradeSourceDescription[source]
 }
 
 function gradeSourceTone(source: GradeSourceCode): BadgeTone {
   return GRADE_SOURCE_TONE[source]
 }
 
-function initScoreDraft(records: ReviewTaskItemVO[]): void {
+function initScoreDraft(records: ReviewTaskItemResponse[]): void {
   for (const record of records) {
     if (scoreDraftMap[record.gradeResultId] == null && record.aiScore != null) {
       scoreDraftMap[record.gradeResultId] = record.aiScore
@@ -231,15 +259,14 @@ async function loadTasks(): Promise<void> {
   try {
     const result = await listReviewTasks({
       examId: selectedExamId.value,
-      status: 'PENDING',
+      status: ReviewTaskStatusCode.PENDING,
       excludeArbitration: true,
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
     })
-    const records = readPageList(result, '复核任务列表加载失败')
-    records.forEach(validateReviewTaskItemContract)
+    const records = result.list
     rows.value = records
-    pagination.total = readPageTotal(result)
+    pagination.total = Number(result.total)
     initScoreDraft(records)
     selectedRowKeys.value = selectedRowKeys.value.filter((id) =>
       records.some((row) => row.gradeResultId === id),

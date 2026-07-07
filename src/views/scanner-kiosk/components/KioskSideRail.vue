@@ -5,6 +5,7 @@
  * 紧凑卡片：一体机就绪 / 本机能力 / 扫描参数 / 当前考试概览（含本机最近批次）
  */
 import { computed } from 'vue'
+import { ScannerKioskScanModeCode } from '@/apis/mark/scanner-kiosk'
 import { useKioskCtx } from '../composables/kioskInjection'
 
 const { workflow, stage, ui } = useKioskCtx()
@@ -74,7 +75,7 @@ const railScanBlankPage = computed(() =>
 const railScanMode = computed(() => workflow.scanModeText(workflow.scanMode.value, ''))
 const railScanModeTone = computed(() => {
   const mode = workflow.scanMode.value
-  if (mode === 'SUPPLEMENT') return 'supplement'
+  if (mode === ScannerKioskScanModeCode.SUPPLEMENT) return 'supplement'
   return 'direct'
 })
 

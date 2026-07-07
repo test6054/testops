@@ -3,7 +3,7 @@
     <transition-group name="breadcrumb">
       <a-breadcrumb-item
         v-for="(item, index) in breadcrumbList"
-        :key="`${item.path}-${item.meta.title}`"
+        :key="`${item.path}-${breadcrumbTitle(item)}`"
         v-bind="attrs"
       >
         <span
@@ -13,9 +13,9 @@
               || index === breadcrumbList.length - 1
           "
           class="gi_line_1"
-        >{{ item.meta.title }}</span>
+        >{{ breadcrumbTitle(item) }}</span>
         <span v-else class="gi_line_1 breadcrumb-item-title" @click="handleLink(item)">{{
-          item.meta.title
+          breadcrumbTitle(item)
         }}</span>
         <RightOutlined v-if="index !== breadcrumbList.length - 1" />
       </a-breadcrumb-item>
@@ -24,7 +24,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { RouteLocationMatched } from 'vue-router'
+import type { RouteRecordRaw } from 'vue-router'
 import RightOutlined from '@ant-design/icons-vue/RightOutlined'
 import XEUtils from 'xe-utils'
 import { useRouteStore } from '@/stores'
@@ -34,13 +34,12 @@ const router = useRouter()
 const { routes } = useRouteStore()
 const attrs = useAttrs()
 
-let home: RouteLocationMatched | null = null
+let home: RouteRecordRaw | null = null
 const getHome = () => {
   if (!home) {
-    const cloneRoutes = JSON.parse(JSON.stringify(routes)) as RouteLocationMatched[]
     // 查找首页路由，优先查找管理员工作台
     const obj = XEUtils.findTree(
-      cloneRoutes,
+      routes,
       (i) =>
         i.path === '/teacher/dashboard'
         || i.path === '/teacher/exam-list'
@@ -50,12 +49,11 @@ const getHome = () => {
   }
 }
 
-const breadcrumbList = ref<RouteLocationMatched[]>([])
+const breadcrumbList = ref<RouteRecordRaw[]>([])
 
 function getBreadcrumbList() {
   getHome()
-  const cloneRoutes = JSON.parse(JSON.stringify(routes)) as RouteLocationMatched[]
-  const obj = XEUtils.findTree(cloneRoutes, (i) => i.path === route.path)
+  const obj = XEUtils.findTree(routes, (i) => i.path === route.path)
   // 获取当前节点的所有上级节点集合，包含当前节点
   const arr = obj
     ? obj.nodes.filter((item) => item.meta && item.meta.title && item.meta.breadcrumb !== false)
@@ -73,12 +71,16 @@ watchEffect(() => {
 })
 
 // 路由跳转
-function handleLink(item: RouteLocationMatched) {
+function handleLink(item: RouteRecordRaw) {
   const { redirect, path } = item
-  if (redirect) {
-    return router.push(redirect as string)
+  if (typeof redirect === 'string') {
+    return router.push(redirect)
   }
   router.push(path)
+}
+
+function breadcrumbTitle(item: RouteRecordRaw): string {
+  return typeof item.meta?.title === 'string' ? item.meta.title : ''
 }
 </script>
 

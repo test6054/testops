@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type {
-  PfSceneCode,
   PortfolioImpactIndicatorSummaryDto,
   PortfolioIndicatorEngineReadinessVO,
   PortfolioPublishImpactReportVO,
@@ -10,8 +9,9 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import {
-  PF_INDICATOR_BUSINESS_REFERENCE_SCENE_LABEL,
   PF_SCENE_CODE_OPTIONS,
+  PfIndicatorBusinessReferenceSceneDescription,
+  PfSceneCode,
 } from '@/apis/portfolio/indicator-types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -21,7 +21,7 @@ import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
 
 const router = useRouter()
-const sceneCode = ref<PfSceneCode>('PERFORMANCE')
+const sceneCode = ref<PfSceneCode>(PfSceneCode.PERFORMANCE)
 const academicYear = ref('2025-2026')
 const step = ref(1)
 const trialing = ref(false)
@@ -79,14 +79,31 @@ function parseImpactSummary(report: PortfolioPublishImpactReportVO): boolean {
     return false
   }
   try {
-    impactSummary.value = JSON.parse(
-      report.indicatorSummaryJson,
-    ) as PortfolioImpactIndicatorSummaryDto
+    const parsed: unknown = JSON.parse(report.indicatorSummaryJson)
+    if (typeof parsed !== 'object' || parsed === null) {
+      impactSummary.value = null
+      return false
+    }
+    impactSummary.value = {
+      draftIndicatorCount: readOptionalNumber(parsed, 'draftIndicatorCount'),
+      publishedIndicatorCount: readOptionalNumber(parsed, 'publishedIndicatorCount'),
+      addedCount: readOptionalNumber(parsed, 'addedCount'),
+      removedCount: readOptionalNumber(parsed, 'removedCount'),
+      changedCount: readOptionalNumber(parsed, 'changedCount'),
+    }
     return true
   } catch {
     impactSummary.value = null
     return false
   }
+}
+
+function readOptionalNumber(source: object, key: keyof PortfolioImpactIndicatorSummaryDto): number | undefined {
+  const value = Object.getOwnPropertyDescriptor(source, key)?.value
+  if (value === undefined) {
+    return undefined
+  }
+  return typeof value === 'number' ? value : undefined
 }
 
 async function runImpactPreview() {
@@ -160,7 +177,7 @@ onMounted(loadReadiness)
           :key="scene.referenceScene"
           class="scene-tag"
         >
-          {{ PF_INDICATOR_BUSINESS_REFERENCE_SCENE_LABEL[scene.referenceScene] }}：{{
+          {{ PfIndicatorBusinessReferenceSceneDescription[scene.referenceScene] }}：{{
             scene.referencedIndicatorCount
           }}
         </span>

@@ -2,7 +2,6 @@
  * AI状态枚举（评分 + 评审）
  * 合并自 ai-grading-status.ts 和 ai-review-status.ts
  */
-import { strictEnumValue } from '@/utils/strict-enum'
 
 export interface AiGradingStatusConfig {
   text: string
@@ -74,7 +73,7 @@ export function isSuccessStatus(status: AiGradingStatusEnum): boolean {
 
 /** 判断AI评分状态是否需要轮询 */
 export function shouldPollGrading(status: AiGradingStatusEnum): boolean {
-  return strictEnumValue(AI_GRADING_STATUS_CONFIG, status, 'AI评分状态').canPoll
+  return AI_GRADING_STATUS_CONFIG[status].canPoll
 }
 
 
@@ -144,7 +143,7 @@ export const AI_REVIEW_STATUS_CONFIG: Record<AiReviewStatusEnum, AiReviewStatusI
 
 /** 获取AI评审状态配置 */
 export function getAiReviewStatusConfig(status: AiReviewStatusEnum): AiReviewStatusItem {
-  return strictEnumValue(AI_REVIEW_STATUS_CONFIG, status, 'AI评审状态')
+  return AI_REVIEW_STATUS_CONFIG[status]
 }
 
 /** 判断是否可以请求AI评审 */

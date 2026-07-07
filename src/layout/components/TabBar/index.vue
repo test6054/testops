@@ -25,7 +25,7 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDevice } from '@/hooks'
 import { useAuthStore } from '@/stores'
-import { RoleEnum } from '@/utils/permission'
+import { isValidRole, RoleEnum } from '@/utils/permission'
 import { isQualityEvaluationRoute, PORTFOLIO_ROUTE_PREFIX } from '@/utils/portfolio-route'
 
 defineOptions({ name: 'TabBar' })
@@ -95,8 +95,11 @@ const tabBarItems = computed(() => {
   if (!currentRole) {
     return []
   }
+  if (!isValidRole(currentRole)) {
+    return []
+  }
 
-  return allTabBarItems.filter((item) => item.roles.includes(currentRole as RoleEnum))
+  return allTabBarItems.filter((item) => item.roles.includes(currentRole))
 })
 
 /**

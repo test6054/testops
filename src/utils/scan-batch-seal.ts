@@ -1,4 +1,4 @@
-import type { ExamScannerBatchVO } from '@/apis/mark/exam-scan'
+import type { ExamScannerBatchResponse } from '@/apis/mark/exam-scan'
 
 /** 封存检查项：与后端 executeSealScanBatch 前置规则对齐。 */
 export interface BatchSealCheckItem {
@@ -11,7 +11,7 @@ export interface BatchSealCheckItem {
 /**
  * 推导批次封存阻断原因；空字符串表示可封存。
  */
-export function batchSealBlockedReason(batch: ExamScannerBatchVO): string {
+export function batchSealBlockedReason(batch: ExamScannerBatchResponse): string {
   if (batch.sealedTime) return '批次已封存'
   if (batch.status === 'DISCARDED' || batch.discardedTime) return '批次已废弃'
   if (batch.status === 'IN_PROGRESS') return '批次尚未完成提交'
@@ -37,14 +37,14 @@ export function batchSealBlockedReason(batch: ExamScannerBatchVO): string {
   return ''
 }
 
-export function canSealBatch(batch: ExamScannerBatchVO): boolean {
+export function canSealBatch(batch: ExamScannerBatchResponse): boolean {
   return batchSealBlockedReason(batch) === ''
 }
 
 /**
  * 封存确认弹窗检查清单。
  */
-export function buildBatchSealChecklist(batch: ExamScannerBatchVO): BatchSealCheckItem[] {
+export function buildBatchSealChecklist(batch: ExamScannerBatchResponse): BatchSealCheckItem[] {
   const declared = batch.pageCount ?? 0
   const received = batch.receivedPageCount ?? 0
   const pending = batch.pendingUploadCount ?? Math.max(0, declared - received)
@@ -112,7 +112,7 @@ export function buildBatchSealChecklist(batch: ExamScannerBatchVO): BatchSealChe
 /**
  * 封存确认文案：供 confirmAsync content 使用。
  */
-export function formatBatchSealConfirmContent(batch: ExamScannerBatchVO): string {
+export function formatBatchSealConfirmContent(batch: ExamScannerBatchResponse): string {
   const intro = `封存批次 ${batch.batchNo} 后，扫描端将无法再向该批次追加页面。`
   const checklistLines = buildBatchSealChecklist(batch).map((item) => {
     const mark = item.ok ? '✓' : '✗'

@@ -1,88 +1,67 @@
-import type { AiOutputValidation } from './types'
+import type { AiOutputValidationCode } from './types'
+import type {
+  AiResultImprovementPriorityCode} from '@/types/enums/ai-result-improvement-priority-enum';
+import type {
+  AiResultIssueSeverityCode} from '@/types/enums/ai-result-issue-severity-enum';
 /**
  * AI 结果 API - 对齐 AiResultController。
  *
  * 后端路径：/api/quality/ai-results
  */
 import http from '@/config/axios'
+import {
+  AiResultImprovementPriorityDescription,
+} from '@/types/enums/ai-result-improvement-priority-enum'
+import {
+  AiResultIssueSeverityDescription,
+} from '@/types/enums/ai-result-issue-severity-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const BASE = '/api/quality/ai-results'
 
-/** AI 结果问题严重级别 - 对齐 AiResultIssueSeverityEnum */
-export type AiResultIssueSeverity = 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO'
+export {
+  AiResultImprovementPriorityCode,
+  AiResultImprovementPriorityDescription,
+  ALL_AI_RESULT_IMPROVEMENT_PRIORITY_CODES,
+} from '@/types/enums/ai-result-improvement-priority-enum'
 
-export const AI_RESULT_ISSUE_SEVERITY_LABEL: Record<AiResultIssueSeverity, string> = {
-  HIGH: '高影响',
-  MEDIUM: '中影响',
-  LOW: '低影响',
-  INFO: '提示',
+export {
+  AiResultIssueSeverityCode,
+  AiResultIssueSeverityDescription,
+  ALL_AI_RESULT_ISSUE_SEVERITY_CODES,
+} from '@/types/enums/ai-result-issue-severity-enum'
+
+export function aiResultIssueSeverityLabel(value: AiResultIssueSeverityCode): string {
+  return strictEnumLabel(AiResultIssueSeverityDescription, value, 'AI 结果问题严重级别')
 }
 
-/** AI 改进建议跟进优先级 - 对齐 AiResultImprovementPriorityEnum */
-export type AiResultImprovementPriority = 'URGENT' | 'HIGH' | 'VERIFICATION' | 'OBSERVE'
-
-export const AI_RESULT_IMPROVEMENT_PRIORITY_LABEL: Record<AiResultImprovementPriority, string> = {
-  URGENT: '紧急',
-  HIGH: '高优先级',
-  VERIFICATION: '验证',
-  OBSERVE: '观察',
-}
-
-/** 达成度诊断改进类别 - 对齐 AiResultImprovementCategoryEnum */
-export type AiResultImprovementCategory
-  = 'TEACHING' | 'ASSESSMENT' | 'STUDENT_SUPPORT' | 'FACULTY_PREPARATION' | 'RESOURCE'
-
-export const AI_RESULT_IMPROVEMENT_CATEGORY_LABEL: Record<AiResultImprovementCategory, string> = {
-  TEACHING: '教学',
-  ASSESSMENT: '考核',
-  STUDENT_SUPPORT: '学生支持',
-  FACULTY_PREPARATION: '师资',
-  RESOURCE: '资源',
-}
-
-/** improvementItems.priority 持久化混用跟进优先级与达成度类别 */
-export type AiResultImprovementPriorityValue
-  = AiResultImprovementPriority | AiResultImprovementCategory
-
-export function aiResultIssueSeverityLabel(value: AiResultIssueSeverity): string {
-  return strictEnumLabel(AI_RESULT_ISSUE_SEVERITY_LABEL, value, 'AI 结果问题严重级别')
-}
-
-export function aiResultImprovementPriorityLabel(value: AiResultImprovementPriorityValue): string {
-  if (value in AI_RESULT_IMPROVEMENT_PRIORITY_LABEL) {
-    return strictEnumLabel(
-      AI_RESULT_IMPROVEMENT_PRIORITY_LABEL,
-      value as AiResultImprovementPriority,
-      'AI 改进跟进优先级',
-    )
-  }
+export function aiResultImprovementPriorityLabel(value: AiResultImprovementPriorityCode): string {
   return strictEnumLabel(
-    AI_RESULT_IMPROVEMENT_CATEGORY_LABEL,
-    value as AiResultImprovementCategory,
-    'AI 改进类别',
+    AiResultImprovementPriorityDescription,
+    value,
+    'AI 改进建议优先级',
   )
 }
 
 /** AI 结果问题项 - 严格对齐后端 AiResultIssueItem */
 export interface AiResultIssueItem {
-  issueTitle: string
+  issueTitle?: string
   issueDescription?: string
-  severity?: AiResultIssueSeverity
+  severity?: AiResultIssueSeverityCode
 }
 
 /** AI 结果证据项 - 严格对齐后端 AiResultEvidenceItem */
 export interface AiResultEvidenceItem {
-  evidenceTitle: string
+  evidenceTitle?: string
   evidenceSource?: string
-  evidenceContent: string
+  evidenceContent?: string
 }
 
 /** AI 结果改进项 - 严格对齐后端 AiResultImprovementItem */
 export interface AiResultImprovementItem {
-  suggestionTitle: string
-  suggestionContent: string
-  priority?: AiResultImprovementPriorityValue
+  suggestionTitle?: string
+  suggestionContent?: string
+  priority?: AiResultImprovementPriorityCode
 }
 
 /** AI 结果 VO - 严格对齐后端 AiResultVO */
@@ -101,7 +80,7 @@ export interface AiResultVO {
   /** 改进措施 */
   improvementItems?: AiResultImprovementItem[]
   /** 结构 / 证据 / 敏感综合校验状态 */
-  outputValidation: AiOutputValidation
+  outputValidation: AiOutputValidationCode
   /** 敏感信息校验状态：运行时取值 CLEAN / LEAK_DETECTED */
   sensitiveCheckStatus?: string
   /** 敏感信息校验明细文本 */
@@ -126,7 +105,7 @@ export interface AiResultSaveRequest {
   issueItems?: AiResultIssueItem[]
   evidenceItems?: AiResultEvidenceItem[]
   improvementItems?: AiResultImprovementItem[]
-  outputValidation: AiOutputValidation
+  outputValidation: AiOutputValidationCode
   sensitiveCheckStatus?: string
   sensitiveCheckDetail?: string
   modelName: string
@@ -138,7 +117,7 @@ export interface AiResultSaveRequest {
 /** AI 结果校验状态更新请求 - 严格对齐后端 AiResultValidationUpdateRequest */
 export interface AiResultValidationUpdateRequest {
   id: string
-  outputValidation: AiOutputValidation
+  outputValidation: AiOutputValidationCode
   sensitiveCheckStatus?: string
   sensitiveCheckDetail?: string
 }

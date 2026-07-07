@@ -1,4 +1,17 @@
+import type { PortfolioArchiveBagSectionTypeCode } from '@/types/enums/portfolio-archive-bag-section-type-enum'
+import type { PortfolioArchiveBagSourceTypeCode } from '@/types/enums/portfolio-archive-bag-source-type-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
+
+export {
+  ALL_PORTFOLIO_ARCHIVE_BAG_SECTION_TYPE_CODES,
+  PortfolioArchiveBagSectionTypeCode,
+  PortfolioArchiveBagSectionTypeDescription,
+} from '@/types/enums/portfolio-archive-bag-section-type-enum'
+export {
+  ALL_PORTFOLIO_ARCHIVE_BAG_SOURCE_TYPE_CODES,
+  PortfolioArchiveBagSourceTypeCode,
+  PortfolioArchiveBagSourceTypeDescription,
+} from '@/types/enums/portfolio-archive-bag-source-type-enum'
 
 export interface PortfolioArchiveBagAssembleVO {
   teacherId: string
@@ -25,21 +38,10 @@ export interface PortfolioArchiveBagAttachmentVO {
   sortOrder: number
 }
 
-export type PortfolioArchiveBagSourceType = 'ARCHIVE' | 'ACHIEVEMENT' | 'MATERIAL'
-
-export const PORTFOLIO_ARCHIVE_BAG_SOURCE_TYPE_LABEL: Record<
-  PortfolioArchiveBagSourceType,
-  string
-> = {
-  ARCHIVE: '正式档案',
-  ACHIEVEMENT: '成果库',
-  MATERIAL: '材料库',
-}
-
 export interface PortfolioArchiveBagItemVO {
   recordId?: string
   categoryId?: string
-  sourceType: PortfolioArchiveBagSourceType
+  sourceType: PortfolioArchiveBagSourceTypeCode
   achievementType?: string
   materialType?: string
   title: string
@@ -52,16 +54,13 @@ export interface PortfolioArchiveBagItemVO {
   attachments: PortfolioArchiveBagAttachmentVO[]
 }
 
-export type PortfolioArchiveBagSectionType
-  = 'BY_CATEGORY' | 'BY_SEMESTER' | 'BY_COURSE' | 'BY_ACHIEVEMENT'
-
 export interface PortfolioArchiveBagSectionGroupVO {
   groupTitle: string
   items: PortfolioArchiveBagItemVO[]
 }
 
 export interface PortfolioArchiveBagSectionVO {
-  sectionType: PortfolioArchiveBagSectionType
+  sectionType: PortfolioArchiveBagSectionTypeCode
   sectionTitle: string
   groups: PortfolioArchiveBagSectionGroupVO[]
 }
@@ -102,7 +101,7 @@ export interface PortfolioArchiveScoreResultVO {
   computedTime?: string
 }
 
-export interface PortfolioArchiveBagFilterRequest {
+export interface PortfolioArchiveBagTeacherRequest {
   teacherId?: string
   academicYear?: string
   semester?: SemesterCode

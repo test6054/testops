@@ -1,9 +1,12 @@
 <template>
-  <UiCard class="session-card">
-    <template #title>
-      <ExperimentOutlined />
-      <span>试评会话</span>
-      <UiBadge tone="orange">校准评分尺度</UiBadge>
+  <WorkbenchSurfaceCard class="session-card">
+    <template #head>
+      <div class="session-card__head">
+        <span class="session-card__flow-hint">{{ TRIAL_SESSION_FLOW_HINT }}</span>
+        <ExperimentOutlined />
+        <h3 class="session-card__title">试评会话</h3>
+        <span class="session-card__subtitle">校准评分尺度</span>
+      </div>
     </template>
 
     <a-form v-if="canManage" layout="vertical" class="session-form">
@@ -105,11 +108,11 @@
               {{ item.groupName }}
             </a-typography-text>
             <UiTag
-              :tone="strictEnumTone(TRIAL_STATUS_TONE, item.sessionStatus, '试评会话状态')"
+              :tone="strictEnumTone(TRIAL_SESSION_STATUS_TONE, item.sessionStatus, '试评会话状态')"
               size="sm"
               class="status-tag"
             >
-              {{ strictEnumLabel(TRIAL_STATUS_LABEL, item.sessionStatus, '试评会话状态') }}
+              {{ strictEnumLabel(TrialSessionStatusDescription, item.sessionStatus, '试评会话状态') }}
             </UiTag>
           </template>
           <template #description>
@@ -144,14 +147,13 @@
         </template>
       </a-list-item>
     </a-list>
-  </UiCard>
+  </WorkbenchSurfaceCard>
 </template>
 
 <script lang="ts" setup>
 import type {
   TrialSessionCalibrateRequest,
-  TrialSessionStatusCode,
-  TrialSessionVO,
+  TrialSessionResponse,
 } from '@/apis/mark/marking-organization'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
@@ -166,14 +168,15 @@ import {
   createTrialSession,
   deleteTrialSession,
   startTrialSession,
-  TRIAL_SESSION_STATUS_LABEL as TRIAL_STATUS_LABEL,
-  TRIAL_SESSION_STATUS_TONE as TRIAL_STATUS_TONE,
+  TRIAL_SESSION_FLOW_HINT,
+  TRIAL_SESSION_STATUS_TONE,
+  TrialSessionStatusDescription,
 } from '@/apis/mark/marking-organization'
-import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { TrialSessionStatusCode } from '@/types/enums/trial-session-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -188,7 +191,7 @@ defineOptions({ name: 'TrialSessionPanel' })
 const props = defineProps<{
   organizationId: string
   groupOptions: GroupOption[]
-  sessions: TrialSessionVO[]
+  sessions: TrialSessionResponse[]
   canManage: boolean
   groupHasAllocationPolicyMap?: Record<string, boolean>
 }>()
@@ -215,17 +218,18 @@ const deletingId = ref<string | null>(null)
 const calibrateSessionOptions = computed(() =>
   props.sessions
     .filter(
-      (item) => item.sessionStatus === 'TRIAL_ASSIGNED' || item.sessionStatus === 'TRIAL_SUBMITTED',
+      (item) => item.sessionStatus === TrialSessionStatusCode.TRIAL_ASSIGNED
+        || item.sessionStatus === TrialSessionStatusCode.TRIAL_SUBMITTED,
     )
     .map((item) => ({
       value: item.id,
-      label: `${item.groupName} · ${strictEnumLabel(TRIAL_STATUS_LABEL, item.sessionStatus, '试评会话状态')} · ${formatDateTime(item.createTime)}`,
+      label: `${item.groupName} · ${strictEnumLabel(TrialSessionStatusDescription, item.sessionStatus, '试评会话状态')} · ${formatDateTime(item.createTime)}`,
     })),
 )
 
 const draftTrialSessionOptions = computed(() =>
   props.sessions
-    .filter((item) => item.sessionStatus === 'TRIAL_CREATED')
+    .filter((item) => item.sessionStatus === TrialSessionStatusCode.TRIAL_CREATED)
     .map((item) => ({
       value: item.id,
       label: `${item.groupName} · ${formatDateTime(item.createTime)}`,
@@ -261,12 +265,14 @@ watch(
 function canCloseTrial(status: TrialSessionStatusCode): boolean {
   return (
     props.canManage
-    && (status === 'TRIAL_ASSIGNED' || status === 'TRIAL_SUBMITTED' || status === 'CALIBRATED')
+    && (status === TrialSessionStatusCode.TRIAL_ASSIGNED
+      || status === TrialSessionStatusCode.TRIAL_SUBMITTED
+      || status === TrialSessionStatusCode.CALIBRATED)
   )
 }
 
 function canDeleteTrial(status: TrialSessionStatusCode): boolean {
-  return props.canManage && status === 'TRIAL_CREATED'
+  return props.canManage && status === TrialSessionStatusCode.TRIAL_CREATED
 }
 
 function guardManageAction(): boolean {
@@ -350,6 +356,33 @@ async function submitDelete(sessionId: string): Promise<void> {
 <style lang="scss" scoped>
 .session-card {
   height: 100%;
+
+  &__head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+  }
+
+  &__flow-hint {
+    width: 100%;
+    font-size: 12px;
+    color: var(--c-text-4);
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: var(--dp-font-weight-title, 600);
+    line-height: 1.5;
+  }
+
+  &__subtitle {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--dp-text-muted, #64748b);
+  }
 }
 
 .session-form {

@@ -3,10 +3,16 @@
  * 供 axios 拦截器、认证 store、认证工具共享，避免相互直接依赖。
  */
 
-export const authRuntimeState = {
+interface AuthRuntimeState {
+  authFailed: boolean
+  isRedirecting: boolean
+  redirectTimeoutTimer: ReturnType<typeof setTimeout> | null
+}
+
+export const authRuntimeState: AuthRuntimeState = {
   authFailed: false,
   isRedirecting: false,
-  redirectTimeoutTimer: null as ReturnType<typeof setTimeout> | null,
+  redirectTimeoutTimer: null,
 }
 
 export function resetAuthState(): void {

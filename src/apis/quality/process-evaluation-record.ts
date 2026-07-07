@@ -1,4 +1,4 @@
-import type { ConfirmationStatus, DataSourceMode } from './types'
+import type { ConfirmationStatusCode, DataSourceModeCode } from './types'
 /**
  * 过程性评价记录 API。
  * 后端对象：ProcessEvaluationRecordController /api/quality/process-records。
@@ -18,9 +18,9 @@ export interface ProcessEvaluationRecordVO {
   convertedScore?: number
   evidenceFileId?: string
   sourceBatchId?: string
-  sourceMode?: DataSourceMode
+  sourceMode?: DataSourceModeCode
   validationResult?: string
-  confirmationStatus: ConfirmationStatus
+  confirmationStatus: ConfirmationStatusCode
   confirmedUserId?: string
   confirmedTime?: string
   notes?: string
@@ -29,7 +29,6 @@ export interface ProcessEvaluationRecordVO {
 }
 
 export interface ProcessEvaluationRecordSaveRequest {
-  id?: string
   nodeId: string
   qualityCourseId: string
   studentUserId?: string
@@ -38,26 +37,57 @@ export interface ProcessEvaluationRecordSaveRequest {
   convertedScore?: number
   evidenceFileId?: string
   sourceBatchId?: string
-  sourceMode?: DataSourceMode
+  sourceMode?: DataSourceModeCode
   validationResult?: string
   notes?: string
 }
 
+export interface ProcessEvaluationRecordUpdateRequest {
+  id: string
+  nodeId: string
+  qualityCourseId: string
+  studentUserId?: string
+  studentNumber?: string
+  score: number
+  convertedScore?: number
+  evidenceFileId?: string
+  sourceBatchId?: string
+  sourceMode?: DataSourceModeCode
+  validationResult?: string
+  notes?: string
+}
+
+export interface ProcessEvaluationRecordBatchSaveRequest {
+  nodeId: string
+  records: ProcessEvaluationRecordSaveRequest[]
+}
+
+export interface ProcessEvaluationRecordCourseGoalRequest {
+  qualityCourseId: string
+  courseGoalId: string
+}
+
+export interface ProcessEvaluationRecordListByNodeRequest {
+  nodeId: string
+  confirmationStatus?: ConfirmationStatusCode
+}
+
+export interface ProcessEvaluationRecordConfirmRequest {
+  id: string
+  confirmationStatus: ConfirmationStatusCode
+}
+
 export const processRecordApi = {
-  listByNode: (nodeId: string, confirmationStatus?: ConfirmationStatus) =>
-    http.post<ProcessEvaluationRecordVO[]>(`${RECORD}/list-by-node`, {
-      nodeId,
-      confirmationStatus,
-    }),
-  listConfirmedByCourseGoal: (qualityCourseId: string, courseGoalId: string) =>
-    http.post<ProcessEvaluationRecordVO[]>(`${RECORD}/list-confirmed-by-course-goal`, {
-      qualityCourseId,
-      courseGoalId,
-    }),
+  listByNode: (data: ProcessEvaluationRecordListByNodeRequest) =>
+    http.post<ProcessEvaluationRecordVO[]>(`${RECORD}/list-by-node`, data),
+  listConfirmedByCourseGoal: (data: ProcessEvaluationRecordCourseGoalRequest) =>
+    http.post<ProcessEvaluationRecordVO[]>(`${RECORD}/list-confirmed-by-course-goal`, data),
   detail: (id: string) => http.post<ProcessEvaluationRecordVO>(`${RECORD}/detail`, { id }),
   create: (data: ProcessEvaluationRecordSaveRequest) => http.post<string>(`${RECORD}/create`, data),
-  update: (data: ProcessEvaluationRecordSaveRequest) => http.post<void>(`${RECORD}/update`, data),
+  batchCreate: (data: ProcessEvaluationRecordBatchSaveRequest) =>
+    http.post<void>(`${RECORD}/batch-create`, data),
+  update: (data: ProcessEvaluationRecordUpdateRequest) => http.post<void>(`${RECORD}/update`, data),
   delete: (id: string) => http.post<void>(`${RECORD}/delete`, { id }),
-  updateConfirmationStatus: (id: string, confirmationStatus: ConfirmationStatus) =>
-    http.post<void>(`${RECORD}/update-confirmation-status`, { id, confirmationStatus }),
+  updateConfirmationStatus: (data: ProcessEvaluationRecordConfirmRequest) =>
+    http.post<void>(`${RECORD}/update-confirmation-status`, data),
 }

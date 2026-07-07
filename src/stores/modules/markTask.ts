@@ -2,9 +2,9 @@ import type {
   MarkingSessionPhaseCode,
   MarkingTaskClaimRequest,
   MarkingTaskQueryRequest,
-  MarkingTaskVO,
+  MarkingTaskResponse,
   TeacherClaimContextQueryRequest,
-  TeacherClaimContextVO,
+  TeacherClaimContextResponse,
 } from '@/apis/mark/marking-organization'
 /**
  * 阅卷任务 Store
@@ -23,26 +23,20 @@ import type {
  *
  * 不持久化：任务状态对实时性敏感，每次进入页面需重新拉取。
  */
-import type { MarkingTaskStreamEventVO } from '@/apis/mark/marking-task-stream'
-import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
-import {
-  claimMarkingTasks,
-  getTeacherClaimContext,
-  listMarkingTasks,
-  validateMarkingTaskContract,
-  validateTeacherClaimContextContract,
-} from '@/apis/mark/marking-organization'
-import { validateMarkingTaskStreamEvent } from '@/apis/mark/marking-task-stream'
+import type {MarkingTaskStreamEventVO} from '@/apis/mark/marking-task-stream'
+import {defineStore} from 'pinia'
+import {computed, ref} from 'vue'
+import {claimMarkingTasks, getTeacherClaimContext, listMarkingTasks,} from '@/apis/mark/marking-organization'
+import {validateMarkingTaskStreamEvent} from '@/wire/mark/marking-task-stream-wire'
 
 export const useMarkTaskStore = defineStore('markTask', () => {
   /** 当前用户在指定考试下的阅卷任务（按 examId 隔离） */
-  const tasks = ref<MarkingTaskVO[]>([])
+  const tasks = ref<MarkingTaskResponse[]>([])
   const tasksLoading = ref(false)
   const tasksLoadedExamId = ref<string>('')
 
   /** 教师领取上下文：活跃题组 + 当前会话；按 examId + markingPhase 隔离 */
-  const claimContextByExam = ref<Map<string, TeacherClaimContextVO>>(new Map())
+  const claimContextByExam = ref<Map<string, TeacherClaimContextResponse>>(new Map())
   const claimContextLoading = ref(false)
 
   function claimContextKey(examId: string, markingPhase: MarkingSessionPhaseCode): string {
@@ -64,14 +58,12 @@ export const useMarkTaskStore = defineStore('markTask', () => {
   async function loadTasks(
     request: MarkingTaskQueryRequest,
     options?: { silent?: boolean },
-  ): Promise<MarkingTaskVO[]> {
+  ): Promise<MarkingTaskResponse[]> {
     if (!options?.silent) {
       tasksLoading.value = true
     }
     try {
-      const loaded = await listMarkingTasks(request)
-      loaded.forEach(validateMarkingTaskContract)
-      tasks.value = loaded
+      tasks.value = await listMarkingTasks(request)
       tasksLoadedExamId.value = request.examId
       return tasks.value
     } finally {
@@ -81,9 +73,8 @@ export const useMarkTaskStore = defineStore('markTask', () => {
     }
   }
 
-  async function claimTasks(request: MarkingTaskClaimRequest): Promise<MarkingTaskVO[]> {
+  async function claimTasks(request: MarkingTaskClaimRequest): Promise<MarkingTaskResponse[]> {
     const claimed = await claimMarkingTasks(request)
-    claimed.forEach(validateMarkingTaskContract)
     if (claimed.length > 0) {
       tasks.value = [...claimed, ...tasks.value]
     }
@@ -92,11 +83,10 @@ export const useMarkTaskStore = defineStore('markTask', () => {
 
   async function loadClaimContext(
     request: TeacherClaimContextQueryRequest,
-  ): Promise<TeacherClaimContextVO> {
+  ): Promise<TeacherClaimContextResponse> {
     claimContextLoading.value = true
     try {
       const result = await getTeacherClaimContext(request)
-      validateTeacherClaimContextContract(result)
       const next = new Map(claimContextByExam.value)
       next.set(claimContextKey(request.examId, request.markingPhase), result)
       claimContextByExam.value = next
@@ -109,7 +99,7 @@ export const useMarkTaskStore = defineStore('markTask', () => {
   function getClaimContext(
     examId: string,
     markingPhase: MarkingSessionPhaseCode,
-  ): TeacherClaimContextVO | null {
+  ): TeacherClaimContextResponse | null {
     return claimContextByExam.value.get(claimContextKey(examId, markingPhase)) ?? null
   }
 
@@ -145,11 +135,12 @@ export const useMarkTaskStore = defineStore('markTask', () => {
       case 'SESSION_RESUMED':
       case 'SESSION_PROGRESS':
         return 'none'
+      default:
+        return 'none'
     }
   }
 
-  function upsertTask(task: MarkingTaskVO): void {
-    validateMarkingTaskContract(task)
+  function upsertTask(task: MarkingTaskResponse): void {
     const idx = tasks.value.findIndex((item) => item.id === task.id)
     if (idx >= 0) {
       tasks.value[idx] = task

@@ -79,8 +79,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: var(--kiosk-h-icon-button);
+  height: var(--kiosk-h-icon-button);
   padding: 0;
   border: 1px solid var(--kiosk-divider);
   border-radius: var(--kiosk-radius-sm);
@@ -176,6 +176,7 @@
 }
 
 .hub-signal--clickable {
+  min-height: var(--kiosk-h-icon-button);
   padding: var(--kiosk-space-2);
   margin: calc(-1 * var(--kiosk-space-2));
   border: none;

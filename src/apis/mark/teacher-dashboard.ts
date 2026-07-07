@@ -1,29 +1,19 @@
+import type { ExamStatusCode } from '@/apis/mark/exam'
 /**
  * 教师阅卷概览 API - 对接 MarkTeacherDashboardController
  */
-import type { ExamStatusCode } from '@/apis/mark/exam'
 import type { ExtendedAxiosRequestConfig } from '@/config/axios/types'
 import type { MarkStageKey } from '@/stores/modules/markStage'
-
+import type { MarkTeacherDashboardJourneyKeyCode } from '@/types/enums/mark-teacher-dashboard-journey-key-enum'
+import type { MarkTeacherDashboardTodoTypeCode } from '@/types/enums/mark-teacher-dashboard-todo-type-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
-import { isValidSemesterCode } from '@/types/enums/semester-enum'
 
-export type MarkTeacherDashboardTodoTypeCode
-  = | 'SCAN_ATTENTION'
-    | 'PROCESSING_OPEN'
-    | 'GRADE_PENDING'
-    | 'REVIEW_PENDING'
-    | 'SCORE_UNPUBLISHED'
-    | 'CANDIDATE_UNBOUND'
-
-export type MarkTeacherDashboardJourneyKeyCode
-  = | 'prep'
-    | 'scan'
-    | 'assign'
-    | 'mark'
-    | 'publish'
-    | 'archive'
+export { MarkTeacherDashboardJourneyKeyCode } from '@/types/enums/mark-teacher-dashboard-journey-key-enum'
+export {
+  MarkTeacherDashboardTodoTypeCode,
+  MarkTeacherDashboardTodoTypeDescription,
+} from '@/types/enums/mark-teacher-dashboard-todo-type-enum'
 
 export interface MarkTeacherDashboardFilterContextVO {
   tenantId: string
@@ -45,6 +35,10 @@ export interface MarkTeacherDashboardSignalMetricsVO {
   recentCreatedExamCount: number
   candidateCount: number
   blockingTodoCount: number
+  urgentTodoCount: number
+  arbitrationPendingCount: number
+  spotCheckPendingCount: number
+  attentionTodoCount: number
 }
 
 export interface MarkTeacherDashboardMarkingProgressSummaryVO {
@@ -107,12 +101,12 @@ export interface MarkTeacherDashboardPublishedExamInsightItemVO {
   academicYear?: string
   semester?: SemesterCode
   participantCount: number
-  averageScore?: string
-  maxScore?: string
-  minScore?: string
-  passRate?: string
-  fullScore?: string
-  passScore?: string
+  averageScore?: number
+  maxScore?: number
+  minScore?: number
+  passRate?: number
+  fullScore?: number
+  passScore?: number
 }
 
 export interface MarkTeacherDashboardOverviewVO {
@@ -136,237 +130,16 @@ export interface MarkTeacherDashboardQuery {
   todoLimit?: number
 }
 
-function assertCount(value: unknown, field: string): number {
-  const count = Number(value)
-  if (!Number.isFinite(count) || count < 0) {
-    throw new TypeError(`阅卷概览响应缺少合法字段：${field}`)
-  }
-  return count
-}
-
-function assertRequiredString(value: unknown, field: string): string {
-  if (typeof value !== 'string' || value.trim() === '') {
-    throw new TypeError(`阅卷概览响应缺少合法字段：${field}`)
-  }
-  return value
-}
-
-function assertOptionalSemesterCode(value: unknown, field: string): SemesterCode | undefined {
-  if (value === null || value === undefined || value === '') {
-    return undefined
-  }
-  if (typeof value !== 'string' || !isValidSemesterCode(value)) {
-    throw new TypeError(`阅卷概览响应缺少合法字段：${field}`)
-  }
-  return value
-}
-
-function assertSemesterCodeList(values: unknown, field: string): SemesterCode[] {
-  if (!Array.isArray(values)) {
-    throw new TypeError(`阅卷概览响应缺少合法字段：${field}`)
-  }
-  return values.map((item, index) => {
-    if (typeof item !== 'string' || !isValidSemesterCode(item)) {
-      throw new TypeError(`阅卷概览响应缺少合法字段：${field}[${index}]`)
-    }
-    return item
-  })
-}
-
-const TODO_TYPE_CODES: MarkTeacherDashboardTodoTypeCode[] = [
-  'SCAN_ATTENTION',
-  'PROCESSING_OPEN',
-  'GRADE_PENDING',
-  'REVIEW_PENDING',
-  'SCORE_UNPUBLISHED',
-  'CANDIDATE_UNBOUND',
-]
-
-const JOURNEY_KEY_CODES: MarkTeacherDashboardJourneyKeyCode[] = [
-  'prep',
-  'scan',
-  'assign',
-  'mark',
-  'publish',
-  'archive',
-]
-
-function assertTodoType(value: unknown, field: string): MarkTeacherDashboardTodoTypeCode {
-  if (typeof value !== 'string' || !TODO_TYPE_CODES.includes(value as MarkTeacherDashboardTodoTypeCode)) {
-    throw new TypeError(`阅卷概览响应缺少合法字段：${field}`)
-  }
-  return value as MarkTeacherDashboardTodoTypeCode
-}
-
-function assertJourneyKey(value: unknown, field: string): MarkTeacherDashboardJourneyKeyCode {
-  if (typeof value !== 'string' || !JOURNEY_KEY_CODES.includes(value as MarkTeacherDashboardJourneyKeyCode)) {
-    throw new TypeError(`阅卷概览响应缺少合法字段：${field}`)
-  }
-  return value as MarkTeacherDashboardJourneyKeyCode
-}
-
-function validatePendingTodoItem(
-  item: unknown,
-  index: number,
-): MarkTeacherDashboardPendingTodoItemVO {
-  if (!item || typeof item !== 'object') {
-    throw new TypeError(`阅卷概览响应 pendingTodos[${index}] 无效`)
-  }
-  const todo = item as MarkTeacherDashboardPendingTodoItemVO
-  assertTodoType(todo.todoType, `pendingTodos[${index}].todoType`)
-  assertRequiredString(todo.label, `pendingTodos[${index}].label`)
-  assertCount(todo.count, `pendingTodos[${index}].count`)
-  assertRequiredString(todo.workspacePath, `pendingTodos[${index}].workspacePath`)
-  if (todo.examId != null) {
-    assertRequiredString(todo.examId, `pendingTodos[${index}].examId`)
-  }
-  return todo
-}
-
-function validateOngoingExamItem(
-  item: unknown,
-  index: number,
-): MarkTeacherDashboardOngoingExamItemVO {
-  if (!item || typeof item !== 'object') {
-    throw new TypeError(`阅卷概览响应 ongoingExams[${index}] 无效`)
-  }
-  const exam = item as MarkTeacherDashboardOngoingExamItemVO
-  assertRequiredString(exam.examId, `ongoingExams[${index}].examId`)
-  assertRequiredString(exam.examName, `ongoingExams[${index}].examName`)
-  assertRequiredString(exam.examNo, `ongoingExams[${index}].examNo`)
-  assertRequiredString(exam.status, `ongoingExams[${index}].status`)
-  exam.semester = assertOptionalSemesterCode(exam.semester, `ongoingExams[${index}].semester`)
-  if (exam.pendingTodos != null) {
-    exam.pendingTodos.forEach((todo, todoIndex) => {
-      validatePendingTodoItem(todo, todoIndex)
-    })
-  }
-  return exam
-}
-
-function validatePublishedInsightItem(
-  item: unknown,
-  index: number,
-): MarkTeacherDashboardPublishedExamInsightItemVO {
-  if (!item || typeof item !== 'object') {
-    throw new TypeError(`阅卷概览响应 publishedExamInsights[${index}] 无效`)
-  }
-  const insight = item as MarkTeacherDashboardPublishedExamInsightItemVO
-  assertRequiredString(insight.examId, `publishedExamInsights[${index}].examId`)
-  assertRequiredString(insight.examName, `publishedExamInsights[${index}].examName`)
-  assertCount(insight.participantCount, `publishedExamInsights[${index}].participantCount`)
-  insight.semester = assertOptionalSemesterCode(insight.semester, `publishedExamInsights[${index}].semester`)
-  if (insight.passRate != null && insight.passRate !== '') {
-    const passRate = Number(insight.passRate)
-    if (!Number.isFinite(passRate) || passRate < 0 || passRate > 1) {
-      throw new TypeError(`阅卷概览响应缺少合法字段：publishedExamInsights[${index}].passRate`)
-    }
-  }
-  return insight
-}
-
-/** 校验 MarkTeacherDashboardResponse 必需字段。 */
-export function validateTeacherDashboardOverview(data: MarkTeacherDashboardOverviewVO): MarkTeacherDashboardOverviewVO {
-  if (!data || typeof data !== 'object') {
-    throw new TypeError('阅卷概览响应为空')
-  }
-  const filterContext = data.filterContext
-  if (!filterContext) {
-    throw new TypeError('阅卷概览响应缺少 filterContext')
-  }
-  assertRequiredString(filterContext.tenantId, 'filterContext.tenantId')
-  assertCount(filterContext.filteredExamCount, 'filterContext.filteredExamCount')
-  filterContext.semester = assertOptionalSemesterCode(filterContext.semester, 'filterContext.semester')
-
-  const filterOptions = data.filterOptions
-  if (!filterOptions) {
-    throw new TypeError('阅卷概览响应缺少 filterOptions')
-  }
-  if (!Array.isArray(filterOptions.academicYears)) {
-    throw new TypeError('阅卷概览响应缺少 filterOptions.academicYears')
-  }
-  filterOptions.semesters = assertSemesterCodeList(filterOptions.semesters, 'filterOptions.semesters')
-  if (!Array.isArray(filterOptions.statuses)) {
-    throw new TypeError('阅卷概览响应缺少 filterOptions.statuses')
-  }
-
-  const signalMetrics = data.signalMetrics
-  if (!signalMetrics) {
-    throw new TypeError('阅卷概览响应缺少 signalMetrics')
-  }
-  assertCount(signalMetrics.activeExamCount, 'signalMetrics.activeExamCount')
-  assertCount(signalMetrics.confirmedUnpublishedScoreCount, 'signalMetrics.confirmedUnpublishedScoreCount')
-  assertCount(signalMetrics.recentCreatedExamCount, 'signalMetrics.recentCreatedExamCount')
-  assertCount(signalMetrics.candidateCount, 'signalMetrics.candidateCount')
-  assertCount(signalMetrics.blockingTodoCount, 'signalMetrics.blockingTodoCount')
-
-  const markingProgressSummary = data.markingProgressSummary
-  if (!markingProgressSummary) {
-    throw new TypeError('阅卷概览响应缺少 markingProgressSummary')
-  }
-  assertCount(markingProgressSummary.candidateCount, 'markingProgressSummary.candidateCount')
-  assertCount(markingProgressSummary.scanAttentionCount, 'markingProgressSummary.scanAttentionCount')
-  assertCount(markingProgressSummary.openProcessingTaskCount, 'markingProgressSummary.openProcessingTaskCount')
-  assertCount(markingProgressSummary.pendingReviewTaskCount, 'markingProgressSummary.pendingReviewTaskCount')
-  assertCount(markingProgressSummary.pendingGradeCount, 'markingProgressSummary.pendingGradeCount')
-  assertCount(markingProgressSummary.confirmedUnpublishedScoreCount, 'markingProgressSummary.confirmedUnpublishedScoreCount')
-  assertCount(markingProgressSummary.totalQuestionGradeCount, 'markingProgressSummary.totalQuestionGradeCount')
-  assertCount(markingProgressSummary.confirmedQuestionGradeCount, 'markingProgressSummary.confirmedQuestionGradeCount')
-
-  if (!Array.isArray(data.todoTypeSummary)) {
-    throw new TypeError('阅卷概览响应缺少 todoTypeSummary')
-  }
-  data.todoTypeSummary.forEach((item, index) => {
-    if (!item || typeof item !== 'object') {
-      throw new TypeError(`阅卷概览响应 todoTypeSummary[${index}] 无效`)
-    }
-    assertTodoType(item.todoType, `todoTypeSummary[${index}].todoType`)
-    assertCount(item.count, `todoTypeSummary[${index}].count`)
-  })
-
-  if (!Array.isArray(data.journeyStageSummary)) {
-    throw new TypeError('阅卷概览响应缺少 journeyStageSummary')
-  }
-  data.journeyStageSummary.forEach((item, index) => {
-    if (!item || typeof item !== 'object') {
-      throw new TypeError(`阅卷概览响应 journeyStageSummary[${index}] 无效`)
-    }
-    assertJourneyKey(item.journeyKey, `journeyStageSummary[${index}].journeyKey`)
-    assertCount(item.examCount, `journeyStageSummary[${index}].examCount`)
-  })
-
-  if (!Array.isArray(data.ongoingExams)) {
-    throw new TypeError('阅卷概览响应缺少 ongoingExams')
-  }
-  data.ongoingExams.forEach((item, index) => {
-    validateOngoingExamItem(item, index)
-  })
-  if (!Array.isArray(data.pendingTodos)) {
-    throw new TypeError('阅卷概览响应缺少 pendingTodos')
-  }
-  data.pendingTodos.forEach((item, index) => {
-    validatePendingTodoItem(item, index)
-  })
-  if (!Array.isArray(data.publishedExamInsights)) {
-    throw new TypeError('阅卷概览响应缺少 publishedExamInsights')
-  }
-  data.publishedExamInsights.forEach((item, index) => {
-    validatePublishedInsightItem(item, index)
-  })
-  return data
-}
-
 /** POST /api/mark/teacher/dashboard/overview */
-export async function loadTeacherDashboardOverview(
+export function loadTeacherDashboardOverview(
   query: MarkTeacherDashboardQuery = {},
-  config?: Partial<ExtendedAxiosRequestConfig>,
+  config?: ExtendedAxiosRequestConfig,
 ): Promise<MarkTeacherDashboardOverviewVO> {
-  const data = await http.post<MarkTeacherDashboardOverviewVO>(
+  return http.post<MarkTeacherDashboardOverviewVO>(
     '/api/mark/teacher/dashboard/overview',
     query,
     config,
   )
-  return validateTeacherDashboardOverview(data)
 }
 
 /** 静默拉取概览：筛选回退 bootstrap 用，不触发全局错误 toast。 */

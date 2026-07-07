@@ -1,22 +1,27 @@
 import type { Ref } from 'vue'
 import type {
   PortfolioArchiveRecordFieldInput,
-  PortfolioMaterialIntakeStage,
   PortfolioMaterialIntakeStatusVO,
-  PortfolioMaterialType,
 } from '@/apis/portfolio/types'
-import type { AiTaskStatus } from '@/apis/quality/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioIntakeApi } from '@/apis/portfolio/intake'
+import { PortfolioArchiveRecordStatusCode, PortfolioMaterialIntakeStageCode, PortfolioMaterialTypeCode } from '@/apis/portfolio/types'
+import { AiTaskStatusCode } from '@/apis/quality/types'
 import { usePolling } from '@/composables/usePolling'
 import { showUserError } from '@/utils/error-handler'
 import { hasPendingPortfolioCategoryChange } from '@/utils/portfolio-material-reassign'
 
-const POLLING_STAGES: PortfolioMaterialIntakeStage[] = ['OCR_PENDING', 'AI_PROCESSING']
+const POLLING_STAGES: PortfolioMaterialIntakeStageCode[] = [
+  PortfolioMaterialIntakeStageCode.OCR_PENDING,
+  PortfolioMaterialIntakeStageCode.AI_PROCESSING,
+]
 
-const POLLING_AI_STATUSES: AiTaskStatus[] = ['PENDING', 'PROCESSING']
+const POLLING_AI_STATUSES: AiTaskStatusCode[] = [
+  AiTaskStatusCode.PENDING,
+  AiTaskStatusCode.PROCESSING,
+]
 
 function readRouteQueryString(value: unknown): string {
   return typeof value === 'string' ? value : ''
@@ -26,12 +31,12 @@ function readDemoModeFromRoute(value: unknown): boolean {
   return value === '1' || value === 'true'
 }
 
-function inferMaterialType(fileName?: string): PortfolioMaterialType {
+function inferMaterialType(fileName?: string): PortfolioMaterialTypeCode {
   const lower = (fileName ?? '').toLowerCase()
   if (lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
-    return 'CERTIFICATE'
+    return PortfolioMaterialTypeCode.CERTIFICATE
   }
-  return 'DOCUMENT'
+  return PortfolioMaterialTypeCode.DOCUMENT
 }
 
 export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
@@ -73,23 +78,24 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
       return false
     }
     const stage = status.value.stage
-    if (stage === 'SUBMITTED' || stage === 'UNDER_REVIEW') {
+    if (stage === PortfolioMaterialIntakeStageCode.SUBMITTED || stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW) {
       return true
     }
-    if (stage === 'OCR_PENDING' || stage === 'AI_PROCESSING') {
+    if (stage === PortfolioMaterialIntakeStageCode.OCR_PENDING || stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING) {
       return true
     }
     return (
-      status.value.recordStatus === 'PENDING_CONFIRM' || status.value.recordStatus === 'OFFICIAL'
+      status.value.recordStatus === PortfolioArchiveRecordStatusCode.PENDING_CONFIRM
+      || status.value.recordStatus === PortfolioArchiveRecordStatusCode.OFFICIAL
     )
   })
 
   const aiCandidateReadOnly = computed(() => {
     const stage = status.value?.stage
-    if (stage === 'SUBMITTED' || stage === 'UNDER_REVIEW') {
+    if (stage === PortfolioMaterialIntakeStageCode.SUBMITTED || stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW) {
       return true
     }
-    return status.value?.recordStatus === 'OFFICIAL'
+    return status.value?.recordStatus === PortfolioArchiveRecordStatusCode.OFFICIAL
   })
 
   const readOnly = fieldReadOnly
@@ -145,7 +151,6 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     materialTitle?: string
     fileName?: string
     demoMode?: boolean
-    scanFileNodeId?: string
     /** 显式 true 时重新提交 AI；AI_FAILED 阶段默认不自动提交 */
     submitAi?: boolean
   }) {
@@ -155,7 +160,7 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     }
     const effectiveDemoMode = options?.demoMode ?? demoMode.value
     const effectiveCategoryId = categoryId.value || undefined
-    const aiFailedStage = status.value?.stage === 'AI_FAILED'
+    const aiFailedStage = status.value?.stage === PortfolioMaterialIntakeStageCode.AI_FAILED
     const shouldSubmitAi
       = options?.submitAi === true
         || (options?.submitAi !== false
@@ -179,7 +184,6 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
         submitAi: shouldSubmitAi,
         demoMode: effectiveDemoMode || undefined,
         frozenProviderChain,
-        scanFileNodeId: options?.scanFileNodeId,
       })
       materialId.value = result.materialId
       taskId.value = result.aiTaskId ?? taskId.value
@@ -306,13 +310,27 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     }
   }
 
-  async function handleScanCommitted(scanFileNodeId?: string) {
+  async function handleScanCommitted(options?: {
+    scanFileNodeId?: string
+    scanMaterialId?: string
+    scanQualityAiTaskId?: string
+  }) {
     if (!targetTeacherId.value) {
       return
     }
+    if (options?.scanMaterialId) {
+      materialId.value = options.scanMaterialId
+      if (options.scanQualityAiTaskId) {
+        taskId.value = options.scanQualityAiTaskId
+      }
+      await refreshStatus()
+      return
+    }
+    if (!options?.scanFileNodeId) {
+      return
+    }
     await startIntake({
-      scanFileNodeId,
-      fileNodeId: scanFileNodeId,
+      fileNodeId: options.scanFileNodeId,
     })
   }
 
@@ -321,11 +339,19 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
       return false
     }
     const scanFileNodeId = readRouteQueryString(route.query.scanFileNodeId)
+    const scanMaterialId = readRouteQueryString(route.query.scanMaterialId)
+    const scanQualityAiTaskId = readRouteQueryString(route.query.scanQualityAiTaskId)
     const nextQuery = { ...route.query }
     delete nextQuery.scanCommitted
     delete nextQuery.scanFileNodeId
+    delete nextQuery.scanMaterialId
+    delete nextQuery.scanQualityAiTaskId
     await router.replace({ path: route.path, query: nextQuery })
-    await handleScanCommitted(scanFileNodeId || undefined)
+    await handleScanCommitted({
+      scanFileNodeId: scanFileNodeId || undefined,
+      scanMaterialId: scanMaterialId || undefined,
+      scanQualityAiTaskId: scanQualityAiTaskId || undefined,
+    })
     return true
   }
 

@@ -1,4 +1,4 @@
-import type { ArchiveBusinessType, ExpertPackageType } from './types'
+import type { ArchiveBusinessTypeCode, ExpertPackageTypeCode } from './types'
 /**
  * 材料归档 + 专家材料包 API - 对接 edu-quality / ArchiveController
  *
@@ -11,29 +11,36 @@ const BASE = '/api/quality/archives'
 
 export interface ArchiveVO {
   id: string
+  tenantId?: string
   archiveCode: string
-  businessType: ArchiveBusinessType
+  businessType: ArchiveBusinessTypeCode
   businessId: string
   businessLabel: string
   fileId: string
   fileName: string
-  expertPackageType?: ExpertPackageType
+  expertPackageType?: ExpertPackageTypeCode
   archiveCategory?: string
   retentionPolicyCode?: string
   retentionYears?: number
   digitalStatus?: string
+  destructionStatus?: string
+  destructionApprovedUserId?: string
   archivedTime?: string
   archiveOfficeConfirmed?: boolean
   notes?: string
   createUser?: string
   createTime?: string
+  updateUser?: string
+  updateTime?: string
 }
 
 export interface ArchiveQueryRequest extends QueryDto {
-  businessType?: ArchiveBusinessType
-  excludeBusinessType?: ArchiveBusinessType
+  businessType?: ArchiveBusinessTypeCode
+  excludeBusinessType?: ArchiveBusinessTypeCode
   businessId?: string
   archiveCategory?: string
+  digitalStatus?: string
+  destructionStatus?: string
   archiveOfficeConfirmed?: boolean
   keyword?: string
 }
@@ -41,7 +48,7 @@ export interface ArchiveQueryRequest extends QueryDto {
 export interface ArchiveSaveRequest {
   id?: string
   archiveCode: string
-  businessType: ArchiveBusinessType
+  businessType: ArchiveBusinessTypeCode
   businessId: string
   fileId: string
   archiveCategory?: string
@@ -52,7 +59,7 @@ export interface ArchiveSaveRequest {
 }
 
 export interface ExpertPackageExportRequest {
-  packageType: ExpertPackageType
+  packageType: ExpertPackageTypeCode
   targetId: string
   archiveCode?: string
   retentionYears?: number

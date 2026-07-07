@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioKeyTeacherRegistryStatus } from '@/apis/portfolio/enums'
 import type { PortfolioDoubleDutyRegistryVO } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
-import { PORTFOLIO_KEY_TEACHER_REGISTRY_STATUS_LABEL } from '@/apis/portfolio/enums'
 import { portfolioDoubleDutyApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -14,8 +12,11 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
+import {
+  PortfolioKeyTeacherRegistryStatusCode,
+  PortfolioKeyTeacherRegistryStatusDescription,
+} from '@/types/enums/portfolio-key-teacher-registry-status-enum'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -39,15 +40,15 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 80 },
 ]
 
-function registryStatusLabel(status: PortfolioKeyTeacherRegistryStatus): string {
-  return strictEnumLabel(PORTFOLIO_KEY_TEACHER_REGISTRY_STATUS_LABEL, status, '双肩挑台账状态')
+function registryStatusLabel(status: PortfolioKeyTeacherRegistryStatusCode): string {
+  return strictEnumLabel(PortfolioKeyTeacherRegistryStatusDescription, status, '双肩挑台账状态')
 }
 
 async function loadPage() {
   loading.value = true
   try {
     const page = await portfolioDoubleDutyApi.page({ pageNum: 1, pageSize: 50 })
-    rows.value = readPageList(page, '加载双肩挑台账失败')
+    rows.value = page.list
   } catch (error) {
     showUserError(error)
   } finally {
@@ -92,7 +93,9 @@ async function revokeRegistry(id: string) {
 
 async function exportRoster() {
   try {
-    const result = await portfolioDoubleDutyApi.exportRoster({ registryStatus: 'ACTIVE' })
+    const result = await portfolioDoubleDutyApi.exportRoster({
+      registryStatus: PortfolioKeyTeacherRegistryStatusCode.ACTIVE,
+    })
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
@@ -145,7 +148,12 @@ onMounted(loadPage)
           <template v-else-if="column.key === 'registryStatus'">
             {{ registryStatusLabel(record.registryStatus) }}
           </template>
-          <template v-else-if="column.key === 'actions' && record.registryStatus === 'ACTIVE'">
+          <template
+            v-else-if="
+              column.key === 'actions'
+                && record.registryStatus === PortfolioKeyTeacherRegistryStatusCode.ACTIVE
+            "
+          >
             <UiTextAction @click="revokeRegistry(record.id)"> 作废 </UiTextAction>
           </template>
         </template>

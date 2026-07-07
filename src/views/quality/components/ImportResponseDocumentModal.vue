@@ -124,14 +124,13 @@
 </template>
 
 <script setup lang="ts">
-import type { IndirectResponseDocumentExtraction } from '@/apis/quality/indirect-response'
-import type { AiTaskStatus } from '@/apis/quality/types'
+import type { IndirectResponseDocumentExtractionVO } from '@/apis/quality/indirect-response'
 import { message } from 'ant-design-vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { aiTaskApi } from '@/apis/quality/ai-task'
 import { indirectResponseApi } from '@/apis/quality/indirect-response'
-import { AI_TASK_STATUS_COLOR, AI_TASK_STATUS_LABEL } from '@/apis/quality/types'
+import { AI_TASK_STATUS_COLOR, AiTaskStatusCode, AiTaskStatusDescription } from '@/apis/quality/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -173,7 +172,7 @@ const extractDisplayText = ref('')
 const extractFileName = ref('')
 const extractWarnings = ref<string[]>([])
 const currentTaskId = ref<string | null>(null)
-const currentTaskStatus = ref<AiTaskStatus>('PENDING')
+const currentTaskStatus = ref<AiTaskStatusCode>(AiTaskStatusCode.PENDING)
 const failureReason = ref<string | null>(null)
 const pollCount = ref(0)
 const pollFailureCount = ref(0)
@@ -196,7 +195,7 @@ const extractAlertDescription = computed(() =>
 
 const statusLabel = computed(() => {
   const s = currentTaskStatus.value
-  return strictEnumLabel(AI_TASK_STATUS_LABEL, s, 'AI 任务状态')
+  return strictEnumLabel(AiTaskStatusDescription, s, 'AI 任务状态')
 })
 const statusColor = computed(() => {
   const s = currentTaskStatus.value
@@ -211,7 +210,7 @@ function aiDocumentParseFailureText(messageText?: string | null): string {
 }
 
 /** 将 edu-mark 抽取结果转为弹窗展示文本：优先 fullText，否则按页拼接。 */
-function buildExtractDisplayText(result: IndirectResponseDocumentExtraction): string {
+function buildExtractDisplayText(result: IndirectResponseDocumentExtractionVO): string {
   const fullText = result.extraction.fullText?.trim()
   if (fullText) {
     return fullText
@@ -250,9 +249,12 @@ async function handleSubmitAiParse() {
   }
   uploading.value = true
   try {
-    const result = await indirectResponseApi.importDocumentAi(props.formId, sourceFileId.value)
+    const result = await indirectResponseApi.importDocumentAi({
+      formId: props.formId,
+      sourceFileId: sourceFileId.value,
+    })
     currentTaskId.value = result.taskId
-    currentTaskStatus.value = 'PENDING'
+    currentTaskStatus.value = AiTaskStatusCode.PENDING
     phase.value = 'processing'
     pollCount.value = 0
     pollFailureCount.value = 0
@@ -272,7 +274,10 @@ async function handleSubmitManualExtract() {
   }
   extracting.value = true
   try {
-    const result = await indirectResponseApi.importDocument(props.formId, sourceFileId.value)
+    const result = await indirectResponseApi.importDocument({
+      formId: props.formId,
+      sourceFileId: sourceFileId.value,
+    })
     extractFileName.value = result.fileName
     extractDisplayText.value = buildExtractDisplayText(result)
     extractWarnings.value = result.extraction.diagnostic?.warningMessages ?? []
@@ -342,7 +347,7 @@ function resetState() {
   extractFileName.value = ''
   extractWarnings.value = []
   currentTaskId.value = null
-  currentTaskStatus.value = 'PENDING'
+  currentTaskStatus.value = AiTaskStatusCode.PENDING
   failureReason.value = null
   pollCount.value = 0
   pollFailureCount.value = 0

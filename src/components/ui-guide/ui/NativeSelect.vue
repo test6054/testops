@@ -37,7 +37,10 @@ interface OptionItem {
 }
 
 const onChange = (evt: Event) => {
-  const target = evt.target as HTMLSelectElement
+  if (!(evt.target instanceof HTMLSelectElement)) {
+    return
+  }
+  const target = evt.target
   const value = target.value
   modelValue.value = value === '' ? undefined : value
 }

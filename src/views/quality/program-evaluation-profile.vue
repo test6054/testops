@@ -12,7 +12,6 @@ import type {
   ProgramEvaluationProfileSaveRequest,
   ProgramEvaluationProfileVO,
 } from '@/apis/quality/program-evaluation-profile'
-import type { AccreditationType, EvaluationCycle, EvaluationMethod } from '@/apis/quality/types'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
@@ -20,9 +19,15 @@ import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import { programEvaluationProfileApi } from '@/apis/quality/program-evaluation-profile'
 import {
-  ACCREDITATION_TYPE_LABEL,
-  EVALUATION_CYCLE_LABEL,
-  EVALUATION_METHOD_LABEL,
+  AccreditationTypeCode,
+  AccreditationTypeDescription,
+  ALL_ACCREDITATION_TYPE_CODES,
+  ALL_EVALUATION_CYCLE_CODES,
+  ALL_EVALUATION_METHOD_CODES,
+  EvaluationCycleCode,
+  EvaluationCycleDescription,
+  EvaluationMethodCode,
+  EvaluationMethodDescription,
 } from '@/apis/quality/types'
 import { ProgramSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -36,7 +41,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
-import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const ACCREDITATION_STANDARD_OPTION_PAGE_SIZE = 100
@@ -65,7 +70,7 @@ const query = reactive<ProgramEvaluationProfileQueryRequest>({
 })
 
 interface ProgramProfileFilterModel {
-  accreditationType?: AccreditationType
+  accreditationType?: AccreditationTypeCode
   keyword: string
 }
 
@@ -74,26 +79,14 @@ const listFilterForm = reactive<ProgramProfileFilterModel>({
   keyword: '',
 })
 
-const accreditationTypes: AccreditationType[] = [
-  'ENGINEERING_ACCREDITATION',
-  'TEACHER_ACCREDITATION',
-  'MEDICAL_HEALTH_ACCREDITATION',
-  'ART_DESIGN_QUALITY_EVALUATION',
-  'ECONOMICS_FINANCE_QUALITY_EVALUATION',
-  'LAW_QUALITY_EVALUATION',
-  'AGRICULTURE_ACCREDITATION',
-  'GENERAL_QUALITY_EVALUATION',
-]
-
-const evaluationMethods: EvaluationMethod[] = [
-  'DIRECT_ONLY',
-  'DIRECT_INDIRECT_WEIGHTED',
-  'MANUAL_REVIEW_CONFIRMED',
-]
-
-const accreditationOptions = accreditationTypes.map((value) => ({
+const accreditationOptions = ALL_ACCREDITATION_TYPE_CODES.map((value) => ({
   value,
-  label: strictEnumLabel(ACCREDITATION_TYPE_LABEL, value, '认证类型'),
+  label: strictEnumLabel(AccreditationTypeDescription, value, '认证类型'),
+}))
+
+const evaluationMethodOptions = ALL_EVALUATION_METHOD_CODES.map((value) => ({
+  value,
+  label: strictEnumLabel(EvaluationMethodDescription, value, '评价方法'),
 }))
 
 const filterFields: FilterField[] = [
@@ -116,18 +109,12 @@ const filterFields: FilterField[] = [
     triggerSearchOnChange: false,
   },
 ]
-const evaluationMethodOptions = evaluationMethods.map((value) => ({
-  value,
-  label: strictEnumLabel(EVALUATION_METHOD_LABEL, value, '评价方法'),
-}))
 
-const evaluationCycleOptions: Array<{ value: EvaluationCycle, label: string }> = [
-  { value: 'SEMESTER', label: EVALUATION_CYCLE_LABEL.SEMESTER },
-  { value: 'YEAR', label: EVALUATION_CYCLE_LABEL.YEAR },
-  { value: 'BIENNIAL', label: EVALUATION_CYCLE_LABEL.BIENNIAL },
-  { value: 'TRIENNIAL', label: EVALUATION_CYCLE_LABEL.TRIENNIAL },
-  { value: 'PROGRAM_CYCLE', label: EVALUATION_CYCLE_LABEL.PROGRAM_CYCLE },
-]
+const evaluationCycleOptions: Array<{ value: EvaluationCycleCode, label: string }>
+  = ALL_EVALUATION_CYCLE_CODES.map((value) => ({
+    value,
+    label: strictEnumLabel(EvaluationCycleDescription, value, '评价周期'),
+  }))
 
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
@@ -135,12 +122,12 @@ const editor = reactive<ProgramEvaluationProfileSaveRequest>({
   programId: '',
   schoolId: '',
   departmentId: '',
-  accreditationType: 'ENGINEERING_ACCREDITATION',
+  accreditationType: AccreditationTypeCode.ENGINEERING_ACCREDITATION,
   standardId: undefined,
   standardYear: '',
   accreditationLevel: '',
-  evaluationMethod: 'DIRECT_INDIRECT_WEIGHTED',
-  evaluationCycle: 'YEAR',
+  evaluationMethod: EvaluationMethodCode.DIRECT_INDIRECT_WEIGHTED,
+  evaluationCycle: EvaluationCycleCode.YEAR,
   includeGraduateSamples: true,
   includeEmployerSamples: true,
   includeAlumniSamples: true,
@@ -165,10 +152,10 @@ async function loadList() {
       ...query,
       keyword: query.keyword?.trim() || undefined,
     })
-    list.value = readPageList(page, '专业评价口径加载失败，请稍后重试')
+    list.value = page.list
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
-    total.value = readPageTotal(page, '专业评价口径加载失败，请稍后重试')
+    total.value = Number(page.total)
     if (list.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadList()
@@ -178,16 +165,16 @@ async function loadList() {
   }
 }
 
-function accreditationLabel(value: AccreditationType): string {
-  return strictEnumLabel(ACCREDITATION_TYPE_LABEL, value, '认证类型')
+function accreditationLabel(value: AccreditationTypeCode): string {
+  return strictEnumLabel(AccreditationTypeDescription, value, '认证类型')
 }
 
-function evaluationMethodLabel(value: EvaluationMethod): string {
-  return strictEnumLabel(EVALUATION_METHOD_LABEL, value, '评价方法')
+function evaluationMethodLabel(value: EvaluationMethodCode): string {
+  return strictEnumLabel(EvaluationMethodDescription, value, '评价方法')
 }
 
-function evaluationCycleLabel(value: EvaluationCycle): string {
-  return strictEnumLabel(EVALUATION_CYCLE_LABEL, value, '评价周期')
+function evaluationCycleLabel(value: EvaluationCycleCode): string {
+  return strictEnumLabel(EvaluationCycleDescription, value, '评价周期')
 }
 
 const enabledCount = computed(() => list.value.filter((item) => item.enabled).length)
@@ -195,7 +182,7 @@ const disabledCount = computed(() => list.value.filter((item) => !item.enabled).
 
 const signals = computed<SignalMetric[]>(() => {
   const engineering = list.value.filter(
-    (item) => item.accreditationType === 'ENGINEERING_ACCREDITATION',
+    (item) => item.accreditationType === AccreditationTypeCode.ENGINEERING_ACCREDITATION,
   ).length
   return [
     { key: 'overall', label: '总口径', value: total.value, tone: 'gray' },
@@ -263,12 +250,12 @@ function openCreate() {
     programId: '',
     schoolId: '',
     departmentId: '',
-    accreditationType: 'ENGINEERING_ACCREDITATION',
+    accreditationType: AccreditationTypeCode.ENGINEERING_ACCREDITATION,
     standardId: undefined,
     standardYear: '',
     accreditationLevel: '',
-    evaluationMethod: 'DIRECT_INDIRECT_WEIGHTED',
-    evaluationCycle: 'YEAR',
+    evaluationMethod: EvaluationMethodCode.DIRECT_INDIRECT_WEIGHTED,
+    evaluationCycle: EvaluationCycleCode.YEAR,
     includeGraduateSamples: true,
     includeEmployerSamples: true,
     includeAlumniSamples: true,
@@ -289,7 +276,32 @@ function openCreate() {
 
 function openEdit(record: ProgramEvaluationProfileVO) {
   editorMode.value = 'edit'
-  Object.assign(editor, record)
+  Object.assign(editor, {
+    id: record.id,
+    programId: record.programId,
+    schoolId: record.schoolId,
+    departmentId: record.departmentId,
+    accreditationType: record.accreditationType,
+    standardId: record.standardId,
+    standardYear: record.standardYear,
+    accreditationLevel: record.accreditationLevel,
+    evaluationMethod: record.evaluationMethod,
+    evaluationCycle: record.evaluationCycle,
+    includeGraduateSamples: record.includeGraduateSamples,
+    includeEmployerSamples: record.includeEmployerSamples,
+    includeAlumniSamples: record.includeAlumniSamples,
+    includeCurrentStudentSamples: record.includeCurrentStudentSamples,
+    sampleScopeRemark: record.sampleScopeRemark,
+    collegeReviewOwner: record.collegeReviewOwner,
+    departmentReviewOwner: record.departmentReviewOwner,
+    programReviewOwner: record.programReviewOwner,
+    reviewChainRemark: record.reviewChainRemark,
+    archiveRetentionYears: record.archiveRetentionYears,
+    archiveLocation: record.archiveLocation,
+    archiveResponsibleUnit: record.archiveResponsibleUnit,
+    archivePolicyRemark: record.archivePolicyRemark,
+    enabled: record.enabled,
+  })
   editorVisible.value = true
 }
 
@@ -304,8 +316,34 @@ async function submitEditor() {
   }
   submitting.value = true
   try {
-    if (editorMode.value === 'create') await programEvaluationProfileApi.create(editor)
-    else await programEvaluationProfileApi.update(editor)
+    const request: ProgramEvaluationProfileSaveRequest = {
+      id: editor.id,
+      programId: editor.programId,
+      schoolId: editor.schoolId || undefined,
+      departmentId: editor.departmentId || undefined,
+      accreditationType: editor.accreditationType,
+      standardId: editor.standardId || undefined,
+      standardYear: editor.standardYear?.trim() || undefined,
+      accreditationLevel: editor.accreditationLevel?.trim() || undefined,
+      evaluationMethod: editor.evaluationMethod,
+      evaluationCycle: editor.evaluationCycle,
+      includeGraduateSamples: editor.includeGraduateSamples,
+      includeEmployerSamples: editor.includeEmployerSamples,
+      includeAlumniSamples: editor.includeAlumniSamples,
+      includeCurrentStudentSamples: editor.includeCurrentStudentSamples,
+      sampleScopeRemark: editor.sampleScopeRemark?.trim() || undefined,
+      collegeReviewOwner: editor.collegeReviewOwner?.trim() || undefined,
+      departmentReviewOwner: editor.departmentReviewOwner?.trim() || undefined,
+      programReviewOwner: editor.programReviewOwner?.trim() || undefined,
+      reviewChainRemark: editor.reviewChainRemark?.trim() || undefined,
+      archiveRetentionYears: editor.archiveRetentionYears,
+      archiveLocation: editor.archiveLocation?.trim() || undefined,
+      archiveResponsibleUnit: editor.archiveResponsibleUnit?.trim() || undefined,
+      archivePolicyRemark: editor.archivePolicyRemark?.trim() || undefined,
+      enabled: editor.enabled,
+    }
+    if (editorMode.value === 'create') await programEvaluationProfileApi.create(request)
+    else await programEvaluationProfileApi.update(request)
     message.success('已保存')
     editorVisible.value = false
     await loadList()

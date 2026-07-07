@@ -2,39 +2,26 @@
  * 阅卷任务 SSE API - 对接 edu-mark MarkingTaskStreamController（契约见 RW 方案 §6.7）
  */
 import type { MarkingTaskStatusCode } from './marking-organization'
+import type { MarkingTaskStreamEventTypeCode } from '@/types/enums/marking-task-stream-event-type-enum'
+import type { MarkingTaskStreamSubscribeScopeCode } from '@/types/enums/marking-task-stream-subscribe-scope-enum'
 import { fetchEventSource } from '@microsoft/fetch-event-source'
 import http from '@/config/axios'
 import { useAuthStore } from '@/stores/modules/auth'
+
 import { getValidToken } from '@/utils/auth'
-import { strictEnumLabel } from '@/utils/strict-enum'
+import { readMarkingTaskStreamEvent } from '@/wire/mark/marking-task-stream-wire'
 
-/** SSE 事件类型 - 与后端 MarkingTaskStreamEventType enum 对齐 */
-export type MarkingTaskStreamEventTypeCode
-  = | 'TASK_ALLOCATED'
-    | 'TASK_RECYCLED'
-    | 'TASK_SUBMITTED'
-    | 'TASK_WITHDRAWN'
-    | 'SESSION_PAUSED'
-    | 'SESSION_RESUMED'
-    | 'SESSION_PROGRESS'
+export {
+  ALL_MARKING_TASK_STREAM_EVENT_TYPE_CODES,
+  MarkingTaskStreamEventTypeCode,
+  MarkingTaskStreamEventTypeDescription,
+} from '@/types/enums/marking-task-stream-event-type-enum'
 
-export const MARKING_TASK_STREAM_EVENT_LABEL: Record<MarkingTaskStreamEventTypeCode, string> = {
-  TASK_ALLOCATED: '任务已分配',
-  TASK_RECYCLED: '任务已回收',
-  TASK_SUBMITTED: '任务已提交',
-  TASK_WITHDRAWN: '任务已撤回',
-  SESSION_PAUSED: '正评会话已暂停',
-  SESSION_RESUMED: '正评会话已恢复',
-  SESSION_PROGRESS: '正评会话进度更新',
-}
-
-/** SSE 订阅范围 - 与后端 MarkingTaskStreamSubscribeScope enum 对齐 */
-export type MarkingTaskStreamSubscribeScopeCode = 'teacher' | 'groupLeader'
-
-export const MARKING_TASK_STREAM_SCOPE_LABEL: Record<MarkingTaskStreamSubscribeScopeCode, string> = {
-  teacher: '教师个人任务',
-  groupLeader: '题组组长考试进度',
-}
+export {
+  ALL_MARKING_TASK_STREAM_SUBSCRIBE_SCOPE_CODES,
+  MarkingTaskStreamSubscribeScopeCode,
+  MarkingTaskStreamSubscribeScopeDescription,
+} from '@/types/enums/marking-task-stream-subscribe-scope-enum'
 
 /** 阅卷任务 SSE 事件 - 对应 MarkingTaskStreamEventResponse */
 export interface MarkingTaskStreamEventVO {
@@ -84,10 +71,6 @@ export interface MarkingTaskStreamHandler {
   onError?: (err: Error) => void
   onClose?: () => void
   onAuthRefreshRequired?: () => Promise<void>
-}
-
-export function validateMarkingTaskStreamEvent(event: MarkingTaskStreamEventVO): void {
-  strictEnumLabel(MARKING_TASK_STREAM_EVENT_LABEL, event.eventType, '阅卷任务SSE事件类型')
 }
 
 /**
@@ -190,11 +173,8 @@ export function subscribeMarkingTaskStream(
       }
       if (message.event === 'marking-task') {
         try {
-          const parsed: MarkingTaskStreamEventVO = JSON.parse(message.data)
-          validateMarkingTaskStreamEvent(parsed)
-          handler.onEvent(parsed)
-        }
-        catch (err) {
+          handler.onEvent(readMarkingTaskStreamEvent(message.data))
+        } catch (err) {
           handler.onError?.(err instanceof Error ? err : new Error('阅卷任务实时消息解析失败'))
         }
       }
@@ -204,7 +184,7 @@ export function subscribeMarkingTaskStream(
         throw err
       }
       handler.onError?.(err instanceof Error ? err : new Error('阅卷任务 SSE 连接失败'))
-      throw err
+      return 5000
     },
     onclose() {
       handler.onClose?.()

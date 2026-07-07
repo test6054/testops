@@ -2,12 +2,13 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ExamDetailVO } from '@/apis/mark/exam'
-import type { ExamScoreSummaryItemVO } from '@/apis/mark/exam-score'
-import type { MarkOcrConfigVO } from '@/apis/mark/ocr-config'
-import type { PaddleOcrInstanceVO } from '@/apis/mark/ocr-paddle-instance'
-import type { MarkOcrPaperSliceVO, MarkOcrRecognizeVO } from '@/apis/mark/ocr-recognition'
+import type { ExamDetailResponse } from '@/apis/mark/exam'
+import type { ExamScoreSummaryItemResponse } from '@/apis/mark/exam-score'
+import type { MarkOcrConfigResponse } from '@/apis/mark/ocr-config'
+import type { PaddleOcrInstanceResponse } from '@/apis/mark/ocr-paddle-instance'
+import type { MarkOcrPaperSliceVO, MarkOcrRecognizeResponse } from '@/apis/mark/ocr-recognition'
 import type { MarkOcrHealthStatusCode, MarkOcrProviderTypeCode } from '@/apis/mark/ocr-types'
+import type { SignalMetric } from '@/types/workbench'
 import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
 import ClusterOutlined from '@ant-design/icons-vue/ClusterOutlined'
 import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
@@ -15,32 +16,36 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { getExamDetail } from '@/apis/mark/exam'
-import { BINDING_STATUS_LABEL } from '@/apis/mark/exam-binding'
+import { BindingStatusDescription } from '@/apis/mark/exam-binding'
 import { pageExamScoreSummary } from '@/apis/mark/exam-score'
-import { FINAL_SCORE_STATUS_LABEL } from '@/apis/mark/final-score-status'
+import { FinalScoreStatusDescription } from '@/apis/mark/final-score-status'
 import { checkMarkOcrHealth, getCurrentMarkOcrConfig } from '@/apis/mark/ocr-config'
 import { listPaddleOcrInstances } from '@/apis/mark/ocr-paddle-instance'
 import { listMarkOcrPaperSlices, recognizeMarkOcr } from '@/apis/mark/ocr-recognition'
 import {
-  MARK_OCR_HEALTH_STATUS_LABEL,
   MARK_OCR_HEALTH_STATUS_TONE,
   MARK_OCR_PAPER_CUT_CAPABILITY,
   MARK_OCR_PROVIDER_DESCRIPTION,
-  MARK_OCR_PROVIDER_LABEL,
+  MarkOcrHealthStatusDescription,
+  MarkOcrProviderTypeDescription,
 } from '@/apis/mark/ocr-types'
-import { QUESTION_TYPE_LABEL } from '@/apis/mark/question-type'
-import UiBadge from '@/components/ui-guide/ui/Badge.vue'
+import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
-import { useUserStore } from '@/stores/modules/user'
-import { assertUserFacing } from '@/utils/contract-guard'
+import { useAuthStore } from '@/stores/modules/auth'
+import { RoleEnum } from '@/types/enums'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import mittBus from '@/utils/mitt'
-import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherOcrSettings' })
@@ -55,25 +60,41 @@ interface DebugFormState {
 
 const debugFormRef = ref<FormInstance | null>(null)
 const loading = ref(false)
+const loadFailed = ref(false)
 const healthChecking = ref(false)
 const recognizing = ref(false)
-const currentConfig = ref<MarkOcrConfigVO | null>(null)
+const currentConfig = ref<MarkOcrConfigResponse | null>(null)
 // 加载失败：toast 提示，主区保持空态/列表壳
-const recognizeResult = ref<MarkOcrRecognizeVO | null>(null)
+const recognizeResult = ref<MarkOcrRecognizeResponse | null>(null)
 const debugForm = ref<DebugFormState>({})
 const { selectedExamId } = useMarkExamContext()
-const userStore = useUserStore()
+const {
+  contextBarTitle,
+  contextBarSubtitle,
+  examStatusLabel,
+  examStatusTone,
+} = useExamJourneyContextBar('OCR 识别配置')
+const authStore = useAuthStore()
+
+/** 同步调试仅平台管理员可用，教师工作台路径不暴露识别试跑入口。 */
+const ocrDebugAllowed = computed(
+  () =>
+    authStore.userRole === RoleEnum.SUPER_ADMIN || authStore.userRole === RoleEnum.CROP_ADMIN,
+)
+
+/** OCR 渠道健康检查会写入租户配置状态，仅超级管理员可执行。 */
+const ocrHealthCheckAllowed = computed(() => authStore.userRole === RoleEnum.SUPER_ADMIN)
 
 // 仅 PADDLE 渠道相关：展示后端已注册的 PaddleOCR 服务实例列表。
 // 用 watch(currentConfig.providerType) 自动开关加载，无需手动触发。
-const paddleInstances = ref<PaddleOcrInstanceVO[]>([])
+const paddleInstances = ref<PaddleOcrInstanceResponse[]>([])
 const paddleInstancesLoading = ref(false)
 const paperSlices = ref<MarkOcrPaperSliceVO[]>([])
 const paperSlicesLoading = ref(false)
-const paperCandidates = ref<ExamScoreSummaryItemVO[]>([])
+const paperCandidates = ref<ExamScoreSummaryItemResponse[]>([])
 const paperCandidatesLoading = ref(false)
 const paperCandidateKeyword = ref('')
-const examDetail = ref<ExamDetailVO | null>(null)
+const examDetail = ref<ExamDetailResponse | null>(null)
 const examDetailLoading = ref(false)
 
 const examMaterialLayoutMode = computed(() => examDetail.value?.materialLayoutMode)
@@ -108,9 +129,36 @@ const healthColor = computed(() =>
 )
 const healthLabel = computed(() =>
   healthStatus.value
-    ? strictEnumLabel(MARK_OCR_HEALTH_STATUS_LABEL, healthStatus.value, 'OCR 健康状态')
+    ? strictEnumLabel(MarkOcrHealthStatusDescription, healthStatus.value, 'OCR 健康状态')
     : '',
 )
+
+const ocrSignalMetrics = computed((): SignalMetric[] => {
+  if (!currentConfig.value) {
+    return []
+  }
+  return [
+    {
+      key: 'provider',
+      label: 'OCR 渠道',
+      value: currentProviderLabel.value,
+      tone: 'blue',
+    },
+    {
+      key: 'health',
+      label: '健康状态',
+      value: healthLabel.value || '未检查',
+      tone: healthColor.value ?? 'gray',
+    },
+    {
+      key: 'enabled',
+      label: '启用状态',
+      value: currentConfig.value.enabled ? '已启用' : '未启用',
+      tone: currentConfig.value.enabled ? 'green' : 'gray',
+    },
+  ]
+})
+
 const currentProviderLabel = computed(() =>
   currentConfig.value?.providerType ? providerLabel(currentConfig.value.providerType) : '未配置',
 )
@@ -146,7 +194,7 @@ const paperSliceOptions = computed(() =>
     value: slice.responseSliceId,
     label: [
       `题 ${slice.questionNo}`,
-      strictEnumLabel(QUESTION_TYPE_LABEL, slice.questionType, '题型'),
+      strictEnumLabel(QuestionTypeDescription, slice.questionType, '题型'),
       `${slice.fullScore} 分`,
     ].join(' · '),
   })),
@@ -167,17 +215,17 @@ const paperCandidateOptions = computed(() =>
     })),
 )
 
-function finalScoreStatusLabel(status: ExamScoreSummaryItemVO['finalScoreStatus']): string {
-  return strictEnumLabel(FINAL_SCORE_STATUS_LABEL, status, '最终成绩状态')
+function finalScoreStatusLabel(status: ExamScoreSummaryItemResponse['finalScoreStatus']): string {
+  return strictEnumLabel(FinalScoreStatusDescription, status, '最终成绩状态')
 }
 
-function bindingStatusLabel(status: ExamScoreSummaryItemVO['bindingStatus']): string | undefined {
+function bindingStatusLabel(status: ExamScoreSummaryItemResponse['bindingStatus']): string | undefined {
   if (!status) return undefined
-  return strictEnumLabel(BINDING_STATUS_LABEL, status, '试卷绑定状态')
+  return strictEnumLabel(BindingStatusDescription, status, '试卷绑定状态')
 }
 
 function providerLabel(providerType: MarkOcrProviderTypeCode): string {
-  return strictEnumLabel(MARK_OCR_PROVIDER_LABEL, providerType, 'OCR 渠道')
+  return strictEnumLabel(MarkOcrProviderTypeDescription, providerType, 'OCR 渠道')
 }
 
 /** 将 OCR 调试诊断转为可展示的识别处理说明，避免暴露引擎和接口调试细节。 */
@@ -195,24 +243,18 @@ function ocrHealthMessageText(messageText?: string): string {
   )
 }
 
-function applyConfig(config: MarkOcrConfigVO): void {
-  const dataError = 'OCR 配置数据异常，请刷新后重试'
-  if (config.id) {
-    assertUserFacing(Boolean(config.providerType), dataError)
-  }
-  if (config.enabled) {
-    assertUserFacing(Boolean(config.providerType), dataError)
-  }
+function applyConfig(config: MarkOcrConfigResponse): void {
   currentConfig.value = config
 }
 
 async function loadConfig(): Promise<void> {
   loading.value = true
+  loadFailed.value = false
   try {
-    const tenantId = userStore.userInfo.tenantId
-    applyConfig(await getCurrentMarkOcrConfig(tenantId))
+    applyConfig(await getCurrentMarkOcrConfig())
   } catch (error) {
     currentConfig.value = null
+    loadFailed.value = true
     showUserError(error, 'OCR 识别配置加载失败')
   } finally {
     loading.value = false
@@ -221,16 +263,16 @@ async function loadConfig(): Promise<void> {
 
 /** 触发当前租户 OCR 渠道健康探活，并刷新只读配置展示。 */
 async function handleHealthCheck(): Promise<void> {
-  const tenantId = userStore.userInfo.tenantId
+  const tenantId = currentConfig.value?.tenantId
   if (!tenantId) {
-    message.error('当前会话缺少租户信息，不能执行 OCR 健康检查')
+    message.error('当前 OCR 配置缺少租户信息，不能执行健康检查')
     return
   }
   healthChecking.value = true
   try {
     const result = await checkMarkOcrHealth(tenantId)
     message.success(
-      `OCR 健康检查完成：${strictEnumLabel(MARK_OCR_HEALTH_STATUS_LABEL, result.healthStatus, 'OCR 健康状态')}`,
+      `OCR 健康检查完成：${strictEnumLabel(MarkOcrHealthStatusDescription, result.healthStatus, 'OCR 健康状态')}`,
     )
     await loadConfig()
   } catch (error) {
@@ -252,7 +294,7 @@ async function handleRecognize(): Promise<void> {
       examId: debugForm.value.examId!,
       paperInstanceId: debugForm.value.paperInstanceId!,
       responseSliceId: currentPaperSlice.value.responseSliceId,
-      questionTemplateId: currentPaperSlice.value.questionTemplateId,
+      layoutQuestionId: currentPaperSlice.value.layoutQuestionId,
     })
   } finally {
     recognizing.value = false
@@ -296,7 +338,7 @@ async function loadPaperCandidates(
       pageSize: PAPER_CANDIDATE_FILTER_PAGE_SIZE,
       keyword: normalizedKeyword || undefined,
     })
-    paperCandidates.value = readPageList(result, '卷面候选加载失败，请稍后重试').filter(
+    paperCandidates.value = result.list.filter(
       (item) => item.paperInstanceId && item.bindingStatus === 'BOUND',
     )
   } catch (error) {
@@ -343,7 +385,7 @@ const paddleHealthyCount = computed(
   () => paddleInstances.value.filter((it) => it.healthStatus === 'HEALTHY').length,
 )
 
-const paddleInstanceColumns: ColumnType<PaddleOcrInstanceVO>[] = [
+const paddleInstanceColumns: ColumnType<PaddleOcrInstanceResponse>[] = [
   { title: '实例', key: 'instanceName', width: 180, ellipsis: true },
   { title: '健康', key: 'healthStatus', width: 100 },
   { title: '设备类型', dataIndex: 'deviceType', key: 'deviceType', width: 100 },
@@ -400,7 +442,7 @@ function paddleInstanceHealthTone(status: MarkOcrHealthStatusCode) {
 }
 
 function paddleInstanceHealthLabel(status: MarkOcrHealthStatusCode): string {
-  return strictEnumLabel(MARK_OCR_HEALTH_STATUS_LABEL, status, 'PaddleOCR 实例健康状态')
+  return strictEnumLabel(MarkOcrHealthStatusDescription, status, 'PaddleOCR 实例健康状态')
 }
 
 async function reloadOcrWorkbench(): Promise<void> {
@@ -426,28 +468,65 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="ocr-settings">
-    <UiEmpty v-if="!selectedExamId" description="未进入考试工作台" />
-
-    <a-spin v-else-if="loading && !currentConfig" />
-
-    <template v-else-if="currentConfig">
-      <div class="ocr-settings__toolbar">
-        <div class="ocr-settings__status">
+  <StageWorkbenchShell class="ocr-settings">
+    <template v-if="selectedExamId && currentConfig" #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        :title="contextBarTitle"
+        :subtitle="contextBarSubtitle"
+      >
+        <template #status>
+          <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
+            {{ examStatusLabel }}
+          </UiTag>
           <UiTag :tone="currentConfig.enabled ? 'green' : 'gray'" size="sm">
             {{ currentConfig.enabled ? '已启用' : '未启用' }}
           </UiTag>
-          <UiTag :tone="healthColor">
+          <UiTag :tone="healthColor" size="sm">
             {{ healthLabel }}
           </UiTag>
-        </div>
-      </div>
+        </template>
+        <template #actions>
+          <UiButton
+            v-if="ocrHealthCheckAllowed"
+            variant="outline"
+            size="sm"
+            :loading="healthChecking"
+            @click="handleHealthCheck"
+          >
+            <template #icon><ReloadOutlined /></template>
+            健康检查
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
+
+    <template v-if="selectedExamId && currentConfig" #signal>
+      <SignalBand variant="tiles" compact :metrics="ocrSignalMetrics" />
+    </template>
+
+    <UiEmpty v-if="!selectedExamId" description="未进入考试工作台" />
+
+    <UiEmpty
+      v-else-if="loadFailed"
+      description="OCR 识别配置加载失败"
+      action-label="重试"
+      @action="loadConfig"
+    />
+
+    <UiSkeletonState v-else-if="loading && !currentConfig" variant="card" compact />
+
+    <template v-else-if="currentConfig">
+      <ExamWorkspaceJourneySubNav />
 
       <div class="ocr-grid">
-        <UiCard class="info-card">
-          <template #title>
-            <ApiOutlined />
-            <span>当前 OCR 渠道</span>
+        <WorkbenchSurfaceCard class="ocr-settings__panel">
+          <template #head>
+            <h3 class="ocr-settings__panel-title">
+              <ApiOutlined />
+              <span>当前 OCR 渠道</span>
+            </h3>
           </template>
           <UiEmpty v-if="!currentConfig.providerType" description="租户尚未配置 OCR 渠道" />
           <template v-else>
@@ -466,12 +545,14 @@ onBeforeUnmount(() => {
               </a-descriptions-item>
             </a-descriptions>
           </template>
-        </UiCard>
+        </WorkbenchSurfaceCard>
 
-        <UiCard class="info-card">
-          <template #title>
-            <ExperimentOutlined />
-            <span>运行状态</span>
+        <WorkbenchSurfaceCard class="ocr-settings__panel">
+          <template #head>
+            <h3 class="ocr-settings__panel-title">
+              <ExperimentOutlined />
+              <span>运行状态</span>
+            </h3>
           </template>
           <a-descriptions :column="1" size="small" bordered>
             <a-descriptions-item label="已保存渠道">{{ currentProviderLabel }}</a-descriptions-item>
@@ -479,35 +560,32 @@ onBeforeUnmount(() => {
               {{ currentConfig?.enabled ? '启用' : '关闭' }}
             </a-descriptions-item>
             <a-descriptions-item label="健康状态">
-              <div class="ocr-health-row">
-                <UiTag :tone="healthColor">{{ healthLabel }}</UiTag>
-                <UiButton
-                  variant="outline"
-                  size="sm"
-                  :loading="healthChecking"
-                  @click="handleHealthCheck"
-                >
-                  健康检查
-                </UiButton>
-              </div>
+              <UiTag :tone="healthColor">{{ healthLabel }}</UiTag>
             </a-descriptions-item>
             <a-descriptions-item label="最近检查">
               {{ currentConfig?.lastHealthCheckTime || '未检查' }}
             </a-descriptions-item>
           </a-descriptions>
-        </UiCard>
+        </WorkbenchSurfaceCard>
       </div>
 
-      <!-- PaddleOCR 实例列表：仅当当前渠道为 PADDLE 时展示，按健康状态排序 -->
-      <UiCard v-if="isPaddleProvider" class="info-card paddle-card">
-        <template #title>
-          <ClusterOutlined />
-          <span>PaddleOCR 服务实例</span>
-          <UiBadge :tone="paddleHealthyCount > 0 ? 'green' : 'gray'">
-            健康 {{ paddleHealthyCount }} / {{ paddleInstances.length }}
-          </UiBadge>
+      <WorkbenchSurfaceCard
+        v-if="isPaddleProvider"
+        flush
+        class="ocr-settings__panel ocr-settings__panel--paddle"
+      >
+        <template #head>
+          <div class="ocr-settings__panel-head">
+            <h3 class="ocr-settings__panel-title">
+              <ClusterOutlined />
+              <span>PaddleOCR 服务实例</span>
+            </h3>
+            <span class="ocr-settings__panel-desc">
+              健康 {{ paddleHealthyCount }} / {{ paddleInstances.length }}
+            </span>
+          </div>
         </template>
-        <template #extra>
+        <template #toolbar>
           <UiButton
             variant="outline"
             size="sm"
@@ -518,7 +596,6 @@ onBeforeUnmount(() => {
             刷新
           </UiButton>
         </template>
-
         <UiDataTable
           pagination-mode="none"
           class="student-detail-table__data-table"
@@ -558,12 +635,14 @@ onBeforeUnmount(() => {
             </template>
           </template>
         </UiDataTable>
-      </UiCard>
+      </WorkbenchSurfaceCard>
 
-      <UiCard class="info-card">
-        <template #title>
-          <ExperimentOutlined />
-          <span>同步调试</span>
+      <WorkbenchSurfaceCard v-if="ocrDebugAllowed" class="ocr-settings__panel">
+        <template #head>
+          <h3 class="ocr-settings__panel-title">
+            <ExperimentOutlined />
+            <span>同步调试</span>
+          </h3>
         </template>
         <a-form
           ref="debugFormRef"
@@ -628,37 +707,48 @@ onBeforeUnmount(() => {
           </div>
         </template>
         <UiEmpty v-else-if="!recognizing" description="暂无数据" />
-      </UiCard>
+      </WorkbenchSurfaceCard>
     </template>
-  </div>
+  </StageWorkbenchShell>
 </template>
 
 <style scoped lang="scss">
 .ocr-settings {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--dp-space-4, 16px);
 
-  &__toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+  &__panel {
+    margin-bottom: 0;
   }
 
-  &__status {
+  &__panel--paddle {
+    margin-top: var(--dp-space-3, 12px);
+  }
+
+  &__panel-head {
     display: flex;
-    align-items: center;
     flex-wrap: wrap;
+    align-items: baseline;
     gap: 8px;
+    width: 100%;
   }
-}
 
-.ocr-health-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
+  &__panel-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 16px;
+    font-weight: var(--dp-font-weight-title, 600);
+    line-height: 1.5;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__panel-desc {
+    font-size: 13px;
+    color: var(--dp-text-secondary, #475569);
+  }
 }
 
 .ocr-grid {
@@ -671,10 +761,6 @@ onBeforeUnmount(() => {
   .ocr-grid {
     grid-template-columns: 1fr;
   }
-}
-
-.info-card {
-  margin-bottom: 0;
 }
 
 .ocr-channel {
@@ -746,10 +832,6 @@ onBeforeUnmount(() => {
   overflow-y: auto;
   font-size: 13px;
   line-height: 1.6;
-}
-
-.paddle-card {
-  margin-top: 12px;
 }
 
 .paddle-instance__name {

@@ -12,19 +12,6 @@ import type { BlobDownloadResponse, ExtendedAxiosRequestConfig, RequestOptions }
 import { config } from './config'
 import service from './service'
 
-/** AJ-Captcha 原始响应（非 ResultInfo 包装） */
-function isAjCaptchaPayload(value: unknown): value is { repCode: string } {
-  return typeof value === 'object' && value !== null && 'repCode' in value
-}
-
-/** 从 request 返回值解包业务数据：ResultInfo.data 或 AJ-Captcha 整包 */
-function unwrapBusinessPayload<T>(payload: unknown): T {
-  if (isAjCaptchaPayload(payload)) {
-    return payload as T
-  }
-  return (payload as ResultInfo<T>).data
-}
-
 /**
  * 内部基础请求函数
  *
@@ -38,7 +25,7 @@ function unwrapBusinessPayload<T>(payload: unknown): T {
  */
 async function request<TResponse, TData = unknown, TParams = unknown>(
     options: RequestOptions<TData, TParams>,
-): Promise<ResultInfo<TResponse>> {
+): Promise<TResponse> {
     const {url, method = 'GET', data, params, headers, responseType, config: requestConfig} = options
 
     const axiosConfig: ExtendedAxiosRequestConfig = {
@@ -54,8 +41,8 @@ async function request<TResponse, TData = unknown, TParams = unknown>(
         ...requestConfig,
     }
 
-    const response = await service(axiosConfig)
-    return response.data
+    const response = await service<ResultInfo<TResponse>>(axiosConfig)
+    return response.data.data
 }
 
 /**
@@ -69,15 +56,14 @@ const http = {
      */
     async get<TResponse>(
         url: string,
-        config?: Partial<ExtendedAxiosRequestConfig>,
+        config?: ExtendedAxiosRequestConfig,
     ): Promise<TResponse> {
-        const result = await request<TResponse, never, Record<string, unknown>>({
+        return await request<TResponse, never, Record<string, unknown>>({
             url,
             method: 'GET',
             params: config?.params,
             config,
         })
-        return unwrapBusinessPayload<TResponse>(result)
     },
 
     /**
@@ -87,15 +73,14 @@ const http = {
     async post<TResponse, TData = unknown>(
         url: string,
         data?: TData,
-        config?: Partial<ExtendedAxiosRequestConfig>,
+        config?: ExtendedAxiosRequestConfig,
     ): Promise<TResponse> {
-        const result = await request<TResponse, TData>({
+        return await request<TResponse, TData>({
             url,
             method: 'POST',
             data,
             config,
         })
-        return unwrapBusinessPayload<TResponse>(result)
     },
 
     /**
@@ -105,7 +90,7 @@ const http = {
   async download(
       url: string,
       params?: Record<string, string | string[] | undefined>,
-      config?: Partial<ExtendedAxiosRequestConfig>,
+      config?: ExtendedAxiosRequestConfig,
   ): Promise<BlobDownloadResponse> {
     return await service({
         url,
@@ -118,7 +103,7 @@ const http = {
     async downloadByPost(
         url: string,
         data?: object,
-        config?: Partial<ExtendedAxiosRequestConfig>,
+        config?: ExtendedAxiosRequestConfig,
     ): Promise<BlobDownloadResponse> {
       return await service({
         url,
@@ -134,9 +119,9 @@ const http = {
     async upload<TResponse>(
         url: string,
         formData: FormData,
-        config?: Partial<ExtendedAxiosRequestConfig>,
+        config?: ExtendedAxiosRequestConfig,
     ): Promise<TResponse> {
-        const result = await request<TResponse, FormData>({
+        return await request<TResponse, FormData>({
             url,
             method: 'POST',
             data: formData,
@@ -145,7 +130,6 @@ const http = {
             },
             config,
         })
-        return unwrapBusinessPayload<TResponse>(result)
     },
 }
 

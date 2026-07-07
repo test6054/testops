@@ -9,11 +9,9 @@ import { message } from 'ant-design-vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
+import { PortfolioCompletenessLevelDescription } from '@/apis/portfolio/enums'
 import { portfolioTodoApi } from '@/apis/portfolio/todo'
-import {
-  PORTFOLIO_COMPLETENESS_LEVEL_LABEL,
-  PORTFOLIO_COMPLETENESS_LEVEL_TONE,
-} from '@/apis/portfolio/types'
+import { PORTFOLIO_COMPLETENESS_LEVEL_TONE } from '@/apis/portfolio/types'
 import PortfolioProgressCockpitBand from '@/components/portfolio/PortfolioProgressCockpitBand.vue'
 import PortfolioProgressCompareDrawer from '@/components/portfolio/PortfolioProgressCompareDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -29,7 +27,6 @@ import {
 } from '@/composables/usePortfolioPageScope'
 import { ResultCode } from '@/types/enums/result-code'
 import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const route = useRoute()
@@ -136,7 +133,7 @@ async function loadTodos() {
       pageNum: 1,
       pageSize: 20,
     })
-    todos.value = readPageList(page, '加载待办失败')
+    todos.value = page.list
   } catch (error) {
     showUserError(error, '加载待办失败')
   } finally {
@@ -371,7 +368,7 @@ onUnmounted(() => {
               >
                 {{
                   strictEnumLabel(
-                    PORTFOLIO_COMPLETENESS_LEVEL_LABEL,
+                    PortfolioCompletenessLevelDescription,
                     workbenchSummary.completenessLevel,
                     '档案完整度等级',
                   )

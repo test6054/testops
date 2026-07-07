@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { PortfolioTeacherIdentityTypeCode } from '@/apis/portfolio/enums'
 import type {
   PortfolioDeptStructureStatVO,
   PortfolioTeacherOneTableSummaryVO,
 } from '@/apis/portfolio/teacher'
-import type { PortfolioTeacherIdentityType } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { PortfolioTeacherIdentityTypeDescription } from '@/apis/portfolio/enums'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
-import { PORTFOLIO_TEACHER_IDENTITY_TYPE_LABEL } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -60,8 +60,8 @@ async function loadSummary() {
   }
 }
 
-function identityLabel(tag: PortfolioTeacherIdentityType) {
-  return strictEnumLabel(PORTFOLIO_TEACHER_IDENTITY_TYPE_LABEL, tag, '身份标签')
+function identityLabel(tag: PortfolioTeacherIdentityTypeCode) {
+  return strictEnumLabel(PortfolioTeacherIdentityTypeDescription, tag, '身份标签')
 }
 
 function openCorrection() {

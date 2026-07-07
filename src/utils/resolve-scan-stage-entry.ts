@@ -1,6 +1,6 @@
 import type { RouteLocationRaw } from 'vue-router'
 
-/** 扫描阶段入口分流上下文（对齐 MarkingProgressVO.scanAttentionCount） */
+/** 扫描阶段入口分流上下文（对齐 MarkingProgressResponse.scanAttentionCount） */
 export interface ScanStageEntryContext {
   scanAttentionCount?: number
 }

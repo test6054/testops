@@ -1,18 +1,15 @@
-import type { ConfirmationStatus } from './types'
+import type { ConfirmationStatusCode } from './types'
+import type { ObeJourneyStepKeyCode } from '@/types/enums/obe-journey-step-key-enum'
+import type { ObeJourneyStepStatusCode } from '@/types/enums/obe-journey-step-status-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
 const BASE = '/api/quality/workbench'
 
-export type ObeJourneyStepStatus = 'pending' | 'active' | 'completed'
-
-export type ObeJourneyStepKey
-  = 'config' | 'plan' | 'data' | 'calc' | 'audit' | 'improve' | 'archive'
-
 export interface ObeJourneyStepVO {
-  stepKey: ObeJourneyStepKey
+  stepKey: ObeJourneyStepKeyCode
   title: string
-  status: ObeJourneyStepStatus
+  status: ObeJourneyStepStatusCode
   routeName?: string
   primaryCount?: number
 }
@@ -20,7 +17,7 @@ export interface ObeJourneyStepVO {
 export interface ObeJourneySummaryVO {
   programId?: string
   trainingPlanId?: string
-  confirmationStatus?: ConfirmationStatus
+  confirmationStatus?: ConfirmationStatusCode
   achievementTotal?: number
   achievementCalculated?: number
   achievementSubmitted?: number
@@ -38,8 +35,32 @@ export interface ObeJourneySummaryRequest {
   semester?: SemesterCode
 }
 
+export interface ImprovementWorkbenchSignalSummaryVO {
+  improvementTotal: number
+  improvementInProgressCount: number
+  improvementSubmittedCount: number
+  overdueCount: number
+  dueSoonCount: number
+  openIssueCount: number
+  activeRectificationCount: number
+  supervisionWarningCount: number
+}
+
+export interface ImprovementWorkbenchSignalSummaryRequest {
+  programId?: string
+  trainingPlanId?: string
+}
+
 export const workbenchApi = {
   obeJourneySummary(request: ObeJourneySummaryRequest): Promise<ObeJourneySummaryVO> {
     return http.post<ObeJourneySummaryVO>(`${BASE}/obe-journey-summary`, request)
+  },
+  improvementSignalSummary(
+    request: ImprovementWorkbenchSignalSummaryRequest,
+  ): Promise<ImprovementWorkbenchSignalSummaryVO> {
+    return http.post<ImprovementWorkbenchSignalSummaryVO>(
+      `${BASE}/improvement-workbench/signal-summary`,
+      request,
+    )
   },
 }

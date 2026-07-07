@@ -40,7 +40,7 @@
 
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue'
-import * as Regexp from '@/utils/regexp'
+import { OnlyEn } from '@/utils/regexp'
 import { isAvatarUrl, normalizeAvatarUrl } from './avatarContract'
 
 defineOptions({ name: 'GiCellAvatar' })
@@ -182,7 +182,7 @@ const avatarName = computed(() => {
   if (!name) return '?'
 
   // 英文姓名处理：如果包含空格，取各部分首字母
-  if (name[0].match(Regexp.OnlyEn)) {
+  if (name[0].match(OnlyEn)) {
     const nameArr = name.split(' ').filter((part) => part.length > 0)
     if (nameArr.length > 1) {
       // 多个单词：取前两个单词的首字母

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioEvaluationMode } from '@/apis/portfolio/enums'
+import type { PortfolioEvaluationModeCode } from '@/apis/portfolio/enums'
 import type {
   PortfolioEvaluationEntrySummaryItemVO,
   PortfolioEvaluationEntrySummaryVO,
@@ -9,11 +9,12 @@ import type {
   PortfolioEvaluationSubjectTeacherOptionVO,
   PortfolioEvaluationTaskVO,
 } from '@/apis/portfolio/teacher-platform'
+import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES,
-  PORTFOLIO_EVALUATION_MODE_LABEL,
+  PortfolioEvaluationModeDescription,
 } from '@/apis/portfolio/enums'
 import {
   portfolioEvaluationEntryApi,
@@ -27,7 +28,6 @@ import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -42,10 +42,15 @@ const summary = ref<PortfolioEvaluationEntrySummaryVO | null>(null)
 const subjectTeacherOptions = ref<PortfolioEvaluationSubjectTeacherOptionVO[]>([])
 const indicatorOptions = ref<PortfolioEvaluationIndicatorOptionVO[]>([])
 
-const fillForm = reactive({
+const fillForm = reactive<{
+  subjectTeacherUserId: string
+  indicatorCode: string
+  score?: number
+  commentText: string
+}>({
   subjectTeacherUserId: '',
   indicatorCode: '',
-  score: '',
+  score: undefined,
   commentText: '',
 })
 
@@ -72,7 +77,7 @@ const fillWindowBlockedReason = computed(() => {
 })
 const canSaveEntry = computed(() => !fillWindowBlockedReason.value)
 
-const taskSummaryItems = computed(() => {
+const taskSummaryItems = computed<UiStatPanelItem[]>(() => {
   if (!summary.value) {
     return []
   }
@@ -81,7 +86,7 @@ const taskSummaryItems = computed(() => {
       key: 'entries',
       label: '填报条目',
       value: String(summary.value.entryCount),
-      tone: 'blue' as const,
+      tone: 'blue',
     },
     { key: 'avg', label: '平均分', value: summary.value.averageScore, unit: '分' },
     { key: 'mode', label: '评价模式', value: evaluationModeLabel(summary.value.evaluationMode) },
@@ -118,8 +123,8 @@ const summaryColumns = computed<ColumnsType<PortfolioEvaluationEntrySummaryItemV
   ]
 })
 
-function evaluationModeLabel(mode: PortfolioEvaluationMode): string {
-  return strictEnumLabel(PORTFOLIO_EVALUATION_MODE_LABEL, mode, '多元评价模式')
+function evaluationModeLabel(mode: PortfolioEvaluationModeCode): string {
+  return strictEnumLabel(PortfolioEvaluationModeDescription, mode, '多元评价模式')
 }
 
 function summaryRowKey(record: unknown): string {
@@ -154,7 +159,7 @@ async function loadTasks() {
       pageNum: 1,
       pageSize: 100,
     })
-    tasks.value = readPageList(page, '加载评价任务失败')
+    tasks.value = page.list
     const pool = selectableTasks.value
     if (!selectedTaskId.value && pool.length) {
       selectedTaskId.value = pool[0].id
@@ -199,7 +204,7 @@ async function loadEntries() {
       pageNum: 1,
       pageSize: 100,
     })
-    entries.value = readPageList(page, '加载填报条目失败')
+    entries.value = page.list
   } catch (error) {
     showUserError(error)
   } finally {
@@ -231,7 +236,7 @@ async function saveEntry() {
     message.warning(fillWindowBlockedReason.value || '当前不可填报')
     return
   }
-  if (!fillForm.subjectTeacherUserId.trim() || !fillForm.score.trim()) {
+  if (!fillForm.subjectTeacherUserId.trim() || fillForm.score === undefined) {
     message.warning('请填写被评教师与得分')
     return
   }
@@ -245,11 +250,11 @@ async function saveEntry() {
       evaluationTaskId: selectedTaskId.value,
       subjectTeacherUserId: fillForm.subjectTeacherUserId.trim(),
       indicatorCode: isByIndicator.value ? fillForm.indicatorCode.trim() : undefined,
-      score: fillForm.score.trim(),
+      score: fillForm.score,
       commentText: fillForm.commentText.trim() || undefined,
     })
     message.success('评价已保存')
-    fillForm.score = ''
+    fillForm.score = undefined
     fillForm.commentText = ''
     await Promise.all([loadEntries(), loadSummary()])
   } catch (error) {
@@ -372,7 +377,7 @@ onMounted(async () => {
                 {{ indicator.indicatorName }}
               </a-select-option>
             </a-select>
-            <a-input v-model:value="fillForm.score" placeholder="得分" style="width: 100px" />
+            <a-input-number v-model:value="fillForm.score" placeholder="得分" style="width: 100px" />
             <a-input v-model:value="fillForm.commentText" placeholder="评语" style="flex: 1" />
             <UiButton
               variant="primary"

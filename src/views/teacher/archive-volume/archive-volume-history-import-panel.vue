@@ -1,18 +1,30 @@
 <template>
-  <div class="archive-volume-history-import">
-    <p class="archive-volume-history-import__hint">
-      上传 Excel 批量补录历史纸质档案卷。请先下载模板，按格式填写后导入。
-    </p>
-    <UiFormActions align="between">
+  <WorkbenchSurfaceCard flush class="archive-volume-history-import">
+    <template #head>
+      <div class="archive-volume-history-import__section-head">
+        <h3 class="archive-volume-history-import__section-title">历史纸质档案补录</h3>
+        <p class="archive-volume-history-import__section-subtitle">
+          历史纸质卷数字化 · 批量补录归档卷与材料
+        </p>
+      </div>
+    </template>
+    <template #toolbar>
       <UiButton size="sm" variant="outline" @click="importModalOpen = true">
         Excel 历史补录
       </UiButton>
-    </UiFormActions>
+    </template>
+    <UiAlertStrip
+      tone="info"
+      title="补录流程"
+      description="1. 下载 MARK_PAPER_ARCHIVE_HISTORY 模板；2. 按模板填写历史纸质档案卷宗与材料信息；3. 上传 Excel，平台按批次返回成功/失败条数；4. 失败行见批次诊断明细，修正后重新导入。"
+      dense
+      class="archive-volume-history-import__flow"
+    />
     <UiAlertStrip
       v-if="lastResult"
-      :tone="resultTone(lastResult.batchStatus)"
+      :tone="archiveImportResultTone(lastResult.batchStatus)"
       :title="`批次 ${lastResult.batchNo}`"
-      :description="resultDescription(lastResult)"
+      :description="buildArchiveImportResultDescription(lastResult, lastFailureSummaries)"
       dense
       class="archive-volume-history-import__result"
     />
@@ -22,82 +34,82 @@
       entity-label="历史纸质档案"
       @success="handleImportSuccess"
     />
-  </div>
+  </WorkbenchSurfaceCard>
 </template>
 
 <script setup lang="ts">
-import type {
-  ArchiveExternalImportResultVO,
-  ArchiveImportBatchStatusCode,
-} from '@/apis/mark/archive-volume'
+import type { ArchiveExternalImportResultVO } from '@/apis/mark/archive-volume'
 import type { ExcelImportResult } from '@/apis/platform/types'
-import type { UiAlertStripTone } from '@/components/ui-guide/ui/types'
 import { ref } from 'vue'
-import { ARCHIVE_IMPORT_BATCH_STATUS_LABEL } from '@/apis/mark/archive-volume'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import UiFormActions from '@/components/ui-guide/ui/UiFormActions.vue'
-import { strictEnumLabel } from '@/utils/strict-enum'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import {
+  archiveImportResultTone,
+  buildArchiveImportFailureSummaries,
+  buildArchiveImportResultDescription,
+  buildMissingBatchImportFailure,
+  mapExcelImportResultToArchiveBatch,
+} from '@/utils/archive-import-result-ui'
 
 defineOptions({ name: 'ArchiveVolumeHistoryImportPanel' })
+
+const emit = defineEmits<{
+  imported: []
+}>()
 
 const importModalOpen = ref(false)
 const lastResult = ref<ArchiveExternalImportResultVO | null>(null)
 const lastFailureSummaries = ref<string[]>([])
 
-function resultTone(status: ArchiveImportBatchStatusCode): UiAlertStripTone {
-  if (status === 'SUCCESS') {
-    return 'success'
-  }
-  if (status === 'PARTIAL_FAILED') {
-    return 'warning'
-  }
-  return 'error'
-}
-
-function resultDescription(result: ArchiveExternalImportResultVO): string {
-  const statusLabel = strictEnumLabel(
-    ARCHIVE_IMPORT_BATCH_STATUS_LABEL,
-    result.batchStatus,
-    '归档导入批次状态',
-  )
-  let text = `${statusLabel}：成功 ${result.successCount} 条，失败 ${result.failureCount} 条，共 ${result.totalCount} 条`
-  if (lastFailureSummaries.value.length > 0) {
-    text += `；${lastFailureSummaries.value.join('；')}`
-  }
-  return text
-}
-
 function handleImportSuccess(result: ExcelImportResult): void {
-  if (!result.batchId) {
+  importModalOpen.value = false
+  const mapped = mapExcelImportResultToArchiveBatch(result)
+  if (!mapped) {
+    const failure = buildMissingBatchImportFailure()
+    lastResult.value = failure.result
+    lastFailureSummaries.value = failure.failureSummaries
     return
   }
-  lastResult.value = {
-    batchId: result.batchId,
-    batchNo: result.batchNo ?? result.batchId,
-    batchStatus: (result.batchStatus ?? 'SUCCESS') as ArchiveImportBatchStatusCode,
-    totalCount: result.totalRows ?? 0,
-    successCount: result.successRows ?? 0,
-    failureCount: result.errorRows ?? 0,
+  lastResult.value = mapped
+  lastFailureSummaries.value = buildArchiveImportFailureSummaries(result)
+  if (mapped.successCount > 0) {
+    emit('imported')
   }
-  lastFailureSummaries.value = (result.diagnostics ?? [])
-    .filter((row) => !row.valid)
-    .map((row) => `第 ${row.rowIndex} 行：${row.invalidReason ?? '导入失败'}`)
 }
 </script>
 
 <style scoped lang="scss">
 .archive-volume-history-import {
-  &__hint {
-    margin: 0 0 12px;
-    font-size: 13px;
-    color: var(--dp-text-secondary);
+  &__section-head {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  &__section-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.5;
+    color: var(--dp-text-primary);
+  }
+
+  &__section-subtitle {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--dp-text-muted);
+  }
+
+  &__flow {
+    margin-top: var(--dp-space-2, 8px);
   }
 
   &__result {
-    margin-top: 12px;
+    margin-top: var(--dp-space-3, 12px);
   }
 }
 </style>

@@ -34,7 +34,7 @@ export function useAccreditationCockpit() {
     }
     cockpitLoading.value = true
     try {
-      cockpit.value = await accreditationApi.cockpit(planId)
+      cockpit.value = await accreditationApi.cockpit({ trainingPlanId: planId })
       cachedKey = key
       return cockpit.value
     } catch (error) {

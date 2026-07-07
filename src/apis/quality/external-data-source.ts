@@ -4,7 +4,7 @@
  * 后端路径：/api/quality/external-data-sources
  * 连接串 / 账号 / 密码按后端明文请求字段提交，由服务端加密落库。
  */
-import type { ExternalSourceType } from './types'
+import type { ExternalSourceTypeCode } from './types'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
@@ -15,22 +15,30 @@ export interface ExternalDataSourceVO {
   tenantId?: string
   sourceCode: string
   sourceName: string
-  sourceType: ExternalSourceType
+  sourceType: ExternalSourceTypeCode
   jdbcUrlConfigured?: boolean
   usernameConfigured?: boolean
   passwordConfigured?: boolean
-  driverClass: string
-  fieldScopes: ExternalSourceFieldScope[]
-  maxRowCount: number
-  queryTimeoutSeconds: number
-  enabled: boolean
+  driverClass?: string
+  fieldScopes?: ExternalSourceFieldScopeVO[]
+  maxRowCount?: number
+  queryTimeoutSeconds?: number
+  enabled?: boolean
   createTime?: string
   updateTime?: string
 }
 
-export interface ExternalSourceFieldScope {
+export interface ExternalSourceFieldScopeVO {
   id?: string
   sourceId?: string
+  sourceObjectName: string
+  fieldName: string
+  fieldLabel: string
+  fieldType: string
+  fieldOrder: number
+}
+
+export interface ExternalSourceFieldScopeRequest {
   sourceObjectName: string
   fieldName: string
   fieldLabel: string
@@ -42,7 +50,7 @@ export interface ExternalDataSourceSaveRequest {
   id?: string
   sourceCode: string
   sourceName: string
-  sourceType: ExternalSourceType
+  sourceType: ExternalSourceTypeCode
   /** JDBC 连接串明文 */
   jdbcUrl: string
   /** 用户名明文 */
@@ -50,16 +58,21 @@ export interface ExternalDataSourceSaveRequest {
   /** 密码明文 */
   password: string
   driverClass: string
-  fieldScopes: ExternalSourceFieldScope[]
+  fieldScopes: ExternalSourceFieldScopeRequest[]
   maxRowCount: number
   queryTimeoutSeconds: number
   enabled: boolean
 }
 
 export interface ExternalDataSourceQueryRequest extends QueryDto {
-  sourceType?: ExternalSourceType
+  sourceType?: ExternalSourceTypeCode
   enabled?: boolean
   keyword?: string
+}
+
+export interface ExternalDataSourceToggleRequest {
+  id: string
+  enabled: boolean
 }
 
 export const externalDataSourceApi = {
@@ -69,6 +82,6 @@ export const externalDataSourceApi = {
   create: (data: ExternalDataSourceSaveRequest) => http.post<string>(`${BASE}/create`, data),
   update: (data: ExternalDataSourceSaveRequest) => http.post<void>(`${BASE}/update`, data),
   delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),
-  toggleEnabled: (id: string, enabled: boolean) =>
-    http.post<void>(`${BASE}/toggle-enabled`, { id, enabled }),
+  toggleEnabled: (data: ExternalDataSourceToggleRequest) =>
+    http.post<void>(`${BASE}/toggle-enabled`, data),
 }

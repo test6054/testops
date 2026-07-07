@@ -1,7 +1,7 @@
 /**
  * 阅卷主链阶段状态 Store：仅缓存后端 workbench-stage-snapshot，不做客户端推导。
  */
-import type { WorkbenchStageSnapshotVO } from '@/apis/mark/exam-progress'
+import type { ExamWorkbenchStageSnapshotResponse } from '@/apis/mark/exam-progress'
 import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
@@ -39,6 +39,18 @@ export const MARK_STAGE_ORDER: ReadonlyArray<MarkStageKey> = [
   'ARCHIVE',
 ]
 
+function isMarkStageKey(key: string): key is MarkStageKey {
+  return key === 'EXAM_PREP'
+    || key === 'PAPER_TEMPLATE'
+    || key === 'CANDIDATE_ROSTER'
+    || key === 'SCAN'
+    || key === 'MARKING_ORG'
+    || key === 'TRIAL_MARKING'
+    || key === 'FORMAL_MARKING'
+    || key === 'SCORE_PUBLISH'
+    || key === 'ARCHIVE'
+}
+
 function mapSnapshotStatus(status: string): WorkbenchStageStatus {
   if (status === 'pending'
     || status === 'active'
@@ -53,7 +65,7 @@ function mapSnapshotStatus(status: string): WorkbenchStageStatus {
 
 export const useMarkStageStore = defineStore('markStage', () => {
   const observedExamId = ref('')
-  const snapshot = ref<WorkbenchStageSnapshotVO | null>(null)
+  const snapshot = ref<ExamWorkbenchStageSnapshotResponse | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
   const refreshedAt = ref<number | null>(null)
@@ -88,14 +100,23 @@ export const useMarkStageStore = defineStore('markStage', () => {
     if (!key) {
       return null
     }
-    if (!MARK_STAGE_ORDER.includes(key as MarkStageKey)) {
+    if (!isMarkStageKey(key)) {
       throw new Error(`未知建议阶段：${key}`)
     }
-    return key as MarkStageKey
+    return key
   })
 
   const prepAdvisoryReasons = computed(() => snapshot.value?.prepAdvisoryReasons ?? [])
   const prepBlockingReasons = computed(() => snapshot.value?.prepBlockingReasons ?? [])
+  const experienceAssistBlockingReasons = computed(
+    () => snapshot.value?.experienceAssistBlockingReasons ?? [],
+  )
+  const manualFinalScoreConfirmRequired = computed(
+    () => snapshot.value?.manualFinalScoreConfirmRequired,
+  )
+  const delayedFinalScoreConfirmMinutes = computed(
+    () => snapshot.value?.delayedFinalScoreConfirmMinutes,
+  )
   const isExamConfidential = computed(() => isExamConfidentialFlag(snapshot.value?.confidential))
   const examConfidentialLabel = computed(() => formatExamConfidentialLabel(snapshot.value))
 
@@ -111,7 +132,7 @@ export const useMarkStageStore = defineStore('markStage', () => {
     observedExamId.value = examId
   }
 
-  function applySnapshot(next: WorkbenchStageSnapshotVO): void {
+  function applySnapshot(next: ExamWorkbenchStageSnapshotResponse): void {
     observedExamId.value = next.examId
     snapshot.value = next
     error.value = null
@@ -145,6 +166,9 @@ export const useMarkStageStore = defineStore('markStage', () => {
     suggestedStageKey,
     prepAdvisoryReasons,
     prepBlockingReasons,
+    experienceAssistBlockingReasons,
+    manualFinalScoreConfirmRequired,
+    delayedFinalScoreConfirmMinutes,
     isExamConfidential,
     examConfidentialLabel,
     selectedExamLabel,

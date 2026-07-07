@@ -6,15 +6,15 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { AchievementResultVO } from '@/apis/quality/achievement-result'
-import type { AchievementAuditStatus, AchievementTargetType } from '@/apis/quality/types'
+import type { AchievementAuditStatusCode, AchievementTargetTypeCode } from '@/apis/quality/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import { Tag } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { achievementResultApi } from '@/apis/quality/achievement-result'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
-  ACHIEVEMENT_AUDIT_STATUS_LABEL,
-  ACHIEVEMENT_TARGET_TYPE_LABEL,
+  AchievementAuditStatusDescription,
+  AchievementTargetTypeDescription,
 } from '@/apis/quality/types'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
@@ -37,8 +37,8 @@ const AuditStatusTag = Tag
 
 interface Props {
   value?: string | null
-  targetType?: AchievementTargetType
-  auditStatus?: AchievementAuditStatus
+  targetType?: AchievementTargetTypeCode
+  auditStatus?: AchievementAuditStatusCode
   trainingPlanId?: string | null
   qualityCourseId?: string | null
   classId?: string | null
@@ -154,15 +154,15 @@ function qualityCourseText(opt: AchievementResultVO) {
   return [code, name].filter(Boolean).join(' ')
 }
 
-function achievementTargetTypeLabel(value: AchievementTargetType) {
-  return strictEnumLabel(ACHIEVEMENT_TARGET_TYPE_LABEL, value, '达成度目标类型')
+function achievementTargetTypeLabel(value: AchievementTargetTypeCode) {
+  return strictEnumLabel(AchievementTargetTypeDescription, value, '达成度目标类型')
 }
 
-function auditStatusLabel(value: AchievementAuditStatus) {
-  return strictEnumLabel(ACHIEVEMENT_AUDIT_STATUS_LABEL, value, '达成度审核状态')
+function auditStatusLabel(value: AchievementAuditStatusCode) {
+  return strictEnumLabel(AchievementAuditStatusDescription, value, '达成度审核状态')
 }
 
-function auditStatusColor(value: AchievementAuditStatus) {
+function auditStatusColor(value: AchievementAuditStatusCode) {
   return strictEnumTone(ACHIEVEMENT_AUDIT_STATUS_COLOR, value, '达成度审核状态')
 }
 

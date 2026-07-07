@@ -6,7 +6,6 @@
  * @author 庆之
  * @version 1.0
  */
-import { throwUserFacing } from '@/utils/contract-guard'
 
 /**
  * 学期代码枚举
@@ -18,6 +17,12 @@ export enum SemesterCode {
   /** 春季学期 */
   SPRING = '2',
 }
+
+/** 全部合法学期码（显式枚举成员列表，禁止 Object.keys 反射推导）。 */
+export const ALL_SEMESTER_CODES: readonly SemesterCode[] = [
+  SemesterCode.AUTUMN,
+  SemesterCode.SPRING,
+]
 
 /**
  * 学期描述文本
@@ -39,53 +44,39 @@ export const SemesterOptions: Array<{ value: SemesterCode, label: string }> = [
  * 根据学期代码获取描述文本
  *
  * @param code 学期代码 "1" 或 "2"
- * @returns 学期描述文本；空值返回空串，未知码显式失败
+ * @returns 学期描述文本；空值返回空串
  */
-export function getSemesterDescription(code: string | null | undefined): string {
-  if (code === null || code === undefined || code === '') {
+export function getSemesterDescription(code: SemesterCode | null | undefined): string {
+  if (code === null || code === undefined) {
     return ''
   }
-  const label = SemesterDescription[code as SemesterCode]
-  if (!label) {
-    throwUserFacing('数据异常，请刷新后重试')
-  }
-  return label
-}
-
-/**
- * 验证学期代码是否有效
- *
- * @param code 学期代码
- * @returns 是否为有效的学期代码
- */
-export function isValidSemesterCode(code: string | null | undefined): code is SemesterCode {
-  return code === SemesterCode.AUTUMN
-    || code === SemesterCode.SPRING
+  return SemesterDescription[code]
 }
 
 /**
  * 学期代码格式化：
  * - 已知码（"1" / "2"）返回对应描述
  * - 可选字段为空时返回空串
- * - 未知码显式失败
- *
- * @param value 学期代码或任意展示值
+ * @param value 学期代码
  */
-export function formatSemester(value: string | null | undefined): string {
+export function formatSemester(value: SemesterCode | null | undefined): string {
   return getSemesterDescription(value)
 }
 
-/**
- * 格式化学年学期筛选项展示文本，值格式 YYYY-YYYY_学期。
- */
-export function formatAcademicTermCode(value: string | null | undefined): string {
-  if (value === null || value === undefined || value === '') return ''
-  const separatorIndex = value.lastIndexOf('_')
-  if (separatorIndex <= 0 || separatorIndex >= value.length - 1) {
-    return value
+/** 格式化学年、学期展示文本（flat 字段，非 API 复合对象）。 */
+export function formatAcademicYearSemester(
+  academicYear?: string | null,
+  semester?: SemesterCode | null,
+): string {
+  const year = academicYear?.trim()
+  if (!year && !semester) {
+    return ''
   }
-  const academicYear = value.substring(0, separatorIndex)
-  const semester = value.substring(separatorIndex + 1)
-  const semesterLabel = getSemesterDescription(semester)
-  return `${academicYear} · ${semesterLabel}`
+  if (!year) {
+    return getSemesterDescription(semester)
+  }
+  if (!semester) {
+    return year
+  }
+  return `${year} · ${getSemesterDescription(semester)}`
 }

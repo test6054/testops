@@ -1,4 +1,4 @@
-import type { ManualReviewDecision } from './types'
+import type { ManualReviewDecisionCode } from './types'
 /**
  * 达成度人工复核 API。
  * 后端对象：AchievementManualReviewController /api/quality/achievement-manual-reviews。
@@ -9,13 +9,13 @@ const REVIEW = '/api/quality/achievement-manual-reviews'
 
 export interface AchievementManualReviewVO {
   id: string
-  achievementResultId: string
-  reviewerUserId: string
-  reviewerNickName: string
+  achievementResultId?: string
+  reviewerUserId?: string
+  reviewerNickName?: string
   reviewerRole?: string
-  decision: ManualReviewDecision
+  decision?: ManualReviewDecisionCode
   reviewRemark?: string
-  reviewedTime: string
+  reviewedTime?: string
   createTime?: string
   updateTime?: string
 }
@@ -23,7 +23,7 @@ export interface AchievementManualReviewVO {
 export interface AchievementManualReviewCreateRequest {
   achievementResultId: string
   reviewerRole?: string
-  decision: ManualReviewDecision
+  decision: ManualReviewDecisionCode
   reviewRemark?: string
 }
 

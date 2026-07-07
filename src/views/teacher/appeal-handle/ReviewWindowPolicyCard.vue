@@ -1,16 +1,20 @@
 <template>
-  <section class="appeal-section">
-    <div class="appeal-section__header">
-      <UiTag
-        v-if="policy?.policyStatus"
-        :tone="reviewWindowStatusColor(policy.policyStatus)"
-        size="sm"
-      >
-        {{ reviewWindowStatusLabel(policy.policyStatus) }}
-      </UiTag>
-    </div>
+  <WorkbenchSurfaceCard flush class="appeal-section">
+    <template #head>
+      <div class="appeal-section__header">
+        <span class="appeal-section__flow-hint">{{ REVIEW_WINDOW_FLOW_HINT }}</span>
+        <UiTag
+          v-if="policy?.policyStatus"
+          :tone="reviewWindowStatusColor(policy.policyStatus)"
+          size="sm"
+        >
+          {{ reviewWindowStatusLabel(policy.policyStatus) }}
+        </UiTag>
+      </div>
+    </template>
 
-    <a-spin :spinning="loading">
+    <UiSkeletonState v-if="loading" variant="card" compact />
+    <template v-else>
       <a-form layout="vertical" :model="form">
         <a-row :gutter="16">
           <a-col :span="12">
@@ -67,6 +71,9 @@
 
       <a-space>
         <a-button type="primary" :loading="saving" @click="handleSave">保存策略</a-button>
+        <a-button type="primary" ghost :loading="savingAndActivating" @click="handleSaveAndActivate">
+          保存并启用
+        </a-button>
         <a-button
           :loading="activating"
           :disabled="!policy || policy.policyStatus === 'ACTIVE'"
@@ -83,16 +90,15 @@
           关闭窗口
         </a-button>
       </a-space>
-    </a-spin>
-  </section>
+    </template>
+  </WorkbenchSurfaceCard>
 </template>
 
 <script lang="ts" setup>
 import type {
-  ExamReviewWindowPolicyVO,
+  ExamReviewWindowPolicy,
   GradeReviewReasonTypeCode,
   ReviewWindowPolicyStatusCode,
-  VisibleMaterialScopeCode,
 } from '@/apis/mark/grade-review'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
@@ -101,12 +107,17 @@ import {
   activateReviewWindow,
   closeReviewWindow,
   getReviewWindowPolicy,
-  GRADE_REVIEW_REASON_TYPE_LABEL,
-  REVIEW_WINDOW_STATUS_LABEL,
+  GRADE_REVIEW_REASON_TYPE_OPTIONS,
+  REVIEW_WINDOW_FLOW_HINT,
   REVIEW_WINDOW_STATUS_TONE,
+  ReviewWindowPolicyStatusDescription,
   saveReviewWindowPolicy,
+  VisibleMaterialScopeCode,
+  VisibleMaterialScopeDescription,
 } from '@/apis/mark/grade-review'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -120,12 +131,13 @@ function reviewWindowStatusColor(status: ReviewWindowPolicyStatusCode): BadgeTon
 }
 
 function reviewWindowStatusLabel(status: ReviewWindowPolicyStatusCode): string {
-  return strictEnumLabel(REVIEW_WINDOW_STATUS_LABEL, status, '复核窗口状态')
+  return strictEnumLabel(ReviewWindowPolicyStatusDescription, status, '复核窗口状态')
 }
 
-const policy = ref<ExamReviewWindowPolicyVO | null>(null)
+const policy = ref<ExamReviewWindowPolicy | null>(null)
 const loading = ref(false)
 const saving = ref(false)
+const savingAndActivating = ref(false)
 const activating = ref(false)
 const closing = ref(false)
 
@@ -139,22 +151,38 @@ const form = reactive<{
   openTime: '',
   closeTime: '',
   maxRequestCount: 1,
-  visibleMaterialScope: 'SCORE_ONLY',
+  visibleMaterialScope: VisibleMaterialScopeCode.SCORE_ONLY,
   allowedReasonTypes: [],
 })
 
 const scopeOptions: { label: string, value: VisibleMaterialScopeCode }[] = [
-  { label: '仅分数', value: 'SCORE_ONLY' },
-  { label: '分数+批注', value: 'SCORE_AND_ANNOTATION' },
-  { label: '完整材料', value: 'FULL' },
+  {
+    label: strictEnumLabel(
+      VisibleMaterialScopeDescription,
+      VisibleMaterialScopeCode.SCORE_ONLY,
+      '复核可见材料范围',
+    ),
+    value: VisibleMaterialScopeCode.SCORE_ONLY,
+  },
+  {
+    label: strictEnumLabel(
+      VisibleMaterialScopeDescription,
+      VisibleMaterialScopeCode.SCORE_AND_ANNOTATION,
+      '复核可见材料范围',
+    ),
+    value: VisibleMaterialScopeCode.SCORE_AND_ANNOTATION,
+  },
+  {
+    label: strictEnumLabel(
+      VisibleMaterialScopeDescription,
+      VisibleMaterialScopeCode.FULL,
+      '复核可见材料范围',
+    ),
+    value: VisibleMaterialScopeCode.FULL,
+  },
 ]
 
-const reasonTypeOptions: { label: string, value: GradeReviewReasonTypeCode }[] = [
-  { label: GRADE_REVIEW_REASON_TYPE_LABEL.SCORE_ERROR, value: 'SCORE_ERROR' },
-  { label: GRADE_REVIEW_REASON_TYPE_LABEL.RUBRIC, value: 'RUBRIC' },
-  { label: GRADE_REVIEW_REASON_TYPE_LABEL.OBJECTIVE, value: 'OBJECTIVE' },
-  { label: GRADE_REVIEW_REASON_TYPE_LABEL.OTHER, value: 'OTHER' },
-]
+const reasonTypeOptions = GRADE_REVIEW_REASON_TYPE_OPTIONS
 
 async function reload(): Promise<void> {
   if (!props.examId) return
@@ -178,6 +206,14 @@ async function reload(): Promise<void> {
 }
 
 async function handleSave(): Promise<void> {
+  await persistPolicy(false)
+}
+
+async function handleSaveAndActivate(): Promise<void> {
+  await persistPolicy(true)
+}
+
+async function persistPolicy(activateImmediately: boolean): Promise<void> {
   if (!form.openTime || !form.closeTime) {
     message.warning('请选择开放和关闭时间')
     return
@@ -186,7 +222,11 @@ async function handleSave(): Promise<void> {
     message.warning('关闭时间需晚于开放时间')
     return
   }
-  saving.value = true
+  if (activateImmediately) {
+    savingAndActivating.value = true
+  } else {
+    saving.value = true
+  }
   try {
     policy.value = await saveReviewWindowPolicy({
       examId: props.examId,
@@ -195,13 +235,15 @@ async function handleSave(): Promise<void> {
       maxRequestCount: form.maxRequestCount,
       visibleMaterialScope: form.visibleMaterialScope,
       allowedReasonTypes: form.allowedReasonTypes.length > 0 ? form.allowedReasonTypes : undefined,
+      activateImmediately,
     })
-    message.success('复核窗口策略已保存')
+    message.success(activateImmediately ? '复核窗口已保存并启用' : '复核窗口策略已保存')
     emit('changed')
   } catch (e) {
-    showUserError(e, '成绩复核窗口保存失败')
+    showUserError(e, activateImmediately ? '保存并启用失败' : '成绩复核窗口保存失败')
   } finally {
     saving.value = false
+    savingAndActivating.value = false
   }
 }
 

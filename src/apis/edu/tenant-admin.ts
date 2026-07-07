@@ -21,14 +21,14 @@ export interface TenantAdminQueryDto extends QueryDto {
   tenantAdmin?: string
 }
 
-/** 租户管理员信息DTO */
+/** 租户管理员信息DTO - 对齐后端 UserListItemDto */
 export interface TenantAdminDto {
   /** 用户ID */
   id: string
   /** 租户ID */
   tenantId: string
-  /** 用户名 */
-  username: string
+  /** 登录用户名 */
+  userName: string
   /** 昵称 */
   nickName?: string
   /** 姓名 */
@@ -64,7 +64,10 @@ export interface SetTenantAdminRequestDto {
  * 创建租户管理员 - 对应后端 POST /api/admin/tenant/tenant-admin/create
  */
 export function createTenantAdmin(data: { tenantId: string, userId: string }): Promise<void> {
-  return http.post<void>('/api/admin/tenant/tenant-admin/create', data)
+  return http.post<void>('/api/admin/tenant/tenant-admin/create', {
+    tenantId: data.tenantId,
+    userList: [data.userId],
+  })
 }
 
 

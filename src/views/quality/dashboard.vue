@@ -3,19 +3,14 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { AchievementResultVO } from '@/apis/quality/achievement-result'
 import type { AiTaskVO } from '@/apis/quality/ai-task'
 import type { ImprovementTaskVO } from '@/apis/quality/improvement-task'
+import type {
+  AchievementTargetTypeCode,
+  AiTaskTypeCode} from '@/apis/quality/types';
 /**
  * 质量评价 - 年度工作台
  *
  * 阶段：专业配置 -> 培养方案 -> 数据接入 -> 计算 -> 审核 -> 改进 -> 归档
  */
-import type {
-  AchievementAuditStatus,
-  AchievementStatus,
-  AchievementTargetType,
-  AiTaskStatus,
-  AiTaskType,
-  ImprovementTaskStatus,
-} from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
 import type { QualityChartGroup } from '@/utils/quality-workbench-charts'
@@ -27,16 +22,20 @@ import { aiTaskApi } from '@/apis/quality/ai-task'
 import { improvementTaskApi } from '@/apis/quality/improvement-task'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
-  ACHIEVEMENT_AUDIT_STATUS_LABEL,
   ACHIEVEMENT_STATUS_COLOR,
-  ACHIEVEMENT_STATUS_LABEL,
-  ACHIEVEMENT_TARGET_TYPE_LABEL,
+  AchievementAuditStatusCode,
+  AchievementAuditStatusDescription,
+  AchievementStatusCode,
+  AchievementStatusDescription,
+  AchievementTargetTypeDescription,
   AI_TASK_STATUS_COLOR,
-  AI_TASK_STATUS_LABEL,
-  AI_TASK_TYPE_LABEL,
-  CONFIRMATION_STATUS_LABEL,
+  AiTaskStatusCode,
+  AiTaskStatusDescription,
+  AiTaskTypeDescription,
+  ConfirmationStatusDescription,
   IMPROVEMENT_TASK_STATUS_COLOR,
-  IMPROVEMENT_TASK_STATUS_LABEL,
+  ImprovementTaskStatusCode,
+  ImprovementTaskStatusDescription,
 } from '@/apis/quality/types'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import QualityWorkbenchCharts from '@/components/quality/QualityWorkbenchCharts.vue'
@@ -53,7 +52,6 @@ import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { useQualityTaskStore } from '@/stores/modules/qualityTask'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { buildStatusChartGroup } from '@/utils/quality-workbench-charts'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -129,7 +127,7 @@ const planConfirmationStatus = computed(() => {
 
 const planConfirmationLabel = computed(() => {
   const status = planConfirmationStatus.value
-  return status ? strictEnumLabel(CONFIRMATION_STATUS_LABEL, status, '培养方案确认状态') : '未提交'
+  return status ? strictEnumLabel(ConfirmationStatusDescription, status, '培养方案确认状态') : '未提交'
 })
 
 // 年度评价阶段推断：依据培养方案确认状态与各能力块计数
@@ -246,44 +244,44 @@ const qualityChartGroups = computed<QualityChartGroup[]>(() => {
   return groups
 })
 
-function targetTypeLabel(value: AchievementTargetType): string {
-  return strictEnumLabel(ACHIEVEMENT_TARGET_TYPE_LABEL, value, '达成目标类型')
+function targetTypeLabel(value: AchievementTargetTypeCode): string {
+  return strictEnumLabel(AchievementTargetTypeDescription, value, '达成目标类型')
 }
 
-function achievementStatusLabel(value: AchievementStatus): string {
-  return strictEnumLabel(ACHIEVEMENT_STATUS_LABEL, value, '达成状态')
+function achievementStatusLabel(value: AchievementStatusCode): string {
+  return strictEnumLabel(AchievementStatusDescription, value, '达成状态')
 }
 
-function achievementStatusColor(value: AchievementStatus): BadgeTone {
+function achievementStatusColor(value: AchievementStatusCode): BadgeTone {
   return strictEnumTone(ACHIEVEMENT_STATUS_COLOR, value, '达成状态')
 }
 
-function auditStatusLabel(value: AchievementAuditStatus): string {
-  return strictEnumLabel(ACHIEVEMENT_AUDIT_STATUS_LABEL, value, '达成审核状态')
+function auditStatusLabel(value: AchievementAuditStatusCode): string {
+  return strictEnumLabel(AchievementAuditStatusDescription, value, '达成审核状态')
 }
 
-function auditStatusColor(value: AchievementAuditStatus): BadgeTone {
+function auditStatusColor(value: AchievementAuditStatusCode): BadgeTone {
   return strictEnumTone(ACHIEVEMENT_AUDIT_STATUS_COLOR, value, '达成审核状态')
 }
 
-function improvementStatusLabelOf(value: ImprovementTaskStatus): string {
-  return strictEnumLabel(IMPROVEMENT_TASK_STATUS_LABEL, value, '持续改进任务状态')
+function improvementStatusLabelOf(value: ImprovementTaskStatusCode): string {
+  return strictEnumLabel(ImprovementTaskStatusDescription, value, '持续改进任务状态')
 }
 
-function improvementStatusColorOf(value: ImprovementTaskStatus): BadgeTone {
+function improvementStatusColorOf(value: ImprovementTaskStatusCode): BadgeTone {
   return strictEnumTone(IMPROVEMENT_TASK_STATUS_COLOR, value, '持续改进任务状态')
 }
 
-function aiStatusLabel(value: AiTaskStatus): string {
-  return strictEnumLabel(AI_TASK_STATUS_LABEL, value, 'AI 任务状态')
+function aiStatusLabel(value: AiTaskStatusCode): string {
+  return strictEnumLabel(AiTaskStatusDescription, value, 'AI 任务状态')
 }
 
-function aiStatusColor(value: AiTaskStatus): BadgeTone {
+function aiStatusColor(value: AiTaskStatusCode): BadgeTone {
   return strictEnumTone(AI_TASK_STATUS_COLOR, value, 'AI 任务状态')
 }
 
-function aiTypeLabel(value: AiTaskType): string {
-  return strictEnumLabel(AI_TASK_TYPE_LABEL, value, 'AI 任务类型')
+function aiTypeLabel(value: AiTaskTypeCode): string {
+  return strictEnumLabel(AiTaskTypeDescription, value, 'AI 任务类型')
 }
 
 async function loadAchievement() {
@@ -295,46 +293,46 @@ async function loadAchievement() {
       pageSize: 5,
       trainingPlanId: trainingPlanId.value,
     })
-    recentAchievements.value = readPageList(page, '达成度结果加载失败，请稍后重试')
-    achievementCounts.total = readPageTotal(page)
+    recentAchievements.value = page.list
+    achievementCounts.total = Number(page.total)
 
     const [calculated, submitted, confirmed, archived, notAchieved] = await Promise.all([
       achievementResultApi.page({
         pageNum: 1,
         pageSize: 1,
         trainingPlanId: trainingPlanId.value,
-        auditStatus: 'CALCULATED',
+        auditStatus: AchievementAuditStatusCode.CALCULATED,
       }),
       achievementResultApi.page({
         pageNum: 1,
         pageSize: 1,
         trainingPlanId: trainingPlanId.value,
-        auditStatus: 'SUBMITTED',
+        auditStatus: AchievementAuditStatusCode.SUBMITTED,
       }),
       achievementResultApi.page({
         pageNum: 1,
         pageSize: 1,
         trainingPlanId: trainingPlanId.value,
-        auditStatus: 'CONFIRMED',
+        auditStatus: AchievementAuditStatusCode.CONFIRMED,
       }),
       achievementResultApi.page({
         pageNum: 1,
         pageSize: 1,
         trainingPlanId: trainingPlanId.value,
-        auditStatus: 'ARCHIVED',
+        auditStatus: AchievementAuditStatusCode.ARCHIVED,
       }),
       achievementResultApi.page({
         pageNum: 1,
         pageSize: 1,
         trainingPlanId: trainingPlanId.value,
-        achievementStatus: 'NOT_ACHIEVED',
+        achievementStatus: AchievementStatusCode.NOT_ACHIEVED,
       }),
     ])
-    achievementCounts.calculated = readPageTotal(calculated, '达成度状态统计加载失败，请稍后重试')
-    achievementCounts.submitted = readPageTotal(submitted, '达成度状态统计加载失败，请稍后重试')
-    achievementCounts.confirmed = readPageTotal(confirmed, '达成度状态统计加载失败，请稍后重试')
-    achievementCounts.archived = readPageTotal(archived, '达成度状态统计加载失败，请稍后重试')
-    achievementCounts.notAchieved = readPageTotal(notAchieved, '达成度状态统计加载失败，请稍后重试')
+    achievementCounts.calculated = Number(calculated.total)
+    achievementCounts.submitted = Number(submitted.total)
+    achievementCounts.confirmed = Number(confirmed.total)
+    achievementCounts.archived = Number(archived.total)
+    achievementCounts.notAchieved = Number(notAchieved.total)
   } catch (error) {
     showUserError(error, '达成度数据加载失败')
   } finally {
@@ -351,39 +349,39 @@ async function loadImprovement() {
       pageSize: 5,
       trainingPlanId: trainingPlanId.value,
     })
-    recentImprovements.value = readPageList(page, '改进任务加载失败，请稍后重试')
-    improvementCounts.total = readPageTotal(page)
+    recentImprovements.value = page.list
+    improvementCounts.total = Number(page.total)
 
     const [open, inProgress, submitted, closed] = await Promise.all([
       improvementTaskApi.page({
         pageNum: 1,
         pageSize: 1,
         trainingPlanId: trainingPlanId.value,
-        status: 'OPEN',
+        status: ImprovementTaskStatusCode.OPEN,
       }),
       improvementTaskApi.page({
         pageNum: 1,
         pageSize: 1,
         trainingPlanId: trainingPlanId.value,
-        status: 'IN_PROGRESS',
+        status: ImprovementTaskStatusCode.IN_PROGRESS,
       }),
       improvementTaskApi.page({
         pageNum: 1,
         pageSize: 1,
         trainingPlanId: trainingPlanId.value,
-        status: 'SUBMITTED',
+        status: ImprovementTaskStatusCode.SUBMITTED,
       }),
       improvementTaskApi.page({
         pageNum: 1,
         pageSize: 1,
         trainingPlanId: trainingPlanId.value,
-        status: 'CLOSED',
+        status: ImprovementTaskStatusCode.CLOSED,
       }),
     ])
-    improvementCounts.open = readPageTotal(open, '改进任务状态统计加载失败，请稍后重试')
-    improvementCounts.inProgress = readPageTotal(inProgress, '改进任务状态统计加载失败，请稍后重试')
-    improvementCounts.submitted = readPageTotal(submitted, '改进任务状态统计加载失败，请稍后重试')
-    improvementCounts.closed = readPageTotal(closed, '改进任务状态统计加载失败，请稍后重试')
+    improvementCounts.open = Number(open.total)
+    improvementCounts.inProgress = Number(inProgress.total)
+    improvementCounts.submitted = Number(submitted.total)
+    improvementCounts.closed = Number(closed.total)
   } catch (error) {
     showUserError(error, '改进任务数据加载失败')
   } finally {
@@ -401,19 +399,19 @@ async function loadAiTasks() {
       pageSize: 5,
       trainingPlanId: plan,
     })
-    recentAiTasks.value = readPageList(page, 'AI 任务加载失败，请稍后重试')
-    aiCounts.total = readPageTotal(page)
+    recentAiTasks.value = page.list
+    aiCounts.total = Number(page.total)
 
     const [pending, processing, succeeded, failed] = await Promise.all([
-      aiTaskApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: plan, status: 'PENDING' }),
-      aiTaskApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: plan, status: 'PROCESSING' }),
-      aiTaskApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: plan, status: 'SUCCEEDED' }),
-      aiTaskApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: plan, status: 'FAILED' }),
+      aiTaskApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: plan, status: AiTaskStatusCode.PENDING }),
+      aiTaskApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: plan, status: AiTaskStatusCode.PROCESSING }),
+      aiTaskApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: plan, status: AiTaskStatusCode.SUCCEEDED }),
+      aiTaskApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: plan, status: AiTaskStatusCode.FAILED }),
     ])
-    aiCounts.pending = readPageTotal(pending, 'AI 任务状态统计加载失败，请稍后重试')
-    aiCounts.processing = readPageTotal(processing, 'AI 任务状态统计加载失败，请稍后重试')
-    aiCounts.succeeded = readPageTotal(succeeded, 'AI 任务状态统计加载失败，请稍后重试')
-    aiCounts.failed = readPageTotal(failed, 'AI 任务状态统计加载失败，请稍后重试')
+    aiCounts.pending = Number(pending.total)
+    aiCounts.processing = Number(processing.total)
+    aiCounts.succeeded = Number(succeeded.total)
+    aiCounts.failed = Number(failed.total)
   } catch (error) {
     showUserError(error, 'AI 任务数据加载失败')
   } finally {

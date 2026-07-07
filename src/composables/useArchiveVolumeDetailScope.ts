@@ -1,48 +1,25 @@
 import type { Ref } from 'vue'
-import type { ArchiveVolumeDetailVO, ArchiveVolumeRoleCode } from '@/apis/mark/archive-volume'
-import { computed, reactive, ref, watch } from 'vue'
-import { ARCHIVE_VOLUME_ROLE_LABEL } from '@/apis/mark/archive-volume'
+import type { ArchiveVolumeDetailResponse } from '@/apis/mark/archive-volume'
+import { computed, reactive } from 'vue'
+import { ArchiveVolumeRoleDescription } from '@/apis/mark/archive-volume'
 import { canSubmitArchiveVolumeDetail } from '@/composables/useArchiveVolumeSubmitGate'
+import { ArchiveVolumeRoleCode } from '@/types/enums/archive-volume-role-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-export type ArchiveVolumeDetailViewMode = 'wizard' | 'expert'
-
 /**
- * 归档卷详情页视图裁剪：向导/专家模式与 volumeRole 操作门禁。
+ * 归档卷详情页 volumeRole 操作门禁（已移除 wizard/expert 双轨）。
  */
 export function useArchiveVolumeDetailScope(
-  detail: Ref<ArchiveVolumeDetailVO | null>,
+  detail: Ref<ArchiveVolumeDetailResponse | null>,
   currentUserId: Ref<string>,
 ) {
-  const viewMode = ref<ArchiveVolumeDetailViewMode>('wizard')
+  const volumeRole = computed(() => detail.value?.volumeRole ?? ArchiveVolumeRoleCode.READONLY)
+  const isOwner = computed(() => volumeRole.value === ArchiveVolumeRoleCode.OWNER)
+  const isContributor = computed(() => volumeRole.value === ArchiveVolumeRoleCode.CONTRIBUTOR)
 
-  const volumeRole = computed(() => detail.value?.volumeRole ?? 'READONLY')
-
-  const wizardEligible = computed(() => {
-    const d = detail.value
-    if (!d) return false
-    const status = d.volume.volumeStatus
-    if (status !== 'COLLECTING' && status !== 'SUBMITTED') return false
-    const role = d.volumeRole
-    return role === 'OWNER' || role === 'CONTRIBUTOR'
+  const volumeRoleLabel = computed(() => {
+    return strictEnumLabel(ArchiveVolumeRoleDescription, volumeRole.value, 'volumeRole')
   })
-
-  const effectiveViewMode = computed<ArchiveVolumeDetailViewMode>(() => {
-    if (!wizardEligible.value) return 'expert'
-    return viewMode.value
-  })
-
-  const isOwner = computed(() => volumeRole.value === 'OWNER')
-  const isContributor = computed(() => volumeRole.value === 'CONTRIBUTOR')
-  const isReadonlyWizard = computed(() => isContributor.value)
-
-  const volumeRoleLabel = computed(() =>
-    strictEnumLabel(
-      ARCHIVE_VOLUME_ROLE_LABEL,
-      volumeRole.value as ArchiveVolumeRoleCode,
-      'volumeRole',
-    ),
-  )
 
   const canSubmitVolume = computed(() => {
     if (!isOwner.value) return false
@@ -80,31 +57,11 @@ export function useArchiveVolumeDetailScope(
 
   const canRunIntegrityCheck = computed(() => isOwner.value)
 
-  function switchToExpertMode() {
-    viewMode.value = 'expert'
-  }
-
-  function switchToWizardMode() {
-    if (wizardEligible.value) {
-      viewMode.value = 'wizard'
-    }
-  }
-
-  watch(wizardEligible, (eligible) => {
-    if (!eligible) {
-      viewMode.value = 'expert'
-    }
-  })
-
   return reactive({
-    viewMode,
-    effectiveViewMode,
-    wizardEligible,
     volumeRole,
     volumeRoleLabel,
     isOwner,
     isContributor,
-    isReadonlyWizard,
     canSubmitVolume,
     showSelfCheckButton,
     showSubmitActions,
@@ -112,7 +69,5 @@ export function useArchiveVolumeDetailScope(
     canEditSelfCheck,
     canRegisterMaterial,
     canRunIntegrityCheck,
-    switchToExpertMode,
-    switchToWizardMode,
   })
 }

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioDualTeacherApplicationStatus } from '@/apis/portfolio/enums'
+import type { PortfolioDualTeacherApplicationStatusCode } from '@/apis/portfolio/enums'
 import type { PortfolioDualTeacherAnalyticsVO } from '@/apis/portfolio/teacher-platform'
 import { onMounted, ref } from 'vue'
-import { PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL } from '@/apis/portfolio/enums'
+import { PortfolioDualTeacherApplicationStatusDescription } from '@/apis/portfolio/enums'
 import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -25,9 +25,9 @@ const certLevelColumns: ColumnsType = [
   { title: '数量', dataIndex: 'count', key: 'count', width: 88 },
 ]
 
-function applicationStatusLabel(status: PortfolioDualTeacherApplicationStatus): string {
+function applicationStatusLabel(status: PortfolioDualTeacherApplicationStatusCode): string {
   return strictEnumLabel(
-    PORTFOLIO_DUAL_TEACHER_APPLICATION_STATUS_LABEL,
+    PortfolioDualTeacherApplicationStatusDescription,
     status,
     '双师认定申请状态',
   )

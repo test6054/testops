@@ -144,7 +144,7 @@
         size="small"
         flat
       />
-      <p v-if="result?.executionMode === 'ASYNC'" class="platform-excel-import-modal__async-hint">
+      <p v-if="result?.executionMode === ExcelImportExecutionMode.ASYNC" class="platform-excel-import-modal__async-hint">
         已提交解析任务，请在列表中预览确认。
       </p>
     </div>
@@ -153,11 +153,12 @@
 
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { ExcelImportSceneKeyValue } from '@/apis/platform/scene-keys'
+import type { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import type {
   ExcelImportResult,
   ExcelImportRosterPreviewRow,
   ExcelImportRowDiagnostic,
+  PlatformJsonObject,
 } from '@/apis/platform/types'
 import { FileOutlined, UploadOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
@@ -166,6 +167,7 @@ import { downloadFile } from '@/apis/edu/file-management'
 import { downloadExcelImportTemplate, submitExcelImport } from '@/apis/platform/excel-import'
 import { stagePlatformFile } from '@/apis/platform/file'
 import { resolveFileStageSceneForExcel } from '@/apis/platform/scene-keys'
+import { ExcelImportExecutionMode } from '@/apis/platform/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -176,9 +178,9 @@ type ImportPhase = 'upload' | 'preview' | 'result'
 
 const props = defineProps<{
   open: boolean
-  sceneKey: ExcelImportSceneKeyValue
+  sceneKey: ExcelImportSceneKey
   entityLabel: string
-  context?: Record<string, unknown>
+  context?: PlatformJsonObject
   requirements?: string[]
   hideTemplateDownload?: boolean
   templateHint?: string
@@ -283,7 +285,7 @@ const resultTitle = computed(() => {
   if (!result.value) {
     return ''
   }
-  if (result.value.executionMode === 'ASYNC') {
+  if (result.value.executionMode === ExcelImportExecutionMode.ASYNC) {
     return '已提交导入任务'
   }
   const success = result.value.successRows ?? 0
@@ -321,7 +323,10 @@ function openFilePicker() {
 }
 
 function handleFileInputChange(event: Event) {
-  const input = event.target as HTMLInputElement
+  if (!(event.target instanceof HTMLInputElement)) {
+    return
+  }
+  const input = event.target
   const file = input.files?.[0]
   if (file) {
     void stageSelectedFile(file)
@@ -433,10 +438,10 @@ async function handleOk() {
     }
     result.value = importResult
     phase.value = 'result'
-    if ((importResult.successRows ?? 0) > 0 || importResult.executionMode === 'ASYNC') {
+    if ((importResult.successRows ?? 0) > 0 || importResult.executionMode === ExcelImportExecutionMode.ASYNC) {
       emit('success', importResult)
     }
-    if (importResult.executionMode === 'ASYNC') {
+    if (importResult.executionMode === ExcelImportExecutionMode.ASYNC) {
       message.success('已提交解析任务')
     } else if ((importResult.errorRows ?? 0) === 0) {
       message.success(`导入成功 ${importResult.successRows ?? 0} 条`)

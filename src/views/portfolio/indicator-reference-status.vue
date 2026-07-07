@@ -3,7 +3,7 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioIndicatorReferenceStatusVO } from '@/apis/portfolio/indicator-types'
 import { onMounted, ref } from 'vue'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
-import { PF_INDICATOR_DATA_SOURCE_CHANNEL_LABEL } from '@/apis/portfolio/indicator-types'
+import { PfIndicatorDataSourceChannelDescription } from '@/apis/portfolio/indicator-types'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -16,7 +16,7 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 function dataSourceLabel(
   value: NonNullable<PortfolioIndicatorReferenceStatusVO['defaultDataSource']>,
 ): string {
-  return strictEnumLabel(PF_INDICATOR_DATA_SOURCE_CHANNEL_LABEL, value, '数据来源')
+  return strictEnumLabel(PfIndicatorDataSourceChannelDescription, value, '数据来源')
 }
 
 const loading = ref(false)

@@ -7,7 +7,6 @@ import type {
   ArchiveVO,
   ExpertPackageExportRequest,
 } from '@/apis/quality/archive'
-import type { ArchiveBusinessType } from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
@@ -17,9 +16,11 @@ import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { accreditationApi } from '@/apis/quality/accreditation'
 import { archiveApi } from '@/apis/quality/archive'
 import {
-  ARCHIVE_BUSINESS_TYPE_CODES,
-  ARCHIVE_BUSINESS_TYPE_LABEL,
-  EXPERT_PACKAGE_TYPE_LABEL,
+  ALL_ARCHIVE_BUSINESS_TYPE_CODES,
+  ArchiveBusinessTypeCode,
+  ArchiveBusinessTypeDescription,
+  ExpertPackageTypeCode,
+  ExpertPackageTypeDescription,
 } from '@/apis/quality/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
@@ -53,22 +54,21 @@ import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
-import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-function archiveBusinessTypeLabel(value: ArchiveBusinessType): string {
-  return strictEnumLabel(ARCHIVE_BUSINESS_TYPE_LABEL, value, '归档业务类型')
+function archiveBusinessTypeLabel(value: ArchiveBusinessTypeCode): string {
+  return strictEnumLabel(ArchiveBusinessTypeDescription, value, '归档业务类型')
 }
 
-function archiveBusinessTypeColor(value: ArchiveBusinessType): BadgeTone {
-  if (value === 'EXPERT_PACKAGE') return 'yellow'
-  if (value === 'REPORT') return 'blue'
-  if (value === 'GRADUATION_REQUIREMENT') return 'purple'
+function archiveBusinessTypeColor(value: ArchiveBusinessTypeCode): BadgeTone {
+  if (value === ArchiveBusinessTypeCode.EXPERT_PACKAGE) return 'yellow'
+  if (value === ArchiveBusinessTypeCode.REPORT) return 'blue'
+  if (value === ArchiveBusinessTypeCode.GRADUATION_REQUIREMENT) return 'purple'
   return 'blue'
 }
 
-function isExpertPackageRecord(value: ArchiveBusinessType): boolean {
-  return value === 'EXPERT_PACKAGE'
+function isExpertPackageRecord(value: ArchiveBusinessTypeCode): boolean {
+  return value === ArchiveBusinessTypeCode.EXPERT_PACKAGE
 }
 
 const list = ref<ArchiveVO[]>([])
@@ -77,7 +77,7 @@ const loading = ref(false)
 const qualityStore = useQualityStore()
 
 interface ArchiveFilterModel {
-  businessType?: ArchiveBusinessType
+  businessType?: ArchiveBusinessTypeCode
   archiveCategory: string
   keyword: string
 }
@@ -100,17 +100,29 @@ function applyArchiveListTab(tab: ArchiveListTab): void {
   query.pageNum = 1
   filterModel.value.businessType = undefined
   if (tab === 'expert') {
-    query.businessType = 'EXPERT_PACKAGE'
+    query.businessType = ArchiveBusinessTypeCode.EXPERT_PACKAGE
     query.excludeBusinessType = undefined
   } else {
     query.businessType = undefined
-    query.excludeBusinessType = 'EXPERT_PACKAGE'
+    query.excludeBusinessType = ArchiveBusinessTypeCode.EXPERT_PACKAGE
   }
 }
 
-const businessTypeOptions = ARCHIVE_BUSINESS_TYPE_CODES.map((value) => ({
+function handleArchiveListTabChange(key: string | number): void {
+  if (key === 'expert') {
+    applyArchiveListTab('expert')
+    void loadList()
+    return
+  }
+  if (key === 'annual') {
+    applyArchiveListTab('annual')
+    void loadList()
+  }
+}
+
+const businessTypeOptions = ALL_ARCHIVE_BUSINESS_TYPE_CODES.map((value) => ({
   value,
-  label: strictEnumLabel(ARCHIVE_BUSINESS_TYPE_LABEL, value, '归档业务类型'),
+  label: strictEnumLabel(ArchiveBusinessTypeDescription, value, '归档业务类型'),
 }))
 
 const filterModel = ref<ArchiveFilterModel>({
@@ -120,7 +132,7 @@ const filterModel = ref<ArchiveFilterModel>({
 })
 
 const annualBusinessTypeOptions = businessTypeOptions.filter(
-  (item) => item.value !== 'EXPERT_PACKAGE',
+  (item) => item.value !== ArchiveBusinessTypeCode.EXPERT_PACKAGE,
 )
 
 const filterFields = computed((): FilterField[] => {
@@ -161,7 +173,7 @@ const filterFields = computed((): FilterField[] => {
 const exportVisible = ref(false)
 const exportSubmitting = ref(false)
 const exportForm = reactive<ExpertPackageExportRequest>({
-  packageType: 'REQUIREMENT',
+  packageType: ExpertPackageTypeCode.REQUIREMENT,
   targetId: '',
   archiveCode: '',
   retentionYears: 20,
@@ -176,7 +188,7 @@ const exportEvidenceCount = ref(0)
 const exportReadinessLoading = ref(false)
 
 const exportProgramBlockers = computed(() => {
-  if (exportForm.packageType !== 'PROGRAM_ACCREDITATION') {
+  if (exportForm.packageType !== ExpertPackageTypeCode.PROGRAM_ACCREDITATION) {
     return []
   }
   return expertPackageExportBlockers(
@@ -187,7 +199,7 @@ const exportProgramBlockers = computed(() => {
 })
 
 const canSubmitProgramExport = computed(() => {
-  if (exportForm.packageType !== 'PROGRAM_ACCREDITATION') {
+  if (exportForm.packageType !== ExpertPackageTypeCode.PROGRAM_ACCREDITATION) {
     return true
   }
   return canExportExpertPackage(
@@ -206,7 +218,7 @@ async function loadProgramExportReadiness(trainingPlanId: string) {
   }
   exportReadinessLoading.value = true
   try {
-    const cockpit = await accreditationApi.cockpit(trainingPlanId.trim())
+    const cockpit = await accreditationApi.cockpit({ trainingPlanId: trainingPlanId.trim() })
     exportCockpit.value = cockpit
     exportActiveCycle.value = cockpit.activeCycle
     const programId = qualityStore.currentProgramId
@@ -220,7 +232,7 @@ async function loadProgramExportReadiness(trainingPlanId: string) {
       pageNum: 1,
       pageSize: 1,
     })
-    exportEvidenceCount.value = readPageTotal(evidencePage, '认证证据数量加载失败，请刷新后重试')
+    exportEvidenceCount.value = Number(evidencePage.total)
   } catch (error) {
     exportCockpit.value = undefined
     exportActiveCycle.value = undefined
@@ -240,7 +252,7 @@ const editorMode = ref<'create' | 'edit'>('create')
 const editorSubmitting = ref(false)
 const editor = reactive<ArchiveSaveRequest>({
   archiveCode: '',
-  businessType: 'TRAINING_PLAN',
+  businessType: ArchiveBusinessTypeCode.TRAINING_PLAN,
   businessId: '',
   fileId: '',
   archiveCategory: '',
@@ -263,10 +275,10 @@ async function loadList() {
       archiveCategory: query.archiveCategory?.trim() || undefined,
       keyword: query.keyword?.trim() || undefined,
     })
-    list.value = readPageList(page, '质量归档材料加载失败，请稍后重试')
+    list.value = page.list
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
-    total.value = readPageTotal(page, '质量归档材料加载失败，请稍后重试')
+    total.value = Number(page.total)
     if (list.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadList()
@@ -292,11 +304,11 @@ function handlePageChange(page: { current: number, pageSize: number }) {
 
 function syncFilterToQuery() {
   if (archiveListTab.value === 'expert') {
-    query.businessType = 'EXPERT_PACKAGE'
+    query.businessType = ArchiveBusinessTypeCode.EXPERT_PACKAGE
     query.excludeBusinessType = undefined
     filterModel.value.businessType = undefined
   } else {
-    query.excludeBusinessType = 'EXPERT_PACKAGE'
+    query.excludeBusinessType = ArchiveBusinessTypeCode.EXPERT_PACKAGE
     query.businessType = filterModel.value.businessType || undefined
   }
   query.archiveCategory = filterModel.value.archiveCategory
@@ -318,7 +330,7 @@ function handleResetSearch() {
 
 function openExport() {
   Object.assign(exportForm, {
-    packageType: 'REQUIREMENT',
+    packageType: ExpertPackageTypeCode.REQUIREMENT,
     targetId: '',
     archiveCode: '',
     retentionYears: 20,
@@ -338,7 +350,7 @@ async function submitExport() {
     message.error('请选择材料包对应的毕业要求或培养方案')
     return
   }
-  if (exportForm.packageType === 'PROGRAM_ACCREDITATION') {
+  if (exportForm.packageType === ExpertPackageTypeCode.PROGRAM_ACCREDITATION) {
     await loadProgramExportReadiness(exportForm.targetId.trim())
     if (!canSubmitProgramExport.value) {
       message.error(exportProgramBlockers.value.join('；') || '专业认证专家材料包导出条件未满足')
@@ -361,7 +373,7 @@ async function submitExport() {
     exportVisible.value = false
     await loadList()
     if (archiveId) {
-      await openDetail({ id: archiveId } as ArchiveVO)
+      await openDetail({ id: archiveId })
     }
   } finally {
     exportSubmitting.value = false
@@ -379,7 +391,7 @@ async function downloadArchiveFile(record: ArchiveVO) {
   })
 }
 
-async function openDetail(record: ArchiveVO) {
+async function openDetail(record: Pick<ArchiveVO, 'id'>) {
   detailVisible.value = true
   detailLoading.value = true
   try {
@@ -394,7 +406,7 @@ function openCreate() {
   Object.assign(editor, {
     id: undefined,
     archiveCode: '',
-    businessType: 'TRAINING_PLAN',
+    businessType: ArchiveBusinessTypeCode.TRAINING_PLAN,
     businessId: '',
     fileId: '',
     archiveCategory: '',
@@ -506,7 +518,7 @@ function clearEditorBusinessObject() {
 
 function syncEditorTrainingPlan(value: string | null) {
   editorTrainingPlanId.value = value || ''
-  if (editor.businessType === 'TRAINING_PLAN') editor.businessId = value || ''
+  if (editor.businessType === ArchiveBusinessTypeCode.TRAINING_PLAN) editor.businessId = value || ''
 }
 
 function syncEditorCourse(value: string | null) {
@@ -520,7 +532,7 @@ const signals = computed<SignalMetric[]>(() => {
   const confirmed = list.value.filter((r) => r.archiveOfficeConfirmed).length
   const pending = totalCount - confirmed
   const expertPackages = list.value.filter((r) => isExpertPackageRecord(r.businessType)).length
-  const reports = list.value.filter((r) => r.businessType === 'REPORT').length
+  const reports = list.value.filter((r) => r.businessType === ArchiveBusinessTypeCode.REPORT).length
   return [
     { key: 'total', label: '本页归档', value: totalCount, tone: 'blue' },
     { key: 'confirmed', label: '已确认', value: confirmed, tone: confirmed > 0 ? 'green' : 'gray' },
@@ -569,7 +581,7 @@ async function openAuditDrawer(record: ArchiveVO) {
       category: 'QUALITY',
       bizId: record.id,
     })
-    auditEvents.value = readPageList(page, '归档审计记录加载失败，请稍后重试').map((log) => {
+    auditEvents.value = page.list.map((log) => {
       return {
         id: log.id,
         operatorName: log.userDto.nickName,
@@ -597,15 +609,15 @@ watch(
 )
 
 watch(
-  () => [exportForm.packageType, exportForm.targetId] as const,
-  async ([packageType, targetId]) => {
-    if (packageType !== 'PROGRAM_ACCREDITATION' || !targetId.trim()) {
+  () => ({ packageType: exportForm.packageType, targetId: exportForm.targetId }),
+  async (exportState) => {
+    if (exportState.packageType !== ExpertPackageTypeCode.PROGRAM_ACCREDITATION || !exportState.targetId.trim()) {
       exportCockpit.value = undefined
       exportActiveCycle.value = undefined
       exportEvidenceCount.value = 0
       return
     }
-    await loadProgramExportReadiness(targetId.trim())
+    await loadProgramExportReadiness(exportState.targetId.trim())
   },
 )
 
@@ -639,12 +651,7 @@ onMounted(async () => {
     <a-tabs
       :active-key="archiveListTab"
       class="archive-page__tabs"
-      @change="
-        (key: string | number) => {
-          applyArchiveListTab(String(key) as ArchiveListTab)
-          void loadList()
-        }
-      "
+      @change="handleArchiveListTabChange"
     >
       <a-tab-pane key="expert" tab="专家材料包" />
       <a-tab-pane key="annual" tab="年度归档记录" />
@@ -745,7 +752,7 @@ onMounted(async () => {
         <a-form-item label="材料包类型" required>
           <a-radio-group v-model:value="exportForm.packageType">
             <a-radio
-              v-for="(label, value) in EXPERT_PACKAGE_TYPE_LABEL"
+              v-for="(label, value) in ExpertPackageTypeDescription"
               :key="value"
               :value="value"
             >
@@ -754,18 +761,18 @@ onMounted(async () => {
           </a-radio-group>
         </a-form-item>
         <a-form-item
-          :label="exportForm.packageType === 'REQUIREMENT' ? '毕业要求' : '培养方案'"
+          :label="exportForm.packageType === ExpertPackageTypeCode.REQUIREMENT ? '毕业要求' : '培养方案'"
           required
         >
           <TrainingPlanSelector
-            v-if="exportForm.packageType === 'REQUIREMENT'"
+            v-if="exportForm.packageType === ExpertPackageTypeCode.REQUIREMENT"
             v-model:value="exportTrainingPlanId"
             :program-id="qualityStore.currentProgramId || null"
             class="archive__stacked-control archive__stacked-control--first"
             placeholder="请选择毕业要求所属培养方案"
           />
           <GraduationRequirementSelector
-            v-if="exportForm.packageType === 'REQUIREMENT'"
+            v-if="exportForm.packageType === ExpertPackageTypeCode.REQUIREMENT"
             v-model:value="exportForm.targetId"
             :training-plan-id="exportTrainingPlanId || qualityStore.currentTrainingPlanId || null"
             class="archive__stacked-control"
@@ -779,7 +786,7 @@ onMounted(async () => {
           />
         </a-form-item>
         <div
-          v-if="exportForm.packageType === 'PROGRAM_ACCREDITATION' && exportForm.targetId"
+          v-if="exportForm.packageType === ExpertPackageTypeCode.PROGRAM_ACCREDITATION && exportForm.targetId"
           class="archive-page__export-readiness"
         >
           <p class="archive-page__export-readiness-text">
@@ -860,7 +867,7 @@ onMounted(async () => {
           <a-col :span="12">
             <a-form-item label="关联业务对象" required>
               <TrainingPlanSelector
-                v-if="editor.businessType === 'TRAINING_PLAN'"
+                v-if="editor.businessType === ArchiveBusinessTypeCode.TRAINING_PLAN"
                 :value="editor.businessId || null"
                 :program-id="qualityStore.currentProgramId || null"
                 placeholder="请选择培养方案"
@@ -868,7 +875,7 @@ onMounted(async () => {
                 @change="syncEditorTrainingPlan"
               />
               <GraduationRequirementSelector
-                v-else-if="editor.businessType === 'GRADUATION_REQUIREMENT'"
+                v-else-if="editor.businessType === ArchiveBusinessTypeCode.GRADUATION_REQUIREMENT"
                 v-model:value="editor.businessId"
                 :training-plan-id="
                   editorTrainingPlanId || qualityStore.currentTrainingPlanId || null
@@ -910,7 +917,7 @@ onMounted(async () => {
                 :disabled="editorMode === 'edit'"
               />
               <ReportSelector
-                v-else-if="editor.businessType === 'REPORT'"
+                v-else-if="editor.businessType === ArchiveBusinessTypeCode.REPORT"
                 v-model:value="editor.businessId"
                 :program-id="qualityStore.currentProgramId || null"
                 :training-plan-id="

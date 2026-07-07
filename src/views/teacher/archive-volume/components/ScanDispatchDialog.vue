@@ -2,9 +2,12 @@
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
 import type { ScanDispatchTicketStatusCode } from '@/apis/mark/scanner-dispatch'
 import { message } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
-import { createScanDispatch } from '@/apis/mark/scanner-dispatch'
+import { reactive, ref, watch } from 'vue'
+import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scanner-dispatch'
+import { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { showUserError } from '@/utils/error-handler'
+import ArchiveMaterialTagSelect from '@/views/teacher/archive-volume/components/ArchiveMaterialTagSelect.vue'
 
 const props = defineProps<{
   open: boolean
@@ -13,6 +16,9 @@ const props = defineProps<{
   materialType?: ArchiveMaterialTypeCode
   archiveBatchMode?: string
   archiveTitle?: string
+  initialMaterialTags?: string[]
+  /** PC 详情页回跳路径，写入 Kiosk 派单 URL 供 commit 后返回 */
+  returnTo?: string
 }>()
 
 const emit = defineEmits<{
@@ -29,17 +35,18 @@ const emit = defineEmits<{
 }>()
 
 const submitting = ref(false)
-const form = reactive({
+interface ScanDispatchForm {
+  physicalStorageLocation: string
+  physicalLocationNote: string
+  generateTraceLabel: boolean
+  materialTags: string[]
+}
+
+const form = reactive<ScanDispatchForm>({
   physicalStorageLocation: '',
   physicalLocationNote: '',
   generateTraceLabel: true,
-})
-
-const kioskBaseUrl = computed(() => {
-  if (typeof window === 'undefined') {
-    return ''
-  }
-  return `${window.location.origin}${window.location.pathname.replace(/\/teacher\/.*$/, '')}`
+  materialTags: [],
 })
 
 watch(
@@ -49,6 +56,7 @@ watch(
       form.physicalStorageLocation = ''
       form.physicalLocationNote = ''
       form.generateTraceLabel = true
+      form.materialTags = [...(props.initialMaterialTags ?? [])]
     }
   },
 )
@@ -65,7 +73,7 @@ async function handleSubmit() {
   submitting.value = true
   try {
     const response = await createScanDispatch({
-      taskKind: 'EXAM_ARCHIVE',
+      taskKind: ScanTaskKindCode.EXAM_ARCHIVE,
       volumeId: props.volumeId,
       catalogCode: props.catalogCode,
       materialType: props.materialType,
@@ -73,14 +81,14 @@ async function handleSubmit() {
       physicalStorageLocation: form.physicalStorageLocation.trim(),
       physicalLocationNote: form.physicalLocationNote.trim() || undefined,
       generateTraceLabel: form.generateTraceLabel,
+      materialTags: form.materialTags.length > 0 ? form.materialTags : undefined,
     })
     const ticket = response.ticket
     if (!ticket?.ticketId) {
       message.error('派单创建失败')
       return
     }
-    const kioskPath = ticket.kioskDispatchUrl || `/scanner-kiosk/dispatch/${ticket.ticketId}`
-    const kioskUrl = `${kioskBaseUrl.value}${kioskPath}`
+    const kioskUrl = buildScanDispatchKioskUrl(ticket, props.returnTo)
     emit('created', {
       ticketId: ticket.ticketId,
       kioskUrl,
@@ -98,15 +106,16 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <a-modal
+  <UiDrawer
     :open="open"
     title="创建扫描派单"
-    width="560"
+    :width="560"
     :confirm-loading="submitting"
     ok-text="派单"
-    cancel-text="取消"
+    :hide-footer="false"
     @update:open="emit('update:open', $event)"
-    @ok="handleSubmit"
+    @close="emit('update:open', false)"
+    @confirm="handleSubmit"
   >
     <p v-if="archiveTitle" class="scan-dispatch-dialog__hint">卷：{{ archiveTitle }}</p>
     <a-form layout="vertical">
@@ -116,6 +125,9 @@ async function handleSubmit() {
       <a-form-item label="柜位说明">
         <a-input v-model:value="form.physicalLocationNote" placeholder="可选补充说明" />
       </a-form-item>
+      <a-form-item label="材料标签" extra="扫描 commit 登记时写入材料，便于后续检索">
+        <ArchiveMaterialTagSelect v-model="form.materialTags" />
+      </a-form-item>
       <a-form-item>
         <a-checkbox v-model:checked="form.generateTraceLabel">生成追溯标签 PDF</a-checkbox>
       </a-form-item>
@@ -123,7 +135,7 @@ async function handleSubmit() {
     <p class="scan-dispatch-dialog__note">
       工位通过分机 URL / QR 进入，不使用同浏览器 router.push。
     </p>
-  </a-modal>
+  </UiDrawer>
 </template>
 
 <style scoped>

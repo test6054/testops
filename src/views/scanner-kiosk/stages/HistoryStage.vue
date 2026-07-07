@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import type { ExamScannerKioskBatchHistoryItem } from '@/apis/mark/scanner-kiosk'
+import type { ExamScannerBatchResponse } from '@/apis/mark/scanner-kiosk'
 /**
  * 本机历史批次（只读）
  *
@@ -20,6 +20,8 @@ import {
   SafetyCertificateFilled,
 } from '@ant-design/icons-vue'
 import { computed, ref, watch } from 'vue'
+import { ScannerKioskScanModeCode } from '@/apis/mark/scanner-kiosk'
+import { ScanBatchStatusCode } from '@/types/enums/scan-batch-status-enum'
 import KioskBoundStudentsPanel from '../components/KioskBoundStudentsPanel.vue'
 import { useKioskCtx } from '../composables/kioskInjection'
 
@@ -28,12 +30,19 @@ const { workflow, ui } = useKioskCtx()
 const batch = computed(() => workflow.kioskContext.value?.latestBatch ?? null)
 
 const isDiscarded = computed(
-  () => batch.value?.discardedTime || batch.value?.status === 'DISCARDED',
+  () => batch.value?.discardedTime || batch.value?.status === ScanBatchStatusCode.DISCARDED,
 )
 const isSealed = computed(() => Boolean(batch.value?.sealedTime))
 const awaitingWebSeal = computed(() =>
   Boolean(batch.value && !isSealed.value && !isDiscarded.value),
 )
+
+function handleIncludeDiscardedChange(event: Event): void {
+  if (!(event.target instanceof HTMLInputElement)) {
+    return
+  }
+  workflow.changeBatchHistoryIncludeDiscarded(event.target.checked)
+}
 
 /** 时间线（综合 lifecycle、扫描起止与批次提交状态） */
 interface TimelineEvent {
@@ -95,7 +104,7 @@ const timeline = computed<TimelineEvent[]>(() => {
       detail: b.sealedUserId ? `执行人 #${b.sealedUserId}` : undefined,
     })
   }
-  if (b.discardedTime || b.status === 'DISCARDED') {
+  if (b.discardedTime || b.status === ScanBatchStatusCode.DISCARDED) {
     events.push({
       key: 'discarded',
       icon: CloseCircleFilled,
@@ -122,23 +131,23 @@ function reloadHistory() {
 }
 
 function historyBadgeTone(
-  item: ExamScannerKioskBatchHistoryItem,
+  item: ExamScannerBatchResponse,
 ): 'success' | 'warning' | 'danger' | 'muted' {
-  if (item.discardedTime || item.status === 'DISCARDED') return 'danger'
+  if (item.discardedTime || item.status === ScanBatchStatusCode.DISCARDED) return 'danger'
   if (item.sealedTime) return 'success'
-  if (item.status === 'BLOCKED') return 'warning'
+  if (item.status === ScanBatchStatusCode.BLOCKED) return 'warning'
   return 'muted'
 }
 
-function historyBadgeText(item: ExamScannerKioskBatchHistoryItem): string {
-  if (item.discardedTime || item.status === 'DISCARDED') return '已废弃'
+function historyBadgeText(item: ExamScannerBatchResponse): string {
+  if (item.discardedTime || item.status === ScanBatchStatusCode.DISCARDED) return '已废弃'
   if (item.sealedTime) return '已封存'
   return item.statusMessage
 }
 
-function historyModeText(item: ExamScannerKioskBatchHistoryItem): string {
+function historyModeText(item: ExamScannerBatchResponse): string {
   const mode = workflow.scanModeText(item.scanMode, '')
-  if (item.scanMode !== 'SUPPLEMENT') return mode
+  if (item.scanMode !== ScannerKioskScanModeCode.SUPPLEMENT) return mode
   const replaceText = item.replaceTargetPage ? '替换目标页' : '追加补扫'
   const targetText = item.targetPageNo
     ? workflow.scanPageDisplayTitleByNoForDuplex(item.targetPageNo, item.scanConfig.duplexMode)
@@ -270,11 +279,7 @@ watch(
             <input
               type="checkbox"
               :checked="workflow.batchHistoryFilter.includeDiscarded"
-              @change="
-                workflow.changeBatchHistoryIncludeDiscarded(
-                  ($event.target as HTMLInputElement).checked,
-                )
-              "
+              @change="handleIncludeDiscardedChange"
             />
             <span>包含已废弃</span>
           </label>

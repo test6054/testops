@@ -1,0 +1,30 @@
+/** 档案袋 AI 任务类型 - 对齐 AiTaskTypeEnum 档案袋材料类 */
+export enum PortfolioAiTaskTypeCode {
+  PORTFOLIO_CERTIFICATE_OCR = 'PORTFOLIO_CERTIFICATE_OCR',
+  PORTFOLIO_DOCUMENT_PARSE = 'PORTFOLIO_DOCUMENT_PARSE',
+  PORTFOLIO_POLICY_MATCH = 'PORTFOLIO_POLICY_MATCH',
+  PORTFOLIO_MATERIAL_QA = 'PORTFOLIO_MATERIAL_QA',
+  PORTFOLIO_COCKPIT_ASK = 'PORTFOLIO_COCKPIT_ASK',
+  PORTFOLIO_REPORT_GENERATE = 'PORTFOLIO_REPORT_GENERATE',
+  PORTFOLIO_TEACHER_RECOMMEND_EXPLAIN = 'PORTFOLIO_TEACHER_RECOMMEND_EXPLAIN',
+}
+
+export const ALL_PORTFOLIO_AI_TASK_TYPE_CODES: readonly PortfolioAiTaskTypeCode[] = [
+  PortfolioAiTaskTypeCode.PORTFOLIO_CERTIFICATE_OCR,
+  PortfolioAiTaskTypeCode.PORTFOLIO_DOCUMENT_PARSE,
+  PortfolioAiTaskTypeCode.PORTFOLIO_POLICY_MATCH,
+  PortfolioAiTaskTypeCode.PORTFOLIO_MATERIAL_QA,
+  PortfolioAiTaskTypeCode.PORTFOLIO_COCKPIT_ASK,
+  PortfolioAiTaskTypeCode.PORTFOLIO_REPORT_GENERATE,
+  PortfolioAiTaskTypeCode.PORTFOLIO_TEACHER_RECOMMEND_EXPLAIN,
+]
+
+export const PortfolioAiTaskTypeDescription: Record<PortfolioAiTaskTypeCode, string> = {
+  [PortfolioAiTaskTypeCode.PORTFOLIO_CERTIFICATE_OCR]: '证书证明 OCR 抽取',
+  [PortfolioAiTaskTypeCode.PORTFOLIO_DOCUMENT_PARSE]: '文档结构化抽取',
+  [PortfolioAiTaskTypeCode.PORTFOLIO_POLICY_MATCH]: '政策条款匹配',
+  [PortfolioAiTaskTypeCode.PORTFOLIO_MATERIAL_QA]: '材料智能问数',
+  [PortfolioAiTaskTypeCode.PORTFOLIO_COCKPIT_ASK]: '驾驶舱指标问数',
+  [PortfolioAiTaskTypeCode.PORTFOLIO_REPORT_GENERATE]: '报告初稿生成',
+  [PortfolioAiTaskTypeCode.PORTFOLIO_TEACHER_RECOMMEND_EXPLAIN]: '优秀教师推荐 AI 解释',
+}

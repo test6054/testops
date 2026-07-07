@@ -7,11 +7,15 @@ export function parseEligibilityTreeJson(json: string): PfEligibilityRuleTreeNod
   if (!json.trim()) {
     return { nodeType: 'AND', children: [] }
   }
-  const root = JSON.parse(json) as PfEligibilityRuleTreeNodeDto
-  if (!root?.nodeType) {
+  const root: unknown = JSON.parse(json)
+  if (!isEligibilityRuleTreeNode(root)) {
     throw new Error('资格规则树缺少 nodeType')
   }
   return root
+}
+
+function isEligibilityRuleTreeNode(value: unknown): value is PfEligibilityRuleTreeNodeDto {
+  return typeof value === 'object' && value !== null && 'nodeType' in value && typeof value.nodeType === 'string'
 }
 
 /** 将可视化树序列化为后端 ruleTreeJson 契约 */

@@ -2,7 +2,15 @@
 import { message } from 'ant-design-vue'
 import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { ScannerColorModeCode, ScannerDuplexModeCode } from '@/apis/mark/exam-mark-scanner'
+import { LocalScanJobStatusCode, ScannerBusinessSceneCode } from '@/apis/mark/scanner-agent-local'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import {
+  ArchiveScanBatchModeDescription,
+} from '@/types/enums/archive-scan-batch-mode-enum'
+import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
+import { ScanWorkOrderStatusCode } from '@/types/enums/scan-work-order-status-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 import DocumentKioskActivationGate from '../components/DocumentKioskActivationGate.vue'
 import { useDocumentKioskBootstrap } from '../composables/useDocumentKioskBootstrap'
 import { useWorkOrderScanFlow } from '../composables/useWorkOrderScanFlow'
@@ -14,14 +22,15 @@ const session = useArchiveScanSession()
 const bootstrap = useDocumentKioskBootstrap()
 const lease = useLeaseHeartbeat()
 const scanFlow = useWorkOrderScanFlow({
-  taskKind: 'EXAM_ARCHIVE',
-  businessScene: 'EXAM_ARCHIVE',
+  taskKind: ScanTaskKindCode.EXAM_ARCHIVE,
+  businessScene: ScannerBusinessSceneCode.EXAM_ARCHIVE,
   getBusinessRefId: () => session.volumeId.value,
   getArchiveBatchMode: () => session.batchMode.value,
+  lifecycle: session.lifecycle,
   getScanConfig: () => ({
     dpi: 300,
-    colorMode: 'COLOR',
-    duplexMode: 'SIMPLEX',
+    colorMode: ScannerColorModeCode.COLOR,
+    duplexMode: ScannerDuplexModeCode.SIMPLEX,
     blankPageDetectionEnabled: true,
   }),
   getScannerDeviceId: () => bootstrap.setup.value?.scannerDeviceId ?? '',
@@ -31,20 +40,33 @@ const scanFlow = useWorkOrderScanFlow({
 
 const canStart = computed(() =>
   Boolean(
-    session.volumeId.value &&
-    session.materialType.value &&
-    bootstrap.selectedScannerId.value &&
-    session.archiveContext.value != null &&
-    session.archiveContext.value.canRegisterMaterial === true &&
-    !lease.leaseLost.value,
+    session.volumeId.value
+    && session.materialType.value
+    && bootstrap.selectedScannerId.value
+    && session.archiveContext.value != null
+    && session.archiveContext.value.canRegisterMaterial === true
+    && !lease.leaseLost.value,
   ),
 )
 const leaseLostMessage = '派单租约已失效，扫描会话可能已被中断，请返回队列'
+const batchModeLabel = computed(() =>
+  strictEnumLabel(ArchiveScanBatchModeDescription, session.batchMode.value, '归档扫描批次模式'),
+)
 const jobMessage = computed(() => scanFlow.currentJob.value?.message ?? '')
 const physicalStorageLocation = computed(
   () => session.dispatchSnapshot.value?.physicalStorageLocation ?? '',
 )
 const traceLabelCode = computed(() => session.dispatchTraceLabelCode.value)
+const archiveWorkOrderBlockedMessage = computed(() => {
+  const status = session.lifecycle.value?.status
+  if (status === ScanWorkOrderStatusCode.FAILED) {
+    return session.lifecycle.value?.diagnostic || '归档提交失败，可重试提交或废弃后重新开单'
+  }
+  if (status === ScanWorkOrderStatusCode.COMMITTING) {
+    return session.lifecycle.value?.diagnostic || '归档提交处理中，请稍候；长时间未结束可重试提交'
+  }
+  return ''
+})
 
 function handleLeaseLost() {
   message.warning(leaseLostMessage)
@@ -81,15 +103,14 @@ watch(
 )
 
 watch(
-  () =>
-    [
-      session.dispatchTicketId.value,
-      bootstrap.setup.value?.scannerDeviceId,
-      bootstrap.setup.value?.scannerStationId,
-    ] as const,
-  ([ticketId, deviceId, stationId]) => {
-    if (ticketId && deviceId && stationId) {
-      lease.startHeartbeat(ticketId, deviceId, stationId, { onLeaseLost: handleLeaseLost })
+  () => ({
+    deviceId: bootstrap.setup.value?.scannerDeviceId,
+    stationId: bootstrap.setup.value?.scannerStationId,
+    ticketId: session.dispatchTicketId.value,
+  }),
+  (leaseState) => {
+    if (leaseState.ticketId && leaseState.deviceId && leaseState.stationId) {
+      lease.startHeartbeat(leaseState.ticketId, leaseState.deviceId, leaseState.stationId, { onLeaseLost: handleLeaseLost })
       return
     }
     lease.stopHeartbeat()
@@ -125,7 +146,7 @@ watch(
 watch(
   () => scanFlow.lifecycle.value?.status,
   (status) => {
-    if (status !== 'DISCARDED' || !session.dispatchTicketId.value) {
+    if (status !== ScanWorkOrderStatusCode.DISCARDED || !session.dispatchTicketId.value) {
       return
     }
     message.info('已放弃，派单已释放')
@@ -172,7 +193,10 @@ function goBack() {
       <p v-if="traceLabelCode">追溯码：{{ traceLabelCode }}</p>
       <p>目录编码：{{ session.catalogCode.value || '卷级收材' }}</p>
       <p>材料类型：{{ session.materialTypeLabel.value }}</p>
-      <p>批次模式：{{ session.batchMode.value === 'PER_PAGE' ? '逐页登记' : '合并 PDF' }}</p>
+      <p>批次模式：{{ batchModeLabel }}</p>
+      <p v-if="archiveWorkOrderBlockedMessage" class="archive-scan-session__block">
+        {{ archiveWorkOrderBlockedMessage }}
+      </p>
     </section>
 
     <section v-if="bootstrap.scanners.value.length" class="archive-scan-session__scanner">
@@ -192,7 +216,7 @@ function goBack() {
 
     <section class="archive-scan-session__actions">
       <UiButton
-        v-if="!scanFlow.currentJob.value"
+        v-if="!scanFlow.currentJob.value && !scanFlow.canRetryWorkOrderCommit.value"
         variant="primary"
         :loading="session.loading.value || scanFlow.loading.value"
         :disabled="!canStart || bootstrap.needsActivationGate.value"
@@ -200,7 +224,24 @@ function goBack() {
       >
         开单并开始扫描
       </UiButton>
-      <template v-else>
+      <template v-if="!scanFlow.currentJob.value && scanFlow.canRetryWorkOrderCommit.value">
+        <UiButton
+          variant="outline"
+          :loading="scanFlow.loading.value"
+          @click="scanFlow.retryWorkOrderCommit()"
+        >
+          重试提交工单
+        </UiButton>
+        <UiButton
+          v-if="scanFlow.canDiscard.value"
+          variant="destructive"
+          :loading="scanFlow.loading.value"
+          @click="scanFlow.discardCurrentSession()"
+        >
+          废弃
+        </UiButton>
+      </template>
+      <template v-else-if="scanFlow.currentJob.value">
         <UiButton
           v-if="scanFlow.canEndBatch.value"
           variant="primary"
@@ -217,7 +258,7 @@ function goBack() {
           暂停
         </UiButton>
         <UiButton
-          v-if="scanFlow.currentJob.value?.status === 'PAUSED'"
+          v-if="scanFlow.currentJob.value?.status === LocalScanJobStatusCode.PAUSED"
           variant="outline"
           @click="scanFlow.resumeCurrentJob()"
         >
@@ -296,6 +337,12 @@ function goBack() {
   border: 1px solid var(--dp-border-subtle, #e5e7eb);
   border-radius: 6px;
   font-size: 14px;
+}
+
+.archive-scan-session__block {
+  margin: 0;
+  color: #dc2626;
+  font-size: 13px;
 }
 
 .archive-scan-session__select {

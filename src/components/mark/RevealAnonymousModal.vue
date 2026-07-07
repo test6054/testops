@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
-import type { AnonymousRevealVO } from '@/apis/mark/marking-organization'
+import type { AnonymousRevealResponse } from '@/apis/mark/marking-organization'
 import { message } from 'ant-design-vue'
 import { reactive, ref, watch } from 'vue'
 import { revealAnonymous } from '@/apis/mark/marking-organization'
@@ -16,7 +16,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  revealed: [value: AnonymousRevealVO]
+  revealed: [value: AnonymousRevealResponse]
 }>()
 
 const submitting = ref(false)

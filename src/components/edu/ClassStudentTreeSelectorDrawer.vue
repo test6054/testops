@@ -75,7 +75,7 @@
               <template #title="nodeData">
                 <div class="custom-tree-node" @click.stop="handleTitleClick">
                   <!-- 院系节点 -->
-                  <template v-if="nodeData.nodeType === 'DEPARTMENT'">
+                  <template v-if="nodeData.nodeType === ExamClassStudentTreeNodeTypeCode.DEPARTMENT">
                     <AppstoreOutlined class="icon-department" />
                     <span
                       class="node-name"
@@ -96,7 +96,7 @@
                   </template>
 
                   <!-- 班级节点 -->
-                  <template v-else-if="nodeData.nodeType === 'CLASS'">
+                  <template v-else-if="nodeData.nodeType === ExamClassStudentTreeNodeTypeCode.CLASS">
                     <TeamOutlined class="icon-class" />
                     <span
                       class="node-name"
@@ -117,7 +117,7 @@
                   </template>
 
                   <!-- 学生节点 -->
-                  <template v-else-if="nodeData.nodeType === 'STUDENT'">
+                  <template v-else-if="nodeData.nodeType === ExamClassStudentTreeNodeTypeCode.STUDENT">
                     <UserOutlined class="icon-student" />
                     <span
                       class="node-name"
@@ -178,6 +178,7 @@ import { getAvailableStudentTree, getClassStudentTree } from '@/apis/edu/class'
 import { listExamStudentTree } from '@/apis/mark/exam-scope'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import { ExamClassStudentTreeNodeTypeCode } from '@/types/enums/exam-class-student-tree-node-type-enum'
 import { showUserError } from '@/utils/error-handler'
 
 interface Props {
@@ -259,7 +260,7 @@ const findParentClassNode = (
     if (node.children) {
       // 检查当前节点的子节点中是否有目标学生
       const hasStudent = node.children.some((child) => child.id === studentKey)
-      if (hasStudent && node.nodeType === 'CLASS') {
+      if (hasStudent && node.nodeType === ExamClassStudentTreeNodeTypeCode.CLASS) {
         return node
       }
       // 递归查找
@@ -342,7 +343,7 @@ const findStudentNodeKeys = (studentIds: (number | string)[]): string[] => {
   const keys: string[] = []
   const searchNodes = (nodes: ClassStudentTreeNode[]) => {
     for (const node of nodes) {
-      if (node.nodeType === 'STUDENT' && node.originalId) {
+      if (node.nodeType === ExamClassStudentTreeNodeTypeCode.STUDENT && node.originalId) {
         // 检查学生ID是否在初始选中列表中
         if (studentIds.some((id) => String(id) === String(node.originalId))) {
           keys.push(node.id)
@@ -370,21 +371,21 @@ const calculateDisabledKeys = () => {
 
   // 递归检查节点及其子节点
   const checkNode = (node: ClassStudentTreeNode): boolean => {
-    if (node.nodeType === 'STUDENT' && node.originalId) {
+    if (node.nodeType === ExamClassStudentTreeNodeTypeCode.STUDENT && node.originalId) {
       // 学生节点：检查是否在排除列表中
       const isExcluded = props.excludedStudentIds.includes(String(node.originalId))
       if (isExcluded) {
         keys.push(node.id)
       }
       return isExcluded
-    } else if (node.nodeType === 'CLASS' && node.children && node.children.length > 0) {
+    } else if (node.nodeType === ExamClassStudentTreeNodeTypeCode.CLASS && node.children && node.children.length > 0) {
       // 班级节点：检查所有学生是否都被禁用
       const allStudentsDisabled = node.children.every((child) => checkNode(child))
       if (allStudentsDisabled) {
         keys.push(node.id)
       }
       return allStudentsDisabled
-    } else if (node.nodeType === 'DEPARTMENT' && node.children && node.children.length > 0) {
+    } else if (node.nodeType === ExamClassStudentTreeNodeTypeCode.DEPARTMENT && node.children && node.children.length > 0) {
       // 院系节点：检查所有班级是否都被禁用
       const allClassesDisabled = node.children.every((child) => checkNode(child))
       if (allClassesDisabled) {
@@ -411,14 +412,14 @@ function filterTreeByClassScope(nodes: ClassStudentTreeNode[]): ClassStudentTree
   const walk = (list: ClassStudentTreeNode[]): ClassStudentTreeNode[] => {
     const result: ClassStudentTreeNode[] = []
     for (const node of list) {
-      if (node.nodeType === 'DEPARTMENT') {
+      if (node.nodeType === ExamClassStudentTreeNodeTypeCode.DEPARTMENT) {
         const children = walk(node.children ?? [])
         if (children.length > 0) {
           result.push({ ...node, children })
         }
         continue
       }
-      if (node.nodeType === 'CLASS' && allowedSet.has(String(node.originalId))) {
+      if (node.nodeType === ExamClassStudentTreeNodeTypeCode.CLASS && allowedSet.has(String(node.originalId))) {
         result.push({ ...node, children: node.children ?? [] })
       }
     }
@@ -446,7 +447,7 @@ const loadTreeData = async () => {
 
     // 设置默认展开到第一层（院系层级，展开后显示班级）
     defaultExpandedKeys.value = treeData.value
-      .filter((node) => node.nodeType === 'DEPARTMENT')
+      .filter((node) => node.nodeType === ExamClassStudentTreeNodeTypeCode.DEPARTMENT)
       .map((node) => node.id)
 
     // 如果有初始选中的学生ID，设置选中状态

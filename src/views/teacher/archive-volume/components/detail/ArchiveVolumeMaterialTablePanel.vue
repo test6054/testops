@@ -1,30 +1,38 @@
 <template>
-  <div class="archive-volume-material-table">
-    <div v-if="canRegisterMaterial" class="archive-volume-material-table__toolbar">
-      <UiButton size="sm" @click="openUploadModal">登记材料</UiButton>
-      <UiButton
-        v-if="canGenerateExamReports"
-        size="sm"
-        variant="outline"
-        :loading="generatingExamAnalysis"
-        @click="handleGenerateExamAnalysis"
-      >
-        生成试卷分析
-      </UiButton>
-      <UiButton
-        v-if="canGenerateExamReports"
-        size="sm"
-        variant="outline"
-        :loading="generatingCourseObjective"
-        @click="handleGenerateCourseObjective"
-      >
-        生成达成度报告
-      </UiButton>
-      <UiButton size="sm" variant="outline" @click="openArchiveScan">一体机扫描</UiButton>
-      <UiButton size="sm" variant="outline" @click="batchRegisterOpen = true">批量登记</UiButton>
-      <UiButton size="sm" variant="outline" @click="courseSyncOpen = true">课程平台同步</UiButton>
-      <UiButton size="sm" variant="outline" @click="openSharedRefModal">引用合用材料</UiButton>
-    </div>
+  <WorkbenchSurfaceCard flush class="archive-volume-material-table">
+    <template #head>
+      <div class="archive-volume-material-table__head">
+        <h3 class="archive-volume-material-table__title">归档材料</h3>
+        <span class="archive-volume-material-table__meta">{{ materialReadySummary }}</span>
+      </div>
+    </template>
+    <template v-if="canRegisterMaterial" #toolbar>
+      <div class="archive-volume-material-table__actions">
+        <UiButton size="sm" @click="openUploadModal">登记材料</UiButton>
+        <UiButton
+          v-if="canGenerateExamReports"
+          size="sm"
+          variant="outline"
+          :loading="generatingExamAnalysis"
+          @click="handleGenerateExamAnalysis"
+        >
+          生成试卷分析
+        </UiButton>
+        <UiButton
+          v-if="canGenerateExamReports"
+          size="sm"
+          variant="outline"
+          :loading="generatingCourseObjective"
+          @click="handleGenerateCourseObjective"
+        >
+          生成达成度报告
+        </UiButton>
+        <UiButton size="sm" variant="outline" @click="openArchiveScan">一体机扫描</UiButton>
+        <UiButton size="sm" variant="outline" @click="batchRegisterOpen = true">批量登记</UiButton>
+        <UiButton size="sm" variant="outline" @click="courseSyncOpen = true">课程平台同步</UiButton>
+        <UiButton size="sm" variant="outline" @click="openSharedRefModal">引用合用材料</UiButton>
+      </div>
+    </template>
     <p
       v-if="canGenerateExamReports && courseObjectiveMappingHint"
       class="archive-volume-material-table__mapping-hint"
@@ -53,16 +61,18 @@
           {{ materialTypeLabel(record.materialType) }}
         </template>
         <template v-else-if="column.key === 'submissionStatus'">
-          <span v-if="record.submissionStatus" class="archive-volume-material-table__status">
+          <div v-if="record.submissionStatus" class="material-status">
             <span
-              class="archive-volume-material-table__status-icon"
-              :class="`archive-volume-material-table__status-icon--${submissionStatusTone(record.submissionStatus)}`"
+              class="material-status-icon"
+              :class="`material-status-icon--${materialStatusView(record.submissionStatus).variant}`"
               aria-hidden="true"
-            />
-            <UiTag :tone="submissionStatusTone(record.submissionStatus)" size="sm">
-              {{ submissionStatusLabel(record.submissionStatus) }}
-            </UiTag>
-          </span>
+            >
+              {{ materialStatusView(record.submissionStatus).icon }}
+            </span>
+            <span class="material-status-label">
+              {{ materialStatusView(record.submissionStatus).label }}
+            </span>
+          </div>
         </template>
         <template v-else-if="column.key === 'ocrStatus'">
           <span v-if="record.ocrStatus" class="archive-volume-material-table__status">
@@ -82,7 +92,34 @@
             {{ record.ocrFailureReason }}
           </span>
         </template>
+        <template v-else-if="column.key === 'tags'">
+          <template v-if="record.tags?.length">
+            <UiTag v-for="tag in record.tags" :key="tag" tone="gray" size="sm">{{ tag }}</UiTag>
+          </template>
+          <span v-else>-</span>
+        </template>
         <template v-else-if="column.key === 'materialActions'">
+          <UiTextAction
+            v-if="canPreviewMaterialFile(record)"
+            tone="primary"
+            @click="handlePreviewMaterial(record)"
+          >
+            预览
+          </UiTextAction>
+          <UiTextAction
+            v-if="canPreviewMaterialFile(record)"
+            tone="primary"
+            @click="handleDownloadMaterial(record)"
+          >
+            下载
+          </UiTextAction>
+          <UiTextAction
+            v-if="canRegisterMaterial"
+            tone="primary"
+            @click="openTagModal(record)"
+          >
+            编辑标签
+          </UiTextAction>
           <UiTextAction
             v-if="canViewMaterialOcr(record)"
             tone="primary"
@@ -101,14 +138,23 @@
       </template>
     </UiDataTable>
 
-    <a-modal
-      v-model:open="uploadModalOpen"
+    <UiDrawer
+      :open="uploadModalOpen"
       title="登记归档材料"
+      :width="520"
       :confirm-loading="uploading"
       ok-text="登记"
-      cancel-text="取消"
-      @ok="submitMaterial"
+      :hide-footer="false"
+      @update:open="(v: boolean) => (uploadModalOpen = v)"
+      @close="uploadModalOpen = false"
+      @confirm="submitMaterial"
     >
+      <UiAlertStrip
+        v-if="registerCatalogLabel"
+        dense
+        tone="info"
+        :title="`登记目录：${registerCatalogLabel}`"
+      />
       <a-form layout="vertical">
         <a-form-item label="材料类型" required>
           <a-select
@@ -129,6 +175,9 @@
         <a-form-item v-if="uploadForm.retakeFlag" label="补考轮次">
           <a-input v-model:value="uploadForm.makeupRound" placeholder="如 补考1" />
         </a-form-item>
+        <a-form-item label="自由标签" extra="回车或逗号分隔；与目录编码并用，便于检索">
+          <ArchiveMaterialTagSelect v-model="uploadForm.tags" />
+        </a-form-item>
         <a-form-item label="扫描文件" required>
           <UiPlatformFileField
             v-model:file-node-id="uploadForm.fileNodeId"
@@ -138,15 +187,18 @@
           />
         </a-form-item>
       </a-form>
-    </a-modal>
+    </UiDrawer>
 
-    <a-modal
-      v-model:open="sharedRefModalOpen"
+    <UiDrawer
+      :open="sharedRefModalOpen"
       title="引用合用材料"
+      :width="520"
       :confirm-loading="sharedRefSubmitting"
       ok-text="保存引用"
-      cancel-text="取消"
-      @ok="submitSharedRef"
+      :hide-footer="false"
+      @update:open="(v: boolean) => (sharedRefModalOpen = v)"
+      @close="sharedRefModalOpen = false"
+      @confirm="submitSharedRef"
     >
       <a-form layout="vertical">
         <a-form-item label="引用类型" required>
@@ -169,11 +221,14 @@
           <a-input v-model:value="sharedRefForm.catalogNote" placeholder="如 合用材料见××班级卷" />
         </a-form-item>
       </a-form>
-    </a-modal>
+    </UiDrawer>
 
     <ArchiveVolumeBatchRegisterModal
       v-model:open="batchRegisterOpen"
       :volume-id="volumeId"
+      :catalog-code="selectedCatalogContext.catalogCode"
+      :catalog-name="selectedCatalogContext.catalogName"
+      :initial-material-type="selectedCatalogContext.materialType"
       @success="emitRefreshed"
     />
     <ArchiveVolumeCourseSyncModal
@@ -185,6 +240,13 @@
       v-model:open="ocrDetailOpen"
       :material-id="ocrDetailMaterialId"
     />
+    <ArchiveVolumeMaterialTagModal
+      v-model:open="tagModalOpen"
+      :material-id="tagEditMaterial?.materialId"
+      :file-name="tagEditMaterial?.fileName"
+      :initial-tags="tagEditMaterial?.tags"
+      @success="emitRefreshed"
+    />
     <ScanDispatchDialog
       v-model:open="scanDispatchOpen"
       :volume-id="volumeId"
@@ -192,6 +254,8 @@
       :material-type="scanDispatchMaterialType"
       :archive-batch-mode="scanDispatchQuery?.batchMode"
       :archive-title="detail.volume.archiveTitle"
+      :initial-material-tags="uploadForm.tags"
+      :return-to="scanDispatchQuery?.returnTo"
       @created="handleDispatchCreated"
     />
     <ScanDispatchResultDialog
@@ -199,49 +263,72 @@
       :volume-id="volumeId"
       :payload="scanDispatchResult"
     />
-  </div>
+    <FilePreviewDialog :api="filePreview" />
+  </WorkbenchSurfaceCard>
 </template>
 
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-status'
 import type {
   ArchiveMaterialSubmissionStatusCode,
   ArchiveMaterialTypeCode,
-  ArchiveVolumeDetailVO,
-  ArchiveVolumeMaterialVO,
+  ArchiveVolumeDetailResponse,
+  ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
-import type { PaperArchiveOcrStatusCode } from '@/apis/mark/paper-archive'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 import { message } from 'ant-design-vue'
 import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import {
-  ARCHIVE_MATERIAL_SUBMISSION_STATUS_LABEL,
-  ARCHIVE_MATERIAL_SUBMISSION_STATUS_TONE,
-  ARCHIVE_MATERIAL_TYPE_LABEL,
+  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
+  ArchiveMaterialOcrStatusDescription,
+} from '@/apis/mark/archive-ocr-status'
+import {
+  ALL_ARCHIVE_MATERIAL_TYPE_CODES,
+  ARCHIVE_MATERIAL_TYPE_OPTIONS,
+  ArchiveElectronicOriginalStatusCode,
+  ArchiveMaterialMediaTypeCode,
+  ArchiveMaterialSortRuleCode,
+  ArchiveMaterialTypeDescription,
+  ArchiveSharedMaterialRefTypeCode,
   generateArchiveVolumeCourseObjectiveReport,
   generateArchiveVolumeExamAnalysisReport,
   registerArchiveSharedMaterialRef,
   registerArchiveVolumeMaterial,
   triggerArchiveVolumeMaterialOcr,
 } from '@/apis/mark/archive-volume'
-import {
-  PAPER_ARCHIVE_OCR_STATUS_LABEL,
-  PAPER_ARCHIVE_OCR_STATUS_TONE,
-} from '@/apis/mark/paper-archive'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import FilePreviewDialog from '@/components/FilePreviewDialog.vue'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useFilePreview } from '@/composables/useFilePreview'
+import {
+  archiveMaterialBelongsToCatalogKey,
+  archiveMissingItemTargetsCatalogKey,
+  filterArchiveMaterialsByCatalogKey,
+} from '@/utils/archive-catalog-material-key'
+import {
+  buildArchiveMaterialStatusView,
+  countArchiveMaterialsReady,
+} from '@/utils/archive-material-status-ui'
+import { normalizeMaterialTagsForRegister } from '@/utils/archive-material-tag'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ArchiveVolumeBatchRegisterModal from '@/views/teacher/archive-volume/archive-volume-batch-register-modal.vue'
 import ArchiveVolumeCourseSyncModal from '@/views/teacher/archive-volume/archive-volume-course-sync-modal.vue'
+import ArchiveMaterialTagSelect from '@/views/teacher/archive-volume/components/ArchiveMaterialTagSelect.vue'
 import ArchiveVolumeMaterialOcrDetailModal from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialOcrDetailModal.vue'
+import ArchiveVolumeMaterialTagModal from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialTagModal.vue'
 import ScanDispatchDialog from '@/views/teacher/archive-volume/components/ScanDispatchDialog.vue'
 import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 
@@ -249,7 +336,7 @@ defineOptions({ name: 'ArchiveVolumeMaterialTablePanel' })
 
 const props = defineProps<{
   volumeId: string
-  detail: ArchiveVolumeDetailVO
+  detail: ArchiveVolumeDetailResponse
   selectedCatalogKeys: string[]
   canRegisterMaterial: boolean
 }>()
@@ -270,62 +357,76 @@ const sharedRefModalOpen = ref(false)
 const sharedRefSubmitting = ref(false)
 const ocrDetailOpen = ref(false)
 const ocrDetailMaterialId = ref<string>()
+const tagModalOpen = ref(false)
+const tagEditMaterial = ref<ArchiveVolumeMaterialResponse>()
 const scanDispatchOpen = ref(false)
 const scanDispatchResultOpen = ref(false)
 const scanDispatchQuery = ref<Record<string, string> | null>(null)
 const scanDispatchResult = ref<ScanDispatchResultPayload | null>(null)
 
-const scanDispatchMaterialType = computed(() => {
-  const value = scanDispatchQuery.value?.materialType
-  if (!value) {
-    return undefined
-  }
-  if (value in ARCHIVE_MATERIAL_TYPE_LABEL) {
-    return value as ArchiveMaterialTypeCode
-  }
-  return undefined
-})
+const scanDispatchMaterialType = computed(() =>
+  ALL_ARCHIVE_MATERIAL_TYPE_CODES.find((code) => code === scanDispatchQuery.value?.materialType),
+)
 
-const uploadForm = reactive({
-  materialType: undefined as ArchiveMaterialTypeCode | undefined,
-  fileNodeId: undefined as string | undefined,
-  fileName: undefined as string | undefined,
+interface ArchiveVolumeMaterialUploadForm {
+  materialType?: ArchiveMaterialTypeCode
+  catalogCode?: string
+  fileNodeId?: string
+  fileName?: string
+  studentNo: string
+  studentName: string
+  retakeFlag: boolean
+  makeupRound: string
+  tags: string[]
+}
+
+const uploadForm = reactive<ArchiveVolumeMaterialUploadForm>({
+  catalogCode: undefined,
+  fileNodeId: undefined,
+  fileName: undefined,
   studentNo: '',
   studentName: '',
   retakeFlag: false,
   makeupRound: '',
+  tags: [],
 })
 const sharedRefForm = reactive({
-  refType: 'MERGED_CLASS_SHARED' as 'UNIFIED_EXAM_PUBLIC' | 'MERGED_CLASS_SHARED',
+  refType: ArchiveSharedMaterialRefTypeCode.MERGED_CLASS_SHARED,
   targetVolumeId: '',
   targetMaterialId: '',
   catalogNote: '',
 })
 const sharedRefTypeOptions = [
-  { value: 'UNIFIED_EXAM_PUBLIC', label: '统考公用' },
-  { value: 'MERGED_CLASS_SHARED', label: '合班合用' },
+  { value: ArchiveSharedMaterialRefTypeCode.UNIFIED_EXAM_PUBLIC, label: '统考公用' },
+  { value: ArchiveSharedMaterialRefTypeCode.MERGED_CLASS_SHARED, label: '合班合用' },
 ]
 
-const materialTypeOptions = Object.entries(ARCHIVE_MATERIAL_TYPE_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
+const materialTypeOptions = ARCHIVE_MATERIAL_TYPE_OPTIONS
 
-const materialColumns: ColumnsType<ArchiveVolumeMaterialVO> = [
-  { title: '材料类型', key: 'materialType', width: 160 },
+const materialColumns: ColumnsType<ArchiveVolumeMaterialResponse> = [
+  { title: '类别', key: 'materialType', width: 160 },
   { title: '目录编码', dataIndex: 'catalogCode', width: 120 },
   { title: '文件名', dataIndex: 'fileName' },
   { title: '学号', dataIndex: 'studentNo', width: 120 },
-  { title: '提交状态', key: 'submissionStatus', width: 120 },
+  { title: '标签', key: 'tags', width: 160 },
+  { title: '状态', key: 'submissionStatus', width: 120 },
   { title: 'OCR 状态', key: 'ocrStatus', width: 160 },
-  { title: '操作', key: 'materialActions', width: 160 },
+  { title: '操作', key: 'materialActions', width: 280 },
 ]
 
-const filteredMaterials = computed(() => {
-  const materials = props.detail.materials ?? []
-  const key = props.selectedCatalogKeys[0]
-  if (!key) return materials
-  return materials.filter((item) => (item.catalogCode || item.materialType) === key)
+const filePreview = useFilePreview()
+
+const filteredMaterials = computed(() =>
+  filterArchiveMaterialsByCatalogKey(
+    props.detail.materials ?? [],
+    props.selectedCatalogKeys[0],
+  ),
+)
+
+const materialReadySummary = computed(() => {
+  const materials = filteredMaterials.value
+  const readyCount = countArchiveMaterialsReady(materials)
+  return `${readyCount}/${materials.length} 就绪`
 })
 
 const effectiveExamId = computed(
@@ -338,6 +439,29 @@ const courseObjectiveMappingPath = computed(() => {
   const examId = effectiveExamId.value
   if (!examId) return null
   return `/teacher/exams/${examId}/archive/statistics`
+})
+
+function resolveCatalogName(catalogCode?: string): string | undefined {
+  if (!catalogCode) return undefined
+  const missing = props.detail.latestIntegrityCheck?.missingItems?.find(
+    (item) => item.catalogCode === catalogCode,
+  )
+  return missing?.catalogName
+}
+
+const selectedCatalogContext = computed(() => {
+  const context = resolveSelectedCatalogContext()
+  return {
+    ...context,
+    catalogName: resolveCatalogName(context.catalogCode),
+  }
+})
+
+const registerCatalogLabel = computed(() => {
+  const code = uploadForm.catalogCode
+  if (!code) return ''
+  const name = resolveCatalogName(code)
+  return name ? `${code} · ${name}` : code
 })
 
 const courseObjectiveMappingHint = computed(() => {
@@ -395,30 +519,47 @@ async function handleGenerateCourseObjective(): Promise<void> {
 }
 
 function materialTypeLabel(code: ArchiveMaterialTypeCode) {
-  return strictEnumLabel(ARCHIVE_MATERIAL_TYPE_LABEL, code, 'materialType')
+  return strictEnumLabel(ArchiveMaterialTypeDescription, code, 'materialType')
 }
 
-function submissionStatusLabel(code: ArchiveMaterialSubmissionStatusCode) {
-  return strictEnumLabel(ARCHIVE_MATERIAL_SUBMISSION_STATUS_LABEL, code, 'submissionStatus')
+function materialStatusView(code: ArchiveMaterialSubmissionStatusCode) {
+  return buildArchiveMaterialStatusView(code)
 }
 
-function submissionStatusTone(code: ArchiveMaterialSubmissionStatusCode): BadgeTone {
-  return strictEnumTone(ARCHIVE_MATERIAL_SUBMISSION_STATUS_TONE, code, 'submissionStatus')
+function materialOcrStatusLabel(code: ArchiveMaterialOcrStatusCode) {
+  return strictEnumLabel(ArchiveMaterialOcrStatusDescription, code, 'ocrStatus')
 }
 
-function materialOcrStatusLabel(code: PaperArchiveOcrStatusCode) {
-  return strictEnumLabel(PAPER_ARCHIVE_OCR_STATUS_LABEL, code, 'ocrStatus')
+function materialOcrStatusTone(code: ArchiveMaterialOcrStatusCode): BadgeTone {
+  return strictEnumTone(ARCHIVE_MATERIAL_OCR_STATUS_TONE, code, 'ocrStatus')
 }
 
-function materialOcrStatusTone(code: PaperArchiveOcrStatusCode): BadgeTone {
-  return strictEnumTone(PAPER_ARCHIVE_OCR_STATUS_TONE, code, 'ocrStatus')
-}
-
-function canRetryMaterialOcr(material: ArchiveVolumeMaterialVO): boolean {
+function canRetryMaterialOcr(material: ArchiveVolumeMaterialResponse): boolean {
   return material.ocrStatus === 'FAILED' && Boolean(material.fileId)
 }
 
-function canViewMaterialOcr(material: ArchiveVolumeMaterialVO): boolean {
+function canPreviewMaterialFile(material: ArchiveVolumeMaterialResponse): boolean {
+  return Boolean(material.fileId)
+}
+
+function handlePreviewMaterial(material: ArchiveVolumeMaterialResponse): void {
+  if (!material.fileId) return
+  void filePreview.openPreview({
+    fileId: material.fileId,
+    fileName: material.fileName ?? material.materialId,
+  })
+}
+
+async function handleDownloadMaterial(material: ArchiveVolumeMaterialResponse): Promise<void> {
+  if (!material.fileId) return
+  try {
+    await downloadFile({ nodeId: material.fileId })
+  } catch (error) {
+    showUserError(error, '下载失败')
+  }
+}
+
+function canViewMaterialOcr(material: ArchiveVolumeMaterialResponse): boolean {
   return (
     material.ocrStatus === 'COMPLETED'
     || material.ocrStatus === 'FAILED'
@@ -426,16 +567,21 @@ function canViewMaterialOcr(material: ArchiveVolumeMaterialVO): boolean {
   )
 }
 
-function openMaterialOcrDetail(material: ArchiveVolumeMaterialVO): void {
+function openMaterialOcrDetail(material: ArchiveVolumeMaterialResponse): void {
   ocrDetailMaterialId.value = material.materialId
   ocrDetailOpen.value = true
+}
+
+function openTagModal(material: ArchiveVolumeMaterialResponse): void {
+  tagEditMaterial.value = material
+  tagModalOpen.value = true
 }
 
 function emitRefreshed(options?: { silent?: boolean }) {
   emit('refreshed', options)
 }
 
-function confirmRetryMaterialOcr(material: ArchiveVolumeMaterialVO): void {
+function confirmRetryMaterialOcr(material: ArchiveVolumeMaterialResponse): void {
   void confirmAsync({
     title: '重试 OCR 识别？',
     content: `材料「${material.fileName ?? material.materialId}」将重新进入 OCR 队列。`,
@@ -476,9 +622,7 @@ watch(
     if (wasPolling && !shouldPoll) {
       void (async () => {
         emitRefreshed({ silent: true })
-        if (props.detail.fourPropertyStale) {
-          emit('ocr-completed-stale')
-        }
+        emit('ocr-completed-stale')
       })()
     }
   },
@@ -492,14 +636,41 @@ onUnmounted(() => {
   }
 })
 
+function resolveSelectedCatalogContext(): {
+  catalogCode?: string
+  materialType?: ArchiveMaterialTypeCode
+} {
+  const key = props.selectedCatalogKeys[0]
+  if (!key) {
+    return {}
+  }
+  const parsedMaterialType = ALL_ARCHIVE_MATERIAL_TYPE_CODES.find((code) => code === key)
+  if (parsedMaterialType) {
+    return { materialType: parsedMaterialType }
+  }
+  const material = props.detail.materials.find((item) =>
+    archiveMaterialBelongsToCatalogKey(item, key),
+  )
+  const missing = props.detail.latestIntegrityCheck?.missingItems?.find((item) =>
+    archiveMissingItemTargetsCatalogKey(item, key),
+  )
+  return {
+    catalogCode: key,
+    materialType: material?.materialType ?? missing?.materialType,
+  }
+}
+
 function openUploadModal() {
-  uploadForm.materialType = undefined
+  const context = resolveSelectedCatalogContext()
+  uploadForm.materialType = context.materialType
+  uploadForm.catalogCode = context.catalogCode
   uploadForm.fileNodeId = undefined
   uploadForm.fileName = undefined
   uploadForm.studentNo = ''
   uploadForm.studentName = ''
   uploadForm.retakeFlag = false
   uploadForm.makeupRound = ''
+  uploadForm.tags = []
   uploadModalOpen.value = true
 }
 
@@ -513,13 +684,15 @@ function resolveArchiveScanQuery(): Record<string, string> | null {
     returnTo: route.fullPath,
     batchMode: 'PER_PAGE',
   }
-  if (key in ARCHIVE_MATERIAL_TYPE_LABEL) {
+  if (key in ArchiveMaterialTypeDescription) {
     query.materialType = key
     return query
   }
-  const material = props.detail.materials.find((item) => item.catalogCode === key)
-  const missing = props.detail.latestIntegrityCheck?.missingItems?.find(
-    (item) => item.catalogCode === key,
+  const material = props.detail.materials.find((item) =>
+    archiveMaterialBelongsToCatalogKey(item, key),
+  )
+  const missing = props.detail.latestIntegrityCheck?.missingItems?.find((item) =>
+    archiveMissingItemTargetsCatalogKey(item, key),
   )
   const resolvedMaterialType = material?.materialType ?? missing?.materialType
   if (!resolvedMaterialType) {
@@ -546,7 +719,7 @@ function handleDispatchCreated(payload: ScanDispatchResultPayload) {
 }
 
 function openSharedRefModal() {
-  sharedRefForm.refType = 'MERGED_CLASS_SHARED'
+  sharedRefForm.refType = ArchiveSharedMaterialRefTypeCode.MERGED_CLASS_SHARED
   sharedRefForm.targetVolumeId = ''
   sharedRefForm.targetMaterialId = ''
   sharedRefForm.catalogNote = ''
@@ -558,19 +731,27 @@ async function submitMaterial() {
     message.warning('请选择材料类型和文件')
     return
   }
+  const tags = normalizeMaterialTagsForRegister(uploadForm.tags)
+  if (tags === undefined && uploadForm.tags.length > 0) {
+    return
+  }
   uploading.value = true
   try {
     await registerArchiveVolumeMaterial({
       volumeId: props.volumeId,
       materialType: uploadForm.materialType,
+      catalogCode: uploadForm.catalogCode,
       fileId: uploadForm.fileNodeId,
-      mediaType: 'ELECTRONIC',
-      sortRule: uploadForm.retakeFlag ? 'STUDENT_NO' : 'CATALOG_ORDER',
-      electronicOriginalStatus: 'SCANNED',
+      mediaType: ArchiveMaterialMediaTypeCode.ELECTRONIC,
+      sortRule: uploadForm.retakeFlag
+        ? ArchiveMaterialSortRuleCode.STUDENT_NO
+        : ArchiveMaterialSortRuleCode.CATALOG_ORDER,
+      electronicOriginalStatus: ArchiveElectronicOriginalStatusCode.SCANNED,
       studentNo: uploadForm.studentNo.trim() || undefined,
       studentName: uploadForm.studentName.trim() || undefined,
       retakeFlag: uploadForm.retakeFlag || undefined,
       makeupRound: uploadForm.makeupRound.trim() || undefined,
+      tags,
       triggerOcr: true,
     })
     message.success('材料登记成功')
@@ -617,7 +798,30 @@ async function submitSharedRef() {
   gap: var(--dp-space-4, 16px);
 }
 
-.archive-volume-material-table__toolbar {
+.archive-volume-material-table__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dp-space-3, 12px);
+  width: 100%;
+}
+
+.archive-volume-material-table__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.archive-volume-material-table__meta {
+  margin-left: auto;
+  font-family: var(--dp-font-mono, ui-monospace, monospace);
+  font-size: var(--dp-type-hint-size, 11px);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--dp-text-secondary, #64748b);
+}
+
+.archive-volume-material-table__actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--dp-space-2, 8px);

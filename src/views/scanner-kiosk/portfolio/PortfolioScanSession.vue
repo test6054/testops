@@ -2,8 +2,12 @@
 import { message } from 'ant-design-vue'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { SCAN_WORK_ORDER_STATUS_LABEL } from '@/apis/mark/scanner-work-order'
+import { ScannerColorModeCode, ScannerDuplexModeCode } from '@/apis/mark/exam-mark-scanner'
+import { LocalScanJobStatusCode, ScannerBusinessSceneCode } from '@/apis/mark/scanner-agent-local'
+import { ScanWorkOrderStatusDescription } from '@/apis/mark/scanner-work-order'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
+import { ScanWorkOrderStatusCode } from '@/types/enums/scan-work-order-status-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import DocumentKioskActivationGate from '../components/DocumentKioskActivationGate.vue'
 import { useDocumentKioskBootstrap } from '../composables/useDocumentKioskBootstrap'
@@ -16,14 +20,14 @@ const session = usePortfolioScanSession()
 const bootstrap = useDocumentKioskBootstrap()
 const lease = useLeaseHeartbeat()
 const scanFlow = useWorkOrderScanFlow({
-  taskKind: 'PORTFOLIO_COLLECT',
-  businessScene: 'TEACHER_PORTFOLIO',
+  taskKind: ScanTaskKindCode.PORTFOLIO_COLLECT,
+  businessScene: ScannerBusinessSceneCode.TEACHER_PORTFOLIO,
   getBusinessRefId: () => session.teacherId.value,
   lifecycle: session.lifecycle,
   getScanConfig: () => ({
     dpi: 300,
-    colorMode: 'COLOR',
-    duplexMode: 'SIMPLEX',
+    colorMode: ScannerColorModeCode.COLOR,
+    duplexMode: ScannerDuplexModeCode.SIMPLEX,
     blankPageDetectionEnabled: true,
   }),
   getScannerDeviceId: () => bootstrap.setup.value?.scannerDeviceId ?? '',
@@ -33,16 +37,17 @@ const scanFlow = useWorkOrderScanFlow({
 
 const canStart = computed(() =>
   Boolean(
-    session.collectMode.value &&
-    session.teacherId.value &&
-    bootstrap.selectedScannerId.value &&
-    session.portfolioContext.value != null &&
-    session.portfolioContext.value.scanAllowed === true &&
-    !lease.leaseLost.value,
+    session.collectMode.value
+    && session.teacherId.value
+    && bootstrap.selectedScannerId.value
+    && session.portfolioContext.value != null
+    && session.portfolioContext.value.scanAllowed === true
+    && !lease.leaseLost.value,
   ),
 )
 const leaseLostMessage = '派单租约已失效，扫描会话可能已被中断，请返回队列'
 const completedNavigated = ref(false)
+const autoResumeAttempted = ref(false)
 const jobMessage = computed(() => scanFlow.currentJob.value?.message ?? '')
 
 const lifecycleStatusLabel = computed(() => {
@@ -50,7 +55,7 @@ const lifecycleStatusLabel = computed(() => {
   if (!status) {
     return '—'
   }
-  return strictEnumLabel(SCAN_WORK_ORDER_STATUS_LABEL, status, '扫描工单状态')
+  return strictEnumLabel(ScanWorkOrderStatusDescription, status, '扫描工单状态')
 })
 
 function handleLeaseLost() {
@@ -79,6 +84,14 @@ function handleScanCompleted() {
     if (fileNodeId) {
       params.set('scanFileNodeId', fileNodeId)
     }
+    const materialId = scanFlow.lifecycle.value?.committedMaterialId
+    if (materialId) {
+      params.set('scanMaterialId', materialId)
+    }
+    const qualityAiTaskId = scanFlow.lifecycle.value?.committedQualityAiTaskId
+    if (qualityAiTaskId) {
+      params.set('scanQualityAiTaskId', qualityAiTaskId)
+    }
     void router.replace(`${path}?${params.toString()}`)
     return
   }
@@ -98,31 +111,39 @@ onMounted(async () => {
   }
   await bootstrap.initBootstrap()
   if (bootstrap.activation.isActivatedForMarkApis()) {
-    await session.loadContext()
-    await scanFlow.recoverLocalScanJob()
+    void session.loadContext().then(() => tryAutoResumeScan())
   }
 })
 
 watch(
   () => bootstrap.activation.isActivatedForMarkApis(),
-  async (activated) => {
+  (activated) => {
     if (activated) {
-      await session.loadContext()
-      await scanFlow.recoverLocalScanJob()
+      void session.loadContext().then(() => tryAutoResumeScan())
     }
   },
 )
 
 watch(
-  () =>
-    [
-      session.dispatchTicketId.value,
-      bootstrap.setup.value?.scannerDeviceId,
-      bootstrap.setup.value?.scannerStationId,
-    ] as const,
-  ([ticketId, deviceId, stationId]) => {
-    if (ticketId && deviceId && stationId) {
-      lease.startHeartbeat(ticketId, deviceId, stationId, { onLeaseLost: handleLeaseLost })
+  () => ({
+    scanAllowed: session.portfolioContext.value?.scanAllowed,
+    selectedScannerId: bootstrap.selectedScannerId.value,
+    status: session.lifecycle.value?.status,
+  }),
+  () => {
+    void tryAutoResumeScan()
+  },
+)
+
+watch(
+  () => ({
+    deviceId: bootstrap.setup.value?.scannerDeviceId,
+    stationId: bootstrap.setup.value?.scannerStationId,
+    ticketId: session.dispatchTicketId.value,
+  }),
+  (leaseState) => {
+    if (leaseState.ticketId && leaseState.deviceId && leaseState.stationId) {
+      lease.startHeartbeat(leaseState.ticketId, leaseState.deviceId, leaseState.stationId, { onLeaseLost: handleLeaseLost })
       return
     }
     lease.stopHeartbeat()
@@ -135,7 +156,7 @@ onUnmounted(() => {
 })
 
 watch(
-  () => scanFlow.isReported.value || scanFlow.lifecycle.value?.status === 'COMMITTED',
+  () => scanFlow.isReported.value || scanFlow.lifecycle.value?.status === ScanWorkOrderStatusCode.COMMITTED,
   (completed) => {
     if (completed) {
       handleScanCompleted()
@@ -146,13 +167,41 @@ watch(
 watch(
   () => scanFlow.lifecycle.value?.status,
   (status) => {
-    if (status !== 'DISCARDED' || !session.dispatchTicketId.value) {
+    if (status !== ScanWorkOrderStatusCode.DISCARDED || !session.dispatchTicketId.value) {
       return
     }
     message.info('已放弃，派单已释放')
     returnToDispatchQueue(false)
   },
 )
+
+async function tryAutoResumeScan() {
+  if (autoResumeAttempted.value) {
+    return
+  }
+  if (session.lifecycle.value?.status !== ScanWorkOrderStatusCode.IN_PROGRESS) {
+    return
+  }
+  if (scanFlow.currentJob.value) {
+    return
+  }
+  if (!bootstrap.selectedScannerId.value) {
+    return
+  }
+  if (session.portfolioContext.value?.scanAllowed !== true) {
+    return
+  }
+  autoResumeAttempted.value = true
+  try {
+    const workOrder = await session.startSession()
+    if (workOrder?.batchExternalNo && workOrder.reportId && workOrder.resolvedScanConfig) {
+      await scanFlow.startLocalScanAfterWorkOrder(workOrder)
+    }
+  }
+  catch {
+    autoResumeAttempted.value = false
+  }
+}
 
 async function handleStart() {
   const workOrder = await session.startSession()
@@ -190,7 +239,13 @@ function goBack() {
 
     <section v-if="session.portfolioContext.value" class="portfolio-scan-session__summary">
       <p>采集模式：{{ session.collectModeLabel.value }}</p>
-      <p>教师 ID：{{ session.teacherId.value }}</p>
+      <p>
+        教师：{{
+          session.portfolioContext.value.teacherName
+            || session.portfolioContext.value.teacherId
+            || '—'
+        }}
+      </p>
       <p v-if="session.portfolioContext.value.categoryName">
         分类：{{ session.portfolioContext.value.categoryName }}
       </p>
@@ -261,7 +316,7 @@ function goBack() {
           暂停
         </UiButton>
         <UiButton
-          v-if="scanFlow.currentJob.value?.status === 'PAUSED'"
+          v-if="scanFlow.currentJob.value?.status === LocalScanJobStatusCode.PAUSED"
           variant="outline"
           @click="scanFlow.resumeCurrentJob()"
         >
@@ -297,8 +352,7 @@ function goBack() {
       {{ scanFlow.currentJob.value?.status ?? '等待 Agent' }}； 已扫
       {{ scanFlow.currentJob.value?.scannedPages ?? 0 }} 页
       <span v-if="scanFlow.lifecycle.value.diagnostic">
-        — {{ scanFlow.lifecycle.value.diagnostic }}</span
-      >
+        — {{ scanFlow.lifecycle.value.diagnostic }}</span>
       <span v-else-if="jobMessage"> — {{ jobMessage }}</span>
     </p>
     <p v-if="scanFlow.errorMessage.value" class="portfolio-scan-session__error">
