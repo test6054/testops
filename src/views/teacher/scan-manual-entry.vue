@@ -331,6 +331,12 @@ import type { ExamScannerDeviceVO } from '@/apis/mark/exam-mark-scanner'
 import { listActiveScannerDevices } from '@/apis/mark/exam-mark-scanner'
 import type { ExamScannerBatchVO } from '@/apis/mark/exam-scan'
 import { pageScannerBatches } from '@/apis/mark/exam-scan'
+import type { MarkOcrPaperSliceVO, MarkOcrRecognizeVO } from '@/apis/mark/ocr-recognition'
+import {
+  listMarkOcrPaperSlices,
+  recognizeMarkOcr,
+  submitRecognition,
+} from '@/apis/mark/ocr-recognition'
 import type { ExamTeacherScanSupplementPrepareResponse } from '@/apis/mark/scan-source'
 import {
   importScanSource,
@@ -339,12 +345,6 @@ import {
   teacherSupplementScanSource,
 } from '@/apis/mark/scan-source'
 import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
-import type { MarkOcrPaperSliceVO, MarkOcrRecognizeVO } from '@/apis/mark/ocr-recognition'
-import {
-  listMarkOcrPaperSlices,
-  recognizeMarkOcr,
-  submitRecognition,
-} from '@/apis/mark/ocr-recognition'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
@@ -359,10 +359,10 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/SectionTabs.vue'
 import UiTextAction from '@/components/ui-guide/ui/TextAction.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiSectionTabs from '@/components/ui-guide/ui/SectionTabs.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
