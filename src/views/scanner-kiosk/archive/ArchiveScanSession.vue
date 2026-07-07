@@ -31,12 +31,12 @@ const scanFlow = useWorkOrderScanFlow({
 
 const canStart = computed(() =>
   Boolean(
-    session.volumeId.value
-    && session.materialType.value
-    && bootstrap.selectedScannerId.value
-    && session.archiveContext.value != null
-    && session.archiveContext.value.canRegisterMaterial === true
-    && !lease.leaseLost.value,
+    session.volumeId.value &&
+    session.materialType.value &&
+    bootstrap.selectedScannerId.value &&
+    session.archiveContext.value != null &&
+    session.archiveContext.value.canRegisterMaterial === true &&
+    !lease.leaseLost.value,
   ),
 )
 const leaseLostMessage = '派单租约已失效，扫描会话可能已被中断，请返回队列'
@@ -65,15 +65,17 @@ onMounted(async () => {
   }
   await bootstrap.initBootstrap()
   if (bootstrap.activation.isActivatedForMarkApis()) {
-    void session.loadContext()
+    await session.loadContext()
+    await scanFlow.recoverLocalScanJob()
   }
 })
 
 watch(
   () => bootstrap.activation.isActivatedForMarkApis(),
-  (activated) => {
+  async (activated) => {
     if (activated) {
-      void session.loadContext()
+      await session.loadContext()
+      await scanFlow.recoverLocalScanJob()
     }
   },
 )
