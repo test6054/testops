@@ -1085,32 +1085,38 @@ function scheduleMonitorBatchReload(): void {
     void loadConnectedScannerDevices()
     if (activeTab.value === 'normal') {
       void loadMonitorBatches()
+    } else if (activeTab.value === 'abnormal') {
+      void loadAttentions()
     }
   }, 800)
 }
 
 const connectionTone = computed<BadgeTone>(() => {
-  if (scanLiveStream.connectionPhase.value === 'ready' && scanLiveStream.ready.value) {
+  const phase = scanLiveStream.connectionPhase.value
+  if (phase === 'ready' && scanLiveStream.ready.value) {
     return 'green'
   }
-  if (scanLiveStream.connectionPhase.value === 'reconnecting') {
+  if (phase === 'reconnecting' || phase === 'connecting') {
     return 'orange'
   }
-  return connectedDevices.value.length > 0 ? 'green' : 'gray'
+  return connectedDevices.value.length > 0 ? 'gray' : 'gray'
 })
 
 const connectionLabel = computed(() => {
-  if (scanLiveStream.connectionPhase.value === 'ready' && scanLiveStream.ready.value) {
+  const phase = scanLiveStream.connectionPhase.value
+  if (phase === 'ready' && scanLiveStream.ready.value) {
     return '实时同步中'
   }
-  if (scanLiveStream.connectionPhase.value === 'reconnecting') {
+  if (phase === 'reconnecting') {
     return '重连中'
   }
-  if (scanLiveStream.connectionPhase.value === 'connecting') {
-    return '连接中'
+  if (phase === 'connecting') {
+    return connectedDevices.value.length > 0
+      ? `连接中 · ${connectedDevices.value.length} 台在线`
+      : '连接中'
   }
   return connectedDevices.value.length > 0
-    ? `${connectedDevices.value.length} 台在线`
+    ? `${connectedDevices.value.length} 台在线（轮询）`
     : '无在线设备'
 })
 

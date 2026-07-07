@@ -351,6 +351,7 @@ import {
   pageArchiveVolumes,
   retryArchiveVolumeAutoCreate,
 } from '@/apis/mark/archive-volume'
+import { readAllPages } from '@/utils/page-result'
 import ArchiveDimPill from '@/components/archive-volume/ArchiveDimPill.vue'
 import ArchiveExamScoreGatePanel from '@/components/archive-volume/ArchiveExamScoreGatePanel.vue'
 import ArchiveLifecyclePipe from '@/components/archive-volume/ArchiveLifecyclePipe.vue'
@@ -740,12 +741,14 @@ async function loadVolume() {
   examGate.value = null
   primaryVolumeNavigationSummary.value = null
   try {
-    const page = await pageArchiveVolumes({
-      examId: examId.value,
-      pageNum: 1,
-      pageSize: EXAM_ARCHIVE_VOLUME_PAGE_SIZE,
-    })
-    const list = page.list
+    const list = await readAllPages(
+      (pageNum) => pageArchiveVolumes({
+        examId: examId.value!,
+        pageNum,
+        pageSize: EXAM_ARCHIVE_VOLUME_PAGE_SIZE,
+      }),
+      '加载归档卷失败',
+    )
     healthyVolumes.value = list.filter((item) => !isAutoCreateFailureStub(item))
     const stubRow = list.find((item) => isAutoCreateFailureStub(item))
     if (stubRow) {
