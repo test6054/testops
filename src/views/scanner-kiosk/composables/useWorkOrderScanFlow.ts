@@ -16,6 +16,7 @@ import {
   deleteScanJob,
   endBatch,
   getScanJob,
+  listDocumentScanJobs,
   LocalScanJobStatusCode,
   LocalScanPageStatusCode,
   pauseScanJob,
@@ -164,6 +165,75 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
     } catch (error) {
       errorMessage.value = getUserErrorMessage(error, '刷新扫描任务失败')
     }
+  }
+
+  function isRecoverableLocalJob(job: ScanJobResponse) {
+    return [
+      LocalScanJobStatusCode.CREATED,
+      LocalScanJobStatusCode.SCANNING,
+      LocalScanJobStatusCode.PAUSED,
+      LocalScanJobStatusCode.READYTOUPLOAD,
+      LocalScanJobStatusCode.UPLOADING,
+      LocalScanJobStatusCode.RETRYING,
+      LocalScanJobStatusCode.FAILED,
+    ].includes(job.status)
+  }
+
+  function shouldPollRecoveredJob(job: ScanJobResponse) {
+    return [
+      LocalScanJobStatusCode.CREATED,
+      LocalScanJobStatusCode.SCANNING,
+      LocalScanJobStatusCode.PAUSED,
+      LocalScanJobStatusCode.READYTOUPLOAD,
+      LocalScanJobStatusCode.UPLOADING,
+      LocalScanJobStatusCode.RETRYING,
+      LocalScanJobStatusCode.FAILED,
+    ].includes(job.status)
+  }
+
+  /** 归档 / 档案袋 Kiosk 刷新后恢复 Agent 本地未完成任务，避免磁盘残留任务阻断新开扫。 */
+  async function recoverLocalScanJob() {
+    const deviceId = options.getScannerDeviceId().trim()
+    const stationId = options.getScannerStationId().trim()
+    if (!deviceId || !stationId) {
+      return
+    }
+    const batchExternalNo = lifecycle.value?.batchExternalNo?.trim()
+    let response
+    try {
+      response = await listDocumentScanJobs({
+        taskKind: options.taskKind,
+        scannerDeviceId: deviceId,
+        scannerStationId: stationId,
+        batchExternalNo: batchExternalNo || undefined,
+        includeTerminal: false,
+      })
+    } catch (error) {
+      errorMessage.value = getUserErrorMessage(error, '恢复本地扫描任务失败')
+      return
+    }
+    const currentJobId = currentJob.value?.scanJobId?.trim() ?? ''
+    const recoverableJobs = response.jobs.filter(isRecoverableLocalJob)
+    const recoverableJob
+      = (currentJobId ? recoverableJobs.find((job) => job.scanJobId === currentJobId) : undefined)
+        || (batchExternalNo
+          ? recoverableJobs.find((job) => job.batchExternalNo === batchExternalNo)
+          : undefined)
+        || recoverableJobs[0]
+    if (!recoverableJob) {
+      return
+    }
+    if (currentJob.value?.scanJobId === recoverableJob.scanJobId) {
+      if (shouldPollRecoveredJob(recoverableJob)) {
+        startPolling(recoverableJob.scanJobId)
+      }
+      return
+    }
+    currentJob.value = await getScanJob(recoverableJob.scanJobId)
+    if (shouldPollRecoveredJob(currentJob.value)) {
+      startPolling(currentJob.value.scanJobId)
+    }
+    successMessage.value = '已恢复本地未完成扫描任务'
   }
 
   async function startLocalScanAfterWorkOrder(workOrder: ScanWorkOrderLifecycleVO) {
@@ -326,6 +396,7 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
     retryCurrentCommit,
     retryWorkOrderCommit,
     discardCurrentSession,
+    recoverLocalScanJob,
     stopPolling,
   }
 }

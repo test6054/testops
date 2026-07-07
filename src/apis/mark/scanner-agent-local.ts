@@ -374,6 +374,15 @@ export interface ListScanJobsParams {
   includeTerminal?: boolean
 }
 
+export interface ListDocumentScanJobsParams {
+  taskKind: ScanTaskKindCode
+  scannerDeviceId: string
+  scannerStationId: string
+  /** 可选：精确匹配后端 IN_PROGRESS 工单的 batchExternalNo。 */
+  batchExternalNo?: string
+  includeTerminal?: boolean
+}
+
 export function getLocalAgentBaseUrl() {
   const value = import.meta.env.VITE_SCANNER_AGENT_URL
   return typeof value === 'string' && value.trim()
@@ -446,6 +455,27 @@ export async function listScanJobs(params: ListScanJobsParams): Promise<ScanJobL
   query.set('examId', params.examId.trim())
   query.set('scannerDeviceId', params.scannerDeviceId.trim())
   query.set('scannerStationId', params.scannerStationId.trim())
+  if (typeof params.includeTerminal === 'boolean') {
+    query.set('includeTerminal', String(params.includeTerminal))
+  }
+  const payload = await localAgentGet(`/api/scan-jobs?${query.toString()}`)
+  return readScanJobListResponse(payload)
+}
+
+/** 归档 / 档案袋文档采集任务列表；不依赖考试 kiosk 上下文。 */
+export async function listDocumentScanJobs(
+  params: ListDocumentScanJobsParams,
+): Promise<ScanJobListResponse> {
+  if (!params.scannerDeviceId.trim() || !params.scannerStationId.trim()) {
+    throw new Error('扫描设备或扫描站点缺失，无法恢复本地文档采集任务')
+  }
+  const query = new URLSearchParams()
+  query.set('taskKind', params.taskKind)
+  query.set('scannerDeviceId', params.scannerDeviceId.trim())
+  query.set('scannerStationId', params.scannerStationId.trim())
+  if (params.batchExternalNo?.trim()) {
+    query.set('batchExternalNo', params.batchExternalNo.trim())
+  }
   if (typeof params.includeTerminal === 'boolean') {
     query.set('includeTerminal', String(params.includeTerminal))
   }

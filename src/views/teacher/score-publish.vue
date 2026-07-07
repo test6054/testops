@@ -78,7 +78,7 @@
 
       <UiAlertStrip
         v-if="blockedDelayedAutoConfirmNotice"
-        tone="danger"
+        tone="error"
         title="延迟自动确认连续失败"
         :description="blockedDelayedAutoConfirmNotice"
         dense
@@ -408,7 +408,6 @@ import type {
   FinalScoreBatchPublishResponse,
   FinalScoreRiskOverviewResponse,
 } from '@/apis/mark/exam-score'
-import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
@@ -429,6 +428,7 @@ import {
 import {
   FINAL_SCORE_STATUS_OPTIONS,
   FINAL_SCORE_STATUS_TONE,
+  FinalScoreStatusCode,
   FinalScoreStatusDescription,
 } from '@/apis/mark/final-score-status'
 import ExamArchiveGateBanner from '@/components/archive-volume/ExamArchiveGateBanner.vue'
@@ -557,7 +557,7 @@ const blockedDelayedAutoConfirmNotice = computed(() => {
 })
 
 function filterCorrectedOnly(): void {
-  scoreFilterForm.statusFilter = 'CORRECTED'
+  scoreFilterForm.statusFilter = FinalScoreStatusCode.CORRECTED
   scoreFilterForm.unpublishedBoundOnly = false
   pagination.current = 1
   void loadCandidates()

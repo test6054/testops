@@ -115,9 +115,13 @@ const scoreSourceOptions = [
   label: ArchiveScoreSourceDescription[value],
 }))
 
-function handleResponsibleChange(user: TeacherUserInfoDto | null): void {
-  const userId = user?.userId != null ? String(user.userId) : null
-  emit('responsible-change', userId, user?.nickName ?? '')
+function handleResponsibleChange(
+  value: string | string[] | null,
+  option?: TeacherUserInfoDto | TeacherUserInfoDto[],
+): void {
+  const teacher = Array.isArray(option) ? option[0] : option
+  const userId = typeof value === 'string' ? value : null
+  emit('responsible-change', userId, teacher?.nickName?.trim() ?? '')
 }
 
 defineExpose({ formRef })

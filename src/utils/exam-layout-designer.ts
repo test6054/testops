@@ -570,7 +570,7 @@ function validateIdentityAreaTypes(document: ExamLayoutDocument | null): string[
       reasons.push('身份填涂区必须配置身份字段类型')
       continue
     }
-    if (!ALL_PAPER_MASTER_IDENTITY_AREA_TYPE_CODES.includes(block.identityAreaType)) {
+    if (ALL_PAPER_MASTER_IDENTITY_AREA_TYPE_CODES.find((code) => code === block.identityAreaType) == null) {
       reasons.push('身份填涂区类型无效，请选择学号、班级或姓名填涂区')
     }
   }

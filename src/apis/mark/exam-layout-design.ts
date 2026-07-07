@@ -6,6 +6,7 @@ import type {
 } from '@/apis/mark/exam-standard-answer'
 import type { MarkOcrSceneCode } from '@/apis/mark/ocr-scene'
 import type { QuestionTypeCode } from '@/apis/mark/question-type'
+import type { ExamLayoutDetectTaskStatusCode } from '@/types/enums/exam-layout-detect-task-status-enum'
 import http from '@/config/axios'
 
 /** 制卷设计主流程 hint：整卷直接上传源文件，答题卡生成识别版式后保存并预览 */
