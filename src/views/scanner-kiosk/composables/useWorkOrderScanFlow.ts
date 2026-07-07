@@ -45,6 +45,8 @@ export interface WorkOrderScanFlowOptions {
   getLocalScannerId: () => string
   /** 与 session 共享 lifecycle，便于恢复 COMMITTING/FAILED 工单。 */
   lifecycle?: Ref<ScanWorkOrderLifecycleVO | null>
+  /** Agent 上报后轮询 work-order context，直至 COMMITTED/FAILED（归档/档案袋异步 commit）。 */
+  refreshWorkOrderLifecycle?: () => Promise<void>
 }
 
 /**
@@ -62,6 +64,13 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
   const errorMessage = ref('')
   const successMessage = ref('')
   let pollTimer: ReturnType<typeof setInterval> | null = null
+  let workOrderPollTimer: ReturnType<typeof setInterval> | null = null
+
+  const isDocumentWorkOrderTask = computed(
+    () =>
+      options.taskKind === ScanTaskKindCode.EXAM_ARCHIVE
+      || options.taskKind === ScanTaskKindCode.PORTFOLIO_COLLECT,
+  )
 
   const isScanning = computed(
     () => currentJob.value?.status === LocalScanJobStatusCode.SCANNING
@@ -76,6 +85,12 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
   const isReported = computed(
     () => currentJob.value?.reported === true
       || currentJob.value?.status === LocalScanJobStatusCode.REPORTED,
+  )
+  const isWorkOrderCommitted = computed(
+    () => lifecycle.value?.status === ScanWorkOrderStatusCode.COMMITTED,
+  )
+  const isWorkOrderSettling = computed(
+    () => lifecycle.value?.status === ScanWorkOrderStatusCode.COMMITTING,
   )
   const canEndBatch = computed(
     () => currentJob.value?.status === LocalScanJobStatusCode.SCANNING
@@ -145,6 +160,76 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
     }
   }
 
+  function stopWorkOrderPolling() {
+    if (workOrderPollTimer) {
+      clearInterval(workOrderPollTimer)
+      workOrderPollTimer = null
+    }
+  }
+
+  function mergePageCountFromCurrentJob() {
+    const job = currentJob.value
+    if (!job || !lifecycle.value?.batchExternalNo) {
+      return
+    }
+    const pageCount = job.scannedPages > 0 ? job.scannedPages : job.uploadedPages
+    if (pageCount <= 0) {
+      return
+    }
+    lifecycle.value = {
+      ...lifecycle.value,
+      pageCount: lifecycle.value.pageCount ?? pageCount,
+    }
+  }
+
+  async function enrichCommittedLifecycle() {
+    if (!lifecycle.value?.batchExternalNo || !isWorkOrderCommitted.value) {
+      return
+    }
+    const pageCount = lifecycle.value.pageCount ?? currentJob.value?.scannedPages ?? currentJob.value?.uploadedPages
+    if (!pageCount || pageCount <= 0) {
+      return
+    }
+    try {
+      lifecycle.value = await commitScanWorkOrder({
+        taskKind: options.taskKind,
+        batchExternalNo: lifecycle.value.batchExternalNo,
+        pageCount,
+        scanEndTime: new Date().toISOString(),
+      })
+    } catch {
+      // context 已确认 COMMITTED，幂等 commit 失败不阻断导航
+    }
+  }
+
+  async function pollWorkOrderLifecycleOnce() {
+    if (!options.refreshWorkOrderLifecycle) {
+      return
+    }
+    await options.refreshWorkOrderLifecycle()
+    if (lifecycle.value?.status === ScanWorkOrderStatusCode.COMMITTED) {
+      stopWorkOrderPolling()
+      await enrichCommittedLifecycle()
+      successMessage.value = '扫描工单已提交'
+      return
+    }
+    if (lifecycle.value?.status === ScanWorkOrderStatusCode.FAILED) {
+      stopWorkOrderPolling()
+      errorMessage.value = lifecycle.value.diagnostic || '扫描工单提交失败，可重试提交或废弃后重新开单'
+    }
+  }
+
+  function startWorkOrderPolling() {
+    if (!options.refreshWorkOrderLifecycle || !isDocumentWorkOrderTask.value) {
+      return
+    }
+    stopWorkOrderPolling()
+    void pollWorkOrderLifecycleOnce()
+    workOrderPollTimer = setInterval(() => {
+      void pollWorkOrderLifecycleOnce()
+    }, 2000)
+  }
+
   function startPolling(scanJobId: string) {
     stopPolling()
     pollTimer = setInterval(() => {
@@ -157,7 +242,18 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
       currentJob.value = await getScanJob(scanJobId)
       if (currentJob.value.reported || currentJob.value.status === LocalScanJobStatusCode.REPORTED) {
         stopPolling()
-        successMessage.value = '扫描批次已提交'
+        if (isDocumentWorkOrderTask.value) {
+          mergePageCountFromCurrentJob()
+          if (isWorkOrderCommitted.value) {
+            await enrichCommittedLifecycle()
+            successMessage.value = '扫描工单已提交'
+          } else {
+            successMessage.value = '扫描页已上传，正在登记材料…'
+            startWorkOrderPolling()
+          }
+        } else {
+          successMessage.value = '扫描批次已提交'
+        }
       }
       if (currentJob.value.status === LocalScanJobStatusCode.FAILED) {
         stopPolling()
@@ -323,6 +419,9 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
       })
       if (lifecycle.value.status === ScanWorkOrderStatusCode.COMMITTED) {
         successMessage.value = '扫描工单已提交'
+      } else if (lifecycle.value.status === ScanWorkOrderStatusCode.COMMITTING) {
+        successMessage.value = '正在登记材料…'
+        startWorkOrderPolling()
       }
     } catch (error) {
       errorMessage.value = getUserErrorMessage(error, '重试提交扫描工单失败')
@@ -362,6 +461,7 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
       lifecycle.value = await discardScanWorkOrder(discardRequest)
       currentJob.value = null
       stopPolling()
+      stopWorkOrderPolling()
       successMessage.value = '扫描工单已废弃'
     } catch (error) {
       errorMessage.value = getUserErrorMessage(error, '废弃扫描失败')
@@ -370,8 +470,22 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
     }
   }
 
+  async function resumeWorkOrderPollingIfNeeded() {
+    if (!isDocumentWorkOrderTask.value || !options.refreshWorkOrderLifecycle) {
+      return
+    }
+    if (lifecycle.value?.status === ScanWorkOrderStatusCode.COMMITTED) {
+      await enrichCommittedLifecycle()
+      return
+    }
+    if (lifecycle.value?.status === ScanWorkOrderStatusCode.COMMITTING) {
+      startWorkOrderPolling()
+    }
+  }
+
   onBeforeUnmount(() => {
     stopPolling()
+    stopWorkOrderPolling()
   })
 
   return {
@@ -383,6 +497,8 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
     isScanning,
     isUploading,
     isReported,
+    isWorkOrderCommitted,
+    isWorkOrderSettling,
     canEndBatch,
     canDiscard,
     canRetryUpload,
@@ -397,6 +513,7 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
     retryWorkOrderCommit,
     discardCurrentSession,
     recoverLocalScanJob,
+    resumeWorkOrderPollingIfNeeded,
     stopPolling,
   }
 }

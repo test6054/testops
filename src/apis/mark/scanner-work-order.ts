@@ -153,6 +153,7 @@ export interface ScanWorkOrderArchiveContextVO {
   activeWorkOrderId?: string
   activeWorkOrderStatus?: ScanWorkOrderStatusCode
   activeBatchExternalNo?: string
+  activeWorkOrderDiagnostic?: string
   canRegisterMaterial?: boolean
 }
 
@@ -163,7 +164,7 @@ export interface ScanWorkOrderContextVO {
   activeBatchExternalNo?: string
   examKioskContext?: ExamScannerKioskContextVO
   archiveContext?: ScanWorkOrderArchiveContextVO
-  portfolioContext?: ScanWorkOrderPortfolioContextVO
+  activeWorkOrderLifecycle?: ScanWorkOrderLifecycleVO
 }
 
 export interface ScanWorkOrderCommitRequest {

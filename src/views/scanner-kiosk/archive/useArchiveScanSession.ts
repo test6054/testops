@@ -18,9 +18,9 @@ import {
   ArchiveScanBatchModeCode,
 } from '@/types/enums/archive-scan-batch-mode-enum'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
-import { ScanWorkOrderStatusCode } from '@/types/enums/scan-work-order-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import { mergeWorkOrderLifecycleFromContext } from '../composables/mergeWorkOrderLifecycleFromContext'
 
 export function useArchiveScanSession() {
   const route = useRoute()
@@ -71,12 +71,14 @@ export function useArchiveScanSession() {
     }
   }
 
-  async function loadContext() {
+  async function loadContext(options?: { silent?: boolean }) {
     if (!volumeId.value) {
       showUserError(null, '缺少归档卷 ID')
       return
     }
-    loading.value = true
+    if (!options?.silent) {
+      loading.value = true
+    }
     try {
       await loadDispatchSnapshot()
       const setup = await getAgentSetupContext()
@@ -92,27 +94,20 @@ export function useArchiveScanSession() {
         batchExternalNo: lifecycle.value?.batchExternalNo,
       })
       archiveContext.value = context.archiveContext ?? null
-      const batchNo = context.activeBatchExternalNo ?? context.archiveContext?.activeBatchExternalNo
-      const status = context.activeWorkOrderStatus ?? context.archiveContext?.activeWorkOrderStatus
-      if (
-        batchNo
-        && (
-          status === ScanWorkOrderStatusCode.COMMITTING
-          || status === ScanWorkOrderStatusCode.FAILED
-          || status === ScanWorkOrderStatusCode.IN_PROGRESS
-        )
-      ) {
-        lifecycle.value = {
-          workOrderId: context.activeWorkOrderId ?? context.archiveContext?.activeWorkOrderId,
-          batchExternalNo: batchNo,
-          status,
-          taskKind: ScanTaskKindCode.EXAM_ARCHIVE,
-        }
-      }
+      const merged = mergeWorkOrderLifecycleFromContext(
+        context,
+        ScanTaskKindCode.EXAM_ARCHIVE,
+        lifecycle.value,
+      )
+      lifecycle.value = merged
     } catch (error) {
-      showUserError(error, '加载归档扫描上下文失败')
+      if (!options?.silent) {
+        showUserError(error, '加载归档扫描上下文失败')
+      }
     } finally {
-      loading.value = false
+      if (!options?.silent) {
+        loading.value = false
+      }
     }
   }
 

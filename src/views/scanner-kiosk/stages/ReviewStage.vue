@@ -482,6 +482,24 @@ const reviewBoundBatchId = computed(
 
       <section class="panel-section">
         <header><h4>处置操作</h4></header>
+        <div
+          v-if="workflow.pageRegisterBlocked.value"
+          class="page-register-block"
+        >
+          <p class="page-register-block__title">自动页登记被阻断</p>
+          <p class="page-register-block__desc">
+            {{ workflow.pageRegisterDiagnostic.value || '批次已提交，但页登记尚未完成' }}
+          </p>
+          <button
+            type="button"
+            class="op-btn op-btn--warn"
+            :disabled="!workflow.canRetryPageRegister.value || workflow.pageRegisterRetryLoading.value"
+            @click="workflow.retryPageRegister()"
+          >
+            <ReloadOutlined :spin="workflow.pageRegisterRetryLoading.value" />
+            <span>重试页登记</span>
+          </button>
+        </div>
         <button
           type="button"
           class="op-btn"
@@ -918,6 +936,30 @@ const reviewBoundBatchId = computed(
 .op-btn--danger-ghost:hover:not(:disabled) {
   border-color: var(--kiosk-danger);
   background: var(--kiosk-danger-soft);
+}
+
+.page-register-block {
+  margin-bottom: var(--kiosk-space-3);
+  padding: var(--kiosk-space-3);
+  border: 1px solid rgba(212, 136, 6, 0.35);
+  border-radius: var(--kiosk-radius-md);
+  background: rgba(250, 173, 20, 0.08);
+}
+.page-register-block__title {
+  margin: 0 0 var(--kiosk-space-2);
+  font-size: var(--kiosk-fz-body);
+  font-weight: var(--kiosk-fw-semibold);
+  color: #ad6800;
+}
+.page-register-block__desc {
+  margin: 0 0 var(--kiosk-space-3);
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-ink-secondary);
+  line-height: 1.5;
+}
+.op-btn--warn {
+  border-color: rgba(212, 136, 6, 0.45);
+  color: #ad6800;
 }
 
 /* ============ 鎵规鎽樿 KV ============ */

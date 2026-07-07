@@ -63,6 +63,11 @@ export function useLeaseHeartbeat() {
     }, HEARTBEAT_INTERVAL_MS)
   }
 
+  function releaseLease() {
+    stopHeartbeat()
+    leaseLost.value = false
+  }
+
   onUnmounted(stopHeartbeat)
 
   return {
@@ -70,5 +75,6 @@ export function useLeaseHeartbeat() {
     leaseLost,
     startHeartbeat,
     stopHeartbeat,
+    releaseLease,
   }
 }

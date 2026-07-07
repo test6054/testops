@@ -16,6 +16,7 @@ import {
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { ScanWorkOrderStatusCode } from '@/types/enums/scan-work-order-status-enum'
 import { showUserError } from '@/utils/error-handler'
+import { mergeWorkOrderLifecycleFromContext } from '../composables/mergeWorkOrderLifecycleFromContext'
 
 export function usePortfolioScanSession() {
   const route = useRoute()
@@ -42,7 +43,7 @@ export function usePortfolioScanSession() {
     return PortfolioCollectModeDescription[collectMode.value]
   })
 
-  async function loadContext() {
+  async function loadContext(options?: { silent?: boolean }) {
     if (!dispatchTicketId.value) {
       showUserError(null, '缺少派单 ticketId，请从 Hub 或派单页进入')
       return
@@ -51,7 +52,9 @@ export function usePortfolioScanSession() {
       showUserError(null, '缺少采集模式或教师 ID')
       return
     }
-    loading.value = true
+    if (!options?.silent) {
+      loading.value = true
+    }
     try {
       const setup = await getAgentSetupContext()
       if (!setup.bound || !setup.scannerDeviceId || !setup.scannerStationId) {
@@ -75,30 +78,19 @@ export function usePortfolioScanSession() {
         batchExternalNo: lifecycle.value?.batchExternalNo,
       })
       portfolioContext.value = context.portfolioContext ?? null
-      const batchNo
-        = context.activeBatchExternalNo ?? context.portfolioContext?.activeBatchExternalNo
-      const status
-        = context.activeWorkOrderStatus ?? context.portfolioContext?.activeWorkOrderStatus
-      if (
-        batchNo
-        && (
-          status === ScanWorkOrderStatusCode.COMMITTING
-          || status === ScanWorkOrderStatusCode.FAILED
-          || status === ScanWorkOrderStatusCode.IN_PROGRESS
-        )
-      ) {
-        lifecycle.value = {
-          workOrderId: context.activeWorkOrderId ?? context.portfolioContext?.activeWorkOrderId,
-          batchExternalNo: batchNo,
-          status,
-          taskKind: ScanTaskKindCode.PORTFOLIO_COLLECT,
-          diagnostic: context.portfolioContext?.activeWorkOrderDiagnostic,
-        }
-      }
+      lifecycle.value = mergeWorkOrderLifecycleFromContext(
+        context,
+        ScanTaskKindCode.PORTFOLIO_COLLECT,
+        lifecycle.value,
+      )
     } catch (error) {
-      showUserError(error, '加载档案袋扫描上下文失败')
+      if (!options?.silent) {
+        showUserError(error, '加载档案袋扫描上下文失败')
+      }
     } finally {
-      loading.value = false
+      if (!options?.silent) {
+        loading.value = false
+      }
     }
   }
 

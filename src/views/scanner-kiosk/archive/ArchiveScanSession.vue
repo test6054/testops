@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { message } from 'ant-design-vue'
-import { computed, onMounted, onUnmounted, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ScannerColorModeCode, ScannerDuplexModeCode } from '@/apis/mark/exam-mark-scanner'
 import { LocalScanJobStatusCode, ScannerBusinessSceneCode } from '@/apis/mark/scanner-agent-local'
@@ -27,6 +27,7 @@ const scanFlow = useWorkOrderScanFlow({
   getBusinessRefId: () => session.volumeId.value,
   getArchiveBatchMode: () => session.batchMode.value,
   lifecycle: session.lifecycle,
+  refreshWorkOrderLifecycle: () => session.loadContext({ silent: true }),
   getScanConfig: () => ({
     dpi: 300,
     colorMode: ScannerColorModeCode.COLOR,
@@ -52,6 +53,7 @@ const leaseLostMessage = '派单租约已失效，扫描会话可能已被中断
 const batchModeLabel = computed(() =>
   strictEnumLabel(ArchiveScanBatchModeDescription, session.batchMode.value, '归档扫描批次模式'),
 )
+const completedNavigated = ref(false)
 const jobMessage = computed(() => scanFlow.currentJob.value?.message ?? '')
 const physicalStorageLocation = computed(
   () => session.dispatchSnapshot.value?.physicalStorageLocation ?? '',
@@ -80,6 +82,25 @@ function returnToDispatchQueue(scanCommitted: boolean) {
   })
 }
 
+function handleScanCompleted() {
+  if (completedNavigated.value) {
+    return
+  }
+  completedNavigated.value = true
+  if (session.returnTo.value) {
+    lease.stopHeartbeat()
+    const [path, search = ''] = session.returnTo.value.split('?')
+    const params = new URLSearchParams(search)
+    params.set('scanCommitted', '1')
+    params.set('tab', 'materials')
+    void router.replace(`${path}?${params.toString()}`)
+    return
+  }
+  if (session.dispatchTicketId.value) {
+    returnToDispatchQueue(true)
+  }
+}
+
 onMounted(async () => {
   if (!session.volumeId.value) {
     void router.replace('/scanner-kiosk')
@@ -89,6 +110,7 @@ onMounted(async () => {
   if (bootstrap.activation.isActivatedForMarkApis()) {
     await session.loadContext()
     await scanFlow.recoverLocalScanJob()
+    await scanFlow.resumeWorkOrderPollingIfNeeded()
   }
 })
 
@@ -98,6 +120,7 @@ watch(
     if (activated) {
       await session.loadContext()
       await scanFlow.recoverLocalScanJob()
+      await scanFlow.resumeWorkOrderPollingIfNeeded()
     }
   },
 )
@@ -123,22 +146,10 @@ onUnmounted(() => {
 })
 
 watch(
-  () => scanFlow.isReported.value,
-  (reported) => {
-    if (!reported) {
-      return
-    }
-    if (session.returnTo.value) {
-      lease.stopHeartbeat()
-      const [path, search = ''] = session.returnTo.value.split('?')
-      const params = new URLSearchParams(search)
-      params.set('scanCommitted', '1')
-      params.set('tab', 'materials')
-      void router.replace(`${path}?${params.toString()}`)
-      return
-    }
-    if (session.dispatchTicketId.value) {
-      returnToDispatchQueue(true)
+  () => scanFlow.isWorkOrderCommitted.value,
+  (committed) => {
+    if (committed) {
+      handleScanCompleted()
     }
   },
 )
@@ -146,6 +157,9 @@ watch(
 watch(
   () => scanFlow.lifecycle.value?.status,
   (status) => {
+    if (status === ScanWorkOrderStatusCode.FAILED) {
+      lease.releaseLease()
+    }
     if (status !== ScanWorkOrderStatusCode.DISCARDED || !session.dispatchTicketId.value) {
       return
     }
@@ -194,7 +208,10 @@ function goBack() {
       <p>目录编码：{{ session.catalogCode.value || '卷级收材' }}</p>
       <p>材料类型：{{ session.materialTypeLabel.value }}</p>
       <p>批次模式：{{ batchModeLabel }}</p>
-      <p v-if="archiveWorkOrderBlockedMessage" class="archive-scan-session__block">
+      <p v-if="scanFlow.isWorkOrderSettling.value" class="archive-scan-session__block">
+        {{ scanFlow.successMessage.value || '扫描页已上传，正在登记材料…' }}
+      </p>
+      <p v-else-if="archiveWorkOrderBlockedMessage" class="archive-scan-session__block">
         {{ archiveWorkOrderBlockedMessage }}
       </p>
     </section>

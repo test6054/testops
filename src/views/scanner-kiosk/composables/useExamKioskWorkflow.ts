@@ -98,6 +98,7 @@ import {
   listScannerKioskBoundPapers,
   pageScannerKioskBatchHistory,
   pageScannerKioskExamOptions,
+  retryKioskScanBatchPageRegister,
   ScannerKioskScanModeCode,
   ScannerKioskScanModeDescription,
 } from '@/apis/mark/scanner-kiosk'
@@ -220,6 +221,10 @@ export function useExamKioskWorkflow() {
   const activeBatchExternalNo = ref('')
   /** batch/start 落库的当前工作台批次 ID，供绑定查询与侧栏展示锚定。 */
   const activeScanBatchId = ref('')
+  /** 自动页登记阻断态：commit 成功后批次已收件但页登记未完成。 */
+  const pageRegisterBlocked = ref(false)
+  const pageRegisterDiagnostic = ref('')
+  const pageRegisterRetryLoading = ref(false)
   /** 当前 IN_PROGRESS 工单 reportId，浏览器 commit 兜底时使用。 */
   const activeReportId = ref('')
   /** start 时冻结的扫描参数，浏览器 commit 兜底时使用。 */
@@ -1162,6 +1167,48 @@ export function useExamKioskWorkflow() {
     lastReportedBatchExternalNo.value = ''
     lastPreviewScanJobId.value = ''
     lastPreviewScanJob.value = null
+    pageRegisterBlocked.value = false
+    pageRegisterDiagnostic.value = ''
+  }
+
+  /** 同步页登记阻断态，供 Review 阶段显式重试入口读取。 */
+  function applyPageRegisterBlockState(blocked?: boolean, diagnostic?: string | null) {
+    pageRegisterBlocked.value = blocked === true
+    pageRegisterDiagnostic.value = blocked === true ? (diagnostic?.trim() ?? '') : ''
+  }
+
+  const canRetryPageRegister = computed(
+    () =>
+      pageRegisterBlocked.value
+      && Boolean(examId.value)
+      && Boolean(activeScanBatchId.value),
+  )
+
+  async function retryPageRegister() {
+    if (!examId.value || !activeScanBatchId.value) {
+      return
+    }
+    pageRegisterRetryLoading.value = true
+    errorMessage.value = ''
+    try {
+      const response = await retryKioskScanBatchPageRegister({
+        examId: examId.value,
+        scanBatchId: activeScanBatchId.value,
+      })
+      if (response.pageRegisterBlocked) {
+        applyPageRegisterBlockState(true, response.pageRegisterDiagnostic)
+        errorMessage.value = `页登记仍被阻断：${pageRegisterDiagnostic.value || '请检查模板与页序配置'}`
+        return
+      }
+      applyPageRegisterBlockState(false)
+      successMessage.value = '页登记重试成功'
+      await refreshPageLedger()
+      await refreshKioskContext()
+    } catch (error) {
+      handleError(error, '页登记重试失败')
+    } finally {
+      pageRegisterRetryLoading.value = false
+    }
   }
 
   /** 终态上报任务只保留复核预览快照，不能再占用当前扫描锚点。 */
@@ -2476,8 +2523,9 @@ export function useExamKioskWorkflow() {
     currentJob.value = null
     await refreshKioskContext()
     await refreshPageLedger()
+    applyPageRegisterBlockState(lifecycle.pageRegisterBlocked, lifecycle.pageRegisterDiagnostic)
     if (lifecycle.pageRegisterBlocked) {
-      errorMessage.value = `批次已提交，但自动页登记被阻断：${lifecycle.pageRegisterDiagnostic ?? '请前往 PC 端处理'}`
+      errorMessage.value = `批次已提交，但自动页登记被阻断：${lifecycle.pageRegisterDiagnostic ?? '请在复核页重试页登记'}`
     } else {
       successMessage.value = KIOSK_BATCH_SUBMITTED_HINT
     }
@@ -2867,8 +2915,12 @@ export function useExamKioskWorkflow() {
       const pageRegisterBlockMessage = job.pageRegisterBlocked
         ? scannerDiagnosticText(job.pageRegisterDiagnostic || job.message)
         : resolvePageRegisterBlockMessage()
+      applyPageRegisterBlockState(
+        job.pageRegisterBlocked || Boolean(pageRegisterBlockMessage),
+        job.pageRegisterDiagnostic || pageRegisterBlockMessage,
+      )
       if (pageRegisterBlockMessage) {
-        errorMessage.value = `批次已上传，但自动页登记被阻断：${pageRegisterBlockMessage}。请在复核页查看异常，或联系阅卷管理员在 PC 端处理。`
+        errorMessage.value = `批次已上传，但自动页登记被阻断：${pageRegisterBlockMessage}。请在复核页重试页登记。`
         successMessage.value = ''
       }
       else {
@@ -3132,6 +3184,10 @@ export function useExamKioskWorkflow() {
     boundPapersError,
     boundPaperScanBatchId,
     boundPaperSummary,
+    pageRegisterBlocked,
+    pageRegisterDiagnostic,
+    pageRegisterRetryLoading,
+    canRetryPageRegister,
     currentJob,
     previewScanJob,
     reviewScanJob,
@@ -3291,6 +3347,7 @@ export function useExamKioskWorkflow() {
     resumeCurrentJob,
     endCurrentBatch,
     retryCurrentCommit,
+    retryPageRegister,
     removeCurrentScanJob,
     discardLedgerPage,
 

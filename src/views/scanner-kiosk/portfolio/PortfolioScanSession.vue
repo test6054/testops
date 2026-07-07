@@ -24,6 +24,7 @@ const scanFlow = useWorkOrderScanFlow({
   businessScene: ScannerBusinessSceneCode.TEACHER_PORTFOLIO,
   getBusinessRefId: () => session.teacherId.value,
   lifecycle: session.lifecycle,
+  refreshWorkOrderLifecycle: () => session.loadContext({ silent: true }),
   getScanConfig: () => ({
     dpi: 300,
     colorMode: ScannerColorModeCode.COLOR,
@@ -56,6 +57,16 @@ const lifecycleStatusLabel = computed(() => {
     return '—'
   }
   return strictEnumLabel(ScanWorkOrderStatusDescription, status, '扫描工单状态')
+})
+const portfolioWorkOrderBlockedMessage = computed(() => {
+  const status = session.lifecycle.value?.status
+  if (status === ScanWorkOrderStatusCode.FAILED) {
+    return session.lifecycle.value?.diagnostic || '档案袋提交失败，可重试提交或废弃后重新开单'
+  }
+  if (status === ScanWorkOrderStatusCode.COMMITTING) {
+    return session.lifecycle.value?.diagnostic || '档案袋提交处理中，请稍候；长时间未结束可重试提交'
+  }
+  return ''
 })
 
 function handleLeaseLost() {
@@ -111,7 +122,10 @@ onMounted(async () => {
   }
   await bootstrap.initBootstrap()
   if (bootstrap.activation.isActivatedForMarkApis()) {
-    void session.loadContext().then(() => tryAutoResumeScan())
+    void session.loadContext().then(async () => {
+      await tryAutoResumeScan()
+      await scanFlow.resumeWorkOrderPollingIfNeeded()
+    })
   }
 })
 
@@ -119,7 +133,10 @@ watch(
   () => bootstrap.activation.isActivatedForMarkApis(),
   (activated) => {
     if (activated) {
-      void session.loadContext().then(() => tryAutoResumeScan())
+      void session.loadContext().then(async () => {
+        await tryAutoResumeScan()
+        await scanFlow.resumeWorkOrderPollingIfNeeded()
+      })
     }
   },
 )
@@ -156,8 +173,8 @@ onUnmounted(() => {
 })
 
 watch(
-  () => scanFlow.isReported.value || scanFlow.lifecycle.value?.status === ScanWorkOrderStatusCode.COMMITTED,
-  (completed) => {
+  () => scanFlow.isWorkOrderCommitted.value,
+  (committed) => {
     if (completed) {
       handleScanCompleted()
     }
@@ -167,6 +184,9 @@ watch(
 watch(
   () => scanFlow.lifecycle.value?.status,
   (status) => {
+    if (status === ScanWorkOrderStatusCode.FAILED) {
+      lease.releaseLease()
+    }
     if (status !== ScanWorkOrderStatusCode.DISCARDED || !session.dispatchTicketId.value) {
       return
     }
@@ -254,6 +274,12 @@ function goBack() {
       </p>
       <p v-if="session.portfolioContext.value.blockReason" class="portfolio-scan-session__block">
         {{ session.portfolioContext.value.blockReason }}
+      </p>
+      <p v-if="scanFlow.isWorkOrderSettling.value" class="portfolio-scan-session__block">
+        {{ scanFlow.successMessage.value || '扫描页已上传，正在登记材料…' }}
+      </p>
+      <p v-else-if="portfolioWorkOrderBlockedMessage" class="portfolio-scan-session__block">
+        {{ portfolioWorkOrderBlockedMessage }}
       </p>
     </section>
 

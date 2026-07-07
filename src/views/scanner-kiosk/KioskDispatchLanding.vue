@@ -43,6 +43,12 @@ const terminalHint = computed(() => {
 const canContinueScan = computed(
   () => ticketStatus.value === ScanDispatchTicketStatusCode.PROCESSING && Boolean(session.ticket.value?.workOrderId),
 )
+const isFailedPending = computed(
+  () =>
+    ticketStatus.value === ScanDispatchTicketStatusCode.PENDING
+    && Boolean(session.ticket.value?.failureReason?.trim()),
+)
+const failedPendingReason = computed(() => session.ticket.value?.failureReason?.trim() ?? '')
 
 onMounted(async () => {
   await session.bootstrap.initBootstrap()
@@ -119,6 +125,9 @@ function goHub() {
         追溯码 {{ session.ticket.value.traceLabelCode }}
       </p>
       <p v-if="session.isPreviewMode">预览模式 · 不占设备锁</p>
+      <p v-else-if="isFailedPending" class="dispatch-landing__hint dispatch-landing__hint--danger">
+        提交失败：{{ failedPendingReason }}。请在本工位重试；其他工位不可领取。
+      </p>
       <p v-else-if="isTerminalStatus" class="dispatch-landing__hint">{{ terminalHint }}</p>
       <div v-if="isTerminalStatus" class="dispatch-landing__actions">
         <UiButton variant="primary" @click="goQueue">返回队列</UiButton>
@@ -136,7 +145,7 @@ function goHub() {
           :disabled="session.actionLoading.value || !session.canClaimTicket.value"
           @click="session.claimTicket()"
         >
-          领取任务
+          {{ isFailedPending ? '重试任务' : '领取任务' }}
         </UiButton>
         <UiButton
           v-if="canContinueScan"
@@ -170,6 +179,9 @@ function goHub() {
         追溯码 {{ session.ticket.value.traceLabelCode }}
       </p>
       <p v-if="session.isPreviewMode">预览模式 · 不占设备锁</p>
+      <p v-else-if="isFailedPending" class="dispatch-landing__hint dispatch-landing__hint--danger">
+        提交失败：{{ failedPendingReason }}。请在本工位重试；其他工位不可领取。
+      </p>
       <p v-else-if="isTerminalStatus" class="dispatch-landing__hint">{{ terminalHint }}</p>
       <div v-if="isTerminalStatus" class="dispatch-landing__actions">
         <UiButton variant="primary" @click="goQueue">返回队列</UiButton>
@@ -187,7 +199,7 @@ function goHub() {
           :disabled="session.actionLoading.value || !session.canClaimTicket.value"
           @click="session.claimTicket()"
         >
-          领取任务
+          {{ isFailedPending ? '重试任务' : '领取任务' }}
         </UiButton>
         <UiButton
           v-if="canContinueScan"
@@ -252,6 +264,9 @@ function goHub() {
 .dispatch-landing__hint {
   margin: 12px 0 0;
   color: var(--nybc-text-secondary, #8c8c8c);
+}
+.dispatch-landing__hint--danger {
+  color: #cf1322;
 }
 .dispatch-landing__panel {
   border: 1px solid var(--nybc-border, #e8e8e8);
