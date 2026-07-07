@@ -243,10 +243,11 @@ export const useAuthStore = defineStore(
           } else {
             try {
               const claims = parseTokenClaims(token.value)
-              if (!claims) return
-              tokenExpiresAt.value = claims.exp
-              storedTokenExpiresAt = claims.exp.toString()
-              localStorage.setItem(STORAGE_TOKEN_EXPIRES_AT, storedTokenExpiresAt)
+              if (claims) {
+                tokenExpiresAt.value = claims.exp
+                storedTokenExpiresAt = claims.exp.toString()
+                localStorage.setItem(STORAGE_TOKEN_EXPIRES_AT, storedTokenExpiresAt)
+              }
             } catch {
               /* 无效 token 不在此修复 */
             }

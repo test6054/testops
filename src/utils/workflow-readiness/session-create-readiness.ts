@@ -143,7 +143,7 @@ export function resolveSessionCreateWorkflowSteps(
   const secondaryAction = resolveSecondaryAction(steps)
 
   return {
-    canCreate: input.readiness.canCreate === true,
+    canCreate: input.readiness.canCreate,
     panelTitle,
     disabledTooltip,
     steps,

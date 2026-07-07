@@ -226,14 +226,14 @@
             {{ detailCandidate?.studentClassName }}
           </a-descriptions-item>
           <a-descriptions-item v-if="hasDailyScoreConfig" label="考试分">
-            <span class="score-summary-table__score">{{ paperScore.examScore ?? 0 }} 分</span>
+            <span class="score-summary-table__score">{{ formatScorePoints(paperScore.examScore) }}</span>
           </a-descriptions-item>
           <a-descriptions-item v-if="hasDailyScoreConfig" label="日常分">
-            <span class="score-summary-table__score">{{ paperScore.dailyScore ?? 0 }} 分</span>
+            <span class="score-summary-table__score">{{ formatScorePoints(paperScore.dailyScore) }}</span>
           </a-descriptions-item>
           <a-descriptions-item :label="hasDailyScoreConfig ? '总成绩' : '总分'">
             <span class="score-summary-table__score score-summary-table__score--total">
-              {{ paperScore.totalScore ?? 0 }} 分
+              {{ formatScorePoints(paperScore.totalScore) }}
             </span>
           </a-descriptions-item>
           <a-descriptions-item label="最终状态" :span="2">
@@ -592,6 +592,10 @@ async function loadExamDetail(): Promise<void> {
 }
 
 const hasDailyScoreConfig = computed(() => examDetail.value?.dailyScoreFull != null)
+
+function formatScorePoints(score: number | null | undefined): string {
+  return score != null ? `${score} 分` : '—'
+}
 
 const columns = computed(() =>
   buildExamScoreSummaryTableColumns('publish', hasDailyScoreConfig.value),

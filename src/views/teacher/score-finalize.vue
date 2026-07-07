@@ -239,14 +239,14 @@
             {{ detailCandidate?.studentClassName }}
           </a-descriptions-item>
           <a-descriptions-item v-if="hasDailyScoreConfig" label="考试分">
-            <span class="score-summary-table__score">{{ paperScore.examScore ?? 0 }} 分</span>
+            <span class="score-summary-table__score">{{ formatScorePoints(paperScore.examScore) }}</span>
           </a-descriptions-item>
           <a-descriptions-item v-if="hasDailyScoreConfig" label="日常分">
-            <span class="score-summary-table__score">{{ paperScore.dailyScore ?? 0 }} 分</span>
+            <span class="score-summary-table__score">{{ formatScorePoints(paperScore.dailyScore) }}</span>
           </a-descriptions-item>
           <a-descriptions-item :label="hasDailyScoreConfig ? '总成绩' : '总分'">
             <span class="score-summary-table__score score-summary-table__score--total">
-              {{ paperScore.totalScore ?? 0 }} 分
+              {{ formatScorePoints(paperScore.totalScore) }}
             </span>
           </a-descriptions-item>
           <a-descriptions-item label="最终状态" :span="2">
@@ -358,7 +358,7 @@
           </div>
         </a-form-item>
         <a-form-item v-if="hasDailyScoreConfig" label="总成绩预览">
-          <a-input :value="`${confirmTotalScorePreview} 分`" disabled />
+          <a-input :value="formatScorePoints(confirmTotalScorePreview)" disabled />
         </a-form-item>
         <a-form-item>
           <a-checkbox
@@ -1379,11 +1379,23 @@ const confirmComputedExamScore = ref<number | null>(null)
 const confirmDailyScore = ref<number | undefined>(undefined)
 const confirmAndPublish = ref(false)
 
-const confirmTotalScorePreview = computed(() => {
-  const examScore = confirmComputedExamScore.value ?? 0
-  const dailyScore = hasDailyScoreConfig.value ? (confirmDailyScore.value ?? 0) : 0
-  return Number((examScore + dailyScore).toFixed(2))
+const confirmTotalScorePreview = computed<number | null>(() => {
+  const examScore = confirmComputedExamScore.value
+  if (examScore == null) {
+    return null
+  }
+  if (hasDailyScoreConfig.value) {
+    if (confirmDailyScore.value == null) {
+      return null
+    }
+    return Number((examScore + confirmDailyScore.value).toFixed(2))
+  }
+  return Number(examScore.toFixed(2))
 })
+
+function formatScorePoints(score: number | null | undefined): string {
+  return score != null ? `${score} 分` : '—'
+}
 
 /** 按试卷题目明细计算确认弹窗卷面分预览；后端 confirmFinalScore 仍是最终写入真源。 */
 function resolveConfirmExamScorePreview(score: ExamPaperScoreResponse): number {
