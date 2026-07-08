@@ -98,6 +98,7 @@ import {
 import {
   commitExamScanWorkOrder,
   discardExamScanWorkOrder,
+  retryExamScanWorkOrderPageRegister,
   startExamScanWorkOrder
 } from '@/apis/mark/scanner-work-order'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -1254,16 +1255,39 @@ export function useExamKioskWorkflow() {
     () =>
       pageRegisterBlocked.value
       && Boolean(examId.value)
-      && Boolean(activeScanBatchId.value),
+      && (Boolean(activeScanBatchId.value) || Boolean(activeBatchExternalNo.value.trim())),
   )
 
   async function retryPageRegister() {
-    if (!examId.value || !activeScanBatchId.value) {
+    if (!examId.value) {
+      return
+    }
+    const workOrderBatchExternalNo = activeBatchExternalNo.value.trim()
+    if (!workOrderBatchExternalNo && !activeScanBatchId.value) {
       return
     }
     pageRegisterRetryLoading.value = true
     errorMessage.value = ''
     try {
+      if (workOrderBatchExternalNo) {
+        const lifecycle = await retryExamScanWorkOrderPageRegister({
+          examId: examId.value,
+          batchExternalNo: workOrderBatchExternalNo,
+        })
+        applyPageRegisterBlockState(lifecycle.pageRegisterBlocked, lifecycle.pageRegisterDiagnostic)
+        if (lifecycle.pageRegisterBlocked) {
+          errorMessage.value = `页登记仍被阻断：${pageRegisterDiagnostic.value || '请检查模板与页序配置'}`
+          return
+        }
+        if (lifecycle.committedExamBatchId) {
+          activeScanBatchId.value = String(lifecycle.committedExamBatchId)
+        }
+        applyPageRegisterBlockState(false)
+        successMessage.value = '页登记重试成功'
+        await refreshPageLedger()
+        await refreshKioskContext()
+        return
+      }
       const response = await retryKioskScanBatchPageRegister({
         examId: examId.value,
         scanBatchId: activeScanBatchId.value,
@@ -2658,7 +2682,11 @@ export function useExamKioskWorkflow() {
     if (lifecycle.committedExamBatchId) {
       activeScanBatchId.value = String(lifecycle.committedExamBatchId)
     }
-    activeBatchExternalNo.value = ''
+    if (lifecycle.pageRegisterBlocked && lifecycle.batchExternalNo) {
+      activeBatchExternalNo.value = lifecycle.batchExternalNo
+    } else {
+      activeBatchExternalNo.value = ''
+    }
     activeReportId.value = ''
     activeResolvedScanConfig.value = null
     currentJob.value = null

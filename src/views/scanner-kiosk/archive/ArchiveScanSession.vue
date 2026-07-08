@@ -12,6 +12,7 @@ import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { ScanWorkOrderStatusCode } from '@/types/enums/scan-work-order-status-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import DocumentKioskActivationGate from '../components/DocumentKioskActivationGate.vue'
+import { useDispatchLeaseLostSessionGuard } from '../composables/useDispatchLeaseLostSessionGuard'
 import { useDocumentKioskBootstrap } from '../composables/useDocumentKioskBootstrap'
 import { useWorkOrderScanFlow } from '../composables/useWorkOrderScanFlow'
 import { useLeaseHeartbeat } from '../core/useLeaseHeartbeat'
@@ -37,6 +38,7 @@ const scanFlow = useWorkOrderScanFlow({
   getScannerDeviceId: () => bootstrap.setup.value?.scannerDeviceId ?? '',
   getScannerStationId: () => bootstrap.setup.value?.scannerStationId ?? '',
   getLocalScannerId: () => bootstrap.selectedScannerId.value,
+  isScanSessionBlocked: () => lease.leaseLost.value,
 })
 
 const canStart = computed(() =>
@@ -50,6 +52,10 @@ const canStart = computed(() =>
   ),
 )
 const leaseLostMessage = '派单租约已失效，扫描会话可能已被中断，请返回队列'
+const scanActionsDisabled = computed(() => {
+  if (!lease.leaseLost.value) return false
+  return !(scanFlow.canRetryWorkOrderCommit.value || scanFlow.canDiscard.value)
+})
 const batchModeLabel = computed(() =>
   strictEnumLabel(ArchiveScanBatchModeDescription, session.batchMode.value, '归档扫描批次模式'),
 )
@@ -81,6 +87,15 @@ function returnToDispatchQueue(scanCommitted: boolean) {
     query: scanCommitted ? { scanCommitted: '1' } : undefined,
   })
 }
+
+useDispatchLeaseLostSessionGuard({
+  leaseLost: lease.leaseLost,
+  lifecycle: session.lifecycle,
+  hasDispatchTicket: () => Boolean(session.dispatchTicketId.value),
+  refreshWorkOrderLifecycle: () => session.loadContext({ silent: true }),
+  suspendActiveScan: scanFlow.suspendActiveScan,
+  returnToDispatchQueue: () => returnToDispatchQueue(false),
+})
 
 function handleScanCompleted() {
   if (completedNavigated.value) {
@@ -169,6 +184,10 @@ watch(
 )
 
 async function handleStart() {
+  if (lease.leaseLost.value) {
+    message.warning(leaseLostMessage)
+    return
+  }
   const workOrder = await session.startSession()
   if (workOrder) {
     await scanFlow.startLocalScanAfterWorkOrder(workOrder)
@@ -191,7 +210,7 @@ function goBack() {
 <template>
   <div class="archive-scan-session">
     <DocumentKioskActivationGate
-      :can-activate="bootstrap.canActivateAgent.value"
+      :can-activate="bootstrap.canActivateAgent.value && !lease.leaseLost.value"
       :submit-loading="bootstrap.loading.value"
       @submit="bootstrap.activateAgent"
     />
@@ -219,7 +238,11 @@ function goBack() {
     <section v-if="bootstrap.scanners.value.length" class="archive-scan-session__scanner">
       <label>
         扫描仪
-        <select v-model="bootstrap.selectedScannerId.value" class="archive-scan-session__select">
+        <select
+          v-model="bootstrap.selectedScannerId.value"
+          class="archive-scan-session__select"
+          :disabled="lease.leaseLost.value"
+        >
           <option
             v-for="scanner in bootstrap.scanners.value"
             :key="scanner.localScannerId"
@@ -233,7 +256,14 @@ function goBack() {
 
     <section class="archive-scan-session__actions">
       <UiButton
-        v-if="!scanFlow.currentJob.value && !scanFlow.canRetryWorkOrderCommit.value"
+        v-if="scanActionsDisabled"
+        variant="primary"
+        @click="returnToDispatchQueue(false)"
+      >
+        返回派单队列
+      </UiButton>
+      <UiButton
+        v-if="!scanFlow.currentJob.value && !scanFlow.canRetryWorkOrderCommit.value && !scanActionsDisabled"
         variant="primary"
         :loading="session.loading.value || scanFlow.loading.value"
         :disabled="!canStart || bootstrap.needsActivationGate.value"
@@ -241,7 +271,7 @@ function goBack() {
       >
         开单并开始扫描
       </UiButton>
-      <template v-if="!scanFlow.currentJob.value && scanFlow.canRetryWorkOrderCommit.value">
+      <template v-if="!scanActionsDisabled && !scanFlow.currentJob.value && scanFlow.canRetryWorkOrderCommit.value">
         <UiButton
           variant="outline"
           :loading="scanFlow.loading.value"
@@ -258,7 +288,7 @@ function goBack() {
           废弃
         </UiButton>
       </template>
-      <template v-else-if="scanFlow.currentJob.value">
+      <template v-else-if="!scanActionsDisabled && scanFlow.currentJob.value">
         <UiButton
           v-if="scanFlow.canEndBatch.value"
           variant="primary"

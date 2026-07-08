@@ -734,7 +734,7 @@ const publishableOverviewCount = computed(() => {
 
 const publishRiskBlocked = computed(() => {
   const overview = effectiveFinalScoreOverview.value
-  return Boolean(overview && !overview.readyToPublish && (overview.blockedCount ?? 0) > 0)
+  return Boolean(overview && !overview.readyToPublish)
 })
 
 const bulkModalStatItems = computed(() => {

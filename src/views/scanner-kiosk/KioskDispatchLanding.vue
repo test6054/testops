@@ -49,6 +49,7 @@ const isFailedPending = computed(
     && Boolean(session.ticket.value?.failureReason?.trim()),
 )
 const failedPendingReason = computed(() => session.ticket.value?.failureReason?.trim() ?? '')
+const leaseBlocked = computed(() => session.lease.leaseLost.value)
 
 onMounted(async () => {
   await session.bootstrap.initBootstrap()
@@ -135,14 +136,14 @@ function goHub() {
       </div>
       <div v-else-if="ticketStatus === ScanDispatchTicketStatusCode.SUSPENDED" class="dispatch-landing__actions">
         <UiButton variant="primary" @click="goQueue">返回队列</UiButton>
-        <UiButton :disabled="session.actionLoading.value" @click="session.resumeTicket()">
+        <UiButton :disabled="session.actionLoading.value || leaseBlocked" @click="session.resumeTicket()">
           恢复任务
         </UiButton>
       </div>
       <div v-else-if="!session.isPreviewMode" class="dispatch-landing__actions">
         <UiButton
           v-if="ticketStatus === ScanDispatchTicketStatusCode.PENDING"
-          :disabled="session.actionLoading.value || !session.canClaimTicket.value"
+          :disabled="session.actionLoading.value || leaseBlocked || !session.canClaimTicket.value"
           @click="session.claimTicket()"
         >
           {{ isFailedPending ? '重试任务' : '领取任务' }}
@@ -150,7 +151,7 @@ function goHub() {
         <UiButton
           v-if="canContinueScan"
           variant="primary"
-          :disabled="session.actionLoading.value"
+          :disabled="session.actionLoading.value || leaseBlocked"
           @click="session.continueScanSession()"
         >
           继续扫描
@@ -158,14 +159,14 @@ function goHub() {
         <UiButton
           v-if="ticketStatus === ScanDispatchTicketStatusCode.PROCESSING"
           variant="outline"
-          :disabled="session.actionLoading.value"
+          :disabled="session.actionLoading.value || leaseBlocked"
           @click="session.suspendTicket()"
         >
           挂起
         </UiButton>
         <UiButton
           v-if="ticketStatus === ScanDispatchTicketStatusCode.PROCESSING"
-          :disabled="session.actionLoading.value || !session.canClaimTicket.value"
+          :disabled="session.actionLoading.value || leaseBlocked || !session.canClaimTicket.value"
           @click="session.cognitive.requestConfirm(session.ticket.value!)"
         >
           认知确认
@@ -189,14 +190,14 @@ function goHub() {
       </div>
       <div v-else-if="ticketStatus === ScanDispatchTicketStatusCode.SUSPENDED" class="dispatch-landing__actions">
         <UiButton variant="primary" @click="goQueue">返回队列</UiButton>
-        <UiButton :disabled="session.actionLoading.value" @click="session.resumeTicket()">
+        <UiButton :disabled="session.actionLoading.value || leaseBlocked" @click="session.resumeTicket()">
           恢复任务
         </UiButton>
       </div>
       <div v-else-if="!session.isPreviewMode" class="dispatch-landing__actions">
         <UiButton
           v-if="ticketStatus === ScanDispatchTicketStatusCode.PENDING"
-          :disabled="session.actionLoading.value || !session.canClaimTicket.value"
+          :disabled="session.actionLoading.value || leaseBlocked || !session.canClaimTicket.value"
           @click="session.claimTicket()"
         >
           {{ isFailedPending ? '重试任务' : '领取任务' }}
@@ -204,7 +205,7 @@ function goHub() {
         <UiButton
           v-if="canContinueScan"
           variant="primary"
-          :disabled="session.actionLoading.value"
+          :disabled="session.actionLoading.value || leaseBlocked"
           @click="session.continueScanSession()"
         >
           继续扫描
@@ -212,14 +213,14 @@ function goHub() {
         <UiButton
           v-if="ticketStatus === ScanDispatchTicketStatusCode.PROCESSING"
           variant="outline"
-          :disabled="session.actionLoading.value"
+          :disabled="session.actionLoading.value || leaseBlocked"
           @click="session.suspendTicket()"
         >
           挂起
         </UiButton>
         <UiButton
           v-if="ticketStatus === ScanDispatchTicketStatusCode.PROCESSING"
-          :disabled="session.actionLoading.value || !session.canClaimTicket.value"
+          :disabled="session.actionLoading.value || leaseBlocked || !session.canClaimTicket.value"
           @click="session.cognitive.requestConfirm(session.ticket.value!)"
         >
           认知确认

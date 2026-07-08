@@ -50,6 +50,14 @@ export function useDispatchSession() {
     cognitive.clearConfirm()
   }
 
+  function assertLeaseActive() {
+    if (lease.leaseLost.value) {
+      errorMessage.value = '派单租约已失效，请返回队列重新领取'
+      return false
+    }
+    return true
+  }
+
   function startProcessingHeartbeat() {
     if (!ticketId.value || !scannerDeviceId.value || !scannerStationId.value) {
       return
@@ -82,6 +90,9 @@ export function useDispatchSession() {
   }
 
   async function claimTicket() {
+    if (!assertLeaseActive()) {
+      return false
+    }
     if (!ticketId.value || !scannerDeviceId.value || !scannerStationId.value) {
       return false
     }
@@ -106,6 +117,9 @@ export function useDispatchSession() {
   }
 
   async function confirmOpen() {
+    if (!assertLeaseActive()) {
+      return false
+    }
     if (!ticketId.value || !scannerDeviceId.value || !scannerStationId.value) {
       return false
     }
@@ -158,6 +172,9 @@ export function useDispatchSession() {
   }
 
   async function suspendTicket() {
+    if (!assertLeaseActive()) {
+      return
+    }
     if (!ticketId.value || !scannerDeviceId.value || !scannerStationId.value) {
       return
     }
@@ -179,6 +196,9 @@ export function useDispatchSession() {
   }
 
   async function continueScanSession() {
+    if (!assertLeaseActive()) {
+      return false
+    }
     if (!ticketId.value) {
       return false
     }
@@ -222,6 +242,9 @@ export function useDispatchSession() {
   }
 
   async function resumeTicket() {
+    if (!assertLeaseActive()) {
+      return
+    }
     if (!ticketId.value || !scannerDeviceId.value || !scannerStationId.value) {
       return
     }

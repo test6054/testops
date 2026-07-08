@@ -1,5 +1,7 @@
 import { onUnmounted, ref } from 'vue'
 import { heartbeatScanDispatch } from '@/apis/mark/scanner-dispatch'
+import { ResultCode } from '@/types/enums/result-code'
+import { readBusinessResultCode } from '@/utils/error-handler'
 
 const HEARTBEAT_INTERVAL_MS = 60_000
 const LEASE_LOST_FAILURE_THRESHOLD = 2
@@ -39,7 +41,16 @@ export function useLeaseHeartbeat() {
       await heartbeatScanDispatch({ ticketId, scannerDeviceId, scannerStationId })
       consecutiveFailures = 0
     }
-    catch {
+    catch (error) {
+      const businessCode = readBusinessResultCode(error)
+      if (
+        businessCode === ResultCode.CONFLICT
+        || businessCode === ResultCode.NOT_FOUND
+        || businessCode === ResultCode.FORBIDDEN
+      ) {
+        markLeaseLost()
+        return
+      }
       consecutiveFailures += 1
       if (consecutiveFailures >= LEASE_LOST_FAILURE_THRESHOLD) {
         markLeaseLost()
