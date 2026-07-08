@@ -47,6 +47,8 @@ export interface WorkOrderScanFlowOptions {
   lifecycle?: Ref<ScanWorkOrderLifecycleVO | null>
   /** Agent 上报后轮询 work-order context，直至 COMMITTED/FAILED（归档/档案袋异步 commit）。 */
   refreshWorkOrderLifecycle?: () => Promise<void>
+  /** 派单租约失效等场景阻断扫描写操作 */
+  isScanSessionBlocked?: () => boolean
 }
 
 /**
@@ -65,6 +67,23 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
   const successMessage = ref('')
   let pollTimer: ReturnType<typeof setInterval> | null = null
   let workOrderPollTimer: ReturnType<typeof setInterval> | null = null
+
+  function isScanSessionBlocked() {
+    return options.isScanSessionBlocked?.() === true
+  }
+
+  /** COMMITTING/FAILED 工单恢复阶段：派单租约失效仍允许 retry commit / discard。 */
+  const isWorkOrderRecoveryPhase = computed(() => {
+    const status = lifecycle.value?.status
+    return status === ScanWorkOrderStatusCode.COMMITTING
+      || status === ScanWorkOrderStatusCode.FAILED
+  })
+
+  function assertScanSessionActive() {
+    if (isScanSessionBlocked() && !isWorkOrderRecoveryPhase.value) {
+      return rejectUserError('派单租约已失效，请返回队列后重新领取')
+    }
+  }
 
   const isDocumentWorkOrderTask = computed(
     () =>
@@ -93,14 +112,16 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
     () => lifecycle.value?.status === ScanWorkOrderStatusCode.COMMITTING,
   )
   const canEndBatch = computed(
-    () => currentJob.value?.status === LocalScanJobStatusCode.SCANNING
-      || currentJob.value?.status === LocalScanJobStatusCode.PAUSED,
+    () => !isScanSessionBlocked()
+      && (currentJob.value?.status === LocalScanJobStatusCode.SCANNING
+        || currentJob.value?.status === LocalScanJobStatusCode.PAUSED),
   )
   const canDiscard = computed(() => {
+    if (isScanSessionBlocked() && !isWorkOrderRecoveryPhase.value) return false
     if (!lifecycle.value?.batchExternalNo) return false
     const status = lifecycle.value.status
     if (status === ScanWorkOrderStatusCode.COMMITTING) {
-      return false
+      return true
     }
     if (status === ScanWorkOrderStatusCode.FAILED) {
       return true
@@ -108,6 +129,7 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
     return !isReported.value
   })
   const canRetryUpload = computed(() => {
+    if (isScanSessionBlocked()) return false
     const job = currentJob.value
     if (!job || job.reported) return false
     if (
@@ -120,6 +142,7 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
     return false
   })
   const canRetryCommit = computed(() => {
+    if (isScanSessionBlocked()) return false
     const job = currentJob.value
     if (!job || job.reported) return false
     const status = job.status
@@ -140,6 +163,7 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
   })
 
   const canRetryWorkOrderCommit = computed(() => {
+    if (isScanSessionBlocked() && !isWorkOrderRecoveryPhase.value) return false
     if (
       options.taskKind !== ScanTaskKindCode.PORTFOLIO_COLLECT
       && options.taskKind !== ScanTaskKindCode.EXAM_ARCHIVE
@@ -203,6 +227,10 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
   }
 
   async function pollWorkOrderLifecycleOnce() {
+    if (isScanSessionBlocked()) {
+      stopWorkOrderPolling()
+      return
+    }
     if (!options.refreshWorkOrderLifecycle) {
       return
     }
@@ -220,6 +248,9 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
   }
 
   function startWorkOrderPolling() {
+    if (isScanSessionBlocked()) {
+      return
+    }
     if (!options.refreshWorkOrderLifecycle || !isDocumentWorkOrderTask.value) {
       return
     }
@@ -238,6 +269,10 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
   }
 
   async function pollJob(scanJobId: string) {
+    if (isScanSessionBlocked()) {
+      stopPolling()
+      return
+    }
     try {
       currentJob.value = await getScanJob(scanJobId)
       if (currentJob.value.reported || currentJob.value.status === LocalScanJobStatusCode.REPORTED) {
@@ -289,6 +324,9 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
 
   /** 归档 / 档案袋 Kiosk 刷新后恢复 Agent 本地未完成任务，避免磁盘残留任务阻断新开扫。 */
   async function recoverLocalScanJob() {
+    if (isScanSessionBlocked()) {
+      return
+    }
     const deviceId = options.getScannerDeviceId().trim()
     const stationId = options.getScannerStationId().trim()
     if (!deviceId || !stationId) {
@@ -333,6 +371,7 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
   }
 
   async function startLocalScanAfterWorkOrder(workOrder: ScanWorkOrderLifecycleVO) {
+    assertScanSessionActive()
     lifecycle.value = workOrder
     if (!workOrder.batchExternalNo || !workOrder.reportId || !workOrder.resolvedScanConfig) {
       return rejectUserError('扫描工单缺少 batchExternalNo、reportId 或冻结扫描参数')
@@ -364,6 +403,7 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
 
   async function endCurrentBatch() {
     if (!currentJob.value || !canEndBatch.value) return
+    assertScanSessionActive()
     loading.value = true
     errorMessage.value = ''
     try {
@@ -378,23 +418,27 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
 
   async function pauseCurrentJob() {
     if (!currentJob.value) return
+    assertScanSessionActive()
     currentJob.value = await pauseScanJob(currentJob.value.scanJobId)
   }
 
   async function resumeCurrentJob() {
     if (!currentJob.value) return
+    assertScanSessionActive()
     currentJob.value = await resumeScanJob(currentJob.value.scanJobId)
     startPolling(currentJob.value.scanJobId)
   }
 
   async function retryCurrentUpload() {
     if (!currentJob.value) return
+    assertScanSessionActive()
     currentJob.value = await retryUpload(currentJob.value.scanJobId)
     startPolling(currentJob.value.scanJobId)
   }
 
   async function retryCurrentCommit() {
     if (!currentJob.value) return
+    assertScanSessionActive()
     currentJob.value = await retryCommit(currentJob.value.scanJobId)
     startPolling(currentJob.value.scanJobId)
   }
@@ -408,6 +452,7 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
       return
     }
     if (!lifecycle.value?.batchExternalNo || !canRetryWorkOrderCommit.value) return
+    assertScanSessionActive()
     loading.value = true
     errorMessage.value = ''
     try {
@@ -432,6 +477,7 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
 
   async function discardCurrentSession() {
     if (!lifecycle.value?.batchExternalNo) return
+    assertScanSessionActive()
     const confirmed = await confirmAsync({
       title: '确认废弃本次扫描？',
       content: '将清除未提交页面并关闭工单，本地扫描任务一并清理。',
@@ -471,6 +517,9 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
   }
 
   async function resumeWorkOrderPollingIfNeeded() {
+    if (isScanSessionBlocked()) {
+      return
+    }
     if (!isDocumentWorkOrderTask.value || !options.refreshWorkOrderLifecycle) {
       return
     }
@@ -504,6 +553,7 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
     canRetryUpload,
     canRetryCommit,
     canRetryWorkOrderCommit,
+    isScanSessionBlocked,
     startLocalScanAfterWorkOrder,
     endCurrentBatch,
     pauseCurrentJob,
@@ -515,5 +565,10 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
     recoverLocalScanJob,
     resumeWorkOrderPollingIfNeeded,
     stopPolling,
+    stopWorkOrderPolling,
+    suspendActiveScan: () => {
+      stopPolling()
+      stopWorkOrderPolling()
+    },
   }
 }

@@ -297,3 +297,17 @@ export function discardExamScanWorkOrder(
 ): Promise<ScanWorkOrderLifecycleVO> {
   return discardScanWorkOrder({ ...request, taskKind: ScanTaskKindCode.EXAM_MARKING })
 }
+
+export interface ExamScanWorkOrderPageRegisterRetryRequest {
+  batchExternalNo: string
+  examId: string
+}
+
+export function retryExamScanWorkOrderPageRegister(
+  request: ExamScanWorkOrderPageRegisterRetryRequest,
+): Promise<ScanWorkOrderLifecycleVO> {
+  return http.post<ScanWorkOrderLifecycleVO>(
+    '/api/mark/scanner/work-order/page-register/retry',
+    request,
+  )
+}
