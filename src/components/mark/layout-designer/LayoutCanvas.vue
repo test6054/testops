@@ -2,14 +2,18 @@
 import type Konva from 'konva'
 import type { ComponentPublicInstance } from 'vue'
 import type { ExamLayoutBlockDto, ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
+import type { LayoutCanvasToolCode } from '@/components/mark/layout-designer/LayoutCanvasToolbar.vue'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { Image, Layer, Line, Rect, Stage, Text, Transformer } from 'vue-konva'
 import LayoutCanvasToolbar from '@/components/mark/layout-designer/LayoutCanvasToolbar.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import { useLayoutPageRaster } from '@/composables/useLayoutPageRaster'
+import { ExamLayoutBlockTypeCode, requireExamLayoutBlockTypeCode } from '@/types/enums/exam-layout-block-type-enum'
 import {
   blocksOnPage,
   computeStageSize,
+  createBlockWithRect,
+  expectedAnswerBlockTypeForOcrScene,
   formatRectMmLabel,
   mmToPx,
   normToStageRect,
@@ -27,9 +31,11 @@ const props = withDefaults(
     document: ExamLayoutDocument | null
     pageNo: number
     focusedBlockId: string | null
+    focusedQuestionId?: string | null
     readOnly?: boolean
   }>(),
   {
+    focusedQuestionId: null,
     readOnly: false,
   },
 )
@@ -45,10 +51,22 @@ const zoom = ref(1)
 const showGrid = ref(true)
 const showSafeMargin = ref(true)
 const snapGridMm = ref(5)
+const canvasTool = ref<LayoutCanvasToolCode>('select')
 const stageRef = ref()
 const transformerRef = ref()
 const shapeRefs = new Map<string, Konva.Rect>()
 const bgImage = ref<HTMLCanvasElement | null>(null)
+
+interface MarqueeDraft {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+const marqueeDrawing = ref(false)
+const marqueeAnchor = ref<{ x: number, y: number } | null>(null)
+const marqueeDraft = ref<MarqueeDraft | null>(null)
 
 interface VueKonvaShapeRef {
   getNode: () => Konva.Rect
@@ -149,6 +167,83 @@ const gridLines = computed(() => {
   return lines
 })
 
+const marqueePreviewConfig = computed(() => {
+  if (!marqueeDraft.value) {
+    return null
+  }
+  return {
+    x: marqueeDraft.value.x,
+    y: marqueeDraft.value.y,
+    width: marqueeDraft.value.width,
+    height: marqueeDraft.value.height,
+    stroke: '#1677ff',
+    dash: [6, 4],
+    strokeWidth: 1.5,
+    fill: 'rgba(22, 119, 255, 0.08)',
+    listening: false,
+  }
+})
+
+function blockDraggable(): boolean {
+  return !props.readOnly && canvasTool.value === 'select'
+}
+
+function resolveMarqueeBlockType(): ExamLayoutBlockTypeCode {
+  if (props.focusedQuestionId && props.document) {
+    const question = props.document.questions.find((item) => item.id === props.focusedQuestionId)
+    if (question) {
+      return requireExamLayoutBlockTypeCode(
+        expectedAnswerBlockTypeForOcrScene(question.ocrScene),
+      )
+    }
+  }
+  return ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER
+}
+
+function stagePointer(event: { target: Konva.Node }): { x: number, y: number } | null {
+  const stage = event.target.getStage()
+  if (!stage) {
+    return null
+  }
+  const pointer = stage.getPointerPosition()
+  if (!pointer) {
+    return null
+  }
+  const scale = stage.scaleX() || 1
+  return { x: pointer.x / scale, y: pointer.y / scale }
+}
+
+function snapMarqueeRect(x: number, y: number, width: number, height: number): MarqueeDraft {
+  if (snapGridMm.value <= 0 || !page.value) {
+    return { x, y, width, height }
+  }
+  const paperSpec = props.document?.paperSpec
+  const snappedX = snapStageValue(x, snapGridMm.value, page.value, stageSize.value.width, 'x', paperSpec)
+  const snappedY = snapStageValue(y, snapGridMm.value, page.value, stageSize.value.width, 'y', paperSpec)
+  const snappedWidth = snapStageValue(
+    width,
+    snapGridMm.value,
+    page.value,
+    stageSize.value.width,
+    'x',
+    paperSpec,
+  )
+  const snappedHeight = snapStageValue(
+    height,
+    snapGridMm.value,
+    page.value,
+    stageSize.value.width,
+    'y',
+    paperSpec,
+  )
+  return {
+    x: snappedX,
+    y: snappedY,
+    width: snappedWidth,
+    height: snappedHeight,
+  }
+}
+
 function blockConfig(block: ExamLayoutBlockDto) {
   const rect = normToStageRect(block.rectNorm, page.value!, stageSize.value.width)
   const focused = props.focusedBlockId === block.id
@@ -161,7 +256,8 @@ function blockConfig(block: ExamLayoutBlockDto) {
     fill: resolveBlockFill(block.blockType),
     stroke: focused ? '#1677ff' : resolveBlockStroke(block.blockType),
     strokeWidth: focused ? 2 : 1,
-    draggable: !props.readOnly,
+    draggable: blockDraggable(),
+    listening: canvasTool.value === 'select',
     name: block.id,
   }
 }
@@ -191,7 +287,7 @@ function syncTransformer(): void {
   if (!transformer) {
     return
   }
-  if (props.readOnly || !props.focusedBlockId) {
+  if (props.readOnly || canvasTool.value !== 'select' || !props.focusedBlockId) {
     transformer.nodes([])
     transformer.getLayer()?.batchDraw()
     return
@@ -256,13 +352,98 @@ function handleTransformEnd(blockId: string, event: { target: Konva.Rect }): voi
 }
 
 function handleSelect(block: ExamLayoutBlockDto): void {
+  if (canvasTool.value !== 'select') {
+    return
+  }
   emit('focus-block', block)
 }
 
-function handleStageClick(event: { target: Konva.Node }): void {
+function resetMarqueeDraft(): void {
+  marqueeDrawing.value = false
+  marqueeAnchor.value = null
+  marqueeDraft.value = null
+}
+
+function commitMarqueeDraft(): void {
+  if (!marqueeDraft.value || !props.document || !page.value) {
+    resetMarqueeDraft()
+    return
+  }
+  const draft = snapMarqueeRect(
+    marqueeDraft.value.x,
+    marqueeDraft.value.y,
+    marqueeDraft.value.width,
+    marqueeDraft.value.height,
+  )
+  resetMarqueeDraft()
+  if (draft.width < 8 || draft.height < 8) {
+    return
+  }
+  const rectNorm = stageRectToNorm(
+    draft.x,
+    draft.y,
+    draft.width,
+    draft.height,
+    page.value,
+    stageSize.value.width,
+  )
+  const blockType = resolveMarqueeBlockType()
+  const maxLayer = props.document.blocks.reduce((max, block) => Math.max(max, block.layer ?? 0), 0)
+  const nextBlock = createBlockWithRect(props.pageNo, blockType, maxLayer + 1, rectNorm)
+  if (props.focusedQuestionId) {
+    nextBlock.layoutQuestionId = props.focusedQuestionId
+  }
+  emit('patch', {
+    ...props.document,
+    blocks: [...props.document.blocks, nextBlock],
+  })
+  emit('focus-block', nextBlock)
+}
+
+function handleStageMouseDown(event: { target: Konva.Node }): void {
+  if (props.readOnly) {
+    return
+  }
+  if (canvasTool.value === 'marquee') {
+    if (event.target !== event.target.getStage()) {
+      return
+    }
+    const point = stagePointer(event)
+    if (!point) {
+      return
+    }
+    marqueeDrawing.value = true
+    marqueeAnchor.value = { x: point.x, y: point.y }
+    marqueeDraft.value = { x: point.x, y: point.y, width: 0, height: 0 }
+    return
+  }
   if (event.target === event.target.getStage()) {
     emit('focus-block', null)
   }
+}
+
+function handleStageMouseMove(event: { target: Konva.Node }): void {
+  if (!marqueeDrawing.value || !marqueeAnchor.value) {
+    return
+  }
+  const point = stagePointer(event)
+  if (!point) {
+    return
+  }
+  const anchor = marqueeAnchor.value
+  marqueeDraft.value = {
+    x: Math.min(anchor.x, point.x),
+    y: Math.min(anchor.y, point.y),
+    width: Math.abs(point.x - anchor.x),
+    height: Math.abs(point.y - anchor.y),
+  }
+}
+
+function handleStageMouseUp(): void {
+  if (!marqueeDrawing.value) {
+    return
+  }
+  commitMarqueeDraft()
 }
 
 async function loadBackground(): Promise<void> {
@@ -286,7 +467,7 @@ watch(
 )
 
 watch(
-  () => [props.focusedBlockId, visibleBlocks.value.length, props.readOnly],
+  () => [props.focusedBlockId, visibleBlocks.value.length, props.readOnly, canvasTool.value],
   async () => {
     await nextTick()
     syncTransformer()
@@ -305,6 +486,7 @@ onMounted(() => {
       v-model:show-grid="showGrid"
       v-model:show-safe-margin="showSafeMargin"
       v-model:snap-grid-mm="snapGridMm"
+      v-model:canvas-tool="canvasTool"
       :read-only="readOnly"
     />
     <div v-if="rulerLabel" class="layout-canvas__ruler">{{ rulerLabel }}</div>
@@ -323,8 +505,13 @@ onMounted(() => {
             scaleX: zoom,
             scaleY: zoom,
           }"
-          @mousedown="handleStageClick"
-          @touchstart="handleStageClick"
+          @mousedown="handleStageMouseDown"
+          @mousemove="handleStageMouseMove"
+          @mouseup="handleStageMouseUp"
+          @mouseleave="handleStageMouseUp"
+          @touchstart="handleStageMouseDown"
+          @touchmove="handleStageMouseMove"
+          @touchend="handleStageMouseUp"
         >
           <Layer>
             <Image v-if="bgImageConfig" :config="bgImageConfig" />
@@ -367,7 +554,7 @@ onMounted(() => {
               <Text :config="labelConfig(block)" />
             </template>
             <Transformer
-              v-if="!readOnly"
+              v-if="!readOnly && canvasTool === 'select'"
               ref="transformerRef"
               :config="{
                 rotateEnabled: false,
@@ -385,6 +572,7 @@ onMounted(() => {
                 boundBoxFunc: transformerBoundBoxFunc,
               }"
             />
+            <Rect v-if="marqueePreviewConfig" :config="marqueePreviewConfig" />
           </Layer>
         </Stage>
       </div>

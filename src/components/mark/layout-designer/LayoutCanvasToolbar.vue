@@ -3,15 +3,19 @@ import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import { MinusOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 
+export type LayoutCanvasToolCode = 'select' | 'marquee'
+
 const props = withDefaults(
   defineProps<{
     zoom: number
     showGrid: boolean
     showSafeMargin: boolean
     snapGridMm: number
+    canvasTool?: LayoutCanvasToolCode
     readOnly?: boolean
   }>(),
   {
+    canvasTool: 'select',
     readOnly: false,
   },
 )
@@ -21,6 +25,7 @@ const emit = defineEmits<{
   'update:show-grid': [value: boolean]
   'update:show-safe-margin': [value: boolean]
   'update:snap-grid-mm': [value: number]
+  'update:canvas-tool': [value: LayoutCanvasToolCode]
 }>()
 
 const ZOOM_MIN = 0.5
@@ -60,6 +65,16 @@ function onSnapChange(value: SelectValue, _option?: DefaultOptionType | DefaultO
 
 <template>
   <div class="layout-canvas-toolbar">
+    <div v-if="!readOnly" class="layout-canvas-toolbar__group">
+      <a-radio-group
+        :value="canvasTool"
+        size="small"
+        @update:value="emit('update:canvas-tool', $event as LayoutCanvasToolCode)"
+      >
+        <a-radio-button value="select">选择</a-radio-button>
+        <a-radio-button value="marquee">框选</a-radio-button>
+      </a-radio-group>
+    </div>
     <div class="layout-canvas-toolbar__group">
       <UiButton size="sm" variant="outline" @click="zoomOut">
         <template #icon><MinusOutlined /></template>

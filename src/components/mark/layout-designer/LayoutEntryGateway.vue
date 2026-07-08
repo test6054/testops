@@ -4,6 +4,7 @@ import type {
   ExamLayoutDocument,
   ExamLayoutGenerateQuestionRequest,
 } from '@/apis/mark/exam-layout-design'
+import type {LayoutQuestionDraft} from '@/utils/layout-question-templates';
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { ExamMaterialLayoutModeDescription } from '@/apis/mark/exam'
@@ -24,18 +25,17 @@ import {
 import { createClientUuid } from '@/utils/client-uuid'
 import { showUserError } from '@/utils/error-handler'
 import { layoutHasSourceFileDetectResult } from '@/utils/exam-layout-designer'
+import {
+  buildGenerateQuestionsFromDrafts,
+  createAnswerSheetDefaultQuestionRows,
+  createQuestionDraft,
+  defaultFullScore,
+  defaultOptionCount,
+  deriveQuestionType
+
+} from '@/utils/layout-question-templates'
+
 import { strictEnumLabel } from '@/utils/strict-enum'
-
-type LayoutQuestionType = 'OBJECTIVE' | 'SUBJECTIVE'
-
-interface LayoutQuestionDraft {
-  id: string
-  questionNo: string
-  ocrScene: string
-  questionType: LayoutQuestionType
-  fullScore: number
-  optionCount?: number
-}
 
 const props = defineProps<{
   document: ExamLayoutDocument | null
@@ -82,9 +82,7 @@ const QUICK_SCENE_OPTIONS = [
   { label: '作图', value: 'DRAWING' },
   { label: '编程', value: 'PROGRAMMING' },
 ]
-
-const OBJECTIVE_SCENES = new Set(['CHOICE', 'TRUE_FALSE', 'FILL_BLANK', 'NUMERIC'])
-
+new Set(['CHOICE', 'TRUE_FALSE', 'FILL_BLANK', 'NUMERIC'])
 const sourcePdfFileId = ref(props.document?.sourcePdfFileId ?? '')
 const sourcePdfFileName = ref('')
 const sourceFileCanAutoDetect = computed(() => {
@@ -102,7 +100,7 @@ const paperSpec = ref<ExamLayoutPaperSpecCode>(
 )
 const layoutName = ref(props.document?.layoutName ?? '')
 const printSafeMarginMm = ref(props.document?.printSafeMarginMm ?? 5)
-const questionRows = ref<LayoutQuestionDraft[]>(createDefaultQuestionRows())
+const questionRows = ref<LayoutQuestionDraft[]>(createAnswerSheetDefaultQuestionRows())
 
 watch(
   () => props.document?.sourcePdfFileId,
@@ -209,7 +207,7 @@ function buildSourceFileDocument(currentDocument: ExamLayoutDocument | null): Ex
 }
 
 function handleGenerateSheet(): void {
-  const questions = buildGenerateQuestions()
+  const questions = buildGenerateQuestionsFromDrafts(questionRows.value)
   if (questions.length === 0) {
     message.warning('请至少配置一道题目后再生成答题卡')
     return
@@ -217,77 +215,6 @@ function handleGenerateSheet(): void {
   startBlankSheet()
   emit('generate-sheet', paperSpec.value, questions)
 }
-
-function buildGenerateQuestions(): ExamLayoutGenerateQuestionRequest[] {
-  return questionRows.value.map((row, index) => {
-    const question: ExamLayoutGenerateQuestionRequest = {
-      questionNo: row.questionNo.trim(),
-      questionType: row.questionType,
-      ocrScene: row.ocrScene,
-      fullScore: row.fullScore,
-      sortNo: index + 1,
-    }
-    if (row.ocrScene === 'CHOICE' || row.ocrScene === 'TRUE_FALSE') {
-      question.optionCount = row.ocrScene === 'TRUE_FALSE' ? 2 : row.optionCount
-    }
-    return question
-  })
-}
-
-function createDefaultQuestionRows(): LayoutQuestionDraft[] {
-  const rows: LayoutQuestionDraft[] = []
-  for (let index = 0; index < 20; index += 1) {
-    rows.push(createQuestionDraft('CHOICE', rows.length + 1))
-  }
-  for (let index = 0; index < 5; index += 1) {
-    rows.push(createQuestionDraft('SHORT_ANSWER', rows.length + 1))
-  }
-  return rows
-}
-
-function createQuestionDraft(ocrScene: string, sortNo: number): LayoutQuestionDraft {
-  return {
-    id: createClientUuid(),
-    questionNo: String(sortNo),
-    ocrScene,
-    questionType: deriveQuestionType(ocrScene),
-    fullScore: defaultFullScore(ocrScene),
-    optionCount: defaultOptionCount(ocrScene),
-  }
-}
-
-function deriveQuestionType(ocrScene: string): LayoutQuestionType {
-  return OBJECTIVE_SCENES.has(ocrScene) ? 'OBJECTIVE' : 'SUBJECTIVE'
-}
-
-function defaultFullScore(ocrScene: string): number {
-  if (ocrScene === 'TRUE_FALSE') {
-    return 1
-  }
-  if (ocrScene === 'CHOICE' || ocrScene === 'FILL_BLANK' || ocrScene === 'NUMERIC') {
-    return 2
-  }
-  if (
-    ocrScene === 'CALCULATION'
-    || ocrScene === 'PROOF'
-    || ocrScene === 'PROGRAMMING'
-    || ocrScene === 'DRAWING'
-  ) {
-    return 10
-  }
-  return 8
-}
-
-function defaultOptionCount(ocrScene: string): number | undefined {
-  if (ocrScene === 'TRUE_FALSE') {
-    return 2
-  }
-  if (ocrScene === 'CHOICE') {
-    return 4
-  }
-  return undefined
-}
-
 function addQuestion(ocrScene: string): void {
   questionRows.value.push(createQuestionDraft(ocrScene, questionRows.value.length + 1))
 }
@@ -309,7 +236,7 @@ function handleQuestionSceneChange(row: LayoutQuestionDraft): void {
   row.fullScore = defaultFullScore(row.ocrScene)
 }
 
-function questionTypeLabel(questionType: LayoutQuestionType): string {
+function questionTypeLabel(questionType: LayoutQuestionDraft['questionType']): string {
   return questionType === 'OBJECTIVE' ? '客观' : '主观'
 }
 

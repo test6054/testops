@@ -1,7 +1,9 @@
 import type { ExamDetailResponse } from '@/apis/mark/exam'
+import type { ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
 import type { ExamWorkbenchPrepStepResponse } from '@/apis/mark/exam-progress'
 import type { WorkbenchStageStatus } from '@/types/workbench'
 import { ExamMaterialLayoutModeDescription, ExamPrintSourceModeDescription } from '@/apis/mark/exam'
+import { resolveDefaultLayoutDesignPhase, resolvePrepStepLayoutDesignPhase } from '@/utils/layout-design-workspace'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 /** 考试准备页步骤卡片：后端诊断步骤 + 前端路由与操作文案 */
@@ -14,6 +16,11 @@ export interface PrepStepCard {
   routeName: string
   primaryAction: string
   advisoryReason?: string
+}
+
+export interface PrepStepRouteLocation {
+  name: string
+  query?: Record<string, string>
 }
 
 const PREP_STEP_ROUTES: Record<string, string> = {
@@ -34,6 +41,28 @@ export function resolvePrepStepRouteName(stepKey: string): string {
     throw new Error(`未知准备步骤键：${stepKey}`)
   }
   return routeName
+}
+
+/** 准备步骤 deep link：制卷设计器步骤携带 phase query。 */
+export function resolvePrepStepRouteLocation(
+  stepKey: string,
+  detail: ExamDetailResponse,
+  document?: ExamLayoutDocument | null,
+): PrepStepRouteLocation {
+  const name = resolvePrepStepRouteName(stepKey)
+  if (stepKey === 'paperTemplate' && name === 'TeacherExamWorkspaceLayoutDesigner') {
+    return {
+      name,
+      query: { phase: resolveDefaultLayoutDesignPhase(detail, document ?? null) },
+    }
+  }
+  if (stepKey === 'layoutDesign' && name === 'TeacherExamWorkspaceLayoutDesigner') {
+    return {
+      name,
+      query: { phase: resolvePrepStepLayoutDesignPhase(detail, document ?? null) },
+    }
+  }
+  return { name }
 }
 
 function resolvePrepStepDescription(step: ExamWorkbenchPrepStepResponse, detail: ExamDetailResponse): string {

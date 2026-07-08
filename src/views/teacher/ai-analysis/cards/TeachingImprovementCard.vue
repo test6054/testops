@@ -71,16 +71,16 @@ import type {
   TeachingImprovementItemResponse,
   TeachingImprovementSeverityCode,
 } from '@/apis/mark/teaching-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import {
   generateTeachingImprovement,
   getLatestTeachingImprovement,
   TEACHING_IMPROVEMENT_SEVERITY_TONE,
   TeachingImprovementSeverityDescription,
 } from '@/apis/mark/teaching-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
-import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import AiAnalysisCardBody from '@/components/mark/analysis/AiAnalysisCardBody.vue'
 import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCollapse.vue'
 import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'

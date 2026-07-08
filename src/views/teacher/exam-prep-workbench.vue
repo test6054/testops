@@ -3,15 +3,15 @@
  * 考试准备聚合工作台：Signal 五 KPI、信息双栏、横向步骤流水线（含主操作）、制卷形态配置。
  */
 import type { ExamPrintSourceModeCode } from '@/apis/mark/exam'
-import { ExamMaterialLayoutModeCode, saveMaterialLayout } from '@/apis/mark/exam'
+import type { ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
 import type { SignalMetric } from '@/types/workbench'
 import type { PrepStepCard } from '@/utils/exam-prep-step-ui'
-import { buildPrepStepCards } from '@/utils/exam-prep-step-ui'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import ScanOutlined from '@ant-design/icons-vue/ScanOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, inject, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { ExamMaterialLayoutModeCode, saveMaterialLayout } from '@/apis/mark/exam'
 import { loadExamLayoutDesign } from '@/apis/mark/exam-layout-design'
 import { WorkbenchNextActionKeyCode } from '@/apis/mark/exam-progress'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -27,6 +27,7 @@ import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
+import { buildPrepStepCards, resolvePrepStepRouteLocation } from '@/utils/exam-prep-step-ui'
 import {
   canEnterReviewBatch,
   canStartScanRegistration,
@@ -67,8 +68,8 @@ const scanEntryEnabled = computed(() =>
 )
 const scanEntryDisabledReason = computed(
   () =>
-    resolveNextActionDisabledReason(nextActions.value, WorkbenchNextActionKeyCode.START_SCAN) ??
-    prepBlockingReasons.value[0],
+    resolveNextActionDisabledReason(nextActions.value, WorkbenchNextActionKeyCode.START_SCAN)
+    ?? prepBlockingReasons.value[0],
 )
 const reviewEntryEnabled = computed(() =>
   canEnterReviewBatch(nextActions.value, markingProgress.value),
@@ -94,14 +95,12 @@ const firstPendingPrepStep = computed(
 const materialLayoutStep = computed(
   () => prepSteps.value.find((step) => step.key === 'materialLayout') ?? null,
 )
-
-const prepProgressPercent = computed(() => {
+computed(() => {
   if (prepSteps.value.length === 0) {
     return 0
   }
   return Math.round((completedPrepCount.value / prepSteps.value.length) * 100)
-})
-
+});
 const prepSignalMetrics = computed((): SignalMetric[] => {
   const detail = examDetail.value
   const total = prepSteps.value.length
@@ -182,9 +181,9 @@ const layoutDirty = computed(() => {
     return false
   }
   return (
-    draftLayoutMode.value !== detail.materialLayoutMode ||
-    (draftLayoutMode.value === ExamMaterialLayoutModeCode.FULL_PAPER &&
-      draftPrintSource.value !== detail.printSourceMode)
+    draftLayoutMode.value !== detail.materialLayoutMode
+    || (draftLayoutMode.value === ExamMaterialLayoutModeCode.FULL_PAPER
+      && draftPrintSource.value !== detail.printSourceMode)
   )
 })
 
@@ -235,7 +234,7 @@ async function handleSaveLayoutMode(): Promise<void> {
   }
 }
 
-function goPrepStep(step: PrepStepCard): void {
+async function goPrepStep(step: PrepStepCard): Promise<void> {
   if (!selectedExamId.value) {
     return
   }
@@ -247,7 +246,22 @@ function goPrepStep(step: PrepStepCard): void {
     layoutModalOpen.value = true
     return
   }
-  void router.push({ name: step.routeName, params: { examId: selectedExamId.value } })
+  let layoutDocument: ExamLayoutDocument | null = null
+  if (step.routeName === 'TeacherExamWorkspaceLayoutDesigner') {
+    try {
+      const response = await loadExamLayoutDesign({ examId: selectedExamId.value })
+      layoutDocument = response.document ?? null
+    } catch (error) {
+      showUserError(error, '加载制卷设计状态失败，无法跳转')
+      return
+    }
+  }
+  const location = resolvePrepStepRouteLocation(step.key, examDetail.value, layoutDocument)
+  void router.push({
+    name: location.name,
+    params: { examId: selectedExamId.value },
+    query: location.query,
+  })
 }
 
 function goFirstPendingPrepStep(): void {
@@ -344,8 +358,8 @@ watch(
             </UiButton>
             <a-tooltip
               :title="
-                contextPrimaryAction?.tooltip ??
-                (contextPrimaryAction?.disabled ? scanEntryDisabledReason : undefined)
+                contextPrimaryAction?.tooltip
+                  ?? (contextPrimaryAction?.disabled ? scanEntryDisabledReason : undefined)
               "
             >
               <UiButton

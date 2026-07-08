@@ -72,12 +72,12 @@ import type {
   ErrorCauseClusterItemVO,
   ErrorCauseClusterResponse,
 } from '@/apis/mark/error-cause-cluster'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { computed, ref, watch } from 'vue'
 import {
   generateErrorCauseCluster,
   getLatestErrorCauseCluster,
 } from '@/apis/mark/error-cause-cluster'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { computed, ref, watch } from 'vue'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import AiAnalysisCardBody from '@/components/mark/analysis/AiAnalysisCardBody.vue'
