@@ -124,10 +124,10 @@ const normalizedItems = computed(() => {
 
 const currentActiveKey = computed(() => {
   return (
-    modelValue.value
-    || normalizedItems.value.find((item) => item.status === 'active')?.key
-    || normalizedItems.value[0]?.key
-    || ''
+    modelValue.value ||
+    normalizedItems.value.find((item) => item.status === 'active')?.key ||
+    normalizedItems.value[0]?.key ||
+    ''
   )
 })
 
@@ -308,7 +308,7 @@ function handleSelect(key: string) {
   font-size: 15px;
   line-height: 1.5;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-milestone-progress__item:hover .ui-milestone-progress__title,
@@ -337,7 +337,7 @@ function handleSelect(key: string) {
 .ui-milestone-progress__meta,
 .ui-milestone-progress__helper {
   text-align: center;
-  color: var(--dp-text-muted, #64748b);
+  color: var(--dp-text-muted);
 }
 
 .ui-milestone-progress__status {

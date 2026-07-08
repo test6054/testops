@@ -10,7 +10,9 @@
         <UiBadge :tone="statusTone" variant="soft" size="sm">
           {{ props.statusLabel || statusText }}
         </UiBadge>
-        <span v-if="props.showPercent" class="ui-workflow-status-bar__percent">{{ normalizedPercent }}%</span>
+        <span v-if="props.showPercent" class="ui-workflow-status-bar__percent"
+          >{{ normalizedPercent }}%</span
+        >
         <slot name="actions" />
       </div>
     </div>
@@ -113,15 +115,16 @@ const progressColor = computed(() => {
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .ui-workflow-status-bar {
   display: flex;
   flex-direction: column;
   gap: 12px;
   min-width: 0;
   padding: 16px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
   background: #fff;
 }
 
@@ -146,20 +149,20 @@ const progressColor = computed(() => {
 .ui-workflow-status-bar__title {
   font-size: 15px;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-workflow-status-bar__detail {
   margin-top: 4px;
   font-size: 12px;
   line-height: 1.7;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-workflow-status-bar__percent {
   font-size: 12px;
   font-weight: 700;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-workflow-status-bar__steps {
@@ -169,8 +172,8 @@ const progressColor = computed(() => {
 .ui-workflow-status-bar__step {
   min-width: 0;
   padding: 8px 10px;
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface-subtle, #f8fafc);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface-subtle);
 }
 
 .ui-workflow-status-bar__step-dot {
@@ -199,10 +202,10 @@ const progressColor = computed(() => {
 .ui-workflow-status-bar__step-label {
   font-size: 12px;
   font-weight: 700;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
-@media (max-width: 767px) {
+@media (max-width: bp.$layout-mobile-max) {
   .ui-workflow-status-bar__head {
     flex-direction: column;
     align-items: flex-start;

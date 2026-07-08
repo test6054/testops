@@ -7,10 +7,12 @@ import UiErrorBoundary from '@/components/UiErrorBoundary.vue'
 import GlobalConfirmDialog from '@/components/workbench/GlobalConfirmDialog.vue'
 import { useAppStore, useUserStore } from '@/stores'
 import { useNotificationStore } from '@/stores/modules/notification'
+import { isScannerKioskBrowserPage } from '@/utils/kiosk-auth'
 
 defineOptions({ name: 'App' })
 
-const DP_FONT_FAMILY_SANS = '-apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif'
+const DP_FONT_FAMILY_SANS =
+  '-apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif'
 
 /**
  * Ant Design Vue 全局主题配置
@@ -36,10 +38,12 @@ const notificationStore = useNotificationStore()
 watch(
   () => userStore?.userInfo?.userId,
   (userId, prevUserId) => {
+    if (isScannerKioskBrowserPage()) {
+      return
+    }
     if (userId && !prevUserId) {
       notificationStore.startPolling()
-    }
-    else if (!userId && prevUserId) {
+    } else if (!userId && prevUserId) {
       notificationStore.reset()
     }
   },

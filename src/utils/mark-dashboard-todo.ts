@@ -1,6 +1,7 @@
 import type { MarkTeacherDashboardPendingTodoItemVO } from '@/apis/mark/teacher-dashboard'
 import type { UiSectionTabItem } from '@/components/ui-guide/ui/types'
 import {
+  ALL_MARK_TEACHER_DASHBOARD_TODO_TYPE_CODES,
   MarkTeacherDashboardTodoTypeCode,
   MarkTeacherDashboardTodoTypeDescription
 } from '@/types/enums/mark-teacher-dashboard-todo-type-enum'
@@ -74,6 +75,24 @@ export function countAttentionTodos(todos: MarkTeacherDashboardPendingTodoItemVO
   return todos.filter(isAttentionTodo).length
 }
 
+/** 概览待办面板视觉档位：有紧急项用红底，仅需关注用橙底，其余待办用轻橙底。 */
+export type MarkDashboardPendingTodoFocusTone = 'urgent' | 'attention' | 'pending'
+
+export function resolvePendingTodoFocusTone(
+  todos: MarkTeacherDashboardPendingTodoItemVO[],
+): MarkDashboardPendingTodoFocusTone | null {
+  if (!todos.length) {
+    return null
+  }
+  if (countUrgentTodos(todos) > 0) {
+    return 'urgent'
+  }
+  if (countAttentionTodos(todos) > 0) {
+    return 'attention'
+  }
+  return 'pending'
+}
+
 export function sumTodoCountByType(
   todos: MarkTeacherDashboardPendingTodoItemVO[],
   todoType: MarkTeacherDashboardPendingTodoItemVO['todoType'],
@@ -81,6 +100,28 @@ export function sumTodoCountByType(
   return todos
     .filter((todo) => todo.todoType === todoType)
     .reduce((sum, todo) => sum + (todo.count ?? 0), 0)
+}
+
+/** 待办行操作按钮：按业务类型精确动词，与高校阅卷主链动作一致。 */
+export const MARK_DASHBOARD_TODO_ACTION_LABEL: Record<MarkTeacherDashboardTodoTypeCode, string> = {
+  [MarkTeacherDashboardTodoTypeCode.SCAN_ATTENTION]: '查异常',
+  [MarkTeacherDashboardTodoTypeCode.PROCESSING_OPEN]: '查进度',
+  [MarkTeacherDashboardTodoTypeCode.GRADE_PENDING]: '去评阅',
+  [MarkTeacherDashboardTodoTypeCode.REVIEW_PENDING]: '去复核',
+  [MarkTeacherDashboardTodoTypeCode.SCORE_UNPUBLISHED]: '去发布',
+  [MarkTeacherDashboardTodoTypeCode.CANDIDATE_UNBOUND]: '去绑定',
+  [MarkTeacherDashboardTodoTypeCode.ARBITRATION_PENDING]: '去仲裁',
+  [MarkTeacherDashboardTodoTypeCode.SPOT_CHECK_PENDING]: '去抽检',
+  [MarkTeacherDashboardTodoTypeCode.EXPERIENCE_ASSIST_PENDING]: '去定标',
+}
+
+/** 待办行操作按钮文案；阻断项仍按类型语义，不泛化为「处理」。 */
+export function resolveTodoActionLabel(todo: MarkTeacherDashboardPendingTodoItemVO): string {
+  const todoType = todo.todoType
+  if (!ALL_MARK_TEACHER_DASHBOARD_TODO_TYPE_CODES.includes(todoType)) {
+    throw new Error(`未知待办类型: ${String(todoType)}`)
+  }
+  return MARK_DASHBOARD_TODO_ACTION_LABEL[todoType]
 }
 
 /** 待办行主标题：以考试名区分同类型多条。 */

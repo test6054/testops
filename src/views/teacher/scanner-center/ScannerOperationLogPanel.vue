@@ -1,22 +1,18 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {
-  ScanOperationActionCode,
-  ScanOperationLogItemVO,
-} from '@/apis/mark/scanner-dispatch'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import type { ScanOperationActionCode, ScanOperationLogItemVO } from '@/apis/mark/scanner-dispatch'
 import {
   pageScanOperationLogs,
   SCAN_OPERATION_ACTION_OPTIONS,
   ScanOperationActionDescription,
 } from '@/apis/mark/scanner-dispatch'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import SignalBand from '@/components/workbench/SignalBand.vue'
+import UiEllipsisText from '@/components/ui-guide/ui/UiEllipsisText.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
@@ -34,19 +30,10 @@ const props = defineProps<{
 const emit = defineEmits<{
   'return-dispatch': []
 }>()
+
 const loading = ref(false)
 const logs = ref<ScanOperationLogItemVO[]>([])
 const pagination = reactive({ current: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
-
-const logSignalMetrics = computed((): SignalMetric[] => [
-  {
-    key: 'logs',
-    label: '日志总数',
-    value: pagination.total,
-    unit: '条',
-    tone: 'blue',
-  },
-])
 
 interface OperationLogFilters {
   ticketId: string
@@ -60,8 +47,8 @@ const filters = reactive<OperationLogFilters>({
 })
 
 const filterFields = computed<FilterField[]>(() => [
-  { key: 'ticketId', label: '派单 ID', type: 'input', placeholder: 'ticketId' },
-  { key: 'volumeId', label: '归档卷 ID', type: 'input', placeholder: 'volumeId' },
+  { key: 'ticketId', label: '派单 ID', type: 'input', placeholder: '输入派单 ID' },
+  { key: 'volumeId', label: '归档卷 ID', type: 'input', placeholder: '输入归档卷 ID' },
   {
     key: 'action',
     label: '操作类型',
@@ -73,12 +60,24 @@ const filterFields = computed<FilterField[]>(() => [
 ])
 
 const columns: ColumnsType<ScanOperationLogItemVO> = [
-  { title: '时间', dataIndex: 'createTime', key: 'createTime', width: 168 },
-  { title: '操作类型', dataIndex: 'action', key: 'operationAction', width: 120 },
-  { title: '派单', dataIndex: 'ticketId', key: 'ticketId', width: 120 },
-  { title: '工单', dataIndex: 'workOrderId', key: 'workOrderId', width: 120 },
-  { title: '工位', dataIndex: 'scannerStationId', key: 'scannerStationId', width: 120 },
-  { title: '操作人', dataIndex: 'operatorUserId', key: 'operatorUserId', width: 100 },
+  { title: '时间', dataIndex: 'createTime', key: 'createTime', width: 168, fixed: 'left' },
+  { title: '操作类型', dataIndex: 'action', key: 'operationAction', width: 108 },
+  { title: '派单', dataIndex: 'ticketId', key: 'ticketId', width: 108, ellipsis: true },
+  { title: '工单', dataIndex: 'workOrderId', key: 'workOrderId', width: 96, align: 'right' },
+  {
+    title: '工位',
+    dataIndex: 'scannerStationId',
+    key: 'scannerStationId',
+    width: 152,
+    ellipsis: true,
+  },
+  {
+    title: '操作人',
+    dataIndex: 'operatorUserId',
+    key: 'operatorUserId',
+    width: 88,
+    align: 'right',
+  },
   { title: '详情', dataIndex: 'detailJson', key: 'detailJson', ellipsis: true },
 ]
 
@@ -87,6 +86,27 @@ function actionLabel(action?: ScanOperationActionCode) {
     return '—'
   }
   return strictEnumLabel(ScanOperationActionDescription, action, 'scanOperationAction')
+}
+
+/** 将后端 detailJson 规范为单行可读摘要，便于表格 ellipsis 展示。 */
+function formatDetailJson(raw?: string): string {
+  if (!raw?.trim()) {
+    return '—'
+  }
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    const pairs = Object.entries(parsed).map(([key, value]) => `${key}=${String(value)}`)
+    return pairs.length > 0 ? pairs.join(' · ') : '—'
+  } catch {
+    return raw
+  }
+}
+
+function cellText(value?: string | number | null): string {
+  if (value === undefined || value === null || value === '') {
+    return '—'
+  }
+  return String(value)
 }
 
 async function loadLogs() {
@@ -101,13 +121,11 @@ async function loadLogs() {
     })
     logs.value = result.list
     pagination.total = result.total
-  }
-  catch (error) {
+  } catch (error) {
     logs.value = []
     pagination.total = 0
     showUserError(error, '扫描操作日志加载失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -125,7 +143,7 @@ function handleResetSearch() {
   void loadLogs()
 }
 
-function handlePageChange(pageEvent: { current: number, pageSize: number }) {
+function handlePageChange(pageEvent: { current: number; pageSize: number }) {
   pagination.current = pageEvent.current
   pagination.pageSize = pageEvent.pageSize
   void loadLogs()
@@ -166,24 +184,17 @@ onMounted(() => {
       </template>
     </UiAlertStrip>
 
-    <SignalBand variant="tiles" compact :metrics="logSignalMetrics" class="scanner-operation-log-panel__signal" />
-
     <WorkbenchSurfaceCard flush>
       <template #toolbar>
-        <div class="scanner-operation-log-panel__toolbar">
-          <UiFilterBar
-            variant="plain"
-            :model-value="filters"
-            :fields="filterFields"
-            search-text="查询"
-            @update:model-value="Object.assign(filters, $event)"
-            @search="handleSearch"
-            @reset="handleResetSearch"
-          />
-          <UiButton size="sm" variant="outline" :loading="loading" @click="() => loadLogs()">
-            刷新
-          </UiButton>
-        </div>
+        <UiFilterBar
+          variant="plain"
+          :model-value="filters"
+          :fields="filterFields"
+          search-text="查询"
+          @update:model-value="Object.assign(filters, $event)"
+          @search="handleSearch"
+          @reset="handleResetSearch"
+        />
       </template>
 
       <UiDataTable
@@ -195,6 +206,7 @@ onMounted(() => {
         :loading="loading"
         :total="pagination.total"
         row-key="logId"
+        size="middle"
         flat
         empty-description="暂无操作日志"
         @page-change="handlePageChange"
@@ -207,38 +219,26 @@ onMounted(() => {
             {{ actionLabel(record.action) }}
           </template>
           <template v-else-if="column.key === 'ticketId'">
-            {{ record.ticketId ?? '—' }}
+            <UiEllipsisText :text="record.ticketId" />
           </template>
           <template v-else-if="column.key === 'workOrderId'">
-            {{ record.workOrderId ?? '—' }}
+            {{ cellText(record.workOrderId) }}
           </template>
           <template v-else-if="column.key === 'scannerStationId'">
-            {{ record.scannerStationId ?? '—' }}
+            <UiEllipsisText :text="record.scannerStationId" />
           </template>
           <template v-else-if="column.key === 'operatorUserId'">
-            {{ record.operatorUserId ?? '—' }}
+            {{ cellText(record.operatorUserId) }}
           </template>
           <template v-else-if="column.key === 'detailJson'">
-            {{ record.detailJson ?? '—' }}
+            <UiEllipsisText
+              :text="formatDetailJson(record.detailJson)"
+              :title="formatDetailJson(record.detailJson)"
+              tone="mono"
+            />
           </template>
         </template>
       </UiDataTable>
     </WorkbenchSurfaceCard>
   </div>
 </template>
-
-<style scoped>
-.scanner-operation-log-panel__signal {
-  margin-top: 12px;
-  margin-bottom: 12px;
-}
-
-.scanner-operation-log-panel__toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
-  width: 100%;
-}
-</style>

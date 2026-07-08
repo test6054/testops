@@ -44,7 +44,9 @@
         :class="transferCardClass(record.transferStatus)"
       >
         <div class="approval-card__head">
-          <span class="approval-card__action">{{ transferActionLabel(record.transferStatus) }}</span>
+          <span class="approval-card__action">{{
+            transferActionLabel(record.transferStatus)
+          }}</span>
           <UiTag
             v-if="record.transferStatus"
             :tone="transferStatusTone(record.transferStatus)"
@@ -63,9 +65,7 @@
       v-if="detail.latestTransferRecord?.transferPackageFileId"
       class="archive-volume-transfer-panel__footer-actions"
     >
-      <UiButton size="sm" variant="ghost" @click="downloadTransferPackage">
-        下载移交包
-      </UiButton>
+      <UiButton size="sm" variant="ghost" @click="downloadTransferPackage"> 下载移交包 </UiButton>
     </div>
 
     <UiDrawer
@@ -94,10 +94,6 @@ import type {
   ArchiveVolumeDetailResponse,
   ArchiveVolumeTransferRecordResponse,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { onMounted, ref } from 'vue'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   approveArchiveVolumeTransfer,
   ARCHIVE_TRANSFER_STATUS_TONE,
@@ -105,6 +101,10 @@ import {
   listArchiveVolumeTransferRecords,
   rejectArchiveVolumeTransfer,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { onMounted, ref } from 'vue'
+import { downloadFile } from '@/apis/edu/file-management'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -160,8 +160,8 @@ function transferCardClass(status?: ArchiveTransferStatusCode): string {
 }
 
 function formatRecordTime(record: ArchiveVolumeTransferRecordResponse): string {
-  const time
-    = record.transferStatus === 'APPROVED' || record.transferStatus === 'REJECTED'
+  const time =
+    record.transferStatus === 'APPROVED' || record.transferStatus === 'REJECTED'
       ? record.reviewedTime
       : record.submitTime
   return time ? formatDateTime(time) : '—'
@@ -246,7 +246,7 @@ onMounted(() => {
 .archive-volume-transfer-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4, 16px);
+  gap: var(--dp-space-4);
 }
 
 .archive-volume-transfer-panel__alert {
@@ -257,14 +257,14 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
   width: 100%;
 }
 
 .archive-volume-transfer-panel__head-actions {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 
 .archive-volume-transfer-panel__title {
@@ -276,18 +276,18 @@ onMounted(() => {
 .archive-volume-transfer-panel__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 
 .archive-volume-transfer-panel__list {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 
 .archive-volume-transfer-panel__footer-actions {
   display: flex;
-  gap: var(--dp-space-2, 8px);
-  margin-top: var(--dp-space-3, 12px);
+  gap: var(--dp-space-2);
+  margin-top: var(--dp-space-3);
 }
 </style>

@@ -3,6 +3,7 @@ import type {
   PortfolioArchiveRecordFieldInput,
   PortfolioTargetFieldDefinition,
 } from '@/apis/portfolio/types'
+import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -12,7 +13,6 @@ import {
   PortfolioArchiveRecordStatusCode,
   PortfolioArchiveRecordStatusDescription,
 } from '@/apis/portfolio/enums'
-import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -237,7 +237,9 @@ usePortfolioScopedLoader(
         <UiTag
           :tone="strictEnumTone(PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE, recordStatus, '档案记录状态')"
         >
-          {{ strictEnumLabel(PortfolioArchiveRecordStatusDescription, recordStatus, '档案记录状态') }}
+          {{
+            strictEnumLabel(PortfolioArchiveRecordStatusDescription, recordStatus, '档案记录状态')
+          }}
         </UiTag>
         <span v-if="statusHint" class="archive-category-edit__status-hint">{{ statusHint }}</span>
       </p>
@@ -271,8 +273,8 @@ usePortfolioScopedLoader(
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
-  margin: 0 0 var(--dp-space-4, 16px);
+  gap: var(--dp-space-2);
+  margin: 0 0 var(--dp-space-4);
 }
 
 .archive-category-edit__status-hint {
@@ -281,10 +283,10 @@ usePortfolioScopedLoader(
 }
 
 .archive-category-edit__evidence {
-  margin-top: var(--dp-space-2, 8px);
+  margin-top: var(--dp-space-2);
 }
 
 .archive-category-edit__hint {
-  padding: var(--dp-space-6, 24px) 0;
+  padding: var(--dp-space-6) 0;
 }
 </style>

@@ -63,10 +63,12 @@ function handleAction(action: ArchiveVolumeNextStepActionVO): void {
     showUserError(new Error(`未知卷外路由键：${action.externalRouteKey}`))
     return
   }
-  void router.push(resolveArchiveNextStepRouteLocation(action.externalRouteKey, {
-    examId: props.examId,
-    volumeId: props.volumeId,
-  }))
+  void router.push(
+    resolveArchiveNextStepRouteLocation(action.externalRouteKey, {
+      examId: props.examId,
+      volumeId: props.volumeId,
+    }),
+  )
 }
 </script>
 
@@ -74,55 +76,57 @@ function handleAction(action: ArchiveVolumeNextStepActionVO): void {
 .archive-next-steps__head {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
-  margin-bottom: var(--dp-space-3, 12px);
+  gap: var(--dp-space-2);
+  margin-bottom: var(--dp-space-3);
 }
 
 .archive-next-steps__head-icon {
   font-size: 14px;
   line-height: 1;
-  color: var(--dp-primary, #2d7ff9);
+  color: var(--dp-primary);
 }
 
 .archive-next-steps__title {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: var(--dp-text, #1a1d21);
+  color: var(--dp-text);
 }
 
 .archive-next-steps__grid {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-3);
 }
 
 .archive-next-steps__item {
   flex: 1 1 160px;
   min-width: 0;
-  padding: var(--dp-space-3, 12px);
-  border: 1px solid var(--dp-border-light, #eef0f3);
-  border-radius: var(--dp-radius-sm, 4px);
-  background: var(--dp-surface, #fff);
+  padding: var(--dp-space-3);
+  border: 1px solid var(--dp-border-light);
+  border-radius: var(--dp-radius-sm);
+  background: var(--dp-surface);
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .archive-next-steps__item:hover {
-  border-color: var(--dp-primary, #2d7ff9);
+  border-color: var(--dp-primary);
   box-shadow: 0 2px 8px rgba(45, 127, 249, 0.08);
 }
 
 .archive-next-steps__item--primary {
-  border-left: 3px solid var(--dp-orange-500, #f59e0b);
-  background: color-mix(in srgb, var(--dp-orange-500, #f59e0b) 6%, var(--dp-surface, #fff));
+  border-left: 3px solid var(--dp-orange-500);
+  background: color-mix(in srgb, var(--dp-orange-500) 6%, var(--dp-surface));
 }
 
 .archive-next-steps__item-head {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
   margin-bottom: 4px;
 }
 
@@ -132,9 +136,9 @@ function handleAction(action: ArchiveVolumeNextStepActionVO): void {
   justify-content: center;
   width: 22px;
   height: 22px;
-  border-radius: var(--dp-radius-xs, 2px);
-  background: color-mix(in srgb, var(--dp-primary, #2d7ff9) 10%, transparent);
-  color: var(--dp-primary, #2d7ff9);
+  border-radius: var(--dp-radius-xs);
+  background: color-mix(in srgb, var(--dp-primary) 10%, transparent);
+  color: var(--dp-primary);
   font-size: 11px;
   font-weight: 700;
   flex-shrink: 0;
@@ -143,7 +147,7 @@ function handleAction(action: ArchiveVolumeNextStepActionVO): void {
 .archive-next-steps__item-label {
   font-size: 14px;
   font-weight: 600;
-  color: var(--dp-text, #1a1d21);
+  color: var(--dp-text);
 }
 
 .archive-next-steps__item-desc {
@@ -151,6 +155,6 @@ function handleAction(action: ArchiveVolumeNextStepActionVO): void {
   padding-left: 30px;
   font-size: 12px;
   line-height: 1.5;
-  color: var(--dp-text-4, #8b919a);
+  color: var(--dp-text-4);
 }
 </style>

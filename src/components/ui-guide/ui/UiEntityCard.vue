@@ -97,17 +97,18 @@ const handleClick = (evt: MouseEvent) => {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .ui-entity-card {
   --entity-accent: #2563eb;
-  --entity-cover-bg: var(--dp-surface-subtle, #f8fafc);
+  --entity-cover-bg: var(--dp-surface-subtle);
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: var(--dp-surface, #fff);
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  box-shadow: var(--dp-shadow-card, 0 10px 30px rgba(15, 23, 42, 0.06));
+  background: var(--dp-surface);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  box-shadow: var(--dp-shadow-card);
   overflow: hidden;
   transition:
     transform 0.2s ease,
@@ -120,12 +121,12 @@ const handleClick = (evt: MouseEvent) => {
 }
 
 .ui-entity-card--clickable:hover {
-  border-color: var(--dp-border-strong, #d0d5dd);
-  background: var(--dp-surface, #fff);
+  border-color: var(--dp-border-strong);
+  background: var(--dp-surface);
 }
 
 .ui-entity-card--selected {
-  border-color: var(--dp-blue-200, #bfdbfe);
+  border-color: var(--dp-blue-200);
   box-shadow: 0 10px 24px rgba(37, 99, 235, 0.08);
 }
 
@@ -166,7 +167,7 @@ const handleClick = (evt: MouseEvent) => {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-entity-card__title-row {
@@ -181,7 +182,7 @@ const handleClick = (evt: MouseEvent) => {
   font-size: 18px;
   line-height: 1.45;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-entity-card__badges,
@@ -201,7 +202,7 @@ const handleClick = (evt: MouseEvent) => {
   margin: 8px 0 0;
   font-size: 13px;
   line-height: 1.75;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-entity-card__meta {
@@ -222,12 +223,12 @@ const handleClick = (evt: MouseEvent) => {
   justify-content: space-between;
   gap: 12px;
   padding-top: 12px;
-  border-top: 1px solid var(--dp-border, #e5e7eb);
+  border-top: 1px solid var(--dp-border);
 }
 
 .ui-entity-card--gray {
   --entity-accent: #64748b;
-  --entity-cover-bg: var(--dp-surface-subtle, #f8fafc);
+  --entity-cover-bg: var(--dp-surface-subtle);
 }
 
 .ui-entity-card--blue {
@@ -256,11 +257,11 @@ const handleClick = (evt: MouseEvent) => {
 }
 
 .ui-entity-card--purple {
-  --entity-accent: var(--dp-purple-500, #722ed1);
+  --entity-accent: var(--dp-purple-500);
   --entity-cover-bg: #f5f3ff;
 }
 
-@media (max-width: 767px) {
+@media (max-width: bp.$layout-mobile-max) {
   .ui-entity-card__top,
   .ui-entity-card__footer {
     flex-direction: column;

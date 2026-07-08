@@ -7,6 +7,7 @@ export enum ArchiveDutyTypeCode {
   ARCHIVE_ADMIN = 'ARCHIVE_ADMIN',
   DESTRUCTION_APPROVER = 'DESTRUCTION_APPROVER',
   SUPERVISION_INSPECTOR = 'SUPERVISION_INSPECTOR',
+  DEPARTMENT_ARCHIVIST = 'DEPARTMENT_ARCHIVIST',
 }
 
 export const ALL_ARCHIVE_DUTY_TYPE_CODES: readonly ArchiveDutyTypeCode[] = [
@@ -17,6 +18,7 @@ export const ALL_ARCHIVE_DUTY_TYPE_CODES: readonly ArchiveDutyTypeCode[] = [
   ArchiveDutyTypeCode.ARCHIVE_ADMIN,
   ArchiveDutyTypeCode.DESTRUCTION_APPROVER,
   ArchiveDutyTypeCode.SUPERVISION_INSPECTOR,
+  ArchiveDutyTypeCode.DEPARTMENT_ARCHIVIST,
 ]
 
 export const ArchiveDutyTypeDescription: Record<ArchiveDutyTypeCode, string> = {
@@ -27,4 +29,5 @@ export const ArchiveDutyTypeDescription: Record<ArchiveDutyTypeCode, string> = {
   [ArchiveDutyTypeCode.ARCHIVE_ADMIN]: '档案管理',
   [ArchiveDutyTypeCode.DESTRUCTION_APPROVER]: '销毁审批',
   [ArchiveDutyTypeCode.SUPERVISION_INSPECTOR]: '督导抽查',
+  [ArchiveDutyTypeCode.DEPARTMENT_ARCHIVIST]: '部门档案员',
 }

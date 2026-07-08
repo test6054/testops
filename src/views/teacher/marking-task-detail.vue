@@ -393,7 +393,7 @@ const {
     flex: 1;
     min-width: 0;
     font-size: 13px;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
   }
 
   &__footer-hint {

@@ -223,8 +223,8 @@ const normalizeOptionValue = (value: unknown): UiOptionValue => {
 
 const getFieldStyle = (field: FilterField) => {
   const style: Record<string, string> = {}
-  const widthPx
-    = field.width !== undefined
+  const widthPx =
+    field.width !== undefined
       ? typeof field.width === 'number'
         ? field.width
         : Number.parseFloat(String(field.width))
@@ -297,8 +297,8 @@ const normalizeFieldValue = (value: unknown, field?: FilterField) => {
     return ''
   }
   if (
-    value === ''
-    && (field?.type === 'select' || field?.type === 'date' || field?.type === 'year')
+    value === '' &&
+    (field?.type === 'select' || field?.type === 'date' || field?.type === 'year')
   ) {
     return undefined
   }
@@ -323,7 +323,7 @@ const resolveAntSize = (size?: FilterField['size']): SizeType => {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-3);
 }
 
 .dp-filter-bar--panel {
@@ -387,7 +387,7 @@ const resolveAntSize = (size?: FilterField['size']): SizeType => {
 
 :deep(.ant-input-affix-wrapper),
 :deep(.ant-select-selector) {
-  border-radius: var(--dp-radius-control, 4px);
+  border-radius: var(--dp-radius-control);
   height: 36px;
 }
 
@@ -399,7 +399,7 @@ const resolveAntSize = (size?: FilterField['size']): SizeType => {
 :deep(.ant-btn) {
   min-height: 36px;
   padding: 8px 16px;
-  border-radius: var(--dp-radius-control, 4px);
+  border-radius: var(--dp-radius-control);
   white-space: nowrap;
 }
 </style>

@@ -1,12 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        title="个人资料"
-        :subtitle="userInfo.userName"
-      >
+      <ContextBar layout="workbench" show-title title="个人资料" :subtitle="userInfo.userName">
         <template #status>
           <UiTag tone="blue" size="sm">{{ roleLabel }}</UiTag>
           <UiTag v-if="tenantName" tone="gray" size="sm">{{ tenantName }}</UiTag>
@@ -210,7 +205,6 @@ const isTenantAdmin = computed(() => userInfo.value.isTenantAdmin === true)
 
 const unreadTotal = computed(() => totalUnreadCount.value)
 
-
 async function refresh() {
   refreshing.value = true
   try {
@@ -332,7 +326,7 @@ onActivated(() => {
   gap: 12px;
   padding: 12px 14px;
   border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-panel, 6px);
+  border-radius: var(--dp-radius-panel);
 
   &__main {
     flex: 1;
@@ -360,7 +354,7 @@ onActivated(() => {
   padding: 12px 14px;
   background: var(--ant-color-fill-quaternary);
   border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-panel, 6px);
+  border-radius: var(--dp-radius-panel);
   cursor: pointer;
   text-align: left;
   font-size: 14px;

@@ -11,6 +11,7 @@ export enum ArchiveVolumeSubmitChecklistDimensionCode {
   SELF_CHECK = 'SELF_CHECK',
   SELF_CHECK_FORM = 'SELF_CHECK_FORM',
   SIGN_OFF = 'SIGN_OFF',
+  DEPARTMENT_REVIEW = 'DEPARTMENT_REVIEW',
 }
 
 export const ALL_ARCHIVE_VOLUME_SUBMIT_CHECKLIST_DIMENSION_CODES: readonly ArchiveVolumeSubmitChecklistDimensionCode[] = [
@@ -25,6 +26,7 @@ export const ALL_ARCHIVE_VOLUME_SUBMIT_CHECKLIST_DIMENSION_CODES: readonly Archi
   ArchiveVolumeSubmitChecklistDimensionCode.SELF_CHECK,
   ArchiveVolumeSubmitChecklistDimensionCode.SELF_CHECK_FORM,
   ArchiveVolumeSubmitChecklistDimensionCode.SIGN_OFF,
+  ArchiveVolumeSubmitChecklistDimensionCode.DEPARTMENT_REVIEW,
 ]
 
 export const ArchiveVolumeSubmitChecklistDimensionDescription: Record<ArchiveVolumeSubmitChecklistDimensionCode, string> = {
@@ -39,4 +41,5 @@ export const ArchiveVolumeSubmitChecklistDimensionDescription: Record<ArchiveVol
   [ArchiveVolumeSubmitChecklistDimensionCode.SELF_CHECK]: '自查',
   [ArchiveVolumeSubmitChecklistDimensionCode.SELF_CHECK_FORM]: '自查表',
   [ArchiveVolumeSubmitChecklistDimensionCode.SIGN_OFF]: '签字确认',
+  [ArchiveVolumeSubmitChecklistDimensionCode.DEPARTMENT_REVIEW]: '院系审核',
 }

@@ -66,14 +66,14 @@ const emit = defineEmits<{
   (e: 'finish-failed', errorInfo: unknown): void
 }>()
 
-type UiFormStyle = CSSProperties
-  & Partial<Record<'--ui-form-label-width' | '--ui-form-gap', string>>
+type UiFormStyle = CSSProperties &
+  Partial<Record<'--ui-form-label-width' | '--ui-form-gap', string>>
 
 const formStyle = computed<UiFormStyle>(() => {
   const style: UiFormStyle = {}
   if (props.labelWidth !== undefined) {
-    style['--ui-form-label-width']
-      = typeof props.labelWidth === 'number' ? `${props.labelWidth}px` : String(props.labelWidth)
+    style['--ui-form-label-width'] =
+      typeof props.labelWidth === 'number' ? `${props.labelWidth}px` : String(props.labelWidth)
   }
   if (props.gap !== undefined) {
     style['--ui-form-gap'] = typeof props.gap === 'number' ? `${props.gap}px` : String(props.gap)
@@ -102,9 +102,9 @@ const handleFinishFailed = (errorInfo: unknown) => {
 
 .ui-form--bordered {
   padding: 20px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
 }
 
 .ui-form--horizontal :deep(.ant-form-item) {

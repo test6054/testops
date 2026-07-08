@@ -33,18 +33,21 @@ function dimensionTone(
   dimension: ArchiveVolumeSubmitChecklistDimensionCode,
 ): 'gray' | 'blue' | 'green' | 'red' | 'orange' | 'purple' {
   if (dimension === ArchiveVolumeSubmitChecklistDimensionCode.REMEDIATION) return 'orange'
-  if (dimension === ArchiveVolumeSubmitChecklistDimensionCode.FOUR_PROPERTY_SECURITY) return 'orange'
+  if (dimension === ArchiveVolumeSubmitChecklistDimensionCode.FOUR_PROPERTY_SECURITY)
+    return 'orange'
   if (dimension === ArchiveVolumeSubmitChecklistDimensionCode.FOUR_PROPERTY) return 'blue'
   if (
-    dimension === ArchiveVolumeSubmitChecklistDimensionCode.INTEGRITY
-    || dimension === ArchiveVolumeSubmitChecklistDimensionCode.SCORE
-  ) { return 'red'
-}
+    dimension === ArchiveVolumeSubmitChecklistDimensionCode.INTEGRITY ||
+    dimension === ArchiveVolumeSubmitChecklistDimensionCode.SCORE
+  ) {
+    return 'red'
+  }
   if (
-    dimension === ArchiveVolumeSubmitChecklistDimensionCode.CATALOG_NOT_READY
-    || dimension === ArchiveVolumeSubmitChecklistDimensionCode.CATALOG
-  ) { return 'purple'
-}
+    dimension === ArchiveVolumeSubmitChecklistDimensionCode.CATALOG_NOT_READY ||
+    dimension === ArchiveVolumeSubmitChecklistDimensionCode.CATALOG
+  ) {
+    return 'purple'
+  }
   return 'gray'
 }
 
@@ -62,15 +65,12 @@ function dimensionLabel(dimension: ArchiveVolumeSubmitChecklistDimensionCode): s
       :class="{ 'submit-task-row--primary': index === 0 }"
     >
       <div class="submit-task-row__main">
-        <UiTag :tone="dimensionTone(item.dimension)" size="sm">{{ dimensionLabel(item.dimension) }}</UiTag>
+        <UiTag :tone="dimensionTone(item.dimension)" size="sm">{{
+          dimensionLabel(item.dimension)
+        }}</UiTag>
         <span class="submit-task-row__message">{{ item.message }}</span>
       </div>
-      <UiButton
-        v-if="!readonly"
-        size="sm"
-        variant="outline"
-        @click="emit('navigate', item)"
-      >
+      <UiButton v-if="!readonly" size="sm" variant="outline" @click="emit('navigate', item)">
         {{ actionLabel(item) }}
       </UiButton>
     </li>
@@ -84,17 +84,17 @@ function dimensionLabel(dimension: ArchiveVolumeSubmitChecklistDimensionCode): s
   padding: 0;
   list-style: none;
   display: grid;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 
 .archive-volume-submit-task-list__empty {
   margin: 0;
   font-size: 13px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 
 .submit-task-row--primary {
-  border-left-color: var(--dp-red-500, #ef4444);
-  background: color-mix(in srgb, var(--dp-orange-500, #f59e0b) 8%, var(--dp-surface, #fff));
+  border-left-color: var(--dp-red-500);
+  background: color-mix(in srgb, var(--dp-orange-500) 8%, var(--dp-surface));
 }
 </style>

@@ -137,7 +137,7 @@ function handleChange(value: Key) {
 .ui-section-tabs__head {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--dp-space-2);
 }
 
 .ui-section-tabs__nav {
@@ -145,23 +145,23 @@ function handleChange(value: Key) {
   align-self: flex-start;
   max-width: 100%;
   flex-wrap: wrap;
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--dp-border, #e2e8f0);
-  border-radius: var(--dp-radius-panel, 8px);
-  background: var(--dp-gray-50, #f8fafc);
+  gap: var(--dp-space-1);
+  padding: var(--dp-space-1);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-gray-50);
 }
 
 .ui-section-tabs__tab {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 14px;
+  gap: var(--dp-space-2);
+  padding: var(--dp-space-2) var(--dp-space-3);
   border: 0;
-  border-radius: calc(var(--dp-radius-panel, 8px) - 2px);
+  border-radius: calc(var(--dp-radius-panel) - 2px);
   background: transparent;
-  color: var(--dp-text-secondary, #64748b);
-  font-size: 14px;
+  color: var(--dp-text-secondary);
+  font-size: var(--dp-font-size-md);
   font-weight: 500;
   line-height: 1.4;
   cursor: pointer;
@@ -172,13 +172,13 @@ function handleChange(value: Key) {
 }
 
 .ui-section-tabs__tab:hover:not(:disabled):not(.ui-section-tabs__tab--active) {
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
   background: rgb(255 255 255 / 55%);
 }
 
 .ui-section-tabs__tab--active {
-  background: var(--dp-surface, #fff);
-  color: var(--dp-text-primary, #0f172a);
+  background: var(--dp-surface);
+  color: var(--dp-text-primary);
   box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
 }
 
@@ -206,18 +206,18 @@ function handleChange(value: Key) {
 }
 
 .ui-section-tabs__count--gray {
-  background: var(--dp-gray-100, #f1f5f9);
-  color: var(--dp-text-secondary, #64748b);
+  background: var(--dp-gray-100);
+  color: var(--dp-text-secondary);
 }
 
 .ui-section-tabs__count--blue {
-  background: var(--dp-blue-50, #eff6ff);
-  color: var(--dp-blue-700, #1d4ed8);
+  background: var(--dp-blue-50);
+  color: var(--dp-blue-700);
 }
 
 .ui-section-tabs__count--green {
-  background: var(--dp-green-50, #f0fdf4);
-  color: var(--dp-green-700, #15803d);
+  background: var(--dp-green-50);
+  color: var(--dp-green-700);
 }
 
 .ui-section-tabs__count--orange {
@@ -236,12 +236,12 @@ function handleChange(value: Key) {
 }
 
 .ui-section-tabs__count--active-tab.ui-section-tabs__count--gray {
-  background: var(--dp-gray-200, #e2e8f0);
-  color: var(--dp-text-primary, #0f172a);
+  background: var(--dp-gray-200);
+  color: var(--dp-text-primary);
 }
 
 .ui-section-tabs__count--active-tab.ui-section-tabs__count--blue {
-  background: var(--dp-blue-600, #2563eb);
+  background: var(--dp-blue-600);
   color: #fff;
 }
 
@@ -270,7 +270,7 @@ function handleChange(value: Key) {
   padding-left: 2px;
   font-size: 12px;
   line-height: 1.5;
-  color: var(--dp-text-muted, #64748b);
+  color: var(--dp-text-muted);
 }
 
 .ui-section-tabs__content {

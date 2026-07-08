@@ -25,7 +25,12 @@
       <a-sub-menu v-for="group in groupedMenus.groups" :key="group.key">
         <template #title>{{ group.title }}</template>
         <template #icon>
-          <MenuIcon :icon="group.icon" />
+          <MenuCollapsedTooltip
+            :collapsed="!isDesktop ? false : appStore.menuCollapse"
+            :label="group.title"
+          >
+            <MenuIcon :icon="group.icon" />
+          </MenuCollapsedTooltip>
         </template>
         <MenuItem v-for="item in group.items" :key="item.path || item.name" :item="item" />
       </a-sub-menu>
@@ -39,10 +44,10 @@
 <script lang="ts" setup>
 import type { Key } from 'ant-design-vue/es/_util/type'
 import type { CSSProperties } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { debounce } from 'lodash-es'
-import { computed, ref, watch } from 'vue'
 import { useDevice } from '@/hooks'
 import { useAppStore, useAuthStore, useQualityStore, useRouteStore, useUserStore } from '@/stores'
 import { RoleEnum } from '@/utils/permission'
@@ -53,6 +58,7 @@ import {
 } from '@/utils/portfolio-route'
 import { isExternal } from '@/utils/validate'
 import DualDomainSideNav from './DualDomainSideNav.vue'
+import MenuCollapsedTooltip from './MenuCollapsedTooltip.vue'
 import MenuIcon from './MenuIcon.vue'
 import MenuItem from './MenuItem.vue'
 
@@ -89,8 +95,8 @@ function isPlatformAdminRoute(item: RouteRecordRaw): boolean {
 
 function isSidebarMenuRoute(routeRecord: RouteRecordRaw): boolean {
   return (
-    !routeRecord.meta?.hideInMenu
-    && !(routeRecord.redirect && !routeRecord.component && !routeRecord.components)
+    !routeRecord.meta?.hideInMenu &&
+    !(routeRecord.redirect && !routeRecord.component && !routeRecord.components)
   )
 }
 
@@ -167,7 +173,7 @@ function numberMetaValue(value: unknown): number | undefined {
   return value
 }
 
-function emptyMenuGroups(): { ungrouped: RouteRecordRaw[], groups: MenuGroup[] } {
+function emptyMenuGroups(): { ungrouped: RouteRecordRaw[]; groups: MenuGroup[] } {
   return { ungrouped: [], groups: [] }
 }
 
@@ -223,9 +229,9 @@ const isDualTeacherQualityMenu = computed(() => {
     return false
   }
   return (
-    route.path.startsWith('/teacher')
-    || isQualityEvaluationRoute(route.path)
-    || route.path.startsWith(PORTFOLIO_ROUTE_PREFIX)
+    route.path.startsWith('/teacher') ||
+    isQualityEvaluationRoute(route.path) ||
+    route.path.startsWith(PORTFOLIO_ROUTE_PREFIX)
   )
 })
 

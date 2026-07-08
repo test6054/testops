@@ -112,9 +112,9 @@ const handleOpenChange = (open: boolean) => {
 
 .ui-year-picker :deep(.ant-picker) {
   width: 100%;
-  border-radius: var(--dp-radius-control, 4px);
-  border: 1px solid var(--dp-border, #e5e7eb);
-  background-color: var(--dp-bg-control, #f3f4f6);
+  border-radius: var(--dp-radius-control);
+  border: 1px solid var(--dp-border);
+  background-color: var(--dp-bg-control);
   box-shadow: none;
   transition:
     border-color 0.2s ease,
@@ -123,54 +123,54 @@ const handleOpenChange = (open: boolean) => {
 }
 
 .ui-year-picker--sm :deep(.ant-picker) {
-  min-height: var(--dp-control-height-sm, 32px);
+  min-height: var(--dp-control-height-sm);
 }
 
 .ui-year-picker--md :deep(.ant-picker) {
-  min-height: var(--dp-control-height-md, 36px);
+  min-height: var(--dp-control-height-md);
 }
 
 .ui-year-picker--lg :deep(.ant-picker) {
-  min-height: var(--dp-control-height-lg, 40px);
+  min-height: var(--dp-control-height-lg);
 }
 
 .ui-year-picker :deep(.ant-picker:hover) {
-  border-color: var(--dp-blue-600, #2563eb);
+  border-color: var(--dp-blue-600);
 }
 
 .ui-year-picker :deep(.ant-picker-focused) {
-  border-color: var(--dp-blue-600, #2563eb);
-  box-shadow: 0 0 0 3px var(--dp-focus-ring, rgba(37, 99, 235, 0.25));
+  border-color: var(--dp-blue-600);
+  box-shadow: 0 0 0 3px var(--dp-focus-ring);
 }
 
 .ui-year-picker :deep(.ant-picker-input > input) {
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-year-picker :deep(.ant-picker-input > input::placeholder) {
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-year-picker :deep(.ant-picker-suffix),
 .ui-year-picker :deep(.ant-picker-clear) {
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-year-picker--error :deep(.ant-picker) {
-  border-color: var(--dp-red-500, #ef4444);
+  border-color: var(--dp-red-500);
 }
 
 .ui-year-picker--warning :deep(.ant-picker) {
-  border-color: var(--dp-orange-500, #f97316);
+  border-color: var(--dp-orange-500);
 }
 
 .ui-year-picker--success :deep(.ant-picker) {
-  border-color: var(--dp-green-500, #22c55e);
+  border-color: var(--dp-green-500);
 }
 
 .ui-year-picker--disabled :deep(.ant-picker),
 .ui-year-picker :deep(.ant-picker-disabled) {
   opacity: 0.7;
-  background-color: var(--dp-bg-control-disabled, #eef2f7);
+  background-color: var(--dp-bg-control-disabled);
 }
 </style>

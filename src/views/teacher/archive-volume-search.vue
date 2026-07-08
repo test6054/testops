@@ -6,21 +6,27 @@
         show-title
         title="材料检索"
         subtitle="跨卷 OCR 全文检索 · 归档材料内容"
-      >
-        <template #actions>
-          <UiButton variant="ghost" size="sm" @click="goList">返回列表</UiButton>
-        </template>
-      </ContextBar>
+      />
     </template>
 
-    <template #signal>
+    <template v-if="showSignalSection" #signal>
+      <UiAlertStrip
+        v-if="searchAccess && searchAccess.canSearch === false"
+        tone="warning"
+        :message="searchAccess.scopeSummary || '当前账号暂无可检索范围'"
+      />
+      <UiAlertStrip
+        v-else-if="searchAccess?.scopeSummary"
+        tone="info"
+        :message="searchAccess.scopeSummary"
+      />
       <SignalBand variant="tiles" :metrics="signalMetrics" compact />
     </template>
 
     <WorkbenchSurfaceCard flush>
       <template #toolbar>
         <div class="archive-search-toolbar">
-          <div class="archive-search-toolbar__profiles">
+          <div v-if="canUseMaterialSearch" class="archive-search-toolbar__profiles">
             <a-select
               v-model:value="selectedProfileId"
               allow-clear
@@ -29,7 +35,12 @@
               placeholder="已保存检索"
               :options="profileOptions"
             />
-            <UiButton variant="outline" size="sm" :disabled="!selectedProfileId" @click="applySelectedProfile">
+            <UiButton
+              variant="outline"
+              size="sm"
+              :disabled="!selectedProfileId"
+              @click="applySelectedProfile"
+            >
               加载
             </UiButton>
             <UiButton
@@ -58,51 +69,107 @@
               <a-input
                 v-model:value="filterForm.keyword"
                 allow-clear
-                placeholder="输入关键词搜索归档材料 OCR 全文..."
+                placeholder="搜索材料 OCR 全文..."
                 @press-enter="handleSearch"
               />
             </div>
             <div class="archive-search-primary__field">
+              <label class="archive-search-primary__label">学号</label>
+              <a-input
+                v-model:value="filterForm.studentNo"
+                allow-clear
+                placeholder="精确匹配"
+                @press-enter="handleSearch"
+              />
+            </div>
+            <div class="archive-search-primary__field">
+              <label class="archive-search-primary__label">姓名</label>
+              <a-input
+                v-model:value="filterForm.studentNameKeyword"
+                allow-clear
+                placeholder="模糊匹配"
+                @press-enter="handleSearch"
+              />
+            </div>
+            <div class="archive-search-primary__field archive-search-primary__field--archive">
+              <label class="archive-search-primary__label">档案号/标题</label>
+              <a-input
+                v-model:value="filterForm.archiveKeyword"
+                allow-clear
+                placeholder="模糊匹配"
+                @press-enter="handleSearch"
+              />
+            </div>
+            <UiButton
+              variant="primary"
+              size="sm"
+              class="archive-search-primary__submit"
+              @click="handleSearch"
+            >
+              检索
+            </UiButton>
+          </div>
+          <div v-if="filterForm.volumeId" class="archive-search-scope-hint">
+            <UiTag tone="blue" size="sm">限定当前归档卷</UiTag>
+            <UiTextAction @click="clearVolumeScope">清除限定</UiTextAction>
+          </div>
+          <div class="archive-search-scope">
+            <div class="archive-search-scope__field">
+              <label class="archive-search-primary__label">学年</label>
+              <a-select
+                v-model:value="filterForm.academicYearStartYear"
+                allow-clear
+                class="archive-search-scope__select"
+                :options="academicYearStartOptions"
+                placeholder="全部学年"
+              />
+            </div>
+            <div class="archive-search-scope__field">
+              <label class="archive-search-primary__label">学期</label>
+              <a-select
+                v-model:value="filterForm.semester"
+                allow-clear
+                class="archive-search-scope__select"
+                :options="semesterOptions"
+                placeholder="全部学期"
+              />
+            </div>
+            <div class="archive-search-scope__field">
+              <label class="archive-search-primary__label">学院</label>
+              <a-select
+                v-model:value="filterForm.departmentId"
+                allow-clear
+                class="archive-search-scope__select"
+                :options="departmentOptions"
+                placeholder="全部学院"
+              />
+            </div>
+            <div class="archive-search-scope__field archive-search-scope__field--exam">
               <label class="archive-search-primary__label">考试</label>
               <MarkExamSelect
                 :selected-exam-id="filterForm.examId"
                 :exam-options="examOptions"
                 :loading="examLoading"
                 :searching="examSearching"
-                select-class="archive-search-primary__exam-select"
+                select-class="archive-search-scope__exam-select"
                 placeholder="全部考试"
                 @change="handleExamChange"
                 @search="handleExamSearch"
               />
             </div>
-            <div class="archive-search-primary__field">
-              <label class="archive-search-primary__label">学院</label>
-              <a-select
-                v-model:value="filterForm.departmentId"
-                allow-clear
-                class="archive-search-primary__select"
-                :options="departmentOptions"
-                placeholder="全部学院"
+            <div class="archive-search-scope__field archive-search-scope__field--tags">
+              <label class="archive-search-primary__label">材料标签</label>
+              <ArchiveMaterialTagSelect
+                v-model="filterForm.tagAny"
+                :enable-remote-suggest="canUseMaterialSearch"
+                placeholder="选择或输入标签"
               />
             </div>
-            <div class="archive-search-primary__field">
-              <label class="archive-search-primary__label">课程</label>
-              <a-select
-                v-model:value="filterForm.courseId"
-                allow-clear
-                class="archive-search-primary__select"
-                :options="courseOptions"
-                placeholder="全部课程"
-              />
-            </div>
-            <UiButton variant="primary" size="sm" class="archive-search-primary__submit" @click="handleSearch">
-              检索
-            </UiButton>
           </div>
           <UiFilterBar
             v-model="filterModel"
             :fields="filterFields"
-            variant="panel"
+            variant="plain"
             show-labels
             search-text="检索"
             @search="handleSearch"
@@ -122,7 +189,9 @@
       </template>
 
       <p v-if="pagination.total > 0" class="archive-search-result-meta">
-        {{ pagination.total }} 条匹配<span v-if="resultMetaVolumeHint">{{ resultMetaVolumeHint }}</span>
+        {{ pagination.total }} 条匹配<span v-if="resultMetaVolumeHint">{{
+          resultMetaVolumeHint
+        }}</span>
       </p>
 
       <UiDataTable
@@ -207,7 +276,9 @@
       <template #head>
         <div class="archive-search-ocr-panel__head">
           <span class="archive-search-ocr-panel__title">OCR 文档详情</span>
-          <span v-if="ocrInlineFileName" class="archive-search-ocr-panel__file">{{ ocrInlineFileName }}</span>
+          <span v-if="ocrInlineFileName" class="archive-search-ocr-panel__file">{{
+            ocrInlineFileName
+          }}</span>
           <UiButton variant="ghost" size="sm" @click="closeOcrInlinePanel">关闭</UiButton>
         </div>
       </template>
@@ -235,15 +306,17 @@
     >
       <a-form layout="vertical">
         <a-form-item label="方案名称" required>
-          <a-input v-model:value="saveProfileForm.profileName" :maxlength="128" placeholder="如：2024 秋季期末卷检索" />
+          <a-input
+            v-model:value="saveProfileForm.profileName"
+            :maxlength="128"
+            placeholder="如：2024 秋季期末卷检索"
+          />
         </a-form-item>
         <a-form-item>
           <a-checkbox v-model:checked="saveProfileForm.sharedFlag">租户内共享</a-checkbox>
         </a-form-item>
       </a-form>
     </UiDrawer>
-
-    <ArchiveVolumeListNextStepsPanel variant="search" />
   </StageWorkbenchShell>
 </template>
 
@@ -251,59 +324,67 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-status'
-import type {
-  ArchiveMaterialTypeCode,
-  ArchiveVolumeMaterialSearchCriteria,
-  ArchiveVolumeMaterialSearchProfileResponse,
-  ArchiveVolumeSearchRequest,
-  ArchiveVolumeSearchResponse,
-} from '@/apis/mark/archive-volume'
-import type { CourseListVO, TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import type { MarkExamSelectOption } from '@/utils/mark-exam-option'
-import { message, Modal } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   ARCHIVE_MATERIAL_OCR_STATUS_OPTIONS,
   ARCHIVE_MATERIAL_OCR_STATUS_TONE,
   ArchiveMaterialOcrStatusDescription,
 } from '@/apis/mark/archive-ocr-status'
+import type {
+  ArchiveMaterialTypeCode,
+  ArchiveVolumeMaterialSearchCriteria,
+  ArchiveVolumeMaterialSearchProfileResponse,
+  ArchiveVolumeSearchAccessResponse,
+  ArchiveVolumeSearchRequest,
+  ArchiveVolumeSearchResponse,
+} from '@/apis/mark/archive-volume'
 import {
   ARCHIVE_MATERIAL_TYPE_OPTIONS,
   ArchiveMaterialTypeDescription,
   deleteArchiveVolumeSearchProfile,
   listArchiveVolumeSearchProfiles,
+  resolveArchiveVolumeSearchAccess,
   saveArchiveVolumeSearchProfile,
   searchArchiveVolumes,
 } from '@/apis/mark/archive-volume'
-import { ExamStatusCode, getExamDetail, pageExams } from '@/apis/mark/exam'
+import type { CourseListVO, TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
 import { courseCatalogApi, departmentCatalogApi } from '@/apis/quality/user-catalog'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import type { AcademicYearSemesterTripleFilterState } from '@/utils/academic-year-semester-triple-filter'
+import {
+  applyAcademicYearStartYearChange,
+  buildTriplePeriodQuery,
+  createAcademicYearSemesterTripleDefaults,
+  ensureTriplePeriodPair,
+  parseTripleFromAcademicYear,
+} from '@/utils/academic-year-semester-triple-filter'
+import type { MarkExamSelectOption } from '@/utils/mark-exam-option'
+import { examSummaryFromDetail, toMarkExamSelectOption } from '@/utils/mark-exam-option'
+import { message, Modal } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ExamStatusCode, getExamDetail, pageExams } from '@/apis/mark/exam'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
-import { generateAcademicYearOptions } from '@/utils/academic-year'
-import {
-  buildOptionalAcademicYearSemesterQuery,
-  ensureAcademicYearSemesterPair,
-} from '@/utils/academic-year-semester-query'
+import { generateAcademicYearStartOptions } from '@/utils/academic-year'
 import { highlightArchiveSearchSnippet } from '@/utils/archive-search-snippet'
 import { showUserError } from '@/utils/error-handler'
-import { examSummaryFromDetail, toMarkExamSelectOption } from '@/utils/mark-exam-option'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import ArchiveVolumeListNextStepsPanel from '@/views/teacher/archive-volume/components/ArchiveVolumeListNextStepsPanel.vue'
+import ArchiveMaterialTagSelect from '@/views/teacher/archive-volume/components/ArchiveMaterialTagSelect.vue'
 import ArchiveVolumeMaterialOcrDetailContent from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialOcrDetailContent.vue'
 import ArchiveVolumeMaterialOcrDetailModal from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialOcrDetailModal.vue'
 
@@ -311,14 +392,14 @@ defineOptions({ name: 'TeacherArchiveVolumeSearch' })
 
 const SEARCH_EXAMPLES: string[] = ['水准测量', '混凝土保护层', 'NPV净现值']
 
-interface SearchFilterForm {
+interface SearchFilterForm extends AcademicYearSemesterTripleFilterState {
   keyword: string
   studentNo: string
   studentNameKeyword: string
   archiveKeyword: string
   catalogCode: string
   catalogNameKeyword: string
-  tagAnyKeyword: string
+  tagAny: string[]
   fileNameKeyword: string
   classNameKeyword: string
   departmentId?: string
@@ -327,14 +408,13 @@ interface SearchFilterForm {
   examId?: string
   ocrStatus?: ArchiveMaterialOcrStatusCode
   materialType?: ArchiveMaterialTypeCode
-  academicYear?: string
-  semester?: SemesterCode
 }
 
 const router = useRouter()
 const route = useRoute()
 const loading = ref(false)
 const profilesLoading = ref(false)
+const searchAccess = ref<ArchiveVolumeSearchAccessResponse | null>(null)
 const saveProfileLoading = ref(false)
 const saveProfileModalOpen = ref(false)
 const saveProfileMode = ref<'update' | 'saveAs'>('saveAs')
@@ -345,8 +425,9 @@ const ocrInlineMaterialId = ref<string>()
 const ocrInlinePageNo = ref<number>()
 const ocrInlineFileName = ref<string>()
 const hits = ref<ArchiveVolumeSearchResponse[]>([])
-const departmentOptions = ref<Array<{ value: string, label: string }>>([])
-const courseOptions = ref<Array<{ value: string, label: string }>>([])
+const searchHitVolumeCount = ref(0)
+const departmentOptions = ref<Array<{ value: string; label: string }>>([])
+const courseOptions = ref<Array<{ value: string; label: string }>>([])
 const examOptions = ref<MarkExamSelectOption[]>([])
 const examLoading = ref(false)
 const examSearching = ref(false)
@@ -363,9 +444,10 @@ const filterForm = reactive<SearchFilterForm>({
   archiveKeyword: '',
   catalogCode: '',
   catalogNameKeyword: '',
-  tagAnyKeyword: '',
+  tagAny: [],
   fileNameKeyword: '',
   classNameKeyword: '',
+  ...createAcademicYearSemesterTripleDefaults(false),
 })
 const filterModel = computed<Record<string, unknown>>({
   get: () => filterForm as Record<string, unknown>,
@@ -375,6 +457,8 @@ const filterModel = computed<Record<string, unknown>>({
 })
 const pagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 
+const canUseMaterialSearch = computed(() => searchAccess.value?.canSearch === true)
+
 const signalMetrics = computed<SignalMetric[]>(() => {
   if (pagination.total <= 0) {
     return []
@@ -382,11 +466,11 @@ const signalMetrics = computed<SignalMetric[]>(() => {
   const metrics: SignalMetric[] = [
     { key: 'hits', label: '命中材料', value: pagination.total, unit: '条', tone: 'green' },
   ]
-  if (matchedVolumeCount.value > 0) {
+  if (searchHitVolumeCount.value > 0) {
     metrics.push({
       key: 'volumes',
       label: filterForm.volumeId ? '限定卷数' : '涉及归档卷',
-      value: matchedVolumeCount.value,
+      value: searchHitVolumeCount.value,
       unit: '卷',
       tone: 'blue',
     })
@@ -394,29 +478,31 @@ const signalMetrics = computed<SignalMetric[]>(() => {
   return metrics
 })
 
-const matchedVolumeCount = computed(() =>
-  new Set(hits.value.map((item) => item.volumeId).filter(Boolean)).size,
-)
+const showSignalSection = computed(() => {
+  const access = searchAccess.value
+  if (access && access.canSearch === false) {
+    return true
+  }
+  if (access?.scopeSummary) {
+    return true
+  }
+  return signalMetrics.value.length > 0
+})
 
 const resultMetaVolumeHint = computed(() => {
   if (filterForm.volumeId) {
-    return matchedVolumeCount.value > 0 ? ` · 限定 ${matchedVolumeCount.value} 卷` : ''
+    return searchHitVolumeCount.value > 0 ? ` · 限定 ${searchHitVolumeCount.value} 卷` : ''
   }
-  if (pagination.total <= 0 || matchedVolumeCount.value <= 0) {
+  if (pagination.total <= 0 || searchHitVolumeCount.value <= 0) {
     return ''
   }
-  if (pagination.total <= pagination.pageSize) {
-    return ` · 跨 ${matchedVolumeCount.value} 个归档卷`
-  }
-  return ` · 当前页 ${matchedVolumeCount.value} 卷`
+  return ` · 跨 ${searchHitVolumeCount.value} 个归档卷`
 })
 
 const profileOptions = computed(() =>
   searchProfiles.value.map((profile) => ({
     value: profile.profileId,
-    label: profile.sharedFlag
-      ? `${profile.profileName}（共享）`
-      : profile.profileName,
+    label: profile.sharedFlag ? `${profile.profileName}（共享）` : profile.profileName,
   })),
 )
 
@@ -428,29 +514,35 @@ const selectedOwnedProfile = computed(() => {
 
 const materialTypeOptions = ARCHIVE_MATERIAL_TYPE_OPTIONS
 
+const academicYearStartOptions = computed(() =>
+  generateAcademicYearStartOptions().map((year) => ({
+    label: `${year} 年`,
+    value: year,
+  })),
+)
+
+const semesterOptions = computed(() =>
+  SemesterOptions.map((item) => ({
+    label: formatSemester(item.value),
+    value: item.value,
+  })),
+)
+
 const filterFields = computed<FilterField[]>(() => [
-  { key: 'studentNo', label: '学号', type: 'input', placeholder: '精确匹配' },
-  { key: 'studentNameKeyword', label: '姓名', type: 'input', placeholder: '模糊匹配' },
-  { key: 'archiveKeyword', label: '档案号/标题', type: 'input', placeholder: '模糊匹配' },
-  { key: 'catalogCode', label: '目录编码', type: 'input', placeholder: '精确匹配' },
-  { key: 'catalogNameKeyword', label: '目录名称', type: 'input', placeholder: '模糊匹配' },
-  { key: 'tagAnyKeyword', label: '材料标签', type: 'input', placeholder: '精确匹配，多个用逗号分隔（「期末」不匹配「期末补录」）' },
-  { key: 'classNameKeyword', label: '班级', type: 'input', placeholder: '模糊匹配' },
-  { key: 'fileNameKeyword', label: '文件名', type: 'input', placeholder: '模糊匹配' },
   {
-    key: 'academicYear',
-    label: '学年',
+    key: 'courseId',
+    label: '课程',
     type: 'select',
-    placeholder: '全部学年',
-    options: generateAcademicYearOptions().map((year: string) => ({ label: year, value: year })),
+    placeholder: '全部课程',
+    options: courseOptions.value,
     allowClear: true,
   },
   {
-    key: 'semester',
-    label: '学期',
+    key: 'materialType',
+    label: '材料类型',
     type: 'select',
-    placeholder: '全部学期',
-    options: SemesterOptions.map((item) => ({ label: formatSemester(item.value), value: item.value })),
+    placeholder: '全部类型',
+    options: materialTypeOptions,
     allowClear: true,
   },
   {
@@ -464,14 +556,10 @@ const filterFields = computed<FilterField[]>(() => [
     })),
     allowClear: true,
   },
-  {
-    key: 'materialType',
-    label: '材料类型',
-    type: 'select',
-    placeholder: '全部类型',
-    options: materialTypeOptions,
-    allowClear: true,
-  },
+  { key: 'catalogCode', label: '目录编码', type: 'input', placeholder: '精确匹配' },
+  { key: 'catalogNameKeyword', label: '目录名称', type: 'input', placeholder: '模糊匹配' },
+  { key: 'classNameKeyword', label: '班级', type: 'input', placeholder: '模糊匹配' },
+  { key: 'fileNameKeyword', label: '文件名', type: 'input', placeholder: '模糊匹配' },
 ])
 
 const columns: ColumnsType<ArchiveVolumeSearchResponse> = [
@@ -507,41 +595,30 @@ function formatTerm(academicYear?: string, semester?: SemesterCode) {
   return `${academicYear} ${formatSemester(semester)}`
 }
 
-function parseTagAnyKeyword(raw: string): string[] | undefined {
-  const tags = raw
-    .split(/[,，]/)
-    .map((item) => item.trim())
-    .filter(Boolean)
-  return tags.length > 0 ? tags : undefined
-}
-
 function hasSearchCriterion(): boolean {
   return Boolean(
-    filterForm.keyword.trim()
-    || filterForm.studentNo.trim()
-    || filterForm.studentNameKeyword.trim()
-    || filterForm.archiveKeyword.trim()
-    || filterForm.catalogCode.trim()
-    || filterForm.catalogNameKeyword.trim()
-    || parseTagAnyKeyword(filterForm.tagAnyKeyword)
-    || filterForm.fileNameKeyword.trim()
-    || filterForm.classNameKeyword.trim()
-    || filterForm.departmentId
-    || filterForm.courseId
-    || filterForm.volumeId
-    || filterForm.examId
-    || filterForm.ocrStatus
-    || filterForm.materialType
-    || filterForm.academicYear
-    || filterForm.semester,
+    filterForm.keyword.trim() ||
+    filterForm.studentNo.trim() ||
+    filterForm.studentNameKeyword.trim() ||
+    filterForm.archiveKeyword.trim() ||
+    filterForm.catalogCode.trim() ||
+    filterForm.catalogNameKeyword.trim() ||
+    filterForm.tagAny.length > 0 ||
+    filterForm.fileNameKeyword.trim() ||
+    filterForm.classNameKeyword.trim() ||
+    filterForm.departmentId ||
+    filterForm.courseId ||
+    filterForm.volumeId ||
+    filterForm.examId ||
+    filterForm.ocrStatus ||
+    filterForm.materialType ||
+    filterForm.academicYearStartYear != null ||
+    filterForm.semester,
   )
 }
 
 function buildSearchCriteriaFromFilter(): ArchiveVolumeMaterialSearchCriteria {
-  const termQuery = buildOptionalAcademicYearSemesterQuery(
-    filterForm.academicYear,
-    filterForm.semester,
-  ) ?? {}
+  const termQuery = buildTriplePeriodQuery(filterForm) ?? {}
   return {
     keyword: filterForm.keyword.trim() || undefined,
     volumeId: filterForm.volumeId || undefined,
@@ -551,7 +628,7 @@ function buildSearchCriteriaFromFilter(): ArchiveVolumeMaterialSearchCriteria {
     archiveKeyword: filterForm.archiveKeyword.trim() || undefined,
     catalogCode: filterForm.catalogCode.trim() || undefined,
     catalogNameKeyword: filterForm.catalogNameKeyword.trim() || undefined,
-    tagAny: parseTagAnyKeyword(filterForm.tagAnyKeyword),
+    tagAny: filterForm.tagAny.length > 0 ? [...filterForm.tagAny] : undefined,
     fileNameKeyword: filterForm.fileNameKeyword.trim() || undefined,
     classNameKeyword: filterForm.classNameKeyword.trim() || undefined,
     departmentId: filterForm.departmentId || undefined,
@@ -578,15 +655,17 @@ function applyCriteriaToFilter(criteria: ArchiveVolumeMaterialSearchCriteria) {
   filterForm.archiveKeyword = criteria.archiveKeyword ?? ''
   filterForm.catalogCode = criteria.catalogCode ?? ''
   filterForm.catalogNameKeyword = criteria.catalogNameKeyword ?? ''
-  filterForm.tagAnyKeyword = criteria.tagAny?.join('，') ?? ''
+  filterForm.tagAny = criteria.tagAny ? [...criteria.tagAny] : []
   filterForm.fileNameKeyword = criteria.fileNameKeyword ?? ''
   filterForm.classNameKeyword = criteria.classNameKeyword ?? ''
   filterForm.departmentId = criteria.departmentId
   filterForm.courseId = criteria.courseId
   filterForm.ocrStatus = criteria.ocrStatus
   filterForm.materialType = criteria.materialType
-  filterForm.academicYear = criteria.academicYear
-  filterForm.semester = criteria.semester
+  const triple = parseTripleFromAcademicYear(criteria.academicYear, criteria.semester)
+  filterForm.academicYearStartYear = triple.academicYearStartYear
+  filterForm.academicYearEndYear = triple.academicYearEndYear
+  filterForm.semester = triple.semester
   filterForm.volumeId = criteria.volumeId
 }
 
@@ -653,7 +732,20 @@ async function loadCourses() {
   }
 }
 
+async function loadSearchAccess() {
+  try {
+    searchAccess.value = await resolveArchiveVolumeSearchAccess()
+  } catch (error) {
+    showUserError(error)
+  }
+}
+
 async function loadSearchProfiles() {
+  if (!canUseMaterialSearch.value) {
+    searchProfiles.value = []
+    selectedProfileId.value = undefined
+    return
+  }
   profilesLoading.value = true
   try {
     searchProfiles.value = await listArchiveVolumeSearchProfiles()
@@ -665,12 +757,19 @@ async function loadSearchProfiles() {
 }
 
 async function loadHits() {
+  if (searchAccess.value?.canSearch === false) {
+    hits.value = []
+    pagination.total = 0
+    searchHitVolumeCount.value = 0
+    return
+  }
   if (!hasSearchCriterion()) {
     hits.value = []
     pagination.total = 0
+    searchHitVolumeCount.value = 0
     return
   }
-  if (!ensureAcademicYearSemesterPair(filterForm.academicYear, filterForm.semester)) {
+  if (!ensureTriplePeriodPair(filterForm)) {
     return
   }
   loading.value = true
@@ -680,6 +779,7 @@ async function loadHits() {
     pagination.total = result.total
     pagination.pageNum = result.pageNum
     pagination.pageSize = result.pageSize
+    searchHitVolumeCount.value = result.hitVolumeCount ?? 0
   } catch (error) {
     showUserError(error, '材料检索失败')
   } finally {
@@ -692,7 +792,7 @@ function handleSearch() {
     message.warning('请至少填写一项检索条件')
     return
   }
-  if (!ensureAcademicYearSemesterPair(filterForm.academicYear, filterForm.semester)) {
+  if (!ensureTriplePeriodPair(filterForm)) {
     return
   }
   pagination.pageNum = 1
@@ -704,6 +804,14 @@ function applySearchExample(keyword: string) {
   handleSearch()
 }
 
+function clearVolumeScope() {
+  filterForm.volumeId = undefined
+  hits.value = []
+  pagination.pageNum = 1
+  pagination.total = 0
+  searchHitVolumeCount.value = 0
+}
+
 function handleReset() {
   const scopedVolumeId = filterForm.volumeId
   filterForm.keyword = ''
@@ -712,7 +820,7 @@ function handleReset() {
   filterForm.archiveKeyword = ''
   filterForm.catalogCode = ''
   filterForm.catalogNameKeyword = ''
-  filterForm.tagAnyKeyword = ''
+  filterForm.tagAny = []
   filterForm.fileNameKeyword = ''
   filterForm.classNameKeyword = ''
   filterForm.departmentId = undefined
@@ -720,13 +828,15 @@ function handleReset() {
   filterForm.examId = undefined
   filterForm.ocrStatus = undefined
   filterForm.materialType = undefined
-  filterForm.academicYear = undefined
+  filterForm.academicYearStartYear = undefined
+  filterForm.academicYearEndYear = undefined
   filterForm.semester = undefined
   filterForm.volumeId = scopedVolumeId
   selectedProfileId.value = undefined
   hits.value = []
   pagination.pageNum = 1
   pagination.total = 0
+  searchHitVolumeCount.value = 0
 }
 
 function highlightSnippet(snippet: string): string {
@@ -767,9 +877,11 @@ function handleArchiveSearchAction(key: string, record: ArchiveVolumeSearchRespo
 }
 
 function canViewMaterialOcr(record: ArchiveVolumeSearchResponse): boolean {
-  return record.ocrStatus === 'COMPLETED'
-    || record.ocrStatus === 'FAILED'
-    || record.ocrStatus === 'RUNNING'
+  return (
+    record.ocrStatus === 'COMPLETED' ||
+    record.ocrStatus === 'FAILED' ||
+    record.ocrStatus === 'RUNNING'
+  )
 }
 
 function openMaterialOcr(record: ArchiveVolumeSearchResponse): void {
@@ -815,9 +927,10 @@ async function handleSaveProfile() {
   saveProfileLoading.value = true
   try {
     const saved = await saveArchiveVolumeSearchProfile({
-      profileId: saveProfileMode.value === 'update' && selectedOwnedProfile.value
-        ? selectedProfileId.value
-        : undefined,
+      profileId:
+        saveProfileMode.value === 'update' && selectedOwnedProfile.value
+          ? selectedProfileId.value
+          : undefined,
       profileName,
       sharedFlag: saveProfileForm.sharedFlag,
       criteria: buildSearchCriteriaFromFilter(),
@@ -876,21 +989,26 @@ function goDetail(volumeId: string) {
 
 function goDetailOcrSearch(volumeId: string) {
   void router.push({
-    name: 'TeacherArchiveVolumeDetail',
-    params: { volumeId },
-    query: { tab: 'ocr-search' },
+    name: 'TeacherArchiveVolumeSearch',
+    query: { volumeId },
   })
 }
 
-function goList() {
-  void router.push({ name: 'TeacherArchiveVolumeList' })
-}
+watch(
+  () => filterForm.academicYearStartYear,
+  (startYear) => {
+    applyAcademicYearStartYearChange(filterForm, startYear)
+  },
+)
 
-onMounted(() => {
+onMounted(async () => {
+  await loadSearchAccess()
   void loadDepartments()
   void loadCourses()
   void loadExamOptions()
-  void loadSearchProfiles()
+  if (canUseMaterialSearch.value) {
+    void loadSearchProfiles()
+  }
   const rawVolumeId = route.query.volumeId
   if (typeof rawVolumeId === 'string' && rawVolumeId.trim()) {
     filterForm.volumeId = rawVolumeId.trim()
@@ -907,16 +1025,20 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.archive-search-page :deep(.context-bar--workbench) {
+  margin-bottom: 0;
+}
+
 .archive-search-toolbar {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-3);
 }
 .archive-search-toolbar__profiles {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 .archive-search-toolbar__profile-select {
   min-width: 220px;
@@ -925,18 +1047,18 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
   font-size: 12px;
 }
 .archive-search-toolbar__examples-label {
-  color: var(--dp-text-muted, #64748b);
+  color: var(--dp-text-muted);
 }
 
 .archive-search-primary {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 
 .archive-search-primary__field {
@@ -954,7 +1076,51 @@ onMounted(() => {
 .archive-search-primary__label {
   font-size: 12px;
   font-weight: 600;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
+}
+
+.archive-search-primary__field--archive {
+  flex: 1;
+  min-width: 160px;
+}
+
+.archive-search-scope-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dp-space-2);
+}
+
+.archive-search-scope {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--dp-space-2);
+}
+
+.archive-search-scope__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.archive-search-scope__field--exam {
+  flex: 1;
+  min-width: 220px;
+}
+
+.archive-search-scope__field--tags {
+  flex: 1 1 100%;
+  min-width: 280px;
+}
+
+.archive-search-scope__select {
+  min-width: 120px;
+}
+
+.archive-search-scope__exam-select {
+  min-width: 220px;
 }
 
 .archive-search-primary__select {
@@ -970,16 +1136,16 @@ onMounted(() => {
 }
 
 .archive-search-result-meta {
-  margin: 0 0 var(--dp-space-3, 12px);
+  margin: 0 0 var(--dp-space-3);
   font-size: 12px;
-  color: var(--dp-text-muted, #64748b);
+  color: var(--dp-text-muted);
 }
 
 .archive-search-snippet-row {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: var(--dp-space-1, 4px);
+  gap: var(--dp-space-1);
   min-width: 0;
 }
 
@@ -991,17 +1157,17 @@ onMounted(() => {
 .archive-search-page-no {
   font-size: 10px;
   font-weight: 600;
-  font-family: var(--dp-font-mono, ui-monospace, monospace);
-  color: var(--dp-text-muted, #94a3b8);
+  font-family: var(--dp-font-mono);
+  color: var(--dp-text-muted);
 }
 .archive-search-ocr-panel {
-  margin-top: var(--dp-space-3, 12px);
+  margin-top: var(--dp-space-3);
 }
 .archive-search-ocr-panel__head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 .archive-search-ocr-panel__title {
   font-weight: 600;

@@ -59,13 +59,13 @@ export function progressTone(percent: number | null | undefined): BadgeTone {
  * 仅用于内联 style / SVG / a-progress stroke-color 这类必须传 color 字符串的边界。
  */
 const TONE_COLOR_MAP: Record<BadgeTone, string> = {
-  gray: 'var(--dp-gray-400, #94a3b8)',
-  blue: 'var(--ant-color-primary, #2563eb)',
-  orange: 'var(--ant-color-warning, #f59e0b)',
-  green: 'var(--ant-color-success, #16a34a)',
-  yellow: 'var(--dp-yellow-600, #ca8a04)',
-  red: 'var(--ant-color-error, #dc2626)',
-  purple: 'var(--dp-purple-500, #7c3aed)',
+  gray: 'var(--dp-gray-400)',
+  blue: 'var(--ant-color-primary)',
+  orange: 'var(--ant-color-warning)',
+  green: 'var(--ant-color-success)',
+  yellow: 'var(--dp-yellow-600)',
+  red: 'var(--ant-color-error)',
+  purple: 'var(--dp-purple-500)',
 }
 
 /** 取 BadgeTone 对应的主题色变量字符串（边界场景用） */

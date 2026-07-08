@@ -332,6 +332,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
     meta: {
       title: '归档模板配置',
       roles: ALL_ROLES,
+      requireTenantAdmin: true,
       icon: 'database',
       hideInMenu: false,
       keepAlive: true,

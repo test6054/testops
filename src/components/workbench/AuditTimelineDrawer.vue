@@ -101,7 +101,7 @@ function handleClose() {
 
 .audit-timeline__empty-text {
   font-size: 13px;
-  color: var(--dp-text-muted, #94a3b8);
+  color: var(--dp-text-muted);
 }
 
 .audit-timeline__list {
@@ -118,7 +118,7 @@ function handleClose() {
   top: 12px;
   bottom: 12px;
   width: 2px;
-  background: var(--dp-border, #e5e7eb);
+  background: var(--dp-border);
 }
 
 .audit-timeline__item {
@@ -139,7 +139,7 @@ function handleClose() {
   margin-top: 2px;
   border-radius: 50%;
   border: 2px solid var(--ant-color-primary, #2563eb);
-  background: var(--dp-surface, #fff);
+  background: var(--dp-surface);
   position: relative;
   z-index: 1;
 }
@@ -159,12 +159,12 @@ function handleClose() {
 .audit-timeline__operation {
   font-size: 13px;
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .audit-timeline__time {
   font-size: 11px;
-  color: var(--dp-text-muted, #94a3b8);
+  color: var(--dp-text-muted);
   flex-shrink: 0;
 }
 
@@ -174,14 +174,14 @@ function handleClose() {
   gap: 6px;
   margin-top: 4px;
   font-size: 12px;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .audit-timeline__role {
   padding: 0 6px;
   font-size: 11px;
-  color: var(--dp-text-muted, #64748b);
-  background: var(--dp-gray-100, #f3f4f6);
+  color: var(--dp-text-muted);
+  background: var(--dp-gray-100);
   border-radius: 3px;
 }
 
@@ -191,7 +191,7 @@ function handleClose() {
   gap: 6px;
   margin-top: 4px;
   font-size: 12px;
-  color: var(--dp-text-muted, #64748b);
+  color: var(--dp-text-muted);
 }
 
 .audit-timeline__target-type {
@@ -206,9 +206,9 @@ function handleClose() {
   margin-top: 6px;
   padding: 6px 10px;
   font-size: 12px;
-  color: var(--dp-text-secondary, #475569);
-  background: var(--dp-gray-50, #f9fafb);
-  border-radius: var(--dp-radius-control-inner, 4px);
+  color: var(--dp-text-secondary);
+  background: var(--dp-gray-50);
+  border-radius: var(--dp-radius-control-inner);
   line-height: 1.5;
 }
 </style>

@@ -1,8 +1,8 @@
 import type { Ref } from 'vue'
+import { ref, watch } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
 import { cloneDeep } from 'lodash-es'
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
 import XEUtils from 'xe-utils'
 import { commonRoutes } from '@/router/routes/common'
 import { portfolioRoutes } from '@/router/routes/portfolio'
@@ -78,14 +78,12 @@ const storeSetup = (): RouteStoreState => {
     asyncRoutes.value = data
   }
 
-  // 监听用户权限变化，自动重新生成菜单
+  // 监听租户管理员权限变化，自动重新生成菜单
   const userStore = useUserStore()
   watch(
-    () => userStore.isTenantAdmin,
-    (newValue, oldValue) => {
-      if (oldValue !== newValue) {
-        generateMenus().catch(() => {})
-      }
+    () => userStore.userInfo.isTenantAdmin,
+    () => {
+      void generateMenus()
     },
   )
 

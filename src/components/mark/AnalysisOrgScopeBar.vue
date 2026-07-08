@@ -146,6 +146,6 @@ function handleClassChange(value: string | null, option?: ClassInfoDto) {
   max-width: 280px;
   font-size: 14px;
   line-height: 32px;
-  color: var(--dp-text-primary, rgba(0, 0, 0, 0.88));
+  color: var(--dp-text-primary);
 }
 </style>

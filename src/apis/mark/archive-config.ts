@@ -1,13 +1,16 @@
 /**
- * 归档配置 API - 职责授权 / 密级策略
+ * 归档配置 API - 职责授权 / 密级策略 / 时限策略
  */
 import type { ArchiveSecurityLevelCode } from '@/apis/mark/archive-volume'
+import type { ArchiveDeadlineTierCode } from '@/types/enums/archive-deadline-tier-enum'
 import type { ArchiveDutyTypeCode } from '@/types/enums/archive-duty-type-enum'
-import http from '@/config/axios'
 import {
   ALL_ARCHIVE_DUTY_TYPE_CODES,
   ArchiveDutyTypeDescription,
 } from '@/types/enums/archive-duty-type-enum'
+import type { ArchiveKioskHubListModeCode } from '@/types/enums/archive-kiosk-hub-list-mode-enum'
+import type { ArchiveSubmitModeCode } from '@/types/enums/archive-submit-mode-enum'
+import http from '@/config/axios'
 
 export {
   ALL_ARCHIVE_DUTY_TYPE_CODES,
@@ -71,4 +74,55 @@ export function saveArchiveSecurityPolicy(
   items: ArchiveSecurityPolicyItemRequest[],
 ): Promise<void> {
   return http.post<void>('/api/mark/archive-config/security-policy/save', { items })
+}
+
+export interface ArchiveDeadlinePolicyResponse {
+  policyId: string
+  departmentId?: string
+  deadlineTier: ArchiveDeadlineTierCode
+  leadDays: number
+  overdueSubmitBlock: boolean
+  departmentReviewEnabled: boolean
+}
+
+export interface ArchiveDeadlinePolicyItemRequest {
+  departmentId?: string
+  deadlineTier: ArchiveDeadlineTierCode
+  leadDays: number
+  overdueSubmitBlock: boolean
+  departmentReviewEnabled: boolean
+}
+
+export function listArchiveDeadlinePolicy(): Promise<ArchiveDeadlinePolicyResponse[]> {
+  return http.post<ArchiveDeadlinePolicyResponse[]>('/api/mark/archive-config/deadline-policy/list', {})
+}
+
+export function saveArchiveDeadlinePolicy(
+  items: ArchiveDeadlinePolicyItemRequest[],
+): Promise<void> {
+  return http.post<void>('/api/mark/archive-config/deadline-policy/save', { items })
+}
+
+export interface ArchiveTenantCollaborationPolicyResponse {
+  autoSeedExamReviewers: boolean
+  autoSeedCourseTeachers: boolean
+  coordinatorImplicitSubmit: boolean
+  scanOperatorMayEditCatalog: boolean
+  submitMode: ArchiveSubmitModeCode
+  kioskHubListMode: ArchiveKioskHubListModeCode
+}
+
+export type ArchiveTenantCollaborationPolicySaveRequest = ArchiveTenantCollaborationPolicyResponse
+
+export function getArchiveCollaborationPolicy(): Promise<ArchiveTenantCollaborationPolicyResponse> {
+  return http.post<ArchiveTenantCollaborationPolicyResponse>(
+    '/api/mark/archive-config/collaboration-policy/get',
+    {},
+  )
+}
+
+export function saveArchiveCollaborationPolicy(
+  request: ArchiveTenantCollaborationPolicySaveRequest,
+): Promise<void> {
+  return http.post<void>('/api/mark/archive-config/collaboration-policy/save', request)
 }

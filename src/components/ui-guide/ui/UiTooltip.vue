@@ -5,7 +5,7 @@
       :placement="props.placement"
       :trigger="props.trigger"
       :get-popup-container="getPopupContainer"
-      :overlay-class-name="props.overlayClassName || 'ui-tooltip-overlay'"
+      :overlay-class-name="resolvedOverlayClassName"
       v-bind="$attrs"
     >
       <slot />
@@ -15,7 +15,7 @@
 
 <script lang="ts" setup>
 import type { TooltipProps } from 'ant-design-vue/es/tooltip'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { resolvePopupContainer } from './popup-container'
 
 defineOptions({
@@ -41,18 +41,31 @@ const props = withDefaults(
       | 'rightBottom'
     trigger?: TooltipProps['trigger']
     overlayClassName?: string
+    /** inline：挂载在触发器旁；body：挂载到 document.body（表格 ellipsis 必用，避免单元格裁剪与字阶污染） */
+    popupMount?: 'inline' | 'body'
   }>(),
   {
     title: '',
     placement: 'top',
     trigger: () => ['hover'],
     overlayClassName: '',
+    popupMount: 'inline',
   },
 )
 
 const tooltipRoot = ref<HTMLElement>()
 
+const resolvedOverlayClassName = computed(() => {
+  if (!props.overlayClassName) {
+    return 'ui-tooltip-overlay'
+  }
+  return `ui-tooltip-overlay ${props.overlayClassName}`
+})
+
 const getPopupContainer = (triggerNode?: HTMLElement) => {
+  if (props.popupMount === 'body' && typeof document !== 'undefined') {
+    return document.body
+  }
   return tooltipRoot.value ?? resolvePopupContainer(triggerNode)
 }
 </script>
@@ -68,7 +81,7 @@ const getPopupContainer = (triggerNode?: HTMLElement) => {
 <style>
 .ui-tooltip-overlay .ant-tooltip-inner {
   max-width: 320px;
-  border-radius: var(--dp-radius-overlay, 4px);
+  border-radius: var(--dp-radius-overlay);
   padding: 8px 12px;
   color: #f8fafc;
   background: rgba(15, 23, 42, 0.92);

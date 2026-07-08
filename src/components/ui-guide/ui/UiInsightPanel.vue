@@ -217,12 +217,12 @@ const slots = useSlots()
 
 const hasHeader = computed(() => {
   return (
-    !!props.title
-    || !!props.description
-    || !!props.eyebrow
-    || !!props.level
-    || !!slots.meta
-    || !!slots.actions
+    !!props.title ||
+    !!props.description ||
+    !!props.eyebrow ||
+    !!props.level ||
+    !!slots.meta ||
+    !!slots.actions
   )
 })
 
@@ -280,17 +280,18 @@ const getToneLabel = (tone?: BadgeTone) => {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .ui-insight-panel {
   display: flex;
   flex-direction: column;
   gap: 18px;
   min-width: 0;
   padding: 18px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
-  box-shadow: var(--dp-shadow-card, 0 10px 30px rgba(15, 23, 42, 0.06));
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-card);
 }
 
 .ui-insight-panel__content {
@@ -304,8 +305,8 @@ const getToneLabel = (tone?: BadgeTone) => {
   gap: 16px;
   min-width: 0;
   padding: 16px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
   background: #fff;
 }
 
@@ -316,7 +317,7 @@ const getToneLabel = (tone?: BadgeTone) => {
   gap: 8px;
   min-height: 120px;
   padding: 16px;
-  border-radius: var(--dp-radius-panel, 4px);
+  border-radius: var(--dp-radius-panel);
 }
 
 .ui-insight-panel__score--gray {
@@ -351,7 +352,7 @@ const getToneLabel = (tone?: BadgeTone) => {
 
 .ui-insight-panel__score--purple {
   background: #f5f3ff;
-  color: var(--dp-purple-500, #722ed1);
+  color: var(--dp-purple-500);
 }
 
 .ui-insight-panel__score-value {
@@ -390,7 +391,7 @@ const getToneLabel = (tone?: BadgeTone) => {
   margin: 0;
   font-size: 16px;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-insight-panel__summary-text,
@@ -400,7 +401,7 @@ const getToneLabel = (tone?: BadgeTone) => {
   margin: 0;
   font-size: 13px;
   line-height: 1.75;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-insight-panel__grid {
@@ -414,8 +415,8 @@ const getToneLabel = (tone?: BadgeTone) => {
   display: grid;
   gap: 12px;
   padding: 16px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
   background: #fff;
 }
 
@@ -432,9 +433,9 @@ const getToneLabel = (tone?: BadgeTone) => {
   display: grid;
   gap: 8px;
   padding: 12px 14px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface-subtle, #f8fafc);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface-subtle);
 }
 
 .ui-insight-panel__suggestion {
@@ -448,7 +449,7 @@ const getToneLabel = (tone?: BadgeTone) => {
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: var(--dp-radius-panel, 4px);
+  border-radius: var(--dp-radius-panel);
   font-size: 12px;
   font-weight: 800;
   color: #1d4ed8;
@@ -462,14 +463,14 @@ const getToneLabel = (tone?: BadgeTone) => {
 .ui-insight-panel__metric-label {
   font-size: 12px;
   font-weight: 700;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-insight-panel__metric-value {
   font-size: 24px;
   line-height: 1.1;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-insight-panel__metric-trend {
@@ -491,7 +492,7 @@ const getToneLabel = (tone?: BadgeTone) => {
 
 .ui-insight-panel__footer {
   padding-top: 14px;
-  border-top: 1px solid var(--dp-border, #e5e7eb);
+  border-top: 1px solid var(--dp-border);
 }
 
 @media (max-width: 1080px) {
@@ -501,7 +502,7 @@ const getToneLabel = (tone?: BadgeTone) => {
   }
 }
 
-@media (max-width: 767px) {
+@media (max-width: bp.$layout-mobile-max) {
   .ui-insight-panel__summary-card {
     grid-template-columns: minmax(0, 1fr);
   }

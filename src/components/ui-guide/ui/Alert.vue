@@ -52,41 +52,41 @@ const iconComponent = computed(() => {
 
 <style scoped>
 .ui-alert {
-  --alert-bg: var(--dp-blue-50, #eff6ff);
-  --alert-border: var(--dp-blue-200, #bfdbfe);
-  --alert-icon: var(--dp-blue-600, #2563eb);
+  --alert-bg: var(--dp-blue-50);
+  --alert-border: var(--dp-blue-200);
+  --alert-icon: var(--dp-blue-600);
   display: flex;
   gap: 12px;
   align-items: flex-start;
   border: 1px solid var(--alert-border);
   background: var(--alert-bg);
-  border-radius: var(--dp-radius-panel, 4px);
+  border-radius: var(--dp-radius-panel);
   padding: 14px 16px;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-alert--info {
-  --alert-bg: var(--dp-blue-50, #eff6ff);
-  --alert-border: var(--dp-blue-200, #bfdbfe);
-  --alert-icon: var(--dp-blue-600, #2563eb);
+  --alert-bg: var(--dp-blue-50);
+  --alert-border: var(--dp-blue-200);
+  --alert-icon: var(--dp-blue-600);
 }
 
 .ui-alert--success {
-  --alert-bg: var(--dp-green-50, #ecfdf3);
-  --alert-border: var(--dp-green-200, #bbf7d0);
-  --alert-icon: var(--dp-green-500, #22c55e);
+  --alert-bg: var(--dp-green-50);
+  --alert-border: var(--dp-green-200);
+  --alert-icon: var(--dp-green-500);
 }
 
 .ui-alert--warning {
-  --alert-bg: var(--dp-orange-50, #fff7ed);
-  --alert-border: var(--dp-orange-200, #fed7aa);
-  --alert-icon: var(--dp-orange-500, #f97316);
+  --alert-bg: var(--dp-orange-50);
+  --alert-border: var(--dp-orange-200);
+  --alert-icon: var(--dp-orange-500);
 }
 
 .ui-alert--error {
-  --alert-bg: var(--dp-red-50, #fef2f2);
-  --alert-border: var(--dp-red-200, #fecdd3);
-  --alert-icon: var(--dp-red-500, #ef4444);
+  --alert-bg: var(--dp-red-50);
+  --alert-border: var(--dp-red-200);
+  --alert-icon: var(--dp-red-500);
 }
 
 .ui-alert__icon {
@@ -108,12 +108,12 @@ const iconComponent = computed(() => {
   margin-bottom: 4px;
   font-size: 14px;
   font-weight: 700;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-alert__description {
   font-size: 13px;
   line-height: 1.6;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 </style>

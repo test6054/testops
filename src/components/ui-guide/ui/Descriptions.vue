@@ -41,13 +41,13 @@ const props = withDefaults(defineProps<{
   margin-bottom: 16px;
   font-size: 16px;
   font-weight: 700;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-descriptions :deep(.ant-descriptions-view) {
   overflow: hidden;
-  border-radius: var(--dp-radius-panel, 10px);
-  border: 1px solid var(--dp-border, #e5e7eb);
+  border-radius: var(--dp-radius-panel);
+  border: 1px solid var(--dp-border);
 }
 
 .ui-descriptions :deep(.ant-descriptions-row > th),
@@ -57,13 +57,13 @@ const props = withDefaults(defineProps<{
 }
 
 .ui-descriptions :deep(.ant-descriptions-row > th) {
-  background: var(--dp-table-header-bg, #f8fafc);
-  color: var(--dp-text-secondary, #475569);
+  background: var(--dp-table-header-bg);
+  color: var(--dp-text-secondary);
   font-weight: 600;
 }
 
 .ui-descriptions :deep(.ant-descriptions-row > td) {
-  color: var(--dp-text-primary, #0f172a);
-  background: var(--dp-surface, #fff);
+  color: var(--dp-text-primary);
+  background: var(--dp-surface);
 }
 </style>

@@ -39,7 +39,10 @@
         </UiButton>
       </div>
     </div>
-    <div v-else-if="mode === 'standalone' && organizationDetail" class="mark-quality-scope-bar__row">
+    <div
+      v-else-if="mode === 'standalone' && organizationDetail"
+      class="mark-quality-scope-bar__row"
+    >
       <a-select
         :value="selectedGroupId"
         class="mark-quality-scope-bar__group-select"
@@ -55,11 +58,11 @@
 <script lang="ts" setup>
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { MarkingOrganizationResponse } from '@/apis/mark/marking-organization'
-import { computed } from 'vue'
 import {
   MarkingOrganizationStatusDescription,
   QuestionMarkingGroupStatusDescription,
 } from '@/apis/mark/marking-organization'
+import { computed } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -92,7 +95,11 @@ const organizationLabel = computed(() => {
   if (!org) {
     return '—'
   }
-  const status = strictEnumLabel(MarkingOrganizationStatusDescription, org.organizationStatus, '阅卷组织状态')
+  const status = strictEnumLabel(
+    MarkingOrganizationStatusDescription,
+    org.organizationStatus,
+    '阅卷组织状态',
+  )
   return `${org.leaderUserName} · ${status}`
 })
 
@@ -101,10 +108,12 @@ const organizationOptions = computed<DefaultOptionType[]>(() => {
   if (!org) {
     return []
   }
-  return [{
-    value: org.id,
-    label: `阅卷组织 · ${strictEnumLabel(MarkingOrganizationStatusDescription, org.organizationStatus, '阅卷组织状态')} · 负责人 ${org.leaderUserName}`,
-  }]
+  return [
+    {
+      value: org.id,
+      label: `阅卷组织 · ${strictEnumLabel(MarkingOrganizationStatusDescription, org.organizationStatus, '阅卷组织状态')} · 负责人 ${org.leaderUserName}`,
+    },
+  ]
 })
 
 const groupOptions = computed<DefaultOptionType[]>(() =>
@@ -131,37 +140,37 @@ function emitGroupChangeSelect(value: SelectValue): void {
 .mark-quality-scope-bar {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
-  margin-top: var(--dp-space-3, 12px);
-  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
-  border: 1px solid var(--dp-border, #e2e8f0);
-  border-radius: var(--dp-radius-panel, 8px);
-  background: var(--dp-surface, #fff);
+  gap: var(--dp-space-3);
+  margin-top: var(--dp-space-3);
+  padding: var(--dp-space-3) var(--dp-space-4);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
 
   &__row {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--dp-space-2, 8px);
+    gap: var(--dp-space-2);
   }
 
   &__org-label,
   &__scope-label {
-    font-size: var(--dp-type-hint-size, 12px);
-    color: var(--dp-text-muted, #64748b);
+    font-size: var(--dp-type-hint-size);
+    color: var(--dp-text-muted);
     flex-shrink: 0;
   }
 
   &__org-label {
-    font-size: var(--dp-type-body-size, 14px);
-    color: var(--dp-text-primary, #0f172a);
+    font-size: var(--dp-type-body-size);
+    color: var(--dp-text-primary);
     font-weight: 500;
   }
 
   &__chips {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--dp-space-2, 8px);
+    gap: var(--dp-space-2);
   }
 
   &__org-select {
@@ -173,8 +182,8 @@ function emitGroupChangeSelect(value: SelectValue): void {
   }
 
   &__hint {
-    font-size: var(--dp-type-hint-size, 12px);
-    color: var(--dp-text-muted, #64748b);
+    font-size: var(--dp-type-hint-size);
+    color: var(--dp-text-muted);
   }
 }
 </style>

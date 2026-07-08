@@ -89,9 +89,6 @@ import type {
   UiDataTableEmptyKind,
   UiDataTablePaginationMode,
 } from './data-table'
-import { useBreakpoints } from '@vueuse/core'
-import { computed, getCurrentInstance, ref, useAttrs, useSlots, watch } from 'vue'
-import UiCard from './Card.vue'
 import {
   filterResponsiveDataTableColumns,
   normalizeDataTableColumns,
@@ -100,6 +97,9 @@ import {
   UI_DATA_TABLE_EMPTY_PRESETS,
   UI_DATA_TABLE_VIEWPORT,
 } from './data-table'
+import { useBreakpoints } from '@vueuse/core'
+import { computed, getCurrentInstance, ref, useAttrs, useSlots, watch } from 'vue'
+import UiCard from './Card.vue'
 import UiEmpty from './Empty.vue'
 import UiPagination from './Pagination.vue'
 import { resolvePopupContainer } from './popup-container'
@@ -179,7 +179,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (e: 'change', changeEvent: UiDataTableChangeEvent): void
-  (e: 'page-change', pageEvent: { current: number, pageSize: number }): void
+  (e: 'page-change', pageEvent: { current: number; pageSize: number }): void
   (e: 'selection-change', rowKeys: Key[]): void
 }>()
 
@@ -305,9 +305,9 @@ const effectiveShowPagination = computed(() => {
     return false
   }
   if (
-    props.paginationMode === 'server'
-    && effectiveTotal.value > pageSize.value
-    && !hasPageChangeListener.value
+    props.paginationMode === 'server' &&
+    effectiveTotal.value > pageSize.value &&
+    !hasPageChangeListener.value
   ) {
     return false
   }
@@ -316,11 +316,11 @@ const effectiveShowPagination = computed(() => {
 
 const hasTopBar = computed(() => {
   return (
-    !!props.title
-    || !!props.description
-    || !!props.sortedInfo
-    || !!slots['toolbar-left']
-    || !!slots['toolbar-right']
+    !!props.title ||
+    !!props.description ||
+    !!props.sortedInfo ||
+    !!slots['toolbar-left'] ||
+    !!slots['toolbar-right']
   )
 })
 
@@ -369,8 +369,8 @@ watch(
     }
     missingPageChangeWarned = true
     console.warn(
-      '[UiDataTable] paginationMode="server" 且 total 大于 pageSize，但未监听 @page-change；分页栏已自动隐藏。'
-      + '请绑定 @page-change 走服务端分页，或改用 paginationMode="client" / "none"。',
+      '[UiDataTable] paginationMode="server" 且 total 大于 pageSize，但未监听 @page-change；分页栏已自动隐藏。' +
+        '请绑定 @page-change 走服务端分页，或改用 paginationMode="client" / "none"。',
     )
   },
   { immediate: true },
@@ -413,23 +413,23 @@ const handlePageChange = (page: number, size: number) => {
 }
 
 .ui-data-table__title {
-  font-size: var(--dp-font-size-lg, 16px);
-  font-weight: var(--dp-font-weight-title, 600);
-  color: var(--dp-text-primary, #0f172a);
+  font-size: var(--dp-font-size-lg);
+  font-weight: var(--dp-font-weight-title);
+  color: var(--dp-text-primary);
 }
 
 .ui-data-table__description {
   margin-top: 4px;
   font-size: 13px;
   line-height: 1.6;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-data-table__sorted-info {
   margin-top: 6px;
   font-size: 12px;
   line-height: 1.5;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-data-table__toolbar-left {
@@ -448,8 +448,8 @@ const handlePageChange = (page: number, size: number) => {
 
 .ui-data-table__table-wrap {
   overflow: auto;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
 }
 
 .ui-data-table__table-wrap--pinned {
@@ -474,34 +474,8 @@ const handlePageChange = (page: number, size: number) => {
 }
 
 .ui-data-table__table :deep(.ant-table-thead > tr > th) {
-  height: 44px !important;
-  padding: 0 12px !important;
-  background: var(--dp-table-header-bg, #f8fafc) !important;
-  color: var(--dp-text-secondary, #475569);
-  font-size: var(--dp-type-table-head-size, 14px);
-  font-weight: var(--dp-type-table-head-weight, 600);
-  line-height: var(--dp-type-table-head-line-height, 20px);
-  vertical-align: middle;
-  border-bottom: 1px solid var(--dp-border-strong, #e2e8f0);
-  white-space: nowrap;
-}
-
-.ui-data-table__table :deep(.ant-table-thead > tr > th.ant-table-column-sort) {
-  background: var(--dp-blue-50, #eff6ff) !important;
-}
-
-.ui-data-table__table :deep(.ant-table-column-sorters) {
-  justify-content: flex-start;
-  gap: 4px;
-}
-
-.ui-data-table__table :deep(.ant-table-column-sorter) {
-  color: var(--dp-text-muted, #94a3b8);
-}
-
-.ui-data-table__table :deep(.ant-table-column-sorter-up.active),
-.ui-data-table__table :deep(.ant-table-column-sorter-down.active) {
-  color: var(--ant-color-primary, #1677ff);
+  background: var(--dp-table-header-bg) !important;
+  border-bottom: 1px solid var(--dp-border);
 }
 
 .ui-data-table__table
@@ -509,26 +483,13 @@ const handlePageChange = (page: number, size: number) => {
   justify-content: flex-end;
 }
 
-.ui-data-table__table :deep(.ant-table-thead > tr > th.ant-table-selection-column) {
-  padding-inline: 8px !important;
+.ui-data-table__table :deep(.ant-table-column-sorter) {
+  color: var(--dp-text-muted);
 }
 
-.ui-data-table__table
-  :deep(.ant-table-thead > tr > th.ant-table-selection-column .ant-table-selection),
-.ui-data-table__table
-  :deep(.ant-table-thead > tr > th.ant-table-selection-column .ant-checkbox-wrapper),
-.ui-data-table__table :deep(.ant-table-thead > tr > th.ant-table-selection-column .ant-checkbox) {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  margin: 0 !important;
-}
-
-.ui-data-table__table
-  :deep(.ant-table-thead > tr > th.ant-table-selection-column .ant-checkbox::after) {
-  display: none !important;
-  animation: none !important;
+.ui-data-table__table :deep(.ant-table-column-sorter-up.active),
+.ui-data-table__table :deep(.ant-table-column-sorter-down.active) {
+  color: var(--ant-color-primary, #1677ff);
 }
 
 .ui-data-table__table
@@ -554,34 +515,31 @@ const handlePageChange = (page: number, size: number) => {
       .ant-checkbox-wrapper:hover
       .ant-checkbox-inner
   ) {
-  border-color: var(--dp-border, #e5e7eb) !important;
+  border-color: var(--dp-border) !important;
 }
 
 .ui-data-table__table :deep(.ant-table-tbody > tr > td) {
-  padding: 12px 14px !important;
-  color: var(--dp-text-primary, #0f172a);
-  font-size: var(--dp-type-table-body-size, 14px);
-  line-height: var(--dp-type-table-body-line-height, 20px);
-  font-weight: var(--dp-type-table-body-weight, 400);
-  vertical-align: middle;
-  border-bottom: 1px solid var(--dp-border, #e5e7eb);
-  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--dp-border);
 }
 
 .ui-data-table__table :deep(.ant-table-tbody > tr > td .ui-table-actions) {
   max-width: 100%;
 }
 
+.ui-data-table__table :deep(.ant-table-tbody > tr > td.ui-data-table__col--numeric) {
+  font-variant-numeric: tabular-nums;
+}
+
 .ui-data-table__table :deep(.ant-table-cell-fix-left),
 .ui-data-table__table :deep(.ant-table-cell-fix-right) {
   z-index: 2;
-  background: var(--dp-surface, #fff);
+  background: var(--dp-surface);
 }
 
 .ui-data-table__table :deep(.ant-table-thead > tr > th.ant-table-cell-fix-left),
 .ui-data-table__table :deep(.ant-table-thead > tr > th.ant-table-cell-fix-right) {
   z-index: 3;
-  background: var(--dp-table-header-bg, #f8fafc) !important;
+  background: var(--dp-table-header-bg) !important;
 }
 
 .ui-data-table__table :deep(.ant-table-cell-fix-left-last::after),
@@ -609,24 +567,20 @@ const handlePageChange = (page: number, size: number) => {
 
 .ui-data-table__table :deep(.ant-table-tbody > tr:hover > td.ant-table-cell-fix-left),
 .ui-data-table__table :deep(.ant-table-tbody > tr:hover > td.ant-table-cell-fix-right) {
-  background: var(--dp-gray-50, #f8fafc) !important;
+  background: rgb(239 246 255 / 68%) !important;
 }
 
 .ui-data-table__table
   :deep(.ant-table-tbody > tr.ant-table-row-selected > td.ant-table-cell-fix-left),
 .ui-data-table__table
   :deep(.ant-table-tbody > tr.ant-table-row-selected > td.ant-table-cell-fix-right) {
-  background: var(--dp-blue-50, #eff6ff) !important;
-}
-
-.ui-data-table__table :deep(.ant-table-tbody > tr > td.ui-data-table__col--numeric) {
-  font-variant-numeric: tabular-nums;
+  background: var(--dp-gray-50) !important;
 }
 
 .ui-data-table--zebra
   .ui-data-table__table
   :deep(.ant-table-tbody > tr:nth-child(even):not(.ant-table-placeholder) > td) {
-  background: var(--dp-gray-50, #f8fafc);
+  background: var(--dp-gray-50);
 }
 
 .ui-data-table__table :deep(.ant-table-tbody > tr.ant-table-measure-row) {
@@ -647,25 +601,25 @@ const handlePageChange = (page: number, size: number) => {
 }
 
 .ui-data-table__table :deep(.ant-table-tbody > tr:hover > td) {
-  background: var(--dp-gray-50, #f8fafc) !important;
+  background: rgb(239 246 255 / 68%) !important;
 }
 
 .ui-data-table--zebra
   .ui-data-table__table
   :deep(.ant-table-tbody > tr:nth-child(even):not(.ant-table-placeholder):hover > td) {
-  background: var(--dp-blue-50, #eff6ff) !important;
+  background: var(--dp-blue-50) !important;
 }
 
 .ui-data-table__table :deep(.ant-table-tbody > tr.ant-table-row-selected > td) {
-  background: var(--dp-blue-50, #eff6ff) !important;
+  background: var(--dp-gray-50) !important;
 }
 
 .ui-data-table__table :deep(.ant-table-tbody > tr.ant-table-row-selected:hover > td) {
-  background: var(--dp-blue-100, #dbeafe) !important;
+  background: var(--dp-gray-100) !important;
 }
 
 .ui-data-table__table :deep(.ant-table-placeholder:hover > td) {
-  background: var(--dp-surface, #fff) !important;
+  background: var(--dp-surface) !important;
 }
 
 .ui-data-table__pagination {

@@ -71,7 +71,7 @@ function handleBrushSelected(params: unknown): void {
 const loadingOptions = {
   text: '加载中',
   color: 'var(--ant-color-primary, #1677ff)',
-  textColor: 'var(--dp-text-secondary, #64748b)',
+  textColor: 'var(--dp-text-secondary)',
   maskColor: 'rgba(255, 255, 255, 0.72)',
   fontSize: 12,
   showSpinner: true,

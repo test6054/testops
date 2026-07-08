@@ -38,8 +38,8 @@ const props = withDefaults(
 .ui-table-wrap {
   width: 100%;
   overflow-x: auto;
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
 }
 
 .ui-table {
@@ -47,7 +47,7 @@ const props = withDefaults(
   border-collapse: separate;
   border-spacing: 0;
   font-size: 14px;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-table__header th {
@@ -56,24 +56,24 @@ const props = withDefaults(
   text-align: left;
   font-size: 13px;
   font-weight: 700;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
   white-space: nowrap;
-  background: var(--dp-table-header-bg, #f8fafc);
-  border-bottom: 1px solid var(--dp-border, #e5e7eb);
+  background: var(--dp-table-header-bg);
+  border-bottom: 1px solid var(--dp-border);
 }
 
 .ui-table__header th:first-child {
-  border-top-left-radius: var(--dp-radius-panel, 4px);
+  border-top-left-radius: var(--dp-radius-panel);
 }
 
 .ui-table__header th:last-child {
-  border-top-right-radius: var(--dp-radius-panel, 4px);
+  border-top-right-radius: var(--dp-radius-panel);
 }
 
 .ui-table__body td {
   padding: 16px;
-  border-bottom: 1px solid var(--dp-border, #e5e7eb);
-  background: var(--dp-surface, #fff);
+  border-bottom: 1px solid var(--dp-border);
+  background: var(--dp-surface);
   vertical-align: middle;
 }
 

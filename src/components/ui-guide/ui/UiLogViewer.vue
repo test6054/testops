@@ -126,13 +126,13 @@ const normalizeCssSize = (value?: string | number) => {
 
 const hasHeader = computed(() => {
   return (
-    !!props.title
-    || !!props.description
-    || !!props.eyebrow
-    || !!slots.meta
-    || !!slots.actions
-    || props.copyable
-    || props.allowWrapToggle
+    !!props.title ||
+    !!props.description ||
+    !!props.eyebrow ||
+    !!slots.meta ||
+    !!slots.actions ||
+    props.copyable ||
+    props.allowWrapToggle
   )
 })
 
@@ -211,10 +211,10 @@ onBeforeUnmount(() => {
   gap: 18px;
   min-width: 0;
   padding: 18px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
-  box-shadow: var(--dp-shadow-card, 0 10px 30px rgba(15, 23, 42, 0.06));
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-card);
 }
 
 .ui-log-viewer__body {
@@ -225,7 +225,7 @@ onBeforeUnmount(() => {
   min-width: 0;
   overflow: auto;
   border: 1px solid rgba(30, 41, 59, 0.88);
-  border-radius: var(--dp-radius-panel, 4px);
+  border-radius: var(--dp-radius-panel);
   background: #0f172a;
   color: #e2e8f0;
 }
@@ -291,6 +291,6 @@ onBeforeUnmount(() => {
 
 .ui-log-viewer__footer {
   padding-top: 14px;
-  border-top: 1px solid var(--dp-border, #e5e7eb);
+  border-top: 1px solid var(--dp-border);
 }
 </style>

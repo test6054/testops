@@ -3,17 +3,13 @@
     <template #context>
       <ContextBar layout="workbench">
         <template #status>
-          <UiTag tone="blue" size="sm">
-            待复核 {{ pagination.total }} 条
-          </UiTag>
+          <UiTag tone="blue" size="sm"> 待复核 {{ pagination.total }} 条 </UiTag>
           <UiTag v-if="selectedRowKeys.length > 0" tone="orange" size="sm">
             已选 {{ selectedRowKeys.length }}
           </UiTag>
         </template>
         <template #actions>
-          <UiButton variant="outline" size="sm" @click="goSingleReview">
-            OCR/AI 单题复核
-          </UiButton>
+          <UiButton variant="outline" size="sm" @click="goSingleReview"> OCR/AI 单题复核 </UiButton>
           <UiButton
             size="sm"
             variant="outline"
@@ -63,7 +59,15 @@
           size="middle"
           @page-change="onPageChange"
         >
-          <template #bodyCell="{ column, record }: { column: ColumnType<ReviewTaskItemResponse>, record: ReviewTaskItemResponse }">
+          <template
+            #bodyCell="{
+              column,
+              record,
+            }: {
+              column: ColumnType<ReviewTaskItemResponse>
+              record: ReviewTaskItemResponse
+            }"
+          >
             <template v-if="column.key === 'paper'">
               {{ record.paperDisplay.primaryText }}
             </template>
@@ -102,9 +106,7 @@
           <template #renderItem="{ item }">
             <a-list-item>
               <a-list-item-meta>
-                <template #title>
-                  成绩记录 {{ item.gradeResultId }}
-                </template>
+                <template #title> 成绩记录 {{ item.gradeResultId }} </template>
                 <template #description>
                   <UiTag tone="red" size="sm">{{ item.code }}</UiTag>
                   {{ item.message }}
@@ -124,24 +126,19 @@ import type {
   ExamGradeBatchConfirmFailureItem,
   ExamGradeBatchConfirmResponse,
 } from '@/apis/mark/exam-grade'
-import type {
-  GradeSourceCode,
-  ReviewTaskItemResponse,
-} from '@/apis/mark/exam-review-task'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import {
-  batchConfirmQuestionGrades,
-} from '@/apis/mark/exam-grade'
+import { batchConfirmQuestionGrades } from '@/apis/mark/exam-grade'
+import type { GradeSourceCode, ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
 import {
   GRADE_SOURCE_TONE,
   GradeSourceDescription,
   listReviewTasks,
   ReviewTaskStatusCode,
 } from '@/apis/mark/exam-review-task'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -271,7 +268,7 @@ async function loadTasks(): Promise<void> {
   }
 }
 
-function onPageChange(page: { current: number, pageSize: number }): void {
+function onPageChange(page: { current: number; pageSize: number }): void {
   pagination.current = page.current
   pagination.pageSize = page.pageSize
   void loadTasks()
@@ -316,7 +313,9 @@ async function submitBatch(): Promise<void> {
     })
     batchFailures.value = response.failures ?? []
     if (response.failureCount > 0) {
-      message.warning(`成功 ${response.successCount} 条，失败 ${response.failureCount} 条，请查看下方失败明细`)
+      message.warning(
+        `成功 ${response.successCount} 条，失败 ${response.failureCount} 条，请查看下方失败明细`,
+      )
     } else {
       batchFailures.value = []
       message.success(`已确认 ${response.successCount} 条复核得分`)
@@ -333,16 +332,20 @@ async function submitBatch(): Promise<void> {
 
 const skipFirstActivatedLoad = ref(true)
 
-watch(selectedExamId, (value) => {
-  pagination.current = 1
-  selectedRowKeys.value = []
-  if (value) {
-    void loadTasks()
-  } else {
-    rows.value = []
-    pagination.total = 0
-  }
-}, { immediate: true })
+watch(
+  selectedExamId,
+  (value) => {
+    pagination.current = 1
+    selectedRowKeys.value = []
+    if (value) {
+      void loadTasks()
+    } else {
+      rows.value = []
+      pagination.total = 0
+    }
+  },
+  { immediate: true },
+)
 
 onActivated(() => {
   if (skipFirstActivatedLoad.value) {
@@ -368,7 +371,7 @@ watch(workbenchRefreshing, (isRefreshing, wasRefreshing) => {
 
 .batch-confirm__full-score {
   margin-left: 4px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
   font-size: 12px;
 }
 

@@ -4,8 +4,12 @@
       <div class="archive-volume-scores-panel__head">
         <h3 class="archive-volume-scores-panel__title">成绩完成度确认</h3>
         <div class="archive-volume-scores-panel__actions">
-          <UiTag :tone="completionTone" size="sm">{{ scoreCompletionLabel(detail.volume.scoreCompletionStatus) }}</UiTag>
-          <span v-if="confirmMeta" class="archive-volume-scores-panel__meta">{{ confirmMeta }}</span>
+          <UiTag :tone="completionTone" size="sm">{{
+            scoreCompletionLabel(detail.volume.scoreCompletionStatus)
+          }}</UiTag>
+          <span v-if="confirmMeta" class="archive-volume-scores-panel__meta">{{
+            confirmMeta
+          }}</span>
         </div>
       </div>
     </template>
@@ -17,13 +21,12 @@
 
     <UiSkeletonState v-if="gateLoading" variant="card" compact />
     <div v-else class="archive-volume-scores-panel__gates">
-      <ArchiveExamScoreGatePanel
-        v-if="showExamGate"
-        :gate="examGate"
-        :loading="gateLoading"
-      />
+      <ArchiveExamScoreGatePanel v-if="showExamGate" :gate="examGate" :loading="gateLoading" />
       <div v-if="showTeachingAffairsGate" class="score-gate">
-        <span class="score-gate__check" :class="teachingAffairsGatePassed ? 'score-gate__check--pass' : 'score-gate__check--fail'">
+        <span
+          class="score-gate__check"
+          :class="teachingAffairsGatePassed ? 'score-gate__check--pass' : 'score-gate__check--fail'"
+        >
           {{ teachingAffairsGatePassed ? '✓' : '✗' }}
         </span>
         <div>
@@ -95,9 +98,6 @@ import type {
   ArchiveVolumeExamGateResponse,
   ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   ArchiveMaterialTypeCode,
   ArchiveMaterialTypeDescription,
@@ -108,6 +108,9 @@ import {
   getArchiveVolumeExamGate,
   syncTeachingAffairsScoreCompletion,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { ARCHIVE_TEACHING_AFFAIRS_SCORE_COMPLETION_HINT } from '@/apis/mark/teaching-affairs-sync'
 import ArchiveExamScoreGatePanel from '@/components/archive-volume/ArchiveExamScoreGatePanel.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -153,7 +156,9 @@ const scoreMaterials = computed(() =>
 )
 
 const showExamGate = computed(
-  () => props.detail.volume.scoreSource === ArchiveScoreSourceCode.MARK_INTERNAL && !!props.detail.volume.examId,
+  () =>
+    props.detail.volume.scoreSource === ArchiveScoreSourceCode.MARK_INTERNAL &&
+    !!props.detail.volume.examId,
 )
 
 const showTeachingAffairsGate = computed(
@@ -162,8 +167,8 @@ const showTeachingAffairsGate = computed(
 
 const teachingAffairsGatePassed = computed(
   () =>
-    props.detail.volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.COMPLETED
-    || props.detail.volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.VERIFIED,
+    props.detail.volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.COMPLETED ||
+    props.detail.volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.VERIFIED,
 )
 
 const teachingAffairsGateLabel = computed(() => {
@@ -175,7 +180,11 @@ const teachingAffairsGateLabel = computed(() => {
 
 const completionTone = computed((): BadgeTone => {
   const code = props.detail.volume.scoreCompletionStatus
-  if (code === ArchiveScoreCompletionStatusCode.COMPLETED || code === ArchiveScoreCompletionStatusCode.VERIFIED) return 'green'
+  if (
+    code === ArchiveScoreCompletionStatusCode.COMPLETED ||
+    code === ArchiveScoreCompletionStatusCode.VERIFIED
+  )
+    return 'green'
   if (code === ArchiveScoreCompletionStatusCode.NOT_REQUIRED) return 'gray'
   return 'orange'
 })
@@ -198,7 +207,9 @@ const scoreMaterialColumns: ColumnsType<ArchiveVolumeMaterialResponse> = [
   { title: '状态', key: 'submissionStatus', width: 120 },
 ]
 
-function scoreCompletionLabel(code: ArchiveVolumeDetailResponse['volume']['scoreCompletionStatus']) {
+function scoreCompletionLabel(
+  code: ArchiveVolumeDetailResponse['volume']['scoreCompletionStatus'],
+) {
   return strictEnumLabel(ArchiveScoreCompletionStatusDescription, code, 'scoreCompletionStatus')
 }
 
@@ -286,7 +297,7 @@ watch(
 .archive-volume-scores-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4, 16px);
+  gap: var(--dp-space-4);
 }
 
 .archive-volume-scores-panel__head {
@@ -294,14 +305,14 @@ watch(
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 
 .archive-volume-scores-panel__actions {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 
 .archive-volume-scores-panel__title {
@@ -312,24 +323,24 @@ watch(
 
 .archive-volume-scores-panel__meta {
   font-size: 12px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 
 .archive-volume-scores-panel__gates {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 
 .archive-volume-scores-panel__subheading {
-  margin: 0 0 var(--dp-space-2, 8px);
+  margin: 0 0 var(--dp-space-2);
   font-size: 14px;
   font-weight: 600;
 }
 
 .archive-volume-scores-panel__sync-form {
-  padding: var(--dp-space-3, 12px);
-  border: 1px solid var(--dp-border, #e5e7eb);
+  padding: var(--dp-space-3);
+  border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
 }
 
@@ -338,7 +349,7 @@ watch(
 }
 
 .archive-volume-scores-panel__materials {
-  border-top: 1px solid var(--dp-border, #e5e7eb);
-  padding-top: var(--dp-space-3, 12px);
+  border-top: 1px solid var(--dp-border);
+  padding-top: var(--dp-space-3);
 }
 </style>

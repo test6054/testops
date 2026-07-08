@@ -108,6 +108,12 @@
 
 <script lang="ts" setup>
 import type { CrossExamTrendAnalysisResponse } from '@/apis/mark/cross-exam-analysis'
+import {
+  generateClassTrend,
+  generateCourseTrend,
+  listCommonClassScopes,
+  listTrends,
+} from '@/apis/mark/cross-exam-analysis'
 import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import message from 'ant-design-vue/es/message'
@@ -116,12 +122,6 @@ import {
   AnalysisScopeTypeCode,
   AnalysisScopeTypeDescription,
 } from '@/apis/mark/analysis-scope-type'
-import {
-  generateClassTrend,
-  generateCourseTrend,
-  listCommonClassScopes,
-  listTrends,
-} from '@/apis/mark/cross-exam-analysis'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisConfigCollapse from '@/components/mark/analysis/AiAnalysisConfigCollapse.vue'
 import AiAnalysisHistorySelect from '@/components/mark/analysis/AiAnalysisHistorySelect.vue'
@@ -205,7 +205,7 @@ const historyRows = computed(() =>
 )
 
 const selectedExams = ref<ExamSummaryResponse[]>([])
-const classOptions = ref<{ label: string, value: string }[]>([])
+const classOptions = ref<{ label: string; value: string }[]>([])
 const classLoading = ref(false)
 const loading = ref(false)
 const generating = ref(false)
@@ -325,7 +325,7 @@ function applyDrillClassSelection(): void {
   }
 }
 
-function mapClassRefsToOptions(classRefs: Array<{ classId: string, className: string }>) {
+function mapClassRefsToOptions(classRefs: Array<{ classId: string; className: string }>) {
   return classRefs.map((classRef) => ({
     value: classRef.classId,
     label: classRef.className,
@@ -481,8 +481,8 @@ async function handleGenerate(): Promise<void> {
   }
   generating.value = true
   try {
-    const generated
-      = scopeMode.value === AnalysisScopeTypeCode.COURSE
+    const generated =
+      scopeMode.value === AnalysisScopeTypeCode.COURSE
         ? await generateCourseTrend({
             courseId,
             academicYear,
@@ -518,29 +518,29 @@ async function handleGenerate(): Promise<void> {
 .diagnosis-rate {
   margin-left: auto;
   font-size: 12px;
-  color: var(--dp-text-secondary, rgba(0, 0, 0, 0.65));
+  color: var(--dp-text-secondary);
 }
 .diagnosis-type {
   font-size: 13px;
   font-weight: 600;
-  color: var(--dp-text-primary, rgba(0, 0, 0, 0.88));
+  color: var(--dp-text-primary);
 }
 .diagnosis-text {
   margin: 4px 0 0;
   font-size: 13px;
   line-height: 1.6;
-  color: var(--dp-text-secondary, rgba(0, 0, 0, 0.75));
+  color: var(--dp-text-secondary);
 }
 .diagnosis-text--hint {
-  color: var(--dp-text-primary, rgba(0, 0, 0, 0.88));
+  color: var(--dp-text-primary);
 }
 .diagnosis-text--muted {
   font-size: 12px;
-  color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
+  color: var(--dp-text-muted);
 }
 .scope-hint {
   font-size: 12px;
-  color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
+  color: var(--dp-text-muted);
   line-height: 32px;
 }
 </style>

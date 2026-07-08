@@ -250,12 +250,24 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamProcessingTaskItemResponse } from '@/apis/mark/exam-processing-task'
+import {
+  pageExamProcessingTasks,
+  retryPaperGradeSuggestion,
+} from '@/apis/mark/exam-processing-task'
 import type {
   MarkingProgressResponse,
   ReviewQuestionProgressItemResponse,
 } from '@/apis/mark/exam-progress'
+import { getMarkingProgress } from '@/apis/mark/exam-progress'
 import type { TaskStatusCode } from '@/apis/mark/task-status'
+import { TASK_STATUS_TONE, TaskStatusDescription } from '@/apis/mark/task-status'
 import type { ProcessingTaskTypeCode } from '@/apis/mark/task-type'
+import {
+  ALL_PROCESSING_TASK_TYPE_CODES,
+  PROCESSING_TASK_TYPE_OPTIONS,
+  PROCESSING_TASK_TYPE_TONE,
+  ProcessingTaskTypeDescription,
+} from '@/apis/mark/task-type'
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
@@ -266,23 +278,11 @@ import message from 'ant-design-vue/es/message'
 import { computed, inject, onActivated, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
-  pageExamProcessingTasks,
-  retryPaperGradeSuggestion,
-} from '@/apis/mark/exam-processing-task'
-import { getMarkingProgress } from '@/apis/mark/exam-progress'
-import {
   REVIEW_TASK_STATUS_TONE,
   ReviewTaskStatusCode,
   ReviewTaskStatusDescription,
 } from '@/apis/mark/exam-review-task'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
-import { TASK_STATUS_TONE, TaskStatusDescription } from '@/apis/mark/task-status'
-import {
-  ALL_PROCESSING_TASK_TYPE_CODES,
-  PROCESSING_TASK_TYPE_OPTIONS,
-  PROCESSING_TASK_TYPE_TONE,
-  ProcessingTaskTypeDescription,
-} from '@/apis/mark/task-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkDistributionSection from '@/components/chart/MarkDistributionSection.vue'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
@@ -433,7 +433,7 @@ async function reloadProcessingTasksFromRoute(resetPage = true): Promise<void> {
   await loadProcessingTasks()
 }
 
-function handleProcessingTaskPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleProcessingTaskPageChange(pageEvent: { current: number; pageSize: number }): void {
   processingTaskPageNum.value = pageEvent.current
   processingTaskPageSize.value = pageEvent.pageSize
   void loadProcessingTasks()
@@ -468,9 +468,9 @@ const processingTaskColumns: ColumnType<ExamProcessingTaskItemResponse>[] = [
 
 const contextProgress = computed(
   () =>
-    workbenchContext?.markingProgress?.value
-    ?? workbenchContext?.snapshot.value?.markingProgress
-    ?? null,
+    workbenchContext?.markingProgress?.value ??
+    workbenchContext?.snapshot.value?.markingProgress ??
+    null,
 )
 
 watch(
@@ -481,7 +481,8 @@ watch(
       progress.value = null
       return
     }
-    const contextExamId = workbenchContext?.examId?.value ?? workbenchContext?.snapshot.value?.examId
+    const contextExamId =
+      workbenchContext?.examId?.value ?? workbenchContext?.snapshot.value?.examId
     if (contextExamId && String(contextExamId) !== String(examId)) {
       return
     }
@@ -808,7 +809,7 @@ onActivated(() => {
     gap: 8px;
     font-size: 16px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__body {
@@ -832,7 +833,7 @@ onActivated(() => {
     gap: 8px;
     font-size: 16px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__body {
@@ -876,7 +877,7 @@ onActivated(() => {
     gap: 8px;
     font-size: 16px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 }
 
@@ -887,7 +888,7 @@ onActivated(() => {
     gap: 8px;
     font-size: 16px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 }
 
@@ -915,7 +916,7 @@ onActivated(() => {
 .question-cell--highlight {
   outline: 2px solid var(--ant-color-primary);
   outline-offset: 2px;
-  border-radius: var(--dp-radius-control-inner, 4px);
+  border-radius: var(--dp-radius-control-inner);
 }
 
 .progress-page__chart-canvas {

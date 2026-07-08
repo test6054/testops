@@ -55,17 +55,17 @@ const exitLabel = computed(() => {
 const exitTitle = computed(() => {
   if (hasOrphanBackendSession.value) {
     return (
-      mutex.reasonOf('cancelJob')
-      || workflow.removeCurrentJobTitle.value
-      || '结束后端未完成扫描进程并返回准备扫描'
+      mutex.reasonOf('cancelJob') ||
+      workflow.removeCurrentJobTitle.value ||
+      '结束后端未完成扫描进程并返回准备扫描'
     )
   }
   if (showRemoveInsteadOfCancel.value) {
     return mutex.reasonOf('removeJob') || workflow.removeCurrentJobTitle.value
   }
   return (
-    mutex.reasonOf('cancelJob')
-    || (workflow.isPreUploadScanFailure.value ? '清理失败的扫描任务并返回准备扫描' : '取消当前任务')
+    mutex.reasonOf('cancelJob') ||
+    (workflow.isPreUploadScanFailure.value ? '清理失败的扫描任务并返回准备扫描' : '取消当前任务')
   )
 })
 
@@ -200,13 +200,18 @@ function handleExitAction() {
       </button>
     </div>
     <div class="bottom-counters">
-      <span>已上传 <b>{{ counterUploaded }}</b></span>
-      <span class="warn">异常 <b>{{ counterException }}</b></span>
+      <span
+        >已上传 <b>{{ counterUploaded }}</b></span
+      >
+      <span class="warn"
+        >异常 <b>{{ counterException }}</b></span
+      >
     </div>
   </footer>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .bottom-bar {
   position: fixed;
   left: var(--kiosk-space-4);
@@ -383,7 +388,7 @@ function handleExitAction() {
   color: var(--kiosk-warning);
 }
 
-@media (max-width: 1280px) {
+@media (max-width: bp.$shell-laptop-max) {
   .bottom-bar {
     right: calc(300px + var(--kiosk-space-4) * 2);
   }
@@ -391,7 +396,7 @@ function handleExitAction() {
     display: none;
   }
 }
-@media (max-width: 1024px) {
+@media (max-width: bp.$shell-tablet-max) {
   .bottom-bar {
     right: var(--kiosk-space-4);
   }

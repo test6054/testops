@@ -78,11 +78,11 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { OrganizationCreateRequest } from '@/apis/mark/marking-organization'
+import { createOrganization, getOrganization } from '@/apis/mark/marking-organization'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { createOrganization, getOrganization } from '@/apis/mark/marking-organization'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -104,8 +104,8 @@ import {
 
 defineOptions({ name: 'MarkingOrgWorkspaceEntry' })
 
-const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
-  = useExamJourneyContextBar('阅卷组织')
+const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useExamJourneyContextBar('阅卷组织')
 
 const route = useRoute()
 const router = useRouter()
@@ -250,8 +250,8 @@ onActivated(() => {
 <style lang="scss" scoped>
 .org-entry {
   &__panel {
-    background: var(--dp-surface, #fff);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
     padding: 16px;
 
@@ -265,7 +265,7 @@ onActivated(() => {
     margin: 0 0 8px;
     font-size: 15px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -275,13 +275,13 @@ onActivated(() => {
   &__empty-desc {
     margin: 8px 0 16px;
     font-size: 14px;
-    color: var(--dp-text-secondary, #64748b);
+    color: var(--dp-text-secondary);
   }
 
   &__switch-hint {
     margin-left: 8px;
     font-size: 13px;
-    color: var(--dp-text-secondary, #64748b);
+    color: var(--dp-text-secondary);
   }
 }
 </style>

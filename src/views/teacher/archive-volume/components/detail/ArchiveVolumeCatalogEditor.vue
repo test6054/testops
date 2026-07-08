@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { ArchiveCatalogStatusCode,
-  ArchiveVolumeCatalogLineVO} from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { computed, onMounted } from 'vue'
+import type {
+  ArchiveCatalogStatusCode,
+  ArchiveVolumeCatalogLineVO,
+} from '@/apis/mark/archive-volume'
 import {
   ARCHIVE_CATALOG_STATUS_TONE,
   ArchiveCatalogStatusDescription,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { computed, onMounted } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -66,7 +68,10 @@ function statusTone(code: ArchiveCatalogStatusCode): BadgeTone {
   return strictEnumTone(ARCHIVE_CATALOG_STATUS_TONE, code, 'catalogStatus')
 }
 
-function catalogCellValue(record: ArchiveVolumeCatalogLineVO, dataIndex: unknown): string | number | undefined {
+function catalogCellValue(
+  record: ArchiveVolumeCatalogLineVO,
+  dataIndex: unknown,
+): string | number | undefined {
   if (dataIndex === 'lineNo') return record.lineNo
   if (dataIndex === 'archiveCode') return record.archiveCode
   if (dataIndex === 'title') return record.title
@@ -230,20 +235,20 @@ defineExpose({ loadCatalog })
 .archive-volume-catalog-editor {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4, 16px);
+  gap: var(--dp-space-4);
 }
 
 .archive-volume-catalog-editor__head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-3);
 }
 
 .archive-volume-catalog-editor__title-wrap {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 
 .archive-volume-catalog-editor__title {
@@ -253,13 +258,13 @@ defineExpose({ loadCatalog })
 }
 
 .archive-volume-catalog-editor__meta {
-  font-size: var(--dp-type-hint-size, 11px);
+  font-size: var(--dp-type-hint-size);
   color: var(--dp-text-muted);
 }
 
 .archive-volume-catalog-editor__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 </style>

@@ -12,7 +12,7 @@
     <MarkChart
       v-else
       :option="chartOption"
-      height="220px"
+      height="var(--dp-chart-height-md)"
       :aria-label="chartAriaLabel"
       class="published-insight-chart__canvas"
     />
@@ -51,22 +51,22 @@ const chartAriaLabel = computed(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-height: 220px;
+  min-height: var(--dp-chart-height-md);
 }
 
 .published-insight-chart__head {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-3);
 }
 
 .published-insight-chart__title {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .published-insight-chart__empty {
   flex: 1;
-  min-height: 180px;
+  min-height: var(--dp-chart-empty-min-height);
   display: flex;
   align-items: center;
   justify-content: center;

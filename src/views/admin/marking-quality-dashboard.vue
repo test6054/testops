@@ -187,7 +187,9 @@
                       :style="{ width: `${Math.min(100, Math.max(0, item.consistencyRate))}%` }"
                     />
                   </div>
-                  <span class="quality-dashboard__consistency-rate">{{ item.consistencyRate }}%</span>
+                  <span class="quality-dashboard__consistency-rate"
+                    >{{ item.consistencyRate }}%</span
+                  >
                 </li>
               </ul>
               <UiEmpty v-else description="暂无评阅员一致性样本" />
@@ -838,11 +840,19 @@
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamWorkbenchQualityPanelResponse } from '@/apis/mark/exam-progress'
+import { getQualityPanel } from '@/apis/mark/exam-progress'
 import type { ExamScannerBatchResponse } from '@/apis/mark/exam-scan'
+import { pageScannerBatches } from '@/apis/mark/exam-scan'
 import type {
   MarkingOrganizationResponse,
   QuestionGroupReviewerResponse,
   QuestionMarkingGroupResponse,
+} from '@/apis/mark/marking-organization'
+import {
+  getOrganization,
+  MarkingOrganizationStatusDescription,
+  QUESTION_GROUP_STATUS_TONE,
+  QuestionMarkingGroupStatusDescription,
 } from '@/apis/mark/marking-organization'
 import type {
   ExamSpotCheckRecordItemResponse,
@@ -854,28 +864,6 @@ import type {
   ReviewerQualityMetricResponse,
   SpotCheckStatusCode,
 } from '@/apis/mark/marking-quality'
-import type {
-  BadgeTone,
-  FilterField,
-  UiBarChartItem,
-  UiSectionTabItem,
-} from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { getQualityPanel } from '@/apis/mark/exam-progress'
-import { pageScannerBatches } from '@/apis/mark/exam-scan'
-import {
-  getOrganization,
-  MarkingOrganizationStatusDescription,
-  QUESTION_GROUP_STATUS_TONE,
-  QuestionMarkingGroupStatusDescription,
-} from '@/apis/mark/marking-organization'
 import {
   BatchReprocessScopeCode,
   createSpotCheckTasks,
@@ -895,6 +883,20 @@ import {
   SpotCheckStatusDescription,
   takeProgressSnapshot,
 } from '@/apis/mark/marking-quality'
+import type {
+  BadgeTone,
+  FilterField,
+  UiBarChartItem,
+  UiSectionTabItem,
+} from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
@@ -939,8 +941,8 @@ const route = useRoute()
 const router = useRouter()
 const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
 
-const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
-  = useOptionalExamJourneyContextBar('阅卷质控')
+const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useOptionalExamJourneyContextBar('阅卷质控')
 
 const {
   examOptions,
@@ -958,11 +960,11 @@ type QualityTabKey = 'overview' | 'progress' | 'reviewer' | 'spotcheck' | 'repro
 function resolveInitialTab(): QualityTabKey {
   const queryTab = route.query.tab
   if (
-    queryTab === 'overview'
-    || queryTab === 'progress'
-    || queryTab === 'reviewer'
-    || queryTab === 'spotcheck'
-    || queryTab === 'reprocess'
+    queryTab === 'overview' ||
+    queryTab === 'progress' ||
+    queryTab === 'reviewer' ||
+    queryTab === 'spotcheck' ||
+    queryTab === 'reprocess'
   ) {
     return queryTab
   }
@@ -1003,8 +1005,8 @@ const scopeValid = computed(() => Boolean(selectedExamId.value && selectedOrgani
 
 const showGroupScope = computed(
   () =>
-    isExamWorkspaceRoute.value
-    && (activeTab.value === 'progress' || activeTab.value === 'spotcheck'),
+    isExamWorkspaceRoute.value &&
+    (activeTab.value === 'progress' || activeTab.value === 'spotcheck'),
 )
 
 const showProgressGroupSummary = computed(
@@ -1246,7 +1248,7 @@ async function loadExamSpotCheckRecords(): Promise<void> {
   }
 }
 
-function handleExamSpotCheckPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleExamSpotCheckPageChange(pageEvent: { current: number; pageSize: number }): void {
   examSpotCheckPagination.pageNum = pageEvent.current
   examSpotCheckPagination.pageSize = pageEvent.pageSize
   void loadExamSpotCheckRecords()
@@ -1301,7 +1303,7 @@ async function loadMyPendingSpotChecks(): Promise<void> {
   }
 }
 
-function handleMySpotCheckPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleMySpotCheckPageChange(pageEvent: { current: number; pageSize: number }): void {
   mySpotCheckPagination.pageNum = pageEvent.current
   mySpotCheckPagination.pageSize = pageEvent.pageSize
   void loadMyPendingSpotChecks()
@@ -1570,8 +1572,8 @@ async function loadExamQualityPanel(): Promise<void> {
     examQualityPanel.value = null
     return
   }
-  const shouldLoad
-    = isExamWorkspaceRoute.value || activeTab.value === 'overview' || activeTab.value === 'spotcheck'
+  const shouldLoad =
+    isExamWorkspaceRoute.value || activeTab.value === 'overview' || activeTab.value === 'spotcheck'
   if (!shouldLoad) {
     examQualityPanel.value = null
     return
@@ -1585,11 +1587,11 @@ async function loadExamQualityPanel(): Promise<void> {
 }
 
 const signalMetrics = computed<SignalMetric[]>(() => {
-  const useExamQualitySignals
-    = examQualityPanel.value
-      && (isExamWorkspaceRoute.value
-        || activeTab.value === 'overview'
-        || activeTab.value === 'spotcheck')
+  const useExamQualitySignals =
+    examQualityPanel.value &&
+    (isExamWorkspaceRoute.value ||
+      activeTab.value === 'overview' ||
+      activeTab.value === 'spotcheck')
   if (useExamQualitySignals) {
     const panel = examQualityPanel.value!
     const summary = panel.qualitySummary
@@ -1640,8 +1642,8 @@ const signalMetrics = computed<SignalMetric[]>(() => {
     (r) => r.metricStatus === 'SUSPENDED',
   ).length
 
-  const completionRate
-    = typeof p?.completionRate === 'number' ? `${p.completionRate.toFixed(1)}%` : '-'
+  const completionRate =
+    typeof p?.completionRate === 'number' ? `${p.completionRate.toFixed(1)}%` : '-'
   const recycledCount = p?.recycledTasks ?? 0
   const inProgressCount = p?.inProgressTasks ?? 0
   const finalizedCount = p?.finalizedTasks ?? 0
@@ -1883,6 +1885,7 @@ onActivated(() => {
 </script>
 
 <style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .quality-dashboard {
   &__tabs {
     padding: 0 16px;
@@ -1895,9 +1898,9 @@ onActivated(() => {
   &__overview-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: var(--dp-space-4, 16px);
+    gap: var(--dp-space-4);
 
-    @media (min-width: 992px) {
+    @media (min-width: bp.$ant-grid-lg) {
       grid-template-columns: 1.2fr 0.8fr;
     }
   }
@@ -1906,23 +1909,23 @@ onActivated(() => {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: var(--dp-space-2, 8px);
-    margin-bottom: var(--dp-space-4, 16px);
+    gap: var(--dp-space-2);
+    margin-bottom: var(--dp-space-4);
   }
 
   &__consistency-label {
-    font-size: var(--dp-type-hint-size, 12px);
-    color: var(--dp-text-muted, #64748b);
+    font-size: var(--dp-type-hint-size);
+    color: var(--dp-text-muted);
   }
 
   &__consistency-value {
-    font-size: var(--dp-type-title-size, 20px);
-    color: var(--dp-text-primary, #0f172a);
+    font-size: var(--dp-type-title-size);
+    color: var(--dp-text-primary);
   }
 
   &__consistency-meta {
-    font-size: var(--dp-type-hint-size, 12px);
-    color: var(--dp-text-muted, #64748b);
+    font-size: var(--dp-type-hint-size);
+    color: var(--dp-text-muted);
   }
 
   &__consistency-list {
@@ -1935,8 +1938,8 @@ onActivated(() => {
     display: grid;
     grid-template-columns: 72px 1fr 48px;
     align-items: center;
-    gap: var(--dp-space-3, 12px);
-    padding: var(--dp-space-2, 8px) 0;
+    gap: var(--dp-space-3);
+    padding: var(--dp-space-2) 0;
   }
 
   &__consistency-name {
@@ -1949,15 +1952,15 @@ onActivated(() => {
 
   &__consistency-track {
     height: 6px;
-    border-radius: var(--dp-radius-full, 999px);
-    background: var(--dp-surface-soft, #f1f5f9);
+    border-radius: var(--dp-radius-full);
+    background: var(--dp-surface-soft);
     overflow: hidden;
   }
 
   &__consistency-fill {
     height: 100%;
     border-radius: inherit;
-    background: var(--dp-blue-500, #3b82f6);
+    background: var(--dp-blue-500);
   }
 
   &__consistency-rate {
@@ -1968,7 +1971,7 @@ onActivated(() => {
   }
 
   &__dimension-chart {
-    margin-bottom: var(--dp-space-4, 16px);
+    margin-bottom: var(--dp-space-4);
   }
 
   &__form--spot {
@@ -1976,20 +1979,20 @@ onActivated(() => {
   }
 
   &__panel-hint {
-    font-size: var(--dp-type-hint-size, 12px);
-    color: var(--dp-text-muted, #64748b);
+    font-size: var(--dp-type-hint-size);
+    color: var(--dp-text-muted);
   }
 
   &__todo-panel {
-    margin-top: var(--dp-space-4, 16px);
+    margin-top: var(--dp-space-4);
   }
 
   &__todo-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: var(--dp-space-3, 12px);
+    gap: var(--dp-space-3);
 
-    @media (min-width: 992px) {
+    @media (min-width: bp.$ant-grid-lg) {
       grid-template-columns: repeat(4, 1fr);
     }
   }
@@ -1998,11 +2001,11 @@ onActivated(() => {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: var(--dp-space-1, 4px);
-    padding: var(--dp-space-3, 12px);
-    border: 1px solid var(--dp-border, #e2e8f0);
-    border-radius: var(--dp-radius-panel, 8px);
-    background: var(--dp-surface-soft, #f8fafc);
+    gap: var(--dp-space-1);
+    padding: var(--dp-space-3);
+    border: 1px solid var(--dp-border);
+    border-radius: var(--dp-radius-panel);
+    background: var(--dp-surface-soft);
     cursor: pointer;
     text-align: left;
     transition:
@@ -2010,32 +2013,32 @@ onActivated(() => {
       background 0.2s ease;
 
     &:hover {
-      border-color: var(--dp-blue-300, #93c5fd);
-      background: var(--dp-surface, #fff);
+      border-color: var(--dp-blue-300);
+      background: var(--dp-surface);
     }
   }
 
   &__todo-label {
-    font-size: var(--dp-type-hint-size, 12px);
-    color: var(--dp-text-muted, #64748b);
+    font-size: var(--dp-type-hint-size);
+    color: var(--dp-text-muted);
   }
 
   &__todo-value {
-    font-size: var(--dp-type-title-size, 20px);
+    font-size: var(--dp-type-title-size);
     font-weight: 700;
     font-variant-numeric: tabular-nums;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__todo-hint {
-    font-size: var(--dp-type-hint-size, 12px);
-    color: var(--dp-blue-600, #2563eb);
+    font-size: var(--dp-type-hint-size);
+    color: var(--dp-blue-600);
   }
 
   &__panel-title {
     font-size: 16px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__charts {
@@ -2093,7 +2096,7 @@ onActivated(() => {
   }
 
   &__risk-item {
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
     line-height: 1.6;
   }
 }

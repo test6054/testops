@@ -54,6 +54,26 @@ export function generateAcademicYearOptions(): string[] {
   return options
 }
 
+/** 生成学年起始年选项（基准年前后各 2 年，9 月为基准年分界） */
+export function generateAcademicYearStartOptions(): number[] {
+  return generateAcademicYearOptions().map((year) => Number(year.split('-')[0]))
+}
+
+/** 由起始年合成 YYYY-YYYY 合同字符串 */
+export function composeAcademicYear(startYear: number): string {
+  return `${startYear}-${startYear + 1}`
+}
+
+/** 解析 YYYY-YYYY 起始年；非法返回 null */
+export function parseAcademicYearStart(academicYear: string): number | null {
+  const match = /^(\d{4})-\d{4}$/.exec(academicYear.trim())
+  if (!match) return null
+  const start = Number(match[1])
+  const end = Number(academicYear.trim().substring(5, 9))
+  if (end !== start + 1) return null
+  return start
+}
+
 export interface DashboardFilterOptions {
   academicYears: string[]
   semesters: SemesterCode[]

@@ -40,8 +40,8 @@
         <p class="formal-detail-drawer__text">{{ formatFormalSessionQuestionScope(session) }}</p>
         <p
           v-if="
-            session.allocationUnit === AllocationUnitCode.RANDOM_QUESTIONS
-              && session.questionScopes.length > 0
+            session.allocationUnit === AllocationUnitCode.RANDOM_QUESTIONS &&
+            session.questionScopes.length > 0
           "
           class="formal-detail-drawer__warn"
         >
@@ -133,13 +133,13 @@ const emit = defineEmits<{
   &__warn {
     margin: 8px 0 0;
     font-size: 12px;
-    color: var(--dp-color-warning, #d97706);
+    color: var(--dp-color-warning);
   }
 
   &__error {
     margin: 8px 0 0;
     font-size: 12px;
-    color: var(--dp-color-error, #dc2626);
+    color: var(--dp-color-error);
   }
 }
 </style>

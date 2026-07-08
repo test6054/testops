@@ -1,19 +1,22 @@
 // 与 src/constants/breakpoints.ts 保持数值同步
 
+// Layout shell（TabBar / Asider）
 $layout-mobile-max: 767px;
 $layout-desktop-min: 768px;
 
+// Ant Design Grid 断点（与 a-col-sm/md/lg/xl 一致；组件响应式媒体查询优先使用本组）
 $ant-grid-sm: 576px;
 $ant-grid-md: 768px;
 $ant-grid-lg: 992px;
 $ant-grid-xl: 1200px;
 $ant-grid-xxl: 1600px;
 
-$screen-xs-max: $layout-mobile-max;
-$screen-sm-min: $layout-desktop-min;
-$screen-sm-max: 1024px;
-$screen-md-min: 1025px;
-$screen-md-max: 1280px;
-$screen-lg-min: 1281px;
-$screen-lg-max: 1440px;
-$screen-xl-min: 1441px;
+// 页面容器阶梯（RESPONSIVE_SHELL；命名与 Ant Grid 刻意区分，禁止与 $ant-grid-* 混用）
+$shell-mobile-max: $layout-mobile-max;
+$shell-tablet-min: 768px;
+$shell-tablet-max: 1024px;
+$shell-laptop-min: 1025px;
+$shell-laptop-max: 1280px;
+$shell-desktop-min: 1281px;
+$shell-desktop-max: 1440px;
+$shell-wide-min: 1441px;

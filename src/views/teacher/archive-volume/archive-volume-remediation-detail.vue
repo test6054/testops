@@ -10,7 +10,11 @@
         <template #actions>
           <UiButton variant="ghost" size="sm" @click="goRemediationList">返回整改列表</UiButton>
           <UiButton
-            v-if="taskDetail && canActOnTask && taskDetail.taskStatus === ArchiveRemediationStatusCode.OPEN"
+            v-if="
+              taskDetail &&
+              canActOnTask &&
+              taskDetail.taskStatus === ArchiveRemediationStatusCode.OPEN
+            "
             variant="primary"
             size="sm"
             :loading="updating"
@@ -19,7 +23,11 @@
             开始处理
           </UiButton>
           <UiButton
-            v-if="taskDetail && canActOnTask && taskDetail.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS"
+            v-if="
+              taskDetail &&
+              canActOnTask &&
+              taskDetail.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
+            "
             variant="primary"
             size="sm"
             :loading="updating"
@@ -59,8 +67,11 @@
         </p>
         <div class="archive-remediation-detail__links">
           <span>
-            关联归档卷:
-            <UiTextAction tone="primary" @click="goVolumeDetail(taskDetail.volumeId, undefined, taskDetail.diagnosticCode)">
+            关联归档任务:
+            <UiTextAction
+              tone="primary"
+              @click="goVolumeDetail(taskDetail.volumeId, undefined, taskDetail.diagnosticCode)"
+            >
               {{ volumeArchiveNo || taskDetail.volumeId }}
             </UiTextAction>
           </span>
@@ -78,7 +89,9 @@
         </template>
         <template #toolbar>
           <div class="archive-remediation-detail__flow-toolbar">
-            <span class="archive-remediation-detail__flow-hint">OPEN → IN_PROGRESS → RESUBMITTED → CLOSED</span>
+            <span class="archive-remediation-detail__flow-hint"
+              >OPEN → IN_PROGRESS → RESUBMITTED → CLOSED</span
+            >
             <div class="archive-remediation-detail__completion">
               <span class="archive-remediation-detail__completion-label">任务进度</span>
               <ArchiveReadinessRateBar :percent="taskCompletionPercent" />
@@ -116,7 +129,10 @@
         <template #head>
           <div class="archive-remediation-detail__evidence-head">
             <span>整改证据</span>
-            <span v-if="taskDetail.evidenceItems?.length" class="archive-remediation-detail__evidence-count">
+            <span
+              v-if="taskDetail.evidenceItems?.length"
+              class="archive-remediation-detail__evidence-count"
+            >
               {{ taskDetail.evidenceItems.length }} 个文件
             </span>
             <UiButton
@@ -186,8 +202,12 @@
             v-if="taskDetail.verifierNickName || taskDetail.verifiedTime"
             class="archive-remediation-detail__verify-meta"
           >
-            <span v-if="taskDetail.verifierNickName">验证人: {{ taskDetail.verifierNickName }}</span>
-            <span v-if="taskDetail.verifiedTime"> · {{ formatDateTime(taskDetail.verifiedTime) }}</span>
+            <span v-if="taskDetail.verifierNickName"
+              >验证人: {{ taskDetail.verifierNickName }}</span
+            >
+            <span v-if="taskDetail.verifiedTime">
+              · {{ formatDateTime(taskDetail.verifiedTime) }}</span
+            >
           </p>
         </div>
       </WorkbenchSurfaceCard>
@@ -208,7 +228,9 @@
             <div class="stat-card__label">待处理</div>
           </div>
           <div class="stat-card">
-            <div class="stat-card__val stat-card__val--primary">{{ campaignTaskStats.inProgress }}</div>
+            <div class="stat-card__val stat-card__val--primary">
+              {{ campaignTaskStats.inProgress }}
+            </div>
             <div class="stat-card__label">处理中</div>
           </div>
           <div class="stat-card">
@@ -281,12 +303,21 @@
             </UiButton>
           </template>
           <UiButton
-            v-if="taskDetail.taskStatus === ArchiveRemediationStatusCode.OPEN || taskDetail.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS"
+            v-if="
+              taskDetail.taskStatus === ArchiveRemediationStatusCode.OPEN ||
+              taskDetail.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
+            "
             size="sm"
             variant="outline"
-            @click="goVolumeDetail(taskDetail.volumeId, taskDetail.taskId, taskDetail.diagnosticCode)"
+            @click="
+              goVolumeDetail(taskDetail.volumeId, taskDetail.taskId, taskDetail.diagnosticCode)
+            "
           >
-            {{ isSecurityRemediationDiagnostic(taskDetail.diagnosticCode) ? '去定密确认' : '去卷内整改' }}
+            {{
+              isSecurityRemediationDiagnostic(taskDetail.diagnosticCode)
+                ? '去定密确认'
+                : '去卷内整改'
+            }}
           </UiButton>
         </div>
       </WorkbenchSurfaceCard>
@@ -348,12 +379,6 @@ import type {
   ArchiveRemediationPriorityCode,
   ArchiveRemediationTaskResponse,
 } from '@/apis/mark/archive-volume'
-import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   ARCHIVE_REMEDIATION_EVIDENCE_STATUS_TONE,
   ARCHIVE_REMEDIATION_STATUS_TONE,
@@ -367,6 +392,12 @@ import {
   registerRemediationEvidence,
   updateRemediationTask,
 } from '@/apis/mark/archive-volume'
+import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import ArchiveLifecyclePipe from '@/components/archive-volume/ArchiveLifecyclePipe.vue'
 import ArchiveReadinessRateBar from '@/components/archive-volume/ArchiveReadinessRateBar.vue'
@@ -500,14 +531,11 @@ const lifecycleSteps = computed(() => {
     let stepStatus: 'done' | 'active' | 'pending'
     if (status === ArchiveRemediationStatusCode.CLOSED) {
       stepStatus = 'done'
-    }
-    else if (index < currentIndex) {
+    } else if (index < currentIndex) {
       stepStatus = 'done'
-    }
-    else if (index === currentIndex) {
+    } else if (index === currentIndex) {
       stepStatus = 'active'
-    }
-    else {
+    } else {
       stepStatus = 'pending'
     }
     return {
@@ -525,7 +553,8 @@ const campaignTaskStats = computed(() => {
   return {
     total: tasks.length,
     open: tasks.filter((item) => item.taskStatus === ArchiveRemediationStatusCode.OPEN).length,
-    inProgress: tasks.filter((item) => item.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS).length,
+    inProgress: tasks.filter((item) => item.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS)
+      .length,
     closed: tasks.filter((item) => item.taskStatus === ArchiveRemediationStatusCode.CLOSED).length,
   }
 })
@@ -540,13 +569,9 @@ const isCurrentAssignee = computed(
   () => taskDetail.value?.assigneeUserId === userStore.userInfo.userId,
 )
 
-const showAssigneeActions = computed(
-  () => isCurrentAssignee.value && !showCoordinatorActions.value,
-)
+const showAssigneeActions = computed(() => isCurrentAssignee.value && !showCoordinatorActions.value)
 
-const canActOnTask = computed(
-  () => showCoordinatorActions.value || showAssigneeActions.value,
-)
+const canActOnTask = computed(() => showCoordinatorActions.value || showAssigneeActions.value)
 
 const canUploadEvidence = computed(() => {
   const task = taskDetail.value
@@ -573,8 +598,8 @@ const showVerifierPanel = computed(() => {
   const task = taskDetail.value
   if (!task) return false
   if (
-    task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED
-    || task.taskStatus === ArchiveRemediationStatusCode.CLOSED
+    task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED ||
+    task.taskStatus === ArchiveRemediationStatusCode.CLOSED
   ) {
     return Boolean(task.verificationComment || task.verifierNickName || task.verifiedTime)
   }
@@ -759,13 +784,13 @@ onMounted(() => {
 
 <style scoped>
 .archive-remediation-detail__section {
-  margin-bottom: var(--dp-space-3, 12px);
+  margin-bottom: var(--dp-space-3);
 }
 
 .archive-remediation-detail__diag-head {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 
 .archive-remediation-detail__desc {
@@ -778,14 +803,14 @@ onMounted(() => {
 .archive-remediation-detail__links {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-4, 16px);
-  margin-top: var(--dp-space-3, 12px);
+  gap: var(--dp-space-4);
+  margin-top: var(--dp-space-3);
   font-size: 13px;
   color: var(--dp-text-muted);
 }
 
 .archive-remediation-detail__pipe {
-  padding: var(--dp-space-2, 8px) 0 var(--dp-space-3, 12px);
+  padding: var(--dp-space-2) 0 var(--dp-space-3);
 }
 
 .archive-remediation-detail__flow-hint {
@@ -798,14 +823,14 @@ onMounted(() => {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-3);
   width: 100%;
 }
 
 .archive-remediation-detail__completion {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 
 .archive-remediation-detail__completion-label {
@@ -815,18 +840,18 @@ onMounted(() => {
 }
 
 .archive-remediation-detail__mono {
-  font-family: var(--dp-font-mono, ui-monospace, monospace);
+  font-family: var(--dp-font-mono);
   font-size: 12px;
 }
 
 .archive-remediation-detail__campaign-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-3);
 }
 
 .archive-remediation-detail__campaign-deadline {
-  margin: var(--dp-space-3, 12px) 0 0;
+  margin: var(--dp-space-3) 0 0;
   font-size: 13px;
   color: var(--dp-text-muted);
 }
@@ -835,8 +860,8 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
-  padding: var(--dp-space-2, 8px) 0;
+  gap: var(--dp-space-2);
+  padding: var(--dp-space-2) 0;
 }
 
 .archive-remediation-detail__assignee {
@@ -846,14 +871,14 @@ onMounted(() => {
 .archive-remediation-detail__timeline {
   list-style: none;
   margin: 0;
-  padding: var(--dp-space-2, 8px) 0;
+  padding: var(--dp-space-2) 0;
 }
 
 .archive-remediation-detail__timeline-item {
   display: flex;
-  gap: var(--dp-space-3, 12px);
-  padding: var(--dp-space-2, 8px) 0;
-  border-bottom: 1px solid var(--dp-border-light, #eef0f3);
+  gap: var(--dp-space-3);
+  padding: var(--dp-space-2) 0;
+  border-bottom: 1px solid var(--dp-border-light);
 }
 
 .archive-remediation-detail__timeline-item:last-child {
@@ -875,7 +900,7 @@ onMounted(() => {
 .archive-remediation-detail__timeline-title {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
   font-size: 14px;
   font-weight: 500;
 }
@@ -888,9 +913,9 @@ onMounted(() => {
 }
 
 .archive-remediation-detail__verify {
-  padding: var(--dp-space-3, 12px);
-  border-radius: var(--dp-radius-sm, 4px);
-  background: var(--dp-surface-sunken, #f5f6f8);
+  padding: var(--dp-space-3);
+  border-radius: var(--dp-radius-sm);
+  background: var(--dp-surface-sunken);
 }
 
 .archive-remediation-detail__verify-notes {
@@ -901,7 +926,7 @@ onMounted(() => {
 }
 
 .archive-remediation-detail__verify-meta {
-  margin: var(--dp-space-2, 8px) 0 0;
+  margin: var(--dp-space-2) 0 0;
   font-size: 12px;
   color: var(--dp-text-muted);
 }
@@ -909,7 +934,7 @@ onMounted(() => {
 .archive-remediation-detail__evidence-head {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
   width: 100%;
 }
 
@@ -920,6 +945,6 @@ onMounted(() => {
 }
 
 .archive-remediation-detail__evidence-upload {
-  margin-left: var(--dp-space-2, 8px);
+  margin-left: var(--dp-space-2);
 }
 </style>

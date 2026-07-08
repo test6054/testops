@@ -4,6 +4,7 @@ import type {
   PortfolioTeacherWorkbenchSummaryVO,
   PortfolioTodoSummaryVO,
 } from '@/apis/portfolio/types'
+import { PORTFOLIO_COMPLETENESS_LEVEL_TONE } from '@/apis/portfolio/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
@@ -11,7 +12,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import { PortfolioCompletenessLevelDescription } from '@/apis/portfolio/enums'
 import { portfolioTodoApi } from '@/apis/portfolio/todo'
-import { PORTFOLIO_COMPLETENESS_LEVEL_TONE } from '@/apis/portfolio/types'
 import PortfolioProgressCockpitBand from '@/components/portfolio/PortfolioProgressCockpitBand.vue'
 import PortfolioProgressCompareDrawer from '@/components/portfolio/PortfolioProgressCompareDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -77,8 +77,8 @@ const portraitDataInsufficient = computed(() => {
     return false
   }
   return (
-    portrait.value.officialRecordCount === 0
-    && portrait.value.dimensions.every((item) => item.readiness === 'PENDING')
+    portrait.value.officialRecordCount === 0 &&
+    portrait.value.dimensions.every((item) => item.readiness === 'PENDING')
   )
 })
 
@@ -147,8 +147,8 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     ? { teacherId: targetTeacherId.value }
     : {}
   if (
-    item.archiveRecordId
-    && (item.todoType === 'ARCHIVE_RETURNED' || item.todoType === 'ARCHIVE_DRAFT')
+    item.archiveRecordId &&
+    (item.todoType === 'ARCHIVE_RETURNED' || item.todoType === 'ARCHIVE_DRAFT')
   ) {
     query.recordId = item.archiveRecordId
   }
@@ -177,8 +177,8 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     return
   }
   if (
-    item.todoType === 'EVALUATION_MATERIAL_CONFIRM'
-    || item.todoType === 'EVALUATION_RETURNED_SUPPLEMENT'
+    item.todoType === 'EVALUATION_MATERIAL_CONFIRM' ||
+    item.todoType === 'EVALUATION_RETURNED_SUPPLEMENT'
   ) {
     void router.push({
       path: '/portfolio/teacher/evaluation',
@@ -382,8 +382,8 @@ onUnmounted(() => {
             </p>
             <p
               v-if="
-                workbenchSummary.completenessPercent === 0
-                  && (workbenchSummary.requiredCategoryDone ?? 0) === 0
+                workbenchSummary.completenessPercent === 0 &&
+                (workbenchSummary.requiredCategoryDone ?? 0) === 0
               "
               class="teacher-home__onboarding"
             >
@@ -464,7 +464,7 @@ onUnmounted(() => {
 .teacher-home__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--dp-space-4, 16px);
+  gap: var(--dp-space-4);
 }
 
 .teacher-home__card--actions {
@@ -474,24 +474,24 @@ onUnmounted(() => {
 .teacher-home__completeness-head {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-3);
 }
 
 .teacher-home__percent {
   font-size: 32px;
-  font-weight: var(--dp-font-weight-semibold, 600);
+  font-weight: var(--dp-font-weight-semibold);
   line-height: 1.2;
   color: var(--dp-text-primary);
 }
 
 .teacher-home__meta {
-  margin: var(--dp-space-3, 12px) 0 0;
+  margin: var(--dp-space-3) 0 0;
   font-size: 14px;
   color: var(--dp-text-secondary);
 }
 
 .teacher-home__onboarding {
-  margin: var(--dp-space-2, 8px) 0 0;
+  margin: var(--dp-space-2) 0 0;
   font-size: 14px;
   color: var(--ant-color-warning);
 }
@@ -499,7 +499,7 @@ onUnmounted(() => {
 .teacher-home__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 
 .teacher-home__todo-list {
@@ -509,7 +509,7 @@ onUnmounted(() => {
 }
 
 .teacher-home__todo-item {
-  padding: var(--dp-space-2, 8px) 0;
+  padding: var(--dp-space-2) 0;
   border-bottom: 1px solid var(--ant-color-border-secondary);
   cursor: pointer;
 }
@@ -524,7 +524,7 @@ onUnmounted(() => {
 }
 
 .teacher-home__hint {
-  padding: var(--dp-space-6, 24px) 0;
+  padding: var(--dp-space-6) 0;
 }
 
 @media (max-width: 960px) {

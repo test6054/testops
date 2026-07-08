@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
 import type { PortfolioCollectModeCode } from '@/types/enums/portfolio-collect-mode-enum'
-import { computed, onUnmounted, ref, watch } from 'vue'
-import { getImageBlobUrl } from '@/apis/edu/file-management'
-import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { PortfolioCollectModeDescription } from '@/types/enums/portfolio-collect-mode-enum'
+import { computed, onUnmounted, ref, watch } from 'vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
+import { isScannerKioskBrowserPage } from '@/utils/kiosk-auth'
 
 const props = defineProps<{
   open: boolean
@@ -15,8 +15,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "confirm": []
-  "cancel": []
+  confirm: []
+  cancel: []
 }>()
 
 function portfolioCollectModeLabel(value: PortfolioCollectModeCode | undefined): string {
@@ -59,11 +59,12 @@ async function loadPreview() {
   revokePreviewUrl()
   previewError.value = false
   const fileId = previewFileId.value
-  if (!fileId || isPortfolio.value) {
+  if (!fileId || isPortfolio.value || isScannerKioskBrowserPage()) {
     return
   }
   previewLoading.value = true
   try {
+    const { getImageBlobUrl } = await import('@/apis/edu/file-management')
     previewObjectUrl = await getImageBlobUrl(fileId)
     previewUrl.value = previewObjectUrl
   } catch {

@@ -1,13 +1,24 @@
 <template>
-  <component :is="embedded ? 'div' : WorkbenchSurfaceCard" flush class="archive-lifecycle-pipe-card">
+  <component
+    :is="embedded ? 'div' : WorkbenchSurfaceCard"
+    flush
+    class="archive-lifecycle-pipe-card"
+  >
     <template v-if="!embedded" #head>
       <span class="archive-lifecycle-pipe-card__title">{{ title }}</span>
     </template>
     <template v-if="!embedded && steps.length > 0" #toolbar>
-      <span class="archive-lifecycle-pipe-card__progress">{{ doneCount }}/{{ stageTotal }} 阶段</span>
+      <span class="archive-lifecycle-pipe-card__progress"
+        >{{ doneCount }}/{{ stageTotal }} 阶段</span
+      >
     </template>
 
-    <div v-if="steps.length > 0" class="archive-lifecycle-pipe" role="list" aria-label="归档生命周期">
+    <div
+      v-if="steps.length > 0"
+      class="archive-lifecycle-pipe"
+      role="list"
+      aria-label="归档生命周期"
+    >
       <template v-for="(step, index) in steps" :key="step.key">
         <div
           v-if="index > 0"
@@ -43,11 +54,11 @@
 
 <script lang="ts" setup>
 import type { ArchiveLifecycleStep } from '@/utils/archive-volume-lifecycle'
+import { countArchiveLifecycleDoneSteps } from '@/utils/archive-volume-lifecycle'
 import CheckOutlined from '@ant-design/icons-vue/CheckOutlined'
 import { computed } from 'vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
-import { countArchiveLifecycleDoneSteps } from '@/utils/archive-volume-lifecycle'
 
 defineOptions({ name: 'ArchiveLifecyclePipe' })
 
@@ -112,12 +123,12 @@ function connectorClass(index: number): string {
   &__title {
     font-size: 14px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__progress {
     font-size: 12px;
-    color: var(--dp-text-secondary, #64748b);
+    color: var(--dp-text-secondary);
   }
 }
 
@@ -147,27 +158,30 @@ function connectorClass(index: number): string {
   justify-content: center;
   font-size: 11px;
   font-weight: 700;
-  transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
 
   &--done {
-    background: var(--dp-success, #52c41a);
+    background: var(--dp-success);
     color: #fff;
   }
 
   &--active {
-    background: var(--dp-primary, #1677ff);
+    background: var(--dp-primary);
     color: #fff;
     box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.15);
   }
 
   &--pending {
-    background: var(--dp-surface-sunken, #f1f5f9);
-    color: var(--dp-text-tertiary, #94a3b8);
-    border: 1.5px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface-sunken);
+    color: var(--dp-text-tertiary);
+    border: 1.5px solid var(--dp-border);
   }
 
   &--warn {
-    background: var(--dp-warning, #faad14);
+    background: var(--dp-warning);
     color: #fff;
   }
 }
@@ -177,21 +191,21 @@ function connectorClass(index: number): string {
   text-align: center;
   white-space: nowrap;
   font-weight: 500;
-  color: var(--dp-text-tertiary, #94a3b8);
+  color: var(--dp-text-tertiary);
 }
 
 .archive-lifecycle-pipe__node--done .archive-lifecycle-pipe__label {
-  color: var(--dp-success, #52c41a);
+  color: var(--dp-success);
   font-weight: 600;
 }
 
 .archive-lifecycle-pipe__node--active .archive-lifecycle-pipe__label {
-  color: var(--dp-primary, #1677ff);
+  color: var(--dp-primary);
   font-weight: 600;
 }
 
 .archive-lifecycle-pipe__node--warn .archive-lifecycle-pipe__label {
-  color: var(--dp-warning, #faad14);
+  color: var(--dp-warning);
   font-weight: 600;
 }
 
@@ -206,11 +220,11 @@ function connectorClass(index: number): string {
   margin-top: 15px;
 
   &--done {
-    background: var(--dp-success, #52c41a);
+    background: var(--dp-success);
   }
 
   &--pending {
-    background: var(--dp-border, #e2e8f0);
+    background: var(--dp-border);
   }
 }
 </style>

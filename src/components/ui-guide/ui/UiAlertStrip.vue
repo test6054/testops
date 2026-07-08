@@ -113,7 +113,7 @@ const handleClose = () => {
   gap: 14px;
   padding: 16px 18px;
   border: 1px solid var(--alert-border);
-  border-radius: var(--dp-radius-panel, 4px);
+  border-radius: var(--dp-radius-panel);
   background: var(--alert-surface);
 }
 
@@ -157,7 +157,7 @@ const handleClose = () => {
   flex-shrink: 0;
   width: 34px;
   height: 34px;
-  border-radius: var(--dp-radius-panel, 4px);
+  border-radius: var(--dp-radius-panel);
   background: rgba(255, 255, 255, 0.88);
   border: 1px solid rgba(15, 23, 42, 0.06);
   color: var(--alert-icon);
@@ -192,7 +192,7 @@ const handleClose = () => {
   font-size: 15px;
   font-weight: 800;
   line-height: 1.5;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-alert-strip__meta {
@@ -206,7 +206,7 @@ const handleClose = () => {
   margin: 0;
   font-size: 14px;
   line-height: 1.7;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-alert-strip__actions {
@@ -225,9 +225,9 @@ const handleClose = () => {
   width: 30px;
   height: 30px;
   border: 0;
-  border-radius: var(--dp-radius-panel, 4px);
+  border-radius: var(--dp-radius-panel);
   background: rgba(255, 255, 255, 0.82);
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
   cursor: pointer;
   transition:
     background-color 0.2s ease,
@@ -236,7 +236,7 @@ const handleClose = () => {
 
 .ui-alert-strip__close:hover {
   background: rgba(255, 255, 255, 0.96);
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 @media (max-width: 900px) {

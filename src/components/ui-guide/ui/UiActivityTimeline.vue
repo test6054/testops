@@ -129,9 +129,9 @@ const props = withDefaults(
   },
 )
 
-type TimelineTag
-  = | string
-    | {
+type TimelineTag =
+  | string
+  | {
       label: string
       tone?: BadgeTone
       variant?: 'soft' | 'outline'
@@ -179,7 +179,8 @@ const resolveTagVariant = (tag: TimelineTag) => {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .ui-activity-timeline {
   display: flex;
   flex-direction: column;
@@ -189,9 +190,9 @@ const resolveTagVariant = (tag: TimelineTag) => {
 
 .ui-activity-timeline--bordered {
   padding: 18px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
 }
 
 .ui-activity-timeline--compact {
@@ -225,23 +226,23 @@ const resolveTagVariant = (tag: TimelineTag) => {
   justify-content: center;
   font-size: 12px;
   font-weight: 700;
-  color: var(--dp-blue-700, #1d4ed8);
-  background: var(--dp-blue-50, #eff6ff);
-  border: 1px solid var(--dp-blue-200, #bfdbfe);
-  border-radius: var(--dp-radius-control-inner, 4px);
+  color: var(--dp-blue-700);
+  background: var(--dp-blue-50);
+  border: 1px solid var(--dp-blue-200);
+  border-radius: var(--dp-radius-control-inner);
 }
 
 .ui-activity-timeline__group-line {
   flex: 1;
   height: 1px;
-  background: var(--dp-border, #e5e7eb);
+  background: var(--dp-border);
 }
 
 .ui-activity-timeline__group-count {
   flex-shrink: 0;
   font-size: 12px;
   font-weight: 600;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-activity-timeline__items {
@@ -275,7 +276,7 @@ const resolveTagVariant = (tag: TimelineTag) => {
 }
 
 .ui-activity-timeline__dot--gray {
-  background: var(--dp-gray-400, #94a3b8);
+  background: var(--dp-gray-400);
 }
 
 .ui-activity-timeline__dot--blue {
@@ -283,23 +284,23 @@ const resolveTagVariant = (tag: TimelineTag) => {
 }
 
 .ui-activity-timeline__dot--orange {
-  background: var(--dp-orange-500, #f97316);
+  background: var(--dp-orange-500);
 }
 
 .ui-activity-timeline__dot--green {
-  background: var(--dp-green-500, #22c55e);
+  background: var(--dp-green-500);
 }
 
 .ui-activity-timeline__dot--yellow {
-  background: var(--dp-yellow-500, #eab308);
+  background: var(--dp-yellow-500);
 }
 
 .ui-activity-timeline__dot--red {
-  background: var(--dp-red-500, #ef4444);
+  background: var(--dp-red-500);
 }
 
 .ui-activity-timeline__dot--purple {
-  background: var(--dp-purple-500, #8b5cf6);
+  background: var(--dp-purple-500);
 }
 
 .ui-activity-timeline__axis-line {
@@ -344,7 +345,7 @@ const resolveTagVariant = (tag: TimelineTag) => {
   font-size: 16px;
   line-height: 1.5;
   font-weight: 700;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-activity-timeline__meta-row {
@@ -360,14 +361,14 @@ const resolveTagVariant = (tag: TimelineTag) => {
 .ui-activity-timeline__meta {
   font-size: 12px;
   line-height: 1.5;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-activity-timeline__content {
   margin: 0;
   font-size: 13px;
   line-height: 1.7;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-activity-timeline__tags {
@@ -381,9 +382,9 @@ const resolveTagVariant = (tag: TimelineTag) => {
   flex-direction: column;
   gap: 0;
   padding: 10px 12px;
-  background: var(--dp-gray-50, #f8fafc);
+  background: var(--dp-gray-50);
   border: 1px solid #eef2f7;
-  border-radius: var(--dp-radius-control-inner, 4px);
+  border-radius: var(--dp-radius-control-inner);
 }
 
 .ui-activity-timeline__file-row {
@@ -407,7 +408,7 @@ const resolveTagVariant = (tag: TimelineTag) => {
   flex: 1;
   font-size: 13px;
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -417,7 +418,7 @@ const resolveTagVariant = (tag: TimelineTag) => {
 .ui-activity-timeline__file-size {
   flex-shrink: 0;
   font-size: 12px;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-activity-timeline--compact .ui-activity-timeline__group {
@@ -491,7 +492,7 @@ const resolveTagVariant = (tag: TimelineTag) => {
   }
 }
 
-@media (max-width: 767px) {
+@media (max-width: bp.$layout-mobile-max) {
   .ui-activity-timeline__group-header {
     flex-wrap: wrap;
   }

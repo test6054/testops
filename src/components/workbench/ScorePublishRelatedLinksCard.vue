@@ -1,10 +1,10 @@
 <script lang="ts" setup>
 import type { ScorePublishRelatedVariant } from '@/utils/score-publish-related-links'
+import { SCORE_PUBLISH_RELATED_LINKS } from '@/utils/score-publish-related-links'
 import { computed } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useScorePublishRelatedNavigation } from '@/composables/useScorePublishRelatedNavigation'
-import { SCORE_PUBLISH_RELATED_LINKS } from '@/utils/score-publish-related-links'
 
 defineOptions({ name: 'ScorePublishRelatedLinksCard' })
 
@@ -21,11 +21,7 @@ const items = computed(() => SCORE_PUBLISH_RELATED_LINKS[props.variant])
   <WorkbenchSurfaceCard class="score-publish-related-links">
     <template #head>相关能力</template>
     <dl class="score-publish-related-links__list">
-      <div
-        v-for="item in items"
-        :key="item.key"
-        class="score-publish-related-links__item"
-      >
+      <div v-for="item in items" :key="item.key" class="score-publish-related-links__item">
         <dt>{{ item.label }}</dt>
         <dd>{{ item.description }}</dd>
         <UiButton variant="outline" size="sm" @click="navigateToRoute(item.routeName)">
@@ -38,7 +34,7 @@ const items = computed(() => SCORE_PUBLISH_RELATED_LINKS[props.variant])
 
 <style scoped lang="scss">
 .score-publish-related-links {
-  margin-top: var(--dp-space-4, 16px);
+  margin-top: var(--dp-space-4);
 
   &__list {
     margin: 0;
@@ -52,7 +48,7 @@ const items = computed(() => SCORE_PUBLISH_RELATED_LINKS[props.variant])
     flex-direction: column;
     gap: 8px;
     padding-bottom: 16px;
-    border-bottom: 1px solid var(--dp-border-subtle, #e2e8f0);
+    border-bottom: 1px solid var(--dp-border-subtle);
 
     &:last-child {
       padding-bottom: 0;
@@ -63,14 +59,14 @@ const items = computed(() => SCORE_PUBLISH_RELATED_LINKS[props.variant])
       margin: 0;
       font-size: 13px;
       font-weight: 600;
-      color: var(--dp-text-primary, #0f172a);
+      color: var(--dp-text-primary);
     }
 
     dd {
       margin: 0;
       font-size: 12px;
       line-height: 1.5;
-      color: var(--dp-text-secondary, #64748b);
+      color: var(--dp-text-secondary);
     }
   }
 }

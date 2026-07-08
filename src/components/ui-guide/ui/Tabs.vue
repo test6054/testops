@@ -83,44 +83,44 @@ const handleChange = (value: Key) => {
 }
 
 .ui-tabs :deep(.ant-tabs-tab) {
-  border-radius: var(--dp-radius-control, 4px) var(--dp-radius-control, 4px) 0 0;
+  border-radius: var(--dp-radius-control) var(--dp-radius-control) 0 0;
   transition: all 0.2s ease;
 }
 
 .ui-tabs :deep(.ant-tabs-tab-btn) {
   font-weight: 600;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-tabs :deep(.ant-tabs-tab-active .ant-tabs-tab-btn) {
-  color: var(--dp-blue-700, #1d4ed8);
+  color: var(--dp-blue-700);
 }
 
 .ui-tabs :deep(.ant-tabs-ink-bar) {
-  background: var(--dp-blue-600, #2563eb);
+  background: var(--dp-blue-600);
   height: 3px;
   border-radius: 999px;
 }
 
 .ui-tabs--card :deep(.ant-tabs-card .ant-tabs-tab) {
-  border-radius: var(--dp-radius-control, 4px) var(--dp-radius-control, 4px) 0 0;
+  border-radius: var(--dp-radius-control) var(--dp-radius-control) 0 0;
 }
 
 .ui-tabs--pill :deep(.ant-tabs-nav-wrap) {
-  background: var(--dp-surface-subtle, #f8fafc);
-  border-radius: var(--dp-radius-panel, 4px);
+  background: var(--dp-surface-subtle);
+  border-radius: var(--dp-radius-panel);
   padding: 4px;
 }
 
 .ui-tabs--pill :deep(.ant-tabs-tab) {
   margin: 0 4px 0 0;
   padding: 8px 14px;
-  border-radius: var(--dp-radius-control-inner, 4px);
+  border-radius: var(--dp-radius-control-inner);
 }
 
 .ui-tabs--pill :deep(.ant-tabs-tab-active) {
-  background: var(--dp-surface, #fff);
-  box-shadow: var(--dp-shadow-soft, 0 6px 16px rgba(15, 23, 42, 0.05));
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-soft);
 }
 
 .ui-tabs--pill :deep(.ant-tabs-ink-bar) {

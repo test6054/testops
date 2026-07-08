@@ -52,13 +52,16 @@
 </template>
 
 <script lang="ts" setup>
-import type { AllocationPolicyResponse, RecyclePolicyResponse } from '@/apis/mark/marking-organization'
-import { computed } from 'vue'
-import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
+import type {
+  AllocationPolicyResponse,
+  RecyclePolicyResponse,
+} from '@/apis/mark/marking-organization'
 import {
   AllocationUnitDescription,
   MarkingAllocationModeDescription,
 } from '@/apis/mark/marking-organization'
+import { computed } from 'vue'
+import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -78,13 +81,21 @@ const emit = defineEmits<{
 
 const allocationModeLabel = computed(() =>
   props.allocationPolicy
-    ? strictEnumLabel(MarkingAllocationModeDescription, props.allocationPolicy.allocationMode, '分配模式')
+    ? strictEnumLabel(
+        MarkingAllocationModeDescription,
+        props.allocationPolicy.allocationMode,
+        '分配模式',
+      )
     : '未配置',
 )
 
 const allocationUnitLabel = computed(() =>
   props.allocationPolicy
-    ? strictEnumLabel(AllocationUnitDescription, props.allocationPolicy.allocationUnit, '批阅任务单元')
+    ? strictEnumLabel(
+        AllocationUnitDescription,
+        props.allocationPolicy.allocationUnit,
+        '批阅任务单元',
+      )
     : '—',
 )
 
@@ -133,7 +144,7 @@ const strategyHint = computed(() => {
     justify-content: space-between;
     gap: 12px;
     padding: 8px 0;
-    border-bottom: 1px solid var(--dp-border-light, #f1f5f9);
+    border-bottom: 1px solid var(--dp-border-light);
 
     dt {
       margin: 0;
@@ -156,7 +167,7 @@ const strategyHint = computed(() => {
   &__footer {
     padding: 12px 16px;
     border-top: 1px solid var(--dp-border);
-    background: var(--dp-surface-sunken, #f8fafc);
+    background: var(--dp-surface-sunken);
     font-size: 12px;
     line-height: 1.5;
     color: var(--dp-text-muted);

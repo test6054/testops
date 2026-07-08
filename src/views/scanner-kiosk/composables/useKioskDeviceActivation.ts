@@ -2,7 +2,6 @@ import type {
   AgentHealthResponse,
   AgentSetupContextResponse,
 } from '@/apis/mark/scanner-agent-local'
-import { computed, ref } from 'vue'
 import {
   activateLocalAgent,
   getAgentHealth,
@@ -10,7 +9,7 @@ import {
   LOCAL_AGENT_UNAVAILABLE_ERROR,
   LocalAgentUnavailableError,
 } from '@/apis/mark/scanner-agent-local'
-import { bindScannerOperator } from '@/apis/mark/scanner-operator-bind'
+import { computed, ref } from 'vue'
 import { AgentDiagnosticStatusCode } from '@/types/enums/agent-diagnostic-status-enum'
 import {
   KioskActivationGateReasonCode,
@@ -59,16 +58,15 @@ function createKioskDeviceActivation() {
   const activationForm = ref({
     activationCode: '',
     endpointName: '',
-    boundOperatorUserId: '',
     gatewayBaseUrl: defaultGatewayFromEnv,
   })
 
   const isDeviceBound = computed(() => Boolean(health.value?.bound))
   const activationModalForced = computed(
     () =>
-      !health.value?.bound
-      || Boolean(health.value?.tokenResetRequired)
-      || Boolean(health.value?.rebindRequired),
+      !health.value?.bound ||
+      Boolean(health.value?.tokenResetRequired) ||
+      Boolean(health.value?.rebindRequired),
   )
   const needsActivationGate = computed(
     () => activationModalForced.value || manualActivationGateOpen.value,
@@ -89,7 +87,9 @@ function createKioskDeviceActivation() {
       return KioskActivationGateReasonDescription[KioskActivationGateReasonCode.REBIND_REQUIRED]
     }
     if (reason === KioskActivationGateReasonCode.TOKEN_RESET_REQUIRED) {
-      return KioskActivationGateReasonDescription[KioskActivationGateReasonCode.TOKEN_RESET_REQUIRED]
+      return KioskActivationGateReasonDescription[
+        KioskActivationGateReasonCode.TOKEN_RESET_REQUIRED
+      ]
     }
     return isDeviceBound.value ? '重新激活一体机' : '激活扫描一体机'
   })
@@ -150,9 +150,9 @@ function createKioskDeviceActivation() {
 
   function isActivatedForMarkApis(): boolean {
     return (
-      hasActiveDeviceActivation()
-      && !health.value?.tokenResetRequired
-      && !health.value?.rebindRequired
+      hasActiveDeviceActivation() &&
+      !health.value?.tokenResetRequired &&
+      !health.value?.rebindRequired
     )
   }
 
@@ -201,7 +201,7 @@ function createKioskDeviceActivation() {
         activationCode: string
         endpointName: string
       }
-      | {
+    | {
         ok: false
         errorMessage: string
       } {
@@ -316,14 +316,6 @@ function createKioskDeviceActivation() {
         ...activation,
         endpointName: request.endpointName,
       })
-      const boundOperatorUserId = activationForm.value.boundOperatorUserId.trim()
-      if (boundOperatorUserId) {
-        await bindScannerOperator({
-          scannerDeviceId: activation.scannerDeviceId,
-          scannerStationId: activation.scannerStationId,
-          boundOperatorUserId,
-        })
-      }
       activationForm.value.activationCode = ''
       manualActivationGateOpen.value = false
       await refreshDeviceActivationState()

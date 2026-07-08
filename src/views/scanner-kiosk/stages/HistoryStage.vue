@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { ExamScannerBatchResponse } from '@/apis/mark/scanner-kiosk'
+import { ScannerKioskScanModeCode } from '@/apis/mark/scanner-kiosk'
 /**
  * 本机历史批次（只读）
  *
@@ -19,8 +21,6 @@ import {
   ReloadOutlined,
   SafetyCertificateFilled,
 } from '@ant-design/icons-vue'
-import { computed, ref, watch } from 'vue'
-import { ScannerKioskScanModeCode } from '@/apis/mark/scanner-kiosk'
 import { ScanBatchStatusCode } from '@/types/enums/scan-batch-status-enum'
 import KioskBoundStudentsPanel from '../components/KioskBoundStudentsPanel.vue'
 import { useKioskCtx } from '../composables/kioskInjection'
@@ -327,9 +327,9 @@ watch(
           type="button"
           class="time-clear"
           :disabled="
-            workflow.batchHistoryLoading.value
-              || (!workflow.batchHistoryFilter.scanStartTimeFrom
-                && !workflow.batchHistoryFilter.scanStartTimeTo)
+            workflow.batchHistoryLoading.value ||
+            (!workflow.batchHistoryFilter.scanStartTimeFrom &&
+              !workflow.batchHistoryFilter.scanStartTimeTo)
           "
           @click="workflow.clearBatchHistoryTimeRange"
         >
@@ -470,8 +470,8 @@ watch(
           type="button"
           class="pager-btn"
           :disabled="
-            workflow.batchHistoryFilter.pageNum >= historyTotalPages
-              || workflow.batchHistoryLoading.value
+            workflow.batchHistoryFilter.pageNum >= historyTotalPages ||
+            workflow.batchHistoryLoading.value
           "
           @click="workflow.changeBatchHistoryPage(workflow.batchHistoryFilter.pageNum + 1)"
         >
@@ -482,9 +482,10 @@ watch(
   </section>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .history-stage {
-  max-width: 1280px;
+  max-width: bp.$shell-laptop-max;
   margin: 0 auto;
   padding: var(--kiosk-space-4) var(--kiosk-space-5);
   display: flex;
@@ -1148,7 +1149,7 @@ watch(
   font-weight: var(--kiosk-fw-bold);
 }
 
-@media (max-width: 1280px) {
+@media (max-width: bp.$shell-laptop-max) {
   .history-body {
     grid-template-columns: minmax(0, 1fr) 320px;
   }
@@ -1159,7 +1160,7 @@ watch(
     grid-template-columns: minmax(160px, 2fr) minmax(120px, 1fr) 60px minmax(140px, 1fr) 90px;
   }
 }
-@media (max-width: 1024px) {
+@media (max-width: bp.$shell-tablet-max) {
   .history-body {
     grid-template-columns: 1fr;
   }

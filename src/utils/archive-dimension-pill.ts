@@ -3,13 +3,13 @@ import type {
   ArchiveIntegrityStatusCode,
   ArchiveTransferStatusCode,
   ArchiveVolumeResponse,
-  ArchiveVolumeStatusCode,
+  ArchiveVolumeStatusCode
 } from '@/apis/mark/archive-volume'
 import {
   ArchiveAppraisalStatusDescription,
   ArchiveIntegrityStatusDescription,
   ArchiveTransferStatusDescription,
-  ArchiveVolumeStatusDescription,
+  ArchiveVolumeStatusDescription
 } from '@/apis/mark/archive-volume'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -25,10 +25,10 @@ export function volumeStatusDimTone(status: ArchiveVolumeStatusCode): ArchiveDim
   if (status === 'STORED' || status === 'ARCHIVED_DESTROYED') {
     return 'ok'
   }
-  if (status === 'SUBMITTED') {
+  if (status === 'SUBMITTED' || status === 'DEPARTMENT_REVIEWED') {
     return 'info'
   }
-  if (status === 'COLLECTING') {
+  if (status === 'COLLECTING' || status === 'DEPARTMENT_REVIEW_PENDING') {
     return 'warn'
   }
   return 'pending'

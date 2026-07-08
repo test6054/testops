@@ -1,15 +1,16 @@
 import type { ComputedRef, InjectionKey, Ref } from 'vue'
+import { computed, inject, provide, ref, watch } from 'vue'
 import type {
   ArchiveVolumeDetailResponse,
   ArchiveVolumeNavChainStepVO,
   ArchiveVolumeNextStepActionVO,
 } from '@/apis/mark/archive-volume'
-import { computed, inject, provide, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { getArchiveVolumeDetail } from '@/apis/mark/archive-volume'
+import { useRoute, useRouter } from 'vue-router'
 import {
   ARCHIVE_VOLUME_DETAIL_SECTION_TABS,
   ARCHIVE_VOLUME_DETAIL_TAB_KEYS,
+  ARCHIVE_VOLUME_LEGACY_OCR_SEARCH_TAB,
 } from '@/constants/archive-volume-detail-tabs'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 
@@ -34,8 +35,8 @@ export interface ArchiveVolumeWorkbenchContext {
   syncActiveTabFromNavigation: (options?: { preserveUserTab?: boolean }) => void
 }
 
-export const ARCHIVE_VOLUME_WORKBENCH_CONTEXT_KEY: InjectionKey<ArchiveVolumeWorkbenchContext>
-  = Symbol('archiveVolumeWorkbenchContext')
+export const ARCHIVE_VOLUME_WORKBENCH_CONTEXT_KEY: InjectionKey<ArchiveVolumeWorkbenchContext> =
+  Symbol('archiveVolumeWorkbenchContext')
 
 export function provideArchiveVolumeWorkbenchContext(): ArchiveVolumeWorkbenchContext {
   const route = useRoute()
@@ -78,7 +79,25 @@ export function provideArchiveVolumeWorkbenchContext(): ArchiveVolumeWorkbenchCo
     return navigationChainSteps.value.some((step) => step.tabKey === tabKey)
   }
 
+  function redirectLegacyOcrSearchTab(): boolean {
+    const raw = route.query.tab
+    if (raw !== ARCHIVE_VOLUME_LEGACY_OCR_SEARCH_TAB) {
+      return false
+    }
+    if (!volumeId.value) {
+      return false
+    }
+    void router.replace({
+      name: 'TeacherArchiveVolumeSearch',
+      query: { volumeId: volumeId.value },
+    })
+    return true
+  }
+
   function syncActiveTabFromNavigation(options?: { preserveUserTab?: boolean }): void {
+    if (redirectLegacyOcrSearchTab()) {
+      return
+    }
     const raw = route.query.tab
     if (typeof raw === 'string' && isValidDetailTab(raw)) {
       activeTab.value = raw
@@ -94,6 +113,9 @@ export function provideArchiveVolumeWorkbenchContext(): ArchiveVolumeWorkbenchCo
   }
 
   function resolveInitialTab(): void {
+    if (redirectLegacyOcrSearchTab()) {
+      return
+    }
     const raw = route.query.tab
     if (typeof raw !== 'string') {
       return
@@ -117,7 +139,7 @@ export function provideArchiveVolumeWorkbenchContext(): ArchiveVolumeWorkbenchCo
 
   async function loadDetail(options?: { silent?: boolean }): Promise<void> {
     if (!volumeId.value) {
-      showUserError(new Error('缺少归档卷 ID'), '缺少归档卷 ID')
+      showUserError(new Error('缺少归档任务 ID'), '缺少归档任务 ID')
       loading.value = false
       return
     }
@@ -138,12 +160,12 @@ export function provideArchiveVolumeWorkbenchContext(): ArchiveVolumeWorkbenchCo
         return
       }
       if (!options?.silent) {
-        showUserError(error, getUserErrorMessage(error, '加载归档卷详情失败'))
+        showUserError(error, getUserErrorMessage(error, '加载归档任务详情失败'))
         detail.value = null
       } else {
         silentRefreshFailureCount += 1
         if (silentRefreshFailureCount >= SILENT_REFRESH_FAILURE_THRESHOLD) {
-          showUserError(error, getUserErrorMessage(error, '归档卷材料状态刷新失败'))
+          showUserError(error, getUserErrorMessage(error, '归档任务材料状态刷新失败'))
         }
       }
     } finally {
@@ -158,6 +180,10 @@ export function provideArchiveVolumeWorkbenchContext(): ArchiveVolumeWorkbenchCo
   watch(
     () => route.query.tab,
     (raw) => {
+      if (raw === ARCHIVE_VOLUME_LEGACY_OCR_SEARCH_TAB) {
+        redirectLegacyOcrSearchTab()
+        return
+      }
       if (typeof raw === 'string' && isValidDetailTab(raw)) {
         activeTab.value = raw
       }

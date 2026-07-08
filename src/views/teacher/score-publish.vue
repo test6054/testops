@@ -7,12 +7,8 @@
           <UiTag v-else-if="hasPendingAbsence" tone="orange" size="sm">缺考待确认</UiTag>
         </template>
         <template #actions>
-          <UiButton variant="outline" size="sm" @click="goExportTasks">
-            导出任务
-          </UiButton>
-          <UiButton variant="ghost" size="sm" @click="goScoreConfirm">
-            返回成绩确认
-          </UiButton>
+          <UiButton variant="outline" size="sm" @click="goExportTasks"> 导出任务 </UiButton>
+          <UiButton variant="ghost" size="sm" @click="goScoreConfirm"> 返回成绩确认 </UiButton>
           <UiButton
             variant="primary"
             size="sm"
@@ -49,9 +45,7 @@
         class="score-publish__alert"
       >
         <template #actions>
-          <UiButton variant="primary" size="sm" @click="goAbsenceConfirm">
-            前往缺考确认
-          </UiButton>
+          <UiButton variant="primary" size="sm" @click="goAbsenceConfirm"> 前往缺考确认 </UiButton>
         </template>
       </UiAlertStrip>
 
@@ -79,9 +73,7 @@
         class="score-publish__alert"
       >
         <template #actions>
-          <UiButton variant="primary" size="sm" @click="goScoreConfirm">
-            前往成绩确认
-          </UiButton>
+          <UiButton variant="primary" size="sm" @click="goScoreConfirm"> 前往成绩确认 </UiButton>
           <UiButton variant="ghost" size="sm" @click="goDelayedConfirmTasks">
             查看处理任务
           </UiButton>
@@ -97,9 +89,7 @@
         class="score-publish__alert"
       >
         <template #actions>
-          <UiButton variant="primary" size="sm" @click="filterCorrectedOnly">
-            仅看已更正
-          </UiButton>
+          <UiButton variant="primary" size="sm" @click="filterCorrectedOnly"> 仅看已更正 </UiButton>
         </template>
       </UiAlertStrip>
 
@@ -137,7 +127,9 @@
               <button
                 type="button"
                 class="score-publish__filter-chip"
-                :class="{ 'score-publish__filter-chip--active': scoreFilterForm.unpublishedBoundOnly }"
+                :class="{
+                  'score-publish__filter-chip--active': scoreFilterForm.unpublishedBoundOnly,
+                }"
                 @click="toggleIncompleteClassFilter"
               >
                 仅看未齐班级
@@ -160,7 +152,9 @@
           >
             <template #bodyCell="{ column, index }">
               <template v-if="column.key === 'studentNo'">
-                <span class="score-summary-table__mono">{{ candidates[index].studentNo || '—' }}</span>
+                <span class="score-summary-table__mono">{{
+                  candidates[index].studentNo || '—'
+                }}</span>
               </template>
               <template v-else-if="column.key === 'studentName'">
                 {{ candidates[index].studentName || '—' }}
@@ -172,13 +166,19 @@
                 <span v-else class="score-publish__hint">—</span>
               </template>
               <template v-else-if="column.key === 'dailyScore'">
-                <span v-if="candidates[index].dailyScore != null" class="score-summary-table__score">
+                <span
+                  v-if="candidates[index].dailyScore != null"
+                  class="score-summary-table__score"
+                >
                   {{ candidates[index].dailyScore }}
                 </span>
                 <span v-else class="score-publish__hint">—</span>
               </template>
               <template v-else-if="column.key === 'finalScore'">
-                <span v-if="candidates[index].finalScore != null" class="score-summary-table__score score-summary-table__score--total">
+                <span
+                  v-if="candidates[index].finalScore != null"
+                  class="score-summary-table__score score-summary-table__score--total"
+                >
                   {{ candidates[index].finalScore }}
                 </span>
                 <span v-else class="score-publish__hint">—</span>
@@ -226,10 +226,14 @@
             {{ detailCandidate?.studentClassName }}
           </a-descriptions-item>
           <a-descriptions-item v-if="hasDailyScoreConfig" label="考试分">
-            <span class="score-summary-table__score">{{ formatScorePoints(paperScore.examScore) }}</span>
+            <span class="score-summary-table__score">{{
+              formatScorePoints(paperScore.examScore)
+            }}</span>
           </a-descriptions-item>
           <a-descriptions-item v-if="hasDailyScoreConfig" label="日常分">
-            <span class="score-summary-table__score">{{ formatScorePoints(paperScore.dailyScore) }}</span>
+            <span class="score-summary-table__score">{{
+              formatScorePoints(paperScore.dailyScore)
+            }}</span>
           </a-descriptions-item>
           <a-descriptions-item :label="hasDailyScoreConfig ? '总成绩' : '总分'">
             <span class="score-summary-table__score score-summary-table__score--total">
@@ -310,15 +314,15 @@
       :mask-closable="!bulkRunning"
       :closable="!bulkRunning"
       :hide-footer="false"
-      @update:open="(v: boolean) => { if (!bulkRunning) bulkOpen = v }"
+      @update:open="
+        (v: boolean) => {
+          if (!bulkRunning) bulkOpen = v
+        }
+      "
       @close="bulkOpen = false"
     >
       <div v-if="finalScoreOverview" class="score-publish__bulk-stats analytics-stats">
-        <div
-          v-for="item in bulkModalStatItems"
-          :key="item.key"
-          class="analytics-stats__card"
-        >
+        <div v-for="item in bulkModalStatItems" :key="item.key" class="analytics-stats__card">
           <div class="analytics-stats__value" :class="bulkModalValueClass(item.valClass)">
             {{ item.value }}
           </div>
@@ -328,26 +332,19 @@
       <div v-if="bulkResult" class="score-publish__bulk-result">
         <a-progress
           :percent="bulkResultPercent"
-          :status="bulkResult.failureCount > 0 || bulkResult.remainingCount > 0 ? 'exception' : 'success'"
+          :status="
+            bulkResult.failureCount > 0 || bulkResult.remainingCount > 0 ? 'exception' : 'success'
+          "
         />
         <div class="score-publish__bulk-meta">
           本次成功 {{ bulkResult.successCount }} 条 · 失败 {{ bulkResult.failureCount }} 条 ·
           全场已发布 {{ bulkResult.alreadyPublishedCount }} / {{ bulkResult.totalCandidateCount }}
         </div>
       </div>
-      <a-list
-        v-if="bulkResult?.failures.length"
-        size="small"
-        class="score-publish__bulk-list"
-      >
-        <a-list-item
-          v-for="(item, index) in bulkResult.failures"
-          :key="item.paperInstanceId"
-        >
+      <a-list v-if="bulkResult?.failures.length" size="small" class="score-publish__bulk-list">
+        <a-list-item v-for="(item, index) in bulkResult.failures" :key="item.paperInstanceId">
           <a-list-item-meta>
-            <template #title>
-              试卷实例 {{ item.paperInstanceId }}
-            </template>
+            <template #title> 试卷实例 {{ item.paperInstanceId }} </template>
             <template #description>
               <UiTag tone="red" size="sm" class="score-publish__bulk-error-tag">
                 {{ item.code }}
@@ -380,26 +377,17 @@ import type { Key } from 'ant-design-vue/es/_util/type'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
 import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
-import type {
-  ExamDetailResponse,
-} from '@/apis/mark/exam'
+import type { ExamDetailResponse } from '@/apis/mark/exam'
+import { getExamDetail } from '@/apis/mark/exam'
 import type { ExamPaperScoreResponse, ExamQuestionScoreResponse } from '@/apis/mark/exam-grade'
-import type {ExamWorkbenchScorePanelResponse} from '@/apis/mark/exam-progress';
+import { getPaperScore } from '@/apis/mark/exam-grade'
+import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
+import { getScorePanel } from '@/apis/mark/exam-progress'
 import type {
   ExamScoreSummaryItemResponse,
   FinalScoreBatchPublishResponse,
   FinalScoreRiskOverviewResponse,
 } from '@/apis/mark/exam-score'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import {
-  getExamDetail,
-} from '@/apis/mark/exam'
-import { getPaperScore } from '@/apis/mark/exam-grade'
-import { getScorePanel } from '@/apis/mark/exam-progress'
 import {
   batchPublishFinalScores,
   getFinalScoreRiskOverview,
@@ -407,6 +395,11 @@ import {
   publishFinalScore,
   withdrawFinalScore,
 } from '@/apis/mark/exam-score'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   FINAL_SCORE_STATUS_TONE,
   FinalScoreStatusCode,
@@ -439,7 +432,11 @@ import { showUserError } from '@/utils/error-handler'
 import { buildExamScoreSummaryTableColumns } from '@/utils/exam-score-summary-table-columns'
 import { formatDateTime } from '@/utils/format'
 import { isExamScoresFullyPublished } from '@/utils/score-release-readiness'
-import { buildScoreBulkPublishModalStatItems, buildScoreConfirmStatusTabItems, SCORE_STATUS_TAB_ALL } from '@/utils/score-workbench-analytics'
+import {
+  buildScoreBulkPublishModalStatItems,
+  buildScoreConfirmStatusTabItems,
+  SCORE_STATUS_TAB_ALL,
+} from '@/utils/score-workbench-analytics'
 import { buildScorePublishSignalMetrics } from '@/utils/score-workbench-signal'
 import { toSignalMetrics } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -476,11 +473,10 @@ const scoreFilterModel = computed<Record<string, unknown>>({
 })
 
 const scoreFilterFields = computed<FilterField[]>(() => {
-  const classOptions = (examArchiveGate.value?.classPublishProgress ?? [])
-    .map(item => ({
-      label: item.className?.trim() || (item.classId ? `班级 ${item.classId}` : '未分班'),
-      value: item.classId,
-    }))
+  const classOptions = (examArchiveGate.value?.classPublishProgress ?? []).map((item) => ({
+    label: item.className?.trim() || (item.classId ? `班级 ${item.classId}` : '未分班'),
+    value: item.classId,
+  }))
   const fields: FilterField[] = [
     {
       key: 'keyword',
@@ -505,8 +501,8 @@ const scoreFilterFields = computed<FilterField[]>(() => {
   return fields
 })
 
-const showIncompleteClassChip = computed(() =>
-  (examArchiveGate.value?.unpublishedBoundPaperCount ?? 0) > 0,
+const showIncompleteClassChip = computed(
+  () => (examArchiveGate.value?.unpublishedBoundPaperCount ?? 0) > 0,
 )
 
 const correctedRepublishNotice = computed(() => {
@@ -612,7 +608,9 @@ const effectiveFinalScoreOverview = computed(
   () => finalScoreOverview.value ?? scorePanel.value?.riskOverview ?? null,
 )
 
-const statusTabItems = computed(() => buildScoreConfirmStatusTabItems(effectiveFinalScoreOverview.value))
+const statusTabItems = computed(() =>
+  buildScoreConfirmStatusTabItems(effectiveFinalScoreOverview.value),
+)
 
 const scoresFullyPublished = computed(() =>
   isExamScoresFullyPublished(effectiveFinalScoreOverview.value, examArchiveGate.value),
@@ -720,7 +718,7 @@ function handleStatusTabChange(tabKey: Key): void {
   void loadCandidates()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void loadCandidates()
@@ -755,11 +753,12 @@ function bulkModalValueClass(valClass?: string): string | undefined {
   return undefined
 }
 
-const canBulkPublish = computed(() =>
-  Boolean(selectedExamId.value)
-  && publishableOverviewCount.value > 0
-  && finalScoreOverview.value?.readyToPublish === true
-  && (finalScoreOverview.value?.blockedCount ?? 0) === 0,
+const canBulkPublish = computed(
+  () =>
+    Boolean(selectedExamId.value) &&
+    publishableOverviewCount.value > 0 &&
+    finalScoreOverview.value?.readyToPublish === true &&
+    (finalScoreOverview.value?.blockedCount ?? 0) === 0,
 )
 
 const bulkOpen = ref(false)
@@ -959,7 +958,9 @@ const detailCandidate = ref<ExamScoreSummaryItemResponse | null>(null)
 const paperScore = ref<ExamPaperScoreResponse | null>(null)
 
 // computed 派生强类型题目数组，模板侧用 paperQuestions[index] 取 VO，避免 a-table slot record 类型丢失。
-const paperQuestions = computed<ExamQuestionScoreResponse[]>(() => paperScore.value?.questions ?? [])
+const paperQuestions = computed<ExamQuestionScoreResponse[]>(
+  () => paperScore.value?.questions ?? [],
+)
 
 const paperItemColumns: ColumnType<ExamQuestionScoreResponse>[] = [
   { title: '题号', key: 'questionNo', width: 80 },
@@ -988,27 +989,31 @@ async function openDetailDrawer(record: ExamScoreSummaryItemResponse): Promise<v
 }
 
 // ─── 初始化 ─────────────────────────────────────
-watch(selectedExamId, (value) => {
-  pagination.current = 1
-  statusTabKey.value = SCORE_STATUS_TAB_ALL
-  scoreFilterForm.keyword = ''
-  scoreFilterForm.classId = undefined
-  scoreFilterForm.unpublishedBoundOnly = false
-  if (value) {
-    void Promise.all([
-      loadExamDetail(),
-      loadCandidates(),
-      refreshPendingAbsenceCount(),
-      loadFinalScoreOverview(),
-    ])
-  } else {
-    examDetail.value = null
-    candidates.value = []
-    pagination.total = 0
-    pendingAbsenceCount.value = 0
-    finalScoreOverview.value = null
-  }
-}, { immediate: true })
+watch(
+  selectedExamId,
+  (value) => {
+    pagination.current = 1
+    statusTabKey.value = SCORE_STATUS_TAB_ALL
+    scoreFilterForm.keyword = ''
+    scoreFilterForm.classId = undefined
+    scoreFilterForm.unpublishedBoundOnly = false
+    if (value) {
+      void Promise.all([
+        loadExamDetail(),
+        loadCandidates(),
+        refreshPendingAbsenceCount(),
+        loadFinalScoreOverview(),
+      ])
+    } else {
+      examDetail.value = null
+      candidates.value = []
+      pagination.total = 0
+      pendingAbsenceCount.value = 0
+      finalScoreOverview.value = null
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <style lang="scss" scoped>
@@ -1018,7 +1023,7 @@ watch(selectedExamId, (value) => {
 
 .score-publish {
   &__alert {
-    margin-top: var(--dp-space-3, 12px);
+    margin-top: var(--dp-space-3);
   }
 
   &__exam-select {
@@ -1030,22 +1035,22 @@ watch(selectedExamId, (value) => {
   }
 
   &__table-section {
-    margin-top: var(--dp-space-3, 12px);
+    margin-top: var(--dp-space-3);
   }
 
   &__table-shell {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-4, 16px);
-    padding: var(--dp-space-4, 16px) var(--dp-space-5, 20px) var(--dp-space-5, 20px);
+    gap: var(--dp-space-4);
+    padding: var(--dp-space-4) var(--dp-space-5) var(--dp-space-5);
   }
 
   &__table-title {
     margin: 0;
     font-size: 16px;
-    font-weight: var(--dp-font-weight-title, 600);
+    font-weight: var(--dp-font-weight-title);
     line-height: 1.5;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__status-tabs {
@@ -1058,7 +1063,7 @@ watch(selectedExamId, (value) => {
   &__table-toolbar {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-3, 12px);
+    gap: var(--dp-space-3);
     width: 100%;
   }
 
@@ -1069,36 +1074,39 @@ watch(selectedExamId, (value) => {
   &__filter-chips {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--dp-space-2, 8px);
+    gap: var(--dp-space-2);
   }
 
   &__filter-chip {
     padding: 2px 10px;
-    border: 1px solid var(--dp-border, #e2e8f0);
-    border-radius: var(--dp-radius-control, 4px);
-    background: var(--dp-surface, #fff);
+    border: 1px solid var(--dp-border);
+    border-radius: var(--dp-radius-control);
+    background: var(--dp-surface);
     font-size: 12px;
     line-height: 1.5;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
     cursor: pointer;
-    transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
+    transition:
+      border-color 0.2s ease,
+      color 0.2s ease,
+      background-color 0.2s ease;
 
     &:hover {
-      border-color: var(--dp-primary-light, #93c5fd);
-      color: var(--dp-primary, #2563eb);
+      border-color: var(--dp-primary-light);
+      color: var(--dp-primary);
     }
 
     &--active {
-      border-color: var(--dp-primary, #2563eb);
-      background: color-mix(in srgb, var(--dp-primary, #2563eb) 8%, #fff);
-      color: var(--dp-primary, #2563eb);
+      border-color: var(--dp-primary);
+      background: color-mix(in srgb, var(--dp-primary) 8%, #fff);
+      color: var(--dp-primary);
       font-weight: 600;
     }
   }
 
   &__table {
     :deep(.ant-table-thead > tr > th) {
-      background: var(--dp-surface-soft, #f8fafc);
+      background: var(--dp-surface-soft);
       font-weight: 600;
     }
   }
@@ -1114,7 +1122,7 @@ watch(selectedExamId, (value) => {
   }
 
   &__hint {
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__bulk-progress {
@@ -1123,7 +1131,7 @@ watch(selectedExamId, (value) => {
 
   &__bulk-meta {
     font-size: 12px;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
     margin-top: 4px;
   }
 
@@ -1131,9 +1139,9 @@ watch(selectedExamId, (value) => {
     max-height: 320px;
     overflow-y: auto;
     margin-top: 8px;
-    border: 1px solid var(--dp-border, #e2e8f0);
-    border-radius: var(--dp-radius-panel, 6px);
-    background: var(--dp-surface, #fff);
+    border: 1px solid var(--dp-border);
+    border-radius: var(--dp-radius-panel);
+    background: var(--dp-surface);
   }
 
   &__bulk-error-tag {

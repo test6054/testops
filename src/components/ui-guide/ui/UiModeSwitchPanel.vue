@@ -126,8 +126,8 @@ const handleChange = (key: string) => {
   min-width: 0;
   padding: 14px 16px;
   text-align: left;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
   background: #fff;
   transition:
     border-color 0.2s ease,
@@ -138,13 +138,13 @@ const handleChange = (key: string) => {
 }
 
 .ui-mode-switch-panel__option:hover:not(:disabled) {
-  border-color: var(--dp-border-strong, #d0d5dd);
-  background: var(--dp-gray-50, #f8fafc);
+  border-color: var(--dp-border-strong);
+  background: var(--dp-gray-50);
 }
 
 .ui-mode-switch-panel__option--active {
-  border-color: var(--dp-blue-200, #bfdbfe);
-  background: var(--dp-blue-50, #eff6ff);
+  border-color: var(--dp-blue-200);
+  background: var(--dp-blue-50);
 }
 
 .ui-mode-switch-panel__option--disabled {
@@ -162,20 +162,20 @@ const handleChange = (key: string) => {
 .ui-mode-switch-panel__option-title {
   font-size: 14px;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-mode-switch-panel__option-desc {
   font-size: 13px;
   line-height: 1.7;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-mode-switch-panel__content {
   min-width: 0;
   padding: 16px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
   background: #fff;
 }
 

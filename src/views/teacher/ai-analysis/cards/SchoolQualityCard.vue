@@ -1,14 +1,8 @@
 <template>
   <AiAnalysisSection title="AI 校级质量分析">
     <template #actions>
-      <AiAnalysisHistorySelect
-        v-model="historySelectedId"
-        :rows="historyRows"
-        :loading="loading"
-      />
-      <UiButton variant="outline" size="sm" :loading="loading" @click="reload">
-        查看历史
-      </UiButton>
+      <AiAnalysisHistorySelect v-model="historySelectedId" :rows="historyRows" :loading="loading" />
+      <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 查看历史 </UiButton>
       <UiButton variant="primary" size="sm" :loading="generating" @click="handleGenerate">
         生成分析
       </UiButton>
@@ -28,7 +22,10 @@
               </a-select-option>
             </a-select>
           </a-form-item>
-          <a-form-item v-if="form.analysisDimension === SchoolQualityDimensionCode.COURSE" label="课程">
+          <a-form-item
+            v-if="form.analysisDimension === SchoolQualityDimensionCode.COURSE"
+            label="课程"
+          >
             <CatalogCourseSelector
               v-model:value="form.dimensionId"
               placeholder="请选择课程"
@@ -36,7 +33,10 @@
               width="220px"
             />
           </a-form-item>
-          <a-form-item v-if="form.analysisDimension === SchoolQualityDimensionCode.CLASS" label="班级">
+          <a-form-item
+            v-if="form.analysisDimension === SchoolQualityDimensionCode.CLASS"
+            label="班级"
+          >
             <ClassSelector
               v-model:value="form.dimensionId"
               :department-id="examSelectScopeReferenceDepartmentId"
@@ -53,13 +53,21 @@
               :class-id="examSelectScopeClassId"
               :reference-department-id="examSelectScopeReferenceDepartmentId"
               :allow-clear="form.analysisDimension !== SchoolQualityDimensionCode.SEMESTER"
-              :default-recent-semester-count="form.analysisDimension === SchoolQualityDimensionCode.SEMESTER ? 1 : 0"
+              :default-recent-semester-count="
+                form.analysisDimension === SchoolQualityDimensionCode.SEMESTER ? 1 : 0
+              "
             />
           </a-form-item>
-          <p v-if="form.analysisDimension === SchoolQualityDimensionCode.SEMESTER" class="semester-dimension-hint">
+          <p
+            v-if="form.analysisDimension === SchoolQualityDimensionCode.SEMESTER"
+            class="semester-dimension-hint"
+          >
             学期维度须同时选择学年与学期；课程/班级维度查看历史可不选学期，生成分析须选择学年与学期
           </p>
-          <p v-else-if="form.analysisDimension === SchoolQualityDimensionCode.CLASS" class="semester-dimension-hint">
+          <p
+            v-else-if="form.analysisDimension === SchoolQualityDimensionCode.CLASS"
+            class="semester-dimension-hint"
+          >
             班级维度须手动勾选至少 2 场包含该班级的考试
           </p>
           <a-form-item label="参与考试列表" style="flex: 1; min-width: 320px">
@@ -114,7 +122,9 @@
             <p v-if="item.baselineComparison" class="diagnosis-text diagnosis-text--muted">
               基线对比：{{ item.baselineComparison }}
             </p>
-            <p v-if="item.suggestion" class="diagnosis-text diagnosis-text--hint">{{ item.suggestion }}</p>
+            <p v-if="item.suggestion" class="diagnosis-text diagnosis-text--hint">
+              {{ item.suggestion }}
+            </p>
           </div>
         </div>
       </div>
@@ -134,11 +144,6 @@ import type {
   SchoolQualityItemResponse,
   SchoolQualityRatingCode,
 } from '@/apis/mark/school-quality'
-import type { BadgeTone, UiStatPanelItem } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   generateQualityAnalysis,
   listQualityAnalysis,
@@ -149,6 +154,12 @@ import {
   SchoolQualityItemDimensionDescription,
   SchoolQualityRatingDescription,
 } from '@/apis/mark/school-quality'
+import type { BadgeTone, UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { formatSemester } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisConfigCollapse from '@/components/mark/analysis/AiAnalysisConfigCollapse.vue'
 import AiAnalysisHistorySelect from '@/components/mark/analysis/AiAnalysisHistorySelect.vue'
@@ -165,7 +176,6 @@ import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { formatSemester } from '@/types/enums/semester-enum'
 import {
   buildOptionalAcademicYearSemesterQuery,
   buildRequiredAcademicYearSemesterQuery,
@@ -247,12 +257,13 @@ const examSelectScopeClassId = computed(() => {
   }
   return props.scopeOrgClassId?.trim() || undefined
 })
-const examSelectScopeReferenceDepartmentId = computed(() =>
-  props.scopeReferenceDepartmentId?.trim() || undefined,
+const examSelectScopeReferenceDepartmentId = computed(
+  () => props.scopeReferenceDepartmentId?.trim() || undefined,
 )
-const examSelectAutoSelectScoped = computed(() =>
-  form.analysisDimension === SchoolQualityDimensionCode.SEMESTER
-  || form.analysisDimension === SchoolQualityDimensionCode.COURSE,
+const examSelectAutoSelectScoped = computed(
+  () =>
+    form.analysisDimension === SchoolQualityDimensionCode.SEMESTER ||
+    form.analysisDimension === SchoolQualityDimensionCode.COURSE,
 )
 const examSelectReady = computed(() => {
   if (!form.academicYear || !form.semester) {
@@ -261,7 +272,7 @@ const examSelectReady = computed(() => {
   if (form.analysisDimension === SchoolQualityDimensionCode.COURSE && !form.dimensionId) {
     return false
   }
-  return !(form.analysisDimension === SchoolQualityDimensionCode.CLASS && !form.dimensionId);
+  return !(form.analysisDimension === SchoolQualityDimensionCode.CLASS && !form.dimensionId)
 })
 const examSelectHint = computed(() => {
   if (form.analysisDimension === SchoolQualityDimensionCode.COURSE && !form.dimensionId) {
@@ -326,7 +337,7 @@ const qualityMetrics = computed((): UiStatPanelItem[] => {
 
 const qualitySignalMetrics = computed<SignalMetric[]>(() => {
   const scoreRateTrend = computeTrendPointDelta(examStatTrendPoints.value)
-  return toSignalMetrics(qualityMetrics.value).map(metric =>
+  return toSignalMetrics(qualityMetrics.value).map((metric) =>
     metric.key === 'teachingQualityScore'
       ? { ...metric, trend: scoreRateTrend, trendPolarity: 'positive' }
       : metric,
@@ -361,7 +372,10 @@ function examScopeSummary(value: SchoolQualityAnalysisResponse): string {
     return '—'
   }
   return value.exams
-    .map(exam => `${exam.examName ?? exam.examId}${exam.examTime ? ` · ${formatDateTime(exam.examTime)}` : ''}`)
+    .map(
+      (exam) =>
+        `${exam.examName ?? exam.examId}${exam.examTime ? ` · ${formatDateTime(exam.examTime)}` : ''}`,
+    )
     .join('；')
 }
 
@@ -427,8 +441,8 @@ async function reload(): Promise<void> {
     return
   }
   if (
-    form.analysisDimension === SchoolQualityDimensionCode.SEMESTER
-    && !ensureRequiredAcademicYearSemester(form.academicYear, form.semester)
+    form.analysisDimension === SchoolQualityDimensionCode.SEMESTER &&
+    !ensureRequiredAcademicYearSemester(form.academicYear, form.semester)
   ) {
     return
   }
@@ -498,14 +512,14 @@ async function handleGenerate(): Promise<void> {
 }
 .exam-hint {
   font-size: 14px;
-  color: var(--dp-text-secondary, rgba(0, 0, 0, 0.65));
+  color: var(--dp-text-secondary);
   line-height: 32px;
 }
 .semester-dimension-hint {
   flex: 1 1 100%;
   margin: 0 0 4px;
   font-size: 12px;
-  color: var(--dp-text-secondary, rgba(0, 0, 0, 0.65));
+  color: var(--dp-text-secondary);
   line-height: 1.5;
 }
 .diagnosis-header {
@@ -516,7 +530,7 @@ async function handleGenerate(): Promise<void> {
 .diagnosis-rate {
   margin-left: auto;
   font-size: 12px;
-  color: var(--dp-text-secondary, rgba(0, 0, 0, 0.65));
+  color: var(--dp-text-secondary);
 }
 .diagnosis-type {
   font-size: 13px;
@@ -526,15 +540,13 @@ async function handleGenerate(): Promise<void> {
   margin: 4px 0 0;
   font-size: 13px;
   line-height: 1.6;
-  color: var(--dp-text-secondary, rgba(0, 0, 0, 0.75));
+  color: var(--dp-text-secondary);
 }
 .diagnosis-text--hint {
-  color: var(--dp-text-primary, rgba(0, 0, 0, 0.88));
+  color: var(--dp-text-primary);
 }
 .diagnosis-text--muted {
   font-size: 12px;
-  color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
+  color: var(--dp-text-muted);
 }
 </style>
-
-

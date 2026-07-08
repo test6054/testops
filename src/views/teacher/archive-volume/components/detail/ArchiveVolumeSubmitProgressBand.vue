@@ -3,10 +3,8 @@ import type {
   ArchiveVolumeSubmitChecklistItemVO,
   ArchiveVolumeSubmitProgressVO,
 } from '@/apis/mark/archive-volume'
+import { ArchiveVolumeSubmitChecklistPhaseDescription } from '@/apis/mark/archive-volume'
 import { computed, ref, watch } from 'vue'
-import {
-  ArchiveVolumeSubmitChecklistPhaseDescription,
-} from '@/apis/mark/archive-volume'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -17,8 +15,8 @@ defineOptions({ name: 'ArchiveVolumeSubmitProgressBand' })
 
 const props = defineProps<{
   progress?: ArchiveVolumeSubmitProgressVO | null
-  /** 卷级 submitReady，与列表/提交门禁同源，优先于 progress 缓存 */
-  volumeSubmitReady?: boolean
+  /** 与 capabilities.canSubmitVolume 同源，表示当前用户可提交档案馆 */
+  canSubmitVolume?: boolean
   blockingItems?: ArchiveVolumeSubmitChecklistItemVO[]
 }>()
 
@@ -41,7 +39,7 @@ watch(
 
 const pendingCount = computed(() => {
   const fromItems = props.blockingItems?.filter((item) => item.passed !== true).length ?? 0
-  if (props.volumeSubmitReady === false && fromItems > 0) {
+  if (props.canSubmitVolume === false && fromItems > 0) {
     return fromItems
   }
   if (props.progress?.pendingBlockingCount != null) {
@@ -58,7 +56,7 @@ const currentLabel = computed(() => {
     'checklistPhaseKey',
   )
 })
-const submitReady = computed(() => props.volumeSubmitReady === true)
+const submitReady = computed(() => props.canSubmitVolume === true)
 </script>
 
 <template>
@@ -89,14 +87,14 @@ const submitReady = computed(() => props.volumeSubmitReady === true)
 
 <style scoped>
 .archive-volume-submit-progress-band {
-  margin-bottom: var(--dp-space-4, 16px);
+  margin-bottom: var(--dp-space-4);
 }
 
 .archive-volume-submit-progress-band__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-3);
   width: 100%;
 }
 
@@ -104,21 +102,21 @@ const submitReady = computed(() => props.volumeSubmitReady === true)
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 
 .archive-volume-submit-progress-band__label {
   font-size: 13px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 
 .archive-volume-submit-progress-band__step {
   font-size: 15px;
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .archive-volume-submit-progress-band__tasks {
-  margin-top: var(--dp-space-3, 12px);
+  margin-top: var(--dp-space-3);
 }
 </style>

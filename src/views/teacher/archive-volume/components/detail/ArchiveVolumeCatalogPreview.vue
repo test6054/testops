@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import type { ArchiveCatalogStatusCode, ArchiveVolumeCatalogLineVO } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { computed } from 'vue'
+import type {
+  ArchiveCatalogStatusCode,
+  ArchiveVolumeCatalogLineVO,
+} from '@/apis/mark/archive-volume'
 import {
   ARCHIVE_CATALOG_STATUS_TONE,
   ArchiveCatalogStatusDescription,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { computed } from 'vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import {
@@ -51,7 +54,9 @@ const statusTone = computed<BadgeTone>(() => {
         >
           <span class="catalog-seq">{{ entry.lineNo }}</span>
           <span class="catalog-entry__title">{{ entry.title }}</span>
-          <span class="catalog-entry__pages">{{ formatCatalogPreviewPageCount(entry.pageRange) }}</span>
+          <span class="catalog-entry__pages">{{
+            formatCatalogPreviewPageCount(entry.pageRange)
+          }}</span>
           <UiTag v-if="catalogStatus" :tone="statusTone" size="sm">
             {{ statusLabel }}
           </UiTag>
@@ -63,7 +68,7 @@ const statusTone = computed<BadgeTone>(() => {
 
 <style scoped>
 .archive-volume-catalog-preview {
-  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
+  padding: var(--dp-space-3) var(--dp-space-4);
 }
 
 .catalog-entry__title {
@@ -75,8 +80,8 @@ const statusTone = computed<BadgeTone>(() => {
 }
 
 .catalog-entry__pages {
-  font-family: var(--dp-font-mono, ui-monospace, monospace);
-  font-size: var(--dp-type-hint-size, 11px);
+  font-family: var(--dp-font-mono);
+  font-size: var(--dp-type-hint-size);
   color: var(--dp-text-muted);
 }
 </style>

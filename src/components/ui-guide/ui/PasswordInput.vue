@@ -174,10 +174,10 @@ const toggleVisibility = () => {
   align-items: center;
   gap: 8px;
   width: 100%;
-  border-radius: var(--dp-radius-control, 4px);
-  border: 1px solid var(--dp-border, #e5e7eb);
-  background-color: var(--dp-bg-control, #f3f4f6);
-  color: var(--dp-text-primary, #0f172a);
+  border-radius: var(--dp-radius-control);
+  border: 1px solid var(--dp-border);
+  background-color: var(--dp-bg-control);
+  color: var(--dp-text-primary);
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease,
@@ -198,45 +198,45 @@ const toggleVisibility = () => {
 }
 
 .ui-password-input__control::placeholder {
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-password-input--sm {
-  min-height: var(--dp-control-height-sm, 32px);
+  min-height: var(--dp-control-height-sm);
 }
 
 .ui-password-input--md {
-  min-height: var(--dp-control-height-md, 36px);
+  min-height: var(--dp-control-height-md);
 }
 
 .ui-password-input--lg {
-  min-height: var(--dp-control-height-lg, 40px);
+  min-height: var(--dp-control-height-lg);
 }
 
 .ui-password-input:hover {
-  border-color: var(--dp-blue-600, #2563eb);
+  border-color: var(--dp-blue-600);
 }
 
 .ui-password-input:focus-within {
-  border-color: var(--dp-blue-600, #2563eb);
-  box-shadow: 0 0 0 3px var(--dp-focus-ring, rgba(37, 99, 235, 0.25));
+  border-color: var(--dp-blue-600);
+  box-shadow: 0 0 0 3px var(--dp-focus-ring);
 }
 
 .ui-password-input--error {
-  border-color: var(--dp-red-500, #ef4444);
+  border-color: var(--dp-red-500);
 }
 
 .ui-password-input--warning {
-  border-color: var(--dp-orange-500, #f97316);
+  border-color: var(--dp-orange-500);
 }
 
 .ui-password-input--success {
-  border-color: var(--dp-green-500, #22c55e);
+  border-color: var(--dp-green-500);
 }
 
 .ui-password-input--disabled,
 .ui-password-input--readonly {
-  background-color: var(--dp-bg-control-disabled, #eef2f7);
+  background-color: var(--dp-bg-control-disabled);
 }
 
 .ui-password-input--disabled {
@@ -248,7 +248,7 @@ const toggleVisibility = () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
   flex-shrink: 0;
 }
 
@@ -271,7 +271,7 @@ const toggleVisibility = () => {
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
   cursor: pointer;
   transition:
     background-color 0.2s ease,
@@ -281,16 +281,16 @@ const toggleVisibility = () => {
 
 .ui-password-input__toggle:hover,
 .ui-password-input__clear:hover {
-  background: var(--dp-gray-200, #e5e7eb);
-  color: var(--dp-text-primary, #0f172a);
+  background: var(--dp-gray-200);
+  color: var(--dp-text-primary);
 }
 
 .ui-password-input__toggle:focus-visible,
 .ui-password-input__clear:focus-visible {
-  outline: 2px solid var(--dp-blue-600, #2563eb);
+  outline: 2px solid var(--dp-blue-600);
   outline-offset: 1px;
-  background: var(--dp-gray-200, #e5e7eb);
-  color: var(--dp-text-primary, #0f172a);
+  background: var(--dp-gray-200);
+  color: var(--dp-text-primary);
 }
 
 .ui-password-input__toggle {
@@ -303,7 +303,7 @@ const toggleVisibility = () => {
 }
 
 .ui-password-input__toggle--active {
-  color: var(--dp-blue-600, #2563eb);
+  color: var(--dp-blue-600);
 }
 
 .ui-password-input__clear {

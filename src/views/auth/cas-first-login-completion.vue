@@ -172,11 +172,11 @@ import type {
   CasFirstLoginSubmitRequest,
   CasProfileCompletionResponse,
 } from '@/apis/sso'
+import { completeCasFirstLogin, getCasAvailableClasses, getCasFirstLoginContext } from '@/apis/sso'
 import type { UiSelectOption } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { completeCasFirstLogin, getCasAvailableClasses, getCasFirstLoginContext } from '@/apis/sso'
 import AuthLayout from '@/components/AuthLayout/index.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -187,6 +187,7 @@ import { getDefaultRoute } from '@/router/permission'
 import { useAuthStore, useUserStore } from '@/stores'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { shouldEnforcePasswordChange } from '@/utils/password-change-enforcement'
+import { casFirstLoginLockedRoleDescription } from '@/types/enums/cas-first-login-locked-role-enum'
 
 defineOptions({ name: 'CasFirstLoginCompletion' })
 
@@ -200,8 +201,6 @@ interface FieldErrors {
   department: string
   title: string
 }
-
-import { casFirstLoginLockedRoleDescription } from '@/types/enums/cas-first-login-locked-role-enum'
 
 const route = useRoute()
 const router = useRouter()
@@ -449,7 +448,7 @@ void initialize()
   margin: 0;
   font-size: 12px;
   font-weight: 700;
-  color: var(--dp-blue-600, #2563eb);
+  color: var(--dp-blue-600);
 }
 
 .cas-completion__title {
@@ -457,14 +456,14 @@ void initialize()
   font-size: 28px;
   line-height: 1.25;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .cas-completion__subtitle {
   margin: 0;
   font-size: 14px;
   line-height: 1.7;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .cas-completion__panel {
@@ -484,22 +483,22 @@ void initialize()
   flex-direction: column;
   gap: 6px;
   padding: 14px 14px 12px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
 }
 
 .cas-completion__summary-label {
   font-size: 12px;
   line-height: 1.4;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .cas-completion__summary-value {
   font-size: 14px;
   line-height: 1.6;
   font-weight: 700;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
   word-break: break-all;
 }
 
@@ -513,7 +512,7 @@ void initialize()
   margin: 0;
   font-size: 13px;
   line-height: 1.6;
-  color: var(--dp-red-500, #ef4444);
+  color: var(--dp-red-500);
 }
 
 .cas-completion__actions {

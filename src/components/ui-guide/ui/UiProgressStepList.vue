@@ -39,11 +39,7 @@
           <div class="ui-progress-step-list__head">
             <div class="ui-progress-step-list__title-wrap">
               <h4 class="ui-progress-step-list__title">{{ item.title }}</h4>
-              <UiTag
-                :tone="getStatusTone(item.status)"
-                size="sm"
-                variant="outline"
-              >
+              <UiTag :tone="getStatusTone(item.status)" size="sm" variant="outline">
                 {{ item.statusLabel || getStatusLabel(item.status) }}
               </UiTag>
             </div>
@@ -51,7 +47,9 @@
             <div v-if="item.meta" class="ui-progress-step-list__meta">{{ item.meta }}</div>
           </div>
 
-          <p v-if="item.description" class="ui-progress-step-list__description">{{ item.description }}</p>
+          <p v-if="item.description" class="ui-progress-step-list__description">
+            {{ item.description }}
+          </p>
 
           <div
             v-if="item.percent !== undefined || item.helper"
@@ -85,21 +83,24 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  title?: string
-  description?: string
-  eyebrow?: string
-  items?: UiProgressStepItem[]
-  compact?: boolean
-  divided?: boolean
-}>(), {
-  title: '',
-  description: '',
-  eyebrow: '',
-  items: () => [],
-  compact: false,
-  divided: false,
-})
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    description?: string
+    eyebrow?: string
+    items?: UiProgressStepItem[]
+    compact?: boolean
+    divided?: boolean
+  }>(),
+  {
+    title: '',
+    description: '',
+    eyebrow: '',
+    items: () => [],
+    compact: false,
+    divided: false,
+  },
+)
 
 const slots = useSlots()
 
@@ -160,7 +161,8 @@ const isLineDone = (status?: UiProgressStepItem['status']) => {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .ui-progress-step-list {
   display: flex;
   flex-direction: column;
@@ -259,27 +261,27 @@ const isLineDone = (status?: UiProgressStepItem['status']) => {
   font-size: 15px;
   line-height: 1.5;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-progress-step-list__meta,
 .ui-progress-step-list__helper {
   font-size: 12px;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-progress-step-list__description {
   margin: 0;
   font-size: 13px;
   line-height: 1.75;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-progress-step-list__bar {
   width: min(240px, 100%);
 }
 
-@media (max-width: 767px) {
+@media (max-width: bp.$layout-mobile-max) {
   .ui-progress-step-list__head,
   .ui-progress-step-list__footer {
     flex-direction: column;

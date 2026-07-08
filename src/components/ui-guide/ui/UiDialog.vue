@@ -102,8 +102,8 @@ const handleOk = () => {
   justify-content: space-between;
   gap: 12px;
   padding: 20px 24px;
-  background: var(--dp-surface, #ffffff);
-  border-bottom: 1px solid var(--dp-border, #f1f5f9);
+  background: var(--dp-surface);
+  border-bottom: 1px solid var(--dp-border);
 }
 
 .ui-dialog__header-main {
@@ -115,7 +115,7 @@ const handleOk = () => {
   margin: 0;
   font-size: 18px;
   font-weight: 700;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-dialog__close {
@@ -125,9 +125,9 @@ const handleOk = () => {
   width: 32px;
   height: 32px;
   border: none;
-  border-radius: var(--dp-radius-control-inner, 6px);
+  border-radius: var(--dp-radius-control-inner);
   background: transparent;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
   cursor: pointer;
   transition:
     background-color 0.15s ease,
@@ -135,8 +135,8 @@ const handleOk = () => {
 }
 
 .ui-dialog__close:hover {
-  background: var(--dp-bg-control, #f1f5f9);
-  color: var(--dp-text-primary, #0f172a);
+  background: var(--dp-bg-control);
+  color: var(--dp-text-primary);
 }
 
 .ui-dialog__body {
@@ -155,10 +155,10 @@ const handleOk = () => {
 .ui-dialog-wrap {
   .ant-modal-content {
     padding: 0 !important;
-    border-radius: var(--dp-radius-overlay, 8px) !important;
+    border-radius: var(--dp-radius-overlay) !important;
     overflow: hidden !important;
     box-shadow: var(--dp-shadow-modal) !important;
-    border: 1px solid var(--dp-border, #f1f5f9);
+    border: 1px solid var(--dp-border);
   }
 
   .ant-modal-close {

@@ -44,6 +44,7 @@ export function submitChecklistActionLabel(
   }
   if (routeTarget.checklistPhaseKey === 'catalog') return '去编目'
   if (routeTarget.checklistPhaseKey === 'selfCheck') return '去自查'
+  if (routeTarget.checklistPhaseKey === 'departmentReview') return '去院系审核'
   if (routeTarget.checklistPhaseKey === 'submit') return '去提交'
   return '去处理'
 }
@@ -63,6 +64,7 @@ function detailTabToChecklistPhase(
 ): ArchiveVolumeSubmitChecklistPhaseKey {
   if (tab === ArchiveVolumeDetailTabKey.INTEGRITY) return 'integrity'
   if (tab === ArchiveVolumeDetailTabKey.TRANSFER) return 'submit'
+  if (tab === ArchiveVolumeDetailTabKey.DEPARTMENT_REVIEW) return 'departmentReview'
   if (tab === ArchiveVolumeDetailTabKey.SCORES) return 'materials'
   return 'materials'
 }
@@ -81,6 +83,8 @@ function dimensionToChecklistPhase(dimension: string): ArchiveVolumeSubmitCheckl
     case 'SELF_CHECK_FORM':
     case 'SIGN_OFF':
       return 'selfCheck'
+    case 'DEPARTMENT_REVIEW':
+      return 'departmentReview'
     case 'materials':
     case 'integrity':
     case 'submit':
@@ -105,6 +109,8 @@ function dimensionToDetailTab(dimension: string): ArchiveVolumeDetailTabKey {
     case 'SELF_CHECK_FORM':
     case 'SIGN_OFF':
       return ArchiveVolumeDetailTabKey.MATERIALS
+    case 'DEPARTMENT_REVIEW':
+      return ArchiveVolumeDetailTabKey.DEPARTMENT_REVIEW
     default:
       return ArchiveVolumeDetailTabKey.MATERIALS
   }

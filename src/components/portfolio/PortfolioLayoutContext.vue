@@ -30,7 +30,7 @@ function handleScopeChange() {
 
 <style lang="scss" scoped>
 .portfolio-layout-context {
-  padding: var(--dp-space-4, 16px) 24px 0;
+  padding: var(--dp-space-4) 24px 0;
   background: var(--ant-color-bg-container);
   border-bottom: 1px solid var(--ant-color-border-secondary);
 }

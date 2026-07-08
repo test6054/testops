@@ -32,10 +32,10 @@ withDefaults(
 
 <style scoped>
 .ui-page-card {
-  border-radius: var(--dp-radius-panel, 12px);
-  background: var(--dp-surface, #fff);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
   box-shadow: var(--dp-shadow-sm);
-  border: 1px solid var(--dp-border, #f1f5f9);
+  border: 1px solid var(--dp-border);
 }
 
 .ui-page-card :deep(.dp-card__header) {

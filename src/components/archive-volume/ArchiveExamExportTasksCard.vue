@@ -1,12 +1,12 @@
 <script lang="ts" setup>
 import type { ExportTaskResponse } from '@/apis/mark/exam-export'
+import { createExportTask, listExportTasks } from '@/apis/mark/exam-export'
 import type { ExportTypeCode } from '@/types/enums/export-type-enum'
+import { ALL_EXPORT_TYPE_CODES, ExportTypeDescription } from '@/types/enums/export-type-enum'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 
 import { useRouter } from 'vue-router'
-
-import { createExportTask, listExportTasks } from '@/apis/mark/exam-export'
 
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 
@@ -26,8 +26,6 @@ import {
   ExportTaskStatusCode,
   ExportTaskStatusDescription,
 } from '@/types/enums/export-task-status-enum'
-
-import { ALL_EXPORT_TYPE_CODES, ExportTypeDescription } from '@/types/enums/export-type-enum'
 
 import { showUserError } from '@/utils/error-handler'
 
@@ -84,8 +82,8 @@ const busyExportTypes = computed(() => {
 
   for (const task of tasks.value) {
     if (
-      task.taskStatus === ExportTaskStatusCode.PENDING
-      || task.taskStatus === ExportTaskStatusCode.GENERATING
+      task.taskStatus === ExportTaskStatusCode.PENDING ||
+      task.taskStatus === ExportTaskStatusCode.GENERATING
     ) {
       set.add(task.exportType)
     }
@@ -320,17 +318,17 @@ defineExpose({ refresh: loadTasks })
 
   flex-direction: column;
 
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 
-  padding: var(--dp-space-3, 12px);
+  padding: var(--dp-space-3);
 
-  border-bottom: 1px solid var(--dp-border-light, #e2e8f0);
+  border-bottom: 1px solid var(--dp-border-light);
 }
 
 .archive-exam-export-tasks__picker-label {
   font-size: 12px;
 
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 
 .archive-exam-export-tasks__options {
@@ -338,7 +336,7 @@ defineExpose({ refresh: loadTasks })
 
   flex-wrap: wrap;
 
-  gap: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+  gap: var(--dp-space-2) var(--dp-space-3);
 }
 
 .archive-exam-export-tasks__option {
@@ -350,19 +348,19 @@ defineExpose({ refresh: loadTasks })
 
   font-size: 13px;
 
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 
   cursor: pointer;
 }
 
 .archive-exam-export-tasks__option--disabled {
-  color: var(--dp-text-tertiary, #94a3b8);
+  color: var(--dp-text-tertiary);
 
   cursor: not-allowed;
 }
 
 .archive-exam-export-tasks__file {
-  font-family: var(--dp-font-mono, ui-monospace, monospace);
+  font-family: var(--dp-font-mono);
 
   font-size: 12px;
 }

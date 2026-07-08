@@ -1,11 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        title="消息中心"
-      >
+      <ContextBar layout="workbench" show-title title="消息中心">
         <template #status>
           <UiTag tone="blue" size="sm">站内信 + 系统公告</UiTag>
           <UiTag v-if="unreadTotal > 0" tone="red" size="sm">未读 {{ unreadTotal }}</UiTag>
@@ -63,12 +59,7 @@
             @reset="handleInboxReset"
           />
           <div v-if="unreadInboxCount > 0" class="message-tab__mark-all">
-            <UiButton
-              size="sm"
-              variant="outline"
-              :loading="markingAllInbox"
-              @click="markAllInbox"
-            >
+            <UiButton size="sm" variant="outline" :loading="markingAllInbox" @click="markAllInbox">
               全部已读
             </UiButton>
           </div>
@@ -272,15 +263,6 @@ import type {
   InboxMessageListItemDTO,
   PublishedSystemAnnouncementResponse,
 } from '@/apis/edu/message'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { UserDto } from '@/types/api-types.d'
-import BellOutlined from '@ant-design/icons-vue/BellOutlined'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
-import { storeToRefs } from 'pinia'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   confirmReadAnnouncement,
   getInboxMessages,
@@ -293,6 +275,15 @@ import {
   MessageOperationTypeEnum,
   updateMessageStatus,
 } from '@/apis/edu/message'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { UserDto } from '@/types/api-types.d'
+import BellOutlined from '@ant-design/icons-vue/BellOutlined'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { message } from 'ant-design-vue'
+import { storeToRefs } from 'pinia'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -326,7 +317,7 @@ const activeTab = ref<'inbox' | 'announcement'>('inbox')
 // ─── 站内信 ──────────────────────────────────
 const messages = ref<InboxMessageListItemDTO[]>([])
 const loadingMessages = ref(false)
-const inboxFilter = reactive<{ keyword?: string, isRead?: string }>({})
+const inboxFilter = reactive<{ keyword?: string; isRead?: string }>({})
 const messagePageState = reactive({ pageNum: 1, pageSize: 10, total: 0 })
 const messagePagination = computed(() => ({
   current: messagePageState.pageNum,
@@ -665,6 +656,7 @@ function formatMessageType(type: NotificationTypeEnum): string {
     [NotificationTypeEnum.MARK_ARCHIVE_ACCESS_EXPIRED]: '查阅授权到期',
     [NotificationTypeEnum.MARK_ARCHIVE_REMEDIATION_ASSIGNED]: '归档卷整改指派',
     [NotificationTypeEnum.MARK_ARCHIVE_REMEDIATION_RESUBMITTED]: '归档卷整改已重提',
+    [NotificationTypeEnum.MARK_ARCHIVE_COLLECTION_REJECTED]: '归档卷收材驳回',
   }
   return map[type]
 }
@@ -738,7 +730,7 @@ onActivated(() => {
   :deep(.ant-list-item) {
     padding: 14px 16px;
     border: 1px solid var(--ant-color-border-secondary);
-    border-radius: var(--dp-radius-panel, 6px);
+    border-radius: var(--dp-radius-panel);
     margin-bottom: 10px;
     transition:
       border-color 0.2s ease,

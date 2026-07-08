@@ -141,8 +141,6 @@
         </UiDataTable>
       </div>
     </WorkbenchSurfaceCard>
-
-    <ArchiveVolumeListNextStepsPanel variant="statistics" />
   </StageWorkbenchShell>
 </template>
 
@@ -156,11 +154,6 @@ import type {
   ArchiveVolumeDestructionLedgerRowResponse,
   ArchiveVolumeStatisticsResponse,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   ARCHIVE_DESTRUCTION_STATUS_TONE,
   ArchiveDestructionStatusDescription,
@@ -170,6 +163,11 @@ import {
   getArchiveVolumeStatistics,
   pageDestructionLedger,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -184,26 +182,26 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { SemesterOptions } from '@/types/enums/semester-enum'
-import { getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
 import {
-  buildOptionalAcademicYearSemesterQuery,
-  ensureAcademicYearSemesterPair,
-} from '@/utils/academic-year-semester-query'
+  applyAcademicYearStartYearChange,
+  buildAcademicYearSemesterTripleFilterFields,
+  buildTriplePeriodQuery,
+  createAcademicYearSemesterTripleDefaults,
+  ensureTriplePeriodPair,
+  resetAcademicYearSemesterTriple,
+} from '@/utils/academic-year-semester-triple-filter'
 import { downloadArchiveExcelBase64 } from '@/utils/archive-excel-export'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import ArchiveVolumeListNextStepsPanel from '@/views/teacher/archive-volume/components/ArchiveVolumeListNextStepsPanel.vue'
 
 defineOptions({ name: 'TeacherArchiveVolumeStatistics' })
 
 const router = useRouter()
-const { grantsLoadFailed, listScopedDepartmentIds, filterListDepartmentOptions, loadGrants }
-  = useArchiveDutyAccess()
+const { grantsLoadFailed, listScopedDepartmentIds, filterListDepartmentOptions, loadGrants } =
+  useArchiveDutyAccess()
 
 const statsTab = ref('overview')
-const defaultYearSemester = getDefaultAcademicYearAndSemester()
 const statsTabs = [
   { key: 'overview', label: '迎评统计' },
   { key: 'destruction', label: '销毁清册' },
@@ -214,17 +212,17 @@ const exportDestructionLoading = ref(false)
 const destructionLoading = ref(false)
 const statistics = ref<ArchiveVolumeStatisticsResponse | null>(null)
 const destructionRows = ref<ArchiveVolumeDestructionLedgerRowResponse[]>([])
-const departmentOptions = ref<Array<{ value: string, label: string }>>([])
+const departmentOptions = ref<Array<{ value: string; label: string }>>([])
 
 interface ArchiveVolumeStatisticsFilterForm extends Record<string, unknown> {
-  academicYear: string | undefined
+  academicYearStartYear: number | undefined
+  academicYearEndYear: number | undefined
   semester: SemesterCode | undefined
   departmentId: string | undefined
 }
 
 const filterForm = reactive<ArchiveVolumeStatisticsFilterForm>({
-  academicYear: defaultYearSemester.academicYear,
-  semester: defaultYearSemester.semester,
+  ...createAcademicYearSemesterTripleDefaults(true),
   departmentId: undefined,
 })
 const filterModel = computed<Record<string, unknown>>({
@@ -257,15 +255,7 @@ const scopedDepartmentOptions = computed(() => filterListDepartmentOptions(depar
 const departmentFilterDisabled = computed(() => listScopedDepartmentIds.value.length === 1)
 
 const filterFields = computed<FilterField[]>(() => [
-  { key: 'academicYear', label: '学年', type: 'input', placeholder: '2024-2025' },
-  {
-    key: 'semester',
-    label: '学期',
-    type: 'select',
-    placeholder: '全部学期',
-    allowClear: true,
-    options: SemesterOptions.map((item) => ({ label: item.label, value: item.value })),
-  },
+  ...buildAcademicYearSemesterTripleFilterFields(),
   {
     key: 'departmentId',
     label: '学院',
@@ -348,7 +338,7 @@ const overviewAnalyticsCards = computed<OverviewAnalyticsCard[]>(() => {
   return [
     {
       key: 'total',
-      label: '归档卷总数',
+      label: '归档任务总数',
       displayValue: totalCount,
       signalValue: totalCount,
       unit: '卷',
@@ -454,10 +444,7 @@ async function loadDepartments() {
 }
 
 function buildStatisticsRequest() {
-  const query = buildOptionalAcademicYearSemesterQuery(
-    filterForm.academicYear,
-    filterForm.semester,
-  )
+  const query = buildTriplePeriodQuery(filterForm)
   if (query === null) {
     return null
   }
@@ -468,7 +455,7 @@ function buildStatisticsRequest() {
 }
 
 async function loadStatistics() {
-  if (!ensureAcademicYearSemesterPair(filterForm.academicYear, filterForm.semester)) {
+  if (!ensureTriplePeriodPair(filterForm)) {
     return
   }
   const request = buildStatisticsRequest()
@@ -506,8 +493,7 @@ async function loadDestructionLedger() {
 }
 
 function handleReset() {
-  filterForm.academicYear = defaultYearSemester.academicYear
-  filterForm.semester = defaultYearSemester.semester
+  resetAcademicYearSemesterTriple(filterForm, true)
   filterForm.departmentId = departmentFilterDisabled.value
     ? listScopedDepartmentIds.value[0]
     : undefined
@@ -529,7 +515,7 @@ function goList() {
 }
 
 async function exportOverviewExcel() {
-  if (!ensureAcademicYearSemesterPair(filterForm.academicYear, filterForm.semester)) {
+  if (!ensureTriplePeriodPair(filterForm)) {
     return
   }
   const request = buildStatisticsRequest()
@@ -571,11 +557,9 @@ watch(statsTab, (tab) => {
 })
 
 watch(
-  () => filterForm.academicYear,
-  (academicYear) => {
-    if (!academicYear?.trim()) {
-      filterForm.semester = undefined
-    }
+  () => filterForm.academicYearStartYear,
+  (startYear) => {
+    applyAcademicYearStartYearChange(filterForm, startYear)
   },
 )
 
@@ -585,7 +569,7 @@ async function initPage() {
     return
   }
   await loadDepartments()
-  if (filterForm.academicYear && filterForm.semester) {
+  if (filterForm.academicYearStartYear != null && filterForm.semester) {
     await loadStatistics()
   }
 }
@@ -595,23 +579,24 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .archive-volume-statistics__tabs {
-  margin-top: var(--dp-space-2, 8px);
+  margin-top: var(--dp-space-2);
 }
 
 .archive-volume-statistics__export {
-  margin-top: var(--dp-space-2, 8px);
+  margin-top: var(--dp-space-2);
 }
 
 .archive-volume-statistics__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--dp-space-4, 16px);
-  margin-top: var(--dp-space-4, 16px);
+  gap: var(--dp-space-4);
+  margin-top: var(--dp-space-4);
 }
 
-@media (max-width: 1024px) {
+@media (max-width: bp.$shell-tablet-max) {
   .archive-volume-statistics__grid {
     grid-template-columns: 1fr;
   }

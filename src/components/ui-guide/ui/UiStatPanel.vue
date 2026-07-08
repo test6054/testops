@@ -90,7 +90,8 @@ const hasHeader = computed(() => {
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .ui-stat-panel {
   display: flex;
   flex-direction: column;
@@ -135,7 +136,7 @@ const hasHeader = computed(() => {
   gap: 10px;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: #{bp.$ant-grid-xl - 1px}) {
   .ui-stat-panel--grid .ui-stat-panel__list,
   .ui-stat-panel--compact .ui-stat-panel__list,
   .ui-stat-panel--strip .ui-stat-panel__list {
@@ -143,7 +144,7 @@ const hasHeader = computed(() => {
   }
 }
 
-@media (max-width: 767px) {
+@media (max-width: bp.$layout-mobile-max) {
   .ui-stat-panel--grid .ui-stat-panel__list,
   .ui-stat-panel--compact .ui-stat-panel__list,
   .ui-stat-panel--strip .ui-stat-panel__list {

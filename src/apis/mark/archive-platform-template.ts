@@ -62,6 +62,9 @@ export interface ArchiveTenantTemplateSetResponse {
   forkSourceReleaseTag?: string
   releaseTag?: string
   description?: string
+  defaultPermanentRetention?: boolean
+  defaultRetentionYears?: number
+  retentionPolicyLabel?: string
   /** 模板作用域：PLATFORM 平台母版 / TENANT 本校副本 */
   templateScope: ArchiveTemplateScopeCode
   materialItems?: ArchiveMaterialCatalogTemplateResponse[]
@@ -109,6 +112,9 @@ export interface ArchiveTenantTemplateSetSaveRequest {
   templateSetCode: string
   templateSetName: string
   examForm: ArchiveExamFormCode
+  defaultPermanentRetention?: boolean
+  defaultRetentionYears?: number
+  retentionPolicyLabel?: string
   materialItems: ArchiveTenantTemplateMaterialItemRequest[]
   selfCheckItems: ArchiveTenantTemplateSelfCheckItemRequest[]
 }

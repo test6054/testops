@@ -94,16 +94,17 @@ const hasStats = computed(() => {
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .ui-page-hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 20px;
   padding: 24px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
-  box-shadow: var(--dp-shadow-card, 0 10px 30px rgba(15, 23, 42, 0.06));
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-card);
 }
 
 .ui-page-hero--compact {
@@ -130,7 +131,7 @@ const hasStats = computed(() => {
 .ui-page-hero__eyebrow {
   font-size: 12px;
   font-weight: 600;
-  color: var(--dp-blue-700, #1d4ed8);
+  color: var(--dp-blue-700);
 }
 
 .ui-page-hero__title-row {
@@ -145,7 +146,7 @@ const hasStats = computed(() => {
   font-size: 20px;
   line-height: 1.3;
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-page-hero__badges,
@@ -161,7 +162,7 @@ const hasStats = computed(() => {
   margin: 0;
   font-size: 16px;
   font-weight: 700;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-page-hero__description,
@@ -169,7 +170,7 @@ const hasStats = computed(() => {
   margin: 0;
   font-size: 14px;
   line-height: 1.75;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-page-hero__stats {
@@ -183,15 +184,15 @@ const hasStats = computed(() => {
   display: grid;
   gap: 6px;
   padding: 14px 16px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface-subtle, #f8fafc);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface-subtle);
 }
 
 .ui-page-hero__stat-label {
   font-size: 12px;
   font-weight: 700;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-page-hero__stat-value {
@@ -225,7 +226,7 @@ const hasStats = computed(() => {
 }
 
 .ui-page-hero__stat-value--purple {
-  color: var(--dp-purple-500, #722ed1);
+  color: var(--dp-purple-500);
 }
 
 .ui-page-hero__side {
@@ -253,7 +254,7 @@ const hasStats = computed(() => {
   }
 }
 
-@media (max-width: 767px) {
+@media (max-width: bp.$layout-mobile-max) {
   .ui-page-hero {
     padding: 20px;
   }

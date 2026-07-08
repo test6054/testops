@@ -1,0 +1,5 @@
+/**
+ * mark-vue 全局 CSS 层叠顺序（方案 A）。
+ * 所有全局样式必须落入下列 layer；禁止写入 unlayered 全局规则（Vue SFC scoped 除外）。
+ */
+@layer ant-base, dp-base, dp-tokens, dp-components, ant-overrides, tailwind-utilities;

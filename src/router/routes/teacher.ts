@@ -39,8 +39,8 @@ export const teacherRoutes: RouteRecordRaw[] = [
           hideInMenu: false,
           keepAlive: true,
           menuGroup: 'marking-workbench',
-          menuGroupTitle: '考试阅卷',
-          menuGroupIcon: 'audit',
+          menuGroupTitle: '工作台',
+          menuGroupIcon: 'dashboard',
           menuGroupOrder: 1,
         },
       },
@@ -55,21 +55,14 @@ export const teacherRoutes: RouteRecordRaw[] = [
           hideInMenu: false,
           keepAlive: true,
           menuGroup: 'marking-workbench',
-          menuGroupTitle: '考试阅卷',
-          menuGroupIcon: 'audit',
+          menuGroupTitle: '工作台',
+          menuGroupIcon: 'dashboard',
           menuGroupOrder: 1,
         },
       },
       {
         path: 'exam-create',
-        name: 'TeacherExamCreate',
-        component: () => import('@/views/teacher/exam-create/exam-create.vue'),
-        meta: {
-          title: '新建考试',
-          roles: TEACHER_ROLES,
-          hideInMenu: true,
-          activeMenu: '/teacher/exam-list',
-        },
+        redirect: { name: 'TeacherCreateExam' },
       },
       {
         path: 'archive-volumes',
@@ -92,14 +85,18 @@ export const teacherRoutes: RouteRecordRaw[] = [
         name: 'TeacherArchiveVolumeSettings',
         component: () => import('@/views/teacher/archive-volume/archive-volume-settings.vue'),
         props: route => ({
-          initialTab: typeof route.query.settingsTab === 'string' ? route.query.settingsTab : undefined,
+          initialTab: typeof route.query.settingsTab === 'string'
+            ? route.query.settingsTab
+            : typeof route.query.tab === 'string'
+              ? route.query.tab
+              : undefined,
         }),
         meta: {
           title: '归档配置',
           roles: TEACHER_ROLES,
           hideInMenu: true,
           keepAlive: true,
-          activeMenu: '/teacher/archive-volumes',
+          activeMenu: '/teacher/archive-volumes/settings',
         },
       },
       {
@@ -110,9 +107,13 @@ export const teacherRoutes: RouteRecordRaw[] = [
           title: '材料检索',
           roles: TEACHER_ROLES,
           icon: 'search',
-          hideInMenu: true,
+          hideInMenu: false,
           keepAlive: true,
-          activeMenu: '/teacher/archive-volumes',
+          menuGroup: 'archive-workbench',
+          menuGroupTitle: '课程考核归档',
+          menuGroupIcon: 'container',
+          menuGroupOrder: 2,
+          activeMenu: '/teacher/archive-volumes/search',
         },
       },
       {
@@ -188,28 +189,22 @@ export const teacherRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'archive-volumes/create',
+        redirect: { name: 'TeacherCreateArchiveTask' },
+      },
+      {
         path: 'archive-volumes/create-offline',
-        name: 'TeacherArchiveVolumeCreateOffline',
-        component: () => import('@/views/teacher/archive-volume/archive-volume-create-offline/archive-volume-create-offline.vue'),
-        meta: {
-          title: '线下建卷',
-          roles: TEACHER_ROLES,
-          hideInMenu: true,
-          noCache: true,
-          activeMenu: '/teacher/archive-volumes',
-        },
+        redirect: (to) => ({
+          name: 'TeacherCreateArchiveTask',
+          query: { ...to.query, provenance: 'CURRENT_TERM_OFFLINE' },
+        }),
       },
       {
         path: 'archive-volumes/create-supplement',
-        name: 'TeacherArchiveVolumeCreateSupplement',
-        component: () => import('@/views/teacher/archive-volume/archive-volume-create-supplement/archive-volume-create-supplement.vue'),
-        meta: {
-          title: '补录建卷',
-          roles: TEACHER_ROLES,
-          hideInMenu: true,
-          noCache: true,
-          activeMenu: '/teacher/archive-volumes',
-        },
+        redirect: (to) => ({
+          name: 'TeacherCreateArchiveTask',
+          query: { ...to.query, provenance: 'HISTORICAL_DIGITIZE' },
+        }),
       },
       {
         path: 'archive-volumes/remediation/:taskId',
@@ -249,6 +244,10 @@ export const teacherRoutes: RouteRecordRaw[] = [
           icon: 'cloud-upload',
           hideInMenu: false,
           keepAlive: true,
+          menuGroup: 'quality-admin',
+          menuGroupTitle: '系统管理',
+          menuGroupIcon: 'setting',
+          menuGroupOrder: 5,
         },
       },
       {

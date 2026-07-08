@@ -14,18 +14,32 @@
 
     <WorkbenchSurfaceCard flush class="archive-readiness-matrix">
       <template #toolbar>
-        <AnalysisSemesterSelect
-          v-model:academic-year="filterModel.endAcademicYear"
-          v-model:semester="filterModel.endSemester"
-          :allow-clear="false"
-          :default-recent-semester-count="4"
-        />
-        <a-select
-          v-model:value="filterModel.termCount"
-          :options="termCountOptions"
-          style="width: 120px"
-        />
-        <UiButton size="sm" @click="loadMatrix">查询</UiButton>
+        <div class="archive-readiness-matrix__filters">
+          <a-select
+            v-model:value="filterForm.academicYearStartYear"
+            :options="academicYearStartOptions"
+            placeholder="起始年"
+            style="width: 140px"
+          />
+          <a-input
+            :value="filterForm.academicYearEndYear"
+            disabled
+            style="width: 100px"
+            placeholder="结束年"
+          />
+          <a-select
+            v-model:value="filterForm.semester"
+            :options="SemesterOptions"
+            placeholder="学期"
+            style="width: 120px"
+          />
+          <a-select
+            v-model:value="filterForm.termCount"
+            :options="termCountOptions"
+            style="width: 120px"
+          />
+          <UiButton size="sm" @click="loadMatrix">查询</UiButton>
+        </div>
       </template>
 
       <UiSkeletonState v-if="loading" variant="card" compact />
@@ -49,21 +63,27 @@
                 {{ formatReadinessRate(termCell(record, column.key)?.storedRate) }}
               </span>
               <div class="archive-readiness-matrix__cell-sub">
-                入库 {{ termCell(record, column.key)?.storedCount ?? 0 }}/{{ termCell(record, column.key)?.totalVolumeCount ?? 0 }}
+                入库 {{ termCell(record, column.key)?.storedCount ?? 0 }}/{{
+                  termCell(record, column.key)?.totalVolumeCount ?? 0
+                }}
               </div>
               <div class="archive-readiness-matrix__cell-sub">
-                完整性通过率 {{ formatReadinessRate(invertReadinessRate(termCell(record, column.key)?.integrityFailedRate)) }}
+                完整性通过率
+                {{
+                  formatReadinessRate(
+                    invertReadinessRate(termCell(record, column.key)?.integrityFailedRate),
+                  )
+                }}
               </div>
               <div class="archive-readiness-matrix__cell-sub">
-                四性通过率 {{ formatReadinessRate(termCell(record, column.key)?.fourPropertyPassedRate) }}
+                四性通过率
+                {{ formatReadinessRate(termCell(record, column.key)?.fourPropertyPassedRate) }}
               </div>
             </div>
           </template>
         </template>
       </UiDataTable>
     </WorkbenchSurfaceCard>
-
-    <ArchiveVolumeListNextStepsPanel variant="readiness-matrix" />
   </StageWorkbenchShell>
 </template>
 
@@ -74,12 +94,12 @@ import type {
   ArchiveReadinessMatrixResponse,
   ArchiveReadinessTermColumnVO,
 } from '@/apis/mark/archive-volume'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import { computed, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { getSupervisionReadinessMatrix } from '@/apis/mark/archive-volume'
-import AnalysisSemesterSelect from '@/components/mark/AnalysisSemesterSelect.vue'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { formatAcademicYearSemester, SemesterOptions } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -88,15 +108,19 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
-import { formatAcademicYearSemester } from '@/types/enums/semester-enum'
-import { buildRequiredAcademicYearSemesterQuery } from '@/utils/academic-year-semester-query'
+import { generateAcademicYearStartOptions } from '@/utils/academic-year'
+import {
+  applyAcademicYearStartYearChange,
+  createAcademicYearSemesterTripleDefaults,
+  ensureTriplePeriodPair,
+  resolveAcademicYearFromTriple,
+} from '@/utils/academic-year-semester-triple-filter'
 import {
   formatReadinessRate,
   invertReadinessRate,
   readinessRateCellClass,
 } from '@/utils/archive-readiness-matrix-ui'
 import { showUserError } from '@/utils/error-handler'
-import ArchiveVolumeListNextStepsPanel from '@/views/teacher/archive-volume/components/ArchiveVolumeListNextStepsPanel.vue'
 
 defineOptions({ name: 'ArchiveVolumeReadinessMatrix' })
 
@@ -104,13 +128,18 @@ const router = useRouter()
 const loading = ref(false)
 const matrix = ref<ArchiveReadinessMatrixResponse | null>(null)
 
-const filterModel = reactive<{
-  endAcademicYear: string | undefined
-  endSemester: SemesterCode | undefined
+const academicYearStartOptions = generateAcademicYearStartOptions().map((year) => ({
+  label: `${year} 年`,
+  value: year,
+}))
+
+const filterForm = reactive<{
+  academicYearStartYear: number | undefined
+  academicYearEndYear: number | undefined
+  semester: SemesterCode | undefined
   termCount: number
 }>({
-  endAcademicYear: undefined,
-  endSemester: undefined,
+  ...createAcademicYearSemesterTripleDefaults(true),
   termCount: 4,
 })
 
@@ -133,7 +162,13 @@ function termColumnKey(term: ArchiveReadinessTermColumnVO) {
 
 const tableColumns = computed<ColumnsType<ReadinessTableRow>>(() => {
   const columns: ColumnsType<ReadinessTableRow> = [
-    { title: '院系', dataIndex: 'departmentName', key: 'departmentName', width: 140, fixed: 'left' },
+    {
+      title: '院系',
+      dataIndex: 'departmentName',
+      key: 'departmentName',
+      width: 140,
+      fixed: 'left',
+    },
     { title: '课程', dataIndex: 'courseName', key: 'courseName', width: 180, fixed: 'left' },
   ]
   for (const term of matrix.value?.termColumns ?? []) {
@@ -176,10 +211,12 @@ function termKey(columnKey: string) {
 }
 
 function isArchiveReadinessCell(value: unknown): value is ArchiveReadinessCellVO {
-  return typeof value === 'object'
-    && value !== null
-    && 'storedCount' in value
-    && 'totalVolumeCount' in value
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'storedCount' in value &&
+    'totalVolumeCount' in value
+  )
 }
 
 function termCell(record: ReadinessTableRow, key: unknown): ArchiveReadinessCellVO | undefined {
@@ -199,33 +236,51 @@ function goList() {
 }
 
 async function loadMatrix() {
-  const termQuery = buildRequiredAcademicYearSemesterQuery(
-    filterModel.endAcademicYear,
-    filterModel.endSemester,
-  )
-  if (!termQuery) {
+  if (!ensureTriplePeriodPair(filterForm)) {
+    matrix.value = null
+    return
+  }
+  const endAcademicYear = resolveAcademicYearFromTriple(filterForm)
+  if (!endAcademicYear || !filterForm.semester) {
     matrix.value = null
     return
   }
   loading.value = true
   try {
     matrix.value = await getSupervisionReadinessMatrix({
-      endAcademicYear: termQuery.academicYear,
-      endSemester: termQuery.semester,
-      termCount: filterModel.termCount,
+      endAcademicYear,
+      endSemester: filterForm.semester,
+      termCount: filterForm.termCount,
     })
-  }
-  catch (error) {
+  } catch (error) {
     matrix.value = null
     showUserError(error, '加载就绪度矩阵失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
+
+watch(
+  () => filterForm.academicYearStartYear,
+  (startYear) => {
+    applyAcademicYearStartYearChange(filterForm, startYear)
+  },
+)
+
+onMounted(() => {
+  void loadMatrix()
+})
 </script>
 
 <style scoped>
+.archive-readiness-matrix__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+}
+
 .archive-readiness-matrix__table {
   margin-top: 8px;
 }
@@ -235,7 +290,7 @@ async function loadMatrix() {
 }
 
 .archive-readiness-matrix__cell-sub {
-  color: var(--dp-text-muted, #64748b);
+  color: var(--dp-text-muted);
   font-size: 12px;
 }
 </style>

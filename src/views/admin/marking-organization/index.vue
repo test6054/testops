@@ -258,16 +258,12 @@
  */
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { RouteLocationRaw } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import type {
   MarkingOrganizationResponse,
   OrganizationCreateRequest,
   OrganizationUpdateRequest,
 } from '@/apis/mark/marking-organization'
-import type { SignalMetric } from '@/types/workbench'
-import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, inject, onActivated, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   createOrganization,
   deleteOrganization,
@@ -277,6 +273,10 @@ import {
   requireMarkingOrganizationId,
   updateOrganization,
 } from '@/apis/mark/marking-organization'
+import type { SignalMetric } from '@/types/workbench'
+import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, inject, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -309,8 +309,8 @@ defineOptions({ name: 'AdminMarkingOrganizationIndex' })
 const router = useRouter()
 const route = useRoute()
 
-const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
-  = useOptionalExamJourneyContextBar('阅卷安排')
+const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useOptionalExamJourneyContextBar('阅卷安排')
 
 const {
   examOptions,
@@ -650,7 +650,7 @@ onActivated(() => {
     gap: 8px;
     font-size: 16px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__exam-select {
@@ -662,8 +662,8 @@ onActivated(() => {
   }
 
   &__panel {
-    background: var(--dp-surface, #fff);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
     padding: 16px;
 
@@ -685,7 +685,7 @@ onActivated(() => {
     margin: 0;
     font-size: 14px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
     display: flex;
     align-items: center;
     gap: 6px;
@@ -699,7 +699,7 @@ onActivated(() => {
     margin: 0 0 8px;
     font-size: 15px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -710,7 +710,7 @@ onActivated(() => {
     margin: 8px 0 16px;
     font-size: 14px;
     line-height: 1.5;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
   }
 
   &__descriptions {
@@ -718,7 +718,7 @@ onActivated(() => {
 
     :deep(.ant-descriptions-item-label) {
       width: 140px;
-      color: var(--dp-text-secondary, #475569);
+      color: var(--dp-text-secondary);
     }
   }
 
@@ -727,7 +727,7 @@ onActivated(() => {
     gap: 8px;
     margin-top: 16px;
     padding-top: 16px;
-    border-top: 1px solid var(--dp-border-light, #f1f5f9);
+    border-top: 1px solid var(--dp-border-light);
   }
 
   &__hint {
@@ -737,7 +737,7 @@ onActivated(() => {
   &__switch-hint {
     margin-left: 8px;
     font-size: 12px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 }
 </style>

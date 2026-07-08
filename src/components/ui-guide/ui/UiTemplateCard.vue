@@ -121,13 +121,13 @@ const resolveDuration = (durationDays?: number) => {
 .ui-template-card__meta-label,
 .ui-template-card__footer-text {
   font-size: 12px;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-template-card__meta-value {
   font-size: 13px;
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -145,7 +145,7 @@ const resolveDuration = (durationDays?: number) => {
   justify-content: space-between;
   gap: 12px;
   padding: 10px 12px;
-  background: var(--dp-gray-50, #f8fafc);
+  background: var(--dp-gray-50);
   border-radius: 10px;
 }
 
@@ -154,19 +154,19 @@ const resolveDuration = (durationDays?: number) => {
   flex: 1;
   font-size: 13px;
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-template-card__stage-duration,
 .ui-template-card__stage-empty {
   flex-shrink: 0;
   font-size: 12px;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-template-card__stage-empty {
   padding: 14px 12px;
-  border: 1px dashed var(--dp-border, #e5e7eb);
+  border: 1px dashed var(--dp-border);
   border-radius: 10px;
   text-align: center;
 }

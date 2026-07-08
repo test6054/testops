@@ -64,8 +64,8 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import type { UiSessionListItem } from './types'
 import { computed, useSlots } from 'vue'
+import type { UiSessionListItem } from './types'
 import UiBadge from './Badge.vue'
 import UiEmpty from './Empty.vue'
 import UiTag from './Tag.vue'
@@ -135,7 +135,8 @@ const listStyle = computed<CSSProperties | undefined>(() => {
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .ui-session-list-panel {
   display: flex;
   flex-direction: column;
@@ -143,10 +144,10 @@ const listStyle = computed<CSSProperties | undefined>(() => {
   min-width: 0;
   height: 100%;
   padding: 18px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
-  box-shadow: var(--dp-shadow-card, 0 10px 30px rgba(15, 23, 42, 0.06));
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-card);
 }
 
 .ui-session-list-panel__items {
@@ -161,8 +162,8 @@ const listStyle = computed<CSSProperties | undefined>(() => {
   gap: 12px;
   min-width: 0;
   padding: 14px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
   background: #fff;
   cursor: pointer;
   transition:
@@ -174,12 +175,12 @@ const listStyle = computed<CSSProperties | undefined>(() => {
 
 .ui-session-list-panel__item:hover {
   background: #f8fafc;
-  border-color: var(--dp-border-strong, #d0d5dd);
+  border-color: var(--dp-border-strong);
 }
 
 .ui-session-list-panel__item--active {
-  border-color: var(--dp-blue-200, #bfdbfe);
-  background: var(--dp-blue-50, #eff6ff);
+  border-color: var(--dp-blue-200);
+  background: var(--dp-blue-50);
 }
 
 .ui-session-list-panel__main,
@@ -212,13 +213,13 @@ const listStyle = computed<CSSProperties | undefined>(() => {
   min-width: 0;
   font-size: 14px;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-session-list-panel__helper {
   font-size: 12px;
   line-height: 1.6;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-session-list-panel__side {
@@ -229,7 +230,7 @@ const listStyle = computed<CSSProperties | undefined>(() => {
   flex-shrink: 0;
 }
 
-@media (max-width: 767px) {
+@media (max-width: bp.$layout-mobile-max) {
   .ui-session-list-panel__item {
     flex-direction: column;
     align-items: flex-start;

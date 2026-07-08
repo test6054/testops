@@ -302,20 +302,20 @@ onMounted(() => {
   align-items: center;
   gap: 6px;
   padding: 10px 14px;
-  background: var(--dp-blue-50, #eff6ff);
+  background: var(--dp-blue-50);
   border: 1px solid rgba(37, 99, 235, 0.15);
-  border-radius: var(--dp-radius-control, 4px);
-  color: var(--dp-text-secondary, #475569);
+  border-radius: var(--dp-radius-control);
+  color: var(--dp-text-secondary);
   font-size: 13px;
   line-height: 1.5;
 
   .hint-icon {
     flex-shrink: 0;
-    color: var(--dp-blue-600, #2563eb);
+    color: var(--dp-blue-600);
   }
 
   a {
-    color: var(--dp-blue-600, #2563eb);
+    color: var(--dp-blue-600);
     cursor: pointer;
     white-space: nowrap;
     font-weight: 500;
@@ -331,10 +331,10 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  background: var(--dp-red-50, #fef2f2);
+  background: var(--dp-red-50);
   border: 1px solid rgba(239, 68, 68, 0.2);
-  border-radius: var(--dp-radius-control, 4px);
-  color: var(--dp-red-500, #ef4444);
+  border-radius: var(--dp-radius-control);
+  color: var(--dp-red-500);
   font-size: 13px;
   line-height: 1.5;
 

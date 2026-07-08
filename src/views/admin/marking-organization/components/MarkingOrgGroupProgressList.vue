@@ -34,7 +34,10 @@
           </div>
           <span class="org-group-progress__percent">{{ progressPercent(group.id) }}%</span>
         </div>
-        <div v-if="canManage && group.groupStatus !== QuestionMarkingGroupStatusCode.GROUP_CLOSED" class="org-group-progress__actions">
+        <div
+          v-if="canManage && group.groupStatus !== QuestionMarkingGroupStatusCode.GROUP_CLOSED"
+          class="org-group-progress__actions"
+        >
           <UiButton variant="ghost" size="sm" @click="emit('edit-group', group.id)">编辑</UiButton>
         </div>
       </li>
@@ -44,11 +47,11 @@
 
 <script lang="ts" setup>
 import type { QuestionMarkingGroupResponse } from '@/apis/mark/marking-organization'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import {
   QUESTION_GROUP_STATUS_TONE,
   QuestionMarkingGroupStatusDescription,
 } from '@/apis/mark/marking-organization'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -173,14 +176,14 @@ function groupStatusLabel(status: QuestionMarkingGroupStatusCode): string {
     flex: 1;
     height: 4px;
     border-radius: 2px;
-    background: var(--dp-surface-sunken, #e2e8f0);
+    background: var(--dp-surface-sunken);
     overflow: hidden;
   }
 
   &__bar-fill {
     height: 100%;
     border-radius: 2px;
-    background: var(--dp-color-primary, #2563eb);
+    background: var(--dp-color-primary);
     transition: width 0.2s ease;
   }
 

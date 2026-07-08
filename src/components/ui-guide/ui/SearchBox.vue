@@ -76,11 +76,11 @@ const handleSearch = () => {
 
 .dp-search-box .ant-input-affix-wrapper {
   min-height: 36px;
-  border-radius: var(--dp-radius-control, 4px);
-  border: 1px solid var(--dp-border, #e5e7eb);
-  background-color: var(--dp-bg-control, #f3f4f6);
+  border-radius: var(--dp-radius-control);
+  border: 1px solid var(--dp-border);
+  background-color: var(--dp-bg-control);
   font-size: 14px;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease,
@@ -88,29 +88,29 @@ const handleSearch = () => {
 }
 
 .dp-search-box .ant-input-affix-wrapper:hover {
-  border-color: var(--dp-blue-600, #2563eb);
+  border-color: var(--dp-blue-600);
 }
 
 .dp-search-box .ant-input-affix-wrapper-focused {
-  border-color: var(--dp-blue-600, #2563eb);
-  box-shadow: 0 0 0 3px var(--dp-focus-ring, rgba(37, 99, 235, 0.25));
+  border-color: var(--dp-blue-600);
+  box-shadow: 0 0 0 3px var(--dp-focus-ring);
 }
 
 .dp-search-box .ant-input {
   background-color: transparent;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .dp-search-box .ant-input::placeholder {
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .dp-search-box .ant-input-prefix {
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
   margin-right: 8px;
 }
 
 .dp-search-box .ant-input-affix-wrapper-disabled {
-  background: var(--dp-bg-control-disabled, #eef2f7);
+  background: var(--dp-bg-control-disabled);
 }
 </style>

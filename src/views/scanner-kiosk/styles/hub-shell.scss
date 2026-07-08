@@ -1,3 +1,4 @@
+@use '../../../styles/breakpoints' as bp;
 .hub-shell {
   display: flex;
   flex-direction: column;
@@ -116,7 +117,7 @@
 }
 
 .hub-shell__panel {
-  max-width: 1200px;
+  max-width: #{bp.$ant-grid-xl - 1px};
   margin: 0 auto;
   padding: var(--kiosk-space-6);
   background: var(--kiosk-surface);
@@ -452,7 +453,7 @@
   background: var(--kiosk-primary-soft);
 }
 
-@media (max-width: 1024px) {
+@media (max-width: bp.$shell-tablet-max) {
   .hub-shell__bar {
     grid-template-columns: 1fr auto;
   }

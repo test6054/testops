@@ -152,16 +152,16 @@ defineExpose({
 .archive-exam-score-gate-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-3);
 }
 
 .archive-exam-score-gate-panel__row {
   display: flex;
   align-items: flex-start;
-  gap: var(--dp-space-3, 12px);
-  padding: var(--dp-space-3, 12px);
-  border-radius: var(--dp-radius-md, 8px);
-  background: var(--dp-surface-sunken, #f8fafc);
+  gap: var(--dp-space-3);
+  padding: var(--dp-space-3);
+  border-radius: var(--dp-radius-md);
+  background: var(--dp-surface-sunken);
 }
 
 .archive-exam-score-gate-panel__check {
@@ -176,19 +176,19 @@ defineExpose({
 
   &--pass {
     color: #fff;
-    background: var(--dp-green-600, #16a34a);
+    background: var(--dp-green-600);
   }
 
   &--pending {
-    color: var(--dp-orange-700, #c2410c);
-    background: var(--dp-orange-50, #fff7ed);
-    border: 1.5px solid var(--dp-orange-200, #fed7aa);
+    color: var(--dp-orange-700);
+    background: var(--dp-orange-50);
+    border: 1.5px solid var(--dp-orange-200);
   }
 
   &--fail {
-    color: var(--dp-red-700, #b91c1c);
-    background: var(--dp-red-50, #fef2f2);
-    border: 1.5px solid var(--dp-red-200, #fecaca);
+    color: var(--dp-red-700);
+    background: var(--dp-red-50);
+    border: 1.5px solid var(--dp-red-200);
   }
 }
 
@@ -201,34 +201,34 @@ defineExpose({
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 
 .archive-exam-score-gate-panel__title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .archive-exam-score-gate-panel__hint {
   margin: 4px 0 0;
   font-size: 12px;
   line-height: 1.5;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 
 .archive-exam-score-gate-panel__stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--dp-space-3, 12px);
-  margin-top: var(--dp-space-1, 4px);
+  gap: var(--dp-space-3);
+  margin-top: var(--dp-space-1);
 }
 
 .archive-exam-score-gate-panel__stat {
-  padding: var(--dp-space-3, 12px);
-  border: 1px solid var(--dp-border-light, #eef0f3);
-  border-radius: var(--dp-radius-md, 8px);
-  background: var(--dp-surface, #fff);
+  padding: var(--dp-space-3);
+  border: 1px solid var(--dp-border-light);
+  border-radius: var(--dp-radius-md);
+  background: var(--dp-surface);
 }
 
 .archive-exam-score-gate-panel__stat-val {
@@ -236,30 +236,30 @@ defineExpose({
   font-weight: 700;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 
   &--ok {
-    color: var(--dp-green-700, #15803d);
+    color: var(--dp-green-700);
   }
 
   &--danger {
-    color: var(--dp-red-700, #b91c1c);
+    color: var(--dp-red-700);
   }
 }
 
 .archive-exam-score-gate-panel__stat-label {
   margin-top: 4px;
   font-size: 12px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 
 .archive-exam-score-gate-panel__empty-papers {
   margin: 0;
-  padding: var(--dp-space-3, 12px);
+  padding: var(--dp-space-3);
   font-size: 13px;
   line-height: 1.5;
-  color: var(--dp-text-secondary, #64748b);
-  border-radius: var(--dp-radius-md, 8px);
-  background: var(--dp-surface-sunken, #f8fafc);
+  color: var(--dp-text-secondary);
+  border-radius: var(--dp-radius-md);
+  background: var(--dp-surface-sunken);
 }
 </style>

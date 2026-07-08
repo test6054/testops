@@ -58,17 +58,6 @@ function handleActivate() {
         />
       </label>
       <label class="activation-panel__row">
-        <span>扫描员用户 ID</span>
-        <input
-          v-model="activation.activationForm.value.boundOperatorUserId"
-          type="text"
-          inputmode="numeric"
-          class="activation-panel__input"
-          placeholder="专职扫描员用户 ID（可选）"
-          :disabled="formDisabled"
-        />
-      </label>
-      <label class="activation-panel__row">
         <span>本机位置名称</span>
         <input
           v-model="activation.activationForm.value.endpointName"

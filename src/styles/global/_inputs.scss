@@ -5,7 +5,7 @@
 .ant-input-affix-wrapper,
 .ant-select-selector,
 .ant-picker {
-  border-radius: var(--dp-radius-control-inner, 6px) !important;
+  border-radius: var(--dp-radius-control-inner) !important;
   border-color: var(--dp-border-strong) !important;
   transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
   
@@ -16,7 +16,7 @@
   &:focus,
   &-focused {
     border-color: var(--dp-blue-600) !important;
-    box-shadow: 0 0 0 3px var(--dp-focus-ring, rgba(37, 99, 235, 0.15)) !important;
+    box-shadow: 0 0 0 3px var(--dp-focus-ring) !important;
     outline: none !important;
   }
 }

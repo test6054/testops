@@ -134,7 +134,7 @@ const handleOk = () => {
   margin: 0;
   font-size: 18px;
   font-weight: 700;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-drawer__close {
@@ -144,16 +144,16 @@ const handleOk = () => {
   width: 32px;
   height: 32px;
   border: none;
-  border-radius: var(--dp-radius-control-inner, 4px);
+  border-radius: var(--dp-radius-control-inner);
   background: transparent;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .ui-drawer__close:hover {
-  background: var(--dp-gray-100, #f3f4f6);
-  color: var(--dp-text-primary, #0f172a);
+  background: var(--dp-gray-100);
+  color: var(--dp-text-primary);
 }
 
 .ui-drawer__body {
@@ -170,7 +170,7 @@ const handleOk = () => {
   justify-content: flex-end;
   gap: 12px;
   padding: 0 24px 24px;
-  border-top: 1px solid var(--dp-border, #e5e7eb);
+  border-top: 1px solid var(--dp-border);
 }
 </style>
 
@@ -179,7 +179,7 @@ const handleOk = () => {
   direction: ltr;
 
   .ant-drawer-content {
-    background: var(--dp-surface, #fff) !important;
+    background: var(--dp-surface) !important;
   }
 
   .ant-drawer-body {

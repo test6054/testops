@@ -158,9 +158,9 @@
 
               <section
                 v-if="
-                  currentDetail.improvementSuggestion
-                    || currentDetail.mistakeClusterLabel
-                    || currentDetail.aiDiagnostic
+                  currentDetail.improvementSuggestion ||
+                  currentDetail.mistakeClusterLabel ||
+                  currentDetail.aiDiagnostic
                 "
                 class="answer-panel__section"
               >
@@ -177,7 +177,8 @@
                     <UiTag tone="orange" size="sm">{{ currentDetail.mistakeClusterLabel }}</UiTag>
                   </p>
                   <p v-if="currentDetail.aiDiagnostic" class="answer-panel__ai-line">
-                    <strong>AI 处理说明：</strong>{{ aiLearningDiagnosticText(currentDetail.aiDiagnostic) }}
+                    <strong>AI 处理说明：</strong
+                    >{{ aiLearningDiagnosticText(currentDetail.aiDiagnostic) }}
                   </p>
                 </div>
               </section>
@@ -378,6 +379,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { StudentWrongBookItemResponse } from '@/apis/mark/question-analysis'
+import { pageStudentWrongBook } from '@/apis/mark/question-analysis'
 import type {
   StudentAiDiagnosisItemResponse,
   StudentAiErrorClusterResponse,
@@ -385,6 +387,12 @@ import type {
   StudentQuestionAnswerDetailResponse,
   StudentQuestionScoreVO,
   StudentScoreDetailResponse,
+} from '@/apis/mark/student-exam'
+import {
+  canSubmitReview,
+  getMyAiLearningReport,
+  getMyQuestionAnswerDetail,
+  getMyScoreDetail,
 } from '@/apis/mark/student-exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
@@ -404,13 +412,6 @@ import {
 } from '@/apis/mark/final-score-status'
 import { GRADE_STATUS_TONE, GradeStatusDescription } from '@/apis/mark/grade-status'
 import { OBJECTIVE_RESULT_TONE, ObjectiveResultDescription } from '@/apis/mark/objective-result'
-import { pageStudentWrongBook } from '@/apis/mark/question-analysis'
-import {
-  canSubmitReview,
-  getMyAiLearningReport,
-  getMyQuestionAnswerDetail,
-  getMyScoreDetail,
-} from '@/apis/mark/student-exam'
 import { MASTERY_LEVEL_TONE, MasteryLevelDescription } from '@/apis/mark/student-mastery-level'
 import MarkHeatmapSection from '@/components/chart/MarkHeatmapSection.vue'
 import ConfidentialStatusBar from '@/components/mark/ConfidentialStatusBar.vue'
@@ -488,7 +489,7 @@ const sliceLoading = ref(false)
  * 从题目明细中提取所有出现过的 mistakeClusterLabel，供顶部下拉选择。
  * 学生可以按错题聚类快速查看同一类型的错题。
  */
-const clusterLabelOptions = computed<Array<{ value: string, label: string }>>(() => {
+const clusterLabelOptions = computed<Array<{ value: string; label: string }>>(() => {
   const labels = new Set<string>()
   for (const question of detailQuestions.value) {
     if (question.mistakeClusterLabel) {
@@ -557,8 +558,8 @@ const selectedQuestion = computed<StudentQuestionScoreVO | null>(() => {
     return null
   }
   return (
-    filteredQuestions.value.find((item) => item.layoutQuestionId === selectedQuestionId.value)
-    ?? null
+    filteredQuestions.value.find((item) => item.layoutQuestionId === selectedQuestionId.value) ??
+    null
   )
 })
 
@@ -649,7 +650,7 @@ async function loadWrongBook(): Promise<void> {
   }
 }
 
-function handleWrongBookPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleWrongBookPageChange(pageEvent: { current: number; pageSize: number }): void {
   wrongBookPagination.current = pageEvent.current
   wrongBookPagination.pageSize = pageEvent.pageSize
   void loadWrongBook()
@@ -829,8 +830,8 @@ watch(filteredQuestions, (list) => {
     return
   }
   if (
-    !selectedQuestionId.value
-    || !list.some((item) => item.layoutQuestionId === selectedQuestionId.value)
+    !selectedQuestionId.value ||
+    !list.some((item) => item.layoutQuestionId === selectedQuestionId.value)
   ) {
     void selectQuestion(list[0])
   }
@@ -841,6 +842,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .score-detail {
   &__layout {
     display: grid;
@@ -849,7 +851,7 @@ onBeforeUnmount(() => {
     align-items: start;
     margin-top: 8px;
 
-    @media (max-width: 991px) {
+    @media (max-width: #{bp.$ant-grid-lg - 1px}) {
       grid-template-columns: 1fr;
     }
   }
@@ -875,7 +877,7 @@ onBeforeUnmount(() => {
   }
 
   &__hint {
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 }
 
@@ -896,7 +898,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   font-size: 16px;
-  font-weight: var(--dp-font-weight-title, 600);
+  font-weight: var(--dp-font-weight-title);
 }
 
 .score-detail__wrong-book-card,
@@ -937,7 +939,7 @@ onBeforeUnmount(() => {
     border: 1px solid var(--ant-color-border-secondary, #e5e7eb);
     border-radius: 6px;
     padding: 8px;
-    background: var(--dp-surface-soft, #f8fafc);
+    background: var(--dp-surface-soft);
     text-align: center;
     min-height: 120px;
   }
@@ -951,7 +953,7 @@ onBeforeUnmount(() => {
   &__text {
     margin: 0;
     padding: 12px;
-    background: var(--dp-surface-soft, #f8fafc);
+    background: var(--dp-surface-soft);
     border-radius: 6px;
     border: 1px solid var(--ant-color-border-secondary, #e5e7eb);
     white-space: pre-wrap;
@@ -966,7 +968,7 @@ onBeforeUnmount(() => {
     flex-direction: column;
     gap: 6px;
     padding: 12px;
-    background: var(--dp-surface-soft, #f8fafc);
+    background: var(--dp-surface-soft);
     border-radius: 6px;
     border: 1px solid var(--ant-color-border-secondary, #e5e7eb);
   }

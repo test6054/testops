@@ -113,11 +113,7 @@
           >
             下载
           </UiTextAction>
-          <UiTextAction
-            v-if="canRegisterMaterial"
-            tone="primary"
-            @click="openTagModal(record)"
-          >
+          <UiTextAction v-if="canRegisterMaterial" tone="primary" @click="openTagModal(record)">
             编辑标签
           </UiTextAction>
           <UiTextAction
@@ -211,7 +207,7 @@
         <a-form-item label="目标卷 ID" required>
           <a-input
             v-model:value="sharedRefForm.targetVolumeId"
-            placeholder="合用材料所在归档卷 ID"
+            placeholder="合用材料所在归档任务 ID"
           />
         </a-form-item>
         <a-form-item label="目标材料 ID" required>
@@ -270,22 +266,16 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-status'
+import {
+  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
+  ArchiveMaterialOcrStatusDescription,
+} from '@/apis/mark/archive-ocr-status'
 import type {
   ArchiveMaterialSubmissionStatusCode,
   ArchiveMaterialTypeCode,
   ArchiveVolumeDetailResponse,
   ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
-import { message } from 'ant-design-vue'
-import { computed, onUnmounted, reactive, ref, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
-import {
-  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
-  ArchiveMaterialOcrStatusDescription,
-} from '@/apis/mark/archive-ocr-status'
 import {
   ALL_ARCHIVE_MATERIAL_TYPE_CODES,
   ARCHIVE_MATERIAL_TYPE_OPTIONS,
@@ -300,6 +290,13 @@ import {
   registerArchiveVolumeMaterial,
   triggerArchiveVolumeMaterialOcr,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
+import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
+import { message } from 'ant-design-vue'
+import { computed, onUnmounted, reactive, ref, watch } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import FilePreviewDialog from '@/components/FilePreviewDialog.vue'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
@@ -330,7 +327,6 @@ import ArchiveMaterialTagSelect from '@/views/teacher/archive-volume/components/
 import ArchiveVolumeMaterialOcrDetailModal from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialOcrDetailModal.vue'
 import ArchiveVolumeMaterialTagModal from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialTagModal.vue'
 import ScanDispatchDialog from '@/views/teacher/archive-volume/components/ScanDispatchDialog.vue'
-import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 
 defineOptions({ name: 'ArchiveVolumeMaterialTablePanel' })
 
@@ -342,7 +338,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  "refreshed": [options?: { silent?: boolean }]
+  refreshed: [options?: { silent?: boolean }]
   'ocr-completed-stale': []
 }>()
 
@@ -417,10 +413,7 @@ const materialColumns: ColumnsType<ArchiveVolumeMaterialResponse> = [
 const filePreview = useFilePreview()
 
 const filteredMaterials = computed(() =>
-  filterArchiveMaterialsByCatalogKey(
-    props.detail.materials ?? [],
-    props.selectedCatalogKeys[0],
-  ),
+  filterArchiveMaterialsByCatalogKey(props.detail.materials ?? [], props.selectedCatalogKeys[0]),
 )
 
 const materialReadySummary = computed(() => {
@@ -471,14 +464,14 @@ const courseObjectiveMappingHint = computed(() => {
   const goalTotal = props.detail.courseObjectiveTotalGoalCount
   const goalCovered = props.detail.courseObjectiveCoveredGoalCount
   if (
-    total != null
-    && mapped != null
-    && total > 0
-    && mapped >= total
-    && goalTotal != null
-    && goalCovered != null
-    && goalTotal > 0
-    && goalCovered < goalTotal
+    total != null &&
+    mapped != null &&
+    total > 0 &&
+    mapped >= total &&
+    goalTotal != null &&
+    goalCovered != null &&
+    goalTotal > 0 &&
+    goalCovered < goalTotal
   ) {
     return `quality 课程目标覆盖 ${goalCovered}/${goalTotal} 未完成，须确保每个课程目标至少映射一题后再生成达成度报告。`
   }
@@ -561,9 +554,9 @@ async function handleDownloadMaterial(material: ArchiveVolumeMaterialResponse): 
 
 function canViewMaterialOcr(material: ArchiveVolumeMaterialResponse): boolean {
   return (
-    material.ocrStatus === 'COMPLETED'
-    || material.ocrStatus === 'FAILED'
-    || material.ocrStatus === 'RUNNING'
+    material.ocrStatus === 'COMPLETED' ||
+    material.ocrStatus === 'FAILED' ||
+    material.ocrStatus === 'RUNNING'
   )
 }
 
@@ -795,14 +788,14 @@ async function submitSharedRef() {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4, 16px);
+  gap: var(--dp-space-4);
 }
 
 .archive-volume-material-table__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-3);
   width: 100%;
 }
 
@@ -814,30 +807,30 @@ async function submitSharedRef() {
 
 .archive-volume-material-table__meta {
   margin-left: auto;
-  font-family: var(--dp-font-mono, ui-monospace, monospace);
-  font-size: var(--dp-type-hint-size, 11px);
+  font-family: var(--dp-font-mono);
+  font-size: var(--dp-type-hint-size);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 
 .archive-volume-material-table__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 
 .archive-volume-material-table__ocr-failure {
   display: block;
   margin-top: 4px;
   font-size: 12px;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .archive-volume-material-table__mapping-hint {
   margin: 0;
   font-size: 13px;
-  color: var(--dp-text-secondary, #595959);
+  color: var(--dp-text-secondary);
 }
 
 .archive-volume-material-table__mapping-link {
@@ -847,7 +840,7 @@ async function submitSharedRef() {
 .archive-volume-material-table__status {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-1, 4px);
+  gap: var(--dp-space-1);
 }
 
 .archive-volume-material-table__status-icon {
@@ -858,23 +851,23 @@ async function submitSharedRef() {
 }
 
 .archive-volume-material-table__status-icon--gray {
-  background: var(--dp-color-text-quaternary, #bfbfbf);
+  background: var(--dp-color-text-quaternary);
 }
 
 .archive-volume-material-table__status-icon--blue {
-  background: var(--dp-color-primary, #1677ff);
+  background: var(--dp-color-primary);
 }
 
 .archive-volume-material-table__status-icon--green {
-  background: var(--dp-color-success, #52c41a);
+  background: var(--dp-color-success);
 }
 
 .archive-volume-material-table__status-icon--red {
-  background: var(--dp-color-error, #ff4d4f);
+  background: var(--dp-color-error);
 }
 
 .archive-volume-material-table__status-icon--orange {
-  background: var(--dp-color-warning, #fa8c16);
+  background: var(--dp-color-warning);
 }
 
 .archive-volume-material-table__status-icon--purple {

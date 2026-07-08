@@ -39,9 +39,9 @@ const resolvedTone = computed<BadgeTone>(() => (props.empty ? 'gray' : props.ton
 
 <style scoped>
 .ui-tag {
-  --tag-text: var(--dp-blue-700, #1d4ed8);
-  --tag-bg: var(--dp-blue-50, #eff6ff);
-  --tag-border: var(--dp-blue-200, #bfdbfe);
+  --tag-text: var(--dp-blue-700);
+  --tag-bg: var(--dp-blue-50);
+  --tag-border: var(--dp-blue-200);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -49,7 +49,7 @@ const resolvedTone = computed<BadgeTone>(() => (props.empty ? 'gray' : props.ton
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  border-radius: var(--dp-radius-control-inner, 6px);
+  border-radius: var(--dp-radius-control-inner);
   border: 1px solid transparent;
   color: var(--tag-text);
   font-family: var(--dp-font-family), sans-serif;
@@ -90,45 +90,45 @@ const resolvedTone = computed<BadgeTone>(() => (props.empty ? 'gray' : props.ton
 }
 
 .ui-tag--gray {
-  --tag-text: var(--dp-text-secondary, #475569);
-  --tag-bg: var(--dp-gray-50, #f8fafc);
-  --tag-border: var(--dp-gray-200, #e5e7eb);
+  --tag-text: var(--dp-text-secondary);
+  --tag-bg: var(--dp-gray-50);
+  --tag-border: var(--dp-gray-200);
 }
 
 .ui-tag--blue {
-  --tag-text: var(--dp-blue-700, #1d4ed8);
-  --tag-bg: var(--dp-blue-50, #eff6ff);
-  --tag-border: var(--dp-blue-200, #bfdbfe);
+  --tag-text: var(--dp-blue-700);
+  --tag-bg: var(--dp-blue-50);
+  --tag-border: var(--dp-blue-200);
 }
 
 .ui-tag--green {
-  --tag-text: var(--dp-green-700, #15803d);
-  --tag-bg: var(--dp-green-50, #ecfdf3);
-  --tag-border: var(--dp-green-200, #bbf7d0);
+  --tag-text: var(--dp-green-700);
+  --tag-bg: var(--dp-green-50);
+  --tag-border: var(--dp-green-200);
 }
 
 .ui-tag--orange {
-  --tag-text: var(--dp-orange-700, #c2410c);
-  --tag-bg: var(--dp-orange-50, #fff7ed);
-  --tag-border: var(--dp-orange-200, #fed7aa);
+  --tag-text: var(--dp-orange-700);
+  --tag-bg: var(--dp-orange-50);
+  --tag-border: var(--dp-orange-200);
 }
 
 .ui-tag--red {
-  --tag-text: var(--dp-red-700, #b91c1c);
-  --tag-bg: var(--dp-red-50, #fef2f2);
-  --tag-border: var(--dp-red-200, #fecdd3);
+  --tag-text: var(--dp-red-700);
+  --tag-bg: var(--dp-red-50);
+  --tag-border: var(--dp-red-200);
 }
 
 .ui-tag--yellow {
-  --tag-text: var(--dp-yellow-700, #a16207);
-  --tag-bg: var(--dp-yellow-50, #fefce8);
-  --tag-border: var(--dp-yellow-200, #fef08a);
+  --tag-text: var(--dp-yellow-700);
+  --tag-bg: var(--dp-yellow-50);
+  --tag-border: var(--dp-yellow-200);
 }
 
 .ui-tag--purple {
-  --tag-text: var(--dp-purple-700, var(--dp-purple-500, #722ed1));
-  --tag-bg: var(--dp-purple-50, #f5f3ff);
-  --tag-border: var(--dp-purple-200, #ddd6fe);
+  --tag-text: var(--dp-purple-700);
+  --tag-bg: var(--dp-purple-50);
+  --tag-border: var(--dp-purple-200);
 }
 
 .ui-tag--empty {

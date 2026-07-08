@@ -110,7 +110,8 @@ const emit = defineEmits<{
 }>()
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .ui-resource-card__cover {
   display: flex;
   align-items: flex-start;
@@ -132,14 +133,14 @@ const emit = defineEmits<{
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-resource-card__cover-title {
   font-size: 20px;
   line-height: 1.4;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-resource-card__cover-badges {
@@ -161,7 +162,7 @@ const emit = defineEmits<{
 .ui-resource-card__creator {
   font-size: 12px;
   font-weight: 600;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-resource-card__footer-main,
@@ -172,7 +173,7 @@ const emit = defineEmits<{
   gap: 10px;
 }
 
-@media (max-width: 767px) {
+@media (max-width: bp.$layout-mobile-max) {
   .ui-resource-card__cover,
   .ui-resource-card__footer-actions {
     flex-direction: column;

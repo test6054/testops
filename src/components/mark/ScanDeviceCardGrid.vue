@@ -116,14 +116,14 @@ function handleSelect(device: ExamScanMonitorDeviceResponse): void {
 
   &__meta {
     font-size: 12px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__empty {
     padding: 24px 0;
     text-align: center;
     font-size: 13px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__list {
@@ -138,9 +138,9 @@ function handleSelect(device: ExamScanMonitorDeviceResponse): void {
     gap: 8px;
     padding: 12px;
     text-align: left;
-    border: 1px solid var(--dp-border, #e2e8f0);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
-    background: var(--dp-surface, #fff);
+    background: var(--dp-surface);
     cursor: pointer;
     transition:
       border-color 0.2s ease,
@@ -188,18 +188,18 @@ function handleSelect(device: ExamScanMonitorDeviceResponse): void {
     flex: 1;
     font-size: 14px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__id {
     font-size: 12px;
-    font-family: var(--dp-font-mono, ui-monospace, monospace);
-    color: var(--dp-text-muted, #64748b);
+    font-family: var(--dp-font-mono);
+    color: var(--dp-text-muted);
   }
 
   &__batch {
     font-size: 12px;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
   }
 
   &__stats {
@@ -211,25 +211,25 @@ function handleSelect(device: ExamScanMonitorDeviceResponse): void {
 
   &__stat-label {
     font-size: 11px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__stat-value {
     font-size: 18px;
     font-weight: 700;
-    font-family: var(--dp-font-mono, ui-monospace, monospace);
-    color: var(--dp-text-primary, #0f172a);
+    font-family: var(--dp-font-mono);
+    color: var(--dp-text-primary);
   }
 
   &__stat-version {
     font-size: 13px;
     font-weight: 500;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
   }
 
   &__heartbeat {
     font-size: 11px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 }
 

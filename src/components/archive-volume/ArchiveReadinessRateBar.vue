@@ -49,29 +49,29 @@ const displayPercent = computed(() => {
   width: 60px;
   height: 4px;
   border-radius: 2px;
-  background: var(--dp-border-subtle, #e2e8f0);
+  background: var(--dp-border-subtle);
   overflow: hidden;
 }
 
 .archive-readiness-rate__fill {
   height: 100%;
   border-radius: 2px;
-  background: var(--dp-warning, #f59e0b);
+  background: var(--dp-warning);
   transition: width 200ms ease;
 }
 
 .archive-readiness-rate__fill--done {
-  background: var(--dp-success, #16a34a);
+  background: var(--dp-success);
 }
 
 .archive-readiness-rate__pct {
   font-size: 10px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: var(--dp-warning, #f59e0b);
+  color: var(--dp-warning);
 }
 
 .archive-readiness-rate__pct--done {
-  color: var(--dp-success, #16a34a);
+  color: var(--dp-success);
 }
 </style>

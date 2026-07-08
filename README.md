@@ -44,7 +44,7 @@ pnpm build
 - `src/apis/mark/*`：阅卷业务，按 edu-mark Controller 1:1 拆分。
 - `src/stores/modules/auth.ts`、`user.ts`、`tenant.ts`、`app.ts`：与 web-vue 等价，确保跨站点登录态一致。
 - `src/utils/auth.ts`、`device.ts`、`trace.ts`、`error-handler.ts`、`subdomain.ts`、`permission.ts`、`file-download.ts`：完整复用。
-- `src/styles/ui-tokens.scss`、`var.scss`、`mixin.scss` 等：与 web-vue 一致。
+- `src/styles/ui-tokens.scss`、`mixin.scss` 等：设计令牌与 mixin 真源。
 
 ## 后续批次
 

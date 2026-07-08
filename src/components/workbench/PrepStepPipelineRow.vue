@@ -130,14 +130,14 @@ function handleSelect(step: PrepStepCard): void {
 
   &__meta {
     font-size: 12px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__hint {
     margin: 0 0 12px;
     font-size: 12px;
     line-height: 1.5;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
   }
 
   &__track {
@@ -157,9 +157,9 @@ function handleSelect(step: PrepStepCard): void {
     gap: 8px;
     padding: 12px;
     text-align: left;
-    border: 1px solid var(--dp-border, #e2e8f0);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
-    background: var(--dp-surface, #fff);
+    background: var(--dp-surface);
     cursor: pointer;
     transition:
       border-color 0.2s ease,
@@ -198,7 +198,7 @@ function handleSelect(step: PrepStepCard): void {
     transform: translateY(-50%);
     width: 8px;
     height: 2px;
-    background: var(--dp-border, #e2e8f0);
+    background: var(--dp-border);
     z-index: 1;
   }
 
@@ -216,14 +216,14 @@ function handleSelect(step: PrepStepCard): void {
   &__label {
     font-size: 14px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__desc {
     margin: 0;
     font-size: 12px;
     line-height: 1.5;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
     display: -webkit-box;
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;

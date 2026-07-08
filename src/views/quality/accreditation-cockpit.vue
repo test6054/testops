@@ -2,10 +2,7 @@
 import { SafetyCertificateOutlined } from '@ant-design/icons-vue'
 import { computed, onActivated, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  
-  ALL_ACCREDITATION_CYCLE_PHASE_CODES
-} from '@/apis/quality/accreditation'
+import { ALL_ACCREDITATION_CYCLE_PHASE_CODES } from '@/apis/quality/accreditation'
 import AccreditationAnnualPanel from '@/components/quality/accreditation/AccreditationAnnualPanel.vue'
 import AccreditationAnnualReportMaterialPanel from '@/components/quality/accreditation/AccreditationAnnualReportMaterialPanel.vue'
 import AccreditationCyclePanel from '@/components/quality/accreditation/AccreditationCyclePanel.vue'
@@ -52,16 +49,16 @@ const evidenceCount = ref(0)
 
 const cyclePanelRef = ref<InstanceType<typeof AccreditationCyclePanel>>()
 const annualPanelRef = ref<InstanceType<typeof AccreditationAnnualPanel>>()
-const annualReportMaterialPanelRef
-  = ref<InstanceType<typeof AccreditationAnnualReportMaterialPanel>>()
+const annualReportMaterialPanelRef =
+  ref<InstanceType<typeof AccreditationAnnualReportMaterialPanel>>()
 const onsitePanelRef = ref<InstanceType<typeof AccreditationOnsitePanel>>()
 const supportPanelRef = ref<InstanceType<typeof AccreditationSupportPanel>>()
 const evidencePanelRef = ref<InstanceType<typeof AccreditationEvidencePanel>>()
 
 function readinessReady(itemKey: string): boolean {
   return (
-    cockpit.value?.conclusionReadinessItems?.find((item) => item.itemKey === itemKey)?.ready
-    === true
+    cockpit.value?.conclusionReadinessItems?.find((item) => item.itemKey === itemKey)?.ready ===
+    true
   )
 }
 
@@ -81,25 +78,25 @@ const ceeaa2024CheckItems = computed(() => {
       label: '4.2 培养目标·为党育人',
       desc: '培养目标应符合"为党育人、为国育才"总要求',
       passed:
-        readinessReady('GRADUATION_REQUIREMENT_READY')
-        && readinessReady('PROGRAM_QUALITY_REPORT_READY'),
+        readinessReady('GRADUATION_REQUIREMENT_READY') &&
+        readinessReady('PROGRAM_QUALITY_REPORT_READY'),
     },
     {
       key: '4.3-graduate',
       label: '4.3 毕业要求·工程报国',
       desc: '毕业要求应包含工程伦理和职业规范（含工程报国意识）',
       passed:
-        readinessReady('GRADUATION_REQUIREMENT_READY')
-        && readinessReady('ACHIEVEMENT_RESULT_READY'),
+        readinessReady('GRADUATION_REQUIREMENT_READY') &&
+        readinessReady('ACHIEVEMENT_RESULT_READY'),
     },
     {
       key: '4.4-curriculum',
       label: '4.4 课程体系·价值导向',
       desc: '课程设置和教学实施应体现正确的价值导向',
       passed:
-        readinessReady('ENABLED_QUALITY_COURSE_READY')
-        && readinessReady('COURSE_GOAL_READY')
-        && readinessReady('SUPPORT_MATRIX_READY'),
+        readinessReady('ENABLED_QUALITY_COURSE_READY') &&
+        readinessReady('COURSE_GOAL_READY') &&
+        readinessReady('SUPPORT_MATRIX_READY'),
     },
     {
       key: '4.5-faculty',
@@ -118,9 +115,9 @@ const ceeaa2024CheckItems = computed(() => {
       label: '4.7 持续改进·达成度闭环',
       desc: '"评价→分析→改进→再评价"闭环机制',
       passed:
-        readinessReady('ACHIEVEMENT_RESULT_READY')
-        && readinessReady('IMPROVEMENT_TASK_CLOSED')
-        && c?.annualReportMaterialsReady === true,
+        readinessReady('ACHIEVEMENT_RESULT_READY') &&
+        readinessReady('IMPROVEMENT_TASK_CLOSED') &&
+        c?.annualReportMaterialsReady === true,
     },
   ]
 })
@@ -146,7 +143,7 @@ async function refreshAll() {
 }
 
 function onPhaseSelect(stage: { key: string }) {
-  const phase = ALL_ACCREDITATION_CYCLE_PHASE_CODES.find(code => code === stage.key)
+  const phase = ALL_ACCREDITATION_CYCLE_PHASE_CODES.find((code) => code === stage.key)
   if (phase) {
     activeTab.value = tabForPhase(phase)
   }
@@ -449,7 +446,7 @@ onActivated(() => {
 .acc-standard-check__desc {
   grid-column: 1 / -1;
   font-size: 12px;
-  color: var(--dp-text-secondary, rgba(0, 0, 0, 0.55));
+  color: var(--dp-text-secondary);
 }
 .acc-standard-check__fix {
   grid-column: 1 / -1;

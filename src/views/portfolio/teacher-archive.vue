@@ -5,9 +5,14 @@ import type {
   PortfolioArchiveBagPreviewVO,
   PortfolioArchiveScoreResultVO,
 } from '@/apis/portfolio/bag-types'
+import { PortfolioArchiveBagSourceTypeDescription } from '@/apis/portfolio/bag-types'
 import type {
   PortfolioArchiveRecordSourceTypeCode,
   PortfolioArchiveRecordStatusCode,
+} from '@/apis/portfolio/enums'
+import {
+  PortfolioArchiveRecordSourceTypeDescription,
+  PortfolioArchiveRecordStatusDescription,
 } from '@/apis/portfolio/enums'
 import type {
   PortfolioArchiveRecordDetailVO,
@@ -15,19 +20,15 @@ import type {
   PortfolioArchiveTimelineItemVO,
   PortfolioTeacherOneTableCategoryVO,
 } from '@/apis/portfolio/types'
+import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
-import { PortfolioArchiveBagSourceTypeDescription } from '@/apis/portfolio/bag-types'
-import {
-  PortfolioArchiveRecordSourceTypeDescription,
-  PortfolioArchiveRecordStatusDescription,
-} from '@/apis/portfolio/enums'
 import { portfolioArchiveBagApi } from '@/apis/portfolio/teacher-platform'
-import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -42,7 +43,6 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
-import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -255,7 +255,7 @@ function selectCategory(categoryId: string) {
   void loadRecords()
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   pageNum.value = page.current
   pageSize.value = page.pageSize
   void loadRecords()
@@ -691,7 +691,7 @@ watch(
 .teacher-archive__layout {
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr) 240px;
-  gap: var(--dp-space-4, 16px);
+  gap: var(--dp-space-4);
   align-items: start;
 }
 
@@ -705,9 +705,9 @@ watch(
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
-  padding: var(--dp-space-2, 8px);
-  border-radius: var(--dp-radius-control, 4px);
+  gap: var(--dp-space-2);
+  padding: var(--dp-space-2);
+  border-radius: var(--dp-radius-control);
   cursor: pointer;
 }
 
@@ -718,7 +718,7 @@ watch(
 .teacher-archive__category-name {
   flex: 1 1 100%;
   font-size: 14px;
-  font-weight: var(--dp-font-weight-medium, 500);
+  font-weight: var(--dp-font-weight-medium);
 }
 
 .teacher-archive__category-count {
@@ -733,13 +733,13 @@ watch(
 }
 
 .teacher-archive__latest-export {
-  margin-top: var(--dp-space-3, 12px);
+  margin-top: var(--dp-space-3);
   font-size: 14px;
   color: var(--dp-text-secondary);
 }
 
 .teacher-archive__timeline-item {
-  padding: var(--dp-space-2, 8px) 0;
+  padding: var(--dp-space-2) 0;
   border-bottom: 1px solid var(--ant-color-border-secondary);
   cursor: pointer;
 }
@@ -752,25 +752,25 @@ watch(
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
   margin: 0;
   font-size: 14px;
 }
 
 .teacher-archive__timeline-meta {
-  margin: var(--dp-space-1, 4px) 0 0;
+  margin: var(--dp-space-1) 0 0;
   font-size: 12px;
   color: var(--dp-text-secondary);
 }
 
 .teacher-archive__detail-meta {
-  margin: 0 0 var(--dp-space-2, 8px);
+  margin: 0 0 var(--dp-space-2);
   font-size: 13px;
   color: var(--dp-text-secondary);
 }
 
 .teacher-archive__correcting-tag {
-  margin-left: var(--dp-space-2, 8px);
+  margin-left: var(--dp-space-2);
 }
 
 .teacher-archive__score-list {
@@ -782,7 +782,7 @@ watch(
 .teacher-archive__bag,
 .teacher-archive__bag-filter,
 .teacher-archive__bag-preview {
-  margin-bottom: var(--dp-space-4, 16px);
+  margin-bottom: var(--dp-space-4);
 }
 
 .teacher-archive__filter-row {
@@ -798,7 +798,7 @@ watch(
 .teacher-archive__section-title {
   margin: 0 0 8px;
   font-size: 14px;
-  font-weight: var(--dp-font-weight-medium, 500);
+  font-weight: var(--dp-font-weight-medium);
 }
 
 .teacher-archive__group {
@@ -817,13 +817,13 @@ watch(
 }
 
 .teacher-archive__bag p {
-  margin: 0 0 var(--dp-space-2, 8px);
+  margin: 0 0 var(--dp-space-2);
   font-size: 13px;
   color: var(--dp-text-secondary);
 }
 
 .teacher-archive__hint {
-  padding: var(--dp-space-6, 24px) 0;
+  padding: var(--dp-space-6) 0;
 }
 
 @media (max-width: 1100px) {

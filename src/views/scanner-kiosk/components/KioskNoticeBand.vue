@@ -27,8 +27,8 @@ const showKioskReactivationAction = computed(() => {
   if (!err) return false
   if (workflow.needsActivationGate.value) return true
   return (
-    err === KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE
-    || err === KIOSK_BROWSER_PUSH_TOKEN_REJECTED_MESSAGE
+    err === KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE ||
+    err === KIOSK_BROWSER_PUSH_TOKEN_REJECTED_MESSAGE
   )
 })
 
@@ -100,3 +100,13 @@ watch(
 
 onBeforeUnmount(closeNotice)
 </script>
+
+<template>
+  <span class="kiosk-notice-band-host" aria-hidden="true" />
+</template>
+
+<style scoped>
+.kiosk-notice-band-host {
+  display: none;
+}
+</style>

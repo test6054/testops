@@ -21,6 +21,10 @@ const scanConfigOptions = computed(() => workflow.kioskContext.value?.scanConfig
 const recommendedConfig = computed(() => scanConfigOptions.value?.defaultScanConfig)
 const scanConfigAdvisory = computed(() => scanConfigOptions.value?.scanConfigAdvisory?.trim() || '')
 const scanConfigHint = computed(() => scanConfigOptions.value?.scanConfigHint?.trim() || '')
+const tenantProviderChainLabel = computed(
+  () => scanConfigOptions.value?.directScanProviderChainLabel?.trim() || '',
+)
+const providerChainOptions = computed(() => workflow.providerChainOptions.value)
 const scanConfigBoundaryNote = '单面/双面扫描可按实际送纸修改，与应扫页数无强制对应。'
 const dpiOptions = computed(() =>
   (scanConfigOptions.value?.allowedDpis ?? []).map((dpi) => ({ value: dpi, label: `${dpi} DPI` })),
@@ -120,6 +124,12 @@ function applyRecommendedScanConfig() {
           <span v-for="item in hardwareParamPreview" :key="item" class="contract-hint__chip">
             {{ item }}
           </span>
+          <span
+            v-if="tenantProviderChainLabel"
+            class="contract-hint__chip contract-hint__chip--chain"
+          >
+            {{ tenantProviderChainLabel }}
+          </span>
         </p>
         <p v-if="scanConfigHint" class="contract-hint__sub">
           {{ scanConfigHint }}
@@ -161,11 +171,14 @@ function applyRecommendedScanConfig() {
         </div>
       </div>
 
-      <div v-if="workflow.businessScene.value === ScannerBusinessSceneCode.EXAM_DIRECT_SCAN" class="field">
+      <div
+        v-if="workflow.businessScene.value === ScannerBusinessSceneCode.EXAM_DIRECT_SCAN"
+        class="field"
+      >
         <span class="field__label">识别链路</span>
         <div class="seg seg--stack">
           <button
-            v-for="option in workflow.providerChainOptions"
+            v-for="option in providerChainOptions"
             :key="option.value"
             type="button"
             class="seg__btn seg__btn--stack"
@@ -178,7 +191,12 @@ function applyRecommendedScanConfig() {
           </button>
         </div>
         <p class="field__hint field__hint--muted">
-          当前：{{ workflow.providerChainText(workflow.providerChain.value) }}，开单后冻结
+          当前：{{
+            tenantProviderChainLabel || workflow.providerChainText(workflow.providerChain.value)
+          }}，开单后冻结
+        </p>
+        <p v-if="!scanConfigOptions?.directScanProviderChain" class="field__hint field__hint--warn">
+          租户 OCR 渠道未启用，无法开始试卷直扫，请联系管理员配置 OCR
         </p>
       </div>
 
@@ -375,6 +393,10 @@ function applyRecommendedScanConfig() {
 
 .field__hint--muted {
   color: var(--kiosk-ink-tertiary);
+}
+
+.field__hint--warn {
+  color: var(--kiosk-warning);
 }
 
 .field__hint {

@@ -109,7 +109,7 @@ function handleSave(): void {
     margin: 0 0 12px;
     font-size: 13px;
     line-height: 1.6;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__mode-options {
@@ -126,8 +126,8 @@ function handleSave(): void {
     min-height: 88px;
     padding: 12px 16px;
     text-align: left;
-    background: var(--dp-surface, #fff);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
     cursor: pointer;
     transition:
@@ -136,7 +136,7 @@ function handleSave(): void {
 
     &:hover:not(:disabled) {
       border-color: var(--ant-color-primary, #1677ff);
-      background: var(--dp-surface-subtle, #f8fafc);
+      background: var(--dp-surface-subtle);
     }
 
     &:disabled {
@@ -153,13 +153,13 @@ function handleSave(): void {
   &__mode-option-title {
     font-size: 14px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__mode-option-desc {
     font-size: 13px;
     line-height: 1.5;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
   }
 
   &__print-form {
@@ -169,7 +169,7 @@ function handleSave(): void {
   &__hint {
     margin: 0;
     font-size: 13px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__advisory {

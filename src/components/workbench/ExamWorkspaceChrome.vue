@@ -95,15 +95,15 @@ function handleRefresh(): void {
   display: flex;
   flex-direction: column;
   gap: 0;
-  margin-bottom: var(--dp-space-4, 16px);
+  margin-bottom: var(--dp-space-4);
   background: var(--ant-color-bg-container);
   border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-panel, 8px);
+  border-radius: var(--dp-radius-panel);
   overflow: hidden;
 
   :deep(.context-bar--workbench) {
     margin-bottom: 0;
-    padding: var(--dp-space-4, 16px);
+    padding: var(--dp-space-4);
     border-bottom: 1px solid var(--ant-color-border-secondary);
   }
 
@@ -112,12 +112,12 @@ function handleRefresh(): void {
   }
 
   &__signal {
-    padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
+    padding: var(--dp-space-3) var(--dp-space-4);
   }
 
   &--loading {
-    padding: var(--dp-space-4, 16px);
-    gap: var(--dp-space-3, 12px);
+    padding: var(--dp-space-4);
+    gap: var(--dp-space-3);
   }
 
   &__rail-skeleton {

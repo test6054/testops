@@ -101,7 +101,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   (
     e: 'change',
-    changeEvent: { record: TableFormRow, field: string, value: unknown, index: number },
+    changeEvent: { record: TableFormRow; field: string; value: unknown; index: number },
   ): void
 }>()
 
@@ -222,8 +222,8 @@ const handleCellChange = (
   emit('change', { record, field, value, index })
 }
 
-const handleSelectChange
-  = (record: TableFormRow, column: TableFormCellColumn, index: number) =>
+const handleSelectChange =
+  (record: TableFormRow, column: TableFormCellColumn, index: number) =>
   (value: SelectValue): void => {
     handleCellChange(record, column, value, index)
   }
@@ -250,14 +250,14 @@ const handleSelectChange
 .ui-table-form__title {
   font-size: 16px;
   font-weight: 700;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-table-form__description {
   margin-top: 4px;
   font-size: 13px;
   line-height: 1.6;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-table-form__toolbar-right {
@@ -269,8 +269,8 @@ const handleSelectChange
 
 .ui-table-form__table-wrap {
   overflow: hidden;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
 }
 
 .ui-table-form__table :deep(.ant-table) {
@@ -279,21 +279,21 @@ const handleSelectChange
 
 .ui-table-form__table :deep(.ant-table-thead > tr > th) {
   padding: 12px 14px !important;
-  background: var(--dp-table-header-bg, #f8fafc);
-  color: var(--dp-text-secondary, #475569);
+  background: var(--dp-table-header-bg);
+  color: var(--dp-text-secondary);
   font-size: 15px;
   font-weight: 700;
   line-height: 1.3;
-  border-bottom: 1px solid var(--dp-border, #e5e7eb);
+  border-bottom: 1px solid var(--dp-border);
 }
 
 .ui-table-form__table :deep(.ant-table-tbody > tr > td) {
   padding: 12px 14px !important;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
   font-size: 15px;
   line-height: 1.35;
   vertical-align: middle;
-  border-bottom: 1px solid var(--dp-border, #e5e7eb);
+  border-bottom: 1px solid var(--dp-border);
 }
 
 .ui-table-form__table :deep(.ant-table-tbody > tr:hover > td) {
@@ -306,9 +306,9 @@ const handleSelectChange
 }
 
 .ui-table-form__select :deep(.ant-select-selector) {
-  border-radius: var(--dp-radius-control, 4px) !important;
-  border: 1px solid var(--dp-border, #e5e7eb) !important;
-  background-color: var(--dp-gray-100, #f3f4f6) !important;
+  border-radius: var(--dp-radius-control) !important;
+  border: 1px solid var(--dp-border) !important;
+  background-color: var(--dp-gray-100) !important;
   box-shadow: none !important;
   min-height: 36px !important;
   transition:
@@ -318,25 +318,25 @@ const handleSelectChange
 }
 
 .ui-table-form__select:hover :deep(.ant-select-selector) {
-  border-color: var(--dp-blue-600, #2563eb) !important;
+  border-color: var(--dp-blue-600) !important;
 }
 
 .ui-table-form__select :deep(.ant-select-focused .ant-select-selector),
 .ui-table-form__select :deep(.ant-select-open .ant-select-selector) {
-  border-color: var(--dp-blue-600, #2563eb) !important;
-  box-shadow: 0 0 0 3px var(--dp-focus-ring, rgba(37, 99, 235, 0.25)) !important;
+  border-color: var(--dp-blue-600) !important;
+  box-shadow: 0 0 0 3px var(--dp-focus-ring) !important;
 }
 
 .ui-table-form__select :deep(.ant-select-selection-placeholder) {
-  color: var(--dp-text-muted, #6b7280) !important;
+  color: var(--dp-text-muted) !important;
 }
 
 .ui-table-form__select :deep(.ant-select-selection-item) {
-  color: var(--dp-text-primary, #0f172a) !important;
+  color: var(--dp-text-primary) !important;
 }
 
 .ui-table-form__select :deep(.ant-select-arrow),
 .ui-table-form__select :deep(.ant-select-clear) {
-  color: var(--dp-text-secondary, #475569) !important;
+  color: var(--dp-text-secondary) !important;
 }
 </style>

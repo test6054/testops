@@ -28,18 +28,21 @@ export interface ScanDispatchResultPayload {
   gapTaskId?: string
 }
 
-const props = withDefaults(defineProps<{
-  open: boolean
-  payload: ScanDispatchResultPayload | null
-  volumeId?: string
-  taskKind?: ScanTaskKindCode
-}>(), {
-  taskKind: ScanTaskKindCode.EXAM_ARCHIVE,
-})
+const props = withDefaults(
+  defineProps<{
+    open: boolean
+    payload: ScanDispatchResultPayload | null
+    volumeId?: string
+    taskKind?: ScanTaskKindCode
+  }>(),
+  {
+    taskKind: ScanTaskKindCode.EXAM_ARCHIVE,
+  },
+)
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  'cancelled': []
+  cancelled: []
 }>()
 
 const cancelling = ref(false)
@@ -51,10 +54,10 @@ const previewUrl = computed(() =>
   props.payload?.kioskUrl ? appendUrlQueryParam(props.payload.kioskUrl, 'mode', 'preview') : '',
 )
 const canCancel = computed(() => props.payload?.status === ScanDispatchTicketStatusCode.PENDING)
-const isPortfolioDispatch = computed(() =>
-  (props.payload?.taskKind ?? props.taskKind) === ScanTaskKindCode.PORTFOLIO_COLLECT)
-const drawerTitle = computed(() =>
-  isPortfolioDispatch.value ? '档案袋派单已创建' : '派单已创建')
+const isPortfolioDispatch = computed(
+  () => (props.payload?.taskKind ?? props.taskKind) === ScanTaskKindCode.PORTFOLIO_COLLECT,
+)
+const drawerTitle = computed(() => (isPortfolioDispatch.value ? '档案袋派单已创建' : '派单已创建'))
 const otherPendingTickets = computed(() => {
   const currentTicketId = props.payload?.ticketId
   if (!currentTicketId) {
@@ -112,13 +115,13 @@ async function loadPendingTickets() {
         traceLabelCode: item.traceLabelCode,
         status: item.status,
         taskKind: item.taskKind,
-        contextLabel: item.portfolioSnapshot?.gapTaskTitle
-          ?? item.portfolioSnapshot?.categoryName
-          ?? item.archiveSnapshot?.archiveTitle,
+        contextLabel:
+          item.portfolioSnapshot?.gapTaskTitle ??
+          item.portfolioSnapshot?.categoryName ??
+          item.archiveSnapshot?.archiveTitle,
         gapTaskId: item.portfolioSnapshot?.gapTaskId,
       }))
-  }
-  catch (error) {
+  } catch (error) {
     if (generation !== pendingTicketsLoadGeneration) {
       return
     }
@@ -131,8 +134,7 @@ async function copyText(text: string) {
   try {
     await navigator.clipboard.writeText(text)
     message.success('已复制')
-  }
-  catch {
+  } catch {
     message.error('复制失败，请手动选择复制')
   }
 }
@@ -145,11 +147,9 @@ async function downloadTraceLabel() {
   downloading.value = true
   try {
     await downloadFile({ nodeId: fileId })
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '追溯标签下载失败')
-  }
-  finally {
+  } finally {
     downloading.value = false
   }
 }
@@ -164,11 +164,9 @@ async function handleCancel() {
     message.success('派单已取消')
     emit('cancelled')
     emit('update:open', false)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
-  }
-  finally {
+  } finally {
     cancelling.value = false
   }
 }
@@ -185,13 +183,19 @@ async function handleCancel() {
   >
     <div v-if="payload" class="scan-dispatch-result">
       <p class="scan-dispatch-result__hint">
-        {{ isPortfolioDispatch ? '请将分机 URL 或二维码推送到档案袋采集工位。' : '请将分机 URL 或二维码推送到工位一体机。' }}
+        {{
+          isPortfolioDispatch
+            ? '请将分机 URL 或二维码推送到档案袋采集工位。'
+            : '请将分机 URL 或二维码推送到工位一体机。'
+        }}
       </p>
       <p v-if="payload.contextLabel" class="scan-dispatch-result__context">
-        {{ isPortfolioDispatch ? '采集任务' : '归档卷' }}：{{ payload.contextLabel }}
+        {{ isPortfolioDispatch ? '采集任务' : '归档任务' }}：{{ payload.contextLabel }}
       </p>
       <div v-if="payload.status" class="scan-dispatch-result__status">
-        <UiTag tone="blue" size="sm">{{ ScanDispatchTicketStatusDescription[payload.status] }}</UiTag>
+        <UiTag tone="blue" size="sm">{{
+          ScanDispatchTicketStatusDescription[payload.status]
+        }}</UiTag>
         <span v-if="payload.traceLabelCode">追溯码 {{ payload.traceLabelCode }}</span>
       </div>
       <AQrcode

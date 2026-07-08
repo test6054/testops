@@ -61,100 +61,101 @@ type StatusType = 'gray' | 'blue' | 'orange' | 'yellow' | 'green' | 'red' | stri
 </script>
 
 <style lang="scss">
+@use '@/styles/breakpoints' as bp;
 .ui-task-card {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: var(--dp-surface, #fff);
-  border: 1.5px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
+  background: var(--dp-surface);
+  border: 1.5px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
   padding: 16px 20px;
   transition: all 0.2s ease;
-  box-shadow: var(--dp-shadow-card, 0 1px 3px rgba(0, 0, 0, 0.06));
+  box-shadow: var(--dp-shadow-card);
 
   // 可点击状态
   &--clickable {
     cursor: pointer;
 
     &:hover {
-      border-color: var(--dp-border-strong, #d0d5dd);
+      border-color: var(--dp-border-strong);
     }
   }
 
   // 选中状态
   &--selected {
     border-color: var(--dp-blue-500);
-    background: var(--dp-blue-50, #eff6ff);
+    background: var(--dp-blue-50);
     box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
   }
 
   // 警告状态（如逾期）
   &--warning {
-    border-color: var(--dp-red-300, #fca5a5);
+    border-color: var(--dp-red-300);
     background: #fef2f2;
 
     &:hover {
-      border-color: var(--dp-red-400, #f87171);
+      border-color: var(--dp-red-400);
     }
   }
 
   // 灰色 - 草稿/未开始
   &--gray {
-    border-color: var(--dp-gray-200, #e5e7eb);
-    &:hover { border-color: var(--dp-gray-300, #d1d5db); }
+    border-color: var(--dp-gray-200);
+    &:hover { border-color: var(--dp-gray-300); }
     &.ui-task-card--selected {
-      border-color: var(--dp-gray-400, #9ca3af);
-      background: var(--dp-gray-50, #f9fafb);
+      border-color: var(--dp-gray-400);
+      background: var(--dp-gray-50);
     }
   }
 
   // 蓝色 - 进行中
   &--blue {
-    border-color: var(--dp-blue-200, #bfdbfe);
-    &:hover { border-color: var(--dp-blue-400, #60a5fa); }
+    border-color: var(--dp-blue-200);
+    &:hover { border-color: var(--dp-blue-400); }
     &.ui-task-card--selected {
       border-color: var(--dp-blue-500);
-      background: var(--dp-blue-50, #eff6ff);
+      background: var(--dp-blue-50);
     }
   }
 
   // 橙色 - 待审核
   &--orange {
-    border-color: var(--dp-orange-200, #fed7aa);
-    &:hover { border-color: var(--dp-orange-400, #fb923c); }
+    border-color: var(--dp-orange-200);
+    &:hover { border-color: var(--dp-orange-400); }
     &.ui-task-card--selected {
-      border-color: var(--dp-orange-500, #f97316);
-      background: var(--dp-orange-50, #fff7ed);
+      border-color: var(--dp-orange-500);
+      background: var(--dp-orange-50);
     }
   }
 
   // 黄色 - 待修订
   &--yellow {
-    border-color: var(--dp-yellow-200, #fef08a);
-    &:hover { border-color: var(--dp-yellow-400, #facc15); }
+    border-color: var(--dp-yellow-200);
+    &:hover { border-color: var(--dp-yellow-400); }
     &.ui-task-card--selected {
-      border-color: var(--dp-yellow-500, #eab308);
-      background: var(--dp-yellow-50, #fefce8);
+      border-color: var(--dp-yellow-500);
+      background: var(--dp-yellow-50);
     }
   }
 
   // 绿色 - 已完成
   &--green {
-    border-color: var(--dp-green-200, #bbf7d0);
-    &:hover { border-color: var(--dp-green-400, #4ade80); }
+    border-color: var(--dp-green-200);
+    &:hover { border-color: var(--dp-green-400); }
     &.ui-task-card--selected {
-      border-color: var(--dp-green-500, #22c55e);
-      background: var(--dp-green-50, #f0fdf4);
+      border-color: var(--dp-green-500);
+      background: var(--dp-green-50);
     }
   }
 
   // 红色 - 已关闭/逾期
   &--red {
-    border-color: var(--dp-red-200, #fecaca);
-    &:hover { border-color: var(--dp-red-400, #f87171); }
+    border-color: var(--dp-red-200);
+    &:hover { border-color: var(--dp-red-400); }
     &.ui-task-card--selected {
-      border-color: var(--dp-red-500, #ef4444);
-      background: var(--dp-red-50, #fef2f2);
+      border-color: var(--dp-red-500);
+      background: var(--dp-red-50);
     }
   }
 }
@@ -175,7 +176,7 @@ type StatusType = 'gray' | 'blue' | 'orange' | 'yellow' | 'green' | 'red' | stri
   flex: 0 1 auto;
   font-size: 18px;
   font-weight: 700;
-  color: var(--dp-text-primary, #1f2937);
+  color: var(--dp-text-primary);
   margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -212,7 +213,7 @@ type StatusType = 'gray' | 'blue' | 'orange' | 'yellow' | 'green' | 'red' | stri
   align-items: center;
   justify-content: space-between;
   padding-top: 8px;
-  border-top: 1px solid var(--dp-border, #e5e7eb);
+  border-top: 1px solid var(--dp-border);
 }
 
 .ui-task-card__meta {
@@ -232,7 +233,7 @@ type StatusType = 'gray' | 'blue' | 'orange' | 'yellow' | 'green' | 'red' | stri
   }
 }
 
-@media (max-width: 1200px) {
+@media (max-width: #{bp.$ant-grid-xl - 1px}) {
   .ui-task-card__title-row {
     flex-wrap: wrap;
   }
@@ -254,7 +255,7 @@ type StatusType = 'gray' | 'blue' | 'orange' | 'yellow' | 'green' | 'red' | stri
   }
 }
 
-@media (max-width: 767px) {
+@media (max-width: bp.$layout-mobile-max) {
   .ui-task-card {
     padding: 12px 16px;
   }

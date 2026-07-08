@@ -5,6 +5,7 @@ import { setupRouterGuard } from '@/router/guard'
 import { archiveVolumeWorkspaceRoutes } from '@/router/routes/archive-volume-workspace'
 import { commonRoutes, errorRoutes } from '@/router/routes/common'
 import { constantRoutes } from '@/router/routes/constant'
+import { createPageRoutes } from '@/router/routes/create-routes'
 import { examWorkspaceRoutes } from '@/router/routes/exam-workspace'
 import { portfolioRoutes } from '@/router/routes/portfolio'
 import { qualityRoutes } from '@/router/routes/quality'
@@ -15,6 +16,7 @@ import { setupRoutePreload } from './preload-strategy'
 const allRoutes: RouteRecordRaw[] = [
   ...constantRoutes,
   ...teacherRoutes,
+  createPageRoutes,
   examWorkspaceRoutes,
   archiveVolumeWorkspaceRoutes,
   ...qualityRoutes,

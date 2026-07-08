@@ -8,10 +8,10 @@ import type {
   PortfolioIndicatorTrendVO,
   PortfolioIndicatorUsageFrequencyVO,
 } from '@/apis/portfolio/indicator-types'
+import { PF_SCENE_CODE_OPTIONS, PfSceneCodeDescription } from '@/apis/portfolio/indicator-types'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioIndicatorDashboardApi } from '@/apis/portfolio/indicator'
-import { PF_SCENE_CODE_OPTIONS, PfSceneCodeDescription } from '@/apis/portfolio/indicator-types'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -160,8 +160,8 @@ async function loadDashboard() {
   loading.value = true
   query.sceneCode = sceneCode.value
   try {
-    const [summaryResult, usageResult, trendResult, collegeResult, teacherTypeResult]
-      = await Promise.all([
+    const [summaryResult, usageResult, trendResult, collegeResult, teacherTypeResult] =
+      await Promise.all([
         portfolioIndicatorDashboardApi.summary(query),
         portfolioIndicatorDashboardApi.usageFrequency(query),
         portfolioIndicatorDashboardApi.trend(query),
@@ -252,7 +252,8 @@ onMounted(loadDashboard)
   </StageWorkbenchShell>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .toolbar {
   display: flex;
   gap: 8px;
@@ -267,7 +268,7 @@ onMounted(loadDashboard)
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
-@media (max-width: 1200px) {
+@media (max-width: #{bp.$ant-grid-xl - 1px}) {
   .chart-grid {
     grid-template-columns: 1fr;
   }

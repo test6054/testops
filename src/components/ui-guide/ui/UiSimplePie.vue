@@ -53,7 +53,7 @@ const props = withDefaults(
       '#22c55e',
       '#f59e0b',
       '#ef4444',
-      'var(--dp-purple-500, #722ed1)',
+      'var(--dp-purple-500)',
       '#06b6d4',
       '#ec4899',
     ],
@@ -183,13 +183,13 @@ const slices = computed(() => {
 
 .ui-simple-pie__legend-label {
   font-size: 13px;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-simple-pie__legend-value {
   font-size: 13px;
   font-weight: 600;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
   margin-left: auto;
 }
 </style>

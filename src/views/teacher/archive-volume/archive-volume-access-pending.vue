@@ -20,11 +20,13 @@
         >
           <div class="approval-card__head">
             <span class="approval-card__applicant">
-              {{ archiveAccessApplicantLabel(
-                record.applicantNickName,
-                record.applicantIdentifier,
-                record.applicantUserId,
-              ) }}
+              {{
+                archiveAccessApplicantLabel(
+                  record.applicantNickName,
+                  record.applicantIdentifier,
+                  record.applicantUserId,
+                )
+              }}
             </span>
             <UiTag :tone="archiveAccessStatusTone(record.accessStatus)" size="sm">
               {{ archiveAccessStatusLabel(record.accessStatus) }}
@@ -46,8 +48,15 @@
                 class="approval-card__reject-input"
               />
               <div class="approval-card__action-row">
-                <UiButton size="sm" variant="outline" :loading="submitting" @click="cancelReject">取消</UiButton>
-                <UiButton size="sm" variant="outline" :loading="submitting" @click="submitReject(record.accessRecordId)">
+                <UiButton size="sm" variant="outline" :loading="submitting" @click="cancelReject"
+                  >取消</UiButton
+                >
+                <UiButton
+                  size="sm"
+                  variant="outline"
+                  :loading="submitting"
+                  @click="submitReject(record.accessRecordId)"
+                >
                   确认驳回
                 </UiButton>
               </div>
@@ -61,15 +70,23 @@
               />
               <div class="approval-card__action-row">
                 <UiButton size="sm" variant="outline" @click="cancelApprove">取消</UiButton>
-                <UiButton size="sm" :loading="submitting" @click="submitApprove(record.accessRecordId)">
+                <UiButton
+                  size="sm"
+                  :loading="submitting"
+                  @click="submitApprove(record.accessRecordId)"
+                >
                   确认批准
                 </UiButton>
               </div>
             </template>
             <template v-else>
               <UiButton size="sm" @click="startApprove(record.accessRecordId)">批准</UiButton>
-              <UiButton size="sm" variant="outline" @click="startReject(record.accessRecordId)">拒绝</UiButton>
-              <UiButton size="sm" variant="ghost" @click="goVolumeDetail(record.volumeId)">打开卷详情</UiButton>
+              <UiButton size="sm" variant="outline" @click="startReject(record.accessRecordId)"
+                >拒绝</UiButton
+              >
+              <UiButton size="sm" variant="ghost" @click="goVolumeDetail(record.volumeId)"
+                >打开卷详情</UiButton
+              >
             </template>
           </div>
         </article>
@@ -80,14 +97,14 @@
 
 <script lang="ts" setup>
 import type { ArchiveVolumeAccessRecordResponse } from '@/apis/mark/archive-volume'
-import message from 'ant-design-vue/es/message'
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   approveArchiveVolumeAccess,
   listPendingArchiveAccessRecords,
   rejectArchiveVolumeAccess,
 } from '@/apis/mark/archive-volume'
+import message from 'ant-design-vue/es/message'
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -216,7 +233,7 @@ onMounted(() => {
 .archive-access-pending__list {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2, 8px);
-  padding: var(--dp-space-3, 12px) 0;
+  gap: var(--dp-space-2);
+  padding: var(--dp-space-3) 0;
 }
 </style>

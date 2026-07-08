@@ -1,14 +1,14 @@
 <template>
-  <section id="exam-create-candidates" class="form-section exam-create-form">
-    <header class="section-header">
-      <h2 class="section-title">考生范围</h2>
+  <div id="exam-create-candidates" class="form-section">
+    <div class="section-header">
+      <h3 class="section-title">考生范围</h3>
       <div
         v-if="rosterForm.scopeMode === ExamRosterScopeModeCode.BY_STUDENT"
         class="section-actions"
       >
-        <UiButton size="sm" variant="outline" @click="openStudentDrawer"> 按学生选择 </UiButton>
+        <UiButton size="sm" variant="outline" @click="openStudentDrawer">按学生选择</UiButton>
       </div>
-    </header>
+    </div>
     <p class="section-desc">选择参考班级与纳入方式；创建后仍可在工作台名册中调整。</p>
 
     <UiAlertStrip
@@ -17,7 +17,7 @@
       title="名册预览失败"
       :description="rosterPreviewError"
       closable
-      class="exam-create-form__preview-error"
+      class="create-form__preview-error"
       @close="rosterPreviewError = ''"
     />
 
@@ -25,53 +25,58 @@
       ref="formRef"
       :model="rosterForm"
       :rules="rosterRules"
-      layout="vertical"
-      class="exam-create-form__body"
+      layout="horizontal"
+      :label-col="labelCol"
+      :wrapper-col="{ flex: 1 }"
+      class="create-form"
     >
-      <div class="exam-create-form__grid exam-create-form__grid--single">
-        <a-form-item label="纳入方式" name="scopeMode">
-          <a-segmented
-            :value="rosterForm.scopeMode"
-            :options="scopeModeOptions"
-            block
-            @change="handleScopeModeChange"
-          />
-        </a-form-item>
-        <a-form-item label="院系" required>
-          <a-select
-            v-model:value="departmentId"
-            placeholder="请选择院系"
-            :options="departmentOptions"
-            :loading="departmentLoading"
-            show-search
-            option-filter-prop="label"
-            allow-clear
-            style="width: 100%"
-          />
-        </a-form-item>
-        <a-form-item label="参考班级" name="classIds">
-          <a-select
-            v-model:value="rosterForm.classIds"
-            mode="multiple"
-            :placeholder="departmentId ? '选择参考班级（可多选）' : '请先选择院系'"
-            :options="classSelectOptions"
-            :loading="classOptionsLoading"
-            :disabled="!departmentId"
-            show-search
-            option-filter-prop="label"
-            allow-clear
-            style="width: 100%"
-          />
-          <div class="exam-create-form__hint">
-            <template v-if="rosterForm.scopeMode === ExamRosterScopeModeCode.BY_CLASS">
-              正考场景：按院系选择班级后自动纳入该班全部在籍学生；可切换院系继续添加班级。
-            </template>
-            <template v-else>
-              补考或部分考生：按院系选择班级后自动列出在籍学生，可移除不参加本场考试的学生，或通过「按学生选择」追加。
-            </template>
-          </div>
-        </a-form-item>
-      </div>
+      <a-form-item label="纳入方式" name="scopeMode">
+        <a-segmented
+          :value="rosterForm.scopeMode"
+          :options="scopeModeOptions"
+          block
+          @change="handleScopeModeChange"
+        />
+      </a-form-item>
+
+      <a-row :gutter="24">
+        <a-col :span="12">
+          <a-form-item label="院系" required :label-col="labelCol">
+            <a-select
+              v-model:value="departmentId"
+              placeholder="请选择院系"
+              :options="departmentOptions"
+              :loading="departmentLoading"
+              show-search
+              option-filter-prop="label"
+              allow-clear
+            />
+          </a-form-item>
+        </a-col>
+        <a-col :span="12">
+          <a-form-item label="参考班级" name="classIds" :label-col="labelCol">
+            <a-select
+              v-model:value="rosterForm.classIds"
+              mode="multiple"
+              :placeholder="departmentId ? '选择参考班级（可多选）' : '请先选择院系'"
+              :options="classSelectOptions"
+              :loading="classOptionsLoading"
+              :disabled="!departmentId"
+              show-search
+              option-filter-prop="label"
+              allow-clear
+            />
+            <p class="create-form__hint">
+              <template v-if="rosterForm.scopeMode === ExamRosterScopeModeCode.BY_CLASS">
+                正考场景：按院系选择班级后自动纳入该班全部在籍学生。
+              </template>
+              <template v-else>
+                补考或部分考生：可移除不参加本场考试的学生，或通过「按学生选择」追加。
+              </template>
+            </p>
+          </a-form-item>
+        </a-col>
+      </a-row>
     </a-form>
 
     <UiEmpty
@@ -118,7 +123,7 @@
       :excluded-student-ids="selectedStudentIds"
       @confirm="handleStudentsSelected"
     />
-  </section>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -139,7 +144,11 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { useExamDepartmentClassScope } from '@/composables/useExamDepartmentClassScope'
-import { readBusinessResultCode, showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import {
+  readBusinessResultCode,
+  showFormValidationMessage,
+  showUserError,
+} from '@/utils/error-handler'
 import { useInjectedExamCreateRosterForm } from './exam-create-context'
 import {
   buildRosterRequestsFromDrawerSelection,
@@ -161,6 +170,7 @@ const emit = defineEmits<{
 }>()
 const rosterForm = useInjectedExamCreateRosterForm()
 
+const labelCol = { style: { width: '88px' } }
 const formRef = ref<FormInstance>()
 const studentDrawerOpen = ref(false)
 const classScopeSyncing = ref(false)
@@ -279,8 +289,8 @@ function syncByClassScope(addedClassIds: string[]): void {
       if (syncSeq !== classScopeSyncSeq) return
       const previewCandidates = requirePreviewCandidates(preview.candidates)
       if (!previewCandidates) return
-      const nextCandidates
-        = scopeMode === ExamRosterScopeModeCode.BY_CLASS
+      const nextCandidates =
+        scopeMode === ExamRosterScopeModeCode.BY_CLASS
           ? previewCandidates
           : mergePreviewCandidates(rosterForm.candidates, previewCandidates)
       emit('sync-class-scope', nextCandidates, [...classIds])
@@ -381,26 +391,6 @@ watch(formRef, (value) => {
 </script>
 
 <style scoped lang="scss">
-.section-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.exam-create-form__hint {
-  margin-top: 8px;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--dp-text-secondary, #64748b);
-}
-
-.exam-create-form__preview-error {
-  margin-bottom: 16px;
-}
-
-.candidate-preview-table {
-  margin-top: 16px;
-}
-
 .roster-student {
   display: flex;
   flex-direction: column;
@@ -413,11 +403,11 @@ watch(formRef, (value) => {
 
   &__no {
     font-size: 12px;
-    color: var(--dp-text-secondary, #64748b);
+    color: var(--dp-text-secondary);
   }
 }
 
 .roster-cell--muted {
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 </style>

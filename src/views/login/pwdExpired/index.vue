@@ -72,6 +72,7 @@ const logo = computed(() => appStore.getLogo())
 </script>
 
 <style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 @media screen and (max-width: 570px) {
   .pc {
     display: none !important;
@@ -206,7 +207,7 @@ const logo = computed(() => appStore.getLogo())
   }
 }
 
-@media screen and (min-width: 768px) {
+@media screen and (min-width: bp.$ant-grid-md) {
   .h5 {
     display: none !important;
   }

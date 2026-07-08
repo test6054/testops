@@ -35,7 +35,7 @@
           class="todo-feed__action-link"
           @click="emit('navigate', todo.workspacePath, todo.examId)"
         >
-          {{ todoActionLabel(todo) }}
+          {{ resolveTodoActionLabel(todo) }}
         </button>
       </li>
     </ul>
@@ -43,16 +43,14 @@
 </template>
 
 <script lang="ts" setup>
-import type {
-  MarkTeacherDashboardPendingTodoItemVO,
-  MarkTeacherDashboardTodoTypeCode,
-} from '@/apis/mark/teacher-dashboard'
+import type { MarkTeacherDashboardPendingTodoItemVO } from '@/apis/mark/teacher-dashboard'
 import { MarkTeacherDashboardTodoTypeDescription } from '@/apis/mark/teacher-dashboard'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import {
   MARK_DASHBOARD_TODO_COUNT_UNIT,
+  resolveTodoActionLabel,
   resolveTodoRowContext,
   resolveTodoRowLabel,
   resolveTodoRowTitle,
@@ -75,7 +73,7 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  "navigate": [routeName: string | undefined, examId: string | undefined]
+  navigate: [routeName: string | undefined, examId: string | undefined]
   'empty-action': []
 }>()
 
@@ -105,22 +103,6 @@ function resolveRowContext(todo: MarkTeacherDashboardPendingTodoItemVO): string 
     return undefined
   }
   return resolveTodoRowContext(todo)
-}
-
-function todoActionLabel(todo: MarkTeacherDashboardPendingTodoItemVO): string {
-  const actionMap: Partial<Record<MarkTeacherDashboardTodoTypeCode, string>> = {
-    SCAN_ATTENTION: '查看',
-    REVIEW_PENDING: '处理',
-    GRADE_PENDING: '处理',
-    PROCESSING_OPEN: '查看',
-    SCORE_UNPUBLISHED: '发布',
-    CANDIDATE_UNBOUND: '处理',
-    ARBITRATION_PENDING: '审核',
-    SPOT_CHECK_PENDING: '处理',
-    EXPERIENCE_ASSIST_PENDING: '定标',
-  }
-  if (todo.blocking) return '处理'
-  return actionMap[todo.todoType] ?? '查看'
 }
 </script>
 
@@ -212,7 +194,7 @@ function todoActionLabel(todo: MarkTeacherDashboardPendingTodoItemVO): string {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--dp-space-1);
-  margin-top: 2px;
+  margin-top: var(--dp-space-1);
 }
 
 .todo-feed__label {
@@ -222,7 +204,7 @@ function todoActionLabel(todo: MarkTeacherDashboardPendingTodoItemVO): string {
 }
 
 .todo-feed__context {
-  margin-top: 2px;
+  margin-top: var(--dp-space-1);
   font-size: 12px;
   line-height: 1.5;
   color: var(--dp-text-muted);
@@ -249,11 +231,11 @@ function todoActionLabel(todo: MarkTeacherDashboardPendingTodoItemVO): string {
 }
 
 .todo-feed__action-link:hover {
-  color: var(--dp-blue-600, #0958d9);
+  color: var(--dp-blue-600);
 }
 
 .todo-feed__action-link:focus-visible {
-  outline: 2px solid var(--dp-focus-ring, rgba(22, 119, 255, 0.35));
+  outline: 2px solid var(--dp-focus-ring);
   outline-offset: 2px;
   border-radius: var(--dp-radius-control);
 }

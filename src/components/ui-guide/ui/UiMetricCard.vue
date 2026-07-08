@@ -88,7 +88,8 @@ const handleClick = (evt: MouseEvent) => {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .ui-metric-card {
   --metric-border: rgba(148, 163, 184, 0.2);
   --metric-text: #2563eb;
@@ -159,10 +160,10 @@ const handleClick = (evt: MouseEvent) => {
 
 .ui-metric-card__label {
   min-width: 0;
-  font-size: var(--dp-type-hint-size, 12px);
-  font-weight: var(--dp-type-table-head-weight, 600);
-  line-height: var(--dp-type-hint-line-height, 18px);
-  color: var(--dp-text-secondary, #6b7280);
+  font-size: var(--dp-type-hint-size);
+  font-weight: var(--dp-type-table-head-weight);
+  line-height: var(--dp-type-hint-line-height);
+  color: var(--dp-text-secondary);
 }
 
 .ui-metric-card__extra {
@@ -183,15 +184,15 @@ const handleClick = (evt: MouseEvent) => {
 .ui-metric-card__value {
   font-size: 24px;
   line-height: 1.25;
-  font-weight: var(--dp-font-weight-metric, 600);
-  color: var(--dp-text-primary, #0f172a);
+  font-weight: var(--dp-font-weight-metric);
+  color: var(--dp-text-primary);
   font-variant-numeric: tabular-nums;
 }
 
 .ui-metric-card__unit {
-  font-size: var(--dp-type-table-body-size, 14px);
-  font-weight: var(--dp-type-sidebar-weight-active, 600);
-  color: var(--dp-text-muted, #6b7280);
+  font-size: var(--dp-type-table-body-size);
+  font-weight: var(--dp-type-sidebar-weight-active);
+  color: var(--dp-text-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -207,7 +208,7 @@ const handleClick = (evt: MouseEvent) => {
   min-width: 0;
   font-size: 13px;
   line-height: 1.5;
-  color: var(--dp-text-secondary, #6b7280);
+  color: var(--dp-text-secondary);
 }
 
 .ui-metric-card__trend {
@@ -217,19 +218,19 @@ const handleClick = (evt: MouseEvent) => {
 }
 
 .ui-metric-card__trend--default {
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-metric-card__trend--success {
-  color: var(--dp-green-700, #15803d);
+  color: var(--dp-green-700);
 }
 
 .ui-metric-card__trend--warning {
-  color: var(--dp-orange-700, #c2410c);
+  color: var(--dp-orange-700);
 }
 
 .ui-metric-card__trend--danger {
-  color: var(--dp-red-700, #b91c1c);
+  color: var(--dp-red-700);
 }
 
 .ui-metric-card--gray {
@@ -269,7 +270,7 @@ const handleClick = (evt: MouseEvent) => {
 }
 
 .ui-metric-card--purple {
-  --metric-text: var(--dp-purple-500, #722ed1);
+  --metric-text: var(--dp-purple-500);
   --metric-icon-bg: #f5f3ff;
   --metric-icon-border: rgba(221, 214, 254, 0.9);
 }
@@ -297,7 +298,7 @@ const handleClick = (evt: MouseEvent) => {
   font-size: 12px;
 }
 
-@media (max-width: 767px) {
+@media (max-width: bp.$layout-mobile-max) {
   .ui-metric-card {
     padding: 14px 16px;
   }

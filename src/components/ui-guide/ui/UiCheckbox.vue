@@ -55,7 +55,7 @@ const inGroup = inject(uiCheckboxGroupKey, undefined) === true
   display: inline-flex;
   align-items: center;
   min-height: 22px;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
   font-size: 14px;
   line-height: 1.6;
   font-family: var(--dp-font-family);
@@ -67,15 +67,15 @@ const inGroup = inject(uiCheckboxGroupKey, undefined) === true
 
 .ui-checkbox :deep(.ant-checkbox + span) {
   padding-inline-start: 10px;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-checkbox :deep(.ant-checkbox-inner) {
   width: 18px;
   height: 18px;
   border-radius: 4px;
-  border-color: var(--dp-border, #e5e7eb);
-  background: var(--dp-bg-control, #f3f4f6);
+  border-color: var(--dp-border);
+  background: var(--dp-bg-control);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
   transition:
     border-color 0.2s ease,
@@ -84,18 +84,18 @@ const inGroup = inject(uiCheckboxGroupKey, undefined) === true
 }
 
 .ui-checkbox:hover :deep(.ant-checkbox-inner) {
-  border-color: var(--dp-border-hover, #2563eb);
+  border-color: var(--dp-border-hover);
 }
 
 .ui-checkbox :deep(.ant-checkbox-input:focus-visible + .ant-checkbox-inner) {
-  border-color: var(--dp-border-hover, #2563eb);
-  box-shadow: 0 0 0 3px var(--dp-focus-ring, rgba(37, 99, 235, 0.25));
+  border-color: var(--dp-border-hover);
+  box-shadow: 0 0 0 3px var(--dp-focus-ring);
 }
 
 .ui-checkbox :deep(.ant-checkbox-checked .ant-checkbox-inner),
 .ui-checkbox :deep(.ant-checkbox-indeterminate .ant-checkbox-inner) {
-  background: var(--dp-blue-600, #2563eb);
-  border-color: var(--dp-blue-600, #2563eb);
+  background: var(--dp-blue-600);
+  border-color: var(--dp-blue-600);
 }
 
 .ui-checkbox :deep(.ant-checkbox-checked .ant-checkbox-inner::after) {
@@ -113,11 +113,11 @@ const inGroup = inject(uiCheckboxGroupKey, undefined) === true
 
 .ui-checkbox :deep(.ant-checkbox-disabled + span),
 .ui-checkbox :deep(.ant-checkbox-wrapper-disabled) {
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-checkbox :deep(.ant-checkbox-disabled .ant-checkbox-inner) {
-  background: var(--dp-bg-control-disabled, #eef2f7);
-  border-color: var(--dp-border, #e5e7eb);
+  background: var(--dp-bg-control-disabled);
+  border-color: var(--dp-border);
 }
 </style>

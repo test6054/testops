@@ -1,21 +1,22 @@
-// 实训详情列表：表头/单元格字号、字重、居中及排序图标布局
-// 全局样式（由 index.scss 引入），避免 scoped :deep 穿透不稳定
-
+// 表格字阶与排序布局（全局，与 web-vue 对齐；由 index.scss 引入）
 .ui-data-table__table,
 .unified-list-table__table-wrap,
 .defense-table-wrap {
   .ant-table-thead > tr > th {
-    height: 44px !important;
+    height: 48px !important;
     padding: 0 14px !important;
-    font-size: var(--dp-type-table-head-size, 14px) !important;
-    font-weight: var(--dp-type-table-head-weight, 600) !important;
-    line-height: var(--dp-type-table-head-line-height, 20px) !important;
+    font-size: var(--dp-type-table-head-size) !important;
+    font-weight: var(--dp-type-table-head-weight) !important;
+    color: var(--ant-color-text) !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+    line-height: var(--dp-type-table-head-line-height);
     white-space: nowrap;
   }
 
   .ant-table-thead > tr > th .ant-table-column-title {
-    font-size: var(--dp-type-table-head-size, 14px) !important;
-    font-weight: var(--dp-type-table-head-weight, 600) !important;
+    font-size: var(--dp-type-table-head-size) !important;
+    font-weight: var(--dp-type-table-head-weight) !important;
     color: var(--ant-color-text) !important;
   }
 
@@ -68,14 +69,18 @@
     transform: translateY(-50%);
   }
 
+  .ant-table-thead > tr > th.ant-table-column-sort {
+    background: var(--dp-blue-50) !important;
+  }
+
   .ant-table-tbody > tr > td.ant-table-cell {
     padding: 12px 14px !important;
-    font-size: var(--dp-type-table-body-size, 14px) !important;
-    font-weight: var(--dp-type-table-body-weight, 400) !important;
+    font-size: var(--dp-type-table-body-size) !important;
+    font-weight: var(--dp-type-table-body-weight) !important;
     color: var(--ant-color-text) !important;
     text-align: center !important;
     vertical-align: middle !important;
-    line-height: var(--dp-type-table-body-line-height, 20px) !important;
+    line-height: var(--dp-type-table-body-line-height) !important;
   }
 
   .ant-table-tbody > tr.ant-table-measure-row > td.ant-table-cell {
@@ -84,5 +89,14 @@
     border: 0 !important;
     font-size: 0 !important;
     font-weight: normal !important;
+  }
+
+  .ant-table-thead > tr > th.ui-data-table__col--text-left,
+  .ant-table-tbody > tr > td.ui-data-table__col--text-left {
+    text-align: left !important;
+  }
+
+  .ant-table-thead > tr > th.ui-data-table__col--text-left .ant-table-column-sorters {
+    justify-content: flex-start;
   }
 }

@@ -24,7 +24,9 @@
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'reviewerName'">
           <span class="org-roster__name">{{ record.reviewerName }}</span>
-          <div v-if="record.reviewerTeacherNo" class="org-roster__sub">{{ record.reviewerTeacherNo }}</div>
+          <div v-if="record.reviewerTeacherNo" class="org-roster__sub">
+            {{ record.reviewerTeacherNo }}
+          </div>
         </template>
         <template v-else-if="column.key === 'role'">
           <UiTag :tone="record.roleTone" size="sm">{{ record.roleLabel }}</UiTag>
@@ -32,13 +34,18 @@
         <template v-else-if="column.key === 'completion'">
           <div class="org-roster__progress">
             <div class="org-roster__bar">
-              <div class="org-roster__bar-fill" :style="{ width: `${record.completionPercent}%` }" />
+              <div
+                class="org-roster__bar-fill"
+                :style="{ width: `${record.completionPercent}%` }"
+              />
             </div>
             <span>{{ record.completionLabel }}</span>
           </div>
         </template>
         <template v-else-if="column.key === 'consistency'">
-          <span :class="{ 'org-roster__warn': record.consistencyWarn }">{{ record.consistencyLabel }}</span>
+          <span :class="{ 'org-roster__warn': record.consistencyWarn }">{{
+            record.consistencyLabel
+          }}</span>
         </template>
       </template>
     </UiDataTable>
@@ -89,13 +96,19 @@ const columns: ColumnType<RosterRow>[] = [
   { title: '题组', dataIndex: 'groupName', key: 'groupName', width: 140 },
   { title: '角色', key: 'role', width: 88 },
   { title: '分配任务', dataIndex: 'totalTasks', key: 'totalTasks', width: 88, align: 'right' },
-  { title: '已完成', dataIndex: 'submittedTasks', key: 'submittedTasks', width: 88, align: 'right' },
+  {
+    title: '已完成',
+    dataIndex: 'submittedTasks',
+    key: 'submittedTasks',
+    width: 88,
+    align: 'right',
+  },
   { title: '完成率', key: 'completion', width: 120 },
   { title: '一致性', key: 'consistency', width: 88, align: 'right' },
   { title: '平均用时', dataIndex: 'avgTimeLabel', key: 'avgTimeLabel', width: 96, align: 'right' },
 ]
 
-function formatConsistency(value: number | null | undefined): { label: string, warn: boolean } {
+function formatConsistency(value: number | null | undefined): { label: string; warn: boolean } {
   if (value == null || Number.isNaN(value)) {
     return { label: '—', warn: false }
   }
@@ -106,7 +119,7 @@ function formatConsistency(value: number | null | undefined): { label: string, w
   }
 }
 
-function formatCompletion(total: number, submitted: number): { percent: number, label: string } {
+function formatCompletion(total: number, submitted: number): { percent: number; label: string } {
   if (total <= 0) {
     return { percent: 0, label: '—' }
   }
@@ -201,17 +214,17 @@ const rows = computed((): RosterRow[] => {
     max-width: 60px;
     height: 3px;
     border-radius: 2px;
-    background: var(--dp-surface-sunken, #e2e8f0);
+    background: var(--dp-surface-sunken);
     overflow: hidden;
   }
 
   &__bar-fill {
     height: 100%;
-    background: var(--dp-color-primary, #2563eb);
+    background: var(--dp-color-primary);
   }
 
   &__warn {
-    color: var(--dp-color-warning, #d97706);
+    color: var(--dp-color-warning);
     font-weight: 600;
   }
 }

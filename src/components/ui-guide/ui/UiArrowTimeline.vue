@@ -126,7 +126,8 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .ui-arrow-timeline {
   display: flex;
   gap: 0;
@@ -143,7 +144,7 @@ function handleStageClick(stage: UiArrowTimelineStage) {
   font: inherit;
   text-align: inherit;
   cursor: pointer;
-  transition: transform var(--dp-duration-fast, 150ms) ease;
+  transition: transform var(--dp-duration-fast) ease;
 }
 
 .ui-arrow-timeline__stage:focus-visible {
@@ -345,13 +346,13 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 .ui-arrow-timeline__title {
   font-size: 13px;
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
   line-height: 1.4;
 }
 
 .ui-arrow-timeline__date {
   font-size: 12px;
-  color: var(--dp-text-muted, #64748b);
+  color: var(--dp-text-muted);
   line-height: 1.3;
 }
 
@@ -370,7 +371,7 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 
 .ui-arrow-timeline__status-text {
   font-size: 12px;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 /* ===== 进度条 ===== */
@@ -399,7 +400,7 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 .ui-arrow-timeline__progress-text {
   font-size: 11px;
   font-weight: 500;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
   min-width: 32px;
   text-align: right;
 }
@@ -420,13 +421,13 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 .ui-arrow-timeline__metric-value {
   font-size: 15px;
   font-weight: 700;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
   line-height: 1.2;
 }
 
 .ui-arrow-timeline__metric-label {
   font-size: 11px;
-  color: var(--dp-text-muted, #64748b);
+  color: var(--dp-text-muted);
 }
 
 /* ===== 紧凑模式 ===== */
@@ -467,7 +468,7 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 }
 
 /* ===== 响应式 ===== */
-@media (max-width: 767px) {
+@media (max-width: bp.$layout-mobile-max) {
   .ui-arrow-timeline {
     flex-direction: column;
     gap: 6px;

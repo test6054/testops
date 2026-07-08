@@ -92,22 +92,22 @@
 <script lang="ts" setup>
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
-import type { StudentExamItemVO } from '@/apis/mark/student-exam'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   FINAL_SCORE_STATUS_CODES,
   FINAL_SCORE_STATUS_TONE,
   FinalScoreStatusDescription,
 } from '@/apis/mark/final-score-status'
+import type { StudentExamItemVO } from '@/apis/mark/student-exam'
 import {
   canSubmitReview,
   listMyExams,
   ReviewWindowPolicyStatusDescription,
   STUDENT_REVIEW_WINDOW_STATUS_TONE,
 } from '@/apis/mark/student-exam'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -177,8 +177,8 @@ const columns: ColumnsType<StudentExamItemVO> = [
 const filteredExams = computed<StudentExamItemVO[]>(() => {
   return exams.value.filter((item) => {
     if (
-      historyFilterForm.statusFilter
-      && item.finalScoreStatus !== historyFilterForm.statusFilter
+      historyFilterForm.statusFilter &&
+      item.finalScoreStatus !== historyFilterForm.statusFilter
     ) {
       return false
     }
@@ -282,7 +282,7 @@ onActivated(loadExams)
   align-items: center;
   gap: 8px;
   font-size: 16px;
-  font-weight: var(--dp-font-weight-title, 600);
+  font-weight: var(--dp-font-weight-title);
 }
 
 .history-table {

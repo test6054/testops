@@ -3,13 +3,16 @@ import { computed } from 'vue'
 
 defineOptions({ name: 'ConfidentialWatermarkLayer' })
 
-const props = withDefaults(defineProps<{
-  lines?: string[]
-  density?: 'normal' | 'dense'
-}>(), {
-  lines: () => [],
-  density: 'normal',
-})
+const props = withDefaults(
+  defineProps<{
+    lines?: string[]
+    density?: 'normal' | 'dense'
+  }>(),
+  {
+    lines: () => [],
+    density: 'normal',
+  },
+)
 
 const watermarkText = computed(() => props.lines.filter(Boolean).join(' · '))
 
@@ -24,11 +27,7 @@ const tileCount = computed(() => (props.density === 'dense' ? 48 : 32))
     aria-hidden="true"
   >
     <div class="confidential-watermark__grid">
-      <span
-        v-for="index in tileCount"
-        :key="index"
-        class="confidential-watermark__tile"
-      >
+      <span v-for="index in tileCount" :key="index" class="confidential-watermark__tile">
         {{ watermarkText }}
       </span>
     </div>
@@ -62,7 +61,7 @@ const tileCount = computed(() => (props.density === 'dense' ? 48 : 32))
   &__tile {
     font-size: 13px;
     line-height: 1.4;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
     white-space: nowrap;
     user-select: none;
   }

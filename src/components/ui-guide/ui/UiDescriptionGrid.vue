@@ -144,9 +144,9 @@ const getDisplayValue = (item: UiDescriptionItem) => {
   gap: 10px;
   min-width: 0;
   padding: 16px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
 }
 
 .ui-description-grid--compact .ui-description-grid__item {
@@ -163,7 +163,7 @@ const getDisplayValue = (item: UiDescriptionItem) => {
   font-size: 13px;
   font-weight: 700;
   line-height: 1.5;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-description-grid__value-wrap {
@@ -178,43 +178,43 @@ const getDisplayValue = (item: UiDescriptionItem) => {
   font-size: 15px;
   font-weight: 700;
   line-height: 1.6;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
   word-break: break-word;
 }
 
 .ui-description-grid__value--gray {
-  color: var(--dp-gray-700, #334155);
+  color: var(--dp-gray-700);
 }
 
 .ui-description-grid__value--blue {
-  color: var(--dp-blue-700, #1d4ed8);
+  color: var(--dp-blue-700);
 }
 
 .ui-description-grid__value--orange {
-  color: var(--dp-orange-700, #c2410c);
+  color: var(--dp-orange-700);
 }
 
 .ui-description-grid__value--green {
-  color: var(--dp-green-700, #15803d);
+  color: var(--dp-green-700);
 }
 
 .ui-description-grid__value--yellow {
-  color: var(--dp-yellow-700, #a16207);
+  color: var(--dp-yellow-700);
 }
 
 .ui-description-grid__value--red {
-  color: var(--dp-red-700, #b91c1c);
+  color: var(--dp-red-700);
 }
 
 .ui-description-grid__value--purple {
-  color: var(--dp-purple-700, var(--dp-purple-500, #722ed1));
+  color: var(--dp-purple-700);
 }
 
 .ui-description-grid__helper {
   margin: 0;
   font-size: 13px;
   line-height: 1.6;
-  color: var(--dp-text-muted, #64748b);
+  color: var(--dp-text-muted);
 }
 
 .ui-description-grid__footer {
@@ -224,7 +224,7 @@ const getDisplayValue = (item: UiDescriptionItem) => {
   flex-wrap: wrap;
   gap: 12px;
   padding-top: 14px;
-  border-top: 1px solid var(--dp-border, #e5e7eb);
+  border-top: 1px solid var(--dp-border);
 }
 
 @media (max-width: 900px) {

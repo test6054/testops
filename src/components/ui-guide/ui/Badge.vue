@@ -31,17 +31,17 @@ type BadgeVariant = 'solid' | 'outline' | 'soft'
 
 <style scoped>
 .ui-badge {
-  --badge-text: var(--dp-text-secondary, #475569);
-  --badge-bg: var(--dp-gray-50, #f8fafc);
-  --badge-border: var(--dp-gray-200, #e5e7eb);
-  --badge-solid-bg: var(--dp-gray-600, #475569);
+  --badge-text: var(--dp-text-secondary);
+  --badge-bg: var(--dp-gray-50);
+  --badge-border: var(--dp-gray-200);
+  --badge-solid-bg: var(--dp-gray-600);
   --badge-solid-text: #fff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   border: 1px solid var(--badge-border);
-  border-radius: var(--dp-radius-control-inner, 4px);
+  border-radius: var(--dp-radius-control-inner);
   white-space: nowrap;
   font-weight: 500;
   line-height: 1;
@@ -87,51 +87,51 @@ type BadgeVariant = 'solid' | 'outline' | 'soft'
 }
 
 .ui-badge--gray {
-  --badge-text: var(--dp-text-secondary, #475569);
-  --badge-bg: var(--dp-gray-100, #f3f4f6);
-  --badge-border: var(--dp-gray-200, #e5e7eb);
-  --badge-solid-bg: var(--dp-gray-600, #475569);
+  --badge-text: var(--dp-text-secondary);
+  --badge-bg: var(--dp-gray-100);
+  --badge-border: var(--dp-gray-200);
+  --badge-solid-bg: var(--dp-gray-600);
 }
 
 .ui-badge--blue {
-  --badge-text: var(--dp-blue-700, #1d4ed8);
-  --badge-bg: var(--dp-blue-50, #eff6ff);
-  --badge-border: var(--dp-blue-200, #bfdbfe);
-  --badge-solid-bg: var(--dp-blue-600, #2563eb);
+  --badge-text: var(--dp-blue-700);
+  --badge-bg: var(--dp-blue-50);
+  --badge-border: var(--dp-blue-200);
+  --badge-solid-bg: var(--dp-blue-600);
 }
 
 .ui-badge--orange {
-  --badge-text: var(--dp-orange-700, #c2410c);
-  --badge-bg: var(--dp-orange-50, #fff7ed);
-  --badge-border: var(--dp-orange-200, #fed7aa);
-  --badge-solid-bg: var(--dp-orange-500, #f97316);
+  --badge-text: var(--dp-orange-700);
+  --badge-bg: var(--dp-orange-50);
+  --badge-border: var(--dp-orange-200);
+  --badge-solid-bg: var(--dp-orange-500);
 }
 
 .ui-badge--green {
-  --badge-text: var(--dp-green-700, #15803d);
-  --badge-bg: var(--dp-green-50, #ecfdf3);
-  --badge-border: var(--dp-green-200, #bbf7d0);
-  --badge-solid-bg: var(--dp-green-500, #22c55e);
+  --badge-text: var(--dp-green-700);
+  --badge-bg: var(--dp-green-50);
+  --badge-border: var(--dp-green-200);
+  --badge-solid-bg: var(--dp-green-500);
 }
 
 .ui-badge--yellow {
-  --badge-text: var(--dp-yellow-700, #a16207);
-  --badge-bg: var(--dp-yellow-50, #fefce8);
-  --badge-border: var(--dp-yellow-200, #fef08a);
-  --badge-solid-bg: var(--dp-yellow-500, #eab308);
+  --badge-text: var(--dp-yellow-700);
+  --badge-bg: var(--dp-yellow-50);
+  --badge-border: var(--dp-yellow-200);
+  --badge-solid-bg: var(--dp-yellow-500);
 }
 
 .ui-badge--red {
-  --badge-text: var(--dp-red-700, #b91c1c);
-  --badge-bg: var(--dp-red-50, #fef2f2);
-  --badge-border: var(--dp-red-200, #fecdd3);
-  --badge-solid-bg: var(--dp-red-500, #ef4444);
+  --badge-text: var(--dp-red-700);
+  --badge-bg: var(--dp-red-50);
+  --badge-border: var(--dp-red-200);
+  --badge-solid-bg: var(--dp-red-500);
 }
 
 .ui-badge--purple {
-  --badge-text: var(--dp-purple-700, var(--dp-purple-500, #722ed1));
-  --badge-bg: var(--dp-purple-50, #f5f3ff);
-  --badge-border: var(--dp-purple-200, #ddd6fe);
-  --badge-solid-bg: var(--dp-purple-700, var(--dp-purple-500, #722ed1));
+  --badge-text: var(--dp-purple-700);
+  --badge-bg: var(--dp-purple-50);
+  --badge-border: var(--dp-purple-200);
+  --badge-solid-bg: var(--dp-purple-700);
 }
 </style>

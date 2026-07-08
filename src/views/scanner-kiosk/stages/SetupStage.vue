@@ -68,6 +68,8 @@ const hardwareParamItems = computed(() => {
   if (scanConfig.value.duplexMode) {
     items.push(workflow.scannerDuplexModeLabel(scanConfig.value.duplexMode))
   }
+  const chainLabel = workflow.tenantProviderChainLabel.value
+  if (chainLabel) items.push(chainLabel)
   return items
 })
 
@@ -99,6 +101,10 @@ const templateReviewLinkText = computed(() => {
 
 const scanMaterialAdvisory = computed(() => workflow.scanMaterialAdvisory.value)
 const classScopeAdvisory = computed(() => workflow.classScopeAdvisory.value)
+const prepHardBlockingReasons = computed(
+  () => workflow.kioskContext.value?.prepHardBlockingReasons ?? [],
+)
+const prepAdvisoryReasons = computed(() => workflow.kioskContext.value?.prepAdvisoryReasons ?? [])
 
 const scanConfigAdvisory = computed(
   () => workflow.kioskContext.value?.scanConfigOptions?.scanConfigAdvisory?.trim() || '',
@@ -143,9 +149,9 @@ function buildFirstScanCalibrationDialog() {
     return {
       title: '试卷首次扫描核对',
       content:
-        `当前考试为整卷作答，纸型 ${paperStyle}。`
-        + '首张送纸后请在「扫描中」预览整卷切分与页序是否正常；'
-        + '若偏差，请暂停并在 Web 端调整制卷设计后再继续批量扫描。',
+        `当前考试为整卷作答，纸型 ${paperStyle}。` +
+        '首张送纸后请在「扫描中」预览整卷切分与页序是否正常；' +
+        '若偏差，请暂停并在 Web 端调整制卷设计后再继续批量扫描。',
       okText: '已了解，开始扫描',
       cancelText: '先查看制卷摘要',
     }
@@ -154,9 +160,9 @@ function buildFirstScanCalibrationDialog() {
     return {
       title: '答卷页首次扫描核对',
       content:
-        `当前考试为独立答卷页，纸型 ${paperStyle}。`
-        + '首张送纸后请在「扫描中」预览定位框与考号区是否正常；'
-        + '若偏差，请暂停并在 Web 端调整答卷页模板后再继续批量扫描。',
+        `当前考试为独立答卷页，纸型 ${paperStyle}。` +
+        '首张送纸后请在「扫描中」预览定位框与考号区是否正常；' +
+        '若偏差，请暂停并在 Web 端调整答卷页模板后再继续批量扫描。',
       okText: '已了解，开始扫描',
       cancelText: '先查看制卷摘要',
     }
@@ -164,8 +170,8 @@ function buildFirstScanCalibrationDialog() {
   return {
     title: '首次扫描核对',
     content:
-      `考试制卷形态尚未配置，已按 ${kind} 单面扫描建议参数（纸型 ${paperStyle}）。`
-      + '首张送纸后请核对预览是否正常，并在 Web 端补配制卷形态与模板。',
+      `考试制卷形态尚未配置，已按 ${kind} 单面扫描建议参数（纸型 ${paperStyle}）。` +
+      '首张送纸后请核对预览是否正常，并在 Web 端补配制卷形态与模板。',
     okText: '已了解，开始扫描',
     cancelText: '先查看制卷摘要',
   }
@@ -359,20 +365,30 @@ onMounted(() => {
         <div v-if="troubleshootingLine" class="scan-control__trouble">
           <p>{{ troubleshootingLine }}</p>
         </div>
+        <div v-if="prepHardBlockingReasons.length" class="scan-control__hard-block">
+          <p v-for="reason in prepHardBlockingReasons" :key="reason">{{ reason }}</p>
+        </div>
         <div
-          v-if="scanMaterialAdvisory || classScopeAdvisory || scanConfigAdvisory"
+          v-if="
+            scanMaterialAdvisory ||
+            classScopeAdvisory ||
+            scanConfigAdvisory ||
+            prepAdvisoryReasons.length
+          "
           class="scan-control__advisory"
         >
           <p v-if="scanMaterialAdvisory">{{ scanMaterialAdvisory }}</p>
           <p v-if="classScopeAdvisory">{{ classScopeAdvisory }}</p>
           <p v-if="scanConfigAdvisory">{{ scanConfigAdvisory }}</p>
+          <p v-for="reason in prepAdvisoryReasons" :key="reason">{{ reason }}</p>
         </div>
       </div>
     </div>
   </section>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .workbench {
   display: flex;
   flex-direction: column;
@@ -693,6 +709,24 @@ onMounted(() => {
   line-height: var(--kiosk-lh-base);
 }
 
+.scan-control__hard-block {
+  padding: var(--kiosk-space-3) var(--kiosk-space-4);
+  border-radius: var(--kiosk-radius-md);
+  background: var(--kiosk-danger-soft, #fff1f0);
+  border: 1px solid var(--kiosk-danger, #cf1322);
+}
+
+.scan-control__hard-block p {
+  margin: 0;
+  font-size: var(--kiosk-fz-label);
+  color: var(--kiosk-danger, #cf1322);
+  line-height: var(--kiosk-lh-base);
+}
+
+.scan-control__hard-block p + p {
+  margin-top: var(--kiosk-space-2);
+}
+
 .scan-control__advisory {
   padding: var(--kiosk-space-3) var(--kiosk-space-4);
   border-radius: var(--kiosk-radius-md);
@@ -797,7 +831,7 @@ onMounted(() => {
   cursor: not-allowed;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: #{bp.$ant-grid-xl - 1px}) {
   .scan-control {
     flex-direction: column;
     align-items: stretch;
@@ -808,7 +842,7 @@ onMounted(() => {
   }
 }
 
-@media (max-width: 1024px) {
+@media (max-width: bp.$shell-tablet-max) {
   .workbench__grid {
     grid-template-columns: 1fr;
   }

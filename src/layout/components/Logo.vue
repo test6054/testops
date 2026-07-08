@@ -2,7 +2,7 @@
   <section :class="{ collapsed: props.collapsed }" class="system-logo" @click="toHome">
     <img v-if="logo" :src="logo" alt="logo" class="logo" />
     <img v-else alt="logo" class="logo" src="/logo.svg" />
-    <span class="system-name gi_line_1">{{ title }}</span>
+    <span class="system-name">{{ title }}</span>
   </section>
 </template>
 
@@ -70,7 +70,9 @@ const toHome = () => {
 
   .system-name {
     padding-left: 6px;
+    overflow: hidden;
     white-space: nowrap;
+    text-overflow: ellipsis;
     transition: color 0.3s;
     line-height: 1.5;
     display: inline-flex;

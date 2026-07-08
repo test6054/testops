@@ -1,0 +1,145 @@
+/* 考试绑定/切换全屏页 — 医院挂号一体机磁贴布局 */
+
+.exam-gate {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--kiosk-z-modal, 100) - 1);
+  display: flex;
+  flex-direction: column;
+  background: var(--kiosk-page-bg);
+  color: var(--kiosk-ink-primary);
+  font-family: var(--kiosk-font-display);
+  min-height: 0;
+}
+
+.exam-gate--overlay {
+  z-index: var(--kiosk-z-modal, 100);
+}
+
+.exam-gate__bar {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(180px, auto) auto;
+  align-items: center;
+  gap: var(--kiosk-space-4);
+  flex-shrink: 0;
+  height: var(--kiosk-h-app-bar);
+  padding: 0 var(--kiosk-space-6);
+  background: var(--kiosk-surface);
+  border-bottom: 1px solid var(--kiosk-divider);
+  box-shadow: var(--kiosk-shadow-1);
+}
+
+.exam-gate__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--kiosk-space-3);
+  min-width: 0;
+}
+
+.exam-gate__logo {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.exam-gate__brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: var(--kiosk-lh-tight);
+  min-width: 0;
+}
+
+.exam-gate__brand-title {
+  font-size: 16px;
+  font-weight: var(--kiosk-fw-semibold);
+}
+
+.exam-gate__brand-sub {
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-ink-tertiary);
+}
+
+.exam-gate__status {
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--kiosk-space-2);
+  min-height: 40px;
+  padding: 0 var(--kiosk-space-4);
+  border-radius: var(--kiosk-radius-pill);
+  background: var(--kiosk-success-soft);
+  border: 1px solid rgba(31, 157, 85, 0.24);
+  font-size: var(--kiosk-fz-label);
+  font-weight: var(--kiosk-fw-medium);
+  color: var(--kiosk-success);
+  white-space: nowrap;
+}
+
+.exam-gate__status-dot {
+  width: var(--kiosk-led-size);
+  height: var(--kiosk-led-size);
+  border-radius: 50%;
+  background: var(--kiosk-success);
+  box-shadow: 0 0 0 var(--kiosk-led-ring) rgba(31, 157, 85, 0.28);
+}
+
+.exam-gate__bar-action {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--kiosk-space-2);
+}
+
+.exam-gate__ghost-btn {
+  min-width: 112px;
+  min-height: var(--kiosk-h-action-md);
+  padding: 0 var(--kiosk-space-5);
+  border-radius: var(--kiosk-radius-md);
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: var(--kiosk-fw-semibold);
+  cursor: pointer;
+  background: var(--kiosk-surface);
+  border: 1px solid var(--kiosk-divider);
+  color: var(--kiosk-ink-secondary);
+}
+
+.exam-gate__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--kiosk-space-4);
+  min-height: 0;
+  padding: var(--kiosk-space-5) var(--kiosk-space-6) var(--kiosk-space-4);
+}
+
+.exam-gate__heading {
+  margin: 0;
+  font-size: var(--kiosk-fz-h1);
+  font-weight: var(--kiosk-fw-bold);
+  line-height: var(--kiosk-lh-tight);
+}
+
+.exam-gate__heading-sub {
+  margin: var(--kiosk-space-1) 0 0;
+  font-size: var(--kiosk-fz-body);
+  color: var(--kiosk-ink-secondary);
+}
+
+.exam-gate__panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: var(--kiosk-space-5);
+  border: 1px solid var(--kiosk-divider);
+  border-radius: var(--kiosk-radius-lg);
+  background: var(--kiosk-surface);
+  box-shadow: var(--kiosk-shadow-1);
+}
+
+.exam-gate__panel--busy {
+  pointer-events: none;
+  opacity: 0.72;
+}

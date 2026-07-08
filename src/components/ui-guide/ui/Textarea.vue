@@ -82,11 +82,11 @@ const resolvedStatus = computed<UiFieldStatus>(() => (props.error ? 'error' : pr
 }
 
 .ui-textarea :deep(.ant-input) {
-  border-radius: var(--dp-radius-control, 4px) !important;
-  border: 1px solid var(--dp-border, #e5e7eb) !important;
-  background: var(--dp-bg-control, #f3f4f6) !important;
+  border-radius: var(--dp-radius-control) !important;
+  border: 1px solid var(--dp-border) !important;
+  background: var(--dp-bg-control) !important;
   box-shadow: none !important;
-  color: var(--dp-text-primary, #0f172a) !important;
+  color: var(--dp-text-primary) !important;
   font-family: var(--dp-font-family) !important;
   line-height: 1.6 !important;
   resize: vertical !important;
@@ -97,21 +97,21 @@ const resolvedStatus = computed<UiFieldStatus>(() => (props.error ? 'error' : pr
 }
 
 .ui-textarea :deep(.ant-input:hover) {
-  border-color: var(--dp-border-hover, #2563eb) !important;
+  border-color: var(--dp-border-hover) !important;
 }
 
 .ui-textarea :deep(.ant-input:focus),
 .ui-textarea :deep(.ant-input-focused) {
-  border-color: var(--dp-blue-600, #2563eb) !important;
-  box-shadow: 0 0 0 3px var(--dp-focus-ring, rgba(37, 99, 235, 0.25)) !important;
+  border-color: var(--dp-blue-600) !important;
+  box-shadow: 0 0 0 3px var(--dp-focus-ring) !important;
 }
 
 .ui-textarea :deep(.ant-input::placeholder) {
-  color: var(--dp-text-muted, #6b7280) !important;
+  color: var(--dp-text-muted) !important;
 }
 
 .ui-textarea :deep(.ant-input-data-count) {
-  color: var(--dp-text-muted, #6b7280) !important;
+  color: var(--dp-text-muted) !important;
   font-size: 12px !important;
 }
 
@@ -134,21 +134,21 @@ const resolvedStatus = computed<UiFieldStatus>(() => (props.error ? 'error' : pr
 }
 
 .ui-textarea--error :deep(.ant-input) {
-  border-color: var(--dp-red-500, #ef4444) !important;
+  border-color: var(--dp-red-500) !important;
 }
 
 .ui-textarea--warning :deep(.ant-input) {
-  border-color: var(--dp-orange-500, #f97316) !important;
+  border-color: var(--dp-orange-500) !important;
 }
 
 .ui-textarea--success :deep(.ant-input) {
-  border-color: var(--dp-green-500, #22c55e) !important;
+  border-color: var(--dp-green-500) !important;
 }
 
 .ui-textarea--disabled :deep(.ant-input),
 .ui-textarea--readonly :deep(.ant-input) {
-  background: var(--dp-bg-control-disabled, #eef2f7) !important;
-  color: var(--dp-text-secondary, #475569) !important;
+  background: var(--dp-bg-control-disabled) !important;
+  color: var(--dp-text-secondary) !important;
 }
 
 .ui-textarea--disabled :deep(.ant-input) {

@@ -1,0 +1,155 @@
+<script setup lang="ts">
+import type { ArchiveVolumeMemberDisplayVO } from '@/apis/mark/archive-volume'
+import { addArchiveVolumeMember, removeArchiveVolumeMember } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { ref, watch } from 'vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import {
+  ArchiveVolumeMemberRoleCode,
+  archiveVolumeMemberRoleLabel,
+} from '@/types/enums/archive-volume-member-role-enum'
+import { showUserError } from '@/utils/error-handler'
+
+const props = defineProps<{
+  open: boolean
+  volumeId: string
+  collaborators: ArchiveVolumeMemberDisplayVO[]
+}>()
+
+const emit = defineEmits<{
+  'update:open': [boolean]
+  changed: []
+}>()
+
+const addUserId = ref('')
+const addRole = ref<ArchiveVolumeMemberRoleCode>(ArchiveVolumeMemberRoleCode.SCAN_OPERATOR)
+const submitting = ref(false)
+
+watch(
+  () => props.open,
+  (v) => {
+    if (v) {
+      addUserId.value = ''
+      addRole.value = ArchiveVolumeMemberRoleCode.SCAN_OPERATOR
+    }
+  },
+)
+
+function close() {
+  emit('update:open', false)
+}
+
+async function handleAdd() {
+  if (!addUserId.value.trim()) {
+    message.warning('请输入用户 ID')
+    return
+  }
+  submitting.value = true
+  try {
+    await addArchiveVolumeMember({
+      volumeId: props.volumeId,
+      userId: addUserId.value.trim(),
+      memberRole: addRole.value,
+    })
+    message.success('已添加协作老师')
+    emit('changed')
+    addUserId.value = ''
+  } catch (e) {
+    showUserError(e)
+  } finally {
+    submitting.value = false
+  }
+}
+
+async function handleRemove(member: ArchiveVolumeMemberDisplayVO) {
+  if (!member.memberId) return
+  submitting.value = true
+  try {
+    await removeArchiveVolumeMember({ volumeId: props.volumeId, memberId: member.memberId })
+    message.success('已移除')
+    emit('changed')
+  } catch (e) {
+    showUserError(e)
+  } finally {
+    submitting.value = false
+  }
+}
+
+const roleOptions = [
+  { value: ArchiveVolumeMemberRoleCode.SCAN_OPERATOR, label: '协作老师（扫描）' },
+  { value: ArchiveVolumeMemberRoleCode.SUBMITTER, label: '提交老师' },
+  { value: ArchiveVolumeMemberRoleCode.CATALOG_EDITOR, label: '编目老师' },
+  { value: ArchiveVolumeMemberRoleCode.VIEWER, label: '只读' },
+]
+</script>
+
+<template>
+  <a-drawer :open="open" title="管理协作老师" width="420" @close="close">
+    <div class="member-list">
+      <div v-for="m in collaborators" :key="m.memberId" class="member-row">
+        <div class="member-row__info">
+          <span class="member-row__name">{{ m.userName ?? m.userId }}</span>
+          <span class="member-row__role">{{ archiveVolumeMemberRoleLabel(m.memberRole) }}</span>
+        </div>
+        <UiButton
+          v-if="m.memberRole !== ArchiveVolumeMemberRoleCode.ORGANIZER"
+          size="sm"
+          variant="ghost"
+          :disabled="submitting"
+          @click="handleRemove(m)"
+        >
+          移除
+        </UiButton>
+      </div>
+    </div>
+    <div class="member-add">
+      <a-input v-model:value="addUserId" placeholder="用户 ID" />
+      <a-select
+        v-model:value="addRole"
+        :options="roleOptions"
+        style="width: 100%; margin-top: 8px"
+      />
+      <UiButton
+        variant="primary"
+        size="sm"
+        class="member-add__btn"
+        :loading="submitting"
+        @click="handleAdd"
+      >
+        添加
+      </UiButton>
+    </div>
+  </a-drawer>
+</template>
+
+<style scoped lang="scss">
+.member-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.member-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+.member-row__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.member-row__name {
+  color: var(--dp-text-primary);
+}
+.member-row__role {
+  font-size: 12px;
+  color: var(--dp-text-muted);
+}
+.member-add__btn {
+  margin-top: 12px;
+}
+</style>

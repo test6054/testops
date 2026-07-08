@@ -14,8 +14,12 @@
         <template #toolbar>
           <div class="archive-supervision-panel__volume-actions">
             <div class="archive-supervision-panel__problem-filters">
-              <a-checkbox v-model:checked="volumeFilterForm.integrityFailedOnly">缺必交项</a-checkbox>
-              <a-checkbox v-model:checked="volumeFilterForm.archiveOverdueOnly">归档逾期</a-checkbox>
+              <a-checkbox v-model:checked="volumeFilterForm.integrityFailedOnly"
+                >缺必交项</a-checkbox
+              >
+              <a-checkbox v-model:checked="volumeFilterForm.archiveOverdueOnly"
+                >归档逾期</a-checkbox
+              >
               <a-checkbox v-model:checked="volumeFilterForm.delaySubmissionOverdueOnly">
                 补交逾期
               </a-checkbox>
@@ -92,10 +96,18 @@
         <template #head>就绪矩阵</template>
         <template #toolbar>
           <div class="archive-supervision-panel__stats-actions">
+            <a-select
+              v-model:value="statsFilter.academicYearStartYear"
+              :options="academicYearStartOptions"
+              placeholder="学年起始年"
+              allow-clear
+              style="width: 140px"
+            />
             <a-input
-              v-model:value="statsFilter.academicYear"
-              placeholder="学年 如 2024-2025"
-              style="width: 160px"
+              :value="statsFilter.academicYearEndYear"
+              placeholder="结束年"
+              disabled
+              style="width: 100px"
             />
             <a-select
               v-model:value="statsFilter.semester"
@@ -131,27 +143,30 @@
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'storedRate'">
-                <span :class="readinessRateCellClass(record.storedRate)">{{ formatReadinessRate(record.storedRate) }}</span>
+                <span :class="readinessRateCellClass(record.storedRate)">{{
+                  formatReadinessRate(record.storedRate)
+                }}</span>
               </template>
               <template v-else-if="column.key === 'storedCount'">
                 <span class="mono">{{ record.storedCount }}/{{ record.totalVolumeCount }}</span>
               </template>
               <template v-else-if="column.key === 'integrityPassRate'">
-                <span :class="readinessRateCellClass(record.integrityPassRate)">{{ formatReadinessRate(record.integrityPassRate) }}</span>
+                <span :class="readinessRateCellClass(record.integrityPassRate)">{{
+                  formatReadinessRate(record.integrityPassRate)
+                }}</span>
               </template>
               <template v-else-if="column.key === 'fourPropertyPassRate'">
-                <span :class="readinessRateCellClass(record.fourPropertyPassRate)">{{ formatReadinessRate(record.fourPropertyPassRate) }}</span>
+                <span :class="readinessRateCellClass(record.fourPropertyPassRate)">{{
+                  formatReadinessRate(record.fourPropertyPassRate)
+                }}</span>
               </template>
             </template>
           </UiDataTable>
           <UiEmpty
-            v-else-if="statsFilter.academicYear && statsFilter.semester"
+            v-else-if="statsFilter.academicYearStartYear != null && statsFilter.semester"
             description="当前学期暂无就绪度数据"
           />
-          <UiEmpty
-            v-else
-            description="请选择学年学期后查询"
-          />
+          <UiEmpty v-else description="请选择学年学期后查询" />
         </template>
       </WorkbenchSurfaceCard>
     </section>
@@ -255,7 +270,7 @@
 
   <UiDrawer
     :open="detailOpen"
-    title="归档卷详情（只读）"
+    title="归档任务详情（只读）"
     :width="640"
     hide-footer
     @update:open="(v: boolean) => (detailOpen = v)"
@@ -344,14 +359,6 @@ import type {
   ArchiveVolumeSourceTypeCode,
   ArchiveVolumeStatusCode,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
   ARCHIVE_VOLUME_STATUS_TONE,
@@ -370,6 +377,15 @@ import {
   markSupervisionProblem,
   pageSupervisionArchiveVolumes,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { SemesterOptions } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -383,16 +399,16 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
-import { generateAcademicYearOptions } from '@/utils/academic-year'
+import { generateAcademicYearStartOptions } from '@/utils/academic-year'
 import {
-  buildOptionalAcademicYearSemesterQuery,
-  ensureAcademicYearSemesterPair,
-} from '@/utils/academic-year-semester-query'
-import {
-  formatReadinessRate,
-  readinessRateCellClass,
-} from '@/utils/archive-readiness-matrix-ui'
+  applyAcademicYearStartYearChange,
+  buildAcademicYearSemesterTripleFilterFields,
+  buildTriplePeriodQuery,
+  createAcademicYearSemesterTripleDefaults,
+  ensureTriplePeriodPair,
+  resolveAcademicYearFromTriple,
+} from '@/utils/academic-year-semester-triple-filter'
+import { formatReadinessRate, readinessRateCellClass } from '@/utils/archive-readiness-matrix-ui'
 import {
   remediationDiagnosticLabel,
   remediationVolumeDetailTabKey,
@@ -408,7 +424,7 @@ const { isTenantWideCollegeCoordinator, loadGrants } = useArchiveDutyAccess()
 const activeTab = ref('statistics')
 const supervisionTabItems = [
   { key: 'statistics', label: '就绪矩阵' },
-  { key: 'volumes', label: '归档卷' },
+  { key: 'volumes', label: '归档任务' },
   { key: 'remediation', label: '整改任务' },
   { key: 'campaign', label: '评估批次' },
 ]
@@ -432,8 +448,8 @@ const remediationTasks = ref<ArchiveRemediationTaskResponse[]>([])
 const campaigns = ref<ArchiveEvaluationCampaignResponse[]>([])
 const detail = ref<ArchiveVolumeDetailResponse | null>(null)
 
-const openRemediationCount = computed(() =>
-  remediationTasks.value.filter((item) => item.taskStatus !== 'CLOSED').length,
+const openRemediationCount = computed(
+  () => remediationTasks.value.filter((item) => item.taskStatus !== 'CLOSED').length,
 )
 
 const panelSignalMetrics = computed<SignalMetric[]>(() => [
@@ -445,14 +461,15 @@ const panelSignalMetrics = computed<SignalMetric[]>(() => [
   },
   {
     key: 'supervisionVolumes',
-    label: '督导归档卷',
+    label: '督导归档任务',
     value: volumePagination.total,
   },
 ])
 
 interface SupervisionVolumeFilterForm extends Record<string, unknown> {
   keyword: string
-  academicYear: string | undefined
+  academicYearStartYear: number | undefined
+  academicYearEndYear: number | undefined
   semester: SemesterCode | undefined
   volumeStatus: ArchiveVolumeStatusCode | undefined
   integrityFailedOnly: boolean
@@ -462,8 +479,7 @@ interface SupervisionVolumeFilterForm extends Record<string, unknown> {
 
 const volumeFilterForm = reactive<SupervisionVolumeFilterForm>({
   keyword: '',
-  academicYear: undefined,
-  semester: undefined,
+  ...createAcademicYearSemesterTripleDefaults(false),
   volumeStatus: undefined,
   integrityFailedOnly: false,
   archiveOverdueOnly: false,
@@ -477,41 +493,27 @@ const volumeFilter = computed<Record<string, unknown>>({
 })
 const volumePagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 interface SupervisionStatsFilter {
-  academicYear: string
+  academicYearStartYear: number | undefined
+  academicYearEndYear: number | undefined
   semester: SemesterCode | undefined
 }
 
 const statsFilter = reactive<SupervisionStatsFilter>({
-  academicYear: '',
-  semester: undefined,
+  ...createAcademicYearSemesterTripleDefaults(true),
 })
+
+const academicYearStartOptions = generateAcademicYearStartOptions().map((year) => ({
+  label: `${year} 年`,
+  value: year,
+}))
 
 const volumeFilterFields = computed<FilterField[]>(() => [
   { key: 'keyword', label: '关键词', type: 'input', placeholder: '档案号/标题' },
-  {
-    key: 'academicYear',
-    label: '学年',
-    type: 'select',
-    placeholder: '全部学年',
-    options: generateAcademicYearOptions().map((year) => ({ label: year, value: year })),
-    allowClear: true,
-  },
-  {
-    key: 'semester',
-    label: '学期',
-    type: 'select',
-    placeholder: '全部学期',
-    options: SemesterOptions.map((item) => ({
-      label: formatSemester(item.value),
-      value: item.value,
-    })),
-    allowClear: true,
-    disabled: !volumeFilterForm.academicYear?.trim(),
-  },
+  ...buildAcademicYearSemesterTripleFilterFields(),
 ])
 
 const volumeColumns: ColumnsType<ArchiveVolumeResponse> = [
-  { title: '归档卷', key: 'archive', dataIndex: 'archiveNo', width: 240 },
+  { title: '归档任务', key: 'archive', dataIndex: 'archiveNo', width: 240 },
   { title: '院系', key: 'departmentName', dataIndex: 'departmentName', width: 140 },
   { title: '状态', key: 'volumeStatus', dataIndex: 'volumeStatus', width: 120 },
   { title: '操作', key: 'actions', width: 140 },
@@ -543,7 +545,8 @@ const matrixPreviewRows = computed<MatrixPreviewRow[]>(() => {
   const latestTerm = matrix.termColumns[matrix.termColumns.length - 1]
   return matrix.rows.map((row) => {
     const cell = row.cells.find(
-      (item) => item.academicYear === latestTerm.academicYear && item.semester === latestTerm.semester,
+      (item) =>
+        item.academicYear === latestTerm.academicYear && item.semester === latestTerm.semester,
     )
     return {
       rowKey: `${row.departmentId ?? 'none'}-${row.courseId ?? 'none'}`,
@@ -604,9 +607,9 @@ const statsMetrics = computed<SignalMetric[]>(() => {
       key: 'stored',
       label: '平均入库率',
       value: `${Math.round(
-        matrixPreviewRows.value.reduce((sum, row) => sum + row.storedRate, 0)
-        / matrixPreviewRows.value.length
-        * 100,
+        (matrixPreviewRows.value.reduce((sum, row) => sum + row.storedRate, 0) /
+          matrixPreviewRows.value.length) *
+          100,
       )}%`,
     },
   ]
@@ -714,13 +717,10 @@ async function handleExportArchive() {
 }
 
 async function loadVolumes() {
-  if (!ensureAcademicYearSemesterPair(volumeFilterForm.academicYear, volumeFilterForm.semester)) {
+  if (!ensureTriplePeriodPair(volumeFilterForm)) {
     return
   }
-  const termQuery = buildOptionalAcademicYearSemesterQuery(
-    volumeFilterForm.academicYear,
-    volumeFilterForm.semester,
-  )
+  const termQuery = buildTriplePeriodQuery(volumeFilterForm)
   if (termQuery === null) {
     return
   }
@@ -749,7 +749,8 @@ async function loadVolumes() {
 
 function resetVolumeFilter() {
   volumeFilterForm.keyword = ''
-  volumeFilterForm.academicYear = undefined
+  volumeFilterForm.academicYearStartYear = undefined
+  volumeFilterForm.academicYearEndYear = undefined
   volumeFilterForm.semester = undefined
   volumeFilterForm.volumeStatus = undefined
   volumeFilterForm.integrityFailedOnly = false
@@ -760,12 +761,12 @@ function resetVolumeFilter() {
 }
 
 async function loadReadinessPreview() {
-  if (!ensureAcademicYearSemesterPair(statsFilter.academicYear, statsFilter.semester)) {
+  if (!ensureTriplePeriodPair(statsFilter)) {
     return
   }
-  const academicYear = statsFilter.academicYear.trim()
+  const academicYear = resolveAcademicYearFromTriple(statsFilter)
   const semester = statsFilter.semester
-  if (!semester) {
+  if (!academicYear || !semester) {
     return
   }
   statsLoading.value = true
@@ -871,11 +872,16 @@ watch(activeTab, (tab) => {
 })
 
 watch(
-  () => volumeFilterForm.academicYear,
-  (academicYear) => {
-    if (!academicYear?.trim()) {
-      volumeFilterForm.semester = undefined
-    }
+  () => volumeFilterForm.academicYearStartYear,
+  (startYear) => {
+    applyAcademicYearStartYearChange(volumeFilterForm, startYear)
+  },
+)
+
+watch(
+  () => statsFilter.academicYearStartYear,
+  (startYear) => {
+    applyAcademicYearStartYearChange(statsFilter, startYear)
   },
 )
 
@@ -894,15 +900,15 @@ onMounted(() => {
 
 <style scoped>
 .archive-supervision-panel__top-signal {
-  margin-bottom: var(--dp-space-3, 12px);
+  margin-bottom: var(--dp-space-3);
 }
 
 .archive-supervision-panel__section {
-  margin-top: var(--dp-space-4, 16px);
+  margin-top: var(--dp-space-4);
 }
 
 .archive-supervision-panel__remediation-tag {
-  margin-left: var(--dp-space-1, 4px);
+  margin-left: var(--dp-space-1);
 }
 
 .archive-supervision-panel__volume-actions {
@@ -937,7 +943,7 @@ onMounted(() => {
 }
 
 .link-cell__sub {
-  color: var(--dp-text-muted, #64748b);
+  color: var(--dp-text-muted);
   font-size: 12px;
 }
 
@@ -947,7 +953,7 @@ onMounted(() => {
 }
 
 .detail-head__sub {
-  color: var(--dp-text-muted, #64748b);
+  color: var(--dp-text-muted);
   margin-bottom: 12px;
 }
 
@@ -963,7 +969,7 @@ onMounted(() => {
 }
 
 .link-cell__sub {
-  color: var(--dp-text-muted, #64748b);
+  color: var(--dp-text-muted);
   font-size: 12px;
 }
 </style>

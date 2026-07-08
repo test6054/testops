@@ -14,12 +14,7 @@
         >
           {{ prevStep.label }}
         </UiButton>
-        <UiButton
-          v-else
-          variant="ghost"
-          size="sm"
-          @click="emit('back-to-list')"
-        >
+        <UiButton v-else variant="ghost" size="sm" @click="emit('back-to-list')">
           返回列表
         </UiButton>
         <span v-if="currentStep" class="exam-flow-ctx-bar__current">{{ currentStep.label }}</span>
@@ -36,7 +31,7 @@
     <div v-if="$slots.actions" class="exam-flow-ctx-bar__actions">
       <slot name="actions" />
     </div>
-    <div class="exam-flow-ctx-bar__pipeline">
+    <div v-if="showPipeline !== false && chainSteps.length > 0" class="exam-flow-ctx-bar__pipeline">
       <button
         v-for="step in chainSteps"
         :key="step.tabKey"
@@ -67,6 +62,8 @@ const props = defineProps<{
   activeTab: string
   title: string
   subtitle: string
+  /** 收材期 false：仅标题与操作，不渲染顶栏 Flow 管道（对标竞品：SubmitProgressBand 承担主进度） */
+  showPipeline?: boolean
 }>()
 
 const emit = defineEmits<{

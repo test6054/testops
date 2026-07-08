@@ -69,7 +69,9 @@
                 当前第 {{ currentQueueIndex }} 份，剩余
                 {{ Math.max(0, queueTotal - currentQueueIndex) }} 份待复核
               </span>
-              <span class="review-workspace__keyboard-hint">J/K 或 ←/→ 切换份数 · 0-9 快捷给分</span>
+              <span class="review-workspace__keyboard-hint"
+                >J/K 或 ←/→ 切换份数 · 0-9 快捷给分</span
+              >
             </div>
             <a-progress
               :percent="queueProgressPercent"
@@ -381,24 +383,12 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { AnnotationResponse } from '@/apis/mark/exam-annotation'
+import { listAnnotations } from '@/apis/mark/exam-annotation'
 import type {
   AiAbilityCode,
   AiExecutionStatusCode,
   ExamQuestionAiExecutionItemResponse,
 } from '@/apis/mark/exam-grade'
-import type { ReviewTaskDetailResponse, ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
-import type { ObjectiveComparePolicyCode } from '@/apis/mark/exam-standard-answer'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
-import EditOutlined from '@ant-design/icons-vue/EditOutlined'
-import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
-import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
-import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { listAnnotations } from '@/apis/mark/exam-annotation'
 import {
   AI_ABILITY_TONE,
   AI_EXECUTION_STATUS_TONE,
@@ -409,6 +399,7 @@ import {
   rejectQuestionGrade,
   rescoreQuestionByAi,
 } from '@/apis/mark/exam-grade'
+import type { ReviewTaskDetailResponse, ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
 import {
   claimReviewTask,
   getReviewTaskDetail,
@@ -418,7 +409,18 @@ import {
   ReviewTaskStatusDescription,
   ReviewTaskTypeCode,
 } from '@/apis/mark/exam-review-task'
+import type { ObjectiveComparePolicyCode } from '@/apis/mark/exam-standard-answer'
 import { ObjectiveComparePolicyDescription } from '@/apis/mark/exam-standard-answer'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
+import EditOutlined from '@ant-design/icons-vue/EditOutlined'
+import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
+import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
+import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import ExperienceAssistBadge from '@/components/mark/ExperienceAssistBadge.vue'
 import GradingImmersionChrome from '@/components/mark/GradingImmersionChrome.vue'
 import GradingImmersionSection from '@/components/mark/GradingImmersionSection.vue'
@@ -589,10 +591,10 @@ const reviewQueue = ref<ReviewTaskItemResponse[]>([])
  */
 async function loadReviewQueue(): Promise<void> {
   if (
-    !examId.value
-    || !detail.value?.layoutQuestionId
-    || !detail.value.reviewType
-    || !detail.value.gradeSource
+    !examId.value ||
+    !detail.value?.layoutQuestionId ||
+    !detail.value.reviewType ||
+    !detail.value.gradeSource
   ) {
     reviewQueue.value = []
     return
@@ -782,8 +784,8 @@ const canRescoreByAi = computed<boolean>(() => {
   if (!examId.value) return false
   if (!detail.value) return false
   return (
-    detail.value.status === ReviewTaskStatusCode.PENDING
-    || detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
+    detail.value.status === ReviewTaskStatusCode.PENDING ||
+    detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
   )
 })
 
@@ -796,23 +798,27 @@ async function loadTask(): Promise<void> {
   loading.value = true
   try {
     const loadedDetail = await loadReviewTaskDetail()
-    if (generation !== loadTaskGeneration
-      || expectedExamId !== examId.value
-      || expectedTaskId !== taskId.value) {
+    if (
+      generation !== loadTaskGeneration ||
+      expectedExamId !== examId.value ||
+      expectedTaskId !== taskId.value
+    ) {
       return
     }
     detail.value = loadedDetail
     syncExperienceAssistMetaFromDetail(detail.value)
     await Promise.all([loadAnnotations(), loadReviewQueue()])
-    if (generation !== loadTaskGeneration
-      || expectedExamId !== examId.value
-      || expectedTaskId !== taskId.value) {
+    if (
+      generation !== loadTaskGeneration ||
+      expectedExamId !== examId.value ||
+      expectedTaskId !== taskId.value
+    ) {
       return
     }
     if (
-      gradeForm.teacherReviewScore === undefined
-      && detail.value?.aiScore !== undefined
-      && detail.value?.aiScore !== null
+      gradeForm.teacherReviewScore === undefined &&
+      detail.value?.aiScore !== undefined &&
+      detail.value?.aiScore !== null
     ) {
       gradeForm.teacherReviewScore = detail.value.aiScore
     }
@@ -858,8 +864,8 @@ async function loadReviewTaskDetail(): Promise<ReviewTaskDetailResponse> {
     reviewTaskId: taskId.value,
   })
   if (
-    preview.status === ReviewTaskStatusCode.PENDING
-    || preview.status === ReviewTaskStatusCode.IN_PROGRESS
+    preview.status === ReviewTaskStatusCode.PENDING ||
+    preview.status === ReviewTaskStatusCode.IN_PROGRESS
   ) {
     return claimReviewTask({
       examId: examId.value,
@@ -1084,8 +1090,8 @@ async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
   }
   const fullScore = detail.value.fullScore
   const teacherReviewScore = gradeForm.teacherReviewScore
-  const ratio
-    = fullScore && fullScore > 0 && typeof teacherReviewScore === 'number'
+  const ratio =
+    fullScore && fullScore > 0 && typeof teacherReviewScore === 'number'
       ? `${Math.round((teacherReviewScore / fullScore) * 100)}%`
       : '-'
   // 取下一份模式下额外提示队列剩余信息，让教师清楚复核会继续
@@ -1257,8 +1263,8 @@ onBeforeUnmount(() => {
   &__queue-progress {
     margin-bottom: 12px;
     padding: 12px 16px;
-    background: var(--dp-surface, #fff);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
     display: flex;
     flex-direction: column;
@@ -1268,22 +1274,22 @@ onBeforeUnmount(() => {
   &__invalidated-banner {
     margin-bottom: 12px;
     padding: 12px 16px;
-    border: 1px solid var(--dp-border, #e2e8f0);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
-    background: var(--dp-surface-soft, #f8fafc);
+    background: var(--dp-surface-soft);
   }
 
   &__invalidated-title {
     font-size: 13px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__invalidated-text {
     margin-top: 4px;
     font-size: 12px;
     line-height: 1.6;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
   }
 
   &__queue-progress-meta {
@@ -1295,18 +1301,18 @@ onBeforeUnmount(() => {
 
   &__keyboard-hint {
     font-size: 12px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__queue-progress-title {
     font-size: 13px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__queue-progress-text {
     font-size: 12px;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
   }
 
   &__row {
@@ -1318,8 +1324,8 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--dp-surface-soft, #f8fafc);
-    border-radius: var(--dp-radius-panel, 6px);
+    background: var(--dp-surface-soft);
+    border-radius: var(--dp-radius-panel);
     padding: 16px;
   }
 
@@ -1335,10 +1341,10 @@ onBeforeUnmount(() => {
     line-height: 1.6;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
-    color: var(--dp-text-primary, #0f172a);
-    background: var(--dp-surface-soft, #f8fafc);
+    color: var(--dp-text-primary);
+    background: var(--dp-surface-soft);
     padding: 12px;
-    border-radius: var(--dp-radius-panel, 6px);
+    border-radius: var(--dp-radius-panel);
   }
 
   &__alert {
@@ -1352,7 +1358,7 @@ onBeforeUnmount(() => {
   &__hint {
     margin-top: 4px;
     font-size: 12px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__annotation-meta {
@@ -1367,7 +1373,7 @@ onBeforeUnmount(() => {
 
   &__sticky-left {
     flex: 1;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
     font-size: 13px;
   }
 
@@ -1384,12 +1390,12 @@ onBeforeUnmount(() => {
     gap: 8px;
     margin-top: 12px;
     padding-top: 12px;
-    border-top: 1px dashed var(--dp-border, #e2e8f0);
+    border-top: 1px dashed var(--dp-border);
   }
 
   &__ai-actions-hint {
     font-size: 12px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
     margin-left: 8px;
   }
 }

@@ -16,12 +16,15 @@ import type {
   ScanAttentionTypeCode,
   ScanBatchStatusCode,
 } from '@/apis/mark/exam-scan'
+import type { ExamCandidateResponse } from '@/apis/mark/exam-scope'
 import type { GradeStatusCode } from '@/apis/mark/grade-status'
 import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
 import type { PortfolioCollectModeCode, ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import type { TaskStatusCode } from '@/apis/mark/task-status'
 import type { PortfolioGapTaskStatusCode } from '@/apis/portfolio/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { ArchiveKioskHubListModeCode } from '@/types/enums/archive-kiosk-hub-list-mode-enum'
+import type { DirectScanProviderChainCode } from '@/types/enums/direct-scan-provider-chain-enum'
 import type { ExamScannerLedgerDataSourceCode } from '@/types/enums/exam-scanner-ledger-data-source-enum'
 import type { ExamScannerPageRegistrationStatusCode } from '@/types/enums/exam-scanner-page-registration-status-enum'
 import type { ExamScannerPageScanStatusCode } from '@/types/enums/exam-scanner-page-scan-status-enum'
@@ -119,6 +122,10 @@ export interface ExamScannerScanConfigOptionsVO {
   scanConfigAdvisory?: string
   /** 默认单面/双面扫描说明（如纸型 1 张 2 面且设备支持双面时的默认建议） */
   scanConfigHint?: string
+  /** 租户当前启用的直扫识别链路；OCR 未启用时为空 */
+  directScanProviderChain?: DirectScanProviderChainCode
+  /** 直扫识别链路展示文案 */
+  directScanProviderChainLabel?: string
 }
 
 export interface ExamScannerKioskBatchVO {
@@ -190,6 +197,10 @@ export interface ExamScannerKioskContextVO {
   canStartSupplementScan: boolean
   blockReason?: string
   supplementBlockReason?: string
+  /** 考试准备硬阻断项（与开批次接口同源） */
+  prepHardBlockingReasons?: string[]
+  /** 考试准备建议项（不阻断直扫） */
+  prepAdvisoryReasons?: string[]
   taskContract?: ExamScannerKioskTaskContractVO
   sessionBatches?: ExamScannerKioskSessionBatchVO[]
   kioskBoundExamId?: string
@@ -272,53 +283,88 @@ export function getScannerKioskContext(
 // ============================================================================
 
 /**
- * 扫描工作台考试选择下拉请求。
+ * 一体机绑定扫描考试候选分页请求。
  *
- * 仅用于在一体机端开始扫描前的考试搜索：按学年、学期、班级与考试名或考试编号关键字过滤当前租户内
- * status=ACTIVE 的考试。已归档（CLOSED）考试在后端被强制过滤，不会出现在响应中。
+ * 专供触摸屏工位卡片点选，与教师 Web {@code /api/mark/exams/page} 隔离；
+ * 须携带工位设备身份，批次统计仅本机维度。
  */
-export interface ExamScannerKioskExamOptionRequest extends QueryDto {
+export interface ExamScannerKioskBindExamCandidatePageRequest extends QueryDto {
+  scannerDeviceId: string
+  scannerStationId: string
   /** 模糊关键字，匹配 examName / examNo */
   keyword?: string
   /** 学年过滤，例如 '2024-2025' */
   academicYear?: string
   /** 学期过滤，'1'=秋季学期，'2'=春季学期 */
   semester?: SemesterCode
-  /** 班级 ID 过滤；不为空时仅返回 t_exam_class_scope 命中该班级的考试 */
+  /** 班级 ID 过滤 */
   classId?: string
 }
 
 /**
- * 扫描工作台考试选择下拉项视图。
- *
- * declaredClassNames 与 classIds 顺序一一对应，被删除班级位置为 null。scanBatchCount
- * 为该考试已落库扫描批次数，可用于在选项中预览扫描进度。
+ * 一体机绑定扫描考试候选卡片。
  */
-export interface ExamScannerKioskExamOptionVO {
+export interface ExamScannerKioskBindExamCandidateVO {
   examId: string
   examNo: string
   examName: string
   courseName?: string
-  /** 学年，如 '2024-2025' */
   academicYear?: string
-  /** 学期，'1'=秋季学期，'2'=春季学期 */
   semester?: SemesterCode
   examStartTime?: string
   examEndTime?: string
-  classIds: string[]
-  /** 与 classIds 顺序一致；被删除班级位置为 null */
-  declaredClassNames: (string | null)[]
-  /** 已落库扫描批次数量，用于在选项内展示扫描进度 */
-  scanBatchCount: number
+  /** 本工位已落库扫描批次数量 */
+  deviceScanBatchCount: number
+  /** 本工位是否存在未结束扫描进程 */
+  hasActiveScanSession?: boolean
+  /** 本工位未结束扫描进程外部批次号 */
+  activeBatchExternalNo?: string
 }
 
-export function pageScannerKioskExamOptions(
-  request: ExamScannerKioskExamOptionRequest,
-): Promise<PageResult<ExamScannerKioskExamOptionVO>> {
-  return http.post<PageResult<ExamScannerKioskExamOptionVO>>(
-    '/api/mark/scanner/kiosk/exam-options',
+export function pageScannerKioskBindExamCandidates(
+  request: ExamScannerKioskBindExamCandidatePageRequest,
+): Promise<PageResult<ExamScannerKioskBindExamCandidateVO>> {
+  return http.post<PageResult<ExamScannerKioskBindExamCandidateVO>>(
+    '/api/mark/scanner/kiosk/bind-exam/candidates/page',
     request,
   )
+}
+
+/** 一体机考试考生名册分页请求 */
+export interface ExamScannerKioskExamRosterPageRequest extends QueryDto {
+  scannerDeviceId: string
+  scannerStationId: string
+  examId: string
+  classId?: string
+  keyword?: string
+}
+
+/** 一体机按考试分页查询考生名册 */
+export function pageScannerKioskExamRoster(
+  request: ExamScannerKioskExamRosterPageRequest,
+): Promise<PageResult<ExamCandidateResponse>> {
+  return http.post<PageResult<ExamCandidateResponse>>(
+    '/api/mark/scanner/kiosk/exam-roster/page',
+    request,
+  )
+}
+
+/** 一体机试卷身份绑定请求 */
+export interface ExamScannerKioskPaperBindRequest {
+  scannerDeviceId: string
+  scannerStationId: string
+  examId: string
+  scanBatchId: string
+  paperInstanceId: string
+  recognizedStudentNo?: string
+  confirmedCandidateRosterId: string
+  attemptStatus: 'NORMAL' | 'MAKEUP' | 'RETAKE'
+  attemptNo?: string
+}
+
+/** 一体机工位确认试卷与考生身份绑定 */
+export function bindScannerKioskPaper(request: ExamScannerKioskPaperBindRequest): Promise<boolean> {
+  return http.post<boolean>('/api/mark/scanner/kiosk/papers/bind', request)
 }
 
 // ============================================================================
@@ -714,6 +760,17 @@ export function pageKioskArchiveVolumes(
   return http.post<PageResult<ScannerKioskArchiveVolumeItemVO>>(
     '/api/mark/scanner/kiosk/archive-volumes/page',
     request,
+  )
+}
+
+export interface ScannerKioskArchiveCollaborationPolicyVO {
+  kioskHubListMode: ArchiveKioskHubListModeCode
+}
+
+export function getKioskArchiveCollaborationPolicy(): Promise<ScannerKioskArchiveCollaborationPolicyVO> {
+  return http.post<ScannerKioskArchiveCollaborationPolicyVO>(
+    '/api/mark/scanner/kiosk/archive/collaboration-policy',
+    {},
   )
 }
 

@@ -21,7 +21,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  "retry": []
+  retry: []
   'go-candidate-roster': []
 }>()
 
@@ -102,6 +102,6 @@ const activeAlert = computed(() => {
 
 <style scoped>
 .archive-exam-auto-create-status {
-  margin-top: var(--dp-space-3, 12px);
+  margin-top: var(--dp-space-3);
 }
 </style>

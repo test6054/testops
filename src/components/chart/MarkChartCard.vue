@@ -41,7 +41,7 @@ withDefaults(
 <style scoped>
 .mark-chart-card {
   height: 100%;
-  border-color: var(--dp-border, #e5e7eb);
+  border-color: var(--dp-border);
   box-shadow: none;
 }
 
@@ -52,6 +52,6 @@ withDefaults(
   border: 0;
   border-radius: 0;
   overflow: hidden;
-  background: var(--dp-surface, #fff);
+  background: var(--dp-surface);
 }
 </style>

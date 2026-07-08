@@ -1,3 +1,4 @@
+import { resolveAppPath } from '@/utils/app-path'
 import { getValidToken } from '@/utils/auth'
 
 const KIOSK_AUTH_STORAGE_KEY = 'mark-scanner-kiosk-auth'
@@ -28,12 +29,12 @@ export interface MarkScannerStationAuth {
  */
 export function isMarkScannerStationApiUrl(url: string): boolean {
   return (
-    url.includes('/api/mark/scanner/kiosk/')
-    || url.includes('/api/mark/scanner/work-order/')
-    || url.includes('/api/mark/scanner/dispatch/')
-    || url.includes('/api/mark/scanner/exception/')
-    || url.includes('/api/mark/sse/scan-live/')
-    || url.includes('/api/mark/scan-live/')
+    url.includes('/api/mark/scanner/kiosk/') ||
+    url.includes('/api/mark/scanner/work-order/') ||
+    url.includes('/api/mark/scanner/dispatch/') ||
+    url.includes('/api/mark/scanner/exception/') ||
+    url.includes('/api/mark/sse/scan-live/') ||
+    url.includes('/api/mark/scan-live/')
   )
 }
 
@@ -88,12 +89,14 @@ export function getKioskAuthSession(): KioskAuthSession | null {
 }
 
 function isKioskAuthSession(value: unknown): value is KioskAuthSession {
-  return typeof value === 'object'
-    && value !== null
-    && 'authorizationHeader' in value
-    && typeof value.authorizationHeader === 'string'
-    && 'tenantId' in value
-    && typeof value.tenantId === 'string'
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'authorizationHeader' in value &&
+    typeof value.authorizationHeader === 'string' &&
+    'tenantId' in value &&
+    typeof value.tenantId === 'string'
+  )
 }
 
 export function saveKioskBindingProfile(profile: KioskBindingProfile): void {
@@ -117,25 +120,38 @@ export function getKioskBindingProfile(): KioskBindingProfile | null {
 }
 
 function isKioskBindingProfile(value: unknown): value is KioskBindingProfile {
-  return typeof value === 'object'
-    && value !== null
-    && 'scannerDeviceId' in value
-    && typeof value.scannerDeviceId === 'string'
-    && value.scannerDeviceId.length > 0
-    && 'scannerStationId' in value
-    && typeof value.scannerStationId === 'string'
-    && value.scannerStationId.length > 0
-    && 'endpointName' in value
-    && typeof value.endpointName === 'string'
-    && 'gatewayBaseUrl' in value
-    && typeof value.gatewayBaseUrl === 'string'
-    && 'deviceName' in value
-    && typeof value.deviceName === 'string'
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'scannerDeviceId' in value &&
+    typeof value.scannerDeviceId === 'string' &&
+    value.scannerDeviceId.length > 0 &&
+    'scannerStationId' in value &&
+    typeof value.scannerStationId === 'string' &&
+    value.scannerStationId.length > 0 &&
+    'endpointName' in value &&
+    typeof value.endpointName === 'string' &&
+    'gatewayBaseUrl' in value &&
+    typeof value.gatewayBaseUrl === 'string' &&
+    'deviceName' in value &&
+    typeof value.deviceName === 'string'
+  )
 }
 
 export function clearKioskAuthSession(): void {
   localStorage.removeItem(KIOSK_AUTH_STORAGE_KEY)
   localStorage.removeItem(KIOSK_BINDING_PROFILE_KEY)
+}
+
+/** 一体机 push_token 会话中的租户 ID。 */
+export function getKioskTenantId(): string | null {
+  const tenantId = getKioskAuthSession()?.tenantId?.trim()
+  return tenantId || null
+}
+
+/** 凭证失效后回一体机 Hub，不走教师登录页。 */
+export function redirectToKioskHub(): void {
+  window.location.href = resolveAppPath('scanner-kiosk')
 }
 
 /**
@@ -166,7 +182,7 @@ export async function syncKioskAuthFromLocalAgent(): Promise<boolean> {
  */
 export async function ensureScannerStationTeacherJwt(): Promise<string | null> {
   if (isScannerKioskBrowserPage()) {
-    return getValidToken()
+    return null
   }
   const token = getValidToken()
   if (token) {
@@ -272,12 +288,12 @@ export function needsKioskBrowserReactivation(agentBound: boolean | undefined): 
 export const KIOSK_BROWSER_SESSION_SYNC_MESSAGE = '正在从本机 Agent 同步会话，请稍候'
 
 /** 无法从本机 Agent 拉取 push_token（Agent 未启动、未绑定或版本过旧）。 */
-export const KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE
-  = '无法从本机 Agent 同步会话，请确认 Agent 已启动并完成激活；仍无法恢复时请重新输入激活码'
+export const KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE =
+  '无法从本机 Agent 同步会话，请确认 Agent 已启动并完成激活；仍无法恢复时请重新输入激活码'
 
 /** Agent 同步后服务端仍拒绝 push_token，凭证已失效。 */
-export const KIOSK_BROWSER_PUSH_TOKEN_REJECTED_MESSAGE
-  = '扫描工位凭证已失效，请重新输入激活码完成绑定'
+export const KIOSK_BROWSER_PUSH_TOKEN_REJECTED_MESSAGE =
+  '扫描工位凭证已失效，请重新输入激活码完成绑定'
 
 /**
  * 从本机 Agent DeviceBinding 恢复浏览器 push_token 会话。

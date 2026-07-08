@@ -51,12 +51,7 @@
           {{ strictEnumLabel(AllocationUnitDescription, record.allocationUnit, '批阅任务单元') }}
         </template>
         <template v-else-if="column.key === 'questionScope'">
-          <span
-            class="formal-workbench__ellipsis"
-            :title="formatFormalSessionQuestionScope(record)"
-          >
-            {{ formatFormalSessionQuestionScope(record) }}
-          </span>
+          <UiEllipsisText :text="formatFormalSessionQuestionScope(record)" />
         </template>
         <template v-else-if="column.key === 'taskProgress'">
           {{ formatFormalSessionTaskProgress(record) }}
@@ -92,13 +87,6 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { FormalSessionResponse } from '@/apis/mark/marking-organization'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { WorkflowPrerequisiteEmptyViewModel } from '@/components/workbench/workflow-readiness/types'
-import type { MarkingOrgSessionFilterModel } from '@/composables/useMarkingOrgSessionWorkspace'
-import { Modal } from 'ant-design-vue'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   AllocationUnitDescription,
   completeFormalSession,
@@ -108,9 +96,17 @@ import {
   resumeFormalSession,
   startFormalSession,
 } from '@/apis/mark/marking-organization'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { WorkflowPrerequisiteEmptyViewModel } from '@/components/workbench/workflow-readiness/types'
+import type { MarkingOrgSessionFilterModel } from '@/composables/useMarkingOrgSessionWorkspace'
+import { Modal } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiEllipsisText from '@/components/ui-guide/ui/UiEllipsisText.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import WorkflowPrerequisiteEmpty from '@/components/workbench/workflow-readiness/WorkflowPrerequisiteEmpty.vue'
@@ -158,10 +154,10 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  "refresh": []
-  "search": [model: Record<string, unknown>]
-  "reset": []
-  'page-change': [page: { current: number, pageSize: number }]
+  refresh: []
+  search: [model: Record<string, unknown>]
+  reset: []
+  'page-change': [page: { current: number; pageSize: number }]
   'open-lifecycle': [action: 'pauseFormal' | 'closeFormal', sessionId: string]
 }>()
 
@@ -242,9 +238,9 @@ watch(
 
 const hasActiveFilter = computed(
   () =>
-    Boolean(props.filterModel.keyword.trim())
-    || Boolean(props.filterModel.status)
-    || Boolean(props.filterModel.groupId),
+    Boolean(props.filterModel.keyword.trim()) ||
+    Boolean(props.filterModel.status) ||
+    Boolean(props.filterModel.groupId),
 )
 
 const sessionTableEmptyDescription = computed(() => {
@@ -268,7 +264,7 @@ function emitReset(): void {
   emit('reset')
 }
 
-function emitPageChange(page: { current: number, pageSize: number }): void {
+function emitPageChange(page: { current: number; pageSize: number }): void {
   emit('page-change', page)
 }
 
@@ -278,9 +274,9 @@ function canStart(status: FormalSessionStatusCode): boolean {
 
 function canComplete(record: FormalSessionResponse): boolean {
   return (
-    props.canManage
-    && record.sessionStatus === FormalSessionStatusCode.SESSION_ACTIVE
-    && record.sessionTaskCompletionReady
+    props.canManage &&
+    record.sessionStatus === FormalSessionStatusCode.SESSION_ACTIVE &&
+    record.sessionTaskCompletionReady
   )
 }
 
@@ -294,10 +290,10 @@ function canResume(status: FormalSessionStatusCode): boolean {
 
 function canClose(status: FormalSessionStatusCode): boolean {
   return (
-    props.canManage
-    && (status === FormalSessionStatusCode.SESSION_ACTIVE
-      || status === FormalSessionStatusCode.SESSION_PAUSED
-      || status === FormalSessionStatusCode.SESSION_COMPLETED)
+    props.canManage &&
+    (status === FormalSessionStatusCode.SESSION_ACTIVE ||
+      status === FormalSessionStatusCode.SESSION_PAUSED ||
+      status === FormalSessionStatusCode.SESSION_COMPLETED)
   )
 }
 
@@ -360,10 +356,10 @@ function guardManageAction(): boolean {
 function handleFormalStartError(error: unknown): void {
   const detail = getUserErrorMessage(error, '')
   const isConflict = readBusinessResultCode(error) === ResultCode.CONFLICT
-  const isExperienceAssistBlock
-    = isConflict
-      && (detail.includes(EXPERIENCE_ASSIST_BASELINE_BLOCKING_PREFIX)
-        || detail.includes(EXPERIENCE_ASSIST_BINDING_BLOCKING_PREFIX))
+  const isExperienceAssistBlock =
+    isConflict &&
+    (detail.includes(EXPERIENCE_ASSIST_BASELINE_BLOCKING_PREFIX) ||
+      detail.includes(EXPERIENCE_ASSIST_BINDING_BLOCKING_PREFIX))
   if (isExperienceAssistBlock && props.examId) {
     Modal.warning({
       title: '无法启动正评',
@@ -502,14 +498,6 @@ async function handleSessionRowAction(key: string, record: FormalSessionResponse
 .formal-workbench {
   :deep(.dp-filter-bar) {
     width: 100%;
-  }
-
-  &__ellipsis {
-    display: block;
-    max-width: 240px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   &__lifecycle {

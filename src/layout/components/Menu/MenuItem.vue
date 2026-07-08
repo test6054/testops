@@ -2,7 +2,9 @@
   <template v-if="isRenderableMenuNode">
     <a-menu-item v-if="shouldShowAsMenuItem" :key="menuItemKey" :disabled="menuItemDisabled">
       <template #icon>
-        <MenuIcon :icon="menuItemIcon" />
+        <MenuCollapsedTooltip :collapsed="menuCollapsed" :label="menuItemTitle ?? ''">
+          <MenuIcon :icon="menuItemIcon" />
+        </MenuCollapsedTooltip>
       </template>
       <span>{{ menuItemTitle }}</span>
     </a-menu-item>
@@ -10,7 +12,9 @@
     <a-sub-menu v-else :key="item.path">
       <template #title>{{ item?.meta?.title }}</template>
       <template #icon>
-        <MenuIcon :icon="subMenuIcon" />
+        <MenuCollapsedTooltip :collapsed="menuCollapsed" :label="String(item?.meta?.title ?? '')">
+          <MenuIcon :icon="subMenuIcon" />
+        </MenuCollapsedTooltip>
       </template>
       <MenuItem v-for="child in visibleChildren" :key="child.path" :item="child" />
     </a-sub-menu>
@@ -20,6 +24,9 @@
 <script lang="ts" setup>
 import type { RouteRecordRaw } from 'vue-router'
 import { computed } from 'vue'
+import { useDevice } from '@/hooks'
+import { useAppStore } from '@/stores'
+import MenuCollapsedTooltip from './MenuCollapsedTooltip.vue'
 import MenuIcon from './MenuIcon.vue'
 
 defineOptions({ name: 'MenuItem' })
@@ -28,6 +35,10 @@ const props = withDefaults(defineProps<Props>(), {})
 interface Props {
   item: RouteRecordRaw
 }
+
+const { isDesktop } = useDevice()
+const appStore = useAppStore()
+const menuCollapsed = computed(() => isDesktop.value && appStore.menuCollapse)
 
 function isVisibleMenuChild(route: RouteRecordRaw): boolean {
   return !route.meta?.hideInMenu && !(route.redirect && !route.component && !route.components)
@@ -73,10 +84,10 @@ const menuData = computed(() => {
 // 是否应该显示为菜单项（而不是子菜单）
 const shouldShowAsMenuItem = computed(() => {
   return (
-    menuData.value.isOneShowingChild
-    && (!menuData.value.onlyOneChild?.children
-      || menuData.value.onlyOneChild?.meta?.noShowingChildren)
-    && !props.item?.meta?.alwaysShow
+    menuData.value.isOneShowingChild &&
+    (!menuData.value.onlyOneChild?.children ||
+      menuData.value.onlyOneChild?.meta?.noShowingChildren) &&
+    !props.item?.meta?.alwaysShow
   )
 })
 

@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import type { ArchivePhysicalLocationResponse, ArchiveVolumeDetailResponse } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import type {
+  ArchivePhysicalLocationResponse,
+  ArchiveVolumeDetailResponse,
+} from '@/apis/mark/archive-volume'
 import {
   ArchiveSecurityLevelDescription,
   listArchivePhysicalLocationHistory,
   updateArchiveVolumePhysicalLocation,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -128,7 +131,12 @@ function formatLocationLabel(item: ArchivePhysicalLocationResponse) {
 
 const displayLocation = computed(() => {
   const volume = props.detail.volume
-  const structured = [volume.physicalBuilding, volume.physicalRoom, volume.physicalCabinet, volume.physicalSlot]
+  const structured = [
+    volume.physicalBuilding,
+    volume.physicalRoom,
+    volume.physicalCabinet,
+    volume.physicalSlot,
+  ]
     .filter(Boolean)
     .join(' / ')
   return structured || '尚未登记柜位'
@@ -184,7 +192,9 @@ onMounted(() => {
           <a-form-item
             label="柜号"
             required
-            :class="{ 'archive-volume-physical-location__field--filled': Boolean(form.cabinet.trim()) }"
+            :class="{
+              'archive-volume-physical-location__field--filled': Boolean(form.cabinet.trim()),
+            }"
           >
             <a-input v-model:value="form.cabinet" placeholder="例如 03柜" :disabled="!canEdit" />
           </a-form-item>
@@ -192,7 +202,9 @@ onMounted(() => {
         <a-col :span="12">
           <a-form-item
             label="层/格位"
-            :class="{ 'archive-volume-physical-location__field--filled': Boolean(form.slot.trim()) }"
+            :class="{
+              'archive-volume-physical-location__field--filled': Boolean(form.slot.trim()),
+            }"
           >
             <a-input v-model:value="form.slot" placeholder="例如 2层" :disabled="!canEdit" />
           </a-form-item>
@@ -205,14 +217,21 @@ onMounted(() => {
           :disabled="!canEdit"
         />
       </a-form-item>
-      <p v-if="!canEdit" class="archive-volume-physical-location__readonly">当前卷状态不允许修改柜位</p>
+      <p v-if="!canEdit" class="archive-volume-physical-location__readonly">
+        当前卷状态不允许修改柜位
+      </p>
     </a-form>
     <section class="archive-volume-physical-location__timeline">
       <h3 class="archive-volume-physical-location__timeline-title">位置变更历史</h3>
       <UiSkeletonState v-if="historyLoading" variant="card" compact />
-      <div v-else-if="locationHistory.length > 0" class="audit-timeline archive-volume-physical-location__audit">
+      <div
+        v-else-if="locationHistory.length > 0"
+        class="audit-timeline archive-volume-physical-location__audit"
+      >
         <article v-for="item in locationHistory" :key="item.locationId" class="audit-item">
-          <div class="audit-time">{{ item.effectiveTime ? formatDateTime(item.effectiveTime) : '—' }}</div>
+          <div class="audit-time">
+            {{ item.effectiveTime ? formatDateTime(item.effectiveTime) : '—' }}
+          </div>
           <div class="audit-body">
             <div class="audit-title">更新柜位 → {{ formatLocationLabel(item) }}</div>
             <div v-if="item.note" class="audit-desc">{{ item.note }}</div>
@@ -246,22 +265,22 @@ onMounted(() => {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-4, 16px);
-  padding: var(--dp-space-3, 12px);
-  margin-bottom: var(--dp-space-4, 16px);
-  background: var(--dp-surface-sunken, #f8fafc);
-  border-radius: var(--dp-radius-control, 4px);
+  gap: var(--dp-space-4);
+  padding: var(--dp-space-3);
+  margin-bottom: var(--dp-space-4);
+  background: var(--dp-surface-sunken);
+  border-radius: var(--dp-radius-control);
 }
 .archive-volume-physical-location__location-text {
   font-size: 18px;
   font-weight: 700;
-  font-family: var(--dp-font-mono, ui-monospace, monospace);
-  color: var(--dp-primary, #2563eb);
+  font-family: var(--dp-font-mono);
+  color: var(--dp-primary);
   font-variant-numeric: tabular-nums;
 }
 .archive-volume-physical-location__hero-meta {
   font-size: 12px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 .archive-volume-physical-location__form {
   max-width: 560px;
@@ -279,11 +298,11 @@ onMounted(() => {
   padding-top: 0;
 }
 .archive-volume-physical-location__field--filled :deep(.ant-input) {
-  border-color: var(--dp-primary, #2563eb);
-  background: color-mix(in srgb, var(--dp-primary, #2563eb) 4%, #fff);
+  border-color: var(--dp-primary);
+  background: color-mix(in srgb, var(--dp-primary) 4%, #fff);
 }
 .archive-volume-physical-location__field--filled :deep(.ant-form-item-label > label) {
-  color: var(--dp-primary, #2563eb);
+  color: var(--dp-primary);
   font-weight: 600;
 }
 .archive-volume-physical-location__timeline-title {

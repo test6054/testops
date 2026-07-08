@@ -1,41 +1,37 @@
-// 基础样式
-@use './base.scss';
+@use 'sass:meta';
 
-// Design System Tokens
+@use './base.scss';
 @use './ui-tokens.scss';
 
-// 字体角色契约
-@use './typography.scss';
+@layer dp-components {
+  @include meta.load-css('typography');
+  @include meta.load-css('scrollbar-reset');
+  @include meta.load-css('nprogress');
+  @include meta.load-css('editor');
+  @include meta.load-css('animated');
+  @include meta.load-css('responsive');
+  @include meta.load-css('admin/super-admin');
+  @include meta.load-css('teacher-detail-table-typography');
+  @include meta.load-css('teacher-detail-table-actions');
+  @include meta.load-css('workbench-list');
+  @include meta.load-css('mark-chart');
+  @include meta.load-css('global/utilities');
+  @include meta.load-css('global/layouts');
+  @include meta.load-css('global/button');
+  @include meta.load-css('global/card');
+  @include meta.load-css('global/assign');
+  @include meta.load-css('global/inputs');
+  @include meta.load-css('global/print');
+  @include meta.load-css('global/workbench');
+  @include meta.load-css('global/prototype-workbench');
+  @include meta.load-css('workbench/exam-workspace-shell');
+  @include meta.load-css('workbench/analysis-center');
+  @include meta.load-css('workbench/scanner-center');
+  @include meta.load-css('global/focus');
+  @include meta.load-css('global/reduced-motion');
+}
 
-// 全局类名样式
-@use './global.scss';
-
-// 自定义原生滚动条样式
-@use './scrollbar-reset.scss';
-
-// 自定义 nprogress 插件进度条颜色
-@use './nprogress.scss';
-
-// 富文本的css主题颜色变量
-@use './editor.scss';
-
-// 动画类名
-@use './animated.scss';
-
-// 🚀 UI 2.0: 响应式样式和移动端适配
-@use './responsive.scss';
-
-// 超级管理员后台统一页面语法
-@use './admin/super-admin.scss';
-
-// 实训详情列表表格 typography（与 edu-practice-web-vue 一致）
-@use './teacher-detail-table-typography.scss';
-
-// 实训详情列表操作列 / 工具栏（与 edu-practice-web-vue 一致）
-@use './teacher-detail-table-actions.scss';
-
-// 工作台列表页：筛选工具栏、去卡片副文案
-@use './workbench-list.scss';
-
-// ECharts 图表区块（趋势 / 柱状 / 环形进度）
-@use './mark-chart.scss';
+@layer ant-overrides {
+  @include meta.load-css('global/overrides');
+  @include meta.load-css('global/ant-component-guards');
+}

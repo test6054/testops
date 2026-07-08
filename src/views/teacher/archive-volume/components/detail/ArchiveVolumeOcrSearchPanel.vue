@@ -6,9 +6,7 @@
           <span class="archive-volume-ocr-search__title">卷内内容检索</span>
           <span class="archive-volume-ocr-search__hint">卷内 OCR 全文检索 · 可跳转全局检索</span>
         </div>
-        <UiButton variant="ghost" size="sm" @click="goGlobalSearch">
-          全局检索
-        </UiButton>
+        <UiButton variant="ghost" size="sm" @click="goGlobalSearch"> 全局检索 </UiButton>
       </div>
     </template>
 
@@ -38,12 +36,9 @@
 
     <div v-if="searched" class="archive-volume-ocr-search__results">
       <p class="archive-volume-ocr-search__result-meta">
-        {{ pagination.total }} 条匹配 · 当前归档卷
+        {{ pagination.total }} 条匹配 · 当前归档任务
       </p>
-      <UiEmpty
-        v-if="!loading && hits.length === 0"
-        description="本卷无匹配结果"
-      >
+      <UiEmpty v-if="!loading && hits.length === 0" description="本卷无匹配结果">
         <UiTextAction tone="primary" @click="goGlobalSearch">切换全局检索</UiTextAction>
       </UiEmpty>
       <ul v-else class="archive-volume-ocr-search__hit-list">
@@ -164,25 +159,24 @@
 
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {ArchiveMaterialOcrStatusCode} from '@/apis/mark/archive-ocr-status';
+import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-status'
+import {
+  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
+  ArchiveMaterialOcrStatusDescription,
+} from '@/apis/mark/archive-ocr-status'
 import type {
   ArchiveVolumeMaterialResponse,
   ArchiveVolumeSearchResponse,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import {
-  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
-  
-  ArchiveMaterialOcrStatusDescription
-} from '@/apis/mark/archive-ocr-status'
 import {
   ArchiveMaterialTypeCode,
   ArchiveMaterialTypeDescription,
   searchArchiveVolumes,
   triggerArchiveVolumeMaterialOcr,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -204,7 +198,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  "refreshed": [options?: { silent?: boolean }]
+  refreshed: [options?: { silent?: boolean }]
   'navigate-materials': []
 }>()
 
@@ -265,23 +259,27 @@ function highlightSnippet(snippet: string): string {
 }
 
 function canViewMaterialOcr(record: ArchiveVolumeSearchResponse): boolean {
-  return record.ocrStatus === 'COMPLETED'
-    || record.ocrStatus === 'FAILED'
-    || record.ocrStatus === 'RUNNING'
+  return (
+    record.ocrStatus === 'COMPLETED' ||
+    record.ocrStatus === 'FAILED' ||
+    record.ocrStatus === 'RUNNING'
+  )
 }
 
 function canViewMaterialOcrMaterial(record: ArchiveVolumeMaterialResponse): boolean {
-  return record.ocrStatus === 'COMPLETED'
-    || record.ocrStatus === 'FAILED'
-    || record.ocrStatus === 'RUNNING'
+  return (
+    record.ocrStatus === 'COMPLETED' ||
+    record.ocrStatus === 'FAILED' ||
+    record.ocrStatus === 'RUNNING'
+  )
 }
 
 function canTriggerMaterialOcr(record: ArchiveVolumeMaterialResponse): boolean {
-  return props.canRegisterMaterial
-    && Boolean(record.fileId)
-    && (record.ocrStatus === 'PENDING'
-      || record.ocrStatus === 'FAILED'
-      || !record.ocrStatus)
+  return (
+    props.canRegisterMaterial &&
+    Boolean(record.fileId) &&
+    (record.ocrStatus === 'PENDING' || record.ocrStatus === 'FAILED' || !record.ocrStatus)
+  )
 }
 
 function openMaterialOcr(materialId: string, pageNo?: number): void {
@@ -392,10 +390,7 @@ function confirmTriggerOcr(material: ArchiveVolumeMaterialResponse): void {
   })
 }
 
-function handleOcrMaterialRowAction(
-  key: string,
-  material: ArchiveVolumeMaterialResponse,
-) {
+function handleOcrMaterialRowAction(key: string, material: ArchiveVolumeMaterialResponse) {
   if (key === 'view') openMaterialOcr(material.materialId)
   else if (key === 'trigger') confirmTriggerOcr(material)
 }
@@ -407,51 +402,51 @@ function handleOcrMaterialRowAction(
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--dp-space-2, 8px);
+    gap: var(--dp-space-2);
   }
 
   &__head-main {
     display: flex;
     align-items: baseline;
     flex-wrap: wrap;
-    gap: var(--dp-space-2, 8px);
+    gap: var(--dp-space-2);
   }
 
   &__title {
     font-size: 16px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__hint {
     font-size: 11px;
-    font-family: var(--dp-font-mono, ui-monospace, monospace);
-    color: var(--dp-text-muted, #64748b);
+    font-family: var(--dp-font-mono);
+    color: var(--dp-text-muted);
   }
 
   &__toolbar {
     display: flex;
-    gap: var(--dp-space-2, 8px);
-    margin-bottom: var(--dp-space-3, 12px);
+    gap: var(--dp-space-2);
+    margin-bottom: var(--dp-space-3);
   }
 
   &__quick {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--dp-space-2, 8px);
-    margin-bottom: var(--dp-space-3, 12px);
+    gap: var(--dp-space-2);
+    margin-bottom: var(--dp-space-3);
   }
 
   &__quick-label {
     font-size: 12px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__result-meta {
-    margin: 0 0 var(--dp-space-2, 8px);
+    margin: 0 0 var(--dp-space-2);
     font-size: 12px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__hit-list {
@@ -461,8 +456,8 @@ function handleOcrMaterialRowAction(
   }
 
   &__hit-item {
-    padding: var(--dp-space-3, 12px) 0;
-    border-top: 1px solid var(--dp-border-light, #eef0f3);
+    padding: var(--dp-space-3) 0;
+    border-top: 1px solid var(--dp-border-light);
 
     &:first-child {
       border-top: none;
@@ -474,38 +469,38 @@ function handleOcrMaterialRowAction(
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: var(--dp-space-2, 8px);
+    gap: var(--dp-space-2);
     margin-bottom: 6px;
   }
 
   &__file-name {
     font-size: 14px;
     font-weight: 500;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__student {
     font-size: 11px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__page-no {
     margin-left: auto;
     font-size: 10px;
-    color: var(--dp-text-muted, #94a3b8);
-    font-family: var(--dp-font-mono, ui-monospace, monospace);
+    color: var(--dp-text-muted);
+    font-family: var(--dp-font-mono);
   }
 
   &__hit-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--dp-space-3, 12px);
+    gap: var(--dp-space-3);
     margin-top: 6px;
     font-size: 12px;
   }
 
   &__pager {
-    margin-top: var(--dp-space-3, 12px);
+    margin-top: var(--dp-space-3);
     display: flex;
     justify-content: flex-end;
   }
@@ -514,26 +509,26 @@ function handleOcrMaterialRowAction(
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: var(--dp-space-2, 8px);
-    padding-top: var(--dp-space-3, 12px);
-    border-top: 1px solid var(--dp-border-subtle, #e2e8f0);
+    margin-bottom: var(--dp-space-2);
+    padding-top: var(--dp-space-3);
+    border-top: 1px solid var(--dp-border-subtle);
   }
 
   &__overview-title {
     font-size: 13px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__muted {
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
     font-size: 12px;
   }
 }
 
 :deep(.archive-search-snippet-mark) {
-  background: color-mix(in srgb, var(--dp-primary, #2563eb) 18%, transparent);
-  color: var(--dp-primary, #2563eb);
+  background: color-mix(in srgb, var(--dp-primary) 18%, transparent);
+  color: var(--dp-primary);
   font-weight: 600;
   padding: 0 2px;
   border-radius: 2px;

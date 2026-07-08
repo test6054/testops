@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TaskStatusCode } from '@/apis/mark/task-status'
+import { TaskStatusDescription } from '@/apis/mark/task-status'
 /**
  * Stage 3 - 澶嶆牳涓庡紓甯稿缃?
  *
@@ -20,10 +21,7 @@ import {
 } from '@ant-design/icons-vue'
 import { computed, ref, watch } from 'vue'
 import { LocalScanPageStatusCode } from '@/apis/mark/scanner-agent-local'
-import { TaskStatusDescription } from '@/apis/mark/task-status'
-import {
-  ExamScannerPageRegistrationStatusCode,
-} from '@/types/enums/exam-scanner-page-registration-status-enum'
+import { ExamScannerPageRegistrationStatusCode } from '@/types/enums/exam-scanner-page-registration-status-enum'
 import { ScanAttentionTypeCode } from '@/types/enums/scan-attention-type-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import KioskBoundStudentsPanel from '../components/KioskBoundStudentsPanel.vue'
@@ -78,7 +76,8 @@ const ledgerAttentions = computed<ReviewItem[]>(() => {
       pageNo: item.pageNo,
       type: 'attention',
       title: `${workflow.scanPageDisplayTitleByNo(item.pageNo)} · ${workflow.attentionTypeText(item.attentionType!)}`,
-      description: item.attentionMessage || workflow.registrationStatusText(item.registrationStatus),
+      description:
+        item.attentionMessage || workflow.registrationStatusText(item.registrationStatus),
       detail: item.operatorName
         ? `操作人 ${item.operatorName} · ${workflow.formatTime(item.occurredAt)}`
         : workflow.formatTime(item.occurredAt),
@@ -101,20 +100,21 @@ const ledgerAttentionTodos = computed<ReviewItem[]>(() => {
       ? ledger.items.find((item) => item.localPageId === att.pageId)
       : undefined
     const pageNo = pageItem?.pageNo ?? 0
-    const bindingConflictWithoutPage
-      = !att.pageId && att.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT
+    const bindingConflictWithoutPage =
+      !att.pageId && att.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT
     if (pageNo <= 0 && !bindingConflictWithoutPage) continue
-    const titlePrefix = pageNo > 0
-      ? workflow.scanPageDisplayTitleByNo(pageNo)
-      : `答卷 ${att.paperInstanceId ?? '未知'}`
+    const titlePrefix =
+      pageNo > 0
+        ? workflow.scanPageDisplayTitleByNo(pageNo)
+        : `答卷 ${att.paperInstanceId ?? '未知'}`
     items.push({
       key: `attention-${att.id}`,
       pageNo,
       type: 'attention',
       title: `${titlePrefix} · ${workflow.attentionTypeText(att.attentionType)}`,
       description:
-        att.diagnostic
-        || workflow.registrationStatusText(
+        att.diagnostic ||
+        workflow.registrationStatusText(
           pageItem?.registrationStatus ?? ExamScannerPageRegistrationStatusCode.PENDING,
         ),
       detail: workflow.formatTime(att.updateTime),
@@ -153,8 +153,8 @@ const registeredPages = computed<ReviewItem[]>(() => {
   return ledger.items
     .filter(
       (item) =>
-        item.registrationStatus !== ExamScannerPageRegistrationStatusCode.DISCARDED
-        && item.registrationStatus !== ExamScannerPageRegistrationStatusCode.SUPERSEDED,
+        item.registrationStatus !== ExamScannerPageRegistrationStatusCode.DISCARDED &&
+        item.registrationStatus !== ExamScannerPageRegistrationStatusCode.SUPERSEDED,
     )
     .filter((item) => !issuePageNos.has(item.pageNo))
     .map((item): ReviewItem => ({
@@ -182,17 +182,17 @@ const selectedItem = computed<ReviewItem | null>(() => {
   if (!workflow.previewPageNo.value) return null
   const pageNo = workflow.previewPageNo.value
   return (
-    reviewItems.value.find((item) => item.pageNo === pageNo)
-    ?? registeredPages.value.find((item) => item.pageNo === pageNo)
-    ?? localBrowsablePages.value.find((item) => item.pageNo === pageNo)
-    ?? null
+    reviewItems.value.find((item) => item.pageNo === pageNo) ??
+    registeredPages.value.find((item) => item.pageNo === pageNo) ??
+    localBrowsablePages.value.find((item) => item.pageNo === pageNo) ??
+    null
   )
 })
 
 const showBindingPanel = computed(
   () =>
-    selectedItem.value?.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT
-    && Boolean(selectedItem.value?.paperInstanceId),
+    selectedItem.value?.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT &&
+    Boolean(selectedItem.value?.paperInstanceId),
 )
 
 function isReviewItemActive(item: ReviewItem): boolean {
@@ -208,8 +208,8 @@ function selectItem(item: ReviewItem) {
     workflow.previewPageNo.value = 0
     return
   }
-  selectedBindingPaperInstanceId.value
-    = item.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT
+  selectedBindingPaperInstanceId.value =
+    item.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT
       ? (item.paperInstanceId ?? '')
       : ''
   workflow.previewPageNo.value = item.pageNo
@@ -344,7 +344,7 @@ const reviewBoundBatchId = computed(
           :key="item.key"
           class="issue-item"
           :class="{
-            'active': isReviewItemActive(item),
+            active: isReviewItemActive(item),
             'item-failed': item.type === 'page-failed',
             'item-attention': item.type === 'attention',
           }"
@@ -357,7 +357,9 @@ const reviewBoundBatchId = computed(
             <div class="issue-item-text">
               <strong>{{ item.title }}</strong>
               <span>{{ item.description }}</span>
-              <small v-if="item.processingStatus">处理任务：{{ processingStatusLabel(item.processingStatus) }}</small>
+              <small v-if="item.processingStatus"
+                >处理任务：{{ processingStatusLabel(item.processingStatus) }}</small
+              >
               <small v-if="item.detail">{{ item.detail }}</small>
             </div>
           </button>
@@ -482,10 +484,7 @@ const reviewBoundBatchId = computed(
 
       <section class="panel-section">
         <header><h4>处置操作</h4></header>
-        <div
-          v-if="workflow.pageRegisterBlocked.value"
-          class="page-register-block"
-        >
+        <div v-if="workflow.pageRegisterBlocked.value" class="page-register-block">
           <p class="page-register-block__title">自动页登记被阻断</p>
           <p class="page-register-block__desc">
             {{ workflow.pageRegisterDiagnostic.value || '批次已提交，但页登记尚未完成' }}
@@ -493,7 +492,9 @@ const reviewBoundBatchId = computed(
           <button
             type="button"
             class="op-btn op-btn--warn"
-            :disabled="!workflow.canRetryPageRegister.value || workflow.pageRegisterRetryLoading.value"
+            :disabled="
+              !workflow.canRetryPageRegister.value || workflow.pageRegisterRetryLoading.value
+            "
             @click="workflow.retryPageRegister()"
           >
             <ReloadOutlined :spin="workflow.pageRegisterRetryLoading.value" />
@@ -526,11 +527,11 @@ const reviewBoundBatchId = computed(
           type="button"
           class="op-btn op-btn--danger"
           :disabled="
-            !selectedItem
-              || selectedItem.source !== 'ledger'
-              || selectedItem.pageNo <= 0
-              || !selectedItem.localPageId
-              || !workflow.canDiscardLedgerPage.value
+            !selectedItem ||
+            selectedItem.source !== 'ledger' ||
+            selectedItem.pageNo <= 0 ||
+            !selectedItem.localPageId ||
+            !workflow.canDiscardLedgerPage.value
           "
           :title="
             selectedItem
@@ -587,7 +588,8 @@ const reviewBoundBatchId = computed(
   </section>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .review-stage {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr) 280px;
@@ -989,12 +991,12 @@ const reviewBoundBatchId = computed(
   word-break: break-all;
 }
 
-@media (max-width: 1280px) {
+@media (max-width: bp.$shell-laptop-max) {
   .review-stage {
     grid-template-columns: 280px minmax(0, 1fr) 240px;
   }
 }
-@media (max-width: 1024px) {
+@media (max-width: bp.$shell-tablet-max) {
   .review-stage {
     grid-template-columns: 240px minmax(0, 1fr);
   }

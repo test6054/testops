@@ -91,7 +91,8 @@ const hasHeader = computed(() => {
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .ui-statistic-summary-grid {
   display: flex;
   flex-direction: column;
@@ -125,9 +126,9 @@ const hasHeader = computed(() => {
   gap: 10px;
   min-width: 0;
   padding: 16px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
 }
 
 .ui-statistic-summary-grid--compact .ui-statistic-summary-grid__item {
@@ -147,7 +148,7 @@ const hasHeader = computed(() => {
   min-width: 0;
   font-size: 13px;
   font-weight: 700;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-statistic-summary-grid__dot {
@@ -176,7 +177,7 @@ const hasHeader = computed(() => {
   background: #dc2626;
 }
 .ui-statistic-summary-grid__dot--purple {
-  background: var(--dp-purple-500, #722ed1);
+  background: var(--dp-purple-500);
 }
 
 .ui-statistic-summary-grid__value-row {
@@ -190,13 +191,13 @@ const hasHeader = computed(() => {
   font-size: 28px;
   line-height: 1.1;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-statistic-summary-grid__unit {
   font-size: 13px;
   font-weight: 700;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-statistic-summary-grid__helper,
@@ -206,7 +207,7 @@ const hasHeader = computed(() => {
 }
 
 .ui-statistic-summary-grid__helper {
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-statistic-summary-grid__trend--gray {
@@ -231,13 +232,13 @@ const hasHeader = computed(() => {
   color: #6d28d9;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: #{bp.$ant-grid-xl - 1px}) {
   .ui-statistic-summary-grid__list {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
 
-@media (max-width: 767px) {
+@media (max-width: bp.$layout-mobile-max) {
   .ui-statistic-summary-grid__list {
     grid-template-columns: 1fr !important;
   }

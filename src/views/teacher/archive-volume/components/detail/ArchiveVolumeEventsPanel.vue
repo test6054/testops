@@ -17,10 +17,10 @@
 
 <script setup lang="ts">
 import type { ArchiveVolumeDetailResponse } from '@/apis/mark/archive-volume'
+import { exportArchiveVolumeEvents } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
 import { ref } from 'vue'
 import { downloadFile } from '@/apis/edu/file-management'
-import { exportArchiveVolumeEvents } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -58,24 +58,24 @@ async function handleExport() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
   width: 100%;
 }
 
 .archive-volume-events-panel__actions {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 
 .archive-volume-events-panel__title {
   margin: 0;
   font-size: 16px;
-  font-weight: var(--dp-font-weight-title, 600);
+  font-weight: var(--dp-font-weight-title);
 }
 
 .archive-volume-events-panel__count {
   font-size: 12px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 </style>

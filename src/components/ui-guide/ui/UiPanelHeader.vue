@@ -66,7 +66,7 @@ const props = withDefaults(defineProps<{
 
 .ui-panel-header--divided {
   padding-bottom: 16px;
-  border-bottom: 1px solid var(--dp-border, #e5e7eb);
+  border-bottom: 1px solid var(--dp-border);
 }
 
 .ui-panel-header--compact {
@@ -79,7 +79,7 @@ const props = withDefaults(defineProps<{
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--dp-blue-700, #1d4ed8);
+  color: var(--dp-blue-700);
 }
 
 .ui-panel-header__row {
@@ -106,7 +106,7 @@ const props = withDefaults(defineProps<{
   font-size: 18px;
   font-weight: 800;
   line-height: 1.4;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-panel-header__meta {
@@ -120,7 +120,7 @@ const props = withDefaults(defineProps<{
   margin: 8px 0 0;
   font-size: 14px;
   line-height: 1.7;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-panel-header__actions {

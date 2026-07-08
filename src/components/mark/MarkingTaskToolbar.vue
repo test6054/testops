@@ -204,7 +204,7 @@ const navNextLabel = computed(() => props.navigation.navNextLabel.value)
   &__progress {
     font-size: 13px;
     font-weight: 500;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
     padding: 0 4px;
     white-space: nowrap;
   }
@@ -227,14 +227,14 @@ const navNextLabel = computed(() => props.navigation.navNextLabel.value)
       margin: 0;
       font-size: 12px;
       line-height: 1.5;
-      color: var(--dp-text-muted, #64748b);
+      color: var(--dp-text-muted);
     }
 
     dd {
       margin: 0;
       font-size: 13px;
       line-height: 1.5;
-      color: var(--dp-text-primary, #0f172a);
+      color: var(--dp-text-primary);
       word-break: break-word;
     }
   }
@@ -260,7 +260,7 @@ const navNextLabel = computed(() => props.navigation.navNextLabel.value)
     flex-direction: column;
     gap: 2px;
     font-size: 12px;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
   }
 }
 </style>

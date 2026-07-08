@@ -78,8 +78,8 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import type { UiActivityFeedGroup, UiActivityFeedItem, UiNoticeAction } from './types'
 import { computed } from 'vue'
+import type { UiActivityFeedGroup, UiActivityFeedItem, UiNoticeAction } from './types'
 import UiEmpty from './Empty.vue'
 import UiTag from './Tag.vue'
 import UiActionLink from './UiActionLink.vue'
@@ -107,7 +107,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (e: 'item-click', item: UiActivityFeedItem): void
-  (e: 'action-click', actionEvent: { item: UiActivityFeedItem, action: UiNoticeAction }): void
+  (e: 'action-click', actionEvent: { item: UiActivityFeedItem; action: UiNoticeAction }): void
 }>()
 
 const normalizeCssSize = (value?: string | number) => {
@@ -160,12 +160,12 @@ const handleActionClick = (item: UiActivityFeedItem, action: UiNoticeAction) => 
 .ui-activity-feed__group-title {
   font-size: 13px;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-activity-feed__group-count {
   font-size: 12px;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-activity-feed__item {
@@ -174,8 +174,8 @@ const handleActionClick = (item: UiActivityFeedItem, action: UiNoticeAction) => 
   gap: 12px;
   min-width: 0;
   padding: 14px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
   background: #fff;
   transition:
     border-color 0.2s ease,
@@ -187,7 +187,7 @@ const handleActionClick = (item: UiActivityFeedItem, action: UiNoticeAction) => 
 }
 
 .ui-activity-feed__item--clickable:hover {
-  background: var(--dp-gray-50, #f8fafc);
+  background: var(--dp-gray-50);
   border-color: #dbe3ef;
 }
 
@@ -197,7 +197,7 @@ const handleActionClick = (item: UiActivityFeedItem, action: UiNoticeAction) => 
   justify-content: center;
   width: 36px;
   height: 36px;
-  border-radius: var(--dp-radius-control-inner, 4px);
+  border-radius: var(--dp-radius-control-inner);
   font-size: 13px;
   font-weight: 800;
   color: #fff;
@@ -224,7 +224,7 @@ const handleActionClick = (item: UiActivityFeedItem, action: UiNoticeAction) => 
 }
 
 .ui-activity-feed__avatar--purple {
-  background: var(--dp-purple-500, #722ed1);
+  background: var(--dp-purple-500);
 }
 
 .ui-activity-feed__main {
@@ -252,20 +252,20 @@ const handleActionClick = (item: UiActivityFeedItem, action: UiNoticeAction) => 
 .ui-activity-feed__title {
   font-size: 14px;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-activity-feed__time,
 .ui-activity-feed__meta {
   font-size: 12px;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-activity-feed__description {
   margin: 0;
   font-size: 13px;
   line-height: 1.75;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-activity-feed__actions {

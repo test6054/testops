@@ -119,16 +119,17 @@ import type {
   CourseAchievementItemResponse,
   CourseObjectiveAchievementResponse,
 } from '@/apis/mark/cross-exam-analysis'
-import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   CourseObjectiveDimensionDescription,
   generateAchievement,
   listAchievements,
 } from '@/apis/mark/cross-exam-analysis'
+import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { formatSemester } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisConfigCollapse from '@/components/mark/analysis/AiAnalysisConfigCollapse.vue'
@@ -145,7 +146,6 @@ import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { formatSemester } from '@/types/enums/semester-enum'
 import {
   buildOptionalAcademicYearSemesterQuery,
   buildRequiredAcademicYearSemesterQuery,
@@ -494,19 +494,19 @@ function objectiveDimensionLabel(item: CourseAchievementItemResponse): string {
   margin: 0;
   font-size: 13px;
   line-height: 1.6;
-  color: var(--dp-text-secondary, rgba(0, 0, 0, 0.75));
+  color: var(--dp-text-secondary);
 }
 .diagnosis-text--hint {
-  color: var(--dp-text-primary, rgba(0, 0, 0, 0.88));
+  color: var(--dp-text-primary);
 }
 .diagnosis-text--muted {
   font-size: 12px;
-  color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
+  color: var(--dp-text-muted);
 }
 .scope-hint {
   margin: 4px 0 0;
   font-size: 12px;
-  color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
+  color: var(--dp-text-muted);
   line-height: 1.5;
 }
 </style>

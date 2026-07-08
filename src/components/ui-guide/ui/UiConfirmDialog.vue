@@ -120,23 +120,23 @@ const handleCancel = () => {
 }
 
 .ui-confirm-dialog__icon--warning {
-  color: var(--dp-orange-500, #f97316);
-  background: var(--dp-orange-50, #fff7ed);
+  color: var(--dp-orange-500);
+  background: var(--dp-orange-50);
 }
 
 .ui-confirm-dialog__icon--info {
-  color: var(--dp-blue-600, #2563eb);
-  background: var(--dp-blue-50, #eff6ff);
+  color: var(--dp-blue-600);
+  background: var(--dp-blue-50);
 }
 
 .ui-confirm-dialog__icon--success {
-  color: var(--dp-green-500, #22c55e);
-  background: var(--dp-green-50, #ecfdf3);
+  color: var(--dp-green-500);
+  background: var(--dp-green-50);
 }
 
 .ui-confirm-dialog__icon--error {
-  color: var(--dp-red-500, #ef4444);
-  background: var(--dp-red-50, #fef2f2);
+  color: var(--dp-red-500);
+  background: var(--dp-red-50);
 }
 
 .ui-confirm-dialog__content {
@@ -147,6 +147,6 @@ const handleCancel = () => {
   margin: 0;
   font-size: 14px;
   line-height: 1.7;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 </style>

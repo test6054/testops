@@ -50,32 +50,32 @@ const inGroup = inject(uiRadioGroupKey, undefined) === true
 
 <style lang="scss" scoped>
 .ui-radio--single {
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
   font-size: 14px;
 }
 
 .ui-radio--single :deep(.ant-radio-inner) {
   width: 18px;
   height: 18px;
-  border-color: var(--dp-border, #e5e7eb);
-  background: var(--dp-bg-control, #f3f4f6);
+  border-color: var(--dp-border);
+  background: var(--dp-bg-control);
 }
 
 .ui-radio--single:hover :deep(.ant-radio-inner),
 .ui-radio--single :deep(.ant-radio-wrapper:hover .ant-radio-inner) {
-  border-color: var(--dp-border-hover, #2563eb);
+  border-color: var(--dp-border-hover);
 }
 
 .ui-radio--single :deep(.ant-radio-checked .ant-radio-inner) {
-  border-color: var(--dp-blue-600, #2563eb);
+  border-color: var(--dp-blue-600);
   background: #fff;
 }
 
 .ui-radio--single :deep(.ant-radio-checked .ant-radio-inner::after) {
-  background: var(--dp-blue-600, #2563eb);
+  background: var(--dp-blue-600);
 }
 
 .ui-radio--single :deep(.ant-radio-input:focus-visible + .ant-radio-inner) {
-  box-shadow: 0 0 0 3px var(--dp-focus-ring, rgba(37, 99, 235, 0.25));
+  box-shadow: 0 0 0 3px var(--dp-focus-ring);
 }
 </style>

@@ -1,0 +1,57 @@
+/**
+ * Ant 组件保护层：防止 dp-base / utility 回归导致按钮透明、表头字重丢失等。
+ * 仅覆盖裸 .ant-* 组件；页级主按钮应优先 UiButton / .dp-btn。
+ */
+
+.ant-btn-primary:not(:disabled):not(.ant-btn-disabled) {
+  background: var(--ant-color-primary);
+  border-color: var(--ant-color-primary);
+  color: var(--ant-color-white);
+  font-weight: 600;
+}
+
+.ant-btn-primary:not(:disabled):not(.ant-btn-disabled):hover {
+  background: var(--ant-color-primary-hover);
+  border-color: var(--ant-color-primary-hover);
+}
+
+.ant-btn-default:not(:disabled):not(.ant-btn-disabled) {
+  background: var(--ant-color-bg-container);
+  border-color: var(--ant-color-border);
+  color: var(--ant-color-text);
+}
+
+.ant-table-thead > tr > th,
+.ant-table-thead > tr > td {
+  font-weight: 600;
+  background: var(--dp-table-header-bg);
+}
+
+.ant-select-selector,
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-picker {
+  background: var(--ant-color-bg-container);
+}
+
+.ant-select-focused:not(.ant-select-disabled) .ant-select-selector,
+.ant-input:focus,
+.ant-input-affix-wrapper-focused,
+.ant-picker-focused {
+  border-color: var(--ant-color-primary);
+  box-shadow: 0 0 0 2px var(--dp-focus-ring);
+}
+
+// 三域侧栏层级缩进：layer 化后 _overrides 的 12px 会压平域/分组，此处用更高语义选择器恢复
+.dual-domain-side-nav.ant-menu.ant-menu-inline {
+  > .ant-menu-submenu > .ant-menu-sub.ant-menu-inline {
+    > .ant-menu-item,
+    > .ant-menu-submenu > .ant-menu-submenu-title {
+      padding-inline-start: 24px !important;
+    }
+
+    .ant-menu-sub.ant-menu-inline > .ant-menu-item {
+      padding-inline-start: 48px !important;
+    }
+  }
+}

@@ -25,6 +25,7 @@ const { isMobile } = useDevice()
 </script>
 
 <style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .header {
   display: flex;
   align-items: center;
@@ -56,7 +57,7 @@ const { isMobile } = useDevice()
   border-bottom: 1px solid var(--ant-color-border-secondary);
 
   // 移动端适配
-  @media (max-width: 767px) {
+  @media (max-width: bp.$layout-mobile-max) {
     padding: 0 12px;
     height: 48px;
 

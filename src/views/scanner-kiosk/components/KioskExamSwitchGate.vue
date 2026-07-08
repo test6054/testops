@@ -1,11 +1,11 @@
 <script setup lang="ts">
 /**
- * 已绑定考试后切换工位考试；与首次绑定向导分离，由顶部「当前考试」入口打开。
+ * 已绑定考试后切换工位考试；医院挂号式磁贴页，单击卡片即切换。
  */
-import type { ExamScannerKioskExamOptionVO } from '@/apis/mark/scanner-kiosk'
-import { ReloadOutlined } from '@ant-design/icons-vue'
 import { computed, ref, watch } from 'vue'
 import { useKioskCtx } from '../composables/kioskInjection'
+import KioskExamPickPanel from './KioskExamPickPanel.vue'
+import '../styles/exam-pick-gate.scss'
 
 const { workflow } = useKioskCtx()
 
@@ -19,34 +19,29 @@ const currentExamLabel = computed(() => {
   return exam.examName
 })
 
-const examSelectOptions = computed(() =>
-  workflow.examOptions.value
-    .filter((opt) => opt.examId !== workflow.examId.value)
-    .map((opt) => ({
-      value: opt.examId,
-      label: formatExamLabel(opt),
-    })),
-)
+const scanReadyCount = computed(() => workflow.bindExamCandidateTotal.value)
 
-function formatExamLabel(opt: ExamScannerKioskExamOptionVO): string {
-  const parts = [opt.examName, opt.examNo]
-  if (opt.courseName) parts.push(opt.courseName)
-  return parts.join(' · ')
-}
+const statusLabel = computed(() => {
+  if (workflow.bindExamCandidateLoading.value) return '加载考试中'
+  if (workflow.bindExamCandidateLoadIssue.value) return '考试列表加载失败'
+  if (scanReadyCount.value <= 0) return '暂无可切换考试'
+  return `${scanReadyCount.value} 场可切换`
+})
 
-function onSearch(keyword: string) {
-  workflow.onExamSelectSearch(keyword)
-}
+const endpointLabel = computed(() => {
+  const device = workflow.kioskContext.value?.device
+  return device?.deviceName?.trim() || device?.scannerDeviceId || '扫描工位'
+})
 
 function closeGate() {
   workflow.closeExamSwitchGate()
 }
 
-async function confirmSwitch() {
-  if (!selectedExamId.value || switching.value) return
+async function onConfirmSwitch(examId: string) {
+  if (switching.value) return
   switching.value = true
   try {
-    await workflow.bindKioskExam(selectedExamId.value)
+    await workflow.bindKioskExam(examId)
     selectedExamId.value = undefined
   } finally {
     switching.value = false
@@ -58,152 +53,53 @@ watch(visible, (show) => {
     selectedExamId.value = undefined
     return
   }
-  workflow.resetExamOptionFilter()
-  void workflow.loadExamOptions()
+  workflow.resetBindExamCandidateFilter()
+  void workflow.loadBindExamCandidates()
 })
 </script>
 
 <template>
-  <div v-if="visible" class="gate" role="dialog" aria-modal="true" @click.self="closeGate">
-    <div class="gate__panel">
-      <h1>切换扫描考试</h1>
-      <p class="gate__lead">
-        当前工位：<strong>{{ currentExamLabel }}</strong>。选择其他考试后将重新加载工作台上下文。
-      </p>
-
-      <div class="field">
-        <span class="field__label">切换到</span>
-        <div class="field__row">
-          <a-select
-            v-model:value="selectedExamId"
-            show-search
-            allow-clear
-            placeholder="搜索并选择考试"
-            :options="examSelectOptions"
-            :filter-option="false"
-            :loading="workflow.examOptionLoading.value"
-            class="exam-select"
-            @search="onSearch"
-          />
-          <button
-            type="button"
-            class="icon-btn"
-            :disabled="workflow.examOptionLoading.value"
-            @click="workflow.refreshExamOptionsByUser"
-          >
-            <ReloadOutlined :spin="workflow.examOptionLoading.value" />
-          </button>
+  <div v-if="visible" class="exam-gate exam-gate--overlay" role="dialog" aria-modal="true">
+    <header class="exam-gate__bar">
+      <div class="exam-gate__brand">
+        <div class="exam-gate__logo" aria-hidden="true">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <rect x="2" y="2" width="28" height="28" rx="7" fill="var(--kiosk-primary)" />
+            <path
+              d="M9 11h14M9 16h14M9 21h9"
+              stroke="white"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+          </svg>
+        </div>
+        <div class="exam-gate__brand-text">
+          <span class="exam-gate__brand-title">扫描工作站</span>
+          <span class="exam-gate__brand-sub">{{ endpointLabel }}</span>
         </div>
       </div>
 
-      <div class="gate__actions">
-        <button type="button" class="ghost-btn" @click="closeGate">取消</button>
-        <button
-          type="button"
-          class="primary-btn"
-          :disabled="!selectedExamId || switching || workflow.loading.value"
-          @click="confirmSwitch"
-        >
-          {{ switching ? '切换中…' : '确认切换' }}
-        </button>
+      <div class="exam-gate__status">
+        <span class="exam-gate__status-dot" />
+        <span>{{ statusLabel }}</span>
       </div>
-    </div>
+
+      <div class="exam-gate__bar-action">
+        <button type="button" class="exam-gate__ghost-btn" @click="closeGate">取消</button>
+      </div>
+    </header>
+
+    <main class="exam-gate__main">
+      <h1 class="exam-gate__heading">切换扫描考试</h1>
+      <p class="exam-gate__heading-sub">当前：{{ currentExamLabel }}</p>
+
+      <KioskExamPickPanel
+        v-model:selected-exam-id="selectedExamId"
+        :exclude-exam-id="workflow.examId.value"
+        class="exam-gate__panel"
+        :class="{ 'exam-gate__panel--busy': switching || workflow.loading.value }"
+        @confirm="onConfirmSwitch"
+      />
+    </main>
   </div>
 </template>
-
-<style scoped>
-.gate {
-  position: fixed;
-  inset: 0;
-  z-index: var(--kiosk-z-modal, 1200);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(15, 23, 42, 0.45);
-  padding: var(--kiosk-space-6);
-}
-
-.gate__panel {
-  width: min(560px, 100%);
-  background: var(--kiosk-surface);
-  border: 1px solid var(--kiosk-divider);
-  border-radius: var(--kiosk-radius-lg);
-  padding: var(--kiosk-space-6);
-  box-shadow: var(--kiosk-shadow-2);
-}
-
-.gate__panel h1 {
-  margin: 0 0 var(--kiosk-space-2);
-  font-size: var(--kiosk-fz-h1);
-  font-weight: var(--kiosk-fw-bold);
-}
-
-.gate__lead {
-  margin: 0 0 var(--kiosk-space-5);
-  color: var(--kiosk-ink-secondary);
-}
-
-.gate__lead strong {
-  color: var(--kiosk-ink-primary);
-}
-
-.field__label {
-  display: block;
-  margin-bottom: var(--kiosk-space-2);
-  font-size: var(--kiosk-fz-label);
-  color: var(--kiosk-ink-secondary);
-}
-
-.field__row {
-  display: flex;
-  gap: var(--kiosk-space-2);
-  margin-bottom: var(--kiosk-space-5);
-}
-
-.exam-select {
-  flex: 1;
-}
-
-.icon-btn {
-  width: 44px;
-  height: 44px;
-  border: 1px solid var(--kiosk-divider);
-  border-radius: var(--kiosk-radius-md);
-  background: var(--kiosk-surface-alt);
-  cursor: pointer;
-}
-
-.gate__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--kiosk-space-3);
-}
-
-.ghost-btn,
-.primary-btn {
-  height: 48px;
-  padding: 0 var(--kiosk-space-5);
-  border-radius: var(--kiosk-radius-md);
-  font-family: inherit;
-  font-size: var(--kiosk-fz-body);
-  font-weight: var(--kiosk-fw-semibold);
-  cursor: pointer;
-}
-
-.ghost-btn {
-  background: var(--kiosk-surface);
-  border: 1px solid var(--kiosk-divider);
-  color: var(--kiosk-ink-secondary);
-}
-
-.primary-btn {
-  background: var(--kiosk-primary);
-  color: #fff;
-  border: none;
-}
-
-.primary-btn:disabled {
-  background: var(--kiosk-neutral);
-  cursor: not-allowed;
-}
-</style>

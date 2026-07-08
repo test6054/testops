@@ -275,13 +275,39 @@ function isLeafTableColumn(column: ColumnsType[number]): column is ColumnType {
   return !('children' in column && column.children?.length)
 }
 
+/** 无显式 width 的 flex 列在 scroll.x 计算时的保底宽度 */
+export const UI_DATA_TABLE_FLEX_COLUMN_MIN_WIDTH = 240
+
+function resolveLeafColumnWidth(column: ColumnType): number | undefined {
+  if (typeof column.width === 'number') {
+    return column.width
+  }
+  if (typeof column.minWidth === 'number') {
+    return column.minWidth
+  }
+  if (typeof column.width === 'string') {
+    const parsed = Number.parseInt(column.width, 10)
+    if (!Number.isNaN(parsed)) {
+      return parsed
+    }
+  }
+  if (typeof column.minWidth === 'string') {
+    const parsed = Number.parseInt(column.minWidth, 10)
+    if (!Number.isNaN(parsed)) {
+      return parsed
+    }
+  }
+  return undefined
+}
+
 /**
  * 当存在 fixed 列且列宽可求和时，计算横向滚动宽度，避免固定列与操作按钮错位溢出。
+ * 无 width 的 flex 列按 {@link UI_DATA_TABLE_FLEX_COLUMN_MIN_WIDTH} 计入，保证 ellipsis 列有约束。
  */
 export function resolveDataTableScrollX(columns: ColumnsType): number | undefined {
   let totalWidth = 0
-  let hasNumericWidth = false
   let hasFixed = false
+  let flexColumnCount = 0
 
   for (const column of columns) {
     if (!isLeafTableColumn(column)) {
@@ -290,24 +316,20 @@ export function resolveDataTableScrollX(columns: ColumnsType): number | undefine
     if (column.fixed === 'left' || column.fixed === 'right' || column.fixed === true) {
       hasFixed = true
     }
-    if (typeof column.width === 'number') {
-      totalWidth += column.width
-      hasNumericWidth = true
+    const resolvedWidth = resolveLeafColumnWidth(column)
+    if (resolvedWidth != null) {
+      totalWidth += resolvedWidth
       continue
     }
-    if (typeof column.width === 'string') {
-      const parsed = Number.parseInt(column.width, 10)
-      if (!Number.isNaN(parsed)) {
-        totalWidth += parsed
-        hasNumericWidth = true
-      }
-    }
+    flexColumnCount += 1
   }
 
-  if (hasFixed && hasNumericWidth && totalWidth > 0) {
-    return totalWidth
+  if (!hasFixed) {
+    return undefined
   }
-  return undefined
+
+  totalWidth += flexColumnCount * UI_DATA_TABLE_FLEX_COLUMN_MIN_WIDTH
+  return totalWidth > 0 ? totalWidth : undefined
 }
 
 /**

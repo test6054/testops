@@ -11,7 +11,6 @@ import {
 } from '@/apis/mark/scanner-dispatch'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
-import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -19,6 +18,7 @@ import {
   DispatchQueueStatusFilterCode,
   DispatchQueueStatusFilterDescription,
 } from '@/types/enums/dispatch-queue-status-filter-enum'
+import { ScannerExceptionItemKindCode } from '@/types/enums/scanner-exception-item-kind-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ScannerDispatchPanel from './ScannerDispatchPanel.vue'
@@ -108,7 +108,9 @@ function buildDispatchTabQuery(context: DispatchRouteContext): Record<string, st
     query.dispatchFilter = DispatchQueueStatusFilterCode.FAILED
     return query
   }
-  const dispatchStatus = ALL_SCAN_DISPATCH_TICKET_STATUS_CODES.find((code) => code === context.dispatchStatus)
+  const dispatchStatus = ALL_SCAN_DISPATCH_TICKET_STATUS_CODES.find(
+    (code) => code === context.dispatchStatus,
+  )
   if (dispatchStatus) {
     query.dispatchStatus = dispatchStatus
   }
@@ -116,7 +118,7 @@ function buildDispatchTabQuery(context: DispatchRouteContext): Record<string, st
 }
 
 function buildLogTabQuery(
-  payload: { ticketId?: string, volumeId?: string },
+  payload: { ticketId?: string; volumeId?: string },
   dispatchContext: DispatchRouteContext,
 ): Record<string, string> {
   const query: Record<string, string> = { tab: 'log' }
@@ -128,8 +130,7 @@ function buildLogTabQuery(
   }
   if (dispatchContext.dispatchFilter) {
     query.returnDispatchFilter = dispatchContext.dispatchFilter
-  }
-  else if (dispatchContext.dispatchStatus) {
+  } else if (dispatchContext.dispatchStatus) {
     query.returnDispatchStatus = dispatchContext.dispatchStatus
   }
   return query
@@ -139,7 +140,9 @@ function resolveLogReturnDispatchLabel(context: DispatchRouteContext): string | 
   if (context.dispatchFilter === DispatchQueueStatusFilterCode.FAILED) {
     return `派单调度 · ${strictEnumLabel(DispatchQueueStatusFilterDescription, DispatchQueueStatusFilterCode.FAILED, 'dispatchQueueStatusFilter')}`
   }
-  const status = ALL_SCAN_DISPATCH_TICKET_STATUS_CODES.find((code) => code === context.dispatchStatus)
+  const status = ALL_SCAN_DISPATCH_TICKET_STATUS_CODES.find(
+    (code) => code === context.dispatchStatus,
+  )
   if (status) {
     return `派单调度 · ${strictEnumLabel(ScanDispatchTicketStatusDescription, status, 'ticketStatus')}`
   }
@@ -181,9 +184,10 @@ watch(
 function buildTabQuery(tab: ScannerCenterTab): Record<string, string> {
   const query: Record<string, string> = { tab }
   if (tab === 'exception') {
-    const kind = route.query.tab === 'exception'
-      ? asQueryString(route.query.kind)
-      : exceptionKindSnapshot.value
+    const kind =
+      route.query.tab === 'exception'
+        ? asQueryString(route.query.kind)
+        : exceptionKindSnapshot.value
     if (kind) {
       query.kind = kind
     }
@@ -234,9 +238,13 @@ const logReturnDispatchLabel = computed(() =>
 )
 
 const isDispatchFailedQueueActive = computed(
-  () => activeTab.value === 'dispatch'
-    && dispatchFilter.value === DispatchQueueStatusFilterCode.FAILED,
+  () =>
+    activeTab.value === 'dispatch' && dispatchFilter.value === DispatchQueueStatusFilterCode.FAILED,
 )
+
+function isExceptionKindActive(kind: ScannerExceptionItemKindCode): boolean {
+  return activeTab.value === 'exception' && exceptionKind.value === kind
+}
 
 const headerSignalMetrics = computed<SignalMetric[]>(() => [
   {
@@ -254,6 +262,7 @@ const headerSignalMetrics = computed<SignalMetric[]>(() => [
     value: String(failedWorkOrderCount.value),
     tone: failedWorkOrderCount.value > 0 ? 'red' : 'green',
     clickable: true,
+    active: isExceptionKindActive(ScannerExceptionItemKindCode.WORK_ORDER),
   },
   {
     key: 'mixed-batch',
@@ -261,6 +270,7 @@ const headerSignalMetrics = computed<SignalMetric[]>(() => [
     value: String(mixedBatchCount.value),
     tone: mixedBatchCount.value > 0 ? 'orange' : 'green',
     clickable: true,
+    active: isExceptionKindActive(ScannerExceptionItemKindCode.MIXED_BATCH),
   },
   {
     key: 'page-register-blocked',
@@ -268,6 +278,7 @@ const headerSignalMetrics = computed<SignalMetric[]>(() => [
     value: String(pageRegisterBlockedCount.value),
     tone: pageRegisterBlockedCount.value > 0 ? 'red' : 'green',
     clickable: true,
+    active: isExceptionKindActive(ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED),
   },
   {
     key: 'committing-work-order',
@@ -275,6 +286,7 @@ const headerSignalMetrics = computed<SignalMetric[]>(() => [
     value: String(committingWorkOrderCount.value),
     tone: committingWorkOrderCount.value > 0 ? 'orange' : 'green',
     clickable: true,
+    active: isExceptionKindActive(ScannerExceptionItemKindCode.COMMITTING),
   },
   {
     key: 'pending-dispatch',
@@ -282,6 +294,10 @@ const headerSignalMetrics = computed<SignalMetric[]>(() => [
     value: String(pendingDispatchCount.value),
     tone: pendingDispatchCount.value > 0 ? 'orange' : 'green',
     clickable: true,
+    active:
+      activeTab.value === 'dispatch' &&
+      dispatchStatus.value === ScanDispatchTicketStatusCode.PENDING &&
+      dispatchFilter.value !== DispatchQueueStatusFilterCode.FAILED,
   },
   {
     key: 'processing-dispatch',
@@ -289,6 +305,9 @@ const headerSignalMetrics = computed<SignalMetric[]>(() => [
     value: String(processingDispatchCount.value),
     tone: processingDispatchCount.value > 0 ? 'blue' : 'green',
     clickable: true,
+    active:
+      activeTab.value === 'dispatch' &&
+      dispatchStatus.value === ScanDispatchTicketStatusCode.PROCESSING,
   },
   {
     key: 'suspended-dispatch',
@@ -296,6 +315,9 @@ const headerSignalMetrics = computed<SignalMetric[]>(() => [
     value: String(suspendedDispatchCount.value),
     tone: suspendedDispatchCount.value > 0 ? 'orange' : 'green',
     clickable: true,
+    active:
+      activeTab.value === 'dispatch' &&
+      dispatchStatus.value === ScanDispatchTicketStatusCode.SUSPENDED,
   },
 ])
 
@@ -312,8 +334,7 @@ async function loadOverview() {
     pendingDispatchCount.value = Number(overview.pendingDispatchCount ?? 0)
     processingDispatchCount.value = Number(overview.processingDispatchCount ?? 0)
     suspendedDispatchCount.value = Number(overview.suspendedDispatchCount ?? 0)
-  }
-  catch (error) {
+  } catch (error) {
     failedTicketCount.value = 0
     failedWorkOrderCount.value = 0
     mixedBatchCount.value = 0
@@ -324,8 +345,7 @@ async function loadOverview() {
     suspendedDispatchCount.value = 0
     overviewLoadFailed.value = true
     showUserError(error, '扫描中心概览加载失败')
-  }
-  finally {
+  } finally {
     overviewLoading.value = false
   }
 }
@@ -344,7 +364,7 @@ function handleHeaderMetricClick(key: string) {
     })
     return
   }
-  const exceptionQueryByKey: Record<string, { tab: 'exception', kind: string }> = {
+  const exceptionQueryByKey: Record<string, { tab: 'exception'; kind: string }> = {
     'committing-work-order': { tab: 'exception', kind: 'COMMITTING' },
     'failed-work-order': { tab: 'exception', kind: 'WORK_ORDER' },
     'mixed-batch': { tab: 'exception', kind: 'MIXED_BATCH' },
@@ -411,17 +431,13 @@ watch(
 
 <template>
   <StageWorkbenchShell>
-    <template #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        title="扫描中心"
-        subtitle="异常处理、运营统计、操作日志与派单调度"
-      />
-    </template>
-
     <template #signal>
-      <SignalBand variant="tiles" compact :metrics="headerSignalMetrics" @metric-click="handleHeaderMetricClick" />
+      <SignalBand
+        variant="tiles"
+        compact
+        :metrics="headerSignalMetrics"
+        @metric-click="handleHeaderMetricClick"
+      />
     </template>
 
     <UiEmpty
@@ -454,7 +470,10 @@ watch(
         :ticket-id="logTicketId"
         :volume-id="logVolumeId"
         :return-dispatch-label="logReturnDispatchLabel"
-        @return-dispatch="() => void router.replace({ query: buildDispatchTabQuery(readDispatchContextForRestore()) })"
+        @return-dispatch="
+          () =>
+            void router.replace({ query: buildDispatchTabQuery(readDispatchContextForRestore()) })
+        "
       />
       <ScannerDispatchPanel
         v-else-if="activeTab === 'dispatch'"

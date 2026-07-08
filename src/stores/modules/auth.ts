@@ -25,6 +25,7 @@ import { getDeviceId } from '@/utils/device'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { syncRememberedAccountOnLogout } from '@/utils/login-remember'
 import mittBus from '@/utils/mitt'
+import { useRouteStore } from './route'
 import { useTenantStore } from './tenant'
 import { useUserStore } from './user'
 
@@ -521,9 +522,12 @@ export const useAuthStore = defineStore(
         userStore.userInfo.isTenantAdmin = undefined
         resetHasMenuFlag()
 
-        // Critical tasks
         const criticalTasks: Promise<void>[] = []
-        criticalTasks.push(userStore.fetchTenantAdminPermission().catch(() => {}))
+        criticalTasks.push(
+          userStore.fetchTenantAdminPermission().then(async () => {
+            await useRouteStore().generateMenus()
+          }).catch(() => {}),
+        )
         await Promise.all(criticalTasks)
 
         // Async tasks
@@ -593,6 +597,15 @@ export const useAuthStore = defineStore(
           tenantStore.fetchTenantInfo(res.tenantInfo.id).catch(() => {})
         }
         applyLoginUserData(res)
+        userStore.userInfo.isTenantAdmin = undefined
+        resetHasMenuFlag()
+
+        await userStore.fetchTenantAdminPermission().catch(() => {})
+        await useRouteStore().generateMenus().catch(() => {})
+
+        if (res.tenantInfo?.id) {
+          tenantStore.fetchTenantInfo(res.tenantInfo.id).catch(() => {})
+        }
       } finally {
         isLoading.value = false
       }
@@ -627,8 +640,11 @@ export const useAuthStore = defineStore(
         }
 
         applyLoginUserData(res)
+        userStore.userInfo.isTenantAdmin = undefined
+        resetHasMenuFlag()
 
         await userStore.fetchTenantAdminPermission().catch(() => {})
+        await useRouteStore().generateMenus().catch(() => {})
 
         if (res.tenantInfo?.id) {
           tenantStore.fetchTenantInfo(res.tenantInfo.id).catch(() => {})

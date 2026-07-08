@@ -1,7 +1,6 @@
 import type {
   ArchiveVolumeDetailResponse,
   ArchiveVolumeResponse,
-  ArchiveVolumeRoleCode,
   ArchiveVolumeSubmitChecklistItemVO,
 } from '@/apis/mark/archive-volume'
 
@@ -24,14 +23,18 @@ interface SubmitGateInput {
     | 'requireSelfCheckConfirm'
     | 'selfCheckConfirmed'
     | 'signOffReady'
+    | 'canSubmitVolume'
+    | 'departmentReviewEnabled'
   >
   currentUserId: string
-  /** 详情页 volumeRole=OWNER 含 responsibleUserId 与 VOLUME_OWNER grant，与后端 submit 权限对齐 */
-  volumeRole?: ArchiveVolumeRoleCode
+  /** 详情页 capabilities.canSubmitVolume，优先于 responsibleUserId 旧门禁 */
+  canSubmitVolumeCapability?: boolean
+  /** 租户/院系是否启用院系审核；列表/详情 capabilities 或卷响应 */
+  departmentReviewEnabled?: boolean
+  volumeRole?: ArchiveVolumeResponse['volumeRole']
   fourPropertyStale?: boolean
   fourPropertyPassed?: boolean
   hasBlockingRemediationForSubmit?: boolean
-  /** 详情页 checklist/preview 阻塞项，与后端 blockingItems 同源 */
   blockingItems?: ArchiveVolumeSubmitChecklistItemVO[]
 }
 
@@ -50,20 +53,33 @@ function findFirstBlockingMessage(
 }
 
 function canActAsSubmitOwner(input: SubmitGateInput): boolean {
-  if (input.volumeRole === 'OWNER') {
-    return true
+  return input.canSubmitVolumeCapability === true || input.volume.canSubmitVolume === true
+}
+
+function resolveDepartmentReviewEnabled(input: SubmitGateInput): boolean {
+  return input.departmentReviewEnabled === true || input.volume.departmentReviewEnabled === true
+}
+
+/** 与后端 submitVolume 状态门禁一致 */
+function volumeStatusAllowsSubmit(
+  volumeStatus: ArchiveVolumeResponse['volumeStatus'],
+  departmentReviewEnabled: boolean,
+): boolean {
+  if (departmentReviewEnabled) {
+    return volumeStatus === 'DEPARTMENT_REVIEWED'
   }
-  return input.volume.responsibleUserId === input.currentUserId
+  return volumeStatus === 'COLLECTING'
 }
 
 /**
- * 列表与详情共用的「提交归档」门禁，与后端 submit 前置条件对齐。
+ * 列表与详情共用的「提交归档」门禁，与后端 capabilities + 提交前置条件对齐。
  */
 export function canSubmitArchiveVolume(input: SubmitGateInput): boolean {
   const { volume, fourPropertyStale, fourPropertyPassed } = input
-  const blockingRemediation
-    = input.hasBlockingRemediationForSubmit ?? volume.hasBlockingRemediationForSubmit
-  if (volume.volumeStatus !== 'COLLECTING') return false
+  const departmentReviewEnabled = resolveDepartmentReviewEnabled(input)
+  const blockingRemediation =
+    input.hasBlockingRemediationForSubmit ?? volume.hasBlockingRemediationForSubmit
+  if (!volumeStatusAllowsSubmit(volume.volumeStatus, departmentReviewEnabled)) return false
   if (blockingRemediation) return false
   if (!canActAsSubmitOwner(input)) return false
   if (volume.submitReady === true) return true
@@ -99,8 +115,8 @@ export function isScoreSubmitReady(
   }
   if (volume.scoreSource === 'TEACHING_AFFAIRS' || volume.scoreSource === 'OFFLINE_CONFIRMED') {
     if (
-      volume.scoreCompletionStatus === 'COMPLETED'
-      || volume.scoreCompletionStatus === 'VERIFIED'
+      volume.scoreCompletionStatus === 'COMPLETED' ||
+      volume.scoreCompletionStatus === 'VERIFIED'
     ) {
       return true
     }
@@ -111,7 +127,16 @@ export function isScoreSubmitReady(
 
 export function describeSubmitBlockReason(input: SubmitGateInput): string | null {
   const { volume } = input
-  if (volume.volumeStatus !== 'COLLECTING') return null
+  const departmentReviewEnabled = resolveDepartmentReviewEnabled(input)
+  if (!volumeStatusAllowsSubmit(volume.volumeStatus, departmentReviewEnabled)) {
+    if (departmentReviewEnabled && volume.volumeStatus === 'COLLECTING') {
+      return '须先完成院系审核通过后再提交档案馆'
+    }
+    if (departmentReviewEnabled && volume.volumeStatus === 'DEPARTMENT_REVIEW_PENDING') {
+      return '院系审核进行中，请等待审核通过'
+    }
+    return null
+  }
   if (input.hasBlockingRemediationForSubmit ?? volume.hasBlockingRemediationForSubmit) {
     return '存在未关闭整改任务，须关闭后再提交'
   }
@@ -163,10 +188,15 @@ export function describeSubmitBlockReason(input: SubmitGateInput): string | null
   return null
 }
 
-export function canSubmitArchiveVolumeRow(record: ArchiveVolumeResponse, currentUserId: string): boolean {
+export function canSubmitArchiveVolumeRow(
+  record: ArchiveVolumeResponse,
+  currentUserId: string,
+): boolean {
   return canSubmitArchiveVolume({
     volume: record,
     currentUserId,
+    canSubmitVolumeCapability: record.canSubmitVolume,
+    departmentReviewEnabled: record.departmentReviewEnabled,
     volumeRole: record.volumeRole,
     fourPropertyStale: record.fourPropertyStale,
     hasBlockingRemediationForSubmit: record.hasBlockingRemediationForSubmit,
@@ -180,6 +210,9 @@ export function canSubmitArchiveVolumeDetail(
   return canSubmitArchiveVolume({
     volume: detail.volume,
     currentUserId,
+    canSubmitVolumeCapability: detail.capabilities?.canSubmitVolume,
+    departmentReviewEnabled:
+      detail.capabilities?.departmentReviewEnabled ?? detail.volume.departmentReviewEnabled,
     volumeRole: detail.volumeRole,
     fourPropertyStale: detail.fourPropertyStale,
     fourPropertyPassed: detail.latestFourPropertyCheck?.overallPassed,
@@ -195,6 +228,9 @@ export function describeSubmitBlockReasonForDetail(
   return describeSubmitBlockReason({
     volume: detail.volume,
     currentUserId,
+    canSubmitVolumeCapability: detail.capabilities?.canSubmitVolume,
+    departmentReviewEnabled:
+      detail.capabilities?.departmentReviewEnabled ?? detail.volume.departmentReviewEnabled,
     volumeRole: detail.volumeRole,
     fourPropertyStale: detail.fourPropertyStale,
     fourPropertyPassed: detail.latestFourPropertyCheck?.overallPassed,

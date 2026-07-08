@@ -29,7 +29,12 @@
           <UiButton size="sm" variant="outline" :disabled="!selectedExamId" @click="goToScanLedger">
             影像账本
           </UiButton>
-          <UiButton size="sm" variant="outline" :disabled="!selectedExamId" @click="goToManualEntry">
+          <UiButton
+            size="sm"
+            variant="outline"
+            :disabled="!selectedExamId"
+            @click="goToManualEntry"
+          >
             手动补录
           </UiButton>
         </template>
@@ -477,9 +482,7 @@
             {{ detailRecord.paperDisplay.primaryText }}
           </a-descriptions-item>
           <a-descriptions-item label="扫描页">
-            {{
-              detailRecord.pageDisplayName
-            }}
+            {{ detailRecord.pageDisplayName }}
           </a-descriptions-item>
           <a-descriptions-item label="题目">
             {{ detailRecord.questionDisplayName }}
@@ -533,21 +536,38 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type {
-  ExamPaperBatchBindResponse,
-} from '@/apis/mark/exam-mark-scanner'
+import type { ExamPaperBatchBindResponse } from '@/apis/mark/exam-mark-scanner'
+import { batchBindPapers, ScannerEndpointOnlineStatusCode } from '@/apis/mark/exam-mark-scanner'
 import type {
   ExamScanMonitorDeviceResponse,
   ExamWorkbenchScanMonitorPanelResponse,
 } from '@/apis/mark/exam-progress'
+import { getScanMonitorPanel, listExamScanMonitorDevices } from '@/apis/mark/exam-progress'
 import type {
   ExamScannerBatchResponse,
   ScanAttentionItemResponse,
   ScanAttentionSourceTypeCode,
   ScanBatchStatusCode,
 } from '@/apis/mark/exam-scan'
+import {
+  listScanAttentions,
+  pageScannerBatches,
+  QUALITY_DECISION_TONE,
+  QualityDecisionDescription,
+  SCAN_ATTENTION_TYPE_OPTIONS,
+  SCAN_ATTENTION_TYPE_TONE,
+  SCAN_BATCH_STATUS_OPTIONS,
+  SCAN_BATCH_STATUS_TONE,
+  ScanAttentionQueryGroupCode,
+  ScanAttentionSourceTypeDescription,
+  ScanAttentionTypeCode,
+  ScanAttentionTypeDescription,
+  ScanBatchStatusDescription,
+} from '@/apis/mark/exam-scan'
 import type { CandidateStatusCode, ExamCandidateResponse } from '@/apis/mark/exam-scope'
+import { CandidateStatusDescription, listExamCandidates } from '@/apis/mark/exam-scope'
 import type { ExamScoreSummaryItemResponse } from '@/apis/mark/exam-score'
+import { pageExamScoreSummary } from '@/apis/mark/exam-score'
 import type {
   BadgeTone,
   FilterField,
@@ -565,27 +585,6 @@ import {
   DuplicateResolutionStatusDescription,
 } from '@/apis/mark/duplicate-resolution-status'
 import { BindingStatusDescription, bindPaper } from '@/apis/mark/exam-binding'
-import {
-  batchBindPapers, ScannerEndpointOnlineStatusCode 
-} from '@/apis/mark/exam-mark-scanner'
-import { getScanMonitorPanel, listExamScanMonitorDevices } from '@/apis/mark/exam-progress'
-import {
-  listScanAttentions,
-  pageScannerBatches,
-  QUALITY_DECISION_TONE,
-  QualityDecisionDescription,
-  SCAN_ATTENTION_TYPE_OPTIONS,
-  SCAN_ATTENTION_TYPE_TONE,
-  SCAN_BATCH_STATUS_OPTIONS,
-  SCAN_BATCH_STATUS_TONE,
-  ScanAttentionQueryGroupCode,
-  ScanAttentionSourceTypeDescription,
-  ScanAttentionTypeCode,
-  ScanAttentionTypeDescription,
-  ScanBatchStatusDescription,
-} from '@/apis/mark/exam-scan'
-import { CandidateStatusDescription, listExamCandidates } from '@/apis/mark/exam-scope'
-import { pageExamScoreSummary } from '@/apis/mark/exam-score'
 import { FinalScoreStatusDescription } from '@/apis/mark/final-score-status'
 import { GRADE_STATUS_TONE, GradeStatusDescription } from '@/apis/mark/grade-status'
 import { discardScannedPage } from '@/apis/mark/scanner-kiosk'
@@ -647,15 +646,15 @@ enum ScanMonitorTabQuery {
 
 function isScanMonitorTabQuery(value: unknown): value is ScanMonitorTabQuery {
   return (
-    value === ScanMonitorTabQuery.NORMAL
-    || value === ScanMonitorTabQuery.ABNORMAL
-    || value === ScanMonitorTabQuery.DUPLICATE
+    value === ScanMonitorTabQuery.NORMAL ||
+    value === ScanMonitorTabQuery.ABNORMAL ||
+    value === ScanMonitorTabQuery.DUPLICATE
   )
 }
 
 const { selectedExamId } = useMarkExamContext()
-const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
-  = useExamJourneyContextBar('扫描监控')
+const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useExamJourneyContextBar('扫描监控')
 
 const scanMonitorContextSubtitle = computed(() => {
   const journeySubtitle = contextBarSubtitle.value
@@ -665,8 +664,8 @@ const scanMonitorContextSubtitle = computed(() => {
   return journeySubtitle
 })
 const { refreshSnapshot } = useWorkspaceExamId()
-const { isExamConfidential, examConfidentialLabel, watermarkLines }
-  = useWorkspaceConfidentialContext()
+const { isExamConfidential, examConfidentialLabel, watermarkLines } =
+  useWorkspaceConfidentialContext()
 
 /** 扫描链写操作后同步 StageRail 与本页数据。 */
 async function syncScanWorkbenchState(): Promise<void> {
@@ -703,10 +702,11 @@ function formatMonitorDeviceLabel(device: ExamScanMonitorDeviceResponse): string
   return device.scannerIp ? `${name}（${device.scannerIp}）` : name
 }
 
-const onlineScannerDeviceCount = computed(() =>
-  scannerDevices.value.filter(
-    (device) => device.endpointOnlineStatus === ScannerEndpointOnlineStatusCode.ONLINE,
-  ).length,
+const onlineScannerDeviceCount = computed(
+  () =>
+    scannerDevices.value.filter(
+      (device) => device.endpointOnlineStatus === ScannerEndpointOnlineStatusCode.ONLINE,
+    ).length,
 )
 
 const normalFilterApplied = reactive<{
@@ -782,10 +782,10 @@ const normalTableEmptyDescription = computed(() => {
 
 const hasActiveNormalFilters = computed(() =>
   Boolean(
-    normalFilterApplied.keyword
-    || normalFilterApplied.scanBatchId
-    || normalFilterApplied.batchStatus
-    || normalFilterApplied.scannerDeviceId,
+    normalFilterApplied.keyword ||
+    normalFilterApplied.scanBatchId ||
+    normalFilterApplied.batchStatus ||
+    normalFilterApplied.scannerDeviceId,
   ),
 )
 
@@ -947,7 +947,7 @@ function handleMonitorBatchUpdated(): void {
   void loadScanOverview(selectedExamId.value!)
 }
 
-function handleMonitorBatchPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleMonitorBatchPageChange(pageEvent: { current: number; pageSize: number }): void {
   monitorBatchPagination.current = pageEvent.current
   monitorBatchPagination.pageSize = pageEvent.pageSize
   void loadMonitorBatches()
@@ -1271,8 +1271,8 @@ async function loadConnectedScannerDevices(): Promise<void> {
       return
     }
     if (
-      filterForm.monitorDeviceId
-      && !scannerDevices.value.some((device) => device.scannerDeviceId === filterForm.monitorDeviceId)
+      filterForm.monitorDeviceId &&
+      !scannerDevices.value.some((device) => device.scannerDeviceId === filterForm.monitorDeviceId)
     ) {
       filterForm.monitorDeviceId = ''
     }
@@ -1312,9 +1312,10 @@ function tickMonitorFallbackPoll(): void {
 
 function startMonitorFallbackPolling(): void {
   stopMonitorFallbackPolling()
-  const intervalMs = activeTab.value === 'normal'
-    ? SCANNER_DEVICE_POLL_INTERVAL_MS
-    : ATTENTION_FALLBACK_POLL_INTERVAL_MS
+  const intervalMs =
+    activeTab.value === 'normal'
+      ? SCANNER_DEVICE_POLL_INTERVAL_MS
+      : ATTENTION_FALLBACK_POLL_INTERVAL_MS
   monitorFallbackPollTimer = setInterval(tickMonitorFallbackPoll, intervalMs)
 }
 
@@ -1504,7 +1505,7 @@ function reloadAttentionsFromFirstPage(): void {
   void loadAttentions()
 }
 
-function handleAttentionPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleAttentionPageChange(pageEvent: { current: number; pageSize: number }): void {
   attentionPagination.current = pageEvent.current
   attentionPagination.pageSize = pageEvent.pageSize
   selectedRowKeys.value = []
@@ -1864,8 +1865,8 @@ function filterCandidate(input: string, option?: DefaultOptionType): boolean {
   const candidate = candidates.value.find((item) => item.candidateRosterId === option.value)
   if (!candidate) return false
   return (
-    (candidate.studentName ?? '').toLowerCase().includes(kw)
-    || (candidate.studentNo ?? '').toLowerCase().includes(kw)
+    (candidate.studentName ?? '').toLowerCase().includes(kw) ||
+    (candidate.studentNo ?? '').toLowerCase().includes(kw)
   )
 }
 
@@ -2046,8 +2047,8 @@ function buildAttentionActions(record: ScanAttentionItemResponse): UiTableRowAct
   } else if (record.attentionType === ScanAttentionTypeCode.DUPLICATE_PENDING) {
     actions.push({ key: 'ledger', label: '去影像账本处置', tone: 'primary' })
   } else if (
-    record.attentionType === ScanAttentionTypeCode.QUALITY_BLOCK
-    || record.attentionType === ScanAttentionTypeCode.PROCESSING_BLOCK
+    record.attentionType === ScanAttentionTypeCode.QUALITY_BLOCK ||
+    record.attentionType === ScanAttentionTypeCode.PROCESSING_BLOCK
   ) {
     actions.push({ key: 'dispose', label: '查看处置', tone: 'primary' })
     if (record.paperInstanceId && record.scanBatchId) {
@@ -2103,7 +2104,7 @@ const batchBindDrawerOpen = ref(false)
 const batchBindResult = ref<ExamPaperBatchBindResponse | null>(null)
 type BatchBindAttemptStatus = 'NORMAL' | 'MAKEUP' | 'RETAKE'
 
-const batchAttemptStatusOptions: Array<{ label: string, value: BatchBindAttemptStatus }> = [
+const batchAttemptStatusOptions: Array<{ label: string; value: BatchBindAttemptStatus }> = [
   { label: '普通答卷', value: 'NORMAL' },
   { label: '补考答卷', value: 'MAKEUP' },
   { label: '重考答卷', value: 'RETAKE' },
@@ -2165,10 +2166,10 @@ async function handleBatchBind(): Promise<void> {
   }
   const selected = attentions.value.filter(
     (item) =>
-      selectedRowKeys.value.includes(item.id)
-      && item.attentionType === 'BINDING_CONFLICT'
-      && item.paperInstanceId
-      && item.scanBatchId,
+      selectedRowKeys.value.includes(item.id) &&
+      item.attentionType === 'BINDING_CONFLICT' &&
+      item.paperInstanceId &&
+      item.scanBatchId,
   )
   if (selected.length === 0) {
     message.error('请选择可身份绑定的绑定冲突异常项')
@@ -2431,7 +2432,7 @@ onBeforeUnmount(() => {
   }
 
   &__devices {
-    margin-bottom: var(--dp-space-4, 16px);
+    margin-bottom: var(--dp-space-4);
   }
 
   &__stats {
@@ -2443,7 +2444,7 @@ onBeforeUnmount(() => {
   }
 
   &__health-card {
-    margin-bottom: var(--dp-space-4, 16px);
+    margin-bottom: var(--dp-space-4);
     max-width: 320px;
     min-width: 0;
     display: flex;
@@ -2472,7 +2473,7 @@ onBeforeUnmount(() => {
     flex-direction: column;
     gap: 6px;
     margin-top: 12px;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
     font-size: 12px;
   }
 
@@ -2483,8 +2484,8 @@ onBeforeUnmount(() => {
   &__table-shell {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-4, 16px);
-    padding: var(--dp-space-4, 16px) var(--dp-space-5, 20px) var(--dp-space-5, 20px);
+    gap: var(--dp-space-4);
+    padding: var(--dp-space-4) var(--dp-space-5) var(--dp-space-5);
   }
 
   &__status-tabs {
@@ -2495,7 +2496,7 @@ onBeforeUnmount(() => {
   }
 
   &__panel-alert {
-    margin-bottom: var(--dp-space-4, 16px);
+    margin-bottom: var(--dp-space-4);
   }
 
   &__normal-panel,
@@ -2510,8 +2511,8 @@ onBeforeUnmount(() => {
   }
 
   &__panel {
-    background: var(--dp-surface, #fff);
-    border: 1px solid var(--dp-border, #e2e8f0);
+    background: var(--dp-surface);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
     padding: 16px;
   }
@@ -2528,12 +2529,12 @@ onBeforeUnmount(() => {
     margin: 0;
     font-size: 14px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__panel-meta {
     font-size: 12px;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
   }
 
   &__filter-form {
@@ -2560,7 +2561,7 @@ onBeforeUnmount(() => {
   }
 
   &__hint {
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
     font-size: 12px;
   }
 
@@ -2569,7 +2570,7 @@ onBeforeUnmount(() => {
     font-size: 12px;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__identity-evidence {
@@ -2578,9 +2579,9 @@ onBeforeUnmount(() => {
     gap: 12px;
     margin-bottom: 16px;
     padding: 16px;
-    border: 1px solid var(--dp-border, #e2e8f0);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
-    background: var(--dp-surface-subtle, #f8fafc);
+    background: var(--dp-surface-subtle);
   }
 
   &__identity-evidence-header {
@@ -2592,7 +2593,7 @@ onBeforeUnmount(() => {
 
   &__identity-evidence-title {
     margin: 0;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
     font-size: 14px;
     font-weight: 600;
     line-height: 1.4;
@@ -2600,7 +2601,7 @@ onBeforeUnmount(() => {
 
   &__identity-evidence-subtitle {
     margin: 4px 0 0;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
     font-size: 12px;
     line-height: 1.5;
   }
@@ -2621,7 +2622,7 @@ onBeforeUnmount(() => {
 
   &__identity-pane-title {
     margin-bottom: 8px;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
     font-size: 13px;
     font-weight: 600;
   }
@@ -2652,8 +2653,8 @@ onBeforeUnmount(() => {
 
   &__identity-empty {
     padding: 16px 0;
-    background: var(--dp-surface, #fff);
-    border: 1px dashed var(--dp-border, #e2e8f0);
+    background: var(--dp-surface);
+    border: 1px dashed var(--dp-border);
     border-radius: 6px;
   }
 
@@ -2668,9 +2669,9 @@ onBeforeUnmount(() => {
     grid-template-columns: minmax(240px, 1fr) minmax(360px, 1.4fr);
     gap: 16px;
     padding: 12px;
-    border: 1px solid var(--dp-border, #e2e8f0);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
-    background: var(--dp-surface, #fff);
+    background: var(--dp-surface);
   }
 
   &__batch-main {
@@ -2681,7 +2682,7 @@ onBeforeUnmount(() => {
   }
 
   &__batch-diagnostic {
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
     font-size: 12px;
     line-height: 1.5;
     word-break: break-all;

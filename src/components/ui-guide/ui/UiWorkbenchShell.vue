@@ -91,14 +91,14 @@ const layoutStyle = computed(() => ({
   font-size: 18px;
   line-height: 1.4;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-workbench-shell__subtitle {
   margin-top: 2px;
   font-size: 12px;
   line-height: 1.6;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-workbench-shell__toolbar-actions {

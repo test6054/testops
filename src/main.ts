@@ -12,12 +12,9 @@ import { configureAppFeedback, message } from '@/utils/feedback'
 import App from './App.vue'
 import router from './router'
 
-import 'ant-design-vue/dist/reset.css'
-
-// Design tokens and global SCSS (load before Tailwind theme bridges)
+import '@/styles/cascade-layers.css'
+import '@/styles/ant-base.css'
 import '@/styles/index.scss'
-
-// Tailwind utilities (layout/spacing only; no preflight — see tailwind.css)
 import '@/styles/tailwind.css'
 
 // Polyfill: Array.prototype.at (ES2022) — 解决旧版浏览器兼容性问题

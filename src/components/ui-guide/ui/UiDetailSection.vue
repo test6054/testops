@@ -52,14 +52,14 @@ const props = withDefaults(
 .ui-detail-section__title {
   font-size: 16px;
   font-weight: 700;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-detail-section__subtitle {
   margin-top: 4px;
   font-size: 13px;
   line-height: 1.6;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-detail-section__extra {

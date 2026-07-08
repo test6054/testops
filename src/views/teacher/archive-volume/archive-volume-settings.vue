@@ -5,8 +5,15 @@
         layout="workbench"
         show-title
         title="归档配置"
-        subtitle="维护模板套、职责授权、密级策略与材料目录模板"
-      />
+        subtitle="租户级模板母版、档案岗位与密级矩阵（任务级设置在详情「任务设置」）"
+      >
+        <template #actions>
+          <UiButton variant="primary" size="sm" @click="goArchiveList"> 返回归档列表 </UiButton>
+          <UiButton variant="outline" size="sm" @click="goCreateArchiveTask">
+            新建归档任务
+          </UiButton>
+        </template>
+      </ContextBar>
     </template>
 
     <template #signal>
@@ -23,32 +30,19 @@
       </section>
 
       <section v-else-if="settingsTab === 'duty'" class="archive-volume-settings__panel">
-        <UiAlertStrip
-          v-if="!canManageConfig"
-          tone="warning"
-          title="当前账号仅可查看"
-          description="职责授权维护须租户管理员权限。"
-          dense
-        />
-        <UiForm :disabled="dutyLoading || saving || !canManageConfig">
+        <UiForm :disabled="dutyLoading || saving">
           <WorkbenchSurfaceCard flush>
             <template #head>
-              <span>职责授权</span>
+              <span>档案管理岗位</span>
             </template>
             <template #toolbar>
               <div class="archive-volume-settings__section-toolbar">
                 <span class="archive-volume-settings__section-hint">
-                  配置归档职责类型、院系范围与全校授权
+                  配置归档职责类型、院系范围与全校授权（含部门档案员）
                 </span>
                 <div class="archive-volume-settings__section-actions">
-                  <UiButton v-if="canManageConfig" size="sm" variant="outline" @click="addDutyRow">新增授权</UiButton>
-                  <UiButton
-                    v-if="canManageConfig"
-                    size="sm"
-                    variant="primary"
-                    :loading="saving"
-                    @click="saveDutyGrants"
-                  >
+                  <UiButton size="sm" variant="outline" @click="addDutyRow">新增授权</UiButton>
+                  <UiButton size="sm" variant="primary" :loading="saving" @click="saveDutyGrants">
                     保存职责授权
                   </UiButton>
                 </div>
@@ -107,17 +101,10 @@
       </section>
 
       <section v-else-if="settingsTab === 'security'" class="archive-volume-settings__panel">
-        <UiAlertStrip
-          v-if="!canManageConfig"
-          tone="warning"
-          title="当前账号仅可查看"
-          description="密级策略维护须租户管理员权限。"
-          dense
-        />
-        <UiForm :disabled="policyLoading || saving || !canManageConfig">
+        <UiForm :disabled="policyLoading || saving">
           <WorkbenchSurfaceCard flush>
             <template #head>
-              <span>密级策略</span>
+              <span>密级访问矩阵</span>
             </template>
             <template #toolbar>
               <div class="archive-volume-settings__section-toolbar">
@@ -125,9 +112,8 @@
                   按职责类型限制可访问的最高密级
                 </span>
                 <div class="archive-volume-settings__section-actions">
-                  <UiButton v-if="canManageConfig" size="sm" variant="outline" @click="addPolicyRow">新增策略</UiButton>
+                  <UiButton size="sm" variant="outline" @click="addPolicyRow">新增策略</UiButton>
                   <UiButton
-                    v-if="canManageConfig"
                     size="sm"
                     variant="primary"
                     :loading="saving"
@@ -177,94 +163,148 @@
         </UiForm>
       </section>
 
-      <section v-else class="archive-volume-settings__panel">
-        <UiAlertStrip
-          v-if="!canManageConfig"
-          tone="warning"
-          title="当前账号仅可查看"
-          description="目录模板维护须租户管理员权限。"
-          dense
-        />
-        <UiForm :disabled="catalogLoading || saving || !canManageConfig">
+      <section v-else-if="settingsTab === 'collaboration'" class="archive-volume-settings__panel">
+        <UiForm :disabled="collaborationLoading || saving">
           <WorkbenchSurfaceCard flush>
             <template #head>
-              <span>目录模板</span>
+              <span>协作与提交策略</span>
             </template>
             <template #toolbar>
               <div class="archive-volume-settings__section-toolbar">
                 <span class="archive-volume-settings__section-hint">
-                  维护租户材料目录项、必交规则与排序
+                  控制成员自动加入、提交权、扫描台 Hub 列表模式等租户级协作规则
+                </span>
+                <UiButton
+                  size="sm"
+                  variant="primary"
+                  :loading="saving"
+                  @click="saveCollaborationPolicyForm"
+                >
+                  保存协作策略
+                </UiButton>
+              </div>
+            </template>
+            <div class="archive-volume-settings__collaboration-form">
+              <label class="archive-volume-settings__field">
+                <span>提交权模式</span>
+                <UiSelect
+                  v-model="collaborationForm.submitMode"
+                  :options="submitModeOptions"
+                  :allow-clear="false"
+                />
+              </label>
+              <label class="archive-volume-settings__field">
+                <span>扫描台 Hub 列表</span>
+                <UiSelect
+                  v-model="collaborationForm.kioskHubListMode"
+                  :options="kioskHubListModeOptions"
+                  :allow-clear="false"
+                />
+              </label>
+              <a-checkbox v-model:checked="collaborationForm.autoSeedExamReviewers">
+                自动加入考试阅卷老师为协作成员
+              </a-checkbox>
+              <a-checkbox v-model:checked="collaborationForm.autoSeedCourseTeachers">
+                自动加入课程任课老师为协作成员
+              </a-checkbox>
+              <a-checkbox v-model:checked="collaborationForm.coordinatorImplicitSubmit">
+                学院协调员隐式具备提交权
+              </a-checkbox>
+              <a-checkbox v-model:checked="collaborationForm.scanOperatorMayEditCatalog">
+                扫描员可编辑编目与自查
+              </a-checkbox>
+            </div>
+          </WorkbenchSurfaceCard>
+        </UiForm>
+      </section>
+
+      <section v-else-if="settingsTab === 'deadline'" class="archive-volume-settings__panel">
+        <UiForm :disabled="deadlineLoading || saving">
+          <WorkbenchSurfaceCard flush>
+            <template #head>
+              <span>归档时限策略</span>
+            </template>
+            <template #toolbar>
+              <div class="archive-volume-settings__section-toolbar">
+                <span class="archive-volume-settings__section-hint">
+                  须保留一条租户默认；可按院系覆盖法规节点、临期提醒与院系审核门禁
                 </span>
                 <div class="archive-volume-settings__section-actions">
-                  <UiButton v-if="canManageConfig" size="sm" variant="outline" @click="addCatalogRow">新增目录项</UiButton>
+                  <UiButton size="sm" variant="outline" @click="addDeadlineRow"
+                    >新增院系策略</UiButton
+                  >
                   <UiButton
-                    v-if="canManageConfig"
                     size="sm"
                     variant="primary"
                     :loading="saving"
-                    @click="saveCatalogRows"
+                    @click="saveDeadlinePolicyRows"
                   >
-                    保存目录模板
+                    保存时限策略
                   </UiButton>
                 </div>
               </div>
             </template>
             <UiDataTable
               pagination-mode="none"
-              :columns="catalogColumns"
-              :data-source="catalogRows"
-              :loading="catalogLoading"
+              :columns="deadlineColumns"
+              :data-source="deadlineRows"
+              :loading="deadlineLoading"
               :show-pagination="false"
               flat
               row-key="rowKey"
               size="middle"
-              empty-description="暂无目录模板项"
+              empty-description="暂无时限策略"
             >
               <template #bodyCell="{ column, index }">
-                <template v-if="column.key === 'examForm'">
-                  <a-select
-                    v-model:value="catalogRows[index].examForm"
-                    :options="examFormOptions"
-                    allow-clear
-                    placeholder="全部形式"
+                <template v-if="column.key === 'scope'">
+                  {{ deadlineRows[index].isTenantDefault ? '租户默认' : '院系覆盖' }}
+                </template>
+                <template v-else-if="column.key === 'departmentId'">
+                  <UiSelect
+                    v-model="deadlineRows[index].departmentId"
+                    :options="departmentOptions"
+                    :disabled="deadlineRows[index].isTenantDefault"
+                    placeholder="选择院系"
+                    allow-search
+                  />
+                </template>
+                <template v-else-if="column.key === 'deadlineTier'">
+                  <UiSelect
+                    v-model="deadlineRows[index].deadlineTier"
+                    :options="deadlineTierOptions"
+                    :allow-clear="false"
+                  />
+                </template>
+                <template v-else-if="column.key === 'leadDays'">
+                  <a-input-number
+                    v-model:value="deadlineRows[index].leadDays"
+                    :min="1"
+                    :max="90"
                     style="width: 100%"
                   />
                 </template>
-                <template v-else-if="column.key === 'materialType'">
-                  <a-select
-                    v-model:value="catalogRows[index].materialType"
-                    :options="materialTypeOptions"
-                    show-search
-                    option-filter-prop="label"
-                    style="width: 100%"
-                  />
-                </template>
-                <template v-else-if="column.key === 'catalogName'">
-                  <a-input v-model:value="catalogRows[index].catalogName" />
-                </template>
-                <template v-else-if="column.key === 'catalogCode'">
-                  <a-input v-model:value="catalogRows[index].catalogCode" />
-                </template>
-                <template v-else-if="column.key === 'requiredFlag'">
-                  <a-checkbox v-model:checked="catalogRows[index].requiredFlag">必交</a-checkbox>
-                </template>
-                <template v-else-if="column.key === 'delayAllowedFlag'">
-                  <a-checkbox v-model:checked="catalogRows[index].delayAllowedFlag">
-                    允许延迟
+                <template v-else-if="column.key === 'overdueSubmitBlock'">
+                  <a-checkbox v-model:checked="deadlineRows[index].overdueSubmitBlock">
+                    逾期硬阻断
                   </a-checkbox>
                 </template>
-                <template v-else-if="column.key === 'sortOrder'">
-                  <a-input-number
-                    v-model:value="catalogRows[index].sortOrder"
-                    :min="0"
-                    style="width: 100%"
-                  />
+                <template v-else-if="column.key === 'departmentReviewEnabled'">
+                  <a-checkbox v-model:checked="deadlineRows[index].departmentReviewEnabled">
+                    启用院系审核
+                  </a-checkbox>
                 </template>
                 <template v-else-if="column.key === 'actions'">
                   <UiTableActions
-                    :items="[{ key: 'delete', label: '删除', tone: 'danger' }]"
+                    :items="[
+                      {
+                        key: 'delete',
+                        label: '删除',
+                        tone: 'danger',
+                        disabled: deadlineRows[index].isTenantDefault,
+                      },
+                    ]"
                     split
-                    @action="() => removeCatalogRow(index)"
+                    @action="() => removeDeadlineRow(index)"
                   />
                 </template>
               </template>
@@ -273,43 +313,38 @@
         </UiForm>
       </section>
     </WorkbenchSurfaceCard>
-
-    <ArchiveVolumeListNextStepsPanel variant="settings" />
   </StageWorkbenchShell>
 </template>
 
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
+  ArchiveDeadlinePolicyItemRequest,
   ArchiveDutyGrantItemRequest,
   ArchiveSecurityPolicyItemRequest,
+  ArchiveTenantCollaborationPolicySaveRequest,
 } from '@/apis/mark/archive-config'
-import type {
-  ArchiveCatalogTemplateSaveItemRequest,
-} from '@/apis/mark/archive-volume'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   ARCHIVE_DUTY_TYPE_OPTIONS,
   ArchiveDutyTypeCode,
+  getArchiveCollaborationPolicy,
+  listArchiveDeadlinePolicy,
   listArchiveDutyGrants,
   listArchiveSecurityPolicy,
+  saveArchiveCollaborationPolicy,
+  saveArchiveDeadlinePolicy,
   saveArchiveDutyGrants,
   saveArchiveSecurityPolicy,
 } from '@/apis/mark/archive-config'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
-import {
-  ARCHIVE_EXAM_FORM_OPTIONS,
-  ARCHIVE_MATERIAL_TYPE_OPTIONS,
-  ARCHIVE_SECURITY_LEVEL_OPTIONS,
-  listArchiveCatalogTemplate,
-  saveArchiveCatalogTemplate,
-} from '@/apis/mark/archive-volume'
+import { ARCHIVE_SECURITY_LEVEL_OPTIONS } from '@/apis/mark/archive-volume'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
@@ -319,11 +354,20 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
-import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
-import { ArchiveMaterialTypeCode } from '@/types/enums/archive-material-type-enum'
+import {
+  ARCHIVE_DEADLINE_TIER_OPTIONS,
+  ArchiveDeadlineTierCode,
+} from '@/types/enums/archive-deadline-tier-enum'
+import {
+  ALL_ARCHIVE_KIOSK_HUB_LIST_MODE_CODES,
+  ArchiveKioskHubListModeDescription,
+} from '@/types/enums/archive-kiosk-hub-list-mode-enum'
 import { ArchiveSecurityLevelCode } from '@/types/enums/archive-security-level-enum'
+import {
+  ALL_ARCHIVE_SUBMIT_MODE_CODES,
+  ArchiveSubmitModeDescription,
+} from '@/types/enums/archive-submit-mode-enum'
 import { showUserError } from '@/utils/error-handler'
-import ArchiveVolumeListNextStepsPanel from '@/views/teacher/archive-volume/components/ArchiveVolumeListNextStepsPanel.vue'
 import ArchiveVolumeTemplateSetsPanel from './components/ArchiveVolumeTemplateSetsPanel.vue'
 
 defineOptions({ name: 'ArchiveVolumeSettings' })
@@ -332,32 +376,67 @@ const props = defineProps<{
   initialTab?: string
 }>()
 
+const route = useRoute()
+const router = useRouter()
+
 type DutyRow = ArchiveDutyGrantItemRequest & { rowKey: string }
 interface PolicyRow {
   rowKey: string
   dutyType: ArchiveDutyTypeCode
   maxSecurityLevel: ArchiveSecurityLevelCode
 }
-type CatalogRow = ArchiveCatalogTemplateSaveItemRequest & { rowKey: string }
+
+interface DeadlineRow {
+  rowKey: string
+  isTenantDefault: boolean
+  departmentId?: string
+  deadlineTier: ArchiveDeadlineTierCode
+  leadDays: number
+  overdueSubmitBlock: boolean
+  departmentReviewEnabled: boolean
+}
 
 const settingsTab = ref('templateSets')
 const saving = ref(false)
 const dutyLoading = ref(false)
 const policyLoading = ref(false)
-const catalogLoading = ref(false)
+const deadlineLoading = ref(false)
+const collaborationLoading = ref(false)
 const dutyRows = ref<DutyRow[]>([])
 const policyRows = ref<PolicyRow[]>([])
-const catalogRows = ref<CatalogRow[]>([])
-const departmentOptions = ref<Array<{ value: string, label: string }>>([])
+const deadlineRows = ref<DeadlineRow[]>([])
+const collaborationForm = ref<ArchiveTenantCollaborationPolicySaveRequest>({
+  autoSeedExamReviewers: true,
+  autoSeedCourseTeachers: true,
+  coordinatorImplicitSubmit: false,
+  scanOperatorMayEditCatalog: false,
+  submitMode: ALL_ARCHIVE_SUBMIT_MODE_CODES[0],
+  kioskHubListMode: ALL_ARCHIVE_KIOSK_HUB_LIST_MODE_CODES[0],
+})
+const submitModeOptions = ALL_ARCHIVE_SUBMIT_MODE_CODES.map((value) => ({
+  value,
+  label: ArchiveSubmitModeDescription[value],
+}))
+const kioskHubListModeOptions = ALL_ARCHIVE_KIOSK_HUB_LIST_MODE_CODES.map((value) => ({
+  value,
+  label: ArchiveKioskHubListModeDescription[value],
+}))
+const departmentOptions = ref<Array<{ value: string; label: string }>>([])
 const tenantTemplateSetCount = ref(0)
 
-const { canManageConfig, loadGrants } = useArchiveDutyAccess()
+function goArchiveList() {
+  void router.push({ name: 'TeacherArchiveVolumeList' })
+}
+
+function goCreateArchiveTask() {
+  void router.push({ name: 'TeacherCreateArchiveTask' })
+}
 
 const settingsSignalMetrics = computed((): SignalMetric[] => [
-  { key: 'templateSets', label: '本校模板套', value: tenantTemplateSetCount.value, unit: '套' },
-  { key: 'duty', label: '职责授权', value: dutyRows.value.length, unit: '条' },
-  { key: 'policy', label: '密级策略', value: policyRows.value.length, unit: '条' },
-  { key: 'catalog', label: '目录模板', value: catalogRows.value.length, unit: '项' },
+  { key: 'templateSets', label: '模板母版', value: tenantTemplateSetCount.value, unit: '套' },
+  { key: 'duty', label: '档案岗位', value: dutyRows.value.length, unit: '条' },
+  { key: 'policy', label: '密级矩阵', value: policyRows.value.length, unit: '条' },
+  { key: 'deadline', label: '时限策略', value: deadlineRows.value.length, unit: '条' },
 ])
 
 function dutyRowKey(row: DutyRow) {
@@ -375,7 +454,11 @@ function validateDutyRows(): boolean {
       message.warning('全校授权不可同时选择院系')
       return false
     }
-    if (!row.tenantWide && !row.scopeDepartmentId && row.dutyType !== ArchiveDutyTypeCode.VOLUME_OWNER) {
+    if (
+      !row.tenantWide &&
+      !row.scopeDepartmentId &&
+      row.dutyType !== ArchiveDutyTypeCode.VOLUME_OWNER
+    ) {
       message.warning('非全校授权须选择院系')
       return false
     }
@@ -389,23 +472,42 @@ function validateDutyRows(): boolean {
 }
 
 const settingsTabs = [
-  { key: 'templateSets', label: '模板套' },
-  { key: 'duty', label: '职责授权' },
-  { key: 'security', label: '密级策略' },
-  { key: 'catalog', label: '目录模板' },
+  { key: 'templateSets', label: '模板母版' },
+  { key: 'duty', label: '档案管理岗位' },
+  { key: 'security', label: '密级访问矩阵' },
+  { key: 'collaboration', label: '协作策略' },
+  { key: 'deadline', label: '归档时限' },
 ]
 
 function resolveSettingsTab(raw?: string) {
   if (!raw) return 'templateSets'
   if (raw === 'duties') return 'duty'
+  if (raw === 'catalog') return 'templateSets'
   const allowed = settingsTabs.map((item) => item.key)
-  return allowed.includes(raw) ? raw : 'duty'
+  return allowed.includes(raw) ? raw : 'templateSets'
+}
+
+function readTabFromRoute(): string {
+  const queryTab = route.query.settingsTab ?? route.query.tab
+  if (typeof queryTab === 'string') {
+    return resolveSettingsTab(queryTab)
+  }
+  return resolveSettingsTab(props.initialTab)
+}
+
+function syncRouteQueryTab(tab: string) {
+  if (route.query.settingsTab === tab) return
+  void router.replace({
+    query: {
+      ...route.query,
+      settingsTab: tab,
+    },
+  })
 }
 
 const dutyTypeOptions = ARCHIVE_DUTY_TYPE_OPTIONS
 const securityLevelOptions = ARCHIVE_SECURITY_LEVEL_OPTIONS
-const materialTypeOptions = ARCHIVE_MATERIAL_TYPE_OPTIONS
-const examFormOptions = ARCHIVE_EXAM_FORM_OPTIONS
+const deadlineTierOptions = ARCHIVE_DEADLINE_TIER_OPTIONS
 
 const dutyColumns: ColumnsType<DutyRow> = [
   { title: '用户', key: 'userId', width: 220 },
@@ -421,14 +523,13 @@ const policyColumns: ColumnsType<PolicyRow> = [
   { title: '操作', key: 'actions', width: 80 },
 ]
 
-const catalogColumns: ColumnsType<CatalogRow> = [
-  { title: '考核形式', key: 'examForm', width: 140 },
-  { title: '材料类型', key: 'materialType', width: 180 },
-  { title: '目录名称', key: 'catalogName', width: 160 },
-  { title: '目录编码', key: 'catalogCode', width: 120 },
-  { title: '必交', key: 'requiredFlag', width: 80 },
-  { title: '延迟', key: 'delayAllowedFlag', width: 80 },
-  { title: '排序', key: 'sortOrder', width: 80 },
+const deadlineColumns: ColumnsType<DeadlineRow> = [
+  { title: '范围', key: 'scope', width: 96 },
+  { title: '院系', key: 'departmentId', width: 180 },
+  { title: '法规节点', key: 'deadlineTier', width: 200 },
+  { title: '临期提醒(天)', key: 'leadDays', width: 120 },
+  { title: '逾期阻断', key: 'overdueSubmitBlock', width: 110 },
+  { title: '院系审核', key: 'departmentReviewEnabled', width: 110 },
   { title: '操作', key: 'actions', width: 80 },
 ]
 
@@ -459,7 +560,7 @@ function handleTenantWideChange(index: number) {
 async function loadTemplateSetStats() {
   try {
     const sets = await listArchiveTenantTemplateSets()
-    tenantTemplateSetCount.value = sets.filter((item) => item.templateScope === 'TENANT').length
+    tenantTemplateSetCount.value = sets.length
   } catch (error) {
     showUserError(error, '加载模板套统计失败')
     tenantTemplateSetCount.value = 0
@@ -490,20 +591,127 @@ function removePolicyRow(index: number) {
   policyRows.value.splice(index, 1)
 }
 
-function addCatalogRow() {
-  catalogRows.value.push({
+function buildDefaultDeadlineRow(isTenantDefault: boolean): DeadlineRow {
+  return {
     rowKey: newRowKey(),
-    materialType: ArchiveMaterialTypeCode.VOLUME_CATALOG,
-    catalogName: '',
-    catalogCode: '',
-    requiredFlag: true,
-    delayAllowedFlag: false,
-    sortOrder: catalogRows.value.length + 1,
-  })
+    isTenantDefault,
+    departmentId: undefined,
+    deadlineTier: ArchiveDeadlineTierCode.FACULTY_WINTER_BREAK,
+    leadDays: 14,
+    overdueSubmitBlock: false,
+    departmentReviewEnabled: true,
+  }
 }
 
-function removeCatalogRow(index: number) {
-  catalogRows.value.splice(index, 1)
+function addDeadlineRow() {
+  deadlineRows.value.push(buildDefaultDeadlineRow(false))
+}
+
+function removeDeadlineRow(index: number) {
+  if (deadlineRows.value[index]?.isTenantDefault) return
+  deadlineRows.value.splice(index, 1)
+}
+
+function deadlineRowKey(row: DeadlineRow) {
+  return row.isTenantDefault ? 'tenant-default' : `dept:${row.departmentId ?? 'none'}`
+}
+
+function validateDeadlineRows(): boolean {
+  const tenantDefaultCount = deadlineRows.value.filter((row) => row.isTenantDefault).length
+  if (tenantDefaultCount !== 1) {
+    message.warning('须且仅须保留一条租户默认时限策略')
+    return false
+  }
+  for (const row of deadlineRows.value) {
+    if (!row.isTenantDefault && !row.departmentId) {
+      message.warning('院系覆盖策略须选择院系')
+      return false
+    }
+    if (!row.deadlineTier || !row.leadDays) {
+      message.warning('时限策略须完整填写法规节点与临期提醒天数')
+      return false
+    }
+  }
+  const keys = deadlineRows.value.map(deadlineRowKey)
+  if (new Set(keys).size !== keys.length) {
+    message.warning('存在重复的院系时限策略')
+    return false
+  }
+  return true
+}
+
+async function loadCollaborationPolicy() {
+  collaborationLoading.value = true
+  try {
+    collaborationForm.value = await getArchiveCollaborationPolicy()
+  } catch (error) {
+    showUserError(error, '加载协作策略失败')
+  } finally {
+    collaborationLoading.value = false
+  }
+}
+
+async function saveCollaborationPolicyForm() {
+  saving.value = true
+  try {
+    await saveArchiveCollaborationPolicy({ ...collaborationForm.value })
+    message.success('协作策略已保存')
+    await loadCollaborationPolicy()
+  } catch (error) {
+    showUserError(error)
+  } finally {
+    saving.value = false
+  }
+}
+
+async function loadDeadlinePolicy() {
+  deadlineLoading.value = true
+  try {
+    const policies = await listArchiveDeadlinePolicy()
+    if (policies.length === 0) {
+      deadlineRows.value = [buildDefaultDeadlineRow(true)]
+      return
+    }
+    deadlineRows.value = policies.map((item) => ({
+      rowKey: item.policyId,
+      isTenantDefault: !item.departmentId,
+      departmentId: item.departmentId,
+      deadlineTier: item.deadlineTier,
+      leadDays: item.leadDays,
+      overdueSubmitBlock: item.overdueSubmitBlock,
+      departmentReviewEnabled: item.departmentReviewEnabled,
+    }))
+    if (!deadlineRows.value.some((row) => row.isTenantDefault)) {
+      deadlineRows.value.unshift(buildDefaultDeadlineRow(true))
+    }
+  } catch (error) {
+    showUserError(error, '加载时限策略失败')
+    deadlineRows.value = [buildDefaultDeadlineRow(true)]
+  } finally {
+    deadlineLoading.value = false
+  }
+}
+
+async function saveDeadlinePolicyRows() {
+  if (!validateDeadlineRows()) return
+  saving.value = true
+  try {
+    await saveArchiveDeadlinePolicy(
+      deadlineRows.value.map((item): ArchiveDeadlinePolicyItemRequest => ({
+        departmentId: item.isTenantDefault ? undefined : item.departmentId,
+        deadlineTier: item.deadlineTier,
+        leadDays: item.leadDays,
+        overdueSubmitBlock: item.overdueSubmitBlock,
+        departmentReviewEnabled: item.departmentReviewEnabled,
+      })),
+    )
+    message.success('时限策略已保存')
+    await loadDeadlinePolicy()
+  } catch (error) {
+    showUserError(error)
+  } finally {
+    saving.value = false
+  }
 }
 
 async function loadDutyGrants() {
@@ -542,38 +750,18 @@ async function loadPolicy() {
   }
 }
 
-async function loadCatalog() {
-  catalogLoading.value = true
-  try {
-    const templates = await listArchiveCatalogTemplate()
-    catalogRows.value = templates.map((item) => ({
-      rowKey: item.templateItemId,
-      examForm: item.examForm,
-      materialType: item.materialType,
-      catalogCode: item.catalogCode,
-      catalogName: item.catalogName ?? '',
-      requiredFlag: item.requiredFlag ?? false,
-      delayAllowedFlag: item.delayAllowedFlag,
-      sortOrder: item.sortOrder ?? 0,
-    }))
-  } catch (error) {
-    showUserError(error, '加载目录模板失败')
-    catalogRows.value = []
-  } finally {
-    catalogLoading.value = false
-  }
-}
-
 async function saveDutyGrants() {
   if (!validateDutyRows()) return
   saving.value = true
   try {
-    await saveArchiveDutyGrants(dutyRows.value.map((item): ArchiveDutyGrantItemRequest => ({
-      userId: item.userId,
-      dutyType: item.dutyType,
-      scopeDepartmentId: item.scopeDepartmentId,
-      tenantWide: item.tenantWide,
-    })))
+    await saveArchiveDutyGrants(
+      dutyRows.value.map((item): ArchiveDutyGrantItemRequest => ({
+        userId: item.userId,
+        dutyType: item.dutyType,
+        scopeDepartmentId: item.scopeDepartmentId,
+        tenantWide: item.tenantWide,
+      })),
+    )
     message.success('职责授权已保存')
     await loadDutyGrants()
   } catch (error) {
@@ -596,10 +784,12 @@ async function saveSecurityPolicyRows() {
   }
   saving.value = true
   try {
-    await saveArchiveSecurityPolicy(policyRows.value.map((item): ArchiveSecurityPolicyItemRequest => ({
-      dutyType: item.dutyType,
-      maxSecurityLevel: item.maxSecurityLevel,
-    })))
+    await saveArchiveSecurityPolicy(
+      policyRows.value.map((item): ArchiveSecurityPolicyItemRequest => ({
+        dutyType: item.dutyType,
+        maxSecurityLevel: item.maxSecurityLevel,
+      })),
+    )
     message.success('密级策略已保存')
     await loadPolicy()
   } catch (error) {
@@ -609,59 +799,30 @@ async function saveSecurityPolicyRows() {
   }
 }
 
-async function saveCatalogRows() {
-  if (catalogRows.value.length === 0) {
-    message.warning('至少保留一条目录模板项')
-    return
-  }
-  for (const row of catalogRows.value) {
-    if (!row.materialType || !row.catalogCode?.trim()) {
-      message.warning('目录模板须填写材料类型与目录编码')
-      return
-    }
-    if (!row.catalogName?.trim()) {
-      message.warning('目录模板须填写目录名称')
-      return
-    }
-  }
-  saving.value = true
-  try {
-    await saveArchiveCatalogTemplate({
-      items: catalogRows.value.map((item): ArchiveCatalogTemplateSaveItemRequest => ({
-        examForm: item.examForm,
-        materialType: item.materialType,
-        catalogCode: item.catalogCode?.trim() || undefined,
-        catalogName: item.catalogName.trim(),
-        requiredFlag: item.requiredFlag,
-        delayAllowedFlag: item.delayAllowedFlag,
-        sortOrder: item.sortOrder,
-      })),
-    })
-    message.success('目录模板已保存')
-    await loadCatalog()
-  } catch (error) {
-    showUserError(error)
-  } finally {
-    saving.value = false
-  }
-}
-
 watch(
-  () => props.initialTab,
-  (tab) => {
-    settingsTab.value = resolveSettingsTab(tab)
+  () => [props.initialTab, route.query.settingsTab, route.query.tab] as const,
+  () => {
+    settingsTab.value = readTabFromRoute()
   },
   { immediate: true },
 )
 
+watch(settingsTab, (tab) => {
+  syncRouteQueryTab(tab)
+})
+
+onActivated(() => {
+  settingsTab.value = readTabFromRoute()
+})
+
 onMounted(() => {
-  settingsTab.value = resolveSettingsTab(props.initialTab)
-  void loadGrants()
+  settingsTab.value = readTabFromRoute()
   void loadDepartments()
   void loadTemplateSetStats()
   void loadDutyGrants()
   void loadPolicy()
-  void loadCatalog()
+  void loadCollaborationPolicy()
+  void loadDeadlinePolicy()
 })
 </script>
 
@@ -669,7 +830,7 @@ onMounted(() => {
 .archive-volume-settings__panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4, 16px);
+  gap: var(--dp-space-4);
 }
 
 .archive-volume-settings__section-toolbar {
@@ -677,7 +838,7 @@ onMounted(() => {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-3);
   width: 100%;
 }
 
@@ -693,5 +854,19 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   margin-left: auto;
+}
+
+.archive-volume-settings__collaboration-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-4);
+  padding: var(--dp-space-4);
+}
+
+.archive-volume-settings__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-2);
+  max-width: 420px;
 }
 </style>

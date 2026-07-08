@@ -64,8 +64,8 @@ const normalizedSteps = computed(() => {
     ...step,
     key: step.key || `step-${index}`,
     status:
-      step.status
-      || (index < props.current ? 'completed' : index === props.current ? 'running' : 'pending'),
+      step.status ||
+      (index < props.current ? 'completed' : index === props.current ? 'running' : 'pending'),
   }))
 })
 
@@ -135,7 +135,7 @@ function handleClick(step: UiStepItem, index: number) {
 .ui-card-steps__title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
   line-height: 1.4;
   white-space: nowrap;
   overflow: hidden;
@@ -148,7 +148,7 @@ function handleClick(step: UiStepItem, index: number) {
 
 .ui-card-steps__desc {
   font-size: 12px;
-  color: var(--dp-text-muted, #64748b);
+  color: var(--dp-text-muted);
   margin-top: 2px;
   white-space: nowrap;
   overflow: hidden;
@@ -242,6 +242,6 @@ function handleClick(step: UiStepItem, index: number) {
 }
 
 .ui-card-steps__item--clickable:hover .ui-card-steps__card {
-  border-color: var(--dp-border-strong, #e2e8f0);
+  border-color: var(--dp-border-strong);
 }
 </style>

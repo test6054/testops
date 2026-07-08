@@ -1,5 +1,6 @@
 // Ant Design Vue 4.x 默认主题 CSS 变量声明
 // 用途：帮助 WebStorm 解析 --ant-* 自定义属性，运行时由 Ant Design Vue ConfigProvider 注入实际值覆盖
+@layer dp-tokens {
 :root {
   --ant-border-radius: 6px;
   --ant-padding: 16px;
@@ -45,6 +46,8 @@
   --ant-color-bg-container: #ffffff;
   --ant-color-bg-elevated: #ffffff;
   --ant-color-bg-layout: #f5f5f5;
+  --ant-color-fill-alter: #fafafa;
+  --ant-color-text-disabled: rgba(0, 0, 0, 0.25);
   --ant-control-item-bg-hover: rgba(0, 0, 0, 0.04);
   --ant-control-item-bg-active: #e6f4ff;
 }
@@ -84,13 +87,13 @@
   --dp-type-h1-line-height: 26px;
   --dp-type-h1-weight: 600;
 
-  --dp-type-table-body-size: 14px;
-  --dp-type-table-body-line-height: 20px;
-  --dp-type-table-body-weight: 400;
+  --dp-type-table-body-size: 15px;
+  --dp-type-table-body-line-height: 1.35;
+  --dp-type-table-body-weight: 600;
 
-  --dp-type-table-head-size: 14px;
-  --dp-type-table-head-line-height: 20px;
-  --dp-type-table-head-weight: 600;
+  --dp-type-table-head-size: 16px;
+  --dp-type-table-head-line-height: 1.2;
+  --dp-type-table-head-weight: 700;
 
   --dp-type-hint-size: 12px;
   --dp-type-hint-line-height: 18px;
@@ -129,16 +132,21 @@
   /* 语义间距别名 */
   --dp-space-section: var(--dp-space-8);
 
+  /* 图表区高度 */
+  --dp-chart-height-md: 220px;
+  --dp-chart-height-sm: 200px;
+  --dp-chart-empty-min-height: 180px;
+
   --dp-bg-muted: var(--ant-color-bg-layout);
   --dp-surface: var(--ant-color-bg-container);
   --dp-surface-subtle: var(--ant-color-fill-quaternary);
   /* 与 _card.scss / 质量工作台区块对齐的别名 */
   --dp-surface-elevated: var(--dp-surface-subtle);
-  --dp-bg-control: #f3f4f6;
-  --dp-bg-control-disabled: #eef2f7;
-  --dp-bg-button-disabled: #ebebeb;
-  --dp-border: #e5e7eb;
-  --dp-border-strong: #d0d5dd;
+  --dp-bg-control: var(--ant-color-fill-tertiary);
+  --dp-bg-control-disabled: var(--ant-color-fill-quaternary);
+  --dp-bg-button-disabled: var(--ant-color-fill-tertiary);
+  --dp-border: var(--ant-color-border);
+  --dp-border-strong: var(--ant-color-border);
   --dp-border-hover: var(--ant-color-primary-border-hover);
 
   /* 圆角仅两档语义：控件 4px、面板/容器 8px；禁止 sm/md/lg/xl 尺度别名 */
@@ -174,25 +182,27 @@
   --dp-z-popover: 1060;
   --dp-z-tooltip: 1080;
 
-  --dp-table-header-bg: #f8fafc;
+  --dp-table-header-bg: var(--ant-color-fill-alter);
 
   --dp-text-primary: var(--ant-color-text);
   --dp-text-secondary: var(--ant-color-text-secondary);
   --dp-text-muted: var(--ant-color-text-tertiary);
-  --dp-text-disabled: rgba(0, 0, 0, 0.38);
+  --dp-text-disabled: var(--ant-color-text-disabled);
 
   --dp-gray-50: #f8fafc;
   --dp-gray-100: #f3f4f6;
   --dp-gray-200: #e5e7eb;
   --dp-gray-300: #cbd5e1;
+  --dp-gray-400: #94a3b8;
   --dp-gray-600: #475569;
   --dp-gray-900: #0f172a;
 
   --dp-blue-50: var(--ant-color-primary-bg);
   --dp-blue-100: var(--ant-color-primary-bg-hover);
   --dp-blue-200: var(--ant-color-primary-border);
+  /* Ant 语义色为权威源；--dp-blue-* 色阶：500 基色 / 600 悬停 / 700 按下（600 不再与 500 重复） */
   --dp-blue-500: var(--ant-color-primary);
-  --dp-blue-600: var(--ant-color-primary);
+  --dp-blue-600: var(--ant-color-primary-active);
   --dp-blue-700: var(--ant-color-primary-active);
 
   --dp-green-50: var(--ant-color-success-bg);
@@ -219,6 +229,7 @@
   --dp-yellow-50: #fefce8;
   --dp-yellow-200: #fef08a;
   --dp-yellow-500: #eab308;
+  --dp-yellow-600: #ca8a04;
   --dp-yellow-700: #a16207;
 
   --dp-purple-50: #f5f3ff;
@@ -238,4 +249,5 @@
   --scan-paper-shadow: 0 6px 24px rgba(15, 23, 42, 0.12);
   --scan-toolbar-bg: rgba(255, 255, 255, 0.94);
   --scan-toolbar-border: #e2e8f0;
+}
 }

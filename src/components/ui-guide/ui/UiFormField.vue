@@ -49,11 +49,11 @@ withDefaults(defineProps<{
   gap: 4px;
   font-size: 14px;
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-form-field__required {
-  color: var(--dp-red-500, #ef4444);
+  color: var(--dp-red-500);
 }
 
 .ui-form-field__control {
@@ -61,7 +61,7 @@ withDefaults(defineProps<{
 }
 
 .ui-form-field--error .ui-form-field__label {
-  color: var(--dp-red-500, #ef4444);
+  color: var(--dp-red-500);
 }
 
 .ui-form-field__help,
@@ -72,10 +72,10 @@ withDefaults(defineProps<{
 }
 
 .ui-form-field__help {
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-form-field__error {
-  color: var(--dp-red-500, #ef4444);
+  color: var(--dp-red-500);
 }
 </style>

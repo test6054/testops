@@ -178,23 +178,23 @@
 
 <script lang="ts" setup>
 import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
+import {
+  FINAL_SCORE_STATUS_TONE,
+  FinalScoreStatusDescription,
+} from '@/apis/mark/final-score-status'
 import type { MasteryLevelCode } from '@/apis/mark/student-mastery-level'
+import { MASTERY_LEVEL_TONE, MasteryLevelDescription } from '@/apis/mark/student-mastery-level'
 import type { TeachingAnalysisRecordResponse } from '@/apis/mark/teaching-analysis'
+import {
+  generateStudentLearningProfile,
+  getLatestStudentLearningProfile,
+} from '@/apis/mark/teaching-analysis'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { MarkStudentOption } from '@/composables/useMarkExamRoster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
-import {
-  FINAL_SCORE_STATUS_TONE,
-  FinalScoreStatusDescription,
-} from '@/apis/mark/final-score-status'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
-import { MASTERY_LEVEL_TONE, MasteryLevelDescription } from '@/apis/mark/student-mastery-level'
-import {
-  generateStudentLearningProfile,
-  getLatestStudentLearningProfile,
-} from '@/apis/mark/teaching-analysis'
 import AiAnalysisCardBody from '@/components/mark/analysis/AiAnalysisCardBody.vue'
 import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCollapse.vue'
 import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'
@@ -327,8 +327,8 @@ watch(
   () => props.studentOptions,
   (next) => {
     if (
-      selectedStudentUserId.value
-      && !next.some((opt) => opt.value === selectedStudentUserId.value)
+      selectedStudentUserId.value &&
+      !next.some((opt) => opt.value === selectedStudentUserId.value)
     ) {
       selectedStudentUserId.value = undefined
       hasQueried.value = false
@@ -341,8 +341,8 @@ watch(
   () => props.classIdHint,
   () => {
     if (
-      selectedStudentUserId.value
-      && !filteredStudentOptions.value.some((opt) => opt.value === selectedStudentUserId.value)
+      selectedStudentUserId.value &&
+      !filteredStudentOptions.value.some((opt) => opt.value === selectedStudentUserId.value)
     ) {
       selectedStudentUserId.value = undefined
       hasQueried.value = false
@@ -368,30 +368,30 @@ watch(selectedStudentUserId, (studentUserId) => {
 }
 .diagnosis-rate {
   margin-left: auto;
-  color: var(--dp-text-secondary, rgba(0, 0, 0, 0.65));
+  color: var(--dp-text-secondary);
   font-size: 12px;
 }
 .diagnosis-type {
   font-size: 13px;
-  color: var(--dp-text-secondary, rgba(0, 0, 0, 0.75));
+  color: var(--dp-text-secondary);
 }
 .diagnosis-text {
   margin: 4px 0 0;
   font-size: 13px;
   line-height: 1.6;
-  color: var(--dp-text-secondary, rgba(0, 0, 0, 0.75));
+  color: var(--dp-text-secondary);
 }
 .diagnosis-text--hint {
-  color: var(--dp-text-primary, rgba(0, 0, 0, 0.88));
+  color: var(--dp-text-primary);
 }
 .diagnosis-text--muted {
   font-size: 12px;
-  color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
+  color: var(--dp-text-muted);
 }
 .score-full {
-  color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
+  color: var(--dp-text-muted);
 }
 .text-muted {
-  color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
+  color: var(--dp-text-muted);
 }
 </style>

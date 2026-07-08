@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import type { MarkingScanPageRefVO } from '@/apis/mark/exam-scan'
+import { QUALITY_DECISION_TONE, QualityDecisionDescription } from '@/apis/mark/exam-scan'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
-import { QUALITY_DECISION_TONE, QualityDecisionDescription } from '@/apis/mark/exam-scan'
 import ScanImageStage from '@/components/mark/ScanImageStage.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -37,7 +37,7 @@ const showTabs = computed(
   () => (hasSlice.value ? 1 : 0) + (hasSource.value ? 1 : 0) + (hasLayout.value ? 1 : 0) > 1,
 )
 const tabOptions = computed(() => {
-  const options: { label: string, value: ViewTab }[] = []
+  const options: { label: string; value: ViewTab }[] = []
   if (hasSlice.value) {
     options.push({ label: '作答切片', value: 'slice' })
   }
@@ -54,14 +54,14 @@ const tabOptions = computed(() => {
 const layoutRoiStyle = computed(() => {
   const page = props.layoutPaperPage
   if (
-    !page
-    || page.roiX == null
-    || page.roiY == null
-    || page.roiWidth == null
-    || page.roiHeight == null
+    !page ||
+    page.roiX == null ||
+    page.roiY == null ||
+    page.roiWidth == null ||
+    page.roiHeight == null
   ) {
     return null
-}
+  }
   const pw = page.pageImageWidth
   const ph = page.pageImageHeight
   if (!pw || !ph || pw <= 0 || ph <= 0) return null
@@ -245,7 +245,7 @@ onBeforeUnmount(releaseImages)
 }
 
 .marking-scan-material__solo-label {
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
   font-size: 13px;
   font-weight: 600;
 }

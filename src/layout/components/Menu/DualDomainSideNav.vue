@@ -14,7 +14,9 @@
         <span>考试阅卷</span>
       </template>
       <template #icon>
-        <MenuIcon icon="audit" />
+        <MenuCollapsedTooltip :collapsed="collapsed" label="考试阅卷">
+          <MenuIcon icon="audit" />
+        </MenuCollapsedTooltip>
       </template>
       <a-menu-item
         v-for="item in markingGrouped.ungrouped"
@@ -22,7 +24,9 @@
         :disabled="item.meta?.disabled"
       >
         <template #icon>
-          <MenuIcon :icon="routeIcon(item, 'unordered-list')" />
+          <MenuCollapsedTooltip :collapsed="collapsed" :label="routeTitle(item)">
+            <MenuIcon :icon="routeIcon(item, 'unordered-list')" />
+          </MenuCollapsedTooltip>
         </template>
         <span>{{ item.meta?.title }}</span>
       </a-menu-item>
@@ -31,11 +35,15 @@
           <span>{{ group.title }}</span>
         </template>
         <template #icon>
-          <MenuIcon :icon="group.icon" />
+          <MenuCollapsedTooltip :collapsed="collapsed" :label="group.title">
+            <MenuIcon :icon="group.icon" />
+          </MenuCollapsedTooltip>
         </template>
         <a-menu-item v-for="item in group.items" :key="item.path" :disabled="item.meta?.disabled">
           <template #icon>
-            <MenuIcon :icon="routeIcon(item, 'folder')" />
+            <MenuCollapsedTooltip :collapsed="collapsed" :label="routeTitle(item)">
+              <MenuIcon :icon="routeIcon(item, 'folder')" />
+            </MenuCollapsedTooltip>
           </template>
           <span>{{ item.meta?.title }}</span>
         </a-menu-item>
@@ -47,7 +55,9 @@
         <span>质量评价</span>
       </template>
       <template #icon>
-        <MenuIcon icon="reconciliation" />
+        <MenuCollapsedTooltip :collapsed="collapsed" label="质量评价">
+          <MenuIcon icon="reconciliation" />
+        </MenuCollapsedTooltip>
       </template>
       <a-menu-item
         v-for="item in qualityGrouped.ungrouped"
@@ -55,7 +65,9 @@
         :disabled="item.meta?.disabled"
       >
         <template #icon>
-          <MenuIcon :icon="routeIcon(item, 'dashboard')" />
+          <MenuCollapsedTooltip :collapsed="collapsed" :label="routeTitle(item)">
+            <MenuIcon :icon="routeIcon(item, 'dashboard')" />
+          </MenuCollapsedTooltip>
         </template>
         <span>{{ item.meta?.title }}</span>
       </a-menu-item>
@@ -64,11 +76,15 @@
           <span>{{ group.title }}</span>
         </template>
         <template #icon>
-          <MenuIcon :icon="group.icon" />
+          <MenuCollapsedTooltip :collapsed="collapsed" :label="group.title">
+            <MenuIcon :icon="group.icon" />
+          </MenuCollapsedTooltip>
         </template>
         <a-menu-item v-for="item in group.items" :key="item.path" :disabled="item.meta?.disabled">
           <template #icon>
-            <MenuIcon :icon="routeIcon(item, 'folder')" />
+            <MenuCollapsedTooltip :collapsed="collapsed" :label="routeTitle(item)">
+              <MenuIcon :icon="routeIcon(item, 'folder')" />
+            </MenuCollapsedTooltip>
           </template>
           <span>{{ item.meta?.title }}</span>
         </a-menu-item>
@@ -80,7 +96,9 @@
         <span>教学档案袋</span>
       </template>
       <template #icon>
-        <MenuIcon icon="folder" />
+        <MenuCollapsedTooltip :collapsed="collapsed" label="教学档案袋">
+          <MenuIcon icon="folder" />
+        </MenuCollapsedTooltip>
       </template>
       <a-menu-item
         v-for="item in portfolioGrouped.ungrouped"
@@ -88,7 +106,9 @@
         :disabled="item.meta?.disabled"
       >
         <template #icon>
-          <MenuIcon :icon="routeIcon(item, 'folder')" />
+          <MenuCollapsedTooltip :collapsed="collapsed" :label="routeTitle(item)">
+            <MenuIcon :icon="routeIcon(item, 'folder')" />
+          </MenuCollapsedTooltip>
         </template>
         <span>{{ item.meta?.title }}</span>
       </a-menu-item>
@@ -97,11 +117,15 @@
           <span>{{ group.title }}</span>
         </template>
         <template #icon>
-          <MenuIcon :icon="group.icon" />
+          <MenuCollapsedTooltip :collapsed="collapsed" :label="group.title">
+            <MenuIcon :icon="group.icon" />
+          </MenuCollapsedTooltip>
         </template>
         <a-menu-item v-for="item in group.items" :key="item.path" :disabled="item.meta?.disabled">
           <template #icon>
-            <MenuIcon :icon="routeIcon(item, 'folder')" />
+            <MenuCollapsedTooltip :collapsed="collapsed" :label="routeTitle(item)">
+              <MenuIcon :icon="routeIcon(item, 'folder')" />
+            </MenuCollapsedTooltip>
           </template>
           <span>{{ item.meta?.title }}</span>
         </a-menu-item>
@@ -113,7 +137,9 @@
         <span>系统管理</span>
       </template>
       <template #icon>
-        <MenuIcon icon="setting" />
+        <MenuCollapsedTooltip :collapsed="collapsed" label="系统管理">
+          <MenuIcon icon="setting" />
+        </MenuCollapsedTooltip>
       </template>
       <a-menu-item
         v-for="item in platformMenuItems"
@@ -121,7 +147,9 @@
         :disabled="item.meta?.disabled"
       >
         <template #icon>
-          <MenuIcon :icon="routeIcon(item, 'setting')" />
+          <MenuCollapsedTooltip :collapsed="collapsed" :label="routeTitle(item)">
+            <MenuIcon :icon="routeIcon(item, 'setting')" />
+          </MenuCollapsedTooltip>
         </template>
         <span>{{ item.meta?.title }}</span>
       </a-menu-item>
@@ -132,11 +160,12 @@
 <script lang="ts" setup>
 import type { Key } from 'ant-design-vue/es/_util/type'
 import type { RouteRecordRaw } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { isPortfolioRoute, QUALITY_ADMIN_MENU_GROUP } from '@/utils/portfolio-route'
 import { isExternal } from '@/utils/validate'
+import MenuCollapsedTooltip from './MenuCollapsedTooltip.vue'
 import MenuIcon from './MenuIcon.vue'
 
 defineOptions({ name: 'DualDomainSideNav' })
@@ -193,6 +222,10 @@ function routeIcon(item: RouteRecordRaw, fallback: string): string {
   return stringMetaValue(item.meta?.icon) || fallback
 }
 
+function routeTitle(item: RouteRecordRaw): string {
+  return stringMetaValue(item.meta?.title) ?? ''
+}
+
 const activeMenuKeys = computed<Key[]>(() => {
   const { meta, path } = route
   if (meta?.activeMenu) {
@@ -210,13 +243,23 @@ function collectGroupKeySet(grouped: { groups: MenuGroup[] }): Set<string> {
   return new Set(grouped.groups.map((group) => group.key))
 }
 
-/** 域收起时同步清理其下二级分组 openKeys，避免 inline 嵌套子菜单被顶到根级。 */
+function onOpenChange(keys: Key[]) {
+  openMenuKeys.value = normalizeOpenKeys(keys)
+}
+
+/** 域收起时同步清理其下二级分组 openKeys，并限制同时仅展开一个一级域。 */
 function normalizeOpenKeys(keys: Key[]): Key[] {
   const next = new Set(keys.map(String))
   const markingGroupKeys = collectGroupKeySet(props.markingGrouped)
   const platformGroupKeys = collectGroupKeySet(props.platformGrouped)
   const qualityGroupKeys = collectGroupKeySet(props.qualityGrouped)
   const portfolioGroupKeys = collectGroupKeySet(props.portfolioGrouped)
+  const domainKeys = [
+    MARKING_DOMAIN_KEY,
+    QUALITY_DOMAIN_KEY,
+    PORTFOLIO_DOMAIN_KEY,
+    PLATFORM_DOMAIN_KEY,
+  ]
 
   if (!next.has(MARKING_DOMAIN_KEY)) {
     for (const groupKey of markingGroupKeys) {
@@ -258,6 +301,31 @@ function normalizeOpenKeys(keys: Key[]): Key[] {
       next.add(PORTFOLIO_DOMAIN_KEY)
     }
   }
+
+  const openDomains = domainKeys.filter((domainKey) => next.has(domainKey))
+  if (openDomains.length > 1) {
+    // 多域同时出现时保留用户最近点开的域（keys 末位），而不是锁死当前路由所属域
+    const ordered = keys.map(String).filter((key) => domainKeys.includes(key))
+    const keepDomain = ordered[ordered.length - 1] || openDomains[openDomains.length - 1]
+    for (const domainKey of domainKeys) {
+      if (domainKey === keepDomain) {
+        continue
+      }
+      next.delete(domainKey)
+      const groupKeys =
+        domainKey === MARKING_DOMAIN_KEY
+          ? markingGroupKeys
+          : domainKey === PLATFORM_DOMAIN_KEY
+            ? platformGroupKeys
+            : domainKey === QUALITY_DOMAIN_KEY
+              ? qualityGroupKeys
+              : portfolioGroupKeys
+      for (const groupKey of groupKeys) {
+        next.delete(groupKey)
+      }
+    }
+  }
+
   return [...next]
 }
 
@@ -303,14 +371,10 @@ function resolveDefaultOpenKeys(): Key[] {
 watch(
   () => [route.path, route.meta?.menuGroup, props.collapsed],
   () => {
-    openMenuKeys.value = resolveDefaultOpenKeys()
+    openMenuKeys.value = normalizeOpenKeys(resolveDefaultOpenKeys())
   },
   { immediate: true },
 )
-
-function onOpenChange(keys: Key[]) {
-  openMenuKeys.value = normalizeOpenKeys(keys)
-}
 
 function collectGroupedRoutes(grouped: {
   ungrouped: RouteRecordRaw[]
@@ -322,10 +386,10 @@ function collectGroupedRoutes(grouped: {
 function onMenuClick({ key }: { key: Key }) {
   const keyStr = String(key)
   if (
-    keyStr === MARKING_DOMAIN_KEY
-    || keyStr === PLATFORM_DOMAIN_KEY
-    || keyStr === QUALITY_DOMAIN_KEY
-    || keyStr === PORTFOLIO_DOMAIN_KEY
+    keyStr === MARKING_DOMAIN_KEY ||
+    keyStr === PLATFORM_DOMAIN_KEY ||
+    keyStr === QUALITY_DOMAIN_KEY ||
+    keyStr === PORTFOLIO_DOMAIN_KEY
   ) {
     return
   }

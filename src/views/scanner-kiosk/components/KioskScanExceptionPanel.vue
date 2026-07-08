@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import type { ExamCandidateResponse } from '@/apis/mark/exam-scope'
+import { CandidateStatusDescription } from '@/apis/mark/exam-scope'
 /**
  * 扫描中异常修正面板：边扫边处理，占用缩略图列（非遮罩叠加）。
  */
 import { CloseOutlined, ReloadOutlined } from '@ant-design/icons-vue'
 import { computed, ref, watch } from 'vue'
-import { bindPaper } from '@/apis/mark/exam-binding'
-import { CandidateStatusDescription, listExamCandidates } from '@/apis/mark/exam-scope'
 import { LocalScanPageStatusCode } from '@/apis/mark/scanner-agent-local'
+import { bindScannerKioskPaper, pageScannerKioskExamRoster } from '@/apis/mark/scanner-kiosk'
 import { TaskStatusDescription } from '@/apis/mark/task-status'
 import { CandidateStatusCode } from '@/types/enums/candidate-status-enum'
+import { getKioskBindingProfile } from '@/utils/kiosk-auth'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { useKioskCtx } from '../composables/kioskInjection'
 
@@ -54,10 +56,10 @@ const pageTitle = computed(() => {
 
 const scanBatchId = computed(
   () =>
-    workflow.currentJob.value?.scanBatchId
-    || workflow.pageLedger.value?.scanBatchId
-    || workflow.boundPaperScanBatchId.value
-    || '',
+    workflow.currentJob.value?.scanBatchId ||
+    workflow.pageLedger.value?.scanBatchId ||
+    workflow.boundPaperScanBatchId.value ||
+    '',
 )
 
 /** 优先显式 paperInstanceId；否则通过页级 localPageId 与 attentionItems.pageId 精确关联。 */
@@ -109,7 +111,8 @@ const diagnosticText = computed(() => {
   if (attentionItem.value?.attentionType) {
     return workflow.attentionTypeText(attentionItem.value.attentionType)
   }
-  if (currentPage.value?.status === LocalScanPageStatusCode.FAILED) return '页面上传失败，可重试上传后继续扫描'
+  if (currentPage.value?.status === LocalScanPageStatusCode.FAILED)
+    return '页面上传失败，可重试上传后继续扫描'
   return '页面处理异常，请核对影像与考号'
 })
 
@@ -136,14 +139,29 @@ function candidateBindingBlockReason(rosterId: string): string {
 
 async function loadCandidates() {
   const examId = workflow.examId.value
+  const profile = getKioskBindingProfile()
   if (!examId) {
     candidatesLoadError.value = '考试未绑定，无法加载考生名册'
+    return
+  }
+  if (!profile) {
+    candidatesLoadError.value = '工位设备身份缺失，请重新完成一体机激活'
     return
   }
   candidatesLoading.value = true
   candidatesLoadError.value = ''
   try {
-    candidates.value = await listExamCandidates(examId)
+    candidates.value = await readAllPages(
+      (pageNum) =>
+        pageScannerKioskExamRoster({
+          examId,
+          scannerDeviceId: profile.scannerDeviceId,
+          scannerStationId: profile.scannerStationId,
+          pageNum,
+          pageSize: 100,
+        }),
+      '考生名册加载失败',
+    )
   } catch (error) {
     candidates.value = []
     candidatesLoadError.value = error instanceof Error ? error.message : '考生名册加载失败'
@@ -177,7 +195,8 @@ function onCandidateChange(event: Event) {
 async function submitBind() {
   if (!canBindCandidate.value) return
   const examId = workflow.examId.value
-  if (!examId) return
+  const profile = getKioskBindingProfile()
+  if (!examId || !profile) return
   const blockReason = candidateBindingBlockReason(candidateRosterId.value)
   if (blockReason) {
     workflow.errorMessage.value = blockReason
@@ -186,7 +205,9 @@ async function submitBind() {
   binding.value = true
   workflow.errorMessage.value = ''
   try {
-    await bindPaper({
+    await bindScannerKioskPaper({
+      scannerDeviceId: profile.scannerDeviceId,
+      scannerStationId: profile.scannerStationId,
       examId,
       scanBatchId: scanBatchId.value,
       paperInstanceId: resolvedPaperInstanceId.value!,

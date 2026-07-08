@@ -68,7 +68,7 @@ const emit = defineEmits<{
 
 .ui-page-header--divided {
   padding-bottom: 20px;
-  border-bottom: 1px solid var(--dp-border, #e5e7eb);
+  border-bottom: 1px solid var(--dp-border);
 }
 
 .ui-page-header__main {
@@ -96,7 +96,7 @@ const emit = defineEmits<{
   font-size: 28px;
   line-height: 1.2;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-page-header__badges,
@@ -112,6 +112,6 @@ const emit = defineEmits<{
   margin: 10px 0 0;
   font-size: 14px;
   line-height: 1.7;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 </style>

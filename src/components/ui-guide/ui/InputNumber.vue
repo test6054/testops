@@ -109,9 +109,9 @@ function handleChange(value: string | number | null) {
 
 .ui-input-number :deep(.ant-input-number) {
   width: 100%;
-  border-radius: var(--dp-radius-control, 4px) !important;
-  border: 1px solid var(--dp-border, #e5e7eb) !important;
-  background: var(--dp-bg-control, #f3f4f6) !important;
+  border-radius: var(--dp-radius-control) !important;
+  border: 1px solid var(--dp-border) !important;
+  background: var(--dp-bg-control) !important;
   box-shadow: none !important;
   transition:
     border-color 0.2s ease,
@@ -120,65 +120,65 @@ function handleChange(value: string | number | null) {
 }
 
 .ui-input-number :deep(.ant-input-number:hover) {
-  border-color: var(--dp-border-hover, #2563eb) !important;
+  border-color: var(--dp-border-hover) !important;
 }
 
 .ui-input-number :deep(.ant-input-number-focused) {
-  border-color: var(--dp-blue-600, #2563eb) !important;
-  box-shadow: 0 0 0 3px var(--dp-focus-ring, rgba(37, 99, 235, 0.25)) !important;
+  border-color: var(--dp-blue-600) !important;
+  box-shadow: 0 0 0 3px var(--dp-focus-ring) !important;
 }
 
 .ui-input-number :deep(.ant-input-number-input) {
-  color: var(--dp-text-primary, #0f172a) !important;
+  color: var(--dp-text-primary) !important;
   font-family: var(--dp-font-family) !important;
 }
 
 .ui-input-number :deep(.ant-input-number-input::placeholder) {
-  color: var(--dp-text-muted, #6b7280) !important;
+  color: var(--dp-text-muted) !important;
 }
 
 .ui-input-number :deep(.ant-input-number-handler-wrap) {
-  border-inline-start: 1px solid var(--dp-border, #e5e7eb) !important;
+  border-inline-start: 1px solid var(--dp-border) !important;
   background: rgba(255, 255, 255, 0.42) !important;
-  border-start-end-radius: var(--dp-radius-control, 4px) !important;
-  border-end-end-radius: var(--dp-radius-control, 4px) !important;
+  border-start-end-radius: var(--dp-radius-control) !important;
+  border-end-end-radius: var(--dp-radius-control) !important;
   opacity: 1 !important;
 }
 
 .ui-input-number :deep(.ant-input-number-handler) {
-  color: var(--dp-text-secondary, #475569) !important;
+  color: var(--dp-text-secondary) !important;
 }
 
 .ui-input-number :deep(.ant-input-number-handler:hover) {
-  color: var(--dp-blue-600, #2563eb) !important;
+  color: var(--dp-blue-600) !important;
 }
 
 .ui-input-number--sm :deep(.ant-input-number) {
-  min-height: var(--dp-control-height-sm, 32px) !important;
+  min-height: var(--dp-control-height-sm) !important;
 }
 
 .ui-input-number--md :deep(.ant-input-number) {
-  min-height: var(--dp-control-height-md, 36px) !important;
+  min-height: var(--dp-control-height-md) !important;
 }
 
 .ui-input-number--lg :deep(.ant-input-number) {
-  min-height: var(--dp-control-height-lg, 40px) !important;
+  min-height: var(--dp-control-height-lg) !important;
 }
 
 .ui-input-number--error :deep(.ant-input-number) {
-  border-color: var(--dp-red-500, #ef4444) !important;
+  border-color: var(--dp-red-500) !important;
 }
 
 .ui-input-number--warning :deep(.ant-input-number) {
-  border-color: var(--dp-orange-500, #f97316) !important;
+  border-color: var(--dp-orange-500) !important;
 }
 
 .ui-input-number--success :deep(.ant-input-number) {
-  border-color: var(--dp-green-500, #22c55e) !important;
+  border-color: var(--dp-green-500) !important;
 }
 
 .ui-input-number--disabled :deep(.ant-input-number),
 .ui-input-number--readonly :deep(.ant-input-number) {
-  background: var(--dp-bg-control-disabled, #eef2f7) !important;
+  background: var(--dp-bg-control-disabled) !important;
 }
 </style>

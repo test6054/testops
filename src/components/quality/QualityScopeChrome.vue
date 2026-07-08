@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { TrainingPlanVO } from '@/apis/quality/training-plan'
+import { trainingPlanApi } from '@/apis/quality/training-plan'
 /**
  * 质量评价域唯一 scope 选择器：按 scopeProfile 裁剪字段，写入 qualityStore。
  * 禁止 silent 自动选首项；仅恢复 persist 选择。
@@ -7,7 +8,6 @@ import type { TrainingPlanVO } from '@/apis/quality/training-plan'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { trainingPlanApi } from '@/apis/quality/training-plan'
 import { CONFIRMATION_STATUS_COLOR, ConfirmationStatusDescription } from '@/apis/quality/types'
 import {
   CourseSelector,
@@ -19,7 +19,10 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { useQualityScopeProfile } from '@/composables/useQualityScopeProfile'
 import { useQualityStore } from '@/stores/modules/quality'
 import { ALL_SEMESTER_CODES, SemesterOptions } from '@/types/enums/semester-enum'
-import { generateAcademicYearOptions, getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
+import {
+  generateAcademicYearOptions,
+  getDefaultAcademicYearAndSemester,
+} from '@/utils/academic-year'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'QualityScopeChrome' })
@@ -38,10 +41,10 @@ const trainingPlanId = computed(() => qualityStore.currentTrainingPlanId || null
 const showProgram = computed(() => scopeProfile.value !== 'none')
 const showPlan = computed(
   () =>
-    scopeProfile.value === 'plan'
-    || scopeProfile.value === 'plan-period'
-    || scopeProfile.value === 'plan-course'
-    || scopeProfile.value === 'accreditation',
+    scopeProfile.value === 'plan' ||
+    scopeProfile.value === 'plan-period' ||
+    scopeProfile.value === 'plan-course' ||
+    scopeProfile.value === 'accreditation',
 )
 const showPeriod = computed(
   () => scopeProfile.value === 'plan-period' || scopeProfile.value === 'plan-course',
@@ -93,8 +96,7 @@ async function resolvePlanForScope(): Promise<TrainingPlanVO | undefined> {
 }
 
 function applySchoolYearFromPlan(plan?: TrainingPlanVO | null): void {
-  const schoolYear = plan?.schoolYear?.trim()
-    || getDefaultAcademicYearAndSemester().academicYear
+  const schoolYear = plan?.schoolYear?.trim() || getDefaultAcademicYearAndSemester().academicYear
   if (!qualityStore.currentSchoolYear.trim()) {
     qualityStore.setSchoolPeriod(schoolYear, undefined)
   }
@@ -256,7 +258,7 @@ onMounted(() => {
   min-height: 40px;
 
   &__hint {
-    font-size: var(--dp-font-size-sm, 13px);
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
   }
 

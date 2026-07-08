@@ -1,4 +1,4 @@
-/** 一体机送纸物类型（扫描员视角，区别于制卷形态配置文案） */
+/** 一体机送纸物类型（教师工位视角，区别于制卷形态配置文案） */
 export enum KioskScanMaterialKindCode {
   ANSWER_SHEET = 'ANSWER_SHEET',
   FULL_PAPER = 'FULL_PAPER',

@@ -1,23 +1,12 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { AchievementResultVO } from '@/apis/quality/achievement-result'
-import type { AiTaskVO } from '@/apis/quality/ai-task'
-import type { ImprovementTaskVO } from '@/apis/quality/improvement-task'
-import type { AchievementTargetTypeCode, AiTaskTypeCode } from '@/apis/quality/types'
-/**
- * 质量评价 - 年度工作台
- *
- * 阶段：专业配置 -> 培养方案 -> 数据接入 -> 计算 -> 审核 -> 改进 -> 归档
- */
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
-import type { QualityChartGroup } from '@/utils/quality-workbench-charts'
-import { storeToRefs } from 'pinia'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { achievementResultApi } from '@/apis/quality/achievement-result'
+import type { AiTaskVO } from '@/apis/quality/ai-task'
 import { aiTaskApi } from '@/apis/quality/ai-task'
+import type { ImprovementTaskVO } from '@/apis/quality/improvement-task'
 import { improvementTaskApi } from '@/apis/quality/improvement-task'
+import type { AchievementTargetTypeCode, AiTaskTypeCode } from '@/apis/quality/types'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_STATUS_COLOR,
@@ -35,6 +24,18 @@ import {
   ImprovementTaskStatusCode,
   ImprovementTaskStatusDescription,
 } from '@/apis/quality/types'
+/**
+ * 质量评价 - 年度工作台
+ *
+ * 阶段：专业配置 -> 培养方案 -> 数据接入 -> 计算 -> 审核 -> 改进 -> 归档
+ */
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
+import type { QualityChartGroup } from '@/utils/quality-workbench-charts'
+import { buildStatusChartGroup } from '@/utils/quality-workbench-charts'
+import { storeToRefs } from 'pinia'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import QualityWorkbenchCharts from '@/components/quality/QualityWorkbenchCharts.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -50,7 +51,6 @@ import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { useQualityTaskStore } from '@/stores/modules/qualityTask'
 import { showUserError } from '@/utils/error-handler'
-import { buildStatusChartGroup } from '@/utils/quality-workbench-charts'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const recentAchievementColumns: ColumnsType = [
@@ -134,11 +134,11 @@ const planConfirmationLabel = computed(() => {
 const stages = computed<WorkbenchStage[]>(() => {
   const planSelected = !!trainingPlanId.value
   const planConfirmed = planConfirmationStatus.value === 'CONFIRMED'
-  const dataReached
-    = achievementCounts.calculated > 0
-      || achievementCounts.submitted > 0
-      || achievementCounts.confirmed > 0
-      || achievementCounts.archived > 0
+  const dataReached =
+    achievementCounts.calculated > 0 ||
+    achievementCounts.submitted > 0 ||
+    achievementCounts.confirmed > 0 ||
+    achievementCounts.archived > 0
   const calcDone = dataReached
   const auditDone = achievementCounts.confirmed > 0 || achievementCounts.archived > 0
   const improvementActive = improvementCounts.total > 0
@@ -657,9 +657,9 @@ function handleTodoAction(key: string) {
                 <span
                   class="quality-dashboard__value"
                   :class="[
-                    record.finalValue !== null
-                      && record.thresholdValue !== null
-                      && record.finalValue >= record.thresholdValue
+                    record.finalValue !== null &&
+                    record.thresholdValue !== null &&
+                    record.finalValue >= record.thresholdValue
                       ? 'quality-dashboard__value--ok'
                       : 'quality-dashboard__value--bad',
                   ]"
@@ -763,6 +763,7 @@ function handleTodoAction(key: string) {
 </template>
 
 <style scoped lang="scss">
+@use '@/styles/breakpoints' as bp;
 .quality-dashboard {
   &__plan-select {
     min-width: 260px;
@@ -812,7 +813,7 @@ function handleTodoAction(key: string) {
     gap: 16px;
     margin-bottom: 16px;
 
-    @media (min-width: 1280px) {
+    @media (min-width: bp.$shell-laptop-max) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
 
       .quality-dashboard__list-card:last-child {

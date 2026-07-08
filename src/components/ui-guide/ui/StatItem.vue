@@ -61,21 +61,22 @@ const descClass = computed(() => {
 </script>
 
 <style lang="scss">
+@use '@/styles/breakpoints' as bp;
 .ui-stat-item {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding: 12px 16px;
-  background: var(--dp-gray-50, #f8fafc);
-  border-radius: var(--dp-radius-panel, 4px);
-  border: 1px solid var(--dp-border, #e5e7eb);
+  background: var(--dp-gray-50);
+  border-radius: var(--dp-radius-panel);
+  border: 1px solid var(--dp-border);
   transition: all 0.15s ease;
   min-width: 0;
 
   &:hover {
-    border-color: var(--dp-blue-200, #bfdbfe);
-    background: var(--dp-blue-50, #eff6ff);
+    border-color: var(--dp-blue-200);
+    background: var(--dp-blue-50);
   }
 
   &--clickable {
@@ -85,14 +86,14 @@ const descClass = computed(() => {
   &__label {
     font-size: 12px;
     font-weight: 500;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
     line-height: 1.2;
   }
 
   &__value {
     font-size: 18px;
     font-weight: 700;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
     line-height: 1.2;
 
     &--large {
@@ -114,7 +115,7 @@ const descClass = computed(() => {
 
   &__desc {
     font-size: 11px;
-    color: var(--dp-text-muted, #6b7280);
+    color: var(--dp-text-muted);
     line-height: 1.2;
 
     &--danger {
@@ -125,19 +126,19 @@ const descClass = computed(() => {
 
   &__bar {
     height: 4px;
-    background: var(--dp-gray-200, #e5e7eb);
-    border-radius: var(--dp-radius-full, 999px);
+    background: var(--dp-gray-200);
+    border-radius: var(--dp-radius-full);
     overflow: hidden;
     margin-top: 2px;
   }
 
   &__bar-fill {
     height: 100%;
-    border-radius: var(--dp-radius-full, 999px);
+    border-radius: var(--dp-radius-full);
     transition: width 0.3s ease;
 
     &--gray {
-      background: var(--dp-gray-400, #9ca3af);
+      background: var(--dp-gray-400);
     }
 
     &--blue {
@@ -145,30 +146,30 @@ const descClass = computed(() => {
     }
 
     &--orange {
-      background: var(--dp-orange-500, #f97316);
+      background: var(--dp-orange-500);
     }
 
     &--yellow {
-      background: var(--dp-yellow-500, #eab308);
+      background: var(--dp-yellow-500);
     }
 
     &--green {
-      background: var(--dp-green-500, #22c55e);
+      background: var(--dp-green-500);
     }
 
     &--red {
-      background: var(--dp-red-500, #ef4444);
+      background: var(--dp-red-500);
     }
   }
 }
 
-@media (max-width: 1200px) {
+@media (max-width: #{bp.$ant-grid-xl - 1px}) {
   .ui-stat-item {
     min-width: calc(50% - 6px);
   }
 }
 
-@media (max-width: 767px) {
+@media (max-width: bp.$layout-mobile-max) {
   .ui-stat-item {
     min-width: 100%;
   }

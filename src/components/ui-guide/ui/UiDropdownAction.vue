@@ -103,20 +103,20 @@ const handleMenuClick = (info: { key: string | number }) => {
 }
 .ui-dropdown-action-overlay .ant-dropdown-menu {
   padding: 6px;
-  border-radius: var(--dp-radius-overlay, 4px);
-  box-shadow: var(--dp-shadow-dropdown, 0 18px 40px rgba(15, 23, 42, 0.12));
+  border-radius: var(--dp-radius-overlay);
+  box-shadow: var(--dp-shadow-dropdown);
 }
 
 .ui-dropdown-action-overlay .ant-dropdown-menu-item {
   min-width: 140px;
   min-height: 36px;
-  border-radius: var(--dp-radius-control-inner, 4px);
+  border-radius: var(--dp-radius-control-inner);
   font-size: 13px;
   line-height: 36px;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-dropdown-action-overlay .ant-dropdown-menu-item:hover {
-  background: var(--dp-blue-50, #eff6ff);
+  background: var(--dp-blue-50);
 }
 </style>

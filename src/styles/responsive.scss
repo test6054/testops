@@ -5,48 +5,32 @@
 
 @use './breakpoints';
 
-// 移动端（手机）
-$screen-xs-max: breakpoints.$screen-xs-max;
+$shell-mobile-max: breakpoints.$shell-mobile-max;
+$shell-tablet-min: breakpoints.$shell-tablet-min;
+$shell-tablet-max: breakpoints.$shell-tablet-max;
+$shell-laptop-min: breakpoints.$shell-laptop-min;
+$shell-laptop-max: breakpoints.$shell-laptop-max;
+$shell-desktop-min: breakpoints.$shell-desktop-min;
+$shell-desktop-max: breakpoints.$shell-desktop-max;
+$shell-wide-min: breakpoints.$shell-wide-min;
 
-// 平板
-$screen-sm-min: breakpoints.$screen-sm-min;
-$screen-sm-max: breakpoints.$screen-sm-max;
-
-// 笔记本
-$screen-md-min: breakpoints.$screen-md-min;
-$screen-md-max: breakpoints.$screen-md-max;
-
-// 桌面
-$screen-lg-min: breakpoints.$screen-lg-min;
-$screen-lg-max: breakpoints.$screen-lg-max;
-
-// 大屏桌面
-$screen-xl-min: breakpoints.$screen-xl-min;
-
-
-// 移动端通用样式
-@media (max-width: $screen-xs-max) {
-  // 隐藏桌面端专属元素
+@media (max-width: $shell-mobile-max) {
   .hide-on-mobile {
     display: none !important;
   }
 
-  // 表格横向滚动
   .ant-table-container {
     overflow-x: auto;
   }
 
-  // 按钮组堆叠
   .ant-space {
     flex-wrap: wrap;
   }
 
-  // 弹窗全屏显示
   .ant-modal {
     max-width: calc(100vw - var(--dp-space-8)) !important;
   }
 
-  // 抽屉从底部弹出
   .ant-drawer {
     &.ant-drawer-right {
       width: 100% !important;
@@ -54,13 +38,11 @@ $screen-xl-min: breakpoints.$screen-xl-min;
   }
 }
 
-// 平板适配
-@media (min-width: $screen-sm-min) and (max-width: $screen-sm-max) {
+@media (min-width: $shell-tablet-min) and (max-width: $shell-tablet-max) {
   .hide-on-tablet {
     display: none !important;
   }
 
-  // 网格列数减少
   .ant-row {
     &[class*='gutter-'] {
       margin-left: calc(-1 * var(--dp-space-2));
@@ -69,8 +51,7 @@ $screen-xl-min: breakpoints.$screen-xl-min;
   }
 }
 
-// 桌面端显示
-@media (min-width: $screen-md-min) {
+@media (min-width: $shell-laptop-min) {
   .show-on-mobile {
     display: none !important;
   }
@@ -80,65 +61,59 @@ $screen-xl-min: breakpoints.$screen-xl-min;
   }
 }
 
-
-// 容器最大宽度
 .container-responsive {
   width: 100%;
   margin: 0 auto;
   padding: 0 var(--dp-space-4);
 
-  @media (min-width: $screen-sm-min) {
+  @media (min-width: $shell-tablet-min) {
     max-width: 750px;
     padding: 0 var(--dp-space-5);
   }
 
-  @media (min-width: $screen-md-min) {
+  @media (min-width: $shell-laptop-min) {
     max-width: 970px;
     padding: 0 var(--dp-space-6);
   }
 
-  @media (min-width: $screen-lg-min) {
-    max-width: 1200px;
+  @media (min-width: $shell-desktop-min) {
+    max-width: breakpoints.$ant-grid-xl;
   }
 
-  @media (min-width: $screen-xl-min) {
+  @media (min-width: $shell-wide-min) {
     max-width: 1400px;
   }
 }
 
-// 响应式间距
 .padding-responsive {
   padding: var(--dp-space-3);
 
-  @media (min-width: $screen-sm-min) {
+  @media (min-width: $shell-tablet-min) {
     padding: var(--dp-space-4);
   }
 
-  @media (min-width: $screen-md-min) {
+  @media (min-width: $shell-laptop-min) {
     padding: var(--dp-space-5);
   }
 
-  @media (min-width: $screen-lg-min) {
+  @media (min-width: $shell-desktop-min) {
     padding: var(--dp-space-6);
   }
 }
 
-// 响应式字体
 .text-responsive {
   font-size: var(--dp-font-size-md);
 
-  @media (max-width: $screen-xs-max) {
+  @media (max-width: $shell-mobile-max) {
     font-size: var(--dp-font-size-sm);
   }
 
-  @media (min-width: $screen-lg-min) {
-    font-size: 15px;
+  @media (min-width: $shell-desktop-min) {
+    font-size: var(--dp-type-table-body-size);
   }
 }
 
-
-// 移动端增大点击区域
-@media (max-width: $screen-xs-max) {
+@media (max-width: $shell-mobile-max) {
   .ant-btn {
     min-height: 40px;
     padding: var(--dp-space-2) var(--dp-space-4);
@@ -152,12 +127,10 @@ $screen-xl-min: breakpoints.$screen-xl-min;
     min-height: 40px;
   }
 
-  // 禁用hover效果（移动端无hover）
   * {
     -webkit-tap-highlight-color: transparent;
   }
 }
-
 
 @supports (padding: env(safe-area-inset-bottom)) {
   .safe-area-bottom {

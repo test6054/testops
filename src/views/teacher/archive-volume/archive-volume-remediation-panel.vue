@@ -73,14 +73,8 @@
       </template>
 
       <UiSkeletonState v-if="taskLoading" variant="card" compact />
-      <UiEmpty
-        v-else-if="!selectedCampaignId"
-        description="请选择评估批次查看整改任务"
-      />
-      <UiEmpty
-        v-else-if="tasks.length === 0"
-        description="当前批次暂无整改任务"
-      />
+      <UiEmpty v-else-if="!selectedCampaignId" description="请选择评估批次查看整改任务" />
+      <UiEmpty v-else-if="tasks.length === 0" description="当前批次暂无整改任务" />
       <div v-else class="archive-remediation-card-list">
         <article
           v-for="task in tasks"
@@ -97,7 +91,9 @@
               {{ remediationPriorityLabel(task.taskPriority) }}
             </UiTag>
           </div>
-          <p v-if="task.taskDescription" class="remediation-card__desc">{{ task.taskDescription }}</p>
+          <p v-if="task.taskDescription" class="remediation-card__desc">
+            {{ task.taskDescription }}
+          </p>
           <div class="remediation-card__meta">
             <span>负责人: {{ remediationAssigneeLabel(task) }}</span>
             <span v-if="task.dueTime">截止: {{ formatDateTime(task.dueTime) }}</span>
@@ -105,7 +101,10 @@
           </div>
           <div class="remediation-card__actions">
             <UiButton
-              v-if="task.taskStatus === ArchiveRemediationStatusCode.OPEN || task.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS"
+              v-if="
+                task.taskStatus === ArchiveRemediationStatusCode.OPEN ||
+                task.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
+              "
               size="sm"
               variant="outline"
               @click="openTask(task.taskId)"
@@ -134,13 +133,23 @@
           <a-input v-model:value="campaignForm.campaignName" />
         </a-form-item>
         <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="学年">
-              <a-input v-model:value="campaignForm.academicYear" placeholder="2024-2025" />
+          <a-col :span="8">
+            <a-form-item label="学年起始年" required>
+              <a-select
+                v-model:value="campaignForm.academicYearStartYear"
+                :options="academicYearStartOptions"
+                placeholder="请选择起始年"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
-          <a-col :span="12">
-            <a-form-item label="学期">
+          <a-col :span="8">
+            <a-form-item label="学年结束年">
+              <a-input :value="campaignForm.academicYearEndYear" disabled />
+            </a-form-item>
+          </a-col>
+          <a-col :span="8">
+            <a-form-item label="学期" required>
               <a-select
                 v-model:value="campaignForm.semester"
                 :options="SemesterOptions"
@@ -246,12 +255,6 @@ import type {
   ArchiveRemediationPriorityCode,
   ArchiveRemediationTaskResponse,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   ARCHIVE_EVALUATION_CAMPAIGN_STATUS_OPTIONS,
   ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
@@ -267,6 +270,13 @@ import {
   listRemediationTasksByCampaign,
   saveEvaluationCampaign,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { SemesterOptions } from '@/types/enums/semester-enum'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import ArchiveReadinessRateBar from '@/components/archive-volume/ArchiveReadinessRateBar.vue'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -277,8 +287,14 @@ import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
-import { SemesterOptions } from '@/types/enums/semester-enum'
-import { ensureAcademicYearSemesterPair } from '@/utils/academic-year-semester-query'
+import { generateAcademicYearStartOptions } from '@/utils/academic-year'
+import {
+  applyAcademicYearStartYearChange,
+  createAcademicYearSemesterTripleDefaults,
+  ensureTriplePeriodPair,
+  parseTripleFromAcademicYear,
+  resolveAcademicYearFromTriple,
+} from '@/utils/academic-year-semester-triple-filter'
 import { remediationAssigneeLabel } from '@/utils/archive-remediation-display'
 import {
   ARCHIVE_REMEDIATION_PRIORITY_TONE,
@@ -318,7 +334,8 @@ const campaignStatusOptions = ARCHIVE_EVALUATION_CAMPAIGN_STATUS_OPTIONS
 interface RemediationCampaignForm {
   campaignId: string | undefined
   campaignName: string
-  academicYear: string
+  academicYearStartYear: number | undefined
+  academicYearEndYear: number | undefined
   semester: SemesterCode | undefined
   campaignStatus: ArchiveEvaluationCampaignStatusCode
   startTime: string | undefined
@@ -326,11 +343,15 @@ interface RemediationCampaignForm {
   description: string
 }
 
+const academicYearStartOptions = generateAcademicYearStartOptions().map((year) => ({
+  label: `${year} 年`,
+  value: year,
+}))
+
 const campaignForm = reactive<RemediationCampaignForm>({
   campaignId: undefined,
   campaignName: '',
-  academicYear: '',
-  semester: undefined,
+  ...createAcademicYearSemesterTripleDefaults(true),
   campaignStatus: ArchiveEvaluationCampaignStatusCode.ACTIVE,
   startTime: undefined,
   endTime: undefined,
@@ -424,9 +445,12 @@ async function loadTasks() {
 function openCampaignModal(campaign?: ArchiveEvaluationCampaignResponse) {
   campaignForm.campaignId = campaign?.campaignId
   campaignForm.campaignName = campaign?.campaignName ?? ''
-  campaignForm.academicYear = campaign?.academicYear ?? ''
-  campaignForm.semester = campaign?.semester
-  campaignForm.campaignStatus = campaign?.campaignStatus ?? ArchiveEvaluationCampaignStatusCode.ACTIVE
+  const triple = parseTripleFromAcademicYear(campaign?.academicYear, campaign?.semester)
+  campaignForm.academicYearStartYear = triple.academicYearStartYear
+  campaignForm.academicYearEndYear = triple.academicYearEndYear
+  campaignForm.semester = triple.semester
+  campaignForm.campaignStatus =
+    campaign?.campaignStatus ?? ArchiveEvaluationCampaignStatusCode.ACTIVE
   campaignForm.startTime = campaign?.startTime
   campaignForm.endTime = campaign?.endTime
   campaignForm.description = campaign?.description ?? ''
@@ -438,15 +462,16 @@ async function submitCampaign() {
     message.warning('请填写批次名称')
     return
   }
-  if (!ensureAcademicYearSemesterPair(campaignForm.academicYear, campaignForm.semester)) {
+  if (!ensureTriplePeriodPair(campaignForm)) {
     return
   }
+  const academicYear = resolveAcademicYearFromTriple(campaignForm)
   campaignSaving.value = true
   try {
     const saved = await saveEvaluationCampaign({
       campaignId: campaignForm.campaignId,
       campaignName: campaignForm.campaignName.trim(),
-      academicYear: campaignForm.academicYear.trim() || undefined,
+      academicYear,
       semester: campaignForm.semester,
       campaignStatus: campaignForm.campaignStatus,
       startTime: campaignForm.startTime,
@@ -569,6 +594,13 @@ onMounted(() => {
   void loadGrants()
   void loadCampaigns()
 })
+
+watch(
+  () => campaignForm.academicYearStartYear,
+  (startYear) => {
+    applyAcademicYearStartYearChange(campaignForm, startYear)
+  },
+)
 </script>
 
 <style scoped>
@@ -590,8 +622,8 @@ onMounted(() => {
 .archive-volume-remediation-panel__campaign-rate {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
-  padding: 0 var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
+  padding: 0 var(--dp-space-2);
 }
 
 .archive-volume-remediation-panel__campaign-rate-label {
@@ -613,62 +645,62 @@ onMounted(() => {
 .archive-remediation-card-list {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
-  padding: var(--dp-space-3, 12px) 0;
+  gap: var(--dp-space-3);
+  padding: var(--dp-space-3) 0;
 }
 
 .remediation-card {
-  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
-  border: 1px solid var(--dp-border-light, #eef0f3);
-  border-radius: var(--dp-radius-sm, 4px);
-  background: var(--dp-surface, #fff);
+  padding: var(--dp-space-3) var(--dp-space-4);
+  border: 1px solid var(--dp-border-light);
+  border-radius: var(--dp-radius-sm);
+  background: var(--dp-surface);
 }
 
 .remediation-card--high {
-  border-left: 3px solid var(--dp-danger, #dc2626);
+  border-left: 3px solid var(--dp-danger);
 }
 
 .remediation-card--medium {
-  border-left: 3px solid var(--dp-warning, #f59e0b);
+  border-left: 3px solid var(--dp-warning);
 }
 
 .remediation-card--low {
-  border-left: 3px solid var(--dp-primary, #2d7ff9);
+  border-left: 3px solid var(--dp-primary);
 }
 
 .remediation-card__head {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 
 .remediation-card__title {
   flex: 1;
   font-size: 14px;
   font-weight: 600;
-  color: var(--dp-text, #1a1d21);
+  color: var(--dp-text);
 }
 
 .remediation-card__desc {
-  margin: var(--dp-space-2, 8px) 0 0;
+  margin: var(--dp-space-2) 0 0;
   font-size: 12px;
   line-height: 1.5;
-  color: var(--dp-text-3, #64748b);
+  color: var(--dp-text-3);
 }
 
 .remediation-card__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-4, 16px);
-  margin-top: var(--dp-space-2, 8px);
+  gap: var(--dp-space-4);
+  margin-top: var(--dp-space-2);
   font-size: 12px;
-  color: var(--dp-text-4, #8b919a);
+  color: var(--dp-text-4);
 }
 
 .remediation-card__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
-  margin-top: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
+  margin-top: var(--dp-space-2);
 }
 </style>

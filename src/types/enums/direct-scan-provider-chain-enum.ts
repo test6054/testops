@@ -9,3 +9,15 @@ export const ALL_DIRECT_SCAN_PROVIDER_CHAIN_CODES: readonly DirectScanProviderCh
   DirectScanProviderChainCode.PADDLE_LOCAL,
 ]
 
+export const DirectScanProviderChainDescription: Record<DirectScanProviderChainCode, string> = {
+  [DirectScanProviderChainCode.BAIDU_QWEN]: '云端百度+千问',
+  [DirectScanProviderChainCode.PADDLE_LOCAL]: '本地 PaddleOCR',
+}
+
+export function isDirectScanProviderChainCode(
+  value: string | null | undefined,
+): value is DirectScanProviderChainCode {
+  if (!value) return false
+  return (ALL_DIRECT_SCAN_PROVIDER_CHAIN_CODES as readonly string[]).includes(value)
+}
+

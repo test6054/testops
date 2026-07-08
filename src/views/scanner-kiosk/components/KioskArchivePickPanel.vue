@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ScannerKioskArchiveVolumeItemVO } from '@/apis/mark/scanner-kiosk'
+import { createAdhocDispatchTicket, pageKioskArchiveVolumes } from '@/apis/mark/scanner-kiosk'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -7,7 +8,6 @@ import {
   ARCHIVE_VOLUME_STATUS_TONE,
   ArchiveVolumeStatusDescription,
 } from '@/apis/mark/archive-volume'
-import { createAdhocDispatchTicket, pageKioskArchiveVolumes } from '@/apis/mark/scanner-kiosk'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -85,7 +85,7 @@ async function loadVolumes() {
   }
 }
 
-function handlePageChange(pageEvent: { current: number, pageSize: number }) {
+function handlePageChange(pageEvent: { current: number; pageSize: number }) {
   pageNum.value = pageEvent.current
   pageSize.value = pageEvent.pageSize
   void loadVolumes()
@@ -120,8 +120,8 @@ async function pickVolume(row: ScannerKioskArchiveVolumeItemVO) {
       return
     }
     emit('update:open', false)
-    const kioskPath
-      = response.ticket?.kioskDispatchUrl || (ticketId ? `/scanner-kiosk/dispatch/${ticketId}` : '')
+    const kioskPath =
+      response.ticket?.kioskDispatchUrl || (ticketId ? `/scanner-kiosk/dispatch/${ticketId}` : '')
     if (kioskPath) {
       void router.push(kioskPath)
     }
@@ -150,7 +150,7 @@ function volumeStatusTone(status: ScannerKioskArchiveVolumeItemVO['volumeStatus'
     @update:open="emit('update:open', $event)"
   >
     <p class="kiosk-archive-pick__hint">
-      仅展示当前权限范围内、状态为收集中且按柜位排序的归档卷。选定后将创建临时派单并进入认知确认。
+      仅展示您已加入协作组、状态为收集中且已登记柜位的归档卷。若列表为空，请联系卷负责人将您添加为扫描协作成员后再试。
     </p>
     <WorkbenchSurfaceCard flush>
       <template #toolbar>
@@ -201,9 +201,9 @@ function volumeStatusTone(status: ScannerKioskArchiveVolumeItemVO['volumeStatus'
                   key: 'pick',
                   label: '开单',
                   disabled:
-                    !canPick
-                    || record.volumeStatus !== ArchiveVolumeStatusCode.COLLECTING
-                    || pickingVolumeId === record.volumeId,
+                    !canPick ||
+                    record.volumeStatus !== ArchiveVolumeStatusCode.COLLECTING ||
+                    pickingVolumeId === record.volumeId,
                 },
               ]"
               split
@@ -228,7 +228,7 @@ function volumeStatusTone(status: ScannerKioskArchiveVolumeItemVO['volumeStatus'
 }
 .kiosk-archive-pick__error {
   margin: 0 0 12px;
-  padding: 0 var(--dp-space-5, 20px);
+  padding: 0 var(--dp-space-5);
   color: #cf1322;
 }
 </style>

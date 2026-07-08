@@ -63,21 +63,23 @@ const isCompactToolbar = computed(
 </template>
 
 <style scoped lang="scss">
+@use '@/styles/breakpoints' as bp;
+
 .context-bar {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--dp-space-4, 16px);
+  gap: var(--dp-space-4);
   flex-wrap: wrap;
 
   &--workbench {
     align-items: center;
     flex-wrap: nowrap;
-    margin-bottom: var(--dp-space-5, 20px);
+    margin-bottom: var(--dp-space-5);
   }
 
   &--compact-toolbar {
-    margin-bottom: var(--dp-space-2, 8px);
+    margin-bottom: var(--dp-space-2);
     justify-content: flex-end;
 
     &:has(.context-bar__info) {
@@ -100,10 +102,10 @@ const isCompactToolbar = computed(
 
   &__title {
     margin: 0;
-    font-size: var(--dp-type-h1-size, 18px);
-    line-height: var(--dp-type-h1-lh, 26px);
-    font-weight: var(--dp-type-h1-weight, 600);
-    color: var(--dp-text-primary, rgba(0, 0, 0, 0.88));
+    font-size: var(--dp-type-h1-size);
+    line-height: var(--dp-type-h1-lh);
+    font-weight: var(--dp-type-h1-weight);
+    color: var(--dp-text-primary);
     letter-spacing: -0.01em;
   }
 
@@ -111,26 +113,26 @@ const isCompactToolbar = computed(
     margin: 0;
     font-size: 13px;
     line-height: 18px;
-    color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
+    color: var(--dp-text-muted);
   }
 
   &__status {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-2);
     flex-wrap: wrap;
-    margin-top: 4px;
+    margin-top: var(--dp-space-1);
   }
 
   &__info-extra {
-    margin-top: 4px;
+    margin-top: var(--dp-space-1);
   }
 
   &__actions,
   &__toolbar {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-2);
     flex-wrap: wrap;
     flex-shrink: 0;
   }
@@ -142,7 +144,7 @@ const isCompactToolbar = computed(
   }
 }
 
-@media (max-width: 960px) {
+@media (max-width: #{bp.$ant-grid-lg - 1px}) {
   .context-bar--workbench {
     flex-wrap: wrap;
   }

@@ -4,6 +4,7 @@
       class="main-scroll-wrapper"
       :class="{
         'main-scroll-wrapper--wide': route.meta.layoutWide,
+        'main-scroll-wrapper--create-page': route.meta.layoutCreatePage,
         'mark-domain--quality': isQualityDomain,
         'mark-domain--portfolio': isPortfolioDomain,
       }"
@@ -22,8 +23,8 @@
 
 <script lang="ts" setup>
 import type { RouteLocationNormalized } from 'vue-router'
-import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { computed } from 'vue'
 import { isPortfolioRoute, isQualityEvaluationRoute } from '@/utils/portfolio-route'
 
 defineOptions({ name: 'LayoutMain' })
@@ -67,6 +68,7 @@ function shouldCacheRoute(childRoute: RouteLocationNormalized): boolean {
 </script>
 
 <style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .main {
   width: 100%;
   flex: 1;
@@ -123,7 +125,7 @@ function shouldCacheRoute(childRoute: RouteLocationNormalized): boolean {
   }
 
   // 移动端适配
-  @media (max-width: 767px) {
+  @media (max-width: bp.$layout-mobile-max) {
     padding: 12px;
 
     // 为底部TabBar留出空间
@@ -133,7 +135,7 @@ function shouldCacheRoute(childRoute: RouteLocationNormalized): boolean {
   }
 
   // 平板适配
-  @media (min-width: 768px) and (max-width: 1024px) {
+  @media (min-width: bp.$shell-tablet-min) and (max-width: bp.$shell-tablet-max) {
     padding: 16px;
   }
 }

@@ -33,9 +33,9 @@ defineProps<{
   flex-direction: column;
   gap: 12px;
   padding: 16px;
-  background: var(--dp-surface, #fff);
-  border: 1px solid var(--dp-border, #e2e8f0);
-  border-radius: var(--dp-radius-panel, 8px);
+  background: var(--dp-surface);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
 
   &__header {
     display: flex;
@@ -58,7 +58,7 @@ defineProps<{
     font-size: 14px;
     font-weight: 600;
     line-height: 1.4;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__tags {

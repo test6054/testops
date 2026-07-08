@@ -39,7 +39,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  'success': []
+  success: []
 }>()
 
 const saving = ref(false)
@@ -80,8 +80,8 @@ async function handleSave() {
 
 <style scoped>
 .archive-material-tag-modal__hint {
-  margin: 0 0 var(--dp-space-3, 12px);
+  margin: 0 0 var(--dp-space-3);
   font-size: 13px;
-  color: var(--dp-text-secondary, #595959);
+  color: var(--dp-text-secondary);
 }
 </style>

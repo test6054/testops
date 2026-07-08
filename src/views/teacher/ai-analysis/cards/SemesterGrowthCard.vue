@@ -150,15 +150,6 @@ import type {
   SemesterAbilityGrowthResponse,
   SemesterGrowthTrendCode,
 } from '@/apis/mark/cross-exam-analysis'
-import type { ExamSummaryResponse } from '@/apis/mark/exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import {
-  AnalysisScopeTypeCode,
-  AnalysisScopeTypeDescription,
-} from '@/apis/mark/analysis-scope-type'
 import {
   generateClassGrowth,
   listCommonClassScopes,
@@ -166,6 +157,16 @@ import {
   SEMESTER_GROWTH_TREND_TONE,
   SemesterGrowthTrendDescription,
 } from '@/apis/mark/cross-exam-analysis'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { formatSemester } from '@/types/enums/semester-enum'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import {
+  AnalysisScopeTypeCode,
+  AnalysisScopeTypeDescription,
+} from '@/apis/mark/analysis-scope-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisConfigCollapse from '@/components/mark/analysis/AiAnalysisConfigCollapse.vue'
@@ -182,7 +183,6 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { formatSemester } from '@/types/enums/semester-enum'
 import {
   buildRequiredAcademicYearSemesterQuery,
   ensureRequiredAcademicYearSemester,
@@ -275,7 +275,7 @@ const historyRows = computed(() =>
 )
 
 const selectedExams = ref<ExamSummaryResponse[]>([])
-const classOptions = ref<{ label: string, value: string }[]>([])
+const classOptions = ref<{ label: string; value: string }[]>([])
 const classLoading = ref(false)
 const loading = ref(false)
 const generating = ref(false)
@@ -656,7 +656,7 @@ function growthValueText(value: number | undefined): string {
 .diagnosis-rate {
   margin-left: auto;
   font-size: 12px;
-  color: var(--dp-text-secondary, rgba(0, 0, 0, 0.65));
+  color: var(--dp-text-secondary);
 }
 .diagnosis-type {
   font-size: 13px;
@@ -666,16 +666,16 @@ function growthValueText(value: number | undefined): string {
   margin: 4px 0 0;
   font-size: 13px;
   line-height: 1.6;
-  color: var(--dp-text-secondary, rgba(0, 0, 0, 0.75));
+  color: var(--dp-text-secondary);
 }
 .diagnosis-text--hint {
-  color: var(--dp-text-primary, rgba(0, 0, 0, 0.88));
+  color: var(--dp-text-primary);
 }
 .diagnosis-text--muted {
   font-size: 12px;
-  color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
+  color: var(--dp-text-muted);
 }
 .text-muted {
-  color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
+  color: var(--dp-text-muted);
 }
 </style>

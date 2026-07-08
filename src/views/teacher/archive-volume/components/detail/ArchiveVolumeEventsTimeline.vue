@@ -2,7 +2,7 @@
   <UiEmpty
     v-if="sortedEvents.length === 0"
     title="暂无事件流水"
-    description="归档卷操作与状态变更将在此按时间展示"
+    description="归档任务操作与状态变更将在此按时间展示"
   />
   <div v-else class="audit-timeline">
     <article v-for="event in sortedEvents" :key="event.eventId" class="audit-item">

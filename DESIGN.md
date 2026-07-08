@@ -10,7 +10,9 @@ product
 
 ## Existing Tokens
 
-项目已有 Ant Design Vue CSS 变量和 `--dp-*` 设计令牌，优先复用 `src/styles/ui-tokens.scss` 和 `src/styles/var.scss`。
+项目设计令牌真源为 `src/styles/ui-tokens.scss`。**Ant Design `--ant-color-*`** 为语义色权威源（primary / success / warning / error）；**`--dp-*`** 为间距、圆角、阴影及色阶别名（如 `--dp-blue-500` → `--ant-color-primary`）。组件内语义态（成功/警告/错误/主色）优先用 `--ant-color-*`；需要色阶时用 `--dp-{hue}-{step}`，禁止 hardcoded hex。
+
+`gi_*` legacy 工具类已淘汰；布局工具保留 `w-full` / `flex-1` 等无前缀原子类。
 
 - 主色：`--ant-color-primary: #2563eb`
 - 成功：`--ant-color-success: #22c55e`

@@ -65,7 +65,7 @@ watch(
 <style scoped>
 .archive-template-sortable-table :deep(.archive-template-sortable__ghost) {
   opacity: 0.55;
-  background: var(--dp-blue-50, #eff6ff) !important;
+  background: var(--dp-blue-50) !important;
 }
 
 .archive-template-sortable-table :deep(.ant-table-row) {

@@ -155,11 +155,11 @@ const handleClear = () => {
   align-items: center;
   gap: 8px;
   width: 100%;
-  border-radius: var(--dp-radius-control, 4px);
-  border: 1px solid var(--dp-border, #e5e7eb);
-  background-color: var(--dp-bg-control, #f3f4f6);
+  border-radius: var(--dp-radius-control);
+  border: 1px solid var(--dp-border);
+  background-color: var(--dp-bg-control);
   font-size: 14px;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease,
@@ -186,45 +186,45 @@ const handleClear = () => {
 }
 
 .dp-input-wrap--sm {
-  min-height: var(--dp-control-height-sm, 32px);
+  min-height: var(--dp-control-height-sm);
 }
 
 .dp-input-wrap--md {
-  min-height: var(--dp-control-height-md, 36px);
+  min-height: var(--dp-control-height-md);
 }
 
 .dp-input-wrap--lg {
-  min-height: var(--dp-control-height-lg, 40px);
+  min-height: var(--dp-control-height-lg);
 }
 
 .dp-input-wrap:hover {
-  border-color: var(--dp-blue-600, #2563eb);
+  border-color: var(--dp-blue-600);
 }
 
 .dp-input-wrap:focus-within {
-  border-color: var(--dp-blue-600, #2563eb);
-  box-shadow: 0 0 0 3px var(--dp-focus-ring, rgba(37, 99, 235, 0.25));
+  border-color: var(--dp-blue-600);
+  box-shadow: 0 0 0 3px var(--dp-focus-ring);
 }
 
 .dp-input::placeholder {
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .dp-input-wrap--error {
-  border-color: var(--dp-red-500, #ef4444);
+  border-color: var(--dp-red-500);
 }
 
 .dp-input-wrap--warning {
-  border-color: var(--dp-orange-500, #f97316);
+  border-color: var(--dp-orange-500);
 }
 
 .dp-input-wrap--success {
-  border-color: var(--dp-green-500, #22c55e);
+  border-color: var(--dp-green-500);
 }
 
 .dp-input-wrap--disabled,
 .dp-input-wrap--readonly {
-  background-color: var(--dp-bg-control-disabled, #eef2f7);
+  background-color: var(--dp-bg-control-disabled);
 }
 
 .dp-input-wrap--disabled {
@@ -236,7 +236,7 @@ const handleClear = () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
   flex-shrink: 0;
 }
 
@@ -258,7 +258,7 @@ const handleClear = () => {
   border: none;
   border-radius: 999px;
   background: transparent;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
   cursor: pointer;
   transition:
     background-color 0.2s ease,
@@ -266,14 +266,14 @@ const handleClear = () => {
 }
 
 .dp-input__clear:hover {
-  background: var(--dp-gray-200, #e5e7eb);
-  color: var(--dp-text-primary, #0f172a);
+  background: var(--dp-gray-200);
+  color: var(--dp-text-primary);
 }
 
 .dp-input__clear:focus-visible {
-  outline: 2px solid var(--dp-blue-600, #2563eb);
+  outline: 2px solid var(--dp-blue-600);
   outline-offset: 1px;
-  background: var(--dp-gray-200, #e5e7eb);
-  color: var(--dp-text-primary, #0f172a);
+  background: var(--dp-gray-200);
+  color: var(--dp-text-primary);
 }
 </style>

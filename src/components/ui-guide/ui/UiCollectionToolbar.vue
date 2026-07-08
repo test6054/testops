@@ -133,9 +133,9 @@ const updateViewMode = (mode: ViewMode) => {
   justify-content: space-between;
   gap: 16px;
   padding: 14px 16px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
 }
 
 .ui-collection-toolbar__summary,
@@ -154,7 +154,7 @@ const updateViewMode = (mode: ViewMode) => {
 .ui-collection-toolbar__title {
   font-size: 15px;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-collection-toolbar__summary-row {
@@ -166,7 +166,7 @@ const updateViewMode = (mode: ViewMode) => {
 
 .ui-collection-toolbar__summary-text {
   font-size: 13px;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-collection-toolbar__controls {

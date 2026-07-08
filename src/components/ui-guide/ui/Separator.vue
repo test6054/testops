@@ -9,7 +9,7 @@ defineOptions({ name: 'UiSeparator' })
 <style scoped>
 .dp-separator {
   border: none;
-  border-top: 1px solid var(--dp-border, #f1f5f9);
+  border-top: 1px solid var(--dp-border);
   margin: 16px 0;
 }
 </style>

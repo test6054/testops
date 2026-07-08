@@ -1,7 +1,5 @@
 <script lang="ts" setup>
 import type { ExamDetailResponse } from '@/apis/mark/exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { computed } from 'vue'
 import {
   EXAM_KIND_TONE,
   ExamGradingStrategyDescription,
@@ -10,6 +8,8 @@ import {
   ExamPrintSourceModeDescription,
   ExamScorePolicyDescription,
 } from '@/apis/mark/exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { computed } from 'vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { formatSemester } from '@/types/enums/semester-enum'
@@ -32,20 +32,27 @@ interface InfoRow {
 const examInfoRows = computed((): InfoRow[] => {
   const d = props.detail
   const term = [d.academicYear, formatSemester(d.semester)].filter(Boolean).join(' ')
-  const examTime
-    = d.examStartTime && d.examEndTime
+  const examTime =
+    d.examStartTime && d.examEndTime
       ? `${formatDateTimeWithSeconds(d.examStartTime)} ~ ${formatDateTimeWithSeconds(d.examEndTime)}`
       : '—'
   const examKindLabel = d.examKind
     ? strictEnumLabel(ExamKindDescription, d.examKind, '考试性质')
-    : d.examKindMessage ?? '—'
+    : (d.examKindMessage ?? '—')
   return [
     { label: '考试编号', value: d.examNo },
     { label: '所属院系', value: d.departmentName ?? '—' },
     { label: '学年学期', value: term || '—' },
     { label: '考试时间', value: examTime },
-    { label: '考试类型', value: examKindLabel, tagTone: d.examKind ? strictEnumTone(EXAM_KIND_TONE, d.examKind, '考试性质') : undefined },
-    { label: '评阅方式', value: strictEnumLabel(ExamGradingStrategyDescription, d.gradingStrategy, '评阅方式') },
+    {
+      label: '考试类型',
+      value: examKindLabel,
+      tagTone: d.examKind ? strictEnumTone(EXAM_KIND_TONE, d.examKind, '考试性质') : undefined,
+    },
+    {
+      label: '评阅方式',
+      value: strictEnumLabel(ExamGradingStrategyDescription, d.gradingStrategy, '评阅方式'),
+    },
     { label: '备注', value: d.remark?.trim() || '—' },
     { label: '创建人', value: d.createUserNickName ?? d.createUser },
   ]
@@ -62,8 +69,8 @@ const configRows = computed((): InfoRow[] => {
   const scorePolicyLabel = d.scorePolicy
     ? strictEnumLabel(ExamScorePolicyDescription, d.scorePolicy, '成绩合成策略')
     : '—'
-  const fullScoreText
-    = props.examFullScore != null && Number.isFinite(props.examFullScore)
+  const fullScoreText =
+    props.examFullScore != null && Number.isFinite(props.examFullScore)
       ? String(props.examFullScore)
       : '—'
   return [
@@ -138,7 +145,7 @@ const configRows = computed((): InfoRow[] => {
 
     dt {
       margin: 0;
-      color: var(--dp-text-muted, #64748b);
+      color: var(--dp-text-muted);
       flex-shrink: 0;
     }
 
@@ -146,7 +153,7 @@ const configRows = computed((): InfoRow[] => {
       margin: 0;
       font-weight: 500;
       text-align: right;
-      color: var(--dp-text-primary, #0f172a);
+      color: var(--dp-text-primary);
       word-break: break-word;
     }
   }

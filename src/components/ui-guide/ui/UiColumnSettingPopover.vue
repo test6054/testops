@@ -149,8 +149,8 @@ const handleSave = async () => {
   justify-content: space-between;
   gap: 12px;
   padding: 10px 12px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-control-inner, 4px);
-  background: var(--dp-gray-50, #f8fafc);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-control-inner);
+  background: var(--dp-gray-50);
 }
 </style>

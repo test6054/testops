@@ -7,6 +7,7 @@ import type { RouteRecordRaw } from 'vue-router'
 import { archiveVolumeWorkspaceRoutes } from '@/router/routes/archive-volume-workspace'
 import { commonRoutes, errorRoutes } from '@/router/routes/common'
 import { constantRoutes } from '@/router/routes/constant'
+import { createPageRoutes } from '@/router/routes/create-routes'
 import { examWorkspaceRoutes } from '@/router/routes/exam-workspace'
 import { portfolioRoutes } from '@/router/routes/portfolio'
 import { qualityRoutes } from '@/router/routes/quality'
@@ -19,6 +20,7 @@ export { runPortfolioTeacherReadinessGuard } from '@/router/guards/portfolio-tea
 const allRoutes: RouteRecordRaw[] = [
   ...constantRoutes,
   ...teacherRoutes,
+  createPageRoutes,
   examWorkspaceRoutes,
   archiveVolumeWorkspaceRoutes,
   ...qualityRoutes,

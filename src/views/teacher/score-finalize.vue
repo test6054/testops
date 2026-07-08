@@ -1,13 +1,21 @@
 <template>
   <StageWorkbenchShell class="score-finalize-page">
     <template
-      v-if="effectiveRiskOverview?.readyToPublish || blockingRiskReasons.length > 0 || canBatchConfirmSafe"
+      v-if="
+        effectiveRiskOverview?.readyToPublish ||
+        blockingRiskReasons.length > 0 ||
+        canBatchConfirmSafe
+      "
       #context
     >
       <ContextBar layout="workbench">
         <template #status>
-          <UiTag v-if="effectiveRiskOverview?.readyToPublish" tone="green" size="sm">可进入发布</UiTag>
-          <UiTag v-else-if="blockingRiskReasons.length > 0" tone="orange" size="sm">存在阻塞风险</UiTag>
+          <UiTag v-if="effectiveRiskOverview?.readyToPublish" tone="green" size="sm"
+            >可进入发布</UiTag
+          >
+          <UiTag v-else-if="blockingRiskReasons.length > 0" tone="orange" size="sm"
+            >存在阻塞风险</UiTag
+          >
         </template>
         <template #actions>
           <UiButton
@@ -68,9 +76,7 @@
         class="score-finalize__alert"
       >
         <template #actions>
-          <UiButton variant="primary" size="sm" @click="openRiskReviewDrawer">
-            集中复核
-          </UiButton>
+          <UiButton variant="primary" size="sm" @click="openRiskReviewDrawer"> 集中复核 </UiButton>
         </template>
       </UiAlertStrip>
       <UiAlertStrip
@@ -141,9 +147,7 @@
                 @search="handleSearch"
                 @reset="handleReset"
               />
-              <UiButton variant="outline" size="sm" @click="goExportTasks">
-                导出任务
-              </UiButton>
+              <UiButton variant="outline" size="sm" @click="goExportTasks"> 导出任务 </UiButton>
             </div>
           </div>
 
@@ -162,7 +166,9 @@
           >
             <template #bodyCell="{ column, index }">
               <template v-if="column.key === 'studentNo'">
-                <span class="score-summary-table__mono">{{ candidates[index].studentNo || '—' }}</span>
+                <span class="score-summary-table__mono">{{
+                  candidates[index].studentNo || '—'
+                }}</span>
               </template>
               <template v-else-if="column.key === 'studentName'">
                 {{ candidates[index].studentName || '—' }}
@@ -174,21 +180,36 @@
                 <span v-else class="score-finalize__hint">—</span>
               </template>
               <template v-else-if="column.key === 'dailyScore'">
-                <span v-if="candidates[index].dailyScore != null" class="score-summary-table__score">
+                <span
+                  v-if="candidates[index].dailyScore != null"
+                  class="score-summary-table__score"
+                >
                   {{ candidates[index].dailyScore }}
                 </span>
                 <span v-else class="score-finalize__hint">—</span>
               </template>
               <template v-else-if="column.key === 'finalScore'">
-                <span v-if="candidates[index].finalScore != null" class="score-summary-table__score score-summary-table__score--total">
+                <span
+                  v-if="candidates[index].finalScore != null"
+                  class="score-summary-table__score score-summary-table__score--total"
+                >
                   {{ candidates[index].finalScore }}
                 </span>
                 <span v-else class="score-finalize__hint">—</span>
               </template>
               <template v-else-if="column.key === 'bias'">
                 <div class="score-finalize__bias-cell">
-                  <UiTag :tone="biasLevelTone(classifyScoreBias(candidates[index].finalScore, pageScoreStats))" size="sm">
-                    {{ biasLevelLabel(classifyScoreBias(candidates[index].finalScore, pageScoreStats)) }}
+                  <UiTag
+                    :tone="
+                      biasLevelTone(classifyScoreBias(candidates[index].finalScore, pageScoreStats))
+                    "
+                    size="sm"
+                  >
+                    {{
+                      biasLevelLabel(
+                        classifyScoreBias(candidates[index].finalScore, pageScoreStats),
+                      )
+                    }}
                   </UiTag>
                   <span
                     v-if="formatScoreBiasDelta(candidates[index].finalScore, pageScoreStats)"
@@ -239,10 +260,14 @@
             {{ detailCandidate?.studentClassName }}
           </a-descriptions-item>
           <a-descriptions-item v-if="hasDailyScoreConfig" label="考试分">
-            <span class="score-summary-table__score">{{ formatScorePoints(paperScore.examScore) }}</span>
+            <span class="score-summary-table__score">{{
+              formatScorePoints(paperScore.examScore)
+            }}</span>
           </a-descriptions-item>
           <a-descriptions-item v-if="hasDailyScoreConfig" label="日常分">
-            <span class="score-summary-table__score">{{ formatScorePoints(paperScore.dailyScore) }}</span>
+            <span class="score-summary-table__score">{{
+              formatScorePoints(paperScore.dailyScore)
+            }}</span>
           </a-descriptions-item>
           <a-descriptions-item :label="hasDailyScoreConfig ? '总成绩' : '总分'">
             <span class="score-summary-table__score score-summary-table__score--total">
@@ -334,17 +359,21 @@
             disabled
           />
         </a-form-item>
-        <a-form-item :label="hasDailyScoreConfig ? '考试分（各题教师复核评分之和）' : '试卷计算总分将作为教师复核评分'">
+        <a-form-item
+          :label="
+            hasDailyScoreConfig
+              ? '考试分（各题教师复核评分之和）'
+              : '试卷计算总分将作为教师复核评分'
+          "
+        >
           <a-input
-            :value="confirmComputedExamScore != null ? `${confirmComputedExamScore} 分` : '加载中...'"
+            :value="
+              confirmComputedExamScore != null ? `${confirmComputedExamScore} 分` : '加载中...'
+            "
             disabled
           />
         </a-form-item>
-        <a-form-item
-          v-if="hasDailyScoreConfig"
-          label="日常成绩"
-          :required="true"
-        >
+        <a-form-item v-if="hasDailyScoreConfig" label="日常成绩" :required="true">
           <a-input-number
             v-model:value="confirmDailyScore"
             :min="0"
@@ -361,10 +390,7 @@
           <a-input :value="formatScorePoints(confirmTotalScorePreview)" disabled />
         </a-form-item>
         <a-form-item>
-          <a-checkbox
-            v-model:checked="confirmAndPublish"
-            :disabled="hasUnreviewedBlockingRisks"
-          >
+          <a-checkbox v-model:checked="confirmAndPublish" :disabled="hasUnreviewedBlockingRisks">
             确认后立即发布并通知学生
           </a-checkbox>
         </a-form-item>
@@ -379,10 +405,7 @@
       @update:open="(v: boolean) => (riskReviewDrawerOpen = v)"
       @close="riskReviewDrawerOpen = false"
     >
-      <UiEmpty
-        v-if="blockingRiskReasons.length === 0"
-        description="暂无数据"
-      />
+      <UiEmpty v-if="blockingRiskReasons.length === 0" description="暂无数据" />
       <div v-else class="score-finalize__risk-review-list">
         <div
           v-for="reason in blockingRiskReasons"
@@ -414,7 +437,10 @@
             size="sm"
             variant="outline"
             :loading="riskReviewSavingReasonCode === reason.reasonCode"
-            :disabled="riskReviewSavingReasonCode !== null && riskReviewSavingReasonCode !== reason.reasonCode"
+            :disabled="
+              riskReviewSavingReasonCode !== null &&
+              riskReviewSavingReasonCode !== reason.reasonCode
+            "
             @click="toggleRiskReasonReviewed(reason.reasonCode)"
           >
             {{ isRiskReasonReviewed(reason.reasonCode) ? '取消复核标记' : '标记已复核' }}
@@ -460,7 +486,11 @@
       :width="480"
       :mask-closable="false"
       hide-footer
-      @update:open="(v: boolean) => { if (!v) closeNextStep() }"
+      @update:open="
+        (v: boolean) => {
+          if (!v) closeNextStep()
+        }
+      "
       @close="closeNextStep"
     >
       <div class="score-finalize__next-step">
@@ -496,31 +526,22 @@ import type { Key } from 'ant-design-vue/es/_util/type'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
 import type { OperationLogResponse, OperationTypeCode } from '@/apis/mark/admin-audit'
-import type {
-  ExamDetailResponse,
-} from '@/apis/mark/exam'
+import {
+  AuditTargetTypeCode,
+  listOperationLogs,
+  OperationTypeDescription,
+} from '@/apis/mark/admin-audit'
+import type { ExamDetailResponse } from '@/apis/mark/exam'
+import { getExamDetail, pageExams } from '@/apis/mark/exam'
 import type { ExamPaperScoreResponse, ExamQuestionScoreResponse } from '@/apis/mark/exam-grade'
-import type {ExamWorkbenchScorePanelResponse} from '@/apis/mark/exam-progress';
+import { getPaperScore } from '@/apis/mark/exam-grade'
+import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
+import { getScorePanel } from '@/apis/mark/exam-progress'
 import type {
   ExamScoreSummaryItemResponse,
   FinalScoreRiskOverviewResponse,
   FinalScoreRiskReasonCode,
 } from '@/apis/mark/exam-score'
-import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
-import type { ScoreBiasLevelCode } from '@/apis/mark/score-bias'
-import type { BadgeTone, FilterField, UiTableRowActionItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { AuditTargetTypeCode, listOperationLogs, OperationTypeDescription } from '@/apis/mark/admin-audit'
-import {
-  getExamDetail,
-  pageExams,
-} from '@/apis/mark/exam'
-import { getPaperScore } from '@/apis/mark/exam-grade'
-import { getScorePanel } from '@/apis/mark/exam-progress'
 import {
   batchConfirmSafeFinalScores,
   confirmFinalScore,
@@ -530,10 +551,12 @@ import {
   saveFinalScoreRiskReview,
   withdrawFinalScore,
 } from '@/apis/mark/exam-score'
+import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
 import {
   FINAL_SCORE_STATUS_TONE,
   FinalScoreStatusDescription,
 } from '@/apis/mark/final-score-status'
+import type { ScoreBiasLevelCode } from '@/apis/mark/score-bias'
 import {
   classifyScoreBias,
   computeScoreBiasStats,
@@ -541,6 +564,17 @@ import {
   SCORE_BIAS_LEVEL_TONE,
   ScoreBiasLevelDescription,
 } from '@/apis/mark/score-bias'
+import type {
+  BadgeTone,
+  FilterField,
+  UiTableRowActionItem,
+  UiTrendPoint,
+} from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -698,9 +732,7 @@ const riskReviewDrawerOpen = ref(false)
 const riskReviewSavingReasonCode = ref<FinalScoreRiskReasonCode | null>(null)
 const reviewedRiskReasonCodes = ref<Set<FinalScoreRiskReasonCode>>(new Set())
 
-const HARD_BLOCKING_RISK_REASON_CODES = new Set<FinalScoreRiskReasonCode>([
-  'UNRECONCILED_ABSENCE',
-])
+const HARD_BLOCKING_RISK_REASON_CODES = new Set<FinalScoreRiskReasonCode>(['UNRECONCILED_ABSENCE'])
 
 const pagination = reactive<TablePaginationConfig>({
   current: 1,
@@ -755,7 +787,9 @@ async function loadRiskOverview(): Promise<void> {
     riskOverview.value = await getFinalScoreRiskOverview({ examId: selectedExamId.value })
     const validReasonCodes = new Set(blockingRiskReasons.value.map((reason) => reason.reasonCode))
     reviewedRiskReasonCodes.value = new Set(
-      (riskOverview.value.reviewedReasonCodes ?? []).filter((reasonCode) => validReasonCodes.has(reasonCode)),
+      (riskOverview.value.reviewedReasonCodes ?? []).filter((reasonCode) =>
+        validReasonCodes.has(reasonCode),
+      ),
     )
   } catch (error) {
     riskOverview.value = null
@@ -818,7 +852,7 @@ function handleStatusTabChange(tabKey: Key): void {
   void loadCandidates()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void loadCandidates()
@@ -862,8 +896,8 @@ const hasHardBlockingRisks = computed(() => hardBlockingRiskReasons.value.length
 const hasUnreviewedBlockingRisks = computed(() => {
   return blockingRiskReasons.value.some(
     (reason) =>
-      !HARD_BLOCKING_RISK_REASON_CODES.has(reason.reasonCode)
-      && !reviewedRiskReasonCodes.value.has(reason.reasonCode),
+      !HARD_BLOCKING_RISK_REASON_CODES.has(reason.reasonCode) &&
+      !reviewedRiskReasonCodes.value.has(reason.reasonCode),
   )
 })
 
@@ -940,12 +974,12 @@ function warnUnreviewedBlockingRisks(): boolean {
 const canBatchConfirmSafe = computed(() => {
   const overview = effectiveRiskOverview.value
   return Boolean(
-    overview
-    && overview.safeConfirmableCount > 0
-    && blockingRiskReasons.value.length === 0
-    && !hasHardBlockingRisks.value
-    && !hasDailyScoreConfig.value
-    && !batchConfirming.value,
+    overview &&
+    overview.safeConfirmableCount > 0 &&
+    blockingRiskReasons.value.length === 0 &&
+    !hasHardBlockingRisks.value &&
+    !hasDailyScoreConfig.value &&
+    !batchConfirming.value,
   )
 })
 
@@ -1101,7 +1135,9 @@ const detailCandidate = ref<ExamScoreSummaryItemResponse | null>(null)
 const paperScore = ref<ExamPaperScoreResponse | null>(null)
 
 // computed 派生强类型题目数组，模板侧用 paperQuestions[index] 取 VO，避免 a-table slot record 类型丢失。
-const paperQuestions = computed<ExamQuestionScoreResponse[]>(() => paperScore.value?.questions ?? [])
+const paperQuestions = computed<ExamQuestionScoreResponse[]>(
+  () => paperScore.value?.questions ?? [],
+)
 
 const paperItemColumns: ColumnType<ExamQuestionScoreResponse>[] = [
   { title: '题号', key: 'questionNo', width: 80 },
@@ -1172,13 +1208,14 @@ async function loadPaperAuditLogs(): Promise<void> {
   const paperInstanceId = detailCandidate.value.paperInstanceId
   try {
     const logs = await readAllPages(
-      (pageNum) => listOperationLogs({
-        examId,
-        targetType: AuditTargetTypeCode.EXAM_FINAL_SCORE,
-        targetId: paperInstanceId,
-        pageNum,
-        pageSize: SCORE_AUDIT_LOG_PAGE_SIZE,
-      }),
+      (pageNum) =>
+        listOperationLogs({
+          examId,
+          targetType: AuditTargetTypeCode.EXAM_FINAL_SCORE,
+          targetId: paperInstanceId,
+          pageNum,
+          pageSize: SCORE_AUDIT_LOG_PAGE_SIZE,
+        }),
       '操作记录加载失败，请刷新后重试',
     )
     auditLogs.value = logs.sort((a, b) => {
@@ -1298,10 +1335,9 @@ const historicalTrendPoints = computed<UiTrendPoint[]>(() => {
   }))
 })
 
-const historicalTrendHint = computed(() => buildTrendChartInsight(
-  historicalTrendPoints.value,
-  { valueUnit: ' 分' },
-))
+const historicalTrendHint = computed(() =>
+  buildTrendChartInsight(historicalTrendPoints.value, { valueUnit: ' 分' }),
+)
 
 const { chartOption: historicalTrendChartOption } = useChartOption(() =>
   buildTrendLineChartOption(historicalTrendPoints.value, {
@@ -1407,8 +1443,10 @@ function resolveConfirmExamScorePreview(score: ExamPaperScoreResponse): number {
   }
   const questions = score.questions ?? []
   if (
-    questions.length === 0
-    || questions.some((question) => question.gradeStatus !== 'CONFIRMED' || question.teacherReviewScore == null)
+    questions.length === 0 ||
+    questions.some(
+      (question) => question.gradeStatus !== 'CONFIRMED' || question.teacherReviewScore == null,
+    )
   ) {
     return 0
   }
@@ -1486,8 +1524,8 @@ function deriveNextStepSuggestion(): void {
     return
   }
   // 当前页找下一份未确认
-  const next
-    = candidates.value.find(
+  const next =
+    candidates.value.find(
       (c) => c.finalScoreStatus === 'CALCULATED' || c.finalScoreStatus === 'PENDING',
     ) ?? null
   if (next) {
@@ -1505,7 +1543,8 @@ function deriveNextStepSuggestion(): void {
     visible: true,
     kind: 'continue-next',
     title: '当前页已全部核对',
-    description: '当前页成绩已处理，全场仍有待确认或风险项，请切换筛选 / 翻页或处理风险概览中的问题。',
+    description:
+      '当前页成绩已处理，全场仍有待确认或风险项，请切换筛选 / 翻页或处理风险概览中的问题。',
     nextCandidate: null,
   }
 }
@@ -1545,7 +1584,7 @@ async function handleConfirm(): Promise<void> {
     await confirmFinalScore({
       examId,
       paperInstanceId,
-      dailyScore: hasDailyScoreConfig.value ? confirmDailyScore.value ?? undefined : undefined,
+      dailyScore: hasDailyScoreConfig.value ? (confirmDailyScore.value ?? undefined) : undefined,
     })
     if (confirmAndPublish.value) {
       const canContinue = await ensureScorePublishPreconditions()
@@ -1628,22 +1667,26 @@ async function handleWithdraw(): Promise<void> {
 }
 
 // ─── 初始化 ─────────────────────────────────────
-watch(selectedExamId, (value) => {
-  pagination.current = 1
-  statusTabKey.value = SCORE_STATUS_TAB_ALL
-  scoreFilterForm.keyword = ''
-  reviewedRiskReasonCodes.value = new Set()
-  riskReviewDrawerOpen.value = false
-  examDetail.value = null
-  candidates.value = []
-  riskOverview.value = null
-  scorePanel.value = null
-  panelLoadError.value = ''
-  pagination.total = 0
-  if (value) {
-    void Promise.all([loadExamDetail(), refreshScoreFinalizeData()])
-  }
-}, { immediate: true })
+watch(
+  selectedExamId,
+  (value) => {
+    pagination.current = 1
+    statusTabKey.value = SCORE_STATUS_TAB_ALL
+    scoreFilterForm.keyword = ''
+    reviewedRiskReasonCodes.value = new Set()
+    riskReviewDrawerOpen.value = false
+    examDetail.value = null
+    candidates.value = []
+    riskOverview.value = null
+    scorePanel.value = null
+    panelLoadError.value = ''
+    pagination.total = 0
+    if (value) {
+      void Promise.all([loadExamDetail(), refreshScoreFinalizeData()])
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <style lang="scss" scoped>
@@ -1653,11 +1696,11 @@ watch(selectedExamId, (value) => {
 
 .score-finalize {
   &__notice-banner {
-    margin-top: var(--dp-space-3, 12px);
+    margin-top: var(--dp-space-3);
   }
 
   &__alert {
-    margin-top: var(--dp-space-3, 12px);
+    margin-top: var(--dp-space-3);
   }
 
   &__guide {
@@ -1673,14 +1716,14 @@ watch(selectedExamId, (value) => {
   }
 
   &__table-section {
-    margin-top: var(--dp-space-3, 12px);
+    margin-top: var(--dp-space-3);
   }
 
   &__table-shell {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-4, 16px);
-    padding: var(--dp-space-4, 16px) var(--dp-space-5, 20px) var(--dp-space-5, 20px);
+    gap: var(--dp-space-4);
+    padding: var(--dp-space-4) var(--dp-space-5) var(--dp-space-5);
   }
 
   &__status-tabs {
@@ -1693,7 +1736,7 @@ watch(selectedExamId, (value) => {
   &__table-toolbar {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-3, 12px);
+    gap: var(--dp-space-3);
     width: 100%;
   }
 
@@ -1701,7 +1744,7 @@ watch(selectedExamId, (value) => {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: var(--dp-space-3, 12px);
+    gap: var(--dp-space-3);
     flex-wrap: wrap;
     width: 100%;
   }
@@ -1709,14 +1752,14 @@ watch(selectedExamId, (value) => {
   &__table-title {
     margin: 0;
     font-size: 16px;
-    font-weight: var(--dp-font-weight-title, 600);
+    font-weight: var(--dp-font-weight-title);
     line-height: 1.5;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__table {
     :deep(.ant-table-thead > tr > th) {
-      background: var(--dp-surface-soft, #f8fafc);
+      background: var(--dp-surface-soft);
       font-weight: 600;
     }
   }
@@ -1732,7 +1775,7 @@ watch(selectedExamId, (value) => {
   }
 
   &__hint {
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__table-actions {
@@ -1753,9 +1796,9 @@ watch(selectedExamId, (value) => {
     justify-content: space-between;
     gap: 16px;
     padding: 12px;
-    border: 1px solid var(--dp-border, #e2e8f0);
-    border-radius: var(--dp-radius-panel, 8px);
-    background: var(--dp-surface, #fff);
+    border: 1px solid var(--dp-border);
+    border-radius: var(--dp-radius-panel);
+    background: var(--dp-surface);
   }
 
   &__risk-review-main {
@@ -1767,13 +1810,13 @@ watch(selectedExamId, (value) => {
   &__risk-review-title {
     font-size: 14px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__risk-review-desc {
     margin-top: 4px;
     font-size: 12px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__bias-cell {
@@ -1785,14 +1828,14 @@ watch(selectedExamId, (value) => {
 
   &__bias-delta {
     font-size: 12px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__detail-section-helper {
     margin-left: 8px;
     font-size: 12px;
     font-weight: normal;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__history-chart {
@@ -1807,7 +1850,7 @@ watch(selectedExamId, (value) => {
 
   &__next-step-desc {
     margin: 0;
-    color: var(--dp-text, #1f2937);
+    color: var(--dp-text);
   }
 
   &__next-step-actions {

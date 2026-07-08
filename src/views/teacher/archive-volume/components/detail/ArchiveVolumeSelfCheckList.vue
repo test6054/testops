@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { ArchiveSelfCheckStatusCode } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { computed, onMounted } from 'vue'
 import {
   ARCHIVE_SELF_CHECK_STATUS_TONE,
   ArchiveSelfCheckStatusDescription,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { computed, onMounted } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -32,7 +32,7 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  "refreshed": []
+  refreshed: []
   'open-sign-off': []
 }>()
 
@@ -65,7 +65,7 @@ async function handleToggle(templateItemId: string, checked: boolean) {
   emit('refreshed')
 }
 
-function handleRowClick(item: { templateItemId: string, checked?: boolean }) {
+function handleRowClick(item: { templateItemId: string; checked?: boolean }) {
   if (props.readonly || checking.value) return
   void handleToggle(item.templateItemId, !item.checked)
 }
@@ -144,24 +144,24 @@ defineExpose({ loadSelfCheck })
 .archive-volume-self-check-list {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-3);
 }
 
 .archive-volume-self-check-list--embedded {
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-3);
 }
 
 .archive-volume-self-check-list__head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-3);
 }
 
 .archive-volume-self-check-list__title-wrap {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 
 .archive-volume-self-check-list__title {
@@ -173,7 +173,7 @@ defineExpose({ loadSelfCheck })
 .archive-volume-self-check-list__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 
 .archive-volume-self-check-list__items {

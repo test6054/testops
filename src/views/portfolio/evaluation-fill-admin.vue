@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationModeCode } from '@/apis/portfolio/enums'
+import {
+  PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES,
+  PortfolioEvaluationModeDescription,
+} from '@/apis/portfolio/enums'
 import type {
   PortfolioEvaluationEntrySummaryItemVO,
   PortfolioEvaluationEntrySummaryVO,
@@ -9,17 +13,13 @@ import type {
   PortfolioEvaluationSubjectTeacherOptionVO,
   PortfolioEvaluationTaskVO,
 } from '@/apis/portfolio/teacher-platform'
-import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import {
-  PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES,
-  PortfolioEvaluationModeDescription,
-} from '@/apis/portfolio/enums'
 import {
   portfolioEvaluationEntryApi,
   portfolioEvaluationTaskApi,
 } from '@/apis/portfolio/teacher-platform'
+import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -377,7 +377,11 @@ onMounted(async () => {
                 {{ indicator.indicatorName }}
               </a-select-option>
             </a-select>
-            <a-input-number v-model:value="fillForm.score" placeholder="得分" style="width: 100px" />
+            <a-input-number
+              v-model:value="fillForm.score"
+              placeholder="得分"
+              style="width: 100px"
+            />
             <a-input v-model:value="fillForm.commentText" placeholder="评语" style="flex: 1" />
             <UiButton
               variant="primary"
@@ -446,7 +450,7 @@ onMounted(async () => {
   font-size: 14px;
 }
 .fill-window-hint {
-  color: var(--dp-text-muted, #666);
+  color: var(--dp-text-muted);
   font-size: 14px;
 }
 </style>

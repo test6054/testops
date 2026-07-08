@@ -1,3 +1,4 @@
+@use './breakpoints' as bp;
 // mark-vue ECharts 图表区块：趋�?/ 柱状 / 环形进度统一布局与空�?
 
 .mark-chart-host {
@@ -13,7 +14,7 @@
   &:focus-visible {
     outline: 2px solid var(--ant-color-primary, #1677ff);
     outline-offset: 2px;
-    border-radius: var(--dp-radius-control, 4px);
+    border-radius: var(--dp-radius-control);
   }
 }
 
@@ -62,10 +63,10 @@
 .mark-distribution-section,
 .mark-scatter-section,
 .mark-heatmap-section {
-  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
-  border: 1px solid var(--dp-border, #e2e8f0);
-  border-radius: var(--dp-radius-panel, 6px);
-  background: var(--dp-surface, #fff);
+  padding: var(--dp-space-3) var(--dp-space-4);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
 }
 
 .mark-trend-section__head,
@@ -76,8 +77,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3, 12px);
-  margin-bottom: var(--dp-space-2, 8px);
+  gap: var(--dp-space-3);
+  margin-bottom: var(--dp-space-2);
 }
 
 .mark-trend-section__title,
@@ -87,7 +88,7 @@
 .mark-heatmap-section__title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .mark-trend-section__hint,
@@ -95,9 +96,9 @@
 .mark-distribution-section__hint,
 .mark-scatter-section__hint,
 .mark-heatmap-section__hint {
-  font-size: var(--dp-type-hint-size, 12px);
-  line-height: var(--dp-type-hint-line-height, 18px);
-  color: var(--dp-text-secondary, #475569);
+  font-size: var(--dp-type-hint-size);
+  line-height: var(--dp-type-hint-line-height);
+  color: var(--dp-text-secondary);
   text-align: right;
 }
 
@@ -119,13 +120,13 @@
   align-items: center;
   justify-content: center;
   min-height: 160px;
-  padding: var(--dp-space-4, 16px) 0;
+  padding: var(--dp-space-4) 0;
 }
 
 .mark-gauge-block {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-4, 16px);
+  gap: var(--dp-space-4);
   min-width: 0;
 }
 
@@ -142,7 +143,7 @@
 .mark-gauge-block__meta {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-1, 4px);
+  gap: var(--dp-space-1);
   min-width: 0;
   flex: 1;
 }
@@ -155,29 +156,29 @@
 .mark-gauge-block__formula {
   font-size: 16px;
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
   line-height: 1.4;
 }
 
 .mark-gauge-block__hint {
   margin: 0;
-  font-size: var(--dp-type-hint-size, 12px);
-  line-height: var(--dp-type-hint-line-height, 18px);
-  color: var(--dp-text-secondary, #475569);
+  font-size: var(--dp-type-hint-size);
+  line-height: var(--dp-type-hint-line-height);
+  color: var(--dp-text-secondary);
 }
 
 .mark-gauge-block__detail-list {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-1, 4px);
+  gap: var(--dp-space-1);
   margin: 0;
   padding: 0;
   list-style: none;
   font-size: 12px;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
-@media (max-width: 767px) {
+@media (max-width: bp.$layout-mobile-max) {
   .mark-gauge-block:not(.mark-gauge-block--stacked) {
     flex-direction: column;
     align-items: flex-start;

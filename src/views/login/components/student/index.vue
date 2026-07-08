@@ -61,13 +61,13 @@
 
 <script lang="ts" setup>
 import type { TenantPublicInfo } from '@/apis/auth'
+import { getCaptchaConfig, getTenantsByStudentNo } from '@/apis/auth'
 import type { SchoolItem } from '@/components/SchoolAutocomplete.vue'
+import SchoolAutocomplete from '@/components/SchoolAutocomplete.vue'
 import message from 'ant-design-vue/es/message'
 import { nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { getCaptchaConfig, getTenantsByStudentNo } from '@/apis/auth'
 import AjCaptcha from '@/components/AjCaptcha/index.vue'
-import SchoolAutocomplete from '@/components/SchoolAutocomplete.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiPasswordInput from '@/components/ui-guide/ui/PasswordInput.vue'
@@ -83,7 +83,7 @@ import { getSafeRedirect } from '@/utils/redirect-validator'
 const props = defineProps<{
   subdomainMode?: boolean
   subdomainTenant?: TenantPublicInfo | null
-  prefillData?: { studentNo: string, password: string }
+  prefillData?: { studentNo: string; password: string }
 }>()
 
 const router = useRouter()
@@ -320,10 +320,10 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  background: var(--dp-red-50, #fef2f2);
+  background: var(--dp-red-50);
   border: 1px solid rgba(239, 68, 68, 0.2);
-  border-radius: var(--dp-radius-control, 4px);
-  color: var(--dp-red-500, #ef4444);
+  border-radius: var(--dp-radius-control);
+  color: var(--dp-red-500);
   font-size: 13px;
   line-height: 1.5;
 
@@ -337,19 +337,19 @@ onMounted(() => {
   width: 100%;
 
   .ant-input-affix-wrapper {
-    min-height: var(--dp-control-height-lg, 40px);
-    border-radius: var(--dp-radius-control, 4px);
-    border: 1px solid var(--dp-border, #e5e7eb);
-    background-color: var(--dp-bg-control, #f3f4f6);
+    min-height: var(--dp-control-height-lg);
+    border-radius: var(--dp-radius-control);
+    border: 1px solid var(--dp-border);
+    background-color: var(--dp-bg-control);
   }
 
   .ant-input-affix-wrapper:hover {
-    border-color: var(--dp-blue-600, #2563eb);
+    border-color: var(--dp-blue-600);
   }
 
   .ant-input-affix-wrapper:focus-within {
-    border-color: var(--dp-blue-600, #2563eb);
-    box-shadow: 0 0 0 3px var(--dp-focus-ring, rgba(37, 99, 235, 0.25));
+    border-color: var(--dp-blue-600);
+    box-shadow: 0 0 0 3px var(--dp-focus-ring);
   }
 }
 </style>

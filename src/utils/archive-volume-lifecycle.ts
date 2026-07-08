@@ -1,12 +1,9 @@
 import type {
   ArchiveIntegrityStatusCode,
   ArchiveTransferStatusCode,
-  ArchiveVolumeStatusCode,
+  ArchiveVolumeStatusCode
 } from '@/apis/mark/archive-volume'
-import {
-  ArchiveAppraisalStatusCode,
-  ArchiveDestructionStatusCode,
-} from '@/apis/mark/archive-volume'
+import { ArchiveAppraisalStatusCode, ArchiveDestructionStatusCode } from '@/apis/mark/archive-volume'
 
 /** 归档卷全链路生命周期节点状态（lifecycle-pipe 展示用；卷主链须来自 navigationSummary.lifecycleNodes） */
 export type ArchiveLifecycleStepStatus = 'done' | 'active' | 'pending' | 'warn'
@@ -60,7 +57,7 @@ const APPRAISAL_STEP_DEFINITIONS: Array<ArchiveLifecycleStepDefinition & { key: 
   { key: 'destruction-approve', label: '销毁审批' },
   { key: 'destruction-execute', label: '执行销毁' },
   { key: 'supervise', label: '监销确认' },
-] 
+]
 
 function resolveAppraisalStepDone(
   stepKey: AppraisalStepKey,
@@ -250,7 +247,7 @@ export interface ArchiveExamGateLifecycleInput {
 
 const EXAM_GATE_STEP_DEFINITIONS: ArchiveLifecycleStepDefinition[] = [
   { key: 'gate', label: '成绩发布 + 关考' },
-  { key: 'auto-create', label: '自动创建归档卷' },
+  { key: 'auto-create', label: '自动创建归档任务' },
   { key: 'collecting', label: '材料收集' },
   { key: 'submit', label: '提交归档' },
 ]

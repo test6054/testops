@@ -133,7 +133,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   add: [item: T, index: number]
   remove: [item: T, index: number]
-  reorder: [moveEvent: { from: number, to: number }]
+  reorder: [moveEvent: { from: number; to: number }]
 }>()
 
 const list = computed(() => modelValue.value || [])
@@ -232,14 +232,14 @@ const moveItem = (index: number, offset: number) => {
 }
 
 .dp-form-list__card {
-  border: 1px solid var(--ant-color-border, var(--dp-border, #e5e7eb));
-  border-radius: var(--dp-radius-panel, 8px);
+  border: 1px solid var(--ant-color-border, var(--dp-border));
+  border-radius: var(--dp-radius-panel);
   background: linear-gradient(
     180deg,
-    var(--ant-color-primary-bg, var(--dp-surface-subtle, #f8fafc)) 0%,
-    var(--ant-color-bg-container, var(--dp-surface, #fff)) 56%
+    var(--ant-color-primary-bg, var(--dp-surface-subtle)) 0%,
+    var(--ant-color-bg-container, var(--dp-surface)) 56%
   );
-  box-shadow: var(--dp-shadow-card, 0 6px 18px rgba(15, 23, 42, 0.04));
+  box-shadow: var(--dp-shadow-card);
   padding: 14px;
   display: flex;
   flex-direction: column;
@@ -263,9 +263,9 @@ const moveItem = (index: number, offset: number) => {
 .dp-form-list__badge {
   width: 28px;
   height: 28px;
-  border-radius: var(--dp-radius-panel, var(--dp-radius-control-inner, 4px));
-  background: var(--ant-color-primary-bg, var(--dp-surface-subtle, #f8fafc));
-  color: var(--ant-color-primary-active, var(--dp-blue-700, #1d4ed8));
+  border-radius: var(--dp-radius-panel);
+  background: var(--ant-color-primary-bg, var(--dp-surface-subtle));
+  color: var(--ant-color-primary-active, var(--dp-blue-700));
   font-weight: 700;
   font-size: 13px;
   display: inline-flex;
@@ -276,7 +276,7 @@ const moveItem = (index: number, offset: number) => {
 .dp-form-list__text {
   font-weight: 700;
   font-size: 14px;
-  color: var(--ant-color-text, var(--dp-text-primary, #0f172a));
+  color: var(--ant-color-text, var(--dp-text-primary));
 }
 
 .dp-form-list__actions {
@@ -291,9 +291,9 @@ const moveItem = (index: number, offset: number) => {
 }
 
 .dp-form-list__empty {
-  border: 1px dashed var(--ant-color-border, var(--dp-border, #e5e7eb));
-  border-radius: var(--dp-radius-panel, 8px);
-  background: var(--ant-color-fill-tertiary, var(--dp-gray-50, #f8fafc));
+  border: 1px dashed var(--ant-color-border, var(--dp-border));
+  border-radius: var(--dp-radius-panel);
+  background: var(--ant-color-fill-tertiary, var(--dp-gray-50));
   padding: 16px;
 }
 
@@ -301,20 +301,20 @@ const moveItem = (index: number, offset: number) => {
   width: 100%;
   border-style: dashed;
   border-color: var(--ant-color-border, currentColor);
-  border-radius: var(--dp-radius-panel, 8px);
+  border-radius: var(--dp-radius-panel);
   background: linear-gradient(
     90deg,
-    var(--ant-color-primary-bg, var(--dp-surface-subtle, #f8fafc)) 0%,
-    var(--ant-color-bg-container, var(--dp-surface, #fff))
+    var(--ant-color-primary-bg, var(--dp-surface-subtle)) 0%,
+    var(--ant-color-bg-container, var(--dp-surface))
   );
-  color: var(--ant-color-primary-active, var(--dp-text-primary, #0f172a));
+  color: var(--ant-color-primary-active, var(--dp-text-primary));
 }
 
 .dp-form-list__add:hover {
   border-color: var(--ant-color-primary);
   color: var(--ant-color-primary);
-  background: var(--ant-color-bg-container, var(--dp-surface, #fff));
-  box-shadow: var(--dp-shadow-sm, 0 4px 12px rgba(15, 23, 42, 0.08));
+  background: var(--ant-color-bg-container, var(--dp-surface));
+  box-shadow: var(--dp-shadow-sm);
 }
 
 .dp-form-list__body :deep(.ant-form-item) {

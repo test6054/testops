@@ -1,10 +1,10 @@
 import type { UserDetailedInfoVO } from '@/apis/auth'
+import { getUserDetailedInfo } from '@/apis/auth'
 import type { UserLoginResponseDto } from '@/types/auth'
 import { defineStore } from 'pinia'
 import { computed, reactive, ref } from 'vue'
-import { getUserDetailedInfo } from '@/apis/auth'
 import { checkTenantAdminPermission } from '@/apis/edu/tenant-admin'
-import { UserStatusEnum } from '@/types/enums'
+import { RoleEnum, UserStatusEnum } from '@/types/enums'
 import { useAuthStore } from './auth'
 
 export const useUserStore = defineStore(
@@ -38,7 +38,7 @@ export const useUserStore = defineStore(
       tenantName: '',
       schoolName: '',
       tenantType: '',
-      isTenantAdmin: false,
+      isTenantAdmin: undefined,
       lastLoginTime: '',
       passwordLastChangedTime: '',
       gender: undefined,
@@ -60,8 +60,14 @@ export const useUserStore = defineStore(
     const studentClassName = computed(() => userInfo.studentDetails?.className || '')
     const studentEnrollmentYear = computed(() => userInfo.studentDetails?.enrollmentYear ?? null)
 
-    // 是否为租户管理员
-    const isTenantAdmin = computed(() => userInfo.isTenantAdmin || false)
+    // 是否为租户管理员（SUPER_ADMIN 恒为 true；SCH_TECH 以 check-permission 为准）
+    const isTenantAdmin = computed(() => {
+      const authStore = useAuthStore()
+      if (authStore.userRole === RoleEnum.SUPER_ADMIN) {
+        return true
+      }
+      return userInfo.isTenantAdmin === true
+    })
 
     // 租户信息
     const tenantInfo = computed(() => ({
@@ -126,7 +132,7 @@ export const useUserStore = defineStore(
         tenantName: '',
         schoolName: '',
         tenantType: '',
-        isTenantAdmin: false,
+        isTenantAdmin: undefined,
         lastLoginTime: '',
         passwordLastChangedTime: '',
         gender: undefined,
@@ -185,10 +191,10 @@ export const useUserStore = defineStore(
       }
       // 如果已经有用户信息且token有效，且不是强制刷新，直接返回
       if (
-        !forceRefresh
-        && userInfo.userId
-        && authStore.token
-        && !authStore.isTokenExpiredCheck(authStore.token)
+        !forceRefresh &&
+        userInfo.userId &&
+        authStore.token &&
+        !authStore.isTokenExpiredCheck(authStore.token)
       ) {
         await fetchTenantAdminPermission(false)
         return Promise.resolve()
@@ -231,17 +237,29 @@ export const useUserStore = defineStore(
       }
     }
 
-    // 获取租户管理员权限 - 优化：避免重复调用
+    // 获取租户管理员权限 - edu-user check-permission 为真源；失败时保留已有 true，避免菜单闪失
     const fetchTenantAdminPermission = async (skipIfAlreadySet = false) => {
-      // 如果已经设置过且要求跳过重复调用，则直接返回
+      const authStore = useAuthStore()
+
       if (skipIfAlreadySet && userInfo.isTenantAdmin !== undefined) {
         return
       }
+
+      if (authStore.userRole === RoleEnum.SUPER_ADMIN) {
+        userInfo.isTenantAdmin = true
+        return
+      }
+
+      const preservedTenantAdmin = userInfo.isTenantAdmin === true
 
       try {
         const response = await checkTenantAdminPermission()
         userInfo.isTenantAdmin = response?.isTenantAdmin === true
       } catch {
+        if (preservedTenantAdmin) {
+          userInfo.isTenantAdmin = true
+          return
+        }
         userInfo.isTenantAdmin = false
       }
     }
@@ -298,6 +316,7 @@ export const useUserStore = defineStore(
         'userInfo.tenantName',
         'userInfo.schoolName',
         'userInfo.tenantType',
+        'userInfo.isTenantAdmin',
         'userInfo.studentDetails',
         'userInfo.teacherDetails',
         'userInfo.forcePasswordChange',

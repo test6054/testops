@@ -1,18 +1,18 @@
 .scanner-center__surface {
-  margin-top: var(--dp-space-4, 16px);
+  margin-top: var(--dp-space-4);
 }
 
 .scanner-center__signal {
-  margin-bottom: var(--dp-space-4, 16px);
+  margin-bottom: var(--dp-space-4);
 }
 
 .scanner-dispatch-panel__signal {
-  margin-bottom: var(--dp-space-4, 16px);
+  margin-bottom: var(--dp-space-4);
 }
 
 .scanner-dispatch-panel__toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
   align-items: center;
 }

@@ -63,8 +63,8 @@ const handleClick = (evt: MouseEvent) => {
   gap: 14px;
   min-width: 0;
   padding: 16px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
   background: #fff;
   transition:
     border-color 0.2s ease,
@@ -78,8 +78,8 @@ const handleClick = (evt: MouseEvent) => {
 }
 
 .ui-assistant-entry-card--clickable:hover {
-  border-color: var(--dp-border-strong, #d0d5dd);
-  background: var(--dp-gray-50, #f8fafc);
+  border-color: var(--dp-border-strong);
+  background: var(--dp-gray-50);
 }
 
 .ui-assistant-entry-card__icon {
@@ -88,7 +88,7 @@ const handleClick = (evt: MouseEvent) => {
   justify-content: center;
   width: 48px;
   height: 48px;
-  border-radius: var(--dp-radius-panel, 4px);
+  border-radius: var(--dp-radius-panel);
   font-size: 18px;
   font-weight: 800;
 }
@@ -102,14 +102,14 @@ const handleClick = (evt: MouseEvent) => {
 .ui-assistant-entry-card__title {
   font-size: 15px;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-assistant-entry-card__description,
 .ui-assistant-entry-card__helper {
   font-size: 13px;
   line-height: 1.7;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-assistant-entry-card--gray .ui-assistant-entry-card__icon {
@@ -144,6 +144,6 @@ const handleClick = (evt: MouseEvent) => {
 
 .ui-assistant-entry-card--purple .ui-assistant-entry-card__icon {
   background: #f5f3ff;
-  color: var(--dp-purple-500, #722ed1);
+  color: var(--dp-purple-500);
 }
 </style>

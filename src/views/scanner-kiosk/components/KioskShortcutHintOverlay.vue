@@ -144,7 +144,8 @@ onBeforeUnmount(() => {
   </Teleport>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .hint-backdrop {
   position: fixed;
   inset: 0;
@@ -303,7 +304,7 @@ onBeforeUnmount(() => {
   opacity: 0;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: bp.$shell-tablet-max) {
   .hint-body {
     grid-template-columns: 1fr;
   }

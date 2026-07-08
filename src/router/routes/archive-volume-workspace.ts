@@ -18,7 +18,7 @@ export const archiveVolumeWorkspaceRoutes: RouteRecordRaw = {
     params: { volumeId: to.params.volumeId },
   }),
   meta: {
-    title: '归档卷详情',
+    title: '归档任务详情',
     roles: TEACHER_ROLES,
     hideInMenu: true,
     layout: 'ArchiveVolumeDetail',
@@ -31,7 +31,7 @@ export const archiveVolumeWorkspaceRoutes: RouteRecordRaw = {
       name: 'TeacherArchiveVolumeDetail',
       component: () => import('@/views/teacher/archive-volume/archive-volume-detail.vue'),
       meta: {
-        title: '归档卷详情',
+        title: '归档任务详情',
         roles: TEACHER_ROLES,
         hideInMenu: true,
         noCache: true,

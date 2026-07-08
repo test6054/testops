@@ -126,15 +126,24 @@
                 <ExperienceAssistBadge
                   clickable
                   :applied="question.referenceExperienceAudit?.referenceExperienceApplied"
-                  :source-exam-name="question.referenceExperienceAudit?.referenceExperienceSourceExamName"
-                  :consistency-rate="question.referenceExperienceAudit?.referenceExperienceConsistencyRate"
+                  :source-exam-name="
+                    question.referenceExperienceAudit?.referenceExperienceSourceExamName
+                  "
+                  :consistency-rate="
+                    question.referenceExperienceAudit?.referenceExperienceConsistencyRate
+                  "
                   @open-ai-history="emit('open-ai-history-from-whole-question', question)"
                 />
                 <p
-                  v-if="question.referenceExperienceAudit?.referenceExperienceApplied && question.referenceExperienceAudit?.referenceExperienceMatchMode"
+                  v-if="
+                    question.referenceExperienceAudit?.referenceExperienceApplied &&
+                    question.referenceExperienceAudit?.referenceExperienceMatchMode
+                  "
                   class="marking-score-panel__match-mode"
                 >
-                  定标方式：{{ matchModeLabel(question.referenceExperienceAudit.referenceExperienceMatchMode) }}
+                  定标方式：{{
+                    matchModeLabel(question.referenceExperienceAudit.referenceExperienceMatchMode)
+                  }}
                 </p>
               </a-space>
               <a-typography-paragraph
@@ -300,6 +309,7 @@ import type {
 } from '@/apis/mark/marking-organization'
 import type { WholeQuestionForm } from '@/composables/useWholePaperGallery'
 import type { GradingExperienceReferenceMatchModeCode } from '@/types/enums/grading-experience-reference-match-mode-enum'
+import { GradingExperienceReferenceMatchModeDescription } from '@/types/enums/grading-experience-reference-match-mode-enum'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import { ref, watch } from 'vue'
 import ExperienceAssistBadge from '@/components/mark/ExperienceAssistBadge.vue'
@@ -307,7 +317,6 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import { GradingExperienceReferenceMatchModeDescription } from '@/types/enums/grading-experience-reference-match-mode-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'MarkingScorePanel' })
@@ -410,17 +419,17 @@ function quickDigitScores(fullScore: number): number[] {
   &__keyboard-hint {
     margin: 8px 0 0;
     font-size: 12px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__accordion {
-    border: 1px solid var(--dp-border-subtle, #e2e8f0);
-    border-radius: var(--dp-radius-panel, 8px);
+    border: 1px solid var(--dp-border-subtle);
+    border-radius: var(--dp-radius-panel);
     background: var(--ant-color-bg-container, #fff);
     overflow: hidden;
 
     :deep(.ant-collapse-item) {
-      border-bottom: 1px solid var(--dp-border-subtle, #e2e8f0) !important;
+      border-bottom: 1px solid var(--dp-border-subtle) !important;
     }
 
     :deep(.ant-collapse-item:last-child) {
@@ -448,9 +457,9 @@ function quickDigitScores(fullScore: number): number[] {
   &__question-stem {
     margin: 0 0 8px;
     padding: 8px 10px;
-    border: 1px solid var(--dp-border-subtle, #e2e8f0);
-    border-radius: var(--dp-radius-panel, 8px);
-    color: var(--dp-text-primary, #0f172a);
+    border: 1px solid var(--dp-border-subtle);
+    border-radius: var(--dp-radius-panel);
+    color: var(--dp-text-primary);
     background: var(--ant-color-bg-container, #fff);
   }
 
@@ -469,9 +478,9 @@ function quickDigitScores(fullScore: number): number[] {
     gap: 8px;
     margin: 0 0 8px;
     padding: 8px;
-    border: 1px solid var(--dp-border-subtle, #e2e8f0);
+    border: 1px solid var(--dp-border-subtle);
     border-radius: var(--dp-radius-panel);
-    background: var(--dp-surface-subtle, #f8fafc);
+    background: var(--dp-surface-subtle);
   }
 
   &__ai-text {
@@ -479,7 +488,7 @@ function quickDigitScores(fullScore: number): number[] {
     align-items: baseline;
     gap: 4px;
     font-size: 13px;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
 
     strong {
       color: var(--ant-color-primary, #1677ff);
@@ -489,7 +498,7 @@ function quickDigitScores(fullScore: number): number[] {
 
   &__ai-diagnostic {
     margin-bottom: 0;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
     font-size: 13px;
   }
 
@@ -501,7 +510,7 @@ function quickDigitScores(fullScore: number): number[] {
   &__match-mode {
     margin: 0;
     font-size: 12px;
-    color: var(--dp-text-secondary, #64748b);
+    color: var(--dp-text-secondary);
   }
 }
 </style>

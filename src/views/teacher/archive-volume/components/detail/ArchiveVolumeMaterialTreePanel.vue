@@ -15,12 +15,14 @@
         >
           <span class="catalog-seq">{{ entry.seq }}</span>
           <span class="archive-volume-material-tree__title">{{ entry.title }}</span>
-          <span v-if="entry.pageLabel || entry.readySummary" class="archive-volume-material-tree__meta">
-            <span v-if="entry.pageLabel" class="archive-volume-material-tree__pages">{{ entry.pageLabel }}</span>
-            <span
-              v-if="entry.readySummary"
-              class="archive-volume-material-tree__ready"
-            >
+          <span
+            v-if="entry.pageLabel || entry.readySummary"
+            class="archive-volume-material-tree__meta"
+          >
+            <span v-if="entry.pageLabel" class="archive-volume-material-tree__pages">{{
+              entry.pageLabel
+            }}</span>
+            <span v-if="entry.readySummary" class="archive-volume-material-tree__ready">
               {{ entry.readySummary.ready }}/{{ entry.readySummary.total }} 就绪
             </span>
           </span>
@@ -46,11 +48,8 @@ import type {
   ArchiveVolumeCatalogLineVO,
   ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
+import { ArchiveMaterialTypeDescription, getArchiveVolumeCatalog } from '@/apis/mark/archive-volume'
 import { computed, onMounted, ref, watch } from 'vue'
-import {
-  ArchiveMaterialTypeDescription,
-  getArchiveVolumeCatalog,
-} from '@/apis/mark/archive-volume'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import {
@@ -122,9 +121,7 @@ function isCatalogEntryMissing(catalogKey: string): boolean {
   return props.missingItems.some((item) => archiveMissingItemTargetsCatalogKey(item, catalogKey))
 }
 
-function enrichCatalogEntry(
-  entry: Omit<CatalogTreeEntry, 'readySummary'>,
-): CatalogTreeEntry {
+function enrichCatalogEntry(entry: Omit<CatalogTreeEntry, 'readySummary'>): CatalogTreeEntry {
   if (entry.missing) {
     return entry
   }
@@ -156,34 +153,42 @@ function buildFallbackTreeGroups(): CatalogTreeGroup[] {
   const entryMap = new Map<string, CatalogTreeEntry>()
   for (const item of props.missingItems) {
     const key = resolveArchiveMaterialGroupKey(item)
-    entryMap.set(key, enrichCatalogEntry({
+    entryMap.set(
       key,
-      seq: '—',
-      title: item.catalogCode
-        ? `${item.catalogCode} · ${item.catalogName || materialTypeLabel(item.materialType)}`
-        : materialTypeLabel(item.materialType),
-      missing: true,
-    }))
+      enrichCatalogEntry({
+        key,
+        seq: '—',
+        title: item.catalogCode
+          ? `${item.catalogCode} · ${item.catalogName || materialTypeLabel(item.materialType)}`
+          : materialTypeLabel(item.materialType),
+        missing: true,
+      }),
+    )
   }
   for (const material of props.materials) {
     const key = resolveArchiveMaterialGroupKey(material)
     if (!entryMap.has(key)) {
-      entryMap.set(key, enrichCatalogEntry({
+      entryMap.set(
         key,
-        seq: '—',
-        title: material.catalogCode
-          ? `${material.catalogCode} · ${materialTypeLabel(material.materialType)}`
-          : materialTypeLabel(material.materialType),
-      }))
+        enrichCatalogEntry({
+          key,
+          seq: '—',
+          title: material.catalogCode
+            ? `${material.catalogCode} · ${materialTypeLabel(material.materialType)}`
+            : materialTypeLabel(material.materialType),
+        }),
+      )
     }
   }
   if (entryMap.size === 0) {
     return []
   }
-  return [{
-    category: '归档材料',
-    entries: Array.from(entryMap.values()),
-  }]
+  return [
+    {
+      category: '归档材料',
+      entries: Array.from(entryMap.values()),
+    },
+  ]
 }
 
 function isSelected(key: string): boolean {
@@ -239,8 +244,8 @@ onMounted(() => {
   width: 100%;
   min-width: 280px;
   flex-shrink: 0;
-  padding: var(--dp-space-3, 12px);
-  border: 1px solid var(--dp-border, #e5e7eb);
+  padding: var(--dp-space-3);
+  border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--ant-color-bg-container, #fff);
 }
@@ -257,20 +262,20 @@ onMounted(() => {
 .archive-volume-material-tree__meta {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
   flex-shrink: 0;
 }
 
 .archive-volume-material-tree__pages,
 .archive-volume-material-tree__ready {
-  font-family: var(--dp-font-mono, ui-monospace, monospace);
-  font-size: var(--dp-type-hint-size, 11px);
+  font-family: var(--dp-font-mono);
+  font-size: var(--dp-type-hint-size);
   color: var(--dp-text-muted);
   font-variant-numeric: tabular-nums;
 }
 
 .archive-volume-material-tree__ready {
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 
 .catalog-entry {

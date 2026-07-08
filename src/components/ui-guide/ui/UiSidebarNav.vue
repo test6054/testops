@@ -77,21 +77,21 @@ const handleSelect = (item: UiSidebarNavItem) => {
   display: flex;
   flex-direction: column;
   min-height: 100%;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
 }
 
 .ui-sidebar-nav__head {
   padding: 14px 16px;
-  border-bottom: 1px solid var(--dp-border, #e5e7eb);
+  border-bottom: 1px solid var(--dp-border);
 }
 
 .ui-sidebar-nav__title {
   font-size: 14px;
   line-height: 1.5;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-sidebar-nav__list {
@@ -110,7 +110,7 @@ const handleSelect = (item: UiSidebarNavItem) => {
   min-width: 0;
   padding: 10px 12px;
   border: 1px solid transparent;
-  border-radius: var(--dp-radius-panel, 4px);
+  border-radius: var(--dp-radius-panel);
   background: transparent;
   text-align: left;
   cursor: pointer;
@@ -120,12 +120,12 @@ const handleSelect = (item: UiSidebarNavItem) => {
 }
 
 .ui-sidebar-nav__item:hover:not(:disabled) {
-  background: var(--dp-gray-50, #f8fafc);
+  background: var(--dp-gray-50);
 }
 
 .ui-sidebar-nav__item--active {
-  border-color: var(--dp-blue-200, #bfdbfe);
-  background: var(--dp-blue-50, #eff6ff);
+  border-color: var(--dp-blue-200);
+  background: var(--dp-blue-50);
 }
 
 .ui-sidebar-nav__item:disabled {
@@ -138,12 +138,12 @@ const handleSelect = (item: UiSidebarNavItem) => {
   font-size: 15px;
   line-height: 1.5;
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-sidebar-nav__footer {
   margin-top: auto;
   padding: 12px;
-  border-top: 1px solid var(--dp-border, #e5e7eb);
+  border-top: 1px solid var(--dp-border);
 }
 </style>

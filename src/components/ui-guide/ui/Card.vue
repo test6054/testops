@@ -69,9 +69,9 @@ const hasHeader = computed(
 
 <style scoped>
 .dp-card {
-  background-color: var(--dp-surface, #fff);
-  border: 1px solid var(--dp-card-border, transparent);
-  border-radius: var(--dp-radius-panel, 8px);
+  background-color: var(--dp-surface);
+  border: 1px solid var(--dp-card-border);
+  border-radius: var(--dp-radius-panel);
   box-shadow: var(--dp-shadow-card);
   transition:
     border-color 0.15s ease,
@@ -81,11 +81,11 @@ const hasHeader = computed(
 }
 
 .dp-card--bordered {
-  --dp-card-border: var(--dp-border-strong, #e2e8f0);
+  --dp-card-border: var(--dp-border-strong);
 }
 
 .dp-card--hoverable:hover {
-  border-color: var(--dp-border-strong, #e2e8f0);
+  border-color: var(--dp-border-strong);
 }
 
 .dp-card__header {
@@ -94,7 +94,7 @@ const hasHeader = computed(
   justify-content: space-between;
   gap: 16px;
   padding: 18px 20px 16px;
-  border-bottom: 1px solid var(--dp-border, #e5e7eb);
+  border-bottom: 1px solid var(--dp-border);
 }
 
 .dp-card__title {
@@ -103,7 +103,7 @@ const hasHeader = computed(
   gap: 8px;
   font-size: 15px;
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
   line-height: 1.5;
 }
 
@@ -112,7 +112,7 @@ const hasHeader = computed(
   width: 16px;
   height: 16px;
   font-size: 16px;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
   flex-shrink: 0;
 }
 

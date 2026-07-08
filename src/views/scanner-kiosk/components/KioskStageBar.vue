@@ -39,7 +39,8 @@ const currentIndex = computed(() =>
   </nav>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .stage-bar {
   display: flex;
   align-items: stretch;
@@ -116,7 +117,7 @@ const currentIndex = computed(() =>
   color: var(--kiosk-ink-tertiary);
 }
 
-@media (max-width: 1280px) {
+@media (max-width: bp.$shell-laptop-max) {
   .stage-label small {
     display: none;
   }

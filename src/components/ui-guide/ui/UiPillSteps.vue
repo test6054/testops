@@ -51,8 +51,8 @@ const normalizedSteps = computed(() => {
     ...step,
     key: step.key || `step-${index}`,
     status:
-      step.status
-      || (index < props.current ? 'completed' : index === props.current ? 'running' : 'pending'),
+      step.status ||
+      (index < props.current ? 'completed' : index === props.current ? 'running' : 'pending'),
   }))
 })
 
@@ -96,7 +96,7 @@ function handleClick(step: UiStepItem, index: number) {
 .ui-pill-steps__title {
   font-size: 13px;
   font-weight: 500;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-pill-steps__check {
@@ -154,6 +154,6 @@ function handleClick(step: UiStepItem, index: number) {
 }
 
 .ui-pill-steps__item--clickable:hover {
-  border-color: var(--dp-border-strong, #e2e8f0);
+  border-color: var(--dp-border-strong);
 }
 </style>

@@ -36,11 +36,14 @@ const iconMap = {
     <component :is="iconMap[tone]" class="workbench-notice-banner__icon" aria-hidden="true" />
     <p class="workbench-notice-banner__text">
       <span v-if="title" class="workbench-notice-banner__title">{{ title }}</span>
-      <span v-if="title && description" class="workbench-notice-banner__sep" aria-hidden="true">·</span>
+      <span v-if="title && description" class="workbench-notice-banner__sep" aria-hidden="true"
+        >·</span
+      >
       <span
         class="workbench-notice-banner__description"
         :class="{ 'workbench-notice-banner__description--solo': !title }"
-      >{{ description }}</span>
+        >{{ description }}</span
+      >
     </p>
     <div v-if="$slots.default" class="workbench-notice-banner__actions">
       <slot />
@@ -55,17 +58,17 @@ const iconMap = {
   gap: 10px;
   min-height: 36px;
   padding: 8px 14px;
-  border-radius: var(--dp-radius-panel, 4px);
+  border-radius: var(--dp-radius-panel);
 }
 
 .workbench-notice-banner--warning {
-  border: 1px solid var(--dp-amber-200, #fde68a);
-  background: var(--dp-amber-50, #fffbeb);
+  border: 1px solid var(--dp-amber-200);
+  background: var(--dp-amber-50);
 }
 
 .workbench-notice-banner--info {
-  border: 1px solid var(--dp-blue-200, #bfdbfe);
-  background: var(--dp-blue-50, #eff6ff);
+  border: 1px solid var(--dp-blue-200);
+  background: var(--dp-blue-50);
 }
 
 .workbench-notice-banner__icon {
@@ -74,11 +77,11 @@ const iconMap = {
 }
 
 .workbench-notice-banner--warning .workbench-notice-banner__icon {
-  color: var(--dp-amber-700, #b45309);
+  color: var(--dp-amber-700);
 }
 
 .workbench-notice-banner--info .workbench-notice-banner__icon {
-  color: var(--dp-blue-700, #1d4ed8);
+  color: var(--dp-blue-700);
 }
 
 .workbench-notice-banner__text {
@@ -95,15 +98,15 @@ const iconMap = {
 
 .workbench-notice-banner__title {
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .workbench-notice-banner__sep {
-  color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
+  color: var(--dp-text-muted);
 }
 
 .workbench-notice-banner__description {
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .workbench-notice-banner__actions {

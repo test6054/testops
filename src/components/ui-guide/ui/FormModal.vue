@@ -84,8 +84,8 @@ function handleOpenUpdate(value: boolean) {
   width: 32px;
   height: 32px;
   border-radius: 10px;
-  color: var(--dp-blue-600, #2563eb);
-  background: var(--dp-blue-50, #eff6ff);
+  color: var(--dp-blue-600);
+  background: var(--dp-blue-50);
   font-size: 16px;
   flex-shrink: 0;
 }
@@ -94,6 +94,6 @@ function handleOpenUpdate(value: boolean) {
   margin: 0;
   font-size: 18px;
   font-weight: 700;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 </style>

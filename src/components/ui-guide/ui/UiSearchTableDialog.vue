@@ -149,7 +149,7 @@ const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
   (e: 'search', value: Record<string, unknown>): void
   (e: 'reset', value: Record<string, unknown>): void
-  (e: 'page-change', pageEvent: { current: number, pageSize: number }): void
+  (e: 'page-change', pageEvent: { current: number; pageSize: number }): void
   (e: 'selection-change', rowKeys: Key[]): void
   (e: 'table-change', changeEvent: UiDataTableChangeEvent): void
   (e: 'confirm'): void
@@ -169,7 +169,7 @@ const forwardedTableSlots = computed(() => {
   return Object.keys(slots).filter((name) => !reserved.includes(name))
 })
 
-const handlePageChange = (pageEvent: { current: number, pageSize: number }) => {
+const handlePageChange = (pageEvent: { current: number; pageSize: number }) => {
   emit('page-change', pageEvent)
 }
 
@@ -230,6 +230,6 @@ function handleTableChange(changeEvent: UiDataTableChangeEvent): void {
 .ui-search-table-dialog__selected {
   font-size: 14px;
   font-weight: 600;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 </style>

@@ -2,12 +2,14 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioCorrectionRequestStatusCode } from '@/apis/portfolio/enums'
+import { PortfolioCorrectionRequestStatusDescription } from '@/apis/portfolio/enums'
 import type {
   PortfolioCorrectionDetailVO,
   PortfolioCorrectionSummaryVO,
   PortfolioTargetFieldDefinition,
   PortfolioTeacherOneTableCategoryVO,
 } from '@/apis/portfolio/types'
+import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
@@ -15,8 +17,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
-import { PortfolioCorrectionRequestStatusDescription } from '@/apis/portfolio/enums'
-import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -103,8 +103,8 @@ const fieldOptions = computed(() =>
 
 function applyRoutePrefill() {
   const categoryId = typeof route.query.categoryId === 'string' ? route.query.categoryId : ''
-  const archiveRecordId
-    = typeof route.query.archiveRecordId === 'string' ? route.query.archiveRecordId : ''
+  const archiveRecordId =
+    typeof route.query.archiveRecordId === 'string' ? route.query.archiveRecordId : ''
   const fieldCode = typeof route.query.fieldCode === 'string' ? route.query.fieldCode : ''
   const fieldLabel = typeof route.query.fieldLabel === 'string' ? route.query.fieldLabel : ''
   const wrongValue = typeof route.query.wrongValue === 'string' ? route.query.wrongValue : ''
@@ -224,7 +224,7 @@ async function handleSubmit() {
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   pageNum.value = page.current
   pageSize.value = page.pageSize
   void loadCorrections()
@@ -390,15 +390,15 @@ watch(
 <style scoped lang="scss">
 .correction-page__form,
 .correction-page__list {
-  margin-bottom: var(--dp-space-4, 16px);
+  margin-bottom: var(--dp-space-4);
 }
 
 .correction-page__detail-line {
-  margin: 0 0 var(--dp-space-2, 8px);
+  margin: 0 0 var(--dp-space-2);
   font-size: 14px;
 }
 
 .correction-page__hint {
-  padding: var(--dp-space-6, 24px) 0;
+  padding: var(--dp-space-6) 0;
 }
 </style>

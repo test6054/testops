@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { PortfolioGapTaskSummaryInternalVO } from '@/apis/mark/scanner-kiosk'
+import { createAdhocDispatchTicket, pageKioskPortfolioGapTasks } from '@/apis/mark/scanner-kiosk'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { createAdhocDispatchTicket, pageKioskPortfolioGapTasks } from '@/apis/mark/scanner-kiosk'
 import { PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -78,7 +78,7 @@ async function loadTasks() {
   }
 }
 
-function handlePageChange(pageEvent: { current: number, pageSize: number }) {
+function handlePageChange(pageEvent: { current: number; pageSize: number }) {
   pageNum.value = pageEvent.current
   pageSize.value = pageEvent.pageSize
   void loadTasks()
@@ -196,7 +196,7 @@ async function openGapScan(row: PortfolioGapTaskSummaryInternalVO) {
 }
 .kiosk-portfolio-pick__error {
   margin: 0 0 12px;
-  padding: 0 var(--dp-space-5, 20px);
+  padding: 0 var(--dp-space-5);
   color: #cf1322;
 }
 </style>

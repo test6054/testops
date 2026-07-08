@@ -88,10 +88,10 @@ const hasHeader = computed(() => {
   min-width: 0;
   height: 100%;
   padding: 18px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
-  box-shadow: var(--dp-shadow-card, 0 10px 30px rgba(15, 23, 42, 0.06));
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-card);
 }
 
 .ui-selector-header-extra__body,
@@ -104,33 +104,33 @@ const hasHeader = computed(() => {
   display: grid;
   gap: 6px;
   padding: 12px 14px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
 }
 
 .ui-selector-header-extra__item-label {
   font-size: 12px;
   font-weight: 700;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-selector-header-extra__item-value {
   font-size: 14px;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-selector-header-extra__item-helper,
 .ui-selector-header-extra__note {
   font-size: 13px;
   line-height: 1.7;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-selector-header-extra__note {
   padding: 12px 14px;
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface-subtle, #f8fafc);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface-subtle);
 }
 </style>

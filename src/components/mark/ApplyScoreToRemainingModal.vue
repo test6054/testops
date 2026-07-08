@@ -91,7 +91,7 @@ onBeforeUnmount(clearTimer)
   &__panel {
     padding: 16px;
     border: 1px solid var(--ant-color-border-secondary);
-    border-radius: var(--dp-radius-panel, 6px);
+    border-radius: var(--dp-radius-panel);
     background: var(--ant-color-bg-container);
     box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
   }
@@ -99,20 +99,20 @@ onBeforeUnmount(clearTimer)
   &__title {
     font-size: 14px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__desc {
     margin: 8px 0 0;
     font-size: 13px;
     line-height: 1.5;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
   }
 
   &__countdown {
     margin: 8px 0 0;
     font-size: 12px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__actions {

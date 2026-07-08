@@ -65,10 +65,10 @@
 <script lang="ts" setup>
 import type { UiArrowTimelineStage } from '@/components/ui-guide/ui/types'
 import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
+import { WORKBENCH_STAGE_TO_TIMELINE } from '@/types/workbench'
 import CheckOutlined from '@ant-design/icons-vue/CheckOutlined'
 import { computed } from 'vue'
 import UiArrowTimeline from '@/components/ui-guide/ui/UiArrowTimeline.vue'
-import { WORKBENCH_STAGE_TO_TIMELINE } from '@/types/workbench'
 
 defineOptions({
   name: 'StageRail',
@@ -149,6 +149,8 @@ function handlePanelSelect(stage: WorkbenchStage) {
 </script>
 
 <style scoped>
+@use '@/styles/breakpoints' as bp;
+
 .stage-rail-panel {
   display: flex;
   align-items: stretch;
@@ -287,5 +289,34 @@ function handlePanelSelect(stage: WorkbenchStage) {
   transform: translateY(-50%);
   z-index: 1;
   pointer-events: none;
+}
+
+@media (max-width: bp.$layout-mobile-max) {
+  .stage-rail-panel {
+    flex-direction: column;
+    overflow-x: visible;
+    gap: 0;
+    padding: var(--dp-space-2);
+  }
+
+  .stage-rail-panel__item {
+    flex: none;
+    width: 100%;
+    min-width: 0;
+    padding: var(--dp-space-3);
+    border-bottom: 1px solid var(--dp-border);
+  }
+
+  .stage-rail-panel__item:last-child {
+    border-bottom: none;
+  }
+
+  .stage-rail-panel__chevron {
+    display: none;
+  }
+
+  .stage-rail-panel__title {
+    white-space: normal;
+  }
 }
 </style>

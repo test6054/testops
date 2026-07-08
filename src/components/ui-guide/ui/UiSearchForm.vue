@@ -136,10 +136,10 @@ const defaultModel = computed(() => {
       return acc
     }
     if (
-      field.type === 'select'
-      || field.type === 'date'
-      || field.type === 'year'
-      || field.type === 'custom'
+      field.type === 'select' ||
+      field.type === 'date' ||
+      field.type === 'year' ||
+      field.type === 'custom'
     ) {
       acc[field.key] = undefined
       return acc
@@ -185,14 +185,14 @@ function handleResetValue(value: Record<string, unknown>): void {
 .ui-search-form__title {
   font-size: 16px;
   font-weight: 700;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-search-form__description {
   margin-top: 4px;
   font-size: 13px;
   line-height: 1.6;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-search-form__extra {

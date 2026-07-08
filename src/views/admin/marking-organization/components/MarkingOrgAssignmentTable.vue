@@ -30,7 +30,9 @@
             <span v-for="q in record.questionLabels" :key="q" class="org-assignment__chip">{{
               q
             }}</span>
-            <span v-if="record.questionLabels.length === 0" class="org-assignment__muted">整卷题组</span>
+            <span v-if="record.questionLabels.length === 0" class="org-assignment__muted"
+              >整卷题组</span
+            >
           </div>
         </template>
         <template v-else-if="column.key === 'questionType'">
@@ -84,14 +86,14 @@ import type {
   AllocationPolicyResponse,
   QuestionMarkingGroupResponse,
 } from '@/apis/mark/marking-organization'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import { computed } from 'vue'
-import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
 import {
   AllocationUnitDescription,
   MarkingAllocationModeDescription,
 } from '@/apis/mark/marking-organization'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import { computed } from 'vue'
+import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -159,7 +161,7 @@ function isEditable(status: QuestionMarkingGroupStatusCode): boolean {
   return status !== QuestionMarkingGroupStatusCode.GROUP_CLOSED
 }
 
-function resolveTypeLabel(group: QuestionMarkingGroupResponse): { label: string, tone: BadgeTone } {
+function resolveTypeLabel(group: QuestionMarkingGroupResponse): { label: string; tone: BadgeTone } {
   if (group.questions.length === 0) {
     return { label: '整卷', tone: 'gray' }
   }
@@ -183,8 +185,8 @@ const rows = computed((): AssignmentRow[] =>
     const anonymityLabel = policy
       ? strictEnumLabel(AnonymityModeDescription, policy.anonymityMode, '匿名模式')
       : '—'
-    const anonymityTone: BadgeTone
-      = policy?.anonymityMode === AnonymityModeCode.ANONYMOUS ? 'green' : 'gray'
+    const anonymityTone: BadgeTone =
+      policy?.anonymityMode === AnonymityModeCode.ANONYMOUS ? 'green' : 'gray'
     return {
       groupId: group.id,
       groupName: group.groupName,
@@ -248,7 +250,7 @@ const summaryReviewerCount = computed(() => {
     display: inline-flex;
     padding: 1px 6px;
     border-radius: 4px;
-    background: var(--dp-surface-sunken, #f1f5f9);
+    background: var(--dp-surface-sunken);
     font-size: 12px;
     font-weight: 500;
   }
@@ -272,7 +274,7 @@ const summaryReviewerCount = computed(() => {
   &__footer {
     padding: 12px 16px;
     border-top: 1px solid var(--dp-border);
-    background: var(--dp-surface-sunken, #f8fafc);
+    background: var(--dp-surface-sunken);
     font-size: 12px;
     line-height: 1.5;
     color: var(--dp-text-muted);

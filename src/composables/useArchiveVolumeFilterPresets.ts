@@ -1,22 +1,21 @@
 import type { ArchiveVolumePageRequest, ArchiveVolumeResponse } from '@/apis/mark/archive-volume'
+import { ArchiveTransferStatusCode, ArchiveVolumeStatusCode } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, ref } from 'vue'
-import {
-  ArchiveIntegrityStatusCode,
-  ArchiveTransferStatusCode,
-  ArchiveVolumeStatusCode,
-} from '@/apis/mark/archive-volume'
 import { getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
 
 export type ArchiveVolumeListTabKey = 'mine' | 'college' | 'archive'
 
-export type ArchiveVolumeScenarioKey
-  = | 'collecting-materials'
-    | 'catalog-pending'
-    | 'submit-ready'
-    | 'remediation-open'
-    | 'pending-review'
-    | 'term-not-stored'
+export type ArchiveVolumeScenarioKey =
+  | 'collecting-materials'
+  | 'catalog-pending'
+  | 'submit-ready'
+  | 'remediation-open'
+  | 'pending-review'
+  | 'term-not-stored'
+  | 'department-review-pending'
+  | 'archive-overdue'
+  | 'archive-due-soon'
 
 export interface ArchiveVolumeFilterPreset {
   key: ArchiveVolumeScenarioKey
@@ -24,7 +23,6 @@ export interface ArchiveVolumeFilterPreset {
   tone: BadgeTone
   tabs: ArchiveVolumeListTabKey[]
   buildRequest: (ctx: ArchiveVolumeFilterPresetContext) => Partial<ArchiveVolumePageRequest>
-  matchRow?: (row: ArchiveVolumeResponse) => boolean
 }
 
 export interface ArchiveVolumeFilterPresetContext {
@@ -50,16 +48,8 @@ const ARCHIVE_VOLUME_FILTER_PRESETS: ArchiveVolumeFilterPreset[] = [
     tabs: ['mine', 'college'],
     buildRequest: () => ({
       volumeStatus: ArchiveVolumeStatusCode.COLLECTING,
-      integrityStatus: ArchiveIntegrityStatusCode.PASSED,
+      catalogPendingOnly: true,
     }),
-    matchRow: (row) =>
-      row.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
-      && (
-        row.integrityStatus === ArchiveIntegrityStatusCode.PASSED
-        || row.integrityStatus === ArchiveIntegrityStatusCode.WAIVED
-      )
-      && row.submitReady !== true
-      && row.hasOpenRemediationTask !== true,
   },
   {
     key: 'submit-ready',
@@ -67,9 +57,8 @@ const ARCHIVE_VOLUME_FILTER_PRESETS: ArchiveVolumeFilterPreset[] = [
     tone: 'green',
     tabs: ['mine', 'college'],
     buildRequest: () => ({
-      volumeStatus: ArchiveVolumeStatusCode.COLLECTING,
+      submitReadyOnly: true,
     }),
-    matchRow: row => row.volumeStatus === ArchiveVolumeStatusCode.COLLECTING && row.submitReady === true,
   },
   {
     key: 'remediation-open',
@@ -78,9 +67,8 @@ const ARCHIVE_VOLUME_FILTER_PRESETS: ArchiveVolumeFilterPreset[] = [
     tabs: ['mine', 'college'],
     buildRequest: (ctx) => ({
       mineOnly: ctx.listTab === 'mine' ? true : undefined,
-      volumeStatus: ArchiveVolumeStatusCode.COLLECTING,
+      openRemediationTaskOnly: true,
     }),
-    matchRow: (row) => row.hasOpenRemediationTask === true,
   },
   {
     key: 'pending-review',
@@ -102,9 +90,36 @@ const ARCHIVE_VOLUME_FILTER_PRESETS: ArchiveVolumeFilterPreset[] = [
       return {
         academicYear,
         semester,
+        excludeVolumeStatus: ArchiveVolumeStatusCode.STORED,
       }
     },
-    matchRow: row => row.volumeStatus !== ArchiveVolumeStatusCode.STORED,
+  },
+  {
+    key: 'department-review-pending',
+    label: '待院系审核',
+    tone: 'purple',
+    tabs: ['college'],
+    buildRequest: () => ({
+      volumeStatus: ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING,
+    }),
+  },
+  {
+    key: 'archive-overdue',
+    label: '归档逾期',
+    tone: 'red',
+    tabs: ['college'],
+    buildRequest: () => ({
+      archiveOverdueOnly: true,
+    }),
+  },
+  {
+    key: 'archive-due-soon',
+    label: '临期归档',
+    tone: 'orange',
+    tabs: ['college'],
+    buildRequest: () => ({
+      archiveDueSoonOnly: true,
+    }),
   },
 ]
 
@@ -134,12 +149,6 @@ export function useArchiveVolumeFilterPresets(listTab: () => ArchiveVolumeListTa
     return preset.buildRequest({ listTab: listTab() })
   }
 
-  function filterScenarioRows(rows: ArchiveVolumeResponse[]): ArchiveVolumeResponse[] {
-    const preset = activePreset.value
-    if (!preset?.matchRow) return rows
-    return rows.filter(preset.matchRow)
-  }
-
   return {
     activeScenario,
     visiblePresets,
@@ -147,6 +156,7 @@ export function useArchiveVolumeFilterPresets(listTab: () => ArchiveVolumeListTa
     selectScenario,
     clearScenario,
     buildScenarioRequest,
-    filterScenarioRows,
   }
 }
+
+export type { ArchiveVolumeResponse }

@@ -134,9 +134,9 @@ const emit = defineEmits<{
   width: 52px;
   height: 52px;
   flex-shrink: 0;
-  border-radius: var(--dp-radius-panel, 4px);
+  border-radius: var(--dp-radius-panel);
   background: rgba(255, 255, 255, 0.9);
-  color: var(--dp-purple-500, #722ed1);
+  color: var(--dp-purple-500);
   font-size: 16px;
   font-weight: 800;
   border: 1px solid rgba(255, 255, 255, 0.82);
@@ -149,14 +149,14 @@ const emit = defineEmits<{
 .ui-agent-card__name {
   font-size: 18px;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-agent-card__helper,
 .ui-agent-card__metric-helper {
   font-size: 12px;
   line-height: 1.6;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-agent-card__metrics {
@@ -169,21 +169,21 @@ const emit = defineEmits<{
   display: grid;
   gap: 6px;
   padding: 12px 14px;
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface-subtle, #f8fafc);
-  border: 1px solid var(--dp-border, #e5e7eb);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface-subtle);
+  border: 1px solid var(--dp-border);
 }
 
 .ui-agent-card__metric-label {
   font-size: 12px;
   font-weight: 700;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-agent-card__metric-value {
   font-size: 18px;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 @media (max-width: 900px) {

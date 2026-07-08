@@ -164,15 +164,8 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamWorkbenchPrintPackagePanelResponse } from '@/apis/mark/exam-progress'
-import type { ExamPrintPackageResponse, PrintPackageItemVO } from '@/apis/mark/print-package'
-import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { downloadFile, getFileArrayBuffer } from '@/apis/edu/file-management'
-import { getExamDetail } from '@/apis/mark/exam'
 import { getPrintPackagePanel } from '@/apis/mark/exam-progress'
+import type { ExamPrintPackageResponse, PrintPackageItemVO } from '@/apis/mark/print-package'
 import {
   generatePrintPackage,
   getPrintPackage,
@@ -182,6 +175,13 @@ import {
   PRINT_PACKAGE_STATUS_TONE,
   PrintPackageStatusDescription,
 } from '@/apis/mark/print-package'
+import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { downloadFile, getFileArrayBuffer } from '@/apis/edu/file-management'
+import { getExamDetail } from '@/apis/mark/exam'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -207,8 +207,8 @@ defineOptions({ name: 'TeacherPrintPackage' })
 
 const { selectedExamId } = useMarkExamContext()
 const workbenchContext = useMarkWorkbenchContext()
-const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
-  = useExamJourneyContextBar('印刷包')
+const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useExamJourneyContextBar('印刷包')
 const { refreshSnapshot } = useWorkspaceExamId()
 
 const prepBlockingReasons = computed(
@@ -350,7 +350,7 @@ async function loadPackageList() {
   }
 }
 
-function handlePackagePageChange(pageEvent: { current: number, pageSize: number }): void {
+function handlePackagePageChange(pageEvent: { current: number; pageSize: number }): void {
   pagination.pageNum = pageEvent.current
   pagination.pageSize = pageEvent.pageSize
   loadPackageList()
@@ -546,7 +546,7 @@ watch(
   }
 
   &__blocking-strip {
-    margin-bottom: var(--dp-space-4, 16px);
+    margin-bottom: var(--dp-space-4);
   }
 
   &__flow-hint {
@@ -562,7 +562,7 @@ watch(
   &__preview-frame {
     min-height: 360px;
     border: 1px solid var(--ant-color-border-secondary);
-    border-radius: var(--dp-radius-md, 6px);
+    border-radius: var(--dp-radius-md);
     overflow: hidden;
   }
 }

@@ -57,7 +57,7 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
 
   // ── 教师 ① 考试列表 + 工作台 ────────────────────────
   TeacherExamList: () => import('@/views/teacher/exam-list.vue'),
-  TeacherExamCreate: () => import('@/views/teacher/exam-create/exam-create.vue'),
+  TeacherCreateExam: () => import('@/views/teacher/exam-create/exam-create.vue'),
   TeacherExamWorkspace: () => import('@/views/teacher/exam-workspace-layout.vue'),
   TeacherExamWorkspaceOverview: () => import('@/views/teacher/exam-detail.vue'),
   TeacherExamWorkspacePrep: () => import('@/views/teacher/exam-prep-workbench.vue'),
@@ -105,8 +105,7 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   TeacherArchiveVolumeList: () => import('@/views/teacher/archive-volume/archive-volume-list.vue'),
   TeacherArchiveVolumeWorkspace: () => import('@/views/teacher/archive-volume-detail-layout.vue'),
   TeacherArchiveVolumeDetail: () => import('@/views/teacher/archive-volume/archive-volume-detail.vue'),
-  TeacherArchiveVolumeCreateOffline: () => import('@/views/teacher/archive-volume/archive-volume-create-offline/archive-volume-create-offline.vue'),
-  TeacherArchiveVolumeCreateSupplement: () => import('@/views/teacher/archive-volume/archive-volume-create-supplement/archive-volume-create-supplement.vue'),
+  TeacherCreateArchiveTask: () => import('@/views/teacher/archive-volume/archive-task-create/archive-task-create.vue'),
   TeacherArchiveVolumeStatistics: () => import('@/views/teacher/archive-volume/archive-volume-statistics.vue'),
   TeacherArchiveVolumeEvalCampaign: () => import('@/views/teacher/archive-volume/archive-volume-eval-campaign.vue'),
   TeacherArchiveVolumeReadinessMatrix: () => import('@/views/teacher/archive-volume/archive-volume-readiness-matrix.vue'),
@@ -214,7 +213,7 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
 
   // ── ① 考试列表 + 工作台 ───────────────────────────
   TeacherExamList: [
-    'TeacherExamCreate',
+    'TeacherCreateExam',
     'TeacherExamWorkspaceOverview',
     'TeacherExamWorkspacePrep',
     'TeacherExamWorkspaceScanMonitor',

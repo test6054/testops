@@ -22,7 +22,8 @@ import { getDeviceId } from '@/utils/device'
 
 /** 用户详细信息VO - 对应后端 GET /api/user/detailed/me 响应 */
 export interface UserDetailedInfoVO extends UserLoginResponseDto {
-  // tenantType 已从 UserLoginResponseDto 继承（required string）
+  /** 是否为租户管理员（UserDetailDto.isTenantAdmin） */
+  isTenantAdmin?: boolean
 }
 
 /** 微信用户信息 - 对应后端 WechatUserInfoDto */

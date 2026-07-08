@@ -130,7 +130,7 @@ const getProgressColor = (item: UiQuotaItem) => {
     case 'red':
       return '#dc2626'
     case 'purple':
-      return 'var(--dp-purple-500, #722ed1)'
+      return 'var(--dp-purple-500)'
     case 'yellow':
       return '#ca8a04'
     case 'gray':
@@ -149,10 +149,10 @@ const getProgressColor = (item: UiQuotaItem) => {
   gap: 18px;
   min-width: 0;
   padding: 18px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
-  box-shadow: var(--dp-shadow-card, 0 10px 30px rgba(15, 23, 42, 0.06));
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-card);
 }
 
 .ui-quota-panel__grid {
@@ -177,8 +177,8 @@ const getProgressColor = (item: UiQuotaItem) => {
   gap: 12px;
   min-width: 0;
   padding: 14px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
   background: #fff;
 }
 
@@ -199,25 +199,25 @@ const getProgressColor = (item: UiQuotaItem) => {
 .ui-quota-panel__label {
   font-size: 14px;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-quota-panel__helper,
 .ui-quota-panel__percent {
   font-size: 12px;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-quota-panel__value {
   flex-shrink: 0;
   font-size: 13px;
   font-weight: 700;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-quota-panel__footer {
   padding-top: 14px;
-  border-top: 1px solid var(--dp-border, #e5e7eb);
+  border-top: 1px solid var(--dp-border);
 }
 
 @media (max-width: 1080px) {

@@ -119,12 +119,12 @@ const slots = useSlots()
 
 const hasHeader = computed(() => {
   return (
-    !!props.title
-    || !!props.description
-    || !!props.eyebrow
-    || !!props.statusLabel
-    || !!slots.meta
-    || !!slots.actions
+    !!props.title ||
+    !!props.description ||
+    !!props.eyebrow ||
+    !!props.statusLabel ||
+    !!slots.meta ||
+    !!slots.actions
   )
 })
 
@@ -141,7 +141,7 @@ const progressColor = computed(() => {
     case 'red':
       return '#dc2626'
     case 'purple':
-      return 'var(--dp-purple-500, #722ed1)'
+      return 'var(--dp-purple-500)'
     case 'yellow':
       return '#ca8a04'
     case 'gray':
@@ -160,10 +160,10 @@ const progressColor = computed(() => {
   gap: 16px;
   min-width: 0;
   padding: 18px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
-  box-shadow: var(--dp-shadow-card, 0 10px 30px rgba(15, 23, 42, 0.06));
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-card);
 }
 
 .ui-progress-monitor-card__body,
@@ -213,13 +213,13 @@ const progressColor = computed(() => {
 }
 
 .ui-progress-monitor-card__dot--purple {
-  background: var(--dp-purple-500, #722ed1);
+  background: var(--dp-purple-500);
 }
 
 .ui-progress-monitor-card__time,
 .ui-progress-monitor-card__helper {
   font-size: 12px;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-progress-monitor-card__status-row {
@@ -230,19 +230,19 @@ const progressColor = computed(() => {
   font-size: 30px;
   line-height: 1;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-progress-monitor-card__percent span {
   font-size: 14px;
   margin-left: 2px;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-progress-monitor-card__side-value {
   font-size: 13px;
   font-weight: 700;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-progress-monitor-card__metrics {
@@ -256,33 +256,33 @@ const progressColor = computed(() => {
   gap: 6px;
   min-width: 0;
   padding: 12px 14px;
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface-subtle, #f8fafc);
-  border: 1px solid var(--dp-border, #e5e7eb);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface-subtle);
+  border: 1px solid var(--dp-border);
 }
 
 .ui-progress-monitor-card__metric-label {
   font-size: 12px;
   font-weight: 700;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-progress-monitor-card__metric-value {
   font-size: 18px;
   line-height: 1.2;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-progress-monitor-card__metric-value span {
   margin-left: 4px;
   font-size: 12px;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-progress-monitor-card__footer {
   padding-top: 12px;
-  border-top: 1px solid var(--dp-border, #e5e7eb);
+  border-top: 1px solid var(--dp-border);
 }
 
 @media (max-width: 900px) {

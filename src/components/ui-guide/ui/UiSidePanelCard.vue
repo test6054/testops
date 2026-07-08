@@ -56,8 +56,8 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import type { BadgeTone } from './types'
 import { computed, useSlots } from 'vue'
+import type { BadgeTone } from './types'
 import UiBadge from './Badge.vue'
 import UiPanelHeader from './UiPanelHeader.vue'
 
@@ -102,12 +102,12 @@ const normalizeCssSize = (value?: string | number) => {
 
 const hasHeader = computed(() => {
   return (
-    !!props.title
-    || !!props.description
-    || !!props.eyebrow
-    || !!slots.icon
-    || !!slots.actions
-    || !!slots.meta
+    !!props.title ||
+    !!props.description ||
+    !!props.eyebrow ||
+    !!slots.icon ||
+    !!slots.actions ||
+    !!slots.meta
   )
 })
 
@@ -133,10 +133,10 @@ const bodyStyle = computed<CSSProperties | undefined>(() => {
   gap: 14px;
   min-height: 0;
   padding: 16px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
-  box-shadow: var(--dp-shadow-card, 0 10px 30px rgba(15, 23, 42, 0.06));
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-card);
 }
 
 .ui-side-panel-card--compact {
@@ -156,7 +156,7 @@ const bodyStyle = computed<CSSProperties | undefined>(() => {
   align-items: center;
   justify-content: center;
   font-size: 18px;
-  color: var(--dp-blue-600, #2563eb);
+  color: var(--dp-blue-600);
 }
 
 .ui-side-panel-card__body {
@@ -172,7 +172,7 @@ const bodyStyle = computed<CSSProperties | undefined>(() => {
 }
 
 .ui-side-panel-card__body--scrollable::-webkit-scrollbar-thumb {
-  background: var(--dp-gray-200, #e2e8f0);
+  background: var(--dp-gray-200);
   border-radius: 999px;
 }
 
@@ -183,6 +183,6 @@ const bodyStyle = computed<CSSProperties | undefined>(() => {
   flex-wrap: wrap;
   gap: 12px;
   padding-top: 14px;
-  border-top: 1px solid var(--dp-border, #e5e7eb);
+  border-top: 1px solid var(--dp-border);
 }
 </style>

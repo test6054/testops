@@ -106,9 +106,9 @@ const handleToggle = () => {
 
 <style scoped>
 .ui-editor-card {
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 8px);
-  background: var(--dp-surface, #fff);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
   overflow: hidden;
 }
@@ -119,7 +119,7 @@ const handleToggle = () => {
   justify-content: space-between;
   gap: 16px;
   padding: 16px 18px;
-  background: var(--dp-surface, #fff);
+  background: var(--dp-surface);
   border-bottom: 1px solid transparent;
 }
 
@@ -128,7 +128,7 @@ const handleToggle = () => {
 }
 
 .ui-editor-card--open .ui-editor-card__header {
-  border-bottom-color: var(--dp-border, #e5e7eb);
+  border-bottom-color: var(--dp-border);
 }
 
 .ui-editor-card__leading {
@@ -145,10 +145,10 @@ const handleToggle = () => {
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: var(--dp-radius-control-inner, 4px);
-  color: var(--dp-text-muted, #6b7280);
-  background: var(--dp-surface-subtle, #f8fafc);
-  border: 1px solid var(--dp-border, #e5e7eb);
+  border-radius: var(--dp-radius-control-inner);
+  color: var(--dp-text-muted);
+  background: var(--dp-surface-subtle);
+  border: 1px solid var(--dp-border);
   flex-shrink: 0;
 }
 
@@ -175,12 +175,12 @@ const handleToggle = () => {
 .ui-editor-card__title {
   font-size: 16px;
   font-weight: 700;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-editor-card__subtitle {
   font-size: 13px;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-editor-card__meta {
@@ -205,10 +205,10 @@ const handleToggle = () => {
   justify-content: center;
   width: 32px;
   height: 32px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-control-inner, 4px);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-control-inner);
   background: #fff;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -218,9 +218,9 @@ const handleToggle = () => {
 }
 
 .ui-editor-card__toggle:hover {
-  border-color: var(--dp-border-strong, #d0d5dd);
-  background: var(--dp-surface-subtle, #f8fafc);
-  color: var(--dp-text-primary, #0f172a);
+  border-color: var(--dp-border-strong);
+  background: var(--dp-surface-subtle);
+  color: var(--dp-text-primary);
 }
 
 .ui-editor-card__body {

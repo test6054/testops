@@ -1,6 +1,6 @@
 <template>
   <a-button
-    class="gi_hover_btn menu-fold-btn"
+    class="menu-fold-btn"
     size="small"
     :aria-label="appStore.menuCollapse ? '展开菜单' : '收起菜单'"
     @click="onClick"
@@ -59,8 +59,19 @@ const onClick = () => {
 
 <style lang="scss" scoped>
 .menu-fold-btn {
+  border: 0 !important;
   background-color: var(--ant-control-item-bg-hover) !important;
   flex-shrink: 0;
+
+  &:hover {
+    background: var(--ant-control-item-bg-hover) !important;
+    border-radius: var(--dp-radius-full);
+  }
+
+  &:active {
+    background: var(--ant-control-item-bg-active) !important;
+    border-radius: var(--dp-radius-full);
+  }
 }
 
 .drawer {

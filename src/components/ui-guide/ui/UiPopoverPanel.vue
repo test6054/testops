@@ -51,19 +51,19 @@ import { computed, ref, useSlots } from 'vue'
 import { resolvePopupContainer } from './popup-container'
 
 type PopoverTrigger = 'hover' | 'focus' | 'click' | 'contextmenu'
-type PopoverPlacement
-  = | 'topLeft'
-    | 'top'
-    | 'topRight'
-    | 'leftTop'
-    | 'left'
-    | 'leftBottom'
-    | 'rightTop'
-    | 'right'
-    | 'rightBottom'
-    | 'bottomLeft'
-    | 'bottom'
-    | 'bottomRight'
+type PopoverPlacement =
+  | 'topLeft'
+  | 'top'
+  | 'topRight'
+  | 'leftTop'
+  | 'left'
+  | 'leftBottom'
+  | 'rightTop'
+  | 'right'
+  | 'rightBottom'
+  | 'bottomLeft'
+  | 'bottom'
+  | 'bottomRight'
 
 defineOptions({
   name: 'UiPopoverPanel',
@@ -173,7 +173,7 @@ const handleOpenChange = (value: boolean) => {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: var(--dp-surface, #fff);
+  background: var(--dp-surface);
 }
 
 .ui-popover-panel__surface--compact {
@@ -189,14 +189,14 @@ const handleOpenChange = (value: boolean) => {
   font-size: 15px;
   font-weight: 800;
   line-height: 1.4;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-popover-panel__description {
   margin: 6px 0 0;
   font-size: 13px;
   line-height: 1.6;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-popover-panel__body {
@@ -215,7 +215,7 @@ const handleOpenChange = (value: boolean) => {
 .ui-popover-panel__content-text {
   font-size: 13px;
   line-height: 1.7;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-popover-panel__footer {
@@ -225,7 +225,7 @@ const handleOpenChange = (value: boolean) => {
   flex-wrap: wrap;
   gap: 10px;
   padding: 0 16px 16px;
-  border-top: 1px solid var(--dp-border, #e5e7eb);
+  border-top: 1px solid var(--dp-border);
 }
 
 .ui-popover-panel__surface--compact .ui-popover-panel__footer {
@@ -238,8 +238,8 @@ const handleOpenChange = (value: boolean) => {
   .ant-popover-inner {
     padding: 0 !important;
     overflow: hidden !important;
-    border-radius: var(--dp-radius-overlay, 4px) !important;
-    box-shadow: var(--dp-shadow-dropdown, 0 18px 40px rgba(15, 23, 42, 0.12)) !important;
+    border-radius: var(--dp-radius-overlay) !important;
+    box-shadow: var(--dp-shadow-dropdown) !important;
   }
 
   .ant-popover-inner-content {

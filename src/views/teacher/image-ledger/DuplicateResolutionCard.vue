@@ -40,13 +40,13 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamPaperDuplicateResolutionVO } from '@/apis/mark/image-ledger'
+import { listPendingDuplicates } from '@/apis/mark/image-ledger'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, ref, watch } from 'vue'
 import {
   DUPLICATE_RESOLUTION_STATUS_TONE,
   DuplicateResolutionStatusDescription,
 } from '@/apis/mark/duplicate-resolution-status'
-import { listPendingDuplicates } from '@/apis/mark/image-ledger'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
@@ -124,21 +124,21 @@ defineExpose({ reload })
 
 <style lang="scss" scoped>
 .duplicate-resolution {
-  border-top: 1px solid var(--dp-border, #e2e8f0);
-  padding-top: var(--dp-space-4, 16px);
+  border-top: 1px solid var(--dp-border);
+  padding-top: var(--dp-space-4);
 }
 
 .duplicate-resolution__head {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: var(--dp-space-3, 12px);
+  margin-bottom: var(--dp-space-3);
 }
 
 .duplicate-resolution__title {
   margin: 0;
   font-size: 16px;
-  font-weight: var(--dp-font-weight-title, 600);
+  font-weight: var(--dp-font-weight-title);
   line-height: 1.5;
 }
 </style>

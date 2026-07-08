@@ -76,11 +76,11 @@ function navigate(step: WorkflowReadinessStep): void {
 
 <style scoped>
 .workflow-readiness-panel {
-  margin-bottom: var(--dp-space-3, 12px);
-  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
-  border: 1px solid var(--dp-border-light, #eef0f3);
-  border-radius: var(--dp-radius-md, 6px);
-  background: var(--dp-surface, #fff);
+  margin-bottom: var(--dp-space-3);
+  padding: var(--dp-space-3) var(--dp-space-4);
+  border: 1px solid var(--dp-border-light);
+  border-radius: var(--dp-radius-md);
+  background: var(--dp-surface);
 }
 
 .workflow-readiness-panel__head {
@@ -88,26 +88,26 @@ function navigate(step: WorkflowReadinessStep): void {
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--dp-space-2, 8px);
-  margin-bottom: var(--dp-space-3, 12px);
+  gap: var(--dp-space-2);
+  margin-bottom: var(--dp-space-3);
 }
 
 .workflow-readiness-panel__title {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: var(--dp-text, #1a1d21);
+  color: var(--dp-text);
 }
 
 .workflow-readiness-panel__metrics {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-3);
 }
 
 .workflow-readiness-panel__metric {
   font-size: 12px;
-  color: var(--dp-text-4, #8b919a);
+  color: var(--dp-text-4);
 }
 
 .workflow-readiness-panel__steps {
@@ -116,18 +116,18 @@ function navigate(step: WorkflowReadinessStep): void {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 
 .workflow-readiness-panel__step {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--dp-space-3, 12px);
-  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
-  border: 1px solid var(--dp-border-light, #eef0f3);
-  border-radius: var(--dp-radius-sm, 4px);
-  background: var(--dp-surface-subtle, #f8fafc);
+  gap: var(--dp-space-3);
+  padding: var(--dp-space-2) var(--dp-space-3);
+  border: 1px solid var(--dp-border-light);
+  border-radius: var(--dp-radius-sm);
+  background: var(--dp-surface-subtle);
 }
 
 .workflow-readiness-panel__step--completed {
@@ -137,14 +137,14 @@ function navigate(step: WorkflowReadinessStep): void {
 .workflow-readiness-panel__step-label {
   font-size: 14px;
   font-weight: 500;
-  color: var(--dp-text, #1a1d21);
+  color: var(--dp-text);
 }
 
 .workflow-readiness-panel__step-desc {
   margin: 4px 0 0;
   font-size: 12px;
   line-height: 1.5;
-  color: var(--dp-text-4, #8b919a);
+  color: var(--dp-text-4);
 }
 
 .workflow-readiness-panel__step-main {

@@ -201,7 +201,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   (
     e: 'cell-click',
-    eventData: { row: MatrixRow, col: MatrixCol, cell: MatrixCell | undefined },
+    eventData: { row: MatrixRow; col: MatrixCol; cell: MatrixCell | undefined },
   ): void
   (e: 'row-click', row: MatrixRow): void
 }>()
@@ -251,8 +251,8 @@ function handleRowClick(row: MatrixRow) {
 .matrix-workbench {
   display: flex;
   flex-direction: column;
-  background: var(--dp-surface, #fff);
-  border: 1px solid var(--dp-border, #e2e8f0);
+  background: var(--dp-surface);
+  border: 1px solid var(--dp-border);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -263,8 +263,8 @@ function handleRowClick(row: MatrixRow) {
   justify-content: space-between;
   gap: 12px;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--dp-border, #e2e8f0);
-  background: var(--dp-surface-elevated, #f8fafc);
+  border-bottom: 1px solid var(--dp-border);
+  background: var(--dp-surface-elevated);
 }
 
 .matrix-workbench__title-block {
@@ -277,12 +277,12 @@ function handleRowClick(row: MatrixRow) {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .matrix-workbench__subtitle {
   font-size: 12px;
-  color: var(--dp-text-muted, #64748b);
+  color: var(--dp-text-muted);
 }
 
 .matrix-workbench__toolbar {
@@ -301,7 +301,7 @@ function handleRowClick(row: MatrixRow) {
 .matrix-workbench__scroll {
   width: 100%;
   overflow-x: auto;
-  background: var(--dp-surface, #fff);
+  background: var(--dp-surface);
 }
 
 .matrix-workbench__table {
@@ -310,24 +310,24 @@ function handleRowClick(row: MatrixRow) {
   border-spacing: 0;
   table-layout: fixed;
   font-size: 13px;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .matrix-workbench__th,
 .matrix-workbench__cell {
   padding: 10px 12px;
-  border-bottom: 1px solid var(--dp-border, #e2e8f0);
-  border-right: 1px solid var(--dp-border, #e2e8f0);
+  border-bottom: 1px solid var(--dp-border);
+  border-right: 1px solid var(--dp-border);
   text-align: left;
   vertical-align: top;
-  background: var(--dp-surface, #fff);
+  background: var(--dp-surface);
 }
 
 .matrix-workbench__th--col {
   position: sticky;
   top: 0;
   z-index: 2;
-  background: var(--dp-surface-elevated, #f8fafc);
+  background: var(--dp-surface-elevated);
   font-weight: 600;
   text-align: center;
 }
@@ -337,7 +337,7 @@ function handleRowClick(row: MatrixRow) {
   position: sticky;
   left: 0;
   z-index: 1;
-  background: var(--dp-surface-elevated, #f8fafc);
+  background: var(--dp-surface-elevated);
   font-weight: 600;
   text-align: left;
 }
@@ -359,11 +359,11 @@ function handleRowClick(row: MatrixRow) {
 
 .matrix-workbench__hit:focus-visible {
   outline: none;
-  box-shadow: inset 0 0 0 2px var(--dp-focus-ring, rgba(22, 119, 255, 0.18));
+  box-shadow: inset 0 0 0 2px var(--dp-focus-ring);
 }
 
 .matrix-workbench__hit:hover {
-  background: var(--dp-surface-elevated, #f1f5f9);
+  background: var(--dp-surface-elevated);
 }
 
 .matrix-workbench__th--row-header {
@@ -373,14 +373,14 @@ function handleRowClick(row: MatrixRow) {
 
 .matrix-workbench__corner-label {
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .matrix-workbench__corner-axis {
   margin-left: 6px;
   font-size: 12px;
   font-weight: 400;
-  color: var(--dp-text-muted, #64748b);
+  color: var(--dp-text-muted);
 }
 
 .matrix-workbench__col-label {
@@ -394,7 +394,7 @@ function handleRowClick(row: MatrixRow) {
   margin-top: 4px;
   font-size: 12px;
   font-weight: 400;
-  color: var(--dp-text-muted, #64748b);
+  color: var(--dp-text-muted);
 }
 
 .matrix-workbench__col-badge,
@@ -416,11 +416,11 @@ function handleRowClick(row: MatrixRow) {
 .matrix-workbench__row-warning {
   margin-top: 4px;
   font-size: 12px;
-  color: var(--dp-color-danger, #dc2626);
+  color: var(--dp-color-danger);
 }
 
 .matrix-workbench__th--summary {
-  background: var(--dp-surface-strong, #eef2f7);
+  background: var(--dp-surface-strong);
   font-weight: 600;
   text-align: center;
 }
@@ -442,24 +442,24 @@ function handleRowClick(row: MatrixRow) {
 }
 
 .matrix-workbench__cell--summary {
-  background: var(--dp-surface-strong, #eef2f7);
+  background: var(--dp-surface-strong);
   cursor: default;
   font-weight: 600;
 }
 
 .matrix-workbench__cell--summary:hover {
-  background: var(--dp-surface-strong, #eef2f7);
+  background: var(--dp-surface-strong);
 }
 
 .matrix-workbench__cell-primary {
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .matrix-workbench__cell-secondary {
   margin-top: 2px;
   font-size: 11px;
-  color: var(--dp-text-muted, #64748b);
+  color: var(--dp-text-muted);
 }
 
 .matrix-workbench__cell-empty {
@@ -468,7 +468,7 @@ function handleRowClick(row: MatrixRow) {
 }
 
 .matrix-workbench__cell--empty-state {
-  background: var(--dp-surface, #fff);
+  background: var(--dp-surface);
 }
 
 .matrix-workbench__cell-warning {
@@ -478,7 +478,7 @@ function handleRowClick(row: MatrixRow) {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: var(--dp-color-danger, #dc2626);
+  background: var(--dp-color-danger);
   color: #fff;
   font-size: 11px;
   font-weight: 700;
@@ -520,7 +520,7 @@ function handleRowClick(row: MatrixRow) {
 
 .matrix-workbench__tone--gray {
   background: rgba(148, 163, 184, 0.16);
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .matrix-workbench__tone--blue {

@@ -165,6 +165,12 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { StudentExamItemVO } from '@/apis/mark/student-exam'
+import {
+  canSubmitReview,
+  listMyExams,
+  ReviewWindowPolicyStatusDescription,
+  STUDENT_REVIEW_WINDOW_STATUS_TONE,
+} from '@/apis/mark/student-exam'
 import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
@@ -174,12 +180,6 @@ import {
   FINAL_SCORE_STATUS_TONE,
   FinalScoreStatusDescription,
 } from '@/apis/mark/final-score-status'
-import {
-  canSubmitReview,
-  listMyExams,
-  ReviewWindowPolicyStatusDescription,
-  STUDENT_REVIEW_WINDOW_STATUS_TONE,
-} from '@/apis/mark/student-exam'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -264,7 +264,7 @@ const unpublishedCount = computed<number>(() => {
 })
 
 /** 最近两次发布的分数差（最新 - 上一次），无足够数据返回 null */
-const scoreTrend = computed<{ diff: number, latest: number, previous: number } | null>(() => {
+const scoreTrend = computed<{ diff: number; latest: number; previous: number } | null>(() => {
   const list = publishedExamsSorted.value
   if (list.length < 2) return null
   const latest = Number(list[0].finalScore)
@@ -457,7 +457,7 @@ onActivated(loadExams)
     align-items: center;
     gap: 8px;
     font-size: 16px;
-    font-weight: var(--dp-font-weight-title, 600);
+    font-weight: var(--dp-font-weight-title);
   }
 
   &__list-head {
@@ -465,7 +465,7 @@ onActivated(loadExams)
     align-items: center;
     gap: 8px;
     font-size: 16px;
-    font-weight: var(--dp-font-weight-title, 600);
+    font-weight: var(--dp-font-weight-title);
   }
 
   &__insights {
@@ -477,7 +477,7 @@ onActivated(loadExams)
   }
 
   &__hint {
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 }
 
@@ -494,9 +494,9 @@ onActivated(loadExams)
     justify-content: center;
     padding: 24px;
     /* 与全站其他卡片视觉对齐：用纯色浅绿底 + 1px 边框，去除 135deg 渐变 */
-    background: var(--dp-green-50, #f0fdf4);
-    border: 1px solid var(--dp-green-200, #bbf7d0);
-    border-radius: var(--dp-radius-panel, 6px);
+    background: var(--dp-green-50);
+    border: 1px solid var(--dp-green-200);
+    border-radius: var(--dp-radius-panel);
 
     .score-label {
       font-size: 12px;

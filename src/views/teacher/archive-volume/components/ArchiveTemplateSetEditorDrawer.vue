@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
+import { ArchiveMaterialTypeDescription } from '@/apis/mark/archive-volume'
 import type {
   ArchiveTemplateMaterialEditRow,
   ArchiveTemplateSelfCheckEditRow,
 } from '@/views/teacher/archive-volume/components/archive-template-editor-types'
 import MenuOutlined from '@ant-design/icons-vue/MenuOutlined'
 import { computed, ref, watch } from 'vue'
-import { ArchiveMaterialTypeDescription } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
@@ -17,9 +17,13 @@ import ArchiveTemplateSortableTableShell from '@/views/teacher/archive-volume/co
 
 defineOptions({ name: 'ArchiveTemplateSetEditorDrawer' })
 
-const materialRowsModel = defineModel<ArchiveTemplateMaterialEditRow[]>('materialRows', { required: true })
+const materialRowsModel = defineModel<ArchiveTemplateMaterialEditRow[]>('materialRows', {
+  required: true,
+})
 
-const selfCheckRowsModel = defineModel<ArchiveTemplateSelfCheckEditRow[]>('selfCheckRows', { required: true })
+const selfCheckRowsModel = defineModel<ArchiveTemplateSelfCheckEditRow[]>('selfCheckRows', {
+  required: true,
+})
 
 const props = withDefaults(
   defineProps<{
@@ -45,8 +49,8 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "save": []
-  "cancel": []
+  save: []
+  cancel: []
 }>()
 
 const MATERIAL_GROUP_FALLBACK = '材料目录'
@@ -74,7 +78,12 @@ const {
 })
 
 const materialColumns = computed<ColumnsType<ArchiveTemplateMaterialEditRow>>(() => {
-  const dragCol: ColumnsType<ArchiveTemplateMaterialEditRow>[number] = { title: '', key: 'drag', width: 44, align: 'center' }
+  const dragCol: ColumnsType<ArchiveTemplateMaterialEditRow>[number] = {
+    title: '',
+    key: 'drag',
+    width: 44,
+    align: 'center',
+  }
   if (props.mode === 'platform') {
     return [
       dragCol,
@@ -300,7 +309,9 @@ defineExpose({
                   <a-input v-model:value="selfCheckRowsModel[index].itemText" />
                 </template>
                 <template v-else-if="column.key === 'requiredFlag'">
-                  <a-checkbox v-model:checked="selfCheckRowsModel[index].requiredFlag">必查</a-checkbox>
+                  <a-checkbox v-model:checked="selfCheckRowsModel[index].requiredFlag"
+                    >必查</a-checkbox
+                  >
                 </template>
               </template>
             </ArchiveTemplateSortableTableShell>
@@ -312,7 +323,9 @@ defineExpose({
 
     <template #footer>
       <UiButton size="sm" variant="outline" :disabled="saving" @click="handleClose">取消</UiButton>
-      <UiButton size="sm" variant="primary" :loading="saving" @click="handleSave">{{ saveLabel }}</UiButton>
+      <UiButton size="sm" variant="primary" :loading="saving" @click="handleSave">{{
+        saveLabel
+      }}</UiButton>
     </template>
   </UiDrawer>
 </template>
@@ -320,7 +333,7 @@ defineExpose({
 <style scoped>
 .archive-template-editor__tip {
   margin: 0 0 16px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
   font-size: 13px;
 }
 
@@ -361,17 +374,17 @@ defineExpose({
   width: 28px;
   height: 28px;
   padding: 0;
-  border-radius: var(--dp-radius-control, 4px);
+  border-radius: var(--dp-radius-control);
   background: transparent;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
   cursor: grab;
   user-select: none;
   touch-action: none;
 }
 
 .archive-template-editor__drag-handle:hover {
-  background: var(--dp-gray-100, #f3f4f6);
-  color: var(--dp-text-primary, #0f172a);
+  background: var(--dp-gray-100);
+  color: var(--dp-text-primary);
 }
 
 .archive-template-editor__drag-handle:active {
@@ -380,7 +393,7 @@ defineExpose({
 
 .archive-template-editor__empty {
   margin: 0;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
   font-size: 14px;
 }
 </style>

@@ -214,6 +214,7 @@ const openExportTaskCenter = () => {
 </script>
 
 <style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .header-right-bar {
   display: flex;
   align-items: center;
@@ -394,7 +395,7 @@ const openExportTaskCenter = () => {
   }
 }
 
-@media (max-width: 767px) {
+@media (max-width: bp.$layout-mobile-max) {
   .tenant-info {
     display: none;
   }

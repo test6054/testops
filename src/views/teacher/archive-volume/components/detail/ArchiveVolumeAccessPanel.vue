@@ -18,11 +18,13 @@
       >
         <div class="approval-card__head">
           <span class="approval-card__applicant">
-            {{ archiveAccessApplicantLabel(
-              record.applicantNickName,
-              record.applicantIdentifier,
-              record.applicantUserId,
-            ) }}
+            {{
+              archiveAccessApplicantLabel(
+                record.applicantNickName,
+                record.applicantIdentifier,
+                record.applicantUserId,
+              )
+            }}
           </span>
           <UiTag :tone="archiveAccessStatusTone(record.accessStatus)" size="sm">
             {{ archiveAccessStatusLabel(record.accessStatus) }}
@@ -36,7 +38,10 @@
           <span v-if="record.expireTime"> · 到期: {{ formatDateTime(record.expireTime) }}</span>
           <span v-if="record.watermarkApplied"> · 含水印</span>
         </p>
-        <p v-if="record.decisionComment && record.accessStatus === 'REJECTED'" class="approval-card__reject">
+        <p
+          v-if="record.decisionComment && record.accessStatus === 'REJECTED'"
+          class="approval-card__reject"
+        >
           拒绝原因: {{ record.decisionComment }}
         </p>
         <p
@@ -179,8 +184,6 @@ import type {
   ArchiveVolumeAccessReadPageRequest,
   ArchiveVolumeAccessRecordResponse,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import {
   approveArchiveVolumeAccess,
   downloadArchiveAccessMaterial,
@@ -190,6 +193,8 @@ import {
   rejectArchiveVolumeAccess,
   requestArchiveVolumeAccess,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -446,7 +451,7 @@ defineExpose({ loadAccessRecords })
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-3);
   width: 100%;
 }
 
@@ -454,32 +459,32 @@ defineExpose({ loadAccessRecords })
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: var(--dp-text, #1a1d21);
+  color: var(--dp-text);
 }
 
 .archive-volume-access-panel__list {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2, 8px);
-  padding: var(--dp-space-3, 12px) 0;
+  gap: var(--dp-space-2);
+  padding: var(--dp-space-3) 0;
 }
 
 :deep(.approval-card__actions) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
-  margin-top: var(--dp-space-3, 12px);
+  gap: var(--dp-space-2);
+  margin-top: var(--dp-space-3);
 }
 
 :deep(.approval-card__action-row) {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 
 :deep(.approval-card__reject-input) {
   width: 100%;
-  margin-bottom: var(--dp-space-2, 8px);
+  margin-bottom: var(--dp-space-2);
 }
 </style>

@@ -283,7 +283,7 @@ watch(
   justify-content: center;
   background: var(--scan-canvas-bg);
   border: 1px solid var(--scan-canvas-border);
-  border-radius: var(--dp-radius-panel, 8px);
+  border-radius: var(--dp-radius-panel);
   overflow: hidden;
   touch-action: none;
 }
@@ -297,7 +297,7 @@ watch(
 }
 
 .scan-stage__empty {
-  color: var(--dp-text-muted, #94a3b8);
+  color: var(--dp-text-muted);
   font-size: 14px;
 }
 
@@ -322,8 +322,8 @@ watch(
   user-select: none;
   transform-origin: center center;
   transition:
-    transform var(--dp-duration-fast, 150ms) ease,
-    filter var(--dp-duration-fast, 150ms) ease;
+    transform var(--dp-duration-fast) ease,
+    filter var(--dp-duration-fast) ease;
 }
 
 .scan-stage__canvas--confidential .scan-stage__image {
@@ -331,7 +331,7 @@ watch(
 }
 
 .scan-stage__canvas--panning .scan-stage__image {
-  transition: filter var(--dp-duration-fast, 150ms) ease;
+  transition: filter var(--dp-duration-fast) ease;
 }
 
 .scan-stage__roi {
@@ -354,7 +354,7 @@ watch(
   background: var(--scan-toolbar-bg);
   border: 1px solid var(--scan-toolbar-border);
   border-radius: var(--dp-radius-panel);
-  box-shadow: var(--dp-shadow-sm, 0 2px 8px rgba(15, 23, 42, 0.06));
+  box-shadow: var(--dp-shadow-sm);
   backdrop-filter: blur(6px);
 }
 
@@ -367,7 +367,7 @@ watch(
 .scan-stage__divider {
   width: 1px;
   height: 22px;
-  background: var(--dp-border, #e5e7eb);
+  background: var(--dp-border);
 }
 
 .scan-stage__btn {
@@ -379,14 +379,14 @@ watch(
   justify-content: center;
   background: transparent;
   border: none;
-  border-radius: var(--dp-radius-control-inner, 4px);
-  color: var(--dp-text-secondary, #475569);
+  border-radius: var(--dp-radius-control-inner);
+  color: var(--dp-text-secondary);
   font-size: 14px;
   cursor: pointer;
-  transition: background var(--dp-duration-fast, 150ms) ease;
+  transition: background var(--dp-duration-fast) ease;
 }
 .scan-stage__btn:hover:not(:disabled) {
-  background: var(--dp-surface-subtle, #f1f5f9);
+  background: var(--dp-surface-subtle);
   color: var(--ant-color-primary, #1677ff);
 }
 .scan-stage__btn:disabled {
@@ -408,12 +408,12 @@ watch(
   text-align: center;
   font-variant-numeric: tabular-nums;
   font-size: 13px;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .scan-stage__caption {
   margin: 0;
   font-size: 12px;
-  color: var(--dp-text-muted, #94a3b8);
+  color: var(--dp-text-muted);
 }
 </style>

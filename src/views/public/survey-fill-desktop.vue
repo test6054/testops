@@ -48,7 +48,9 @@
         <div class="d-survey__progress">
           <div class="d-survey__progress-bar" :style="{ width: `${progressPercent}%` }" />
         </div>
-        <span class="d-survey__progress-label">已完成 {{ answeredCount }}/{{ totalCount }} 题（{{ progressPercent }}%）</span>
+        <span class="d-survey__progress-label"
+          >已完成 {{ answeredCount }}/{{ totalCount }} 题（{{ progressPercent }}%）</span
+        >
       </div>
 
       <!-- 内容区 -->
@@ -378,9 +380,9 @@ async function handleSubmit() {
   --survey-border-light: var(--ant-color-border-secondary, #f0f0f0);
   --survey-surface: var(--ant-color-bg-container, #fff);
   --survey-surface-muted: var(--ant-color-fill-quaternary, #fafafa);
-  --survey-text: var(--dp-text-primary, #1a1a2e);
-  --survey-text-secondary: var(--dp-text-secondary, #666);
-  --survey-text-muted: var(--dp-text-tertiary, #999);
+  --survey-text: var(--dp-text-primary);
+  --survey-text-secondary: var(--dp-text-secondary);
+  --survey-text-muted: var(--dp-text-tertiary);
   --survey-text-placeholder: var(--ant-color-text-quaternary, #bbb);
   --survey-warning-bg: var(--ant-color-warning-bg, #fff3e0);
   --survey-warning-text: var(--ant-color-warning, #f57c00);
@@ -496,14 +498,14 @@ async function handleSubmit() {
 .d-survey__banner-title {
   font-size: 28px;
   font-weight: 700;
-  color: var(--dp-text-primary, #1a1a2e);
+  color: var(--dp-text-primary);
   margin: 0 0 12px;
   line-height: 1.3;
 }
 
 .d-survey__banner-desc {
   font-size: 15px;
-  color: var(--dp-text-secondary, #666);
+  color: var(--dp-text-secondary);
   line-height: 1.6;
   margin: 0 auto;
   max-width: 560px;

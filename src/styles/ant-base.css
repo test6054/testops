@@ -1,0 +1,4 @@
+/**
+ * Ant Design Vue 4.x reset — 唯一 base reset 来源；不得再引入 Tailwind preflight。
+ */
+@import 'ant-design-vue/dist/reset.css' layer(ant-base);

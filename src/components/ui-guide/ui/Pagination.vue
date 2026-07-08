@@ -67,7 +67,7 @@ const handleShowSizeChange = (page: number, size: number) => {
   display: flex;
   align-items: center;
   gap: 4px;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
   font-family: var(--dp-font-family);
 }
 
@@ -76,7 +76,7 @@ const handleShowSizeChange = (page: number, size: number) => {
 .ui-pagination :deep(.ant-pagination-next) {
   min-width: 32px;
   height: 32px;
-  border-radius: var(--dp-radius-control, 6px);
+  border-radius: var(--dp-radius-control);
   border-color: transparent;
   background: transparent;
   transition: all 0.15s ease;
@@ -85,29 +85,29 @@ const handleShowSizeChange = (page: number, size: number) => {
 .ui-pagination :deep(.ant-pagination-item:hover),
 .ui-pagination :deep(.ant-pagination-prev:hover),
 .ui-pagination :deep(.ant-pagination-next:hover) {
-  background: var(--dp-gray-100, #f3f4f6);
+  background: var(--dp-gray-100);
   border-color: transparent;
 }
 
 .ui-pagination :deep(.ant-pagination-item a) {
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-pagination :deep(.ant-pagination-item:hover a) {
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-pagination :deep(.ant-pagination-item-active) {
   border-color: transparent;
-  background: var(--dp-blue-50, #eff6ff);
+  background: var(--dp-blue-50);
 }
 
 .ui-pagination :deep(.ant-pagination-item-active:hover) {
-  background: var(--dp-blue-100, #dbeafe);
+  background: var(--dp-blue-100);
 }
 
 .ui-pagination :deep(.ant-pagination-item-active a) {
-  color: var(--dp-blue-700, #1d4ed8);
+  color: var(--dp-blue-700);
   font-weight: 700;
 }
 </style>

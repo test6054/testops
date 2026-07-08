@@ -19,11 +19,7 @@
       }"
       @click="metric.clickable ? emit('metric-click', metric.key) : undefined"
     >
-      <span
-        v-if="variant === 'tiles'"
-        class="signal-band__dot"
-        :class="dotClass(metric.tone)"
-      />
+      <span v-if="variant === 'tiles'" class="signal-band__dot" :class="dotClass(metric.tone)" />
       <div class="signal-band__body">
         <span class="signal-band__label">{{ metric.label }}</span>
         <div class="signal-band__value-row">
@@ -94,6 +90,8 @@ function trendClass(metric: SignalMetric): string {
 </script>
 
 <style scoped>
+@use '@/styles/breakpoints' as bp;
+
 .signal-band {
   display: flex;
   flex-wrap: wrap;
@@ -122,11 +120,6 @@ function trendClass(metric: SignalMetric): string {
   flex-wrap: nowrap;
   gap: var(--dp-space-2);
   overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.signal-band--tiles::-webkit-scrollbar {
-  display: none;
 }
 
 .signal-band--tiles .signal-band__item {
@@ -150,13 +143,13 @@ function trendClass(metric: SignalMetric): string {
 }
 
 .signal-band--tiles .signal-band__item--active {
-  border-color: var(--dp-primary-light, #93c5fd);
-  background: color-mix(in srgb, var(--dp-primary, #2563eb) 6%, var(--dp-surface-subtle));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dp-primary, #2563eb) 12%, transparent);
+  border-color: var(--dp-primary-light);
+  background: color-mix(in srgb, var(--dp-primary) 6%, var(--dp-surface-subtle));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dp-primary) 12%, transparent);
 }
 
 .signal-band--panel .signal-band__item--active {
-  background: color-mix(in srgb, var(--dp-primary, #2563eb) 6%, var(--dp-surface-subtle));
+  background: color-mix(in srgb, var(--dp-primary) 6%, var(--dp-surface-subtle));
 }
 
 .signal-band--tiles .signal-band__body {
@@ -347,5 +340,27 @@ function trendClass(metric: SignalMetric): string {
 
 .signal-band__value--gray {
   color: var(--dp-text-secondary);
+}
+
+@media (max-width: bp.$layout-mobile-max) {
+  .signal-band--tiles {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+
+  .signal-band--tiles .signal-band__item {
+    flex: 1 1 calc(50% - var(--dp-space-1));
+    min-width: 0;
+  }
+
+  .signal-band--panel {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+
+  .signal-band--panel .signal-band__item {
+    flex: 1 1 calc(50% - 1px);
+    min-width: 0;
+  }
 }
 </style>

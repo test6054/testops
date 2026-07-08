@@ -2,21 +2,19 @@
   <WorkbenchSurfaceCard flush class="archive-volume-external-import">
     <template #head>
       <div class="archive-volume-external-import__section-head">
-        <h3 class="archive-volume-external-import__section-title">外部 Excel 批量建卷</h3>
+        <h3 class="archive-volume-external-import__section-title">外部 Excel 批量导入</h3>
         <p class="archive-volume-external-import__section-subtitle">
-          教务系统等外部来源 · 批量建卷并登记材料
+          教务系统等外部来源 · 批量创建归档任务并登记材料
         </p>
       </div>
     </template>
     <template #toolbar>
-      <UiButton size="sm" variant="outline" @click="openImportModal">
-        Excel 批量导入
-      </UiButton>
+      <UiButton size="sm" variant="outline" @click="openImportModal"> Excel 批量导入 </UiButton>
     </template>
     <UiAlertStrip
       tone="info"
       title="导入流程"
-      description="1. 填写来源系统（导入上下文 sourceSystem）；2. 确认导入类型为卷宗材料（VOLUME_MATERIAL）；3. 下载 MARK_ARCHIVE_EXTERNAL 模板，按「导入数据」表填写；4. 上传 Excel，平台返回批次号与成功/失败条数。"
+      description="1. 填写来源系统（导入上下文 sourceSystem）；2. 确认导入类型为任务材料（VOLUME_MATERIAL）；3. 下载 MARK_ARCHIVE_EXTERNAL 模板，按「导入数据」表填写；4. 上传 Excel，平台返回批次号与成功/失败条数。"
       dense
       class="archive-volume-external-import__flow"
     />
@@ -30,11 +28,7 @@
           />
         </a-form-item>
         <a-form-item label="导入类型" required>
-          <a-select
-            v-model:value="form.importType"
-            :options="importTypeOptions"
-            disabled
-          />
+          <a-select v-model:value="form.importType" :options="importTypeOptions" disabled />
         </a-form-item>
       </div>
     </a-form>
@@ -56,7 +50,7 @@
     <UiPlatformExcelImportModal
       v-model:open="importModalOpen"
       :scene-key="ExcelImportSceneKey.MARK_ARCHIVE_EXTERNAL"
-      entity-label="归档卷外部数据"
+      entity-label="归档任务外部数据"
       :context="importContext"
       @success="handleImportSuccess"
     />
@@ -65,12 +59,12 @@
 
 <script setup lang="ts">
 import type { ArchiveExternalImportResultVO } from '@/apis/mark/archive-volume'
-import type { ExcelImportResult } from '@/apis/platform/types'
-import { computed, ref } from 'vue'
 import {
   ArchiveExternalImportTypeCode,
   ArchiveExternalImportTypeDescription,
 } from '@/apis/mark/archive-volume'
+import type { ExcelImportResult } from '@/apis/platform/types'
+import { computed, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -167,25 +161,25 @@ function handleImportSuccess(result: ExcelImportResult): void {
   }
 
   &__flow {
-    margin-top: var(--dp-space-2, 8px);
+    margin-top: var(--dp-space-2);
   }
 
   &__form {
-    margin-top: var(--dp-space-3, 12px);
+    margin-top: var(--dp-space-3);
   }
 
   &__grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0 var(--dp-space-3, 12px);
+    gap: 0 var(--dp-space-3);
   }
 
   &__error {
-    margin-top: var(--dp-space-2, 8px);
+    margin-top: var(--dp-space-2);
   }
 
   &__result {
-    margin-top: var(--dp-space-3, 12px);
+    margin-top: var(--dp-space-3);
   }
 }
 

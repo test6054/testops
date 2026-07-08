@@ -4,18 +4,6 @@ import type {
   PortfolioEvaluationObjectionHandleActionCode,
   PortfolioEvaluationTeacherNoticeStatusCode,
 } from '@/apis/portfolio/enums'
-import type {
-  PortfolioEvaluationMaterialCategoryItemVO,
-  PortfolioEvaluationMaterialPreviewVO,
-  PortfolioEvaluationPublicityListItemVO,
-  PortfolioEvaluationTeacherNoticeVO,
-  PortfolioEvaluationTeacherResultSummaryVO,
-} from '@/apis/portfolio/types'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { Input, message, Select } from 'ant-design-vue'
-import { computed, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   PORTFOLIO_EVALUATION_OBJECTION_TYPE_OPTIONS,
   PortfolioEvaluationObjectionHandleActionDescription,
@@ -24,14 +12,26 @@ import {
   PortfolioEvaluationPublicityStatusDescription,
   PortfolioEvaluationTeacherNoticeStatusDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
-import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
+import type {
+  PortfolioEvaluationMaterialCategoryItemVO,
+  PortfolioEvaluationMaterialPreviewVO,
+  PortfolioEvaluationPublicityListItemVO,
+  PortfolioEvaluationTeacherNoticeVO,
+  PortfolioEvaluationTeacherResultSummaryVO,
+} from '@/apis/portfolio/types'
 import {
   PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
   PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE,
   PORTFOLIO_EVALUATION_PUBLICITY_STATUS_TONE,
   PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE,
 } from '@/apis/portfolio/types'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import { Input, message, Select } from 'ant-design-vue'
+import { computed, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
+import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -162,9 +162,9 @@ function canViewerSubmitObjection(record: PortfolioEvaluationPublicityListItemVO
     return false
   }
   return !(
-    canPickTeachers.value
-    && targetTeacherId.value
-    && targetTeacherId.value !== currentUserId.value
+    canPickTeachers.value &&
+    targetTeacherId.value &&
+    targetTeacherId.value !== currentUserId.value
   )
 }
 
@@ -576,7 +576,7 @@ usePortfolioScopedLoader(
 
 <style scoped lang="scss">
 .teacher-evaluation__block {
-  margin-top: var(--dp-space-4, 16px);
+  margin-top: var(--dp-space-4);
 }
 
 .teacher-evaluation__meta {
@@ -586,21 +586,21 @@ usePortfolioScopedLoader(
 }
 
 .teacher-evaluation__handle-opinion {
-  margin: var(--dp-space-1, 4px) 0 0;
+  margin: var(--dp-space-1) 0 0;
   font-size: 12px;
   line-height: 1.5;
   color: var(--dp-text-secondary);
 }
 
 .teacher-evaluation__category-table {
-  margin-top: var(--dp-space-3, 12px);
+  margin-top: var(--dp-space-3);
 }
 
 .teacher-evaluation__result-table {
-  margin-top: var(--dp-space-3, 12px);
+  margin-top: var(--dp-space-3);
 }
 
 .teacher-evaluation__form-field {
-  margin-bottom: var(--dp-space-3, 12px);
+  margin-bottom: var(--dp-space-3);
 }
 </style>

@@ -51,10 +51,15 @@
               @open-ai-history="focusExecutionTrace(item.traceId)"
             />
             <p
-              v-if="item.referenceExperienceAudit?.referenceExperienceApplied && item.referenceExperienceAudit?.referenceExperienceMatchMode"
+              v-if="
+                item.referenceExperienceAudit?.referenceExperienceApplied &&
+                item.referenceExperienceAudit?.referenceExperienceMatchMode
+              "
               class="marking-ai-assist-drawer__match-mode"
             >
-              定标方式：{{ matchModeLabel(item.referenceExperienceAudit.referenceExperienceMatchMode) }}
+              定标方式：{{
+                matchModeLabel(item.referenceExperienceAudit.referenceExperienceMatchMode)
+              }}
             </p>
             <div v-if="item.diagnostic" class="marking-ai-assist-drawer__diagnostic">
               <strong>处理说明：</strong>{{ diagnosticText(item.diagnostic) }}
@@ -71,16 +76,16 @@
 
 <script lang="ts" setup>
 import type { ComponentPublicInstance } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import type {
   AiAbilityCode,
   AiExecutionStatusCode,
   AiProviderTypeCode,
   ExamQuestionAiExecutionItemResponse,
 } from '@/apis/mark/exam-grade'
+import { AiProviderTypeDescription } from '@/apis/mark/exam-grade'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { GradingExperienceReferenceMatchModeCode } from '@/types/enums/grading-experience-reference-match-mode-enum'
-import { computed, nextTick, ref, watch } from 'vue'
-import { AiProviderTypeDescription } from '@/apis/mark/exam-grade'
 import ExperienceAssistBadge from '@/components/mark/ExperienceAssistBadge.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -143,7 +148,10 @@ function resolveItemElement(el: Element | ComponentPublicInstance | null): HTMLE
   return root instanceof HTMLElement ? root : null
 }
 
-function registerItemRef(traceId: string | undefined, el: Element | ComponentPublicInstance | null): void {
+function registerItemRef(
+  traceId: string | undefined,
+  el: Element | ComponentPublicInstance | null,
+): void {
   if (!traceId) return
   const element = resolveItemElement(el)
   if (element) {
@@ -164,7 +172,9 @@ function focusExecutionTrace(traceId?: string | null): void {
 async function scrollToHighlightedTrace(): Promise<void> {
   if (!props.open || !resolvedHighlightTraceId.value || props.loading) return
   await nextTick()
-  itemRefMap.get(resolvedHighlightTraceId.value)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  itemRefMap
+    .get(resolvedHighlightTraceId.value)
+    ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
 }
 
 watch(
@@ -218,13 +228,13 @@ watch(
   &__model,
   &__match-mode {
     font-size: 12px;
-    color: var(--dp-text-muted, #64748b);
+    color: var(--dp-text-muted);
   }
 
   &__diagnostic,
   &__summary {
     font-size: 13px;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
   }
 }
 </style>

@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioCorrectionRequestStatusCode } from '@/apis/portfolio/enums'
-import type { PortfolioCorrectionSummaryVO } from '@/apis/portfolio/types'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { Input, message } from 'ant-design-vue'
-import { reactive, ref } from 'vue'
-import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
 import {
   PortfolioCorrectionHandleActionCode,
   PortfolioCorrectionRequestStatusDescription,
 } from '@/apis/portfolio/enums'
+import type { PortfolioCorrectionSummaryVO } from '@/apis/portfolio/types'
 import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import { Input, message } from 'ant-design-vue'
+import { reactive, ref } from 'vue'
+import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -234,7 +234,7 @@ void loadPage()
 
 <style scoped lang="scss">
 .correction-admin__reject-meta {
-  margin: 0 0 var(--dp-space-3, 12px);
+  margin: 0 0 var(--dp-space-3);
   font-size: 14px;
   color: var(--dp-text-secondary);
 }

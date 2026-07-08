@@ -24,7 +24,8 @@
             <span
               class="task-result-panel__item-badge"
               :class="`task-result-panel__item-badge--${item.statusTone}`"
-            >{{ item.statusLabel }}</span>
+              >{{ item.statusLabel }}</span
+            >
           </div>
           <div v-if="item.description" class="task-result-panel__item-desc">
             {{ item.description }}
@@ -74,7 +75,7 @@ withDefaults(
 
 const emit = defineEmits<{
   (e: 'item-click', item: TaskResultItem): void
-  (e: 'action', actionEvent: { item: TaskResultItem, action: TaskResultAction }): void
+  (e: 'action', actionEvent: { item: TaskResultItem; action: TaskResultAction }): void
 }>()
 
 function handleItemClick(item: TaskResultItem) {
@@ -88,9 +89,9 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 
 <style scoped>
 .task-result-panel {
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
 }
 
 .task-result-panel__header {
@@ -101,7 +102,7 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .task-result-panel__empty {
@@ -111,7 +112,7 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 
 .task-result-panel__empty-text {
   font-size: 13px;
-  color: var(--dp-text-muted, #94a3b8);
+  color: var(--dp-text-muted);
 }
 
 .task-result-panel__list {
@@ -138,16 +139,16 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 }
 
 .task-result-panel__item-trigger:hover {
-  background: var(--dp-hover-bg, #f8fafc);
+  background: var(--dp-hover-bg);
 }
 
 .task-result-panel__item-trigger:focus-visible {
   outline: none;
-  box-shadow: inset 0 0 0 2px var(--dp-focus-ring, rgba(22, 119, 255, 0.18));
+  box-shadow: inset 0 0 0 2px var(--dp-focus-ring);
 }
 
 .task-result-panel__item + .task-result-panel__item {
-  border-top: 1px solid var(--dp-border-light, #f1f5f9);
+  border-top: 1px solid var(--dp-border-light);
 }
 
 .task-result-panel__item-main {
@@ -159,7 +160,7 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 .task-result-panel__item-title {
   font-size: 13px;
   font-weight: 500;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -213,7 +214,7 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 .task-result-panel__item-desc {
   margin-top: 4px;
   font-size: 12px;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
   line-height: 1.5;
 }
 
@@ -226,7 +227,7 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 .task-result-panel__item-time,
 .task-result-panel__item-extra {
   font-size: 11px;
-  color: var(--dp-text-muted, #94a3b8);
+  color: var(--dp-text-muted);
 }
 
 .task-result-panel__item-actions {
@@ -243,14 +244,14 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
   color: var(--ant-color-primary, #2563eb);
   background: transparent;
   border: 1px solid var(--ant-color-primary, #2563eb);
-  border-radius: var(--dp-radius-control-inner, 4px);
+  border-radius: var(--dp-radius-control-inner);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .task-result-panel__action:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px var(--dp-focus-ring, rgba(22, 119, 255, 0.18));
+  box-shadow: 0 0 0 3px var(--dp-focus-ring);
 }
 
 .task-result-panel__action:hover:not(:disabled) {

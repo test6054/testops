@@ -8,15 +8,19 @@
       >
         <span
           v-if="
-            item.redirect === 'noRedirect'
-              || item.redirect === ''
-              || index === breadcrumbList.length - 1
+            item.redirect === 'noRedirect' ||
+            item.redirect === '' ||
+            index === breadcrumbList.length - 1
           "
-          class="gi_line_1"
-        >{{ breadcrumbTitle(item) }}</span>
-        <span v-else class="gi_line_1 breadcrumb-item-title" @click="handleLink(item)">{{
-          breadcrumbTitle(item)
-        }}</span>
+          class="breadcrumb-item-ellipsis"
+          >{{ breadcrumbTitle(item) }}</span
+        >
+        <span
+          v-else
+          class="breadcrumb-item-ellipsis breadcrumb-item-title"
+          @click="handleLink(item)"
+          >{{ breadcrumbTitle(item) }}</span
+        >
         <RightOutlined v-if="index !== breadcrumbList.length - 1" />
       </a-breadcrumb-item>
     </transition-group>
@@ -41,9 +45,9 @@ const getHome = () => {
     const obj = XEUtils.findTree(
       routes,
       (i) =>
-        i.path === '/teacher/dashboard'
-        || i.path === '/teacher/exam-list'
-        || i.path === '/student/score',
+        i.path === '/teacher/dashboard' ||
+        i.path === '/teacher/exam-list' ||
+        i.path === '/student/score',
     )
     home = obj?.item || null
   }
@@ -116,6 +120,12 @@ function breadcrumbTitle(item: RouteRecordRaw): string {
   .anticon-right {
     margin: 0 4px;
   }
+}
+
+.breadcrumb-item-ellipsis {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .breadcrumb-item-title {

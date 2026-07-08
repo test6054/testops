@@ -35,15 +35,15 @@ withDefaults(
   gap: 8px;
   min-height: 32px;
   padding: 6px 12px;
-  border: 1px solid var(--dp-purple-200, #ddd6fe);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-purple-50, #f5f3ff);
+  border: 1px solid var(--dp-purple-200);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-purple-50);
 }
 
 .confidential-status-bar__icon {
   flex-shrink: 0;
   font-size: 14px;
-  color: var(--dp-purple-700, #7c3aed);
+  color: var(--dp-purple-700);
 }
 
 .confidential-status-bar__text {
@@ -59,14 +59,14 @@ withDefaults(
 
 .confidential-status-bar__title {
   font-weight: 600;
-  color: var(--dp-purple-700, #7c3aed);
+  color: var(--dp-purple-700);
 }
 
 .confidential-status-bar__sep {
-  color: var(--dp-purple-500, #8b5cf6);
+  color: var(--dp-purple-500);
 }
 
 .confidential-status-bar__description {
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 </style>

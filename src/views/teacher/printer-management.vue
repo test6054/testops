@@ -308,12 +308,6 @@ import type {
   ScannerAgentDiagnosticStatusCode,
   ScannerEndpointOnlineStatusCode,
 } from '@/apis/mark/exam-mark-scanner'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import AQrcode from 'ant-design-vue/es/qrcode'
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
   createScannerActivationCode,
   createScannerDevice,
@@ -333,6 +327,12 @@ import {
   unbindScannerDeviceAgent,
   updateScannerDevice,
 } from '@/apis/mark/exam-mark-scanner'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import AQrcode from 'ant-design-vue/es/qrcode'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -355,8 +355,8 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'PrinterManagement' })
 
 const { refreshSnapshot } = useWorkspaceExamId()
-const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
-  = useExamJourneyContextBar('扫描设备')
+const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useExamJourneyContextBar('扫描设备')
 
 /** 扫描设备写操作后刷新列表，并同步工作台 SCAN 段快照与 OCR 配置页。 */
 async function syncAfterDeviceMutation(): Promise<void> {
@@ -408,7 +408,7 @@ const deviceSignalMetrics = computed((): SignalMetric[] => [
   },
 ])
 
-const locationOptions = ref<Array<{ label: string, value: string }>>([])
+const locationOptions = ref<Array<{ label: string; value: string }>>([])
 
 function syncSearchForm(next: Record<string, unknown>): void {
   Object.assign(searchForm, next)
@@ -582,7 +582,7 @@ function handleResetSearch(): void {
   void loadDevices()
 }
 
-function handleUiPageChange(page: { current: number, pageSize: number }): void {
+function handleUiPageChange(page: { current: number; pageSize: number }): void {
   pagination.current = page.current
   pagination.pageSize = page.pageSize
   void loadDevices()
@@ -861,10 +861,10 @@ onBeforeUnmount(() => {
 .printer-management-page {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4, 16px);
+  gap: var(--dp-space-4);
 
   &__filter {
-    margin-bottom: var(--dp-space-2, 8px);
+    margin-bottom: var(--dp-space-2);
   }
 }
 

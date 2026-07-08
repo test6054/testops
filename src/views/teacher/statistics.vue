@@ -1,12 +1,7 @@
 <template>
   <StageWorkbenchShell class="stats-page">
     <template v-if="currentExamId" #signal>
-      <UiSkeletonState
-        v-if="paperAnalysisLoading"
-        variant="card"
-        :card-count="3"
-        compact
-      />
+      <UiSkeletonState v-if="paperAnalysisLoading" variant="card" :card-count="3" compact />
       <SignalBand v-else variant="tiles" compact :metrics="statsSignalMetrics" />
     </template>
 
@@ -165,10 +160,10 @@
 import type { Key } from 'ant-design-vue/es/_util/type'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ExamPaperAnalysisResponse } from '@/apis/mark/question-analysis'
+import { getExamPaperAnalysis } from '@/apis/mark/question-analysis'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getExamPaperAnalysis } from '@/apis/mark/question-analysis'
 import MarkQualitySyncChip from '@/components/quality/MarkQualitySyncChip.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -245,7 +240,8 @@ const currentExamId = computed(() => selectedExamId.value || '')
 const {
   classOptions,
   studentOptions,
-  loading: rosterLoading, load: loadRoster,
+  loading: rosterLoading,
+  load: loadRoster,
   reset: resetRoster,
 } = useMarkExamRoster()
 
@@ -293,7 +289,9 @@ const activeStudentText = computed(() => {
     )
     if (selectedStudent) {
       const studentText = `${selectedStudent.studentName} (${selectedStudent.studentNo})`
-      return selectedStudent.className ? `${studentText} · ${selectedStudent.className}` : studentText
+      return selectedStudent.className
+        ? `${studentText} · ${selectedStudent.className}`
+        : studentText
     } else {
       return activeStudentUserId.value
     }
@@ -329,9 +327,9 @@ async function loadPaperAnalysis(): Promise<void> {
 function handleClassChange(value?: SelectValue): void {
   activeClassId.value = typeof value === 'string' ? value : ''
   if (
-  activeStudentUserId.value
-  && activeClassId.value
-  && !studentOptions.value.some(
+    activeStudentUserId.value &&
+    activeClassId.value &&
+    !studentOptions.value.some(
       (opt) => opt.value === activeStudentUserId.value && opt.classId === activeClassId.value,
     )
   ) {
@@ -403,16 +401,20 @@ async function exportTeachingLecture(): Promise<void> {
   teachingImprovementRef.value?.exportRecordText()
 }
 
-watch(selectedExamId, (v) => {
-  // 切换考试时清空联动上下文，避免跨考试串号
-  clearLinkage()
-  if (v) {
-    void loadRoster(v)
-    reloadAll()
-  } else {
-    resetRoster()
-  }
-}, { immediate: true })
+watch(
+  selectedExamId,
+  (v) => {
+    // 切换考试时清空联动上下文，避免跨考试串号
+    clearLinkage()
+    if (v) {
+      void loadRoster(v)
+      reloadAll()
+    } else {
+      resetRoster()
+    }
+  },
+  { immediate: true },
+)
 
 onMounted(() => {
   mittBus.on('exam-workbench:refresh', reloadAll)
@@ -450,7 +452,7 @@ onBeforeUnmount(() => {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--dp-space-2, 8px);
+    gap: var(--dp-space-2);
     min-width: 0;
     flex: 1 1 auto;
   }
@@ -460,14 +462,14 @@ onBeforeUnmount(() => {
     flex-wrap: wrap;
     align-items: center;
     justify-content: flex-end;
-    gap: var(--dp-space-2, 8px);
+    gap: var(--dp-space-2);
     flex-shrink: 0;
   }
 
   &__linkage-label {
-    color: var(--dp-text-secondary, rgba(0, 0, 0, 0.65));
-    font-size: var(--dp-font-size-sm, 13px);
-    font-weight: var(--dp-font-weight-title, 600);
+    color: var(--dp-text-secondary);
+    font-size: var(--dp-font-size-sm);
+    font-weight: var(--dp-font-weight-title);
   }
 
   &__class-select {
@@ -493,15 +495,15 @@ onBeforeUnmount(() => {
 
   &__section-title {
     margin: 0;
-    color: var(--dp-text-primary, rgba(0, 0, 0, 0.88));
+    color: var(--dp-text-primary);
     font-size: 18px;
-    font-weight: var(--dp-font-weight-title, 600);
+    font-weight: var(--dp-font-weight-title);
     line-height: 1.5;
   }
 
   &__section-desc {
     margin: 0;
-    color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
+    color: var(--dp-text-muted);
     font-size: 14px;
     line-height: 1.6;
   }
@@ -509,7 +511,7 @@ onBeforeUnmount(() => {
   &__cards {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-4, 16px);
+    gap: var(--dp-space-4);
 
     :deep(.stats-card) {
       box-shadow: var(--dp-shadow-sm);
@@ -518,7 +520,7 @@ onBeforeUnmount(() => {
     :deep(.stats-card__title) {
       margin: 0;
       font-size: 16px;
-      font-weight: var(--dp-font-weight-title, 600);
+      font-weight: var(--dp-font-weight-title);
       line-height: 1.5;
     }
 
@@ -542,14 +544,14 @@ onBeforeUnmount(() => {
     :deep(.stats-card .question-analysis-card) {
       display: flex;
       flex-direction: column;
-      gap: var(--dp-space-3, 12px);
+      gap: var(--dp-space-3);
     }
 
     :deep(.stats-card .score-dist),
     :deep(.stats-card .ai-record) {
       display: flex;
       flex-direction: column;
-      gap: var(--dp-space-3, 12px);
+      gap: var(--dp-space-3);
     }
 
     :deep(.stats-card .score-dist__chart),
@@ -560,18 +562,18 @@ onBeforeUnmount(() => {
     }
 
     :deep(.stats-card .score-dist__metrics) {
-      padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
+      padding: var(--dp-space-3) var(--dp-space-4);
       background: var(--dp-surface-subtle);
-      border-radius: var(--dp-radius-control-inner, 4px);
+      border-radius: var(--dp-radius-control-inner);
     }
 
     :deep(.stats-card .score-dist__chart-wrap),
     :deep(.stats-card .question-analysis-card__chart-wrap),
     :deep(.stats-card .ai-chart) {
-      padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
-      border: 1px solid var(--dp-border, #e2e8f0);
-      border-radius: var(--dp-radius-panel, 6px);
-      background: var(--dp-surface, #fff);
+      padding: var(--dp-space-3) var(--dp-space-4);
+      border: 1px solid var(--dp-border);
+      border-radius: var(--dp-radius-panel);
+      background: var(--dp-surface);
     }
 
     :deep(.stats-card .score-dist__chart-meta),
@@ -580,29 +582,29 @@ onBeforeUnmount(() => {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: var(--dp-space-3, 12px);
-      margin-bottom: var(--dp-space-2, 8px);
+      gap: var(--dp-space-3);
+      margin-bottom: var(--dp-space-2);
 
       strong {
-        font-size: var(--dp-font-size-md, 14px);
-        font-weight: var(--dp-font-weight-title, 600);
+        font-size: var(--dp-font-size-md);
+        font-weight: var(--dp-font-weight-title);
       }
     }
 
     :deep(.stats-card .score-dist__chart-hint),
     :deep(.stats-card .question-analysis-card__chart-hint) {
-      font-size: var(--dp-font-size-xs, 12px);
-      color: var(--dp-text-secondary, rgba(0, 0, 0, 0.65));
+      font-size: var(--dp-font-size-xs);
+      color: var(--dp-text-secondary);
     }
 
     :deep(.stats-card .analysis-item__title),
     :deep(.stats-card .diagnosis-type) {
-      font-weight: var(--dp-font-weight-emphasis, 500);
+      font-weight: var(--dp-font-weight-emphasis);
     }
 
     :deep(.stats-card .ai-items > strong),
     :deep(.stats-card .ai-summary strong) {
-      font-weight: var(--dp-font-weight-title, 600);
+      font-weight: var(--dp-font-weight-title);
     }
 
     :deep(.stats-card .analysis-item__metric),
@@ -610,12 +612,12 @@ onBeforeUnmount(() => {
     :deep(.stats-card .diagnosis-rate),
     :deep(.stats-card .diagnosis-text),
     :deep(.stats-card .text-muted) {
-      color: var(--dp-text-secondary, rgba(0, 0, 0, 0.65));
+      color: var(--dp-text-secondary);
     }
 
     :deep(.stats-card .text-muted),
     :deep(.stats-card .diagnosis-rate) {
-      color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
+      color: var(--dp-text-muted);
     }
   }
 }

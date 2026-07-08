@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ScannerAgentReleaseResponse } from '@/apis/mark/scanner-agent-release'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   deleteScannerAgentRelease,
   pageScannerAgentReleases,
   publishScannerAgentRelease,
   registerScannerAgentRelease,
 } from '@/apis/mark/scanner-agent-release'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -34,9 +34,7 @@ import { formatDateTime, formatFileSize } from '@/utils/format'
 defineOptions({ name: 'ScannerAgentReleasesPage' })
 
 const authStore = useAuthStore()
-const canManage = computed(() =>
-  authStore.userRole === RoleEnum.SUPER_ADMIN,
-)
+const canManage = computed(() => authStore.userRole === RoleEnum.SUPER_ADMIN)
 
 const loading = ref(false)
 const saving = ref(false)
@@ -138,20 +136,17 @@ async function loadReleases() {
     })
     releases.value = result.list
     pagination.total = result.total
-    const publishedInPage = releases.value.find(item => item.published === true)
+    const publishedInPage = releases.value.find((item) => item.published === true)
     if (publishedInPage) {
       publishedReleaseSnapshot.value = publishedInPage
-    }
-    else if (pagination.current === 1 && !filters.keyword.trim()) {
+    } else if (pagination.current === 1 && !filters.keyword.trim()) {
       publishedReleaseSnapshot.value = null
     }
-  }
-  catch (error) {
+  } catch (error) {
     releases.value = []
     pagination.total = 0
     showUserError(error, 'Agent 发布包列表加载失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -177,11 +172,9 @@ async function submitRegister() {
     registerOpen.value = false
     pagination.current = 1
     await loadReleases()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '注册发布包失败')
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
@@ -223,11 +216,9 @@ async function submitPublish() {
     publishOpen.value = false
     publishTarget.value = null
     await loadReleases()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '发布失败')
-  }
-  finally {
+  } finally {
     publishing.value = false
   }
 }
@@ -250,8 +241,7 @@ async function confirmDelete(record: ScannerAgentReleaseResponse) {
     await deleteScannerAgentRelease({ releaseId: record.id })
     message.success('发布包已删除')
     await loadReleases()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '删除失败')
   }
 }
@@ -267,7 +257,7 @@ function handleResetSearch() {
   void loadReleases()
 }
 
-function handlePageChange(pageEvent: { current: number, pageSize: number }) {
+function handlePageChange(pageEvent: { current: number; pageSize: number }) {
   pagination.current = pageEvent.current
   pagination.pageSize = pageEvent.pageSize
   void loadReleases()
@@ -305,7 +295,7 @@ onMounted(() => {
       <SignalBand v-if="signalMetrics.length" variant="tiles" :metrics="signalMetrics" compact />
     </template>
 
-    <UiEmpty v-if="!canManage" description="当前账号无租户管理员权限，无法维护 Agent 发布包" />
+    <UiEmpty v-if="!canManage" description="仅平台超级管理员可维护 Agent 发布包" />
 
     <WorkbenchSurfaceCard v-else flush>
       <template #toolbar>
@@ -383,11 +373,7 @@ onMounted(() => {
     >
       <a-form layout="vertical">
         <a-form-item label="版本号" required>
-          <a-input
-            v-model:value="registerForm.version"
-            placeholder="例如 1.2.0"
-            :maxlength="32"
-          />
+          <a-input v-model:value="registerForm.version" placeholder="例如 1.2.0" :maxlength="32" />
         </a-form-item>
         <a-form-item label="安装包" required>
           <UiPlatformFileField
@@ -420,7 +406,8 @@ onMounted(() => {
       @ok="submitPublish"
     >
       <p v-if="publishTarget">
-        将 <strong>{{ publishTarget.version }}</strong>（{{ publishTarget.fileName }}）设为当前发布版本，其他已发布包会自动下线。
+        将 <strong>{{ publishTarget.version }}</strong
+        >（{{ publishTarget.fileName }}）设为当前发布版本，其他已发布包会自动下线。
       </p>
       <a-form-item v-if="publishTarget && isMsiPackage(publishTarget)" label="主动推送更新">
         <a-checkbox v-model:checked="publishPushEnabled">

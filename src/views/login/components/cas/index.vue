@@ -242,19 +242,19 @@ defineExpose({
 
   .cas-icon {
     margin-bottom: 12px;
-    color: var(--dp-blue-600, #2563eb);
+    color: var(--dp-blue-600);
     opacity: 0.85;
   }
 
   h3 {
     font-size: 18px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
     margin: 0 0 4px;
   }
 
   p {
-    color: var(--dp-text-muted, #6b7280);
+    color: var(--dp-text-muted);
     font-size: 14px;
     margin: 0;
   }
@@ -263,13 +263,13 @@ defineExpose({
 .cas-tips {
   width: 100%;
   padding: 14px 18px;
-  background: var(--dp-gray-50, #f8fafc);
-  border-radius: var(--dp-radius-control, 4px);
+  background: var(--dp-gray-50);
+  border-radius: var(--dp-radius-control);
 
   p {
     margin: 4px 0;
     font-size: 13px;
-    color: var(--dp-text-muted, #6b7280);
+    color: var(--dp-text-muted);
     line-height: 1.6;
   }
 }
@@ -280,10 +280,10 @@ defineExpose({
   gap: 8px;
   width: 100%;
   padding: 10px 14px;
-  background: var(--dp-red-50, #fef2f2);
+  background: var(--dp-red-50);
   border: 1px solid rgba(239, 68, 68, 0.2);
-  border-radius: var(--dp-radius-control, 4px);
-  color: var(--dp-red-500, #ef4444);
+  border-radius: var(--dp-radius-control);
+  color: var(--dp-red-500);
   font-size: 13px;
 
   svg {

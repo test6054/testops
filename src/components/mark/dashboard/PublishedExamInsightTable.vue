@@ -104,7 +104,7 @@ function formatPassRate(value?: number): string {
 .published-insight-table__title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .published-insight-table__empty {

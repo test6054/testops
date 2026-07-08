@@ -29,8 +29,8 @@ function stepClass(step: ObeJourneyStepVO): string {
 function goStep(step: ObeJourneyStepVO): void {
   if (!step.routeName) return
   if (
-    PLAN_CONFIRMED_ROUTE_NAMES.has(step.routeName)
-    && qualityStore.currentPlan?.confirmationStatus !== 'CONFIRMED'
+    PLAN_CONFIRMED_ROUTE_NAMES.has(step.routeName) &&
+    qualityStore.currentPlan?.confirmationStatus !== 'CONFIRMED'
   ) {
     void router.push({ name: 'QualityTrainingPlanWorkbench' })
     return
@@ -78,7 +78,7 @@ function goStep(step: ObeJourneyStepVO): void {
     padding: 0;
     border: 0;
     background: transparent;
-    color: var(--dp-text-secondary, rgba(0, 0, 0, 0.45));
+    color: var(--dp-text-secondary);
     font-size: 12px;
     line-height: 32px;
     white-space: nowrap;
@@ -111,7 +111,7 @@ function goStep(step: ObeJourneyStepVO): void {
   }
 
   &__step--pending {
-    color: var(--dp-text-secondary, rgba(0, 0, 0, 0.45));
+    color: var(--dp-text-secondary);
   }
 }
 </style>

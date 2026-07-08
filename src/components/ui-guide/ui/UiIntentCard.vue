@@ -141,17 +141,18 @@ const statusLabel = computed(() => {
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .ui-intent-card {
   display: flex;
   flex-direction: column;
   gap: 14px;
   min-width: 0;
   padding: 18px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
   background: #fff;
-  box-shadow: var(--dp-shadow-card, 0 10px 30px rgba(15, 23, 42, 0.06));
+  box-shadow: var(--dp-shadow-card);
 }
 
 .ui-intent-card--running {
@@ -194,7 +195,7 @@ const statusLabel = computed(() => {
   height: 28px;
   flex-shrink: 0;
   border: none;
-  border-radius: var(--dp-radius-panel, 4px);
+  border-radius: var(--dp-radius-panel);
   background: #f8fafc;
   color: #475569;
   cursor: pointer;
@@ -209,7 +210,7 @@ const statusLabel = computed(() => {
   margin: 0;
   font-size: 16px;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-intent-card__description,
@@ -217,7 +218,7 @@ const statusLabel = computed(() => {
 .ui-intent-card__field-helper {
   font-size: 13px;
   line-height: 1.75;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-intent-card__description {
@@ -234,12 +235,12 @@ const statusLabel = computed(() => {
   justify-content: space-between;
   font-size: 12px;
   font-weight: 700;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-intent-card__error {
   padding: 12px 14px;
-  border-radius: var(--dp-radius-panel, 4px);
+  border-radius: var(--dp-radius-panel);
   background: #fef2f2;
   color: #b91c1c;
 }
@@ -248,29 +249,29 @@ const statusLabel = computed(() => {
   display: grid;
   gap: 6px;
   padding: 12px 14px;
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface-subtle, #f8fafc);
-  border: 1px solid var(--dp-border, #e5e7eb);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface-subtle);
+  border: 1px solid var(--dp-border);
 }
 
 .ui-intent-card__field-label {
   font-size: 12px;
   font-weight: 700;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-intent-card__field-value {
   font-size: 14px;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-intent-card__footer {
   padding-top: 12px;
-  border-top: 1px solid var(--dp-border, #e5e7eb);
+  border-top: 1px solid var(--dp-border);
 }
 
-@media (max-width: 767px) {
+@media (max-width: bp.$layout-mobile-max) {
   .ui-intent-card__header {
     flex-direction: column;
     align-items: flex-start;

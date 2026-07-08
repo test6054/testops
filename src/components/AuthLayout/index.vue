@@ -88,6 +88,7 @@ const copyright = computed(() => appStore.getCopyright())
 </script>
 
 <style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .auth-layout {
   display: flex;
   min-height: 100vh;
@@ -240,19 +241,19 @@ const copyright = computed(() => appStore.getCopyright())
   right: 0;
   text-align: center;
   font-size: 12px;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 
   a {
     color: inherit;
     text-decoration: none;
 
     &:hover {
-      color: var(--dp-text-secondary, #475569);
+      color: var(--dp-text-secondary);
     }
   }
 }
 
-@media (max-width: 1280px) {
+@media (max-width: bp.$shell-laptop-max) {
   .auth-brand__capabilities {
     gap: 12px 10px;
   }

@@ -222,6 +222,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
+import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
 import type {
   FormalSessionResponse,
   MarkingTaskClaimRequest,
@@ -229,6 +230,15 @@ import type {
   MarkingTaskResponse,
   TeacherClaimContextResponse,
   TrialSessionResponse,
+} from '@/apis/mark/marking-organization'
+import {
+  FormalSessionStatusDescription,
+  getMarkingQuestionView,
+  getOrganization,
+  MARKING_TASK_STATUS_OPTIONS,
+  MARKING_TASK_STATUS_TONE,
+  MarkingTaskStatusDescription,
+  TrialSessionStatusDescription,
 } from '@/apis/mark/marking-organization'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -239,16 +249,6 @@ import message from 'ant-design-vue/es/message'
 import { storeToRefs } from 'pinia'
 import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
-import {
-  FormalSessionStatusDescription,
-  getMarkingQuestionView,
-  getOrganization,
-  MARKING_TASK_STATUS_OPTIONS,
-  MARKING_TASK_STATUS_TONE,
-  MarkingTaskStatusDescription,
-  TrialSessionStatusDescription,
-} from '@/apis/mark/marking-organization'
 import { MarkingTaskStreamSubscribeScopeCode } from '@/apis/mark/marking-task-stream'
 import MarkingBatchScoreDrawer from '@/components/mark/MarkingBatchScoreDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -373,8 +373,8 @@ const selectedTasks = computed(() =>
 
 function isBatchSelectable(task: MarkingTaskResponse): boolean {
   return (
-    task.taskStatus === MarkingTaskStatusCode.ALLOCATED
-    || task.taskStatus === MarkingTaskStatusCode.IN_PROGRESS
+    task.taskStatus === MarkingTaskStatusCode.ALLOCATED ||
+    task.taskStatus === MarkingTaskStatusCode.IN_PROGRESS
   )
 }
 
@@ -391,8 +391,8 @@ function handleSelectionChange(keys: (string | number)[]): void {
     clearBatchSelection()
     return
   }
-  const anchor
-    = batchSelectionAnchor.value ?? tasks.value.find((task) => task.id === typedKeys[0]) ?? null
+  const anchor =
+    batchSelectionAnchor.value ?? tasks.value.find((task) => task.id === typedKeys[0]) ?? null
   if (!anchor || !isBatchSelectable(anchor)) {
     clearBatchSelection()
     return
@@ -495,9 +495,9 @@ const groupLeaderStream = useMarkingTaskStream({
     }
     // exam Topic 事件携带单 session 计数，须回源 claimContext 做 exam 级聚合
     if (
-      event.eventType === 'SESSION_PROGRESS'
-      || event.eventType === 'SESSION_PAUSED'
-      || event.eventType === 'SESSION_RESUMED'
+      event.eventType === 'SESSION_PROGRESS' ||
+      event.eventType === 'SESSION_PAUSED' ||
+      event.eventType === 'SESSION_RESUMED'
     ) {
       void loadClaimContext()
     }
@@ -513,8 +513,8 @@ function getPollingIntervalMs(): number {
   }
   const hasPending = tasks.value.some(
     (task) =>
-      task.taskStatus === MarkingTaskStatusCode.ALLOCATED
-      || task.taskStatus === MarkingTaskStatusCode.IN_PROGRESS,
+      task.taskStatus === MarkingTaskStatusCode.ALLOCATED ||
+      task.taskStatus === MarkingTaskStatusCode.IN_PROGRESS,
   )
   if (hasPending) {
     return 5000
@@ -913,19 +913,19 @@ watch(markingPhase, () => {
   &__task-title {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2, 8px);
+    gap: var(--dp-space-2);
     margin: 0;
     font-size: 16px;
-    font-weight: var(--dp-font-weight-title, 600);
+    font-weight: var(--dp-font-weight-title);
     line-height: 1.5;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__task-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--dp-space-3, 12px);
+    gap: var(--dp-space-3);
     flex-wrap: wrap;
     width: 100%;
   }

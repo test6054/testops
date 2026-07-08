@@ -164,7 +164,7 @@ const handleSend = () => {
 .ui-conversation-panel__composer-title {
   font-size: 14px;
   font-weight: 700;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-conversation-panel__composer-row {

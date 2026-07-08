@@ -423,9 +423,9 @@ async function handleSubmit() {
   --survey-border-light: var(--ant-color-border-secondary, #f0f0f0);
   --survey-surface: var(--ant-color-bg-container, #fff);
   --survey-surface-muted: var(--ant-color-fill-quaternary, #f7f8fc);
-  --survey-text: var(--dp-text-primary, #1a1a2e);
-  --survey-text-secondary: var(--dp-text-secondary, #666);
-  --survey-text-muted: var(--dp-text-tertiary, #999);
+  --survey-text: var(--dp-text-primary);
+  --survey-text-secondary: var(--dp-text-secondary);
+  --survey-text-muted: var(--dp-text-tertiary);
   --survey-text-placeholder: var(--ant-color-text-quaternary, #bbb);
   --survey-warning-bg: var(--ant-color-warning-bg, #fff3e0);
   --survey-warning-text: var(--ant-color-warning, #f57c00);
@@ -555,14 +555,14 @@ async function handleSubmit() {
 .m-survey__cover-title {
   font-size: 26px;
   font-weight: 700;
-  color: var(--dp-text-primary, #1a1a2e);
+  color: var(--dp-text-primary);
   line-height: 1.4;
   margin: 0 0 16px;
 }
 
 .m-survey__cover-desc {
   font-size: 15px;
-  color: var(--dp-text-secondary, #666);
+  color: var(--dp-text-secondary);
   line-height: 1.6;
   margin: 0 0 12px;
   max-width: 320px;
@@ -570,7 +570,7 @@ async function handleSubmit() {
 
 .m-survey__cover-welcome {
   font-size: 14px;
-  color: var(--dp-text-secondary, #666);
+  color: var(--dp-text-secondary);
   line-height: 1.5;
   margin: 0 0 20px;
   max-width: 300px;
@@ -582,7 +582,7 @@ async function handleSubmit() {
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: var(--dp-text-tertiary, #999);
+  color: var(--dp-text-tertiary);
   margin-bottom: 8px;
 
   svg {
@@ -592,7 +592,7 @@ async function handleSubmit() {
 
 .m-survey__cover-info {
   font-size: 13px;
-  color: var(--dp-text-tertiary, #999);
+  color: var(--dp-text-tertiary);
 }
 
 .m-survey__cover-action {

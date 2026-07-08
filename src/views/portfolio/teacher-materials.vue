@@ -1,21 +1,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-status'
-import type { PortfolioMaterialStatusCode } from '@/apis/portfolio/enums'
-import type {
-  PortfolioMaterialSaveRequest,
-  PortfolioMaterialSearchResponse,
-  PortfolioMaterialVO,
-} from '@/apis/portfolio/types'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { Input, message } from 'ant-design-vue'
-import { computed, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   ARCHIVE_MATERIAL_OCR_STATUS_TONE,
   ArchiveMaterialOcrStatusDescription,
 } from '@/apis/mark/archive-ocr-status'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import type { PortfolioMaterialStatusCode } from '@/apis/portfolio/enums'
 import {
   PORTFOLIO_MATERIAL_STATUS_OPTIONS,
   PORTFOLIO_MATERIAL_TYPE_OPTIONS,
@@ -23,8 +13,18 @@ import {
   PortfolioMaterialTypeCode,
   PortfolioMaterialTypeDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioMaterialApi } from '@/apis/portfolio/material'
+import type {
+  PortfolioMaterialSaveRequest,
+  PortfolioMaterialSearchResponse,
+  PortfolioMaterialVO,
+} from '@/apis/portfolio/types'
 import { PORTFOLIO_MATERIAL_STATUS_TONE } from '@/apis/portfolio/types'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import { Input, message } from 'ant-design-vue'
+import { computed, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -472,7 +472,7 @@ usePortfolioScopedLoader(
 .teacher-materials__field {
   display: block;
   width: 100%;
-  margin-bottom: var(--dp-space-3, 12px);
+  margin-bottom: var(--dp-space-3);
 }
 
 .teacher-materials__select {

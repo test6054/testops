@@ -47,7 +47,7 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  (e: 'navigate', navigateEvent: { item: UiBreadcrumbItem, index: number }): void
+  (e: 'navigate', navigateEvent: { item: UiBreadcrumbItem; index: number }): void
 }>()
 
 const router = useRouter()
@@ -96,7 +96,7 @@ const handleNavigate = (item: UiBreadcrumbItem, index: number) => {
   min-width: 0;
   font-size: 13px;
   line-height: 1.6;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
   white-space: nowrap;
 }
 
@@ -109,16 +109,16 @@ const handleNavigate = (item: UiBreadcrumbItem, index: number) => {
 }
 
 .ui-breadcrumbs__link--action:hover {
-  color: var(--dp-blue-700, #1d4ed8);
+  color: var(--dp-blue-700);
 }
 
 .ui-breadcrumbs__link--current {
   font-weight: 700;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-breadcrumbs__separator {
   font-size: 11px;
-  color: var(--dp-text-muted, #94a3b8);
+  color: var(--dp-text-muted);
 }
 </style>

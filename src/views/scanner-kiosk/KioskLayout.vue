@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { KioskUiState } from './composables/kioskInjection'
+import { KIOSK_CTX_KEY } from './composables/kioskInjection'
 /**
  * 扫描一体机工作站 - 持久 Layout（路由父级）
  *
@@ -26,7 +27,6 @@ import KioskShortcutHintOverlay from './components/KioskShortcutHintOverlay.vue'
 import KioskSideRail from './components/KioskSideRail.vue'
 import KioskStageBar from './components/KioskStageBar.vue'
 import KioskWorkbenchTabs from './components/KioskWorkbenchTabs.vue'
-import { KIOSK_CTX_KEY } from './composables/kioskInjection'
 import { useExamKioskWorkflow } from './composables/useExamKioskWorkflow'
 import { useKioskMutex } from './composables/useKioskMutex'
 import { useKioskShortcuts } from './composables/useKioskShortcuts'
@@ -154,7 +154,8 @@ onActivated(() => {
 @import './styles/tokens.css';
 </style>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .kiosk-layout {
   --rail-width: var(--kiosk-w-side-rail);
 
@@ -238,13 +239,13 @@ onActivated(() => {
 
 /* ===================== Responsive ===================== */
 
-@media (max-width: 1280px) {
+@media (max-width: bp.$shell-laptop-max) {
   .kiosk-layout {
     --rail-width: 300px;
   }
 }
 
-@media (max-width: 1024px) {
+@media (max-width: bp.$shell-tablet-max) {
   .kiosk-layout {
     --rail-width: 0;
   }

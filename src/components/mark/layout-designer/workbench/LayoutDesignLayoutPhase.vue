@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import type { ExamMaterialLayoutModeCode } from '@/apis/mark/exam'
-import type { ExamLayoutBlockDto, ExamLayoutDocument, ExamLayoutQuestionDto } from '@/apis/mark/exam-layout-design'
+import type {
+  ExamLayoutBlockDto,
+  ExamLayoutDocument,
+  ExamLayoutQuestionDto,
+} from '@/apis/mark/exam-layout-design'
 import { computed } from 'vue'
 import LayoutBlockLayerPanel from '@/components/mark/layout-designer/LayoutBlockLayerPanel.vue'
 import LayoutCanvas from '@/components/mark/layout-designer/LayoutCanvas.vue'
@@ -26,7 +30,7 @@ const emit = defineEmits<{
   'focus-block': [block: ExamLayoutBlockDto | null]
   'focus-question': [question: ExamLayoutQuestionDto | null]
   'focus-block-from-outline': [block: ExamLayoutBlockDto | null, pageNo: number]
-  "patch": [document: ExamLayoutDocument]
+  patch: [document: ExamLayoutDocument]
 }>()
 
 const fullPaperMode = computed(() => isFullPaperWorkspace(props.materialLayoutMode))
@@ -45,20 +49,17 @@ const currentPageTabKey = computed({
   },
 })
 
-const focusedQuestion = computed(() =>
-  props.document?.questions.find((item) => item.id === props.focusedQuestionId) ?? null,
+const focusedQuestion = computed(
+  () => props.document?.questions.find((item) => item.id === props.focusedQuestionId) ?? null,
 )
 
-const focusedBlock = computed(() =>
-  props.document?.blocks.find((item) => item.id === props.focusedBlockId) ?? null,
+const focusedBlock = computed(
+  () => props.document?.blocks.find((item) => item.id === props.focusedBlockId) ?? null,
 )
 </script>
 
 <template>
-  <UiEmpty
-    v-if="!document?.pages?.length"
-    description="请先完成资料入口并同步页底图"
-  />
+  <UiEmpty v-if="!document?.pages?.length" description="请先完成资料入口并同步页底图" />
   <div v-else class="layout-design-layout-phase">
     <aside class="layout-design-layout-phase__left">
       <LayoutQuestionOutlinePanel
@@ -118,6 +119,7 @@ const focusedBlock = computed(() =>
 </template>
 
 <style scoped lang="scss">
+@use '@/styles/breakpoints' as bp;
 .layout-design-layout-phase {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr) 300px;
@@ -145,7 +147,7 @@ const focusedBlock = computed(() =>
     gap: 8px;
   }
 
-  @media (max-width: 1200px) {
+  @media (max-width: #{bp.$ant-grid-xl - 1px}) {
     grid-template-columns: 1fr;
   }
 }

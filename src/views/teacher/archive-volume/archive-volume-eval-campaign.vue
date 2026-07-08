@@ -8,7 +8,9 @@
         subtitle="归档全链路 · 迎评批次与卷就绪度"
       >
         <template #actions>
-          <UiButton variant="ghost" size="sm" @click="goList"> 返回列表 </UiButton>
+          <UiButton variant="ghost" size="sm" @click="goList">
+            {{ backButtonLabel }}
+          </UiButton>
           <UiButton variant="outline" size="sm" @click="goReadinessMatrix"> 就绪度矩阵 </UiButton>
         </template>
       </ContextBar>
@@ -65,8 +67,8 @@
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
                 v-if="
-                  record.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE
-                    && canExportCampaign
+                  record.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE &&
+                  canExportCampaign
                 "
                 :items="buildCampaignActions(record)"
                 split
@@ -79,7 +81,7 @@
       </div>
 
       <div v-else class="archive-eval-campaign__pane">
-        <h3 class="archive-eval-campaign__readiness-title">归档卷迎评就绪度</h3>
+        <h3 class="archive-eval-campaign__readiness-title">归档任务迎评就绪度</h3>
         <div class="archive-eval-campaign__readiness-toolbar">
           <a-select
             v-model:value="selectedCampaignId"
@@ -165,8 +167,6 @@
         </UiDataTable>
       </div>
     </WorkbenchSurfaceCard>
-
-    <ArchiveVolumeListNextStepsPanel variant="eval-campaign" />
   </StageWorkbenchShell>
 </template>
 
@@ -175,6 +175,13 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchiveEvaluationCampaignResponse,
   ArchiveEvaluationVolumeReadinessResponse,
+} from '@/apis/mark/archive-volume'
+import {
+  ArchiveEvaluationCampaignStatusCode,
+  ArchiveEvaluationCampaignStatusDescription,
+  exportEvaluationArchivePackage,
+  getEvaluationCampaignReadinessPanel,
+  listEvaluationCampaigns,
 } from '@/apis/mark/archive-volume'
 import type {
   BadgeTone,
@@ -187,13 +194,6 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
 import { ArchiveDutyTypeCode } from '@/apis/mark/archive-config'
-import {
-  ArchiveEvaluationCampaignStatusCode,
-  ArchiveEvaluationCampaignStatusDescription,
-  exportEvaluationArchivePackage,
-  getEvaluationCampaignReadinessPanel,
-  listEvaluationCampaigns,
-} from '@/apis/mark/archive-volume'
 import ArchiveReadinessRateBar from '@/components/archive-volume/ArchiveReadinessRateBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -216,7 +216,6 @@ import { formatSemester } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import ArchiveVolumeListNextStepsPanel from '@/views/teacher/archive-volume/components/ArchiveVolumeListNextStepsPanel.vue'
 
 defineOptions({ name: 'TeacherArchiveVolumeEvalCampaign' })
 
@@ -236,6 +235,11 @@ const readinessRows = ref<ArchiveEvaluationVolumeReadinessResponse[]>([])
 const readinessPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 
 const canExportCampaign = computed(() => hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR))
+
+const backButtonLabel = computed(() => {
+  const volumeId = route.query.volumeId
+  return typeof volumeId === 'string' && volumeId ? '返回任务详情' : '返回列表'
+})
 
 const evalCampaignSignalMetrics = computed((): SignalMetric[] => {
   const activeCount = campaigns.value.filter(
@@ -335,6 +339,14 @@ function campaignStatusTone(code: ArchiveEvaluationCampaignStatusCode): BadgeTon
 }
 
 function goList(): void {
+  const volumeId = typeof route.query.volumeId === 'string' ? route.query.volumeId : undefined
+  if (volumeId) {
+    void router.push({
+      name: 'TeacherArchiveVolumeDetail',
+      params: { volumeId },
+    })
+    return
+  }
   void router.push({ name: 'TeacherArchiveVolumeList' })
 }
 
@@ -473,26 +485,26 @@ watch(
   &__pane {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-3, 12px);
+    gap: var(--dp-space-3);
   }
 
   &__readiness-title {
     margin: 0;
     font-size: 14px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__readiness-toolbar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--dp-space-2, 8px);
+    gap: var(--dp-space-2);
   }
 
   &__mono {
     font-variant-numeric: tabular-nums;
-    font-family: var(--dp-font-mono, ui-monospace, monospace);
+    font-family: var(--dp-font-mono);
 
     &--strong {
       font-weight: 600;
@@ -501,7 +513,7 @@ watch(
 }
 
 .link-cell__sub {
-  color: var(--dp-text-muted, #64748b);
+  color: var(--dp-text-muted);
   font-size: 12px;
 }
 </style>

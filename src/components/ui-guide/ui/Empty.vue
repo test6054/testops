@@ -1,6 +1,6 @@
 <template>
   <div class="ui-empty" :class="`ui-empty--${props.size}`" v-bind="$attrs">
-    <div class="ui-empty__icon">
+    <div class="ui-empty__icon" aria-hidden="true">
       <slot name="image">
         <svg
           class="ui-empty__default-icon"
@@ -71,8 +71,8 @@ const props = withDefaults(defineProps<{
   width: 84px;
   height: 84px;
   margin-bottom: 16px;
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface-subtle, #f8fafc);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface-subtle);
 }
 
 .ui-empty__default-icon {
@@ -84,14 +84,14 @@ const props = withDefaults(defineProps<{
   margin-bottom: 6px;
   font-size: 16px;
   font-weight: 700;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-empty__description {
   max-width: 420px;
   font-size: 14px;
   line-height: 1.6;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-empty__action {

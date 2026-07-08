@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { ScanDispatchQueueSummaryVO } from '@/apis/mark/scanner-dispatch'
+import { loadScanDispatchQueueSummary } from '@/apis/mark/scanner-dispatch'
 import { ReloadOutlined, ScanOutlined } from '@ant-design/icons-vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-
-import { loadScanDispatchQueueSummary } from '@/apis/mark/scanner-dispatch'
+import { getKioskArchiveCollaborationPolicy } from '@/apis/mark/scanner-kiosk'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import { ArchiveKioskHubListModeCode } from '@/types/enums/archive-kiosk-hub-list-mode-enum'
 import { DispatchQueueStatusFilterCode } from '@/types/enums/dispatch-queue-status-filter-enum'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { getUserErrorMessage } from '@/utils/error-handler'
@@ -70,6 +71,9 @@ const hubLoading = ref(true)
 const hubErrorMessage = ref('')
 const archivePickOpen = ref(false)
 const portfolioPickOpen = ref(false)
+const archiveHubListMode = ref<ArchiveKioskHubListModeCode>(
+  ArchiveKioskHubListModeCode.DISPATCH_QUEUE_FIRST,
+)
 const queueSummaryLoading = ref(false)
 const queueSummary = ref<ScanDispatchQueueSummaryVO | null>(null)
 const queueSummaryError = ref('')
@@ -83,9 +87,9 @@ const scannerDeviceId = computed(() => deviceActivation.setup.value?.scannerDevi
 const scannerStationId = computed(() => deviceActivation.setup.value?.scannerStationId ?? '')
 
 const endpointLabel = computed(() => {
-  const name
-    = deviceActivation.setup.value?.deviceName?.trim()
-      || deviceActivation.activationForm.value.endpointName.trim()
+  const name =
+    deviceActivation.setup.value?.deviceName?.trim() ||
+    deviceActivation.activationForm.value.endpointName.trim()
   return name || '未命名工位'
 })
 
@@ -100,25 +104,25 @@ const stationLedTone = computed<'green' | 'gray'>(() =>
 
 const showAgentOfflineHint = computed(
   () =>
-    !hubLoading.value
-    && !deviceActivation.loading.value
-    && !deviceActivation.localAgentReachable.value
-    && (deviceActivation.isDeviceBound.value || !deviceActivation.needsActivationGate.value),
+    !hubLoading.value &&
+    !deviceActivation.loading.value &&
+    !deviceActivation.localAgentReachable.value &&
+    (deviceActivation.isDeviceBound.value || !deviceActivation.needsActivationGate.value),
 )
 
 const showTaskKindCards = computed(
   () =>
-    deviceActivation.localAgentReachable.value
-    && deviceActivation.isDeviceBound.value
-    && !deviceActivation.needsActivationGate.value,
+    deviceActivation.localAgentReachable.value &&
+    deviceActivation.isDeviceBound.value &&
+    !deviceActivation.needsActivationGate.value,
 )
 
 const showFailedAlert = computed(
   () =>
-    showTaskKindCards.value
-    && !queueSummaryLoading.value
-    && ((queueSummary.value?.failedTicketCount ?? 0) > 0
-      || (queueSummary.value?.committingWorkOrderCount ?? 0) > 0),
+    showTaskKindCards.value &&
+    !queueSummaryLoading.value &&
+    ((queueSummary.value?.failedTicketCount ?? 0) > 0 ||
+      (queueSummary.value?.committingWorkOrderCount ?? 0) > 0),
 )
 
 const contextSubtitle = computed(() => {
@@ -267,6 +271,37 @@ const showSignalBand = computed(
   () => !hubLoading.value && !hubErrorMessage.value && !deviceActivation.needsActivationGate.value,
 )
 
+const archivePickFirst = computed(
+  () => archiveHubListMode.value === ArchiveKioskHubListModeCode.ARCHIVE_PICK_FIRST,
+)
+
+const archiveEntryCard = computed<TaskKindCard>(() => {
+  const base = DEEPLINK_CARDS.find((card) => card.kind === ScanTaskKindCode.EXAM_ARCHIVE)!
+  if (!archivePickFirst.value) {
+    return base
+  }
+  return {
+    ...base,
+    tagText: '临时选卷',
+    ctaText: '临时扫描',
+  }
+})
+
+const portfolioEntryCard = computed(() =>
+  DEEPLINK_CARDS.find((card) => card.kind === ScanTaskKindCode.PORTFOLIO_COLLECT)!,
+)
+
+async function loadArchiveHubPolicy() {
+  try {
+    const policy = await getKioskArchiveCollaborationPolicy()
+    if (policy.kioskHubListMode) {
+      archiveHubListMode.value = policy.kioskHubListMode
+    }
+  } catch {
+    archiveHubListMode.value = ArchiveKioskHubListModeCode.DISPATCH_QUEUE_FIRST
+  }
+}
+
 async function loadQueueSummary() {
   if (!deviceActivation.isDeviceBound.value) {
     queueSummary.value = null
@@ -352,7 +387,7 @@ async function loadHubState() {
   hubErrorMessage.value = ''
   try {
     await deviceActivation.refreshDeviceActivationState()
-    await loadQueueSummary()
+    await Promise.all([loadArchiveHubPolicy(), loadQueueSummary()])
     startQueueSummaryPolling()
   } catch (error) {
     hubErrorMessage.value = getUserErrorMessage(error)
@@ -370,11 +405,36 @@ async function handleHubActivate() {
   }
 }
 
+function enterArchiveEntry() {
+  if (archivePickFirst.value) {
+    openArchivePick()
+    return
+  }
+  void router.push({
+    path: archiveEntryCard.value.route,
+    query: { taskKind: ScanTaskKindCode.EXAM_ARCHIVE },
+  })
+}
+
+function enterPortfolioEntry() {
+  void router.push({
+    path: portfolioEntryCard.value.route,
+    query: { taskKind: ScanTaskKindCode.PORTFOLIO_COLLECT },
+  })
+}
+
+function enterArchiveQueue() {
+  void router.push({
+    path: '/scanner-kiosk/queue',
+    query: { taskKind: ScanTaskKindCode.EXAM_ARCHIVE },
+  })
+}
+
 function enterCard(card: TaskKindCard) {
   if (card.deeplinkOnly) return
   if (
-    card.kind === ScanTaskKindCode.EXAM_ARCHIVE
-    || card.kind === ScanTaskKindCode.PORTFOLIO_COLLECT
+    card.kind === ScanTaskKindCode.EXAM_ARCHIVE ||
+    card.kind === ScanTaskKindCode.PORTFOLIO_COLLECT
   ) {
     void router.push({ path: card.route, query: { taskKind: card.kind } })
     return
@@ -572,17 +632,10 @@ onUnmounted(() => {
             </button>
 
             <div class="hub-entry-wrap">
-              <div v-for="card in DEEPLINK_CARDS" :key="card.kind" class="hub-entry-block">
-                <button type="button" class="hub-entry" @click="enterCard(card)">
+              <div class="hub-entry-block">
+                <button type="button" class="hub-entry" @click="enterArchiveEntry">
                   <div class="hub-entry__icon">
-                    <svg
-                      v-if="card.kind === ScanTaskKindCode.EXAM_ARCHIVE"
-                      width="40"
-                      height="40"
-                      viewBox="0 0 40 40"
-                      fill="none"
-                      aria-hidden="true"
-                    >
+                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true">
                       <rect
                         x="4"
                         y="4"
@@ -605,14 +658,50 @@ onUnmounted(() => {
                         stroke-linecap="round"
                       />
                     </svg>
-                    <svg
-                      v-else
-                      width="40"
-                      height="40"
-                      viewBox="0 0 40 40"
-                      fill="none"
-                      aria-hidden="true"
-                    >
+                  </div>
+                  <div class="hub-entry__body">
+                    <div class="hub-entry__title-row">
+                      <span class="hub-entry__title">{{ archiveEntryCard.title }}</span>
+                      <span class="hub-entry__tag">{{ archiveEntryCard.tagText }}</span>
+                    </div>
+                    <p class="hub-entry__desc">{{ archiveEntryCard.description }}</p>
+                    <span class="hub-entry__cta">
+                      {{ archiveEntryCard.ctaText }}
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M6 3l5 5-5 5"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </span>
+                  </div>
+                </button>
+                <button
+                  v-if="archivePickFirst"
+                  type="button"
+                  class="hub-entry__temp-btn"
+                  @click="enterArchiveQueue"
+                >
+                  进入队列
+                </button>
+                <button v-else type="button" class="hub-entry__temp-btn" @click="openArchivePick">
+                  <ScanOutlined />
+                  临时扫描
+                </button>
+              </div>
+              <div class="hub-entry-block">
+                <button type="button" class="hub-entry" @click="enterPortfolioEntry">
+                  <div class="hub-entry__icon">
+                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true">
                       <rect
                         x="4"
                         y="4"
@@ -657,12 +746,12 @@ onUnmounted(() => {
                   </div>
                   <div class="hub-entry__body">
                     <div class="hub-entry__title-row">
-                      <span class="hub-entry__title">{{ card.title }}</span>
-                      <span class="hub-entry__tag">{{ card.tagText }}</span>
+                      <span class="hub-entry__title">{{ portfolioEntryCard.title }}</span>
+                      <span class="hub-entry__tag">{{ portfolioEntryCard.tagText }}</span>
                     </div>
-                    <p class="hub-entry__desc">{{ card.description }}</p>
+                    <p class="hub-entry__desc">{{ portfolioEntryCard.description }}</p>
                     <span class="hub-entry__cta">
-                      {{ card.ctaText }}
+                      {{ portfolioEntryCard.ctaText }}
                       <svg
                         width="16"
                         height="16"
@@ -681,21 +770,7 @@ onUnmounted(() => {
                     </span>
                   </div>
                 </button>
-                <button
-                  v-if="card.kind === ScanTaskKindCode.EXAM_ARCHIVE"
-                  type="button"
-                  class="hub-entry__temp-btn"
-                  @click="openArchivePick"
-                >
-                  <ScanOutlined />
-                  临时扫描
-                </button>
-                <button
-                  v-if="card.kind === ScanTaskKindCode.PORTFOLIO_COLLECT"
-                  type="button"
-                  class="hub-entry__temp-btn"
-                  @click="openPortfolioPick"
-                >
+                <button type="button" class="hub-entry__temp-btn" @click="openPortfolioPick">
                   <ScanOutlined />
                   临时扫描
                 </button>

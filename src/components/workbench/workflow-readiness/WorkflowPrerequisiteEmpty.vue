@@ -68,7 +68,7 @@ function navigate(action: WorkflowReadinessAction): void {
   padding-left: 16px;
   font-size: 13px;
   line-height: 1.6;
-  color: var(--dp-text-secondary, #5c6370);
+  color: var(--dp-text-secondary);
 }
 
 .workflow-prerequisite-empty__step::before {
@@ -79,13 +79,13 @@ function navigate(action: WorkflowReadinessAction): void {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--dp-border, #d0d5dd);
+  background: var(--dp-border);
 }
 
 .workflow-prerequisite-empty__actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 </style>

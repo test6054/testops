@@ -70,6 +70,7 @@
 
 <script lang="ts" setup>
 import type { Component } from 'vue'
+import { computed } from 'vue'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { ExamWorkspaceJourneyKey } from '@/constants/exam-journey'
 import type { ExamWorkspaceMenuKey } from '@/constants/exam-workspace-menu'
@@ -77,7 +78,6 @@ import type { MarkStageKey } from '@/stores/modules/markStage'
 import type { WorkbenchStage } from '@/types/workbench'
 import MenuFoldOutlined from '@ant-design/icons-vue/MenuFoldOutlined'
 import MenuUnfoldOutlined from '@ant-design/icons-vue/MenuUnfoldOutlined'
-import { computed } from 'vue'
 import ExamJourneySidebarNav from '@/components/workbench/ExamJourneySidebarNav.vue'
 import ExamSidebarExamSwitch from '@/components/workbench/ExamSidebarExamSwitch.vue'
 import ExamSubSidebarNav from '@/components/workbench/ExamSubSidebarNav.vue'
@@ -114,7 +114,7 @@ const journeyProgressPercent = computed(() => {
   if (!stages.length) {
     return 0
   }
-  const completedCount = stages.filter(stage => stage.status === 'completed').length
+  const completedCount = stages.filter((stage) => stage.status === 'completed').length
   return Math.round((completedCount / stages.length) * 100)
 })
 
@@ -123,12 +123,13 @@ const journeyProgressLabel = computed(() => {
   if (!stages.length) {
     return '旅程进度'
   }
-  const completedCount = stages.filter(stage => stage.status === 'completed').length
+  const completedCount = stages.filter((stage) => stage.status === 'completed').length
   return `已完成 ${completedCount}/${stages.length} 步`
 })
 </script>
 
 <style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .exam-sub-sidebar {
   width: 260px;
   flex-shrink: 0;
@@ -205,7 +206,7 @@ const journeyProgressLabel = computed(() => {
     }
   }
 
-  @media (max-width: 767px) {
+  @media (max-width: bp.$layout-mobile-max) {
     position: fixed;
     z-index: 200;
     top: 56px;

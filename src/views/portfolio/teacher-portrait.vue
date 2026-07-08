@@ -1,24 +1,27 @@
 <script setup lang="ts">
 import type { EChartsCoreOption } from 'echarts/core'
 import type { PortfolioPortraitDimensionCode } from '@/apis/portfolio/enums'
+import {
+  PortfolioArchiveRecordStatusDescription,
+  PortfolioPortraitDimensionReadinessDescription,
+  PortfolioPortraitIndicatorEvidenceTypeDescription,
+} from '@/apis/portfolio/enums'
 import type { PortfolioDevelopmentPlanCompletionVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import type {
   PortfolioTeacherPortraitCohortCompareVO,
   PortfolioTeacherPortraitIndicatorDetailVO,
   PortfolioTeacherPortraitTrendVO,
   PortfolioTeacherPortraitVO,
 } from '@/apis/portfolio/types'
+import {
+  PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
+  PORTFOLIO_PORTRAIT_DIMENSION_READINESS_TONE,
+} from '@/apis/portfolio/types'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
-import {
-  PortfolioArchiveRecordStatusDescription,
-  PortfolioPortraitDimensionReadinessDescription,
-  PortfolioPortraitIndicatorEvidenceTypeDescription,
-} from '@/apis/portfolio/enums'
-import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
-import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE, PORTFOLIO_PORTRAIT_DIMENSION_READINESS_TONE } from '@/apis/portfolio/types'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import MarkChartCard from '@/components/chart/MarkChartCard.vue'
 import UiAlert from '@/components/ui-guide/ui/Alert.vue'
@@ -510,13 +513,13 @@ usePortfolioScopedLoader(
 
 <style scoped lang="scss">
 .teacher-portrait__meta {
-  margin: var(--dp-space-4, 16px) 0 0;
+  margin: var(--dp-space-4) 0 0;
   font-size: 14px;
   color: var(--dp-text-secondary);
 }
 
 .teacher-portrait__hint-text {
-  margin: 0 0 var(--dp-space-3, 12px);
+  margin: 0 0 var(--dp-space-3);
   font-size: 14px;
   color: var(--dp-text-secondary);
 }
@@ -524,20 +527,20 @@ usePortfolioScopedLoader(
 .teacher-portrait__charts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--dp-space-4, 16px);
-  margin-top: var(--dp-space-4, 16px);
+  gap: var(--dp-space-4);
+  margin-top: var(--dp-space-4);
 }
 
 .teacher-portrait__trend {
-  margin-top: var(--dp-space-4, 16px);
+  margin-top: var(--dp-space-4);
 }
 
 .teacher-portrait__cohort-alert {
-  margin: 0 var(--dp-space-4, 16px) var(--dp-space-3, 12px);
+  margin: 0 var(--dp-space-4) var(--dp-space-3);
 }
 
 .teacher-portrait__dimensions {
-  margin-top: var(--dp-space-4, 16px);
+  margin-top: var(--dp-space-4);
 }
 
 .teacher-portrait__table {
@@ -547,7 +550,7 @@ usePortfolioScopedLoader(
 
   th,
   td {
-    padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+    padding: var(--dp-space-2) var(--dp-space-3);
     border-bottom: 1px solid var(--dp-border);
     text-align: left;
   }
@@ -575,8 +578,8 @@ usePortfolioScopedLoader(
 .teacher-portrait__detail-meta {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--dp-space-4, 16px);
-  margin: 0 0 var(--dp-space-4, 16px);
+  gap: var(--dp-space-4);
+  margin: 0 0 var(--dp-space-4);
 
   dt {
     margin: 0;
@@ -585,7 +588,7 @@ usePortfolioScopedLoader(
   }
 
   dd {
-    margin: var(--dp-space-1, 4px) 0 0;
+    margin: var(--dp-space-1) 0 0;
     font-size: 14px;
     font-weight: 600;
     color: var(--dp-text-primary);
@@ -593,11 +596,11 @@ usePortfolioScopedLoader(
 }
 
 .teacher-portrait__evidence-table {
-  margin-top: var(--dp-space-2, 8px);
+  margin-top: var(--dp-space-2);
 }
 
 .teacher-portrait__hint {
-  padding: var(--dp-space-6, 24px) 0;
+  padding: var(--dp-space-6) 0;
 }
 
 @media (max-width: 960px) {

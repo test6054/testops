@@ -2,21 +2,21 @@
   <WorkbenchSurfaceCard flush class="archive-volume-history-import">
     <template #head>
       <div class="archive-volume-history-import__section-head">
-        <h3 class="archive-volume-history-import__section-title">历史纸质档案补录</h3>
+        <h3 class="archive-volume-history-import__section-title">历史档案数字化</h3>
         <p class="archive-volume-history-import__section-subtitle">
-          历史纸质卷数字化 · 批量补录归档卷与材料
+          历史纸质卷数字化 · 批量导入归档任务与材料
         </p>
       </div>
     </template>
     <template #toolbar>
       <UiButton size="sm" variant="outline" @click="importModalOpen = true">
-        Excel 历史补录
+        Excel 批量导入
       </UiButton>
     </template>
     <UiAlertStrip
       tone="info"
-      title="补录流程"
-      description="1. 下载 MARK_PAPER_ARCHIVE_HISTORY 模板；2. 按模板填写历史纸质档案卷宗与材料信息；3. 上传 Excel，平台按批次返回成功/失败条数；4. 失败行见批次诊断明细，修正后重新导入。"
+      title="导入流程"
+      description="1. 下载 MARK_PAPER_ARCHIVE_HISTORY 模板；2. 按模板填写历史纸质档案任务与材料信息；3. 上传 Excel，平台按批次返回成功/失败条数；4. 失败行见批次诊断明细，修正后重新导入。"
       dense
       class="archive-volume-history-import__flow"
     />
@@ -105,11 +105,11 @@ function handleImportSuccess(result: ExcelImportResult): void {
   }
 
   &__flow {
-    margin-top: var(--dp-space-2, 8px);
+    margin-top: var(--dp-space-2);
   }
 
   &__result {
-    margin-top: var(--dp-space-3, 12px);
+    margin-top: var(--dp-space-3);
   }
 }
 </style>

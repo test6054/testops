@@ -5,18 +5,18 @@ import type {
   ArchivePlatformTemplateSetResponse,
   ArchivePlatformTemplateSetSaveRequest,
 } from '@/apis/mark/archive-platform-template'
-import type {
-  ArchiveTemplateMaterialEditRow,
-  ArchiveTemplateSelfCheckEditRow,
-} from '@/views/teacher/archive-volume/components/archive-template-editor-types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   initializeArchivePlatformTemplateDefaults,
   listArchivePlatformTemplateSets,
   previewArchivePlatformTemplateSet,
   saveArchivePlatformTemplateSet,
 } from '@/apis/mark/archive-platform-template'
+import type {
+  ArchiveTemplateMaterialEditRow,
+  ArchiveTemplateSelfCheckEditRow,
+} from '@/views/teacher/archive-volume/components/archive-template-editor-types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   archiveTemplateScopeLabel,
   archiveTemplateScopeTone,
@@ -100,7 +100,10 @@ function openCreateEditor() {
   editorMeta.releaseTag = new Date().toISOString().slice(0, 10)
 }
 
-function mapMaterialRow(item: ArchivePlatformMaterialItemResponse, index: number): ArchiveTemplateMaterialEditRow {
+function mapMaterialRow(
+  item: ArchivePlatformMaterialItemResponse,
+  index: number,
+): ArchiveTemplateMaterialEditRow {
   return {
     rowKey: `${item.materialType}-${index}`,
     materialType: item.materialType,
@@ -131,12 +134,10 @@ async function openEditEditor(setCode: string) {
       requiredFlag: item.requiredFlag ?? false,
       sortOrder: item.sortOrder ?? index + 1,
     }))
-  }
-  catch (error) {
+  } catch (error) {
     resetEditor()
     showUserError(error, '加载模板详情失败')
-  }
-  finally {
+  } finally {
     detailLoading.value = false
   }
 }
@@ -145,12 +146,10 @@ async function loadPlatformSets() {
   loading.value = true
   try {
     platformSets.value = await listArchivePlatformTemplateSets()
-  }
-  catch (error) {
+  } catch (error) {
     platformSets.value = []
     showUserError(error, '加载平台模板失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -161,16 +160,13 @@ async function submitInitializeDefaults() {
     const result = await initializeArchivePlatformTemplateDefaults()
     if (result.seeded) {
       message.success(`已写入默认模板，当前共 ${result.afterSetCount ?? 0} 套`)
-    }
-    else {
+    } else {
       message.info(`默认模板已存在，当前共 ${result.afterSetCount ?? 0} 套`)
     }
     await loadPlatformSets()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '初始化默认模板失败')
-  }
-  finally {
+  } finally {
     seeding.value = false
   }
 }
@@ -193,7 +189,7 @@ async function submitSave() {
     examForm: editorMeta.examForm,
     description: editorMeta.description.trim() || undefined,
     releaseTag,
-    materialItems: materialRows.value.map(item => ({
+    materialItems: materialRows.value.map((item) => ({
       materialType: item.materialType,
       catalogCode: item.catalogCode?.trim() || undefined,
       catalogName: item.catalogName.trim(),
@@ -201,7 +197,7 @@ async function submitSave() {
       sortOrder: item.sortOrder,
       categoryGroup: item.categoryGroup?.trim() || undefined,
     })),
-    selfCheckItems: selfCheckRows.value.map(item => ({
+    selfCheckItems: selfCheckRows.value.map((item) => ({
       itemText: item.itemText.trim(),
       requiredFlag: item.requiredFlag,
       sortOrder: item.sortOrder,
@@ -213,11 +209,9 @@ async function submitSave() {
     message.success('平台模板已保存')
     await loadPlatformSets()
     resetEditor()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '保存平台模板失败')
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
@@ -244,10 +238,14 @@ onMounted(loadPlatformSets)
         </template>
         <template #toolbar>
           <div class="archive-platform-admin__toolbar-row">
-            <span v-if="platformSets.length === 0" class="archive-platform-admin__hint">尚未配置任何平台模板</span>
+            <span v-if="platformSets.length === 0" class="archive-platform-admin__hint"
+              >尚未配置任何平台模板</span
+            >
             <span v-else class="archive-platform-admin__hint">共 {{ platformSets.length }} 套</span>
             <div class="archive-platform-admin__actions">
-              <UiButton size="sm" :loading="seeding" @click="submitInitializeDefaults">初始化默认模板</UiButton>
+              <UiButton size="sm" :loading="seeding" @click="submitInitializeDefaults"
+                >初始化默认模板</UiButton
+              >
               <UiButton size="sm" variant="primary" @click="openCreateEditor">新建模板套</UiButton>
             </div>
           </div>
@@ -305,7 +303,11 @@ onMounted(loadPlatformSets)
           <div class="archive-template-editor__meta">
             <label class="archive-template-editor__field">
               <span>套编码</span>
-              <a-input v-model:value="editorMeta.setCode" :disabled="!!editorSetCode" placeholder="如 PLATFORM_PAPER_FULL" />
+              <a-input
+                v-model:value="editorMeta.setCode"
+                :disabled="!!editorSetCode"
+                placeholder="如 PLATFORM_PAPER_FULL"
+              />
             </label>
             <label class="archive-template-editor__field">
               <span>名称</span>
@@ -313,7 +315,11 @@ onMounted(loadPlatformSets)
             </label>
             <label class="archive-template-editor__field">
               <span>考核形式</span>
-              <a-select v-model:value="editorMeta.examForm" :options="examFormOptions" style="width: 100%" />
+              <a-select
+                v-model:value="editorMeta.examForm"
+                :options="examFormOptions"
+                style="width: 100%"
+              />
             </label>
             <label class="archive-template-editor__field">
               <span>发版标签</span>
@@ -332,13 +338,13 @@ onMounted(loadPlatformSets)
 
 <style scoped>
 .archive-platform-admin__hint {
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
   font-size: 14px;
 }
 .archive-platform-admin__title {
   margin: 0;
   font-size: 16px;
-  font-weight: var(--dp-font-weight-title, 600);
+  font-weight: var(--dp-font-weight-title);
   line-height: 1.5;
 }
 .archive-platform-admin__toolbar-row {

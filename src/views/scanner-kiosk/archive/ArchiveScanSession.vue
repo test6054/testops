@@ -5,9 +5,7 @@ import { useRouter } from 'vue-router'
 import { ScannerColorModeCode, ScannerDuplexModeCode } from '@/apis/mark/exam-mark-scanner'
 import { LocalScanJobStatusCode, ScannerBusinessSceneCode } from '@/apis/mark/scanner-agent-local'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import {
-  ArchiveScanBatchModeDescription,
-} from '@/types/enums/archive-scan-batch-mode-enum'
+import { ArchiveScanBatchModeDescription } from '@/types/enums/archive-scan-batch-mode-enum'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { ScanWorkOrderStatusCode } from '@/types/enums/scan-work-order-status-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -43,12 +41,12 @@ const scanFlow = useWorkOrderScanFlow({
 
 const canStart = computed(() =>
   Boolean(
-    session.volumeId.value
-    && session.materialType.value
-    && bootstrap.selectedScannerId.value
-    && session.archiveContext.value != null
-    && session.archiveContext.value.canRegisterMaterial === true
-    && !lease.leaseLost.value,
+    session.volumeId.value &&
+    session.materialType.value &&
+    bootstrap.selectedScannerId.value &&
+    session.archiveContext.value != null &&
+    session.archiveContext.value.canRegisterMaterial === true &&
+    !lease.leaseLost.value,
   ),
 )
 const leaseLostMessage = '派单租约已失效，扫描会话可能已被中断，请返回队列'
@@ -148,7 +146,9 @@ watch(
   }),
   (leaseState) => {
     if (leaseState.ticketId && leaseState.deviceId && leaseState.stationId) {
-      lease.startHeartbeat(leaseState.ticketId, leaseState.deviceId, leaseState.stationId, { onLeaseLost: handleLeaseLost })
+      lease.startHeartbeat(leaseState.ticketId, leaseState.deviceId, leaseState.stationId, {
+        onLeaseLost: handleLeaseLost,
+      })
       return
     }
     lease.stopHeartbeat()
@@ -255,15 +255,15 @@ function goBack() {
     </section>
 
     <section class="archive-scan-session__actions">
-      <UiButton
-        v-if="scanActionsDisabled"
-        variant="primary"
-        @click="returnToDispatchQueue(false)"
-      >
+      <UiButton v-if="scanActionsDisabled" variant="primary" @click="returnToDispatchQueue(false)">
         返回派单队列
       </UiButton>
       <UiButton
-        v-if="!scanFlow.currentJob.value && !scanFlow.canRetryWorkOrderCommit.value && !scanActionsDisabled"
+        v-if="
+          !scanFlow.currentJob.value &&
+          !scanFlow.canRetryWorkOrderCommit.value &&
+          !scanActionsDisabled
+        "
         variant="primary"
         :loading="session.loading.value || scanFlow.loading.value"
         :disabled="!canStart || bootstrap.needsActivationGate.value"
@@ -271,7 +271,13 @@ function goBack() {
       >
         开单并开始扫描
       </UiButton>
-      <template v-if="!scanActionsDisabled && !scanFlow.currentJob.value && scanFlow.canRetryWorkOrderCommit.value">
+      <template
+        v-if="
+          !scanActionsDisabled &&
+          !scanFlow.currentJob.value &&
+          scanFlow.canRetryWorkOrderCommit.value
+        "
+      >
         <UiButton
           variant="outline"
           :loading="scanFlow.loading.value"
@@ -381,7 +387,7 @@ function goBack() {
   flex-direction: column;
   gap: 8px;
   padding: 16px;
-  border: 1px solid var(--dp-border-subtle, #e5e7eb);
+  border: 1px solid var(--dp-border-subtle);
   border-radius: 6px;
   font-size: 14px;
 }
@@ -407,7 +413,7 @@ function goBack() {
 .archive-scan-session__hint {
   margin: 0;
   font-size: 13px;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .archive-scan-session__error {

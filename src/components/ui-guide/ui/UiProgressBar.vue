@@ -65,8 +65,8 @@ function lightenColor(hex: string, percent: number): string {
   const num = Number.parseInt(hex.replace('#', ''), 16)
   const amt = Math.round(2.55 * percent)
   const R = Math.min(255, (num >> 16) + amt)
-  const G = Math.min(255, ((num >> 8) & 0x00FF) + amt)
-  const B = Math.min(255, (num & 0x0000FF) + amt)
+  const G = Math.min(255, ((num >> 8) & 0x00ff) + amt)
+  const B = Math.min(255, (num & 0x0000ff) + amt)
   return `#${(0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)}`
 }
 </script>
@@ -102,13 +102,13 @@ function lightenColor(hex: string, percent: number): string {
 .ui-progress-bar__label {
   font-size: 13px;
   font-weight: 500;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-progress-bar__percent {
   font-size: 13px;
   font-weight: 600;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-progress-bar__track {

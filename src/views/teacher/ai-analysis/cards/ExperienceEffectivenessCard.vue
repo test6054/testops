@@ -1,12 +1,14 @@
 <template>
   <AiAnalysisSection title="AI 经验案例有效性评估">
     <template #actions>
-      <AiAnalysisHistorySelect
-        v-model="historySelectedId"
-        :rows="historyRows"
+      <AiAnalysisHistorySelect v-model="historySelectedId" :rows="historyRows" :loading="loading" />
+      <UiButton
+        variant="outline"
+        size="sm"
         :loading="loading"
-      />
-      <UiButton variant="outline" size="sm" :loading="loading" :disabled="!form.experienceCaseId" @click="reload">
+        :disabled="!form.experienceCaseId"
+        @click="reload"
+      >
         查看历史
       </UiButton>
       <UiButton variant="primary" size="sm" :loading="generating" @click="handleGenerate">
@@ -83,7 +85,9 @@
       </div>
 
       <p v-if="record.evalSummary" class="ai-analysis-summary">{{ record.evalSummary }}</p>
-      <p v-if="record.detailedAnalysis" class="ai-analysis-summary">{{ record.detailedAnalysis }}</p>
+      <p v-if="record.detailedAnalysis" class="ai-analysis-summary">
+        {{ record.detailedAnalysis }}
+      </p>
       <p v-if="record.recommendation" class="ai-analysis-summary">
         维护动作：{{ recommendationLabel(record.recommendation) }}
       </p>
@@ -118,23 +122,23 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { GradingExperienceCaseResponse } from '@/apis/mark/grading-experience'
+import { ExperienceCaseStatusDescription, listExperiences } from '@/apis/mark/grading-experience'
 import type { QuestionTypeCode } from '@/apis/mark/question-type'
+import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import type {
   ExperienceEffectivenessEvalEvidenceResponse,
   ExperienceEffectivenessEvalResponse,
   ExperienceRecommendationCode,
 } from '@/apis/mark/school-quality'
-import type { UiBarChartItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { ExperienceCaseStatusDescription, listExperiences } from '@/apis/mark/grading-experience'
-import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import {
   evaluateExperienceEffectiveness,
   ExperienceRecommendationDescription,
   listExperienceEvals,
 } from '@/apis/mark/school-quality'
+import type { UiBarChartItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisConfigCollapse from '@/components/mark/analysis/AiAnalysisConfigCollapse.vue'
@@ -179,8 +183,8 @@ const props = withDefaults(
 
 const examSelectScopeCourseId = computed(() => props.scopeOrgCourseId?.trim() || undefined)
 const examSelectScopeClassId = computed(() => props.scopeOrgClassId?.trim() || undefined)
-const examSelectScopeReferenceDepartmentId = computed(() =>
-  props.scopeReferenceDepartmentId?.trim() || undefined,
+const examSelectScopeReferenceDepartmentId = computed(
+  () => props.scopeReferenceDepartmentId?.trim() || undefined,
 )
 
 interface ExperienceEffectivenessForm {
@@ -554,7 +558,7 @@ watch(
 .school-quality-card__title {
   margin: 0;
   font-size: 16px;
-  font-weight: var(--dp-font-weight-title, 600);
+  font-weight: var(--dp-font-weight-title);
   line-height: 1.5;
 }
 

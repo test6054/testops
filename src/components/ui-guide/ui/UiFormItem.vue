@@ -52,11 +52,11 @@ const props = withDefaults(
 .ui-form-item :deep(.ant-form-item-label > label) {
   font-size: 14px;
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-form-item :deep(.ant-form-item-required::before) {
-  color: var(--dp-red-500, #ef4444) !important;
+  color: var(--dp-red-500) !important;
 }
 
 .ui-form-item :deep(.ant-form-item-explain),
@@ -66,10 +66,10 @@ const props = withDefaults(
 }
 
 .ui-form-item :deep(.ant-form-item-extra) {
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-form-item :deep(.ant-form-item-explain-error) {
-  color: var(--dp-red-500, #ef4444);
+  color: var(--dp-red-500);
 }
 </style>

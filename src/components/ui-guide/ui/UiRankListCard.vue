@@ -96,8 +96,8 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import type { UiRankListItem } from './types'
 import { computed, useSlots } from 'vue'
+import type { UiRankListItem } from './types'
 import UiBadge from './Badge.vue'
 import UiEmpty from './Empty.vue'
 import UiTag from './Tag.vue'
@@ -152,12 +152,12 @@ const normalizeCssSize = (value?: string | number) => {
 
 const hasHeader = computed(() => {
   return (
-    !!props.title
-    || !!props.description
-    || !!props.eyebrow
-    || props.showCount
-    || !!slots.meta
-    || !!slots.actions
+    !!props.title ||
+    !!props.description ||
+    !!props.eyebrow ||
+    props.showCount ||
+    !!slots.meta ||
+    !!slots.actions
   )
 })
 
@@ -202,17 +202,18 @@ const handleItemClick = (item: UiRankListItem) => {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .ui-rank-list-card {
   display: flex;
   flex-direction: column;
   gap: 18px;
   min-width: 0;
   padding: 18px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
-  box-shadow: var(--dp-shadow-card, 0 10px 30px rgba(15, 23, 42, 0.06));
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-card);
 }
 
 .ui-rank-list-card__list {
@@ -227,8 +228,8 @@ const handleItemClick = (item: UiRankListItem) => {
   gap: 12px;
   min-width: 0;
   padding: 14px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
   background: #fff;
   transition:
     border-color 0.2s ease,
@@ -242,8 +243,8 @@ const handleItemClick = (item: UiRankListItem) => {
 }
 
 .ui-rank-list-card__item--clickable:hover {
-  background: var(--dp-gray-50, #f8fafc);
-  border-color: var(--dp-border-strong, #d0d5dd);
+  background: var(--dp-gray-50);
+  border-color: var(--dp-border-strong);
 }
 
 .ui-rank-list-card__rank,
@@ -254,7 +255,7 @@ const handleItemClick = (item: UiRankListItem) => {
   width: 40px;
   height: 40px;
   flex-shrink: 0;
-  border-radius: var(--dp-radius-panel, 4px);
+  border-radius: var(--dp-radius-panel);
   font-size: 13px;
   font-weight: 800;
 }
@@ -274,7 +275,7 @@ const handleItemClick = (item: UiRankListItem) => {
 .ui-rank-list-card__rank--purple,
 .ui-rank-list-card__avatar--purple {
   background: #f5f3ff;
-  color: var(--dp-purple-500, #722ed1);
+  color: var(--dp-purple-500);
 }
 
 .ui-rank-list-card__rank--gray,
@@ -302,14 +303,14 @@ const handleItemClick = (item: UiRankListItem) => {
   min-width: 0;
   font-size: 14px;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-rank-list-card__sub,
 .ui-rank-list-card__trend {
   font-size: 12px;
   line-height: 1.6;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-rank-list-card__value-row {
@@ -323,13 +324,13 @@ const handleItemClick = (item: UiRankListItem) => {
   font-size: 24px;
   line-height: 1.1;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-rank-list-card__unit {
   font-size: 12px;
   font-weight: 700;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-rank-list-card__trend {
@@ -351,10 +352,10 @@ const handleItemClick = (item: UiRankListItem) => {
 
 .ui-rank-list-card__footer {
   padding-top: 14px;
-  border-top: 1px solid var(--dp-border, #e5e7eb);
+  border-top: 1px solid var(--dp-border);
 }
 
-@media (max-width: 767px) {
+@media (max-width: bp.$layout-mobile-max) {
   .ui-rank-list-card__item {
     grid-template-columns: 40px minmax(0, 1fr);
   }

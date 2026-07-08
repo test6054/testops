@@ -144,11 +144,11 @@ const handleOpenChange = (open: boolean) => {
 
 .ui-date-picker :deep(.ant-picker) {
   width: 100%;
-  border-radius: var(--dp-radius-control, 4px);
-  border: 1px solid var(--dp-border, #e5e7eb);
-  background-color: var(--dp-bg-control, #f3f4f6);
+  border-radius: var(--dp-radius-control);
+  border: 1px solid var(--dp-border);
+  background-color: var(--dp-bg-control);
   font-size: 14px;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
   font-family: var(--dp-font-family);
   box-shadow: none;
   transition:
@@ -158,62 +158,62 @@ const handleOpenChange = (open: boolean) => {
 }
 
 .ui-date-picker--sm :deep(.ant-picker) {
-  min-height: var(--dp-control-height-sm, 32px);
+  min-height: var(--dp-control-height-sm);
 }
 
 .ui-date-picker--md :deep(.ant-picker) {
-  min-height: var(--dp-control-height-md, 36px);
+  min-height: var(--dp-control-height-md);
 }
 
 .ui-date-picker--lg :deep(.ant-picker) {
-  min-height: var(--dp-control-height-lg, 40px);
+  min-height: var(--dp-control-height-lg);
 }
 
 .ui-date-picker :deep(.ant-picker:hover) {
-  border-color: var(--dp-blue-600, #2563eb);
+  border-color: var(--dp-blue-600);
 }
 
 .ui-date-picker :deep(.ant-picker-focused) {
-  border-color: var(--dp-blue-600, #2563eb);
-  box-shadow: 0 0 0 3px var(--dp-focus-ring, rgba(37, 99, 235, 0.25));
+  border-color: var(--dp-blue-600);
+  box-shadow: 0 0 0 3px var(--dp-focus-ring);
 }
 
 .ui-date-picker :deep(.ant-picker-input > input) {
   background-color: transparent;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
   font-size: 14px;
   font-family: var(--dp-font-family);
 }
 
 .ui-date-picker :deep(.ant-picker-input > input::placeholder) {
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-date-picker :deep(.ant-picker-suffix) {
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-date-picker :deep(.ant-picker-clear) {
   background: transparent;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-date-picker--error :deep(.ant-picker) {
-  border-color: var(--dp-red-500, #ef4444);
+  border-color: var(--dp-red-500);
 }
 
 .ui-date-picker--warning :deep(.ant-picker) {
-  border-color: var(--dp-orange-500, #f97316);
+  border-color: var(--dp-orange-500);
 }
 
 .ui-date-picker--success :deep(.ant-picker) {
-  border-color: var(--dp-green-500, #22c55e);
+  border-color: var(--dp-green-500);
 }
 
 .ui-date-picker--disabled :deep(.ant-picker),
 .ui-date-picker :deep(.ant-picker-disabled) {
   opacity: 0.7;
-  background-color: var(--dp-bg-control-disabled, #eef2f7);
+  background-color: var(--dp-bg-control-disabled);
 }
 
 /* 弹出面板样式 — 通过 teleport 渲染，需要非 scoped */
@@ -221,8 +221,8 @@ const handleOpenChange = (open: boolean) => {
 
 <style>
 .ui-date-picker-dropdown {
-  border-radius: var(--dp-radius-overlay, 4px) !important;
-  box-shadow: var(--dp-shadow-dropdown, 0 18px 40px rgba(15, 23, 42, 0.12)) !important;
+  border-radius: var(--dp-radius-overlay) !important;
+  box-shadow: var(--dp-shadow-dropdown) !important;
   font-family: var(--dp-font-family) !important;
   overflow: hidden !important;
   padding: 6px !important;
@@ -235,40 +235,40 @@ const handleOpenChange = (open: boolean) => {
 .ui-date-picker-dropdown .ant-picker-header {
   font-family: var(--dp-font-family) !important;
   font-weight: 600 !important;
-  color: var(--dp-text-primary, #0f172a) !important;
+  color: var(--dp-text-primary) !important;
 }
 
 .ui-date-picker-dropdown .ant-picker-header-view {
   font-size: 15px !important;
   font-weight: 600 !important;
-  color: var(--dp-text-primary, #0f172a) !important;
+  color: var(--dp-text-primary) !important;
 }
 
 .ui-date-picker-dropdown .ant-picker-content th {
   font-family: var(--dp-font-family) !important;
   font-size: 13px !important;
   font-weight: 500 !important;
-  color: var(--dp-text-muted, #6b7280) !important;
+  color: var(--dp-text-muted) !important;
 }
 
 .ui-date-picker-dropdown .ant-picker-cell-inner {
   font-family: var(--dp-font-family) !important;
   font-size: 14px !important;
-  color: var(--dp-text-primary, #0f172a) !important;
-  border-radius: var(--dp-radius-control-inner, 4px) !important;
+  color: var(--dp-text-primary) !important;
+  border-radius: var(--dp-radius-control-inner) !important;
 }
 
 .ui-date-picker-dropdown .ant-picker-cell-selected .ant-picker-cell-inner {
-  background-color: var(--dp-blue-600, #2563eb) !important;
+  background-color: var(--dp-blue-600) !important;
   color: #fff !important;
 }
 
 .ui-date-picker-dropdown .ant-picker-cell-today .ant-picker-cell-inner::before {
-  border: 1px solid var(--dp-blue-600, #2563eb) !important;
+  border: 1px solid var(--dp-blue-600) !important;
 }
 
 .ui-date-picker-dropdown .ant-picker-cell:hover .ant-picker-cell-inner {
-  background-color: var(--dp-gray-100, #f3f4f6) !important;
+  background-color: var(--dp-gray-100) !important;
 }
 
 .ui-date-picker-dropdown
@@ -276,12 +276,12 @@ const handleOpenChange = (open: boolean) => {
   > li.ant-picker-time-panel-cell-selected
   .ant-picker-time-panel-cell-inner {
   font-weight: 600 !important;
-  color: var(--dp-text-primary, #0f172a) !important;
-  background-color: var(--dp-gray-100, #f3f4f6) !important;
+  color: var(--dp-text-primary) !important;
+  background-color: var(--dp-gray-100) !important;
 }
 
 .ui-date-picker-dropdown .ant-picker-footer {
-  border-top: 1px solid var(--dp-border, #e5e7eb) !important;
+  border-top: 1px solid var(--dp-border) !important;
   padding: 8px 12px !important;
 }
 
@@ -289,15 +289,15 @@ const handleOpenChange = (open: boolean) => {
   font-family: var(--dp-font-family) !important;
   font-size: 13px !important;
   font-weight: 500 !important;
-  background-color: var(--dp-blue-600, #2563eb) !important;
+  background-color: var(--dp-blue-600) !important;
   border: none !important;
-  border-radius: var(--dp-radius-control-inner, 4px) !important;
+  border-radius: var(--dp-radius-control-inner) !important;
   padding: 4px 8px !important;
   box-shadow: none !important;
   height: auto !important;
 }
 
 .ui-date-picker-dropdown .ant-picker-ranges .ant-picker-ok .ant-btn-primary:hover {
-  background-color: var(--dp-blue-700, #1d4ed8) !important;
+  background-color: var(--dp-blue-700) !important;
 }
 </style>

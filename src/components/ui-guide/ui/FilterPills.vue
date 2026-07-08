@@ -138,7 +138,8 @@ const toggleExpanded = () => {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .dp-filter-pills {
   display: flex;
   align-items: flex-start;
@@ -170,7 +171,7 @@ const toggleExpanded = () => {
   gap: 6px;
   padding: 0 14px;
   min-height: 36px;
-  border-radius: var(--dp-radius-control, 4px);
+  border-radius: var(--dp-radius-control);
   border: none;
   background-color: transparent;
   color: var(--ant-color-text, #1f2937);
@@ -187,25 +188,25 @@ const toggleExpanded = () => {
 
 .dp-filter-pill:hover:not(.is-disabled):not(.is-active) {
   background-color: rgba(148, 163, 184, 0.12);
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .dp-filter-pill.is-active {
   background: rgba(37, 99, 235, 0.08);
-  color: var(--dp-blue-700, #1d4ed8);
+  color: var(--dp-blue-700);
   font-weight: 600;
 }
 
 .dp-filter-pill.is-active:hover:not(.is-disabled) {
   background: rgba(37, 99, 235, 0.12);
-  color: var(--dp-blue-700, #1d4ed8);
+  color: var(--dp-blue-700);
 }
 
 .dp-filter-pill.is-disabled {
   cursor: not-allowed;
   opacity: 0.5;
   background-color: transparent;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .dp-filter-pill__label {
@@ -224,7 +225,7 @@ const toggleExpanded = () => {
   min-width: 20px;
   height: 20px;
   padding: 0 6px;
-  border-radius: var(--dp-radius-control-inner, 4px);
+  border-radius: var(--dp-radius-control-inner);
   background-color: rgba(0, 0, 0, 0.1);
   font-size: 12px;
   font-weight: 600;
@@ -241,10 +242,10 @@ const toggleExpanded = () => {
   gap: 6px;
   padding: 0 14px;
   min-height: 36px;
-  border-radius: var(--dp-radius-control, 4px);
+  border-radius: var(--dp-radius-control);
   border: none;
   background-color: transparent;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
   font-size: 14px;
   font-weight: 600;
   font-family: var(--dp-font-family);
@@ -257,7 +258,7 @@ const toggleExpanded = () => {
 
 .dp-filter-pills__toggle:hover {
   background-color: rgba(148, 163, 184, 0.12);
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .dp-filter-pills__toggle-icon {
@@ -269,7 +270,7 @@ const toggleExpanded = () => {
 }
 
 /* 响应式适配 */
-@media (max-width: 767px) {
+@media (max-width: bp.$layout-mobile-max) {
   .dp-filter-pills {
     flex-direction: column;
   }

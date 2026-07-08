@@ -42,12 +42,12 @@ withDefaults(defineProps<{
 .ui-form-section__title {
   font-size: 16px;
   font-weight: 700;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-form-section__subtitle {
   font-size: 13px;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-form-section__body {
@@ -63,6 +63,6 @@ withDefaults(defineProps<{
 .ui-form-section--divided + .ui-form-section--divided {
   margin-top: 24px;
   padding-top: 24px;
-  border-top: 1px solid var(--dp-border, #e5e7eb);
+  border-top: 1px solid var(--dp-border);
 }
 </style>

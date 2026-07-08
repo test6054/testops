@@ -6,16 +6,16 @@
           <a-select
             v-model:value="filterForm.academicYear"
             :options="academicYearOptions"
-            style="width: 120px"
-            placeholder="学年"
+            class="context-bar__filter-select"
+            :placeholder="MARK_DASHBOARD_FILTER_PLACEHOLDERS.academicYear"
             allow-clear
             @change="handleContextFilterChange"
           />
           <a-select
             v-model:value="filterForm.semester"
             :options="semesterSelectOptions"
-            style="width: 120px"
-            placeholder="学期"
+            class="context-bar__filter-select"
+            :placeholder="MARK_DASHBOARD_FILTER_PLACEHOLDERS.semester"
             allow-clear
             :disabled="!filterForm.academicYear"
             @change="handleContextFilterChange"
@@ -23,8 +23,8 @@
           <a-select
             v-model:value="filterForm.status"
             :options="statusSelectOptions"
-            style="width: 120px"
-            placeholder="状态"
+            class="context-bar__filter-select"
+            :placeholder="MARK_DASHBOARD_FILTER_PLACEHOLDERS.status"
             allow-clear
             @change="handleContextFilterChange"
           />
@@ -219,36 +219,6 @@
         </template>
       </UiDataTable>
     </WorkbenchSurfaceCard>
-
-    <section class="exam-list-page__next-steps">
-      <header class="exam-list-page__next-steps-head">
-        <ClockCircleOutlined class="exam-list-page__next-steps-icon" />
-        <span>下一步行动</span>
-      </header>
-      <div class="exam-list-page__next-steps-grid">
-        <button type="button" class="exam-list-page__next-step" @click="goAiAnalysisCenter">
-          <span class="exam-list-page__next-step-badge">AI</span>
-          <span class="exam-list-page__next-step-body">
-            <span class="exam-list-page__next-step-label">教学质量分析</span>
-            <span class="exam-list-page__next-step-desc">跨考试维度的 AI 洞察与达成度分析</span>
-          </span>
-        </button>
-        <button type="button" class="exam-list-page__next-step" @click="goArchiveVolumeList">
-          <span class="exam-list-page__next-step-badge">归</span>
-          <span class="exam-list-page__next-step-body">
-            <span class="exam-list-page__next-step-label">历史归档管理</span>
-            <span class="exam-list-page__next-step-desc">查看已关闭考试的归档卷状态</span>
-          </span>
-        </button>
-        <button type="button" class="exam-list-page__next-step" @click="goAuditTrail">
-          <span class="exam-list-page__next-step-badge">审</span>
-          <span class="exam-list-page__next-step-body">
-            <span class="exam-list-page__next-step-label">考试审计日志</span>
-            <span class="exam-list-page__next-step-desc">全链路操作审计与合规追踪</span>
-          </span>
-        </button>
-      </div>
-    </section>
   </StageWorkbenchShell>
 
   <!-- 考试维护 Drawer -->
@@ -364,26 +334,11 @@ import type {
   ExamUpdateRequest,
   ExamWorkbenchSummaryResponse,
 } from '@/apis/mark/exam'
-import type {
-  BadgeTone,
-  FilterField,
-  UiSectionTabItem,
-  UiTableRowActionItem,
-} from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
 import {
   closeExam,
   countExamWorkbenchScopes,
   deleteExam,
   EXAM_KIND_TONE,
-  EXAM_STATUS_FILTER_OPTIONS,
   EXAM_STATUS_TONE,
   ExamGradingStrategyCode,
   ExamGradingStrategyDescription,
@@ -396,6 +351,20 @@ import {
   pageExamWorkbench,
   updateExam,
 } from '@/apis/mark/exam'
+import type {
+  BadgeTone,
+  FilterField,
+  UiSectionTabItem,
+  UiTableRowActionItem,
+} from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -416,14 +385,11 @@ import {
   buildCloseExamBlockedContent,
   buildCloseExamReadyContent,
 } from '@/composables/useExamArchiveGateHint'
+import { useMarkDashboardFilterOptions } from '@/composables/useMarkDashboardFilterOptions'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
-import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
-import {
-  generateAcademicYearOptions,
-  getDefaultAcademicYearAndSemester,
-} from '@/utils/academic-year'
+import { getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
 import {
   buildOptionalAcademicYearSemesterQuery,
   ensureAcademicYearSemesterPair,
@@ -435,6 +401,12 @@ import {
   resolveSmartExamEntryRouteName,
 } from '@/utils/exam-workspace-entry-gates'
 import { formatDateTime } from '@/utils/format'
+import {
+  buildMarkDashboardAcademicYearSelectOptions,
+  buildMarkDashboardSemesterSelectOptions,
+  buildMarkDashboardStatusSelectOptions,
+  MARK_DASHBOARD_FILTER_PLACEHOLDERS,
+} from '@/utils/mark-dashboard-filter-options'
 import { resolveScanStageEntryRoute } from '@/utils/resolve-scan-stage-entry'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ExamListExamWindowCell from '@/views/teacher/components/ExamListExamWindowCell.vue'
@@ -445,6 +417,7 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const userStore = useUserStore()
+const { filterOptions: dashboardFilterOptions, loadFilterOptions } = useMarkDashboardFilterOptions()
 
 /**
  * 是否全租户审计读视角。
@@ -498,22 +471,22 @@ const filterModel = computed<Record<string, unknown>>({
   },
 })
 
-const statusOptions = EXAM_STATUS_FILTER_OPTIONS
 const academicYearOptions = computed(() =>
-  generateAcademicYearOptions().map((year) => ({ label: year, value: year })),
+  buildMarkDashboardAcademicYearSelectOptions(dashboardFilterOptions.value?.academicYears),
 )
 const semesterSelectOptions = computed(() =>
-  SemesterOptions.map((item) => ({ label: item.label, value: item.value })),
+  buildMarkDashboardSemesterSelectOptions(dashboardFilterOptions.value?.semesters),
 )
 const statusSelectOptions = computed(() =>
-  statusOptions.map((item) => ({ label: item.label, value: item.value })),
+  buildMarkDashboardStatusSelectOptions(dashboardFilterOptions.value?.statuses),
 )
 
 const pageSubtitle = computed(() => {
   const parts: string[] = []
   if (filterForm.academicYear) parts.push(filterForm.academicYear)
   if (filterForm.semester) parts.push(formatSemester(filterForm.semester))
-  const scope = parts.length ? parts.join(' ') : '全部学年学期'
+  if (filterForm.status) parts.push(ExamStatusDescription[filterForm.status])
+  const scope = parts.length ? parts.join(' · ') : '全部学年学期'
   return `${scope} · 共 ${allBadgeTotal.value} 场考试`
 })
 
@@ -838,9 +811,9 @@ function isExamPriorityRow(exam: ExamWorkbenchSummaryResponse): boolean {
   if (listTab.value === 'priority') return true
   if (exam.status !== ExamStatusCode.ACTIVE) return false
   return (
-    getScanAttentionCount(exam) > 0
-    || getPendingConfirmCount(exam) > 0
-    || getExamGradingPercent(exam) < 50
+    getScanAttentionCount(exam) > 0 ||
+    getPendingConfirmCount(exam) > 0 ||
+    getExamGradingPercent(exam) < 50
   )
 }
 
@@ -961,8 +934,8 @@ function getLoadingRefByScope(scope: ExamListScopeCode): typeof priorityLoading 
 
 function buildScopeCountQuery(): ExamPageQueryRequest {
   const [startTime, endTime] = filterForm.dateRange ?? []
-  const termQuery
-    = buildOptionalAcademicYearSemesterQuery(filterForm.academicYear, filterForm.semester) ?? {}
+  const termQuery =
+    buildOptionalAcademicYearSemesterQuery(filterForm.academicYear, filterForm.semester) ?? {}
   return {
     status: filterForm.status,
     ...termQuery,
@@ -978,8 +951,8 @@ function buildWorkbenchQuery(
   pageSize: number,
 ): Parameters<typeof pageExamWorkbench>[0] {
   const [startTime, endTime] = filterForm.dateRange ?? []
-  const termQuery
-    = buildOptionalAcademicYearSemesterQuery(filterForm.academicYear, filterForm.semester) ?? {}
+  const termQuery =
+    buildOptionalAcademicYearSemesterQuery(filterForm.academicYear, filterForm.semester) ?? {}
   return {
     listScope: scope,
     pageNum,
@@ -1063,7 +1036,7 @@ function handleReset(): void {
   void reloadListAndCounts()
 }
 
-function handleUiPageChange(page: { current: number, pageSize: number }): void {
+function handleUiPageChange(page: { current: number; pageSize: number }): void {
   const scope = tabToScope(listTab.value)
   const paginationState = getPaginationByScope(scope)
   paginationState.current = page.current
@@ -1122,14 +1095,6 @@ function goMarkingTaskPool(exam: ExamWorkbenchSummaryResponse): void {
 
 function goArchiveVolumeList(): void {
   void router.push({ name: 'TeacherArchiveVolumeList' })
-}
-
-function goAiAnalysisCenter(): void {
-  void router.push({ name: 'TeacherAiAnalysisCenter' })
-}
-
-function goAuditTrail(): void {
-  void router.push({ name: 'AdminAuditTrail' })
 }
 
 // ─── KPI 概览：workbench-scope-counts 返回 CLOSED；Signal「进行中」与 Tab 共用 ongoingCount ─
@@ -1261,7 +1226,7 @@ function resetExamForm(): void {
 }
 
 function goCreateExam(): void {
-  void router.push({ name: 'TeacherExamCreate' })
+  void router.push({ name: 'TeacherCreateExam' })
 }
 
 async function openEditModal(exam: ExamWorkbenchSummaryResponse): Promise<void> {
@@ -1272,8 +1237,8 @@ async function openEditModal(exam: ExamWorkbenchSummaryResponse): Promise<void> 
   examForm.examNo = exam.examNo
   examForm.academicYear = exam.academicYear ?? ''
   examForm.semester = exam.semester
-  examForm.examWindow
-    = exam.examStartTime && exam.examEndTime ? [exam.examStartTime, exam.examEndTime] : undefined
+  examForm.examWindow =
+    exam.examStartTime && exam.examEndTime ? [exam.examStartTime, exam.examEndTime] : undefined
   examForm.scoreCompositionMode = exam.dailyScoreFull != null ? 'EXAM_WITH_DAILY' : 'EXAM_ONLY'
   examForm.dailyScoreFull = exam.dailyScoreFull ?? undefined
   examForm.examKind = exam.examKind ?? ExamKindCode.REGULAR
@@ -1484,11 +1449,26 @@ async function reloadAll(): Promise<void> {
 
 onActivated(() => {
   applyExamListDeepLinkFromRoute()
-  void reloadAll()
+  void (async () => {
+    await loadFilterOptions()
+    await reloadAll()
+  })()
 })
 </script>
 
 <style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
+.context-bar__filter-select {
+  width: 120px;
+  min-width: 0;
+}
+
+@media (max-width: #{bp.$ant-grid-xl - 1px}) {
+  .context-bar__filter-select {
+    width: 108px;
+  }
+}
+
 .exam-list-page__count-alert {
   margin-bottom: var(--dp-space-3);
 }
@@ -1537,11 +1517,11 @@ onActivated(() => {
 }
 
 .exam-list-page__exam-no-code {
-  font-family: var(--dp-font-mono, ui-monospace, monospace);
+  font-family: var(--dp-font-mono);
 }
 
 .exam-list-page__term-year {
-  font-family: var(--dp-font-mono, ui-monospace, monospace);
+  font-family: var(--dp-font-mono);
   font-size: 12px;
 }
 
@@ -1629,89 +1609,6 @@ onActivated(() => {
   color: var(--ant-color-text-quaternary);
 }
 
-.exam-list-page__next-steps {
-  margin-top: var(--dp-space-4);
-  padding: var(--dp-space-4);
-  border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-panel, 8px);
-  background: var(--dp-surface, #fff);
-}
-
-.exam-list-page__next-steps-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: var(--dp-space-3);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ant-color-text);
-}
-
-.exam-list-page__next-steps-icon {
-  color: var(--ant-color-primary);
-  font-size: 14px;
-}
-
-.exam-list-page__next-steps-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--dp-space-3);
-}
-
-.exam-list-page__next-step {
-  display: flex;
-  flex: 1;
-  min-width: 160px;
-  gap: var(--dp-space-2);
-  padding: var(--dp-space-3);
-  border: 1px solid var(--ant-color-border-secondary);
-  border-radius: 6px;
-  background: var(--dp-surface, #fff);
-  cursor: pointer;
-  text-align: left;
-  transition:
-    border-color 150ms ease,
-    box-shadow 150ms ease;
-
-  &:hover {
-    border-color: var(--ant-color-primary-border);
-    box-shadow: 0 2px 8px rgb(22 119 255 / 8%);
-  }
-}
-
-.exam-list-page__next-step-badge {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--ant-color-primary) 10%, transparent);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--ant-color-primary);
-}
-
-.exam-list-page__next-step-body {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.exam-list-page__next-step-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ant-color-text);
-}
-
-.exam-list-page__next-step-desc {
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--ant-color-text-quaternary);
-}
-
 .exam-table :deep(.ant-table-tbody > tr > td) {
   vertical-align: middle;
 }
@@ -1730,12 +1627,12 @@ onActivated(() => {
 
 .exam-table :deep(.ant-table-cell-fix-left),
 .exam-table :deep(.ant-table-cell-fix-right) {
-  background: var(--dp-surface, #fff);
+  background: var(--dp-surface);
 }
 
 .exam-table :deep(.ant-table-tbody > tr:hover > td.ant-table-cell-fix-left),
 .exam-table :deep(.ant-table-tbody > tr:hover > td.ant-table-cell-fix-right) {
-  background: var(--dp-gray-50, #f8fafc) !important;
+  background: var(--dp-gray-50) !important;
 }
 
 .exam-list-page__exam-window {

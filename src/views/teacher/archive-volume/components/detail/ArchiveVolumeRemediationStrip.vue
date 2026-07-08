@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { ArchiveRemediationTaskResponse } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { computed } from 'vue'
 import {
   ARCHIVE_REMEDIATION_STATUS_TONE,
   ArchiveRemediationStatusCode,
   ArchiveRemediationStatusDescription,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { computed } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -26,7 +26,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'register-material': []
-  "advance": [status: ArchiveRemediationStatusCode]
+  advance: [status: ArchiveRemediationStatusCode]
 }>()
 
 const assigneeLabel = computed(() => {
@@ -133,11 +133,11 @@ function remediationStatusTone(code: ArchiveRemediationStatusCode): BadgeTone {
 
 <style scoped>
 .archive-volume-remediation-strip {
-  margin-bottom: var(--dp-space-4, 16px);
+  margin-bottom: var(--dp-space-4);
 }
 
 .archive-volume-remediation-strip__assignee {
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
   font-size: 13px;
 }
 </style>

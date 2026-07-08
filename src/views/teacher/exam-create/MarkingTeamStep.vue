@@ -1,50 +1,82 @@
 <template>
-  <section id="exam-create-marking-team" class="form-section exam-create-form">
-    <header class="section-header">
-      <h2 class="section-title">阅卷队伍</h2>
-    </header>
-    <p class="section-desc">指定主考与阅卷教师；主考须同时属于阅卷名单。</p>
-    <a-form ref="formRef" :model="markingTeamForm" :rules="markingTeamRules" layout="vertical" class="exam-create-form__body">
-      <div class="exam-create-form__grid">
-        <a-form-item label="主考教师" name="chiefExaminerUserId" required>
-          <TeacherSelector
-            :value="markingTeamForm.chiefExaminerUserId"
-            placeholder="默认当前创建人，可调整"
-            @change="handleChiefSelect"
-          />
-          <div class="exam-create-form__hint">主考默认为创建人，须同时属于阅卷教师名单。</div>
-        </a-form-item>
-        <a-form-item label="匿名阅卷" name="anonymousMode">
-          <div class="exam-create-form__switch-row">
-            <a-switch v-model:checked="markingTeamForm.anonymousMode" />
-            <span class="exam-create-form__switch-label">
-              {{ markingTeamForm.anonymousMode ? '启用匿名' : '关闭匿名' }}
-            </span>
-          </div>
-          <div class="exam-create-form__hint">
-            启用后，阅卷教师查看答卷时不显示考生姓名与学号。
-          </div>
-        </a-form-item>
-        <a-form-item label="阅卷教师" name="reviewerUserIds" required class="exam-create-form__full">
-          <TeacherSelector
-            v-model:value="markingTeamForm.reviewerUserIds"
-            mode="multiple"
-            placeholder="选择参与阅卷的教师（须包含主考）"
-            @change="handleReviewersChange"
-          />
-        </a-form-item>
-        <a-form-item label="队伍备注" name="remark" class="exam-create-form__full">
-          <a-textarea
-            v-model:value="markingTeamForm.remark"
-            :rows="2"
-            placeholder="可填写阅卷分工说明（可选）"
-            :maxlength="200"
-            show-count
-          />
-        </a-form-item>
+  <a-form
+    ref="formRef"
+    :model="markingTeamForm"
+    :rules="markingTeamRules"
+    layout="horizontal"
+    :label-col="labelCol"
+    :wrapper-col="{ flex: 1 }"
+    class="create-form"
+  >
+    <div id="exam-create-marking-team" class="form-section">
+      <div class="section-header">
+        <h3 class="section-title">阅卷队伍</h3>
       </div>
-    </a-form>
-  </section>
+      <p class="section-desc">指定主考与阅卷教师；主考须同时属于阅卷名单。</p>
+
+      <a-row :gutter="24" class="create-form__split-row">
+        <a-col :span="12">
+          <a-form-item
+            label="主考教师"
+            name="chiefExaminerUserId"
+            required
+            :label-col="labelCol"
+            :wrapper-col="wrapperCol"
+          >
+            <TeacherSelector
+              :value="markingTeamForm.chiefExaminerUserId"
+              placeholder="默认当前创建人，可调整"
+              @change="handleChiefSelect"
+            />
+            <template #extra>
+              <p class="create-form__hint create-form__hint--extra">
+                主考默认为创建人，须同时属于阅卷教师名单。
+              </p>
+            </template>
+          </a-form-item>
+        </a-col>
+        <a-col :span="12">
+          <a-form-item
+            label="匿名阅卷"
+            name="anonymousMode"
+            :label-col="labelCol"
+            :wrapper-col="wrapperCol"
+          >
+            <div class="create-form__switch-row">
+              <a-switch v-model:checked="markingTeamForm.anonymousMode" />
+              <span class="create-form__switch-label">
+                {{ markingTeamForm.anonymousMode ? '启用匿名' : '关闭匿名' }}
+              </span>
+            </div>
+            <template #extra>
+              <p class="create-form__hint create-form__hint--extra">
+                启用后，阅卷教师查看答卷时不显示考生姓名与学号。
+              </p>
+            </template>
+          </a-form-item>
+        </a-col>
+      </a-row>
+
+      <a-form-item label="阅卷教师" name="reviewerUserIds" required>
+        <TeacherSelector
+          v-model:value="markingTeamForm.reviewerUserIds"
+          mode="multiple"
+          placeholder="选择参与阅卷的教师（须包含主考）"
+          @change="handleReviewersChange"
+        />
+      </a-form-item>
+
+      <a-form-item label="队伍备注" name="remark">
+        <a-textarea
+          v-model:value="markingTeamForm.remark"
+          :rows="2"
+          placeholder="可填写阅卷分工说明（可选）"
+          :maxlength="200"
+          show-count
+        />
+      </a-form-item>
+    </div>
+  </a-form>
 </template>
 
 <script setup lang="ts">
@@ -63,8 +95,10 @@ const emit = defineEmits<{
   'chief-change': [userId: string | null, nickName: string]
   'reviewers-change': [nickNames: string[]]
 }>()
-const markingTeamForm = useInjectedExamCreateMarkingTeamForm()
 
+const labelCol = { style: { width: '88px' } }
+const wrapperCol = { flex: 1 }
+const markingTeamForm = useInjectedExamCreateMarkingTeamForm()
 const formRef = ref<FormInstance>()
 
 function handleReviewersChange(
@@ -72,14 +106,14 @@ function handleReviewersChange(
   option?: TeacherUserInfoDto | TeacherUserInfoDto[],
 ): void {
   const teachers = Array.isArray(option) ? option : option ? [option] : []
-  emit('reviewers-change', teachers.map(teacher => teacher.nickName).filter(Boolean))
+  emit('reviewers-change', teachers.map((teacher) => teacher.nickName).filter(Boolean))
 }
 
 function handleChiefSelect(
   value: string | string[] | null,
   option?: TeacherUserInfoDto | TeacherUserInfoDto[],
 ): void {
-  const rawChiefId = Array.isArray(value) ? value[0] ?? null : value
+  const rawChiefId = Array.isArray(value) ? (value[0] ?? null) : value
   const chiefId = rawChiefId == null || rawChiefId === '' ? null : String(rawChiefId)
   const teacher = Array.isArray(option) ? option[0] : option
   if (!chiefId) {
@@ -97,24 +131,3 @@ watch(formRef, (value) => {
   emit('update:marking-team-form-ref', value)
 })
 </script>
-
-<style scoped lang="scss">
-.exam-create-form__hint {
-  margin-top: 8px;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--dp-text-secondary, #64748b);
-}
-
-.exam-create-form__switch-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 32px;
-}
-
-.exam-create-form__switch-label {
-  font-size: 14px;
-  color: var(--dp-text-secondary, #64748b);
-}
-</style>

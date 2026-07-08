@@ -255,7 +255,25 @@ import type {
   GradeReviewRequestStatusCode,
   StudentGradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
+import {
+  countMyPendingReviewRequests,
+  GRADE_REVIEW_REASON_TYPE_OPTIONS,
+  GradeReviewReasonTypeCode,
+  GradeReviewReasonTypeDescription,
+  GradeReviewRequestStatusDescription,
+  listMyReviewRequests,
+  REVIEW_REQUEST_STATUS_OPTIONS,
+  REVIEW_REQUEST_STATUS_TONE,
+  submitReviewRequest,
+} from '@/apis/mark/grade-review'
 import type { StudentExamItemVO, StudentQuestionScoreVO } from '@/apis/mark/student-exam'
+import {
+  canSubmitReview,
+  getMyScoreDetail,
+  listMyExams,
+  ReviewWindowPolicyStatusDescription,
+  STUDENT_REVIEW_WINDOW_STATUS_TONE,
+} from '@/apis/mark/student-exam'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
@@ -269,24 +287,6 @@ import {
   FINAL_SCORE_STATUS_TONE,
   FinalScoreStatusDescription,
 } from '@/apis/mark/final-score-status'
-import {
-  countMyPendingReviewRequests,
-  GRADE_REVIEW_REASON_TYPE_OPTIONS,
-  GradeReviewReasonTypeCode,
-  GradeReviewReasonTypeDescription,
-  GradeReviewRequestStatusDescription,
-  listMyReviewRequests,
-  REVIEW_REQUEST_STATUS_OPTIONS,
-  REVIEW_REQUEST_STATUS_TONE,
-  submitReviewRequest,
-} from '@/apis/mark/grade-review'
-import {
-  canSubmitReview,
-  getMyScoreDetail,
-  listMyExams,
-  ReviewWindowPolicyStatusDescription,
-  STUDENT_REVIEW_WINDOW_STATUS_TONE,
-} from '@/apis/mark/student-exam'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -331,8 +331,8 @@ const sourceQuestionId = ref<string | undefined>(undefined)
 
 const reasonTypeOptions = GRADE_REVIEW_REASON_TYPE_OPTIONS
 
-const statusOptions: Array<{ value: GradeReviewRequestStatusCode, label: string }>
-  = REVIEW_REQUEST_STATUS_OPTIONS
+const statusOptions: Array<{ value: GradeReviewRequestStatusCode; label: string }> =
+  REVIEW_REQUEST_STATUS_OPTIONS
 
 const requestFilterForm = reactive<{
   status?: GradeReviewRequestStatusCode
@@ -507,9 +507,9 @@ async function loadRequests() {
     requestPagination.current = result.pageNum ?? requestPagination.current
     requestPagination.pageSize = result.pageSize ?? requestPagination.pageSize
     if (
-      requests.value.length === 0
-      && requestPagination.total > 0
-      && requestPagination.current > 1
+      requests.value.length === 0 &&
+      requestPagination.total > 0 &&
+      requestPagination.current > 1
     ) {
       requestPagination.current -= 1
       await Promise.all([loadRequests(), loadPendingRequestCount()])
@@ -523,7 +523,7 @@ async function loadRequests() {
   }
 }
 
-function handleRequestPageChange(pageInfo: { current: number, pageSize: number }): void {
+function handleRequestPageChange(pageInfo: { current: number; pageSize: number }): void {
   requestPagination.current = pageInfo.current
   requestPagination.pageSize = pageInfo.pageSize
   void loadRequests()
@@ -793,7 +793,7 @@ async function loadSelectedExamQuestions(): Promise<void> {
   align-items: center;
   gap: 8px;
   font-size: 16px;
-  font-weight: var(--dp-font-weight-title, 600);
+  font-weight: var(--dp-font-weight-title);
 }
 
 .appeal-page__list-card {
@@ -812,7 +812,7 @@ async function loadSelectedExamQuestions(): Promise<void> {
   gap: 14px;
   padding: 14px 16px;
   border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-panel, 6px);
+  border-radius: var(--dp-radius-panel);
   cursor: pointer;
   background: #fff;
   transition:
@@ -968,7 +968,7 @@ async function loadSelectedExamQuestions(): Promise<void> {
   gap: 10px;
   padding: 10px 12px;
   background: var(--ant-color-fill-quaternary);
-  border-radius: var(--dp-radius-control-inner, 6px);
+  border-radius: var(--dp-radius-control-inner);
 
   &__score {
     margin-left: auto;

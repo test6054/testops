@@ -55,6 +55,11 @@
 <script lang="ts" setup>
 import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
 import type { ScoreWorkbenchAnalyticsMode } from '@/utils/score-workbench-analytics'
+import {
+  buildScoreAnalyticsFlowSteps,
+  buildScoreDistributionStatItems,
+  resolveScoreAnalyticsOverviewTitle,
+} from '@/utils/score-workbench-analytics'
 import { computed } from 'vue'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import ScoreAnalyticsStatusFlow from '@/components/workbench/ScoreAnalyticsStatusFlow.vue'
@@ -63,11 +68,6 @@ import { useChartOption } from '@/hooks/modules/useChartOption'
 import { buildBarChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
 import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
 import { scoreHistogramToBarItems } from '@/utils/mark-statistics-chart'
-import {
-  buildScoreAnalyticsFlowSteps,
-  buildScoreDistributionStatItems,
-  resolveScoreAnalyticsOverviewTitle,
-} from '@/utils/score-workbench-analytics'
 
 defineOptions({ name: 'ScoreWorkbenchAnalyticsSection' })
 
@@ -157,29 +157,30 @@ const participantLabel = computed(() => {
 </script>
 
 <style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .score-workbench-analytics {
-  margin-top: var(--dp-space-3, 12px);
+  margin-top: var(--dp-space-3);
 
   &__grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: var(--dp-space-4, 16px);
+    gap: var(--dp-space-4);
 
-    @media (min-width: 992px) {
+    @media (min-width: bp.$ant-grid-lg) {
       grid-template-columns: 1fr 1fr;
     }
   }
 
   &__title {
     margin: 0;
-    font-size: var(--dp-type-body-size, 14px);
-    font-weight: var(--dp-font-weight-title, 600);
-    color: var(--dp-text-primary, #0f172a);
+    font-size: var(--dp-type-body-size);
+    font-weight: var(--dp-font-weight-title);
+    color: var(--dp-text-primary);
   }
 
   &__hint {
-    font-size: var(--dp-type-hint-size, 12px);
-    color: var(--dp-text-muted, #64748b);
+    font-size: var(--dp-type-hint-size);
+    color: var(--dp-text-muted);
   }
 
   &__chart {
@@ -189,7 +190,7 @@ const participantLabel = computed(() => {
   &__stat-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--dp-space-3, 12px);
+    gap: var(--dp-space-3);
   }
 }
 </style>

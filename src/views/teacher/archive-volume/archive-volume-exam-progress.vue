@@ -80,7 +80,9 @@
         <div v-if="isPackaging" class="archive-exam-review__packaging">
           <div class="archive-exam-review__packaging-head">
             <span>{{ packagingProgressLabel }}</span>
-            <span class="archive-exam-review__packaging-percent">{{ packagingProgressPercent }}%</span>
+            <span class="archive-exam-review__packaging-percent"
+              >{{ packagingProgressPercent }}%</span
+            >
           </div>
           <div class="archive-exam-review__packaging-track">
             <div
@@ -174,10 +176,6 @@ import type {
   ArchiveVolumeExamVolumeProgressItemVO,
   ArchiveVolumeResponse,
 } from '@/apis/mark/archive-volume'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   ArchiveIntegrityStatusDescription,
   ArchiveVolumeStatusDescription,
@@ -186,6 +184,10 @@ import {
   pageArchiveVolumes,
   retryArchiveVolumeAutoCreate,
 } from '@/apis/mark/archive-volume'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { createExamArchivePackage, retryExamArchivePackaging } from '@/apis/mark/exam-archive'
 import ArchiveDimPill from '@/components/archive-volume/ArchiveDimPill.vue'
 import ArchiveExamAutoCreateStatus from '@/components/archive-volume/ArchiveExamAutoCreateStatus.vue'
@@ -211,7 +213,10 @@ import {
   CLASS_SCOPE_FIX_AUTO_CREATE_FAILURE_CATEGORIES,
   isArchiveAutoCreateFailureCategory,
 } from '@/constants/archive-auto-create-failure-category'
-import { ArchivePackageStatusCode, ArchivePackageStatusDescription } from '@/types/enums/archive-package-status-enum'
+import {
+  ArchivePackageStatusCode,
+  ArchivePackageStatusDescription,
+} from '@/types/enums/archive-package-status-enum'
 import { ArchiveVolumeAutoCreatePendingStatusCode } from '@/types/enums/archive-volume-auto-create-pending-status-enum'
 import { integrityStatusDimTone, volumeStatusDimTone } from '@/utils/archive-dimension-pill'
 import { buildArchivePackageLifecycleSteps } from '@/utils/archive-package-lifecycle'
@@ -303,7 +308,9 @@ const canCreatePackage = computed(() => {
 })
 
 const showRetryPackagingAction = computed(
-  () => gateOpen.value && archivePackage.value?.archiveStatus === ArchivePackageStatusCode.PACKAGING_FAILED,
+  () =>
+    gateOpen.value &&
+    archivePackage.value?.archiveStatus === ArchivePackageStatusCode.PACKAGING_FAILED,
 )
 
 const reviewStatusLabel = computed(() => {
@@ -325,14 +332,22 @@ const reviewStatusLabel = computed(() => {
 
 const reviewStatusTone = computed(() => {
   const pkgStatus = archivePackage.value?.archiveStatus
-  if (pkgStatus === ArchivePackageStatusCode.ACTIVE || pkgStatus === ArchivePackageStatusCode.STORED) {
+  if (
+    pkgStatus === ArchivePackageStatusCode.ACTIVE ||
+    pkgStatus === ArchivePackageStatusCode.STORED
+  ) {
     return 'green' as const
   }
-  if (pkgStatus === ArchivePackageStatusCode.PACKAGING || pkgStatus === ArchivePackageStatusCode.DRAFT) {
+  if (
+    pkgStatus === ArchivePackageStatusCode.PACKAGING ||
+    pkgStatus === ArchivePackageStatusCode.DRAFT
+  ) {
     return 'blue' as const
   }
-  if (pkgStatus === ArchivePackageStatusCode.PACKAGING_FAILED
-    || pkgStatus === ArchivePackageStatusCode.DESTRUCTION_FAILED) {
+  if (
+    pkgStatus === ArchivePackageStatusCode.PACKAGING_FAILED ||
+    pkgStatus === ArchivePackageStatusCode.DESTRUCTION_FAILED
+  ) {
     return 'red' as const
   }
   if (!gateOpen.value) {
@@ -354,8 +369,9 @@ const reviewSignals = computed<SignalMetric[]>(() => {
     {
       key: 'archive-status',
       label: '归档状态',
-      value: pkg?.archiveStatusLabel
-        ?? (pkg?.archiveStatus
+      value:
+        pkg?.archiveStatusLabel ??
+        (pkg?.archiveStatus
           ? strictEnumLabel(ArchivePackageStatusDescription, pkg.archiveStatus, 'archiveStatus')
           : '未创建'),
       tone: reviewStatusTone.value,
@@ -369,9 +385,10 @@ const reviewSignals = computed<SignalMetric[]>(() => {
     {
       key: 'archive-size',
       label: '文件大小',
-      value: pkg?.archiveFileSize != null && pkg.archiveFileSize > 0
-        ? formatFileSize(pkg.archiveFileSize)
-        : '—',
+      value:
+        pkg?.archiveFileSize != null && pkg.archiveFileSize > 0
+          ? formatFileSize(pkg.archiveFileSize)
+          : '—',
       tone: 'gray',
     },
     {
@@ -384,10 +401,11 @@ const reviewSignals = computed<SignalMetric[]>(() => {
 })
 
 const showVolumeCollapse = computed(
-  () => gateOpen.value
-    && (healthyVolumes.value.length > 0
-      || hasAutoCreateFailure.value
-      || examGate.value?.autoCreatePendingStatus != null),
+  () =>
+    gateOpen.value &&
+    (healthyVolumes.value.length > 0 ||
+      hasAutoCreateFailure.value ||
+      examGate.value?.autoCreatePendingStatus != null),
 )
 
 const volumeCollapseHeader = computed(() => {
@@ -395,19 +413,20 @@ const volumeCollapseHeader = computed(() => {
   const expected = expectedAutoCreateVolumeCount.value
   const healthy = gate?.healthyAutoCreateVolumeCount ?? healthyVolumes.value.length
   if (expected != null && expected > 0) {
-    return `院系归档卷（${healthy}/${expected}）`
+    return `院系归档任务（${healthy}/${expected}）`
   }
   if (healthyVolumes.value.length > 0) {
-    return `院系归档卷（${healthyVolumes.value.length} 卷）`
+    return `院系归档任务（${healthyVolumes.value.length} 个）`
   }
-  return '院系归档卷'
+  return '院系归档任务'
 })
 
 const showVolumeAutoCreateStatus = computed(
-  () => gateOpen.value
-    && (hasAutoCreateFailure.value
-      || examGate.value?.autoCreatePendingStatus != null
-      || showRetryAutoCreate.value),
+  () =>
+    gateOpen.value &&
+    (hasAutoCreateFailure.value ||
+      examGate.value?.autoCreatePendingStatus != null ||
+      showRetryAutoCreate.value),
 )
 
 const volumeTableColumns = computed(() => {
@@ -431,24 +450,24 @@ const autoCreateFailedEvent = computed(() =>
 const autoCreateFailedNeedsClassScope = computed(() => {
   const category = examGate.value?.autoCreateFailureCategory
   return (
-    category != null
-    && isArchiveAutoCreateFailureCategory(category)
-    && CLASS_SCOPE_FIX_AUTO_CREATE_FAILURE_CATEGORIES.has(category)
+    category != null &&
+    isArchiveAutoCreateFailureCategory(category) &&
+    CLASS_SCOPE_FIX_AUTO_CREATE_FAILURE_CATEGORIES.has(category)
   )
 })
 
 const hasAutoCreateFailure = computed(
   () =>
-    examGate.value?.autoCreateFailureStubPresent === true
-    || autoCreateFailedEvent.value != null
-    || examGate.value?.autoCreatePendingStatus
-    === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED,
+    examGate.value?.autoCreateFailureStubPresent === true ||
+    autoCreateFailedEvent.value != null ||
+    examGate.value?.autoCreatePendingStatus ===
+      ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED,
 )
 
 const showRetryAutoCreate = computed(
   () =>
-    examGate.value?.archiveAutoCreateRetryAllowed === true
-    && !autoCreateFailedNeedsClassScope.value,
+    examGate.value?.archiveAutoCreateRetryAllowed === true &&
+    !autoCreateFailedNeedsClassScope.value,
 )
 
 const showNonOwnerHint = computed(() => {
@@ -460,16 +479,16 @@ const showNonOwnerHint = computed(() => {
     return false
   }
   return (
-    hasAutoCreateFailure.value
-    || gate.autoCreatePendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED
-    || (gate.gateOpen === true && !gate.autoCreateFailureStubPresent)
+    hasAutoCreateFailure.value ||
+    gate.autoCreatePendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED ||
+    (gate.gateOpen === true && !gate.autoCreateFailureStubPresent)
   )
 })
 
 const pendingRetryDescription = computed(() => {
   const gate = examGate.value
   if (gate?.autoCreatePendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED) {
-    return gate.autoCreateLastError || '自动建卷多次失败，请修复问题后重新触发'
+    return gate.autoCreateLastError || '自动创建归档任务多次失败，请修复问题后重新触发'
   }
   if (gate?.autoCreateFailureCategory === ArchiveAutoCreateFailureCategoryCode.PACKAGE_PENDING) {
     return gate.autoCreateLastError
@@ -479,9 +498,9 @@ const pendingRetryDescription = computed(() => {
   if (gate?.autoCreatePendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.PENDING) {
     return gate.autoCreateLastError
       ? `${gate.autoCreateLastError}；系统仍将自动重试`
-      : '系统正在自动重试建卷，也可手动立即触发'
+      : '系统正在自动重试创建，也可手动立即触发'
   }
-  return '双门禁已满足但归档卷尚未生成'
+  return '双门禁已满足但归档任务尚未生成'
 })
 
 const autoCreateFailedDescription = computed(() => {
@@ -509,10 +528,10 @@ function volumeProgressItem(volumeId: string): ArchiveVolumeExamVolumeProgressIt
 
 function formatVolumeLifecycleProgress(volumeId: string): string {
   const item = volumeProgressItem(volumeId)
-  if (!item) {
+  if (!item || item.totalLifecycleCount == null) {
     return '—'
   }
-  return `${item.completedLifecycleCount ?? 0}/${item.totalLifecycleCount ?? 8}`
+  return `${item.completedLifecycleCount ?? 0}/${item.totalLifecycleCount}`
 }
 
 function volumeStatusLabel(code: ArchiveVolumeResponse['volumeStatus']) {
@@ -540,15 +559,14 @@ async function loadVolumes() {
         pageNum,
         pageSize: EXAM_ARCHIVE_VOLUME_PAGE_SIZE,
       }),
-    '加载归档卷失败',
+    '加载归档任务失败',
   )
   healthyVolumes.value = list.filter((item) => !isAutoCreateFailureStub(item))
   const stubRow = list.find((item) => isAutoCreateFailureStub(item))
   if (stubRow) {
     const detail = await getArchiveVolumeDetail(stubRow.volumeId)
     events.value = detail.events
-  }
-  else {
+  } else {
     events.value = []
   }
 }
@@ -566,13 +584,11 @@ async function loadReview() {
     await loadVolumes()
     await exportTasksRef.value?.refresh()
     syncPackagingPoll()
-  }
-  catch (error) {
+  } catch (error) {
     review.value = null
     loadFailed.value = true
     showUserError(error, '加载归档复盘失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -617,11 +633,9 @@ async function createPackage() {
     })
     message.success(result.reusedExistingDraft ? '已重新入队归档打包' : '已创建归档包并开始打包')
     await loadReview()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '创建归档包失败')
-  }
-  finally {
+  } finally {
     packagingActionLoading.value = false
   }
 }
@@ -635,11 +649,9 @@ async function retryPackaging() {
     await retryExamArchivePackaging(examId.value)
     message.success('已重新入队归档打包')
     await loadReview()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '重新打包失败')
-  }
-  finally {
+  } finally {
     packagingActionLoading.value = false
   }
 }
@@ -693,13 +705,11 @@ async function retryAutoCreate() {
   retrying.value = true
   try {
     await retryArchiveVolumeAutoCreate(examId.value)
-    message.success('已重新触发自动建卷')
+    message.success('已重新触发自动创建归档任务')
     await startAutoCreatePoll()
-  }
-  catch (error) {
-    showUserError(error, '重新触发自动建卷失败')
-  }
-  finally {
+  } catch (error) {
+    showUserError(error, '重新触发自动创建失败')
+  } finally {
     retrying.value = false
   }
 }
@@ -719,71 +729,72 @@ onUnmounted(() => {
 </script>
 
 <style scoped lang="scss">
+@use '@/styles/breakpoints' as bp;
 .archive-exam-review__gate-notice {
-  margin-top: var(--dp-space-3, 12px);
+  margin-top: var(--dp-space-3);
 }
 
 .archive-exam-review__lifecycle {
-  margin-top: var(--dp-space-4, 16px);
+  margin-top: var(--dp-space-4);
 }
 
 .archive-exam-review__packaging {
-  margin-top: var(--dp-space-3, 12px);
-  padding: var(--dp-space-3, 12px);
-  border: 1px solid var(--dp-border-light, #e2e8f0);
-  border-radius: var(--dp-radius-md, 6px);
-  background: var(--dp-surface-muted, #f8fafc);
+  margin-top: var(--dp-space-3);
+  padding: var(--dp-space-3);
+  border: 1px solid var(--dp-border-light);
+  border-radius: var(--dp-radius-md);
+  background: var(--dp-surface-muted);
 }
 
 .archive-exam-review__packaging-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
   font-size: 13px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 
 .archive-exam-review__packaging-percent {
-  font-family: var(--dp-font-mono, ui-monospace, monospace);
+  font-family: var(--dp-font-mono);
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .archive-exam-review__packaging-track {
   height: 6px;
-  margin-top: var(--dp-space-2, 8px);
+  margin-top: var(--dp-space-2);
   border-radius: 999px;
-  background: var(--dp-border-light, #e2e8f0);
+  background: var(--dp-border-light);
   overflow: hidden;
 }
 
 .archive-exam-review__packaging-bar {
   height: 100%;
   border-radius: inherit;
-  background: var(--dp-blue-600, #2563eb);
+  background: var(--dp-blue-600);
   transition: width 0.2s ease;
 }
 
 .archive-exam-review__grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--dp-space-4, 16px);
-  margin-top: var(--dp-space-4, 16px);
+  gap: var(--dp-space-4);
+  margin-top: var(--dp-space-4);
 
-  @media (min-width: 992px) {
+  @media (min-width: bp.$ant-grid-lg) {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
 
 .archive-exam-review__volume-collapse {
-  margin-top: var(--dp-space-4, 16px);
-  background: var(--dp-surface, #fff);
-  border: 1px solid var(--dp-border-light, #e2e8f0);
-  border-radius: var(--dp-radius-md, 6px);
+  margin-top: var(--dp-space-4);
+  background: var(--dp-surface);
+  border: 1px solid var(--dp-border-light);
+  border-radius: var(--dp-radius-md);
 }
 
 .archive-exam-review__volume-status {
-  margin-top: var(--dp-space-3, 12px);
+  margin-top: var(--dp-space-3);
 }
 </style>

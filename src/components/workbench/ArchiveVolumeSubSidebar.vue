@@ -20,46 +20,47 @@
       <p class="archive-volume-sub-sidebar__subtitle">{{ archiveSubtitle }}</p>
     </div>
 
-    <div v-if="!collapsed" class="archive-volume-sub-sidebar__section-label">归档模块</div>
+    <div v-if="!collapsed" class="archive-volume-sub-sidebar__section-label">归档阶段</div>
     <nav class="archive-volume-sub-sidebar__nav">
-      <button
-        v-for="tab in tabs"
-        :key="tab.key"
-        type="button"
-        class="archive-volume-sub-sidebar__nav-item"
-        :class="{
-          'archive-volume-sub-sidebar__nav-item--active': activeTab === tab.key,
-          'archive-volume-sub-sidebar__nav-item--warn': tab.chainStatus === 'warn' && activeTab !== tab.key,
-        }"
-        :title="collapsed ? tab.label : undefined"
-        @click="emit('tab-change', tab.key)"
-      >
-        <span class="archive-volume-sub-sidebar__nav-label">
-          <span
-            class="archive-volume-sub-sidebar__dot"
-            :class="dotClass(tab)"
-          />
-          <span v-if="!collapsed">{{ tab.label }}</span>
-        </span>
-        <span
-          v-if="!collapsed && tab.badge"
-          class="archive-volume-sub-sidebar__badge"
+      <template v-for="group in navGroups" :key="group.key">
+        <div
+          v-if="!collapsed && navGroups.length > 1"
+          class="archive-volume-sub-sidebar__group-label"
         >
-          {{ tab.badge }}
-        </span>
-      </button>
+          {{ group.label }}
+        </div>
+        <button
+          v-for="tab in group.tabs"
+          :key="tab.key"
+          type="button"
+          class="archive-volume-sub-sidebar__nav-item"
+          :class="{
+            'archive-volume-sub-sidebar__nav-item--active': activeTab === tab.key,
+            'archive-volume-sub-sidebar__nav-item--warn':
+              tab.chainStatus === 'warn' && activeTab !== tab.key,
+          }"
+          :title="collapsed ? tab.label : undefined"
+          @click="emit('tab-change', tab.key)"
+        >
+          <span class="archive-volume-sub-sidebar__nav-label">
+            <span class="archive-volume-sub-sidebar__dot" :class="dotClass(tab)" />
+            <span v-if="!collapsed">{{ tab.label }}</span>
+          </span>
+          <span v-if="!collapsed && tab.badge" class="archive-volume-sub-sidebar__badge">
+            {{ tab.badge }}
+          </span>
+        </button>
+      </template>
     </nav>
 
     <template v-if="!collapsed && statusRows.length">
-      <div class="archive-volume-sub-sidebar__section-label archive-volume-sub-sidebar__section-label--meta">
+      <div
+        class="archive-volume-sub-sidebar__section-label archive-volume-sub-sidebar__section-label--meta"
+      >
         卷状态
       </div>
       <div class="archive-volume-sub-sidebar__meta">
-        <div
-          v-for="row in statusRows"
-          :key="row.key"
-          class="archive-volume-sub-sidebar__meta-row"
-        >
+        <div v-for="row in statusRows" :key="row.key" class="archive-volume-sub-sidebar__meta-row">
           <span>{{ row.label }}</span>
           <span class="archive-volume-sub-sidebar__meta-value">{{ row.value }}</span>
         </div>
@@ -83,6 +84,7 @@
 import type { ArchiveVolumeNavigationChainStatusCode } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { ArchiveVolumeSidebarTab } from '@/composables/useArchiveVolumeWorkbenchContext'
+import type { ArchiveVolumeSidebarNavGroupView } from '@/utils/archive-volume-sidebar-navigation'
 import MenuFoldOutlined from '@ant-design/icons-vue/MenuFoldOutlined'
 import MenuUnfoldOutlined from '@ant-design/icons-vue/MenuUnfoldOutlined'
 
@@ -93,8 +95,8 @@ const props = defineProps<{
   archiveSubtitle: string
   volumeStatusTone: BadgeTone
   activeTab: string
-  tabs: ArchiveVolumeSidebarTab[]
-  statusRows: Array<{ key: string, label: string, value: string }>
+  navGroups: ArchiveVolumeSidebarNavGroupView[]
+  statusRows: Array<{ key: string; label: string; value: string }>
   collapsed: boolean
   mobileOpen: boolean
   loading?: boolean
@@ -124,6 +126,7 @@ function dotClass(tab: ArchiveVolumeSidebarTab): string {
 </script>
 
 <style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .archive-volume-sub-sidebar {
   width: 260px;
   flex-shrink: 0;
@@ -228,6 +231,13 @@ function dotClass(tab: ArchiveVolumeSidebarTab): string {
     }
   }
 
+  &__group-label {
+    padding: 10px 12px 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ant-color-text-quaternary);
+  }
+
   &__nav {
     flex: 1;
     min-height: 0;
@@ -246,13 +256,15 @@ function dotClass(tab: ArchiveVolumeSidebarTab): string {
     width: 100%;
     padding: 8px 12px;
     border: none;
-    border-radius: var(--dp-radius-panel, 6px);
+    border-radius: var(--dp-radius-panel);
     background: transparent;
     color: var(--ant-color-text-secondary);
     font-size: 13px;
     text-align: left;
     cursor: pointer;
-    transition: background 0.2s, color 0.2s;
+    transition:
+      background 0.2s,
+      color 0.2s;
 
     &:hover {
       background: var(--ant-color-fill-tertiary);
@@ -352,7 +364,7 @@ function dotClass(tab: ArchiveVolumeSidebarTab): string {
     width: 28px;
     height: 28px;
     border: none;
-    border-radius: var(--dp-radius-panel, 6px);
+    border-radius: var(--dp-radius-panel);
     background: transparent;
     color: var(--ant-color-text-tertiary);
     cursor: pointer;
@@ -363,7 +375,7 @@ function dotClass(tab: ArchiveVolumeSidebarTab): string {
     }
   }
 
-  @media (max-width: 767px) {
+  @media (max-width: bp.$layout-mobile-max) {
     position: fixed;
     z-index: 200;
     top: 56px;
@@ -372,7 +384,7 @@ function dotClass(tab: ArchiveVolumeSidebarTab): string {
     width: 260px;
     transform: translateX(-100%);
     transition: transform 0.2s ease;
-    box-shadow: var(--dp-shadow-md, 0 4px 12px rgb(0 0 0 / 12%));
+    box-shadow: var(--dp-shadow-md);
 
     &--mobile-open {
       transform: translateX(0);

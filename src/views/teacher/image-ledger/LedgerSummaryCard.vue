@@ -62,11 +62,11 @@
 
 <script lang="ts" setup>
 import type { ImageLedgerDetailResponse } from '@/apis/mark/image-ledger'
+import { LEDGER_STATUS_TONE, LedgerStatusDescription } from '@/apis/mark/image-ledger'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
 import { computed } from 'vue'
-import { LEDGER_STATUS_TONE, LedgerStatusDescription } from '@/apis/mark/image-ledger'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -122,8 +122,8 @@ function formatLedgerMetric(value: number | null | undefined): string | number {
 
 /** 扫描完成率环色：100% 完成绿 / ≥60% 推进蓝 / 其余推进橙 */
 const scanRingColor = computed(() => {
-  const tone: BadgeTone
-    = scanPercent.value >= 100 ? 'green' : scanPercent.value >= 60 ? 'blue' : 'orange'
+  const tone: BadgeTone =
+    scanPercent.value >= 100 ? 'green' : scanPercent.value >= 60 ? 'blue' : 'orange'
   return toneToColor(tone)
 })
 
@@ -271,8 +271,8 @@ const deviationSignalMetrics = computed((): SignalMetric[] => {
   justify-content: space-between;
   gap: 24px;
   padding: 16px 20px;
-  background: var(--dp-surface-subtle, #f8fafc);
-  border-radius: var(--dp-radius-panel, 8px);
+  background: var(--dp-surface-subtle);
+  border-radius: var(--dp-radius-panel);
 }
 
 .ledger-summary__hero-left {
@@ -299,7 +299,7 @@ const deviationSignalMetrics = computed((): SignalMetric[] => {
 
 .ledger-summary__hero-time {
   font-size: 12px;
-  color: var(--dp-text-muted, #64748b);
+  color: var(--dp-text-muted);
 }
 
 .ledger-summary__scan-bar {
@@ -311,7 +311,7 @@ const deviationSignalMetrics = computed((): SignalMetric[] => {
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ledger-summary__hero-right {
@@ -320,8 +320,8 @@ const deviationSignalMetrics = computed((): SignalMetric[] => {
 
 .ledger-summary__group-title {
   margin: 0 0 8px;
-  font-size: var(--dp-type-table-head-size, 14px);
-  font-weight: var(--dp-type-table-head-weight, 600);
-  color: var(--dp-text-primary, rgba(0, 0, 0, 0.88));
+  font-size: var(--dp-type-table-head-size);
+  font-weight: var(--dp-type-table-head-weight);
+  color: var(--dp-text-primary);
 }
 </style>

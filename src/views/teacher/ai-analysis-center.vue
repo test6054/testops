@@ -39,8 +39,8 @@ const {
   semesterOptions,
   courseOptions,
   examOptions,
+  selectedExamLabel,
   setClassScope,
-  refreshAnalysis,
   examLocked,
 } = useAiAnalysisScope()
 
@@ -71,20 +71,7 @@ const activeTab = computed<AiAnalysisTab>({
 })
 
 const headerSignalMetrics = computed<SignalMetric[]>(() => {
-  const metrics: SignalMetric[] = [
-    {
-      key: 'scope-year',
-      label: '学年',
-      value: academicYear.value,
-      tone: 'blue',
-    },
-    {
-      key: 'scope-semester',
-      label: '学期',
-      value: semesterOptions.value.find(item => item.value === semester.value)?.label ?? semester.value,
-      tone: 'gray',
-    },
-  ]
+  const metrics: SignalMetric[] = []
   if (overview.value?.scopedExamCount != null) {
     metrics.push({
       key: 'scoped-exams',
@@ -101,25 +88,25 @@ const headerSignalMetrics = computed<SignalMetric[]>(() => {
       tone: 'blue',
     })
   }
-  metrics.push(
-    {
+  if (examId.value) {
+    metrics.push({
       key: 'scope-exam',
       label: '选定考试',
-      value: examId.value ? '已选定' : '未选',
-      tone: examId.value ? 'green' : 'orange',
-    },
-    {
-      key: 'active-tab',
-      label: '当前视图',
-      value: tabItems.find(item => item.key === activeTab.value)?.label ?? '—',
-      tone: 'blue',
-    },
-  )
+      value: selectedExamLabel.value ?? '已选定',
+      tone: 'green',
+    })
+  }
+  metrics.push({
+    key: 'active-tab',
+    label: '当前视图',
+    value: tabItems.find((item) => item.key === activeTab.value)?.label ?? '—',
+    tone: 'blue',
+  })
   return metrics
 })
 
-const showTeachingScopeFilters = computed(() =>
-  activeTab.value === 'teaching' || activeTab.value === 'cluster',
+const showTeachingScopeFilters = computed(
+  () => activeTab.value === 'teaching' || activeTab.value === 'cluster',
 )
 
 function handleTabChange(key: Key) {
@@ -129,48 +116,48 @@ function handleTabChange(key: Key) {
 function handleClassSelectChange(classIdValue?: string, option?: MarkClassOption) {
   setClassScope(classIdValue, option)
 }
-
-const scopeSelectClass = 'ai-analysis-center__scope-select'
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template v-if="!examLocked" #context>
-      <ContextBar layout="workbench">
-        <template #toolbar>
-          <div class="ai-analysis-center__toolbar">
+      <ContextBar layout="workbench" show-title title="AI 分析中心">
+        <template #status>
+          <div class="ai-analysis-center__scope-field ai-analysis-center__scope-field--year">
             <UiSelect
               v-model="academicYear"
-              :class="[scopeSelectClass, `${scopeSelectClass}--year`]"
               :options="academicYearOptions"
               placeholder="学年"
               :allow-clear="false"
             />
+          </div>
+          <div class="ai-analysis-center__scope-field ai-analysis-center__scope-field--semester">
             <UiSelect
               v-model="semester"
-              :class="[scopeSelectClass, `${scopeSelectClass}--semester`]"
               :options="semesterOptions"
               placeholder="学期"
               :allow-clear="false"
             />
-            <template v-if="showTeachingScopeFilters">
+          </div>
+          <template v-if="showTeachingScopeFilters">
+            <div class="ai-analysis-center__scope-field ai-analysis-center__scope-field--course">
               <UiSelect
                 v-model="examFilterCourseId"
-                :class="[scopeSelectClass, `${scopeSelectClass}--course`]"
                 :options="courseOptions"
                 placeholder="课程（可选）"
                 allow-search
               />
+            </div>
+            <div class="ai-analysis-center__scope-field ai-analysis-center__scope-field--exam">
               <UiSelect
                 v-model="examId"
-                :class="[scopeSelectClass, `${scopeSelectClass}--exam`]"
                 :options="examOptions"
                 :loading="examsLoading"
                 placeholder="考试（教学/聚类必填）"
                 allow-search
               />
-            </template>
-          </div>
+            </div>
+          </template>
         </template>
       </ContextBar>
     </template>
@@ -179,12 +166,7 @@ const scopeSelectClass = 'ai-analysis-center__scope-select'
       <SignalBand variant="tiles" compact :metrics="headerSignalMetrics" />
     </template>
 
-    <UiEmpty
-      v-if="overviewLoadFailed"
-      description="AI 分析中心概览加载失败"
-      action-label="重试"
-      @action="refreshAnalysis"
-    />
+    <UiEmpty v-if="overviewLoadFailed" description="AI 分析中心概览加载失败" />
 
     <template v-else>
       <ExamWorkspaceJourneySubNav v-if="examLocked" />
@@ -221,15 +203,9 @@ const scopeSelectClass = 'ai-analysis-center__scope-select'
 </template>
 
 <style lang="scss" scoped>
-.ai-analysis-center__toolbar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  width: 100%;
-}
+.ai-analysis-center__scope-field {
+  flex: 0 0 auto;
 
-.ai-analysis-center__scope-select {
   &--year,
   &--semester {
     width: 120px;

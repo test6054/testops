@@ -118,13 +118,13 @@ const props = withDefaults(
     searchPlaceholder?: string
     loading?: boolean
     treeData?: UiTreeNode[]
-    checkedKeys?: Key[] | { checked: Key[], halfChecked: Key[] }
+    checkedKeys?: Key[] | { checked: Key[]; halfChecked: Key[] }
     selectedKeys?: Array<string | number>
     defaultExpandAll?: boolean
     defaultExpandedKeys?: Array<string | number>
     checkable?: boolean
     selectable?: boolean
-    fieldNames?: { title: string, key: string, children: string }
+    fieldNames?: { title: string; key: string; children: string }
     treeProps?: Record<string, unknown>
     showStats?: boolean
     selectedCount?: number
@@ -172,7 +172,7 @@ const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
   (e: 'search', value: string): void
   (e: 'clear'): void
-  (e: 'check', checkedKeys: Key[] | { checked: Key[], halfChecked: Key[] }, info: CheckInfo): void
+  (e: 'check', checkedKeys: Key[] | { checked: Key[]; halfChecked: Key[] }, info: CheckInfo): void
   (e: 'select', selectedKeys: Key[], info: unknown): void
   (e: 'confirm'): void
   (e: 'cancel'): void
@@ -198,7 +198,7 @@ function handleOpenChange(value: boolean): void {
 }
 
 const handleCheck = (
-  checkedKeys: Key[] | { checked: Key[], halfChecked: Key[] },
+  checkedKeys: Key[] | { checked: Key[]; halfChecked: Key[] },
   info: CheckInfo,
 ) => {
   emit('check', checkedKeys, info)
@@ -240,20 +240,20 @@ const handleSelect = (selectedKeys: Key[], info: unknown) => {
   align-items: center;
   gap: 6px;
   font-size: 14px;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-tree-selection-dialog__stats strong {
   font-size: 16px;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-tree-selection-dialog__body {
   min-height: 0;
   flex: 1;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 8px);
-  background: var(--dp-surface, #fff);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
   padding: 16px;
   overflow: auto;
 }
@@ -263,11 +263,11 @@ const handleSelect = (selectedKeys: Key[], info: unknown) => {
 }
 
 .ui-tree-selection-dialog__tree :deep(.ant-tree-node-content-wrapper) {
-  border-radius: var(--dp-radius-control-inner, 4px);
+  border-radius: var(--dp-radius-control-inner);
 }
 
 .ui-tree-selection-dialog__tree :deep(.ant-tree-node-content-wrapper:hover) {
-  background: var(--dp-blue-50, #eff6ff);
+  background: var(--dp-blue-50);
 }
 
 .ui-tree-selection-dialog__footer {

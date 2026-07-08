@@ -109,9 +109,9 @@ const hasHeader = computed(() => {
   flex-direction: column;
   gap: 16px;
   padding: 16px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
 }
 
 .ui-skeleton-state--compact {
@@ -130,9 +130,9 @@ const hasHeader = computed(() => {
   display: flex;
   gap: 12px;
   padding: 14px;
-  border: 1px solid var(--dp-border, #eef2f7);
-  border-radius: var(--dp-radius-control-inner, 4px);
-  background: var(--dp-gray-50, #f8fafc);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-control-inner);
+  background: var(--dp-gray-50);
 }
 
 .ui-skeleton-state__card {
@@ -149,7 +149,7 @@ const hasHeader = computed(() => {
   width: 40px;
   height: 40px;
   flex-shrink: 0;
-  border-radius: var(--dp-radius-control-inner, 4px);
+  border-radius: var(--dp-radius-control-inner);
   background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 37%, #f1f5f9 63%);
   background-size: 400% 100%;
   animation: ui-skeleton-shimmer 1.6s ease infinite;

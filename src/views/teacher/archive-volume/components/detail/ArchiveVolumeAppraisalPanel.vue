@@ -100,10 +100,7 @@
       </div>
 
       <UiSkeletonState v-if="flowLoading" variant="card" compact />
-      <UiEmpty
-        v-else-if="flowRecords.length === 0"
-        description="保管期未到或尚未发起鉴定"
-      />
+      <UiEmpty v-else-if="flowRecords.length === 0" description="保管期未到或尚未发起鉴定" />
       <div v-else class="archive-volume-appraisal-panel__list">
         <article
           v-for="record in flowRecords"
@@ -121,7 +118,10 @@
               {{ appraisalStatusLabel(record.appraisalStatus) }}
             </UiTag>
           </div>
-          <p v-if="record.reason && record.eventType !== 'APPRAISAL_REJECTED'" class="approval-card__remark">
+          <p
+            v-if="record.reason && record.eventType !== 'APPRAISAL_REJECTED'"
+            class="approval-card__remark"
+          >
             {{ record.reason }}
           </p>
           <p class="approval-card__meta">{{ formatFlowRecordMeta(record) }}</p>
@@ -150,7 +150,9 @@
       </div>
     </section>
 
-    <section class="archive-volume-appraisal-panel__section archive-volume-appraisal-panel__section--destruction">
+    <section
+      class="archive-volume-appraisal-panel__section archive-volume-appraisal-panel__section--destruction"
+    >
       <div class="archive-volume-appraisal-panel__section-head">
         <h3 class="archive-volume-appraisal-panel__section-title">销毁流程</h3>
         <span class="archive-volume-appraisal-panel__destruction-hint">L2-D3 两阶段物理删除</span>
@@ -167,10 +169,7 @@
         class="archive-volume-appraisal-panel__pipe"
       />
       <UiSkeletonState v-if="destructionFlowLoading" variant="card" compact />
-      <UiEmpty
-        v-else-if="destructionFlowRecords.length === 0"
-        description="尚未发起销毁流程"
-      />
+      <UiEmpty v-else-if="destructionFlowRecords.length === 0" description="尚未发起销毁流程" />
       <div v-else class="archive-volume-appraisal-panel__list">
         <article
           v-for="record in destructionFlowRecords"
@@ -197,8 +196,12 @@
           :key="step.key"
           class="archive-volume-appraisal-panel__destruction-step"
         >
-          <span class="archive-volume-appraisal-panel__destruction-step-label">{{ step.label }}</span>
-          <span class="archive-volume-appraisal-panel__destruction-step-desc">{{ step.description }}</span>
+          <span class="archive-volume-appraisal-panel__destruction-step-label">{{
+            step.label
+          }}</span>
+          <span class="archive-volume-appraisal-panel__destruction-step-desc">{{
+            step.description
+          }}</span>
         </li>
       </ul>
     </section>
@@ -221,7 +224,10 @@
             <a-radio :value="ArchiveAppraisalDecisionCode.DESTROY">可销毁</a-radio>
           </a-radio-group>
         </a-form-item>
-        <a-form-item v-if="appraisalForm.decision === ArchiveAppraisalDecisionCode.RETAIN" label="延长保管（年）">
+        <a-form-item
+          v-if="appraisalForm.decision === ArchiveAppraisalDecisionCode.RETAIN"
+          label="延长保管（年）"
+        >
           <a-input-number
             :value="appraisalForm.retentionExtensionYears"
             :min="1"
@@ -329,9 +335,6 @@ import type {
   ArchiveVolumeDestructionFlowRecordResponse,
   ArchiveVolumeDetailResponse,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import {
   approveArchiveVolumeAppraisal,
   approveArchiveVolumeDestruction,
@@ -349,6 +352,9 @@ import {
   requestArchiveVolumeAppraisal,
   requestArchiveVolumeDestruction,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import ArchiveLifecyclePipe from '@/components/archive-volume/ArchiveLifecyclePipe.vue'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
@@ -403,7 +409,9 @@ const superviseModalOpen = ref(false)
 const rejectAppraisalReason = ref('')
 const destructionReason = ref('')
 const destructionApprovalRemark = ref('')
-const destructionApprovalDecision = ref<ArchiveDestructionDecisionCode>(ArchiveDestructionDecisionCode.APPROVED)
+const destructionApprovalDecision = ref<ArchiveDestructionDecisionCode>(
+  ArchiveDestructionDecisionCode.APPROVED,
+)
 
 interface ArchiveVolumeAppraisalFormModel {
   decision: ArchiveAppraisalDecisionCode
@@ -450,15 +458,18 @@ const canRecordAppraisalOpinion = computed(
 
 const canRequestDestruction = computed(
   () =>
-    props.canManageAppraisal
-    && props.detail.volume.appraisalStatus === 'OPINION_RECORDED'
-    && props.detail.appraisalDecision === ArchiveAppraisalDecisionCode.DESTROY
-    && (props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.NONE
-      || props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.FAILED),
+    props.canManageAppraisal &&
+    props.detail.volume.appraisalStatus === 'OPINION_RECORDED' &&
+    props.detail.appraisalDecision === ArchiveAppraisalDecisionCode.DESTROY &&
+    (props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.NONE ||
+      props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.FAILED),
 )
 
 const canApproveDestructionAction = computed(() => {
-  if (!props.canApproveDestruction || props.detail.volume.destructionStatus !== ArchiveDestructionStatusCode.REQUESTED) {
+  if (
+    !props.canApproveDestruction ||
+    props.detail.volume.destructionStatus !== ArchiveDestructionStatusCode.REQUESTED
+  ) {
     return false
   }
   const requestUserId = props.detail.destructionRequestUserId
@@ -467,17 +478,21 @@ const canApproveDestructionAction = computed(() => {
 
 const canExecuteDestruction = computed(
   () =>
-    props.canApproveDestruction
-    && props.detail.volume.volumeStatus === 'STORED'
-    && props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.APPROVED,
+    props.canApproveDestruction &&
+    props.detail.volume.volumeStatus === 'STORED' &&
+    props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.APPROVED,
 )
 
 const canSuperviseDestruction = computed(
-  () => props.canApproveDestruction && props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.EXECUTED,
+  () =>
+    props.canApproveDestruction &&
+    props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.EXECUTED,
 )
 
 const destructionLifecycleSteps = computed(() =>
-  buildArchiveDestructionLifecycleSteps(props.detail.volume.destructionStatus ?? ArchiveDestructionStatusCode.NONE),
+  buildArchiveDestructionLifecycleSteps(
+    props.detail.volume.destructionStatus ?? ArchiveDestructionStatusCode.NONE,
+  ),
 )
 
 const destructionStepDescriptions = getArchiveDestructionStepDescriptions()
@@ -491,13 +506,13 @@ const retentionDisplayText = computed(() => {
 })
 
 function flowRecordTitle(record: ArchiveVolumeAppraisalFlowRecordResponse): string {
-  const title = props.detail.volume.archiveTitle || props.detail.volume.archiveNo || '归档卷'
+  const title = props.detail.volume.archiveTitle || props.detail.volume.archiveNo || '案卷'
   return `${title} · ${record.actionLabel || '鉴定'}`
 }
 
 function formatFlowRecordMeta(record: ArchiveVolumeAppraisalFlowRecordResponse): string {
-  const actor = record.operatorNickName
-    || (record.eventType === 'RETENTION_REMINDER' ? '系统自动' : '—')
+  const actor =
+    record.operatorNickName || (record.eventType === 'RETENTION_REMINDER' ? '系统自动' : '—')
   const time = record.occurredAt ? formatDateTime(record.occurredAt) : '—'
   const parts: string[] = []
   if (record.eventType === 'RETENTION_REMINDER' || record.eventType === 'APPRAISAL_REQUESTED') {
@@ -523,7 +538,10 @@ function isLatestFlowRecord(record: ArchiveVolumeAppraisalFlowRecordResponse): b
 
 function showRecordActions(record: ArchiveVolumeAppraisalFlowRecordResponse): boolean {
   if (!isLatestFlowRecord(record)) return false
-  if (record.appraisalStatus === 'REQUESTED' && props.detail.volume.appraisalStatus === 'REQUESTED') {
+  if (
+    record.appraisalStatus === 'REQUESTED' &&
+    props.detail.volume.appraisalStatus === 'REQUESTED'
+  ) {
     return canApproveAppraisal.value || canRejectAppraisal.value
   }
   if (record.appraisalStatus === 'APPROVED' && props.detail.volume.appraisalStatus === 'APPROVED') {
@@ -545,11 +563,13 @@ async function loadAppraisalFlowRecords() {
 }
 
 function destructionFlowRecordTitle(record: ArchiveVolumeDestructionFlowRecordResponse): string {
-  const title = props.detail.volume.archiveTitle || props.detail.volume.archiveNo || '归档卷'
+  const title = props.detail.volume.archiveTitle || props.detail.volume.archiveNo || '案卷'
   return `${title} · ${record.actionLabel || '销毁'}`
 }
 
-function formatDestructionFlowRecordMeta(record: ArchiveVolumeDestructionFlowRecordResponse): string {
+function formatDestructionFlowRecordMeta(
+  record: ArchiveVolumeDestructionFlowRecordResponse,
+): string {
   const actor = record.operatorNickName || '—'
   const time = record.occurredAt ? formatDateTime(record.occurredAt) : '—'
   return `${actor} · ${time}`
@@ -765,9 +785,9 @@ function syncAppraisalRetentionYears(value: string | number | null | undefined) 
 
 async function submitAppraisalOpinion() {
   if (
-    appraisalForm.decision === ArchiveAppraisalDecisionCode.RETAIN
-    && !appraisalForm.permanentRetention
-    && !appraisalForm.retentionExtensionYears
+    appraisalForm.decision === ArchiveAppraisalDecisionCode.RETAIN &&
+    !appraisalForm.permanentRetention &&
+    !appraisalForm.retentionExtensionYears
   ) {
     message.warning('请填写延长保管年限或勾选永久保管')
     return
@@ -778,11 +798,14 @@ async function submitAppraisalOpinion() {
       volumeId: props.volumeId,
       decision: appraisalForm.decision,
       retentionExtensionYears:
-        appraisalForm.decision === ArchiveAppraisalDecisionCode.RETAIN && !appraisalForm.permanentRetention
+        appraisalForm.decision === ArchiveAppraisalDecisionCode.RETAIN &&
+        !appraisalForm.permanentRetention
           ? appraisalForm.retentionExtensionYears
           : undefined,
       permanentRetention:
-        appraisalForm.decision === ArchiveAppraisalDecisionCode.RETAIN ? appraisalForm.permanentRetention : undefined,
+        appraisalForm.decision === ArchiveAppraisalDecisionCode.RETAIN
+          ? appraisalForm.permanentRetention
+          : undefined,
       remark: appraisalForm.remark.trim() || undefined,
     })
     message.success('鉴定决议已记录')
@@ -844,38 +867,38 @@ onUnmounted(() => {
 .archive-volume-appraisal-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4, 16px);
+  gap: var(--dp-space-4);
 }
 
 .archive-volume-appraisal-panel__head {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 
 .archive-volume-appraisal-panel__title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .archive-volume-appraisal-panel__guide {
-  margin-bottom: var(--dp-space-2, 8px);
+  margin-bottom: var(--dp-space-2);
 }
 
 .archive-volume-appraisal-panel__section-head {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
-  margin-bottom: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
+  margin-bottom: var(--dp-space-2);
 }
 
 .archive-volume-appraisal-panel__section-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
   margin-left: auto;
 }
 
@@ -883,70 +906,70 @@ onUnmounted(() => {
   margin: 0;
   font-size: 13px;
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .archive-volume-appraisal-panel__destruction-hint {
   font-size: 12px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 
 .archive-volume-appraisal-panel__destruction-steps {
-  margin: var(--dp-space-2, 8px) 0 0;
+  margin: var(--dp-space-2) 0 0;
   padding: 0;
   list-style: none;
   display: grid;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 
 .archive-volume-appraisal-panel__destruction-step {
   display: flex;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-3);
   font-size: 12px;
 }
 
 .archive-volume-appraisal-panel__destruction-step-label {
   min-width: 60px;
   font-weight: 600;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 
 .archive-volume-appraisal-panel__destruction-step-desc {
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .archive-volume-appraisal-panel__list {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 
 .archive-volume-appraisal-panel__section {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-3);
 }
 
 .archive-volume-appraisal-panel__section--destruction {
-  padding-top: var(--dp-space-3, 12px);
-  border-top: 1px solid var(--dp-border-subtle, #e2e8f0);
+  padding-top: var(--dp-space-3);
+  border-top: 1px solid var(--dp-border-subtle);
 }
 
 .archive-volume-appraisal-panel__section-title {
   margin: 0;
   font-size: 13px;
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .archive-volume-appraisal-panel__pipe {
-  margin-bottom: var(--dp-space-4, 16px);
+  margin-bottom: var(--dp-space-4);
 }
 
 .archive-volume-appraisal-panel__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
   width: 100%;
 }
 </style>

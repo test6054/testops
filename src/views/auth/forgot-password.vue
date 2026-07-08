@@ -116,7 +116,9 @@
           <span class="countdown-text">{{
             countdown > 0 ? `${countdown}秒后可重新发送` : ''
           }}</span>
-          <a :class="{ disabled: countdown > 0 }" @click="countdown <= 0 && resendCode()">重新发送</a>
+          <a :class="{ disabled: countdown > 0 }" @click="countdown <= 0 && resendCode()"
+            >重新发送</a
+          >
         </div>
         <div class="step-buttons">
           <UiButton type="submit" variant="primary" size="lg" block :loading="loading">
@@ -356,8 +358,8 @@ const maskEmail = (email: string) => {
   if (!email) return ''
   const [username, domain] = email.split('@')
   if (!username || !domain) return email
-  const maskedUsername
-    = username.length > 2 ? username.substring(0, 2) + '*'.repeat(username.length - 2) : username
+  const maskedUsername =
+    username.length > 2 ? username.substring(0, 2) + '*'.repeat(username.length - 2) : username
   return `${maskedUsername}@${domain}`
 }
 
@@ -442,13 +444,13 @@ onUnmounted(() => {
   h2 {
     font-size: 24px;
     font-weight: 700;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
     margin: 0 0 6px;
   }
 
   p {
     font-size: 14px;
-    color: var(--dp-text-muted, #6b7280);
+    color: var(--dp-text-muted);
     margin: 0;
   }
 }
@@ -477,29 +479,29 @@ onUnmounted(() => {
   border-radius: 50%;
   font-size: 12px;
   font-weight: 600;
-  background: var(--dp-gray-100, #f1f5f9);
-  color: var(--dp-text-muted, #6b7280);
+  background: var(--dp-gray-100);
+  color: var(--dp-text-muted);
   transition: all 0.2s;
 }
 
 .step-dot__label {
   font-size: 11px;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
   transition: color 0.2s;
 }
 
 .step-dot--active .step-dot__num {
-  background: var(--dp-blue-600, #2563eb);
+  background: var(--dp-blue-600);
   color: #fff;
 }
 
 .step-dot--active .step-dot__label {
-  color: var(--dp-blue-600, #2563eb);
+  color: var(--dp-blue-600);
   font-weight: 600;
 }
 
 .step-dot--done .step-dot__num {
-  background: var(--dp-green-50, #f0fdf4);
+  background: var(--dp-green-50);
   color: var(--dp-green-600);
 }
 
@@ -525,18 +527,18 @@ onUnmounted(() => {
 .verification-info {
   text-align: center;
   padding-bottom: 8px;
-  color: var(--dp-blue-600, #2563eb);
+  color: var(--dp-blue-600);
 
   p {
     margin: 6px 0;
     font-size: 14px;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
   }
 }
 
 .contact-highlight {
   font-weight: 600;
-  color: var(--dp-blue-600, #2563eb) !important;
+  color: var(--dp-blue-600) !important;
 }
 
 .verification-actions {
@@ -545,12 +547,12 @@ onUnmounted(() => {
   align-items: center;
 
   a {
-    color: var(--dp-blue-600, #2563eb);
+    color: var(--dp-blue-600);
     cursor: pointer;
     font-size: 13px;
 
     &.disabled {
-      color: var(--dp-text-muted, #6b7280);
+      color: var(--dp-text-muted);
       pointer-events: none;
     }
   }
@@ -558,7 +560,7 @@ onUnmounted(() => {
 
 .countdown-text {
   font-size: 12px;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 // ─── 密码强度 ───
@@ -570,14 +572,14 @@ onUnmounted(() => {
 
 .strength-label {
   font-size: 12px;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
   white-space: nowrap;
 }
 
 .strength-bar {
   flex: 1;
   height: 4px;
-  background: var(--dp-gray-100, #f1f5f9);
+  background: var(--dp-gray-100);
   border-radius: 999px;
   overflow: hidden;
 }
@@ -608,7 +610,7 @@ onUnmounted(() => {
 
 .strength-text {
   font-size: 12px;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
   min-width: 30px;
 }
 
@@ -622,13 +624,13 @@ onUnmounted(() => {
     margin: 14px 0 6px;
     font-size: 18px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   p {
     margin: 0 0 20px;
     font-size: 14px;
-    color: var(--dp-text-muted, #6b7280);
+    color: var(--dp-text-muted);
   }
 }
 
@@ -637,12 +639,12 @@ onUnmounted(() => {
   text-align: center;
   margin-top: 20px;
   padding-top: 20px;
-  border-top: 1px solid var(--dp-border-light, #f1f5f9);
+  border-top: 1px solid var(--dp-border-light);
   font-size: 14px;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 
   a {
-    color: var(--dp-blue-600, #2563eb);
+    color: var(--dp-blue-600);
     font-weight: 500;
     text-decoration: none;
 

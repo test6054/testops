@@ -21,12 +21,12 @@ const injectedReferenceDepartmentLabel = inject(AI_ANALYSIS_REFERENCE_DEPARTMENT
 const injectedScopeCourseLabel = inject(AI_ANALYSIS_SCOPE_COURSE_LABEL_KEY, null)
 
 if (
-  !injectedReferenceDepartmentId
-  || !injectedScopeCourseId
-  || !injectedScopeClassId
-  || !examLocked
-  || !injectedReferenceDepartmentLabel
-  || !injectedScopeCourseLabel
+  !injectedReferenceDepartmentId ||
+  !injectedScopeCourseId ||
+  !injectedScopeClassId ||
+  !examLocked ||
+  !injectedReferenceDepartmentLabel ||
+  !injectedScopeCourseLabel
 ) {
   throw new Error('AI 分析中心未提供 scope')
 }
@@ -37,12 +37,10 @@ const scopeClassId = injectedScopeClassId
 const referenceDepartmentLabel = injectedReferenceDepartmentLabel
 const scopeCourseLabel = injectedScopeCourseLabel
 
-const departmentLocked = computed(() =>
-  examLocked.value || Boolean(referenceDepartmentId.value?.trim()),
+const departmentLocked = computed(
+  () => examLocked.value || Boolean(referenceDepartmentId.value?.trim()),
 )
-const courseLocked = computed(() =>
-  examLocked.value || Boolean(scopeCourseId.value?.trim()),
-)
+const courseLocked = computed(() => examLocked.value || Boolean(scopeCourseId.value?.trim()))
 const orgScopeReady = computed(() =>
   Boolean(referenceDepartmentId.value?.trim() && scopeCourseId.value?.trim()),
 )
@@ -105,6 +103,6 @@ function handleCourseChange(_value: string | null, option?: CourseListVO): void 
   margin: 0;
   font-size: 13px;
   line-height: 1.6;
-  color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
+  color: var(--dp-text-muted);
 }
 </style>

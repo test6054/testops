@@ -69,7 +69,10 @@ const canvasEmptyTitle = computed(() => {
       ? `正在扫描（${job.value.scannedPages} 页）…`
       : '正在连接扫描仪…'
   }
-  if (job.value?.status === LocalScanJobStatusCode.UPLOADING || job.value?.status === LocalScanJobStatusCode.RETRYING) {
+  if (
+    job.value?.status === LocalScanJobStatusCode.UPLOADING ||
+    job.value?.status === LocalScanJobStatusCode.RETRYING
+  ) {
     return '扫描页上传中…'
   }
   if (job.value?.status === LocalScanJobStatusCode.FAILED) {
@@ -84,7 +87,10 @@ const canvasEmptyHint = computed(() => {
   if (job.value?.status === LocalScanJobStatusCode.SCANNING) {
     return '扫描仪正在采集影像，首张完成后将自动显示预览。'
   }
-  if (job.value?.status === LocalScanJobStatusCode.UPLOADING || job.value?.status === LocalScanJobStatusCode.RETRYING) {
+  if (
+    job.value?.status === LocalScanJobStatusCode.UPLOADING ||
+    job.value?.status === LocalScanJobStatusCode.RETRYING
+  ) {
     return job.value.message || '上传完成后可在右侧缩略图查看各页。'
   }
   if (job.value?.status === LocalScanJobStatusCode.FAILED) {
@@ -114,7 +120,9 @@ const effectiveEmptyScanHint = computed(() => {
     return '正在恢复本机扫描批次与 Agent 任务，请稍候…'
   }
   if (workflow.activeBackendScanSession.value) {
-    return workflow.activeBackendScanSessionReason.value || '扫描进程仍在恢复中，请先刷新当前扫描状态。'
+    return (
+      workflow.activeBackendScanSessionReason.value || '扫描进程仍在恢复中，请先刷新当前扫描状态。'
+    )
   }
   return '本机尚未建立扫描任务。请返回「准备扫描」点击「开始扫描」，或点击下方「重新开始扫描」自动创建批次。'
 })
@@ -135,7 +143,7 @@ const imageTransform = computed(
 )
 const imageFilter = computed(() => (grayscale.value ? 'grayscale(1)' : 'none'))
 
-const isPageException = (page: { status: string, diagnostic?: string }) =>
+const isPageException = (page: { status: string; diagnostic?: string }) =>
   page.status === LocalScanPageStatusCode.FAILED || Boolean(page.diagnostic)
 
 const currentIndex = computed(() => {
@@ -286,17 +294,41 @@ function pageStatusLabel(status: string): string {
   }
   switch (status) {
     case LocalScanPageStatusCode.CAPTURED:
-      return strictEnumLabel(LocalScanPageStatusDescription, LocalScanPageStatusCode.CAPTURED, '扫描页状态')
+      return strictEnumLabel(
+        LocalScanPageStatusDescription,
+        LocalScanPageStatusCode.CAPTURED,
+        '扫描页状态',
+      )
     case LocalScanPageStatusCode.PREPROCESSED:
-      return strictEnumLabel(LocalScanPageStatusDescription, LocalScanPageStatusCode.PREPROCESSED, '扫描页状态')
+      return strictEnumLabel(
+        LocalScanPageStatusDescription,
+        LocalScanPageStatusCode.PREPROCESSED,
+        '扫描页状态',
+      )
     case LocalScanPageStatusCode.UPLOADING:
-      return strictEnumLabel(LocalScanPageStatusDescription, LocalScanPageStatusCode.UPLOADING, '扫描页状态')
+      return strictEnumLabel(
+        LocalScanPageStatusDescription,
+        LocalScanPageStatusCode.UPLOADING,
+        '扫描页状态',
+      )
     case LocalScanPageStatusCode.UPLOADED:
-      return strictEnumLabel(LocalScanPageStatusDescription, LocalScanPageStatusCode.UPLOADED, '扫描页状态')
+      return strictEnumLabel(
+        LocalScanPageStatusDescription,
+        LocalScanPageStatusCode.UPLOADED,
+        '扫描页状态',
+      )
     case LocalScanPageStatusCode.FAILED:
-      return strictEnumLabel(LocalScanPageStatusDescription, LocalScanPageStatusCode.FAILED, '扫描页状态')
+      return strictEnumLabel(
+        LocalScanPageStatusDescription,
+        LocalScanPageStatusCode.FAILED,
+        '扫描页状态',
+      )
     case LocalScanPageStatusCode.DELETED:
-      return strictEnumLabel(LocalScanPageStatusDescription, LocalScanPageStatusCode.DELETED, '扫描页状态')
+      return strictEnumLabel(
+        LocalScanPageStatusDescription,
+        LocalScanPageStatusCode.DELETED,
+        '扫描页状态',
+      )
   }
   throw new Error(`扫描页状态缺少展示映射：${status}`)
 }
@@ -414,7 +446,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
           <div class="canvas">
             <div v-if="!hasJob" class="canvas-empty">
               <ScanOutlined class="canvas-empty-icon" />
-              <p>{{ workflow.scanWorkspaceBootstrapping.value ? '正在准备扫描工作台…' : emptyScanTitle }}</p>
+              <p>
+                {{
+                  workflow.scanWorkspaceBootstrapping.value ? '正在准备扫描工作台…' : emptyScanTitle
+                }}
+              </p>
               <small>{{ effectiveEmptyScanHint }}</small>
               <div v-if="!workflow.scanWorkspaceBootstrapping.value" class="canvas-empty-actions">
                 <button
@@ -624,7 +660,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
   </section>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .scanning-stage {
   display: flex;
   flex-direction: column;
@@ -1129,7 +1166,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
   color: var(--kiosk-danger);
 }
 
-@media (max-width: 1280px) {
+@media (max-width: bp.$shell-laptop-max) {
   .stage-main {
     /* gridTemplateColumns 由内联 style 控制 */
   }
@@ -1141,7 +1178,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
     margin: 0;
   }
 }
-@media (max-width: 1024px) {
+@media (max-width: bp.$shell-tablet-max) {
   .scan-bound-mobile {
     display: block;
   }

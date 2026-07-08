@@ -1,10 +1,6 @@
 <template>
   <div class="review-task-detail-page grading-immersion-page grading-workspace-page">
-    <UiEmpty
-      v-if="!hasParams"
-      description="暂无数据"
-      class="review-task-detail-page__empty"
-    />
+    <UiEmpty v-if="!hasParams" description="暂无数据" class="review-task-detail-page__empty" />
 
     <UiSkeletonState
       v-else-if="loading && !detail"
@@ -23,7 +19,10 @@
     </UiEmpty>
 
     <template v-else-if="detail">
-      <div v-if="detail.status === 'INVALIDATED'" class="review-task-detail-page__invalidated-banner">
+      <div
+        v-if="detail.status === 'INVALIDATED'"
+        class="review-task-detail-page__invalidated-banner"
+      >
         <div class="review-task-detail-page__invalidated-title">当前复核任务已失效</div>
         <div class="review-task-detail-page__invalidated-text">
           原作答影像已因补扫替换失效，系统正在重新执行识别与切片，请等待新复核任务生成。
@@ -77,7 +76,9 @@
           <GradingImmersionSection title="识别答案">
             <template #icon><FileTextOutlined /></template>
             <UiEmpty v-if="!detail.recognizedAnswer" description="暂无数据" />
-            <div v-else class="review-task-detail-page__text-block">{{ detail.recognizedAnswer }}</div>
+            <div v-else class="review-task-detail-page__text-block">
+              {{ detail.recognizedAnswer }}
+            </div>
           </GradingImmersionSection>
 
           <GradingImmersionSection title="AI 评分说明">
@@ -209,20 +210,14 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import type { AnnotationResponse } from '@/apis/mark/exam-annotation'
-import type { AiAbilityCode, AiExecutionStatusCode, ExamQuestionAiExecutionItemResponse } from '@/apis/mark/exam-grade'
-import type { ReviewTaskDetailResponse, ReviewTaskStatusCode } from '@/apis/mark/exam-review-task'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
-import EditOutlined from '@ant-design/icons-vue/EditOutlined'
-import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
-import PictureOutlined from '@ant-design/icons-vue/PictureOutlined'
-import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
-import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
-import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import type { AnnotationResponse } from '@/apis/mark/exam-annotation'
 import { listAnnotations } from '@/apis/mark/exam-annotation'
+import type {
+  AiAbilityCode,
+  AiExecutionStatusCode,
+  ExamQuestionAiExecutionItemResponse,
+} from '@/apis/mark/exam-grade'
 import {
   AI_ABILITY_TONE,
   AI_EXECUTION_STATUS_TONE,
@@ -231,11 +226,21 @@ import {
   listAiExecutionsForQuestion,
   rescoreQuestionByAi,
 } from '@/apis/mark/exam-grade'
+import type { ReviewTaskDetailResponse, ReviewTaskStatusCode } from '@/apis/mark/exam-review-task'
 import {
   getReviewTaskDetail,
   REVIEW_TASK_STATUS_TONE,
   ReviewTaskStatusDescription,
 } from '@/apis/mark/exam-review-task'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
+import EditOutlined from '@ant-design/icons-vue/EditOutlined'
+import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
+import PictureOutlined from '@ant-design/icons-vue/PictureOutlined'
+import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
+import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
+import message from 'ant-design-vue/es/message'
+import { useRoute, useRouter } from 'vue-router'
 import ExperienceAssistBadge from '@/components/mark/ExperienceAssistBadge.vue'
 import GradingImmersionChrome from '@/components/mark/GradingImmersionChrome.vue'
 import GradingImmersionSection from '@/components/mark/GradingImmersionSection.vue'
@@ -461,14 +466,15 @@ async function loadAnnotations(): Promise<void> {
   const { paperInstanceId, layoutQuestionId, gradeResultId } = detail.value
   try {
     annotations.value = await readAllPages(
-      (pageNum) => listAnnotations({
-        examId: currentExamId,
-        paperInstanceId,
-        layoutQuestionId,
-        gradeResultId,
-        pageNum,
-        pageSize: REVIEW_TASK_DETAIL_PAGE_SIZE,
-      }),
+      (pageNum) =>
+        listAnnotations({
+          examId: currentExamId,
+          paperInstanceId,
+          layoutQuestionId,
+          gradeResultId,
+          pageNum,
+          pageSize: REVIEW_TASK_DETAIL_PAGE_SIZE,
+        }),
       '批注记录加载失败，请刷新后重试',
     )
   } catch (error) {
@@ -527,22 +533,22 @@ watch(
   &__invalidated-banner {
     margin-bottom: 12px;
     padding: 12px 16px;
-    border: 1px solid var(--dp-border, #e2e8f0);
+    border: 1px solid var(--dp-border);
     border-radius: 8px;
-    background: var(--dp-surface-soft, #f8fafc);
+    background: var(--dp-surface-soft);
   }
 
   &__invalidated-title {
     font-size: 13px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__invalidated-text {
     margin-top: 4px;
     font-size: 12px;
     line-height: 1.6;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
   }
 
   &__text-block {
@@ -554,14 +560,14 @@ watch(
     color: var(--ant-color-text);
     background: var(--ant-color-fill-quaternary);
     padding: 12px;
-    border-radius: var(--dp-radius-panel, 6px);
+    border-radius: var(--dp-radius-panel);
   }
 
   &__footer-main {
     flex: 1;
     min-width: 0;
     font-size: 13px;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
   }
 
   &__footer-hint {

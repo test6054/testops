@@ -135,12 +135,12 @@ const normalizeCssSize = (value?: string | number) => {
 
 const hasHeader = computed(() => {
   return (
-    !!props.title
-    || !!props.description
-    || !!props.eyebrow
-    || !!props.statusLabel
-    || !!slots.meta
-    || !!slots.actions
+    !!props.title ||
+    !!props.description ||
+    !!props.eyebrow ||
+    !!props.statusLabel ||
+    !!slots.meta ||
+    !!slots.actions
   )
 })
 
@@ -172,10 +172,10 @@ const sideStyle = computed(() => ({
   gap: 18px;
   min-width: 0;
   padding: 18px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
-  box-shadow: var(--dp-shadow-card, 0 10px 30px rgba(15, 23, 42, 0.06));
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-card);
 }
 
 .ui-statistic-chart-card--compact {
@@ -197,9 +197,9 @@ const sideStyle = computed(() => ({
 .ui-statistic-chart-card__main {
   min-width: 0;
   padding: 14px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface-subtle, #f8fafc);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface-subtle);
 }
 
 .ui-statistic-chart-card__side {
@@ -218,9 +218,9 @@ const sideStyle = computed(() => ({
   display: grid;
   gap: 8px;
   padding: 12px 14px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
 }
 
 .ui-statistic-chart-card__stat-head {
@@ -262,14 +262,14 @@ const sideStyle = computed(() => ({
 }
 
 .ui-statistic-chart-card__stat-dot--purple {
-  background: var(--dp-purple-500, #722ed1);
+  background: var(--dp-purple-500);
 }
 
 .ui-statistic-chart-card__stat-label {
   min-width: 0;
   font-size: 12px;
   font-weight: 700;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-statistic-chart-card__stat-value-row {
@@ -283,13 +283,13 @@ const sideStyle = computed(() => ({
   font-size: 26px;
   line-height: 1.1;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-statistic-chart-card__stat-unit {
   font-size: 12px;
   font-weight: 700;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-statistic-chart-card__stat-helper,
@@ -297,12 +297,12 @@ const sideStyle = computed(() => ({
   margin: 0;
   font-size: 12px;
   line-height: 1.7;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-statistic-chart-card__footer {
   padding-top: 14px;
-  border-top: 1px solid var(--dp-border, #e5e7eb);
+  border-top: 1px solid var(--dp-border);
 }
 
 @media (max-width: 1080px) {

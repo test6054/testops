@@ -79,8 +79,8 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import type { UiNoticeAction, UiNoticeItem } from './types'
 import { computed } from 'vue'
+import type { UiNoticeAction, UiNoticeItem } from './types'
 import UiBadge from './Badge.vue'
 import UiEmpty from './Empty.vue'
 import UiTag from './Tag.vue'
@@ -111,7 +111,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (e: 'item-click', item: UiNoticeItem): void
-  (e: 'action-click', actionEvent: { item: UiNoticeItem, action: UiNoticeAction }): void
+  (e: 'action-click', actionEvent: { item: UiNoticeItem; action: UiNoticeAction }): void
 }>()
 
 const normalizeCssSize = (value?: string | number) => {
@@ -163,8 +163,8 @@ const handleActionClick = (item: UiNoticeItem, action: UiNoticeAction) => {
   gap: 10px;
   min-width: 0;
   padding: 14px 16px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
   background: #fff;
   transition:
     border-color 0.2s ease,
@@ -174,7 +174,7 @@ const handleActionClick = (item: UiNoticeItem, action: UiNoticeAction) => {
 .ui-notice-list__items--compact .ui-notice-list__item {
   gap: 8px;
   padding: 12px 14px;
-  border-radius: var(--dp-radius-panel, 4px);
+  border-radius: var(--dp-radius-panel);
 }
 
 .ui-notice-list__item--clickable {
@@ -182,7 +182,7 @@ const handleActionClick = (item: UiNoticeItem, action: UiNoticeAction) => {
 }
 
 .ui-notice-list__item--clickable:hover {
-  background: var(--dp-gray-50, #f8fafc);
+  background: var(--dp-gray-50);
   border-color: #dbe3ef;
 }
 
@@ -221,13 +221,13 @@ const handleActionClick = (item: UiNoticeItem, action: UiNoticeAction) => {
   font-size: 15px;
   line-height: 1.5;
   font-weight: 800;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-notice-list__time {
   flex-shrink: 0;
   font-size: 12px;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-notice-list__tags {
@@ -241,7 +241,7 @@ const handleActionClick = (item: UiNoticeItem, action: UiNoticeAction) => {
   margin: 0;
   font-size: 13px;
   line-height: 1.75;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
   display: -webkit-box;
   overflow: hidden;
   -webkit-line-clamp: 2;
@@ -267,7 +267,7 @@ const handleActionClick = (item: UiNoticeItem, action: UiNoticeAction) => {
 .ui-notice-list__meta-item,
 .ui-notice-list__meta-divider {
   font-size: 12px;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-notice-list__actions {

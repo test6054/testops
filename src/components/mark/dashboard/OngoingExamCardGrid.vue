@@ -2,97 +2,109 @@
   <div class="ongoing-exam-card-grid-wrap">
     <UiEmpty v-if="!exams.length" size="sm" description="当前筛选下暂无考试" />
     <div v-else class="ongoing-exam-card-grid">
-      <article
+      <a-tooltip
         v-for="exam in exams"
         :key="exam.examId"
-        class="ongoing-exam-card"
-        :class="{ 'ongoing-exam-card--blocking': (exam.blockingTodoCount ?? 0) > 0 }"
-        tabindex="0"
-        role="button"
-        @click="emitNavigate(exam.recommendedWorkspacePath, exam.examId)"
-        @keydown.enter="emitNavigate(exam.recommendedWorkspacePath, exam.examId)"
+        title="点击进入考试工作台"
+        placement="top"
       >
-        <div class="ongoing-exam-card__header">
-          <div class="ongoing-exam-card__title-block">
-            <div class="ongoing-exam-card__name">{{ exam.examName }}</div>
-            <div v-if="examMeta(exam)" class="ongoing-exam-card__meta">{{ examMeta(exam) }}</div>
-          </div>
-          <UiTag :tone="stageTagTone(exam.currentStageKey)" size="sm">
-            {{ stageTagLabel(exam) }}
-          </UiTag>
-        </div>
-
-        <div class="ongoing-exam-card__progress">
-          <div class="ongoing-exam-card__progress-track">
-            <div
-              class="ongoing-exam-card__progress-fill"
-              :class="progressFillClass(exam.progressPercent ?? 0)"
-              :style="{ width: `${Math.min(exam.progressPercent ?? 0, 100)}%` }"
-            />
-          </div>
-          <div class="ongoing-exam-card__progress-label">
-            <span>{{ progressFractionLabel(exam) }}</span>
-            <span>{{ exam.progressPercent ?? 0 }}%</span>
-          </div>
-        </div>
-
-        <div class="ongoing-exam-card__stats">
-          <div class="ongoing-exam-card__stat">
-            <span class="ongoing-exam-card__stat-label">考生数</span>
-            <span class="ongoing-exam-card__stat-value">{{
-              formatCount(exam.candidateCount)
-            }}</span>
-          </div>
-          <div class="ongoing-exam-card__stat">
-            <span class="ongoing-exam-card__stat-label">扫描关注</span>
-            <span
-              class="ongoing-exam-card__stat-value"
-              :class="{
-                'ongoing-exam-card__stat-value--alert': (exam.scanAttentionCount ?? 0) > 0,
-              }"
-            >
-              {{ formatCount(exam.scanAttentionCount) }}
-            </span>
-          </div>
-          <div class="ongoing-exam-card__stat">
-            <span class="ongoing-exam-card__stat-label">待复核</span>
-            <span
-              class="ongoing-exam-card__stat-value"
-              :class="{
-                'ongoing-exam-card__stat-value--warn': (exam.pendingReviewTaskCount ?? 0) > 0,
-              }"
-            >
-              {{ formatCount(exam.pendingReviewTaskCount) }}
-            </span>
-          </div>
-          <div class="ongoing-exam-card__stat">
-            <span class="ongoing-exam-card__stat-label">待确认题</span>
-            <span
-              class="ongoing-exam-card__stat-value"
-              :class="{ 'ongoing-exam-card__stat-value--warn': (exam.pendingGradeCount ?? 0) > 0 }"
-            >
-              {{ formatCount(exam.pendingGradeCount) }}
-            </span>
-          </div>
-        </div>
-
-        <footer class="ongoing-exam-card__footer">
-          <UiTag
-            v-if="formatAcademicYearSemester(exam.academicYear, exam.semester)"
-            tone="gray"
-            size="sm"
+        <span class="ongoing-exam-card__tooltip-target">
+          <article
+            class="ongoing-exam-card"
+            :class="{ 'ongoing-exam-card--blocking': (exam.blockingTodoCount ?? 0) > 0 }"
+            tabindex="0"
+            role="button"
+            :aria-label="`点击进入考试工作台：${exam.examName}`"
+            @click="emitNavigate(exam.recommendedWorkspacePath, exam.examId)"
+            @keydown.enter="emitNavigate(exam.recommendedWorkspacePath, exam.examId)"
           >
-            {{ formatAcademicYearSemester(exam.academicYear, exam.semester) }}
-          </UiTag>
-          <UiButton
-            size="sm"
-            class="ongoing-exam-card__enter"
-            @click.stop="emitNavigate(exam.recommendedWorkspacePath, exam.examId)"
-          >
-            进入考试
-          </UiButton>
-        </footer>
-      </article>
+            <div class="ongoing-exam-card__header">
+              <div class="ongoing-exam-card__title-block">
+                <div class="ongoing-exam-card__name">{{ exam.examName }}</div>
+                <div v-if="examMeta(exam)" class="ongoing-exam-card__meta">
+                  {{ examMeta(exam) }}
+                </div>
+              </div>
+              <UiTag :tone="stageTagTone(exam.currentStageKey)" size="sm">
+                {{ stageTagLabel(exam) }}
+              </UiTag>
+            </div>
+
+            <div class="ongoing-exam-card__progress">
+              <div class="ongoing-exam-card__progress-track">
+                <div
+                  class="ongoing-exam-card__progress-fill"
+                  :class="progressFillClass(exam)"
+                  :style="{ width: `${Math.min(exam.progressPercent ?? 0, 100)}%` }"
+                />
+              </div>
+              <div class="ongoing-exam-card__progress-label">
+                <span>{{ progressFractionLabel(exam) }}</span>
+                <span>{{ exam.progressPercent ?? 0 }}%</span>
+              </div>
+            </div>
+
+            <div class="ongoing-exam-card__stats">
+              <div class="ongoing-exam-card__stat">
+                <span class="ongoing-exam-card__stat-label">考生数</span>
+                <span class="ongoing-exam-card__stat-value">{{
+                  formatCount(exam.candidateCount)
+                }}</span>
+              </div>
+              <div class="ongoing-exam-card__stat">
+                <span class="ongoing-exam-card__stat-label">扫描关注</span>
+                <span
+                  class="ongoing-exam-card__stat-value"
+                  :class="{
+                    'ongoing-exam-card__stat-value--alert': (exam.scanAttentionCount ?? 0) > 0,
+                  }"
+                >
+                  {{ formatCount(exam.scanAttentionCount) }}
+                </span>
+              </div>
+              <div class="ongoing-exam-card__stat">
+                <span class="ongoing-exam-card__stat-label">待复核</span>
+                <span
+                  class="ongoing-exam-card__stat-value"
+                  :class="{
+                    'ongoing-exam-card__stat-value--warn': (exam.pendingReviewTaskCount ?? 0) > 0,
+                  }"
+                >
+                  {{ formatCount(exam.pendingReviewTaskCount) }}
+                </span>
+              </div>
+              <div class="ongoing-exam-card__stat">
+                <span class="ongoing-exam-card__stat-label">待确认题</span>
+                <span
+                  class="ongoing-exam-card__stat-value"
+                  :class="{
+                    'ongoing-exam-card__stat-value--warn': (exam.pendingGradeCount ?? 0) > 0,
+                  }"
+                >
+                  {{ formatCount(exam.pendingGradeCount) }}
+                </span>
+              </div>
+            </div>
+
+            <footer class="ongoing-exam-card__footer">
+              <UiTag
+                v-if="formatAcademicYearSemester(exam.academicYear, exam.semester)"
+                tone="gray"
+                size="sm"
+              >
+                {{ formatAcademicYearSemester(exam.academicYear, exam.semester) }}
+              </UiTag>
+              <UiButton
+                size="sm"
+                class="ongoing-exam-card__enter"
+                @click.stop="emitNavigate(exam.recommendedWorkspacePath, exam.examId)"
+              >
+                进入考试
+              </UiButton>
+            </footer>
+          </article>
+        </span>
+      </a-tooltip>
     </div>
   </div>
 </template>
@@ -105,6 +117,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { formatAcademicYearSemester } from '@/types/enums/semester-enum'
+import { resolveOngoingExamProgressTone } from '@/utils/mark-dashboard-stages'
 
 defineOptions({ name: 'OngoingExamCardGrid' })
 
@@ -158,14 +171,17 @@ function progressFractionLabel(exam: MarkTeacherDashboardOngoingExamItemVO): str
   return `${published.toLocaleString('zh-CN')} / ${total.toLocaleString('zh-CN')} 份`
 }
 
-function progressFillClass(progress: number): string {
-  if (progress >= 100) return 'ongoing-exam-card__progress-fill--success'
-  if (progress < 40) return 'ongoing-exam-card__progress-fill--warning'
+function progressFillClass(exam: MarkTeacherDashboardOngoingExamItemVO): string {
+  const tone = resolveOngoingExamProgressTone(exam.progressPercent ?? 0, exam.currentStageKey)
+  if (tone === 'success') return 'ongoing-exam-card__progress-fill--success'
+  if (tone === 'warning') return 'ongoing-exam-card__progress-fill--warning'
   return ''
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@/styles/breakpoints' as bp;
+
 .ongoing-exam-card-grid-wrap {
   flex: 1;
   display: flex;
@@ -187,6 +203,12 @@ function progressFillClass(progress: number): string {
   gap: var(--dp-space-4);
 }
 
+.ongoing-exam-card__tooltip-target {
+  display: block;
+  min-width: 0;
+  height: 100%;
+}
+
 .ongoing-exam-card {
   display: flex;
   flex-direction: column;
@@ -197,12 +219,19 @@ function progressFillClass(progress: number): string {
   cursor: pointer;
   transition:
     border-color var(--dp-duration-normal) ease,
-    box-shadow var(--dp-duration-normal) ease;
+    box-shadow var(--dp-duration-normal) ease,
+    transform var(--dp-duration-normal) ease;
 }
 
 .ongoing-exam-card:hover {
-  border-color: var(--dp-blue-200);
-  box-shadow: var(--dp-shadow-card-hover, 0 2px 8px rgba(0, 0, 0, 0.06));
+  border-color: var(--ant-color-primary-border);
+  box-shadow: 0 4px 12px rgba(22, 119, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.ongoing-exam-card:active {
+  transform: translateY(0);
+  box-shadow: var(--dp-shadow-card-hover);
 }
 
 .ongoing-exam-card:focus-visible {
@@ -227,7 +256,7 @@ function progressFillClass(progress: number): string {
 }
 
 .ongoing-exam-card__name {
-  font-size: 15px;
+  font-size: var(--dp-font-size-lg);
   font-weight: 600;
   line-height: 22px;
   color: var(--dp-text-primary);
@@ -235,7 +264,7 @@ function progressFillClass(progress: number): string {
 }
 
 .ongoing-exam-card__meta {
-  margin-top: 2px;
+  margin-top: var(--dp-space-1);
   font-size: var(--dp-type-hint-size);
   color: var(--dp-text-muted);
 }
@@ -254,16 +283,16 @@ function progressFillClass(progress: number): string {
 .ongoing-exam-card__progress-fill {
   height: 100%;
   border-radius: inherit;
-  background: var(--dp-blue-500);
+  background: var(--ant-color-primary);
   transition: width var(--dp-duration-slow) ease;
 }
 
 .ongoing-exam-card__progress-fill--success {
-  background: var(--dp-green-500);
+  background: var(--ant-color-success);
 }
 
 .ongoing-exam-card__progress-fill--warning {
-  background: var(--dp-orange-500);
+  background: var(--ant-color-warning);
 }
 
 .ongoing-exam-card__progress-label {
@@ -276,8 +305,10 @@ function progressFillClass(progress: number): string {
 }
 
 .ongoing-exam-card__stats {
-  display: flex;
-  gap: var(--dp-space-4);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--dp-space-4);
+  row-gap: var(--dp-space-3);
   margin-top: var(--dp-space-3);
   padding-top: var(--dp-space-3);
   border-top: 1px solid var(--dp-border);
@@ -292,12 +323,17 @@ function progressFillClass(progress: number): string {
 
 .ongoing-exam-card__stat-label {
   font-size: 11px;
+  line-height: 1.4;
   color: var(--dp-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ongoing-exam-card__stat-value {
   font-size: 14px;
   font-weight: 600;
+  line-height: 1.4;
   font-variant-numeric: tabular-nums;
   color: var(--dp-text-primary);
 }
@@ -322,9 +358,15 @@ function progressFillClass(progress: number): string {
   margin-left: auto;
 }
 
-@media (max-width: 991px) {
+@media (max-width: bp.$layout-mobile-max) {
   .ongoing-exam-card-grid {
     grid-template-columns: 1fr;
+  }
+
+  .ongoing-exam-card__stat-label {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
   }
 }
 </style>

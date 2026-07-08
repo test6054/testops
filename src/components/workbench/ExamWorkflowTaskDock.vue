@@ -44,11 +44,12 @@ const emit = defineEmits<{
 }>()
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .exam-workflow-task-dock {
   position: sticky;
   top: 0;
-  z-index: var(--dp-z-sticky, 1020);
+  z-index: var(--dp-z-sticky);
   display: flex;
   align-items: center;
   gap: var(--dp-space-3);
@@ -113,7 +114,7 @@ const emit = defineEmits<{
   gap: var(--dp-space-2);
 }
 
-@media (max-width: 767px) {
+@media (max-width: bp.$layout-mobile-max) {
   .exam-workflow-task-dock {
     flex-wrap: wrap;
     align-items: flex-start;

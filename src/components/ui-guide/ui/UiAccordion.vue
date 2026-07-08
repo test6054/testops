@@ -105,9 +105,9 @@ const hasHeader = computed(() => {
 }
 
 .ui-accordion__collapse {
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
   overflow: hidden;
 }
 </style>
@@ -115,7 +115,7 @@ const hasHeader = computed(() => {
 <style lang="scss">
 .ui-accordion__collapse {
   .ant-collapse-item {
-    border-bottom: 1px solid var(--dp-border, #e5e7eb) !important;
+    border-bottom: 1px solid var(--dp-border) !important;
   }
 
   .ant-collapse-item:last-child {
@@ -129,16 +129,16 @@ const hasHeader = computed(() => {
   }
 
   .ant-collapse-header:hover {
-    background: var(--dp-gray-50, #f8fafc) !important;
+    background: var(--dp-gray-50) !important;
   }
 
   .ant-collapse-expand-icon {
     padding-inline-end: 0 !important;
-    color: var(--dp-text-secondary, #475569) !important;
+    color: var(--dp-text-secondary) !important;
   }
 
   .ant-collapse-content {
-    border-top: 1px solid var(--dp-border, #e5e7eb) !important;
+    border-top: 1px solid var(--dp-border) !important;
     background: #fff !important;
   }
 
@@ -168,14 +168,14 @@ const hasHeader = computed(() => {
   font-size: 15px;
   font-weight: 800;
   line-height: 1.5;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-accordion__description {
   margin-top: 4px;
   font-size: 13px;
   line-height: 1.7;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-accordion__body {
@@ -190,11 +190,11 @@ const hasHeader = computed(() => {
 }
 
 .ui-accordion__content {
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-accordion__helper {
   margin-top: 8px;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 </style>

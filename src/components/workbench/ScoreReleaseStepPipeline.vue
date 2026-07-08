@@ -1,11 +1,11 @@
 <script lang="ts" setup>
 import type { FinalScoreRiskOverviewResponse } from '@/apis/mark/exam-score'
-import type {ScoreReleaseStep} from '@/utils/score-release-step';
+import type { ScoreReleaseStep } from '@/utils/score-release-step'
+import { buildScoreReleaseSteps } from '@/utils/score-release-step'
 import CheckOutlined from '@ant-design/icons-vue/CheckOutlined'
 import { computed } from 'vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useScoreReleaseNavigation } from '@/composables/useScoreReleaseNavigation'
-import { buildScoreReleaseSteps } from '@/utils/score-release-step'
 
 defineOptions({ name: 'ScoreReleaseStepPipeline' })
 
@@ -34,11 +34,7 @@ function handleSelect(step: ScoreReleaseStep): void {
       <span class="score-release-pipeline__meta">{{ doneCount }}/{{ steps.length }} 已完成</span>
     </template>
     <ul class="score-release-pipeline__track" aria-label="成绩发布流程">
-      <li
-        v-for="(step, index) in steps"
-        :key="step.key"
-        class="score-release-pipeline__item"
-      >
+      <li v-for="(step, index) in steps" :key="step.key" class="score-release-pipeline__item">
         <button
           type="button"
           class="score-release-pipeline__step"
@@ -48,7 +44,11 @@ function handleSelect(step: ScoreReleaseStep): void {
           ]"
           @click="handleSelect(step)"
         >
-          <span v-if="index < steps.length - 1" class="score-release-pipeline__connector" aria-hidden="true" />
+          <span
+            v-if="index < steps.length - 1"
+            class="score-release-pipeline__connector"
+            aria-hidden="true"
+          />
           <span class="score-release-pipeline__dot">
             <CheckOutlined v-if="step.status === 'done'" />
             <span v-else>{{ index + 1 }}</span>
@@ -63,7 +63,7 @@ function handleSelect(step: ScoreReleaseStep): void {
 
 <style scoped lang="scss">
 .score-release-pipeline {
-  margin-top: var(--dp-space-3, 12px);
+  margin-top: var(--dp-space-3);
 
   &__title {
     font-size: 14px;
@@ -74,7 +74,7 @@ function handleSelect(step: ScoreReleaseStep): void {
     margin-left: 8px;
     font-size: 12px;
     font-weight: 400;
-    color: var(--dp-text-secondary, #64748b);
+    color: var(--dp-text-secondary);
   }
 
   &__track {
@@ -100,26 +100,28 @@ function handleSelect(step: ScoreReleaseStep): void {
     align-items: flex-start;
     gap: 6px;
     padding: 12px;
-    border: 1px solid var(--dp-border-subtle, #e2e8f0);
+    border: 1px solid var(--dp-border-subtle);
     border-radius: 6px;
-    background: var(--dp-surface-raised, #fff);
+    background: var(--dp-surface-raised);
     text-align: left;
     cursor: pointer;
-    transition: border-color 0.2s, background 0.2s;
+    transition:
+      border-color 0.2s,
+      background 0.2s;
 
     &:hover {
-      border-color: var(--dp-blue-300, #93c5fd);
+      border-color: var(--dp-blue-300);
     }
 
     &--active,
     &--current {
-      border-color: var(--dp-blue-400, #60a5fa);
-      background: var(--dp-blue-50, #eff6ff);
+      border-color: var(--dp-blue-400);
+      background: var(--dp-blue-50);
     }
 
     &--done {
-      border-color: var(--dp-green-200, #bbf7d0);
-      background: var(--dp-green-50, #f0fdf4);
+      border-color: var(--dp-green-200);
+      background: var(--dp-green-50);
     }
 
     &--pending {
@@ -140,17 +142,17 @@ function handleSelect(step: ScoreReleaseStep): void {
     border-radius: 50%;
     font-size: 12px;
     font-weight: 600;
-    background: var(--dp-surface-muted, #f1f5f9);
-    color: var(--dp-text-secondary, #64748b);
+    background: var(--dp-surface-muted);
+    color: var(--dp-text-secondary);
 
     .score-release-pipeline__step--active &,
     .score-release-pipeline__step--current & {
-      background: var(--dp-blue-600, #2563eb);
+      background: var(--dp-blue-600);
       color: #fff;
     }
 
     .score-release-pipeline__step--done & {
-      background: var(--dp-green-600, #16a34a);
+      background: var(--dp-green-600);
       color: #fff;
     }
   }
@@ -158,13 +160,13 @@ function handleSelect(step: ScoreReleaseStep): void {
   &__label {
     font-size: 13px;
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 
   &__desc {
     font-size: 12px;
     line-height: 1.4;
-    color: var(--dp-text-secondary, #64748b);
+    color: var(--dp-text-secondary);
   }
 }
 </style>

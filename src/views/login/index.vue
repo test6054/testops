@@ -102,9 +102,9 @@
 
 <script lang="ts" setup>
 import type { SsoConfigResponse } from '@/apis/sso'
+import { getCasLoginUrl, getSsoConfig } from '@/apis/sso'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { getCasLoginUrl, getSsoConfig } from '@/apis/sso'
 import loginHeroVisual from '@/assets/login/login-hero-visual.svg'
 import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiStateBlock from '@/components/ui-guide/ui/UiStateBlock.vue'
@@ -124,7 +124,7 @@ const appStore = useAppStore()
 
 const isSubdomain = ref(false)
 const activeTab = ref('1')
-const studentPrefill = ref<{ studentNo: string, password: string }>({ studentNo: '', password: '' })
+const studentPrefill = ref<{ studentNo: string; password: string }>({ studentNo: '', password: '' })
 
 const ssoConfig = ref<SsoConfigResponse | null>(null)
 const casEnabled = computed(() => ssoConfig.value?.casEnabled ?? false)
@@ -134,7 +134,7 @@ const isCasCallback = ref(false)
 const copyright = computed(() => appStore.getCopyright())
 
 const loginTabItems = computed(() => {
-  const items: { value: string, label: string }[] = [
+  const items: { value: string; label: string }[] = [
     { value: '1', label: '账号登录' },
     { value: '2', label: '学号登录' },
   ]
@@ -144,7 +144,7 @@ const loginTabItems = computed(() => {
   return items
 })
 
-function switchToStudentTab(val: { studentNo: string, password: string }) {
+function switchToStudentTab(val: { studentNo: string; password: string }) {
   activeTab.value = '2'
   studentPrefill.value = {
     studentNo: val.studentNo,
@@ -237,6 +237,7 @@ onMounted(async () => {
 </script>
 
 <style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 :global(html),
 :global(body),
 :global(#app) {
@@ -433,7 +434,7 @@ onMounted(async () => {
   width: 100%;
   padding: 0;
   gap: 0;
-  border-radius: var(--dp-radius-panel, 8px);
+  border-radius: var(--dp-radius-panel);
   background: transparent;
   box-shadow: none;
   backdrop-filter: none;
@@ -442,7 +443,7 @@ onMounted(async () => {
 .login-panel__header {
   margin-bottom: 0;
   padding: 24px 24px 16px;
-  border-radius: var(--dp-radius-panel, 8px) var(--dp-radius-panel, 8px) 0 0;
+  border-radius: var(--dp-radius-panel) var(--dp-radius-panel) 0 0;
   background: var(--login-surface);
   border: 1px solid var(--ant-color-border-secondary, #e5e7eb);
   border-bottom: none;
@@ -465,7 +466,7 @@ onMounted(async () => {
 
 .login-panel__surface {
   padding: 20px 24px 24px;
-  border-radius: 0 0 var(--dp-radius-panel, 8px) var(--dp-radius-panel, 8px);
+  border-radius: 0 0 var(--dp-radius-panel) var(--dp-radius-panel);
   background: var(--login-surface);
   border: 1px solid var(--ant-color-border-secondary, #e5e7eb);
   border-top: none;
@@ -592,7 +593,7 @@ onMounted(async () => {
   }
 }
 
-@media (max-width: 767px) {
+@media (max-width: bp.$layout-mobile-max) {
   .login-page {
     padding: 20px 16px 24px;
   }

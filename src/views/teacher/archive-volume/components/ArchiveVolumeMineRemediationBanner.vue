@@ -64,12 +64,13 @@
 </template>
 
 <script lang="ts" setup>
-import type {ArchiveRemediationStatusCode, ArchiveRemediationTaskResponse} from '@/apis/mark/archive-volume';
+import type {
+  ArchiveRemediationStatusCode,
+  ArchiveRemediationTaskResponse,
+} from '@/apis/mark/archive-volume'
+import { ArchiveRemediationStatusDescription } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed } from 'vue'
-import {
-  ArchiveRemediationStatusDescription
-} from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -98,8 +99,7 @@ const singleTaskDescription = computed(() => {
   const parts: string[] = []
   if (task.taskDescription?.trim()) {
     parts.push(task.taskDescription.trim())
-  }
-  else {
+  } else {
     parts.push(task.taskTitle)
   }
   if (task.dueTime) {
@@ -122,26 +122,26 @@ function remediationStatusTone(code: ArchiveRemediationStatusCode): BadgeTone {
 
 <style scoped>
 .archive-volume-mine-remediation-banner__list {
-  margin: var(--dp-space-2, 8px) 0 0;
+  margin: var(--dp-space-2) 0 0;
   padding: 0;
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 
 .archive-volume-mine-remediation-banner__item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-3);
 }
 
 .archive-volume-mine-remediation-banner__main {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
   min-width: 0;
 }
 
@@ -151,7 +151,7 @@ function remediationStatusTone(code: ArchiveRemediationStatusCode): BadgeTone {
 }
 
 .archive-volume-mine-remediation-banner__due {
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
   font-size: 13px;
 }
 </style>

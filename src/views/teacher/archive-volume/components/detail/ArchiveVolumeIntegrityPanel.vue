@@ -121,7 +121,12 @@
           尚未执行四性检测
         </p>
         <div class="archive-volume-integrity-panel__section-actions">
-          <UiButton size="sm" variant="ghost" :loading="checkingFourProperty" @click="runFourPropertyCheck">
+          <UiButton
+            size="sm"
+            variant="ghost"
+            :loading="checkingFourProperty"
+            @click="runFourPropertyCheck"
+          >
             重新检测
           </UiButton>
           <UiButton
@@ -235,7 +240,11 @@
           {{ securityLevelLabel(detail.volume.securityLevel!) }}
         </a-form-item>
         <a-form-item label="确认说明">
-          <a-textarea v-model:value="confirmSecurityMarkReason" :rows="3" placeholder="如：教学档案内部定密，卷内材料密级一致" />
+          <a-textarea
+            v-model:value="confirmSecurityMarkReason"
+            :rows="3"
+            placeholder="如：教学档案内部定密，卷内材料密级一致"
+          />
         </a-form-item>
       </a-form>
     </UiDrawer>
@@ -275,9 +284,6 @@ import type {
   ArchiveSecurityLevelCode,
   ArchiveVolumeDetailResponse,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref } from 'vue'
 import {
   allowArchiveMaterialDelay,
   ARCHIVE_INTEGRITY_STATUS_TONE,
@@ -292,6 +298,9 @@ import {
   waiveArchiveMaterialMissing,
   waiveArchiveVolumeIntegrity,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref } from 'vue'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -323,7 +332,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  "refreshed": []
+  refreshed: []
   'integrity-checked': [result: Awaited<ReturnType<typeof checkArchiveVolumeIntegrity>>]
   'four-property-checked': [result: Awaited<ReturnType<typeof checkArchiveVolumeFourProperty>>]
   'run-integrity-check': []
@@ -378,10 +387,12 @@ const missingColumns: ColumnsType<ArchiveIntegrityMissingItemVO> = [
 ]
 
 function isArchiveIntegrityMissingItem(record: unknown): record is ArchiveIntegrityMissingItemVO {
-  return typeof record === 'object'
-    && record !== null
-    && 'materialType' in record
-    && 'catalogCode' in record
+  return (
+    typeof record === 'object' &&
+    record !== null &&
+    'materialType' in record &&
+    'catalogCode' in record
+  )
 }
 
 function missingRowKey(record: unknown): string {
@@ -404,7 +415,9 @@ function integrityStatusLabel(code: ArchiveVolumeDetailResponse['volume']['integ
   return strictEnumLabel(ArchiveIntegrityStatusDescription, code, 'integrityStatus')
 }
 
-function integrityStatusTone(code: ArchiveVolumeDetailResponse['volume']['integrityStatus']): BadgeTone {
+function integrityStatusTone(
+  code: ArchiveVolumeDetailResponse['volume']['integrityStatus'],
+): BadgeTone {
   return strictEnumTone(ARCHIVE_INTEGRITY_STATUS_TONE, code, 'integrityStatus')
 }
 
@@ -583,31 +596,31 @@ async function submitWaiveIntegrity() {
 .archive-volume-integrity-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4, 16px);
+  gap: var(--dp-space-4);
 }
 
 .archive-volume-integrity-panel__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
 }
 
 .archive-volume-integrity-panel__missing-table {
-  margin-top: var(--dp-space-3, 12px);
+  margin-top: var(--dp-space-3);
 }
 
 .archive-volume-integrity-panel__section-head {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
-  margin-bottom: var(--dp-space-3, 12px);
+  gap: var(--dp-space-2);
+  margin-bottom: var(--dp-space-3);
 }
 
 .archive-volume-integrity-panel__section-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-2);
   margin-left: auto;
 }
 
@@ -620,27 +633,27 @@ async function submitWaiveIntegrity() {
 .archive-volume-integrity-panel__stale-hint {
   margin: 0;
   font-size: 13px;
-  color: var(--dp-orange-700, #c2410c);
+  color: var(--dp-orange-700);
 }
 
 .archive-volume-integrity-panel__four-property {
-  margin-top: var(--dp-space-4, 16px);
+  margin-top: var(--dp-space-4);
 }
 
 .archive-volume-integrity-panel__security {
-  margin-top: var(--dp-space-4, 16px);
-  padding-top: var(--dp-space-4, 16px);
-  border-top: 1px solid var(--dp-border-light, #eef0f3);
+  margin-top: var(--dp-space-4);
+  padding-top: var(--dp-space-4);
+  border-top: 1px solid var(--dp-border-light);
 }
 
 .archive-volume-integrity-panel__security-level {
-  margin: 0 0 var(--dp-space-3, 12px);
+  margin: 0 0 var(--dp-space-3);
   font-size: 14px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 
 .archive-volume-integrity-panel__self-check {
-  border-top: 1px solid var(--dp-border-light, #eef0f3);
-  padding-top: var(--dp-space-4, 16px);
+  border-top: 1px solid var(--dp-border-light);
+  padding-top: var(--dp-space-4);
 }
 </style>

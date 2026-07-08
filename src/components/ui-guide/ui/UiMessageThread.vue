@@ -76,8 +76,8 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import type { UiThreadMessage } from './types'
 import { computed } from 'vue'
+import type { UiThreadMessage } from './types'
 import UiBadge from './Badge.vue'
 import UiEmpty from './Empty.vue'
 import UiTag from './Tag.vue'
@@ -152,9 +152,9 @@ const listStyle = computed<CSSProperties>(() => {
   justify-content: center;
   width: 34px;
   height: 34px;
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-blue-50, #eff6ff);
-  color: var(--dp-blue-700, #1d4ed8);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-blue-50);
+  color: var(--dp-blue-700);
   font-size: 13px;
   font-weight: 800;
   flex-shrink: 0;
@@ -177,7 +177,7 @@ const listStyle = computed<CSSProperties>(() => {
   flex-wrap: wrap;
   gap: 8px;
   font-size: 12px;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-message-thread__sender {
@@ -189,20 +189,20 @@ const listStyle = computed<CSSProperties>(() => {
   gap: 10px;
   min-width: 0;
   padding: 14px 16px;
-  border-radius: var(--dp-radius-panel, 4px);
-  border: 1px solid var(--dp-border, #e5e7eb);
+  border-radius: var(--dp-radius-panel);
+  border: 1px solid var(--dp-border);
   background: #fff;
 }
 
 .ui-message-thread__row--mine .ui-message-thread__bubble {
-  background: var(--dp-blue-50, #eff6ff);
-  border-color: var(--dp-blue-200, #bfdbfe);
+  background: var(--dp-blue-50);
+  border-color: var(--dp-blue-200);
 }
 
 .ui-message-thread__text {
   font-size: 13px;
   line-height: 1.8;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
   white-space: pre-wrap;
 }
 
@@ -217,21 +217,21 @@ const listStyle = computed<CSSProperties>(() => {
   flex-wrap: wrap;
   gap: 8px;
   padding: 10px 12px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
   background: rgba(255, 255, 255, 0.72);
 }
 
 .ui-message-thread__attachment-name {
   font-size: 13px;
   font-weight: 700;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-message-thread__attachment-size,
 .ui-message-thread__helper {
   font-size: 12px;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-message-thread__helper-row {
@@ -243,6 +243,6 @@ const listStyle = computed<CSSProperties>(() => {
 
 .ui-message-thread__footer {
   padding-top: 12px;
-  border-top: 1px solid var(--dp-border, #e5e7eb);
+  border-top: 1px solid var(--dp-border);
 }
 </style>

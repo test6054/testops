@@ -196,19 +196,19 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamTemplateResponse } from '@/apis/mark/exam-layout-question'
+import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import type {
   ExamQuestionAnalysisRecordResponse,
   QuestionAnalysisListQueryRequest,
 } from '@/apis/mark/question-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { computed, ref, watch } from 'vue'
-import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import {
   fetchAllQuestionAnalysisRows,
   generateAllQuestionAnalysis,
   generateQuestionAnalysis,
   pageQuestionAnalysis,
 } from '@/apis/mark/question-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { computed, ref, watch } from 'vue'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkScatterSection from '@/components/chart/MarkScatterSection.vue'
@@ -267,7 +267,7 @@ const generatingId = ref<string>('')
 const selectedLayoutQuestionId = ref<string>()
 const questionLoading = ref(false)
 const questionOptions = ref<
-  Array<{ value: string, label: string, disabled?: boolean, title?: string }>
+  Array<{ value: string; label: string; disabled?: boolean; title?: string }>
 >([])
 const layoutSummary = ref<ExamTemplateResponse | null>(null)
 const layoutRoiGap = computed(() => {
@@ -391,7 +391,7 @@ async function reload(): Promise<void> {
   await Promise.all([loadChartRows(), loadTablePage(1, tablePageSize.value)])
 }
 
-function handleTablePageChange(event: { current: number, pageSize: number }): void {
+function handleTablePageChange(event: { current: number; pageSize: number }): void {
   void loadTablePage(event.current, event.pageSize)
 }
 
@@ -410,8 +410,8 @@ async function loadQuestionOptions(): Promise<void> {
     }
     questionOptions.value = buildExamLayoutQuestionOptions(template.questions)
     if (
-      selectedLayoutQuestionId.value
-      && !template.questions.some(
+      selectedLayoutQuestionId.value &&
+      !template.questions.some(
         (q) => q.layoutQuestionId === selectedLayoutQuestionId.value && q.roiReady,
       )
     ) {
@@ -461,9 +461,9 @@ async function handleGenerateOne(layoutQuestionId: string): Promise<void> {
       successMessage: '已重新生成',
       onSuccess: async () => {
         await reload()
-        const matched
-          = tableRows.value.find((item) => item.layoutQuestionId === layoutQuestionId)
-            ?? chartRows.value.find((item) => item.layoutQuestionId === layoutQuestionId)
+        const matched =
+          tableRows.value.find((item) => item.layoutQuestionId === layoutQuestionId) ??
+          chartRows.value.find((item) => item.layoutQuestionId === layoutQuestionId)
         generationSummary.value = matched
           ? `已生成题 ${matched.questionNo} 的质量分析，可查看难度、区分度与正确率。`
           : '已生成该题质量分析，可查看难度、区分度与正确率。'
@@ -630,33 +630,33 @@ watch(
   }
 
   &__question-title {
-    font-weight: var(--dp-font-weight-emphasis, 500);
+    font-weight: var(--dp-font-weight-emphasis);
   }
 
   &__question-stem {
     font-size: 12px;
-    color: var(--dp-text-secondary, rgba(0, 0, 0, 0.65));
+    color: var(--dp-text-secondary);
   }
 
   &__generation-summary {
     margin: 0;
-    color: var(--dp-text-secondary, rgba(0, 0, 0, 0.75));
+    color: var(--dp-text-secondary);
   }
 
   &__brush-list {
-    margin-top: var(--dp-space-3, 12px);
-    padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
-    border: 1px solid var(--dp-border, #e2e8f0);
-    border-radius: var(--dp-radius-panel, 8px);
-    background: var(--dp-surface-subtle, #f8fafc);
+    margin-top: var(--dp-space-3);
+    padding: var(--dp-space-3) var(--dp-space-4);
+    border: 1px solid var(--dp-border);
+    border-radius: var(--dp-radius-panel);
+    background: var(--dp-surface-subtle);
   }
 
   &__brush-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--dp-space-3, 12px);
-    margin-bottom: var(--dp-space-2, 8px);
+    gap: var(--dp-space-3);
+    margin-bottom: var(--dp-space-2);
     font-size: 14px;
   }
 
@@ -666,19 +666,19 @@ watch(
     list-style: none;
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-2, 8px);
+    gap: var(--dp-space-2);
   }
 
   &__brush-item {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    gap: var(--dp-space-3, 12px);
+    gap: var(--dp-space-3);
     font-size: 13px;
   }
 
   &__brush-meta {
-    color: var(--dp-text-secondary, rgba(0, 0, 0, 0.65));
+    color: var(--dp-text-secondary);
     white-space: nowrap;
   }
 }

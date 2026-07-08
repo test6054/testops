@@ -17,11 +17,11 @@
 // Ant Table 多选选中态统一为淡灰蓝，避免局部页面出现过重的蓝底
 .ant-table-wrapper {
   .ant-table-tbody > tr.ant-table-row-selected > td {
-    background: var(--dp-gray-50, #f8fafc) !important;
+    background: var(--dp-gray-50) !important;
   }
 
   .ant-table-tbody > tr.ant-table-row-selected:hover > td {
-    background: var(--dp-gray-100, #f1f5f9) !important;
+    background: var(--dp-gray-100) !important;
   }
 }
 
@@ -29,23 +29,23 @@
 .ant-tabs {
   .ant-tabs-tab {
     padding: 10px 16px !important;
-    border-radius: var(--dp-radius-control, 6px) var(--dp-radius-control, 6px) 0 0 !important;
+    border-radius: var(--dp-radius-control) var(--dp-radius-control) 0 0 !important;
     transition: color 0.15s ease !important;
     font-weight: 500;
-    color: var(--dp-text-secondary, #475569);
+    color: var(--dp-text-secondary);
 
     &:hover {
-      color: var(--dp-text-primary, #0f172a);
+      color: var(--dp-text-primary);
     }
 
     &.ant-tabs-tab-active .ant-tabs-tab-btn {
-      color: var(--dp-blue-600, #2563eb) !important;
+      color: var(--dp-blue-600) !important;
       font-weight: 600;
     }
   }
 
   .ant-tabs-ink-bar {
-    background: var(--dp-blue-600, #2563eb) !important;
+    background: var(--dp-blue-600) !important;
     border-radius: 2px !important;
     height: 3px !important;
   }
@@ -54,18 +54,18 @@
 // ─── Drawer 现代化 ───
 .ant-drawer-content-wrapper {
   .ant-drawer-content {
-    border-radius: var(--dp-radius-panel, 8px) 0 0 var(--dp-radius-panel, 8px);
+    border-radius: var(--dp-radius-panel) 0 0 var(--dp-radius-panel);
   }
 
   .ant-drawer-header {
-    border-bottom: 1px solid var(--dp-border, #f1f5f9) !important;
+    border-bottom: 1px solid var(--dp-border) !important;
     padding: 16px 20px !important;
   }
 
   .ant-drawer-title {
     font-size: var(--dp-font-size-lg) !important;
     font-weight: 600 !important;
-    color: var(--dp-text-primary, #0f172a) !important;
+    color: var(--dp-text-primary) !important;
   }
 
   .ant-drawer-body {
@@ -73,7 +73,7 @@
   }
 
   .ant-drawer-footer {
-    border-top: 1px solid var(--dp-border, #f1f5f9) !important;
+    border-top: 1px solid var(--dp-border) !important;
     padding: 12px 20px !important;
   }
 }
@@ -86,25 +86,25 @@
 .ant-dropdown {
   .ant-dropdown-menu {
     padding: 6px !important;
-    border-radius: var(--dp-radius-panel, 6px) !important;
+    border-radius: var(--dp-radius-panel) !important;
     box-shadow: var(--dp-shadow-md) !important;
-    border: 1px solid var(--dp-border, #f1f5f9);
+    border: 1px solid var(--dp-border);
 
     .ant-dropdown-menu-item {
       padding: 8px 12px !important;
-      border-radius: var(--dp-radius-control-inner, 4px) !important;
+      border-radius: var(--dp-radius-control-inner) !important;
       font-size: 14px;
-      color: var(--dp-text-primary, #0f172a);
+      color: var(--dp-text-primary);
       transition: all 0.15s ease;
 
       &:hover {
-        background: var(--dp-gray-50, #f8fafc) !important;
-        color: var(--dp-blue-600, #2563eb);
+        background: var(--dp-gray-50) !important;
+        color: var(--dp-blue-600);
       }
 
       &.ant-dropdown-menu-item-selected {
-        background: var(--dp-blue-50, #eff6ff) !important;
-        color: var(--dp-blue-700, #1d4ed8);
+        background: var(--dp-blue-50) !important;
+        color: var(--dp-blue-700);
         font-weight: 600;
       }
     }
@@ -114,16 +114,16 @@
 // ─── Popover / Popconfirm 现代化 ───
 .ant-popover {
   .ant-popover-inner {
-    border-radius: var(--dp-radius-panel, 6px) !important;
+    border-radius: var(--dp-radius-panel) !important;
     box-shadow: var(--dp-shadow-md) !important;
     padding: 16px 20px !important;
-    border: 1px solid var(--dp-border, #f1f5f9);
+    border: 1px solid var(--dp-border);
   }
 
   .ant-popover-title {
     font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
-    border-bottom: 1px solid var(--dp-border, #f1f5f9);
+    color: var(--dp-text-primary);
+    border-bottom: 1px solid var(--dp-border);
     padding-bottom: 8px;
     margin-bottom: 8px;
   }
@@ -136,7 +136,7 @@
 
   .ant-popconfirm-buttons {
     .ant-btn {
-      border-radius: var(--dp-radius-control, 6px);
+      border-radius: var(--dp-radius-control);
     }
   }
 }
@@ -144,15 +144,15 @@
 // ─── Notification / Message 现代化 ───
 .ant-notification {
   .ant-notification-notice {
-    border-radius: var(--dp-radius-panel, 6px) !important;
+    border-radius: var(--dp-radius-panel) !important;
     box-shadow: var(--dp-shadow-md) !important;
-    border: 1px solid var(--dp-border, #f1f5f9);
+    border: 1px solid var(--dp-border);
     padding: 16px 20px !important;
   }
 
   .ant-notification-notice-message {
     font-weight: 600 !important;
-    color: var(--dp-text-primary, #0f172a);
+    color: var(--dp-text-primary);
   }
 }
 
@@ -167,7 +167,7 @@
   max-width: min(420px, calc(100vw - 48px));
 
   .ant-message-notice-content {
-    border-radius: var(--dp-radius-control, 6px) !important;
+    border-radius: var(--dp-radius-control) !important;
     box-shadow: var(--dp-shadow-md) !important;
     padding: 10px 16px !important;
     font-weight: 500;
@@ -192,22 +192,22 @@
     margin: 2px 8px !important;
     padding: 0 12px !important;
     height: 40px !important;
-    line-height: var(--dp-type-sidebar-line-height, 20px) !important;
-    font-size: var(--dp-type-sidebar-size, 14px) !important;
-    font-weight: var(--dp-type-sidebar-weight, 500) !important;
-    border-radius: var(--dp-radius-panel, 6px) !important;
-    color: var(--dp-text-secondary, #475569);
+    line-height: var(--dp-type-sidebar-line-height) !important;
+    font-size: var(--dp-type-sidebar-size) !important;
+    font-weight: var(--dp-type-sidebar-weight) !important;
+    border-radius: var(--dp-radius-panel) !important;
+    color: var(--dp-text-secondary);
     transition: all 0.15s ease;
 
     &:hover {
-      background: var(--dp-gray-50, #f8fafc) !important;
-      color: var(--dp-text-primary, #0f172a) !important;
+      background: var(--dp-gray-50) !important;
+      color: var(--dp-text-primary) !important;
     }
 
     &.ant-menu-item-selected {
-      background: var(--dp-blue-50, #eff6ff) !important;
-      color: var(--dp-blue-700, #1d4ed8) !important;
-      font-weight: var(--dp-type-sidebar-weight-active, 600) !important;
+      background: var(--dp-blue-50) !important;
+      color: var(--dp-blue-700) !important;
+      font-weight: var(--dp-type-sidebar-weight-active) !important;
 
       &::after {
         display: none !important;
@@ -220,21 +220,21 @@
       margin: 2px 8px !important;
       padding: 0 12px !important;
       height: 40px !important;
-      line-height: var(--dp-type-sidebar-line-height, 20px) !important;
-      font-size: var(--dp-type-sidebar-size, 14px) !important;
-      font-weight: var(--dp-type-sidebar-weight-active, 600) !important;
-      border-radius: var(--dp-radius-control-inner, 4px) !important;
-      color: var(--dp-text-secondary, #475569);
+      line-height: var(--dp-type-sidebar-line-height) !important;
+      font-size: var(--dp-type-sidebar-size) !important;
+      font-weight: var(--dp-type-sidebar-weight-active) !important;
+      border-radius: var(--dp-radius-control-inner) !important;
+      color: var(--dp-text-secondary);
       transition: all 0.15s ease;
 
       &:hover {
-        background: var(--dp-gray-50, #f8fafc) !important;
-        color: var(--dp-text-primary, #0f172a) !important;
+        background: var(--dp-gray-50) !important;
+        color: var(--dp-text-primary) !important;
       }
     }
 
     &.ant-menu-submenu-selected > .ant-menu-submenu-title {
-      color: var(--dp-blue-700, #1d4ed8) !important;
+      color: var(--dp-blue-700) !important;
     }
 
     .ant-menu-sub.ant-menu-inline {
@@ -245,9 +245,9 @@
         margin: 2px 8px 2px 12px !important;
         padding: 0 12px 0 24px !important;
         height: 36px !important;
-        line-height: var(--dp-type-sidebar-line-height, 20px) !important;
-        font-size: var(--dp-type-sidebar-size, 14px) !important;
-        font-weight: var(--dp-type-sidebar-weight, 400) !important;
+        line-height: var(--dp-type-sidebar-line-height) !important;
+        font-size: var(--dp-type-sidebar-size) !important;
+        font-weight: var(--dp-type-sidebar-weight) !important;
       }
     }
   }
@@ -256,24 +256,24 @@
 // 侧边栏菜单弹出层（折叠态下拉）
 .ant-menu-submenu-popup {
   .ant-menu {
-    border-radius: var(--dp-radius-panel, 6px) !important;
+    border-radius: var(--dp-radius-panel) !important;
     box-shadow: var(--dp-shadow-md) !important;
     padding: 6px !important;
-    border: 1px solid var(--dp-border, #f1f5f9);
+    border: 1px solid var(--dp-border);
   }
 
   .ant-menu-item {
-    border-radius: var(--dp-radius-panel, 6px) !important;
+    border-radius: var(--dp-radius-panel) !important;
     margin: 2px 0 !important;
     transition: all 0.15s ease;
 
     &:hover {
-      background: var(--dp-gray-50, #f8fafc) !important;
+      background: var(--dp-gray-50) !important;
     }
 
     &.ant-menu-item-selected {
-      background: var(--dp-blue-50, #eff6ff) !important;
-      color: var(--dp-blue-700, #1d4ed8) !important;
+      background: var(--dp-blue-50) !important;
+      color: var(--dp-blue-700) !important;
       font-weight: 600;
     }
   }

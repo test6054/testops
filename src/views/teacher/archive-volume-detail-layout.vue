@@ -39,7 +39,7 @@
         :archive-subtitle="sidebarArchiveSubtitle"
         :volume-status-tone="volumeStatusTone"
         :active-tab="activeTab"
-        :tabs="sidebarTabs"
+        :nav-groups="sidebarNavGroups"
         :status-rows="sidebarStatusRows"
         :loading="loading"
         :collapsed="sidebarCollapsed"
@@ -53,7 +53,7 @@
         <div class="archive-volume-detail-layout__content">
           <UiEmpty
             v-if="!volumeId"
-            description="缺少归档卷上下文，请从归档列表进入"
+            description="缺少归档任务上下文，请从归档列表进入"
             class="archive-volume-detail-layout__empty"
           >
             <UiButton variant="primary" @click="goArchiveList">返回归档列表</UiButton>
@@ -63,11 +63,7 @@
             <keep-alive v-if="ViewComponent && shouldCacheDetailRoute(childRoute)">
               <component :is="ViewComponent" :key="childRoute.fullPath" />
             </keep-alive>
-            <component
-              v-else-if="ViewComponent"
-              :is="ViewComponent"
-              :key="childRoute.fullPath"
-            />
+            <component v-else-if="ViewComponent" :is="ViewComponent" :key="childRoute.fullPath" />
           </router-view>
         </div>
       </main>
@@ -77,10 +73,10 @@
 
 <script lang="ts" setup>
 import type { RouteLocationNormalized } from 'vue-router'
+import { useRouter } from 'vue-router'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import MenuOutlined from '@ant-design/icons-vue/MenuOutlined'
 import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   ARCHIVE_VOLUME_STATUS_TONE,
   ArchiveIntegrityStatusDescription,
@@ -93,6 +89,7 @@ import ArchiveVolumeSubSidebar from '@/components/workbench/ArchiveVolumeSubSide
 import { provideArchiveVolumeWorkbenchContext } from '@/composables/useArchiveVolumeWorkbenchContext'
 import HeaderRightBar from '@/layout/components/HeaderRightBar/index.vue'
 import { useAppStore } from '@/stores/modules/app'
+import { buildArchiveVolumeSidebarNavGroups } from '@/utils/archive-volume-sidebar-navigation'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ArchiveVolumeDetailLayout' })
@@ -104,19 +101,13 @@ const appTitle = computed(() => appStore.getTitle())
 const sidebarCollapsed = ref(false)
 const mobileNavOpen = ref(false)
 
-const {
-  volumeId,
-  detail,
-  loading,
-  activeTab,
-  sidebarTabs,
-  setActiveTab,
-} = provideArchiveVolumeWorkbenchContext()
+const { volumeId, detail, loading, activeTab, sidebarTabs, setActiveTab } =
+  provideArchiveVolumeWorkbenchContext()
 
 const sidebarArchiveTitle = computed(() => {
   const volume = detail.value?.volume
   if (!volume) {
-    return '加载归档卷…'
+    return '加载归档任务…'
   }
   return volume.archiveTitle || volume.archiveNo
 })
@@ -129,8 +120,7 @@ const sidebarArchiveSubtitle = computed(() => {
   const parts = [volume.archiveNo]
   if (volume.teachingClassName) {
     parts.push(volume.teachingClassName)
-  }
-  else if (volume.departmentName) {
+  } else if (volume.departmentName) {
     parts.push(volume.departmentName)
   }
   return parts.join(' · ')
@@ -146,9 +136,23 @@ const volumeStatusTone = computed((): BadgeTone => {
   return strictEnumTone(ARCHIVE_VOLUME_STATUS_TONE, status, 'volumeStatus')
 })
 
+const sidebarNavGroups = computed(() =>
+  buildArchiveVolumeSidebarNavGroups(
+    sidebarTabs.value,
+    detail.value?.volume.volumeStatus,
+    detail.value?.capabilities?.departmentReviewEnabled,
+  ),
+)
+
 const activeTabLabel = computed(() => {
-  const tab = sidebarTabs.value.find((item) => item.key === activeTab.value)
-  return tab?.label ?? '归档模块'
+  for (const group of sidebarNavGroups.value) {
+    const tab = group.tabs.find((item) => item.key === activeTab.value)
+    if (tab) {
+      return tab.label
+    }
+  }
+  const fallback = sidebarTabs.value.find((item) => item.key === activeTab.value)
+  return fallback?.label ?? '归档阶段'
 })
 
 const sidebarStatusRows = computed(() => {
@@ -158,30 +162,43 @@ const sidebarStatusRows = computed(() => {
   }
   const retention = volume.permanentRetention
     ? '永久保管'
-    : (volume.retentionYears ? `${volume.retentionYears} 年` : '—')
-  const location = volume.physicalStorageLocation
-    || [volume.physicalBuilding, volume.physicalRoom, volume.physicalCabinet, volume.physicalSlot]
+    : volume.retentionYears
+      ? `${volume.retentionYears} 年`
+      : '—'
+  const location =
+    volume.physicalStorageLocation ||
+    [volume.physicalBuilding, volume.physicalRoom, volume.physicalCabinet, volume.physicalSlot]
       .filter(Boolean)
-      .join(' / ')
-      || volume.physicalLocationNote
-      || '—'
+      .join(' / ') ||
+    volume.physicalLocationNote ||
+    '—'
   return [
     {
       key: 'integrity',
       label: '完整性',
-      value: strictEnumLabel(ArchiveIntegrityStatusDescription, volume.integrityStatus, 'integrityStatus'),
+      value: strictEnumLabel(
+        ArchiveIntegrityStatusDescription,
+        volume.integrityStatus,
+        'integrityStatus',
+      ),
     },
     ...(volume.securityLevel
-      ? [{
-          key: 'security-mark',
-          label: '密级定密',
-          value: volume.securityMarkPending ? '待确认' : '已确认',
-        }]
+      ? [
+          {
+            key: 'security-mark',
+            label: '密级定密',
+            value: volume.securityMarkPending ? '待确认' : '已确认',
+          },
+        ]
       : []),
     {
       key: 'transfer',
       label: '移交',
-      value: strictEnumLabel(ArchiveTransferStatusDescription, volume.transferStatus, 'transferStatus'),
+      value: strictEnumLabel(
+        ArchiveTransferStatusDescription,
+        volume.transferStatus,
+        'transferStatus',
+      ),
     },
     {
       key: 'retention',
@@ -219,6 +236,7 @@ watch(volumeId, () => {
 </script>
 
 <style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .archive-volume-detail-layout {
   display: flex;
   flex-direction: column;
@@ -330,8 +348,8 @@ watch(volumeId, () => {
   &__content {
     flex: 1;
     overflow: auto;
-    padding: var(--dp-space-5, 20px);
-    background: var(--dp-gray-50, #f8fafc);
+    padding: var(--dp-space-5);
+    background: var(--dp-gray-50);
 
     :deep(> *) {
       max-width: min(100%, 1680px);
@@ -343,7 +361,7 @@ watch(volumeId, () => {
     padding: 60px 0;
   }
 
-  @media (max-width: 767px) {
+  @media (max-width: bp.$layout-mobile-max) {
     &__header {
       grid-template-columns: auto minmax(0, 1fr) auto;
       padding: 0 16px;

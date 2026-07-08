@@ -42,13 +42,13 @@ const props = withDefaults(defineProps<{
   justify-content: space-between;
   gap: 16px;
   padding: 12px 14px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
   background: #fff;
 }
 
 .ui-batch-action-bar--muted {
-  background: var(--dp-surface-subtle, #f8fafc);
+  background: var(--dp-surface-subtle);
 }
 
 .ui-batch-action-bar__left {
@@ -62,17 +62,17 @@ const props = withDefaults(defineProps<{
   flex-wrap: wrap;
   gap: 8px;
   font-size: 14px;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-batch-action-bar__summary strong {
   font-size: 18px;
   line-height: 1;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-batch-action-bar__description {
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-batch-action-bar__right {

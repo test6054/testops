@@ -2,8 +2,8 @@
  * 断点常量真源（TS）。
  *
  * - LAYOUT_*：layout shell（useDevice：TabBar vs Asider）
- * - ANT_GRID_*：Ant Design Grid / useBreakpoint / a-col
- * - RESPONSIVE_SHELL_*：容器 max-width / padding 阶梯（命名≠ Ant md）
+ * - ANT_GRID_*：Ant Design Grid / useBreakpoint / a-col（SCSS：$ant-grid-*）
+ * - RESPONSIVE_SHELL_*：容器 max-width / padding 阶梯（SCSS：$shell-*，勿与 Ant Grid 混用）
  * - UI_DATA_TABLE_VIEWPORT：表格列窄视口隐藏
  *
  * SCSS 镜像见 styles/_breakpoints.scss，数值须保持同步。

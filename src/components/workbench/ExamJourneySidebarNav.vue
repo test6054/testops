@@ -51,7 +51,8 @@
         <span
           v-if="!collapsed && showSuggestionBadge(stage.key)"
           class="exam-journey-sidebar-nav__badge"
-        >下一步</span>
+          >下一步</span
+        >
       </button>
     </template>
   </nav>
@@ -59,12 +60,12 @@
 
 <script lang="ts" setup>
 import type { ExamJourneyKey, ExamWorkspaceJourneyKey } from '@/constants/exam-journey'
+import { isExamWorkspaceJourneyKey, resolveJourneyKeyByStage } from '@/constants/exam-journey'
 import type { MarkStageKey } from '@/stores/modules/markStage'
 import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
 import CheckOutlined from '@ant-design/icons-vue/CheckOutlined'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import { computed } from 'vue'
-import { isExamWorkspaceJourneyKey, resolveJourneyKeyByStage } from '@/constants/exam-journey'
 import { shouldShowJourneySuggestion } from '@/constants/mark-workspace-nav'
 
 defineOptions({
@@ -157,7 +158,7 @@ function statusClass(status: WorkbenchStageStatus): string {
     width: 100%;
     padding: 8px 10px;
     border: none;
-    border-radius: var(--dp-radius-panel, 6px);
+    border-radius: var(--dp-radius-panel);
     background: transparent;
     cursor: pointer;
     text-align: left;

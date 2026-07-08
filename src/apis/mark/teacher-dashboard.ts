@@ -133,71 +133,70 @@ export interface MarkTeacherDashboardQuery {
   todoLimit?: number
 }
 
-/** POST /api/mark/teacher/dashboard/overview */
-export function loadTeacherDashboardOverview(
+export interface MarkTeacherDashboardSectionQuery extends MarkTeacherDashboardQuery {
+  loadKey: string
+}
+
+export interface MarkTeacherDashboardSignalSectionVO {
+  loadKey: string
+  filterContext: MarkTeacherDashboardFilterContextVO
+  filterOptions: MarkTeacherDashboardFilterOptionsVO
+  signalMetrics: MarkTeacherDashboardSignalMetricsVO
+  markingProgressSummary: MarkTeacherDashboardMarkingProgressSummaryVO
+}
+
+export interface MarkTeacherDashboardExamsSectionVO {
+  ongoingExams: MarkTeacherDashboardOngoingExamItemVO[]
+  publishedExamInsights: MarkTeacherDashboardPublishedExamInsightItemVO[]
+  journeyStageSummary: MarkTeacherDashboardJourneyStageSummaryItemVO[]
+  todoTypeSummary: MarkTeacherDashboardTodoTypeSummaryItemVO[]
+  markingProgressSummary: MarkTeacherDashboardMarkingProgressSummaryVO
+  signalMetrics?: MarkTeacherDashboardSignalMetricsVO
+}
+
+export interface MarkTeacherDashboardTodosSectionVO {
+  pendingTodos: MarkTeacherDashboardPendingTodoItemVO[]
+  todoTypeSummary: MarkTeacherDashboardTodoTypeSummaryItemVO[]
+}
+
+/** POST /api/mark/teacher/dashboard/overview/signal */
+export function loadTeacherDashboardSignalSection(
   query: MarkTeacherDashboardQuery = {},
   config?: ExtendedAxiosRequestConfig,
-): Promise<MarkTeacherDashboardOverviewVO> {
-  return http.post<MarkTeacherDashboardOverviewVO>(
-    '/api/mark/teacher/dashboard/overview',
+): Promise<MarkTeacherDashboardSignalSectionVO> {
+  return http.post<MarkTeacherDashboardSignalSectionVO>(
+    '/api/mark/teacher/dashboard/overview/signal',
     query,
     config,
   )
 }
 
-/** 静默拉取概览：筛选回退 bootstrap 用，不触发全局错误 toast。 */
-export function loadTeacherDashboardOverviewSilent(
+export function loadTeacherDashboardSignalSectionSilent(
   query: MarkTeacherDashboardQuery = {},
-): Promise<MarkTeacherDashboardOverviewVO> {
-  return loadTeacherDashboardOverview(query, { showErrorMessage: false })
+): Promise<MarkTeacherDashboardSignalSectionVO> {
+  return loadTeacherDashboardSignalSection(query, { showErrorMessage: false })
 }
 
-let inflightOverviewRequest: Promise<MarkTeacherDashboardOverviewVO> | null = null
-let inflightOverviewQueryKey = ''
-
-function buildOverviewQueryKey(query: MarkTeacherDashboardQuery): string {
-  return JSON.stringify({
-    academicYear: query.academicYear ?? '',
-    semester: query.semester ?? '',
-    status: query.status ?? '',
-    ongoingLimit: query.ongoingLimit ?? '',
-    publishedInsightLimit: query.publishedInsightLimit ?? '',
-    todoLimit: query.todoLimit ?? '',
-  })
+/** POST /api/mark/teacher/dashboard/overview/exams */
+export function loadTeacherDashboardExamsSection(
+  query: MarkTeacherDashboardSectionQuery,
+  config?: ExtendedAxiosRequestConfig,
+): Promise<MarkTeacherDashboardExamsSectionVO> {
+  return http.post<MarkTeacherDashboardExamsSectionVO>(
+    '/api/mark/teacher/dashboard/overview/exams',
+    query,
+    config,
+  )
 }
 
-/** 同屏多段加载共用一次 overview 请求；后端分段契约就绪后可替换为独立 endpoint。 */
-export function loadTeacherDashboardOverviewOnce(
-  query: MarkTeacherDashboardQuery = {},
-): Promise<MarkTeacherDashboardOverviewVO> {
-  const queryKey = buildOverviewQueryKey(query)
-  if (!inflightOverviewRequest || inflightOverviewQueryKey !== queryKey) {
-    inflightOverviewQueryKey = queryKey
-    inflightOverviewRequest = loadTeacherDashboardOverview(query).finally(() => {
-      inflightOverviewRequest = null
-      inflightOverviewQueryKey = ''
-    })
-  }
-  return inflightOverviewRequest
-}
-
-/** 信号带分段：KPI、筛选上下文与进度汇总。 */
-export async function loadTeacherDashboardSignalSection(
-  query: MarkTeacherDashboardQuery = {},
-): Promise<MarkTeacherDashboardOverviewVO> {
-  return loadTeacherDashboardOverviewOnce(query)
-}
-
-/** 考试卡片分段：进行中考试与已发布学情。 */
-export async function loadTeacherDashboardExamsSection(
-  query: MarkTeacherDashboardQuery = {},
-): Promise<MarkTeacherDashboardOverviewVO> {
-  return loadTeacherDashboardOverviewOnce(query)
-}
-
-/** 待办分段：租户级待办 TopN。 */
-export async function loadTeacherDashboardTodosSection(
-  query: MarkTeacherDashboardQuery = {},
-): Promise<MarkTeacherDashboardOverviewVO> {
-  return loadTeacherDashboardOverviewOnce(query)
+/** POST /api/mark/teacher/dashboard/overview/todos */
+export function loadTeacherDashboardTodosSection(
+  query: MarkTeacherDashboardSectionQuery,
+  config?: ExtendedAxiosRequestConfig,
+): Promise<MarkTeacherDashboardTodosSectionVO> {
+  return http.post<MarkTeacherDashboardTodosSectionVO>(
+    '/api/mark/teacher/dashboard/overview/todos',
+    query,
+    config,
+  )
 }

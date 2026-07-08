@@ -73,8 +73,8 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import type { UiNoticeAction, UiSimpleListItem } from './types'
 import { computed, useSlots } from 'vue'
+import type { UiNoticeAction, UiSimpleListItem } from './types'
 import UiEmpty from './Empty.vue'
 import UiTag from './Tag.vue'
 import UiActionLink from './UiActionLink.vue'
@@ -114,7 +114,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (e: 'item-click', item: UiSimpleListItem): void
-  (e: 'action-click', actionEvent: { item: UiSimpleListItem, action: UiNoticeAction }): void
+  (e: 'action-click', actionEvent: { item: UiSimpleListItem; action: UiNoticeAction }): void
 }>()
 
 const slots = useSlots()
@@ -152,7 +152,8 @@ const handleActionClick = (item: UiSimpleListItem, action: UiNoticeAction) => {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
 .ui-simple-list {
   display: flex;
   flex-direction: column;
@@ -170,9 +171,9 @@ const handleActionClick = (item: UiSimpleListItem, action: UiNoticeAction) => {
   justify-content: space-between;
   gap: 12px;
   padding: 14px 16px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
   transition:
     border-color 0.2s ease,
     background-color 0.2s ease,
@@ -184,8 +185,8 @@ const handleActionClick = (item: UiSimpleListItem, action: UiNoticeAction) => {
 }
 
 .ui-simple-list__item--clickable:hover {
-  background: var(--dp-gray-50, #f8fafc);
-  border-color: var(--dp-border-strong, #d0d5dd);
+  background: var(--dp-gray-50);
+  border-color: var(--dp-border-strong);
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
 }
 
@@ -214,14 +215,14 @@ const handleActionClick = (item: UiSimpleListItem, action: UiNoticeAction) => {
   font-size: 15px;
   font-weight: 800;
   line-height: 1.5;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-simple-list__description {
   margin: 0;
   font-size: 13px;
   line-height: 1.75;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-simple-list__meta {
@@ -230,7 +231,7 @@ const handleActionClick = (item: UiSimpleListItem, action: UiNoticeAction) => {
   flex-wrap: wrap;
   gap: 6px;
   font-size: 12px;
-  color: var(--dp-text-muted, #6b7280);
+  color: var(--dp-text-muted);
 }
 
 .ui-simple-list__side {
@@ -243,7 +244,7 @@ const handleActionClick = (item: UiSimpleListItem, action: UiNoticeAction) => {
 .ui-simple-list__value {
   font-size: 14px;
   font-weight: 700;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-simple-list__actions {
@@ -254,7 +255,7 @@ const handleActionClick = (item: UiSimpleListItem, action: UiNoticeAction) => {
   gap: 12px;
 }
 
-@media (max-width: 767px) {
+@media (max-width: bp.$layout-mobile-max) {
   .ui-simple-list__item {
     flex-direction: column;
   }

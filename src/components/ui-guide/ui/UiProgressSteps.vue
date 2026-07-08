@@ -69,8 +69,8 @@ const normalizedSteps = computed(() => {
     ...step,
     key: step.key || `step-${index}`,
     status:
-      step.status
-      || (index < props.current ? 'completed' : index === props.current ? 'running' : 'pending'),
+      step.status ||
+      (index < props.current ? 'completed' : index === props.current ? 'running' : 'pending'),
   }))
 })
 
@@ -178,7 +178,7 @@ function handleClick(step: UiStepItem, index: number) {
 .ui-progress-steps__title {
   font-size: 13px;
   font-weight: 600;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
   line-height: 1.4;
 }
 
@@ -192,7 +192,7 @@ function handleClick(step: UiStepItem, index: number) {
 
 .ui-progress-steps__desc {
   font-size: 12px;
-  color: var(--dp-text-muted, #64748b);
+  color: var(--dp-text-muted);
   margin-top: 2px;
 }
 </style>

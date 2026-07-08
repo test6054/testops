@@ -2,15 +2,18 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { Key } from 'ant-design-vue/es/table/interface'
 import type { ArchiveScanBatchSnapshotItemVO } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import {
   batchRetryArchiveScanBatches,
   pageArchiveScanBatchSnapshots,
   SCAN_BATCH_QUALITY_FLAG_TONE,
   ScanBatchQualityFlagDescription,
 } from '@/apis/mark/archive-volume'
-import { SCAN_WORK_ORDER_STATUS_TONE, ScanWorkOrderStatusDescription } from '@/apis/mark/scanner-work-order'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
+import {
+  SCAN_WORK_ORDER_STATUS_TONE,
+  ScanWorkOrderStatusDescription,
+} from '@/apis/mark/scanner-work-order'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -48,7 +51,9 @@ function handleSelectionChange(keys: Key[]) {
 
 function qualityScoreClass(score?: number): string {
   if (score == null) return ''
-  return score >= 95 ? 'archive-scan-batch-snapshot__score--pass' : 'archive-scan-batch-snapshot__score--warn'
+  return score >= 95
+    ? 'archive-scan-batch-snapshot__score--pass'
+    : 'archive-scan-batch-snapshot__score--warn'
 }
 
 async function loadRows() {
@@ -163,10 +168,18 @@ onMounted(() => {
         </template>
         <template v-else-if="column.key === 'workOrderStatus'">
           <UiTag
-            :tone="strictEnumTone(SCAN_WORK_ORDER_STATUS_TONE, record.workOrderStatus, 'workOrderStatus')"
+            :tone="
+              strictEnumTone(SCAN_WORK_ORDER_STATUS_TONE, record.workOrderStatus, 'workOrderStatus')
+            "
             size="sm"
           >
-            {{ strictEnumLabel(ScanWorkOrderStatusDescription, record.workOrderStatus, 'workOrderStatus') }}
+            {{
+              strictEnumLabel(
+                ScanWorkOrderStatusDescription,
+                record.workOrderStatus,
+                'workOrderStatus',
+              )
+            }}
           </UiTag>
         </template>
         <template v-else-if="column.key === 'createTime'">
@@ -220,9 +233,9 @@ onMounted(() => {
   font-variant-numeric: tabular-nums;
 }
 .archive-scan-batch-snapshot__score--pass {
-  color: var(--dp-success, #12b76a);
+  color: var(--dp-success);
 }
 .archive-scan-batch-snapshot__score--warn {
-  color: var(--dp-warning, #f5a623);
+  color: var(--dp-warning);
 }
 </style>

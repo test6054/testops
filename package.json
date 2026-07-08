@@ -13,6 +13,7 @@
     "build:test": "vue-tsc -p tsconfig.app.json --noEmit && vite build --mode test",
     "preview": "vite preview --port 5050",
     "typecheck": "pnpm exec vue-tsc -p tsconfig.app.json --noEmit",
+    "css:guard": "node scripts/css-guard.mjs",
     "lint": "eslint",
     "lint:fix": "node scripts/eslint-fix.mjs"
   },

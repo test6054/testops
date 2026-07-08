@@ -69,16 +69,16 @@ function handleChange(value: SwitchProps['checked']) {
 }
 
 .ui-switch.ant-switch.ant-switch-checked {
-  background: var(--dp-blue-600, #2563eb);
+  background: var(--dp-blue-600);
 }
 
 .ui-switch.ant-switch.ant-switch-checked:hover:not(.ant-switch-disabled) {
-  background: var(--dp-blue-700, #1d4ed8);
+  background: var(--dp-blue-700);
 }
 
 .ui-switch.ant-switch:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px var(--dp-focus-ring, rgba(37, 99, 235, 0.25));
+  box-shadow: 0 0 0 3px var(--dp-focus-ring);
 }
 
 .ui-switch.ant-switch :deep(.ant-switch-handle::before) {

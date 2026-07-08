@@ -149,8 +149,8 @@ const containerStyle = computed(() => {
 
 <style scoped>
 .ui-state-block {
-  --state-border: var(--dp-border, #e5e7eb);
-  --state-surface: var(--dp-surface, #fff);
+  --state-border: var(--dp-border);
+  --state-surface: var(--dp-surface);
   --state-icon-bg: #eff6ff;
   --state-icon-color: #2563eb;
   display: flex;
@@ -161,7 +161,7 @@ const containerStyle = computed(() => {
   min-height: 220px;
   padding: 28px 24px;
   border: 1px solid var(--state-border);
-  border-radius: var(--dp-radius-panel, 4px);
+  border-radius: var(--dp-radius-panel);
   background: var(--state-surface);
   text-align: center;
 }
@@ -223,9 +223,9 @@ const containerStyle = computed(() => {
   justify-content: center;
   width: 72px;
   height: 72px;
-  border-radius: var(--dp-radius-panel, 4px);
+  border-radius: var(--dp-radius-panel);
   background: var(--state-icon-bg);
-  border: 1px solid var(--dp-border, #e5e7eb);
+  border: 1px solid var(--dp-border);
   color: var(--state-icon-color);
   font-size: 30px;
 }
@@ -253,21 +253,21 @@ const containerStyle = computed(() => {
   font-size: 18px;
   font-weight: 800;
   line-height: 1.4;
-  color: var(--dp-text-primary, #0f172a);
+  color: var(--dp-text-primary);
 }
 
 .ui-state-block__description {
   margin: 0;
   font-size: 14px;
   line-height: 1.7;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-secondary);
 }
 
 .ui-state-block__helper {
   margin: 0;
   font-size: 13px;
   line-height: 1.6;
-  color: var(--dp-text-muted, #64748b);
+  color: var(--dp-text-muted);
 }
 
 .ui-state-block__body {
