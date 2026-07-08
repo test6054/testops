@@ -4,6 +4,7 @@ import {
   MarkTeacherDashboardTodoTypeCode,
   MarkTeacherDashboardTodoTypeDescription
 } from '@/types/enums/mark-teacher-dashboard-todo-type-enum'
+import { formatAcademicYearSemester } from '@/types/enums/semester-enum'
 
 /** 待办紧急度档位，前后端语义对齐。 */
 export type MarkDashboardTodoUrgency = 'urgent' | 'attention' | 'info' | 'normal'
@@ -82,23 +83,43 @@ export function sumTodoCountByType(
     .reduce((sum, todo) => sum + (todo.count ?? 0), 0)
 }
 
-/** 待办行主标题：以考试名区分同类型多条，避免重复 label 像 demo。 */
+/** 待办行主标题：以考试名区分同类型多条。 */
 export function resolveTodoRowTitle(todo: MarkTeacherDashboardPendingTodoItemVO): string {
   const examName = todo.examName?.trim()
-  if (examName) return examName
+  if (examName) {
+    return examName
+  }
   return MarkTeacherDashboardTodoTypeDescription[todo.todoType]
 }
 
-/** 待办行副文案：类型 + 数量 + 阻断标记。 */
-export function resolveTodoRowMeta(todo: MarkTeacherDashboardPendingTodoItemVO): string {
-  const parts: string[] = [MarkTeacherDashboardTodoTypeDescription[todo.todoType]]
-  if (todo.count > 0) {
-    parts.push(
-      `${todo.count.toLocaleString('zh-CN')} ${MARK_DASHBOARD_TODO_COUNT_UNIT[todo.todoType]}`,
-    )
+/** 待办行任务文案：仅消费后端 label。 */
+export function resolveTodoRowLabel(todo: MarkTeacherDashboardPendingTodoItemVO): string {
+  const label = todo.label?.trim()
+  if (label) {
+    return label
   }
-  if (todo.blocking) parts.push('阻断')
-  return parts.join(' · ')
+  if (todo.count > 0) {
+    return `${todo.count.toLocaleString('zh-CN')} ${MARK_DASHBOARD_TODO_COUNT_UNIT[todo.todoType]}`
+  }
+  return MarkTeacherDashboardTodoTypeDescription[todo.todoType]
+}
+
+/** 待办行考试上下文：标题已有考试名时只展示学年学期，避免编号重复。 */
+export function resolveTodoRowContext(todo: MarkTeacherDashboardPendingTodoItemVO): string | undefined {
+  const examName = todo.examName?.trim()
+  const examNo = todo.examNo?.trim()
+  const term = formatAcademicYearSemester(todo.academicYear, todo.semester)
+  if (examName) {
+    return term || undefined
+  }
+  const parts: string[] = []
+  if (examNo) {
+    parts.push(examNo)
+  }
+  if (term) {
+    parts.push(term)
+  }
+  return parts.length > 0 ? parts.join(' · ') : undefined
 }
 
 export function resolveDefaultPendingTodoTab(

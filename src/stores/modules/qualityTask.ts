@@ -117,6 +117,7 @@ export const useQualityTaskStore = defineStore('qualityTask', () => {
         programId: scope.programId,
         trainingPlanId: scope.trainingPlanId,
         qualityCourseId: scope.qualityCourseId,
+        includeAchievementDisplay: false,
       })
       const list = result.list
       reportExportsInFlight.value = list.filter(

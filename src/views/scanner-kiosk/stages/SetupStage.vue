@@ -3,7 +3,7 @@
  * 讯飞式扫描工作台：左任务进度 + 批次列表，右设备状态条 + 主 CTA。
  */
 import { PlayCircleFilled, ReloadOutlined, SettingOutlined } from '@ant-design/icons-vue'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { ScannerKioskScanModeCode } from '@/apis/mark/scanner-kiosk'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { ExamMaterialLayoutModeCode } from '@/types/enums/exam-material-layout-mode-enum'
@@ -193,12 +193,23 @@ async function startScan() {
   if (!workflow.canStartScan.value) return
   const ok = await confirmCalibrationIfNeeded()
   if (!ok) return
-  await workflow.submitScanJob()
+  const started = await workflow.submitScanJob()
+  if (started) {
+    stage.gotoStage('scanning')
+  }
 }
 
 function continueActiveBatch() {
-  stage.gotoStage('scanning')
+  void workflow.ensureScanningWorkspaceReady().then((ready) => {
+    if (ready) {
+      stage.gotoStage('scanning')
+    }
+  })
 }
+
+onMounted(() => {
+  void workflow.ensureScannerInventoryReady()
+})
 </script>
 
 <template>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
 import AimOutlined from '@ant-design/icons-vue/AimOutlined'
+import AlertOutlined from '@ant-design/icons-vue/AlertOutlined'
 import ApartmentOutlined from '@ant-design/icons-vue/ApartmentOutlined'
 import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
 import AppstoreOutlined from '@ant-design/icons-vue/AppstoreOutlined'
@@ -11,7 +12,10 @@ import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
 import BellOutlined from '@ant-design/icons-vue/BellOutlined'
 import BlockOutlined from '@ant-design/icons-vue/BlockOutlined'
 import BookOutlined from '@ant-design/icons-vue/BookOutlined'
+import BranchesOutlined from '@ant-design/icons-vue/BranchesOutlined'
 import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
+import CalculatorOutlined from '@ant-design/icons-vue/CalculatorOutlined'
+import CalendarOutlined from '@ant-design/icons-vue/CalendarOutlined'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import CheckSquareOutlined from '@ant-design/icons-vue/CheckSquareOutlined'
 import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
@@ -44,30 +48,39 @@ import HistoryOutlined from '@ant-design/icons-vue/HistoryOutlined'
 import HomeOutlined from '@ant-design/icons-vue/HomeOutlined'
 import InboxOutlined from '@ant-design/icons-vue/InboxOutlined'
 import InteractionOutlined from '@ant-design/icons-vue/InteractionOutlined'
+import LayoutOutlined from '@ant-design/icons-vue/LayoutOutlined'
+import LikeOutlined from '@ant-design/icons-vue/LikeOutlined'
 import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
+import LinkOutlined from '@ant-design/icons-vue/LinkOutlined'
 import MailOutlined from '@ant-design/icons-vue/MailOutlined'
 import MessageOutlined from '@ant-design/icons-vue/MessageOutlined'
 import NodeIndexOutlined from '@ant-design/icons-vue/NodeIndexOutlined'
 import OrderedListOutlined from '@ant-design/icons-vue/OrderedListOutlined'
+import PayCircleOutlined from '@ant-design/icons-vue/PayCircleOutlined'
+import PieChartOutlined from '@ant-design/icons-vue/PieChartOutlined'
 import PlayCircleOutlined from '@ant-design/icons-vue/PlayCircleOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import PrinterOutlined from '@ant-design/icons-vue/PrinterOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import QuestionCircleOutlined from '@ant-design/icons-vue/QuestionCircleOutlined'
+import RadarChartOutlined from '@ant-design/icons-vue/RadarChartOutlined'
 import ReadOutlined from '@ant-design/icons-vue/ReadOutlined'
 import ReconciliationOutlined from '@ant-design/icons-vue/ReconciliationOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import RiseOutlined from '@ant-design/icons-vue/RiseOutlined'
 import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
+import RocketOutlined from '@ant-design/icons-vue/RocketOutlined'
 import SafetyCertificateOutlined from '@ant-design/icons-vue/SafetyCertificateOutlined'
 import SafetyOutlined from '@ant-design/icons-vue/SafetyOutlined'
 import ScanOutlined from '@ant-design/icons-vue/ScanOutlined'
 import ScheduleOutlined from '@ant-design/icons-vue/ScheduleOutlined'
+import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
 import SettingOutlined from '@ant-design/icons-vue/SettingOutlined'
 import ShoppingCartOutlined from '@ant-design/icons-vue/ShoppingCartOutlined'
 import SolutionOutlined from '@ant-design/icons-vue/SolutionOutlined'
 import SoundOutlined from '@ant-design/icons-vue/SoundOutlined'
 import StarOutlined from '@ant-design/icons-vue/StarOutlined'
+import SwapOutlined from '@ant-design/icons-vue/SwapOutlined'
 import TableOutlined from '@ant-design/icons-vue/TableOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
@@ -84,6 +97,7 @@ const props = defineProps<{ icon?: string }>()
 
 const ICON_COMPONENTS: Record<string, Component> = {
   AimOutlined,
+  AlertOutlined,
   ApartmentOutlined,
   ApiOutlined,
   AppstoreOutlined,
@@ -92,9 +106,12 @@ const ICON_COMPONENTS: Record<string, Component> = {
   BankOutlined,
   BarChartOutlined,
   BellOutlined,
+  BranchesOutlined,
   BlockOutlined,
   BookOutlined,
   BulbOutlined,
+  CalculatorOutlined,
+  CalendarOutlined,
   CheckCircleOutlined,
   CheckSquareOutlined,
   CloudDownloadOutlined,
@@ -127,17 +144,24 @@ const ICON_COMPONENTS: Record<string, Component> = {
   HomeOutlined,
   InboxOutlined,
   InteractionOutlined,
+  LayoutOutlined,
+  LikeOutlined,
   LineChartOutlined,
+  LinkOutlined,
   MailOutlined,
   MessageOutlined,
   NodeIndexOutlined,
   OrderedListOutlined,
+  PayCircleOutlined,
+  PieChartOutlined,
   PlayCircleOutlined,
   PlusOutlined,
   PrinterOutlined,
   ProfileOutlined,
   QuestionCircleOutlined,
+  RadarChartOutlined,
   ReadOutlined,
+  RocketOutlined,
   ReconciliationOutlined,
   ReloadOutlined,
   RiseOutlined,
@@ -146,11 +170,13 @@ const ICON_COMPONENTS: Record<string, Component> = {
   SafetyOutlined,
   ScanOutlined,
   ScheduleOutlined,
+  SearchOutlined,
   SettingOutlined,
   ShoppingCartOutlined,
   SolutionOutlined,
   SoundOutlined,
   StarOutlined,
+  SwapOutlined,
   TableOutlined,
   TeamOutlined,
   ThunderboltOutlined,

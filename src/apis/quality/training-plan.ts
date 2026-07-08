@@ -52,10 +52,46 @@ export interface TrainingPlanSaveRequest {
   enabled?: boolean
 }
 
+/** Wire 层 Long 可能以 number 到达，统一归一为 string 供 Select / Store 比较。 */
+export function normalizeTrainingPlanId(value: unknown): string {
+  if (value === null || value === undefined) {
+    return ''
+  }
+  if (typeof value === 'string') {
+    return value.trim()
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value)
+  }
+  return String(value)
+}
+
+/** 归一培养方案 VO 主键与关联 ID，避免 a-select 值类型漂移。 */
+export function normalizeTrainingPlanVO(plan: TrainingPlanVO): TrainingPlanVO {
+  return {
+    ...plan,
+    id: normalizeTrainingPlanId(plan.id),
+    programId: normalizeTrainingPlanId(plan.programId),
+    accreditationProfileId: plan.accreditationProfileId
+      ? normalizeTrainingPlanId(plan.accreditationProfileId)
+      : undefined,
+    storageFileId: plan.storageFileId ? normalizeTrainingPlanId(plan.storageFileId) : undefined,
+    confirmedUserId: plan.confirmedUserId ? normalizeTrainingPlanId(plan.confirmedUserId) : undefined,
+  }
+}
+
+function normalizeTrainingPlanPage(result: PageResult<TrainingPlanVO>): PageResult<TrainingPlanVO> {
+  return {
+    ...result,
+    list: result.list.map((item) => normalizeTrainingPlanVO(item)),
+  }
+}
+
 export const trainingPlanApi = {
-  page: (data: TrainingPlanQueryRequest) =>
-    http.post<PageResult<TrainingPlanVO>>(`${BASE}/page`, data),
-  detail: (id: string) => http.post<TrainingPlanVO>(`${BASE}/detail`, { id }),
+  page: async (data: TrainingPlanQueryRequest) =>
+    normalizeTrainingPlanPage(await http.post<PageResult<TrainingPlanVO>>(`${BASE}/page`, data)),
+  detail: async (id: string) =>
+    normalizeTrainingPlanVO(await http.post<TrainingPlanVO>(`${BASE}/detail`, { id: normalizeTrainingPlanId(id) })),
   create: (data: TrainingPlanSaveRequest) => http.post<string>(`${BASE}/create`, data),
   update: (data: TrainingPlanSaveRequest) => http.post<void>(`${BASE}/update`, data),
   delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),

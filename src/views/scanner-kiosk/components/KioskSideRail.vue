@@ -29,7 +29,8 @@ const boundBatchKpiCount = computed(() => {
 
 const railDeviceLed = computed(() => {
   if (!workflow.health.value?.bound) return 'danger'
-  if (!workflow.health.value?.scannerConnected) return 'warning'
+  if (workflow.isScannerProbePending.value) return 'warning'
+  if (!workflow.isLocalScannerConnected.value) return 'warning'
   return 'success'
 })
 

@@ -8,6 +8,7 @@ import type { ScanBatchQualityFlagCode } from '@/types/enums/scan-batch-quality-
 import type { ScanDispatchTicketStatusCode } from '@/types/enums/scan-dispatch-ticket-status-enum'
 import type { ScanOperationActionCode } from '@/types/enums/scan-operation-action-enum'
 import type { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
+import type { ScannerExceptionItemKindCode } from '@/types/enums/scanner-exception-item-kind-enum'
 import http from '@/config/axios'
 import {
   ALL_SCAN_DISPATCH_TICKET_STATUS_CODES,
@@ -191,6 +192,47 @@ export interface SuspectedMixedBatchItemVO {
   diagnostic?: string
 }
 
+/** 扫描异常看板分页条目，对应后端 ScannerExceptionDashboardItemVO */
+export interface ScannerExceptionDashboardItemVO {
+  itemKind?: ScannerExceptionItemKindCode
+  ticketId?: string
+  workOrderId?: string
+  volumeId?: string
+  scanBatchId?: string
+  examId?: string
+  ticketStatus?: ScanDispatchTicketStatusCode
+  workOrderStatus?: ScanWorkOrderStatusCode
+  batchQualityFlag?: ScanBatchQualityFlagCode
+  traceLabelCode?: string
+  failureReason?: string
+  batchExternalNo?: string
+  batchNo?: string
+  diagnostic?: string
+  pageRegisterDiagnostic?: string
+  registeredPageCount?: number
+  pageCount?: number
+  taskKind?: ScanTaskKindCode
+  contextExamId?: string
+  contextVolumeId?: string
+  contextCollectMode?: PortfolioCollectModeCode
+  contextTeacherId?: string
+  contextGapTaskId?: string
+  workOrderBatchExternalNo?: string
+}
+
+export interface ScannerExceptionDashboardPageRequest extends QueryDto {
+  itemKind?: ScannerExceptionItemKindCode
+}
+
+/** 扫描异常 KPI 计数，对应后端 ScannerExceptionMetricCounts */
+export interface ScannerExceptionMetricCountsVO {
+  failedTicketCount?: number
+  failedWorkOrderCount?: number
+  suspectedMixedBatchCount?: number
+  pageRegisterBlockedCount?: number
+  committingWorkOrderCount?: number
+}
+
 /** 扫描异常看板聚合 VO，对应后端 ScannerExceptionDashboardVO */
 export interface ScannerExceptionDashboardVO {
   failedTickets?: FailedTicketItemVO[]
@@ -306,6 +348,20 @@ export function loadScannerExceptionDashboard() {
   return http.post<ScannerExceptionDashboardVO>(
     '/api/mark/scanner/exception/dashboard/aggregate',
     {},
+  )
+}
+
+export function loadScannerExceptionMetrics() {
+  return http.post<ScannerExceptionMetricCountsVO>(
+    '/api/mark/scanner/exception/dashboard/metrics',
+    {},
+  )
+}
+
+export function pageScannerExceptionDashboard(request: ScannerExceptionDashboardPageRequest) {
+  return http.post<PageResult<ScannerExceptionDashboardItemVO>>(
+    '/api/mark/scanner/exception/dashboard/page',
+    request,
   )
 }
 

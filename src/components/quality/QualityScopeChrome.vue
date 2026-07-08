@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import type { TrainingPlanVO } from '@/apis/quality/training-plan'
 /**
  * 质量评价域唯一 scope 选择器：按 scopeProfile 裁剪字段，写入 qualityStore。
  * 禁止 silent 自动选首项；仅恢复 persist 选择。
@@ -6,6 +7,7 @@
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { trainingPlanApi } from '@/apis/quality/training-plan'
 import { CONFIRMATION_STATUS_COLOR, ConfirmationStatusDescription } from '@/apis/quality/types'
 import {
   CourseSelector,
@@ -17,6 +19,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { useQualityScopeProfile } from '@/composables/useQualityScopeProfile'
 import { useQualityStore } from '@/stores/modules/quality'
 import { ALL_SEMESTER_CODES, SemesterOptions } from '@/types/enums/semester-enum'
+import { generateAcademicYearOptions, getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'QualityScopeChrome' })
@@ -47,6 +50,16 @@ const showCourse = computed(() => scopeProfile.value === 'plan-course')
 
 const needsPlanSelection = computed(() => showPlan.value && !trainingPlanId.value)
 
+const schoolYearOptions = computed(() => {
+  const years = generateAcademicYearOptions()
+  const current = qualityStore.currentSchoolYear.trim()
+  const options = years.map((year) => ({ label: year, value: year }))
+  if (current && !years.includes(current)) {
+    return [{ label: current, value: current }, ...options]
+  }
+  return options
+})
+
 const planConfirmationLabel = computed(() => {
   if (!qualityStore.currentPlan?.confirmationStatus) {
     return ''
@@ -69,13 +82,37 @@ const planConfirmationTone = computed((): BadgeTone => {
   )
 })
 
+async function resolvePlanForScope(): Promise<TrainingPlanVO | undefined> {
+  if (!qualityStore.currentTrainingPlanId) {
+    return undefined
+  }
+  if (qualityStore.currentPlan) {
+    return qualityStore.currentPlan
+  }
+  return trainingPlanApi.detail(qualityStore.currentTrainingPlanId)
+}
+
+function applySchoolYearFromPlan(plan?: TrainingPlanVO | null): void {
+  const schoolYear = plan?.schoolYear?.trim()
+    || getDefaultAcademicYearAndSemester().academicYear
+  if (!qualityStore.currentSchoolYear.trim()) {
+    qualityStore.setSchoolPeriod(schoolYear, undefined)
+  }
+}
+
 async function restorePersistedScope(): Promise<void> {
   try {
     if (!qualityStore.majorCategoryOptions.length) {
       await qualityStore.loadMajorCategoryOptions()
     }
-    if (qualityStore.currentProgramId && qualityStore.currentTrainingPlanId) {
-      await qualityStore.loadTrainingPlanOptions()
+    if (qualityStore.currentProgramId || qualityStore.currentTrainingPlanId) {
+      await qualityStore.loadTrainingPlanOptions({
+        programId: qualityStore.currentProgramId || undefined,
+      })
+    }
+    if (qualityStore.currentTrainingPlanId) {
+      const plan = await resolvePlanForScope()
+      applySchoolYearFromPlan(plan)
     }
   } catch {
     // 由业务页展示空态 / 错误
@@ -91,13 +128,22 @@ function handleProgramChange(value: string | null): void {
   emit('change')
 }
 
-function handleTrainingPlanChange(value: string | null): void {
+function handleTrainingPlanValueSync(value: string | null): void {
+  const normalized = value?.trim() || ''
+  if (normalized !== qualityStore.currentTrainingPlanId) {
+    qualityStore.setTrainingPlan(normalized)
+  }
+}
+
+function handleTrainingPlanChange(value: string | null, option?: TrainingPlanVO): void {
   qualityStore.setTrainingPlan(value || '')
+  applySchoolYearFromPlan(option)
   emit('change')
 }
 
-function handleSchoolYearChange(value: string): void {
-  qualityStore.setSchoolPeriod(value?.trim() || '', value?.trim() ? undefined : null)
+function handleSchoolYearChange(raw: unknown): void {
+  const value = typeof raw === 'string' ? raw.trim() : ''
+  qualityStore.setSchoolPeriod(value, value ? undefined : null)
   emit('change')
 }
 
@@ -151,19 +197,23 @@ onMounted(() => {
       :program-id="programId"
       :width="260"
       class="quality-scope-chrome__select"
-      @update:value="handleTrainingPlanChange"
+      @update:value="handleTrainingPlanValueSync"
+      @change="handleTrainingPlanChange"
     />
     <template v-if="needsPlanSelection">
       <span class="quality-scope-chrome__hint">请选择培养方案</span>
       <UiButton variant="outline" size="sm" @click="goSelectPlan"> 去培养方案工作台 </UiButton>
     </template>
     <template v-else>
-      <a-input
+      <a-select
         v-if="showPeriod"
-        :value="qualityStore.currentSchoolYear"
-        placeholder="学年 如 2024-2025"
-        class="quality-scope-chrome__input"
+        :value="qualityStore.currentSchoolYear || undefined"
+        placeholder="学年"
+        class="quality-scope-chrome__select quality-scope-chrome__select--year"
         allow-clear
+        show-search
+        option-filter-prop="label"
+        :options="schoolYearOptions"
         @update:value="handleSchoolYearChange"
       />
       <a-select
@@ -213,13 +263,13 @@ onMounted(() => {
   &__select {
     min-width: 0;
 
+    &--year {
+      width: 140px;
+    }
+
     &--semester {
       width: 120px;
     }
-  }
-
-  &__input {
-    width: 140px;
   }
 }
 </style>

@@ -66,6 +66,9 @@ export interface MarkTeacherDashboardPendingTodoItemVO {
   todoType: MarkTeacherDashboardTodoTypeCode
   examId?: string
   examName?: string
+  examNo?: string
+  academicYear?: string
+  semester?: SemesterCode
   label: string
   count: number
   blocking?: boolean

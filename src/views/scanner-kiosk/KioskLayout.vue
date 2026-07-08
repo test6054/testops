@@ -12,7 +12,7 @@ import type { KioskUiState } from './composables/kioskInjection'
  *
  * 此文件不再持有 UI 细节，仅负责 grid 布局与组件编排。
  */
-import { computed, onActivated, onMounted, provide, ref } from 'vue'
+import { computed, onActivated, provide, ref, watch } from 'vue'
 import KioskActivationGate from './components/KioskActivationGate.vue'
 import KioskAppBar from './components/KioskAppBar.vue'
 import KioskBottomBar from './components/KioskBottomBar.vue'
@@ -92,12 +92,16 @@ const showStageBar = computed(
 )
 const showSideRail = computed(() => showStageBar.value)
 
-// 静默对齐路由到自动推导阶段：
-// - 浏览器刷新 / 直接访问 /scanner-kiosk/* 时按 currentJob 状态机 redirect
-// - 等到 workflow 自身 onMounted 链路（refreshAll + loadExamOptions）完成后下一个 tick 调用
-onMounted(() => {
-  setTimeout(() => stage.autoSyncOnce(), 0)
-})
+// 静默对齐路由到自动推导阶段：首屏 refreshAll 完成后再 sync，避免 context 未就绪误跳 Step2
+watch(
+  () => workflow.kioskBootstrapPending.value,
+  (pending) => {
+    if (!pending) {
+      stage.autoSyncOnce()
+    }
+  },
+  { immediate: true },
+)
 
 onActivated(() => {
   void workflow.refreshAll().then(() => {

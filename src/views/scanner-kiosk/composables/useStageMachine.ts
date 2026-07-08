@@ -78,7 +78,7 @@ export function useStageMachine(workflow: ExamKioskWorkflow) {
     if (workflow.activeBackendScanSession.value) return 'scanning'
     if (job) return 'scanning'
     if (workflow.reviewScanJob.value) return 'review'
-    return 'scanning'
+    return 'setup'
   })
 
   const currentStage = computed<KioskStageId>(() => {
@@ -89,10 +89,18 @@ export function useStageMachine(workflow: ExamKioskWorkflow) {
   function gotoStage(stageId: KioskStageId) {
     if (stageId === currentStage.value) return
     const job = workflow.currentJob.value
-    const activeSession = Boolean(
+    const hasScanSession = Boolean(
       workflow.activeBackendScanSession.value
       || (job && SCANNING_JOB_STATUS.has(job.status)),
     )
+    if (stageId === 'scanning' && !hasScanSession && !job && !workflow.reviewScanJob.value) {
+      const setup = ALL_KIOSK_STAGES.find((s) => s.id === 'setup')
+      if (setup && currentStage.value !== 'setup') {
+        router.replace({ name: setup.routeName, query: route.query })
+      }
+      return
+    }
+    const activeSession = hasScanSession
     if (stageId === 'review' && (Boolean(job) || !workflow.reviewScanJob.value)) return
     if (activeSession && stageId !== 'scanning') {
       const stage = ALL_KIOSK_STAGES.find((s) => s.id === 'scanning')

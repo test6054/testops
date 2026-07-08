@@ -84,7 +84,9 @@ export const useQualityStore = defineStore(
     const hasCourse = computed(() => !!currentQualityCourseId.value)
 
     const currentPlan = computed<TrainingPlanVO | undefined>(() =>
-      trainingPlanOptions.value.find((item) => item.id === currentTrainingPlanId.value),
+      trainingPlanOptions.value.find(
+        (item) => item.id === currentTrainingPlanId.value,
+      ),
     )
 
     const currentCourse = computed<QualityCourseVO | undefined>(() =>
@@ -213,13 +215,14 @@ export const useQualityStore = defineStore(
 
     /** 切换培养方案：清空下游 requirement / course 缓存 */
     function setTrainingPlan(trainingPlanId: string) {
-      const planChanged = currentTrainingPlanId.value !== trainingPlanId
+      const normalizedPlanId = trainingPlanId.trim()
+      const planChanged = currentTrainingPlanId.value !== normalizedPlanId
       if (planChanged) {
         currentQualityCourseId.value = ''
         requirementOptions.value = []
         qualityCourseOptions.value = []
       }
-      currentTrainingPlanId.value = trainingPlanId
+      currentTrainingPlanId.value = normalizedPlanId
       if (planChanged) {
         bumpScopeChangeEpoch()
       }

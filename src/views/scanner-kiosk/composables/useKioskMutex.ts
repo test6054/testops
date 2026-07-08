@@ -99,7 +99,9 @@ export function useKioskMutex(workflow: ExamKioskWorkflow) {
       cancelJob: workflow.canCancelJob.value
         ? ''
         : !job
-            ? '当前没有可取消的任务'
+            ? workflow.hasOrphanBackendScanSession.value
+              ? '当前未完成进程不可结束'
+              : '当前没有可取消的任务'
             : job.status === LocalScanJobStatusCode.FAILED
               ? '扫描已产生页面，请使用重试上传或删除任务'
               : '当前任务已进入上传链路，不能取消',

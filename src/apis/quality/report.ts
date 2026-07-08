@@ -64,6 +64,8 @@ export interface ReportQueryRequest extends QueryDto {
   semester?: SemesterCode
   status?: ReportStatusCode
   keyword?: string
+  /** 是否装配达成度结果展示标签；导出监控等轻量分页传 false */
+  includeAchievementDisplay?: boolean
 }
 
 /** 后端 ReportSaveRequest 真值 */

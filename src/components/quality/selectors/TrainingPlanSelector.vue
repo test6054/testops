@@ -7,7 +7,7 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { TrainingPlanVO } from '@/apis/quality/training-plan'
 import { onMounted, ref, watch } from 'vue'
-import { trainingPlanApi } from '@/apis/quality/training-plan'
+import { normalizeTrainingPlanId, trainingPlanApi } from '@/apis/quality/training-plan'
 import { ConfirmationStatusCode } from '@/apis/quality/types'
 import { showUserError } from '@/utils/error-handler'
 import { requireAllPages } from './page-contract'
@@ -43,12 +43,15 @@ const emit = defineEmits<{
 const options = ref<TrainingPlanVO[]>([])
 const loading = ref(false)
 // a-select v-model:value 不接受 null，外部 emit 仍保持 string | null。
-const internalValue = ref<string | undefined>(props.value ?? undefined)
+const internalValue = ref<string | undefined>(
+  props.value ? normalizeTrainingPlanId(props.value) || undefined : undefined,
+)
 
 watch(
   () => props.value,
   (v) => {
-    internalValue.value = v ?? undefined
+    internalValue.value = v ? normalizeTrainingPlanId(v) || undefined : undefined
+    void ensureSelectedOptionVisible()
   },
 )
 
@@ -56,6 +59,27 @@ watch(
   () => props.programId,
   () => loadOptions(),
 )
+
+async function ensureSelectedOptionVisible(): Promise<void> {
+  const selectedId = internalValue.value
+  if (!selectedId || options.value.some((item) => item.id === selectedId)) {
+    return
+  }
+  try {
+    const detail = await trainingPlanApi.detail(selectedId)
+    options.value = [detail, ...options.value]
+    if (detail.id !== selectedId) {
+      internalValue.value = detail.id
+      emit('update:value', detail.id)
+      emit('change', detail.id, detail)
+    }
+  } catch (e) {
+    showUserError(e, '培养方案详情加载失败')
+    internalValue.value = undefined
+    emit('update:value', null)
+    emit('change', null, undefined)
+  }
+}
 
 async function loadOptions() {
   loading.value = true
@@ -71,6 +95,7 @@ async function loadOptions() {
         }),
       '培养方案',
     )
+    await ensureSelectedOptionVisible()
   } catch (e) {
     showUserError(e, '培养方案列表加载失败')
   } finally {
@@ -78,8 +103,22 @@ async function loadOptions() {
   }
 }
 
+function normalizeSelectValue(val: SelectValue): string | null {
+  if (val === null || val === undefined) {
+    return null
+  }
+  if (typeof val === 'string') {
+    const trimmed = val.trim()
+    return trimmed || null
+  }
+  if (typeof val === 'number' && Number.isFinite(val)) {
+    return String(val)
+  }
+  return null
+}
+
 function handleChange(val: SelectValue) {
-  const next: string | null = typeof val === 'string' ? val : null
+  const next = normalizeSelectValue(val)
   internalValue.value = next ?? undefined
   const option = options.value.find((o) => o.id === next)
   emit('update:value', next)

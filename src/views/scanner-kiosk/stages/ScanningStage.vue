@@ -109,11 +109,15 @@ const previewPageNo = computed({
     workflow.previewPageNo.value = v
   },
 })
-const effectiveEmptyScanHint = computed(() =>
-  workflow.activeBackendScanSession.value
-    ? workflow.activeBackendScanSessionReason.value || '扫描进程仍在恢复中，请先刷新当前扫描状态。'
-    : '当前本机还没有创建扫描任务，单纯放纸不会自动生成扫描批次，请先返回“准备扫描”点击“开始扫描”。',
-)
+const effectiveEmptyScanHint = computed(() => {
+  if (workflow.scanWorkspaceBootstrapping.value) {
+    return '正在恢复本机扫描批次与 Agent 任务，请稍候…'
+  }
+  if (workflow.activeBackendScanSession.value) {
+    return workflow.activeBackendScanSessionReason.value || '扫描进程仍在恢复中，请先刷新当前扫描状态。'
+  }
+  return '本机尚未建立扫描任务。请返回「准备扫描」点击「开始扫描」，或点击下方「重新开始扫描」自动创建批次。'
+})
 const hasRecoverableBackendSession = computed(() => workflow.activeBackendScanSession.value)
 
 // 视图状态：缩放 / 旋转 / 灰度（不进 workflow，仅 stage 内部）
@@ -189,7 +193,10 @@ async function refreshScanningState() {
 
 async function restartScanFromEmptyState() {
   if (!workflow.canStartScan.value || workflow.loading.value) return
-  await workflow.submitScanJob()
+  const started = await workflow.submitScanJob()
+  if (!started && !workflow.currentJob.value) {
+    await workflow.ensureScanningWorkspaceReady()
+  }
 }
 
 function clampZoom(v: number) {
@@ -340,7 +347,10 @@ function onViewKeyDown(event: KeyboardEvent) {
   }
 }
 
-onMounted(() => window.addEventListener('keydown', onViewKeyDown))
+onMounted(() => {
+  window.addEventListener('keydown', onViewKeyDown)
+  void workflow.ensureScanningWorkspaceReady()
+})
 onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
 </script>
 
@@ -404,9 +414,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
           <div class="canvas">
             <div v-if="!hasJob" class="canvas-empty">
               <ScanOutlined class="canvas-empty-icon" />
-              <p>{{ emptyScanTitle }}</p>
+              <p>{{ workflow.scanWorkspaceBootstrapping.value ? '正在准备扫描工作台…' : emptyScanTitle }}</p>
               <small>{{ effectiveEmptyScanHint }}</small>
-              <div class="canvas-empty-actions">
+              <div v-if="!workflow.scanWorkspaceBootstrapping.value" class="canvas-empty-actions">
                 <button
                   v-if="hasRecoverableBackendSession"
                   type="button"
@@ -661,6 +671,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
 .state-dot.state-danger {
   background: var(--kiosk-danger);
   box-shadow: 0 0 0 var(--kiosk-led-ring) var(--kiosk-danger-soft);
+}
+.state-dot.state-warning {
+  background: var(--kiosk-warning);
+  box-shadow: 0 0 0 var(--kiosk-led-ring) rgba(245, 158, 11, 0.2);
 }
 .state-dot.state-muted {
   background: var(--kiosk-neutral);

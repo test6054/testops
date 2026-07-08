@@ -22,6 +22,8 @@ import { useKioskCtx } from '../composables/kioskInjection'
 
 const { workflow, mutex } = useKioskCtx()
 
+const hasOrphanBackendSession = computed(() => workflow.hasOrphanBackendScanSession.value)
+
 const counterUploaded = computed(() => {
   const job = workflow.currentJob.value
   return job ? String(job.uploadedPages) : '—'
@@ -42,12 +44,22 @@ const cantExit = computed(() =>
   showRemoveInsteadOfCancel.value ? Boolean(mutex.reasonOf('removeJob')) : cantCancel.value,
 )
 const exitLabel = computed(() => {
+  if (hasOrphanBackendSession.value) {
+    return '结束未完成进程'
+  }
   if (showRemoveInsteadOfCancel.value) {
     return workflow.currentJob.value?.reported ? '废弃批次' : '删除任务'
   }
   return workflow.isPreUploadScanFailure.value ? '取消并清理' : '取消'
 })
 const exitTitle = computed(() => {
+  if (hasOrphanBackendSession.value) {
+    return (
+      mutex.reasonOf('cancelJob')
+      || workflow.removeCurrentJobTitle.value
+      || '结束后端未完成扫描进程并返回准备扫描'
+    )
+  }
   if (showRemoveInsteadOfCancel.value) {
     return mutex.reasonOf('removeJob') || workflow.removeCurrentJobTitle.value
   }
@@ -80,6 +92,9 @@ const endBatchMetrics = computed(() => {
 })
 
 const exitVariant = computed(() => {
+  if (hasOrphanBackendSession.value) {
+    return 'danger'
+  }
   if (showRemoveInsteadOfCancel.value || workflow.isPreUploadScanFailure.value) {
     return 'danger'
   }
@@ -96,77 +111,85 @@ function handleExitAction() {
 </script>
 
 <template>
-  <footer class="bottom-bar">
+  <footer class="bottom-bar" :class="{ 'bottom-bar--orphan': hasOrphanBackendSession }">
+    <p v-if="hasOrphanBackendSession" class="orphan-hint">
+      服务端仍有未完成扫描批次，本机任务未恢复。请等待 Agent 自动续扫，或结束进程后重新开批。
+    </p>
     <div class="bottom-actions">
-      <button
-        v-if="!showResumeInsteadOfPause"
-        type="button"
-        class="action-btn action-btn--secondary"
-        :disabled="cantPause"
-        :title="mutex.reasonOf('pauseJob') || '暂停当前任务 [Space]'"
-        @click="workflow.pauseCurrentJob"
-      >
-        <PauseCircleOutlined class="action-btn__icon" />
-        暂停
-      </button>
-      <button
-        v-else
-        type="button"
-        class="action-btn action-btn--secondary"
-        :disabled="cantResume"
-        :title="mutex.reasonOf('resumeJob') || '继续当前任务 [Space]'"
-        @click="workflow.resumeCurrentJob"
-      >
-        <PlayCircleOutlined class="action-btn__icon" />
-        继续
-      </button>
-      <div class="end-batch-group">
+      <template v-if="!hasOrphanBackendSession">
+        <button
+          v-if="!showResumeInsteadOfPause"
+          type="button"
+          class="action-btn action-btn--secondary"
+          :disabled="cantPause"
+          :title="mutex.reasonOf('pauseJob') || '暂停当前任务 [Space]'"
+          @click="workflow.pauseCurrentJob"
+        >
+          <PauseCircleOutlined class="action-btn__icon" />
+          暂停
+        </button>
+        <button
+          v-else
+          type="button"
+          class="action-btn action-btn--secondary"
+          :disabled="cantResume"
+          :title="mutex.reasonOf('resumeJob') || '继续当前任务 [Space]'"
+          @click="workflow.resumeCurrentJob"
+        >
+          <PlayCircleOutlined class="action-btn__icon" />
+          继续
+        </button>
+        <div class="end-batch-group">
+          <button
+            type="button"
+            class="action-btn action-btn--primary"
+            :disabled="cantEnd"
+            :title="mutex.reasonOf('endBatch') || '结束本批次并提交'"
+            @click="workflow.endCurrentBatch"
+          >
+            <CheckCircleOutlined class="action-btn__icon" />
+            结束本批次
+          </button>
+          <div v-if="endBatchMetrics.length" class="end-batch-summary" aria-label="批次摘要">
+            <span
+              v-for="metric in endBatchMetrics"
+              :key="metric.label"
+              class="summary-metric"
+              :class="`summary-metric--${metric.tone}`"
+            >
+              <small>{{ metric.label }}</small>
+              <b>{{ metric.value }}</b>
+            </span>
+          </div>
+        </div>
         <button
           type="button"
-          class="action-btn action-btn--primary"
-          :disabled="cantEnd"
-          :title="mutex.reasonOf('endBatch') || '结束本批次并提交'"
-          @click="workflow.endCurrentBatch"
+          class="action-btn action-btn--secondary"
+          :disabled="cantRetryUpload"
+          :title="mutex.reasonOf('retryUpload') || '重试上传失败页'"
+          @click="workflow.retryCurrentUpload"
         >
-          <CheckCircleOutlined class="action-btn__icon" />
-          结束本批次
+          <UploadOutlined class="action-btn__icon" />
+          重试上传
         </button>
-        <div v-if="endBatchMetrics.length" class="end-batch-summary" aria-label="批次摘要">
-          <span
-            v-for="metric in endBatchMetrics"
-            :key="metric.label"
-            class="summary-metric"
-            :class="`summary-metric--${metric.tone}`"
-          >
-            <small>{{ metric.label }}</small>
-            <b>{{ metric.value }}</b>
-          </span>
-        </div>
-      </div>
-      <button
-        type="button"
-        class="action-btn action-btn--secondary"
-        :disabled="cantRetryUpload"
-        :title="mutex.reasonOf('retryUpload') || '重试上传失败页'"
-        @click="workflow.retryCurrentUpload"
-      >
-        <UploadOutlined class="action-btn__icon" />
-        重试上传
-      </button>
-      <button
-        type="button"
-        class="action-btn action-btn--secondary"
-        :disabled="cantRetryCommit"
-        :title="mutex.reasonOf('retryCommit') || '重试提交'"
-        @click="workflow.retryCurrentCommit"
-      >
-        <RedoOutlined class="action-btn__icon" />
-        重试提交
-      </button>
+        <button
+          type="button"
+          class="action-btn action-btn--secondary"
+          :disabled="cantRetryCommit"
+          :title="mutex.reasonOf('retryCommit') || '重试提交'"
+          @click="workflow.retryCurrentCommit"
+        >
+          <RedoOutlined class="action-btn__icon" />
+          重试提交
+        </button>
+      </template>
       <button
         type="button"
         class="action-btn"
-        :class="`action-btn--${exitVariant}`"
+        :class="[
+          `action-btn--${exitVariant}`,
+          { 'action-btn--orphan-exit': hasOrphanBackendSession },
+        ]"
         :disabled="cantExit"
         :title="exitTitle"
         @click="handleExitAction"
@@ -199,6 +222,30 @@ function handleExitAction() {
   gap: var(--kiosk-space-5);
   padding: 0 var(--kiosk-space-5);
   z-index: var(--kiosk-z-bottom);
+}
+.bottom-bar--orphan {
+  border-color: #f5c7d1;
+  background: #fff8fa;
+}
+.orphan-hint {
+  position: absolute;
+  left: var(--kiosk-space-5);
+  top: -28px;
+  margin: 0;
+  padding: 4px 10px;
+  max-width: min(720px, calc(100% - var(--kiosk-space-5) * 2));
+  font-size: var(--kiosk-fz-caption);
+  line-height: 1.4;
+  color: var(--kiosk-danger);
+  background: var(--kiosk-danger-soft);
+  border: 1px solid #f5c7d1;
+  border-radius: var(--kiosk-radius-md);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.action-btn--orphan-exit {
+  min-width: 148px;
 }
 
 .bottom-actions {
