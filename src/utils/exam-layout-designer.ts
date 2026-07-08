@@ -214,6 +214,18 @@ export function createDefaultBlock(
   return block
 }
 
+/** 在指定归一化坐标创建识别块，供画布框选工具使用。 */
+export function createBlockWithRect(
+  pageNo: number,
+  blockType: ExamLayoutBlockTypeCode,
+  layer: number,
+  rectNorm: ExamLayoutRectNorm,
+): ExamLayoutBlockDto {
+  const block = createDefaultBlock(pageNo, blockType, layer)
+  block.rectNorm = rectNorm
+  return block
+}
+
 export function formatRectMmLabel(
   rectNorm: ExamLayoutRectNorm,
   page: ExamLayoutPageDto,

@@ -180,20 +180,14 @@ import type {
   MarkTeacherDashboardOverviewVO,
   MarkTeacherDashboardQuery,
 } from '@/apis/mark/teacher-dashboard'
+import type { MarkDashboardPendingTodoTabKey } from '@/utils/mark-dashboard-todo'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { EXAM_STATUS_FILTER_OPTIONS, ExamStatusCode } from '@/apis/mark/exam'
 import {
   loadTeacherDashboardOverviewOnce,
   loadTeacherDashboardOverviewSilent,
 } from '@/apis/mark/teacher-dashboard'
-import type { MarkDashboardPendingTodoTabKey } from '@/utils/mark-dashboard-todo'
-import {
-  buildPendingTodoHint,
-  buildPendingTodoTabItems,
-  filterPendingTodosByTab,
-  resolveDefaultPendingTodoTab,
-} from '@/utils/mark-dashboard-todo'
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { EXAM_STATUS_FILTER_OPTIONS, ExamStatusCode } from '@/apis/mark/exam'
 import MarkingOverviewAnalytics from '@/components/mark/dashboard/MarkingOverviewAnalytics.vue'
 import MarkingOverviewSignalBand from '@/components/mark/dashboard/MarkingOverviewSignalBand.vue'
 import MarkingOverviewStageRail from '@/components/mark/dashboard/MarkingOverviewStageRail.vue'
@@ -220,6 +214,12 @@ import {
 } from '@/utils/academic-year-semester-query'
 import { showUserError } from '@/utils/error-handler'
 import { buildExamListRoute } from '@/utils/exam-list-navigation'
+import {
+  buildPendingTodoHint,
+  buildPendingTodoTabItems,
+  filterPendingTodosByTab,
+  resolveDefaultPendingTodoTab,
+} from '@/utils/mark-dashboard-todo'
 
 defineOptions({ name: 'TeacherMarkingOverview' })
 
@@ -229,7 +229,7 @@ const signalLoading = ref(false)
 const examsLoading = ref(false)
 const todosLoading = ref(false)
 const loadFailed = ref(false)
-const dashboardRefreshing = computed(
+computed(
   () => signalLoading.value || examsLoading.value || todosLoading.value,
 )
 const overview = ref<MarkTeacherDashboardOverviewVO | null>(null)

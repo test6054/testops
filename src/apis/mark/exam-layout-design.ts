@@ -109,6 +109,15 @@ export interface ExamLayoutDesignLoadResponse {
   detectPollingPolicy: ExamLayoutDetectPollingPolicy
 }
 
+export interface ExamLayoutDesignBootstrapRequest {
+  examId: string
+}
+
+export interface ExamLayoutDesignBootstrapResponse {
+  document: ExamLayoutDocument
+  persisted: boolean
+}
+
 export interface ExamLayoutDesignLoadRequest {
   examId: string
 }
@@ -204,6 +213,10 @@ export interface ExamLayoutQuestionRegionAdjustRequest {
 
 export function loadExamLayoutDesign(data: ExamLayoutDesignLoadRequest) {
   return http.post<ExamLayoutDesignLoadResponse>('/api/mark/exams/layout-design/load', data)
+}
+
+export function bootstrapExamLayoutDesign(data: ExamLayoutDesignBootstrapRequest) {
+  return http.post<ExamLayoutDesignBootstrapResponse>('/api/mark/exams/layout-design/bootstrap', data)
 }
 
 export function saveExamLayoutDesign(data: ExamLayoutDesignSaveRequest) {
