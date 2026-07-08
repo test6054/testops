@@ -23,6 +23,7 @@ import {
 } from '@/apis/mark/exam-layout-design'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { ExamLayoutDetectTaskStatusCode, isExamLayoutDetectInFlightStatus, requireExamLayoutDetectTaskStatusCode } from '@/types/enums/exam-layout-detect-task-status-enum'
+import { ExamMaterialLayoutModeCode } from '@/types/enums/exam-material-layout-mode-enum'
 import { LayoutDesignPhaseCode } from '@/types/enums/layout-design-phase-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import {
@@ -127,7 +128,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
   const layoutRoiStats = computed(() => computeLayoutRoiStats(document.value))
 
   const identitySetupPending = computed(
-    () => options.examDetail()?.materialLayoutMode === 'FULL_PAPER'
+    () => options.examDetail()?.materialLayoutMode === ExamMaterialLayoutModeCode.FULL_PAPER
       && !detecting.value
       && Boolean(document.value)
       && !hasIdentityBlock(document.value),
@@ -404,7 +405,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       return false
     }
     if (saveBlockingReasons.value.length > 0) {
-      message.warning(saveBlockingReasons.value[0])
+      void message.warning(saveBlockingReasons.value[0])
       return false
     }
     saving.value = true
@@ -431,11 +432,11 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       return
     }
     if (detecting.value) {
-      message.warning('识别进行中，请等待完成后再预览')
+      void message.warning('识别进行中，请等待完成后再预览')
       return
     }
     if (saveBlockingReasons.value.length > 0) {
-      message.warning(saveBlockingReasons.value[0])
+      void message.warning(saveBlockingReasons.value[0])
       return
     }
     previewing.value = true
@@ -484,7 +485,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       return
     }
     if (detecting.value) {
-      message.warning('当前试卷正在识别题目，请稍候再重新上传或识别')
+      void message.warning('当前试卷正在识别题目，请稍候再重新上传或识别')
       return
     }
     const session = ++detectSessionSeq
