@@ -1,6 +1,6 @@
 import type { Ref } from 'vue'
-import { ref } from 'vue'
 import type { PageResult, QueryDto } from '@/types'
+import { ref } from 'vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
 

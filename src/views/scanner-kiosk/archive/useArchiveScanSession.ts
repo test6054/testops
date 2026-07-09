@@ -1,10 +1,8 @@
 import type { ScanDispatchArchiveSnapshotVO } from '@/apis/mark/scanner-dispatch'
-import { previewScanDispatch } from '@/apis/mark/scanner-dispatch'
 import type {
   ScanWorkOrderArchiveContextVO,
   ScanWorkOrderLifecycleVO,
 } from '@/apis/mark/scanner-work-order'
-import { getScanWorkOrderContext, startScanWorkOrder } from '@/apis/mark/scanner-work-order'
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import {
@@ -13,6 +11,8 @@ import {
 } from '@/apis/mark/archive-volume'
 import { ScannerColorModeCode, ScannerDuplexModeCode } from '@/apis/mark/exam-mark-scanner'
 import { getAgentSetupContext } from '@/apis/mark/scanner-agent-local'
+import { previewScanDispatch } from '@/apis/mark/scanner-dispatch'
+import { getScanWorkOrderContext, startScanWorkOrder } from '@/apis/mark/scanner-work-order'
 import {
   ALL_ARCHIVE_SCAN_BATCH_MODE_CODES,
   ArchiveScanBatchModeCode,

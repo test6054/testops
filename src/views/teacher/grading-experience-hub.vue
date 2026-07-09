@@ -432,25 +432,7 @@ import type {
   GradingExperienceStatsResponse,
   QuestionSignatureResponse,
 } from '@/apis/mark/grading-experience'
-import {
-  confirmExperienceCase,
-  deprecateExperienceCase,
-  EXPERIENCE_ASSIST_CALIBRATION_HINT,
-  EXPERIENCE_CASE_FLOW_HINT,
-  EXPERIENCE_CASE_STATUS_TONE,
-  ExperienceCaseStatusCode,
-  ExperienceCaseStatusDescription,
-  extractExperience,
-  generateAnswerCluster,
-  generateSignatures,
-  getExperienceStats,
-  getLatestAnswerCluster,
-  pageExperiences,
-  pageSignatures,
-  searchSimilar,
-} from '@/apis/mark/grading-experience'
 import type { QuestionTypeCode } from '@/apis/mark/question-type'
-import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import type {
   BadgeTone,
   FilterField,
@@ -468,6 +450,24 @@ import {
   AiAnalysisStatusCode,
   AiAnalysisStatusDescription,
 } from '@/apis/mark/ai-analysis-status'
+import {
+  confirmExperienceCase,
+  deprecateExperienceCase,
+  EXPERIENCE_ASSIST_CALIBRATION_HINT,
+  EXPERIENCE_CASE_FLOW_HINT,
+  EXPERIENCE_CASE_STATUS_TONE,
+  ExperienceCaseStatusCode,
+  ExperienceCaseStatusDescription,
+  extractExperience,
+  generateAnswerCluster,
+  generateSignatures,
+  getExperienceStats,
+  getLatestAnswerCluster,
+  pageExperiences,
+  pageSignatures,
+  searchSimilar,
+} from '@/apis/mark/grading-experience'
+import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -813,16 +813,16 @@ const deprecatingExperience = ref(false)
 
 const canConfirmExperience = computed(
   () =>
-    detailExperience.value?.caseStatus === ExperienceCaseStatusCode.DRAFT &&
-    detailExperience.value?.analysisStatus === AiAnalysisStatusCode.SUCCESS &&
-    Boolean(detailExperience.value?.id),
+    detailExperience.value?.caseStatus === ExperienceCaseStatusCode.DRAFT
+    && detailExperience.value?.analysisStatus === AiAnalysisStatusCode.SUCCESS
+    && Boolean(detailExperience.value?.id),
 )
 
 const canDeprecateExperience = computed(
   () =>
-    detailExperience.value?.caseStatus === ExperienceCaseStatusCode.CONFIRMED &&
-    detailExperience.value?.analysisStatus === AiAnalysisStatusCode.SUCCESS &&
-    Boolean(detailExperience.value?.id),
+    detailExperience.value?.caseStatus === ExperienceCaseStatusCode.CONFIRMED
+    && detailExperience.value?.analysisStatus === AiAnalysisStatusCode.SUCCESS
+    && Boolean(detailExperience.value?.id),
 )
 
 async function handleConfirmExperience(): Promise<void> {

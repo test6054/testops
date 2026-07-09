@@ -2,7 +2,6 @@ import type {
   ExamCandidateResponse,
   ExamClassStudentTreeNodeResponse,
 } from '@/apis/mark/exam-scope'
-import { listExamStudentTree, pageExamCandidates } from '@/apis/mark/exam-scope'
 /**
  * 批改主链：考试考生名册 composable
  *
@@ -12,6 +11,7 @@ import { listExamStudentTree, pageExamCandidates } from '@/apis/mark/exam-scope'
  * - 切换 examId 时自动重载，调用方只需观察 examId 即可
  */
 import { ref } from 'vue'
+import { listExamStudentTree, pageExamCandidates } from '@/apis/mark/exam-scope'
 import { ExamClassStudentTreeNodeTypeCode } from '@/types/enums/exam-class-student-tree-node-type-enum'
 import { showUserError } from '@/utils/error-handler'
 

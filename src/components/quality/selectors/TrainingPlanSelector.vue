@@ -4,8 +4,8 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { TrainingPlanVO } from '@/apis/quality/training-plan'
-import { normalizeTrainingPlanId, trainingPlanApi } from '@/apis/quality/training-plan'
 import { onMounted, ref, watch } from 'vue'
+import { normalizeTrainingPlanId, trainingPlanApi } from '@/apis/quality/training-plan'
 import { ConfirmationStatusCode } from '@/apis/quality/types'
 import { showUserError } from '@/utils/error-handler'
 import { loadSelectorFirstPage, QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS } from './page-contract'
@@ -35,7 +35,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: TrainingPlanVO]
+  "change": [value: string | null, option?: TrainingPlanVO]
 }>()
 
 const options = ref<TrainingPlanVO[]>([])

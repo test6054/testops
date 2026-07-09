@@ -4,10 +4,10 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { IndirectEvaluationFormVO } from '@/apis/quality/indirect-form'
-import { indirectFormApi } from '@/apis/quality/indirect-form'
 import type { AchievementTargetTypeCode, IndirectFormTypeCode } from '@/apis/quality/types'
-import { IndirectFormTypeDescription } from '@/apis/quality/types'
 import { computed, onMounted, ref, watch } from 'vue'
+import { indirectFormApi } from '@/apis/quality/indirect-form'
+import { IndirectFormTypeDescription } from '@/apis/quality/types'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { loadSelectorFirstPage } from './page-contract'
@@ -34,7 +34,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: IndirectEvaluationFormVO]
+  "change": [value: string | null, option?: IndirectEvaluationFormVO]
 }>()
 
 const options = ref<IndirectEvaluationFormVO[]>([])
@@ -130,9 +130,7 @@ defineExpose({ reload: loadOptions })
     >
       <span class="dp-selector-option-code">{{ opt.formCode }}</span>
       {{ opt.formName }}
-      <span v-if="opt.formType" class="dp-selector-option-meta"
-        >· {{ formTypeLabel(opt.formType) }}</span
-      >
+      <span v-if="opt.formType" class="dp-selector-option-meta">· {{ formTypeLabel(opt.formType) }}</span>
     </a-select-option>
   </a-select>
 </template>

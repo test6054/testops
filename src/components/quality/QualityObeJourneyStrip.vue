@@ -30,8 +30,8 @@ function stepClass(step: ObeJourneyStepVO): string {
 function goStep(step: ObeJourneyStepVO): void {
   if (!step.routeName) return
   if (
-    PLAN_CONFIRMED_ROUTE_NAMES.has(step.routeName) &&
-    qualityStore.currentPlan?.confirmationStatus !== ConfirmationStatusCode.CONFIRMED
+    PLAN_CONFIRMED_ROUTE_NAMES.has(step.routeName)
+    && qualityStore.currentPlan?.confirmationStatus !== ConfirmationStatusCode.CONFIRMED
   ) {
     void router.push({ name: 'QualityTrainingPlanWorkbench' })
     return

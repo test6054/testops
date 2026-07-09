@@ -121,9 +121,7 @@
                 {{ scanModeLabel(record.scanMode) }}
               </template>
               <template v-else-if="column.key === 'student'">
-                <span v-if="record.studentNo"
-                  >{{ record.studentNo }} · {{ record.studentName }}</span
-                >
+                <span v-if="record.studentNo">{{ record.studentNo }} · {{ record.studentName }}</span>
                 <span v-else class="scan-manual-entry__muted">—</span>
               </template>
               <template v-else-if="column.key === 'createTime'">
@@ -152,24 +150,23 @@ import type {
   ExamManualSupplementRecordItemResponse,
   ExamManualSupplementWorkbenchResponse,
 } from '@/apis/mark/manual-supplement'
+import type {
+  ManualSupplementScenario,
+  ManualSupplementWizardContext,
+} from '@/components/mark/manual-supplement/ManualSupplementWizardDrawer.vue'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { ScannerKioskScanModeCode } from '@/types/enums/scanner-kiosk-scan-mode-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getExamDetail } from '@/apis/mark/exam'
 import {
   getManualSupplementWorkbench,
   pageManualSupplementCandidates,
   pageManualSupplementRecords,
 } from '@/apis/mark/manual-supplement'
-import type {
-  ManualSupplementScenario,
-  ManualSupplementWizardContext,
-} from '@/components/mark/manual-supplement/ManualSupplementWizardDrawer.vue'
-import ManualSupplementWizardDrawer from '@/components/mark/manual-supplement/ManualSupplementWizardDrawer.vue'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { ScannerKioskScanModeCode } from '@/types/enums/scanner-kiosk-scan-mode-enum'
-import { ScannerKioskScanModeDescription } from '@/types/enums/scanner-kiosk-scan-mode-enum'
-import type { SignalMetric } from '@/types/workbench'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { getExamDetail } from '@/apis/mark/exam'
 import ManualSupplementCandidateTable from '@/components/mark/manual-supplement/ManualSupplementCandidateTable.vue'
+import ManualSupplementWizardDrawer from '@/components/mark/manual-supplement/ManualSupplementWizardDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -184,6 +181,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { ScannerKioskScanModeDescription } from '@/types/enums/scanner-kiosk-scan-mode-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -210,7 +208,7 @@ const tabItems = [
 const workbench = ref<ExamManualSupplementWorkbenchResponse | null>(null)
 const workbenchLoadFailed = ref(false)
 const declaredClassIds = ref<string[]>([])
-const classOptions = ref<Array<{ value: string; label: string }>>([])
+const classOptions = ref<Array<{ value: string, label: string }>>([])
 
 const candidateFilterModel = reactive({
   classId: undefined as string | undefined,
@@ -488,7 +486,7 @@ function handleCandidatePageChange(pageNum: number, pageSize: number): void {
   void loadCandidates()
 }
 
-function handleRecordPageChange(pageEvent: { current: number; pageSize: number }): void {
+function handleRecordPageChange(pageEvent: { current: number, pageSize: number }): void {
   recordPagination.current = pageEvent.current
   recordPagination.pageSize = pageEvent.pageSize
   void loadRecords()

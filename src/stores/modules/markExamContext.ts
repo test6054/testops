@@ -20,9 +20,9 @@ import type {
   ExamPageQueryRequest,
   ExamSummaryResponse,
 } from '@/apis/mark/exam'
-import { getExamDetail, pageExams } from '@/apis/mark/exam'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { getExamDetail, pageExams } from '@/apis/mark/exam'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 import { formatAcademicYearSemester } from '@/types/enums/semester-enum'
 

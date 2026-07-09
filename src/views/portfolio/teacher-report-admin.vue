@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import type { PortfolioAiAnalysisDetailVO, PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
-import {
-  PORTFOLIO_REPORT_SCENE_OPTIONS,
-  PortfolioAiTaskTypeCode,
-  PortfolioReportSceneCode,
-} from '@/apis/portfolio/types'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
 import { PortfolioMaterialTypeCode } from '@/apis/portfolio/enums'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
+import {
+  PORTFOLIO_REPORT_SCENE_OPTIONS,
+  PortfolioAiTaskTypeCode,
+  PortfolioReportSceneCode,
+} from '@/apis/portfolio/types'
 import { AiTaskStatusCode } from '@/apis/quality/types'
 import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'

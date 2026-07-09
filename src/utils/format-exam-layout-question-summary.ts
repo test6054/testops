@@ -39,8 +39,8 @@ export function formatExamLayoutQuestionSummaryLabel(
   segments.push(strictEnumLabel(QuestionTypeDescription, question.questionType, 'questionType'))
   segments.push(`${question.fullScore} 分`)
   if (question.questionStem) {
-    const preview =
-      question.questionStem.length > 24
+    const preview
+      = question.questionStem.length > 24
         ? `${question.questionStem.slice(0, 24)}...`
         : question.questionStem
     segments.push(preview)

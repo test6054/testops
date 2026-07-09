@@ -27,7 +27,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   'update:selected-exam-id': [value: string | undefined]
   /** 单击选中并立即绑定/切换 */
-  confirm: [examId: string]
+  "confirm": [examId: string]
 }>()
 
 const { workflow } = useKioskCtx()
@@ -55,8 +55,8 @@ const emptyHint = computed(() => {
     return workflow.bindExamCandidateLoadIssue.value
   }
   if (
-    props.excludeExamId &&
-    workflow.bindExamCandidates.value.some((item) => item.examId === props.excludeExamId)
+    props.excludeExamId
+    && workflow.bindExamCandidates.value.some((item) => item.examId === props.excludeExamId)
   ) {
     return '当前工位仅绑定此考试，暂无可切换目标'
   }
@@ -237,8 +237,7 @@ function goNextPage() {
           <span
             class="exam-tile__badge"
             :class="{ 'exam-tile__badge--active': exam.hasActiveScanSession }"
-            >{{ formatBatchBadge(exam) }}</span
-          >
+          >{{ formatBatchBadge(exam) }}</span>
         </div>
       </button>
     </div>
@@ -255,15 +254,13 @@ function goNextPage() {
         <LeftOutlined />
         <span>上一页</span>
       </button>
-      <span class="pager-indicator"
-        >{{ workflow.bindExamCandidateFilter.pageNum }} / {{ totalPages }}</span
-      >
+      <span class="pager-indicator">{{ workflow.bindExamCandidateFilter.pageNum }} / {{ totalPages }}</span>
       <button
         type="button"
         class="pager-btn"
         :disabled="
-          workflow.bindExamCandidateFilter.pageNum >= totalPages ||
-          workflow.bindExamCandidateLoading.value
+          workflow.bindExamCandidateFilter.pageNum >= totalPages
+            || workflow.bindExamCandidateLoading.value
         "
         @click="goNextPage"
       >

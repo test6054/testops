@@ -6,12 +6,6 @@ import type {
   TeacherClaimContextQueryRequest,
   TeacherClaimContextResponse
 } from '@/apis/mark/marking-organization'
-import {
-  claimMarkingTasks,
-  getTeacherClaimContext,
-  MarkingTaskStatusCode,
-  pageMarkingTasks
-} from '@/apis/mark/marking-organization'
 /**
  * 阅卷任务 Store
  *
@@ -33,6 +27,12 @@ import type { MarkingTaskStreamEventVO } from '@/apis/mark/marking-task-stream'
 import type { PageResult } from '@/types'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import {
+  claimMarkingTasks,
+  getTeacherClaimContext,
+  MarkingTaskStatusCode,
+  pageMarkingTasks
+} from '@/apis/mark/marking-organization'
 import { validateMarkingTaskStreamEvent } from '@/wire/mark/marking-task-stream-wire'
 
 /** 任务详情上下题导航单页上限；超过须缩小筛选范围 */

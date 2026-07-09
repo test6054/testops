@@ -2,8 +2,8 @@
   <WorkbenchSurfaceCard class="archive-volume-transfer-panel">
     <UiAlertStrip
       v-if="
-        detail.volume.transferStatus === ArchiveTransferStatusCode.REJECTED &&
-        detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
+        detail.volume.transferStatus === ArchiveTransferStatusCode.REJECTED
+          && detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
       "
       tone="info"
       title="移交已退回"
@@ -24,8 +24,8 @@
     <template #toolbar>
       <div
         v-if="
-          canReviewTransfer &&
-          detail.volume.transferStatus === ArchiveTransferStatusCode.PENDING_REVIEW
+          canReviewTransfer
+            && detail.volume.transferStatus === ArchiveTransferStatusCode.PENDING_REVIEW
         "
         class="archive-volume-transfer-panel__actions"
       >
@@ -97,6 +97,10 @@ import type {
   ArchiveVolumeDetailResponse,
   ArchiveVolumeTransferRecordResponse,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { onMounted, ref } from 'vue'
+import { downloadFile } from '@/apis/edu/file-management'
 import {
   approveArchiveVolumeTransfer,
   ARCHIVE_TRANSFER_STATUS_TONE,
@@ -106,10 +110,6 @@ import {
   listArchiveVolumeTransferRecords,
   rejectArchiveVolumeTransfer,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { onMounted, ref } from 'vue'
-import { downloadFile } from '@/apis/edu/file-management'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -165,9 +165,9 @@ function transferCardClass(status?: ArchiveTransferStatusCode): string {
 }
 
 function formatRecordTime(record: ArchiveVolumeTransferRecordResponse): string {
-  const time =
-    record.transferStatus === ArchiveTransferStatusCode.APPROVED ||
-    record.transferStatus === ArchiveTransferStatusCode.REJECTED
+  const time
+    = record.transferStatus === ArchiveTransferStatusCode.APPROVED
+      || record.transferStatus === ArchiveTransferStatusCode.REJECTED
       ? record.reviewedTime
       : record.submitTime
   return time ? formatDateTime(time) : '—'
@@ -175,8 +175,8 @@ function formatRecordTime(record: ArchiveVolumeTransferRecordResponse): string {
 
 function formatRecordActor(record: ArchiveVolumeTransferRecordResponse): string {
   if (
-    record.transferStatus === ArchiveTransferStatusCode.APPROVED ||
-    record.transferStatus === ArchiveTransferStatusCode.REJECTED
+    record.transferStatus === ArchiveTransferStatusCode.APPROVED
+    || record.transferStatus === ArchiveTransferStatusCode.REJECTED
   ) {
     return record.reviewerUserNickName || '验收人'
   }

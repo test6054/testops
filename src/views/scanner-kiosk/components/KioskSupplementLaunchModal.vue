@@ -30,12 +30,12 @@ const fieldBlockReason = computed(() => workflow.supplementLaunchFieldBlockedRea
 
 const canConfirm = computed(
   () =>
-    !preparing.value &&
-    !prepareFailed.value &&
-    !fieldBlockReason.value &&
-    mutex.canDo('startSupplementScan') &&
-    !launching.value &&
-    !workflow.loading.value,
+    !preparing.value
+    && !prepareFailed.value
+    && !fieldBlockReason.value
+    && mutex.canDo('startSupplementScan')
+    && !launching.value
+    && !workflow.loading.value,
 )
 
 const confirmBlockReason = computed(

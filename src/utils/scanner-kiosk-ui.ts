@@ -7,8 +7,8 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 
 export function kioskMaterialKindLabel(mode?: ExamMaterialLayoutModeCode): string {
   if (!mode) return '未配置'
-  const materialKind =
-    mode === ExamMaterialLayoutModeCode.ANSWER_SHEET
+  const materialKind
+    = mode === ExamMaterialLayoutModeCode.ANSWER_SHEET
       ? KioskScanMaterialKindCode.ANSWER_SHEET
       : KioskScanMaterialKindCode.FULL_PAPER
   return strictEnumLabel(KioskScanMaterialKindDescription, materialKind, '扫描材料类型')

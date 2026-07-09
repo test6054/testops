@@ -161,10 +161,10 @@
 import type { Key } from 'ant-design-vue/es/_util/type'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ExamPaperAnalysisResponse } from '@/apis/mark/question-analysis'
-import { getExamPaperAnalysis } from '@/apis/mark/question-analysis'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { getExamPaperAnalysis } from '@/apis/mark/question-analysis'
 import MarkQualitySyncChip from '@/components/quality/MarkQualitySyncChip.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -330,9 +330,9 @@ function handleClassChange(value?: SelectValue): void {
   activeClassId.value = typeof value === 'string' ? value : ''
   void searchStudents('', activeClassId.value || undefined)
   if (
-    activeStudentUserId.value &&
-    activeClassId.value &&
-    !studentOptions.value.some(
+    activeStudentUserId.value
+    && activeClassId.value
+    && !studentOptions.value.some(
       (opt) => opt.value === activeStudentUserId.value && opt.classId === activeClassId.value,
     )
   ) {

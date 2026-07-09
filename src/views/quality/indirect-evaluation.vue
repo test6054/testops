@@ -12,9 +12,9 @@
 import type { IndirectEvaluationFormVO } from '@/apis/quality/indirect-form'
 import type { IndirectEvaluationItemVO } from '@/apis/quality/indirect-item'
 import type { IndirectEvaluationWorkbenchSignalSummaryVO } from '@/apis/quality/workbench'
-import { workbenchApi } from '@/apis/quality/workbench'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onActivated, onMounted, ref, watch } from 'vue'
+import { workbenchApi } from '@/apis/quality/workbench'
 import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -57,14 +57,14 @@ const signals = computed<SignalMetric[]>(() => {
   if (!summary) {
     return []
   }
-  const completionRate =
-    summary.completionRate ??
-    (summary.expectedSample > 0
+  const completionRate
+    = summary.completionRate
+      ?? (summary.expectedSample > 0
       ? Number((summary.submissionCount / summary.expectedSample).toFixed(2))
       : 0)
-  const collectionRate =
-    summary.collectionRate ??
-    (summary.expectedResponseCount > 0
+  const collectionRate
+    = summary.collectionRate
+      ?? (summary.expectedResponseCount > 0
       ? Number((summary.receivedResponseCount / summary.expectedResponseCount).toFixed(2))
       : 0)
   const completionRatePct = Math.round(completionRate * 100)

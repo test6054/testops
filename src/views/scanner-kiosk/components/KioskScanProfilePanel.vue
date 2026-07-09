@@ -39,7 +39,7 @@ const dpiRangeText = computed(() => {
 })
 
 const paramItems = computed(() => {
-  const items: { label: string; value: string }[] = []
+  const items: { label: string, value: string }[] = []
   const config = scanConfig.value
   if (config.dpi) items.push({ label: '分辨率', value: `${config.dpi} DPI` })
   const dpiRange = dpiRangeText.value
@@ -56,9 +56,9 @@ const paramItems = computed(() => {
       value: capabilities.value.supportsAdf ? '支持' : '不支持',
     })
   }
-  const chainLabel =
-    workflow.tenantProviderChainLabel.value ||
-    workflow.providerChainText(workflow.providerChain.value)
+  const chainLabel
+    = workflow.tenantProviderChainLabel.value
+      || workflow.providerChainText(workflow.providerChain.value)
   if (chainLabel) items.push({ label: '识别链路', value: chainLabel })
   items.push({
     label: '空白页检测',

@@ -5,8 +5,8 @@
 <script setup lang="ts">
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { CourseGoalVO } from '@/apis/quality/course-goal'
-import { courseGoalApi } from '@/apis/quality/course-goal'
 import { computed, onMounted, ref, watch } from 'vue'
+import { courseGoalApi } from '@/apis/quality/course-goal'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { showUserError } from '@/utils/error-handler'
 import { loadSelectorFirstPage, QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS } from './page-contract'
@@ -29,7 +29,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: CourseGoalVO]
+  "change": [value: string | null, option?: CourseGoalVO]
 }>()
 
 const options = ref<CourseGoalVO[]>([])

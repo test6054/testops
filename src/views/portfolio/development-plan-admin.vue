@@ -2,17 +2,6 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ExcelImportRowDiagnostic } from '@/apis/platform/types'
 import type { PortfolioDevelopmentPlanHistoryImportBatchStatusCode } from '@/apis/portfolio/enums'
-import {
-  PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_OPTIONS,
-  PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
-  PortfolioDevelopmentPlanHistoryImportBatchStatusDescription,
-  PortfolioDevelopmentPlanItemStatusCode,
-  PortfolioDevelopmentPlanItemStatusDescription,
-  PortfolioDevelopmentPlanStatusCode,
-  PortfolioDevelopmentPlanStatusDescription,
-  PortfolioDevelopmentPlanTypeCode,
-  PortfolioDevelopmentPlanTypeDescription,
-} from '@/apis/portfolio/enums'
 import type { PortfolioTenantIndicatorConfigVO } from '@/apis/portfolio/indicator-types'
 import type {
   PortfolioDevelopmentPlanAchievementAttainmentItemVO,
@@ -24,13 +13,24 @@ import type {
   PortfolioDevelopmentPlanVO,
   PortfolioDevelopmentPlanYearStatVO,
 } from '@/apis/portfolio/teacher-platform'
-import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
+import {
+  PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_OPTIONS,
+  PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
+  PortfolioDevelopmentPlanHistoryImportBatchStatusDescription,
+  PortfolioDevelopmentPlanItemStatusCode,
+  PortfolioDevelopmentPlanItemStatusDescription,
+  PortfolioDevelopmentPlanStatusCode,
+  PortfolioDevelopmentPlanStatusDescription,
+  PortfolioDevelopmentPlanTypeCode,
+  PortfolioDevelopmentPlanTypeDescription,
+} from '@/apis/portfolio/enums'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
+import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -117,10 +117,10 @@ const historyBatchDetailDiagnostics = computed<ExcelImportRowDiagnostic[]>(() =>
           invalidReason: '导入错误报告明细格式异常',
         }
       }
-      const rowIndex =
-        'rowIndex' in item && typeof item.rowIndex === 'number' ? item.rowIndex : index + 1
-      const message =
-        'message' in item && typeof item.message === 'string' ? item.message : '导入失败'
+      const rowIndex
+        = 'rowIndex' in item && typeof item.rowIndex === 'number' ? item.rowIndex : index + 1
+      const message
+        = 'message' in item && typeof item.message === 'string' ? item.message : '导入失败'
       return {
         rowIndex,
         valid: false,
@@ -255,8 +255,8 @@ const selectedPlan = computed(
 const planItemEditable = computed(() => {
   const status = selectedPlan.value?.planStatus
   return (
-    status === PortfolioDevelopmentPlanStatusCode.DRAFT ||
-    status === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
+    status === PortfolioDevelopmentPlanStatusCode.DRAFT
+    || status === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
   )
 })
 
@@ -317,8 +317,8 @@ function openPlanFromQuery() {
   highlightedPlanId.value = planId
   const target = rows.value.find((item) => item.id === planId)
   if (
-    target?.planStatus === PortfolioDevelopmentPlanStatusCode.DRAFT ||
-    target?.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
+    target?.planStatus === PortfolioDevelopmentPlanStatusCode.DRAFT
+    || target?.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
   ) {
     activeTab.value = 'plans'
   }
@@ -354,8 +354,8 @@ function buildDevelopmentPlanRowActions(
 ): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = []
   if (
-    record.planStatus === PortfolioDevelopmentPlanStatusCode.DRAFT ||
-    record.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
+    record.planStatus === PortfolioDevelopmentPlanStatusCode.DRAFT
+    || record.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
   ) {
     actions.push({ key: 'submit', label: '提交', tone: 'primary' })
   }
@@ -521,9 +521,7 @@ onMounted(async () => {
       <div class="toolbar">
         <input v-model="form.planYear" class="input" placeholder="年度" />
         <UiButton @click="loadPage"> 刷新 </UiButton>
-        <span v-if="showAdminStats" class="stats"
-          >{{ form.planYear }} 年已通过 {{ approvedCount }} 项</span
-        >
+        <span v-if="showAdminStats" class="stats">{{ form.planYear }} 年已通过 {{ approvedCount }} 项</span>
       </div>
       <a-tabs v-model:active-key="activeTab">
         <a-tab-pane key="plans" tab="规划管理">
@@ -684,11 +682,9 @@ onMounted(async () => {
             <span>待审 {{ completion.pendingPlanCount }}</span>
             <span>退回 {{ completion.returnedPlanCount }}</span>
             <span>审批完成率 {{ completion.completionRatePercent }}%</span>
-            <span
-              >明细项 {{ completion.completedPlanItemCount }}/{{
-                completion.totalPlanItemCount
-              }}</span
-            >
+            <span>明细项 {{ completion.completedPlanItemCount }}/{{
+              completion.totalPlanItemCount
+            }}</span>
             <span>明细完成率 {{ completion.planItemCompletionRatePercent }}%</span>
             <span>平均完成度 {{ completion.averageItemCompletionPercent }}%</span>
           </div>

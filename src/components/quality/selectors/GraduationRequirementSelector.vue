@@ -5,8 +5,8 @@
 <script setup lang="ts">
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { GraduationRequirementVO } from '@/apis/quality/graduation-requirement'
-import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
 import { computed, onMounted, ref, watch } from 'vue'
+import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
 import { showUserError } from '@/utils/error-handler'
 import { loadSelectorFirstPage, QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS } from './page-contract'
 
@@ -28,7 +28,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: GraduationRequirementVO]
+  "change": [value: string | null, option?: GraduationRequirementVO]
 }>()
 
 const options = ref<GraduationRequirementVO[]>([])

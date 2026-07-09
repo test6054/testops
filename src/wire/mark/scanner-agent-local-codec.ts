@@ -14,8 +14,15 @@ import type {
 } from '@/apis/mark/scanner-agent-local'
 import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
 import type { ScannerKioskScanModeCode } from '@/types/enums/scanner-kiosk-scan-mode-enum'
-import { ALL_SCANNER_KIOSK_SCAN_MODE_CODES } from '@/types/enums/scanner-kiosk-scan-mode-enum'
 import type { AgentWireJsonObject } from '@/wire/mark/scanner-agent-local-wire'
+import { AgentDiagnosticStatusCode } from '@/types/enums/agent-diagnostic-status-enum'
+import { AgentHealthStatusCode } from '@/types/enums/agent-health-status-enum'
+import { AgentUpdateStatusCode } from '@/types/enums/agent-update-status-enum'
+import { LocalScanJobStatusCode } from '@/types/enums/local-scan-job-status-enum'
+import { LocalScanPageSideCode } from '@/types/enums/local-scan-page-side-enum'
+import { LocalScanPageStatusCode } from '@/types/enums/local-scan-page-status-enum'
+import { ALL_SCANNER_DUPLEX_MODE_CODES } from '@/types/enums/scanner-duplex-mode-enum'
+import { ALL_SCANNER_KIOSK_SCAN_MODE_CODES } from '@/types/enums/scanner-kiosk-scan-mode-enum'
 import {
   LOCAL_AGENT_WIRE_ERROR,
   requireAgentWireBoolean,
@@ -28,13 +35,6 @@ import {
   requireOptionalAgentWireInt32,
   requireOptionalAgentWireString,
 } from '@/wire/mark/scanner-agent-local-wire'
-import { AgentDiagnosticStatusCode } from '@/types/enums/agent-diagnostic-status-enum'
-import { AgentHealthStatusCode } from '@/types/enums/agent-health-status-enum'
-import { AgentUpdateStatusCode } from '@/types/enums/agent-update-status-enum'
-import { LocalScanJobStatusCode } from '@/types/enums/local-scan-job-status-enum'
-import { LocalScanPageSideCode } from '@/types/enums/local-scan-page-side-enum'
-import { LocalScanPageStatusCode } from '@/types/enums/local-scan-page-status-enum'
-import { ALL_SCANNER_DUPLEX_MODE_CODES } from '@/types/enums/scanner-duplex-mode-enum'
 
 const LOCAL_AGENT_REQUEST_ERROR = '本地扫描服务处理失败，请检查扫描服务后重试'
 
@@ -138,10 +138,10 @@ function requireObject(value: LocalAgentJsonValue): AgentWireJsonObject {
 
 function isLocalAgentJsonValue(value: unknown): value is LocalAgentJsonValue {
   if (
-    value === null ||
-    typeof value === 'string' ||
-    typeof value === 'number' ||
-    typeof value === 'boolean'
+    value === null
+    || typeof value === 'string'
+    || typeof value === 'number'
+    || typeof value === 'boolean'
   ) {
     return true
   }
@@ -286,13 +286,13 @@ function requireAgentUpdateStatus(
 ): AgentUpdateStatusCode {
   const fieldValue = value[field]
   if (
-    fieldValue !== AgentUpdateStatusCode.NONE &&
-    fieldValue !== AgentUpdateStatusCode.AVAILABLE &&
-    fieldValue !== AgentUpdateStatusCode.DOWNLOADING &&
-    fieldValue !== AgentUpdateStatusCode.DOWNLOADED &&
-    fieldValue !== AgentUpdateStatusCode.INSTALLING &&
-    fieldValue !== AgentUpdateStatusCode.INSTALLED &&
-    fieldValue !== AgentUpdateStatusCode.FAILED
+    fieldValue !== AgentUpdateStatusCode.NONE
+    && fieldValue !== AgentUpdateStatusCode.AVAILABLE
+    && fieldValue !== AgentUpdateStatusCode.DOWNLOADING
+    && fieldValue !== AgentUpdateStatusCode.DOWNLOADED
+    && fieldValue !== AgentUpdateStatusCode.INSTALLING
+    && fieldValue !== AgentUpdateStatusCode.INSTALLED
+    && fieldValue !== AgentUpdateStatusCode.FAILED
   ) {
     rejectLocalAgentResponse()
   }

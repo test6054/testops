@@ -3,11 +3,11 @@
  */
 
 import type { InjectionKey, Ref } from 'vue'
-import { inject } from 'vue'
 import type { ExamKioskWorkflow } from './useExamKioskWorkflow'
 import type { KioskMutex } from './useKioskMutex'
 import type { KioskStageMachine } from './useStageMachine'
 import type { ExamScannerBatchResponse } from '@/apis/mark/scanner-kiosk'
+import { inject } from 'vue'
 
 /**
  * UI 视图层共享状态（不属于业务 workflow，仅控制持久 UI 元素的显隐）。

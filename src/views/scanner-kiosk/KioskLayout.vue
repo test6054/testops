@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { KioskUiState } from './composables/kioskInjection'
-import { KIOSK_CTX_KEY } from './composables/kioskInjection'
 /**
  * 扫描一体机工作站 - 持久 Layout（路由父级）
  */
@@ -15,6 +14,7 @@ import KioskNoticeBand from './components/KioskNoticeBand.vue'
 import KioskSettingsDrawer from './components/KioskSettingsDrawer.vue'
 import KioskStageBar from './components/KioskStageBar.vue'
 import KioskWorkbenchTabs from './components/KioskWorkbenchTabs.vue'
+import { KIOSK_CTX_KEY } from './composables/kioskInjection'
 import { useExamKioskWorkflow } from './composables/useExamKioskWorkflow'
 import {
   SCANNER_EXAM_BIND_ROUTE,
@@ -56,15 +56,15 @@ provide(KIOSK_CTX_KEY, ctx)
 const isBindShell = computed(() => route.name === SCANNER_EXAM_BIND_ROUTE)
 const showBindBootstrap = computed(
   () =>
-    isBindShell.value &&
-    workflow.examBindingBootstrapPending.value &&
-    !workflow.needsActivationGate.value,
+    isBindShell.value
+    && workflow.examBindingBootstrapPending.value
+    && !workflow.needsActivationGate.value,
 )
 const showBootstrapShell = computed(
   () =>
-    workflow.examBindingBootstrapPending.value &&
-    !workflow.needsActivationGate.value &&
-    !isBindShell.value,
+    workflow.examBindingBootstrapPending.value
+    && !workflow.needsActivationGate.value
+    && !isBindShell.value,
 )
 const showWorkbenchBody = computed(() => !isBindShell.value && !showBootstrapShell.value)
 const showBottomBar = computed(
@@ -72,13 +72,13 @@ const showBottomBar = computed(
 )
 const showWorkbenchChrome = computed(
   () =>
-    showWorkbenchBody.value &&
-    (stage.currentStage.value === 'setup' || stage.currentStage.value === 'history'),
+    showWorkbenchBody.value
+    && (stage.currentStage.value === 'setup' || stage.currentStage.value === 'history'),
 )
 const showStageBar = computed(
   () =>
-    showWorkbenchBody.value &&
-    (stage.currentStage.value === 'scanning' || stage.currentStage.value === 'review'),
+    showWorkbenchBody.value
+    && (stage.currentStage.value === 'scanning' || stage.currentStage.value === 'review'),
 )
 
 watch(

@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import type { Dayjs } from 'dayjs'
-import dayjs from 'dayjs'
 import type {
   ArchiveVolumeDetailResponse,
   ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import dayjs from 'dayjs'
+import { computed, ref, watch } from 'vue'
 import {
   ArchiveMaterialSubmissionStatusCode,
   ArchiveMaterialTypeDescription,
   ArchiveSecurityLevelDescription,
   updateArchiveVolumeTaskSettings,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { computed, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -31,7 +31,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'manage-collaborators': []
   'open-materials': []
-  updated: []
+  "updated": []
 }>()
 
 const saving = ref(false)

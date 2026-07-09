@@ -92,9 +92,9 @@ function resolveFlowEmphasis(
       return true
     }
     return (
-      code === FinalScoreStatusCode.PENDING &&
-      overview.pendingCount > 0 &&
-      overview.calculatedCount === 0
+      code === FinalScoreStatusCode.PENDING
+      && overview.pendingCount > 0
+      && overview.calculatedCount === 0
     )
   }
   if (code === FinalScoreStatusCode.CONFIRMED && publishableCount > 0) {
@@ -112,8 +112,8 @@ export function buildScoreDistributionStatItems(
   publishableCount: number,
 ): ScoreAnalyticsStatItem[] {
   const overview = panel.riskOverview
-  const workflowTail =
-    mode === 'publish'
+  const workflowTail
+    = mode === 'publish'
       ? [
           {
             key: 'publishable',

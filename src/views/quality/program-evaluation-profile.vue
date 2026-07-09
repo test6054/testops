@@ -7,18 +7,18 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 配置某专业采用的认证标准、评价方法、评价周期、样本范围、责任链与归档策略。
  */
 import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
-import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import type {
   ProgramEvaluationProfileQueryRequest,
   ProgramEvaluationProfileSaveRequest,
   ProgramEvaluationProfileSignalSummaryVO,
   ProgramEvaluationProfileVO,
 } from '@/apis/quality/program-evaluation-profile'
-import { programEvaluationProfileApi } from '@/apis/quality/program-evaluation-profile'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
+import { programEvaluationProfileApi } from '@/apis/quality/program-evaluation-profile'
 import {
   AccreditationTypeCode,
   AccreditationTypeDescription,
@@ -115,8 +115,8 @@ const filterFields: FilterField[] = [
   },
 ]
 
-const evaluationCycleOptions: Array<{ value: EvaluationCycleCode; label: string }> =
-  ALL_EVALUATION_CYCLE_CODES.map((value) => ({
+const evaluationCycleOptions: Array<{ value: EvaluationCycleCode, label: string }>
+  = ALL_EVALUATION_CYCLE_CODES.map((value) => ({
     value,
     label: strictEnumLabel(EvaluationCycleDescription, value, '评价周期'),
   }))
@@ -246,7 +246,7 @@ function handleStandardDictSearch(keyword: string) {
   )
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()

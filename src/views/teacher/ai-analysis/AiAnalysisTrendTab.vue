@@ -30,15 +30,15 @@ const injectedCourseLabel = inject(AI_ANALYSIS_SCOPE_COURSE_LABEL_KEY, null)
 const examLocked = inject(AI_ANALYSIS_EXAM_LOCKED_KEY, null)
 
 if (
-  !injectedReferenceDepartmentId ||
-  !injectedScopeCourseId ||
-  !injectedScopeClassId ||
-  !injectedScopeClassLabel ||
-  !injectedAcademicYear ||
-  !injectedSemester ||
-  !examLocked ||
-  !injectedDepartmentLabel ||
-  !injectedCourseLabel
+  !injectedReferenceDepartmentId
+  || !injectedScopeCourseId
+  || !injectedScopeClassId
+  || !injectedScopeClassLabel
+  || !injectedAcademicYear
+  || !injectedSemester
+  || !examLocked
+  || !injectedDepartmentLabel
+  || !injectedCourseLabel
 ) {
   throw new Error('AI 分析中心未提供 scope')
 }

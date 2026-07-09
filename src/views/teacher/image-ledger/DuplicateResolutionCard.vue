@@ -42,13 +42,13 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamPaperDuplicateResolutionVO } from '@/apis/mark/image-ledger'
-import { pagePendingDuplicates } from '@/apis/mark/image-ledger'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { watch } from 'vue'
 import {
   DUPLICATE_RESOLUTION_STATUS_TONE,
   DuplicateResolutionStatusDescription,
 } from '@/apis/mark/duplicate-resolution-status'
+import { pagePendingDuplicates } from '@/apis/mark/image-ledger'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
@@ -64,8 +64,8 @@ const props = defineProps<{
 
 defineEmits<{ (e: 'resolve', record: ExamPaperDuplicateResolutionVO): void }>()
 
-const { rows, loading, pageNum, pageSize, pageTotal, filters, search, handlePageChange } =
-  useQueryTable<ExamPaperDuplicateResolutionVO, { examId: string }>(
+const { rows, loading, pageNum, pageSize, pageTotal, filters, search, handlePageChange }
+  = useQueryTable<ExamPaperDuplicateResolutionVO, { examId: string }>(
     (params) => pagePendingDuplicates(params),
     {
       defaultFilters: () => ({ examId: props.examId }),

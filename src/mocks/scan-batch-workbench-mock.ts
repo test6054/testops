@@ -95,8 +95,8 @@ export function mockPageScannerBatchWorkbenchPages(
 export function mockGetScannerBatchPageInspector(
   request: ExamScannerBatchPageInspectorRequest,
 ): Promise<ExamScannerBatchPageInspectorVO> {
-  const page =
-    buildPendingRows().find((item) => item.pageKey === request.pageKey) ?? buildPendingRows()[0]
+  const page
+    = buildPendingRows().find((item) => item.pageKey === request.pageKey) ?? buildPendingRows()[0]
   return Promise.resolve({
     page,
     inspectorHint: '原件待登记，OCR 将在登记后自动触发',

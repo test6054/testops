@@ -1,6 +1,6 @@
 import type { ExamPageQueryRequest, ExamSummaryResponse } from '@/apis/mark/exam'
-import { listDistinctExamTerms, pageExams } from '@/apis/mark/exam'
 import type { SemesterCode } from '@/types/enums/semester-enum'
+import { listDistinctExamTerms, pageExams } from '@/apis/mark/exam'
 
 const RECENT_TERM_EXAM_PAGE_SIZE = 100
 
@@ -173,8 +173,8 @@ export function pickExamIdsByLargestCourseCluster(exams: ExamSummaryResponse[]):
       continue
     }
     if (
-      courseExams.length === selectedExams.length &&
-      courseId.localeCompare(selectedCourseId) > 0
+      courseExams.length === selectedExams.length
+      && courseId.localeCompare(selectedCourseId) > 0
     ) {
       selectedCourseId = courseId
       selectedExams = courseExams

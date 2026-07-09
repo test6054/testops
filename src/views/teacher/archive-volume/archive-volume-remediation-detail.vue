@@ -11,9 +11,9 @@
           <UiButton variant="ghost" size="sm" @click="goRemediationList">返回整改列表</UiButton>
           <UiButton
             v-if="
-              taskDetail &&
-              canActOnTask &&
-              taskDetail.taskStatus === ArchiveRemediationStatusCode.OPEN
+              taskDetail
+                && canActOnTask
+                && taskDetail.taskStatus === ArchiveRemediationStatusCode.OPEN
             "
             variant="primary"
             size="sm"
@@ -24,9 +24,9 @@
           </UiButton>
           <UiButton
             v-if="
-              taskDetail &&
-              canActOnTask &&
-              taskDetail.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
+              taskDetail
+                && canActOnTask
+                && taskDetail.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
             "
             variant="primary"
             size="sm"
@@ -89,9 +89,7 @@
         </template>
         <template #toolbar>
           <div class="archive-remediation-detail__flow-toolbar">
-            <span class="archive-remediation-detail__flow-hint"
-              >OPEN → IN_PROGRESS → RESUBMITTED → CLOSED</span
-            >
+            <span class="archive-remediation-detail__flow-hint">OPEN → IN_PROGRESS → RESUBMITTED → CLOSED</span>
             <div class="archive-remediation-detail__completion">
               <span class="archive-remediation-detail__completion-label">任务进度</span>
               <ArchiveReadinessRateBar :percent="taskCompletionPercent" />
@@ -203,12 +201,9 @@
             v-if="taskDetail.verifierNickName || taskDetail.verifiedTime"
             class="archive-remediation-detail__verify-meta"
           >
-            <span v-if="taskDetail.verifierNickName"
-              >验证人: {{ taskDetail.verifierNickName }}</span
-            >
+            <span v-if="taskDetail.verifierNickName">验证人: {{ taskDetail.verifierNickName }}</span>
             <span v-if="taskDetail.verifiedTime">
-              · {{ formatDateTime(taskDetail.verifiedTime) }}</span
-            >
+              · {{ formatDateTime(taskDetail.verifiedTime) }}</span>
           </p>
         </div>
       </WorkbenchSurfaceCard>
@@ -309,8 +304,8 @@
           </template>
           <UiButton
             v-if="
-              taskDetail.taskStatus === ArchiveRemediationStatusCode.OPEN ||
-              taskDetail.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
+              taskDetail.taskStatus === ArchiveRemediationStatusCode.OPEN
+                || taskDetail.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
             "
             size="sm"
             variant="outline"
@@ -385,6 +380,12 @@ import type {
   ArchiveRemediationPriorityCode,
   ArchiveRemediationTaskResponse,
 } from '@/apis/mark/archive-volume'
+import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import {
   ARCHIVE_REMEDIATION_EVIDENCE_STATUS_TONE,
   ARCHIVE_REMEDIATION_STATUS_TONE,
@@ -398,12 +399,6 @@ import {
   registerRemediationEvidence,
   updateRemediationTask,
 } from '@/apis/mark/archive-volume'
-import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import ArchiveLifecyclePipe from '@/components/archive-volume/ArchiveLifecyclePipe.vue'
 import ArchiveReadinessRateBar from '@/components/archive-volume/ArchiveReadinessRateBar.vue'
@@ -593,8 +588,8 @@ const showVerifierPanel = computed(() => {
   const task = taskDetail.value
   if (!task) return false
   if (
-    task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED ||
-    task.taskStatus === ArchiveRemediationStatusCode.CLOSED
+    task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED
+    || task.taskStatus === ArchiveRemediationStatusCode.CLOSED
   ) {
     return Boolean(task.verificationComment || task.verifierNickName || task.verifiedTime)
   }

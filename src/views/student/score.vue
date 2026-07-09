@@ -168,14 +168,6 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { StudentExamItemVO, StudentExamStatsResponse } from '@/apis/mark/student-exam'
-import {
-  canSubmitReview,
-  getMyExamStats,
-  pageMyExams,
-  ReviewWindowPolicyStatusCode,
-  ReviewWindowPolicyStatusDescription,
-  STUDENT_REVIEW_WINDOW_STATUS_TONE,
-} from '@/apis/mark/student-exam'
 import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
@@ -186,6 +178,14 @@ import {
   FinalScoreStatusCode,
   FinalScoreStatusDescription,
 } from '@/apis/mark/final-score-status'
+import {
+  canSubmitReview,
+  getMyExamStats,
+  pageMyExams,
+  ReviewWindowPolicyStatusCode,
+  ReviewWindowPolicyStatusDescription,
+  STUDENT_REVIEW_WINDOW_STATUS_TONE,
+} from '@/apis/mark/student-exam'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -258,7 +258,7 @@ const unpublishedCount = computed(() => examStats.value?.unpublishedCount ?? 0)
 
 const latestPublished = computed<StudentExamItemVO | null>(() => publishedTopExams.value[0] ?? null)
 
-const scoreTrend = computed<{ diff: number; latest: number; previous: number } | null>(() => {
+const scoreTrend = computed<{ diff: number, latest: number, previous: number } | null>(() => {
   const list = publishedTopExams.value
   if (list.length < 2) return null
   const latest = Number(list[0].finalScore)

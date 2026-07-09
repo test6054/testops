@@ -5,8 +5,8 @@
 <script setup lang="ts">
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
-import { assessmentItemApi } from '@/apis/quality/assessment-item'
 import { computed, onMounted, ref, watch } from 'vue'
+import { assessmentItemApi } from '@/apis/quality/assessment-item'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { showUserError } from '@/utils/error-handler'
 import { loadSelectorFirstPage, QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS } from './page-contract'
@@ -31,7 +31,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: AssessmentItemVO]
+  "change": [value: string | null, option?: AssessmentItemVO]
 }>()
 
 const options = ref<AssessmentItemVO[]>([])

@@ -144,18 +144,17 @@ import type {
   RationalityAuditCourseLedgerOverviewVO,
   RationalityAuditSaveRequest,
 } from '@/apis/quality/rationality-audit'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import SafetyCertificateOutlined from '@ant-design/icons-vue/SafetyCertificateOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import {
   createRationalityAudit,
   getRationalityAuditCourseLedgerOverview,
   pageRationalityAuditCourseLedger,
   updateRationalityAudit,
 } from '@/apis/quality/rationality-audit'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { ALL_SEMESTER_CODES, SemesterOptions } from '@/types/enums/semester-enum'
-import SafetyCertificateOutlined from '@ant-design/icons-vue/SafetyCertificateOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import {
   AssessmentRationalityAuditStatusCode,
   AssessmentRationalityAuditStatusDescription,
@@ -171,6 +170,7 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
+import { ALL_SEMESTER_CODES, SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -301,7 +301,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(pageEvent: { current: number; pageSize: number }) {
+function handlePageChange(pageEvent: { current: number, pageSize: number }) {
   pageNum.value = pageEvent.current
   pageSize.value = pageEvent.pageSize
   void loadList()
@@ -387,10 +387,10 @@ async function submitAudit(
     return
   }
   if (
-    status === AssessmentRationalityAuditStatusCode.APPROVED &&
-    (!editForm.value.contentAligned ||
-      !editForm.value.rubricMeasurable ||
-      !editForm.value.methodReasonable)
+    status === AssessmentRationalityAuditStatusCode.APPROVED
+    && (!editForm.value.contentAligned
+      || !editForm.value.rubricMeasurable
+      || !editForm.value.methodReasonable)
   ) {
     message.error('审核通过必须同时满足三项合理性检查')
     return

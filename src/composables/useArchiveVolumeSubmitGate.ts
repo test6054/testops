@@ -83,8 +83,8 @@ function volumeStatusAllowsSubmit(
 export function canSubmitArchiveVolume(input: SubmitGateInput): boolean {
   const { volume, fourPropertyStale, fourPropertyPassed } = input
   const departmentReviewEnabled = resolveDepartmentReviewEnabled(input)
-  const blockingRemediation =
-    input.hasBlockingRemediationForSubmit ?? volume.hasBlockingRemediationForSubmit
+  const blockingRemediation
+    = input.hasBlockingRemediationForSubmit ?? volume.hasBlockingRemediationForSubmit
   if (!volumeStatusAllowsSubmit(volume.volumeStatus, departmentReviewEnabled)) return false
   if (blockingRemediation) return false
   if (!canActAsSubmitOwner(input)) return false
@@ -94,10 +94,11 @@ export function canSubmitArchiveVolume(input: SubmitGateInput): boolean {
   if (volume.securityMarkPending) return false
   if (!fourPropertyPassed) return false
   if (
-    volume.integrityStatus !== ArchiveIntegrityStatusCode.PASSED &&
-    volume.integrityStatus !== ArchiveIntegrityStatusCode.WAIVED
-  )
+    volume.integrityStatus !== ArchiveIntegrityStatusCode.PASSED
+    && volume.integrityStatus !== ArchiveIntegrityStatusCode.WAIVED
+  ) {
     return false
+}
   if (!isScoreSubmitReady(volume)) return false
   if (volume.requireSelfCheckConfirm) {
     if (!volume.selfCheckConfirmed || volume.signOffReady !== true) {
@@ -124,12 +125,12 @@ export function isScoreSubmitReady(
     return volume.examGateOpen === true
   }
   if (
-    volume.scoreSource === ArchiveScoreSourceCode.TEACHING_AFFAIRS ||
-    volume.scoreSource === ArchiveScoreSourceCode.OFFLINE_CONFIRMED
+    volume.scoreSource === ArchiveScoreSourceCode.TEACHING_AFFAIRS
+    || volume.scoreSource === ArchiveScoreSourceCode.OFFLINE_CONFIRMED
   ) {
     if (
-      volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.COMPLETED ||
-      volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.VERIFIED
+      volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.COMPLETED
+      || volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.VERIFIED
     ) {
       return true
     }
@@ -146,8 +147,8 @@ export function describeSubmitBlockReason(input: SubmitGateInput): string | null
       return '须先完成院系审核通过后再提交档案馆'
     }
     if (
-      departmentReviewEnabled &&
-      volume.volumeStatus === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING
+      departmentReviewEnabled
+      && volume.volumeStatus === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING
     ) {
       return '院系审核进行中，请等待审核通过'
     }
@@ -177,8 +178,8 @@ export function describeSubmitBlockReason(input: SubmitGateInput): string | null
   }
 
   if (
-    volume.integrityStatus !== ArchiveIntegrityStatusCode.PASSED &&
-    volume.integrityStatus !== ArchiveIntegrityStatusCode.WAIVED
+    volume.integrityStatus !== ArchiveIntegrityStatusCode.PASSED
+    && volume.integrityStatus !== ArchiveIntegrityStatusCode.WAIVED
   ) {
     return '完整性未通过，请先执行完整性检查或授权豁免'
   }

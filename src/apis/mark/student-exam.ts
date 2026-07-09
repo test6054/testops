@@ -224,7 +224,7 @@ export function getMyQuestionAnswerDetail(
 
 export function canSubmitReview(item: StudentExamItemVO | StudentScoreDetailResponse): boolean {
   return (
-    item.finalScoreStatus === FinalScoreStatusCode.PUBLISHED &&
-    item.reviewWindowStatus === ReviewWindowPolicyStatusCode.ACTIVE
+    item.finalScoreStatus === FinalScoreStatusCode.PUBLISHED
+    && item.reviewWindowStatus === ReviewWindowPolicyStatusCode.ACTIVE
   )
 }

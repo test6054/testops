@@ -290,8 +290,8 @@ function syncByClassScope(addedClassIds: string[]): void {
       if (syncSeq !== classScopeSyncSeq) return
       const previewCandidates = requirePreviewCandidates(preview.candidates)
       if (!previewCandidates) return
-      const nextCandidates =
-        scopeMode === ExamRosterScopeModeCode.BY_CLASS
+      const nextCandidates
+        = scopeMode === ExamRosterScopeModeCode.BY_CLASS
           ? previewCandidates
           : mergePreviewCandidates(rosterForm.candidates, previewCandidates)
       emit('sync-class-scope', nextCandidates, [...classIds])

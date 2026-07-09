@@ -5,17 +5,15 @@ import type { PaperInstanceDisplayVO } from './exam-score'
 import type { GradeStatusCode } from './grade-status'
 import type { ScannerKioskScanModeCode } from './scanner-kiosk'
 import type { TaskStatusCode } from './task-status'
+import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
 /**
  * 阅卷考试扫描批次与扫描异常 API - 对接 /api/mark/exams/scanner-batches/* 与 scan-attentions。
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { PageRegisterStateCode } from '@/types/enums/page-register-state-enum'
 import type { ScanAttentionQueryGroupCode } from '@/types/enums/scan-attention-query-group-enum'
 import type { ScanAttentionSourceTypeCode } from '@/types/enums/scan-attention-source-type-enum'
-import {
-  ALL_SCAN_ATTENTION_SOURCE_TYPE_CODES,
-  ScanAttentionSourceTypeDescription,
-} from '@/types/enums/scan-attention-source-type-enum'
 import type { ScanBatchOrderAuditCode } from '@/types/enums/scan-batch-order-audit-enum'
 import type { ScanBatchWorkbenchBindingStatusCode } from '@/types/enums/scan-batch-workbench-binding-status-enum'
 import type { ScanBatchWorkbenchPageStatusFilterCode } from '@/types/enums/scan-batch-workbench-page-status-filter-enum'
@@ -29,6 +27,10 @@ import {
   QualityDecisionDescription,
 } from '@/types/enums/quality-decision-enum'
 import {
+  ALL_SCAN_ATTENTION_SOURCE_TYPE_CODES,
+  ScanAttentionSourceTypeDescription,
+} from '@/types/enums/scan-attention-source-type-enum'
+import {
   ALL_SCAN_ATTENTION_TYPE_CODES,
   ScanAttentionTypeCode,
   ScanAttentionTypeDescription,
@@ -38,8 +40,6 @@ import {
   ScanBatchStatusCode,
   ScanBatchStatusDescription,
 } from '@/types/enums/scan-batch-status-enum'
-import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
-import type { PageRegisterStateCode } from '@/types/enums/page-register-state-enum'
 
 export {
   ALL_QUALITY_DECISION_CODES,
@@ -71,8 +71,8 @@ export const QUALITY_DECISION_TONE: Record<QualityDecisionCode, BadgeTone> = {
   [QualityDecisionCode.BLOCKED]: 'red',
 }
 
-export const QUALITY_DECISION_OPTIONS: Array<{ label: string; value: QualityDecisionCode }> =
-  ALL_QUALITY_DECISION_CODES.map((value) => ({
+export const QUALITY_DECISION_OPTIONS: Array<{ label: string, value: QualityDecisionCode }>
+  = ALL_QUALITY_DECISION_CODES.map((value) => ({
     value,
     label: QualityDecisionDescription[value],
   }))
@@ -87,8 +87,8 @@ export const SCAN_ATTENTION_TYPE_TONE: Record<ScanAttentionTypeCode, BadgeTone> 
   [ScanAttentionTypeCode.MISSING_CANDIDATE_ROSTER]: 'orange',
 }
 
-export const SCAN_ATTENTION_TYPE_OPTIONS: Array<{ label: string; value: ScanAttentionTypeCode }> =
-  ALL_SCAN_ATTENTION_TYPE_CODES.map((value) => ({
+export const SCAN_ATTENTION_TYPE_OPTIONS: Array<{ label: string, value: ScanAttentionTypeCode }>
+  = ALL_SCAN_ATTENTION_TYPE_CODES.map((value) => ({
     value,
     label: ScanAttentionTypeDescription[value],
   }))
@@ -193,8 +193,8 @@ export const SCAN_BATCH_STATUS_TONE: Record<ScanBatchStatusCode, BadgeTone> = {
   [ScanBatchStatusCode.DISCARDED]: 'gray',
 }
 
-export const SCAN_BATCH_STATUS_OPTIONS: Array<{ value: ScanBatchStatusCode; label: string }> =
-  ALL_SCAN_BATCH_STATUS_CODES.map((value) => ({
+export const SCAN_BATCH_STATUS_OPTIONS: Array<{ value: ScanBatchStatusCode, label: string }>
+  = ALL_SCAN_BATCH_STATUS_CODES.map((value) => ({
     value,
     label: ScanBatchStatusDescription[value],
   }))
@@ -655,8 +655,8 @@ export interface ExamScannerBatchPageInspectorVO {
   exceptionSummary?: string
 }
 
-const scanBatchWorkbenchMockEnabled =
-  import.meta.env.DEV && import.meta.env.VITE_SCAN_BATCH_WORKBENCH_MOCK === 'true'
+const scanBatchWorkbenchMockEnabled
+  = import.meta.env.DEV && import.meta.env.VITE_SCAN_BATCH_WORKBENCH_MOCK === 'true'
 
 /** 查询扫描批次工作台聚合。 */
 export async function getScannerBatchWorkbench(

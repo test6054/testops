@@ -186,6 +186,13 @@ import type {
   ExamScannerBatchWorkbenchPageVO,
   ExamScannerBatchWorkbenchResponse,
 } from '@/apis/mark/exam-scan'
+import type { BadgeTone, UiAlertStripTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { useWindowSize } from '@vueuse/core'
+import message from 'ant-design-vue/es/message'
+import { computed, onUnmounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { fetchStoragePreviewBlobUrl } from '@/apis/edu/file-management'
 import {
   getScannerBatchPageInspector,
   getScannerBatchWorkbench,
@@ -196,13 +203,6 @@ import {
   ScanBatchWorkbenchTopActionDescription,
   sealScanBatchByTeacher,
 } from '@/apis/mark/exam-scan'
-import type { BadgeTone, UiAlertStripTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { useWindowSize } from '@vueuse/core'
-import message from 'ant-design-vue/es/message'
-import { computed, onUnmounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { fetchStoragePreviewBlobUrl } from '@/apis/edu/file-management'
 import { discardScannerKioskBatch } from '@/apis/mark/scanner-kiosk'
 import ScanBatchDiscardDialog from '@/components/mark/ScanBatchDiscardDialog.vue'
 import ScanBatchPageInspectorPanel from '@/components/mark/ScanBatchPageInspectorPanel.vue'
@@ -244,8 +244,8 @@ const route = useRoute()
 const router = useRouter()
 const { selectedExamId } = useWorkspaceExamId()
 const { width: viewportWidth } = useWindowSize()
-const { isExamConfidential, examConfidentialLabel, watermarkLines } =
-  useWorkspaceConfidentialContext()
+const { isExamConfidential, examConfidentialLabel, watermarkLines }
+  = useWorkspaceConfidentialContext()
 
 const pageStatusFilter = ref<ScanBatchWorkbenchPageStatusFilterCode>(
   ScanBatchWorkbenchPageStatusFilterCode.ALL,
@@ -298,8 +298,8 @@ const pageRailEmptyDescription = computed(() => {
     return '原件待登记，可在中栏预览原件'
   }
   if (
-    pageStatusFilter.value !== ScanBatchWorkbenchPageStatusFilterCode.ALL ||
-    pageKeyword.value.trim()
+    pageStatusFilter.value !== ScanBatchWorkbenchPageStatusFilterCode.ALL
+    || pageKeyword.value.trim()
   ) {
     return '当前筛选条件下无匹配页轨'
   }
@@ -421,8 +421,8 @@ const selectedPage = computed(() => {
 
 const showPreviewTabs = computed(() =>
   Boolean(
-    selectedPage.value?.identitySliceFileId &&
-    selectedPage.value.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING,
+    selectedPage.value?.identitySliceFileId
+    && selectedPage.value.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING,
   ),
 )
 
@@ -488,8 +488,8 @@ function resolvePageKeyAfterRefresh(
   if (pendingFileOrder !== null) {
     const registered = items.find(
       (item) =>
-        item.fileOrder === pendingFileOrder &&
-        item.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING,
+        item.fileOrder === pendingFileOrder
+        && item.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING,
     )
     if (registered) {
       return registered.pageKey
@@ -541,8 +541,8 @@ async function loadWorkbench(): Promise<void> {
       scanBatchId: scanBatchId.value,
     })
     pageItems.value = workbench.value.initialPageItems ?? []
-    selectedPageKey.value =
-      preservedPageKey || workbench.value.initialPageKey || pageItems.value[0]?.pageKey || ''
+    selectedPageKey.value
+      = preservedPageKey || workbench.value.initialPageKey || pageItems.value[0]?.pageKey || ''
     pagesNextCursor.value = undefined
     await refreshPagesWindow()
 
@@ -626,10 +626,10 @@ async function refreshPagesWindow(): Promise<void> {
 
 async function loadMorePages(): Promise<void> {
   if (
-    !selectedExamId.value ||
-    !scanBatchId.value ||
-    !pagesNextCursor.value ||
-    pagesLoadingMore.value
+    !selectedExamId.value
+    || !scanBatchId.value
+    || !pagesNextCursor.value
+    || pagesLoadingMore.value
   ) {
     return
   }
@@ -721,8 +721,8 @@ async function loadPreview(): Promise<void> {
   if (!page) {
     return
   }
-  const previewPath =
-    previewTab.value === 'identity' ? page.identitySlicePreviewUrl : page.previewUrl
+  const previewPath
+    = previewTab.value === 'identity' ? page.identitySlicePreviewUrl : page.previewUrl
   if (!previewPath) {
     previewLoadFailed.value = true
     return

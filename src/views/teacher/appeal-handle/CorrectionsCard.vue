@@ -140,6 +140,11 @@ import type {
   ExamGradeCorrectionRecordResponse,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import Modal from 'ant-design-vue/es/modal'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   computeSingleQuestionCorrectionCompositeTotal,
   createCorrection,
@@ -148,11 +153,6 @@ import {
   listCorrections,
   listReviewRequests,
 } from '@/apis/mark/grade-review'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import Modal from 'ant-design-vue/es/modal'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -178,7 +178,7 @@ const REVIEW_REQUEST_SEARCH_DEBOUNCE_MS = 300
 
 const rows = ref<ExamGradeCorrectionRecordResponse[]>([])
 const loading = ref(false)
-const reviewRequestOptions = ref<{ value: string; label: string }[]>([])
+const reviewRequestOptions = ref<{ value: string, label: string }[]>([])
 const reviewRequestCache = ref<Map<string, GradeReviewRequestItemResponse>>(new Map())
 const reviewRequestLoading = ref(false)
 let reviewRequestSearchTimer: ReturnType<typeof setTimeout> | undefined
@@ -412,7 +412,7 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()
@@ -437,24 +437,24 @@ async function submit(): Promise<void> {
     return
   }
   if (
-    form.layoutQuestionId &&
-    !request.questionRefs.some((question) => question.layoutQuestionId === form.layoutQuestionId)
+    form.layoutQuestionId
+    && !request.questionRefs.some((question) => question.layoutQuestionId === form.layoutQuestionId)
   ) {
     message.warning('更正题目必须来自选中的复核申请')
     return
   }
   if (
-    request.questionRefs.length === 0 &&
-    props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60 &&
-    form.afterScore > 60
+    request.questionRefs.length === 0
+    && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60
+    && form.afterScore > 60
   ) {
     message.warning('补考成绩策略为封顶60分，更正后总成绩不能超过60分')
     return
   }
   if (
-    form.layoutQuestionId &&
-    props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60 &&
-    isMakeupCap60SingleQuestionCorrectionExceeded(request, form.layoutQuestionId, form.afterScore)
+    form.layoutQuestionId
+    && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60
+    && isMakeupCap60SingleQuestionCorrectionExceeded(request, form.layoutQuestionId, form.afterScore)
   ) {
     message.warning('补考成绩策略为封顶60分，单题更正后合成总成绩不能超过60分')
     return

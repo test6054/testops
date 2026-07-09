@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { MarkClassOption } from '@/composables/useMarkExamRoster'
-import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
 import { watch } from 'vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
 import ClassWeaknessCard from '@/views/teacher/ai-analysis/cards/ClassWeaknessCard.vue'
 import PaperQualityCard from '@/views/teacher/ai-analysis/cards/PaperQualityCard.vue'
 import StudentLearningProfileCard from '@/views/teacher/ai-analysis/cards/StudentLearningProfileCard.vue'

@@ -31,8 +31,8 @@ const LOCAL_AGENT_REQUEST_TIMEOUT_MS = 15_000
 const LOCAL_AGENT_SCANNER_LIST_TIMEOUT_MS = 60_000
 export const LOCAL_AGENT_UNAVAILABLE_ERROR = '本地扫描服务未连接，请确认一体机组件已启动'
 
-export type LocalAgentJsonValue =
-  string | number | boolean | null | LocalAgentJsonObject | LocalAgentJsonValue[]
+export type LocalAgentJsonValue
+  = string | number | boolean | null | LocalAgentJsonObject | LocalAgentJsonValue[]
 
 export interface LocalAgentJsonObject {
   [key: string]: LocalAgentJsonValue | undefined

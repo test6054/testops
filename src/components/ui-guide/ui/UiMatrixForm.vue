@@ -106,7 +106,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   (
     e: 'change',
-    changeEvent: { record: TableFormRow; field: string; value: unknown; index: number },
+    changeEvent: { record: TableFormRow, field: string, value: unknown, index: number },
   ): void
 }>()
 
@@ -227,8 +227,8 @@ const handleCellChange = (
   emit('change', { record, field, value, index })
 }
 
-const handleSelectChange =
-  (record: TableFormRow, column: TableFormCellColumn, index: number) =>
+const handleSelectChange
+  = (record: TableFormRow, column: TableFormCellColumn, index: number) =>
   (value: SelectValue): void => {
     handleCellChange(record, column, value, index)
   }

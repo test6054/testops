@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ScanDispatchQueueSummaryVO } from '@/apis/mark/scanner-dispatch'
-import { loadScanDispatchQueueSummary } from '@/apis/mark/scanner-dispatch'
 import { ReloadOutlined, ScanOutlined } from '@ant-design/icons-vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { loadScanDispatchQueueSummary } from '@/apis/mark/scanner-dispatch'
 import { getKioskArchiveCollaborationPolicy } from '@/apis/mark/scanner-kiosk'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { ArchiveKioskHubListModeCode } from '@/types/enums/archive-kiosk-hub-list-mode-enum'
@@ -87,9 +87,9 @@ const scannerDeviceId = computed(() => deviceActivation.setup.value?.scannerDevi
 const scannerStationId = computed(() => deviceActivation.setup.value?.scannerStationId ?? '')
 
 const endpointLabel = computed(() => {
-  const name =
-    deviceActivation.setup.value?.deviceName?.trim() ||
-    deviceActivation.activationForm.value.endpointName.trim()
+  const name
+    = deviceActivation.setup.value?.deviceName?.trim()
+      || deviceActivation.activationForm.value.endpointName.trim()
   return name || '未命名工位'
 })
 
@@ -104,25 +104,25 @@ const stationLedTone = computed<'green' | 'gray'>(() =>
 
 const showAgentOfflineHint = computed(
   () =>
-    !hubLoading.value &&
-    !deviceActivation.loading.value &&
-    !deviceActivation.localAgentReachable.value &&
-    (deviceActivation.isDeviceBound.value || !deviceActivation.needsActivationGate.value),
+    !hubLoading.value
+    && !deviceActivation.loading.value
+    && !deviceActivation.localAgentReachable.value
+    && (deviceActivation.isDeviceBound.value || !deviceActivation.needsActivationGate.value),
 )
 
 const showTaskKindCards = computed(
   () =>
-    deviceActivation.localAgentReachable.value &&
-    deviceActivation.isDeviceBound.value &&
-    !deviceActivation.needsActivationGate.value,
+    deviceActivation.localAgentReachable.value
+    && deviceActivation.isDeviceBound.value
+    && !deviceActivation.needsActivationGate.value,
 )
 
 const showFailedAlert = computed(
   () =>
-    showTaskKindCards.value &&
-    !queueSummaryLoading.value &&
-    ((queueSummary.value?.failedTicketCount ?? 0) > 0 ||
-      (queueSummary.value?.committingWorkOrderCount ?? 0) > 0),
+    showTaskKindCards.value
+    && !queueSummaryLoading.value
+    && ((queueSummary.value?.failedTicketCount ?? 0) > 0
+      || (queueSummary.value?.committingWorkOrderCount ?? 0) > 0),
 )
 
 const contextSubtitle = computed(() => {
@@ -433,8 +433,8 @@ function enterArchiveQueue() {
 function enterCard(card: TaskKindCard) {
   if (card.deeplinkOnly) return
   if (
-    card.kind === ScanTaskKindCode.EXAM_ARCHIVE ||
-    card.kind === ScanTaskKindCode.PORTFOLIO_COLLECT
+    card.kind === ScanTaskKindCode.EXAM_ARCHIVE
+    || card.kind === ScanTaskKindCode.PORTFOLIO_COLLECT
   ) {
     void router.push({ path: card.route, query: { taskKind: card.kind } })
     return

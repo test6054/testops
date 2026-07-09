@@ -68,9 +68,9 @@ import type {
   ArchiveRemediationStatusCode,
   ArchiveRemediationTaskResponse,
 } from '@/apis/mark/archive-volume'
-import { ArchiveRemediationStatusDescription } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed } from 'vue'
+import { ArchiveRemediationStatusDescription } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'

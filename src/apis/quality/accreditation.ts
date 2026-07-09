@@ -478,8 +478,8 @@ export interface AccreditationLinkedExamOptionVO {
   label: string
 }
 
-export const ANNUAL_REPORT_MATERIAL_STATUS_TONE: Record<AnnualReportMaterialStatusCode, BadgeTone> =
-  {
+export const ANNUAL_REPORT_MATERIAL_STATUS_TONE: Record<AnnualReportMaterialStatusCode, BadgeTone>
+  = {
     [AnnualReportMaterialStatusCode.DRAFT]: 'gray',
     [AnnualReportMaterialStatusCode.SUBMITTED]: 'blue',
     [AnnualReportMaterialStatusCode.APPROVED]: 'green',
@@ -560,7 +560,7 @@ export const accreditationApi = {
     http.post<void>(`${BASE}/support-profiles/confirm`, { id }),
   evidencePage: (data: AccreditationEvidenceQueryRequest) =>
     http.post<PageResult<AccreditationEvidenceVO>>(`${BASE}/evidences/page`, data),
-  linkedExamOptions: (data: { trainingPlanId: string; programId?: string }) =>
+  linkedExamOptions: (data: { trainingPlanId: string, programId?: string }) =>
     http.post<AccreditationLinkedExamOptionVO[]>(`${BASE}/evidences/linked-exam-options`, data),
   evidenceCreate: (data: AccreditationEvidenceSaveRequest) =>
     http.post<string>(`${BASE}/evidences/create`, data),

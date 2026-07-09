@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ScanOperationActionCode, ScanOperationLogItemVO } from '@/apis/mark/scanner-dispatch'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   pageScanOperationLogs,
   SCAN_OPERATION_ACTION_OPTIONS,
   ScanOperationActionDescription,
 } from '@/apis/mark/scanner-dispatch'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -142,7 +142,7 @@ function handleResetSearch() {
   void loadLogs()
 }
 
-function handlePageChange(pageEvent: { current: number; pageSize: number }) {
+function handlePageChange(pageEvent: { current: number, pageSize: number }) {
   pagination.current = pageEvent.current
   pagination.pageSize = pageEvent.pageSize
   void loadLogs()

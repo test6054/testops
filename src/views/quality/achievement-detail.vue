@@ -1,14 +1,21 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { AchievementAuditVO } from '@/apis/quality/achievement-audit'
-import { achievementAuditApi } from '@/apis/quality/achievement-audit'
 import type { AchievementDetailVO } from '@/apis/quality/achievement-detail'
-import { achievementDetailApi } from '@/apis/quality/achievement-detail'
 import type { AchievementManualReviewVO } from '@/apis/quality/achievement-manual-review'
-import { achievementManualReviewApi } from '@/apis/quality/achievement-manual-review'
 import type { AchievementResultVO } from '@/apis/quality/achievement-result'
-import { achievementResultApi } from '@/apis/quality/achievement-result'
 import type { AchievementDetailTypeCode, AchievementStatusCode } from '@/apis/quality/types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
+import { achievementApi } from '@/apis/quality/achievement'
+import { achievementAuditApi } from '@/apis/quality/achievement-audit'
+import { achievementDetailApi } from '@/apis/quality/achievement-detail'
+import { achievementManualReviewApi } from '@/apis/quality/achievement-manual-review'
+import { achievementResultApi } from '@/apis/quality/achievement-result'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_STATUS_COLOR,
@@ -21,13 +28,6 @@ import {
   ManualReviewDecisionCode,
   ManualReviewDecisionDescription,
 } from '@/apis/quality/types'
-
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { achievementApi } from '@/apis/quality/achievement'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -82,7 +82,7 @@ const auditTotal = ref(0)
 const reviewPageNum = ref(1)
 const reviewPageSize = ref(10)
 const reviewTotal = ref(0)
-const reviewForm = reactive<{ decision: ManualReviewDecisionCode; reviewRemark: string }>({
+const reviewForm = reactive<{ decision: ManualReviewDecisionCode, reviewRemark: string }>({
   decision: ManualReviewDecisionCode.CONFIRMED,
   reviewRemark: '',
 })
@@ -186,18 +186,18 @@ const targetTypeToComputeKind: Partial<Record<AchievementTargetTypeCode, string>
 function canRecomputeResult(value: AchievementResultVO | null): boolean {
   if (!value) return false
   return (
-    value.auditStatus === AchievementAuditStatusCode.RETURNED ||
-    isResultStale(value) ||
-    value.auditStatus === AchievementAuditStatusCode.DRAFT ||
-    value.auditStatus === AchievementAuditStatusCode.CALCULATED
+    value.auditStatus === AchievementAuditStatusCode.RETURNED
+    || isResultStale(value)
+    || value.auditStatus === AchievementAuditStatusCode.DRAFT
+    || value.auditStatus === AchievementAuditStatusCode.CALCULATED
   )
 }
 
 function canSubmitManualReview(value: AchievementResultVO | null): boolean {
   if (!value?.auditStatus) return false
   return (
-    value.auditStatus === AchievementAuditStatusCode.SUBMITTED ||
-    value.auditStatus === AchievementAuditStatusCode.CONFIRMED
+    value.auditStatus === AchievementAuditStatusCode.SUBMITTED
+    || value.auditStatus === AchievementAuditStatusCode.CONFIRMED
   )
 }
 
@@ -330,7 +330,7 @@ async function loadAll() {
   await Promise.all([loadResult(), loadDetails(), loadAudits(), loadReviews()])
 }
 
-function handleDetailPageChange(page: { current: number; pageSize: number }) {
+function handleDetailPageChange(page: { current: number, pageSize: number }) {
   detailPageNum.value = page.current
   detailPageSize.value = page.pageSize
   void loadDetails()

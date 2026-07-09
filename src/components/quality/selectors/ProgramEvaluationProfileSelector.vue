@@ -6,10 +6,10 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ProgramEvaluationProfileVO } from '@/apis/quality/program-evaluation-profile'
-import { programEvaluationProfileApi } from '@/apis/quality/program-evaluation-profile'
 import type { AccreditationTypeCode, EvaluationMethodCode } from '@/apis/quality/types'
-import { AccreditationTypeDescription, EvaluationMethodDescription } from '@/apis/quality/types'
 import { onMounted, ref, watch } from 'vue'
+import { programEvaluationProfileApi } from '@/apis/quality/program-evaluation-profile'
+import { AccreditationTypeDescription, EvaluationMethodDescription } from '@/apis/quality/types'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { loadSelectorFirstPage, QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS } from './page-contract'
@@ -36,7 +36,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: ProgramEvaluationProfileVO]
+  "change": [value: string | null, option?: ProgramEvaluationProfileVO]
 }>()
 
 const options = ref<ProgramEvaluationProfileVO[]>([])

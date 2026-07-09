@@ -217,6 +217,11 @@ import type {
   ExamQuestionExperienceAssistBindingResponse,
   GradingExperienceAssistReadinessResponse,
 } from '@/apis/mark/grading-experience-assist'
+import type { ExamExperienceAssistPolicyConfigMode } from '@/components/mark/ExamExperienceAssistPolicyEnableModal.vue'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { ExperienceAssistBindingFilterQuery } from '@/utils/experience-assist-binding-filter'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   disableExamGradingExperienceAssistPolicy,
   getExamGradingExperienceAssistPolicy,
@@ -224,12 +229,7 @@ import {
   pageExamExperienceAssistBindings,
   saveExamExperienceAssistBinding,
 } from '@/apis/mark/grading-experience-assist'
-import type { ExamExperienceAssistPolicyConfigMode } from '@/components/mark/ExamExperienceAssistPolicyEnableModal.vue'
 import ExamExperienceAssistPolicyEnableModal from '@/components/mark/ExamExperienceAssistPolicyEnableModal.vue'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { ExperienceAssistBindingFilterQuery } from '@/utils/experience-assist-binding-filter'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
 import QuestionExperienceAssistBindingModal from '@/components/mark/QuestionExperienceAssistBindingModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -380,10 +380,11 @@ const policyStatusLabel = computed(() => {
   if (status === GradingExperienceAssistPolicyStatusCode.FROZEN) {
     return GradingExperienceAssistPolicyStatusDescription[status]
   }
-  if (policy.value?.enabled)
+  if (policy.value?.enabled) {
     return GradingExperienceAssistPolicyStatusDescription[
       GradingExperienceAssistPolicyStatusCode.ENABLED
     ]
+}
   return GradingExperienceAssistPolicyStatusDescription[
     GradingExperienceAssistPolicyStatusCode.DISABLED
   ]
@@ -396,25 +397,25 @@ const policyTone = computed((): BadgeTone => {
 
 const canEnable = computed(() =>
   Boolean(
-    policy.value?.tenantExperienceAssistEnabled &&
-    policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN &&
-    !bindingsLoading.value &&
-    unresolvedSubjectiveCount.value === 0,
+    policy.value?.tenantExperienceAssistEnabled
+    && policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN
+    && !bindingsLoading.value
+    && unresolvedSubjectiveCount.value === 0,
   ),
 )
 
 const canDisable = computed(() =>
   Boolean(
-    policy.value?.enabled &&
-    policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN,
+    policy.value?.enabled
+    && policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN,
   ),
 )
 
 const canEditConfig = computed(() =>
   Boolean(
-    policy.value?.tenantExperienceAssistEnabled &&
-    policy.value?.enabled &&
-    policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN,
+    policy.value?.tenantExperienceAssistEnabled
+    && policy.value?.enabled
+    && policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN,
   ),
 )
 
@@ -437,8 +438,8 @@ function resolutionLabel(
 ): string {
   if (!status) return '—'
   if (
-    status === GradingExperienceAssistQuestionResolutionCode.NEEDS_EXPLICIT_BINDING &&
-    row?.experienceCaseId
+    status === GradingExperienceAssistQuestionResolutionCode.NEEDS_EXPLICIT_BINDING
+    && row?.experienceCaseId
   ) {
     return '定标引用失效'
   }
@@ -577,10 +578,11 @@ function openBindingModal(row: ExamQuestionExperienceAssistBindingResponse): voi
 
 function confirmUnbind(row: ExamQuestionExperienceAssistBindingResponse): void {
   if (
-    !examId.value ||
-    policy.value?.policyStatus === GradingExperienceAssistPolicyStatusCode.FROZEN
-  )
+    !examId.value
+    || policy.value?.policyStatus === GradingExperienceAssistPolicyStatusCode.FROZEN
+  ) {
     return
+}
   void confirmAsync({
     title: '解除题目定标绑定？',
     content: `题号 ${row.questionNo ?? row.layoutQuestionId} 将不再引用显式定标经验。`,

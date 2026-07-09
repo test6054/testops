@@ -1,19 +1,19 @@
 import type { DefaultOptionType } from 'ant-design-vue/es/select'
 import type { ExamCandidateResponse } from '@/apis/mark/exam-scope'
-import { CandidateStatusDescription, pageExamCandidates } from '@/apis/mark/exam-scope'
 import type { AttemptStatusCode } from '@/types/enums/attempt-status-enum'
+import { ref } from 'vue'
+import { CandidateStatusDescription, pageExamCandidates } from '@/apis/mark/exam-scope'
 import {
   AttemptStatusDescription,
   BINDABLE_ATTEMPT_STATUS_CODES,
 } from '@/types/enums/attempt-status-enum'
-import { ref } from 'vue'
 import { CandidateStatusCode } from '@/types/enums/candidate-status-enum'
 import { showUserError } from '@/utils/error-handler'
 
 const CANDIDATE_BIND_SEARCH_PAGE_SIZE = 20
 
-export const BINDABLE_ATTEMPT_STATUS_OPTIONS: Array<{ label: string; value: AttemptStatusCode }> =
-  BINDABLE_ATTEMPT_STATUS_CODES.map((value) => ({
+export const BINDABLE_ATTEMPT_STATUS_OPTIONS: Array<{ label: string, value: AttemptStatusCode }>
+  = BINDABLE_ATTEMPT_STATUS_CODES.map((value) => ({
     value,
     label: AttemptStatusDescription[value],
   }))

@@ -32,8 +32,8 @@ export {
   PortfolioCollectModeDescription,
 } from '@/types/enums/portfolio-collect-mode-enum'
 
-export const SCAN_TASK_KIND_OPTIONS: Array<{ value: ScanTaskKindCode; label: string }> =
-  ALL_SCAN_TASK_KIND_CODES.map((value) => ({
+export const SCAN_TASK_KIND_OPTIONS: Array<{ value: ScanTaskKindCode, label: string }>
+  = ALL_SCAN_TASK_KIND_CODES.map((value) => ({
     value,
     label: ScanTaskKindDescription[value],
   }))

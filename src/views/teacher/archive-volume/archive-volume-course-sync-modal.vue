@@ -86,6 +86,8 @@ import type {
   ArchiveMaterialTypeCode,
   ArchiveVolumeMaterialRegisterRequest,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { ref, watch } from 'vue'
 import {
   ARCHIVE_MATERIAL_TYPE_OPTIONS,
   ArchiveElectronicOriginalStatusCode,
@@ -93,8 +95,6 @@ import {
   ArchiveMaterialSortRuleCode,
   syncArchiveCoursePlatform,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -111,7 +111,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  success: []
+  "success": []
 }>()
 
 interface SyncRow {

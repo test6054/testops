@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { Dayjs } from 'dayjs'
-import dayjs from 'dayjs'
 import type {
   IndirectEvaluationFormPublishRequest,
   IndirectEvaluationFormVO,
@@ -8,9 +7,10 @@ import type {
   IndirectEvaluationProgressVO,
   IndirectEvaluationStatisticsVO,
 } from '@/apis/quality/indirect-form'
-import { indirectFormApi } from '@/apis/quality/indirect-form'
 import { message } from 'ant-design-vue'
+import dayjs from 'dayjs'
 import { reactive, ref, watch } from 'vue'
+import { indirectFormApi } from '@/apis/quality/indirect-form'
 import { IndirectFormAccessModeCode } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -234,7 +234,7 @@ async function loadStatisticsItems() {
   }
 }
 
-function handleStatisticsItemPageChange(page: { current: number; pageSize: number }) {
+function handleStatisticsItemPageChange(page: { current: number, pageSize: number }) {
   statisticsItemPageNum.value = page.current
   statisticsItemPageSize.value = page.pageSize
   void loadStatisticsItems()
@@ -366,9 +366,7 @@ defineExpose({
         <p>状态：{{ formStatusLabel(progressData.status) }}</p>
         <p>
           填答份数：{{ progressData.submissionCount }} / 有效批次 {{ progressData.validCount }}
-          <span v-if="progressData.expectedSample"
-            >（预期 {{ progressData.expectedSample }} 份）</span
-          >
+          <span v-if="progressData.expectedSample">（预期 {{ progressData.expectedSample }} 份）</span>
         </p>
         <p v-if="progressData.completionRate != null">
           填答完成率：{{ progressData.completionRate }}%
@@ -384,16 +382,14 @@ defineExpose({
         </p>
         <p
           v-if="
-            (progressData.scoredResponseCount ?? 0) > 0 ||
-            (progressData.pendingConversionCount ?? 0) > 0 ||
-            (progressData.noSubstantiveCount ?? 0) > 0
+            (progressData.scoredResponseCount ?? 0) > 0
+              || (progressData.pendingConversionCount ?? 0) > 0
+              || (progressData.noSubstantiveCount ?? 0) > 0
           "
         >
           已换算 {{ progressData.scoredResponseCount ?? 0 }} · 待换算
           {{ progressData.pendingConversionCount ?? 0 }}
-          <span v-if="(progressData.pendingConversionCount ?? 0) > 0"
-            >（选择/开放题须教师录入换算分）</span
-          >
+          <span v-if="(progressData.pendingConversionCount ?? 0) > 0">（选择/开放题须教师录入换算分）</span>
           <span v-if="(progressData.noSubstantiveCount ?? 0) > 0">
             · 无实质作答 {{ progressData.noSubstantiveCount }}
           </span>

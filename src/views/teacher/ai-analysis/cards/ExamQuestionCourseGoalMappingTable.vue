@@ -13,7 +13,7 @@ defineProps<{
   courseGoals: QualityCourseGoalForMarkVO[]
   columns: ColumnsType<MappingRow>
   rows: MappingRow[]
-  goalOptions: Array<{ value: string; label: string }>
+  goalOptions: Array<{ value: string, label: string }>
 }>()
 
 const emit = defineEmits<{

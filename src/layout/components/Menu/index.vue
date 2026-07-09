@@ -44,10 +44,10 @@
 <script lang="ts" setup>
 import type { Key } from 'ant-design-vue/es/_util/type'
 import type { CSSProperties } from 'vue'
-import { computed, ref, watch } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { debounce } from 'lodash-es'
+import { computed, ref, watch } from 'vue'
 import { ConfirmationStatusCode } from '@/apis/quality/types'
 import { useDevice } from '@/hooks'
 import { useAppStore, useAuthStore, useQualityStore, useRouteStore, useUserStore } from '@/stores'
@@ -96,8 +96,8 @@ function isPlatformAdminRoute(item: RouteRecordRaw): boolean {
 
 function isSidebarMenuRoute(routeRecord: RouteRecordRaw): boolean {
   return (
-    !routeRecord.meta?.hideInMenu &&
-    !(routeRecord.redirect && !routeRecord.component && !routeRecord.components)
+    !routeRecord.meta?.hideInMenu
+    && !(routeRecord.redirect && !routeRecord.component && !routeRecord.components)
   )
 }
 
@@ -174,7 +174,7 @@ function numberMetaValue(value: unknown): number | undefined {
   return value
 }
 
-function emptyMenuGroups(): { ungrouped: RouteRecordRaw[]; groups: MenuGroup[] } {
+function emptyMenuGroups(): { ungrouped: RouteRecordRaw[], groups: MenuGroup[] } {
   return { ungrouped: [], groups: [] }
 }
 
@@ -230,9 +230,9 @@ const isDualTeacherQualityMenu = computed(() => {
     return false
   }
   return (
-    route.path.startsWith('/teacher') ||
-    isQualityEvaluationRoute(route.path) ||
-    route.path.startsWith(PORTFOLIO_ROUTE_PREFIX)
+    route.path.startsWith('/teacher')
+    || isQualityEvaluationRoute(route.path)
+    || route.path.startsWith(PORTFOLIO_ROUTE_PREFIX)
   )
 })
 

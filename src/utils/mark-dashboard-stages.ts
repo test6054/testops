@@ -79,15 +79,15 @@ function buildJourneyRailStages(
 
 function isMarkStageKey(value: unknown): value is MarkStageKey {
   return (
-    value === 'EXAM_PREP' ||
-    value === 'PAPER_TEMPLATE' ||
-    value === 'CANDIDATE_ROSTER' ||
-    value === 'SCAN' ||
-    value === 'MARKING_ORG' ||
-    value === 'TRIAL_MARKING' ||
-    value === 'FORMAL_MARKING' ||
-    value === 'SCORE_PUBLISH' ||
-    value === 'ARCHIVE'
+    value === 'EXAM_PREP'
+    || value === 'PAPER_TEMPLATE'
+    || value === 'CANDIDATE_ROSTER'
+    || value === 'SCAN'
+    || value === 'MARKING_ORG'
+    || value === 'TRIAL_MARKING'
+    || value === 'FORMAL_MARKING'
+    || value === 'SCORE_PUBLISH'
+    || value === 'ARCHIVE'
   )
 }
 
