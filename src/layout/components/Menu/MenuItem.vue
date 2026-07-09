@@ -66,12 +66,10 @@ const menuData = computed(() => {
     onlyChild = children[0]
     isOneShowing = true
   } else if (children.length === 0) {
-    // 没有子路由时，显示父路由
-    const parentAsLeaf: RouteRecordRaw = {
+    onlyChild = {
       ...props.item,
       meta: { ...props.item.meta, noShowingChildren: true },
     }
-    onlyChild = parentAsLeaf
     isOneShowing = true
   }
 

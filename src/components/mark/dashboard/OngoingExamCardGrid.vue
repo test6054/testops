@@ -8,12 +8,12 @@
         title="点击进入考试工作台"
         placement="top"
       >
-        <span class="ongoing-exam-card__tooltip-target">
-          <article
+        <div class="ongoing-exam-card__tooltip-target">
+          <div
             class="ongoing-exam-card"
             :class="{ 'ongoing-exam-card--blocking': (exam.blockingTodoCount ?? 0) > 0 }"
-            tabindex="0"
             role="button"
+            tabindex="0"
             :aria-label="`点击进入考试工作台：${exam.examName}`"
             @click="emitNavigate(exam.recommendedWorkspacePath, exam.examId)"
             @keydown.enter="emitNavigate(exam.recommendedWorkspacePath, exam.examId)"
@@ -86,7 +86,7 @@
               </div>
             </div>
 
-            <footer class="ongoing-exam-card__footer">
+            <div class="ongoing-exam-card__footer">
               <UiTag
                 v-if="formatAcademicYearSemester(exam.academicYear, exam.semester)"
                 tone="gray"
@@ -101,9 +101,9 @@
               >
                 进入考试
               </UiButton>
-            </footer>
-          </article>
-        </span>
+            </div>
+          </div>
+        </div>
       </a-tooltip>
     </div>
   </div>
