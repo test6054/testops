@@ -2,12 +2,14 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioCorrectionRequestStatusCode } from '@/apis/portfolio/enums'
+import { PortfolioCorrectionRequestStatusDescription } from '@/apis/portfolio/enums'
 import type {
   PortfolioCorrectionDetailVO,
   PortfolioCorrectionSummaryVO,
   PortfolioTargetFieldDefinition,
   PortfolioTeacherOneTableCategoryVO,
 } from '@/apis/portfolio/types'
+import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
@@ -15,8 +17,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
-import { PortfolioCorrectionRequestStatusDescription } from '@/apis/portfolio/enums'
-import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -48,12 +48,12 @@ function correctionRequestStatusTone(status: PortfolioCorrectionRequestStatusCod
 }
 
 const columns: ColumnsType = [
-  { title: '分类', dataIndex: 'categoryName', key: 'categoryName', width: 120 },
+  { title: '分类', dataIndex: 'categoryName', key: 'categoryName', width: 120, fixed: 'left' },
   { title: '字段', dataIndex: 'fieldLabel', key: 'fieldLabel', width: 120 },
   { title: '状态', key: 'requestStatus', width: 100 },
   { title: '原因', dataIndex: 'reason', key: 'reason' },
   { title: '更新时间', dataIndex: 'updateTime', key: 'updateTime', width: 170 },
-  { title: '操作', key: 'actions', width: 72, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 72 },
 ]
 
 const route = useRoute()
@@ -103,8 +103,8 @@ const fieldOptions = computed(() =>
 
 function applyRoutePrefill() {
   const categoryId = typeof route.query.categoryId === 'string' ? route.query.categoryId : ''
-  const archiveRecordId
-    = typeof route.query.archiveRecordId === 'string' ? route.query.archiveRecordId : ''
+  const archiveRecordId =
+    typeof route.query.archiveRecordId === 'string' ? route.query.archiveRecordId : ''
   const fieldCode = typeof route.query.fieldCode === 'string' ? route.query.fieldCode : ''
   const fieldLabel = typeof route.query.fieldLabel === 'string' ? route.query.fieldLabel : ''
   const wrongValue = typeof route.query.wrongValue === 'string' ? route.query.wrongValue : ''
@@ -224,7 +224,7 @@ async function handleSubmit() {
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   pageNum.value = page.current
   pageSize.value = page.pageSize
   void loadCorrections()

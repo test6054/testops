@@ -9,8 +9,9 @@
  *
  * 自取 ctx，不接受 prop。父级通过 provide(KIOSK_CTX_KEY) 注入。
  */
-import { QuestionCircleOutlined, ReloadOutlined, SettingOutlined } from '@ant-design/icons-vue'
+import { ReloadOutlined, SettingOutlined } from '@ant-design/icons-vue'
 import { computed } from 'vue'
+import { formatExamSubMeta } from '@/utils/exam-display-meta'
 import { useKioskCtx } from '../composables/kioskInjection'
 
 const { workflow, stage, ui } = useKioskCtx()
@@ -24,15 +25,17 @@ const examPillLabel = computed(() => {
 const examPillSub = computed(() => {
   const exam = workflow.kioskContext.value?.exam
   if (!exam) return '请前往「准备」选考试'
+  const subMeta = formatExamSubMeta(exam.examNo, exam.departmentName)
   const term = workflow.examTermText.value
-  return [exam.examNo, term].filter(Boolean).join(' · ')
+  const course = exam.courseName?.trim()
+  return [course, subMeta, term].filter(Boolean).join(' · ')
 })
 
 const sseLedTitle = computed(() =>
   workflow.sseStreaming.value ? '实时流：已连接' : '实时流：未连接',
 )
 
-const refreshButtonDisabled = computed(() => workflow.loading.value)
+const refreshButtonDisabled = computed(() => workflow.isDeviceRefreshing.value)
 
 const examPillBlocked = computed(() => Boolean(workflow.switchExamBlockedReason.value))
 
@@ -54,16 +57,12 @@ function handleExamPillClick() {
 }
 
 function handleRefresh() {
-  if (workflow.loading.value) return
-  workflow.refreshAll()
+  if (workflow.isDeviceRefreshing.value) return
+  void workflow.refreshAll()
 }
 
 function handleOpenSettings() {
   ui.openSettings()
-}
-
-function handleOpenHints() {
-  ui.openShortcutHints()
 }
 </script>
 
@@ -96,14 +95,11 @@ function handleOpenHints() {
       <button
         type="button"
         class="icon-button"
-        title="刷新工作台 [F5 / Ctrl+R 由浏览器处理]"
+        title="刷新工作台"
         :disabled="refreshButtonDisabled"
         @click="handleRefresh"
       >
         <ReloadOutlined />
-      </button>
-      <button type="button" class="icon-button" title="键盘快捷键 [?]" @click="handleOpenHints">
-        <QuestionCircleOutlined />
       </button>
       <button type="button" class="icon-button" title="设备设置" @click="handleOpenSettings">
         <SettingOutlined />

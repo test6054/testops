@@ -1,7 +1,8 @@
 <template>
   <UiDataTable
-    :current="current"
-    :page-size="pageSize"
+    v-model:current="currentPage"
+    v-model:page-size="currentPageSize"
+    pagination-mode="server"
     :columns="columns"
     :data-source="items"
     :loading="loading"
@@ -11,8 +12,7 @@
     flat
     empty-kind="first-run"
     :empty-description="emptyDescription"
-    @update:current="(value) => emit('page-change', value, pageSize)"
-    @update:page-size="(value) => emit('page-change', current, value)"
+    @page-change="(pageInfo) => emit('page-change', pageInfo.current, pageInfo.pageSize)"
   >
     <template #bodyCell="{ column, record }">
       <template v-if="column.key === 'student'">
@@ -72,11 +72,12 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ManualSupplementCandidateTable' })
 
+const currentPage = defineModel<number>('current', { required: true })
+const currentPageSize = defineModel<number>('pageSize', { required: true })
+
 defineProps<{
   items: ExamManualSupplementCandidateItemResponse[]
   loading: boolean
-  current: number
-  pageSize: number
   total: number
   emptyDescription: string
 }>()
@@ -94,7 +95,7 @@ const columns: ColumnType<ExamManualSupplementCandidateItemResponse>[] = [
   { title: '已扫/应有', key: 'pageProgress', width: 100, align: 'right' },
   { title: '缺口页', key: 'missingPages', width: 220 },
   { title: '扫描状态', key: 'scanProgressStatus', width: 110 },
-  { title: '操作', key: 'actions', width: 180, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 180 },
 ]
 
 function scanProgressLabel(status: CandidateScanProgressStatusCode): string {

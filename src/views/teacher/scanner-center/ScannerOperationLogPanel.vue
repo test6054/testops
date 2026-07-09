@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ScanOperationActionCode, ScanOperationLogItemVO } from '@/apis/mark/scanner-dispatch'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   pageScanOperationLogs,
   SCAN_OPERATION_ACTION_OPTIONS,
   ScanOperationActionDescription,
 } from '@/apis/mark/scanner-dispatch'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -61,9 +61,9 @@ const filterFields = computed<FilterField[]>(() => [
 
 const columns: ColumnsType<ScanOperationLogItemVO> = [
   { title: '时间', dataIndex: 'createTime', key: 'createTime', width: 168, fixed: 'left' },
-  { title: '操作类型', dataIndex: 'action', key: 'operationAction', width: 108 },
+  { title: '操作类型', dataIndex: 'action', key: 'operationAction', width: 108, align: 'center' },
   { title: '派单', dataIndex: 'ticketId', key: 'ticketId', width: 108, ellipsis: true },
-  { title: '工单', dataIndex: 'workOrderId', key: 'workOrderId', width: 96, align: 'right' },
+  { title: '工单', dataIndex: 'workOrderId', key: 'workOrderId', width: 96 },
   {
     title: '工位',
     dataIndex: 'scannerStationId',
@@ -76,9 +76,8 @@ const columns: ColumnsType<ScanOperationLogItemVO> = [
     dataIndex: 'operatorUserId',
     key: 'operatorUserId',
     width: 88,
-    align: 'right',
   },
-  { title: '详情', dataIndex: 'detailJson', key: 'detailJson', ellipsis: true },
+  { title: '详情', dataIndex: 'detailJson', key: 'detailJson', minWidth: 280, ellipsis: true },
 ]
 
 function actionLabel(action?: ScanOperationActionCode) {
@@ -143,7 +142,7 @@ function handleResetSearch() {
   void loadLogs()
 }
 
-function handlePageChange(pageEvent: { current: number, pageSize: number }) {
+function handlePageChange(pageEvent: { current: number; pageSize: number }) {
   pagination.current = pageEvent.current
   pagination.pageSize = pageEvent.pageSize
   void loadLogs()
@@ -208,6 +207,8 @@ onMounted(() => {
         row-key="logId"
         size="middle"
         flat
+        zebra
+        sticky-header
         empty-description="暂无操作日志"
         @page-change="handlePageChange"
       >

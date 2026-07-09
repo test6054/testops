@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ClassInfoDto } from '@/apis/edu/class'
 import type { CourseListVO, TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
-import type { SemesterCode } from '@/types/enums/semester-enum'
 import { computed, inject } from 'vue'
 import AnalysisOrgScopeBar from '@/components/mark/AnalysisOrgScopeBar.vue'
 import {
@@ -31,15 +30,15 @@ const injectedCourseLabel = inject(AI_ANALYSIS_SCOPE_COURSE_LABEL_KEY, null)
 const examLocked = inject(AI_ANALYSIS_EXAM_LOCKED_KEY, null)
 
 if (
-  !injectedReferenceDepartmentId
-  || !injectedScopeCourseId
-  || !injectedScopeClassId
-  || !injectedScopeClassLabel
-  || !injectedAcademicYear
-  || !injectedSemester
-  || !examLocked
-  || !injectedDepartmentLabel
-  || !injectedCourseLabel
+  !injectedReferenceDepartmentId ||
+  !injectedScopeCourseId ||
+  !injectedScopeClassId ||
+  !injectedScopeClassLabel ||
+  !injectedAcademicYear ||
+  !injectedSemester ||
+  !examLocked ||
+  !injectedDepartmentLabel ||
+  !injectedCourseLabel
 ) {
   throw new Error('AI 分析中心未提供 scope')
 }
@@ -62,7 +61,7 @@ const orgScopeReady = computed(() =>
 )
 const termLabel = computed(() => {
   const year = academicYear.value
-  const semesterCode = semester.value as SemesterCode | undefined
+  const semesterCode = semester.value
   if (!year || !semesterCode) {
     return '—'
   }

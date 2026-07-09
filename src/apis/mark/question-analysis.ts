@@ -22,7 +22,6 @@ import {
   RejudgePlanStatusCode,
   RejudgePlanStatusDescription,
 } from '@/types/enums/rejudge-plan-status-enum'
-import { readAllPages } from '@/utils/page-result'
 
 // ─── 题目质量分析 ─────────────────────────────────
 
@@ -69,7 +68,10 @@ export interface ExamClassScopeQueryRequest {
 export function generateQuestionAnalysis(
   request: ExamQuestionAnalysisGenerateRequest,
 ): Promise<ExamQuestionAnalysisRecordResponse> {
-  return http.post<ExamQuestionAnalysisRecordResponse>('/api/exam/question-analysis/generate', request)
+  return http.post<ExamQuestionAnalysisRecordResponse>(
+    '/api/exam/question-analysis/generate',
+    request,
+  )
 }
 
 export function generateAllQuestionAnalysis(
@@ -114,20 +116,22 @@ export function pageQuestionAnalysis(
 }
 
 /**
- * 统计图表所需全量题目质量分析：按 PageResult 协议自动翻页直至 pages 耗尽。
+ * 图表所需题目质量分析：单页有界读取，单场考试题目数有界。
  */
-export function fetchAllQuestionAnalysisRows(
+export async function loadQuestionAnalysisChartRows(
   request: QuestionAnalysisFetchAllRequest,
 ): Promise<ExamQuestionAnalysisRecordResponse[]> {
-  return readAllPages(
-    (pageNum) =>
-      pageQuestionAnalysis({
-        ...request,
-        pageNum,
-        pageSize: QUESTION_ANALYSIS_LIST_PAGE_SIZE,
-      }),
-    '题目质量分析加载失败',
-  )
+  const page = await pageQuestionAnalysis({
+    ...request,
+    pageNum: 1,
+    pageSize: QUESTION_ANALYSIS_LIST_PAGE_SIZE,
+  })
+  if (page.total > page.list.length) {
+    throw new Error(
+      `题目质量分析记录数（${page.total}）超过图表单页上限（${QUESTION_ANALYSIS_LIST_PAGE_SIZE}）`,
+    )
+  }
+  return page.list
 }
 
 // ─── 学生错题本 ─────────────────────────────────

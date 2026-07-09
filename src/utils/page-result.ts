@@ -44,18 +44,13 @@ export function normalizePageResultPayload<T>(payload: T): T {
   return normalized as T
 }
 
-export async function readAllPages<T>(
-  loadPage: (pageNum: number) => Promise<PageResult<T>>,
-  _userFallback: string,
-): Promise<T[]> {
-  const items: T[] = []
-  let pageNum = 1
-  while (true) {
-    const page = await loadPage(pageNum)
-    items.push(...page.list)
-    if (pageNum >= page.pages || page.pages === 0) {
-      return items
-    }
-    pageNum += 1
+/** UiDataTable / useQueryTable 空列表占位，字段与后端 PageResult 契约一致。 */
+export function buildEmptyPageResult<T>(pageNum = 1, pageSize = 10): PageResult<T> {
+  return {
+    list: [],
+    total: 0,
+    pageNum,
+    pageSize,
+    pages: 0,
   }
 }

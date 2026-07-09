@@ -1,7 +1,7 @@
 import type { ExamLayoutQuestionViewResponse } from '@/apis/mark/exam-layout-question'
-import { EXAM_PAPER_PAGE_KIND_LABEL } from '@/apis/mark/exam-paper-page-kind'
-import { EXAM_QUESTION_REGION_ROLE_LABEL } from '@/apis/mark/exam-question-region-role'
-import { MARK_OCR_SCENE_LABEL } from '@/apis/mark/ocr-scene'
+import { ExamPaperPageKindDescription } from '@/apis/mark/exam-paper-page-kind'
+import { ExamQuestionRegionRoleDescription } from '@/apis/mark/exam-question-region-role'
+import { MarkOcrSceneDescription } from '@/apis/mark/ocr-scene'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -15,17 +15,23 @@ export interface ExamLayoutQuestionOption {
 }
 
 /** 制卷题目摘要下拉/列表展示文案，对标 Gradescope Set Question Type + 页面来源核对。 */
-export function formatExamLayoutQuestionSummaryLabel(question: ExamLayoutQuestionViewResponse): string {
+export function formatExamLayoutQuestionSummaryLabel(
+  question: ExamLayoutQuestionViewResponse,
+): string {
   const segments = [
     `第 ${question.questionNo} 题`,
-    strictEnumLabel(MARK_OCR_SCENE_LABEL, question.ocrScene, 'ocrScene'),
+    strictEnumLabel(MarkOcrSceneDescription, question.ocrScene, 'ocrScene'),
   ]
   if (question.roiReady) {
     if (question.sourcePageKind) {
-      segments.push(strictEnumLabel(EXAM_PAPER_PAGE_KIND_LABEL, question.sourcePageKind, 'sourcePageKind'))
+      segments.push(
+        strictEnumLabel(ExamPaperPageKindDescription, question.sourcePageKind, 'sourcePageKind'),
+      )
     }
     if (question.regionRole) {
-      segments.push(strictEnumLabel(EXAM_QUESTION_REGION_ROLE_LABEL, question.regionRole, 'regionRole'))
+      segments.push(
+        strictEnumLabel(ExamQuestionRegionRoleDescription, question.regionRole, 'regionRole'),
+      )
     }
   } else {
     segments.push(ROI_NOT_CONFIGURED_LABEL)
@@ -33,9 +39,10 @@ export function formatExamLayoutQuestionSummaryLabel(question: ExamLayoutQuestio
   segments.push(strictEnumLabel(QuestionTypeDescription, question.questionType, 'questionType'))
   segments.push(`${question.fullScore} 分`)
   if (question.questionStem) {
-    const preview = question.questionStem.length > 24
-      ? `${question.questionStem.slice(0, 24)}...`
-      : question.questionStem
+    const preview =
+      question.questionStem.length > 24
+        ? `${question.questionStem.slice(0, 24)}...`
+        : question.questionStem
     segments.push(preview)
   }
   return segments.join(' · ')

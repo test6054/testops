@@ -1,5 +1,6 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { Ref } from 'vue'
+import { computed, ref } from 'vue'
 import type {
   MarkingPageAnnotationSubmitItem,
   MarkingQuestionScoreSubmitItem,
@@ -7,16 +8,16 @@ import type {
   MarkingTaskResponse,
   QuestionMarkingGroupQuestionResponse,
 } from '@/apis/mark/marking-organization'
+import { MarkingTaskStatusCode, submitMarkingTask } from '@/apis/mark/marking-organization'
 import type { WholeQuestionForm } from '@/composables/useWholePaperGallery'
 import message from 'ant-design-vue/es/message'
 import Modal from 'ant-design-vue/es/modal'
-import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   batchSubmitMarkingTasksInChunks,
+  MarkingTaskBatchOutcomeCode,
   precheckMarkingTaskBatch,
 } from '@/apis/mark/marking-batch'
-import { submitMarkingTask } from '@/apis/mark/marking-organization'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
   buildGradingDraftKey,
@@ -48,7 +49,7 @@ export interface UseMarkingSubmitOptions {
   loadTask: () => Promise<void>
   ensureBatchLoaded: (examId: string) => Promise<void>
   tenantId: Ref<string>
-  form: { score?: number, annotationNote?: string }
+  form: { score?: number; annotationNote?: string }
   wholeQuestions: Ref<QuestionMarkingGroupQuestionResponse[]>
   getWholeQuestionForm: (layoutQuestionId: string) => WholeQuestionForm
   wholePageAnnotationForms: Record<string, string>
@@ -56,7 +57,7 @@ export interface UseMarkingSubmitOptions {
     questionScores: MarkingQuestionScoreSubmitItem[]
     pageAnnotations: MarkingPageAnnotationSubmitItem[]
   } | null
-  onSubmitSuccess?: (payload: { taskId: string, score: number }) => void
+  onSubmitSuccess?: (payload: { taskId: string; score: number }) => void
 }
 
 export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
@@ -163,7 +164,11 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
     }
     return options.batchTasks.value.filter((item) => {
       if (item.id === currentTask.id) return false
-      if (item.taskStatus !== 'ALLOCATED' && item.taskStatus !== 'IN_PROGRESS') return false
+      if (
+        item.taskStatus !== MarkingTaskStatusCode.ALLOCATED &&
+        item.taskStatus !== MarkingTaskStatusCode.IN_PROGRESS
+      )
+        return false
       if (item.groupId !== currentTask.groupId) return false
       if (item.taskUnit === 'WHOLE_PAPER') return false
       return item.questionNo === currentTask.questionNo
@@ -171,7 +176,7 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   }
 
   function buildDraftPayload() {
-    const wholeQuestionForms: Record<string, { score?: number, annotationText: string }> = {}
+    const wholeQuestionForms: Record<string, { score?: number; annotationText: string }> = {}
     for (const question of options.wholeQuestions.value) {
       const qForm = options.getWholeQuestionForm(question.layoutQuestionId)
       if (qForm.score !== undefined || qForm.annotationText.trim()) {
@@ -226,8 +231,8 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   async function applyScoreToRemaining(): Promise<void> {
     const currentTask = options.task.value
     const score = submittedScoreSnapshot.value
-    const layoutQuestionId
-      = pendingBatchLayoutQuestionId.value || options.questionView.value?.layoutQuestionId
+    const layoutQuestionId =
+      pendingBatchLayoutQuestionId.value || options.questionView.value?.layoutQuestionId
     if (!currentTask?.examId || !currentTask.groupId || score === undefined || !layoutQuestionId) {
       closeApplyModal()
       return
@@ -274,7 +279,7 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
         batchApplyProgress.value = { done, total }
       })
       const submittedTaskIds = results.flatMap((item) => item.submittedTaskIds ?? [])
-      const failed = results.find((item) => item.outcome === 'FAILED')
+      const failed = results.find((item) => item.outcome === MarkingTaskBatchOutcomeCode.FAILED)
       if (submittedTaskIds.length > 0) {
         const withdrawWindowMinutes = requireWithdrawWindowMinutes()
         if (withdrawWindowMinutes != null) {
@@ -304,7 +309,7 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
         )
         return
       }
-      const warn = results.find((item) => item.outcome === 'WARN')
+      const warn = results.find((item) => item.outcome === MarkingTaskBatchOutcomeCode.WARN)
       if (warn?.annotationWarning) {
         message.warning(warn.annotationWarning)
       } else {
@@ -387,8 +392,8 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
     onGradingDraftSubmitStart()
     submitting.value = true
     const currentTask = options.task.value
-    const draftKey
-      = options.tenantId.value && currentTask
+    const draftKey =
+      options.tenantId.value && currentTask
         ? buildGradingDraftKey(options.tenantId.value, currentTask.examId, currentTask.id)
         : null
     try {
@@ -457,8 +462,8 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
       const hasQuestionDraft = options.wholeQuestions.value.some((question) => {
         const questionForm = options.getWholeQuestionForm(question.layoutQuestionId)
         return (
-          (questionForm.score !== undefined && questionForm.score !== null)
-          || (questionForm.annotationText?.trim() ?? '') !== ''
+          (questionForm.score !== undefined && questionForm.score !== null) ||
+          (questionForm.annotationText?.trim() ?? '') !== ''
         )
       })
       if (hasQuestionDraft) return true

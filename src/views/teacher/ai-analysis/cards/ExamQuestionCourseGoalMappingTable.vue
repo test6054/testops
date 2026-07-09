@@ -13,7 +13,7 @@ defineProps<{
   courseGoals: QualityCourseGoalForMarkVO[]
   columns: ColumnsType<MappingRow>
   rows: MappingRow[]
-  goalOptions: Array<{ value: string, label: string }>
+  goalOptions: Array<{ value: string; label: string }>
 }>()
 
 const emit = defineEmits<{
@@ -48,6 +48,7 @@ interface MappingRow {
     row-key="layoutQuestionId"
     size="middle"
     empty-description="暂无试题，请先完成题目质量分析"
+    :sticky-header="false"
   >
     <template #bodyCell="{ column, record }">
       <template v-if="column.key === 'goal'">

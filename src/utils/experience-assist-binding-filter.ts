@@ -2,6 +2,7 @@ import type { ExamQuestionExperienceAssistBindingResponse } from '@/apis/mark/gr
 import type { GradingExperienceAssistQuestionResolutionCode } from '@/types/enums/grading-experience-assist-question-resolution-enum'
 
 export interface ExperienceAssistBindingFilterQuery {
+  [key: string]: unknown
   keyword?: string
   assistResolutionStatus?: GradingExperienceAssistQuestionResolutionCode
 }

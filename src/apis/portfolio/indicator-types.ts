@@ -1,38 +1,42 @@
 import type { PageResult, QueryDto } from '@/types'
 import type { PfEligibilityAuditStatusCode } from '@/types/enums/pf-eligibility-audit-status-enum'
-import type { PfEligibilityNodeTypeCode } from '@/types/enums/pf-eligibility-node-type-enum'
-import type { PfIndicatorBusinessReferenceSceneCode } from '@/types/enums/pf-indicator-business-reference-scene-enum'
-import type { PfIndicatorDataSourceChannelCode } from '@/types/enums/pf-indicator-data-source-channel-enum'
-import type { PfIndicatorStatusCode } from '@/types/enums/pf-indicator-status-enum'
-import type { PfModelStatusCode } from '@/types/enums/pf-model-status-enum'
-import type { PfScoreRuleTypeCode } from '@/types/enums/pf-score-rule-type-enum'
-import type { PortfolioIndicatorDefinitionTreeNodeTypeCode } from '@/types/enums/portfolio-indicator-definition-tree-node-type-enum'
 import {
   ALL_PF_ELIGIBILITY_AUDIT_STATUS_CODES,
   PfEligibilityAuditStatusDescription,
 } from '@/types/enums/pf-eligibility-audit-status-enum'
+import type { PfEligibilityNodeTypeCode } from '@/types/enums/pf-eligibility-node-type-enum'
 import {
   ALL_PF_ELIGIBILITY_NODE_TYPE_CODES,
   PfEligibilityNodeTypeDescription,
 } from '@/types/enums/pf-eligibility-node-type-enum'
-import { PfImpactReportStatusCode } from '@/types/enums/pf-impact-report-status-enum'
+import type { PfIndicatorBusinessReferenceSceneCode } from '@/types/enums/pf-indicator-business-reference-scene-enum'
+import type { PfIndicatorDataSourceChannelCode } from '@/types/enums/pf-indicator-data-source-channel-enum'
 import {
   ALL_PF_INDICATOR_DATA_SOURCE_CHANNEL_CODES,
   PfIndicatorDataSourceChannelDescription,
 } from '@/types/enums/pf-indicator-data-source-channel-enum'
+import type { PfIndicatorStatusCode } from '@/types/enums/pf-indicator-status-enum'
 import {
   ALL_PF_INDICATOR_STATUS_CODES,
   PfIndicatorStatusDescription,
 } from '@/types/enums/pf-indicator-status-enum'
+import type { PfModelStatusCode } from '@/types/enums/pf-model-status-enum'
 import {
   ALL_PF_MODEL_STATUS_CODES,
   PfModelStatusDescription,
 } from '@/types/enums/pf-model-status-enum'
-import { ALL_PF_SCENE_CODES, PfSceneCode, PfSceneCodeDescription } from '@/types/enums/pf-scene-code-enum'
+import type { PfScoreRuleTypeCode } from '@/types/enums/pf-score-rule-type-enum'
 import {
   ALL_PF_SCORE_RULE_TYPE_CODES,
   PfScoreRuleTypeDescription,
 } from '@/types/enums/pf-score-rule-type-enum'
+import type { PortfolioIndicatorDefinitionTreeNodeTypeCode } from '@/types/enums/portfolio-indicator-definition-tree-node-type-enum'
+import { PfImpactReportStatusCode } from '@/types/enums/pf-impact-report-status-enum'
+import {
+  ALL_PF_SCENE_CODES,
+  PfSceneCode,
+  PfSceneCodeDescription,
+} from '@/types/enums/pf-scene-code-enum'
 
 export {
   ALL_PF_ELIGIBILITY_AUDIT_STATUS_CODES,
@@ -40,8 +44,8 @@ export {
   PfEligibilityAuditStatusDescription,
 } from '@/types/enums/pf-eligibility-audit-status-enum'
 
-export const PF_SCENE_CODE_OPTIONS: Array<{ value: PfSceneCode, label: string }>
-  = ALL_PF_SCENE_CODES.map((value) => ({
+export const PF_SCENE_CODE_OPTIONS: Array<{ value: PfSceneCode; label: string }> =
+  ALL_PF_SCENE_CODES.map((value) => ({
     value,
     label: PfSceneCodeDescription[value],
   }))
@@ -52,8 +56,8 @@ export {
   PfEligibilityNodeTypeDescription,
 } from '@/types/enums/pf-eligibility-node-type-enum'
 
-export const PF_INDICATOR_STATUS_OPTIONS: Array<{ value: PfIndicatorStatusCode, label: string }>
-  = ALL_PF_INDICATOR_STATUS_CODES.map((value) => ({
+export const PF_INDICATOR_STATUS_OPTIONS: Array<{ value: PfIndicatorStatusCode; label: string }> =
+  ALL_PF_INDICATOR_STATUS_CODES.map((value) => ({
     value,
     label: PfIndicatorStatusDescription[value],
   }))
@@ -64,11 +68,13 @@ export {
   PfImpactReportStatusDescription,
 } from '@/types/enums/pf-impact-report-status-enum'
 
-export const PF_INDICATOR_DATA_SOURCE_CHANNEL_OPTIONS: Array<{ value: PfIndicatorDataSourceChannelCode, label: string }>
-  = ALL_PF_INDICATOR_DATA_SOURCE_CHANNEL_CODES.map((value) => ({
-    value,
-    label: PfIndicatorDataSourceChannelDescription[value],
-  }))
+export const PF_INDICATOR_DATA_SOURCE_CHANNEL_OPTIONS: Array<{
+  value: PfIndicatorDataSourceChannelCode
+  label: string
+}> = ALL_PF_INDICATOR_DATA_SOURCE_CHANNEL_CODES.map((value) => ({
+  value,
+  label: PfIndicatorDataSourceChannelDescription[value],
+}))
 
 /** 指标业务引用场景 - PfIndicatorBusinessReferenceSceneEnum */
 export {
@@ -77,8 +83,8 @@ export {
   PfIndicatorBusinessReferenceSceneDescription,
 } from '@/types/enums/pf-indicator-business-reference-scene-enum'
 
-export const PF_SCORE_RULE_TYPE_OPTIONS: Array<{ value: PfScoreRuleTypeCode, label: string }>
-  = ALL_PF_SCORE_RULE_TYPE_CODES.map((value) => ({
+export const PF_SCORE_RULE_TYPE_OPTIONS: Array<{ value: PfScoreRuleTypeCode; label: string }> =
+  ALL_PF_SCORE_RULE_TYPE_CODES.map((value) => ({
     value,
     label: PfScoreRuleTypeDescription[value],
   }))
@@ -89,8 +95,8 @@ export {
   PfIndicatorDataSourceChannelDescription,
 } from '@/types/enums/pf-indicator-data-source-channel-enum'
 
-export const PF_MODEL_STATUS_OPTIONS: Array<{ value: PfModelStatusCode, label: string }>
-  = ALL_PF_MODEL_STATUS_CODES.map((value) => ({
+export const PF_MODEL_STATUS_OPTIONS: Array<{ value: PfModelStatusCode; label: string }> =
+  ALL_PF_MODEL_STATUS_CODES.map((value) => ({
     value,
     label: PfModelStatusDescription[value],
   }))
@@ -101,7 +107,10 @@ export {
   PfIndicatorStatusDescription,
 } from '@/types/enums/pf-indicator-status-enum'
 
-export const PF_IMPACT_REPORT_STATUS_TONE: Record<PfImpactReportStatusCode, 'gray' | 'blue' | 'green' | 'red'> = {
+export const PF_IMPACT_REPORT_STATUS_TONE: Record<
+  PfImpactReportStatusCode,
+  'gray' | 'blue' | 'green' | 'red'
+> = {
   [PfImpactReportStatusCode.PENDING]: 'gray',
   [PfImpactReportStatusCode.RUNNING]: 'blue',
   [PfImpactReportStatusCode.COMPLETED]: 'green',
@@ -473,11 +482,14 @@ export interface PortfolioIndicatorCollectedValueVO {
   skipReason?: string
 }
 
-export interface PortfolioIndicatorAutoCollectResultVO {
+export interface PortfolioIndicatorAutoCollectSummaryResponse {
   teacherId: string
-  items: PortfolioIndicatorCollectedValueVO[]
   collectedCount: number
   skippedCount: number
+}
+
+export interface PortfolioIndicatorAutoCollectPageRequest extends QueryDto {
+  teacherId: string
 }
 
 export {
@@ -486,11 +498,13 @@ export {
   PfSceneCodeDescription,
 } from '@/types/enums/pf-scene-code-enum'
 
-export const PF_ELIGIBILITY_NODE_TYPE_OPTIONS: Array<{ value: PfEligibilityNodeTypeCode, label: string }>
-  = ALL_PF_ELIGIBILITY_NODE_TYPE_CODES.map((value) => ({
-    value,
-    label: PfEligibilityNodeTypeDescription[value],
-  }))
+export const PF_ELIGIBILITY_NODE_TYPE_OPTIONS: Array<{
+  value: PfEligibilityNodeTypeCode
+  label: string
+}> = ALL_PF_ELIGIBILITY_NODE_TYPE_CODES.map((value) => ({
+  value,
+  label: PfEligibilityNodeTypeDescription[value],
+}))
 
 export {
   ALL_PF_SCORE_RULE_TYPE_CODES,
@@ -498,11 +512,13 @@ export {
   PfScoreRuleTypeDescription,
 } from '@/types/enums/pf-score-rule-type-enum'
 
-export const PF_ELIGIBILITY_AUDIT_STATUS_OPTIONS: Array<{ value: PfEligibilityAuditStatusCode, label: string }>
-  = ALL_PF_ELIGIBILITY_AUDIT_STATUS_CODES.map((value) => ({
-    value,
-    label: PfEligibilityAuditStatusDescription[value],
-  }))
+export const PF_ELIGIBILITY_AUDIT_STATUS_OPTIONS: Array<{
+  value: PfEligibilityAuditStatusCode
+  label: string
+}> = ALL_PF_ELIGIBILITY_AUDIT_STATUS_CODES.map((value) => ({
+  value,
+  label: PfEligibilityAuditStatusDescription[value],
+}))
 
 export interface PortfolioIndicatorExportResultVO {
   fileName: string
@@ -539,6 +555,11 @@ export interface PortfolioIndicatorDefinitionPageRequest extends QueryDto {
 }
 
 export interface PortfolioSceneCodeRequest {
+  sceneCode: PfSceneCode
+}
+
+/** 规则发布快照历史分页查询 */
+export interface PortfolioRuleHistoryPageRequest extends QueryDto {
   sceneCode: PfSceneCode
 }
 
@@ -673,10 +694,16 @@ export interface PortfolioIndicatorTeacherTypeCompareVO {
 
 /** 平台指标 API 契约 */
 export interface PortfolioIndicatorPlatformApi {
-  pageDefinition: (data: PortfolioIndicatorDefinitionPageRequest) => Promise<PageResult<PortfolioIndicatorDefinitionVO>>
-  getDefinition: (data: PortfolioIndicatorDefinitionGetRequest) => Promise<PortfolioIndicatorDefinitionVO>
+  pageDefinition: (
+    data: PortfolioIndicatorDefinitionPageRequest,
+  ) => Promise<PageResult<PortfolioIndicatorDefinitionVO>>
+  getDefinition: (
+    data: PortfolioIndicatorDefinitionGetRequest,
+  ) => Promise<PortfolioIndicatorDefinitionVO>
   saveDefinition: (data: PortfolioIndicatorDefinitionSaveRequest) => Promise<string>
-  pageTemplate: (data: PortfolioIndicatorRuleTemplatePageRequest) => Promise<PageResult<PortfolioIndicatorRuleTemplateVO>>
+  pageTemplate: (
+    data: PortfolioIndicatorRuleTemplatePageRequest,
+  ) => Promise<PageResult<PortfolioIndicatorRuleTemplateVO>>
   saveTemplate: (data: PortfolioIndicatorRuleTemplateSaveRequest) => Promise<string>
   saveBinding: (data: PortfolioIndicatorRuleBindingSaveRequest) => Promise<string>
   listIndustryPack: () => Promise<PortfolioIndustryPackVO[]>
@@ -702,20 +729,44 @@ export interface PortfolioIndicatorTenantApi {
   publishModel: (data: PortfolioTenantSceneModelPublishRequest) => Promise<string>
   freezeModel: (data: PortfolioSceneCodeRequest) => Promise<void>
   ruleHistory: (data: PortfolioSceneCodeRequest) => Promise<PortfolioRulePublishSnapshotVO[]>
-  retroactiveGet: (data: PortfolioRuleRetroactiveGetRequest) => Promise<PortfolioRulePublishSnapshotVO>
+  pageRuleHistory: (
+    data: PortfolioRuleHistoryPageRequest,
+  ) => Promise<PageResult<PortfolioRulePublishSnapshotVO>>
+  retroactiveGet: (
+    data: PortfolioRuleRetroactiveGetRequest,
+  ) => Promise<PortfolioRulePublishSnapshotVO>
   saveEligibilityRule: (data: PortfolioEligibilityRuleSaveRequest) => Promise<string>
-  getEligibilityRule: (data: PortfolioEligibilityRuleGetRequest) => Promise<PortfolioEligibilityRuleVO>
+  getEligibilityRule: (
+    data: PortfolioEligibilityRuleGetRequest,
+  ) => Promise<PortfolioEligibilityRuleVO>
   impactPreview: (data: PortfolioSceneCodeRequest) => Promise<string>
-  getImpactReport: (data: PortfolioPublishImpactReportGetRequest) => Promise<PortfolioPublishImpactReportVO>
+  getImpactReport: (
+    data: PortfolioPublishImpactReportGetRequest,
+  ) => Promise<PortfolioPublishImpactReportVO>
   pageImpactReport: (data: QueryDto) => Promise<PageResult<PortfolioPublishImpactReportVO>>
-  evaluateEligibility: (data: PortfolioEligibilityEvaluateRequest) => Promise<PortfolioEligibilityEvalResultDto>
+  evaluateEligibility: (
+    data: PortfolioEligibilityEvaluateRequest,
+  ) => Promise<PortfolioEligibilityEvalResultDto>
   pageEvalLog: (data: QueryDto) => Promise<PageResult<PortfolioEligibilityEvalLogVO>>
   getExplain: (data: PortfolioExplainGetRequest) => Promise<string>
   exportIndicatorCatalog: () => Promise<PortfolioIndicatorExportResultVO>
-  exportSnapshotDiff: (data: PortfolioExportSnapshotDiffRequest) => Promise<PortfolioIndicatorExportResultVO>
-  exportImpactReport: (data: PortfolioPublishImpactReportGetRequest) => Promise<PortfolioIndicatorExportResultVO>
-  computeTrial: (data: PortfolioIndicatorComputeTrialRequest) => Promise<PortfolioIndicatorScoreComputeResult>
-  computeSnapshot: (data: PortfolioIndicatorSnapshotComputeRequest) => Promise<PortfolioIndicatorScoreComputeResult>
+  exportSnapshotDiff: (
+    data: PortfolioExportSnapshotDiffRequest,
+  ) => Promise<PortfolioIndicatorExportResultVO>
+  exportImpactReport: (
+    data: PortfolioPublishImpactReportGetRequest,
+  ) => Promise<PortfolioIndicatorExportResultVO>
+  computeTrial: (
+    data: PortfolioIndicatorComputeTrialRequest,
+  ) => Promise<PortfolioIndicatorScoreComputeResult>
+  computeSnapshot: (
+    data: PortfolioIndicatorSnapshotComputeRequest,
+  ) => Promise<PortfolioIndicatorScoreComputeResult>
   pageComputeLog: (data: QueryDto) => Promise<PageResult<PortfolioIndicatorComputeLogVO>>
-  autoCollect: (data: PortfolioIndicatorAutoCollectRequest) => Promise<PortfolioIndicatorAutoCollectResultVO>
+  getAutoCollectSummary: (
+    data: PortfolioIndicatorAutoCollectRequest,
+  ) => Promise<PortfolioIndicatorAutoCollectSummaryResponse>
+  pageAutoCollectItems: (
+    data: PortfolioIndicatorAutoCollectPageRequest,
+  ) => Promise<PageResult<PortfolioIndicatorCollectedValueVO>>
 }

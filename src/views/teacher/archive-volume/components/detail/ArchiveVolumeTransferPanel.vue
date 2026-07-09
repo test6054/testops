@@ -2,7 +2,8 @@
   <WorkbenchSurfaceCard class="archive-volume-transfer-panel">
     <UiAlertStrip
       v-if="
-        detail.volume.transferStatus === 'REJECTED' && detail.volume.volumeStatus === 'COLLECTING'
+        detail.volume.transferStatus === ArchiveTransferStatusCode.REJECTED &&
+        detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
       "
       tone="info"
       title="移交已退回"
@@ -22,7 +23,10 @@
     </template>
     <template #toolbar>
       <div
-        v-if="canReviewTransfer && detail.volume.transferStatus === 'PENDING_REVIEW'"
+        v-if="
+          canReviewTransfer &&
+          detail.volume.transferStatus === ArchiveTransferStatusCode.PENDING_REVIEW
+        "
         class="archive-volume-transfer-panel__actions"
       >
         <UiButton size="sm" :loading="approvingTransfer" @click="handleApproveTransfer">
@@ -90,21 +94,22 @@
 
 <script setup lang="ts">
 import type {
-  ArchiveTransferStatusCode,
   ArchiveVolumeDetailResponse,
   ArchiveVolumeTransferRecordResponse,
+} from '@/apis/mark/archive-volume'
+import {
+  approveArchiveVolumeTransfer,
+  ARCHIVE_TRANSFER_STATUS_TONE,
+  ArchiveTransferStatusCode,
+  ArchiveTransferStatusDescription,
+  ArchiveVolumeStatusCode,
+  listArchiveVolumeTransferRecords,
+  rejectArchiveVolumeTransfer,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { onMounted, ref } from 'vue'
 import { downloadFile } from '@/apis/edu/file-management'
-import {
-  approveArchiveVolumeTransfer,
-  ARCHIVE_TRANSFER_STATUS_TONE,
-  ArchiveTransferStatusDescription,
-  listArchiveVolumeTransferRecords,
-  rejectArchiveVolumeTransfer,
-} from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -145,30 +150,34 @@ function transferStatusTone(code: ArchiveTransferStatusCode): BadgeTone {
 }
 
 function transferActionLabel(status?: ArchiveTransferStatusCode): string {
-  if (status === 'NOT_SUBMITTED') return '尚未提交移交'
-  if (status === 'PENDING_REVIEW') return '提交移交验收'
-  if (status === 'APPROVED') return '移交验收通过'
-  if (status === 'REJECTED') return '移交退回补正'
+  if (status === ArchiveTransferStatusCode.NOT_SUBMITTED) return '尚未提交移交'
+  if (status === ArchiveTransferStatusCode.PENDING_REVIEW) return '提交移交验收'
+  if (status === ArchiveTransferStatusCode.APPROVED) return '移交验收通过'
+  if (status === ArchiveTransferStatusCode.REJECTED) return '移交退回补正'
   return '移交记录'
 }
 
 function transferCardClass(status?: ArchiveTransferStatusCode): string {
-  if (status === 'APPROVED') return 'approval-card--approved'
-  if (status === 'PENDING_REVIEW') return 'approval-card--pending'
-  if (status === 'REJECTED') return 'approval-card--rejected'
+  if (status === ArchiveTransferStatusCode.APPROVED) return 'approval-card--approved'
+  if (status === ArchiveTransferStatusCode.PENDING_REVIEW) return 'approval-card--pending'
+  if (status === ArchiveTransferStatusCode.REJECTED) return 'approval-card--rejected'
   return ''
 }
 
 function formatRecordTime(record: ArchiveVolumeTransferRecordResponse): string {
-  const time
-    = record.transferStatus === 'APPROVED' || record.transferStatus === 'REJECTED'
+  const time =
+    record.transferStatus === ArchiveTransferStatusCode.APPROVED ||
+    record.transferStatus === ArchiveTransferStatusCode.REJECTED
       ? record.reviewedTime
       : record.submitTime
   return time ? formatDateTime(time) : '—'
 }
 
 function formatRecordActor(record: ArchiveVolumeTransferRecordResponse): string {
-  if (record.transferStatus === 'APPROVED' || record.transferStatus === 'REJECTED') {
+  if (
+    record.transferStatus === ArchiveTransferStatusCode.APPROVED ||
+    record.transferStatus === ArchiveTransferStatusCode.REJECTED
+  ) {
     return record.reviewerUserNickName || '验收人'
   }
   return record.submitUserNickName || '提交人'

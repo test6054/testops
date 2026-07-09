@@ -75,6 +75,17 @@ export interface AuditRectificationVerifyRequest {
   remark?: string
 }
 
+/** 审核问题整改任务数量项 */
+export interface AuditIssueRectificationCountItem {
+  auditIssueId: string
+  rectificationCount: number
+}
+
+/** 审核问题整改任务数量批量查询响应 */
+export interface AuditIssueRectificationCountResponse {
+  items: AuditIssueRectificationCountItem[]
+}
+
 export const auditRectificationApi = {
   page: (data: AuditRectificationQueryRequest) =>
     http.post<PageResult<AuditRectificationVO>>(`${BASE}/page`, data),
@@ -89,4 +100,8 @@ export const auditRectificationApi = {
   verify: (data: AuditRectificationVerifyRequest) => http.post<void>(`${BASE}/verify`, data),
   /** 闭环：VERIFIED -> CLOSED */
   close: (id: string) => http.post<void>(`${BASE}/close`, { id }),
+  countByIssueIds: (auditIssueIds: string[]) =>
+    http.post<AuditIssueRectificationCountResponse>(`${BASE}/count-by-issue-ids`, {
+      auditIssueIds,
+    }),
 }

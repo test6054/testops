@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentPlanStatusCode } from '@/apis/portfolio/enums'
-import type {
-  PortfolioDeptOneTableSummaryVO,
-  PortfolioDeptOneTableTeacherRowVO,
-} from '@/apis/portfolio/teacher'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
   PortfolioDevelopmentPlanStatusDescription,
 } from '@/apis/portfolio/enums'
+import type {
+  PortfolioDeptOneTableSummaryVO,
+  PortfolioDeptOneTableTeacherRowVO,
+} from '@/apis/portfolio/teacher'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import MarkChartCard from '@/components/chart/MarkChartCard.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -63,6 +63,11 @@ const titleStructureRows: Array<{
   { key: 'titleMiddleCount', label: '中级' },
   { key: 'titleJuniorCount', label: '初级' },
   { key: 'titleUnclassifiedCount', label: '未分类' },
+]
+
+const titleStructureColumns: ColumnsType<(typeof titleStructureRows)[number]> = [
+  { title: '职称层级', dataIndex: 'label', key: 'label' },
+  { title: '人数', key: 'count', width: 88, align: 'right' },
 ]
 
 const teacherColumns: ColumnsType = [
@@ -173,7 +178,7 @@ function structureCount(key: (typeof titleStructureRows)[number]['key']) {
   return summary.value?.[key] ?? 0
 }
 
-function handleTeacherPageChange(page: { current: number, pageSize: number }) {
+function handleTeacherPageChange(page: { current: number; pageSize: number }) {
   teacherQuery.pageNum = page.current
   teacherQuery.pageSize = page.pageSize
   void loadTeachers()
@@ -277,22 +282,23 @@ watch(
           </a-descriptions>
           <div class="detail-grid">
             <UiCard title="职称结构">
-              <a-table
-                size="small"
-                :pagination="false"
+              <UiDataTable
+                :columns="titleStructureColumns"
+                :data-source="titleStructureRows"
                 row-key="key"
-                :data-source="[...titleStructureRows]"
-                :columns="[
-                  { title: '职称层级', dataIndex: 'label', key: 'label' },
-                  { title: '人数', key: 'count', width: 88 },
-                ]"
+                size="small"
+                flat
+                pagination-mode="none"
+                :show-pagination="false"
+                :sticky-header="false"
+                :total="titleStructureRows.length"
               >
                 <template #bodyCell="{ column, record }">
                   <template v-if="column.key === 'count'">
                     {{ structureCount(record.key) }}
                   </template>
                 </template>
-              </a-table>
+              </UiDataTable>
             </UiCard>
             <MarkChartCard title="职称分布" subtitle="该院系教师职称结构">
               <MarkChart :option="titleChartOption" height="240px" aria-label="职称结构饼图" />

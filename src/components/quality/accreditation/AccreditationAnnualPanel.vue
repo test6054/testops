@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
+  AnnualEvaluationPlanCourseVO,
   AnnualEvaluationPlanSaveRequest,
   AnnualEvaluationPlanVO,
 } from '@/apis/quality/accreditation'
@@ -25,16 +26,16 @@ const props = defineProps<{
 const emit = defineEmits<{ refresh: [] }>()
 
 const planColumns: ColumnsType = [
-  { title: '年度', dataIndex: 'planYear', key: 'planYear', width: 80 },
+  { title: '年度', dataIndex: 'planYear', key: 'planYear', width: 80, fixed: 'left' },
   { title: '计划标题', dataIndex: 'planTitle', key: 'planTitle' },
   { title: '须评价', dataIndex: 'requiredCourseCount', key: 'requiredCourseCount', width: 80 },
   { title: '已完成', dataIndex: 'completedCourseCount', key: 'completedCourseCount', width: 80 },
   { title: '覆盖率', key: 'coverage', width: 200 },
-  { title: '操作', key: 'actions', width: 240, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 240 },
 ]
 
 const courseColumns: ColumnsType = [
-  { title: '课程编码', dataIndex: 'courseCode', key: 'courseCode', width: 120 },
+  { title: '课程编码', dataIndex: 'courseCode', key: 'courseCode', width: 120, fixed: 'left' },
   { title: '课程名称', dataIndex: 'courseName', key: 'courseName' },
   { title: '须评价', key: 'required', width: 80 },
   { title: '已完成', key: 'completed', width: 80 },
@@ -43,7 +44,14 @@ const courseColumns: ColumnsType = [
 
 const loading = ref(false)
 const plans = ref<AnnualEvaluationPlanVO[]>([])
+const planTotal = ref(0)
+const planPageNum = ref(1)
+const planPageSize = ref(20)
 const selectedPlan = ref<AnnualEvaluationPlanVO>()
+const courseRows = ref<AnnualEvaluationPlanCourseVO[]>([])
+const courseTotal = ref(0)
+const coursePageNum = ref(1)
+const coursePageSize = ref(20)
 const drawerOpen = ref(false)
 const detailLoading = ref(false)
 const drawerTitle = ref('年度评价课程计划')
@@ -57,14 +65,13 @@ const form = reactive<AnnualEvaluationPlanSaveRequest>({
 })
 
 const courseProgress = computed(() => {
-  const courses = selectedPlan.value?.courses || []
-  const required = courses.filter((c) => c.evaluationRequired)
-  if (required.length === 0) return { percent: 0, done: 0, total: 0 }
-  const done = required.filter((c) => c.evaluationCompleted).length
+  const total = selectedPlan.value?.requiredCourseCount ?? 0
+  const done = selectedPlan.value?.completedCourseCount ?? 0
+  if (total === 0) return { percent: 0, done: 0, total: 0 }
   return {
-    percent: Math.round((done / required.length) * 100),
+    percent: Math.round((done / total) * 100),
     done,
-    total: required.length,
+    total,
   }
 })
 
@@ -85,7 +92,13 @@ async function loadPlans() {
   if (!props.trainingPlanId) return
   loading.value = true
   try {
-    plans.value = await accreditationApi.annualPlanList({ trainingPlanId: props.trainingPlanId })
+    const page = await accreditationApi.annualPlanPage({
+      trainingPlanId: props.trainingPlanId,
+      pageNum: planPageNum.value,
+      pageSize: planPageSize.value,
+    })
+    plans.value = page.list
+    planTotal.value = page.total
     if (selectedPlan.value) {
       const hit = plans.value.find((p) => p.id === selectedPlan.value?.id)
       if (hit) await selectPlan(hit.id)
@@ -98,15 +111,53 @@ async function loadPlans() {
   }
 }
 
+function handlePlanPageChange(pageEvent: { current: number, pageSize: number }) {
+  planPageNum.value = pageEvent.current
+  planPageSize.value = pageEvent.pageSize
+  void loadPlans()
+}
+
 async function selectPlan(id: string) {
   detailLoading.value = true
   try {
     selectedPlan.value = await accreditationApi.annualPlanDetail(id)
+    coursePageNum.value = 1
+    await loadPlanCourses()
   } catch (e) {
     showUserError(e)
   } finally {
     detailLoading.value = false
   }
+}
+
+async function loadPlanCourses() {
+  if (!selectedPlan.value?.id) {
+    courseRows.value = []
+    courseTotal.value = 0
+    return
+  }
+  detailLoading.value = true
+  try {
+    const page = await accreditationApi.annualPlanCoursePage({
+      annualPlanId: selectedPlan.value.id,
+      pageNum: coursePageNum.value,
+      pageSize: coursePageSize.value,
+    })
+    courseRows.value = page.list
+    courseTotal.value = page.total
+  } catch (e) {
+    courseRows.value = []
+    courseTotal.value = 0
+    showUserError(e)
+  } finally {
+    detailLoading.value = false
+  }
+}
+
+function handleCoursePageChange(pageEvent: { current: number, pageSize: number }) {
+  coursePageNum.value = pageEvent.current
+  coursePageSize.value = pageEvent.pageSize
+  void loadPlanCourses()
 }
 
 function resetForm() {
@@ -213,7 +264,9 @@ async function updateCourseStatus(courseRowId: string, evaluationCompleted: bool
   try {
     await accreditationApi.updateAnnualPlanCourseStatus({ id: courseRowId, evaluationCompleted })
     message.success(evaluationCompleted ? '已登记课程评价完成' : '已撤销课程评价完成')
-    if (selectedPlan.value) await selectPlan(selectedPlan.value.id)
+    if (selectedPlan.value) {
+      await selectPlan(selectedPlan.value.id)
+    }
     await loadPlans()
     emit('refresh')
   } catch (e) {
@@ -245,7 +298,17 @@ defineExpose({ openCreate, loadPlans })
         新建年度计划
       </UiButton>
     </div>
-    <UiDataTable :columns="planColumns" :data-source="plans" :loading="loading" row-key="id">
+    <UiDataTable
+      pagination-mode="server"
+      v-model:current="planPageNum"
+      v-model:page-size="planPageSize"
+      :columns="planColumns"
+      :data-source="plans"
+      :loading="loading"
+      row-key="id"
+      :total="planTotal"
+      @page-change="handlePlanPageChange"
+    >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'coverage'">
           <div class="coverage-cell">
@@ -284,11 +347,16 @@ defineExpose({ openCreate, loadPlans })
       </div>
       <a-progress :percent="courseProgress.percent" size="small" class="course-progress" />
       <UiDataTable
+        pagination-mode="server"
+        v-model:current="coursePageNum"
+        v-model:page-size="coursePageSize"
         :columns="courseColumns"
-        :data-source="selectedPlan.courses || []"
+        :data-source="courseRows"
         :loading="detailLoading"
         row-key="id"
         size="small"
+        :total="courseTotal"
+        @page-change="handleCoursePageChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'required'">

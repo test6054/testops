@@ -75,9 +75,19 @@ export interface ProgramEvaluationProfileQueryRequest extends QueryDto {
   keyword?: string
 }
 
+/** SignalBand 汇总响应 - 对齐后端 ProgramEvaluationProfileSignalSummaryVO */
+export interface ProgramEvaluationProfileSignalSummaryVO {
+  totalCount: number
+  enabledCount: number
+  disabledCount: number
+  engineeringAccreditationCount: number
+}
+
 export const programEvaluationProfileApi = {
   page: (data: ProgramEvaluationProfileQueryRequest) =>
     http.post<PageResult<ProgramEvaluationProfileVO>>(`${BASE}/page`, data),
+  signalSummary: (data: ProgramEvaluationProfileQueryRequest) =>
+    http.post<ProgramEvaluationProfileSignalSummaryVO>(`${BASE}/signal-summary`, data),
   detail: (id: string) => http.post<ProgramEvaluationProfileVO>(`${BASE}/detail`, { id }),
   create: (data: ProgramEvaluationProfileSaveRequest) => http.post<string>(`${BASE}/create`, data),
   update: (data: ProgramEvaluationProfileSaveRequest) => http.post<void>(`${BASE}/update`, data),

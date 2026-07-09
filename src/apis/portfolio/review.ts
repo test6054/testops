@@ -1,7 +1,10 @@
 import type {
   PortfolioAiAnalysisDetailVO,
   PortfolioReviewArchiveRecordDetailVO,
+  PortfolioReviewArchiveRecordFieldPageRequest,
+  PortfolioReviewLogPageRequest,
   PortfolioReviewLogVO,
+  PortfolioReviewRecordFieldVO,
   PortfolioReviewTaskApproveRequest,
   PortfolioReviewTaskBatchApproveRequest,
   PortfolioReviewTaskBatchRejectRequest,
@@ -21,8 +24,7 @@ export const portfolioReviewApi = {
     http.post<PageResult<PortfolioReviewTaskSummaryVO>>(`${BASE}/task/page`, data),
   approve: (data: PortfolioReviewTaskApproveRequest) =>
     http.post<void>(`${BASE}/task/approve`, data),
-  reject: (data: PortfolioReviewTaskRejectRequest) =>
-    http.post<void>(`${BASE}/task/reject`, data),
+  reject: (data: PortfolioReviewTaskRejectRequest) => http.post<void>(`${BASE}/task/reject`, data),
   dismiss: (data: PortfolioReviewTaskDismissRequest) =>
     http.post<void>(`${BASE}/task/dismiss`, data),
   batchApprove: (data: PortfolioReviewTaskBatchApproveRequest) =>
@@ -33,8 +35,14 @@ export const portfolioReviewApi = {
     http.post<void>(`${BASE}/task/escalate`, data),
   listLogs: (reviewTaskId: string) =>
     http.post<PortfolioReviewLogVO[]>(`${BASE}/log/list`, { id: reviewTaskId }),
+  pageLogs: (data: PortfolioReviewLogPageRequest) =>
+    http.post<PageResult<PortfolioReviewLogVO>>(`${BASE}/log/page`, data),
+  pageArchiveRecordFields: (data: PortfolioReviewArchiveRecordFieldPageRequest) =>
+    http.post<PageResult<PortfolioReviewRecordFieldVO>>(`${BASE}/archive-record/field/page`, data),
   getArchiveRecord: (archiveRecordId: string) =>
-    http.post<PortfolioReviewArchiveRecordDetailVO>(`${BASE}/archive-record/get`, { id: archiveRecordId }),
+    http.post<PortfolioReviewArchiveRecordDetailVO>(`${BASE}/archive-record/get`, {
+      id: archiveRecordId,
+    }),
   getAiPreReview: (reviewTaskId: string) =>
     http.post<PortfolioAiAnalysisDetailVO>(`${BASE}/ai-pre-review/get`, { id: reviewTaskId }),
 }

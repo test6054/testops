@@ -51,6 +51,8 @@ export enum NotificationTypeEnum {
   EXAM_REVIEW_PENDING = 'EXAM_REVIEW_PENDING',
   /** 试卷成绩发布 */
   EXAM_SCORE_PUBLISHED = 'EXAM_SCORE_PUBLISHED',
+  /** 试卷成绩撤回 */
+  EXAM_SCORE_WITHDRAWN = 'EXAM_SCORE_WITHDRAWN',
   /** 试卷导出完成 */
   EXAM_EXPORT_COMPLETED = 'EXAM_EXPORT_COMPLETED',
   /** 试卷复核处理 */

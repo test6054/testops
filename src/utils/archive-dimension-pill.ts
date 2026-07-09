@@ -1,14 +1,12 @@
-import type {
-  ArchiveAppraisalStatusCode,
-  ArchiveIntegrityStatusCode,
-  ArchiveTransferStatusCode,
-  ArchiveVolumeResponse,
-  ArchiveVolumeStatusCode
-} from '@/apis/mark/archive-volume'
+import type { ArchiveVolumeResponse } from '@/apis/mark/archive-volume'
 import {
+  ArchiveAppraisalStatusCode,
   ArchiveAppraisalStatusDescription,
+  ArchiveIntegrityStatusCode,
   ArchiveIntegrityStatusDescription,
+  ArchiveTransferStatusCode,
   ArchiveTransferStatusDescription,
+  ArchiveVolumeStatusCode,
   ArchiveVolumeStatusDescription
 } from '@/apis/mark/archive-volume'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -22,52 +20,52 @@ export interface ArchiveDimPillItem {
 }
 
 export function volumeStatusDimTone(status: ArchiveVolumeStatusCode): ArchiveDimPillTone {
-  if (status === 'STORED' || status === 'ARCHIVED_DESTROYED') {
+  if (status === ArchiveVolumeStatusCode.STORED || status === ArchiveVolumeStatusCode.ARCHIVED_DESTROYED) {
     return 'ok'
   }
-  if (status === 'SUBMITTED' || status === 'DEPARTMENT_REVIEWED') {
+  if (status === ArchiveVolumeStatusCode.SUBMITTED || status === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED) {
     return 'info'
   }
-  if (status === 'COLLECTING' || status === 'DEPARTMENT_REVIEW_PENDING') {
+  if (status === ArchiveVolumeStatusCode.COLLECTING || status === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING) {
     return 'warn'
   }
   return 'pending'
 }
 
 export function integrityStatusDimTone(status: ArchiveIntegrityStatusCode): ArchiveDimPillTone {
-  if (status === 'PASSED' || status === 'WAIVED') {
+  if (status === ArchiveIntegrityStatusCode.PASSED || status === ArchiveIntegrityStatusCode.WAIVED) {
     return 'ok'
   }
-  if (status === 'FAILED') {
+  if (status === ArchiveIntegrityStatusCode.FAILED) {
     return 'error'
   }
-  if (status === 'CHECKING') {
+  if (status === ArchiveIntegrityStatusCode.CHECKING) {
     return 'info'
   }
   return 'pending'
 }
 
 export function transferStatusDimTone(status: ArchiveTransferStatusCode): ArchiveDimPillTone {
-  if (status === 'APPROVED') {
+  if (status === ArchiveTransferStatusCode.APPROVED) {
     return 'ok'
   }
-  if (status === 'PENDING_REVIEW') {
+  if (status === ArchiveTransferStatusCode.PENDING_REVIEW) {
     return 'info'
   }
-  if (status === 'REJECTED') {
+  if (status === ArchiveTransferStatusCode.REJECTED) {
     return 'error'
   }
   return 'pending'
 }
 
 export function appraisalStatusDimTone(status: ArchiveAppraisalStatusCode): ArchiveDimPillTone {
-  if (status === 'REMINDER_SENT' || status === 'REQUESTED') {
+  if (status === ArchiveAppraisalStatusCode.REMINDER_SENT || status === ArchiveAppraisalStatusCode.REQUESTED) {
     return 'warn'
   }
-  if (status === 'APPROVED' || status === 'OPINION_RECORDED') {
+  if (status === ArchiveAppraisalStatusCode.APPROVED || status === ArchiveAppraisalStatusCode.OPINION_RECORDED) {
     return 'ok'
   }
-  if (status === 'REJECTED') {
+  if (status === ArchiveAppraisalStatusCode.REJECTED) {
     return 'error'
   }
   return 'pending'

@@ -9,7 +9,7 @@ export function buildExamScoreSummaryTableColumns(
   hasDailyScoreConfig: boolean,
 ): ColumnType<ExamScoreSummaryItemResponse>[] {
   const identityColumns: ColumnType<ExamScoreSummaryItemResponse>[] = [
-    { title: '学号', key: 'studentNo', width: 120 },
+    { title: '学号', key: 'studentNo', width: 120, fixed: 'left' },
     { title: '姓名', key: 'studentName', width: 96 },
     {
       title: '班级',
@@ -44,7 +44,6 @@ export function buildExamScoreSummaryTableColumns(
     title: '操作',
     key: 'actions',
     width: variant === 'finalize' ? 320 : 280,
-    fixed: 'right',
   }
 
   if (variant === 'finalize') {

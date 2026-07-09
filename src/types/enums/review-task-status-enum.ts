@@ -22,4 +22,3 @@ export const ReviewTaskStatusDescription: Record<ReviewTaskStatusCode, string> =
   [ReviewTaskStatusCode.INVALIDATED]: '已失效',
 }
 
-

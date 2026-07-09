@@ -64,6 +64,21 @@
         class="scan-monitor__panel-alert"
       />
 
+      <UiAlertStrip
+        v-else-if="scanMonitorPanel?.signalBandMessage"
+        :tone="scanMonitorSignalBandTone"
+        :title="scanMonitorProgressTitle"
+        :description="scanMonitorPanel.signalBandMessage"
+        dense
+        class="scan-monitor__signal-band"
+      >
+        <template v-if="scanMonitorSignalActionLabel" #actions>
+          <UiButton size="sm" variant="primary" @click="handleScanMonitorSignalAction">
+            {{ scanMonitorSignalActionLabel }}
+          </UiButton>
+        </template>
+      </UiAlertStrip>
+
       <ScanDeviceCardGrid
         class="scan-monitor__devices"
         :devices="scannerDevices"
@@ -122,12 +137,11 @@
             <UiDataTable
               v-model:current="monitorBatchPagination.current"
               v-model:page-size="monitorBatchPagination.pageSize"
-              class="student-detail-table__data-table"
+              pagination-mode="server"
               :columns="monitorBatchColumns"
               :data-source="monitorBatches"
               :loading="monitorBatchLoading"
               :total="monitorBatchPagination.total"
-              :scroll="{ x: 1340 }"
               row-key="scanBatchId"
               flat
               empty-kind="first-run"
@@ -182,9 +196,9 @@
           </section>
           <section v-else class="scan-monitor__attention-panel">
             <UiDataTable
-              class="student-detail-table__data-table"
               v-model:current="attentionPagination.current"
               v-model:page-size="attentionPagination.pageSize"
+              pagination-mode="server"
               :columns="columns"
               :data-source="activeAttentionRows"
               :loading="loading"
@@ -356,9 +370,10 @@
               placeholder="按姓名或学号搜索"
               show-search
               :options="candidateOptions"
-              :filter-option="filterCandidate"
+              :filter-option="false"
               :loading="candidatesLoading"
               allow-clear
+              @search="searchBindCandidates"
             />
           </a-form-item>
           <a-row :gutter="16">
@@ -367,7 +382,7 @@
                 <a-select
                   v-model:value="bindForm.attemptStatus"
                   placeholder="选择答卷状态"
-                  :options="batchAttemptStatusOptions"
+                  :options="BINDABLE_ATTEMPT_STATUS_OPTIONS"
                 />
               </a-form-item>
             </a-col>
@@ -431,15 +446,16 @@
                 placeholder="选择正确考生"
                 show-search
                 :options="candidateOptions"
-                :filter-option="filterCandidate"
+                :filter-option="false"
                 :loading="candidatesLoading"
                 class="scan-monitor__batch-candidate"
                 allow-clear
+                @search="searchBindCandidates"
               />
               <a-select
                 v-model:value="row.attemptStatus"
                 placeholder="作答状态"
-                :options="batchAttemptStatusOptions"
+                :options="BINDABLE_ATTEMPT_STATUS_OPTIONS"
                 class="scan-monitor__batch-attempt-status"
               />
               <a-input
@@ -537,18 +553,37 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamPaperBatchBindResponse } from '@/apis/mark/exam-mark-scanner'
+import { batchBindPapers, ScannerEndpointOnlineStatusCode } from '@/apis/mark/exam-mark-scanner'
 import type {
   ExamScanMonitorDeviceResponse,
   ExamWorkbenchScanMonitorPanelResponse,
 } from '@/apis/mark/exam-progress'
+import { getScanMonitorPanel, listExamScanMonitorDevices } from '@/apis/mark/exam-progress'
 import type {
   ExamScannerBatchResponse,
   ScanAttentionItemResponse,
   ScanAttentionSourceTypeCode,
   ScanBatchStatusCode,
 } from '@/apis/mark/exam-scan'
-import type { CandidateStatusCode, ExamCandidateResponse } from '@/apis/mark/exam-scope'
+import {
+  listScanAttentions,
+  pageScannerBatches,
+  QUALITY_DECISION_TONE,
+  QualityDecisionDescription,
+  SCAN_ATTENTION_TYPE_OPTIONS,
+  SCAN_ATTENTION_TYPE_TONE,
+  SCAN_BATCH_STATUS_OPTIONS,
+  SCAN_BATCH_STATUS_TONE,
+  ScanAttentionQueryGroupCode,
+  ScanAttentionSourceTypeDescription,
+  ScanAttentionTypeCode,
+  ScanAttentionTypeDescription,
+  ScanBatchStatusDescription,
+} from '@/apis/mark/exam-scan'
+import type { ExamCandidateResponse } from '@/apis/mark/exam-scope'
+import { CandidateStatusDescription, pageExamCandidates } from '@/apis/mark/exam-scope'
 import type { ExamScoreSummaryItemResponse } from '@/apis/mark/exam-score'
+import { pageExamScoreSummary } from '@/apis/mark/exam-score'
 import type {
   BadgeTone,
   FilterField,
@@ -566,25 +601,6 @@ import {
   DuplicateResolutionStatusDescription,
 } from '@/apis/mark/duplicate-resolution-status'
 import { BindingStatusDescription, bindPaper } from '@/apis/mark/exam-binding'
-import { batchBindPapers, ScannerEndpointOnlineStatusCode } from '@/apis/mark/exam-mark-scanner'
-import { getScanMonitorPanel, listExamScanMonitorDevices } from '@/apis/mark/exam-progress'
-import {
-  listScanAttentions,
-  pageScannerBatches,
-  QUALITY_DECISION_TONE,
-  QualityDecisionDescription,
-  SCAN_ATTENTION_TYPE_OPTIONS,
-  SCAN_ATTENTION_TYPE_TONE,
-  SCAN_BATCH_STATUS_OPTIONS,
-  SCAN_BATCH_STATUS_TONE,
-  ScanAttentionQueryGroupCode,
-  ScanAttentionSourceTypeDescription,
-  ScanAttentionTypeCode,
-  ScanAttentionTypeDescription,
-  ScanBatchStatusDescription,
-} from '@/apis/mark/exam-scan'
-import { CandidateStatusDescription, listExamCandidates } from '@/apis/mark/exam-scope'
-import { pageExamScoreSummary } from '@/apis/mark/exam-score'
 import { FinalScoreStatusDescription } from '@/apis/mark/final-score-status'
 import { GRADE_STATUS_TONE, GradeStatusDescription } from '@/apis/mark/grade-status'
 import { discardScannedPage } from '@/apis/mark/scanner-kiosk'
@@ -609,6 +625,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
+import { BINDABLE_ATTEMPT_STATUS_OPTIONS } from '@/composables/useExamPaperBindCandidates'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
@@ -618,11 +635,13 @@ import { useWorkspaceConfidentialContext } from '@/composables/useWorkspaceConfi
  *
  * 后端契约：
  * - listScanAttentions(examId, pageNum, pageSize, queryGroup?, attentionType?, scanBatchId?, paperInstanceId?)
- * - bindPaper(...)、batchBindPapers(...)、listExamCandidates(examId)
+ * - bindPaper(...)、batchBindPapers(...)、pageExamCandidates(...)
  *
  * attentionType 枚举：QUALITY_BLOCK / PROCESSING_BLOCK / DUPLICATE_PENDING / RECOGNITION_REVIEW / BINDING_CONFLICT / MISSING_CANDIDATE_ROSTER
  */
 import { DEFAULT_LIST_PAGE_SIZE, REMOTE_SEARCH_PAGE_SIZE } from '@/constants/pagination'
+import { AttemptStatusCode } from '@/types/enums/attempt-status-enum'
+import { CandidateStatusCode } from '@/types/enums/candidate-status-enum'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
 import mittBus from '@/utils/mitt'
@@ -646,15 +665,14 @@ enum ScanMonitorTabQuery {
 
 function isScanMonitorTabQuery(value: unknown): value is ScanMonitorTabQuery {
   return (
-    value === ScanMonitorTabQuery.NORMAL
-    || value === ScanMonitorTabQuery.ABNORMAL
-    || value === ScanMonitorTabQuery.DUPLICATE
+    value === ScanMonitorTabQuery.NORMAL ||
+    value === ScanMonitorTabQuery.ABNORMAL ||
+    value === ScanMonitorTabQuery.DUPLICATE
   )
 }
 
 const { selectedExamId } = useMarkExamContext()
-const { contextBarSubtitle, examStatusLabel, examStatusTone }
-  = useExamJourneyContextBar('扫描监控')
+const { contextBarSubtitle, examStatusLabel, examStatusTone } = useExamJourneyContextBar('扫描监控')
 
 const scanMonitorContextSubtitle = computed(() => {
   const journeySubtitle = contextBarSubtitle.value
@@ -664,8 +682,8 @@ const scanMonitorContextSubtitle = computed(() => {
   return journeySubtitle
 })
 const { refreshSnapshot } = useWorkspaceExamId()
-const { isExamConfidential, examConfidentialLabel, watermarkLines }
-  = useWorkspaceConfidentialContext()
+const { isExamConfidential, examConfidentialLabel, watermarkLines } =
+  useWorkspaceConfidentialContext()
 
 /** 扫描链写操作后同步 StageRail 与本页数据。 */
 async function syncScanWorkbenchState(): Promise<void> {
@@ -782,10 +800,10 @@ const normalTableEmptyDescription = computed(() => {
 
 const hasActiveNormalFilters = computed(() =>
   Boolean(
-    normalFilterApplied.keyword
-    || normalFilterApplied.scanBatchId
-    || normalFilterApplied.batchStatus
-    || normalFilterApplied.scannerDeviceId,
+    normalFilterApplied.keyword ||
+    normalFilterApplied.scanBatchId ||
+    normalFilterApplied.batchStatus ||
+    normalFilterApplied.scannerDeviceId,
   ),
 )
 
@@ -898,8 +916,8 @@ const batchDetailBatchId = ref<string | null>(null)
 const batchDetailSummary = ref<ExamScannerBatchResponse | null>(null)
 
 const monitorBatchColumns: ColumnType<ExamScannerBatchResponse>[] = [
-  { title: '批次号', key: 'batchNo', width: 200, ellipsis: true },
-  { title: '状态', key: 'status', width: 100 },
+  { title: '批次号', key: 'batchNo', width: 200, ellipsis: true, fixed: 'left' },
+  { title: '状态', key: 'status', width: 100, align: 'center' },
   { title: '页数', key: 'pageCount', width: 72, align: 'right' },
   { title: '答卷数', key: 'boundPaperCount', width: 72, align: 'right' },
   { title: '落库', key: 'pageProgress', width: 88, align: 'right' },
@@ -908,7 +926,7 @@ const monitorBatchColumns: ColumnType<ExamScannerBatchResponse>[] = [
   { title: 'DPI', key: 'dpi', width: 88, align: 'right' },
   { title: '开始时间', key: 'scanStartTime', width: 168 },
   { title: '结束时间', key: 'scanEndTime', width: 168 },
-  { title: '操作', key: 'actions', width: 80, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 80 },
 ]
 
 function monitorBatchStatusTone(batch: ExamScannerBatchResponse): BadgeTone {
@@ -947,7 +965,7 @@ function handleMonitorBatchUpdated(): void {
   void loadScanOverview(selectedExamId.value!)
 }
 
-function handleMonitorBatchPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleMonitorBatchPageChange(pageEvent: { current: number; pageSize: number }): void {
   monitorBatchPagination.current = pageEvent.current
   monitorBatchPagination.pageSize = pageEvent.pageSize
   void loadMonitorBatches()
@@ -1188,8 +1206,12 @@ const statPanelMetrics = computed<SignalMetric[]>(() => {
     {
       key: 'scanned-page',
       label: '已扫描页',
-      value: panel.scannedPageCount,
-      tone: panel.scannedPageCount > 0 ? 'green' : 'gray',
+      value: panel.progressDisplay ?? panel.scannedPageCount,
+      tone: mapScanMonitorMetricTone(
+        panel.primaryMetricTone,
+        panel.scannedPageCount > 0 ? 'green' : 'gray',
+      ),
+      helper: panel.progressPercent != null ? `扫描进度 ${panel.progressPercent}%` : undefined,
     },
     {
       key: 'bound-paper',
@@ -1235,6 +1257,72 @@ const statPanelMetrics = computed<SignalMetric[]>(() => {
   ]
 })
 
+function mapScanMonitorMetricTone(
+  tone: string | undefined,
+  fallback: SignalMetric['tone'],
+): SignalMetric['tone'] {
+  if (tone === 'green') return 'green'
+  if (tone === 'blue') return 'blue'
+  if (tone === 'orange') return 'orange'
+  if (tone === 'red') return 'red'
+  if (tone === 'gray') return 'gray'
+  return fallback
+}
+
+const scanMonitorSignalBandTone = computed(() => {
+  const tone = scanMonitorPanel.value?.signalBandTone
+  if (tone === 'red') return 'error'
+  if (tone === 'green') return 'success'
+  if (tone === 'blue') return 'info'
+  if (tone === 'amber' || tone === 'orange') return 'warning'
+  return 'info'
+})
+
+const scanMonitorProgressTitle = computed(() => {
+  const panel = scanMonitorPanel.value
+  if (!panel) return '扫描进度'
+  if (panel.progressDisplay) return `扫描进度 ${panel.progressDisplay}`
+  return '扫描进度'
+})
+
+const scanMonitorSignalActionLabel = computed(() => {
+  switch (scanMonitorPanel.value?.signalActionKey) {
+    case 'UPLOAD_ROSTER':
+      return '去上传名册'
+    case 'VIEW_ATTENTION':
+      return '查看异常队列'
+    case 'PUBLISH_SCORE':
+      return '去发布'
+    case 'REFRESH':
+      return '刷新数据'
+    default:
+      return ''
+  }
+})
+
+function handleScanMonitorSignalAction(): void {
+  if (!selectedExamId.value) return
+  switch (scanMonitorPanel.value?.signalActionKey) {
+    case 'UPLOAD_ROSTER':
+      void router.push({
+        name: 'TeacherExamWorkspaceCandidateRoster',
+        params: { examId: selectedExamId.value },
+      })
+      return
+    case 'VIEW_ATTENTION':
+      jumpToAbnormalTab()
+      return
+    case 'PUBLISH_SCORE':
+      void router.push({
+        name: 'TeacherExamWorkspaceScoreRelease',
+        params: { examId: selectedExamId.value },
+      })
+      return
+    case 'REFRESH':
+      void loadScanOverview(selectedExamId.value)
+  }
+}
+
 const monitorTabs = computed<UiSectionTabItem[]>(() => [
   {
     key: 'normal',
@@ -1271,8 +1359,8 @@ async function loadConnectedScannerDevices(): Promise<void> {
       return
     }
     if (
-      filterForm.monitorDeviceId
-      && !scannerDevices.value.some((device) => device.scannerDeviceId === filterForm.monitorDeviceId)
+      filterForm.monitorDeviceId &&
+      !scannerDevices.value.some((device) => device.scannerDeviceId === filterForm.monitorDeviceId)
     ) {
       filterForm.monitorDeviceId = ''
     }
@@ -1312,8 +1400,8 @@ function tickMonitorFallbackPoll(): void {
 
 function startMonitorFallbackPolling(): void {
   stopMonitorFallbackPolling()
-  const intervalMs
-    = activeTab.value === 'normal'
+  const intervalMs =
+    activeTab.value === 'normal'
       ? SCANNER_DEVICE_POLL_INTERVAL_MS
       : ATTENTION_FALLBACK_POLL_INTERVAL_MS
   monitorFallbackPollTimer = setInterval(tickMonitorFallbackPoll, intervalMs)
@@ -1389,14 +1477,14 @@ function finalScoreStatusLabel(status: ExamScoreSummaryItemResponse['finalScoreS
 }
 
 const columns: ColumnType<ScanAttentionItemResponse>[] = [
-  { title: '异常类型', key: 'attentionType', width: 160 },
+  { title: '异常类型', key: 'attentionType', width: 160, fixed: 'left' },
   { title: '来源', key: 'sourceInfo', width: 180 },
   { title: '扫描批次', key: 'scanBatch', width: 220, ellipsis: true },
   { title: '答卷', key: 'paperDisplay', width: 220 },
-  { title: '状态', key: 'status', width: 120 },
-  { title: '处理说明', key: 'diagnostic', ellipsis: true },
+  { title: '状态', key: 'status', width: 120, align: 'center' },
+  { title: '处理说明', key: 'diagnostic', minWidth: 280, ellipsis: true },
   { title: '更新时间', key: 'updateTime', width: 170 },
-  { title: '操作', key: 'actions', width: 200, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 200 },
 ]
 
 async function loadAttentions(): Promise<void> {
@@ -1505,7 +1593,7 @@ function reloadAttentionsFromFirstPage(): void {
   void loadAttentions()
 }
 
-function handleAttentionPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleAttentionPageChange(pageEvent: { current: number; pageSize: number }): void {
   attentionPagination.current = pageEvent.current
   attentionPagination.pageSize = pageEvent.pageSize
   selectedRowKeys.value = []
@@ -1769,7 +1857,7 @@ const bindForm = reactive<{
   paperDisplayName: string
   recognizedStudentNo?: string
   confirmedCandidateRosterId?: string
-  attemptStatus: string
+  attemptStatus: AttemptStatusCode
   attemptNo?: string
 }>({
   scanBatchId: '',
@@ -1778,7 +1866,7 @@ const bindForm = reactive<{
   paperDisplayName: '',
   recognizedStudentNo: '',
   confirmedCandidateRosterId: undefined,
-  attemptStatus: '',
+  attemptStatus: AttemptStatusCode.NORMAL,
   attemptNo: '',
 })
 
@@ -1790,8 +1878,10 @@ const bindFormRules: Record<string, Rule[]> = {
   recognizedStudentNo: [{ max: 64, message: '学号最多 64 个字符', trigger: 'blur' }],
 }
 
-// 考生名册缓存
-const candidates = ref<ExamCandidateResponse[]>([])
+// 考生名册绑定候选（分页 remote 搜索）
+const CANDIDATE_BIND_SEARCH_PAGE_SIZE = 20
+const candidateCache = ref<Map<string, ExamCandidateResponse>>(new Map())
+const candidateOptions = ref<DefaultOptionType[]>([])
 const candidatesLoading = ref(false)
 const bindIdentitySliceFileId = ref('')
 const bindIdentitySliceImageUrl = ref('')
@@ -1838,17 +1928,41 @@ const bindEvidenceTagTone = computed(() =>
   bindIdentitySliceFileId.value || bindSourcePageFileId.value ? 'blue' : 'orange',
 )
 
-const candidateOptions = computed(() =>
-  candidates.value.map((item) => ({
+function mapCandidateOption(item: ExamCandidateResponse): DefaultOptionType {
+  candidateCache.value.set(item.candidateRosterId, item)
+  return {
     value: item.candidateRosterId,
     label: `${item.studentName}（${item.studentNo}）· ${candidateStatusLabel(item.status)}`,
     disabled: !isCandidateBindable(item),
-  })),
-)
+  }
+}
+
+/** 按姓名或学号 remote 搜索可绑定考生。 */
+async function searchBindCandidates(keyword?: string): Promise<void> {
+  if (!selectedExamId.value) {
+    candidateOptions.value = []
+    return
+  }
+  candidatesLoading.value = true
+  try {
+    const page = await pageExamCandidates({
+      examId: selectedExamId.value,
+      keyword: keyword?.trim() || undefined,
+      pageNum: 1,
+      pageSize: CANDIDATE_BIND_SEARCH_PAGE_SIZE,
+    })
+    candidateOptions.value = page.list.map(mapCandidateOption)
+  } catch (error) {
+    candidateOptions.value = []
+    showUserError(error, '考生名册搜索失败')
+  } finally {
+    candidatesLoading.value = false
+  }
+}
 
 /** 判断名册考生是否允许用于答卷身份绑定，缺考和状态异常必须在教师提交前阻断。 */
 function isCandidateBindable(candidate: ExamCandidateResponse): boolean {
-  return candidate.status === 'ACTIVE'
+  return candidate.status === CandidateStatusCode.ACTIVE
 }
 
 /** 输出名册状态文案，状态缺失或未知时显式暴露合同异常而不是默认按正常处理。 */
@@ -1859,47 +1973,19 @@ function candidateStatusLabel(status: CandidateStatusCode | undefined): string {
   return CandidateStatusDescription[status]
 }
 
-function filterCandidate(input: string, option?: DefaultOptionType): boolean {
-  const kw = input.trim().toLowerCase()
-  if (!kw || !option) return true
-  const candidate = candidates.value.find((item) => item.candidateRosterId === option.value)
-  if (!candidate) return false
-  return (
-    (candidate.studentName ?? '').toLowerCase().includes(kw)
-    || (candidate.studentNo ?? '').toLowerCase().includes(kw)
-  )
-}
-
 /** 按名册绑定规则解析被教师选中的考生，不存在、缺考或状态异常时返回可展示的阻断原因。 */
 function candidateBindingBlockReason(candidateRosterId: string | undefined): string {
   if (!candidateRosterId) {
     return '请从名册中选择正确考生'
   }
-  const candidate = candidates.value.find((item) => item.candidateRosterId === candidateRosterId)
+  const candidate = candidateCache.value.get(candidateRosterId)
   if (!candidate) {
-    return '所选考生不在当前考试名册中，请刷新名册后重试'
+    return '所选考生不在当前搜索范围内，请重新搜索并选择'
   }
   if (!isCandidateBindable(candidate)) {
     return `${candidate.studentName}（${candidate.studentNo}）当前状态为${candidateStatusLabel(candidate.status)}，不能绑定试卷`
   }
   return ''
-}
-
-async function ensureCandidatesLoaded(): Promise<boolean> {
-  if (!selectedExamId.value) return false
-  if (candidates.value.length > 0) {
-    return true
-  }
-  candidatesLoading.value = true
-  try {
-    candidates.value = await listExamCandidates(selectedExamId.value)
-    return true
-  } catch (error) {
-    showUserError(error, '考生名册加载失败')
-    return false
-  } finally {
-    candidatesLoading.value = false
-  }
 }
 
 function releaseBindIdentitySliceImage(): void {
@@ -1961,14 +2047,14 @@ function openBindDrawer(record: ScanAttentionItemResponse): void {
   bindForm.paperDisplayName = record.paperDisplay.primaryText
   bindForm.recognizedStudentNo = record.studentNo?.trim() || ''
   bindForm.confirmedCandidateRosterId = undefined
-  bindForm.attemptStatus = 'NORMAL'
+  bindForm.attemptStatus = AttemptStatusCode.NORMAL
   bindForm.attemptNo = ''
   bindIdentitySliceFileId.value = record.identitySliceFileId || ''
   bindSourcePageFileId.value = record.sourceScanPage?.fileId || ''
   bindDrawerOpen.value = true
   void loadBindIdentitySliceImage()
   void loadBindSourcePageImage()
-  void ensureCandidatesLoaded()
+  void searchBindCandidates(bindForm.recognizedStudentNo?.trim() || '')
 }
 
 async function handleBind(): Promise<void> {
@@ -1983,12 +2069,7 @@ async function handleBind(): Promise<void> {
   } catch {
     return
   }
-  const attemptStatus = bindForm.attemptStatus.trim()
-  const validAttemptStatus = parseBindAttemptStatus(attemptStatus)
-  if (!validAttemptStatus) {
-    message.error('答卷状态只能选择普通答卷、补考答卷或重考答卷')
-    return
-  }
+  const attemptStatus = bindForm.attemptStatus
   const confirmedCandidateRosterId = bindForm.confirmedCandidateRosterId ?? ''
   const candidateBlockReason = candidateBindingBlockReason(confirmedCandidateRosterId)
   if (candidateBlockReason) {
@@ -2003,7 +2084,7 @@ async function handleBind(): Promise<void> {
       paperInstanceId: bindForm.paperInstanceId,
       recognizedStudentNo: bindForm.recognizedStudentNo?.trim() || undefined,
       confirmedCandidateRosterId,
-      attemptStatus: validAttemptStatus,
+      attemptStatus,
       attemptNo: bindForm.attemptNo?.trim() || undefined,
     })
     message.success('试卷身份绑定成功')
@@ -2047,8 +2128,8 @@ function buildAttentionActions(record: ScanAttentionItemResponse): UiTableRowAct
   } else if (record.attentionType === ScanAttentionTypeCode.DUPLICATE_PENDING) {
     actions.push({ key: 'ledger', label: '去影像账本处置', tone: 'primary' })
   } else if (
-    record.attentionType === ScanAttentionTypeCode.QUALITY_BLOCK
-    || record.attentionType === ScanAttentionTypeCode.PROCESSING_BLOCK
+    record.attentionType === ScanAttentionTypeCode.QUALITY_BLOCK ||
+    record.attentionType === ScanAttentionTypeCode.PROCESSING_BLOCK
   ) {
     actions.push({ key: 'dispose', label: '查看处置', tone: 'primary' })
     if (record.paperInstanceId && record.scanBatchId) {
@@ -2102,29 +2183,6 @@ const selectedRowKeys = ref<string[]>([])
 const batchBinding = ref(false)
 const batchBindDrawerOpen = ref(false)
 const batchBindResult = ref<ExamPaperBatchBindResponse | null>(null)
-type BatchBindAttemptStatus = 'NORMAL' | 'MAKEUP' | 'RETAKE'
-
-const batchAttemptStatusOptions: Array<{ label: string, value: BatchBindAttemptStatus }> = [
-  { label: '普通答卷', value: 'NORMAL' },
-  { label: '补考答卷', value: 'MAKEUP' },
-  { label: '重考答卷', value: 'RETAKE' },
-]
-
-function parseBindAttemptStatus(value: string): BatchBindAttemptStatus | null {
-  if (value === 'NORMAL' || value === 'MAKEUP' || value === 'RETAKE') {
-    return value
-  }
-  return null
-}
-
-/** 将扫描异常诊断转为教师可执行的处置提示，避免展示接口、字段或识别链路内部细节。 */
-function scanAttentionDiagnosticText(diagnostic?: string): string {
-  return getUserErrorMessage(
-    { message: diagnostic },
-    '扫描异常需要人工核对，请根据异常类型补充绑定或重新扫描',
-  )
-}
-
 const batchBindRows = ref<
   Array<{
     attentionId: string
@@ -2134,11 +2192,19 @@ const batchBindRows = ref<
     paperDisplayName: string
     recognizedStudentNo?: string
     confirmedCandidateRosterId?: string
-    attemptStatus: BatchBindAttemptStatus
+    attemptStatus: AttemptStatusCode
     attemptNo?: string
     diagnostic?: string
   }>
 >([])
+
+/** 将扫描异常诊断转为教师可执行的处置提示，避免展示接口、字段或识别链路内部细节。 */
+function scanAttentionDiagnosticText(diagnostic?: string): string {
+  return getUserErrorMessage(
+    { message: diagnostic },
+    '扫描异常需要人工核对，请根据异常类型补充绑定或重新扫描',
+  )
+}
 
 const batchBindFailedItems = computed(() =>
   batchBindResult.value ? batchBindResult.value.items.filter((item) => !item.success) : [],
@@ -2166,10 +2232,10 @@ async function handleBatchBind(): Promise<void> {
   }
   const selected = attentions.value.filter(
     (item) =>
-      selectedRowKeys.value.includes(item.id)
-      && item.attentionType === 'BINDING_CONFLICT'
-      && item.paperInstanceId
-      && item.scanBatchId,
+      selectedRowKeys.value.includes(item.id) &&
+      item.attentionType === 'BINDING_CONFLICT' &&
+      item.paperInstanceId &&
+      item.scanBatchId,
   )
   if (selected.length === 0) {
     message.error('请选择可身份绑定的绑定冲突异常项')
@@ -2178,14 +2244,6 @@ async function handleBatchBind(): Promise<void> {
   const scanBatchIds = new Set(selected.map((item) => item.scanBatchId))
   if (scanBatchIds.size !== 1) {
     message.error('批量绑定必须选择同一扫描批次内的试卷')
-    return
-  }
-  const candidatesReady = await ensureCandidatesLoaded()
-  if (!candidatesReady) {
-    return
-  }
-  if (candidates.value.length === 0) {
-    message.error('当前考试无考生名册，无法绑定')
     return
   }
   batchBindResult.value = null
@@ -2197,10 +2255,11 @@ async function handleBatchBind(): Promise<void> {
     paperDisplayName: item.paperDisplay.primaryText,
     recognizedStudentNo: item.studentNo?.trim() || '',
     confirmedCandidateRosterId: undefined,
-    attemptStatus: 'NORMAL',
+    attemptStatus: AttemptStatusCode.NORMAL,
     attemptNo: '',
     diagnostic: item.diagnostic,
   }))
+  void searchBindCandidates()
   batchBindDrawerOpen.value = true
 }
 
@@ -2233,13 +2292,6 @@ async function submitBatchBind(): Promise<void> {
     message.error(`${blockedCandidateRow.paperDisplayName}：${blockReason}`)
     return
   }
-  const invalidAttemptStatus = batchBindRows.value.find(
-    (item) => !parseBindAttemptStatus(item.attemptStatus),
-  )
-  if (invalidAttemptStatus) {
-    message.error(`${invalidAttemptStatus.paperDisplayName} 的作答状态无效`)
-    return
-  }
   const scanBatchIds = new Set(batchBindRows.value.map((item) => item.scanBatchId))
   if (scanBatchIds.size !== 1) {
     message.error('批量绑定必须选择同一扫描批次内的试卷')
@@ -2255,7 +2307,7 @@ async function submitBatchBind(): Promise<void> {
         paperInstanceId: item.paperInstanceId,
         recognizedStudentNo: item.recognizedStudentNo?.trim() || undefined,
         confirmedCandidateRosterId: item.confirmedCandidateRosterId!,
-        attemptStatus: parseBindAttemptStatus(item.attemptStatus)!,
+        attemptStatus: item.attemptStatus,
         attemptNo: item.attemptNo?.trim() || undefined,
       })),
     })
@@ -2280,8 +2332,9 @@ async function submitBatchBind(): Promise<void> {
 watch(
   selectedExamId,
   (value) => {
-    // 切换考试需要重置名册缓存
-    candidates.value = []
+    // 切换考试需要重置名册绑定搜索缓存
+    candidateCache.value = new Map()
+    candidateOptions.value = []
     scanBatches.value = []
     scanBatchKeyword.value = ''
     paperCandidates.value = []

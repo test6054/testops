@@ -5,11 +5,15 @@ import type {
   ProcessEvaluationNodeUpdateRequest,
   ProcessEvaluationNodeVO,
 } from '@/apis/quality/process-evaluation'
+import { processNodeApi } from '@/apis/quality/process-evaluation'
 import type {
   ProcessEvaluationRecordSaveRequest,
   ProcessEvaluationRecordUpdateRequest,
   ProcessEvaluationRecordVO,
 } from '@/apis/quality/process-evaluation-record'
+import { processRecordApi } from '@/apis/quality/process-evaluation-record'
+import type { ProcessEvaluationSignalSummaryVO } from '@/apis/quality/workbench'
+import { workbenchApi } from '@/apis/quality/workbench'
 /**
  * 过程性评价节点配置 + 节点记录管理
  *
@@ -29,8 +33,6 @@ import type { SignalMetric } from '@/types/workbench'
 import { message, Modal } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { processNodeApi } from '@/apis/quality/process-evaluation'
-import { processRecordApi } from '@/apis/quality/process-evaluation-record'
 import {
   CONFIRMATION_STATUS_COLOR,
   CONFIRMATION_STATUS_TRANSIT_MAP,
@@ -69,21 +71,21 @@ import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const nodeColumns: ColumnsType = [
-  { title: '编码', dataIndex: 'nodeCode', key: 'nodeCode', width: 100 },
+  { title: '编码', dataIndex: 'nodeCode', key: 'nodeCode', width: 100, fixed: 'left' },
   { title: '名称', key: 'nodeName' },
   { title: '权重', dataIndex: 'weight', key: 'weight', width: 80 },
   { title: '状态', dataIndex: 'confirmationStatus', key: 'confirmationStatus', width: 100 },
-  { title: '操作', key: 'actions', width: 220, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 220 },
 ]
 
 const recordColumns: ColumnsType = [
-  { title: '学号', dataIndex: 'studentNumber', key: 'studentNumber', width: 120 },
+  { title: '学号', dataIndex: 'studentNumber', key: 'studentNumber', width: 120, fixed: 'left' },
   { title: '学生', key: 'studentBinding', width: 120 },
   { title: '得分', dataIndex: 'score', key: 'score', width: 80 },
   { title: '换算分', dataIndex: 'convertedScore', key: 'convertedScore', width: 80 },
   { title: '来源', dataIndex: 'sourceMode', key: 'sourceMode', width: 140 },
   { title: '状态', dataIndex: 'confirmationStatus', key: 'confirmationStatus', width: 100 },
-  { title: '操作', key: 'actions', width: 220, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 220 },
 ]
 
 const confirmedByGoalColumns: ColumnsType = [
@@ -114,8 +116,8 @@ function isNodeMutable(node: ProcessEvaluationNodeVO): boolean {
 
 function isRecordMutable(record: ProcessEvaluationRecordVO): boolean {
   return (
-    record.confirmationStatus === ConfirmationStatusCode.DRAFT
-    || record.confirmationStatus === ConfirmationStatusCode.RETURNED
+    record.confirmationStatus === ConfirmationStatusCode.DRAFT ||
+    record.confirmationStatus === ConfirmationStatusCode.RETURNED
   )
 }
 
@@ -137,6 +139,9 @@ function studentDisplay(record: ProcessEvaluationRecordVO): string {
 
 const nodes = ref<ProcessEvaluationNodeVO[]>([])
 const nodesLoading = ref(false)
+const nodePageNum = ref(1)
+const nodePageSize = ref(20)
+const nodeTotal = ref(0)
 const selectedNode = ref<ProcessEvaluationNodeVO | null>(null)
 
 const nodeTypeOptions = PROCESS_NODE_TYPE_OPTIONS
@@ -144,17 +149,37 @@ const nodeTypeOptions = PROCESS_NODE_TYPE_OPTIONS
 async function loadNodes() {
   if (!qualityStore.currentQualityCourseId) {
     nodes.value = []
+    nodeTotal.value = 0
+    signalSummary.value = null
     return
   }
   nodesLoading.value = true
   try {
-    nodes.value = await processNodeApi.listByCourse(qualityStore.currentQualityCourseId)
+    const page = await processNodeApi.page({
+      pageNum: nodePageNum.value,
+      pageSize: nodePageSize.value,
+      qualityCourseId: qualityStore.currentQualityCourseId,
+    })
+    nodes.value = page.list
+    nodeTotal.value = page.total
+    if (selectedNode.value) {
+      const matched = nodes.value.find((item) => item.id === selectedNode.value!.id)
+      selectedNode.value = matched || nodes.value[0] || null
+    }
+    await loadSignalSummary()
   } catch (error) {
     nodes.value = []
+    nodeTotal.value = 0
     showUserError(error, '过程性评价节点加载失败')
   } finally {
     nodesLoading.value = false
   }
+}
+
+function handleNodePageChange(page: { current: number; pageSize: number }) {
+  nodePageNum.value = page.current
+  nodePageSize.value = page.pageSize
+  void loadNodes()
 }
 
 async function handleScopeChange(): Promise<void> {
@@ -349,6 +374,9 @@ async function changeNodeStatus(record: ProcessEvaluationNodeVO, target: Confirm
 
 const records = ref<ProcessEvaluationRecordVO[]>([])
 const recordsLoading = ref(false)
+const recordPageNum = ref(1)
+const recordPageSize = ref(20)
+const recordTotal = ref(0)
 const recordFilterForm = reactive<{ status?: ConfirmationStatusCode }>({
   status: undefined,
 })
@@ -373,20 +401,38 @@ const recordFilterFields: FilterField[] = [
 async function loadRecords() {
   if (!selectedNode.value) {
     records.value = []
+    recordTotal.value = 0
     return
   }
   recordsLoading.value = true
   try {
-    records.value = await processRecordApi.listByNode({
+    const page = await processRecordApi.page({
+      pageNum: recordPageNum.value,
+      pageSize: recordPageSize.value,
       nodeId: selectedNode.value.id,
       confirmationStatus: recordFilterForm.status,
     })
+    records.value = page.list
+    recordTotal.value = page.total
+    await loadSignalSummary()
   } catch (err) {
     records.value = []
+    recordTotal.value = 0
     showUserError(err, '过程性评价记录加载失败')
   } finally {
     recordsLoading.value = false
   }
+}
+
+function handleRecordPageChange(page: { current: number; pageSize: number }) {
+  recordPageNum.value = page.current
+  recordPageSize.value = page.pageSize
+  void loadRecords()
+}
+
+function handleRecordFilterSearch() {
+  recordPageNum.value = 1
+  void loadRecords()
 }
 
 const recordEditorVisible = ref(false)
@@ -557,7 +603,7 @@ function buildProcessNodeActions(record: ProcessEvaluationNodeVO): UiTableRowAct
   }
   for (const target of allowedConfirmationTransitions(record.confirmationStatus)) {
     actions.push({
-      key: `status:${target}`,
+      key: target,
       label: confirmationStatusLabel(target),
       tone: 'primary',
     })
@@ -569,17 +615,18 @@ function buildProcessNodeActions(record: ProcessEvaluationNodeVO): UiTableRowAct
 }
 
 function handleProcessNodeAction(key: string, record: ProcessEvaluationNodeVO): void {
-  if (key === 'edit') {
-    openNodeEdit(record)
-    return
-  }
-  if (key === 'delete') {
-    void handleNodeDelete(record)
-    return
-  }
-  if (key.startsWith('status:')) {
-    const target = key.slice('status:'.length) as ConfirmationStatusCode
-    void changeNodeStatus(record, target)
+  switch (key) {
+    case 'edit':
+      openNodeEdit(record)
+      return
+    case 'delete':
+      void handleNodeDelete(record)
+      return
+    case ConfirmationStatusCode.DRAFT:
+    case ConfirmationStatusCode.SUBMITTED:
+    case ConfirmationStatusCode.CONFIRMED:
+    case ConfirmationStatusCode.RETURNED:
+      void changeNodeStatus(record, key)
   }
 }
 
@@ -590,7 +637,7 @@ function buildProcessRecordActions(record: ProcessEvaluationRecordVO): UiTableRo
   }
   for (const target of allowedConfirmationTransitions(record.confirmationStatus)) {
     actions.push({
-      key: `status:${target}`,
+      key: target,
       label: confirmationStatusLabel(target),
       tone: 'primary',
     })
@@ -602,17 +649,18 @@ function buildProcessRecordActions(record: ProcessEvaluationRecordVO): UiTableRo
 }
 
 function handleProcessRecordAction(key: string, record: ProcessEvaluationRecordVO): void {
-  if (key === 'edit') {
-    openRecordEdit(record)
-    return
-  }
-  if (key === 'delete') {
-    void deleteRecord(record)
-    return
-  }
-  if (key.startsWith('status:')) {
-    const target = key.slice('status:'.length) as ConfirmationStatusCode
-    void changeRecordStatus(record, target)
+  switch (key) {
+    case 'edit':
+      openRecordEdit(record)
+      return
+    case 'delete':
+      void deleteRecord(record)
+      return
+    case ConfirmationStatusCode.DRAFT:
+    case ConfirmationStatusCode.SUBMITTED:
+    case ConfirmationStatusCode.CONFIRMED:
+    case ConfirmationStatusCode.RETURNED:
+      void changeRecordStatus(record, key)
   }
 }
 
@@ -621,7 +669,7 @@ function handleProcessRecordAction(key: string, record: ProcessEvaluationRecordV
 const importExcelVisible = ref(false)
 const importConfirmationStatus = ref<ConfirmationStatusCode>(ConfirmationStatusCode.SUBMITTED)
 
-const importConfirmationStatusOptions: { label: string, value: ConfirmationStatusCode }[] = [
+const importConfirmationStatusOptions: { label: string; value: ConfirmationStatusCode }[] = [
   { label: ConfirmationStatusDescription.DRAFT, value: ConfirmationStatusCode.DRAFT },
   { label: ConfirmationStatusDescription.SUBMITTED, value: ConfirmationStatusCode.SUBMITTED },
   { label: ConfirmationStatusDescription.CONFIRMED, value: ConfirmationStatusCode.CONFIRMED },
@@ -664,6 +712,27 @@ const confirmedByGoalVisible = ref(false)
 const confirmedByGoalLoading = ref(false)
 const confirmedByGoalId = ref<string>('')
 const confirmedByGoalRecords = ref<ProcessEvaluationRecordVO[]>([])
+const confirmedByGoalPageNum = ref(1)
+const confirmedByGoalPageSize = ref(20)
+const confirmedByGoalTotal = ref(0)
+
+const signalSummary = ref<ProcessEvaluationSignalSummaryVO | null>(null)
+
+async function loadSignalSummary() {
+  if (!qualityStore.currentQualityCourseId) {
+    signalSummary.value = null
+    return
+  }
+  try {
+    signalSummary.value = await workbenchApi.processEvaluationSignalSummary({
+      qualityCourseId: qualityStore.currentQualityCourseId,
+      nodeId: selectedNode.value?.id,
+    })
+  } catch (err) {
+    signalSummary.value = null
+    showUserError(err, '过程性评价指标加载失败')
+  }
+}
 
 function handleConfirmedByGoalChange(value: string | null): void {
   confirmedByGoalId.value = value ?? ''
@@ -673,6 +742,8 @@ function openConfirmedByGoal() {
   if (!qualityStore.currentQualityCourseId) return
   confirmedByGoalId.value = ''
   confirmedByGoalRecords.value = []
+  confirmedByGoalTotal.value = 0
+  confirmedByGoalPageNum.value = 1
   confirmedByGoalVisible.value = true
 }
 
@@ -683,76 +754,59 @@ async function queryConfirmedByGoal() {
   }
   confirmedByGoalLoading.value = true
   try {
-    confirmedByGoalRecords.value = await processRecordApi.listConfirmedByCourseGoal({
+    const page = await processRecordApi.pageConfirmedByCourseGoal({
       qualityCourseId: qualityStore.currentQualityCourseId,
       courseGoalId: confirmedByGoalId.value,
+      pageNum: confirmedByGoalPageNum.value,
+      pageSize: confirmedByGoalPageSize.value,
     })
+    confirmedByGoalRecords.value = page.list
+    confirmedByGoalTotal.value = page.total
   } catch (err) {
     confirmedByGoalRecords.value = []
+    confirmedByGoalTotal.value = 0
     showUserError(err, '课程目标已确认记录加载失败')
   } finally {
     confirmedByGoalLoading.value = false
   }
 }
 
+function handleConfirmedByGoalPageChange(page: { current: number; pageSize: number }) {
+  confirmedByGoalPageNum.value = page.current
+  confirmedByGoalPageSize.value = page.pageSize
+  void queryConfirmedByGoal()
+}
+
 /* ========== 信号指标：节点 + 记录健康度 ========== */
 
 const signals = computed<SignalMetric[]>(() => {
-  const buckets: Record<ConfirmationStatusCode, number> = {
-    DRAFT: 0,
-    SUBMITTED: 0,
-    CONFIRMED: 0,
-    RETURNED: 0,
+  const summary = signalSummary.value
+  if (!summary) {
+    return []
   }
-  for (const n of nodes.value) {
-    buckets[n.confirmationStatus] += 1
-  }
-  let weightSum = 0
-  let coverageSum = 0
-  let coverageCount = 0
-  for (const n of nodes.value) {
-    if (n.weight != null) {
-      if (!Number.isFinite(n.weight)) continue
-      weightSum += n.weight
-    }
-    if (n.coverageRequired != null) {
-      if (!Number.isFinite(n.coverageRequired)) continue
-      coverageSum += n.coverageRequired
-      coverageCount += 1
-    }
-  }
-  const recordBuckets: Record<ConfirmationStatusCode, number> = {
-    DRAFT: 0,
-    SUBMITTED: 0,
-    CONFIRMED: 0,
-    RETURNED: 0,
-  }
-  for (const r of records.value) {
-    recordBuckets[r.confirmationStatus] += 1
-  }
-  const totalWeight = Number(weightSum.toFixed(2))
-  const avgCoverage = coverageCount > 0 ? Number((coverageSum / coverageCount).toFixed(2)) : 0
+  const totalWeight = summary.weightSum ?? 0
+  const avgCoverage = summary.avgCoverageRequired ?? 0
   const weightOk = totalWeight === 0 || Math.abs(totalWeight - 1) < 0.01
 
   return [
-    { key: 'nodes-total', label: '节点总数', value: nodes.value.length, tone: 'blue' },
+    { key: 'nodes-total', label: '节点总数', value: summary.nodeTotal, tone: 'blue' },
     {
       key: 'nodes-confirmed',
       label: '已确认节点',
-      value: buckets.CONFIRMED,
-      tone: buckets.CONFIRMED > 0 ? 'green' : 'gray',
+      value: summary.nodeConfirmedCount,
+      tone: summary.nodeConfirmedCount > 0 ? 'green' : 'gray',
     },
     {
       key: 'nodes-draft',
       label: '起草中',
-      value: buckets.DRAFT,
-      tone: buckets.DRAFT > 0 ? 'orange' : 'gray',
+      value: summary.nodeDraftCount,
+      tone: summary.nodeDraftCount > 0 ? 'orange' : 'gray',
     },
     {
       key: 'nodes-returned',
       label: '已退回',
-      value: buckets.RETURNED,
-      tone: buckets.RETURNED > 0 ? 'red' : 'gray',
+      value: summary.nodeReturnedCount,
+      tone: summary.nodeReturnedCount > 0 ? 'red' : 'gray',
     },
     { key: 'weight-sum', label: '权重合计', value: totalWeight, tone: weightOk ? 'green' : 'red' },
     {
@@ -761,12 +815,12 @@ const signals = computed<SignalMetric[]>(() => {
       value: avgCoverage,
       tone: avgCoverage >= 0.8 ? 'green' : avgCoverage > 0 ? 'orange' : 'gray',
     },
-    { key: 'records-total', label: '当前节点记录', value: records.value.length, tone: 'blue' },
+    { key: 'records-total', label: '当前节点记录', value: summary.recordTotal, tone: 'blue' },
     {
       key: 'records-confirmed',
       label: '已确认记录',
-      value: recordBuckets.CONFIRMED,
-      tone: recordBuckets.CONFIRMED > 0 ? 'green' : 'gray',
+      value: summary.recordConfirmedCount,
+      tone: summary.recordConfirmedCount > 0 ? 'green' : 'gray',
     },
   ]
 })
@@ -778,6 +832,7 @@ watch(
   async () => {
     selectedNode.value = null
     records.value = []
+    recordTotal.value = 0
     await loadNodes()
   },
 )
@@ -790,7 +845,11 @@ watch(
   },
 )
 
-watch(selectedNode, () => loadRecords())
+watch(selectedNode, () => {
+  recordPageNum.value = 1
+  void loadRecords()
+  void loadSignalSummary()
+})
 
 onMounted(async () => {
   if (qualityStore.currentQualityCourseId) {
@@ -845,16 +904,17 @@ function handleCourseChange(courseId: string | null) {
           </template>
 
           <UiDataTable
-            pagination-mode="none"
-            class="student-detail-table__data-table"
+            pagination-mode="server"
             :columns="nodeColumns"
             :data-source="nodes"
             :loading="nodesLoading"
             row-key="id"
             size="middle"
-            :show-pagination="false"
+            v-model:current="nodePageNum"
+            v-model:page-size="nodePageSize"
+            :total="nodeTotal"
             flat
-            :total="nodes.length"
+            @page-change="handleNodePageChange"
             :row-class-name="
               (r: ProcessEvaluationNodeVO) => (selectedNode?.id === r.id ? 'pe__row-selected' : '')
             "
@@ -935,21 +995,22 @@ function handleCourseChange(courseId: string | null) {
             :fields="recordFilterFields"
             show-labels
             search-text="查询"
-            @search="loadRecords"
-            @reset="loadRecords"
+            @search="handleRecordFilterSearch"
+            @reset="handleRecordFilterSearch"
           />
 
           <UiDataTable
-            pagination-mode="none"
-            class="student-detail-table__data-table"
+            pagination-mode="server"
             :columns="recordColumns"
             :data-source="records"
             :loading="recordsLoading"
             row-key="id"
             size="middle"
-            :show-pagination="false"
             flat
-            :total="records.length"
+            v-model:current="recordPageNum"
+            v-model:page-size="recordPageSize"
+            :total="recordTotal"
+            @page-change="handleRecordPageChange"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'score'">
@@ -1194,16 +1255,17 @@ function handleCourseChange(courseId: string | null) {
         </UiButton>
       </a-space>
       <UiDataTable
-        pagination-mode="client"
-        class="student-detail-table__data-table"
+        pagination-mode="server"
         :columns="confirmedByGoalColumns"
         :data-source="confirmedByGoalRecords"
         :loading="confirmedByGoalLoading"
         row-key="id"
         size="small"
-        :page-size="20"
-        :total="confirmedByGoalRecords.length"
+        :page-size="confirmedByGoalPageSize"
+        :page-num="confirmedByGoalPageNum"
+        :total="confirmedByGoalTotal"
         flat
+        @page-change="handleConfirmedByGoalPageChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'scores'">

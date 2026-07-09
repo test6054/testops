@@ -1,19 +1,22 @@
 <script setup lang="ts">
 import type { ArchiveVolumeDetailResponse } from '@/apis/mark/archive-volume'
-import { computed } from 'vue'
 import {
   ArchiveCatalogStatusDescription,
   ArchiveVolumeSubmitChecklistPhaseDescription,
+  getArchiveVolumeMaterialStats,
 } from '@/apis/mark/archive-volume'
+import { computed, onMounted, ref, watch } from 'vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import {
   ArchiveSelfCheckStatusCode,
   ArchiveSelfCheckStatusDescription,
 } from '@/types/enums/archive-self-check-status-enum'
+import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const props = defineProps<{
+  volumeId: string
   detail: ArchiveVolumeDetailResponse
   /** 列表抽屉不跳转 Tab 时隐藏快捷入口 */
   showNavigateActions?: boolean
@@ -29,7 +32,7 @@ const ARCHIVE_SELF_CHECK_STATUS_TONE = {
   [ArchiveSelfCheckStatusCode.COMPLETED]: 'green',
 } as const
 
-const materialCount = computed(() => props.detail.materials?.length ?? 0)
+const materialCount = ref<number | null>(null)
 
 const catalogLabel = computed(() => {
   const status = props.detail.catalogStatus
@@ -78,18 +81,45 @@ const fourPropertySummary = computed(() => {
 })
 
 const missingItems = computed(() => props.detail.latestIntegrityCheck?.missingItems ?? [])
+
+async function loadMaterialCount(): Promise<void> {
+  if (!props.volumeId) {
+    materialCount.value = null
+    return
+  }
+  try {
+    const stats = await getArchiveVolumeMaterialStats({ volumeId: props.volumeId })
+    materialCount.value = stats.volumeSummary.totalCount
+  } catch (error) {
+    materialCount.value = null
+    showUserError(error, '加载材料统计失败')
+  }
+}
+
+watch(
+  () => props.volumeId,
+  () => {
+    void loadMaterialCount()
+  },
+)
+
+onMounted(() => {
+  void loadMaterialCount()
+})
 </script>
 
 <template>
   <section class="dept-review-summary">
     <div class="dept-review-summary__head">
       <span class="dept-review-summary__title">材料与提交前摘要</span>
-      <span class="dept-review-summary__hint">院系档案员审核前可在此核对完整性，无需进入详情逐 Tab 切换</span>
+      <span class="dept-review-summary__hint"
+        >院系档案员审核前可在此核对完整性，无需进入详情逐 Tab 切换</span
+      >
     </div>
     <dl class="dept-review-summary__grid">
       <div class="dept-review-summary__item">
         <dt>已登记材料</dt>
-        <dd>{{ materialCount }} 件</dd>
+        <dd>{{ materialCount ?? '—' }} 件</dd>
       </div>
       <div class="dept-review-summary__item">
         <dt>编目</dt>
@@ -120,7 +150,10 @@ const missingItems = computed(() => props.detail.latestIntegrityCheck?.missingIt
     </dl>
   </section>
   <ul v-if="missingItems.length > 0" class="dept-review-summary__missing">
-    <li v-for="(item, index) in missingItems" :key="`${item.catalogCode ?? item.materialType}-${index}`">
+    <li
+      v-for="(item, index) in missingItems"
+      :key="`${item.catalogCode ?? item.materialType}-${index}`"
+    >
       {{ item.missingReason || item.catalogName || item.materialType }}
     </li>
   </ul>

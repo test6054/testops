@@ -6,12 +6,12 @@
 <script setup lang="ts">
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { QualityCourseVO } from '@/apis/quality/quality-course'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { onMounted, ref, watch } from 'vue'
 import { qualityCourseApi } from '@/apis/quality/quality-course'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import { formatSemester } from '@/types/enums/semester-enum'
+import { onMounted, ref, watch } from 'vue'
 import { showUserError } from '@/utils/error-handler'
-import { requireAllPages } from './page-contract'
+import { loadSelectorFirstPage, QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -36,11 +36,12 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: QualityCourseVO]
+  change: [value: string | null, option?: QualityCourseVO]
 }>()
 
 const options = ref<QualityCourseVO[]>([])
 const loading = ref(false)
+const searchText = ref('')
 const internalValue = ref<string | undefined>(props.value ?? undefined)
 
 watch(
@@ -55,27 +56,33 @@ watch(
   () => loadOptions(),
 )
 
-async function loadOptions() {
+async function loadOptions(keyword?: string) {
   loading.value = true
   try {
-    options.value = await requireAllPages(
-      (pageNum) =>
-        qualityCourseApi.page({
-          pageNum,
-          pageSize: 100,
-          trainingPlanId: props.trainingPlanId || undefined,
-          programId: props.programId || undefined,
-          schoolYear: props.schoolYear || undefined,
-          semester: props.semester || undefined,
-          enabled: props.onlyEnabled ? true : undefined,
-        }),
-      '质量评价课程',
+    options.value = await loadSelectorFirstPage((pageNum, pageSize) =>
+      qualityCourseApi.page({
+        pageNum,
+        pageSize,
+        trainingPlanId: props.trainingPlanId || undefined,
+        programId: props.programId || undefined,
+        schoolYear: props.schoolYear || undefined,
+        semester: props.semester || undefined,
+        enabled: props.onlyEnabled ? true : undefined,
+        keyword: (keyword ?? searchText.value)?.trim() || undefined,
+      }),
     )
   } catch (e) {
     showUserError(e, '质量评价课程列表加载失败')
   } finally {
     loading.value = false
   }
+}
+
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
+function handleSearch(val: string) {
+  searchText.value = val
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => loadOptions(val), QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS)
 }
 
 function handleChange(val: SelectValue, _option: DefaultOptionType | DefaultOptionType[]) {
@@ -102,7 +109,8 @@ defineExpose({ reload: loadOptions })
     :loading="loading"
     :style="{ width: typeof width === 'number' ? `${width}px` : width }"
     show-search
-    option-filter-prop="label"
+    :filter-option="false"
+    @search="handleSearch"
     @change="handleChange"
   >
     <a-select-option
@@ -114,7 +122,8 @@ defineExpose({ reload: loadOptions })
       <span class="dp-selector-option-code">{{ opt.courseCode }}</span>
       {{ opt.courseName }}
       <span v-if="opt.schoolYear" class="dp-selector-option-meta">
-        ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ formatSemester(opt.semester) }}</span>)
+        ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ formatSemester(opt.semester) }}</span
+        >)
       </span>
     </a-select-option>
   </a-select>

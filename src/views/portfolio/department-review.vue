@@ -6,18 +6,6 @@ import type {
   PortfolioMaterialRiskLevelCode,
   PortfolioReviewActionTypeCode,
 } from '@/apis/portfolio/enums'
-import type {
-  PortfolioAiAnalysisDetailVO,
-  PortfolioArchiveCategoryTreeNodeVO,
-  PortfolioReviewArchiveRecordDetailVO,
-  PortfolioReviewLogVO,
-  PortfolioReviewTaskPageRequest,
-  PortfolioReviewTaskSummaryVO,
-} from '@/apis/portfolio/types'
-import type { BadgeTone, FilterField, FilterOption } from '@/components/ui-guide/ui/types'
-import { Input, message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import {
   PortfolioArchiveRecordSourceTypeDescription,
   PortfolioArchiveRecordStatusDescription,
@@ -26,7 +14,15 @@ import {
   PortfolioReviewTaskStatusCode,
   PortfolioReviewTaskStatusDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioReviewApi } from '@/apis/portfolio/review'
+import type {
+  PortfolioAiAnalysisDetailVO,
+  PortfolioArchiveCategoryTreeNodeVO,
+  PortfolioReviewArchiveRecordDetailVO,
+  PortfolioReviewLogVO,
+  PortfolioReviewRecordFieldVO,
+  PortfolioReviewTaskPageRequest,
+  PortfolioReviewTaskSummaryVO,
+} from '@/apis/portfolio/types'
 import {
   PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
   PORTFOLIO_DEFAULT_AUDIT_FLOW_CODE,
@@ -34,6 +30,11 @@ import {
   PORTFOLIO_REVIEW_TASK_STATUS_TONE,
   PORTFOLIO_SCHOOL_REVIEW_FLOW_CODE,
 } from '@/apis/portfolio/types'
+import type { BadgeTone, FilterField, FilterOption } from '@/components/ui-guide/ui/types'
+import { Input, message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
+import { portfolioReviewApi } from '@/apis/portfolio/review'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
@@ -112,7 +113,7 @@ interface ReviewFilterModel extends Record<string, unknown> {
 }
 
 const listColumns: ColumnsType = [
-  { title: '教师', key: 'teacher', width: 140 },
+  { title: '教师', key: 'teacher', width: 140, fixed: 'left' },
   { title: '工号', dataIndex: 'teacherNumber', key: 'teacherNumber', width: 120 },
   { title: '院系', dataIndex: 'departmentName', key: 'departmentName' },
   { title: '材料分类', dataIndex: 'categoryName', key: 'categoryName', width: 140 },
@@ -123,17 +124,17 @@ const listColumns: ColumnsType = [
   { title: '档案状态', key: 'recordStatus', width: 100 },
   { title: '审核状态', key: 'reviewStatus', width: 100 },
   { title: '提交时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
-  { title: '操作', key: 'actions', width: 120, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 120 },
 ]
 
 const fieldColumns: ColumnsType = [
-  { title: '字段', dataIndex: 'fieldLabel', key: 'fieldLabel', width: 140 },
+  { title: '字段', dataIndex: 'fieldLabel', key: 'fieldLabel', width: 140, fixed: 'left' },
   { title: '值', dataIndex: 'fieldValue', key: 'fieldValue' },
   { title: '证据', dataIndex: 'evidenceRef', key: 'evidenceRef', width: 120 },
 ]
 
 const logColumns: ColumnsType = [
-  { title: '操作', key: 'actionType', width: 100 },
+  { title: '操作', key: 'actionType', width: 100, fixed: 'left' },
   { title: '意见', dataIndex: 'opinion', key: 'opinion' },
   { title: '时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
 ]
@@ -155,7 +156,7 @@ const filterModel = computed<Record<string, unknown>>({
   },
 })
 
-const categoryOptions = ref<{ label: string, value: string }[]>([])
+const categoryOptions = ref<{ label: string; value: string }[]>([])
 
 const filterFields = computed<FilterField[]>(() => [
   {
@@ -206,6 +207,7 @@ const filterFields = computed<FilterField[]>(() => [
 const loading = ref(false)
 const rows = ref<PortfolioReviewTaskSummaryVO[]>([])
 const pageNum = ref(1)
+const pageSize = ref(DEFAULT_LIST_PAGE_SIZE)
 const pageTotal = ref(0)
 const selectedRowKeys = ref<string[]>([])
 const batchSubmitting = ref(false)
@@ -216,7 +218,14 @@ const activeRow = ref<PortfolioReviewTaskSummaryVO | null>(null)
 const recordDetail = ref<PortfolioReviewArchiveRecordDetailVO | null>(null)
 const aiPreReview = ref<PortfolioAiAnalysisDetailVO | null>(null)
 const aiPreReviewAbsent = ref(false)
+const fieldRows = ref<PortfolioReviewRecordFieldVO[]>([])
+const fieldPageNum = ref(1)
+const fieldPageSize = ref(DEFAULT_LIST_PAGE_SIZE)
+const fieldTotal = ref(0)
 const logRows = ref<PortfolioReviewLogVO[]>([])
+const logPageNum = ref(1)
+const logPageSize = ref(DEFAULT_LIST_PAGE_SIZE)
+const logTotal = ref(0)
 const detailLoading = ref(false)
 const actionSubmitting = ref(false)
 const approveOpinion = ref('')
@@ -242,8 +251,8 @@ async function loadCategories() {
 
 function flattenCategoryTree(
   nodes: PortfolioArchiveCategoryTreeNodeVO[],
-): { label: string, value: string }[] {
-  const options: { label: string, value: string }[] = []
+): { label: string; value: string }[] {
+  const options: { label: string; value: string }[] = []
   for (const node of nodes) {
     options.push({ label: node.categoryName, value: node.id })
     if (node.children?.length) {
@@ -258,7 +267,7 @@ async function loadPage() {
   try {
     const result = await portfolioReviewApi.pageTasks({
       pageNum: pageNum.value,
-      pageSize: DEFAULT_LIST_PAGE_SIZE,
+      pageSize: pageSize.value,
       departmentId: filterForm.departmentId,
       categoryId: filterForm.categoryId,
       teacherId: filterForm.teacherId,
@@ -282,9 +291,48 @@ function handleSearch() {
   void loadPage()
 }
 
-function handlePageChange(next: number) {
-  pageNum.value = next
+function handlePageChange(event: { current: number; pageSize: number }) {
+  pageNum.value = event.current
+  pageSize.value = event.pageSize
   void loadPage()
+}
+
+async function loadFieldPage() {
+  if (!activeRow.value) {
+    return
+  }
+  const page = await portfolioReviewApi.pageArchiveRecordFields({
+    archiveRecordId: activeRow.value.archiveRecordId,
+    pageNum: fieldPageNum.value,
+    pageSize: fieldPageSize.value,
+  })
+  fieldRows.value = page.list
+  fieldTotal.value = page.total
+}
+
+async function loadLogPage() {
+  if (!activeRow.value) {
+    return
+  }
+  const page = await portfolioReviewApi.pageLogs({
+    reviewTaskId: activeRow.value.id,
+    pageNum: logPageNum.value,
+    pageSize: logPageSize.value,
+  })
+  logRows.value = page.list
+  logTotal.value = page.total
+}
+
+function handleFieldPageChange(event: { current: number; pageSize: number }) {
+  fieldPageNum.value = event.current
+  fieldPageSize.value = event.pageSize
+  void loadFieldPage()
+}
+
+function handleLogPageChange(event: { current: number; pageSize: number }) {
+  logPageNum.value = event.current
+  logPageSize.value = event.pageSize
+  void loadLogPage()
 }
 
 async function openDetail(row: PortfolioReviewTaskSummaryVO) {
@@ -299,11 +347,16 @@ async function openDetail(row: PortfolioReviewTaskSummaryVO) {
   recordDetail.value = null
   aiPreReview.value = null
   aiPreReviewAbsent.value = false
+  fieldRows.value = []
+  fieldTotal.value = 0
+  fieldPageNum.value = 1
   logRows.value = []
+  logTotal.value = 0
+  logPageNum.value = 1
   try {
     recordDetail.value = await portfolioReviewApi.getArchiveRecord(row.archiveRecordId)
     if (row.reviewActionAllowed) {
-      logRows.value = await portfolioReviewApi.listLogs(row.id)
+      await Promise.all([loadFieldPage(), loadLogPage()])
       try {
         aiPreReview.value = await portfolioReviewApi.getAiPreReview(row.id)
       } catch (error) {
@@ -521,12 +574,17 @@ onMounted(async () => {
       </div>
       <UiDataTable
         row-key="id"
+        v-model:current="pageNum"
+        v-model:page-size="pageSize"
+        pagination-mode="server"
         :columns="listColumns"
         :data-source="rows"
         :loading="loading"
-        :pagination="false"
+        :total="pageTotal"
+        flat
         empty-title="暂无审核待办"
         empty-description="当前筛选条件下没有待复核材料，可调整院系、分类或审核状态后重试。"
+        @page-change="handlePageChange"
         :row-selection="{
           selectedRowKeys,
           onChange: (keys: string[]) => {
@@ -579,15 +637,6 @@ onMounted(async () => {
           </template>
         </template>
       </UiDataTable>
-      <div v-if="pageTotal > 20" class="review-pagination">
-        <UiButton @click="handlePageChange(pageNum - 1)" :disabled="pageNum <= 1">
-          上一页
-        </UiButton>
-        <span>{{ pageNum }} / {{ Math.ceil(pageTotal / 20) }}</span>
-        <UiButton @click="handlePageChange(pageNum + 1)" :disabled="pageNum * 20 >= pageTotal">
-          下一页
-        </UiButton>
-      </div>
     </UiCard>
 
     <UiDrawer v-model:open="drawerOpen" title="审核复核" width="720">
@@ -617,22 +666,34 @@ onMounted(async () => {
           敏感材料：须单条复核，禁止批量操作。
         </p>
         <UiDataTable
-          v-if="recordDetail?.fields?.length"
+          v-if="fieldTotal > 0"
           row-key="fieldCode"
           size="small"
+          v-model:current="fieldPageNum"
+          v-model:page-size="fieldPageSize"
+          pagination-mode="server"
           :columns="fieldColumns"
-          :data-source="recordDetail.fields"
-          :pagination="false"
+          :data-source="fieldRows"
+          :total="fieldTotal"
+          :sticky-header="false"
+          flat
+          @page-change="handleFieldPageChange"
         />
         <UiEmpty v-else-if="!detailLoading" description="暂无字段快照" />
         <UiDataTable
-          v-if="logRows.length"
+          v-if="logTotal > 0"
           class="review-logs"
           row-key="id"
           size="small"
+          v-model:current="logPageNum"
+          v-model:page-size="logPageSize"
+          pagination-mode="server"
           :columns="logColumns"
           :data-source="logRows"
-          :pagination="false"
+          :total="logTotal"
+          :sticky-header="false"
+          flat
+          @page-change="handleLogPageChange"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'actionType'">
@@ -694,12 +755,6 @@ onMounted(async () => {
   margin: 0 0 12px;
   color: var(--ant-color-error);
   font-size: 13px;
-}
-.review-pagination {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 12px;
 }
 .review-meta {
   margin: 0 0 12px;

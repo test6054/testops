@@ -7,20 +7,24 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 1. 选择质量评价课程 + 考核环节 + 学年/学期 → 填批次编码/名称 → UiPlatformFileField stage Excel
  *    → submitPlatformExcelImport(QUALITY_SCORE_BATCH) 一键注册并 enqueue-parse
  * 2. 状态机：PENDING → PARSING → PREVIEW_READY / FAILED
- * 3. PREVIEW_READY 后 POST /preview 拿 ScoreImportPreviewVO（含 diagnostics）
+ * 3. PREVIEW_READY 后 POST /preview 拿摘要，错误行走 score-records/page-by-batch
  * 4. POST /validate → VALIDATED，POST /confirm → CONFIRMED
  * 5. PENDING / FAILED 可 POST /update-status { id, status: 'CANCELLED' } 取消
  */
 import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
+import { assessmentItemApi } from '@/apis/quality/assessment-item'
 import type { QualityCourseVO } from '@/apis/quality/quality-course'
+import { qualityCourseApi } from '@/apis/quality/quality-course'
 import type {
   QualityStatusCountsResponse,
   ScoreBatchQueryRequest,
   ScoreBatchSaveRequest,
   ScoreBatchUpdateRequest,
   ScoreBatchVO,
-  ScoreImportRowDiagnostic,
 } from '@/apis/quality/score-batch'
+import { scoreBatchApi } from '@/apis/quality/score-batch'
+import type { ScoreRecordVO } from '@/apis/quality/score-record'
+import { scoreRecordApi } from '@/apis/quality/score-record'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type {
   AuditTimelineEvent,
@@ -36,9 +40,6 @@ import { downloadFile } from '@/apis/edu/file-management'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import { downloadExcelImportTemplate } from '@/apis/platform/excel-import'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { assessmentItemApi } from '@/apis/quality/assessment-item'
-import { qualityCourseApi } from '@/apis/quality/quality-course'
-import { scoreBatchApi } from '@/apis/quality/score-batch'
 import {
   ALL_DATA_SOURCE_MODE_CODES,
   ALL_SCORE_BATCH_STATUS_CODES,
@@ -51,6 +52,10 @@ import {
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
+import {
+  loadSelectorFirstPage,
+  QUALITY_SELECTOR_PAGE_SIZE,
+} from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -72,7 +77,6 @@ import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
-import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const qualityStore = useQualityStore()
@@ -81,8 +85,8 @@ const batches = ref<ScoreBatchVO[]>([])
 const total = ref(0)
 const batchStatusCounts = ref<QualityStatusCountsResponse | null>(null)
 const loading = ref(false)
-const { exporting: scoreBatchExporting, exportExcel: exportScoreBatchExcel }
-  = useQualityTableExport()
+const { exporting: scoreBatchExporting, exportExcel: exportScoreBatchExcel } =
+  useQualityTableExport()
 const uploading = ref(false)
 const uploadFileNodeId = ref<string>()
 const uploadFileName = ref<string>()
@@ -90,7 +94,10 @@ const templateLoading = ref(false)
 
 const previewVisible = ref(false)
 const previewLoading = ref(false)
-const diagnostics = ref<ScoreImportRowDiagnostic[]>([])
+const previewDiagnostics = ref<ScoreRecordVO[]>([])
+const previewDiagnosticTotal = ref(0)
+const previewPageNum = ref(1)
+const previewPageSize = ref(20)
 const previewBatch = ref<ScoreBatchVO | null>(null)
 interface ScoreImportPreviewSummary {
   totalRows?: number
@@ -250,17 +257,17 @@ function hasGeneratedRowStatistics(
   record: Pick<ScoreBatchVO, 'totalRows' | 'successRows' | 'errorRows'> | ScoreImportPreviewSummary,
 ): boolean {
   return (
-    record.totalRows !== undefined
-    && record.successRows !== undefined
-    && record.errorRows !== undefined
+    record.totalRows !== undefined &&
+    record.successRows !== undefined &&
+    record.errorRows !== undefined
   )
 }
 
 function scoreBatchRowStatisticsText(record: ScoreBatchVO): string {
   if (
-    record.status === ScoreBatchStatusCode.PENDING
-    || record.status === ScoreBatchStatusCode.PARSING
-    || record.status === ScoreBatchStatusCode.CANCELLED
+    record.status === ScoreBatchStatusCode.PENDING ||
+    record.status === ScoreBatchStatusCode.PARSING ||
+    record.status === ScoreBatchStatusCode.CANCELLED
   ) {
     return '未生成'
   }
@@ -311,7 +318,7 @@ const statusBuckets = computed(() => buildScoreBatchStatusBuckets(batchStatusCou
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const stageOrder: Array<{ key: ScoreBatchStatusCode, title: string }> = [
+  const stageOrder: Array<{ key: ScoreBatchStatusCode; title: string }> = [
     { key: ScoreBatchStatusCode.PENDING, title: '待处理' },
     { key: ScoreBatchStatusCode.PARSING, title: '解析中' },
     { key: ScoreBatchStatusCode.PREVIEW_READY, title: '预览就绪' },
@@ -366,21 +373,19 @@ const queryAssessmentItemOptions = computed(() =>
   })),
 )
 
-async function loadCourses() {
+async function loadCourses(keyword?: string) {
   if (!qualityStore.currentTrainingPlanId) {
     courseOptions.value = []
     return
   }
-  courseOptions.value = await readAllPages(
-    (pageNum) =>
-      qualityCourseApi.page({
-        pageNum,
-        pageSize: 100,
-        trainingPlanId: qualityStore.currentTrainingPlanId,
-        enabled: true,
-      }),
-    '质量评价课程加载失败，请稍后重试',
-  )
+  const page = await qualityCourseApi.page({
+    pageNum: 1,
+    pageSize: QUALITY_SELECTOR_PAGE_SIZE,
+    trainingPlanId: qualityStore.currentTrainingPlanId,
+    enabled: true,
+    keyword: keyword?.trim() || undefined,
+  })
+  courseOptions.value = page.list
 }
 
 async function loadUploadAssessmentItems(qualityCourseId: string | undefined) {
@@ -390,7 +395,9 @@ async function loadUploadAssessmentItems(qualityCourseId: string | undefined) {
   }
   uploadAssessmentLoading.value = true
   try {
-    uploadAssessmentItems.value = await assessmentItemApi.listByCourse(qualityCourseId)
+    uploadAssessmentItems.value = await loadSelectorFirstPage((pageNum, pageSize) =>
+      assessmentItemApi.page({ pageNum, pageSize, qualityCourseId }),
+    )
   } finally {
     uploadAssessmentLoading.value = false
   }
@@ -403,7 +410,9 @@ async function loadQueryAssessmentItems(qualityCourseId: string | undefined) {
   }
   queryAssessmentLoading.value = true
   try {
-    queryAssessmentItems.value = await assessmentItemApi.listByCourse(qualityCourseId)
+    queryAssessmentItems.value = await loadSelectorFirstPage((pageNum, pageSize) =>
+      assessmentItemApi.page({ pageNum, pageSize, qualityCourseId }),
+    )
   } finally {
     queryAssessmentLoading.value = false
   }
@@ -491,14 +500,14 @@ async function handleScopeChange(): Promise<void> {
 
 useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false })
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadBatches()
 }
 
 const batchListColumns: ColumnsType = [
-  { title: '编码', dataIndex: 'batchCode', key: 'batchCode', width: 140 },
+  { title: '编码', dataIndex: 'batchCode', key: 'batchCode', width: 140, fixed: 'left' },
   { title: '名称', dataIndex: 'batchName', key: 'batchName' },
   { title: '课程', key: 'course', width: 220 },
   { title: '考核环节', key: 'assessmentItem', width: 200 },
@@ -508,18 +517,56 @@ const batchListColumns: ColumnsType = [
   { title: '行数（成功/错误/总）', key: 'rowsBreakdown', width: 180 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 120 },
   { title: '提交时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
-  { title: '操作', key: 'actions', width: 360, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 360 },
 ]
 
 const diagnosticsColumns: ColumnsType = [
-  { title: 'Excel 行号', dataIndex: 'rowIndex', key: 'rowIndex', width: 80 },
   { title: '学号', dataIndex: 'studentNumber', key: 'studentNumber' },
   { title: '姓名', dataIndex: 'studentName', key: 'studentName' },
   { title: '班级', dataIndex: 'className', key: 'className' },
   { title: '得分', dataIndex: 'score', key: 'score' },
-  { title: '是否通过', dataIndex: 'valid', key: 'valid', width: 90 },
+  { title: '是否通过', key: 'valid', width: 90 },
   { title: '处理说明', key: 'errorInfo' },
 ]
+
+function splitCsvText(value?: string): string[] {
+  if (!value?.trim()) return []
+  return value
+    .split(/[,；]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+function previewErrorMessages(record: ScoreRecordVO): string[] {
+  return splitCsvText(record.invalidReason)
+}
+
+function previewErrorCodes(record: ScoreRecordVO): string[] {
+  return splitCsvText(record.errorCodes)
+}
+
+async function loadPreviewDiagnostics(batchId: string) {
+  const page = await scoreRecordApi.pageByBatch({
+    batchId,
+    validFlag: false,
+    pageNum: previewPageNum.value,
+    pageSize: previewPageSize.value,
+  })
+  previewDiagnostics.value = page.list
+  previewDiagnosticTotal.value = page.total
+}
+
+function handlePreviewPageChange(pageEvent: { current: number; pageSize: number }) {
+  previewPageNum.value = pageEvent.current
+  previewPageSize.value = pageEvent.pageSize
+  if (!previewBatch.value) return
+  previewLoading.value = true
+  void loadPreviewDiagnostics(previewBatch.value.id)
+    .catch((error: unknown) => showUserError(error, '错误行加载失败'))
+    .finally(() => {
+      previewLoading.value = false
+    })
+}
 
 function resetQuery() {
   query.pageNum = 1
@@ -583,19 +630,9 @@ async function openPreview(record: ScoreBatchVO) {
   previewBatch.value = record
   previewVisible.value = true
   previewLoading.value = true
+  previewPageNum.value = 1
   try {
     const preview = await scoreBatchApi.preview(record.id)
-    for (const diagnostic of preview.diagnostics) {
-      if (
-        diagnostic.valid === false
-        && diagnostic.errorMessages.length === 0
-        && diagnostic.errorCodes.length === 0
-      ) {
-        message.error('成绩预览结果异常，请重新导入后再试')
-        return
-      }
-    }
-    diagnostics.value = preview.diagnostics
     if (preview.status !== ScoreBatchStatusCode.FAILED && !hasGeneratedRowStatistics(preview)) {
       message.error('成绩预览结果异常，请重新导入后再试')
       return
@@ -609,6 +646,9 @@ async function openPreview(record: ScoreBatchVO) {
           '成绩批次解析未完成，请检查导入文件后重新提交',
         )
       : undefined
+    await loadPreviewDiagnostics(record.id)
+  } catch (error: unknown) {
+    showUserError(error, '成绩预览加载失败')
   } finally {
     previewLoading.value = false
   }
@@ -705,7 +745,9 @@ async function openEdit(record: ScoreBatchVO) {
   editor.externalPullTaskId = record.externalPullTaskId
   editor.schoolYear = record.schoolYear || ''
   editor.semester = record.semester
-  editorAssessmentItems.value = await assessmentItemApi.listByCourse(record.qualityCourseId)
+  editorAssessmentItems.value = await loadSelectorFirstPage((pageNum, pageSize) =>
+    assessmentItemApi.page({ pageNum, pageSize, qualityCourseId: record.qualityCourseId }),
+  )
   editorVisible.value = true
 }
 
@@ -746,9 +788,9 @@ async function submitEditor() {
 
 function canEdit(status: ScoreBatchStatusCode) {
   return (
-    status === ScoreBatchStatusCode.PENDING
-    || status === ScoreBatchStatusCode.FAILED
-    || status === ScoreBatchStatusCode.CANCELLED
+    status === ScoreBatchStatusCode.PENDING ||
+    status === ScoreBatchStatusCode.FAILED ||
+    status === ScoreBatchStatusCode.CANCELLED
   )
 }
 
@@ -803,16 +845,16 @@ const batchResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleBatchResultAction(actionEvent: { item: TaskResultItem, action: { key: string } }) {
+function handleBatchResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
   const record = batches.value.find((b) => b.id === actionEvent.item.id)
   if (record && actionEvent.action.key === 'preview') openPreview(record)
 }
 
 function canDelete(status: ScoreBatchStatusCode) {
   return (
-    status === ScoreBatchStatusCode.PENDING
-    || status === ScoreBatchStatusCode.FAILED
-    || status === ScoreBatchStatusCode.CANCELLED
+    status === ScoreBatchStatusCode.PENDING ||
+    status === ScoreBatchStatusCode.FAILED ||
+    status === ScoreBatchStatusCode.CANCELLED
   )
 }
 
@@ -831,9 +873,9 @@ async function handleDelete(record: ScoreBatchVO) {
 
 function canValidate(record: ScoreBatchVO) {
   return (
-    record.status === ScoreBatchStatusCode.PREVIEW_READY
-    && (record.errorRows ?? 0) === 0
-    && (record.successRows ?? 0) > 0
+    record.status === ScoreBatchStatusCode.PREVIEW_READY &&
+    (record.errorRows ?? 0) === 0 &&
+    (record.successRows ?? 0) > 0
   )
 }
 function canConfirm(status: ScoreBatchStatusCode) {
@@ -841,9 +883,9 @@ function canConfirm(status: ScoreBatchStatusCode) {
 }
 function canPreview(status: ScoreBatchStatusCode) {
   return (
-    status === ScoreBatchStatusCode.PREVIEW_READY
-    || status === ScoreBatchStatusCode.VALIDATED
-    || status === ScoreBatchStatusCode.FAILED
+    status === ScoreBatchStatusCode.PREVIEW_READY ||
+    status === ScoreBatchStatusCode.VALIDATED ||
+    status === ScoreBatchStatusCode.FAILED
   )
 }
 function canCancel(status: ScoreBatchStatusCode) {
@@ -1102,7 +1144,7 @@ onMounted(async () => {
         <UiDataTable
           v-model:current="query.pageNum"
           v-model:page-size="query.pageSize"
-          class="score-batch__table student-detail-table__data-table"
+          class="score-batch__table"
           :columns="batchListColumns"
           :data-source="batches"
           :loading="loading"
@@ -1127,9 +1169,9 @@ onMounted(async () => {
             </template>
             <template
               v-else-if="
-                column.key === 'schoolYear'
-                  || column.key === 'semester'
-                  || column.key === 'createTime'
+                column.key === 'schoolYear' ||
+                column.key === 'semester' ||
+                column.key === 'createTime'
               "
             >
               <template v-if="column.key === 'schoolYear'">
@@ -1210,36 +1252,32 @@ onMounted(async () => {
         {{ previewSummary.errorSummary }}
       </p>
       <UiDataTable
-        pagination-mode="none"
-        class="student-detail-table__data-table"
+        pagination-mode="server"
+        v-model:current="previewPageNum"
+        v-model:page-size="previewPageSize"
         :columns="diagnosticsColumns"
-        :data-source="diagnostics"
+        :data-source="previewDiagnostics"
         :loading="previewLoading"
-        row-key="rowIndex"
+        row-key="id"
         size="small"
-        :show-pagination="false"
-        flat
-        :total="diagnostics.length"
+        :total="previewDiagnosticTotal"
         :scroll="{ y: 420 }"
+        @page-change="handlePreviewPageChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'score'">
-            {{
-              record.score === null || record.score === undefined || record.score === ''
-                ? '未解析得分'
-                : record.score
-            }}
+            {{ record.score === null || record.score === undefined ? '未解析得分' : record.score }}
           </template>
           <template v-else-if="column.key === 'valid'">
-            <UiTag :tone="record.valid ? 'green' : 'red'">
-              {{ record.valid ? '通过' : '失败' }}
+            <UiTag :tone="record.validFlag ? 'green' : 'red'">
+              {{ record.validFlag ? '通过' : '失败' }}
             </UiTag>
           </template>
           <template v-else-if="column.key === 'errorInfo'">
             <a-space direction="vertical" size="small" style="width: 100%">
               <div
-                v-for="(errorMessage, idx) in record.errorMessages"
-                :key="`${record.rowIndex}-message-${idx}`"
+                v-for="(errorMessage, idx) in previewErrorMessages(record)"
+                :key="`${record.id}-message-${idx}`"
                 class="score-batch__error-msg"
               >
                 {{
@@ -1250,12 +1288,14 @@ onMounted(async () => {
                 }}
               </div>
               <div
-                v-if="record.errorMessages.length === 0 && record.errorCodes.length > 0"
+                v-if="
+                  previewErrorMessages(record).length === 0 && previewErrorCodes(record).length > 0
+                "
                 class="score-batch__error-msg"
               >
                 该行成绩无法确认，请检查学号、班级、成绩格式和考核环节配置
               </div>
-              <span v-if="record.valid" class="score-batch__sub-text"> 无错误 </span>
+              <span v-if="record.validFlag" class="score-batch__sub-text"> 无错误 </span>
             </a-space>
           </template>
         </template>

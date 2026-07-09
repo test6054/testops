@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {
-  PortfolioEvaluationObjectionHandleActionCode,
+import type { PortfolioEvaluationObjectionHandleActionCode } from '@/apis/portfolio/enums'
+import {
+  PORTFOLIO_EVALUATION_OBJECTION_TYPE_OPTIONS,
+  PortfolioEvaluationObjectionHandleActionDescription,
+  PortfolioEvaluationObjectionStatusDescription,
+  PortfolioEvaluationObjectionTypeCode,
+  PortfolioEvaluationPublicityStatusDescription,
   PortfolioEvaluationTeacherNoticeStatusCode,
+  PortfolioEvaluationTeacherNoticeStatusDescription,
 } from '@/apis/portfolio/enums'
 import type {
   PortfolioEvaluationMaterialCategoryItemVO,
@@ -11,27 +17,19 @@ import type {
   PortfolioEvaluationTeacherNoticeVO,
   PortfolioEvaluationTeacherResultSummaryVO,
 } from '@/apis/portfolio/types'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { Input, message, Select } from 'ant-design-vue'
-import { computed, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import {
-  PORTFOLIO_EVALUATION_OBJECTION_TYPE_OPTIONS,
-  PortfolioEvaluationObjectionHandleActionDescription,
-  PortfolioEvaluationObjectionStatusDescription,
-  PortfolioEvaluationObjectionTypeCode,
-  PortfolioEvaluationPublicityStatusDescription,
-  PortfolioEvaluationTeacherNoticeStatusDescription,
-} from '@/apis/portfolio/enums'
-import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
-import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import {
   PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
   PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE,
   PORTFOLIO_EVALUATION_PUBLICITY_STATUS_TONE,
   PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE,
 } from '@/apis/portfolio/types'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import { Input, message, Select } from 'ant-design-vue'
+import { computed, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
+import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -129,30 +127,36 @@ const selectedNotice = computed(
 )
 
 const noticeColumns: ColumnsType<PortfolioEvaluationTeacherNoticeVO> = [
-  { title: '评价任务', dataIndex: 'taskTitle', key: 'taskTitle' },
+  { title: '评价任务', dataIndex: 'taskTitle', key: 'taskTitle', fixed: 'left' },
   { title: '状态', key: 'noticeStatus', width: 120 },
   { title: '截止', dataIndex: 'dueTime', key: 'dueTime', width: 170 },
-  { title: '操作', key: 'actions', width: 160, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 160 },
 ]
 
 const categoryColumns: ColumnsType<PortfolioEvaluationMaterialCategoryItemVO> = [
-  { title: '档案分类', dataIndex: 'categoryName', key: 'categoryName' },
+  { title: '档案分类', dataIndex: 'categoryName', key: 'categoryName', fixed: 'left' },
   { title: '完成', key: 'completed', width: 100 },
 ]
 
 const publicityColumns: ColumnsType<PortfolioEvaluationPublicityListItemVO> = [
-  { title: '任务', dataIndex: 'taskName', key: 'taskName' },
+  { title: '任务', dataIndex: 'taskName', key: 'taskName', fixed: 'left' },
   { title: '公示标题', dataIndex: 'publicityTitle', key: 'publicityTitle' },
   { title: '公示状态', key: 'publicityStatus', width: 100 },
   { title: '公示期', key: 'publicityWindow', width: 200 },
   { title: '异议 / 复核', key: 'objectionStatus', width: 140 },
-  { title: '操作', key: 'actions', width: 180, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 180 },
 ]
 
 const resultColumns: ColumnsType<
   NonNullable<PortfolioEvaluationTeacherResultSummaryVO['entries']>[number]
 > = [
-  { title: '指标编码', dataIndex: 'indicatorCode', key: 'indicatorCode', width: 120 },
+  {
+    title: '指标编码',
+    dataIndex: 'indicatorCode',
+    key: 'indicatorCode',
+    width: 120,
+    fixed: 'left',
+  },
   { title: '得分', dataIndex: 'score', key: 'score', width: 90, align: 'right' },
   { title: '评语', dataIndex: 'commentText', key: 'commentText' },
 ]
@@ -162,9 +166,9 @@ function canViewerSubmitObjection(record: PortfolioEvaluationPublicityListItemVO
     return false
   }
   return !(
-    canPickTeachers.value
-    && targetTeacherId.value
-    && targetTeacherId.value !== currentUserId.value
+    canPickTeachers.value &&
+    targetTeacherId.value &&
+    targetTeacherId.value !== currentUserId.value
   )
 }
 
@@ -312,7 +316,7 @@ function goArchive() {
 /** 组装评价待办行内操作。 */
 function buildNoticeRowActions(record: PortfolioEvaluationTeacherNoticeVO): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = [{ key: 'preview', label: '预览材料' }]
-  if (record.noticeStatus !== 'CONFIRMED') {
+  if (record.noticeStatus !== PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED) {
     actions.push({
       key: 'confirm',
       label: '确认材料',
@@ -435,9 +439,12 @@ usePortfolioScopedLoader(
         v-if="preview.categories?.length"
         row-key="categoryId"
         size="small"
+        pagination-mode="none"
         :columns="categoryColumns"
         :data-source="preview.categories"
-        :pagination="false"
+        :show-pagination="false"
+        :sticky-header="false"
+        flat
         class="teacher-evaluation__category-table"
       >
         <template #bodyCell="{ column, record }">
@@ -520,9 +527,12 @@ usePortfolioScopedLoader(
             v-if="resultSummary.entries?.length"
             row-key="indicatorCode"
             size="small"
+            pagination-mode="none"
             :columns="resultColumns"
             :data-source="resultSummary.entries"
-            :pagination="false"
+            :show-pagination="false"
+            :sticky-header="false"
+            flat
             class="teacher-evaluation__result-table"
           />
           <UiEmpty v-else description="暂无评价依据明细" />
@@ -530,9 +540,12 @@ usePortfolioScopedLoader(
             v-if="resultSummary.materialCategories?.length"
             row-key="categoryId"
             size="small"
+            pagination-mode="none"
             :columns="categoryColumns"
             :data-source="resultSummary.materialCategories"
-            :pagination="false"
+            :show-pagination="false"
+            :sticky-header="false"
+            flat
             class="teacher-evaluation__category-table"
           />
         </template>

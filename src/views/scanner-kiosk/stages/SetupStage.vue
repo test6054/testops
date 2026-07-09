@@ -1,29 +1,46 @@
 <script setup lang="ts">
 /**
- * 讯飞式扫描工作台：左任务进度 + 批次列表，右设备状态条 + 主 CTA。
+ * 讯飞式扫描工作台：设备状态 + 双 CTA（首次扫描/补扫）+ 只读参数信息带。
  */
-import { PlayCircleFilled, ReloadOutlined, SettingOutlined } from '@ant-design/icons-vue'
+import {
+  ArrowRightOutlined,
+  PlayCircleFilled,
+  ReloadOutlined,
+  RetweetOutlined,
+  StopOutlined,
+} from '@ant-design/icons-vue'
 import { computed, onMounted, ref } from 'vue'
-import { ScannerKioskScanModeCode } from '@/apis/mark/scanner-kiosk'
+import { useRouter } from 'vue-router'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { ExamMaterialLayoutModeCode } from '@/types/enums/exam-material-layout-mode-enum'
+import { ScannerKioskBlockReasonCode } from '@/types/enums/scanner-kiosk-block-reason-enum'
+import { ScannerKioskResumeActionCode } from '@/types/enums/scanner-kiosk-resume-action-enum'
+import { formatExamSubMeta, formatExamTimeRange } from '@/utils/exam-display-meta'
+import KioskScanProfilePanel from '../components/KioskScanProfilePanel.vue'
 import KioskSessionBatchPanel from '../components/KioskSessionBatchPanel.vue'
+import KioskSupplementLaunchModal from '../components/KioskSupplementLaunchModal.vue'
 import { useKioskCtx } from '../composables/kioskInjection'
 
 const CALIBRATION_ACK_PREFIX = 'kiosk-sheet-calibration-ack:'
 
-const { workflow, mutex, ui, stage } = useKioskCtx()
+const { workflow, mutex, stage } = useKioskCtx()
+const router = useRouter()
 
 const contract = computed(() => workflow.kioskContext.value?.taskContract)
 const exam = computed(() => workflow.kioskContext.value?.exam)
 const readiness = computed(() => workflow.deviceReadiness.value)
-const startReason = computed(() => mutex.reasonOf('startScan'))
-const scanConfig = computed(() => workflow.scanConfig.value)
+const directStartReason = computed(() => mutex.reasonOf('startDirectScan'))
+const supplementOpenReason = computed(() => mutex.reasonOf('openSupplementLaunch'))
 
 const templateExpanded = ref(false)
+const supplementModalOpen = ref(false)
 
 const breadcrumb = computed(() => {
-  const name = exam.value?.examName || '未绑定考试'
+  const name =
+    exam.value?.examName ||
+    (workflow.examId.value ? `考试 ${workflow.examId.value}` : '') ||
+    '未绑定考试'
   const course = exam.value?.courseName
   return course ? `${name}（${course}）` : name
 })
@@ -51,30 +68,6 @@ const progressPercent = computed(() => {
   return Math.min(100, Math.round((scanned / expected) * 100))
 })
 
-const scanModeLabel = computed(() => workflow.scanModeText(workflow.scanMode.value, ''))
-
-const scanModeTone = computed(() => {
-  const mode = workflow.scanMode.value
-  if (mode === ScannerKioskScanModeCode.SUPPLEMENT) return 'supplement'
-  return 'direct'
-})
-
-const hardwareParamItems = computed(() => {
-  const items: string[] = []
-  if (scanConfig.value.dpi) items.push(`${scanConfig.value.dpi} DPI`)
-  if (scanConfig.value.colorMode) {
-    items.push(workflow.scannerColorModeLabel(scanConfig.value.colorMode))
-  }
-  if (scanConfig.value.duplexMode) {
-    items.push(workflow.scannerDuplexModeLabel(scanConfig.value.duplexMode))
-  }
-  const chainLabel = workflow.tenantProviderChainLabel.value
-  if (chainLabel) items.push(chainLabel)
-  return items
-})
-
-const scanProfileReady = computed(() => hardwareParamItems.value.length > 0)
-
 const statusDetailLine = computed(() => {
   const { tone, detail, headline, statusText } = readiness.value
   if (tone === 'success') return ''
@@ -99,16 +92,56 @@ const templateReviewLinkText = computed(() => {
   return '制卷核对 →'
 })
 
-const scanMaterialAdvisory = computed(() => workflow.scanMaterialAdvisory.value)
-const classScopeAdvisory = computed(() => workflow.classScopeAdvisory.value)
 const prepHardBlockingReasons = computed(
   () => workflow.kioskContext.value?.prepHardBlockingReasons ?? [],
 )
 const prepAdvisoryReasons = computed(() => workflow.kioskContext.value?.prepAdvisoryReasons ?? [])
-
-const scanConfigAdvisory = computed(
-  () => workflow.kioskContext.value?.scanConfigOptions?.scanConfigAdvisory?.trim() || '',
+const declaredClassChips = computed(() => workflow.declaredClassChips.value)
+const examSubMeta = computed(() =>
+  formatExamSubMeta(exam.value?.examNo, exam.value?.departmentName),
 )
+const examTimeRange = computed(() =>
+  formatExamTimeRange(exam.value?.examStartTime, exam.value?.examEndTime),
+)
+const activeSessionReason = computed(
+  () => workflow.kioskContext.value?.activeScanSessionReason?.trim() || '',
+)
+const resumeAction = computed(() => workflow.kioskContext.value?.resumeAction ?? null)
+const pageRegisterPending = computed(
+  () => workflow.kioskContext.value?.pageRegisterPending === true,
+)
+const latestBatchRegisterState = computed(
+  () => workflow.kioskContext.value?.latestBatch?.pageRegisterState ?? null,
+)
+const showRegisterStateSkeleton = computed(
+  () => workflow.kioskContext.value?.latestBatch != null && latestBatchRegisterState.value === null,
+)
+const blockReasonCode = computed(() => workflow.kioskContext.value?.blockReasonCode ?? null)
+const latestBatchPageCount = computed(
+  () => workflow.kioskContext.value?.latestBatch?.pageCount ?? 0,
+)
+const scanDerivedTemplateActive = computed(() => contract.value?.scanDerivedTemplateActive === true)
+const primaryCtaDisabled = computed(
+  () =>
+    showRegisterStateSkeleton.value ||
+    (resumeAction.value === ScannerKioskResumeActionCode.RETRY_PAGE_REGISTER &&
+      (!workflow.canRetryPageRegister.value || workflow.pageRegisterRetryLoading.value)) ||
+    (resumeAction.value !== ScannerKioskResumeActionCode.RETRY_PAGE_REGISTER &&
+      resumeAction.value !== ScannerKioskResumeActionCode.RESUME_SCANNING &&
+      resumeAction.value !== ScannerKioskResumeActionCode.VIEW_REGISTER_EXCEPTION &&
+      !workflow.canStartDirectScan.value),
+)
+const scanStats = computed(() => workflow.kioskMetrics.value)
+
+function openLayoutDesigner() {
+  const id = workflow.examId.value
+  if (!id) return
+  const target = router.resolve({
+    name: 'TeacherExamWorkspaceLayoutDesigner',
+    params: { examId: id },
+  })
+  window.open(target.href, '_blank')
+}
 
 const calibrationExamKey = computed(() => {
   const id = workflow.examId.value
@@ -133,10 +166,6 @@ function refreshDevice() {
   void workflow.refreshAll()
 }
 
-function openParams() {
-  ui.openScanParams()
-}
-
 function openTemplateReview() {
   templateExpanded.value = true
 }
@@ -144,14 +173,13 @@ function openTemplateReview() {
 function buildFirstScanCalibrationDialog() {
   const mode = contract.value?.materialLayoutMode
   const paperStyle = contract.value?.paperStyleText || '未配置'
-  const kind = materialKindLabel.value
   if (mode === ExamMaterialLayoutModeCode.FULL_PAPER) {
     return {
       title: '试卷首次扫描核对',
       content:
-        `当前考试为整卷作答，纸型 ${paperStyle}。`
-        + '首张送纸后请在「扫描中」预览整卷切分与页序是否正常；'
-        + '若偏差，请暂停并在 Web 端调整制卷设计后再继续批量扫描。',
+        `当前考试为整卷作答，纸型 ${paperStyle}。` +
+        '首张送纸后请在「扫描中」预览整卷切分与页序是否正常；' +
+        '若偏差，请暂停并在 Web 端调整制卷设计后再继续批量扫描。',
       okText: '已了解，开始扫描',
       cancelText: '先查看制卷摘要',
     }
@@ -160,25 +188,22 @@ function buildFirstScanCalibrationDialog() {
     return {
       title: '答卷页首次扫描核对',
       content:
-        `当前考试为独立答卷页，纸型 ${paperStyle}。`
-        + '首张送纸后请在「扫描中」预览定位框与考号区是否正常；'
-        + '若偏差，请暂停并在 Web 端调整答卷页模板后再继续批量扫描。',
+        `当前考试为独立答卷页，纸型 ${paperStyle}。` +
+        '首张送纸后请在「扫描中」预览定位框与考号区是否正常；' +
+        '若偏差，请暂停并在 Web 端调整答卷页模板后再继续批量扫描。',
       okText: '已了解，开始扫描',
       cancelText: '先查看制卷摘要',
     }
   }
   return {
     title: '首次扫描核对',
-    content:
-      `考试制卷形态尚未配置，已按 ${kind} 单面扫描建议参数（纸型 ${paperStyle}）。`
-      + '首张送纸后请核对预览是否正常，并在 Web 端补配制卷形态与模板。',
+    content: `纸型 ${paperStyle}。首张送纸后请在「扫描中」预览页序与识别是否正常。`,
     okText: '已了解，开始扫描',
     cancelText: '先查看制卷摘要',
   }
 }
 
 async function confirmCalibrationIfNeeded(): Promise<boolean> {
-  if (workflow.scanMode.value !== ScannerKioskScanModeCode.DIRECT) return true
   if (hasCalibrationAck() || !contract.value) return true
   const dialog = buildFirstScanCalibrationDialog()
   const confirmed = await confirmAsync({
@@ -195,14 +220,19 @@ async function confirmCalibrationIfNeeded(): Promise<boolean> {
   return false
 }
 
-async function startScan() {
-  if (!workflow.canStartScan.value) return
+async function startDirectScan() {
+  if (!workflow.canStartDirectScan.value) return
   const ok = await confirmCalibrationIfNeeded()
   if (!ok) return
-  const started = await workflow.submitScanJob()
+  const started = await workflow.startDirectScan()
   if (started) {
     stage.gotoStage('scanning')
   }
+}
+
+async function openSupplementModal() {
+  if (!mutex.canDo('openSupplementLaunch')) return
+  supplementModalOpen.value = true
 }
 
 function continueActiveBatch() {
@@ -227,11 +257,25 @@ onMounted(() => {
     <div class="workbench__grid">
       <aside class="sidebar">
         <h2 class="sidebar__title">{{ exam?.examName || '—' }}</h2>
-        <p v-if="contract?.gradeSubjectText" class="sidebar__sub">
+        <p v-if="exam?.courseName" class="sidebar__sub">{{ exam.courseName }}</p>
+        <p v-if="examSubMeta" class="sidebar__sub sidebar__sub--mono">{{ examSubMeta }}</p>
+        <p v-if="examTimeRange" class="sidebar__hint">考试时间 {{ examTimeRange }}</p>
+        <p v-if="exam?.statusMessage" class="sidebar__hint">考试状态 {{ exam.statusMessage }}</p>
+
+        <div v-if="declaredClassChips.length" class="class-chips">
+          <span
+            v-for="chip in declaredClassChips"
+            :key="chip.key"
+            class="class-chip"
+            :class="{ 'class-chip--missing': chip.missing }"
+            >{{ chip.label }}</span
+          >
+        </div>
+        <p v-else-if="contract?.gradeSubjectText" class="sidebar__sub">
           {{ contract.gradeSubjectText }}
         </p>
 
-        <div class="progress-kpi">
+        <div class="progress-kpi progress-kpi--wide">
           <div class="progress-kpi__item">
             <span>应扫页</span>
             <strong>{{ expectedPages ?? '—' }}</strong>
@@ -249,6 +293,14 @@ onMounted(() => {
           >
             <span>异常</span>
             <strong>{{ attentionCount ?? '—' }}</strong>
+          </div>
+          <div class="progress-kpi__item">
+            <span>已绑定卷</span>
+            <strong>{{ scanStats.boundPaperInstances }}</strong>
+          </div>
+          <div class="progress-kpi__item">
+            <span>本机批次</span>
+            <strong>{{ scanStats.scanBatchCount }}</strong>
           </div>
         </div>
 
@@ -278,7 +330,12 @@ onMounted(() => {
             </div>
             <div v-if="contract.templateDisplayName">
               <dt>模板</dt>
-              <dd>{{ contract.templateDisplayName }}</dd>
+              <dd>
+                {{ contract.templateDisplayName }}
+                <span v-if="scanDerivedTemplateActive" class="template-fold__derived-tag"
+                  >扫描推导</span
+                >
+              </dd>
             </div>
             <div>
               <dt>纸型</dt>
@@ -310,80 +367,185 @@ onMounted(() => {
             <span class="status-led" :class="`status-led--${readiness.tone}`" />
             <div class="scan-control__copy">
               <p class="scan-control__headline">{{ readiness.statusText }}</p>
-              <div
-                v-if="readiness.tone === 'success' && scanProfileReady"
-                class="scan-profile"
-                aria-label="当前扫描配置"
-              >
-                <span class="scan-profile__mode" :class="`scan-profile__mode--${scanModeTone}`">
-                  {{ scanModeLabel }}
-                </span>
-                <span v-for="item in hardwareParamItems" :key="item" class="scan-profile__chip">
-                  {{ item }}
-                </span>
-              </div>
-              <p v-else-if="readiness.tone === 'success'" class="scan-control__sub">
-                参数未加载，请打开扫描参数
-              </p>
-              <p v-else-if="statusDetailLine" class="scan-control__sub">{{ statusDetailLine }}</p>
+              <p v-if="statusDetailLine" class="scan-control__sub">{{ statusDetailLine }}</p>
             </div>
           </div>
-          <div class="scan-control__actions">
-            <button type="button" class="icon-btn" title="刷新设备状态" @click="refreshDevice">
-              <ReloadOutlined :spin="workflow.loading.value" />
+          <button type="button" class="icon-btn" title="刷新设备状态" @click="refreshDevice">
+            <ReloadOutlined :spin="workflow.isDeviceRefreshing.value" />
+          </button>
+        </div>
+
+        <div v-if="showRegisterStateSkeleton" class="setup-signal setup-signal--skeleton">
+          <a-skeleton-button active block size="large" />
+          <a-skeleton-input active block size="small" style="margin-top: 8px" />
+          <p class="setup-signal__hint">登记状态计算中…</p>
+        </div>
+        <UiAlertStrip
+          v-else-if="blockReasonCode === ScannerKioskBlockReasonCode.E_KOS_004"
+          tone="info"
+          dense
+          :closable="false"
+          title="答题卡模式尚未完成制卷"
+          description="请先在 Web 端完成答卷页 layout 设计后再开始扫描。"
+          class="setup-signal"
+        >
+          <template #actions>
+            <button type="button" class="setup-signal__link" @click="openLayoutDesigner">
+              去制卷 →
             </button>
-            <button type="button" class="param-btn" @click="openParams">
-              <SettingOutlined />
-              <span>扫描参数</span>
+          </template>
+        </UiAlertStrip>
+        <UiAlertStrip
+          v-else-if="resumeAction === ScannerKioskResumeActionCode.RETRY_PAGE_REGISTER"
+          tone="warning"
+          dense
+          :closable="false"
+          title="页登记待重试"
+          :description="`本批 ${latestBatchPageCount} 页已提交，登记遇阻。已自动推导模板，点击重试即刻落库。`"
+          class="setup-signal setup-signal--warning"
+        />
+        <UiAlertStrip
+          v-else-if="resumeAction === ScannerKioskResumeActionCode.VIEW_REGISTER_EXCEPTION"
+          tone="error"
+          dense
+          :closable="false"
+          title="页登记不可恢复"
+          :description="
+            workflow.kioskContext.value?.pageRegisterDiagnostic ||
+            '文件不可读或批次已封存 (BLOCKED)，请联系管理员。'
+          "
+          class="setup-signal setup-signal--fatal"
+        >
+          <template #meta>
+            <span class="setup-signal__pulse" aria-hidden="true" />
+          </template>
+        </UiAlertStrip>
+        <UiAlertStrip
+          v-else-if="pageRegisterPending"
+          tone="warning"
+          dense
+          :closable="false"
+          title="上一批次页登记待重试"
+          :description="
+            workflow.kioskContext.value?.pageRegisterDiagnostic || '请先完成登记后再开新扫'
+          "
+          class="setup-signal"
+        />
+
+        <div class="scan-cta-row">
+          <template v-if="showRegisterStateSkeleton">
+            <a-skeleton-button active block size="large" class="scan-cta-skeleton" />
+            <button
+              type="button"
+              class="scan-cta scan-cta--supplement"
+              :disabled="!mutex.canDo('openSupplementLaunch')"
+              :title="supplementOpenReason || '补扫'"
+              @click="openSupplementModal"
+            >
+              <RetweetOutlined />
+              <span>补扫</span>
+            </button>
+          </template>
+          <template v-else>
+            <button
+              v-if="resumeAction === ScannerKioskResumeActionCode.RETRY_PAGE_REGISTER"
+              type="button"
+              class="scan-cta scan-cta--direct scan-cta--warning"
+              :disabled="primaryCtaDisabled"
+              :title="mutex.reasonOf('retryPageRegister') || '重试页登记'"
+              @click="workflow.retryPageRegister()"
+            >
+              <ReloadOutlined :spin="workflow.pageRegisterRetryLoading.value" />
+              <span>重试页登记</span>
             </button>
             <button
-              v-if="hasActiveScanSession"
+              v-else-if="resumeAction === ScannerKioskResumeActionCode.VIEW_REGISTER_EXCEPTION"
               type="button"
-              class="continue-btn"
-              title="返回当前未结束批次，使用底部暂停或结束本批次"
+              class="scan-cta scan-cta--direct scan-cta--fatal"
+              disabled
+              :title="workflow.kioskContext.value?.pageRegisterDiagnostic || '登记不可恢复'"
+            >
+              <StopOutlined />
+              <span>查看登记异常</span>
+            </button>
+            <button
+              v-else-if="resumeAction === ScannerKioskResumeActionCode.RESUME_SCANNING"
+              type="button"
+              class="scan-cta scan-cta--direct"
+              :title="activeSessionReason || '继续扫描'"
               @click="continueActiveBatch"
             >
-              继续本批次
+              <ArrowRightOutlined />
+              <span>继续扫描</span>
+            </button>
+            <button
+              v-else
+              type="button"
+              class="scan-cta scan-cta--direct"
+              :disabled="primaryCtaDisabled"
+              :title="directStartReason || '首次扫描'"
+              @click="startDirectScan"
+            >
+              <PlayCircleFilled />
+              <span>首次扫描</span>
             </button>
             <button
               type="button"
-              class="start-btn"
-              :disabled="!workflow.canStartScan.value"
-              :title="startReason || workflow.scanBlockedReason.value || '开始扫描'"
-              @click="startScan"
+              class="scan-cta scan-cta--supplement"
+              :disabled="!mutex.canDo('openSupplementLaunch')"
+              :title="supplementOpenReason || '补扫'"
+              @click="openSupplementModal"
             >
-              <PlayCircleFilled />
-              <span>开始扫描</span>
+              <RetweetOutlined />
+              <span>补扫</span>
             </button>
-          </div>
+          </template>
         </div>
+
+        <p
+          v-if="
+            !showRegisterStateSkeleton &&
+            !resumeAction &&
+            workflow.canStartDirectScan.value &&
+            contract?.firstScanTemplateHint
+          "
+          class="scan-control__guide scan-control__guide--first-scan"
+        >
+          {{ contract.firstScanTemplateHint }}
+        </p>
+
+        <button
+          v-if="hasActiveScanSession"
+          type="button"
+          class="continue-btn"
+          :title="activeSessionReason || '返回当前未结束批次'"
+          @click="continueActiveBatch"
+        >
+          继续本批次
+        </button>
+        <p v-if="hasActiveScanSession && activeSessionReason" class="scan-control__guide">
+          {{ activeSessionReason }}
+        </p>
 
         <p class="scan-control__guide">
           扫描开始后，请用底部「暂停」或「结束本批次」手动控制；结束本批次后可再次开始新批次送纸。
         </p>
 
+        <KioskScanProfilePanel />
+
         <div v-if="troubleshootingLine" class="scan-control__trouble">
           <p>{{ troubleshootingLine }}</p>
+        </div>
+        <div v-if="prepAdvisoryReasons.length" class="scan-control__advisory">
+          <p v-for="reason in prepAdvisoryReasons" :key="reason">{{ reason }}</p>
         </div>
         <div v-if="prepHardBlockingReasons.length" class="scan-control__hard-block">
           <p v-for="reason in prepHardBlockingReasons" :key="reason">{{ reason }}</p>
         </div>
-        <div
-          v-if="
-            scanMaterialAdvisory
-              || classScopeAdvisory
-              || scanConfigAdvisory
-              || prepAdvisoryReasons.length
-          "
-          class="scan-control__advisory"
-        >
-          <p v-if="scanMaterialAdvisory">{{ scanMaterialAdvisory }}</p>
-          <p v-if="classScopeAdvisory">{{ classScopeAdvisory }}</p>
-          <p v-if="scanConfigAdvisory">{{ scanConfigAdvisory }}</p>
-          <p v-for="reason in prepAdvisoryReasons" :key="reason">{{ reason }}</p>
-        </div>
       </div>
     </div>
+
+    <KioskSupplementLaunchModal v-model:open="supplementModalOpen" />
   </section>
 </template>
 
@@ -446,6 +608,35 @@ onMounted(() => {
   grid-template-columns: repeat(3, 1fr);
   gap: var(--kiosk-space-2);
   margin-top: var(--kiosk-space-1);
+}
+
+.progress-kpi--wide {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.class-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kiosk-space-2);
+}
+
+.class-chip {
+  padding: 2px var(--kiosk-space-2);
+  border-radius: var(--kiosk-radius-sm);
+  background: var(--kiosk-neutral-soft);
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-ink-secondary);
+}
+
+.class-chip--missing {
+  border: 1px dashed var(--kiosk-divider);
+  color: var(--kiosk-ink-tertiary);
+}
+
+.sidebar__sub--mono {
+  font-family: var(--kiosk-font-mono);
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-ink-tertiary);
 }
 
 .progress-kpi__item {
@@ -633,54 +824,6 @@ onMounted(() => {
   line-height: var(--kiosk-lh-tight);
 }
 
-.scan-profile {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--kiosk-space-2);
-}
-
-.scan-profile__mode {
-  display: inline-flex;
-  align-items: center;
-  height: 24px;
-  padding: 0 var(--kiosk-space-2);
-  border-radius: var(--kiosk-radius-sm);
-  font-size: var(--kiosk-fz-caption);
-  font-weight: var(--kiosk-fw-semibold);
-  line-height: 1;
-}
-
-.scan-profile__mode--direct {
-  background: var(--kiosk-primary-soft);
-  color: var(--kiosk-primary);
-}
-
-.scan-profile__mode--supplement {
-  background: var(--kiosk-warning-soft);
-  color: var(--kiosk-warning);
-}
-
-.scan-profile__mode--archive {
-  background: var(--kiosk-surface);
-  border: 1px solid var(--kiosk-divider);
-  color: var(--kiosk-ink-secondary);
-}
-
-.scan-profile__chip {
-  display: inline-flex;
-  align-items: center;
-  height: 24px;
-  padding: 0 var(--kiosk-space-2);
-  border-radius: var(--kiosk-radius-sm);
-  background: var(--kiosk-surface);
-  border: 1px solid var(--kiosk-divider);
-  font-size: var(--kiosk-fz-caption);
-  color: var(--kiosk-ink-secondary);
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
 .scan-control__sub {
   margin: 0;
   font-size: var(--kiosk-fz-label);
@@ -688,11 +831,69 @@ onMounted(() => {
   line-height: var(--kiosk-lh-base);
 }
 
-.scan-control__actions {
-  display: flex;
+.scan-cta-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--kiosk-space-4);
+}
+
+.scan-cta {
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--kiosk-space-3);
-  flex-shrink: 0;
+  min-height: var(--kiosk-h-cta);
+  padding: 0 var(--kiosk-space-5);
+  border-radius: var(--kiosk-radius-md);
+  font-family: inherit;
+  font-size: var(--kiosk-fz-h2);
+  font-weight: var(--kiosk-fw-semibold);
+  cursor: pointer;
+}
+
+.scan-cta--direct {
+  background: var(--kiosk-primary);
+  border: none;
+  color: #fff;
+}
+
+.scan-cta--warning {
+  background: #faad14;
+  border: none;
+  color: #fff;
+}
+
+.scan-cta--fatal {
+  background: var(--kiosk-danger, #ff4d4f);
+  border: none;
+  color: #fff;
+}
+
+.scan-cta--supplement {
+  background: var(--kiosk-surface);
+  border: 2px solid var(--kiosk-warning);
+  color: var(--kiosk-warning);
+}
+
+.scan-cta:disabled {
+  background: var(--kiosk-neutral-soft);
+  border-color: var(--kiosk-divider);
+  color: var(--kiosk-ink-disabled);
+  cursor: not-allowed;
+}
+
+.continue-btn {
+  align-self: flex-start;
+  min-height: var(--kiosk-h-action-md);
+  padding: 0 var(--kiosk-space-4);
+  background: var(--kiosk-surface);
+  border: 1px solid var(--kiosk-primary);
+  border-radius: var(--kiosk-radius-md);
+  color: var(--kiosk-primary);
+  font-family: inherit;
+  font-size: var(--kiosk-fz-label);
+  font-weight: var(--kiosk-fw-semibold);
+  cursor: pointer;
 }
 
 .scan-control__trouble {
@@ -707,24 +908,6 @@ onMounted(() => {
   font-size: var(--kiosk-fz-label);
   color: var(--kiosk-ink-secondary);
   line-height: var(--kiosk-lh-base);
-}
-
-.scan-control__hard-block {
-  padding: var(--kiosk-space-3) var(--kiosk-space-4);
-  border-radius: var(--kiosk-radius-md);
-  background: var(--kiosk-danger-soft, #fff1f0);
-  border: 1px solid var(--kiosk-danger, #cf1322);
-}
-
-.scan-control__hard-block p {
-  margin: 0;
-  font-size: var(--kiosk-fz-label);
-  color: var(--kiosk-danger, #cf1322);
-  line-height: var(--kiosk-lh-base);
-}
-
-.scan-control__hard-block p + p {
-  margin-top: var(--kiosk-space-2);
 }
 
 .scan-control__advisory {
@@ -745,8 +928,91 @@ onMounted(() => {
   margin-top: var(--kiosk-space-2);
 }
 
+.scan-control__hard-block {
+  padding: var(--kiosk-space-3) var(--kiosk-space-4);
+  border-radius: var(--kiosk-radius-md);
+  background: var(--kiosk-danger-soft, #fff1f0);
+  border: 1px solid var(--kiosk-danger, #cf1322);
+}
+
+.scan-control__hard-block p {
+  margin: 0;
+  font-size: var(--kiosk-fz-label);
+  color: var(--kiosk-danger, #cf1322);
+  line-height: var(--kiosk-lh-base);
+}
+
+.scan-control__hard-block p + p {
+  margin-top: var(--kiosk-space-2);
+}
+
+.scan-control__guide--first-scan {
+  color: #8c8c8c;
+  margin-top: -4px;
+}
+
+.setup-signal {
+  margin-bottom: var(--kiosk-space-2);
+}
+
+.setup-signal--skeleton {
+  padding: var(--kiosk-space-3);
+  border: 1px solid var(--kiosk-divider);
+  border-radius: var(--kiosk-radius-md);
+  background: var(--kiosk-surface-alt);
+}
+
+.setup-signal__hint {
+  margin: var(--kiosk-space-2) 0 0;
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-ink-tertiary);
+}
+
+.setup-signal__link {
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: var(--kiosk-fz-label);
+  font-weight: var(--kiosk-fw-semibold);
+  color: var(--kiosk-primary);
+  cursor: pointer;
+}
+
+.setup-signal__pulse {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--kiosk-danger, #ff4d4f);
+  animation: setup-signal-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes setup-signal-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.template-fold__derived-tag {
+  margin-left: var(--kiosk-space-2);
+  padding: 0 var(--kiosk-space-2);
+  border-radius: var(--kiosk-radius-sm);
+  background: #e6f4ff;
+  color: #0958d9;
+  font-size: 10px;
+}
+
+.scan-cta-skeleton {
+  min-height: var(--kiosk-h-cta);
+}
+
 .scan-control__guide {
-  margin: var(--kiosk-space-3) 0 0;
+  margin: 0;
   font-size: var(--kiosk-fz-caption);
   color: var(--kiosk-ink-tertiary);
   line-height: var(--kiosk-lh-base);
@@ -785,65 +1051,12 @@ onMounted(() => {
   flex: 0 0 auto;
 }
 
-.param-btn,
-.continue-btn,
-.start-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--kiosk-space-2);
-  font-family: inherit;
-  font-weight: var(--kiosk-fw-semibold);
-  cursor: pointer;
-  border-radius: var(--kiosk-radius-md);
-}
-
-.continue-btn {
-  height: var(--kiosk-h-action-md);
-  padding: 0 var(--kiosk-space-4);
-  background: var(--kiosk-surface);
-  border: 1px solid var(--kiosk-primary);
-  color: var(--kiosk-primary);
-  font-size: var(--kiosk-fz-label);
-}
-
-.param-btn {
-  height: var(--kiosk-h-action-md);
-  padding: 0 var(--kiosk-space-4);
-  background: var(--kiosk-surface);
-  border: 1px solid var(--kiosk-divider);
-  color: var(--kiosk-ink-secondary);
-  font-size: var(--kiosk-fz-label);
-}
-
-.start-btn {
-  height: var(--kiosk-h-cta);
-  min-width: 200px;
-  padding: 0 var(--kiosk-space-6);
-  background: var(--kiosk-primary);
-  border: none;
-  color: #fff;
-  font-size: var(--kiosk-fz-h2);
-}
-
-.start-btn:disabled {
-  background: var(--kiosk-neutral);
-  cursor: not-allowed;
-}
-
-@media (max-width: #{bp.$ant-grid-xl - 1px}) {
-  .scan-control {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .scan-control__actions {
-    justify-content: flex-end;
-  }
-}
-
 @media (max-width: bp.$shell-tablet-max) {
   .workbench__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .scan-cta-row {
     grid-template-columns: 1fr;
   }
 }

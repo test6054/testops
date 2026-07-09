@@ -3,7 +3,9 @@
     <template #context>
       <ContextBar>
         <template #status>
-          <UiTag tone="blue" size="sm">{{ appealableExams.length }} 场可申请</UiTag>
+          <UiTag tone="blue" size="sm"
+            >{{ examStats?.appealableCount ?? appealableExams.length }} 场可申请</UiTag
+          >
           <UiTag v-if="pendingRequestCount > 0" tone="orange" size="sm">
             待处理 {{ pendingRequestCount }}
           </UiTag>
@@ -103,7 +105,6 @@
       <UiDataTable
         v-model:current="requestPagination.current"
         v-model:page-size="requestPagination.pageSize"
-        class="student-detail-table__data-table requests-table"
         :columns="columns"
         :data-source="requests"
         :loading="loadingRequests"
@@ -250,12 +251,35 @@
 </template>
 
 <script lang="ts" setup>
+import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   GradeReviewEvidenceFileRefVO,
-  GradeReviewRequestStatusCode,
   StudentGradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
-import type { StudentExamItemVO, StudentQuestionScoreVO } from '@/apis/mark/student-exam'
+import {
+  countMyPendingReviewRequests,
+  GRADE_REVIEW_REASON_TYPE_OPTIONS,
+  GradeReviewReasonTypeCode,
+  GradeReviewReasonTypeDescription,
+  GradeReviewRequestStatusCode,
+  GradeReviewRequestStatusDescription,
+  listMyReviewRequests,
+  REVIEW_REQUEST_STATUS_OPTIONS,
+  REVIEW_REQUEST_STATUS_TONE,
+  submitReviewRequest,
+} from '@/apis/mark/grade-review'
+import type {
+  StudentExamItemVO,
+  StudentExamStatsResponse,
+  StudentQuestionScoreVO,
+} from '@/apis/mark/student-exam'
+import {
+  getMyExamStats,
+  getMyScoreDetail,
+  pageMyExams,
+  ReviewWindowPolicyStatusDescription,
+  STUDENT_REVIEW_WINDOW_STATUS_TONE,
+} from '@/apis/mark/student-exam'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
@@ -269,24 +293,6 @@ import {
   FINAL_SCORE_STATUS_TONE,
   FinalScoreStatusDescription,
 } from '@/apis/mark/final-score-status'
-import {
-  countMyPendingReviewRequests,
-  GRADE_REVIEW_REASON_TYPE_OPTIONS,
-  GradeReviewReasonTypeCode,
-  GradeReviewReasonTypeDescription,
-  GradeReviewRequestStatusDescription,
-  listMyReviewRequests,
-  REVIEW_REQUEST_STATUS_OPTIONS,
-  REVIEW_REQUEST_STATUS_TONE,
-  submitReviewRequest,
-} from '@/apis/mark/grade-review'
-import {
-  canSubmitReview,
-  getMyScoreDetail,
-  listMyExams,
-  ReviewWindowPolicyStatusDescription,
-  STUDENT_REVIEW_WINDOW_STATUS_TONE,
-} from '@/apis/mark/student-exam'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -298,6 +304,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
+import { MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE } from '@/composables/useMarkExamSelector'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { formatDateTime, formatScore } from '@/utils/format'
@@ -318,6 +325,8 @@ const submitModalOpen = ref(false)
 const scoreDetailLoading = ref(false)
 
 const exams = ref<StudentExamItemVO[]>([])
+const appealableExams = ref<StudentExamItemVO[]>([])
+const examStats = ref<StudentExamStatsResponse | null>(null)
 const requests = ref<StudentGradeReviewRequestItemResponse[]>([])
 const requestPagination = reactive({
   current: 1,
@@ -331,8 +340,8 @@ const sourceQuestionId = ref<string | undefined>(undefined)
 
 const reasonTypeOptions = GRADE_REVIEW_REASON_TYPE_OPTIONS
 
-const statusOptions: Array<{ value: GradeReviewRequestStatusCode, label: string }>
-  = REVIEW_REQUEST_STATUS_OPTIONS
+const statusOptions: Array<{ value: GradeReviewRequestStatusCode; label: string }> =
+  REVIEW_REQUEST_STATUS_OPTIONS
 
 const requestFilterForm = reactive<{
   status?: GradeReviewRequestStatusCode
@@ -342,14 +351,8 @@ const requestFilterForm = reactive<{
   examId: undefined,
 })
 
-const appealableExams = computed<StudentExamItemVO[]>(() => exams.value.filter(canSubmitReview))
-
-const examFilterOptions = computed(() =>
-  exams.value.map((e) => ({
-    value: e.examId,
-    label: `${e.examName} (${e.examNo})`,
-  })),
-)
+const STUDENT_EXAM_OPTION_PAGE_SIZE = MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE
+const examFilterOptions = ref<Array<{ value: string; label: string }>>([])
 
 const requestFilterFields = computed<FilterField[]>(() => [
   {
@@ -450,28 +453,68 @@ function reviewCountdownText(exam: StudentExamItemVO): string {
   return `剩余 ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
-const columns = [
-  { title: '考试', key: 'examName', dataIndex: 'examName', width: 240 },
+const columns: ColumnsType<StudentGradeReviewRequestItemResponse> = [
+  {
+    title: '考试',
+    key: 'examName',
+    dataIndex: 'examName',
+    width: 260,
+    ellipsis: true,
+    fixed: 'left' as const,
+  },
   { title: '原因类型', key: 'reasonType', dataIndex: 'reasonType', width: 130 },
-  { title: '申请理由', key: 'requestReason', dataIndex: 'requestReason', ellipsis: true },
+  {
+    title: '申请理由',
+    key: 'requestReason',
+    dataIndex: 'requestReason',
+    ellipsis: true,
+    minWidth: 240,
+  },
   { title: '佐证', key: 'evidenceFileRefs', width: 160 },
   { title: '处理状态', key: 'requestStatus', dataIndex: 'requestStatus', width: 110 },
   { title: '提交时间', key: 'createTime', dataIndex: 'createTime', width: 170 },
   { title: '处理时间', key: 'reviewTime', dataIndex: 'reviewTime', width: 170 },
-  { title: '处理意见', key: 'reviewNote', dataIndex: 'reviewNote', width: 240 },
+  { title: '处理意见', key: 'reviewNote', dataIndex: 'reviewNote', width: 240, ellipsis: true },
 ]
+
+async function loadExamFilterOptions(keyword?: string) {
+  const page = await pageMyExams({
+    pageNum: 1,
+    pageSize: STUDENT_EXAM_OPTION_PAGE_SIZE,
+    keyword: keyword?.trim() || undefined,
+  })
+  examFilterOptions.value = page.list.map((e) => ({
+    value: e.examId,
+    label: `${e.examName} (${e.examNo})`,
+  }))
+}
 
 async function loadExams() {
   loadingExams.value = true
   try {
-    const loadedExams = await listMyExams()
-    exams.value = loadedExams
+    const [appealablePage, stats] = await Promise.all([
+      pageMyExams({
+        reviewWindowAppealableOnly: true,
+        pageNum: 1,
+        pageSize: STUDENT_EXAM_OPTION_PAGE_SIZE,
+      }),
+      getMyExamStats({}),
+    ])
+    appealableExams.value = appealablePage.list
+    exams.value = appealablePage.list
+    examStats.value = stats
+    await loadExamFilterOptions()
+    if (appealablePage.total > STUDENT_EXAM_OPTION_PAGE_SIZE) {
+      message.warning(
+        `可申请考试共 ${appealablePage.total} 场，当前仅展示前 ${STUDENT_EXAM_OPTION_PAGE_SIZE} 场，请优先处理临近截止场次`,
+      )
+    }
     if (!selectedExamId.value && appealableExams.value.length > 0) {
       const queryExamId = typeof route.query.examId === 'string' ? route.query.examId : undefined
       if (queryExamId) {
         if (appealableExams.value.some((e) => e.examId === queryExamId)) {
           selectedExamId.value = queryExamId
-        } else if (loadedExams.some((e) => e.examId === queryExamId)) {
+        } else if (exams.value.some((e) => e.examId === queryExamId)) {
           selectedExamId.value = undefined
           message.warning('该考试当前不在复核窗口内，无法提交新申请')
         } else {
@@ -482,6 +525,10 @@ async function loadExams() {
       }
     }
   } catch (error) {
+    appealableExams.value = []
+    exams.value = []
+    examStats.value = null
+    examFilterOptions.value = []
     showUserError(error, '考试列表加载失败')
   } finally {
     loadingExams.value = false
@@ -507,9 +554,9 @@ async function loadRequests() {
     requestPagination.current = result.pageNum ?? requestPagination.current
     requestPagination.pageSize = result.pageSize ?? requestPagination.pageSize
     if (
-      requests.value.length === 0
-      && requestPagination.total > 0
-      && requestPagination.current > 1
+      requests.value.length === 0 &&
+      requestPagination.total > 0 &&
+      requestPagination.current > 1
     ) {
       requestPagination.current -= 1
       await Promise.all([loadRequests(), loadPendingRequestCount()])
@@ -523,7 +570,7 @@ async function loadRequests() {
   }
 }
 
-function handleRequestPageChange(pageInfo: { current: number, pageSize: number }): void {
+function handleRequestPageChange(pageInfo: { current: number; pageSize: number }): void {
   requestPagination.current = pageInfo.current
   requestPagination.pageSize = pageInfo.pageSize
   void loadRequests()
@@ -584,7 +631,7 @@ function requestStatusLabel(status: GradeReviewRequestStatusCode): string {
 
 function reviewNoteText(item: StudentGradeReviewRequestItemResponse): string {
   if (item.reviewNote) return item.reviewNote
-  if (item.requestStatus === 'PENDING') return '等待复核处理'
+  if (item.requestStatus === GradeReviewRequestStatusCode.PENDING) return '等待复核处理'
   if (item.requestStatus === 'IN_REVIEW') return '复核处理中'
   return '未填写复核意见'
 }
@@ -902,13 +949,6 @@ async function loadSelectedExamQuestions(): Promise<void> {
       color: var(--ant-color-warning);
       font-weight: 600;
     }
-  }
-}
-
-.requests-table {
-  :deep(.ant-table-thead > tr > th) {
-    background: var(--ant-color-fill-quaternary);
-    font-weight: 600;
   }
 }
 

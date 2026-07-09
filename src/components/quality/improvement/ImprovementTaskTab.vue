@@ -62,14 +62,14 @@ const qualityStore = useQualityStore()
 const aiTaskStore = useAiTaskStore()
 
 const improvementColumns: ColumnsType = [
-  { title: '编号', dataIndex: 'taskCode', key: 'taskCode', width: 160 },
+  { title: '编号', dataIndex: 'taskCode', key: 'taskCode', width: 160, fixed: 'left' },
   { title: '标题', dataIndex: 'taskTitle', key: 'taskTitle' },
   { title: '关联课程', key: 'qualityCourseRef', width: 120 },
   { title: '负责人', key: 'ownerRef', width: 120 },
   { title: '角色', dataIndex: 'ownerRole', key: 'ownerRole', width: 100 },
   { title: '截止', dataIndex: 'dueDate', key: 'dueDate', width: 110 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 120 },
-  { title: '操作', key: 'actions', width: 380, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 380 },
 ]
 
 const improvementList = ref<ImprovementTaskVO[]>([])
@@ -577,7 +577,7 @@ function buildImprovementTaskActions(record: ImprovementTaskVO): UiTableRowActio
   ]
   for (const to of nextImprovementStatuses(record.status)) {
     actions.push({
-      key: `transit:${to}`,
+      key: to,
       label: `→ ${improvementStatusLabel(to)}`,
       tone: to === ImprovementTaskStatusCode.RETURNED ? 'danger' : 'primary',
     })
@@ -594,25 +594,26 @@ function buildImprovementTaskActions(record: ImprovementTaskVO): UiTableRowActio
 }
 
 function handleImprovementTaskAction(key: string, record: ImprovementTaskVO): void {
-  if (key === 'detail') {
-    void openImprovementDetail(record)
-    return
-  }
-  if (key === 'edit') {
-    openImprovementEdit(record)
-    return
-  }
-  if (key === 'ai-suggestion') {
-    void handleImprovementAiSuggestion(record)
-    return
-  }
-  if (key === 'delete') {
-    void handleImprovementDelete(record)
-    return
-  }
-  if (key.startsWith('transit:')) {
-    const target = key.slice('transit:'.length) as ImprovementTaskStatusCode
-    void handleImprovementTransit(record, target)
+  switch (key) {
+    case 'detail':
+      void openImprovementDetail(record)
+      return
+    case 'edit':
+      openImprovementEdit(record)
+      return
+    case 'ai-suggestion':
+      void handleImprovementAiSuggestion(record)
+      return
+    case 'delete':
+      void handleImprovementDelete(record)
+      return
+    case ImprovementTaskStatusCode.OPEN:
+    case ImprovementTaskStatusCode.IN_PROGRESS:
+    case ImprovementTaskStatusCode.SUBMITTED:
+    case ImprovementTaskStatusCode.REVIEWED:
+    case ImprovementTaskStatusCode.CLOSED:
+    case ImprovementTaskStatusCode.RETURNED:
+      void handleImprovementTransit(record, key)
   }
 }
 
@@ -675,7 +676,6 @@ defineExpose({
     <UiDataTable
       v-model:current="improvementQuery.pageNum"
       v-model:page-size="improvementQuery.pageSize"
-      class="student-detail-table__data-table"
       :columns="improvementColumns"
       :data-source="improvementList"
       :loading="improvementLoading"

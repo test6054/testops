@@ -23,12 +23,9 @@ export const ArchiveVolumeMemberRoleDescription: Record<ArchiveVolumeMemberRoleC
   [ArchiveVolumeMemberRoleCode.VIEWER]: '只读',
 }
 
-export function isArchiveVolumeMemberRoleCode(value: string): value is ArchiveVolumeMemberRoleCode {
-  return (ALL_ARCHIVE_VOLUME_MEMBER_ROLE_CODES as string[]).includes(value)
-}
 
-export function archiveVolumeMemberRoleLabel(role?: ArchiveVolumeMemberRoleCode | string | null): string {
-  if (!role || !isArchiveVolumeMemberRoleCode(role)) {
+export function archiveVolumeMemberRoleLabel(role?: ArchiveVolumeMemberRoleCode | null): string {
+  if (!role) {
     return '协作成员'
   }
   return ArchiveVolumeMemberRoleDescription[role]

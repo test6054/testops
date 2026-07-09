@@ -2,24 +2,7 @@
 /**
  * Stage 2 - 扫描中
  *
- * 顶部 status ribbon + 大画布预览（深色） + 右侧缩略图 strip + 浮动工具栏（4 组）
- *
- * 浮动工具栏组（左→右，分隔条隔开）：
- *   翻页组：首页 / 上页 / 页号 / 下页 / 末页
- *   缩放组：缩小 / 百分比 / 放大 / 适配窗口
- *   旋转组：左转 90° / 右转 90°
- *   滤镜组：灰度切换
- *
- * 键盘快捷键（仅在本 stage 焦点不在输入框时生效）：
- *   ←/→/Home/End  : 由全局 useKioskShortcuts 处理（KioskLayout）
- *   Space         : 由全局 useKioskShortcuts 处理（暂停/继续）
- *   + / =         : 缩小 / 放大（实际：= 不带 shift 时为 +）
- *   - / _         : 缩小
- *   0             : 重置视图（缩放 1.0 / 旋转 0 / 关灰度）
- *   r             : 右转 90°
- *   R (shift+r)   : 左转 90°
- *   g             : 切换灰度
- *
+ * 顶部 status ribbon + 大画布预览 + 右侧缩略图 strip + 浮动工具栏。
  * 操作类按钮（暂停/继续/结束/重试）由 KioskLayout 的 BottomBar 处理。
  */
 import {
@@ -41,7 +24,7 @@ import {
   UndoOutlined,
   WarningFilled,
 } from '@ant-design/icons-vue'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   KioskSyntheticScanPageStatusCode,
   KioskSyntheticScanPageStatusDescription,
@@ -52,6 +35,7 @@ import {
 import { strictEnumLabel } from '@/utils/strict-enum'
 import KioskBoundStudentsPanel from '../components/KioskBoundStudentsPanel.vue'
 import KioskScanExceptionPanel from '../components/KioskScanExceptionPanel.vue'
+import KioskScanSessionStrip from '../components/KioskScanSessionStrip.vue'
 import KioskSessionBatchPanel from '../components/KioskSessionBatchPanel.vue'
 import { useKioskCtx } from '../composables/kioskInjection'
 
@@ -70,8 +54,8 @@ const canvasEmptyTitle = computed(() => {
       : '正在连接扫描仪…'
   }
   if (
-    job.value?.status === LocalScanJobStatusCode.UPLOADING
-    || job.value?.status === LocalScanJobStatusCode.RETRYING
+    job.value?.status === LocalScanJobStatusCode.UPLOADING ||
+    job.value?.status === LocalScanJobStatusCode.RETRYING
   ) {
     return '扫描页上传中…'
   }
@@ -88,8 +72,8 @@ const canvasEmptyHint = computed(() => {
     return '扫描仪正在采集影像，首张完成后将自动显示预览。'
   }
   if (
-    job.value?.status === LocalScanJobStatusCode.UPLOADING
-    || job.value?.status === LocalScanJobStatusCode.RETRYING
+    job.value?.status === LocalScanJobStatusCode.UPLOADING ||
+    job.value?.status === LocalScanJobStatusCode.RETRYING
   ) {
     return job.value.message || '上传完成后可在右侧缩略图查看各页。'
   }
@@ -143,7 +127,7 @@ const imageTransform = computed(
 )
 const imageFilter = computed(() => (grayscale.value ? 'grayscale(1)' : 'none'))
 
-const isPageException = (page: { status: string, diagnostic?: string }) =>
+const isPageException = (page: { status: string; diagnostic?: string }) =>
   page.status === LocalScanPageStatusCode.FAILED || Boolean(page.diagnostic)
 
 const currentIndex = computed(() => {
@@ -200,8 +184,8 @@ async function refreshScanningState() {
 }
 
 async function restartScanFromEmptyState() {
-  if (!workflow.canStartScan.value || workflow.loading.value) return
-  const started = await workflow.submitScanJob()
+  if (!workflow.canStartDirectScan.value || workflow.loading.value) return
+  const started = await workflow.startDirectScan()
   if (!started && !workflow.currentJob.value) {
     await workflow.ensureScanningWorkspaceReady()
   }
@@ -333,61 +317,15 @@ function pageStatusLabel(status: string): string {
   throw new Error(`扫描页状态缺少展示映射：${status}`)
 }
 
-// stage 内部视图键盘快捷键（与全局 useKioskShortcuts 不冲突）
-function shouldIgnoreKey(event: KeyboardEvent): boolean {
-  if (!(event.target instanceof HTMLElement)) return false
-  const target = event.target
-  const tag = target.tagName
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
-  return target.isContentEditable
-}
-
-function onViewKeyDown(event: KeyboardEvent) {
-  // 仅本 stage active 时响应（route 切换后 unmount 已清理 listener，此处再加一层保险）
-  if (stage.currentStage.value !== 'scanning') return
-  if (shouldIgnoreKey(event)) return
-  if (event.altKey || event.ctrlKey || event.metaKey) return
-
-  switch (event.key) {
-    case '+':
-    case '=':
-      event.preventDefault()
-      zoomIn()
-      break
-    case '-':
-    case '_':
-      event.preventDefault()
-      zoomOut()
-      break
-    case '0':
-      event.preventDefault()
-      resetView()
-      break
-    case 'r':
-      event.preventDefault()
-      rotateRight()
-      break
-    case 'R':
-      event.preventDefault()
-      rotateLeft()
-      break
-    case 'g':
-    case 'G':
-      event.preventDefault()
-      toggleGrayscale()
-      break
-  }
-}
-
 onMounted(() => {
-  window.addEventListener('keydown', onViewKeyDown)
   void workflow.ensureScanningWorkspaceReady()
 })
-onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
 </script>
 
 <template>
   <section class="scanning-stage">
+    <KioskScanSessionStrip />
+
     <!-- 顶部 status ribbon -->
     <header class="ribbon">
       <div class="ribbon-state">
@@ -476,7 +414,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
                   <button
                     type="button"
                     class="canvas-empty-btn canvas-empty-btn--primary"
-                    :disabled="!workflow.canStartScan.value || workflow.loading.value"
+                    :disabled="!workflow.canStartDirectScan.value || workflow.loading.value"
                     @click="restartScanFromEmptyState"
                   >
                     <PlayCircleOutlined />

@@ -8,6 +8,7 @@
     <template v-for="(item, index) in visibleItems" :key="item.key">
       <span v-if="props.split && index > 0" class="ui-table-actions__sep" aria-hidden="true" />
       <UiTextAction
+        size="table"
         :tone="item.tone ?? 'default'"
         :disabled="item.disabled"
         @click="emitAction(item.key)"
@@ -21,7 +22,12 @@
         class="ui-table-actions__sep"
         aria-hidden="true"
       />
-      <UiDropdownAction :items="overflowDropdownItems" button-text="更多" @select="emitAction" />
+      <UiDropdownAction
+        trigger-style="table"
+        :items="overflowDropdownItems"
+        button-text="更多"
+        @select="emitAction"
+      />
     </template>
   </div>
 </template>
@@ -46,7 +52,7 @@ const props = withDefaults(
   }>(),
   {
     maxVisible: 3,
-    align: 'start',
+    align: 'center',
     split: true,
   },
 )
@@ -118,8 +124,8 @@ const emitAction = (key: string) => {
   flex-shrink: 0;
   width: 1px;
   height: 12px;
-  margin: 0 12px;
-  background: var(--ant-color-border-secondary);
+  margin: 0;
+  background: var(--dp-table-border, var(--ant-color-border-secondary));
 }
 
 .ui-table-actions :deep(.ui-text-action),

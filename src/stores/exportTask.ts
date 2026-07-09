@@ -1,8 +1,9 @@
 import type { ExportJobQueryRequest, ExportJobStatusVO } from '@/apis/edu/export'
+import { deleteExportJob, queryExportJobs } from '@/apis/edu/export'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
-import { deleteExportJob, queryExportJobs } from '@/apis/edu/export'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { AsyncTaskStatusEnum } from '@/types/enums'
 import { showUserError } from '@/utils/error-handler'
 
 /**
@@ -26,7 +27,7 @@ export const useExportTaskStore = defineStore('export-task', () => {
 
   const runningCount = computed(
     () =>
-      tasks.value.filter((task) => task.status === 'PENDING' || task.status === 'PROCESSING')
+      tasks.value.filter((task) => task.status === AsyncTaskStatusEnum.PENDING || task.status === AsyncTaskStatusEnum.PROCESSING)
         .length,
   )
 

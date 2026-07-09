@@ -6,13 +6,14 @@ import type {
   ScaleConversionRuleItemVO,
   ScaleConversionRuleQueryRequest,
   ScaleConversionRuleSaveRequest,
+  ScaleConversionRuleSignalSummaryVO,
   ScaleConversionRuleVO,
 } from '@/apis/quality/scale-conversion-rule'
+import { scaleConversionRuleApi } from '@/apis/quality/scale-conversion-rule'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { scaleConversionRuleApi } from '@/apis/quality/scale-conversion-rule'
 import { ALL_SCALE_TYPE_CODES, ScaleTypeCode, ScaleTypeDescription } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -26,6 +27,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const list = ref<ScaleConversionRuleVO[]>([])
@@ -38,7 +40,7 @@ const query = reactive<ScaleConversionRuleQueryRequest>({
   enabled: undefined,
 })
 
-const scaleTypeOptions: { value: ScaleTypeCode, label: string }[] = ALL_SCALE_TYPE_CODES.map(
+const scaleTypeOptions: { value: ScaleTypeCode; label: string }[] = ALL_SCALE_TYPE_CODES.map(
   (value) => ({
     value,
     label: strictEnumLabel(ScaleTypeDescription, value, '量表类型'),
@@ -98,13 +100,13 @@ const editor = reactive<ScaleConversionRuleSaveRequest>({
 const submitting = ref(false)
 
 const columns: ColumnsType = [
-  { title: '编码', dataIndex: 'ruleCode', key: 'ruleCode', width: 140 },
+  { title: '编码', dataIndex: 'ruleCode', key: 'ruleCode', width: 140, fixed: 'left' },
   { title: '名称', dataIndex: 'ruleName', key: 'ruleName', width: 180 },
   { title: '量表类型', dataIndex: 'scaleType', key: 'scaleType', width: 140 },
   { title: '换算条目', dataIndex: 'items', key: 'items', width: 360 },
   { title: '说明', dataIndex: 'description', key: 'description' },
   { title: '状态', dataIndex: 'enabled', key: 'enabled', width: 90 },
-  { title: '操作', key: 'actions', width: 180, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 180 },
 ]
 
 function defaultItemsByScaleType(scaleType: ScaleTypeCode): ScaleConversionRuleItemSaveRequest[] {
@@ -155,8 +157,13 @@ function cloneItems(items: ScaleConversionRuleItemVO[]): ScaleConversionRuleItem
 async function loadList() {
   loading.value = true
   try {
-    const page = await scaleConversionRuleApi.page({ ...query })
+    const listQuery = { ...query }
+    const [page, summary] = await Promise.all([
+      scaleConversionRuleApi.page(listQuery),
+      scaleConversionRuleApi.signalSummary(listQuery),
+    ])
     list.value = page.list
+    signalSummary.value = summary
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
     total.value = page.total
@@ -164,12 +171,15 @@ async function loadList() {
       query.pageNum -= 1
       await loadList()
     }
+  } catch (error) {
+    signalSummary.value = null
+    showUserError(error, '量表换算规则加载失败')
   } finally {
     loading.value = false
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -372,28 +382,23 @@ async function handleDelete(record: ScaleConversionRuleVO) {
   })
 }
 
+const signalSummary = ref<ScaleConversionRuleSignalSummaryVO | null>(null)
+
 const signals = computed<SignalMetric[]>(() => {
-  const enabled = list.value.filter((r) => r.enabled).length
-  const disabled = list.value.filter((r) => !r.enabled).length
-  const byScale: Record<ScaleTypeCode, number> = {
-    FIVE_LEVEL: 0,
-    FOUR_LEVEL: 0,
-    TEN_POINT: 0,
-    PERCENTAGE: 0,
-    CUSTOM: 0,
+  const summary = signalSummary.value
+  if (!summary) {
+    return []
   }
-  for (const r of list.value) {
-    byScale[r.scaleType] += 1
-  }
+  const enabled = summary.enabledCount ?? 0
+  const disabled = summary.disabledCount ?? 0
   return [
-    { key: 'page', label: '当前页记录', value: list.value.length, tone: 'blue' },
-    { key: 'all-total', label: '规则总数', value: total.value, tone: 'blue' },
+    { key: 'all-total', label: '规则总数', value: summary.totalCount ?? 0, tone: 'blue' },
     { key: 'enabled', label: '启用', value: enabled, tone: enabled > 0 ? 'green' : 'gray' },
     { key: 'disabled', label: '停用', value: disabled, tone: disabled > 0 ? 'orange' : 'gray' },
     {
       key: 'scale-types',
       label: '覆盖量表类型',
-      value: scaleTypeOptions.filter((item) => byScale[item.value] > 0).length,
+      value: summary.scaleTypeCoverageCount ?? 0,
       tone: 'blue',
     },
   ]
@@ -433,7 +438,6 @@ onActivated(() => {
       <UiEmpty v-if="!loading && total === 0" description="无量表换算规则" />
       <UiDataTable
         v-else
-        class="student-detail-table__data-table"
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
         :columns="columns"

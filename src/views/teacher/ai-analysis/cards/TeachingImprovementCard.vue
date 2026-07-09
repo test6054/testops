@@ -71,16 +71,17 @@ import type {
   TeachingImprovementItemResponse,
   TeachingImprovementSeverityCode,
 } from '@/apis/mark/teaching-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
-import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import {
   generateTeachingImprovement,
   getLatestTeachingImprovement,
   TEACHING_IMPROVEMENT_SEVERITY_TONE,
   TeachingImprovementSeverityDescription,
 } from '@/apis/mark/teaching-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
+import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import AiAnalysisCardBody from '@/components/mark/analysis/AiAnalysisCardBody.vue'
 import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.vue'
 import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCollapse.vue'
@@ -108,7 +109,7 @@ const record = ref<TeachingAnalysisRecordResponse | null>(null)
 const loading = ref(false)
 const { generating, runGeneration } = useAiAnalysisGenerationFeedback()
 
-const canShareRecord = computed(() => record.value?.analysisStatus === 'SUCCESS')
+const canShareRecord = computed(() => record.value?.analysisStatus === AiAnalysisStatusCode.SUCCESS)
 
 function questionTypeLabel(value: TeachingImprovementItemResponse['questionType']): string {
   return strictEnumLabel(QuestionTypeDescription, value, '题目类型')
@@ -159,7 +160,7 @@ async function handleGenerate(): Promise<void> {
 
 function buildShareText(): string | null {
   const current = record.value
-  if (!current || current.analysisStatus !== 'SUCCESS') {
+  if (!current || current.analysisStatus !== AiAnalysisStatusCode.SUCCESS) {
     return null
   }
   const lines = [

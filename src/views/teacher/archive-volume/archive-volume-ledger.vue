@@ -72,21 +72,28 @@
                 <span v-if="record.departmentName">{{ record.departmentName }}</span>
                 <span v-if="record.approverNickName"> · 审批: {{ record.approverNickName }}</span>
                 <span v-if="record.expireTime">
-                  · 到期: {{ formatDateTime(record.expireTime) }}</span>
+                  · 到期: {{ formatDateTime(record.expireTime) }}</span
+                >
               </p>
               <p
-                v-if="record.decisionComment && record.accessStatus === 'REJECTED'"
+                v-if="
+                  record.decisionComment && record.accessStatus === ArchiveAccessStatusCode.REJECTED
+                "
                 class="approval-card__reject"
               >
                 拒绝原因: {{ record.decisionComment }}
               </p>
               <p
-                v-if="record.accessStatus === 'ACTIVE' && record.lastReadPage != null"
+                v-if="
+                  record.accessStatus === ArchiveAccessStatusCode.ACTIVE &&
+                  record.lastReadPage != null
+                "
                 class="approval-card__meta"
               >
                 最后阅读: 第 {{ record.lastReadPage }} 页
                 <span v-if="record.downloadCount != null">
-                  · 下载次数: {{ record.downloadCount }}</span>
+                  · 下载次数: {{ record.downloadCount }}</span
+                >
               </p>
             </article>
           </div>
@@ -199,24 +206,24 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  ArchiveAccessStatusCode,
   ArchiveMaterialSearchAuditRowResponse,
   ArchiveVolumeAccessLedgerRowResponse,
   ArchiveVolumeAccessRecordResponse,
   ArchiveVolumeResponse,
+} from '@/apis/mark/archive-volume'
+import {
+  ARCHIVE_ACCESS_STATUS_OPTIONS,
+  ArchiveAccessStatusCode,
+  listArchiveVolumeAccessRecords,
+  pageAccessLedger,
+  pageArchiveVolumes,
+  pageMaterialSearchAudit,
 } from '@/apis/mark/archive-volume'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  ARCHIVE_ACCESS_STATUS_OPTIONS,
-  listArchiveVolumeAccessRecords,
-  pageAccessLedger,
-  pageArchiveVolumes,
-  pageMaterialSearchAudit,
-} from '@/apis/mark/archive-volume'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -270,7 +277,7 @@ const selectedArchiveNo = ref('')
 const accessRecords = ref<ArchiveVolumeAccessRecordResponse[]>([])
 const tenantRows = ref<ArchiveVolumeAccessLedgerRowResponse[]>([])
 const searchAuditRows = ref<ArchiveMaterialSearchAuditRowResponse[]>([])
-const departmentOptions = ref<Array<{ value: string, label: string }>>([])
+const departmentOptions = ref<Array<{ value: string; label: string }>>([])
 
 interface ArchiveVolumeAccessLedgerVolumeFilterForm extends Record<string, unknown> {
   keyword: string
@@ -409,11 +416,11 @@ const searchAuditFilterFields = computed<FilterField[]>(() => [
 ])
 
 const searchAuditColumns: ColumnsType<ArchiveMaterialSearchAuditRowResponse> = [
-  { title: '操作人', key: 'searcher', width: 120 },
-  { title: '检索条件', dataIndex: 'criteriaSummary' },
+  { title: '操作人', key: 'searcher', width: 120, fixed: 'left' },
+  { title: '检索条件', dataIndex: 'criteriaSummary', minWidth: 280 },
   { title: '筛选学院', dataIndex: 'filterDepartmentName', width: 120 },
-  { title: '命中材料', dataIndex: 'hitCount', width: 90 },
-  { title: '涉及卷数', dataIndex: 'hitVolumeCount', width: 90 },
+  { title: '命中材料', dataIndex: 'hitCount', width: 90, align: 'right' },
+  { title: '涉及卷数', dataIndex: 'hitVolumeCount', width: 90, align: 'right' },
   { title: '可见路径', key: 'visibilityPaths', width: 140 },
   { title: '检索时间', key: 'createTime', width: 160 },
 ]
@@ -460,14 +467,14 @@ function handleSearchAuditReset() {
 }
 
 const tenantAccessColumns: ColumnsType<ArchiveVolumeAccessLedgerRowResponse> = [
-  { title: '档案号', dataIndex: 'archiveNo', width: 140 },
+  { title: '档案号', dataIndex: 'archiveNo', width: 140, fixed: 'left' },
   { title: '院系', dataIndex: 'departmentName', width: 140 },
   { title: '申请人', key: 'applicant', width: 120 },
   { title: '审批人', key: 'approver', width: 120 },
-  { title: '最近阅读页', dataIndex: 'lastReadPage', width: 100 },
+  { title: '最近阅读页', dataIndex: 'lastReadPage', width: 100, align: 'right' },
   { title: '状态', key: 'accessStatus', width: 100 },
-  { title: '查阅原因', dataIndex: 'accessReason' },
-  { title: '审批意见', dataIndex: 'decisionComment', ellipsis: true },
+  { title: '查阅原因', dataIndex: 'accessReason', minWidth: 200 },
+  { title: '审批意见', dataIndex: 'decisionComment', ellipsis: true, minWidth: 200 },
   { title: '申请时间', key: 'createTime', width: 160 },
 ]
 

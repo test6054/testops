@@ -6,7 +6,12 @@ import type {
   PortfolioEvaluationComprehensiveTeacherRowVO,
   PortfolioEvaluationTaskVO,
 } from '@/apis/portfolio/teacher-platform'
+import {
+  portfolioEvaluationEntryApi,
+  portfolioEvaluationTaskApi,
+} from '@/apis/portfolio/teacher-platform'
 import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
+import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
@@ -14,11 +19,7 @@ import {
   PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES,
   PortfolioEvaluationModeDescription,
 } from '@/apis/portfolio/enums'
-import {
-  portfolioEvaluationEntryApi,
-  portfolioEvaluationTaskApi,
-} from '@/apis/portfolio/teacher-platform'
-import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
+import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -127,7 +128,10 @@ function canRunAnalysis(): boolean {
 
 async function loadWorkgroups() {
   try {
-    const page = await evaluationWorkgroupApi.page({ pageNum: 1, pageSize: 100 })
+    const page = await evaluationWorkgroupApi.page({
+      pageNum: 1,
+      pageSize: QUALITY_SELECTOR_PAGE_SIZE,
+    })
     workgroups.value = page.list ?? []
   } catch (error) {
     showUserError(error)
@@ -139,7 +143,7 @@ async function loadTasks() {
   try {
     const page = await portfolioEvaluationTaskApi.page({
       pageNum: 1,
-      pageSize: 200,
+      pageSize: QUALITY_SELECTOR_PAGE_SIZE,
     })
     tasks.value = page.list.filter((item) =>
       PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES.includes(item.taskStatus),
@@ -176,8 +180,8 @@ async function exportAnalysis() {
   }
   exporting.value = true
   try {
-    const result
-      = await portfolioEvaluationEntryApi.exportComprehensiveAnalysis(buildAnalysisParams())
+    const result =
+      await portfolioEvaluationEntryApi.exportComprehensiveAnalysis(buildAnalysisParams())
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条填报`)
   } catch (error) {
@@ -260,11 +264,14 @@ onMounted(async () => {
         <UiStatPanel :items="kpiItems" compact style="margin-top: 16px" />
         <h3 class="section-title">任务汇总</h3>
         <UiDataTable
+          pagination-mode="none"
           :columns="taskColumns"
           :data-source="analysis.tasks"
           :loading="loading"
           row-key="evaluationTaskId"
-          :pagination="false"
+          :show-pagination="false"
+          :sticky-header="false"
+          flat
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'evaluationMode'">
@@ -274,11 +281,14 @@ onMounted(async () => {
         </UiDataTable>
         <h3 class="section-title">被评教师跨任务汇总</h3>
         <UiDataTable
+          pagination-mode="none"
           :columns="teacherColumns"
           :data-source="analysis.teacherRows"
           :loading="loading"
           row-key="subjectTeacherUserId"
-          :pagination="false"
+          :show-pagination="false"
+          :sticky-header="false"
+          flat
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'subjectTeacherUserId'">

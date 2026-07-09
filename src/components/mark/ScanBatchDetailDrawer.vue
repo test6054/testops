@@ -10,6 +10,21 @@
       <UiEmpty v-if="!batchDetail && !detailLoading" description="扫描批次详情加载失败" />
 
       <template v-else-if="batchDetail">
+        <div class="scan-batch-detail__top-actions">
+          <UiButton
+            v-if="canShowPageRegisterRetry && (activeTab === 'overview' || activeTab === 'attentions')"
+            size="sm"
+            variant="primary"
+            :loading="pageRegisterRetrying"
+            @click="onRetryPageRegister"
+          >
+            重试页登记
+          </UiButton>
+          <UiButton size="sm" variant="outline" @click="openInWorkbench">
+            在工作台打开 ↗
+          </UiButton>
+        </div>
+
         <UiSectionTabs
           v-model="activeTab"
           :items="tabItems"
@@ -53,12 +68,16 @@
                 <dd>{{ batchDetail.eventCount }} 条</dd>
               </div>
               <div>
-                <dt>来源文件</dt>
-                <dd>{{ batchDetail.sourceFileCount }} 份</dd>
+                <dt>已收件</dt>
+                <dd>{{ batchDetail.sourceFileCount }} 份原件</dd>
               </div>
               <div>
-                <dt>落库进度</dt>
-                <dd>{{ batchDetail.receivedPageCount ?? 0 }} / {{ batchDetail.pageCount }} 页</dd>
+                <dt>已登记</dt>
+                <dd>{{ batchDetail.receivedPageCount ?? 0 }} 页</dd>
+              </div>
+              <div>
+                <dt>已绑定</dt>
+                <dd>{{ batchDetail.boundPaperCount ?? 0 }} 卷</dd>
               </div>
               <div>
                 <dt>异常项</dt>
@@ -67,11 +86,14 @@
               <div>
                 <dt>顺序审计</dt>
                 <dd>
-                  <UiTag v-if="batchDetail.orderAuditPassed === false" tone="red" size="sm">
+                  <UiTag v-if="batchDetail.orderAuditAttentionPending === true" tone="orange" size="sm">
+                    余页待确认
+                  </UiTag>
+                  <UiTag v-else-if="batchDetail.orderAuditPassed === false" tone="red" size="sm">
                     {{ batchDetail.orderAuditIssueCount ?? 0 }} 项异常
                   </UiTag>
                   <UiTag v-else-if="batchDetail.orderAuditPassed === true" tone="green" size="sm">
-                    通过
+                    {{ batchDetail.orderAuditIssueCount ? `通过·${batchDetail.orderAuditIssueCount}项` : '通过' }}
                   </UiTag>
                   <span v-else class="muted">待审计</span>
                 </dd>
@@ -85,21 +107,30 @@
 
           <section v-else-if="activeTab === 'pages'" class="scan-batch-detail__panel">
             <UiDataTable
-              v-model:current="pageQuery.pageNum"
-              v-model:page-size="pageQuery.pageSize"
-              :columns="pageColumns"
-              :data-source="pages"
+              pagination-mode="none"
+              :columns="workbenchPageColumns"
+              :data-source="workbenchPages"
               :loading="pagesLoading"
-              :total="pageTotal"
-              row-key="pageId"
+              :show-pagination="false"
+              row-key="pageKey"
               size="small"
               flat
-              empty-description="该批次暂无扫描页"
-              @page-change="onPageChange"
+              :empty-description="pagesEmptyDescription"
+              :sticky-header="false"
             >
               <template #bodyCell="{ column, record }">
-                <template v-if="column.key === 'qualityStatus'">
+                <template v-if="column.key === 'registerStatus'">
+                  <UiTag tone="gray" size="sm">
+                    {{ strictEnumLabel(
+                      ScanBatchWorkbenchRegisterStatusDescription,
+                      record.registerStatus,
+                      '页轨登记状态',
+                    ) }}
+                  </UiTag>
+                </template>
+                <template v-else-if="column.key === 'qualityStatus'">
                   <UiTag
+                    v-if="record.qualityStatus"
                     :tone="
                       strictEnumTone(QUALITY_DECISION_TONE, record.qualityStatus, '扫描页质量判定')
                     "
@@ -113,20 +144,15 @@
                       )
                     }}
                   </UiTag>
-                </template>
-                <template v-else-if="column.key === 'effectiveStatus'">
-                  <UiTag tone="gray" size="sm">
-                    {{
-                      strictEnumLabel(
-                        EffectiveStatusDescription,
-                        record.effectiveStatus,
-                        '扫描页生效状态',
-                      )
-                    }}
-                  </UiTag>
+                  <span v-else class="muted">—</span>
                 </template>
               </template>
             </UiDataTable>
+            <div v-if="workbenchPagesHasMore" class="scan-batch-detail__load-more">
+              <UiButton size="sm" variant="outline" :loading="pagesLoadingMore" @click="loadMoreWorkbenchPages">
+                加载更多页轨
+              </UiButton>
+            </div>
           </section>
 
           <section v-else-if="activeTab === 'sources'" class="scan-batch-detail__panel">
@@ -162,7 +188,7 @@
               size="small"
               flat
               empty-description="该批次暂无扫描异常"
-              @page-change="onAttentionPageChange"
+              @page-change="onAttentionPageChange" :sticky-header="false"
             >
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'attentionType'">
@@ -200,6 +226,23 @@
           <section v-else-if="activeTab === 'dispose'" class="scan-batch-detail__panel">
             <div class="scan-batch-detail__actions">
               <UiButton
+                v-if="batchDetail.orderAuditAttentionPending === true"
+                size="sm"
+                variant="primary"
+                :loading="collateAttentionDismissing"
+                @click="onDismissCollateAttention"
+              >
+                忽略并继续
+              </UiButton>
+              <UiButton
+                v-if="batchDetail.orderAuditAttentionPending === true"
+                size="sm"
+                variant="outline"
+                @click="openOrderAudit"
+              >
+                人工合并
+              </UiButton>
+              <UiButton
                 v-if="batchDetail.orderAuditPassed === false"
                 size="sm"
                 variant="outline"
@@ -208,7 +251,7 @@
                 查看顺序诊断
               </UiButton>
               <UiButton
-                v-if="batchDetail.status === 'BLOCKED'"
+                v-if="canShowPageRegisterRetry"
                 size="sm"
                 variant="outline"
                 :loading="pageRegisterRetrying"
@@ -242,7 +285,16 @@
               </UiButton>
             </div>
             <UiAlertStrip
-              v-if="batchDetail.orderAuditPassed === false"
+              v-if="batchDetail.orderAuditAttentionPending === true"
+              tone="warning"
+              :closable="false"
+              dense
+              title="批次余页未完整切卷"
+              description="完整卷已登记；余页保留在扫描页中。可忽略并继续封存，或打开顺序诊断后在工作台人工合并。"
+              class="scan-batch-detail__alert"
+            />
+            <UiAlertStrip
+              v-else-if="batchDetail.orderAuditPassed === false"
               tone="error"
               :closable="false"
               dense
@@ -275,7 +327,7 @@
         flat
         :total="orderAuditDetail?.issues?.length ?? 0"
         row-key="message"
-        size="small"
+        size="small" :sticky-header="false"
       />
     </UiDrawer>
 
@@ -298,8 +350,8 @@
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamFileRefVO } from '@/apis/mark/exam'
 import type {
-  ExamScannerBatchPageItemVO,
   ExamScannerBatchResponse,
+  ExamScannerBatchWorkbenchPageVO,
   ScanAttentionItemResponse,
   ScanBatchOrderAuditIssueResponse,
   ScanBatchOrderAuditResponse,
@@ -307,12 +359,13 @@ import type {
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
-import { EffectiveStatusDescription } from '@/apis/mark/effective-status'
+import { useRouter } from 'vue-router'
 import {
+  dismissScanBatchCollateAttention,
   getScanBatchOrderAudit,
   getScannerBatchDetail,
   listScanAttentions,
-  pageScannerBatchPages,
+  pageScannerBatchWorkbenchPages,
   QUALITY_DECISION_TONE,
   QualityDecisionDescription,
   retryScanBatchPageRegister,
@@ -321,6 +374,7 @@ import {
   ScanAttentionTypeDescription,
   ScanBatchOrderAuditDescription,
   ScanBatchStatusDescription,
+  ScanBatchWorkbenchRegisterStatusDescription,
   sealScanBatchByTeacher,
 } from '@/apis/mark/exam-scan'
 import { discardScanJob, listScanJobs } from '@/apis/mark/scanner-agent-local'
@@ -336,6 +390,9 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useWorkspaceConfidentialContext } from '@/composables/useWorkspaceConfidentialContext'
+import { PageRegisterStateCode } from '@/types/enums/page-register-state-enum'
+import { ScanBatchStatusCode } from '@/types/enums/scan-batch-status-enum'
+import { ScanBatchWorkbenchPageStatusFilterCode } from '@/types/enums/scan-batch-workbench-page-status-filter-enum'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { formatDateTimeWithSeconds } from '@/utils/format'
@@ -360,16 +417,17 @@ const emit = defineEmits<{
   "updated": []
 }>()
 
+const router = useRouter()
 const { isExamConfidential } = useWorkspaceConfidentialContext()
 
 const activeTab = ref('overview')
 const batchDetail = ref<ExamScannerBatchResponse | null>(null)
 const detailLoading = ref(false)
 
-const pages = ref<ExamScannerBatchPageItemVO[]>([])
-const pageTotal = ref(0)
+const workbenchPages = ref<ExamScannerBatchWorkbenchPageVO[]>([])
+const workbenchPagesNextCursor = ref<string | null | undefined>(undefined)
+const pagesLoadingMore = ref(false)
 const pagesLoading = ref(false)
-const pageQuery = reactive({ pageNum: 1, pageSize: 10 })
 
 const attentions = ref<ScanAttentionItemResponse[]>([])
 const attentionTotal = ref(0)
@@ -378,6 +436,19 @@ const attentionQuery = reactive({ pageNum: 1, pageSize: 10 })
 
 const sourceFileDownloading = ref<string | null>(null)
 const pageRegisterRetrying = ref(false)
+const canShowPageRegisterRetry = computed(() => {
+  const batch = batchDetail.value
+  if (!batch?.scanBatchId) {
+    return false
+  }
+  const state = batch.pageRegisterState
+  if (state === PageRegisterStateCode.BLOCKED_RECOVERABLE || state === PageRegisterStateCode.PENDING) {
+    return true
+  }
+  // pageRegisterState 尚未算出时，BLOCKED 批次允许重试入口
+  return batch.status === ScanBatchStatusCode.BLOCKED && state == null
+})
+const collateAttentionDismissing = ref(false)
 const sealing = ref(false)
 const discarding = ref(false)
 const discardModalOpen = ref(false)
@@ -405,12 +476,26 @@ const orderAuditDrawerTitle = computed(() => {
 
 const tabItems = computed(() => [
   { key: 'overview', label: '概览' },
-  { key: 'pages', label: '扫描页', count: batchDetail.value?.pageCount },
+  // 页轨列表走 workbench 混合页轨（PENDING+REGISTERED），角标须与 sourceFileCount 同源
+  { key: 'pages', label: '扫描页', count: batchDetail.value?.sourceFileCount },
   { key: 'sources', label: '扫描原件', count: batchDetail.value?.sourceFileCount },
   { key: 'attentions', label: '异常', count: batchDetail.value?.attentionItemCount },
   { key: 'supplement', label: '补扫' },
   { key: 'dispose', label: '处置' },
 ])
+
+const workbenchPagesHasMore = computed(() => Boolean(workbenchPagesNextCursor.value))
+
+const pagesEmptyDescription = computed(() => {
+  const batch = batchDetail.value
+  if (!batch) {
+    return '该批次暂无扫描页'
+  }
+  if ((batch.receivedPageCount ?? 0) === 0 && (batch.sourceFileCount ?? 0) > 0) {
+    return '原件待登记，请在工作台预览原件'
+  }
+  return '该批次暂无扫描页'
+})
 
 const canSupplement = computed(() => {
   const batch = batchDetail.value
@@ -440,19 +525,20 @@ const supplementBlockReason = computed(() => {
   return ''
 })
 
-const pageColumns: ColumnType<ExamScannerBatchPageItemVO>[] = [
-  { title: '进纸序', dataIndex: 'pageSeq', key: 'pageSeq', width: 72 },
+const workbenchPageColumns: ColumnType<ExamScannerBatchWorkbenchPageVO>[] = [
+  { title: '进纸序', dataIndex: 'fileOrder', key: 'fileOrder', width: 72 },
+  { title: '登记', key: 'registerStatus', width: 88 },
+  { title: '页序', dataIndex: 'pageSeq', key: 'pageSeq', width: 72 },
   { title: '模板页', dataIndex: 'templatePageNo', key: 'templatePageNo', width: 72 },
   { title: '质量', key: 'qualityStatus', width: 100 },
-  { title: '生效状态', key: 'effectiveStatus', width: 100 },
-  { title: '诊断', dataIndex: 'diagnostic', key: 'diagnostic', ellipsis: true },
+  { title: '诊断', dataIndex: 'diagnostic', key: 'diagnostic' },
 ]
 
 const attentionColumns: ColumnType<ScanAttentionItemResponse>[] = [
   { title: '类型', key: 'attentionType', width: 120 },
-  { title: '来源', dataIndex: 'sourceDisplayName', key: 'sourceDisplayName', ellipsis: true },
+  { title: '来源', dataIndex: 'sourceDisplayName', key: 'sourceDisplayName' },
   { title: '页', dataIndex: 'pageDisplayName', key: 'pageDisplayName', width: 120 },
-  { title: '诊断', dataIndex: 'diagnostic', key: 'diagnostic', ellipsis: true },
+  { title: '诊断', dataIndex: 'diagnostic', key: 'diagnostic' },
 ]
 
 const orderAuditIssueColumns: ColumnType<ScanBatchOrderAuditIssueResponse>[] = [
@@ -463,7 +549,7 @@ const orderAuditIssueColumns: ColumnType<ScanBatchOrderAuditIssueResponse>[] = [
     customRender: ({ record }) =>
       strictEnumLabel(ScanBatchOrderAuditDescription, record.auditCode, '顺序审计异常码'),
   },
-  { title: '说明', dataIndex: 'message', key: 'message', ellipsis: true },
+  { title: '说明', dataIndex: 'message', key: 'message' },
   { title: '进纸序', dataIndex: 'pageSeq', key: 'pageSeq', width: 72 },
   { title: '模板页', dataIndex: 'templatePageNo', key: 'templatePageNo', width: 72 },
 ]
@@ -503,27 +589,63 @@ async function loadDetail(): Promise<void> {
 
 async function loadPages(): Promise<void> {
   if (!props.examId || !props.scanBatchId) {
-    pages.value = []
-    pageTotal.value = 0
+    workbenchPages.value = []
+    workbenchPagesNextCursor.value = undefined
     return
   }
   pagesLoading.value = true
   try {
-    const result = await pageScannerBatchPages({
+    const result = await pageScannerBatchWorkbenchPages({
       examId: props.examId,
       scanBatchId: props.scanBatchId,
-      pageNum: pageQuery.pageNum,
-      pageSize: pageQuery.pageSize,
+      pageStatusFilter: ScanBatchWorkbenchPageStatusFilterCode.ALL,
+      pageSize: 50,
     })
-    pages.value = result.list
-    pageTotal.value = result.total
+    workbenchPages.value = result.items
+    workbenchPagesNextCursor.value = result.nextCursor ?? null
   } catch (error) {
-    pages.value = []
-    pageTotal.value = 0
+    workbenchPages.value = []
+    workbenchPagesNextCursor.value = undefined
     showUserError(error, '扫描页列表加载失败')
   } finally {
     pagesLoading.value = false
   }
+}
+
+async function loadMoreWorkbenchPages(): Promise<void> {
+  if (!props.examId || !props.scanBatchId || !workbenchPagesNextCursor.value || pagesLoadingMore.value) {
+    return
+  }
+  pagesLoadingMore.value = true
+  try {
+    const result = await pageScannerBatchWorkbenchPages({
+      examId: props.examId,
+      scanBatchId: props.scanBatchId,
+      pageStatusFilter: ScanBatchWorkbenchPageStatusFilterCode.ALL,
+      pageSize: 50,
+      cursor: workbenchPagesNextCursor.value,
+    })
+    workbenchPages.value = [...workbenchPages.value, ...result.items]
+    workbenchPagesNextCursor.value = result.nextCursor ?? null
+  } catch (error) {
+    showUserError(error, '扫描页列表加载失败')
+  } finally {
+    pagesLoadingMore.value = false
+  }
+}
+
+function openInWorkbench(): void {
+  if (!props.examId || !props.scanBatchId) {
+    return
+  }
+  void router.push({
+    name: 'TeacherExamWorkspaceScanBatchDetail',
+    params: {
+      examId: props.examId,
+      scanBatchId: props.scanBatchId,
+    },
+  })
+  emit('update:open', false)
 }
 
 async function loadAttentions(): Promise<void> {
@@ -549,12 +671,6 @@ async function loadAttentions(): Promise<void> {
   } finally {
     attentionsLoading.value = false
   }
-}
-
-function onPageChange(page: { current: number, pageSize: number }): void {
-  pageQuery.pageNum = page.current
-  pageQuery.pageSize = page.pageSize
-  void loadPages()
 }
 
 function onAttentionPageChange(page: { current: number, pageSize: number }): void {
@@ -609,7 +725,7 @@ async function openOrderAudit(): Promise<void> {
 
 async function onRetryPageRegister(): Promise<void> {
   const batch = batchDetail.value
-  if (!batch?.scanBatchId || !props.examId || batch.status !== 'BLOCKED') {
+  if (!batch?.scanBatchId || !props.examId || !canShowPageRegisterRetry.value) {
     return
   }
   pageRegisterRetrying.value = true
@@ -620,6 +736,8 @@ async function onRetryPageRegister(): Promise<void> {
     })
     if (response.pageRegisterBlocked) {
       message.warning(response.pageRegisterDiagnostic ?? '页登记仍被阻断')
+    } else if (response.pageRegisterPending) {
+      message.warning(response.pageRegisterDiagnostic ?? '页登记待重试')
     } else {
       message.success('页登记重试成功')
     }
@@ -629,6 +747,33 @@ async function onRetryPageRegister(): Promise<void> {
   } finally {
     pageRegisterRetrying.value = false
   }
+}
+
+async function onDismissCollateAttention(): Promise<void> {
+  const batch = batchDetail.value
+  if (!batch?.scanBatchId || !props.examId || batch.orderAuditAttentionPending !== true) {
+    return
+  }
+  await confirmAsync({
+    title: '忽略并继续',
+    content: '余页将保留在扫描页中，不创建试卷实例。确认后可继续封存批次并推进阅卷。',
+    type: 'warning',
+    onOk: async () => {
+      collateAttentionDismissing.value = true
+      try {
+        await dismissScanBatchCollateAttention({
+          examId: props.examId,
+          scanBatchId: batch.scanBatchId,
+        })
+        message.success('已忽略余页异常，可继续封存')
+        await refreshAll()
+      } catch (error) {
+        showUserError(error, '忽略余页异常失败')
+      } finally {
+        collateAttentionDismissing.value = false
+      }
+    },
+  })
 }
 
 function onSealBatch(): void {
@@ -765,7 +910,6 @@ watch(
   ([open, scanBatchId]) => {
     if (open && scanBatchId) {
       activeTab.value = 'overview'
-      pageQuery.pageNum = 1
       attentionQuery.pageNum = 1
       batchDetail.value = props.batchSummary
       void loadDetail()
@@ -787,7 +931,20 @@ watch(activeTab, (tab) => {
 
 <style lang="scss" scoped>
 .scan-batch-detail__tabs {
-  margin-top: -8px;
+  margin-top: 8px;
+}
+
+.scan-batch-detail__top-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.scan-batch-detail__load-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
 }
 
 .scan-batch-detail__panel {

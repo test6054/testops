@@ -68,8 +68,19 @@ export interface ExpertPackageExportRequest {
   recipientUserIds?: string[]
 }
 
+/** SignalBand 汇总响应 - 对齐后端 ArchiveSignalSummaryVO */
+export interface ArchiveSignalSummaryVO {
+  totalCount: number
+  confirmedCount: number
+  pendingCount: number
+  expertPackageCount: number
+  reportCount: number
+}
+
 export const archiveApi = {
   page: (data: ArchiveQueryRequest) => http.post<PageResult<ArchiveVO>>(`${BASE}/page`, data),
+  signalSummary: (data: ArchiveQueryRequest) =>
+    http.post<ArchiveSignalSummaryVO>(`${BASE}/signal-summary`, data),
   detail: (id: string) => http.post<ArchiveVO>(`${BASE}/detail`, { id }),
   create: (data: ArchiveSaveRequest) => http.post<string>(`${BASE}/create`, data),
   update: (data: ArchiveSaveRequest) => http.post<void>(`${BASE}/update`, data),

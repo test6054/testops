@@ -23,6 +23,7 @@
 import type { PortfolioArchiveCategoryTreeNodeVO } from '@/apis/portfolio/types'
 import { onMounted, ref, watch } from 'vue'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
+import { PortfolioArchiveCategoryStatusCode } from '@/apis/portfolio/enums'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import { showUserError } from '@/utils/error-handler'
 
@@ -49,7 +50,7 @@ const treeData = ref<TreeSelectNode[]>([])
 
 function mapCategoryNodes(nodes: PortfolioArchiveCategoryTreeNodeVO[]): TreeSelectNode[] {
   return nodes
-    .filter((node) => node.status === 'ACTIVE')
+    .filter((node) => node.status === PortfolioArchiveCategoryStatusCode.ACTIVE)
     .map((node) => {
       const children = node.children?.length ? mapCategoryNodes(node.children) : undefined
       return {

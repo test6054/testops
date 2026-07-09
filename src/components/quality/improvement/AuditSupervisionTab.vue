@@ -62,13 +62,13 @@ const props = defineProps<{
 const qualityStore = useQualityStore()
 
 const supColumns: ColumnsType = [
-  { title: '编码', dataIndex: 'supervisionCode', key: 'supervisionCode', width: 140 },
+  { title: '编码', dataIndex: 'supervisionCode', key: 'supervisionCode', width: 140, fixed: 'left' },
   { title: '标题', key: 'supTitle' },
   { title: '类型', dataIndex: 'supervisionType', key: 'supervisionType', width: 110 },
   { title: '范围', dataIndex: 'supervisionScope', key: 'supervisionScope', width: 100 },
   { title: '督导时间', dataIndex: 'supervisedTime', key: 'supervisedTime', width: 160 },
   { title: '结论', dataIndex: 'conclusion', key: 'conclusion', width: 110 },
-  { title: '操作', key: 'actions', width: 160, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 160 },
 ]
 
 const supervisionTypeOptions: Array<{ value: AuditSupervisionTypeCode, label: string }> = [
@@ -534,7 +534,6 @@ defineExpose({
     />
 
     <UiDataTable
-      class="student-detail-table__data-table"
       v-model:current="supQuery.pageNum"
       v-model:page-size="supQuery.pageSize"
       :columns="supColumns"

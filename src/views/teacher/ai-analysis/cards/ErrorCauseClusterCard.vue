@@ -72,12 +72,13 @@ import type {
   ErrorCauseClusterItemVO,
   ErrorCauseClusterResponse,
 } from '@/apis/mark/error-cause-cluster'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { computed, ref, watch } from 'vue'
 import {
   generateErrorCauseCluster,
   getLatestErrorCauseCluster,
 } from '@/apis/mark/error-cause-cluster'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { computed, ref, watch } from 'vue'
+import { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import AiAnalysisCardBody from '@/components/mark/analysis/AiAnalysisCardBody.vue'
@@ -140,7 +141,7 @@ function formatExamples(examples?: string[]): string | undefined {
 
 function clusterCountText(value: ErrorCauseClusterResponse): string {
   if (typeof value.clusterCount === 'number') return String(value.clusterCount)
-  if (value.analysisStatus === 'PENDING') return '待分析'
+  if (value.analysisStatus === AiAnalysisStatusCode.PENDING) return '待分析'
   return '—'
 }
 

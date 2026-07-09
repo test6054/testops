@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TreeProps } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PortfolioOrgAliasSaveRequest,
@@ -9,7 +10,6 @@ import type {
   PortfolioOrgTreeNodeVO,
   PortfolioOrgUnitSaveRequest,
 } from '@/apis/portfolio/types'
-import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
   PORTFOLIO_ORG_UNIT_TYPE_OPTIONS,
@@ -48,20 +48,20 @@ interface TreeNode {
 
 function isTreeNode(value: unknown): value is TreeNode {
   return (
-    typeof value === 'object'
-    && value !== null
-    && 'key' in value
-    && 'title' in value
-    && 'raw' in value
+    typeof value === 'object' &&
+    value !== null &&
+    'key' in value &&
+    'title' in value &&
+    'raw' in value
   )
 }
 
 const aliasColumns: ColumnsType = [
-  { title: '历史名称', dataIndex: 'aliasName', key: 'aliasName' },
+  { title: '历史名称', dataIndex: 'aliasName', key: 'aliasName', fixed: 'left' },
   { title: '生效起', dataIndex: 'effectiveFrom', key: 'effectiveFrom', width: 110 },
   { title: '生效止', dataIndex: 'effectiveTo', key: 'effectiveTo', width: 110 },
   { title: '备注', dataIndex: 'remark', key: 'remark', ellipsis: true },
-  { title: '操作', key: 'actions', width: 120, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 120 },
 ]
 
 const { loading, treeRoots, loadTree } = usePortfolioOrgTree()
@@ -267,13 +267,13 @@ function openUnitEditor(mode: 'create' | 'edit') {
     unitEditor.orgName = ''
     unitEditor.orgCode = ''
     unitEditor.parentPortfolioOrgId = selectedNode.value?.portfolioOrgId
-    unitEditor.anchorDepartmentId
-      = selectedRaw.value?.anchorDepartmentId
-        ?? (selectedRaw.value?.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.DEPARTMENT
+    unitEditor.anchorDepartmentId =
+      selectedRaw.value?.anchorDepartmentId ??
+      (selectedRaw.value?.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.DEPARTMENT
         ? selectedRaw.value.id
         : undefined)
-    unitEditor.anchorMajorId
-      = selectedRaw.value?.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.MAJOR
+    unitEditor.anchorMajorId =
+      selectedRaw.value?.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.MAJOR
         ? selectedRaw.value.id
         : selectedRaw.value?.anchorMajorId
     unitEditor.sortOrder = 0
@@ -499,10 +499,12 @@ onMounted(async () => {
           </dl>
           <UiDataTable
             title="历史名称"
+            pagination-mode="none"
             :columns="aliasColumns"
             :data-source="selectedAliases"
             row-key="id"
-            :pagination="false"
+            :show-pagination="false"
+            :sticky-header="false"
             flat
           >
             <template #bodyCell="{ column, record }">

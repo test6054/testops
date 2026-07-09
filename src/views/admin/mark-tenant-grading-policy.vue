@@ -108,13 +108,17 @@
             <span>待办项 {{ opsOverview.totalPendingItemCount }} 项</span>
           </div>
 
-          <a-table
+          <UiDataTable
             v-if="opsOverview && opsOverview.exams.length > 0"
-            size="small"
-            row-key="examId"
-            :pagination="false"
             :columns="opsColumns"
             :data-source="opsOverview.exams"
+            row-key="examId"
+            size="small"
+            flat
+            pagination-mode="none"
+            :show-pagination="false"
+            :sticky-header="false"
+            :total="opsOverview.exams.length"
             class="tenant-policy__ops-table"
           />
           <UiEmpty
@@ -129,20 +133,22 @@
 </template>
 
 <script lang="ts" setup>
+import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   MarkTenantGradingOpsOverviewResponse,
   MarkTenantGradingPolicyResponse,
   MarkTenantGradingPolicySaveRequest,
 } from '@/apis/mark/grading-experience-assist'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   getTenantGradingOpsOverview,
   getTenantGradingPolicy,
   saveTenantGradingPolicy,
 } from '@/apis/mark/grading-experience-assist'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -177,16 +183,36 @@ const form = reactive<MarkTenantGradingPolicySaveRequest>({
   delayedFinalScoreConfirmMinutes: 10,
 })
 
-const opsColumns = [
-  { title: '考试', dataIndex: 'examName', key: 'examName' },
-  { title: '考务编号', dataIndex: 'examNo', key: 'examNo' },
-  { title: '待办项', dataIndex: 'pendingItemCount', key: 'pendingItemCount', width: 80 },
-  { title: '基线缺失', dataIndex: 'baselineMissingCount', key: 'baselineMissingCount', width: 88 },
+const opsColumns: ColumnsType<MarkTenantGradingOpsOverviewResponse['exams'][number]> = [
+  {
+    title: '考试',
+    dataIndex: 'examName',
+    key: 'examName',
+    fixed: 'left',
+    ellipsis: true,
+    minWidth: 200,
+  },
+  { title: '考务编号', dataIndex: 'examNo', key: 'examNo', width: 140 },
+  {
+    title: '待办项',
+    dataIndex: 'pendingItemCount',
+    key: 'pendingItemCount',
+    width: 80,
+    align: 'right',
+  },
+  {
+    title: '基线缺失',
+    dataIndex: 'baselineMissingCount',
+    key: 'baselineMissingCount',
+    width: 88,
+    align: 'right',
+  },
   {
     title: '定标未就绪',
     dataIndex: 'assistUnresolvedCount',
     key: 'assistUnresolvedCount',
     width: 96,
+    align: 'right',
   },
   {
     title: '正评就绪',

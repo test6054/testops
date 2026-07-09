@@ -3,6 +3,7 @@ import type { ConfirmationStatusCode, ProcessNodeTypeCode } from './types'
  * 过程性评价节点 API。
  * 后端对象：ProcessEvaluationNodeController /api/quality/process-nodes。
  */
+import type { PageResult, QueryDto } from '@/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
@@ -66,9 +67,15 @@ export interface ProcessEvaluationNodeConfirmRequest {
   confirmationStatus: ConfirmationStatusCode
 }
 
+export interface ProcessEvaluationNodeQueryRequest extends QueryDto {
+  qualityCourseId?: string
+  confirmationStatus?: ConfirmationStatusCode
+  keyword?: string
+}
+
 export const processNodeApi = {
-  listByCourse: (qualityCourseId: string) =>
-    http.post<ProcessEvaluationNodeVO[]>(`${NODE}/list-by-course`, { id: qualityCourseId }),
+  page: (data: ProcessEvaluationNodeQueryRequest) =>
+    http.post<PageResult<ProcessEvaluationNodeVO>>(`${NODE}/page`, data),
   detail: (id: string) =>
     http.post<ProcessEvaluationNodeVO>(`${NODE}/detail`, { id }),
   create: (data: ProcessEvaluationNodeSaveRequest) => http.post<string>(`${NODE}/create`, data),

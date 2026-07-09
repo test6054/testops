@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioCorrectionRequestStatusCode } from '@/apis/portfolio/enums'
 import type { PortfolioCorrectionSummaryVO } from '@/apis/portfolio/types'
+import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { Input, message } from 'ant-design-vue'
 import { reactive, ref } from 'vue'
 import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
 import {
   PortfolioCorrectionHandleActionCode,
+  PortfolioCorrectionRequestStatusCode,
   PortfolioCorrectionRequestStatusDescription,
 } from '@/apis/portfolio/enums'
-import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -42,12 +42,12 @@ const rejectTarget = ref<PortfolioCorrectionSummaryVO | null>(null)
 const rejectForm = reactive({ handleOpinion: '' })
 
 const columns: ColumnsType<PortfolioCorrectionSummaryVO> = [
-  { title: '教师', key: 'teacherName', width: 120 },
+  { title: '教师', key: 'teacherName', width: 120, fixed: 'left' },
   { title: '分类', dataIndex: 'categoryName', key: 'categoryName', width: 120 },
   { title: '字段', dataIndex: 'fieldLabel', key: 'fieldLabel', width: 120 },
   { title: '状态', key: 'requestStatus', width: 110 },
   { title: '原因', dataIndex: 'reason', key: 'reason' },
-  { title: '操作', key: 'actions', width: 220, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 220 },
 ]
 
 async function loadPage() {
@@ -112,7 +112,7 @@ async function submitReject() {
 function buildCorrectionRowActions(row: PortfolioCorrectionSummaryVO): UiTableRowActionItem[] {
   const busy = handlingId.value === row.id
   const actions: UiTableRowActionItem[] = []
-  if (row.requestStatus === 'SUBMITTED') {
+  if (row.requestStatus === PortfolioCorrectionRequestStatusCode.SUBMITTED) {
     actions.push({
       key: 'accept',
       label: '受理',

@@ -12,6 +12,9 @@ export type ScoreWorkbenchAnalyticsMode = 'confirm' | 'publish'
 /** 成绩名单状态 Tab：全部 */
 export const SCORE_STATUS_TAB_ALL = 'ALL'
 
+/** 成绩名单状态 Tab 键：全部 + 最终成绩状态枚举值 */
+export type ScoreStatusTabKey = typeof SCORE_STATUS_TAB_ALL | FinalScoreStatusCode
+
 /** 分析区 stat-card 展示项 */
 export interface ScoreAnalyticsStatItem {
   key: string
@@ -89,9 +92,9 @@ function resolveFlowEmphasis(
       return true
     }
     return (
-      code === FinalScoreStatusCode.PENDING
-      && overview.pendingCount > 0
-      && overview.calculatedCount === 0
+      code === FinalScoreStatusCode.PENDING &&
+      overview.pendingCount > 0 &&
+      overview.calculatedCount === 0
     )
   }
   if (code === FinalScoreStatusCode.CONFIRMED && publishableCount > 0) {
@@ -109,8 +112,8 @@ export function buildScoreDistributionStatItems(
   publishableCount: number,
 ): ScoreAnalyticsStatItem[] {
   const overview = panel.riskOverview
-  const workflowTail
-    = mode === 'publish'
+  const workflowTail =
+    mode === 'publish'
       ? [
           {
             key: 'publishable',

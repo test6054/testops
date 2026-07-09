@@ -22,3 +22,4 @@ export const ExternalPullTaskStatusDescription: Record<ExternalPullTaskStatusCod
   [ExternalPullTaskStatusCode.FAILED]: '失败',
   [ExternalPullTaskStatusCode.CANCELLED]: '已取消',
 }
+

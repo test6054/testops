@@ -6,7 +6,6 @@ import type { UserDto } from '@/types/api-types.d'
 import type { CandidateStatusCode } from '@/types/enums/candidate-status-enum'
 import type { ExamClassStudentTreeNodeTypeCode } from '@/types/enums/exam-class-student-tree-node-type-enum'
 import http from '@/config/axios'
-import { readAllPages } from '@/utils/page-result'
 
 export {
   ALL_CANDIDATE_STATUS_CODES,
@@ -115,6 +114,26 @@ export function saveExamScope(request: ExamScopeSaveRequest): Promise<boolean> {
   return http.post<boolean>('/api/mark/exams/scope/save', request)
 }
 
+/** 按当前库内活动名册与请求班级范围做整表对齐保存。 */
+export function saveCurrentExamScope(request: ExamClassScopeSaveRequest): Promise<boolean> {
+  return http.post<boolean>('/api/mark/exams/scope/save-current', request)
+}
+
+/** 考试在册学生用户 ID 集合 - 对应 ExamCandidateStudentUserIdsResponse */
+export interface ExamCandidateStudentUserIdsResponse {
+  studentUserIds: string[]
+}
+
+/** 查询考试当前在册学生用户 ID 集合。 */
+export function listExamCandidateStudentUserIds(
+  examId: string,
+): Promise<ExamCandidateStudentUserIdsResponse> {
+  return http.post<ExamCandidateStudentUserIdsResponse>(
+    '/api/mark/exams/scope/candidates/student-user-ids',
+    { examId },
+  )
+}
+
 /** 增量合并考生名册。 */
 export function mergeExamCandidates(request: ExamCandidateMergeRequest): Promise<boolean> {
   return http.post<boolean>('/api/mark/exams/scope/candidates/merge', request)
@@ -158,17 +177,3 @@ export function pageExamCandidates(
   return http.post<PageResult<ExamCandidateResponse>>('/api/mark/exams/candidates', request)
 }
 
-const EXAM_CANDIDATE_PAGE_SIZE = 100
-
-/** 查询考试当前考生名单，按后端分页合同自动拉全。 */
-export async function listExamCandidates(examId: string): Promise<ExamCandidateResponse[]> {
-  return readAllPages(
-    (pageNum) =>
-      pageExamCandidates({
-        examId,
-        pageNum,
-        pageSize: EXAM_CANDIDATE_PAGE_SIZE,
-      }),
-    '考试考生名单加载失败，请稍后重试',
-  )
-}

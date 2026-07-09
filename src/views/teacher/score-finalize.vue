@@ -2,9 +2,9 @@
   <StageWorkbenchShell class="score-finalize-page">
     <template
       v-if="
-        effectiveRiskOverview?.readyToPublish
-          || blockingRiskReasons.length > 0
-          || canBatchConfirmSafe
+        effectiveRiskOverview?.readyToPublish ||
+        blockingRiskReasons.length > 0 ||
+        canBatchConfirmSafe
       "
       #context
     >
@@ -154,6 +154,7 @@
           <UiDataTable
             v-model:current="pagination.current"
             v-model:page-size="pagination.pageSize"
+            pagination-mode="server"
             :columns="columns"
             :data-source="candidates"
             :loading="loading"
@@ -161,7 +162,6 @@
             row-key="candidateRosterId"
             size="middle"
             flat
-            class="score-finalize__table student-detail-table__data-table"
             @page-change="handlePageChange"
           >
             <template #bodyCell="{ column, index }">
@@ -287,6 +287,7 @@
           :columns="paperItemColumns"
           :data-source="paperQuestions"
           :show-pagination="false"
+          :sticky-header="false"
           flat
           :total="paperQuestions.length"
           row-key="layoutQuestionId"
@@ -337,7 +338,15 @@
           :groups="auditTimelineGroups"
           compact
         />
-        <UiEmpty v-else description="暂无操作记录" />
+        <UiPagination
+          v-if="auditPagination.total > 0"
+          v-model:current="auditPagination.pageNum"
+          v-model:page-size="auditPagination.pageSize"
+          class="score-finalize__audit-pagination"
+          :total="auditPagination.total"
+          @change="handleAuditPageChange"
+        />
+        <UiEmpty v-else-if="!auditLoading" description="暂无操作记录" />
       </div>
     </UiDrawer>
 
@@ -438,8 +447,8 @@
             variant="outline"
             :loading="riskReviewSavingReasonCode === reason.reasonCode"
             :disabled="
-              riskReviewSavingReasonCode !== null
-                && riskReviewSavingReasonCode !== reason.reasonCode
+              riskReviewSavingReasonCode !== null &&
+              riskReviewSavingReasonCode !== reason.reasonCode
             "
             @click="toggleRiskReasonReviewed(reason.reasonCode)"
           >
@@ -526,48 +535,32 @@ import type { Key } from 'ant-design-vue/es/_util/type'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
 import type { OperationLogResponse, OperationTypeCode } from '@/apis/mark/admin-audit'
-import type { ExamDetailResponse } from '@/apis/mark/exam'
-import type { ExamPaperScoreResponse, ExamQuestionScoreResponse } from '@/apis/mark/exam-grade'
-import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
-import type {
-  ExamScoreSummaryItemResponse,
-  FinalScoreRiskOverviewResponse,
-  FinalScoreRiskReasonCode,
-} from '@/apis/mark/exam-score'
-import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
-import type { ScoreBiasLevelCode } from '@/apis/mark/score-bias'
-import type {
-  BadgeTone,
-  FilterField,
-  UiTableRowActionItem,
-  UiTrendPoint,
-} from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   AuditTargetTypeCode,
   listOperationLogs,
   OperationTypeDescription,
 } from '@/apis/mark/admin-audit'
+import type { ExamDetailResponse } from '@/apis/mark/exam'
 import { getExamDetail, pageExams } from '@/apis/mark/exam'
+import type { ExamPaperScoreResponse, ExamQuestionScoreResponse } from '@/apis/mark/exam-grade'
 import { getPaperScore } from '@/apis/mark/exam-grade'
+import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
 import { getScorePanel } from '@/apis/mark/exam-progress'
+import type {
+  ExamScoreSummaryItemResponse,
+  FinalScoreRiskOverviewResponse,
+} from '@/apis/mark/exam-score'
 import {
   batchConfirmSafeFinalScores,
   confirmFinalScore,
+  FinalScoreRiskReasonCode,
   getFinalScoreRiskOverview,
   pageExamScoreSummary,
   publishFinalScore,
   saveFinalScoreRiskReview,
   withdrawFinalScore,
 } from '@/apis/mark/exam-score'
-import {
-  FINAL_SCORE_STATUS_TONE,
-  FinalScoreStatusDescription,
-} from '@/apis/mark/final-score-status'
+import type { ScoreBiasLevelCode } from '@/apis/mark/score-bias'
 import {
   classifyScoreBias,
   computeScoreBiasStats,
@@ -575,10 +568,33 @@ import {
   SCORE_BIAS_LEVEL_TONE,
   ScoreBiasLevelDescription,
 } from '@/apis/mark/score-bias'
+import type {
+  BadgeTone,
+  FilterField,
+  UiTableRowActionItem,
+  UiTrendPoint,
+} from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import type { ScoreStatusTabKey } from '@/utils/score-workbench-analytics'
+import {
+  buildScoreConfirmStatusTabItems,
+  SCORE_STATUS_TAB_ALL,
+} from '@/utils/score-workbench-analytics'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  FINAL_SCORE_STATUS_TONE,
+  FinalScoreStatusCode,
+  FinalScoreStatusDescription,
+} from '@/apis/mark/final-score-status'
+import { GradeStatusCode } from '@/apis/mark/grade-status'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiPagination from '@/components/ui-guide/ui/Pagination.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiActivityTimeline from '@/components/ui-guide/ui/UiActivityTimeline.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -606,17 +622,10 @@ import { formatDateTime, formatDateTimeWithSeconds } from '@/utils/format'
 import { formatTrendAriaLabel, MARK_CHART_EMPTY } from '@/utils/mark-chart-accessibility'
 import { buildTrendChartInsight } from '@/utils/mark-chart-insights'
 import { buildTrendLineChartOption } from '@/utils/mark-echarts-options'
-import { readAllPages } from '@/utils/page-result'
-import {
-  buildScoreConfirmStatusTabItems,
-  SCORE_STATUS_TAB_ALL,
-} from '@/utils/score-workbench-analytics'
 import { buildScoreFinalizeSignalMetrics } from '@/utils/score-workbench-signal'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScoreFinalize' })
-
-const SCORE_AUDIT_LOG_PAGE_SIZE = 100
 
 function finalScoreStatusTone(value: FinalScoreStatusCode) {
   return strictEnumTone(FINAL_SCORE_STATUS_TONE, value, '最终成绩状态')
@@ -635,7 +644,7 @@ const scoreFilterForm = reactive<ScoreFilterForm>({
   keyword: '',
 })
 
-const statusTabKey = ref<Key>(SCORE_STATUS_TAB_ALL)
+const statusTabKey = ref<ScoreStatusTabKey>(SCORE_STATUS_TAB_ALL)
 
 const scoreFilterModel = computed<Record<string, unknown>>({
   get: () => scoreFilterForm,
@@ -721,18 +730,21 @@ const panelNotice = computed(() => {
   return null
 })
 
-const { ensureScorePublishPreconditions } = useScorePublishPreconditions({
-  examId: selectedExamId,
-  riskOverview: effectiveRiskOverview,
-  scorePanel,
-})
+const { ensureScorePublishPreconditions, ensureScoreConfirmPreconditions } =
+  useScorePublishPreconditions({
+    examId: selectedExamId,
+    riskOverview: effectiveRiskOverview,
+    scorePanel,
+  })
 
 const batchConfirming = ref(false)
 const riskReviewDrawerOpen = ref(false)
 const riskReviewSavingReasonCode = ref<FinalScoreRiskReasonCode | null>(null)
 const reviewedRiskReasonCodes = ref<Set<FinalScoreRiskReasonCode>>(new Set())
 
-const HARD_BLOCKING_RISK_REASON_CODES = new Set<FinalScoreRiskReasonCode>(['UNRECONCILED_ABSENCE'])
+const HARD_BLOCKING_RISK_REASON_CODES = new Set<FinalScoreRiskReasonCode>([
+  FinalScoreRiskReasonCode.UNRECONCILED_ABSENCE,
+])
 
 const pagination = reactive<TablePaginationConfig>({
   current: 1,
@@ -756,7 +768,8 @@ async function loadCandidates(): Promise<void> {
     const result = await pageExamScoreSummary({
       examId: selectedExamId.value,
       keyword: scoreFilterForm.keyword.trim() || undefined,
-      finalScoreStatus: resolveStatusTabFilter(statusTabKey.value),
+      finalScoreStatus:
+        statusTabKey.value === SCORE_STATUS_TAB_ALL ? undefined : statusTabKey.value,
       pageNum: pagination.current ?? 1,
       pageSize: pagination.pageSize ?? DEFAULT_LIST_PAGE_SIZE,
     })
@@ -839,20 +852,23 @@ function handleReset(): void {
   void loadCandidates()
 }
 
-function resolveStatusTabFilter(tabKey: Key): FinalScoreStatusCode | undefined {
-  if (tabKey === SCORE_STATUS_TAB_ALL) {
-    return undefined
-  }
-  return tabKey as FinalScoreStatusCode
-}
-
 function handleStatusTabChange(tabKey: Key): void {
-  statusTabKey.value = tabKey
+  switch (tabKey) {
+    case SCORE_STATUS_TAB_ALL:
+    case FinalScoreStatusCode.PENDING:
+    case FinalScoreStatusCode.CALCULATED:
+    case FinalScoreStatusCode.CONFIRMED:
+    case FinalScoreStatusCode.CORRECTED:
+    case FinalScoreStatusCode.PUBLISHED:
+    case FinalScoreStatusCode.WITHDRAWN:
+      statusTabKey.value = tabKey
+      break
+  }
   pagination.current = 1
   void loadCandidates()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void loadCandidates()
@@ -862,11 +878,17 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 function canConfirm(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
   const s = record.finalScoreStatus
-  return s === 'PENDING' || s === 'CALCULATED' || s === 'WITHDRAWN' || s === 'CORRECTED'
+  return (
+    s === FinalScoreStatusCode.PENDING ||
+    s === FinalScoreStatusCode.CALCULATED ||
+    s === FinalScoreStatusCode.WITHDRAWN ||
+    s === FinalScoreStatusCode.CORRECTED
+  )
 }
 function confirmButtonLabel(record: ExamScoreSummaryItemResponse): string {
   const s = record.finalScoreStatus
-  if (s === 'WITHDRAWN' || s === 'CORRECTED') return '重新确认'
+  if (s === FinalScoreStatusCode.WITHDRAWN || s === FinalScoreStatusCode.CORRECTED)
+    return '重新确认'
   return '确认'
 }
 function canPublish(record: ExamScoreSummaryItemResponse): boolean {
@@ -874,15 +896,21 @@ function canPublish(record: ExamScoreSummaryItemResponse): boolean {
   if (hasHardBlockingRisks.value || hasUnreviewedBlockingRisks.value) return false
   const s = record.finalScoreStatus
   // CONFIRMED / WITHDRAWN / CORRECTED 可以发布
-  return s === 'CONFIRMED' || s === 'WITHDRAWN' || s === 'CORRECTED'
+  return (
+    s === FinalScoreStatusCode.CONFIRMED ||
+    s === FinalScoreStatusCode.WITHDRAWN ||
+    s === FinalScoreStatusCode.CORRECTED
+  )
 }
 function publishButtonLabel(record: ExamScoreSummaryItemResponse): string {
-  return record.finalScoreStatus === 'WITHDRAWN' ? '重新发布' : '发布'
+  return record.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN ? '重新发布' : '发布'
 }
 
 const blockingRiskReasons = computed(() => {
   const reasons = effectiveRiskOverview.value?.riskReasons ?? []
-  return reasons.filter((reason) => reason.reasonCode !== 'SAFE_CONFIRMABLE' && reason.count > 0)
+  return reasons.filter(
+    (reason) => reason.reasonCode !== FinalScoreRiskReasonCode.SAFE_CONFIRMABLE && reason.count > 0,
+  )
 })
 
 const hardBlockingRiskReasons = computed(() => {
@@ -896,8 +924,8 @@ const hasHardBlockingRisks = computed(() => hardBlockingRiskReasons.value.length
 const hasUnreviewedBlockingRisks = computed(() => {
   return blockingRiskReasons.value.some(
     (reason) =>
-      !HARD_BLOCKING_RISK_REASON_CODES.has(reason.reasonCode)
-      && !reviewedRiskReasonCodes.value.has(reason.reasonCode),
+      !HARD_BLOCKING_RISK_REASON_CODES.has(reason.reasonCode) &&
+      !reviewedRiskReasonCodes.value.has(reason.reasonCode),
   )
 })
 
@@ -974,18 +1002,22 @@ function warnUnreviewedBlockingRisks(): boolean {
 const canBatchConfirmSafe = computed(() => {
   const overview = effectiveRiskOverview.value
   return Boolean(
-    overview
-    && overview.safeConfirmableCount > 0
-    && blockingRiskReasons.value.length === 0
-    && !hasHardBlockingRisks.value
-    && !hasDailyScoreConfig.value
-    && !batchConfirming.value,
+    overview &&
+    overview.safeConfirmableCount > 0 &&
+    blockingRiskReasons.value.length === 0 &&
+    !hasHardBlockingRisks.value &&
+    !hasDailyScoreConfig.value &&
+    !batchConfirming.value,
   )
 })
 
 async function handleBatchConfirmSafe(): Promise<void> {
   if (!selectedExamId.value || !effectiveRiskOverview.value) return
   if (warnUnreviewedBlockingRisks()) return
+  const canContinue = await ensureScoreConfirmPreconditions()
+  if (!canContinue) {
+    return
+  }
   batchConfirming.value = true
   try {
     const result = await batchConfirmSafeFinalScores({ examId: selectedExamId.value })
@@ -1052,12 +1084,12 @@ function goDelayedConfirmTasks(): void {
 /** 当前页候选状态分桶，仅用于页内偏差提示与下一份核对引导。 */
 const candidateBuckets = computed<Record<FinalScoreStatusCode, number>>(() => {
   const buckets: Record<FinalScoreStatusCode, number> = {
-    PENDING: 0,
-    CALCULATED: 0,
-    CONFIRMED: 0,
-    PUBLISHED: 0,
-    CORRECTED: 0,
-    WITHDRAWN: 0,
+    [FinalScoreStatusCode.PENDING]: 0,
+    [FinalScoreStatusCode.CALCULATED]: 0,
+    [FinalScoreStatusCode.CONFIRMED]: 0,
+    [FinalScoreStatusCode.PUBLISHED]: 0,
+    [FinalScoreStatusCode.CORRECTED]: 0,
+    [FinalScoreStatusCode.WITHDRAWN]: 0,
   }
   for (const c of candidates.value) {
     const s = c.finalScoreStatus
@@ -1125,7 +1157,7 @@ function handleFinalizeRowAction(key: string, record: ExamScoreSummaryItemRespon
 function canWithdraw(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
   const s = record.finalScoreStatus
-  return s === 'PUBLISHED' || s === 'CORRECTED'
+  return s === FinalScoreStatusCode.PUBLISHED || s === FinalScoreStatusCode.CORRECTED
 }
 
 // ─── 成绩明细 Drawer ─────────────────────────────
@@ -1140,7 +1172,7 @@ const paperQuestions = computed<ExamQuestionScoreResponse[]>(
 )
 
 const paperItemColumns: ColumnType<ExamQuestionScoreResponse>[] = [
-  { title: '题号', key: 'questionNo', width: 80 },
+  { title: '题号', key: 'questionNo', width: 80, fixed: 'left' },
   { title: '题型', dataIndex: 'questionType', key: 'questionType', width: 100 },
   { title: '满分', dataIndex: 'fullScore', key: 'fullScore', width: 80 },
   { title: '题目得分', key: 'teacherReviewScore', width: 100 },
@@ -1150,6 +1182,7 @@ const paperItemColumns: ColumnType<ExamQuestionScoreResponse>[] = [
 // ─── B-6 操作记录（审计可追溯） ─────────────────────────────
 const auditLogs = ref<OperationLogResponse[]>([])
 const auditLoading = ref(false)
+const auditPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 const TRACE_TAG_TONE: BadgeTone = 'gray'
 
 const SCORE_AUDIT_TONE: Record<OperationTypeCode, BadgeTone> = {
@@ -1201,34 +1234,37 @@ function scoreAuditTone(log: OperationLogResponse): BadgeTone {
 async function loadPaperAuditLogs(): Promise<void> {
   if (!selectedExamId.value || !detailCandidate.value?.paperInstanceId) {
     auditLogs.value = []
+    auditPagination.total = 0
     return
   }
   auditLoading.value = true
   const examId = selectedExamId.value
   const paperInstanceId = detailCandidate.value.paperInstanceId
   try {
-    const logs = await readAllPages(
-      (pageNum) =>
-        listOperationLogs({
-          examId,
-          targetType: AuditTargetTypeCode.EXAM_FINAL_SCORE,
-          targetId: paperInstanceId,
-          pageNum,
-          pageSize: SCORE_AUDIT_LOG_PAGE_SIZE,
-        }),
-      '操作记录加载失败，请刷新后重试',
-    )
-    auditLogs.value = logs.sort((a, b) => {
-      const ta = a.createTime ? dayjs(a.createTime).valueOf() : 0
-      const tb = b.createTime ? dayjs(b.createTime).valueOf() : 0
-      return tb - ta
+    const page = await listOperationLogs({
+      examId,
+      targetType: AuditTargetTypeCode.EXAM_FINAL_SCORE,
+      targetId: paperInstanceId,
+      pageNum: auditPagination.pageNum,
+      pageSize: auditPagination.pageSize,
     })
+    auditLogs.value = page.list
+    auditPagination.pageNum = page.pageNum
+    auditPagination.pageSize = page.pageSize
+    auditPagination.total = page.total
   } catch (error) {
     message.warning(getUserErrorMessage(error, '操作记录加载失败'))
     auditLogs.value = []
+    auditPagination.total = 0
   } finally {
     auditLoading.value = false
   }
+}
+
+function handleAuditPageChange(pageNum: number, pageSize: number): void {
+  auditPagination.pageNum = pageNum
+  auditPagination.pageSize = pageSize
+  void loadPaperAuditLogs()
 }
 
 /** 把审计日志聚合到一个时间分组，喂给 UiActivityTimeline */
@@ -1391,6 +1427,8 @@ async function openDetailDrawer(record: ExamScoreSummaryItemResponse): Promise<v
   detailLoading.value = true
   paperScore.value = null
   auditLogs.value = []
+  auditPagination.pageNum = 1
+  auditPagination.total = 0
   historicalScores.value = []
   try {
     paperScore.value = await getPaperScore({
@@ -1443,9 +1481,10 @@ function resolveConfirmExamScorePreview(score: ExamPaperScoreResponse): number {
   }
   const questions = score.questions ?? []
   if (
-    questions.length === 0
-    || questions.some(
-      (question) => question.gradeStatus !== 'CONFIRMED' || question.teacherReviewScore == null,
+    questions.length === 0 ||
+    questions.some(
+      (question) =>
+        question.gradeStatus !== GradeStatusCode.CONFIRMED || question.teacherReviewScore == null,
     )
   ) {
     return 0
@@ -1524,16 +1563,18 @@ function deriveNextStepSuggestion(): void {
     return
   }
   // 当前页找下一份未确认
-  const next
-    = candidates.value.find(
-      (c) => c.finalScoreStatus === 'CALCULATED' || c.finalScoreStatus === 'PENDING',
+  const next =
+    candidates.value.find(
+      (c) =>
+        c.finalScoreStatus === FinalScoreStatusCode.CALCULATED ||
+        c.finalScoreStatus === FinalScoreStatusCode.PENDING,
     ) ?? null
   if (next) {
     nextStep.value = {
       visible: true,
       kind: 'continue-next',
       title: '继续核对下一份',
-      description: `当前页还有 ${b.CALCULATED + b.PENDING} 名考生待确认。下一份待确认：${next.paperDisplay.primaryText}。`,
+      description: `当前页还有 ${b[FinalScoreStatusCode.CALCULATED] + b[FinalScoreStatusCode.PENDING]} 名考生待确认。下一份待确认：${next.paperDisplay.primaryText}。`,
       nextCandidate: next,
     }
     return
@@ -1757,13 +1798,6 @@ watch(
     color: var(--dp-text-primary);
   }
 
-  &__table {
-    :deep(.ant-table-thead > tr > th) {
-      background: var(--dp-surface-soft);
-      font-weight: 600;
-    }
-  }
-
   &__detail-summary {
     margin-bottom: 16px;
   }
@@ -1840,6 +1874,12 @@ watch(
 
   &__history-chart {
     margin-top: 8px;
+  }
+
+  &__audit-pagination {
+    margin-top: 12px;
+    display: flex;
+    justify-content: flex-end;
   }
 
   &__next-step {

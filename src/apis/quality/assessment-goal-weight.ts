@@ -2,6 +2,7 @@
  * 考核环节-课程目标权重 API。
  * 后端对象：AssessmentGoalWeightController /api/quality/assessment-goal-weights。
  */
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 const WEIGHT = '/api/quality/assessment-goal-weights'
@@ -21,6 +22,12 @@ export interface AssessmentGoalWeightVO {
   updateTime?: string
 }
 
+export interface AssessmentGoalWeightQueryRequest extends QueryDto {
+  qualityCourseId?: string
+  assessmentItemId?: string
+  courseGoalId?: string
+}
+
 export interface AssessmentGoalWeightSaveRequest {
   id?: string
   assessmentItemId: string
@@ -30,10 +37,8 @@ export interface AssessmentGoalWeightSaveRequest {
 }
 
 export const assessmentGoalWeightApi = {
-  listByItem: (assessmentItemId: string) =>
-    http.post<AssessmentGoalWeightVO[]>(`${WEIGHT}/list-by-item`, { id: assessmentItemId }),
-  listByCourseGoal: (courseGoalId: string) =>
-    http.post<AssessmentGoalWeightVO[]>(`${WEIGHT}/list-by-course-goal`, { id: courseGoalId }),
+  page: (data: AssessmentGoalWeightQueryRequest) =>
+    http.post<PageResult<AssessmentGoalWeightVO>>(`${WEIGHT}/page`, data),
   detail: (id: string) => http.post<AssessmentGoalWeightVO>(`${WEIGHT}/detail`, { id }),
   create: (data: AssessmentGoalWeightSaveRequest) => http.post<string>(`${WEIGHT}/create`, data),
   update: (data: AssessmentGoalWeightSaveRequest) => http.post<void>(`${WEIGHT}/update`, data),

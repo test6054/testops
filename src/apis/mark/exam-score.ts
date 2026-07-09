@@ -1,11 +1,18 @@
 import type { BindingStatusCode } from './exam-binding'
 import type { CandidateStatusCode } from './exam-scope'
 import type { FinalScoreStatusCode } from './final-score-status'
+import type { PageResult, QueryDto } from '@/types'
 /**
  * 阅卷考试成绩汇总与最终成绩 API - 对接 /api/mark/exams/score-* 与 final-scores 接口。
  */
-import type { PageResult, QueryDto } from '@/types'
+import type { FinalScoreRiskReasonCode } from '@/types/enums/final-score-risk-reason-enum'
 import http from '@/config/axios'
+
+export {
+  ALL_FINAL_SCORE_RISK_REASON_CODES,
+  FinalScoreRiskReasonCode,
+  FinalScoreRiskReasonDescription,
+} from '@/types/enums/final-score-risk-reason-enum'
 
 /** 答卷展示信息 - 对应 PaperInstanceDisplayVO */
 export interface PaperInstanceDisplayVO {
@@ -57,16 +64,6 @@ export interface ExamScoreSummaryItemResponse {
   confirmedUserId?: string
   paperDisplay: PaperInstanceDisplayVO
 }
-
-/** 最终成绩风险原因编码 - 对应后端全场风险概览输出 */
-export type FinalScoreRiskReasonCode
-   = | 'ABNORMAL_PAPER'
-     | 'UNRECONCILED_ABSENCE'
-     | 'MISSING_QUESTION_GRADE'
-     | 'UNCONFIRMED_QUESTION_GRADE'
-     | 'BLOCKING_INCIDENT'
-     | 'PENDING_DUPLICATE_IMAGE'
-     | 'SAFE_CONFIRMABLE'
 
 /** 最终成绩全场风险概览请求 - 对应 FinalScoreRiskOverviewRequest */
 export interface FinalScoreRiskOverviewRequest {
@@ -207,14 +204,20 @@ export interface ExamScoreDistributionResponse {
 export function pageExamScoreSummary(
   request: ExamScoreSummaryQueryRequest,
 ): Promise<PageResult<ExamScoreSummaryItemResponse>> {
-  return http.post<PageResult<ExamScoreSummaryItemResponse>>('/api/mark/exams/score-summary', request)
+  return http.post<PageResult<ExamScoreSummaryItemResponse>>(
+    '/api/mark/exams/score-summary',
+    request,
+  )
 }
 
 /** 查询最终成绩全场风险概览，前端不得由分页列表自行推断全场状态。 */
 export function getFinalScoreRiskOverview(
   request: FinalScoreRiskOverviewRequest,
 ): Promise<FinalScoreRiskOverviewResponse> {
-  return http.post<FinalScoreRiskOverviewResponse>('/api/mark/exams/final-scores/risk-overview', request)
+  return http.post<FinalScoreRiskOverviewResponse>(
+    '/api/mark/exams/final-scores/risk-overview',
+    request,
+  )
 }
 
 /** 保存最终成绩风险复核状态，并返回最新风险概览。 */
@@ -241,7 +244,10 @@ export function batchConfirmSafeFinalScores(
 export function batchPublishFinalScores(
   request: FinalScoreBatchPublishRequest,
 ): Promise<FinalScoreBatchPublishResponse> {
-  return http.post<FinalScoreBatchPublishResponse>('/api/mark/exams/final-scores/batch-publish', request)
+  return http.post<FinalScoreBatchPublishResponse>(
+    '/api/mark/exams/final-scores/batch-publish',
+    request,
+  )
 }
 
 /** 最终成绩 ID；后端 ResultInfo<Long>，客户端按 string 语义传递 */

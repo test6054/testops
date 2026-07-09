@@ -1,6 +1,6 @@
 import type { Ref } from 'vue'
-import type { PageResult, QueryDto } from '@/types'
 import { ref } from 'vue'
+import type { PageResult, QueryDto } from '@/types'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
 
@@ -89,6 +89,7 @@ export function useQueryTable<T, F extends Record<string, unknown> = Record<stri
     pageTotal,
     filters,
     loadPage,
+    reload: loadPage,
     search,
     handlePageChange,
     resetFilters,

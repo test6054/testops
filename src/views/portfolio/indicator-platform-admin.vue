@@ -9,12 +9,6 @@ import type {
   PortfolioIndicatorSourceMappingVO,
   PortfolioIndustryPackVO,
 } from '@/apis/portfolio/indicator-types'
-import type { PortfolioIndustryPackDefForm } from '@/utils/indicator-industry-pack-def'
-import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
-import { portfolioIndicatorPlatformApi } from '@/apis/portfolio/indicator'
 import {
   PF_INDICATOR_DATA_SOURCE_CHANNEL_OPTIONS,
   PF_INDICATOR_STATUS_OPTIONS,
@@ -26,6 +20,22 @@ import {
   PfScoreRuleTypeCode,
   PfScoreRuleTypeDescription,
 } from '@/apis/portfolio/indicator-types'
+import type { PortfolioIndustryPackDefForm } from '@/utils/indicator-industry-pack-def'
+import {
+  buildNewIndustryPackDefJson,
+  mergeIndustryPackDefJson,
+  parseIndustryPackDefJson,
+} from '@/utils/indicator-industry-pack-def'
+import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
+import {
+  defaultTemplateParams,
+  parseTemplateParamsJson,
+  serializeTemplateParams,
+} from '@/utils/indicator-template-params'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioIndicatorPlatformApi } from '@/apis/portfolio/indicator'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/PortfolioIndicatorTemplateParamsForm.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -39,16 +49,6 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { PortfolioIndicatorDefinitionTreeNodeTypeCode } from '@/types/enums/portfolio-indicator-definition-tree-node-type-enum'
 import { showUserError } from '@/utils/error-handler'
-import {
-  buildNewIndustryPackDefJson,
-  mergeIndustryPackDefJson,
-  parseIndustryPackDefJson,
-} from '@/utils/indicator-industry-pack-def'
-import {
-  defaultTemplateParams,
-  parseTemplateParamsJson,
-  serializeTemplateParams,
-} from '@/utils/indicator-template-params'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 function dataSourceLabel(value: PfIndicatorDataSourceChannelCode): string {
@@ -69,6 +69,7 @@ const saving = ref(false)
 const activeTab = ref('tree')
 const summary = ref<PortfolioIndicatorPlatformSummaryVO | null>(null)
 const rows = ref<PortfolioIndicatorDefinitionVO[]>([])
+const definitionTotal = ref(0)
 const treeData = ref<PortfolioIndicatorDefinitionTreeNodeVO[]>([])
 const templates = ref<PortfolioIndicatorRuleTemplateVO[]>([])
 const templateTotal = ref(0)
@@ -222,6 +223,7 @@ async function loadPage() {
   try {
     const page = await portfolioIndicatorPlatformApi.pageDefinition(query)
     rows.value = page.list
+    definitionTotal.value = page.total
   } catch (error) {
     showUserError(error)
   } finally {
@@ -251,6 +253,18 @@ async function loadTemplates() {
   } finally {
     loading.value = false
   }
+}
+
+function handleDefinitionPageChange(event: { current: number; pageSize: number }) {
+  query.pageNum = event.current
+  query.pageSize = event.pageSize
+  void loadPage()
+}
+
+function handleTemplatePageChange(event: { current: number; pageSize: number }) {
+  templateQuery.pageNum = event.current
+  templateQuery.pageSize = event.pageSize
+  void loadTemplates()
 }
 
 async function loadIndustryPacks() {
@@ -407,7 +421,8 @@ function openTemplateEdit(record?: PortfolioIndicatorRuleTemplateVO) {
     templateForm.templateCode = record.templateCode
     templateForm.templateName = record.templateName
     templateForm.ruleType = record.ruleType
-    templateParams.value = parseTemplateParamsJson(record.paramsJson) ?? defaultTemplateParams(record.ruleType)
+    templateParams.value =
+      parseTemplateParamsJson(record.paramsJson) ?? defaultTemplateParams(record.ruleType)
     templateForm.description = ''
     templateForm.status = record.status
   } else {
@@ -583,7 +598,9 @@ onMounted(async () => {
                 {{ indicatorCode }} ·
                 {{ defaultDataSource ? dataSourceLabel(defaultDataSource) : '—' }} ·
                 {{ status ? indicatorStatusLabel(status) : '—' }}
-                <a v-if="indicatorCode" class="detail-link" @click.stop="openDetail(indicatorCode)">详情</a>
+                <a v-if="indicatorCode" class="detail-link" @click.stop="openDetail(indicatorCode)"
+                  >详情</a
+                >
               </span>
             </template>
           </a-tree>
@@ -608,10 +625,15 @@ onMounted(async () => {
           </div>
           <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无平台指标" />
           <UiDataTable
+            v-model:current="query.pageNum"
+            v-model:page-size="query.pageSize"
+            pagination-mode="server"
             :columns="definitionColumns"
             :data-source="rows"
             :loading="loading"
+            :total="definitionTotal"
             row-key="id"
+            @page-change="handleDefinitionPageChange"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'defaultDataSource'">
@@ -661,10 +683,15 @@ onMounted(async () => {
             <UiButton variant="outline" @click="openTemplateEdit()"> 新建模板 </UiButton>
           </div>
           <UiDataTable
+            v-model:current="templateQuery.pageNum"
+            v-model:page-size="templateQuery.pageSize"
+            pagination-mode="server"
             :columns="templateColumns"
             :data-source="templates"
             :loading="loading"
+            :total="templateTotal"
             row-key="id"
+            @page-change="handleTemplatePageChange"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'ruleType'">
@@ -684,13 +711,6 @@ onMounted(async () => {
               </template>
             </template>
           </UiDataTable>
-          <a-pagination
-            v-model:current="templateQuery.pageNum"
-            :total="templateTotal"
-            :page-size="templateQuery.pageSize"
-            style="margin-top: 12px"
-            @change="loadTemplates"
-          />
         </a-tab-pane>
         <a-tab-pane key="pack" tab="行业包">
           <div class="toolbar">

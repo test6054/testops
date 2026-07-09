@@ -88,7 +88,7 @@
       <UiEmpty v-if="!reconcileVO && !recordLoading" description="暂无核对数据，请先执行出勤核对" />
 
       <WorkbenchSurfaceCard
-        v-if="reconcileVO && absentStudents.length"
+        v-if="reconcileVO && reconcileVO.absentCount > 0"
         flush
         class="absence-page__section"
       >
@@ -96,15 +96,17 @@
           <h3 class="absence-page__section-title">核对检出的缺考学生</h3>
         </template>
         <UiDataTable
-          pagination-mode="none"
-          class="student-detail-table__data-table"
+          pagination-mode="server"
           :columns="absentColumns"
           :data-source="absentStudents"
-          :show-pagination="false"
+          :loading="absentStudentLoading"
+          v-model:current="absentStudentPagination.pageNum"
+          v-model:page-size="absentStudentPagination.pageSize"
           flat
-          :total="absentStudents.length"
+          :total="absentStudentPagination.total"
           row-key="studentUserId"
           size="middle"
+          @page-change="handleAbsentStudentPageChange"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'studentNo'">
@@ -145,7 +147,7 @@
           </div>
         </template>
         <UiDataTable
-          class="student-detail-table__data-table"
+          pagination-mode="server"
           :columns="recordColumns"
           :data-source="records"
           :loading="recordLoading"
@@ -337,14 +339,6 @@ import type {
   AttendanceReconcileResponse,
   ScorePolicyCode,
 } from '@/apis/mark/absence'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   ABSENCE_REASON_OPTIONS,
   ABSENCE_REASON_TONE,
@@ -355,11 +349,22 @@ import {
   AbsenceStatusDescription,
   confirmAbsence,
   countPendingMakeupAbsences,
-  listAbsenceRecords,
+  getAbsenceExamStats,
+  pageAbsenceRecords,
+  pageReconcileAbsentStudents,
   reconcileAttendance,
   revokeAbsence,
   SCORE_POLICY_OPTIONS,
 } from '@/apis/mark/absence'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { SemesterOptions } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { deriveMakeupExam, getExamDetail } from '@/apis/mark/exam'
 import { getScorePanel } from '@/apis/mark/exam-progress'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
@@ -382,7 +387,6 @@ import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
 import { buildGaugeChartOption } from '@/utils/mark-echarts-options'
@@ -436,20 +440,12 @@ const recordPagination = reactive({
   total: 0,
 })
 
-const absentStudents = computed<AbsentStudentRow[]>(() => {
-  if (!reconcileVO.value) return []
-  const confirmedIds = new Set(
-    records.value
-      .filter(
-        (r) =>
-          r.absenceStatus === AbsenceStatusCode.CONFIRMED
-          || r.absenceStatus === AbsenceStatusCode.PENDING,
-      )
-      .map((r) => r.studentUserId),
-  )
-  return reconcileVO.value.absentStudents
-    .filter((student) => !confirmedIds.has(student.studentUserId))
-    .map(toAbsentStudentRow)
+const absentStudents = ref<AbsentStudentRow[]>([])
+const absentStudentLoading = ref(false)
+const absentStudentPagination = reactive({
+  pageNum: 1,
+  pageSize: DEFAULT_LIST_PAGE_SIZE,
+  total: 0,
 })
 
 const attendancePercent = computed(() => {
@@ -460,8 +456,8 @@ const attendancePercent = computed(() => {
 
 /** 出勤率环色：≥90 充足绿 / ≥70 一般蓝 / 偏低橙 */
 const attendanceRingColor = computed(() => {
-  const tone: BadgeTone
-    = attendancePercent.value >= 90 ? 'green' : attendancePercent.value >= 70 ? 'blue' : 'orange'
+  const tone: BadgeTone =
+    attendancePercent.value >= 90 ? 'green' : attendancePercent.value >= 70 ? 'blue' : 'orange'
   return toneToColor(tone)
 })
 
@@ -520,20 +516,20 @@ const absenceListMetrics = computed((): SignalMetric[] => {
 })
 
 const absentColumns: ColumnType<AbsentStudentRow>[] = [
-  { title: '学号', key: 'studentNo', dataIndex: 'studentNo', width: 160 },
+  { title: '学号', key: 'studentNo', dataIndex: 'studentNo', width: 160, fixed: 'left' },
   { title: '姓名', key: 'studentName', dataIndex: 'studentName', width: 140 },
   { title: '班级', key: 'className', dataIndex: 'className', width: 180 },
-  { title: '操作', key: 'actions', width: 100, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 100 },
 ]
 
 const recordColumns: ColumnType<AbsenceRecordResponse>[] = [
-  { title: '学号', key: 'studentNo', width: 120 },
+  { title: '学号', key: 'studentNo', width: 120, fixed: 'left' },
   { title: '姓名', key: 'studentName', dataIndex: 'studentName', width: 96 },
   { title: '缺考类型', key: 'absenceReason', width: 100 },
   { title: '已确认', key: 'confirmState', width: 96 },
   { title: '确认人', key: 'confirmedBy', width: 120 },
   { title: '可补考', key: 'makeupEligible', width: 88 },
-  { title: '操作', key: 'actions', width: 120, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 120 },
 ]
 
 function toAbsentStudentRow(student: AbsentStudentSnapshotResponse): AbsentStudentRow {
@@ -628,23 +624,53 @@ async function loadPendingMakeupTotal(): Promise<void> {
   }
 }
 
-async function loadPendingAbsenceCount(): Promise<void> {
+async function loadAbsenceStats(): Promise<void> {
   if (!selectedExamId.value) {
     pendingAbsenceCount.value = 0
+    confirmedAbsenceCount.value = 0
     return
   }
   try {
-    const result = await listAbsenceRecords({
-      examId: selectedExamId.value,
-      absenceStatus: AbsenceStatusCode.PENDING,
-      pageNum: 1,
-      pageSize: 1,
-    })
-    pendingAbsenceCount.value = result.total
+    const stats = await getAbsenceExamStats({ examId: selectedExamId.value })
+    pendingAbsenceCount.value = stats.pendingAbsenceCount
+    confirmedAbsenceCount.value = stats.confirmedAbsenceCount
   } catch (error) {
     pendingAbsenceCount.value = 0
-    showUserError(error, '待确认缺考记录查询失败')
+    confirmedAbsenceCount.value = 0
+    showUserError(error, '缺考统计加载失败')
   }
+}
+
+async function loadAbsentStudents(): Promise<void> {
+  if (!selectedExamId.value || !reconcileVO.value || reconcileVO.value.absentCount <= 0) {
+    absentStudents.value = []
+    absentStudentPagination.total = 0
+    return
+  }
+  absentStudentLoading.value = true
+  try {
+    const page = await pageReconcileAbsentStudents({
+      examId: selectedExamId.value,
+      pageNum: absentStudentPagination.pageNum,
+      pageSize: absentStudentPagination.pageSize,
+    })
+    absentStudents.value = page.list.map(toAbsentStudentRow)
+    absentStudentPagination.pageNum = page.pageNum
+    absentStudentPagination.pageSize = page.pageSize
+    absentStudentPagination.total = page.total
+  } catch (error) {
+    absentStudents.value = []
+    absentStudentPagination.total = 0
+    showUserError(error, '核对缺考学生加载失败')
+  } finally {
+    absentStudentLoading.value = false
+  }
+}
+
+function handleAbsentStudentPageChange(page: { current: number; pageSize: number }): void {
+  absentStudentPagination.pageNum = page.current
+  absentStudentPagination.pageSize = page.pageSize
+  void loadAbsentStudents()
 }
 
 async function loadUnreconciledAbsenceCount(): Promise<void> {
@@ -671,25 +697,6 @@ function goScorePublish(): void {
   })
 }
 
-async function loadAbsenceKpiCounts(): Promise<void> {
-  if (!selectedExamId.value) {
-    confirmedAbsenceCount.value = 0
-    return
-  }
-  try {
-    const confirmedResult = await listAbsenceRecords({
-      examId: selectedExamId.value,
-      absenceStatus: AbsenceStatusCode.CONFIRMED,
-      pageNum: 1,
-      pageSize: 1,
-    })
-    confirmedAbsenceCount.value = confirmedResult.total
-  } catch (error) {
-    confirmedAbsenceCount.value = 0
-    showUserError(error, '缺考统计加载失败')
-  }
-}
-
 async function loadRecords(): Promise<void> {
   if (!selectedExamId.value) {
     records.value = []
@@ -698,7 +705,7 @@ async function loadRecords(): Promise<void> {
   }
   recordLoading.value = true
   try {
-    const page = await listAbsenceRecords({
+    const page = await pageAbsenceRecords({
       examId: selectedExamId.value,
       absenceStatus: recordFilterForm.status,
       pageNum: recordPagination.pageNum,
@@ -710,9 +717,9 @@ async function loadRecords(): Promise<void> {
     recordPagination.total = page.total
     await Promise.all([
       loadPendingMakeupTotal(),
-      loadPendingAbsenceCount(),
-      loadAbsenceKpiCounts(),
+      loadAbsenceStats(),
       loadUnreconciledAbsenceCount(),
+      loadAbsentStudents(),
     ])
   } catch (error) {
     showUserError(error, '缺考记录加载失败')
@@ -721,7 +728,7 @@ async function loadRecords(): Promise<void> {
   }
 }
 
-function handleRecordPageChange(page: { current: number, pageSize: number }): void {
+function handleRecordPageChange(page: { current: number; pageSize: number }): void {
   recordPagination.pageNum = page.current
   recordPagination.pageSize = page.pageSize
   void loadRecords()
@@ -735,6 +742,7 @@ async function handleReconcile(createPending: boolean): Promise<void> {
       examId: selectedExamId.value,
       createPendingAbsence: createPending,
     })
+    absentStudentPagination.pageNum = 1
     if (createPending && reconcileVO.value.createdPendingCount > 0) {
       message.success(`已为 ${reconcileVO.value.createdPendingCount} 名缺考学生创建待确认记录`)
     }
@@ -807,7 +815,7 @@ async function handleConfirm(): Promise<void> {
 const revokeModalOpen = ref(false)
 const revoking = ref(false)
 const revokeTargetName = ref('')
-const revokeForm = reactive<{ studentUserId: string, revokeReason: string }>({
+const revokeForm = reactive<{ studentUserId: string; revokeReason: string }>({
   studentUserId: '',
   revokeReason: '',
 })
@@ -865,13 +873,13 @@ const deriveForm = reactive<{
 const deriveValid = computed(() => {
   const [startTime, endTime] = deriveForm.examWindow ?? []
   return Boolean(
-    deriveForm.academicYear.trim()
-    && deriveForm.semester
-    && deriveForm.examName.trim()
-    && deriveForm.examNo.trim()
-    && startTime
-    && endTime
-    && startTime < endTime,
+    deriveForm.academicYear.trim() &&
+    deriveForm.semester &&
+    deriveForm.examName.trim() &&
+    deriveForm.examNo.trim() &&
+    startTime &&
+    endTime &&
+    startTime < endTime,
   )
 })
 

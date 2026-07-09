@@ -1,6 +1,7 @@
 import type { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import type { ExcelImportResult, PlatformJsonObject } from '@/apis/platform/types'
 import { getExcelImportBatch, submitExcelImport } from '@/apis/platform/excel-import'
+import { ScoreBatchStatusCode } from '@/apis/quality/types'
 import { showFormValidationMessage } from '@/utils/error-handler'
 
 const ASYNC_POLL_INTERVAL_MS = 2000
@@ -37,10 +38,14 @@ export async function pollPlatformExcelImportBatch(
   for (let attempt = 0; attempt < ASYNC_POLL_MAX_ATTEMPTS; attempt += 1) {
     const batch = await getExcelImportBatch({ sceneKey, batchId })
     const status = batch.asyncStatus ?? batch.batchStatus
-    if (status === 'PREVIEW_READY' || status === 'VALIDATED' || status === 'CONFIRMED') {
+    if (
+      status === ScoreBatchStatusCode.PREVIEW_READY ||
+      status === ScoreBatchStatusCode.VALIDATED ||
+      status === ScoreBatchStatusCode.CONFIRMED
+    ) {
       return batch
     }
-    if (status === 'FAILED' || status === 'CANCELLED') {
+    if (status === ScoreBatchStatusCode.FAILED || status === ScoreBatchStatusCode.CANCELLED) {
       return batch
     }
     await sleep(ASYNC_POLL_INTERVAL_MS)

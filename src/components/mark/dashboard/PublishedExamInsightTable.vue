@@ -11,9 +11,11 @@
     />
     <UiDataTable
       v-else
+      pagination-mode="none"
       :columns="columns"
       :data-source="insights"
-      :pagination="false"
+      :show-pagination="false"
+      :sticky-header="false"
       row-key="examId"
       size="small"
       flat
@@ -72,7 +74,7 @@ const emit = defineEmits<{
 }>()
 
 const columns: TableColumnsType<MarkTeacherDashboardPublishedExamInsightItemVO> = [
-  { title: '考试', dataIndex: 'examName', ellipsis: true, width: 160 },
+  { title: '考试', dataIndex: 'examName', ellipsis: true, width: 160, fixed: 'left' },
   { title: '学年', key: 'academicYear', width: 96 },
   { title: '学期', key: 'semester', width: 88 },
   { title: '参考人数', dataIndex: 'participantCount', width: 80 },
@@ -80,7 +82,7 @@ const columns: TableColumnsType<MarkTeacherDashboardPublishedExamInsightItemVO> 
   { title: '分数段', key: 'scoreRange', width: 96 },
   { title: '及格线', key: 'passLine', width: 88 },
   { title: '及格率', key: 'passRate', width: 72 },
-  { title: '操作', key: 'actions', width: 72, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 72 },
 ]
 
 function formatPassRate(value?: number): string {

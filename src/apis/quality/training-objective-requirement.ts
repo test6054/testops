@@ -2,6 +2,7 @@
  * 培养目标-毕业要求权重映射 API。
  * 后端对象：TrainingObjectiveRequirementController /api/quality/training-objective-requirements。
  */
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 const MAPPING = '/api/quality/training-objective-requirements'
@@ -18,6 +19,12 @@ export interface TrainingObjectiveRequirementVO {
   updateTime?: string
 }
 
+export interface TrainingObjectiveRequirementQueryRequest extends QueryDto {
+  trainingPlanId?: string
+  trainingObjectiveId?: string
+  graduationRequirementId?: string
+}
+
 export interface TrainingObjectiveRequirementSaveRequest {
   id?: string
   trainingObjectiveId: string
@@ -28,12 +35,8 @@ export interface TrainingObjectiveRequirementSaveRequest {
 }
 
 export const trainingObjectiveRequirementApi = {
-  listByObjective: (trainingObjectiveId: string) =>
-    http.post<TrainingObjectiveRequirementVO[]>(`${MAPPING}/list-by-objective`, {
-      id: trainingObjectiveId,
-    }),
-  listByPlan: (trainingPlanId: string) =>
-    http.post<TrainingObjectiveRequirementVO[]>(`${MAPPING}/list-by-plan`, { id: trainingPlanId }),
+  page: (data: TrainingObjectiveRequirementQueryRequest) =>
+    http.post<PageResult<TrainingObjectiveRequirementVO>>(`${MAPPING}/page`, data),
   detail: (id: string) =>
     http.post<TrainingObjectiveRequirementVO>(`${MAPPING}/detail`, { id }),
   create: (data: TrainingObjectiveRequirementSaveRequest) =>

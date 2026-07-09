@@ -1,3 +1,5 @@
+import type { DuplicateResolutionStatusCode } from './duplicate-resolution-status'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 /**
  * 影像账本 API - 对接 edu-mark 模块 ImageLedgerController
  *
@@ -10,8 +12,7 @@
  * - 租户与操作人从 UserHold 注入，前端只传业务字段
  * - 后端 Long ID 统一用 string 表达到前端
  */
-import type { DuplicateResolutionStatusCode } from './duplicate-resolution-status'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 import { LedgerStatusCode } from '@/types/enums/ledger-status-enum'
 
@@ -108,13 +109,17 @@ export interface ExamPaperDuplicateResolutionVO {
 }
 
 /**
- * 查询待处置的重复影像记录
+ * 分页查询待处置的重复影像记录
  * POST /api/mark/exams/binding/duplicate-page
  */
-export function listPendingDuplicates(
-  request: ImageLedgerDetailRequest,
-): Promise<ExamPaperDuplicateResolutionVO[]> {
-  return http.post<ExamPaperDuplicateResolutionVO[]>(
+export interface DuplicateResolutionPageRequest extends QueryDto {
+  examId: string
+}
+
+export function pagePendingDuplicates(
+  request: DuplicateResolutionPageRequest,
+): Promise<PageResult<ExamPaperDuplicateResolutionVO>> {
+  return http.post<PageResult<ExamPaperDuplicateResolutionVO>>(
     '/api/mark/exams/binding/duplicate-page',
     request,
   )

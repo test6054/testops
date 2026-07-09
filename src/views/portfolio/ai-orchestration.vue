@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PortfolioAiAnalysisDetailVO, PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
+import { PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -14,8 +15,9 @@ import {
 } from '@/apis/portfolio/enums'
 import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
-import { PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE } from '@/apis/portfolio/types'
+import { AiTaskStatusCode } from '@/apis/quality/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
+import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -98,8 +100,8 @@ function isAnalysisType(type: PortfolioAiAnalysisTypeCode) {
 const supportedOrchestrationAnalysis = computed(() => {
   const type = analysisDetail.value?.analysisType
   return (
-    type === PortfolioAiAnalysisTypeCode.MATERIAL_QA
-    || type === PortfolioAiAnalysisTypeCode.POLICY_MATCH
+    type === PortfolioAiAnalysisTypeCode.MATERIAL_QA ||
+    type === PortfolioAiAnalysisTypeCode.POLICY_MATCH
   )
 })
 
@@ -116,7 +118,7 @@ async function loadTeacherProgram() {
     selectedTeacherProgramId.value = detail.programId
     const page = await portfolioTeacherApi.page({
       pageNum: 1,
-      pageSize: 100,
+      pageSize: QUALITY_SELECTOR_PAGE_SIZE,
     })
     teacherOptions.value = page.list
   } catch (error) {
@@ -192,7 +194,7 @@ async function pollAnalysis(taskId: string) {
         applyOrchestrationAnalysisDetail(detail)
         return
       }
-      if (task.status === 'FAILED' || task.status === 'CANCELLED') {
+      if (task.status === AiTaskStatusCode.FAILED || task.status === AiTaskStatusCode.CANCELLED) {
         showUserError(null, 'AI 任务失败，请稍后重试或重新提交')
         return
       }

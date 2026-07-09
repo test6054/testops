@@ -22,3 +22,4 @@ export const AuditIssueStatusDescription: Record<AuditIssueStatusCode, string> =
   [AuditIssueStatusCode.VERIFIED]: '已复核',
   [AuditIssueStatusCode.CLOSED]: '已闭环',
 }
+

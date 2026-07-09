@@ -1,4 +1,5 @@
 import type { ExamDetailResponse } from '@/apis/mark/exam'
+import { getExamDetail } from '@/apis/mark/exam'
 import type {
   AllocationPolicyResponse,
   AllocationUnitCode,
@@ -11,13 +12,6 @@ import type {
   TrialSessionResponse,
   TrialSessionWorkbenchSummaryResponse,
 } from '@/apis/mark/marking-organization'
-import type { FormalSessionStatusCode } from '@/types/enums/formal-session-status-enum'
-import type { TrialSessionStatusCode } from '@/types/enums/trial-session-status-enum'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { getExamDetail } from '@/apis/mark/exam'
 import {
   getFormalSessionWorkbenchSummary,
   getOrganizationById,
@@ -28,6 +22,14 @@ import {
   pageTrialSessions,
   requireMarkingOrganizationId,
 } from '@/apis/mark/marking-organization'
+import type { FormalSessionStatusCode } from '@/types/enums/formal-session-status-enum'
+import { ALL_FORMAL_SESSION_STATUS_CODES } from '@/types/enums/formal-session-status-enum'
+import type { TrialSessionStatusCode } from '@/types/enums/trial-session-status-enum'
+import { ALL_TRIAL_SESSION_STATUS_CODES } from '@/types/enums/trial-session-status-enum'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useMarkingOrgPermission } from '@/composables/useMarkingOrgPermission'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { MarkingSessionPhaseCode } from '@/types/enums/marking-session-phase-enum'
@@ -98,13 +100,13 @@ export function useMarkingOrgSessionWorkspace(phase: MarkingOrgSessionPhase) {
     groupId: undefined,
   })
 
-  const resolveRoute
-    = phase === 'trial'
+  const resolveRoute =
+    phase === 'trial'
       ? resolveMarkingOrganizationTrialSessionsRoute
       : resolveMarkingOrganizationFormalSessionsRoute
 
-  const sessionMarkingPhase
-    = phase === 'trial' ? MarkingSessionPhaseCode.TRIAL : MarkingSessionPhaseCode.FORMAL
+  const sessionMarkingPhase =
+    phase === 'trial' ? MarkingSessionPhaseCode.TRIAL : MarkingSessionPhaseCode.FORMAL
 
   const groupOptions = computed(() =>
     (organization.value?.groups ?? []).map((group) => ({
@@ -243,10 +245,20 @@ export function useMarkingOrgSessionWorkspace(phase: MarkingOrgSessionPhase) {
       query.groupId = sessionFilterModel.value.groupId
     }
     if (phase === 'trial' && sessionFilterModel.value.status) {
-      query.trialSessionStatus = sessionFilterModel.value.status as TrialSessionStatusCode
+      for (const code of ALL_TRIAL_SESSION_STATUS_CODES) {
+        if (code === sessionFilterModel.value.status) {
+          query.trialSessionStatus = code
+          break
+        }
+      }
     }
     if (phase === 'formal' && sessionFilterModel.value.status) {
-      query.formalSessionStatus = sessionFilterModel.value.status as FormalSessionStatusCode
+      for (const code of ALL_FORMAL_SESSION_STATUS_CODES) {
+        if (code === sessionFilterModel.value.status) {
+          query.formalSessionStatus = code
+          break
+        }
+      }
     }
     return query
   }
@@ -455,13 +467,28 @@ export function useMarkingOrgSessionWorkspace(phase: MarkingOrgSessionPhase) {
   }
 
   function applySessionFilter(model: Record<string, unknown>): void {
-    const nextStatus = model.status
+    let status: TrialSessionStatusCode | FormalSessionStatusCode | undefined
+    const rawStatus = model.status
+    if (typeof rawStatus === 'string' && rawStatus) {
+      if (phase === 'trial') {
+        for (const code of ALL_TRIAL_SESSION_STATUS_CODES) {
+          if (code === rawStatus) {
+            status = code
+            break
+          }
+        }
+      } else {
+        for (const code of ALL_FORMAL_SESSION_STATUS_CODES) {
+          if (code === rawStatus) {
+            status = code
+            break
+          }
+        }
+      }
+    }
     sessionFilterModel.value = {
       keyword: String(model.keyword ?? '').trim(),
-      status:
-        typeof nextStatus === 'string' && nextStatus
-          ? (nextStatus as TrialSessionStatusCode | FormalSessionStatusCode)
-          : undefined,
+      status,
       groupId: model.groupId ? String(model.groupId) : undefined,
     }
     sessionPagination.value.current = 1
@@ -478,7 +505,7 @@ export function useMarkingOrgSessionWorkspace(phase: MarkingOrgSessionPhase) {
     void reloadSessions()
   }
 
-  function handleSessionPageChange(page: { current: number, pageSize: number }): void {
+  function handleSessionPageChange(page: { current: number; pageSize: number }): void {
     sessionPagination.value.current = page.current
     sessionPagination.value.pageSize = page.pageSize
     sessionsLoading.value = true

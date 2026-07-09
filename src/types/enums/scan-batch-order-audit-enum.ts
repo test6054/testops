@@ -8,6 +8,7 @@ export enum ScanBatchOrderAuditCode {
   DUPLEX_INCOMPLETE = 'DUPLEX_INCOMPLETE',
   INSTANCE_COUNT_MISMATCH = 'INSTANCE_COUNT_MISMATCH',
   DIRECT_PAGE_GROUP = 'DIRECT_PAGE_GROUP',
+  PARTIAL_TAIL = 'PARTIAL_TAIL',
 }
 
 export const ALL_SCAN_BATCH_ORDER_AUDIT_CODES: readonly ScanBatchOrderAuditCode[] = [
@@ -19,6 +20,7 @@ export const ALL_SCAN_BATCH_ORDER_AUDIT_CODES: readonly ScanBatchOrderAuditCode[
   ScanBatchOrderAuditCode.DUPLEX_INCOMPLETE,
   ScanBatchOrderAuditCode.INSTANCE_COUNT_MISMATCH,
   ScanBatchOrderAuditCode.DIRECT_PAGE_GROUP,
+  ScanBatchOrderAuditCode.PARTIAL_TAIL,
 ]
 
 export const ScanBatchOrderAuditDescription: Record<ScanBatchOrderAuditCode, string> = {
@@ -30,5 +32,6 @@ export const ScanBatchOrderAuditDescription: Record<ScanBatchOrderAuditCode, str
   [ScanBatchOrderAuditCode.DUPLEX_INCOMPLETE]: '双面配对不完整',
   [ScanBatchOrderAuditCode.INSTANCE_COUNT_MISMATCH]: '试卷实例数不一致',
   [ScanBatchOrderAuditCode.DIRECT_PAGE_GROUP]: '页数不能整卷分组',
+  [ScanBatchOrderAuditCode.PARTIAL_TAIL]: '批次余页未完整切卷',
 }
 

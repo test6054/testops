@@ -63,7 +63,9 @@
         <div class="exam-scope-classes">
           <div class="exam-scope-classes__head">
             <span class="exam-scope-classes__title">参考班级</span>
-            <span v-if="scopedClassTags.length" class="exam-scope-classes__count">{{ scopedClassTags.length }} 个</span>
+            <span v-if="scopedClassTags.length" class="exam-scope-classes__count"
+              >{{ scopedClassTags.length }} 个</span
+            >
           </div>
           <div v-if="scopedClassTags.length" class="exam-scope-classes__tags">
             <UiTag v-for="item in scopedClassTags" :key="item.classId" tone="blue" size="sm">
@@ -289,12 +291,23 @@
 import type { TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { ClassStudentTreeConfirmPayload } from '@/apis/edu/class'
 import type { ExamClassRefVO, ExamRosterScopeModeCode } from '@/apis/mark/exam'
+import { ExamRosterScopeModeDescription, getExamDetail } from '@/apis/mark/exam'
 import type { ExamCandidateRosterWorkbenchItemResponse } from '@/apis/mark/exam-candidate-roster'
+import { pageCandidateRosterWorkbench } from '@/apis/mark/exam-candidate-roster'
 import type {
   ExamWorkbenchCandidateRosterPanelQueryRequest,
   ExamWorkbenchCandidateRosterPanelResponse,
 } from '@/apis/mark/exam-progress'
+import { getCandidateRosterPanel } from '@/apis/mark/exam-progress'
 import type { ExamCandidateRosterRequest } from '@/apis/mark/exam-scope'
+import {
+  listExamCandidateStudentUserIds,
+  mergeExamCandidates,
+  previewExamCandidates,
+  removeExamCandidates,
+  saveCurrentExamScope,
+  saveExamClassScope,
+} from '@/apis/mark/exam-scope'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { UserDto } from '@/types/api-types.d'
 import type { SignalMetric } from '@/types/workbench'
@@ -304,19 +317,7 @@ import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import UserAddOutlined from '@ant-design/icons-vue/UserAddOutlined'
 import message from 'ant-design-vue/es/message'
 import { useRouter } from 'vue-router'
-import { ExamRosterScopeModeDescription, getExamDetail } from '@/apis/mark/exam'
-import { pageCandidateRosterWorkbench } from '@/apis/mark/exam-candidate-roster'
-import { getCandidateRosterPanel } from '@/apis/mark/exam-progress'
 import { pageScannerBatches } from '@/apis/mark/exam-scan'
-import {
-  listExamCandidates,
-  mergeExamCandidates,
-  pageExamCandidates,
-  previewExamCandidates,
-  removeExamCandidates,
-  saveExamClassScope,
-  saveExamScope,
-} from '@/apis/mark/exam-scope'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import ClassStudentTreeSelectorDrawer from '@/components/edu/ClassStudentTreeSelectorDrawer.vue'
 import ExamCandidatePaperImagesDrawer from '@/components/exam-workbench/ExamCandidatePaperImagesDrawer.vue'
@@ -342,7 +343,6 @@ import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { CandidateScanProgressStatusCode } from '@/types/enums/candidate-scan-progress-status-enum'
 import { ErrorType, handleError, showUserError } from '@/utils/error-handler'
-import { readAllPages } from '@/utils/page-result'
 import { buildScopedClassTags } from './candidate-roster/class-scope'
 import {
   buildExamCandidateMergeRequests,
@@ -350,8 +350,6 @@ import {
 } from './candidate-roster/roster-merge'
 
 defineOptions({ name: 'TeacherCandidateRoster' })
-
-const ROSTER_CANDIDATE_EXPORT_PAGE_SIZE = 100
 
 const { selectedExamId } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
@@ -374,8 +372,8 @@ let classScopeSaveTimer: ReturnType<typeof setTimeout> | null = null
 let loadContextSeq = 0
 let loadTableSeq = 0
 
-const { departmentId, classOptionsLoading, classSelectOptions, loadClassesForDepartment }
-  = useExamDepartmentClassScope({
+const { departmentId, classOptionsLoading, classSelectOptions, loadClassesForDepartment } =
+  useExamDepartmentClassScope({
     selectedClassIds: classIds,
     seedOptions: computed(() =>
       examClassRefs.value.flatMap((item) => {
@@ -563,12 +561,18 @@ const rosterClassFilterOptions = computed(() =>
   })),
 )
 
-const rosterScanFilterChips = computed(() => {
+interface RosterScanFilterChip {
+  label: string
+  value: CandidateScanProgressStatusCode | undefined
+  count?: number
+}
+
+const rosterScanFilterChips = computed((): RosterScanFilterChip[] => {
   const panel = rosterPanel.value
   return [
     {
       label: '全部',
-      value: undefined as CandidateScanProgressStatusCode | undefined,
+      value: undefined,
       count: panel?.totalCount,
     },
     {
@@ -713,8 +717,8 @@ async function handleAddClassSubmit(): Promise<void> {
 
 async function loadRosterStudentIds(examId: string): Promise<void> {
   try {
-    const list = await listExamCandidates(examId)
-    rosterStudentUserIds.value = list.map((item) => item.studentUserId)
+    const response = await listExamCandidateStudentUserIds(examId)
+    rosterStudentUserIds.value = response.studentUserIds
   } catch (error) {
     rosterStudentUserIds.value = []
     showUserError(error, '考生 ID 列表加载失败')
@@ -811,8 +815,8 @@ async function loadExamContext(): Promise<void> {
     rosterLocked.value = locked
     examStatus.value = detail.status
     rosterScopeMode.value = detail.rosterScopeMode
-    archiveClassScopeRecoveryAllowed.value
-      = detail.archiveAutoCreateClassScopeRecoveryAllowed === true
+    archiveClassScopeRecoveryAllowed.value =
+      detail.archiveAutoCreateClassScopeRecoveryAllowed === true
     examClassRefs.value = [...(detail.classRefs ?? [])]
     candidateTotal.value = detail.candidateCount ?? 0
     classIds.value = [...new Set(detail.classIds ?? [])]
@@ -869,7 +873,7 @@ function handleRosterReset(): void {
   void reloadRosterData()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void loadCandidatePage()
@@ -907,32 +911,6 @@ async function mergeCandidatesWithPreview(
   return candidates.length
 }
 
-async function fetchAllRosterCandidates(): Promise<ExamCandidateRosterRequest[]> {
-  const examId = selectedExamId.value
-  if (!examId) {
-    return []
-  }
-  const pages = await readAllPages(
-    (pageNum) =>
-      pageExamCandidates({
-        examId,
-        pageNum,
-        pageSize: ROSTER_CANDIDATE_EXPORT_PAGE_SIZE,
-      }),
-    '考生名册加载失败',
-  )
-  const roster: ExamCandidateRosterRequest[] = []
-  for (const item of pages) {
-    const classId = String(item.classId ?? '').trim()
-    const studentUserId = String(item.studentUserId ?? '').trim()
-    if (!classId || !studentUserId) {
-      continue
-    }
-    roster.push({ classId, studentUserId })
-  }
-  return roster
-}
-
 async function confirmSaveFullScope(): Promise<void> {
   if (!selectedExamId.value || !classIds.value.length) {
     message.warning('请先选择班级范围')
@@ -940,25 +918,19 @@ async function confirmSaveFullScope(): Promise<void> {
   }
   const confirmed = await confirmAsync({
     title: '全量保存考生名册？',
-    content: '将当前班级范围与全部考生一次性写入后端，覆盖增量编辑结果。扫描已开始后可能失败。',
+    content: '将当前班级范围与库内全部考生一次性写入后端，覆盖增量编辑结果。扫描已开始后可能失败。',
     type: 'warning',
     okText: '全量保存',
     cancelText: '取消',
     onOk: async () => {
       fullScopeSaving.value = true
       try {
-        const candidates = await fetchAllRosterCandidates()
-        if (!candidates.length) {
-          message.error('名册为空，无法全量保存')
-          return false
-        }
-        await saveExamScope({
+        await saveCurrentExamScope({
           examId: selectedExamId.value!,
           classIds: [...classIds.value],
           referenceDepartmentId: departmentId.value,
-          candidates,
         })
-        message.success(`已全量保存 ${candidates.length} 名考生`)
+        message.success('已全量保存考生名册')
         await reloadExamContext()
       } catch (error) {
         showUserError(error, '全量保存名册失败')

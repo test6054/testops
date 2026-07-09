@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationTaskStatusCode } from '@/apis/portfolio/enums'
-import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import {
   PORTFOLIO_EVALUATION_MODE_OPTIONS,
   PORTFOLIO_EVALUATION_TASK_STATUS_OPTIONS,
@@ -12,8 +9,12 @@ import {
   PortfolioEvaluationModeDescription,
   PortfolioEvaluationTaskStatusDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
+import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
 import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
+import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
+import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -102,7 +103,10 @@ function workgroupName(id?: string) {
 
 async function loadWorkgroups() {
   try {
-    const page = await evaluationWorkgroupApi.page({ pageNum: 1, pageSize: 100 })
+    const page = await evaluationWorkgroupApi.page({
+      pageNum: 1,
+      pageSize: QUALITY_SELECTOR_PAGE_SIZE,
+    })
     workgroups.value = page.list ?? []
   } catch (error) {
     showUserError(error)

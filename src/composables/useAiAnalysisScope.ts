@@ -1,15 +1,16 @@
 import type { ComputedRef, InjectionKey, Ref } from 'vue'
+import { computed, inject, provide, ref, watch } from 'vue'
 import type { AiAnalysisCenterOverviewResponse } from '@/apis/mark/analysis-center'
+import { loadAiAnalysisCenterOverview } from '@/apis/mark/analysis-center'
 import type { ExamSummaryResponse } from '@/apis/mark/exam'
+import { getExamDetail, pageExams } from '@/apis/mark/exam'
 import type { MarkClassOption } from '@/composables/useMarkExamRoster'
 import type { SemesterCode } from '@/types/enums/semester-enum'
-import { computed, inject, provide, ref, watch } from 'vue'
-import { loadAiAnalysisCenterOverview } from '@/apis/mark/analysis-center'
-import { pageExams } from '@/apis/mark/exam'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
+import { MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE } from '@/composables/useMarkExamSelector'
 import { generateAcademicYearOptions, getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
 import { showUserError } from '@/utils/error-handler'
-import { readAllPages } from '@/utils/page-result'
+import { examSummaryFromDetail } from '@/utils/mark-exam-option'
 
 /** 工作台内锁定 AI 分析考试范围（注入后禁止切换考试） */
 export const AI_ANALYSIS_LOCK_EXAM_ID_KEY: InjectionKey<Ref<string | undefined>> = Symbol('aiAnalysisLockExamId')
@@ -90,6 +91,7 @@ export function useAiAnalysisScope() {
   provide(AI_ANALYSIS_EXAM_LOCKED_KEY, examLocked)
   const examsLoading = ref(false)
   const exams = ref<ExamSummaryResponse[]>([])
+  const pinnedExam = ref<ExamSummaryResponse | null>(null)
   const overview = ref<AiAnalysisCenterOverviewResponse | null>(null)
   const overviewLoading = ref(false)
   const overviewLoadFailed = ref(false)
@@ -115,7 +117,10 @@ export function useAiAnalysisScope() {
 
   const courseOptions = computed(() => {
     const courseMap = new Map<string, string>()
-    exams.value.forEach((exam) => {
+    const mergedExams = pinnedExam.value
+      ? [pinnedExam.value, ...exams.value.filter(exam => exam.examId !== pinnedExam.value!.examId)]
+      : exams.value
+    mergedExams.forEach((exam) => {
       if (!exam.courseId) {
         return
       }
@@ -128,10 +133,13 @@ export function useAiAnalysisScope() {
   })
 
   const filteredExams = computed(() => {
+    const mergedExams = pinnedExam.value
+      ? [pinnedExam.value, ...exams.value.filter(exam => exam.examId !== pinnedExam.value!.examId)]
+      : exams.value
     if (!examFilterCourseId.value) {
-      return exams.value
+      return mergedExams
     }
-    return exams.value.filter(exam => exam.courseId === examFilterCourseId.value)
+    return mergedExams.filter(exam => exam.courseId === examFilterCourseId.value)
   })
 
   const filteredExamOptions = computed(() =>
@@ -142,7 +150,8 @@ export function useAiAnalysisScope() {
   )
 
   const selectedExam = computed(() =>
-    exams.value.find(exam => exam.examId === examId.value),
+    filteredExams.value.find(exam => exam.examId === examId.value)
+    ?? (pinnedExam.value?.examId === examId.value ? pinnedExam.value : undefined),
   )
 
   const selectedExamLabel = computed(() => {
@@ -200,12 +209,13 @@ export function useAiAnalysisScope() {
     scopeCourseLabel.value = ''
   }
 
-  function buildExamPageQuery(pageNum: number) {
+  function buildExamPageQuery(pageNum: number, keyword?: string) {
     const query: Parameters<typeof pageExams>[0] = {
       academicYear: academicYear.value,
       semester: semester.value,
       pageNum,
-      pageSize: 100,
+      pageSize: MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE,
+      keyword: keyword?.trim() || undefined,
     }
     const scopedCourseId = examFilterCourseId.value?.trim()
     if (scopedCourseId) {
@@ -245,19 +255,39 @@ export function useAiAnalysisScope() {
     }
   }
 
-  async function loadExams() {
+  async function syncPinnedExam(id?: string): Promise<void> {
+    if (!id) {
+      pinnedExam.value = null
+      return
+    }
+    const inPage = exams.value.find(exam => exam.examId === id)
+    if (inPage) {
+      pinnedExam.value = inPage
+      return
+    }
+    try {
+      pinnedExam.value = examSummaryFromDetail(await getExamDetail(id))
+    }
+    catch {
+      pinnedExam.value = null
+    }
+  }
+
+  async function loadExams(keyword?: string) {
     examsLoading.value = true
     try {
-      exams.value = await readAllPages(
-        pageNum => pageExams(buildExamPageQuery(pageNum)),
-        '考试列表加载失败',
-      )
-      if (examId.value && !exams.value.some(exam => exam.examId === examId.value)) {
+      const page = await pageExams(buildExamPageQuery(1, keyword))
+      exams.value = page.list
+      await syncPinnedExam(examId.value)
+      const mergedExams = pinnedExam.value
+        ? [pinnedExam.value, ...exams.value.filter(exam => exam.examId !== pinnedExam.value!.examId)]
+        : exams.value
+      if (examId.value && !mergedExams.some(exam => exam.examId === examId.value)) {
         if (!examLocked.value) {
           examId.value = undefined
         }
       }
-      if (examFilterCourseId.value && !exams.value.some(exam => exam.courseId === examFilterCourseId.value)) {
+      if (examFilterCourseId.value && !mergedExams.some(exam => exam.courseId === examFilterCourseId.value)) {
         examFilterCourseId.value = undefined
       }
     }
@@ -380,7 +410,7 @@ export function useAiAnalysisScope() {
       }
       return
     }
-    const exam = exams.value.find(item => item.examId === id)
+    const exam = selectedExam.value ?? exams.value.find(item => item.examId === id)
     if (exam) {
       syncOrgScopeFromExam(exam)
     }
@@ -390,7 +420,7 @@ export function useAiAnalysisScope() {
     if (!examId.value) {
       return
     }
-    const exam = exams.value.find(item => item.examId === examId.value)
+    const exam = selectedExam.value ?? exams.value.find(item => item.examId === examId.value)
     if (exam) {
       syncOrgScopeFromExam(exam)
     }

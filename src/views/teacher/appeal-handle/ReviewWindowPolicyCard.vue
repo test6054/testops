@@ -71,12 +71,17 @@
 
       <a-space>
         <a-button type="primary" :loading="saving" @click="handleSave">保存策略</a-button>
-        <a-button type="primary" ghost :loading="savingAndActivating" @click="handleSaveAndActivate">
+        <a-button
+          type="primary"
+          ghost
+          :loading="savingAndActivating"
+          @click="handleSaveAndActivate"
+        >
           保存并启用
         </a-button>
         <a-button
           :loading="activating"
-          :disabled="!policy || policy.policyStatus === 'ACTIVE'"
+          :disabled="!policy || policy.policyStatus === ReviewWindowPolicyStatusCode.ACTIVE"
           @click="handleActivate"
         >
           激活窗口
@@ -95,14 +100,7 @@
 </template>
 
 <script lang="ts" setup>
-import type {
-  ExamReviewWindowPolicy,
-  GradeReviewReasonTypeCode,
-  ReviewWindowPolicyStatusCode,
-} from '@/apis/mark/grade-review'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { reactive, ref, watch } from 'vue'
+import type { ExamReviewWindowPolicy, GradeReviewReasonTypeCode } from '@/apis/mark/grade-review'
 import {
   activateReviewWindow,
   closeReviewWindow,
@@ -110,11 +108,15 @@ import {
   GRADE_REVIEW_REASON_TYPE_OPTIONS,
   REVIEW_WINDOW_FLOW_HINT,
   REVIEW_WINDOW_STATUS_TONE,
+  ReviewWindowPolicyStatusCode,
   ReviewWindowPolicyStatusDescription,
   saveReviewWindowPolicy,
   VisibleMaterialScopeCode,
   VisibleMaterialScopeDescription,
 } from '@/apis/mark/grade-review'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { reactive, ref, watch } from 'vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -123,7 +125,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ReviewWindowPolicyCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 const emit = defineEmits<{ (e: 'changed'): void }>()
 
 function reviewWindowStatusColor(status: ReviewWindowPolicyStatusCode): BadgeTone {
@@ -155,7 +157,7 @@ const form = reactive<{
   allowedReasonTypes: [],
 })
 
-const scopeOptions: { label: string, value: VisibleMaterialScopeCode }[] = [
+const scopeOptions: { label: string; value: VisibleMaterialScopeCode }[] = [
   {
     label: strictEnumLabel(
       VisibleMaterialScopeDescription,

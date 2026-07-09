@@ -39,7 +39,6 @@
         v-model:current="pagination.current"
         v-model:page-size="pagination.pageSize"
         pagination-mode="server"
-        class="student-detail-table__data-table"
         :columns="columns"
         :data-source="devices"
         :loading="loading"
@@ -68,7 +67,7 @@
             <span v-if="devices[index].lastSeenTime">{{ devices[index].lastSeenTime }}</span>
             <span v-else class="text-muted">从未通讯</span>
           </template>
-          <template v-else-if="column.key === 'action'">
+          <template v-else-if="column.key === 'actions'">
             <UiTableActions
               :items="buildDeviceActions(devices[index])"
               split
@@ -308,12 +307,6 @@ import type {
   ScannerAgentDiagnosticStatusCode,
   ScannerEndpointOnlineStatusCode,
 } from '@/apis/mark/exam-mark-scanner'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import AQrcode from 'ant-design-vue/es/qrcode'
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
   createScannerActivationCode,
   createScannerDevice,
@@ -333,6 +326,12 @@ import {
   unbindScannerDeviceAgent,
   updateScannerDevice,
 } from '@/apis/mark/exam-mark-scanner'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import AQrcode from 'ant-design-vue/es/qrcode'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -407,7 +406,7 @@ const deviceSignalMetrics = computed((): SignalMetric[] => [
   },
 ])
 
-const locationOptions = ref<Array<{ label: string, value: string }>>([])
+const locationOptions = ref<Array<{ label: string; value: string }>>([])
 
 function syncSearchForm(next: Record<string, unknown>): void {
   Object.assign(searchForm, next)
@@ -446,7 +445,14 @@ const deviceFilterFields = computed<FilterField[]>(() => [
 ])
 
 const columns: ColumnsType<ExamScannerDeviceResponse> = [
-  { title: '设备名称', dataIndex: 'deviceName', key: 'deviceName', width: 160 },
+  {
+    title: '设备名称',
+    dataIndex: 'deviceName',
+    key: 'deviceName',
+    width: 160,
+    fixed: 'left',
+    ellipsis: true,
+  },
   { title: '扫描设备编号', dataIndex: 'scannerDeviceId', key: 'scannerDeviceId', width: 160 },
   { title: '站点', dataIndex: 'scannerStationId', key: 'scannerStationId', width: 120 },
   { title: '设备地址', dataIndex: 'scannerIp', key: 'scannerIp', width: 130 },
@@ -455,7 +461,7 @@ const columns: ColumnsType<ExamScannerDeviceResponse> = [
   { title: '组件版本', dataIndex: 'agentVersion', key: 'agentVersion', width: 120 },
   { title: '最近通讯', dataIndex: 'lastSeenTime', key: 'lastSeenTime', width: 170 },
   { title: '位置', dataIndex: 'location', key: 'location', width: 160, ellipsis: true },
-  { title: '操作', dataIndex: 'action', key: 'action', width: 200, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 200 },
 ]
 
 function buildDeviceActions(record: ExamScannerDeviceResponse): UiTableRowActionItem[] {
@@ -581,7 +587,7 @@ function handleResetSearch(): void {
   void loadDevices()
 }
 
-function handleUiPageChange(page: { current: number, pageSize: number }): void {
+function handleUiPageChange(page: { current: number; pageSize: number }): void {
   pagination.current = page.current
   pagination.pageSize = page.pageSize
   void loadDevices()

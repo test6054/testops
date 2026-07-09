@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ScannerKioskArchiveVolumeItemVO } from '@/apis/mark/scanner-kiosk'
+import { createAdhocDispatchTicket, pageKioskArchiveVolumes } from '@/apis/mark/scanner-kiosk'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -7,7 +8,6 @@ import {
   ARCHIVE_VOLUME_STATUS_TONE,
   ArchiveVolumeStatusDescription,
 } from '@/apis/mark/archive-volume'
-import { createAdhocDispatchTicket, pageKioskArchiveVolumes } from '@/apis/mark/scanner-kiosk'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -85,10 +85,18 @@ async function loadVolumes() {
   }
 }
 
-function handlePageChange(pageEvent: { current: number, pageSize: number }) {
+function handlePageChange(pageEvent: { current: number; pageSize: number }) {
   pageNum.value = pageEvent.current
   pageSize.value = pageEvent.pageSize
   void loadVolumes()
+}
+
+function volumeAcceptsKioskPick(status?: string): boolean {
+  return (
+    status === ArchiveVolumeStatusCode.COLLECTING ||
+    status === ArchiveVolumeStatusCode.STORED ||
+    status === ArchiveVolumeStatusCode.SUBMITTED
+  )
 }
 
 async function pickVolume(row: ScannerKioskArchiveVolumeItemVO) {
@@ -96,8 +104,8 @@ async function pickVolume(row: ScannerKioskArchiveVolumeItemVO) {
     message.error('工位未激活，无法创建临时派单')
     return
   }
-  if (row.volumeStatus !== ArchiveVolumeStatusCode.COLLECTING) {
-    message.error('仅收集中归档卷可临时开单')
+  if (!volumeAcceptsKioskPick(row.volumeStatus)) {
+    message.error('当前卷状态不允许临时开单')
     return
   }
   if (!row.physicalStorageLocation?.trim()) {
@@ -120,8 +128,8 @@ async function pickVolume(row: ScannerKioskArchiveVolumeItemVO) {
       return
     }
     emit('update:open', false)
-    const kioskPath
-      = response.ticket?.kioskDispatchUrl || (ticketId ? `/scanner-kiosk/dispatch/${ticketId}` : '')
+    const kioskPath =
+      response.ticket?.kioskDispatchUrl || (ticketId ? `/scanner-kiosk/dispatch/${ticketId}` : '')
     if (kioskPath) {
       void router.push(kioskPath)
     }
@@ -184,6 +192,7 @@ function volumeStatusTone(status: ScannerKioskArchiveVolumeItemVO['volumeStatus'
         size="middle"
         flat
         @page-change="handlePageChange"
+        :sticky-header="false"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'physicalStorageLocation'">
@@ -201,9 +210,9 @@ function volumeStatusTone(status: ScannerKioskArchiveVolumeItemVO['volumeStatus'
                   key: 'pick',
                   label: '开单',
                   disabled:
-                    !canPick
-                    || record.volumeStatus !== ArchiveVolumeStatusCode.COLLECTING
-                    || pickingVolumeId === record.volumeId,
+                    !canPick ||
+                    record.volumeStatus !== ArchiveVolumeStatusCode.COLLECTING ||
+                    pickingVolumeId === record.volumeId,
                 },
               ]"
               split

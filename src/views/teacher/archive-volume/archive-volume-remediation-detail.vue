@@ -11,9 +11,9 @@
           <UiButton variant="ghost" size="sm" @click="goRemediationList">返回整改列表</UiButton>
           <UiButton
             v-if="
-              taskDetail
-                && canActOnTask
-                && taskDetail.taskStatus === ArchiveRemediationStatusCode.OPEN
+              taskDetail &&
+              canActOnTask &&
+              taskDetail.taskStatus === ArchiveRemediationStatusCode.OPEN
             "
             variant="primary"
             size="sm"
@@ -24,9 +24,9 @@
           </UiButton>
           <UiButton
             v-if="
-              taskDetail
-                && canActOnTask
-                && taskDetail.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
+              taskDetail &&
+              canActOnTask &&
+              taskDetail.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
             "
             variant="primary"
             size="sm"
@@ -89,7 +89,9 @@
         </template>
         <template #toolbar>
           <div class="archive-remediation-detail__flow-toolbar">
-            <span class="archive-remediation-detail__flow-hint">OPEN → IN_PROGRESS → RESUBMITTED → CLOSED</span>
+            <span class="archive-remediation-detail__flow-hint"
+              >OPEN → IN_PROGRESS → RESUBMITTED → CLOSED</span
+            >
             <div class="archive-remediation-detail__completion">
               <span class="archive-remediation-detail__completion-label">任务进度</span>
               <ArchiveReadinessRateBar :percent="taskCompletionPercent" />
@@ -152,13 +154,14 @@
         />
         <UiDataTable
           v-else
+          pagination-mode="none"
           :columns="evidenceColumns"
           :data-source="taskDetail.evidenceItems"
-          :pagination="false"
+          :show-pagination="false"
+          :sticky-header="false"
           flat
           row-key="evidenceId"
           size="middle"
-          class="student-detail-table__data-table"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'fileName'">
@@ -200,9 +203,12 @@
             v-if="taskDetail.verifierNickName || taskDetail.verifiedTime"
             class="archive-remediation-detail__verify-meta"
           >
-            <span v-if="taskDetail.verifierNickName">验证人: {{ taskDetail.verifierNickName }}</span>
+            <span v-if="taskDetail.verifierNickName"
+              >验证人: {{ taskDetail.verifierNickName }}</span
+            >
             <span v-if="taskDetail.verifiedTime">
-              · {{ formatDateTime(taskDetail.verifiedTime) }}</span>
+              · {{ formatDateTime(taskDetail.verifiedTime) }}</span
+            >
           </p>
         </div>
       </WorkbenchSurfaceCard>
@@ -215,21 +221,25 @@
         <template #head>整改活动概览</template>
         <div class="archive-remediation-detail__campaign-grid">
           <div class="stat-card">
-            <div class="stat-card__val">{{ campaignTaskStats.total }}</div>
+            <div class="stat-card__val">{{ campaignTaskStats?.totalTaskCount ?? 0 }}</div>
             <div class="stat-card__label">总任务</div>
           </div>
           <div class="stat-card">
-            <div class="stat-card__val stat-card__val--warn">{{ campaignTaskStats.open }}</div>
+            <div class="stat-card__val stat-card__val--warn">
+              {{ campaignTaskStats?.openTaskCount ?? 0 }}
+            </div>
             <div class="stat-card__label">待处理</div>
           </div>
           <div class="stat-card">
             <div class="stat-card__val stat-card__val--primary">
-              {{ campaignTaskStats.inProgress }}
+              {{ campaignTaskStats?.inProgressTaskCount ?? 0 }}
             </div>
             <div class="stat-card__label">处理中</div>
           </div>
           <div class="stat-card">
-            <div class="stat-card__val stat-card__val--ok">{{ campaignTaskStats.closed }}</div>
+            <div class="stat-card__val stat-card__val--ok">
+              {{ campaignTaskStats?.closedTaskCount ?? 0 }}
+            </div>
             <div class="stat-card__label">已关闭</div>
           </div>
         </div>
@@ -299,8 +309,8 @@
           </template>
           <UiButton
             v-if="
-              taskDetail.taskStatus === ArchiveRemediationStatusCode.OPEN
-                || taskDetail.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
+              taskDetail.taskStatus === ArchiveRemediationStatusCode.OPEN ||
+              taskDetail.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
             "
             size="sm"
             variant="outline"
@@ -369,17 +379,12 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchiveEvaluationCampaignResponse,
+  ArchiveRemediationByCampaignStatsVO,
   ArchiveRemediationEvidenceResponse,
   ArchiveRemediationEvidenceStatusCode,
   ArchiveRemediationPriorityCode,
   ArchiveRemediationTaskResponse,
 } from '@/apis/mark/archive-volume'
-import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   ARCHIVE_REMEDIATION_EVIDENCE_STATUS_TONE,
   ARCHIVE_REMEDIATION_STATUS_TONE,
@@ -387,12 +392,18 @@ import {
   ArchiveRemediationStatusCode,
   ArchiveRemediationStatusDescription,
   getArchiveVolumeDetail,
+  getEvaluationCampaign,
+  getRemediationStatsByCampaign,
   getRemediationTask,
-  listEvaluationCampaigns,
-  listRemediationTasksByCampaign,
   registerRemediationEvidence,
   updateRemediationTask,
 } from '@/apis/mark/archive-volume'
+import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import ArchiveLifecyclePipe from '@/components/archive-volume/ArchiveLifecyclePipe.vue'
 import ArchiveReadinessRateBar from '@/components/archive-volume/ArchiveReadinessRateBar.vue'
@@ -448,7 +459,7 @@ const volumeArchiveNo = ref('')
 const taskVolumeDepartmentId = ref<string>()
 const editAssigneeUserId = ref<string>()
 const campaignSummary = ref<ArchiveEvaluationCampaignResponse | null>(null)
-const campaignTasks = ref<ArchiveRemediationTaskResponse[]>([])
+const campaignTaskStats = ref<ArchiveRemediationByCampaignStatsVO | null>(null)
 
 const taskId = computed(() => String(route.params.taskId ?? ''))
 
@@ -543,17 +554,6 @@ const lifecycleSteps = computed(() => {
 
 const campaignName = computed(() => campaignSummary.value?.campaignName)
 
-const campaignTaskStats = computed(() => {
-  const tasks = campaignTasks.value
-  return {
-    total: tasks.length,
-    open: tasks.filter((item) => item.taskStatus === ArchiveRemediationStatusCode.OPEN).length,
-    inProgress: tasks.filter((item) => item.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS)
-      .length,
-    closed: tasks.filter((item) => item.taskStatus === ArchiveRemediationStatusCode.CLOSED).length,
-  }
-})
-
 const showCoordinatorActions = computed(() =>
   taskVolumeDepartmentId.value
     ? canManageRemediationAsCoordinator({ departmentId: taskVolumeDepartmentId.value })
@@ -575,7 +575,7 @@ const canUploadEvidence = computed(() => {
 })
 
 const evidenceColumns: ColumnsType<ArchiveRemediationEvidenceResponse> = [
-  { title: '文件名', key: 'fileName', dataIndex: 'fileName' },
+  { title: '文件名', key: 'fileName', dataIndex: 'fileName', fixed: 'left' },
   { title: '大小', key: 'fileSize', width: 100 },
   { title: '上传时间', key: 'createTime', width: 168 },
   { title: '状态', key: 'evidenceStatus', width: 100 },
@@ -593,8 +593,8 @@ const showVerifierPanel = computed(() => {
   const task = taskDetail.value
   if (!task) return false
   if (
-    task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED
-    || task.taskStatus === ArchiveRemediationStatusCode.CLOSED
+    task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED ||
+    task.taskStatus === ArchiveRemediationStatusCode.CLOSED
   ) {
     return Boolean(task.verificationComment || task.verifierNickName || task.verifiedTime)
   }
@@ -664,12 +664,11 @@ async function downloadEvidence(fileId: string) {
 async function loadCampaignContext(campaignId?: string) {
   if (!campaignId) {
     campaignSummary.value = null
-    campaignTasks.value = []
+    campaignTaskStats.value = null
     return
   }
-  const campaigns = await listEvaluationCampaigns()
-  campaignSummary.value = campaigns.find((item) => item.campaignId === campaignId) ?? null
-  campaignTasks.value = await listRemediationTasksByCampaign(campaignId)
+  campaignSummary.value = await getEvaluationCampaign(campaignId)
+  campaignTaskStats.value = await getRemediationStatsByCampaign({ campaignId })
 }
 
 async function loadTask() {

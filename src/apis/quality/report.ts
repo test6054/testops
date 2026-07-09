@@ -108,9 +108,30 @@ export interface ReportStatusTransitRequest {
   targetStatus: ReportStatusCode
 }
 
+/** 按状态分组统计行 - 对齐后端 QualityStatusStatRow */
+export interface ReportQualityStatusStatRow {
+  status: ReportStatusCode
+  recordCount: number
+}
+
+/** 按导出状态分组统计行 - 对齐后端 QualityStatusStatRow（export_status 分组） */
+export interface ReportExportQualityStatusStatRow {
+  status: ReportExportStatusCode
+  recordCount: number
+}
+
+/** 按状态分组统计响应 - 对齐后端 QualityStatusCountsResponse */
+export interface QualityStatusCountsResponse {
+  totalCount: number
+  statusCounts: ReportQualityStatusStatRow[]
+  exportStatusCounts?: ReportExportQualityStatusStatRow[]
+}
+
 export const reportApi = {
   page: (data: ReportQueryRequest) =>
     http.post<PageResult<ReportVO>>(`${BASE}/page`, data),
+  statusCounts: (data: ReportQueryRequest) =>
+    http.post<QualityStatusCountsResponse>(`${BASE}/status-counts`, data),
   detail: (id: string) =>
     http.post<ReportVO>(`${BASE}/detail`, { id }),
   create: (data: ReportSaveRequest) => http.post<string>(`${BASE}/create`, data),

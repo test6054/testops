@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TaskStatusCode } from '@/apis/mark/task-status'
+import { TaskStatusDescription } from '@/apis/mark/task-status'
 /**
  * Stage 3 - 澶嶆牳涓庡紓甯稿缃?
  *
@@ -20,12 +21,13 @@ import {
 } from '@ant-design/icons-vue'
 import { computed, ref, watch } from 'vue'
 import { LocalScanPageStatusCode } from '@/apis/mark/scanner-agent-local'
-import { TaskStatusDescription } from '@/apis/mark/task-status'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { ExamScannerPageRegistrationStatusCode } from '@/types/enums/exam-scanner-page-registration-status-enum'
 import { ScanAttentionTypeCode } from '@/types/enums/scan-attention-type-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import KioskBoundStudentsPanel from '../components/KioskBoundStudentsPanel.vue'
 import KioskScanExceptionPanel from '../components/KioskScanExceptionPanel.vue'
+import KioskScanSessionStrip from '../components/KioskScanSessionStrip.vue'
 import { useKioskCtx } from '../composables/kioskInjection'
 
 const { workflow } = useKioskCtx()
@@ -85,7 +87,7 @@ const ledgerAttentions = computed<ReviewItem[]>(() => {
       source: 'ledger',
       localPageId: item.localPageId,
       paperInstanceId: linkedAttention?.paperInstanceId,
-      attentionType: item.attentionType as ScanAttentionTypeCode,
+      attentionType: item.attentionType!,
     }
   })
 })
@@ -100,11 +102,11 @@ const ledgerAttentionTodos = computed<ReviewItem[]>(() => {
       ? ledger.items.find((item) => item.localPageId === att.pageId)
       : undefined
     const pageNo = pageItem?.pageNo ?? 0
-    const bindingConflictWithoutPage
-      = !att.pageId && att.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT
+    const bindingConflictWithoutPage =
+      !att.pageId && att.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT
     if (pageNo <= 0 && !bindingConflictWithoutPage) continue
-    const titlePrefix
-      = pageNo > 0
+    const titlePrefix =
+      pageNo > 0
         ? workflow.scanPageDisplayTitleByNo(pageNo)
         : `答卷 ${att.paperInstanceId ?? '未知'}`
     items.push({
@@ -113,8 +115,8 @@ const ledgerAttentionTodos = computed<ReviewItem[]>(() => {
       type: 'attention',
       title: `${titlePrefix} · ${workflow.attentionTypeText(att.attentionType)}`,
       description:
-        att.diagnostic
-        || workflow.registrationStatusText(
+        att.diagnostic ||
+        workflow.registrationStatusText(
           pageItem?.registrationStatus ?? ExamScannerPageRegistrationStatusCode.PENDING,
         ),
       detail: workflow.formatTime(att.updateTime),
@@ -153,8 +155,8 @@ const registeredPages = computed<ReviewItem[]>(() => {
   return ledger.items
     .filter(
       (item) =>
-        item.registrationStatus !== ExamScannerPageRegistrationStatusCode.DISCARDED
-        && item.registrationStatus !== ExamScannerPageRegistrationStatusCode.SUPERSEDED,
+        item.registrationStatus !== ExamScannerPageRegistrationStatusCode.DISCARDED &&
+        item.registrationStatus !== ExamScannerPageRegistrationStatusCode.SUPERSEDED,
     )
     .filter((item) => !issuePageNos.has(item.pageNo))
     .map((item): ReviewItem => ({
@@ -182,17 +184,17 @@ const selectedItem = computed<ReviewItem | null>(() => {
   if (!workflow.previewPageNo.value) return null
   const pageNo = workflow.previewPageNo.value
   return (
-    reviewItems.value.find((item) => item.pageNo === pageNo)
-    ?? registeredPages.value.find((item) => item.pageNo === pageNo)
-    ?? localBrowsablePages.value.find((item) => item.pageNo === pageNo)
-    ?? null
+    reviewItems.value.find((item) => item.pageNo === pageNo) ??
+    registeredPages.value.find((item) => item.pageNo === pageNo) ??
+    localBrowsablePages.value.find((item) => item.pageNo === pageNo) ??
+    null
   )
 })
 
 const showBindingPanel = computed(
   () =>
-    selectedItem.value?.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT
-    && Boolean(selectedItem.value?.paperInstanceId),
+    selectedItem.value?.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT &&
+    Boolean(selectedItem.value?.paperInstanceId),
 )
 
 function isReviewItemActive(item: ReviewItem): boolean {
@@ -208,8 +210,8 @@ function selectItem(item: ReviewItem) {
     workflow.previewPageNo.value = 0
     return
   }
-  selectedBindingPaperInstanceId.value
-    = item.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT
+  selectedBindingPaperInstanceId.value =
+    item.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT
       ? (item.paperInstanceId ?? '')
       : ''
   workflow.previewPageNo.value = item.pageNo
@@ -306,10 +308,19 @@ const registeredPageCount = computed(() => registeredPages.value.length)
 const reviewBoundBatchId = computed(
   () => workflow.boundPaperScanBatchId.value || batch.value?.scanBatchId || '',
 )
+
+const registerProgressText = computed(() => {
+  const latest = workflow.kioskContext.value?.latestBatch
+  if (!latest || latest.pageCount <= 0) return ''
+  const registered = latest.registeredPageCount ?? latest.receivedPageCount ?? 0
+  return `已登记 ${registered} / ${latest.pageCount} 页`
+})
 </script>
 
 <template>
   <section class="review-stage">
+    <KioskScanSessionStrip class="review-strip" />
+
     <!-- 宸︼細寮傚父鍒楄〃 -->
     <aside class="issue-list">
       <header class="issue-head">
@@ -344,7 +355,7 @@ const reviewBoundBatchId = computed(
           :key="item.key"
           class="issue-item"
           :class="{
-            'active': isReviewItemActive(item),
+            active: isReviewItemActive(item),
             'item-failed': item.type === 'page-failed',
             'item-attention': item.type === 'attention',
           }"
@@ -357,7 +368,9 @@ const reviewBoundBatchId = computed(
             <div class="issue-item-text">
               <strong>{{ item.title }}</strong>
               <span>{{ item.description }}</span>
-              <small v-if="item.processingStatus">处理任务：{{ processingStatusLabel(item.processingStatus) }}</small>
+              <small v-if="item.processingStatus"
+                >处理任务：{{ processingStatusLabel(item.processingStatus) }}</small
+              >
               <small v-if="item.detail">{{ item.detail }}</small>
             </div>
           </button>
@@ -482,23 +495,32 @@ const reviewBoundBatchId = computed(
 
       <section class="panel-section">
         <header><h4>处置操作</h4></header>
-        <div v-if="workflow.pageRegisterBlocked.value" class="page-register-block">
-          <p class="page-register-block__title">自动页登记被阻断</p>
-          <p class="page-register-block__desc">
-            {{ workflow.pageRegisterDiagnostic.value || '批次已提交，但页登记尚未完成' }}
-          </p>
-          <button
-            type="button"
-            class="op-btn op-btn--warn"
-            :disabled="
-              !workflow.canRetryPageRegister.value || workflow.pageRegisterRetryLoading.value
-            "
-            @click="workflow.retryPageRegister()"
-          >
-            <ReloadOutlined :spin="workflow.pageRegisterRetryLoading.value" />
-            <span>重试页登记</span>
-          </button>
-        </div>
+        <UiAlertStrip
+          v-if="workflow.pageRegisterBlocked.value || workflow.pageRegisterPending.value"
+          :tone="workflow.pageRegisterBlocked.value ? 'error' : 'warning'"
+          dense
+          :closable="false"
+          :title="workflow.pageRegisterBlocked.value ? '自动页登记被阻断' : '页登记处理中'"
+          :description="workflow.pageRegisterDiagnostic.value || '批次已提交，但页登记尚未完成'"
+          class="page-register-alert"
+        >
+          <template v-if="workflow.pageRegisterPending.value && registerProgressText" #default>
+            {{ registerProgressText }}
+          </template>
+          <template #actions>
+            <button
+              type="button"
+              class="op-btn op-btn--warn"
+              :disabled="
+                !workflow.canRetryPageRegister.value || workflow.pageRegisterRetryLoading.value
+              "
+              @click="workflow.retryPageRegister()"
+            >
+              <ReloadOutlined :spin="workflow.pageRegisterRetryLoading.value" />
+              <span>重试页登记</span>
+            </button>
+          </template>
+        </UiAlertStrip>
         <button
           type="button"
           class="op-btn"
@@ -525,11 +547,11 @@ const reviewBoundBatchId = computed(
           type="button"
           class="op-btn op-btn--danger"
           :disabled="
-            !selectedItem
-              || selectedItem.source !== 'ledger'
-              || selectedItem.pageNo <= 0
-              || !selectedItem.localPageId
-              || !workflow.canDiscardLedgerPage.value
+            !selectedItem ||
+            selectedItem.source !== 'ledger' ||
+            selectedItem.pageNo <= 0 ||
+            !selectedItem.localPageId ||
+            !workflow.canDiscardLedgerPage.value
           "
           :title="
             selectedItem
@@ -591,9 +613,14 @@ const reviewBoundBatchId = computed(
 .review-stage {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr) 280px;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: var(--kiosk-space-3);
   height: 100%;
   min-height: 0;
+}
+
+.review-strip {
+  grid-column: 1 / -1;
 }
 
 .panel-bound {

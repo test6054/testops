@@ -5,16 +5,16 @@ import type {
   ArchivePlatformTemplatePreviewResponse,
 } from '@/apis/mark/archive-platform-template'
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
+import {
+  ArchiveExamFormDescription,
+  ArchiveMaterialTypeDescription,
+} from '@/apis/mark/archive-volume'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, ref, watch } from 'vue'
 import {
   archiveTemplateScopeLabel,
   archiveTemplateScopeTone,
 } from '@/apis/mark/archive-template-scope'
-import {
-  ArchiveExamFormDescription,
-  ArchiveMaterialTypeDescription,
-} from '@/apis/mark/archive-volume'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
@@ -42,7 +42,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "close": []
+  close: []
 }>()
 
 const EDITOR_TAB_SELF_CHECK = 'self-check'
@@ -298,6 +298,7 @@ watch(
                 row-key="rowKey"
                 size="small"
                 empty-description="该分组暂无材料项"
+                :sticky-header="false"
               >
                 <template #bodyCell="{ column, record }">
                   <template v-if="column.key === 'materialType'">
@@ -325,6 +326,7 @@ watch(
                 row-key="rowKey"
                 size="small"
                 empty-description="暂无自查项"
+                :sticky-header="false"
               >
                 <template #bodyCell="{ column, record }">
                   <template v-if="column.key === 'requiredFlag'">

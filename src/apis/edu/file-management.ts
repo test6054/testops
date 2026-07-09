@@ -329,6 +329,34 @@ export async function convertLegacyOfficeArrayBuffer(
 }
 
 /**
+ * 通过后端 previewUrl 拉取鉴权预览 blob URL；B3 消费 storage 相对路径真源。
+ */
+export async function fetchStoragePreviewBlobUrl(previewUrl: string): Promise<string> {
+  const trimmed = previewUrl.trim()
+  if (!trimmed) {
+    return rejectUserError('预览地址无效')
+  }
+  const requestUrl = new URL(trimmed, window.location.origin)
+  const token = localStorage.getItem(STORAGE_TOKEN)
+  if (!token) {
+    return rejectUserError('未登录或登录已过期')
+  }
+  const response = await fetch(requestUrl.toString(), {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...getTraceHeaders(),
+    },
+  })
+  if (!response.ok) {
+    return rejectUserError('图片加载失败，请稍后重试')
+  }
+  const blob = await response.blob()
+  return URL.createObjectURL(blob)
+}
+
+/**
  * 获取图片的 Blob URL - 用于需要认证的图片展示
  * 使用 fetch 带 Authorization header 获取图片，转换为 blob URL
  * 注意：调用方需要在不使用时调用 URL.revokeObjectURL 释放内存

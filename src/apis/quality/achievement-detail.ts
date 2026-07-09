@@ -6,6 +6,7 @@
  * 记录每个子对象（课程目标/观测点/毕业要求）参与本次正式计算的权重、样本、平均分与达成值。
  */
 import type { AchievementDetailTypeCode } from './types'
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 const BASE = '/api/quality/achievement-details'
@@ -29,7 +30,11 @@ export interface AchievementDetailVO {
   updateTime?: string
 }
 
+export interface AchievementDetailQueryRequest extends QueryDto {
+  achievementResultId: string
+}
+
 export const achievementDetailApi = {
-  listByResult: (achievementResultId: string) =>
-    http.post<AchievementDetailVO[]>(`${BASE}/list-by-result`, { id: achievementResultId }),
+  page: (data: AchievementDetailQueryRequest) =>
+    http.post<PageResult<AchievementDetailVO>>(`${BASE}/page`, data),
 }

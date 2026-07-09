@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentPlanVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -11,7 +12,6 @@ import {
   PortfolioDevelopmentPlanStatusCode,
   PortfolioDevelopmentPlanStatusDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -90,6 +90,7 @@ const filterFields = computed<FilterField[]>(() => [
 const loading = ref(false)
 const rows = ref<PortfolioDevelopmentPlanVO[]>([])
 const pageNum = ref(1)
+const pageSize = ref(DEFAULT_LIST_PAGE_SIZE)
 const pageTotal = ref(0)
 const reviewModalOpen = ref(false)
 const reviewTargetId = ref('')
@@ -109,7 +110,7 @@ async function loadPage() {
   try {
     const page = await portfolioDevelopmentPlanApi.page({
       pageNum: pageNum.value,
-      pageSize: DEFAULT_LIST_PAGE_SIZE,
+      pageSize: pageSize.value,
       planYear: filterForm.planYear,
       planStatus: filterForm.planStatus,
       portfolioOrgId: filterForm.portfolioOrgId,
@@ -136,6 +137,12 @@ function openPlanFromQuery() {
 
 function handleSearch() {
   pageNum.value = 1
+  void loadPage()
+}
+
+function handlePageChange(event: { current: number; pageSize: number }) {
+  pageNum.value = event.current
+  pageSize.value = event.pageSize
   void loadPage()
 }
 
@@ -214,7 +221,17 @@ onMounted(async () => {
     />
     <UiCard>
       <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无待审规划" />
-      <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id">
+      <UiDataTable
+        v-model:current="pageNum"
+        v-model:page-size="pageSize"
+        pagination-mode="server"
+        :columns="columns"
+        :data-source="rows"
+        :loading="loading"
+        :total="pageTotal"
+        row-key="id"
+        @page-change="handlePageChange"
+      >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'planStatus'">
             <UiTag :tone="planStatusTone(record.planStatus)">
@@ -243,13 +260,6 @@ onMounted(async () => {
           </template>
         </template>
       </UiDataTable>
-      <a-pagination
-        v-model:current="pageNum"
-        :total="pageTotal"
-        :page-size="20"
-        style="margin-top: 12px"
-        @change="loadPage"
-      />
     </UiCard>
     <a-modal
       v-model:open="reviewModalOpen"

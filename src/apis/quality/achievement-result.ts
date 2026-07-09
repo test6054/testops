@@ -77,11 +77,32 @@ export interface AchievementResultAuditRequest {
   auditRemark?: string
 }
 
+/** 按达成状态分组统计行 - 对齐后端 QualityStatusStatRow */
+export interface AchievementStatusStatRow {
+  status: AchievementStatusCode
+  recordCount: number
+}
+
+/** 按审核状态分组统计行 - 对齐后端 QualityStatusStatRow */
+export interface AchievementAuditStatusStatRow {
+  status: AchievementAuditStatusCode
+  recordCount: number
+}
+
+/** SignalBand 汇总响应 - 对齐后端 AchievementResultSignalSummaryVO */
+export interface AchievementResultSignalSummaryVO {
+  totalCount: number
+  staleCount: number
+  achievementStatusCounts: AchievementStatusStatRow[]
+  auditStatusCounts: AchievementAuditStatusStatRow[]
+}
+
 export const achievementResultApi = {
   page: (data: AchievementResultQueryRequest) =>
     http.post<PageResult<AchievementResultVO>>(`${BASE}/page`, data),
-  detail: (id: string) =>
-    http.post<AchievementResultVO>(`${BASE}/detail`, { id }),
+  signalSummary: (data: AchievementResultQueryRequest) =>
+    http.post<AchievementResultSignalSummaryVO>(`${BASE}/signal-summary`, data),
+  detail: (id: string) => http.post<AchievementResultVO>(`${BASE}/detail`, { id }),
   /** 审核状态流转：DRAFT ↔ CALCULATED ↔ SUBMITTED ↔ CONFIRMED / RETURNED / ARCHIVED */
   updateAuditStatus: (data: AchievementResultAuditRequest) =>
     http.post<void>(`${BASE}/update-audit-status`, data),

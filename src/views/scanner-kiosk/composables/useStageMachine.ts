@@ -9,6 +9,7 @@ import type { ExamKioskWorkflow } from './useExamKioskWorkflow'
 import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { LocalScanJobStatusCode } from '@/apis/mark/scanner-agent-local'
+import { SCANNER_EXAM_BIND_ROUTE } from './useKioskExamRouteGuard'
 
 export type KioskStageId = 'setup' | 'scanning' | 'review' | 'history'
 
@@ -119,6 +120,7 @@ export function useStageMachine(workflow: ExamKioskWorkflow) {
   }
 
   function syncToAutoStage() {
+    if (route.name === SCANNER_EXAM_BIND_ROUTE) return
     if (autoStage.value === currentStage.value) return
     if (currentStage.value === 'history' && autoStage.value !== 'scanning') return
     const stage = KIOSK_STAGES.find((s) => s.id === autoStage.value)
@@ -132,6 +134,7 @@ export function useStageMachine(workflow: ExamKioskWorkflow) {
 
   watch(autoStage, (next, prev) => {
     if (next === prev) return
+    if (route.name === SCANNER_EXAM_BIND_ROUTE) return
     if (next === currentStage.value) return
     if (currentStage.value === 'history' && next !== 'scanning') return
 

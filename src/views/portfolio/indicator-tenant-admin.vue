@@ -6,13 +6,6 @@ import type {
   PortfolioIndustryPackVO,
   PortfolioTenantIndicatorConfigVO,
 } from '@/apis/portfolio/indicator-types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import {
-  portfolioIndicatorPlatformApi,
-  portfolioIndicatorTenantApi,
-} from '@/apis/portfolio/indicator'
 import {
   PF_SCENE_CODE_OPTIONS,
   PfIndicatorStatusDescription,
@@ -20,6 +13,13 @@ import {
   PfSceneCode,
   PfSceneCodeDescription,
 } from '@/apis/portfolio/indicator-types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  portfolioIndicatorPlatformApi,
+  portfolioIndicatorTenantApi,
+} from '@/apis/portfolio/indicator'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -79,8 +79,8 @@ const filteredConfigs = computed(() => {
   }
   return configRows.value.filter(
     (row) =>
-      row.indicatorCode.toLowerCase().includes(keyword)
-      || row.indicatorName.toLowerCase().includes(keyword),
+      row.indicatorCode.toLowerCase().includes(keyword) ||
+      row.indicatorName.toLowerCase().includes(keyword),
   )
 })
 
@@ -91,6 +91,19 @@ const configColumns: ColumnsType = [
   { title: '标准分', dataIndex: 'standardScore', key: 'standardScore', width: 80 },
   { title: '封顶分', dataIndex: 'capScore', key: 'capScore', width: 80 },
   { title: '操作', key: 'actions', width: 120 },
+]
+
+const sceneWeightColumns: ColumnsType = [
+  { title: '指标编码', dataIndex: 'indicatorCode', key: 'indicatorCode', fixed: 'left' },
+  { title: '启用', key: 'enabled', width: 80 },
+  { title: '权重', key: 'weight', width: 120 },
+]
+
+const industryPackColumns: ColumnsType = [
+  { title: '包编码', dataIndex: 'packCode', key: 'packCode', fixed: 'left' },
+  { title: '包名称', dataIndex: 'packName', key: 'packName' },
+  { title: '版本', dataIndex: 'packVersion', key: 'packVersion', width: 88 },
+  { title: '状态', key: 'status', width: 88 },
 ]
 
 async function loadConfig() {
@@ -382,16 +395,16 @@ onMounted(loadConfig)
                 {{ sceneLabel }} · 状态 {{ modelStatusLabel(model.modelStatus) }} · 权重合计
                 {{ model.weightSum ?? '—' }} · 试算 {{ model.trialPassed ? '通过' : '未通过' }}
               </p>
-              <a-table
-                size="small"
-                :pagination="false"
-                row-key="indicatorCode"
+              <UiDataTable
+                :columns="sceneWeightColumns"
                 :data-source="model.indicators"
-                :columns="[
-                  { title: '指标编码', dataIndex: 'indicatorCode' },
-                  { title: '启用', key: 'enabled', width: 80 },
-                  { title: '权重', key: 'weight', width: 120 },
-                ]"
+                row-key="indicatorCode"
+                size="small"
+                flat
+                pagination-mode="none"
+                :show-pagination="false"
+                :sticky-header="false"
+                :total="model.indicators.length"
               >
                 <template #bodyCell="{ column, record }">
                   <template v-if="column.key === 'enabled'">
@@ -410,7 +423,7 @@ onMounted(loadConfig)
                     />
                   </template>
                 </template>
-              </a-table>
+              </UiDataTable>
             </template>
           </a-spin>
         </a-tab-pane>
@@ -439,24 +452,23 @@ onMounted(loadConfig)
             />
             <UiButton variant="primary" :loading="binding" @click="bindPack"> 挂载 </UiButton>
           </div>
-          <a-table
-            size="small"
-            row-key="id"
-            :pagination="false"
+          <UiDataTable
+            :columns="industryPackColumns"
             :data-source="industryPacks"
-            :columns="[
-              { title: '包编码', dataIndex: 'packCode' },
-              { title: '包名称', dataIndex: 'packName' },
-              { title: '版本', dataIndex: 'packVersion', width: 88 },
-              { title: '状态', key: 'status', width: 88 },
-            ]"
+            row-key="id"
+            size="small"
+            flat
+            pagination-mode="none"
+            :show-pagination="false"
+            :sticky-header="false"
+            :total="industryPacks.length"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'status'">
                 {{ indicatorStatusLabel(record.status) }}
               </template>
             </template>
-          </a-table>
+          </UiDataTable>
         </a-tab-pane>
       </a-tabs>
     </UiCard>

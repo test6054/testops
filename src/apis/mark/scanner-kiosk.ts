@@ -24,12 +24,16 @@ import type { TaskStatusCode } from '@/apis/mark/task-status'
 import type { PortfolioGapTaskStatusCode } from '@/apis/portfolio/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { ArchiveKioskHubListModeCode } from '@/types/enums/archive-kiosk-hub-list-mode-enum'
+import type { AttemptStatusCode } from '@/types/enums/attempt-status-enum'
 import type { DirectScanProviderChainCode } from '@/types/enums/direct-scan-provider-chain-enum'
 import type { ExamScannerLedgerDataSourceCode } from '@/types/enums/exam-scanner-ledger-data-source-enum'
 import type { ExamScannerPageRegistrationStatusCode } from '@/types/enums/exam-scanner-page-registration-status-enum'
 import type { ExamScannerPageScanStatusCode } from '@/types/enums/exam-scanner-page-scan-status-enum'
 import type { ExamScannerPageServerReceiveStatusCode } from '@/types/enums/exam-scanner-page-server-receive-status-enum'
 import type { ExamScannerPageUploadStatusCode } from '@/types/enums/exam-scanner-page-upload-status-enum'
+import type { PageRegisterStateCode } from '@/types/enums/page-register-state-enum'
+import type { ScannerKioskBlockReasonCode } from '@/types/enums/scanner-kiosk-block-reason-enum'
+import type { ScannerKioskResumeActionCode } from '@/types/enums/scanner-kiosk-resume-action-enum'
 import type { ScannerKioskScanModeCode } from '@/types/enums/scanner-kiosk-scan-mode-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
@@ -51,6 +55,21 @@ export {
   ExamScannerPageUploadStatusCode,
 } from '@/types/enums/exam-scanner-page-upload-status-enum'
 export {
+  ALL_PAGE_REGISTER_STATE_CODES,
+  PageRegisterStateCode,
+  PageRegisterStateDescription,
+} from '@/types/enums/page-register-state-enum'
+export {
+  ALL_SCANNER_KIOSK_BLOCK_REASON_CODES,
+  ScannerKioskBlockReasonCode,
+  ScannerKioskBlockReasonDescription,
+} from '@/types/enums/scanner-kiosk-block-reason-enum'
+export {
+  ALL_SCANNER_KIOSK_RESUME_ACTION_CODES,
+  ScannerKioskResumeActionCode,
+  ScannerKioskResumeActionDescription,
+} from '@/types/enums/scanner-kiosk-resume-action-enum'
+export {
   ALL_SCANNER_KIOSK_SCAN_MODE_CODES,
   ScannerKioskScanModeCode,
   ScannerKioskScanModeDescription,
@@ -67,6 +86,8 @@ export interface ExamScannerKioskExamVO {
   examId: string
   examName: string
   courseName?: string
+  /** 参考院系名称，与 Web 考试列表 departmentName 同源 */
+  departmentName?: string
   /** 学年，如 '2024-2025' */
   academicYear?: string
   /** 学期，'1'=秋季学期, '2'=春季学期 */
@@ -167,6 +188,10 @@ export interface ExamScannerKioskBatchVO {
   status: ScanBatchStatusCode
   statusMessage: string
   diagnostic?: string
+  /** 页登记状态；后端未算出时为 null（A3） */
+  pageRegisterState?: PageRegisterStateCode | null
+  /** 已登记页数，与 receivedPageCount 对齐 */
+  registeredPageCount?: number
   scanStartTime?: string
   scanEndTime?: string
   scanConfig: ExamScannerScanConfigVO
@@ -194,9 +219,19 @@ export interface ExamScannerKioskContextVO {
   attentionCount: number
   scanMode: ScannerKioskScanModeCode
   canStartScan: boolean
+  canStartDirectScan: boolean
   canStartSupplementScan: boolean
   blockReason?: string
+  directBlockReason?: string
   supplementBlockReason?: string
+  /** 一体机阻断原因码（如 E_KOS_004 去制卷） */
+  blockReasonCode?: ScannerKioskBlockReasonCode | null
+  /** 续处理动作；后端未算出时为 null（A3） */
+  resumeAction?: ScannerKioskResumeActionCode | null
+  /** commit 成功但页登记待重试 */
+  pageRegisterPending?: boolean
+  pageRegisterPendingBatchId?: string
+  pageRegisterDiagnostic?: string
   /** 考试准备硬阻断项（与开批次接口同源） */
   prepHardBlockingReasons?: string[]
   /** 考试准备建议项（不阻断直扫） */
@@ -227,6 +262,10 @@ export interface ExamScannerKioskTaskContractVO {
   materialLayoutModeText?: string
   /** 单份应扫页数 */
   pagesPerSheet?: number
+  /** 当前 ACTIVE 模板是否为扫描推导模板 */
+  scanDerivedTemplateActive?: boolean
+  /** 整卷首扫无模板时的提示文案 */
+  firstScanTemplateHint?: string | null
 }
 
 export interface ExamScannerKioskSessionBatchVO {
@@ -309,6 +348,8 @@ export interface ExamScannerKioskBindExamCandidateVO {
   examNo: string
   examName: string
   courseName?: string
+  /** 参考院系名称，与考试工作台列表 departmentName 同源 */
+  departmentName?: string
   academicYear?: string
   semester?: SemesterCode
   examStartTime?: string
@@ -358,7 +399,7 @@ export interface ExamScannerKioskPaperBindRequest {
   paperInstanceId: string
   recognizedStudentNo?: string
   confirmedCandidateRosterId: string
-  attemptStatus: 'NORMAL' | 'MAKEUP' | 'RETAKE'
+  attemptStatus: AttemptStatusCode
   attemptNo?: string
 }
 

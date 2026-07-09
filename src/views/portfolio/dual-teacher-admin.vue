@@ -4,12 +4,15 @@ import type {
   PortfolioDualTeacherApplicationVO,
   PortfolioDualTeacherEligibilityFreezeVO,
 } from '@/apis/portfolio/teacher-platform'
+import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { message, Modal } from 'ant-design-vue'
 import { computed, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
-import { PortfolioDualTeacherApplicationStatusDescription } from '@/apis/portfolio/enums'
-import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
+import {
+  PortfolioDualTeacherApplicationStatusCode,
+  PortfolioDualTeacherApplicationStatusDescription,
+} from '@/apis/portfolio/enums'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -74,7 +77,7 @@ async function previewEligibility(id: string) {
 }
 
 function canCollegeApprove(record: PortfolioDualTeacherApplicationVO): boolean {
-  if (record.applicationStatus !== 'COLLEGE_PENDING') {
+  if (record.applicationStatus !== PortfolioDualTeacherApplicationStatusCode.COLLEGE_PENDING) {
     return false
   }
   return collegeEligibilityById.value[record.id]?.eligible === true
@@ -89,7 +92,7 @@ function showEligibilityPreviewModal(preview: PortfolioDualTeacherEligibilityFre
 }
 
 function canAcademicApprove(record: PortfolioDualTeacherApplicationVO): boolean {
-  if (record.applicationStatus !== 'ACADEMIC_PENDING') {
+  if (record.applicationStatus !== PortfolioDualTeacherApplicationStatusCode.ACADEMIC_PENDING) {
     return false
   }
   if (!record.eligibilityFreeze) {
@@ -103,38 +106,47 @@ function buildDualTeacherRowActions(
 ): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = []
   if (
-    record.applicationStatus === 'DRAFT'
-    || record.applicationStatus === 'COLLEGE_RETURNED'
-    || record.applicationStatus === 'ACADEMIC_RETURNED'
+    record.applicationStatus === PortfolioDualTeacherApplicationStatusCode.DRAFT ||
+    record.applicationStatus === 'COLLEGE_RETURNED' ||
+    record.applicationStatus === 'ACADEMIC_RETURNED'
   ) {
     actions.push({ key: 'submit', label: '提交' })
   }
-  if (canCollegeReview.value && record.applicationStatus === 'COLLEGE_PENDING') {
+  if (
+    canCollegeReview.value &&
+    record.applicationStatus === PortfolioDualTeacherApplicationStatusCode.COLLEGE_PENDING
+  ) {
     actions.push({ key: 'preview', label: '预览资格' })
   }
   if (canCollegeReview.value && canCollegeApprove(record)) {
     actions.push({ key: 'collegeApprove', label: '院审通过', tone: 'primary' })
   }
-  if (canCollegeReview.value && record.applicationStatus === 'COLLEGE_PENDING') {
+  if (
+    canCollegeReview.value &&
+    record.applicationStatus === PortfolioDualTeacherApplicationStatusCode.COLLEGE_PENDING
+  ) {
     actions.push({ key: 'collegeReturn', label: '院审退回' })
   }
   if (canAcademicReview.value && canAcademicApprove(record)) {
     actions.push({ key: 'academicApprove', label: '教务通过', tone: 'primary' })
   }
-  if (canAcademicReview.value && record.applicationStatus === 'ACADEMIC_PENDING') {
+  if (
+    canAcademicReview.value &&
+    record.applicationStatus === PortfolioDualTeacherApplicationStatusCode.ACADEMIC_PENDING
+  ) {
     actions.push({ key: 'academicReturn', label: '教务退回' })
     actions.push({ key: 'academicReject', label: '教务驳回', tone: 'danger' })
   }
   return actions
 }
 
-type DualTeacherWorkflowAction
-  = | 'submit'
-    | 'collegeApprove'
-    | 'collegeReturn'
-    | 'academicApprove'
-    | 'academicReturn'
-    | 'academicReject'
+type DualTeacherWorkflowAction =
+  | 'submit'
+  | 'collegeApprove'
+  | 'collegeReturn'
+  | 'academicApprove'
+  | 'academicReturn'
+  | 'academicReject'
 
 function handleDualTeacherRowAction(key: string, record: PortfolioDualTeacherApplicationVO): void {
   if (key === 'preview') {
@@ -234,7 +246,13 @@ async function handleImportSuccess() {
             <UiTag v-else-if="record.eligibilityFreeze?.eligible === false" tone="orange">
               已冻结·未满足
             </UiTag>
-            <span v-else-if="record.applicationStatus === 'COLLEGE_PENDING'">待院审冻结</span>
+            <span
+              v-else-if="
+                record.applicationStatus ===
+                PortfolioDualTeacherApplicationStatusCode.COLLEGE_PENDING
+              "
+              >待院审冻结</span
+            >
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions

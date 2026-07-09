@@ -79,14 +79,15 @@ import type {
   ArchiveVolumeAuditEventResponse,
   ArchiveVolumeEventTypeCode,
 } from '@/apis/mark/archive-volume'
+import {
+  ARCHIVE_VOLUME_EVENT_TYPE_OPTIONS,
+  getArchiveAuditEventStats,
+  pageArchiveAuditEvents,
+} from '@/apis/mark/archive-volume'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  ARCHIVE_VOLUME_EVENT_TYPE_OPTIONS,
-  pageArchiveAuditEvents,
-} from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -110,10 +111,13 @@ const router = useRouter()
 const loading = ref(false)
 const loadFailed = ref(false)
 const events = ref<ArchiveVolumeAuditEventResponse[]>([])
+const auditEventCount = ref(0)
 const pagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 
 const signalMetrics = computed<SignalMetric[]>(() =>
-  pagination.total > 0 ? [{ key: 'events', label: '审计事件', value: pagination.total }] : [],
+  auditEventCount.value > 0
+    ? [{ key: 'events', label: '审计事件', value: auditEventCount.value }]
+    : [],
 )
 
 interface ArchiveVolumeAuditFilterForm extends Record<string, unknown> {
@@ -143,14 +147,26 @@ const filterFields: FilterField[] = [
 ]
 
 const columns: ColumnsType<ArchiveVolumeAuditEventResponse> = [
-  { title: '事件类型', key: 'eventType', dataIndex: 'eventType', width: 160 },
+  { title: '事件类型', key: 'eventType', dataIndex: 'eventType', width: 160, fixed: 'left' },
   { title: '卷ID', key: 'volumeId', dataIndex: 'volumeId', width: 120 },
   { title: '操作人', key: 'operatorUserId', width: 120 },
-  { title: '说明', dataIndex: 'reason', key: 'reason', ellipsis: true },
+  { title: '说明', dataIndex: 'reason', key: 'reason', ellipsis: true, minWidth: 240 },
   { title: '前状态', dataIndex: 'beforeStatus', key: 'beforeStatus', width: 100 },
   { title: '后状态', dataIndex: 'afterStatus', key: 'afterStatus', width: 100 },
   { title: '时间', key: 'createTime', dataIndex: 'createTime', width: 168 },
 ]
+
+async function loadAuditStats() {
+  try {
+    const stats = await getArchiveAuditEventStats({
+      volumeId: filterForm.volumeId.trim() || undefined,
+      eventType: filterForm.eventType,
+    })
+    auditEventCount.value = stats.eventCount
+  } catch {
+    auditEventCount.value = 0
+  }
+}
 
 async function loadEvents() {
   loading.value = true
@@ -166,9 +182,11 @@ async function loadEvents() {
     pagination.total = result.total
     pagination.pageNum = result.pageNum
     pagination.pageSize = result.pageSize
+    await loadAuditStats()
   } catch (error) {
     events.value = []
     pagination.total = 0
+    auditEventCount.value = 0
     loadFailed.value = true
     showUserError(error, '加载审计事件失败')
   } finally {
@@ -203,13 +221,3 @@ onMounted(() => {
   void loadEvents()
 })
 </script>
-
-<style scoped>
-.link-cell {
-  color: var(--ant-color-primary);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-}
-</style>

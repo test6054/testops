@@ -38,14 +38,16 @@
         <UiDataTable
           v-model:current="volumePagination.pageNum"
           v-model:page-size="volumePagination.pageSize"
+          pagination-mode="server"
           :columns="volumeColumns"
           :data-source="volumes"
           :loading="volumeLoading"
           :total="volumePagination.total"
           flat
+          zebra
+          sticky-header
           row-key="volumeId"
           size="middle"
-          class="student-detail-table__data-table"
           @page-change="loadVolumes"
         >
           <template #bodyCell="{ column, record }">
@@ -131,15 +133,21 @@
             class="archive-supervision-panel__signal"
           />
           <UiDataTable
-            v-if="matrixPreviewRows.length"
-            pagination-mode="none"
+            v-if="matrixPreviewRows.length || previewPagination.total > 0"
+            v-model:current="previewPagination.pageNum"
+            v-model:page-size="previewPagination.pageSize"
+            pagination-mode="server"
             :columns="matrixPreviewColumns"
             :data-source="matrixPreviewRows"
-            :show-pagination="false"
+            :loading="statsLoading"
+            :total="previewPagination.total"
             flat
+            zebra
+            sticky-header
             row-key="rowKey"
             size="small"
             class="archive-supervision-panel__table"
+            @page-change="loadReadinessPreview"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'storedRate'">
@@ -174,15 +182,19 @@
     <section v-else-if="activeTab === 'remediation'" class="archive-supervision-panel__section">
       <WorkbenchSurfaceCard flush>
         <UiDataTable
-          pagination-mode="none"
+          v-model:current="remediationPagination.pageNum"
+          v-model:page-size="remediationPagination.pageSize"
+          pagination-mode="server"
           :columns="remediationColumns"
           :data-source="remediationTasks"
           :loading="remediationLoading"
-          :show-pagination="false"
+          :total="remediationPagination.total"
           flat
+          zebra
+          sticky-header
           row-key="taskId"
           size="middle"
-          class="student-detail-table__data-table"
+          @page-change="loadRemediation"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'taskStatus'">
@@ -254,15 +266,19 @@
           导出范围：{{ ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT }}
         </p>
         <UiDataTable
-          pagination-mode="none"
+          v-model:current="campaignPagination.pageNum"
+          v-model:page-size="campaignPagination.pageSize"
+          pagination-mode="server"
           :columns="campaignColumns"
           :data-source="campaigns"
           :loading="campaignLoading"
-          :show-pagination="false"
+          :total="campaignPagination.total"
           flat
+          zebra
+          sticky-header
           row-key="campaignId"
           size="middle"
-          class="student-detail-table__data-table"
+          @page-change="loadCampaigns"
         />
       </WorkbenchSurfaceCard>
     </section>
@@ -295,13 +311,19 @@
       </a-descriptions>
       <h4 class="section-title">材料清单</h4>
       <UiDataTable
-        pagination-mode="none"
+        v-model:current="detailMaterialPagination.pageNum"
+        v-model:page-size="detailMaterialPagination.pageSize"
+        pagination-mode="server"
         :columns="materialColumns"
-        :data-source="detail.materials"
-        :show-pagination="false"
+        :data-source="detailMaterials"
+        :loading="detailMaterialLoading"
+        :total="detailMaterialPagination.total"
         flat
+        zebra
+        sticky-header
         row-key="materialId"
         size="small"
+        @page-change="loadDetailMaterials"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'tags'">
@@ -352,21 +374,15 @@ import type {
   ArchiveEvaluationCampaignResponse,
   ArchiveIntegrityStatusCode,
   ArchiveMaterialTypeCode,
-  ArchiveReadinessMatrixResponse,
+  ArchiveReadinessMatrixPreviewRowVO,
+  ArchiveReadinessMatrixPreviewStatsVO,
   ArchiveRemediationTaskResponse,
   ArchiveVolumeDetailResponse,
+  ArchiveVolumeMaterialResponse,
   ArchiveVolumeResponse,
   ArchiveVolumeSourceTypeCode,
   ArchiveVolumeStatusCode,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
   ARCHIVE_VOLUME_STATUS_TONE,
@@ -379,12 +395,25 @@ import {
   exportEvaluationArchivePackage,
   exportEvaluationPackage,
   getSupervisionArchiveVolumeDetail,
-  getSupervisionReadinessMatrix,
-  listSupervisionCampaigns,
-  listSupervisionRemediationTasks,
+  getSupervisionReadinessMatrixPreviewStats,
+  getSupervisionRemediationStats,
+  getSupervisionVolumeStats,
   markSupervisionProblem,
+  pageArchiveVolumeMaterials,
   pageSupervisionArchiveVolumes,
+  pageSupervisionCampaigns,
+  pageSupervisionReadinessMatrixPreview,
+  pageSupervisionRemediationTasks,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { SemesterOptions } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -398,7 +427,6 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearStartOptions } from '@/utils/academic-year'
 import {
   applyAcademicYearStartYearChange,
@@ -443,26 +471,32 @@ const exportCampaignId = ref<string>()
 const exportingManifest = ref(false)
 const exportingArchive = ref(false)
 const volumes = ref<ArchiveVolumeResponse[]>([])
-const readinessMatrix = ref<ArchiveReadinessMatrixResponse | null>(null)
+const previewRows = ref<ArchiveReadinessMatrixPreviewRowVO[]>([])
+const previewStats = ref<ArchiveReadinessMatrixPreviewStatsVO | null>(null)
+const previewPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 const remediationTasks = ref<ArchiveRemediationTaskResponse[]>([])
+const remediationPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
+const remediationOpenCount = ref(0)
+const supervisionVolumeCount = ref(0)
 const campaigns = ref<ArchiveEvaluationCampaignResponse[]>([])
+const campaignPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 const detail = ref<ArchiveVolumeDetailResponse | null>(null)
-
-const openRemediationCount = computed(
-  () => remediationTasks.value.filter((item) => item.taskStatus !== 'CLOSED').length,
-)
+const detailMaterials = ref<ArchiveVolumeMaterialResponse[]>([])
+const detailMaterialPagination = reactive({ pageNum: 1, pageSize: 10, total: 0 })
+const detailMaterialLoading = ref(false)
+const detailVolumeId = ref('')
 
 const panelSignalMetrics = computed<SignalMetric[]>(() => [
   {
     key: 'openRemediation',
     label: '待处理整改',
-    value: openRemediationCount.value,
-    tone: openRemediationCount.value > 0 ? 'orange' : undefined,
+    value: remediationOpenCount.value,
+    tone: remediationOpenCount.value > 0 ? 'orange' : undefined,
   },
   {
     key: 'supervisionVolumes',
     label: '督导归档任务',
-    value: volumePagination.total,
+    value: supervisionVolumeCount.value,
   },
 ])
 
@@ -519,16 +553,16 @@ const volumeColumns: ColumnsType<ArchiveVolumeResponse> = [
   { title: '操作', key: 'actions', width: 140 },
 ]
 
-interface MatrixPreviewRow {
+interface MatrixPreviewRow extends ArchiveReadinessMatrixPreviewRowVO {
   rowKey: string
-  departmentName: string
-  courseName: string
-  storedRate: number
-  storedCount: number
-  totalVolumeCount: number
-  integrityPassRate: number
-  fourPropertyPassRate: number
 }
+
+const matrixPreviewRows = computed<MatrixPreviewRow[]>(() =>
+  previewRows.value.map((row) => ({
+    ...row,
+    rowKey: `${row.departmentId ?? 'none'}-${row.courseId ?? 'none'}`,
+  })),
+)
 
 const matrixPreviewColumns: ColumnsType<MatrixPreviewRow> = [
   { title: '院系', dataIndex: 'departmentName', key: 'departmentName', width: 140 },
@@ -538,28 +572,6 @@ const matrixPreviewColumns: ColumnsType<MatrixPreviewRow> = [
   { title: '完整性通过率', key: 'integrityPassRate', width: 120 },
   { title: '四性通过率', key: 'fourPropertyPassRate', width: 120 },
 ]
-
-const matrixPreviewRows = computed<MatrixPreviewRow[]>(() => {
-  const matrix = readinessMatrix.value
-  if (!matrix || matrix.termColumns.length === 0) return []
-  const latestTerm = matrix.termColumns[matrix.termColumns.length - 1]
-  return matrix.rows.map((row) => {
-    const cell = row.cells.find(
-      (item) =>
-        item.academicYear === latestTerm.academicYear && item.semester === latestTerm.semester,
-    )
-    return {
-      rowKey: `${row.departmentId ?? 'none'}-${row.courseId ?? 'none'}`,
-      departmentName: row.departmentName ?? '—',
-      courseName: row.courseName ?? '—',
-      storedRate: cell?.storedRate ?? 0,
-      storedCount: cell?.storedCount ?? 0,
-      totalVolumeCount: cell?.totalVolumeCount ?? 0,
-      integrityPassRate: cell ? 1 - cell.integrityFailedRate : 0,
-      fourPropertyPassRate: cell?.fourPropertyPassedRate ?? 0,
-    }
-  })
-})
 
 const remediationColumns: ColumnsType<ArchiveRemediationTaskResponse> = [
   { title: '任务', dataIndex: 'taskTitle', key: 'taskTitle' },
@@ -587,7 +599,7 @@ const campaignColumns: ColumnsType<ArchiveEvaluationCampaignResponse> = [
   },
 ]
 
-const materialColumns: ColumnsType<ArchiveVolumeDetailResponse['materials'][number]> = [
+const materialColumns: ColumnsType<ArchiveVolumeMaterialResponse> = [
   {
     title: '类型',
     key: 'materialType',
@@ -600,17 +612,14 @@ const materialColumns: ColumnsType<ArchiveVolumeDetailResponse['materials'][numb
 ]
 
 const statsMetrics = computed<SignalMetric[]>(() => {
-  if (matrixPreviewRows.value.length === 0) return []
+  const stats = previewStats.value
+  if (!stats || stats.rowCount <= 0) return []
   return [
-    { key: 'rows', label: '院系课程', value: matrixPreviewRows.value.length },
+    { key: 'rows', label: '院系课程', value: stats.rowCount },
     {
       key: 'stored',
       label: '平均入库率',
-      value: `${Math.round(
-        (matrixPreviewRows.value.reduce((sum, row) => sum + row.storedRate, 0)
-          / matrixPreviewRows.value.length)
-        * 100,
-      )}%`,
+      value: `${Math.round(stats.averageStoredRate * 100)}%`,
     },
   ]
 })
@@ -760,38 +769,78 @@ function resetVolumeFilter() {
   void loadVolumes()
 }
 
+function goMarkingQuality() {
+  void router.push({ name: 'TeacherMarkingOverview' })
+}
+
+function buildPreviewRequest() {
+  const academicYear = resolveAcademicYearFromTriple(statsFilter)
+  const semester = statsFilter.semester
+  if (!academicYear || !semester) return null
+  return {
+    endAcademicYear: academicYear,
+    endSemester: semester,
+    pageNum: previewPagination.pageNum,
+    pageSize: previewPagination.pageSize,
+  }
+}
+
 async function loadReadinessPreview() {
   if (!ensureTriplePeriodPair(statsFilter)) {
     return
   }
-  const academicYear = resolveAcademicYearFromTriple(statsFilter)
-  const semester = statsFilter.semester
-  if (!academicYear || !semester) {
-    return
-  }
+  const request = buildPreviewRequest()
+  if (!request) return
   statsLoading.value = true
   try {
-    readinessMatrix.value = await getSupervisionReadinessMatrix({
-      endAcademicYear: academicYear,
-      endSemester: semester,
-      termCount: 1,
-    })
+    const [stats, page] = await Promise.all([
+      getSupervisionReadinessMatrixPreviewStats(request),
+      pageSupervisionReadinessMatrixPreview(request),
+    ])
+    previewStats.value = stats
+    previewRows.value = page.list
+    previewPagination.total = page.total
+    if (page.pageNum != null) previewPagination.pageNum = page.pageNum
+    if (page.pageSize != null) previewPagination.pageSize = page.pageSize
   } catch (error) {
-    readinessMatrix.value = null
+    previewStats.value = null
+    previewRows.value = []
+    previewPagination.total = 0
     showUserError(error, '加载就绪矩阵失败')
   } finally {
     statsLoading.value = false
   }
 }
 
-function goMarkingQuality() {
-  void router.push({ name: 'TeacherMarkingOverview' })
+async function loadRemediationStats(): Promise<void> {
+  try {
+    const stats = await getSupervisionRemediationStats()
+    remediationOpenCount.value = stats.openTaskCount
+  } catch {
+    remediationOpenCount.value = 0
+  }
+}
+
+async function loadSupervisionVolumeStats(): Promise<void> {
+  try {
+    const stats = await getSupervisionVolumeStats()
+    supervisionVolumeCount.value = stats.supervisionVolumeCount
+  } catch {
+    supervisionVolumeCount.value = 0
+  }
 }
 
 async function loadRemediation() {
   remediationLoading.value = true
   try {
-    remediationTasks.value = await listSupervisionRemediationTasks()
+    const page = await pageSupervisionRemediationTasks({
+      pageNum: remediationPagination.pageNum,
+      pageSize: remediationPagination.pageSize,
+    })
+    remediationTasks.value = page.list
+    remediationPagination.total = page.total
+    if (page.pageNum != null) remediationPagination.pageNum = page.pageNum
+    if (page.pageSize != null) remediationPagination.pageSize = page.pageSize
   } catch (error) {
     showUserError(error)
   } finally {
@@ -802,7 +851,14 @@ async function loadRemediation() {
 async function loadCampaigns() {
   campaignLoading.value = true
   try {
-    campaigns.value = await listSupervisionCampaigns()
+    const page = await pageSupervisionCampaigns({
+      pageNum: campaignPagination.pageNum,
+      pageSize: campaignPagination.pageSize,
+    })
+    campaigns.value = page.list
+    campaignPagination.total = page.total
+    if (page.pageNum != null) campaignPagination.pageNum = page.pageNum
+    if (page.pageSize != null) campaignPagination.pageSize = page.pageSize
   } catch (error) {
     showUserError(error)
   } finally {
@@ -810,12 +866,42 @@ async function loadCampaigns() {
   }
 }
 
+async function loadDetailMaterials(): Promise<void> {
+  if (!detailVolumeId.value) {
+    detailMaterials.value = []
+    detailMaterialPagination.total = 0
+    return
+  }
+  detailMaterialLoading.value = true
+  try {
+    const page = await pageArchiveVolumeMaterials({
+      volumeId: detailVolumeId.value,
+      pageNum: detailMaterialPagination.pageNum,
+      pageSize: detailMaterialPagination.pageSize,
+    })
+    detailMaterials.value = page.list
+    detailMaterialPagination.total = page.total
+    if (page.pageNum != null) detailMaterialPagination.pageNum = page.pageNum
+    if (page.pageSize != null) detailMaterialPagination.pageSize = page.pageSize
+  } catch (error) {
+    detailMaterials.value = []
+    detailMaterialPagination.total = 0
+    showUserError(error, '材料清单加载失败')
+  } finally {
+    detailMaterialLoading.value = false
+  }
+}
+
 async function openDetail(volumeId: string) {
   detailOpen.value = true
   detailLoading.value = true
   detail.value = null
+  detailVolumeId.value = volumeId
+  detailMaterialPagination.pageNum = 1
+  detailMaterials.value = []
   try {
     detail.value = await getSupervisionArchiveVolumeDetail(volumeId)
+    await loadDetailMaterials()
   } catch (error) {
     showUserError(error)
     detailOpen.value = false
@@ -856,6 +942,7 @@ async function submitMarkProblem() {
     markProblemOpen.value = false
     if (activeTab.value === 'remediation') {
       void loadRemediation()
+      void loadRemediationStats()
     }
   } catch (error) {
     showUserError(error)
@@ -865,7 +952,7 @@ async function submitMarkProblem() {
 }
 
 watch(activeTab, (tab) => {
-  if (tab === 'statistics' && !readinessMatrix.value) void loadReadinessPreview()
+  if (tab === 'statistics' && previewRows.value.length === 0) void loadReadinessPreview()
   if (tab === 'volumes' && volumes.value.length === 0) void loadVolumes()
   if (tab === 'remediation' && remediationTasks.value.length === 0) void loadRemediation()
   if (tab === 'campaign' && campaigns.value.length === 0) void loadCampaigns()
@@ -893,7 +980,8 @@ watch(campaigns, (items) => {
 
 onMounted(() => {
   void loadGrants()
-  void loadRemediation()
+  void loadRemediationStats()
+  void loadSupervisionVolumeStats()
   void loadVolumes()
 })
 </script>
@@ -942,11 +1030,6 @@ onMounted(() => {
   margin-top: 8px;
 }
 
-.link-cell__sub {
-  color: var(--dp-text-muted);
-  font-size: 12px;
-}
-
 .detail-head__title {
   font-size: 16px;
   font-weight: 600;
@@ -966,10 +1049,5 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-}
-
-.link-cell__sub {
-  color: var(--dp-text-muted);
-  font-size: 12px;
 }
 </style>

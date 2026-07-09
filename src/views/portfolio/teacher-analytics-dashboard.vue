@@ -4,25 +4,26 @@ import type {
   PortfolioDualTeacherApplicationStatusCode,
   PortfolioKeyTeacherRegistryStatusCode,
 } from '@/apis/portfolio/enums'
+import {
+  PortfolioDualTeacherApplicationStatusDescription,
+  PortfolioKeyTeacherRegistryStatusDescription,
+} from '@/apis/portfolio/enums'
 import type { PortfolioDeptStructureStatVO } from '@/apis/portfolio/teacher'
+import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import type {
   PortfolioDoubleDutyAnalyticsVO,
   PortfolioDualTeacherAnalyticsVO,
   PortfolioExternalTeacherStatsVO,
 } from '@/apis/portfolio/teacher-platform'
-import { onMounted, ref } from 'vue'
-import {
-  PortfolioDualTeacherApplicationStatusDescription,
-  PortfolioKeyTeacherRegistryStatusDescription,
-} from '@/apis/portfolio/enums'
-import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
   portfolioDoubleDutyApi,
   portfolioDualTeacherApi,
   portfolioExternalTeacherApi,
 } from '@/apis/portfolio/teacher-platform'
+import { onMounted, ref } from 'vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -37,32 +38,32 @@ const externalStats = ref<PortfolioExternalTeacherStatsVO | null>(null)
 
 const deptColumns: ColumnsType = [
   { title: '院系', dataIndex: 'departmentName', key: 'departmentName' },
-  { title: '教师数', dataIndex: 'teacherCount', key: 'teacherCount', width: 88 },
+  { title: '教师数', dataIndex: 'teacherCount', key: 'teacherCount', width: 88, align: 'right' },
 ]
 
 const statusColumns: ColumnsType = [
   { title: '状态', dataIndex: 'applicationStatus', key: 'applicationStatus' },
-  { title: '数量', dataIndex: 'count', key: 'count', width: 88 },
+  { title: '数量', dataIndex: 'count', key: 'count', width: 88, align: 'right' },
 ]
 
 const dimensionColumns: ColumnsType = [
   { title: '维度', dataIndex: 'dimensionCode', key: 'dimensionCode' },
-  { title: '数量', dataIndex: 'count', key: 'count', width: 88 },
+  { title: '数量', dataIndex: 'count', key: 'count', width: 88, align: 'right' },
 ]
 
 const certColumns: ColumnsType = [
   { title: '认定等级', dataIndex: 'certLevel', key: 'certLevel' },
-  { title: '数量', dataIndex: 'count', key: 'count', width: 88 },
+  { title: '数量', dataIndex: 'count', key: 'count', width: 88, align: 'right' },
 ]
 
 const doubleDutyStatusColumns: ColumnsType = [
   { title: '台账状态', dataIndex: 'registryStatus', key: 'registryStatus' },
-  { title: '数量', dataIndex: 'count', key: 'count', width: 88 },
+  { title: '数量', dataIndex: 'count', key: 'count', width: 88, align: 'right' },
 ]
 
 const appointYearColumns: ColumnsType = [
   { title: '任命年度', dataIndex: 'appointYear', key: 'appointYear' },
-  { title: '数量', dataIndex: 'count', key: 'count', width: 88 },
+  { title: '数量', dataIndex: 'count', key: 'count', width: 88, align: 'right' },
 ]
 
 function applicationStatusLabel(status: PortfolioDualTeacherApplicationStatusCode): string {
@@ -124,12 +125,16 @@ onMounted(loadAll)
             variant="grid"
             compact
           />
-          <a-table
-            size="small"
-            :pagination="false"
-            row-key="departmentId"
-            :data-source="deptStats.departments"
+          <UiDataTable
             :columns="deptColumns"
+            :data-source="deptStats.departments"
+            row-key="departmentId"
+            size="small"
+            flat
+            pagination-mode="none"
+            :show-pagination="false"
+            :sticky-header="false"
+            :total="deptStats.departments.length"
             style="margin-top: 16px"
           />
         </UiCard>
@@ -148,12 +153,16 @@ onMounted(loadAll)
             variant="grid"
             compact
           />
-          <a-table
-            size="small"
-            :pagination="false"
-            row-key="applicationStatus"
-            :data-source="dualStats.statusCounts"
+          <UiDataTable
             :columns="statusColumns"
+            :data-source="dualStats.statusCounts"
+            row-key="applicationStatus"
+            size="small"
+            flat
+            pagination-mode="none"
+            :show-pagination="false"
+            :sticky-header="false"
+            :total="dualStats.statusCounts.length"
             style="margin-top: 16px"
           >
             <template #bodyCell="{ column, record }">
@@ -161,14 +170,18 @@ onMounted(loadAll)
                 {{ applicationStatusLabel(record.applicationStatus) }}
               </template>
             </template>
-          </a-table>
-          <a-table
+          </UiDataTable>
+          <UiDataTable
             v-if="dualStats.certLevelCounts.length"
-            size="small"
-            :pagination="false"
-            row-key="certLevel"
-            :data-source="dualStats.certLevelCounts"
             :columns="certColumns"
+            :data-source="dualStats.certLevelCounts"
+            row-key="certLevel"
+            size="small"
+            flat
+            pagination-mode="none"
+            :show-pagination="false"
+            :sticky-header="false"
+            :total="dualStats.certLevelCounts.length"
             style="margin-top: 16px"
           />
         </UiCard>
@@ -187,12 +200,16 @@ onMounted(loadAll)
             variant="grid"
             compact
           />
-          <a-table
-            size="small"
-            :pagination="false"
-            row-key="registryStatus"
-            :data-source="doubleDutyStats.statusCounts"
+          <UiDataTable
             :columns="doubleDutyStatusColumns"
+            :data-source="doubleDutyStats.statusCounts"
+            row-key="registryStatus"
+            size="small"
+            flat
+            pagination-mode="none"
+            :show-pagination="false"
+            :sticky-header="false"
+            :total="doubleDutyStats.statusCounts.length"
             style="margin-top: 16px"
           >
             <template #bodyCell="{ column, record }">
@@ -200,32 +217,44 @@ onMounted(loadAll)
                 {{ registryStatusLabel(record.registryStatus) }}
               </template>
             </template>
-          </a-table>
-          <a-table
+          </UiDataTable>
+          <UiDataTable
             v-if="doubleDutyStats.appointYearCounts.length"
-            size="small"
-            :pagination="false"
-            row-key="appointYear"
-            :data-source="doubleDutyStats.appointYearCounts"
             :columns="appointYearColumns"
+            :data-source="doubleDutyStats.appointYearCounts"
+            row-key="appointYear"
+            size="small"
+            flat
+            pagination-mode="none"
+            :show-pagination="false"
+            :sticky-header="false"
+            :total="doubleDutyStats.appointYearCounts.length"
             style="margin-top: 16px"
           />
         </UiCard>
         <UiCard v-if="externalStats" title="外聘教师">
-          <a-table
-            size="small"
-            :pagination="false"
-            row-key="dimensionCode"
-            :data-source="externalStats.contractStatusCounts"
+          <UiDataTable
             :columns="dimensionColumns"
+            :data-source="externalStats.contractStatusCounts"
+            row-key="dimensionCode"
+            size="small"
+            flat
+            pagination-mode="none"
+            :show-pagination="false"
+            :sticky-header="false"
+            :total="externalStats.contractStatusCounts.length"
             style="margin-bottom: 16px"
           />
-          <a-table
-            size="small"
-            :pagination="false"
-            row-key="dimensionCode"
-            :data-source="externalStats.teacherSourceCounts"
+          <UiDataTable
             :columns="dimensionColumns"
+            :data-source="externalStats.teacherSourceCounts"
+            row-key="dimensionCode"
+            size="small"
+            flat
+            pagination-mode="none"
+            :show-pagination="false"
+            :sticky-header="false"
+            :total="externalStats.teacherSourceCounts.length"
           />
         </UiCard>
       </div>

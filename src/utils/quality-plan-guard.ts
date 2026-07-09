@@ -1,6 +1,7 @@
 import type { RouteRecordNormalized } from 'vue-router'
 import type { QualityGate } from '@/constants/quality-scope-profile'
 import { message } from 'ant-design-vue'
+import { ConfirmationStatusCode } from '@/apis/quality/types'
 import { useQualityStore } from '@/stores/modules/quality'
 
 /** 路由链是否要求培养方案已确认（仅 qualityGate） */
@@ -33,7 +34,7 @@ export async function ensureQualityPlanConfirmedForNavigation(
     return false
   }
   const plan = qualityStore.currentPlan
-  if (!plan || plan.confirmationStatus !== 'CONFIRMED') {
+  if (!plan || plan.confirmationStatus !== ConfirmationStatusCode.CONFIRMED) {
     message.warning('培养方案尚未确认，请先在「培养方案体系工作台」完成确认')
     return false
   }

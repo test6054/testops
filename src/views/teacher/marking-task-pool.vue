@@ -113,18 +113,19 @@
             variant="panel"
             show-labels
             search-text="查询"
-            @search="loadTasks"
+            @search="() => loadTasks({ resetPage: true })"
             @reset="resetFilter"
           />
         </template>
 
         <UiDataTable
-          pagination-mode="client"
+          v-model:current="taskPageNum"
+          v-model:page-size="taskPageSize"
+          pagination-mode="server"
           :columns="columns"
           :data-source="tasks"
           :loading="loading"
-          :page-size="20"
-          :total="tasks.length"
+          :total="taskPageTotal"
           row-key="id"
           size="middle"
           flat
@@ -134,7 +135,7 @@
           :enable-selection="batchMode"
           :selected-row-keys="selectedRowKeys"
           @selection-change="handleSelectionChange"
-          class="student-detail-table__data-table"
+          @page-change="handleTaskPageChange"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'question'">
@@ -222,6 +223,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
+import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
 import type {
   FormalSessionResponse,
   MarkingTaskClaimRequest,
@@ -229,6 +231,15 @@ import type {
   MarkingTaskResponse,
   TeacherClaimContextResponse,
   TrialSessionResponse,
+} from '@/apis/mark/marking-organization'
+import {
+  FormalSessionStatusDescription,
+  getMarkingQuestionView,
+  getOrganization,
+  MARKING_TASK_STATUS_OPTIONS,
+  MARKING_TASK_STATUS_TONE,
+  MarkingTaskStatusDescription,
+  TrialSessionStatusDescription,
 } from '@/apis/mark/marking-organization'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -239,16 +250,6 @@ import message from 'ant-design-vue/es/message'
 import { storeToRefs } from 'pinia'
 import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
-import {
-  FormalSessionStatusDescription,
-  getMarkingQuestionView,
-  getOrganization,
-  MARKING_TASK_STATUS_OPTIONS,
-  MARKING_TASK_STATUS_TONE,
-  MarkingTaskStatusDescription,
-  TrialSessionStatusDescription,
-} from '@/apis/mark/marking-organization'
 import { MarkingTaskStreamSubscribeScopeCode } from '@/apis/mark/marking-task-stream'
 import MarkingBatchScoreDrawer from '@/components/mark/MarkingBatchScoreDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -322,7 +323,14 @@ const currentUserId = computed(() => userStore.userInfo.userId || '')
 const markTaskStore = useMarkTaskStore()
 // 注意：tasks / tasksLoading 仅用于读取，写入必须经 markTaskStore.loadTasks /
 // clearTasks 等 action，避免组件直接修改 storeToRefs 解开后的 ref。
-const { tasks, tasksLoading: loading, claimContextLoading } = storeToRefs(markTaskStore)
+const {
+  tasks,
+  tasksLoading: loading,
+  claimContextLoading,
+  tasksPageNum: taskPageNum,
+  tasksPageSize: taskPageSize,
+  tasksPageTotal: taskPageTotal,
+} = storeToRefs(markTaskStore)
 
 const filterForm = reactive<{
   taskStatus?: MarkingTaskStatusCode
@@ -371,8 +379,8 @@ const selectedTasks = computed(() =>
 
 function isBatchSelectable(task: MarkingTaskResponse): boolean {
   return (
-    task.taskStatus === MarkingTaskStatusCode.ALLOCATED
-    || task.taskStatus === MarkingTaskStatusCode.IN_PROGRESS
+    task.taskStatus === MarkingTaskStatusCode.ALLOCATED ||
+    task.taskStatus === MarkingTaskStatusCode.IN_PROGRESS
   )
 }
 
@@ -389,8 +397,8 @@ function handleSelectionChange(keys: (string | number)[]): void {
     clearBatchSelection()
     return
   }
-  const anchor
-    = batchSelectionAnchor.value ?? tasks.value.find((task) => task.id === typedKeys[0]) ?? null
+  const anchor =
+    batchSelectionAnchor.value ?? tasks.value.find((task) => task.id === typedKeys[0]) ?? null
   if (!anchor || !isBatchSelectable(anchor)) {
     clearBatchSelection()
     return
@@ -493,31 +501,41 @@ const groupLeaderStream = useMarkingTaskStream({
     }
     // exam Topic 事件携带单 session 计数，须回源 claimContext 做 exam 级聚合
     if (
-      event.eventType === 'SESSION_PROGRESS'
-      || event.eventType === 'SESSION_PAUSED'
-      || event.eventType === 'SESSION_RESUMED'
+      event.eventType === 'SESSION_PROGRESS' ||
+      event.eventType === 'SESSION_PAUSED' ||
+      event.eventType === 'SESSION_RESUMED'
     ) {
       void loadClaimContext()
     }
   },
 })
 
-function getPollingIntervalMs(): number {
-  if (teacherTaskStream.ready.value) {
-    return 0
+function allRequiredTaskStreamsReady(): boolean {
+  if (!teacherTaskStream.ready.value) {
+    return false
   }
+  if (isGroupLeader.value && !groupLeaderStream.ready.value) {
+    return false
+  }
+  return true
+}
+
+function getPollingIntervalMs(): number {
   if (sessionPausedAlert.value) {
     return 0
   }
-  const hasPending = tasks.value.some(
-    (task) =>
-      task.taskStatus === MarkingTaskStatusCode.ALLOCATED
-      || task.taskStatus === MarkingTaskStatusCode.IN_PROGRESS,
-  )
+  if (allRequiredTaskStreamsReady()) {
+    return 0
+  }
+  const summary = taskPoolSummary.value
+  const hasPending = summary ? summary.allocatedTaskCount + summary.inProgressTaskCount > 0 : false
   if (hasPending) {
     return 5000
   }
-  if (teacherTaskStream.connectionPhase.value === 'failed') {
+  if (
+    teacherTaskStream.connectionPhase.value === 'failed' ||
+    (isGroupLeader.value && groupLeaderStream.connectionPhase.value === 'failed')
+  ) {
     return 30000
   }
   return 15000
@@ -538,7 +556,7 @@ const pageSignalMetrics = computed((): SignalMetric[] => {
 })
 
 const columns = computed<ColumnType<MarkingTaskResponse>[]>(() => [
-  { title: '题目', key: 'question', width: 190 },
+  { title: '题目', key: 'question', width: 190, fixed: 'left' },
   { title: '匿名', key: 'anonymityMode', width: 72 },
   { title: '答卷', key: 'paperDisplay', width: 220 },
   { title: '题组', key: 'groupName', width: 150 },
@@ -548,10 +566,10 @@ const columns = computed<ColumnType<MarkingTaskResponse>[]>(() => [
   { title: '给分', key: 'score', width: 80 },
   { title: '分配时间', key: 'allocatedTime', width: 170 },
   { title: '提交时间', key: 'submittedTime', width: 170 },
-  { title: '操作', key: 'actions', width: 140, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 140 },
 ])
 
-async function loadTasks(options?: { silent?: boolean }): Promise<void> {
+async function loadTasks(options?: { silent?: boolean; resetPage?: boolean }): Promise<void> {
   if (!selectedExamId.value) {
     markTaskStore.clearTasks()
     tasksLoadError.value = ''
@@ -572,6 +590,9 @@ async function loadTasks(options?: { silent?: boolean }): Promise<void> {
   if (options?.silent && loading.value) {
     return
   }
+  if (options?.resetPage) {
+    taskPageNum.value = 1
+  }
   const previousIds = new Set(tasks.value.map((task) => task.id))
   try {
     const request: MarkingTaskQueryRequest = {
@@ -580,7 +601,9 @@ async function loadTasks(options?: { silent?: boolean }): Promise<void> {
       sessionId: filterForm.sessionId?.trim() || undefined,
       taskStatus: filterForm.taskStatus,
     }
-    await markTaskStore.loadTasks(request, { silent: options?.silent })
+    await markTaskStore.loadTasksPage(request, taskPageNum.value, taskPageSize.value, {
+      silent: options?.silent,
+    })
     tasksLoadError.value = ''
     if (options?.silent && isGroupLeader.value) {
       void loadClaimContext()
@@ -597,6 +620,10 @@ async function loadTasks(options?: { silent?: boolean }): Promise<void> {
       showUserError(error, '阅卷任务列表加载失败')
     }
   }
+}
+
+function handleTaskPageChange(): void {
+  void loadTasks()
 }
 
 function applyNewTaskHighlights(previousIds: Set<string>): void {
@@ -655,7 +682,7 @@ onBeforeUnmount(() => {
 })
 
 function resetFilter(): void {
-  void loadTasks()
+  void loadTasks({ resetPage: true })
 }
 
 watch(
@@ -892,7 +919,15 @@ watch(
 
 watch(isGroupLeader, () => {
   void groupLeaderStream.refresh()
+  taskListPolling.syncPolling()
 })
+
+watch(
+  () => [teacherTaskStream.ready.value, groupLeaderStream.ready.value],
+  () => {
+    taskListPolling.syncPolling()
+  },
+)
 
 watch(markingPhase, () => {
   claimForm.markingPhase = markingPhase.value

@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import type { ExamCandidateResponse } from '@/apis/mark/exam-scope'
+import { CandidateStatusDescription } from '@/apis/mark/exam-scope'
 /**
  * 扫描中异常修正面板：边扫边处理，占用缩略图列（非遮罩叠加）。
  */
 import { CloseOutlined, ReloadOutlined } from '@ant-design/icons-vue'
 import { computed, ref, watch } from 'vue'
-import { CandidateStatusDescription } from '@/apis/mark/exam-scope'
 import { LocalScanPageStatusCode } from '@/apis/mark/scanner-agent-local'
 import { bindScannerKioskPaper, pageScannerKioskExamRoster } from '@/apis/mark/scanner-kiosk'
 import { TaskStatusDescription } from '@/apis/mark/task-status'
+import { AttemptStatusCode } from '@/types/enums/attempt-status-enum'
 import { CandidateStatusCode } from '@/types/enums/candidate-status-enum'
 import { getKioskBindingProfile } from '@/utils/kiosk-auth'
-import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { useKioskCtx } from '../composables/kioskInjection'
 
@@ -30,7 +30,9 @@ const { workflow, stage } = useKioskCtx()
 
 const studentNo = ref('')
 const candidateRosterId = ref('')
+const candidateKeyword = ref('')
 const candidates = ref<ExamCandidateResponse[]>([])
+const candidateCache = ref<Map<string, ExamCandidateResponse>>(new Map())
 const candidatesLoading = ref(false)
 const candidatesLoadError = ref('')
 const binding = ref(false)
@@ -56,10 +58,10 @@ const pageTitle = computed(() => {
 
 const scanBatchId = computed(
   () =>
-    workflow.currentJob.value?.scanBatchId
-    || workflow.pageLedger.value?.scanBatchId
-    || workflow.boundPaperScanBatchId.value
-    || '',
+    workflow.currentJob.value?.scanBatchId ||
+    workflow.pageLedger.value?.scanBatchId ||
+    workflow.boundPaperScanBatchId.value ||
+    '',
 )
 
 /** 优先显式 paperInstanceId；否则通过页级 localPageId 与 attentionItems.pageId 精确关联。 */
@@ -112,7 +114,7 @@ const diagnosticText = computed(() => {
     return workflow.attentionTypeText(attentionItem.value.attentionType)
   }
   if (currentPage.value?.status === LocalScanPageStatusCode.FAILED)
-    return '页面上传失败，可重试上传后继续扫描'
+    return '页面上传失败，系统后台自动重试上传中'
   return '页面处理异常，请核对影像与考号'
 })
 
@@ -129,7 +131,9 @@ function candidateStatusLabel(status: CandidateStatusCode | undefined): string {
 
 function candidateBindingBlockReason(rosterId: string): string {
   if (!rosterId.trim()) return '请从名册中选择正确考生'
-  const candidate = candidates.value.find((item) => item.candidateRosterId === rosterId)
+  const candidate =
+    candidateCache.value.get(rosterId) ??
+    candidates.value.find((item) => item.candidateRosterId === rosterId)
   if (!candidate) return '所选考生不在当前考试名册中，请刷新名册后重试'
   if (!isCandidateBindable(candidate)) {
     return `${candidate.studentName}（${candidate.studentNo}）当前状态为${candidateStatusLabel(candidate.status)}，不能绑定试卷`
@@ -137,7 +141,15 @@ function candidateBindingBlockReason(rosterId: string): string {
   return ''
 }
 
-async function loadCandidates() {
+let candidateSearchTimer: ReturnType<typeof setTimeout> | null = null
+function onCandidateKeywordInput(event: Event) {
+  if (!(event.target instanceof HTMLInputElement)) return
+  candidateKeyword.value = event.target.value
+  if (candidateSearchTimer) clearTimeout(candidateSearchTimer)
+  candidateSearchTimer = setTimeout(() => void loadCandidates(candidateKeyword.value), 300)
+}
+
+async function loadCandidates(keyword?: string) {
   const examId = workflow.examId.value
   const profile = getKioskBindingProfile()
   if (!examId) {
@@ -151,17 +163,18 @@ async function loadCandidates() {
   candidatesLoading.value = true
   candidatesLoadError.value = ''
   try {
-    candidates.value = await readAllPages(
-      (pageNum) =>
-        pageScannerKioskExamRoster({
-          examId,
-          scannerDeviceId: profile.scannerDeviceId,
-          scannerStationId: profile.scannerStationId,
-          pageNum,
-          pageSize: 100,
-        }),
-      '考生名册加载失败',
-    )
+    const page = await pageScannerKioskExamRoster({
+      examId,
+      scannerDeviceId: profile.scannerDeviceId,
+      scannerStationId: profile.scannerStationId,
+      pageNum: 1,
+      pageSize: 20,
+      keyword: keyword?.trim() || undefined,
+    })
+    for (const item of page.list) {
+      candidateCache.value.set(item.candidateRosterId, item)
+    }
+    candidates.value = page.list
   } catch (error) {
     candidates.value = []
     candidatesLoadError.value = error instanceof Error ? error.message : '考生名册加载失败'
@@ -177,6 +190,7 @@ watch(
     if (!isOpen) return
     studentNo.value = ''
     candidateRosterId.value = ''
+    candidateKeyword.value = ''
     void loadCandidates()
     void workflow.refreshPageLedger()
   },
@@ -213,7 +227,7 @@ async function submitBind() {
       paperInstanceId: resolvedPaperInstanceId.value!,
       recognizedStudentNo: studentNo.value.trim() || undefined,
       confirmedCandidateRosterId: candidateRosterId.value,
-      attemptStatus: 'NORMAL',
+      attemptStatus: AttemptStatusCode.NORMAL,
     })
     workflow.successMessage.value = '考号已修正并绑定'
     await workflow.refreshPageLedger()
@@ -265,6 +279,16 @@ function gotoReview() {
           type="text"
           class="field__input"
           placeholder="选择名册后自动填充"
+        />
+      </label>
+      <label class="field">
+        <span>搜索考生</span>
+        <input
+          v-model="candidateKeyword"
+          type="text"
+          class="field__input"
+          placeholder="考号 / 姓名"
+          @input="onCandidateKeywordInput"
         />
       </label>
       <label class="field">

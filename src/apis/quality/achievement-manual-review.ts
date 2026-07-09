@@ -3,6 +3,7 @@ import type { ManualReviewDecisionCode } from './types'
  * 达成度人工复核 API。
  * 后端对象：AchievementManualReviewController /api/quality/achievement-manual-reviews。
  */
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 const REVIEW = '/api/quality/achievement-manual-reviews'
@@ -27,9 +28,13 @@ export interface AchievementManualReviewCreateRequest {
   reviewRemark?: string
 }
 
+export interface AchievementManualReviewQueryRequest extends QueryDto {
+  achievementResultId: string
+}
+
 export const achievementManualReviewApi = {
-  listByResult: (achievementResultId: string) =>
-    http.post<AchievementManualReviewVO[]>(`${REVIEW}/list-by-result`, { id: achievementResultId }),
+  page: (data: AchievementManualReviewQueryRequest) =>
+    http.post<PageResult<AchievementManualReviewVO>>(`${REVIEW}/page`, data),
   create: (data: AchievementManualReviewCreateRequest) =>
     http.post<string>(`${REVIEW}/create`, data),
 }

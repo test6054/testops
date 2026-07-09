@@ -39,14 +39,16 @@
         <UiEmpty v-if="!loading && !list.length" description="当前范围无待审核项" />
         <UiDataTable
           v-else
-          pagination-mode="none"
+          pagination-mode="server"
+          v-model:current="pageNum"
+          v-model:page-size="pageSize"
           :columns="columns"
           :data-source="list"
           :loading="loading"
           row-key="qualityCourseId"
-          :show-pagination="false"
           flat
-          :total="list.length"
+          :total="listTotal"
+          @page-change="handlePageChange"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'auditStatus'">
@@ -142,16 +144,18 @@ import type {
   RationalityAuditCourseLedgerOverviewVO,
   RationalityAuditSaveRequest,
 } from '@/apis/quality/rationality-audit'
+import {
+  createRationalityAudit,
+  getRationalityAuditCourseLedgerOverview,
+  pageRationalityAuditCourseLedger,
+  updateRationalityAudit,
+} from '@/apis/quality/rationality-audit'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
+import { ALL_SEMESTER_CODES, SemesterOptions } from '@/types/enums/semester-enum'
 import SafetyCertificateOutlined from '@ant-design/icons-vue/SafetyCertificateOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import {
-  createRationalityAudit,
-  getRationalityAuditCourseLedger,
-  updateRationalityAudit,
-} from '@/apis/quality/rationality-audit'
 import {
   AssessmentRationalityAuditStatusCode,
   AssessmentRationalityAuditStatusDescription,
@@ -167,7 +171,6 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
-import { ALL_SEMESTER_CODES, SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -214,6 +217,9 @@ const filterFields: FilterField[] = [
   { key: 'semester', type: 'custom', width: 140 },
 ]
 const list = ref<RationalityAuditCourseLedgerItemVO[]>([])
+const listTotal = ref(0)
+const pageNum = ref(1)
+const pageSize = ref(20)
 const overview = ref<RationalityAuditCourseLedgerOverviewVO>({
   totalCourseCount: 0,
   auditedCourseCount: 0,
@@ -239,7 +245,11 @@ const columns = [
 ]
 
 function auditStatusTone(s: AssessmentRationalityAuditStatusCode) {
-  return s === 'APPROVED' ? 'green' : s === 'REJECTED' ? 'red' : 'orange'
+  return s === AssessmentRationalityAuditStatusCode.APPROVED
+    ? 'green'
+    : s === AssessmentRationalityAuditStatusCode.REJECTED
+      ? 'red'
+      : 'orange'
 }
 
 function auditStatusLabel(s: AssessmentRationalityAuditStatusCode) {
@@ -247,7 +257,7 @@ function auditStatusLabel(s: AssessmentRationalityAuditStatusCode) {
 }
 
 function isCourseAuditMutable(record: RationalityAuditCourseLedgerItemVO): boolean {
-  return record.auditStatus !== 'APPROVED'
+  return record.auditStatus !== AssessmentRationalityAuditStatusCode.APPROVED
 }
 
 function booleanTagTone(v?: boolean) {
@@ -263,15 +273,21 @@ async function loadList() {
   }
   loading.value = true
   try {
-    const response = await getRationalityAuditCourseLedger({
-      trainingPlanId,
-      schoolYear,
-      semester,
-    })
-    overview.value = response.overview
-    list.value = response.items
+    const scope = { trainingPlanId, schoolYear, semester }
+    const [overviewResult, pageResult] = await Promise.all([
+      getRationalityAuditCourseLedgerOverview(scope),
+      pageRationalityAuditCourseLedger({
+        ...scope,
+        pageNum: pageNum.value,
+        pageSize: pageSize.value,
+      }),
+    ])
+    overview.value = overviewResult
+    list.value = pageResult.list
+    listTotal.value = pageResult.total
   } catch (e: unknown) {
     list.value = []
+    listTotal.value = 0
     overview.value = {
       totalCourseCount: 0,
       auditedCourseCount: 0,
@@ -285,7 +301,14 @@ async function loadList() {
   }
 }
 
+function handlePageChange(pageEvent: { current: number; pageSize: number }) {
+  pageNum.value = pageEvent.current
+  pageSize.value = pageEvent.pageSize
+  void loadList()
+}
+
 function handleSearch() {
+  pageNum.value = 1
   void loadList()
 }
 
@@ -294,7 +317,9 @@ function handleReset() {
     schoolYear: '',
     semester: undefined,
   })
+  pageNum.value = 1
   list.value = []
+  listTotal.value = 0
   overview.value = {
     totalCourseCount: 0,
     auditedCourseCount: 0,
@@ -362,10 +387,10 @@ async function submitAudit(
     return
   }
   if (
-    status === 'APPROVED'
-    && (!editForm.value.contentAligned
-      || !editForm.value.rubricMeasurable
-      || !editForm.value.methodReasonable)
+    status === AssessmentRationalityAuditStatusCode.APPROVED &&
+    (!editForm.value.contentAligned ||
+      !editForm.value.rubricMeasurable ||
+      !editForm.value.methodReasonable)
   ) {
     message.error('审核通过必须同时满足三项合理性检查')
     return
@@ -388,7 +413,9 @@ async function submitAudit(
     } else {
       await createRationalityAudit(request)
     }
-    message.success(status === 'APPROVED' ? '审核已通过' : '已驳回')
+    message.success(
+      status === AssessmentRationalityAuditStatusCode.APPROVED ? '审核已通过' : '已驳回',
+    )
     editOpen.value = false
     await loadList()
   } catch (e: unknown) {

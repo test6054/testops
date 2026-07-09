@@ -5,6 +5,7 @@
 import type { ObeJourneyStepVO } from '@/apis/quality/workbench'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { ConfirmationStatusCode } from '@/apis/quality/types'
 import { useObeJourneySummary } from '@/composables/useObeJourneySummary'
 import { useQualityStore } from '@/stores/modules/quality'
 
@@ -29,8 +30,8 @@ function stepClass(step: ObeJourneyStepVO): string {
 function goStep(step: ObeJourneyStepVO): void {
   if (!step.routeName) return
   if (
-    PLAN_CONFIRMED_ROUTE_NAMES.has(step.routeName)
-    && qualityStore.currentPlan?.confirmationStatus !== 'CONFIRMED'
+    PLAN_CONFIRMED_ROUTE_NAMES.has(step.routeName) &&
+    qualityStore.currentPlan?.confirmationStatus !== ConfirmationStatusCode.CONFIRMED
   ) {
     void router.push({ name: 'QualityTrainingPlanWorkbench' })
     return

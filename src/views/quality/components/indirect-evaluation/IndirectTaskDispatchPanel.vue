@@ -1,18 +1,20 @@
 <script setup lang="ts">
 import type { Dayjs } from 'dayjs'
+import dayjs from 'dayjs'
 import type {
   IndirectEvaluationFormPublishRequest,
   IndirectEvaluationFormVO,
+  IndirectEvaluationItemStatisticsVO,
   IndirectEvaluationProgressVO,
   IndirectEvaluationStatisticsVO,
 } from '@/apis/quality/indirect-form'
-import { message } from 'ant-design-vue'
-import dayjs from 'dayjs'
-import { reactive, ref, watch } from 'vue'
 import { indirectFormApi } from '@/apis/quality/indirect-form'
+import { message } from 'ant-design-vue'
+import { reactive, ref, watch } from 'vue'
 import { IndirectFormAccessModeCode } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -60,6 +62,27 @@ const workflowProgressLoading = ref(false)
 const statisticsDrawerVisible = ref(false)
 const statisticsLoading = ref(false)
 const statisticsData = ref<IndirectEvaluationStatisticsVO | null>(null)
+const statisticsItems = ref<IndirectEvaluationItemStatisticsVO[]>([])
+const statisticsItemTotal = ref(0)
+const statisticsItemPageNum = ref(1)
+const statisticsItemPageSize = ref(20)
+const statisticsFormId = ref('')
+
+const WEIGHTED_ATTAINMENT_NOTICE_KEY = 'quality-indirect-weighted-attainment-notice-v1'
+const weightedAttainmentNoticeVisible = ref(false)
+
+function maybeShowWeightedAttainmentNotice() {
+  if (localStorage.getItem(WEIGHTED_ATTAINMENT_NOTICE_KEY) === '1') {
+    weightedAttainmentNoticeVisible.value = false
+    return
+  }
+  weightedAttainmentNoticeVisible.value = true
+  localStorage.setItem(WEIGHTED_ATTAINMENT_NOTICE_KEY, '1')
+}
+
+function dismissWeightedAttainmentNotice() {
+  weightedAttainmentNoticeVisible.value = false
+}
 
 /** 打开发布抽屉并初始化默认填写窗口与身份字段 */
 function openPublishDrawer(record: IndirectEvaluationFormVO) {
@@ -175,14 +198,46 @@ async function openStatisticsDrawer(record: IndirectEvaluationFormVO) {
   statisticsDrawerVisible.value = true
   statisticsLoading.value = true
   statisticsData.value = null
+  statisticsItems.value = []
+  statisticsItemTotal.value = 0
+  statisticsFormId.value = record.id
+  statisticsItemPageNum.value = 1
+  maybeShowWeightedAttainmentNotice()
   try {
     statisticsData.value = await indirectFormApi.statistics(record.id)
+    await loadStatisticsItems()
   } catch (error) {
     showUserError(error, '问卷统计加载失败')
     statisticsDrawerVisible.value = false
   } finally {
     statisticsLoading.value = false
   }
+}
+
+async function loadStatisticsItems() {
+  if (!statisticsFormId.value) return
+  statisticsLoading.value = true
+  try {
+    const page = await indirectFormApi.statisticsItemPage({
+      formId: statisticsFormId.value,
+      pageNum: statisticsItemPageNum.value,
+      pageSize: statisticsItemPageSize.value,
+    })
+    statisticsItems.value = page.list
+    statisticsItemTotal.value = page.total
+  } catch (error) {
+    statisticsItems.value = []
+    statisticsItemTotal.value = 0
+    showUserError(error, '题项统计加载失败')
+  } finally {
+    statisticsLoading.value = false
+  }
+}
+
+function handleStatisticsItemPageChange(page: { current: number; pageSize: number }) {
+  statisticsItemPageNum.value = page.current
+  statisticsItemPageSize.value = page.pageSize
+  void loadStatisticsItems()
 }
 
 /** 复制公开填答链接到剪贴板 */
@@ -253,6 +308,12 @@ defineExpose({
         >
           · 待换算 {{ workflowProgress.pendingConversionCount }} 份
         </span>
+        <span
+          v-if="(workflowProgress.noSubstantiveCount ?? 0) > 0"
+          class="ie__workflow-no-substantive"
+        >
+          · 无实质作答 {{ workflowProgress.noSubstantiveCount }} 份
+        </span>
       </template>
     </p>
   </UiCard>
@@ -305,7 +366,9 @@ defineExpose({
         <p>状态：{{ formStatusLabel(progressData.status) }}</p>
         <p>
           填答份数：{{ progressData.submissionCount }} / 有效批次 {{ progressData.validCount }}
-          <span v-if="progressData.expectedSample">（预期 {{ progressData.expectedSample }} 份）</span>
+          <span v-if="progressData.expectedSample"
+            >（预期 {{ progressData.expectedSample }} 份）</span
+          >
         </p>
         <p v-if="progressData.completionRate != null">
           填答完成率：{{ progressData.completionRate }}%
@@ -321,13 +384,19 @@ defineExpose({
         </p>
         <p
           v-if="
-            (progressData.scoredResponseCount ?? 0) > 0
-              || (progressData.pendingConversionCount ?? 0) > 0
+            (progressData.scoredResponseCount ?? 0) > 0 ||
+            (progressData.pendingConversionCount ?? 0) > 0 ||
+            (progressData.noSubstantiveCount ?? 0) > 0
           "
         >
           已换算 {{ progressData.scoredResponseCount ?? 0 }} · 待换算
           {{ progressData.pendingConversionCount ?? 0 }}
-          <span v-if="(progressData.pendingConversionCount ?? 0) > 0">（选择/开放题须教师录入换算分）</span>
+          <span v-if="(progressData.pendingConversionCount ?? 0) > 0"
+            >（选择/开放题须教师录入换算分）</span
+          >
+          <span v-if="(progressData.noSubstantiveCount ?? 0) > 0">
+            · 无实质作答 {{ progressData.noSubstantiveCount }}
+          </span>
         </p>
       </template>
     </a-spin>
@@ -336,6 +405,13 @@ defineExpose({
   <UiDrawer v-model:open="statisticsDrawerVisible" title="问卷统计分析" width="720" hide-footer>
     <a-spin :spinning="statisticsLoading">
       <template v-if="statisticsData">
+        <UiAlertStrip
+          v-if="weightedAttainmentNoticeVisible"
+          tone="info"
+          title="间接达成度计算口径已升级：多题项支撑同一目标时，按题项权重加权合成（原为样本简单均值），历史数值可能变化。"
+          class="tw:mb-dp-4"
+          @close="dismissWeightedAttainmentNotice"
+        />
         <p>
           有效回收答卷：{{ statisticsData.overallSampleCount }}
           <span v-if="(statisticsData.overallScoredCount ?? 0) > 0">
@@ -344,12 +420,15 @@ defineExpose({
           <span v-if="(statisticsData.pendingConversionCount ?? 0) > 0">
             · 待换算 {{ statisticsData.pendingConversionCount }}
           </span>
+          <span v-if="(statisticsData.noSubstantiveCount ?? 0) > 0">
+            · 无实质作答 {{ statisticsData.noSubstantiveCount }}
+          </span>
           <span v-if="statisticsData.overallScore != null">
-            · 总体换算分 {{ statisticsData.overallScore }}（已换算答卷简单均值，与达成度一致）
+            · 总体换算分 {{ statisticsData.overallScore }}（题项权重加权，与达成度一致）
           </span>
         </p>
         <UiDataTable
-          pagination-mode="none"
+          pagination-mode="server"
           :columns="[
             { title: '题项', dataIndex: 'itemCode', key: 'itemCode', width: 100 },
             { title: '题干', dataIndex: 'itemText', key: 'itemText' },
@@ -361,14 +440,23 @@ defineExpose({
               key: 'pendingConversionCount',
               width: 72,
             },
+            {
+              title: '无实质',
+              dataIndex: 'noSubstantiveCount',
+              key: 'noSubstantiveCount',
+              width: 72,
+            },
             { title: '均值', dataIndex: 'mean', key: 'mean', width: 80 },
             { title: '换算分', dataIndex: 'convertedScore', key: 'convertedScore', width: 90 },
           ]"
-          :data-source="statisticsData.items"
+          :data-source="statisticsItems"
           row-key="itemId"
-          :show-pagination="false"
+          :loading="statisticsLoading"
           flat
-          :total="statisticsData.items.length"
+          :total="statisticsItemTotal"
+          :page-num="statisticsItemPageNum"
+          :page-size="statisticsItemPageSize"
+          @page-change="handleStatisticsItemPageChange"
         />
       </template>
     </a-spin>
@@ -390,6 +478,10 @@ defineExpose({
   &__workflow-pending {
     color: var(--dp-warning);
     font-weight: 500;
+  }
+
+  &__workflow-no-substantive {
+    color: var(--dp-text-muted);
   }
 
   &__panel-actions {

@@ -117,7 +117,7 @@
         row-key="examId"
         size="middle"
         flat
-        class="exam-table student-detail-table__data-table"
+        class="exam-table"
         :custom-row="examListCustomRow"
         :row-class-name="examListRowClassName"
         @page-change="handleUiPageChange"
@@ -334,19 +334,6 @@ import type {
   ExamUpdateRequest,
   ExamWorkbenchSummaryResponse,
 } from '@/apis/mark/exam'
-import type {
-  BadgeTone,
-  FilterField,
-  UiSectionTabItem,
-  UiTableRowActionItem,
-} from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
 import {
   closeExam,
   countExamWorkbenchScopes,
@@ -364,6 +351,20 @@ import {
   pageExamWorkbench,
   updateExam,
 } from '@/apis/mark/exam'
+import type {
+  BadgeTone,
+  FilterField,
+  UiSectionTabItem,
+  UiTableRowActionItem,
+} from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -388,13 +389,13 @@ import { useMarkDashboardFilterOptions } from '@/composables/useMarkDashboardFil
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
-import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
 import {
   buildOptionalAcademicYearSemesterQuery,
   ensureAcademicYearSemesterPair,
 } from '@/utils/academic-year-semester-query'
 import { rejectFormValidation, showUserError } from '@/utils/error-handler'
+import { formatExamSubMeta } from '@/utils/exam-display-meta'
 import { readExamListDeepLinkQuery } from '@/utils/exam-list-navigation'
 import {
   countBlockingScanAttention,
@@ -535,18 +536,17 @@ const allTabColumns: ColumnType<ExamWorkbenchSummaryResponse>[] = [
     title: '考试名称',
     dataIndex: 'examName',
     key: 'examName',
-    align: 'center',
     ellipsis: true,
     width: 360,
     fixed: 'left',
   },
-  { title: '学年', key: 'academicYear', width: 120, fixed: 'left' },
-  { title: '学期', key: 'semester', width: 88, fixed: 'left' },
+  { title: '学年', key: 'academicYear', width: 120 },
+  { title: '学期', key: 'semester', width: 88 },
   { title: '状态', key: 'status', width: 140 },
   { title: '阅卷进度', key: 'progress', width: 140 },
   { title: '考试时间', key: 'examWindow', width: 160 },
   { title: '创建时间', key: 'createTime', width: 180 },
-  { title: '操作', key: 'actions', align: 'center', width: 200, fixed: 'right' },
+  { title: '操作', key: 'actions', align: 'center', width: 200 },
 ]
 
 const workbenchTabColumns: ColumnType<ExamWorkbenchSummaryResponse>[] = [
@@ -554,13 +554,12 @@ const workbenchTabColumns: ColumnType<ExamWorkbenchSummaryResponse>[] = [
     title: '考试名称',
     dataIndex: 'examName',
     key: 'examName',
-    align: 'center',
     ellipsis: true,
     width: 300,
     fixed: 'left',
   },
-  { title: '学年', key: 'academicYear', width: 120, fixed: 'left' },
-  { title: '学期', key: 'semester', width: 88, fixed: 'left' },
+  { title: '学年', key: 'academicYear', width: 120 },
+  { title: '学期', key: 'semester', width: 88 },
   { title: '状态', key: 'status', width: 132 },
   { title: '阅卷进度', key: 'progress', width: 140 },
   { title: '待确认题数', key: 'pendingConfirm', width: 108 },
@@ -568,7 +567,7 @@ const workbenchTabColumns: ColumnType<ExamWorkbenchSummaryResponse>[] = [
   { title: '进行中批阅', key: 'openMarking', width: 108 },
   { title: '考试时间', key: 'examWindow', width: 160 },
   { title: '创建时间', key: 'createTime', width: 168 },
-  { title: '操作', key: 'actions', align: 'center', width: 200, fixed: 'right' },
+  { title: '操作', key: 'actions', align: 'center', width: 200 },
 ]
 
 const ongoingTabColumns: ColumnType<ExamWorkbenchSummaryResponse>[] = [
@@ -576,13 +575,12 @@ const ongoingTabColumns: ColumnType<ExamWorkbenchSummaryResponse>[] = [
     title: '考试名称',
     dataIndex: 'examName',
     key: 'examName',
-    align: 'center',
     ellipsis: true,
     width: 300,
     fixed: 'left',
   },
-  { title: '学年', key: 'academicYear', width: 120, fixed: 'left' },
-  { title: '学期', key: 'semester', width: 88, fixed: 'left' },
+  { title: '学年', key: 'academicYear', width: 120 },
+  { title: '学期', key: 'semester', width: 88 },
   { title: '状态', key: 'status', width: 132 },
   { title: '参与角色', key: 'role', width: 88 },
   { title: '阅卷进度', key: 'progress', width: 140 },
@@ -591,7 +589,7 @@ const ongoingTabColumns: ColumnType<ExamWorkbenchSummaryResponse>[] = [
   { title: '进行中批阅', key: 'openMarking', width: 108 },
   { title: '考试时间', key: 'examWindow', width: 160 },
   { title: '创建时间', key: 'createTime', width: 168 },
-  { title: '操作', key: 'actions', align: 'center', width: 200, fixed: 'right' },
+  { title: '操作', key: 'actions', align: 'center', width: 200 },
 ]
 
 type ExamListTabKey = 'priority' | 'ongoing' | 'all'
@@ -811,22 +809,15 @@ function isExamPriorityRow(exam: ExamWorkbenchSummaryResponse): boolean {
   if (listTab.value === 'priority') return true
   if (exam.status !== ExamStatusCode.ACTIVE) return false
   return (
-    getScanAttentionCount(exam) > 0
-    || getPendingConfirmCount(exam) > 0
-    || getExamGradingPercent(exam) < 50
+    getScanAttentionCount(exam) > 0 ||
+    getPendingConfirmCount(exam) > 0 ||
+    getExamGradingPercent(exam) < 50
   )
 }
 
 /** 考试名列副行：编号 · 院系（院系名由后端按 reference_department_id 反查）。 */
 function examListExamSubMeta(exam: ExamWorkbenchSummaryResponse): string {
-  const parts: string[] = []
-  if (exam.examNo?.trim()) {
-    parts.push(exam.examNo.trim())
-  }
-  if (exam.departmentName?.trim()) {
-    parts.push(exam.departmentName.trim())
-  }
-  return parts.join(' · ')
+  return formatExamSubMeta(exam.examNo, exam.departmentName)
 }
 
 function isExamArchiveReady(exam: ExamWorkbenchSummaryResponse): boolean {
@@ -934,8 +925,8 @@ function getLoadingRefByScope(scope: ExamListScopeCode): typeof priorityLoading 
 
 function buildScopeCountQuery(): ExamPageQueryRequest {
   const [startTime, endTime] = filterForm.dateRange ?? []
-  const termQuery
-    = buildOptionalAcademicYearSemesterQuery(filterForm.academicYear, filterForm.semester) ?? {}
+  const termQuery =
+    buildOptionalAcademicYearSemesterQuery(filterForm.academicYear, filterForm.semester) ?? {}
   return {
     status: filterForm.status,
     ...termQuery,
@@ -951,8 +942,8 @@ function buildWorkbenchQuery(
   pageSize: number,
 ): Parameters<typeof pageExamWorkbench>[0] {
   const [startTime, endTime] = filterForm.dateRange ?? []
-  const termQuery
-    = buildOptionalAcademicYearSemesterQuery(filterForm.academicYear, filterForm.semester) ?? {}
+  const termQuery =
+    buildOptionalAcademicYearSemesterQuery(filterForm.academicYear, filterForm.semester) ?? {}
   return {
     listScope: scope,
     pageNum,
@@ -1036,7 +1027,7 @@ function handleReset(): void {
   void reloadListAndCounts()
 }
 
-function handleUiPageChange(page: { current: number, pageSize: number }): void {
+function handleUiPageChange(page: { current: number; pageSize: number }): void {
   const scope = tabToScope(listTab.value)
   const paginationState = getPaginationByScope(scope)
   paginationState.current = page.current
@@ -1237,8 +1228,8 @@ async function openEditModal(exam: ExamWorkbenchSummaryResponse): Promise<void> 
   examForm.examNo = exam.examNo
   examForm.academicYear = exam.academicYear ?? ''
   examForm.semester = exam.semester
-  examForm.examWindow
-    = exam.examStartTime && exam.examEndTime ? [exam.examStartTime, exam.examEndTime] : undefined
+  examForm.examWindow =
+    exam.examStartTime && exam.examEndTime ? [exam.examStartTime, exam.examEndTime] : undefined
   examForm.scoreCompositionMode = exam.dailyScoreFull != null ? 'EXAM_WITH_DAILY' : 'EXAM_ONLY'
   examForm.dailyScoreFull = exam.dailyScoreFull ?? undefined
   examForm.examKind = exam.examKind ?? ExamKindCode.REGULAR
@@ -1487,23 +1478,30 @@ onActivated(() => {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   gap: 2px;
-  min-height: 44px;
-  text-align: center;
+  min-height: 40px;
+  min-width: 0;
+  text-align: left;
 }
 
 .exam-list-page__exam-name-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 8px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .exam-list-page__exam-name {
   font-weight: 500;
   color: var(--ant-color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .exam-list-page__exam-name--link {
@@ -1613,26 +1611,12 @@ onActivated(() => {
   vertical-align: middle;
 }
 
-.exam-table :deep(.ant-table-tbody > tr) {
-  cursor: pointer;
-}
-
 .exam-table :deep(.exam-list-row--priority > td:first-child) {
   box-shadow: inset 3px 0 0 var(--ant-color-warning);
 }
 
 .exam-table :deep(.exam-list-row--active > td:first-child) {
   box-shadow: inset 3px 0 0 var(--ant-color-primary-border);
-}
-
-.exam-table :deep(.ant-table-cell-fix-left),
-.exam-table :deep(.ant-table-cell-fix-right) {
-  background: var(--dp-surface);
-}
-
-.exam-table :deep(.ant-table-tbody > tr:hover > td.ant-table-cell-fix-left),
-.exam-table :deep(.ant-table-tbody > tr:hover > td.ant-table-cell-fix-right) {
-  background: var(--dp-gray-50) !important;
 }
 
 .exam-list-page__exam-window {

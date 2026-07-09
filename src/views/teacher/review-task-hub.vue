@@ -44,12 +44,12 @@
         <UiDataTable
           pagination-mode="server"
           row-key="reviewTaskId"
+          v-model:current="pagination.current"
+          v-model:page-size="pagination.pageSize"
           :columns="columns"
           :data-source="rows"
           :loading="loading"
           :total="pagination.total"
-          :page-num="pagination.current"
-          :page-size="pagination.pageSize"
           flat
           size="middle"
           @page-change="onPageChange"
@@ -125,20 +125,21 @@ import type {
   ReviewTaskItemResponse,
   ReviewTaskTypeCode,
 } from '@/apis/mark/exam-review-task'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   GRADE_SOURCE_TONE,
   GradeSourceDescription,
   listReviewTasks,
   REVIEW_TASK_HUB_STATUS_FILTER_OPTIONS,
   REVIEW_TASK_STATUS_TONE,
+  ReviewTaskStatusCode,
   ReviewTaskStatusDescription,
   ReviewTaskTypeDescription,
   ReviewTaskTypeTone,
 } from '@/apis/mark/exam-review-task'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -152,7 +153,6 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useMarkWorkbenchContext, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { ReviewTaskStatusCode } from '@/types/enums/review-task-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 
@@ -188,11 +188,11 @@ const filterModel = computed<Record<string, unknown>>({
   get: () => ({ status: statusFilter.value }),
   set: (value) => {
     if (
-      value.status === ReviewTaskStatusCode.PENDING
-      || value.status === ReviewTaskStatusCode.IN_PROGRESS
-      || value.status === ReviewTaskStatusCode.APPROVED
-      || value.status === ReviewTaskStatusCode.REJECTED
-      || value.status === ReviewTaskStatusCode.INVALIDATED
+      value.status === ReviewTaskStatusCode.PENDING ||
+      value.status === ReviewTaskStatusCode.IN_PROGRESS ||
+      value.status === ReviewTaskStatusCode.APPROVED ||
+      value.status === ReviewTaskStatusCode.REJECTED ||
+      value.status === ReviewTaskStatusCode.INVALIDATED
     ) {
       statusFilter.value = value.status
     }
@@ -240,8 +240,8 @@ function handleHubSignalClick(key: string): void {
     return
   }
   if (
-    key === 'in-progress'
-    && (snapshot.value?.markingProgress?.inProgressReviewTaskCount ?? 0) > 0
+    key === 'in-progress' &&
+    (snapshot.value?.markingProgress?.inProgressReviewTaskCount ?? 0) > 0
   ) {
     statusFilter.value = ReviewTaskStatusCode.IN_PROGRESS
     onFilterChange()
@@ -254,15 +254,15 @@ function resetStatusFilter(): void {
 }
 
 const columns: ColumnType<ReviewTaskItemResponse>[] = [
-  { title: '答卷', key: 'paper', width: 200 },
+  { title: '答卷', key: 'paper', width: 220, ellipsis: true, fixed: 'left' },
   { title: '题号', key: 'question', width: 88 },
   { title: '复核类型', key: 'reviewType', width: 140 },
   { title: '来源', key: 'gradeSource', width: 100 },
-  { title: 'AI 建议分', key: 'aiScore', width: 96 },
+  { title: 'AI 建议分', key: 'aiScore', width: 96, align: 'right' },
   { title: '状态', key: 'status', width: 96 },
   { title: '指派教师', key: 'assignedTeacherName', width: 120 },
   { title: '更新时间', key: 'updateTime', width: 160 },
-  { title: '操作', key: 'actions', width: 100, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 100 },
 ]
 
 const statusFilterLabel = computed(() => reviewStatusLabel(statusFilter.value))
@@ -322,7 +322,7 @@ async function loadTasks(): Promise<void> {
   }
 }
 
-function onPageChange(page: { current: number, pageSize: number }): void {
+function onPageChange(page: { current: number; pageSize: number }): void {
   pagination.current = page.current
   pagination.pageSize = page.pageSize
   void loadTasks()
@@ -337,8 +337,8 @@ function buildReviewTaskRowActions(record: ReviewTaskItemResponse): UiTableRowAc
   return [
     {
       key: 'enter',
-      label: record.status === 'INVALIDATED' ? '查看详情' : '进入复核',
-      tone: record.status === 'INVALIDATED' ? 'default' : 'primary',
+      label: record.status === ReviewTaskStatusCode.INVALIDATED ? '查看详情' : '进入复核',
+      tone: record.status === ReviewTaskStatusCode.INVALIDATED ? 'default' : 'primary',
     },
   ]
 }
@@ -347,7 +347,7 @@ function enterReview(record: ReviewTaskItemResponse): void {
   if (!examId.value) {
     return
   }
-  if (record.status === 'INVALIDATED') {
+  if (record.status === ReviewTaskStatusCode.INVALIDATED) {
     void router.push({
       name: 'TeacherExamWorkspaceReviewTaskDetail',
       params: { examId: examId.value, taskId: record.reviewTaskId },

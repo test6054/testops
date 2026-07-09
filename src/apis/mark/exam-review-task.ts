@@ -196,6 +196,30 @@ export function listReviewTasks(
   return http.post<PageResult<ReviewTaskItemResponse>>('/api/mark/exams/review-tasks', request)
 }
 
+/** 同题复核流水线队列查询请求 */
+export interface ReviewTaskPipelineQueryRequest {
+  examId: string
+  layoutQuestionId: string
+  reviewType: ReviewTaskTypeCode
+  gradeSource: GradeSourceCode
+  excludeArbitration?: boolean
+  currentReviewTaskId?: string
+}
+
+/** 同题复核流水线队列响应 */
+export interface ReviewTaskPipelineResponse {
+  totalCount: number
+  currentIndex: number
+  items: ReviewTaskItemResponse[]
+}
+
+/** 查询同题复核流水线队列。 */
+export function getReviewTaskPipeline(
+  request: ReviewTaskPipelineQueryRequest,
+): Promise<ReviewTaskPipelineResponse> {
+  return http.post<ReviewTaskPipelineResponse>('/api/mark/exams/review-tasks/pipeline', request)
+}
+
 /** 查询题目复核仲裁工作台 KPI 汇总。 */
 export function getReviewArbitrationSummary(request: {
   examId: string

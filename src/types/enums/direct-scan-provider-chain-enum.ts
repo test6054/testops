@@ -14,10 +14,4 @@ export const DirectScanProviderChainDescription: Record<DirectScanProviderChainC
   [DirectScanProviderChainCode.PADDLE_LOCAL]: '本地 PaddleOCR',
 }
 
-export function isDirectScanProviderChainCode(
-  value: string | null | undefined,
-): value is DirectScanProviderChainCode {
-  if (!value) return false
-  return (ALL_DIRECT_SCAN_PROVIDER_CHAIN_CODES as readonly string[]).includes(value)
-}
 

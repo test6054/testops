@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationModeCode } from '@/apis/portfolio/enums'
+import {
+  PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES,
+  PortfolioEvaluationModeDescription,
+} from '@/apis/portfolio/enums'
 import type {
   PortfolioEvaluationEntrySummaryItemVO,
   PortfolioEvaluationEntrySummaryVO,
@@ -9,17 +13,14 @@ import type {
   PortfolioEvaluationSubjectTeacherOptionVO,
   PortfolioEvaluationTaskVO,
 } from '@/apis/portfolio/teacher-platform'
-import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import {
-  PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES,
-  PortfolioEvaluationModeDescription,
-} from '@/apis/portfolio/enums'
 import {
   portfolioEvaluationEntryApi,
   portfolioEvaluationTaskApi,
 } from '@/apis/portfolio/teacher-platform'
+import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -27,7 +28,9 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { useQueryTable } from '@/composables/useQueryTable'
 import { showUserError } from '@/utils/error-handler'
+import { buildEmptyPageResult } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -37,10 +40,31 @@ const saving = ref(false)
 const exporting = ref(false)
 const tasks = ref<PortfolioEvaluationTaskVO[]>([])
 const selectedTaskId = ref('')
-const entries = ref<PortfolioEvaluationEntryVO[]>([])
 const summary = ref<PortfolioEvaluationEntrySummaryVO | null>(null)
 const subjectTeacherOptions = ref<PortfolioEvaluationSubjectTeacherOptionVO[]>([])
 const indicatorOptions = ref<PortfolioEvaluationIndicatorOptionVO[]>([])
+
+const {
+  loading: entryTableLoading,
+  rows: entries,
+  pageNum: entryPageNum,
+  pageSize: entryPageSize,
+  pageTotal: entryPageTotal,
+  filters: entryFilters,
+  handlePageChange: handleEntryPageChange,
+  search: searchEntries,
+} = useQueryTable<PortfolioEvaluationEntryVO, { evaluationTaskId: string }>(
+  (params) => {
+    const { evaluationTaskId, ...pageParams } = params
+    if (!evaluationTaskId) {
+      return Promise.resolve(
+        buildEmptyPageResult<PortfolioEvaluationEntryVO>(pageParams.pageNum, pageParams.pageSize),
+      )
+    }
+    return portfolioEvaluationEntryApi.page({ evaluationTaskId, ...pageParams })
+  },
+  { immediate: false, errorMessage: '加载填答记录失败' },
+)
 
 const fillForm = reactive<{
   subjectTeacherUserId: string
@@ -157,7 +181,7 @@ async function loadTasks() {
   try {
     const page = await portfolioEvaluationTaskApi.page({
       pageNum: 1,
-      pageSize: 100,
+      pageSize: QUALITY_SELECTOR_PAGE_SIZE,
     })
     tasks.value = page.list
     const pool = selectableTasks.value
@@ -193,23 +217,9 @@ async function loadFillContext() {
 }
 
 async function loadEntries() {
-  if (!selectedTaskId.value) {
-    entries.value = []
-    return
-  }
-  loading.value = true
-  try {
-    const page = await portfolioEvaluationEntryApi.page({
-      evaluationTaskId: selectedTaskId.value,
-      pageNum: 1,
-      pageSize: 100,
-    })
-    entries.value = page.list
-  } catch (error) {
-    showUserError(error)
-  } finally {
-    loading.value = false
-  }
+  if (!selectedTaskId.value) return
+  entryFilters.value = { evaluationTaskId: selectedTaskId.value }
+  await searchEntries()
 }
 
 async function loadSummary() {
@@ -392,13 +402,21 @@ onMounted(async () => {
               保存评价
             </UiButton>
           </div>
-          <UiEmpty v-if="!loading && entries.length === 0" description="当前筛选无填答记录" />
+          <UiEmpty
+            v-if="!entryTableLoading && entries.length === 0"
+            description="当前筛选无填答记录"
+          />
           <UiDataTable
+            v-model:current="entryPageNum"
+            v-model:page-size="entryPageSize"
+            pagination-mode="server"
             :columns="entryColumns"
             :data-source="entries"
-            :loading="loading"
+            :loading="entryTableLoading"
+            :total="entryPageTotal"
             row-key="id"
             style="margin-top: 16px"
+            @page-change="handleEntryPageChange"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'subjectTeacherUserId'">
@@ -415,11 +433,14 @@ onMounted(async () => {
             <UiButton :loading="exporting" @click="exportSummaryCsv"> 导出 Excel </UiButton>
           </div>
           <UiDataTable
+            pagination-mode="none"
             :columns="summaryColumns"
             :data-source="summary?.rows ?? []"
             :loading="loading"
             :row-key="summaryRowKey"
-            :pagination="false"
+            :show-pagination="false"
+            :sticky-header="false"
+            flat
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'subjectTeacherUserId'">

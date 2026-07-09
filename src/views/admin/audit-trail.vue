@@ -67,7 +67,7 @@
           :loading="logLoading"
           row-key="id"
           size="middle"
-          class="audit-table student-detail-table__data-table"
+          class="audit-table"
           v-model:current="logPagination.current"
           v-model:page-size="logPagination.pageSize"
           :total="logPagination.total"
@@ -135,7 +135,7 @@
           :loading="incidentLoading"
           row-key="id"
           size="middle"
-          class="audit-table student-detail-table__data-table"
+          class="audit-table"
           v-model:current="incidentPagination.current"
           v-model:page-size="incidentPagination.pageSize"
           :total="incidentPagination.total"
@@ -206,7 +206,7 @@
           :loading="sampleLoading"
           row-key="id"
           size="middle"
-          class="audit-table student-detail-table__data-table"
+          class="audit-table"
           v-model:current="samplePagination.current"
           v-model:page-size="samplePagination.pageSize"
           :total="samplePagination.total"
@@ -285,22 +285,6 @@ import type {
   OperationLogResponse,
   OperationTypeCode,
 } from '@/apis/mark/admin-audit'
-import type {
-  ExamIncidentRecord,
-  IncidentLevelCode,
-  IncidentTypeCode,
-} from '@/apis/mark/admin-dashboard'
-import type {
-  BadgeTone,
-  FilterField,
-  UiSectionTabItem,
-  UiTableRowActionItem,
-} from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
 import {
   AuditTargetTypeDescription,
   DIAGNOSTIC_SAMPLE_TYPE_OPTIONS,
@@ -314,11 +298,27 @@ import {
   OperationTypeDescription,
   resolveIncident,
 } from '@/apis/mark/admin-audit'
+import type {
+  ExamIncidentRecord,
+  IncidentLevelCode,
+  IncidentTypeCode,
+} from '@/apis/mark/admin-dashboard'
 import {
   INCIDENT_LEVEL_TONE,
   IncidentLevelDescription,
   IncidentTypeDescription,
 } from '@/apis/mark/admin-dashboard'
+import type {
+  BadgeTone,
+  FilterField,
+  UiSectionTabItem,
+  UiTableRowActionItem,
+} from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -344,8 +344,8 @@ defineOptions({ name: 'AdminAuditTrail' })
 const route = useRoute()
 const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
 
-const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
-  = useOptionalExamJourneyContextBar('质控审计')
+const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useOptionalExamJourneyContextBar('质控审计')
 
 const {
   examOptions,
@@ -425,7 +425,7 @@ const logPagination = reactive<TablePaginationConfig>({
   showSizeChanger: true,
   showTotal: (total: number) => `共 ${total} 条`,
 })
-const operationTypeOptions = computed<Array<{ value: OperationTypeCode, label: string }>>(
+const operationTypeOptions = computed<Array<{ value: OperationTypeCode; label: string }>>(
   () => OPERATION_TYPE_OPTIONS,
 )
 
@@ -481,7 +481,7 @@ function searchLogs() {
   void loadLogs()
 }
 
-function handleLogPageChange(pageInfo: { current: number, pageSize: number }) {
+function handleLogPageChange(pageInfo: { current: number; pageSize: number }) {
   logPagination.current = pageInfo.current
   logPagination.pageSize = pageInfo.pageSize
   void loadLogs()
@@ -512,14 +512,14 @@ const incidentFilterFields: FilterField[] = [
 ]
 
 const incidentColumns: ColumnsType<ExamIncidentRecord> = [
-  { title: '级别', key: 'incidentLevel', dataIndex: 'incidentLevel', width: 90 },
+  { title: '级别', key: 'incidentLevel', dataIndex: 'incidentLevel', width: 90, fixed: 'left' },
   { title: '类型', key: 'incidentType', dataIndex: 'incidentType', width: 140 },
   { title: '摘要', key: 'summary', dataIndex: 'summary', ellipsis: true },
   { title: '详情', key: 'detail', dataIndex: 'detail', ellipsis: true },
   { title: '状态', key: 'resolved', dataIndex: 'resolved', width: 100 },
   { title: '创建时间', key: 'createTime', dataIndex: 'createTime', width: 170 },
   { title: '解决时间', key: 'resolvedTime', dataIndex: 'resolvedTime', width: 170 },
-  { title: '操作', key: 'actions', fixed: 'right', width: 110 },
+  { title: '操作', key: 'actions', width: 110 },
 ]
 
 async function loadIncidents() {
@@ -559,7 +559,7 @@ function searchIncidents() {
   void loadIncidents()
 }
 
-function handleIncidentPageChange(pageInfo: { current: number, pageSize: number }): void {
+function handleIncidentPageChange(pageInfo: { current: number; pageSize: number }): void {
   incidentPagination.current = pageInfo.current
   incidentPagination.pageSize = pageInfo.pageSize
   void loadIncidents()
@@ -629,7 +629,7 @@ const samplePagination = reactive<TablePaginationConfig>({
   showTotal: (total: number) => `共 ${total} 条`,
 })
 const diagnosticSampleTypeOptions = computed<
-  Array<{ value: DiagnosticSampleTypeCode, label: string }>
+  Array<{ value: DiagnosticSampleTypeCode; label: string }>
 >(() => DIAGNOSTIC_SAMPLE_TYPE_OPTIONS)
 
 const sampleFilterFields = computed<FilterField[]>(() => [
@@ -683,7 +683,7 @@ function searchDiagnosticSamples() {
   void loadDiagnosticSamples()
 }
 
-function handleSamplePageChange(pageInfo: { current: number, pageSize: number }) {
+function handleSamplePageChange(pageInfo: { current: number; pageSize: number }) {
   samplePagination.current = pageInfo.current
   samplePagination.pageSize = pageInfo.pageSize
   void loadDiagnosticSamples()

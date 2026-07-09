@@ -39,33 +39,42 @@
           <span v-if="record.watermarkApplied"> · 含水印</span>
         </p>
         <p
-          v-if="record.decisionComment && record.accessStatus === 'REJECTED'"
+          v-if="record.decisionComment && record.accessStatus === ArchiveAccessStatusCode.REJECTED"
           class="approval-card__reject"
         >
           拒绝原因: {{ record.decisionComment }}
         </p>
         <p
-          v-else-if="record.decisionComment && record.accessStatus === 'ACTIVE'"
+          v-else-if="
+            record.decisionComment && record.accessStatus === ArchiveAccessStatusCode.ACTIVE
+          "
           class="approval-card__meta"
         >
           审批意见: {{ record.decisionComment }}
         </p>
         <p
-          v-if="record.accessStatus === 'ACTIVE' && record.lastReadPage != null"
+          v-if="
+            record.accessStatus === ArchiveAccessStatusCode.ACTIVE && record.lastReadPage != null
+          "
           class="approval-card__meta"
         >
           最后阅读: 第 {{ record.lastReadPage }} 页
           <span v-if="record.downloadCount != null"> · 下载次数: {{ record.downloadCount }}</span>
         </p>
         <p
-          v-else-if="record.accessStatus === 'ACTIVE' && record.downloadCount != null"
+          v-else-if="
+            record.accessStatus === ArchiveAccessStatusCode.ACTIVE && record.downloadCount != null
+          "
           class="approval-card__meta"
         >
           下载次数: {{ record.downloadCount }}
         </p>
 
         <div
-          v-if="record.accessStatus === 'PENDING' && canApproveAccessRecord(record)"
+          v-if="
+            record.accessStatus === ArchiveAccessStatusCode.PENDING &&
+            canApproveAccessRecord(record)
+          "
           class="approval-card__actions"
         >
           <template v-if="rejectingRecordId === record.accessRecordId">
@@ -121,7 +130,10 @@
         </div>
 
         <div
-          v-if="record.accessStatus === 'ACTIVE' && record.applicantUserId === currentUserId"
+          v-if="
+            record.accessStatus === ArchiveAccessStatusCode.ACTIVE &&
+            record.applicantUserId === currentUserId
+          "
           class="approval-card__actions"
         >
           <UiButton size="sm" variant="outline" @click="handleAccessDownload(record)">
@@ -184,10 +196,9 @@ import type {
   ArchiveVolumeAccessReadPageRequest,
   ArchiveVolumeAccessRecordResponse,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import {
   approveArchiveVolumeAccess,
+  ArchiveAccessStatusCode,
   downloadArchiveAccessMaterial,
   listArchiveVolumeAccessRecords,
   previewArchiveAccessMaterial,
@@ -195,6 +206,8 @@ import {
   rejectArchiveVolumeAccess,
   requestArchiveVolumeAccess,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'

@@ -33,7 +33,7 @@
     v-else-if="tasks.length > 1"
     tone="warning"
     title="待整改任务"
-    :description="`当前有 ${tasks.length} 项开放整改任务待处理`"
+    :description="`当前有 ${displayTotalCount} 项开放整改任务待处理`"
     dense
     class="archive-volume-mine-remediation-banner"
   >
@@ -68,9 +68,9 @@ import type {
   ArchiveRemediationStatusCode,
   ArchiveRemediationTaskResponse,
 } from '@/apis/mark/archive-volume'
+import { ArchiveRemediationStatusDescription } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed } from 'vue'
-import { ArchiveRemediationStatusDescription } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -86,12 +86,15 @@ defineOptions({ name: 'ArchiveVolumeMineRemediationBanner' })
 
 const props = defineProps<{
   tasks: ArchiveRemediationTaskResponse[]
+  totalCount?: number
   loading: boolean
 }>()
 
 const emit = defineEmits<{
   go: [task: ArchiveRemediationTaskResponse]
 }>()
+
+const displayTotalCount = computed(() => props.totalCount ?? props.tasks.length)
 
 const singleTaskDescription = computed(() => {
   const task = props.tasks[0]

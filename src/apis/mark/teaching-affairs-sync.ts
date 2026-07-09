@@ -4,11 +4,11 @@
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { ExternalSystemTypeCode } from '@/types/enums/external-system-type-enum'
-import http from '@/config/axios'
 import {
   ALL_EXTERNAL_SYSTEM_TYPE_CODES,
   ExternalSystemTypeDescription,
 } from '@/types/enums/external-system-type-enum'
+import http from '@/config/axios'
 import {
   ALL_PASSBACK_STATUS_CODES,
   PassbackStatusCode,
@@ -212,13 +212,18 @@ export function createSyncTask(request: SyncTaskCreateRequest): Promise<ExamTeac
   return http.post<ExamTeachingAffairsSyncTask>('/api/exam/teaching-affairs/sync-task/create', request)
 }
 
-export interface SyncTaskListQueryRequest {
+/** 同步任务分页查询请求 - 对应 SyncTaskPageRequest */
+export interface SyncTaskPageRequest extends QueryDto {
   examId: string
   taskStatus?: SyncTaskStatusCode
 }
 
-export function listSyncTasks(request: SyncTaskListQueryRequest): Promise<ExamTeachingAffairsSyncTask[]> {
-  return http.post<ExamTeachingAffairsSyncTask[]>('/api/exam/teaching-affairs/sync-task/list', request)
+/**
+ * 分页查询同步任务
+ * POST /api/exam/teaching-affairs/sync-task/page
+ */
+export function pageSyncTasks(request: SyncTaskPageRequest): Promise<PageResult<ExamTeachingAffairsSyncTask>> {
+  return http.post<PageResult<ExamTeachingAffairsSyncTask>>('/api/exam/teaching-affairs/sync-task/page', request)
 }
 
 export function executeGradePassback(syncTaskId: string): Promise<void> {

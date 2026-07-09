@@ -13,6 +13,10 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { GradeCorrectionTypeCode } from '@/types/enums/grade-correction-type-enum'
 import type { GradeReviewReasonTypeCode } from '@/types/enums/grade-review-reason-type-enum'
+import {
+  ALL_GRADE_REVIEW_REASON_TYPE_CODES,
+  GradeReviewReasonTypeDescription,
+} from '@/types/enums/grade-review-reason-type-enum'
 import type { VisibleMaterialScopeCode } from '@/types/enums/visible-material-scope-enum'
 import http from '@/config/axios'
 import {
@@ -21,10 +25,6 @@ import {
   BatchCorrectionApprovalStatusDescription,
 } from '@/types/enums/batch-correction-approval-status-enum'
 import { GradeCorrectionStatusCode } from '@/types/enums/grade-correction-status-enum'
-import {
-  ALL_GRADE_REVIEW_REASON_TYPE_CODES,
-  GradeReviewReasonTypeDescription,
-} from '@/types/enums/grade-review-reason-type-enum'
 import {
   ALL_GRADE_REVIEW_REQUEST_STATUS_CODES,
   GradeReviewRequestStatusCode,
@@ -289,6 +289,7 @@ export interface GradeReviewRequestListQuery extends QueryDto {
   studentUserId?: string
   requestStatus?: GradeReviewRequestStatusCode
   keyword?: string
+  layoutQuestionId?: string
 }
 
 /**
@@ -304,6 +305,19 @@ export function listReviewRequests(
   return http.post<PageResult<GradeReviewRequestItemResponse>>(
     '/api/exam/grade-review/request/list',
     request,
+  )
+}
+
+/**
+ * 查询考试下已通过复核申请涉及的去重题目选项。
+ * POST /api/exam/grade-review/request/approved-question-options
+ */
+export function listApprovedReviewQuestionOptions(
+  examId: string,
+): Promise<GradeReviewQuestionRefVO[]> {
+  return http.post<GradeReviewQuestionRefVO[]>(
+    '/api/exam/grade-review/request/approved-question-options',
+    { examId },
   )
 }
 
@@ -358,6 +372,18 @@ export function countMyPendingReviewRequests(): Promise<number> {
 
 export function getReviewSummary(examId: string): Promise<GradeReviewSummaryResponse> {
   return http.post<GradeReviewSummaryResponse>('/api/exam/grade-review/summary', { examId })
+}
+
+/**
+ * 领取复核申请
+ * POST /api/exam/grade-review/request/claim
+ */
+export interface GradeReviewClaimRequest {
+  reviewRequestId: string
+}
+
+export function claimReviewRequest(request: GradeReviewClaimRequest): Promise<void> {
+  return http.post<void>('/api/exam/grade-review/request/claim', request)
 }
 
 /**
@@ -425,7 +451,10 @@ export interface ExamGradeCorrectionRecordResponse {
 export function createCorrection(
   request: GradeCorrectionRequest,
 ): Promise<ExamGradeCorrectionRecordResponse> {
-  return http.post<ExamGradeCorrectionRecordResponse>('/api/exam/grade-review/correction/create', request)
+  return http.post<ExamGradeCorrectionRecordResponse>(
+    '/api/exam/grade-review/correction/create',
+    request,
+  )
 }
 
 /**
@@ -603,7 +632,8 @@ export function computeSingleQuestionCorrectionCompositeTotal(
     return null
   }
   const dailyScore = request.currentDailyScore ?? 0
-  const correctedExamScore = request.currentExamScore - questionRef.currentTeacherReviewScore + afterScore
+  const correctedExamScore =
+    request.currentExamScore - questionRef.currentTeacherReviewScore + afterScore
   return correctedExamScore + dailyScore
 }
 
@@ -613,6 +643,10 @@ export function isMakeupCap60SingleQuestionCorrectionExceeded(
   layoutQuestionId: string,
   afterScore: number,
 ): boolean {
-  const projected = computeSingleQuestionCorrectionCompositeTotal(request, layoutQuestionId, afterScore)
+  const projected = computeSingleQuestionCorrectionCompositeTotal(
+    request,
+    layoutQuestionId,
+    afterScore,
+  )
   return projected != null && projected > 60
 }

@@ -108,6 +108,16 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       keepAlive: true,
       hasWorkbenchShell: true,
     }),
+    workspaceChild('scan/batches/:scanBatchId', 'TeacherExamWorkspaceScanBatchDetail', () => import('@/views/teacher/scan-batch-detail-workbench.vue'), {
+      title: '批次详情',
+      markStageKey: 'SCAN',
+      journeyKey: 'scan',
+      workspacePhase: 'scan',
+      keepAlive: false,
+      noCache: true,
+      hasWorkbenchShell: true,
+      layoutWide: true,
+    }),
     workspaceChild('scan/manual-entry', 'TeacherExamWorkspaceScanManualEntry', () => import('@/views/teacher/scan-manual-entry.vue'), {
       title: '手动补录',
       markStageKey: 'SCAN',

@@ -1,22 +1,22 @@
 import type { ComputedRef } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type {
   FormalSessionResponse,
   SessionListQueryRequest,
   TrialSessionResponse,
 } from '@/apis/mark/marking-organization'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { FormalSessionStatusCode } from '@/types/enums/formal-session-status-enum'
-import type { TrialSessionStatusCode } from '@/types/enums/trial-session-status-enum'
-import { computed, ref, watch } from 'vue'
 import {
   getOrganizationById,
   pageFormalSessions,
   pageTrialSessions,
 } from '@/apis/mark/marking-organization'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { FormalSessionStatusCode } from '@/types/enums/formal-session-status-enum'
 import {
   ALL_FORMAL_SESSION_STATUS_CODES,
   FormalSessionStatusDescription,
 } from '@/types/enums/formal-session-status-enum'
+import type { TrialSessionStatusCode } from '@/types/enums/trial-session-status-enum'
 import {
   ALL_TRIAL_SESSION_STATUS_CODES,
   TrialSessionStatusDescription,
@@ -57,7 +57,7 @@ export function useExamMarkingProgressSessionList(
 ) {
   const trialSessions = ref<TrialSessionResponse[]>([])
   const formalSessions = ref<FormalSessionResponse[]>([])
-  const groupOptions = ref<Array<{ value: string, label: string }>>([])
+  const groupOptions = ref<Array<{ value: string; label: string }>>([])
   const sessionsLoading = ref(false)
   const sessionPagination = ref({
     current: 1,
@@ -76,9 +76,9 @@ export function useExamMarkingProgressSessionList(
 
   const hasActiveFilter = computed(
     () =>
-      Boolean(sessionFilterModel.value.keyword.trim())
-      || Boolean(sessionFilterModel.value.status)
-      || Boolean(sessionFilterModel.value.groupId),
+      Boolean(sessionFilterModel.value.keyword.trim()) ||
+      Boolean(sessionFilterModel.value.status) ||
+      Boolean(sessionFilterModel.value.groupId),
   )
 
   const statusFilterOptions = computed(() => {
@@ -165,10 +165,20 @@ export function useExamMarkingProgressSessionList(
       query.groupId = sessionFilterModel.value.groupId
     }
     if (phase.value === 'trial' && sessionFilterModel.value.status) {
-      query.trialSessionStatus = sessionFilterModel.value.status as TrialSessionStatusCode
+      for (const code of ALL_TRIAL_SESSION_STATUS_CODES) {
+        if (code === sessionFilterModel.value.status) {
+          query.trialSessionStatus = code
+          break
+        }
+      }
     }
     if (phase.value === 'formal' && sessionFilterModel.value.status) {
-      query.formalSessionStatus = sessionFilterModel.value.status as FormalSessionStatusCode
+      for (const code of ALL_FORMAL_SESSION_STATUS_CODES) {
+        if (code === sessionFilterModel.value.status) {
+          query.formalSessionStatus = code
+          break
+        }
+      }
     }
     return query
   }
@@ -273,13 +283,28 @@ export function useExamMarkingProgressSessionList(
   }
 
   function applySessionFilter(model: Record<string, unknown>): void {
-    const nextStatus = model.status
+    let status: TrialSessionStatusCode | FormalSessionStatusCode | undefined
+    const rawStatus = model.status
+    if (typeof rawStatus === 'string' && rawStatus) {
+      if (phase.value === 'trial') {
+        for (const code of ALL_TRIAL_SESSION_STATUS_CODES) {
+          if (code === rawStatus) {
+            status = code
+            break
+          }
+        }
+      } else {
+        for (const code of ALL_FORMAL_SESSION_STATUS_CODES) {
+          if (code === rawStatus) {
+            status = code
+            break
+          }
+        }
+      }
+    }
     sessionFilterModel.value = {
       keyword: String(model.keyword ?? '').trim(),
-      status:
-        typeof nextStatus === 'string' && nextStatus
-          ? (nextStatus as TrialSessionStatusCode | FormalSessionStatusCode)
-          : undefined,
+      status,
       groupId: model.groupId ? String(model.groupId) : undefined,
     }
     sessionPagination.value.current = 1
@@ -296,7 +321,7 @@ export function useExamMarkingProgressSessionList(
     void loadSessions(1)
   }
 
-  function handleSessionPageChange(page: { current: number, pageSize: number }): void {
+  function handleSessionPageChange(page: { current: number; pageSize: number }): void {
     sessionPagination.value.current = page.current
     sessionPagination.value.pageSize = page.pageSize
     void loadSessions(page.current)

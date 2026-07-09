@@ -53,12 +53,12 @@ const props = defineProps<{
 }>()
 
 const rectColumns: ColumnsType = [
-  { title: '编码', dataIndex: 'rectificationCode', key: 'rectificationCode', width: 140 },
+  { title: '编码', dataIndex: 'rectificationCode', key: 'rectificationCode', width: 140, fixed: 'left' },
   { title: '标题', key: 'rectTitle' },
   { title: '责任人', key: 'ownerRef', width: 140 },
   { title: '截止', dataIndex: 'dueDate', key: 'dueDate', width: 110 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 120 },
-  { title: '操作', key: 'actions', width: 340, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 340 },
 ]
 
 function rectificationStatusLabel(value: AuditRectificationStatusCode): string {
@@ -583,7 +583,6 @@ defineExpose({
     </UiFilterBar>
 
     <UiDataTable
-      class="student-detail-table__data-table"
       v-model:current="rectQuery.pageNum"
       v-model:page-size="rectQuery.pageSize"
       :columns="rectColumns"

@@ -1,36 +1,42 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { AchievementResultVO } from '@/apis/quality/achievement-result'
-import type { AiTaskVO } from '@/apis/quality/ai-task'
-import type { ImprovementTaskVO } from '@/apis/quality/improvement-task'
-import type { AchievementTargetTypeCode, AiTaskTypeCode } from '@/apis/quality/types'
-
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
-import type { QualityChartGroup } from '@/utils/quality-workbench-charts'
-import { storeToRefs } from 'pinia'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { achievementResultApi } from '@/apis/quality/achievement-result'
+import type { AiTaskVO } from '@/apis/quality/ai-task'
 import { aiTaskApi } from '@/apis/quality/ai-task'
+import type { ImprovementTaskVO } from '@/apis/quality/improvement-task'
 import { improvementTaskApi } from '@/apis/quality/improvement-task'
+import type {
+  AchievementAuditStatusCode,
+  AchievementStatusCode,
+  AchievementTargetTypeCode,
+  AiTaskTypeCode,
+  ImprovementTaskStatusCode,
+} from '@/apis/quality/types'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_STATUS_COLOR,
-  AchievementAuditStatusCode,
   AchievementAuditStatusDescription,
-  AchievementStatusCode,
   AchievementStatusDescription,
   AchievementTargetTypeDescription,
   AI_TASK_STATUS_COLOR,
   AiTaskStatusCode,
   AiTaskStatusDescription,
   AiTaskTypeDescription,
+  ConfirmationStatusCode,
   ConfirmationStatusDescription,
   IMPROVEMENT_TASK_STATUS_COLOR,
-  ImprovementTaskStatusCode,
   ImprovementTaskStatusDescription,
 } from '@/apis/quality/types'
+
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
+import type { QualityChartGroup } from '@/utils/quality-workbench-charts'
+import { buildStatusChartGroup } from '@/utils/quality-workbench-charts'
+import { storeToRefs } from 'pinia'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { workbenchApi } from '@/apis/quality/workbench'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import QualityWorkbenchCharts from '@/components/quality/QualityWorkbenchCharts.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -46,7 +52,6 @@ import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { useQualityTaskStore } from '@/stores/modules/qualityTask'
 import { showUserError } from '@/utils/error-handler'
-import { buildStatusChartGroup } from '@/utils/quality-workbench-charts'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const recentAchievementColumns: ColumnsType = [
@@ -78,6 +83,7 @@ const qualityStore = useQualityStore()
 const { cockpit, refresh: refreshCockpit } = useAccreditationCockpit()
 
 const loading = reactive({
+  summary: false,
   achievement: false,
   improvement: false,
   ai: false,
@@ -129,12 +135,12 @@ const planConfirmationLabel = computed(() => {
 // 年度评价阶段推断：依据培养方案确认状态与各能力块计数
 const stages = computed<WorkbenchStage[]>(() => {
   const planSelected = !!trainingPlanId.value
-  const planConfirmed = planConfirmationStatus.value === 'CONFIRMED'
-  const dataReached
-    = achievementCounts.calculated > 0
-      || achievementCounts.submitted > 0
-      || achievementCounts.confirmed > 0
-      || achievementCounts.archived > 0
+  const planConfirmed = planConfirmationStatus.value === ConfirmationStatusCode.CONFIRMED
+  const dataReached =
+    achievementCounts.calculated > 0 ||
+    achievementCounts.submitted > 0 ||
+    achievementCounts.confirmed > 0 ||
+    achievementCounts.archived > 0
   const calcDone = dataReached
   const auditDone = achievementCounts.confirmed > 0 || achievementCounts.archived > 0
   const improvementActive = improvementCounts.total > 0
@@ -280,6 +286,36 @@ function aiTypeLabel(value: AiTaskTypeCode): string {
   return strictEnumLabel(AiTaskTypeDescription, value, 'AI 任务类型')
 }
 
+async function loadSummary() {
+  if (!trainingPlanId.value) return
+  loading.summary = true
+  try {
+    const summary = await workbenchApi.obeJourneySummary({
+      trainingPlanId: trainingPlanId.value,
+    })
+    achievementCounts.total = summary.achievementTotal ?? 0
+    achievementCounts.calculated = summary.achievementCalculated ?? 0
+    achievementCounts.submitted = summary.achievementSubmitted ?? 0
+    achievementCounts.confirmed = summary.achievementConfirmed ?? 0
+    achievementCounts.archived = summary.achievementArchived ?? 0
+    achievementCounts.notAchieved = summary.achievementNotAchieved ?? 0
+    improvementCounts.total = summary.improvementTotal ?? 0
+    improvementCounts.open = summary.improvementOpen ?? 0
+    improvementCounts.inProgress = summary.improvementInProgress ?? 0
+    improvementCounts.submitted = summary.improvementSubmitted ?? 0
+    improvementCounts.closed = summary.improvementClosed ?? 0
+    aiCounts.total = summary.aiTaskTotal ?? 0
+    aiCounts.pending = summary.aiTaskPending ?? 0
+    aiCounts.processing = summary.aiTaskProcessing ?? 0
+    aiCounts.succeeded = summary.aiTaskSucceeded ?? 0
+    aiCounts.failed = summary.aiTaskFailed ?? 0
+  } catch (error) {
+    showUserError(error, '工作台汇总加载失败')
+  } finally {
+    loading.summary = false
+  }
+}
+
 async function loadAchievement() {
   if (!trainingPlanId.value) return
   loading.achievement = true
@@ -290,45 +326,6 @@ async function loadAchievement() {
       trainingPlanId: trainingPlanId.value,
     })
     recentAchievements.value = page.list
-    achievementCounts.total = page.total
-
-    const [calculated, submitted, confirmed, archived, notAchieved] = await Promise.all([
-      achievementResultApi.page({
-        pageNum: 1,
-        pageSize: 1,
-        trainingPlanId: trainingPlanId.value,
-        auditStatus: AchievementAuditStatusCode.CALCULATED,
-      }),
-      achievementResultApi.page({
-        pageNum: 1,
-        pageSize: 1,
-        trainingPlanId: trainingPlanId.value,
-        auditStatus: AchievementAuditStatusCode.SUBMITTED,
-      }),
-      achievementResultApi.page({
-        pageNum: 1,
-        pageSize: 1,
-        trainingPlanId: trainingPlanId.value,
-        auditStatus: AchievementAuditStatusCode.CONFIRMED,
-      }),
-      achievementResultApi.page({
-        pageNum: 1,
-        pageSize: 1,
-        trainingPlanId: trainingPlanId.value,
-        auditStatus: AchievementAuditStatusCode.ARCHIVED,
-      }),
-      achievementResultApi.page({
-        pageNum: 1,
-        pageSize: 1,
-        trainingPlanId: trainingPlanId.value,
-        achievementStatus: AchievementStatusCode.NOT_ACHIEVED,
-      }),
-    ])
-    achievementCounts.calculated = calculated.total
-    achievementCounts.submitted = submitted.total
-    achievementCounts.confirmed = confirmed.total
-    achievementCounts.archived = archived.total
-    achievementCounts.notAchieved = notAchieved.total
   } catch (error) {
     showUserError(error, '达成度数据加载失败')
   } finally {
@@ -346,38 +343,6 @@ async function loadImprovement() {
       trainingPlanId: trainingPlanId.value,
     })
     recentImprovements.value = page.list
-    improvementCounts.total = page.total
-
-    const [open, inProgress, submitted, closed] = await Promise.all([
-      improvementTaskApi.page({
-        pageNum: 1,
-        pageSize: 1,
-        trainingPlanId: trainingPlanId.value,
-        status: ImprovementTaskStatusCode.OPEN,
-      }),
-      improvementTaskApi.page({
-        pageNum: 1,
-        pageSize: 1,
-        trainingPlanId: trainingPlanId.value,
-        status: ImprovementTaskStatusCode.IN_PROGRESS,
-      }),
-      improvementTaskApi.page({
-        pageNum: 1,
-        pageSize: 1,
-        trainingPlanId: trainingPlanId.value,
-        status: ImprovementTaskStatusCode.SUBMITTED,
-      }),
-      improvementTaskApi.page({
-        pageNum: 1,
-        pageSize: 1,
-        trainingPlanId: trainingPlanId.value,
-        status: ImprovementTaskStatusCode.CLOSED,
-      }),
-    ])
-    improvementCounts.open = open.total
-    improvementCounts.inProgress = inProgress.total
-    improvementCounts.submitted = submitted.total
-    improvementCounts.closed = closed.total
   } catch (error) {
     showUserError(error, '改进任务数据加载失败')
   } finally {
@@ -396,38 +361,6 @@ async function loadAiTasks() {
       trainingPlanId: plan,
     })
     recentAiTasks.value = page.list
-    aiCounts.total = page.total
-
-    const [pending, processing, succeeded, failed] = await Promise.all([
-      aiTaskApi.page({
-        pageNum: 1,
-        pageSize: 1,
-        trainingPlanId: plan,
-        status: AiTaskStatusCode.PENDING,
-      }),
-      aiTaskApi.page({
-        pageNum: 1,
-        pageSize: 1,
-        trainingPlanId: plan,
-        status: AiTaskStatusCode.PROCESSING,
-      }),
-      aiTaskApi.page({
-        pageNum: 1,
-        pageSize: 1,
-        trainingPlanId: plan,
-        status: AiTaskStatusCode.SUCCEEDED,
-      }),
-      aiTaskApi.page({
-        pageNum: 1,
-        pageSize: 1,
-        trainingPlanId: plan,
-        status: AiTaskStatusCode.FAILED,
-      }),
-    ])
-    aiCounts.pending = pending.total
-    aiCounts.processing = processing.total
-    aiCounts.succeeded = succeeded.total
-    aiCounts.failed = failed.total
   } catch (error) {
     showUserError(error, 'AI 任务数据加载失败')
   } finally {
@@ -437,6 +370,7 @@ async function loadAiTasks() {
 
 async function reload() {
   await Promise.all([
+    loadSummary(),
     loadAchievement(),
     loadImprovement(),
     loadAiTasks(),
@@ -485,7 +419,7 @@ const cockpitPhase = computed(() => cockpit.value?.activeCycle?.currentPhase)
 const dashboardTodos = computed<DashboardTodoItem[]>(() => {
   if (!trainingPlanId.value) return []
   const items: DashboardTodoItem[] = []
-  if (planConfirmationStatus.value !== 'CONFIRMED') {
+  if (planConfirmationStatus.value !== ConfirmationStatusCode.CONFIRMED) {
     items.push({
       key: 'plan-confirm',
       label: `培养方案待确认（${planConfirmationLabel.value}）`,
@@ -493,7 +427,10 @@ const dashboardTodos = computed<DashboardTodoItem[]>(() => {
       tone: 'orange',
     })
   }
-  if (planConfirmationStatus.value === 'CONFIRMED' && achievementCounts.calculated === 0) {
+  if (
+    planConfirmationStatus.value === ConfirmationStatusCode.CONFIRMED &&
+    achievementCounts.calculated === 0
+  ) {
     items.push({
       key: 'ingest',
       label: '尚未产生达成度计算输入，请先完成成绩或过程数据接入',
@@ -631,16 +568,15 @@ function handleTodoAction(key: string) {
             <UiButton variant="ghost" size="sm" @click="goAchievement"> 查看全部 </UiButton>
           </template>
           <UiDataTable
-            pagination-mode="none"
-            class="student-detail-table__data-table"
+            pagination-mode="server"
             :columns="recentAchievementColumns"
             :data-source="recentAchievements"
-            :loading="loading.achievement"
+            :loading="loading.achievement || loading.summary"
             :show-pagination="false"
             row-key="id"
             size="small"
             flat
-            :total="recentAchievements.length"
+            :total="achievementCounts.total"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'targetType'">
@@ -653,9 +589,9 @@ function handleTodoAction(key: string) {
                 <span
                   class="quality-dashboard__value"
                   :class="[
-                    record.finalValue !== null
-                      && record.thresholdValue !== null
-                      && record.finalValue >= record.thresholdValue
+                    record.finalValue !== null &&
+                    record.thresholdValue !== null &&
+                    record.finalValue >= record.thresholdValue
                       ? 'quality-dashboard__value--ok'
                       : 'quality-dashboard__value--bad',
                   ]"
@@ -683,16 +619,15 @@ function handleTodoAction(key: string) {
             <UiButton variant="ghost" size="sm" @click="goImprovement"> 查看全部 </UiButton>
           </template>
           <UiDataTable
-            pagination-mode="none"
-            class="student-detail-table__data-table"
+            pagination-mode="server"
             :columns="recentImprovementColumns"
             :data-source="recentImprovements"
-            :loading="loading.improvement"
+            :loading="loading.improvement || loading.summary"
             :show-pagination="false"
             row-key="id"
             size="small"
             flat
-            :total="recentImprovements.length"
+            :total="improvementCounts.total"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'ownerRef'">
@@ -715,16 +650,15 @@ function handleTodoAction(key: string) {
             <UiButton variant="ghost" size="sm" @click="goAiTask"> 查看全部 </UiButton>
           </template>
           <UiDataTable
-            pagination-mode="none"
-            class="student-detail-table__data-table"
+            pagination-mode="server"
             :columns="recentAiTaskColumns"
             :data-source="recentAiTasks"
-            :loading="loading.ai"
+            :loading="loading.ai || loading.summary"
             :show-pagination="false"
             row-key="id"
             size="small"
             flat
-            :total="recentAiTasks.length"
+            :total="aiCounts.total"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'taskType'">
@@ -744,10 +678,10 @@ function handleTodoAction(key: string) {
               <template v-else-if="column.key === 'failurePhase'">
                 <span
                   :class="{
-                    'quality-dashboard__value--error': record.status === 'FAILED',
+                    'quality-dashboard__value--error': record.status === AiTaskStatusCode.FAILED,
                   }"
                 >
-                  {{ record.status === 'FAILED' ? record.failurePhase : '不适用' }}
+                  {{ record.status === AiTaskStatusCode.FAILED ? record.failurePhase : '不适用' }}
                 </span>
               </template>
             </template>

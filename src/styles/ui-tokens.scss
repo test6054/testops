@@ -87,13 +87,13 @@
   --dp-type-h1-line-height: 26px;
   --dp-type-h1-weight: 600;
 
-  --dp-type-table-body-size: 15px;
-  --dp-type-table-body-line-height: 1.35;
-  --dp-type-table-body-weight: 600;
+  --dp-type-table-body-size: 13px;
+  --dp-type-table-body-line-height: 1.5;
+  --dp-type-table-body-weight: 400;
 
-  --dp-type-table-head-size: 16px;
-  --dp-type-table-head-line-height: 1.2;
-  --dp-type-table-head-weight: 700;
+  --dp-type-table-head-size: 13px;
+  --dp-type-table-head-line-height: 1.5;
+  --dp-type-table-head-weight: 600;
 
   --dp-type-hint-size: 12px;
   --dp-type-hint-line-height: 18px;
@@ -182,7 +182,14 @@
   --dp-z-popover: 1060;
   --dp-z-tooltip: 1080;
 
-  --dp-table-header-bg: var(--ant-color-fill-alter);
+  --dp-table-header-bg: #fafbfc;
+  --dp-table-header-height: 40px;
+  --dp-table-header-padding: 0 16px;
+  --dp-table-cell-padding: 10px 16px;
+  --dp-table-cell-padding-sm: 8px 12px;
+  --dp-table-border: var(--ant-color-border-secondary);
+  --dp-table-row-hover-bg: var(--dp-gray-50);
+  --dp-table-row-selected-bg: var(--dp-gray-50);
 
   --dp-text-primary: var(--ant-color-text);
   --dp-text-secondary: var(--ant-color-text-secondary);

@@ -1,10 +1,18 @@
 import type { ExtendedAxiosRequestConfig } from '@/config/axios/types'
+import type { PageResult, QueryDto } from '@/types'
 import type { ExamKindCode } from '@/types/enums/exam-kind-enum'
 import type { ExperienceRecommendationCode } from '@/types/enums/experience-recommendation-enum'
+import type { GradingExperienceAssistPolicyStatusCode } from '@/types/enums/grading-experience-assist-policy-status-enum'
 import type { GradingExperienceAssistQuestionResolutionCode } from '@/types/enums/grading-experience-assist-question-resolution-enum'
 import type { GradingExperienceReferenceMatchModeCode } from '@/types/enums/grading-experience-reference-match-mode-enum'
 import type { MarkingOrganizationStatusCode } from '@/types/enums/marking-organization-status-enum'
 import http from '@/config/axios'
+
+export {
+  ALL_GRADING_EXPERIENCE_ASSIST_POLICY_STATUS_CODES,
+  GradingExperienceAssistPolicyStatusCode,
+  GradingExperienceAssistPolicyStatusDescription,
+} from '@/types/enums/grading-experience-assist-policy-status-enum'
 
 export interface MarkAiReferenceExperienceAuditResponse {
   referenceExperienceApplied?: boolean
@@ -37,8 +45,6 @@ export interface MarkTenantGradingPolicySaveRequest {
   delayedFinalScoreConfirmMinutes: number
 }
 
-export type GradingExperienceAssistPolicyStatusCode = 'DISABLED' | 'ENABLED' | 'FROZEN'
-
 export interface ExamGradingExperienceAssistPolicyResponse {
   examId: string
   examKind?: ExamKindCode
@@ -60,8 +66,8 @@ export interface ExamGradingExperienceAssistPolicyEnableRequest {
   maxExperienceItems: number
 }
 
-export type ExamGradingExperienceAssistPolicySaveRequest
-   = ExamGradingExperienceAssistPolicyEnableRequest
+export type ExamGradingExperienceAssistPolicySaveRequest =
+  ExamGradingExperienceAssistPolicyEnableRequest
 
 export interface ExamQuestionExperienceAssistBindingResponse {
   id?: string
@@ -87,6 +93,12 @@ export interface GradingExperienceAssistCandidateResponse {
   experienceSummary?: string
   consistencyRate?: number
   recommendation?: ExperienceRecommendationCode
+}
+
+export interface ExamQuestionExperienceAssistBindingPageRequest extends QueryDto {
+  examId: string
+  keyword?: string
+  assistResolutionStatus?: GradingExperienceAssistQuestionResolutionCode
 }
 
 export interface ExamQuestionExperienceAssistBindingSaveRequest {
@@ -218,13 +230,14 @@ export function getExamGradingExperienceAssistReadiness(
   )
 }
 
-export function listExamExperienceAssistBindings(
-  examId: string,
+export function pageExamExperienceAssistBindings(
+  request: ExamQuestionExperienceAssistBindingPageRequest,
   config?: ExtendedAxiosRequestConfig,
-): Promise<ExamQuestionExperienceAssistBindingResponse[]> {
-  return http.get<ExamQuestionExperienceAssistBindingResponse[]>(
-    '/api/mark/exam/grading-experience-assist/bindings/list',
-    { ...config, params: { examId, ...(config?.params ?? {}) } },
+): Promise<PageResult<ExamQuestionExperienceAssistBindingResponse>> {
+  return http.post<PageResult<ExamQuestionExperienceAssistBindingResponse>>(
+    '/api/mark/exam/grading-experience-assist/bindings/page',
+    request,
+    config,
   )
 }
 

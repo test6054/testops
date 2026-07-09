@@ -14,13 +14,17 @@
       </div>
 
       <div class="ui-table-form__table-wrap">
-        <a-table
-          class="ui-table-form__table"
+        <UiDataTable
+          class="ui-table-form__data-table"
           :columns="tableColumns"
           :data-source="props.dataSource"
           :loading="props.loading"
           :row-key="props.rowKey"
-          :pagination="false"
+          flat
+          pagination-mode="none"
+          :show-pagination="false"
+          :sticky-header="false"
+          :total="props.dataSource.length"
           size="middle"
         >
           <template #bodyCell="{ column, record, index }">
@@ -42,7 +46,7 @@
               </slot>
             </template>
           </template>
-        </a-table>
+        </UiDataTable>
       </div>
     </UiCard>
   </div>
@@ -53,6 +57,7 @@ import type { LabeledValue, SelectValue } from 'ant-design-vue/es/select'
 import type { UiSelectOption } from './types'
 import { computed, ref, useSlots } from 'vue'
 import UiCard from './Card.vue'
+import UiDataTable from './UiDataTable.vue'
 
 export interface TableFormColumn {
   key: string
@@ -101,7 +106,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   (
     e: 'change',
-    changeEvent: { record: TableFormRow, field: string, value: unknown, index: number },
+    changeEvent: { record: TableFormRow; field: string; value: unknown; index: number },
   ): void
 }>()
 
@@ -222,8 +227,8 @@ const handleCellChange = (
   emit('change', { record, field, value, index })
 }
 
-const handleSelectChange
-  = (record: TableFormRow, column: TableFormCellColumn, index: number) =>
+const handleSelectChange =
+  (record: TableFormRow, column: TableFormCellColumn, index: number) =>
   (value: SelectValue): void => {
     handleCellChange(record, column, value, index)
   }
@@ -268,36 +273,12 @@ const handleSelectChange
 }
 
 .ui-table-form__table-wrap {
-  overflow: hidden;
-  border: 1px solid var(--dp-border);
-  border-radius: var(--dp-radius-panel);
+  min-width: 0;
 }
 
-.ui-table-form__table :deep(.ant-table) {
-  background: transparent;
-}
-
-.ui-table-form__table :deep(.ant-table-thead > tr > th) {
-  padding: 12px 14px !important;
-  background: var(--dp-table-header-bg);
-  color: var(--dp-text-secondary);
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.3;
-  border-bottom: 1px solid var(--dp-border);
-}
-
-.ui-table-form__table :deep(.ant-table-tbody > tr > td) {
-  padding: 12px 14px !important;
-  color: var(--dp-text-primary);
-  font-size: 15px;
-  line-height: 1.35;
-  vertical-align: middle;
-  border-bottom: 1px solid var(--dp-border);
-}
-
-.ui-table-form__table :deep(.ant-table-tbody > tr:hover > td) {
-  background: rgba(239, 246, 255, 0.68) !important;
+.ui-table-form__data-table :deep(.ui-data-table__table-wrap) {
+  border: none;
+  border-radius: 0;
 }
 
 .ui-table-form__select {

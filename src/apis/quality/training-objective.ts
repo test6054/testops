@@ -2,6 +2,7 @@
  * 培养目标 API。
  * 后端对象：TrainingObjectiveController /api/quality/training-objectives。
  */
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 const OBJECTIVE = '/api/quality/training-objectives'
@@ -17,6 +18,11 @@ export interface TrainingObjectiveVO {
   updateTime?: string
 }
 
+export interface TrainingObjectiveQueryRequest extends QueryDto {
+  trainingPlanId?: string
+  keyword?: string
+}
+
 export interface TrainingObjectiveSaveRequest {
   id?: string
   trainingPlanId: string
@@ -27,8 +33,8 @@ export interface TrainingObjectiveSaveRequest {
 }
 
 export const trainingObjectiveApi = {
-  listByPlan: (trainingPlanId: string) =>
-    http.post<TrainingObjectiveVO[]>(`${OBJECTIVE}/list-by-plan`, { id: trainingPlanId }),
+  page: (data: TrainingObjectiveQueryRequest) =>
+    http.post<PageResult<TrainingObjectiveVO>>(`${OBJECTIVE}/page`, data),
   detail: (id: string) =>
     http.post<TrainingObjectiveVO>(`${OBJECTIVE}/detail`, { id }),
   create: (data: TrainingObjectiveSaveRequest) =>

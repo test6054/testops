@@ -45,7 +45,7 @@
         <UiDataTable
           v-model:current="pagination.pageNum"
           v-model:page-size="pagination.pageSize"
-          class="student-detail-table__data-table"
+          pagination-mode="server"
           :columns="packageColumns"
           :data-source="packageList"
           :loading="loading"
@@ -122,20 +122,23 @@
         :width="960"
         hide-footer
       >
-        <UiSkeletonState v-if="detailLoading" variant="table" compact />
+        <UiSkeletonState v-if="detailLoading && detailItems.length === 0" variant="table" compact />
         <UiDataTable
           v-else
-          pagination-mode="none"
-          class="student-detail-table__data-table"
+          v-model:current="detailPagination.pageNum"
+          v-model:page-size="detailPagination.pageSize"
+          pagination-mode="server"
           :columns="detailColumns"
           :data-source="detailItems"
-          :show-pagination="false"
+          :loading="detailLoading"
+          :total="detailPagination.total"
+          :sticky-header="false"
           flat
-          :total="detailItems.length"
           row-key="printPackageItemId"
           size="small"
           bordered
           :scroll="{ y: 400 }"
+          @page-change="handleDetailPageChange"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'status'">
@@ -164,7 +167,17 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamWorkbenchPrintPackagePanelResponse } from '@/apis/mark/exam-progress'
+import { getPrintPackagePanel } from '@/apis/mark/exam-progress'
 import type { ExamPrintPackageResponse, PrintPackageItemVO } from '@/apis/mark/print-package'
+import {
+  generatePrintPackage,
+  isLayoutNotReadyError,
+  pagePrintPackageItems,
+  pagePrintPackages,
+  PRINT_PACKAGE_FLOW_HINT,
+  PRINT_PACKAGE_STATUS_TONE,
+  PrintPackageStatusDescription,
+} from '@/apis/mark/print-package'
 import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
@@ -172,16 +185,6 @@ import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { downloadFile, getFileArrayBuffer } from '@/apis/edu/file-management'
 import { getExamDetail } from '@/apis/mark/exam'
-import { getPrintPackagePanel } from '@/apis/mark/exam-progress'
-import {
-  generatePrintPackage,
-  getPrintPackage,
-  isLayoutNotReadyError,
-  pagePrintPackages,
-  PRINT_PACKAGE_FLOW_HINT,
-  PRINT_PACKAGE_STATUS_TONE,
-  PrintPackageStatusDescription,
-} from '@/apis/mark/print-package'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -305,13 +308,13 @@ const packageSignalMetrics = computed((): SignalMetric[] => {
 })
 
 const packageColumns: ColumnType<ExamPrintPackageResponse>[] = [
-  { title: '名称', key: 'packageName', width: 200, ellipsis: true },
+  { title: '名称', key: 'packageName', width: 200, ellipsis: true, fixed: 'left' },
   { title: '编号', dataIndex: 'packageNo', key: 'packageNo', width: 140 },
   { title: '状态', key: 'status', width: 100 },
   { title: '人数', dataIndex: 'itemCount', key: 'itemCount', width: 80, align: 'right' },
   { title: '生成时间', dataIndex: 'generatedTime', key: 'generatedTime', width: 170 },
   { title: '封装备注', key: 'sealRemark', ellipsis: true },
-  { title: '操作', key: 'actions', fixed: 'right', width: 220 },
+  { title: '操作', key: 'actions', width: 220 },
 ]
 
 async function loadPrintPackagePanel(): Promise<void> {
@@ -349,7 +352,7 @@ async function loadPackageList() {
   }
 }
 
-function handlePackagePageChange(pageEvent: { current: number, pageSize: number }): void {
+function handlePackagePageChange(pageEvent: { current: number; pageSize: number }): void {
   pagination.pageNum = pageEvent.current
   pagination.pageSize = pageEvent.pageSize
   loadPackageList()
@@ -458,6 +461,7 @@ const detailModalVisible = ref(false)
 const detailLoading = ref(false)
 const detailPackage = ref<ExamPrintPackageResponse | null>(null)
 const detailItems = ref<PrintPackageItemVO[]>([])
+const detailPagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
 
 function buildPackageActions(pkg: ExamPrintPackageResponse): UiTableRowActionItem[] {
   return [
@@ -484,23 +488,47 @@ function handlePackageAction(key: string, pkg: ExamPrintPackageResponse): void {
 async function viewDetail(pkg: ExamPrintPackageResponse) {
   detailPackage.value = pkg
   detailItems.value = []
+  detailPagination.pageNum = 1
   detailModalVisible.value = true
+  await loadDetailItems()
+}
+
+async function loadDetailItems(): Promise<void> {
+  const pkg = detailPackage.value
+  if (!pkg) return
   detailLoading.value = true
   try {
-    const res = await getPrintPackage({
+    const page = await pagePrintPackageItems({
       examId: pkg.examId,
       printPackageId: pkg.printPackageId,
+      pageNum: detailPagination.pageNum,
+      pageSize: detailPagination.pageSize,
     })
-    detailItems.value = res.items
+    detailItems.value = page.list
+    detailPagination.total = page.total
+    if (page.pageNum != null) {
+      detailPagination.pageNum = page.pageNum
+    }
+    if (page.pageSize != null) {
+      detailPagination.pageSize = page.pageSize
+    }
   } catch (error) {
+    detailItems.value = []
+    detailPagination.total = 0
     showUserError(error, '印刷包明细加载失败，请稍后重试')
   } finally {
     detailLoading.value = false
   }
 }
 
+function handleDetailPageChange(pageEvent: { current: number; pageSize: number }): void {
+  detailPagination.pageNum = pageEvent.current
+  detailPagination.pageSize = pageEvent.pageSize
+  void loadDetailItems()
+}
+
 const detailColumns: ColumnType[] = [
-  { title: '学号', dataIndex: 'studentNo', key: 'studentNo', width: 120 },
+  { title: '学号', dataIndex: 'studentNo', key: 'studentNo', width: 120, fixed: 'left' },
   { title: '姓名', dataIndex: 'studentName', key: 'studentName', width: 100 },
   { title: '考场', dataIndex: 'examRoom', key: 'examRoom', width: 120 },
   { title: '座位号', dataIndex: 'seatNo', key: 'seatNo', width: 80 },

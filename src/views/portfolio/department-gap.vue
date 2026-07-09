@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioGapTaskStatusCode } from '@/apis/portfolio/enums'
+import { PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import type { PortfolioGapTaskSummaryVO } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import { portfolioGapApi } from '@/apis/portfolio/gap'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -31,12 +31,12 @@ const pageSize = ref(10)
 const pageTotal = ref(0)
 
 const columns: ColumnsType<PortfolioGapTaskSummaryVO> = [
-  { title: '教师', dataIndex: 'teacherId', key: 'teacherId', width: 100 },
+  { title: '教师', dataIndex: 'teacherId', key: 'teacherId', width: 100, fixed: 'left' },
   { title: '分类', dataIndex: 'categoryName', key: 'categoryName', width: 140 },
   { title: '任务', dataIndex: 'taskTitle', key: 'taskTitle' },
   { title: '状态', key: 'taskStatus', width: 100 },
   { title: '截止', dataIndex: 'dueTime', key: 'dueTime', width: 170 },
-  { title: '操作', key: 'actions', width: 140, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 140 },
 ]
 
 async function loadPage() {

@@ -51,9 +51,19 @@ export interface ScaleConversionRuleQueryRequest extends QueryDto {
   enabled?: boolean
 }
 
+/** SignalBand 汇总响应 - 对齐后端 ScaleConversionRuleSignalSummaryVO */
+export interface ScaleConversionRuleSignalSummaryVO {
+  totalCount: number
+  enabledCount: number
+  disabledCount: number
+  scaleTypeCoverageCount: number
+}
+
 export const scaleConversionRuleApi = {
   page: (data: ScaleConversionRuleQueryRequest) =>
     http.post<PageResult<ScaleConversionRuleVO>>(`${BASE}/page`, data),
+  signalSummary: (data: ScaleConversionRuleQueryRequest) =>
+    http.post<ScaleConversionRuleSignalSummaryVO>(`${BASE}/signal-summary`, data),
   detail: (id: string) => http.post<ScaleConversionRuleVO>(`${BASE}/detail`, { id }),
   create: (data: ScaleConversionRuleSaveRequest) => http.post<string>(`${BASE}/create`, data),
   update: (data: ScaleConversionRuleSaveRequest) => http.post<void>(`${BASE}/update`, data),

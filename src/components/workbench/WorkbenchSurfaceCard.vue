@@ -63,6 +63,7 @@ withDefaults(
   flex: 1;
   padding: var(--dp-space-5);
   min-height: 0;
+  min-width: 0;
 }
 
 .workbench-surface-card__body--flush {

@@ -1,21 +1,14 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { AchievementAuditVO } from '@/apis/quality/achievement-audit'
-import type { AchievementDetailVO } from '@/apis/quality/achievement-detail'
-import type { AchievementManualReviewVO } from '@/apis/quality/achievement-manual-review'
-import type { AchievementResultVO } from '@/apis/quality/achievement-result'
-import type { AchievementDetailTypeCode, AchievementStatusCode } from '@/apis/quality/types'
-
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { achievementApi } from '@/apis/quality/achievement'
 import { achievementAuditApi } from '@/apis/quality/achievement-audit'
+import type { AchievementDetailVO } from '@/apis/quality/achievement-detail'
 import { achievementDetailApi } from '@/apis/quality/achievement-detail'
+import type { AchievementManualReviewVO } from '@/apis/quality/achievement-manual-review'
 import { achievementManualReviewApi } from '@/apis/quality/achievement-manual-review'
+import type { AchievementResultVO } from '@/apis/quality/achievement-result'
 import { achievementResultApi } from '@/apis/quality/achievement-result'
+import type { AchievementDetailTypeCode, AchievementStatusCode } from '@/apis/quality/types'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_STATUS_COLOR,
@@ -28,6 +21,13 @@ import {
   ManualReviewDecisionCode,
   ManualReviewDecisionDescription,
 } from '@/apis/quality/types'
+
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { achievementApi } from '@/apis/quality/achievement'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -70,7 +70,19 @@ const details = ref<AchievementDetailVO[]>([])
 const audits = ref<AchievementAuditVO[]>([])
 const reviews = ref<AchievementManualReviewVO[]>([])
 const loading = ref(false)
-const reviewForm = reactive<{ decision: ManualReviewDecisionCode, reviewRemark: string }>({
+const detailsLoading = ref(false)
+const auditsLoading = ref(false)
+const reviewsLoading = ref(false)
+const detailPageNum = ref(1)
+const detailPageSize = ref(10)
+const detailTotal = ref(0)
+const auditPageNum = ref(1)
+const auditPageSize = ref(10)
+const auditTotal = ref(0)
+const reviewPageNum = ref(1)
+const reviewPageSize = ref(10)
+const reviewTotal = ref(0)
+const reviewForm = reactive<{ decision: ManualReviewDecisionCode; reviewRemark: string }>({
   decision: ManualReviewDecisionCode.CONFIRMED,
   reviewRemark: '',
 })
@@ -131,14 +143,10 @@ function manualReviewDecisionLabel(value: ManualReviewDecisionCode): string {
   return strictEnumLabel(ManualReviewDecisionDescription, value, '人工复核决定')
 }
 
-function auditEventLabel(event: string | undefined): string {
+function auditEventLabel(event: AchievementAuditStatusCode | undefined): string {
   if (!event) return '-'
   if (event === AchievementAuditStatusCode.CALCULATED) return '达成度计算'
-  const auditStatus = event as AchievementAuditStatusCode
-  if (Object.prototype.hasOwnProperty.call(AchievementAuditStatusDescription, auditStatus)) {
-    return auditStatusLabel(auditStatus)
-  }
-  return event
+  return auditStatusLabel(event)
 }
 
 const auditTransitMap: Record<AchievementAuditStatusCode, AchievementAuditStatusCode[]> = {
@@ -178,18 +186,18 @@ const targetTypeToComputeKind: Partial<Record<AchievementTargetTypeCode, string>
 function canRecomputeResult(value: AchievementResultVO | null): boolean {
   if (!value) return false
   return (
-    value.auditStatus === AchievementAuditStatusCode.RETURNED
-    || isResultStale(value)
-    || value.auditStatus === AchievementAuditStatusCode.DRAFT
-    || value.auditStatus === AchievementAuditStatusCode.CALCULATED
+    value.auditStatus === AchievementAuditStatusCode.RETURNED ||
+    isResultStale(value) ||
+    value.auditStatus === AchievementAuditStatusCode.DRAFT ||
+    value.auditStatus === AchievementAuditStatusCode.CALCULATED
   )
 }
 
 function canSubmitManualReview(value: AchievementResultVO | null): boolean {
   if (!value?.auditStatus) return false
   return (
-    value.auditStatus === AchievementAuditStatusCode.SUBMITTED
-    || value.auditStatus === AchievementAuditStatusCode.CONFIRMED
+    value.auditStatus === AchievementAuditStatusCode.SUBMITTED ||
+    value.auditStatus === AchievementAuditStatusCode.CONFIRMED
   )
 }
 
@@ -247,23 +255,97 @@ async function handleRecompute() {
   }
 }
 
-async function loadAll() {
+async function loadResult() {
   if (!resultId.value) return
   loading.value = true
   try {
-    const [r, d, a, rv] = await Promise.all([
-      achievementResultApi.detail(resultId.value),
-      achievementDetailApi.listByResult(resultId.value),
-      achievementAuditApi.listByResult(resultId.value),
-      achievementManualReviewApi.listByResult(resultId.value),
-    ])
-    result.value = r
-    details.value = d
-    audits.value = a
-    reviews.value = rv
+    result.value = await achievementResultApi.detail(resultId.value)
   } finally {
     loading.value = false
   }
+}
+
+async function loadDetails() {
+  if (!resultId.value) {
+    details.value = []
+    detailTotal.value = 0
+    return
+  }
+  detailsLoading.value = true
+  try {
+    const page = await achievementDetailApi.page({
+      achievementResultId: resultId.value,
+      pageNum: detailPageNum.value,
+      pageSize: detailPageSize.value,
+    })
+    details.value = page.list
+    detailTotal.value = page.total
+  } finally {
+    detailsLoading.value = false
+  }
+}
+
+async function loadAudits() {
+  if (!resultId.value) {
+    audits.value = []
+    auditTotal.value = 0
+    return
+  }
+  auditsLoading.value = true
+  try {
+    const page = await achievementAuditApi.page({
+      achievementResultId: resultId.value,
+      pageNum: auditPageNum.value,
+      pageSize: auditPageSize.value,
+    })
+    audits.value = page.list
+    auditTotal.value = page.total
+  } finally {
+    auditsLoading.value = false
+  }
+}
+
+async function loadReviews() {
+  if (!resultId.value) {
+    reviews.value = []
+    reviewTotal.value = 0
+    return
+  }
+  reviewsLoading.value = true
+  try {
+    const page = await achievementManualReviewApi.page({
+      achievementResultId: resultId.value,
+      pageNum: reviewPageNum.value,
+      pageSize: reviewPageSize.value,
+    })
+    reviews.value = page.list
+    reviewTotal.value = page.total
+  } finally {
+    reviewsLoading.value = false
+  }
+}
+
+async function loadAll() {
+  if (!resultId.value) return
+  await Promise.all([loadResult(), loadDetails(), loadAudits(), loadReviews()])
+}
+
+function handleDetailPageChange(page: { current: number; pageSize: number }) {
+  detailPageNum.value = page.current
+  detailPageSize.value = page.pageSize
+  void loadDetails()
+}
+
+function handleAuditPageChange(page: number, pageSize: number) {
+  auditPageNum.value = page
+  auditPageSize.value = pageSize
+  void loadAudits()
+}
+
+function handleReviewPageChange(page: number, pageSize: number) {
+  reviewPageNum.value = page
+  reviewPageSize.value = pageSize
+  void loadReviews()
 }
 
 async function handleTransit(to: AchievementAuditStatusCode) {
@@ -343,20 +425,20 @@ const signals = computed<SignalMetric[]>(() => {
     {
       key: 'detail-rows',
       label: '明细行数',
-      value: details.value.length,
+      value: detailTotal.value,
       tone: 'blue',
     },
     {
       key: 'audits',
       label: '审核流水',
-      value: audits.value.length,
-      tone: audits.value.length > 0 ? 'blue' : 'gray',
+      value: auditTotal.value,
+      tone: auditTotal.value > 0 ? 'blue' : 'gray',
     },
     {
       key: 'reviews',
       label: '复核记录',
-      value: reviews.value.length,
-      tone: reviews.value.length > 0 ? 'green' : 'gray',
+      value: reviewTotal.value,
+      tone: reviewTotal.value > 0 ? 'green' : 'gray',
     },
   ]
 })
@@ -380,6 +462,9 @@ async function submitReviewAndClose() {
 watch(
   resultId,
   () => {
+    detailPageNum.value = 1
+    auditPageNum.value = 1
+    reviewPageNum.value = 1
     void loadAll()
   },
   { immediate: true },
@@ -510,19 +595,20 @@ onActivated(() => {
       <div class="achievement-detail__layout">
         <UiCard class="achievement-detail__detail-card">
           <template #title>计算明细</template>
-          <UiEmpty v-if="!details.length && !loading" description="暂无数据" size="sm" />
+          <UiEmpty v-if="!details.length && !detailsLoading" description="暂无数据" size="sm" />
           <UiDataTable
-            pagination-mode="none"
-            class="student-detail-table__data-table"
+            pagination-mode="server"
             v-else
+            v-model:current="detailPageNum"
+            v-model:page-size="detailPageSize"
             :columns="detailColumns"
             :data-source="details"
             row-key="id"
             size="small"
-            :loading="loading"
-            :show-pagination="false"
+            :loading="detailsLoading"
             flat
-            :total="details.length"
+            :total="detailTotal"
+            @page-change="handleDetailPageChange"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'detailType'">
@@ -562,53 +648,81 @@ onActivated(() => {
 
         <UiCard class="achievement-detail__audit-card">
           <template #title>审核责任链流水</template>
-          <UiEmpty v-if="!audits.length && !loading" description="暂无数据" size="sm" />
-          <a-timeline v-else class="achievement-detail__timeline">
-            <a-timeline-item
-              v-for="audit in audits"
-              :key="audit.id"
-              :color="auditStatusColorMaybe(audit.auditStatusTo) === 'red' ? 'red' : 'blue'"
-            >
-              <p class="achievement-detail__audit-line">
-                <UiTag tone="gray" size="sm">{{ auditEventLabel(audit.auditEvent) }}</UiTag>
-                <strong v-if="audit.auditStatusFrom">
-                  {{ auditStatusLabelMaybe(audit.auditStatusFrom) }}
-                </strong>
-                <span v-if="audit.auditStatusFrom && audit.auditStatusTo"> -> </span>
-                <strong v-if="audit.auditStatusTo">
-                  {{ auditStatusLabelMaybe(audit.auditStatusTo) }}
-                </strong>
-              </p>
-              <p class="achievement-detail__audit-meta">
-                {{ audit.auditorNickName }} · {{ audit.auditedTime }}
-              </p>
-              <p v-if="audit.auditOpinion" class="achievement-detail__audit-opinion">
-                意见：{{ audit.auditOpinion }}
-              </p>
-              <p v-if="audit.returnReason" class="achievement-detail__audit-return">
-                退回原因：{{ audit.returnReason }}
-              </p>
-            </a-timeline-item>
-          </a-timeline>
+          <UiEmpty v-if="!audits.length && !auditsLoading" description="暂无数据" size="sm" />
+          <template v-else>
+            <a-spin :spinning="auditsLoading">
+              <a-timeline class="achievement-detail__timeline">
+                <a-timeline-item
+                  v-for="audit in audits"
+                  :key="audit.id"
+                  :color="auditStatusColorMaybe(audit.auditStatusTo) === 'red' ? 'red' : 'blue'"
+                >
+                  <p class="achievement-detail__audit-line">
+                    <UiTag tone="gray" size="sm">{{ auditEventLabel(audit.auditEvent) }}</UiTag>
+                    <strong v-if="audit.auditStatusFrom">
+                      {{ auditStatusLabelMaybe(audit.auditStatusFrom) }}
+                    </strong>
+                    <span v-if="audit.auditStatusFrom && audit.auditStatusTo"> -> </span>
+                    <strong v-if="audit.auditStatusTo">
+                      {{ auditStatusLabelMaybe(audit.auditStatusTo) }}
+                    </strong>
+                  </p>
+                  <p class="achievement-detail__audit-meta">
+                    {{ audit.auditorNickName }} · {{ audit.auditedTime }}
+                  </p>
+                  <p v-if="audit.auditOpinion" class="achievement-detail__audit-opinion">
+                    意见：{{ audit.auditOpinion }}
+                  </p>
+                  <p v-if="audit.returnReason" class="achievement-detail__audit-return">
+                    退回原因：{{ audit.returnReason }}
+                  </p>
+                </a-timeline-item>
+              </a-timeline>
+            </a-spin>
+            <a-pagination
+              v-if="auditTotal > auditPageSize"
+              class="achievement-detail__pager"
+              size="small"
+              :current="auditPageNum"
+              :page-size="auditPageSize"
+              :total="auditTotal"
+              show-size-changer
+              @change="handleAuditPageChange"
+            />
+          </template>
         </UiCard>
       </div>
 
       <UiCard class="achievement-detail__review-card">
         <template #title>人工复核记录</template>
-        <UiEmpty v-if="!reviews.length" description="暂无数据" size="sm" />
-        <a-list v-else :data-source="reviews" item-layout="horizontal">
-          <template #renderItem="{ item }">
-            <a-list-item>
-              <a-list-item-meta
-                :title="`${manualReviewDecisionLabel(item.decision)} · ${item.reviewerNickName}`"
-                :description="item.reviewRemark"
-              />
-              <template #actions>
-                <span class="achievement-detail__review-time">{{ item.reviewedTime }}</span>
+        <UiEmpty v-if="!reviews.length && !reviewsLoading" description="暂无数据" size="sm" />
+        <template v-else>
+          <a-spin :spinning="reviewsLoading">
+            <a-list :data-source="reviews" item-layout="horizontal">
+              <template #renderItem="{ item }">
+                <a-list-item>
+                  <a-list-item-meta
+                    :title="`${manualReviewDecisionLabel(item.decision)} · ${item.reviewerNickName}`"
+                    :description="item.reviewRemark"
+                  />
+                  <template #actions>
+                    <span class="achievement-detail__review-time">{{ item.reviewedTime }}</span>
+                  </template>
+                </a-list-item>
               </template>
-            </a-list-item>
-          </template>
-        </a-list>
+            </a-list>
+          </a-spin>
+          <a-pagination
+            v-if="reviewTotal > reviewPageSize"
+            class="achievement-detail__pager"
+            size="small"
+            :current="reviewPageNum"
+            :page-size="reviewPageSize"
+            :total="reviewTotal"
+            show-size-changer
+            @change="handleReviewPageChange"
+          />
+        </template>
       </UiCard>
     </template>
 
@@ -724,6 +838,11 @@ onActivated(() => {
   &__review-time {
     font-size: 12px;
     color: var(--dp-text-muted);
+  }
+
+  &__pager {
+    margin-top: 12px;
+    text-align: right;
   }
 }
 

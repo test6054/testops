@@ -1,18 +1,17 @@
 <script setup lang="ts">
-import type {
-  PortfolioAiAnalysisDetailVO,
-  PortfolioTeacherSummaryVO,
+import type { PortfolioAiAnalysisDetailVO, PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
+import {
+  PORTFOLIO_REPORT_SCENE_OPTIONS,
+  PortfolioAiTaskTypeCode,
+  PortfolioReportSceneCode,
 } from '@/apis/portfolio/types'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
 import { PortfolioMaterialTypeCode } from '@/apis/portfolio/enums'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
-import {
-  PORTFOLIO_REPORT_SCENE_OPTIONS,
-  PortfolioAiTaskTypeCode,
-  PortfolioReportSceneCode,
-} from '@/apis/portfolio/types'
+import { AiTaskStatusCode } from '@/apis/quality/types'
+import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -49,7 +48,10 @@ function sleep(ms: number) {
 
 async function loadTeachers() {
   try {
-    const page = await portfolioTeacherApi.page({ pageNum: 1, pageSize: 100 })
+    const page = await portfolioTeacherApi.page({
+      pageNum: 1,
+      pageSize: QUALITY_SELECTOR_PAGE_SIZE,
+    })
     teachers.value = page.list
     if (!form.teacherId) {
       const firstOption = portfolioTeacherSelectOptionsFromSummaries(teachers.value)[0]
@@ -82,7 +84,7 @@ async function pollAnalysis(taskId: string): Promise<PortfolioAiAnalysisDetailVO
     if (task.status === 'SUCCEEDED') {
       return portfolioAiJobApi.getAnalysisByTask(taskId)
     }
-    if (task.status === 'FAILED' || task.status === 'CANCELLED') {
+    if (task.status === AiTaskStatusCode.FAILED || task.status === AiTaskStatusCode.CANCELLED) {
       showUserError(null, '报告生成失败，请稍后重试')
       return null
     }

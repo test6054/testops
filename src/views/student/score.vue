@@ -8,7 +8,7 @@
           </UiTag>
         </template>
         <template #actions>
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadExams">
+          <UiButton variant="outline" size="sm" :loading="pageBootstrapping" @click="reloadPage">
             刷新
           </UiButton>
         </template>
@@ -16,10 +16,10 @@
     </template>
 
     <template #signal>
-      <SignalBand v-if="!loading" :metrics="summarySignalMetrics" compact />
+      <SignalBand v-if="!pageBootstrapping" :metrics="summarySignalMetrics" compact />
     </template>
 
-    <a-skeleton v-if="loading" active :paragraph="{ rows: 4 }" />
+    <a-skeleton v-if="pageBootstrapping" active :paragraph="{ rows: 4 }" />
 
     <template v-else>
       <!-- 最近一场已发布详情卡 -->
@@ -73,7 +73,9 @@
             <div class="info-row">
               <span class="info-label">复核窗口</span>
               <span class="info-value">
-                <template v-if="latestPublished.reviewWindowStatus === 'ACTIVE'">
+                <template
+                  v-if="latestPublished.reviewWindowStatus === ReviewWindowPolicyStatusCode.ACTIVE"
+                >
                   {{ formatDateTime(latestPublished.reviewWindowOpenTime) }}
                   <span class="student-score__hint"> 至 </span>
                   {{ formatDateTime(latestPublished.reviewWindowCloseTime) }}
@@ -105,16 +107,17 @@
         </template>
 
         <UiDataTable
-          pagination-mode="none"
-          class="student-detail-table__data-table"
+          v-model:current="pageNum"
+          v-model:page-size="pageSize"
+          pagination-mode="server"
           :columns="examColumns"
-          :data-source="exams"
-          :loading="loading"
-          :show-pagination="false"
+          :data-source="rows"
+          :loading="tableLoading"
+          :total="pageTotal"
           flat
-          :total="exams.length"
           row-key="examId"
           size="middle"
+          @page-change="handlePageChange"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'examName'">
@@ -132,13 +135,13 @@
               </UiTag>
             </template>
             <template v-else-if="column.key === 'finalScore'">
-              <template v-if="record.finalScoreStatus === 'PUBLISHED'">
+              <template v-if="record.finalScoreStatus === FinalScoreStatusCode.PUBLISHED">
                 {{ formatPublishedScore(record) }}
               </template>
               <span v-else class="student-score__muted">—</span>
             </template>
             <template v-else-if="column.key === 'publishedTime'">
-              <template v-if="record.finalScoreStatus === 'PUBLISHED'">
+              <template v-if="record.finalScoreStatus === FinalScoreStatusCode.PUBLISHED">
                 {{ requirePublishedTime(record) }}
               </template>
               <span v-else class="student-score__muted">—</span>
@@ -164,7 +167,15 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { StudentExamItemVO } from '@/apis/mark/student-exam'
+import type { StudentExamItemVO, StudentExamStatsResponse } from '@/apis/mark/student-exam'
+import {
+  canSubmitReview,
+  getMyExamStats,
+  pageMyExams,
+  ReviewWindowPolicyStatusCode,
+  ReviewWindowPolicyStatusDescription,
+  STUDENT_REVIEW_WINDOW_STATUS_TONE,
+} from '@/apis/mark/student-exam'
 import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
@@ -172,14 +183,9 @@ import { computed, onActivated, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   FINAL_SCORE_STATUS_TONE,
+  FinalScoreStatusCode,
   FinalScoreStatusDescription,
 } from '@/apis/mark/final-score-status'
-import {
-  canSubmitReview,
-  listMyExams,
-  ReviewWindowPolicyStatusDescription,
-  STUDENT_REVIEW_WINDOW_STATUS_TONE,
-} from '@/apis/mark/student-exam'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -188,6 +194,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useQueryTable } from '@/composables/useQueryTable'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime, formatScore } from '@/utils/format'
 import { toSignalMetrics } from '@/utils/stat-metric-helpers'
@@ -196,17 +203,31 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'StudentScore' })
 
 const router = useRouter()
-const loading = ref(false)
-const exams = ref<StudentExamItemVO[]>([])
+const pageBootstrapping = ref(false)
+const examStats = ref<StudentExamStatsResponse | null>(null)
+const publishedTopExams = ref<StudentExamItemVO[]>([])
+
+const {
+  loading: tableLoading,
+  rows,
+  pageNum,
+  pageSize,
+  pageTotal,
+  handlePageChange,
+  reload: reloadExamTable,
+} = useQueryTable((params) => pageMyExams(params), {
+  immediate: false,
+  errorMessage: '考试成绩列表加载失败',
+})
 
 const examColumns: ColumnType<StudentExamItemVO>[] = [
-  { title: '考试', key: 'examName', width: 260 },
+  { title: '考试', key: 'examName', width: 260, fixed: 'left' },
   { title: '开始时间', key: 'examStartTime', width: 170 },
   { title: '成绩状态', key: 'finalScoreStatus', width: 140 },
   { title: '得分', key: 'finalScore', width: 100, align: 'right' },
   { title: '发布时间', key: 'publishedTime', width: 170 },
   { title: '复核窗口', key: 'reviewWindowStatus', width: 120 },
-  { title: '操作', key: 'actions', fixed: 'right', width: 200 },
+  { title: '操作', key: 'actions', width: 200 },
 ]
 
 function finalScoreStatusTone(item: StudentExamItemVO): BadgeTone {
@@ -229,43 +250,16 @@ function reviewWindowStatusLabel(item: StudentExamItemVO): string {
   )
 }
 
-const publishedCount = computed(
-  () => exams.value.filter((e) => e.finalScoreStatus === 'PUBLISHED').length,
-)
+const publishedCount = computed(() => examStats.value?.publishedCount ?? 0)
 
-// ─── D-6 个性化洞察派生 ────────────────────────────────
-/** 按发布时间倒序的已发布考试 */
-const publishedExamsSorted = computed<StudentExamItemVO[]>(() => {
-  return exams.value
-    .filter((e) => e.finalScoreStatus === 'PUBLISHED')
-    .slice()
-    .sort((a, b) => {
-      const ta = a.publishedTime ? new Date(a.publishedTime).getTime() : 0
-      const tb = b.publishedTime ? new Date(b.publishedTime).getTime() : 0
-      return tb - ta
-    })
-})
+const reviewOpenCount = computed(() => examStats.value?.reviewOpenCount ?? 0)
 
-const latestPublished = computed<StudentExamItemVO | null>(() => {
-  return publishedExamsSorted.value[0] ?? null
-})
+const unpublishedCount = computed(() => examStats.value?.unpublishedCount ?? 0)
 
-/** 复核窗口当前开放中的考试数 */
-const reviewOpenCount = computed<number>(() => {
-  return exams.value.filter((e) => e.reviewWindowStatus === 'ACTIVE').length
-})
+const latestPublished = computed<StudentExamItemVO | null>(() => publishedTopExams.value[0] ?? null)
 
-/** 成绩尚未发布的考试数（PENDING / CALCULATED / CONFIRMED / CORRECTED / WITHDRAWN 都算"未在学生侧可见") */
-const unpublishedCount = computed<number>(() => {
-  return exams.value.filter((e) => {
-    const s = e.finalScoreStatus
-    return s !== 'PUBLISHED'
-  }).length
-})
-
-/** 最近两次发布的分数差（最新 - 上一次），无足够数据返回 null */
-const scoreTrend = computed<{ diff: number, latest: number, previous: number } | null>(() => {
-  const list = publishedExamsSorted.value
+const scoreTrend = computed<{ diff: number; latest: number; previous: number } | null>(() => {
+  const list = publishedTopExams.value
   if (list.length < 2) return null
   const latest = Number(list[0].finalScore)
   const previous = Number(list[1].finalScore)
@@ -310,11 +304,11 @@ const insightItems = computed(() => {
         tone: 'blue',
       })
     }
-  } else if (publishedExamsSorted.value.length === 1) {
+  } else if (publishedTopExams.value.length === 1) {
     items.push({
       key: 'trend',
       label: '首次发布',
-      value: formatPublishedScore(publishedExamsSorted.value[0]),
+      value: formatPublishedScore(publishedTopExams.value[0]),
       unit: '分',
       tone: 'blue',
     })
@@ -357,7 +351,7 @@ const summarySignalMetrics = computed(() =>
     {
       key: 'total',
       label: '考试总数',
-      value: exams.value.length,
+      value: examStats.value?.totalExamCount ?? 0,
       unit: '场',
       tone: 'blue',
     },
@@ -380,15 +374,30 @@ const summarySignalMetrics = computed(() =>
 
 const insightSignalMetrics = computed(() => toSignalMetrics(insightItems.value))
 
-async function loadExams() {
-  loading.value = true
+async function loadPublishedTopExams(): Promise<void> {
+  const page = await pageMyExams({
+    finalScoreStatus: FinalScoreStatusCode.PUBLISHED,
+    orderByPublishedTimeDesc: true,
+    pageNum: 1,
+    pageSize: 2,
+  })
+  publishedTopExams.value = page.list
+}
+
+async function loadExamStats(): Promise<void> {
+  examStats.value = await getMyExamStats({})
+}
+
+async function reloadPage(): Promise<void> {
+  pageBootstrapping.value = true
   try {
-    exams.value = await listMyExams()
+    await Promise.all([loadExamStats(), loadPublishedTopExams(), reloadExamTable()])
   } catch (error) {
-    exams.value = []
-    showUserError(error, '考试成绩列表加载失败')
+    examStats.value = null
+    publishedTopExams.value = []
+    showUserError(error, '考试成绩加载失败')
   } finally {
-    loading.value = false
+    pageBootstrapping.value = false
   }
 }
 
@@ -405,7 +414,7 @@ function buildExamScoreActions(record: StudentExamItemVO): UiTableRowActionItem[
     {
       key: 'detail',
       label: '查看详情',
-      disabled: record.finalScoreStatus !== 'PUBLISHED',
+      disabled: record.finalScoreStatus !== FinalScoreStatusCode.PUBLISHED,
     },
     {
       key: 'appeal',
@@ -432,9 +441,9 @@ function goAppeal(examId: string) {
   router.push({ name: 'StudentAppeal', query: { examId } })
 }
 
-onMounted(loadExams)
+onMounted(reloadPage)
 
-onActivated(loadExams)
+onActivated(reloadPage)
 </script>
 
 <style lang="scss" scoped>

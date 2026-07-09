@@ -1,14 +1,12 @@
-import type {
-  AccreditationCockpitVO,
-  AccreditationCycleVO,
+import type { AccreditationCockpitVO, AccreditationCycleVO } from '@/apis/quality/accreditation'
+import {
+  AccreditationCyclePhaseCode,
+  AccreditationCyclePhaseDescription,
+  AccreditationCycleStatusCode,
 } from '@/apis/quality/accreditation'
 import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
 import { computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  AccreditationCyclePhaseCode,
-  AccreditationCyclePhaseDescription,
-} from '@/apis/quality/accreditation'
 import { useAccreditationCockpit } from '@/composables/useAccreditationCockpit'
 import { useQualityStore } from '@/stores/modules/quality'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -62,7 +60,10 @@ export function useAccreditationWorkbench() {
       let status: WorkbenchStage['status'] = 'pending'
       if (idx < currentIdx) status = 'completed'
       else if (idx === currentIdx)
-        status = cycle.cycleStatus === 'CLOSED' && key !== AccreditationCyclePhaseCode.MAINTENANCE ? 'warning' : 'active'
+        status =
+          cycle.cycleStatus === 'CLOSED' && key !== AccreditationCyclePhaseCode.MAINTENANCE
+            ? 'warning'
+            : 'active'
       const stage: WorkbenchStage = {
         key,
         title: strictEnumLabel(AccreditationCyclePhaseDescription, key, '认证周期阶段'),
@@ -71,7 +72,10 @@ export function useAccreditationWorkbench() {
       if (key === AccreditationCyclePhaseCode.SELF_EVALUATION && cycle.applicationRecordedTime) {
         stage.statusText = '已登记申请'
       }
-      if (key === AccreditationCyclePhaseCode.SELF_ASSESSMENT_REVIEW && cycle.selfAssessmentSubmittedTime) {
+      if (
+        key === AccreditationCyclePhaseCode.SELF_ASSESSMENT_REVIEW &&
+        cycle.selfAssessmentSubmittedTime
+      ) {
         stage.statusText = cycle.selfAssessmentReviewDecision || '审阅中'
       }
       if (key === AccreditationCyclePhaseCode.ONSITE_VISIT && cycle.onsiteVisitStart) {
@@ -81,7 +85,10 @@ export function useAccreditationWorkbench() {
         stage.statusText = cycle.conclusionType
         stage.status = 'completed'
       }
-      if (key === AccreditationCyclePhaseCode.MAINTENANCE && cycle.currentPhase === AccreditationCyclePhaseCode.MAINTENANCE) {
+      if (
+        key === AccreditationCyclePhaseCode.MAINTENANCE &&
+        cycle.currentPhase === AccreditationCyclePhaseCode.MAINTENANCE
+      ) {
         stage.status = 'active'
         if (cycle.conditionalDueDate) {
           stage.statusText = `改进截止 ${cycle.conditionalDueDate}`
@@ -200,35 +207,38 @@ export function useAccreditationWorkbench() {
 }
 
 export function canRecordApplication(row: AccreditationCycleVO) {
-  return row.currentPhase === 'SELF_EVALUATION' && row.cycleStatus === 'ACTIVE'
+  return (
+    row.currentPhase === AccreditationCyclePhaseCode.SELF_EVALUATION &&
+    row.cycleStatus === AccreditationCycleStatusCode.ACTIVE
+  )
 }
 
 export function canSubmitSelfAssessment(row: AccreditationCycleVO) {
-  if (row.cycleStatus !== 'ACTIVE') {
+  if (row.cycleStatus !== AccreditationCycleStatusCode.ACTIVE) {
     return false
   }
   if (row.currentPhase === 'SELF_EVALUATION') {
     return !!row.applicationRecordedTime
   }
   return (
-    row.currentPhase === 'SELF_ASSESSMENT_REVIEW'
-    && row.selfAssessmentReviewDecision === 'SUPPLEMENT_REQUIRED'
+    row.currentPhase === 'SELF_ASSESSMENT_REVIEW' &&
+    row.selfAssessmentReviewDecision === 'SUPPLEMENT_REQUIRED'
   )
 }
 
 export function canReview(row: AccreditationCycleVO) {
   return (
-    row.currentPhase === 'SELF_ASSESSMENT_REVIEW'
-    && row.cycleStatus === 'ACTIVE'
-    && row.selfAssessmentReviewStatus !== 'DECIDED'
+    row.currentPhase === 'SELF_ASSESSMENT_REVIEW' &&
+    row.cycleStatus === AccreditationCycleStatusCode.ACTIVE &&
+    row.selfAssessmentReviewStatus !== 'DECIDED'
   )
 }
 
 export function canConclusion(row: AccreditationCycleVO) {
   return (
-    row.cycleStatus === 'ACTIVE'
-    && row.currentPhase === 'ONSITE_VISIT'
-    && !row.conclusionRegisteredTime
+    row.cycleStatus === AccreditationCycleStatusCode.ACTIVE &&
+    row.currentPhase === 'ONSITE_VISIT' &&
+    !row.conclusionRegisteredTime
   )
 }
 
@@ -243,7 +253,10 @@ export function canRegisterConclusion(
 }
 
 export function canEditCycle(row: AccreditationCycleVO) {
-  return row.cycleStatus === 'ACTIVE' && row.currentPhase !== 'MAINTENANCE'
+  return (
+    row.cycleStatus === AccreditationCycleStatusCode.ACTIVE &&
+    row.currentPhase !== AccreditationCyclePhaseCode.MAINTENANCE
+  )
 }
 
 export function canDeleteCycle(row: AccreditationCycleVO) {
@@ -252,27 +265,31 @@ export function canDeleteCycle(row: AccreditationCycleVO) {
 
 /** 与 SelfAssessmentSectionServiceImpl.assertEditableCycle 对齐：校内自评或补正阶段可编辑章节 */
 export function canEditSelfAssessmentSection(cycle: AccreditationCycleVO | undefined) {
-  if (!cycle || cycle.cycleStatus !== 'ACTIVE') {
+  if (!cycle || cycle.cycleStatus !== AccreditationCycleStatusCode.ACTIVE) {
     return false
   }
   if (cycle.currentPhase === 'SELF_EVALUATION') {
     return true
   }
   return (
-    cycle.currentPhase === 'SELF_ASSESSMENT_REVIEW'
-    && cycle.selfAssessmentReviewDecision === 'SUPPLEMENT_REQUIRED'
+    cycle.currentPhase === 'SELF_ASSESSMENT_REVIEW' &&
+    cycle.selfAssessmentReviewDecision === 'SUPPLEMENT_REQUIRED'
   )
 }
 
 /** 结论登记前、自评/审阅/现场考查阶段可维护认证原始资料证据 */
 export function canMutateAccreditationEvidence(cycle: AccreditationCycleVO | undefined) {
-  if (!cycle || cycle.cycleStatus !== 'ACTIVE' || cycle.conclusionRegisteredTime) {
+  if (
+    !cycle ||
+    cycle.cycleStatus !== AccreditationCycleStatusCode.ACTIVE ||
+    cycle.conclusionRegisteredTime
+  ) {
     return false
   }
   return (
-    cycle.currentPhase === 'SELF_EVALUATION'
-    || cycle.currentPhase === 'SELF_ASSESSMENT_REVIEW'
-    || cycle.currentPhase === 'ONSITE_VISIT'
+    cycle.currentPhase === 'SELF_EVALUATION' ||
+    cycle.currentPhase === 'SELF_ASSESSMENT_REVIEW' ||
+    cycle.currentPhase === 'ONSITE_VISIT'
   )
 }
 
@@ -282,7 +299,11 @@ export function canExportExpertPackage(
   cockpit: AccreditationCockpitVO | undefined,
   evidenceCount: number,
 ) {
-  if (!cycle || cycle.cycleStatus !== 'ACTIVE' || !cycle.conclusionRegisteredTime) {
+  if (
+    !cycle ||
+    cycle.cycleStatus !== AccreditationCycleStatusCode.ACTIVE ||
+    !cycle.conclusionRegisteredTime
+  ) {
     return false
   }
   if (!cycle.validFrom || !cycle.validUntil) {
@@ -306,7 +327,7 @@ export function expertPackageExportBlockers(
   evidenceCount: number,
 ): string[] {
   const blockers: string[] = []
-  if (!cycle || cycle.cycleStatus !== 'ACTIVE') {
+  if (!cycle || cycle.cycleStatus !== AccreditationCycleStatusCode.ACTIVE) {
     blockers.push('缺少进行中的认证周期')
     return blockers
   }
@@ -338,7 +359,7 @@ export function canMutateAnnualEvaluationPlan(activeCycleId: string | undefined)
 
 /** 与 AnnualReportMaterialServiceImpl.assertAnnualReportCycleReady 对齐 */
 export function canMutateAnnualReportMaterial(cycle: AccreditationCycleVO | undefined) {
-  if (!cycle || cycle.cycleStatus !== 'ACTIVE') {
+  if (!cycle || cycle.cycleStatus !== AccreditationCycleStatusCode.ACTIVE) {
     return false
   }
   if (cycle.currentPhase !== 'MAINTENANCE') {
@@ -352,7 +373,8 @@ export function canMutateAnnualReportMaterial(cycle: AccreditationCycleVO | unde
 
 export function annualReportMaterialPhaseHint(cycle: AccreditationCycleVO | undefined) {
   if (!cycle) return '请先创建认证周期。'
-  if (cycle.cycleStatus !== 'ACTIVE') return '认证周期未处于有效状态，不可维护年度报备材料。'
+  if (cycle.cycleStatus !== AccreditationCycleStatusCode.ACTIVE)
+    return '认证周期未处于有效状态，不可维护年度报备材料。'
   if (cycle.currentPhase !== 'MAINTENANCE') {
     return '年度报备材料仅允许在保持改进阶段登记；请先完成认证结论登记并进入保持改进。'
   }

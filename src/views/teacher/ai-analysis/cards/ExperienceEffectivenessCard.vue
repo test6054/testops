@@ -58,12 +58,12 @@
     <UiEmpty v-else-if="!record" description="选择经验案例后评估有效性" />
     <div v-else-if="record" class="ai-analysis-section__body ai-analysis-section__body--flush">
       <SignalBand
-        v-if="record.analysisStatus === 'SUCCESS'"
+        v-if="record.analysisStatus === AiAnalysisStatusCode.SUCCESS"
         :metrics="effectivenessMetrics"
         compact
       />
 
-      <div v-if="record.analysisStatus === 'SUCCESS'" class="ai-record__charts">
+      <div v-if="record.analysisStatus === AiAnalysisStatusCode.SUCCESS" class="ai-record__charts">
         <MarkBarSection
           title="当前评估指标"
           :hint="effectivenessBarHint"
@@ -92,20 +92,24 @@
         维护动作：{{ recommendationLabel(record.recommendation) }}
       </p>
 
-      <div v-if="record.analysisStatus === 'SUCCESS'" class="ai-evidence">
+      <div v-if="record.analysisStatus === AiAnalysisStatusCode.SUCCESS" class="ai-evidence">
         <div class="ai-evidence__header">
           <strong>评估脱敏样本</strong>
           <span class="text-muted">共 {{ evidenceRows.length }} 条，供复核 AI 一致性依据</span>
         </div>
-        <a-table
+        <UiDataTable
           v-if="evidenceRows.length"
-          size="small"
-          bordered
           :columns="evidenceColumns"
           :data-source="evidenceRows"
-          :pagination="false"
-          :scroll="{ x: 1200 }"
           row-key="rowKey"
+          size="small"
+          flat
+          bordered
+          pagination-mode="none"
+          :show-pagination="false"
+          :sticky-header="false"
+          :scroll="{ x: 1200 }"
+          :total="evidenceRows.length"
         />
         <UiEmpty v-else description="评估考试无同题型作答样本" />
       </div>
@@ -122,23 +126,28 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { GradingExperienceCaseResponse } from '@/apis/mark/grading-experience'
+import {
+  ExperienceCaseStatusCode,
+  ExperienceCaseStatusDescription,
+  pageExperiences,
+} from '@/apis/mark/grading-experience'
 import type { QuestionTypeCode } from '@/apis/mark/question-type'
+import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import type {
   ExperienceEffectivenessEvalEvidenceResponse,
   ExperienceEffectivenessEvalResponse,
   ExperienceRecommendationCode,
 } from '@/apis/mark/school-quality'
-import type { UiBarChartItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { ExperienceCaseStatusDescription, listExperiences } from '@/apis/mark/grading-experience'
-import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import {
   evaluateExperienceEffectiveness,
   ExperienceRecommendationDescription,
   listExperienceEvals,
 } from '@/apis/mark/school-quality'
+import type { UiBarChartItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisConfigCollapse from '@/components/mark/analysis/AiAnalysisConfigCollapse.vue'
@@ -148,9 +157,11 @@ import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'
 import AnalysisExamSelect from '@/components/mark/AnalysisExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
+import { EXPORT_PAGE_SIZE } from '@/constants/pagination'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -226,7 +237,9 @@ const experienceOptions = computed(() =>
   experiences.value
     .filter(
       (item): item is GradingExperienceCaseResponse & { id: string } =>
-        Boolean(item.id) && item.caseStatus === 'CONFIRMED' && item.analysisStatus === 'SUCCESS',
+        Boolean(item.id) &&
+        item.caseStatus === ExperienceCaseStatusCode.CONFIRMED &&
+        item.analysisStatus === AiAnalysisStatusCode.SUCCESS,
     )
     .map((item) => ({
       label: [
@@ -241,7 +254,7 @@ const experienceOptions = computed(() =>
 )
 
 const effectivenessMetrics = computed((): SignalMetric[] => {
-  if (!record.value || record.value.analysisStatus !== 'SUCCESS') return []
+  if (!record.value || record.value.analysisStatus !== AiAnalysisStatusCode.SUCCESS) return []
   const data = record.value
   return [
     {
@@ -282,7 +295,7 @@ function toConsistencyPercent(value?: number): number | null {
 }
 
 const effectivenessBarItems = computed((): UiBarChartItem[] => {
-  if (!record.value || record.value.analysisStatus !== 'SUCCESS') return []
+  if (!record.value || record.value.analysisStatus !== AiAnalysisStatusCode.SUCCESS) return []
   const data = record.value
   const items: UiBarChartItem[] = []
   const consistency = toConsistencyPercent(data.consistencyRate)
@@ -325,7 +338,8 @@ const effectivenessTrendPoints = computed((): UiTrendPoint[] => {
   const successRecords = [...historyRecords.value]
     .filter(
       (item) =>
-        item.analysisStatus === 'SUCCESS' && toConsistencyPercent(item.consistencyRate) != null,
+        item.analysisStatus === AiAnalysisStatusCode.SUCCESS &&
+        toConsistencyPercent(item.consistencyRate) != null,
     )
     .reverse()
   return successRecords.map((item, index) => {
@@ -389,7 +403,7 @@ const evidenceRows = computed((): EvidenceTableRow[] => {
 })
 
 const evidenceColumns: ColumnType<EvidenceTableRow>[] = [
-  { title: '脱敏学生', dataIndex: 'anonymousId', key: 'anonymousId', width: 100 },
+  { title: '脱敏学生', dataIndex: 'anonymousId', key: 'anonymousId', width: 100, fixed: 'left' },
   { title: '班级', dataIndex: 'anonymousClassLabel', key: 'anonymousClassLabel', width: 88 },
   { title: '题号', dataIndex: 'questionNo', key: 'questionNo', width: 72 },
   {
@@ -468,10 +482,10 @@ function requireText(value: string | undefined, _fieldName: string): string {
 }
 
 function experienceCaseSummaryText(item: GradingExperienceCaseResponse): string {
-  if (item.analysisStatus === 'SUCCESS') {
+  if (item.analysisStatus === AiAnalysisStatusCode.SUCCESS) {
     return requireText(item.experienceSummary, 'experienceSummary')
   }
-  if (item.analysisStatus === 'PENDING') return '经验摘要生成中'
+  if (item.analysisStatus === AiAnalysisStatusCode.PENDING) return '经验摘要生成中'
   return analysisFailureMessage(item.errorMessage)
 }
 
@@ -501,7 +515,7 @@ async function handleGenerate(): Promise<void> {
     return
   }
   const selectedCase = experiences.value.find((item) => item.id === experienceCaseId)
-  if (!selectedCase || selectedCase.caseStatus !== 'CONFIRMED') {
+  if (!selectedCase || selectedCase.caseStatus !== ExperienceCaseStatusCode.CONFIRMED) {
     message.warning('请先在阅卷经验库确认该经验案例后再评估有效性')
     return
   }
@@ -530,7 +544,12 @@ async function handleSourceExamChange(): Promise<void> {
   if (!form.sourceExamId) return
   experienceLoading.value = true
   try {
-    experiences.value = await listExperiences(form.sourceExamId)
+    const result = await pageExperiences({
+      examId: form.sourceExamId,
+      pageNum: 1,
+      pageSize: EXPORT_PAGE_SIZE,
+    })
+    experiences.value = result.list
   } catch (e) {
     experiences.value = []
     showUserError(e, '经验案例列表加载失败')

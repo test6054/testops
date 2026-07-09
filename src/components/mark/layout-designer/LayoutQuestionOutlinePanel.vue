@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ExamLayoutBlockDto, ExamLayoutDocument, ExamLayoutQuestionDto } from '@/apis/mark/exam-layout-design'
 import { computed } from 'vue'
-import { MARK_OCR_SCENE_LABEL } from '@/apis/mark/ocr-scene'
+import { MarkOcrSceneDescription } from '@/apis/mark/ocr-scene'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -50,7 +50,7 @@ function handleQuestionClick(question: ExamLayoutQuestionDto): void {
 }
 
 function formatOcrSceneLabel(question: ExamLayoutQuestionDto): string {
-  return question.ocrScene ? MARK_OCR_SCENE_LABEL[question.ocrScene] : ''
+  return question.ocrScene ? MarkOcrSceneDescription[question.ocrScene] : ''
 }
 
 function formatQuestionTypeLabel(question: ExamLayoutQuestionDto): string {

@@ -1,6 +1,5 @@
 <!--
-  达成度结果选择器
-  数据源：POST /api/quality/achievement-results/page
+  达成度结果选择�?  数据源：POST /api/quality/achievement-results/page
   常用过滤：targetType / auditStatus / trainingPlanId / qualityCourseId / schoolYear
 -->
 <script setup lang="ts">
@@ -19,7 +18,7 @@ import {
 import { formatSemester } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import { requireAllPages } from './page-contract'
+import { loadSelectorFirstPage } from './page-contract'
 
 const props = withDefaults(defineProps<Props>(), {
   placeholder: '请选择达成度结果',
@@ -54,7 +53,7 @@ interface Props {
 const options = ref<AchievementResultVO[]>([])
 const loading = ref(false)
 const searchText = ref('')
-// a-select v-model:value 不接受 null，外部 emit 仍保持 string | null。
+// a-select v-model:value 不接受 null，对外 emit 仍保持 string | null。
 const internalValue = ref<string | undefined>(props.value ?? undefined)
 
 watch(
@@ -81,11 +80,11 @@ watch(
 async function loadOptions() {
   loading.value = true
   try {
-    options.value = await requireAllPages(
-      (pageNum) =>
+    options.value = await loadSelectorFirstPage(
+      (pageNum, pageSize) =>
         achievementResultApi.page({
           pageNum,
-          pageSize: 100,
+          pageSize,
           targetType: props.targetType,
           auditStatus: props.auditStatus,
           trainingPlanId: props.trainingPlanId || undefined,
@@ -95,7 +94,6 @@ async function loadOptions() {
           schoolYear: props.schoolYear || undefined,
           semester: props.semester || undefined,
         }),
-      '达成度结果',
     )
   } catch (e) {
     showUserError(e, '达成度结果列表加载失败')
@@ -104,10 +102,7 @@ async function loadOptions() {
   }
 }
 
-/**
- * 后端 AchievementResultQueryRequest 不接受关键字参数，这里采用客户端过滤。
- * 过滤仅使用后端返回的展示字段，避免把 ID 当作业务文案。
- */
+/** 后端无 keyword 参数，仅在首屏条数内做客户端过滤。 */
 const filteredOptions = computed(() => {
   const kw = searchText.value?.trim()
   if (!kw) return options.value

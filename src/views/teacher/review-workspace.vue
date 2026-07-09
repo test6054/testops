@@ -69,7 +69,9 @@
                 当前第 {{ currentQueueIndex }} 份，剩余
                 {{ Math.max(0, queueTotal - currentQueueIndex) }} 份待复核
               </span>
-              <span class="review-workspace__keyboard-hint">J/K 或 ←/→ 切换份数 · 0-9 快捷给分</span>
+              <span class="review-workspace__keyboard-hint"
+                >J/K 或 ←/→ 切换份数 · 0-9 快捷给分</span
+              >
             </div>
             <a-progress
               :percent="queueProgressPercent"
@@ -302,23 +304,35 @@
 
           <GradingImmersionSection title="批注历史">
             <template #icon><CommentOutlined /></template>
-            <UiEmpty v-if="annotations.length === 0" description="暂无数据" />
-            <a-list v-else :data-source="annotations" size="small">
-              <template #renderItem="{ item }">
-                <a-list-item>
-                  <a-list-item-meta>
-                    <template #title>
-                      <a-typography-text :content="item.annotationText || '（无批注正文）'" />
-                    </template>
-                    <template #description>
-                      <span class="review-workspace__hint">{{
-                        formatDateTime(item.createTime)
-                      }}</span>
-                    </template>
-                  </a-list-item-meta>
-                </a-list-item>
-              </template>
-            </a-list>
+            <UiSkeletonState v-if="annotationsLoading" variant="card" compact />
+            <UiEmpty v-else-if="annotations.length === 0" description="暂无数据" />
+            <template v-else>
+              <a-list :data-source="annotations" size="small">
+                <template #renderItem="{ item }">
+                  <a-list-item>
+                    <a-list-item-meta>
+                      <template #title>
+                        <a-typography-text :content="item.annotationText || '（无批注正文）'" />
+                      </template>
+                      <template #description>
+                        <span class="review-workspace__hint">{{
+                          formatDateTime(item.createTime)
+                        }}</span>
+                      </template>
+                    </a-list-item-meta>
+                  </a-list-item>
+                </template>
+              </a-list>
+              <a-pagination
+                v-if="annotationPagination.total > annotationPagination.pageSize"
+                v-model:current="annotationPagination.pageNum"
+                v-model:page-size="annotationPagination.pageSize"
+                class="review-workspace__annotation-pagination"
+                :total="annotationPagination.total"
+                size="small"
+                @change="loadAnnotations"
+              />
+            </template>
           </GradingImmersionSection>
         </template>
 
@@ -381,24 +395,12 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { AnnotationResponse } from '@/apis/mark/exam-annotation'
+import { listAnnotations } from '@/apis/mark/exam-annotation'
 import type {
   AiAbilityCode,
   AiExecutionStatusCode,
   ExamQuestionAiExecutionItemResponse,
 } from '@/apis/mark/exam-grade'
-import type { ReviewTaskDetailResponse, ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
-import type { ObjectiveComparePolicyCode } from '@/apis/mark/exam-standard-answer'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
-import EditOutlined from '@ant-design/icons-vue/EditOutlined'
-import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
-import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
-import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { listAnnotations } from '@/apis/mark/exam-annotation'
 import {
   AI_ABILITY_TONE,
   AI_EXECUTION_STATUS_TONE,
@@ -409,16 +411,28 @@ import {
   rejectQuestionGrade,
   rescoreQuestionByAi,
 } from '@/apis/mark/exam-grade'
+import type { ReviewTaskDetailResponse, ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
 import {
   claimReviewTask,
   getReviewTaskDetail,
-  listReviewTasks,
+  getReviewTaskPipeline,
   REVIEW_TASK_STATUS_TONE,
   ReviewTaskStatusCode,
   ReviewTaskStatusDescription,
   ReviewTaskTypeCode,
 } from '@/apis/mark/exam-review-task'
+import type { ObjectiveComparePolicyCode } from '@/apis/mark/exam-standard-answer'
 import { ObjectiveComparePolicyDescription } from '@/apis/mark/exam-standard-answer'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
+import EditOutlined from '@ant-design/icons-vue/EditOutlined'
+import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
+import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
+import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import ExperienceAssistBadge from '@/components/mark/ExperienceAssistBadge.vue'
 import GradingImmersionChrome from '@/components/mark/GradingImmersionChrome.vue'
 import GradingImmersionSection from '@/components/mark/GradingImmersionSection.vue'
@@ -435,17 +449,15 @@ import {
   EXAM_WORKSPACE_CHROME_KEY,
   useWorkspaceExamId,
 } from '@/composables/useMarkWorkbenchContext'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useUserStore } from '@/stores/modules/user'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { isGradingKeyboardInputTarget } from '@/utils/grading-keyboard'
-import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ReviewTaskHub from '@/views/teacher/review-task-hub.vue'
 
 defineOptions({ name: 'TeacherExamWorkspaceReviewWorkspace' })
-
-const REVIEW_WORKSPACE_PAGE_SIZE = 100
 
 function reviewStatusTone(value: ReviewTaskStatusCode): BadgeTone {
   return strictEnumTone(REVIEW_TASK_STATUS_TONE, value, '复核任务状态')
@@ -557,31 +569,39 @@ const canReject = computed(() => {
 
 // ─── 批注列表 ─────────────────────────────
 const annotations = ref<AnnotationResponse[]>([])
+const annotationsLoading = ref(false)
+const annotationPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 
 async function loadAnnotations(): Promise<void> {
   if (!examId.value || !detail.value) return
   const currentExamId = examId.value
   const { paperInstanceId, layoutQuestionId, gradeResultId } = detail.value
+  annotationsLoading.value = true
   try {
-    annotations.value = await readAllPages(
-      (pageNum) =>
-        listAnnotations({
-          examId: currentExamId,
-          paperInstanceId,
-          layoutQuestionId,
-          gradeResultId,
-          pageNum,
-          pageSize: REVIEW_WORKSPACE_PAGE_SIZE,
-        }),
-      '批注记录加载失败，请刷新后重试',
-    )
+    const page = await listAnnotations({
+      examId: currentExamId,
+      paperInstanceId,
+      layoutQuestionId,
+      gradeResultId,
+      pageNum: annotationPagination.pageNum,
+      pageSize: annotationPagination.pageSize,
+    })
+    annotations.value = page.list
+    annotationPagination.total = page.total
+    annotationPagination.pageNum = page.pageNum
+    annotationPagination.pageSize = page.pageSize
   } catch (error) {
+    annotations.value = []
+    annotationPagination.total = 0
     showUserError(error, '批注记录加载失败')
+  } finally {
+    annotationsLoading.value = false
   }
 }
 
 // ─── B-7 同题剩余复核任务队列（用于「提交并取下一份」流水线接力） ─────
 const reviewQueue = ref<ReviewTaskItemResponse[]>([])
+const pipelineCurrentIndex = ref(0)
 
 /**
  * 加载当前考试 + 当前题目下可继续复核的任务集合。
@@ -589,10 +609,10 @@ const reviewQueue = ref<ReviewTaskItemResponse[]>([])
  */
 async function loadReviewQueue(): Promise<void> {
   if (
-    !examId.value
-    || !detail.value?.layoutQuestionId
-    || !detail.value.reviewType
-    || !detail.value.gradeSource
+    !examId.value ||
+    !detail.value?.layoutQuestionId ||
+    !detail.value.reviewType ||
+    !detail.value.gradeSource
   ) {
     reviewQueue.value = []
     return
@@ -608,64 +628,27 @@ async function loadReviewQueue(): Promise<void> {
   const currentExamId = examId.value
   const { layoutQuestionId, reviewType, gradeSource } = detail.value
   try {
-    // 后端 ReviewTaskQueryRequest.status 可选；同题下分别拉 PENDING / IN_PROGRESS 后合并去重。
-    const [pendingItems, inProgressItems] = await Promise.all([
-      readAllPages(
-        (pageNum) =>
-          listReviewTasks({
-            examId: currentExamId,
-            layoutQuestionId,
-            reviewType,
-            gradeSource,
-            excludeArbitration: reviewType !== ReviewTaskTypeCode.QUESTION_REVIEW_ARBITRATION,
-            status: ReviewTaskStatusCode.PENDING,
-            pageNum,
-            pageSize: REVIEW_WORKSPACE_PAGE_SIZE,
-          }),
-        '同题复核队列加载失败，请刷新后重试',
-      ),
-      readAllPages(
-        (pageNum) =>
-          listReviewTasks({
-            examId: currentExamId,
-            layoutQuestionId,
-            reviewType,
-            gradeSource,
-            excludeArbitration: reviewType !== ReviewTaskTypeCode.QUESTION_REVIEW_ARBITRATION,
-            status: ReviewTaskStatusCode.IN_PROGRESS,
-            pageNum,
-            pageSize: REVIEW_WORKSPACE_PAGE_SIZE,
-          }),
-        '同题复核队列加载失败，请刷新后重试',
-      ),
-    ])
-    const merged = new Map<string, ReviewTaskItemResponse>()
-    for (const item of pendingItems) {
-      merged.set(item.reviewTaskId, item)
-    }
-    for (const item of inProgressItems) {
-      if (item.assignedTeacherUserId !== currentUserId.value) {
-        continue
-      }
-      merged.set(item.reviewTaskId, item)
-    }
-    reviewQueue.value = Array.from(merged.values())
+    const pipeline = await getReviewTaskPipeline({
+      examId: currentExamId,
+      layoutQuestionId,
+      reviewType,
+      gradeSource,
+      excludeArbitration: reviewType !== ReviewTaskTypeCode.QUESTION_REVIEW_ARBITRATION,
+      currentReviewTaskId: taskId.value,
+    })
+    reviewQueue.value = pipeline.items
+    pipelineCurrentIndex.value = pipeline.currentIndex
   } catch (error) {
     showUserError(error, '同题复核队列加载失败，提交并取下一份暂不可用。')
     reviewQueue.value = []
+    pipelineCurrentIndex.value = 0
   }
 }
 
 /**
  * 当前任务在同题复核队列中的 1-based 位次，找不到时回退为 1（流水线尚未刷新到当前任务）。
  */
-const currentQueueIndex = computed<number>(() => {
-  if (!detail.value || reviewQueue.value.length === 0) {
-    return 0
-  }
-  const idx = reviewQueue.value.findIndex((item) => item.reviewTaskId === taskId.value)
-  return idx >= 0 ? idx + 1 : 0
-})
+const currentQueueIndex = computed<number>(() => pipelineCurrentIndex.value)
 
 const queueTotal = computed<number>(() => reviewQueue.value.length)
 
@@ -782,8 +765,8 @@ const canRescoreByAi = computed<boolean>(() => {
   if (!examId.value) return false
   if (!detail.value) return false
   return (
-    detail.value.status === ReviewTaskStatusCode.PENDING
-    || detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
+    detail.value.status === ReviewTaskStatusCode.PENDING ||
+    detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
   )
 })
 
@@ -797,9 +780,9 @@ async function loadTask(): Promise<void> {
   try {
     const loadedDetail = await loadReviewTaskDetail()
     if (
-      generation !== loadTaskGeneration
-      || expectedExamId !== examId.value
-      || expectedTaskId !== taskId.value
+      generation !== loadTaskGeneration ||
+      expectedExamId !== examId.value ||
+      expectedTaskId !== taskId.value
     ) {
       return
     }
@@ -807,16 +790,16 @@ async function loadTask(): Promise<void> {
     syncExperienceAssistMetaFromDetail(detail.value)
     await Promise.all([loadAnnotations(), loadReviewQueue()])
     if (
-      generation !== loadTaskGeneration
-      || expectedExamId !== examId.value
-      || expectedTaskId !== taskId.value
+      generation !== loadTaskGeneration ||
+      expectedExamId !== examId.value ||
+      expectedTaskId !== taskId.value
     ) {
       return
     }
     if (
-      gradeForm.teacherReviewScore === undefined
-      && detail.value?.aiScore !== undefined
-      && detail.value?.aiScore !== null
+      gradeForm.teacherReviewScore === undefined &&
+      detail.value?.aiScore !== undefined &&
+      detail.value?.aiScore !== null
     ) {
       gradeForm.teacherReviewScore = detail.value.aiScore
     }
@@ -847,7 +830,10 @@ function resetTaskState(): void {
   resetGradeForm()
   detail.value = null
   annotations.value = []
+  annotationPagination.pageNum = 1
+  annotationPagination.total = 0
   reviewQueue.value = []
+  pipelineCurrentIndex.value = 0
   executionsDrawerOpen.value = false
   aiExecutions.value = []
   lastExperienceAssistMeta.value = null
@@ -862,8 +848,8 @@ async function loadReviewTaskDetail(): Promise<ReviewTaskDetailResponse> {
     reviewTaskId: taskId.value,
   })
   if (
-    preview.status === ReviewTaskStatusCode.PENDING
-    || preview.status === ReviewTaskStatusCode.IN_PROGRESS
+    preview.status === ReviewTaskStatusCode.PENDING ||
+    preview.status === ReviewTaskStatusCode.IN_PROGRESS
   ) {
     return claimReviewTask({
       examId: examId.value,
@@ -1088,8 +1074,8 @@ async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
   }
   const fullScore = detail.value.fullScore
   const teacherReviewScore = gradeForm.teacherReviewScore
-  const ratio
-    = fullScore && fullScore > 0 && typeof teacherReviewScore === 'number'
+  const ratio =
+    fullScore && fullScore > 0 && typeof teacherReviewScore === 'number'
       ? `${Math.round((teacherReviewScore / fullScore) * 100)}%`
       : '-'
   // 取下一份模式下额外提示队列剩余信息，让教师清楚复核会继续

@@ -1,24 +1,18 @@
-import type { ExamCandidateResponse } from '@/apis/mark/exam-scope'
+import type {
+  ExamCandidateResponse,
+  ExamClassStudentTreeNodeResponse,
+} from '@/apis/mark/exam-scope'
+import { listExamStudentTree, pageExamCandidates } from '@/apis/mark/exam-scope'
 /**
  * 批改主链：考试考生名册 composable
  *
  * 用途：
- * - 在统计分析、班级薄弱、学生学情等页面统一加载某场考试的考生名册
- * - 从名册派生「班级选择项」与「学生选择项」，避免在 UI 上让教师手输 classId / studentUserId
+ * - 在统计分析、班级薄弱、学生学情等页面加载某场考试的班级选项与学生候选
+ * - 班级选项来自名册学生树；学生下拉走后端 keyword / classId 分页搜索
  * - 切换 examId 时自动重载，调用方只需观察 examId 即可
- *
- * 后端契约：
- * - POST /api/mark/exams/candidates 返回 ExamCandidateResponse[]
- * - ExamCandidateResponse.className 由后端通过 edu-user 班级主数据回填
- *
- * 用法示例：
- * ```ts
- * const { classOptions, studentOptions, loading, load } = useMarkExamRoster()
- * watch(() => examId.value, (id) => void load(id))
- * ```
  */
-import { computed, ref } from 'vue'
-import { listExamCandidates } from '@/apis/mark/exam-scope'
+import { ref } from 'vue'
+import { ExamClassStudentTreeNodeTypeCode } from '@/types/enums/exam-class-student-tree-node-type-enum'
 import { showUserError } from '@/utils/error-handler'
 
 export interface MarkClassOption {
@@ -47,61 +41,99 @@ export interface MarkStudentOption {
   className?: string
 }
 
-export function useMarkExamRoster() {
-  const candidates = ref<ExamCandidateResponse[]>([])
-  const loading = ref(false)
+const ROSTER_STUDENT_PAGE_SIZE = 20
 
-  const classOptions = computed<MarkClassOption[]>(() => {
-    const grouped = new Map<string, { className: string, count: number }>()
-    for (const item of candidates.value) {
-      const cid = item.classId
-      if (!cid) continue
-      const current = grouped.get(cid)
-      if (!item.className) continue
-      grouped.set(cid, {
-        className: item.className,
-        count: (current?.count ?? 0) + 1,
-      })
-    }
-    return Array.from(grouped.entries())
-      .sort((a, b) => {
-        // 班级 ID 是数字字符串，按数值排序更稳定；非数字时退化为字符串排序
-        const an = Number(a[0])
-        const bn = Number(b[0])
-        if (Number.isFinite(an) && Number.isFinite(bn)) return an - bn
-        return a[0].localeCompare(b[0])
-      })
-      .map(([classId, classInfo]) => ({
-        value: classId,
-        label: `${classInfo.className} · ${classInfo.count} 名考生`,
-        className: classInfo.className,
-        candidateCount: classInfo.count,
-      }))
-  })
-
-  const studentOptions = computed<MarkStudentOption[]>(() => {
-    return candidates.value.map((item) => ({
-      value: item.studentUserId,
-      studentNo: item.studentNo,
-      studentName: item.studentName,
-      classId: item.classId,
-      className: item.className,
-      label: item.classId
+function mapCandidateToStudentOption(item: ExamCandidateResponse): MarkStudentOption {
+  return {
+    value: item.studentUserId,
+    studentNo: item.studentNo,
+    studentName: item.studentName,
+    classId: item.classId,
+    className: item.className,
+    label:
+      item.classId && item.className
         ? `${item.studentName} (${item.studentNo}) · ${item.className}`
         : `${item.studentName} (${item.studentNo})`,
-    }))
+  }
+}
+
+/** 从名册学生树提取班级下拉项，考生数由树节点 studentCount 提供。 */
+function collectClassOptions(nodes: ExamClassStudentTreeNodeResponse[]): MarkClassOption[] {
+  const result: MarkClassOption[] = []
+  function walk(list: ExamClassStudentTreeNodeResponse[]) {
+    for (const node of list) {
+      if (node.nodeType === ExamClassStudentTreeNodeTypeCode.CLASS) {
+        const count = node.studentCount ?? 0
+        result.push({
+          value: node.originalId,
+          className: node.name,
+          label: count > 0 ? `${node.name} · ${count} 名考生` : node.name,
+          candidateCount: count,
+        })
+      }
+      if (node.children?.length) {
+        walk(node.children)
+      }
+    }
+  }
+  walk(nodes)
+  return result.sort((a, b) => {
+    const an = Number(a.value)
+    const bn = Number(b.value)
+    if (Number.isFinite(an) && Number.isFinite(bn)) {
+      return an - bn
+    }
+    return a.value.localeCompare(b.value)
   })
+}
+
+export function useMarkExamRoster() {
+  const classOptions = ref<MarkClassOption[]>([])
+  const studentOptions = ref<MarkStudentOption[]>([])
+  const loading = ref(false)
+  const studentSearching = ref(false)
+  const currentExamId = ref('')
+
+  /** 按班级与关键词分页搜索在册学生，供下拉 remote 搜索。 */
+  async function searchStudents(keyword?: string, classId?: string): Promise<void> {
+    if (!currentExamId.value) {
+      studentOptions.value = []
+      return
+    }
+    studentSearching.value = true
+    try {
+      const page = await pageExamCandidates({
+        examId: currentExamId.value,
+        classId: classId?.trim() || undefined,
+        keyword: keyword?.trim() || undefined,
+        pageNum: 1,
+        pageSize: ROSTER_STUDENT_PAGE_SIZE,
+      })
+      studentOptions.value = page.list.map(mapCandidateToStudentOption)
+    } catch (e) {
+      studentOptions.value = []
+      showUserError(e, '考生搜索失败')
+    } finally {
+      studentSearching.value = false
+    }
+  }
 
   async function load(examId: string | undefined): Promise<void> {
     if (!examId) {
-      candidates.value = []
+      currentExamId.value = ''
+      classOptions.value = []
+      studentOptions.value = []
       return
     }
+    currentExamId.value = examId
     loading.value = true
     try {
-      candidates.value = await listExamCandidates(examId)
+      const tree = await listExamStudentTree({ examId })
+      classOptions.value = collectClassOptions(tree)
+      await searchStudents()
     } catch (e) {
-      candidates.value = []
+      classOptions.value = []
+      studentOptions.value = []
       showUserError(e, '考生名册加载失败')
     } finally {
       loading.value = false
@@ -109,15 +141,18 @@ export function useMarkExamRoster() {
   }
 
   function reset(): void {
-    candidates.value = []
+    currentExamId.value = ''
+    classOptions.value = []
+    studentOptions.value = []
   }
 
   return {
-    candidates,
     classOptions,
     studentOptions,
     loading,
+    studentSearching,
     load,
+    searchStudents,
     reset,
   }
 }

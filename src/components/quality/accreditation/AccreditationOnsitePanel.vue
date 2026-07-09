@@ -11,6 +11,7 @@ import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import {
   accreditationApi,
+  AccreditationCycleStatusCode,
   OnsiteChecklistCategoryCode,
   OnsiteChecklistCategoryDescription,
   OnsiteChecklistItemStatusCode,
@@ -36,16 +37,16 @@ const props = defineProps<{
 const emit = defineEmits<{ refresh: [] }>()
 
 const planColumns: ColumnsType = [
-  { title: '编码', dataIndex: 'visitCode', key: 'visitCode', width: 110 },
+  { title: '编码', dataIndex: 'visitCode', key: 'visitCode', width: 110, fixed: 'left' },
   { title: '标题', dataIndex: 'visitTitle', key: 'visitTitle' },
   { title: '考查期', key: 'visitRange', width: 200 },
   { title: '报告截止', dataIndex: 'reportDueDate', key: 'reportDueDate', width: 110 },
   { title: '清单', key: 'checklist', width: 120 },
-  { title: '操作', key: 'actions', width: 200, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 200 },
 ]
 
 const checklistColumns: ColumnsType = [
-  { title: '编码', dataIndex: 'itemCode', key: 'itemCode', width: 80 },
+  { title: '编码', dataIndex: 'itemCode', key: 'itemCode', width: 80, fixed: 'left' },
   { title: '类别', dataIndex: 'itemCategory', key: 'itemCategory', width: 140 },
   { title: '检查项', dataIndex: 'itemTitle', key: 'itemTitle' },
   { title: '状态', dataIndex: 'itemStatus', key: 'itemStatus', width: 90 },
@@ -64,7 +65,15 @@ const CATEGORY_TABS: { key: '' | OnsiteChecklistCategoryCode, label: string }[] 
 
 const loading = ref(false)
 const plans = ref<OnsiteVisitPlanVO[]>([])
+const planTotal = ref(0)
+const planPageNum = ref(1)
+const planPageSize = ref(20)
 const selectedPlan = ref<OnsiteVisitPlanVO>()
+const checklistRows = ref<OnsiteChecklistItemVO[]>([])
+const checklistTotal = ref(0)
+const checklistPageNum = ref(1)
+const checklistPageSize = ref(20)
+const checklistLoading = ref(false)
 const drawerOpen = ref(false)
 const drawerTitle = ref('现场考查计划')
 const checklistDrawerOpen = ref(false)
@@ -73,27 +82,17 @@ const checklistCategoryFilter = ref<'' | OnsiteChecklistCategoryCode>('')
 
 const canMutateOnsitePlan = computed(
   () =>
-    props.activeCycle?.cycleStatus === 'ACTIVE'
+    props.activeCycle?.cycleStatus === AccreditationCycleStatusCode.ACTIVE
     && props.activeCycle?.currentPhase === 'ONSITE_VISIT',
 )
 
 const canCreatePlan = computed(() => canMutateOnsitePlan.value && !!props.activeCycleId)
 
 const checklistProgress = computed(() => {
-  const items = selectedPlan.value?.checklistItems || []
-  if (items.length === 0) return 0
-  const done = items.filter(
-    (i) =>
-      i.itemStatus === OnsiteChecklistItemStatusCode.COMPLETED
-      || i.itemStatus === OnsiteChecklistItemStatusCode.NOT_APPLICABLE,
-  ).length
-  return Math.round((done / items.length) * 100)
-})
-
-const filteredChecklistItems = computed(() => {
-  const items = selectedPlan.value?.checklistItems || []
-  if (!checklistCategoryFilter.value) return items
-  return items.filter((i) => i.itemCategory === checklistCategoryFilter.value)
+  const total = selectedPlan.value?.totalChecklistCount ?? 0
+  const done = selectedPlan.value?.completedChecklistCount ?? 0
+  if (total === 0) return 0
+  return Math.round((done / total) * 100)
 })
 
 const form = reactive<OnsiteVisitPlanSaveRequest>({
@@ -117,11 +116,15 @@ async function loadPlans() {
   if (!props.trainingPlanId) return
   loading.value = true
   try {
-    plans.value = await accreditationApi.onsitePlanList({
+    const page = await accreditationApi.onsitePlanPage({
       trainingPlanId: props.trainingPlanId,
       programId: props.programId,
       accreditationCycleId: props.activeCycleId,
+      pageNum: planPageNum.value,
+      pageSize: planPageSize.value,
     })
+    plans.value = page.list
+    planTotal.value = page.total
   } catch (e) {
     showUserError(e)
   } finally {
@@ -129,13 +132,52 @@ async function loadPlans() {
   }
 }
 
+function handlePlanPageChange(pageEvent: { current: number, pageSize: number }) {
+  planPageNum.value = pageEvent.current
+  planPageSize.value = pageEvent.pageSize
+  void loadPlans()
+}
+
 async function selectPlan(id: string) {
   try {
     selectedPlan.value = await accreditationApi.onsitePlanDetail(id)
     checklistCategoryFilter.value = ''
+    checklistPageNum.value = 1
+    await loadChecklistItems()
   } catch (e) {
     showUserError(e)
   }
+}
+
+async function loadChecklistItems() {
+  if (!selectedPlan.value?.id) {
+    checklistRows.value = []
+    checklistTotal.value = 0
+    return
+  }
+  checklistLoading.value = true
+  try {
+    const page = await accreditationApi.onsiteChecklistPage({
+      onsiteVisitPlanId: selectedPlan.value.id,
+      itemCategory: checklistCategoryFilter.value || undefined,
+      pageNum: checklistPageNum.value,
+      pageSize: checklistPageSize.value,
+    })
+    checklistRows.value = page.list
+    checklistTotal.value = page.total
+  } catch (e) {
+    checklistRows.value = []
+    checklistTotal.value = 0
+    showUserError(e)
+  } finally {
+    checklistLoading.value = false
+  }
+}
+
+function handleChecklistPageChange(pageEvent: { current: number, pageSize: number }) {
+  checklistPageNum.value = pageEvent.current
+  checklistPageSize.value = pageEvent.pageSize
+  void loadChecklistItems()
 }
 
 function resetPlanForm(accreditationCycleId: string) {
@@ -297,6 +339,11 @@ async function submitChecklistItem() {
   }
 }
 
+watch(checklistCategoryFilter, () => {
+  checklistPageNum.value = 1
+  void loadChecklistItems()
+})
+
 watch([() => props.trainingPlanId, () => props.activeCycleId], loadPlans, { immediate: true })
 
 defineExpose({ openCreate, loadPlans })
@@ -316,7 +363,17 @@ defineExpose({ openCreate, loadPlans })
         新建考查计划
       </UiButton>
     </div>
-    <UiDataTable :columns="planColumns" :data-source="plans" :loading="loading" row-key="id">
+    <UiDataTable
+      pagination-mode="server"
+      v-model:current="planPageNum"
+      v-model:page-size="planPageSize"
+      :columns="planColumns"
+      :data-source="plans"
+      :loading="loading"
+      row-key="id"
+      :total="planTotal"
+      @page-change="handlePlanPageChange"
+    >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'visitRange'">
           {{ record.visitStart }} ~ {{ record.visitEnd }}
@@ -352,7 +409,7 @@ defineExpose({ openCreate, loadPlans })
         <UiEmpty description="暂无现场考查计划" />
       </template>
     </UiDataTable>
-    <div v-if="selectedPlan?.checklistItems?.length" class="checklist-block">
+    <div v-if="selectedPlan" class="checklist-block">
       <div class="checklist-head">
         <h4>{{ selectedPlan.visitTitle }} — CEEAA 检查清单</h4>
         <span class="checklist-meta">报告截止 {{ selectedPlan.reportDueDate }}</span>
@@ -369,10 +426,16 @@ defineExpose({ openCreate, loadPlans })
         </a-radio-button>
       </a-radio-group>
       <UiDataTable
+        pagination-mode="server"
+        v-model:current="checklistPageNum"
+        v-model:page-size="checklistPageSize"
         :columns="checklistColumns"
-        :data-source="filteredChecklistItems"
+        :data-source="checklistRows"
+        :loading="checklistLoading"
         row-key="id"
         size="small"
+        :total="checklistTotal"
+        @page-change="handleChecklistPageChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'itemCategory'">

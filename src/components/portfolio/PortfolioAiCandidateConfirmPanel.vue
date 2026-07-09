@@ -3,7 +3,7 @@
     <UiAlertStrip v-if="!taskId" tone="info" title="尚未关联 AI 抽取任务" />
     <template v-else>
       <UiAlertStrip
-        v-if="taskStatus && taskStatus !== 'SUCCEEDED'"
+        v-if="taskStatus && taskStatus !== AiTaskStatusCode.SUCCEEDED"
         tone="warning"
         title="AI 抽取尚未完成，完成后方可确认候选字段"
       />
@@ -12,17 +12,20 @@
         tone="warning"
         :title="`有 ${manualFillPendingCount} 个字段含脱敏占位符，请补全真实值后再确认`"
       />
-      <div v-if="taskStatus === 'SUCCEEDED'" class="portfolio-ai-candidate-panel__actions">
+      <div v-if="taskStatus === AiTaskStatusCode.SUCCEEDED" class="portfolio-ai-candidate-panel__actions">
         <UiButton size="sm" :loading="confirming" @click="confirmAllEligible">
           确认全部可自动通过项
         </UiButton>
       </div>
       <UiDataTable
         row-key="id"
+        pagination-mode="none"
         :columns="candidateColumns"
         :data-source="candidateRows"
         :loading="loading"
-        :pagination="false"
+        :show-pagination="false"
+        :sticky-header="false"
+        flat
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'fieldLabel'">
@@ -76,7 +79,7 @@
         </template>
       </UiDataTable>
       <UiEmpty
-        v-if="!loading && taskStatus === 'SUCCEEDED' && candidateRows.length === 0"
+        v-if="!loading && taskStatus === AiTaskStatusCode.SUCCEEDED && candidateRows.length === 0"
         description="暂无候选字段"
       />
     </template>
@@ -86,7 +89,6 @@
 <script lang="ts" setup>
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioCandidateFieldVO } from '@/apis/portfolio/types'
-import type { AiTaskStatusCode } from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
@@ -96,6 +98,7 @@ import {
   PortfolioCandidateConfirmStatusDescription,
 } from '@/apis/portfolio/enums'
 import { PORTFOLIO_CANDIDATE_CONFIRM_STATUS_TONE } from '@/apis/portfolio/types'
+import { AiTaskStatusCode } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -121,11 +124,11 @@ const emit = defineEmits<{
 }>()
 
 const candidateColumns: ColumnsType = [
-  { title: '字段', key: 'fieldLabel', width: 140 },
+  { title: '字段', key: 'fieldLabel', width: 140, fixed: 'left' },
   { title: '候选值', key: 'candidateValue', width: 220 },
   { title: '证据引用', dataIndex: 'evidenceRef', key: 'evidenceRef' },
   { title: '状态', key: 'confirmStatus', width: 120 },
-  { title: '操作', key: 'actions', width: 160, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 160 },
 ]
 
 const loading = ref(false)
@@ -144,7 +147,7 @@ const manualFillPendingCount = computed(
 )
 
 const pendingTaskPolling = computed(
-  () => taskStatus.value === 'PENDING' || taskStatus.value === 'PROCESSING',
+  () => taskStatus.value === AiTaskStatusCode.PENDING || taskStatus.value === AiTaskStatusCode.PROCESSING,
 )
 
 function candidateStatusLabel(row: PortfolioCandidateFieldVO): string {

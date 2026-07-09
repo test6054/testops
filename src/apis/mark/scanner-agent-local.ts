@@ -5,6 +5,7 @@ import type { AgentUpdateStatusCode } from '@/types/enums/agent-update-status-en
 import type { ArchiveScanBatchModeCode } from '@/types/enums/archive-scan-batch-mode-enum'
 import type { DirectScanProviderChainCode } from '@/types/enums/direct-scan-provider-chain-enum'
 import type { LocalScanJobStatusCode } from '@/types/enums/local-scan-job-status-enum'
+import type { LocalScanPageSideCode } from '@/types/enums/local-scan-page-side-enum'
 import type { LocalScanPageStatusCode } from '@/types/enums/local-scan-page-status-enum'
 import type { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import type { ScannerBusinessSceneCode } from '@/types/enums/scanner-business-scene-enum'
@@ -24,10 +25,14 @@ import {
 } from '@/wire/mark/scanner-agent-local-codec'
 
 const DEFAULT_AGENT_BASE_URL = 'http://127.0.0.1:18761'
+/** 本地 Agent HTTP 请求超时，避免 fetch 永久挂起导致 Kiosk 页面卡在 loading。 */
+const LOCAL_AGENT_REQUEST_TIMEOUT_MS = 15_000
+/** TWAIN/WIA 首次枚举可能较慢，单工位单扫描仪场景单独放宽。 */
+const LOCAL_AGENT_SCANNER_LIST_TIMEOUT_MS = 60_000
 export const LOCAL_AGENT_UNAVAILABLE_ERROR = '本地扫描服务未连接，请确认一体机组件已启动'
 
-export type LocalAgentJsonValue
-   = string | number | boolean | null | LocalAgentJsonObject | LocalAgentJsonValue[]
+export type LocalAgentJsonValue =
+  string | number | boolean | null | LocalAgentJsonObject | LocalAgentJsonValue[]
 
 export interface LocalAgentJsonObject {
   [key: string]: LocalAgentJsonValue | undefined
@@ -84,6 +89,10 @@ export interface AgentHealthResponse {
   updateInstallable: boolean
   /** 是否存在仍占用工作台、应阻断重新激活的本地或服务端扫描任务 */
   workspaceBlocked: boolean
+  /** storage 直传凭证过期时间（ISO 字符串）；未绑定或未续期时为 null */
+  storageUploadCredentialExpiresAt: string | null
+  /** storage 直传凭证是否在续期窗口内可用 */
+  storageUploadCredentialFresh: boolean
 }
 
 export {
@@ -119,18 +128,21 @@ export {
 } from '@/types/enums/local-scan-job-status-enum'
 
 export {
+  ALL_LOCAL_SCAN_PAGE_SIDE_CODES,
+  LocalScanPageSideCode,
+} from '@/types/enums/local-scan-page-side-enum'
+export {
   ALL_LOCAL_SCAN_PAGE_STATUS_CODES,
   KioskSyntheticScanPageStatusCode,
   KioskSyntheticScanPageStatusDescription,
   LocalScanPageStatusCode,
   LocalScanPageStatusDescription,
 } from '@/types/enums/local-scan-page-status-enum'
+
 export {
   ALL_SCANNER_BUSINESS_SCENE_CODES,
   ScannerBusinessSceneCode,
 } from '@/types/enums/scanner-business-scene-enum'
-
-export type LocalScanPageSide = 'FRONT' | 'BACK'
 
 /** 本地扫描 Agent 输出容器格式。 */
 export enum ScannerOutputContainerFormat {
@@ -323,7 +335,7 @@ export interface ScanPageInfo {
   captureSeq: number
   pageNo: number
   sheetNo: number
-  pageSide: LocalScanPageSide
+  pageSide: LocalScanPageSideCode
   pageSideLabel: string
   status: LocalScanPageStatusCode
   /** Agent ScanPageInfo.SizeBytes（C# long），HTTP 边界为十进制字符串 */
@@ -358,6 +370,8 @@ export interface ScanJobResponse {
   message: string
   /** Agent commit 后：自动页登记是否被阻断 */
   pageRegisterBlocked?: boolean
+  /** commit 成功但页登记待重试（D3） */
+  pageRegisterPending?: boolean
   pageRegisterDiagnostic?: string
   pages: ScanPageInfo[]
 }
@@ -408,7 +422,7 @@ export async function getAgentKioskBrowserAuth(): Promise<KioskBrowserAuthRespon
 }
 
 export async function listLocalScanners(): Promise<ScannerListResponse> {
-  const payload = await localAgentGet('/api/scanners')
+  const payload = await localAgentGet('/api/scanners', LOCAL_AGENT_SCANNER_LIST_TIMEOUT_MS)
   return readScannerListResponse(payload)
 }
 
@@ -566,10 +580,17 @@ export function getPageImageUrl(scanJobId: string, pageNo: number): string {
   return `${getLocalAgentBaseUrl()}/api/scan-jobs/${encodeURIComponent(scanJobId)}/pages/${pageNo}/image`
 }
 
-async function localAgentGet(path: string): Promise<LocalAgentJsonValue> {
-  const response = await requestLocalAgent(path, {
-    method: 'GET',
-  })
+async function localAgentGet(
+  path: string,
+  timeoutMs: number = LOCAL_AGENT_REQUEST_TIMEOUT_MS,
+): Promise<LocalAgentJsonValue> {
+  const response = await requestLocalAgent(
+    path,
+    {
+      method: 'GET',
+    },
+    timeoutMs,
+  )
   return await readLocalAgentResponseData(response, tryParseBusyError)
 }
 
@@ -584,11 +605,25 @@ async function localAgentPost(path: string, requestBody: object): Promise<LocalA
   return await readLocalAgentResponseData(response, tryParseBusyError)
 }
 
-async function requestLocalAgent(path: string, init: RequestInit): Promise<Response> {
+async function requestLocalAgent(
+  path: string,
+  init: RequestInit,
+  timeoutMs: number = LOCAL_AGENT_REQUEST_TIMEOUT_MS,
+): Promise<Response> {
   const agentBaseUrl = getLocalAgentBaseUrl()
+  const controller = new AbortController()
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs)
   try {
-    return await fetch(`${agentBaseUrl}${path}`, init)
-  } catch {
+    return await fetch(`${agentBaseUrl}${path}`, {
+      ...init,
+      signal: controller.signal,
+    })
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw rejectUserError('本地扫描服务响应超时，请确认 Agent 已启动')
+    }
     throw new LocalAgentUnavailableError(agentBaseUrl)
+  } finally {
+    window.clearTimeout(timeoutId)
   }
 }

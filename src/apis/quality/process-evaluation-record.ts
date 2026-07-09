@@ -3,6 +3,7 @@ import type { ConfirmationStatusCode, DataSourceModeCode } from './types'
  * 过程性评价记录 API。
  * 后端对象：ProcessEvaluationRecordController /api/quality/process-records。
  */
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 const RECORD = '/api/quality/process-records'
@@ -62,14 +63,15 @@ export interface ProcessEvaluationRecordBatchSaveRequest {
   records: ProcessEvaluationRecordSaveRequest[]
 }
 
-export interface ProcessEvaluationRecordCourseGoalRequest {
+export interface ProcessEvaluationRecordCourseGoalQueryRequest extends QueryDto {
   qualityCourseId: string
   courseGoalId: string
 }
 
-export interface ProcessEvaluationRecordListByNodeRequest {
+export interface ProcessEvaluationRecordQueryRequest extends QueryDto {
   nodeId: string
   confirmationStatus?: ConfirmationStatusCode
+  keyword?: string
 }
 
 export interface ProcessEvaluationRecordConfirmRequest {
@@ -78,10 +80,10 @@ export interface ProcessEvaluationRecordConfirmRequest {
 }
 
 export const processRecordApi = {
-  listByNode: (data: ProcessEvaluationRecordListByNodeRequest) =>
-    http.post<ProcessEvaluationRecordVO[]>(`${RECORD}/list-by-node`, data),
-  listConfirmedByCourseGoal: (data: ProcessEvaluationRecordCourseGoalRequest) =>
-    http.post<ProcessEvaluationRecordVO[]>(`${RECORD}/list-confirmed-by-course-goal`, data),
+  page: (data: ProcessEvaluationRecordQueryRequest) =>
+    http.post<PageResult<ProcessEvaluationRecordVO>>(`${RECORD}/page`, data),
+  pageConfirmedByCourseGoal: (data: ProcessEvaluationRecordCourseGoalQueryRequest) =>
+    http.post<PageResult<ProcessEvaluationRecordVO>>(`${RECORD}/page-confirmed-by-course-goal`, data),
   detail: (id: string) => http.post<ProcessEvaluationRecordVO>(`${RECORD}/detail`, { id }),
   create: (data: ProcessEvaluationRecordSaveRequest) => http.post<string>(`${RECORD}/create`, data),
   batchCreate: (data: ProcessEvaluationRecordBatchSaveRequest) =>

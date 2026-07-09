@@ -6,6 +6,7 @@ import type { FinalScoreRiskOverviewResponse } from './exam-score'
  */
 import type { QuestionTypeCode } from './question-type'
 import type { MarkTeacherDashboardPendingTodoItemVO } from './teacher-dashboard'
+import type { PageResult, QueryDto } from '@/types'
 import type { WorkbenchNextActionKeyCode } from '@/types/enums/exam-workbench-next-action-key-enum'
 import type { ExamWorkbenchStageKeyCode } from '@/types/enums/exam-workbench-stage-key-enum'
 import type { WorkbenchStageStatusCode } from '@/types/enums/exam-workbench-stage-status-enum'
@@ -35,7 +36,15 @@ export interface MarkingProgressResponse {
   /** 待教师复核的批改结果数（grade_status = NEED_REVIEW） */
   needReviewGradeResultCount: number
   reviewTaskStatusSummaryList: ReviewTaskStatusSummaryResponse[]
-  reviewQuestionProgressList: ReviewQuestionProgressItemResponse[]
+}
+
+export interface ReviewQuestionProgressSummaryResponse {
+  examId: string
+  items: ReviewQuestionProgressItemResponse[]
+}
+
+export interface ReviewQuestionProgressPageRequest extends QueryDto {
+  examId: string
 }
 
 /** 复核任务状态汇总项 - 对应 ReviewTaskStatusSummaryResponse */
@@ -212,6 +221,24 @@ export function getMarkingProgress(examId: string): Promise<MarkingProgressRespo
   return http.post<MarkingProgressResponse>('/api/mark/exams/marking-progress', { examId })
 }
 
+export function pageReviewQuestionProgress(
+  request: ReviewQuestionProgressPageRequest,
+): Promise<PageResult<ReviewQuestionProgressItemResponse>> {
+  return http.post<PageResult<ReviewQuestionProgressItemResponse>>(
+    '/api/mark/exams/marking-progress/review-questions/page',
+    request,
+  )
+}
+
+export function getReviewQuestionProgressSummary(
+  examId: string,
+): Promise<ReviewQuestionProgressSummaryResponse> {
+  return http.post<ReviewQuestionProgressSummaryResponse>(
+    '/api/mark/exams/marking-progress/review-questions/summary',
+    { examId },
+  )
+}
+
 /** 批量查询阅卷进度（考试工作台列表聚合，一次请求）。 */
 export async function batchGetMarkingProgress(
   examIds: string[],
@@ -339,11 +366,21 @@ export interface ExamWorkbenchScanMonitorPanelResponse {
   inProgressCount: number
   blockedCount: number
   scannedPageCount: number
+  expectedPageCount?: number
   boundPaperCount: number
   missingCandidateCount: number
   duplicatePageCount: number
   attentionCount: number
   orphanPendingEventCount: number
+  ledgerStatus?: string
+  progressPercent?: number | null
+  progressDisplay?: string
+  diagnostic?: string
+  signalCode?: string
+  signalBandTone?: string
+  signalBandMessage?: string
+  signalActionKey?: string | null
+  primaryMetricTone?: string
 }
 
 /** 查询扫描监控看板（扫描监控页 Signal 真源）。 */

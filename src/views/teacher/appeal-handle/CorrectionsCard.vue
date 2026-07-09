@@ -19,7 +19,6 @@
       <UiDataTable
         v-model:current="pagination.current"
         v-model:page-size="pagination.pageSize"
-        class="student-detail-table__data-table"
         :columns="columns"
         :data-source="rows"
         :loading="loading"
@@ -73,7 +72,8 @@
                   :options="reviewRequestOptions"
                   placeholder="选择已通过的复核申请"
                   show-search
-                  option-filter-prop="label"
+                  :filter-option="false"
+                  @search="onReviewRequestSearch"
                   @change="handleReviewRequestChange"
                 />
               </a-form-item>
@@ -140,11 +140,6 @@ import type {
   ExamGradeCorrectionRecordResponse,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import Modal from 'ant-design-vue/es/modal'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   computeSingleQuestionCorrectionCompositeTotal,
   createCorrection,
@@ -153,6 +148,11 @@ import {
   listCorrections,
   listReviewRequests,
 } from '@/apis/mark/grade-review'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import Modal from 'ant-design-vue/es/modal'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -162,7 +162,6 @@ import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { ExamScorePolicyCode } from '@/types/enums/exam-score-policy-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readAllPages } from '@/utils/page-result'
 
 defineOptions({ name: 'CorrectionsCard' })
 
@@ -174,12 +173,15 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: 'created'): void }>()
 const router = useRouter()
 
-const APPROVED_REVIEW_REQUEST_PAGE_SIZE = 100
+const APPROVED_REVIEW_REQUEST_PAGE_SIZE = 20
+const REVIEW_REQUEST_SEARCH_DEBOUNCE_MS = 300
 
 const rows = ref<ExamGradeCorrectionRecordResponse[]>([])
 const loading = ref(false)
-const approvedReviewRequests = ref<GradeReviewRequestItemResponse[]>([])
+const reviewRequestOptions = ref<{ value: string; label: string }[]>([])
+const reviewRequestCache = ref<Map<string, GradeReviewRequestItemResponse>>(new Map())
 const reviewRequestLoading = ref(false)
+let reviewRequestSearchTimer: ReturnType<typeof setTimeout> | undefined
 const pagination = reactive({
   current: 1,
   pageSize: DEFAULT_LIST_PAGE_SIZE,
@@ -231,16 +233,26 @@ const form = reactive<{
   reviewRequestId: '',
 })
 
-const selectedReviewRequest = computed(() =>
-  approvedReviewRequests.value.find((request) => request.id === form.reviewRequestId),
-)
+const selectedReviewRequest = computed(() => {
+  if (!form.reviewRequestId) return undefined
+  return reviewRequestCache.value.get(form.reviewRequestId)
+})
 
-const reviewRequestOptions = computed(() =>
-  approvedReviewRequests.value.map((request) => ({
+function buildReviewRequestOption(request: GradeReviewRequestItemResponse): {
+  value: string
+  label: string
+} {
+  return {
     value: request.id,
     label: `${reviewRequestStudentLabel(request)} · ${reviewRequestQuestionLabel(request)}`,
-  })),
-)
+  }
+}
+
+function cacheReviewRequests(requests: GradeReviewRequestItemResponse[]): void {
+  for (const request of requests) {
+    reviewRequestCache.value.set(request.id, request)
+  }
+}
 
 const selectedReviewQuestionOptions = computed(
   () =>
@@ -263,9 +275,7 @@ const isTotalScoreCorrection = computed(
   () => !!selectedReviewRequest.value && selectedReviewRequest.value.questionRefs.length === 0,
 )
 
-const makeupCap60Hint = computed(
-  () => props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60,
-)
+const makeupCap60Hint = computed(() => props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60)
 
 const makeupCap60AlertMessage = computed(() =>
   isTotalScoreCorrection.value
@@ -300,8 +310,8 @@ const singleQuestionProjectionHint = computed(() => {
   return `${currentPart}更正后合成总分 ${projected}`
 })
 
-const totalCorrectionScoreMax = computed(
-  () => (isTotalScoreCorrection.value && makeupCap60Hint.value ? 60 : undefined),
+const totalCorrectionScoreMax = computed(() =>
+  isTotalScoreCorrection.value && makeupCap60Hint.value ? 60 : undefined,
 )
 
 async function openCreateModal(): Promise<void> {
@@ -310,7 +320,56 @@ async function openCreateModal(): Promise<void> {
   form.reason = ''
   form.reviewRequestId = ''
   createOpen.value = true
-  await loadApprovedReviewRequests()
+  await loadReviewRequestOptions('')
+}
+
+async function loadReviewRequestOptions(keyword?: string): Promise<void> {
+  if (!props.examId) return
+  reviewRequestLoading.value = true
+  try {
+    const result = await listReviewRequests({
+      examId: props.examId,
+      requestStatus: GradeReviewRequestStatusCode.APPROVED,
+      keyword: keyword?.trim() || undefined,
+      pageNum: 1,
+      pageSize: APPROVED_REVIEW_REQUEST_PAGE_SIZE,
+    })
+    cacheReviewRequests(result.list)
+    reviewRequestOptions.value = result.list.map((request) => buildReviewRequestOption(request))
+    if (form.reviewRequestId && !reviewRequestCache.value.has(form.reviewRequestId)) {
+      await pinReviewRequestById(form.reviewRequestId)
+    }
+  } catch (e) {
+    reviewRequestOptions.value = []
+    showUserError(e, '已通过复核申请加载失败')
+  } finally {
+    reviewRequestLoading.value = false
+  }
+}
+
+async function pinReviewRequestById(reviewRequestId: string): Promise<void> {
+  const result = await listReviewRequests({
+    examId: props.examId,
+    requestStatus: GradeReviewRequestStatusCode.APPROVED,
+    id: reviewRequestId,
+    pageNum: 1,
+    pageSize: 1,
+  })
+  if (result.list.length === 0) return
+  cacheReviewRequests(result.list)
+  const option = buildReviewRequestOption(result.list[0])
+  if (!reviewRequestOptions.value.some((item) => item.value === option.value)) {
+    reviewRequestOptions.value = [option, ...reviewRequestOptions.value]
+  }
+}
+
+function onReviewRequestSearch(keyword: string): void {
+  if (reviewRequestSearchTimer) {
+    clearTimeout(reviewRequestSearchTimer)
+  }
+  reviewRequestSearchTimer = setTimeout(() => {
+    void loadReviewRequestOptions(keyword)
+  }, REVIEW_REQUEST_SEARCH_DEBOUNCE_MS)
 }
 
 async function reload(): Promise<void> {
@@ -353,32 +412,10 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()
-}
-
-async function loadApprovedReviewRequests(): Promise<void> {
-  if (!props.examId) return
-  reviewRequestLoading.value = true
-  try {
-    approvedReviewRequests.value = await readAllPages(
-      (pageNum) =>
-        listReviewRequests({
-          examId: props.examId,
-          requestStatus: GradeReviewRequestStatusCode.APPROVED,
-          pageNum,
-          pageSize: APPROVED_REVIEW_REQUEST_PAGE_SIZE,
-        }),
-      '已通过复核申请加载失败',
-    )
-  } catch (e) {
-    approvedReviewRequests.value = []
-    showUserError(e, '已通过复核申请加载失败')
-  } finally {
-    reviewRequestLoading.value = false
-  }
 }
 
 function handleReviewRequestChange(): void {
@@ -400,24 +437,24 @@ async function submit(): Promise<void> {
     return
   }
   if (
-    form.layoutQuestionId
-    && !request.questionRefs.some((question) => question.layoutQuestionId === form.layoutQuestionId)
+    form.layoutQuestionId &&
+    !request.questionRefs.some((question) => question.layoutQuestionId === form.layoutQuestionId)
   ) {
     message.warning('更正题目必须来自选中的复核申请')
     return
   }
   if (
-    request.questionRefs.length === 0
-    && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60
-    && form.afterScore > 60
+    request.questionRefs.length === 0 &&
+    props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60 &&
+    form.afterScore > 60
   ) {
     message.warning('补考成绩策略为封顶60分，更正后总成绩不能超过60分')
     return
   }
   if (
-    form.layoutQuestionId
-    && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60
-    && isMakeupCap60SingleQuestionCorrectionExceeded(request, form.layoutQuestionId, form.afterScore)
+    form.layoutQuestionId &&
+    props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60 &&
+    isMakeupCap60SingleQuestionCorrectionExceeded(request, form.layoutQuestionId, form.afterScore)
   ) {
     message.warning('补考成绩策略为封顶60分，单题更正后合成总成绩不能超过60分')
     return
@@ -444,10 +481,11 @@ async function submit(): Promise<void> {
         content: '更正前成绩已发布，学生端暂不可见最新分数。请前往成绩发布页重新发布。',
         okText: '前往发布',
         cancelText: '稍后处理',
-        onOk: () => router.push({
-          name: 'TeacherExamWorkspaceScoreRelease',
-          params: { examId: props.examId },
-        }),
+        onOk: () =>
+          router.push({
+            name: 'TeacherExamWorkspaceScoreRelease',
+            params: { examId: props.examId },
+          }),
       })
     }
   } catch (e) {

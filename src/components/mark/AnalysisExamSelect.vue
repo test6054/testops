@@ -5,7 +5,6 @@ import { onMounted, ref, watch } from 'vue'
 import { pageExams } from '@/apis/mark/exam'
 import { formatAcademicYearSemester } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
-import { readAllPages } from '@/utils/page-result'
 
 defineOptions({ name: 'AnalysisExamSelect' })
 
@@ -78,15 +77,12 @@ async function loadExamOptions(keyword?: string): Promise<void> {
       examOptions.value = mapExamOptions(result.list)
       return
     }
-    const exams = await readAllPages(
-      (pageNum) => pageExams({
-        pageNum,
-        pageSize: ANALYSIS_EXAM_LIST_PAGE_SIZE,
-        ...orgScope,
-      }),
-      '考试列表加载失败',
-    )
-    examOptions.value = mapExamOptions(exams)
+    const result = await pageExams({
+      pageNum: 1,
+      pageSize: ANALYSIS_EXAM_LIST_PAGE_SIZE,
+      ...orgScope,
+    })
+    examOptions.value = mapExamOptions(result.list)
   } catch (error) {
     showUserError(error, '考试列表加载失败')
   } finally {

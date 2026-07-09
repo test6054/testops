@@ -15,7 +15,9 @@
           :options="filteredStudentOptions"
           :loading="props.rosterLoading"
           :disabled="!props.examId"
+          :filter-option="false"
           :not-found-content="props.rosterLoading ? '加载中…' : '该考试未关联考生'"
+          @search="(keyword: string) => props.onStudentSearch?.(keyword)"
         />
         <UiButton
           variant="outline"
@@ -50,7 +52,9 @@
           :options="filteredStudentOptions"
           :loading="props.rosterLoading"
           :disabled="!props.examId"
+          :filter-option="false"
           :not-found-content="props.rosterLoading ? '加载中…' : '该考试未关联考生'"
+          @search="(keyword: string) => props.onStudentSearch?.(keyword)"
         />
         <UiButton
           variant="outline"
@@ -178,23 +182,23 @@
 
 <script lang="ts" setup>
 import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
+import {
+  FINAL_SCORE_STATUS_TONE,
+  FinalScoreStatusDescription,
+} from '@/apis/mark/final-score-status'
 import type { MasteryLevelCode } from '@/apis/mark/student-mastery-level'
+import { MASTERY_LEVEL_TONE, MasteryLevelDescription } from '@/apis/mark/student-mastery-level'
 import type { TeachingAnalysisRecordResponse } from '@/apis/mark/teaching-analysis'
+import {
+  generateStudentLearningProfile,
+  getLatestStudentLearningProfile,
+} from '@/apis/mark/teaching-analysis'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { MarkStudentOption } from '@/composables/useMarkExamRoster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
-import {
-  FINAL_SCORE_STATUS_TONE,
-  FinalScoreStatusDescription,
-} from '@/apis/mark/final-score-status'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
-import { MASTERY_LEVEL_TONE, MasteryLevelDescription } from '@/apis/mark/student-mastery-level'
-import {
-  generateStudentLearningProfile,
-  getLatestStudentLearningProfile,
-} from '@/apis/mark/teaching-analysis'
 import AiAnalysisCardBody from '@/components/mark/analysis/AiAnalysisCardBody.vue'
 import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.vue'
 import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCollapse.vue'
@@ -213,6 +217,7 @@ const props = withDefaults(
     classIdHint?: string
     studentOptions: MarkStudentOption[]
     rosterLoading: boolean
+    onStudentSearch?: (keyword: string) => void | Promise<void>
     examLabel?: string
     embedded?: boolean
   }>(),
@@ -322,8 +327,8 @@ watch(
   () => props.studentOptions,
   (next) => {
     if (
-      selectedStudentUserId.value
-      && !next.some((opt) => opt.value === selectedStudentUserId.value)
+      selectedStudentUserId.value &&
+      !next.some((opt) => opt.value === selectedStudentUserId.value)
     ) {
       selectedStudentUserId.value = undefined
       hasQueried.value = false
@@ -336,8 +341,8 @@ watch(
   () => props.classIdHint,
   () => {
     if (
-      selectedStudentUserId.value
-      && !filteredStudentOptions.value.some((opt) => opt.value === selectedStudentUserId.value)
+      selectedStudentUserId.value &&
+      !filteredStudentOptions.value.some((opt) => opt.value === selectedStudentUserId.value)
     ) {
       selectedStudentUserId.value = undefined
       hasQueried.value = false

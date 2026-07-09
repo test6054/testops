@@ -38,7 +38,7 @@
           @reset="handleReset"
         />
 
-        <div v-if="statistics" class="archive-volume-statistics__export">
+        <div v-if="statisticsSummary" class="archive-volume-statistics__export">
           <UiButton
             variant="outline"
             size="sm"
@@ -51,32 +51,40 @@
 
         <UiSkeletonState v-if="loading" variant="card" compact />
 
-        <div v-else-if="statistics" class="archive-volume-statistics__grid">
+        <div v-else-if="statisticsSummary" class="archive-volume-statistics__grid">
           <WorkbenchSurfaceCard flush>
             <template #head>院系完成率</template>
             <UiDataTable
-              pagination-mode="none"
+              v-model:current="deptPagination.pageNum"
+              v-model:page-size="deptPagination.pageSize"
+              pagination-mode="server"
               :columns="deptColumns"
-              :data-source="statistics.departmentCompletions"
-              :show-pagination="false"
+              :data-source="departmentRows"
+              :loading="deptLoading"
+              :total="deptPagination.total"
               flat
               row-key="departmentId"
               size="middle"
               empty-description="暂无院系统计数据"
+              @page-change="loadDepartmentCompletions"
             />
           </WorkbenchSurfaceCard>
 
           <WorkbenchSurfaceCard flush>
             <template #head>缺项材料分布</template>
             <UiDataTable
-              pagination-mode="none"
+              v-model:current="missingPagination.pageNum"
+              v-model:page-size="missingPagination.pageSize"
+              pagination-mode="server"
               :columns="missingColumns"
-              :data-source="statistics.missingMaterials"
-              :show-pagination="false"
+              :data-source="missingRows"
+              :loading="missingLoading"
+              :total="missingPagination.total"
               flat
               row-key="materialType"
               size="middle"
               empty-description="暂无缺项统计"
+              @page-change="loadMissingMaterials"
             >
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'materialType'">
@@ -152,22 +160,24 @@ import type {
   ArchiveMaterialTypeCode,
   ArchiveMissingMaterialStatVO,
   ArchiveVolumeDestructionLedgerRowResponse,
-  ArchiveVolumeStatisticsResponse,
+  ArchiveVolumeStatisticsSummaryVO,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   ARCHIVE_DESTRUCTION_STATUS_TONE,
   ArchiveDestructionStatusDescription,
   ArchiveMaterialTypeDescription,
   exportArchiveVolumeStatisticsExcel,
   exportDestructionLedgerExcel,
-  getArchiveVolumeStatistics,
+  getArchiveVolumeStatisticsSummary,
   pageDestructionLedger,
+  pageStatisticsDepartmentCompletions,
+  pageStatisticsMissingMaterials,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -198,8 +208,8 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'TeacherArchiveVolumeStatistics' })
 
 const router = useRouter()
-const { grantsLoadFailed, listScopedDepartmentIds, filterListDepartmentOptions, loadGrants }
-  = useArchiveDutyAccess()
+const { grantsLoadFailed, listScopedDepartmentIds, filterListDepartmentOptions, loadGrants } =
+  useArchiveDutyAccess()
 
 const statsTab = ref('overview')
 const statsTabs = [
@@ -207,12 +217,16 @@ const statsTabs = [
   { key: 'destruction', label: '销毁清册' },
 ]
 const loading = ref(false)
+const deptLoading = ref(false)
+const missingLoading = ref(false)
 const exportOverviewLoading = ref(false)
 const exportDestructionLoading = ref(false)
 const destructionLoading = ref(false)
-const statistics = ref<ArchiveVolumeStatisticsResponse | null>(null)
+const statisticsSummary = ref<ArchiveVolumeStatisticsSummaryVO | null>(null)
+const departmentRows = ref<ArchiveDepartmentCompletionVO[]>([])
+const missingRows = ref<ArchiveMissingMaterialStatVO[]>([])
 const destructionRows = ref<ArchiveVolumeDestructionLedgerRowResponse[]>([])
-const departmentOptions = ref<Array<{ value: string, label: string }>>([])
+const departmentOptions = ref<Array<{ value: string; label: string }>>([])
 
 interface ArchiveVolumeStatisticsFilterForm extends Record<string, unknown> {
   academicYearStartYear: number | undefined
@@ -249,6 +263,8 @@ const destructionFilterModel = computed<Record<string, unknown>>({
 })
 
 const destructionPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
+const deptPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
+const missingPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 
 const scopedDepartmentOptions = computed(() => filterListDepartmentOptions(departmentOptions.value))
 
@@ -326,48 +342,44 @@ interface OverviewAnalyticsCard {
 }
 
 const overviewAnalyticsCards = computed<OverviewAnalyticsCard[]>(() => {
-  if (!statistics.value) {
+  if (!statisticsSummary.value) {
     return []
   }
-  const depts = statistics.value.departmentCompletions
-  const totalCount = depts.reduce((sum, item) => sum + item.totalCount, 0)
-  const storedCount = depts.reduce((sum, item) => sum + item.storedCount, 0)
-  const avgCompletionRate = depts.length
-    ? Math.round(depts.reduce((sum, item) => sum + Number(item.completionRate), 0) / depts.length)
-    : 0
+  const summary = statisticsSummary.value
+  const avgCompletionRate = Math.round(summary.avgCompletionRate)
   return [
     {
       key: 'total',
       label: '归档任务总数',
-      displayValue: totalCount,
-      signalValue: totalCount,
+      displayValue: summary.totalVolumeCount,
+      signalValue: summary.totalVolumeCount,
       unit: '卷',
       badgeTone: 'blue',
-      clickable: totalCount > 0,
+      clickable: summary.totalVolumeCount > 0,
     },
     {
       key: 'stored',
       label: '已入库',
-      displayValue: storedCount,
-      signalValue: storedCount,
+      displayValue: summary.storedVolumeCount,
+      signalValue: summary.storedVolumeCount,
       unit: '卷',
       badgeTone: 'green',
-      clickable: storedCount > 0,
+      clickable: summary.storedVolumeCount > 0,
     },
     {
       key: 'overdue',
       label: '逾期卷',
-      displayValue: statistics.value.overdueVolumeCount,
-      signalValue: statistics.value.overdueVolumeCount,
+      displayValue: summary.overdueVolumeCount,
+      signalValue: summary.overdueVolumeCount,
       unit: '卷',
-      badgeTone: statistics.value.overdueVolumeCount > 0 ? 'red' : 'gray',
-      clickable: statistics.value.overdueVolumeCount > 0,
+      badgeTone: summary.overdueVolumeCount > 0 ? 'red' : 'gray',
+      clickable: summary.overdueVolumeCount > 0,
     },
     {
       key: 'dept',
       label: '院系',
-      displayValue: depts.length,
-      signalValue: depts.length,
+      displayValue: summary.departmentRowCount,
+      signalValue: summary.departmentRowCount,
       unit: '个',
       badgeTone: 'blue',
       clickable: false,
@@ -375,11 +387,11 @@ const overviewAnalyticsCards = computed<OverviewAnalyticsCard[]>(() => {
     {
       key: 'missing',
       label: '缺项类型',
-      displayValue: statistics.value.missingMaterials.length,
-      signalValue: statistics.value.missingMaterials.length,
+      displayValue: summary.missingMaterialKindCount,
+      signalValue: summary.missingMaterialKindCount,
       unit: '项',
-      badgeTone: statistics.value.missingMaterials.length > 0 ? 'orange' : 'gray',
-      clickable: statistics.value.missingMaterials.length > 0,
+      badgeTone: summary.missingMaterialKindCount > 0 ? 'orange' : 'gray',
+      clickable: summary.missingMaterialKindCount > 0,
     },
     {
       key: 'rate',
@@ -454,6 +466,56 @@ function buildStatisticsRequest() {
   }
 }
 
+async function loadDepartmentCompletions() {
+  const request = buildStatisticsRequest()
+  if (!request) {
+    return
+  }
+  deptLoading.value = true
+  try {
+    const result = await pageStatisticsDepartmentCompletions({
+      ...request,
+      pageNum: deptPagination.pageNum,
+      pageSize: deptPagination.pageSize,
+    })
+    departmentRows.value = result.list
+    deptPagination.total = result.total
+    deptPagination.pageNum = result.pageNum
+    deptPagination.pageSize = result.pageSize
+  } catch (error) {
+    departmentRows.value = []
+    deptPagination.total = 0
+    showUserError(error, '加载院系完成率失败')
+  } finally {
+    deptLoading.value = false
+  }
+}
+
+async function loadMissingMaterials() {
+  const request = buildStatisticsRequest()
+  if (!request) {
+    return
+  }
+  missingLoading.value = true
+  try {
+    const result = await pageStatisticsMissingMaterials({
+      ...request,
+      pageNum: missingPagination.pageNum,
+      pageSize: missingPagination.pageSize,
+    })
+    missingRows.value = result.list
+    missingPagination.total = result.total
+    missingPagination.pageNum = result.pageNum
+    missingPagination.pageSize = result.pageSize
+  } catch (error) {
+    missingRows.value = []
+    missingPagination.total = 0
+    showUserError(error, '加载缺项材料分布失败')
+  } finally {
+    missingLoading.value = false
+  }
+}
+
 async function loadStatistics() {
   if (!ensureTriplePeriodPair(filterForm)) {
     return
@@ -463,9 +525,17 @@ async function loadStatistics() {
     return
   }
   loading.value = true
+  deptPagination.pageNum = 1
+  missingPagination.pageNum = 1
   try {
-    statistics.value = await getArchiveVolumeStatistics(request)
+    statisticsSummary.value = await getArchiveVolumeStatisticsSummary(request)
+    await Promise.all([loadDepartmentCompletions(), loadMissingMaterials()])
   } catch (error) {
+    statisticsSummary.value = null
+    departmentRows.value = []
+    missingRows.value = []
+    deptPagination.total = 0
+    missingPagination.total = 0
     showUserError(error, '加载迎评统计失败')
   } finally {
     loading.value = false
@@ -497,7 +567,13 @@ function handleReset() {
   filterForm.departmentId = departmentFilterDisabled.value
     ? listScopedDepartmentIds.value[0]
     : undefined
-  statistics.value = null
+  statisticsSummary.value = null
+  departmentRows.value = []
+  missingRows.value = []
+  deptPagination.pageNum = 1
+  missingPagination.pageNum = 1
+  deptPagination.total = 0
+  missingPagination.total = 0
 }
 
 function handleDestructionReset() {

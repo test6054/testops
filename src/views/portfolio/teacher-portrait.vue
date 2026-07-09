@@ -1,27 +1,28 @@
 <script setup lang="ts">
 import type { EChartsCoreOption } from 'echarts/core'
 import type { PortfolioPortraitDimensionCode } from '@/apis/portfolio/enums'
+import {
+  PortfolioArchiveRecordStatusDescription,
+  PortfolioPortraitDimensionReadinessCode,
+  PortfolioPortraitDimensionReadinessDescription,
+  PortfolioPortraitIndicatorEvidenceTypeDescription,
+} from '@/apis/portfolio/enums'
 import type { PortfolioDevelopmentPlanCompletionVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import type {
   PortfolioTeacherPortraitCohortCompareVO,
   PortfolioTeacherPortraitIndicatorDetailVO,
   PortfolioTeacherPortraitTrendVO,
   PortfolioTeacherPortraitVO,
 } from '@/apis/portfolio/types'
-import type { SignalMetric } from '@/types/workbench'
-import { computed, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
-import {
-  PortfolioArchiveRecordStatusDescription,
-  PortfolioPortraitDimensionReadinessDescription,
-  PortfolioPortraitIndicatorEvidenceTypeDescription,
-} from '@/apis/portfolio/enums'
-import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import {
   PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
   PORTFOLIO_PORTRAIT_DIMENSION_READINESS_TONE,
 } from '@/apis/portfolio/types'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import MarkChartCard from '@/components/chart/MarkChartCard.vue'
 import UiAlert from '@/components/ui-guide/ui/Alert.vue'
@@ -87,7 +88,9 @@ const portraitDataInsufficient = computed(() => {
   if (!portrait.value) {
     return false
   }
-  return portrait.value.dimensions.every((item) => item.readiness === 'PENDING')
+  return portrait.value.dimensions.every(
+    (item) => item.readiness === PortfolioPortraitDimensionReadinessCode.PENDING,
+  )
 })
 
 const cohortHint = computed(() => {

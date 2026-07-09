@@ -3,6 +3,7 @@ import type { AssessmentItemTypeCode } from './types'
  * 考核环节 API。
  * 后端对象：AssessmentItemController /api/quality/assessment-items。
  */
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 const ITEM = '/api/quality/assessment-items'
@@ -25,6 +26,11 @@ export interface AssessmentItemVO {
   updateTime?: string
 }
 
+export interface AssessmentItemQueryRequest extends QueryDto {
+  qualityCourseId?: string
+  keyword?: string
+}
+
 export interface AssessmentItemSaveRequest {
   id?: string
   qualityCourseId: string
@@ -40,8 +46,8 @@ export interface AssessmentItemSaveRequest {
 }
 
 export const assessmentItemApi = {
-  listByCourse: (qualityCourseId: string) =>
-    http.post<AssessmentItemVO[]>(`${ITEM}/list-by-course`, { id: qualityCourseId }),
+  page: (data: AssessmentItemQueryRequest) =>
+    http.post<PageResult<AssessmentItemVO>>(`${ITEM}/page`, data),
   detail: (id: string) => http.post<AssessmentItemVO>(`${ITEM}/detail`, { id }),
   create: (data: AssessmentItemSaveRequest) => http.post<string>(`${ITEM}/create`, data),
   update: (data: AssessmentItemSaveRequest) => http.post<void>(`${ITEM}/update`, data),

@@ -39,7 +39,7 @@
                 />
               </div>
               <div class="ongoing-exam-card__progress-label">
-                <span>{{ progressFractionLabel(exam) }}</span>
+                <span>{{ resolveOngoingExamProgressFractionLabel(exam) }}</span>
                 <span>{{ exam.progressPercent ?? 0 }}%</span>
               </div>
             </div>
@@ -117,7 +117,10 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { formatAcademicYearSemester } from '@/types/enums/semester-enum'
-import { resolveOngoingExamProgressTone } from '@/utils/mark-dashboard-stages'
+import {
+  resolveOngoingExamProgressFractionLabel,
+  resolveOngoingExamProgressTone,
+} from '@/utils/mark-dashboard-stages'
 
 defineOptions({ name: 'OngoingExamCardGrid' })
 
@@ -162,13 +165,6 @@ function stageTagTone(stageKey: MarkStageKey | undefined): BadgeTone {
     default:
       return 'gray'
   }
-}
-
-function progressFractionLabel(exam: MarkTeacherDashboardOngoingExamItemVO): string {
-  const total = exam.candidateCount ?? 0
-  if (total <= 0) return exam.currentStageTitle || '进度'
-  const published = exam.publishedScoreCount ?? 0
-  return `${published.toLocaleString('zh-CN')} / ${total.toLocaleString('zh-CN')} 份`
 }
 
 function progressFillClass(exam: MarkTeacherDashboardOngoingExamItemVO): string {

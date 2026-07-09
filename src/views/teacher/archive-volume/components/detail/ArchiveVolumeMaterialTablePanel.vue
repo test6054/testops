@@ -47,14 +47,18 @@
       </RouterLink>
     </p>
     <UiDataTable
-      pagination-mode="none"
+      v-model:current="pageNum"
+      v-model:page-size="pageSize"
+      pagination-mode="server"
       :columns="materialColumns"
-      :data-source="filteredMaterials"
-      :show-pagination="false"
+      :data-source="materials"
+      :loading="materialsLoading"
+      :total="pageTotal"
       flat
       row-key="materialId"
       size="middle"
       empty-description="该目录项下暂无材料"
+      @page-change="handlePageChange"
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'materialType'">
@@ -86,7 +90,9 @@
             </UiTag>
           </span>
           <span
-            v-if="record.ocrStatus === 'FAILED' && record.ocrFailureReason"
+            v-if="
+              record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED && record.ocrFailureReason
+            "
             class="archive-volume-material-table__ocr-failure"
           >
             {{ record.ocrFailureReason }}
@@ -265,23 +271,13 @@
 
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-status'
 import type {
   ArchiveMaterialSubmissionStatusCode,
   ArchiveMaterialTypeCode,
   ArchiveVolumeDetailResponse,
   ArchiveVolumeMaterialResponse,
+  ArchiveVolumeMaterialStatsResponse,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
-import { message } from 'ant-design-vue'
-import { computed, onUnmounted, reactive, ref, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
-import {
-  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
-  ArchiveMaterialOcrStatusDescription,
-} from '@/apis/mark/archive-ocr-status'
 import {
   ALL_ARCHIVE_MATERIAL_TYPE_CODES,
   ARCHIVE_MATERIAL_TYPE_OPTIONS,
@@ -292,10 +288,24 @@ import {
   ArchiveSharedMaterialRefTypeCode,
   generateArchiveVolumeCourseObjectiveReport,
   generateArchiveVolumeExamAnalysisReport,
+  getArchiveVolumeMaterialStats,
+  pageArchiveVolumeMaterials,
   registerArchiveSharedMaterialRef,
   registerArchiveVolumeMaterial,
   triggerArchiveVolumeMaterialOcr,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
+import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
+import {
+  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
+  ArchiveMaterialOcrStatusCode,
+  ArchiveMaterialOcrStatusDescription,
+} from '@/apis/mark/archive-ocr-status'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import FilePreviewDialog from '@/components/FilePreviewDialog.vue'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
@@ -308,15 +318,8 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useFilePreview } from '@/composables/useFilePreview'
-import {
-  archiveMaterialBelongsToCatalogKey,
-  archiveMissingItemTargetsCatalogKey,
-  filterArchiveMaterialsByCatalogKey,
-} from '@/utils/archive-catalog-material-key'
-import {
-  buildArchiveMaterialStatusView,
-  countArchiveMaterialsReady,
-} from '@/utils/archive-material-status-ui'
+import { archiveMissingItemTargetsCatalogKey } from '@/utils/archive-catalog-material-key'
+import { buildArchiveMaterialStatusView } from '@/utils/archive-material-status-ui'
 import { normalizeMaterialTagsForRegister } from '@/utils/archive-material-tag'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -326,7 +329,6 @@ import ArchiveMaterialTagSelect from '@/views/teacher/archive-volume/components/
 import ArchiveVolumeMaterialOcrDetailModal from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialOcrDetailModal.vue'
 import ArchiveVolumeMaterialTagModal from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialTagModal.vue'
 import ScanDispatchDialog from '@/views/teacher/archive-volume/components/ScanDispatchDialog.vue'
-import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 
 defineOptions({ name: 'ArchiveVolumeMaterialTablePanel' })
 
@@ -338,7 +340,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  "refreshed": [options?: { silent?: boolean }]
+  refreshed: [options?: { silent?: boolean }]
   'ocr-completed-stale': []
 }>()
 
@@ -359,6 +361,13 @@ const scanDispatchOpen = ref(false)
 const scanDispatchResultOpen = ref(false)
 const scanDispatchQuery = ref<Record<string, string> | null>(null)
 const scanDispatchResult = ref<ScanDispatchResultPayload | null>(null)
+
+const pageNum = ref(1)
+const pageSize = ref(20)
+const pageTotal = ref(0)
+const materials = ref<ArchiveVolumeMaterialResponse[]>([])
+const materialsLoading = ref(false)
+const materialStats = ref<ArchiveVolumeMaterialStatsResponse | null>(null)
 
 const scanDispatchMaterialType = computed(() =>
   ALL_ARCHIVE_MATERIAL_TYPE_CODES.find((code) => code === scanDispatchQuery.value?.materialType),
@@ -412,15 +421,66 @@ const materialColumns: ColumnsType<ArchiveVolumeMaterialResponse> = [
 
 const filePreview = useFilePreview()
 
-const filteredMaterials = computed(() =>
-  filterArchiveMaterialsByCatalogKey(props.detail.materials ?? [], props.selectedCatalogKeys[0]),
-)
-
 const materialReadySummary = computed(() => {
-  const materials = filteredMaterials.value
-  const readyCount = countArchiveMaterialsReady(materials)
-  return `${readyCount}/${materials.length} 就绪`
+  if (!materialStats.value) {
+    return '—'
+  }
+  const catalogKey = props.selectedCatalogKeys[0]
+  if (catalogKey) {
+    const scoped = materialStats.value.catalogSummaries.find(
+      (item) => item.catalogKey === catalogKey,
+    )
+    if (!scoped) {
+      return '0/0 就绪'
+    }
+    return `${scoped.readyCount}/${scoped.totalCount} 就绪`
+  }
+  const summary = materialStats.value.volumeSummary
+  return `${summary.readyCount}/${summary.totalCount} 就绪`
 })
+
+async function loadMaterials(): Promise<void> {
+  if (!props.volumeId) {
+    materials.value = []
+    pageTotal.value = 0
+    return
+  }
+  materialsLoading.value = true
+  try {
+    const result = await pageArchiveVolumeMaterials({
+      volumeId: props.volumeId,
+      catalogKey: props.selectedCatalogKeys[0] || undefined,
+      pageNum: pageNum.value,
+      pageSize: pageSize.value,
+    })
+    materials.value = result.list
+    pageTotal.value = result.total
+  } catch (error) {
+    showUserError(error, '加载归档材料失败')
+  } finally {
+    materialsLoading.value = false
+  }
+}
+
+async function loadMaterialStats(): Promise<void> {
+  if (!props.volumeId) {
+    materialStats.value = null
+    return
+  }
+  try {
+    materialStats.value = await getArchiveVolumeMaterialStats({ volumeId: props.volumeId })
+  } catch (error) {
+    showUserError(error, '加载材料统计失败')
+  }
+}
+
+async function reloadMaterialsAndStats(): Promise<void> {
+  await Promise.all([loadMaterials(), loadMaterialStats()])
+}
+
+function handlePageChange(): void {
+  void loadMaterials()
+}
 
 const effectiveExamId = computed(
   () => props.detail.volume?.examId ?? props.detail.volume?.relatedExamId,
@@ -464,14 +524,14 @@ const courseObjectiveMappingHint = computed(() => {
   const goalTotal = props.detail.courseObjectiveTotalGoalCount
   const goalCovered = props.detail.courseObjectiveCoveredGoalCount
   if (
-    total != null
-    && mapped != null
-    && total > 0
-    && mapped >= total
-    && goalTotal != null
-    && goalCovered != null
-    && goalTotal > 0
-    && goalCovered < goalTotal
+    total != null &&
+    mapped != null &&
+    total > 0 &&
+    mapped >= total &&
+    goalTotal != null &&
+    goalCovered != null &&
+    goalTotal > 0 &&
+    goalCovered < goalTotal
   ) {
     return `quality 课程目标覆盖 ${goalCovered}/${goalTotal} 未完成，须确保每个课程目标至少映射一题后再生成达成度报告。`
   }
@@ -528,7 +588,7 @@ function materialOcrStatusTone(code: ArchiveMaterialOcrStatusCode): BadgeTone {
 }
 
 function canRetryMaterialOcr(material: ArchiveVolumeMaterialResponse): boolean {
-  return material.ocrStatus === 'FAILED' && Boolean(material.fileId)
+  return material.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED && Boolean(material.fileId)
 }
 
 function canPreviewMaterialFile(material: ArchiveVolumeMaterialResponse): boolean {
@@ -554,9 +614,9 @@ async function handleDownloadMaterial(material: ArchiveVolumeMaterialResponse): 
 
 function canViewMaterialOcr(material: ArchiveVolumeMaterialResponse): boolean {
   return (
-    material.ocrStatus === 'COMPLETED'
-    || material.ocrStatus === 'FAILED'
-    || material.ocrStatus === 'RUNNING'
+    material.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED ||
+    material.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED ||
+    material.ocrStatus === ArchiveMaterialOcrStatusCode.RUNNING
   )
 }
 
@@ -572,6 +632,7 @@ function openTagModal(material: ArchiveVolumeMaterialResponse): void {
 
 function emitRefreshed(options?: { silent?: boolean }) {
   emit('refreshed', options)
+  void reloadMaterialsAndStats()
 }
 
 function confirmRetryMaterialOcr(material: ArchiveVolumeMaterialResponse): void {
@@ -595,10 +656,8 @@ function confirmRetryMaterialOcr(material: ArchiveVolumeMaterialResponse): void 
 
 let materialOcrPollTimer: ReturnType<typeof setInterval> | null = null
 
-const shouldPollMaterialOcr = computed(() =>
-  (props.detail.materials ?? []).some(
-    (item) => item.ocrStatus === 'PENDING' || item.ocrStatus === 'RUNNING',
-  ),
+const shouldPollMaterialOcr = computed(
+  () => (materialStats.value?.ocrOverview.activeOcrCount ?? 0) > 0,
 )
 
 watch(
@@ -622,6 +681,26 @@ watch(
   { immediate: true },
 )
 
+onMounted(() => {
+  void reloadMaterialsAndStats()
+})
+
+watch(
+  () => props.volumeId,
+  () => {
+    pageNum.value = 1
+    void reloadMaterialsAndStats()
+  },
+)
+
+watch(
+  () => props.selectedCatalogKeys[0],
+  () => {
+    pageNum.value = 1
+    void loadMaterials()
+  },
+)
+
 onUnmounted(() => {
   if (materialOcrPollTimer) {
     clearInterval(materialOcrPollTimer)
@@ -641,15 +720,12 @@ function resolveSelectedCatalogContext(): {
   if (parsedMaterialType) {
     return { materialType: parsedMaterialType }
   }
-  const material = props.detail.materials.find((item) =>
-    archiveMaterialBelongsToCatalogKey(item, key),
-  )
   const missing = props.detail.latestIntegrityCheck?.missingItems?.find((item) =>
     archiveMissingItemTargetsCatalogKey(item, key),
   )
   return {
     catalogCode: key,
-    materialType: material?.materialType ?? missing?.materialType,
+    materialType: missing?.materialType,
   }
 }
 
@@ -681,13 +757,10 @@ function resolveArchiveScanQuery(): Record<string, string> | null {
     query.materialType = key
     return query
   }
-  const material = props.detail.materials.find((item) =>
-    archiveMaterialBelongsToCatalogKey(item, key),
-  )
   const missing = props.detail.latestIntegrityCheck?.missingItems?.find((item) =>
     archiveMissingItemTargetsCatalogKey(item, key),
   )
-  const resolvedMaterialType = material?.materialType ?? missing?.materialType
+  const resolvedMaterialType = missing?.materialType
   if (!resolvedMaterialType) {
     return null
   }

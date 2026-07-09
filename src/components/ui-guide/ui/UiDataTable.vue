@@ -89,9 +89,6 @@ import type {
   UiDataTableEmptyKind,
   UiDataTablePaginationMode,
 } from './data-table'
-import { useBreakpoints } from '@vueuse/core'
-import { computed, getCurrentInstance, ref, useAttrs, useSlots, watch } from 'vue'
-import UiCard from './Card.vue'
 import {
   filterResponsiveDataTableColumns,
   normalizeDataTableColumns,
@@ -100,6 +97,9 @@ import {
   UI_DATA_TABLE_EMPTY_PRESETS,
   UI_DATA_TABLE_VIEWPORT,
 } from './data-table'
+import { useBreakpoints } from '@vueuse/core'
+import { computed, getCurrentInstance, ref, useAttrs, useSlots, watch } from 'vue'
+import UiCard from './Card.vue'
 import UiEmpty from './Empty.vue'
 import UiPagination from './Pagination.vue'
 import { resolvePopupContainer } from './popup-container'
@@ -137,12 +137,14 @@ const props = withDefaults(
     emptyKind?: UiDataTableEmptyKind
     emptyTitle?: string
     emptyDescription?: string
-    /** 启用粘性表头，需配合 scrollY */
+    /** 粘性表头：CSS sticky，不强制 scroll.y，避免与 scroll.x 冲突 */
     stickyHeader?: boolean
     /** 表格纵向滚动高度，stickyHeader 默认 480 */
     scrollY?: number | string
     /** 斑马纹行，适合高密度明细表 */
     zebra?: boolean
+    /** 行级可点击指针（配合 customRow 整行跳转） */
+    rowClickable?: boolean
     /** 窄视口自动隐藏低优先级列并在操作列启用触控友好布局 */
     responsiveColumns?: boolean
     /** 透传 a-table customRow，用于行级拖拽等交互 */
@@ -170,16 +172,17 @@ const props = withDefaults(
     emptyKind: 'default',
     emptyTitle: '',
     emptyDescription: '',
-    stickyHeader: false,
+    stickyHeader: true,
     scrollY: undefined,
-    zebra: false,
+    zebra: true,
+    rowClickable: false,
     responsiveColumns: true,
   },
 )
 
 const emit = defineEmits<{
   (e: 'change', changeEvent: UiDataTableChangeEvent): void
-  (e: 'page-change', pageEvent: { current: number, pageSize: number }): void
+  (e: 'page-change', pageEvent: { current: number; pageSize: number }): void
   (e: 'selection-change', rowKeys: Key[]): void
 }>()
 
@@ -198,16 +201,6 @@ const isLgViewport = breakpoints.greaterOrEqual('lg')
 const isCompactViewport = computed(() => props.responsiveColumns && !isMdViewport.value)
 
 const rootClass = computed(() => attrs.class)
-
-const rootClasses = computed(() => {
-  return [
-    rootClass.value,
-    { 'ui-data-table--flat': props.flat },
-    { 'ui-data-table--zebra': props.zebra },
-    { 'ui-data-table--compact-viewport': isCompactViewport.value },
-    { 'ui-data-table--pinned-columns': hasPinnedColumns.value },
-  ]
-})
 
 const passthroughTableAttrs = computed(() => {
   const {
@@ -284,9 +277,6 @@ const resolvedScroll = computed<TableProps['scroll']>(() => {
   if (props.scrollY != null) {
     merged.y = props.scrollY
   }
-  if (props.stickyHeader && merged.y == null) {
-    merged.y = 480
-  }
   const autoScrollX = resolveDataTableScrollX(resolvedColumns.value)
   if (merged.x == null && autoScrollX != null) {
     merged.x = autoScrollX
@@ -300,14 +290,29 @@ const tableLayout = computed<TableProps['tableLayout']>(() => {
 
 const hasPinnedColumns = computed(() => resolvedScroll.value?.x != null)
 
+const hasScrollY = computed(() => resolvedScroll.value?.y != null)
+
+const rootClasses = computed(() => {
+  return [
+    rootClass.value,
+    { 'ui-data-table--flat': props.flat },
+    { 'ui-data-table--zebra': props.zebra },
+    { 'ui-data-table--row-clickable': props.rowClickable || !!props.customRow },
+    { 'ui-data-table--sticky-header': props.stickyHeader },
+    { 'ui-data-table--compact-viewport': isCompactViewport.value },
+    { 'ui-data-table--pinned-columns': hasPinnedColumns.value },
+    { 'ui-data-table--has-scroll-y': hasScrollY.value },
+  ]
+})
+
 const effectiveShowPagination = computed(() => {
   if (!props.showPagination || props.paginationMode === 'none') {
     return false
   }
   if (
-    props.paginationMode === 'server'
-    && effectiveTotal.value > pageSize.value
-    && !hasPageChangeListener.value
+    props.paginationMode === 'server' &&
+    effectiveTotal.value > pageSize.value &&
+    !hasPageChangeListener.value
   ) {
     return false
   }
@@ -316,11 +321,11 @@ const effectiveShowPagination = computed(() => {
 
 const hasTopBar = computed(() => {
   return (
-    !!props.title
-    || !!props.description
-    || !!props.sortedInfo
-    || !!slots['toolbar-left']
-    || !!slots['toolbar-right']
+    !!props.title ||
+    !!props.description ||
+    !!props.sortedInfo ||
+    !!slots['toolbar-left'] ||
+    !!slots['toolbar-right']
   )
 })
 
@@ -369,8 +374,8 @@ watch(
     }
     missingPageChangeWarned = true
     console.warn(
-      '[UiDataTable] paginationMode="server" 且 total 大于 pageSize，但未监听 @page-change；分页栏已自动隐藏。'
-      + '请绑定 @page-change 走服务端分页，或改用 paginationMode="client" / "none"。',
+      '[UiDataTable] paginationMode="server" 且 total 大于 pageSize，但未监听 @page-change；分页栏已自动隐藏。' +
+        '请绑定 @page-change 走服务端分页，或改用 paginationMode="client" / "none"。',
     )
   },
   { immediate: true },
@@ -447,17 +452,55 @@ const handlePageChange = (page: number, size: number) => {
 }
 
 .ui-data-table__table-wrap {
-  overflow: auto;
+  min-width: 0;
+  width: 100%;
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
 }
 
 .ui-data-table__table-wrap--pinned {
-  overflow: hidden;
+  min-width: 0;
 }
 
-.ui-data-table--pinned-columns .ui-data-table__table :deep(.ant-table-content) {
-  overflow: auto hidden;
+.ui-data-table--flat .ui-data-table__table-wrap {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.ui-data-table--flat .ui-data-table__table-wrap:not(.ui-data-table__table-wrap--pinned) {
+  overflow-x: auto;
+}
+
+/* 有 fixed 列时横向滚动交给 Ant Table 内部 .ant-table-content，外层不得再设 overflow */
+.ui-data-table--pinned-columns .ui-data-table__table-wrap {
+  overflow: visible;
+}
+
+.ui-data-table--sticky-header:not(.ui-data-table--pinned-columns) .ui-data-table__table-wrap {
+  overflow: auto;
+  max-height: min(70vh, 640px);
+}
+
+.ui-data-table--sticky-header:not(.ui-data-table--pinned-columns)
+  .ui-data-table__table
+  :deep(.ant-table-thead > tr > th) {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+}
+
+.ui-data-table--sticky-header:not(.ui-data-table--pinned-columns)
+  .ui-data-table__table
+  :deep(.ant-table-thead > tr > th.ant-table-cell-fix-left),
+.ui-data-table--sticky-header:not(.ui-data-table--pinned-columns)
+  .ui-data-table__table
+  :deep(.ant-table-thead > tr > th.ant-table-cell-fix-right) {
+  z-index: 5;
+}
+
+.ui-data-table--flat .ui-data-table__flat-wrap {
+  background: transparent;
 }
 
 .ui-data-table--flat .ui-data-table__table-wrap :deep(.ant-table-placeholder .ui-empty--sm) {
@@ -465,8 +508,41 @@ const handlePageChange = (page: number, size: number) => {
   padding-bottom: 20px;
 }
 
-.ui-data-table__table :deep(.ant-table-body) {
+.ui-data-table--has-scroll-y .ui-data-table__table :deep(.ant-table-body) {
   overflow: auto !important;
+}
+
+.ui-data-table--flat .ui-data-table__top {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 0 12px;
+  justify-content: space-between;
+  margin-bottom: 0;
+}
+
+.ui-data-table--flat .ui-data-table__meta {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+}
+
+.ui-data-table--flat .ui-data-table__toolbar-left {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  margin-top: 0;
+  gap: 8px;
+}
+
+.ui-data-table--flat .ui-data-table__toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .ui-data-table__table :deep(.ant-table) {
@@ -567,7 +643,7 @@ const handlePageChange = (page: number, size: number) => {
 
 .ui-data-table__table :deep(.ant-table-tbody > tr:hover > td.ant-table-cell-fix-left),
 .ui-data-table__table :deep(.ant-table-tbody > tr:hover > td.ant-table-cell-fix-right) {
-  background: rgb(239 246 255 / 68%) !important;
+  background: var(--dp-table-row-hover-bg) !important;
 }
 
 .ui-data-table__table
@@ -600,14 +676,50 @@ const handlePageChange = (page: number, size: number) => {
   overflow: hidden !important;
 }
 
+.ui-data-table--zebra
+  .ui-data-table__table
+  :deep(
+    .ant-table-tbody > tr:nth-child(even):not(.ant-table-placeholder) > td.ant-table-cell-fix-left
+  ),
+.ui-data-table--zebra
+  .ui-data-table__table
+  :deep(
+    .ant-table-tbody > tr:nth-child(even):not(.ant-table-placeholder) > td.ant-table-cell-fix-right
+  ) {
+  background: var(--dp-gray-50);
+}
+
 .ui-data-table__table :deep(.ant-table-tbody > tr:hover > td) {
-  background: rgb(239 246 255 / 68%) !important;
+  background: var(--dp-table-row-hover-bg) !important;
 }
 
 .ui-data-table--zebra
   .ui-data-table__table
   :deep(.ant-table-tbody > tr:nth-child(even):not(.ant-table-placeholder):hover > td) {
-  background: var(--dp-blue-50) !important;
+  background: var(--dp-table-row-hover-bg) !important;
+}
+
+.ui-data-table--zebra
+  .ui-data-table__table
+  :deep(
+    .ant-table-tbody
+      > tr:nth-child(even):not(.ant-table-placeholder):hover
+      > td.ant-table-cell-fix-left
+  ),
+.ui-data-table--zebra
+  .ui-data-table__table
+  :deep(
+    .ant-table-tbody
+      > tr:nth-child(even):not(.ant-table-placeholder):hover
+      > td.ant-table-cell-fix-right
+  ) {
+  background: var(--dp-gray-100) !important;
+}
+
+.ui-data-table--row-clickable
+  .ui-data-table__table
+  :deep(.ant-table-tbody > tr:not(.ant-table-placeholder):not(.ant-table-measure-row)) {
+  cursor: pointer;
 }
 
 .ui-data-table__table :deep(.ant-table-tbody > tr.ant-table-row-selected > td) {

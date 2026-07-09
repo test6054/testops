@@ -1,5 +1,7 @@
-import type { ArchiveMaterialSubmissionStatusCode } from '@/apis/mark/archive-volume'
-import { ArchiveMaterialSubmissionStatusDescription } from '@/apis/mark/archive-volume'
+import {
+  ArchiveMaterialSubmissionStatusCode,
+  ArchiveMaterialSubmissionStatusDescription
+} from '@/apis/mark/archive-volume'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 /** 原型 material-status-icon 三态：就绪 / 缺件 / 待处理。 */
@@ -18,10 +20,10 @@ export function buildArchiveMaterialStatusView(
   if (!status) {
     return { variant: 'pending', icon: '…', label: '待处理' }
   }
-  if (status === 'SUBMITTED' || status === 'DELAY_ALLOWED') {
+  if (status === ArchiveMaterialSubmissionStatusCode.SUBMITTED || status === ArchiveMaterialSubmissionStatusCode.DELAY_ALLOWED) {
     return { variant: 'ok', icon: '✓', label: '已就绪' }
   }
-  if (status === 'MISSING' || status === 'OVERDUE') {
+  if (status === ArchiveMaterialSubmissionStatusCode.MISSING || status === ArchiveMaterialSubmissionStatusCode.OVERDUE) {
     return { variant: 'missing', icon: '…', label: '缺件' }
   }
   return {
@@ -37,6 +39,7 @@ export function countArchiveMaterialsReady(
 ): number {
   return materials.filter(
     (item) =>
-      item.submissionStatus === 'SUBMITTED' || item.submissionStatus === 'DELAY_ALLOWED',
+      item.submissionStatus === ArchiveMaterialSubmissionStatusCode.SUBMITTED
+      || item.submissionStatus === ArchiveMaterialSubmissionStatusCode.DELAY_ALLOWED,
   ).length
 }

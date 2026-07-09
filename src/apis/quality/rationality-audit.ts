@@ -3,6 +3,7 @@
  * 后端 Controller: AssessmentRationalityAuditController
  */
 import type { AssessmentRationalityAuditStatusCode } from './types'
+import type { PageResult, QueryDto } from '@/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
@@ -10,6 +11,11 @@ export interface RationalityAuditCourseLedgerRequest {
   trainingPlanId: string
   schoolYear: string
   semester: SemesterCode
+}
+
+export interface RationalityAuditCourseLedgerQueryRequest extends QueryDto, RationalityAuditCourseLedgerRequest {
+  auditStatus?: AssessmentRationalityAuditStatusCode
+  keyword?: string
 }
 
 export interface RationalityAuditSaveRequest {
@@ -55,11 +61,6 @@ export interface RationalityAuditCourseLedgerOverviewVO {
   coverageRate: number
 }
 
-export interface RationalityAuditCourseLedgerVO {
-  overview: RationalityAuditCourseLedgerOverviewVO
-  items: RationalityAuditCourseLedgerItemVO[]
-}
-
 /** POST /api/quality/rationality-audits/create */
 export function createRationalityAudit(request: RationalityAuditSaveRequest): Promise<string> {
   return http.post<string>('/api/quality/rationality-audits/create', request)
@@ -70,9 +71,22 @@ export function updateRationalityAudit(request: RationalityAuditSaveRequest): Pr
   return http.post<void>('/api/quality/rationality-audits/update', request)
 }
 
-/** POST /api/quality/rationality-audits/course-ledger */
-export function getRationalityAuditCourseLedger(
+/** POST /api/quality/rationality-audits/course-ledger/overview */
+export function getRationalityAuditCourseLedgerOverview(
   request: RationalityAuditCourseLedgerRequest,
-): Promise<RationalityAuditCourseLedgerVO> {
-  return http.post<RationalityAuditCourseLedgerVO>('/api/quality/rationality-audits/course-ledger', request)
+): Promise<RationalityAuditCourseLedgerOverviewVO> {
+  return http.post<RationalityAuditCourseLedgerOverviewVO>(
+    '/api/quality/rationality-audits/course-ledger/overview',
+    request,
+  )
+}
+
+/** POST /api/quality/rationality-audits/course-ledger/page */
+export function pageRationalityAuditCourseLedger(
+  request: RationalityAuditCourseLedgerQueryRequest,
+): Promise<PageResult<RationalityAuditCourseLedgerItemVO>> {
+  return http.post<PageResult<RationalityAuditCourseLedgerItemVO>>(
+    '/api/quality/rationality-audits/course-ledger/page',
+    request,
+  )
 }

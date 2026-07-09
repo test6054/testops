@@ -263,15 +263,6 @@ import type {
   InboxMessageListItemDTO,
   PublishedSystemAnnouncementResponse,
 } from '@/apis/edu/message'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { UserDto } from '@/types/api-types.d'
-import BellOutlined from '@ant-design/icons-vue/BellOutlined'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
-import { storeToRefs } from 'pinia'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   confirmReadAnnouncement,
   getInboxMessages,
@@ -284,6 +275,15 @@ import {
   MessageOperationTypeEnum,
   updateMessageStatus,
 } from '@/apis/edu/message'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { UserDto } from '@/types/api-types.d'
+import BellOutlined from '@ant-design/icons-vue/BellOutlined'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { message } from 'ant-design-vue'
+import { storeToRefs } from 'pinia'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -317,7 +317,7 @@ const activeTab = ref<'inbox' | 'announcement'>('inbox')
 // ─── 站内信 ──────────────────────────────────
 const messages = ref<InboxMessageListItemDTO[]>([])
 const loadingMessages = ref(false)
-const inboxFilter = reactive<{ keyword?: string, isRead?: string }>({})
+const inboxFilter = reactive<{ keyword?: string; isRead?: string }>({})
 const messagePageState = reactive({ pageNum: 1, pageSize: 10, total: 0 })
 const messagePagination = computed(() => ({
   current: messagePageState.pageNum,
@@ -620,6 +620,7 @@ function formatMessageType(type: NotificationTypeEnum): string {
     [NotificationTypeEnum.EXAM_SCAN_COMPLETED]: '试卷扫描完成',
     [NotificationTypeEnum.EXAM_REVIEW_PENDING]: '试卷待复核',
     [NotificationTypeEnum.EXAM_SCORE_PUBLISHED]: '试卷成绩发布',
+    [NotificationTypeEnum.EXAM_SCORE_WITHDRAWN]: '试卷成绩撤回',
     [NotificationTypeEnum.EXAM_EXPORT_COMPLETED]: '试卷导出完成',
     [NotificationTypeEnum.EXAM_GRADE_REVIEW_UPDATED]: '试卷复核处理',
     [NotificationTypeEnum.QUALITY_AI_TASK_COMPLETED]: '教学质量评价 AI 任务完成',

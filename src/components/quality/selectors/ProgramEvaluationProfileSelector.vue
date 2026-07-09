@@ -1,29 +1,28 @@
 <!--
-  专业评价口径选择器
-  数据源：POST /api/quality/program-evaluation-profiles/page
+  专业评价口径选择�?  数据源：POST /api/quality/program-evaluation-profiles/page
   - 必传 programId 时按专业过滤；不传时返回当前租户全部启用口径
-  - 显示「认证类型 + 评价方法 + 评价周期」三段语义，便于教师识别
+  - 显示「认证类�?+ 评价方法 + 评价周期」三段语义，便于教师识别
 -->
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ProgramEvaluationProfileVO } from '@/apis/quality/program-evaluation-profile'
-import type { AccreditationTypeCode, EvaluationMethodCode } from '@/apis/quality/types'
-import { onMounted, ref, watch } from 'vue'
 import { programEvaluationProfileApi } from '@/apis/quality/program-evaluation-profile'
+import type { AccreditationTypeCode, EvaluationMethodCode } from '@/apis/quality/types'
 import { AccreditationTypeDescription, EvaluationMethodDescription } from '@/apis/quality/types'
+import { onMounted, ref, watch } from 'vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import { requireAllPages } from './page-contract'
+import { loadSelectorFirstPage, QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS } from './page-contract'
 
 interface Props {
   value?: string | null
-  /** 按专业大类过滤 */
+  /** 按专业大类过�? */
   programId?: string | null
   placeholder?: string
   allowClear?: boolean
   disabled?: boolean
   width?: string | number
-  /** 是否仅显示启用 */
+  /** 是否仅显示启�? */
   onlyEnabled?: boolean
 }
 
@@ -37,11 +36,12 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: ProgramEvaluationProfileVO]
+  change: [value: string | null, option?: ProgramEvaluationProfileVO]
 }>()
 
 const options = ref<ProgramEvaluationProfileVO[]>([])
 const loading = ref(false)
+const searchText = ref('')
 const internalValue = ref<string | undefined>(props.value ?? undefined)
 
 watch(
@@ -56,17 +56,16 @@ watch(
   () => loadOptions(),
 )
 
-async function loadOptions() {
+async function loadOptions(keyword?: string) {
   loading.value = true
   try {
-    const all = await requireAllPages(
-      (pageNum) =>
-        programEvaluationProfileApi.page({
-          pageNum,
-          pageSize: 100,
-          enabled: props.onlyEnabled ? true : undefined,
-        }),
-      '专业评价口径',
+    const all = await loadSelectorFirstPage((pageNum, pageSize) =>
+      programEvaluationProfileApi.page({
+        pageNum,
+        pageSize,
+        enabled: props.onlyEnabled ? true : undefined,
+        keyword: (keyword ?? searchText.value)?.trim() || undefined,
+      }),
     )
     options.value = props.programId ? all.filter((p) => p.programId === props.programId) : all
   } catch (e) {
@@ -74,6 +73,13 @@ async function loadOptions() {
   } finally {
     loading.value = false
   }
+}
+
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
+function handleSearch(val: string) {
+  searchText.value = val
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => loadOptions(val), QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS)
 }
 
 function handleChange(val: SelectValue) {
@@ -108,7 +114,8 @@ defineExpose({ reload: loadOptions })
     :loading="loading"
     :style="{ width: typeof width === 'number' ? `${width}px` : width }"
     show-search
-    option-filter-prop="label"
+    :filter-option="false"
+    @search="handleSearch"
     @change="handleChange"
   >
     <a-select-option

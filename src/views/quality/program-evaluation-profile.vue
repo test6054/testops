@@ -7,17 +7,18 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 配置某专业采用的认证标准、评价方法、评价周期、样本范围、责任链与归档策略。
  */
 import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import type {
   ProgramEvaluationProfileQueryRequest,
   ProgramEvaluationProfileSaveRequest,
+  ProgramEvaluationProfileSignalSummaryVO,
   ProgramEvaluationProfileVO,
 } from '@/apis/quality/program-evaluation-profile'
+import { programEvaluationProfileApi } from '@/apis/quality/program-evaluation-profile'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
-import { programEvaluationProfileApi } from '@/apis/quality/program-evaluation-profile'
 import {
   AccreditationTypeCode,
   AccreditationTypeDescription,
@@ -30,6 +31,10 @@ import {
   EvaluationMethodDescription,
 } from '@/apis/quality/types'
 import { ProgramSelector } from '@/components/quality/selectors'
+import {
+  QUALITY_SELECTOR_PAGE_SIZE,
+  QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS,
+} from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -42,19 +47,18 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
-import { readAllPages } from '@/utils/page-result'
+import { showUserError } from '@/utils/error-handler'
+
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-const ACCREDITATION_STANDARD_OPTION_PAGE_SIZE = 100
-
 const columns: ColumnsType = [
-  { title: '专业', dataIndex: 'programName', key: 'programName' },
+  { title: '专业', dataIndex: 'programName', key: 'programName', fixed: 'left' },
   { title: '认证类型', dataIndex: 'accreditationType', key: 'accreditationType', width: 200 },
   { title: '级别', dataIndex: 'accreditationLevel', key: 'accreditationLevel', width: 100 },
   { title: '评价方法', dataIndex: 'evaluationMethod', key: 'evaluationMethod', width: 180 },
   { title: '评价周期', dataIndex: 'evaluationCycle', key: 'evaluationCycle', width: 120 },
   { title: '启用', dataIndex: 'enabled', key: 'enabled', width: 80 },
-  { title: '操作', key: 'actions', width: 160, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 160 },
 ]
 
 const list = ref<ProgramEvaluationProfileVO[]>([])
@@ -111,8 +115,8 @@ const filterFields: FilterField[] = [
   },
 ]
 
-const evaluationCycleOptions: Array<{ value: EvaluationCycleCode, label: string }>
-  = ALL_EVALUATION_CYCLE_CODES.map((value) => ({
+const evaluationCycleOptions: Array<{ value: EvaluationCycleCode; label: string }> =
+  ALL_EVALUATION_CYCLE_CODES.map((value) => ({
     value,
     label: strictEnumLabel(EvaluationCycleDescription, value, '评价周期'),
   }))
@@ -146,14 +150,25 @@ const editor = reactive<ProgramEvaluationProfileSaveRequest>({
 })
 const submitting = ref(false)
 
+function buildProgramProfileListQuery(): ProgramEvaluationProfileQueryRequest {
+  return {
+    ...query,
+    keyword: query.keyword?.trim() || undefined,
+  }
+}
+
+const signalSummary = ref<ProgramEvaluationProfileSignalSummaryVO | null>(null)
+
 async function loadList() {
   loading.value = true
   try {
-    const page = await programEvaluationProfileApi.page({
-      ...query,
-      keyword: query.keyword?.trim() || undefined,
-    })
+    const listQuery = buildProgramProfileListQuery()
+    const [page, summary] = await Promise.all([
+      programEvaluationProfileApi.page(listQuery),
+      programEvaluationProfileApi.signalSummary(listQuery),
+    ])
     list.value = page.list
+    signalSummary.value = summary
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
     total.value = page.total
@@ -161,6 +176,9 @@ async function loadList() {
       query.pageNum -= 1
       await loadList()
     }
+  } catch (error) {
+    signalSummary.value = null
+    showUserError(error, '专业评价口径加载失败')
   } finally {
     loading.value = false
   }
@@ -178,27 +196,27 @@ function evaluationCycleLabel(value: EvaluationCycleCode): string {
   return strictEnumLabel(EvaluationCycleDescription, value, '评价周期')
 }
 
-const enabledCount = computed(() => list.value.filter((item) => item.enabled).length)
-const disabledCount = computed(() => list.value.filter((item) => !item.enabled).length)
-
 const signals = computed<SignalMetric[]>(() => {
-  const engineering = list.value.filter(
-    (item) => item.accreditationType === AccreditationTypeCode.ENGINEERING_ACCREDITATION,
-  ).length
+  const summary = signalSummary.value
+  if (!summary) {
+    return []
+  }
+  const enabledCount = summary.enabledCount ?? 0
+  const disabledCount = summary.disabledCount ?? 0
+  const engineering = summary.engineeringAccreditationCount ?? 0
   return [
-    { key: 'overall', label: '总口径', value: total.value, tone: 'gray' },
-    { key: 'page', label: '本页', value: list.value.length, tone: 'blue' },
+    { key: 'overall', label: '总口径', value: summary.totalCount ?? 0, tone: 'gray' },
     {
       key: 'enabled',
       label: '启用',
-      value: enabledCount.value,
-      tone: enabledCount.value > 0 ? 'green' : 'gray',
+      value: enabledCount,
+      tone: enabledCount > 0 ? 'green' : 'gray',
     },
     {
       key: 'disabled',
       label: '停用',
-      value: disabledCount.value,
-      tone: disabledCount.value > 0 ? 'orange' : 'gray',
+      value: disabledCount,
+      tone: disabledCount > 0 ? 'orange' : 'gray',
     },
     {
       key: 'engineering',
@@ -209,19 +227,26 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
-async function loadDicts() {
-  standards.value = await readAllPages(
-    (pageNum) =>
-      accreditationStandardApi.page({
-        pageNum,
-        pageSize: ACCREDITATION_STANDARD_OPTION_PAGE_SIZE,
-        enabled: true,
-      }),
-    '认证标准列表加载失败，请稍后重试',
+async function loadDicts(keyword?: string) {
+  const page = await accreditationStandardApi.page({
+    pageNum: 1,
+    pageSize: QUALITY_SELECTOR_PAGE_SIZE,
+    enabled: true,
+    keyword: keyword?.trim() || undefined,
+  })
+  standards.value = page.list
+}
+
+let standardDictSearchTimer: ReturnType<typeof setTimeout> | null = null
+function handleStandardDictSearch(keyword: string) {
+  if (standardDictSearchTimer) clearTimeout(standardDictSearchTimer)
+  standardDictSearchTimer = setTimeout(
+    () => void loadDicts(keyword),
+    QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS,
   )
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -427,7 +452,6 @@ onActivated(() => {
       <UiEmpty v-if="!loading && total === 0" description="未配置专业评价口径" />
       <UiDataTable
         v-else
-        class="student-detail-table__data-table"
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
         :columns="columns"
@@ -514,7 +538,8 @@ onActivated(() => {
             v-model:value="editor.standardId"
             :allow-clear="editorMode === 'create'"
             show-search
-            option-filter-prop="label"
+            :filter-option="false"
+            @search="handleStandardDictSearch"
           >
             <a-select-option
               v-for="s in standards"

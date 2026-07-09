@@ -1,4 +1,5 @@
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { PageResult, QueryDto } from '@/types'
 import type {
   SelfAssessmentSectionEvidenceRefTypeCode,
 } from '@/types/enums/self-assessment-section-evidence-ref-type-enum'
@@ -70,8 +71,12 @@ export interface SelfAssessmentSectionSaveRequest {
   evidenceRefs?: SelfAssessmentSectionEvidenceRefItem[]
 }
 
+export interface SelfAssessmentSectionQueryRequest extends QueryDto {
+  accreditationCycleId: string
+}
+
 export const selfAssessmentSectionApi = {
-  listByCycle: (accreditationCycleId: string) =>
-    http.post<SelfAssessmentSectionVO[]>(`${BASE}/list-by-cycle`, { id: accreditationCycleId }),
+  page: (data: SelfAssessmentSectionQueryRequest) =>
+    http.post<PageResult<SelfAssessmentSectionVO>>(`${BASE}/page`, data),
   save: (data: SelfAssessmentSectionSaveRequest) => http.post<void>(`${BASE}/save`, data),
 }

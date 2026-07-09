@@ -40,6 +40,7 @@
         :empty-description="props.emptyDescription"
         @page-change="handlePageChange"
         @selection-change="handleSelectionChange"
+        :sticky-header="false"
       >
         <template v-for="name in forwardedTableSlots" :key="name" #[name]="slotProps">
           <slot :name="name" v-bind="slotProps" />
@@ -125,7 +126,7 @@ const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
   (e: 'search', value: Record<string, unknown>): void
   (e: 'reset', value: Record<string, unknown>): void
-  (e: 'page-change', pageEvent: { current: number, pageSize: number }): void
+  (e: 'page-change', pageEvent: { current: number; pageSize: number }): void
   (e: 'selection-change', rowKeys: Key[]): void
   (e: 'confirm'): void
   (e: 'cancel'): void
@@ -142,7 +143,7 @@ const forwardedTableSlots = computed(() => {
   return Object.keys(slots).filter((name) => !reserved.includes(name))
 })
 
-const handlePageChange = (pageEvent: { current: number, pageSize: number }) => {
+const handlePageChange = (pageEvent: { current: number; pageSize: number }) => {
   emit('page-change', pageEvent)
 }
 

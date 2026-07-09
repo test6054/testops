@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioTeacherIdentityTypeCode } from '@/apis/portfolio/enums'
+import { PortfolioTeacherIdentityTypeDescription } from '@/apis/portfolio/enums'
 import type {
   PortfolioDeptStructureStatVO,
   PortfolioTeacherOneTableSummaryVO,
 } from '@/apis/portfolio/teacher'
+import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import { message } from 'ant-design-vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { PortfolioTeacherIdentityTypeDescription } from '@/apis/portfolio/enums'
-import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -35,8 +35,13 @@ const deptStats = ref<PortfolioDeptStructureStatVO | null>(null)
 
 const categoryColumns: ColumnsType = [
   { title: '档案分类', dataIndex: 'categoryName', key: 'categoryName' },
-  { title: '记录数', dataIndex: 'recordCount', key: 'recordCount', width: 88 },
+  { title: '记录数', dataIndex: 'recordCount', key: 'recordCount', width: 88, align: 'right' },
   { title: '正式档案', dataIndex: 'officialRecordId', key: 'officialRecordId', width: 120 },
+]
+
+const deptStructureColumns: ColumnsType = [
+  { title: '院系', dataIndex: 'departmentName', key: 'departmentName' },
+  { title: '人数', dataIndex: 'teacherCount', key: 'teacherCount', width: 88, align: 'right' },
 ]
 
 async function loadSummary() {
@@ -168,20 +173,25 @@ usePortfolioScopedLoader(
           :columns="categoryColumns"
           :data-source="summary.categories"
           row-key="categoryId"
-          :pagination="false"
+          flat
+          pagination-mode="none"
+          :show-pagination="false"
+          :sticky-header="false"
+          :total="summary.categories.length"
         />
       </UiCard>
       <UiCard v-if="deptStats" title="院系师资结构" style="margin-top: 16px">
         <p class="dept-total">教师总数 {{ deptStats.totalTeacherCount }}</p>
-        <a-table
-          size="small"
-          :pagination="false"
+        <UiDataTable
+          :columns="deptStructureColumns"
           :data-source="deptStats.departments"
           row-key="departmentId"
-          :columns="[
-            { title: '院系', dataIndex: 'departmentName', key: 'departmentName' },
-            { title: '人数', dataIndex: 'teacherCount', key: 'teacherCount', width: 88 },
-          ]"
+          size="small"
+          flat
+          pagination-mode="none"
+          :show-pagination="false"
+          :sticky-header="false"
+          :total="deptStats.departments.length"
         />
       </UiCard>
     </a-spin>

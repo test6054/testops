@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
+  QualityStatusCountsResponse,
   ReportEditorForm,
   ReportQueryRequest,
   ReportSaveRequest,
   ReportVO,
 } from '@/apis/quality/report'
+import { reportApi } from '@/apis/quality/report'
 /**
  * 质量评价 - 报告生成与确认台
  *
@@ -28,7 +30,6 @@ import { message } from 'ant-design-vue'
 import Modal from 'ant-design-vue/es/modal'
 import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
-import { reportApi } from '@/apis/quality/report'
 import {
   ALL_REPORT_STATUS_CODES,
   ALL_REPORT_TYPE_CODES,
@@ -152,13 +153,13 @@ const detailVisible = ref(false)
 const detailRecord = ref<ReportVO | null>(null)
 const detailLoading = ref(false)
 
-const reportTypeOptions: Array<{ value: ReportTypeCode, label: string }>
-  = ALL_REPORT_TYPE_CODES.map((value) => ({
+const reportTypeOptions: Array<{ value: ReportTypeCode; label: string }> =
+  ALL_REPORT_TYPE_CODES.map((value) => ({
     value,
     label: ReportTypeDescription[value],
   }))
-const statusOptions: Array<{ value: ReportStatusCode, label: string }>
-  = ALL_REPORT_STATUS_CODES.map((value) => ({
+const statusOptions: Array<{ value: ReportStatusCode; label: string }> =
+  ALL_REPORT_STATUS_CODES.map((value) => ({
     value,
     label: strictEnumLabel(ReportStatusDescription, value, '报告状态'),
   }))
@@ -234,20 +235,31 @@ const transitMap: Record<ReportStatusCode, ReportStatusCode[]> = {
   [ReportStatusCode.ARCHIVED]: [],
 }
 
+function buildReportListQuery(): ReportQueryRequest {
+  return {
+    ...query,
+    trainingPlanId: qualityStore.currentTrainingPlanId || undefined,
+    qualityCourseId: query.qualityCourseId || undefined,
+    schoolYear: query.schoolYear || undefined,
+    semester: query.semester || undefined,
+    reportType: query.reportType || undefined,
+    status: query.status || undefined,
+    keyword: query.keyword?.trim() || undefined,
+  }
+}
+
+const reportStatusCounts = ref<QualityStatusCountsResponse | null>(null)
+
 async function loadList() {
   loading.value = true
   try {
-    const page = await reportApi.page({
-      ...query,
-      trainingPlanId: qualityStore.currentTrainingPlanId || undefined,
-      qualityCourseId: query.qualityCourseId || undefined,
-      schoolYear: query.schoolYear || undefined,
-      semester: query.semester || undefined,
-      reportType: query.reportType || undefined,
-      status: query.status || undefined,
-      keyword: query.keyword?.trim() || undefined,
-    })
+    const listQuery = buildReportListQuery()
+    const [page, counts] = await Promise.all([
+      reportApi.page(listQuery),
+      reportApi.statusCounts(listQuery),
+    ])
     list.value = page.list
+    reportStatusCounts.value = counts
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
     total.value = page.total
@@ -258,6 +270,7 @@ async function loadList() {
     }
     resumeExportPollingForList()
   } catch (error) {
+    reportStatusCounts.value = null
     showUserError(error, '质量报告加载失败')
   } finally {
     loading.value = false
@@ -274,21 +287,21 @@ useQualityScopedLoader(handleScopeChange, {
   reloadOnActivated: false,
 })
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
 }
 
 const columns: ColumnsType = [
-  { title: '标题', dataIndex: 'title', key: 'title' },
+  { title: '标题', dataIndex: 'title', key: 'title', fixed: 'left' },
   { title: '类型', dataIndex: 'reportType', key: 'reportType', width: 120 },
   { title: '关联课程', key: 'qualityCourseRef', width: 120 },
   { title: '达成结果', key: 'achievementResultRef', width: 140 },
   { title: '学年 / 学期', key: 'period', width: 120 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 110 },
   { title: '附件 / 导出', key: 'exports', width: 260 },
-  { title: '操作', key: 'actions', width: 380, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 380 },
 ]
 
 function resetQuery() {
@@ -487,8 +500,8 @@ function reportTitle(record: ReportVO): string {
 async function handleExport(record: ReportVO) {
   const currentExport = record.exportStatus
   if (
-    currentExport === ReportExportStatusCode.PENDING
-    || currentExport === ReportExportStatusCode.PROCESSING
+    currentExport === ReportExportStatusCode.PENDING ||
+    currentExport === ReportExportStatusCode.PROCESSING
   ) {
     message.info(
       `${reportTitle(record)}当前处于「${exportStatusLabel(currentExport)}」，请等待完成`,
@@ -530,8 +543,8 @@ function resumeExportPollingForList() {
 }
 
 async function downloadReportExportFile(record: ReportVO, kind: 'word' | 'pdf' | 'excel') {
-  const fileId
-    = kind === 'word' ? record.wordFileId : kind === 'pdf' ? record.pdfFileId : record.excelFileId
+  const fileId =
+    kind === 'word' ? record.wordFileId : kind === 'pdf' ? record.pdfFileId : record.excelFileId
   if (!fileId) {
     message.warning('该格式文件尚未生成')
     return
@@ -571,7 +584,9 @@ async function openDetail(record: ReportVO) {
 
 /* ========== 阶段轨与信号指标 ========== */
 
-const statusBuckets = computed(() => {
+function buildReportStatusBuckets(
+  counts: QualityStatusCountsResponse | null,
+): Record<ReportStatusCode, number> {
   const buckets: Record<ReportStatusCode, number> = {
     [ReportStatusCode.DRAFT]: 0,
     [ReportStatusCode.SUBMITTED]: 0,
@@ -579,15 +594,40 @@ const statusBuckets = computed(() => {
     [ReportStatusCode.RETURNED]: 0,
     [ReportStatusCode.ARCHIVED]: 0,
   }
-  for (const r of list.value) {
-    buckets[r.status] += 1
+  if (!counts) {
+    return buckets
+  }
+  for (const row of counts.statusCounts) {
+    buckets[row.status] = row.recordCount
   }
   return buckets
-})
+}
+
+function buildReportExportBuckets(
+  counts: QualityStatusCountsResponse | null,
+): Record<ReportExportStatusCode, number> {
+  const buckets: Record<ReportExportStatusCode, number> = {
+    [ReportExportStatusCode.IDLE]: 0,
+    [ReportExportStatusCode.PENDING]: 0,
+    [ReportExportStatusCode.PROCESSING]: 0,
+    [ReportExportStatusCode.COMPLETED]: 0,
+    [ReportExportStatusCode.FAILED]: 0,
+  }
+  if (!counts?.exportStatusCounts) {
+    return buckets
+  }
+  for (const row of counts.exportStatusCounts) {
+    buckets[row.status] = row.recordCount
+  }
+  return buckets
+}
+
+const statusBuckets = computed(() => buildReportStatusBuckets(reportStatusCounts.value))
+const exportBuckets = computed(() => buildReportExportBuckets(reportStatusCounts.value))
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const order: Array<{ key: ReportStatusCode, title: string }> = [
+  const order: Array<{ key: ReportStatusCode; title: string }> = [
     { key: ReportStatusCode.DRAFT, title: '草稿' },
     { key: ReportStatusCode.SUBMITTED, title: '待确认' },
     { key: ReportStatusCode.CONFIRMED, title: '已确认' },
@@ -608,16 +648,17 @@ const stages = computed<WorkbenchStage[]>(() => {
 })
 
 const signals = computed<SignalMetric[]>(() => {
+  const counts = reportStatusCounts.value
+  if (!counts) {
+    return []
+  }
   const b = statusBuckets.value
-  const exporting = list.value.filter((r) => isExportInFlight(r.exportStatus)).length
-  const exportFailed = list.value.filter(
-    (r) => r.exportStatus === ReportExportStatusCode.FAILED,
-  ).length
-  const exportComplete = list.value.filter(
-    (r) => r.exportStatus === ReportExportStatusCode.COMPLETED,
-  ).length
+  const e = exportBuckets.value
+  const exporting = e[ReportExportStatusCode.PENDING] + e[ReportExportStatusCode.PROCESSING]
+  const exportFailed = e[ReportExportStatusCode.FAILED]
+  const exportComplete = e[ReportExportStatusCode.COMPLETED]
   return [
-    { key: 'total', label: '本页报告', value: list.value.length, tone: 'blue' },
+    { key: 'total', label: '报告总数', value: counts.totalCount ?? 0, tone: 'blue' },
     {
       key: 'draft',
       label: '草稿',
@@ -710,7 +751,7 @@ const reportResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleReportResultAction(actionEvent: { item: TaskResultItem, action: { key: string } }) {
+function handleReportResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
   const record = list.value.find((r) => r.id === actionEvent.item.id)
   if (record && actionEvent.action.key === 'detail') openDetail(record)
 }
@@ -726,15 +767,15 @@ function buildReportActions(record: ReportVO): UiTableRowActionItem[] {
   ]
   for (const to of nextStatuses(record.status)) {
     actions.push({
-      key: `transit:${to}`,
+      key: to,
       label: `→ ${reportStatusLabel(to)}`,
       tone: to === ReportStatusCode.RETURNED ? 'danger' : 'primary',
     })
   }
   if (
-    record.status === ReportStatusCode.SUBMITTED
-    || record.status === ReportStatusCode.CONFIRMED
-    || record.status === ReportStatusCode.ARCHIVED
+    record.status === ReportStatusCode.SUBMITTED ||
+    record.status === ReportStatusCode.CONFIRMED ||
+    record.status === ReportStatusCode.ARCHIVED
   ) {
     actions.push({
       key: 'export',
@@ -750,29 +791,28 @@ function buildReportActions(record: ReportVO): UiTableRowActionItem[] {
 }
 
 function handleReportAction(key: string, record: ReportVO): void {
-  if (key === 'detail') {
-    void openDetail(record)
-    return
-  }
-  if (key === 'edit') {
-    void openEdit(record)
-    return
-  }
-  if (key === 'export') {
-    void handleExport(record)
-    return
-  }
-  if (key === 'delete') {
-    void handleDelete(record)
-    return
-  }
-  if (key === 'audit') {
-    void openAuditDrawer(record)
-    return
-  }
-  if (key.startsWith('transit:')) {
-    const target = key.slice('transit:'.length) as ReportStatusCode
-    void handleTransit(record, target)
+  switch (key) {
+    case 'detail':
+      void openDetail(record)
+      return
+    case 'edit':
+      void openEdit(record)
+      return
+    case 'export':
+      void handleExport(record)
+      return
+    case 'delete':
+      void handleDelete(record)
+      return
+    case 'audit':
+      void openAuditDrawer(record)
+      return
+    case ReportStatusCode.DRAFT:
+    case ReportStatusCode.SUBMITTED:
+    case ReportStatusCode.RETURNED:
+    case ReportStatusCode.CONFIRMED:
+    case ReportStatusCode.ARCHIVED:
+      void handleTransit(record, key)
   }
 }
 
@@ -847,7 +887,6 @@ onBeforeUnmount(() => {
         </UiFilterBar>
 
         <UiDataTable
-          class="student-detail-table__data-table"
           v-model:current="query.pageNum"
           v-model:page-size="query.pageSize"
           :columns="columns"
@@ -1066,7 +1105,8 @@ onBeforeUnmount(() => {
           <a-descriptions-item label="学年 / 学期">
             {{ detailRecord.schoolYear
             }}<span v-if="detailRecord.semester">
-              / {{ formatSemester(detailRecord.semester) }}</span>
+              / {{ formatSemester(detailRecord.semester) }}</span
+            >
           </a-descriptions-item>
           <a-descriptions-item label="Word 文件">
             <UiTextAction

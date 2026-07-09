@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationObjectionSummaryVO } from '@/apis/portfolio/types'
+import {
+  PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
+  PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE,
+} from '@/apis/portfolio/types'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { Input, InputNumber, message, Select } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
@@ -14,10 +18,6 @@ import {
   PortfolioEvaluationObjectionTypeDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
-import {
-  PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
-  PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE,
-} from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -65,8 +65,8 @@ function actionTone(action: PortfolioEvaluationObjectionHandleActionCode) {
 
 function requiresDangerConfirm(action: PortfolioEvaluationObjectionHandleActionCode): boolean {
   return (
-    action === PortfolioEvaluationObjectionHandleActionCode.REVOKE
-    || action === PortfolioEvaluationObjectionHandleActionCode.RE_REVIEW
+    action === PortfolioEvaluationObjectionHandleActionCode.REVOKE ||
+    action === PortfolioEvaluationObjectionHandleActionCode.RE_REVIEW
   )
 }
 
@@ -83,15 +83,15 @@ const STATUS_FILTER_OPTIONS: Array<{
 
 function requiresCorrectedScore(objectionType: PortfolioEvaluationObjectionTypeCode): boolean {
   return (
-    objectionType === PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE
-    || objectionType === PortfolioEvaluationObjectionTypeCode.SCORE_DISPUTE
+    objectionType === PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE ||
+    objectionType === PortfolioEvaluationObjectionTypeCode.SCORE_DISPUTE
   )
 }
 
 function requiresOpinion(action: PortfolioEvaluationObjectionHandleActionCode): boolean {
   return (
-    action === PortfolioEvaluationObjectionHandleActionCode.MAINTAIN
-    || action === PortfolioEvaluationObjectionHandleActionCode.RE_REVIEW
+    action === PortfolioEvaluationObjectionHandleActionCode.MAINTAIN ||
+    action === PortfolioEvaluationObjectionHandleActionCode.RE_REVIEW
   )
 }
 
@@ -122,13 +122,13 @@ const showCorrectedScore = computed(() => {
     return false
   }
   return (
-    reviewForm.action === PortfolioEvaluationObjectionHandleActionCode.CORRECT
-    && requiresCorrectedScore(reviewTarget.value.objectionType)
+    reviewForm.action === PortfolioEvaluationObjectionHandleActionCode.CORRECT &&
+    requiresCorrectedScore(reviewTarget.value.objectionType)
   )
 })
 
 const columns: ColumnsType<PortfolioEvaluationObjectionSummaryVO> = [
-  { title: '教师', key: 'teacherName', width: 120 },
+  { title: '教师', key: 'teacherName', width: 120, fixed: 'left' },
   { title: '任务', dataIndex: 'taskName', key: 'taskName' },
   { title: '公示标题', dataIndex: 'publicityTitle', key: 'publicityTitle' },
   { title: '异议类型', key: 'objectionType', width: 120 },
@@ -136,7 +136,7 @@ const columns: ColumnsType<PortfolioEvaluationObjectionSummaryVO> = [
   { title: '复核结论', key: 'handleAction', width: 120 },
   { title: '理由', dataIndex: 'objectionReason', key: 'objectionReason' },
   { title: '佐证', key: 'evidenceRef', width: 100, align: 'center' },
-  { title: '操作', key: 'actions', width: 120, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 120 },
 ]
 
 async function downloadEvidence(row: PortfolioEvaluationObjectionSummaryVO) {

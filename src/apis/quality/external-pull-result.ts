@@ -5,6 +5,7 @@
  * 关键：「确认 / 驳回」流程是对拔取结果批次操作，不是对任务操作。
  */
 import type { ExternalPullConfirmationStatusCode } from './types'
+import type { PageResult, QueryDto } from '@/types'
 import type { BusinessAnchorCode } from '@/types/enums/business-anchor-code-enum'
 import http from '@/config/axios'
 
@@ -48,9 +49,13 @@ export interface ExternalPullResultRejectRequest {
   notes: string
 }
 
+export interface ExternalPullResultPageByTaskRequest extends QueryDto {
+  pullTaskId: string
+}
+
 export const externalPullResultApi = {
-  listByTask: (pullTaskId: string) =>
-    http.post<ExternalPullResultVO[]>(`${BASE}/list-by-task`, { id: pullTaskId }),
+  pageByTask: (request: ExternalPullResultPageByTaskRequest) =>
+    http.post<PageResult<ExternalPullResultVO>>(`${BASE}/page-by-task`, request),
   detail: (id: string) => http.post<ExternalPullResultVO>(`${BASE}/detail`, { id }),
   /** 登记结果批次：初始化为 PREVIEW */
   create: (data: ExternalPullResultSaveRequest) => http.post<string>(`${BASE}/create`, data),

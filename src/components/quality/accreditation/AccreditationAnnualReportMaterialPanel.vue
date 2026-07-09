@@ -56,7 +56,7 @@ const MATERIAL_STATUS_OPTIONS: { label: string, value: AnnualReportMaterialStatu
 const COURSE_EVALUATION_MATERIAL = AnnualReportMaterialCategoryCode.COURSE_QUALITY_EVALUATION
 
 const columns: ColumnsType<AnnualReportMaterialVO> = [
-  { title: '年度', dataIndex: 'reportYear', key: 'reportYear', width: 88 },
+  { title: '年度', dataIndex: 'reportYear', key: 'reportYear', width: 88, fixed: 'left' },
   { title: '材料名称', dataIndex: 'materialName', key: 'materialName' },
   { title: '类别', dataIndex: 'materialCategory', key: 'materialCategory', width: 160 },
   { title: '关联课程', dataIndex: 'qualityCourseId', key: 'qualityCourseId', width: 150 },
@@ -64,7 +64,7 @@ const columns: ColumnsType<AnnualReportMaterialVO> = [
   { title: '状态', dataIndex: 'reportStatus', key: 'reportStatus', width: 96 },
   { title: '提交时间', dataIndex: 'submittedTime', key: 'submittedTime', width: 170 },
   { title: '审核时间', dataIndex: 'reviewedTime', key: 'reviewedTime', width: 170 },
-  { title: '操作', key: 'actions', width: 330, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 330 },
 ]
 
 const loading = ref(false)

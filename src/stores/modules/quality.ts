@@ -11,18 +11,21 @@
  * - 持久化只保存少量"用户选择"字段，目录缓存只放内存。
  */
 import type { GraduationRequirementVO } from '@/apis/quality/graduation-requirement'
+import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
 import type { QualityCourseVO } from '@/apis/quality/quality-course'
+import { qualityCourseApi } from '@/apis/quality/quality-course'
 import type { TrainingPlanVO } from '@/apis/quality/training-plan'
+import { trainingPlanApi } from '@/apis/quality/training-plan'
 import type { MajorCategoryVO, TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
+import { departmentCatalogApi, majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
 import type { SemesterCode } from '@/types/enums/semester-enum'
+import { ALL_SEMESTER_CODES } from '@/types/enums/semester-enum'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
-import { qualityCourseApi } from '@/apis/quality/quality-course'
-import { trainingPlanApi } from '@/apis/quality/training-plan'
-import { departmentCatalogApi, majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
-import { ALL_SEMESTER_CODES } from '@/types/enums/semester-enum'
-import { readAllPages } from '@/utils/page-result'
+import {
+  loadSelectorFirstPage,
+  QUALITY_SELECTOR_PAGE_SIZE,
+} from '@/components/quality/selectors/page-contract'
 import { sanitizePersistedSchoolPeriod } from '@/utils/semester-contract'
 
 export const useQualityStore = defineStore(
@@ -84,9 +87,7 @@ export const useQualityStore = defineStore(
     const hasCourse = computed(() => !!currentQualityCourseId.value)
 
     const currentPlan = computed<TrainingPlanVO | undefined>(() =>
-      trainingPlanOptions.value.find(
-        (item) => item.id === currentTrainingPlanId.value,
-      ),
+      trainingPlanOptions.value.find((item) => item.id === currentTrainingPlanId.value),
     )
 
     const currentCourse = computed<QualityCourseVO | undefined>(() =>
@@ -124,20 +125,17 @@ export const useQualityStore = defineStore(
       }
     }
 
-    async function loadTrainingPlanOptions(opts?: { programId?: string, keyword?: string }) {
+    async function loadTrainingPlanOptions(opts?: { programId?: string; keyword?: string }) {
       trainingPlanLoading.value = true
       try {
-        trainingPlanOptions.value = await readAllPages(
-          (pageNum) =>
-            trainingPlanApi.page({
-              pageNum,
-              pageSize: 100,
-              enabled: true,
-              programId: opts?.programId || currentProgramId.value || undefined,
-              keyword: opts?.keyword?.trim() || undefined,
-            }),
-          '培养方案列表加载失败',
-        )
+        const page = await trainingPlanApi.page({
+          pageNum: 1,
+          pageSize: QUALITY_SELECTOR_PAGE_SIZE,
+          enabled: true,
+          programId: opts?.programId || currentProgramId.value || undefined,
+          keyword: opts?.keyword?.trim() || undefined,
+        })
+        trainingPlanOptions.value = page.list
         return trainingPlanOptions.value
       } catch {
         trainingPlanOptions.value = []
@@ -155,7 +153,9 @@ export const useQualityStore = defineStore(
       }
       requirementLoading.value = true
       try {
-        requirementOptions.value = (await graduationRequirementApi.listByPlan(planId)) || []
+        requirementOptions.value = await loadSelectorFirstPage((pageNum, pageSize) =>
+          graduationRequirementApi.page({ pageNum, pageSize, trainingPlanId: planId }),
+        )
         return requirementOptions.value
       } finally {
         requirementLoading.value = false
@@ -174,18 +174,15 @@ export const useQualityStore = defineStore(
       }
       qualityCourseLoading.value = true
       try {
-        qualityCourseOptions.value = await readAllPages(
-          (pageNum) =>
-            qualityCourseApi.page({
-              pageNum,
-              pageSize: 100,
-              trainingPlanId: planId,
-              schoolYear: opts?.schoolYear || currentSchoolYear.value || undefined,
-              semester: opts?.semester || currentSemester.value || undefined,
-              enabled: true,
-            }),
-          '质量评价课程列表加载失败',
-        )
+        const page = await qualityCourseApi.page({
+          pageNum: 1,
+          pageSize: QUALITY_SELECTOR_PAGE_SIZE,
+          trainingPlanId: planId,
+          schoolYear: opts?.schoolYear || currentSchoolYear.value || undefined,
+          semester: opts?.semester || currentSemester.value || undefined,
+          enabled: true,
+        })
+        qualityCourseOptions.value = page.list
         return qualityCourseOptions.value
       } finally {
         qualityCourseLoading.value = false

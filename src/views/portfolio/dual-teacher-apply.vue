@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import type { PortfolioDualTeacherApplicationVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { PortfolioDualTeacherApplicationStatusDescription } from '@/apis/portfolio/enums'
-import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
+import {
+  PortfolioDualTeacherApplicationStatusCode,
+  PortfolioDualTeacherApplicationStatusDescription,
+} from '@/apis/portfolio/enums'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -42,10 +45,14 @@ const canEdit = () => {
   if (!status) {
     return true
   }
-  if (status === 'REJECTED') {
+  if (status === PortfolioDualTeacherApplicationStatusCode.REJECTED) {
     return !form.id
   }
-  return status === 'DRAFT' || status === 'COLLEGE_RETURNED' || status === 'ACADEMIC_RETURNED'
+  return (
+    status === PortfolioDualTeacherApplicationStatusCode.DRAFT ||
+    status === PortfolioDualTeacherApplicationStatusCode.COLLEGE_RETURNED ||
+    status === PortfolioDualTeacherApplicationStatusCode.ACADEMIC_RETURNED
+  )
 }
 
 const canSubmit = () => canEdit()
@@ -68,7 +75,9 @@ async function loadMine() {
       return
     }
     application.value = await portfolioDualTeacherApi.get({ id: mine.id })
-    if (application.value.applicationStatus === 'REJECTED') {
+    if (
+      application.value.applicationStatus === PortfolioDualTeacherApplicationStatusCode.REJECTED
+    ) {
       form.id = ''
       form.certLevel = application.value.certLevel ?? ''
       form.certYear = application.value.certYear ?? form.certYear

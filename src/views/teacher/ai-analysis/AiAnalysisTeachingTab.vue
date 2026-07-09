@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { MarkClassOption } from '@/composables/useMarkExamRoster'
+import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
 import { watch } from 'vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
 import ClassWeaknessCard from '@/views/teacher/ai-analysis/cards/ClassWeaknessCard.vue'
 import PaperQualityCard from '@/views/teacher/ai-analysis/cards/PaperQualityCard.vue'
 import StudentLearningProfileCard from '@/views/teacher/ai-analysis/cards/StudentLearningProfileCard.vue'
@@ -24,6 +24,7 @@ const {
   studentOptions,
   loading: rosterLoading,
   load: loadRoster,
+  searchStudents,
   reset: resetRoster,
 } = useMarkExamRoster()
 
@@ -38,9 +39,18 @@ watch(
   { immediate: true },
 )
 
+watch(
+  () => props.classId,
+  (classId) => {
+    if (props.examId) {
+      void searchStudents('', classId)
+    }
+  },
+)
+
 function handleClassChange(value?: SelectValue): void {
   const nextClassId = typeof value === 'string' ? value : undefined
-  const option = classOptions.value.find(item => item.value === nextClassId)
+  const option = classOptions.value.find((item) => item.value === nextClassId)
   emit('class-change', nextClassId, option)
 }
 </script>
@@ -69,13 +79,9 @@ function handleClassChange(value?: SelectValue): void {
       :class-id-hint="classId"
       :student-options="studentOptions"
       :roster-loading="rosterLoading"
+      :on-student-search="searchStudents"
       embedded
     />
-    <PaperQualityCard
-      :exam-id="examId"
-      :reload-token="reloadToken"
-      :class-id="classId"
-      embedded
-    />
+    <PaperQualityCard :exam-id="examId" :reload-token="reloadToken" :class-id="classId" embedded />
   </div>
 </template>

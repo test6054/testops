@@ -1,20 +1,19 @@
 <!--
-  审核评估问题选择器
-  数据源：POST /api/quality/audit-evaluation/issues/page
+  审核评估问题选择�?  数据源：POST /api/quality/audit-evaluation/issues/page
   可选过滤：programId / trainingPlanId / qualityCourseId / status / issueSource / severity / auditYear
 -->
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { AuditIssueVO } from '@/apis/quality/audit-issue'
+import { auditIssueApi } from '@/apis/quality/audit-issue'
 import type { AuditIssueStatusCode } from '@/apis/quality/types'
+import { AUDIT_ISSUE_STATUS_COLOR, AuditIssueStatusDescription } from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { onMounted, ref, watch } from 'vue'
-import { auditIssueApi } from '@/apis/quality/audit-issue'
-import { AUDIT_ISSUE_STATUS_COLOR, AuditIssueStatusDescription } from '@/apis/quality/types'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import { requireAllPages } from './page-contract'
+import { loadSelectorFirstPage, QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -38,11 +37,12 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: AuditIssueVO]
+  change: [value: string | null, option?: AuditIssueVO]
 }>()
 
 const options = ref<AuditIssueVO[]>([])
 const loading = ref(false)
+const searchText = ref('')
 const internalValue = ref<string | undefined>(props.value ?? undefined)
 
 watch(
@@ -63,27 +63,33 @@ watch(
   () => loadOptions(),
 )
 
-async function loadOptions() {
+async function loadOptions(keyword?: string) {
   loading.value = true
   try {
-    options.value = await requireAllPages(
-      (pageNum) =>
-        auditIssueApi.page({
-          pageNum,
-          pageSize: 100,
-          programId: props.programId || undefined,
-          trainingPlanId: props.trainingPlanId || undefined,
-          qualityCourseId: props.qualityCourseId || undefined,
-          status: props.status,
-          auditYear: props.auditYear || undefined,
-        }),
-      '审核评估问题',
+    options.value = await loadSelectorFirstPage((pageNum, pageSize) =>
+      auditIssueApi.page({
+        pageNum,
+        pageSize,
+        programId: props.programId || undefined,
+        trainingPlanId: props.trainingPlanId || undefined,
+        qualityCourseId: props.qualityCourseId || undefined,
+        status: props.status,
+        auditYear: props.auditYear || undefined,
+        keyword: (keyword ?? searchText.value)?.trim() || undefined,
+      }),
     )
   } catch (e) {
     showUserError(e, '审核问题列表加载失败')
   } finally {
     loading.value = false
   }
+}
+
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
+function handleSearch(val: string) {
+  searchText.value = val
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => loadOptions(val), QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS)
 }
 
 function auditIssueStatusLabel(value: AuditIssueStatusCode): string {
@@ -118,7 +124,8 @@ defineExpose({ reload: loadOptions })
     :loading="loading"
     :style="{ width: typeof width === 'number' ? `${width}px` : width }"
     show-search
-    option-filter-prop="label"
+    :filter-option="false"
+    @search="handleSearch"
     @change="handleChange"
   >
     <a-select-option

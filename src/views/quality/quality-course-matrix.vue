@@ -1,25 +1,35 @@
 <script setup lang="ts">
 import type { RadioChangeEvent } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   AssessmentGoalWeightSaveRequest,
   AssessmentGoalWeightVO,
 } from '@/apis/quality/assessment-goal-weight'
+import { assessmentGoalWeightApi } from '@/apis/quality/assessment-goal-weight'
 import type { AssessmentItemSaveRequest, AssessmentItemVO } from '@/apis/quality/assessment-item'
+import { assessmentItemApi } from '@/apis/quality/assessment-item'
 import type { CourseGoalSaveRequest, CourseGoalVO } from '@/apis/quality/course-goal'
+import { courseGoalApi } from '@/apis/quality/course-goal'
 import type { CourseGoalAssessmentRuleSaveRequest } from '@/apis/quality/course-goal-assessment-rule'
+import { courseGoalAssessmentRuleApi } from '@/apis/quality/course-goal-assessment-rule'
 import type {
   CourseGoalRequirementSaveRequest,
   CourseGoalRequirementVO,
 } from '@/apis/quality/course-goal-requirement'
+import { courseGoalRequirementApi } from '@/apis/quality/course-goal-requirement'
 import type { GraduationRequirementVO } from '@/apis/quality/graduation-requirement'
+import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
 import type {
   QualityCourseEditorForm,
   QualityCourseSaveRequest,
   QualityCourseVO,
 } from '@/apis/quality/quality-course'
+import { qualityCourseApi } from '@/apis/quality/quality-course'
 import type { RequirementIndicatorVO } from '@/apis/quality/requirement-indicator'
+import { requirementIndicatorApi } from '@/apis/quality/requirement-indicator'
 import type { RubricItemSaveRequest, RubricItemVO } from '@/apis/quality/rubric-item'
+import { rubricItemApi } from '@/apis/quality/rubric-item'
 /**
  * 质量评价课程 - 支撑矩阵工作台（3-in-1）
  *
@@ -45,21 +55,13 @@ import type { RubricItemSaveRequest, RubricItemVO } from '@/apis/quality/rubric-
  *   - Rubric 满分加总 = (item, goal) 的 fullScore
  */
 import type { CourseListVO } from '@/apis/quality/user-catalog'
+import type { QualityCourseMatrixSignalSummaryVO } from '@/apis/quality/workbench'
+import { workbenchApi } from '@/apis/quality/workbench'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/matrix-types'
 import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { assessmentGoalWeightApi } from '@/apis/quality/assessment-goal-weight'
-import { assessmentItemApi } from '@/apis/quality/assessment-item'
-import { courseGoalApi } from '@/apis/quality/course-goal'
-import { courseGoalAssessmentRuleApi } from '@/apis/quality/course-goal-assessment-rule'
-import { courseGoalRequirementApi } from '@/apis/quality/course-goal-requirement'
-import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
-import { qualityCourseApi } from '@/apis/quality/quality-course'
-import { requirementIndicatorApi } from '@/apis/quality/requirement-indicator'
-import { rubricItemApi } from '@/apis/quality/rubric-item'
 import {
   AggregationFunctionCode,
   AggregationFunctionDescription,
@@ -68,6 +70,7 @@ import {
   ALL_SUPPORT_LEVEL_CODES,
   AssessmentItemTypeCode,
   AssessmentItemTypeDescription,
+  ConfirmationStatusCode,
   SUPPORT_LEVEL_DEFAULT_FACTOR,
   SupportLevelCode,
   SupportLevelDescription,
@@ -77,6 +80,7 @@ import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vu
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
 import CourseSelector from '@/components/quality/selectors/CourseSelector.vue'
+import { loadBoundedPlanAggregate } from '@/components/quality/selectors/page-contract'
 import ProgramSelector from '@/components/quality/selectors/ProgramSelector.vue'
 import TeacherSelector from '@/components/quality/selectors/TeacherSelector.vue'
 import TrainingPlanSelector from '@/components/quality/selectors/TrainingPlanSelector.vue'
@@ -95,41 +99,42 @@ import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
 import { ALL_SEMESTER_CODES, formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
+import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const itemColumns: ColumnsType = [
-  { title: '编码', dataIndex: 'itemCode', key: 'itemCode', width: 100 },
+  { title: '编码', dataIndex: 'itemCode', key: 'itemCode', width: 100, fixed: 'left' },
   { title: '名称', dataIndex: 'itemName', key: 'itemName' },
   { title: '类型', key: 'itemType', width: 120 },
   { title: '满分', dataIndex: 'fullScore', key: 'fullScore', width: 80 },
   { title: '过程性', dataIndex: 'isProcessOriented', key: 'isProcessOriented', width: 80 },
   { title: '权重和', key: 'weightSum', width: 100 },
   { title: 'Rubric 数', key: 'rubricCount', width: 100 },
-  { title: '操作', key: 'actions', width: 280, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 280 },
 ]
 
 const goalColumns: ColumnsType = [
-  { title: '编码', dataIndex: 'goalCode', key: 'goalCode', width: 80 },
+  { title: '编码', dataIndex: 'goalCode', key: 'goalCode', width: 80, fixed: 'left' },
   { title: '名称', dataIndex: 'goalName', key: 'goalName' },
   { title: '阈值', dataIndex: 'thresholdValue', key: 'thresholdValue', width: 80 },
   { title: '聚合', dataIndex: 'aggregation', key: 'aggregation', width: 120 },
   { title: '支撑数', key: 'supportCount', width: 80 },
   { title: '标记', key: 'flags', width: 180 },
-  { title: '操作', key: 'actions', width: 220, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 220 },
 ]
 
 const rubricColumns: ColumnsType = [
-  { title: '编码', dataIndex: 'rubricCode', key: 'rubricCode', width: 80 },
+  { title: '编码', dataIndex: 'rubricCode', key: 'rubricCode', width: 80, fixed: 'left' },
   { title: '维度', dataIndex: 'rubricName', key: 'rubricName' },
   { title: '课程目标', key: 'goalCode', width: 120 },
   { title: '满分', dataIndex: 'fullScore', key: 'fullScore', width: 80 },
-  { title: '操作', key: 'actions', width: 120, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 120 },
 ]
 
 const qualityStore = useQualityStore()
 
 const isPlanStructureEditable = computed(
-  () => qualityStore.currentPlan?.confirmationStatus !== 'CONFIRMED',
+  () => qualityStore.currentPlan?.confirmationStatus !== ConfirmationStatusCode.CONFIRMED,
 )
 
 function guardCourseMatrixEditable(action: string): boolean {
@@ -178,8 +183,13 @@ async function loadCurrentCourse() {
 
 const courseGoals = ref<CourseGoalVO[]>([])
 const courseGoalsLoading = ref(false)
+const goalTableRows = ref<CourseGoalVO[]>([])
+const goalPageNum = ref(1)
+const goalPageSize = ref(10)
+const goalTableTotal = ref(0)
+const goalTableLoading = ref(false)
 
-async function loadCourseGoals() {
+async function loadCourseGoalsAggregate() {
   const scope = beginQualityScopeRequest()
   if (!qualityStore.currentQualityCourseId) {
     courseGoals.value = []
@@ -187,16 +197,63 @@ async function loadCourseGoals() {
   }
   courseGoalsLoading.value = true
   try {
-    const goals = await courseGoalApi.listByCourse(qualityStore.currentQualityCourseId)
+    const goals = await loadBoundedPlanAggregate(
+      (pageNum, pageSize) =>
+        courseGoalApi.page({
+          pageNum,
+          pageSize,
+          qualityCourseId: qualityStore.currentQualityCourseId!,
+        }),
+      '课程目标',
+    )
     if (scope.isStale()) {
       return
     }
     courseGoals.value = goals
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '课程目标加载失败')
+    courseGoals.value = []
   } finally {
     if (!scope.isStale()) {
       courseGoalsLoading.value = false
     }
   }
+}
+
+async function loadGoalTable() {
+  const scope = beginQualityScopeRequest()
+  if (!qualityStore.currentQualityCourseId) {
+    goalTableRows.value = []
+    goalTableTotal.value = 0
+    return
+  }
+  goalTableLoading.value = true
+  try {
+    const page = await courseGoalApi.page({
+      pageNum: goalPageNum.value,
+      pageSize: goalPageSize.value,
+      qualityCourseId: qualityStore.currentQualityCourseId!,
+    })
+    if (scope.isStale()) {
+      return
+    }
+    goalTableRows.value = page.list
+    goalTableTotal.value = page.total
+  } finally {
+    if (!scope.isStale()) {
+      goalTableLoading.value = false
+    }
+  }
+}
+
+function handleGoalPageChange(page: { current: number; pageSize: number }) {
+  goalPageNum.value = page.current
+  goalPageSize.value = page.pageSize
+  void loadGoalTable()
+}
+
+async function loadCourseGoals() {
+  await Promise.all([loadCourseGoalsAggregate(), loadGoalTable()])
 }
 
 /* ========== 课程目标 → 毕业要求/观测点 支撑映射 ========== */
@@ -206,20 +263,34 @@ const supportsLoading = ref(false)
 
 async function loadAllSupports() {
   const scope = beginQualityScopeRequest()
+  if (!qualityStore.currentQualityCourseId) {
+    courseGoalSupports.value = new Map()
+    return
+  }
   supportsLoading.value = true
   try {
-    const map = new Map<string, CourseGoalRequirementVO[]>()
-    for (const goal of courseGoals.value) {
-      const list = await courseGoalRequirementApi.listByCourseGoal(goal.id)
-      if (scope.isStale()) {
-        return
-      }
-      map.set(goal.id, list)
-    }
+    const list = await loadBoundedPlanAggregate(
+      (pageNum, pageSize) =>
+        courseGoalRequirementApi.page({
+          pageNum,
+          pageSize,
+          qualityCourseId: qualityStore.currentQualityCourseId!,
+        }),
+      '课程目标支撑映射',
+    )
     if (scope.isStale()) {
       return
     }
+    const map = new Map<string, CourseGoalRequirementVO[]>()
+    for (const item of list) {
+      const bucket = map.get(item.courseGoalId) ?? []
+      bucket.push(item)
+      map.set(item.courseGoalId, bucket)
+    }
     courseGoalSupports.value = map
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '课程目标支撑映射加载失败')
+    courseGoalSupports.value = new Map()
   } finally {
     if (!scope.isStale()) {
       supportsLoading.value = false
@@ -245,8 +316,13 @@ function supportWeightSumOfGoal(goalId: string): number {
 
 const assessmentItems = ref<AssessmentItemVO[]>([])
 const assessmentItemsLoading = ref(false)
+const itemTableRows = ref<AssessmentItemVO[]>([])
+const itemPageNum = ref(1)
+const itemPageSize = ref(10)
+const itemTableTotal = ref(0)
+const itemTableLoading = ref(false)
 
-async function loadAssessmentItems() {
+async function loadAssessmentItemsAggregate() {
   const scope = beginQualityScopeRequest()
   if (!qualityStore.currentQualityCourseId) {
     assessmentItems.value = []
@@ -254,16 +330,63 @@ async function loadAssessmentItems() {
   }
   assessmentItemsLoading.value = true
   try {
-    const items = await assessmentItemApi.listByCourse(qualityStore.currentQualityCourseId)
+    const items = await loadBoundedPlanAggregate(
+      (pageNum, pageSize) =>
+        assessmentItemApi.page({
+          pageNum,
+          pageSize,
+          qualityCourseId: qualityStore.currentQualityCourseId!,
+        }),
+      '考核环节',
+    )
     if (scope.isStale()) {
       return
     }
     assessmentItems.value = items
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '考核环节加载失败')
+    assessmentItems.value = []
   } finally {
     if (!scope.isStale()) {
       assessmentItemsLoading.value = false
     }
   }
+}
+
+async function loadItemTable() {
+  const scope = beginQualityScopeRequest()
+  if (!qualityStore.currentQualityCourseId) {
+    itemTableRows.value = []
+    itemTableTotal.value = 0
+    return
+  }
+  itemTableLoading.value = true
+  try {
+    const page = await assessmentItemApi.page({
+      pageNum: itemPageNum.value,
+      pageSize: itemPageSize.value,
+      qualityCourseId: qualityStore.currentQualityCourseId!,
+    })
+    if (scope.isStale()) {
+      return
+    }
+    itemTableRows.value = page.list
+    itemTableTotal.value = page.total
+  } finally {
+    if (!scope.isStale()) {
+      itemTableLoading.value = false
+    }
+  }
+}
+
+function handleItemPageChange(page: { current: number; pageSize: number }) {
+  itemPageNum.value = page.current
+  itemPageSize.value = page.pageSize
+  void loadItemTable()
+}
+
+async function loadAssessmentItems() {
+  await Promise.all([loadAssessmentItemsAggregate(), loadItemTable()])
 }
 
 /* ========== 考核 → 课程目标 权重 + Rubric ========== */
@@ -274,26 +397,54 @@ const itemMetaLoading = ref(false)
 
 async function loadAllItemMeta() {
   const scope = beginQualityScopeRequest()
+  if (!qualityStore.currentQualityCourseId) {
+    assessmentGoalWeights.value = new Map()
+    rubricsByItem.value = new Map()
+    return
+  }
   itemMetaLoading.value = true
   try {
-    const wMap = new Map<string, AssessmentGoalWeightVO[]>()
-    const rMap = new Map<string, RubricItemVO[]>()
-    for (const item of assessmentItems.value) {
-      const [weights, rubrics] = await Promise.all([
-        assessmentGoalWeightApi.listByItem(item.id),
-        rubricItemApi.listByItem(item.id),
-      ])
-      if (scope.isStale()) {
-        return
-      }
-      wMap.set(item.id, weights)
-      rMap.set(item.id, rubrics)
-    }
+    const [weightList, rubricList] = await Promise.all([
+      loadBoundedPlanAggregate(
+        (pageNum, pageSize) =>
+          assessmentGoalWeightApi.page({
+            pageNum,
+            pageSize,
+            qualityCourseId: qualityStore.currentQualityCourseId!,
+          }),
+        '考核环节课程目标权重',
+      ),
+      loadBoundedPlanAggregate(
+        (pageNum, pageSize) =>
+          rubricItemApi.page({
+            pageNum,
+            pageSize,
+            qualityCourseId: qualityStore.currentQualityCourseId!,
+          }),
+        '评分标准明细',
+      ),
+    ])
     if (scope.isStale()) {
       return
     }
+    const wMap = new Map<string, AssessmentGoalWeightVO[]>()
+    for (const weight of weightList) {
+      const bucket = wMap.get(weight.assessmentItemId) ?? []
+      bucket.push(weight)
+      wMap.set(weight.assessmentItemId, bucket)
+    }
+    const rMap = new Map<string, RubricItemVO[]>()
+    for (const rubric of rubricList) {
+      const bucket = rMap.get(rubric.assessmentItemId) ?? []
+      bucket.push(rubric)
+      rMap.set(rubric.assessmentItemId, bucket)
+    }
     assessmentGoalWeights.value = wMap
     rubricsByItem.value = rMap
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '考核权重与评分标准加载失败')
+    assessmentGoalWeights.value = new Map()
+    rubricsByItem.value = new Map()
   } finally {
     if (!scope.isStale()) {
       itemMetaLoading.value = false
@@ -329,23 +480,19 @@ async function loadReferenceData() {
   }
   referenceLoading.value = true
   try {
-    const reqList = await graduationRequirementApi.listByPlan(planId)
+    requirements.value = await loadBoundedPlanAggregate(
+      (pageNum, pageSize) =>
+        graduationRequirementApi.page({ pageNum, pageSize, trainingPlanId: planId }),
+      '毕业要求',
+    )
     if (scope.isStale()) {
       return
     }
-    requirements.value = reqList
-    const indicatorAcc: RequirementIndicatorVO[] = []
-    for (const req of reqList) {
-      const list = await requirementIndicatorApi.listByRequirement(req.id)
-      if (scope.isStale()) {
-        return
-      }
-      indicatorAcc.push(...list)
-    }
-    if (scope.isStale()) {
-      return
-    }
-    indicators.value = indicatorAcc
+    indicators.value = await loadBoundedPlanAggregate(
+      (pageNum, pageSize) =>
+        requirementIndicatorApi.page({ pageNum, pageSize, trainingPlanId: planId }),
+      '毕业要求观测点',
+    )
   } finally {
     if (!scope.isStale()) {
       referenceLoading.value = false
@@ -395,50 +542,78 @@ const requirementsCoveredCount = computed(() => {
   return set.size
 })
 
-const signals = computed<SignalMetric[]>(() => [
-  {
-    key: 'goals',
-    label: '课程目标数',
-    value: courseGoals.value.length,
-    tone: courseGoals.value.length === 0 ? 'gray' : 'blue',
-  },
-  {
-    key: 'goalsCovered',
-    label: '已挂支撑目标',
-    value: `${courseGoalsCovered.value}/${courseGoals.value.length}`,
-    tone:
-      courseGoals.value.length > 0 && courseGoalsCovered.value === courseGoals.value.length
-        ? 'green'
-        : 'red',
-  },
-  {
-    key: 'reqCovered',
-    label: '覆盖毕业要求',
-    value: `${requirementsCoveredCount.value}/${requirements.value.length}`,
-    tone: 'gray',
-  },
-  {
-    key: 'indCovered',
-    label: '覆盖观测点',
-    value: `${indicatorsCoveredCount.value}/${indicators.value.length}`,
-    tone: 'gray',
-  },
-  {
-    key: 'items',
-    label: '考核环节数',
-    value: assessmentItems.value.length,
-    tone: assessmentItems.value.length === 0 ? 'gray' : 'blue',
-  },
-  {
-    key: 'itemsHealth',
-    label: '考核权重健康',
-    value: `${itemsHealthy.value}/${assessmentItems.value.length}`,
-    tone:
-      assessmentItems.value.length > 0 && itemsHealthy.value === assessmentItems.value.length
-        ? 'green'
-        : 'red',
-  },
-])
+const signalSummary = ref<QualityCourseMatrixSignalSummaryVO | null>(null)
+
+async function loadSignalSummary() {
+  if (!qualityStore.currentQualityCourseId) {
+    signalSummary.value = null
+    return
+  }
+  try {
+    signalSummary.value = await workbenchApi.qualityCourseMatrixSignalSummary({
+      qualityCourseId: qualityStore.currentQualityCourseId,
+    })
+  } catch (error) {
+    signalSummary.value = null
+    showUserError(error, '课程矩阵指标加载失败')
+  }
+}
+
+const signals = computed<SignalMetric[]>(() => {
+  const summary = signalSummary.value
+  if (!summary) {
+    return []
+  }
+  const courseGoalTotal = summary.courseGoalTotal ?? 0
+  const courseGoalCoveredCount = summary.courseGoalCoveredCount ?? 0
+  const requirementTotal = summary.requirementTotal ?? 0
+  const requirementCoveredCount = summary.requirementCoveredCount ?? 0
+  const indicatorTotal = summary.indicatorTotal ?? 0
+  const indicatorCoveredCount = summary.indicatorCoveredCount ?? 0
+  const assessmentItemTotal = summary.assessmentItemTotal ?? 0
+  const assessmentItemHealthyCount = summary.assessmentItemHealthyCount ?? 0
+  return [
+    {
+      key: 'goals',
+      label: '课程目标数',
+      value: courseGoalTotal,
+      tone: courseGoalTotal === 0 ? 'gray' : 'blue',
+    },
+    {
+      key: 'goalsCovered',
+      label: '已挂支撑目标',
+      value: `${courseGoalCoveredCount}/${courseGoalTotal}`,
+      tone: courseGoalTotal > 0 && courseGoalCoveredCount === courseGoalTotal ? 'green' : 'red',
+    },
+    {
+      key: 'reqCovered',
+      label: '覆盖毕业要求',
+      value: `${requirementCoveredCount}/${requirementTotal}`,
+      tone: 'gray',
+    },
+    {
+      key: 'indCovered',
+      label: '覆盖观测点',
+      value: `${indicatorCoveredCount}/${indicatorTotal}`,
+      tone: 'gray',
+    },
+    {
+      key: 'items',
+      label: '考核环节数',
+      value: assessmentItemTotal,
+      tone: assessmentItemTotal === 0 ? 'gray' : 'blue',
+    },
+    {
+      key: 'itemsHealth',
+      label: '考核权重健康',
+      value: `${assessmentItemHealthyCount}/${assessmentItemTotal}`,
+      tone:
+        assessmentItemTotal > 0 && assessmentItemHealthyCount === assessmentItemTotal
+          ? 'green'
+          : 'red',
+    },
+  ]
+})
 
 /* ========== 矩阵 1：课程目标 × 毕业要求/观测点 ========== */
 
@@ -507,8 +682,8 @@ const supportMatrixCells = computed<MatrixCell[]>(() => {
         ? `R::${support.requirementId}`
         : null
     if (!colKey) continue
-    const tone: MatrixCell['tone']
-      = support.supportLevel === SupportLevelCode.HIGH
+    const tone: MatrixCell['tone'] =
+      support.supportLevel === SupportLevelCode.HIGH
         ? 'red'
         : support.supportLevel === SupportLevelCode.MEDIUM
           ? 'orange'
@@ -698,13 +873,13 @@ async function submitCourse() {
   const semester = courseEditor.semester
   const selectedSemester = ALL_SEMESTER_CODES.find((code) => code === semester)
   if (
-    !courseEditor.programId.trim()
-    || !courseEditor.trainingPlanId.trim()
-    || !courseEditor.courseId.trim()
-    || !courseEditor.courseCode.trim()
-    || !courseEditor.courseName.trim()
-    || !courseEditor.schoolYear.trim()
-    || !selectedSemester
+    !courseEditor.programId.trim() ||
+    !courseEditor.trainingPlanId.trim() ||
+    !courseEditor.courseId.trim() ||
+    !courseEditor.courseCode.trim() ||
+    !courseEditor.courseName.trim() ||
+    !courseEditor.schoolYear.trim() ||
+    !selectedSemester
   ) {
     message.error('请填写专业、培养方案、目录课程、编码、名称、学年、学期')
     return
@@ -934,9 +1109,9 @@ async function submitSupport() {
     return
   }
   if (
-    supportEditor.supportWeight == null
-    || supportEditor.supportWeight <= 0
-    || supportEditor.supportWeight > 1
+    supportEditor.supportWeight == null ||
+    supportEditor.supportWeight <= 0 ||
+    supportEditor.supportWeight > 1
   ) {
     message.error('权重必须在 (0, 1] 之间')
     return
@@ -987,11 +1162,11 @@ function handleSupportCellClick(cellEvent: {
   const goalSupports = supportsOfGoal(cellEvent.row.key)
   const matched = goalSupports.find(
     (s) =>
-      (colMeta.indicatorId && s.indicatorId === colMeta.indicatorId)
-      || (colMeta.reqId
-        && !colMeta.indicatorId
-        && s.requirementId === colMeta.reqId
-        && !s.indicatorId),
+      (colMeta.indicatorId && s.indicatorId === colMeta.indicatorId) ||
+      (colMeta.reqId &&
+        !colMeta.indicatorId &&
+        s.requirementId === colMeta.reqId &&
+        !s.indicatorId),
   )
   if (matched) openSupportEdit(matched)
   else openSupportCreate(cellEvent.row.key, cellEvent.col.key)
@@ -1229,6 +1404,11 @@ function handleAssessCellClick(cellEvent: {
 
 const rubricDrawerVisible = ref(false)
 const rubricItem = ref<AssessmentItemVO | null>(null)
+const rubricDrawerRows = ref<RubricItemVO[]>([])
+const rubricDrawerTotal = ref(0)
+const rubricDrawerPageNum = ref(1)
+const rubricDrawerPageSize = ref(20)
+const rubricDrawerLoading = ref(false)
 const rubricEditor = reactive<RubricItemSaveRequest>({
   assessmentItemId: '',
   courseGoalId: '',
@@ -1243,7 +1423,35 @@ const rubricEditorMode = ref<'create' | 'edit'>('create')
 
 function openRubricList(item: AssessmentItemVO) {
   rubricItem.value = item
+  rubricDrawerPageNum.value = 1
   rubricDrawerVisible.value = true
+  void loadRubricDrawerPage()
+}
+
+async function loadRubricDrawerPage() {
+  if (!rubricItem.value) return
+  rubricDrawerLoading.value = true
+  try {
+    const page = await rubricItemApi.page({
+      assessmentItemId: rubricItem.value.id,
+      pageNum: rubricDrawerPageNum.value,
+      pageSize: rubricDrawerPageSize.value,
+    })
+    rubricDrawerRows.value = page.list
+    rubricDrawerTotal.value = page.total
+  } catch (error: unknown) {
+    rubricDrawerRows.value = []
+    rubricDrawerTotal.value = 0
+    showUserError(error, 'Rubric 列表加载失败')
+  } finally {
+    rubricDrawerLoading.value = false
+  }
+}
+
+function handleRubricDrawerPageChange(pageEvent: { current: number; pageSize: number }) {
+  rubricDrawerPageNum.value = pageEvent.current
+  rubricDrawerPageSize.value = pageEvent.pageSize
+  void loadRubricDrawerPage()
 }
 
 function openRubricCreate() {
@@ -1258,7 +1466,7 @@ function openRubricCreate() {
     rubricName: '',
     description: '',
     fullScore: 0,
-    sortOrder: (rubricsOfItem(rubricItem.value.id).length + 1) * 10,
+    sortOrder: (rubricDrawerTotal.value + 1) * 10,
   })
   rubricEditorVisible.value = true
 }
@@ -1282,9 +1490,9 @@ function openRubricEdit(record: RubricItemVO) {
 async function submitRubric() {
   if (!guardCourseMatrixEditable('保存 Rubric')) return
   if (
-    !rubricEditor.rubricName.trim()
-    || rubricEditor.fullScore == null
-    || rubricEditor.fullScore <= 0
+    !rubricEditor.rubricName.trim() ||
+    rubricEditor.fullScore == null ||
+    rubricEditor.fullScore <= 0
   ) {
     message.error('请填写名称与满分')
     return
@@ -1303,7 +1511,7 @@ async function submitRubric() {
   else await rubricItemApi.update(request)
   message.success('Rubric 已保存')
   rubricEditorVisible.value = false
-  await loadAllItemMeta()
+  await Promise.all([loadRubricDrawerPage(), loadAllItemMeta()])
 }
 
 async function deleteRubric(record: RubricItemVO) {
@@ -1314,7 +1522,7 @@ async function deleteRubric(record: RubricItemVO) {
     onOk: async () => {
       await rubricItemApi.delete(record.id)
       message.success('已删除')
-      await loadAllItemMeta()
+      await Promise.all([loadRubricDrawerPage(), loadAllItemMeta()])
     },
   })
 }
@@ -1466,8 +1674,10 @@ async function handleScopeChange(): Promise<void> {
       return
     }
   }
+  goalPageNum.value = 1
+  itemPageNum.value = 1
   await loadCurrentCourse()
-  await Promise.all([loadCourseGoals(), loadAssessmentItems()])
+  await Promise.all([loadCourseGoals(), loadAssessmentItems(), loadSignalSummary()])
   await Promise.all([loadAllSupports(), loadAllItemMeta(), loadReferenceData()])
 }
 
@@ -1488,20 +1698,20 @@ onMounted(async () => {
 
 /* ========== 字典 ========== */
 
-const supportLevelOptions: { value: SupportLevelCode, label: string }[]
-  = ALL_SUPPORT_LEVEL_CODES.map((value) => ({
+const supportLevelOptions: { value: SupportLevelCode; label: string }[] =
+  ALL_SUPPORT_LEVEL_CODES.map((value) => ({
     value,
     label: strictEnumLabel(SupportLevelDescription, value, '支撑度'),
   }))
 
-const aggregationOptions: { value: AggregationFunctionCode, label: string }[]
-  = ALL_AGGREGATION_FUNCTION_CODES.map((value) => ({
+const aggregationOptions: { value: AggregationFunctionCode; label: string }[] =
+  ALL_AGGREGATION_FUNCTION_CODES.map((value) => ({
     value,
     label: AggregationFunctionDescription[value],
   }))
 
-const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
-  = ALL_ASSESSMENT_ITEM_TYPE_CODES.map((value) => ({
+const itemTypeOptions: { value: AssessmentItemTypeCode; label: string }[] =
+  ALL_ASSESSMENT_ITEM_TYPE_CODES.map((value) => ({
     value,
     label: strictEnumLabel(AssessmentItemTypeDescription, value, '考核项类型'),
   }))
@@ -1524,7 +1734,8 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
           <UiTag v-if="currentCourse?.schoolYear" tone="blue">
             {{ currentCourse.schoolYear
             }}<span v-if="currentCourse.semester">
-              · {{ formatSemester(currentCourse.semester) }}</span>
+              · {{ formatSemester(currentCourse.semester) }}</span
+            >
           </UiTag>
           <UiTag v-if="currentCourse?.creditValue != null" tone="gray">
             {{ currentCourse.creditValue }} 学分
@@ -1624,16 +1835,17 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
             <span>考核环节列表</span>
           </template>
           <UiDataTable
-            pagination-mode="none"
-            class="student-detail-table__data-table"
+            pagination-mode="server"
+            v-model:current="itemPageNum"
+            v-model:page-size="itemPageSize"
             :columns="itemColumns"
-            :data-source="assessmentItems"
-            :loading="assessmentItemsLoading"
+            :data-source="itemTableRows"
+            :loading="itemTableLoading"
             row-key="id"
             size="middle"
-            :show-pagination="false"
             flat
-            :total="assessmentItems.length"
+            :total="itemTableTotal"
+            @page-change="handleItemPageChange"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'itemType'">
@@ -1678,16 +1890,17 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
             <UiButton variant="primary" size="sm" @click="openGoalCreate"> 新建课程目标 </UiButton>
           </template>
           <UiDataTable
-            pagination-mode="none"
-            class="student-detail-table__data-table"
+            pagination-mode="server"
+            v-model:current="goalPageNum"
+            v-model:page-size="goalPageSize"
             :columns="goalColumns"
-            :data-source="courseGoals"
-            :loading="courseGoalsLoading"
+            :data-source="goalTableRows"
+            :loading="goalTableLoading"
             row-key="id"
             size="middle"
-            :show-pagination="false"
             flat
-            :total="courseGoals.length"
+            :total="goalTableTotal"
+            @page-change="handleGoalPageChange"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'thresholdValue'">
@@ -1706,12 +1919,13 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
                   <UiTag v-if="record.complexEngineeringFlag" tone="orange"> 复杂工程 </UiTag>
                   <span
                     v-if="
-                      !record.civicObjectiveFlag
-                        && !record.aiLiteracyFlag
-                        && !record.complexEngineeringFlag
+                      !record.civicObjectiveFlag &&
+                      !record.aiLiteracyFlag &&
+                      !record.complexEngineeringFlag
                     "
                     class="qcm__muted"
-                  >-</span>
+                    >-</span
+                  >
                 </a-space>
               </template>
               <template v-else-if="column.key === 'actions'">
@@ -2136,15 +2350,16 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
         </span>
       </div>
       <UiDataTable
-        pagination-mode="none"
-        class="student-detail-table__data-table"
+        pagination-mode="server"
+        v-model:current="rubricDrawerPageNum"
+        v-model:page-size="rubricDrawerPageSize"
         :columns="rubricColumns"
-        :data-source="rubricItem ? rubricsOfItem(rubricItem.id) : []"
+        :data-source="rubricDrawerRows"
+        :loading="rubricDrawerLoading"
         row-key="id"
         size="middle"
-        :show-pagination="false"
-        flat
-        :total="rubricItem ? rubricsOfItem(rubricItem.id).length : 0"
+        :total="rubricDrawerTotal"
+        @page-change="handleRubricDrawerPageChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'rubricCode'">

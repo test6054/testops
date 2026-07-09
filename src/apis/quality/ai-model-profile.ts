@@ -85,10 +85,21 @@ export interface AiModelProfileHealthCheckVO {
   responseSummary?: string
 }
 
+/** SignalBand 汇总响应 - 对齐后端 AiModelProfileSignalSummaryVO */
+export interface AiModelProfileSignalSummaryVO {
+  totalCount: number
+  enabledCount: number
+  healthyCount: number
+  failedCount: number
+  keyMissingCount: number
+}
+
 export const aiModelProfileApi = {
   /** 列表分页查询 */
-  list: (data: AiModelProfileQueryRequest) =>
-    http.post<PageResult<AiModelProfileVO>>(`${BASE}/list`, data),
+  page: (data: AiModelProfileQueryRequest) =>
+    http.post<PageResult<AiModelProfileVO>>(`${BASE}/page`, data),
+  signalSummary: (data: AiModelProfileQueryRequest) =>
+    http.post<AiModelProfileSignalSummaryVO>(`${BASE}/signal-summary`, data),
   /** 新建或更新 */
   save: (data: AiModelProfileSaveRequest) => http.post<string>(`${BASE}/save`, data),
   /** 健康检查 */

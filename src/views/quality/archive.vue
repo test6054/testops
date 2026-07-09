@@ -1,20 +1,21 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { AccreditationCockpitVO, AccreditationCycleVO } from '@/apis/quality/accreditation'
+import { accreditationApi } from '@/apis/quality/accreditation'
 import type {
   ArchiveQueryRequest,
   ArchiveSaveRequest,
+  ArchiveSignalSummaryVO,
   ArchiveVO,
   ExpertPackageExportRequest,
 } from '@/apis/quality/archive'
+import { archiveApi } from '@/apis/quality/archive'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { accreditationApi } from '@/apis/quality/accreditation'
-import { archiveApi } from '@/apis/quality/archive'
 import {
   ALL_ARCHIVE_BUSINESS_TYPE_CODES,
   ArchiveBusinessTypeCode,
@@ -221,18 +222,7 @@ async function loadProgramExportReadiness(trainingPlanId: string) {
     const cockpit = await accreditationApi.cockpit({ trainingPlanId: trainingPlanId.trim() })
     exportCockpit.value = cockpit
     exportActiveCycle.value = cockpit.activeCycle
-    const programId = qualityStore.currentProgramId
-    if (!programId) {
-      exportEvidenceCount.value = 0
-      return
-    }
-    const evidencePage = await accreditationApi.evidencePage({
-      programId,
-      trainingPlanId: trainingPlanId.trim(),
-      pageNum: 1,
-      pageSize: 1,
-    })
-    exportEvidenceCount.value = evidencePage.total
+    exportEvidenceCount.value = cockpit.activeEvidenceCount ?? 0
   } catch (error) {
     exportCockpit.value = undefined
     exportActiveCycle.value = undefined
@@ -265,17 +255,28 @@ const editorTrainingPlanId = ref('')
 const editorQualityCourseId = ref('')
 const archiveFileName = ref<string>()
 
+function buildArchiveListQuery(): ArchiveQueryRequest {
+  return {
+    ...query,
+    businessType: query.businessType || undefined,
+    excludeBusinessType: query.excludeBusinessType || undefined,
+    archiveCategory: query.archiveCategory?.trim() || undefined,
+    keyword: query.keyword?.trim() || undefined,
+  }
+}
+
+const signalSummary = ref<ArchiveSignalSummaryVO | null>(null)
+
 async function loadList() {
   loading.value = true
   try {
-    const page = await archiveApi.page({
-      ...query,
-      businessType: query.businessType || undefined,
-      excludeBusinessType: query.excludeBusinessType || undefined,
-      archiveCategory: query.archiveCategory?.trim() || undefined,
-      keyword: query.keyword?.trim() || undefined,
-    })
+    const listQuery = buildArchiveListQuery()
+    const [page, summary] = await Promise.all([
+      archiveApi.page(listQuery),
+      archiveApi.signalSummary(listQuery),
+    ])
     list.value = page.list
+    signalSummary.value = summary
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
     total.value = page.total
@@ -284,6 +285,7 @@ async function loadList() {
       await loadList()
     }
   } catch (error) {
+    signalSummary.value = null
     showUserError(error, '质量归档材料加载失败')
   } finally {
     loading.value = false
@@ -296,7 +298,7 @@ async function handleScopeChange(): Promise<void> {
 
 useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false })
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -563,28 +565,33 @@ function syncEditorCourse(value: string | null) {
 /* ========== 信号指标 ========== */
 
 const signals = computed<SignalMetric[]>(() => {
-  const totalCount = list.value.length
-  const confirmed = list.value.filter((r) => r.archiveOfficeConfirmed).length
-  const pending = totalCount - confirmed
-  const expertPackages = list.value.filter((r) => isExpertPackageRecord(r.businessType)).length
-  const reports = list.value.filter((r) => r.businessType === ArchiveBusinessTypeCode.REPORT).length
+  const summary = signalSummary.value
+  if (!summary) {
+    return []
+  }
+  const confirmed = summary.confirmedCount ?? 0
+  const pending = summary.pendingCount ?? 0
   return [
-    { key: 'total', label: '本页归档', value: totalCount, tone: 'blue' },
+    { key: 'total', label: '归档总数', value: summary.totalCount ?? 0, tone: 'blue' },
     { key: 'confirmed', label: '已确认', value: confirmed, tone: confirmed > 0 ? 'green' : 'gray' },
     { key: 'pending', label: '待确认', value: pending, tone: pending > 0 ? 'orange' : 'gray' },
     {
       key: 'expert',
       label: '专家材料包',
-      value: expertPackages,
-      tone: expertPackages > 0 ? 'yellow' : 'gray',
+      value: summary.expertPackageCount ?? 0,
+      tone: (summary.expertPackageCount ?? 0) > 0 ? 'yellow' : 'gray',
     },
-    { key: 'report', label: '报告归档', value: reports, tone: reports > 0 ? 'blue' : 'gray' },
-    { key: 'overall', label: '总台帐', value: total.value, tone: 'gray' },
+    {
+      key: 'report',
+      label: '报告归档',
+      value: summary.reportCount ?? 0,
+      tone: (summary.reportCount ?? 0) > 0 ? 'blue' : 'gray',
+    },
   ]
 })
 
 const columns: ColumnsType = [
-  { title: '归档编码', dataIndex: 'archiveCode', key: 'archiveCode' },
+  { title: '归档编码', dataIndex: 'archiveCode', key: 'archiveCode', fixed: 'left' },
   { title: '业务类型', dataIndex: 'businessType', key: 'businessType', width: 160 },
   { title: '业务对象', dataIndex: 'businessLabel', key: 'businessRef', width: 220 },
   { title: '归档文件', key: 'fileRef', width: 220 },
@@ -597,7 +604,7 @@ const columns: ColumnsType = [
     width: 110,
   },
   { title: '归档时间', dataIndex: 'archivedTime', key: 'archivedTime', width: 170 },
-  { title: '操作', key: 'actions', width: 280, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 280 },
 ]
 
 const auditDrawerOpen = ref(false)
@@ -647,8 +654,8 @@ watch(
   () => ({ packageType: exportForm.packageType, targetId: exportForm.targetId }),
   async (exportState) => {
     if (
-      exportState.packageType !== ExpertPackageTypeCode.PROGRAM_ACCREDITATION
-      || !exportState.targetId.trim()
+      exportState.packageType !== ExpertPackageTypeCode.PROGRAM_ACCREDITATION ||
+      !exportState.targetId.trim()
     ) {
       exportCockpit.value = undefined
       exportActiveCycle.value = undefined
@@ -711,7 +718,6 @@ onMounted(async () => {
       />
 
       <UiDataTable
-        class="student-detail-table__data-table"
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
         :columns="columns"
@@ -816,8 +822,8 @@ onMounted(async () => {
         </a-form-item>
         <div
           v-if="
-            exportForm.packageType === ExpertPackageTypeCode.PROGRAM_ACCREDITATION
-              && exportForm.targetId
+            exportForm.packageType === ExpertPackageTypeCode.PROGRAM_ACCREDITATION &&
+            exportForm.targetId
           "
           class="archive-page__export-readiness"
         >

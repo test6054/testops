@@ -24,7 +24,6 @@
           v-model:current="pagination.pageNum"
           v-model:page-size="pagination.pageSize"
           pagination-mode="server"
-          class="student-detail-table__data-table"
           :columns="columns"
           :data-source="pendingItems"
           :loading="loading"
@@ -168,10 +167,6 @@ import type {
   MyPendingSpotCheckItemResponse,
   SpotCheckStatusCode,
 } from '@/apis/mark/marking-quality'
-import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import {
   countMyPendingSpotChecks,
   handleSpotCheck,
@@ -180,6 +175,10 @@ import {
   SpotCheckConclusionCode,
   SpotCheckStatusDescription,
 } from '@/apis/mark/marking-quality'
+import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -258,19 +257,19 @@ async function loadList(): Promise<void> {
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }): void {
+function handlePageChange(page: { current: number; pageSize: number }): void {
   pagination.pageNum = page.current
   pagination.pageSize = page.pageSize
   void loadList()
 }
 
 const columns: ColumnType<MyPendingSpotCheckItemResponse>[] = [
-  { title: '考试', key: 'examId', width: 220, ellipsis: true },
+  { title: '考试', key: 'examId', width: 220, ellipsis: true, fixed: 'left' },
   { title: '题目', key: 'question', width: 240 },
   { title: '抽检前教师复核评分', key: 'originalScore', width: 160, align: 'right' },
   { title: '抽检状态', key: 'spotCheckStatus', width: 110 },
   { title: '分派时间', key: 'createTime', width: 170 },
-  { title: '操作', key: 'actions', width: 120, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 120 },
 ]
 
 function statusTone(status: SpotCheckStatusCode): BadgeTone {

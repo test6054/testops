@@ -12,19 +12,23 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  *   串行化并把平台同供应商其它配置置为停用。mark 直接扫描视觉能力使用 QWEN，
  *   quality 文本任务和 mark 其他 AI 能力使用 DEEPSEEK。
  */
-import type { AiModelProfileSaveRequest, AiModelProfileVO } from '@/apis/quality/ai-model-profile'
-import type { AiHealthStatusCode } from '@/apis/quality/types'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import type {
+  AiModelProfileSaveRequest,
+  AiModelProfileSignalSummaryVO,
+  AiModelProfileVO,
+} from '@/apis/quality/ai-model-profile'
 import { aiModelProfileApi } from '@/apis/quality/ai-model-profile'
+import type { AiHealthStatusCode } from '@/apis/quality/types'
 import {
   AI_HEALTH_STATUS_COLOR,
   AiHealthStatusDescription,
   AiProviderTypeCode,
   AiProviderTypeDescription,
 } from '@/apis/quality/types'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -36,22 +40,24 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { getUserErrorMessage } from '@/utils/error-handler'
-import { readAllPages } from '@/utils/page-result'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
-const AI_MODEL_PROFILE_PAGE_SIZE = 100
+const pageNum = ref(1)
+const pageSize = ref(DEFAULT_LIST_PAGE_SIZE)
+const pageTotal = ref(0)
 
 const columns: ColumnsType = [
   { title: '名称', dataIndex: 'profileName', key: 'profileName' },
   { title: '服务商', dataIndex: 'providerType', key: 'providerType', width: 140 },
-  { title: '模型', dataIndex: 'modelName', key: 'modelName', width: 180 },
+  { title: '模型', dataIndex: 'modelName', key: 'modelName', width: 180, fixed: 'left' },
   { title: '温度', dataIndex: 'temperature', key: 'temperature', width: 80 },
   { title: '最大输出量', dataIndex: 'maxTokens', key: 'maxTokens', width: 110 },
   { title: '最大输入字符', dataIndex: 'maxInputChars', key: 'maxInputChars', width: 130 },
   { title: '密钥', dataIndex: 'apiKeyMasked', key: 'apiKeyMasked', width: 220 },
   { title: '健康', dataIndex: 'healthStatus', key: 'healthStatus', width: 100 },
-  { title: '操作', key: 'actions', width: 380, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 380 },
 ]
 
 function healthLabel(value: AiHealthStatusCode | null | undefined): string {
@@ -99,8 +105,8 @@ const filterFields: FilterField[] = [{ key: 'enabledOnly', type: 'custom' }]
 const list = ref<AiModelProfileVO[]>([])
 const loading = ref(false)
 
-/** 当前已启用配置集合，按供应商分流后允许 QWEN / DEEPSEEK 各一条。 */
-const activeProfiles = computed<AiModelProfileVO[]>(() => list.value.filter((item) => item.enabled))
+/** 平台当前启用配置，独立查询避免分页列表只展示当前页启用项。 */
+const activeProfiles = ref<AiModelProfileVO[]>([])
 
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
@@ -129,29 +135,67 @@ const submitting = ref(false)
 const healthLoading = ref<string>('')
 const activatingId = ref<string>('')
 
+function buildAiModelListQuery() {
+  return {
+    enabledOnly: filterForm.enabledOnly || undefined,
+    pageNum: pageNum.value,
+    pageSize: pageSize.value,
+  }
+}
+
+const signalSummary = ref<AiModelProfileSignalSummaryVO | null>(null)
+
+async function loadActiveProfiles() {
+  try {
+    const page = await aiModelProfileApi.page({
+      enabledOnly: true,
+      pageNum: 1,
+      pageSize: 10,
+    })
+    activeProfiles.value = page.list
+  } catch {
+    activeProfiles.value = []
+  }
+}
+
 async function loadList() {
   loading.value = true
   try {
-    list.value = await readAllPages(
-      (pageNum) =>
-        aiModelProfileApi.list({
-          enabledOnly: filterForm.enabledOnly || undefined,
-          pageNum,
-          pageSize: AI_MODEL_PROFILE_PAGE_SIZE,
-        }),
-      '平台 AI 模型配置列表加载失败，请稍后重试',
-    )
+    const listQuery = buildAiModelListQuery()
+    const [page, summary] = await Promise.all([
+      aiModelProfileApi.page(listQuery),
+      aiModelProfileApi.signalSummary(listQuery),
+    ])
+    list.value = page.list
+    signalSummary.value = summary
+    pageNum.value = page.pageNum
+    pageSize.value = page.pageSize
+    pageTotal.value = page.total
+    await loadActiveProfiles()
+  } catch (error) {
+    list.value = []
+    pageTotal.value = 0
+    signalSummary.value = null
+    showUserError(error, '平台 AI 模型配置列表加载失败')
   } finally {
     loading.value = false
   }
 }
 
+function handlePageChange(event: { current: number; pageSize: number }): void {
+  pageNum.value = event.current
+  pageSize.value = event.pageSize
+  void loadList()
+}
+
 function handleSearch() {
+  pageNum.value = 1
   void loadList()
 }
 
 function handleReset() {
   filterForm.enabledOnly = false
+  pageNum.value = 1
   void loadList()
 }
 
@@ -384,13 +428,16 @@ function apiKeyDisplayText(record: AiModelProfileVO): string {
 /* ========== 信号指标 ========== */
 
 const signals = computed<SignalMetric[]>(() => {
-  const totalCount = list.value.length
-  const enabledCount = list.value.filter((item) => item.enabled).length
-  const healthy = list.value.filter((item) => item.healthStatus === 'HEALTHY').length
-  const failed = list.value.filter((item) => item.healthStatus === 'FAILED').length
-  const keyMissing = list.value.filter((item) => !item.apiKeyConfigured).length
+  const summary = signalSummary.value
+  if (!summary) {
+    return []
+  }
+  const enabledCount = summary.enabledCount ?? 0
+  const healthy = summary.healthyCount ?? 0
+  const failed = summary.failedCount ?? 0
+  const keyMissing = summary.keyMissingCount ?? 0
   return [
-    { key: 'total', label: '候选总数', value: totalCount, tone: 'blue' },
+    { key: 'total', label: '候选总数', value: summary.totalCount ?? 0, tone: 'blue' },
     {
       key: 'enabled',
       label: '当前启用',
@@ -492,16 +539,17 @@ onActivated(() => {
       </UiFilterBar>
 
       <UiDataTable
-        pagination-mode="none"
-        class="student-detail-table__data-table"
+        v-model:current="pageNum"
+        v-model:page-size="pageSize"
+        pagination-mode="server"
         :columns="columns"
         :data-source="list"
         :loading="loading"
+        :total="pageTotal"
         row-key="id"
         size="middle"
-        :show-pagination="false"
         flat
-        :total="list.length"
+        @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'profileName'">

@@ -1,5 +1,4 @@
-import type { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
-import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
+import { AiAnalysisStatusCode, aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import { getUserProcessFailureMessage } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 
@@ -36,10 +35,10 @@ export function useAiAnalysisRecordMeta(fallbackMessage: string) {
     if (typeof record.latencyMs === 'number') {
       return `${record.latencyMs} ms`
     }
-    if (record.analysisStatus === 'PENDING') {
+    if (record.analysisStatus === AiAnalysisStatusCode.PENDING) {
       return '待分析，尚未生成耗时'
     }
-    if (record.analysisStatus === 'FAILED' || record.analysisStatus === 'BLOCKED') {
+    if (record.analysisStatus === AiAnalysisStatusCode.FAILED || record.analysisStatus === AiAnalysisStatusCode.BLOCKED) {
       return '分析未完成'
     }
     return '—'
@@ -50,10 +49,10 @@ export function useAiAnalysisRecordMeta(fallbackMessage: string) {
   }
 
   function traceText(record: AiAnalysisRecordMetaSource): string {
-    if (record.analysisStatus === 'PENDING') {
+    if (record.analysisStatus === AiAnalysisStatusCode.PENDING) {
       return '待分析，尚未生成追踪编号'
     }
-    if (record.analysisStatus === 'FAILED' || record.analysisStatus === 'BLOCKED') {
+    if (record.analysisStatus === AiAnalysisStatusCode.FAILED || record.analysisStatus === AiAnalysisStatusCode.BLOCKED) {
       return '分析未完成'
     }
     return record.aiTraceId?.trim() || '—'

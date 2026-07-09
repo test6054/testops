@@ -80,22 +80,23 @@
             :fields="syncFilterFields"
             variant="plain"
             search-text="查询"
-            @search="loadSyncTasks"
+            @search="reloadSyncTasksFromFirstPage"
             @reset="handleSyncFilterReset"
           />
         </template>
 
         <UiDataTable
-          pagination-mode="client"
-          class="student-detail-table__data-table"
+          v-model:current="syncPagination.pageNum"
+          v-model:page-size="syncPagination.pageSize"
+          pagination-mode="server"
           :columns="syncColumns"
           :data-source="syncTasks"
           :loading="syncLoading"
-          :page-size="20"
-          :total="syncTasks.length"
+          :total="syncTaskTotal"
           flat
           row-key="id"
           size="middle"
+          @page-change="handleSyncPageChange"
         >
           <template #bodyCell="{ column, index }">
             <template v-if="column.key === 'externalSystemType'">
@@ -157,7 +158,6 @@
         <UiDataTable
           v-model:current="passbackPagination.pageNum"
           v-model:page-size="passbackPagination.pageSize"
-          class="student-detail-table__data-table"
           :columns="passbackColumns"
           :data-source="passbackRecords"
           :loading="passbackLoading"
@@ -361,18 +361,7 @@ import type {
   PassbackProgressResponse,
   PassbackRecordResponse,
   ReconcileStatusCode,
-  SyncTaskStatusCode,
 } from '@/apis/mark/teaching-affairs-sync'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
-import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
 import {
   cancelSyncTask,
   CREATABLE_SYNC_TYPE_OPTIONS,
@@ -383,7 +372,7 @@ import {
   ExternalSystemTypeDescription,
   getPassbackProgress,
   listPassbackRecords,
-  listSyncTasks,
+  pageSyncTasks,
   PASSBACK_STATUS_OPTIONS,
   PASSBACK_STATUS_TONE,
   PassbackStatusCode,
@@ -395,10 +384,21 @@ import {
   SYNC_TASK_FLOW_HINT,
   SYNC_TASK_STATUS_OPTIONS,
   SYNC_TASK_STATUS_TONE,
+  SyncTaskStatusCode,
   SyncTaskStatusDescription,
   TeachingAffairsSyncTypeCode,
   TeachingAffairsSyncTypeDescription,
 } from '@/apis/mark/teaching-affairs-sync'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
+import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -450,6 +450,12 @@ const loadFailed = ref(false)
 
 const syncTasks = ref<ExamTeachingAffairsSyncTask[]>([])
 const syncLoading = ref(false)
+const syncTaskTotal = ref(0)
+const syncingTaskTotal = ref(0)
+const syncPagination = reactive({
+  pageNum: 1,
+  pageSize: 20,
+})
 
 const syncFilterForm = reactive<{ status?: SyncTaskStatusCode }>({})
 
@@ -467,7 +473,7 @@ const syncFilterFields: FilterField[] = [
 const actionLoadingId = ref<string | undefined>(undefined)
 
 const syncColumns: ColumnType<ExamTeachingAffairsSyncTask>[] = [
-  { title: '同步任务编号', key: 'id', dataIndex: 'id', width: 120 },
+  { title: '同步任务编号', key: 'id', dataIndex: 'id', width: 120, fixed: 'left' },
   { title: '外部系统', key: 'externalSystemType', width: 140 },
   { title: '同步类型', key: 'syncType', width: 120 },
   { title: '状态', key: 'taskStatus', width: 110 },
@@ -475,7 +481,7 @@ const syncColumns: ColumnType<ExamTeachingAffairsSyncTask>[] = [
   { title: '外部课程', key: 'externalCourseId', dataIndex: 'externalCourseId', width: 140 },
   { title: '最后同步', key: 'lastSyncTime', dataIndex: 'lastSyncTime', width: 160 },
   { title: '处理说明', key: 'lastError', width: 120 },
-  { title: '操作', key: 'actions', width: 280, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 280 },
 ]
 
 async function loadSyncTasks(options?: { quiet?: boolean }): Promise<void> {
@@ -485,13 +491,28 @@ async function loadSyncTasks(options?: { quiet?: boolean }): Promise<void> {
     loadFailed.value = false
   }
   try {
-    syncTasks.value = await listSyncTasks({
+    const page = await pageSyncTasks({
       examId: selectedExamId.value,
       taskStatus: syncFilterForm.status,
+      pageNum: syncPagination.pageNum,
+      pageSize: syncPagination.pageSize,
     })
+    syncTasks.value = page.list
+    syncTaskTotal.value = page.total
+    syncPagination.pageNum = page.pageNum ?? syncPagination.pageNum
+    syncPagination.pageSize = page.pageSize ?? syncPagination.pageSize
+    const syncingPage = await pageSyncTasks({
+      examId: selectedExamId.value,
+      taskStatus: SyncTaskStatusCode.SYNCING,
+      pageNum: 1,
+      pageSize: 1,
+    })
+    syncingTaskTotal.value = syncingPage.total
   } catch (error) {
     if (!options?.quiet) {
       syncTasks.value = []
+      syncTaskTotal.value = 0
+      syncingTaskTotal.value = 0
       loadFailed.value = true
       showUserError(error, '教务同步任务加载失败')
     }
@@ -503,12 +524,30 @@ async function loadSyncTasks(options?: { quiet?: boolean }): Promise<void> {
   }
 }
 
+function reloadSyncTasksFromFirstPage(): void {
+  syncPagination.pageNum = 1
+  void loadSyncTasks()
+}
+
+function handleSyncFilterReset(): void {
+  syncFilterForm.status = undefined
+  reloadSyncTasksFromFirstPage()
+}
+
+function handleSyncPageChange(pageInfo: { current: number; pageSize: number }): void {
+  syncPagination.pageNum = pageInfo.current
+  syncPagination.pageSize = pageInfo.pageSize
+  void loadSyncTasks()
+}
+
 let syncPollTimer: ReturnType<typeof setInterval> | null = null
 
 function syncSyncPolling(): void {
-  const syncingTask = syncTasks.value.some((task) => task.taskStatus === 'SYNCING')
+  const syncingTask = syncingTaskTotal.value > 0
   const pendingPassback = passbackRecords.value.some(
-    (record) => record.passbackStatus === 'PENDING' || record.passbackStatus === 'SENT',
+    (record) =>
+      record.passbackStatus === PassbackStatusCode.PENDING ||
+      record.passbackStatus === PassbackStatusCode.SENT,
   )
   const shouldPoll = syncingTask || pendingPassback
   if (shouldPoll && !syncPollTimer) {
@@ -535,22 +574,17 @@ async function loadAllQuietly(): Promise<void> {
   }
 }
 
-function handleSyncFilterReset(): void {
-  syncFilterForm.status = undefined
-  void loadSyncTasks()
-}
-
 function canExecute(record: ExamTeachingAffairsSyncTask): boolean {
   // 后端 executeGradePassback 仅允许首次 PENDING 且无回写记录；重试后任务虽回到 PENDING 但记录已存在
-  return record.taskStatus === 'PENDING' && record.retryCount === 0
+  return record.taskStatus === SyncTaskStatusCode.PENDING && record.retryCount === 0
 }
 
 function canRetry(status: SyncTaskStatusCode): boolean {
-  return status === 'FAILED' || status === 'PARTIAL_SUCCESS'
+  return status === SyncTaskStatusCode.FAILED || status === SyncTaskStatusCode.PARTIAL_SUCCESS
 }
 
 function canCancel(status: SyncTaskStatusCode): boolean {
-  return status === 'PENDING' || status === 'SYNCING'
+  return status === SyncTaskStatusCode.PENDING || status === SyncTaskStatusCode.SYNCING
 }
 
 function buildSyncTaskActions(record: ExamTeachingAffairsSyncTask): UiTableRowActionItem[] {
@@ -761,7 +795,7 @@ async function handleReconcile(record: ExamTeachingAffairsSyncTask): Promise<voi
 const passbackRecords = ref<PassbackRecordResponse[]>([])
 const passbackLoading = ref(false)
 
-const passbackFilterForm = reactive<{ syncTaskId?: string, passbackStatus?: PassbackStatusCode }>(
+const passbackFilterForm = reactive<{ syncTaskId?: string; passbackStatus?: PassbackStatusCode }>(
   {},
 )
 
@@ -794,9 +828,9 @@ const syncSignalMetrics = computed((): SignalMetric[] => [
   {
     key: 'tasks',
     label: '同步任务',
-    value: syncTasks.value.length,
+    value: syncTaskTotal.value,
     unit: '条',
-    tone: syncTasks.value.length > 0 ? 'blue' : 'gray',
+    tone: syncTaskTotal.value > 0 ? 'blue' : 'gray',
   },
   {
     key: 'passback',
@@ -863,7 +897,7 @@ function handlePassbackFilterReset(): void {
   reloadPassbackRecordsFromFirstPage()
 }
 
-function handlePassbackPageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePassbackPageChange(pageInfo: { current: number; pageSize: number }): void {
   passbackPagination.pageNum = pageInfo.current
   passbackPagination.pageSize = pageInfo.pageSize
   void loadPassbackRecords()
@@ -928,6 +962,9 @@ watch(
   selectedExamId,
   (value) => {
     syncTasks.value = []
+    syncTaskTotal.value = 0
+    syncingTaskTotal.value = 0
+    syncPagination.pageNum = 1
     passbackRecords.value = []
     passbackPagination.pageNum = 1
     passbackPagination.total = 0

@@ -22,3 +22,4 @@ export const ReportStatusDescription: Record<ReportStatusCode, string> = {
   [ReportStatusCode.CONFIRMED]: '已确认',
   [ReportStatusCode.ARCHIVED]: '已归档',
 }
+

@@ -1,6 +1,7 @@
 /**
  * 阅卷考试试卷身份绑定 API - 对接 /api/mark/exams/papers/bind。
  */
+import type { AttemptStatusCode } from '@/types/enums/attempt-status-enum'
 import http from '@/config/axios'
 
 export {
@@ -14,9 +15,11 @@ export interface ExamPaperBindRequest {
   examId: string
   scanBatchId: string
   paperInstanceId: string
+  /** 工作台 Inspector 人工绑定时传当前扫描页 ID */
+  pageId?: string
   recognizedStudentNo?: string
   confirmedCandidateRosterId: string
-  attemptStatus: 'NORMAL' | 'MAKEUP' | 'RETAKE'
+  attemptStatus: AttemptStatusCode
   attemptNo?: string
 }
 

@@ -17,6 +17,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { ProgramSupportProfileStatusCode } from '@/types/enums/program-support-profile-status-enum'
 import { showUserError } from '@/utils/error-handler'
 
 const props = defineProps<{
@@ -30,7 +31,9 @@ const loading = ref(false)
 const saving = ref(false)
 const profile = ref<ProgramSupportProfileVO | null>(null)
 
-const isProfileLocked = computed(() => profile.value?.profileStatus === 'CONFIRMED')
+const isProfileLocked = computed(
+  () => profile.value?.profileStatus === ProgramSupportProfileStatusCode.CONFIRMED,
+)
 const facultyLoading = ref(false)
 const facultySaving = ref(false)
 const facultyDrawerOpen = ref(false)
@@ -80,7 +83,7 @@ const facultyForm = reactive<FacultyProfileSaveRequest>({
 })
 
 const facultyColumns: ColumnsType<FacultyProfileVO> = [
-  { title: '教师', dataIndex: 'teacherName', key: 'teacher', width: 180 },
+  { title: '教师', dataIndex: 'teacherName', key: 'teacher', width: 180, fixed: 'left' },
   { title: '院系', dataIndex: 'department', key: 'department', width: 150 },
   { title: '职称', dataIndex: 'title', key: 'title', width: 110 },
   {
@@ -92,7 +95,7 @@ const facultyColumns: ColumnsType<FacultyProfileVO> = [
   { title: '承担课程', dataIndex: 'courses', key: 'courses' },
   { title: '工程认证证据', key: 'engineeringEvidence', width: 220 },
   { title: '更新时间', dataIndex: 'updateTime', key: 'updateTime', width: 170 },
-  { title: '操作', key: 'actions', width: 160, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 160 },
 ]
 
 function syncFormFromProfile(p: ProgramSupportProfileVO | null) {
@@ -458,7 +461,7 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
           <h3 class="section-title">师资与支持条件概述档案</h3>
         </div>
         <div class="status-actions">
-          <span v-if="profile?.profileStatus === 'CONFIRMED'" class="confirmed">已确认</span>
+          <span v-if="profile?.profileStatus === ProgramSupportProfileStatusCode.CONFIRMED" class="confirmed">已确认</span>
           <span v-else-if="profile" class="draft">草稿</span>
           <span v-else class="draft">尚未建档</span>
           <div class="actions">

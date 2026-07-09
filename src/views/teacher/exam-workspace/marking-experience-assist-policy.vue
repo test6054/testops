@@ -6,7 +6,7 @@
     <UiSkeletonState v-else-if="loading" variant="card" :card-count="2" compact />
     <template v-else>
       <UiAlertStrip
-        v-if="policy?.policyStatus === 'FROZEN'"
+        v-if="policy?.policyStatus === GradingExperienceAssistPolicyStatusCode.FROZEN"
         tone="warning"
         title="本场定标策略已冻结"
         description="正评任务已生成，不能再变更启用状态或题目绑定；已生效的定标经验仍会在 AI 复评中引用。"
@@ -97,10 +97,7 @@
           租户未启用经验辅助评阅，请联系教务管理员在「租户阅卷策略」中开启后再回到本页配置。
         </p>
         <template v-else>
-          <p
-            v-if="unresolvedSubjectiveCount > 0"
-            class="experience-assist-policy__hint"
-          >
+          <p v-if="unresolvedSubjectiveCount > 0" class="experience-assist-policy__hint">
             <template v-if="baselineMissingCount > 0">
               尚有
               {{ baselineMissingCount }} 道主观题标答基线未锁定，请先在「标答与评分基线」确认生效。
@@ -152,15 +149,17 @@
           @reset="handleBindingFilterReset"
         />
         <UiDataTable
-          v-model:current="bindingPagination.current"
-          v-model:page-size="bindingPagination.pageSize"
-          pagination-mode="client"
+          v-model:current="bindingPageNum"
+          v-model:page-size="bindingPageSize"
+          pagination-mode="server"
           :columns="bindingColumns"
-          :data-source="filteredBindings"
+          :data-source="bindings"
           :loading="bindingsLoading"
+          :total="bindingPageTotal"
           flat
           row-key="layoutQuestionId"
           size="small"
+          @page-change="handleBindingPageChange"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'baselineReady'">
@@ -218,19 +217,19 @@ import type {
   ExamQuestionExperienceAssistBindingResponse,
   GradingExperienceAssistReadinessResponse,
 } from '@/apis/mark/grading-experience-assist'
-import type { ExamExperienceAssistPolicyConfigMode } from '@/components/mark/ExamExperienceAssistPolicyEnableModal.vue'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type {ExperienceAssistBindingFilterQuery} from '@/utils/experience-assist-binding-filter';
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   disableExamGradingExperienceAssistPolicy,
   getExamGradingExperienceAssistPolicy,
   getExamGradingExperienceAssistReadiness,
-  listExamExperienceAssistBindings,
+  pageExamExperienceAssistBindings,
   saveExamExperienceAssistBinding,
 } from '@/apis/mark/grading-experience-assist'
+import type { ExamExperienceAssistPolicyConfigMode } from '@/components/mark/ExamExperienceAssistPolicyEnableModal.vue'
 import ExamExperienceAssistPolicyEnableModal from '@/components/mark/ExamExperienceAssistPolicyEnableModal.vue'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { ExperienceAssistBindingFilterQuery } from '@/utils/experience-assist-binding-filter'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
 import QuestionExperienceAssistBindingModal from '@/components/mark/QuestionExperienceAssistBindingModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -245,18 +244,19 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkWorkbenchContext, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { useQueryTable } from '@/composables/useQueryTable'
 import { ExamKindDescription } from '@/types/enums/exam-kind-enum'
+import {
+  GradingExperienceAssistPolicyStatusCode,
+  GradingExperienceAssistPolicyStatusDescription,
+} from '@/types/enums/grading-experience-assist-policy-status-enum'
 import {
   GradingExperienceAssistQuestionResolutionCode,
   GradingExperienceAssistQuestionResolutionDescription,
   GradingExperienceAssistQuestionResolutionTone,
-  isGradingExperienceAssistQuestionReady,
 } from '@/types/enums/grading-experience-assist-question-resolution-enum'
 import { showUserError } from '@/utils/error-handler'
-import {
-  
-  filterExperienceAssistBindings
-} from '@/utils/experience-assist-binding-filter'
+import { buildEmptyPageResult } from '@/utils/page-result'
 
 defineOptions({ name: 'TeacherExamWorkspaceMarkingExperienceAssistPolicy' })
 
@@ -264,11 +264,9 @@ const { examId } = useWorkspaceExamId()
 const { snapshot, refreshSnapshot } = useMarkWorkbenchContext()
 const loading = ref(false)
 const saving = ref(false)
-const bindingsLoading = ref(false)
 const unbindingQuestionId = ref<string>()
 const policy = ref<ExamGradingExperienceAssistPolicyResponse | null>(null)
 const readiness = ref<GradingExperienceAssistReadinessResponse | null>(null)
-const bindings = ref<ExamQuestionExperienceAssistBindingResponse[]>([])
 const bindingModalOpen = ref(false)
 const bindingTarget = ref<ExamQuestionExperienceAssistBindingResponse | null>(null)
 const policyConfigModalOpen = ref(false)
@@ -278,6 +276,37 @@ const bindingFilterForm = reactive<ExperienceAssistBindingFilterQuery>({
   keyword: '',
   assistResolutionStatus: undefined,
 })
+
+const {
+  loading: bindingsLoading,
+  rows: bindings,
+  pageNum: bindingPageNum,
+  pageSize: bindingPageSize,
+  pageTotal: bindingPageTotal,
+  filters: bindingFilters,
+  handlePageChange: handleBindingPageChange,
+  search: searchBindings,
+  loadPage: loadBindingPage,
+} = useQueryTable<ExamQuestionExperienceAssistBindingResponse, ExperienceAssistBindingFilterQuery>(
+  (params) => {
+    if (!examId.value) {
+      return Promise.resolve(
+        buildEmptyPageResult<ExamQuestionExperienceAssistBindingResponse>(
+          params.pageNum,
+          params.pageSize,
+        ),
+      )
+    }
+    const { keyword, assistResolutionStatus, ...pageParams } = params
+    return pageExamExperienceAssistBindings({
+      examId: examId.value,
+      keyword: keyword?.trim() || undefined,
+      assistResolutionStatus,
+      ...pageParams,
+    })
+  },
+  { immediate: false, errorMessage: '加载题目绑定失败' },
+)
 
 const bindingFilterModel = computed<Record<string, unknown>>({
   get: () => bindingFilterForm,
@@ -315,24 +344,15 @@ const bindingFilterFields: FilterField[] = [
   },
 ]
 
-const bindingPagination = reactive({
-  current: 1,
-  pageSize: 10,
-})
-
-const filteredBindings = computed(() =>
-  filterExperienceAssistBindings(bindings.value, bindingFilterForm),
-)
-
 const bindingColumns: ColumnType<ExamQuestionExperienceAssistBindingResponse>[] = [
-  { title: '题号', key: 'questionNo', dataIndex: 'questionNo', width: 80 },
+  { title: '题号', key: 'questionNo', dataIndex: 'questionNo', width: 80, fixed: 'left' },
   { title: '标答基线', key: 'baselineReady', width: 96 },
   { title: '定标状态', key: 'assistResolutionStatus', width: 108 },
   { title: '来源考试', key: 'sourceExamName', dataIndex: 'sourceExamName', width: 160 },
   { title: '经验摘要', key: 'experienceSummary', dataIndex: 'experienceSummary', width: 280 },
   { title: '一致率', key: 'consistencyRate', width: 88 },
   { title: '绑定时间', key: 'boundTime', width: 140 },
-  { title: '操作', key: 'actions', width: 128, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 128 },
 ]
 
 const requiresExplicitBinding = computed(() => policy.value?.autoMatchSupported === false)
@@ -357,63 +377,55 @@ const bindingGuideText = computed(() => {
 
 const policyStatusLabel = computed(() => {
   const status = policy.value?.policyStatus
-  if (status === 'FROZEN') return '已冻结'
-  if (policy.value?.enabled) return '已启用'
-  return '未启用'
+  if (status === GradingExperienceAssistPolicyStatusCode.FROZEN) {
+    return GradingExperienceAssistPolicyStatusDescription[status]
+  }
+  if (policy.value?.enabled)
+    return GradingExperienceAssistPolicyStatusDescription[
+      GradingExperienceAssistPolicyStatusCode.ENABLED
+    ]
+  return GradingExperienceAssistPolicyStatusDescription[
+    GradingExperienceAssistPolicyStatusCode.DISABLED
+  ]
 })
 
 const policyTone = computed((): BadgeTone => {
-  if (policy.value?.policyStatus === 'FROZEN') return 'gray'
+  if (policy.value?.policyStatus === GradingExperienceAssistPolicyStatusCode.FROZEN) return 'gray'
   return policy.value?.enabled ? 'green' : 'orange'
 })
 
 const canEnable = computed(() =>
   Boolean(
-    policy.value?.tenantExperienceAssistEnabled
-    && policy.value?.policyStatus !== 'FROZEN'
-    && !bindingsLoading.value
-    && unresolvedSubjectiveCount.value === 0,
+    policy.value?.tenantExperienceAssistEnabled &&
+    policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN &&
+    !bindingsLoading.value &&
+    unresolvedSubjectiveCount.value === 0,
   ),
 )
 
 const canDisable = computed(() =>
-  Boolean(policy.value?.enabled && policy.value?.policyStatus !== 'FROZEN'),
+  Boolean(
+    policy.value?.enabled &&
+    policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN,
+  ),
 )
 
 const canEditConfig = computed(() =>
   Boolean(
-    policy.value?.tenantExperienceAssistEnabled
-    && policy.value?.enabled
-    && policy.value?.policyStatus !== 'FROZEN',
+    policy.value?.tenantExperienceAssistEnabled &&
+    policy.value?.enabled &&
+    policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN,
   ),
 )
 
-const baselineMissingCount = computed(
-  () =>
-    readiness.value?.baselineMissingCount
-    ?? bindings.value.filter((row) => row.baselineReady === false).length,
-)
+const baselineMissingCount = computed(() => readiness.value?.baselineMissingCount ?? 0)
 
-const unboundSubjectiveCount = computed(
-  () =>
-    readiness.value?.assistUnresolvedCount
-    ?? bindings.value.filter(
-      (row) =>
-        row.assistResolutionStatus
-        === GradingExperienceAssistQuestionResolutionCode.NEEDS_EXPLICIT_BINDING,
-    ).length,
-)
+const unboundSubjectiveCount = computed(() => readiness.value?.assistUnresolvedCount ?? 0)
 
-const unresolvedSubjectiveCount = computed(() => {
-  if (readiness.value) {
-    return (
-      (readiness.value.baselineMissingCount ?? 0) + (readiness.value.assistUnresolvedCount ?? 0)
-    )
-  }
-  return bindings.value.filter(
-    (row) => !isGradingExperienceAssistQuestionReady(row.assistResolutionStatus),
-  ).length
-})
+const unresolvedSubjectiveCount = computed(
+  () =>
+    (readiness.value?.baselineMissingCount ?? 0) + (readiness.value?.assistUnresolvedCount ?? 0),
+)
 
 const needsExplicitBindingCount = unboundSubjectiveCount
 
@@ -425,8 +437,8 @@ function resolutionLabel(
 ): string {
   if (!status) return '—'
   if (
-    status === GradingExperienceAssistQuestionResolutionCode.NEEDS_EXPLICIT_BINDING
-    && row?.experienceCaseId
+    status === GradingExperienceAssistQuestionResolutionCode.NEEDS_EXPLICIT_BINDING &&
+    row?.experienceCaseId
   ) {
     return '定标引用失效'
   }
@@ -453,13 +465,18 @@ function syncBindingFilterForm(next: Record<string, unknown>): void {
 }
 
 function handleBindingFilterSearch(): void {
-  bindingPagination.current = 1
+  bindingFilters.value = {
+    keyword: bindingFilterForm.keyword,
+    assistResolutionStatus: bindingFilterForm.assistResolutionStatus,
+  }
+  searchBindings()
 }
 
 function handleBindingFilterReset(): void {
   bindingFilterForm.keyword = ''
   bindingFilterForm.assistResolutionStatus = undefined
-  bindingPagination.current = 1
+  bindingFilters.value = {}
+  searchBindings()
 }
 
 async function syncWorkbenchPendingTodos(): Promise<void> {
@@ -480,25 +497,17 @@ async function loadPolicy(): Promise<void> {
 
 async function loadBindings(): Promise<void> {
   if (!examId.value || !policy.value?.tenantExperienceAssistEnabled) {
-    bindings.value = []
     readiness.value = null
     return
   }
-  bindingsLoading.value = true
   try {
-    const [bindingRows, readinessRow] = await Promise.all([
-      listExamExperienceAssistBindings(examId.value),
-      getExamGradingExperienceAssistReadiness(examId.value),
-    ])
-    bindings.value = bindingRows
+    const readinessRow = await getExamGradingExperienceAssistReadiness(examId.value)
     readiness.value = readinessRow
+    await loadBindingPage()
     await syncWorkbenchPendingTodos()
   } catch (error) {
-    bindings.value = []
     readiness.value = null
     showUserError(error, '加载题目绑定失败')
-  } finally {
-    bindingsLoading.value = false
   }
 }
 
@@ -529,7 +538,7 @@ async function handleDisable(): Promise<void> {
 function buildBindingRowActions(
   row: ExamQuestionExperienceAssistBindingResponse,
 ): UiTableRowActionItem[] {
-  const frozen = policy.value?.policyStatus === 'FROZEN'
+  const frozen = policy.value?.policyStatus === GradingExperienceAssistPolicyStatusCode.FROZEN
   const actions: UiTableRowActionItem[] = [
     {
       key: 'bind',
@@ -567,7 +576,11 @@ function openBindingModal(row: ExamQuestionExperienceAssistBindingResponse): voi
 }
 
 function confirmUnbind(row: ExamQuestionExperienceAssistBindingResponse): void {
-  if (!examId.value || policy.value?.policyStatus === 'FROZEN') return
+  if (
+    !examId.value ||
+    policy.value?.policyStatus === GradingExperienceAssistPolicyStatusCode.FROZEN
+  )
+    return
   void confirmAsync({
     title: '解除题目定标绑定？',
     content: `题号 ${row.questionNo ?? row.layoutQuestionId} 将不再引用显式定标经验。`,
@@ -600,19 +613,11 @@ async function handleBindingSaved(): Promise<void> {
 }
 
 watch(
-  () => filteredBindings.value.length,
-  (total) => {
-    const maxPage = Math.max(1, Math.ceil(total / bindingPagination.pageSize))
-    if (bindingPagination.current > maxPage) {
-      bindingPagination.current = maxPage
-    }
-  },
-)
-
-watch(
   examId,
   () => {
-    handleBindingFilterReset()
+    bindingFilterForm.keyword = ''
+    bindingFilterForm.assistResolutionStatus = undefined
+    bindingFilters.value = {}
     void loadPolicy()
   },
   { immediate: true },
@@ -623,7 +628,7 @@ watch(policy, () => {
 watch(
   () => snapshot.value?.formalSessionActive,
   (active) => {
-    if (active && policy.value?.policyStatus !== 'FROZEN') {
+    if (active && policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN) {
       void loadPolicy()
     }
   },

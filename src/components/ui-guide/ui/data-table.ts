@@ -14,8 +14,9 @@
  * - `no-result`：筛选无结果
  * 也可传 `emptyTitle` / `emptyDescription` 或完全自定义 `#empty` slot。
  *
- * ## 数值列
- * 使用 `buildNumericColumn()` 或列 `align: 'right'`，经 `normalizeDataTableColumns` 统一表头/单元格右对齐。
+ * ## 列固定
+ * - 操作列（key=actions）默认 fixed:right
+ * - 宽表自动首列 fixed:left；页面不得声明多个左固定列
  *
  * ## 窄视口列（768 / 992）
  * - 列 `meta.hideBelow: 'md' | 'lg'`。
@@ -167,6 +168,51 @@ function resolveColumnKey<RecordType>(column: ColumnType<RecordType>): string {
   return key != null ? String(key) : ''
 }
 
+function resolveMinWidthCss(minWidth: ColumnType['minWidth']): string | undefined {
+  if (minWidth == null) {
+    return undefined
+  }
+  if (typeof minWidth === 'number') {
+    return `${minWidth}px`
+  }
+  const textMinWidth = String(minWidth)
+  if (textMinWidth.trim()) {
+    return textMinWidth
+  }
+  return undefined
+}
+
+/** 将 minWidth 注入 Ant Table 单元格 style，保证弹性列在 scroll.x 布局下不被压扁 */
+function injectColumnMinWidth<RecordType>(
+  column: ColumnType<RecordType>,
+): ColumnType<RecordType> {
+  const minWidthCss = resolveMinWidthCss(column.minWidth)
+  if (!minWidthCss) {
+    return column
+  }
+  const prevCustomCell = column.customCell
+  const prevCustomHeaderCell = column.customHeaderCell
+  return {
+    ...column,
+    customCell: (record, rowIndex, col) => {
+      const base = prevCustomCell?.(record, rowIndex, col) ?? {}
+      const baseStyle = (base.style ?? {}) as Record<string, string>
+      return {
+        ...base,
+        style: { ...baseStyle, minWidth: minWidthCss },
+      }
+    },
+    customHeaderCell: (col) => {
+      const base = prevCustomHeaderCell?.(col) ?? {}
+      const baseStyle = (base.style ?? {}) as Record<string, string>
+      return {
+        ...base,
+        style: { ...baseStyle, minWidth: minWidthCss },
+      }
+    },
+  }
+}
+
 /**
  * 按列 key / title 推断窄视口隐藏策略；显式 meta.hideBelow 优先。
  */
@@ -241,22 +287,31 @@ export function buildNumericColumn<RecordType = Record<string, unknown>>(
 }
 
 /**
- * 归一单列定义：meta.numeric 或 align=right 时统一 className 与表头对齐。
+ * 归一单列定义：操作列居中、数值列右对齐、minWidth 注入单元格 style。
  */
 export function normalizeDataTableColumn<RecordType = Record<string, unknown>>(
   column: ColumnType<RecordType> | ColumnWithMetaLegacy<RecordType>,
 ): ColumnType<RecordType> {
-  const withMeta = column as ColumnWithMetaLegacy<RecordType>
-  const alignRight = withMeta.meta?.numeric || column.align === 'right'
+  const columnKey = resolveColumnKey(column)
+  const withMinWidth = injectColumnMinWidth(column)
+  const withMeta = withMinWidth as ColumnWithMetaLegacy<RecordType>
+  const alignRight = withMeta.meta?.numeric || withMinWidth.align === 'right'
+  if (columnKey === 'actions') {
+    return {
+      ...withMinWidth,
+      align: withMinWidth.align ?? 'center',
+      fixed: withMinWidth.fixed ?? 'right',
+    }
+  }
   if (!alignRight) {
-    return column
+    return withMinWidth
   }
   const classNames = [
-    typeof column.className === 'string' ? column.className : '',
+    typeof withMinWidth.className === 'string' ? withMinWidth.className : '',
     'ui-data-table__col--numeric',
   ].filter(Boolean)
   return {
-    ...column,
+    ...withMinWidth,
     align: 'right',
     className: classNames.join(' ') || undefined,
   }
@@ -264,11 +319,100 @@ export function normalizeDataTableColumn<RecordType = Record<string, unknown>>(
 
 /**
  * 批量归一表格列，供 UiDataTable 与页面列定义复用。
+ * - 宽表自动首列左钉、操作列右钉
+ * - 左固定列仅保留首列，其余 fixed:left 会被剥离
  */
 export function normalizeDataTableColumns<RecordType = Record<string, unknown>>(
   columns: ColumnsType<RecordType>,
 ): ColumnsType<RecordType> {
-  return columns.map((column) => normalizeDataTableColumn(column))
+  const leftFixedState = { assigned: false }
+  let withSingleLeftFixed = stripExtraLeftFixedColumns(columns, leftFixedState)
+  if (tableNeedsHorizontalPinning(withSingleLeftFixed) && !leftFixedState.assigned) {
+    withSingleLeftFixed = ensurePrimaryColumnPinned(withSingleLeftFixed)
+  }
+  return withSingleLeftFixed.map((column) => normalizeDataTableColumn(column))
+}
+
+function collectLeafColumns<RecordType>(columns: ColumnsType<RecordType>): ColumnType<RecordType>[] {
+  const leaves: ColumnType<RecordType>[] = []
+  for (const column of columns) {
+    if ('children' in column && column.children?.length) {
+      leaves.push(...collectLeafColumns(column.children))
+      continue
+    }
+    leaves.push(column as ColumnType<RecordType>)
+  }
+  return leaves
+}
+
+/** 存在右钉或列宽合计需横向滚动时，启用首列左钉策略。 */
+function tableNeedsHorizontalPinning<RecordType>(columns: ColumnsType<RecordType>): boolean {
+  const leaves = collectLeafColumns(columns)
+  const hasRightPin = leaves.some(
+    (column) => column.fixed === 'right' || resolveColumnKey(column) === 'actions',
+  )
+  if (hasRightPin) {
+    return true
+  }
+  return resolveDataTableScrollX(columns) != null
+}
+
+/** 宽表无左钉时，自动将第一个非操作列设为 fixed:left。 */
+function ensurePrimaryColumnPinned<RecordType>(
+  columns: ColumnsType<RecordType>,
+): ColumnsType<RecordType> {
+  const state = { assigned: false }
+  return columns.map((column) => pinPrimaryColumnNode(column, state))
+}
+
+function pinPrimaryColumnNode<RecordType>(
+  column: ColumnsType<RecordType>[number],
+  state: { assigned: boolean },
+): ColumnsType<RecordType>[number] {
+  if ('children' in column && column.children?.length) {
+    return {
+      ...column,
+      children: column.children.map((child) => pinPrimaryColumnNode(child, state)),
+    }
+  }
+  const leaf = column as ColumnType<RecordType>
+  if (state.assigned || resolveColumnKey(leaf) === 'actions') {
+    return leaf
+  }
+  state.assigned = true
+  return {
+    ...leaf,
+    fixed: 'left',
+  }
+}
+
+function isLeftFixedColumn(column: ColumnType): boolean {
+  return column.fixed === 'left' || column.fixed === true
+}
+
+/** 仅允许第一个左固定列保留 fixed，后续左固定声明一律移除。 */
+function stripExtraLeftFixedColumns<RecordType>(
+  columns: ColumnsType<RecordType>,
+  state: { assigned: boolean },
+): ColumnsType<RecordType> {
+  return columns.map((column) => {
+    if ('children' in column && column.children?.length) {
+      return {
+        ...column,
+        children: stripExtraLeftFixedColumns(column.children, state),
+      }
+    }
+    const leaf = column as ColumnType<RecordType>
+    if (!isLeftFixedColumn(leaf)) {
+      return leaf
+    }
+    if (!state.assigned) {
+      state.assigned = true
+      return leaf
+    }
+    const { fixed: _fixed, ...rest } = leaf
+    return rest as ColumnType<RecordType>
+  })
 }
 
 function isLeafTableColumn(column: ColumnsType[number]): column is ColumnType {
@@ -301,8 +445,8 @@ function resolveLeafColumnWidth(column: ColumnType): number | undefined {
 }
 
 /**
- * 当存在 fixed 列且列宽可求和时，计算横向滚动宽度，避免固定列与操作按钮错位溢出。
- * 无 width 的 flex 列按 {@link UI_DATA_TABLE_FLEX_COLUMN_MIN_WIDTH} 计入，保证 ellipsis 列有约束。
+ * 当存在 fixed 列或列宽可求和超过视口基准时，计算横向滚动宽度。
+ * 无 width 的 flex 列按 {@link UI_DATA_TABLE_FLEX_COLUMN_MIN_WIDTH} 计入。
  */
 export function resolveDataTableScrollX(columns: ColumnsType): number | undefined {
   let totalWidth = 0
@@ -324,13 +468,21 @@ export function resolveDataTableScrollX(columns: ColumnsType): number | undefine
     flexColumnCount += 1
   }
 
-  if (!hasFixed) {
-    return undefined
+  totalWidth += flexColumnCount * UI_DATA_TABLE_FLEX_COLUMN_MIN_WIDTH
+
+  if (hasFixed) {
+    return totalWidth > 0 ? totalWidth : undefined
   }
 
-  totalWidth += flexColumnCount * UI_DATA_TABLE_FLEX_COLUMN_MIN_WIDTH
-  return totalWidth > 0 ? totalWidth : undefined
+  if (totalWidth >= UI_DATA_TABLE_MIN_SCROLL_X) {
+    return totalWidth
+  }
+
+  return undefined
 }
+
+/** 无 fixed 列时，列宽合计超过该阈值才启用 scroll.x */
+export const UI_DATA_TABLE_MIN_SCROLL_X = 960
 
 /**
  * client 分页模式下按 current/pageSize 切片数据源。

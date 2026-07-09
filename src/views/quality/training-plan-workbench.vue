@@ -29,51 +29,59 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  *   - /api/quality/accreditation-standards          认证标准条目
  */
 import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import type {
   GraduationRequirementSaveRequest,
   GraduationRequirementVO,
 } from '@/apis/quality/graduation-requirement'
+import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
 import type {
   RequirementIndicatorSaveRequest,
   RequirementIndicatorVO,
 } from '@/apis/quality/requirement-indicator'
+import { requirementIndicatorApi } from '@/apis/quality/requirement-indicator'
 import type {
   RequirementStandardMappingSaveRequest,
   RequirementStandardMappingVO,
 } from '@/apis/quality/requirement-standard-mapping'
+import { requirementStandardMappingApi } from '@/apis/quality/requirement-standard-mapping'
 import type {
   TrainingObjectiveSaveRequest,
   TrainingObjectiveVO,
 } from '@/apis/quality/training-objective'
+import { trainingObjectiveApi } from '@/apis/quality/training-objective'
 import type {
   TrainingObjectiveRequirementSaveRequest,
   TrainingObjectiveRequirementVO,
 } from '@/apis/quality/training-objective-requirement'
-import type { TrainingPlanSaveRequest, TrainingPlanVO } from '@/apis/quality/training-plan'
-import type { CivicDimensionCode, ConfirmationStatusCode } from '@/apis/quality/types'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/matrix-types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
-import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
-import { requirementIndicatorApi } from '@/apis/quality/requirement-indicator'
-import { requirementStandardMappingApi } from '@/apis/quality/requirement-standard-mapping'
-import { trainingObjectiveApi } from '@/apis/quality/training-objective'
 import { trainingObjectiveRequirementApi } from '@/apis/quality/training-objective-requirement'
+import type { TrainingPlanSaveRequest, TrainingPlanVO } from '@/apis/quality/training-plan'
 import { trainingPlanApi } from '@/apis/quality/training-plan'
+import type { CivicDimensionCode } from '@/apis/quality/types'
 import {
   AggregationFunctionCode,
   AggregationFunctionDescription,
   ALL_AGGREGATION_FUNCTION_CODES,
   ALL_CIVIC_DIMENSION_CODES,
   CivicDimensionDescription,
+  ConfirmationStatusCode,
   ConfirmationStatusDescription,
 } from '@/apis/quality/types'
+import type { TrainingPlanWorkbenchSignalSummaryVO } from '@/apis/quality/workbench'
+import { workbenchApi } from '@/apis/quality/workbench'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/matrix-types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
+import {
+  loadBoundedPlanAggregate,
+  QUALITY_SELECTOR_PAGE_SIZE,
+  QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS,
+} from '@/components/quality/selectors/page-contract'
 import ProgramEvaluationProfileSelector from '@/components/quality/selectors/ProgramEvaluationProfileSelector.vue'
 import ProgramSelector from '@/components/quality/selectors/ProgramSelector.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -92,50 +100,51 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
-import { readAllPages } from '@/utils/page-result'
+import { showUserError } from '@/utils/error-handler'
+
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-const ACCREDITATION_STANDARD_OPTION_PAGE_SIZE = 100
 const objectiveColumns: ColumnsType = [
-  { title: '编码', dataIndex: 'objectiveCode', key: 'objectiveCode', width: 80 },
+  { title: '编码', dataIndex: 'objectiveCode', key: 'objectiveCode', width: 80, fixed: 'left' },
   { title: '名称', key: 'objectiveName' },
   { title: '权重和', key: 'weightSum', width: 100 },
-  { title: '操作', key: 'actions', width: 120, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 120 },
 ]
 
 const objMappingColumns: ColumnsType = [
-  { title: '毕业要求', key: 'requirement' },
+  { title: '毕业要求', key: 'requirement', fixed: 'left' },
   { title: '权重', dataIndex: 'weight', key: 'weight', width: 100 },
   { title: '备注', dataIndex: 'notes', key: 'notes' },
-  { title: '操作', key: 'actions', width: 120, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 120 },
 ]
 
 const requirementColumns: ColumnsType = [
-  { title: '编码', dataIndex: 'requirementCode', key: 'requirementCode', width: 80 },
+  { title: '编码', dataIndex: 'requirementCode', key: 'requirementCode', width: 80, fixed: 'left' },
   { title: '名称', key: 'requirementName' },
   { title: '观测点权重', key: 'indicatorWeightSum', width: 120 },
-  { title: '操作', key: 'actions', width: 160, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 160 },
 ]
 
 const indicatorColumns: ColumnsType = [
-  { title: '编码', dataIndex: 'indicatorCode', key: 'indicatorCode', width: 80 },
+  { title: '编码', dataIndex: 'indicatorCode', key: 'indicatorCode', width: 80, fixed: 'left' },
   { title: '名称', dataIndex: 'indicatorName', key: 'indicatorName' },
   { title: '权重', dataIndex: 'requirementWeight', key: 'requirementWeight', width: 80 },
   { title: '阈值', dataIndex: 'thresholdValue', key: 'thresholdValue', width: 80 },
   { title: '五育维度', dataIndex: 'civicDimensions', key: 'civicDimensions', width: 160 },
-  { title: '操作', key: 'actions', width: 120, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 120 },
 ]
 
 const stdMappingColumns: ColumnsType = [
-  { title: '标准条目', key: 'standardItem' },
+  { title: '标准条目', key: 'standardItem', fixed: 'left' },
   { title: '标准条款', dataIndex: 'standardClause', key: 'standardClause', width: 180 },
   { title: '覆盖说明', dataIndex: 'coverageNote', key: 'coverageNote' },
-  { title: '操作', key: 'actions', width: 120, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 120 },
 ]
 
 const qualityStore = useQualityStore()
 
 const WEIGHT_EPSILON = 1e-3
+const WORKBENCH_TABLE_PAGE_SIZE = 20
 
 const currentPlan = ref<TrainingPlanVO | null>(null)
 const planLoading = ref(false)
@@ -163,21 +172,30 @@ async function loadCurrentPlan() {
 
 const objectives = ref<TrainingObjectiveVO[]>([])
 const objectivesLoading = ref(false)
+const objectivePageNum = ref(1)
+const objectivePageSize = ref(WORKBENCH_TABLE_PAGE_SIZE)
+const objectiveTotal = ref(0)
 const selectedObjective = ref<TrainingObjectiveVO | null>(null)
 
 async function loadObjectives() {
   const scope = beginQualityScopeRequest()
   if (!qualityStore.currentTrainingPlanId) {
     objectives.value = []
+    objectiveTotal.value = 0
     return
   }
   objectivesLoading.value = true
   try {
-    const list = await trainingObjectiveApi.listByPlan(qualityStore.currentTrainingPlanId)
+    const page = await trainingObjectiveApi.page({
+      pageNum: objectivePageNum.value,
+      pageSize: objectivePageSize.value,
+      trainingPlanId: qualityStore.currentTrainingPlanId,
+    })
     if (scope.isStale()) {
       return
     }
-    objectives.value = list
+    objectives.value = page.list
+    objectiveTotal.value = page.total
     if (selectedObjective.value) {
       const matched = objectives.value.find((o) => o.id === selectedObjective.value!.id)
       selectedObjective.value = matched || objectives.value[0] || null
@@ -191,23 +209,38 @@ async function loadObjectives() {
   }
 }
 
+function handleObjectivePageChange(page: { current: number; pageSize: number }) {
+  objectivePageNum.value = page.current
+  objectivePageSize.value = page.pageSize
+  void loadObjectives()
+}
+
 const requirements = ref<GraduationRequirementVO[]>([])
 const requirementsLoading = ref(false)
+const requirementPageNum = ref(1)
+const requirementPageSize = ref(WORKBENCH_TABLE_PAGE_SIZE)
+const requirementTotal = ref(0)
 const selectedRequirement = ref<GraduationRequirementVO | null>(null)
 
 async function loadRequirements() {
   const scope = beginQualityScopeRequest()
   if (!qualityStore.currentTrainingPlanId) {
     requirements.value = []
+    requirementTotal.value = 0
     return
   }
   requirementsLoading.value = true
   try {
-    const list = await graduationRequirementApi.listByPlan(qualityStore.currentTrainingPlanId)
+    const page = await graduationRequirementApi.page({
+      pageNum: requirementPageNum.value,
+      pageSize: requirementPageSize.value,
+      trainingPlanId: qualityStore.currentTrainingPlanId,
+    })
     if (scope.isStale()) {
       return
     }
-    requirements.value = list
+    requirements.value = page.list
+    requirementTotal.value = page.total
     if (selectedRequirement.value) {
       const matched = requirements.value.find((r) => r.id === selectedRequirement.value!.id)
       selectedRequirement.value = matched || requirements.value[0] || null
@@ -221,25 +254,64 @@ async function loadRequirements() {
   }
 }
 
-const indicatorsByReq = ref<Map<string, RequirementIndicatorVO[]>>(new Map())
-const indicatorsLoading = ref(false)
+function handleRequirementPageChange(page: { current: number; pageSize: number }) {
+  requirementPageNum.value = page.current
+  requirementPageSize.value = page.pageSize
+  void loadRequirements()
+}
 
-async function loadAllIndicators() {
+const planLevelIndicators = ref<RequirementIndicatorVO[]>([])
+const selectedIndicators = ref<RequirementIndicatorVO[]>([])
+const indicatorsLoading = ref(false)
+const indicatorPageNum = ref(1)
+const indicatorPageSize = ref(WORKBENCH_TABLE_PAGE_SIZE)
+const indicatorTotal = ref(0)
+
+async function loadPlanLevelIndicators() {
   const scope = beginQualityScopeRequest()
-  indicatorsLoading.value = true
+  if (!qualityStore.currentTrainingPlanId) {
+    planLevelIndicators.value = []
+    return
+  }
   try {
-    const map = new Map<string, RequirementIndicatorVO[]>()
-    for (const req of requirements.value) {
-      const list = await requirementIndicatorApi.listByRequirement(req.id)
-      if (scope.isStale()) {
-        return
-      }
-      map.set(req.id, list)
-    }
+    const indicators = await loadBoundedPlanAggregate(
+      (pageNum, pageSize) =>
+        requirementIndicatorApi.page({
+          pageNum,
+          pageSize,
+          trainingPlanId: qualityStore.currentTrainingPlanId!,
+        }),
+      '毕业要求观测点',
+    )
     if (scope.isStale()) {
       return
     }
-    indicatorsByReq.value = map
+    planLevelIndicators.value = indicators
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '观测点聚合加载失败')
+    planLevelIndicators.value = []
+  }
+}
+
+async function loadSelectedRequirementIndicators() {
+  const scope = beginQualityScopeRequest()
+  if (!selectedRequirement.value) {
+    selectedIndicators.value = []
+    indicatorTotal.value = 0
+    return
+  }
+  indicatorsLoading.value = true
+  try {
+    const page = await requirementIndicatorApi.page({
+      pageNum: indicatorPageNum.value,
+      pageSize: indicatorPageSize.value,
+      graduationRequirementId: selectedRequirement.value.id,
+    })
+    if (scope.isStale()) {
+      return
+    }
+    selectedIndicators.value = page.list
+    indicatorTotal.value = page.total
   } finally {
     if (!scope.isStale()) {
       indicatorsLoading.value = false
@@ -247,29 +319,71 @@ async function loadAllIndicators() {
   }
 }
 
-const indicatorsOfSelected = computed<RequirementIndicatorVO[]>(() => {
-  if (!selectedRequirement.value) return []
-  return indicatorsByReq.value.get(selectedRequirement.value.id) || []
+function handleIndicatorPageChange(page: { current: number; pageSize: number }) {
+  indicatorPageNum.value = page.current
+  indicatorPageSize.value = page.pageSize
+  void loadSelectedRequirementIndicators()
+}
+
+watch(selectedRequirement, () => {
+  indicatorPageNum.value = 1
+  stdMappingPageNum.value = 1
+  void loadSelectedRequirementIndicators()
+  void loadStandardMappings()
 })
 
+const planLevelMappings = ref<TrainingObjectiveRequirementVO[]>([])
 const objectiveRequirementMappings = ref<TrainingObjectiveRequirementVO[]>([])
 const mappingLoading = ref(false)
+const objMappingPageNum = ref(1)
+const objMappingPageSize = ref(WORKBENCH_TABLE_PAGE_SIZE)
+const objMappingTotal = ref(0)
 
-async function loadObjectiveRequirementMappings() {
+async function loadPlanLevelMappings() {
   const scope = beginQualityScopeRequest()
   if (!qualityStore.currentTrainingPlanId) {
-    objectiveRequirementMappings.value = []
+    planLevelMappings.value = []
     return
   }
-  mappingLoading.value = true
   try {
-    const list = await trainingObjectiveRequirementApi.listByPlan(
-      qualityStore.currentTrainingPlanId,
+    const mappings = await loadBoundedPlanAggregate(
+      (pageNum, pageSize) =>
+        trainingObjectiveRequirementApi.page({
+          pageNum,
+          pageSize,
+          trainingPlanId: qualityStore.currentTrainingPlanId!,
+        }),
+      '培养目标支撑映射',
     )
     if (scope.isStale()) {
       return
     }
-    objectiveRequirementMappings.value = list
+    planLevelMappings.value = mappings
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '支撑映射聚合加载失败')
+    planLevelMappings.value = []
+  }
+}
+
+async function loadObjectiveRequirementMappings() {
+  const scope = beginQualityScopeRequest()
+  if (!selectedObjective.value) {
+    objectiveRequirementMappings.value = []
+    objMappingTotal.value = 0
+    return
+  }
+  mappingLoading.value = true
+  try {
+    const page = await trainingObjectiveRequirementApi.page({
+      pageNum: objMappingPageNum.value,
+      pageSize: objMappingPageSize.value,
+      trainingObjectiveId: selectedObjective.value.id,
+    })
+    if (scope.isStale()) {
+      return
+    }
+    objectiveRequirementMappings.value = page.list
+    objMappingTotal.value = page.total
   } finally {
     if (!scope.isStale()) {
       mappingLoading.value = false
@@ -277,66 +391,98 @@ async function loadObjectiveRequirementMappings() {
   }
 }
 
-const mappingsOfSelectedObjective = computed<TrainingObjectiveRequirementVO[]>(() => {
-  if (!selectedObjective.value) return []
-  return objectiveRequirementMappings.value.filter(
-    (m) => m.trainingObjectiveId === selectedObjective.value!.id,
-  )
+function handleObjMappingPageChange(page: { current: number; pageSize: number }) {
+  objMappingPageNum.value = page.current
+  objMappingPageSize.value = page.pageSize
+  void loadObjectiveRequirementMappings()
+}
+
+watch(selectedObjective, () => {
+  objMappingPageNum.value = 1
+  void loadObjectiveRequirementMappings()
 })
 
-const objectiveWeightSum = computed(() =>
-  mappingsOfSelectedObjective.value.reduce((acc, m) => acc + (Number(m.weight) || 0), 0),
+const mappingsOfSelectedObjective = computed<TrainingObjectiveRequirementVO[]>(
+  () => objectiveRequirementMappings.value,
 )
+
+const objectiveWeightSum = computed(() => {
+  if (!selectedObjective.value) return 0
+  return planLevelMappings.value
+    .filter((m) => m.trainingObjectiveId === selectedObjective.value!.id)
+    .reduce((acc, m) => acc + (Number(m.weight) || 0), 0)
+})
 
 const objectiveWeightHealthy = computed(
   () => Math.abs(objectiveWeightSum.value - 1) < WEIGHT_EPSILON,
 )
 
 function objectiveMappingSum(objectiveId: string): number {
-  return objectiveRequirementMappings.value
+  return planLevelMappings.value
     .filter((m) => m.trainingObjectiveId === objectiveId)
     .reduce((acc, m) => acc + (Number(m.weight) || 0), 0)
 }
 
 const standardMappings = ref<RequirementStandardMappingVO[]>([])
 const standardMappingsLoading = ref(false)
+const stdMappingPageNum = ref(1)
+const stdMappingPageSize = ref(WORKBENCH_TABLE_PAGE_SIZE)
+const stdMappingTotal = ref(0)
 const standardOptions = ref<AccreditationStandardVO[]>([])
 
-async function loadStandardOptions() {
+async function loadStandardOptions(keyword?: string) {
   const scope = beginQualityScopeRequest()
-  const options = await readAllPages(
-    (pageNum) =>
-      accreditationStandardApi.page({
-        pageNum,
-        pageSize: ACCREDITATION_STANDARD_OPTION_PAGE_SIZE,
-        enabled: true,
-      }),
-    '认证标准列表加载失败，请稍后重试',
-  )
+  const page = await accreditationStandardApi.page({
+    pageNum: 1,
+    pageSize: QUALITY_SELECTOR_PAGE_SIZE,
+    enabled: true,
+    keyword: keyword?.trim() || undefined,
+  })
   if (scope.isStale()) {
     return
   }
-  standardOptions.value = options
+  standardOptions.value = page.list
+}
+
+let standardOptionSearchTimer: ReturnType<typeof setTimeout> | null = null
+function handleStandardOptionSearch(keyword: string) {
+  if (standardOptionSearchTimer) clearTimeout(standardOptionSearchTimer)
+  standardOptionSearchTimer = setTimeout(
+    () => void loadStandardOptions(keyword),
+    QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS,
+  )
 }
 
 async function loadStandardMappings() {
   const scope = beginQualityScopeRequest()
   if (!selectedRequirement.value) {
     standardMappings.value = []
+    stdMappingTotal.value = 0
     return
   }
   standardMappingsLoading.value = true
   try {
-    const list = await requirementStandardMappingApi.listByRequirement(selectedRequirement.value.id)
+    const page = await requirementStandardMappingApi.page({
+      pageNum: stdMappingPageNum.value,
+      pageSize: stdMappingPageSize.value,
+      graduationRequirementId: selectedRequirement.value.id,
+    })
     if (scope.isStale()) {
       return
     }
-    standardMappings.value = list
+    standardMappings.value = page.list
+    stdMappingTotal.value = page.total
   } finally {
     if (!scope.isStale()) {
       standardMappingsLoading.value = false
     }
   }
+}
+
+function handleStdMappingPageChange(page: { current: number; pageSize: number }) {
+  stdMappingPageNum.value = page.current
+  stdMappingPageSize.value = page.pageSize
+  void loadStandardMappings()
 }
 
 const standardMap = computed(() => {
@@ -346,8 +492,9 @@ const standardMap = computed(() => {
 })
 
 function indicatorWeightSumByReq(reqId: string): number {
-  const list = indicatorsByReq.value.get(reqId) || []
-  return list.reduce((acc, i) => acc + (Number(i.requirementWeight) || 0), 0)
+  return planLevelIndicators.value
+    .filter((i) => i.requirementId === reqId)
+    .reduce((acc, i) => acc + (Number(i.requirementWeight) || 0), 0)
 }
 
 const requirementsHealthy = computed(() => {
@@ -363,9 +510,7 @@ const objectivesHealthy = computed(() => {
     .length
 })
 
-const totalIndicators = computed(() =>
-  Array.from(indicatorsByReq.value.values()).reduce((acc, list) => acc + list.length, 0),
-)
+const totalIndicators = computed(() => planLevelIndicators.value.length)
 
 const planConfirmationStatus = computed<ConfirmationStatusCode | undefined>(() => {
   return currentPlan.value?.confirmationStatus
@@ -373,16 +518,17 @@ const planConfirmationStatus = computed<ConfirmationStatusCode | undefined>(() =
 
 const canConfirmPlan = computed(
   () =>
-    !!currentPlan.value
-    && (planConfirmationStatus.value === 'DRAFT' || planConfirmationStatus.value === 'RETURNED'),
+    !!currentPlan.value &&
+    (planConfirmationStatus.value === ConfirmationStatusCode.DRAFT ||
+      planConfirmationStatus.value === ConfirmationStatusCode.RETURNED),
 )
 
 const canRevokePlan = computed(
-  () => !!currentPlan.value && planConfirmationStatus.value === 'CONFIRMED',
+  () => !!currentPlan.value && planConfirmationStatus.value === ConfirmationStatusCode.CONFIRMED,
 )
 
 const isPlanStructureEditable = computed(
-  () => !!currentPlan.value && planConfirmationStatus.value !== 'CONFIRMED',
+  () => !!currentPlan.value && planConfirmationStatus.value !== ConfirmationStatusCode.CONFIRMED,
 )
 
 function guardPlanStructureEditable(action: string): boolean {
@@ -391,52 +537,71 @@ function guardPlanStructureEditable(action: string): boolean {
   return false
 }
 
-const signals = computed<SignalMetric[]>(() => [
-  {
-    key: 'plan',
-    label: '当前方案状态',
-    value: planConfirmationStatus.value
-      ? strictEnumLabel(
-          ConfirmationStatusDescription,
-          planConfirmationStatus.value,
-          '培养方案确认状态',
-        )
-      : '未提交',
-    tone:
-      planConfirmationStatus.value === 'CONFIRMED'
-        ? 'green'
-        : planConfirmationStatus.value === 'RETURNED'
-          ? 'red'
-          : 'orange',
-  },
-  { key: 'objectives', label: '培养目标数', value: objectives.value.length, tone: 'blue' },
-  {
-    key: 'objectivesHealth',
-    label: '目标→要求权重健康',
-    value: `${objectivesHealthy.value}/${objectives.value.length}`,
-    tone:
-      objectives.value.length === 0 || objectivesHealthy.value === objectives.value.length
-        ? 'green'
-        : 'red',
-  },
-  { key: 'requirements', label: '毕业要求数', value: requirements.value.length, tone: 'blue' },
-  {
-    key: 'requirementsHealth',
-    label: '要求→观测点权重健康',
-    value: `${requirementsHealthy.value}/${requirements.value.length}`,
-    tone:
-      requirements.value.length === 0 || requirementsHealthy.value === requirements.value.length
-        ? 'green'
-        : 'red',
-  },
-  { key: 'indicators', label: '观测点总数', value: totalIndicators.value, tone: 'blue' },
-  {
-    key: 'standardMaps',
-    label: '已映射标准条款',
-    value: standardMappings.value.length,
-    tone: 'gray',
-  },
-])
+const signalSummary = ref<TrainingPlanWorkbenchSignalSummaryVO | null>(null)
+
+async function loadSignalSummary() {
+  if (!qualityStore.currentTrainingPlanId) {
+    signalSummary.value = null
+    return
+  }
+  try {
+    signalSummary.value = await workbenchApi.trainingPlanWorkbenchSignalSummary({
+      trainingPlanId: qualityStore.currentTrainingPlanId,
+    })
+  } catch (error) {
+    signalSummary.value = null
+    showUserError(error, '培养方案工作台指标加载失败')
+  }
+}
+
+const signals = computed<SignalMetric[]>(() => {
+  const summary = signalSummary.value
+  if (!summary) {
+    return []
+  }
+  const planStatus = summary.planConfirmationStatus
+  const objectiveTotal = summary.objectiveTotal ?? 0
+  const requirementTotal = summary.requirementTotal ?? 0
+  const objectiveHealthyCount = summary.objectiveHealthyCount ?? 0
+  const requirementHealthyCount = summary.requirementHealthyCount ?? 0
+  return [
+    {
+      key: 'plan',
+      label: '当前方案状态',
+      value: planStatus
+        ? strictEnumLabel(ConfirmationStatusDescription, planStatus, '培养方案确认状态')
+        : '未提交',
+      tone:
+        planStatus === ConfirmationStatusCode.CONFIRMED
+          ? 'green'
+          : planStatus === ConfirmationStatusCode.RETURNED
+            ? 'red'
+            : 'orange',
+    },
+    { key: 'objectives', label: '培养目标数', value: objectiveTotal, tone: 'blue' },
+    {
+      key: 'objectivesHealth',
+      label: '目标→要求权重健康',
+      value: `${objectiveHealthyCount}/${objectiveTotal}`,
+      tone: objectiveTotal === 0 || objectiveHealthyCount === objectiveTotal ? 'green' : 'red',
+    },
+    { key: 'requirements', label: '毕业要求数', value: requirementTotal, tone: 'blue' },
+    {
+      key: 'requirementsHealth',
+      label: '要求→观测点权重健康',
+      value: `${requirementHealthyCount}/${requirementTotal}`,
+      tone:
+        requirementTotal === 0 || requirementHealthyCount === requirementTotal ? 'green' : 'red',
+    },
+    { key: 'indicators', label: '观测点总数', value: summary.indicatorTotal ?? 0, tone: 'blue' },
+    {
+      key: 'standardMaps',
+      label: '已映射标准条款',
+      value: summary.standardMappingTotal ?? 0,
+      tone: 'gray',
+    },
+  ]
+})
 
 const objectiveMatrixRows = computed<MatrixRow[]>(() =>
   objectives.value.map((o) => {
@@ -539,10 +704,10 @@ function openPlanEdit() {
 async function submitPlan() {
   if (planEditorMode.value === 'edit' && !guardPlanStructureEditable('编辑方案')) return
   if (
-    !planEditor.programId.trim()
-    || !planEditor.planCode.trim()
-    || !planEditor.planName.trim()
-    || !planEditor.schoolYear.trim()
+    !planEditor.programId.trim() ||
+    !planEditor.planCode.trim() ||
+    !planEditor.planName.trim() ||
+    !planEditor.schoolYear.trim()
   ) {
     message.error('请选择专业，并填写方案编码、方案名称和入学学年')
     return
@@ -626,7 +791,7 @@ async function deletePlan() {
       currentPlan.value = null
       objectives.value = []
       requirements.value = []
-      indicatorsByReq.value = new Map()
+      planLevelIndicators.value = []
       objectiveRequirementMappings.value = []
       standardMappings.value = []
       await qualityStore.loadTrainingPlanOptions()
@@ -774,8 +939,8 @@ function handleObjectiveRequirementCellClick(cellEvent: {
   if (cellEvent.cell) {
     const mapping = objectiveRequirementMappings.value.find(
       (item) =>
-        item.trainingObjectiveId === cellEvent.row.key
-        && item.graduationRequirementId === cellEvent.col.key,
+        item.trainingObjectiveId === cellEvent.row.key &&
+        item.graduationRequirementId === cellEvent.col.key,
     )
     if (mapping) openObjMappingEdit(mapping)
     return
@@ -800,9 +965,9 @@ async function submitObjMapping() {
     return
   }
   if (
-    objMappingEditor.weight == null
-    || objMappingEditor.weight < 0
-    || objMappingEditor.weight > 1
+    objMappingEditor.weight == null ||
+    objMappingEditor.weight < 0 ||
+    objMappingEditor.weight > 1
   ) {
     message.error('权重必须在 0~1 之间')
     return
@@ -814,7 +979,7 @@ async function submitObjMapping() {
     else await trainingObjectiveRequirementApi.update(objMappingEditor)
     message.success('映射已保存')
     objMappingEditorVisible.value = false
-    await loadObjectiveRequirementMappings()
+    await Promise.all([loadPlanLevelMappings(), loadObjectiveRequirementMappings()])
   } finally {
     objMappingSubmitting.value = false
   }
@@ -828,7 +993,7 @@ async function deleteObjMapping(record: TrainingObjectiveRequirementVO) {
     onOk: async () => {
       await trainingObjectiveRequirementApi.delete(record.id)
       message.success('已删除')
-      await loadObjectiveRequirementMappings()
+      await Promise.all([loadPlanLevelMappings(), loadObjectiveRequirementMappings()])
     },
   })
 }
@@ -900,7 +1065,7 @@ async function submitRequirement() {
     message.success('毕业要求已保存')
     requirementEditorVisible.value = false
     await loadRequirements()
-    await loadAllIndicators()
+    await Promise.all([loadPlanLevelIndicators(), loadSelectedRequirementIndicators()])
   } finally {
     requirementSubmitting.value = false
   }
@@ -918,7 +1083,7 @@ async function deleteRequirement(record: GraduationRequirementVO) {
       if (selectedRequirement.value?.id === record.id) selectedRequirement.value = null
       await Promise.all([
         loadRequirements(),
-        loadAllIndicators(),
+        Promise.all([loadPlanLevelIndicators(), loadSelectedRequirementIndicators()]),
         loadObjectiveRequirementMappings(),
         loadStandardMappings(),
       ])
@@ -957,7 +1122,7 @@ function openIndicatorCreate() {
     requirementWeight: Number(remain.toFixed(3)),
     thresholdValue: selectedRequirement.value.thresholdValue ?? 0.7,
     civicDimensions: [],
-    sortOrder: (indicatorsOfSelected.value.length + 1) * 10,
+    sortOrder: (selectedIndicators.value.length + 1) * 10,
   })
   indicatorEditorVisible.value = true
 }
@@ -985,9 +1150,9 @@ async function submitIndicator() {
     return
   }
   if (
-    indicatorEditor.requirementWeight == null
-    || indicatorEditor.requirementWeight <= 0
-    || indicatorEditor.requirementWeight > 1
+    indicatorEditor.requirementWeight == null ||
+    indicatorEditor.requirementWeight <= 0 ||
+    indicatorEditor.requirementWeight > 1
   ) {
     message.error('观测点权重必须在 (0, 1] 之间')
     return
@@ -999,7 +1164,7 @@ async function submitIndicator() {
     else await requirementIndicatorApi.update(indicatorEditor)
     message.success('观测点已保存')
     indicatorEditorVisible.value = false
-    await loadAllIndicators()
+    await Promise.all([loadPlanLevelIndicators(), loadSelectedRequirementIndicators()])
   } finally {
     indicatorSubmitting.value = false
   }
@@ -1013,7 +1178,7 @@ async function deleteIndicator(record: RequirementIndicatorVO) {
     onOk: async () => {
       await requirementIndicatorApi.delete(record.id)
       message.success('观测点已删除')
-      await loadAllIndicators()
+      await Promise.all([loadPlanLevelIndicators(), loadSelectedRequirementIndicators()])
     },
   })
 }
@@ -1188,8 +1353,15 @@ async function handleScopeChange(): Promise<void> {
   selectedObjective.value = null
   selectedRequirement.value = null
   await loadCurrentPlan()
-  await Promise.all([loadObjectives(), loadRequirements(), loadObjectiveRequirementMappings()])
-  await loadAllIndicators()
+  await Promise.all([
+    loadObjectives(),
+    loadRequirements(),
+    loadPlanLevelMappings(),
+    loadPlanLevelIndicators(),
+    loadObjectiveRequirementMappings(),
+    loadSignalSummary(),
+  ])
+  await loadSelectedRequirementIndicators()
   await loadStandardMappings()
 }
 
@@ -1198,8 +1370,6 @@ useQualityScopedLoader(handleScopeChange, {
   immediate: false,
   reloadOnActivated: false,
 })
-
-watch(selectedRequirement, () => loadStandardMappings())
 
 onMounted(async () => {
   await loadStandardOptions()
@@ -1214,9 +1384,12 @@ onActivated(async () => {
     await Promise.all([
       loadObjectives(),
       loadRequirements(),
-      loadAllIndicators(),
+      loadPlanLevelMappings(),
+      loadPlanLevelIndicators(),
       loadObjectiveRequirementMappings(),
+      loadSelectedRequirementIndicators(),
       loadStandardMappings(),
+      loadSignalSummary(),
     ])
   }
 })
@@ -1228,8 +1401,8 @@ const aggregationOptions = ALL_AGGREGATION_FUNCTION_CODES.map((value) => ({
   label: strictEnumLabel(AggregationFunctionDescription, value, '聚合函数'),
 }))
 
-const civicDimensionOptions: Array<{ value: CivicDimensionCode, label: string }>
-  = ALL_CIVIC_DIMENSION_CODES.map((value) => ({
+const civicDimensionOptions: Array<{ value: CivicDimensionCode; label: string }> =
+  ALL_CIVIC_DIMENSION_CODES.map((value) => ({
     value,
     label: strictEnumLabel(CivicDimensionDescription, value, '课程思政维度'),
   }))
@@ -1321,13 +1494,18 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                 </UiButton>
               </template>
               <UiDataTable
-                class="student-detail-table__data-table"
+                pagination-mode="server"
                 :columns="objectiveColumns"
                 :data-source="objectives"
                 :loading="objectivesLoading"
                 row-key="id"
                 size="middle"
-                :pagination="false"
+                v-model:current="objectivePageNum"
+                v-model:page-size="objectivePageSize"
+                :total="objectiveTotal"
+                flat
+                :sticky-header="false"
+                @page-change="handleObjectivePageChange"
                 :row-class-name="
                   (r: TrainingObjectiveVO) =>
                     selectedObjective?.id === r.id ? 'tpw-row-selected' : ''
@@ -1338,9 +1516,6 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                     style: 'cursor: pointer',
                   })
                 "
-                :show-pagination="false"
-                flat
-                :total="objectives.length"
               >
                 <template #bodyCell="{ column, record }">
                   <template v-if="column.key === 'objectiveName'">
@@ -1389,16 +1564,17 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                 </a-space>
               </template>
               <UiDataTable
-                pagination-mode="none"
-                class="student-detail-table__data-table"
+                pagination-mode="server"
                 :columns="objMappingColumns"
                 :data-source="mappingsOfSelectedObjective"
                 :loading="mappingLoading"
                 row-key="id"
                 size="middle"
-                :show-pagination="false"
+                v-model:current="objMappingPageNum"
+                v-model:page-size="objMappingPageSize"
+                :total="objMappingTotal"
                 flat
-                :total="mappingsOfSelectedObjective.length"
+                @page-change="handleObjMappingPageChange"
               >
                 <template #bodyCell="{ column, record }">
                   <template v-if="column.key === 'requirement'">
@@ -1462,13 +1638,18 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                 </UiButton>
               </template>
               <UiDataTable
-                class="student-detail-table__data-table"
+                pagination-mode="server"
                 :columns="requirementColumns"
                 :data-source="requirements"
                 :loading="requirementsLoading"
                 row-key="id"
                 size="middle"
-                :pagination="false"
+                v-model:current="requirementPageNum"
+                v-model:page-size="requirementPageSize"
+                :total="requirementTotal"
+                :sticky-header="false"
+                flat
+                @page-change="handleRequirementPageChange"
                 :row-class-name="
                   (r: GraduationRequirementVO) =>
                     selectedRequirement?.id === r.id ? 'tpw-row-selected' : ''
@@ -1479,9 +1660,6 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                     style: 'cursor: pointer',
                   })
                 "
-                :show-pagination="false"
-                flat
-                :total="requirements.length"
               >
                 <template #bodyCell="{ column, record }">
                   <template v-if="column.key === 'requirementName'">
@@ -1523,8 +1701,8 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                   <a-space>
                     <UiTag
                       :tone="
-                        Math.abs(indicatorWeightSumByReq(selectedRequirement.id) - 1)
-                          < WEIGHT_EPSILON
+                        Math.abs(indicatorWeightSumByReq(selectedRequirement.id) - 1) <
+                        WEIGHT_EPSILON
                           ? 'green'
                           : 'red'
                       "
@@ -1537,16 +1715,17 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                   </a-space>
                 </template>
                 <UiDataTable
-                  pagination-mode="none"
-                  class="student-detail-table__data-table"
+                  pagination-mode="server"
                   :columns="indicatorColumns"
-                  :data-source="indicatorsOfSelected"
+                  :data-source="selectedIndicators"
                   :loading="indicatorsLoading"
                   row-key="id"
                   size="middle"
-                  :show-pagination="false"
+                  v-model:current="indicatorPageNum"
+                  v-model:page-size="indicatorPageSize"
+                  :total="indicatorTotal"
                   flat
-                  :total="indicatorsOfSelected.length"
+                  @page-change="handleIndicatorPageChange"
                 >
                   <template #bodyCell="{ column, record }">
                     <template v-if="column.key === 'requirementWeight'">
@@ -1560,7 +1739,9 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                         <UiTag v-for="d in record.civicDimensions ?? []" :key="d" tone="purple">
                           {{ strictEnumLabel(CivicDimensionDescription, d, '课程思政维度') }}
                         </UiTag>
-                        <span v-if="!(record.civicDimensions ?? []).length" class="tpw__muted">-</span>
+                        <span v-if="!(record.civicDimensions ?? []).length" class="tpw__muted"
+                          >-</span
+                        >
                       </a-space>
                     </template>
                     <template v-else-if="column.key === 'actions'">
@@ -1584,16 +1765,17 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                   </UiButton>
                 </template>
                 <UiDataTable
-                  pagination-mode="none"
-                  class="student-detail-table__data-table"
+                  pagination-mode="server"
                   :columns="stdMappingColumns"
                   :data-source="standardMappings"
                   :loading="standardMappingsLoading"
                   row-key="id"
                   size="middle"
-                  :show-pagination="false"
+                  v-model:current="stdMappingPageNum"
+                  v-model:page-size="stdMappingPageSize"
+                  :total="stdMappingTotal"
                   flat
-                  :total="standardMappings.length"
+                  @page-change="handleStdMappingPageChange"
                 >
                   <template #bodyCell="{ column, record }">
                     <template v-if="column.key === 'standardItem'">
@@ -1936,7 +2118,13 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
     >
       <a-form layout="vertical" :model="stdEditor">
         <a-form-item label="标准条目" required>
-          <a-select v-model:value="stdEditor.standardId" placeholder="选择已启用的认证标准">
+          <a-select
+            v-model:value="stdEditor.standardId"
+            placeholder="选择已启用的认证标准"
+            show-search
+            :filter-option="false"
+            @search="handleStandardOptionSearch"
+          >
             <a-select-option v-for="s in standardOptions" :key="s.id" :value="s.id">
               <span class="dp-selector-option-code">{{ s.standardCode }}</span>
               {{ s.standardName }}

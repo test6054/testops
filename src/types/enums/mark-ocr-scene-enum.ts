@@ -1,0 +1,58 @@
+/** 试卷 OCR 识别场景，与后端 MarkOcrScene 逐值一致 */
+export enum MarkOcrSceneCode {
+  CHOICE = 'CHOICE',
+  TRUE_FALSE = 'TRUE_FALSE',
+  FILL_BLANK = 'FILL_BLANK',
+  NUMERIC = 'NUMERIC',
+  TERM_EXPLANATION = 'TERM_EXPLANATION',
+  SHORT_ANSWER = 'SHORT_ANSWER',
+  ESSAY = 'ESSAY',
+  CALCULATION = 'CALCULATION',
+  PROOF = 'PROOF',
+  CASE_ANALYSIS = 'CASE_ANALYSIS',
+  MEDICAL_CASE = 'MEDICAL_CASE',
+  DESIGN = 'DESIGN',
+  PROGRAMMING = 'PROGRAMMING',
+  DRAWING = 'DRAWING',
+  TABLE_CHART = 'TABLE_CHART',
+  GENERAL_TEXT = 'GENERAL_TEXT',
+}
+
+export const ALL_MARK_OCR_SCENE_CODES: readonly MarkOcrSceneCode[] = [
+  MarkOcrSceneCode.CHOICE,
+  MarkOcrSceneCode.TRUE_FALSE,
+  MarkOcrSceneCode.FILL_BLANK,
+  MarkOcrSceneCode.NUMERIC,
+  MarkOcrSceneCode.TERM_EXPLANATION,
+  MarkOcrSceneCode.SHORT_ANSWER,
+  MarkOcrSceneCode.ESSAY,
+  MarkOcrSceneCode.CALCULATION,
+  MarkOcrSceneCode.PROOF,
+  MarkOcrSceneCode.CASE_ANALYSIS,
+  MarkOcrSceneCode.MEDICAL_CASE,
+  MarkOcrSceneCode.DESIGN,
+  MarkOcrSceneCode.PROGRAMMING,
+  MarkOcrSceneCode.DRAWING,
+  MarkOcrSceneCode.TABLE_CHART,
+  MarkOcrSceneCode.GENERAL_TEXT,
+]
+
+export const MarkOcrSceneDescription: Record<MarkOcrSceneCode, string> = {
+  [MarkOcrSceneCode.CHOICE]: '选择题',
+  [MarkOcrSceneCode.TRUE_FALSE]: '判断题',
+  [MarkOcrSceneCode.FILL_BLANK]: '填空题',
+  [MarkOcrSceneCode.NUMERIC]: '数值题',
+  [MarkOcrSceneCode.TERM_EXPLANATION]: '名词解释',
+  [MarkOcrSceneCode.SHORT_ANSWER]: '简答题',
+  [MarkOcrSceneCode.ESSAY]: '论述题',
+  [MarkOcrSceneCode.CALCULATION]: '计算题',
+  [MarkOcrSceneCode.PROOF]: '证明题',
+  [MarkOcrSceneCode.CASE_ANALYSIS]: '案例分析',
+  [MarkOcrSceneCode.MEDICAL_CASE]: '病案分析',
+  [MarkOcrSceneCode.DESIGN]: '设计题',
+  [MarkOcrSceneCode.PROGRAMMING]: '编程题',
+  [MarkOcrSceneCode.DRAWING]: '作图题',
+  [MarkOcrSceneCode.TABLE_CHART]: '图表题',
+  [MarkOcrSceneCode.GENERAL_TEXT]: '通用文本题',
+}
+

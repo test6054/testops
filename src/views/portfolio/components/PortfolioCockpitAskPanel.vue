@@ -11,6 +11,7 @@ import { useRouter } from 'vue-router'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
 import { portfolioCockpitApi } from '@/apis/portfolio/cockpit'
 import { PortfolioAiAnalysisTypeCode } from '@/apis/portfolio/enums'
+import { AiTaskStatusCode } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -36,7 +37,7 @@ const askPayload = ref<PortfolioCockpitAskResultPayload | null>(null)
 const historyRows = ref<PortfolioAiAnalysisSummaryVO[]>([])
 
 const teacherColumns: ColumnsType = [
-  { title: '姓名', dataIndex: 'nickName', key: 'nickName', width: 100 },
+  { title: '姓名', dataIndex: 'nickName', key: 'nickName', width: 100, fixed: 'left' },
   { title: '工号', dataIndex: 'teacherNumber', key: 'teacherNumber', width: 100 },
   { title: '院系', dataIndex: 'departmentName', key: 'departmentName', width: 120 },
   { title: '指标', dataIndex: 'metricCode', key: 'metricCode', width: 88 },
@@ -44,9 +45,15 @@ const teacherColumns: ColumnsType = [
 ]
 
 const historyColumns: ColumnsType = [
-  { title: '问数问题', dataIndex: 'reportScene', key: 'reportScene', ellipsis: true },
+  {
+    title: '问数问题',
+    dataIndex: 'reportScene',
+    key: 'reportScene',
+    ellipsis: true,
+    fixed: 'left',
+  },
   { title: '生成时间', dataIndex: 'generatedTime', key: 'generatedTime', width: 168 },
-  { title: '操作', key: 'action', width: 72 },
+  { title: '操作', key: 'actions', width: 72 },
 ]
 
 const teacherRows = computed<PortfolioCockpitAskTeacherRow[]>(
@@ -131,7 +138,7 @@ async function pollAnalysis(taskId: string) {
         await loadHistory()
         return
       }
-      if (task.status === 'FAILED' || task.status === 'CANCELLED') {
+      if (task.status === AiTaskStatusCode.FAILED || task.status === AiTaskStatusCode.CANCELLED) {
         showUserError(null, 'AI 问数任务失败，请稍后重试或重新提交')
         return
       }
@@ -200,7 +207,7 @@ async function openTaskResult(taskId: string) {
       applyAnalysisDetail(detail)
       return
     }
-    if (task.status === 'FAILED' || task.status === 'CANCELLED') {
+    if (task.status === AiTaskStatusCode.FAILED || task.status === AiTaskStatusCode.CANCELLED) {
       showUserError(null, 'AI 问数任务失败，请稍后重试或重新提交')
       return
     }
@@ -229,14 +236,17 @@ async function openTaskResult(taskId: string) {
   <UiCard title="问数历史">
     <UiDataTable
       :row-key="historyRowKey"
+      pagination-mode="none"
       :columns="historyColumns"
       :data-source="historyRows"
       :loading="historyLoading"
-      :pagination="false"
+      :show-pagination="false"
       size="small"
+      :sticky-header="false"
+      flat
     >
       <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'action'">
+        <template v-if="column.key === 'actions'">
           <UiTableActions
             :items="[{ key: 'view', label: '查看' }]"
             split
@@ -281,10 +291,13 @@ async function openTaskResult(taskId: string) {
     <UiDataTable
       v-else
       :row-key="teacherRowKey"
+      pagination-mode="none"
       :columns="teacherColumns"
       :data-source="teacherRows"
-      :pagination="false"
+      :show-pagination="false"
       size="small"
+      :sticky-header="false"
+      flat
     />
   </UiCard>
 </template>

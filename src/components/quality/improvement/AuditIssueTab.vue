@@ -50,7 +50,6 @@ import {
 } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError, toUserError } from '@/utils/error-handler'
-import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AuditIssueTab' })
@@ -63,13 +62,13 @@ const props = defineProps<{
 const qualityStore = useQualityStore()
 
 const issueColumns: ColumnsType = [
-  { title: '编码', dataIndex: 'issueCode', key: 'issueCode', width: 140 },
+  { title: '编码', dataIndex: 'issueCode', key: 'issueCode', width: 140, fixed: 'left' },
   { title: '标题', key: 'issueTitle' },
   { title: '来源', dataIndex: 'issueSource', key: 'issueSource', width: 120 },
   { title: '严重度', dataIndex: 'severity', key: 'severity', width: 90 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 110 },
   { title: '年度', dataIndex: 'auditYear', key: 'auditYear', width: 80 },
-  { title: '操作', key: 'actions', width: 260, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 260 },
 ]
 
 const issueStatusOptions: AuditIssueStatusCode[] = [
@@ -210,32 +209,16 @@ function hasLinkedRectification(issueId: string): boolean {
 }
 
 async function refreshIssueRectificationCounts(scope: QualityScopeRequestToken) {
-  const scopedIssues = await readAllPages(
-    (pageNum) =>
-      auditIssueApi.page({
-        pageNum,
-        pageSize: 100,
-        programId: issueQuery.programId || qualityStore.currentProgramId || undefined,
-        trainingPlanId:
-          issueQuery.trainingPlanId || qualityStore.currentTrainingPlanId || undefined,
-      }),
-    '审核评估问题加载失败，请稍后重试',
-  )
-  assertQualityScopeFresh(scope)
-  const scopedIssueIds = new Set(scopedIssues.map((issue) => issue.id))
-  const rects = await readAllPages(
-    (pageNum) =>
-      auditRectificationApi.page({
-        pageNum,
-        pageSize: 100,
-      }),
-    '整改任务加载失败，请稍后重试',
-  )
+  const issueIds = issueList.value.map((issue) => issue.id)
+  if (issueIds.length === 0) {
+    issueRectificationCount.value = new Map()
+    return
+  }
+  const response = await auditRectificationApi.countByIssueIds(issueIds)
   assertQualityScopeFresh(scope)
   const countMap = new Map<string, number>()
-  for (const rect of rects) {
-    if (!rect.auditIssueId || !scopedIssueIds.has(rect.auditIssueId)) continue
-    countMap.set(rect.auditIssueId, (countMap.get(rect.auditIssueId) ?? 0) + 1)
+  for (const item of response.items) {
+    countMap.set(item.auditIssueId, item.rectificationCount)
   }
   assertQualityScopeFresh(scope)
   issueRectificationCount.value = countMap
@@ -433,7 +416,7 @@ function buildAuditIssueActions(record: AuditIssueVO): UiTableRowActionItem[] {
   ]
   for (const status of nextAuditIssueStatuses(record.status)) {
     actions.push({
-      key: `status:${status}`,
+      key: status,
       label: issueStatusLabel(status),
       tone: 'primary',
     })
@@ -445,17 +428,19 @@ function buildAuditIssueActions(record: AuditIssueVO): UiTableRowActionItem[] {
 }
 
 function handleAuditIssueAction(key: string, record: AuditIssueVO): void {
-  if (key === 'edit') {
-    openIssueEdit(record)
-    return
-  }
-  if (key === 'delete') {
-    void handleIssueDelete(record)
-    return
-  }
-  if (key.startsWith('status:')) {
-    const target = key.slice('status:'.length) as AuditIssueStatusCode
-    void changeIssueStatus(record, target)
+  switch (key) {
+    case 'edit':
+      openIssueEdit(record)
+      return
+    case 'delete':
+      void handleIssueDelete(record)
+      return
+    case AuditIssueStatusCode.OPEN:
+    case AuditIssueStatusCode.IN_RECTIFICATION:
+    case AuditIssueStatusCode.RECTIFIED:
+    case AuditIssueStatusCode.VERIFIED:
+    case AuditIssueStatusCode.CLOSED:
+      void changeIssueStatus(record, key)
   }
 }
 
@@ -511,7 +496,6 @@ defineExpose({
     />
 
     <UiDataTable
-      class="student-detail-table__data-table"
       v-model:current="issueQuery.pageNum"
       v-model:page-size="issueQuery.pageSize"
       :columns="issueColumns"

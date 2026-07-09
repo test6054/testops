@@ -4,24 +4,26 @@ import type {
   PfImpactReportStatusCode,
   PfSceneCode,
   PortfolioEligibilityEvalLogVO,
-  PortfolioIndicatorAutoCollectResultVO,
+  PortfolioIndicatorAutoCollectSummaryResponse,
+  PortfolioIndicatorCollectedValueVO,
   PortfolioIndicatorComputeLogVO,
   PortfolioIndicatorScoreComputeResult,
   PortfolioPublishImpactReportVO,
   PortfolioTenantConfigAuditLogVO,
 } from '@/apis/portfolio/indicator-types'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import {
   PF_IMPACT_REPORT_STATUS_TONE,
   PF_SCORE_RULE_TYPE_OPTIONS,
   PfImpactReportStatusDescription,
   PfSceneCodeDescription,
 } from '@/apis/portfolio/indicator-types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
+import { defaultTemplateParams, serializeTemplateParams } from '@/utils/indicator-template-params'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import PortfolioIndicatorExplainDrawer from '@/components/portfolio/PortfolioIndicatorExplainDrawer.vue'
 import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/PortfolioIndicatorTemplateParamsForm.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -34,7 +36,6 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
-import { defaultTemplateParams, serializeTemplateParams } from '@/utils/indicator-template-params'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -94,7 +95,11 @@ const auditTotal = ref(0)
 const evalTotal = ref(0)
 const impactTotal = ref(0)
 const collectTeacherId = ref('')
-const collectResult = ref<PortfolioIndicatorAutoCollectResultVO | null>(null)
+const collectSummary = ref<PortfolioIndicatorAutoCollectSummaryResponse | null>(null)
+const collectItems = ref<PortfolioIndicatorCollectedValueVO[]>([])
+const collectTotal = ref(0)
+const collectPageNum = ref(1)
+const collectPageSize = ref(DEFAULT_LIST_PAGE_SIZE)
 const collectColumns: ColumnsType = [
   { title: '指标', dataIndex: 'indicatorCode', key: 'indicatorCode', width: 88 },
   { title: '通道', dataIndex: 'channelCode', key: 'channelCode', width: 120 },
@@ -280,16 +285,52 @@ async function runAutoCollect() {
   }
   loading.value = true
   try {
-    const result = await portfolioIndicatorTenantApi.autoCollect({
+    collectSummary.value = await portfolioIndicatorTenantApi.getAutoCollectSummary({
       teacherId: collectTeacherId.value.trim(),
     })
-    collectResult.value = result
-    message.success(`采集 ${result.collectedCount} 条，跳过 ${result.skippedCount} 条`)
+    collectPageNum.value = 1
+    await loadCollectPage()
+    message.success(
+      `采集 ${collectSummary.value.collectedCount} 条，跳过 ${collectSummary.value.skippedCount} 条`,
+    )
   } catch (error) {
+    collectSummary.value = null
+    collectItems.value = []
+    collectTotal.value = 0
     showUserError(error)
   } finally {
     loading.value = false
   }
+}
+
+async function loadCollectPage() {
+  if (!collectTeacherId.value.trim() || !collectSummary.value) {
+    collectItems.value = []
+    collectTotal.value = 0
+    return
+  }
+  loading.value = true
+  try {
+    const result = await portfolioIndicatorTenantApi.pageAutoCollectItems({
+      teacherId: collectTeacherId.value.trim(),
+      pageNum: collectPageNum.value,
+      pageSize: collectPageSize.value,
+    })
+    collectItems.value = result.list
+    collectTotal.value = result.total
+  } catch (error) {
+    collectItems.value = []
+    collectTotal.value = 0
+    showUserError(error)
+  } finally {
+    loading.value = false
+  }
+}
+
+function handleCollectPageChange(event: { current: number; pageSize: number }) {
+  collectPageNum.value = event.current
+  collectPageSize.value = event.pageSize
+  void loadCollectPage()
 }
 
 function onTabChange(key: string | number) {
@@ -303,6 +344,20 @@ function onTabChange(key: string | number) {
     loadEvalLogs()
   } else if (activeTab.value === 'impact') {
     loadImpactReports()
+  }
+}
+
+function handlePageChange(event: { current: number; pageSize: number }) {
+  pageQuery.pageNum = event.current
+  pageQuery.pageSize = event.pageSize
+  if (activeTab.value === 'compute-log') {
+    void loadComputeLogs()
+  } else if (activeTab.value === 'audit-log') {
+    void loadAuditLogs()
+  } else if (activeTab.value === 'eval-log') {
+    void loadEvalLogs()
+  } else if (activeTab.value === 'impact') {
+    void loadImpactReports()
   }
 }
 
@@ -396,10 +451,15 @@ onMounted(() => {
         <a-tab-pane key="compute-log" tab="计分日志">
           <UiEmpty v-if="!loading && computeLogs.length === 0" description="当前筛选无运维任务" />
           <UiDataTable
+            v-model:current="pageQuery.pageNum"
+            v-model:page-size="pageQuery.pageSize"
+            pagination-mode="server"
             :columns="computeColumns"
             :data-source="computeLogs"
             :loading="loading"
+            :total="computeTotal"
             row-key="id"
+            @page-change="handlePageChange"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'actions'">
@@ -413,37 +473,33 @@ onMounted(() => {
               </template>
             </template>
           </UiDataTable>
-          <a-pagination
-            v-model:current="pageQuery.pageNum"
-            :total="computeTotal"
-            :page-size="pageQuery.pageSize"
-            style="margin-top: 12px"
-            @change="loadComputeLogs"
-          />
         </a-tab-pane>
         <a-tab-pane key="audit-log" tab="配置审计">
           <UiEmpty v-if="!loading && auditLogs.length === 0" description="当前筛选无运维任务" />
           <UiDataTable
+            v-model:current="pageQuery.pageNum"
+            v-model:page-size="pageQuery.pageSize"
+            pagination-mode="server"
             :columns="auditColumns"
             :data-source="auditLogs"
             :loading="loading"
-            row-key="id"
-          />
-          <a-pagination
-            v-model:current="pageQuery.pageNum"
             :total="auditTotal"
-            :page-size="pageQuery.pageSize"
-            style="margin-top: 12px"
-            @change="loadAuditLogs"
+            row-key="id"
+            @page-change="handlePageChange"
           />
         </a-tab-pane>
         <a-tab-pane key="eval-log" tab="资格评估日志">
           <UiEmpty v-if="!loading && evalLogs.length === 0" description="当前筛选无运维任务" />
           <UiDataTable
+            v-model:current="pageQuery.pageNum"
+            v-model:page-size="pageQuery.pageSize"
+            pagination-mode="server"
             :columns="evalColumns"
             :data-source="evalLogs"
             :loading="loading"
+            :total="evalTotal"
             row-key="id"
+            @page-change="handlePageChange"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'eligible'">
@@ -463,13 +519,6 @@ onMounted(() => {
               </template>
             </template>
           </UiDataTable>
-          <a-pagination
-            v-model:current="pageQuery.pageNum"
-            :total="evalTotal"
-            :page-size="pageQuery.pageSize"
-            style="margin-top: 12px"
-            @change="loadEvalLogs"
-          />
         </a-tab-pane>
         <a-tab-pane key="collect" tab="来源采集">
           <div class="form-grid">
@@ -478,15 +527,21 @@ onMounted(() => {
               执行自动采集
             </UiButton>
           </div>
-          <p v-if="collectResult" class="collect-summary">
-            成功 {{ collectResult.collectedCount }} · 跳过 {{ collectResult.skippedCount }}
+          <p v-if="collectSummary" class="collect-summary">
+            成功 {{ collectSummary.collectedCount }} · 跳过 {{ collectSummary.skippedCount }}
           </p>
           <UiDataTable
-            v-if="collectResult"
+            v-if="collectSummary"
+            v-model:current="collectPageNum"
+            v-model:page-size="collectPageSize"
+            pagination-mode="server"
             :columns="collectColumns"
-            :data-source="collectResult.items"
+            :data-source="collectItems"
+            :loading="loading"
+            :total="collectTotal"
             row-key="indicatorCode"
             style="margin-top: 12px"
+            @page-change="handleCollectPageChange"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'collected'">
@@ -500,10 +555,15 @@ onMounted(() => {
         <a-tab-pane key="impact" tab="影响报告">
           <UiEmpty v-if="!loading && impactReports.length === 0" description="当前筛选无运维任务" />
           <UiDataTable
+            v-model:current="pageQuery.pageNum"
+            v-model:page-size="pageQuery.pageSize"
+            pagination-mode="server"
             :columns="impactColumns"
             :data-source="impactReports"
             :loading="loading"
+            :total="impactTotal"
             row-key="id"
+            @page-change="handlePageChange"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'sceneCode'">
@@ -523,13 +583,6 @@ onMounted(() => {
               </template>
             </template>
           </UiDataTable>
-          <a-pagination
-            v-model:current="pageQuery.pageNum"
-            :total="impactTotal"
-            :page-size="pageQuery.pageSize"
-            style="margin-top: 12px"
-            @change="loadImpactReports"
-          />
         </a-tab-pane>
       </a-tabs>
       <div v-if="computeResult" class="result-panel">

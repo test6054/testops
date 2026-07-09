@@ -3,12 +3,16 @@
  * 本机会话批次列表（Setup / Scanning 共用，对标讯飞左栏批次）。
  */
 import type { ExamScannerKioskSessionBatchVO } from '@/apis/mark/scanner-kiosk'
+import { discardScannerKioskBatch } from '@/apis/mark/scanner-kiosk'
 import { DeleteOutlined } from '@ant-design/icons-vue'
 import { computed } from 'vue'
-import { discardScannerKioskBatch } from '@/apis/mark/scanner-kiosk'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
-import { ScanBatchStatusCode } from '@/types/enums/scan-batch-status-enum'
+import {
+  ScanBatchStatusCode,
+  ScanBatchStatusDescription,
+} from '@/types/enums/scan-batch-status-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 import { useKioskCtx } from '../composables/kioskInjection'
 
 const props = withDefaults(
@@ -21,7 +25,31 @@ const props = withDefaults(
 
 const { workflow, stage } = useKioskCtx()
 
-const batches = computed(() => workflow.kioskContext.value?.sessionBatches ?? [])
+const batches = computed(() => {
+  const rows = workflow.kioskContext.value?.sessionBatches ?? []
+  const active = workflow.activeBackendBatch.value
+  if (!active) return rows
+  if (rows.some((row) => row.scanBatchId === active.scanBatchId)) {
+    return rows
+  }
+  const activeRow: ExamScannerKioskSessionBatchVO = {
+    scanBatchId: active.scanBatchId,
+    batchNo: active.batchNo,
+    batchExternalNo: active.batchExternalNo,
+    scanMode: active.scanMode,
+    status: active.status,
+    scannedCount: active.pageCount ?? 0,
+    exceptionCount: active.attentionItemCount ?? 0,
+    uploadedCount: active.receivedPageCount ?? 0,
+    scanStartTime: active.scanStartTime,
+    scanEndTime: active.scanEndTime,
+  }
+  return [activeRow, ...rows]
+})
+
+const hasSessionBatchRows = computed(
+  () => batches.value.length > 0 || workflow.activeBackendScanSession.value,
+)
 const expectedPageCount = computed(
   () => workflow.kioskContext.value?.taskContract?.expectedPageCount ?? null,
 )
@@ -42,6 +70,11 @@ const setupEmptyHint = computed(() => {
 
 const scanningEmptyHint = computed(() => {
   if (workflow.activeBackendScanSession.value) {
+    const batch = workflow.activeBackendBatch.value
+    const batchLabel = batch?.batchNo || batch?.batchExternalNo
+    if (batchLabel) {
+      return `当前批次 ${batchLabel} 扫描未结束；请继续送纸，或使用底部「取消并清理」结束本批次。`
+    }
     return (
       workflow.activeBackendScanSessionReason.value || '扫描进程仍在恢复中，请先刷新当前扫描状态。'
     )
@@ -55,14 +88,30 @@ const highlightBatchId = computed(() => {
   return fromJob || fromCtx || ''
 })
 
+function batchStatusLabel(status: ExamScannerKioskSessionBatchVO['status']): string {
+  return strictEnumLabel(ScanBatchStatusDescription, status, '扫描批次状态')
+}
+
+function batchModeLabel(row: ExamScannerKioskSessionBatchVO): string {
+  return workflow.scanModeText(row.scanMode, '')
+}
+
+function formatBatchPeriod(row: ExamScannerKioskSessionBatchVO): string {
+  const start = workflow.formatTime(row.scanStartTime)
+  if (start === '-') return '—'
+  const end = workflow.formatTime(row.scanEndTime)
+  if (end === '-') return start
+  return `${start} → ${end}`
+}
+
 function openBatch(row: ExamScannerKioskSessionBatchVO) {
   if (props.variant === 'scanning') {
     if (row.scanBatchId === highlightBatchId.value) return
     workflow.errorMessage.value = '当前批次扫描未结束，请先结束本批次后再查看其它批次'
     return
   }
-  const activeBatchId
-    = workflow.activeBackendBatch.value?.scanBatchId || workflow.currentJob.value?.scanBatchId
+  const activeBatchId =
+    workflow.activeBackendBatch.value?.scanBatchId || workflow.currentJob.value?.scanBatchId
   if (row.status === ScanBatchStatusCode.IN_PROGRESS || activeBatchId === row.scanBatchId) {
     stage.gotoStage('scanning')
   }
@@ -135,21 +184,26 @@ function onDiscardClick(row: ExamScannerKioskSessionBatchVO, event: MouseEvent) 
           type="button"
           class="batch-row__main"
           :title="
-            variant === 'scanning'
-              && row.scanBatchId !== highlightBatchId
-              && row.exceptionCount === 0
+            variant === 'scanning' &&
+            row.scanBatchId !== highlightBatchId &&
+            row.exceptionCount === 0
               ? '当前批次扫描未结束'
               : undefined
           "
           @click="openBatch(row)"
         >
           <span class="batch-row__no">{{ row.batchNo || row.batchExternalNo }}</span>
+          <span class="batch-row__meta"
+            >{{ batchModeLabel(row) }} · {{ batchStatusLabel(row.status) }}</span
+          >
           <span class="batch-row__counts">
             扫 {{ row.scannedCount }}
-            <span v-if="row.exceptionCount > 0" class="batch-row__exc">异 {{ row.exceptionCount }}</span>
+            <span v-if="row.exceptionCount > 0" class="batch-row__exc"
+              >异 {{ row.exceptionCount }}</span
+            >
             传 {{ row.uploadedCount }}
           </span>
-          <span class="batch-row__time">{{ workflow.formatTime(row.scanStartTime) }}</span>
+          <span class="batch-row__time">{{ formatBatchPeriod(row) }}</span>
         </button>
         <button
           v-if="variant === 'setup'"
@@ -163,7 +217,7 @@ function onDiscardClick(row: ExamScannerKioskSessionBatchVO, event: MouseEvent) 
       </li>
     </ul>
     <div v-else class="batch-panel__empty">
-      <p>尚未创建本机批次</p>
+      <p>{{ hasSessionBatchRows ? '批次列表同步中' : '尚未创建本机批次' }}</p>
       <small v-if="variant === 'setup'">{{ setupEmptyHint }}</small>
       <small v-else>{{ scanningEmptyHint }}</small>
     </div>
@@ -213,7 +267,7 @@ function onDiscardClick(row: ExamScannerKioskSessionBatchVO, event: MouseEvent) 
   flex: 1;
   display: grid;
   grid-template-columns: 1fr auto;
-  grid-template-rows: auto auto;
+  grid-template-rows: auto auto auto;
   gap: 2px var(--kiosk-space-2);
   padding: var(--kiosk-space-2) var(--kiosk-space-3);
   background: var(--kiosk-surface-alt);
@@ -245,14 +299,22 @@ function onDiscardClick(row: ExamScannerKioskSessionBatchVO, event: MouseEvent) 
 
 .batch-row__no {
   grid-column: 1;
+  grid-row: 1;
   font-weight: var(--kiosk-fw-semibold);
   font-size: var(--kiosk-fz-label);
   color: var(--kiosk-ink-primary);
 }
 
+.batch-row__meta {
+  grid-column: 1;
+  grid-row: 2;
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-ink-tertiary);
+}
+
 .batch-row__counts {
   grid-column: 2;
-  grid-row: 1 / 3;
+  grid-row: 1 / 4;
   align-self: center;
   font-variant-numeric: tabular-nums;
   font-size: var(--kiosk-fz-caption);
@@ -266,6 +328,7 @@ function onDiscardClick(row: ExamScannerKioskSessionBatchVO, event: MouseEvent) 
 
 .batch-row__time {
   grid-column: 1;
+  grid-row: 3;
   font-size: var(--kiosk-fz-caption);
   color: var(--kiosk-ink-tertiary);
 }

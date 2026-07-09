@@ -1,23 +1,32 @@
-// 表格字阶与排序布局（全局，与 web-vue 对齐；由 index.scss 引入）
+// 表格字阶与对齐（全局；与 UiDataTable 原型 After 规格一致）
 .ui-data-table__table,
 .unified-list-table__table-wrap,
 .defense-table-wrap {
   .ant-table-thead > tr > th {
-    height: 48px !important;
-    padding: 0 14px !important;
+    height: var(--dp-table-header-height) !important;
+    padding: var(--dp-table-header-padding) !important;
     font-size: var(--dp-type-table-head-size) !important;
     font-weight: var(--dp-type-table-head-weight) !important;
-    color: var(--ant-color-text) !important;
-    text-align: center !important;
+    color: var(--dp-text-secondary) !important;
+    text-align: left;
     vertical-align: middle !important;
     line-height: var(--dp-type-table-head-line-height);
     white-space: nowrap;
+    letter-spacing: 0.01em;
   }
 
   .ant-table-thead > tr > th .ant-table-column-title {
     font-size: var(--dp-type-table-head-size) !important;
     font-weight: var(--dp-type-table-head-weight) !important;
-    color: var(--ant-color-text) !important;
+    color: var(--dp-text-secondary) !important;
+  }
+
+  .ant-table-thead > tr > th.ant-table-column-align-center {
+    text-align: center !important;
+  }
+
+  .ant-table-thead > tr > th.ant-table-column-align-right {
+    text-align: right !important;
   }
 
   .ant-table-thead > tr > th.ant-table-selection-column,
@@ -46,17 +55,30 @@
   .ant-table-thead .ant-table-column-sorters {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     position: relative;
     width: 100%;
     max-width: 100%;
     padding-inline-end: 18px;
   }
 
+  .ant-table-thead > tr > th.ant-table-column-align-center .ant-table-column-sorters {
+    justify-content: center;
+  }
+
+  .ant-table-thead > tr > th.ant-table-column-align-right .ant-table-column-sorters {
+    justify-content: flex-end;
+  }
+
   .ant-table-thead .ant-table-column-title {
     flex: none;
     display: inline-flex;
     align-items: center;
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .ant-table-thead > tr > th.ant-table-column-align-center .ant-table-column-title {
     justify-content: center;
     text-align: center;
   }
@@ -74,13 +96,23 @@
   }
 
   .ant-table-tbody > tr > td.ant-table-cell {
-    padding: 12px 14px !important;
+    padding: var(--dp-table-cell-padding) !important;
     font-size: var(--dp-type-table-body-size) !important;
     font-weight: var(--dp-type-table-body-weight) !important;
-    color: var(--ant-color-text) !important;
-    text-align: center !important;
+    color: var(--dp-text-primary) !important;
+    text-align: left;
     vertical-align: middle !important;
     line-height: var(--dp-type-table-body-line-height) !important;
+  }
+
+  .ant-table-tbody > tr > td.ant-table-column-align-center {
+    text-align: center !important;
+  }
+
+  .ant-table-tbody > tr > td.ui-data-table__col--numeric,
+  .ant-table-tbody > tr > td.ant-table-column-align-right {
+    text-align: right !important;
+    font-variant-numeric: tabular-nums;
   }
 
   .ant-table-tbody > tr.ant-table-measure-row > td.ant-table-cell {
@@ -89,14 +121,5 @@
     border: 0 !important;
     font-size: 0 !important;
     font-weight: normal !important;
-  }
-
-  .ant-table-thead > tr > th.ui-data-table__col--text-left,
-  .ant-table-tbody > tr > td.ui-data-table__col--text-left {
-    text-align: left !important;
-  }
-
-  .ant-table-thead > tr > th.ui-data-table__col--text-left .ant-table-column-sorters {
-    justify-content: flex-start;
   }
 }

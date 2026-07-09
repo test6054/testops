@@ -94,7 +94,6 @@
           v-model:current="taskPagination.pageNum"
           v-model:page-size="taskPagination.pageSize"
           pagination-mode="server"
-          class="student-detail-table__data-table"
           :columns="columns"
           :data-source="tasks"
           :loading="loading"
@@ -214,6 +213,8 @@
           :loading="rosterLoading"
           show-search
           option-filter-prop="label"
+          :filter-option="false"
+          @search="(keyword: string) => searchStudents(keyword)"
         />
       </a-form-item>
     </a-form>
@@ -283,15 +284,6 @@ import type {
   ExportTaskResponse,
   ExportTaskStatusSummaryResponse,
 } from '@/apis/mark/exam-export'
-import type { ExamTemplateResponse } from '@/apis/mark/exam-layout-question'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   ALL_EXPORT_SCOPE_CODES,
   ALL_EXPORT_TASK_STATUS_CODES,
@@ -309,7 +301,16 @@ import {
   getExportTaskStatusSummary,
   listExportTasks,
 } from '@/apis/mark/exam-export'
+import type { ExamTemplateResponse } from '@/apis/mark/exam-layout-question'
 import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -365,6 +366,7 @@ const {
   studentOptions,
   loading: rosterLoading,
   load: loadRoster,
+  searchStudents,
   reset: resetRoster,
 } = useMarkExamRoster()
 
@@ -373,7 +375,7 @@ const loading = ref(false)
 const loadFailed = ref(false)
 const downloadingId = ref<string | undefined>(undefined)
 const questionOptions = ref<
-  Array<{ value: string, label: string, disabled?: boolean, title?: string }>
+  Array<{ value: string; label: string; disabled?: boolean; title?: string }>
 >([])
 const layoutSummary = ref<ExamTemplateResponse | null>(null)
 const layoutRoiGap = computed(() => {
@@ -507,14 +509,18 @@ function activeTasksHiddenByStatusFilter(): boolean {
   if (!statusFilter) {
     return false
   }
-  if (counts.pending > 0 && statusFilter !== 'PENDING') {
+  if (counts.pending > 0 && statusFilter !== ExportTaskStatusCode.PENDING) {
     return true
   }
-  return counts.generating > 0 && statusFilter !== 'GENERATING'
+  return counts.generating > 0 && statusFilter !== ExportTaskStatusCode.GENERATING
 }
 
 function listHasActiveExportTask(taskList: ExportTaskResponse[]): boolean {
-  return taskList.some((task) => task.taskStatus === 'PENDING' || task.taskStatus === 'GENERATING')
+  return taskList.some(
+    (task) =>
+      task.taskStatus === ExportTaskStatusCode.PENDING ||
+      task.taskStatus === ExportTaskStatusCode.GENERATING,
+  )
 }
 
 /** 无筛选时若全局仍有进行中任务但当前页看不到，应回到第 1 页。 */
@@ -609,14 +615,14 @@ function handleTaskFilterReset(): void {
   void loadTasks()
 }
 
-function handleTaskPageChange(page: { current: number, pageSize: number }): void {
+function handleTaskPageChange(page: { current: number; pageSize: number }): void {
   taskPagination.pageNum = page.current
   taskPagination.pageSize = page.pageSize
   void loadTasks()
 }
 
 const columns: ColumnType<ExportTaskResponse>[] = [
-  { title: '类型', key: 'exportType', width: 120 },
+  { title: '类型', key: 'exportType', width: 120, fixed: 'left' },
   { title: '范围', key: 'exportScope', width: 100 },
   { title: '范围条件', key: 'scopeSummary', width: 160 },
   { title: '状态', key: 'taskStatus', width: 100 },
@@ -625,7 +631,7 @@ const columns: ColumnType<ExportTaskResponse>[] = [
   { title: '开始时间', key: 'startedTime', dataIndex: 'startedTime', width: 160 },
   { title: '完成时间', key: 'completedTime', dataIndex: 'completedTime', width: 160 },
   { title: '导出处理说明', key: 'errorMessage', width: 220 },
-  { title: '操作', key: 'actions', width: 180, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 180 },
 ]
 
 function statusTone(status: ExportTaskStatusCode): BadgeTone {
@@ -662,57 +668,57 @@ function formatBytes(size: number): string {
 }
 
 function exportTaskFileNameText(task: ExportTaskResponse): string {
-  if (task.taskStatus === 'COMPLETED') return task.fileName || '导出文件'
-  if (task.taskStatus === 'FAILED') return '导出失败，未生成文件'
-  if (task.taskStatus === 'GENERATING') return '文件生成中'
+  if (task.taskStatus === ExportTaskStatusCode.COMPLETED) return task.fileName || '导出文件'
+  if (task.taskStatus === ExportTaskStatusCode.FAILED) return '导出失败，未生成文件'
+  if (task.taskStatus === ExportTaskStatusCode.GENERATING) return '文件生成中'
   return '等待任务执行'
 }
 
 function exportTaskFileSizeText(task: ExportTaskResponse): string {
-  if (task.taskStatus === 'COMPLETED') {
+  if (task.taskStatus === ExportTaskStatusCode.COMPLETED) {
     const fileSize = Number(task.fileSize)
     if (!Number.isFinite(fileSize)) {
       return '文件大小异常'
     }
     return formatBytes(fileSize)
   }
-  if (task.taskStatus === 'FAILED') return '导出失败，未生成文件'
-  if (task.taskStatus === 'GENERATING') return '文件生成中'
+  if (task.taskStatus === ExportTaskStatusCode.FAILED) return '导出失败，未生成文件'
+  if (task.taskStatus === ExportTaskStatusCode.GENERATING) return '文件生成中'
   return '等待任务执行'
 }
 
 function exportTaskStartedTimeText(task: ExportTaskResponse): string {
-  if (task.taskStatus === 'PENDING') return '等待任务执行'
+  if (task.taskStatus === ExportTaskStatusCode.PENDING) return '等待任务执行'
   return task.startedTime || '—'
 }
 
 function exportTaskCompletedTimeText(task: ExportTaskResponse): string {
-  if (task.taskStatus === 'COMPLETED') return task.completedTime || '—'
-  if (task.taskStatus === 'FAILED') return '导出失败，未完成'
-  if (task.taskStatus === 'GENERATING') return '生成中，未完成'
+  if (task.taskStatus === ExportTaskStatusCode.COMPLETED) return task.completedTime || '—'
+  if (task.taskStatus === ExportTaskStatusCode.FAILED) return '导出失败，未完成'
+  if (task.taskStatus === ExportTaskStatusCode.GENERATING) return '生成中，未完成'
   return '等待任务执行'
 }
 
 function exportTaskProcessingText(task: ExportTaskResponse): string {
-  if (task.taskStatus === 'FAILED') return task.errorMessage || '导出失败'
-  if (task.taskStatus === 'COMPLETED') return '导出完成'
-  if (task.taskStatus === 'GENERATING') return '文件生成中'
+  if (task.taskStatus === ExportTaskStatusCode.FAILED) return task.errorMessage || '导出失败'
+  if (task.taskStatus === ExportTaskStatusCode.COMPLETED) return '导出完成'
+  if (task.taskStatus === ExportTaskStatusCode.GENERATING) return '文件生成中'
   return '等待任务执行'
 }
 
 function exportTaskFailureMessageText(task: ExportTaskResponse): string | undefined {
-  if (task.taskStatus !== 'FAILED') return undefined
+  if (task.taskStatus !== ExportTaskStatusCode.FAILED) return undefined
   return getUserProcessFailureMessage(task.errorMessage, '导出任务未完成，请稍后重试或重新发起导出')
 }
 
 function clippedExportTaskFailureMessage(task: ExportTaskResponse): string {
-  const messageText
-    = exportTaskFailureMessageText(task) ?? '导出任务未完成，请稍后重试或重新发起导出'
+  const messageText =
+    exportTaskFailureMessageText(task) ?? '导出任务未完成，请稍后重试或重新发起导出'
   return messageText.length > 24 ? `${messageText.slice(0, 24)}…` : messageText
 }
 
 function canDownloadExportTask(task: ExportTaskResponse): boolean {
-  return task.taskStatus === 'COMPLETED'
+  return task.taskStatus === ExportTaskStatusCode.COMPLETED
 }
 
 function buildExportTaskActions(record: ExportTaskResponse): UiTableRowActionItem[] {
@@ -874,10 +880,10 @@ async function loadQuestionOptions(examId: string | undefined): Promise<void> {
     }
     questionOptions.value = [...buildExamLayoutQuestionOptions(template.questions)].sort(
       (left, right) => {
-        const leftSort
-          = template.questions.find((q) => q.layoutQuestionId === left.value)?.sortNo ?? 0
-        const rightSort
-          = template.questions.find((q) => q.layoutQuestionId === right.value)?.sortNo ?? 0
+        const leftSort =
+          template.questions.find((q) => q.layoutQuestionId === left.value)?.sortNo ?? 0
+        const rightSort =
+          template.questions.find((q) => q.layoutQuestionId === right.value)?.sortNo ?? 0
         return leftSort - rightSort
       },
     )

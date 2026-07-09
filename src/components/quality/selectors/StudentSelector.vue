@@ -10,7 +10,6 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { getStudentsByClass } from '@/apis/edu/class'
 import { listExamClassStudents } from '@/apis/mark/exam-scope'
 import { showUserError } from '@/utils/error-handler'
-import { readAllPages } from '@/utils/page-result'
 
 interface Props {
   value?: string | null
@@ -31,7 +30,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: UserDto]
+  change: [value: string | null, option?: UserDto]
 }>()
 
 const options = ref<UserDto[]>([])
@@ -68,17 +67,14 @@ async function loadOptions(keyword?: string) {
   loading.value = true
   try {
     if (props.examId) {
-      options.value = await readAllPages(
-        (pageNum) =>
-          listExamClassStudents({
-            examId: props.examId!,
-            classId: props.classId!,
-            pageNum,
-            pageSize: 100,
-            keyword: keyword ?? searchText.value ?? undefined,
-          }),
-        '学生列表加载失败',
-      )
+      const page = await listExamClassStudents({
+        examId: props.examId!,
+        classId: props.classId!,
+        pageNum: 1,
+        pageSize: 50,
+        keyword: keyword ?? searchText.value ?? undefined,
+      })
+      options.value = page.list
     } else {
       const page = await getStudentsByClass({
         pageNum: 1,
@@ -141,7 +137,9 @@ defineExpose({ reload: loadOptions })
       :label="studentDisplayName(opt)"
     >
       {{ studentDisplayName(opt) }}
-      <span v-if="opt.studentNumber" class="dp-selector-option-meta">({{ opt.studentNumber }})</span>
+      <span v-if="opt.studentNumber" class="dp-selector-option-meta"
+        >({{ opt.studentNumber }})</span
+      >
     </a-select-option>
   </a-select>
 </template>

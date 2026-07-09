@@ -28,8 +28,8 @@ const props = withDefaults(defineProps<{
   /** 文字色调：default 正文色 / primary 主操作蓝 / danger 危险红 */
   tone?: 'default' | 'primary' | 'danger'
   disabled?: boolean
-  /** md=列表操作列 14px；sm=紧凑场景 13px */
-  size?: 'sm' | 'md'
+  /** table=表格操作列（对齐原型 act）；md=通用 14px；sm=紧凑 13px 无 hover 底 */
+  size?: 'table' | 'sm' | 'md'
 }>(), {
   tone: 'default',
   disabled: false,
@@ -69,8 +69,28 @@ const onClick = (event: MouseEvent) => {
   font-size: 13px;
 }
 
+.ui-text-action--table {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 400;
+  transition: background 0.1s ease, color 0.15s ease;
+}
+
 .ui-text-action--default:hover:not(:disabled) {
   color: var(--ant-color-primary);
+}
+
+.ui-text-action--table.ui-text-action--default,
+.ui-text-action--table.ui-text-action--primary {
+  color: var(--ant-color-primary);
+  font-weight: 400;
+}
+
+.ui-text-action--table.ui-text-action--default:hover:not(:disabled),
+.ui-text-action--table.ui-text-action--primary:hover:not(:disabled) {
+  color: var(--ant-color-primary);
+  background: var(--dp-blue-50);
 }
 
 .ui-text-action--primary {
@@ -80,6 +100,16 @@ const onClick = (event: MouseEvent) => {
 
 .ui-text-action--primary:hover:not(:disabled) {
   color: var(--ant-color-primary-hover);
+}
+
+.ui-text-action--table.ui-text-action--danger {
+  color: var(--ant-color-error);
+  font-weight: 400;
+}
+
+.ui-text-action--table.ui-text-action--danger:hover:not(:disabled) {
+  color: var(--ant-color-error);
+  background: var(--dp-red-50);
 }
 
 .ui-text-action--danger {

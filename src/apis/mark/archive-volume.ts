@@ -10,23 +10,47 @@ import type { ArchiveAppraisalDecisionCode } from '@/types/enums/archive-apprais
 import type { ArchiveDestructionDecisionCode } from '@/types/enums/archive-destruction-decision-enum'
 import type { ArchiveElectronicOriginalStatusCode } from '@/types/enums/archive-electronic-original-status-enum'
 import type { ArchiveEvaluationCampaignStatusCode } from '@/types/enums/archive-evaluation-campaign-status-enum'
+import {
+  ALL_ARCHIVE_EVALUATION_CAMPAIGN_STATUS_CODES,
+  ArchiveEvaluationCampaignStatusDescription,
+} from '@/types/enums/archive-evaluation-campaign-status-enum'
 import type { ArchiveExamFormCode } from '@/types/enums/archive-exam-form-enum'
+import {
+  ALL_ARCHIVE_EXAM_FORM_CODES,
+  ArchiveExamFormDescription,
+} from '@/types/enums/archive-exam-form-enum'
 import type { ArchiveImportBatchStatusCode } from '@/types/enums/archive-import-batch-status-enum'
 import type { ArchiveMaterialDeliveryModeCode } from '@/types/enums/archive-material-delivery-mode-enum'
 import type { ArchiveMaterialMediaTypeCode } from '@/types/enums/archive-material-media-type-enum'
 import type { ArchiveMaterialSortRuleCode } from '@/types/enums/archive-material-sort-rule-enum'
 import type { ArchiveMaterialSubmissionStatusCode } from '@/types/enums/archive-material-submission-status-enum'
 import type { ArchiveMaterialTypeCode } from '@/types/enums/archive-material-type-enum'
+import {
+  ALL_ARCHIVE_MATERIAL_TYPE_CODES,
+  ArchiveMaterialTypeDescription,
+} from '@/types/enums/archive-material-type-enum'
 import type { ArchivePackageStatusCode } from '@/types/enums/archive-package-status-enum'
 import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
+import {
+  ALL_ARCHIVE_REMEDIATION_DIAGNOSTIC_CODES,
+  ArchiveRemediationDiagnosticDescription,
+} from '@/types/enums/archive-remediation-diagnostic-enum'
 import type { ArchiveRemediationPriorityCode } from '@/types/enums/archive-remediation-priority-enum'
 import type { ArchiveScoreCompletionStatusCode } from '@/types/enums/archive-score-completion-status-enum'
 import type { ArchiveScoreSourceCode } from '@/types/enums/archive-score-source-enum'
 import type { ArchiveSecurityLevelCode } from '@/types/enums/archive-security-level-enum'
+import {
+  ALL_ARCHIVE_SECURITY_LEVEL_CODES,
+  ArchiveSecurityLevelDescription,
+} from '@/types/enums/archive-security-level-enum'
 import type { ArchiveSharedMaterialRefTypeCode } from '@/types/enums/archive-shared-material-ref-type-enum'
 import type { ArchiveTaskProvenanceCode } from '@/types/enums/archive-task-provenance-enum'
 import type { ArchiveVolumeAutoCreatePendingStatusCode } from '@/types/enums/archive-volume-auto-create-pending-status-enum'
 import type { ArchiveVolumeEventTypeCode } from '@/types/enums/archive-volume-event-type-enum'
+import {
+  ALL_ARCHIVE_VOLUME_EVENT_TYPE_CODES,
+  ArchiveVolumeEventTypeDescription,
+} from '@/types/enums/archive-volume-event-type-enum'
 import type { ArchiveVolumeMemberRoleCode } from '@/types/enums/archive-volume-member-role-enum'
 import type { ArchiveVolumeNavigationChainStatusCode } from '@/types/enums/archive-volume-navigation-chain-status-enum'
 import type { ArchiveVolumeRoleCode } from '@/types/enums/archive-volume-role-enum'
@@ -45,52 +69,20 @@ import {
   ArchiveAccessStatusCode,
   ArchiveAccessStatusDescription,
 } from '@/types/enums/archive-access-status-enum'
-import {
-  ArchiveAppraisalStatusCode,
-} from '@/types/enums/archive-appraisal-status-enum'
+import { ArchiveAppraisalStatusCode } from '@/types/enums/archive-appraisal-status-enum'
 import { ArchiveCatalogStatusCode } from '@/types/enums/archive-catalog-status-enum'
 import { ArchiveDestructionStatusCode } from '@/types/enums/archive-destruction-status-enum'
-import {
-  ALL_ARCHIVE_EVALUATION_CAMPAIGN_STATUS_CODES,
-  ArchiveEvaluationCampaignStatusDescription,
-} from '@/types/enums/archive-evaluation-campaign-status-enum'
-import {
-  ALL_ARCHIVE_EXAM_FORM_CODES,
-  ArchiveExamFormDescription,
-} from '@/types/enums/archive-exam-form-enum'
-import {
-  ArchiveIntegrityStatusCode,
-} from '@/types/enums/archive-integrity-status-enum'
-import {
-  ALL_ARCHIVE_MATERIAL_TYPE_CODES,
-  ArchiveMaterialTypeDescription,
-} from '@/types/enums/archive-material-type-enum'
-import {
-  ALL_ARCHIVE_REMEDIATION_DIAGNOSTIC_CODES,
-  ArchiveRemediationDiagnosticDescription,
-} from '@/types/enums/archive-remediation-diagnostic-enum'
+import { ArchiveIntegrityStatusCode } from '@/types/enums/archive-integrity-status-enum'
 import { ArchiveRemediationEvidenceStatusCode } from '@/types/enums/archive-remediation-evidence-status-enum'
 import { ArchiveRemediationStatusCode } from '@/types/enums/archive-remediation-status-enum'
-import {
-  ALL_ARCHIVE_SECURITY_LEVEL_CODES,
-  ArchiveSecurityLevelDescription,
-} from '@/types/enums/archive-security-level-enum'
 import { ArchiveSelfCheckStatusCode } from '@/types/enums/archive-self-check-status-enum'
-import {
-  ArchiveTransferStatusCode,
-} from '@/types/enums/archive-transfer-status-enum'
-import {
-  ALL_ARCHIVE_VOLUME_EVENT_TYPE_CODES,
-  ArchiveVolumeEventTypeDescription,
-} from '@/types/enums/archive-volume-event-type-enum'
+import { ArchiveTransferStatusCode } from '@/types/enums/archive-transfer-status-enum'
 import {
   ALL_ARCHIVE_VOLUME_SOURCE_TYPE_CODES,
   ArchiveVolumeSourceTypeCode,
   ArchiveVolumeSourceTypeDescription,
 } from '@/types/enums/archive-volume-source-type-enum'
-import {
-  ArchiveVolumeStatusCode,
-} from '@/types/enums/archive-volume-status-enum'
+import { ArchiveVolumeStatusCode } from '@/types/enums/archive-volume-status-enum'
 import { ScanBatchQualityFlagCode } from '@/types/enums/scan-batch-quality-flag-enum'
 
 export {
@@ -478,8 +470,8 @@ export const ARCHIVE_SELF_CHECK_STATUS_TONE: Record<
   [ArchiveSelfCheckStatusCode.COMPLETED]: 'green',
 }
 
-export type ArchiveVolumeSubmitChecklistPhaseKey
-   = 'materials' | 'integrity' | 'catalog' | 'selfCheck' | 'departmentReview' | 'submit'
+export type ArchiveVolumeSubmitChecklistPhaseKey =
+  'materials' | 'integrity' | 'catalog' | 'selfCheck' | 'departmentReview' | 'submit'
 
 export const ArchiveVolumeSubmitChecklistPhaseDescription: Record<
   ArchiveVolumeSubmitChecklistPhaseKey,
@@ -718,8 +710,8 @@ export const ARCHIVE_SECURITY_LEVEL_OPTIONS: Array<{
   label: ArchiveSecurityLevelDescription[value],
 }))
 
-export const ARCHIVE_EXAM_FORM_OPTIONS: Array<{ value: ArchiveExamFormCode, label: string }>
-  = ALL_ARCHIVE_EXAM_FORM_CODES.map((value) => ({
+export const ARCHIVE_EXAM_FORM_OPTIONS: Array<{ value: ArchiveExamFormCode; label: string }> =
+  ALL_ARCHIVE_EXAM_FORM_CODES.map((value) => ({
     value,
     label: ArchiveExamFormDescription[value],
   }))
@@ -865,6 +857,8 @@ export interface ArchiveVolumePageRequest extends QueryDto {
   catalogPendingOnly?: boolean
   /** 收材阶段：COLLECTING、DEPARTMENT_REVIEW_PENDING、DEPARTMENT_REVIEWED */
   collectingPhaseOnly?: boolean
+  /** 排除自动建卷失败诊断 stub（departmentId 为空的占位卷） */
+  excludeAutoCreateFailureStub?: boolean
 }
 
 export interface ArchiveVolumeSearchRequest extends QueryDto {
@@ -1037,6 +1031,72 @@ export function getArchiveVolumeDetail(volumeId: string): Promise<ArchiveVolumeD
   return http.post<ArchiveVolumeDetailResponse>('/api/mark/archive-volumes/detail', { volumeId })
 }
 
+export interface ArchiveVolumeMaterialPageRequest extends QueryDto {
+  volumeId: string
+  catalogKey?: string
+  materialType?: ArchiveMaterialTypeCode
+  materialTypes?: ArchiveMaterialTypeCode[]
+  ocrOverviewOnly?: boolean
+}
+
+export interface ArchiveVolumeMaterialStatsRequest {
+  volumeId: string
+}
+
+export interface ArchiveVolumeMaterialReadySummaryVO {
+  totalCount: number
+  readyCount: number
+}
+
+export interface ArchiveVolumeMaterialCatalogReadySummaryVO {
+  catalogKey: string
+  totalCount: number
+  readyCount: number
+}
+
+export interface ArchiveVolumeMaterialOcrOverviewStatsVO {
+  searchableTotal: number
+  pendingOcrCount: number
+  activeOcrCount: number
+}
+
+export interface ArchiveVolumeMaterialStatsResponse {
+  volumeSummary: ArchiveVolumeMaterialReadySummaryVO
+  catalogSummaries: ArchiveVolumeMaterialCatalogReadySummaryVO[]
+  ocrOverview: ArchiveVolumeMaterialOcrOverviewStatsVO
+}
+
+export function pageArchiveVolumeMaterials(
+  request: ArchiveVolumeMaterialPageRequest,
+): Promise<PageResult<ArchiveVolumeMaterialResponse>> {
+  return http.post<PageResult<ArchiveVolumeMaterialResponse>>(
+    '/api/mark/archive-volumes/materials/page',
+    request,
+  )
+}
+
+export function getArchiveVolumeMaterialStats(
+  request: ArchiveVolumeMaterialStatsRequest,
+): Promise<ArchiveVolumeMaterialStatsResponse> {
+  return http.post<ArchiveVolumeMaterialStatsResponse>(
+    '/api/mark/archive-volumes/materials/stats',
+    request,
+  )
+}
+
+export interface ArchiveVolumeMaterialBatchOcrTriggerResponse {
+  triggeredCount: number
+}
+
+export function batchTriggerArchiveVolumeMaterialOcr(
+  volumeId: string,
+): Promise<ArchiveVolumeMaterialBatchOcrTriggerResponse> {
+  return http.post<ArchiveVolumeMaterialBatchOcrTriggerResponse>(
+    '/api/mark/archive-volumes/materials/ocr/batch-trigger',
+    { volumeId },
+  )
+}
+
 export interface ArchiveVolumeMemberAddRequest {
   volumeId: string
   userId: string
@@ -1092,24 +1152,110 @@ export function getSupervisionArchiveVolumeDetail(
   )
 }
 
-export function listSupervisionRemediationTasks(): Promise<ArchiveRemediationTaskResponse[]> {
-  return http.post<ArchiveRemediationTaskResponse[]>(
-    '/api/mark/archive-volumes/supervision/remediation/list',
+export function pageSupervisionRemediationTasks(
+  request: ArchiveRemediationTaskPageRequest,
+): Promise<PageResult<ArchiveRemediationTaskResponse>> {
+  return http.post<PageResult<ArchiveRemediationTaskResponse>>(
+    '/api/mark/archive-volumes/supervision/remediation/page',
+    request,
+  )
+}
+
+export function pageSupervisionCampaigns(
+  request: ArchiveEvaluationCampaignPageRequest,
+): Promise<PageResult<ArchiveEvaluationCampaignResponse>> {
+  return http.post<PageResult<ArchiveEvaluationCampaignResponse>>(
+    '/api/mark/archive-volumes/supervision/campaign/page',
+    request,
+  )
+}
+
+export function pageEvaluationCampaigns(
+  request: ArchiveEvaluationCampaignPageRequest,
+): Promise<PageResult<ArchiveEvaluationCampaignResponse>> {
+  return http.post<PageResult<ArchiveEvaluationCampaignResponse>>(
+    '/api/mark/archive-volumes/evaluation/campaign/page',
+    request,
+  )
+}
+
+export function getEvaluationCampaign(
+  campaignId: string,
+): Promise<ArchiveEvaluationCampaignResponse> {
+  return http.post<ArchiveEvaluationCampaignResponse>(
+    '/api/mark/archive-volumes/evaluation/campaign/get',
+    { campaignId },
+  )
+}
+
+export interface ArchiveEvaluationCampaignStatsVO {
+  campaignCount: number
+  activeCampaignCount: number
+  totalVolumeCount: number
+  readyVolumeCount: number
+  readinessRatePercent: number
+}
+
+export function getEvaluationCampaignStats(): Promise<ArchiveEvaluationCampaignStatsVO> {
+  return http.post<ArchiveEvaluationCampaignStatsVO>(
+    '/api/mark/archive-volumes/evaluation/campaign/stats',
     {},
   )
 }
 
-export function listSupervisionCampaigns(): Promise<ArchiveEvaluationCampaignResponse[]> {
-  return http.post<ArchiveEvaluationCampaignResponse[]>(
-    '/api/mark/archive-volumes/supervision/campaign/list',
+export function getSupervisionCampaignStats(): Promise<ArchiveEvaluationCampaignStatsVO> {
+  return http.post<ArchiveEvaluationCampaignStatsVO>(
+    '/api/mark/archive-volumes/supervision/campaign/stats',
     {},
   )
 }
 
-export function listEvaluationCampaigns(): Promise<ArchiveEvaluationCampaignResponse[]> {
-  return http.post<ArchiveEvaluationCampaignResponse[]>(
-    '/api/mark/archive-volumes/evaluation/campaign/list',
-    {},
+export interface ArchiveRemediationTaskPageRequest extends QueryDto {}
+
+export interface ArchiveEvaluationCampaignPageRequest extends QueryDto {}
+
+export interface ArchiveRemediationByCampaignPageRequest extends QueryDto {
+  campaignId: string
+}
+
+export interface ArchiveReadinessMatrixPreviewPageRequest extends QueryDto {
+  endAcademicYear: string
+  endSemester: SemesterCode
+  departmentId?: string
+}
+
+export interface ArchiveReadinessMatrixPreviewRowVO {
+  departmentId?: string
+  departmentName?: string
+  courseId?: string
+  courseName?: string
+  storedRate: number
+  storedCount: number
+  totalVolumeCount: number
+  integrityPassRate: number
+  fourPropertyPassRate: number
+}
+
+export interface ArchiveReadinessMatrixPreviewStatsVO {
+  rowCount: number
+  averageStoredRate: number
+}
+
+export function getSupervisionReadinessMatrixPreviewStats(
+  request: ArchiveReadinessMatrixPreviewPageRequest,
+): Promise<ArchiveReadinessMatrixPreviewStatsVO> {
+  return http.post<ArchiveReadinessMatrixPreviewStatsVO>(
+    '/api/mark/archive-volumes/supervision/readiness-matrix/preview/stats',
+    request,
+  )
+}
+
+export function pageSupervisionReadinessMatrixPreview(
+  request: ArchiveReadinessMatrixPreviewPageRequest,
+): Promise<PageResult<ArchiveReadinessMatrixPreviewRowVO>> {
+  return http.post<PageResult<ArchiveReadinessMatrixPreviewRowVO>>(
+    '/api/mark/archive-volumes/supervision/readiness-matrix/preview/page',
+    request,
   )
 }
 
@@ -1132,12 +1278,12 @@ export function getRemediationTask(taskId: string): Promise<ArchiveRemediationTa
   })
 }
 
-export function listRemediationTasksByCampaign(
-  campaignId: string,
-): Promise<ArchiveRemediationTaskResponse[]> {
-  return http.post<ArchiveRemediationTaskResponse[]>(
-    '/api/mark/archive-volumes/remediation/list-by-campaign',
-    { campaignId },
+export function pageRemediationTasksByCampaign(
+  request: ArchiveRemediationByCampaignPageRequest,
+): Promise<PageResult<ArchiveRemediationTaskResponse>> {
+  return http.post<PageResult<ArchiveRemediationTaskResponse>>(
+    '/api/mark/archive-volumes/remediation/page-by-campaign',
+    request,
   )
 }
 
@@ -1183,9 +1329,58 @@ export function createRemediationTask(
   )
 }
 
-export function listOpenRemediationTasks(): Promise<ArchiveRemediationTaskResponse[]> {
-  return http.post<ArchiveRemediationTaskResponse[]>(
-    '/api/mark/archive-volumes/remediation/list',
+export function pageOpenRemediationTasks(
+  request: ArchiveRemediationTaskPageRequest,
+): Promise<PageResult<ArchiveRemediationTaskResponse>> {
+  return http.post<PageResult<ArchiveRemediationTaskResponse>>(
+    '/api/mark/archive-volumes/remediation/page',
+    request,
+  )
+}
+
+export interface ArchiveRemediationOpenStatsVO {
+  openTaskCount: number
+}
+
+export function getOpenRemediationStats(): Promise<ArchiveRemediationOpenStatsVO> {
+  return http.post<ArchiveRemediationOpenStatsVO>('/api/mark/archive-volumes/remediation/stats', {})
+}
+
+export interface ArchiveRemediationByCampaignStatsRequest {
+  campaignId: string
+}
+
+export interface ArchiveRemediationByCampaignStatsVO {
+  totalTaskCount: number
+  openTaskCount: number
+  inProgressTaskCount: number
+  resubmittedTaskCount: number
+  closedTaskCount: number
+}
+
+export function getRemediationStatsByCampaign(
+  request: ArchiveRemediationByCampaignStatsRequest,
+): Promise<ArchiveRemediationByCampaignStatsVO> {
+  return http.post<ArchiveRemediationByCampaignStatsVO>(
+    '/api/mark/archive-volumes/remediation/stats-by-campaign',
+    request,
+  )
+}
+
+export function getSupervisionRemediationStats(): Promise<ArchiveRemediationOpenStatsVO> {
+  return http.post<ArchiveRemediationOpenStatsVO>(
+    '/api/mark/archive-volumes/supervision/remediation/stats',
+    {},
+  )
+}
+
+export interface ArchiveSupervisionVolumeStatsVO {
+  supervisionVolumeCount: number
+}
+
+export function getSupervisionVolumeStats(): Promise<ArchiveSupervisionVolumeStatsVO> {
+  return http.post<ArchiveSupervisionVolumeStatsVO>(
+    '/api/mark/archive-volumes/supervision/volumes/stats',
     {},
   )
 }
@@ -1232,8 +1427,8 @@ export interface ArchiveEvaluationExportResponse {
 }
 
 /** 评估材料包导出范围说明（与后端 resolveCampaignExportVolumeIds 一致） */
-export const ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT
-  = '含本批次学年学期内已提交/已入库/收集中卷（整改任务关联的收集中卷已包含在内；不含线上阅卷自动建卷失败诊断卷）'
+export const ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT =
+  '含本批次学年学期内已提交/已入库/收集中卷（整改任务关联的收集中卷已包含在内；不含线上阅卷自动建卷失败诊断卷）'
 
 export function exportEvaluationPackage(
   campaignId: string,
@@ -1290,6 +1485,8 @@ export interface ArchiveReadinessMatrixResponse {
   termCount: number
   termColumns: ArchiveReadinessTermColumnVO[]
   rows: ArchiveReadinessMatrixRowVO[]
+  rowCount: number
+  termColumnCount: number
 }
 
 export function getSupervisionReadinessMatrix(
@@ -1297,6 +1494,40 @@ export function getSupervisionReadinessMatrix(
 ): Promise<ArchiveReadinessMatrixResponse> {
   return http.post<ArchiveReadinessMatrixResponse>(
     '/api/mark/archive-volumes/supervision/readiness-matrix',
+    request,
+  )
+}
+
+export interface ArchiveReadinessMatrixPageRequest extends QueryDto {
+  endAcademicYear: string
+  endSemester: SemesterCode
+  termCount?: number
+  departmentId?: string
+}
+
+export interface ArchiveReadinessMatrixMetaResponse {
+  endAcademicYear: string
+  endSemester: SemesterCode
+  termCount: number
+  termColumns: ArchiveReadinessTermColumnVO[]
+  rowCount: number
+  termColumnCount: number
+}
+
+export function getSupervisionReadinessMatrixMeta(
+  request: ArchiveReadinessMatrixPageRequest,
+): Promise<ArchiveReadinessMatrixMetaResponse> {
+  return http.post<ArchiveReadinessMatrixMetaResponse>(
+    '/api/mark/archive-volumes/supervision/readiness-matrix/meta',
+    request,
+  )
+}
+
+export function pageSupervisionReadinessMatrix(
+  request: ArchiveReadinessMatrixPageRequest,
+): Promise<PageResult<ArchiveReadinessMatrixRowVO>> {
+  return http.post<PageResult<ArchiveReadinessMatrixRowVO>>(
+    '/api/mark/archive-volumes/supervision/readiness-matrix/page',
     request,
   )
 }
@@ -2194,6 +2425,48 @@ export function getArchiveVolumeStatistics(
   return http.post<ArchiveVolumeStatisticsResponse>('/api/mark/archive-volumes/statistics', request)
 }
 
+export interface ArchiveVolumeStatisticsSummaryVO {
+  totalVolumeCount: number
+  storedVolumeCount: number
+  avgCompletionRate: number
+  overdueVolumeCount: number
+  departmentRowCount: number
+  missingMaterialKindCount: number
+}
+
+export interface ArchiveVolumeStatisticsPageRequest extends QueryDto {
+  academicYear?: string
+  semester?: SemesterCode
+  departmentId?: string
+}
+
+export function getArchiveVolumeStatisticsSummary(
+  request: ArchiveVolumeStatisticsRequest,
+): Promise<ArchiveVolumeStatisticsSummaryVO> {
+  return http.post<ArchiveVolumeStatisticsSummaryVO>(
+    '/api/mark/archive-volumes/statistics/summary',
+    request,
+  )
+}
+
+export function pageStatisticsDepartmentCompletions(
+  request: ArchiveVolumeStatisticsPageRequest,
+): Promise<PageResult<ArchiveDepartmentCompletionVO>> {
+  return http.post<PageResult<ArchiveDepartmentCompletionVO>>(
+    '/api/mark/archive-volumes/statistics/department-completion/page',
+    request,
+  )
+}
+
+export function pageStatisticsMissingMaterials(
+  request: ArchiveVolumeStatisticsPageRequest,
+): Promise<PageResult<ArchiveMissingMaterialStatVO>> {
+  return http.post<PageResult<ArchiveMissingMaterialStatVO>>(
+    '/api/mark/archive-volumes/statistics/missing-material/page',
+    request,
+  )
+}
+
 export function exportArchiveVolumeStatisticsExcel(
   request: ArchiveVolumeStatisticsRequest,
 ): Promise<ArchiveExcelFileResponse> {
@@ -2471,6 +2744,16 @@ export function pageArchiveAuditEvents(
     '/api/mark/archive-volumes/audit/page',
     request,
   )
+}
+
+export interface ArchiveVolumeAuditStatsVO {
+  eventCount: number
+}
+
+export function getArchiveAuditEventStats(
+  request: Pick<ArchiveVolumeAuditPageRequest, 'volumeId' | 'eventType'>,
+): Promise<ArchiveVolumeAuditStatsVO> {
+  return http.post<ArchiveVolumeAuditStatsVO>('/api/mark/archive-volumes/audit/stats', request)
 }
 
 export { ScanBatchQualityFlagDescription } from '@/types/enums/scan-batch-quality-flag-enum'

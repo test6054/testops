@@ -35,64 +35,63 @@
     </div>
 
     <div v-if="searched" class="archive-volume-ocr-search__results">
-      <p class="archive-volume-ocr-search__result-meta">
-        {{ pagination.total }} 条匹配 · 当前归档任务
-      </p>
+      <p class="archive-volume-ocr-search__result-meta">{{ hitPageTotal }} 条匹配 · 当前归档任务</p>
       <UiEmpty v-if="!loading && hits.length === 0" description="本卷无匹配结果">
         <UiTextAction tone="primary" @click="goGlobalSearch">切换全局检索</UiTextAction>
       </UiEmpty>
-      <ul v-else class="archive-volume-ocr-search__hit-list">
-        <li
-          v-for="record in hits"
-          :key="`${record.materialId}-${record.snippet}`"
-          class="archive-volume-ocr-search__hit-item"
-        >
-          <div class="archive-volume-ocr-search__hit-head">
-            <UiTag tone="gray" size="sm">{{ materialTypeLabel(record.materialType) }}</UiTag>
-            <span class="archive-volume-ocr-search__file-name">{{ record.fileName || '—' }}</span>
-            <span v-if="record.studentNo" class="archive-volume-ocr-search__student">
-              {{ record.studentNo }} {{ record.studentName }}
-            </span>
-            <span v-if="record.matchPageNo" class="archive-volume-ocr-search__page-no">
-              P{{ record.matchPageNo }}
-            </span>
+      <UiDataTable
+        v-else
+        v-model:current="hitPageNum"
+        v-model:page-size="hitPageSize"
+        pagination-mode="server"
+        :columns="hitColumns"
+        :data-source="hits"
+        :loading="loading"
+        :total="hitPageTotal"
+        :show-header="false"
+        flat
+        row-key="materialId"
+        @page-change="loadHits"
+      >
+        <template #bodyCell="{ record }">
+          <div class="archive-volume-ocr-search__hit-item">
+            <div class="archive-volume-ocr-search__hit-head">
+              <UiTag tone="gray" size="sm">{{ materialTypeLabel(record.materialType) }}</UiTag>
+              <span class="archive-volume-ocr-search__file-name">{{ record.fileName || '—' }}</span>
+              <span v-if="record.studentNo" class="archive-volume-ocr-search__student">
+                {{ record.studentNo }} {{ record.studentName }}
+              </span>
+              <span v-if="record.matchPageNo" class="archive-volume-ocr-search__page-no">
+                P{{ record.matchPageNo }}
+              </span>
+            </div>
+            <div
+              v-if="record.snippet"
+              class="archive-search-snippet-block"
+              v-html="highlightSnippet(record.snippet)"
+            />
+            <div class="archive-volume-ocr-search__hit-actions">
+              <UiTextAction tone="primary" @click="emit('navigate-materials')">
+                定位材料
+              </UiTextAction>
+              <UiTextAction
+                v-if="canViewMaterialOcr(record)"
+                tone="primary"
+                @click="openMaterialOcrPreview(record)"
+              >
+                {{ record.matchPageNo ? `预览第 ${record.matchPageNo} 页原文` : '预览原文' }}
+              </UiTextAction>
+              <UiTextAction
+                v-if="canViewMaterialOcr(record)"
+                tone="primary"
+                @click="openMaterialOcr(record.materialId)"
+              >
+                查看 OCR
+              </UiTextAction>
+            </div>
           </div>
-          <div
-            v-if="record.snippet"
-            class="archive-search-snippet-block"
-            v-html="highlightSnippet(record.snippet)"
-          />
-          <div class="archive-volume-ocr-search__hit-actions">
-            <UiTextAction tone="primary" @click="emit('navigate-materials')">
-              定位材料
-            </UiTextAction>
-            <UiTextAction
-              v-if="canViewMaterialOcr(record)"
-              tone="primary"
-              @click="openMaterialOcrPreview(record)"
-            >
-              {{ record.matchPageNo ? `预览第 ${record.matchPageNo} 页原文` : '预览原文' }}
-            </UiTextAction>
-            <UiTextAction
-              v-if="canViewMaterialOcr(record)"
-              tone="primary"
-              @click="openMaterialOcr(record.materialId)"
-            >
-              查看 OCR
-            </UiTextAction>
-          </div>
-        </li>
-      </ul>
-      <div v-if="pagination.total > pagination.pageSize" class="archive-volume-ocr-search__pager">
-        <a-pagination
-          v-model:current="pagination.pageNum"
-          v-model:page-size="pagination.pageSize"
-          :total="pagination.total"
-          size="small"
-          show-size-changer
-          @change="loadHits"
-        />
-      </div>
+        </template>
+      </UiDataTable>
     </div>
 
     <div v-else class="archive-volume-ocr-search__empty">
@@ -100,7 +99,7 @@
       <div class="archive-volume-ocr-search__overview-head">
         <span class="archive-volume-ocr-search__overview-title">材料 OCR 状态</span>
         <UiButton
-          v-if="canRegisterMaterial && pendingOcrMaterials.length > 0"
+          v-if="canRegisterMaterial && pendingOcrCount > 0"
           size="sm"
           variant="ghost"
           :loading="batchOcrSubmitting"
@@ -110,14 +109,19 @@
         </UiButton>
       </div>
       <UiDataTable
-        pagination-mode="none"
+        v-model:current="overviewPageNum"
+        v-model:page-size="overviewPageSize"
+        pagination-mode="server"
         :columns="overviewColumns"
         :data-source="ocrMaterials"
-        :show-pagination="false"
+        :loading="overviewLoading"
+        :total="overviewPageTotal"
+        :sticky-header="false"
         flat
         row-key="materialId"
         size="middle"
         empty-description="暂无可检索材料"
+        @page-change="loadOcrMaterials"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'materialType'">
@@ -159,24 +163,27 @@
 
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-status'
 import type {
   ArchiveVolumeMaterialResponse,
+  ArchiveVolumeMaterialStatsResponse,
   ArchiveVolumeSearchResponse,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
-  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
-  ArchiveMaterialOcrStatusDescription,
-} from '@/apis/mark/archive-ocr-status'
-import {
-  ArchiveMaterialTypeCode,
   ArchiveMaterialTypeDescription,
+  batchTriggerArchiveVolumeMaterialOcr,
+  getArchiveVolumeMaterialStats,
+  pageArchiveVolumeMaterials,
   searchArchiveVolumes,
   triggerArchiveVolumeMaterialOcr,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
+  ArchiveMaterialOcrStatusCode,
+  ArchiveMaterialOcrStatusDescription,
+} from '@/apis/mark/archive-ocr-status'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -193,24 +200,13 @@ defineOptions({ name: 'ArchiveVolumeOcrSearchPanel' })
 
 const props = defineProps<{
   volumeId: string
-  materials: ArchiveVolumeMaterialResponse[]
   canRegisterMaterial: boolean
 }>()
 
 const emit = defineEmits<{
-  "refreshed": [options?: { silent?: boolean }]
+  refreshed: [options?: { silent?: boolean }]
   'navigate-materials': []
 }>()
-
-const SEARCHABLE_MATERIAL_TYPES: ArchiveMaterialTypeCode[] = [
-  ArchiveMaterialTypeCode.STUDENT_EXAM_PAPER,
-  ArchiveMaterialTypeCode.ANSWER_SHEET,
-  ArchiveMaterialTypeCode.ANSWER_RUBRIC_A,
-  ArchiveMaterialTypeCode.ANSWER_RUBRIC_B,
-  ArchiveMaterialTypeCode.EXAM_ANALYSIS,
-  ArchiveMaterialTypeCode.BLANK_EXAM_PAPER_A,
-  ArchiveMaterialTypeCode.BLANK_EXAM_PAPER_B,
-]
 
 const router = useRouter()
 const keyword = ref('')
@@ -218,29 +214,71 @@ const loading = ref(false)
 const batchOcrSubmitting = ref(false)
 const searched = ref(false)
 const hits = ref<ArchiveVolumeSearchResponse[]>([])
-const pagination = reactive({ pageNum: 1, pageSize: 10, total: 0 })
+const hitPageNum = ref(1)
+const hitPageSize = ref(10)
+const hitPageTotal = ref(0)
+const overviewPageNum = ref(1)
+const overviewPageSize = ref(20)
+const overviewPageTotal = ref(0)
+const overviewLoading = ref(false)
+const ocrMaterials = ref<ArchiveVolumeMaterialResponse[]>([])
+const materialStats = ref<ArchiveVolumeMaterialStatsResponse | null>(null)
 const ocrDetailOpen = ref(false)
 const ocrDetailMaterialId = ref('')
 const ocrDetailInitialPageNo = ref<number>()
 
 const quickKeywords = ['水准测量', '高程计算', '评分标准', '达成度']
 
+const hitColumns: ColumnsType<ArchiveVolumeSearchResponse> = [{ title: '匹配', key: 'hit' }]
+
 const overviewColumns: ColumnsType<ArchiveVolumeMaterialResponse> = [
-  { title: '材料', dataIndex: 'fileName', key: 'fileName', width: 220 },
+  { title: '材料', dataIndex: 'fileName', key: 'fileName', width: 220, fixed: 'left' },
   { title: '类型', key: 'materialType', width: 120 },
   { title: 'OCR 状态', key: 'ocrStatus', width: 120 },
-  { title: '操作', key: 'actions', width: 120, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 120 },
 ]
 
-const ocrMaterials = computed(() =>
-  props.materials.filter(
-    (item) => Boolean(item.fileId) && SEARCHABLE_MATERIAL_TYPES.includes(item.materialType),
-  ),
-)
+const pendingOcrCount = computed(() => materialStats.value?.ocrOverview.pendingOcrCount ?? 0)
 
-const pendingOcrMaterials = computed(() =>
-  ocrMaterials.value.filter((item) => canTriggerMaterialOcr(item)),
-)
+async function loadMaterialStats(): Promise<void> {
+  if (!props.volumeId) {
+    materialStats.value = null
+    return
+  }
+  try {
+    materialStats.value = await getArchiveVolumeMaterialStats({ volumeId: props.volumeId })
+  } catch (error) {
+    materialStats.value = null
+    showUserError(error, '加载 OCR 统计失败')
+  }
+}
+
+async function loadOcrMaterials(): Promise<void> {
+  if (!props.volumeId) {
+    ocrMaterials.value = []
+    overviewPageTotal.value = 0
+    return
+  }
+  overviewLoading.value = true
+  try {
+    const result = await pageArchiveVolumeMaterials({
+      volumeId: props.volumeId,
+      ocrOverviewOnly: true,
+      pageNum: overviewPageNum.value,
+      pageSize: overviewPageSize.value,
+    })
+    ocrMaterials.value = result.list
+    overviewPageTotal.value = result.total
+  } catch (error) {
+    showUserError(error, '加载 OCR 材料失败')
+  } finally {
+    overviewLoading.value = false
+  }
+}
+
+async function reloadOverviewData(): Promise<void> {
+  await Promise.all([loadMaterialStats(), loadOcrMaterials()])
+}
 
 function materialTypeLabel(code: ArchiveVolumeMaterialResponse['materialType']) {
   return strictEnumLabel(ArchiveMaterialTypeDescription, code, 'materialType')
@@ -260,25 +298,27 @@ function highlightSnippet(snippet: string): string {
 
 function canViewMaterialOcr(record: ArchiveVolumeSearchResponse): boolean {
   return (
-    record.ocrStatus === 'COMPLETED'
-    || record.ocrStatus === 'FAILED'
-    || record.ocrStatus === 'RUNNING'
+    record.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED ||
+    record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED ||
+    record.ocrStatus === ArchiveMaterialOcrStatusCode.RUNNING
   )
 }
 
 function canViewMaterialOcrMaterial(record: ArchiveVolumeMaterialResponse): boolean {
   return (
-    record.ocrStatus === 'COMPLETED'
-    || record.ocrStatus === 'FAILED'
-    || record.ocrStatus === 'RUNNING'
+    record.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED ||
+    record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED ||
+    record.ocrStatus === ArchiveMaterialOcrStatusCode.RUNNING
   )
 }
 
 function canTriggerMaterialOcr(record: ArchiveVolumeMaterialResponse): boolean {
   return (
-    props.canRegisterMaterial
-    && Boolean(record.fileId)
-    && (record.ocrStatus === 'PENDING' || record.ocrStatus === 'FAILED' || !record.ocrStatus)
+    props.canRegisterMaterial &&
+    Boolean(record.fileId) &&
+    (record.ocrStatus === ArchiveMaterialOcrStatusCode.PENDING ||
+      record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED ||
+      !record.ocrStatus)
   )
 }
 
@@ -301,7 +341,7 @@ async function loadHits(): Promise<void> {
   const trimmed = keyword.value.trim()
   if (!trimmed) {
     hits.value = []
-    pagination.total = 0
+    hitPageTotal.value = 0
     searched.value = false
     return
   }
@@ -310,18 +350,18 @@ async function loadHits(): Promise<void> {
     const result = await searchArchiveVolumes({
       volumeId: props.volumeId,
       keyword: trimmed,
-      pageNum: pagination.pageNum,
-      pageSize: pagination.pageSize,
+      pageNum: hitPageNum.value,
+      pageSize: hitPageSize.value,
     })
     hits.value = result.list
-    pagination.total = result.total
-    pagination.pageNum = result.pageNum
-    pagination.pageSize = result.pageSize
+    hitPageTotal.value = result.total
+    hitPageNum.value = result.pageNum
+    hitPageSize.value = result.pageSize
     searched.value = true
   } catch (error) {
     showUserError(error, '卷内检索失败')
     hits.value = []
-    pagination.total = 0
+    hitPageTotal.value = 0
   } finally {
     loading.value = false
   }
@@ -332,7 +372,7 @@ function handleSearch(): void {
     message.warning('请输入检索关键词')
     return
   }
-  pagination.pageNum = 1
+  hitPageNum.value = 1
   void loadHits()
 }
 
@@ -344,14 +384,13 @@ function goGlobalSearch(): void {
 }
 
 async function handleBatchOcr(): Promise<void> {
-  const targets = pendingOcrMaterials.value
-  if (targets.length === 0) {
+  if (pendingOcrCount.value <= 0) {
     message.warning('没有可触发 OCR 的材料')
     return
   }
   const confirmed = await confirmAsync({
     title: '批量触发 OCR？',
-    content: `将为 ${targets.length} 份材料入队 OCR 识别。`,
+    content: `将为 ${pendingOcrCount.value} 份材料入队 OCR 识别。`,
     type: 'info',
     okText: '入队',
     cancelText: '取消',
@@ -359,11 +398,10 @@ async function handleBatchOcr(): Promise<void> {
   if (!confirmed) return
   batchOcrSubmitting.value = true
   try {
-    for (const material of targets) {
-      await triggerArchiveVolumeMaterialOcr(material.materialId)
-    }
-    message.success(`已入队 ${targets.length} 份材料`)
+    const result = await batchTriggerArchiveVolumeMaterialOcr(props.volumeId)
+    message.success(`已入队 ${result.triggeredCount} 份材料`)
     emit('refreshed', { silent: true })
+    await reloadOverviewData()
   } catch (error) {
     showUserError(error, '批量 OCR 触发失败')
   } finally {
@@ -383,6 +421,7 @@ function confirmTriggerOcr(material: ArchiveVolumeMaterialResponse): void {
         await triggerArchiveVolumeMaterialOcr(material.materialId)
         message.success('已入队，等待识别')
         emit('refreshed', { silent: true })
+        await reloadOverviewData()
       } catch (error) {
         showUserError(error, 'OCR 触发失败')
       }
@@ -394,6 +433,18 @@ function handleOcrMaterialRowAction(key: string, material: ArchiveVolumeMaterial
   if (key === 'view') openMaterialOcr(material.materialId)
   else if (key === 'trigger') confirmTriggerOcr(material)
 }
+
+watch(
+  () => props.volumeId,
+  () => {
+    overviewPageNum.value = 1
+    void reloadOverviewData()
+  },
+)
+
+onMounted(() => {
+  void reloadOverviewData()
+})
 </script>
 
 <style scoped lang="scss">

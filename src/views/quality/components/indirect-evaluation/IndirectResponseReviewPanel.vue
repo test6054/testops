@@ -2,14 +2,19 @@
 import type { IndirectEvaluationFormVO } from '@/apis/quality/indirect-form'
 import type { IndirectEvaluationItemVO } from '@/apis/quality/indirect-item'
 import type {
+  IndirectConversionAuditLogVO,
   IndirectEvaluationResponseSaveRequest,
   IndirectEvaluationResponseVO,
 } from '@/apis/quality/indirect-response'
+import {
+  indirectResponseApi,
+  IndirectResponseConversionFilterCode,
+} from '@/apis/quality/indirect-response'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
-import { computed, ref } from 'vue'
+import dayjs from 'dayjs'
+import { computed, ref, watch } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
-import { indirectResponseApi } from '@/apis/quality/indirect-response'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import { ClassSelector, StudentSelector, TeacherSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -20,22 +25,30 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { isIndirectEvaluationItemType } from '@/types/enums/indirect-evaluation-item-type-enum'
+import { isManualConversionStatus } from '@/types/enums/manual-conversion-status-enum'
 import {
   isSystemCollectedRespondentType,
   MANUAL_RESPONDENT_TYPE_OPTIONS,
   RespondentTypeCode,
 } from '@/types/enums/respondent-type-enum'
+import { showUserError } from '@/utils/error-handler'
 import ImportResponseDocumentModal from '../ImportResponseDocumentModal.vue'
 import {
+  formatConversionAuditAction,
+  formatConversionAuditOperator,
   isMultiChoiceItemType,
   isOpenTextItemType,
   isScaleItemType,
   isSingleChoiceItemType,
   isTeacherResponseWritable,
+  manualConversionStatusLabel,
+  manualConversionStatusTone,
   requiresTeacherScoreConversion,
   respondentTypeLabel,
   responseColumns,
 } from './indirect-evaluation-shared'
+
+type ResponseValidFlagEditorValue = 'pending' | 'valid' | 'invalid'
 
 const props = defineProps<{
   selectedForm: IndirectEvaluationFormVO | null
@@ -46,37 +59,50 @@ const emit = defineEmits<{
   'import-done': []
 }>()
 
+const VALID_FLAG_EDITOR_OPTIONS: Array<{ value: ResponseValidFlagEditorValue; label: string }> = [
+  { value: 'pending', label: '待确认' },
+  { value: 'valid', label: '有效' },
+  { value: 'invalid', label: '无效' },
+]
+
 const responses = ref<IndirectEvaluationResponseVO[]>([])
 const responsesLoading = ref(false)
-const conversionFilter = ref<'all' | 'pending' | 'scored'>('all')
+const responsePageNum = ref(1)
+const responsePageSize = ref(10)
+const responseTotal = ref(0)
+const conversionFilter = ref<'all' | 'pending' | 'scored' | 'noSubstantive'>('all')
+const pendingResponseCount = ref(0)
+const convertedResponseCount = ref(0)
+const noSubstantiveResponseCount = ref(0)
+const conversionAuditLogs = ref<IndirectConversionAuditLogVO[]>([])
+const conversionAuditLoading = ref(false)
 
-const pendingResponseCount = computed(
-  () => responses.value.filter((record) => record.conversionPending).length,
-)
-
-const filteredResponses = computed(() => {
-  if (conversionFilter.value === 'pending') {
-    return responses.value.filter((record) => record.conversionPending === true)
-  }
-  if (conversionFilter.value === 'scored') {
-    return responses.value.filter((record) => isScoredResponse(record))
-  }
-  return responses.value
-})
-
-/** 已换算：有效且（量表有分/换算分，或选择开放题已录换算分） */
-function isScoredResponse(record: IndirectEvaluationResponseVO): boolean {
-  if (!record.validFlag) return false
-  if (record.conversionPending) return false
-  if (requiresTeacherScoreConversion(props.selectedItem?.itemType)) {
-    return record.convertedScore != null
-  }
-  return record.convertedScore != null || record.scaleValue != null
+function resolveConversionFilter(): IndirectResponseConversionFilterCode | undefined {
+  if (conversionFilter.value === 'pending') return IndirectResponseConversionFilterCode.PENDING
+  if (conversionFilter.value === 'scored') return IndirectResponseConversionFilterCode.CONVERTED
+  if (conversionFilter.value === 'noSubstantive')
+    return IndirectResponseConversionFilterCode.NO_SUBSTANTIVE
+  return undefined
 }
 
 const showConversionWorkflow = computed(() =>
   requiresTeacherScoreConversion(props.selectedItem?.itemType),
 )
+
+const conversionFilterOptions = computed(() => {
+  const pendingLabel =
+    pendingResponseCount.value > 0 ? `待换算 (${pendingResponseCount.value})` : '待换算'
+  const noSubstantiveLabel =
+    noSubstantiveResponseCount.value > 0
+      ? `无实质作答 (${noSubstantiveResponseCount.value})`
+      : '无实质作答'
+  return [
+    { label: '全部', value: 'all' as const },
+    { label: pendingLabel, value: 'pending' as const },
+    { label: '已换算', value: 'scored' as const },
+    { label: noSubstantiveLabel, value: 'noSubstantive' as const },
+  ]
+})
 
 const responseEditorVisible = ref(false)
 const responseEditorMode = ref<'create' | 'edit'>('create')
@@ -102,13 +128,17 @@ const responseEditor = ref<IndirectEvaluationResponseSaveRequest>({
   invalidReason: '',
 })
 
-/** 表单开关只接受 boolean；API 契约 validFlag 可为 null（待确认） */
-const responseEditorValidFlag = computed({
-  get(): boolean {
-    return responseEditor.value.validFlag === true
+/** validFlag 三态编辑：null=待确认，与表格 UiTag 语义一致 */
+const responseEditorValidFlagChoice = computed<ResponseValidFlagEditorValue>({
+  get(): ResponseValidFlagEditorValue {
+    if (responseEditor.value.validFlag === true) return 'valid'
+    if (responseEditor.value.validFlag === false) return 'invalid'
+    return 'pending'
   },
-  set(value: boolean) {
-    responseEditor.value.validFlag = value
+  set(value: ResponseValidFlagEditorValue) {
+    if (value === 'valid') responseEditor.value.validFlag = true
+    else if (value === 'invalid') responseEditor.value.validFlag = false
+    else responseEditor.value.validFlag = null
   },
 })
 
@@ -140,23 +170,64 @@ function handleResponseRespondentTypeChange() {
   responseIdentityContact.value = ''
 }
 
-/** 按当前选中题项加载答卷列表 */
+/** 按当前选中题项分页加载答卷列表 */
 async function loadResponses() {
   if (!props.selectedItem) {
     responses.value = []
+    responseTotal.value = 0
+    pendingResponseCount.value = 0
+    convertedResponseCount.value = 0
+    noSubstantiveResponseCount.value = 0
     return
   }
   responsesLoading.value = true
   try {
-    responses.value = await indirectResponseApi.listByItem(props.selectedItem.id)
+    const conversionFilterCode = resolveConversionFilter()
+    const page = await indirectResponseApi.page({
+      itemId: props.selectedItem.id,
+      conversionFilter: conversionFilterCode,
+      pageNum: responsePageNum.value,
+      pageSize: responsePageSize.value,
+    })
+    responses.value = page.list
+    responseTotal.value = page.total
+    if (showConversionWorkflow.value) {
+      const signal = await indirectResponseApi.itemSignalSummary(props.selectedItem.id)
+      pendingResponseCount.value = signal.pendingCount
+      convertedResponseCount.value = signal.convertedCount
+      noSubstantiveResponseCount.value = signal.noSubstantiveCount
+    } else {
+      pendingResponseCount.value = 0
+      convertedResponseCount.value = 0
+      noSubstantiveResponseCount.value = 0
+    }
   } finally {
     responsesLoading.value = false
   }
 }
 
+function handleResponsePageChange(page: { current: number; pageSize: number }) {
+  responsePageNum.value = page.current
+  responsePageSize.value = page.pageSize
+  void loadResponses()
+}
+
 function clearResponses() {
   responses.value = []
+  responseTotal.value = 0
 }
+
+watch(
+  () => props.selectedItem?.id,
+  () => {
+    responsePageNum.value = 1
+  },
+)
+
+watch(conversionFilter, () => {
+  responsePageNum.value = 1
+  void loadResponses()
+})
 
 function openResponseCreate() {
   if (!props.selectedItem || !props.selectedForm) return
@@ -187,6 +258,7 @@ function openResponseCreate() {
     invalidReason: '',
   }
   responseEditorVisible.value = true
+  conversionAuditLogs.value = []
 }
 
 function openResponseEdit(record: IndirectEvaluationResponseVO) {
@@ -194,17 +266,18 @@ function openResponseEdit(record: IndirectEvaluationResponseVO) {
     message.error('问卷已关闭或已归档，不允许修改答卷')
     return
   }
+  conversionAuditLogs.value = []
   responseEditorMode.value = 'edit'
   clearConvertedScore.value = false
-  responseMultiChoiceValues.value
-    = record.multipleChoiceValues?.map((option) => option.optionValue) ?? []
+  responseMultiChoiceValues.value =
+    record.multipleChoiceValues?.map((option) => option.optionValue) ?? []
   responseEditorClassId.value = ''
-  responseIdentityName.value
-    = record.identityValues?.find((item) => item.fieldKey === 'NAME')?.fieldValue ?? ''
-  responseIdentityOrganization.value
-    = record.identityValues?.find((item) => item.fieldKey === 'ORGANIZATION')?.fieldValue ?? ''
-  responseIdentityContact.value
-    = record.identityValues?.find((item) => item.fieldKey === 'CONTACT')?.fieldValue ?? ''
+  responseIdentityName.value =
+    record.identityValues?.find((item) => item.fieldKey === 'NAME')?.fieldValue ?? ''
+  responseIdentityOrganization.value =
+    record.identityValues?.find((item) => item.fieldKey === 'ORGANIZATION')?.fieldValue ?? ''
+  responseIdentityContact.value =
+    record.identityValues?.find((item) => item.fieldKey === 'CONTACT')?.fieldValue ?? ''
   responseEditor.value = {
     id: record.id,
     formId: record.formId,
@@ -231,6 +304,35 @@ function openResponseEdit(record: IndirectEvaluationResponseVO) {
     receivedTime: record.receivedTime,
   }
   responseEditorVisible.value = true
+  if (showConversionWorkflow.value && record.id) {
+    void loadConversionAudit(record.id)
+  } else {
+    conversionAuditLogs.value = []
+  }
+}
+
+function formatConversionAuditScore(score?: number | null): string {
+  if (score == null) return '—'
+  return score.toFixed(2)
+}
+
+function formatConversionAuditTime(operateTime?: string): string {
+  if (!operateTime) return ''
+  const parsed = dayjs(operateTime)
+  return parsed.isValid() ? parsed.format('YYYY-MM-DD HH:mm') : operateTime
+}
+
+/** 加载答卷换算审计时间线，供编辑弹窗核对历次改分 */
+async function loadConversionAudit(responseId: string) {
+  conversionAuditLoading.value = true
+  conversionAuditLogs.value = []
+  try {
+    conversionAuditLogs.value = await indirectResponseApi.conversionAuditTimeline(responseId)
+  } catch (error) {
+    showUserError(error, '换算审计加载失败')
+  } finally {
+    conversionAuditLoading.value = false
+  }
 }
 
 function selectedItemScaleOptions() {
@@ -267,18 +369,18 @@ async function submitResponse() {
     return
   }
   if (
-    (v.respondentType === RespondentTypeCode.STUDENT
-      || v.respondentType === RespondentTypeCode.TEACHER
-      || v.respondentType === RespondentTypeCode.EXPERT
-      || v.respondentType === RespondentTypeCode.SUPERVISOR)
-    && !v.respondentId?.trim()
+    (v.respondentType === RespondentTypeCode.STUDENT ||
+      v.respondentType === RespondentTypeCode.TEACHER ||
+      v.respondentType === RespondentTypeCode.EXPERT ||
+      v.respondentType === RespondentTypeCode.SUPERVISOR) &&
+    !v.respondentId?.trim()
   ) {
     message.error('请选择应答人')
     return
   }
   if (
-    v.respondentType === RespondentTypeCode.GRADUATE
-    || v.respondentType === RespondentTypeCode.EMPLOYER
+    v.respondentType === RespondentTypeCode.GRADUATE ||
+    v.respondentType === RespondentTypeCode.EMPLOYER
   ) {
     if (!responseIdentityName.value.trim()) {
       message.error('请填写应答人姓名')
@@ -309,17 +411,22 @@ async function submitResponse() {
     message.error('请选择单选答案')
     return
   }
+  const multiChoiceClearedOnEdit =
+    isMultiChoiceItemType(props.selectedItem.itemType) &&
+    responseEditorMode.value === 'edit' &&
+    responseMultiChoiceValues.value.length === 0
   if (
-    isMultiChoiceItemType(props.selectedItem.itemType)
-    && responseMultiChoiceValues.value.length === 0
+    isMultiChoiceItemType(props.selectedItem.itemType) &&
+    responseMultiChoiceValues.value.length === 0 &&
+    responseEditorMode.value === 'create'
   ) {
     message.error('请至少选择一个多选答案')
     return
   }
   if (
-    isOpenTextItemType(props.selectedItem.itemType)
-    && props.selectedItem.required
-    && !v.openText?.trim()
+    isOpenTextItemType(props.selectedItem.itemType) &&
+    props.selectedItem.required &&
+    !v.openText?.trim()
   ) {
     message.error('请填写开放回答')
     return
@@ -362,20 +469,20 @@ async function submitResponse() {
     message.error('当前题项题型无效，无法保存答卷')
     return
   }
-  if (
-    showConversionWorkflow.value
-    && responseEditor.value.validFlag
-    && responseEditor.value.convertedScore == null
-    && !clearConvertedScore.value
-  ) {
-    message.error('选择/开放题有效答卷须录入换算分')
-    return
+  if (multiChoiceClearedOnEdit) {
+    v.convertedScore = undefined
+    clearConvertedScore.value = false
   }
   if (clearConvertedScore.value) {
     v.clearConvertedScore = true
     v.convertedScore = undefined
   } else {
     v.clearConvertedScore = undefined
+  }
+  if (responseEditorMode.value === 'edit' && v.validFlag === null) {
+    v.pendingValidConfirm = true
+  } else {
+    v.pendingValidConfirm = undefined
   }
   if (responseEditorMode.value === 'create') await indirectResponseApi.create(v)
   else await indirectResponseApi.update(v)
@@ -473,6 +580,26 @@ function openImportDocument() {
   importDocumentVisible.value = true
 }
 
+/** 人工重建题项答卷统计，修复 stats 与 response 聚合偏差 */
+async function handleRebuildItemStats() {
+  if (!props.selectedItem) return
+  const confirmed = await confirmAsync({
+    title: '重建答卷统计',
+    content:
+      '将按当前答卷事实重算该题项的待换算/已换算/无实质作答计数。仅在统计与列表不一致或系统巡检告警后使用。',
+    okText: '重建',
+  })
+  if (!confirmed) return
+  try {
+    await indirectResponseApi.rebuildItemStats(props.selectedItem.id)
+    message.success('题项答卷统计已重建')
+    await loadResponses()
+    emit('import-done')
+  } catch (error) {
+    showUserError(error, '重建答卷统计失败')
+  }
+}
+
 defineExpose({
   responses,
   loadResponses,
@@ -492,11 +619,7 @@ defineExpose({
         <a-segmented
           v-if="showConversionWorkflow"
           v-model:value="conversionFilter"
-          :options="[
-            { label: '全部', value: 'all' },
-            { label: '待换算', value: 'pending' },
-            { label: '已换算', value: 'scored' },
-          ]"
+          :options="conversionFilterOptions"
         />
         <UiButton
           v-if="selectedForm && isTeacherResponseWritable(selectedForm)"
@@ -522,6 +645,14 @@ defineExpose({
         >
           新增答卷
         </UiButton>
+        <UiButton
+          v-if="showConversionWorkflow"
+          variant="outline"
+          size="sm"
+          @click="handleRebuildItemStats"
+        >
+          重建统计
+        </UiButton>
       </a-space>
     </template>
 
@@ -534,16 +665,17 @@ defineExpose({
     />
 
     <UiDataTable
-      pagination-mode="client"
-      class="student-detail-table__data-table"
+      pagination-mode="server"
+      v-model:current="responsePageNum"
+      v-model:page-size="responsePageSize"
       :columns="responseColumns"
-      :data-source="filteredResponses"
+      :data-source="responses"
       :loading="responsesLoading"
       row-key="id"
       size="middle"
-      :page-size="10"
-      :total="filteredResponses.length"
       flat
+      :total="responseTotal"
+      @page-change="handleResponsePageChange"
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'respondentType'">
@@ -570,8 +702,22 @@ defineExpose({
           </span>
         </template>
         <template v-else-if="column.key === 'conversionStatus'">
-          <UiTag v-if="record.conversionPending" tone="orange">待换算</UiTag>
-          <UiTag v-else-if="showConversionWorkflow && record.validFlag" tone="green">已换算</UiTag>
+          <UiTag
+            v-if="
+              showConversionWorkflow &&
+              record.validFlag &&
+              isManualConversionStatus(record.manualConversionStatus)
+            "
+            :tone="manualConversionStatusTone(record.manualConversionStatus)"
+          >
+            {{ manualConversionStatusLabel(record.manualConversionStatus) }}
+          </UiTag>
+          <span
+            v-else-if="showConversionWorkflow && record.validFlag"
+            class="ie__sub-desc ie__sub-desc--error"
+          >
+            换算状态契约错误
+          </span>
           <span v-else class="ie__sub-desc">—</span>
         </template>
         <template v-else-if="column.key === 'openText'">
@@ -607,8 +753,8 @@ defineExpose({
           <a-form-item label="应答人类型" required>
             <span
               v-if="
-                isSystemCollectedRespondentType(responseEditor.respondentType)
-                  || responseEditor.respondentType === RespondentTypeCode.AI_DRAFT
+                isSystemCollectedRespondentType(responseEditor.respondentType) ||
+                responseEditor.respondentType === RespondentTypeCode.AI_DRAFT
               "
               class="ie__sub-desc"
             >
@@ -633,9 +779,9 @@ defineExpose({
         </a-col>
         <a-col
           v-else-if="
-            responseEditor.respondentType === RespondentTypeCode.TEACHER
-              || responseEditor.respondentType === RespondentTypeCode.EXPERT
-              || responseEditor.respondentType === RespondentTypeCode.SUPERVISOR
+            responseEditor.respondentType === RespondentTypeCode.TEACHER ||
+            responseEditor.respondentType === RespondentTypeCode.EXPERT ||
+            responseEditor.respondentType === RespondentTypeCode.SUPERVISOR
           "
           :span="12"
         >
@@ -662,8 +808,8 @@ defineExpose({
       </a-form-item>
       <a-row
         v-if="
-          responseEditor.respondentType === RespondentTypeCode.GRADUATE
-            || responseEditor.respondentType === RespondentTypeCode.EMPLOYER
+          responseEditor.respondentType === RespondentTypeCode.GRADUATE ||
+          responseEditor.respondentType === RespondentTypeCode.EMPLOYER
         "
         :gutter="12"
       >
@@ -739,10 +885,7 @@ defineExpose({
           </a-form-item>
         </a-col>
         <a-col :span="12">
-          <a-form-item
-            label="换算分（0~1）"
-            :required="showConversionWorkflow && responseEditorValidFlag && !clearConvertedScore"
-          >
+          <a-form-item label="换算分（0~1）">
             <a-input-number
               v-model:value="responseEditor.convertedScore"
               :min="0"
@@ -750,37 +893,70 @@ defineExpose({
               :step="0.01"
               :disabled="clearConvertedScore"
               style="width: 100%"
-              placeholder="选择/开放题须录入后才纳入达成度"
+              placeholder="可暂留空，保存后进入待换算 Tab 再录入"
             />
             <a-checkbox
               v-if="
-                responseEditorMode === 'edit'
-                  && showConversionWorkflow
-                  && responseEditor.convertedScore != null
+                showConversionWorkflow &&
+                responseEditorMode === 'edit' &&
+                responseEditor.convertedScore != null
               "
               v-model:checked="clearConvertedScore"
               class="ie__clear-score"
             >
-              清空换算分（改回待换算）
+              清除已录入换算分
             </a-checkbox>
           </a-form-item>
         </a-col>
       </a-row>
       <a-row :gutter="12">
         <a-col :span="8">
-          <a-form-item label="有效">
-            <a-switch v-model:checked="responseEditorValidFlag" />
+          <a-form-item label="有效样本">
+            <a-select
+              v-model:value="responseEditorValidFlagChoice"
+              :options="VALID_FLAG_EDITOR_OPTIONS"
+            />
           </a-form-item>
         </a-col>
         <a-col :span="16">
           <a-form-item label="无效原因">
             <a-input
               v-model:value="responseEditor.invalidReason"
-              :disabled="responseEditorValidFlag"
+              :disabled="responseEditorValidFlagChoice !== 'invalid'"
             />
           </a-form-item>
         </a-col>
       </a-row>
+      <a-collapse
+        v-if="showConversionWorkflow && responseEditorMode === 'edit'"
+        class="ie__audit-collapse"
+      >
+        <a-collapse-panel key="audit" header="换算审计记录">
+          <a-spin :spinning="conversionAuditLoading">
+            <a-timeline v-if="conversionAuditLogs.length">
+              <a-timeline-item v-for="log in conversionAuditLogs" :key="log.id">
+                <div class="ie__audit-entry">
+                  <span class="ie__audit-action">
+                    {{ formatConversionAuditAction(log.oldScore, log.newScore) }}
+                  </span>
+                  <span class="ie__audit-score">
+                    {{ formatConversionAuditScore(log.oldScore) }}
+                    →
+                    {{ formatConversionAuditScore(log.newScore) }}
+                  </span>
+                </div>
+                <div class="ie__audit-meta ie__sub-desc">
+                  {{ formatConversionAuditOperator(log) }}
+                  <template v-if="log.operateTime">
+                    · {{ formatConversionAuditTime(log.operateTime) }}
+                  </template>
+                </div>
+              </a-timeline-item>
+            </a-timeline>
+            <span v-else class="ie__sub-desc">暂无换算审计记录</span>
+          </a-spin>
+        </a-collapse-panel>
+      </a-collapse>
     </a-form>
   </a-modal>
 
@@ -828,12 +1004,44 @@ defineExpose({
 
   &__clear-score {
     margin-top: 8px;
+    display: block;
+  }
+
+  &__audit-collapse {
+    margin-top: 8px;
+  }
+
+  &__audit-entry {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 13px;
+  }
+
+  &__audit-action {
+    font-weight: 500;
+    color: var(--dp-text);
+  }
+
+  &__audit-score {
+    color: var(--dp-text-muted);
+  }
+
+  &__audit-meta {
+    margin-top: 2px;
   }
 
   &__answer-group {
     display: flex;
     flex-wrap: wrap;
     gap: 8px 12px;
+  }
+
+  &__audit-list {
+    margin: 0;
+    padding-left: 16px;
+    font-size: 12px;
+    color: var(--dp-text-muted);
   }
 }
 </style>

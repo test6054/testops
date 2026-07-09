@@ -25,3 +25,4 @@ export const AchievementAuditStatusDescription: Record<AchievementAuditStatusCod
   [AchievementAuditStatusCode.RETURNED]: '已退回',
   [AchievementAuditStatusCode.ARCHIVED]: '已归档',
 }
+

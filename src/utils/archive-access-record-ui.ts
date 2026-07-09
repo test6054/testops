@@ -1,7 +1,7 @@
-import type { ArchiveAccessStatusCode } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import {
   ARCHIVE_ACCESS_STATUS_TONE,
+  ArchiveAccessStatusCode,
   ArchiveAccessStatusDescription,
 } from '@/apis/mark/archive-volume'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -15,13 +15,13 @@ export function archiveAccessStatusTone(code: ArchiveAccessStatusCode): BadgeTon
 }
 
 export function archiveAccessApprovalCardClass(status: ArchiveAccessStatusCode): string {
-  if (status === 'PENDING') {
+  if (status === ArchiveAccessStatusCode.PENDING) {
     return 'approval-card--pending'
   }
-  if (status === 'ACTIVE') {
+  if (status === ArchiveAccessStatusCode.ACTIVE) {
     return 'approval-card--approved'
   }
-  if (status === 'REJECTED') {
+  if (status === ArchiveAccessStatusCode.REJECTED) {
     return 'approval-card--rejected'
   }
   return ''

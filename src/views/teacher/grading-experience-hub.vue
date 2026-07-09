@@ -38,16 +38,17 @@
           </div>
 
           <UiDataTable
-            pagination-mode="client"
-            class="student-detail-table__data-table"
+            v-model:current="signaturePageNum"
+            v-model:page-size="signaturePageSize"
+            pagination-mode="server"
             :columns="signatureColumns"
             :data-source="signatures"
             :loading="signaturesLoading"
             flat
-            :total="signatures.length"
-            :page-size="20"
+            :total="signaturePageTotal"
             row-key="layoutQuestionId"
             size="small"
+            @page-change="handleSignaturePageChange"
           >
             <template #bodyCell="{ column, index }">
               <template v-if="column.key === 'questionNo'">
@@ -58,7 +59,7 @@
               </template>
               <template v-else-if="column.key === 'experienceCount'">
                 <span class="score-summary-table__mono">{{
-                  experienceCountForQuestion(signatures[index].layoutQuestionId)
+                  signatures[index].experienceCount ?? 0
                 }}</span>
               </template>
               <template v-else-if="column.key === 'questionDigest'">
@@ -104,21 +105,22 @@
             show-labels
             search-text="查询"
             @update:model-value="syncExperienceFilterForm"
-            @search="loadExperiences"
+            @search="handleExperienceFilterSearch"
             @reset="handleExperienceFilterReset"
           />
 
           <UiDataTable
-            pagination-mode="client"
-            class="student-detail-table__data-table"
+            v-model:current="experiencePageNum"
+            v-model:page-size="experiencePageSize"
+            pagination-mode="server"
             :columns="experienceColumns"
             :data-source="experiences"
             :loading="experienceLoading"
             flat
-            :total="experiences.length"
-            :page-size="20"
+            :total="experiencePageTotal"
             row-key="id"
             size="small"
+            @page-change="handleExperiencePageChange"
           >
             <template #bodyCell="{ column, index }">
               <template v-if="column.key === 'questionNo'">
@@ -142,7 +144,7 @@
                   可定标
                 </UiTag>
                 <UiTag
-                  v-else-if="experiences[index].caseStatus === 'CONFIRMED'"
+                  v-else-if="experiences[index].caseStatus === ExperienceCaseStatusCode.CONFIRMED"
                   tone="orange"
                   size="sm"
                 >
@@ -424,14 +426,31 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
 import type {
   AnswerClusterRecordResponse,
-  ExperienceCaseStatusCode,
   GradingExperienceCaseResponse,
+  GradingExperienceStatsResponse,
   QuestionSignatureResponse,
 } from '@/apis/mark/grading-experience'
+import {
+  confirmExperienceCase,
+  deprecateExperienceCase,
+  EXPERIENCE_ASSIST_CALIBRATION_HINT,
+  EXPERIENCE_CASE_FLOW_HINT,
+  EXPERIENCE_CASE_STATUS_TONE,
+  ExperienceCaseStatusCode,
+  ExperienceCaseStatusDescription,
+  extractExperience,
+  generateAnswerCluster,
+  generateSignatures,
+  getExperienceStats,
+  getLatestAnswerCluster,
+  pageExperiences,
+  pageSignatures,
+  searchSimilar,
+} from '@/apis/mark/grading-experience'
 import type { QuestionTypeCode } from '@/apis/mark/question-type'
+import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import type {
   BadgeTone,
   FilterField,
@@ -446,25 +465,9 @@ import { computed, onActivated, reactive, ref, watch } from 'vue'
 import {
   AI_ANALYSIS_FLOW_HINT,
   AI_ANALYSIS_STATUS_TONE,
+  AiAnalysisStatusCode,
   AiAnalysisStatusDescription,
 } from '@/apis/mark/ai-analysis-status'
-import {
-  confirmExperienceCase,
-  deprecateExperienceCase,
-  EXPERIENCE_ASSIST_CALIBRATION_HINT,
-  EXPERIENCE_CASE_FLOW_HINT,
-  EXPERIENCE_CASE_STATUS_TONE,
-  ExperienceCaseStatusDescription,
-  extractExperience,
-  generateAnswerCluster,
-  generateSignatures,
-  getLatestAnswerCluster,
-  listExperiences,
-  listExperiencesByQuestion,
-  listSignatures,
-  searchSimilar,
-} from '@/apis/mark/grading-experience'
-import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -480,8 +483,11 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { useQueryTable } from '@/composables/useQueryTable'
+import { EXPORT_PAGE_SIZE } from '@/constants/pagination'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { buildEmptyPageResult } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherGradingExperienceHub' })
@@ -501,20 +507,41 @@ const tabItems: UiSectionTabItem[] = [
 
 // ─── 题目签名 ─────────────────────────────────
 
-const signatures = ref<QuestionSignatureResponse[]>([])
-const signaturesLoading = ref(false)
 const generatingSignatures = ref(false)
+const experienceStats = ref<GradingExperienceStatsResponse | null>(null)
+const questionOptionRows = ref<QuestionSignatureResponse[]>([])
+
+const {
+  loading: signaturesLoading,
+  rows: signatures,
+  pageNum: signaturePageNum,
+  pageSize: signaturePageSize,
+  pageTotal: signaturePageTotal,
+  handlePageChange: handleSignaturePageChange,
+  search: searchSignatures,
+  loadPage: loadSignaturePage,
+} = useQueryTable<QuestionSignatureResponse, Record<string, never>>(
+  (params) => {
+    if (!selectedExamId.value) {
+      return Promise.resolve(
+        buildEmptyPageResult<QuestionSignatureResponse>(params.pageNum, params.pageSize),
+      )
+    }
+    return pageSignatures({ examId: selectedExamId.value, ...params })
+  },
+  { immediate: false, errorMessage: '题目特征加载失败' },
+)
 
 const signatureColumns: ColumnType<QuestionSignatureResponse>[] = [
-  { title: '题号', key: 'questionNo', width: 80 },
+  { title: '题号', key: 'questionNo', width: 80, fixed: 'left' },
   { title: '题型', key: 'questionType', width: 100 },
   { title: '经验案例', key: 'experienceCount', width: 88, align: 'right' },
   { title: '题干摘要', key: 'questionDigest', width: 320 },
-  { title: '操作', key: 'actions', width: 120, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 120 },
 ]
 
 const questionOptions = computed(() =>
-  signatures.value.map((item) => ({
+  questionOptionRows.value.map((item) => ({
     label: `题号 ${item.questionNo} · ${questionTypeLabel(item.questionType)}`,
     value: item.layoutQuestionId,
   })),
@@ -525,6 +552,33 @@ const experienceFilterForm = reactive<{ layoutQuestionId?: string }>({})
 function syncExperienceFilterForm(next: Record<string, unknown>): void {
   Object.assign(experienceFilterForm, next)
 }
+
+const {
+  loading: experienceLoading,
+  rows: experiences,
+  pageNum: experiencePageNum,
+  pageSize: experiencePageSize,
+  pageTotal: experiencePageTotal,
+  filters: experienceFilters,
+  handlePageChange: handleExperiencePageChange,
+  search: searchExperienceTable,
+  loadPage: loadExperiencePage,
+} = useQueryTable<GradingExperienceCaseResponse, { layoutQuestionId?: string }>(
+  (params) => {
+    if (!selectedExamId.value) {
+      return Promise.resolve(
+        buildEmptyPageResult<GradingExperienceCaseResponse>(params.pageNum, params.pageSize),
+      )
+    }
+    const { layoutQuestionId, ...pageParams } = params
+    return pageExperiences({
+      examId: selectedExamId.value,
+      layoutQuestionId: layoutQuestionId || undefined,
+      ...pageParams,
+    })
+  },
+  { immediate: false, errorMessage: '评分经验加载失败' },
+)
 
 const experienceFilterFields = computed<FilterField[]>(() => [
   {
@@ -556,18 +610,44 @@ const clusterFilterFields = computed<FilterField[]>(() => [
   },
 ])
 
+async function loadExperienceStats(): Promise<void> {
+  if (!selectedExamId.value) {
+    experienceStats.value = null
+    return
+  }
+  try {
+    experienceStats.value = await getExperienceStats({ examId: selectedExamId.value })
+  } catch (error) {
+    experienceStats.value = null
+    showUserError(error, '阅卷经验统计加载失败')
+  }
+}
+
+async function loadQuestionOptions(): Promise<void> {
+  if (!selectedExamId.value) {
+    questionOptionRows.value = []
+    return
+  }
+  try {
+    const result = await pageSignatures({
+      examId: selectedExamId.value,
+      pageNum: 1,
+      pageSize: EXPORT_PAGE_SIZE,
+    })
+    questionOptionRows.value = result.list
+  } catch (error) {
+    questionOptionRows.value = []
+    showUserError(error, '题目选项加载失败')
+  }
+}
+
 async function loadSignatures(): Promise<void> {
   if (!selectedExamId.value) return
-  signaturesLoading.value = true
   loadFailed.value = false
   try {
-    signatures.value = await listSignatures(selectedExamId.value)
-  } catch (error) {
-    signatures.value = []
+    await loadSignaturePage()
+  } catch {
     loadFailed.value = true
-    showUserError(error, '题目特征加载失败')
-  } finally {
-    signaturesLoading.value = false
   }
 }
 
@@ -576,8 +656,8 @@ async function handleGenerateSignatures(): Promise<void> {
   generatingSignatures.value = true
   try {
     const result = await generateSignatures(selectedExamId.value)
-    signatures.value = result
     message.success(`已生成 ${result.length} 条题目签名`)
+    await Promise.all([searchSignatures(), loadQuestionOptions(), loadExperienceStats()])
     await refreshSnapshot()
   } catch (error) {
     showUserError(error, '题目签名生成失败')
@@ -634,22 +714,22 @@ async function openSimilarDrawer(record: QuestionSignatureResponse): Promise<voi
 
 // ─── AI 经验提取 ─────────────────────────────────
 
-const experiences = ref<GradingExperienceCaseResponse[]>([])
-const experienceLoading = ref(false)
 const extracting = ref(false)
 
 const experienceSignalMetrics = computed((): SignalMetric[] => {
-  const confirmedCount = experiences.value.filter((item) => item.caseStatus === 'CONFIRMED').length
-  const pendingAnalysisCount = experiences.value.filter(
-    (item) => item.analysisStatus === 'PENDING',
-  ).length
+  const stats = experienceStats.value
+  const signatureCount = stats?.signatureCount ?? 0
+  const confirmedCount = stats?.confirmedCount ?? 0
+  const pendingAnalysisCount = stats?.pendingAnalysisCount ?? 0
+  const assistReadyCount = stats?.assistReadyCount ?? 0
+  const experienceCount = stats?.experienceCount ?? 0
   return [
     {
       key: 'signatures',
       label: '题目签名',
-      value: signatures.value.length,
+      value: signatureCount,
       unit: '条',
-      tone: signatures.value.length > 0 ? 'blue' : 'gray',
+      tone: signatureCount > 0 ? 'blue' : 'gray',
     },
     {
       key: 'confirmed',
@@ -668,22 +748,22 @@ const experienceSignalMetrics = computed((): SignalMetric[] => {
     {
       key: 'assist-ready',
       label: '可定标',
-      value: experiences.value.filter((item) => item.assistEligible).length,
+      value: assistReadyCount,
       unit: '条',
-      tone: experiences.value.some((item) => item.assistEligible) ? 'green' : 'gray',
+      tone: assistReadyCount > 0 ? 'green' : 'gray',
     },
     {
       key: 'experiences',
       label: '经验案例',
-      value: experiences.value.length,
+      value: experienceCount,
       unit: '条',
-      tone: experiences.value.length > 0 ? 'purple' : 'gray',
+      tone: experienceCount > 0 ? 'purple' : 'gray',
     },
   ]
 })
 
 const experienceColumns: ColumnType<GradingExperienceCaseResponse>[] = [
-  { title: '题号', key: 'questionNo', dataIndex: 'questionNo', width: 100 },
+  { title: '题号', key: 'questionNo', dataIndex: 'questionNo', width: 100, fixed: 'left' },
   { title: '题型', key: 'questionType', width: 100 },
   { title: 'AI 状态', key: 'analysisStatus', width: 100 },
   { title: '案例状态', key: 'caseStatus', width: 100 },
@@ -691,27 +771,19 @@ const experienceColumns: ColumnType<GradingExperienceCaseResponse>[] = [
   { title: '引用', key: 'reuseCount', width: 72, align: 'right' },
   { title: '经验总结', key: 'experienceSummary', width: 300 },
   { title: '创建时间', key: 'createTime', dataIndex: 'createTime', width: 160 },
-  { title: '操作', key: 'actions', width: 90, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 90 },
 ]
 
 async function loadExperiences(): Promise<void> {
   if (!selectedExamId.value) return
-  experienceLoading.value = true
-  try {
-    if (experienceFilterForm.layoutQuestionId) {
-      experiences.value = await listExperiencesByQuestion({
-        examId: selectedExamId.value,
-        layoutQuestionId: experienceFilterForm.layoutQuestionId,
-      })
-    } else {
-      experiences.value = await listExperiences(selectedExamId.value)
-    }
-  } catch (error) {
-    experiences.value = []
-    showUserError(error, '评分经验加载失败')
-  } finally {
-    experienceLoading.value = false
+  await loadExperiencePage()
+}
+
+function handleExperienceFilterSearch(): void {
+  experienceFilters.value = {
+    layoutQuestionId: experienceFilterForm.layoutQuestionId,
   }
+  searchExperienceTable()
 }
 
 async function handleExtract(): Promise<void> {
@@ -723,7 +795,7 @@ async function handleExtract(): Promise<void> {
       layoutQuestionId: experienceFilterForm.layoutQuestionId,
     })
     message.success('AI 经验已提取')
-    await loadExperiences()
+    await Promise.all([loadExperiences(), loadExperienceStats()])
     await refreshSnapshot()
   } catch (error) {
     showUserError(error, '阅卷经验提取失败')
@@ -741,16 +813,16 @@ const deprecatingExperience = ref(false)
 
 const canConfirmExperience = computed(
   () =>
-    detailExperience.value?.caseStatus === 'DRAFT'
-    && detailExperience.value?.analysisStatus === 'SUCCESS'
-    && Boolean(detailExperience.value?.id),
+    detailExperience.value?.caseStatus === ExperienceCaseStatusCode.DRAFT &&
+    detailExperience.value?.analysisStatus === AiAnalysisStatusCode.SUCCESS &&
+    Boolean(detailExperience.value?.id),
 )
 
 const canDeprecateExperience = computed(
   () =>
-    detailExperience.value?.caseStatus === 'CONFIRMED'
-    && detailExperience.value?.analysisStatus === 'SUCCESS'
-    && Boolean(detailExperience.value?.id),
+    detailExperience.value?.caseStatus === ExperienceCaseStatusCode.CONFIRMED &&
+    detailExperience.value?.analysisStatus === AiAnalysisStatusCode.SUCCESS &&
+    Boolean(detailExperience.value?.id),
 )
 
 async function handleConfirmExperience(): Promise<void> {
@@ -760,7 +832,7 @@ async function handleConfirmExperience(): Promise<void> {
   try {
     detailExperience.value = await confirmExperienceCase(caseId)
     message.success('经验案例已确认，可用于有效性评估')
-    await loadExperiences()
+    await Promise.all([loadExperiences(), loadExperienceStats()])
   } catch (error) {
     showUserError(error, '经验案例确认失败')
   } finally {
@@ -782,7 +854,7 @@ function handleDeprecateExperience(): void {
       try {
         detailExperience.value = await deprecateExperienceCase(caseId)
         message.success('经验案例已废弃')
-        await loadExperiences()
+        await Promise.all([loadExperiences(), loadExperienceStats()])
       } catch (error) {
         showUserError(error, '经验案例废弃失败')
       } finally {
@@ -799,7 +871,8 @@ function openExperienceDrawer(record: GradingExperienceCaseResponse): void {
 
 function handleExperienceFilterReset(): void {
   experienceFilterForm.layoutQuestionId = undefined
-  void loadExperiences()
+  experienceFilters.value = {}
+  searchExperienceTable()
 }
 
 // ─── AI 答案聚类 ─────────────────────────────────
@@ -869,10 +942,6 @@ function questionTypeLabel(value: QuestionTypeCode): string {
   return strictEnumLabel(QuestionTypeDescription, value, '题型')
 }
 
-function experienceCountForQuestion(layoutQuestionId: string): number {
-  return experiences.value.filter((item) => item.layoutQuestionId === layoutQuestionId).length
-}
-
 function ellipsis(
   text:
     | QuestionSignatureResponse['questionDigest']
@@ -884,50 +953,55 @@ function ellipsis(
 }
 
 function clusterLatencyText(item: AnswerClusterRecordResponse): string {
-  if (item.analysisStatus === 'PENDING') return '待分析，尚未生成耗时'
-  if (item.analysisStatus === 'SUCCESS' && item.latencyMs != null) return `${item.latencyMs} ms`
+  if (item.analysisStatus === AiAnalysisStatusCode.PENDING) return '待分析，尚未生成耗时'
+  if (item.analysisStatus === AiAnalysisStatusCode.SUCCESS && item.latencyMs != null)
+    return `${item.latencyMs} ms`
   return '处理失败，未生成耗时'
 }
 
 function clusterTraceText(item: AnswerClusterRecordResponse): string {
-  if (item.analysisStatus === 'PENDING') return '待分析，尚未生成追踪编号'
-  if (item.analysisStatus === 'SUCCESS') return item.aiTraceId ?? '—'
+  if (item.analysisStatus === AiAnalysisStatusCode.PENDING) return '待分析，尚未生成追踪编号'
+  if (item.analysisStatus === AiAnalysisStatusCode.SUCCESS) return item.aiTraceId ?? '—'
   return '处理失败，未生成追踪编号'
 }
 
 function clusterSummaryText(item: AnswerClusterRecordResponse): string {
-  if (item.analysisStatus === 'PENDING') return 'AI 答案聚类待分析，完成后展示聚类总结'
-  if (item.analysisStatus === 'SUCCESS') return item.clusterSummary ?? '—'
+  if (item.analysisStatus === AiAnalysisStatusCode.PENDING)
+    return 'AI 答案聚类待分析，完成后展示聚类总结'
+  if (item.analysisStatus === AiAnalysisStatusCode.SUCCESS) return item.clusterSummary ?? '—'
   return aiClusterFailureMessage(item.errorMessage)
 }
 
 function clusterGroupCountText(item: AnswerClusterRecordResponse): string {
-  if (item.analysisStatus === 'PENDING') return '待分析'
-  if (item.analysisStatus === 'SUCCESS' && item.groupCount != null) return String(item.groupCount)
+  if (item.analysisStatus === AiAnalysisStatusCode.PENDING) return '待分析'
+  if (item.analysisStatus === AiAnalysisStatusCode.SUCCESS && item.groupCount != null)
+    return String(item.groupCount)
   return '处理失败'
 }
 
 function experienceTraceText(item: GradingExperienceCaseResponse): string {
-  if (item.analysisStatus === 'PENDING') return '待分析，尚未生成追踪编号'
-  if (item.analysisStatus === 'SUCCESS') return item.aiTraceId ?? '—'
+  if (item.analysisStatus === AiAnalysisStatusCode.PENDING) return '待分析，尚未生成追踪编号'
+  if (item.analysisStatus === AiAnalysisStatusCode.SUCCESS) return item.aiTraceId ?? '—'
   return '处理失败，未生成追踪编号'
 }
 
 function experienceLatencyText(item: GradingExperienceCaseResponse): string {
-  if (item.analysisStatus === 'PENDING') return '待分析，尚未生成耗时'
-  if (item.analysisStatus === 'SUCCESS' && item.latencyMs != null) return `${item.latencyMs} ms`
+  if (item.analysisStatus === AiAnalysisStatusCode.PENDING) return '待分析，尚未生成耗时'
+  if (item.analysisStatus === AiAnalysisStatusCode.SUCCESS && item.latencyMs != null)
+    return `${item.latencyMs} ms`
   return '处理失败，未生成耗时'
 }
 
 function experienceSummaryText(item: GradingExperienceCaseResponse): string {
-  if (item.analysisStatus === 'PENDING') return 'AI 阅卷经验提炼待分析，完成后展示经验总结'
-  if (item.analysisStatus === 'SUCCESS') return item.experienceSummary ?? '—'
+  if (item.analysisStatus === AiAnalysisStatusCode.PENDING)
+    return 'AI 阅卷经验提炼待分析，完成后展示经验总结'
+  if (item.analysisStatus === AiAnalysisStatusCode.SUCCESS) return item.experienceSummary ?? '—'
   return gradingExperienceFailureMessage(item.errorMessage)
 }
 
 function experienceApplicableScopeText(item: GradingExperienceCaseResponse): string {
-  if (item.analysisStatus === 'PENDING') return '待分析，尚未生成适用边界'
-  if (item.analysisStatus === 'SUCCESS') return item.applicableScope ?? '—'
+  if (item.analysisStatus === AiAnalysisStatusCode.PENDING) return '待分析，尚未生成适用边界'
+  if (item.analysisStatus === AiAnalysisStatusCode.SUCCESS) return item.applicableScope ?? '—'
   return '处理失败，未生成适用边界'
 }
 
@@ -941,7 +1015,12 @@ function gradingExperienceFailureMessage(errorMessage?: string): string {
 
 async function loadPageSummary(): Promise<void> {
   if (!selectedExamId.value) return
-  await Promise.all([loadSignatures(), loadExperiences()])
+  await Promise.all([
+    loadExperienceStats(),
+    loadQuestionOptions(),
+    loadSignatures(),
+    loadExperiences(),
+  ])
 }
 
 async function reloadActiveTab(): Promise<void> {
@@ -950,13 +1029,13 @@ async function reloadActiveTab(): Promise<void> {
   if (activeTab.value === 'signature') {
     await loadPageSummary()
   } else if (activeTab.value === 'experience') {
-    if (signatures.value.length === 0) {
-      await loadSignatures()
+    if (questionOptionRows.value.length === 0) {
+      await loadQuestionOptions()
     }
-    await loadExperiences()
+    await Promise.all([loadExperienceStats(), loadExperiences()])
   } else if (activeTab.value === 'cluster') {
-    if (signatures.value.length === 0) {
-      await loadSignatures()
+    if (questionOptionRows.value.length === 0) {
+      await loadQuestionOptions()
     }
     if (clusterFilterForm.layoutQuestionId) {
       await loadLatestCluster()
@@ -971,10 +1050,11 @@ watch(activeTab, () => {
 watch(
   selectedExamId,
   (value) => {
-    signatures.value = []
-    experiences.value = []
+    questionOptionRows.value = []
+    experienceStats.value = null
     latestCluster.value = null
     experienceFilterForm.layoutQuestionId = undefined
+    experienceFilters.value = {}
     clusterFilterForm.layoutQuestionId = undefined
     if (value) {
       void reloadActiveTab()

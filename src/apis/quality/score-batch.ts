@@ -60,7 +60,7 @@ export interface ScoreImportRowDiagnostic {
   errorMessages: string[]
 }
 
-/** 成绩导入预览 VO - 严格对齐后端 ScoreImportPreviewVO */
+/** 成绩导入预览 VO - 严格对齐后端 ScoreImportPreviewVO（摘要；错误行走 score-records/page-by-batch） */
 export interface ScoreImportPreviewVO {
   batchId: string
   status: ScoreBatchStatusCode
@@ -68,7 +68,6 @@ export interface ScoreImportPreviewVO {
   successRows?: number
   errorRows?: number
   errorSummary?: string
-  diagnostics: ScoreImportRowDiagnostic[]
 }
 
 /** 分页查询 - 严格对齐 ScoreBatchQueryRequest */

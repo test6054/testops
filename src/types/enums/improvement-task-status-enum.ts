@@ -25,3 +25,4 @@ export const ImprovementTaskStatusDescription: Record<ImprovementTaskStatusCode,
   [ImprovementTaskStatusCode.CLOSED]: '已闭环',
   [ImprovementTaskStatusCode.RETURNED]: '已退回',
 }
+

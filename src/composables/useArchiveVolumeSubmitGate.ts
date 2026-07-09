@@ -3,6 +3,12 @@ import type {
   ArchiveVolumeResponse,
   ArchiveVolumeSubmitChecklistItemVO,
 } from '@/apis/mark/archive-volume'
+import {
+  ArchiveIntegrityStatusCode,
+  ArchiveScoreCompletionStatusCode,
+  ArchiveScoreSourceCode,
+  ArchiveVolumeStatusCode,
+} from '@/apis/mark/archive-volume'
 
 interface SubmitGateInput {
   volume: Pick<
@@ -66,9 +72,9 @@ function volumeStatusAllowsSubmit(
   departmentReviewEnabled: boolean,
 ): boolean {
   if (departmentReviewEnabled) {
-    return volumeStatus === 'DEPARTMENT_REVIEWED'
+    return volumeStatus === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED
   }
-  return volumeStatus === 'COLLECTING'
+  return volumeStatus === ArchiveVolumeStatusCode.COLLECTING
 }
 
 /**
@@ -77,8 +83,8 @@ function volumeStatusAllowsSubmit(
 export function canSubmitArchiveVolume(input: SubmitGateInput): boolean {
   const { volume, fourPropertyStale, fourPropertyPassed } = input
   const departmentReviewEnabled = resolveDepartmentReviewEnabled(input)
-  const blockingRemediation
-    = input.hasBlockingRemediationForSubmit ?? volume.hasBlockingRemediationForSubmit
+  const blockingRemediation =
+    input.hasBlockingRemediationForSubmit ?? volume.hasBlockingRemediationForSubmit
   if (!volumeStatusAllowsSubmit(volume.volumeStatus, departmentReviewEnabled)) return false
   if (blockingRemediation) return false
   if (!canActAsSubmitOwner(input)) return false
@@ -87,7 +93,11 @@ export function canSubmitArchiveVolume(input: SubmitGateInput): boolean {
   if (fourPropertyStale) return false
   if (volume.securityMarkPending) return false
   if (!fourPropertyPassed) return false
-  if (volume.integrityStatus !== 'PASSED' && volume.integrityStatus !== 'WAIVED') return false
+  if (
+    volume.integrityStatus !== ArchiveIntegrityStatusCode.PASSED &&
+    volume.integrityStatus !== ArchiveIntegrityStatusCode.WAIVED
+  )
+    return false
   if (!isScoreSubmitReady(volume)) return false
   if (volume.requireSelfCheckConfirm) {
     if (!volume.selfCheckConfirmed || volume.signOffReady !== true) {
@@ -110,13 +120,16 @@ export function isScoreSubmitReady(
 ): boolean {
   if (volume.scoreSubmitReady === true) return true
   if (volume.scoreSubmitReady === false) return false
-  if (volume.scoreSource === 'MARK_INTERNAL') {
+  if (volume.scoreSource === ArchiveScoreSourceCode.MARK_INTERNAL) {
     return volume.examGateOpen === true
   }
-  if (volume.scoreSource === 'TEACHING_AFFAIRS' || volume.scoreSource === 'OFFLINE_CONFIRMED') {
+  if (
+    volume.scoreSource === ArchiveScoreSourceCode.TEACHING_AFFAIRS ||
+    volume.scoreSource === ArchiveScoreSourceCode.OFFLINE_CONFIRMED
+  ) {
     if (
-      volume.scoreCompletionStatus === 'COMPLETED'
-      || volume.scoreCompletionStatus === 'VERIFIED'
+      volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.COMPLETED ||
+      volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.VERIFIED
     ) {
       return true
     }
@@ -129,10 +142,13 @@ export function describeSubmitBlockReason(input: SubmitGateInput): string | null
   const { volume } = input
   const departmentReviewEnabled = resolveDepartmentReviewEnabled(input)
   if (!volumeStatusAllowsSubmit(volume.volumeStatus, departmentReviewEnabled)) {
-    if (departmentReviewEnabled && volume.volumeStatus === 'COLLECTING') {
+    if (departmentReviewEnabled && volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING) {
       return '须先完成院系审核通过后再提交档案馆'
     }
-    if (departmentReviewEnabled && volume.volumeStatus === 'DEPARTMENT_REVIEW_PENDING') {
+    if (
+      departmentReviewEnabled &&
+      volume.volumeStatus === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING
+    ) {
       return '院系审核进行中，请等待审核通过'
     }
     return null
@@ -160,7 +176,10 @@ export function describeSubmitBlockReason(input: SubmitGateInput): string | null
     return '提交前置未满足，请完成编目、自查与完整性/四性/成绩检查'
   }
 
-  if (volume.integrityStatus !== 'PASSED' && volume.integrityStatus !== 'WAIVED') {
+  if (
+    volume.integrityStatus !== ArchiveIntegrityStatusCode.PASSED &&
+    volume.integrityStatus !== ArchiveIntegrityStatusCode.WAIVED
+  ) {
     return '完整性未通过，请先执行完整性检查或授权豁免'
   }
   if (input.fourPropertyStale ?? volume.fourPropertyStale) {
@@ -174,7 +193,7 @@ export function describeSubmitBlockReason(input: SubmitGateInput): string | null
     return '四性检测未通过，请先执行四性检测'
   }
   if (!isScoreSubmitReady(volume)) {
-    if (volume.scoreSource === 'MARK_INTERNAL') {
+    if (volume.scoreSource === ArchiveScoreSourceCode.MARK_INTERNAL) {
       return '线上阅卷双门禁未满足，暂不可提交'
     }
     return '成绩证明未完成，请先确认成绩或上传证明文件'

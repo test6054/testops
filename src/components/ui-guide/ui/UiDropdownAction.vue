@@ -20,6 +20,15 @@
           </template>
           {{ props.buttonText }}
         </UiButton>
+        <button
+          v-else-if="props.triggerStyle === 'table'"
+          type="button"
+          class="ui-dropdown-action__table-trigger"
+          :disabled="props.disabled"
+        >
+          {{ props.buttonText }}
+          <DownOutlined class="ui-dropdown-action__table-arrow" />
+        </button>
         <UiActionLink v-else :text="props.buttonText" :disabled="props.disabled">
           <template #suffix>
             <DownOutlined class="ui-dropdown-action__arrow" />
@@ -60,7 +69,7 @@ const props = withDefaults(
     buttonText?: string
     disabled?: boolean
     trigger?: DropdownProps['trigger']
-    triggerStyle?: 'text' | 'button'
+    triggerStyle?: 'text' | 'button' | 'table'
     placement?: 'bottomLeft' | 'bottomCenter' | 'bottomRight' | 'topLeft' | 'topCenter' | 'topRight'
   }>(),
   {
@@ -100,6 +109,35 @@ const handleMenuClick = (info: { key: string | number }) => {
 
 .ui-dropdown-action__arrow {
   font-size: 14px;
+}
+
+.ui-dropdown-action__table-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--ant-color-primary);
+  transition: background 0.1s ease;
+}
+
+.ui-dropdown-action__table-trigger:hover:not(:disabled) {
+  background: var(--dp-blue-50);
+}
+
+.ui-dropdown-action__table-trigger:disabled {
+  color: var(--dp-text-disabled);
+  cursor: not-allowed;
+}
+
+.ui-dropdown-action__table-arrow {
+  font-size: 12px;
 }
 .ui-dropdown-action-overlay .ant-dropdown-menu {
   padding: 6px;

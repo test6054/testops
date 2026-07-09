@@ -86,7 +86,7 @@
         :show-size-changer="false"
         row-key="rowNo"
         size="small"
-        flat
+        flat :sticky-header="false"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'student'">

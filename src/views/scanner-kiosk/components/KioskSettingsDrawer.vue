@@ -78,6 +78,22 @@ const scannerConfigRows = computed(() => {
   ]
 })
 
+const kioskCapabilities = computed(() => workflow.kioskContext.value?.capabilities)
+
+const capabilityRows = computed(() => {
+  const caps = kioskCapabilities.value
+  if (!caps?.loaded) {
+    return [{ label: '能力探测', value: '未加载（刷新连接后自动探测）' }]
+  }
+  return [
+    { label: '设备名称', value: caps.scannerDisplayName || '—' },
+    { label: '最大 DPI', value: caps.maxScanDpi ? String(caps.maxScanDpi) : '—' },
+    { label: '双面扫描', value: caps.supportsDuplex ? '支持' : '仅单面' },
+    { label: '进纸器 ADF', value: caps.supportsAdf ? '支持' : '不支持' },
+    { label: '本地扫描仪 ID', value: caps.localScannerId || '—' },
+  ]
+})
+
 function handleRefreshScanners() {
   workflow.refreshScannersByUser()
 }
@@ -99,6 +115,15 @@ const sseStatusTone = computed(() => (workflow.sseStreaming.value ? 'success' : 
 const sseStatusText = computed(() =>
   workflow.sseStreaming.value ? '已连接（实时推送）' : '未连接',
 )
+const storageCredentialText = computed(() => {
+  const h = health.value
+  if (!h?.bound) return '—'
+  if (!('storageUploadCredentialFresh' in h)) return '待 Agent 升级后可见'
+  if (!h.storageUploadCredentialFresh) return '已过期，心跳续期后自动重试上传'
+  const expiresAt = h.storageUploadCredentialExpiresAt
+  if (!expiresAt) return '已签发（续期时间未知）'
+  return workflow.formatTime(expiresAt)
+})
 const liveEventCount = computed(() => workflow.liveEvents.value.length)
 
 const upgradeRequired = computed(() => Boolean(health.value?.upgradeRequired))
@@ -110,19 +135,19 @@ const agentUpdateAvailable = computed(() => Boolean(health.value?.updateAvailabl
 const agentUpdateInstallable = computed(() => Boolean(health.value?.updateInstallable))
 const agentUpdateInProgress = computed(
   () =>
-    agentUpdateStatus.value === AgentUpdateStatusCode.DOWNLOADING
-    || agentUpdateStatus.value === AgentUpdateStatusCode.INSTALLING,
+    agentUpdateStatus.value === AgentUpdateStatusCode.DOWNLOADING ||
+    agentUpdateStatus.value === AgentUpdateStatusCode.INSTALLING,
 )
 const agentUpdateFailed = computed(() => agentUpdateStatus.value === AgentUpdateStatusCode.FAILED)
 const showMaintenanceSection = computed(
   () =>
-    upgradeRequired.value
-    || tokenResetRequired.value
-    || rebindRequired.value
-    || kioskBrowserSessionSyncNeeded.value
-    || agentUpdateInProgress.value
-    || agentUpdateFailed.value
-    || agentUpdateAvailable.value,
+    upgradeRequired.value ||
+    tokenResetRequired.value ||
+    rebindRequired.value ||
+    kioskBrowserSessionSyncNeeded.value ||
+    agentUpdateInProgress.value ||
+    agentUpdateFailed.value ||
+    agentUpdateAvailable.value,
 )
 
 const minAgentVersion = computed(() => health.value?.minimumAgentVersion || '')
@@ -168,7 +193,9 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
 
           <div v-if="kioskBrowserSessionSyncNeeded" class="alert-block">
             <p>浏览器会话未与 Agent 对齐</p>
-            <small>正在从本机 Agent 同步 push_token；若长时间无响应，请刷新连接或重新输入激活码。</small>
+            <small
+              >正在从本机 Agent 同步 push_token；若长时间无响应，请刷新连接或重新输入激活码。</small
+            >
             <button type="button" class="ghost-btn" @click="handleRefreshSession">
               <ReloadOutlined />
               刷新连接
@@ -289,6 +316,10 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
               <dd>{{ health?.pendingUploadJobs ?? '—' }}</dd>
             </div>
             <div>
+              <dt>页面上传凭证</dt>
+              <dd>{{ storageCredentialText }}</dd>
+            </div>
+            <div>
               <dt>设备在线</dt>
               <dd>{{ deviceOnlineText }}</dd>
             </div>
@@ -374,6 +405,16 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
               <div v-if="selectedScanner.diagnostic">
                 <dt>诊断信息</dt>
                 <dd>{{ selectedScanner.diagnostic }}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="scanner-config">
+            <h4>平台能力探测（当前考试上下文）</h4>
+            <dl class="kv">
+              <div v-for="row in capabilityRows" :key="row.label">
+                <dt>{{ row.label }}</dt>
+                <dd>{{ row.value }}</dd>
               </div>
             </dl>
           </div>

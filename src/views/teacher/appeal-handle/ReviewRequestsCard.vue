@@ -16,13 +16,15 @@
           @search="handleSearch"
           @reset="handleFilterReset"
         />
-        <span v-if="pagination.total > 0" class="appeal-section__count">{{ pagination.total }} 条</span>
+        <span v-if="pagination.total > 0" class="appeal-section__count"
+          >{{ pagination.total }} 条</span
+        >
       </div>
 
       <UiDataTable
-        class="student-detail-table__data-table"
         v-model:current="pagination.current"
         v-model:page-size="pagination.pageSize"
+        pagination-mode="server"
         :columns="columns"
         :data-source="rows"
         :loading="loading"
@@ -49,10 +51,10 @@
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
-              v-if="canHandleReviewRequest(rows[index].requestStatus)"
+              v-if="buildReviewRequestActions(rows[index]).length > 0"
               :items="buildReviewRequestActions(rows[index])"
               split
-              @action="(key) => handleReviewRequestAction(key, rows[index])"
+              @action="(key) => void handleReviewRequestAction(key, rows[index])"
             />
             <span v-else class="muted">—</span>
           </template>
@@ -137,10 +139,8 @@ import type {
   GradeReviewReasonTypeCode,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import {
+  claimReviewRequest,
   getReviewSummary,
   GradeReviewReasonTypeDescription,
   GradeReviewRequestStatusCode,
@@ -151,6 +151,9 @@ import {
   REVIEW_REQUEST_STATUS_OPTIONS,
   REVIEW_REQUEST_STATUS_TONE,
 } from '@/apis/mark/grade-review'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -165,7 +168,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ReviewRequestsCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 const emit = defineEmits<{
   (e: 'handled'): void
   (e: 'pending-change', count: number): void
@@ -181,7 +184,7 @@ const pagination = reactive({
   total: 0,
 })
 
-const filterForm = reactive<{ status?: GradeReviewRequestStatusCode, keyword: string }>({
+const filterForm = reactive<{ status?: GradeReviewRequestStatusCode; keyword: string }>({
   keyword: '',
 })
 
@@ -216,17 +219,18 @@ const filterFields: FilterField[] = [
 ]
 
 const columns: ColumnType<GradeReviewRequestItemResponse>[] = [
-  { title: '学号', key: 'studentNo', width: 120 },
+  { title: '学号', key: 'studentNo', width: 120, fixed: 'left' },
   { title: '姓名', key: 'studentName', dataIndex: 'studentName', width: 96 },
   { title: '题号', key: 'questionNo', width: 88 },
   { title: '申请原因', dataIndex: 'requestReason', key: 'requestReason', ellipsis: true },
   { title: '状态', key: 'requestStatus', width: 96 },
   { title: '处理结果', key: 'handleResult', width: 140, ellipsis: true },
-  { title: '操作', key: 'actions', width: 140, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 140 },
 ]
 
 const handleOpen = ref(false)
 const handling = ref(false)
+const claimingId = ref<string | null>(null)
 const targetRequest = ref<GradeReviewRequestItemResponse | null>(null)
 const conclusionDraft = ref<GradeReviewRequestStatusCode>(GradeReviewRequestStatusCode.APPROVED)
 const reviewNote = ref('')
@@ -235,12 +239,19 @@ const handleTitle = computed(() =>
   conclusionDraft.value === GradeReviewRequestStatusCode.APPROVED ? '通过复核申请' : '驳回复核申请',
 )
 
-/** 后端仅允许 PENDING / IN_REVIEW 状态进入 handleReviewRequest。 */
+function canClaimReviewRequest(status: GradeReviewRequestStatusCode): boolean {
+  return status === GradeReviewRequestStatusCode.PENDING
+}
+
+/** 后端要求先领取（IN_REVIEW）后再 handleReviewRequest。 */
 function canHandleReviewRequest(status: GradeReviewRequestStatusCode): boolean {
-  return status === 'PENDING' || status === 'IN_REVIEW'
+  return status === GradeReviewRequestStatusCode.IN_REVIEW
 }
 
 function buildReviewRequestActions(record: GradeReviewRequestItemResponse): UiTableRowActionItem[] {
+  if (canClaimReviewRequest(record.requestStatus)) {
+    return [{ key: 'claim', label: '领取' }]
+  }
   if (!canHandleReviewRequest(record.requestStatus)) {
     return []
   }
@@ -250,7 +261,26 @@ function buildReviewRequestActions(record: GradeReviewRequestItemResponse): UiTa
   ]
 }
 
-function handleReviewRequestAction(key: string, record: GradeReviewRequestItemResponse): void {
+async function handleReviewRequestAction(
+  key: string,
+  record: GradeReviewRequestItemResponse,
+): Promise<void> {
+  if (key === 'claim') {
+    if (!record.id || claimingId.value) {
+      return
+    }
+    claimingId.value = record.id
+    try {
+      await claimReviewRequest({ reviewRequestId: record.id })
+      message.success('已领取复核申请')
+      await reload()
+    } catch (error) {
+      showUserError(error, '领取复核申请失败')
+    } finally {
+      claimingId.value = null
+    }
+    return
+  }
   if (key === 'approve') {
     openHandleModal(record, GradeReviewRequestStatusCode.APPROVED)
   } else if (key === 'reject') {
@@ -320,7 +350,7 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()
@@ -373,7 +403,10 @@ function primaryQuestionNo(record: GradeReviewRequestItemResponse): string {
 }
 
 function handleResultLabel(record: GradeReviewRequestItemResponse): string {
-  if (record.requestStatus === 'PENDING' || record.requestStatus === 'IN_REVIEW') {
+  if (
+    record.requestStatus === GradeReviewRequestStatusCode.PENDING ||
+    record.requestStatus === GradeReviewRequestStatusCode.IN_REVIEW
+  ) {
     return '—'
   }
   if (record.reviewNote?.trim()) {

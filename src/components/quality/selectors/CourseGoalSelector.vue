@@ -1,15 +1,15 @@
 <!--
   课程目标选择器
-  数据源：POST /api/quality/course-goals/list-by-course
-  必传 qualityCourseId
+  数据源：POST /api/quality/course-goals/page
 -->
 <script setup lang="ts">
-import type { SelectValue } from 'ant-design-vue/es/select'
+import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { CourseGoalVO } from '@/apis/quality/course-goal'
-import { computed, onMounted, ref, watch } from 'vue'
 import { courseGoalApi } from '@/apis/quality/course-goal'
+import { computed, onMounted, ref, watch } from 'vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { showUserError } from '@/utils/error-handler'
+import { loadSelectorFirstPage, QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -29,12 +29,12 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: CourseGoalVO]
+  change: [value: string | null, option?: CourseGoalVO]
 }>()
 
 const options = ref<CourseGoalVO[]>([])
 const loading = ref(false)
-// a-select v-model:value 不接受 null，外部 emit 仍保持 string | null。
+const searchText = ref('')
 const internalValue = ref<string | undefined>(props.value ?? undefined)
 
 const effectiveDisabled = computed(() => props.disabled || !props.qualityCourseId)
@@ -62,11 +62,18 @@ watch(
   },
 )
 
-async function loadOptions() {
+async function loadOptions(keyword?: string) {
   if (!props.qualityCourseId) return
   loading.value = true
   try {
-    options.value = await courseGoalApi.listByCourse(props.qualityCourseId)
+    options.value = await loadSelectorFirstPage((pageNum, pageSize) =>
+      courseGoalApi.page({
+        pageNum,
+        pageSize,
+        qualityCourseId: props.qualityCourseId!,
+        keyword: (keyword ?? searchText.value)?.trim() || undefined,
+      }),
+    )
   } catch (e) {
     showUserError(e, '课程目标列表加载失败')
   } finally {
@@ -74,7 +81,14 @@ async function loadOptions() {
   }
 }
 
-function handleChange(val: SelectValue) {
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
+function handleSearch(val: string) {
+  searchText.value = val
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => loadOptions(val), QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS)
+}
+
+function handleChange(val: SelectValue, _option: DefaultOptionType | DefaultOptionType[]) {
   const next: string | null = typeof val === 'string' ? val : null
   internalValue.value = next ?? undefined
   const option = options.value.find((o) => o.id === next)
@@ -98,7 +112,8 @@ defineExpose({ reload: loadOptions })
     :loading="loading"
     :style="{ width: typeof width === 'number' ? `${width}px` : width }"
     show-search
-    option-filter-prop="label"
+    :filter-option="false"
+    @search="handleSearch"
     @change="handleChange"
   >
     <a-select-option

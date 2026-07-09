@@ -51,55 +51,73 @@ async function onConfirmSwitch(examId: string) {
 watch(visible, (show) => {
   if (!show) {
     selectedExamId.value = undefined
-    return
   }
-  workflow.resetBindExamCandidateFilter()
-  void workflow.loadBindExamCandidates()
 })
 </script>
 
 <template>
-  <div v-if="visible" class="exam-gate exam-gate--overlay" role="dialog" aria-modal="true">
-    <header class="exam-gate__bar">
-      <div class="exam-gate__brand">
-        <div class="exam-gate__logo" aria-hidden="true">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-            <rect x="2" y="2" width="28" height="28" rx="7" fill="var(--kiosk-primary)" />
-            <path
-              d="M9 11h14M9 16h14M9 21h9"
-              stroke="white"
-              stroke-width="2"
-              stroke-linecap="round"
-            />
-          </svg>
+  <Teleport to="body">
+    <div v-if="visible" class="exam-gate exam-gate--overlay" role="dialog" aria-modal="true">
+      <header class="exam-gate__bar">
+        <div class="exam-gate__brand">
+          <div class="exam-gate__logo" aria-hidden="true">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <rect x="2" y="2" width="28" height="28" rx="7" fill="var(--kiosk-primary)" />
+              <path
+                d="M9 11h14M9 16h14M9 21h9"
+                stroke="white"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+            </svg>
+          </div>
+          <div class="exam-gate__brand-text">
+            <span class="exam-gate__brand-title">扫描工作站</span>
+            <span class="exam-gate__brand-sub">{{ endpointLabel }}</span>
+          </div>
         </div>
-        <div class="exam-gate__brand-text">
-          <span class="exam-gate__brand-title">扫描工作站</span>
-          <span class="exam-gate__brand-sub">{{ endpointLabel }}</span>
+
+        <div class="exam-gate__status">
+          <span class="exam-gate__status-dot" />
+          <span>{{ statusLabel }}</span>
         </div>
-      </div>
 
-      <div class="exam-gate__status">
-        <span class="exam-gate__status-dot" />
-        <span>{{ statusLabel }}</span>
-      </div>
+        <div class="exam-gate__bar-action">
+          <button type="button" class="exam-gate__ghost-btn" @click="closeGate">取消</button>
+        </div>
+      </header>
 
-      <div class="exam-gate__bar-action">
-        <button type="button" class="exam-gate__ghost-btn" @click="closeGate">取消</button>
-      </div>
-    </header>
+      <main class="exam-gate__main">
+        <h1 class="exam-gate__heading">切换扫描考试</h1>
+        <p class="exam-gate__heading-sub">当前：{{ currentExamLabel }}</p>
 
-    <main class="exam-gate__main">
-      <h1 class="exam-gate__heading">切换扫描考试</h1>
-      <p class="exam-gate__heading-sub">当前：{{ currentExamLabel }}</p>
+        <KioskExamPickPanel
+          v-model:selected-exam-id="selectedExamId"
+          :exclude-exam-id="workflow.examId.value"
+          class="exam-gate__panel"
+          :class="{
+            'exam-gate__panel--busy': switching || workflow.bindExamCandidateLoading.value,
+          }"
+          :interaction-locked="switching"
+          @confirm="onConfirmSwitch"
+        />
 
-      <KioskExamPickPanel
-        v-model:selected-exam-id="selectedExamId"
-        :exclude-exam-id="workflow.examId.value"
-        class="exam-gate__panel"
-        :class="{ 'exam-gate__panel--busy': switching || workflow.loading.value }"
-        @confirm="onConfirmSwitch"
-      />
-    </main>
-  </div>
+        <p v-if="workflow.errorMessage.value.trim()" class="exam-gate__switch-error" role="alert">
+          {{ workflow.errorMessage.value }}
+        </p>
+      </main>
+    </div>
+  </Teleport>
 </template>
+
+<style scoped lang="scss">
+.exam-gate__switch-error {
+  margin: 0;
+  padding: var(--kiosk-space-3) var(--kiosk-space-4);
+  border-radius: var(--kiosk-radius-md);
+  background: rgba(207, 19, 34, 0.08);
+  color: var(--kiosk-danger, #cf1322);
+  font-size: var(--kiosk-fz-body);
+  line-height: 1.5;
+}
+</style>

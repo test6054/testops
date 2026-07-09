@@ -54,10 +54,6 @@ import type {
   InboxMessageListItemDTO,
   PublishedSystemAnnouncementResponse,
 } from '@/apis/edu/message'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { storeToRefs } from 'pinia'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   getInboxMessages,
   getPublishedAnnouncementList,
@@ -65,6 +61,10 @@ import {
   markAllAsRead,
   MessageFolderEnum,
 } from '@/apis/edu/message'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { storeToRefs } from 'pinia'
+import { computed, onMounted, reactive, ref } from 'vue'
 import router from '@/router'
 import { useNotificationStore } from '@/stores/modules/notification'
 import { isErrorHandled, showUserError } from '@/utils/error-handler'
@@ -133,26 +133,27 @@ function resolveNotifTone(
   if (!messageTypeCode) return 'info'
   const code = messageTypeCode.toUpperCase()
   if (
-    code.includes('FAILED')
-    || code.includes('ERROR')
-    || code.includes('OVERDUE')
-    || code.includes('INCONSISTENCY')
+    code.includes('FAILED') ||
+    code.includes('ERROR') ||
+    code.includes('OVERDUE') ||
+    code.includes('INCONSISTENCY') ||
+    code.includes('WITHDRAWN')
   ) {
     return 'error'
   }
   if (
-    code.includes('REMINDER')
-    || code.includes('PENDING')
-    || code.includes('WARNING')
-    || code.includes('UPCOMING')
+    code.includes('REMINDER') ||
+    code.includes('PENDING') ||
+    code.includes('WARNING') ||
+    code.includes('UPCOMING')
   ) {
     return 'warn'
   }
   if (
-    code.includes('COMPLETED')
-    || code.includes('PUBLISHED')
-    || code.includes('CONFIRMED')
-    || code.includes('SUCCESS')
+    code.includes('COMPLETED') ||
+    code.includes('PUBLISHED') ||
+    code.includes('CONFIRMED') ||
+    code.includes('SUCCESS')
   ) {
     return 'success'
   }
@@ -221,8 +222,8 @@ const getMessageData = async () => {
       return
     }
 
-    const inboxMessages: UnifiedMessageItem[]
-      = inboxResult.status === 'fulfilled'
+    const inboxMessages: UnifiedMessageItem[] =
+      inboxResult.status === 'fulfilled'
         ? inboxResult.value.list.map((item: InboxMessageListItemDTO) =>
             buildMessageItem(
               {
@@ -238,8 +239,8 @@ const getMessageData = async () => {
           )
         : []
 
-    const announcementMessages: UnifiedMessageItem[]
-      = announcementResult.status === 'fulfilled'
+    const announcementMessages: UnifiedMessageItem[] =
+      announcementResult.status === 'fulfilled'
         ? announcementResult.value.list.map((item: PublishedSystemAnnouncementResponse) =>
             buildMessageItem({
               id: item.id,
@@ -253,9 +254,9 @@ const getMessageData = async () => {
         : []
 
     if (
-      inboxResult.status === 'rejected'
-      && inboxMessages.length === 0
-      && announcementMessages.length === 0
+      inboxResult.status === 'rejected' &&
+      inboxMessages.length === 0 &&
+      announcementMessages.length === 0
     ) {
       loadError.value = true
       messageList.value = []

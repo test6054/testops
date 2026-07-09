@@ -5,11 +5,14 @@ import type {
   ExamQuestionStandardAnswerOptionRequest,
   ObjectiveComparePolicyCode,
 } from '@/apis/mark/exam-standard-answer'
-import type { MarkOcrSceneCode } from '@/apis/mark/ocr-scene'
 import { computed } from 'vue'
 import { OBJECTIVE_COMPARE_POLICY_OPTIONS, ObjectiveComparePolicyCode as ObjectiveComparePolicy } from '@/apis/mark/exam-standard-answer'
-import { MARK_OCR_SCENE_LABEL } from '@/apis/mark/ocr-scene'
 import { QuestionTypeCode, QuestionTypeDescription } from '@/apis/mark/question-type'
+import {
+  ALL_MARK_OCR_SCENE_CODES,
+  MarkOcrSceneCode,
+  MarkOcrSceneDescription,
+} from '@/types/enums/mark-ocr-scene-enum'
 import {
   findPrimaryAnswerBlockForQuestion,
   isLayoutQuestionRoiReady,
@@ -24,9 +27,9 @@ const emit = defineEmits<{
   patch: [document: ExamLayoutDocument]
 }>()
 
-const OCR_SCENE_OPTIONS = Object.entries(MARK_OCR_SCENE_LABEL).map(([value, label]) => ({
+const OCR_SCENE_OPTIONS = ALL_MARK_OCR_SCENE_CODES.map((value) => ({
   value,
-  label,
+  label: MarkOcrSceneDescription[value],
 }))
 
 const focusedQuestion = computed(() => props.question)
@@ -66,8 +69,32 @@ function patchQuestionAnswer(partial: NonNullable<ExamLayoutQuestionDto['answer'
   })
 }
 
+const focusedOcrScene = computed({
+  get: (): MarkOcrSceneCode | undefined => focusedQuestion.value?.ocrScene,
+  set: (value: MarkOcrSceneCode | undefined) => {
+    if (value) {
+      onOcrSceneChange(value)
+    }
+  },
+})
+
+const focusedComparePolicy = computed({
+  get: (): ObjectiveComparePolicyCode | undefined =>
+    focusedQuestion.value?.answer?.comparePolicy,
+  set: (value: ObjectiveComparePolicyCode | undefined) => {
+    if (value) {
+      updateComparePolicy(value)
+    }
+  },
+})
+
 function onOcrSceneChange(value: MarkOcrSceneCode): void {
-  const objectiveScenes = new Set<MarkOcrSceneCode>(['CHOICE', 'TRUE_FALSE', 'FILL_BLANK', 'NUMERIC'])
+  const objectiveScenes = new Set<MarkOcrSceneCode>([
+    MarkOcrSceneCode.CHOICE,
+    MarkOcrSceneCode.TRUE_FALSE,
+    MarkOcrSceneCode.FILL_BLANK,
+    MarkOcrSceneCode.NUMERIC,
+  ])
   patchQuestion({
     ocrScene: value,
     questionType: objectiveScenes.has(value) ? QuestionTypeCode.OBJECTIVE : QuestionTypeCode.SUBJECTIVE,
@@ -84,13 +111,13 @@ function formatQuestionTypeLabel(question: ExamLayoutQuestionDto): string {
 }
 
 function defaultComparePolicy(ocrScene?: MarkOcrSceneCode): ObjectiveComparePolicyCode | undefined {
-  if (ocrScene === 'CHOICE' || ocrScene === 'TRUE_FALSE') {
+  if (ocrScene === MarkOcrSceneCode.CHOICE || ocrScene === MarkOcrSceneCode.TRUE_FALSE) {
     return ObjectiveComparePolicy.CHOICE_SET
   }
-  if (ocrScene === 'NUMERIC') {
+  if (ocrScene === MarkOcrSceneCode.NUMERIC) {
     return ObjectiveComparePolicy.NUMERIC_TOLERANCE
   }
-  if (ocrScene === 'FILL_BLANK') {
+  if (ocrScene === MarkOcrSceneCode.FILL_BLANK) {
     return ObjectiveComparePolicy.EXACT_NORMALIZED
   }
   return undefined
@@ -164,9 +191,8 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
       </a-form-item>
       <a-form-item label="OCR 场景">
         <a-select
-          :value="focusedQuestion.ocrScene"
+          v-model:value="focusedOcrScene"
           :options="OCR_SCENE_OPTIONS"
-          @change="onOcrSceneChange($event as MarkOcrSceneCode)"
         />
       </a-form-item>
       <a-form-item label="题型">
@@ -199,9 +225,8 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
       </a-form-item>
       <a-form-item v-if="focusedQuestion.questionType === QuestionTypeCode.OBJECTIVE" label="比较策略">
         <a-select
-          :value="focusedQuestion.answer?.comparePolicy"
+          v-model:value="focusedComparePolicy"
           :options="OBJECTIVE_COMPARE_POLICY_OPTIONS"
-          @change="updateComparePolicy($event as ObjectiveComparePolicyCode)"
         />
       </a-form-item>
       <template v-if="focusedQuestion.answer?.comparePolicy === ObjectiveComparePolicy.CHOICE_SET">

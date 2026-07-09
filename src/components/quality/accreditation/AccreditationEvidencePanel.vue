@@ -6,7 +6,6 @@ import type {
   AccreditationEvidenceSaveRequest,
   AccreditationEvidenceVO,
 } from '@/apis/quality/accreditation'
-import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
@@ -19,8 +18,6 @@ import {
   ALL_ACCREDITATION_EVIDENCE_CATEGORY_CODES,
 } from '@/apis/quality/accreditation'
 import { archiveApi } from '@/apis/quality/archive'
-import { assessmentItemApi } from '@/apis/quality/assessment-item'
-import { qualityCourseApi } from '@/apis/quality/quality-course'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import { CourseSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -37,7 +34,6 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { ExpertPackageTypeCode } from '@/types/enums/expert-package-type-enum'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
-import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const props = defineProps<{
@@ -58,12 +54,12 @@ const CATEGORY_TABS: { key: '' | AccreditationEvidenceCategoryCode, label: strin
 ]
 
 const columns: ColumnsType = [
-  { title: '编码', dataIndex: 'evidenceCode', key: 'evidenceCode', width: 130 },
+  { title: '编码', dataIndex: 'evidenceCode', key: 'evidenceCode', width: 130, fixed: 'left' },
   { title: '标题', dataIndex: 'evidenceTitle', key: 'evidenceTitle' },
   { title: '类别', dataIndex: 'evidenceCategory', key: 'evidenceCategory', width: 100 },
   { title: '锚点', dataIndex: 'anchorType', key: 'anchorType', width: 110 },
   { title: '学年', dataIndex: 'schoolYear', key: 'schoolYear', width: 90 },
-  { title: '操作', key: 'actions', width: 200, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 200 },
 ]
 
 const loading = ref(false)
@@ -159,29 +155,14 @@ async function loadLinkedExams() {
   linkedExams.value = []
   if (!props.trainingPlanId) return
   try {
-    const courses = await readAllPages(
-      (pageNum) =>
-        qualityCourseApi.page({
-          trainingPlanId: props.trainingPlanId,
-          programId: props.programId,
-          pageNum,
-          pageSize: 100,
-        }),
-      '质量评价课程列表加载失败，请刷新后重试',
-    )
-    const seen = new Set<string>()
-    for (const course of courses) {
-      const items: AssessmentItemVO[] = await assessmentItemApi.listByCourse(course.id)
-      for (const item of items) {
-        if (item.sourceExamId && !seen.has(item.sourceExamId)) {
-          seen.add(item.sourceExamId)
-          linkedExams.value.push({
-            examId: item.sourceExamId,
-            label: `${course.courseName} / ${item.itemName}（考试 ${item.sourceExamId}）`,
-          })
-        }
-      }
-    }
+    const options = await accreditationApi.linkedExamOptions({
+      trainingPlanId: props.trainingPlanId,
+      programId: props.programId,
+    })
+    linkedExams.value = options.map((item) => ({
+      examId: item.sourceExamId,
+      label: item.label,
+    }))
   } catch (e) {
     showUserError(e)
   }

@@ -140,6 +140,7 @@
           <UiDataTable
             v-model:current="pagination.current"
             v-model:page-size="pagination.pageSize"
+            pagination-mode="server"
             :columns="columns"
             :data-source="candidates"
             :loading="loading"
@@ -147,7 +148,6 @@
             flat
             row-key="candidateRosterId"
             size="middle"
-            class="score-publish__table student-detail-table__data-table"
             @page-change="handlePageChange"
           >
             <template #bodyCell="{ column, index }">
@@ -253,6 +253,7 @@
           :columns="paperItemColumns"
           :data-source="paperQuestions"
           :show-pagination="false"
+          :sticky-header="false"
           flat
           :total="paperQuestions.length"
           row-key="layoutQuestionId"
@@ -378,21 +379,16 @@ import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
 import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
 import type { ExamDetailResponse } from '@/apis/mark/exam'
+import { getExamDetail } from '@/apis/mark/exam'
 import type { ExamPaperScoreResponse, ExamQuestionScoreResponse } from '@/apis/mark/exam-grade'
+import { getPaperScore } from '@/apis/mark/exam-grade'
 import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
+import { getScorePanel } from '@/apis/mark/exam-progress'
 import type {
   ExamScoreSummaryItemResponse,
   FinalScoreBatchPublishResponse,
   FinalScoreRiskOverviewResponse,
 } from '@/apis/mark/exam-score'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { getExamDetail } from '@/apis/mark/exam'
-import { getPaperScore } from '@/apis/mark/exam-grade'
-import { getScorePanel } from '@/apis/mark/exam-progress'
 import {
   batchPublishFinalScores,
   getFinalScoreRiskOverview,
@@ -400,6 +396,17 @@ import {
   publishFinalScore,
   withdrawFinalScore,
 } from '@/apis/mark/exam-score'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { ScoreStatusTabKey } from '@/utils/score-workbench-analytics'
+import {
+  buildScoreBulkPublishModalStatItems,
+  buildScoreConfirmStatusTabItems,
+  SCORE_STATUS_TAB_ALL,
+} from '@/utils/score-workbench-analytics'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   FINAL_SCORE_STATUS_TONE,
   FinalScoreStatusCode,
@@ -431,11 +438,6 @@ import { showUserError } from '@/utils/error-handler'
 import { buildExamScoreSummaryTableColumns } from '@/utils/exam-score-summary-table-columns'
 import { formatDateTime } from '@/utils/format'
 import { isExamScoresFullyPublished } from '@/utils/score-release-readiness'
-import {
-  buildScoreBulkPublishModalStatItems,
-  buildScoreConfirmStatusTabItems,
-  SCORE_STATUS_TAB_ALL,
-} from '@/utils/score-workbench-analytics'
 import { buildScorePublishSignalMetrics } from '@/utils/score-workbench-signal'
 import { toSignalMetrics } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -460,7 +462,7 @@ const scoreFilterForm = reactive<{
   unpublishedBoundOnly: false,
 })
 
-const statusTabKey = ref<Key>(SCORE_STATUS_TAB_ALL)
+const statusTabKey = ref<ScoreStatusTabKey>(SCORE_STATUS_TAB_ALL)
 
 const examArchiveGate = ref<ArchiveVolumeExamGateResponse | null>(null)
 
@@ -643,7 +645,8 @@ async function loadCandidates(): Promise<void> {
     const result = await pageExamScoreSummary({
       examId: selectedExamId.value,
       keyword: scoreFilterForm.keyword.trim() || undefined,
-      finalScoreStatus: resolveStatusTabFilter(statusTabKey.value),
+      finalScoreStatus:
+        statusTabKey.value === SCORE_STATUS_TAB_ALL ? undefined : statusTabKey.value,
       classId: scoreFilterForm.classId,
       unpublishedBoundOnly: scoreFilterForm.unpublishedBoundOnly || undefined,
       pageNum: pagination.current ?? 1,
@@ -703,20 +706,23 @@ function handleReset(): void {
   void loadCandidates()
 }
 
-function resolveStatusTabFilter(tabKey: Key): FinalScoreStatusCode | undefined {
-  if (tabKey === SCORE_STATUS_TAB_ALL) {
-    return undefined
-  }
-  return tabKey as FinalScoreStatusCode
-}
-
 function handleStatusTabChange(tabKey: Key): void {
-  statusTabKey.value = tabKey
+  switch (tabKey) {
+    case SCORE_STATUS_TAB_ALL:
+    case FinalScoreStatusCode.PENDING:
+    case FinalScoreStatusCode.CALCULATED:
+    case FinalScoreStatusCode.CONFIRMED:
+    case FinalScoreStatusCode.CORRECTED:
+    case FinalScoreStatusCode.PUBLISHED:
+    case FinalScoreStatusCode.WITHDRAWN:
+      statusTabKey.value = tabKey
+      break
+  }
   pagination.current = 1
   void loadCandidates()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void loadCandidates()
@@ -753,10 +759,10 @@ function bulkModalValueClass(valClass?: string): string | undefined {
 
 const canBulkPublish = computed(
   () =>
-    Boolean(selectedExamId.value)
-    && publishableOverviewCount.value > 0
-    && finalScoreOverview.value?.readyToPublish === true
-    && (finalScoreOverview.value?.blockedCount ?? 0) === 0,
+    Boolean(selectedExamId.value) &&
+    publishableOverviewCount.value > 0 &&
+    finalScoreOverview.value?.readyToPublish === true &&
+    (finalScoreOverview.value?.blockedCount ?? 0) === 0,
 )
 
 const bulkOpen = ref(false)
@@ -847,15 +853,19 @@ function canPublish(record: ExamScoreSummaryItemResponse): boolean {
     return false
   }
   const s = record.finalScoreStatus
-  return s === 'CONFIRMED' || s === 'WITHDRAWN' || s === 'CORRECTED'
+  return (
+    s === FinalScoreStatusCode.CONFIRMED ||
+    s === FinalScoreStatusCode.WITHDRAWN ||
+    s === FinalScoreStatusCode.CORRECTED
+  )
 }
 function publishButtonLabel(record: ExamScoreSummaryItemResponse): string {
-  return record.finalScoreStatus === 'WITHDRAWN' ? '重新发布' : '发布'
+  return record.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN ? '重新发布' : '发布'
 }
 function canWithdraw(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
   const s = record.finalScoreStatus
-  return s === 'PUBLISHED' || s === 'CORRECTED'
+  return s === FinalScoreStatusCode.PUBLISHED || s === FinalScoreStatusCode.CORRECTED
 }
 
 function buildPublishActions(record: ExamScoreSummaryItemResponse): UiTableRowActionItem[] {
@@ -961,7 +971,7 @@ const paperQuestions = computed<ExamQuestionScoreResponse[]>(
 )
 
 const paperItemColumns: ColumnType<ExamQuestionScoreResponse>[] = [
-  { title: '题号', key: 'questionNo', width: 80 },
+  { title: '题号', key: 'questionNo', width: 80, fixed: 'left' },
   { title: '题型', dataIndex: 'questionType', key: 'questionType', width: 100 },
   { title: '满分', dataIndex: 'fullScore', key: 'fullScore', width: 80 },
   { title: '题目得分', key: 'teacherReviewScore', width: 100 },
@@ -1098,13 +1108,6 @@ watch(
       border-color: var(--dp-primary);
       background: color-mix(in srgb, var(--dp-primary) 8%, #fff);
       color: var(--dp-primary);
-      font-weight: 600;
-    }
-  }
-
-  &__table {
-    :deep(.ant-table-thead > tr > th) {
-      background: var(--dp-surface-soft);
       font-weight: 600;
     }
   }

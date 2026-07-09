@@ -18,9 +18,9 @@
       />
 
       <UiDataTable
-        class="student-detail-table__data-table"
         v-model:current="pagination.current"
         v-model:page-size="pagination.pageSize"
+        pagination-mode="server"
         :columns="columns"
         :data-source="rows"
         :loading="loading"
@@ -96,7 +96,7 @@
           >
             <a-select
               v-model:value="form.layoutQuestionId"
-              :loading="reviewRequestLoading"
+              :loading="questionOptionsLoading"
               :options="questionOptions"
               placeholder="选择需要批量更正的题目"
               show-search
@@ -131,7 +131,9 @@
                       :options="itemReviewRequestOptions"
                       placeholder="选择已通过的复核申请"
                       show-search
-                      option-filter-prop="label"
+                      :filter-option="false"
+                      @search="onReviewRequestSearch"
+                      @change="(value) => handleItemReviewRequestChange(value, item)"
                     />
                   </a-form-item>
                 </a-col>
@@ -220,12 +222,6 @@ import type {
   GradeReviewQuestionRefVO,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import Modal from 'ant-design-vue/es/modal'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   approveBatchCorrectionPlan,
   BATCH_CORRECTION_FLOW_HINT,
@@ -240,10 +236,17 @@ import {
   GradeCorrectionTypeDescription,
   GradeReviewRequestStatusCode,
   isMakeupCap60SingleQuestionCorrectionExceeded,
+  listApprovedReviewQuestionOptions,
   listBatchCorrectionPlans,
   listReviewRequests,
   submitBatchCorrectionPlan,
 } from '@/apis/mark/grade-review'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import Modal from 'ant-design-vue/es/modal'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -255,7 +258,6 @@ import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { ExamScorePolicyCode } from '@/types/enums/exam-score-policy-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'BatchCorrectionPlansCard' })
@@ -268,7 +270,8 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: 'changed'): void }>()
 const router = useRouter()
 
-const APPROVED_REVIEW_REQUEST_PAGE_SIZE = 100
+const APPROVED_REVIEW_REQUEST_PAGE_SIZE = 20
+const REVIEW_REQUEST_SEARCH_DEBOUNCE_MS = 300
 
 type OperationAction = 'submit' | 'approve' | 'reject' | 'execute' | ''
 
@@ -287,7 +290,7 @@ const pagination = reactive({
   total: 0,
 })
 
-const filterForm = reactive<{ status?: BatchCorrectionApprovalStatusCode, keyword: string }>({
+const filterForm = reactive<{ status?: BatchCorrectionApprovalStatusCode; keyword: string }>({
   keyword: '',
 })
 
@@ -332,8 +335,12 @@ const executeModalOpen = ref(false)
 const executePlanId = ref('')
 const executeReason = ref('')
 const nextLocalId = ref(1)
-const approvedReviewRequests = ref<GradeReviewRequestItemResponse[]>([])
+const reviewRequestOptions = ref<{ value: string; label: string }[]>([])
+const reviewRequestCache = ref<Map<string, GradeReviewRequestItemResponse>>(new Map())
 const reviewRequestLoading = ref(false)
+const questionOptions = ref<{ value: string; label: string }[]>([])
+const questionOptionsLoading = ref(false)
+let reviewRequestSearchTimer: ReturnType<typeof setTimeout> | undefined
 
 const form = reactive<{
   planName: string
@@ -365,17 +372,15 @@ const batchTotalScoreMax = computed(() =>
 
 function batchItemProjectionHint(item: PlanItemForm): string {
   if (
-    !makeupCap60Hint.value
-    || form.correctionType !== GradeCorrectionTypeCode.SINGLE_QUESTION
-    || !form.layoutQuestionId
-    || !item.reviewRequestId
-    || typeof item.afterScore !== 'number'
+    !makeupCap60Hint.value ||
+    form.correctionType !== GradeCorrectionTypeCode.SINGLE_QUESTION ||
+    !form.layoutQuestionId ||
+    !item.reviewRequestId ||
+    typeof item.afterScore !== 'number'
   ) {
     return ''
   }
-  const request = approvedReviewRequests.value.find(
-    (approvedRequest) => approvedRequest.id === item.reviewRequestId,
-  )
+  const request = reviewRequestCache.value.get(item.reviewRequestId)
   if (!request) {
     return ''
   }
@@ -404,38 +409,33 @@ const correctionTypeOptions = [
   },
 ]
 
-const questionOptions = computed(() => {
-  const questionMap = new Map<string, GradeReviewQuestionRefVO>()
-  for (const request of approvedReviewRequests.value) {
-    for (const question of request.questionRefs) {
-      if (!questionMap.has(question.layoutQuestionId)) {
-        questionMap.set(question.layoutQuestionId, question)
-      }
-    }
-  }
-  return Array.from(questionMap.values()).map((question) => ({
+const itemReviewRequestOptions = computed(() => reviewRequestOptions.value)
+
+function buildQuestionOption(question: GradeReviewQuestionRefVO): { value: string; label: string } {
+  return {
     value: question.layoutQuestionId,
     label: `第 ${question.questionNo} 题 · ${question.questionType} · 满分 ${question.fullScore} 分`,
-  }))
-})
+  }
+}
 
-const itemReviewRequestOptions = computed(() =>
-  approvedReviewRequests.value
-    .filter(
-      (request) =>
-        form.correctionType === 'TOTAL_SCORE'
-        || request.questionRefs.some(
-          (question) => question.layoutQuestionId === form.layoutQuestionId,
-        ),
-    )
-    .map((request) => ({
-      value: request.id,
-      label: `${reviewRequestStudentLabel(request)} · ${reviewRequestQuestionLabel(request)}`,
-    })),
-)
+function buildReviewRequestOption(request: GradeReviewRequestItemResponse): {
+  value: string
+  label: string
+} {
+  return {
+    value: request.id,
+    label: `${reviewRequestStudentLabel(request)} · ${reviewRequestQuestionLabel(request)}`,
+  }
+}
+
+function cacheReviewRequests(requests: GradeReviewRequestItemResponse[]): void {
+  for (const request of requests) {
+    reviewRequestCache.value.set(request.id, request)
+  }
+}
 
 const columns: ColumnType<ExamBatchGradeCorrectionPlan>[] = [
-  { title: '名称', dataIndex: 'planName', key: 'planName', ellipsis: true },
+  { title: '名称', dataIndex: 'planName', key: 'planName', ellipsis: true, fixed: 'left' },
   { title: '类型', key: 'correctionType', width: 110 },
   { title: '受影响题目', key: 'affectedQuestionRefs', width: 160 },
   {
@@ -450,7 +450,7 @@ const columns: ColumnType<ExamBatchGradeCorrectionPlan>[] = [
   { title: '审批时间', key: 'approvedTime', width: 160 },
   { title: '执行时间', key: 'executedTime', width: 160 },
   { title: '创建时间', key: 'createTime', width: 160 },
-  { title: '操作', key: 'actions', width: 210, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 210 },
 ]
 
 async function reload(): Promise<void> {
@@ -490,7 +490,7 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()
@@ -503,7 +503,92 @@ async function openCreateModal(): Promise<void> {
   form.reason = ''
   form.items = [createEmptyItem()]
   createOpen.value = true
-  await loadApprovedReviewRequests()
+  await Promise.all([loadApprovedQuestionOptions(), loadReviewRequestOptions('')])
+}
+
+async function loadApprovedQuestionOptions(): Promise<void> {
+  if (!props.examId) return
+  questionOptionsLoading.value = true
+  try {
+    const questions = await listApprovedReviewQuestionOptions(props.examId)
+    questionOptions.value = questions.map((question) => buildQuestionOption(question))
+  } catch (e) {
+    questionOptions.value = []
+    showUserError(e, '已通过复核申请题目加载失败')
+  } finally {
+    questionOptionsLoading.value = false
+  }
+}
+
+async function loadReviewRequestOptions(keyword?: string): Promise<void> {
+  if (!props.examId) return
+  if (form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION && !form.layoutQuestionId) {
+    reviewRequestOptions.value = []
+    return
+  }
+  reviewRequestLoading.value = true
+  try {
+    const result = await listReviewRequests({
+      examId: props.examId,
+      requestStatus: GradeReviewRequestStatusCode.APPROVED,
+      layoutQuestionId:
+        form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION
+          ? form.layoutQuestionId
+          : undefined,
+      keyword: keyword?.trim() || undefined,
+      pageNum: 1,
+      pageSize: APPROVED_REVIEW_REQUEST_PAGE_SIZE,
+    })
+    cacheReviewRequests(result.list)
+    reviewRequestOptions.value = result.list.map((request) => buildReviewRequestOption(request))
+    for (const item of form.items) {
+      if (item.reviewRequestId && !reviewRequestCache.value.has(item.reviewRequestId)) {
+        await pinReviewRequestById(item.reviewRequestId)
+      }
+    }
+  } catch (e) {
+    reviewRequestOptions.value = []
+    showUserError(e, '已通过复核申请加载失败')
+  } finally {
+    reviewRequestLoading.value = false
+  }
+}
+
+async function pinReviewRequestById(reviewRequestId: string): Promise<void> {
+  const result = await listReviewRequests({
+    examId: props.examId,
+    requestStatus: GradeReviewRequestStatusCode.APPROVED,
+    id: reviewRequestId,
+    pageNum: 1,
+    pageSize: 1,
+  })
+  if (result.list.length === 0) return
+  cacheReviewRequests(result.list)
+  const option = buildReviewRequestOption(result.list[0])
+  if (!reviewRequestOptions.value.some((item) => item.value === option.value)) {
+    reviewRequestOptions.value = [option, ...reviewRequestOptions.value]
+  }
+}
+
+function onReviewRequestSearch(keyword: string): void {
+  if (reviewRequestSearchTimer) {
+    clearTimeout(reviewRequestSearchTimer)
+  }
+  reviewRequestSearchTimer = setTimeout(() => {
+    void loadReviewRequestOptions(keyword)
+  }, REVIEW_REQUEST_SEARCH_DEBOUNCE_MS)
+}
+
+function handleItemReviewRequestChange(value: unknown, item: PlanItemForm): void {
+  const reviewRequestId = value != null ? String(value) : ''
+  if (!reviewRequestId) return
+  const request = reviewRequestCache.value.get(reviewRequestId)
+  if (request) return
+  void pinReviewRequestById(reviewRequestId).then(() => {
+    if (!reviewRequestCache.value.has(item.reviewRequestId)) {
+      item.reviewRequestId = ''
+    }
+  })
 }
 
 function createEmptyItem(): PlanItemForm {
@@ -526,34 +611,14 @@ function handleCorrectionTypeChange(): void {
   for (const item of form.items) {
     item.reviewRequestId = ''
   }
+  void loadReviewRequestOptions('')
 }
 
 function handleQuestionChange(): void {
   for (const item of form.items) {
     item.reviewRequestId = ''
   }
-}
-
-async function loadApprovedReviewRequests(): Promise<void> {
-  if (!props.examId) return
-  reviewRequestLoading.value = true
-  try {
-    approvedReviewRequests.value = await readAllPages(
-      (pageNum) =>
-        listReviewRequests({
-          examId: props.examId,
-          requestStatus: GradeReviewRequestStatusCode.APPROVED,
-          pageNum,
-          pageSize: APPROVED_REVIEW_REQUEST_PAGE_SIZE,
-        }),
-      '已通过复核申请加载失败',
-    )
-  } catch (e) {
-    approvedReviewRequests.value = []
-    showUserError(e, '已通过复核申请加载失败')
-  } finally {
-    reviewRequestLoading.value = false
-  }
+  void loadReviewRequestOptions('')
 }
 
 function buildCreateRequest(): BatchCorrectionPlanCreateRequest | null {
@@ -575,16 +640,14 @@ function buildCreateRequest(): BatchCorrectionPlanCreateRequest | null {
   }
   const items: BatchCorrectionPlanCreateRequest['items'] = []
   for (const item of form.items) {
-    const request = approvedReviewRequests.value.find(
-      (approvedRequest) => approvedRequest.id === item.reviewRequestId,
-    )
+    const request = reviewRequestCache.value.get(item.reviewRequestId)
     if (!request) {
       message.warning('更正明细请选择已通过的复核申请')
       return null
     }
     if (
-      form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION
-      && !request.questionRefs.some((question) => question.layoutQuestionId === form.layoutQuestionId)
+      form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION &&
+      !request.questionRefs.some((question) => question.layoutQuestionId === form.layoutQuestionId)
     ) {
       message.warning('更正明细包含未申请该题目的学生')
       return null
@@ -594,18 +657,18 @@ function buildCreateRequest(): BatchCorrectionPlanCreateRequest | null {
       return null
     }
     if (
-      form.correctionType === GradeCorrectionTypeCode.TOTAL_SCORE
-      && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60
-      && item.afterScore > 60
+      form.correctionType === GradeCorrectionTypeCode.TOTAL_SCORE &&
+      props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60 &&
+      item.afterScore > 60
     ) {
       message.warning('补考成绩策略为封顶60分，更正后总成绩不能超过60分')
       return null
     }
     if (
-      form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION
-      && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60
-      && form.layoutQuestionId
-      && isMakeupCap60SingleQuestionCorrectionExceeded(request, form.layoutQuestionId, item.afterScore)
+      form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION &&
+      props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60 &&
+      form.layoutQuestionId &&
+      isMakeupCap60SingleQuestionCorrectionExceeded(request, form.layoutQuestionId, item.afterScore)
     ) {
       message.warning('补考成绩策略为封顶60分，单题更正后合成总成绩不能超过60分')
       return null
@@ -687,7 +750,7 @@ async function handleApprove(planId: string): Promise<void> {
 
 function openRejectModal(planId: string): void {
   const row = rows.value.find((item) => item.id === planId)
-  if (!row || row.approvalStatus !== 'PENDING_APPROVAL') {
+  if (!row || row.approvalStatus !== BatchCorrectionApprovalStatusCode.PENDING_APPROVAL) {
     return
   }
   rejectPlanId.value = planId
@@ -770,7 +833,10 @@ function isOperating(planId: string, action: OperationAction): boolean {
 }
 
 function canSubmit(row: ExamBatchGradeCorrectionPlan): boolean {
-  return row.approvalStatus === 'DRAFT' || row.approvalStatus === 'REJECTED'
+  return (
+    row.approvalStatus === BatchCorrectionApprovalStatusCode.DRAFT ||
+    row.approvalStatus === BatchCorrectionApprovalStatusCode.REJECTED
+  )
 }
 
 function buildBatchCorrectionPlanActions(
@@ -787,14 +853,14 @@ function buildBatchCorrectionPlanActions(
     {
       key: 'approve',
       label: '通过',
-      hidden: row.approvalStatus !== 'PENDING_APPROVAL',
+      hidden: row.approvalStatus !== BatchCorrectionApprovalStatusCode.PENDING_APPROVAL,
       disabled: operating('approve'),
     },
     {
       key: 'reject',
       label: '驳回',
       tone: 'danger',
-      hidden: row.approvalStatus !== 'PENDING_APPROVAL',
+      hidden: row.approvalStatus !== BatchCorrectionApprovalStatusCode.PENDING_APPROVAL,
       disabled: operating('reject'),
     },
     {
@@ -818,7 +884,7 @@ function handleBatchCorrectionPlanAction(key: string, row: ExamBatchGradeCorrect
       })
       break
     case 'approve':
-      if (row.approvalStatus !== 'PENDING_APPROVAL') return
+      if (row.approvalStatus !== BatchCorrectionApprovalStatusCode.PENDING_APPROVAL) return
       Modal.confirm({
         title: '确认审批通过？',
         okText: '通过',

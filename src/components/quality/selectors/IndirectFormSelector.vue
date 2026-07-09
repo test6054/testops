@@ -1,17 +1,16 @@
 <!--
-  间接评价问卷选择器
-  数据源：POST /api/quality/indirect-forms/page
+  间接评价问卷选择�?  数据源：POST /api/quality/indirect-forms/page
 -->
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { IndirectEvaluationFormVO } from '@/apis/quality/indirect-form'
-import type { AchievementTargetTypeCode, IndirectFormTypeCode } from '@/apis/quality/types'
-import { computed, onMounted, ref, watch } from 'vue'
 import { indirectFormApi } from '@/apis/quality/indirect-form'
+import type { AchievementTargetTypeCode, IndirectFormTypeCode } from '@/apis/quality/types'
 import { IndirectFormTypeDescription } from '@/apis/quality/types'
+import { computed, onMounted, ref, watch } from 'vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import { requireAllPages } from './page-contract'
+import { loadSelectorFirstPage } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -35,7 +34,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: IndirectEvaluationFormVO]
+  change: [value: string | null, option?: IndirectEvaluationFormVO]
 }>()
 
 const options = ref<IndirectEvaluationFormVO[]>([])
@@ -58,18 +57,16 @@ watch(
 async function loadOptions() {
   loading.value = true
   try {
-    options.value = await requireAllPages(
-      (pageNum) =>
-        indirectFormApi.page({
-          pageNum,
-          pageSize: 100,
-          formType: props.formType || undefined,
-          targetType: props.targetType,
-          targetId: props.targetId || undefined,
-          programId: props.programId || undefined,
-          enabled: props.enabled,
-        }),
-      '间接评价问卷',
+    options.value = await loadSelectorFirstPage((pageNum, pageSize) =>
+      indirectFormApi.page({
+        pageNum,
+        pageSize,
+        formType: props.formType || undefined,
+        targetType: props.targetType,
+        targetId: props.targetId || undefined,
+        programId: props.programId || undefined,
+        enabled: props.enabled,
+      }),
     )
   } catch (e) {
     showUserError(e, '间接评价问卷列表加载失败')
@@ -78,6 +75,7 @@ async function loadOptions() {
   }
 }
 
+/** 后端�?keyword 参数，仅在首屏条数内做客户端过滤�? */
 const filteredOptions = computed(() => {
   const keyword = searchText.value.trim().toLowerCase()
   if (!keyword) return options.value
@@ -132,7 +130,9 @@ defineExpose({ reload: loadOptions })
     >
       <span class="dp-selector-option-code">{{ opt.formCode }}</span>
       {{ opt.formName }}
-      <span v-if="opt.formType" class="dp-selector-option-meta">· {{ formTypeLabel(opt.formType) }}</span>
+      <span v-if="opt.formType" class="dp-selector-option-meta"
+        >· {{ formTypeLabel(opt.formType) }}</span
+      >
     </a-select-option>
   </a-select>
 </template>

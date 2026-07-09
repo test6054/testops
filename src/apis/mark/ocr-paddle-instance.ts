@@ -1,4 +1,5 @@
 import type { MarkOcrHealthStatusCode } from './ocr-types'
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 /**
@@ -37,6 +38,15 @@ export interface PaddleOcrInstanceRegisterRequest {
  */
 export function listPaddleOcrInstances(): Promise<PaddleOcrInstanceResponse[]> {
   return http.post<PaddleOcrInstanceResponse[]>('/api/mark/ocr/paddle/instance/list', {})
+}
+
+export function pagePaddleOcrInstances(
+  request: QueryDto,
+): Promise<PageResult<PaddleOcrInstanceResponse>> {
+  return http.post<PageResult<PaddleOcrInstanceResponse>>(
+    '/api/mark/ocr/paddle/instance/page',
+    request,
+  )
 }
 
 /** 注册 PaddleOCR 服务实例。 */

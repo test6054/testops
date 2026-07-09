@@ -15,13 +15,16 @@
  *
  * 持久化：仅保留 currentExamId，避免缓存陈旧 detail 与 list。
  */
-import type { ExamDetailResponse, ExamPageQueryRequest, ExamSummaryResponse } from '@/apis/mark/exam'
+import type {
+  ExamDetailResponse,
+  ExamPageQueryRequest,
+  ExamSummaryResponse,
+} from '@/apis/mark/exam'
+import { getExamDetail, pageExams } from '@/apis/mark/exam'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { getExamDetail, pageExams } from '@/apis/mark/exam'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 import { formatAcademicYearSemester } from '@/types/enums/semester-enum'
-import { readAllPages } from '@/utils/page-result'
 
 export const useMarkExamContextStore = defineStore(
   'markExamContext',
@@ -50,7 +53,9 @@ export const useMarkExamContextStore = defineStore(
     const examOptions = computed(() =>
       exams.value.map((e) => ({
         value: e.examId,
-        label: [formatExamOptionLabel(e), formatAcademicYearSemester(e.academicYear, e.semester)].filter(Boolean).join(' · '),
+        label: [formatExamOptionLabel(e), formatAcademicYearSemester(e.academicYear, e.semester)]
+          .filter(Boolean)
+          .join(' · '),
       })),
     )
 
@@ -74,18 +79,15 @@ export const useMarkExamContextStore = defineStore(
       examsLoading.value = true
       try {
         const pageSize = request?.pageSize ?? 100
-        exams.value = await readAllPages(
-          (pageNum) =>
-            pageExams({
-              pageNum,
-              pageSize,
-              status: request?.status,
-              keyword: request?.keyword,
-              startTime: request?.startTime,
-              endTime: request?.endTime,
-            }),
-          '考试列表加载失败，请稍后重试',
-        )
+        const page = await pageExams({
+          pageNum: 1,
+          pageSize,
+          status: request?.status,
+          keyword: request?.keyword,
+          startTime: request?.startTime,
+          endTime: request?.endTime,
+        })
+        exams.value = page.list
       } finally {
         examsLoading.value = false
       }

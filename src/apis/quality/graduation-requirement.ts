@@ -4,6 +4,7 @@ import type { AggregationFunctionCode, CivicDimensionCode } from './types'
  *
  * 后端路径: /api/quality/graduation-requirements
  */
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 const BASE = '/api/quality/graduation-requirements'
@@ -23,6 +24,11 @@ export interface GraduationRequirementVO {
   updateTime?: string
 }
 
+export interface GraduationRequirementQueryRequest extends QueryDto {
+  trainingPlanId?: string
+  keyword?: string
+}
+
 /** 保存请求 - 严格对齐后端 GraduationRequirementSaveRequest */
 export interface GraduationRequirementSaveRequest {
   id?: string
@@ -37,8 +43,8 @@ export interface GraduationRequirementSaveRequest {
 }
 
 export const graduationRequirementApi = {
-  listByPlan: (trainingPlanId: string) =>
-    http.post<GraduationRequirementVO[]>(`${BASE}/list-by-plan`, { id: trainingPlanId }),
+  page: (data: GraduationRequirementQueryRequest) =>
+    http.post<PageResult<GraduationRequirementVO>>(`${BASE}/page`, data),
   detail: (id: string) => http.post<GraduationRequirementVO>(`${BASE}/detail`, { id }),
   create: (data: GraduationRequirementSaveRequest) => http.post<string>(`${BASE}/create`, data),
   update: (data: GraduationRequirementSaveRequest) => http.post<void>(`${BASE}/update`, data),

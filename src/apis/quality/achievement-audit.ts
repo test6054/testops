@@ -4,6 +4,7 @@ import type { AchievementAuditStatusCode } from './types'
  * 达成度审核责任链事件 API。
  * 后端对象：AchievementAuditController /api/quality/achievement-audits。
  */
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 const AUDIT = '/api/quality/achievement-audits'
@@ -14,7 +15,7 @@ export interface AchievementAuditVO {
   auditorUserId?: string
   auditorNickName?: string
   auditorRole?: string
-  auditEvent?: string
+  auditEvent?: AchievementAuditStatusCode
   auditStatusFrom?: AchievementAuditStatusCode
   auditStatusTo?: AchievementAuditStatusCode
   auditOpinion?: string
@@ -28,7 +29,7 @@ export interface AchievementAuditVO {
 export interface AchievementAuditCreateRequest {
   achievementResultId: string
   auditorRole?: string
-  auditEvent: string
+  auditEvent: AchievementAuditStatusCode
   auditStatusFrom?: AchievementAuditStatusCode
   auditStatusTo?: AchievementAuditStatusCode
   auditOpinion?: string
@@ -36,8 +37,12 @@ export interface AchievementAuditCreateRequest {
   evidenceItems?: AuditEvidenceItemRequest[]
 }
 
+export interface AchievementAuditQueryRequest extends QueryDto {
+  achievementResultId: string
+}
+
 export const achievementAuditApi = {
-  listByResult: (achievementResultId: string) =>
-    http.post<AchievementAuditVO[]>(`${AUDIT}/list-by-result`, { id: achievementResultId }),
+  page: (data: AchievementAuditQueryRequest) =>
+    http.post<PageResult<AchievementAuditVO>>(`${AUDIT}/page`, data),
   create: (data: AchievementAuditCreateRequest) => http.post<string>(`${AUDIT}/create`, data),
 }

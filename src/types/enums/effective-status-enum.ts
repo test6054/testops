@@ -20,6 +20,3 @@ export const EffectiveStatusDescription: Record<EffectiveStatusCode, string> = {
   [EffectiveStatusCode.DISCARDED]: '已废弃',
 }
 
-export function isEffectiveStatusCode(value: string): value is EffectiveStatusCode {
-  return (ALL_EFFECTIVE_STATUS_CODES as readonly string[]).includes(value)
-}

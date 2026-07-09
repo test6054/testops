@@ -6,10 +6,6 @@ import type {
   PortfolioPublishImpactReportVO,
   PortfolioRulePublishSnapshotVO,
 } from '@/apis/portfolio/indicator-types'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import {
   PF_IMPACT_REPORT_STATUS_TONE,
   PF_SCENE_CODE_OPTIONS,
@@ -18,6 +14,10 @@ import {
   PfSceneCode,
   PfSceneCodeDescription,
 } from '@/apis/portfolio/indicator-types'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -52,6 +52,8 @@ const activeTab = ref('history')
 const sceneCode = ref<PfSceneCode>(PfSceneCode.PERFORMANCE)
 const loading = ref(false)
 const rows = ref<PortfolioRulePublishSnapshotVO[]>([])
+const historyTotal = ref(0)
+const historyQuery = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
 const impactRows = ref<PortfolioPublishImpactReportVO[]>([])
 const impactTotal = ref(0)
 const retroactive = ref<PortfolioRulePublishSnapshotVO | null>(null)
@@ -80,12 +82,30 @@ const impactColumns: ColumnsType = [
 async function loadHistory() {
   loading.value = true
   try {
-    rows.value = await portfolioIndicatorTenantApi.ruleHistory({ sceneCode: sceneCode.value })
+    const page = await portfolioIndicatorTenantApi.pageRuleHistory({
+      sceneCode: sceneCode.value,
+      pageNum: historyQuery.pageNum,
+      pageSize: historyQuery.pageSize,
+    })
+    rows.value = page.list
+    historyTotal.value = page.total
   } catch (error) {
     showUserError(error)
   } finally {
     loading.value = false
   }
+}
+
+function handleHistoryPageChange(event: { current: number; pageSize: number }) {
+  historyQuery.pageNum = event.current
+  historyQuery.pageSize = event.pageSize
+  void loadHistory()
+}
+
+function handleImpactPageChange(event: { current: number; pageSize: number }) {
+  impactQuery.pageNum = event.current
+  impactQuery.pageSize = event.pageSize
+  void loadImpactReports()
 }
 
 async function loadImpactReports() {
@@ -176,14 +196,17 @@ function handleImpactRowAction(key: string, reportId: string) {
 function onTabChange(key: string | number) {
   activeTab.value = String(key)
   if (activeTab.value === 'impact') {
+    impactQuery.pageNum = 1
     loadImpactReports()
   } else {
+    historyQuery.pageNum = 1
     loadHistory()
   }
 }
 
 watch(sceneCode, () => {
   if (activeTab.value === 'history') {
+    historyQuery.pageNum = 1
     loadHistory()
   }
 })
@@ -221,7 +244,17 @@ onMounted(loadHistory)
             />
           </div>
           <UiEmpty v-if="!loading && rows.length === 0" description="暂无发布历史" />
-          <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id">
+          <UiDataTable
+            v-model:current="historyQuery.pageNum"
+            v-model:page-size="historyQuery.pageSize"
+            pagination-mode="server"
+            :columns="columns"
+            :data-source="rows"
+            :loading="loading"
+            :total="historyTotal"
+            row-key="id"
+            @page-change="handleHistoryPageChange"
+          >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'modelStatus'">
                 {{ modelStatusLabel(record.modelStatus) }}
@@ -243,10 +276,15 @@ onMounted(loadHistory)
         </a-tab-pane>
         <a-tab-pane key="impact" tab="影响报告">
           <UiDataTable
+            v-model:current="impactQuery.pageNum"
+            v-model:page-size="impactQuery.pageSize"
+            pagination-mode="server"
             :columns="impactColumns"
             :data-source="impactRows"
             :loading="loading"
+            :total="impactTotal"
             row-key="id"
+            @page-change="handleImpactPageChange"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'sceneCode'">
@@ -269,13 +307,6 @@ onMounted(loadHistory)
               </template>
             </template>
           </UiDataTable>
-          <a-pagination
-            v-model:current="impactQuery.pageNum"
-            :total="impactTotal"
-            :page-size="impactQuery.pageSize"
-            style="margin-top: 12px"
-            @change="loadImpactReports"
-          />
           <pre v-if="impactDetail" class="json-block">{{ impactDetail.indicatorSummaryJson }}</pre>
         </a-tab-pane>
       </a-tabs>

@@ -1,11 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ScannerExceptionDashboardItemVO } from '@/apis/mark/scanner-dispatch'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { retryScanBatchPageRegister } from '@/apis/mark/exam-scan'
 import {
   cancelScanDispatch,
   pageScannerExceptionDashboard,
@@ -13,6 +8,11 @@ import {
   ScanDispatchTicketStatusCode,
   ScanDispatchTicketStatusDescription,
 } from '@/apis/mark/scanner-dispatch'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { dismissScanBatchCollateAttention, retryScanBatchPageRegister } from '@/apis/mark/exam-scan'
 import { ScanWorkOrderStatusDescription } from '@/apis/mark/scanner-work-order'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -22,6 +22,10 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import {
+  PageRegisterStateCode,
+  PageRegisterStateDescription,
+} from '@/types/enums/page-register-state-enum'
 import { ScannerExceptionItemKindCode } from '@/types/enums/scanner-exception-item-kind-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -34,7 +38,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'open-log': [payload: { ticketId?: string, volumeId?: string }]
+  'open-log': [payload: { ticketId?: string; volumeId?: string }]
   'metrics-changed': []
 }>()
 
@@ -53,11 +57,12 @@ const forceReleaseOpen = ref(false)
 const forceReleaseTicket = ref<{ ticketId: string } | null>(null)
 const cancellingTicketId = ref<string>()
 const pageRegisterRetryingKey = ref<string | null>(null)
+const partialTailDismissingKey = ref<string | null>(null)
 const pagination = reactive({ current: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 let pageLoadGeneration = 0
 
 const columns: ColumnsType<ExceptionDashboardRow> = [
-  { title: '类型', key: 'itemKind', dataIndex: 'itemKind', width: 88 },
+  { title: '类型', key: 'itemKind', dataIndex: 'itemKind', width: 88, fixed: 'left' },
   { title: '标识', key: 'identifier', dataIndex: 'identifier', width: 168, ellipsis: true },
   { title: '状态', key: 'status', dataIndex: 'status', width: 108 },
   {
@@ -69,7 +74,7 @@ const columns: ColumnsType<ExceptionDashboardRow> = [
     align: 'left',
     className: 'ui-data-table__col--text-left',
   },
-  { title: '操作', key: 'actions', width: 248, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 248 },
 ]
 
 function buildRowKey(item: ScannerExceptionDashboardItemVO): string {
@@ -87,6 +92,9 @@ function buildRowKey(item: ScannerExceptionDashboardItemVO): string {
   }
   if (item.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED) {
     return `page-register-${item.scanBatchId ?? ''}`
+  }
+  if (item.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL) {
+    return `partial-tail-${item.scanBatchId ?? ''}`
   }
   return `exception-${item.workOrderId ?? item.ticketId ?? item.scanBatchId ?? ''}`
 }
@@ -141,11 +149,12 @@ function filterByKind(kind?: ExceptionDashboardRowKind) {
 function applyRouteKindFilter() {
   const kind = props.initialKind ?? route.query.kind
   if (
-    kind === ScannerExceptionItemKindCode.TICKET
-    || kind === ScannerExceptionItemKindCode.WORK_ORDER
-    || kind === ScannerExceptionItemKindCode.COMMITTING
-    || kind === ScannerExceptionItemKindCode.MIXED_BATCH
-    || kind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED
+    kind === ScannerExceptionItemKindCode.TICKET ||
+    kind === ScannerExceptionItemKindCode.WORK_ORDER ||
+    kind === ScannerExceptionItemKindCode.COMMITTING ||
+    kind === ScannerExceptionItemKindCode.MIXED_BATCH ||
+    kind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED ||
+    kind === ScannerExceptionItemKindCode.PARTIAL_TAIL
   ) {
     itemKindFilter.value = kind
     return
@@ -158,6 +167,7 @@ function itemKindLabel(kind: ExceptionDashboardRowKind) {
   if (kind === ScannerExceptionItemKindCode.WORK_ORDER) return '工单'
   if (kind === ScannerExceptionItemKindCode.COMMITTING) return '合成中'
   if (kind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED) return '页登记阻断'
+  if (kind === ScannerExceptionItemKindCode.PARTIAL_TAIL) return '余页未切卷'
   return '混扫批次'
 }
 
@@ -166,12 +176,15 @@ function rowIdentifier(row: ExceptionDashboardRow) {
     return row.ticketId ?? row.traceLabelCode ?? '—'
   }
   if (
-    row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER
-    || row.itemKind === ScannerExceptionItemKindCode.COMMITTING
+    row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER ||
+    row.itemKind === ScannerExceptionItemKindCode.COMMITTING
   ) {
     return row.workOrderId ?? row.batchExternalNo ?? '—'
   }
   if (row.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED) {
+    return row.batchNo ?? row.batchExternalNo ?? row.scanBatchId ?? '—'
+  }
+  if (row.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL) {
     return row.batchNo ?? row.batchExternalNo ?? row.scanBatchId ?? '—'
   }
   return row.volumeId ?? row.workOrderId ?? '—'
@@ -179,9 +192,9 @@ function rowIdentifier(row: ExceptionDashboardRow) {
 
 function statusLabel(row: ExceptionDashboardRow) {
   if (
-    (row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER
-      || row.itemKind === ScannerExceptionItemKindCode.COMMITTING)
-    && row.workOrderStatus
+    (row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER ||
+      row.itemKind === ScannerExceptionItemKindCode.COMMITTING) &&
+    row.workOrderStatus
   ) {
     return strictEnumLabel(ScanWorkOrderStatusDescription, row.workOrderStatus, 'workOrderStatus')
   }
@@ -196,7 +209,20 @@ function statusLabel(row: ExceptionDashboardRow) {
     )
   }
   if (row.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED) {
+    const state = row.pageRegisterState
+    if (state === PageRegisterStateCode.BLOCKED_FATAL) {
+      return strictEnumLabel(PageRegisterStateDescription, state, 'pageRegisterState')
+    }
+    if (
+      state === PageRegisterStateCode.BLOCKED_RECOVERABLE ||
+      state === PageRegisterStateCode.PENDING
+    ) {
+      return strictEnumLabel(PageRegisterStateDescription, state, 'pageRegisterState')
+    }
     return '页登记阻断'
+  }
+  if (row.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL) {
+    return '余页待确认'
   }
   return '—'
 }
@@ -209,6 +235,10 @@ function rowDetail(row: ExceptionDashboardRow) {
     const progress = `${row.registeredPageCount ?? 0}/${row.pageCount ?? 0} 页`
     return row.pageRegisterDiagnostic ?? row.diagnostic ?? progress
   }
+  if (row.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL) {
+    const progress = `${row.registeredPageCount ?? 0}/${row.pageCount ?? 0} 页已落库`
+    return row.diagnostic ?? progress
+  }
   if (row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER) {
     return row.diagnostic ?? row.batchExternalNo ?? '—'
   }
@@ -217,18 +247,18 @@ function rowDetail(row: ExceptionDashboardRow) {
 
 function canForceReleaseTicket(row: ExceptionDashboardRow) {
   return (
-    row.itemKind === ScannerExceptionItemKindCode.TICKET
-    && Boolean(row.ticketId)
-    && (row.ticketStatus === ScanDispatchTicketStatusCode.PROCESSING
-      || row.ticketStatus === ScanDispatchTicketStatusCode.SUSPENDED)
+    row.itemKind === ScannerExceptionItemKindCode.TICKET &&
+    Boolean(row.ticketId) &&
+    (row.ticketStatus === ScanDispatchTicketStatusCode.PROCESSING ||
+      row.ticketStatus === ScanDispatchTicketStatusCode.SUSPENDED)
   )
 }
 
 function canCancelTicket(row: ExceptionDashboardRow) {
   return (
-    row.itemKind === ScannerExceptionItemKindCode.TICKET
-    && Boolean(row.ticketId)
-    && row.ticketStatus === ScanDispatchTicketStatusCode.PENDING
+    row.itemKind === ScannerExceptionItemKindCode.TICKET &&
+    Boolean(row.ticketId) &&
+    row.ticketStatus === ScanDispatchTicketStatusCode.PENDING
   )
 }
 
@@ -263,30 +293,55 @@ async function cancelTicket(row: ExceptionDashboardRow) {
   })
 }
 
+function canRetryPageRegisterRow(row: ExceptionDashboardRow): boolean {
+  if (row.itemKind !== ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED) {
+    return false
+  }
+  if (!row.scanBatchId || !row.examId) {
+    return false
+  }
+  const state = row.pageRegisterState
+  return (
+    state === PageRegisterStateCode.BLOCKED_RECOVERABLE ||
+    state === PageRegisterStateCode.PENDING ||
+    state == null
+  )
+}
+
 function buildExceptionRowActions(row: ExceptionDashboardRow): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = []
   if (row.itemKind === ScannerExceptionItemKindCode.TICKET && row.ticketId) {
     actions.push({ key: 'view-dispatch', label: '查看派单', tone: 'primary' })
   }
-  if (
-    row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER
-    || row.itemKind === ScannerExceptionItemKindCode.COMMITTING
-    || row.itemKind === ScannerExceptionItemKindCode.MIXED_BATCH
-    || row.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED
-  ) {
-    actions.push({ key: 'goto-handle', label: '前往处理', tone: 'primary' })
-  }
-  if (
-    row.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED
-    && row.scanBatchId
-    && row.examId
-  ) {
+  if (canRetryPageRegisterRow(row)) {
     actions.push({
       key: 'retry-register',
       label: '重试页登记',
       tone: 'primary',
       disabled: pageRegisterRetryingKey.value === row.rowKey,
     })
+  }
+  if (
+    row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER ||
+    row.itemKind === ScannerExceptionItemKindCode.COMMITTING ||
+    row.itemKind === ScannerExceptionItemKindCode.MIXED_BATCH ||
+    row.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED ||
+    row.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL
+  ) {
+    actions.push({
+      key: 'goto-handle',
+      label: '前往处理',
+      tone: canRetryPageRegisterRow(row) ? 'default' : 'primary',
+    })
+  }
+  if (row.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL && row.scanBatchId && row.examId) {
+    actions.push({
+      key: 'ignore-partial-tail',
+      label: '忽略并继续',
+      tone: 'primary',
+      disabled: partialTailDismissingKey.value === row.rowKey,
+    })
+    actions.push({ key: 'manual-merge', label: '人工合并', tone: 'default' })
   }
   actions.push({ key: 'logs', label: '操作日志' })
   if (canCancelTicket(row)) {
@@ -311,6 +366,12 @@ function handleExceptionRowAction(key: string, row: ExceptionDashboardRow): void
       break
     case 'retry-register':
       void retryPageRegister(row)
+      break
+    case 'ignore-partial-tail':
+      void dismissPartialTail(row)
+      break
+    case 'manual-merge':
+      openWorkOrderTarget(row)
       break
     case 'logs':
       openOperationLogs(row)
@@ -364,27 +425,72 @@ function openWorkOrderTarget(row: ExceptionDashboardRow) {
     void router.push({ name: 'TeacherArchiveVolumeDetail', params: { volumeId: row.volumeId } })
     return
   }
-  if (row.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED && row.contextExamId) {
+  if (
+    row.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED &&
+    row.contextExamId &&
+    row.scanBatchId
+  ) {
     void router.push({
-      name: 'TeacherExamWorkspaceScanBatches',
-      params: { examId: row.contextExamId },
-      query: row.scanBatchId ? { scanBatchId: row.scanBatchId } : undefined,
+      name: 'TeacherExamWorkspaceScanBatchDetail',
+      params: { examId: row.contextExamId, scanBatchId: row.scanBatchId },
     })
     return
   }
   if (
-    row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER
-    || row.itemKind === ScannerExceptionItemKindCode.COMMITTING
+    row.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL &&
+    row.contextExamId &&
+    row.scanBatchId
+  ) {
+    void router.push({
+      name: 'TeacherExamWorkspaceScanBatchDetail',
+      params: { examId: row.contextExamId, scanBatchId: row.scanBatchId },
+    })
+    return
+  }
+  if (
+    row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER ||
+    row.itemKind === ScannerExceptionItemKindCode.COMMITTING
   ) {
     navigateWorkOrderByTaskKind(row)
   }
 }
 
+async function dismissPartialTail(row: ExceptionDashboardRow) {
+  if (
+    row.itemKind !== ScannerExceptionItemKindCode.PARTIAL_TAIL ||
+    !row.scanBatchId ||
+    !row.examId
+  ) {
+    return
+  }
+  await confirmAsync({
+    title: '忽略并继续',
+    content: '余页将保留在扫描页中，不创建试卷实例。确认后可继续封存批次。',
+    type: 'warning',
+    onOk: async () => {
+      partialTailDismissingKey.value = row.rowKey
+      try {
+        await dismissScanBatchCollateAttention({
+          examId: row.examId!,
+          scanBatchId: row.scanBatchId!,
+        })
+        message.success('已忽略余页异常')
+        await reloadAll()
+        emit('metrics-changed')
+      } catch (error) {
+        message.error(error instanceof Error ? error.message : '忽略余页异常失败')
+      } finally {
+        partialTailDismissingKey.value = null
+      }
+    },
+  })
+}
+
 async function retryPageRegister(row: ExceptionDashboardRow) {
   if (
-    row.itemKind !== ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED
-    || !row.scanBatchId
-    || !row.examId
+    row.itemKind !== ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED ||
+    !row.scanBatchId ||
+    !row.examId
   ) {
     return
   }
@@ -408,7 +514,7 @@ async function retryPageRegister(row: ExceptionDashboardRow) {
   }
 }
 
-function handlePageChange(pageEvent: { current: number, pageSize: number }) {
+function handlePageChange(pageEvent: { current: number; pageSize: number }) {
   pagination.current = pageEvent.current
   pagination.pageSize = pageEvent.pageSize
   void loadPage()
@@ -488,6 +594,15 @@ watch(
           >
             页登记阻断
           </UiButton>
+          <UiButton
+            size="sm"
+            :variant="
+              itemKindFilter === ScannerExceptionItemKindCode.PARTIAL_TAIL ? 'primary' : 'outline'
+            "
+            @click="filterByKind(ScannerExceptionItemKindCode.PARTIAL_TAIL)"
+          >
+            余页未切卷
+          </UiButton>
         </div>
       </template>
 
@@ -522,7 +637,6 @@ watch(
             <UiTableActions
               :items="buildExceptionRowActions(record)"
               split
-              align="end"
               @action="(key) => handleExceptionRowAction(key, record)"
             />
           </template>

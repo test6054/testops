@@ -1,4 +1,9 @@
 import type { ArchiveVolumeResponse } from '@/apis/mark/archive-volume'
+import {
+  ArchiveAppraisalStatusCode,
+  ArchiveIntegrityStatusCode,
+  ArchiveVolumeStatusCode
+} from '@/apis/mark/archive-volume'
 
 /** 归档时限临期天数（列表 Badge 展示） */
 export const ARCHIVE_DUE_SOON_LEAD_DAYS = 30
@@ -21,25 +26,25 @@ export type ArchiveVolumeListRowBorderTone = 'error' | 'warning' | 'info' | 'non
 /** 是否应在列表行展示 urgency 标签（待处理/待鉴定）。 */
 export function isArchiveVolumeListUrgent(record: ArchiveVolumeResponse): boolean {
   return (
-    record.volumeStatus === 'COLLECTING'
-    || record.integrityStatus === 'FAILED'
-    || record.appraisalStatus === 'REMINDER_SENT'
+    record.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
+    || record.integrityStatus === ArchiveIntegrityStatusCode.FAILED
+    || record.appraisalStatus === ArchiveAppraisalStatusCode.REMINDER_SENT
   )
 }
 
 export function resolveArchiveVolumeListRowBorderTone(
   record: ArchiveVolumeResponse,
 ): ArchiveVolumeListRowBorderTone {
-  if (record.appraisalStatus === 'REMINDER_SENT') {
+  if (record.appraisalStatus === ArchiveAppraisalStatusCode.REMINDER_SENT) {
     return 'error'
   }
-  if (record.volumeStatus === 'COLLECTING') {
+  if (record.volumeStatus === ArchiveVolumeStatusCode.COLLECTING) {
     return 'warning'
   }
-  if (record.integrityStatus === 'FAILED') {
+  if (record.integrityStatus === ArchiveIntegrityStatusCode.FAILED) {
     return 'error'
   }
-  if (record.volumeStatus === 'SUBMITTED') {
+  if (record.volumeStatus === ArchiveVolumeStatusCode.SUBMITTED) {
     return 'info'
   }
   return 'none'

@@ -20,7 +20,7 @@
 
     <template v-else-if="detail">
       <div
-        v-if="detail.status === 'INVALIDATED'"
+        v-if="detail.status === ReviewTaskStatusCode.INVALIDATED"
         class="review-task-detail-page__invalidated-banner"
       >
         <div class="review-task-detail-page__invalidated-title">当前复核任务已失效</div>
@@ -159,21 +159,32 @@
 
           <GradingImmersionSection title="批注历史">
             <template #icon><CommentOutlined /></template>
-            <UiEmpty v-if="annotations.length === 0" description="暂无数据" />
-            <a-list v-else :data-source="annotations" size="small">
-              <template #renderItem="{ item }">
-                <a-list-item>
-                  <a-list-item-meta>
-                    <template #title>
-                      <a-typography-text :content="item.annotationText || '（无批注正文）'" />
-                    </template>
-                    <template #description>
-                      <span class="muted">{{ formatDateTime(item.createTime) }}</span>
-                    </template>
-                  </a-list-item-meta>
-                </a-list-item>
-              </template>
-            </a-list>
+            <UiSkeletonState v-if="annotationsLoading" variant="card" compact />
+            <UiEmpty v-else-if="annotations.length === 0" description="暂无数据" />
+            <template v-else>
+              <a-list :data-source="annotations" size="small">
+                <template #renderItem="{ item }">
+                  <a-list-item>
+                    <a-list-item-meta>
+                      <template #title>
+                        <a-typography-text :content="item.annotationText || '（无批注正文）'" />
+                      </template>
+                      <template #description>
+                        <span class="muted">{{ formatDateTime(item.createTime) }}</span>
+                      </template>
+                    </a-list-item-meta>
+                  </a-list-item>
+                </template>
+              </a-list>
+              <a-pagination
+                v-if="annotationPagination.total > annotationPagination.pageSize"
+                v-model:current="annotationPagination.pageNum"
+                v-model:page-size="annotationPagination.pageSize"
+                :total="annotationPagination.total"
+                size="small"
+                @change="loadAnnotations"
+              />
+            </template>
           </GradingImmersionSection>
         </template>
 
@@ -210,24 +221,14 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import type { AnnotationResponse } from '@/apis/mark/exam-annotation'
+import { listAnnotations } from '@/apis/mark/exam-annotation'
 import type {
   AiAbilityCode,
   AiExecutionStatusCode,
   ExamQuestionAiExecutionItemResponse,
 } from '@/apis/mark/exam-grade'
-import type { ReviewTaskDetailResponse, ReviewTaskStatusCode } from '@/apis/mark/exam-review-task'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
-import EditOutlined from '@ant-design/icons-vue/EditOutlined'
-import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
-import PictureOutlined from '@ant-design/icons-vue/PictureOutlined'
-import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
-import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { listAnnotations } from '@/apis/mark/exam-annotation'
 import {
   AI_ABILITY_TONE,
   AI_EXECUTION_STATUS_TONE,
@@ -236,11 +237,22 @@ import {
   listAiExecutionsForQuestion,
   rescoreQuestionByAi,
 } from '@/apis/mark/exam-grade'
+import type { ReviewTaskDetailResponse } from '@/apis/mark/exam-review-task'
 import {
   getReviewTaskDetail,
   REVIEW_TASK_STATUS_TONE,
+  ReviewTaskStatusCode,
   ReviewTaskStatusDescription,
 } from '@/apis/mark/exam-review-task'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
+import EditOutlined from '@ant-design/icons-vue/EditOutlined'
+import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
+import PictureOutlined from '@ant-design/icons-vue/PictureOutlined'
+import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
+import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
+import message from 'ant-design-vue/es/message'
+import { useRoute, useRouter } from 'vue-router'
 import ExperienceAssistBadge from '@/components/mark/ExperienceAssistBadge.vue'
 import GradingImmersionChrome from '@/components/mark/GradingImmersionChrome.vue'
 import GradingImmersionSection from '@/components/mark/GradingImmersionSection.vue'
@@ -253,14 +265,12 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { isExamConfidentialFlag, useExamConfidential } from '@/composables/useConfidentialWatermark'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherExamWorkspaceReviewTaskDetail' })
-
-const REVIEW_TASK_DETAIL_PAGE_SIZE = 100
 
 function reviewStatusTone(value: ReviewTaskStatusCode): BadgeTone {
   return strictEnumTone(REVIEW_TASK_STATUS_TONE, value, '复核任务状态')
@@ -332,12 +342,15 @@ const currentAiSourceTone = computed<BadgeTone>(() => {
 
 const canRescoreByAi = computed(() => {
   if (rescoring.value || loading.value || !detail.value?.gradeResultId) return false
-  return detail.value.status === 'PENDING' || detail.value.status === 'IN_PROGRESS'
+  return (
+    detail.value.status === ReviewTaskStatusCode.PENDING ||
+    detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
+  )
 })
 
 const canEnterWorkspace = computed(() => {
   const status = detail.value?.status
-  return status === 'PENDING' || status === 'IN_PROGRESS'
+  return status === ReviewTaskStatusCode.PENDING || status === ReviewTaskStatusCode.IN_PROGRESS
 })
 
 function executionDiagnosticText(diagnostic?: string): string {
@@ -459,26 +472,33 @@ function timelineColor(status: AiExecutionStatusCode): string {
 const labelStyle: CSSProperties = { color: 'var(--ant-color-text-tertiary)', width: '100px' }
 
 const annotations = ref<AnnotationResponse[]>([])
+const annotationsLoading = ref(false)
+const annotationPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 
 async function loadAnnotations(): Promise<void> {
   if (!examId.value || !detail.value) return
   const currentExamId = examId.value
   const { paperInstanceId, layoutQuestionId, gradeResultId } = detail.value
+  annotationsLoading.value = true
   try {
-    annotations.value = await readAllPages(
-      (pageNum) =>
-        listAnnotations({
-          examId: currentExamId,
-          paperInstanceId,
-          layoutQuestionId,
-          gradeResultId,
-          pageNum,
-          pageSize: REVIEW_TASK_DETAIL_PAGE_SIZE,
-        }),
-      '批注记录加载失败，请刷新后重试',
-    )
+    const page = await listAnnotations({
+      examId: currentExamId,
+      paperInstanceId,
+      layoutQuestionId,
+      gradeResultId,
+      pageNum: annotationPagination.pageNum,
+      pageSize: annotationPagination.pageSize,
+    })
+    annotations.value = page.list
+    annotationPagination.total = page.total
+    annotationPagination.pageNum = page.pageNum
+    annotationPagination.pageSize = page.pageSize
   } catch (error) {
+    annotations.value = []
+    annotationPagination.total = 0
     showUserError(error, '批注记录加载失败')
+  } finally {
+    annotationsLoading.value = false
   }
 }
 

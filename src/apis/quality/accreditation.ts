@@ -1,5 +1,6 @@
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { ProgramSupportProfileStatusCode } from '@/types/enums/program-support-profile-status-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 import {
@@ -159,6 +160,7 @@ export interface AccreditationCockpitVO {
   annualCourseCoverages?: AccreditationAnnualCourseCoverageSnapshot[]
   conditionalDueDaysRemaining?: number
   onsiteReportDueDaysRemaining?: number
+  activeEvidenceCount: number
 }
 
 export interface AccreditationCycleQueryRequest extends QueryDto {
@@ -228,7 +230,7 @@ export interface ProgramSupportProfileVO {
   industryCoopRemark?: string
   studentDevelopmentRemark?: string
   qualityAssuranceRemark?: string
-  profileStatus?: string
+  profileStatus?: ProgramSupportProfileStatusCode
   confirmedTime?: string
 }
 
@@ -309,6 +311,31 @@ export interface AnnualEvaluationPlanCourseVO {
   evaluationCompleted: boolean
   completedTime?: string
   remark?: string
+}
+
+export interface AnnualEvaluationPlanQueryRequest extends QueryDto {
+  programId?: string
+  trainingPlanId: string
+  planYear?: string
+  planStatus?: string
+  keyword?: string
+}
+
+export interface AnnualEvaluationPlanCourseQueryRequest extends QueryDto {
+  annualPlanId: string
+}
+
+export interface OnsiteVisitPlanQueryRequest extends QueryDto {
+  programId?: string
+  trainingPlanId: string
+  accreditationCycleId?: string
+  planStatus?: string
+  keyword?: string
+}
+
+export interface OnsiteChecklistItemQueryRequest extends QueryDto {
+  onsiteVisitPlanId: string
+  itemCategory?: OnsiteChecklistCategoryCode | ''
 }
 
 export interface AnnualEvaluationPlanCourseStatusUpdateRequest {
@@ -443,17 +470,26 @@ export interface ImportMarkExamEvidenceRequest {
   examIds: string[]
 }
 
-export const ANNUAL_REPORT_MATERIAL_STATUS_TONE: Record<AnnualReportMaterialStatusCode, BadgeTone> = {
-  [AnnualReportMaterialStatusCode.DRAFT]: 'gray',
-  [AnnualReportMaterialStatusCode.SUBMITTED]: 'blue',
-  [AnnualReportMaterialStatusCode.APPROVED]: 'green',
-  [AnnualReportMaterialStatusCode.REJECTED]: 'orange',
+/** 认证证据登记可选的 edu-mark 来源考试 */
+export interface AccreditationLinkedExamOptionVO {
+  sourceExamId: string
+  courseName: string
+  itemName: string
+  label: string
 }
+
+export const ANNUAL_REPORT_MATERIAL_STATUS_TONE: Record<AnnualReportMaterialStatusCode, BadgeTone> =
+  {
+    [AnnualReportMaterialStatusCode.DRAFT]: 'gray',
+    [AnnualReportMaterialStatusCode.SUBMITTED]: 'blue',
+    [AnnualReportMaterialStatusCode.APPROVED]: 'green',
+    [AnnualReportMaterialStatusCode.REJECTED]: 'orange',
+  }
 
 export const ANNUAL_REPORT_MATERIAL_CATEGORY_OPTIONS: Array<{
   value: AnnualReportMaterialCategoryCode
   label: string
-}> = ALL_ANNUAL_REPORT_MATERIAL_CATEGORY_CODES.map(value => ({
+}> = ALL_ANNUAL_REPORT_MATERIAL_CATEGORY_CODES.map((value) => ({
   value,
   label: AnnualReportMaterialCategoryDescription[value],
 }))
@@ -476,10 +512,12 @@ export const accreditationApi = {
     http.post<void>(`${BASE}/cycles/register-conclusion`, data),
   cockpit: (data: TrainingPlanIdRequest) =>
     http.post<AccreditationCockpitVO>(`${BASE}/cockpit`, data),
-  annualPlanList: (data: TrainingPlanIdRequest) =>
-    http.post<AnnualEvaluationPlanVO[]>(`${BASE}/annual-plans/list`, data),
+  annualPlanPage: (data: AnnualEvaluationPlanQueryRequest) =>
+    http.post<PageResult<AnnualEvaluationPlanVO>>(`${BASE}/annual-plans/page`, data),
   annualPlanDetail: (id: string) =>
     http.post<AnnualEvaluationPlanVO>(`${BASE}/annual-plans/detail`, { id }),
+  annualPlanCoursePage: (data: AnnualEvaluationPlanCourseQueryRequest) =>
+    http.post<PageResult<AnnualEvaluationPlanCourseVO>>(`${BASE}/annual-plans/course-page`, data),
   annualPlanCreate: (data: AnnualEvaluationPlanSaveRequest) =>
     http.post<string>(`${BASE}/annual-plans/create`, data),
   annualPlanUpdate: (data: AnnualEvaluationPlanSaveRequest) =>
@@ -501,10 +539,12 @@ export const accreditationApi = {
     http.post<void>(`${BASE}/annual-report-materials/submit`, { id }),
   annualReportMaterialReview: (data: AnnualReportMaterialReviewRequest) =>
     http.post<void>(`${BASE}/annual-report-materials/review`, data),
-  onsitePlanList: (data: AccreditationScopeRequest) =>
-    http.post<OnsiteVisitPlanVO[]>(`${BASE}/onsite-plans/list`, data),
+  onsitePlanPage: (data: OnsiteVisitPlanQueryRequest) =>
+    http.post<PageResult<OnsiteVisitPlanVO>>(`${BASE}/onsite-plans/page`, data),
   onsitePlanDetail: (id: string) =>
     http.post<OnsiteVisitPlanVO>(`${BASE}/onsite-plans/detail`, { id }),
+  onsiteChecklistPage: (data: OnsiteChecklistItemQueryRequest) =>
+    http.post<PageResult<OnsiteChecklistItemVO>>(`${BASE}/onsite-plans/checklist-page`, data),
   createOnsitePlan: (data: OnsiteVisitPlanSaveRequest) =>
     http.post<string>(`${BASE}/onsite-plans/create`, data),
   updateOnsitePlan: (data: OnsiteVisitPlanSaveRequest) =>
@@ -520,6 +560,8 @@ export const accreditationApi = {
     http.post<void>(`${BASE}/support-profiles/confirm`, { id }),
   evidencePage: (data: AccreditationEvidenceQueryRequest) =>
     http.post<PageResult<AccreditationEvidenceVO>>(`${BASE}/evidences/page`, data),
+  linkedExamOptions: (data: { trainingPlanId: string; programId?: string }) =>
+    http.post<AccreditationLinkedExamOptionVO[]>(`${BASE}/evidences/linked-exam-options`, data),
   evidenceCreate: (data: AccreditationEvidenceSaveRequest) =>
     http.post<string>(`${BASE}/evidences/create`, data),
   evidenceUpdate: (data: AccreditationEvidenceSaveRequest) =>

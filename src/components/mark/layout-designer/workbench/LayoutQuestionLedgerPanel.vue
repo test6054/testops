@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ExamLayoutDocument, ExamLayoutQuestionDto } from '@/apis/mark/exam-layout-design'
-import type { MarkOcrSceneCode } from '@/apis/mark/ocr-scene'
 import { computed, ref } from 'vue'
-import { MARK_OCR_SCENE_LABEL } from '@/apis/mark/ocr-scene'
+import { MarkOcrSceneDescription } from '@/apis/mark/ocr-scene'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import LayoutQuestionPropertyPanel from '@/components/mark/layout-designer/LayoutQuestionPropertyPanel.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -43,7 +42,7 @@ const rows = computed((): QuestionRow[] =>
       key: question.id,
       question,
       questionNo: question.questionNo,
-      ocrSceneLabel: question.ocrScene ? MARK_OCR_SCENE_LABEL[question.ocrScene as MarkOcrSceneCode] : '',
+      ocrSceneLabel: question.ocrScene ? MarkOcrSceneDescription[question.ocrScene] : '',
       questionTypeLabel: QuestionTypeDescription[question.questionType],
       fullScore: question.fullScore ?? 0,
       roiReady: isLayoutQuestionRoiReady(props.document, question.id),
@@ -57,7 +56,7 @@ const rows = computed((): QuestionRow[] =>
 )
 
 const columns: ColumnsType<QuestionRow> = [
-  { title: '题号', dataIndex: 'questionNo', width: 72, align: 'center' },
+  { title: '题号', dataIndex: 'questionNo', width: 72, align: 'center', fixed: 'left' },
   { title: 'OCR 场景', dataIndex: 'ocrSceneLabel', width: 108 },
   { title: '题型', dataIndex: 'questionTypeLabel', width: 72, align: 'center' },
   { title: '满分', dataIndex: 'fullScore', width: 72, align: 'right' },
@@ -87,10 +86,13 @@ function handleRowClick(record: QuestionRow): void {
       <UiEmpty v-if="rows.length === 0" description="请先完成资料入口：整卷识别或生成答题卡" />
       <UiDataTable
         v-else
+        pagination-mode="none"
         :columns="columns"
         :data-source="rows"
-        :pagination="false"
+        :show-pagination="false"
+        :sticky-header="false"
         :scroll="{ y: tableScrollY }"
+        flat
         size="small"
         row-key="key"
         :custom-row="(record) => ({

@@ -1,6 +1,5 @@
 <!--
-  材料归档选择器
-  数据源：POST /api/quality/archives/page
+  材料归档选择�?  数据源：POST /api/quality/archives/page
   常用过滤：businessType / archiveCategory / archiveOfficeConfirmed
 -->
 <script setup lang="ts">
@@ -12,13 +11,13 @@ import { archiveApi } from '@/apis/quality/archive'
 import { ArchiveBusinessTypeDescription } from '@/apis/quality/types'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import { requireAllPages } from './page-contract'
+import { loadSelectorFirstPage, QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS } from './page-contract'
 
 interface Props {
   value?: string | null
   businessType?: ArchiveBusinessTypeCode | null
   archiveCategory?: string | null
-  /** 仅返回已被档案室确认的归档 */
+  /** 仅返回已被档案室确认的归�? */
   onlyConfirmed?: boolean
   placeholder?: string
   allowClear?: boolean
@@ -41,6 +40,7 @@ const emit = defineEmits<{
 
 const options = ref<ArchiveVO[]>([])
 const loading = ref(false)
+const searchText = ref('')
 const internalValue = ref<string | undefined>(props.value ?? undefined)
 
 watch(
@@ -55,25 +55,31 @@ watch(
   () => loadOptions(),
 )
 
-async function loadOptions() {
+async function loadOptions(keyword?: string) {
   loading.value = true
   try {
-    options.value = await requireAllPages(
-      (pageNum) =>
+    options.value = await loadSelectorFirstPage(
+      (pageNum, pageSize) =>
         archiveApi.page({
           pageNum,
-          pageSize: 100,
+          pageSize,
           businessType: props.businessType || undefined,
           archiveCategory: props.archiveCategory || undefined,
           archiveOfficeConfirmed: props.onlyConfirmed ? true : undefined,
-        }),
-      '材料归档',
-    )
+          keyword: (keyword ?? searchText.value)?.trim() || undefined,
+        }))
   } catch (e) {
     showUserError(e, '质量档案列表加载失败')
   } finally {
     loading.value = false
   }
+}
+
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
+function handleSearch(val: string) {
+  searchText.value = val
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => loadOptions(val), QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS)
 }
 
 function archiveBusinessTypeLabel(value: ArchiveBusinessTypeCode): string {
@@ -104,7 +110,8 @@ defineExpose({ reload: loadOptions })
     :loading="loading"
     :style="{ width: typeof width === 'number' ? `${width}px` : width }"
     show-search
-    option-filter-prop="label"
+    :filter-option="false"
+    @search="handleSearch"
     @change="handleChange"
   >
     <a-select-option v-for="opt in options" :key="opt.id" :value="opt.id" :label="opt.archiveCode">

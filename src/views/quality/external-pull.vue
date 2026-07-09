@@ -7,39 +7,45 @@ import type {
   ExternalSourceFieldScopeRequest,
   ExternalSourceFieldScopeVO,
 } from '@/apis/quality/external-data-source'
+import { externalDataSourceApi } from '@/apis/quality/external-data-source'
 import type { ExternalPullAuditVO } from '@/apis/quality/external-pull-audit'
+import { externalPullAuditApi } from '@/apis/quality/external-pull-audit'
 import type { ExternalPullResultVO } from '@/apis/quality/external-pull-result'
+import { externalPullResultApi } from '@/apis/quality/external-pull-result'
 import type {
   ExternalPullTaskQueryRequest,
   ExternalPullTaskSaveRequest,
   ExternalPullTaskVO,
 } from '@/apis/quality/external-pull-task'
-import type {
-  ExternalPullAuditCheckStatusCode,
-  ExternalPullAuditEventCode,
-  ExternalPullConfirmationStatusCode,
-} from '@/apis/quality/types'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { BusinessAnchorCode } from '@/types/enums/business-anchor-code-enum'
-import type { SignalMetric, TaskResultItem } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { externalDataSourceApi } from '@/apis/quality/external-data-source'
-import { externalPullAuditApi } from '@/apis/quality/external-pull-audit'
-import { externalPullResultApi } from '@/apis/quality/external-pull-result'
 import { externalPullTaskApi } from '@/apis/quality/external-pull-task'
+import type { ExternalPullAuditEventCode } from '@/apis/quality/types'
 import {
   EXTERNAL_PULL_CONFIRMATION_STATUS_COLOR,
   EXTERNAL_PULL_TASK_STATUS_COLOR,
   EXTERNAL_PULL_TASK_STATUS_OPTIONS,
   EXTERNAL_SOURCE_TYPE_OPTIONS,
+  ExternalPullAuditCheckStatusCode,
   ExternalPullAuditCheckStatusDescription,
   ExternalPullAuditEventDescription,
+  ExternalPullConfirmationStatusCode,
   ExternalPullConfirmationStatusDescription,
+  ExternalPullTaskStatusCode,
   ExternalPullTaskStatusDescription,
   ExternalSourceTypeCode,
   ExternalSourceTypeDescription,
 } from '@/apis/quality/types'
+import type { ExternalPullWorkbenchSignalSummaryVO } from '@/apis/quality/workbench'
+import { workbenchApi } from '@/apis/quality/workbench'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { BusinessAnchorCode } from '@/types/enums/business-anchor-code-enum'
+import {
+  ALL_BUSINESS_ANCHOR_CODES,
+  BUSINESS_ANCHOR_OPTIONS,
+  BusinessAnchorCodeDescription,
+} from '@/types/enums/business-anchor-code-enum'
+import type { SignalMetric, TaskResultItem } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
 import {
   AchievementResultSelector,
@@ -66,11 +72,6 @@ import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import {
-  ALL_BUSINESS_ANCHOR_CODES,
-  BUSINESS_ANCHOR_OPTIONS,
-  BusinessAnchorCodeDescription,
-} from '@/types/enums/business-anchor-code-enum'
-import {
   EXTERNAL_PULL_FILTER_OPERATOR_OPTIONS,
   ExternalPullFilterOperatorCode,
 } from '@/types/enums/external-pull-filter-operator-enum'
@@ -79,7 +80,6 @@ import {
   ExternalPullSortDirectionCode,
 } from '@/types/enums/external-pull-sort-direction-enum'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
-import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 interface SourceFieldScopeEditorRow {
@@ -138,18 +138,18 @@ interface ExternalPullTaskFormState {
 }
 
 const sourceColumns: ColumnsType = [
-  { title: '编码', dataIndex: 'sourceCode', key: 'sourceCode', width: 160 },
+  { title: '编码', dataIndex: 'sourceCode', key: 'sourceCode', width: 160, fixed: 'left' },
   { title: '名称', dataIndex: 'sourceName', key: 'sourceName' },
   { title: '数据库类型', dataIndex: 'sourceType', key: 'sourceType', width: 120 },
   { title: '驱动类', dataIndex: 'driverClass', key: 'driverClass', width: 200 },
   { title: '最大行数', dataIndex: 'maxRowCount', key: 'maxRowCount', width: 100 },
   { title: '超时（秒）', dataIndex: 'queryTimeoutSeconds', key: 'queryTimeoutSeconds', width: 100 },
   { title: '状态', dataIndex: 'enabled', key: 'enabled', width: 100 },
-  { title: '操作', key: 'actions', width: 220, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 220 },
 ]
 
 const taskColumns: ColumnsType = [
-  { title: '任务编码', dataIndex: 'taskCode', key: 'taskCode', width: 160 },
+  { title: '任务编码', dataIndex: 'taskCode', key: 'taskCode', width: 160, fixed: 'left' },
   { title: '任务名称', dataIndex: 'taskName', key: 'taskName' },
   { title: '数据源', dataIndex: 'sourceName', key: 'sourceRef', width: 160 },
   { title: '来源对象', dataIndex: 'sourceObjectName', key: 'sourceObjectName', width: 180 },
@@ -157,7 +157,7 @@ const taskColumns: ColumnsType = [
   { title: '返回行数', dataIndex: 'returnRows', key: 'returnRows', width: 100 },
   { title: '耗时（ms）', dataIndex: 'elapsedMs', key: 'elapsedMs', width: 110 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 120 },
-  { title: '操作', key: 'actions', width: 220, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 220 },
 ]
 
 const detailResultColumns: ColumnsType = [
@@ -232,6 +232,12 @@ const detailRecord = ref<ExternalPullTaskVO | null>(null)
 const detailResults = ref<ExternalPullResultVO[]>([])
 const detailAudits = ref<ExternalPullAuditVO[]>([])
 const detailLoading = ref(false)
+const detailResultPageNum = ref(1)
+const detailResultPageSize = ref(10)
+const detailResultTotal = ref(0)
+const detailAuditPageNum = ref(1)
+const detailAuditPageSize = ref(20)
+const detailAuditTotal = ref(0)
 
 const sourceTypeOptions = EXTERNAL_SOURCE_TYPE_OPTIONS
 const taskStatusOptions = EXTERNAL_PULL_TASK_STATUS_OPTIONS
@@ -317,19 +323,23 @@ const taskFieldOptions = computed<SelectOption[]>(() => {
 })
 
 const signals = computed<SignalMetric[]>(() => {
-  const enabledSources = sources.value.filter((s) => s.enabled).length
-  const runningTasks = tasks.value.filter((t) => t.status === 'RUNNING').length
-  const failedTasks = tasks.value.filter((t) => t.status === 'FAILED').length
-  const succeededTasks = tasks.value.filter((t) => t.status === 'SUCCEEDED').length
+  const summary = signalSummary.value
+  if (!summary) {
+    return []
+  }
+  const enabledSources = summary.sourceEnabledCount ?? 0
+  const runningTasks = summary.taskRunningCount ?? 0
+  const failedTasks = summary.taskFailedCount ?? 0
+  const succeededTasks = summary.taskSucceededCount ?? 0
   return [
-    { key: 'src-total', label: '数据源总数', value: sourceTotal.value, tone: 'blue' },
+    { key: 'src-total', label: '数据源总数', value: summary.sourceTotalCount ?? 0, tone: 'blue' },
     {
       key: 'src-enabled',
       label: '已启用数据源',
       value: enabledSources,
       tone: enabledSources > 0 ? 'green' : 'gray',
     },
-    { key: 'task-total', label: '本页任务', value: tasks.value.length, tone: 'blue' },
+    { key: 'task-total', label: '任务总数', value: summary.taskTotalCount ?? 0, tone: 'blue' },
     {
       key: 'task-running',
       label: '运行中',
@@ -361,8 +371,8 @@ const taskRuleSummaryLines = computed(() => {
   }
   const activeFilters = taskFilters.value.filter(
     (item) =>
-      item.fieldName
-      && (item.operator === ExternalPullFilterOperatorCode.IN
+      item.fieldName &&
+      (item.operator === ExternalPullFilterOperatorCode.IN
         ? item.multipleValues.length > 0
         : Boolean(item.singleValue.trim())),
   )
@@ -370,8 +380,8 @@ const taskRuleSummaryLines = computed(() => {
     lines.push(
       `筛选条件：${activeFilters
         .map((item) => {
-          const valueText
-            = item.operator === ExternalPullFilterOperatorCode.IN
+          const valueText =
+            item.operator === ExternalPullFilterOperatorCode.IN
               ? item.multipleValues.join('、')
               : item.singleValue.trim()
           return `${item.fieldName}${filterOperatorText(item.operator)}${valueText}`
@@ -395,18 +405,22 @@ const taskRuleSummaryLines = computed(() => {
 
 const pullResultItems = computed<TaskResultItem[]>(() => {
   return tasks.value
-    .filter((t) => t.status === 'FAILED' || t.status === 'RUNNING')
+    .filter(
+      (t) =>
+        t.status === ExternalPullTaskStatusCode.FAILED ||
+        t.status === ExternalPullTaskStatusCode.RUNNING,
+    )
     .slice(0, 5)
     .map((t) => ({
       id: t.id,
       title: `${t.taskCode} - ${t.taskName}`,
       statusLabel: taskStatusLabel(t.status),
-      statusTone: t.status === 'FAILED' ? 'red' : 'blue',
+      statusTone: t.status === ExternalPullTaskStatusCode.FAILED ? 'red' : 'blue',
       description:
         getUserProcessFailureMessage(
           t.failureReason,
           '外部成绩数据接入失败，请检查数据源配置、授权状态和返回字段设置',
-        ) || (t.status === 'RUNNING' ? '任务执行中' : undefined),
+        ) || (t.status === ExternalPullTaskStatusCode.RUNNING ? '任务执行中' : undefined),
       time: t.startedTime || undefined,
       actions: [{ key: 'detail', label: '详情' }],
     }))
@@ -433,9 +447,9 @@ function confirmationStatusColor(value: ExternalPullConfirmationStatusCode): Bad
 }
 
 function auditTone(status: ExternalPullAuditCheckStatusCode): string {
-  if (status === 'PASSED') return 'green'
-  if (status === 'REJECTED') return 'red'
-  if (status === 'WARNING') return 'orange'
+  if (status === ExternalPullAuditCheckStatusCode.PASSED) return 'green'
+  if (status === ExternalPullAuditCheckStatusCode.REJECTED) return 'red'
+  if (status === ExternalPullAuditCheckStatusCode.WARNING) return 'orange'
   return 'gray'
 }
 
@@ -493,7 +507,9 @@ function createSortRow(): PullSortEditorRow {
 }
 
 function canCancelTask(status: ExternalPullTaskVO['status']): boolean {
-  return status === 'PENDING' || status === 'RUNNING'
+  return (
+    status === ExternalPullTaskStatusCode.PENDING || status === ExternalPullTaskStatusCode.RUNNING
+  )
 }
 
 function handleFilterOperatorChange(entry: PullFilterEditorRow) {
@@ -501,7 +517,7 @@ function handleFilterOperatorChange(entry: PullFilterEditorRow) {
   entry.multipleValues = []
 }
 
-function handleTaskPageChange(page: { current: number, pageSize: number }) {
+function handleTaskPageChange(page: { current: number; pageSize: number }) {
   taskQuery.pageNum = page.current
   taskQuery.pageSize = page.pageSize
   loadTasks()
@@ -516,7 +532,7 @@ function syncTaskFilterToQuery() {
 function handleTaskSearch() {
   taskQuery.pageNum = 1
   syncTaskFilterToQuery()
-  void loadTasks()
+  void Promise.all([loadTasks(), loadSignalSummary()])
 }
 
 function handleTaskReset() {
@@ -527,7 +543,7 @@ function handleTaskReset() {
   })
   taskQuery.pageNum = 1
   syncTaskFilterToQuery()
-  void loadTasks()
+  void Promise.all([loadTasks(), loadSignalSummary()])
 }
 
 function resetTaskRuleAfterSourceChange() {
@@ -563,7 +579,35 @@ function handleTaskBusinessObjectChange(value: string | null) {
 }
 
 async function reloadAll() {
-  await Promise.all([loadSources(), loadTasks()])
+  await Promise.all([loadSources(), loadTasks(), loadSignalSummary()])
+}
+
+const signalSummary = ref<ExternalPullWorkbenchSignalSummaryVO | null>(null)
+
+function buildExternalPullSignalRequest() {
+  return {
+    sourceQuery: {
+      pageNum: sourceQuery.pageNum,
+      pageSize: sourceQuery.pageSize,
+    },
+    taskQuery: {
+      ...taskQuery,
+      sourceId: taskQuery.sourceId || undefined,
+      status: taskQuery.status || undefined,
+      businessAnchor: taskQuery.businessAnchor,
+    },
+  }
+}
+
+async function loadSignalSummary() {
+  try {
+    signalSummary.value = await workbenchApi.externalPullSignalSummary(
+      buildExternalPullSignalRequest(),
+    )
+  } catch (error) {
+    signalSummary.value = null
+    showUserError(error, '外部拉取指标加载失败')
+  }
 }
 
 useQualityScopedLoader(reloadAll, { watchScope: true, immediate: false })
@@ -572,23 +616,38 @@ async function loadSources() {
   const scope = beginQualityScopeRequest()
   sourceLoading.value = true
   try {
-    sources.value = await readAllPages(
-      (pageNum) =>
-        externalDataSourceApi.page({
-          pageNum,
-          pageSize: sourceQuery.pageSize,
-        }),
-      '外部数据源加载失败，请稍后重试',
-    )
+    const page = await externalDataSourceApi.page({
+      pageNum: sourceQuery.pageNum,
+      pageSize: sourceQuery.pageSize,
+    })
     if (scope.isStale()) {
       return
     }
-    sourceTotal.value = sources.value.length
+    sources.value = page.list
+    sourceQuery.pageNum = page.pageNum
+    sourceQuery.pageSize = page.pageSize
+    sourceTotal.value = page.total
+    if (sources.value.length === 0 && sourceTotal.value > 0 && sourceQuery.pageNum > 1) {
+      sourceQuery.pageNum -= 1
+      await loadSources()
+    }
+  } catch (error) {
+    if (!scope.isStale()) {
+      showUserError(error, '外部数据源加载失败')
+      sources.value = []
+      sourceTotal.value = 0
+    }
   } finally {
     if (!scope.isStale()) {
       sourceLoading.value = false
     }
   }
+}
+
+function handleSourcePageChange(event: { current: number; pageSize: number }): void {
+  sourceQuery.pageNum = event.current
+  sourceQuery.pageSize = event.pageSize
+  void loadSources()
 }
 
 async function loadTasks() {
@@ -624,7 +683,11 @@ async function loadTasks() {
 const taskPolling = usePolling(() => loadTasksQuietly(), {
   getOptions: () => ({
     intervalMs: 3000,
-    when: tasks.value.some((task) => task.status === 'PENDING' || task.status === 'RUNNING'),
+    when: tasks.value.some(
+      (task) =>
+        task.status === ExternalPullTaskStatusCode.PENDING ||
+        task.status === ExternalPullTaskStatusCode.RUNNING,
+    ),
   }),
   pauseWhenDocumentHidden: true,
 })
@@ -697,9 +760,9 @@ async function openSourceEdit(record: ExternalDataSourceVO) {
 
 async function submitSource() {
   if (
-    !sourceForm.sourceCode.trim()
-    || !sourceForm.sourceName.trim()
-    || !sourceForm.jdbcUrl.trim()
+    !sourceForm.sourceCode.trim() ||
+    !sourceForm.sourceName.trim() ||
+    !sourceForm.jdbcUrl.trim()
   ) {
     message.error('请填写编码 / 名称 / 连接地址')
     return
@@ -813,12 +876,12 @@ function openTaskCreate() {
 
 async function submitTask() {
   if (
-    !taskForm.taskName.trim()
-    || !taskForm.taskCode.trim()
-    || !taskForm.sourceId
-    || !taskForm.businessAnchor
-    || !taskForm.businessId
-    || !taskForm.sourceObjectName
+    !taskForm.taskName.trim() ||
+    !taskForm.taskCode.trim() ||
+    !taskForm.sourceId ||
+    !taskForm.businessAnchor ||
+    !taskForm.businessId ||
+    !taskForm.sourceObjectName
   ) {
     message.error('请填写任务编码、名称，选择数据源，并补全业务归属和来源对象')
     return
@@ -835,8 +898,8 @@ async function submitTask() {
   const filters: NonNullable<ExternalPullTaskSaveRequest['filters']> = []
   for (let index = 0; index < taskFilters.value.length; index += 1) {
     const row = taskFilters.value[index]
-    const hasValue
-      = row.operator === ExternalPullFilterOperatorCode.IN
+    const hasValue =
+      row.operator === ExternalPullFilterOperatorCode.IN
         ? row.multipleValues.length > 0
         : Boolean(row.singleValue.trim())
     if (!row.fieldName && !hasValue) continue
@@ -962,18 +1025,59 @@ async function openDetail(record: ExternalPullTaskVO) {
 async function reloadDetail(taskId: string) {
   detailLoading.value = true
   try {
-    const [results, audits] = await Promise.all([
-      externalPullResultApi.listByTask(taskId),
-      externalPullAuditApi.listByTask(taskId),
-    ])
-    detailResults.value = results
-    detailAudits.value = audits
+    detailResultPageNum.value = 1
+    detailAuditPageNum.value = 1
+    await Promise.all([loadDetailAudits(taskId), loadDetailResults(taskId)])
   } finally {
     detailLoading.value = false
   }
 }
 
-function handlePullResultAction(actionEvent: { item: TaskResultItem, action: { key: string } }) {
+async function loadDetailAudits(taskId: string) {
+  const page = await externalPullAuditApi.page({
+    pullTaskId: taskId,
+    pageNum: detailAuditPageNum.value,
+    pageSize: detailAuditPageSize.value,
+  })
+  detailAudits.value = page.list
+  detailAuditTotal.value = page.total
+}
+
+function handleDetailAuditPageChange(event: { current: number; pageSize: number }) {
+  if (!detailRecord.value) return
+  detailAuditPageNum.value = event.current
+  detailAuditPageSize.value = event.pageSize
+  detailLoading.value = true
+  void loadDetailAudits(detailRecord.value.id).finally(() => {
+    detailLoading.value = false
+  })
+}
+
+async function loadDetailResults(taskId: string) {
+  const result = await externalPullResultApi.pageByTask({
+    pullTaskId: taskId,
+    pageNum: detailResultPageNum.value,
+    pageSize: detailResultPageSize.value,
+  })
+  detailResults.value = result.list
+  detailResultTotal.value = result.total
+}
+
+function handleDetailResultPageChange(event: { current: number; pageSize: number }) {
+  if (!detailRecord.value) return
+  detailResultPageNum.value = event.current
+  detailResultPageSize.value = event.pageSize
+  detailLoading.value = true
+  void loadDetailResults(detailRecord.value.id).finally(() => {
+    detailLoading.value = false
+  })
+}
+
+function detailResultBatchNo(index: number): number {
+  return (detailResultPageNum.value - 1) * detailResultPageSize.value + index + 1
+}
+
+function handlePullResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
   const record = tasks.value.find((t) => t.id === actionEvent.item.id)
   if (record && actionEvent.action.key === 'detail') openDetail(record)
 }
@@ -1072,17 +1176,18 @@ onMounted(async () => {
 
       <UiEmpty v-if="!sources.length && !sourceLoading" description="暂无数据" size="sm" />
       <UiDataTable
-        pagination-mode="none"
-        class="student-detail-table__data-table"
+        v-model:current="sourceQuery.pageNum"
+        v-model:page-size="sourceQuery.pageSize"
+        pagination-mode="server"
         v-else
         :columns="sourceColumns"
         :data-source="sources"
         :loading="sourceLoading"
+        :total="sourceTotal"
         row-key="id"
         size="small"
-        :show-pagination="false"
         flat
-        :total="sources.length"
+        @page-change="handleSourcePageChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'sourceType'">
@@ -1127,7 +1232,6 @@ onMounted(async () => {
 
       <UiEmpty v-if="!tasks.length && !taskLoading" description="暂无数据" size="sm" />
       <UiDataTable
-        class="student-detail-table__data-table"
         v-else
         v-model:current="taskQuery.pageNum"
         v-model:page-size="taskQuery.pageSize"
@@ -1155,9 +1259,9 @@ onMounted(async () => {
               {{
                 Number.isFinite(record.returnRows)
                   ? record.returnRows
-                  : record.status === 'RUNNING'
+                  : record.status === ExternalPullTaskStatusCode.RUNNING
                     ? '执行中'
-                    : record.status === 'PENDING'
+                    : record.status === ExternalPullTaskStatusCode.PENDING
                       ? '尚未执行'
                       : '未返回行数'
               }}
@@ -1166,9 +1270,9 @@ onMounted(async () => {
               {{
                 Number.isFinite(record.elapsedMs)
                   ? `${record.elapsedMs} ms`
-                  : record.status === 'RUNNING'
+                  : record.status === ExternalPullTaskStatusCode.RUNNING
                     ? '执行中'
-                    : record.status === 'PENDING'
+                    : record.status === ExternalPullTaskStatusCode.PENDING
                       ? '尚未开始计时'
                       : '未返回耗时'
               }}
@@ -1578,9 +1682,9 @@ onMounted(async () => {
             {{
               Number.isFinite(detailRecord.returnRows)
                 ? detailRecord.returnRows
-                : detailRecord.status === 'RUNNING'
+                : detailRecord.status === ExternalPullTaskStatusCode.RUNNING
                   ? '执行中'
-                  : detailRecord.status === 'PENDING'
+                  : detailRecord.status === ExternalPullTaskStatusCode.PENDING
                     ? '尚未执行'
                     : '未返回行数'
             }}
@@ -1589,27 +1693,29 @@ onMounted(async () => {
             {{
               Number.isFinite(detailRecord.elapsedMs)
                 ? `${detailRecord.elapsedMs} ms`
-                : detailRecord.status === 'RUNNING'
+                : detailRecord.status === ExternalPullTaskStatusCode.RUNNING
                   ? '执行中'
-                  : detailRecord.status === 'PENDING'
+                  : detailRecord.status === ExternalPullTaskStatusCode.PENDING
                     ? '尚未开始计时'
                     : '未返回耗时'
             }}
           </a-descriptions-item>
           <a-descriptions-item label="开始时间">
             {{
-              detailRecord.startedTime
-                || (detailRecord.status === 'PENDING' ? '尚未开始执行' : '缺失开始时间')
+              detailRecord.startedTime ||
+              (detailRecord.status === ExternalPullTaskStatusCode.PENDING
+                ? '尚未开始执行'
+                : '缺失开始时间')
             }}
           </a-descriptions-item>
           <a-descriptions-item label="结束时间">
             {{
-              detailRecord.finishedTime
-                || (detailRecord.status === 'RUNNING'
-                  ? '执行中'
-                  : detailRecord.status === 'PENDING'
-                    ? '尚未开始执行'
-                    : '缺失结束时间')
+              detailRecord.finishedTime ||
+              (detailRecord.status === ExternalPullTaskStatusCode.RUNNING
+                ? '执行中'
+                : detailRecord.status === ExternalPullTaskStatusCode.PENDING
+                  ? '尚未开始执行'
+                  : '缺失结束时间')
             }}
           </a-descriptions-item>
           <a-descriptions-item v-if="detailRecord.failureReason" label="处理说明" :span="2">
@@ -1669,20 +1775,23 @@ onMounted(async () => {
         <h4 class="external-pull__section-title">结果批次（可逐批确认 / 驳回）</h4>
         <UiEmpty v-if="!detailResults.length && !detailLoading" description="暂无数据" size="sm" />
         <UiDataTable
-          pagination-mode="none"
-          class="student-detail-table__data-table"
           v-else
+          v-model:current="detailResultPageNum"
+          v-model:page-size="detailResultPageSize"
+          pagination-mode="server"
           :columns="detailResultColumns"
           :data-source="detailResults"
           :loading="detailLoading"
-          :show-pagination="false"
+          :total="detailResultTotal"
           row-key="id"
           size="small"
           flat
-          :total="detailResults.length"
+          @page-change="handleDetailResultPageChange"
         >
           <template #bodyCell="{ column, record, index }">
-            <template v-if="column.key === 'resultBatch'"> 第 {{ index + 1 }} 批 </template>
+            <template v-if="column.key === 'resultBatch'">
+              第 {{ detailResultBatchNo(index) }} 批
+            </template>
             <template v-else-if="column.key === 'detailAnchor'">
               {{ businessAnchorLabel(record.businessAnchor) }}
               <span> / {{ record.businessLabel }}</span>
@@ -1695,7 +1804,7 @@ onMounted(async () => {
                 {{
                   Number.isFinite(record.confirmedRows)
                     ? record.confirmedRows
-                    : record.confirmationStatus === 'REJECTED'
+                    : record.confirmationStatus === ExternalPullConfirmationStatusCode.REJECTED
                       ? '已驳回'
                       : '尚未确认'
                 }}
@@ -1718,34 +1827,49 @@ onMounted(async () => {
 
         <h4 class="external-pull__section-title">审计流水</h4>
         <UiEmpty v-if="!detailAudits.length && !detailLoading" description="暂无数据" size="sm" />
-        <a-timeline v-else>
-          <a-timeline-item
-            v-for="audit in detailAudits"
-            :key="audit.id"
-            :color="auditTimelineTone(audit)"
-          >
-            <p class="external-pull__audit-event">
-              <strong>{{ auditEventLabel(audit.auditEvent) }}</strong>
-            </p>
-            <p v-if="audit.queryScopeStatus" class="external-pull__audit-line">
-              查询范围：{{ auditCheckStatusLabel(audit.queryScopeStatus) }}
-              <span v-if="audit.queryScopeDetail"> · {{ audit.queryScopeDetail }}</span>
-            </p>
-            <p v-if="audit.fieldScopeStatus" class="external-pull__audit-line">
-              字段范围：{{ auditCheckStatusLabel(audit.fieldScopeStatus) }}
-              <span v-if="audit.fieldScopeDetail"> · {{ audit.fieldScopeDetail }}</span>
-            </p>
-            <p v-if="audit.maskPreviewStatus" class="external-pull__audit-line">
-              脱敏预览：{{ auditCheckStatusLabel(audit.maskPreviewStatus) }}
-            </p>
-            <p v-if="audit.auditDetail" class="external-pull__audit-detail">
-              {{ audit.auditDetail }}
-            </p>
-            <p class="external-pull__sub-text">
-              {{ audit.auditedTime }}
-            </p>
-          </a-timeline-item>
-        </a-timeline>
+        <template v-else>
+          <a-timeline>
+            <a-timeline-item
+              v-for="audit in detailAudits"
+              :key="audit.id"
+              :color="auditTimelineTone(audit)"
+            >
+              <p class="external-pull__audit-event">
+                <strong>{{ auditEventLabel(audit.auditEvent) }}</strong>
+              </p>
+              <p v-if="audit.queryScopeStatus" class="external-pull__audit-line">
+                查询范围：{{ auditCheckStatusLabel(audit.queryScopeStatus) }}
+                <span v-if="audit.queryScopeDetail"> · {{ audit.queryScopeDetail }}</span>
+              </p>
+              <p v-if="audit.fieldScopeStatus" class="external-pull__audit-line">
+                字段范围：{{ auditCheckStatusLabel(audit.fieldScopeStatus) }}
+                <span v-if="audit.fieldScopeDetail"> · {{ audit.fieldScopeDetail }}</span>
+              </p>
+              <p v-if="audit.maskPreviewStatus" class="external-pull__audit-line">
+                脱敏预览：{{ auditCheckStatusLabel(audit.maskPreviewStatus) }}
+              </p>
+              <p v-if="audit.auditDetail" class="external-pull__audit-detail">
+                {{ audit.auditDetail }}
+              </p>
+              <p class="external-pull__sub-text">
+                {{ audit.auditedTime }}
+              </p>
+            </a-timeline-item>
+          </a-timeline>
+          <a-pagination
+            v-if="detailAuditTotal > detailAuditPageSize"
+            class="external-pull__audit-pager"
+            size="small"
+            :current="detailAuditPageNum"
+            :page-size="detailAuditPageSize"
+            :total="detailAuditTotal"
+            show-size-changer
+            @change="
+              (page: number, pageSize: number) =>
+                handleDetailAuditPageChange({ current: page, pageSize })
+            "
+          />
+        </template>
       </template>
     </UiDrawer>
   </QualityIngestPageShell>
@@ -1887,6 +2011,11 @@ onMounted(async () => {
     margin: 4px 0 0;
     color: var(--dp-text-muted);
     font-size: 12px;
+  }
+
+  &__audit-pager {
+    margin-top: 12px;
+    text-align: right;
   }
 }
 </style>

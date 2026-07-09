@@ -65,7 +65,6 @@ export interface ExamPrintPackageResponse {
   status: PrintPackageStatusCode
   generatedTime: string
   sealRemark: string | null
-  items: PrintPackageItemVO[]
 }
 
 export interface PrintPackageGenerateRequest {
@@ -77,6 +76,11 @@ export interface PrintPackageGenerateRequest {
 
 export interface PrintPackagePageRequest extends QueryDto {
   examId: string
+}
+
+export interface PrintPackageItemPageRequest extends QueryDto {
+  examId: string
+  printPackageId: string
 }
 
 export function isLayoutNotReadyError(error: MarkBusinessError): boolean {
@@ -96,4 +100,10 @@ export function pagePrintPackages(
   request: PrintPackagePageRequest,
 ): Promise<PageResult<ExamPrintPackageResponse>> {
   return http.post<PageResult<ExamPrintPackageResponse>>('/api/mark/exams/print-package/page', request)
+}
+
+export function pagePrintPackageItems(
+  request: PrintPackageItemPageRequest,
+): Promise<PageResult<PrintPackageItemVO>> {
+  return http.post<PageResult<PrintPackageItemVO>>('/api/mark/exams/print-package/items/page', request)
 }

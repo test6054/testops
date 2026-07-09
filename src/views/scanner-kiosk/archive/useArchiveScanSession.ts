@@ -1,8 +1,10 @@
 import type { ScanDispatchArchiveSnapshotVO } from '@/apis/mark/scanner-dispatch'
+import { previewScanDispatch } from '@/apis/mark/scanner-dispatch'
 import type {
   ScanWorkOrderArchiveContextVO,
   ScanWorkOrderLifecycleVO,
 } from '@/apis/mark/scanner-work-order'
+import { getScanWorkOrderContext, startScanWorkOrder } from '@/apis/mark/scanner-work-order'
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import {
@@ -11,8 +13,6 @@ import {
 } from '@/apis/mark/archive-volume'
 import { ScannerColorModeCode, ScannerDuplexModeCode } from '@/apis/mark/exam-mark-scanner'
 import { getAgentSetupContext } from '@/apis/mark/scanner-agent-local'
-import { previewScanDispatch } from '@/apis/mark/scanner-dispatch'
-import { getScanWorkOrderContext, startScanWorkOrder } from '@/apis/mark/scanner-work-order'
 import {
   ALL_ARCHIVE_SCAN_BATCH_MODE_CODES,
   ArchiveScanBatchModeCode,
@@ -38,11 +38,15 @@ export function useArchiveScanSession() {
   const returnTo = computed(() => String(route.query.returnTo ?? ''))
   const dispatchTicketId = computed(() => String(route.query.dispatchTicketId ?? ''))
   const batchMode = computed<ArchiveScanBatchModeCode>(() => {
-    const parsedQuery = ALL_ARCHIVE_SCAN_BATCH_MODE_CODES.find((code) => code === route.query.batchMode)
+    const parsedQuery = ALL_ARCHIVE_SCAN_BATCH_MODE_CODES.find(
+      (code) => code === route.query.batchMode,
+    )
     if (parsedQuery) {
       return parsedQuery
     }
-    const parsedSnapshot = ALL_ARCHIVE_SCAN_BATCH_MODE_CODES.find((code) => code === route.query.archiveBatchMode)
+    const parsedSnapshot = ALL_ARCHIVE_SCAN_BATCH_MODE_CODES.find(
+      (code) => code === route.query.archiveBatchMode,
+    )
     if (parsedSnapshot) {
       return parsedSnapshot
     }
@@ -91,6 +95,7 @@ export function useArchiveScanSession() {
         scannerDeviceId: setup.scannerDeviceId,
         scannerStationId: setup.scannerStationId,
         volumeId: volumeId.value,
+        dispatchTicketId: dispatchTicketId.value || undefined,
         batchExternalNo: lifecycle.value?.batchExternalNo,
       })
       archiveContext.value = context.archiveContext ?? null

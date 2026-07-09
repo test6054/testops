@@ -24,7 +24,8 @@
       <UiDataTable
         v-model:current="pagination.current"
         v-model:page-size="pagination.pageSize"
-        class="student-detail-table__data-table"
+        pagination-mode="server"
+        :sticky-header="!embedded"
         :columns="columns"
         :data-source="rows"
         :loading="loading"
@@ -117,9 +118,6 @@ import type {
   RejudgePlanStatusCode,
   RejudgeTriggerTypeCode,
 } from '@/apis/mark/question-analysis'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   approveRejudgePlan,
   executeRejudgePlan,
@@ -129,6 +127,9 @@ import {
   RejudgePlanStatusDescription,
   RejudgeTriggerTypeDescription,
 } from '@/apis/mark/question-analysis'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -201,7 +202,7 @@ const executePlanId = ref<string>('')
 const executeReason = ref('')
 
 const columns: ColumnType<ExamRejudgePlan>[] = [
-  { title: '触发类型', key: 'triggerType', width: 110 },
+  { title: '触发类型', key: 'triggerType', width: 110, fixed: 'left' },
   { title: '受影响题目', key: 'affectedQuestionRefs', width: 180 },
   {
     title: '受影响学生',
@@ -214,7 +215,7 @@ const columns: ColumnType<ExamRejudgePlan>[] = [
   { title: '审批时间', key: 'approvedTime', width: 160 },
   { title: '执行时间', key: 'executedTime', width: 160 },
   { title: '创建时间', key: 'createTime', width: 160 },
-  { title: '操作', key: 'actions', width: 180, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 180 },
 ]
 
 async function reload(): Promise<void> {
@@ -251,7 +252,7 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()

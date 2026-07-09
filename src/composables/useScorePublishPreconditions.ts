@@ -1,10 +1,10 @@
 import type { Ref } from 'vue'
+import { ref } from 'vue'
 import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
 import type { FinalScoreRiskOverviewResponse } from '@/apis/mark/exam-score'
 import message from 'ant-design-vue/es/message'
-import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { AbsenceStatusCode, listAbsenceRecords } from '@/apis/mark/absence'
+import { getAbsenceExamStats } from '@/apis/mark/absence'
 import { useScoreReleaseNavigation } from '@/composables/useScoreReleaseNavigation'
 import { showUserError } from '@/utils/error-handler'
 
@@ -35,13 +35,8 @@ export function useScorePublishPreconditions(options: {
       return
     }
     try {
-      const result = await listAbsenceRecords({
-        examId: options.examId.value,
-        absenceStatus: AbsenceStatusCode.PENDING,
-        pageNum: 1,
-        pageSize: 1,
-      })
-      pendingAbsenceCount.value = result.total
+      const stats = await getAbsenceExamStats({ examId: options.examId.value })
+      pendingAbsenceCount.value = stats.pendingAbsenceCount
     } catch (error) {
       pendingAbsenceCount.value = null
       showUserError(error, '待确认缺考记录查询失败')
@@ -91,10 +86,50 @@ export function useScorePublishPreconditions(options: {
     return true
   }
 
+  async function ensureScoreConfirmPreconditions(): Promise<boolean> {
+    if (!options.examId.value) {
+      return false
+    }
+    await refreshPendingAbsenceCount()
+    if (pendingAbsenceCount.value === null) {
+      message.error('待确认缺考状态未知，请刷新后重试')
+      return false
+    }
+    if (pendingAbsenceCount.value > 0) {
+      message.warning(
+        `当前考试仍有 ${pendingAbsenceCount.value} 条待确认缺考记录，请先完成核对后再确认成绩`,
+      )
+      goToAbsenceConfirm()
+      return false
+    }
+    const overview = options.riskOverview.value
+    if (overview && overview.unreconciledAbsenceCount > 0) {
+      message.warning(
+        `仍有 ${overview.unreconciledAbsenceCount} 名应考学生未完成缺考核对，请先完成缺考 reconcile 后再确认`,
+      )
+      goToAbsenceConfirm()
+      return false
+    }
+    const panel = options.scorePanel.value
+    if (
+      panel
+      && !panel.manualFinalScoreConfirmRequired
+      && panel.blockedDelayedFinalScoreConfirmCount > 0
+    ) {
+      message.warning(
+        `仍有 ${panel.blockedDelayedFinalScoreConfirmCount} 份答卷延迟自动确认失败，请先在成绩确认页逐份确认后再批量确认`,
+      )
+      goScoreConfirm()
+      return false
+    }
+    return true
+  }
+
   return {
     pendingAbsenceCount,
     refreshPendingAbsenceCount,
     ensureScorePublishPreconditions,
+    ensureScoreConfirmPreconditions,
     goToAbsenceConfirm,
   }
 }

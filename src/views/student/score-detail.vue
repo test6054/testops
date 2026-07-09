@@ -8,7 +8,11 @@
           </UiTag>
           <UiTag v-else tone="gray" size="sm">未生成</UiTag>
           <UiTag v-if="isExamConfidential" tone="purple" size="sm">涉密考试</UiTag>
-          <UiTag v-if="detail?.reviewWindowStatus === 'ACTIVE'" tone="orange" size="sm">
+          <UiTag
+            v-if="detail?.reviewWindowStatus === ReviewWindowPolicyStatusCode.ACTIVE"
+            tone="orange"
+            size="sm"
+          >
             复核进行中
           </UiTag>
           <UiTag v-if="detail" tone="blue" size="sm">
@@ -39,7 +43,10 @@
     <template v-else-if="detail">
       <ConfidentialStatusBar v-if="isExamConfidential" class="score-detail__confidential-strip" />
 
-      <div v-if="detail.finalScoreStatus === 'PUBLISHED'" class="score-detail__layout">
+      <div
+        v-if="detail.finalScoreStatus === FinalScoreStatusCode.PUBLISHED"
+        class="score-detail__layout"
+      >
         <WorkbenchSurfaceCard class="score-detail__sheet-card">
           <template #head>
             <div class="score-detail__card-head">
@@ -158,9 +165,9 @@
 
               <section
                 v-if="
-                  currentDetail.improvementSuggestion
-                    || currentDetail.mistakeClusterLabel
-                    || currentDetail.aiDiagnostic
+                  currentDetail.improvementSuggestion ||
+                  currentDetail.mistakeClusterLabel ||
+                  currentDetail.aiDiagnostic
                 "
                 class="answer-panel__section"
               >
@@ -177,7 +184,8 @@
                     <UiTag tone="orange" size="sm">{{ currentDetail.mistakeClusterLabel }}</UiTag>
                   </p>
                   <p v-if="currentDetail.aiDiagnostic" class="answer-panel__ai-line">
-                    <strong>AI 处理说明：</strong>{{ aiLearningDiagnosticText(currentDetail.aiDiagnostic) }}
+                    <strong>AI 处理说明：</strong
+                    >{{ aiLearningDiagnosticText(currentDetail.aiDiagnostic) }}
                   </p>
                 </div>
               </section>
@@ -197,7 +205,7 @@
       </div>
 
       <WorkbenchSurfaceCard
-        v-if="detail.finalScoreStatus === 'PUBLISHED'"
+        v-if="detail.finalScoreStatus === FinalScoreStatusCode.PUBLISHED"
         flush
         class="score-detail__wrong-book-card"
       >
@@ -259,7 +267,7 @@
       </WorkbenchSurfaceCard>
 
       <WorkbenchSurfaceCard
-        v-if="detail.finalScoreStatus === 'PUBLISHED'"
+        v-if="detail.finalScoreStatus === FinalScoreStatusCode.PUBLISHED"
         class="score-detail__profile-card"
       >
         <template #head>
@@ -378,6 +386,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { StudentWrongBookItemResponse } from '@/apis/mark/question-analysis'
+import { pageStudentWrongBook } from '@/apis/mark/question-analysis'
 import type {
   StudentAiDiagnosisItemResponse,
   StudentAiErrorClusterResponse,
@@ -385,6 +394,13 @@ import type {
   StudentQuestionAnswerDetailResponse,
   StudentQuestionScoreVO,
   StudentScoreDetailResponse,
+} from '@/apis/mark/student-exam'
+import {
+  canSubmitReview,
+  getMyAiLearningReport,
+  getMyQuestionAnswerDetail,
+  getMyScoreDetail,
+  ReviewWindowPolicyStatusCode,
 } from '@/apis/mark/student-exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
@@ -400,17 +416,11 @@ import { getImageBlobUrl } from '@/apis/edu/file-management'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import {
   FINAL_SCORE_STATUS_TONE,
+  FinalScoreStatusCode,
   FinalScoreStatusDescription,
 } from '@/apis/mark/final-score-status'
 import { GRADE_STATUS_TONE, GradeStatusDescription } from '@/apis/mark/grade-status'
 import { OBJECTIVE_RESULT_TONE, ObjectiveResultDescription } from '@/apis/mark/objective-result'
-import { pageStudentWrongBook } from '@/apis/mark/question-analysis'
-import {
-  canSubmitReview,
-  getMyAiLearningReport,
-  getMyQuestionAnswerDetail,
-  getMyScoreDetail,
-} from '@/apis/mark/student-exam'
 import { MASTERY_LEVEL_TONE, MasteryLevelDescription } from '@/apis/mark/student-mastery-level'
 import MarkHeatmapSection from '@/components/chart/MarkHeatmapSection.vue'
 import ConfidentialStatusBar from '@/components/mark/ConfidentialStatusBar.vue'
@@ -488,7 +498,7 @@ const sliceLoading = ref(false)
  * 从题目明细中提取所有出现过的 mistakeClusterLabel，供顶部下拉选择。
  * 学生可以按错题聚类快速查看同一类型的错题。
  */
-const clusterLabelOptions = computed<Array<{ value: string, label: string }>>(() => {
+const clusterLabelOptions = computed<Array<{ value: string; label: string }>>(() => {
   const labels = new Set<string>()
   for (const question of detailQuestions.value) {
     if (question.mistakeClusterLabel) {
@@ -557,8 +567,8 @@ const selectedQuestion = computed<StudentQuestionScoreVO | null>(() => {
     return null
   }
   return (
-    filteredQuestions.value.find((item) => item.layoutQuestionId === selectedQuestionId.value)
-    ?? null
+    filteredQuestions.value.find((item) => item.layoutQuestionId === selectedQuestionId.value) ??
+    null
   )
 })
 
@@ -610,7 +620,7 @@ function formatPublishedTotalScore(item: StudentScoreDetailResponse): string {
 }
 
 function formatPublishedScoreSummary(item: StudentScoreDetailResponse): string {
-  if (item.finalScoreStatus !== 'PUBLISHED') {
+  if (item.finalScoreStatus !== FinalScoreStatusCode.PUBLISHED) {
     return '--'
   }
   if (item.dailyScoreFull != null) {
@@ -624,7 +634,7 @@ function formatPublishedFullScore(item: StudentScoreDetailResponse): string {
 }
 
 async function loadWrongBook(): Promise<void> {
-  if (!examId.value || detail.value?.finalScoreStatus !== 'PUBLISHED') {
+  if (!examId.value || detail.value?.finalScoreStatus !== FinalScoreStatusCode.PUBLISHED) {
     wrongBookRows.value = []
     wrongBookTotal.value = 0
     return
@@ -649,7 +659,7 @@ async function loadWrongBook(): Promise<void> {
   }
 }
 
-function handleWrongBookPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleWrongBookPageChange(pageEvent: { current: number; pageSize: number }): void {
   wrongBookPagination.current = pageEvent.current
   wrongBookPagination.pageSize = pageEvent.pageSize
   void loadWrongBook()
@@ -664,7 +674,7 @@ async function loadDetail() {
   try {
     const loadedDetail = await getMyScoreDetail(examId.value)
     detail.value = loadedDetail
-    if (loadedDetail.finalScoreStatus === 'PUBLISHED') {
+    if (loadedDetail.finalScoreStatus === FinalScoreStatusCode.PUBLISHED) {
       wrongBookPagination.current = 1
       await loadWrongBook()
     }
@@ -710,7 +720,7 @@ const errorClusters = computed<StudentAiErrorClusterResponse[]>(
 )
 
 async function loadLearningReport(): Promise<void> {
-  if (!detail.value || detail.value.finalScoreStatus !== 'PUBLISHED') {
+  if (!detail.value || detail.value.finalScoreStatus !== FinalScoreStatusCode.PUBLISHED) {
     learningReport.value = null
     return
   }
@@ -760,7 +770,7 @@ function masteryTone(level: StudentAiDiagnosisItemResponse['masteryLevel']): Bad
  * 答题卡选题后加载题目作答明细；成绩未发布时后端会 CONFLICT，入口已在 selectQuestion 拦截。
  */
 async function selectQuestion(question: StudentQuestionScoreVO): Promise<void> {
-  if (!detail.value || detail.value.finalScoreStatus !== 'PUBLISHED') {
+  if (!detail.value || detail.value.finalScoreStatus !== FinalScoreStatusCode.PUBLISHED) {
     message.warning('成绩尚未发布，暂不能查看答题明细')
     return
   }
@@ -829,8 +839,8 @@ watch(filteredQuestions, (list) => {
     return
   }
   if (
-    !selectedQuestionId.value
-    || !list.some((item) => item.layoutQuestionId === selectedQuestionId.value)
+    !selectedQuestionId.value ||
+    !list.some((item) => item.layoutQuestionId === selectedQuestionId.value)
   ) {
     void selectQuestion(list[0])
   }

@@ -3,9 +3,9 @@
     <template #context>
       <ContextBar title="考试历史">
         <template #status>
-          <UiTag tone="blue" size="sm">{{ exams.length }} 场</UiTag>
-          <UiTag v-if="publishedCount > 0" tone="green" size="sm">
-            已发布 {{ publishedCount }}
+          <UiTag tone="blue" size="sm">{{ examStats?.totalExamCount ?? 0 }} 场</UiTag>
+          <UiTag v-if="(examStats?.publishedCount ?? 0) > 0" tone="green" size="sm">
+            已发布 {{ examStats?.publishedCount }}
           </UiTag>
         </template>
       </ContextBar>
@@ -20,31 +20,34 @@
       </template>
       <template #toolbar>
         <UiFilterBar
-          v-model="historyFilterForm"
+          v-model="historyFilters"
           :fields="historyFilterFields"
           variant="plain"
           search-text="查询"
+          @search="searchExams"
+          @reset="resetExamFilters"
         />
       </template>
 
       <UiDataTable
-        pagination-mode="client"
+        v-model:current="pageNum"
+        v-model:page-size="pageSize"
+        pagination-mode="server"
         :columns="columns"
-        :data-source="filteredExams"
+        :data-source="rows"
         :loading="loading"
-        :page-size="10"
-        :total="filteredExams.length"
+        :total="pageTotal"
         flat
         row-key="examId"
         size="middle"
-        class="history-table student-detail-table__data-table"
+        @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record: item }">
           <template v-if="column.key === 'examName'">
             <button
               type="button"
               class="link-cell"
-              :disabled="item.finalScoreStatus !== 'PUBLISHED'"
+              :disabled="item.finalScoreStatus !== FinalScoreStatusCode.PUBLISHED"
               @click="goDetail(item.examId)"
             >
               {{ item.examName }}
@@ -58,7 +61,9 @@
           </template>
           <template v-else-if="column.key === 'finalScore'">
             <span
-              v-if="item.finalScoreStatus === 'PUBLISHED' && item.finalScore != null"
+              v-if="
+                item.finalScoreStatus === FinalScoreStatusCode.PUBLISHED && item.finalScore != null
+              "
               class="score-cell"
             >
               {{ Number(item.finalScore).toFixed(2) }}
@@ -91,23 +96,24 @@
 
 <script lang="ts" setup>
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
-import type { StudentExamItemVO } from '@/apis/mark/student-exam'
+import type { StudentExamItemVO, StudentExamStatsResponse } from '@/apis/mark/student-exam'
+import {
+  canSubmitReview,
+  getMyExamStats,
+  pageMyExams,
+  ReviewWindowPolicyStatusDescription,
+  STUDENT_REVIEW_WINDOW_STATUS_TONE,
+} from '@/apis/mark/student-exam'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { onActivated, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   FINAL_SCORE_STATUS_CODES,
   FINAL_SCORE_STATUS_TONE,
+  FinalScoreStatusCode,
   FinalScoreStatusDescription,
 } from '@/apis/mark/final-score-status'
-import {
-  canSubmitReview,
-  listMyExams,
-  ReviewWindowPolicyStatusDescription,
-  STUDENT_REVIEW_WINDOW_STATUS_TONE,
-} from '@/apis/mark/student-exam'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -115,23 +121,48 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useQueryTable } from '@/composables/useQueryTable'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'StudentExamHistory' })
 
-const router = useRouter()
-const loading = ref(false)
-const exams = ref<StudentExamItemVO[]>([])
-
-const historyFilterForm = reactive<{
+interface StudentExamHistoryFilters extends Record<string, unknown> {
   keyword: string
   statusFilter?: FinalScoreStatusCode
-}>({
-  keyword: '',
-  statusFilter: undefined,
-})
+}
+
+const router = useRouter()
+const examStats = ref<StudentExamStatsResponse | null>(null)
+
+const {
+  loading,
+  rows,
+  pageNum,
+  pageSize,
+  pageTotal,
+  filters: historyFilters,
+  search: searchExams,
+  resetFilters: resetExamFilters,
+  handlePageChange,
+  reload: reloadExams,
+} = useQueryTable<StudentExamItemVO, StudentExamHistoryFilters>(
+  (params) =>
+    pageMyExams({
+      keyword: params.keyword?.trim() || undefined,
+      finalScoreStatus: params.statusFilter,
+      pageNum: params.pageNum,
+      pageSize: params.pageSize,
+    }),
+  {
+    defaultFilters: (): StudentExamHistoryFilters => ({
+      keyword: '',
+      statusFilter: undefined,
+    }),
+    errorMessage: '考试列表加载失败',
+  },
+)
 
 const statusOptions = FINAL_SCORE_STATUS_CODES.map((value) => ({
   value,
@@ -159,7 +190,14 @@ const historyFilterFields: FilterField[] = [
 ]
 
 const columns: ColumnsType<StudentExamItemVO> = [
-  { title: '考试', key: 'examName', dataIndex: 'examName', width: 260 },
+  {
+    title: '考试',
+    key: 'examName',
+    dataIndex: 'examName',
+    width: 280,
+    ellipsis: true,
+    fixed: 'left',
+  },
   { title: '开始时间', key: 'examStartTime', dataIndex: 'examStartTime', width: 170 },
   { title: '成绩状态', key: 'finalScoreStatus', dataIndex: 'finalScoreStatus', width: 110 },
   {
@@ -171,43 +209,20 @@ const columns: ColumnsType<StudentExamItemVO> = [
   },
   { title: '发布时间', key: 'publishedTime', dataIndex: 'publishedTime', width: 170 },
   { title: '复核窗口', key: 'reviewWindowStatus', dataIndex: 'reviewWindowStatus', width: 120 },
-  { title: '操作', key: 'actions', fixed: 'right', width: 200 },
+  { title: '操作', key: 'actions', width: 200 },
 ]
 
-const filteredExams = computed<StudentExamItemVO[]>(() => {
-  return exams.value.filter((item) => {
-    if (
-      historyFilterForm.statusFilter
-      && item.finalScoreStatus !== historyFilterForm.statusFilter
-    ) {
-      return false
-    }
-    if (historyFilterForm.keyword.trim()) {
-      const kw = historyFilterForm.keyword.trim().toLowerCase()
-      const name = item.examName.toLowerCase()
-      const no = item.examNo.toLowerCase()
-      if (!name.includes(kw) && !no.includes(kw)) {
-        return false
-      }
-    }
-    return true
-  })
-})
-
-const publishedCount = computed(
-  () => exams.value.filter((e) => e.finalScoreStatus === 'PUBLISHED').length,
-)
-
-async function loadExams() {
-  loading.value = true
+async function loadExamStats(): Promise<void> {
   try {
-    exams.value = await listMyExams()
+    examStats.value = await getMyExamStats({})
   } catch (error) {
-    exams.value = []
-    showUserError(error, '考试列表加载失败')
-  } finally {
-    loading.value = false
+    examStats.value = null
+    showUserError(error, '考试统计加载失败')
   }
+}
+
+async function reloadPage(): Promise<void> {
+  await Promise.all([reloadExams(), loadExamStats()])
 }
 
 function finalScoreStatusTone(status: FinalScoreStatusCode): BadgeTone {
@@ -230,9 +245,8 @@ function reviewWindowStatusLabel(item: StudentExamItemVO): string {
   )
 }
 
-/** 未发布成绩列展示固定文案，避免 `--` 让学生误以为数据缺失 */
 function unpublishedScoreText(status: FinalScoreStatusCode): string {
-  if (status === 'PUBLISHED') {
+  if (status === FinalScoreStatusCode.PUBLISHED) {
     return '--'
   }
   return '尚未公布'
@@ -243,7 +257,7 @@ function buildExamHistoryActions(record: StudentExamItemVO): UiTableRowActionIte
     {
       key: 'detail',
       label: '查看详情',
-      disabled: record.finalScoreStatus !== 'PUBLISHED',
+      disabled: record.finalScoreStatus !== FinalScoreStatusCode.PUBLISHED,
     },
     {
       key: 'appeal',
@@ -270,55 +284,47 @@ function goAppeal(examId: string) {
   router.push({ name: 'StudentAppeal', query: { examId } })
 }
 
-onMounted(loadExams)
+onMounted(reloadPage)
 
-onActivated(loadExams)
+onActivated(reloadPage)
 </script>
 
-<style lang="scss" scoped>
+<style scoped lang="less">
+.exam-history-page__table-card {
+  margin-top: 0;
+}
+
 .exam-history-page__list-head {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 16px;
-  font-weight: var(--dp-font-weight-title);
-}
-
-.history-table {
-  :deep(.ant-table-thead > tr > th) {
-    background: var(--ant-color-fill-quaternary);
-    font-weight: 600;
-  }
 }
 
 .link-cell {
-  background: transparent;
-  border: none;
   padding: 0;
+  border: none;
+  background: none;
+  color: var(--nybc-primary);
   cursor: pointer;
-  color: var(--ant-color-primary);
-  font-weight: 500;
-  font-size: 14px;
   text-align: left;
 
-  &:hover {
-    text-decoration: underline;
-  }
-
-  &__sub {
-    margin-top: 2px;
-    font-size: 12px;
-    color: var(--ant-color-text-tertiary);
+  &:disabled {
+    color: inherit;
+    cursor: default;
   }
 }
 
+.link-cell__sub {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--nybc-text-secondary);
+}
+
 .score-cell {
-  font-weight: 600;
-  color: var(--ant-color-success);
   font-variant-numeric: tabular-nums;
 }
 
 .muted {
-  color: var(--ant-color-text-tertiary);
+  color: var(--nybc-text-secondary);
 }
 </style>

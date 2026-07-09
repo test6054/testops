@@ -1,14 +1,13 @@
 /**
  * 扫描一体机互斥规则聚合
  *
- * 把 useKioskWorkflow 中分散的 canStartScan / canSwitchExam / scanBlockedReason 等
+ * 把 useKioskWorkflow 中分散的 canStartDirectScan / canStartSupplementScan 等
  * 全部聚合为统一的 blockedReasons 对象，UI 层只读这一个 computed 决定 disable 状态。
  */
 
 import type { ExamKioskWorkflow } from './useExamKioskWorkflow'
 import { computed } from 'vue'
 import { LocalScanJobStatusCode } from '@/apis/mark/scanner-agent-local'
-import { ScannerKioskScanModeCode } from '@/apis/mark/scanner-kiosk'
 import { resolveKioskActivationGuardMessage } from '../utils/kioskActivationGuard'
 
 const UPLOAD_PHASE_JOB_STATUSES: readonly LocalScanJobStatusCode[] = [
@@ -23,13 +22,13 @@ export interface KioskBlockedReasons {
   switchExam: string
   /** 切换本地扫描仪 */
   switchScanner: string
-  /** 切换扫描模式 / 编辑扫描启动参数 */
-  switchScanMode: string
-  /** 编辑扫描启动设置（补扫参数等） */
-  editScanSetup: string
-  /** 启动扫描（最严格的入口阻断） */
-  startScan: string
-  /** 启动补扫（与 startScan 类似但带补扫专用校验） */
+  /** 重试页登记 */
+  retryPageRegister: string
+  /** 启动首次扫描 */
+  startDirectScan: string
+  /** 打开补扫启动面板 */
+  openSupplementLaunch: string
+  /** 确认补扫并开批次 */
   startSupplementScan: string
   /** 暂停当前任务 */
   pauseJob: string
@@ -54,7 +53,6 @@ export interface KioskBlockedReasons {
 export function useKioskMutex(workflow: ExamKioskWorkflow) {
   /**
    * 当前活动任务在采集 / 上传链路时通用的阻断文案。
-   * SCANNING / PAUSED / READYTOUPLOAD / UPLOADING / RETRYING / FAILED / CANCELLED 都属于"未结束"。
    */
   const jobInflightBlocked = computed(() =>
     workflow.currentJobBlocksWorkspace.value ? '当前扫描任务未结束' : '',
@@ -67,13 +65,23 @@ export function useKioskMutex(workflow: ExamKioskWorkflow) {
     return {
       switchExam: workflow.switchExamBlockedReason.value,
       switchScanner: jobInflightBlocked.value,
-      switchScanMode: jobInflightBlocked.value,
-      editScanSetup: jobInflightBlocked.value,
 
-      startScan: workflow.scanBlockedReason.value || (workflow.loading.value ? '正在处理中' : ''),
+      retryPageRegister:
+        workflow.canRetryPageRegister.value
+          ? ''
+          : workflow.pageRegisterPending.value || workflow.pageRegisterBlocked.value
+            ? '页登记重试条件未满足'
+            : '当前无待重试页登记',
+      startDirectScan:
+        workflow.directScanBlockedReason.value
+        || (workflow.loading.value ? '正在处理中' : ''),
+      openSupplementLaunch:
+        workflow.supplementScanBlockedReason.value
+        || (workflow.loading.value ? '正在处理中' : ''),
       startSupplementScan:
-        workflow.scanBlockedReason.value
-        || (workflow.scanMode.value !== ScannerKioskScanModeCode.SUPPLEMENT ? '当前不在补扫模式' : ''),
+        workflow.supplementScanBlockedReason.value
+        || workflow.supplementLaunchFieldBlockedReason.value
+        || (workflow.loading.value ? '正在处理中' : ''),
 
       pauseJob:
         status === LocalScanJobStatusCode.SCANNING
@@ -125,12 +133,10 @@ export function useKioskMutex(workflow: ExamKioskWorkflow) {
     }
   })
 
-  /** 给定动作 key，返回是否允许执行。UI 层语法糖。 */
   function canDo(action: keyof KioskBlockedReasons): boolean {
     return !blockedReasons.value[action]
   }
 
-  /** 给定动作 key，返回阻断原因（用于 disabled tooltip）。 */
   function reasonOf(action: keyof KioskBlockedReasons): string {
     return blockedReasons.value[action]
   }

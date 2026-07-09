@@ -5,12 +5,15 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 质量评价 - 成绩明细管理
  *
  * 后端契约：
- * - /api/quality/score-records: page-by-batch / batch-summary / list-valid-by-item / detail / create / batch-create / update / delete
+ * - /api/quality/score-records: page-by-batch / batch-summary / page-valid-by-item / detail / create / batch-create / update / delete
  * - /api/quality/score-batches: page（按 qualityCourseId 拉批次列表）
  */
 import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
+import { assessmentItemApi } from '@/apis/quality/assessment-item'
 import type { RubricItemVO } from '@/apis/quality/rubric-item'
+import { rubricItemApi } from '@/apis/quality/rubric-item'
 import type { ScoreBatchVO } from '@/apis/quality/score-batch'
+import { scoreBatchApi } from '@/apis/quality/score-batch'
 import type {
   ScoreRecordBatchSummaryVO,
   ScoreRecordRubricScoreRequest,
@@ -18,7 +21,7 @@ import type {
   ScoreRecordUpdateRequest,
   ScoreRecordVO,
 } from '@/apis/quality/score-record'
-import type { ScoreBatchStatusCode } from '@/apis/quality/types'
+import { scoreRecordApi } from '@/apis/quality/score-record'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { UserDto } from '@/types/api-types.d'
 import type { SignalMetric } from '@/types/workbench'
@@ -26,14 +29,18 @@ import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ExportBusinessType } from '@/apis/edu/export'
-import { assessmentItemApi } from '@/apis/quality/assessment-item'
-import { rubricItemApi } from '@/apis/quality/rubric-item'
-import { scoreBatchApi } from '@/apis/quality/score-batch'
-import { scoreRecordApi } from '@/apis/quality/score-record'
-import { SCORE_BATCH_STATUS_COLOR, ScoreBatchStatusDescription } from '@/apis/quality/types'
+import {
+  SCORE_BATCH_STATUS_COLOR,
+  ScoreBatchStatusCode,
+  ScoreBatchStatusDescription,
+} from '@/apis/quality/types'
 import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import { ClassSelector, CourseSelector, StudentSelector } from '@/components/quality/selectors'
+import {
+  loadBoundedPlanAggregate,
+  loadSelectorFirstPage,
+} from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -62,12 +69,12 @@ const batchColumns: ColumnsType = [
 ]
 
 const recordColumns: ColumnsType = [
-  { title: '学号', dataIndex: 'studentNumber', key: 'studentNumber', width: 120 },
+  { title: '学号', dataIndex: 'studentNumber', key: 'studentNumber', width: 120, fixed: 'left' },
   { title: '姓名', dataIndex: 'studentName', key: 'studentName', width: 100 },
   { title: '考核环节', key: 'assessmentItemRef' },
   { title: '得分 / 满分', key: 'score', width: 140 },
   { title: '状态', key: 'recordStatus', width: 140 },
-  { title: '操作', key: 'actions', width: 180, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 180 },
 ]
 
 const validByItemColumns: ColumnsType = [
@@ -102,13 +109,17 @@ const batchPageNum = ref(1)
 const batchPageSize = ref(DEFAULT_LIST_PAGE_SIZE)
 const batchTotal = ref(0)
 const selectedBatch = ref<ScoreBatchVO | null>(null)
-const { exporting: scoreRecordExporting, exportExcel: exportScoreRecordExcel }
-  = useQualityTableExport()
+const { exporting: scoreRecordExporting, exportExcel: exportScoreRecordExcel } =
+  useQualityTableExport()
 
 const isBatchRecordEditable = computed(() => {
   if (!selectedBatch.value) return false
   const status = selectedBatch.value.status
-  return status !== 'CONFIRMED' && status !== 'PARSING' && status !== 'CANCELLED'
+  return (
+    status !== ScoreBatchStatusCode.CONFIRMED &&
+    status !== ScoreBatchStatusCode.PARSING &&
+    status !== ScoreBatchStatusCode.CANCELLED
+  )
 })
 
 async function refreshSelectedBatch() {
@@ -169,7 +180,7 @@ async function loadBatches() {
   batchStatusPolling.syncPolling()
 }
 
-function handleBatchPageChange(page: { current: number, pageSize: number }): void {
+function handleBatchPageChange(page: { current: number; pageSize: number }): void {
   batchPageNum.value = page.current
   batchPageSize.value = page.pageSize
   void loadBatches()
@@ -179,8 +190,8 @@ const batchStatusPolling = usePolling(() => refreshBatchesQuietly(), {
   getOptions: () => ({
     intervalMs: 3000,
     when:
-      batches.value.some((batch) => batch.status === 'PARSING')
-      || selectedBatch.value?.status === 'PARSING',
+      batches.value.some((batch) => batch.status === ScoreBatchStatusCode.PARSING) ||
+      selectedBatch.value?.status === ScoreBatchStatusCode.PARSING,
   }),
   pauseWhenDocumentHidden: true,
 })
@@ -207,7 +218,7 @@ async function refreshBatchesQuietly(): Promise<void> {
       const updated = page.list.find((item) => item.id === selectedBatch.value!.id)
       if (updated) {
         selectedBatch.value = updated
-        if (updated.status !== 'PARSING') {
+        if (updated.status !== ScoreBatchStatusCode.PARSING) {
           await loadRecords()
         }
       }
@@ -326,7 +337,7 @@ async function loadRecords() {
   }
 }
 
-function handleRecordPageChange(page: { current: number, pageSize: number }): void {
+function handleRecordPageChange(page: { current: number; pageSize: number }): void {
   recordPageNum.value = page.current
   recordPageSize.value = page.pageSize
   void loadRecords()
@@ -337,7 +348,13 @@ async function loadAssessmentItems() {
     assessmentItems.value = []
     return
   }
-  assessmentItems.value = await assessmentItemApi.listByCourse(qualityStore.currentQualityCourseId)
+  assessmentItems.value = await loadSelectorFirstPage((pageNum, pageSize) =>
+    assessmentItemApi.page({
+      pageNum,
+      pageSize,
+      qualityCourseId: qualityStore.currentQualityCourseId!,
+    }),
+  )
 }
 
 /* ========== 信号指标带（SignalBand） ========== */
@@ -423,7 +440,10 @@ async function loadEditorRubrics(assessmentItemId: string, record?: ScoreRecordV
   }
   editorRubricsLoading.value = true
   try {
-    const rubrics = await rubricItemApi.listByItem(assessmentItemId)
+    const rubrics = await loadBoundedPlanAggregate(
+      (pageNum, pageSize) => rubricItemApi.page({ pageNum, pageSize, assessmentItemId }),
+      '评分标准明细',
+    )
     const existingScores = new Map<string, number>()
     for (const item of record?.rubricScores ?? []) {
       if (!Number.isFinite(item.score)) continue
@@ -660,7 +680,7 @@ async function loadValidByItemPage() {
   }
   validByItemLoading.value = true
   try {
-    const page = await scoreRecordApi.listValidByItem({
+    const page = await scoreRecordApi.pageValidByItem({
       assessmentItemId: validByItemId.value,
       qualityCourseId: qualityStore.currentQualityCourseId,
       pageNum: validByItemPageNum.value,
@@ -684,7 +704,7 @@ async function queryValidByItem() {
   await loadValidByItemPage()
 }
 
-function handleValidByItemPageChange(page: { current: number, pageSize: number }): void {
+function handleValidByItemPageChange(page: { current: number; pageSize: number }): void {
   validByItemPageNum.value = page.current
   validByItemPageSize.value = page.pageSize
   void loadValidByItemPage()
@@ -796,7 +816,7 @@ function handleCourseChange(courseId: string | null) {
 
           <UiDataTable
             pagination-mode="server"
-            class="score-record__batches-table student-detail-table__data-table"
+            class="score-record__batches-table"
             :columns="batchColumns"
             :data-source="batches"
             :loading="batchesLoading"
@@ -877,7 +897,7 @@ function handleCourseChange(courseId: string | null) {
 
             <UiDataTable
               pagination-mode="server"
-              class="score-record__records-table student-detail-table__data-table"
+              class="score-record__records-table"
               :columns="recordColumns"
               :data-source="records"
               :loading="recordsLoading"
@@ -1079,7 +1099,6 @@ function handleCourseChange(courseId: string | null) {
       </div>
       <UiDataTable
         pagination-mode="server"
-        class="student-detail-table__data-table"
         :columns="validByItemColumns"
         :data-source="validByItemRecords"
         :loading="validByItemLoading"

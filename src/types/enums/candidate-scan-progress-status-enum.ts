@@ -88,7 +88,4 @@ export const CANDIDATE_SCAN_PROGRESS_STATUS_TONE: Record<CandidateScanProgressSt
 
 
 
-export function isCandidateScanProgressStatusCode(value: string): value is CandidateScanProgressStatusCode {
-  return (ALL_CANDIDATE_SCAN_PROGRESS_STATUS_CODES as readonly string[]).includes(value)
-}
 

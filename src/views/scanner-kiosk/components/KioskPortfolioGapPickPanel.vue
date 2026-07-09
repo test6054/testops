@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { PortfolioGapTaskSummaryInternalVO } from '@/apis/mark/scanner-kiosk'
+import { createAdhocDispatchTicket, pageKioskPortfolioGapTasks } from '@/apis/mark/scanner-kiosk'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { createAdhocDispatchTicket, pageKioskPortfolioGapTasks } from '@/apis/mark/scanner-kiosk'
 import { PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -78,7 +78,7 @@ async function loadTasks() {
   }
 }
 
-function handlePageChange(pageEvent: { current: number, pageSize: number }) {
+function handlePageChange(pageEvent: { current: number; pageSize: number }) {
   pageNum.value = pageEvent.current
   pageSize.value = pageEvent.pageSize
   void loadTasks()
@@ -161,6 +161,7 @@ async function openGapScan(row: PortfolioGapTaskSummaryInternalVO) {
         size="middle"
         flat
         @page-change="handlePageChange"
+        :sticky-header="false"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'categoryName'">

@@ -87,9 +87,23 @@ export interface ProfessionAlgorithmProfileQueryRequest extends QueryDto {
   keyword?: string
 }
 
+/** SignalBand 汇总响应 - 对齐后端 ProfessionAlgorithmProfileSignalSummaryVO */
+export interface ProfessionAlgorithmProfileSignalSummaryVO {
+  totalCount: number
+  enabledCount: number
+  disabledCount: number
+  usableCount: number
+  draftCount: number
+  submittedCount: number
+  confirmedCount: number
+  returnedCount: number
+}
+
 export const professionAlgorithmProfileApi = {
   page: (data: ProfessionAlgorithmProfileQueryRequest) =>
     http.post<PageResult<ProfessionAlgorithmProfileVO>>(`${BASE}/page`, data),
+  signalSummary: (data: ProfessionAlgorithmProfileQueryRequest) =>
+    http.post<ProfessionAlgorithmProfileSignalSummaryVO>(`${BASE}/signal-summary`, data),
   detail: (id: string) => http.post<ProfessionAlgorithmProfileVO>(`${BASE}/detail`, { id }),
   create: (data: ProfessionAlgorithmProfileSaveRequest) =>
     http.post<string>(`${BASE}/create`, data),

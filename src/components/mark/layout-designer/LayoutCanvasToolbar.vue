@@ -52,6 +52,15 @@ function toggleSafeMargin(): void {
   emit('update:show-safe-margin', !props.showSafeMargin)
 }
 
+function onCanvasToolChange(value: string | number): void {
+  switch (value) {
+    case 'select':
+    case 'marquee':
+      emit('update:canvas-tool', value)
+      break
+  }
+}
+
 function onSnapChange(value: SelectValue, _option?: DefaultOptionType | DefaultOptionType[]): void {
   if (typeof value === 'number') {
     emit('update:snap-grid-mm', value)
@@ -69,7 +78,7 @@ function onSnapChange(value: SelectValue, _option?: DefaultOptionType | DefaultO
       <a-radio-group
         :value="canvasTool"
         size="small"
-        @update:value="emit('update:canvas-tool', $event as LayoutCanvasToolCode)"
+        @update:value="onCanvasToolChange"
       >
         <a-radio-button value="select">选择</a-radio-button>
         <a-radio-button value="marquee">框选</a-radio-button>

@@ -5,9 +5,7 @@
         <h3 class="archive-volume-scores-panel__title">成绩完成度确认</h3>
         <div class="archive-volume-scores-panel__actions">
           <UiTag :tone="completionTone" size="sm">
-            {{
-              scoreCompletionLabel(detail.volume.scoreCompletionStatus)
-            }}
+            {{ scoreCompletionLabel(detail.volume.scoreCompletionStatus) }}
           </UiTag>
           <span v-if="confirmMeta" class="archive-volume-scores-panel__meta">{{
             confirmMeta
@@ -59,14 +57,18 @@
     <div class="archive-volume-scores-panel__materials">
       <h3 class="archive-volume-scores-panel__subheading">成绩证明材料</h3>
       <UiDataTable
-        pagination-mode="none"
+        v-model:current="pageNum"
+        v-model:page-size="pageSize"
+        pagination-mode="server"
         :columns="scoreMaterialColumns"
         :data-source="scoreMaterials"
-        :show-pagination="false"
+        :loading="materialsLoading"
+        :total="pageTotal"
         flat
         row-key="materialId"
         size="middle"
         empty-description="暂无成绩证明材料"
+        @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'materialType'">
@@ -100,9 +102,6 @@ import type {
   ArchiveVolumeExamGateResponse,
   ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   ArchiveMaterialTypeCode,
   ArchiveMaterialTypeDescription,
@@ -111,8 +110,12 @@ import {
   ArchiveScoreSourceCode,
   confirmArchiveVolumeScoreCompletion,
   getArchiveVolumeExamGate,
+  pageArchiveVolumeMaterials,
   syncTeachingAffairsScoreCompletion,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { ARCHIVE_TEACHING_AFFAIRS_SCORE_COMPLETION_HINT } from '@/apis/mark/teaching-affairs-sync'
 import ArchiveExamScoreGatePanel from '@/components/archive-volume/ArchiveExamScoreGatePanel.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -120,6 +123,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { buildArchiveMaterialStatusView } from '@/utils/archive-material-status-ui'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -138,12 +142,12 @@ const emit = defineEmits<{
   refreshed: []
 }>()
 
-const SCORE_MATERIAL_TYPES = new Set<ArchiveMaterialTypeCode>([
+const SCORE_MATERIAL_TYPES: ArchiveMaterialTypeCode[] = [
   ArchiveMaterialTypeCode.TRANSCRIPT,
   ArchiveMaterialTypeCode.ITEMIZED_SCORE,
   ArchiveMaterialTypeCode.COURSE_GRADING_BASIS,
   ArchiveMaterialTypeCode.GRADING_INSTRUCTION,
-])
+]
 
 const scoreConfirmSubmitting = ref(false)
 const teachingAffairsSyncing = ref(false)
@@ -152,15 +156,16 @@ const examGate = ref<ArchiveVolumeExamGateResponse | null>(null)
 const teachingAffairsSyncNo = ref('')
 const teachingAffairsSourceSystem = ref(ArchiveScoreSourceCode.TEACHING_AFFAIRS)
 const teachingAffairsProofFileId = ref('')
-
-const scoreMaterials = computed(() =>
-  (props.detail.materials ?? []).filter((item) => SCORE_MATERIAL_TYPES.has(item.materialType)),
-)
+const scoreMaterials = ref<ArchiveVolumeMaterialResponse[]>([])
+const materialsLoading = ref(false)
+const pageNum = ref(1)
+const pageSize = ref(DEFAULT_LIST_PAGE_SIZE)
+const pageTotal = ref(0)
 
 const showExamGate = computed(
   () =>
-    props.detail.volume.scoreSource === ArchiveScoreSourceCode.MARK_INTERNAL
-    && !!props.detail.volume.examId,
+    props.detail.volume.scoreSource === ArchiveScoreSourceCode.MARK_INTERNAL &&
+    !!props.detail.volume.examId,
 )
 
 const showTeachingAffairsGate = computed(
@@ -169,8 +174,8 @@ const showTeachingAffairsGate = computed(
 
 const teachingAffairsGatePassed = computed(
   () =>
-    props.detail.volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.COMPLETED
-    || props.detail.volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.VERIFIED,
+    props.detail.volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.COMPLETED ||
+    props.detail.volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.VERIFIED,
 )
 
 const teachingAffairsGateLabel = computed(() => {
@@ -183,11 +188,11 @@ const teachingAffairsGateLabel = computed(() => {
 const completionTone = computed((): BadgeTone => {
   const code = props.detail.volume.scoreCompletionStatus
   if (
-    code === ArchiveScoreCompletionStatusCode.COMPLETED
-    || code === ArchiveScoreCompletionStatusCode.VERIFIED
+    code === ArchiveScoreCompletionStatusCode.COMPLETED ||
+    code === ArchiveScoreCompletionStatusCode.VERIFIED
   ) {
     return 'green'
-}
+  }
   if (code === ArchiveScoreCompletionStatusCode.NOT_REQUIRED) return 'gray'
   return 'orange'
 })
@@ -222,6 +227,37 @@ function materialTypeLabel(code: ArchiveMaterialTypeCode) {
 
 function materialStatusView(code: ArchiveMaterialSubmissionStatusCode) {
   return buildArchiveMaterialStatusView(code)
+}
+
+async function loadScoreMaterials(): Promise<void> {
+  if (!props.volumeId) {
+    scoreMaterials.value = []
+    pageTotal.value = 0
+    return
+  }
+  materialsLoading.value = true
+  try {
+    const result = await pageArchiveVolumeMaterials({
+      volumeId: props.volumeId,
+      materialTypes: SCORE_MATERIAL_TYPES,
+      pageNum: pageNum.value,
+      pageSize: pageSize.value,
+    })
+    scoreMaterials.value = result.list
+    pageTotal.value = result.total
+  } catch (error) {
+    scoreMaterials.value = []
+    pageTotal.value = 0
+    showUserError(error, '加载成绩证明材料失败')
+  } finally {
+    materialsLoading.value = false
+  }
+}
+
+function handlePageChange(event: { current: number; pageSize: number }): void {
+  pageNum.value = event.current
+  pageSize.value = event.pageSize
+  void loadScoreMaterials()
 }
 
 async function loadExamGate() {
@@ -286,7 +322,16 @@ async function handleSyncTeachingAffairs() {
 
 onMounted(() => {
   void loadExamGate()
+  void loadScoreMaterials()
 })
+
+watch(
+  () => props.volumeId,
+  () => {
+    pageNum.value = 1
+    void loadScoreMaterials()
+  },
+)
 
 watch(
   () => [props.detail.volume.examId, props.detail.volume.scoreSource],

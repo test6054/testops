@@ -10,7 +10,7 @@
     size="middle"
     flat
     bordered
-    class="exam-candidate-workbench-table student-detail-table__data-table"
+    class="exam-candidate-workbench-table"
     @page-change="(pageInfo) => emit('page-change', pageInfo)"
   >
     <template #bodyCell="{ column, index }">
@@ -77,7 +77,6 @@ import {
   CANDIDATE_SCAN_PROGRESS_STATUS_TONE,
   CandidateScanProgressStatusCode,
   CandidateScanProgressStatusDescription,
-  isCandidateScanProgressStatusCode,
 } from '@/types/enums/candidate-scan-progress-status-enum'
 
 defineOptions({ name: 'ExamCandidateWorkbenchTable' })
@@ -107,27 +106,21 @@ const emit = defineEmits<{
 
 const columns = computed<ColumnType<ExamCandidateRosterWorkbenchItemResponse>[]>(() => {
   const cols: ColumnType<ExamCandidateRosterWorkbenchItemResponse>[] = [
-    { title: '考生', key: 'student', width: 200 },
+    { title: '考生', key: 'student', width: 200, fixed: 'left' },
     { title: '班级', key: 'className', width: 160 },
     { title: '扫描状态', key: 'scanProgressStatus', width: 110 },
     { title: '页数', key: 'scanPages', width: 88 },
     { title: '答卷', key: 'paperDisplay', width: 220 },
-    { title: '操作', key: 'actions', width: 160, fixed: 'right' },
+    { title: '操作', key: 'actions', width: 160 },
   ]
   return cols
 })
 
-function scanProgressLabel(status: string): string {
-  if (!isCandidateScanProgressStatusCode(status)) {
-    throw new Error(`考生扫描进度状态契约错误：${status}`)
-  }
+function scanProgressLabel(status: CandidateScanProgressStatusCode): string {
   return CandidateScanProgressStatusDescription[status]
 }
 
-function scanProgressTone(status: string) {
-  if (!isCandidateScanProgressStatusCode(status)) {
-    throw new Error(`考生扫描进度状态契约错误：${status}`)
-  }
+function scanProgressTone(status: CandidateScanProgressStatusCode) {
   return CANDIDATE_SCAN_PROGRESS_STATUS_TONE[status]
 }
 

@@ -80,7 +80,9 @@
         <div v-if="isPackaging" class="archive-exam-review__packaging">
           <div class="archive-exam-review__packaging-head">
             <span>{{ packagingProgressLabel }}</span>
-            <span class="archive-exam-review__packaging-percent">{{ packagingProgressPercent }}%</span>
+            <span class="archive-exam-review__packaging-percent"
+              >{{ packagingProgressPercent }}%</span
+            >
           </div>
           <div class="archive-exam-review__packaging-track">
             <div
@@ -111,13 +113,17 @@
         >
           <a-collapse-panel key="volumes" :header="volumeCollapseHeader">
             <UiDataTable
-              pagination-mode="none"
+              v-model:current="volumePagination.pageNum"
+              v-model:page-size="volumePagination.pageSize"
+              pagination-mode="server"
               :columns="volumeTableColumns"
               :data-source="healthyVolumes"
-              :show-pagination="false"
+              :loading="volumesLoading"
+              :total="volumePagination.total"
               flat
               row-key="volumeId"
               size="small"
+              @page-change="loadVolumes"
             >
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'integrityStatus'">
@@ -169,23 +175,21 @@
 
 <script setup lang="ts">
 import type {
-  ArchiveVolumeEventVO,
   ArchiveVolumeExamArchiveReviewVO,
   ArchiveVolumeExamVolumeProgressItemVO,
   ArchiveVolumeResponse,
 } from '@/apis/mark/archive-volume'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   ArchiveIntegrityStatusDescription,
   ArchiveVolumeStatusDescription,
-  getArchiveVolumeDetail,
   getArchiveVolumeExamReview,
   pageArchiveVolumes,
   retryArchiveVolumeAutoCreate,
 } from '@/apis/mark/archive-volume'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { createExamArchivePackage, retryExamArchivePackaging } from '@/apis/mark/exam-archive'
 import ArchiveDimPill from '@/components/archive-volume/ArchiveDimPill.vue'
 import ArchiveExamAutoCreateStatus from '@/components/archive-volume/ArchiveExamAutoCreateStatus.vue'
@@ -211,6 +215,7 @@ import {
   CLASS_SCOPE_FIX_AUTO_CREATE_FAILURE_CATEGORIES,
   isArchiveAutoCreateFailureCategory,
 } from '@/constants/archive-auto-create-failure-category'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import {
   ArchivePackageStatusCode,
   ArchivePackageStatusDescription,
@@ -220,14 +225,12 @@ import { integrityStatusDimTone, volumeStatusDimTone } from '@/utils/archive-dim
 import { buildArchivePackageLifecycleSteps } from '@/utils/archive-package-lifecycle'
 import { showUserError } from '@/utils/error-handler'
 import { formatFileSize } from '@/utils/format'
-import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { resolveArchiveGateWorkflowSteps } from '@/utils/workflow-readiness/archive-gate-readiness'
 
 defineOptions({ name: 'TeacherArchiveVolumeExamProgress' })
 
 const DEFAULT_RETENTION_YEARS = 10
-const EXAM_ARCHIVE_VOLUME_PAGE_SIZE = 50
 const PACKAGING_POLL_MS = 5000
 
 const route = useRoute()
@@ -249,7 +252,8 @@ const loading = ref(true)
 const loadFailed = ref(false)
 const review = ref<ArchiveVolumeExamArchiveReviewVO | null>(null)
 const healthyVolumes = ref<ArchiveVolumeResponse[]>([])
-const events = ref<ArchiveVolumeEventVO[]>([])
+const volumePagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
+const volumesLoading = ref(false)
 const retrying = ref(false)
 const packagingActionLoading = ref(false)
 const pollTimedOut = ref(false)
@@ -307,8 +311,8 @@ const canCreatePackage = computed(() => {
 
 const showRetryPackagingAction = computed(
   () =>
-    gateOpen.value
-    && archivePackage.value?.archiveStatus === ArchivePackageStatusCode.PACKAGING_FAILED,
+    gateOpen.value &&
+    archivePackage.value?.archiveStatus === ArchivePackageStatusCode.PACKAGING_FAILED,
 )
 
 const reviewStatusLabel = computed(() => {
@@ -331,20 +335,20 @@ const reviewStatusLabel = computed(() => {
 const reviewStatusTone = computed(() => {
   const pkgStatus = archivePackage.value?.archiveStatus
   if (
-    pkgStatus === ArchivePackageStatusCode.ACTIVE
-    || pkgStatus === ArchivePackageStatusCode.STORED
+    pkgStatus === ArchivePackageStatusCode.ACTIVE ||
+    pkgStatus === ArchivePackageStatusCode.STORED
   ) {
     return 'green' as const
   }
   if (
-    pkgStatus === ArchivePackageStatusCode.PACKAGING
-    || pkgStatus === ArchivePackageStatusCode.DRAFT
+    pkgStatus === ArchivePackageStatusCode.PACKAGING ||
+    pkgStatus === ArchivePackageStatusCode.DRAFT
   ) {
     return 'blue' as const
   }
   if (
-    pkgStatus === ArchivePackageStatusCode.PACKAGING_FAILED
-    || pkgStatus === ArchivePackageStatusCode.DESTRUCTION_FAILED
+    pkgStatus === ArchivePackageStatusCode.PACKAGING_FAILED ||
+    pkgStatus === ArchivePackageStatusCode.DESTRUCTION_FAILED
   ) {
     return 'red' as const
   }
@@ -368,8 +372,8 @@ const reviewSignals = computed<SignalMetric[]>(() => {
       key: 'archive-status',
       label: '归档状态',
       value:
-        pkg?.archiveStatusLabel
-        ?? (pkg?.archiveStatus
+        pkg?.archiveStatusLabel ??
+        (pkg?.archiveStatus
           ? strictEnumLabel(ArchivePackageStatusDescription, pkg.archiveStatus, 'archiveStatus')
           : '未创建'),
       tone: reviewStatusTone.value,
@@ -400,31 +404,31 @@ const reviewSignals = computed<SignalMetric[]>(() => {
 
 const showVolumeCollapse = computed(
   () =>
-    gateOpen.value
-    && (healthyVolumes.value.length > 0
-      || hasAutoCreateFailure.value
-      || examGate.value?.autoCreatePendingStatus != null),
+    gateOpen.value &&
+    (volumePagination.total > 0 ||
+      hasAutoCreateFailure.value ||
+      examGate.value?.autoCreatePendingStatus != null),
 )
 
 const volumeCollapseHeader = computed(() => {
   const gate = examGate.value
   const expected = expectedAutoCreateVolumeCount.value
-  const healthy = gate?.healthyAutoCreateVolumeCount ?? healthyVolumes.value.length
+  const healthy = gate?.healthyAutoCreateVolumeCount ?? volumePagination.total
   if (expected != null && expected > 0) {
     return `院系归档任务（${healthy}/${expected}）`
   }
-  if (healthyVolumes.value.length > 0) {
-    return `院系归档任务（${healthyVolumes.value.length} 个）`
+  if (volumePagination.total > 0) {
+    return `院系归档任务（${healthy} 个）`
   }
   return '院系归档任务'
 })
 
 const showVolumeAutoCreateStatus = computed(
   () =>
-    gateOpen.value
-    && (hasAutoCreateFailure.value
-      || examGate.value?.autoCreatePendingStatus != null
-      || showRetryAutoCreate.value),
+    gateOpen.value &&
+    (hasAutoCreateFailure.value ||
+      examGate.value?.autoCreatePendingStatus != null ||
+      showRetryAutoCreate.value),
 )
 
 const volumeTableColumns = computed(() => {
@@ -435,37 +439,32 @@ const volumeTableColumns = computed(() => {
     { title: '卷状态', key: 'volumeStatus' },
     { title: '操作', key: 'action', width: 96 },
   ]
-  if ((expectedAutoCreateVolumeCount.value ?? 0) > 1 || healthyVolumes.value.length > 1) {
+  if ((expectedAutoCreateVolumeCount.value ?? 0) > 1 || volumePagination.total > 1) {
     columns.splice(2, 0, { title: '主链进度', key: 'lifecycleProgress', width: 96 })
   }
   return columns
 })
 
-const autoCreateFailedEvent = computed(() =>
-  events.value.find((item) => item.eventType === 'AUTO_CREATE_FAILED'),
+const hasAutoCreateFailure = computed(
+  () =>
+    examGate.value?.autoCreateFailureStubPresent === true ||
+    examGate.value?.autoCreatePendingStatus ===
+      ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED,
 )
 
 const autoCreateFailedNeedsClassScope = computed(() => {
   const category = examGate.value?.autoCreateFailureCategory
   return (
-    category != null
-    && isArchiveAutoCreateFailureCategory(category)
-    && CLASS_SCOPE_FIX_AUTO_CREATE_FAILURE_CATEGORIES.has(category)
+    category != null &&
+    isArchiveAutoCreateFailureCategory(category) &&
+    CLASS_SCOPE_FIX_AUTO_CREATE_FAILURE_CATEGORIES.has(category)
   )
 })
 
-const hasAutoCreateFailure = computed(
-  () =>
-    examGate.value?.autoCreateFailureStubPresent === true
-    || autoCreateFailedEvent.value != null
-    || examGate.value?.autoCreatePendingStatus
-    === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED,
-)
-
 const showRetryAutoCreate = computed(
   () =>
-    examGate.value?.archiveAutoCreateRetryAllowed === true
-    && !autoCreateFailedNeedsClassScope.value,
+    examGate.value?.archiveAutoCreateRetryAllowed === true &&
+    !autoCreateFailedNeedsClassScope.value,
 )
 
 const showNonOwnerHint = computed(() => {
@@ -477,9 +476,9 @@ const showNonOwnerHint = computed(() => {
     return false
   }
   return (
-    hasAutoCreateFailure.value
-    || gate.autoCreatePendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED
-    || (gate.gateOpen === true && !gate.autoCreateFailureStubPresent)
+    hasAutoCreateFailure.value ||
+    gate.autoCreatePendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED ||
+    (gate.gateOpen === true && !gate.autoCreateFailureStubPresent)
   )
 })
 
@@ -505,10 +504,10 @@ const autoCreateFailedDescription = computed(() => {
   const category = examGate.value?.autoCreateFailureCategory
   if (category && isArchiveAutoCreateFailureCategory(category)) {
     const base = ArchiveAutoCreateFailureCategoryHintDescription[category]
-    const detail = examGate.value?.autoCreateLastError ?? autoCreateFailedEvent.value?.reason
+    const detail = examGate.value?.autoCreateLastError
     return detail ? `${base}（${detail}）` : base
   }
-  const reason = autoCreateFailedEvent.value?.reason ?? examGate.value?.autoCreateLastError ?? ''
+  const reason = examGate.value?.autoCreateLastError ?? ''
   return reason || '请查看事件诊断并联系管理员'
 })
 
@@ -540,32 +539,30 @@ function integrityStatusLabel(code: ArchiveVolumeResponse['integrityStatus']) {
   return strictEnumLabel(ArchiveIntegrityStatusDescription, code, 'integrityStatus')
 }
 
-function isAutoCreateFailureStub(vol: ArchiveVolumeResponse): boolean {
-  return vol.departmentId == null || vol.departmentId === ''
-}
-
 async function loadVolumes() {
   if (!examId.value) {
     healthyVolumes.value = []
-    events.value = []
+    volumePagination.total = 0
     return
   }
-  const list = await readAllPages(
-    (pageNum) =>
-      pageArchiveVolumes({
-        examId: examId.value!,
-        pageNum,
-        pageSize: EXAM_ARCHIVE_VOLUME_PAGE_SIZE,
-      }),
-    '加载归档任务失败',
-  )
-  healthyVolumes.value = list.filter((item) => !isAutoCreateFailureStub(item))
-  const stubRow = list.find((item) => isAutoCreateFailureStub(item))
-  if (stubRow) {
-    const detail = await getArchiveVolumeDetail(stubRow.volumeId)
-    events.value = detail.events
-  } else {
-    events.value = []
+  volumesLoading.value = true
+  try {
+    const page = await pageArchiveVolumes({
+      examId: examId.value,
+      excludeAutoCreateFailureStub: true,
+      pageNum: volumePagination.pageNum,
+      pageSize: volumePagination.pageSize,
+    })
+    healthyVolumes.value = page.list
+    volumePagination.total = page.total
+    volumePagination.pageNum = page.pageNum
+    volumePagination.pageSize = page.pageSize
+  } catch (error) {
+    healthyVolumes.value = []
+    volumePagination.total = 0
+    showUserError(error, '加载归档任务失败')
+  } finally {
+    volumesLoading.value = false
   }
 }
 

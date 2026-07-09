@@ -63,7 +63,7 @@
           :expanded-row-keys="expandedRowKeys"
           empty-kind="first-run"
           empty-description="当前筛选下暂无仲裁任务"
-          class="arbitration-table student-detail-table__data-table"
+          class="arbitration-table"
           @expand="handleExpandChange"
           @page-change="handlePageChange"
         >
@@ -173,8 +173,17 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type {ReviewQuestionProgressItemResponse} from '@/apis/mark/exam-progress';
+import type { ReviewQuestionProgressItemResponse } from '@/apis/mark/exam-progress'
+import { getReviewQuestionProgressSummary } from '@/apis/mark/exam-progress'
 import type { ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
+import {
+  getReviewArbitrationSummary,
+  listReviewTasks,
+  REVIEW_TASK_STATUS_TONE,
+  ReviewTaskStatusCode,
+  ReviewTaskStatusDescription,
+  ReviewTaskTypeCode,
+} from '@/apis/mark/exam-review-task'
 import type {
   BadgeTone,
   FilterField,
@@ -184,15 +193,6 @@ import type {
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onActivated, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { getMarkingProgress } from '@/apis/mark/exam-progress'
-import {
-  getReviewArbitrationSummary,
-  listReviewTasks,
-  REVIEW_TASK_STATUS_TONE,
-  ReviewTaskStatusCode,
-  ReviewTaskStatusDescription,
-  ReviewTaskTypeCode,
-} from '@/apis/mark/exam-review-task'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -239,7 +239,7 @@ const statusTab = ref<StatusTabKey>('pending')
 const filterQuestion = ref('')
 const filterTeacherUserId = ref('')
 const expandedRowKeys = ref<string[]>([])
-const questionOptions = ref<Array<{ label: string, value: string }>>([])
+const questionOptions = ref<Array<{ label: string; value: string }>>([])
 const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
 
 const actionableCount = computed(() => pendingCount.value + inProgressMineCount.value)
@@ -335,7 +335,7 @@ const filterModel = computed({
 })
 
 const columns: ColumnType<ReviewTaskItemResponse>[] = [
-  { title: '题号', key: 'questionNo', width: 96, align: 'center' },
+  { title: '题号', key: 'questionNo', width: 96, align: 'center', fixed: 'left' },
   { title: '考生', key: 'student', width: 140 },
   { title: '答卷', key: 'paperDisplay', width: 160 },
   { title: '满分', key: 'fullScore', width: 72, align: 'right' },
@@ -343,7 +343,7 @@ const columns: ColumnType<ReviewTaskItemResponse>[] = [
   { title: '指派教师', key: 'assignedTeacher', width: 120 },
   { title: '状态', key: 'status', width: 96, align: 'center' },
   { title: '更新时间', key: 'updateTime', width: 168 },
-  { title: '操作', key: 'actions', width: 160, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 160 },
 ]
 
 function reviewStatusTone(value: ReviewTaskStatusCode): BadgeTone {
@@ -418,10 +418,13 @@ function handleArbitrationAction(key: string, record: ReviewTaskItemResponse): v
 
 /** 待领取或当前教师进行中的任务可进入仲裁工作台。 */
 function isActionableTask(record: ReviewTaskItemResponse): boolean {
-  if (record.status === 'PENDING') {
+  if (record.status === ReviewTaskStatusCode.PENDING) {
     return true
   }
-  return record.status === 'IN_PROGRESS' && record.assignedTeacherUserId === currentUserId.value
+  return (
+    record.status === ReviewTaskStatusCode.IN_PROGRESS &&
+    record.assignedTeacherUserId === currentUserId.value
+  )
 }
 
 function handleSignalClick(key: string): void {
@@ -451,7 +454,7 @@ function resetFilters(): void {
   void loadTasks()
 }
 
-function handlePageChange(event: { current: number, pageSize: number }): void {
+function handlePageChange(event: { current: number; pageSize: number }): void {
   pageNum.value = event.current
   pageSize.value = event.pageSize
   void loadTasks()
@@ -513,8 +516,8 @@ async function loadQuestionOptions(): Promise<void> {
     return
   }
   try {
-    const progress = await getMarkingProgress(selectedExamId.value)
-    questionOptions.value = (progress.reviewQuestionProgressList ?? [])
+    const questionSummary = await getReviewQuestionProgressSummary(selectedExamId.value)
+    questionOptions.value = questionSummary.items
       .map((item: ReviewQuestionProgressItemResponse) => item.questionNo)
       .filter((questionNo): questionNo is string => questionNo.trim().length > 0)
       .sort((a, b) => a.localeCompare(b, 'zh-CN', { numeric: true }))

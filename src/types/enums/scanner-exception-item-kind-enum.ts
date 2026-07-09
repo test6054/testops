@@ -5,6 +5,7 @@ export enum ScannerExceptionItemKindCode {
   COMMITTING = 'COMMITTING',
   MIXED_BATCH = 'MIXED_BATCH',
   PAGE_REGISTER_BLOCKED = 'PAGE_REGISTER_BLOCKED',
+  PARTIAL_TAIL = 'PARTIAL_TAIL',
 }
 
 export const ALL_SCANNER_EXCEPTION_ITEM_KIND_CODES = [
@@ -13,6 +14,7 @@ export const ALL_SCANNER_EXCEPTION_ITEM_KIND_CODES = [
   ScannerExceptionItemKindCode.COMMITTING,
   ScannerExceptionItemKindCode.MIXED_BATCH,
   ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED,
+  ScannerExceptionItemKindCode.PARTIAL_TAIL,
 ] as const
 
 export const ScannerExceptionItemKindDescription: Record<ScannerExceptionItemKindCode, string> = {
@@ -21,4 +23,5 @@ export const ScannerExceptionItemKindDescription: Record<ScannerExceptionItemKin
   [ScannerExceptionItemKindCode.COMMITTING]: '合成中工单',
   [ScannerExceptionItemKindCode.MIXED_BATCH]: '疑似混扫',
   [ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED]: '页登记阻断',
+  [ScannerExceptionItemKindCode.PARTIAL_TAIL]: '批次余页未完整切卷',
 }

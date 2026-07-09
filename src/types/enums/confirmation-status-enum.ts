@@ -19,3 +19,4 @@ export const ConfirmationStatusDescription: Record<ConfirmationStatusCode, strin
   [ConfirmationStatusCode.CONFIRMED]: '已确认',
   [ConfirmationStatusCode.RETURNED]: '已退回',
 }
+

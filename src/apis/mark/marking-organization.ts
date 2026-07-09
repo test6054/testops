@@ -5,36 +5,35 @@ import type { MarkAiReferenceExperienceAuditResponse } from '@/apis/mark/grading
 import type { WorkflowBlockingItem } from '@/components/workbench/workflow-readiness/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { AllocationUnitCode } from '@/types/enums/allocation-unit-enum'
-import type { AnonymityModeCode } from '@/types/enums/anonymity-mode-enum'
-import type { AnonymousTokenPolicyCode } from '@/types/enums/anonymous-token-policy-enum'
-import type { EffectiveStatusCode } from '@/types/enums/effective-status-enum'
-import type { MarkingAllocationModeCode } from '@/types/enums/marking-allocation-mode-enum'
-import type { MarkingReassignModeCode } from '@/types/enums/marking-reassign-mode-enum'
-import type { MarkingSessionPhaseCode } from '@/types/enums/marking-session-phase-enum'
-import http from '@/config/axios'
 /** 阅卷组织列表默认分页大小（SessionListQuery / MarkingTaskQuery 缺省时使用） */
-import { EXPORT_PAGE_SIZE } from '@/constants/pagination'
 import {
   ALL_ALLOCATION_UNIT_CODES,
   AllocationUnitDescription,
 } from '@/types/enums/allocation-unit-enum'
+import type { AnonymityModeCode } from '@/types/enums/anonymity-mode-enum'
+import type { AnonymousTokenPolicyCode } from '@/types/enums/anonymous-token-policy-enum'
 import {
   ALL_ANONYMOUS_TOKEN_POLICY_CODES,
   AnonymousTokenPolicyDescription,
 } from '@/types/enums/anonymous-token-policy-enum'
-import {
-  FormalSessionStatusCode,
-  FormalSessionStatusDescription,
-} from '@/types/enums/formal-session-status-enum'
+import type { EffectiveStatusCode } from '@/types/enums/effective-status-enum'
+import type { MarkingAllocationModeCode } from '@/types/enums/marking-allocation-mode-enum'
 import {
   ALL_MARKING_ALLOCATION_MODE_CODES,
   MarkingAllocationModeDescription,
 } from '@/types/enums/marking-allocation-mode-enum'
-import { MarkingOrganizationStatusCode } from '@/types/enums/marking-organization-status-enum'
+import type { MarkingReassignModeCode } from '@/types/enums/marking-reassign-mode-enum'
 import {
   ALL_MARKING_REASSIGN_MODE_CODES,
   MarkingReassignModeDescription,
 } from '@/types/enums/marking-reassign-mode-enum'
+import type { MarkingSessionPhaseCode } from '@/types/enums/marking-session-phase-enum'
+import http from '@/config/axios'
+import {
+  FormalSessionStatusCode,
+  FormalSessionStatusDescription,
+} from '@/types/enums/formal-session-status-enum'
+import { MarkingOrganizationStatusCode } from '@/types/enums/marking-organization-status-enum'
 import {
   ALL_MARKING_TASK_STATUS_CODES,
   MarkingTaskStatusCode,
@@ -47,7 +46,6 @@ import {
   TrialSessionStatusDescription,
 } from '@/types/enums/trial-session-status-enum'
 import { rejectUserError } from '@/utils/error-handler'
-import { readAllPages } from '@/utils/page-result'
 
 export { ALL_ALLOCATION_UNIT_CODES, AllocationUnitCode } from '@/types/enums/allocation-unit-enum'
 export { AllocationUnitDescription } from '@/types/enums/allocation-unit-enum'
@@ -131,8 +129,8 @@ export const MARKING_ALLOCATION_MODE_OPTIONS: Array<{
   label: MarkingAllocationModeDescription[value],
 }))
 
-export const ALLOCATION_UNIT_OPTIONS: Array<{ value: AllocationUnitCode, label: string }>
-  = ALL_ALLOCATION_UNIT_CODES.map((value) => ({
+export const ALLOCATION_UNIT_OPTIONS: Array<{ value: AllocationUnitCode; label: string }> =
+  ALL_ALLOCATION_UNIT_CODES.map((value) => ({
     value,
     label: AllocationUnitDescription[value],
   }))
@@ -346,6 +344,7 @@ export interface MarkingPageAnnotationSubmitItem {
 export interface MarkingTaskQueryRequest extends QueryDto {
   examId: string
   groupId?: string
+  groupIds?: string[]
   sessionId?: string
   reviewerUserId?: string
   taskStatus?: MarkingTaskStatusCode
@@ -864,20 +863,6 @@ export function getSessionCreateReadiness(
   )
 }
 
-/**
- * 查询试评会话列表（自动分页拉全）。
- * POST /api/mark/organization/trial/list
- */
-export async function listTrialSessions(
-  request: SessionListQueryRequest,
-): Promise<TrialSessionResponse[]> {
-  const pageSize = request.pageSize ?? EXPORT_PAGE_SIZE
-  return readAllPages(
-    (pageNum) => pageTrialSessions({ ...request, pageNum, pageSize }),
-    '试评会话列表加载失败，请稍后重试',
-  )
-}
-
 // ===================== 正评会话 =====================
 
 /**
@@ -927,17 +912,20 @@ export function getFormalSessionWorkbenchSummary(
   )
 }
 
-/**
- * 查询正评会话列表（自动分页拉全）。
- * POST /api/mark/organization/formal/list
- */
-export async function listFormalSessions(
-  request: SessionListQueryRequest,
-): Promise<FormalSessionResponse[]> {
-  const pageSize = request.pageSize ?? EXPORT_PAGE_SIZE
-  return readAllPages(
-    (pageNum) => pageFormalSessions({ ...request, pageNum, pageSize }),
-    '正评会话列表加载失败，请稍后重试',
+/** 阅卷组织题组任务进度项 - 对应 MarkingOrganizationGroupTaskProgressItemResponse */
+export interface MarkingOrganizationGroupTaskProgressItemResponse {
+  groupId: string
+  totalTaskCount: number
+  finalizedTaskCount: number
+}
+
+/** 查询阅卷组织题组任务进度。POST /api/mark/organization/group-task-progress */
+export function listOrganizationGroupTaskProgress(
+  request: SessionSummaryQueryRequest,
+): Promise<MarkingOrganizationGroupTaskProgressItemResponse[]> {
+  return http.post<MarkingOrganizationGroupTaskProgressItemResponse[]>(
+    '/api/mark/organization/group-task-progress',
+    request,
   )
 }
 
@@ -986,20 +974,6 @@ export function pageMarkingTasks(
   request: MarkingTaskQueryRequest,
 ): Promise<PageResult<MarkingTaskResponse>> {
   return http.post<PageResult<MarkingTaskResponse>>('/api/mark/organization/task/list', request)
-}
-
-/**
- * 查询阅卷任务列表（自动分页拉全）。
- * POST /api/mark/organization/task/list
- */
-export async function listMarkingTasks(
-  request: MarkingTaskQueryRequest,
-): Promise<MarkingTaskResponse[]> {
-  const pageSize = request.pageSize ?? EXPORT_PAGE_SIZE
-  return readAllPages(
-    (pageNum) => pageMarkingTasks({ ...request, pageNum, pageSize }),
-    '阅卷任务列表加载失败，请稍后重试',
-  )
 }
 
 /** 单任务详情查询请求 - 对应后端 MarkingTaskDetailQueryRequest */
@@ -1204,8 +1178,8 @@ export async function getMarkingScanPageDisplayBlobUrl(
     request,
   )
   const rawContentType = response.headers['content-type']
-  const contentType
-    = typeof rawContentType === 'string'
+  const contentType =
+    typeof rawContentType === 'string'
       ? rawContentType
       : Array.isArray(rawContentType)
         ? rawContentType.join(';')

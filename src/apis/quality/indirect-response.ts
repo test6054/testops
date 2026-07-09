@@ -10,6 +10,9 @@ import type {
   SurveyRespondentIdentityItemRequest,
   SurveyRespondentIdentityItemVO,
 } from '@/apis/public-survey'
+import type { PageResult, QueryDto } from '@/types'
+import type { IndirectResponseConversionFilterCode } from '@/types/enums/indirect-response-conversion-filter-enum'
+import type { ManualConversionStatusCode } from '@/types/enums/manual-conversion-status-enum'
 import type { RespondentTypeCode } from '@/types/enums/respondent-type-enum'
 import http from '@/config/axios'
 
@@ -31,6 +34,7 @@ export interface IndirectEvaluationResponseVO {
   validFlag?: boolean | null
   invalidReason?: string
   conversionPending?: boolean
+  manualConversionStatus?: ManualConversionStatusCode
   receivedTime?: string
   submissionId?: string
   respondentName?: string
@@ -55,6 +59,8 @@ export interface IndirectEvaluationResponseSaveRequest {
   clearConvertedScore?: boolean
   openText?: string
   validFlag?: boolean | null
+  /** 更新时显式将 valid_flag 置为 NULL（待确认有效样本） */
+  pendingValidConfirm?: boolean
   invalidReason?: string
   receivedTime?: string
 }
@@ -112,11 +118,44 @@ export interface IndirectResponseDocumentAiImportRequest {
   sourceFileId: string
 }
 
+export interface IndirectEvaluationResponseQueryRequest extends QueryDto {
+  formId?: string
+  itemId?: string
+  validFlag?: boolean
+  conversionFilter?: IndirectResponseConversionFilterCode
+  keyword?: string
+}
+
+export {
+  ALL_INDIRECT_RESPONSE_CONVERSION_FILTER_CODES,
+  IndirectResponseConversionFilterCode,
+  IndirectResponseConversionFilterDescription,
+} from '@/types/enums/indirect-response-conversion-filter-enum'
+
+export interface IndirectItemResponseSignalSummaryVO {
+  pendingCount: number
+  convertedCount: number
+  noSubstantiveCount: number
+  validCount: number
+  invalidCount: number
+  totalCount: number
+}
+
+/** 间接评价答卷换算审计时间线条目，对齐 IndirectConversionAuditLogVO */
+export interface IndirectConversionAuditLogVO {
+  id: string
+  responseId: string
+  itemId: string
+  oldScore?: number
+  newScore?: number
+  operatorId?: string
+  operatorNickName?: string
+  operateTime?: string
+}
+
 export const indirectResponseApi = {
-  listByForm: (formId: string) =>
-    http.post<IndirectEvaluationResponseVO[]>(`${BASE}/list-by-form`, { id: formId }),
-  listByItem: (itemId: string) =>
-    http.post<IndirectEvaluationResponseVO[]>(`${BASE}/list-by-item`, { id: itemId }),
+  page: (data: IndirectEvaluationResponseQueryRequest) =>
+    http.post<PageResult<IndirectEvaluationResponseVO>>(`${BASE}/page`, data),
   detail: (id: string) => http.post<IndirectEvaluationResponseVO>(`${BASE}/detail`, { id }),
   create: (data: IndirectEvaluationResponseSaveRequest) =>
     http.post<string>(`${BASE}/create`, data),
@@ -128,8 +167,13 @@ export const indirectResponseApi = {
   /** 统计某题项的有效样本数（用于覆盖率计算） */
   countValidByItem: (itemId: string) =>
     http.post<number>(`${BASE}/count-valid-by-item`, { id: itemId }),
-  countPendingConversionByItem: (itemId: string) =>
-    http.post<number>(`${BASE}/count-pending-conversion-by-item`, { id: itemId }),
+  itemSignalSummary: (itemId: string) =>
+    http.post<IndirectItemResponseSignalSummaryVO>(`${BASE}/item-signal-summary`, { id: itemId }),
+  /** 重建题项答卷统计；题项改型或 C9 巡检告警后人工对账 */
+  rebuildItemStats: (itemId: string) =>
+    http.post<void>(`${BASE}/rebuild-item-stats`, { id: itemId }),
+  conversionAuditTimeline: (responseId: string) =>
+    http.post<IndirectConversionAuditLogVO[]>(`${BASE}/conversion-audit-timeline`, { id: responseId }),
   /**
    * 从 PDF / DOCX / 图片中同步抽取答卷文本（不写库，供对照手工录入）。
    * 配合 ImportResponseDocumentModal「仅抽取文本」模式；批量结构化仍走 Excel。

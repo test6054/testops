@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ScannerAgentReleaseResponse } from '@/apis/mark/scanner-agent-release'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   deleteScannerAgentRelease,
   pageScannerAgentReleases,
   publishScannerAgentRelease,
   registerScannerAgentRelease,
 } from '@/apis/mark/scanner-agent-release'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -98,7 +98,7 @@ const filterFields = computed<FilterField[]>(() => [
 ])
 
 const columns: ColumnsType<ScannerAgentReleaseResponse> = [
-  { title: '版本', dataIndex: 'version', key: 'version', width: 120 },
+  { title: '版本', dataIndex: 'version', key: 'version', width: 120, fixed: 'left' },
   { title: '安装包', dataIndex: 'fileName', key: 'fileName', ellipsis: true },
   { title: '大小', dataIndex: 'fileSize', key: 'fileSize', width: 100, align: 'right' },
   { title: '发布状态', dataIndex: 'published', key: 'published', width: 100, align: 'center' },
@@ -257,7 +257,7 @@ function handleResetSearch() {
   void loadReleases()
 }
 
-function handlePageChange(pageEvent: { current: number, pageSize: number }) {
+function handlePageChange(pageEvent: { current: number; pageSize: number }) {
   pagination.current = pageEvent.current
   pagination.pageSize = pageEvent.pageSize
   void loadReleases()
@@ -406,7 +406,8 @@ onMounted(() => {
       @ok="submitPublish"
     >
       <p v-if="publishTarget">
-        将 <strong>{{ publishTarget.version }}</strong>（{{ publishTarget.fileName }}）设为当前发布版本，其他已发布包会自动下线。
+        将 <strong>{{ publishTarget.version }}</strong
+        >（{{ publishTarget.fileName }}）设为当前发布版本，其他已发布包会自动下线。
       </p>
       <a-form-item v-if="publishTarget && isMsiPackage(publishTarget)" label="主动推送更新">
         <a-checkbox v-model:checked="publishPushEnabled">

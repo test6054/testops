@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { ArchiveVolumeDetailResponse } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { computed, ref, watch } from 'vue'
 import {
   approveArchiveVolumeDepartmentReview,
   getArchiveVolumeDetail,
   rejectArchiveVolumeDepartmentReview,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
@@ -23,7 +23,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  'completed': []
+  completed: []
   'open-detail': [volumeId: string, tabKey?: string]
 }>()
 
@@ -37,8 +37,8 @@ const showRejectForm = ref(false)
 
 const canApprove = computed(
   () =>
-    detail.value?.volume.volumeStatus === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING
-    && detail.value?.capabilities?.canApproveDepartmentReview === true,
+    detail.value?.volume.volumeStatus === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING &&
+    detail.value?.capabilities?.canApproveDepartmentReview === true,
 )
 
 const canShowSummary = computed(
@@ -150,7 +150,11 @@ function openDetail(tabKey?: string) {
         <span v-if="detail.volume.teachingClassName">{{ detail.volume.teachingClassName }}</span>
         <span v-if="detail.volume.departmentName">{{ detail.volume.departmentName }}</span>
       </div>
-      <DepartmentReviewMaterialSummary v-if="canShowSummary" :detail="detail" />
+      <DepartmentReviewMaterialSummary
+        v-if="canShowSummary && volumeId"
+        :volume-id="volumeId"
+        :detail="detail"
+      />
       <p v-else class="dept-review-list-drawer__denied">
         当前账号不具备院系材料核对权限，请打开详情页或联系管理员。
       </p>
@@ -162,24 +166,14 @@ function openDetail(tabKey?: string) {
         <UiButton variant="primary" size="sm" :loading="approving" @click="handleApprove">
           审核通过
         </UiButton>
-        <UiButton
-          v-if="!showRejectForm"
-          variant="outline"
-          size="sm"
-          @click="showRejectForm = true"
-        >
+        <UiButton v-if="!showRejectForm" variant="outline" size="sm" @click="showRejectForm = true">
           驳回
         </UiButton>
       </div>
       <div v-if="canApprove && showRejectForm" class="dept-review-list-drawer__reject">
         <a-textarea v-model:value="rejectReason" :rows="3" placeholder="驳回原因" />
         <div class="dept-review-list-drawer__reject-actions">
-          <UiButton
-            variant="outline"
-            size="sm"
-            :loading="rejecting"
-            @click="handleReject"
-          >
+          <UiButton variant="outline" size="sm" :loading="rejecting" @click="handleReject">
             确认驳回
           </UiButton>
           <UiButton variant="ghost" size="sm" @click="showRejectForm = false">取消</UiButton>

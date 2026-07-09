@@ -9,19 +9,20 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 只有 CONFIRMED + enabled 的实例进入达成度计算。
  */
 import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import type {
   ProfessionAlgorithmProfileQueryRequest,
   ProfessionAlgorithmProfileSaveRequest,
+  ProfessionAlgorithmProfileSignalSummaryVO,
   ProfessionAlgorithmProfileVO,
 } from '@/apis/quality/profession-algorithm-profile'
+import { professionAlgorithmProfileApi } from '@/apis/quality/profession-algorithm-profile'
 import type { ProfessionAlgorithmTemplateVO } from '@/apis/quality/profession-algorithm-template'
+import { professionAlgorithmTemplateApi } from '@/apis/quality/profession-algorithm-template'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
-import { professionAlgorithmProfileApi } from '@/apis/quality/profession-algorithm-profile'
-import { professionAlgorithmTemplateApi } from '@/apis/quality/profession-algorithm-template'
 import {
   AccreditationTypeCode,
   AccreditationTypeDescription,
@@ -35,6 +36,10 @@ import {
   ConfirmationStatusDescription,
 } from '@/apis/quality/types'
 import { ProgramSelector } from '@/components/quality/selectors'
+import {
+  QUALITY_SELECTOR_PAGE_SIZE,
+  QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS,
+} from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -46,21 +51,18 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
-import { readAllPages } from '@/utils/page-result'
+import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
-const PROFESSION_ALGORITHM_TEMPLATE_OPTION_PAGE_SIZE = 100
-const ACCREDITATION_STANDARD_OPTION_PAGE_SIZE = 100
-
 const columns: ColumnsType = [
-  { title: '编码', dataIndex: 'profileCode', key: 'profileCode', width: 140 },
+  { title: '编码', dataIndex: 'profileCode', key: 'profileCode', width: 140, fixed: 'left' },
   { title: '名称', dataIndex: 'profileName', key: 'profileName' },
   { title: '专业大类', key: 'programRef', width: 160 },
   { title: '认证类型', dataIndex: 'accreditationType', key: 'accreditationType', width: 180 },
   { title: '级别', dataIndex: 'accreditationLevel', key: 'accreditationLevel', width: 100 },
   { title: '状态', dataIndex: 'confirmationStatus', key: 'confirmationStatus', width: 100 },
   { title: '启用', dataIndex: 'enabled', key: 'enabled', width: 80 },
-  { title: '操作', key: 'actions', width: 260, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 260 },
 ]
 
 function accreditationTypeLabel(value: AccreditationTypeCode): string {
@@ -187,14 +189,25 @@ function handleEditorProgramChange(value: string | null): void {
   editor.programId = value ?? ''
 }
 
+function buildProfileListQuery(): ProfessionAlgorithmProfileQueryRequest {
+  return {
+    ...query,
+    keyword: query.keyword?.trim() || undefined,
+  }
+}
+
+const signalSummary = ref<ProfessionAlgorithmProfileSignalSummaryVO | null>(null)
+
 async function loadList() {
   loading.value = true
   try {
-    const page = await professionAlgorithmProfileApi.page({
-      ...query,
-      keyword: query.keyword?.trim() || undefined,
-    })
+    const listQuery = buildProfileListQuery()
+    const [page, summary] = await Promise.all([
+      professionAlgorithmProfileApi.page(listQuery),
+      professionAlgorithmProfileApi.signalSummary(listQuery),
+    ])
     list.value = page.list
+    signalSummary.value = summary
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
     total.value = page.total
@@ -202,34 +215,49 @@ async function loadList() {
       query.pageNum -= 1
       await loadList()
     }
+  } catch (error) {
+    signalSummary.value = null
+    showUserError(error, '专业算法实例加载失败')
   } finally {
     loading.value = false
   }
 }
 
-async function loadDicts() {
-  const [tpl, std] = await Promise.all([
-    readAllPages(
-      (pageNum) =>
-        professionAlgorithmTemplateApi.page({
-          pageNum,
-          pageSize: PROFESSION_ALGORITHM_TEMPLATE_OPTION_PAGE_SIZE,
-          enabled: true,
-        }),
-      '专业算法模板列表加载失败，请稍后重试',
-    ),
-    readAllPages(
-      (pageNum) =>
-        accreditationStandardApi.page({
-          pageNum,
-          pageSize: ACCREDITATION_STANDARD_OPTION_PAGE_SIZE,
-          enabled: true,
-        }),
-      '认证标准列表加载失败，请稍后重试',
-    ),
+async function loadDicts(templateKeyword?: string, standardKeyword?: string) {
+  const [templatePage, standardPage] = await Promise.all([
+    professionAlgorithmTemplateApi.page({
+      pageNum: 1,
+      pageSize: QUALITY_SELECTOR_PAGE_SIZE,
+      enabled: true,
+      keyword: templateKeyword?.trim() || undefined,
+    }),
+    accreditationStandardApi.page({
+      pageNum: 1,
+      pageSize: QUALITY_SELECTOR_PAGE_SIZE,
+      enabled: true,
+      keyword: standardKeyword?.trim() || undefined,
+    }),
   ])
-  templates.value = tpl
-  standards.value = std
+  templates.value = templatePage.list
+  standards.value = standardPage.list
+}
+
+let templateDictSearchTimer: ReturnType<typeof setTimeout> | null = null
+function handleTemplateDictSearch(keyword: string) {
+  if (templateDictSearchTimer) clearTimeout(templateDictSearchTimer)
+  templateDictSearchTimer = setTimeout(
+    () => void loadDicts(keyword, undefined),
+    QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS,
+  )
+}
+
+let standardDictSearchTimer: ReturnType<typeof setTimeout> | null = null
+function handleStandardDictSearch(keyword: string) {
+  if (standardDictSearchTimer) clearTimeout(standardDictSearchTimer)
+  standardDictSearchTimer = setTimeout(
+    () => void loadDicts(undefined, keyword),
+    QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS,
+  )
 }
 
 // a-select v-model:value 是 SelectValue（string|number|undefined|array），
@@ -342,18 +370,18 @@ function openEdit(record: ProfessionAlgorithmProfileVO) {
 
 async function submitEditor() {
   if (
-    !editor.profileCode.trim()
-    || !editor.profileName.trim()
-    || !editor.templateId
-    || !editor.programId
+    !editor.profileCode.trim() ||
+    !editor.profileName.trim() ||
+    !editor.templateId ||
+    !editor.programId
   ) {
     message.error('请填写编码、名称、模板、专业')
     return
   }
-  const hasOverride
-    = editor.overrideAggregationStrategy
-      || editor.overrideWeightStrategy
-      || editor.overrideThresholdStrategy
+  const hasOverride =
+    editor.overrideAggregationStrategy ||
+    editor.overrideWeightStrategy ||
+    editor.overrideThresholdStrategy
   if (hasOverride && !editor.overrideReason?.trim()) {
     message.error('存在模板策略调整时必须填写覆盖原因')
     return
@@ -433,8 +461,8 @@ function buildAlgorithmProfileActions(
     actions.push({ key: 'edit', label: '编辑' })
   }
   if (
-    record.confirmationStatus === ConfirmationStatusCode.DRAFT
-    || record.confirmationStatus === ConfirmationStatusCode.RETURNED
+    record.confirmationStatus === ConfirmationStatusCode.DRAFT ||
+    record.confirmationStatus === ConfirmationStatusCode.RETURNED
   ) {
     actions.push({ key: 'confirm', label: '确认', tone: 'primary' })
   }
@@ -480,7 +508,7 @@ async function handleDelete(record: ProfessionAlgorithmProfileVO) {
   })
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -514,51 +542,54 @@ function handleReset() {
 /* ========== 信号指标：专业算法实例健康度 ========== */
 
 const signals = computed<SignalMetric[]>(() => {
-  const buckets: Record<ConfirmationStatusCode, number> = {
-    [ConfirmationStatusCode.DRAFT]: 0,
-    [ConfirmationStatusCode.SUBMITTED]: 0,
-    [ConfirmationStatusCode.CONFIRMED]: 0,
-    [ConfirmationStatusCode.RETURNED]: 0,
+  const summary = signalSummary.value
+  if (!summary) {
+    return []
   }
-  for (const p of list.value) {
-    buckets[p.confirmationStatus] += 1
-  }
-  const enabled = list.value.filter((p) => p.enabled).length
-  const disabled = list.value.filter((p) => !p.enabled).length
-  const usable = list.value.filter(
-    (p) => p.enabled && p.confirmationStatus === ConfirmationStatusCode.CONFIRMED,
-  ).length
-
   return [
-    { key: 'page', label: '当前页记录', value: list.value.length, tone: 'blue' },
-    { key: 'all-total', label: '实例总数', value: total.value, tone: 'blue' },
-    { key: 'usable', label: '可用实例', value: usable, tone: usable > 0 ? 'green' : 'gray' },
+    { key: 'all-total', label: '实例总数', value: summary.totalCount ?? 0, tone: 'blue' },
+    {
+      key: 'usable',
+      label: '可用实例',
+      value: summary.usableCount ?? 0,
+      tone: (summary.usableCount ?? 0) > 0 ? 'green' : 'gray',
+    },
     {
       key: 'draft',
       label: '起草',
-      value: buckets.DRAFT,
-      tone: buckets.DRAFT > 0 ? 'orange' : 'gray',
+      value: summary.draftCount ?? 0,
+      tone: (summary.draftCount ?? 0) > 0 ? 'orange' : 'gray',
     },
     {
       key: 'submitted',
       label: '已提交',
-      value: buckets.SUBMITTED,
-      tone: buckets.SUBMITTED > 0 ? 'orange' : 'gray',
+      value: summary.submittedCount ?? 0,
+      tone: (summary.submittedCount ?? 0) > 0 ? 'orange' : 'gray',
     },
     {
       key: 'confirmed',
       label: '已确认',
-      value: buckets.CONFIRMED,
-      tone: buckets.CONFIRMED > 0 ? 'green' : 'gray',
+      value: summary.confirmedCount ?? 0,
+      tone: (summary.confirmedCount ?? 0) > 0 ? 'green' : 'gray',
     },
     {
       key: 'returned',
       label: '已退回',
-      value: buckets.RETURNED,
-      tone: buckets.RETURNED > 0 ? 'red' : 'gray',
+      value: summary.returnedCount ?? 0,
+      tone: (summary.returnedCount ?? 0) > 0 ? 'red' : 'gray',
     },
-    { key: 'enabled', label: '启用', value: enabled, tone: enabled > 0 ? 'green' : 'gray' },
-    { key: 'disabled', label: '停用', value: disabled, tone: disabled > 0 ? 'orange' : 'gray' },
+    {
+      key: 'enabled',
+      label: '启用',
+      value: summary.enabledCount ?? 0,
+      tone: (summary.enabledCount ?? 0) > 0 ? 'green' : 'gray',
+    },
+    {
+      key: 'disabled',
+      label: '停用',
+      value: summary.disabledCount ?? 0,
+      tone: (summary.disabledCount ?? 0) > 0 ? 'orange' : 'gray',
+    },
   ]
 })
 
@@ -612,7 +643,6 @@ onActivated(() => {
       <UiEmpty v-if="!loading && total === 0" description="无算法实例" />
       <UiDataTable
         v-else
-        class="student-detail-table__data-table"
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
         :columns="columns"
@@ -679,8 +709,9 @@ onActivated(() => {
                 v-model:value="editor.templateId"
                 placeholder="选择模板会自动继承默认值"
                 show-search
-                option-filter-prop="label"
+                :filter-option="false"
                 :disabled="editorMode === 'edit'"
+                @search="handleTemplateDictSearch"
                 @change="onTemplateSelectChange"
               >
                 <a-select-option
@@ -727,7 +758,8 @@ onActivated(() => {
             v-model:value="editor.standardId"
             allow-clear
             show-search
-            option-filter-prop="label"
+            :filter-option="false"
+            @search="handleStandardDictSearch"
           >
             <a-select-option
               v-for="s in standards"

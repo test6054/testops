@@ -75,12 +75,22 @@ export const constantRoutes: RouteRecordRaw[] = [
     path: '/scanner-kiosk/exam',
     name: 'ScannerExamKiosk',
     component: () => import('@/views/scanner-kiosk/KioskLayout.vue'),
-    redirect: '/scanner-kiosk/exam/setup',
+    redirect: '/scanner-kiosk/exam/bind',
     meta: {
       title: '考试扫描一体机',
       requiresAuth: false,
     },
     children: [
+      {
+        path: 'bind',
+        name: 'ScannerExamKioskBind',
+        component: () => import('@/views/scanner-kiosk/stages/BindStage.vue'),
+        meta: {
+          title: '绑定扫描考试',
+          requiresAuth: false,
+          kioskShell: 'bind',
+        },
+      },
       {
         path: 'step',
         redirect: '/scanner-kiosk/exam/setup',

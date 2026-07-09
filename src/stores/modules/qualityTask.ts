@@ -20,14 +20,18 @@
  * 不持久化：在飞状态完全后端持有。
  */
 import type { AiTaskVO } from '@/apis/quality/ai-task'
+import { aiTaskApi } from '@/apis/quality/ai-task'
 import type { ImprovementTaskVO } from '@/apis/quality/improvement-task'
+import { improvementTaskApi } from '@/apis/quality/improvement-task'
 import type { ReportVO } from '@/apis/quality/report'
+import { reportApi } from '@/apis/quality/report'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { aiTaskApi } from '@/apis/quality/ai-task'
-import { improvementTaskApi } from '@/apis/quality/improvement-task'
-import { reportApi } from '@/apis/quality/report'
-import { AiTaskStatusCode } from '@/apis/quality/types'
+import {
+  AiTaskStatusCode,
+  ImprovementTaskStatusCode,
+  ReportExportStatusCode,
+} from '@/apis/quality/types'
 
 const DEFAULT_TOP_N = 50
 
@@ -68,14 +72,14 @@ export const useQualityTaskStore = defineStore('qualityTask', () => {
   )
 
   const reportExportsFailed = computed(() =>
-    reportExportsInFlight.value.filter((r) => r.exportStatus === 'FAILED'),
+    reportExportsInFlight.value.filter((r) => r.exportStatus === ReportExportStatusCode.FAILED),
   )
 
   const totalAttentionCount = computed(() =>
     aiTasksInFlight.value.length
     + reportExportsInFlight.value.length
     + reportExportsFailed.value.length
-    + improvementTasksOpen.value.filter((t) => t.status === 'SUBMITTED' || t.status === 'REVIEWED').length,
+    + improvementTasksOpen.value.filter((t) => t.status === ImprovementTaskStatusCode.SUBMITTED || t.status === ImprovementTaskStatusCode.REVIEWED).length,
   )
 
   /* ---------- Actions ---------- */
@@ -121,7 +125,7 @@ export const useQualityTaskStore = defineStore('qualityTask', () => {
       })
       const list = result.list
       reportExportsInFlight.value = list.filter(
-        (r) => r.exportStatus === 'PENDING' || r.exportStatus === 'PROCESSING' || r.exportStatus === 'FAILED',
+        (r) => r.exportStatus === ReportExportStatusCode.PENDING || r.exportStatus === ReportExportStatusCode.PROCESSING || r.exportStatus === ReportExportStatusCode.FAILED,
       )
       return reportExportsInFlight.value
     }
@@ -145,7 +149,7 @@ export const useQualityTaskStore = defineStore('qualityTask', () => {
         qualityCourseId: scope.qualityCourseId,
       })
       const list = result.list
-      improvementTasksOpen.value = list.filter((t) => t.status !== 'CLOSED')
+      improvementTasksOpen.value = list.filter((t) => t.status !== ImprovementTaskStatusCode.CLOSED)
       return improvementTasksOpen.value
     }
     finally {

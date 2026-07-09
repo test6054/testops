@@ -1,17 +1,18 @@
 <script setup lang="ts">
 import type { Dayjs } from 'dayjs'
+import dayjs from 'dayjs'
 import type {
   ArchiveVolumeDetailResponse,
   ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import dayjs from 'dayjs'
-import { computed, ref, watch } from 'vue'
 import {
+  ArchiveMaterialSubmissionStatusCode,
   ArchiveMaterialTypeDescription,
   ArchiveSecurityLevelDescription,
   updateArchiveVolumeTaskSettings,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -30,7 +31,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'manage-collaborators': []
   'open-materials': []
-  "updated": []
+  updated: []
 }>()
 
 const saving = ref(false)
@@ -58,10 +59,11 @@ function materialRowLabel(row: ArchiveVolumeMaterialResponse): string {
 }
 
 function materialRowStatus(row: ArchiveVolumeMaterialResponse): string {
-  if (row.submissionStatus === 'SUBMITTED') return '已登记'
-  if (row.submissionStatus === 'DELAY_ALLOWED') return '可延迟'
-  if (row.submissionStatus === 'OVERDUE') return '已逾期'
-  if (row.submissionStatus === 'WAIVED_WITH_REASON') return '已豁免'
+  if (row.submissionStatus === ArchiveMaterialSubmissionStatusCode.SUBMITTED) return '已登记'
+  if (row.submissionStatus === ArchiveMaterialSubmissionStatusCode.DELAY_ALLOWED) return '可延迟'
+  if (row.submissionStatus === ArchiveMaterialSubmissionStatusCode.OVERDUE) return '已逾期'
+  if (row.submissionStatus === ArchiveMaterialSubmissionStatusCode.WAIVED_WITH_REASON)
+    return '已豁免'
   return row.requiredFlag === false ? '选交' : '待登记'
 }
 

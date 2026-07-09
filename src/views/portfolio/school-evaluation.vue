@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { Input, message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
@@ -13,7 +14,6 @@ import {
   PortfolioEvaluationTaskStatusDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
-import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -41,8 +41,8 @@ const ADVANCE_ACTIONS: Partial<
 
 function canArchiveTask(status: PortfolioEvaluationTaskStatusCode): boolean {
   return (
-    status === PortfolioEvaluationTaskStatusCode.PUBLICITY
-    || status === PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING
+    status === PortfolioEvaluationTaskStatusCode.PUBLICITY ||
+    status === PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING
   )
 }
 
@@ -79,11 +79,11 @@ const publishForm = reactive({
 })
 
 const columns: ColumnsType<PortfolioEvaluationTaskVO> = [
-  { title: '任务名称', dataIndex: 'taskName', key: 'taskName' },
+  { title: '任务名称', dataIndex: 'taskName', key: 'taskName', fixed: 'left' },
   { title: '模式', dataIndex: 'evaluationMode', key: 'evaluationMode', width: 100 },
   { title: '时间窗', key: 'timeWindow', width: 200 },
   { title: '状态', key: 'taskStatus', width: 120 },
-  { title: '操作', key: 'actions', width: 200, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 200 },
 ]
 
 const expiredAwaitingArchiveTasks = computed(() =>

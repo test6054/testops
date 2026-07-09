@@ -212,7 +212,7 @@ export function buildArchiveDestructionLifecycleSteps(
       status = 'done'
     }
     else if (index === activeIndex) {
-      if (definition.key === 'execute' && destructionStatus === 'FAILED') {
+      if (definition.key === 'execute' && destructionStatus === ArchiveDestructionStatusCode.FAILED) {
         status = 'warn'
       }
       else {

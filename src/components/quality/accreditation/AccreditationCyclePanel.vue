@@ -22,6 +22,7 @@ import {
   SelfAssessmentReviewDecisionCode,
 } from '@/apis/quality/accreditation'
 import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
+import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -39,7 +40,6 @@ import {
 } from '@/composables/useAccreditationWorkbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
-import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const props = defineProps<{
@@ -59,12 +59,12 @@ interface AccreditationCycleMenuItem {
 }
 
 const columns: ColumnsType<AccreditationCycleVO> = [
-  { title: '周期编码', dataIndex: 'cycleCode', key: 'cycleCode', width: 120 },
+  { title: '周期编码', dataIndex: 'cycleCode', key: 'cycleCode', width: 120, fixed: 'left' },
   { title: '周期名称', dataIndex: 'cycleName', key: 'cycleName' },
   { title: '阶段', dataIndex: 'currentPhase', key: 'currentPhase', width: 108 },
   { title: '状态', dataIndex: 'cycleStatus', key: 'cycleStatus', width: 88 },
   { title: '结论', dataIndex: 'conclusionType', key: 'conclusionType', width: 108 },
-  { title: '操作', key: 'actions', width: 220, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 220 },
 ]
 
 const loading = ref(false)
@@ -131,17 +131,15 @@ const deadlineHints = computed(() => {
   return hints
 })
 
-async function loadStandards() {
+async function loadStandards(keyword?: string) {
   try {
-    standards.value = await readAllPages(
-      (pageNum) =>
-        accreditationStandardApi.page({
-          pageNum,
-          pageSize: 100,
-          enabled: true,
-        }),
-      '认证标准加载失败，请刷新后重试',
-    )
+    const page = await accreditationStandardApi.page({
+      pageNum: 1,
+      pageSize: QUALITY_SELECTOR_PAGE_SIZE,
+      enabled: true,
+      keyword: keyword?.trim() || undefined,
+    })
+    standards.value = page.list
   } catch (e) {
     standards.value = []
     showUserError(e)

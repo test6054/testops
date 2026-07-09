@@ -1,11 +1,22 @@
 import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
+import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
 import type { ExamDetailResponse } from '@/apis/mark/exam'
+import { getExamDetail } from '@/apis/mark/exam'
 import type {
   AiAbilityCode,
   AiExecutionStatusCode,
   ExamQuestionAiExecutionItemResponse,
 } from '@/apis/mark/exam-grade'
+import {
+  AI_ABILITY_TONE,
+  AI_EXECUTION_STATUS_TONE,
+  AiAbilityDescription,
+  AiExecutionStatusDescription,
+  listAiExecutionsForQuestion,
+  rescoreQuestionByAi,
+} from '@/apis/mark/exam-grade'
 import type { QualityDecisionCode } from '@/apis/mark/exam-scan'
+import { QUALITY_DECISION_TONE, QualityDecisionDescription } from '@/apis/mark/exam-scan'
 import type { PaperInstanceDisplayVO } from '@/apis/mark/exam-score'
 import type { MarkAiReferenceExperienceAuditResponse } from '@/apis/mark/grading-experience-assist'
 import type {
@@ -16,24 +27,6 @@ import type {
   MarkingTaskSubmittedQuestionScoreResponse,
   QuestionMarkingGroupQuestionResponse,
 } from '@/apis/mark/marking-organization'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { GradingExperienceReferenceMatchModeCode } from '@/types/enums/grading-experience-reference-match-mode-enum'
-import message from 'ant-design-vue/es/message'
-import { storeToRefs } from 'pinia'
-import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
-import { getExamDetail } from '@/apis/mark/exam'
-import { listAnnotations } from '@/apis/mark/exam-annotation'
-import {
-  AI_ABILITY_TONE,
-  AI_EXECUTION_STATUS_TONE,
-  AiAbilityDescription,
-  AiExecutionStatusDescription,
-  listAiExecutionsForQuestion,
-  rescoreQuestionByAi,
-} from '@/apis/mark/exam-grade'
-import { QUALITY_DECISION_TONE, QualityDecisionDescription } from '@/apis/mark/exam-scan'
 import {
   AllocationUnitDescription,
   getMarkingQuestionView,
@@ -42,6 +35,13 @@ import {
   MarkingTaskStatusCode,
   MarkingTaskStatusDescription,
 } from '@/apis/mark/marking-organization'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { GradingExperienceReferenceMatchModeCode } from '@/types/enums/grading-experience-reference-match-mode-enum'
+import message from 'ant-design-vue/es/message'
+import { storeToRefs } from 'pinia'
+import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { listAnnotations } from '@/apis/mark/exam-annotation'
 import { MarkingTaskStreamSubscribeScopeCode } from '@/apis/mark/marking-task-stream'
 import { MARKING_WITHDRAW_TOAST_MS } from '@/apis/mark/marking-withdraw'
 import {
@@ -68,10 +68,7 @@ import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useTenantStore } from '@/stores/modules/tenant'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-
-const SUBMITTED_PAGE_ANNOTATION_PAGE_SIZE = 100
 
 function taskStatusTone(status: MarkingTaskStatusCode): BadgeTone {
   return strictEnumTone(MARKING_TASK_STATUS_TONE, status, '阅卷任务状态')
@@ -110,8 +107,8 @@ export function useMarkingTaskDetailState() {
   const tenantStore = useTenantStore()
   const markTaskStore = useMarkTaskStore()
   const { tasks: batchTasks } = storeToRefs(markTaskStore)
-  const { latestWithdrawable, recentList, canWithdrawEntry, withdrawEntry, withdrawLatest }
-    = useMarkingRecentSubmit()
+  const { latestWithdrawable, recentList, canWithdrawEntry, withdrawEntry, withdrawLatest } =
+    useMarkingRecentSubmit()
   const { withdrawWindowLabel, withdrawConfirmHint } = useTenantMarkingWithdrawPolicy()
 
   const taskId = computed(() => (route.params.taskId ? String(route.params.taskId) : ''))
@@ -124,7 +121,7 @@ export function useMarkingTaskDetailState() {
   const sessionPausedAlert = ref(false)
   const withdrawToastVisible = ref(false)
   let withdrawToastTimer: ReturnType<typeof setTimeout> | null = null
-  const form = reactive<{ score?: number, annotationNote?: string }>({
+  const form = reactive<{ score?: number; annotationNote?: string }>({
     score: undefined,
     annotationNote: '',
   })
@@ -140,9 +137,9 @@ export function useMarkingTaskDetailState() {
   const isWholePaperTask = computed(() => task.value?.taskUnit === 'WHOLE_PAPER')
   const usesWholePaperWorkspace = computed(
     () =>
-      task.value?.taskUnit === 'WHOLE_PAPER'
-      || task.value?.taskUnit === 'SELECTED_QUESTIONS'
-      || task.value?.taskUnit === 'RANDOM_QUESTIONS',
+      task.value?.taskUnit === 'WHOLE_PAPER' ||
+      task.value?.taskUnit === 'SELECTED_QUESTIONS' ||
+      task.value?.taskUnit === 'RANDOM_QUESTIONS',
   )
   const canSubmit = computed(() => {
     if (taskRecycledBlocked.value) return false
@@ -384,20 +381,25 @@ export function useMarkingTaskDetailState() {
     const examId = task.value?.examId
     const paperId = paperInstanceId.value
     if (!examId || !paperId || !wholePages.value.length) return
-    const pageAnnotations = await readAllPages(
-      (pageNum) =>
-        listAnnotations({
-          examId,
-          paperInstanceId: paperId,
-          pageNum,
-          pageSize: SUBMITTED_PAGE_ANNOTATION_PAGE_SIZE,
-        }),
-      '批注列表加载失败，请刷新后重试',
-    )
-    for (const annotation of pageAnnotations) {
-      if (annotation.annotationScope !== 'PAGE') continue
-      if (!annotation.pageId || !annotation.annotationText) continue
-      wholePageAnnotationForms[annotation.pageId] = annotation.annotationText
+    const pageSize = Math.max(wholePages.value.length, 1)
+    try {
+      const page = await listAnnotations({
+        examId,
+        paperInstanceId: paperId,
+        pageNum: 1,
+        pageSize,
+      })
+      if (page.total > page.list.length) {
+        showUserError(new Error('批注数量超过单页加载上限'), '批注列表加载不完整，请刷新后重试')
+        return
+      }
+      for (const annotation of page.list) {
+        if (annotation.annotationScope !== 'PAGE') continue
+        if (!annotation.pageId || !annotation.annotationText) continue
+        wholePageAnnotationForms[annotation.pageId] = annotation.annotationText
+      }
+    } catch (error) {
+      showUserError(error, '批注列表加载失败，请刷新后重试')
     }
   }
 

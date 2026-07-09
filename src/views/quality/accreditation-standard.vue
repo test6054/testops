@@ -12,11 +12,11 @@ import type {
   AccreditationStandardSummaryVO,
   AccreditationStandardVO,
 } from '@/apis/quality/accreditation-standard'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import {
   AccreditationTypeCode,
   AccreditationTypeDescription,
@@ -81,13 +81,13 @@ const accreditationOptions = ALL_ACCREDITATION_TYPE_CODES.map((value) => ({
 }))
 
 const columns: ColumnsType<AccreditationStandardVO> = [
-  { title: '编码', dataIndex: 'standardCode', key: 'standardCode', width: 140 },
+  { title: '编码', dataIndex: 'standardCode', key: 'standardCode', width: 140, fixed: 'left' },
   { title: '名称', dataIndex: 'standardName', key: 'standardName' },
   { title: '认证类型', dataIndex: 'accreditationType', key: 'accreditationType', width: 180 },
   { title: '标准年份', dataIndex: 'standardYear', key: 'standardYear', width: 100 },
   { title: '文号', dataIndex: 'documentNumber', key: 'documentNumber', width: 160 },
   { title: '状态', key: 'enabled', width: 120 },
-  { title: '操作', key: 'actions', width: 180, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 180 },
 ]
 
 const filterModel = ref<AccreditationStandardFilterModel>({
@@ -169,7 +169,7 @@ async function loadPageData() {
   await Promise.all([loadList(), loadSummary()])
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -177,8 +177,8 @@ function handlePageChange(page: { current: number, pageSize: number }) {
 
 function syncFilterToQuery() {
   query.accreditationType = filterModel.value.accreditationType
-  query.enabled
-    = filterModel.value.enabled === 'enabled'
+  query.enabled =
+    filterModel.value.enabled === 'enabled'
       ? true
       : filterModel.value.enabled === 'disabled'
         ? false
@@ -297,12 +297,9 @@ async function handleDelete(record: AccreditationStandardVO) {
   })
 }
 
-/* ========== 信号指标：认证标准库健康度 ==========
- * 说明：启用 / 停用 / 试点 / 覆盖类型 使用后端全局聚合口径；当前页记录仅反映本页可见行数。
- */
+/* ========== 信号指标：认证标准库健康度 ========== */
 const signals = computed<SignalMetric[]>(() => {
   return [
-    { key: 'page-total', label: '当前页记录', value: list.value.length, tone: 'blue' },
     { key: 'all-total', label: '认证标准总数', value: summary.value.totalCount, tone: 'blue' },
     {
       key: 'enabled',
@@ -363,7 +360,6 @@ onActivated(() => {
       <UiEmpty v-if="!loading && total === 0" description="尚未配置认证标准条目" />
       <UiDataTable
         v-else
-        class="student-detail-table__data-table"
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
         :columns="columns"

@@ -8,17 +8,20 @@
     </template>
 
     <UiSkeletonState v-if="loading" variant="table" :rows="4" compact />
-    <UiEmpty v-else-if="!loading && !tasks.length" description="暂无待分配回收任务" />
+    <UiEmpty v-else-if="!loading && pagination.total === 0" description="暂无待分配回收任务" />
     <UiDataTable
       v-else
-      pagination-mode="none"
+      v-model:current="pagination.current"
+      v-model:page-size="pagination.pageSize"
+      pagination-mode="server"
       :columns="columns"
       :data-source="tasks"
       row-key="id"
       size="middle"
       flat
-      :show-pagination="false"
-      :total="tasks.length"
+      :loading="loading"
+      :total="pagination.total"
+      @page-change="handlePageChange"
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'reviewer'">
@@ -58,19 +61,19 @@ import type {
   MarkingTaskResponse,
   QuestionMarkingGroupResponse,
 } from '@/apis/mark/marking-organization'
+import { pageMarkingTasks, reassignRecycledMarkingTask } from '@/apis/mark/marking-organization'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
-import { pageMarkingTasks, reassignRecycledMarkingTask } from '@/apis/mark/marking-organization'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { MarkingTaskStatusCode } from '@/types/enums/marking-task-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readAllPages } from '@/utils/page-result'
 
 defineOptions({ name: 'RecycledTaskReassignPanel' })
 
@@ -84,11 +87,15 @@ const props = defineProps<{
 const loading = ref(false)
 const reassigningId = ref<string | null>(null)
 const tasks = ref<MarkingTaskResponse[]>([])
-// 加载失败：toast 提示，主区保持空态/列表壳
+const pagination = reactive({
+  current: 1,
+  pageSize: DEFAULT_LIST_PAGE_SIZE,
+  total: 0,
+})
 const targetReviewerByTaskId = reactive<Record<string, string>>({})
 
 const reviewerOptionsByGroupId = computed(() => {
-  const map: Record<string, Array<{ value: string, label: string }>> = {}
+  const map: Record<string, Array<{ value: string; label: string }>> = {}
   for (const group of props.groups) {
     map[group.id] = group.reviewers.map((reviewer) => ({
       value: reviewer.reviewerUserId,
@@ -107,51 +114,41 @@ const columns = [
   { title: '操作', key: 'action', width: 100 },
 ]
 
-async function loadTasks() {
+async function loadTasks(): Promise<void> {
   if (!props.examId) {
     tasks.value = []
+    pagination.total = 0
     return
   }
   loading.value = true
   try {
-    if (props.viewAllRecycled) {
-      tasks.value = await readAllPages(
-        (pageNum) =>
-          pageMarkingTasks({
-            examId: props.examId,
-            taskStatus: MarkingTaskStatusCode.RECYCLED,
-            pageNum,
-            pageSize: 100,
-          }),
-        '回收待分配任务加载失败，请稍后重试',
-      )
-      return
-    }
-    const merged: MarkingTaskResponse[] = []
-    for (const groupId of props.leaderGroupIds) {
-      const part = await readAllPages(
-        (pageNum) =>
-          pageMarkingTasks({
-            examId: props.examId,
-            groupId,
-            taskStatus: MarkingTaskStatusCode.RECYCLED,
-            pageNum,
-            pageSize: 100,
-          }),
-        '回收待分配任务加载失败，请稍后重试',
-      )
-      merged.push(...part)
-    }
-    tasks.value = merged
+    const result = await pageMarkingTasks({
+      examId: props.examId,
+      taskStatus: MarkingTaskStatusCode.RECYCLED,
+      groupIds: props.viewAllRecycled ? undefined : props.leaderGroupIds,
+      pageNum: pagination.current,
+      pageSize: pagination.pageSize,
+    })
+    tasks.value = result.list
+    pagination.total = result.total
+    pagination.current = result.pageNum ?? pagination.current
+    pagination.pageSize = result.pageSize ?? pagination.pageSize
   } catch (error) {
     showUserError(error, '回收待分配任务加载失败')
     tasks.value = []
+    pagination.total = 0
   } finally {
     loading.value = false
   }
 }
 
-async function submitReassign(task: MarkingTaskResponse) {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
+  pagination.current = pageInfo.current
+  pagination.pageSize = pageInfo.pageSize
+  void loadTasks()
+}
+
+async function submitReassign(task: MarkingTaskResponse): Promise<void> {
   const targetReviewerUserId = targetReviewerByTaskId[task.id]
   if (!targetReviewerUserId) {
     return
@@ -173,8 +170,9 @@ async function submitReassign(task: MarkingTaskResponse) {
 }
 
 watch(
-  () => props.examId,
+  () => [props.examId, props.viewAllRecycled, props.leaderGroupIds.join(',')] as const,
   () => {
+    pagination.current = 1
     void loadTasks()
   },
   { immediate: true },

@@ -3,7 +3,7 @@
 .exam-gate {
   position: fixed;
   inset: 0;
-  z-index: calc(var(--kiosk-z-modal, 100) - 1);
+  z-index: var(--kiosk-z-modal, 100);
   display: flex;
   flex-direction: column;
   background: var(--kiosk-page-bg);

@@ -1,13 +1,14 @@
 import type { AiAnalysisStatusCode } from './ai-analysis-status'
 import type { ExamStatusCode } from './exam'
 import type { BindingStatusCode } from './exam-binding'
-import type { FinalScoreStatusCode } from './final-score-status'
 import type { GradeStatusCode } from './grade-status'
 import type { ObjectiveResultCode } from './objective-result'
 import type { QuestionTypeCode } from './question-type'
 import type { MasteryLevelCode } from './student-mastery-level'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
+import { FinalScoreStatusCode } from './final-score-status'
 
 import { ReviewWindowPolicyStatusCode } from './grade-review'
 
@@ -17,6 +18,23 @@ export const STUDENT_REVIEW_WINDOW_STATUS_TONE: Record<ReviewWindowPolicyStatusC
   [ReviewWindowPolicyStatusCode.DRAFT]: 'gray',
   [ReviewWindowPolicyStatusCode.ACTIVE]: 'orange',
   [ReviewWindowPolicyStatusCode.CLOSED]: 'gray',
+}
+
+export interface StudentExamPageRequest extends QueryDto {
+  keyword?: string
+  finalScoreStatus?: FinalScoreStatusCode
+  reviewWindowAppealableOnly?: boolean
+  orderByPublishedTimeDesc?: boolean
+}
+
+export interface StudentExamStatsRequest {}
+
+export interface StudentExamStatsResponse {
+  totalExamCount: number
+  publishedCount: number
+  unpublishedCount: number
+  reviewOpenCount: number
+  appealableCount: number
 }
 
 export interface StudentExamItemVO {
@@ -159,8 +177,16 @@ export interface StudentQuestionAnswerDetailResponse {
   aiDiagnostic?: string
 }
 
-export function listMyExams(): Promise<StudentExamItemVO[]> {
-  return http.post<StudentExamItemVO[]>('/api/mark/student/exams/list', {})
+export function pageMyExams(
+  request: StudentExamPageRequest,
+): Promise<PageResult<StudentExamItemVO>> {
+  return http.post<PageResult<StudentExamItemVO>>('/api/mark/student/exams/page', request)
+}
+
+export function getMyExamStats(
+  request: StudentExamStatsRequest = {},
+): Promise<StudentExamStatsResponse> {
+  return http.post<StudentExamStatsResponse>('/api/mark/student/exams/stats', request)
 }
 
 export function getMyScoreDetail(examId: string): Promise<StudentScoreDetailResponse> {
@@ -197,5 +223,8 @@ export function getMyQuestionAnswerDetail(
 }
 
 export function canSubmitReview(item: StudentExamItemVO | StudentScoreDetailResponse): boolean {
-  return item.finalScoreStatus === 'PUBLISHED' && item.reviewWindowStatus === 'ACTIVE'
+  return (
+    item.finalScoreStatus === FinalScoreStatusCode.PUBLISHED &&
+    item.reviewWindowStatus === ReviewWindowPolicyStatusCode.ACTIVE
+  )
 }

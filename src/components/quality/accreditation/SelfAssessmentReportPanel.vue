@@ -31,7 +31,6 @@ import {
   canSubmitSelfAssessment,
 } from '@/composables/useAccreditationWorkbench'
 import { showUserError } from '@/utils/error-handler'
-import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'SelfAssessmentReportPanel' })
@@ -62,9 +61,13 @@ const SECTION_ORDER: SelfAssessmentSectionKeyCode[] = [
 const loading = ref(false)
 const saving = ref(false)
 const sections = ref<SelfAssessmentSectionVO[]>([])
+const sectionPageNum = ref(1)
+const sectionPageSize = ref(20)
+const sectionTotal = ref(0)
 const activeSectionKey = ref<SelfAssessmentSectionKeyCode>(SelfAssessmentSectionKeyCode.STUDENT)
 const evidenceDrawerOpen = ref(false)
 const evidenceLoading = ref(false)
+const evidenceKeyword = ref('')
 const evidenceOptions = ref<AccreditationEvidenceVO[]>([])
 const selectedEvidenceIds = ref<string[]>([])
 
@@ -118,18 +121,26 @@ async function loadSections() {
   const cycleId = props.activeCycle?.id
   if (!cycleId) {
     sections.value = []
+    sectionTotal.value = 0
     syncEditor(undefined)
     return
   }
   loading.value = true
   try {
-    sections.value = await selfAssessmentSectionApi.listByCycle(cycleId)
+    const page = await selfAssessmentSectionApi.page({
+      accreditationCycleId: cycleId,
+      pageNum: sectionPageNum.value,
+      pageSize: sectionPageSize.value,
+    })
+    sections.value = page.list
+    sectionTotal.value = page.total
     if (!sections.value.some((item) => item.sectionKey === activeSectionKey.value)) {
       activeSectionKey.value = SECTION_ORDER[0]
     }
     syncEditor(activeSection.value)
   } catch (error) {
     sections.value = []
+    sectionTotal.value = 0
     syncEditor(undefined)
     showUserError(error, '自评报告章节加载失败')
   } finally {
@@ -171,10 +182,33 @@ function removeEvidenceRef(index: number) {
   editor.evidenceRefs.splice(index, 1)
 }
 
+async function loadEvidenceOptions(keyword?: string) {
+  if (!props.programId || !props.trainingPlanId) {
+    evidenceOptions.value = []
+    return
+  }
+  evidenceLoading.value = true
+  try {
+    const page = await accreditationApi.evidencePage({
+      pageNum: 1,
+      pageSize: 50,
+      programId: props.programId,
+      trainingPlanId: props.trainingPlanId,
+      keyword: keyword?.trim() || undefined,
+    })
+    evidenceOptions.value = page.list
+  } catch (error) {
+    evidenceOptions.value = []
+    showUserError(error, '认证证据加载失败')
+  } finally {
+    evidenceLoading.value = false
+  }
+}
+
 async function openEvidenceDrawer() {
   if (!props.programId || !props.trainingPlanId) return
   evidenceDrawerOpen.value = true
-  evidenceLoading.value = true
+  evidenceKeyword.value = ''
   selectedEvidenceIds.value = editor.evidenceRefs
     .filter(
       item =>
@@ -182,23 +216,7 @@ async function openEvidenceDrawer() {
         && item.accreditationEvidenceId,
     )
     .map((item) => item.accreditationEvidenceId!)
-  try {
-    evidenceOptions.value = await readAllPages(
-      (pageNum: number) =>
-        accreditationApi.evidencePage({
-          pageNum,
-          pageSize: 100,
-          programId: props.programId,
-          trainingPlanId: props.trainingPlanId,
-        }),
-      '认证证据加载失败',
-    )
-  } catch (error) {
-    evidenceOptions.value = []
-    showUserError(error, '认证证据加载失败')
-  } finally {
-    evidenceLoading.value = false
-  }
+  await loadEvidenceOptions()
 }
 
 function applySelectedEvidence() {
@@ -235,6 +253,7 @@ function sectionStatusTone(section: SelfAssessmentSectionVO) {
 watch(
   () => props.activeCycle?.id,
   () => {
+    sectionPageNum.value = 1
     void loadSections()
   },
   { immediate: true },
@@ -352,6 +371,13 @@ watch(activeSectionKey, () => {
     </p>
 
     <UiDrawer v-model:open="evidenceDrawerOpen" title="关联认证证据" width="480">
+      <a-input-search
+        v-model:value="evidenceKeyword"
+        placeholder="搜索证据标题"
+        allow-clear
+        class="self-assessment-panel__evidence-search"
+        @search="(kw: string) => loadEvidenceOptions(kw)"
+      />
       <a-spin :spinning="evidenceLoading">
         <a-checkbox-group
           v-model:value="selectedEvidenceIds"

@@ -1,16 +1,14 @@
 <!--
-  培养方案选择器
-  数据源：POST /api/quality/training-plans/page
-  可传 programId 过滤，默认只显示 CONFIRMED 且 enabled=true 的方案
--->
+  培养方案选择�?  数据源：POST /api/quality/training-plans/page
+  可传 programId 过滤，默认只显示 CONFIRMED �?enabled=true 的方�? -->
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { TrainingPlanVO } from '@/apis/quality/training-plan'
-import { onMounted, ref, watch } from 'vue'
 import { normalizeTrainingPlanId, trainingPlanApi } from '@/apis/quality/training-plan'
+import { onMounted, ref, watch } from 'vue'
 import { ConfirmationStatusCode } from '@/apis/quality/types'
 import { showUserError } from '@/utils/error-handler'
-import { requireAllPages } from './page-contract'
+import { loadSelectorFirstPage, QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -18,11 +16,11 @@ interface Props {
   allowClear?: boolean
   disabled?: boolean
   width?: string | number
-  /** 按专业过滤 */
+  /** 按专业过�? */
   programId?: string | null
   /** 是否仅显示已确认 */
   onlyConfirmed?: boolean
-  /** 是否仅显示启用 */
+  /** 是否仅显示启�? */
   onlyEnabled?: boolean
 }
 
@@ -37,12 +35,13 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: TrainingPlanVO]
+  change: [value: string | null, option?: TrainingPlanVO]
 }>()
 
 const options = ref<TrainingPlanVO[]>([])
 const loading = ref(false)
-// a-select v-model:value 不接受 null，外部 emit 仍保持 string | null。
+const searchText = ref('')
+// a-select v-model:value 不接受 null，对外 emit 仍保持 string | null。
 const internalValue = ref<string | undefined>(
   props.value ? normalizeTrainingPlanId(props.value) || undefined : undefined,
 )
@@ -81,19 +80,18 @@ async function ensureSelectedOptionVisible(): Promise<void> {
   }
 }
 
-async function loadOptions() {
+async function loadOptions(keyword?: string) {
   loading.value = true
   try {
-    options.value = await requireAllPages(
-      (pageNum) =>
-        trainingPlanApi.page({
-          pageNum,
-          pageSize: 100,
-          programId: props.programId || undefined,
-          enabled: props.onlyEnabled ? true : undefined,
-          confirmationStatus: props.onlyConfirmed ? ConfirmationStatusCode.CONFIRMED : undefined,
-        }),
-      '培养方案',
+    options.value = await loadSelectorFirstPage((pageNum, pageSize) =>
+      trainingPlanApi.page({
+        pageNum,
+        pageSize,
+        programId: props.programId || undefined,
+        enabled: props.onlyEnabled ? true : undefined,
+        confirmationStatus: props.onlyConfirmed ? ConfirmationStatusCode.CONFIRMED : undefined,
+        keyword: (keyword ?? searchText.value)?.trim() || undefined,
+      }),
     )
     await ensureSelectedOptionVisible()
   } catch (e) {
@@ -101,6 +99,13 @@ async function loadOptions() {
   } finally {
     loading.value = false
   }
+}
+
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
+function handleSearch(val: string) {
+  searchText.value = val
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => loadOptions(val), QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS)
 }
 
 function normalizeSelectValue(val: SelectValue): string | null {
@@ -141,7 +146,8 @@ defineExpose({ reload: loadOptions })
     :loading="loading"
     :style="{ width: typeof width === 'number' ? `${width}px` : width }"
     show-search
-    option-filter-prop="label"
+    :filter-option="false"
+    @search="handleSearch"
     @change="handleChange"
   >
     <a-select-option

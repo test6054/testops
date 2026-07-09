@@ -50,16 +50,16 @@ import type {
   ExamQuestionCourseGoalMappingVO,
   QualityCourseGoalForMarkVO,
 } from '@/apis/mark/exam-question-course-goal-mapping'
-import type { ExamQuestionAnalysisRecordResponse } from '@/apis/mark/question-analysis'
-import { message } from 'ant-design-vue'
-import { computed, ref, watch } from 'vue'
 import {
   deleteExamQuestionCourseGoalMapping,
   listExamCourseGoalsForMapping,
   listExamQuestionCourseGoalMappings,
   saveExamQuestionCourseGoalMapping,
 } from '@/apis/mark/exam-question-course-goal-mapping'
-import { fetchAllQuestionAnalysisRows } from '@/apis/mark/question-analysis'
+import type { ExamQuestionAnalysisRecordResponse } from '@/apis/mark/question-analysis'
+import { loadQuestionAnalysisChartRows } from '@/apis/mark/question-analysis'
+import { message } from 'ant-design-vue'
+import { computed, ref, watch } from 'vue'
 import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -143,7 +143,7 @@ async function loadData() {
     const [goalList, mappingList, questionList] = await Promise.all([
       listExamCourseGoalsForMapping(props.examId),
       listExamQuestionCourseGoalMappings(props.examId),
-      fetchAllQuestionAnalysisRows({ examId: props.examId }),
+      loadQuestionAnalysisChartRows({ examId: props.examId }),
     ])
     courseGoals.value = goalList
     mappings.value = mappingList

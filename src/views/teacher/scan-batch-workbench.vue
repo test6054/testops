@@ -16,6 +16,26 @@
       <ExamWorkspaceJourneySubNav />
 
       <UiAlertStrip
+        v-if="scanDerivedTemplateAlertVisible"
+        tone="info"
+        :closable="false"
+        dense
+        title="切卷真源：扫描推导模板"
+        :description="scanDerivedTemplateAlertDescription"
+        class="scan-batch-workbench__template-alert"
+      />
+
+      <UiAlertStrip
+        v-if="fullPaperFirstScanAlertVisible"
+        tone="info"
+        :closable="false"
+        dense
+        title="整卷首扫待推导模板"
+        description="当前考试尚无 ACTIVE 模板，首扫后将自动生成「扫描推导模板」作为切卷真源。"
+        class="scan-batch-workbench__template-alert"
+      />
+
+      <UiAlertStrip
         v-if="scanAttentionAlertVisible"
         tone="warning"
         :closable="false"
@@ -84,11 +104,12 @@
           :data-source="batches"
           :loading="batchLoading"
           :total="batchTotal"
-          :scroll="{ x: 1320 }"
           :custom-row="batchTableCustomRow"
           row-key="scanBatchId"
           size="small"
           flat
+          zebra
+          sticky-header
           empty-kind="first-run"
           @page-change="onBatchPageChange"
         >
@@ -111,6 +132,14 @@
               <UiTag :tone="batchStatusTone(record)" size="sm">
                 {{ batchStatusLabel(record) }}
               </UiTag>
+              <UiTag
+                v-if="batchPageRegisterTagVisible(record)"
+                :tone="batchPageRegisterTone(record)"
+                size="sm"
+                class="scan-batch-workbench__register-tag"
+              >
+                {{ batchPageRegisterLabel(record) }}
+              </UiTag>
             </template>
             <template v-else-if="column.key === 'scannerDevice'">
               {{ formatDeviceLabel(record.scannerDeviceId) }}
@@ -131,19 +160,22 @@
               <span v-else class="muted">0</span>
             </template>
             <template v-else-if="column.key === 'orderAudit'">
-              <UiTag v-if="record.orderAuditPassed === false" tone="red" size="sm">
+              <UiTag v-if="record.orderAuditAttentionPending === true" tone="orange" size="sm">
+                余页待确认
+              </UiTag>
+              <UiTag v-else-if="record.orderAuditPassed === false" tone="red" size="sm">
                 {{ record.orderAuditIssueCount ?? 0 }} 项异常
               </UiTag>
               <UiTag v-else-if="record.orderAuditPassed === true" tone="green" size="sm">
-                通过
+                {{ record.orderAuditIssueCount ? `通过·${record.orderAuditIssueCount}项` : '通过' }}
               </UiTag>
               <span v-else class="muted">待审计</span>
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
-                :items="[{ key: 'detail', label: '详情' }]"
+                :items="batchRowActions(record)"
                 split
-                @action="() => openBatchDetail(record)"
+                @action="(key) => handleBatchRowAction(key, record)"
               />
             </template>
           </template>
@@ -164,26 +196,27 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamScannerDeviceResponse } from '@/apis/mark/exam-mark-scanner'
+import { listActiveScannerDevices } from '@/apis/mark/exam-mark-scanner'
 import type { MarkingProgressResponse } from '@/apis/mark/exam-progress'
+import { getMarkingProgress } from '@/apis/mark/exam-progress'
 import type {
   ExamScannerBatchQueryRequest,
   ExamScannerBatchResponse,
   ExamScannerBatchWorkbenchSummaryResponse,
 } from '@/apis/mark/exam-scan'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { listActiveScannerDevices } from '@/apis/mark/exam-mark-scanner'
-import { getMarkingProgress } from '@/apis/mark/exam-progress'
 import {
   getScannerBatchWorkbenchSummary,
   pageScannerBatches,
+  retryScanBatchPageRegister,
   SCAN_BATCH_STATUS_TONE,
   ScanBatchStatusCode,
   ScanBatchStatusDescription,
 } from '@/apis/mark/exam-scan'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import ScanBatchDetailDrawer from '@/components/mark/ScanBatchDetailDrawer.vue'
 import ScanOrphanRecoveryAlert from '@/components/mark/ScanOrphanRecoveryAlert.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -201,6 +234,10 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import {
+  PageRegisterStateCode,
+  PageRegisterStateDescription,
+} from '@/types/enums/page-register-state-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
 import mittBus from '@/utils/mitt'
@@ -213,8 +250,7 @@ type StatusTabKey = 'ALL' | ScanBatchStatusCode
 const route = useRoute()
 const router = useRouter()
 const { selectedExamId } = useMarkExamContext()
-const { contextBarSubtitle, examStatusLabel, examStatusTone }
-  = useExamJourneyContextBar('扫描批次')
+const { contextBarSubtitle, examStatusLabel, examStatusTone } = useExamJourneyContextBar('扫描批次')
 
 const scanBatchContextSubtitle = computed(() => {
   const journeySubtitle = contextBarSubtitle.value
@@ -241,7 +277,7 @@ const scanAttentionAlertDescription = computed(() => {
 const batches = ref<ExamScannerBatchResponse[]>([])
 const batchTotal = ref(0)
 const batchLoading = ref(false)
-const batchQuery = reactive<{ pageNum: number, pageSize: number }>({
+const batchQuery = reactive<{ pageNum: number; pageSize: number }>({
   pageNum: 1,
   pageSize: 10,
 })
@@ -264,6 +300,23 @@ const filterForm = reactive<ScanBatchWorkbenchFilterForm>({
 const detailDrawerOpen = ref(false)
 const detailBatchId = ref<string | null>(null)
 const detailBatchSummary = ref<ExamScannerBatchResponse | null>(null)
+const pageRegisterRetryingBatchId = ref<string | null>(null)
+
+const scanDerivedTemplateAlertVisible = computed(
+  () => summary.value?.scanDerivedTemplateActive === true,
+)
+
+const scanDerivedTemplateAlertDescription = computed(() => {
+  const name = summary.value?.activePaperTemplateName?.trim() || '扫描推导模板'
+  const pages = summary.value?.activePaperTemplateTotalPages
+  return pages != null && pages > 0
+    ? `当前 ACTIVE 模板「${name}」（${pages} 页/卷）由首扫自动推导，请勿在 Web 端手工覆盖页数。`
+    : `当前 ACTIVE 模板「${name}」由首扫自动推导。`
+})
+
+const fullPaperFirstScanAlertVisible = computed(
+  () => summary.value?.fullPaperFirstScanTemplatePending === true,
+)
 
 const statusTabItems = computed(() => [
   { key: 'ALL', label: '全部', count: summary.value?.batchTotal },
@@ -357,22 +410,23 @@ const summaryMetrics = computed((): SignalMetric[] => {
 })
 
 const batchColumns: ColumnType<ExamScannerBatchResponse>[] = [
-  { title: '批次号', key: 'batchNo', width: 220 },
-  { title: '状态', key: 'status', width: 100 },
+  { title: '批次号', key: 'batchNo', width: 220, fixed: 'left' },
+  { title: '状态', key: 'status', width: 100, align: 'center' },
   { title: '扫描设备', key: 'scannerDevice', width: 200, ellipsis: true },
   { title: '扫描时间窗', key: 'scanWindow', width: 210 },
-  { title: '事件', dataIndex: 'eventCount', key: 'eventCount', width: 72 },
+  { title: '事件', dataIndex: 'eventCount', key: 'eventCount', width: 72, align: 'right' },
   {
     title: '文件',
     key: 'fileCount',
     width: 72,
+    align: 'right',
     customRender: ({ record }) => `${record.sourceFileCount ?? 0}`,
   },
-  { title: '页数', dataIndex: 'pageCount', key: 'pageCount', width: 72 },
+  { title: '页数', dataIndex: 'pageCount', key: 'pageCount', width: 72, align: 'right' },
   { title: '落库', key: 'pageProgress', width: 90 },
   { title: '异常', key: 'attentionCount', width: 80 },
   { title: '顺序', key: 'orderAudit', width: 90 },
-  { title: '操作', key: 'actions', width: 80, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 140 },
 ]
 
 function batchStatusTone(batch: ExamScannerBatchResponse): BadgeTone {
@@ -387,6 +441,96 @@ function batchStatusLabel(batch: ExamScannerBatchResponse): string {
     return '已封存'
   }
   return strictEnumLabel(ScanBatchStatusDescription, batch.status, '扫描批次状态')
+}
+
+function batchPageRegisterTagVisible(batch: ExamScannerBatchResponse): boolean {
+  const state = batch.pageRegisterState
+  return (
+    state != null &&
+    state !== PageRegisterStateCode.NOT_APPLICABLE &&
+    state !== PageRegisterStateCode.COMPLETED
+  )
+}
+
+function batchPageRegisterLabel(batch: ExamScannerBatchResponse): string {
+  const state = batch.pageRegisterState
+  if (state == null) {
+    return ''
+  }
+  return strictEnumLabel(PageRegisterStateDescription, state, 'pageRegisterState')
+}
+
+function batchPageRegisterTone(batch: ExamScannerBatchResponse): BadgeTone {
+  const state = batch.pageRegisterState
+  if (state === PageRegisterStateCode.BLOCKED_FATAL) {
+    return 'red'
+  }
+  if (
+    state === PageRegisterStateCode.BLOCKED_RECOVERABLE ||
+    state === PageRegisterStateCode.PENDING
+  ) {
+    return 'orange'
+  }
+  return 'gray'
+}
+
+function canRetryBatchPageRegister(batch: ExamScannerBatchResponse): boolean {
+  const state = batch.pageRegisterState
+  if (
+    state === PageRegisterStateCode.BLOCKED_RECOVERABLE ||
+    state === PageRegisterStateCode.PENDING
+  ) {
+    return true
+  }
+  return batch.status === ScanBatchStatusCode.BLOCKED && state == null
+}
+
+function batchRowActions(batch: ExamScannerBatchResponse): UiTableRowActionItem[] {
+  const actions: UiTableRowActionItem[] = [{ key: 'detail', label: '详情', tone: 'primary' }]
+  if (canRetryBatchPageRegister(batch)) {
+    actions.unshift({
+      key: 'retry-register',
+      label: '重试登记',
+      tone: 'primary',
+      disabled: pageRegisterRetryingBatchId.value === batch.scanBatchId,
+    })
+  }
+  return actions
+}
+
+async function retryBatchPageRegister(batch: ExamScannerBatchResponse): Promise<void> {
+  if (!selectedExamId.value || !batch.scanBatchId) {
+    return
+  }
+  pageRegisterRetryingBatchId.value = batch.scanBatchId
+  try {
+    const response = await retryScanBatchPageRegister({
+      examId: selectedExamId.value,
+      scanBatchId: batch.scanBatchId,
+    })
+    if (response.pageRegisterBlocked) {
+      message.warning(response.pageRegisterDiagnostic || '页登记仍被阻断')
+      return
+    }
+    if (response.pageRegisterPending) {
+      message.warning(response.pageRegisterDiagnostic || '页登记待重试')
+      return
+    }
+    message.success('页登记重试成功')
+    await Promise.all([loadSummary(), loadBatches()])
+  } catch (error) {
+    showUserError(error, '页登记重试失败')
+  } finally {
+    pageRegisterRetryingBatchId.value = null
+  }
+}
+
+function handleBatchRowAction(key: string, batch: ExamScannerBatchResponse): void {
+  if (key === 'retry-register') {
+    void retryBatchPageRegister(batch)
+    return
+  }
+  openBatchDetail(batch)
 }
 
 function formatDeviceLabel(deviceId?: string): string {
@@ -404,17 +548,17 @@ function formatDeviceLabel(deviceId?: string): string {
 
 function syncFilterForm(next: Record<string, unknown>): void {
   filterForm.keyword = String(next.keyword ?? '')
-  filterForm.scannerDeviceId
-    = typeof next.scannerDeviceId === 'string' ? next.scannerDeviceId : undefined
+  filterForm.scannerDeviceId =
+    typeof next.scannerDeviceId === 'string' ? next.scannerDeviceId : undefined
   filterForm.scanWindow = isScanWindow(next.scanWindow) ? next.scanWindow : undefined
 }
 
 function isScanWindow(value: unknown): value is [string, string] {
   return (
-    Array.isArray(value)
-    && value.length === 2
-    && typeof value[0] === 'string'
-    && typeof value[1] === 'string'
+    Array.isArray(value) &&
+    value.length === 2 &&
+    typeof value[0] === 'string' &&
+    typeof value[1] === 'string'
   )
 }
 
@@ -521,7 +665,7 @@ function handleStatusTabChange(): void {
   void loadBatches()
 }
 
-function onBatchPageChange(page: { current: number, pageSize: number }): void {
+function onBatchPageChange(page: { current: number; pageSize: number }): void {
   batchQuery.pageNum = page.current
   batchQuery.pageSize = page.pageSize
   void loadBatches()
@@ -678,8 +822,13 @@ onBeforeUnmount(() => {
 }
 
 .scan-batch-workbench__attention-alert,
-.scan-batch-workbench__orphan-alert {
+.scan-batch-workbench__orphan-alert,
+.scan-batch-workbench__template-alert {
   margin-bottom: 12px;
+}
+
+.scan-batch-workbench__register-tag {
+  margin-top: 4px;
 }
 
 .scan-batch-workbench__warn {

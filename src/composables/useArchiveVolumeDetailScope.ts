@@ -1,10 +1,12 @@
 import type { Ref } from 'vue'
+import { computed, reactive } from 'vue'
 import type {
   ArchiveVolumeCapabilitiesVO,
   ArchiveVolumeDetailResponse,
 } from '@/apis/mark/archive-volume'
-import { computed, reactive } from 'vue'
 import { canSubmitArchiveVolumeDetail } from '@/composables/useArchiveVolumeSubmitGate'
+import { ArchiveCatalogStatusCode } from '@/types/enums/archive-catalog-status-enum'
+import { ArchiveVolumeStatusCode } from '@/types/enums/archive-volume-status-enum'
 
 const EMPTY_CAPABILITIES: ArchiveVolumeCapabilitiesVO = {
   member: false,
@@ -19,13 +21,16 @@ const EMPTY_CAPABILITIES: ArchiveVolumeCapabilitiesVO = {
   canStartCollecting: false,
 }
 
-function volumeAcceptsSubmitStatus(status?: string): boolean {
-  return status === 'COLLECTING' || status === 'DEPARTMENT_REVIEWED'
+function volumeAcceptsSubmitStatus(status?: ArchiveVolumeStatusCode): boolean {
+  return (
+    status === ArchiveVolumeStatusCode.COLLECTING ||
+    status === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED
+  )
 }
 
 /** 成绩确认/同步仅收材前阶段；与后端 confirmScoreCompletion / syncTeachingAffairsScoreCompletion 一致。 */
-function volumeAcceptsScoreCompletion(status?: string): boolean {
-  return status === 'DRAFT' || status === 'COLLECTING'
+function volumeAcceptsScoreCompletion(status?: ArchiveVolumeStatusCode): boolean {
+  return status === ArchiveVolumeStatusCode.DRAFT || status === ArchiveVolumeStatusCode.COLLECTING
 }
 
 /**
@@ -45,7 +50,7 @@ export function useArchiveVolumeDetailScope(
   const showSelfCheckButton = computed(() => {
     const d = detail.value
     if (!capabilities.value.canSelfCheck || !d) return false
-    if (d.volume.volumeStatus !== 'COLLECTING') return false
+    if (d.volume.volumeStatus !== ArchiveVolumeStatusCode.COLLECTING) return false
     return d.volume.requireSelfCheckConfirm === true
   })
 
@@ -53,8 +58,10 @@ export function useArchiveVolumeDetailScope(
     const d = detail.value
     if (!d || !volumeAcceptsSubmitStatus(d.volume.volumeStatus)) return false
     if (capabilities.value.canSubmitVolume === true) return true
-    return capabilities.value.member === true
-      && (capabilities.value.canScan === true || capabilities.value.canEditCatalog === true)
+    return (
+      capabilities.value.member === true &&
+      (capabilities.value.canScan === true || capabilities.value.canEditCatalog === true)
+    )
   })
 
   const submitActionDisabledHint = computed(() => {
@@ -65,22 +72,26 @@ export function useArchiveVolumeDetailScope(
 
   const canEditCatalog = computed(() => {
     const d = detail.value
-    return capabilities.value.canEditCatalog === true && d?.volume.volumeStatus === 'COLLECTING'
+    return (
+      capabilities.value.canEditCatalog === true &&
+      d?.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
+    )
   })
 
   const canEditSelfCheck = computed(() => {
     const d = detail.value
     if (!capabilities.value.canSelfCheck || !d) return false
-    if (d.volume.volumeStatus !== 'COLLECTING') return false
-    return d.catalogStatus === 'CONFIRMED'
+    if (d.volume.volumeStatus !== ArchiveVolumeStatusCode.COLLECTING) return false
+    return d.catalogStatus === ArchiveCatalogStatusCode.CONFIRMED
   })
 
   const canRegisterMaterial = computed(() => {
     const d = detail.value
-    if (!capabilities.value.canManageMaterials || !d?.canManageMaterials) return false
+    if (!d?.canManageMaterials) return false
     if (d.hasOpenRemediationTask) return true
+    if (!capabilities.value.canManageMaterials) return false
     const status = d.volume.volumeStatus
-    return status === 'DRAFT' || status === 'COLLECTING'
+    return status === ArchiveVolumeStatusCode.DRAFT || status === ArchiveVolumeStatusCode.COLLECTING
   })
 
   const canRunIntegrityCheck = computed(() => capabilities.value.canRunIntegrityCheck === true)

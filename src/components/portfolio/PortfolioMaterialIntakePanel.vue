@@ -39,7 +39,7 @@
         :title="`审核退回：${status.latestRejectReason}`"
       />
       <UiAlertStrip
-        v-else-if="status?.stage === 'AI_FAILED'"
+        v-else-if="status?.stage === PortfolioMaterialIntakeStageCode.AI_FAILED"
         tone="error"
         title="AI 抽取失败"
         description="请直接在下方补全字段并保存草稿（手工补采）；仅当需要重新识别材料时再点「重新 AI 抽取」。"
@@ -136,7 +136,7 @@ import { useRoute } from 'vue-router'
 import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scanner-dispatch'
 import { PortfolioCollectModeCode, ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { PortfolioMaterialIntakeStageDescription } from '@/apis/portfolio/enums'
+import { PortfolioArchiveRecordStatusCode, PortfolioMaterialIntakeStageCode, PortfolioMaterialIntakeStageDescription } from '@/apis/portfolio/enums'
 import { PORTFOLIO_MATERIAL_INTAKE_STAGE_TONE, PORTFOLIO_TEMPLATE_CODE_CERTIFICATE } from '@/apis/portfolio/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import PortfolioAiCandidateConfirmPanel from '@/components/portfolio/PortfolioAiCandidateConfirmPanel.vue'
@@ -212,18 +212,18 @@ const editableFields = computed(() =>
 const materialRegistered = computed(() => Boolean(materialId.value || status.value?.materialId))
 
 const showRegisterStart = computed(() => {
-  return !(status.value?.stage === 'AI_FAILED' && materialRegistered.value)
+  return !(status.value?.stage === PortfolioMaterialIntakeStageCode.AI_FAILED && materialRegistered.value)
 })
 
 const showRetryAi = computed(
-  () => !demoMode.value && status.value?.stage === 'AI_FAILED' && Boolean(categoryId.value),
+  () => !demoMode.value && status.value?.stage === PortfolioMaterialIntakeStageCode.AI_FAILED && Boolean(categoryId.value),
 )
 
 const reassignBlocked = computed(() => {
   if (!status.value) {
     return false
   }
-  return status.value.stage === 'OCR_PENDING' || status.value.stage === 'AI_PROCESSING'
+  return status.value.stage === PortfolioMaterialIntakeStageCode.OCR_PENDING || status.value.stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
 })
 
 const reassignAllowed = computed(() => {
@@ -231,7 +231,7 @@ const reassignAllowed = computed(() => {
     return false
   }
   const recordStatus = status.value.recordStatus
-  return recordStatus === 'DRAFT' || recordStatus === 'RETURNED'
+  return recordStatus === PortfolioArchiveRecordStatusCode.DRAFT || recordStatus === PortfolioArchiveRecordStatusCode.RETURNED
 })
 
 const reassignReady = computed(
@@ -316,39 +316,39 @@ const archiveActionHint = computed(() => {
     return '请先登记材料'
   }
   if (
-    status.value.recordStatus === 'PENDING_CONFIRM'
+    status.value.recordStatus === PortfolioArchiveRecordStatusCode.PENDING_CONFIRM
     || (status.value.pendingCandidateCount ?? 0) > 0
   ) {
     return '请先确认 AI 候选字段后再保存或提交'
   }
-  if (status.value.stage === 'OCR_PENDING' || status.value.stage === 'AI_PROCESSING') {
+  if (status.value.stage === PortfolioMaterialIntakeStageCode.OCR_PENDING || status.value.stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING) {
     return '材料处理中，请等待完成后再保存或提交'
   }
-  if (status.value.stage === 'AI_FAILED') {
+  if (status.value.stage === PortfolioMaterialIntakeStageCode.AI_FAILED) {
     return '请补全下方字段后保存草稿（手工补采）；需重新识别时再点「重新 AI 抽取」'
   }
-  if (status.value.recordStatus === 'OFFICIAL') {
+  if (status.value.recordStatus === PortfolioArchiveRecordStatusCode.OFFICIAL) {
     return '材料已审核通过，可在档案页查看正式记录'
   }
-  if (status.value.recordStatus === 'RETURNED') {
-    if (status.value.stage === 'READY_TO_SUBMIT') {
+  if (status.value.recordStatus === PortfolioArchiveRecordStatusCode.RETURNED) {
+    if (status.value.stage === PortfolioMaterialIntakeStageCode.READY_TO_SUBMIT) {
       return '审核已退回，字段已补全，请重新提交审核'
     }
     return '审核已退回，请修改字段后保存并重新提交'
   }
-  if (status.value.stage === 'SUBMITTED' || status.value.stage === 'UNDER_REVIEW') {
+  if (status.value.stage === PortfolioMaterialIntakeStageCode.SUBMITTED || status.value.stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW) {
     return '材料已提交，可在审核进度页查看状态'
   }
-  if (status.value.stage === 'FIELDS_INCOMPLETE') {
+  if (status.value.stage === PortfolioMaterialIntakeStageCode.FIELDS_INCOMPLETE) {
     return '请补全必填字段后保存草稿或提交审核'
   }
-  if (status.value.stage === 'READY_TO_SUBMIT') {
+  if (status.value.stage === PortfolioMaterialIntakeStageCode.READY_TO_SUBMIT) {
     return '字段已齐全，可保存草稿或提交审核'
   }
-  if (status.value.stage === 'CATEGORY_PENDING') {
+  if (status.value.stage === PortfolioMaterialIntakeStageCode.CATEGORY_PENDING) {
     return '请先选择档案分类并登记材料'
   }
-  if (status.value.stage === 'UPLOADED') {
+  if (status.value.stage === PortfolioMaterialIntakeStageCode.UPLOADED) {
     return '材料已登记，请补全字段后保存或提交'
   }
   return '当前不可操作'

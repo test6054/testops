@@ -24,6 +24,7 @@ export interface ScoreRecordVO {
   studentNumber: string
   studentName: string
   classId?: string
+  className?: string
   score: number
   fullScore: number
   validFlag: boolean
@@ -108,15 +109,12 @@ export interface ScoreRecordBatchSummaryVO {
 }
 
 export const scoreRecordApi = {
-  listByBatch: (batchId: string) =>
-    http.post<ScoreRecordVO[]>(`${BASE}/list-by-batch`, { id: batchId }),
   pageByBatch: (data: ScoreRecordPageRequest) =>
     http.post<PageResult<ScoreRecordVO>>(`${BASE}/page-by-batch`, data),
   getBatchSummary: (batchId: string) =>
     http.post<ScoreRecordBatchSummaryVO>(`${BASE}/batch-summary`, { id: batchId }),
-  /** 查询某考核环节下批次已确认且样本有效的全部成绩，用于达成度计算 */
-  listValidByItem: (request: ScoreRecordValidQueryRequest) =>
-    http.post<PageResult<ScoreRecordVO>>(`${BASE}/list-valid-by-item`, request),
+  pageValidByItem: (request: ScoreRecordValidQueryRequest) =>
+    http.post<PageResult<ScoreRecordVO>>(`${BASE}/page-valid-by-item`, request),
   detail: (id: string) =>
     http.post<ScoreRecordVO>(`${BASE}/detail`, { id }),
   create: (data: ScoreRecordSaveRequest) =>

@@ -95,48 +95,51 @@
               </UiButton>
             </template>
             <UiDataTable
-              pagination-mode="client"
-              class="student-detail-table__data-table"
+              v-model:current="reviewerPageNum"
+              v-model:page-size="reviewerPageSize"
+              pagination-mode="server"
               :columns="reviewerColumns"
               :data-source="reviewerMetrics"
               :loading="reviewerLoading"
-              :page-size="20"
-              :total="reviewerMetrics.length"
+              :total="reviewerPageTotal"
               flat
+              zebra
+              sticky-header
               row-key="id"
               size="middle"
+              @page-change="handleReviewerPageChange"
             >
-              <template #bodyCell="{ column, index }">
+              <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'reviewer'">
-                  {{ reviewerMetrics[index].reviewerUserName }} ·
-                  {{ reviewerMetrics[index].reviewerTeacherNo }}
+                  {{ record.reviewerUserName }} ·
+                  {{ record.reviewerTeacherNo }}
                 </template>
                 <template v-else-if="column.key === 'organization'">
-                  {{ reviewerMetrics[index].organizationStatusMessage }}
+                  {{ record.organizationStatusMessage }}
                 </template>
                 <template v-else-if="column.key === 'group'">
                   {{
-                    reviewerMetrics[index].groupName
-                      ? `${reviewerMetrics[index].groupName} · ${reviewerMetrics[index].groupStatusMessage}`
+                    record.groupName
+                      ? `${record.groupName} · ${record.groupStatusMessage}`
                       : '组织级'
                   }}
                 </template>
                 <template v-else-if="column.key === 'metricStatus'">
-                  <UiTag :tone="metricStatusTone(reviewerMetrics[index].metricStatus)" size="sm">
-                    {{ metricStatusLabel(reviewerMetrics[index].metricStatus) }}
+                  <UiTag :tone="metricStatusTone(record.metricStatus)" size="sm">
+                    {{ metricStatusLabel(record.metricStatus) }}
                   </UiTag>
                 </template>
                 <template v-else-if="column.key === 'avgScore'">
-                  {{ formatDecimal(reviewerMetrics[index].avgScore) }}
+                  {{ formatDecimal(record.avgScore) }}
                 </template>
                 <template v-else-if="column.key === 'scoreStddev'">
-                  {{ formatDecimal(reviewerMetrics[index].scoreStddev) }}
+                  {{ formatDecimal(record.scoreStddev) }}
                 </template>
                 <template v-else-if="column.key === 'consistencyRate'">
-                  {{ formatDecimal(reviewerMetrics[index].consistencyRate) }}
+                  {{ formatDecimal(record.consistencyRate) }}
                 </template>
                 <template v-else-if="column.key === 'scoreBias'">
-                  {{ formatDecimal(reviewerMetrics[index].scoreBias) }}
+                  {{ formatDecimal(record.scoreBias) }}
                 </template>
               </template>
             </UiDataTable>
@@ -187,7 +190,9 @@
                       :style="{ width: `${Math.min(100, Math.max(0, item.consistencyRate))}%` }"
                     />
                   </div>
-                  <span class="quality-dashboard__consistency-rate">{{ item.consistencyRate }}%</span>
+                  <span class="quality-dashboard__consistency-rate"
+                    >{{ item.consistencyRate }}%</span
+                  >
                 </li>
               </ul>
               <UiEmpty v-else description="暂无评阅员一致性样本" />
@@ -214,12 +219,13 @@
             v-model:current="examSpotCheckPagination.pageNum"
             v-model:page-size="examSpotCheckPagination.pageSize"
             pagination-mode="server"
-            class="student-detail-table__data-table"
             :columns="examSpotCheckColumns"
             :data-source="examSpotCheckItems"
             :loading="examSpotCheckLoading"
             :total="examSpotCheckPagination.total"
             flat
+            zebra
+            sticky-header
             row-key="id"
             size="middle"
             empty-kind="first-run"
@@ -275,12 +281,13 @@
             v-model:current="mySpotCheckPagination.pageNum"
             v-model:page-size="mySpotCheckPagination.pageSize"
             pagination-mode="server"
-            class="student-detail-table__data-table"
             :columns="mySpotCheckColumns"
             :data-source="mySpotCheckItems"
             :loading="mySpotCheckLoading"
             :total="mySpotCheckPagination.total"
             flat
+            zebra
+            sticky-header
             row-key="id"
             size="middle"
             empty-kind="first-run"
@@ -388,6 +395,8 @@
             :loading="groupSummaryLoading"
             :show-pagination="false"
             flat
+            zebra
+            sticky-header
             row-key="groupId"
             size="middle"
           >
@@ -555,53 +564,59 @@
             v-model="reviewerFilterForm"
             :fields="reviewerFilterFields"
             search-text="查询"
-            @search="loadReviewerMetrics"
+            @search="
+              () => {
+                reviewerPageNum = 1
+                void loadReviewerMetrics()
+              }
+            "
             @reset="handleReviewerFilterReset"
           />
 
           <UiDataTable
-            pagination-mode="client"
-            class="student-detail-table__data-table"
+            v-model:current="reviewerPageNum"
+            v-model:page-size="reviewerPageSize"
+            pagination-mode="server"
             :columns="reviewerColumns"
             :data-source="reviewerMetrics"
             :loading="reviewerLoading"
-            :page-size="20"
-            :total="reviewerMetrics.length"
+            :total="reviewerPageTotal"
             flat
+            zebra
+            sticky-header
             row-key="id"
             size="middle"
+            @page-change="handleReviewerPageChange"
           >
-            <template #bodyCell="{ column, index }">
+            <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'reviewer'">
-                {{ reviewerMetrics[index].reviewerUserName }} ·
-                {{ reviewerMetrics[index].reviewerTeacherNo }}
+                {{ record.reviewerUserName }} ·
+                {{ record.reviewerTeacherNo }}
               </template>
               <template v-else-if="column.key === 'organization'">
-                {{ reviewerMetrics[index].organizationStatusMessage }}
+                {{ record.organizationStatusMessage }}
               </template>
               <template v-else-if="column.key === 'group'">
                 {{
-                  reviewerMetrics[index].groupName
-                    ? `${reviewerMetrics[index].groupName} · ${reviewerMetrics[index].groupStatusMessage}`
-                    : '组织级'
+                  record.groupName ? `${record.groupName} · ${record.groupStatusMessage}` : '组织级'
                 }}
               </template>
               <template v-else-if="column.key === 'metricStatus'">
-                <UiTag :tone="metricStatusTone(reviewerMetrics[index].metricStatus)" size="sm">
-                  {{ metricStatusLabel(reviewerMetrics[index].metricStatus) }}
+                <UiTag :tone="metricStatusTone(record.metricStatus)" size="sm">
+                  {{ metricStatusLabel(record.metricStatus) }}
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'avgScore'">
-                {{ formatDecimal(reviewerMetrics[index].avgScore) }}
+                {{ formatDecimal(record.avgScore) }}
               </template>
               <template v-else-if="column.key === 'scoreStddev'">
-                {{ formatDecimal(reviewerMetrics[index].scoreStddev) }}
+                {{ formatDecimal(record.scoreStddev) }}
               </template>
               <template v-else-if="column.key === 'consistencyRate'">
-                {{ formatDecimal(reviewerMetrics[index].consistencyRate) }}
+                {{ formatDecimal(record.consistencyRate) }}
               </template>
               <template v-else-if="column.key === 'scoreBias'">
-                {{ formatDecimal(reviewerMetrics[index].scoreBias) }}
+                {{ formatDecimal(record.scoreBias) }}
               </template>
             </template>
           </UiDataTable>
@@ -677,12 +692,13 @@
             v-model:current="mySpotCheckPagination.pageNum"
             v-model:page-size="mySpotCheckPagination.pageSize"
             pagination-mode="server"
-            class="student-detail-table__data-table"
             :columns="mySpotCheckColumns"
             :data-source="mySpotCheckItems"
             :loading="mySpotCheckLoading"
             :total="mySpotCheckPagination.total"
             flat
+            zebra
+            sticky-header
             row-key="id"
             size="middle"
             empty-kind="first-run"
@@ -741,12 +757,13 @@
             v-model:current="examSpotCheckPagination.pageNum"
             v-model:page-size="examSpotCheckPagination.pageSize"
             pagination-mode="server"
-            class="student-detail-table__data-table"
             :columns="examSpotCheckColumns"
             :data-source="examSpotCheckItems"
             :loading="examSpotCheckLoading"
             :total="examSpotCheckPagination.total"
             flat
+            zebra
+            sticky-header
             row-key="id"
             size="middle"
             empty-kind="first-run"
@@ -798,7 +815,8 @@
                 :loading="scannerBatchLoading"
                 placeholder="选择扫描批次"
                 show-search
-                option-filter-prop="label"
+                :filter-option="false"
+                @search="onScannerBatchSearch"
               />
             </a-form-item>
             <a-form-item label="重处理范围" required>
@@ -838,11 +856,19 @@
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamWorkbenchQualityPanelResponse } from '@/apis/mark/exam-progress'
+import { getQualityPanel } from '@/apis/mark/exam-progress'
 import type { ExamScannerBatchResponse } from '@/apis/mark/exam-scan'
+import { pageScannerBatches } from '@/apis/mark/exam-scan'
 import type {
   MarkingOrganizationResponse,
   QuestionGroupReviewerResponse,
   QuestionMarkingGroupResponse,
+} from '@/apis/mark/marking-organization'
+import {
+  getOrganization,
+  MarkingOrganizationStatusDescription,
+  QUESTION_GROUP_STATUS_TONE,
+  QuestionMarkingGroupStatusDescription,
 } from '@/apis/mark/marking-organization'
 import type {
   ExamSpotCheckRecordItemResponse,
@@ -850,9 +876,28 @@ import type {
   ProgressMonitorRecordResponse,
   ProgressRiskItemResponse,
   ProgressRiskLevelCode,
-  ReviewerMetricStatusCode,
   ReviewerQualityMetricResponse,
   SpotCheckStatusCode,
+} from '@/apis/mark/marking-quality'
+import {
+  BatchReprocessScopeCode,
+  createSpotCheckTasks,
+  getLatestProgress,
+  listExamSpotCheckRecords,
+  listMyPendingSpotChecks,
+  listProgressSnapshots,
+  listReviewerMetrics,
+  PROGRESS_RISK_LEVEL_TONE,
+  ProgressRiskLevelDescription,
+  refreshReviewerMetrics,
+  reprocessBatch,
+  REVIEWER_METRIC_STATUS_OPTIONS,
+  REVIEWER_METRIC_STATUS_TONE,
+  ReviewerMetricStatusCode,
+  ReviewerMetricStatusDescription,
+  SPOT_CHECK_STATUS_TONE,
+  SpotCheckStatusDescription,
+  takeProgressSnapshot,
 } from '@/apis/mark/marking-quality'
 import type {
   BadgeTone,
@@ -868,33 +913,6 @@ import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getQualityPanel } from '@/apis/mark/exam-progress'
-import { pageScannerBatches } from '@/apis/mark/exam-scan'
-import {
-  getOrganization,
-  MarkingOrganizationStatusDescription,
-  QUESTION_GROUP_STATUS_TONE,
-  QuestionMarkingGroupStatusDescription,
-} from '@/apis/mark/marking-organization'
-import {
-  BatchReprocessScopeCode,
-  createSpotCheckTasks,
-  getLatestProgress,
-  listExamSpotCheckRecords,
-  listMyPendingSpotChecks,
-  listProgressSnapshots,
-  listReviewerMetrics,
-  PROGRESS_RISK_LEVEL_TONE,
-  ProgressRiskLevelDescription,
-  refreshReviewerMetrics,
-  reprocessBatch,
-  REVIEWER_METRIC_STATUS_OPTIONS,
-  REVIEWER_METRIC_STATUS_TONE,
-  ReviewerMetricStatusDescription,
-  SPOT_CHECK_STATUS_TONE,
-  SpotCheckStatusDescription,
-  takeProgressSnapshot,
-} from '@/apis/mark/marking-quality'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
@@ -926,21 +944,21 @@ import {
   buildTrendLineChartOption,
 } from '@/utils/mark-echarts-options'
 import { progressSnapshotsToTrendPoints } from '@/utils/mark-statistics-chart'
-import { readAllPages } from '@/utils/page-result'
 import { computeTrendPointDelta } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminMarkingQualityDashboard' })
 
 const REVIEWER_METRIC_PAGE_SIZE = 100
-const SCANNER_BATCH_OPTION_PAGE_SIZE = 100
+const SCANNER_BATCH_OPTION_PAGE_SIZE = 20
+const SCANNER_BATCH_SEARCH_DEBOUNCE_MS = 300
 
 const route = useRoute()
 const router = useRouter()
 const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
 
-const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
-  = useOptionalExamJourneyContextBar('阅卷质控')
+const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useOptionalExamJourneyContextBar('阅卷质控')
 
 const {
   examOptions,
@@ -958,11 +976,11 @@ type QualityTabKey = 'overview' | 'progress' | 'reviewer' | 'spotcheck' | 'repro
 function resolveInitialTab(): QualityTabKey {
   const queryTab = route.query.tab
   if (
-    queryTab === 'overview'
-    || queryTab === 'progress'
-    || queryTab === 'reviewer'
-    || queryTab === 'spotcheck'
-    || queryTab === 'reprocess'
+    queryTab === 'overview' ||
+    queryTab === 'progress' ||
+    queryTab === 'reviewer' ||
+    queryTab === 'spotcheck' ||
+    queryTab === 'reprocess'
   ) {
     return queryTab
   }
@@ -996,6 +1014,8 @@ const organizationLoading = ref(false)
 // 加载失败：toast 提示，主区保持空态/列表壳
 const scannerBatches = ref<ExamScannerBatchResponse[]>([])
 const scannerBatchLoading = ref(false)
+const scannerBatchKeyword = ref('')
+let scannerBatchSearchTimer: ReturnType<typeof setTimeout> | undefined
 const examQualityPanel = ref<ExamWorkbenchQualityPanelResponse | null>(null)
 // 加载失败：toast 提示，主区保持空态/列表壳
 
@@ -1003,8 +1023,8 @@ const scopeValid = computed(() => Boolean(selectedExamId.value && selectedOrgani
 
 const showGroupScope = computed(
   () =>
-    isExamWorkspaceRoute.value
-    && (activeTab.value === 'progress' || activeTab.value === 'spotcheck'),
+    isExamWorkspaceRoute.value &&
+    (activeTab.value === 'progress' || activeTab.value === 'spotcheck'),
 )
 
 const showProgressGroupSummary = computed(
@@ -1024,13 +1044,13 @@ interface GroupSummaryRow {
 }
 
 const groupSummaryColumns: ColumnType<GroupSummaryRow>[] = [
-  { title: '题组', dataIndex: 'groupName', key: 'groupName', width: 160 },
+  { title: '题组', dataIndex: 'groupName', key: 'groupName', width: 160, fixed: 'left' },
   { title: '组长', dataIndex: 'leaderUserName', key: 'leaderUserName', width: 100 },
   { title: '阅卷教师', dataIndex: 'reviewerCount', key: 'reviewerCount', width: 88 },
   { title: '完成率', key: 'completionRate', width: 88 },
   { title: '风险', key: 'riskLevel', width: 88 },
   { title: '状态', key: 'groupStatus', width: 100 },
-  { title: '操作', key: 'actions', width: 100, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 100 },
 ]
 
 const groupSummaryLoading = ref(false)
@@ -1246,7 +1266,7 @@ async function loadExamSpotCheckRecords(): Promise<void> {
   }
 }
 
-function handleExamSpotCheckPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleExamSpotCheckPageChange(pageEvent: { current: number; pageSize: number }): void {
   examSpotCheckPagination.pageNum = pageEvent.current
   examSpotCheckPagination.pageSize = pageEvent.pageSize
   void loadExamSpotCheckRecords()
@@ -1261,12 +1281,12 @@ const mySpotCheckPagination = reactive({
 })
 
 const mySpotCheckColumns: ColumnType<MyPendingSpotCheckItemResponse>[] = [
-  { title: '题目', key: 'question', width: 160 },
+  { title: '题目', key: 'question', width: 160, fixed: 'left' },
   { title: '答卷', key: 'paper', ellipsis: true },
   { title: '原评分', key: 'originalScore', width: 88, align: 'right' },
   { title: '状态', key: 'spotCheckStatus', width: 100 },
   { title: '分派时间', key: 'createTime', width: 160 },
-  { title: '操作', key: 'actions', width: 88, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 88 },
 ]
 
 function mySpotCheckStatusTone(status: SpotCheckStatusCode): BadgeTone {
@@ -1301,7 +1321,7 @@ async function loadMyPendingSpotChecks(): Promise<void> {
   }
 }
 
-function handleMySpotCheckPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleMySpotCheckPageChange(pageEvent: { current: number; pageSize: number }): void {
   mySpotCheckPagination.pageNum = pageEvent.current
   mySpotCheckPagination.pageSize = pageEvent.pageSize
   void loadMyPendingSpotChecks()
@@ -1395,6 +1415,10 @@ async function handleSnapshot(): Promise<void> {
 
 const reviewerMetrics = ref<ReviewerQualityMetricResponse[]>([])
 const reviewerLoading = ref(false)
+const reviewerPageNum = ref(1)
+const reviewerPageSize = ref(20)
+const reviewerPageTotal = ref(0)
+const reviewerStatusStats = ref({ warning: 0, suspended: 0 })
 const refreshing = ref(false)
 
 const reviewerFilterForm = reactive<{ metricStatus?: ReviewerMetricStatusCode }>({})
@@ -1425,32 +1449,63 @@ const reviewerColumns: ColumnType<ReviewerQualityMetricResponse>[] = [
   { title: '快照时间', key: 'snapshotTime', dataIndex: 'snapshotTime', width: 160 },
 ]
 
+async function loadReviewerStatusStats(): Promise<void> {
+  if (!selectedExamId.value) {
+    reviewerStatusStats.value = { warning: 0, suspended: 0 }
+    return
+  }
+  const base = {
+    examId: selectedExamId.value,
+    organizationId: selectedOrganizationId.value,
+    groupId: selectedGroupId.value,
+    pageNum: 1,
+    pageSize: 1,
+  }
+  const [warningPage, suspendedPage] = await Promise.all([
+    listReviewerMetrics({ ...base, metricStatus: ReviewerMetricStatusCode.WARNING }),
+    listReviewerMetrics({ ...base, metricStatus: ReviewerMetricStatusCode.SUSPENDED }),
+  ])
+  reviewerStatusStats.value = {
+    warning: warningPage.total,
+    suspended: suspendedPage.total,
+  }
+}
+
 async function loadReviewerMetrics(): Promise<void> {
   if (!selectedExamId.value) return
   reviewerLoading.value = true
   try {
-    reviewerMetrics.value = await readAllPages(
-      (pageNum) =>
-        listReviewerMetrics({
-          examId: selectedExamId.value!,
-          organizationId: selectedOrganizationId.value,
-          groupId: selectedGroupId.value,
-          metricStatus: reviewerFilterForm.metricStatus,
-          pageNum,
-          pageSize: REVIEWER_METRIC_PAGE_SIZE,
-        }),
-      '阅卷教师质量指标加载失败',
-    )
+    const page = await listReviewerMetrics({
+      examId: selectedExamId.value,
+      organizationId: selectedOrganizationId.value,
+      groupId: selectedGroupId.value,
+      metricStatus: reviewerFilterForm.metricStatus,
+      pageNum: reviewerPageNum.value,
+      pageSize: reviewerPageSize.value,
+    })
+    reviewerMetrics.value = page.list
+    reviewerPageNum.value = page.pageNum
+    reviewerPageSize.value = page.pageSize
+    reviewerPageTotal.value = page.total
+    await loadReviewerStatusStats()
   } catch (error) {
     reviewerMetrics.value = []
+    reviewerPageTotal.value = 0
     showUserError(error, '阅卷教师质量指标加载失败')
   } finally {
     reviewerLoading.value = false
   }
 }
 
+function handleReviewerPageChange(event: { current: number; pageSize: number }): void {
+  reviewerPageNum.value = event.current
+  reviewerPageSize.value = event.pageSize
+  void loadReviewerMetrics()
+}
+
 function handleReviewerFilterReset(): void {
   reviewerFilterForm.metricStatus = undefined
+  reviewerPageNum.value = 1
   void loadReviewerMetrics()
 }
 
@@ -1570,8 +1625,8 @@ async function loadExamQualityPanel(): Promise<void> {
     examQualityPanel.value = null
     return
   }
-  const shouldLoad
-    = isExamWorkspaceRoute.value || activeTab.value === 'overview' || activeTab.value === 'spotcheck'
+  const shouldLoad =
+    isExamWorkspaceRoute.value || activeTab.value === 'overview' || activeTab.value === 'spotcheck'
   if (!shouldLoad) {
     examQualityPanel.value = null
     return
@@ -1585,11 +1640,11 @@ async function loadExamQualityPanel(): Promise<void> {
 }
 
 const signalMetrics = computed<SignalMetric[]>(() => {
-  const useExamQualitySignals
-    = examQualityPanel.value
-      && (isExamWorkspaceRoute.value
-        || activeTab.value === 'overview'
-        || activeTab.value === 'spotcheck')
+  const useExamQualitySignals =
+    examQualityPanel.value &&
+    (isExamWorkspaceRoute.value ||
+      activeTab.value === 'overview' ||
+      activeTab.value === 'spotcheck')
   if (useExamQualitySignals) {
     const panel = examQualityPanel.value!
     const summary = panel.qualitySummary
@@ -1635,13 +1690,11 @@ const signalMetrics = computed<SignalMetric[]>(() => {
   }
 
   const p = progress.value
-  const reviewerWarning = reviewerMetrics.value.filter((r) => r.metricStatus === 'WARNING').length
-  const reviewerSuspended = reviewerMetrics.value.filter(
-    (r) => r.metricStatus === 'SUSPENDED',
-  ).length
+  const reviewerWarning = reviewerStatusStats.value.warning
+  const reviewerSuspended = reviewerStatusStats.value.suspended
 
-  const completionRate
-    = typeof p?.completionRate === 'number' ? `${p.completionRate.toFixed(1)}%` : '-'
+  const completionRate =
+    typeof p?.completionRate === 'number' ? `${p.completionRate.toFixed(1)}%` : '-'
   const recycledCount = p?.recycledTasks ?? 0
   const inProgressCount = p?.inProgressTasks ?? 0
   const finalizedCount = p?.finalizedTasks ?? 0
@@ -1740,24 +1793,29 @@ async function loadOrganizationDetail(): Promise<void> {
   }
 }
 
-async function loadScannerBatches(): Promise<void> {
-  scannerBatches.value = []
-  reprocessForm.scanBatchId = ''
+async function loadScannerBatches(
+  keyword = scannerBatchKeyword.value,
+  resetSelection = false,
+): Promise<void> {
+  if (resetSelection) {
+    scannerBatches.value = []
+    reprocessForm.scanBatchId = ''
+  }
+  scannerBatchKeyword.value = keyword
   if (!selectedExamId.value) {
     return
   }
   scannerBatchLoading.value = true
   try {
-    scannerBatches.value = await readAllPages(
-      (pageNum) =>
-        pageScannerBatches({
-          examId: selectedExamId.value!,
-          pageNum,
-          pageSize: SCANNER_BATCH_OPTION_PAGE_SIZE,
-          includeDiscarded: true,
-        }),
-      '扫描批次加载失败',
-    )
+    const normalizedKeyword = keyword.trim()
+    const page = await pageScannerBatches({
+      examId: selectedExamId.value,
+      pageNum: 1,
+      pageSize: SCANNER_BATCH_OPTION_PAGE_SIZE,
+      keyword: normalizedKeyword || undefined,
+      includeDiscarded: true,
+    })
+    scannerBatches.value = page.list
   } catch (error) {
     scannerBatches.value = []
     reprocessForm.scanBatchId = ''
@@ -1765,6 +1823,15 @@ async function loadScannerBatches(): Promise<void> {
   } finally {
     scannerBatchLoading.value = false
   }
+}
+
+function onScannerBatchSearch(keyword: string): void {
+  if (scannerBatchSearchTimer) {
+    clearTimeout(scannerBatchSearchTimer)
+  }
+  scannerBatchSearchTimer = setTimeout(() => {
+    void loadScannerBatches(keyword)
+  }, SCANNER_BATCH_SEARCH_DEBOUNCE_MS)
 }
 
 function handleExamChange(value: SelectValue): void {
@@ -1864,7 +1931,11 @@ watch(activeTab, () => {
 watch(
   selectedExamId,
   async () => {
-    await Promise.all([loadOrganizationDetail(), loadScannerBatches(), loadExamQualityPanel()])
+    await Promise.all([
+      loadOrganizationDetail(),
+      loadScannerBatches('', true),
+      loadExamQualityPanel(),
+    ])
     syncRouteQuery()
     reloadActiveTab()
   },

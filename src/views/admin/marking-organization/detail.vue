@@ -191,7 +191,7 @@
             :total="filteredGroups.length"
             :sorted-info="groupTableSortedInfo"
             :empty-description="groupTableEmptyDescription"
-            class="group-table student-detail-table__data-table org-detail__group-table"
+            class="group-table org-detail__group-table"
           >
             <template #toolbar-left>
               <UiSearchBox
@@ -515,10 +515,11 @@
           <a-select
             v-model:value="groupForm.leaderUserId"
             show-search
-            option-filter-prop="label"
+            :filter-option="false"
             :options="teacherOptions"
             :loading="teacherLoading"
             placeholder="从教师中选择"
+            @search="onTeacherSearch"
           />
         </a-form-item>
         <a-form-item
@@ -544,8 +545,9 @@
             :options="teacherOptions"
             :loading="teacherLoading"
             placeholder="选择阅卷教师（多选）"
-            option-filter-prop="label"
             show-search
+            :filter-option="false"
+            @search="onTeacherSearch"
           />
         </a-form-item>
       </a-form>
@@ -711,13 +713,17 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
+import { adminGetUserPage } from '@/apis/edu/admin-user'
 import type { ExamDetailResponse } from '@/apis/mark/exam'
+import { getExamDetail } from '@/apis/mark/exam'
 import type { ExamTemplateResponse } from '@/apis/mark/exam-layout-question'
+import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import type { ExamWorkbenchMarkingProgressPanelResponse } from '@/apis/mark/exam-progress'
+import { getMarkingProgressPanel } from '@/apis/mark/exam-progress'
 import type {
   AllocationPolicyResponse,
   AllocationPolicySaveRequest,
-  FormalSessionResponse,
+  MarkingOrganizationGroupTaskProgressItemResponse,
   MarkingOrganizationResponse,
   OrganizationUpdateRequest,
   QuestionGroupSaveRequest,
@@ -725,19 +731,6 @@ import type {
   RecyclePolicyResponse,
   RecyclePolicySaveRequest,
 } from '@/apis/mark/marking-organization'
-import type { ReviewerQualityMetricResponse } from '@/apis/mark/marking-quality'
-import type { BadgeTone, UiSectionTabItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { adminGetUserPage } from '@/apis/edu/admin-user'
-import { ANONYMITY_MODE_OPTIONS } from '@/apis/mark/anonymity-mode'
-import { getExamDetail } from '@/apis/mark/exam'
-import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
-import { getMarkingProgressPanel } from '@/apis/mark/exam-progress'
 import {
   ALLOCATION_UNIT_OPTIONS,
   ANONYMOUS_TOKEN_POLICY_OPTIONS,
@@ -745,8 +738,8 @@ import {
   deleteOrganization,
   deleteQuestionGroup,
   getOrganizationById,
-  listFormalSessions,
   listMarkingPolicies,
+  listOrganizationGroupTaskProgress,
   MARKING_ALLOCATION_MODE_OPTIONS,
   MARKING_ORGANIZATION_STATUS_TONE,
   MARKING_REASSIGN_MODE_OPTIONS,
@@ -759,7 +752,16 @@ import {
   saveRecyclePolicy,
   updateOrganization,
 } from '@/apis/mark/marking-organization'
+import type { ReviewerQualityMetricResponse } from '@/apis/mark/marking-quality'
 import { listReviewerMetrics } from '@/apis/mark/marking-quality'
+import type { BadgeTone, UiSectionTabItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ANONYMITY_MODE_OPTIONS } from '@/apis/mark/anonymity-mode'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInfoGrid from '@/components/ui-guide/ui/InfoGrid.vue'
@@ -798,7 +800,6 @@ import {
   resolveMarkingOrganizationIndexRoute,
   resolveMarkingOrganizationTrialSessionsRoute,
 } from '@/utils/marking-organization-navigation'
-import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import MarkingOrgAssignmentTable from '@/views/admin/marking-organization/components/MarkingOrgAssignmentTable.vue'
 import MarkingOrgGroupProgressList from '@/views/admin/marking-organization/components/MarkingOrgGroupProgressList.vue'
@@ -808,10 +809,11 @@ import RecycledTaskReassignPanel from '@/views/admin/marking-organization/compon
 
 defineOptions({ name: 'AdminMarkingOrganizationDetail' })
 
-const MARKING_TEACHER_OPTION_PAGE_SIZE = 100
+const MARKING_TEACHER_OPTION_PAGE_SIZE = 20
+const TEACHER_SEARCH_DEBOUNCE_MS = 300
 
-const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
-  = useOptionalExamJourneyContextBar('阅卷安排')
+const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useOptionalExamJourneyContextBar('阅卷安排')
 
 const route = useRoute()
 const router = useRouter()
@@ -837,7 +839,7 @@ const loading = ref(false)
 const activeTab = ref<'info' | 'policy' | 'recycled'>('info')
 const policyDrawerOpen = ref(false)
 const markingProgressPanel = ref<ExamWorkbenchMarkingProgressPanelResponse | null>(null)
-const formalSessionsForGroupProgress = ref<FormalSessionResponse[]>([])
+const formalSessionsForGroupProgress = ref<MarkingOrganizationGroupTaskProgressItemResponse[]>([])
 const reviewerMetrics = ref<ReviewerQualityMetricResponse[]>([])
 const reviewerMetricsLoading = ref(false)
 
@@ -873,16 +875,16 @@ function matchesGroupSearch(group: QuestionMarkingGroupResponse, keyword: string
   if (
     group.reviewers.some(
       (reviewer) =>
-        reviewer.reviewerUserName?.toLowerCase().includes(keyword)
-        || reviewer.reviewerTeacherNo?.toLowerCase().includes(keyword),
+        reviewer.reviewerUserName?.toLowerCase().includes(keyword) ||
+        reviewer.reviewerTeacherNo?.toLowerCase().includes(keyword),
     )
   ) {
     return true
   }
   return group.questions.some(
     (question) =>
-      String(question.questionNo).includes(keyword)
-      || question.questionTypeMessage?.toLowerCase().includes(keyword),
+      String(question.questionNo).includes(keyword) ||
+      question.questionTypeMessage?.toLowerCase().includes(keyword),
   )
 }
 
@@ -923,8 +925,8 @@ const orgSignalMetrics = computed((): SignalMetric[] => {
     return []
   }
   const summary = markingProgressPanel.value?.markingTaskSummary
-  const overallPercent
-    = summary && summary.totalTaskCount > 0
+  const overallPercent =
+    summary && summary.totalTaskCount > 0
       ? Math.round((summary.finalizedTaskCount * 100) / summary.totalTaskCount)
       : null
   const metrics: SignalMetric[] = [
@@ -992,12 +994,11 @@ const orgDefaultRecyclePolicy = computed(() =>
 
 const groupProgressById = computed((): Record<string, GroupProgressSnapshot> => {
   const map: Record<string, GroupProgressSnapshot> = {}
-  for (const session of formalSessionsForGroupProgress.value) {
-    if (!session.groupId) continue
-    const current = map[session.groupId] ?? { total: 0, finalized: 0 }
-    current.total += session.totalTaskCount
-    current.finalized += session.finalizedTaskCount
-    map[session.groupId] = current
+  for (const item of formalSessionsForGroupProgress.value) {
+    map[item.groupId] = {
+      total: item.totalTaskCount ?? 0,
+      finalized: item.finalizedTaskCount ?? 0,
+    }
   }
   return map
 })
@@ -1023,7 +1024,7 @@ async function loadWorkbenchPanels(): Promise<void> {
   }
   reviewerMetricsLoading.value = true
   try {
-    const [panel, metricsResult, formalSessions] = await Promise.all([
+    const [panel, metricsResult, groupProgress] = await Promise.all([
       getMarkingProgressPanel(activeExamId.value),
       listReviewerMetrics({
         examId: activeExamId.value,
@@ -1031,10 +1032,10 @@ async function loadWorkbenchPanels(): Promise<void> {
         pageNum: 1,
         pageSize: 200,
       }),
-      listFormalSessions({ organizationId: organizationId.value }),
+      listOrganizationGroupTaskProgress({ organizationId: organizationId.value }),
     ])
     markingProgressPanel.value = panel
-    formalSessionsForGroupProgress.value = formalSessions
+    formalSessionsForGroupProgress.value = groupProgress
     reviewerMetrics.value = metricsResult.list ?? []
   } catch (error) {
     markingProgressPanel.value = null
@@ -1164,33 +1165,82 @@ const groupColumns: ColumnType<QuestionMarkingGroupResponse>[] = [
 ]
 
 const teacherList = ref<UserListItemDto[]>([])
+const teacherOptions = ref<Array<{ value: string; label: string }>>([])
 const teacherLoading = ref(false)
+let teacherSearchTimer: ReturnType<typeof setTimeout> | undefined
 
-const teacherOptions = computed(() =>
-  teacherList.value.map((item) => ({
+function buildTeacherOption(item: UserListItemDto): { value: string; label: string } {
+  return {
     value: item.id,
     label: item.identifierNumber ? `${item.nickName} (${item.identifierNumber})` : item.nickName,
-  })),
-)
+  }
+}
 
-async function loadTeachers(): Promise<void> {
-  if (teacherList.value.length > 0) return
+function cacheTeachers(items: UserListItemDto[]): void {
+  for (const item of items) {
+    if (!teacherList.value.some((teacher) => teacher.id === item.id)) {
+      teacherList.value.push(item)
+    }
+  }
+}
+
+async function pinTeacherById(teacherId: string): Promise<void> {
+  const cached = teacherList.value.find((item) => item.id === teacherId)
+  if (cached) {
+    const option = buildTeacherOption(cached)
+    if (!teacherOptions.value.some((item) => item.value === option.value)) {
+      teacherOptions.value = [option, ...teacherOptions.value]
+    }
+    return
+  }
+  const result = await adminGetUserPage({
+    id: teacherId,
+    pageNum: 1,
+    pageSize: 1,
+    roleKey: 'SCH_TECH',
+  })
+  if (result.list.length === 0) return
+  cacheTeachers(result.list)
+  const option = buildTeacherOption(result.list[0])
+  if (!teacherOptions.value.some((item) => item.value === option.value)) {
+    teacherOptions.value = [option, ...teacherOptions.value]
+  }
+}
+
+async function loadTeachers(keyword?: string): Promise<void> {
   teacherLoading.value = true
   try {
-    teacherList.value = await readAllPages(
-      (pageNum) =>
-        adminGetUserPage({
-          pageNum,
-          pageSize: MARKING_TEACHER_OPTION_PAGE_SIZE,
-          roleKey: 'SCH_TECH',
-        }),
-      '阅卷教师列表加载失败，请稍后重试',
+    const result = await adminGetUserPage({
+      pageNum: 1,
+      pageSize: MARKING_TEACHER_OPTION_PAGE_SIZE,
+      roleKey: 'SCH_TECH',
+      keyword: keyword?.trim() || undefined,
+    })
+    cacheTeachers(result.list)
+    teacherOptions.value = result.list.map((item) => buildTeacherOption(item))
+    const pinnedIds = [groupForm.leaderUserId, ...groupForm.reviewerUserIds].filter(
+      (teacherId): teacherId is string => Boolean(teacherId),
     )
+    for (const teacherId of pinnedIds) {
+      if (!teacherOptions.value.some((item) => item.value === teacherId)) {
+        await pinTeacherById(teacherId)
+      }
+    }
   } catch (error) {
+    teacherOptions.value = []
     showUserError(error, '阅卷教师列表加载失败')
   } finally {
     teacherLoading.value = false
   }
+}
+
+function onTeacherSearch(keyword: string): void {
+  if (teacherSearchTimer) {
+    clearTimeout(teacherSearchTimer)
+  }
+  teacherSearchTimer = setTimeout(() => {
+    void loadTeachers(keyword)
+  }, TEACHER_SEARCH_DEBOUNCE_MS)
 }
 
 interface QuestionOption {
@@ -1402,9 +1452,9 @@ function canDeleteGroup(record: QuestionMarkingGroupResponse): boolean {
 
 function canCloseGroup(record: QuestionMarkingGroupResponse): boolean {
   return (
-    canManageExamOwner.value
-    && (record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_ACTIVE
-      || record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_CONFIGURED)
+    canManageExamOwner.value &&
+    (record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_ACTIVE ||
+      record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_CONFIGURED)
   )
 }
 
@@ -1647,7 +1697,7 @@ const groupAllocationUnitMap = computed(() => {
 })
 
 function policyOptionLabel(
-  options: Array<{ value: string, label: string }>,
+  options: Array<{ value: string; label: string }>,
   value?: string | null,
 ): string {
   if (!value) {

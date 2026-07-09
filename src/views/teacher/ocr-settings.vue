@@ -3,25 +3,16 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamDetailResponse } from '@/apis/mark/exam'
-import type { ExamScoreSummaryItemResponse } from '@/apis/mark/exam-score'
-import type { MarkOcrConfigResponse } from '@/apis/mark/ocr-config'
-import type { PaddleOcrInstanceResponse } from '@/apis/mark/ocr-paddle-instance'
-import type { MarkOcrPaperSliceVO, MarkOcrRecognizeResponse } from '@/apis/mark/ocr-recognition'
-import type { MarkOcrHealthStatusCode, MarkOcrProviderTypeCode } from '@/apis/mark/ocr-types'
-import type { SignalMetric } from '@/types/workbench'
-import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
-import ClusterOutlined from '@ant-design/icons-vue/ClusterOutlined'
-import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { getExamDetail } from '@/apis/mark/exam'
-import { BindingStatusDescription } from '@/apis/mark/exam-binding'
+import type { ExamScoreSummaryItemResponse } from '@/apis/mark/exam-score'
 import { pageExamScoreSummary } from '@/apis/mark/exam-score'
-import { FinalScoreStatusDescription } from '@/apis/mark/final-score-status'
+import type { MarkOcrConfigResponse } from '@/apis/mark/ocr-config'
 import { checkMarkOcrHealth, getCurrentMarkOcrConfig } from '@/apis/mark/ocr-config'
-import { listPaddleOcrInstances } from '@/apis/mark/ocr-paddle-instance'
+import type { PaddleOcrInstanceResponse } from '@/apis/mark/ocr-paddle-instance'
+import { pagePaddleOcrInstances } from '@/apis/mark/ocr-paddle-instance'
+import type { MarkOcrPaperSliceVO, MarkOcrRecognizeResponse } from '@/apis/mark/ocr-recognition'
 import { listMarkOcrPaperSlices, recognizeMarkOcr } from '@/apis/mark/ocr-recognition'
+import type { MarkOcrHealthStatusCode, MarkOcrProviderTypeCode } from '@/apis/mark/ocr-types'
 import {
   MARK_OCR_HEALTH_STATUS_TONE,
   MARK_OCR_PAPER_CUT_CAPABILITY,
@@ -29,6 +20,15 @@ import {
   MarkOcrHealthStatusDescription,
   MarkOcrProviderTypeDescription,
 } from '@/apis/mark/ocr-types'
+import type { SignalMetric } from '@/types/workbench'
+import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
+import ClusterOutlined from '@ant-design/icons-vue/ClusterOutlined'
+import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { BindingStatusCode, BindingStatusDescription } from '@/apis/mark/exam-binding'
+import { FinalScoreStatusDescription } from '@/apis/mark/final-score-status'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -42,6 +42,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useAuthStore } from '@/stores/modules/auth'
 import { RoleEnum } from '@/types/enums'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
@@ -81,6 +82,7 @@ const ocrHealthCheckAllowed = computed(() => authStore.userRole === RoleEnum.SUP
 // 用 watch(currentConfig.providerType) 自动开关加载，无需手动触发。
 const paddleInstances = ref<PaddleOcrInstanceResponse[]>([])
 const paddleInstancesLoading = ref(false)
+const paddlePagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 const paperSlices = ref<MarkOcrPaperSliceVO[]>([])
 const paperSlicesLoading = ref(false)
 const paperCandidates = ref<ExamScoreSummaryItemResponse[]>([])
@@ -171,11 +173,11 @@ const paperCutCapability = computed(() => {
 
 const canRecognize = computed(() =>
   Boolean(
-    ocrDebugReady.value
-    && currentConfig.value?.providerType
-    && currentConfig.value.enabled
-    && debugForm.value.paperInstanceId
-    && debugForm.value.responseSliceId,
+    ocrDebugReady.value &&
+    currentConfig.value?.providerType &&
+    currentConfig.value.enabled &&
+    debugForm.value.paperInstanceId &&
+    debugForm.value.responseSliceId,
   ),
 )
 const currentPaperSlice = computed(() =>
@@ -333,7 +335,7 @@ async function loadPaperCandidates(
       keyword: normalizedKeyword || undefined,
     })
     paperCandidates.value = result.list.filter(
-      (item) => item.paperInstanceId && item.bindingStatus === 'BOUND',
+      (item) => item.paperInstanceId && item.bindingStatus === BindingStatusCode.BOUND,
     )
   } catch (error) {
     paperCandidates.value = []
@@ -380,7 +382,7 @@ const paddleHealthyCount = computed(
 )
 
 const paddleInstanceColumns: ColumnType<PaddleOcrInstanceResponse>[] = [
-  { title: '实例', key: 'instanceName', width: 180, ellipsis: true },
+  { title: '实例', key: 'instanceName', width: 180, ellipsis: true, fixed: 'left' },
   { title: '健康', key: 'healthStatus', width: 100 },
   { title: '设备类型', dataIndex: 'deviceType', key: 'deviceType', width: 100 },
   { title: '服务地址', key: 'serviceUrl', width: 140 },
@@ -391,9 +393,17 @@ const paddleInstanceColumns: ColumnType<PaddleOcrInstanceResponse>[] = [
 async function loadPaddleInstances(): Promise<void> {
   paddleInstancesLoading.value = true
   try {
-    paddleInstances.value = await listPaddleOcrInstances()
+    const page = await pagePaddleOcrInstances({
+      pageNum: paddlePagination.pageNum,
+      pageSize: paddlePagination.pageSize,
+    })
+    paddleInstances.value = page.list
+    paddlePagination.total = page.total
+    paddlePagination.pageNum = page.pageNum
+    paddlePagination.pageSize = page.pageSize
   } catch (error) {
     paddleInstances.value = []
+    paddlePagination.total = 0
     showUserError(error, 'PaddleOCR 实例加载失败')
   } finally {
     paddleInstancesLoading.value = false
@@ -407,6 +417,7 @@ watch(
       void loadPaddleInstances()
     } else {
       paddleInstances.value = []
+      paddlePagination.total = 0
     }
   },
   { immediate: false },
@@ -570,7 +581,7 @@ onBeforeUnmount(() => {
               <span>PaddleOCR 服务实例</span>
             </h3>
             <span class="ocr-settings__panel-desc">
-              健康 {{ paddleHealthyCount }} / {{ paddleInstances.length }}
+              共 {{ paddlePagination.total }} 个实例 · 本页健康 {{ paddleHealthyCount }}
             </span>
           </div>
         </template>
@@ -586,16 +597,18 @@ onBeforeUnmount(() => {
           </UiButton>
         </template>
         <UiDataTable
-          pagination-mode="none"
-          class="student-detail-table__data-table"
+          v-model:current="paddlePagination.pageNum"
+          v-model:page-size="paddlePagination.pageSize"
+          pagination-mode="server"
           :columns="paddleInstanceColumns"
           :data-source="paddleInstances"
           :loading="paddleInstancesLoading"
-          :show-pagination="false"
+          :total="paddlePagination.total"
+          :sticky-header="false"
           flat
-          :total="paddleInstances.length"
           row-key="id"
           size="middle"
+          @page-change="loadPaddleInstances"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'instanceName'">

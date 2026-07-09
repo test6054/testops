@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioExternalTeacherImportBatchStatusCode } from '@/apis/portfolio/enums'
+import {
+  PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS,
+  PortfolioExternalTeacherDataStatusCode,
+  PortfolioExternalTeacherDataStatusDescription,
+  PortfolioExternalTeacherImportBatchStatusDescription,
+} from '@/apis/portfolio/enums'
 import type {
   PortfolioExternalTeacherImportBatchVO,
   PortfolioExternalTeacherPageRequest,
@@ -8,17 +14,11 @@ import type {
   PortfolioExternalTeacherStatsVO,
   PortfolioExternalTeacherVO,
 } from '@/apis/portfolio/teacher-platform'
+import { portfolioExternalTeacherApi } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import {
-  PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS,
-  PortfolioExternalTeacherDataStatusCode,
-  PortfolioExternalTeacherDataStatusDescription,
-  PortfolioExternalTeacherImportBatchStatusDescription,
-} from '@/apis/portfolio/enums'
-import { portfolioExternalTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -48,11 +48,11 @@ const importModalOpen = ref(false)
 type ExternalTeacherFilters = Pick<
   PortfolioExternalTeacherPageRequest,
   'dataStatus' | 'teachSubject' | 'teacherSource' | 'contractStatus'
->
-& Record<string, unknown>
+> &
+  Record<string, unknown>
 
-const { loading, rows, pageNum, pageSize, pageTotal, filters, loadPage, search, handlePageChange }
-  = useQueryTable<PortfolioExternalTeacherVO, ExternalTeacherFilters>(
+const { loading, rows, pageNum, pageSize, pageTotal, filters, loadPage, search, handlePageChange } =
+  useQueryTable<PortfolioExternalTeacherVO, ExternalTeacherFilters>(
     (params) =>
       portfolioExternalTeacherApi.page({
         pageNum: params.pageNum,
@@ -121,7 +121,7 @@ const form = reactive<PortfolioExternalTeacherSaveRequest>({
 const dataStatusOptions = PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS
 
 const columns: ColumnsType<PortfolioExternalTeacherVO> = [
-  { title: '姓名', dataIndex: 'fullName', key: 'fullName', width: 88 },
+  { title: '姓名', dataIndex: 'fullName', key: 'fullName', width: 88, fixed: 'left' },
   { title: '性别', dataIndex: 'gender', key: 'gender', width: 56 },
   { title: '专业', dataIndex: 'major', key: 'major', width: 88 },
   { title: '职称', dataIndex: 'title', key: 'title', width: 72 },
@@ -131,16 +131,26 @@ const columns: ColumnsType<PortfolioExternalTeacherVO> = [
   { title: '任职单位', dataIndex: 'employerUnit', key: 'employerUnit' },
   { title: '合同状态', dataIndex: 'contractStatus', key: 'contractStatus', width: 88 },
   { title: '状态', key: 'dataStatus', width: 72 },
-  { title: '操作', key: 'actions', width: 100, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 100 },
 ]
 
 const batchColumns: ColumnsType<PortfolioExternalTeacherImportBatchVO> = [
-  { title: '文件名', dataIndex: 'fileName', key: 'fileName' },
+  { title: '文件名', dataIndex: 'fileName', key: 'fileName', fixed: 'left' },
   { title: '成功', dataIndex: 'successRows', key: 'successRows', width: 64 },
   { title: '失败', dataIndex: 'failedRows', key: 'failedRows', width: 64 },
   { title: '状态', key: 'batchStatus', width: 96 },
   { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 160 },
   { title: '操作', key: 'actions', width: 72 },
+]
+
+const contractStatusStatsColumns: ColumnsType = [
+  { title: '合同状态', dataIndex: 'dimensionCode', key: 'dimensionCode' },
+  { title: '人数', dataIndex: 'count', key: 'count', width: 72, align: 'right' },
+]
+
+const teacherSourceStatsColumns: ColumnsType = [
+  { title: '教师来源', dataIndex: 'dimensionCode', key: 'dimensionCode' },
+  { title: '人数', dataIndex: 'count', key: 'count', width: 72, align: 'right' },
 ]
 
 function dataStatusLabel(status: PortfolioExternalTeacherDataStatusCode): string {
@@ -485,28 +495,30 @@ onMounted(async () => {
             <div v-if="stats" class="stats-grid">
               <div>
                 <h4>合同状态分布</h4>
-                <a-table
-                  size="small"
-                  :pagination="false"
-                  row-key="dimensionCode"
+                <UiDataTable
+                  :columns="contractStatusStatsColumns"
                   :data-source="stats.contractStatusCounts"
-                  :columns="[
-                    { title: '合同状态', dataIndex: 'dimensionCode', key: 'dimensionCode' },
-                    { title: '人数', dataIndex: 'count', key: 'count', width: 72 },
-                  ]"
+                  row-key="dimensionCode"
+                  size="small"
+                  flat
+                  pagination-mode="none"
+                  :show-pagination="false"
+                  :sticky-header="false"
+                  :total="stats.contractStatusCounts.length"
                 />
               </div>
               <div>
                 <h4>教师来源分布</h4>
-                <a-table
-                  size="small"
-                  :pagination="false"
-                  row-key="dimensionCode"
+                <UiDataTable
+                  :columns="teacherSourceStatsColumns"
                   :data-source="stats.teacherSourceCounts"
-                  :columns="[
-                    { title: '教师来源', dataIndex: 'dimensionCode', key: 'dimensionCode' },
-                    { title: '人数', dataIndex: 'count', key: 'count', width: 72 },
-                  ]"
+                  row-key="dimensionCode"
+                  size="small"
+                  flat
+                  pagination-mode="none"
+                  :show-pagination="false"
+                  :sticky-header="false"
+                  :total="stats.teacherSourceCounts.length"
                 />
               </div>
             </div>

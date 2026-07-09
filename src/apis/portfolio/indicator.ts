@@ -11,8 +11,10 @@ import type {
   PortfolioEligibilityRuleVO,
   PortfolioExplainGetRequest,
   PortfolioExportSnapshotDiffRequest,
+  PortfolioIndicatorAutoCollectPageRequest,
   PortfolioIndicatorAutoCollectRequest,
-  PortfolioIndicatorAutoCollectResultVO,
+  PortfolioIndicatorAutoCollectSummaryResponse,
+  PortfolioIndicatorCollectedValueVO,
   PortfolioIndicatorCollegeCompareVO,
   PortfolioIndicatorComputeLogVO,
   PortfolioIndicatorComputeTrialRequest,
@@ -46,6 +48,7 @@ import type {
   PortfolioIndustryPackVO,
   PortfolioPublishImpactReportGetRequest,
   PortfolioPublishImpactReportVO,
+  PortfolioRuleHistoryPageRequest,
   PortfolioRulePublishSnapshotVO,
   PortfolioRuleRetroactiveGetRequest,
   PortfolioSceneCodeRequest,
@@ -135,6 +138,8 @@ export const portfolioIndicatorTenantApi: PortfolioIndicatorTenantApi = {
     http.post<void>(`${TENANT}/model/freeze`, data),
   ruleHistory: (data: PortfolioSceneCodeRequest) =>
     http.post<PortfolioRulePublishSnapshotVO[]>(`${TENANT}/rule/history`, data),
+  pageRuleHistory: (data: PortfolioRuleHistoryPageRequest) =>
+    http.post<PageResult<PortfolioRulePublishSnapshotVO>>(`${TENANT}/rule/history/page`, data),
   retroactiveGet: (data: PortfolioRuleRetroactiveGetRequest) =>
     http.post<PortfolioRulePublishSnapshotVO>(`${TENANT}/rule/retroactive/get`, data),
   saveEligibilityRule: (data: PortfolioEligibilityRuleSaveRequest) =>
@@ -165,6 +170,8 @@ export const portfolioIndicatorTenantApi: PortfolioIndicatorTenantApi = {
     http.post<PortfolioIndicatorScoreComputeResult>(`${TENANT}/compute/snapshot`, data),
   pageComputeLog: (data: QueryDto) =>
     http.post<PageResult<PortfolioIndicatorComputeLogVO>>(`${TENANT}/compute/log/page`, data),
-  autoCollect: (data: PortfolioIndicatorAutoCollectRequest) =>
-    http.post<PortfolioIndicatorAutoCollectResultVO>(`${TENANT}/tenant/auto-collect`, data),
+  getAutoCollectSummary: (data: PortfolioIndicatorAutoCollectRequest) =>
+    http.post<PortfolioIndicatorAutoCollectSummaryResponse>(`${TENANT}/tenant/auto-collect/summary`, data),
+  pageAutoCollectItems: (data: PortfolioIndicatorAutoCollectPageRequest) =>
+    http.post<PageResult<PortfolioIndicatorCollectedValueVO>>(`${TENANT}/tenant/auto-collect/page`, data),
 }

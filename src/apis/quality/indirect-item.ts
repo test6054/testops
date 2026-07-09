@@ -10,6 +10,7 @@ import type {
   SurveyScaleLabelRequest,
   SurveyScaleLabelVO,
 } from '@/apis/public-survey'
+import type { PageResult, QueryDto } from '@/types'
 import type { IndirectEvaluationItemTypeCode } from '@/types/enums/indirect-evaluation-item-type-enum'
 import http from '@/config/axios'
 
@@ -55,16 +56,16 @@ export interface IndirectEvaluationItemSaveRequest {
   required?: boolean
 }
 
-export interface IndirectEvaluationItemListByTargetRequest {
-  targetType: AchievementTargetTypeCode
-  targetId: string
+export interface IndirectEvaluationItemQueryRequest extends QueryDto {
+  formId?: string
+  targetType?: AchievementTargetTypeCode
+  targetId?: string
+  keyword?: string
 }
 
 export const indirectItemApi = {
-  listByForm: (formId: string) =>
-    http.post<IndirectEvaluationItemVO[]>(`${BASE}/list-by-form`, { id: formId }),
-  listByTarget: (data: IndirectEvaluationItemListByTargetRequest) =>
-    http.post<IndirectEvaluationItemVO[]>(`${BASE}/list-by-target`, data),
+  page: (data: IndirectEvaluationItemQueryRequest) =>
+    http.post<PageResult<IndirectEvaluationItemVO>>(`${BASE}/page`, data),
   detail: (id: string) => http.post<IndirectEvaluationItemVO>(`${BASE}/detail`, { id }),
   create: (data: IndirectEvaluationItemSaveRequest) => http.post<string>(`${BASE}/create`, data),
   update: (data: IndirectEvaluationItemSaveRequest) => http.post<void>(`${BASE}/update`, data),

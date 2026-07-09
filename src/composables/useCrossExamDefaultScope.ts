@@ -1,7 +1,6 @@
-import type { ExamSummaryResponse } from '@/apis/mark/exam'
-import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { ExamPageQueryRequest, ExamSummaryResponse } from '@/apis/mark/exam'
 import { listDistinctExamTerms, pageExams } from '@/apis/mark/exam'
-import { readAllPages } from '@/utils/page-result'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 
 const RECENT_TERM_EXAM_PAGE_SIZE = 100
 
@@ -13,32 +12,46 @@ interface AnalysisExamOrgScope {
 function buildOrgScopeQuery(orgScope?: AnalysisExamOrgScope) {
   return {
     ...(orgScope?.classId ? { classId: orgScope.classId } : {}),
-    ...(orgScope?.referenceDepartmentId ? { referenceDepartmentId: orgScope.referenceDepartmentId } : {}),
+    ...(orgScope?.referenceDepartmentId
+      ? { referenceDepartmentId: orgScope.referenceDepartmentId }
+      : {}),
   }
 }
 
 /**
- * 拉取指定学年学期内教师可见的全部考试（分页读完）。
+ * 单次分页拉取范围内全部考试；超过 pageSize 时显式失败，禁止自动翻页冒充全量。
+ */
+async function loadBoundedExams(
+  query: Omit<ExamPageQueryRequest, 'pageNum'>,
+  pageSize = RECENT_TERM_EXAM_PAGE_SIZE,
+): Promise<ExamSummaryResponse[]> {
+  const page = await pageExams({ ...query, pageNum: 1, pageSize })
+  if (page.total > page.list.length) {
+    throw new Error(
+      `考试数量（${page.total}）超过单页上限（${pageSize}），请缩小学年学期或组织范围`,
+    )
+  }
+  return page.list
+}
+
+/**
+ * 拉取指定学年学期内教师可见的全部考试（单页有界）。
  */
 export async function loadExamsForAcademicYearSemester(
   academicYear: string,
   semester: SemesterCode,
   orgScope?: AnalysisExamOrgScope,
 ): Promise<ExamSummaryResponse[]> {
-  return readAllPages(
-    (pageNum) => pageExams({
-      academicYear,
-      semester,
-      ...buildOrgScopeQuery(orgScope),
-      pageNum,
-      pageSize: RECENT_TERM_EXAM_PAGE_SIZE,
-    }),
-    '考试列表加载失败',
-  )
+  return loadBoundedExams({
+    academicYear,
+    semester,
+    ...buildOrgScopeQuery(orgScope),
+    pageSize: RECENT_TERM_EXAM_PAGE_SIZE,
+  })
 }
 
 /**
- * 拉取指定课程、学年学期内教师可见的全部考试（分页读完）。
+ * 拉取指定课程、学年学期内教师可见的全部考试（单页有界）。
  */
 export async function loadExamsForCourseAcademicYearSemester(
   courseId: string,
@@ -46,37 +59,29 @@ export async function loadExamsForCourseAcademicYearSemester(
   semester: SemesterCode,
   orgScope?: AnalysisExamOrgScope,
 ): Promise<ExamSummaryResponse[]> {
-  return readAllPages(
-    (pageNum) => pageExams({
-      courseId,
-      academicYear,
-      semester,
-      ...buildOrgScopeQuery(orgScope),
-      pageNum,
-      pageSize: RECENT_TERM_EXAM_PAGE_SIZE,
-    }),
-    '考试列表加载失败',
-  )
+  return loadBoundedExams({
+    courseId,
+    academicYear,
+    semester,
+    ...buildOrgScopeQuery(orgScope),
+    pageSize: RECENT_TERM_EXAM_PAGE_SIZE,
+  })
 }
 
 /**
- * 拉取指定开课学年学期内教师可见的全部考试（分页读完）。
+ * 拉取指定开课学年学期内教师可见的全部考试（单页有界）。
  */
 export async function loadExamsForTeachingTerm(
   teachingAcademicYear: string,
   teachingSemester: SemesterCode,
   orgScope?: AnalysisExamOrgScope,
 ): Promise<ExamSummaryResponse[]> {
-  return readAllPages(
-    (pageNum) => pageExams({
-      teachingAcademicYear,
-      teachingSemester,
-      ...buildOrgScopeQuery(orgScope),
-      pageNum,
-      pageSize: RECENT_TERM_EXAM_PAGE_SIZE,
-    }),
-    '考试列表加载失败',
-  )
+  return loadBoundedExams({
+    teachingAcademicYear,
+    teachingSemester,
+    ...buildOrgScopeQuery(orgScope),
+    pageSize: RECENT_TERM_EXAM_PAGE_SIZE,
+  })
 }
 
 /**
@@ -94,7 +99,11 @@ export async function loadExamsForRecentDistinctTerms(
   const recentTerms = terms.slice(0, semesterCount)
   const merged = new Map<string, ExamSummaryResponse>()
   for (const term of recentTerms) {
-    const termExams = await loadExamsForAcademicYearSemester(term.academicYear, term.semester, orgScope)
+    const termExams = await loadExamsForAcademicYearSemester(
+      term.academicYear,
+      term.semester,
+      orgScope,
+    )
     for (const exam of termExams) {
       merged.set(exam.examId, exam)
     }
@@ -119,11 +128,13 @@ export function shouldAutoSelectAnalysisExams(input: {
     return true
   }
   const hasExamScope = Boolean(input.scopeAcademicYear?.trim() && input.scopeSemester)
-  const hasTeachingScope = Boolean(input.scopeTeachingAcademicYear?.trim() && input.scopeTeachingSemester)
+  const hasTeachingScope = Boolean(
+    input.scopeTeachingAcademicYear?.trim() && input.scopeTeachingSemester,
+  )
   if (input.autoSelectLargestCourseClusterInScope && (hasExamScope || hasTeachingScope)) {
     return true
   }
-  return input.autoSelectScopedExams && (hasExamScope || hasTeachingScope);
+  return input.autoSelectScopedExams && (hasExamScope || hasTeachingScope)
 }
 
 /** 跨考趋势等卡片自动勾选时，同一课程簇至少须 2 场考试才预填。 */
@@ -161,7 +172,10 @@ export function pickExamIdsByLargestCourseCluster(exams: ExamSummaryResponse[]):
       selectedExams = courseExams
       continue
     }
-    if (courseExams.length === selectedExams.length && courseId.localeCompare(selectedCourseId) > 0) {
+    if (
+      courseExams.length === selectedExams.length &&
+      courseId.localeCompare(selectedCourseId) > 0
+    ) {
       selectedCourseId = courseId
       selectedExams = courseExams
     }

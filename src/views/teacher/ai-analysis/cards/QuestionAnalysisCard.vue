@@ -1,9 +1,5 @@
 <template>
-  <AiAnalysisCardShell
-    :embedded="embedded"
-    title="题目质量分析"
-    card-class="stats-card"
-  >
+  <AiAnalysisCardShell :embedded="embedded" title="题目质量分析" card-class="stats-card">
     <template v-if="!embedded" #head>
       <h3 class="stats-card__title">题目质量分析</h3>
     </template>
@@ -120,7 +116,6 @@
         </a-typography-paragraph>
 
         <UiDataTable
-          class="student-detail-table__data-table"
           :columns="columns"
           :data-source="tableRows"
           :loading="tableLoading"
@@ -200,19 +195,19 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamTemplateResponse } from '@/apis/mark/exam-layout-question'
+import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import type {
   ExamQuestionAnalysisRecordResponse,
   QuestionAnalysisListQueryRequest,
 } from '@/apis/mark/question-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { computed, ref, watch } from 'vue'
-import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import {
-  fetchAllQuestionAnalysisRows,
   generateAllQuestionAnalysis,
   generateQuestionAnalysis,
+  loadQuestionAnalysisChartRows,
   pageQuestionAnalysis,
 } from '@/apis/mark/question-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { computed, ref, watch } from 'vue'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkScatterSection from '@/components/chart/MarkScatterSection.vue'
@@ -266,7 +261,7 @@ const generatingId = ref<string>('')
 const selectedLayoutQuestionId = ref<string>()
 const questionLoading = ref(false)
 const questionOptions = ref<
-  Array<{ value: string, label: string, disabled?: boolean, title?: string }>
+  Array<{ value: string; label: string; disabled?: boolean; title?: string }>
 >([])
 const layoutSummary = ref<ExamTemplateResponse | null>(null)
 const layoutRoiGap = computed(() => {
@@ -312,7 +307,7 @@ function clearQuestionFilter(): void {
 }
 
 const columns: ColumnType<ExamQuestionAnalysisRecordResponse>[] = [
-  { title: '题目', key: 'question', width: 260 },
+  { title: '题目', key: 'question', width: 260, fixed: 'left' },
   buildNumericColumn({ title: '总人数', dataIndex: 'totalCount', key: 'totalCount', width: 90 }),
   { title: '正确率', key: 'correctRatio', width: 110, align: 'right' },
   buildNumericColumn({
@@ -325,7 +320,7 @@ const columns: ColumnType<ExamQuestionAnalysisRecordResponse>[] = [
   buildNumericColumn({ title: '区分度', key: 'discriminationIndex', width: 100 }),
   { title: '平均分/满分', key: 'avgScore', width: 140, align: 'right' },
   { title: '快照时间', key: 'snapshotTime', width: 160 },
-  { title: '操作', key: 'actions', width: 110, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 110 },
 ]
 
 function buildListQueryBase(): Omit<QuestionAnalysisListQueryRequest, 'pageNum' | 'pageSize'> {
@@ -344,7 +339,7 @@ async function loadChartRows(): Promise<void> {
   }
   chartLoading.value = true
   try {
-    const records = await fetchAllQuestionAnalysisRows(buildListQueryBase())
+    const records = await loadQuestionAnalysisChartRows(buildListQueryBase())
     chartRows.value = acceptQuestionAnalysisRows(records)
   } catch (e) {
     chartRows.value = []
@@ -390,7 +385,7 @@ async function reload(): Promise<void> {
   await Promise.all([loadChartRows(), loadTablePage(1, tablePageSize.value)])
 }
 
-function handleTablePageChange(event: { current: number, pageSize: number }): void {
+function handleTablePageChange(event: { current: number; pageSize: number }): void {
   void loadTablePage(event.current, event.pageSize)
 }
 
@@ -409,8 +404,8 @@ async function loadQuestionOptions(): Promise<void> {
     }
     questionOptions.value = buildExamLayoutQuestionOptions(template.questions)
     if (
-      selectedLayoutQuestionId.value
-      && !template.questions.some(
+      selectedLayoutQuestionId.value &&
+      !template.questions.some(
         (q) => q.layoutQuestionId === selectedLayoutQuestionId.value && q.roiReady,
       )
     ) {
@@ -460,9 +455,9 @@ async function handleGenerateOne(layoutQuestionId: string): Promise<void> {
       successMessage: '已重新生成',
       onSuccess: async () => {
         await reload()
-        const matched
-          = tableRows.value.find((item) => item.layoutQuestionId === layoutQuestionId)
-            ?? chartRows.value.find((item) => item.layoutQuestionId === layoutQuestionId)
+        const matched =
+          tableRows.value.find((item) => item.layoutQuestionId === layoutQuestionId) ??
+          chartRows.value.find((item) => item.layoutQuestionId === layoutQuestionId)
         generationSummary.value = matched
           ? `已生成题 ${matched.questionNo} 的质量分析，可查看难度、区分度与正确率。`
           : '已生成该题质量分析，可查看难度、区分度与正确率。'

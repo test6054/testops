@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { AchievementComputeReadinessItemVO } from '@/apis/quality/achievement'
+import { achievementApi } from '@/apis/quality/achievement'
 import type {
   AchievementResultQueryRequest,
+  AchievementResultSignalSummaryVO,
   AchievementResultVO,
 } from '@/apis/quality/achievement-result'
+import { achievementResultApi } from '@/apis/quality/achievement-result'
 
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
+import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import type {
   AuditTimelineEvent,
   SignalMetric,
@@ -20,9 +24,7 @@ import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ExportBusinessType } from '@/apis/edu/export'
-import { achievementApi } from '@/apis/quality/achievement'
 import { achievementAuditApi } from '@/apis/quality/achievement-audit'
-import { achievementResultApi } from '@/apis/quality/achievement-result'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_STATUS_COLOR,
@@ -41,6 +43,7 @@ import {
   ProgramSelector,
   TrainingObjectiveSelector,
 } from '@/components/quality/selectors'
+import { loadBoundedPlanAggregate } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -58,7 +61,6 @@ import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityTableExport } from '@/composables/useQualityTableExport'
 import { useQualityStore } from '@/stores/modules/quality'
-import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatScore } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
@@ -87,14 +89,10 @@ function isResultStale(record: AchievementResultVO): boolean {
   return record.staleFlag === true
 }
 
-function auditEventLabel(event: string | undefined): string {
+function auditEventLabel(event: AchievementAuditStatusCode | undefined): string {
   if (!event) return '-'
   if (event === AchievementAuditStatusCode.CALCULATED) return '达成度计算'
-  const auditStatus = event as AchievementAuditStatusCode
-  if (Object.prototype.hasOwnProperty.call(AchievementAuditStatusDescription, auditStatus)) {
-    return auditStatusLabel(auditStatus)
-  }
-  return event
+  return auditStatusLabel(event)
 }
 
 function auditStatusLabelMaybe(value: AchievementAuditStatusCode | undefined): string {
@@ -103,10 +101,10 @@ function auditStatusLabelMaybe(value: AchievementAuditStatusCode | undefined): s
 
 function canRecomputeRecord(record: AchievementResultVO): boolean {
   return (
-    record.auditStatus === AchievementAuditStatusCode.RETURNED
-    || isResultStale(record)
-    || record.auditStatus === AchievementAuditStatusCode.DRAFT
-    || record.auditStatus === AchievementAuditStatusCode.CALCULATED
+    record.auditStatus === AchievementAuditStatusCode.RETURNED ||
+    isResultStale(record) ||
+    record.auditStatus === AchievementAuditStatusCode.DRAFT ||
+    record.auditStatus === AchievementAuditStatusCode.CALCULATED
   )
 }
 
@@ -126,8 +124,8 @@ const list = ref<AchievementResultVO[]>([])
 const total = ref(0)
 const loading = ref(false)
 const triggerLoading = ref<string>('')
-const { exporting: achievementExporting, exportExcel: exportAchievementExcel }
-  = useQualityTableExport()
+const { exporting: achievementExporting, exportExcel: exportAchievementExcel } =
+  useQualityTableExport()
 
 const query = reactive<AchievementResultQueryRequest & Record<string, unknown>>({
   pageNum: 1,
@@ -187,7 +185,7 @@ function handleTrainingObjectiveChange(value: string | null) {
   triggerForm.trainingObjectiveId = value ?? ''
 }
 
-const targetTypeOptions: Array<{ value: AchievementTargetTypeCode, label: string }> = [
+const targetTypeOptions: Array<{ value: AchievementTargetTypeCode; label: string }> = [
   {
     value: AchievementTargetTypeCode.COURSE_GOAL,
     label: AchievementTargetTypeDescription.COURSE_GOAL,
@@ -217,7 +215,7 @@ const targetTypeOptions: Array<{ value: AchievementTargetTypeCode, label: string
     label: AchievementTargetTypeDescription.COMPLEX_ENGINEERING_AGGREGATE,
   },
 ]
-const auditStatusOptions: Array<{ value: AchievementAuditStatusCode, label: string }> = [
+const auditStatusOptions: Array<{ value: AchievementAuditStatusCode; label: string }> = [
   { value: AchievementAuditStatusCode.DRAFT, label: AchievementAuditStatusDescription.DRAFT },
   {
     value: AchievementAuditStatusCode.CALCULATED,
@@ -234,7 +232,7 @@ const auditStatusOptions: Array<{ value: AchievementAuditStatusCode, label: stri
   { value: AchievementAuditStatusCode.RETURNED, label: AchievementAuditStatusDescription.RETURNED },
   { value: AchievementAuditStatusCode.ARCHIVED, label: AchievementAuditStatusDescription.ARCHIVED },
 ]
-const achievementStatusOptions: Array<{ value: AchievementStatusCode, label: string }> = [
+const achievementStatusOptions: Array<{ value: AchievementStatusCode; label: string }> = [
   { value: AchievementStatusCode.ACHIEVED, label: AchievementStatusDescription.ACHIEVED },
   {
     value: AchievementStatusCode.PARTIALLY_ACHIEVED,
@@ -311,7 +309,8 @@ const filterFields: FilterField[] = [
 ]
 
 function handleSearch() {
-  loadList()
+  void loadList()
+  void loadSignalSummary()
 }
 
 function handleReset() {
@@ -327,17 +326,7 @@ async function loadList() {
   if (!qualityStore.currentTrainingPlanId) return
   loading.value = true
   try {
-    const page = await achievementResultApi.page({
-      ...query,
-      trainingPlanId: qualityStore.currentTrainingPlanId,
-      qualityCourseId: query.qualityCourseId || undefined,
-      classId: query.classId || undefined,
-      schoolYear: query.schoolYear || undefined,
-      semester: query.semester || undefined,
-      targetType: query.targetType || undefined,
-      auditStatus: query.auditStatus || undefined,
-      achievementStatus: query.achievementStatus || undefined,
-    })
+    const page = await achievementResultApi.page(buildAchievementListQuery())
     list.value = page.list
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
@@ -354,7 +343,7 @@ async function loadList() {
 }
 
 async function handleScopeChange(): Promise<void> {
-  await loadList()
+  await Promise.all([loadList(), loadSignalSummary()])
 }
 
 /** 阅卷桥接跳转：按 query 预填质量评价范围 */
@@ -379,14 +368,14 @@ useQualityScopedLoader(handleScopeChange, {
   reloadOnActivated: false,
 })
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
 }
 
 const columns: ColumnsType = [
-  { title: '目标类型', dataIndex: 'targetType', key: 'targetType', width: 160 },
+  { title: '目标类型', dataIndex: 'targetType', key: 'targetType', width: 160, fixed: 'left' },
   { title: '目标对象', dataIndex: 'targetLabel', key: 'targetLabel', width: 220 },
   { title: '关联课程', key: 'qualityCourse', width: 180 },
   { title: '关联班级', key: 'className', width: 140 },
@@ -410,7 +399,7 @@ const columns: ColumnsType = [
   { title: '达成结论', dataIndex: 'achievementStatus', key: 'achievementStatus', width: 120 },
   { title: '结果有效性', key: 'validity', width: 150 },
   { title: '审核', dataIndex: 'auditStatus', key: 'auditStatus', width: 110 },
-  { title: '操作', key: 'actions', width: 320, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 320 },
 ]
 
 function resetQuery() {
@@ -422,7 +411,8 @@ function resetQuery() {
   query.classId = ''
   query.schoolYear = ''
   query.semester = undefined
-  loadList()
+  void loadList()
+  void loadSignalSummary()
 }
 
 function handleExportAchievement(): void {
@@ -454,13 +444,13 @@ function handleExportAchievement(): void {
  *  - compute-civic-goal-aggregate     课程思政独立汇总
  *  - compute-complex-engineering-aggregate  复杂工程问题专项
  */
-type AchievementComputeResult
-  = | Awaited<ReturnType<typeof achievementApi.computeCourseGoal>>
-    | Awaited<ReturnType<typeof achievementApi.computeRequirement>>
-    | Awaited<ReturnType<typeof achievementApi.computeProgram>>
-    | Awaited<ReturnType<typeof achievementApi.computeTrainingObjective>>
-    | Awaited<ReturnType<typeof achievementApi.computeCivicGoalAggregate>>
-    | Awaited<ReturnType<typeof achievementApi.computeComplexEngineeringAggregate>>
+type AchievementComputeResult =
+  | Awaited<ReturnType<typeof achievementApi.computeCourseGoal>>
+  | Awaited<ReturnType<typeof achievementApi.computeRequirement>>
+  | Awaited<ReturnType<typeof achievementApi.computeProgram>>
+  | Awaited<ReturnType<typeof achievementApi.computeTrainingObjective>>
+  | Awaited<ReturnType<typeof achievementApi.computeCivicGoalAggregate>>
+  | Awaited<ReturnType<typeof achievementApi.computeComplexEngineeringAggregate>>
 
 const triggerButtons: Array<{
   key: string
@@ -573,17 +563,17 @@ async function handleTrigger(key: string, handler: () => Promise<AchievementComp
         ? 1
         : 0
     message.success(count > 0 ? `计算完成，生成 / 更新 ${count} 条结果` : '计算完成')
-    await loadList()
+    await Promise.all([loadList(), loadSignalSummary()])
     if (triggerVisible.value) {
       await loadComputeReadiness()
     }
   } catch (err) {
     // 计算被用户取消（如未填 courseGoalId）静默忽略
     if (
-      err instanceof Error
-      && (err.message === 'cancelled'
-        || err.message === 'missing courseGoalId'
-        || err.message === 'missing trainingObjectiveId')
+      err instanceof Error &&
+      (err.message === 'cancelled' ||
+        err.message === 'missing courseGoalId' ||
+        err.message === 'missing trainingObjectiveId')
     ) {
       return
     }
@@ -633,12 +623,28 @@ async function handleTransit(record: AchievementResultVO, to: AchievementAuditSt
     auditRemark: remark || undefined,
   })
   message.success('流转成功')
-  await loadList()
+  await Promise.all([loadList(), loadSignalSummary()])
 }
 
 /* ========== 阶段轨与信号指标带 ========== */
 
-const auditBuckets = computed(() => {
+function buildAchievementListQuery(): AchievementResultQueryRequest {
+  return {
+    ...query,
+    trainingPlanId: qualityStore.currentTrainingPlanId,
+    qualityCourseId: query.qualityCourseId || undefined,
+    classId: query.classId || undefined,
+    schoolYear: query.schoolYear || undefined,
+    semester: query.semester || undefined,
+    targetType: query.targetType || undefined,
+    auditStatus: query.auditStatus || undefined,
+    achievementStatus: query.achievementStatus || undefined,
+  }
+}
+
+function buildAchievementAuditBuckets(
+  summary: AchievementResultSignalSummaryVO | null,
+): Record<AchievementAuditStatusCode, number> {
   const buckets: Record<AchievementAuditStatusCode, number> = {
     [AchievementAuditStatusCode.DRAFT]: 0,
     [AchievementAuditStatusCode.CALCULATED]: 0,
@@ -647,15 +653,50 @@ const auditBuckets = computed(() => {
     [AchievementAuditStatusCode.RETURNED]: 0,
     [AchievementAuditStatusCode.ARCHIVED]: 0,
   }
-  for (const r of list.value) {
-    buckets[r.auditStatus] += 1
+  if (!summary) {
+    return buckets
+  }
+  for (const row of summary.auditStatusCounts) {
+    buckets[row.status] = row.recordCount
   }
   return buckets
-})
+}
+
+function countAchievementStatus(
+  summary: AchievementResultSignalSummaryVO | null,
+  status: AchievementStatusCode,
+): number {
+  if (!summary) {
+    return 0
+  }
+  for (const row of summary.achievementStatusCounts) {
+    if (row.status === status) {
+      return row.recordCount
+    }
+  }
+  return 0
+}
+
+const signalSummary = ref<AchievementResultSignalSummaryVO | null>(null)
+
+async function loadSignalSummary() {
+  if (!qualityStore.currentTrainingPlanId) {
+    signalSummary.value = null
+    return
+  }
+  try {
+    signalSummary.value = await achievementResultApi.signalSummary(buildAchievementListQuery())
+  } catch (error) {
+    signalSummary.value = null
+    showUserError(error, '达成度 SignalBand 加载失败')
+  }
+}
+
+const auditBuckets = computed(() => buildAchievementAuditBuckets(signalSummary.value))
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = auditBuckets.value
-  const order: Array<{ key: AchievementAuditStatusCode, title: string }> = [
+  const order: Array<{ key: AchievementAuditStatusCode; title: string }> = [
     { key: AchievementAuditStatusCode.DRAFT, title: '草稿' },
     { key: AchievementAuditStatusCode.CALCULATED, title: '已计算' },
     { key: AchievementAuditStatusCode.SUBMITTED, title: '已提交' },
@@ -677,22 +718,20 @@ const stages = computed<WorkbenchStage[]>(() => {
 })
 
 const signals = computed<SignalMetric[]>(() => {
+  const summary = signalSummary.value
+  if (!summary) {
+    return []
+  }
   const b = auditBuckets.value
-  const notAchieved = list.value.filter(
-    (r) => r.achievementStatus === AchievementStatusCode.NOT_ACHIEVED,
-  ).length
-  const partial = list.value.filter(
-    (r) => r.achievementStatus === AchievementStatusCode.PARTIALLY_ACHIEVED,
-  ).length
-  const achieved = list.value.filter(
-    (r) => r.achievementStatus === AchievementStatusCode.ACHIEVED,
-  ).length
-  const stale = list.value.filter((r) => isResultStale(r)).length
+  const achieved = countAchievementStatus(summary, AchievementStatusCode.ACHIEVED)
+  const partial = countAchievementStatus(summary, AchievementStatusCode.PARTIALLY_ACHIEVED)
+  const notAchieved = countAchievementStatus(summary, AchievementStatusCode.NOT_ACHIEVED)
+  const stale = summary.staleCount ?? 0
   return [
     {
       key: 'total',
-      label: '本页结果',
-      value: list.value.length,
+      label: '结果总数',
+      value: summary.totalCount ?? 0,
       tone: 'blue',
       trendPolarity: 'neutral',
     },
@@ -867,7 +906,7 @@ function buildAchievementActions(record: AchievementResultVO): UiTableRowActionI
   }
   for (const to of nextStatuses(record.auditStatus)) {
     actions.push({
-      key: `transit:${to}`,
+      key: to,
       label: `→ ${auditStatusLabel(to)}`,
       tone: to === AchievementAuditStatusCode.RETURNED ? 'danger' : 'primary',
     })
@@ -877,21 +916,23 @@ function buildAchievementActions(record: AchievementResultVO): UiTableRowActionI
 }
 
 function handleAchievementAction(key: string, record: AchievementResultVO): void {
-  if (key === 'detail') {
-    goDetail(record)
-    return
-  }
-  if (key === 'recompute') {
-    void handleRecomputeRecord(record)
-    return
-  }
-  if (key === 'audit') {
-    void openAuditDrawer(record)
-    return
-  }
-  if (key.startsWith('transit:')) {
-    const target = key.slice('transit:'.length) as AchievementAuditStatusCode
-    void handleTransit(record, target)
+  switch (key) {
+    case 'detail':
+      goDetail(record)
+      return
+    case 'recompute':
+      void handleRecomputeRecord(record)
+      return
+    case 'audit':
+      void openAuditDrawer(record)
+      return
+    case AchievementAuditStatusCode.DRAFT:
+    case AchievementAuditStatusCode.CALCULATED:
+    case AchievementAuditStatusCode.SUBMITTED:
+    case AchievementAuditStatusCode.CONFIRMED:
+    case AchievementAuditStatusCode.RETURNED:
+    case AchievementAuditStatusCode.ARCHIVED:
+      void handleTransit(record, key)
   }
 }
 
@@ -904,7 +945,15 @@ async function openAuditDrawer(record: AchievementResultVO) {
   auditLoading.value = true
   auditEvents.value = []
   try {
-    const audits = await achievementAuditApi.listByResult(record.id)
+    const audits = await loadBoundedPlanAggregate(
+      (pageNum, pageSize) =>
+        achievementAuditApi.page({
+          achievementResultId: record.id,
+          pageNum,
+          pageSize,
+        }),
+      '达成度审核流水',
+    )
     auditEvents.value = audits.map((a) => ({
       id: a.id,
       operatorName: a.auditorNickName,
@@ -927,9 +976,9 @@ const achievementResultItems = computed<TaskResultItem[]>(() => {
   return list.value
     .filter(
       (r) =>
-        r.auditStatus === AchievementAuditStatusCode.RETURNED
-        || r.achievementStatus === AchievementStatusCode.NOT_ACHIEVED
-        || isResultStale(r),
+        r.auditStatus === AchievementAuditStatusCode.RETURNED ||
+        r.achievementStatus === AchievementStatusCode.NOT_ACHIEVED ||
+        isResultStale(r),
     )
     .slice(0, 5)
     .map((r) => ({
@@ -952,7 +1001,7 @@ const achievementResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleResultAction(actionEvent: { item: TaskResultItem, action: { key: string } }) {
+function handleResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
   const record = list.value.find((r) => r.id === actionEvent.item.id)
   if (record && actionEvent.action.key === 'detail') goDetail(record)
 }
@@ -983,7 +1032,7 @@ watch(
     triggerForm.courseGoalId = ''
     triggerForm.trainingObjectiveId = ''
     query.qualityCourseId = ''
-    loadList()
+    void Promise.all([loadList(), loadSignalSummary()])
   },
 )
 
@@ -993,8 +1042,7 @@ onMounted(async () => {
   triggerForm.programId = qualityStore.currentProgramId
   query.trainingPlanId = qualityStore.currentTrainingPlanId
   if (qualityStore.currentTrainingPlanId) {
-    await loadList()
-    await loadComputeReadiness()
+    await Promise.all([loadList(), loadSignalSummary(), loadComputeReadiness()])
   }
 })
 
@@ -1004,7 +1052,7 @@ onActivated(async () => {
   }
   query.trainingPlanId = qualityStore.currentTrainingPlanId
   triggerForm.trainingPlanId = qualityStore.currentTrainingPlanId
-  await Promise.all([loadList(), loadComputeReadiness()])
+  await Promise.all([loadList(), loadSignalSummary(), loadComputeReadiness()])
 })
 </script>
 
@@ -1088,7 +1136,6 @@ onActivated(async () => {
         </UiFilterBar>
 
         <UiDataTable
-          class="student-detail-table__data-table"
           v-model:current="query.pageNum"
           v-model:page-size="query.pageSize"
           :columns="columns"
@@ -1127,15 +1174,17 @@ onActivated(async () => {
                   <span
                     class="achievement__value"
                     :class="[
-                      record.finalValue !== null
-                        && record.thresholdValue !== null
-                        && record.finalValue >= record.thresholdValue
+                      record.finalValue !== null &&
+                      record.thresholdValue !== null &&
+                      record.finalValue >= record.thresholdValue
                         ? 'achievement__value--ok'
                         : 'achievement__value--bad',
                     ]"
-                  >{{ formatValue(record.finalValue) }}</span>
+                    >{{ formatValue(record.finalValue) }}</span
+                  >
                   <span class="achievement__threshold">
-                    / {{ formatValue(record.thresholdValue) }}</span>
+                    / {{ formatValue(record.thresholdValue) }}</span
+                  >
                 </span>
                 <UiTag v-if="isNearCriticalThreshold(record)" tone="orange" size="sm">
                   临近临界
@@ -1277,9 +1326,9 @@ onActivated(async () => {
             size="sm"
             :loading="triggerLoading === step.key"
             :disabled="
-              trainingPlanRequired
-                || programRequired
-                || (step.readiness != null && !step.readiness.ready)
+              trainingPlanRequired ||
+              programRequired ||
+              (step.readiness != null && !step.readiness.ready)
             "
             @click="handleTrigger(step.key, step.handler)"
           >

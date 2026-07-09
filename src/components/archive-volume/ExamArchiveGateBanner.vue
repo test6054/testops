@@ -27,7 +27,7 @@
       flat
       row-key="classId"
       size="small"
-      class="exam-archive-gate-banner__table"
+      class="exam-archive-gate-banner__table" :sticky-header="false"
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'progress'">

@@ -67,9 +67,12 @@
           <UiDataTable
             v-if="previewFields.length"
             row-key="fieldCode"
+            pagination-mode="none"
             :columns="fieldPreviewColumns"
             :data-source="previewFields"
-            :pagination="false"
+            :show-pagination="false"
+            :sticky-header="false"
+            flat
           />
         </div>
         <UiAlertStrip

@@ -38,23 +38,28 @@
             :options="termCountOptions"
             style="width: 120px"
           />
-          <UiButton size="sm" @click="loadMatrix">查询</UiButton>
+          <UiButton size="sm" @click="handleSearch">查询</UiButton>
         </div>
       </template>
 
-      <UiSkeletonState v-if="loading" variant="card" compact />
-      <UiEmpty v-else-if="!matrix" description="请选择截止学年与学期后查询" />
+      <UiSkeletonState v-if="loading && !matrixMeta" variant="card" compact />
+      <UiEmpty v-else-if="!matrixMeta" description="请选择截止学年与学期后查询" />
       <UiDataTable
-        v-else-if="matrix"
-        pagination-mode="none"
+        v-else
+        v-model:current="pagination.pageNum"
+        v-model:page-size="pagination.pageSize"
+        pagination-mode="server"
         :columns="tableColumns"
         :data-source="tableRows"
-        :show-pagination="false"
+        :loading="loading"
+        :total="pagination.total"
         flat
         row-key="rowKey"
         size="small"
         class="archive-readiness-matrix__table"
         :scroll="{ x: tableScrollX }"
+        :sticky-header="false"
+        @page-change="loadMatrixPage"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key?.startsWith('term-')">
@@ -91,14 +96,19 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchiveReadinessCellVO,
-  ArchiveReadinessMatrixResponse,
+  ArchiveReadinessMatrixMetaResponse,
+  ArchiveReadinessMatrixRowVO,
   ArchiveReadinessTermColumnVO,
 } from '@/apis/mark/archive-volume'
+import {
+  getSupervisionReadinessMatrixMeta,
+  pageSupervisionReadinessMatrix,
+} from '@/apis/mark/archive-volume'
 import type { SemesterCode } from '@/types/enums/semester-enum'
+import { formatAcademicYearSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { getSupervisionReadinessMatrix } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -107,7 +117,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
-import { formatAcademicYearSemester, SemesterOptions } from '@/types/enums/semester-enum'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { generateAcademicYearStartOptions } from '@/utils/academic-year'
 import {
   applyAcademicYearStartYearChange,
@@ -126,7 +136,9 @@ defineOptions({ name: 'ArchiveVolumeReadinessMatrix' })
 
 const router = useRouter()
 const loading = ref(false)
-const matrix = ref<ArchiveReadinessMatrixResponse | null>(null)
+const matrixMeta = ref<ArchiveReadinessMatrixMetaResponse | null>(null)
+const matrixRows = ref<ArchiveReadinessMatrixRowVO[]>([])
+const pagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 
 const academicYearStartOptions = generateAcademicYearStartOptions().map((year) => ({
   label: `${year} 年`,
@@ -169,9 +181,9 @@ const tableColumns = computed<ColumnsType<ReadinessTableRow>>(() => {
       width: 140,
       fixed: 'left',
     },
-    { title: '课程', dataIndex: 'courseName', key: 'courseName', width: 180, fixed: 'left' },
+    { title: '课程', dataIndex: 'courseName', key: 'courseName', width: 180 },
   ]
-  for (const term of matrix.value?.termColumns ?? []) {
+  for (const term of matrixMeta.value?.termColumns ?? []) {
     columns.push({
       title: formatTermColumnTitle(term),
       key: termKey(termColumnKey(term)),
@@ -182,8 +194,7 @@ const tableColumns = computed<ColumnsType<ReadinessTableRow>>(() => {
 })
 
 const tableRows = computed<ReadinessTableRow[]>(() => {
-  if (!matrix.value) return []
-  return matrix.value.rows.map((row) => {
+  return matrixRows.value.map((row) => {
     const tableRow: ReadinessTableRow = {
       rowKey: `${row.departmentId ?? 'none'}-${row.courseId ?? 'none'}`,
       departmentName: row.departmentName ?? '—',
@@ -197,14 +208,14 @@ const tableRows = computed<ReadinessTableRow[]>(() => {
 })
 
 const signalMetrics = computed<SignalMetric[]>(() => {
-  if (!matrix.value) return []
+  if (!matrixMeta.value) return []
   return [
-    { key: 'rows', label: '院系课程', value: tableRows.value.length },
-    { key: 'terms', label: '学期列', value: matrix.value.termColumns.length },
+    { key: 'rows', label: '院系课程', value: matrixMeta.value.rowCount },
+    { key: 'terms', label: '学期列', value: matrixMeta.value.termColumnCount },
   ]
 })
 
-const tableScrollX = computed(() => 320 + (matrix.value?.termColumns.length ?? 0) * 132)
+const tableScrollX = computed(() => 320 + (matrixMeta.value?.termColumns.length ?? 0) * 132)
 
 function termKey(columnKey: string) {
   return `term-${columnKey}`
@@ -212,10 +223,10 @@ function termKey(columnKey: string) {
 
 function isArchiveReadinessCell(value: unknown): value is ArchiveReadinessCellVO {
   return (
-    typeof value === 'object'
-    && value !== null
-    && 'storedCount' in value
-    && 'totalVolumeCount' in value
+    typeof value === 'object' &&
+    value !== null &&
+    'storedCount' in value &&
+    'totalVolumeCount' in value
   )
 }
 
@@ -235,29 +246,81 @@ function goList() {
   void router.push({ name: 'TeacherArchiveVolumeList', query: { tab: 'supervision' } })
 }
 
-async function loadMatrix() {
+function buildMatrixRequest() {
   if (!ensureTriplePeriodPair(filterForm)) {
-    matrix.value = null
-    return
+    return null
   }
   const endAcademicYear = resolveAcademicYearFromTriple(filterForm)
   if (!endAcademicYear || !filterForm.semester) {
-    matrix.value = null
+    return null
+  }
+  return {
+    endAcademicYear,
+    endSemester: filterForm.semester,
+    termCount: filterForm.termCount,
+  }
+}
+
+async function loadMatrixPage() {
+  const baseRequest = buildMatrixRequest()
+  if (!baseRequest) {
     return
   }
   loading.value = true
   try {
-    matrix.value = await getSupervisionReadinessMatrix({
-      endAcademicYear,
-      endSemester: filterForm.semester,
-      termCount: filterForm.termCount,
+    const page = await pageSupervisionReadinessMatrix({
+      ...baseRequest,
+      pageNum: pagination.pageNum,
+      pageSize: pagination.pageSize,
     })
+    matrixRows.value = page.list
+    pagination.total = page.total
+    pagination.pageNum = page.pageNum
+    pagination.pageSize = page.pageSize
   } catch (error) {
-    matrix.value = null
+    matrixRows.value = []
+    pagination.total = 0
     showUserError(error, '加载就绪度矩阵失败')
   } finally {
     loading.value = false
   }
+}
+
+async function loadMatrix() {
+  const baseRequest = buildMatrixRequest()
+  if (!baseRequest) {
+    matrixMeta.value = null
+    matrixRows.value = []
+    pagination.total = 0
+    return
+  }
+  loading.value = true
+  try {
+    matrixMeta.value = await getSupervisionReadinessMatrixMeta(baseRequest)
+    pagination.pageNum = 1
+    pagination.total = matrixMeta.value.rowCount
+    const page = await pageSupervisionReadinessMatrix({
+      ...baseRequest,
+      pageNum: pagination.pageNum,
+      pageSize: pagination.pageSize,
+    })
+    matrixRows.value = page.list
+    pagination.total = page.total
+    pagination.pageNum = page.pageNum
+    pagination.pageSize = page.pageSize
+  } catch (error) {
+    matrixMeta.value = null
+    matrixRows.value = []
+    pagination.total = 0
+    showUserError(error, '加载就绪度矩阵失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+function handleSearch() {
+  pagination.pageNum = 1
+  void loadMatrix()
 }
 
 watch(

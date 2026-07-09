@@ -4,6 +4,7 @@
 import type { AiAnalysisStatusCode } from './ai-analysis-status'
 import type { QuestionTypeCode } from './question-type'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 import {
   ExperienceCaseStatusCode,
@@ -58,6 +59,31 @@ export interface ExamQuestionScopeQueryRequest {
   layoutQuestionId: string
 }
 
+/** 题目签名分页 - 对应 QuestionSignaturePageRequest */
+export interface QuestionSignaturePageRequest extends QueryDto {
+  examId: string
+}
+
+/** 经验案例分页 - 对应 GradingExperiencePageRequest */
+export interface GradingExperiencePageRequest extends QueryDto {
+  examId: string
+  layoutQuestionId?: string
+}
+
+/** 阅卷经验库汇总统计请求 - 对应 GradingExperienceStatsRequest */
+export interface GradingExperienceStatsRequest {
+  examId: string
+}
+
+/** 阅卷经验库汇总统计 - 对应 GradingExperienceStatsResponse */
+export interface GradingExperienceStatsResponse {
+  signatureCount: number
+  experienceCount: number
+  confirmedCount: number
+  pendingAnalysisCount: number
+  assistReadyCount: number
+}
+
 /** 题目签名 VO - 对应 QuestionSignatureResponse */
 export interface QuestionSignatureResponse {
   id?: string
@@ -69,6 +95,8 @@ export interface QuestionSignatureResponse {
   questionNo: string
   questionDigest?: string
   standardAnswerDigest?: string
+  /** 该题已沉淀经验案例数 */
+  experienceCount?: number
   createTime?: string
 }
 
@@ -143,10 +171,13 @@ export function generateSignatures(examId: string): Promise<QuestionSignatureRes
   } satisfies ExamDetailQueryRequest)
 }
 
-export function listSignatures(examId: string): Promise<QuestionSignatureResponse[]> {
-  return http.post<QuestionSignatureResponse[]>('/api/exam/grading-experience/signature/list', {
-    examId,
-  } satisfies ExamDetailQueryRequest)
+export function pageSignatures(
+  request: QuestionSignaturePageRequest,
+): Promise<PageResult<QuestionSignatureResponse>> {
+  return http.post<PageResult<QuestionSignatureResponse>>(
+    '/api/exam/grading-experience/signature/page',
+    request,
+  )
 }
 
 export function searchSimilar(
@@ -164,17 +195,20 @@ export function extractExperience(
   )
 }
 
-export function listExperiences(examId: string): Promise<GradingExperienceCaseResponse[]> {
-  return http.post<GradingExperienceCaseResponse[]>('/api/exam/grading-experience/experience/list', {
-    examId,
-  } satisfies ExamDetailQueryRequest)
+export function pageExperiences(
+  request: GradingExperiencePageRequest,
+): Promise<PageResult<GradingExperienceCaseResponse>> {
+  return http.post<PageResult<GradingExperienceCaseResponse>>(
+    '/api/exam/grading-experience/experience/page',
+    request,
+  )
 }
 
-export function listExperiencesByQuestion(
-  request: ExamQuestionScopeQueryRequest,
-): Promise<GradingExperienceCaseResponse[]> {
-  return http.post<GradingExperienceCaseResponse[]>(
-    '/api/exam/grading-experience/experience/by-question',
+export function getExperienceStats(
+  request: GradingExperienceStatsRequest,
+): Promise<GradingExperienceStatsResponse> {
+  return http.post<GradingExperienceStatsResponse>(
+    '/api/exam/grading-experience/experience/stats',
     request,
   )
 }

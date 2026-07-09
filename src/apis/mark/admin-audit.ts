@@ -2,16 +2,17 @@ import type { ExamIncidentRecord } from '@/apis/mark/admin-dashboard'
 import type { PageResult, QueryDto } from '@/types'
 import type { AuditTargetTypeCode } from '@/types/enums/audit-target-type-enum'
 import type { DiagnosticSampleTypeCode } from '@/types/enums/diagnostic-sample-type-enum'
-import type { OperationTypeCode } from '@/types/enums/operation-type-enum'
-import http from '@/config/axios'
 import {
   ALL_DIAGNOSTIC_SAMPLE_TYPE_CODES,
   DiagnosticSampleTypeDescription,
 } from '@/types/enums/diagnostic-sample-type-enum'
+import type { DiagnosticSourceTypeCode } from '@/types/enums/diagnostic-source-type-enum'
+import type { OperationTypeCode } from '@/types/enums/operation-type-enum'
 import {
   ALL_OPERATION_TYPE_CODES,
   OperationTypeDescription,
 } from '@/types/enums/operation-type-enum'
+import http from '@/config/axios'
 
 export {
   ALL_AUDIT_TARGET_TYPE_CODES,
@@ -25,19 +26,20 @@ export {
   DiagnosticSampleTypeDescription,
 } from '@/types/enums/diagnostic-sample-type-enum'
 export {
+  ALL_DIAGNOSTIC_SOURCE_TYPE_CODES,
+  DiagnosticSourceTypeCode,
+  DiagnosticSourceTypeDescription,
+} from '@/types/enums/diagnostic-source-type-enum'
+export {
   ALL_OPERATION_TYPE_CODES,
   OPERATION_TYPE_TONE,
   OperationTypeCode,
   OperationTypeDescription,
 } from '@/types/enums/operation-type-enum'
 
-/** 诊断样本来源类型 */
-export type DiagnosticSourceTypeCode
-   = 'SCANNED_PAGE' | 'RESPONSE_SLICE' | 'GRADE_RESULT' | 'RECOGNITION_RESULT'
-
 /** 审计操作类型下拉选项，值来源必须与 OperationTypeCode 完全一致 */
-export const OPERATION_TYPE_OPTIONS: Array<{ label: string, value: OperationTypeCode }>
-  = ALL_OPERATION_TYPE_CODES.map((value) => ({
+export const OPERATION_TYPE_OPTIONS: Array<{ label: string; value: OperationTypeCode }> =
+  ALL_OPERATION_TYPE_CODES.map((value) => ({
     value,
     label: OperationTypeDescription[value],
   }))
@@ -116,7 +118,10 @@ export interface DiagnosticSampleResponse {
 export function listOperationLogs(
   request: OperationLogQueryRequest,
 ): Promise<PageResult<OperationLogResponse>> {
-  return http.post<PageResult<OperationLogResponse>>('/api/mark/exams/audit/operation-logs', request)
+  return http.post<PageResult<OperationLogResponse>>(
+    '/api/mark/exams/audit/operation-logs',
+    request,
+  )
 }
 
 /**

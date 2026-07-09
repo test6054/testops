@@ -54,6 +54,7 @@ watch(
       :row-key="rowKey"
       size="small"
       :empty-description="emptyDescription || undefined"
+      :sticky-header="false"
     >
       <template #bodyCell="slotProps">
         <slot name="bodyCell" v-bind="slotProps" />

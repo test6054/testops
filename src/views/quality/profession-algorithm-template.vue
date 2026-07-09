@@ -8,17 +8,18 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  *      平台维护，专业负责人在创建实例时基于模板继承字段。
  */
 import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import type {
   ProfessionAlgorithmTemplateQueryRequest,
   ProfessionAlgorithmTemplateSaveRequest,
+  ProfessionAlgorithmTemplateSignalSummaryVO,
   ProfessionAlgorithmTemplateVO,
 } from '@/apis/quality/profession-algorithm-template'
+import { professionAlgorithmTemplateApi } from '@/apis/quality/profession-algorithm-template'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
-import { professionAlgorithmTemplateApi } from '@/apis/quality/profession-algorithm-template'
 import {
   AccreditationTypeCode,
   AccreditationTypeDescription,
@@ -27,6 +28,10 @@ import {
   ALL_ACCREDITATION_TYPE_CODES,
   ALL_AGGREGATION_FUNCTION_CODES,
 } from '@/apis/quality/types'
+import {
+  QUALITY_SELECTOR_PAGE_SIZE,
+  QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS,
+} from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -37,20 +42,18 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { readAllPages } from '@/utils/page-result'
+import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-const ACCREDITATION_STANDARD_OPTION_PAGE_SIZE = 100
-
 const columns: ColumnsType = [
-  { title: '编码', dataIndex: 'templateCode', key: 'templateCode', width: 120 },
+  { title: '编码', dataIndex: 'templateCode', key: 'templateCode', width: 120, fixed: 'left' },
   { title: '名称', dataIndex: 'templateName', key: 'templateName' },
   { title: '来源', key: 'source', width: 110 },
   { title: '认证类型', dataIndex: 'accreditationType', key: 'accreditationType', width: 180 },
   { title: '学科', dataIndex: 'disciplineCategory', key: 'disciplineCategory', width: 120 },
   { title: '直接/间接默认权重', key: 'weights', width: 160 },
   { title: '状态', dataIndex: 'enabled', key: 'enabled', width: 100 },
-  { title: '操作', key: 'actions', width: 280, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 280 },
 ]
 
 function accreditationTypeLabel(value: AccreditationTypeCode): string {
@@ -155,16 +158,28 @@ function isSharedTemplate(record: ProfessionAlgorithmTemplateVO) {
 
 /* ========== 信号指标：专业算法模板库健康度 ========== */
 
+function buildTemplateListQuery(): ProfessionAlgorithmTemplateQueryRequest {
+  return {
+    ...query,
+    keyword: query.keyword?.trim() || undefined,
+  }
+}
+
+const signalSummary = ref<ProfessionAlgorithmTemplateSignalSummaryVO | null>(null)
+
 const signals = computed<SignalMetric[]>(() => {
-  const shared = list.value.filter((t) => isSharedTemplate(t)).length
-  const tenant = list.value.filter((t) => !isSharedTemplate(t)).length
-  const enabled = list.value.filter((t) => t.enabled).length
-  const disabled = list.value.filter((t) => !t.enabled).length
-  const aiSupport = list.value.filter((t) => t.aiLiteracySupported).length
-  const civic = list.value.filter((t) => t.civicDimensionsSupported).length
+  const summary = signalSummary.value
+  if (!summary) {
+    return []
+  }
+  const shared = summary.sharedCount ?? 0
+  const tenant = summary.tenantCount ?? 0
+  const enabled = summary.enabledCount ?? 0
+  const disabled = summary.disabledCount ?? 0
+  const aiSupport = summary.aiLiteracySupportedCount ?? 0
+  const civic = summary.civicDimensionsSupportedCount ?? 0
   return [
-    { key: 'page', label: '当前页记录', value: list.value.length, tone: 'blue' },
-    { key: 'all-total', label: '模板总数', value: total.value, tone: 'blue' },
+    { key: 'all-total', label: '模板总数', value: summary.totalCount ?? 0, tone: 'blue' },
     { key: 'shared', label: '平台共享', value: shared, tone: shared > 0 ? 'blue' : 'gray' },
     { key: 'tenant', label: '租户自定义', value: tenant, tone: tenant > 0 ? 'green' : 'gray' },
     { key: 'enabled', label: '启用', value: enabled, tone: enabled > 0 ? 'green' : 'gray' },
@@ -205,26 +220,35 @@ function assignEditor(
   })
 }
 
-async function loadStandards() {
-  standards.value = await readAllPages(
-    (pageNum) =>
-      accreditationStandardApi.page({
-        pageNum,
-        pageSize: ACCREDITATION_STANDARD_OPTION_PAGE_SIZE,
-        enabled: true,
-      }),
-    '认证标准列表加载失败，请稍后重试',
+async function loadStandards(keyword?: string) {
+  const page = await accreditationStandardApi.page({
+    pageNum: 1,
+    pageSize: QUALITY_SELECTOR_PAGE_SIZE,
+    enabled: true,
+    keyword: keyword?.trim() || undefined,
+  })
+  standards.value = page.list
+}
+
+let standardDictSearchTimer: ReturnType<typeof setTimeout> | null = null
+function handleStandardDictSearch(keyword: string) {
+  if (standardDictSearchTimer) clearTimeout(standardDictSearchTimer)
+  standardDictSearchTimer = setTimeout(
+    () => void loadStandards(keyword),
+    QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS,
   )
 }
 
 async function loadList() {
   loading.value = true
   try {
-    const page = await professionAlgorithmTemplateApi.page({
-      ...query,
-      keyword: query.keyword?.trim() || undefined,
-    })
+    const listQuery = buildTemplateListQuery()
+    const [page, summary] = await Promise.all([
+      professionAlgorithmTemplateApi.page(listQuery),
+      professionAlgorithmTemplateApi.signalSummary(listQuery),
+    ])
     list.value = page.list
+    signalSummary.value = summary
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
     total.value = page.total
@@ -232,12 +256,15 @@ async function loadList() {
       query.pageNum -= 1
       await loadList()
     }
+  } catch (error) {
+    signalSummary.value = null
+    showUserError(error, '专业算法模板加载失败')
   } finally {
     loading.value = false
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -449,7 +476,6 @@ onActivated(() => {
       <UiEmpty v-if="!loading && total === 0" description="无算法模板" />
       <UiDataTable
         v-else
-        class="student-detail-table__data-table"
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
         :columns="columns"
@@ -535,8 +561,9 @@ onActivated(() => {
             v-model:value="editor.standardId"
             allow-clear
             show-search
-            option-filter-prop="label"
+            :filter-option="false"
             placeholder="可选"
+            @search="handleStandardDictSearch"
           >
             <a-select-option
               v-for="s in standards"

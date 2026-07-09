@@ -44,11 +44,12 @@
 
       <!-- 任务列表表格 -->
       <UiDataTable
+        v-model:current="exportTaskStore.lastFetchParams.pageNum"
+        v-model:page-size="exportTaskStore.lastFetchParams.pageSize"
+        pagination-mode="server"
         :columns="columns"
         :data-source="exportTaskStore.tasks"
         :loading="exportTaskStore.loading"
-        :current="exportTaskStore.lastFetchParams.pageNum"
-        :page-size="exportTaskStore.lastFetchParams.pageSize"
         :total="exportTaskStore.pagination.total"
         row-key="jobId"
         size="small"
@@ -88,16 +89,16 @@
           <template v-else-if="column.key === 'status'">
             <UiTag :tone="statusColor(record.status)">
               <LoadingOutlined
-                v-if="record.status === 'PROCESSING' || record.status === 'PENDING'"
+                v-if="record.status === AsyncTaskStatusEnum.PROCESSING || record.status === AsyncTaskStatusEnum.PENDING"
                 spin
                 style="margin-right: 4px"
               />
               <CheckCircleOutlined
-                v-else-if="record.status === 'COMPLETED'"
+                v-else-if="record.status === AsyncTaskStatusEnum.COMPLETED"
                 style="margin-right: 4px"
               />
               <CloseCircleOutlined
-                v-else-if="record.status === 'FAILED'"
+                v-else-if="record.status === AsyncTaskStatusEnum.FAILED"
                 style="margin-right: 4px"
               />
               {{ statusLabel(record.status) }}
@@ -107,21 +108,21 @@
           <!-- 进度 -->
           <template v-else-if="column.key === 'progress'">
             <div
-              v-if="record.status === 'PROCESSING' || record.status === 'PENDING'"
+              v-if="record.status === AsyncTaskStatusEnum.PROCESSING || record.status === AsyncTaskStatusEnum.PENDING"
               class="progress-cell"
             >
               <a-progress
                 :percent="record.progress ?? 0"
                 size="small"
-                :status="record.status === 'PROCESSING' ? 'active' : 'exception'"
+                :status="record.status === AsyncTaskStatusEnum.PROCESSING ? 'active' : 'exception'"
                 :show-info="false"
               />
               <span class="progress-text">{{ record.progress ?? 0 }}%</span>
             </div>
-            <span v-else-if="record.status === 'COMPLETED'" class="text-success">
+            <span v-else-if="record.status === AsyncTaskStatusEnum.COMPLETED" class="text-success">
               <CheckCircleFilled /> 完成
             </span>
-            <span v-else-if="record.status === 'FAILED'" class="text-danger">
+            <span v-else-if="record.status === AsyncTaskStatusEnum.FAILED" class="text-danger">
               <CloseCircleFilled /> 失败
             </span>
             <span v-else class="text-muted">-</span>
@@ -142,10 +143,10 @@
           </template>
 
           <!-- 操作 -->
-          <template v-else-if="column.key === 'operations'">
+          <template v-else-if="column.key === 'actions'">
             <a-space>
               <a-button
-                v-if="record.status === 'COMPLETED'"
+                v-if="record.status === AsyncTaskStatusEnum.COMPLETED"
                 type="primary"
                 size="small"
                 :loading="downloadingJobId === record.jobId"
@@ -157,7 +158,7 @@
               </a-button>
               <a-popconfirm title="确定删除这条导出记录吗？" @ok="deleteTask(record.jobId)">
                 <a-button
-                  v-if="record.status === 'COMPLETED' || record.status === 'FAILED'"
+                  v-if="record.status === AsyncTaskStatusEnum.COMPLETED || record.status === AsyncTaskStatusEnum.FAILED"
                   danger
                   size="small"
                   type="text"
@@ -293,6 +294,7 @@ const columns: ColumnType[] = [
     key: 'fileName',
     width: 240,
     ellipsis: true,
+    fixed: 'left',
   },
   {
     title: '业务类型',
@@ -335,10 +337,9 @@ const columns: ColumnType[] = [
   },
   {
     title: '操作',
-    key: 'operations',
+    key: 'actions',
     width: 100,
     align: 'center',
-    fixed: 'right',
   },
 ]
 

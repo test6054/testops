@@ -102,13 +102,13 @@ const filterFields: FilterField[] = [
 ]
 
 const columns: ColumnsType = [
-  { title: '名称', dataIndex: 'workgroupName', key: 'workgroupName' },
+  { title: '名称', dataIndex: 'workgroupName', key: 'workgroupName', fixed: 'left' },
   { title: '专业大类', dataIndex: 'programName', key: 'programName', width: 180 },
   { title: '层级', dataIndex: 'levelCode', key: 'levelCode', width: 100 },
   { title: '状态', dataIndex: 'enabled', key: 'enabled', width: 80 },
   { title: '召集人', dataIndex: 'convenerUserName', key: 'convenerUserName', width: 120 },
   { title: '成员数', key: 'memberCount', width: 90 },
-  { title: '操作', key: 'actions', width: 260, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 260 },
 ]
 
 function workgroupLevelLabel(value: WorkgroupLevelCode): string {
@@ -538,7 +538,6 @@ onActivated(() => {
       </UiFilterBar>
 
       <UiDataTable
-        class="student-detail-table__data-table"
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
         :columns="columns"
@@ -705,7 +704,6 @@ onActivated(() => {
       <UiEmpty v-if="!membersDrawerRows.length" description="该工作组尚无成员" />
       <UiDataTable
         pagination-mode="client"
-        class="student-detail-table__data-table"
         v-else
         :columns="memberColumns"
         :data-source="membersDrawerRows"

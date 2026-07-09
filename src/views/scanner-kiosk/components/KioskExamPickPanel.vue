@@ -6,18 +6,28 @@ import type { ExamScannerKioskBindExamCandidateVO } from '@/apis/mark/scanner-ki
 import { LeftOutlined, ReloadOutlined, RightOutlined, SearchOutlined } from '@ant-design/icons-vue'
 import { computed, ref, watch } from 'vue'
 import { formatSemester } from '@/types/enums/semester-enum'
+import { formatExamSubMeta, formatExamTimeRange } from '@/utils/exam-display-meta'
 import { useKioskCtx } from '../composables/kioskInjection'
 
-const props = defineProps<{
-  selectedExamId?: string
-  /** 切换考试时排除当前已绑定考试 */
-  excludeExamId?: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    selectedExamId?: string
+    /** 切换考试时排除当前已绑定考试 */
+    excludeExamId?: string
+    /** 父级提交中（绑定/切换），勿与全局 workflow.loading 混用 */
+    interactionLocked?: boolean
+    /** true=点磁贴即绑定；false=仅选中，由父级确认按钮提交 */
+    instantBind?: boolean
+  }>(),
+  {
+    instantBind: true,
+  },
+)
 
 const emit = defineEmits<{
   'update:selected-exam-id': [value: string | undefined]
   /** 单击选中并立即绑定/切换 */
-  "confirm": [examId: string]
+  confirm: [examId: string]
 }>()
 
 const { workflow } = useKioskCtx()
@@ -40,6 +50,19 @@ const showPager = computed(
   () => workflow.bindExamCandidateTotal.value > workflow.bindExamCandidateFilter.pageSize,
 )
 
+const emptyHint = computed(() => {
+  if (workflow.bindExamCandidateLoadIssue.value) {
+    return workflow.bindExamCandidateLoadIssue.value
+  }
+  if (
+    props.excludeExamId &&
+    workflow.bindExamCandidates.value.some((item) => item.examId === props.excludeExamId)
+  ) {
+    return '当前工位仅绑定此考试，暂无可切换目标'
+  }
+  return props.excludeExamId ? '暂无可切换考试' : '暂无可绑定考试'
+})
+
 watch(
   () => workflow.bindExamCandidateFilter.keyword,
   (keyword) => {
@@ -51,9 +74,11 @@ watch(
 )
 
 function activateExam(examId: string) {
-  if (workflow.bindExamCandidateLoading.value || workflow.loading.value) return
+  if (props.interactionLocked || workflow.bindExamCandidateLoading.value) return
   emit('update:selected-exam-id', examId)
-  emit('confirm', examId)
+  if (props.instantBind) {
+    emit('confirm', examId)
+  }
 }
 
 function onSearchInput() {
@@ -70,9 +95,14 @@ function onSearchSubmit() {
 
 function formatBatchBadge(candidate: ExamScannerKioskBindExamCandidateVO): string {
   if (candidate.hasActiveScanSession) {
-    return '扫描中'
+    const batchNo = candidate.activeBatchExternalNo?.trim()
+    return batchNo ? `扫描中 · ${batchNo}` : '扫描中'
   }
   return `已扫 ${candidate.deviceScanBatchCount ?? 0} 批`
+}
+
+function formatExamTimeLine(candidate: ExamScannerKioskBindExamCandidateVO): string {
+  return formatExamTimeRange(candidate.examStartTime, candidate.examEndTime)
 }
 
 function formatTermLine(candidate: ExamScannerKioskBindExamCandidateVO): string {
@@ -145,7 +175,7 @@ function goNextPage() {
       <p v-if="workflow.bindExamCandidateLoadIssue.value" class="exam-pick__issue">
         {{ workflow.bindExamCandidateLoadIssue.value }}
       </p>
-      <p v-else>暂无可绑定考试</p>
+      <p v-else>{{ emptyHint }}</p>
       <button
         v-if="workflow.bindExamCandidateLoadIssue.value"
         type="button"
@@ -163,9 +193,12 @@ function goNextPage() {
         type="button"
         role="option"
         class="exam-tile"
-        :class="{ 'exam-tile--resume': exam.hasActiveScanSession }"
+        :class="{
+          'exam-tile--resume': exam.hasActiveScanSession,
+          'exam-tile--selected': selectedExamId === exam.examId,
+        }"
         :aria-selected="selectedExamId === exam.examId"
-        :disabled="workflow.bindExamCandidateLoading.value || workflow.loading.value"
+        :disabled="interactionLocked || workflow.bindExamCandidateLoading.value"
         @click="activateExam(exam.examId)"
       >
         <span class="exam-tile__icon" aria-hidden="true">
@@ -192,14 +225,20 @@ function goNextPage() {
         <div class="exam-tile__body">
           <h3 class="exam-tile__title">{{ exam.examName }}</h3>
           <p v-if="exam.courseName" class="exam-tile__course">{{ exam.courseName }}</p>
+          <p v-if="formatExamSubMeta(exam.examNo, exam.departmentName)" class="exam-tile__sub">
+            {{ formatExamSubMeta(exam.examNo, exam.departmentName) }}
+          </p>
           <p v-if="formatTermLine(exam)" class="exam-tile__meta">{{ formatTermLine(exam) }}</p>
+          <p v-if="formatExamTimeLine(exam)" class="exam-tile__meta">
+            {{ formatExamTimeLine(exam) }}
+          </p>
         </div>
         <div class="exam-tile__foot">
-          <span class="exam-tile__no">{{ exam.examNo }}</span>
           <span
             class="exam-tile__badge"
             :class="{ 'exam-tile__badge--active': exam.hasActiveScanSession }"
-          >{{ formatBatchBadge(exam) }}</span>
+            >{{ formatBatchBadge(exam) }}</span
+          >
         </div>
       </button>
     </div>
@@ -216,13 +255,15 @@ function goNextPage() {
         <LeftOutlined />
         <span>上一页</span>
       </button>
-      <span class="pager-indicator">{{ workflow.bindExamCandidateFilter.pageNum }} / {{ totalPages }}</span>
+      <span class="pager-indicator"
+        >{{ workflow.bindExamCandidateFilter.pageNum }} / {{ totalPages }}</span
+      >
       <button
         type="button"
         class="pager-btn"
         :disabled="
-          workflow.bindExamCandidateFilter.pageNum >= totalPages
-            || workflow.bindExamCandidateLoading.value
+          workflow.bindExamCandidateFilter.pageNum >= totalPages ||
+          workflow.bindExamCandidateLoading.value
         "
         @click="goNextPage"
       >
@@ -426,6 +467,18 @@ function goNextPage() {
   text-overflow: ellipsis;
 }
 
+.exam-tile__sub {
+  margin: 0;
+  width: 100%;
+  flex-shrink: 0;
+  font-size: var(--kiosk-fz-caption);
+  font-family: var(--kiosk-font-mono);
+  color: var(--kiosk-ink-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .exam-tile__meta {
   margin: 0;
   width: 100%;
@@ -441,28 +494,22 @@ function goNextPage() {
   border-color: var(--kiosk-warning, #d48806);
 }
 
+.exam-tile--selected {
+  border-color: var(--kiosk-primary);
+  background: var(--kiosk-primary-soft);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+}
+
 .exam-tile__foot {
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: var(--kiosk-space-2);
   width: 100%;
   margin-top: auto;
   padding-top: var(--kiosk-space-2);
   border-top: 1px solid var(--kiosk-divider);
-}
-
-.exam-tile__no {
-  flex: 1;
-  min-width: 0;
-  font-size: 11px;
-  font-family: var(--kiosk-font-mono);
-  color: var(--kiosk-ink-tertiary);
-  text-align: left;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .exam-tile__badge {

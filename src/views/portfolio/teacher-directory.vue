@@ -9,6 +9,7 @@ import type {
 } from '@/apis/portfolio/types'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { UserStatusEnum } from '@/types/enums/user-status'
+import { getUserStatusLabel, USER_STATUS_FILTER_OPTIONS } from '@/types/enums/user-status'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -36,12 +37,11 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
-import { getUserStatusLabel, USER_STATUS_FILTER_OPTIONS } from '@/types/enums/user-status'
 import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 
 const listColumns: ColumnsType = [
-  { title: '工号', dataIndex: 'teacherNumber', key: 'teacherNumber', width: 120 },
+  { title: '工号', dataIndex: 'teacherNumber', key: 'teacherNumber', width: 120, fixed: 'left' },
   { title: '姓名', dataIndex: 'nickName', key: 'nickName', width: 120 },
   { title: '账号', dataIndex: 'userName', key: 'userName', width: 140 },
   { title: '院系', dataIndex: 'departmentName', key: 'departmentName' },
@@ -49,16 +49,16 @@ const listColumns: ColumnsType = [
   { title: '身份标签', key: 'identityTags', width: 160 },
   { title: '账号状态', key: 'userStatus', width: 100 },
   { title: '主身份', key: 'primaryIdentityType', width: 120 },
-  { title: '操作', key: 'actions', width: 240, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 240 },
 ]
 
 const identityColumns: ColumnsType = [
-  { title: '身份类型', key: 'identityType', width: 120 },
+  { title: '身份类型', key: 'identityType', width: 120, fixed: 'left' },
   { title: '状态', key: 'identityStatus', width: 80 },
   { title: '聘任编号', dataIndex: 'appointmentNo', key: 'appointmentNo', width: 120 },
   { title: '展示名称', dataIndex: 'displayName', key: 'displayName' },
   { title: '企业/单位', dataIndex: 'enterpriseName', key: 'enterpriseName' },
-  { title: '操作', key: 'actions', width: 80, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 80 },
 ]
 
 interface TeacherFilterModel extends Record<string, unknown> {
@@ -195,7 +195,7 @@ function handleSearch() {
   loadPage()
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadPage()
@@ -283,7 +283,7 @@ async function reloadDetail() {
   await loadTeacherExtensions(detail.value.userId)
 }
 
-function openIdentityCreate(context: { userId: string, nickName?: string, departmentId?: string }) {
+function openIdentityCreate(context: { userId: string; nickName?: string; departmentId?: string }) {
   identityMode.value = 'create'
   identityEditor.teacherUserId = context.userId
   identityEditor.id = undefined
@@ -508,10 +508,12 @@ onMounted(async () => {
           </UiButton>
         </div>
         <UiDataTable
+          pagination-mode="none"
           :columns="identityColumns"
           :data-source="detail.identities"
           row-key="id"
-          :pagination="false"
+          :show-pagination="false"
+          :sticky-header="false"
           flat
         >
           <template #bodyCell="{ column, record }">
@@ -519,7 +521,13 @@ onMounted(async () => {
               {{ identityTypeLabel(record.identityType) }}
             </template>
             <template v-else-if="column.key === 'identityStatus'">
-              <UiTag :tone="record.identityStatus === 'ACTIVE' ? 'green' : 'gray'">
+              <UiTag
+                :tone="
+                  record.identityStatus === PortfolioTeacherIdentityStatusCode.ACTIVE
+                    ? 'green'
+                    : 'gray'
+                "
+              >
                 {{ identityStatusLabel(record.identityStatus) }}
               </UiTag>
             </template>

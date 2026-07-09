@@ -27,16 +27,18 @@
 
       <div v-if="activeTab === 'list'" class="archive-eval-campaign__pane">
         <UiDataTable
-          pagination-mode="none"
+          v-model:current="campaignPagination.pageNum"
+          v-model:page-size="campaignPagination.pageSize"
+          pagination-mode="server"
           :columns="campaignColumns"
           :data-source="campaigns"
           :loading="campaignLoading"
-          :show-pagination="false"
           flat
           row-key="campaignId"
           size="middle"
-          class="student-detail-table__data-table"
+          :total="campaignPagination.total"
           empty-description="暂无迎评批次"
+          @page-change="handleCampaignPageChange"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'term'">
@@ -67,8 +69,8 @@
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
                 v-if="
-                  record.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE
-                    && canExportCampaign
+                  record.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE &&
+                  canExportCampaign
                 "
                 :items="buildCampaignActions(record)"
                 split
@@ -85,7 +87,7 @@
         <div class="archive-eval-campaign__readiness-toolbar">
           <a-select
             v-model:value="selectedCampaignId"
-            :loading="campaignLoading"
+            :loading="campaignOptionLoading"
             :options="campaignOptions"
             allow-clear
             placeholder="选择迎评批次"
@@ -96,6 +98,7 @@
         <UiDataTable
           v-model:current="readinessPagination.pageNum"
           v-model:page-size="readinessPagination.pageSize"
+          pagination-mode="server"
           :columns="readinessColumns"
           :data-source="readinessRows"
           :loading="readinessLoading"
@@ -103,7 +106,6 @@
           flat
           row-key="volumeId"
           size="middle"
-          class="student-detail-table__data-table"
           empty-description="请选择迎评批次后查询"
           @page-change="loadReadinessVolumes"
         >
@@ -174,7 +176,16 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchiveEvaluationCampaignResponse,
+  ArchiveEvaluationCampaignStatsVO,
   ArchiveEvaluationVolumeReadinessResponse,
+} from '@/apis/mark/archive-volume'
+import {
+  ArchiveEvaluationCampaignStatusCode,
+  ArchiveEvaluationCampaignStatusDescription,
+  exportEvaluationArchivePackage,
+  getEvaluationCampaignReadinessPanel,
+  getEvaluationCampaignStats,
+  pageEvaluationCampaigns,
 } from '@/apis/mark/archive-volume'
 import type {
   BadgeTone,
@@ -187,13 +198,6 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
 import { ArchiveDutyTypeCode } from '@/apis/mark/archive-config'
-import {
-  ArchiveEvaluationCampaignStatusCode,
-  ArchiveEvaluationCampaignStatusDescription,
-  exportEvaluationArchivePackage,
-  getEvaluationCampaignReadinessPanel,
-  listEvaluationCampaigns,
-} from '@/apis/mark/archive-volume'
 import ArchiveReadinessRateBar from '@/components/archive-volume/ArchiveReadinessRateBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -230,6 +234,10 @@ const campaignLoading = ref(false)
 const readinessLoading = ref(false)
 const exportingCampaignId = ref('')
 const campaigns = ref<ArchiveEvaluationCampaignResponse[]>([])
+const campaignPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
+const campaignSelectOptions = ref<ArchiveEvaluationCampaignResponse[]>([])
+const campaignOptionLoading = ref(false)
+const campaignStats = ref<ArchiveEvaluationCampaignStatsVO | null>(null)
 const selectedCampaignId = ref<string>()
 const readinessRows = ref<ArchiveEvaluationVolumeReadinessResponse[]>([])
 const readinessPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
@@ -242,31 +250,30 @@ const backButtonLabel = computed(() => {
 })
 
 const evalCampaignSignalMetrics = computed((): SignalMetric[] => {
-  const activeCount = campaigns.value.filter(
-    (item) => item.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE,
-  ).length
-  const totalVolumes = campaigns.value.reduce((sum, item) => sum + (item.totalVolumeCount ?? 0), 0)
-  const readyVolumes = campaigns.value.reduce((sum, item) => sum + (item.readyVolumeCount ?? 0), 0)
-  const readinessRate = totalVolumes > 0 ? Math.round((readyVolumes / totalVolumes) * 100) : 0
+  const stats = campaignStats.value
+  if (!stats) return []
   return [
     {
       key: 'campaigns',
       label: '迎评批次',
-      value: campaigns.value.length,
+      value: stats.campaignCount,
       tone: 'blue',
     },
     {
       key: 'active',
       label: '进行中',
-      value: activeCount,
-      tone: activeCount > 0 ? 'orange' : 'gray',
+      value: stats.activeCampaignCount,
+      tone: stats.activeCampaignCount > 0 ? 'orange' : 'gray',
     },
     {
       key: 'ready',
       label: '就绪卷',
-      value: readyVolumes,
-      tone: readyVolumes > 0 ? 'green' : 'gray',
-      helper: totalVolumes > 0 ? `共 ${totalVolumes} 卷 · ${readinessRate}%` : undefined,
+      value: stats.readyVolumeCount,
+      tone: stats.readyVolumeCount > 0 ? 'green' : 'gray',
+      helper:
+        stats.totalVolumeCount > 0
+          ? `共 ${stats.totalVolumeCount} 卷 · ${stats.readinessRatePercent}%`
+          : undefined,
     },
   ]
 })
@@ -277,32 +284,32 @@ const tabItems: UiSectionTabItem[] = [
 ]
 
 const campaignOptions = computed(() =>
-  campaigns.value.map((item) => ({
+  campaignSelectOptions.value.map((item) => ({
     value: item.campaignId,
     label: item.campaignName,
   })),
 )
 
 const campaignColumns: ColumnsType<ArchiveEvaluationCampaignResponse> = [
-  { title: '批次名称', dataIndex: 'campaignName', key: 'campaignName', width: 200 },
+  { title: '批次名称', dataIndex: 'campaignName', key: 'campaignName', width: 200, fixed: 'left' },
   { title: '学年学期', key: 'term', width: 120 },
   { title: '状态', key: 'campaignStatus', width: 90 },
   { title: '总卷数', key: 'totalVolumeCount', width: 80, align: 'right' },
   { title: '就绪卷', key: 'readyVolumeCount', width: 80, align: 'right' },
   { title: '就绪率', key: 'readinessRatePercent', width: 140 },
   { title: '截止日', key: 'endTime', width: 150 },
-  { title: '操作', key: 'actions', width: 110, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 110 },
 ]
 
 const readinessColumns: ColumnsType<ArchiveEvaluationVolumeReadinessResponse> = [
-  { title: '归档编号', key: 'archiveNo', width: 150 },
+  { title: '归档编号', key: 'archiveNo', width: 150, fixed: 'left' },
   { title: '课程', key: 'course', width: 180 },
   { title: '目录', key: 'catalogReady', width: 64, align: 'center' },
   { title: '完整性', key: 'integrityReady', width: 72, align: 'center' },
   { title: '四性', key: 'fourPropertyReady', width: 64, align: 'center' },
   { title: '移交', key: 'transferReady', width: 64, align: 'center' },
   { title: '整体', key: 'overallReady', width: 88 },
-  { title: '操作', key: 'actions', width: 88, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 88 },
 ]
 
 function evaluationDimensionReadyCode(
@@ -383,22 +390,57 @@ function goVolumeDetail(volumeId: string): void {
   void router.push({ name: 'TeacherArchiveVolumeDetail', params: { volumeId } })
 }
 
-async function loadCampaigns(): Promise<void> {
-  campaignLoading.value = true
+async function loadCampaignStats(): Promise<void> {
   try {
-    campaigns.value = await listEvaluationCampaigns()
-    if (!selectedCampaignId.value && campaigns.value.length > 0) {
-      selectedCampaignId.value = campaigns.value[0].campaignId
+    campaignStats.value = await getEvaluationCampaignStats()
+  } catch {
+    campaignStats.value = null
+  }
+}
+
+async function loadCampaignOptions(): Promise<void> {
+  campaignOptionLoading.value = true
+  try {
+    const page = await pageEvaluationCampaigns({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
+    campaignSelectOptions.value = page.list
+    if (!selectedCampaignId.value && page.list.length > 0) {
+      selectedCampaignId.value = page.list[0].campaignId
       if (activeTab.value === 'readiness') {
         void loadReadinessVolumes()
       }
     }
   } catch (error) {
+    showUserError(error, '迎评批次选项加载失败')
+    campaignSelectOptions.value = []
+  } finally {
+    campaignOptionLoading.value = false
+  }
+}
+
+async function loadCampaigns(): Promise<void> {
+  campaignLoading.value = true
+  try {
+    const page = await pageEvaluationCampaigns({
+      pageNum: campaignPagination.pageNum,
+      pageSize: campaignPagination.pageSize,
+    })
+    campaigns.value = page.list
+    campaignPagination.pageNum = page.pageNum
+    campaignPagination.pageSize = page.pageSize
+    campaignPagination.total = page.total
+  } catch (error) {
     showUserError(error, '迎评批次加载失败')
     campaigns.value = []
+    campaignPagination.total = 0
   } finally {
     campaignLoading.value = false
   }
+}
+
+function handleCampaignPageChange(page: { current: number; pageSize: number }): void {
+  campaignPagination.pageNum = page.current
+  campaignPagination.pageSize = page.pageSize
+  void loadCampaigns()
 }
 
 async function loadReadinessVolumes(): Promise<void> {
@@ -461,6 +503,8 @@ async function handleExportArchive(campaignId: string): Promise<void> {
 
 onMounted(async () => {
   await loadGrants()
+  void loadCampaignStats()
+  void loadCampaignOptions()
   await loadCampaigns()
   const volumeId = typeof route.query.volumeId === 'string' ? route.query.volumeId : undefined
   if (volumeId) {
@@ -510,10 +554,5 @@ watch(
       font-weight: 600;
     }
   }
-}
-
-.link-cell__sub {
-  color: var(--dp-text-muted);
-  font-size: 12px;
 }
 </style>

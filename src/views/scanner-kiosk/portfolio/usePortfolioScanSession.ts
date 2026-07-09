@@ -3,11 +3,11 @@ import type {
   ScanWorkOrderLifecycleVO,
   ScanWorkOrderPortfolioContextVO,
 } from '@/apis/mark/scanner-work-order'
+import { getScanWorkOrderContext, startScanWorkOrder } from '@/apis/mark/scanner-work-order'
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ScannerColorModeCode, ScannerDuplexModeCode } from '@/apis/mark/exam-mark-scanner'
 import { getAgentSetupContext } from '@/apis/mark/scanner-agent-local'
-import { getScanWorkOrderContext, startScanWorkOrder } from '@/apis/mark/scanner-work-order'
 import { buildPortfolioIntakeScanReturnTo } from '@/composables/usePortfolioIntake'
 import {
   ALL_PORTFOLIO_COLLECT_MODE_CODES,
@@ -74,6 +74,7 @@ export function usePortfolioScanSession() {
         taskType: taskType.value || undefined,
         templateCode: templateCode.value || undefined,
         archiveRecordId: archiveRecordId.value || undefined,
+        dispatchTicketId: dispatchTicketId.value,
         batchExternalNo: lifecycle.value?.batchExternalNo,
       })
       portfolioContext.value = context.portfolioContext ?? null
@@ -109,6 +110,10 @@ export function usePortfolioScanSession() {
     loading.value = true
     try {
       const setup = await getAgentSetupContext()
+      if (!setup.bound || !setup.scannerDeviceId || !setup.scannerStationId) {
+        showUserError(null, '扫描设备未绑定，请先激活一体机')
+        return null
+      }
       lifecycle.value = await startScanWorkOrder({
         taskKind: ScanTaskKindCode.PORTFOLIO_COLLECT,
         collectMode: collectMode.value,
@@ -119,8 +124,8 @@ export function usePortfolioScanSession() {
         templateCode: templateCode.value || undefined,
         archiveRecordId: archiveRecordId.value || undefined,
         dispatchTicketId: dispatchTicketId.value,
-        scannerDeviceId: setup.scannerDeviceId!,
-        scannerStationId: setup.scannerStationId!,
+        scannerDeviceId: setup.scannerDeviceId,
+        scannerStationId: setup.scannerStationId,
         scanConfig: {
           dpi: 300,
           colorMode: ScannerColorModeCode.COLOR,
@@ -130,6 +135,9 @@ export function usePortfolioScanSession() {
       })
       await loadContext()
       return lifecycle.value
+    } catch (error) {
+      showUserError(error, '档案袋扫描开单失败')
+      return null
     } finally {
       loading.value = false
     }

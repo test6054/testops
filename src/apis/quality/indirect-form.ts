@@ -89,6 +89,7 @@ export interface IndirectEvaluationProgressVO {
   expectedResponseCount?: number
   scoredResponseCount?: number
   pendingConversionCount?: number
+  noSubstantiveCount?: number
   expectedSample?: number
   completionRate?: number
   responseCollectionRate?: number
@@ -102,7 +103,11 @@ export interface IndirectEvaluationStatisticsVO {
   overallScore?: number
   overallScoredCount?: number
   pendingConversionCount?: number
-  items: IndirectEvaluationItemStatisticsVO[]
+  noSubstantiveCount?: number
+}
+
+export interface IndirectEvaluationFormItemStatisticsQueryRequest extends QueryDto {
+  formId: string
 }
 
 export interface IndirectEvaluationItemStatisticsVO {
@@ -115,6 +120,7 @@ export interface IndirectEvaluationItemStatisticsVO {
   validCount: number
   scoredCount?: number
   pendingConversionCount?: number
+  noSubstantiveCount?: number
   mean?: number
   median?: number
   stdDev?: number
@@ -148,4 +154,6 @@ export const indirectFormApi = {
   progress: (id: string) => http.post<IndirectEvaluationProgressVO>(`${BASE}/progress`, { id }),
   statistics: (id: string) =>
     http.post<IndirectEvaluationStatisticsVO>(`${BASE}/statistics`, { id }),
+  statisticsItemPage: (data: IndirectEvaluationFormItemStatisticsQueryRequest) =>
+    http.post<PageResult<IndirectEvaluationItemStatisticsVO>>(`${BASE}/statistics-item-page`, data),
 }

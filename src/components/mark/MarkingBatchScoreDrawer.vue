@@ -64,6 +64,7 @@ import message from 'ant-design-vue/es/message'
 import { ref, watch } from 'vue'
 import {
   batchSubmitMarkingTasksInChunks,
+  MarkingTaskBatchOutcomeCode,
   precheckMarkingTaskBatch,
 } from '@/apis/mark/marking-batch'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -198,7 +199,7 @@ async function handleSubmit(): Promise<void> {
     )
 
     const submittedTaskIds = results.flatMap((item) => item.submittedTaskIds ?? [])
-    const failed = results.find((item) => item.outcome === 'FAILED')
+    const failed = results.find((item) => item.outcome === MarkingTaskBatchOutcomeCode.FAILED)
     if (failed) {
       progressFailed.value = true
       message.error(
@@ -212,7 +213,7 @@ async function handleSubmit(): Promise<void> {
       return
     }
 
-    const warn = results.find((item) => item.outcome === 'WARN')
+    const warn = results.find((item) => item.outcome === MarkingTaskBatchOutcomeCode.WARN)
     if (warn?.annotationWarning) {
       annotationWarning.value = warn.annotationWarning
       message.warning(warn.annotationWarning)

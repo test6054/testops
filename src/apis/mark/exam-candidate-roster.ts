@@ -15,7 +15,6 @@ export {
   CANDIDATE_SCAN_PROGRESS_STATUS_TONE,
   CandidateScanProgressStatusCode,
   CandidateScanProgressStatusDescription,
-  isCandidateScanProgressStatusCode,
 } from '@/types/enums/candidate-scan-progress-status-enum'
 
 /** 考生名册工作台列表查询 - 对应 ExamCandidateRosterWorkbenchListQueryRequest */

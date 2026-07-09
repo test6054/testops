@@ -79,15 +79,15 @@ function buildJourneyRailStages(
 
 function isMarkStageKey(value: unknown): value is MarkStageKey {
   return (
-    value === 'EXAM_PREP'
-    || value === 'PAPER_TEMPLATE'
-    || value === 'CANDIDATE_ROSTER'
-    || value === 'SCAN'
-    || value === 'MARKING_ORG'
-    || value === 'TRIAL_MARKING'
-    || value === 'FORMAL_MARKING'
-    || value === 'SCORE_PUBLISH'
-    || value === 'ARCHIVE'
+    value === 'EXAM_PREP' ||
+    value === 'PAPER_TEMPLATE' ||
+    value === 'CANDIDATE_ROSTER' ||
+    value === 'SCAN' ||
+    value === 'MARKING_ORG' ||
+    value === 'TRIAL_MARKING' ||
+    value === 'FORMAL_MARKING' ||
+    value === 'SCORE_PUBLISH' ||
+    value === 'ARCHIVE'
   )
 }
 
@@ -146,6 +146,24 @@ export function resolveExamJourneyDotStatus(
   if (journeyIndex < completedSegments) return 'done'
   if (journeyIndex === currentIndex) return 'current'
   return 'pending'
+}
+
+/** 与 edu-mark MarkTeacherDashboardServiceImpl.STAGE_COUNT 对齐 */
+export const EXAM_WORKBENCH_STAGE_COUNT = 9
+
+/** 进行中考试卡进度文案：与后端 progressPercent（已完成工作台阶段 / 9）同口径 */
+export function resolveOngoingExamProgressFractionLabel(
+  exam: MarkTeacherDashboardOngoingExamItemVO,
+): string {
+  const completedStages = Math.min(
+    EXAM_WORKBENCH_STAGE_COUNT,
+    Math.round(((exam.progressPercent ?? 0) * EXAM_WORKBENCH_STAGE_COUNT) / 100),
+  )
+  const stageTitle = exam.currentStageTitle?.trim()
+  if (stageTitle) {
+    return `${completedStages} / ${EXAM_WORKBENCH_STAGE_COUNT} 阶段 · ${stageTitle}`
+  }
+  return `${completedStages} / ${EXAM_WORKBENCH_STAGE_COUNT} 阶段`
 }
 
 export type OngoingExamProgressTone = 'success' | 'warning' | 'primary'

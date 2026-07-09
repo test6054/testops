@@ -11,7 +11,7 @@
             allow-clear
             placeholder="选择评估批次"
             style="width: 280px"
-            @change="loadTasks"
+            @change="handleCampaignChange"
           />
           <div
             v-if="selectedCampaign && selectedCampaign.readinessRatePercent != null"
@@ -102,8 +102,8 @@
           <div class="remediation-card__actions">
             <UiButton
               v-if="
-                task.taskStatus === ArchiveRemediationStatusCode.OPEN
-                  || task.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
+                task.taskStatus === ArchiveRemediationStatusCode.OPEN ||
+                task.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
               "
               size="sm"
               variant="outline"
@@ -115,6 +115,14 @@
           </div>
         </article>
       </div>
+      <UiPagination
+        v-if="selectedCampaignId && taskPagination.total > 0"
+        v-model:current="taskPagination.pageNum"
+        v-model:page-size="taskPagination.pageSize"
+        class="archive-volume-remediation-panel__task-pagination"
+        :total="taskPagination.total"
+        @change="handleTaskPageChange"
+      />
     </WorkbenchSurfaceCard>
 
     <UiDrawer
@@ -250,17 +258,12 @@
 </template>
 
 <script setup lang="ts">
+import type { SelectValue } from 'ant-design-vue/es/select'
 import type {
   ArchiveEvaluationCampaignResponse,
   ArchiveRemediationPriorityCode,
   ArchiveRemediationTaskResponse,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   ARCHIVE_EVALUATION_CAMPAIGN_STATUS_OPTIONS,
   ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
@@ -272,21 +275,29 @@ import {
   exportEvaluationArchivePackage,
   exportEvaluationPackage,
   getArchiveVolumeDetail,
-  listEvaluationCampaigns,
-  listRemediationTasksByCampaign,
+  pageEvaluationCampaigns,
+  pageRemediationTasksByCampaign,
   saveEvaluationCampaign,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { SemesterOptions } from '@/types/enums/semester-enum'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import ArchiveReadinessRateBar from '@/components/archive-volume/ArchiveReadinessRateBar.vue'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiPagination from '@/components/ui-guide/ui/Pagination.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
-import { SemesterOptions } from '@/types/enums/semester-enum'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { generateAcademicYearStartOptions } from '@/utils/academic-year'
 import {
   applyAcademicYearStartYearChange,
@@ -323,9 +334,11 @@ const campaignSaving = ref(false)
 const createTaskSubmitting = ref(false)
 const campaignModalOpen = ref(false)
 const createTaskOpen = ref(false)
-const campaigns = ref<ArchiveEvaluationCampaignResponse[]>([])
+const campaignSelectOptions = ref<ArchiveEvaluationCampaignResponse[]>([])
+const selectedCampaign = ref<ArchiveEvaluationCampaignResponse | null>(null)
 const tasks = ref<ArchiveRemediationTaskResponse[]>([])
 const selectedCampaignId = ref<string>()
+const taskPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 
 const remediationDiagnosticOptions = ARCHIVE_REMEDIATION_DIAGNOSTIC_CODE_OPTIONS
 
@@ -378,16 +391,24 @@ const createTaskForm = reactive<ArchiveRemediationCreateTaskForm>({
   dueTime: undefined,
 })
 
-const selectedCampaign = computed(() =>
-  campaigns.value.find((item) => item.campaignId === selectedCampaignId.value),
-)
-
 const campaignOptions = computed(() =>
-  campaigns.value.map((item) => ({
+  campaignSelectOptions.value.map((item) => ({
     label: item.campaignName,
     value: item.campaignId,
   })),
 )
+
+function syncSelectedCampaign(campaignId?: string): void {
+  selectedCampaign.value =
+    campaignSelectOptions.value.find((item) => item.campaignId === campaignId) ?? null
+}
+
+function handleCampaignChange(value: SelectValue): void {
+  const campaignId = typeof value === 'string' ? value : undefined
+  syncSelectedCampaign(campaignId)
+  taskPagination.pageNum = 1
+  void loadTasks()
+}
 
 const canShowCreateRemediationTask = computed(
   () => isTenantWideCollegeCoordinator.value || scopedDepartmentIds.value.length > 0,
@@ -415,9 +436,11 @@ function remediationPriorityTone(code: ArchiveRemediationPriorityCode): BadgeTon
 async function loadCampaigns() {
   campaignLoading.value = true
   try {
-    campaigns.value = await listEvaluationCampaigns()
-    if (!selectedCampaignId.value && campaigns.value.length > 0) {
-      selectedCampaignId.value = campaigns.value[0].campaignId
+    const page = await pageEvaluationCampaigns({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
+    campaignSelectOptions.value = page.list
+    if (!selectedCampaignId.value && page.list.length > 0) {
+      selectedCampaignId.value = page.list[0].campaignId
+      syncSelectedCampaign(selectedCampaignId.value)
       await loadTasks()
     }
   } catch (error) {
@@ -430,16 +453,33 @@ async function loadCampaigns() {
 async function loadTasks() {
   if (!selectedCampaignId.value) {
     tasks.value = []
+    taskPagination.total = 0
     return
   }
   taskLoading.value = true
   try {
-    tasks.value = await listRemediationTasksByCampaign(selectedCampaignId.value)
+    const page = await pageRemediationTasksByCampaign({
+      campaignId: selectedCampaignId.value,
+      pageNum: taskPagination.pageNum,
+      pageSize: taskPagination.pageSize,
+    })
+    tasks.value = page.list
+    taskPagination.pageNum = page.pageNum
+    taskPagination.pageSize = page.pageSize
+    taskPagination.total = page.total
   } catch (error) {
     showUserError(error)
+    tasks.value = []
+    taskPagination.total = 0
   } finally {
     taskLoading.value = false
   }
+}
+
+function handleTaskPageChange(pageNum: number, pageSize: number): void {
+  taskPagination.pageNum = pageNum
+  taskPagination.pageSize = pageSize
+  void loadTasks()
 }
 
 function openCampaignModal(campaign?: ArchiveEvaluationCampaignResponse) {
@@ -449,8 +489,8 @@ function openCampaignModal(campaign?: ArchiveEvaluationCampaignResponse) {
   campaignForm.academicYearStartYear = triple.academicYearStartYear
   campaignForm.academicYearEndYear = triple.academicYearEndYear
   campaignForm.semester = triple.semester
-  campaignForm.campaignStatus
-    = campaign?.campaignStatus ?? ArchiveEvaluationCampaignStatusCode.ACTIVE
+  campaignForm.campaignStatus =
+    campaign?.campaignStatus ?? ArchiveEvaluationCampaignStatusCode.ACTIVE
   campaignForm.startTime = campaign?.startTime
   campaignForm.endTime = campaign?.endTime
   campaignForm.description = campaign?.description ?? ''
@@ -482,6 +522,8 @@ async function submitCampaign() {
     campaignModalOpen.value = false
     await loadCampaigns()
     selectedCampaignId.value = saved.campaignId
+    syncSelectedCampaign(saved.campaignId)
+    taskPagination.pageNum = 1
     await loadTasks()
   } catch (error) {
     showUserError(error)
@@ -609,6 +651,12 @@ watch(
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+}
+
+.archive-volume-remediation-panel__task-pagination {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .archive-volume-remediation-panel__export-hint {

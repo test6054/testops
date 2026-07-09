@@ -115,16 +115,18 @@
         />
 
         <UiDataTable
-          pagination-mode="none"
+          v-model:current="questionPageNum"
+          v-model:page-size="questionPageSize"
+          pagination-mode="server"
           :columns="questionColumns"
-          :data-source="questionRows"
-          :loading="loading"
-          :show-pagination="false"
+          :data-source="questionTableRows"
+          :loading="questionTableLoading || loading"
+          :total="questionPageTotal"
+          :sticky-header="false"
           flat
-          :total="questionRows.length"
           row-key="layoutQuestionId"
           size="middle"
-          class="question-table student-detail-table__data-table"
+          @page-change="handleQuestionPageChange"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'questionNo'">
@@ -197,13 +199,13 @@
           />
         </template>
         <UiDataTable
+          v-model:current="processingTaskPageNum"
+          v-model:page-size="processingTaskPageSize"
           pagination-mode="server"
           :columns="processingTaskColumns"
           :data-source="processingTasks"
           :loading="processingTasksLoading"
           :total="processingTaskTotal"
-          :page-num="processingTaskPageNum"
-          :page-size="processingTaskPageSize"
           row-key="id"
           size="middle"
           flat
@@ -250,12 +252,19 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamProcessingTaskItemResponse } from '@/apis/mark/exam-processing-task'
+import {
+  pageExamProcessingTasks,
+  retryPaperGradeSuggestion,
+} from '@/apis/mark/exam-processing-task'
 import type {
   MarkingProgressResponse,
   ReviewQuestionProgressItemResponse,
 } from '@/apis/mark/exam-progress'
-import type { TaskStatusCode } from '@/apis/mark/task-status'
-import type { ProcessingTaskTypeCode } from '@/apis/mark/task-type'
+import {
+  getMarkingProgress,
+  getReviewQuestionProgressSummary,
+  pageReviewQuestionProgress,
+} from '@/apis/mark/exam-progress'
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
@@ -266,21 +275,17 @@ import message from 'ant-design-vue/es/message'
 import { computed, inject, onActivated, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
-  pageExamProcessingTasks,
-  retryPaperGradeSuggestion,
-} from '@/apis/mark/exam-processing-task'
-import { getMarkingProgress } from '@/apis/mark/exam-progress'
-import {
   REVIEW_TASK_STATUS_TONE,
   ReviewTaskStatusCode,
   ReviewTaskStatusDescription,
 } from '@/apis/mark/exam-review-task'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
-import { TASK_STATUS_TONE, TaskStatusDescription } from '@/apis/mark/task-status'
+import { TASK_STATUS_TONE, TaskStatusCode, TaskStatusDescription } from '@/apis/mark/task-status'
 import {
   ALL_PROCESSING_TASK_TYPE_CODES,
   PROCESSING_TASK_TYPE_OPTIONS,
   PROCESSING_TASK_TYPE_TONE,
+  ProcessingTaskTypeCode,
   ProcessingTaskTypeDescription,
 } from '@/apis/mark/task-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
@@ -299,6 +304,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
+import { useQueryTable } from '@/composables/useQueryTable'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError } from '@/utils/error-handler'
 import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
@@ -336,8 +342,27 @@ const successColor = toneToColor('green')
 const primaryColor = toneToColor('blue')
 
 const progress = ref<MarkingProgressResponse | null>(null)
+const questionSummaryItems = ref<ReviewQuestionProgressItemResponse[]>([])
 const loading = ref(false)
 const loadFailed = ref(false)
+
+const {
+  rows: questionTableRows,
+  loading: questionTableLoading,
+  pageNum: questionPageNum,
+  pageSize: questionPageSize,
+  pageTotal: questionPageTotal,
+  filters: questionTableFilters,
+  search: searchQuestionTable,
+  handlePageChange: handleQuestionPageChange,
+} = useQueryTable<ReviewQuestionProgressItemResponse, { examId: string }>(
+  (params) => pageReviewQuestionProgress(params),
+  {
+    defaultFilters: () => ({ examId: selectedExamId.value ?? '' }),
+    immediate: false,
+    errorMessage: '题目复核进度加载失败',
+  },
+)
 
 const processingTasks = ref<ExamProcessingTaskItemResponse[]>([])
 const processingTasksLoading = ref(false)
@@ -369,9 +394,17 @@ function processingTaskStatusTone(value: TaskStatusCode) {
 
 function canRetryPaperGrade(record: ExamProcessingTaskItemResponse): boolean {
   if (!record.paperInstanceId) return false
-  if (record.taskType !== 'SUBJECTIVE_AI_REVIEW' && record.taskType !== 'OBJECTIVE_AI_REVIEW')
+  if (
+    record.taskType !== ProcessingTaskTypeCode.SUBJECTIVE_AI_REVIEW &&
+    record.taskType !== ProcessingTaskTypeCode.OBJECTIVE_AI_REVIEW
+  ) {
     return false
-  return record.status === 'FAILED' || record.status === 'BLOCKED' || record.status === 'PROCESSING'
+  }
+  return (
+    record.status === TaskStatusCode.FAILED ||
+    record.status === TaskStatusCode.BLOCKED ||
+    record.status === TaskStatusCode.PROCESSING
+  )
 }
 
 async function loadProcessingTasks(): Promise<void> {
@@ -414,9 +447,13 @@ function syncProcessingTaskFilterFromRoute(): void {
     processingTaskTypeFilter.value = undefined
     return
   }
-  if ((ALL_PROCESSING_TASK_TYPE_CODES as readonly string[]).includes(taskType)) {
-    processingTaskTypeFilter.value = taskType as ProcessingTaskTypeCode
+  for (const code of ALL_PROCESSING_TASK_TYPE_CODES) {
+    if (code === taskType) {
+      processingTaskTypeFilter.value = code
+      return
+    }
   }
+  processingTaskTypeFilter.value = undefined
 }
 
 async function reloadProcessingTasksFromRoute(resetPage = true): Promise<void> {
@@ -430,7 +467,7 @@ async function reloadProcessingTasksFromRoute(resetPage = true): Promise<void> {
   await loadProcessingTasks()
 }
 
-function handleProcessingTaskPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleProcessingTaskPageChange(pageEvent: { current: number; pageSize: number }): void {
   processingTaskPageNum.value = pageEvent.current
   processingTaskPageSize.value = pageEvent.pageSize
   void loadProcessingTasks()
@@ -454,7 +491,7 @@ async function retryPaperGradeForTask(record: ExamProcessingTaskItemResponse): P
 }
 
 const processingTaskColumns: ColumnType<ExamProcessingTaskItemResponse>[] = [
-  { title: '类型', dataIndex: 'taskType', key: 'taskType', width: 140 },
+  { title: '类型', dataIndex: 'taskType', key: 'taskType', width: 140, fixed: 'left' },
   { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
   { title: '试卷实例', dataIndex: 'paperInstanceId', key: 'paperInstanceId', width: 120 },
   { title: '制卷题目', dataIndex: 'layoutQuestionId', key: 'layoutQuestionId', width: 120 },
@@ -465,9 +502,9 @@ const processingTaskColumns: ColumnType<ExamProcessingTaskItemResponse>[] = [
 
 const contextProgress = computed(
   () =>
-    workbenchContext?.markingProgress?.value
-    ?? workbenchContext?.snapshot.value?.markingProgress
-    ?? null,
+    workbenchContext?.markingProgress?.value ??
+    workbenchContext?.snapshot.value?.markingProgress ??
+    null,
 )
 
 watch(
@@ -478,8 +515,8 @@ watch(
       progress.value = null
       return
     }
-    const contextExamId
-      = workbenchContext?.examId?.value ?? workbenchContext?.snapshot.value?.examId
+    const contextExamId =
+      workbenchContext?.examId?.value ?? workbenchContext?.snapshot.value?.examId
     if (contextExamId && String(contextExamId) !== String(examId)) {
       return
     }
@@ -648,7 +685,7 @@ const auxStatItems = computed((): UiStatPanelItem[] => {
 })
 
 const questionRows = computed<ReviewQuestionProgressItemResponse[]>(
-  () => progress.value?.reviewQuestionProgressList ?? [],
+  () => questionSummaryItems.value,
 )
 const reviewProgressBarItems = computed(() => reviewProgressToBarItems(questionRows.value))
 
@@ -719,12 +756,27 @@ function questionTypeLabel(
 }
 
 const questionColumns: ColumnType<ReviewQuestionProgressItemResponse>[] = [
-  { title: '题目', dataIndex: 'questionNo', key: 'questionNo', width: 180 },
+  { title: '题目', dataIndex: 'questionNo', key: 'questionNo', width: 180, fixed: 'left' },
   { title: '复核进度', dataIndex: 'approvedTaskCount', key: 'progress', width: 240 },
   { title: '待领取', dataIndex: 'pendingTaskCount', key: 'pending', width: 100 },
   { title: '复核中', dataIndex: 'inProgressTaskCount', key: 'inProgress', width: 100 },
   { title: '已驳回', dataIndex: 'rejectedTaskCount', key: 'rejected', width: 100 },
 ]
+
+async function loadQuestionSummary(): Promise<void> {
+  if (!selectedExamId.value) {
+    questionSummaryItems.value = []
+    return
+  }
+  const summary = await getReviewQuestionProgressSummary(selectedExamId.value)
+  questionSummaryItems.value = summary.items
+}
+
+async function reloadQuestionTable(): Promise<void> {
+  if (!selectedExamId.value) return
+  questionTableFilters.value = { examId: selectedExamId.value }
+  searchQuestionTable()
+}
 
 async function loadAll(): Promise<void> {
   if (!selectedExamId.value) return
@@ -741,6 +793,7 @@ async function loadAll(): Promise<void> {
     if (generation !== pageLoadGeneration) {
       return
     }
+    await Promise.all([loadQuestionSummary(), reloadQuestionTable()])
     processingTaskPageNum.value = 1
     await loadProcessingTasks()
   } catch (error) {
@@ -761,6 +814,7 @@ watch([selectedExamId, () => route.query.taskType], ([examId], [prevExamId]) => 
     pageLoadGeneration++
     processingTasksLoadGeneration++
     progress.value = null
+    questionSummaryItems.value = []
     processingTasks.value = []
     processingTaskTotal.value = 0
     processingTaskTypeFilter.value = undefined
@@ -896,13 +950,6 @@ onActivated(() => {
   line-height: 1.5;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-}
-
-.question-table {
-  :deep(.ant-table-thead > tr > th) {
-    background: var(--ant-color-fill-quaternary);
-    font-weight: 600;
-  }
 }
 
 .progress-page__chart,

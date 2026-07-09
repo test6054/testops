@@ -46,14 +46,18 @@ import type {
   ArchiveIntegrityMissingItemVO,
   ArchiveMaterialTypeCode,
   ArchiveVolumeCatalogLineVO,
-  ArchiveVolumeMaterialResponse,
+  ArchiveVolumeMaterialCatalogReadySummaryVO,
+} from '@/apis/mark/archive-volume'
+import {
+  ArchiveMaterialTypeDescription,
+  getArchiveVolumeCatalog,
+  getArchiveVolumeMaterialStats,
 } from '@/apis/mark/archive-volume'
 import { computed, onMounted, ref, watch } from 'vue'
-import { ArchiveMaterialTypeDescription, getArchiveVolumeCatalog } from '@/apis/mark/archive-volume'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import { ALL_ARCHIVE_MATERIAL_TYPE_CODES } from '@/types/enums/archive-material-type-enum'
 import {
-  archiveMaterialBelongsToCatalogKey,
   archiveMissingItemTargetsCatalogKey,
   resolveArchiveCatalogLineKey,
   resolveArchiveMaterialGroupKey,
@@ -62,7 +66,6 @@ import {
   formatCatalogPreviewPageCount,
   groupArchiveCatalogLinesForPreview,
 } from '@/utils/archive-catalog-tree-preview'
-import { countArchiveMaterialsReady } from '@/utils/archive-material-status-ui'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -72,7 +75,6 @@ const selectedKeys = defineModel<string[]>('selectedKeys', { default: () => [] }
 
 const props = defineProps<{
   volumeId: string
-  materials: ArchiveVolumeMaterialResponse[]
   missingItems: ArchiveIntegrityMissingItemVO[]
   catalogStatus?: ArchiveCatalogStatusCode
 }>()
@@ -98,22 +100,30 @@ interface CatalogTreeGroup {
 
 const catalogLines = ref<ArchiveVolumeCatalogLineVO[]>([])
 const catalogLoadFailed = ref(false)
+const catalogSummaries = ref<ArchiveVolumeMaterialCatalogReadySummaryVO[]>([])
 
 function materialTypeLabel(code: ArchiveMaterialTypeCode) {
   return strictEnumLabel(ArchiveMaterialTypeDescription, code, 'materialType')
 }
 
-/** 按目录键统计已登记材料就绪度（ready/total）。 */
+function catalogKeyTitle(key: string): string {
+  for (const materialType of ALL_ARCHIVE_MATERIAL_TYPE_CODES) {
+    if (materialType === key) {
+      return materialTypeLabel(materialType)
+    }
+  }
+  return key
+}
+
+/** 按目录键从统计接口读取就绪度，不使用分页列表推导。 */
 function resolveEntryReadySummary(catalogKey: string): CatalogEntryReadySummary | undefined {
-  const matched = props.materials.filter((item) =>
-    archiveMaterialBelongsToCatalogKey(item, catalogKey),
-  )
-  if (matched.length === 0) {
+  const matched = catalogSummaries.value.find((item) => item.catalogKey === catalogKey)
+  if (!matched || matched.totalCount <= 0) {
     return undefined
   }
   return {
-    ready: countArchiveMaterialsReady(matched),
-    total: matched.length,
+    ready: matched.readyCount,
+    total: matched.totalCount,
   }
 }
 
@@ -165,17 +175,15 @@ function buildFallbackTreeGroups(): CatalogTreeGroup[] {
       }),
     )
   }
-  for (const material of props.materials) {
-    const key = resolveArchiveMaterialGroupKey(material)
+  for (const material of catalogSummaries.value) {
+    const key = material.catalogKey
     if (!entryMap.has(key)) {
       entryMap.set(
         key,
         enrichCatalogEntry({
           key,
           seq: '—',
-          title: material.catalogCode
-            ? `${material.catalogCode} · ${materialTypeLabel(material.materialType)}`
-            : materialTypeLabel(material.materialType),
+          title: key in ArchiveMaterialTypeDescription ? catalogKeyTitle(key) : key,
         }),
       )
     }
@@ -199,6 +207,20 @@ function selectEntry(key: string) {
   selectedKeys.value = [key]
 }
 
+async function loadMaterialStats(): Promise<void> {
+  if (!props.volumeId) {
+    catalogSummaries.value = []
+    return
+  }
+  try {
+    const stats = await getArchiveVolumeMaterialStats({ volumeId: props.volumeId })
+    catalogSummaries.value = stats.catalogSummaries
+  } catch (error) {
+    catalogSummaries.value = []
+    showUserError(error, '加载材料统计失败')
+  }
+}
+
 async function loadCatalogLines() {
   if (!props.volumeId) {
     catalogLines.value = []
@@ -220,7 +242,16 @@ watch(
   () => props.volumeId,
   () => {
     void loadCatalogLines()
+    void loadMaterialStats()
   },
+)
+
+watch(
+  () => props.missingItems,
+  () => {
+    void loadMaterialStats()
+  },
+  { deep: true },
 )
 
 watch(
@@ -236,6 +267,7 @@ watch(
 
 onMounted(() => {
   void loadCatalogLines()
+  void loadMaterialStats()
 })
 </script>
 
