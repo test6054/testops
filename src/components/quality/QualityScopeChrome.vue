@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import type { TrainingPlanVO } from '@/apis/quality/training-plan'
-import { trainingPlanApi } from '@/apis/quality/training-plan'
 /**
  * 质量评价域唯一 scope 选择器：按 scopeProfile 裁剪字段，写入 qualityStore。
  * 禁止 silent 自动选首项；仅恢复 persist 选择。
@@ -8,6 +7,7 @@ import { trainingPlanApi } from '@/apis/quality/training-plan'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { trainingPlanApi } from '@/apis/quality/training-plan'
 import { CONFIRMATION_STATUS_COLOR, ConfirmationStatusDescription } from '@/apis/quality/types'
 import {
   CourseSelector,
@@ -41,10 +41,10 @@ const trainingPlanId = computed(() => qualityStore.currentTrainingPlanId || null
 const showProgram = computed(() => scopeProfile.value !== 'none')
 const showPlan = computed(
   () =>
-    scopeProfile.value === 'plan' ||
-    scopeProfile.value === 'plan-period' ||
-    scopeProfile.value === 'plan-course' ||
-    scopeProfile.value === 'accreditation',
+    scopeProfile.value === 'plan'
+    || scopeProfile.value === 'plan-period'
+    || scopeProfile.value === 'plan-course'
+    || scopeProfile.value === 'accreditation',
 )
 const showPeriod = computed(
   () => scopeProfile.value === 'plan-period' || scopeProfile.value === 'plan-course',

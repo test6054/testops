@@ -118,7 +118,7 @@ function buildDispatchTabQuery(context: DispatchRouteContext): Record<string, st
 }
 
 function buildLogTabQuery(
-  payload: { ticketId?: string; volumeId?: string },
+  payload: { ticketId?: string, volumeId?: string },
   dispatchContext: DispatchRouteContext,
 ): Record<string, string> {
   const query: Record<string, string> = { tab: 'log' }
@@ -184,8 +184,8 @@ watch(
 function buildTabQuery(tab: ScannerCenterTab): Record<string, string> {
   const query: Record<string, string> = { tab }
   if (tab === 'exception') {
-    const kind =
-      route.query.tab === 'exception'
+    const kind
+      = route.query.tab === 'exception'
         ? asQueryString(route.query.kind)
         : exceptionKindSnapshot.value
     if (kind) {
@@ -295,9 +295,9 @@ const headerSignalMetrics = computed<SignalMetric[]>(() => [
     tone: pendingDispatchCount.value > 0 ? 'orange' : 'green',
     clickable: true,
     active:
-      activeTab.value === 'dispatch' &&
-      dispatchStatus.value === ScanDispatchTicketStatusCode.PENDING &&
-      dispatchFilter.value !== DispatchQueueStatusFilterCode.FAILED,
+      activeTab.value === 'dispatch'
+      && dispatchStatus.value === ScanDispatchTicketStatusCode.PENDING
+      && dispatchFilter.value !== DispatchQueueStatusFilterCode.FAILED,
   },
   {
     key: 'processing-dispatch',
@@ -306,8 +306,8 @@ const headerSignalMetrics = computed<SignalMetric[]>(() => [
     tone: processingDispatchCount.value > 0 ? 'blue' : 'green',
     clickable: true,
     active:
-      activeTab.value === 'dispatch' &&
-      dispatchStatus.value === ScanDispatchTicketStatusCode.PROCESSING,
+      activeTab.value === 'dispatch'
+      && dispatchStatus.value === ScanDispatchTicketStatusCode.PROCESSING,
   },
   {
     key: 'suspended-dispatch',
@@ -316,8 +316,8 @@ const headerSignalMetrics = computed<SignalMetric[]>(() => [
     tone: suspendedDispatchCount.value > 0 ? 'orange' : 'green',
     clickable: true,
     active:
-      activeTab.value === 'dispatch' &&
-      dispatchStatus.value === ScanDispatchTicketStatusCode.SUSPENDED,
+      activeTab.value === 'dispatch'
+      && dispatchStatus.value === ScanDispatchTicketStatusCode.SUSPENDED,
   },
 ])
 
@@ -364,7 +364,7 @@ function handleHeaderMetricClick(key: string) {
     })
     return
   }
-  const exceptionQueryByKey: Record<string, { tab: 'exception'; kind: string }> = {
+  const exceptionQueryByKey: Record<string, { tab: 'exception', kind: string }> = {
     'committing-work-order': { tab: 'exception', kind: 'COMMITTING' },
     'failed-work-order': { tab: 'exception', kind: 'WORK_ORDER' },
     'mixed-batch': { tab: 'exception', kind: 'MIXED_BATCH' },

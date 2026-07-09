@@ -136,8 +136,8 @@
                 />
                 <p
                   v-if="
-                    question.referenceExperienceAudit?.referenceExperienceApplied &&
-                    question.referenceExperienceAudit?.referenceExperienceMatchMode
+                    question.referenceExperienceAudit?.referenceExperienceApplied
+                      && question.referenceExperienceAudit?.referenceExperienceMatchMode
                   "
                   class="marking-score-panel__match-mode"
                 >
@@ -309,7 +309,6 @@ import type {
 } from '@/apis/mark/marking-organization'
 import type { WholeQuestionForm } from '@/composables/useWholePaperGallery'
 import type { GradingExperienceReferenceMatchModeCode } from '@/types/enums/grading-experience-reference-match-mode-enum'
-import { GradingExperienceReferenceMatchModeDescription } from '@/types/enums/grading-experience-reference-match-mode-enum'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import { ref, watch } from 'vue'
 import ExperienceAssistBadge from '@/components/mark/ExperienceAssistBadge.vue'
@@ -317,6 +316,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import { GradingExperienceReferenceMatchModeDescription } from '@/types/enums/grading-experience-reference-match-mode-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'MarkingScorePanel' })

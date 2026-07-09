@@ -131,10 +131,10 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ClassInfoDto } from '@/apis/edu/class'
 import type { ExamSummaryResponse } from '@/apis/mark/exam'
-import { pageExams } from '@/apis/mark/exam'
 import type { CourseListVO } from '@/apis/quality/user-catalog'
-import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import { computed, onMounted, ref, watch } from 'vue'
+import { pageExams } from '@/apis/mark/exam'
+import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
 import { SemesterOptions } from '@/types/enums/semester-enum'
@@ -177,9 +177,9 @@ const relatedExamIdSelectValue = computed({
   },
 })
 const departmentLoading = ref(false)
-const departmentOptions = ref<Array<{ value: string; label: string }>>([])
+const departmentOptions = ref<Array<{ value: string, label: string }>>([])
 const relatedExamLoading = ref(false)
-const relatedExamOptions = ref<Array<{ value: string; label: string }>>([])
+const relatedExamOptions = ref<Array<{ value: string, label: string }>>([])
 
 const academicYearStartOptions = generateAcademicYearStartOptions().map((year) => ({
   value: year,

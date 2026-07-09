@@ -38,7 +38,7 @@ import { ArchiveTaskProvenanceCode } from '@/types/enums/archive-task-provenance
 import { useInjectedArchiveTaskCreateWizardState } from './archive-task-create-context'
 
 const emit = defineEmits<{
-  select: [provenance: ArchiveTaskProvenanceCode]
+  "select": [provenance: ArchiveTaskProvenanceCode]
   'batch-excel': []
 }>()
 

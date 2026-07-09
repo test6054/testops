@@ -5,18 +5,18 @@ import type {
   ArchivePlatformTemplateSetResponse,
   ArchivePlatformTemplateSetSaveRequest,
 } from '@/apis/mark/archive-platform-template'
-import {
-  initializeArchivePlatformTemplateDefaults,
-  listArchivePlatformTemplateSets,
-  previewArchivePlatformTemplateSet,
-  saveArchivePlatformTemplateSet,
-} from '@/apis/mark/archive-platform-template'
 import type {
   ArchiveTemplateMaterialEditRow,
   ArchiveTemplateSelfCheckEditRow,
 } from '@/views/teacher/archive-volume/components/archive-template-editor-types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
+import {
+  initializeArchivePlatformTemplateDefaults,
+  listArchivePlatformTemplateSets,
+  previewArchivePlatformTemplateSet,
+  saveArchivePlatformTemplateSet,
+} from '@/apis/mark/archive-platform-template'
 import {
   archiveTemplateScopeLabel,
   archiveTemplateScopeTone,
@@ -238,14 +238,12 @@ onMounted(loadPlatformSets)
         </template>
         <template #toolbar>
           <div class="archive-platform-admin__toolbar-row">
-            <span v-if="platformSets.length === 0" class="archive-platform-admin__hint"
-              >尚未配置任何平台模板</span
-            >
+            <span v-if="platformSets.length === 0" class="archive-platform-admin__hint">尚未配置任何平台模板</span>
             <span v-else class="archive-platform-admin__hint">共 {{ platformSets.length }} 套</span>
             <div class="archive-platform-admin__actions">
-              <UiButton size="sm" :loading="seeding" @click="submitInitializeDefaults"
-                >初始化默认模板</UiButton
-              >
+              <UiButton size="sm" :loading="seeding" @click="submitInitializeDefaults">
+                初始化默认模板
+              </UiButton>
               <UiButton size="sm" variant="primary" @click="openCreateEditor">新建模板套</UiButton>
             </div>
           </div>

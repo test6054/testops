@@ -67,8 +67,8 @@
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
                 v-if="
-                  record.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE &&
-                  canExportCampaign
+                  record.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE
+                    && canExportCampaign
                 "
                 :items="buildCampaignActions(record)"
                 split
@@ -176,13 +176,6 @@ import type {
   ArchiveEvaluationCampaignResponse,
   ArchiveEvaluationVolumeReadinessResponse,
 } from '@/apis/mark/archive-volume'
-import {
-  ArchiveEvaluationCampaignStatusCode,
-  ArchiveEvaluationCampaignStatusDescription,
-  exportEvaluationArchivePackage,
-  getEvaluationCampaignReadinessPanel,
-  listEvaluationCampaigns,
-} from '@/apis/mark/archive-volume'
 import type {
   BadgeTone,
   UiSectionTabItem,
@@ -194,6 +187,13 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
 import { ArchiveDutyTypeCode } from '@/apis/mark/archive-config'
+import {
+  ArchiveEvaluationCampaignStatusCode,
+  ArchiveEvaluationCampaignStatusDescription,
+  exportEvaluationArchivePackage,
+  getEvaluationCampaignReadinessPanel,
+  listEvaluationCampaigns,
+} from '@/apis/mark/archive-volume'
 import ArchiveReadinessRateBar from '@/components/archive-volume/ArchiveReadinessRateBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'

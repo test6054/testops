@@ -172,11 +172,11 @@ import type {
   CasFirstLoginSubmitRequest,
   CasProfileCompletionResponse,
 } from '@/apis/sso'
-import { completeCasFirstLogin, getCasAvailableClasses, getCasFirstLoginContext } from '@/apis/sso'
 import type { UiSelectOption } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { completeCasFirstLogin, getCasAvailableClasses, getCasFirstLoginContext } from '@/apis/sso'
 import AuthLayout from '@/components/AuthLayout/index.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -185,9 +185,9 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiStateBlock from '@/components/ui-guide/ui/UiStateBlock.vue'
 import { getDefaultRoute } from '@/router/permission'
 import { useAuthStore, useUserStore } from '@/stores'
+import { casFirstLoginLockedRoleDescription } from '@/types/enums/cas-first-login-locked-role-enum'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { shouldEnforcePasswordChange } from '@/utils/password-change-enforcement'
-import { casFirstLoginLockedRoleDescription } from '@/types/enums/cas-first-login-locked-role-enum'
 
 defineOptions({ name: 'CasFirstLoginCompletion' })
 

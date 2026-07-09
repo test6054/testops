@@ -3,12 +3,12 @@ import type {
   ArchiveVolumeDetailResponse,
   ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, ref } from 'vue'
 import {
   ArchiveMaterialTypeDescription,
   confirmArchiveDigitalMaterials,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { computed, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { ArchiveMaterialDeliveryModeCode } from '@/types/enums/archive-material-delivery-mode-enum'
@@ -48,10 +48,10 @@ const canConfirm = computed(() => props.detail.capabilities?.canConfirmDigitalMa
 
 const showPanel = computed(
   () =>
-    canConfirm.value &&
-    confirmableMaterials.value.length > 0 &&
-    (props.detail.volume.sourceType === ArchiveVolumeSourceTypeCode.ONLINE_MARKING ||
-      confirmableMaterials.value.some(
+    canConfirm.value
+    && confirmableMaterials.value.length > 0
+    && (props.detail.volume.sourceType === ArchiveVolumeSourceTypeCode.ONLINE_MARKING
+      || confirmableMaterials.value.some(
         (item) => item.deliveryMode === ArchiveMaterialDeliveryModeCode.DIGITAL_CONFIRM,
       )),
 )

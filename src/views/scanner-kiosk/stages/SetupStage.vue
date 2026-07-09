@@ -149,9 +149,9 @@ function buildFirstScanCalibrationDialog() {
     return {
       title: '试卷首次扫描核对',
       content:
-        `当前考试为整卷作答，纸型 ${paperStyle}。` +
-        '首张送纸后请在「扫描中」预览整卷切分与页序是否正常；' +
-        '若偏差，请暂停并在 Web 端调整制卷设计后再继续批量扫描。',
+        `当前考试为整卷作答，纸型 ${paperStyle}。`
+        + '首张送纸后请在「扫描中」预览整卷切分与页序是否正常；'
+        + '若偏差，请暂停并在 Web 端调整制卷设计后再继续批量扫描。',
       okText: '已了解，开始扫描',
       cancelText: '先查看制卷摘要',
     }
@@ -160,9 +160,9 @@ function buildFirstScanCalibrationDialog() {
     return {
       title: '答卷页首次扫描核对',
       content:
-        `当前考试为独立答卷页，纸型 ${paperStyle}。` +
-        '首张送纸后请在「扫描中」预览定位框与考号区是否正常；' +
-        '若偏差，请暂停并在 Web 端调整答卷页模板后再继续批量扫描。',
+        `当前考试为独立答卷页，纸型 ${paperStyle}。`
+        + '首张送纸后请在「扫描中」预览定位框与考号区是否正常；'
+        + '若偏差，请暂停并在 Web 端调整答卷页模板后再继续批量扫描。',
       okText: '已了解，开始扫描',
       cancelText: '先查看制卷摘要',
     }
@@ -170,8 +170,8 @@ function buildFirstScanCalibrationDialog() {
   return {
     title: '首次扫描核对',
     content:
-      `考试制卷形态尚未配置，已按 ${kind} 单面扫描建议参数（纸型 ${paperStyle}）。` +
-      '首张送纸后请核对预览是否正常，并在 Web 端补配制卷形态与模板。',
+      `考试制卷形态尚未配置，已按 ${kind} 单面扫描建议参数（纸型 ${paperStyle}）。`
+      + '首张送纸后请核对预览是否正常，并在 Web 端补配制卷形态与模板。',
     okText: '已了解，开始扫描',
     cancelText: '先查看制卷摘要',
   }
@@ -370,10 +370,10 @@ onMounted(() => {
         </div>
         <div
           v-if="
-            scanMaterialAdvisory ||
-            classScopeAdvisory ||
-            scanConfigAdvisory ||
-            prepAdvisoryReasons.length
+            scanMaterialAdvisory
+              || classScopeAdvisory
+              || scanConfigAdvisory
+              || prepAdvisoryReasons.length
           "
           class="scan-control__advisory"
         >

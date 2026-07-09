@@ -1,6 +1,6 @@
 import type { MarkTeacherDashboardFilterOptionsVO } from '@/apis/mark/teacher-dashboard'
-import { loadTeacherDashboardSignalSectionSilent } from '@/apis/mark/teacher-dashboard'
 import { ref } from 'vue'
+import { loadTeacherDashboardSignalSectionSilent } from '@/apis/mark/teacher-dashboard'
 
 /**
  * 工作台 ContextBar 三筛选项真源：与 marking-overview signal 段 filterOptions 同源。

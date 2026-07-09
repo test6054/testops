@@ -21,12 +21,12 @@ const injectedReferenceDepartmentLabel = inject(AI_ANALYSIS_REFERENCE_DEPARTMENT
 const injectedScopeCourseLabel = inject(AI_ANALYSIS_SCOPE_COURSE_LABEL_KEY, null)
 
 if (
-  !injectedReferenceDepartmentId ||
-  !injectedScopeCourseId ||
-  !injectedScopeClassId ||
-  !examLocked ||
-  !injectedReferenceDepartmentLabel ||
-  !injectedScopeCourseLabel
+  !injectedReferenceDepartmentId
+  || !injectedScopeCourseId
+  || !injectedScopeClassId
+  || !examLocked
+  || !injectedReferenceDepartmentLabel
+  || !injectedScopeCourseLabel
 ) {
   throw new Error('AI 分析中心未提供 scope')
 }

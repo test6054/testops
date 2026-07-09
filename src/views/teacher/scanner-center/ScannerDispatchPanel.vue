@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
+import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   ALL_SCAN_DISPATCH_TICKET_STATUS_CODES,
   cancelScanDispatch,
@@ -10,12 +15,7 @@ import {
   ScanDispatchTicketStatusCode,
   ScanDispatchTicketStatusDescription,
 } from '@/apis/mark/scanner-dispatch'
-import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import { SCAN_TASK_KIND_OPTIONS, ScanTaskKindDescription } from '@/apis/mark/scanner-work-order'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -337,8 +337,8 @@ async function loadTickets() {
       pageSize: pagination.pageSize,
       failureOnly: filter === DispatchQueueStatusFilterCode.FAILED ? true : undefined,
       excludeFailed:
-        filter === DispatchQueueStatusFilterCode.ALL ||
-        filter === DispatchQueueStatusFilterCode.PENDING
+        filter === DispatchQueueStatusFilterCode.ALL
+        || filter === DispatchQueueStatusFilterCode.PENDING
           ? true
           : undefined,
     })
@@ -390,7 +390,7 @@ function handleResetSearch() {
   void loadTickets()
 }
 
-function handlePageChange(pageEvent: { current: number; pageSize: number }) {
+function handlePageChange(pageEvent: { current: number, pageSize: number }) {
   pagination.current = pageEvent.current
   pagination.pageSize = pageEvent.pageSize
   void loadTickets()
@@ -465,9 +465,9 @@ function canCancelTicket(record: ScanDispatchTicketVO) {
 
 function canForceReleaseTicket(record: ScanDispatchTicketVO) {
   return (
-    Boolean(record.ticketId) &&
-    (record.status === ScanDispatchTicketStatusCode.PROCESSING ||
-      record.status === ScanDispatchTicketStatusCode.SUSPENDED)
+    Boolean(record.ticketId)
+    && (record.status === ScanDispatchTicketStatusCode.PROCESSING
+      || record.status === ScanDispatchTicketStatusCode.SUSPENDED)
   )
 }
 
@@ -525,8 +525,8 @@ watch(
     const lifecycle = resolveLifecycleFilter(dispatchQuery.statusRaw)
     if (lifecycle !== undefined) {
       if (
-        queueFilter.value === lifecycle &&
-        filters.status === lifecycleFilterToStatus(lifecycle)
+        queueFilter.value === lifecycle
+        && filters.status === lifecycleFilterToStatus(lifecycle)
       ) {
         return
       }

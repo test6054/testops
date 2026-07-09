@@ -1,6 +1,6 @@
 import type { ExamStatusCode } from '@/types/enums/exam-status-enum'
-import { ALL_EXAM_STATUS_CODES, ExamStatusDescription } from '@/types/enums/exam-status-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
+import { ALL_EXAM_STATUS_CODES, ExamStatusDescription } from '@/types/enums/exam-status-enum'
 import { ALL_SEMESTER_CODES, formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearOptions } from '@/utils/academic-year'
 

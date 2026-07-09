@@ -42,7 +42,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  cancelled: []
+  "cancelled": []
 }>()
 
 const cancelling = ref(false)
@@ -116,9 +116,9 @@ async function loadPendingTickets() {
         status: item.status,
         taskKind: item.taskKind,
         contextLabel:
-          item.portfolioSnapshot?.gapTaskTitle ??
-          item.portfolioSnapshot?.categoryName ??
-          item.archiveSnapshot?.archiveTitle,
+          item.portfolioSnapshot?.gapTaskTitle
+          ?? item.portfolioSnapshot?.categoryName
+          ?? item.archiveSnapshot?.archiveTitle,
         gapTaskId: item.portfolioSnapshot?.gapTaskId,
       }))
   } catch (error) {
@@ -193,9 +193,11 @@ async function handleCancel() {
         {{ isPortfolioDispatch ? '采集任务' : '归档任务' }}：{{ payload.contextLabel }}
       </p>
       <div v-if="payload.status" class="scan-dispatch-result__status">
-        <UiTag tone="blue" size="sm">{{
-          ScanDispatchTicketStatusDescription[payload.status]
-        }}</UiTag>
+        <UiTag tone="blue" size="sm">
+          {{
+            ScanDispatchTicketStatusDescription[payload.status]
+          }}
+        </UiTag>
         <span v-if="payload.traceLabelCode">追溯码 {{ payload.traceLabelCode }}</span>
       </div>
       <AQrcode

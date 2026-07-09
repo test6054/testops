@@ -11,7 +11,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  rejected: []
+  "rejected": []
 }>()
 
 const reason = ref('')

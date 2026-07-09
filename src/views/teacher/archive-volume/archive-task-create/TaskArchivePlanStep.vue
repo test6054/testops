@@ -115,16 +115,16 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { Dayjs } from 'dayjs'
-import dayjs from 'dayjs'
 import type { ArchiveExamFormCode } from '@/apis/mark/archive-volume'
+import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
+import { message } from 'ant-design-vue'
+import dayjs from 'dayjs'
+import { computed, ref, watch } from 'vue'
 import {
   ARCHIVE_EXAM_FORM_OPTIONS,
   ARCHIVE_SECURITY_LEVEL_OPTIONS,
   ArchiveScoreSourceDescription,
 } from '@/apis/mark/archive-volume'
-import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
-import { message } from 'ant-design-vue'
-import { computed, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { TeacherSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -154,7 +154,7 @@ const emit = defineEmits<{
     code: string | null,
     name: string,
     examForm?: ArchiveExamFormCode,
-    retention?: { defaultPermanentRetention?: boolean; defaultRetentionYears?: number },
+    retention?: { defaultPermanentRetention?: boolean, defaultRetentionYears?: number },
   ]
   'responsible-change': [userId: string | null, nickName: string]
   'update:plan-form-ref': [form: FormInstance | undefined]
@@ -169,8 +169,8 @@ const scoreProofUploading = ref(false)
 
 const requiresScoreProof = computed(
   () =>
-    planForm.scoreSource === ArchiveScoreSourceCode.TEACHING_AFFAIRS ||
-    planForm.scoreSource === ArchiveScoreSourceCode.OFFLINE_CONFIRMED,
+    planForm.scoreSource === ArchiveScoreSourceCode.TEACHING_AFFAIRS
+    || planForm.scoreSource === ArchiveScoreSourceCode.OFFLINE_CONFIRMED,
 )
 
 async function handleScoreProofBeforeUpload(file: File): Promise<boolean> {

@@ -56,12 +56,12 @@ import type {
   AllocationPolicyResponse,
   RecyclePolicyResponse,
 } from '@/apis/mark/marking-organization'
+import { computed } from 'vue'
+import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
 import {
   AllocationUnitDescription,
   MarkingAllocationModeDescription,
 } from '@/apis/mark/marking-organization'
-import { computed } from 'vue'
-import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'

@@ -14,7 +14,6 @@
  */
 
 import type { LocationQueryValue } from 'vue-router'
-import { useRoute, useRouter } from 'vue-router'
 import type {
   AgentHealthStatusCode,
   LocalScanPageSide,
@@ -23,6 +22,29 @@ import type {
   ScannerDeviceInfo,
   ScannerListResponse,
 } from '@/apis/mark/scanner-agent-local'
+import type {
+  ExamScannerBatchResponse,
+  ExamScannerBoundPaperItemVO,
+  ExamScannerKioskBatchHistoryRequest,
+  ExamScannerKioskBindExamCandidatePageRequest,
+  ExamScannerKioskBindExamCandidateVO,
+  ExamScannerKioskContextVO,
+  ExamScannerPageLedgerVO,
+  ExamScannerScanConfigOptionsVO,
+  ExamScannerScanConfigVO,
+} from '@/apis/mark/scanner-kiosk'
+import type { ScanWorkOrderLifecycleVO } from '@/apis/mark/scanner-work-order'
+import type { SemesterCode } from '@/types/enums'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  ScannerColorModeCode,
+  ScannerColorModeDescription,
+  ScannerDuplexModeCode,
+  ScannerDuplexModeDescription,
+  ScannerEndpointOnlineStatusDescription,
+} from '@/apis/mark/exam-mark-scanner'
+import { ScanAttentionTypeCode, ScanAttentionTypeDescription } from '@/apis/mark/exam-scan'
 import {
   AgentHealthStatusDescription,
   AgentUpdateStatusCode,
@@ -56,17 +78,6 @@ import {
   setPreferredLocalScanner,
   startScanJob,
 } from '@/apis/mark/scanner-agent-local'
-import type {
-  ExamScannerBatchResponse,
-  ExamScannerBoundPaperItemVO,
-  ExamScannerKioskBatchHistoryRequest,
-  ExamScannerKioskBindExamCandidatePageRequest,
-  ExamScannerKioskBindExamCandidateVO,
-  ExamScannerKioskContextVO,
-  ExamScannerPageLedgerVO,
-  ExamScannerScanConfigOptionsVO,
-  ExamScannerScanConfigVO,
-} from '@/apis/mark/scanner-kiosk'
 import {
   bindScannerKioskExam,
   discardScannedPage,
@@ -84,27 +95,16 @@ import {
   ScannerKioskScanModeCode,
   ScannerKioskScanModeDescription,
 } from '@/apis/mark/scanner-kiosk'
-import type { ScanWorkOrderLifecycleVO } from '@/apis/mark/scanner-work-order'
 import {
   commitExamScanWorkOrder,
   discardExamScanWorkOrder,
   retryExamScanWorkOrderPageRegister,
   startExamScanWorkOrder,
 } from '@/apis/mark/scanner-work-order'
-import type { SemesterCode } from '@/types/enums'
-import { getSemesterDescription, SemesterOptions } from '@/types/enums'
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import {
-  ScannerColorModeCode,
-  ScannerColorModeDescription,
-  ScannerDuplexModeCode,
-  ScannerDuplexModeDescription,
-  ScannerEndpointOnlineStatusDescription,
-} from '@/apis/mark/exam-mark-scanner'
-import { ScanAttentionTypeCode, ScanAttentionTypeDescription } from '@/apis/mark/exam-scan'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
+import { getSemesterDescription, SemesterOptions } from '@/types/enums'
 import {
   DirectScanProviderChainDescription,
   isDirectScanProviderChainCode,

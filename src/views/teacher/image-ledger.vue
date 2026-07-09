@@ -53,15 +53,15 @@ import type {
   ExamPaperDuplicateResolutionVO,
   ImageLedgerDetailResponse,
 } from '@/apis/mark/image-ledger'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   executeImageLedgerBalance,
   getImageLedgerDetail,
   normalizeImageLedgerDetail,
 } from '@/apis/mark/image-ledger'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -83,8 +83,8 @@ defineOptions({ name: 'TeacherImageLedger' })
 
 const { selectedExamId } = useMarkExamContext()
 const router = useRouter()
-const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
-  useExamJourneyContextBar('影像账本')
+const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
+  = useExamJourneyContextBar('影像账本')
 const { refreshSnapshot } = useWorkspaceExamId()
 
 const ledger = ref<ImageLedgerDetailResponse | null>(null)

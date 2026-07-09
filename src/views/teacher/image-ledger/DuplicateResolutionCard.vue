@@ -40,13 +40,13 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamPaperDuplicateResolutionVO } from '@/apis/mark/image-ledger'
-import { listPendingDuplicates } from '@/apis/mark/image-ledger'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, ref, watch } from 'vue'
 import {
   DUPLICATE_RESOLUTION_STATUS_TONE,
   DuplicateResolutionStatusDescription,
 } from '@/apis/mark/duplicate-resolution-status'
+import { listPendingDuplicates } from '@/apis/mark/image-ledger'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'

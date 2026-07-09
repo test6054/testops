@@ -40,8 +40,8 @@
         <p class="formal-detail-drawer__text">{{ formatFormalSessionQuestionScope(session) }}</p>
         <p
           v-if="
-            session.allocationUnit === AllocationUnitCode.RANDOM_QUESTIONS &&
-            session.questionScopes.length > 0
+            session.allocationUnit === AllocationUnitCode.RANDOM_QUESTIONS
+              && session.questionScopes.length > 0
           "
           class="formal-detail-drawer__warn"
         >

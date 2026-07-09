@@ -1,9 +1,9 @@
 import type { Ref } from 'vue'
-import { computed, reactive } from 'vue'
 import type {
   ArchiveVolumeCapabilitiesVO,
   ArchiveVolumeDetailResponse,
 } from '@/apis/mark/archive-volume'
+import { computed, reactive } from 'vue'
 import { canSubmitArchiveVolumeDetail } from '@/composables/useArchiveVolumeSubmitGate'
 
 const EMPTY_CAPABILITIES: ArchiveVolumeCapabilitiesVO = {
@@ -54,8 +54,8 @@ export function useArchiveVolumeDetailScope(
     if (!d || !volumeAcceptsSubmitStatus(d.volume.volumeStatus)) return false
     if (capabilities.value.canSubmitVolume === true) return true
     return (
-      capabilities.value.member === true &&
-      (capabilities.value.canScan === true || capabilities.value.canEditCatalog === true)
+      capabilities.value.member === true
+      && (capabilities.value.canScan === true || capabilities.value.canEditCatalog === true)
     )
   })
 

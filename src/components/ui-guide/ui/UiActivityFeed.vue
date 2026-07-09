@@ -78,8 +78,8 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import { computed } from 'vue'
 import type { UiActivityFeedGroup, UiActivityFeedItem, UiNoticeAction } from './types'
+import { computed } from 'vue'
 import UiEmpty from './Empty.vue'
 import UiTag from './Tag.vue'
 import UiActionLink from './UiActionLink.vue'
@@ -107,7 +107,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (e: 'item-click', item: UiActivityFeedItem): void
-  (e: 'action-click', actionEvent: { item: UiActivityFeedItem; action: UiNoticeAction }): void
+  (e: 'action-click', actionEvent: { item: UiActivityFeedItem, action: UiNoticeAction }): void
 }>()
 
 const normalizeCssSize = (value?: string | number) => {

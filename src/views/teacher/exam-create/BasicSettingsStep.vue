@@ -75,9 +75,9 @@
         <p class="create-form__hint">
           <template
             v-if="
-              examForm.examKind === ExamKindCode.MAKEUP ||
-              examForm.examKind === ExamKindCode.REEXAM ||
-              examForm.examKind === ExamKindCode.DEFERRED
+              examForm.examKind === ExamKindCode.MAKEUP
+                || examForm.examKind === ExamKindCode.REEXAM
+                || examForm.examKind === ExamKindCode.DEFERRED
             "
           >
             补考、重考、缓考按非正考成绩规则处理，合成后封顶 60 分。
@@ -222,6 +222,8 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ExamSummaryResponse } from '@/apis/mark/exam'
+import type { CourseListVO } from '@/apis/quality/user-catalog'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   EXAM_KIND_FILTER_OPTIONS,
   ExamGradingStrategyCode,
@@ -231,8 +233,6 @@ import {
   ExamStatusCode,
   pageExams,
 } from '@/apis/mark/exam'
-import type { CourseListVO } from '@/apis/quality/user-catalog'
-import { computed, onMounted, ref, watch } from 'vue'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
@@ -252,7 +252,7 @@ const wrapperCol = { flex: 1 }
 const examForm = useInjectedExamCreateBasicForm()
 const formRef = ref<FormInstance>()
 const sourceExamLoading = ref(false)
-const sourceExamOptions = ref<Array<{ label: string; value: string }>>([])
+const sourceExamOptions = ref<Array<{ label: string, value: string }>>([])
 
 const SOURCE_EXAM_PAGE_SIZE = 50
 let sourceExamSearchTimer: ReturnType<typeof setTimeout> | undefined

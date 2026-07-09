@@ -14,12 +14,12 @@
         <template #toolbar>
           <div class="archive-supervision-panel__volume-actions">
             <div class="archive-supervision-panel__problem-filters">
-              <a-checkbox v-model:checked="volumeFilterForm.integrityFailedOnly"
-                >缺必交项</a-checkbox
-              >
-              <a-checkbox v-model:checked="volumeFilterForm.archiveOverdueOnly"
-                >归档逾期</a-checkbox
-              >
+              <a-checkbox v-model:checked="volumeFilterForm.integrityFailedOnly">
+                缺必交项
+              </a-checkbox>
+              <a-checkbox v-model:checked="volumeFilterForm.archiveOverdueOnly">
+                归档逾期
+              </a-checkbox>
               <a-checkbox v-model:checked="volumeFilterForm.delaySubmissionOverdueOnly">
                 补交逾期
               </a-checkbox>
@@ -359,6 +359,14 @@ import type {
   ArchiveVolumeSourceTypeCode,
   ArchiveVolumeStatusCode,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import {
   ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
   ARCHIVE_VOLUME_STATUS_TONE,
@@ -377,15 +385,6 @@ import {
   markSupervisionProblem,
   pageSupervisionArchiveVolumes,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { SemesterOptions } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -399,6 +398,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearStartOptions } from '@/utils/academic-year'
 import {
   applyAcademicYearStartYearChange,
@@ -607,9 +607,9 @@ const statsMetrics = computed<SignalMetric[]>(() => {
       key: 'stored',
       label: '平均入库率',
       value: `${Math.round(
-        (matrixPreviewRows.value.reduce((sum, row) => sum + row.storedRate, 0) /
-          matrixPreviewRows.value.length) *
-          100,
+        (matrixPreviewRows.value.reduce((sum, row) => sum + row.storedRate, 0)
+          / matrixPreviewRows.value.length)
+        * 100,
       )}%`,
     },
   ]

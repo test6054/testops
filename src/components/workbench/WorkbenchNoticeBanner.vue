@@ -36,14 +36,11 @@ const iconMap = {
     <component :is="iconMap[tone]" class="workbench-notice-banner__icon" aria-hidden="true" />
     <p class="workbench-notice-banner__text">
       <span v-if="title" class="workbench-notice-banner__title">{{ title }}</span>
-      <span v-if="title && description" class="workbench-notice-banner__sep" aria-hidden="true"
-        >·</span
-      >
+      <span v-if="title && description" class="workbench-notice-banner__sep" aria-hidden="true">·</span>
       <span
         class="workbench-notice-banner__description"
         :class="{ 'workbench-notice-banner__description--solo': !title }"
-        >{{ description }}</span
-      >
+      >{{ description }}</span>
     </p>
     <div v-if="$slots.default" class="workbench-notice-banner__actions">
       <slot />

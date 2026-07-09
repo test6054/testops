@@ -30,7 +30,7 @@ const emit = defineEmits<{
   'focus-block': [block: ExamLayoutBlockDto | null]
   'focus-question': [question: ExamLayoutQuestionDto | null]
   'focus-block-from-outline': [block: ExamLayoutBlockDto | null, pageNo: number]
-  patch: [document: ExamLayoutDocument]
+  "patch": [document: ExamLayoutDocument]
 }>()
 
 const fullPaperMode = computed(() => isFullPaperWorkspace(props.materialLayoutMode))

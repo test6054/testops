@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ArchiveVolumeMemberDisplayVO } from '@/apis/mark/archive-volume'
-import { addArchiveVolumeMember, removeArchiveVolumeMember } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
 import { ref, watch } from 'vue'
+import { addArchiveVolumeMember, removeArchiveVolumeMember } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import {
   ArchiveVolumeMemberRoleCode,
@@ -18,7 +18,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [boolean]
-  changed: []
+  "changed": []
 }>()
 
 const addUserId = ref('')

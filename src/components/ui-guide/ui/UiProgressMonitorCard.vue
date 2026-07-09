@@ -119,12 +119,12 @@ const slots = useSlots()
 
 const hasHeader = computed(() => {
   return (
-    !!props.title ||
-    !!props.description ||
-    !!props.eyebrow ||
-    !!props.statusLabel ||
-    !!slots.meta ||
-    !!slots.actions
+    !!props.title
+    || !!props.description
+    || !!props.eyebrow
+    || !!props.statusLabel
+    || !!slots.meta
+    || !!slots.actions
   )
 })
 

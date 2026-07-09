@@ -2,20 +2,20 @@
   <StageWorkbenchShell class="score-finalize-page">
     <template
       v-if="
-        effectiveRiskOverview?.readyToPublish ||
-        blockingRiskReasons.length > 0 ||
-        canBatchConfirmSafe
+        effectiveRiskOverview?.readyToPublish
+          || blockingRiskReasons.length > 0
+          || canBatchConfirmSafe
       "
       #context
     >
       <ContextBar layout="workbench">
         <template #status>
-          <UiTag v-if="effectiveRiskOverview?.readyToPublish" tone="green" size="sm"
-            >可进入发布</UiTag
-          >
-          <UiTag v-else-if="blockingRiskReasons.length > 0" tone="orange" size="sm"
-            >存在阻塞风险</UiTag
-          >
+          <UiTag v-if="effectiveRiskOverview?.readyToPublish" tone="green" size="sm">
+            可进入发布
+          </UiTag>
+          <UiTag v-else-if="blockingRiskReasons.length > 0" tone="orange" size="sm">
+            存在阻塞风险
+          </UiTag>
         </template>
         <template #actions>
           <UiButton
@@ -438,8 +438,8 @@
             variant="outline"
             :loading="riskReviewSavingReasonCode === reason.reasonCode"
             :disabled="
-              riskReviewSavingReasonCode !== null &&
-              riskReviewSavingReasonCode !== reason.reasonCode
+              riskReviewSavingReasonCode !== null
+                && riskReviewSavingReasonCode !== reason.reasonCode
             "
             @click="toggleRiskReasonReviewed(reason.reasonCode)"
           >
@@ -526,44 +526,16 @@ import type { Key } from 'ant-design-vue/es/_util/type'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
 import type { OperationLogResponse, OperationTypeCode } from '@/apis/mark/admin-audit'
-import {
-  AuditTargetTypeCode,
-  listOperationLogs,
-  OperationTypeDescription,
-} from '@/apis/mark/admin-audit'
 import type { ExamDetailResponse } from '@/apis/mark/exam'
-import { getExamDetail, pageExams } from '@/apis/mark/exam'
 import type { ExamPaperScoreResponse, ExamQuestionScoreResponse } from '@/apis/mark/exam-grade'
-import { getPaperScore } from '@/apis/mark/exam-grade'
 import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
-import { getScorePanel } from '@/apis/mark/exam-progress'
 import type {
   ExamScoreSummaryItemResponse,
   FinalScoreRiskOverviewResponse,
   FinalScoreRiskReasonCode,
 } from '@/apis/mark/exam-score'
-import {
-  batchConfirmSafeFinalScores,
-  confirmFinalScore,
-  getFinalScoreRiskOverview,
-  pageExamScoreSummary,
-  publishFinalScore,
-  saveFinalScoreRiskReview,
-  withdrawFinalScore,
-} from '@/apis/mark/exam-score'
 import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
-import {
-  FINAL_SCORE_STATUS_TONE,
-  FinalScoreStatusDescription,
-} from '@/apis/mark/final-score-status'
 import type { ScoreBiasLevelCode } from '@/apis/mark/score-bias'
-import {
-  classifyScoreBias,
-  computeScoreBiasStats,
-  formatScoreBiasDelta,
-  SCORE_BIAS_LEVEL_TONE,
-  ScoreBiasLevelDescription,
-} from '@/apis/mark/score-bias'
 import type {
   BadgeTone,
   FilterField,
@@ -575,6 +547,34 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  AuditTargetTypeCode,
+  listOperationLogs,
+  OperationTypeDescription,
+} from '@/apis/mark/admin-audit'
+import { getExamDetail, pageExams } from '@/apis/mark/exam'
+import { getPaperScore } from '@/apis/mark/exam-grade'
+import { getScorePanel } from '@/apis/mark/exam-progress'
+import {
+  batchConfirmSafeFinalScores,
+  confirmFinalScore,
+  getFinalScoreRiskOverview,
+  pageExamScoreSummary,
+  publishFinalScore,
+  saveFinalScoreRiskReview,
+  withdrawFinalScore,
+} from '@/apis/mark/exam-score'
+import {
+  FINAL_SCORE_STATUS_TONE,
+  FinalScoreStatusDescription,
+} from '@/apis/mark/final-score-status'
+import {
+  classifyScoreBias,
+  computeScoreBiasStats,
+  formatScoreBiasDelta,
+  SCORE_BIAS_LEVEL_TONE,
+  ScoreBiasLevelDescription,
+} from '@/apis/mark/score-bias'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -852,7 +852,7 @@ function handleStatusTabChange(tabKey: Key): void {
   void loadCandidates()
 }
 
-function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void loadCandidates()
@@ -896,8 +896,8 @@ const hasHardBlockingRisks = computed(() => hardBlockingRiskReasons.value.length
 const hasUnreviewedBlockingRisks = computed(() => {
   return blockingRiskReasons.value.some(
     (reason) =>
-      !HARD_BLOCKING_RISK_REASON_CODES.has(reason.reasonCode) &&
-      !reviewedRiskReasonCodes.value.has(reason.reasonCode),
+      !HARD_BLOCKING_RISK_REASON_CODES.has(reason.reasonCode)
+      && !reviewedRiskReasonCodes.value.has(reason.reasonCode),
   )
 })
 
@@ -974,12 +974,12 @@ function warnUnreviewedBlockingRisks(): boolean {
 const canBatchConfirmSafe = computed(() => {
   const overview = effectiveRiskOverview.value
   return Boolean(
-    overview &&
-    overview.safeConfirmableCount > 0 &&
-    blockingRiskReasons.value.length === 0 &&
-    !hasHardBlockingRisks.value &&
-    !hasDailyScoreConfig.value &&
-    !batchConfirming.value,
+    overview
+    && overview.safeConfirmableCount > 0
+    && blockingRiskReasons.value.length === 0
+    && !hasHardBlockingRisks.value
+    && !hasDailyScoreConfig.value
+    && !batchConfirming.value,
   )
 })
 
@@ -1443,8 +1443,8 @@ function resolveConfirmExamScorePreview(score: ExamPaperScoreResponse): number {
   }
   const questions = score.questions ?? []
   if (
-    questions.length === 0 ||
-    questions.some(
+    questions.length === 0
+    || questions.some(
       (question) => question.gradeStatus !== 'CONFIRMED' || question.teacherReviewScore == null,
     )
   ) {
@@ -1524,8 +1524,8 @@ function deriveNextStepSuggestion(): void {
     return
   }
   // 当前页找下一份未确认
-  const next =
-    candidates.value.find(
+  const next
+    = candidates.value.find(
       (c) => c.finalScoreStatus === 'CALCULATED' || c.finalScoreStatus === 'PENDING',
     ) ?? null
   if (next) {

@@ -64,8 +64,8 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import { computed, useSlots } from 'vue'
 import type { UiSessionListItem } from './types'
+import { computed, useSlots } from 'vue'
 import UiBadge from './Badge.vue'
 import UiEmpty from './Empty.vue'
 import UiTag from './Tag.vue'

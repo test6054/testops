@@ -56,8 +56,8 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import { computed, useSlots } from 'vue'
 import type { BadgeTone } from './types'
+import { computed, useSlots } from 'vue'
 import UiBadge from './Badge.vue'
 import UiPanelHeader from './UiPanelHeader.vue'
 
@@ -102,12 +102,12 @@ const normalizeCssSize = (value?: string | number) => {
 
 const hasHeader = computed(() => {
   return (
-    !!props.title ||
-    !!props.description ||
-    !!props.eyebrow ||
-    !!slots.icon ||
-    !!slots.actions ||
-    !!slots.meta
+    !!props.title
+    || !!props.description
+    || !!props.eyebrow
+    || !!slots.icon
+    || !!slots.actions
+    || !!slots.meta
   )
 })
 

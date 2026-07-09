@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { ArchiveVolumeDetailResponse } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, ref } from 'vue'
 import {
   approveArchiveVolumeDepartmentReview,
   rejectArchiveVolumeDepartmentReview,
   requestArchiveVolumeDepartmentReview,
   withdrawArchiveVolumeDepartmentReview,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { computed, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -40,21 +40,21 @@ const showPanel = computed(() => {
   const status = volumeStatus.value
   if (capabilities.value?.canReviewDepartmentMaterials === true) {
     return (
-      status === ArchiveVolumeStatusCode.COLLECTING ||
-      status === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING ||
-      status === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED
+      status === ArchiveVolumeStatusCode.COLLECTING
+      || status === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING
+      || status === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED
     )
   }
   if (
-    status === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING ||
-    status === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED
+    status === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING
+    || status === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED
   ) {
     return true
   }
   if (status === ArchiveVolumeStatusCode.COLLECTING) {
     return (
-      capabilities.value?.canRequestDepartmentReview === true ||
-      capabilities.value?.canApproveDepartmentReview === true
+      capabilities.value?.canRequestDepartmentReview === true
+      || capabilities.value?.canApproveDepartmentReview === true
     )
   }
   return false
@@ -62,20 +62,20 @@ const showPanel = computed(() => {
 
 const canRequest = computed(
   () =>
-    volumeStatus.value === ArchiveVolumeStatusCode.COLLECTING &&
-    capabilities.value?.canRequestDepartmentReview === true,
+    volumeStatus.value === ArchiveVolumeStatusCode.COLLECTING
+    && capabilities.value?.canRequestDepartmentReview === true,
 )
 
 const canApprove = computed(
   () =>
-    volumeStatus.value === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING &&
-    capabilities.value?.canApproveDepartmentReview === true,
+    volumeStatus.value === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING
+    && capabilities.value?.canApproveDepartmentReview === true,
 )
 
 const canWithdraw = computed(
   () =>
-    volumeStatus.value === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED &&
-    capabilities.value?.canWithdrawDepartmentReview === true,
+    volumeStatus.value === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED
+    && capabilities.value?.canWithdrawDepartmentReview === true,
 )
 
 const statusTone = computed(() => {

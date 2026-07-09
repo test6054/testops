@@ -72,8 +72,7 @@
                 <span v-if="record.departmentName">{{ record.departmentName }}</span>
                 <span v-if="record.approverNickName"> · 审批: {{ record.approverNickName }}</span>
                 <span v-if="record.expireTime">
-                  · 到期: {{ formatDateTime(record.expireTime) }}</span
-                >
+                  · 到期: {{ formatDateTime(record.expireTime) }}</span>
               </p>
               <p
                 v-if="record.decisionComment && record.accessStatus === 'REJECTED'"
@@ -87,8 +86,7 @@
               >
                 最后阅读: 第 {{ record.lastReadPage }} 页
                 <span v-if="record.downloadCount != null">
-                  · 下载次数: {{ record.downloadCount }}</span
-                >
+                  · 下载次数: {{ record.downloadCount }}</span>
               </p>
             </article>
           </div>
@@ -207,6 +205,11 @@ import type {
   ArchiveVolumeAccessRecordResponse,
   ArchiveVolumeResponse,
 } from '@/apis/mark/archive-volume'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   ARCHIVE_ACCESS_STATUS_OPTIONS,
   listArchiveVolumeAccessRecords,
@@ -214,11 +217,6 @@ import {
   pageArchiveVolumes,
   pageMaterialSearchAudit,
 } from '@/apis/mark/archive-volume'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -272,7 +270,7 @@ const selectedArchiveNo = ref('')
 const accessRecords = ref<ArchiveVolumeAccessRecordResponse[]>([])
 const tenantRows = ref<ArchiveVolumeAccessLedgerRowResponse[]>([])
 const searchAuditRows = ref<ArchiveMaterialSearchAuditRowResponse[]>([])
-const departmentOptions = ref<Array<{ value: string; label: string }>>([])
+const departmentOptions = ref<Array<{ value: string, label: string }>>([])
 
 interface ArchiveVolumeAccessLedgerVolumeFilterForm extends Record<string, unknown> {
   keyword: string

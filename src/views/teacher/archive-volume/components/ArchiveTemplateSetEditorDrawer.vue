@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
-import { ArchiveMaterialTypeDescription } from '@/apis/mark/archive-volume'
 import type {
   ArchiveTemplateMaterialEditRow,
   ArchiveTemplateSelfCheckEditRow,
 } from '@/views/teacher/archive-volume/components/archive-template-editor-types'
 import MenuOutlined from '@ant-design/icons-vue/MenuOutlined'
 import { computed, ref, watch } from 'vue'
+import { ArchiveMaterialTypeDescription } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
@@ -49,8 +49,8 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  save: []
-  cancel: []
+  "save": []
+  "cancel": []
 }>()
 
 const MATERIAL_GROUP_FALLBACK = '材料目录'
@@ -309,9 +309,9 @@ defineExpose({
                   <a-input v-model:value="selfCheckRowsModel[index].itemText" />
                 </template>
                 <template v-else-if="column.key === 'requiredFlag'">
-                  <a-checkbox v-model:checked="selfCheckRowsModel[index].requiredFlag"
-                    >必查</a-checkbox
-                  >
+                  <a-checkbox v-model:checked="selfCheckRowsModel[index].requiredFlag">
+                    必查
+                  </a-checkbox>
                 </template>
               </template>
             </ArchiveTemplateSortableTableShell>
@@ -323,9 +323,11 @@ defineExpose({
 
     <template #footer>
       <UiButton size="sm" variant="outline" :disabled="saving" @click="handleClose">取消</UiButton>
-      <UiButton size="sm" variant="primary" :loading="saving" @click="handleSave">{{
-        saveLabel
-      }}</UiButton>
+      <UiButton size="sm" variant="primary" :loading="saving" @click="handleSave">
+        {{
+          saveLabel
+        }}
+      </UiButton>
     </template>
   </UiDrawer>
 </template>

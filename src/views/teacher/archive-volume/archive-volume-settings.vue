@@ -230,9 +230,9 @@
                   须保留一条租户默认；可按院系覆盖法规节点、临期提醒与院系审核门禁
                 </span>
                 <div class="archive-volume-settings__section-actions">
-                  <UiButton size="sm" variant="outline" @click="addDeadlineRow"
-                    >新增院系策略</UiButton
-                  >
+                  <UiButton size="sm" variant="outline" @click="addDeadlineRow">
+                    新增院系策略
+                  </UiButton>
                   <UiButton
                     size="sm"
                     variant="primary"
@@ -324,6 +324,10 @@ import type {
   ArchiveSecurityPolicyItemRequest,
   ArchiveTenantCollaborationPolicySaveRequest,
 } from '@/apis/mark/archive-config'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   ARCHIVE_DUTY_TYPE_OPTIONS,
   ArchiveDutyTypeCode,
@@ -336,10 +340,6 @@ import {
   saveArchiveDutyGrants,
   saveArchiveSecurityPolicy,
 } from '@/apis/mark/archive-config'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import { ARCHIVE_SECURITY_LEVEL_OPTIONS } from '@/apis/mark/archive-volume'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
@@ -421,7 +421,7 @@ const kioskHubListModeOptions = ALL_ARCHIVE_KIOSK_HUB_LIST_MODE_CODES.map((value
   value,
   label: ArchiveKioskHubListModeDescription[value],
 }))
-const departmentOptions = ref<Array<{ value: string; label: string }>>([])
+const departmentOptions = ref<Array<{ value: string, label: string }>>([])
 const tenantTemplateSetCount = ref(0)
 
 function goArchiveList() {
@@ -455,9 +455,9 @@ function validateDutyRows(): boolean {
       return false
     }
     if (
-      !row.tenantWide &&
-      !row.scopeDepartmentId &&
-      row.dutyType !== ArchiveDutyTypeCode.VOLUME_OWNER
+      !row.tenantWide
+      && !row.scopeDepartmentId
+      && row.dutyType !== ArchiveDutyTypeCode.VOLUME_OWNER
     ) {
       message.warning('非全校授权须选择院系')
       return false

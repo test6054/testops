@@ -324,11 +324,6 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-status'
-import {
-  ARCHIVE_MATERIAL_OCR_STATUS_OPTIONS,
-  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
-  ArchiveMaterialOcrStatusDescription,
-} from '@/apis/mark/archive-ocr-status'
 import type {
   ArchiveMaterialTypeCode,
   ArchiveVolumeMaterialSearchCriteria,
@@ -337,6 +332,20 @@ import type {
   ArchiveVolumeSearchRequest,
   ArchiveVolumeSearchResponse,
 } from '@/apis/mark/archive-volume'
+import type { CourseListVO, TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import type { AcademicYearSemesterTripleFilterState } from '@/utils/academic-year-semester-triple-filter'
+import type { MarkExamSelectOption } from '@/utils/mark-exam-option'
+import { message, Modal } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  ARCHIVE_MATERIAL_OCR_STATUS_OPTIONS,
+  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
+  ArchiveMaterialOcrStatusDescription,
+} from '@/apis/mark/archive-ocr-status'
 import {
   ARCHIVE_MATERIAL_TYPE_OPTIONS,
   ArchiveMaterialTypeDescription,
@@ -346,26 +355,8 @@ import {
   saveArchiveVolumeSearchProfile,
   searchArchiveVolumes,
 } from '@/apis/mark/archive-volume'
-import type { CourseListVO, TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
-import { courseCatalogApi, departmentCatalogApi } from '@/apis/quality/user-catalog'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import type { AcademicYearSemesterTripleFilterState } from '@/utils/academic-year-semester-triple-filter'
-import {
-  applyAcademicYearStartYearChange,
-  buildTriplePeriodQuery,
-  createAcademicYearSemesterTripleDefaults,
-  ensureTriplePeriodPair,
-  parseTripleFromAcademicYear,
-} from '@/utils/academic-year-semester-triple-filter'
-import type { MarkExamSelectOption } from '@/utils/mark-exam-option'
-import { examSummaryFromDetail, toMarkExamSelectOption } from '@/utils/mark-exam-option'
-import { message, Modal } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { ExamStatusCode, getExamDetail, pageExams } from '@/apis/mark/exam'
+import { courseCatalogApi, departmentCatalogApi } from '@/apis/quality/user-catalog'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -380,9 +371,18 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearStartOptions } from '@/utils/academic-year'
+import {
+  applyAcademicYearStartYearChange,
+  buildTriplePeriodQuery,
+  createAcademicYearSemesterTripleDefaults,
+  ensureTriplePeriodPair,
+  parseTripleFromAcademicYear,
+} from '@/utils/academic-year-semester-triple-filter'
 import { highlightArchiveSearchSnippet } from '@/utils/archive-search-snippet'
 import { showUserError } from '@/utils/error-handler'
+import { examSummaryFromDetail, toMarkExamSelectOption } from '@/utils/mark-exam-option'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ArchiveMaterialTagSelect from '@/views/teacher/archive-volume/components/ArchiveMaterialTagSelect.vue'
 import ArchiveVolumeMaterialOcrDetailContent from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialOcrDetailContent.vue'
@@ -426,8 +426,8 @@ const ocrInlinePageNo = ref<number>()
 const ocrInlineFileName = ref<string>()
 const hits = ref<ArchiveVolumeSearchResponse[]>([])
 const searchHitVolumeCount = ref(0)
-const departmentOptions = ref<Array<{ value: string; label: string }>>([])
-const courseOptions = ref<Array<{ value: string; label: string }>>([])
+const departmentOptions = ref<Array<{ value: string, label: string }>>([])
+const courseOptions = ref<Array<{ value: string, label: string }>>([])
 const examOptions = ref<MarkExamSelectOption[]>([])
 const examLoading = ref(false)
 const examSearching = ref(false)
@@ -597,23 +597,23 @@ function formatTerm(academicYear?: string, semester?: SemesterCode) {
 
 function hasSearchCriterion(): boolean {
   return Boolean(
-    filterForm.keyword.trim() ||
-    filterForm.studentNo.trim() ||
-    filterForm.studentNameKeyword.trim() ||
-    filterForm.archiveKeyword.trim() ||
-    filterForm.catalogCode.trim() ||
-    filterForm.catalogNameKeyword.trim() ||
-    filterForm.tagAny.length > 0 ||
-    filterForm.fileNameKeyword.trim() ||
-    filterForm.classNameKeyword.trim() ||
-    filterForm.departmentId ||
-    filterForm.courseId ||
-    filterForm.volumeId ||
-    filterForm.examId ||
-    filterForm.ocrStatus ||
-    filterForm.materialType ||
-    filterForm.academicYearStartYear != null ||
-    filterForm.semester,
+    filterForm.keyword.trim()
+    || filterForm.studentNo.trim()
+    || filterForm.studentNameKeyword.trim()
+    || filterForm.archiveKeyword.trim()
+    || filterForm.catalogCode.trim()
+    || filterForm.catalogNameKeyword.trim()
+    || filterForm.tagAny.length > 0
+    || filterForm.fileNameKeyword.trim()
+    || filterForm.classNameKeyword.trim()
+    || filterForm.departmentId
+    || filterForm.courseId
+    || filterForm.volumeId
+    || filterForm.examId
+    || filterForm.ocrStatus
+    || filterForm.materialType
+    || filterForm.academicYearStartYear != null
+    || filterForm.semester,
   )
 }
 
@@ -878,9 +878,9 @@ function handleArchiveSearchAction(key: string, record: ArchiveVolumeSearchRespo
 
 function canViewMaterialOcr(record: ArchiveVolumeSearchResponse): boolean {
   return (
-    record.ocrStatus === 'COMPLETED' ||
-    record.ocrStatus === 'FAILED' ||
-    record.ocrStatus === 'RUNNING'
+    record.ocrStatus === 'COMPLETED'
+    || record.ocrStatus === 'FAILED'
+    || record.ocrStatus === 'RUNNING'
   )
 }
 

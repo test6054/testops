@@ -59,12 +59,12 @@
 
 <script setup lang="ts">
 import type { ArchiveExternalImportResultVO } from '@/apis/mark/archive-volume'
+import type { ExcelImportResult } from '@/apis/platform/types'
+import { computed, ref } from 'vue'
 import {
   ArchiveExternalImportTypeCode,
   ArchiveExternalImportTypeDescription,
 } from '@/apis/mark/archive-volume'
-import type { ExcelImportResult } from '@/apis/platform/types'
-import { computed, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'

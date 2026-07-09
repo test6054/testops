@@ -1,10 +1,10 @@
 import type { MaybeRefOrGetter } from 'vue'
-import { computed, toValue } from 'vue'
 import type {
   MarkTeacherDashboardJourneyStageSummaryItemVO,
   MarkTeacherDashboardOngoingExamItemVO,
 } from '@/apis/mark/teacher-dashboard'
 import type { WorkbenchStage } from '@/types/workbench'
+import { computed, toValue } from 'vue'
 import {
   buildJourneyStageSummaryFromExams,
   buildMarkDashboardJourneyRail,
@@ -33,8 +33,8 @@ export function useMarkingOverviewStages(options: UseMarkingOverviewStagesOption
       return ''
     }
     const summary = toValue(options.journeyStageSummary)
-    const resolvedSummary =
-      summary.length > 0 ? summary : buildJourneyStageSummaryFromExams(toValue(options.exams))
+    const resolvedSummary
+      = summary.length > 0 ? summary : buildJourneyStageSummaryFromExams(toValue(options.exams))
     const bottleneck = resolvePrimaryJourneyBottleneck(resolvedSummary)
     if (!bottleneck) {
       return ''

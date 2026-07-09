@@ -239,13 +239,6 @@
 
 <script lang="ts" setup>
 import type { MarkDashboardPendingTodoTabKey } from '@/utils/mark-dashboard-todo'
-import {
-  buildPendingTodoHint,
-  buildPendingTodoTabItems,
-  filterPendingTodosByTab,
-  resolveDefaultPendingTodoTab,
-  resolvePendingTodoFocusTone,
-} from '@/utils/mark-dashboard-todo'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import MarkingOverviewAnalytics from '@/components/mark/dashboard/MarkingOverviewAnalytics.vue'
@@ -269,6 +262,13 @@ import { ExamStatusDescription } from '@/types/enums/exam-status-enum'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { buildExamListRoute } from '@/utils/exam-list-navigation'
 import { MARK_DASHBOARD_FILTER_PLACEHOLDERS } from '@/utils/mark-dashboard-filter-options'
+import {
+  buildPendingTodoHint,
+  buildPendingTodoTabItems,
+  filterPendingTodosByTab,
+  resolveDefaultPendingTodoTab,
+  resolvePendingTodoFocusTone,
+} from '@/utils/mark-dashboard-todo'
 
 defineOptions({ name: 'TeacherMarkingOverview' })
 

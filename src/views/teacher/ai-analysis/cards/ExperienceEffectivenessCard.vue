@@ -122,23 +122,23 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { GradingExperienceCaseResponse } from '@/apis/mark/grading-experience'
-import { ExperienceCaseStatusDescription, listExperiences } from '@/apis/mark/grading-experience'
 import type { QuestionTypeCode } from '@/apis/mark/question-type'
-import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import type {
   ExperienceEffectivenessEvalEvidenceResponse,
   ExperienceEffectivenessEvalResponse,
   ExperienceRecommendationCode,
 } from '@/apis/mark/school-quality'
+import type { UiBarChartItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { ExperienceCaseStatusDescription, listExperiences } from '@/apis/mark/grading-experience'
+import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import {
   evaluateExperienceEffectiveness,
   ExperienceRecommendationDescription,
   listExperienceEvals,
 } from '@/apis/mark/school-quality'
-import type { UiBarChartItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisConfigCollapse from '@/components/mark/analysis/AiAnalysisConfigCollapse.vue'

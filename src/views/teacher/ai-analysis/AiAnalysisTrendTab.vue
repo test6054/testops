@@ -2,7 +2,6 @@
 import type { ClassInfoDto } from '@/apis/edu/class'
 import type { CourseListVO, TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
 import type { SemesterCode } from '@/types/enums/semester-enum'
-import { formatSemester } from '@/types/enums/semester-enum'
 import { computed, inject } from 'vue'
 import AnalysisOrgScopeBar from '@/components/mark/AnalysisOrgScopeBar.vue'
 import {
@@ -16,6 +15,7 @@ import {
   AI_ANALYSIS_SCOPE_COURSE_LABEL_KEY,
   AI_ANALYSIS_SEMESTER_KEY,
 } from '@/composables/useAiAnalysisScope'
+import { formatSemester } from '@/types/enums/semester-enum'
 import CourseAchievementCard from '@/views/teacher/ai-analysis/cards/CourseAchievementCard.vue'
 import CrossExamTrendCard from '@/views/teacher/ai-analysis/cards/CrossExamTrendCard.vue'
 import SemesterGrowthCard from '@/views/teacher/ai-analysis/cards/SemesterGrowthCard.vue'
@@ -31,15 +31,15 @@ const injectedCourseLabel = inject(AI_ANALYSIS_SCOPE_COURSE_LABEL_KEY, null)
 const examLocked = inject(AI_ANALYSIS_EXAM_LOCKED_KEY, null)
 
 if (
-  !injectedReferenceDepartmentId ||
-  !injectedScopeCourseId ||
-  !injectedScopeClassId ||
-  !injectedScopeClassLabel ||
-  !injectedAcademicYear ||
-  !injectedSemester ||
-  !examLocked ||
-  !injectedDepartmentLabel ||
-  !injectedCourseLabel
+  !injectedReferenceDepartmentId
+  || !injectedScopeCourseId
+  || !injectedScopeClassId
+  || !injectedScopeClassLabel
+  || !injectedAcademicYear
+  || !injectedSemester
+  || !examLocked
+  || !injectedDepartmentLabel
+  || !injectedCourseLabel
 ) {
   throw new Error('AI 分析中心未提供 scope')
 }

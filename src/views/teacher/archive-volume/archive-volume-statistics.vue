@@ -154,6 +154,11 @@ import type {
   ArchiveVolumeDestructionLedgerRowResponse,
   ArchiveVolumeStatisticsResponse,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   ARCHIVE_DESTRUCTION_STATUS_TONE,
   ArchiveDestructionStatusDescription,
@@ -163,11 +168,6 @@ import {
   getArchiveVolumeStatistics,
   pageDestructionLedger,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -198,8 +198,8 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'TeacherArchiveVolumeStatistics' })
 
 const router = useRouter()
-const { grantsLoadFailed, listScopedDepartmentIds, filterListDepartmentOptions, loadGrants } =
-  useArchiveDutyAccess()
+const { grantsLoadFailed, listScopedDepartmentIds, filterListDepartmentOptions, loadGrants }
+  = useArchiveDutyAccess()
 
 const statsTab = ref('overview')
 const statsTabs = [
@@ -212,7 +212,7 @@ const exportDestructionLoading = ref(false)
 const destructionLoading = ref(false)
 const statistics = ref<ArchiveVolumeStatisticsResponse | null>(null)
 const destructionRows = ref<ArchiveVolumeDestructionLedgerRowResponse[]>([])
-const departmentOptions = ref<Array<{ value: string; label: string }>>([])
+const departmentOptions = ref<Array<{ value: string, label: string }>>([])
 
 interface ArchiveVolumeStatisticsFilterForm extends Record<string, unknown> {
   academicYearStartYear: number | undefined

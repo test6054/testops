@@ -144,6 +144,11 @@ import type {
   SchoolQualityItemResponse,
   SchoolQualityRatingCode,
 } from '@/apis/mark/school-quality'
+import type { BadgeTone, UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   generateQualityAnalysis,
   listQualityAnalysis,
@@ -154,12 +159,6 @@ import {
   SchoolQualityItemDimensionDescription,
   SchoolQualityRatingDescription,
 } from '@/apis/mark/school-quality'
-import type { BadgeTone, UiStatPanelItem } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { formatSemester } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisConfigCollapse from '@/components/mark/analysis/AiAnalysisConfigCollapse.vue'
 import AiAnalysisHistorySelect from '@/components/mark/analysis/AiAnalysisHistorySelect.vue'
@@ -176,6 +175,7 @@ import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
 import { useChartOption } from '@/hooks/modules/useChartOption'
+import { formatSemester } from '@/types/enums/semester-enum'
 import {
   buildOptionalAcademicYearSemesterQuery,
   buildRequiredAcademicYearSemesterQuery,
@@ -262,8 +262,8 @@ const examSelectScopeReferenceDepartmentId = computed(
 )
 const examSelectAutoSelectScoped = computed(
   () =>
-    form.analysisDimension === SchoolQualityDimensionCode.SEMESTER ||
-    form.analysisDimension === SchoolQualityDimensionCode.COURSE,
+    form.analysisDimension === SchoolQualityDimensionCode.SEMESTER
+    || form.analysisDimension === SchoolQualityDimensionCode.COURSE,
 )
 const examSelectReady = computed(() => {
   if (!form.academicYear || !form.semester) {
@@ -441,8 +441,8 @@ async function reload(): Promise<void> {
     return
   }
   if (
-    form.analysisDimension === SchoolQualityDimensionCode.SEMESTER &&
-    !ensureRequiredAcademicYearSemester(form.academicYear, form.semester)
+    form.analysisDimension === SchoolQualityDimensionCode.SEMESTER
+    && !ensureRequiredAcademicYearSemester(form.academicYear, form.semester)
   ) {
     return
   }

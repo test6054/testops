@@ -21,7 +21,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  retry: []
+  "retry": []
   'go-candidate-roster': []
 }>()
 

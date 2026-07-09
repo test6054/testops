@@ -1,12 +1,12 @@
 import type { ComputedRef, InjectionKey, Ref } from 'vue'
-import { computed, inject, provide, ref, watch } from 'vue'
 import type {
   ArchiveVolumeDetailResponse,
   ArchiveVolumeNavChainStepVO,
   ArchiveVolumeNextStepActionVO,
 } from '@/apis/mark/archive-volume'
-import { getArchiveVolumeDetail } from '@/apis/mark/archive-volume'
+import { computed, inject, provide, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { getArchiveVolumeDetail } from '@/apis/mark/archive-volume'
 import {
   ARCHIVE_VOLUME_DETAIL_SECTION_TABS,
   ARCHIVE_VOLUME_DETAIL_TAB_KEYS,
@@ -35,8 +35,8 @@ export interface ArchiveVolumeWorkbenchContext {
   syncActiveTabFromNavigation: (options?: { preserveUserTab?: boolean }) => void
 }
 
-export const ARCHIVE_VOLUME_WORKBENCH_CONTEXT_KEY: InjectionKey<ArchiveVolumeWorkbenchContext> =
-  Symbol('archiveVolumeWorkbenchContext')
+export const ARCHIVE_VOLUME_WORKBENCH_CONTEXT_KEY: InjectionKey<ArchiveVolumeWorkbenchContext>
+  = Symbol('archiveVolumeWorkbenchContext')
 
 export function provideArchiveVolumeWorkbenchContext(): ArchiveVolumeWorkbenchContext {
   const route = useRoute()

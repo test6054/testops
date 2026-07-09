@@ -124,10 +124,10 @@ const normalizedItems = computed(() => {
 
 const currentActiveKey = computed(() => {
   return (
-    modelValue.value ||
-    normalizedItems.value.find((item) => item.status === 'active')?.key ||
-    normalizedItems.value[0]?.key ||
-    ''
+    modelValue.value
+    || normalizedItems.value.find((item) => item.status === 'active')?.key
+    || normalizedItems.value[0]?.key
+    || ''
   )
 })
 

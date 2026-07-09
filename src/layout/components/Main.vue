@@ -23,8 +23,8 @@
 
 <script lang="ts" setup>
 import type { RouteLocationNormalized } from 'vue-router'
-import { useRoute } from 'vue-router'
 import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { isPortfolioRoute, isQualityEvaluationRoute } from '@/utils/portfolio-route'
 
 defineOptions({ name: 'LayoutMain' })

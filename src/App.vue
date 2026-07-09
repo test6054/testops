@@ -11,8 +11,8 @@ import { isScannerKioskBrowserPage } from '@/utils/kiosk-auth'
 
 defineOptions({ name: 'App' })
 
-const DP_FONT_FAMILY_SANS =
-  '-apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif'
+const DP_FONT_FAMILY_SANS
+  = '-apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif'
 
 /**
  * Ant Design Vue 全局主题配置

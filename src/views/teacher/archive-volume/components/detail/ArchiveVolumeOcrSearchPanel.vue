@@ -160,23 +160,23 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-status'
-import {
-  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
-  ArchiveMaterialOcrStatusDescription,
-} from '@/apis/mark/archive-ocr-status'
 import type {
   ArchiveVolumeMaterialResponse,
   ArchiveVolumeSearchResponse,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
+  ArchiveMaterialOcrStatusDescription,
+} from '@/apis/mark/archive-ocr-status'
 import {
   ArchiveMaterialTypeCode,
   ArchiveMaterialTypeDescription,
   searchArchiveVolumes,
   triggerArchiveVolumeMaterialOcr,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -198,7 +198,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  refreshed: [options?: { silent?: boolean }]
+  "refreshed": [options?: { silent?: boolean }]
   'navigate-materials': []
 }>()
 
@@ -260,25 +260,25 @@ function highlightSnippet(snippet: string): string {
 
 function canViewMaterialOcr(record: ArchiveVolumeSearchResponse): boolean {
   return (
-    record.ocrStatus === 'COMPLETED' ||
-    record.ocrStatus === 'FAILED' ||
-    record.ocrStatus === 'RUNNING'
+    record.ocrStatus === 'COMPLETED'
+    || record.ocrStatus === 'FAILED'
+    || record.ocrStatus === 'RUNNING'
   )
 }
 
 function canViewMaterialOcrMaterial(record: ArchiveVolumeMaterialResponse): boolean {
   return (
-    record.ocrStatus === 'COMPLETED' ||
-    record.ocrStatus === 'FAILED' ||
-    record.ocrStatus === 'RUNNING'
+    record.ocrStatus === 'COMPLETED'
+    || record.ocrStatus === 'FAILED'
+    || record.ocrStatus === 'RUNNING'
   )
 }
 
 function canTriggerMaterialOcr(record: ArchiveVolumeMaterialResponse): boolean {
   return (
-    props.canRegisterMaterial &&
-    Boolean(record.fileId) &&
-    (record.ocrStatus === 'PENDING' || record.ocrStatus === 'FAILED' || !record.ocrStatus)
+    props.canRegisterMaterial
+    && Boolean(record.fileId)
+    && (record.ocrStatus === 'PENDING' || record.ocrStatus === 'FAILED' || !record.ocrStatus)
   )
 }
 

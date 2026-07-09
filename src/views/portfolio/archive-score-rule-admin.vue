@@ -4,14 +4,14 @@ import type {
   PortfolioArchiveScoreRuleSaveRequest,
   PortfolioArchiveScoreRuleVO,
 } from '@/apis/portfolio/teacher-platform'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
 import {
   PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_OPTIONS,
   portfolioArchiveScoreApi,
   PortfolioArchiveScoreRuleTypeCode,
   PortfolioArchiveScoreRuleTypeDescription,
 } from '@/apis/portfolio/teacher-platform'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'

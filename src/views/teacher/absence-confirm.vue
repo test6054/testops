@@ -337,6 +337,14 @@ import type {
   AttendanceReconcileResponse,
   ScorePolicyCode,
 } from '@/apis/mark/absence'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   ABSENCE_REASON_OPTIONS,
   ABSENCE_REASON_TONE,
@@ -352,15 +360,6 @@ import {
   revokeAbsence,
   SCORE_POLICY_OPTIONS,
 } from '@/apis/mark/absence'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { SemesterOptions } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { deriveMakeupExam, getExamDetail } from '@/apis/mark/exam'
 import { getScorePanel } from '@/apis/mark/exam-progress'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
@@ -384,6 +383,7 @@ import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useChartOption } from '@/hooks/modules/useChartOption'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
 import { buildGaugeChartOption } from '@/utils/mark-echarts-options'
@@ -444,8 +444,8 @@ const absentStudents = computed<AbsentStudentRow[]>(() => {
     records.value
       .filter(
         (r) =>
-          r.absenceStatus === AbsenceStatusCode.CONFIRMED ||
-          r.absenceStatus === AbsenceStatusCode.PENDING,
+          r.absenceStatus === AbsenceStatusCode.CONFIRMED
+          || r.absenceStatus === AbsenceStatusCode.PENDING,
       )
       .map((r) => r.studentUserId),
   )
@@ -462,8 +462,8 @@ const attendancePercent = computed(() => {
 
 /** 出勤率环色：≥90 充足绿 / ≥70 一般蓝 / 偏低橙 */
 const attendanceRingColor = computed(() => {
-  const tone: BadgeTone =
-    attendancePercent.value >= 90 ? 'green' : attendancePercent.value >= 70 ? 'blue' : 'orange'
+  const tone: BadgeTone
+    = attendancePercent.value >= 90 ? 'green' : attendancePercent.value >= 70 ? 'blue' : 'orange'
   return toneToColor(tone)
 })
 
@@ -723,7 +723,7 @@ async function loadRecords(): Promise<void> {
   }
 }
 
-function handleRecordPageChange(page: { current: number; pageSize: number }): void {
+function handleRecordPageChange(page: { current: number, pageSize: number }): void {
   recordPagination.pageNum = page.current
   recordPagination.pageSize = page.pageSize
   void loadRecords()
@@ -809,7 +809,7 @@ async function handleConfirm(): Promise<void> {
 const revokeModalOpen = ref(false)
 const revoking = ref(false)
 const revokeTargetName = ref('')
-const revokeForm = reactive<{ studentUserId: string; revokeReason: string }>({
+const revokeForm = reactive<{ studentUserId: string, revokeReason: string }>({
   studentUserId: '',
   revokeReason: '',
 })
@@ -867,13 +867,13 @@ const deriveForm = reactive<{
 const deriveValid = computed(() => {
   const [startTime, endTime] = deriveForm.examWindow ?? []
   return Boolean(
-    deriveForm.academicYear.trim() &&
-    deriveForm.semester &&
-    deriveForm.examName.trim() &&
-    deriveForm.examNo.trim() &&
-    startTime &&
-    endTime &&
-    startTime < endTime,
+    deriveForm.academicYear.trim()
+    && deriveForm.semester
+    && deriveForm.examName.trim()
+    && deriveForm.examNo.trim()
+    && startTime
+    && endTime
+    && startTime < endTime,
   )
 })
 

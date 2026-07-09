@@ -1,5 +1,7 @@
 <script lang="ts" setup>
 import type { ExamDetailResponse } from '@/apis/mark/exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { computed } from 'vue'
 import {
   EXAM_KIND_TONE,
   ExamGradingStrategyDescription,
@@ -8,8 +10,6 @@ import {
   ExamPrintSourceModeDescription,
   ExamScorePolicyDescription,
 } from '@/apis/mark/exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { computed } from 'vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { formatSemester } from '@/types/enums/semester-enum'
@@ -32,8 +32,8 @@ interface InfoRow {
 const examInfoRows = computed((): InfoRow[] => {
   const d = props.detail
   const term = [d.academicYear, formatSemester(d.semester)].filter(Boolean).join(' ')
-  const examTime =
-    d.examStartTime && d.examEndTime
+  const examTime
+    = d.examStartTime && d.examEndTime
       ? `${formatDateTimeWithSeconds(d.examStartTime)} ~ ${formatDateTimeWithSeconds(d.examEndTime)}`
       : '—'
   const examKindLabel = d.examKind
@@ -69,8 +69,8 @@ const configRows = computed((): InfoRow[] => {
   const scorePolicyLabel = d.scorePolicy
     ? strictEnumLabel(ExamScorePolicyDescription, d.scorePolicy, '成绩合成策略')
     : '—'
-  const fullScoreText =
-    props.examFullScore != null && Number.isFinite(props.examFullScore)
+  const fullScoreText
+    = props.examFullScore != null && Number.isFinite(props.examFullScore)
       ? String(props.examFullScore)
       : '—'
   return [

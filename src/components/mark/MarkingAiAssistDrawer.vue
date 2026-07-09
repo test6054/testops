@@ -52,8 +52,8 @@
             />
             <p
               v-if="
-                item.referenceExperienceAudit?.referenceExperienceApplied &&
-                item.referenceExperienceAudit?.referenceExperienceMatchMode
+                item.referenceExperienceAudit?.referenceExperienceApplied
+                  && item.referenceExperienceAudit?.referenceExperienceMatchMode
               "
               class="marking-ai-assist-drawer__match-mode"
             >
@@ -76,16 +76,16 @@
 
 <script lang="ts" setup>
 import type { ComponentPublicInstance } from 'vue'
-import { computed, nextTick, ref, watch } from 'vue'
 import type {
   AiAbilityCode,
   AiExecutionStatusCode,
   AiProviderTypeCode,
   ExamQuestionAiExecutionItemResponse,
 } from '@/apis/mark/exam-grade'
-import { AiProviderTypeDescription } from '@/apis/mark/exam-grade'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { GradingExperienceReferenceMatchModeCode } from '@/types/enums/grading-experience-reference-match-mode-enum'
+import { computed, nextTick, ref, watch } from 'vue'
+import { AiProviderTypeDescription } from '@/apis/mark/exam-grade'
 import ExperienceAssistBadge from '@/components/mark/ExperienceAssistBadge.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'

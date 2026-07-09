@@ -1,8 +1,8 @@
 import type { UserDetailedInfoVO } from '@/apis/auth'
-import { getUserDetailedInfo } from '@/apis/auth'
 import type { UserLoginResponseDto } from '@/types/auth'
 import { defineStore } from 'pinia'
 import { computed, reactive, ref } from 'vue'
+import { getUserDetailedInfo } from '@/apis/auth'
 import { checkTenantAdminPermission } from '@/apis/edu/tenant-admin'
 import { RoleEnum, UserStatusEnum } from '@/types/enums'
 import { useAuthStore } from './auth'
@@ -191,10 +191,10 @@ export const useUserStore = defineStore(
       }
       // 如果已经有用户信息且token有效，且不是强制刷新，直接返回
       if (
-        !forceRefresh &&
-        userInfo.userId &&
-        authStore.token &&
-        !authStore.isTokenExpiredCheck(authStore.token)
+        !forceRefresh
+        && userInfo.userId
+        && authStore.token
+        && !authStore.isTokenExpiredCheck(authStore.token)
       ) {
         await fetchTenantAdminPermission(false)
         return Promise.resolve()

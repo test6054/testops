@@ -37,14 +37,14 @@ function dimensionTone(
     return 'orange'
   if (dimension === ArchiveVolumeSubmitChecklistDimensionCode.FOUR_PROPERTY) return 'blue'
   if (
-    dimension === ArchiveVolumeSubmitChecklistDimensionCode.INTEGRITY ||
-    dimension === ArchiveVolumeSubmitChecklistDimensionCode.SCORE
+    dimension === ArchiveVolumeSubmitChecklistDimensionCode.INTEGRITY
+    || dimension === ArchiveVolumeSubmitChecklistDimensionCode.SCORE
   ) {
     return 'red'
   }
   if (
-    dimension === ArchiveVolumeSubmitChecklistDimensionCode.CATALOG_NOT_READY ||
-    dimension === ArchiveVolumeSubmitChecklistDimensionCode.CATALOG
+    dimension === ArchiveVolumeSubmitChecklistDimensionCode.CATALOG_NOT_READY
+    || dimension === ArchiveVolumeSubmitChecklistDimensionCode.CATALOG
   ) {
     return 'purple'
   }
@@ -65,9 +65,11 @@ function dimensionLabel(dimension: ArchiveVolumeSubmitChecklistDimensionCode): s
       :class="{ 'submit-task-row--primary': index === 0 }"
     >
       <div class="submit-task-row__main">
-        <UiTag :tone="dimensionTone(item.dimension)" size="sm">{{
-          dimensionLabel(item.dimension)
-        }}</UiTag>
+        <UiTag :tone="dimensionTone(item.dimension)" size="sm">
+          {{
+            dimensionLabel(item.dimension)
+          }}
+        </UiTag>
         <span class="submit-task-row__message">{{ item.message }}</span>
       </div>
       <UiButton v-if="!readonly" size="sm" variant="outline" @click="emit('navigate', item)">

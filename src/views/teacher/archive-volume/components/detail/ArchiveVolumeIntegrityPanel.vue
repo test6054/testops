@@ -284,6 +284,9 @@ import type {
   ArchiveSecurityLevelCode,
   ArchiveVolumeDetailResponse,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref } from 'vue'
 import {
   allowArchiveMaterialDelay,
   ARCHIVE_INTEGRITY_STATUS_TONE,
@@ -298,9 +301,6 @@ import {
   waiveArchiveMaterialMissing,
   waiveArchiveVolumeIntegrity,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref } from 'vue'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -332,7 +332,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  refreshed: []
+  "refreshed": []
   'integrity-checked': [result: Awaited<ReturnType<typeof checkArchiveVolumeIntegrity>>]
   'four-property-checked': [result: Awaited<ReturnType<typeof checkArchiveVolumeFourProperty>>]
   'run-integrity-check': []
@@ -388,10 +388,10 @@ const missingColumns: ColumnsType<ArchiveIntegrityMissingItemVO> = [
 
 function isArchiveIntegrityMissingItem(record: unknown): record is ArchiveIntegrityMissingItemVO {
   return (
-    typeof record === 'object' &&
-    record !== null &&
-    'materialType' in record &&
-    'catalogCode' in record
+    typeof record === 'object'
+    && record !== null
+    && 'materialType' in record
+    && 'catalogCode' in record
   )
 }
 

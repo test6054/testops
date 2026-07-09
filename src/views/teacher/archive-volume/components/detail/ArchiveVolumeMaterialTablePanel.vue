@@ -266,16 +266,22 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-status'
-import {
-  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
-  ArchiveMaterialOcrStatusDescription,
-} from '@/apis/mark/archive-ocr-status'
 import type {
   ArchiveMaterialSubmissionStatusCode,
   ArchiveMaterialTypeCode,
   ArchiveVolumeDetailResponse,
   ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
+import { message } from 'ant-design-vue'
+import { computed, onUnmounted, reactive, ref, watch } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
+import {
+  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
+  ArchiveMaterialOcrStatusDescription,
+} from '@/apis/mark/archive-ocr-status'
 import {
   ALL_ARCHIVE_MATERIAL_TYPE_CODES,
   ARCHIVE_MATERIAL_TYPE_OPTIONS,
@@ -290,13 +296,6 @@ import {
   registerArchiveVolumeMaterial,
   triggerArchiveVolumeMaterialOcr,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
-import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
-import { message } from 'ant-design-vue'
-import { computed, onUnmounted, reactive, ref, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import FilePreviewDialog from '@/components/FilePreviewDialog.vue'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
@@ -327,6 +326,7 @@ import ArchiveMaterialTagSelect from '@/views/teacher/archive-volume/components/
 import ArchiveVolumeMaterialOcrDetailModal from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialOcrDetailModal.vue'
 import ArchiveVolumeMaterialTagModal from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialTagModal.vue'
 import ScanDispatchDialog from '@/views/teacher/archive-volume/components/ScanDispatchDialog.vue'
+import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 
 defineOptions({ name: 'ArchiveVolumeMaterialTablePanel' })
 
@@ -338,7 +338,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  refreshed: [options?: { silent?: boolean }]
+  "refreshed": [options?: { silent?: boolean }]
   'ocr-completed-stale': []
 }>()
 
@@ -464,14 +464,14 @@ const courseObjectiveMappingHint = computed(() => {
   const goalTotal = props.detail.courseObjectiveTotalGoalCount
   const goalCovered = props.detail.courseObjectiveCoveredGoalCount
   if (
-    total != null &&
-    mapped != null &&
-    total > 0 &&
-    mapped >= total &&
-    goalTotal != null &&
-    goalCovered != null &&
-    goalTotal > 0 &&
-    goalCovered < goalTotal
+    total != null
+    && mapped != null
+    && total > 0
+    && mapped >= total
+    && goalTotal != null
+    && goalCovered != null
+    && goalTotal > 0
+    && goalCovered < goalTotal
   ) {
     return `quality 课程目标覆盖 ${goalCovered}/${goalTotal} 未完成，须确保每个课程目标至少映射一题后再生成达成度报告。`
   }
@@ -554,9 +554,9 @@ async function handleDownloadMaterial(material: ArchiveVolumeMaterialResponse): 
 
 function canViewMaterialOcr(material: ArchiveVolumeMaterialResponse): boolean {
   return (
-    material.ocrStatus === 'COMPLETED' ||
-    material.ocrStatus === 'FAILED' ||
-    material.ocrStatus === 'RUNNING'
+    material.ocrStatus === 'COMPLETED'
+    || material.ocrStatus === 'FAILED'
+    || material.ocrStatus === 'RUNNING'
   )
 }
 

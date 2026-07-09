@@ -17,7 +17,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:selected-exam-id': [value: string | undefined]
   /** 单击选中并立即绑定/切换 */
-  confirm: [examId: string]
+  "confirm": [examId: string]
 }>()
 
 const { workflow } = useKioskCtx()
@@ -199,8 +199,7 @@ function goNextPage() {
           <span
             class="exam-tile__badge"
             :class="{ 'exam-tile__badge--active': exam.hasActiveScanSession }"
-            >{{ formatBatchBadge(exam) }}</span
-          >
+          >{{ formatBatchBadge(exam) }}</span>
         </div>
       </button>
     </div>
@@ -217,15 +216,13 @@ function goNextPage() {
         <LeftOutlined />
         <span>上一页</span>
       </button>
-      <span class="pager-indicator"
-        >{{ workflow.bindExamCandidateFilter.pageNum }} / {{ totalPages }}</span
-      >
+      <span class="pager-indicator">{{ workflow.bindExamCandidateFilter.pageNum }} / {{ totalPages }}</span>
       <button
         type="button"
         class="pager-btn"
         :disabled="
-          workflow.bindExamCandidateFilter.pageNum >= totalPages ||
-          workflow.bindExamCandidateLoading.value
+          workflow.bindExamCandidateFilter.pageNum >= totalPages
+            || workflow.bindExamCandidateLoading.value
         "
         @click="goNextPage"
       >

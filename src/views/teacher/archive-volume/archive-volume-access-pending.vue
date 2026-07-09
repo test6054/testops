@@ -48,9 +48,9 @@
                 class="approval-card__reject-input"
               />
               <div class="approval-card__action-row">
-                <UiButton size="sm" variant="outline" :loading="submitting" @click="cancelReject"
-                  >取消</UiButton
-                >
+                <UiButton size="sm" variant="outline" :loading="submitting" @click="cancelReject">
+                  取消
+                </UiButton>
                 <UiButton
                   size="sm"
                   variant="outline"
@@ -81,12 +81,12 @@
             </template>
             <template v-else>
               <UiButton size="sm" @click="startApprove(record.accessRecordId)">批准</UiButton>
-              <UiButton size="sm" variant="outline" @click="startReject(record.accessRecordId)"
-                >拒绝</UiButton
-              >
-              <UiButton size="sm" variant="ghost" @click="goVolumeDetail(record.volumeId)"
-                >打开卷详情</UiButton
-              >
+              <UiButton size="sm" variant="outline" @click="startReject(record.accessRecordId)">
+                拒绝
+              </UiButton>
+              <UiButton size="sm" variant="ghost" @click="goVolumeDetail(record.volumeId)">
+                打开卷详情
+              </UiButton>
             </template>
           </div>
         </article>
@@ -97,14 +97,14 @@
 
 <script lang="ts" setup>
 import type { ArchiveVolumeAccessRecordResponse } from '@/apis/mark/archive-volume'
+import message from 'ant-design-vue/es/message'
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   approveArchiveVolumeAccess,
   listPendingArchiveAccessRecords,
   rejectArchiveVolumeAccess,
 } from '@/apis/mark/archive-volume'
-import message from 'ant-design-vue/es/message'
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'

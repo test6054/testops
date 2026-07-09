@@ -13,8 +13,7 @@ const emit = defineEmits<{
   <WorkbenchSurfaceCard class="archive-related-links">
     <template #head>相关归档能力</template>
     <p class="archive-related-links__lead">
-      <strong>课程考核归档卷</strong
-      >在本页跟踪建卷、材料入库与四性检测；异步导出记录可在导出任务中查看。
+      <strong>课程考核归档卷</strong>在本页跟踪建卷、材料入库与四性检测；异步导出记录可在导出任务中查看。
     </p>
     <dl class="archive-related-links__list">
       <div class="archive-related-links__item">

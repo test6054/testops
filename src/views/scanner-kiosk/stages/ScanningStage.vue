@@ -70,8 +70,8 @@ const canvasEmptyTitle = computed(() => {
       : '正在连接扫描仪…'
   }
   if (
-    job.value?.status === LocalScanJobStatusCode.UPLOADING ||
-    job.value?.status === LocalScanJobStatusCode.RETRYING
+    job.value?.status === LocalScanJobStatusCode.UPLOADING
+    || job.value?.status === LocalScanJobStatusCode.RETRYING
   ) {
     return '扫描页上传中…'
   }
@@ -88,8 +88,8 @@ const canvasEmptyHint = computed(() => {
     return '扫描仪正在采集影像，首张完成后将自动显示预览。'
   }
   if (
-    job.value?.status === LocalScanJobStatusCode.UPLOADING ||
-    job.value?.status === LocalScanJobStatusCode.RETRYING
+    job.value?.status === LocalScanJobStatusCode.UPLOADING
+    || job.value?.status === LocalScanJobStatusCode.RETRYING
   ) {
     return job.value.message || '上传完成后可在右侧缩略图查看各页。'
   }
@@ -143,7 +143,7 @@ const imageTransform = computed(
 )
 const imageFilter = computed(() => (grayscale.value ? 'grayscale(1)' : 'none'))
 
-const isPageException = (page: { status: string; diagnostic?: string }) =>
+const isPageException = (page: { status: string, diagnostic?: string }) =>
   page.status === LocalScanPageStatusCode.FAILED || Boolean(page.diagnostic)
 
 const currentIndex = computed(() => {

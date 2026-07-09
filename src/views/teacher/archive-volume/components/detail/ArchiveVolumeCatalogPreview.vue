@@ -3,12 +3,12 @@ import type {
   ArchiveCatalogStatusCode,
   ArchiveVolumeCatalogLineVO,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { computed } from 'vue'
 import {
   ARCHIVE_CATALOG_STATUS_TONE,
   ArchiveCatalogStatusDescription,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { computed } from 'vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import {

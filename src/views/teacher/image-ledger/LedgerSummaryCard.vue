@@ -62,11 +62,11 @@
 
 <script lang="ts" setup>
 import type { ImageLedgerDetailResponse } from '@/apis/mark/image-ledger'
-import { LEDGER_STATUS_TONE, LedgerStatusDescription } from '@/apis/mark/image-ledger'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
 import { computed } from 'vue'
+import { LEDGER_STATUS_TONE, LedgerStatusDescription } from '@/apis/mark/image-ledger'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -122,8 +122,8 @@ function formatLedgerMetric(value: number | null | undefined): string | number {
 
 /** 扫描完成率环色：100% 完成绿 / ≥60% 推进蓝 / 其余推进橙 */
 const scanRingColor = computed(() => {
-  const tone: BadgeTone =
-    scanPercent.value >= 100 ? 'green' : scanPercent.value >= 60 ? 'blue' : 'orange'
+  const tone: BadgeTone
+    = scanPercent.value >= 100 ? 'green' : scanPercent.value >= 60 ? 'blue' : 'orange'
   return toneToColor(tone)
 })
 

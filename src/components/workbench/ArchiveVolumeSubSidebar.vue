@@ -96,7 +96,7 @@ const props = defineProps<{
   volumeStatusTone: BadgeTone
   activeTab: string
   navGroups: ArchiveVolumeSidebarNavGroupView[]
-  statusRows: Array<{ key: string; label: string; value: string }>
+  statusRows: Array<{ key: string, label: string, value: string }>
   collapsed: boolean
   mobileOpen: boolean
   loading?: boolean

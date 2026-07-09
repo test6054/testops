@@ -4,13 +4,13 @@
 import type { ArchiveSecurityLevelCode } from '@/apis/mark/archive-volume'
 import type { ArchiveDeadlineTierCode } from '@/types/enums/archive-deadline-tier-enum'
 import type { ArchiveDutyTypeCode } from '@/types/enums/archive-duty-type-enum'
+import type { ArchiveKioskHubListModeCode } from '@/types/enums/archive-kiosk-hub-list-mode-enum'
+import type { ArchiveSubmitModeCode } from '@/types/enums/archive-submit-mode-enum'
+import http from '@/config/axios'
 import {
   ALL_ARCHIVE_DUTY_TYPE_CODES,
   ArchiveDutyTypeDescription,
 } from '@/types/enums/archive-duty-type-enum'
-import type { ArchiveKioskHubListModeCode } from '@/types/enums/archive-kiosk-hub-list-mode-enum'
-import type { ArchiveSubmitModeCode } from '@/types/enums/archive-submit-mode-enum'
-import http from '@/config/axios'
 
 export {
   ALL_ARCHIVE_DUTY_TYPE_CODES,

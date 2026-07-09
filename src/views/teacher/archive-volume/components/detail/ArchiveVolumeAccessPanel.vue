@@ -184,6 +184,8 @@ import type {
   ArchiveVolumeAccessReadPageRequest,
   ArchiveVolumeAccessRecordResponse,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
 import {
   approveArchiveVolumeAccess,
   downloadArchiveAccessMaterial,
@@ -193,8 +195,6 @@ import {
   rejectArchiveVolumeAccess,
   requestArchiveVolumeAccess,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'

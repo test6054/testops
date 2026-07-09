@@ -87,10 +87,10 @@
           <template v-else>
             <UiAlertStrip
               v-if="
-                activeJourneyKey === 'prep' &&
-                prepBlockingReasons.length > 0 &&
-                !isImmersiveWorkspace &&
-                !isPrepSelfManagedPage
+                activeJourneyKey === 'prep'
+                  && prepBlockingReasons.length > 0
+                  && !isImmersiveWorkspace
+                  && !isPrepSelfManagedPage
               "
               tone="warning"
               title="考试准备硬阻断"
@@ -142,20 +142,11 @@
 <script lang="ts" setup>
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { Component } from 'vue'
-import { computed, provide, ref, watch } from 'vue'
 import type { RouteLocationNormalized } from 'vue-router'
-import { useRoute, useRouter } from 'vue-router'
 import type { ExamStatusCode } from '@/apis/mark/exam'
-import { EXAM_STATUS_TONE, ExamStatusDescription } from '@/apis/mark/exam'
 import type { ExamSwitcherOption } from '@/components/workbench/ExamSwitcher.vue'
-import ExamSwitcher from '@/components/workbench/ExamSwitcher.vue'
 import type { ExamJourneyKey } from '@/constants/exam-journey'
-import { EXAM_JOURNEY_STEPS } from '@/constants/exam-journey'
 import type { ExamWorkspaceMenuKey } from '@/constants/exam-workspace-menu'
-import {
-  findExamWorkspaceMenuItem,
-  resolveExamWorkspaceMenuKey,
-} from '@/constants/exam-workspace-menu'
 import type { MarkStageKey } from '@/stores/modules/markStage'
 import AimOutlined from '@ant-design/icons-vue/AimOutlined'
 import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
@@ -184,12 +175,16 @@ import ScanOutlined from '@ant-design/icons-vue/ScanOutlined'
 import SettingOutlined from '@ant-design/icons-vue/SettingOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import { useBreakpoints } from '@vueuse/core'
+import { computed, provide, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { EXAM_STATUS_TONE, ExamStatusDescription } from '@/apis/mark/exam'
 import ConfidentialStatusBar from '@/components/mark/ConfidentialStatusBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ExamSubSidebar from '@/components/workbench/ExamSubSidebar.vue'
+import ExamSwitcher from '@/components/workbench/ExamSwitcher.vue'
 import ExamWorkflowTaskDock from '@/components/workbench/ExamWorkflowTaskDock.vue'
 import ExamWorkspaceChildFrame from '@/components/workbench/ExamWorkspaceChildFrame.vue'
 import ExamWorkspaceChrome from '@/components/workbench/ExamWorkspaceChrome.vue'
@@ -204,6 +199,11 @@ import {
 import { useMarkWorkbenchSnapshot } from '@/composables/useMarkWorkbenchSnapshot'
 import { useWorkspaceConfidentialContext } from '@/composables/useWorkspaceConfidentialContext'
 import { DESKTOP_MARKING_MIN } from '@/constants/breakpoints'
+import { EXAM_JOURNEY_STEPS } from '@/constants/exam-journey'
+import {
+  findExamWorkspaceMenuItem,
+  resolveExamWorkspaceMenuKey,
+} from '@/constants/exam-workspace-menu'
 import HeaderRightBar from '@/layout/components/HeaderRightBar/index.vue'
 import { useAppStore } from '@/stores/modules/app'
 import { MarkTeacherDashboardJourneyKeyCode } from '@/types/enums/mark-teacher-dashboard-journey-key-enum'
@@ -213,8 +213,8 @@ import { navigateToJourneyStep } from '@/utils/mark-stage-navigation'
 defineOptions({ name: 'ExamWorkspaceLayout' })
 
 const menuIconMap: Record<ExamWorkspaceMenuKey, Component> = {
-  overview: DashboardOutlined,
-  prep: ContainerOutlined,
+  "overview": DashboardOutlined,
+  "prep": ContainerOutlined,
   'layout-designer': ProfileOutlined,
   'candidate-roster': TeamOutlined,
   'print-package': PrinterOutlined,
@@ -360,8 +360,8 @@ const stageSuggestionDescription = computed(() => {
 
 const nextActions = computed(() => snapshot.value?.nextActions ?? [])
 
-const { activeTask, showTaskDock, dismissActiveTask, runActiveTaskAction } =
-  useExamWorkflowTaskDock({
+const { activeTask, showTaskDock, dismissActiveTask, runActiveTaskAction }
+  = useExamWorkflowTaskDock({
     examId,
     route,
     isImmersiveWorkspace,

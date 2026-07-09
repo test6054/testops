@@ -73,10 +73,10 @@
 
 <script lang="ts" setup>
 import type { RouteLocationNormalized } from 'vue-router'
-import { useRouter } from 'vue-router'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import MenuOutlined from '@ant-design/icons-vue/MenuOutlined'
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   ARCHIVE_VOLUME_STATUS_TONE,
   ArchiveIntegrityStatusDescription,
@@ -101,8 +101,8 @@ const appTitle = computed(() => appStore.getTitle())
 const sidebarCollapsed = ref(false)
 const mobileNavOpen = ref(false)
 
-const { volumeId, detail, loading, activeTab, sidebarTabs, setActiveTab } =
-  provideArchiveVolumeWorkbenchContext()
+const { volumeId, detail, loading, activeTab, sidebarTabs, setActiveTab }
+  = provideArchiveVolumeWorkbenchContext()
 
 const sidebarArchiveTitle = computed(() => {
   const volume = detail.value?.volume
@@ -165,13 +165,13 @@ const sidebarStatusRows = computed(() => {
     : volume.retentionYears
       ? `${volume.retentionYears} 年`
       : '—'
-  const location =
-    volume.physicalStorageLocation ||
-    [volume.physicalBuilding, volume.physicalRoom, volume.physicalCabinet, volume.physicalSlot]
+  const location
+    = volume.physicalStorageLocation
+      || [volume.physicalBuilding, volume.physicalRoom, volume.physicalCabinet, volume.physicalSlot]
       .filter(Boolean)
-      .join(' / ') ||
-    volume.physicalLocationNote ||
-    '—'
+      .join(' / ')
+      || volume.physicalLocationNote
+      || '—'
   return [
     {
       key: 'integrity',

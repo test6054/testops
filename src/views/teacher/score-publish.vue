@@ -378,16 +378,21 @@ import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
 import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
 import type { ExamDetailResponse } from '@/apis/mark/exam'
-import { getExamDetail } from '@/apis/mark/exam'
 import type { ExamPaperScoreResponse, ExamQuestionScoreResponse } from '@/apis/mark/exam-grade'
-import { getPaperScore } from '@/apis/mark/exam-grade'
 import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
-import { getScorePanel } from '@/apis/mark/exam-progress'
 import type {
   ExamScoreSummaryItemResponse,
   FinalScoreBatchPublishResponse,
   FinalScoreRiskOverviewResponse,
 } from '@/apis/mark/exam-score'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { getExamDetail } from '@/apis/mark/exam'
+import { getPaperScore } from '@/apis/mark/exam-grade'
+import { getScorePanel } from '@/apis/mark/exam-progress'
 import {
   batchPublishFinalScores,
   getFinalScoreRiskOverview,
@@ -395,11 +400,6 @@ import {
   publishFinalScore,
   withdrawFinalScore,
 } from '@/apis/mark/exam-score'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   FINAL_SCORE_STATUS_TONE,
   FinalScoreStatusCode,
@@ -718,7 +718,7 @@ function handleStatusTabChange(tabKey: Key): void {
   void loadCandidates()
 }
 
-function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void loadCandidates()
@@ -755,10 +755,10 @@ function bulkModalValueClass(valClass?: string): string | undefined {
 
 const canBulkPublish = computed(
   () =>
-    Boolean(selectedExamId.value) &&
-    publishableOverviewCount.value > 0 &&
-    finalScoreOverview.value?.readyToPublish === true &&
-    (finalScoreOverview.value?.blockedCount ?? 0) === 0,
+    Boolean(selectedExamId.value)
+    && publishableOverviewCount.value > 0
+    && finalScoreOverview.value?.readyToPublish === true
+    && (finalScoreOverview.value?.blockedCount ?? 0) === 0,
 )
 
 const bulkOpen = ref(false)

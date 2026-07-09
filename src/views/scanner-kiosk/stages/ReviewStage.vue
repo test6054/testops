@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { TaskStatusCode } from '@/apis/mark/task-status'
-import { TaskStatusDescription } from '@/apis/mark/task-status'
 /**
  * Stage 3 - 澶嶆牳涓庡紓甯稿缃?
  *
@@ -21,6 +20,7 @@ import {
 } from '@ant-design/icons-vue'
 import { computed, ref, watch } from 'vue'
 import { LocalScanPageStatusCode } from '@/apis/mark/scanner-agent-local'
+import { TaskStatusDescription } from '@/apis/mark/task-status'
 import { ExamScannerPageRegistrationStatusCode } from '@/types/enums/exam-scanner-page-registration-status-enum'
 import { ScanAttentionTypeCode } from '@/types/enums/scan-attention-type-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -100,11 +100,11 @@ const ledgerAttentionTodos = computed<ReviewItem[]>(() => {
       ? ledger.items.find((item) => item.localPageId === att.pageId)
       : undefined
     const pageNo = pageItem?.pageNo ?? 0
-    const bindingConflictWithoutPage =
-      !att.pageId && att.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT
+    const bindingConflictWithoutPage
+      = !att.pageId && att.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT
     if (pageNo <= 0 && !bindingConflictWithoutPage) continue
-    const titlePrefix =
-      pageNo > 0
+    const titlePrefix
+      = pageNo > 0
         ? workflow.scanPageDisplayTitleByNo(pageNo)
         : `答卷 ${att.paperInstanceId ?? '未知'}`
     items.push({
@@ -113,8 +113,8 @@ const ledgerAttentionTodos = computed<ReviewItem[]>(() => {
       type: 'attention',
       title: `${titlePrefix} · ${workflow.attentionTypeText(att.attentionType)}`,
       description:
-        att.diagnostic ||
-        workflow.registrationStatusText(
+        att.diagnostic
+        || workflow.registrationStatusText(
           pageItem?.registrationStatus ?? ExamScannerPageRegistrationStatusCode.PENDING,
         ),
       detail: workflow.formatTime(att.updateTime),
@@ -153,8 +153,8 @@ const registeredPages = computed<ReviewItem[]>(() => {
   return ledger.items
     .filter(
       (item) =>
-        item.registrationStatus !== ExamScannerPageRegistrationStatusCode.DISCARDED &&
-        item.registrationStatus !== ExamScannerPageRegistrationStatusCode.SUPERSEDED,
+        item.registrationStatus !== ExamScannerPageRegistrationStatusCode.DISCARDED
+        && item.registrationStatus !== ExamScannerPageRegistrationStatusCode.SUPERSEDED,
     )
     .filter((item) => !issuePageNos.has(item.pageNo))
     .map((item): ReviewItem => ({
@@ -182,17 +182,17 @@ const selectedItem = computed<ReviewItem | null>(() => {
   if (!workflow.previewPageNo.value) return null
   const pageNo = workflow.previewPageNo.value
   return (
-    reviewItems.value.find((item) => item.pageNo === pageNo) ??
-    registeredPages.value.find((item) => item.pageNo === pageNo) ??
-    localBrowsablePages.value.find((item) => item.pageNo === pageNo) ??
-    null
+    reviewItems.value.find((item) => item.pageNo === pageNo)
+    ?? registeredPages.value.find((item) => item.pageNo === pageNo)
+    ?? localBrowsablePages.value.find((item) => item.pageNo === pageNo)
+    ?? null
   )
 })
 
 const showBindingPanel = computed(
   () =>
-    selectedItem.value?.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT &&
-    Boolean(selectedItem.value?.paperInstanceId),
+    selectedItem.value?.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT
+    && Boolean(selectedItem.value?.paperInstanceId),
 )
 
 function isReviewItemActive(item: ReviewItem): boolean {
@@ -208,8 +208,8 @@ function selectItem(item: ReviewItem) {
     workflow.previewPageNo.value = 0
     return
   }
-  selectedBindingPaperInstanceId.value =
-    item.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT
+  selectedBindingPaperInstanceId.value
+    = item.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT
       ? (item.paperInstanceId ?? '')
       : ''
   workflow.previewPageNo.value = item.pageNo
@@ -344,7 +344,7 @@ const reviewBoundBatchId = computed(
           :key="item.key"
           class="issue-item"
           :class="{
-            active: isReviewItemActive(item),
+            'active': isReviewItemActive(item),
             'item-failed': item.type === 'page-failed',
             'item-attention': item.type === 'attention',
           }"
@@ -357,9 +357,7 @@ const reviewBoundBatchId = computed(
             <div class="issue-item-text">
               <strong>{{ item.title }}</strong>
               <span>{{ item.description }}</span>
-              <small v-if="item.processingStatus"
-                >处理任务：{{ processingStatusLabel(item.processingStatus) }}</small
-              >
+              <small v-if="item.processingStatus">处理任务：{{ processingStatusLabel(item.processingStatus) }}</small>
               <small v-if="item.detail">{{ item.detail }}</small>
             </div>
           </button>
@@ -527,11 +525,11 @@ const reviewBoundBatchId = computed(
           type="button"
           class="op-btn op-btn--danger"
           :disabled="
-            !selectedItem ||
-            selectedItem.source !== 'ledger' ||
-            selectedItem.pageNo <= 0 ||
-            !selectedItem.localPageId ||
-            !workflow.canDiscardLedgerPage.value
+            !selectedItem
+              || selectedItem.source !== 'ledger'
+              || selectedItem.pageNo <= 0
+              || !selectedItem.localPageId
+              || !workflow.canDiscardLedgerPage.value
           "
           :title="
             selectedItem

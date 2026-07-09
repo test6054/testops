@@ -41,12 +41,12 @@ const scanFlow = useWorkOrderScanFlow({
 
 const canStart = computed(() =>
   Boolean(
-    session.volumeId.value &&
-    session.materialType.value &&
-    bootstrap.selectedScannerId.value &&
-    session.archiveContext.value != null &&
-    session.archiveContext.value.canRegisterMaterial === true &&
-    !lease.leaseLost.value,
+    session.volumeId.value
+    && session.materialType.value
+    && bootstrap.selectedScannerId.value
+    && session.archiveContext.value != null
+    && session.archiveContext.value.canRegisterMaterial === true
+    && !lease.leaseLost.value,
   ),
 )
 const leaseLostMessage = '派单租约已失效，扫描会话可能已被中断，请返回队列'
@@ -260,9 +260,9 @@ function goBack() {
       </UiButton>
       <UiButton
         v-if="
-          !scanFlow.currentJob.value &&
-          !scanFlow.canRetryWorkOrderCommit.value &&
-          !scanActionsDisabled
+          !scanFlow.currentJob.value
+            && !scanFlow.canRetryWorkOrderCommit.value
+            && !scanActionsDisabled
         "
         variant="primary"
         :loading="session.loading.value || scanFlow.loading.value"
@@ -273,9 +273,9 @@ function goBack() {
       </UiButton>
       <template
         v-if="
-          !scanActionsDisabled &&
-          !scanFlow.currentJob.value &&
-          scanFlow.canRetryWorkOrderCommit.value
+          !scanActionsDisabled
+            && !scanFlow.currentJob.value
+            && scanFlow.canRetryWorkOrderCommit.value
         "
       >
         <UiButton

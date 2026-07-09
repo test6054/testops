@@ -10,9 +10,7 @@
         <UiBadge :tone="statusTone" variant="soft" size="sm">
           {{ props.statusLabel || statusText }}
         </UiBadge>
-        <span v-if="props.showPercent" class="ui-workflow-status-bar__percent"
-          >{{ normalizedPercent }}%</span
-        >
+        <span v-if="props.showPercent" class="ui-workflow-status-bar__percent">{{ normalizedPercent }}%</span>
         <slot name="actions" />
       </div>
     </div>

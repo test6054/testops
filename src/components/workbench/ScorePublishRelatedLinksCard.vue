@@ -1,10 +1,10 @@
 <script lang="ts" setup>
 import type { ScorePublishRelatedVariant } from '@/utils/score-publish-related-links'
-import { SCORE_PUBLISH_RELATED_LINKS } from '@/utils/score-publish-related-links'
 import { computed } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useScorePublishRelatedNavigation } from '@/composables/useScorePublishRelatedNavigation'
+import { SCORE_PUBLISH_RELATED_LINKS } from '@/utils/score-publish-related-links'
 
 defineOptions({ name: 'ScorePublishRelatedLinksCard' })
 

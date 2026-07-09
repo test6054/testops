@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { computed, ref, watch } from 'vue'
 import type { ExamScannerBatchResponse } from '@/apis/mark/scanner-kiosk'
-import { ScannerKioskScanModeCode } from '@/apis/mark/scanner-kiosk'
 /**
  * 本机历史批次（只读）
  *
@@ -21,6 +19,8 @@ import {
   ReloadOutlined,
   SafetyCertificateFilled,
 } from '@ant-design/icons-vue'
+import { computed, ref, watch } from 'vue'
+import { ScannerKioskScanModeCode } from '@/apis/mark/scanner-kiosk'
 import { ScanBatchStatusCode } from '@/types/enums/scan-batch-status-enum'
 import KioskBoundStudentsPanel from '../components/KioskBoundStudentsPanel.vue'
 import { useKioskCtx } from '../composables/kioskInjection'
@@ -327,9 +327,9 @@ watch(
           type="button"
           class="time-clear"
           :disabled="
-            workflow.batchHistoryLoading.value ||
-            (!workflow.batchHistoryFilter.scanStartTimeFrom &&
-              !workflow.batchHistoryFilter.scanStartTimeTo)
+            workflow.batchHistoryLoading.value
+              || (!workflow.batchHistoryFilter.scanStartTimeFrom
+                && !workflow.batchHistoryFilter.scanStartTimeTo)
           "
           @click="workflow.clearBatchHistoryTimeRange"
         >
@@ -470,8 +470,8 @@ watch(
           type="button"
           class="pager-btn"
           :disabled="
-            workflow.batchHistoryFilter.pageNum >= historyTotalPages ||
-            workflow.batchHistoryLoading.value
+            workflow.batchHistoryFilter.pageNum >= historyTotalPages
+              || workflow.batchHistoryLoading.value
           "
           @click="workflow.changeBatchHistoryPage(workflow.batchHistoryFilter.pageNum + 1)"
         >

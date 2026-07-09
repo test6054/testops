@@ -165,12 +165,6 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { StudentExamItemVO } from '@/apis/mark/student-exam'
-import {
-  canSubmitReview,
-  listMyExams,
-  ReviewWindowPolicyStatusDescription,
-  STUDENT_REVIEW_WINDOW_STATUS_TONE,
-} from '@/apis/mark/student-exam'
 import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
@@ -180,6 +174,12 @@ import {
   FINAL_SCORE_STATUS_TONE,
   FinalScoreStatusDescription,
 } from '@/apis/mark/final-score-status'
+import {
+  canSubmitReview,
+  listMyExams,
+  ReviewWindowPolicyStatusDescription,
+  STUDENT_REVIEW_WINDOW_STATUS_TONE,
+} from '@/apis/mark/student-exam'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -264,7 +264,7 @@ const unpublishedCount = computed<number>(() => {
 })
 
 /** 最近两次发布的分数差（最新 - 上一次），无足够数据返回 null */
-const scoreTrend = computed<{ diff: number; latest: number; previous: number } | null>(() => {
+const scoreTrend = computed<{ diff: number, latest: number, previous: number } | null>(() => {
   const list = publishedExamsSorted.value
   if (list.length < 2) return null
   const latest = Number(list[0].finalScore)

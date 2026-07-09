@@ -1,11 +1,11 @@
 <script lang="ts" setup>
 import type { FinalScoreRiskOverviewResponse } from '@/apis/mark/exam-score'
 import type { ScoreReleaseStep } from '@/utils/score-release-step'
-import { buildScoreReleaseSteps } from '@/utils/score-release-step'
 import CheckOutlined from '@ant-design/icons-vue/CheckOutlined'
 import { computed } from 'vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useScoreReleaseNavigation } from '@/composables/useScoreReleaseNavigation'
+import { buildScoreReleaseSteps } from '@/utils/score-release-step'
 
 defineOptions({ name: 'ScoreReleaseStepPipeline' })
 

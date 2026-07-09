@@ -3,8 +3,8 @@ import type {
   ArchiveVolumeSubmitChecklistItemVO,
   ArchiveVolumeSubmitProgressVO,
 } from '@/apis/mark/archive-volume'
-import { ArchiveVolumeSubmitChecklistPhaseDescription } from '@/apis/mark/archive-volume'
 import { computed, ref, watch } from 'vue'
+import { ArchiveVolumeSubmitChecklistPhaseDescription } from '@/apis/mark/archive-volume'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -39,7 +39,7 @@ watch(
 
 const pendingCount = computed(() => {
   const fromItems = props.blockingItems?.filter((item) => item.passed !== true).length ?? 0
-  if (props.canSubmitVolume === false && fromItems > 0) {
+  if (!props.canSubmitVolume && fromItems > 0) {
     return fromItems
   }
   if (props.progress?.pendingBlockingCount != null) {
@@ -56,7 +56,7 @@ const currentLabel = computed(() => {
     'checklistPhaseKey',
   )
 })
-const submitReady = computed(() => props.canSubmitVolume === true)
+const submitReady = computed(() => props.canSubmitVolume)
 </script>
 
 <template>

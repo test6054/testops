@@ -94,12 +94,11 @@ import type {
   ArchiveReadinessMatrixResponse,
   ArchiveReadinessTermColumnVO,
 } from '@/apis/mark/archive-volume'
-import { getSupervisionReadinessMatrix } from '@/apis/mark/archive-volume'
 import type { SemesterCode } from '@/types/enums/semester-enum'
-import { formatAcademicYearSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { getSupervisionReadinessMatrix } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -108,6 +107,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { formatAcademicYearSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearStartOptions } from '@/utils/academic-year'
 import {
   applyAcademicYearStartYearChange,
@@ -212,10 +212,10 @@ function termKey(columnKey: string) {
 
 function isArchiveReadinessCell(value: unknown): value is ArchiveReadinessCellVO {
   return (
-    typeof value === 'object' &&
-    value !== null &&
-    'storedCount' in value &&
-    'totalVolumeCount' in value
+    typeof value === 'object'
+    && value !== null
+    && 'storedCount' in value
+    && 'totalVolumeCount' in value
   )
 }
 

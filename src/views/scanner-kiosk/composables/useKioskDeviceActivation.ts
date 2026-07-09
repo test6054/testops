@@ -2,6 +2,7 @@ import type {
   AgentHealthResponse,
   AgentSetupContextResponse,
 } from '@/apis/mark/scanner-agent-local'
+import { computed, ref } from 'vue'
 import {
   activateLocalAgent,
   getAgentHealth,
@@ -9,7 +10,6 @@ import {
   LOCAL_AGENT_UNAVAILABLE_ERROR,
   LocalAgentUnavailableError,
 } from '@/apis/mark/scanner-agent-local'
-import { computed, ref } from 'vue'
 import { AgentDiagnosticStatusCode } from '@/types/enums/agent-diagnostic-status-enum'
 import {
   KioskActivationGateReasonCode,
@@ -64,9 +64,9 @@ function createKioskDeviceActivation() {
   const isDeviceBound = computed(() => Boolean(health.value?.bound))
   const activationModalForced = computed(
     () =>
-      !health.value?.bound ||
-      Boolean(health.value?.tokenResetRequired) ||
-      Boolean(health.value?.rebindRequired),
+      !health.value?.bound
+      || Boolean(health.value?.tokenResetRequired)
+      || Boolean(health.value?.rebindRequired),
   )
   const needsActivationGate = computed(
     () => activationModalForced.value || manualActivationGateOpen.value,
@@ -150,9 +150,9 @@ function createKioskDeviceActivation() {
 
   function isActivatedForMarkApis(): boolean {
     return (
-      hasActiveDeviceActivation() &&
-      !health.value?.tokenResetRequired &&
-      !health.value?.rebindRequired
+      hasActiveDeviceActivation()
+      && !health.value?.tokenResetRequired
+      && !health.value?.rebindRequired
     )
   }
 
@@ -201,7 +201,7 @@ function createKioskDeviceActivation() {
         activationCode: string
         endpointName: string
       }
-    | {
+      | {
         ok: false
         errorMessage: string
       } {

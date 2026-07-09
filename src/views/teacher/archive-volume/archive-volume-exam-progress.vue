@@ -80,9 +80,7 @@
         <div v-if="isPackaging" class="archive-exam-review__packaging">
           <div class="archive-exam-review__packaging-head">
             <span>{{ packagingProgressLabel }}</span>
-            <span class="archive-exam-review__packaging-percent"
-              >{{ packagingProgressPercent }}%</span
-            >
+            <span class="archive-exam-review__packaging-percent">{{ packagingProgressPercent }}%</span>
           </div>
           <div class="archive-exam-review__packaging-track">
             <div
@@ -176,6 +174,10 @@ import type {
   ArchiveVolumeExamVolumeProgressItemVO,
   ArchiveVolumeResponse,
 } from '@/apis/mark/archive-volume'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   ArchiveIntegrityStatusDescription,
   ArchiveVolumeStatusDescription,
@@ -184,10 +186,6 @@ import {
   pageArchiveVolumes,
   retryArchiveVolumeAutoCreate,
 } from '@/apis/mark/archive-volume'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { createExamArchivePackage, retryExamArchivePackaging } from '@/apis/mark/exam-archive'
 import ArchiveDimPill from '@/components/archive-volume/ArchiveDimPill.vue'
 import ArchiveExamAutoCreateStatus from '@/components/archive-volume/ArchiveExamAutoCreateStatus.vue'
@@ -309,8 +307,8 @@ const canCreatePackage = computed(() => {
 
 const showRetryPackagingAction = computed(
   () =>
-    gateOpen.value &&
-    archivePackage.value?.archiveStatus === ArchivePackageStatusCode.PACKAGING_FAILED,
+    gateOpen.value
+    && archivePackage.value?.archiveStatus === ArchivePackageStatusCode.PACKAGING_FAILED,
 )
 
 const reviewStatusLabel = computed(() => {
@@ -333,20 +331,20 @@ const reviewStatusLabel = computed(() => {
 const reviewStatusTone = computed(() => {
   const pkgStatus = archivePackage.value?.archiveStatus
   if (
-    pkgStatus === ArchivePackageStatusCode.ACTIVE ||
-    pkgStatus === ArchivePackageStatusCode.STORED
+    pkgStatus === ArchivePackageStatusCode.ACTIVE
+    || pkgStatus === ArchivePackageStatusCode.STORED
   ) {
     return 'green' as const
   }
   if (
-    pkgStatus === ArchivePackageStatusCode.PACKAGING ||
-    pkgStatus === ArchivePackageStatusCode.DRAFT
+    pkgStatus === ArchivePackageStatusCode.PACKAGING
+    || pkgStatus === ArchivePackageStatusCode.DRAFT
   ) {
     return 'blue' as const
   }
   if (
-    pkgStatus === ArchivePackageStatusCode.PACKAGING_FAILED ||
-    pkgStatus === ArchivePackageStatusCode.DESTRUCTION_FAILED
+    pkgStatus === ArchivePackageStatusCode.PACKAGING_FAILED
+    || pkgStatus === ArchivePackageStatusCode.DESTRUCTION_FAILED
   ) {
     return 'red' as const
   }
@@ -370,8 +368,8 @@ const reviewSignals = computed<SignalMetric[]>(() => {
       key: 'archive-status',
       label: '归档状态',
       value:
-        pkg?.archiveStatusLabel ??
-        (pkg?.archiveStatus
+        pkg?.archiveStatusLabel
+        ?? (pkg?.archiveStatus
           ? strictEnumLabel(ArchivePackageStatusDescription, pkg.archiveStatus, 'archiveStatus')
           : '未创建'),
       tone: reviewStatusTone.value,
@@ -402,10 +400,10 @@ const reviewSignals = computed<SignalMetric[]>(() => {
 
 const showVolumeCollapse = computed(
   () =>
-    gateOpen.value &&
-    (healthyVolumes.value.length > 0 ||
-      hasAutoCreateFailure.value ||
-      examGate.value?.autoCreatePendingStatus != null),
+    gateOpen.value
+    && (healthyVolumes.value.length > 0
+      || hasAutoCreateFailure.value
+      || examGate.value?.autoCreatePendingStatus != null),
 )
 
 const volumeCollapseHeader = computed(() => {
@@ -423,10 +421,10 @@ const volumeCollapseHeader = computed(() => {
 
 const showVolumeAutoCreateStatus = computed(
   () =>
-    gateOpen.value &&
-    (hasAutoCreateFailure.value ||
-      examGate.value?.autoCreatePendingStatus != null ||
-      showRetryAutoCreate.value),
+    gateOpen.value
+    && (hasAutoCreateFailure.value
+      || examGate.value?.autoCreatePendingStatus != null
+      || showRetryAutoCreate.value),
 )
 
 const volumeTableColumns = computed(() => {
@@ -450,24 +448,24 @@ const autoCreateFailedEvent = computed(() =>
 const autoCreateFailedNeedsClassScope = computed(() => {
   const category = examGate.value?.autoCreateFailureCategory
   return (
-    category != null &&
-    isArchiveAutoCreateFailureCategory(category) &&
-    CLASS_SCOPE_FIX_AUTO_CREATE_FAILURE_CATEGORIES.has(category)
+    category != null
+    && isArchiveAutoCreateFailureCategory(category)
+    && CLASS_SCOPE_FIX_AUTO_CREATE_FAILURE_CATEGORIES.has(category)
   )
 })
 
 const hasAutoCreateFailure = computed(
   () =>
-    examGate.value?.autoCreateFailureStubPresent === true ||
-    autoCreateFailedEvent.value != null ||
-    examGate.value?.autoCreatePendingStatus ===
-      ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED,
+    examGate.value?.autoCreateFailureStubPresent === true
+    || autoCreateFailedEvent.value != null
+    || examGate.value?.autoCreatePendingStatus
+    === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED,
 )
 
 const showRetryAutoCreate = computed(
   () =>
-    examGate.value?.archiveAutoCreateRetryAllowed === true &&
-    !autoCreateFailedNeedsClassScope.value,
+    examGate.value?.archiveAutoCreateRetryAllowed === true
+    && !autoCreateFailedNeedsClassScope.value,
 )
 
 const showNonOwnerHint = computed(() => {
@@ -479,9 +477,9 @@ const showNonOwnerHint = computed(() => {
     return false
   }
   return (
-    hasAutoCreateFailure.value ||
-    gate.autoCreatePendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED ||
-    (gate.gateOpen === true && !gate.autoCreateFailureStubPresent)
+    hasAutoCreateFailure.value
+    || gate.autoCreatePendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED
+    || (gate.gateOpen === true && !gate.autoCreateFailureStubPresent)
   )
 })
 

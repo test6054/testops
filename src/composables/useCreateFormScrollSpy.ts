@@ -22,8 +22,8 @@ export function useCreateFormScrollSpy(
       return injectedScrollContainer.value
     }
     return (
-      document.querySelector('.create-form-page__scroll') ??
-      document.querySelector('.main-scroll-wrapper')
+      document.querySelector('.create-form-page__scroll')
+      ?? document.querySelector('.main-scroll-wrapper')
     )
   }
 

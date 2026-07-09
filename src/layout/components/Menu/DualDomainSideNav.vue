@@ -160,9 +160,9 @@
 <script lang="ts" setup>
 import type { Key } from 'ant-design-vue/es/_util/type'
 import type { RouteRecordRaw } from 'vue-router'
-import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { isPortfolioRoute, QUALITY_ADMIN_MENU_GROUP } from '@/utils/portfolio-route'
 import { isExternal } from '@/utils/validate'
 import MenuCollapsedTooltip from './MenuCollapsedTooltip.vue'
@@ -312,8 +312,8 @@ function normalizeOpenKeys(keys: Key[]): Key[] {
         continue
       }
       next.delete(domainKey)
-      const groupKeys =
-        domainKey === MARKING_DOMAIN_KEY
+      const groupKeys
+        = domainKey === MARKING_DOMAIN_KEY
           ? markingGroupKeys
           : domainKey === PLATFORM_DOMAIN_KEY
             ? platformGroupKeys
@@ -386,10 +386,10 @@ function collectGroupedRoutes(grouped: {
 function onMenuClick({ key }: { key: Key }) {
   const keyStr = String(key)
   if (
-    keyStr === MARKING_DOMAIN_KEY ||
-    keyStr === PLATFORM_DOMAIN_KEY ||
-    keyStr === QUALITY_DOMAIN_KEY ||
-    keyStr === PORTFOLIO_DOMAIN_KEY
+    keyStr === MARKING_DOMAIN_KEY
+    || keyStr === PLATFORM_DOMAIN_KEY
+    || keyStr === QUALITY_DOMAIN_KEY
+    || keyStr === PORTFOLIO_DOMAIN_KEY
   ) {
     return
   }

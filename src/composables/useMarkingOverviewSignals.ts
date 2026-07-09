@@ -1,11 +1,11 @@
 import type { MaybeRefOrGetter } from 'vue'
-import { computed, toValue } from 'vue'
 import type {
   MarkTeacherDashboardFilterContextVO,
   MarkTeacherDashboardMarkingProgressSummaryVO,
   MarkTeacherDashboardSignalMetricsVO,
 } from '@/apis/mark/teacher-dashboard'
 import type { SignalMetric } from '@/types/workbench'
+import { computed, toValue } from 'vue'
 
 export interface UseMarkingOverviewSignalsOptions {
   filterContext?: MaybeRefOrGetter<MarkTeacherDashboardFilterContextVO | undefined>
@@ -27,13 +27,13 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
 
     const totalQuestions = progress?.totalQuestionGradeCount ?? 0
     const confirmedQuestions = progress?.confirmedQuestionGradeCount ?? 0
-    const markingPercent =
-      totalQuestions > 0 ? Math.round((confirmedQuestions / totalQuestions) * 1000) / 10 : 0
+    const markingPercent
+      = totalQuestions > 0 ? Math.round((confirmedQuestions / totalQuestions) * 1000) / 10 : 0
 
     const pendingExceptionCount = progress
-      ? (progress.scanAttentionCount ?? 0) +
-        (progress.pendingReviewTaskCount ?? 0) +
-        (progress.pendingGradeCount ?? 0)
+      ? (progress.scanAttentionCount ?? 0)
+      + (progress.pendingReviewTaskCount ?? 0)
+      + (progress.pendingGradeCount ?? 0)
       : dash
 
     const activeExamCount = m?.activeExamCount ?? dash

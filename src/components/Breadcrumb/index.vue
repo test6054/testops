@@ -8,19 +8,17 @@
       >
         <span
           v-if="
-            item.redirect === 'noRedirect' ||
-            item.redirect === '' ||
-            index === breadcrumbList.length - 1
+            item.redirect === 'noRedirect'
+              || item.redirect === ''
+              || index === breadcrumbList.length - 1
           "
           class="breadcrumb-item-ellipsis"
-          >{{ breadcrumbTitle(item) }}</span
-        >
+        >{{ breadcrumbTitle(item) }}</span>
         <span
           v-else
           class="breadcrumb-item-ellipsis breadcrumb-item-title"
           @click="handleLink(item)"
-          >{{ breadcrumbTitle(item) }}</span
-        >
+        >{{ breadcrumbTitle(item) }}</span>
         <RightOutlined v-if="index !== breadcrumbList.length - 1" />
       </a-breadcrumb-item>
     </transition-group>
@@ -45,9 +43,9 @@ const getHome = () => {
     const obj = XEUtils.findTree(
       routes,
       (i) =>
-        i.path === '/teacher/dashboard' ||
-        i.path === '/teacher/exam-list' ||
-        i.path === '/student/score',
+        i.path === '/teacher/dashboard'
+        || i.path === '/teacher/exam-list'
+        || i.path === '/student/score',
     )
     home = obj?.item || null
   }
