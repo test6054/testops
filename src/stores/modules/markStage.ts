@@ -11,15 +11,15 @@ import {
 } from '@/composables/useConfidentialWatermark'
 
 export type MarkStageKey
-  = | 'EXAM_PREP'
-    | 'PAPER_TEMPLATE'
-    | 'CANDIDATE_ROSTER'
-    | 'SCAN'
-    | 'MARKING_ORG'
-    | 'TRIAL_MARKING'
-    | 'FORMAL_MARKING'
-    | 'SCORE_PUBLISH'
-    | 'ARCHIVE'
+   = | 'EXAM_PREP'
+     | 'PAPER_TEMPLATE'
+     | 'CANDIDATE_ROSTER'
+     | 'SCAN'
+     | 'MARKING_ORG'
+     | 'TRIAL_MARKING'
+     | 'FORMAL_MARKING'
+     | 'SCORE_PUBLISH'
+     | 'ARCHIVE'
 
 export interface SelectedExamMeta {
   examId: string

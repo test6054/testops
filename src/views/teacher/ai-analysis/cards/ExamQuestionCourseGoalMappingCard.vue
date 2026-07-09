@@ -1,10 +1,29 @@
 <template>
-  <component :is="embedded ? AiAnalysisSection : 'article'" v-bind="shellProps">
-    <template v-if="embedded" #actions>
+  <AiAnalysisSection
+    v-if="embedded"
+    title="试题-课程目标映射"
+    class="exam-goal-mapping-card exam-goal-mapping-card--section"
+  >
+    <template #actions>
       <UiButton size="sm" variant="outline" :loading="loading" @click="loadData">刷新</UiButton>
     </template>
 
-    <header v-if="!embedded" class="exam-goal-mapping-card__header">
+    <p class="exam-goal-mapping-card__desc exam-goal-mapping-card__desc--embedded">
+      维护各题与质量评价课程目标的支撑关系，供归档卷生成课程目标达成报告。
+    </p>
+
+    <ExamQuestionCourseGoalMappingTable
+      :loading="loading"
+      :course-goals="courseGoals"
+      :columns="columns"
+      :rows="rows"
+      :goal-options="goalOptions"
+      @mapping-row-action="handleMappingRowAction"
+    />
+  </AiAnalysisSection>
+
+  <article v-else class="exam-goal-mapping-card">
+    <header class="exam-goal-mapping-card__header">
       <div>
         <h4 class="exam-goal-mapping-card__title">试题-课程目标映射</h4>
         <p class="exam-goal-mapping-card__desc">
@@ -14,67 +33,15 @@
       <UiButton size="sm" variant="outline" :loading="loading" @click="loadData">刷新</UiButton>
     </header>
 
-    <p v-else class="exam-goal-mapping-card__desc exam-goal-mapping-card__desc--embedded">
-      维护各题与质量评价课程目标的支撑关系，供归档卷生成课程目标达成报告。
-    </p>
-
-    <UiSkeletonState v-if="loading" variant="card" compact />
-    <UiEmpty
-      v-else-if="courseGoals.length === 0"
-      description="质量评价未配置课程目标，请先在质量评价域维护后再映射"
-    />
-    <UiDataTable
-      v-else
-      pagination-mode="none"
+    <ExamQuestionCourseGoalMappingTable
+      :loading="loading"
+      :course-goals="courseGoals"
       :columns="columns"
-      :data-source="rows"
-      :show-pagination="false"
-      flat
-      row-key="layoutQuestionId"
-      size="middle"
-      empty-description="暂无试题，请先完成题目质量分析"
-    >
-      <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'goal'">
-          <a-select
-            v-model:value="record.qualityCourseGoalId"
-            class="exam-goal-mapping-card__select"
-            placeholder="选择课程目标"
-            :options="goalOptions"
-            allow-clear
-            show-search
-            option-filter-prop="label"
-          />
-        </template>
-        <template v-else-if="column.key === 'weight'">
-          <a-input-number
-            v-model:value="record.weight"
-            class="exam-goal-mapping-card__weight"
-            :min="0.0001"
-            :max="999"
-            :step="0.1"
-            :precision="4"
-          />
-        </template>
-        <template v-else-if="column.key === 'actions'">
-          <UiTableActions
-            :items="[
-              { key: 'save', label: '保存', tone: 'primary', disabled: record.saving },
-              {
-                key: 'clear',
-                label: '清除',
-                tone: 'danger',
-                hidden: !record.mappingId,
-                disabled: record.deleting,
-              },
-            ]"
-            split
-            @action="(key) => handleMappingRowAction(key, record)"
-          />
-        </template>
-      </template>
-    </UiDataTable>
-  </component>
+      :rows="rows"
+      :goal-options="goalOptions"
+      @mapping-row-action="handleMappingRowAction"
+    />
+  </article>
 </template>
 
 <script setup lang="ts">
@@ -95,12 +62,9 @@ import {
 import { fetchAllQuestionAnalysisRows } from '@/apis/mark/question-analysis'
 import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
-import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
+import ExamQuestionCourseGoalMappingTable from './ExamQuestionCourseGoalMappingTable.vue'
 
 defineOptions({ name: 'ExamQuestionCourseGoalMappingCard' })
 
@@ -112,15 +76,6 @@ const props = withDefaults(
     embedded?: boolean
   }>(),
   { embedded: false },
-)
-
-const shellProps = computed(() =>
-  props.embedded
-    ? {
-        title: '试题-课程目标映射',
-        class: 'exam-goal-mapping-card exam-goal-mapping-card--section',
-      }
-    : { class: 'exam-goal-mapping-card' },
 )
 
 interface MappingRow {

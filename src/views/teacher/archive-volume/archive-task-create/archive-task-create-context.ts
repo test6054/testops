@@ -10,7 +10,10 @@ import type { SemesterCode } from '@/types/enums/semester-enum'
 import { inject } from 'vue'
 
 export type ArchiveTaskCreateSectionKey
-  = 'archive-task-provenance' | 'archive-task-basic' | 'archive-task-plan' | 'archive-task-confirm'
+  = | 'archive-task-provenance'
+    | 'archive-task-basic'
+    | 'archive-task-plan'
+    | 'archive-task-confirm'
 
 export const ARCHIVE_TASK_CREATE_SECTION_ORDER: ArchiveTaskCreateSectionKey[] = [
   'archive-task-provenance',

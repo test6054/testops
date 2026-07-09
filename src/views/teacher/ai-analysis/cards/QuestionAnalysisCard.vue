@@ -1,5 +1,9 @@
 <template>
-  <component :is="embedded ? AiAnalysisSection : WorkbenchSurfaceCard" v-bind="shellProps">
+  <AiAnalysisCardShell
+    :embedded="embedded"
+    title="题目质量分析"
+    card-class="stats-card"
+  >
     <template v-if="!embedded" #head>
       <h3 class="stats-card__title">题目质量分析</h3>
     </template>
@@ -190,7 +194,7 @@
         </UiDataTable>
       </template>
     </div>
-  </component>
+  </AiAnalysisCardShell>
 </template>
 
 <script lang="ts" setup>
@@ -212,13 +216,12 @@ import {
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkScatterSection from '@/components/chart/MarkScatterSection.vue'
-import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'
+import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { buildNumericColumn } from '@/components/ui-guide/ui/data-table'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
-import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useAiAnalysisGenerationFeedback } from '@/composables/useAiAnalysisGenerationFeedback'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError } from '@/utils/error-handler'
@@ -251,10 +254,6 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{ (e: 'generated'): void }>()
-
-const shellProps = computed(() =>
-  props.embedded ? { title: '题目质量分析' } : { class: 'stats-card' },
-)
 
 const chartRows = ref<ExamQuestionAnalysisRecordResponse[]>([])
 const tableRows = ref<ExamQuestionAnalysisRecordResponse[]>([])

@@ -355,8 +355,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'PrinterManagement' })
 
 const { refreshSnapshot } = useWorkspaceExamId()
-const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
-  = useExamJourneyContextBar('扫描设备')
+const { examStatusLabel, examStatusTone } = useExamJourneyContextBar('扫描设备')
 
 /** 扫描设备写操作后刷新列表，并同步工作台 SCAN 段快照与 OCR 配置页。 */
 async function syncAfterDeviceMutation(): Promise<void> {

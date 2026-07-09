@@ -51,7 +51,9 @@
         <span
           v-if="!collapsed && showSuggestionBadge(stage.key)"
           class="exam-journey-sidebar-nav__badge"
-        >下一步</span>
+        >
+          下一步
+        </span>
       </button>
     </template>
   </nav>

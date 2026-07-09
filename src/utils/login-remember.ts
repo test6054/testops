@@ -1,8 +1,3 @@
-import {
-  STORAGE_REMEMBER_ME,
-  STORAGE_REMEMBERED_USERNAME,
-} from '@/constants/storage-keys'
-
 /** 账号登录页「记住我」配置，仅持久化用户名，不存密码 */
 export interface LoginRememberConfig {
   rememberMe: boolean
@@ -48,22 +43,13 @@ export function writeLoginRememberConfig(config: LoginRememberConfig) {
 }
 
 /**
- * 清除历史遗留的 rememberedUsername / rememberMe 键。
- */
-export function clearLegacyRememberKeys() {
-  localStorage.removeItem(STORAGE_REMEMBERED_USERNAME)
-  localStorage.removeItem(STORAGE_REMEMBER_ME)
-}
-
-/**
- * 取消「记住我」时立即生效：清空已存用户名并移除遗留键。
+ * 取消「记住我」时立即生效：清空已存用户名。
  */
 export function clearRememberedAccount() {
   writeLoginRememberConfig({
     rememberMe: false,
     username: '',
   })
-  clearLegacyRememberKeys()
 }
 
 /**
@@ -74,34 +60,10 @@ export function persistRememberedAccount(username: string) {
     rememberMe: true,
     username,
   })
-  clearLegacyRememberKeys()
 }
 
 /**
- * 将旧版 rememberedUsername 迁移进 login-config（一次性）。
- */
-export function migrateLegacyRememberedAccount(): LoginRememberConfig {
-  const config = readLoginRememberConfig()
-  if (config.username || !config.rememberMe) {
-    clearLegacyRememberKeys()
-    return config
-  }
-  const legacyUsername = localStorage.getItem(STORAGE_REMEMBERED_USERNAME)
-  if (!legacyUsername) {
-    clearLegacyRememberKeys()
-    return config
-  }
-  const merged: LoginRememberConfig = {
-    rememberMe: true,
-    username: legacyUsername,
-  }
-  writeLoginRememberConfig(merged)
-  clearLegacyRememberKeys()
-  return merged
-}
-
-/**
- * 登出时：未勾选记住我则清除已存用户名；始终清理遗留键。
+ * 登出时：未勾选记住我则清除已存用户名。
  */
 export function syncRememberedAccountOnLogout() {
   const config = readLoginRememberConfig()
@@ -111,5 +73,4 @@ export function syncRememberedAccountOnLogout() {
       username: '',
     })
   }
-  clearLegacyRememberKeys()
 }

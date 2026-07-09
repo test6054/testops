@@ -4,9 +4,9 @@
  */
 
 export type ContentType
-  = | 'application/json'
-    | 'application/x-www-form-urlencoded'
-    | 'multipart/form-data'
+   = | 'application/json'
+     | 'application/x-www-form-urlencoded'
+     | 'multipart/form-data'
 
 /**
  * HTTP状态码映射

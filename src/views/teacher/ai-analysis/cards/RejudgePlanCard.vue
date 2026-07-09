@@ -1,5 +1,5 @@
 <template>
-  <component :is="embedded ? AiAnalysisSection : WorkbenchSurfaceCard" v-bind="shellProps">
+  <AiAnalysisCardShell :embedded="embedded" title="重判计划" card-class="stats-card">
     <template v-if="!embedded" #head>
       <h3 class="stats-card__title">重判计划</h3>
     </template>
@@ -107,7 +107,7 @@
         />
       </UiDrawer>
     </div>
-  </component>
+  </AiAnalysisCardShell>
 </template>
 
 <script lang="ts" setup>
@@ -129,13 +129,12 @@ import {
   RejudgePlanStatusDescription,
   RejudgeTriggerTypeDescription,
 } from '@/apis/mark/question-analysis'
-import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'
+import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
-import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -154,10 +153,6 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{ changed: [] }>()
-
-const shellProps = computed(() =>
-  props.embedded ? { title: '重判计划' } : { class: 'stats-card' },
-)
 
 const rows = ref<ExamRejudgePlan[]>([])
 const loading = ref(false)

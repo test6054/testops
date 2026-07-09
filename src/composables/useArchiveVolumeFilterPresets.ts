@@ -7,15 +7,15 @@ import { getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
 export type ArchiveVolumeListTabKey = 'mine' | 'college' | 'archive'
 
 export type ArchiveVolumeScenarioKey
-  = | 'collecting-materials'
-    | 'catalog-pending'
-    | 'submit-ready'
-    | 'remediation-open'
-    | 'pending-review'
-    | 'term-not-stored'
-    | 'department-review-pending'
-    | 'archive-overdue'
-    | 'archive-due-soon'
+   = | 'collecting-materials'
+     | 'catalog-pending'
+     | 'submit-ready'
+     | 'remediation-open'
+     | 'pending-review'
+     | 'term-not-stored'
+     | 'department-review-pending'
+     | 'archive-overdue'
+     | 'archive-due-soon'
 
 export interface ArchiveVolumeFilterPreset {
   key: ArchiveVolumeScenarioKey

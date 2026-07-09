@@ -1,21 +1,21 @@
 /** 质量评价页上下文维度（路由 meta.scopeProfile） */
 export type QualityScopeProfile
-  = | 'none'
-    | 'program'
-    | 'plan'
-    | 'plan-period'
-    | 'plan-course'
-    | 'accreditation'
+   = | 'none'
+     | 'program'
+     | 'plan'
+     | 'plan-period'
+     | 'plan-course'
+     | 'accreditation'
 
 /** Publish 类路由门控（与 scopeProfile 正交） */
 export type QualityGate = 'plan-confirmed'
 
 export type QualityStoreScopeField
-  = | 'currentProgramId'
-    | 'currentTrainingPlanId'
-    | 'currentSchoolYear'
-    | 'currentSemester'
-    | 'currentQualityCourseId'
+   = | 'currentProgramId'
+     | 'currentTrainingPlanId'
+     | 'currentSchoolYear'
+     | 'currentSemester'
+     | 'currentQualityCourseId'
 
 export const DEFAULT_SCOPE_WATCH_FIELDS: Record<QualityScopeProfile, QualityStoreScopeField[]> = {
   "none": [],

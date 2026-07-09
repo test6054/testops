@@ -191,7 +191,6 @@ import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJour
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
-import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
@@ -202,7 +201,6 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'TeacherMarkingSpotCheck' })
 
 const { selectedExamId } = useMarkExamContext()
-const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar('阅卷抽检')
 const { refreshSnapshot } = useWorkspaceExamId()
 
 const pendingItems = ref<MyPendingSpotCheckItemResponse[]>([])

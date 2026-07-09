@@ -33,7 +33,7 @@ export {
 
 /** 诊断样本来源类型 */
 export type DiagnosticSourceTypeCode
-  = 'SCANNED_PAGE' | 'RESPONSE_SLICE' | 'GRADE_RESULT' | 'RECOGNITION_RESULT'
+   = 'SCANNED_PAGE' | 'RESPONSE_SLICE' | 'GRADE_RESULT' | 'RECOGNITION_RESULT'
 
 /** 审计操作类型下拉选项，值来源必须与 OperationTypeCode 完全一致 */
 export const OPERATION_TYPE_OPTIONS: Array<{ label: string, value: OperationTypeCode }>

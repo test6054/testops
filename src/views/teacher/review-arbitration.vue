@@ -205,7 +205,6 @@ import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJour
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
-import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
@@ -222,7 +221,6 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const { selectedExamId } = useMarkExamContext()
-const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar('仲裁裁定')
 const { refreshSnapshot } = useWorkspaceExamId()
 
 const currentUserId = computed(() => userStore.userInfo.userId || '')

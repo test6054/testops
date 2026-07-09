@@ -1,5 +1,5 @@
 <template>
-  <component :is="embedded ? AiAnalysisSection : WorkbenchSurfaceCard" v-bind="shellProps">
+  <AiAnalysisCardShell :embedded="embedded" title="整卷测量学质量" card-class="stats-card">
     <template v-if="!embedded" #head>
       <h3 class="stats-card__title">整卷测量学质量</h3>
     </template>
@@ -20,7 +20,7 @@
       compact
       class="paper-quality-card__metrics"
     />
-  </component>
+  </AiAnalysisCardShell>
 </template>
 
 <script lang="ts" setup>
@@ -29,12 +29,11 @@ import type { SignalMetric } from '@/types/workbench'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, ref, watch } from 'vue'
 import { getExamPaperAnalysis } from '@/apis/mark/question-analysis'
-import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'
+import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
-import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { buildPaperQualitySignalMetrics } from '@/utils/paper-quality-signals'
 
 defineOptions({ name: 'PaperQualityCard' })
@@ -54,10 +53,6 @@ const props = withDefaults(
 
 const analysis = ref<ExamPaperAnalysisResponse | null>(null)
 const loading = ref(false)
-
-const shellProps = computed(() =>
-  props.embedded ? { title: '整卷测量学质量' } : { class: 'stats-card' },
-)
 
 const qualityMetrics = computed((): SignalMetric[] =>
   buildPaperQualitySignalMetrics(analysis.value),

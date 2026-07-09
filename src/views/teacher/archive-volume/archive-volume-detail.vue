@@ -313,6 +313,16 @@
         </template>
       </ArchiveFlowContextBar>
 
+      <ArchiveLifecyclePipe
+        v-if="collectPhaseLifecycleView"
+        class="archive-volume-detail__lifecycle"
+        title="提交前主链"
+        embedded
+        :steps="collectPhaseLifecycleView.steps"
+        :completed-count="collectPhaseLifecycleView.completedCount"
+        :total-count="collectPhaseLifecycleView.totalCount"
+      />
+
       <ArchiveVolumeSubmitProgressBand
         v-if="detail.submitProgress"
         :progress="detail.submitProgress"
@@ -391,6 +401,7 @@
           :volume-id="volumeId"
           :detail="detail"
           @refreshed="loadDetail"
+          @navigate-tab="setActiveTab"
         />
 
         <ArchiveVolumeTransferPanel
@@ -535,6 +546,7 @@ import {
   submitArchiveVolume,
   updateRemediationTask,
 } from '@/apis/mark/archive-volume'
+import ArchiveLifecyclePipe from '@/components/archive-volume/ArchiveLifecyclePipe.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -552,6 +564,7 @@ import { useArchiveVolumeWorkbenchContext } from '@/composables/useArchiveVolume
 import { isArchiveVolumeCollectPhase } from '@/constants/archive-volume-sidebar-groups'
 import { useUserStore } from '@/stores/modules/user'
 import { resolveSecurityDiagnosticMessage } from '@/utils/archive-four-property-diagnostic'
+import { buildVolumeNavigationLifecycleView } from '@/utils/archive-navigation-summary'
 import {
   isSecurityRemediationDiagnostic,
   remediationDiagnosticLabel,
@@ -636,6 +649,13 @@ const nextStepActions = workbench.nextStepActions
 const showPostCollectFlowNav = computed(
   () => !isArchiveVolumeCollectPhase(detail.value?.volume.volumeStatus),
 )
+
+const collectPhaseLifecycleView = computed(() => {
+  if (!isArchiveVolumeCollectPhase(detail.value?.volume.volumeStatus)) {
+    return null
+  }
+  return buildVolumeNavigationLifecycleView(detail.value?.navigationSummary)
+})
 
 const contextBarSubtitle = computed(() => {
   const archiveNo = detail.value?.volume.archiveNo

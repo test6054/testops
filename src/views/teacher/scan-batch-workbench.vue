@@ -213,7 +213,7 @@ type StatusTabKey = 'ALL' | ScanBatchStatusCode
 const route = useRoute()
 const router = useRouter()
 const { selectedExamId } = useMarkExamContext()
-const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
+const { contextBarSubtitle, examStatusLabel, examStatusTone }
   = useExamJourneyContextBar('扫描批次')
 
 const scanBatchContextSubtitle = computed(() => {

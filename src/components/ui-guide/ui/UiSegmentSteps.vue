@@ -110,10 +110,10 @@ function handleClick(step: UiStepItem, index: number) {
 @keyframes segment-pulse {
   0%,
   100% {
-    background-position: 0% 0%;
+    background-position: 0 0;
   }
   50% {
-    background-position: 100% 0%;
+    background-position: 100% 0;
   }
 }
 

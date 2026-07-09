@@ -207,8 +207,7 @@ defineOptions({ name: 'TeacherPrintPackage' })
 
 const { selectedExamId } = useMarkExamContext()
 const workbenchContext = useMarkWorkbenchContext()
-const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
-  = useExamJourneyContextBar('印刷包')
+const { examStatusLabel, examStatusTone } = useExamJourneyContextBar('印刷包')
 const { refreshSnapshot } = useWorkspaceExamId()
 
 const prepBlockingReasons = computed(

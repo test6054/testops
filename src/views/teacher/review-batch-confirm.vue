@@ -149,7 +149,6 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkWorkbenchContext, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
@@ -159,7 +158,6 @@ defineOptions({ name: 'TeacherReviewBatchConfirm' })
 
 const router = useRouter()
 const { selectedExamId } = useMarkExamContext()
-const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar('批量复核确认')
 const { refreshSnapshot } = useWorkspaceExamId()
 const { refreshing: workbenchRefreshing } = useMarkWorkbenchContext()
 

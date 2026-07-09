@@ -30,7 +30,6 @@ import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJour
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
-import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useExamMarkingProgressSessionList } from '@/composables/useExamMarkingProgressSessionList'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
@@ -49,9 +48,6 @@ const { examId } = useWorkspaceExamId()
 
 const isTrialPhase = computed(() => route.name === 'TeacherExamWorkspaceTrialProgress')
 const sessionPhase = computed(() => (isTrialPhase.value ? 'trial' as const : 'formal' as const))
-const stageLabel = computed(() => (isTrialPhase.value ? '试评进度' : '进度看板'))
-const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar(stageLabel)
-
 const loading = ref(false)
 const loadFailed = ref(false)
 const panel = ref<ExamWorkbenchMarkingProgressPanelResponse | null>(null)

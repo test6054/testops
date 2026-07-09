@@ -297,7 +297,6 @@ import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJour
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
-import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
 import { useChartOption } from '@/hooks/modules/useChartOption'
@@ -331,8 +330,6 @@ defineOptions({ name: 'TeacherReviewProgress' })
 
 const route = useRoute()
 const { selectedExamId } = useMarkExamContext()
-const progressStageLabel = computed(() => String(route.meta.title ?? '进度看板'))
-const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar(progressStageLabel)
 const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
 
 const successColor = toneToColor('green')

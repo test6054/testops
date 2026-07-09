@@ -2,12 +2,12 @@
 export const LOCAL_AGENT_WIRE_ERROR = '本地扫描服务响应异常，请检查扫描服务后重试'
 
 export type AgentWireJsonValue
-  = | string
-    | number
-    | boolean
-    | null
-    | AgentWireJsonObject
-    | AgentWireJsonValue[]
+   = | string
+     | number
+     | boolean
+     | null
+     | AgentWireJsonObject
+     | AgentWireJsonValue[]
 
 export interface AgentWireJsonObject {
   [key: string]: AgentWireJsonValue | undefined

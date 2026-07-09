@@ -53,10 +53,8 @@ export function useArchiveVolumeDetailScope(
     const d = detail.value
     if (!d || !volumeAcceptsSubmitStatus(d.volume.volumeStatus)) return false
     if (capabilities.value.canSubmitVolume === true) return true
-    return (
-      capabilities.value.member === true
+    return capabilities.value.member === true
       && (capabilities.value.canScan === true || capabilities.value.canEditCatalog === true)
-    )
   })
 
   const submitActionDisabledHint = computed(() => {

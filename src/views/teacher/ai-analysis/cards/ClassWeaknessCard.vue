@@ -1,5 +1,10 @@
 <template>
-  <component :is="embedded ? AiAnalysisSection : WorkbenchSurfaceCard" v-bind="shellProps">
+  <AiAnalysisCardShell
+    :embedded="embedded"
+    title="班级薄弱知识点"
+    :context="classContextLabel || undefined"
+    card-class="stats-card"
+  >
     <template v-if="!embedded" #head>
       <h3 class="stats-card__title">AI 班级薄弱题型分析</h3>
     </template>
@@ -95,7 +100,7 @@
         />
       </div>
     </AiAnalysisCardBody>
-  </component>
+  </AiAnalysisCardShell>
 </template>
 
 <script lang="ts" setup>
@@ -113,11 +118,10 @@ import {
   getLatestClassWeaknessAnalysis,
 } from '@/apis/mark/teaching-analysis'
 import AiAnalysisCardBody from '@/components/mark/analysis/AiAnalysisCardBody.vue'
+import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.vue'
 import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCollapse.vue'
-import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'
 import AiWeaknessRow from '@/components/mark/analysis/AiWeaknessRow.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useAiAnalysisGenerationFeedback } from '@/composables/useAiAnalysisGenerationFeedback'
 import { deriveWeaknessLevel } from '@/utils/ai-analysis-display'
 import { showUserError } from '@/utils/error-handler'
@@ -143,12 +147,6 @@ const emit = defineEmits<{ (e: 'class-change', classId?: string): void }>()
 const record = ref<TeachingAnalysisRecordResponse | null>(null)
 const loading = ref(false)
 const { generating, runGeneration } = useAiAnalysisGenerationFeedback()
-
-const shellProps = computed(() =>
-  props.embedded
-    ? { title: '班级薄弱知识点', context: classContextLabel.value || undefined }
-    : { class: 'stats-card' },
-)
 
 const emptyDescription = computed(() =>
   props.classId ? '暂无薄弱题型分析，可点击重新生成' : '请选择班级后查看薄弱题型',

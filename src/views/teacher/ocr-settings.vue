@@ -68,8 +68,7 @@ const currentConfig = ref<MarkOcrConfigResponse | null>(null)
 const recognizeResult = ref<MarkOcrRecognizeResponse | null>(null)
 const debugForm = ref<DebugFormState>({})
 const { selectedExamId } = useMarkExamContext()
-const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
-  = useExamJourneyContextBar('OCR 识别配置')
+const { examStatusLabel, examStatusTone } = useExamJourneyContextBar('OCR 识别配置')
 const authStore = useAuthStore()
 
 /** 同步调试仅平台管理员可用，教师工作台路径不暴露识别试跑入口。 */

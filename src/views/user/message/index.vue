@@ -657,6 +657,9 @@ function formatMessageType(type: NotificationTypeEnum): string {
     [NotificationTypeEnum.MARK_ARCHIVE_REMEDIATION_ASSIGNED]: '归档卷整改指派',
     [NotificationTypeEnum.MARK_ARCHIVE_REMEDIATION_RESUBMITTED]: '归档卷整改已重提',
     [NotificationTypeEnum.MARK_ARCHIVE_COLLECTION_REJECTED]: '归档卷收材驳回',
+    [NotificationTypeEnum.MARK_ARCHIVE_DEPARTMENT_REVIEW_REQUESTED]: '归档卷待院系审核',
+    [NotificationTypeEnum.MARK_ARCHIVE_DEPARTMENT_REVIEW_APPROVED]: '归档卷院系审核通过',
+    [NotificationTypeEnum.MARK_ARCHIVE_DEPARTMENT_REVIEW_REJECTED]: '归档卷院系审核驳回',
   }
   return map[type]
 }

@@ -3,7 +3,7 @@ import { StudentTaskStatusEnum } from '@/types/enums/student-task-status'
 import { TeacherReviewStatusEnum } from '@/types/enums/teacher-review-status'
 
 export type StatusVariant
-  = 'neutral' | 'info' | 'pending' | 'success' | 'warning' | 'danger' | 'purple'
+   = 'neutral' | 'info' | 'pending' | 'success' | 'warning' | 'danger' | 'purple'
 
 export interface StatusStyle {
   bgColor: string

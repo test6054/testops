@@ -383,8 +383,7 @@ const insightSignalMetrics = computed(() => toSignalMetrics(insightItems.value))
 async function loadExams() {
   loading.value = true
   try {
-    const loadedExams = await listMyExams()
-    exams.value = loadedExams
+    exams.value = await listMyExams()
   } catch (error) {
     exams.value = []
     showUserError(error, '考试成绩列表加载失败')

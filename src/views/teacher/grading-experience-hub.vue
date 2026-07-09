@@ -478,7 +478,6 @@ import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJour
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
-import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
@@ -489,7 +488,6 @@ defineOptions({ name: 'TeacherGradingExperienceHub' })
 
 // 考试工作台内由 useMarkExamContext 注入当前考试
 const { selectedExamId } = useMarkExamContext()
-const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar('阅卷经验库')
 const { refreshSnapshot } = useWorkspaceExamId()
 
 const activeTab = ref<'signature' | 'experience' | 'cluster'>('signature')

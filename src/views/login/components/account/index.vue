@@ -87,8 +87,8 @@ import { useAuthStore, useTenantStore, useUserStore } from '@/stores'
 import { ErrorType, getUserErrorMessage, standardizeError } from '@/utils/error-handler'
 import {
   clearRememberedAccount,
-  migrateLegacyRememberedAccount,
   persistRememberedAccount,
+  readLoginRememberConfig,
 } from '@/utils/login-remember'
 import { getSafeRedirect } from '@/utils/redirect-validator'
 
@@ -275,7 +275,7 @@ function queryString(value: unknown): string {
 }
 
 onMounted(() => {
-  const config = migrateLegacyRememberedAccount()
+  const config = readLoginRememberConfig()
   loginConfig.value.rememberMe = config.rememberMe
   loginConfig.value.username = config.username
   if (config.rememberMe && config.username) {

@@ -61,7 +61,7 @@ export interface ExamGradingExperienceAssistPolicyEnableRequest {
 }
 
 export type ExamGradingExperienceAssistPolicySaveRequest
-  = ExamGradingExperienceAssistPolicyEnableRequest
+   = ExamGradingExperienceAssistPolicyEnableRequest
 
 export interface ExamQuestionExperienceAssistBindingResponse {
   id?: string

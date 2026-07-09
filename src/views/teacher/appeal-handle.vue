@@ -108,12 +108,7 @@ type AppealTabKey = 'policy' | 'requests' | 'corrections' | 'batch'
 
 const { selectedExamId, selectedExam } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
-const {
-  contextBarTitle,
-  contextBarSubtitle,
-  examStatusLabel,
-  examStatusTone,
-} = useExamJourneyContextBar('成绩复核')
+const { examStatusLabel, examStatusTone } = useExamJourneyContextBar('成绩复核')
 
 const currentExamId = computed(() => selectedExamId.value || '')
 

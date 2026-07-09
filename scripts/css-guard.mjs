@@ -81,4 +81,4 @@ if (errors.length > 0) {
   process.exit(1)
 }
 
-console.log('css:guard passed')
+console.warn('css:guard passed')

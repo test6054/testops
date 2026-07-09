@@ -38,11 +38,6 @@ export function isMarkScannerStationApiUrl(url: string): boolean {
   )
 }
 
-/** @deprecated 使用 isMarkScannerStationApiUrl */
-export function isKioskApiUrl(url: string): boolean {
-  return isMarkScannerStationApiUrl(url)
-}
-
 export function saveKioskAuthSession(response: {
   pushAuthorizationHeader: string
   tenantId?: string
@@ -198,10 +193,6 @@ export async function ensureScannerStationTeacherJwt(): Promise<string | null> {
   return getValidToken()
 }
 
-export function hasMarkScannerJwtAuth(): boolean {
-  return Boolean(getValidToken())
-}
-
 export function hasMarkScannerKioskAuth(): boolean {
   return getKioskAuthSession() !== null
 }
@@ -254,15 +245,6 @@ export function resolveMarkScannerStationAuthHeaders(
 }
 
 /**
- * 扫描工位链路统一鉴权头：一体机页面优先 Agent push_token，教师页面优先 JWT。
- */
-export function buildMarkScannerStationAuthHeaders(
-  extra: Record<string, string> = {},
-): Record<string, string> {
-  return resolveMarkScannerStationAuthHeaders(extra).headers
-}
-
-/**
  * 扫描工位链路是否具备可用鉴权（JWT 或 push_token 任一即可）。
  */
 export function hasMarkScannerStationAuth(): boolean {
@@ -272,16 +254,6 @@ export function hasMarkScannerStationAuth(): boolean {
 /** Agent 已绑定但浏览器未缓存 push_token，应从本机 Agent 同步，不等于未激活。 */
 export function needsKioskBrowserSessionSync(agentBound: boolean | undefined): boolean {
   return Boolean(agentBound) && !hasMarkScannerKioskAuth()
-}
-
-/**
- * @deprecated 一体机页面请用 {@link needsKioskBrowserSessionSync}；仅教师端扫描看板保留。
- */
-export function needsKioskBrowserReactivation(agentBound: boolean | undefined): boolean {
-  if (isScannerKioskBrowserPage()) {
-    return needsKioskBrowserSessionSync(agentBound)
-  }
-  return Boolean(agentBound) && !hasMarkScannerJwtAuth() && !hasMarkScannerKioskAuth()
 }
 
 /** 本机 Agent 已绑定，正在或需要从 DeviceBinding 同步 push_token 到浏览器。 */

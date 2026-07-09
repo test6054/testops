@@ -18,7 +18,7 @@ export const WorkflowBlockingItemCode = {
 } as const
 
 export type WorkflowBlockingItemCodeValue
-  = (typeof WorkflowBlockingItemCode)[keyof typeof WorkflowBlockingItemCode]
+   = (typeof WorkflowBlockingItemCode)[keyof typeof WorkflowBlockingItemCode]
 
 const KNOWN_BLOCKING_CODES = new Set<string>(Object.values(WorkflowBlockingItemCode))
 

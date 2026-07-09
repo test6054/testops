@@ -312,8 +312,6 @@ const taskTableEmptyDescription = computed(() =>
 const { selectedExamId } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
 
-const examDetail = computed(() => workbenchContext?.examDetail?.value ?? null)
-
 /**
  * 当前登录教师 ID 参与查询条件组装。
  *

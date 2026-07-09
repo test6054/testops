@@ -13,12 +13,12 @@ import type { BadgeTone, UiArrowTimelineStatus } from '@/components/ui-guide/ui/
 
 /** 工作台阶段状态 - 业务语义层，映射到 UiArrowTimelineStatus 由 StageRail 内部完成 */
 export type WorkbenchStageStatus
-  = | 'pending'
-    | 'active'
-    | 'completed'
-    | 'warning'
-    | 'error'
-    | 'blocked'
+   = | 'pending'
+     | 'active'
+     | 'completed'
+     | 'warning'
+     | 'error'
+     | 'blocked'
 
 /** 工作台阶段指标 */
 export interface WorkbenchStageMetric {

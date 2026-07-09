@@ -150,7 +150,6 @@ import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJour
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
-import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkWorkbenchContext, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { ReviewTaskStatusCode } from '@/types/enums/review-task-status-enum'
@@ -161,7 +160,6 @@ defineOptions({ name: 'ReviewTaskHub' })
 
 const router = useRouter()
 const { examId } = useWorkspaceExamId()
-const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar('复核任务')
 const { refreshing: workbenchRefreshing, snapshot } = useMarkWorkbenchContext()
 
 const loading = ref(false)

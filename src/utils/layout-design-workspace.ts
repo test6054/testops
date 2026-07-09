@@ -77,9 +77,9 @@ export function resolvePrepStepLayoutDesignPhase(
 }
 
 export type LayoutDesignPhaseRouteQuery
-  = | LocationQueryValue
-    | LocationQueryValue[]
-    | undefined
+   = | LocationQueryValue
+     | LocationQueryValue[]
+     | undefined
 
 /** 将 Vue Router query 归一为制卷阶段解析可用的字符串合同。 */
 export function normalizeLayoutDesignPhaseQuery(

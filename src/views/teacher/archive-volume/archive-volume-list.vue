@@ -257,19 +257,13 @@
       </a-form>
     </UiDrawer>
 
-    <UiDrawer
-      :open="deptRejectOpen"
-      title="驳回院系审核"
-      :width="480"
-      :confirm-loading="deptRejecting"
-      ok-text="确认驳回"
-      :hide-footer="false"
-      @update:open="(v: boolean) => (deptRejectOpen = v)"
-      @close="deptRejectOpen = false"
-      @confirm="confirmDeptRejectFromList"
-    >
-      <a-textarea v-model:value="deptRejectReason" :rows="4" placeholder="驳回原因" />
-    </UiDrawer>
+    <DepartmentReviewListDrawer
+      :open="deptReviewDrawerOpen"
+      :volume-id="deptReviewVolumeId"
+      @update:open="(v: boolean) => (deptReviewDrawerOpen = v)"
+      @completed="handleDeptReviewDrawerCompleted"
+      @open-detail="goDetailWithTab"
+    />
 
     <UiDrawer v-model:open="importDrawerOpen" title="外部批量导入" width="580">
       <ArchiveVolumeExternalImportPanel @imported="handleImportCompleted" />
@@ -302,7 +296,6 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArchiveDutyTypeCode } from '@/apis/mark/archive-config'
 import {
-  approveArchiveVolumeDepartmentReview,
   ARCHIVE_VOLUME_SOURCE_TYPE_OPTIONS,
   ARCHIVE_VOLUME_SOURCE_TYPE_TONE,
   ArchiveTransferStatusCode,
@@ -314,7 +307,6 @@ import {
   pageArchiveVolumes,
   pageOverdueArchiveVolumes,
   previewArchiveVolumeSubmitChecklist,
-  rejectArchiveVolumeDepartmentReview,
   remindArchiveDue,
   requestArchiveVolumeDepartmentReview,
   withdrawArchiveVolumeDepartmentReview,
@@ -367,6 +359,7 @@ import ArchiveVolumeHistoryImportPanel from '@/views/teacher/archive-volume/arch
 import ArchiveVolumeRemediationPanel from '@/views/teacher/archive-volume/archive-volume-remediation-panel.vue'
 import ArchiveVolumeSupervisionPanel from '@/views/teacher/archive-volume/archive-volume-supervision-panel.vue'
 import ArchiveVolumeMineRemediationBanner from '@/views/teacher/archive-volume/components/ArchiveVolumeMineRemediationBanner.vue'
+import DepartmentReviewListDrawer from '@/views/teacher/archive-volume/components/DepartmentReviewListDrawer.vue'
 
 defineOptions({ name: 'TeacherArchiveVolumeList' })
 
@@ -417,10 +410,8 @@ const loading = ref(false)
 const batchRejecting = ref(false)
 const batchReminding = ref(false)
 const batchRejectOpen = ref(false)
-const deptRejectOpen = ref(false)
-const deptRejectReason = ref('')
-const deptRejectVolumeId = ref<string | null>(null)
-const deptRejecting = ref(false)
+const deptReviewDrawerOpen = ref(false)
+const deptReviewVolumeId = ref<string | null>(null)
 const importDrawerOpen = ref(false)
 const batchRejectReason = ref('')
 const volumes = ref<ArchiveVolumeResponse[]>([])
@@ -446,6 +437,7 @@ const listOverviewKpisFailed = ref(false)
 const filterExtras = reactive({
   integrityFailedOnly: false,
   archiveOverdueOnly: false,
+  collectingPhaseOnly: false,
 })
 const defaultYearSemester = getDefaultAcademicYearAndSemester()
 const defaultAcademicYearStart = parseAcademicYearStart(defaultYearSemester.academicYear)
@@ -596,7 +588,8 @@ const hasActiveListFilters = computed(() =>
     || filterForm.transferStatus
     || filterForm.appraisalStatus
     || filterExtras.integrityFailedOnly
-    || filterExtras.archiveOverdueOnly,
+    || filterExtras.archiveOverdueOnly
+    || filterExtras.collectingPhaseOnly,
   ),
 )
 
@@ -619,7 +612,7 @@ const activeArchiveSignalKey = computed(() => {
   if (filterForm.volumeStatus === 'SUBMITTED') {
     return 'submitted'
   }
-  if (filterForm.volumeStatus === 'COLLECTING') {
+  if (filterExtras.collectingPhaseOnly || filterForm.volumeStatus === 'COLLECTING') {
     return 'collecting'
   }
   return null
@@ -874,17 +867,9 @@ function buildVolumeActions(record: ArchiveVolumeResponse): UiTableRowActionItem
       hidden: !showSubmitInMine.value || record.canRequestDepartmentReview !== true,
     },
     {
-      key: 'dept-approve',
-      label: '审核通过',
+      key: 'dept-audit',
+      label: '院系审核',
       tone: 'primary',
-      hidden:
-        record.canApproveDepartmentReview !== true
-        || record.volumeStatus !== ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING,
-    },
-    {
-      key: 'dept-reject',
-      label: '驳回',
-      tone: 'danger',
       hidden:
         record.canApproveDepartmentReview !== true
         || record.volumeStatus !== ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING,
@@ -919,11 +904,8 @@ function handleVolumeAction(key: string, record: ArchiveVolumeResponse): void {
     case 'dept-review':
       void requestDepartmentReviewFromList(record)
       break
-    case 'dept-approve':
-      void approveDepartmentReviewFromList(record)
-      break
-    case 'dept-reject':
-      openDeptRejectDrawer(record.volumeId)
+    case 'dept-audit':
+      openDeptReviewDrawer(record.volumeId)
       break
     case 'dept-withdraw':
       void withdrawDepartmentReviewFromList(record)
@@ -1020,7 +1002,7 @@ async function loadListOverviewKpis(): Promise<void> {
       }),
       pageArchiveVolumes({
         ...countBase,
-        volumeStatus: ArchiveVolumeStatusCode.COLLECTING,
+        collectingPhaseOnly: true,
         pageNum: 1,
         pageSize: 1,
       }),
@@ -1146,6 +1128,7 @@ function buildVolumeFilterRequest(): ArchiveVolumePageRequest {
     appraisalStatus: filterForm.appraisalStatus,
     integrityFailedOnly: filterExtras.integrityFailedOnly || undefined,
     archiveOverdueOnly: filterExtras.archiveOverdueOnly || undefined,
+    collectingPhaseOnly: filterExtras.collectingPhaseOnly || undefined,
     ...buildScenarioRequest(),
   }
   if (listTab.value === 'mine' && volumeScope.value === 'mine') {
@@ -1220,6 +1203,9 @@ function handleScenarioSelect(key: ArchiveVolumeScenarioKey) {
 }
 
 function handleSearch() {
+  if (filterForm.volumeStatus) {
+    filterExtras.collectingPhaseOnly = false
+  }
   if (!ensurePeriodFilterPair()) {
     return
   }
@@ -1257,6 +1243,7 @@ function handleReset() {
   filterForm.appraisalStatus = undefined
   filterExtras.integrityFailedOnly = false
   filterExtras.archiveOverdueOnly = false
+  filterExtras.collectingPhaseOnly = false
   pagination.pageNum = 1
   selectedVolumeIds.value = []
   void loadVolumes()
@@ -1311,8 +1298,18 @@ function goDetail(volumeId: string, tab?: string) {
   })
 }
 
-function goDetailWithTab(volumeId: string, tab: string) {
+function goDetailWithTab(volumeId: string, tab?: string) {
   goDetail(volumeId, tab)
+}
+
+function openDeptReviewDrawer(volumeId: string) {
+  deptReviewVolumeId.value = volumeId
+  deptReviewDrawerOpen.value = true
+}
+
+async function handleDeptReviewDrawerCompleted() {
+  await loadVolumes()
+  void loadListOverviewKpis()
 }
 
 function goDetailWithSubmitIntent(volumeId: string) {
@@ -1367,21 +1364,7 @@ function goRemediationVolumeByVolumeId(volumeId: string) {
   goDetail(volumeId)
 }
 
-async function approveDepartmentReviewFromList(record: ArchiveVolumeResponse) {
-  try {
-    await approveArchiveVolumeDepartmentReview({ volumeId: record.volumeId })
-    message.success('院系审核已通过')
-    await loadVolumes()
-  } catch (error) {
-    showUserError(error, '院系审核通过失败')
-  }
-}
-
 async function requestDepartmentReviewFromList(record: ArchiveVolumeResponse) {
-  if (record.submitReady !== true) {
-    await goDetailForSubmitBlocker(record.volumeId)
-    return
-  }
   try {
     await requestArchiveVolumeDepartmentReview({ volumeId: record.volumeId })
     message.success('已发起院系审核')
@@ -1405,32 +1388,6 @@ async function goDetailForSubmitBlocker(volumeId: string) {
     // 预览失败时仍进入详情首屏
   }
   goDetail(volumeId)
-}
-
-function openDeptRejectDrawer(volumeId: string) {
-  deptRejectVolumeId.value = volumeId
-  deptRejectReason.value = ''
-  deptRejectOpen.value = true
-}
-
-async function confirmDeptRejectFromList() {
-  const volumeId = deptRejectVolumeId.value
-  const reason = deptRejectReason.value.trim()
-  if (!volumeId || !reason) {
-    message.warning('请填写驳回原因')
-    return
-  }
-  deptRejecting.value = true
-  try {
-    await rejectArchiveVolumeDepartmentReview({ volumeId, rejectReason: reason })
-    message.success('院系审核已驳回')
-    deptRejectOpen.value = false
-    await loadVolumes()
-  } catch (error) {
-    showUserError(error, '院系审核驳回失败')
-  } finally {
-    deptRejecting.value = false
-  }
 }
 
 async function withdrawDepartmentReviewFromList(record: ArchiveVolumeResponse) {
@@ -1521,6 +1478,7 @@ function clearArchiveListStatusFilters() {
   filterForm.appraisalStatus = undefined
   filterExtras.integrityFailedOnly = false
   filterExtras.archiveOverdueOnly = false
+  filterExtras.collectingPhaseOnly = false
 }
 
 function reloadArchiveListAfterSignalFilter() {
@@ -1548,6 +1506,7 @@ function handleSignalMetricClick(key: string) {
   if (key === 'stored') {
     archiveListQuickFilter.value = null
     filterExtras.integrityFailedOnly = false
+    filterExtras.collectingPhaseOnly = false
     filterForm.volumeStatus = ArchiveVolumeStatusCode.STORED
     handleSearch()
     return
@@ -1555,6 +1514,7 @@ function handleSignalMetricClick(key: string) {
   if (key === 'submitted') {
     archiveListQuickFilter.value = null
     filterExtras.integrityFailedOnly = false
+    filterExtras.collectingPhaseOnly = false
     filterForm.volumeStatus = ArchiveVolumeStatusCode.SUBMITTED
     handleSearch()
     return
@@ -1562,7 +1522,8 @@ function handleSignalMetricClick(key: string) {
   if (key === 'collecting') {
     archiveListQuickFilter.value = null
     filterExtras.integrityFailedOnly = false
-    filterForm.volumeStatus = ArchiveVolumeStatusCode.COLLECTING
+    filterForm.volumeStatus = undefined
+    filterExtras.collectingPhaseOnly = true
     if (listTab.value === 'archive') {
       listTab.value = 'mine'
       return

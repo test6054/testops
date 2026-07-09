@@ -201,8 +201,7 @@ const publishedCount = computed(
 async function loadExams() {
   loading.value = true
   try {
-    const loadedExams = await listMyExams()
-    exams.value = loadedExams
+    exams.value = await listMyExams()
   } catch (error) {
     exams.value = []
     showUserError(error, '考试列表加载失败')

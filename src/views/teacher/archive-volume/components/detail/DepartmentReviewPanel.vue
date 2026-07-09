@@ -6,7 +6,7 @@ import {
   approveArchiveVolumeDepartmentReview,
   rejectArchiveVolumeDepartmentReview,
   requestArchiveVolumeDepartmentReview,
-  withdrawArchiveVolumeDepartmentReview,
+  withdrawArchiveVolumeDepartmentReview
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -15,6 +15,7 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { ArchiveVolumeStatusCode } from '@/types/enums/archive-volume-status-enum'
 import { showUserError } from '@/utils/error-handler'
+import DepartmentReviewMaterialSummary from '@/views/teacher/archive-volume/components/DepartmentReviewMaterialSummary.vue'
 
 const props = defineProps<{
   volumeId: string
@@ -22,7 +23,8 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  refreshed: []
+  "refreshed": []
+  'navigate-tab': [tabKey: string]
 }>()
 
 const requesting = ref(false)
@@ -35,6 +37,10 @@ const requestReason = ref('')
 
 const volumeStatus = computed(() => props.detail.volume.volumeStatus)
 const capabilities = computed(() => props.detail.capabilities)
+
+const showMaterialSummary = computed(
+  () => capabilities.value?.canReviewDepartmentMaterials === true,
+)
 
 const showPanel = computed(() => {
   const status = volumeStatus.value
@@ -154,6 +160,10 @@ async function handleWithdraw() {
     withdrawing.value = false
   }
 }
+
+function navigateTab(tabKey: string) {
+  emit('navigate-tab', tabKey)
+}
 </script>
 
 <template>
@@ -195,6 +205,13 @@ async function handleWithdraw() {
       </UiButton>
     </template>
     <div v-if="showPanel" class="dept-review-panel__body">
+      <DepartmentReviewMaterialSummary
+        v-if="showMaterialSummary"
+        class="dept-review-panel__summary"
+        :detail="detail"
+        show-navigate-actions
+        @navigate="navigateTab"
+      />
       <p v-if="detail.volume.departmentReviewRejectReason" class="dept-review-panel__reject">
         驳回原因：{{ detail.volume.departmentReviewRejectReason }}
       </p>
@@ -236,6 +253,10 @@ async function handleWithdraw() {
 
 .dept-review-panel__body {
   padding: 12px 16px 16px;
+}
+
+.dept-review-panel__summary {
+  margin-bottom: 12px;
 }
 
 .dept-review-panel__reject {

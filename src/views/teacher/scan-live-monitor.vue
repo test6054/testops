@@ -653,7 +653,7 @@ function isScanMonitorTabQuery(value: unknown): value is ScanMonitorTabQuery {
 }
 
 const { selectedExamId } = useMarkExamContext()
-const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
+const { contextBarSubtitle, examStatusLabel, examStatusTone }
   = useExamJourneyContextBar('扫描监控')
 
 const scanMonitorContextSubtitle = computed(() => {

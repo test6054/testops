@@ -12,10 +12,10 @@ import { inject } from 'vue'
 export type ExamScoreCompositionMode = 'EXAM_ONLY' | 'EXAM_WITH_DAILY'
 
 export type ExamCreateSectionKey
-  = | 'exam-create-basic'
-    | 'exam-create-marking-team'
-    | 'exam-create-candidates'
-    | 'exam-create-confirm'
+   = | 'exam-create-basic'
+     | 'exam-create-marking-team'
+     | 'exam-create-candidates'
+     | 'exam-create-confirm'
 
 export const EXAM_CREATE_SECTION_ORDER: ExamCreateSectionKey[] = [
   'exam-create-basic',

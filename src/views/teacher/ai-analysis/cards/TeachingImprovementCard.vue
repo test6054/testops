@@ -1,5 +1,5 @@
 <template>
-  <component :is="embedded ? AiAnalysisSection : WorkbenchSurfaceCard" v-bind="shellProps">
+  <AiAnalysisCardShell :embedded="embedded" title="AI 教学改进建议" card-class="stats-card">
     <template v-if="!embedded" #head>
       <h3 class="stats-card__title">AI 教学改进方案</h3>
     </template>
@@ -62,7 +62,7 @@
         />
       </div>
     </AiAnalysisCardBody>
-  </component>
+  </AiAnalysisCardShell>
 </template>
 
 <script lang="ts" setup>
@@ -82,11 +82,10 @@ import {
   TeachingImprovementSeverityDescription,
 } from '@/apis/mark/teaching-analysis'
 import AiAnalysisCardBody from '@/components/mark/analysis/AiAnalysisCardBody.vue'
+import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.vue'
 import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCollapse.vue'
-import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'
 import AiRecommendationBlock from '@/components/mark/analysis/AiRecommendationBlock.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useAiAnalysisGenerationFeedback } from '@/composables/useAiAnalysisGenerationFeedback'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -108,10 +107,6 @@ const props = withDefaults(
 const record = ref<TeachingAnalysisRecordResponse | null>(null)
 const loading = ref(false)
 const { generating, runGeneration } = useAiAnalysisGenerationFeedback()
-
-const shellProps = computed(() =>
-  props.embedded ? { title: 'AI 教学改进建议' } : { class: 'stats-card' },
-)
 
 const canShareRecord = computed(() => record.value?.analysisStatus === 'SUCCESS')
 

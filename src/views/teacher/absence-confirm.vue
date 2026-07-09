@@ -378,7 +378,6 @@ import ScorePublishRelatedLinksCard from '@/components/workbench/ScorePublishRel
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
-import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
@@ -394,7 +393,6 @@ defineOptions({ name: 'TeacherAbsenceConfirm' })
 
 const { selectedExamId } = useMarkExamContext()
 const router = useRouter()
-const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar('缺考确认')
 const { refreshSnapshot } = useWorkspaceExamId()
 
 interface AbsentStudentRow {

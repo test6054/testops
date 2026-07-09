@@ -83,8 +83,7 @@ defineOptions({ name: 'TeacherImageLedger' })
 
 const { selectedExamId } = useMarkExamContext()
 const router = useRouter()
-const { contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
-  = useExamJourneyContextBar('影像账本')
+const { examStatusLabel, examStatusTone } = useExamJourneyContextBar('影像账本')
 const { refreshSnapshot } = useWorkspaceExamId()
 
 const ledger = ref<ImageLedgerDetailResponse | null>(null)

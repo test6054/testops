@@ -11,11 +11,11 @@ import type { ArchiveDestructionDecisionCode } from '@/types/enums/archive-destr
 import type { ArchiveElectronicOriginalStatusCode } from '@/types/enums/archive-electronic-original-status-enum'
 import type { ArchiveEvaluationCampaignStatusCode } from '@/types/enums/archive-evaluation-campaign-status-enum'
 import type { ArchiveExamFormCode } from '@/types/enums/archive-exam-form-enum'
-import type { ArchiveExternalImportTypeCode } from '@/types/enums/archive-external-import-type-enum'
 import type { ArchiveImportBatchStatusCode } from '@/types/enums/archive-import-batch-status-enum'
 import type { ArchiveMaterialDeliveryModeCode } from '@/types/enums/archive-material-delivery-mode-enum'
 import type { ArchiveMaterialMediaTypeCode } from '@/types/enums/archive-material-media-type-enum'
 import type { ArchiveMaterialSortRuleCode } from '@/types/enums/archive-material-sort-rule-enum'
+import type { ArchiveMaterialSubmissionStatusCode } from '@/types/enums/archive-material-submission-status-enum'
 import type { ArchiveMaterialTypeCode } from '@/types/enums/archive-material-type-enum'
 import type { ArchivePackageStatusCode } from '@/types/enums/archive-package-status-enum'
 import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
@@ -46,9 +46,7 @@ import {
   ArchiveAccessStatusDescription,
 } from '@/types/enums/archive-access-status-enum'
 import {
-  ALL_ARCHIVE_APPRAISAL_STATUS_CODES,
   ArchiveAppraisalStatusCode,
-  ArchiveAppraisalStatusDescription,
 } from '@/types/enums/archive-appraisal-status-enum'
 import { ArchiveCatalogStatusCode } from '@/types/enums/archive-catalog-status-enum'
 import { ArchiveDestructionStatusCode } from '@/types/enums/archive-destruction-status-enum'
@@ -61,11 +59,8 @@ import {
   ArchiveExamFormDescription,
 } from '@/types/enums/archive-exam-form-enum'
 import {
-  ALL_ARCHIVE_INTEGRITY_STATUS_CODES,
   ArchiveIntegrityStatusCode,
-  ArchiveIntegrityStatusDescription,
 } from '@/types/enums/archive-integrity-status-enum'
-import { ArchiveMaterialSubmissionStatusCode } from '@/types/enums/archive-material-submission-status-enum'
 import {
   ALL_ARCHIVE_MATERIAL_TYPE_CODES,
   ArchiveMaterialTypeDescription,
@@ -82,9 +77,7 @@ import {
 } from '@/types/enums/archive-security-level-enum'
 import { ArchiveSelfCheckStatusCode } from '@/types/enums/archive-self-check-status-enum'
 import {
-  ALL_ARCHIVE_TRANSFER_STATUS_CODES,
   ArchiveTransferStatusCode,
-  ArchiveTransferStatusDescription,
 } from '@/types/enums/archive-transfer-status-enum'
 import {
   ALL_ARCHIVE_VOLUME_EVENT_TYPE_CODES,
@@ -96,9 +89,7 @@ import {
   ArchiveVolumeSourceTypeDescription,
 } from '@/types/enums/archive-volume-source-type-enum'
 import {
-  ALL_ARCHIVE_VOLUME_STATUS_CODES,
   ArchiveVolumeStatusCode,
-  ArchiveVolumeStatusDescription,
 } from '@/types/enums/archive-volume-status-enum'
 import { ScanBatchQualityFlagCode } from '@/types/enums/scan-batch-quality-flag-enum'
 
@@ -268,14 +259,6 @@ export const ARCHIVE_VOLUME_STATUS_TONE: Record<
   [ArchiveVolumeStatusCode.ARCHIVED_DESTROYED]: 'purple',
 }
 
-export const ARCHIVE_VOLUME_STATUS_OPTIONS: Array<{
-  value: ArchiveVolumeStatusCode
-  label: string
-}> = ALL_ARCHIVE_VOLUME_STATUS_CODES.map((value) => ({
-  value,
-  label: ArchiveVolumeStatusDescription[value],
-}))
-
 export const ARCHIVE_VOLUME_SOURCE_TYPE_OPTIONS: Array<{
   value: ArchiveVolumeSourceTypeCode
   label: string
@@ -294,14 +277,6 @@ export const ARCHIVE_INTEGRITY_STATUS_TONE: Record<
   [ArchiveIntegrityStatusCode.FAILED]: 'red',
   [ArchiveIntegrityStatusCode.WAIVED]: 'orange',
 }
-
-export const ARCHIVE_INTEGRITY_STATUS_OPTIONS: Array<{
-  value: ArchiveIntegrityStatusCode
-  label: string
-}> = ALL_ARCHIVE_INTEGRITY_STATUS_CODES.map((value) => ({
-  value,
-  label: ArchiveIntegrityStatusDescription[value],
-}))
 
 export const ARCHIVE_VOLUME_SOURCE_TYPE_TONE: Record<
   ArchiveVolumeSourceTypeCode,
@@ -322,14 +297,6 @@ export const ARCHIVE_TRANSFER_STATUS_TONE: Record<
   [ArchiveTransferStatusCode.REJECTED]: 'red',
 }
 
-export const ARCHIVE_TRANSFER_STATUS_OPTIONS: Array<{
-  value: ArchiveTransferStatusCode
-  label: string
-}> = ALL_ARCHIVE_TRANSFER_STATUS_CODES.map((value) => ({
-  value,
-  label: ArchiveTransferStatusDescription[value],
-}))
-
 export const ARCHIVE_APPRAISAL_STATUS_TONE: Record<
   ArchiveAppraisalStatusCode,
   'gray' | 'blue' | 'green' | 'red' | 'orange' | 'purple'
@@ -341,14 +308,6 @@ export const ARCHIVE_APPRAISAL_STATUS_TONE: Record<
   [ArchiveAppraisalStatusCode.REJECTED]: 'red',
   [ArchiveAppraisalStatusCode.OPINION_RECORDED]: 'purple',
 }
-
-export const ARCHIVE_APPRAISAL_STATUS_OPTIONS: Array<{
-  value: ArchiveAppraisalStatusCode
-  label: string
-}> = ALL_ARCHIVE_APPRAISAL_STATUS_CODES.map((value) => ({
-  value,
-  label: ArchiveAppraisalStatusDescription[value],
-}))
 
 export const ARCHIVE_DESTRUCTION_STATUS_TONE: Record<
   ArchiveDestructionStatusCode,
@@ -520,7 +479,7 @@ export const ARCHIVE_SELF_CHECK_STATUS_TONE: Record<
 }
 
 export type ArchiveVolumeSubmitChecklistPhaseKey
-  = 'materials' | 'integrity' | 'catalog' | 'selfCheck' | 'departmentReview' | 'submit'
+   = 'materials' | 'integrity' | 'catalog' | 'selfCheck' | 'departmentReview' | 'submit'
 
 export const ArchiveVolumeSubmitChecklistPhaseDescription: Record<
   ArchiveVolumeSubmitChecklistPhaseKey,
@@ -715,17 +674,6 @@ export interface ArchiveVolumeMaterialResponse {
   electronicOriginalStatus?: string
 }
 
-export const ARCHIVE_MATERIAL_SUBMISSION_STATUS_TONE: Record<
-  ArchiveMaterialSubmissionStatusCode,
-  'gray' | 'blue' | 'green' | 'red' | 'orange' | 'purple'
-> = {
-  [ArchiveMaterialSubmissionStatusCode.MISSING]: 'red',
-  [ArchiveMaterialSubmissionStatusCode.SUBMITTED]: 'green',
-  [ArchiveMaterialSubmissionStatusCode.DELAY_ALLOWED]: 'orange',
-  [ArchiveMaterialSubmissionStatusCode.OVERDUE]: 'red',
-  [ArchiveMaterialSubmissionStatusCode.WAIVED_WITH_REASON]: 'purple',
-}
-
 export const ARCHIVE_VOLUME_EVENT_TYPE_OPTIONS: Array<{
   value: ArchiveVolumeEventTypeCode
   label: string
@@ -915,6 +863,8 @@ export interface ArchiveVolumePageRequest extends QueryDto {
   openRemediationTaskOnly?: boolean
   submitReadyOnly?: boolean
   catalogPendingOnly?: boolean
+  /** 收材阶段：COLLECTING、DEPARTMENT_REVIEW_PENDING、DEPARTMENT_REVIEWED */
+  collectingPhaseOnly?: boolean
 }
 
 export interface ArchiveVolumeSearchRequest extends QueryDto {
@@ -1139,15 +1089,6 @@ export function getSupervisionArchiveVolumeDetail(
     {
       volumeId,
     },
-  )
-}
-
-export function getSupervisionArchiveStatistics(
-  request: ArchiveVolumeStatisticsRequest,
-): Promise<ArchiveVolumeStatisticsResponse> {
-  return http.post<ArchiveVolumeStatisticsResponse>(
-    '/api/mark/archive-volumes/supervision/statistics',
-    request,
   )
 }
 
@@ -1466,12 +1407,6 @@ export function waiveArchiveMaterialMissing(
   )
 }
 
-export interface ArchiveExternalImportRequest {
-  sourceSystem: string
-  sourceFileId: string
-  importType: ArchiveExternalImportTypeCode
-}
-
 export interface ArchiveExternalImportResultVO {
   batchId: string
   batchNo: string
@@ -1697,17 +1632,6 @@ export interface ArchiveVolumeExportResponse {
   packageChecksumSha256?: string
 }
 
-export interface ArchiveMaterialCatalogTemplateResponse {
-  templateItemId: string
-  examForm?: ArchiveExamFormCode
-  materialType: ArchiveMaterialTypeCode
-  catalogCode?: string
-  catalogName?: string
-  requiredFlag?: boolean
-  delayAllowedFlag?: boolean
-  sortOrder?: number
-}
-
 export { ScanBatchQualityFlagCode } from '@/types/enums/scan-batch-quality-flag-enum'
 
 /** 归档任务统一创建请求（v3.2）- 对应 ArchiveTaskCreateRequest */
@@ -1733,50 +1657,6 @@ export interface ArchiveTaskCreateRequest {
   permanentRetention?: boolean
   responsibleUserId?: string
   archiveDueTimeOverride?: string
-}
-
-/** @deprecated v3.2 起请使用 {@link createArchiveTask} */
-export interface ArchiveVolumeCreateRequest {
-  sourceType: ArchiveVolumeSourceTypeCode
-  examId?: string
-  courseId: string
-  teachingClassId?: string
-  departmentId?: string
-  departmentName?: string
-  teachingClassName?: string
-  academicYear: string
-  semester: SemesterCode
-  relatedExamId?: string
-  examForm?: ArchiveExamFormCode
-  archiveNo?: string
-  archiveTitle: string
-  scoreSource: ArchiveScoreSourceCode
-  securityLevel: ArchiveSecurityLevelCode
-  retentionYears?: number
-  permanentRetention?: boolean
-  responsibleUserId?: string
-}
-
-export interface OfflineMarkedArchiveCreateRequest {
-  courseId: string
-  teachingClassId?: string
-  departmentId?: string
-  departmentName?: string
-  teachingClassName?: string
-  academicYear: string
-  semester: SemesterCode
-  relatedExamId?: string
-  examForm?: ArchiveExamFormCode
-  templateSetCode: string
-  archiveNo?: string
-  archiveTitle: string
-  scoreSource: ArchiveScoreSourceCode
-  scoreCompletionStatus?: ArchiveScoreCompletionStatusCode
-  scoreProofFileId?: string
-  securityLevel: ArchiveSecurityLevelCode
-  retentionYears?: number
-  permanentRetention?: boolean
-  responsibleUserId?: string
 }
 
 export interface ArchiveVolumeMaterialRegisterRequest {
@@ -1880,10 +1760,6 @@ export function registerArchiveVolumeMaterial(
     '/api/mark/archive-volumes/materials/register',
     request,
   )
-}
-
-export interface ArchiveVolumeMaterialOcrTriggerRequest {
-  materialId: string
 }
 
 export function triggerArchiveVolumeMaterialOcr(

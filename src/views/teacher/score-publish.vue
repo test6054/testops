@@ -422,7 +422,6 @@ import ScoreReleaseStepPipeline from '@/components/workbench/ScoreReleaseStepPip
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
-import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useScorePublishPreconditions } from '@/composables/useScorePublishPreconditions'
@@ -570,7 +569,6 @@ function goExamListForClose(): void {
 }
 
 const { selectedExamId } = useMarkExamContext()
-const { contextBarTitle, contextBarSubtitle } = useExamJourneyContextBar('成绩发布')
 const { refreshSnapshot } = useWorkspaceExamId()
 
 const examDetail = ref<ExamDetailResponse | null>(null)
