@@ -13,12 +13,15 @@ const BASE = '/api/quality/training-plans'
 export interface TrainingPlanVO {
   id: string
   programId: string
+  programName?: string
   planCode: string
   planName: string
   schoolYear: string
   gradeLevel?: string
   description?: string
   accreditationProfileId?: string
+  accreditationProfileCode?: string
+  accreditationProfileName?: string
   storageFileId?: string
   enabled: boolean
   confirmationStatus?: ConfirmationStatusCode
@@ -76,7 +79,9 @@ export function normalizeTrainingPlanVO(plan: TrainingPlanVO): TrainingPlanVO {
       ? normalizeTrainingPlanId(plan.accreditationProfileId)
       : undefined,
     storageFileId: plan.storageFileId ? normalizeTrainingPlanId(plan.storageFileId) : undefined,
-    confirmedUserId: plan.confirmedUserId ? normalizeTrainingPlanId(plan.confirmedUserId) : undefined,
+    confirmedUserId: plan.confirmedUserId
+      ? normalizeTrainingPlanId(plan.confirmedUserId)
+      : undefined,
   }
 }
 
@@ -91,7 +96,9 @@ export const trainingPlanApi = {
   page: async (data: TrainingPlanQueryRequest) =>
     normalizeTrainingPlanPage(await http.post<PageResult<TrainingPlanVO>>(`${BASE}/page`, data)),
   detail: async (id: string) =>
-    normalizeTrainingPlanVO(await http.post<TrainingPlanVO>(`${BASE}/detail`, { id: normalizeTrainingPlanId(id) })),
+    normalizeTrainingPlanVO(
+      await http.post<TrainingPlanVO>(`${BASE}/detail`, { id: normalizeTrainingPlanId(id) }),
+    ),
   create: (data: TrainingPlanSaveRequest) => http.post<string>(`${BASE}/create`, data),
   update: (data: TrainingPlanSaveRequest) => http.post<void>(`${BASE}/update`, data),
   delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),

@@ -122,6 +122,8 @@ export interface IndirectEvaluationResponseQueryRequest extends QueryDto {
   formId?: string
   itemId?: string
   validFlag?: boolean
+  /** 仅筛选待确认有效样本（valid_flag IS NULL） */
+  pendingValidConfirm?: boolean
   conversionFilter?: IndirectResponseConversionFilterCode
   keyword?: string
 }
@@ -138,6 +140,8 @@ export interface IndirectItemResponseSignalSummaryVO {
   noSubstantiveCount: number
   validCount: number
   invalidCount: number
+  /** 待确认有效样本数（valid_flag IS NULL） */
+  pendingConfirmCount: number
   totalCount: number
 }
 
@@ -156,7 +160,6 @@ export interface IndirectConversionAuditLogVO {
 export const indirectResponseApi = {
   page: (data: IndirectEvaluationResponseQueryRequest) =>
     http.post<PageResult<IndirectEvaluationResponseVO>>(`${BASE}/page`, data),
-  detail: (id: string) => http.post<IndirectEvaluationResponseVO>(`${BASE}/detail`, { id }),
   create: (data: IndirectEvaluationResponseSaveRequest) =>
     http.post<string>(`${BASE}/create`, data),
   batchCreate: (data: IndirectEvaluationResponseBatchSaveRequest) =>

@@ -412,6 +412,20 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
   },
 
   {
+    path: 'help/indirect-weighted-attainment',
+    name: 'QualityHelpIndirectWeightedAttainment',
+    component: () => import('@/views/quality/help/indirect-weighted-attainment.vue'),
+    meta: {
+      title: '间接达成度题项加权说明',
+      roles: ALL_ROLES,
+      hideInMenu: true,
+      keepAlive: false,
+      activeMenu: '/quality/ingest-hub/indirect-evaluation',
+      ...SCOPE_NONE,
+    },
+  },
+
+  {
     path: 'program-evaluation-profile',
     name: 'QualityProgramEvaluationProfile',
     component: () => import('@/views/quality/program-evaluation-profile.vue'),

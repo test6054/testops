@@ -46,4 +46,10 @@ export const assessmentGoalWeightApi = {
   /** 校验某考核环节下所有权重和是否为 1。 */
   validateWeights: (assessmentItemId: string) =>
     http.post<void>(`${WEIGHT}/validate-weights`, { id: assessmentItemId }),
+  /** 校验某课程目标下全部考核环节权重和是否为 1。 */
+  validateWeightsByCourseGoal: (courseGoalId: string) =>
+    http.post<void>(`${WEIGHT}/validate-weights-by-course-goal`, { id: courseGoalId }),
+  /** 校验质量评价课程考核×目标权重矩阵双向配平。 */
+  validateMatrixWeights: (qualityCourseId: string) =>
+    http.post<void>(`${WEIGHT}/validate-matrix-weights`, { qualityCourseId }),
 }

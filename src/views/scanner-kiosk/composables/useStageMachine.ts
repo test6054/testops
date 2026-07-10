@@ -88,6 +88,9 @@ export function useStageMachine(workflow: ExamKioskWorkflow) {
   })
 
   function gotoStage(stageId: KioskStageId) {
+    if (workflow.pageRegisterRetryLoading.value) {
+      return
+    }
     if (stageId === currentStage.value) return
     const job = workflow.currentJob.value
     const hasScanSession = Boolean(

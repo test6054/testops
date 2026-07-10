@@ -2,14 +2,15 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { Key } from 'ant-design-vue/es/table/interface'
 import type { ArchiveScanBatchSnapshotItemVO } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import {
   batchRetryArchiveScanBatches,
   pageArchiveScanBatchSnapshots,
   SCAN_BATCH_QUALITY_FLAG_TONE,
+  ScanBatchQualityFlagCode,
   ScanBatchQualityFlagDescription,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   SCAN_WORK_ORDER_STATUS_TONE,
   ScanWorkOrderStatusDescription,
@@ -33,6 +34,13 @@ const errorMessage = ref('')
 const pagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 const rows = ref<ArchiveScanBatchSnapshotItemVO[]>([])
 const selectedWorkOrderIds = ref<string[]>([])
+
+const retryableSelectedIds = computed(() =>
+  selectedWorkOrderIds.value.filter((id) => {
+    const row = rows.value.find((item) => item.sourceBatchId === id)
+    return row?.batchQualityFlag === ScanBatchQualityFlagCode.SUSPECTED_MIXED
+  }),
+)
 
 const columns: ColumnsType<ArchiveScanBatchSnapshotItemVO> = [
   { title: '批次号', key: 'batchExternalNo', dataIndex: 'batchExternalNo', width: 140 },
@@ -83,15 +91,15 @@ async function loadRows() {
 }
 
 async function handleBatchRetry() {
-  if (selectedWorkOrderIds.value.length === 0) {
-    message.warning('请先选择要重试的扫描批次')
+  if (retryableSelectedIds.value.length === 0) {
+    message.warning('请先选择质检标记为「疑似混扫」的批次；正常批次请在混扫复核页处理')
     return
   }
   retrying.value = true
   try {
     await batchRetryArchiveScanBatches({
       volumeId: props.volumeId,
-      workOrderIds: selectedWorkOrderIds.value,
+      workOrderIds: retryableSelectedIds.value,
     })
     message.success('批量重试已提交')
     selectedWorkOrderIds.value = []
@@ -114,7 +122,7 @@ onMounted(() => {
       <div class="archive-scan-batch-snapshot__head">
         <h3 class="archive-scan-batch-snapshot__title">扫描批次快照</h3>
         <p class="archive-scan-batch-snapshot__hint">
-          展示本卷有效扫描批次快照（deleted=0），按工单聚合页数与登记材料数。
+          展示本卷有效扫描批次快照（deleted=0），按工单聚合页数与登记材料数；批量重试仅适用于疑似混扫批次。
         </p>
       </div>
     </template>
@@ -123,7 +131,7 @@ onMounted(() => {
         size="sm"
         variant="outline"
         :loading="retrying"
-        :disabled="selectedWorkOrderIds.length === 0"
+        :disabled="retryableSelectedIds.length === 0"
         @click="handleBatchRetry"
       >
         批量重试

@@ -69,8 +69,8 @@
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
                 v-if="
-                  record.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE
-                    && canExportCampaign
+                  record.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE &&
+                  canExportCampaign
                 "
                 :items="buildCampaignActions(record)"
                 split
@@ -179,6 +179,14 @@ import type {
   ArchiveEvaluationCampaignStatsVO,
   ArchiveEvaluationVolumeReadinessResponse,
 } from '@/apis/mark/archive-volume'
+import {
+  ArchiveEvaluationCampaignStatusCode,
+  ArchiveEvaluationCampaignStatusDescription,
+  exportEvaluationArchivePackage,
+  getEvaluationCampaignReadinessPanel,
+  getEvaluationCampaignStats,
+  pageEvaluationCampaigns,
+} from '@/apis/mark/archive-volume'
 import type {
   BadgeTone,
   UiSectionTabItem,
@@ -190,14 +198,6 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
 import { ArchiveDutyTypeCode } from '@/apis/mark/archive-config'
-import {
-  ArchiveEvaluationCampaignStatusCode,
-  ArchiveEvaluationCampaignStatusDescription,
-  exportEvaluationArchivePackage,
-  getEvaluationCampaignReadinessPanel,
-  getEvaluationCampaignStats,
-  pageEvaluationCampaigns,
-} from '@/apis/mark/archive-volume'
 import ArchiveReadinessRateBar from '@/components/archive-volume/ArchiveReadinessRateBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -210,7 +210,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
-import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { DEFAULT_LIST_PAGE_SIZE, EXPORT_PAGE_SIZE } from '@/constants/pagination'
 import {
   ArchiveEvaluationDimensionReadyCode,
   ArchiveEvaluationDimensionReadyDescription,
@@ -398,13 +398,26 @@ async function loadCampaignStats(): Promise<void> {
   }
 }
 
+async function loadAllCampaignOptions(): Promise<ArchiveEvaluationCampaignResponse[]> {
+  const all: ArchiveEvaluationCampaignResponse[] = []
+  let pageNum = 1
+  while (true) {
+    const page = await pageEvaluationCampaigns({ pageNum, pageSize: EXPORT_PAGE_SIZE })
+    all.push(...page.list)
+    if (all.length >= page.total) {
+      break
+    }
+    pageNum += 1
+  }
+  return all
+}
+
 async function loadCampaignOptions(): Promise<void> {
   campaignOptionLoading.value = true
   try {
-    const page = await pageEvaluationCampaigns({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
-    campaignSelectOptions.value = page.list
-    if (!selectedCampaignId.value && page.list.length > 0) {
-      selectedCampaignId.value = page.list[0].campaignId
+    campaignSelectOptions.value = await loadAllCampaignOptions()
+    if (!selectedCampaignId.value && campaignSelectOptions.value.length > 0) {
+      selectedCampaignId.value = campaignSelectOptions.value[0].campaignId
       if (activeTab.value === 'readiness') {
         void loadReadinessVolumes()
       }
@@ -437,7 +450,7 @@ async function loadCampaigns(): Promise<void> {
   }
 }
 
-function handleCampaignPageChange(page: { current: number, pageSize: number }): void {
+function handleCampaignPageChange(page: { current: number; pageSize: number }): void {
   campaignPagination.pageNum = page.current
   campaignPagination.pageSize = page.pageSize
   void loadCampaigns()

@@ -21,6 +21,7 @@ import CourseSelector from './CourseSelector.vue'
 import DepartmentSelector from './DepartmentSelector.vue'
 import GraduationRequirementSelector from './GraduationRequirementSelector.vue'
 import IndirectFormSelector from './IndirectFormSelector.vue'
+import ProfessionAlgorithmProfileSelector from './ProfessionAlgorithmProfileSelector.vue'
 import ProgramEvaluationProfileSelector from './ProgramEvaluationProfileSelector.vue'
 import ProgramSelector from './ProgramSelector.vue'
 import ReportSelector from './ReportSelector.vue'
@@ -43,6 +44,7 @@ export {
   DepartmentSelector,
   GraduationRequirementSelector,
   IndirectFormSelector,
+  ProfessionAlgorithmProfileSelector,
   ProgramEvaluationProfileSelector,
   ProgramSelector,
   ReportSelector,

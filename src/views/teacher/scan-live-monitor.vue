@@ -10,16 +10,16 @@
           >
             {{ connectionLabel }}
           </UiTag>
-          <UiTag :tone="abnormalAttentionTotal > 0 ? 'red' : 'green'" size="sm">
-            {{ abnormalAttentionTotal > 0 ? `${abnormalAttentionTotal} 条异常` : '无阻断异常' }}
+          <UiTag :tone="abnormalAttentionCount > 0 ? 'red' : 'green'" size="sm">
+            {{ abnormalAttentionCount > 0 ? `${abnormalAttentionCount} 条异常` : '无阻断异常' }}
           </UiTag>
-          <UiTag :tone="duplicateAttentionTotal > 0 ? 'orange' : 'green'" size="sm">
-            {{ duplicateAttentionTotal > 0 ? `${duplicateAttentionTotal} 条重复` : '无重复影像' }}
+          <UiTag :tone="duplicateAttentionCount > 0 ? 'orange' : 'green'" size="sm">
+            {{ duplicateAttentionCount > 0 ? `${duplicateAttentionCount} 条重复` : '无重复影像' }}
           </UiTag>
         </template>
         <template #actions>
           <UiButton
-            v-if="abnormalAttentionTotal > 0"
+            v-if="abnormalAttentionCount > 0"
             size="sm"
             variant="primary"
             @click="jumpToAbnormalTab"
@@ -553,18 +553,42 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamPaperBatchBindResponse } from '@/apis/mark/exam-mark-scanner'
+import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
 import type {
   ExamScanMonitorDeviceResponse,
   ExamWorkbenchScanMonitorPanelResponse,
+} from '@/apis/mark/exam-progress'
+import {
+  ExamScanMonitorSignalActionKeyCode,
+  ExamScanMonitorSignalCode,
+  getScanMonitorPanel,
+  listExamScanMonitorDevices,
 } from '@/apis/mark/exam-progress'
 import type {
   ExamScannerBatchResponse,
   ScanAttentionItemResponse,
   ScanAttentionSourceTypeCode,
+} from '@/apis/mark/exam-scan'
+import {
+  listScanAttentions,
+  pageScannerBatches,
+  QUALITY_DECISION_TONE,
+  QualityDecisionDescription,
+  SCAN_ATTENTION_TYPE_OPTIONS,
+  SCAN_ATTENTION_TYPE_TONE,
+  SCAN_BATCH_STATUS_OPTIONS,
+  SCAN_BATCH_STATUS_TONE,
+  ScanAttentionQueryGroupCode,
+  ScanAttentionSourceTypeDescription,
+  ScanAttentionTypeCode,
+  ScanAttentionTypeDescription,
   ScanBatchStatusCode,
+  ScanBatchStatusDescription,
 } from '@/apis/mark/exam-scan'
 import type { ExamCandidateResponse } from '@/apis/mark/exam-scope'
+import { CandidateStatusDescription, pageExamCandidates } from '@/apis/mark/exam-scope'
 import type { ExamScoreSummaryItemResponse } from '@/apis/mark/exam-score'
+import { pageExamScoreSummary } from '@/apis/mark/exam-score'
 import type {
   BadgeTone,
   FilterField,
@@ -582,25 +606,6 @@ import {
   DuplicateResolutionStatusDescription,
 } from '@/apis/mark/duplicate-resolution-status'
 import { BindingStatusDescription, bindPaper } from '@/apis/mark/exam-binding'
-import { batchBindPapers, ScannerEndpointOnlineStatusCode } from '@/apis/mark/exam-mark-scanner'
-import { getScanMonitorPanel, listExamScanMonitorDevices } from '@/apis/mark/exam-progress'
-import {
-  listScanAttentions,
-  pageScannerBatches,
-  QUALITY_DECISION_TONE,
-  QualityDecisionDescription,
-  SCAN_ATTENTION_TYPE_OPTIONS,
-  SCAN_ATTENTION_TYPE_TONE,
-  SCAN_BATCH_STATUS_OPTIONS,
-  SCAN_BATCH_STATUS_TONE,
-  ScanAttentionQueryGroupCode,
-  ScanAttentionSourceTypeDescription,
-  ScanAttentionTypeCode,
-  ScanAttentionTypeDescription,
-  ScanBatchStatusDescription,
-} from '@/apis/mark/exam-scan'
-import { CandidateStatusDescription, pageExamCandidates } from '@/apis/mark/exam-scope'
-import { pageExamScoreSummary } from '@/apis/mark/exam-score'
 import { FinalScoreStatusDescription } from '@/apis/mark/final-score-status'
 import { GRADE_STATUS_TONE, GradeStatusDescription } from '@/apis/mark/grade-status'
 import { discardScannedPage } from '@/apis/mark/scanner-kiosk'
@@ -645,6 +650,11 @@ import { CandidateStatusCode } from '@/types/enums/candidate-status-enum'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
 import mittBus from '@/utils/mitt'
+import {
+  buildScanMonitorSignalMetrics,
+  mapScanMonitorSignalBandToneToAlert,
+  resolveScanMonitorSignalActionLabel,
+} from '@/utils/scan-monitor-panel-ui'
 import { toSignalMetrics } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -665,14 +675,14 @@ enum ScanMonitorTabQuery {
 
 function isScanMonitorTabQuery(value: unknown): value is ScanMonitorTabQuery {
   return (
-    value === ScanMonitorTabQuery.NORMAL
-    || value === ScanMonitorTabQuery.ABNORMAL
-    || value === ScanMonitorTabQuery.DUPLICATE
+    value === ScanMonitorTabQuery.NORMAL ||
+    value === ScanMonitorTabQuery.ABNORMAL ||
+    value === ScanMonitorTabQuery.DUPLICATE
   )
 }
 
 const { selectedExamId } = useMarkExamContext()
-const { contextBarSubtitle, examStatusLabel, examStatusTone } = useExamJourneyContextBar('扫描监控')
+const { contextBarSubtitle } = useExamJourneyContextBar('扫描监控')
 
 const scanMonitorContextSubtitle = computed(() => {
   const journeySubtitle = contextBarSubtitle.value
@@ -682,8 +692,8 @@ const scanMonitorContextSubtitle = computed(() => {
   return journeySubtitle
 })
 const { refreshSnapshot } = useWorkspaceExamId()
-const { isExamConfidential, examConfidentialLabel, watermarkLines }
-  = useWorkspaceConfidentialContext()
+const { isExamConfidential, examConfidentialLabel, watermarkLines } =
+  useWorkspaceConfidentialContext()
 
 /** 扫描链写操作后同步 StageRail 与本页数据。 */
 async function syncScanWorkbenchState(): Promise<void> {
@@ -719,13 +729,6 @@ function formatMonitorDeviceLabel(device: ExamScanMonitorDeviceResponse): string
   const name = device.deviceName || device.scannerDeviceId
   return device.scannerIp ? `${name}（${device.scannerIp}）` : name
 }
-
-const onlineScannerDeviceCount = computed(
-  () =>
-    scannerDevices.value.filter(
-      (device) => device.endpointOnlineStatus === ScannerEndpointOnlineStatusCode.ONLINE,
-    ).length,
-)
 
 const normalFilterApplied = reactive<{
   keyword: string
@@ -800,10 +803,10 @@ const normalTableEmptyDescription = computed(() => {
 
 const hasActiveNormalFilters = computed(() =>
   Boolean(
-    normalFilterApplied.keyword
-    || normalFilterApplied.scanBatchId
-    || normalFilterApplied.batchStatus
-    || normalFilterApplied.scannerDeviceId,
+    normalFilterApplied.keyword ||
+    normalFilterApplied.scanBatchId ||
+    normalFilterApplied.batchStatus ||
+    normalFilterApplied.scannerDeviceId,
   ),
 )
 
@@ -965,7 +968,7 @@ function handleMonitorBatchUpdated(): void {
   void loadScanOverview(selectedExamId.value!)
 }
 
-function handleMonitorBatchPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleMonitorBatchPageChange(pageEvent: { current: number; pageSize: number }): void {
   monitorBatchPagination.current = pageEvent.current
   monitorBatchPagination.pageSize = pageEvent.pageSize
   void loadMonitorBatches()
@@ -1054,8 +1057,8 @@ const paperCandidateOptions = computed<UiSelectOption[]>(() =>
     })),
 )
 
-const abnormalAttentionTotal = ref(0)
-const duplicateAttentionTotal = ref(0)
+const abnormalAttentionCount = computed(() => scanMonitorPanel.value?.abnormalAttentionCount ?? 0)
+const duplicateAttentionCount = computed(() => scanMonitorPanel.value?.duplicateAttentionCount ?? 0)
 const activeAttentionRows = computed(() => attentions.value)
 
 const scanLiveStream = useScanLiveStream({
@@ -1135,7 +1138,6 @@ async function loadScanOverview(examId: string): Promise<void> {
   scanMonitorPanelLoadFailed.value = false
   try {
     scanMonitorPanel.value = await getScanMonitorPanel(examId)
-    await loadAttentionCounters()
   } catch (error) {
     scanMonitorPanel.value = null
     scanMonitorPanelLoadFailed.value = true
@@ -1170,6 +1172,35 @@ function goToScanBatchOrphanRecovery(): void {
   })
 }
 
+function jumpToBlockedBatches(): void {
+  activeTab.value = 'normal'
+  filterForm.batchStatus = ScanBatchStatusCode.BLOCKED
+  applyNormalFilters()
+}
+
+const statPanelMetrics = computed<SignalMetric[]>(() =>
+  buildScanMonitorSignalMetrics(scanMonitorPanel.value, scanMonitorPanelLoadFailed.value, {
+    activeTab: activeTab.value,
+    attentionTypeFilterActive: Boolean(filterForm.attentionType),
+  }),
+)
+
+const scanMonitorSignalBandTone = computed(() =>
+  mapScanMonitorSignalBandToneToAlert(scanMonitorPanel.value?.signalBandTone),
+)
+
+const scanMonitorProgressTitle = computed(() => {
+  const panel = scanMonitorPanel.value
+  if (!panel) return '扫描进度'
+  if (panel.progressDisplay) return `扫描进度 ${panel.progressDisplay}`
+  return '扫描进度'
+})
+
+const scanMonitorSignalActionLabel = computed(() => {
+  const panel = scanMonitorPanel.value
+  return panel ? resolveScanMonitorSignalActionLabel(panel) : ''
+})
+
 function handleScanMonitorMetricClick(key: string): void {
   if (key === 'attention') {
     jumpToAbnormalTab()
@@ -1188,137 +1219,45 @@ function handleScanMonitorMetricClick(key: string): void {
   }
 }
 
-const statPanelMetrics = computed<SignalMetric[]>(() => {
-  if (scanMonitorPanelLoadFailed.value) {
-    return [{ key: 'monitor-load-failed', label: '监控 KPI', value: '加载失败', tone: 'red' }]
-  }
-  const panel = scanMonitorPanel.value
-  if (!panel) {
-    return [{ key: 'monitor-empty', label: '监控 KPI', value: '—', tone: 'gray' }]
-  }
-  return [
-    {
-      key: 'batch',
-      label: '扫描批次',
-      value: `${panel.settledBatchCount}/${panel.batchTotal}`,
-      tone: 'blue',
-    },
-    {
-      key: 'scanned-page',
-      label: '已扫描页',
-      value: panel.progressDisplay ?? panel.scannedPageCount,
-      tone: mapScanMonitorMetricTone(
-        panel.primaryMetricTone,
-        panel.scannedPageCount > 0 ? 'green' : 'gray',
-      ),
-      helper: panel.progressPercent != null ? `扫描进度 ${panel.progressPercent}%` : undefined,
-    },
-    {
-      key: 'bound-paper',
-      label: '已绑定',
-      value: panel.boundPaperCount,
-      tone: panel.boundPaperCount > 0 ? 'green' : 'gray',
-    },
-    {
-      key: 'missing-candidate',
-      label: '缺失考生',
-      value: panel.missingCandidateCount,
-      tone: panel.missingCandidateCount > 0 ? 'red' : 'green',
-      clickable: panel.missingCandidateCount > 0,
-      helper: panel.missingCandidateCount > 0 ? '查看缺失名册异常' : undefined,
-    },
-    {
-      key: 'duplicate-page',
-      label: '重复影像',
-      value: panel.duplicatePageCount,
-      tone: panel.duplicatePageCount > 0 ? 'orange' : 'green',
-      clickable: panel.duplicatePageCount > 0,
-      helper: panel.duplicatePageCount > 0 ? '打开重复 tab' : undefined,
-    },
-    {
-      key: 'attention',
-      label: '扫描异常',
-      value: abnormalAttentionTotal.value,
-      unit: '条',
-      tone: abnormalAttentionTotal.value > 0 ? 'orange' : 'green',
-      clickable: abnormalAttentionTotal.value > 0,
-      active: activeTab.value === 'abnormal' && !filterForm.attentionType,
-      helper: abnormalAttentionTotal.value > 0 ? '打开异常 tab' : undefined,
-    },
-    {
-      key: 'orphan-event',
-      label: '游离页事件',
-      value: panel.orphanPendingEventCount,
-      unit: '条',
-      tone: panel.orphanPendingEventCount > 0 ? 'orange' : 'gray',
-      clickable: panel.orphanPendingEventCount > 0,
-      helper: panel.orphanPendingEventCount > 0 ? '前往批次工作台回收' : undefined,
-    },
-  ]
-})
-
-function mapScanMonitorMetricTone(
-  tone: string | undefined,
-  fallback: SignalMetric['tone'],
-): SignalMetric['tone'] {
-  if (tone === 'green') return 'green'
-  if (tone === 'blue') return 'blue'
-  if (tone === 'orange') return 'orange'
-  if (tone === 'red') return 'red'
-  if (tone === 'gray') return 'gray'
-  return fallback
-}
-
-const scanMonitorSignalBandTone = computed(() => {
-  const tone = scanMonitorPanel.value?.signalBandTone
-  if (tone === 'red') return 'error'
-  if (tone === 'green') return 'success'
-  if (tone === 'blue') return 'info'
-  if (tone === 'amber' || tone === 'orange') return 'warning'
-  return 'info'
-})
-
-const scanMonitorProgressTitle = computed(() => {
-  const panel = scanMonitorPanel.value
-  if (!panel) return '扫描进度'
-  if (panel.progressDisplay) return `扫描进度 ${panel.progressDisplay}`
-  return '扫描进度'
-})
-
-const scanMonitorSignalActionLabel = computed(() => {
-  switch (scanMonitorPanel.value?.signalActionKey) {
-    case 'UPLOAD_ROSTER':
-      return '去上传名册'
-    case 'VIEW_ATTENTION':
-      return '查看异常队列'
-    case 'PUBLISH_SCORE':
-      return '去发布'
-    case 'REFRESH':
-      return '刷新数据'
-    default:
-      return ''
-  }
-})
-
 function handleScanMonitorSignalAction(): void {
   if (!selectedExamId.value) return
-  switch (scanMonitorPanel.value?.signalActionKey) {
-    case 'UPLOAD_ROSTER':
+  const panel = scanMonitorPanel.value
+  if (!panel) return
+  switch (panel.signalActionKey) {
+    case ExamScanMonitorSignalActionKeyCode.UPLOAD_ROSTER:
       void router.push({
         name: 'TeacherExamWorkspaceCandidateRoster',
         params: { examId: selectedExamId.value },
       })
       return
-    case 'VIEW_ATTENTION':
+    case ExamScanMonitorSignalActionKeyCode.VIEW_ATTENTION:
       jumpToAbnormalTab()
       return
-    case 'PUBLISH_SCORE':
+    case ExamScanMonitorSignalActionKeyCode.PUBLISH_SCORE:
       void router.push({
         name: 'TeacherExamWorkspaceScoreRelease',
         params: { examId: selectedExamId.value },
       })
       return
-    case 'REFRESH':
+    case ExamScanMonitorSignalActionKeyCode.REFRESH:
+      void loadScanOverview(selectedExamId.value)
+      return
+    default:
+      break
+  }
+  switch (panel.signalCode) {
+    case ExamScanMonitorSignalCode.PAGE_REGISTER_PENDING:
+      if (panel.blockedCount > 0) {
+        jumpToBlockedBatches()
+      } else {
+        void loadScanOverview(selectedExamId.value)
+      }
+      return
+    case ExamScanMonitorSignalCode.PARTIAL_TAIL:
+    case ExamScanMonitorSignalCode.INCIDENT_OPEN:
+      jumpToAbnormalTab()
+      return
+    case ExamScanMonitorSignalCode.AWAITING_FIRST_SCAN_INFERENCE:
       void loadScanOverview(selectedExamId.value)
   }
 }
@@ -1333,14 +1272,14 @@ const monitorTabs = computed<UiSectionTabItem[]>(() => [
   {
     key: 'abnormal',
     label: '异常',
-    count: abnormalAttentionTotal.value,
-    badgeTone: abnormalAttentionTotal.value > 0 ? 'red' : 'gray',
+    count: abnormalAttentionCount.value,
+    badgeTone: abnormalAttentionCount.value > 0 ? 'red' : 'gray',
   },
   {
     key: 'duplicate',
     label: '重复',
-    count: duplicateAttentionTotal.value,
-    badgeTone: duplicateAttentionTotal.value > 0 ? 'purple' : 'gray',
+    count: duplicateAttentionCount.value,
+    badgeTone: duplicateAttentionCount.value > 0 ? 'purple' : 'gray',
   },
 ])
 
@@ -1359,8 +1298,8 @@ async function loadConnectedScannerDevices(): Promise<void> {
       return
     }
     if (
-      filterForm.monitorDeviceId
-      && !scannerDevices.value.some((device) => device.scannerDeviceId === filterForm.monitorDeviceId)
+      filterForm.monitorDeviceId &&
+      !scannerDevices.value.some((device) => device.scannerDeviceId === filterForm.monitorDeviceId)
     ) {
       filterForm.monitorDeviceId = ''
     }
@@ -1400,8 +1339,8 @@ function tickMonitorFallbackPoll(): void {
 
 function startMonitorFallbackPolling(): void {
   stopMonitorFallbackPolling()
-  const intervalMs
-    = activeTab.value === 'normal'
+  const intervalMs =
+    activeTab.value === 'normal'
       ? SCANNER_DEVICE_POLL_INTERVAL_MS
       : ATTENTION_FALLBACK_POLL_INTERVAL_MS
   monitorFallbackPollTimer = setInterval(tickMonitorFallbackPoll, intervalMs)
@@ -1491,13 +1430,10 @@ async function loadAttentions(): Promise<void> {
   if (!selectedExamId.value) {
     attentions.value = []
     attentionPagination.total = 0
-    abnormalAttentionTotal.value = 0
-    duplicateAttentionTotal.value = 0
     return
   }
   loading.value = true
   try {
-    await loadAttentionCounters()
     const queryGroup = currentAttentionQueryGroup()
     if (!queryGroup) {
       attentions.value = []
@@ -1521,31 +1457,6 @@ function currentAttentionQueryGroup(): ScanAttentionQueryGroupCode | undefined {
 function currentAttentionType(): ScanAttentionTypeCode | undefined {
   if (activeTab.value !== 'abnormal') return undefined
   return filterForm.attentionType || undefined
-}
-
-async function loadAttentionCounters(): Promise<void> {
-  const examId = selectedExamId.value
-  if (!examId) {
-    abnormalAttentionTotal.value = 0
-    duplicateAttentionTotal.value = 0
-    return
-  }
-  const [abnormalResult, duplicateResult] = await Promise.all([
-    listScanAttentions({
-      examId,
-      pageNum: 1,
-      pageSize: 1,
-      queryGroup: ScanAttentionQueryGroupCode.ABNORMAL,
-    }),
-    listScanAttentions({
-      examId,
-      pageNum: 1,
-      pageSize: 1,
-      queryGroup: ScanAttentionQueryGroupCode.DUPLICATE,
-    }),
-  ])
-  abnormalAttentionTotal.value = abnormalResult.total
-  duplicateAttentionTotal.value = duplicateResult.total
 }
 
 let attentionLoadGeneration = 0
@@ -1593,7 +1504,7 @@ function reloadAttentionsFromFirstPage(): void {
   void loadAttentions()
 }
 
-function handleAttentionPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleAttentionPageChange(pageEvent: { current: number; pageSize: number }): void {
   attentionPagination.current = pageEvent.current
   attentionPagination.pageSize = pageEvent.pageSize
   selectedRowKeys.value = []
@@ -2128,8 +2039,8 @@ function buildAttentionActions(record: ScanAttentionItemResponse): UiTableRowAct
   } else if (record.attentionType === ScanAttentionTypeCode.DUPLICATE_PENDING) {
     actions.push({ key: 'ledger', label: '去影像账本处置', tone: 'primary' })
   } else if (
-    record.attentionType === ScanAttentionTypeCode.QUALITY_BLOCK
-    || record.attentionType === ScanAttentionTypeCode.PROCESSING_BLOCK
+    record.attentionType === ScanAttentionTypeCode.QUALITY_BLOCK ||
+    record.attentionType === ScanAttentionTypeCode.PROCESSING_BLOCK
   ) {
     actions.push({ key: 'dispose', label: '查看处置', tone: 'primary' })
     if (record.paperInstanceId && record.scanBatchId) {
@@ -2232,10 +2143,10 @@ async function handleBatchBind(): Promise<void> {
   }
   const selected = attentions.value.filter(
     (item) =>
-      selectedRowKeys.value.includes(item.id)
-      && item.attentionType === 'BINDING_CONFLICT'
-      && item.paperInstanceId
-      && item.scanBatchId,
+      selectedRowKeys.value.includes(item.id) &&
+      item.attentionType === 'BINDING_CONFLICT' &&
+      item.paperInstanceId &&
+      item.scanBatchId,
   )
   if (selected.length === 0) {
     message.error('请选择可身份绑定的绑定冲突异常项')
@@ -2343,8 +2254,6 @@ watch(
     selectedRowKeys.value = []
     attentionPagination.current = 1
     attentionPagination.total = 0
-    abnormalAttentionTotal.value = 0
-    duplicateAttentionTotal.value = 0
     filterForm.attentionType = ''
     filterForm.scanBatchId = ''
     filterForm.paperInstanceId = ''

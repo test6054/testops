@@ -11,6 +11,8 @@ import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { ExamScanBatchWorkbenchSignalBandToneCode } from '@/types/enums/exam-scan-batch-workbench-signal-band-tone-enum'
+import { isExamScanBatchWorkbenchSignalBandToneCode } from '@/types/enums/exam-scan-batch-workbench-signal-band-tone-enum'
 import type { PageRegisterStateCode } from '@/types/enums/page-register-state-enum'
 import type { ScanAttentionQueryGroupCode } from '@/types/enums/scan-attention-query-group-enum'
 import type { ScanAttentionSourceTypeCode } from '@/types/enums/scan-attention-source-type-enum'
@@ -21,15 +23,7 @@ import type { ScanBatchWorkbenchRegisterStatusCode } from '@/types/enums/scan-ba
 import type { ScanBatchWorkbenchRosterMatchStatusCode } from '@/types/enums/scan-batch-workbench-roster-match-status-enum'
 import type { ScanBatchWorkbenchTopActionCode } from '@/types/enums/scan-batch-workbench-top-action-enum'
 import http from '@/config/axios'
-import {
-  ALL_QUALITY_DECISION_CODES,
-  QualityDecisionCode,
-  QualityDecisionDescription,
-} from '@/types/enums/quality-decision-enum'
-import {
-  ALL_SCAN_ATTENTION_SOURCE_TYPE_CODES,
-  ScanAttentionSourceTypeDescription,
-} from '@/types/enums/scan-attention-source-type-enum'
+import { QualityDecisionCode } from '@/types/enums/quality-decision-enum'
 import {
   ALL_SCAN_ATTENTION_TYPE_CODES,
   ScanAttentionTypeCode,
@@ -40,6 +34,12 @@ import {
   ScanBatchStatusCode,
   ScanBatchStatusDescription,
 } from '@/types/enums/scan-batch-status-enum'
+
+export {
+  ALL_EXAM_SCAN_BATCH_WORKBENCH_SIGNAL_BAND_TONE_CODES,
+  ExamScanBatchWorkbenchSignalBandToneCode,
+  isExamScanBatchWorkbenchSignalBandToneCode,
+} from '@/types/enums/exam-scan-batch-workbench-signal-band-tone-enum'
 
 export {
   ALL_QUALITY_DECISION_CODES,
@@ -65,17 +65,23 @@ export {
   ScanAttentionTypeDescription,
 } from '@/types/enums/scan-attention-type-enum'
 
+export {
+  ALL_SCAN_BATCH_ORDER_AUDIT_CODES,
+  ScanBatchOrderAuditCode,
+  ScanBatchOrderAuditDescription,
+} from '@/types/enums/scan-batch-order-audit-enum'
+
+export {
+  ALL_SCAN_BATCH_STATUS_CODES,
+  ScanBatchStatusCode,
+  ScanBatchStatusDescription,
+} from '@/types/enums/scan-batch-status-enum'
+
 /** 扫描页质量判定徽标色调 */
 export const QUALITY_DECISION_TONE: Record<QualityDecisionCode, BadgeTone> = {
   [QualityDecisionCode.PASS]: 'green',
   [QualityDecisionCode.BLOCKED]: 'red',
 }
-
-export const QUALITY_DECISION_OPTIONS: Array<{ label: string, value: QualityDecisionCode }>
-  = ALL_QUALITY_DECISION_CODES.map((value) => ({
-    value,
-    label: QualityDecisionDescription[value],
-  }))
 
 /** 扫描异常类型徽标色调 */
 export const SCAN_ATTENTION_TYPE_TONE: Record<ScanAttentionTypeCode, BadgeTone> = {
@@ -87,20 +93,11 @@ export const SCAN_ATTENTION_TYPE_TONE: Record<ScanAttentionTypeCode, BadgeTone> 
   [ScanAttentionTypeCode.MISSING_CANDIDATE_ROSTER]: 'orange',
 }
 
-export const SCAN_ATTENTION_TYPE_OPTIONS: Array<{ label: string, value: ScanAttentionTypeCode }>
-  = ALL_SCAN_ATTENTION_TYPE_CODES.map((value) => ({
+export const SCAN_ATTENTION_TYPE_OPTIONS: Array<{ label: string; value: ScanAttentionTypeCode }> =
+  ALL_SCAN_ATTENTION_TYPE_CODES.map((value) => ({
     value,
     label: ScanAttentionTypeDescription[value],
   }))
-
-/** 扫描异常来源类型文案 - 与后端 ScanAttentionSourceType 展示约定一致 */
-export const SCAN_ATTENTION_SOURCE_TYPE_OPTIONS: Array<{
-  label: string
-  value: ScanAttentionSourceTypeCode
-}> = ALL_SCAN_ATTENTION_SOURCE_TYPE_CODES.map((value) => ({
-  value,
-  label: ScanAttentionSourceTypeDescription[value],
-}))
 
 /** 阅卷原始扫描页引用 - 与后端 ScannedPageRef 字段对齐 */
 export interface MarkingScanPageRefVO {
@@ -171,18 +168,6 @@ export interface ScanAttentionItemResponse {
   updateTime?: string
 }
 
-export {
-  ALL_SCAN_BATCH_ORDER_AUDIT_CODES,
-  ScanBatchOrderAuditCode,
-  ScanBatchOrderAuditDescription,
-} from '@/types/enums/scan-batch-order-audit-enum'
-
-export {
-  ALL_SCAN_BATCH_STATUS_CODES,
-  ScanBatchStatusCode,
-  ScanBatchStatusDescription,
-} from '@/types/enums/scan-batch-status-enum'
-
 /** 扫描批次状态 BadgeTone 映射 */
 export const SCAN_BATCH_STATUS_TONE: Record<ScanBatchStatusCode, BadgeTone> = {
   [ScanBatchStatusCode.IN_PROGRESS]: 'blue',
@@ -193,14 +178,11 @@ export const SCAN_BATCH_STATUS_TONE: Record<ScanBatchStatusCode, BadgeTone> = {
   [ScanBatchStatusCode.DISCARDED]: 'gray',
 }
 
-export const SCAN_BATCH_STATUS_OPTIONS: Array<{ value: ScanBatchStatusCode, label: string }>
-  = ALL_SCAN_BATCH_STATUS_CODES.map((value) => ({
+export const SCAN_BATCH_STATUS_OPTIONS: Array<{ value: ScanBatchStatusCode; label: string }> =
+  ALL_SCAN_BATCH_STATUS_CODES.map((value) => ({
     value,
     label: ScanBatchStatusDescription[value],
   }))
-
-/** 扫描监控主链路状态说明（批次入账 → 绑定 → 完成；异常与重复须逐条处置） */
-export const SCAN_MONITOR_FLOW_HINT = `${ScanBatchStatusDescription[ScanBatchStatusCode.IN_PROGRESS]} → ${ScanBatchStatusDescription[ScanBatchStatusCode.RECEIVED]} → ${ScanBatchStatusDescription[ScanBatchStatusCode.BOUND]} → ${ScanBatchStatusDescription[ScanBatchStatusCode.COMPLETED]} · 异常与重复须逐条处置`
 
 /** 扫描批次视图 - 对应 ExamScannerBatchResponse */
 export interface ExamScannerBatchResponse {
@@ -307,39 +289,6 @@ export interface ExamScannerBatchDetailRequest {
   scanBatchId: string
 }
 
-/** 扫描批次扫描页分页查询请求 - 对应 ExamScannerBatchPagesPageRequest */
-export interface ExamScannerBatchPagesPageRequest extends QueryDto {
-  examId: string
-  scanBatchId: string
-}
-
-/** 扫描批次扫描页列表项 - 对应 ExamScannerBatchPageItemVO */
-export interface ExamScannerBatchPageItemVO {
-  pageId: string
-  examId: string
-  scanBatchId: string
-  paperInstanceId?: string
-  pageSeq: number
-  templatePageNo: number
-  fileId?: string
-  qualityStatus: QualityDecisionCode
-  diagnostic?: string
-  effectiveStatus: EffectiveStatusCode
-  createTime?: string
-  updateTime?: string
-}
-
-/** orphan 扫描事件统计查询请求 - 对应 ExamScannerBatchOrphanStatsRequest */
-export interface ExamScannerBatchOrphanStatsRequest {
-  examId: string
-}
-
-/** orphan 扫描事件统计响应 - 对应 ExamScannerBatchOrphanStatsResponse */
-export interface ExamScannerBatchOrphanStatsResponse {
-  orphanPendingEventCount: number
-  orphanPendingPageCount: number
-}
-
 /** orphan 扫描事件一键补救请求 - 对应 ExamScannerBatchRecoverOrphanRequest */
 export interface ExamScannerBatchRecoverOrphanRequest {
   examId: string
@@ -427,26 +376,6 @@ export function getScannerBatchDetail(
   request: ExamScannerBatchDetailRequest,
 ): Promise<ExamScannerBatchResponse> {
   return http.post<ExamScannerBatchResponse>('/api/mark/exams/scanner-batches/detail', request)
-}
-
-/** 分页查询扫描批次内扫描页。 */
-export function pageScannerBatchPages(
-  request: ExamScannerBatchPagesPageRequest,
-): Promise<PageResult<ExamScannerBatchPageItemVO>> {
-  return http.post<PageResult<ExamScannerBatchPageItemVO>>(
-    '/api/mark/exams/scanner-batches/pages/page',
-    request,
-  )
-}
-
-/** 查询 orphan PENDING 扫描事件统计。 */
-export function getScannerBatchOrphanStats(
-  request: ExamScannerBatchOrphanStatsRequest,
-): Promise<ExamScannerBatchOrphanStatsResponse> {
-  return http.post<ExamScannerBatchOrphanStatsResponse>(
-    '/api/mark/exams/scanner-batches/orphan-stats',
-    request,
-  )
 }
 
 /** 按设备分组一键补救 orphan PENDING 扫描事件。 */
@@ -606,7 +535,7 @@ export interface ExamScannerBatchWorkbenchPageVO {
 export interface ExamScannerBatchWorkbenchResponse {
   batch: ExamScannerBatchResponse
   signalBandMessage?: string
-  signalBandTone?: string
+  signalBandTone?: ExamScanBatchWorkbenchSignalBandToneCode
   /** 影像账本扫描进度（与监控看板同源，B5/T18） */
   progressPercent?: number
   progressDisplay?: string
@@ -655,31 +584,43 @@ export interface ExamScannerBatchPageInspectorVO {
   exceptionSummary?: string
 }
 
-const scanBatchWorkbenchMockEnabled
-  = import.meta.env.DEV && import.meta.env.VITE_SCAN_BATCH_WORKBENCH_MOCK === 'true'
+function parseScanBatchWorkbenchSignalBandTone(
+  value: unknown,
+): ExamScanBatchWorkbenchSignalBandToneCode | undefined {
+  if (value == null || value === '') {
+    return undefined
+  }
+  if (typeof value !== 'string' || !isExamScanBatchWorkbenchSignalBandToneCode(value)) {
+    throw new Error(`枚举合同不同步：signalBandTone=${String(value)}`)
+  }
+  return value
+}
+
+/** 校验扫描批次工作台 Signal 枚举契约。 */
+export function normalizeScannerBatchWorkbench(
+  workbench: ExamScannerBatchWorkbenchResponse,
+): ExamScannerBatchWorkbenchResponse {
+  return {
+    ...workbench,
+    signalBandTone: parseScanBatchWorkbenchSignalBandTone(workbench.signalBandTone),
+  }
+}
 
 /** 查询扫描批次工作台聚合。 */
 export async function getScannerBatchWorkbench(
   request: ExamScannerBatchWorkbenchRequest,
 ): Promise<ExamScannerBatchWorkbenchResponse> {
-  if (scanBatchWorkbenchMockEnabled) {
-    const { mockGetScannerBatchWorkbench } = await import('@/mocks/scan-batch-workbench-mock')
-    return mockGetScannerBatchWorkbench(request)
-  }
-  return http.post<ExamScannerBatchWorkbenchResponse>(
+  const workbench = await http.post<ExamScannerBatchWorkbenchResponse>(
     '/api/mark/exams/scanner-batches/workbench',
     request,
   )
+  return normalizeScannerBatchWorkbench(workbench)
 }
 
 /** 游标分页查询扫描批次页轨。 */
-export async function pageScannerBatchWorkbenchPages(
+export function pageScannerBatchWorkbenchPages(
   request: ScannerBatchWorkbenchPageQueryRequest,
 ): Promise<ScannerBatchWorkbenchPageQueryResponse> {
-  if (scanBatchWorkbenchMockEnabled) {
-    const { mockPageScannerBatchWorkbenchPages } = await import('@/mocks/scan-batch-workbench-mock')
-    return mockPageScannerBatchWorkbenchPages(request)
-  }
   return http.post<ScannerBatchWorkbenchPageQueryResponse>(
     '/api/mark/exams/scanner-batches/workbench/pages',
     request,
@@ -687,13 +628,9 @@ export async function pageScannerBatchWorkbenchPages(
 }
 
 /** 查询扫描批次单页 Inspector。 */
-export async function getScannerBatchPageInspector(
+export function getScannerBatchPageInspector(
   request: ExamScannerBatchPageInspectorRequest,
 ): Promise<ExamScannerBatchPageInspectorVO> {
-  if (scanBatchWorkbenchMockEnabled) {
-    const { mockGetScannerBatchPageInspector } = await import('@/mocks/scan-batch-workbench-mock')
-    return mockGetScannerBatchPageInspector(request)
-  }
   return http.post<ExamScannerBatchPageInspectorVO>(
     '/api/mark/exams/scanner-batches/workbench/page-inspector',
     request,

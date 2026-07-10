@@ -1,8 +1,10 @@
 import type { ScanDispatchArchiveSnapshotVO } from '@/apis/mark/scanner-dispatch'
+import { previewScanDispatch } from '@/apis/mark/scanner-dispatch'
 import type {
   ScanWorkOrderArchiveContextVO,
   ScanWorkOrderLifecycleVO,
 } from '@/apis/mark/scanner-work-order'
+import { getScanWorkOrderContext, startScanWorkOrder } from '@/apis/mark/scanner-work-order'
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import {
@@ -11,8 +13,6 @@ import {
 } from '@/apis/mark/archive-volume'
 import { ScannerColorModeCode, ScannerDuplexModeCode } from '@/apis/mark/exam-mark-scanner'
 import { getAgentSetupContext } from '@/apis/mark/scanner-agent-local'
-import { previewScanDispatch } from '@/apis/mark/scanner-dispatch'
-import { getScanWorkOrderContext, startScanWorkOrder } from '@/apis/mark/scanner-work-order'
 import {
   ALL_ARCHIVE_SCAN_BATCH_MODE_CODES,
   ArchiveScanBatchModeCode,
@@ -99,12 +99,11 @@ export function useArchiveScanSession() {
         batchExternalNo: lifecycle.value?.batchExternalNo,
       })
       archiveContext.value = context.archiveContext ?? null
-      const merged = mergeWorkOrderLifecycleFromContext(
+      lifecycle.value = mergeWorkOrderLifecycleFromContext(
         context,
         ScanTaskKindCode.EXAM_ARCHIVE,
         lifecycle.value,
       )
-      lifecycle.value = merged
     } catch (error) {
       if (!options?.silent) {
         showUserError(error, '加载归档扫描上下文失败')

@@ -11,21 +11,22 @@
  * - 持久化只保存少量"用户选择"字段，目录缓存只放内存。
  */
 import type { GraduationRequirementVO } from '@/apis/quality/graduation-requirement'
+import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
 import type { QualityCourseVO } from '@/apis/quality/quality-course'
+import { qualityCourseApi } from '@/apis/quality/quality-course'
 import type { TrainingPlanVO } from '@/apis/quality/training-plan'
+import { trainingPlanApi } from '@/apis/quality/training-plan'
 import type { MajorCategoryVO, TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
+import { departmentCatalogApi, majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
 import type { SemesterCode } from '@/types/enums/semester-enum'
+import { isSemesterCode } from '@/types/enums/semester-enum'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
-import { qualityCourseApi } from '@/apis/quality/quality-course'
-import { trainingPlanApi } from '@/apis/quality/training-plan'
-import { departmentCatalogApi, majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
 import {
   loadSelectorFirstPage,
   QUALITY_SELECTOR_PAGE_SIZE,
 } from '@/components/quality/selectors/page-contract'
-import { ALL_SEMESTER_CODES } from '@/types/enums/semester-enum'
+import { buildOptionalAcademicYearSemesterQuery } from '@/utils/academic-year-semester-query'
 import { sanitizePersistedSchoolPeriod } from '@/utils/semester-contract'
 
 export const useQualityStore = defineStore(
@@ -125,7 +126,7 @@ export const useQualityStore = defineStore(
       }
     }
 
-    async function loadTrainingPlanOptions(opts?: { programId?: string, keyword?: string }) {
+    async function loadTrainingPlanOptions(opts?: { programId?: string; keyword?: string }) {
       trainingPlanLoading.value = true
       try {
         const page = await trainingPlanApi.page({
@@ -174,12 +175,19 @@ export const useQualityStore = defineStore(
       }
       qualityCourseLoading.value = true
       try {
+        const termQuery = buildOptionalAcademicYearSemesterQuery(
+          opts?.schoolYear ?? currentSchoolYear.value,
+          opts?.semester ?? currentSemester.value,
+        )
+        if (termQuery === null) {
+          qualityCourseOptions.value = []
+          return qualityCourseOptions.value
+        }
         const page = await qualityCourseApi.page({
           pageNum: 1,
           pageSize: QUALITY_SELECTOR_PAGE_SIZE,
           trainingPlanId: planId,
-          schoolYear: opts?.schoolYear || currentSchoolYear.value || undefined,
-          semester: opts?.semester || currentSemester.value || undefined,
+          ...termQuery,
           enabled: true,
         })
         qualityCourseOptions.value = page.list
@@ -251,9 +259,9 @@ export const useQualityStore = defineStore(
 
       if (semester !== undefined) {
         let next: SemesterCode | undefined
-        if (semester === null || semester === undefined) {
+        if (semester === null) {
           next = undefined
-        } else if (!ALL_SEMESTER_CODES.includes(semester) || !currentSchoolYear.value.trim()) {
+        } else if (!isSemesterCode(semester) || !currentSchoolYear.value.trim()) {
           next = undefined
         } else {
           next = semester

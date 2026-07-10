@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import type { Dayjs } from 'dayjs'
+import dayjs from 'dayjs'
 import type {
   IndirectEvaluationFormPublishRequest,
   IndirectEvaluationFormVO,
   IndirectEvaluationItemStatisticsVO,
   IndirectEvaluationProgressVO,
   IndirectEvaluationStatisticsVO,
+  TargetWeightedScoreVO,
 } from '@/apis/quality/indirect-form'
-import { message } from 'ant-design-vue'
-import dayjs from 'dayjs'
-import { reactive, ref, watch } from 'vue'
 import { indirectFormApi } from '@/apis/quality/indirect-form'
+import { message } from 'ant-design-vue'
+import { reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { IndirectFormAccessModeCode } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -18,13 +20,16 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useUserStore } from '@/stores'
 import { showUserError } from '@/utils/error-handler'
+import { handleDownloadFile } from '@/utils/file-download'
 import {
   accessModeOptions,
   buildPublicSurveyUrl,
   canCloseForm,
   canShowWorkflowInsights,
   DEFAULT_IDENTITY_FIELDS,
+  formatIndirectItemWeightDisplay,
   formStatusLabel,
 } from './indirect-evaluation-shared'
 
@@ -35,6 +40,9 @@ const props = defineProps<{
 const emit = defineEmits<{
   'forms-reloaded': [formId?: string]
 }>()
+
+const router = useRouter()
+const userStore = useUserStore()
 
 const publishDrawerVisible = ref(false)
 const publishSubmitting = ref(false)
@@ -67,21 +75,45 @@ const statisticsItemTotal = ref(0)
 const statisticsItemPageNum = ref(1)
 const statisticsItemPageSize = ref(20)
 const statisticsFormId = ref('')
+const exportContributing = ref(false)
 
-const WEIGHTED_ATTAINMENT_NOTICE_KEY = 'quality-indirect-weighted-attainment-notice-v1'
+const WEIGHTED_ATTAINMENT_NOTICE_KEY_PREFIX = 'quality-indirect-weighted-attainment-notice-v1'
 const weightedAttainmentNoticeVisible = ref(false)
 
+function weightedAttainmentNoticeStorageKey(): string {
+  const tenantId = userStore.userInfo?.tenantId
+  if (!tenantId) {
+    return WEIGHTED_ATTAINMENT_NOTICE_KEY_PREFIX
+  }
+  return `${WEIGHTED_ATTAINMENT_NOTICE_KEY_PREFIX}-${tenantId}`
+}
+
 function maybeShowWeightedAttainmentNotice() {
-  if (localStorage.getItem(WEIGHTED_ATTAINMENT_NOTICE_KEY) === '1') {
+  if (localStorage.getItem(weightedAttainmentNoticeStorageKey()) === '1') {
     weightedAttainmentNoticeVisible.value = false
     return
   }
   weightedAttainmentNoticeVisible.value = true
-  localStorage.setItem(WEIGHTED_ATTAINMENT_NOTICE_KEY, '1')
 }
 
 function dismissWeightedAttainmentNotice() {
   weightedAttainmentNoticeVisible.value = false
+  localStorage.setItem(weightedAttainmentNoticeStorageKey(), '1')
+}
+
+/** 关闭统计抽屉并跳转题项加权说明页，保留问卷上下文供返回统计 */
+function openWeightedAttainmentHelp() {
+  const formId = statisticsFormId.value || props.selectedForm?.id
+  statisticsDrawerVisible.value = false
+  void router.push({
+    name: 'QualityHelpIndirectWeightedAttainment',
+    query: formId
+      ? {
+          formId,
+          from: 'statistics',
+        }
+      : undefined,
+  })
 }
 
 /** 打开发布抽屉并初始化默认填写窗口与身份字段 */
@@ -202,10 +234,11 @@ async function openStatisticsDrawer(record: IndirectEvaluationFormVO) {
   statisticsItemTotal.value = 0
   statisticsFormId.value = record.id
   statisticsItemPageNum.value = 1
-  maybeShowWeightedAttainmentNotice()
+  weightedAttainmentNoticeVisible.value = false
   try {
     statisticsData.value = await indirectFormApi.statistics(record.id)
     await loadStatisticsItems()
+    maybeShowWeightedAttainmentNotice()
   } catch (error) {
     showUserError(error, '问卷统计加载失败')
     statisticsDrawerVisible.value = false
@@ -234,10 +267,50 @@ async function loadStatisticsItems() {
   }
 }
 
-function handleStatisticsItemPageChange(page: { current: number, pageSize: number }) {
+function handleStatisticsItemPageChange(page: { current: number; pageSize: number }) {
   statisticsItemPageNum.value = page.current
   statisticsItemPageSize.value = page.pageSize
   void loadStatisticsItems()
+}
+
+function showTargetScoreCards(targetScores?: TargetWeightedScoreVO[]): boolean {
+  return (targetScores?.length ?? 0) > 0
+}
+
+function formatDirectIndirectWeights(
+  directWeight?: number,
+  indirectWeight?: number,
+): string | null {
+  if (directWeight == null && indirectWeight == null) return null
+  const direct = directWeight == null ? '-' : String(directWeight)
+  const indirect = indirectWeight == null ? '-' : String(indirectWeight)
+  return `${direct} / ${indirect}`
+}
+
+function openAchievementDetail(target: TargetWeightedScoreVO) {
+  if (!target.achievementResultId) return
+  router.push({
+    name: 'QualityAchievementDetail',
+    params: { resultId: target.achievementResultId },
+  })
+}
+
+/** 导出间接评价认证明细 Excel（Phase C / C20） */
+async function exportContribution() {
+  if (!statisticsFormId.value) return
+  exportContributing.value = true
+  try {
+    const result = await indirectFormApi.exportContribution(statisticsFormId.value)
+    await handleDownloadFile({ fileId: result.fileNodeId, fileName: result.fileName })
+    if (result.staleFlag && result.staleMessage) {
+      message.warning(result.staleMessage)
+    }
+    message.success(`已导出 ${result.rowCount} 行认证明细`)
+  } catch (error) {
+    showUserError(error, '认证明细导出失败')
+  } finally {
+    exportContributing.value = false
+  }
 }
 
 /** 复制公开填答链接到剪贴板 */
@@ -303,6 +376,12 @@ defineExpose({
           · 样本回收率 {{ workflowProgress.responseCollectionRate }}%
         </span>
         <span
+          v-if="(workflowProgress.pendingConfirmCount ?? 0) > 0"
+          class="ie__workflow-pending-confirm"
+        >
+          · 待确认 {{ workflowProgress.pendingConfirmCount }} 份
+        </span>
+        <span
           v-if="(workflowProgress.pendingConversionCount ?? 0) > 0"
           class="ie__workflow-pending"
         >
@@ -366,7 +445,9 @@ defineExpose({
         <p>状态：{{ formStatusLabel(progressData.status) }}</p>
         <p>
           填答份数：{{ progressData.submissionCount }} / 有效批次 {{ progressData.validCount }}
-          <span v-if="progressData.expectedSample">（预期 {{ progressData.expectedSample }} 份）</span>
+          <span v-if="progressData.expectedSample"
+            >（预期 {{ progressData.expectedSample }} 份）</span
+          >
         </p>
         <p v-if="progressData.completionRate != null">
           填答完成率：{{ progressData.completionRate }}%
@@ -380,16 +461,25 @@ defineExpose({
         <p v-if="progressData.responseCollectionRate != null">
           样本回收率：{{ progressData.responseCollectionRate }}%（与间接达成度覆盖率口径一致）
         </p>
+        <p v-if="(progressData.pendingConfirmCount ?? 0) > 0" class="ie__progress-pending-confirm">
+          待确认有效
+          {{
+            progressData.pendingConfirmCount
+          }}
+          份（AI/文档导入草稿，须逐份确认有效后再纳入换算统计）
+        </p>
         <p
           v-if="
-            (progressData.scoredResponseCount ?? 0) > 0
-              || (progressData.pendingConversionCount ?? 0) > 0
-              || (progressData.noSubstantiveCount ?? 0) > 0
+            (progressData.scoredResponseCount ?? 0) > 0 ||
+            (progressData.pendingConversionCount ?? 0) > 0 ||
+            (progressData.noSubstantiveCount ?? 0) > 0
           "
         >
           已换算 {{ progressData.scoredResponseCount ?? 0 }} · 待换算
           {{ progressData.pendingConversionCount ?? 0 }}
-          <span v-if="(progressData.pendingConversionCount ?? 0) > 0">（选择/开放题须教师录入换算分）</span>
+          <span v-if="(progressData.pendingConversionCount ?? 0) > 0"
+            >（选择/开放题须教师录入换算分）</span
+          >
           <span v-if="(progressData.noSubstantiveCount ?? 0) > 0">
             · 无实质作答 {{ progressData.noSubstantiveCount }}
           </span>
@@ -401,17 +491,36 @@ defineExpose({
   <UiDrawer v-model:open="statisticsDrawerVisible" title="问卷统计分析" width="720" hide-footer>
     <a-spin :spinning="statisticsLoading">
       <template v-if="statisticsData">
+        <div class="ie__stats-actions">
+          <UiButton
+            size="sm"
+            variant="outline"
+            :loading="exportContributing"
+            @click="exportContribution"
+          >
+            导出认证明细
+          </UiButton>
+        </div>
         <UiAlertStrip
           v-if="weightedAttainmentNoticeVisible"
           tone="info"
           title="间接达成度计算口径已升级：多题项支撑同一目标时，按题项权重加权合成（原为样本简单均值），历史数值可能变化。"
           class="tw:mb-dp-4"
           @close="dismissWeightedAttainmentNotice"
-        />
+        >
+          <template #actions>
+            <UiButton size="sm" variant="ghost" @click="openWeightedAttainmentHelp">
+              了解详情
+            </UiButton>
+          </template>
+        </UiAlertStrip>
         <p>
           有效回收答卷：{{ statisticsData.overallSampleCount }}
           <span v-if="(statisticsData.overallScoredCount ?? 0) > 0">
             · 已换算 {{ statisticsData.overallScoredCount }}
+          </span>
+          <span v-if="(statisticsData.pendingConfirmCount ?? 0) > 0">
+            · 待确认 {{ statisticsData.pendingConfirmCount }}
           </span>
           <span v-if="(statisticsData.pendingConversionCount ?? 0) > 0">
             · 待换算 {{ statisticsData.pendingConversionCount }}
@@ -422,7 +531,77 @@ defineExpose({
           <span v-if="statisticsData.overallScore != null">
             · 总体换算分 {{ statisticsData.overallScore }}（题项权重加权，与达成度一致）
           </span>
+          <span
+            v-else-if="
+              showTargetScoreCards(statisticsData.targetScores) &&
+              statisticsData.targetScores!.length > 1
+            "
+            class="ie__stats-multi-target-hint"
+          >
+            · 本问卷含多个评价目标，请查看下方分目标加权分
+          </span>
         </p>
+        <div v-if="showTargetScoreCards(statisticsData.targetScores)" class="ie__target-scores">
+          <div
+            v-for="target in statisticsData.targetScores"
+            :key="`${target.targetType}-${target.targetId}`"
+            class="ie__target-score-card"
+          >
+            <div class="ie__target-score-head">
+              <span class="ie__target-score-label">{{ target.targetLabel }}</span>
+              <span v-if="target.itemCount != null" class="ie__target-score-meta">
+                {{ target.itemCount }} 题
+              </span>
+            </div>
+            <UiAlertStrip
+              v-if="target.success === false && target.errorMessage"
+              tone="error"
+              :title="target.errorMessage"
+              class="ie__target-score-error"
+            />
+            <template v-else-if="target.success !== false">
+              <p v-if="target.overallScore != null" class="ie__target-score-value">
+                加权间接分 {{ target.overallScore }}
+                <span v-if="target.equalWeightFallback">（等权重 1:1）</span>
+              </p>
+              <p v-else class="ie__target-score-muted">暂无可计入样本</p>
+              <p v-if="target.pendingBlocked" class="ie__target-score-warn">
+                存在待换算答卷，达成度统计可能不完整
+              </p>
+              <p
+                v-if="
+                  target.directValue != null ||
+                  target.indirectAchievementValue != null ||
+                  target.compositeValue != null
+                "
+                class="ie__target-score-synthesis"
+              >
+                <span v-if="target.directValue != null">D {{ target.directValue }}</span>
+                <span v-if="target.indirectAchievementValue != null">
+                  · I {{ target.indirectAchievementValue }}</span
+                >
+                <span
+                  v-if="formatDirectIndirectWeights(target.directWeight, target.indirectWeight)"
+                >
+                  · w {{ formatDirectIndirectWeights(target.directWeight, target.indirectWeight) }}
+                </span>
+                <span v-if="target.compositeValue != null"> · C {{ target.compositeValue }}</span>
+                <span v-if="target.achievementStaleFlag" class="ie__target-score-stale"
+                  >（已过期）</span
+                >
+              </p>
+              <UiButton
+                v-if="target.achievementResultId"
+                variant="ghost"
+                size="sm"
+                class="ie__target-score-link"
+                @click="openAchievementDetail(target)"
+              >
+                查看达成度详情
+              </UiButton>
+            </template>
+          </div>
+        </div>
         <UiDataTable
           pagination-mode="server"
           :columns="[
@@ -430,6 +609,12 @@ defineExpose({
             { title: '题干', dataIndex: 'itemText', key: 'itemText' },
             { title: '有效样本', dataIndex: 'validCount', key: 'validCount', width: 88 },
             { title: '已换算', dataIndex: 'scoredCount', key: 'scoredCount', width: 72 },
+            {
+              title: '待确认',
+              dataIndex: 'pendingConfirmCount',
+              key: 'pendingConfirmCount',
+              width: 72,
+            },
             {
               title: '待换算',
               dataIndex: 'pendingConversionCount',
@@ -443,7 +628,14 @@ defineExpose({
               width: 72,
             },
             { title: '均值', dataIndex: 'mean', key: 'mean', width: 80 },
-            { title: '换算分', dataIndex: 'convertedScore', key: 'convertedScore', width: 90 },
+            { title: '换算分 μ', dataIndex: 'convertedScore', key: 'convertedScore', width: 90 },
+            { title: '权重 w', dataIndex: 'weight', key: 'weight', width: 96 },
+            {
+              title: '贡献 μ×w',
+              dataIndex: 'weightedContribution',
+              key: 'weightedContribution',
+              width: 88,
+            },
           ]"
           :data-source="statisticsItems"
           row-key="itemId"
@@ -453,7 +645,13 @@ defineExpose({
           :page-num="statisticsItemPageNum"
           :page-size="statisticsItemPageSize"
           @page-change="handleStatisticsItemPageChange"
-        />
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'weight'">
+              {{ formatIndirectItemWeightDisplay(record.weight, record.equalWeightFallback) }}
+            </template>
+          </template>
+        </UiDataTable>
       </template>
     </a-spin>
   </UiDrawer>
@@ -471,6 +669,17 @@ defineExpose({
     font-size: 13px;
   }
 
+  &__workflow-pending-confirm {
+    color: var(--dp-warning);
+    font-weight: 500;
+  }
+
+  &__progress-pending-confirm {
+    margin: 0 0 8px;
+    color: var(--dp-warning);
+    font-size: 13px;
+  }
+
   &__workflow-pending {
     color: var(--dp-warning);
     font-weight: 500;
@@ -485,6 +694,79 @@ defineExpose({
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
+  }
+
+  &__stats-multi-target-hint {
+    color: var(--dp-text-muted);
+  }
+
+  &__stats-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 12px;
+  }
+
+  &__target-scores {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  &__target-score-card {
+    padding: 10px 12px;
+    border: 1px solid var(--dp-border);
+    border-radius: 6px;
+    background: var(--dp-surface-muted, #fafafa);
+  }
+
+  &__target-score-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  &__target-score-label {
+    font-weight: 500;
+    font-size: 13px;
+  }
+
+  &__target-score-meta {
+    color: var(--dp-text-muted);
+    font-size: 12px;
+  }
+
+  &__target-score-value {
+    margin: 0;
+    font-size: 13px;
+  }
+
+  &__target-score-muted {
+    margin: 0;
+    color: var(--dp-text-muted);
+    font-size: 13px;
+  }
+
+  &__target-score-warn {
+    margin: 4px 0 0;
+    color: var(--dp-warning);
+    font-size: 12px;
+  }
+
+  &__target-score-error {
+    margin-top: 4px;
+  }
+
+  &__target-score-synthesis {
+    margin: 4px 0 0;
+    color: var(--dp-text-muted);
+    font-size: 12px;
+  }
+
+  &__target-score-stale {
+    color: var(--dp-warning);
   }
 }
 </style>

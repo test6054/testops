@@ -119,7 +119,10 @@ export interface QualityCourseMatrixSignalSummaryVO {
   indicatorTotal: number
   indicatorCoveredCount: number
   assessmentItemTotal: number
+  assessmentItemWeightedCount: number
   assessmentItemHealthyCount: number
+  courseGoalWeightedCount: number
+  courseGoalHealthyCount: number
 }
 
 export interface QualityCourseMatrixSignalSummaryRequest {

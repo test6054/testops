@@ -1,6 +1,6 @@
 import type { SemesterCode } from '@/types/enums/semester-enum'
+import { parseSemesterCode } from '@/types/enums/semester-enum'
 import { message } from 'ant-design-vue'
-import { ALL_SEMESTER_CODES } from '@/types/enums/semester-enum'
 
 /** 与后端 BizException(PARAM_ERROR) 文案一致 */
 export const ACADEMIC_YEAR_SEMESTER_PAIR_MESSAGE = '学年和学期须同时选择'
@@ -80,8 +80,5 @@ export function readPairedSemesterFromQuery(
   if (!academicYear?.trim()) {
     return undefined
   }
-  if (typeof semester !== 'string') {
-    return undefined
-  }
-  return ALL_SEMESTER_CODES.find((code) => code === semester)
+  return parseSemesterCode(semester)
 }

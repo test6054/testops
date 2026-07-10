@@ -27,7 +27,8 @@
       flat
       row-key="classId"
       size="small"
-      class="exam-archive-gate-banner__table" :sticky-header="false"
+      class="exam-archive-gate-banner__table"
+      :sticky-header="false"
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'progress'">
@@ -46,8 +47,8 @@
 
 <script lang="ts" setup>
 import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
-import { computed, ref, watch } from 'vue'
 import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
+import { computed, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -77,7 +78,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   'go-close-exam': []
-  "loaded": [ArchiveVolumeExamGateResponse]
+  loaded: [ArchiveVolumeExamGateResponse]
 }>()
 
 const loading = ref(false)
@@ -87,14 +88,13 @@ const gate = ref<ArchiveVolumeExamGateResponse | null>(null)
 const { gateProgressHint, gateAnomaly, incompleteClasses } = useExamArchiveGateHint(gate)
 
 const closeExamReady = computed(() => {
-  if (props.scoresFullyPublished === true) {
-    return true
-  }
-  if (props.scoresFullyPublished === false) {
-    return false
+  if (props.scoresFullyPublished !== undefined) {
+    return props.scoresFullyPublished
   }
   return gate.value?.allScoresPublished === true
 })
+
+const scoresNotFullyPublished = computed(() => !closeExamReady.value)
 
 const bannerTone = computed(() => {
   if (gateAnomaly.value) {
@@ -106,7 +106,7 @@ const bannerTone = computed(() => {
   if (closeExamReady.value && !gate.value?.examClosed) {
     return 'success'
   }
-  if ((gate.value?.unpublishedBoundPaperCount ?? 0) > 0 || props.scoresFullyPublished === false) {
+  if ((gate.value?.unpublishedBoundPaperCount ?? 0) > 0 || scoresNotFullyPublished.value) {
     return 'warning'
   }
   return 'info'
@@ -126,7 +126,7 @@ const bannerTitle = computed(() => {
   if (closeExamReady.value && !current.examClosed) {
     return '成绩已全部发布'
   }
-  if ((current.unpublishedBoundPaperCount ?? 0) > 0 || props.scoresFullyPublished === false) {
+  if ((current.unpublishedBoundPaperCount ?? 0) > 0 || scoresNotFullyPublished.value) {
     return '尚有成绩未发布'
   }
   return '归档前置条件'
@@ -156,8 +156,8 @@ const showCloseReadyAction = computed(
 
 const showClassTable = computed(
   () =>
-    (gate.value?.classPublishProgress?.length ?? 0) > 0
-    && (gate.value?.unpublishedBoundPaperCount ?? 0) > 0,
+    (gate.value?.classPublishProgress?.length ?? 0) > 0 &&
+    (gate.value?.unpublishedBoundPaperCount ?? 0) > 0,
 )
 
 const classColumns = [

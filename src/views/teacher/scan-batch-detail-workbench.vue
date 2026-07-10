@@ -41,6 +41,28 @@
         class="scan-batch-detail-workbench__signal-alert"
       />
 
+      <UiAlertStrip
+        v-if="workbench?.batch?.orderAuditAttentionPending === true"
+        tone="warning"
+        :closable="false"
+        dense
+        title="批次余页未完整切卷"
+        description="完整卷已登记；余页保留在扫描页中。可忽略并继续封存，或在页轨中人工合并到目标试卷实例。"
+        class="scan-batch-detail-workbench__collate-alert"
+      >
+        <template #actions>
+          <UiButton
+            size="sm"
+            variant="primary"
+            :loading="collateAttentionDismissing"
+            @click="onDismissCollateAttention"
+          >
+            忽略并继续
+          </UiButton>
+          <UiButton size="sm" variant="outline" @click="openOrderAudit"> 人工合并 </UiButton>
+        </template>
+      </UiAlertStrip>
+
       <ScanBatchWorkbenchAttentionPanel
         v-if="workbench?.batch"
         :exam-id="selectedExamId"
@@ -175,16 +197,57 @@
       :batch="workbench?.batch ?? null"
       @success="handleSupplementSuccess"
     />
+
+    <UiDrawer
+      v-model:open="orderAuditDrawerOpen"
+      :title="orderAuditDrawerTitle"
+      width="560"
+      hide-footer
+    >
+      <UiEmpty
+        v-if="!orderAuditLoading && !orderAuditDetail?.issues?.length"
+        description="暂无顺序审计异常"
+      />
+      <UiDataTable
+        v-else
+        pagination-mode="none"
+        :columns="orderAuditIssueColumns"
+        :data-source="orderAuditDetail?.issues ?? []"
+        :loading="orderAuditLoading"
+        :show-pagination="false"
+        flat
+        :total="orderAuditDetail?.issues?.length ?? 0"
+        row-key="message"
+        size="small"
+        :sticky-header="false"
+      />
+    </UiDrawer>
   </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
+import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   ExamScanBatchPageRegisterRetryResponse,
   ExamScannerBatchPageInspectorVO,
   ExamScannerBatchResponse,
   ExamScannerBatchWorkbenchPageVO,
   ExamScannerBatchWorkbenchResponse,
+  ScanBatchOrderAuditIssueResponse,
+  ScanBatchOrderAuditResponse,
+} from '@/apis/mark/exam-scan'
+import {
+  dismissScanBatchCollateAttention,
+  getScanBatchOrderAudit,
+  getScannerBatchPageInspector,
+  getScannerBatchWorkbench,
+  pageScannerBatchWorkbenchPages,
+  retryScanBatchPageRegister,
+  SCAN_BATCH_STATUS_TONE,
+  ScanBatchOrderAuditDescription,
+  ScanBatchStatusDescription,
+  ScanBatchWorkbenchTopActionDescription,
+  sealScanBatchByTeacher,
 } from '@/apis/mark/exam-scan'
 import type { BadgeTone, UiAlertStripTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -193,16 +256,6 @@ import message from 'ant-design-vue/es/message'
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchStoragePreviewBlobUrl } from '@/apis/edu/file-management'
-import {
-  getScannerBatchPageInspector,
-  getScannerBatchWorkbench,
-  pageScannerBatchWorkbenchPages,
-  retryScanBatchPageRegister,
-  SCAN_BATCH_STATUS_TONE,
-  ScanBatchStatusDescription,
-  ScanBatchWorkbenchTopActionDescription,
-  sealScanBatchByTeacher,
-} from '@/apis/mark/exam-scan'
 import { discardScannerKioskBatch } from '@/apis/mark/scanner-kiosk'
 import ScanBatchDiscardDialog from '@/components/mark/ScanBatchDiscardDialog.vue'
 import ScanBatchPageInspectorPanel from '@/components/mark/ScanBatchPageInspectorPanel.vue'
@@ -214,6 +267,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
@@ -236,6 +290,7 @@ import {
   canSealBatch,
   formatBatchSealConfirmContent,
 } from '@/utils/scan-batch-seal'
+import { mapScanBatchWorkbenchSignalBandToneToAlert } from '@/utils/scan-monitor-panel-ui'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherExamWorkspaceScanBatchDetail' })
@@ -244,8 +299,8 @@ const route = useRoute()
 const router = useRouter()
 const { selectedExamId } = useWorkspaceExamId()
 const { width: viewportWidth } = useWindowSize()
-const { isExamConfidential, examConfidentialLabel, watermarkLines }
-  = useWorkspaceConfidentialContext()
+const { isExamConfidential, examConfidentialLabel, watermarkLines } =
+  useWorkspaceConfidentialContext()
 
 const pageStatusFilter = ref<ScanBatchWorkbenchPageStatusFilterCode>(
   ScanBatchWorkbenchPageStatusFilterCode.ALL,
@@ -298,8 +353,8 @@ const pageRailEmptyDescription = computed(() => {
     return '原件待登记，可在中栏预览原件'
   }
   if (
-    pageStatusFilter.value !== ScanBatchWorkbenchPageStatusFilterCode.ALL
-    || pageKeyword.value.trim()
+    pageStatusFilter.value !== ScanBatchWorkbenchPageStatusFilterCode.ALL ||
+    pageKeyword.value.trim()
   ) {
     return '当前筛选条件下无匹配页轨'
   }
@@ -326,6 +381,10 @@ const discardModalOpen = ref(false)
 const supplementModalOpen = ref(false)
 const leftDrawerOpen = ref(false)
 const rightDrawerOpen = ref(false)
+const collateAttentionDismissing = ref(false)
+const orderAuditDrawerOpen = ref(false)
+const orderAuditLoading = ref(false)
+const orderAuditDetail = ref<ScanBatchOrderAuditResponse | null>(null)
 
 const contextSubtitle = computed(() => {
   const batch = workbench.value?.batch
@@ -381,22 +440,9 @@ const workbenchSignalMetrics = computed((): SignalMetric[] => {
 
 const scanBatchId = computed(() => String(route.params.scanBatchId ?? ''))
 
-const workbenchSignalTone = computed((): UiAlertStripTone => {
-  const tone = workbench.value?.signalBandTone
-  if (tone === 'error' || tone === 'warning' || tone === 'info' || tone === 'success') {
-    return tone
-  }
-  if (tone === 'red') {
-    return 'error'
-  }
-  if (tone === 'amber') {
-    return 'warning'
-  }
-  if (tone === 'blue') {
-    return 'info'
-  }
-  return 'info'
-})
+const workbenchSignalTone = computed((): UiAlertStripTone =>
+  mapScanBatchWorkbenchSignalBandToneToAlert(workbench.value?.signalBandTone),
+)
 
 const workbenchProgressTitle = computed(() => {
   const display = workbench.value?.progressDisplay
@@ -406,6 +452,27 @@ const workbenchProgressTitle = computed(() => {
   const percent = workbench.value?.progressPercent
   return percent !== undefined && percent !== null ? `扫描进度 ${percent}%` : '批次信号'
 })
+
+const orderAuditDrawerTitle = computed(() => {
+  const batch = workbench.value?.batch
+  if (!batch) {
+    return '批次顺序诊断'
+  }
+  return `批次顺序诊断 · ${batch.batchNo}`
+})
+
+const orderAuditIssueColumns: ColumnType<ScanBatchOrderAuditIssueResponse>[] = [
+  {
+    title: '异常码',
+    key: 'auditCode',
+    width: 140,
+    customRender: ({ record }) =>
+      strictEnumLabel(ScanBatchOrderAuditDescription, record.auditCode, '顺序审计异常码'),
+  },
+  { title: '说明', dataIndex: 'message', key: 'message' },
+  { title: '进纸序', dataIndex: 'pageSeq', key: 'pageSeq', width: 72 },
+  { title: '模板页', dataIndex: 'templatePageNo', key: 'templatePageNo', width: 72 },
+]
 
 const selectedPage = computed(() => {
   const fromRail = pageItems.value.find((item) => item.pageKey === selectedPageKey.value)
@@ -421,8 +488,8 @@ const selectedPage = computed(() => {
 
 const showPreviewTabs = computed(() =>
   Boolean(
-    selectedPage.value?.identitySliceFileId
-    && selectedPage.value.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING,
+    selectedPage.value?.identitySliceFileId &&
+    selectedPage.value.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING,
   ),
 )
 
@@ -488,8 +555,8 @@ function resolvePageKeyAfterRefresh(
   if (pendingFileOrder !== null) {
     const registered = items.find(
       (item) =>
-        item.fileOrder === pendingFileOrder
-        && item.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING,
+        item.fileOrder === pendingFileOrder &&
+        item.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING,
     )
     if (registered) {
       return registered.pageKey
@@ -541,8 +608,8 @@ async function loadWorkbench(): Promise<void> {
       scanBatchId: scanBatchId.value,
     })
     pageItems.value = workbench.value.initialPageItems ?? []
-    selectedPageKey.value
-      = preservedPageKey || workbench.value.initialPageKey || pageItems.value[0]?.pageKey || ''
+    selectedPageKey.value =
+      preservedPageKey || workbench.value.initialPageKey || pageItems.value[0]?.pageKey || ''
     pagesNextCursor.value = undefined
     await refreshPagesWindow()
 
@@ -626,10 +693,10 @@ async function refreshPagesWindow(): Promise<void> {
 
 async function loadMorePages(): Promise<void> {
   if (
-    !selectedExamId.value
-    || !scanBatchId.value
-    || !pagesNextCursor.value
-    || pagesLoadingMore.value
+    !selectedExamId.value ||
+    !scanBatchId.value ||
+    !pagesNextCursor.value ||
+    pagesLoadingMore.value
   ) {
     return
   }
@@ -721,8 +788,8 @@ async function loadPreview(): Promise<void> {
   if (!page) {
     return
   }
-  const previewPath
-    = previewTab.value === 'identity' ? page.identitySlicePreviewUrl : page.previewUrl
+  const previewPath =
+    previewTab.value === 'identity' ? page.identitySlicePreviewUrl : page.previewUrl
   if (!previewPath) {
     previewLoadFailed.value = true
     return
@@ -749,6 +816,53 @@ async function handleAttentionSelectPage(pageId: string): Promise<void> {
   selectedPageKey.value = pageKey
   previewTab.value = 'page'
   await syncSelectedPageAfterRefresh(pageKey)
+}
+
+async function openOrderAudit(): Promise<void> {
+  const batch = workbench.value?.batch
+  if (!batch?.scanBatchId || !selectedExamId.value) {
+    return
+  }
+  orderAuditDrawerOpen.value = true
+  orderAuditLoading.value = true
+  orderAuditDetail.value = null
+  try {
+    orderAuditDetail.value = await getScanBatchOrderAudit({
+      examId: selectedExamId.value,
+      scanBatchId: batch.scanBatchId,
+    })
+  } catch (error) {
+    showUserError(error, '加载顺序诊断失败')
+  } finally {
+    orderAuditLoading.value = false
+  }
+}
+
+async function onDismissCollateAttention(): Promise<void> {
+  const batch = workbench.value?.batch
+  if (!batch?.scanBatchId || !selectedExamId.value || batch.orderAuditAttentionPending !== true) {
+    return
+  }
+  await confirmAsync({
+    title: '忽略并继续',
+    content: '余页将保留在扫描页中，不创建试卷实例。确认后可继续封存批次。',
+    type: 'warning',
+    onOk: async () => {
+      collateAttentionDismissing.value = true
+      try {
+        await dismissScanBatchCollateAttention({
+          examId: selectedExamId.value,
+          scanBatchId: batch.scanBatchId,
+        })
+        message.success('已忽略余页异常，可继续封存')
+        await loadWorkbench()
+      } catch (error) {
+        showUserError(error, '忽略余页异常失败')
+      } finally {
+        collateAttentionDismissing.value = false
+      }
+    },
+  })
 }
 
 async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise<void> {
@@ -876,6 +990,15 @@ onUnmounted(() => {
 <style lang="scss" scoped>
 .scan-batch-detail-workbench__signal-alert {
   margin-bottom: 12px;
+}
+
+.scan-batch-detail-workbench__collate-alert {
+  margin-bottom: 12px;
+}
+
+.scan-batch-detail-workbench__collate-alert :deep(.ui-alert-strip) {
+  background: #fff7e6;
+  border-color: #ffd591;
 }
 
 .scan-batch-detail-workbench__filters {

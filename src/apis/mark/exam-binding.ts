@@ -1,14 +1,23 @@
 /**
  * 阅卷考试试卷身份绑定 API - 对接 /api/mark/exams/papers/bind。
  */
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { AttemptStatusCode } from '@/types/enums/attempt-status-enum'
 import http from '@/config/axios'
+import { BindingStatusCode } from '@/types/enums/binding-status-enum'
 
 export {
   ALL_BINDING_STATUS_CODES,
   BindingStatusCode,
   BindingStatusDescription,
 } from '@/types/enums/binding-status-enum'
+
+export const BINDING_STATUS_TONE: Record<BindingStatusCode, BadgeTone> = {
+  [BindingStatusCode.UNBOUND]: 'orange',
+  [BindingStatusCode.BOUND]: 'green',
+  [BindingStatusCode.CONFLICT]: 'red',
+  [BindingStatusCode.DISCARDED]: 'gray',
+}
 
 /** 试卷身份绑定请求 - 对应 ExamPaperBindRequest */
 export interface ExamPaperBindRequest {

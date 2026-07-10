@@ -7,6 +7,7 @@ export enum ScanBatchWorkbenchRosterMatchStatusCode {
   ROSTER_BOUND = 'ROSTER_BOUND',
   AUTO_MATCHED = 'AUTO_MATCHED',
   PENDING_CONFIRM = 'PENDING_CONFIRM',
+  INSUFFICIENT_OCR_IDENTITY = 'INSUFFICIENT_OCR_IDENTITY',
   NO_MATCH = 'NO_MATCH',
 }
 
@@ -16,6 +17,7 @@ export const ALL_SCAN_BATCH_WORKBENCH_ROSTER_MATCH_STATUS_CODES: readonly ScanBa
   ScanBatchWorkbenchRosterMatchStatusCode.ROSTER_BOUND,
   ScanBatchWorkbenchRosterMatchStatusCode.AUTO_MATCHED,
   ScanBatchWorkbenchRosterMatchStatusCode.PENDING_CONFIRM,
+  ScanBatchWorkbenchRosterMatchStatusCode.INSUFFICIENT_OCR_IDENTITY,
   ScanBatchWorkbenchRosterMatchStatusCode.NO_MATCH,
 ]
 
@@ -25,6 +27,7 @@ export const ScanBatchWorkbenchRosterMatchStatusDescription: Record<ScanBatchWor
   [ScanBatchWorkbenchRosterMatchStatusCode.ROSTER_BOUND]: '已绑定名册',
   [ScanBatchWorkbenchRosterMatchStatusCode.AUTO_MATCHED]: '自动匹配成功',
   [ScanBatchWorkbenchRosterMatchStatusCode.PENDING_CONFIRM]: '待人工确认',
+  [ScanBatchWorkbenchRosterMatchStatusCode.INSUFFICIENT_OCR_IDENTITY]: '识别不足',
   [ScanBatchWorkbenchRosterMatchStatusCode.NO_MATCH]: '无匹配',
 }
 
@@ -34,6 +37,6 @@ export const ScanBatchWorkbenchRosterMatchStatusTone: Record<ScanBatchWorkbenchR
   [ScanBatchWorkbenchRosterMatchStatusCode.ROSTER_BOUND]: 'green',
   [ScanBatchWorkbenchRosterMatchStatusCode.AUTO_MATCHED]: 'purple',
   [ScanBatchWorkbenchRosterMatchStatusCode.PENDING_CONFIRM]: 'orange',
+  [ScanBatchWorkbenchRosterMatchStatusCode.INSUFFICIENT_OCR_IDENTITY]: 'yellow',
   [ScanBatchWorkbenchRosterMatchStatusCode.NO_MATCH]: 'red',
 }
-

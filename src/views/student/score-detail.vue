@@ -9,6 +9,13 @@
           <UiTag v-else tone="gray" size="sm">未生成</UiTag>
           <UiTag v-if="isExamConfidential" tone="purple" size="sm">涉密考试</UiTag>
           <UiTag
+            v-if="detail?.bindingStatus"
+            :tone="bindingStatusTone(detail.bindingStatus)"
+            size="sm"
+          >
+            {{ bindingStatusLabel(detail.bindingStatus) }}
+          </UiTag>
+          <UiTag
             v-if="detail?.reviewWindowStatus === ReviewWindowPolicyStatusCode.ACTIVE"
             tone="orange"
             size="sm"
@@ -165,9 +172,9 @@
 
               <section
                 v-if="
-                  currentDetail.improvementSuggestion
-                    || currentDetail.mistakeClusterLabel
-                    || currentDetail.aiDiagnostic
+                  currentDetail.improvementSuggestion ||
+                  currentDetail.mistakeClusterLabel ||
+                  currentDetail.aiDiagnostic
                 "
                 class="answer-panel__section"
               >
@@ -184,7 +191,8 @@
                     <UiTag tone="orange" size="sm">{{ currentDetail.mistakeClusterLabel }}</UiTag>
                   </p>
                   <p v-if="currentDetail.aiDiagnostic" class="answer-panel__ai-line">
-                    <strong>AI 处理说明：</strong>{{ aiLearningDiagnosticText(currentDetail.aiDiagnostic) }}
+                    <strong>AI 处理说明：</strong
+                    >{{ aiLearningDiagnosticText(currentDetail.aiDiagnostic) }}
                   </p>
                 </div>
               </section>
@@ -307,34 +315,33 @@
 
             <div v-if="profileDiagnosisItems.length > 0" class="profile-section">
               <strong>知识掌握分析：</strong>
-              <a-list size="small" :data-source="profileDiagnosisItems" bordered>
-                <template #renderItem="{ item }">
-                  <a-list-item>
-                    <div class="diagnosis-item">
-                      <div class="diagnosis-header">
-                        <UiTag :tone="masteryTone(item.masteryLevel)" size="sm">
-                          {{ masteryLabel(item.masteryLevel) }}
-                        </UiTag>
-                        <span class="diagnosis-type">{{ item.questionType }}</span>
-                        <span class="diagnosis-rate">
-                          得分率 {{ formatRate(item.scoreRate) }}
-                        </span>
-                      </div>
-                      <div v-if="item.causeAnalysis" class="diagnosis-text">
-                        <strong>原因分析：</strong>{{ item.causeAnalysis }}
-                      </div>
-                      <div v-if="item.suggestion" class="diagnosis-text">
-                        <strong>改进内容：</strong>{{ item.suggestion }}
-                      </div>
-                      <div
-                        v-if="item.lostQuestionNos && item.lostQuestionNos.length"
-                        class="diagnosis-text"
-                      >
-                        <strong>失分题号：</strong>{{ item.lostQuestionNos.join(', ') }}
-                      </div>
+              <a-list size="small" bordered>
+                <a-list-item
+                  v-for="(item, index) in profileDiagnosisItems"
+                  :key="`${item.questionType}-${item.masteryLevel}-${index}`"
+                >
+                  <div class="diagnosis-item">
+                    <div class="diagnosis-header">
+                      <UiTag :tone="masteryTone(item.masteryLevel)" size="sm">
+                        {{ masteryLabel(item.masteryLevel) }}
+                      </UiTag>
+                      <span class="diagnosis-type">{{ item.questionType }}</span>
+                      <span class="diagnosis-rate"> 得分率 {{ formatRate(item.scoreRate) }} </span>
                     </div>
-                  </a-list-item>
-                </template>
+                    <div v-if="item.causeAnalysis" class="diagnosis-text">
+                      <strong>原因分析：</strong>{{ item.causeAnalysis }}
+                    </div>
+                    <div v-if="item.suggestion" class="diagnosis-text">
+                      <strong>改进内容：</strong>{{ item.suggestion }}
+                    </div>
+                    <div
+                      v-if="item.lostQuestionNos && item.lostQuestionNos.length"
+                      class="diagnosis-text"
+                    >
+                      <strong>失分题号：</strong>{{ item.lostQuestionNos.join(', ') }}
+                    </div>
+                  </div>
+                </a-list-item>
               </a-list>
             </div>
 
@@ -352,27 +359,28 @@
 
             <div v-if="errorClusters.length > 0" class="profile-section">
               <strong>错题聚类：</strong>
-              <a-list size="small" :data-source="errorClusters" bordered>
-                <template #renderItem="{ item }">
-                  <a-list-item>
-                    <div class="diagnosis-item">
-                      <div class="diagnosis-header">
-                        <UiTag tone="orange" size="sm">{{ item.affectedCount }} 人次</UiTag>
-                        <span class="diagnosis-type">{{ item.causeName }}</span>
-                        <span class="diagnosis-rate">{{ item.questionType }}</span>
-                      </div>
-                      <div class="diagnosis-text">
-                        <strong>错因说明：</strong>{{ item.causeDescription }}
-                      </div>
-                      <div class="diagnosis-text">
-                        <strong>订正内容：</strong>{{ item.suggestion }}
-                      </div>
-                      <div v-if="item.typicalExamples.length" class="diagnosis-text">
-                        <strong>典型表现：</strong>{{ item.typicalExamples.join('；') }}
-                      </div>
+              <a-list size="small" bordered>
+                <a-list-item
+                  v-for="(item, index) in errorClusters"
+                  :key="`${item.causeName}-${index}`"
+                >
+                  <div class="diagnosis-item">
+                    <div class="diagnosis-header">
+                      <UiTag tone="orange" size="sm">{{ item.affectedCount }} 人次</UiTag>
+                      <span class="diagnosis-type">{{ item.causeName }}</span>
+                      <span class="diagnosis-rate">{{ item.questionType }}</span>
                     </div>
-                  </a-list-item>
-                </template>
+                    <div class="diagnosis-text">
+                      <strong>错因说明：</strong>{{ item.causeDescription }}
+                    </div>
+                    <div class="diagnosis-text">
+                      <strong>订正内容：</strong>{{ item.suggestion }}
+                    </div>
+                    <div v-if="item.typicalExamples.length" class="diagnosis-text">
+                      <strong>典型表现：</strong>{{ item.typicalExamples.join('；') }}
+                    </div>
+                  </div>
+                </a-list-item>
               </a-list>
             </div>
           </div>
@@ -384,7 +392,10 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
+import type { BindingStatusCode } from '@/apis/mark/exam-binding'
+import { BINDING_STATUS_TONE, BindingStatusDescription } from '@/apis/mark/exam-binding'
 import type { StudentWrongBookItemResponse } from '@/apis/mark/question-analysis'
+import { pageStudentWrongBook } from '@/apis/mark/question-analysis'
 import type {
   StudentAiDiagnosisItemResponse,
   StudentAiErrorClusterResponse,
@@ -392,6 +403,13 @@ import type {
   StudentQuestionAnswerDetailResponse,
   StudentQuestionScoreVO,
   StudentScoreDetailResponse,
+} from '@/apis/mark/student-exam'
+import {
+  canSubmitReview,
+  getMyAiLearningReport,
+  getMyQuestionAnswerDetail,
+  getMyScoreDetail,
+  ReviewWindowPolicyStatusCode,
 } from '@/apis/mark/student-exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
@@ -412,14 +430,6 @@ import {
 } from '@/apis/mark/final-score-status'
 import { GRADE_STATUS_TONE, GradeStatusDescription } from '@/apis/mark/grade-status'
 import { OBJECTIVE_RESULT_TONE, ObjectiveResultDescription } from '@/apis/mark/objective-result'
-import { pageStudentWrongBook } from '@/apis/mark/question-analysis'
-import {
-  canSubmitReview,
-  getMyAiLearningReport,
-  getMyQuestionAnswerDetail,
-  getMyScoreDetail,
-  ReviewWindowPolicyStatusCode,
-} from '@/apis/mark/student-exam'
 import { MASTERY_LEVEL_TONE, MasteryLevelDescription } from '@/apis/mark/student-mastery-level'
 import MarkHeatmapSection from '@/components/chart/MarkHeatmapSection.vue'
 import ConfidentialStatusBar from '@/components/mark/ConfidentialStatusBar.vue'
@@ -497,7 +507,7 @@ const sliceLoading = ref(false)
  * 从题目明细中提取所有出现过的 mistakeClusterLabel，供顶部下拉选择。
  * 学生可以按错题聚类快速查看同一类型的错题。
  */
-const clusterLabelOptions = computed<Array<{ value: string, label: string }>>(() => {
+const clusterLabelOptions = computed<Array<{ value: string; label: string }>>(() => {
   const labels = new Set<string>()
   for (const question of detailQuestions.value) {
     if (question.mistakeClusterLabel) {
@@ -566,8 +576,8 @@ const selectedQuestion = computed<StudentQuestionScoreVO | null>(() => {
     return null
   }
   return (
-    filteredQuestions.value.find((item) => item.layoutQuestionId === selectedQuestionId.value)
-    ?? null
+    filteredQuestions.value.find((item) => item.layoutQuestionId === selectedQuestionId.value) ??
+    null
   )
 })
 
@@ -602,16 +612,20 @@ function finalScoreStatusLabel(item: StudentScoreDetailResponse): string {
   return strictEnumLabel(FinalScoreStatusDescription, item.finalScoreStatus, '最终成绩状态')
 }
 
+function bindingStatusTone(status: BindingStatusCode): BadgeTone {
+  return strictEnumTone(BINDING_STATUS_TONE, status, '试卷绑定状态')
+}
+
+function bindingStatusLabel(status: BindingStatusCode): string {
+  return strictEnumLabel(BindingStatusDescription, status, '试卷绑定状态')
+}
+
 function formatGradeStatus(status: StudentQuestionScoreVO['gradeStatus']): string {
   return strictEnumLabel(GradeStatusDescription, status, '题目批改状态')
 }
 
 function getGradeStatusTone(status: StudentQuestionScoreVO['gradeStatus']): BadgeTone {
   return strictEnumTone(GRADE_STATUS_TONE, status, '题目批改状态')
-}
-
-function formatQuestionFinalScore(question: StudentQuestionScoreVO): string {
-  return question.teacherReviewScore.toFixed(2)
 }
 
 function formatPublishedTotalScore(item: StudentScoreDetailResponse): string {
@@ -658,7 +672,7 @@ async function loadWrongBook(): Promise<void> {
   }
 }
 
-function handleWrongBookPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleWrongBookPageChange(pageEvent: { current: number; pageSize: number }): void {
   wrongBookPagination.current = pageEvent.current
   wrongBookPagination.pageSize = pageEvent.pageSize
   void loadWrongBook()
@@ -838,8 +852,8 @@ watch(filteredQuestions, (list) => {
     return
   }
   if (
-    !selectedQuestionId.value
-    || !list.some((item) => item.layoutQuestionId === selectedQuestionId.value)
+    !selectedQuestionId.value ||
+    !list.some((item) => item.layoutQuestionId === selectedQuestionId.value)
   ) {
     void selectQuestion(list[0])
   }

@@ -93,6 +93,7 @@ export interface StudentScoreDetailResponse {
   studentNo: string
   studentName: string
   paperInstanceId?: string
+  bindingStatus?: BindingStatusCode
   finalScoreId?: string
   finalScoreStatus: FinalScoreStatusCode
   totalScore?: number
@@ -224,7 +225,7 @@ export function getMyQuestionAnswerDetail(
 
 export function canSubmitReview(item: StudentExamItemVO | StudentScoreDetailResponse): boolean {
   return (
-    item.finalScoreStatus === FinalScoreStatusCode.PUBLISHED
-    && item.reviewWindowStatus === ReviewWindowPolicyStatusCode.ACTIVE
+    item.finalScoreStatus === FinalScoreStatusCode.PUBLISHED &&
+    item.reviewWindowStatus === ReviewWindowPolicyStatusCode.ACTIVE
   )
 }

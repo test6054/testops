@@ -12,9 +12,10 @@
 import type { IndirectEvaluationFormVO } from '@/apis/quality/indirect-form'
 import type { IndirectEvaluationItemVO } from '@/apis/quality/indirect-item'
 import type { IndirectEvaluationWorkbenchSignalSummaryVO } from '@/apis/quality/workbench'
-import type { SignalMetric } from '@/types/workbench'
-import { computed, onActivated, onMounted, ref, watch } from 'vue'
 import { workbenchApi } from '@/apis/quality/workbench'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, nextTick, onActivated, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -27,6 +28,8 @@ import IndirectSurveyTemplatePanel from './components/indirect-evaluation/Indire
 import IndirectTaskDispatchPanel from './components/indirect-evaluation/IndirectTaskDispatchPanel.vue'
 
 const qualityStore = useQualityStore()
+const route = useRoute()
+const router = useRouter()
 
 const selectedForm = ref<IndirectEvaluationFormVO | null>(null)
 const selectedItem = ref<IndirectEvaluationItemVO | null>(null)
@@ -57,14 +60,14 @@ const signals = computed<SignalMetric[]>(() => {
   if (!summary) {
     return []
   }
-  const completionRate
-    = summary.completionRate
-      ?? (summary.expectedSample > 0
+  const completionRate =
+    summary.completionRate ??
+    (summary.expectedSample > 0
       ? Number((summary.submissionCount / summary.expectedSample).toFixed(2))
       : 0)
-  const collectionRate
-    = summary.collectionRate
-      ?? (summary.expectedResponseCount > 0
+  const collectionRate =
+    summary.collectionRate ??
+    (summary.expectedResponseCount > 0
       ? Number((summary.receivedResponseCount / summary.expectedResponseCount).toFixed(2))
       : 0)
   const completionRatePct = Math.round(completionRate * 100)
@@ -118,12 +121,14 @@ const signals = computed<SignalMetric[]>(() => {
         label: '当前题项待确认',
         value: responsePendingCount,
         tone: responsePendingCount > 0 ? 'orange' : 'gray',
+        clickable: responsePendingCount > 0,
       },
       {
         key: 'item-pending-conversion',
         label: '当前题项待换算',
         value: itemPendingConversionCount,
         tone: itemPendingConversionCount > 0 ? 'orange' : 'gray',
+        clickable: itemPendingConversionCount > 0,
       },
       {
         key: 'item-converted',
@@ -208,14 +213,49 @@ watch(selectedItem, () => {
   void loadSignalSummary()
 })
 
+function handleSignalMetricClick(key: string): void {
+  if (!selectedItem.value) {
+    return
+  }
+  if (key === 'responses-pending') {
+    responsePanelRef.value?.focusPendingConfirmTab()
+    return
+  }
+  if (key === 'item-pending-conversion') {
+    responsePanelRef.value?.focusPendingConversionTab()
+  }
+}
+
+/** 帮助页返回时按 query 选中问卷并重新打开统计抽屉 */
+async function tryOpenStatisticsFromQuery(): Promise<void> {
+  const formId = typeof route.query.formId === 'string' ? route.query.formId.trim() : ''
+  if (!formId || route.query.openStatistics !== '1') {
+    return
+  }
+  await surveyPanelRef.value?.loadForms()
+  const form = surveyPanelRef.value?.forms.find((item) => item.id === formId)
+  if (!form) {
+    return
+  }
+  selectedForm.value = form
+  await nextTick()
+  taskPanelRef.value?.openStatisticsDrawer(form)
+  const nextQuery = { ...route.query }
+  delete nextQuery.formId
+  delete nextQuery.openStatistics
+  void router.replace({ name: 'QualityIngestIndirectEvaluation', query: nextQuery })
+}
+
 onMounted(async () => {
   await surveyPanelRef.value?.loadScaleRules()
   await reloadIndirectWorkbench()
+  await tryOpenStatisticsFromQuery()
 })
 
 onActivated(async () => {
   await surveyPanelRef.value?.loadScaleRules()
   await reloadIndirectWorkbench()
+  await tryOpenStatisticsFromQuery()
 })
 </script>
 
@@ -231,7 +271,12 @@ onActivated(async () => {
       </QualityPageContextBar>
     </template>
 
-    <SignalBand :metrics="signals" compact class="ie__signals" />
+    <SignalBand
+      :metrics="signals"
+      compact
+      class="ie__signals"
+      @metric-click="handleSignalMetricClick"
+    />
 
     <IndirectSurveyTemplatePanel
       ref="surveyPanelRef"

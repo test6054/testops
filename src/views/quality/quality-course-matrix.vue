@@ -1,25 +1,35 @@
 <script setup lang="ts">
 import type { RadioChangeEvent } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   AssessmentGoalWeightSaveRequest,
   AssessmentGoalWeightVO,
 } from '@/apis/quality/assessment-goal-weight'
+import { assessmentGoalWeightApi } from '@/apis/quality/assessment-goal-weight'
 import type { AssessmentItemSaveRequest, AssessmentItemVO } from '@/apis/quality/assessment-item'
+import { assessmentItemApi } from '@/apis/quality/assessment-item'
 import type { CourseGoalSaveRequest, CourseGoalVO } from '@/apis/quality/course-goal'
+import { courseGoalApi } from '@/apis/quality/course-goal'
 import type { CourseGoalAssessmentRuleSaveRequest } from '@/apis/quality/course-goal-assessment-rule'
+import { courseGoalAssessmentRuleApi } from '@/apis/quality/course-goal-assessment-rule'
 import type {
   CourseGoalRequirementSaveRequest,
   CourseGoalRequirementVO,
 } from '@/apis/quality/course-goal-requirement'
+import { courseGoalRequirementApi } from '@/apis/quality/course-goal-requirement'
 import type { GraduationRequirementVO } from '@/apis/quality/graduation-requirement'
+import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
 import type {
   QualityCourseEditorForm,
   QualityCourseSaveRequest,
   QualityCourseVO,
 } from '@/apis/quality/quality-course'
+import { qualityCourseApi } from '@/apis/quality/quality-course'
 import type { RequirementIndicatorVO } from '@/apis/quality/requirement-indicator'
+import { requirementIndicatorApi } from '@/apis/quality/requirement-indicator'
 import type { RubricItemSaveRequest, RubricItemVO } from '@/apis/quality/rubric-item'
+import { rubricItemApi } from '@/apis/quality/rubric-item'
 /**
  * 质量评价课程 - 支撑矩阵工作台（3-in-1）
  *
@@ -35,7 +45,9 @@ import type { RubricItemSaveRequest, RubricItemVO } from '@/apis/quality/rubric-
  *         → 考核环节（理论考试 / 作业 / 实验 / 报告 / 答辩 等）
  *             → 考核-课程目标权重矩阵：考核(行) × 课程目标(列)
  *               单元格 = (item, goal) 的 weight + fullScore；
- *               同一考核环节对各课程目标 weight 之和必须 = 1（validate-weights 强校验）
+ *               同一考核环节对各课程目标 weight 之和必须 = 1；
+ *               同一课程目标对各考核环节 weight 之和必须 = 1；
+ *               矩阵校验要求全部考核行与全部目标列非空且配平
  *             → Rubric 评分量规：每个 (考核, 课程目标) 拆分到具体维度的等级化打分
  *               rubric 满分之和必须 = 该 (item, goal) 的 fullScore（validate-full-score 强校验）
  *
@@ -46,21 +58,12 @@ import type { RubricItemSaveRequest, RubricItemVO } from '@/apis/quality/rubric-
  */
 import type { CourseListVO } from '@/apis/quality/user-catalog'
 import type { QualityCourseMatrixSignalSummaryVO } from '@/apis/quality/workbench'
+import { workbenchApi } from '@/apis/quality/workbench'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/matrix-types'
 import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { assessmentGoalWeightApi } from '@/apis/quality/assessment-goal-weight'
-import { assessmentItemApi } from '@/apis/quality/assessment-item'
-import { courseGoalApi } from '@/apis/quality/course-goal'
-import { courseGoalAssessmentRuleApi } from '@/apis/quality/course-goal-assessment-rule'
-import { courseGoalRequirementApi } from '@/apis/quality/course-goal-requirement'
-import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
-import { qualityCourseApi } from '@/apis/quality/quality-course'
-import { requirementIndicatorApi } from '@/apis/quality/requirement-indicator'
-import { rubricItemApi } from '@/apis/quality/rubric-item'
 import {
   AggregationFunctionCode,
   AggregationFunctionDescription,
@@ -74,7 +77,6 @@ import {
   SupportLevelCode,
   SupportLevelDescription,
 } from '@/apis/quality/types'
-import { workbenchApi } from '@/apis/quality/workbench'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
@@ -101,6 +103,7 @@ import { useQualityStore } from '@/stores/modules/quality'
 import { ALL_SEMESTER_CODES, formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import { isWeightSumHealthy } from '@/utils/weight-sum-health'
 
 const itemColumns: ColumnsType = [
   { title: '编码', dataIndex: 'itemCode', key: 'itemCode', width: 100, fixed: 'left' },
@@ -142,8 +145,6 @@ function guardCourseMatrixEditable(action: string): boolean {
   message.error(`培养方案已确认，请先撤回后再${action}`)
   return false
 }
-
-const WEIGHT_EPSILON = 1e-3
 
 function assessmentItemTypeLabel(value: AssessmentItemTypeCode): string {
   return strictEnumLabel(AssessmentItemTypeDescription, value, '考核环节类型')
@@ -246,7 +247,7 @@ async function loadGoalTable() {
   }
 }
 
-function handleGoalPageChange(page: { current: number, pageSize: number }) {
+function handleGoalPageChange(page: { current: number; pageSize: number }) {
   goalPageNum.value = page.current
   goalPageSize.value = page.pageSize
   void loadGoalTable()
@@ -379,7 +380,7 @@ async function loadItemTable() {
   }
 }
 
-function handleItemPageChange(page: { current: number, pageSize: number }) {
+function handleItemPageChange(page: { current: number; pageSize: number }) {
   itemPageNum.value = page.current
   itemPageSize.value = page.pageSize
   void loadItemTable()
@@ -456,6 +457,23 @@ function weightsOfItem(itemId: string): AssessmentGoalWeightVO[] {
   return assessmentGoalWeights.value.get(itemId) || []
 }
 
+function goalWeightSum(goalId: string): number {
+  let sum = 0
+  for (const item of assessmentItems.value) {
+    const matched = weightsOfItem(item.id).find((w) => w.courseGoalId === goalId)
+    if (matched) {
+      sum += Number(matched.weight) || 0
+    }
+  }
+  return sum
+}
+
+function goalHasWeights(goalId: string): boolean {
+  return assessmentItems.value.some((item) =>
+    weightsOfItem(item.id).some((w) => w.courseGoalId === goalId),
+  )
+}
+
 function rubricsOfItem(itemId: string): RubricItemVO[] {
   return rubricsByItem.value.get(itemId) || []
 }
@@ -516,11 +534,17 @@ const courseGoalsCovered = computed(
   () => courseGoals.value.filter((g) => supportsOfGoal(g.id).length > 0).length,
 )
 
-const itemsHealthy = computed(() => {
-  if (assessmentItems.value.length === 0) return 0
-  return assessmentItems.value.filter((i) => Math.abs(itemWeightSum(i.id) - 1) < WEIGHT_EPSILON)
-    .length
-})
+const itemsWeighted = computed(
+  () => assessmentItems.value.filter((i) => weightsOfItem(i.id).length > 0).length,
+)
+
+const goalsWeighted = computed(() => courseGoals.value.filter((g) => goalHasWeights(g.id)).length)
+
+const goalsHealthy = computed(
+  () =>
+    courseGoals.value.filter((g) => goalHasWeights(g.id) && isWeightSumHealthy(goalWeightSum(g.id)))
+      .length,
+)
 
 const indicatorsCoveredCount = computed(() => {
   const set = new Set<string>()
@@ -571,7 +595,10 @@ const signals = computed<SignalMetric[]>(() => {
   const indicatorTotal = summary.indicatorTotal ?? 0
   const indicatorCoveredCount = summary.indicatorCoveredCount ?? 0
   const assessmentItemTotal = summary.assessmentItemTotal ?? 0
+  const assessmentItemWeightedCount = summary.assessmentItemWeightedCount ?? itemsWeighted.value
   const assessmentItemHealthyCount = summary.assessmentItemHealthyCount ?? 0
+  const courseGoalWeightedCount = summary.courseGoalWeightedCount ?? goalsWeighted.value
+  const courseGoalHealthyCount = summary.courseGoalHealthyCount ?? goalsHealthy.value
   return [
     {
       key: 'goals',
@@ -605,12 +632,32 @@ const signals = computed<SignalMetric[]>(() => {
     },
     {
       key: 'itemsHealth',
-      label: '考核权重健康',
-      value: `${assessmentItemHealthyCount}/${assessmentItemTotal}`,
+      label: '考核行权重健康',
+      value:
+        assessmentItemWeightedCount > 0
+          ? `${assessmentItemHealthyCount}/${assessmentItemWeightedCount}`
+          : '0/0',
       tone:
-        assessmentItemTotal > 0 && assessmentItemHealthyCount === assessmentItemTotal
+        assessmentItemWeightedCount > 0 &&
+        assessmentItemHealthyCount === assessmentItemWeightedCount
           ? 'green'
-          : 'red',
+          : assessmentItemWeightedCount > 0
+            ? 'red'
+            : 'gray',
+    },
+    {
+      key: 'goalsWeightHealth',
+      label: '目标列权重健康',
+      value:
+        courseGoalWeightedCount > 0
+          ? `${courseGoalHealthyCount}/${courseGoalWeightedCount}`
+          : '0/0',
+      tone:
+        courseGoalWeightedCount > 0 && courseGoalHealthyCount === courseGoalWeightedCount
+          ? 'green'
+          : courseGoalWeightedCount > 0
+            ? 'red'
+            : 'gray',
     },
   ]
 })
@@ -682,8 +729,8 @@ const supportMatrixCells = computed<MatrixCell[]>(() => {
         ? `R::${support.requirementId}`
         : null
     if (!colKey) continue
-    const tone: MatrixCell['tone']
-      = support.supportLevel === SupportLevelCode.HIGH
+    const tone: MatrixCell['tone'] =
+      support.supportLevel === SupportLevelCode.HIGH
         ? 'red'
         : support.supportLevel === SupportLevelCode.MEDIUM
           ? 'orange'
@@ -704,29 +751,33 @@ const supportMatrixCells = computed<MatrixCell[]>(() => {
 const assessMatrixRows = computed<MatrixRow[]>(() =>
   assessmentItems.value.map((it) => {
     const sum = itemWeightSum(it.id)
-    const healthy = Math.abs(sum - 1) < WEIGHT_EPSILON
+    const weighted = weightsOfItem(it.id).length > 0
+    const healthy = weighted && isWeightSumHealthy(sum)
     return {
       key: it.id,
       label: it.itemCode,
       hint: `${it.itemName}（${assessmentItemTypeLabel(it.itemType)}）`,
-      badge: `Σw=${sum.toFixed(3)}`,
-      badgeTone: healthy ? 'green' : 'red',
-      warning: healthy
-        ? undefined
-        : weightsOfItem(it.id).length === 0
-          ? '未挂任何课程目标'
-          : '权重和≠1',
+      badge: weighted ? `Σw=${sum.toFixed(3)}` : undefined,
+      badgeTone: !weighted ? undefined : healthy ? 'green' : 'red',
+      warning: healthy ? undefined : !weighted ? '未挂任何课程目标' : '权重和≠1',
     }
   }),
 )
 
 const assessMatrixCols = computed<MatrixCol[]>(() =>
-  courseGoals.value.map((g) => ({
-    key: g.id,
-    label: g.goalCode,
-    hint: g.goalName,
-    width: 130,
-  })),
+  courseGoals.value.map((g) => {
+    const sum = goalWeightSum(g.id)
+    const weighted = goalHasWeights(g.id)
+    const healthy = weighted && isWeightSumHealthy(sum)
+    return {
+      key: g.id,
+      label: g.goalCode,
+      hint: g.goalName,
+      width: 130,
+      badge: weighted ? `Σw=${sum.toFixed(3)}` : undefined,
+      badgeTone: !weighted ? undefined : healthy ? 'green' : 'red',
+    }
+  }),
 )
 
 const assessMatrixCells = computed<MatrixCell[]>(() => {
@@ -873,13 +924,13 @@ async function submitCourse() {
   const semester = courseEditor.semester
   const selectedSemester = ALL_SEMESTER_CODES.find((code) => code === semester)
   if (
-    !courseEditor.programId.trim()
-    || !courseEditor.trainingPlanId.trim()
-    || !courseEditor.courseId.trim()
-    || !courseEditor.courseCode.trim()
-    || !courseEditor.courseName.trim()
-    || !courseEditor.schoolYear.trim()
-    || !selectedSemester
+    !courseEditor.programId.trim() ||
+    !courseEditor.trainingPlanId.trim() ||
+    !courseEditor.courseId.trim() ||
+    !courseEditor.courseCode.trim() ||
+    !courseEditor.courseName.trim() ||
+    !courseEditor.schoolYear.trim() ||
+    !selectedSemester
   ) {
     message.error('请填写专业、培养方案、目录课程、编码、名称、学年、学期')
     return
@@ -1109,9 +1160,9 @@ async function submitSupport() {
     return
   }
   if (
-    supportEditor.supportWeight == null
-    || supportEditor.supportWeight <= 0
-    || supportEditor.supportWeight > 1
+    supportEditor.supportWeight == null ||
+    supportEditor.supportWeight <= 0 ||
+    supportEditor.supportWeight > 1
   ) {
     message.error('权重必须在 (0, 1] 之间')
     return
@@ -1162,11 +1213,11 @@ function handleSupportCellClick(cellEvent: {
   const goalSupports = supportsOfGoal(cellEvent.row.key)
   const matched = goalSupports.find(
     (s) =>
-      (colMeta.indicatorId && s.indicatorId === colMeta.indicatorId)
-      || (colMeta.reqId
-        && !colMeta.indicatorId
-        && s.requirementId === colMeta.reqId
-        && !s.indicatorId),
+      (colMeta.indicatorId && s.indicatorId === colMeta.indicatorId) ||
+      (colMeta.reqId &&
+        !colMeta.indicatorId &&
+        s.requirementId === colMeta.reqId &&
+        !s.indicatorId),
   )
   if (matched) openSupportEdit(matched)
   else openSupportCreate(cellEvent.row.key, cellEvent.col.key)
@@ -1282,8 +1333,34 @@ async function deleteItem(record: AssessmentItemVO) {
 }
 
 async function validateItemWeights(item: AssessmentItemVO) {
-  await assessmentGoalWeightApi.validateWeights(item.id)
-  message.success(`考核 ${item.itemCode} 的课程目标权重和校验通过`)
+  try {
+    await assessmentGoalWeightApi.validateWeights(item.id)
+    message.success(`考核 ${item.itemCode} 的课程目标行权重校验通过`)
+  } catch (error) {
+    showUserError(error, '考核行权重校验失败')
+  }
+}
+
+async function validateGoalWeights(goal: CourseGoalVO) {
+  try {
+    await assessmentGoalWeightApi.validateWeightsByCourseGoal(goal.id)
+    message.success(`课程目标 ${goal.goalCode} 的考核列权重校验通过`)
+  } catch (error) {
+    showUserError(error, '课程目标列权重校验失败')
+  }
+}
+
+async function validateMatrixWeights() {
+  if (!qualityStore.currentQualityCourseId) {
+    message.warning('请先选择质量评价课程')
+    return
+  }
+  try {
+    await assessmentGoalWeightApi.validateMatrixWeights(qualityStore.currentQualityCourseId)
+    message.success('考核×目标权重矩阵已全部配平，可进入达成度计算')
+  } catch (error) {
+    showUserError(error, '矩阵权重校验失败')
+  }
 }
 
 async function validateRubricFullScore(item: AssessmentItemVO) {
@@ -1362,11 +1439,17 @@ async function submitWeight() {
     message.error('满分必须 > 0')
     return
   }
-  if (weightEditorMode.value === 'create') await assessmentGoalWeightApi.create(weightEditor)
-  else await assessmentGoalWeightApi.update(weightEditor)
-  message.success('权重已保存')
-  weightEditorVisible.value = false
-  await loadAllItemMeta()
+  try {
+    if (weightEditorMode.value === 'create') await assessmentGoalWeightApi.create(weightEditor)
+    else await assessmentGoalWeightApi.update(weightEditor)
+    await assessmentGoalWeightApi.validateWeights(weightEditor.assessmentItemId)
+    await assessmentGoalWeightApi.validateWeightsByCourseGoal(weightEditor.courseGoalId)
+    message.success('权重已保存且行列校验通过')
+    weightEditorVisible.value = false
+    await loadAllItemMeta()
+  } catch (error) {
+    showUserError(error, '考核权重保存或校验失败')
+  }
 }
 
 async function deleteWeight(record: AssessmentGoalWeightVO) {
@@ -1448,7 +1531,7 @@ async function loadRubricDrawerPage() {
   }
 }
 
-function handleRubricDrawerPageChange(pageEvent: { current: number, pageSize: number }) {
+function handleRubricDrawerPageChange(pageEvent: { current: number; pageSize: number }) {
   rubricDrawerPageNum.value = pageEvent.current
   rubricDrawerPageSize.value = pageEvent.pageSize
   void loadRubricDrawerPage()
@@ -1490,9 +1573,9 @@ function openRubricEdit(record: RubricItemVO) {
 async function submitRubric() {
   if (!guardCourseMatrixEditable('保存 Rubric')) return
   if (
-    !rubricEditor.rubricName.trim()
-    || rubricEditor.fullScore == null
-    || rubricEditor.fullScore <= 0
+    !rubricEditor.rubricName.trim() ||
+    rubricEditor.fullScore == null ||
+    rubricEditor.fullScore <= 0
   ) {
     message.error('请填写名称与满分')
     return
@@ -1546,7 +1629,7 @@ function handleAssessmentItemAction(key: string, record: AssessmentItemVO): void
       openRubricList(record)
       break
     case 'validate-weights':
-      validateItemWeights(record)
+      void validateItemWeights(record)
       break
     case 'validate-rubric':
       validateRubricFullScore(record)
@@ -1561,6 +1644,7 @@ function buildCourseGoalActions(_record: CourseGoalVO): UiTableRowActionItem[] {
   return [
     { key: 'edit', label: '编辑' },
     { key: 'rule', label: '计算规则' },
+    { key: 'validate-weights', label: '校验列权重' },
     { key: 'delete', label: '删除', tone: 'danger' },
   ]
 }
@@ -1572,6 +1656,9 @@ function handleCourseGoalAction(key: string, record: CourseGoalVO): void {
       break
     case 'rule':
       openRuleEditor(record)
+      break
+    case 'validate-weights':
+      void validateGoalWeights(record)
       break
     case 'delete':
       void deleteGoal(record)
@@ -1698,20 +1785,20 @@ onMounted(async () => {
 
 /* ========== 字典 ========== */
 
-const supportLevelOptions: { value: SupportLevelCode, label: string }[]
-  = ALL_SUPPORT_LEVEL_CODES.map((value) => ({
+const supportLevelOptions: { value: SupportLevelCode; label: string }[] =
+  ALL_SUPPORT_LEVEL_CODES.map((value) => ({
     value,
     label: strictEnumLabel(SupportLevelDescription, value, '支撑度'),
   }))
 
-const aggregationOptions: { value: AggregationFunctionCode, label: string }[]
-  = ALL_AGGREGATION_FUNCTION_CODES.map((value) => ({
+const aggregationOptions: { value: AggregationFunctionCode; label: string }[] =
+  ALL_AGGREGATION_FUNCTION_CODES.map((value) => ({
     value,
     label: AggregationFunctionDescription[value],
   }))
 
-const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
-  = ALL_ASSESSMENT_ITEM_TYPE_CODES.map((value) => ({
+const itemTypeOptions: { value: AssessmentItemTypeCode; label: string }[] =
+  ALL_ASSESSMENT_ITEM_TYPE_CODES.map((value) => ({
     value,
     label: strictEnumLabel(AssessmentItemTypeDescription, value, '考核项类型'),
   }))
@@ -1734,7 +1821,8 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
           <UiTag v-if="currentCourse?.schoolYear" tone="blue">
             {{ currentCourse.schoolYear
             }}<span v-if="currentCourse.semester">
-              · {{ formatSemester(currentCourse.semester) }}</span>
+              · {{ formatSemester(currentCourse.semester) }}</span
+            >
           </UiTag>
           <UiTag v-if="currentCourse?.creditValue != null" tone="gray">
             {{ currentCourse.creditValue }} 学分
@@ -1813,11 +1901,16 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
       <div v-else-if="activeTab === 'assess'" class="qcm__tab-content">
         <div class="qcm__matrix-toolbar">
           <UiButton variant="primary" size="sm" @click="openItemCreate"> 新建考核环节 </UiButton>
-          <span class="qcm__hint"> 点击单元格新增/修改权重；同一考核环节权重和必须 = 1 </span>
+          <UiButton variant="outline" size="sm" @click="validateMatrixWeights">
+            校验矩阵权重
+          </UiButton>
+          <span class="qcm__hint">
+            点击单元格维护权重；全部考核行与全部目标列须非空且权重和 = 1，保存后自动校验
+          </span>
         </div>
         <MatrixWorkbench
           title="考核环节 × 课程目标 权重矩阵"
-          subtitle="单元格 = 权重 + 满分；行徽标 = 权重之和（必须 = 1）"
+          subtitle="行徽标 = 考核环节对课程目标权重和；列徽标 = 课程目标下考核权重和（均须 = 1）"
           row-header-label="考核环节"
           col-header-label="课程目标"
           :rows="assessMatrixRows"
@@ -1858,9 +1951,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
                 <span v-else class="qcm__muted">-</span>
               </template>
               <template v-else-if="column.key === 'weightSum'">
-                <UiTag
-                  :tone="Math.abs(itemWeightSum(record.id) - 1) < WEIGHT_EPSILON ? 'green' : 'red'"
-                >
+                <UiTag :tone="isWeightSumHealthy(itemWeightSum(record.id)) ? 'green' : 'red'">
                   Σ={{ itemWeightSum(record.id).toFixed(3) }}
                 </UiTag>
               </template>
@@ -1918,12 +2009,13 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
                   <UiTag v-if="record.complexEngineeringFlag" tone="orange"> 复杂工程 </UiTag>
                   <span
                     v-if="
-                      !record.civicObjectiveFlag
-                        && !record.aiLiteracyFlag
-                        && !record.complexEngineeringFlag
+                      !record.civicObjectiveFlag &&
+                      !record.aiLiteracyFlag &&
+                      !record.complexEngineeringFlag
                     "
                     class="qcm__muted"
-                  >-</span>
+                    >-</span
+                  >
                 </a-space>
               </template>
               <template v-else-if="column.key === 'actions'">

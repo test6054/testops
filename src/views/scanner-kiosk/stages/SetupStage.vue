@@ -37,10 +37,10 @@ const templateExpanded = ref(false)
 const supplementModalOpen = ref(false)
 
 const breadcrumb = computed(() => {
-  const name
-    = exam.value?.examName
-      || (workflow.examId.value ? `考试 ${workflow.examId.value}` : '')
-      || '未绑定考试'
+  const name =
+    exam.value?.examName ||
+    (workflow.examId.value ? `考试 ${workflow.examId.value}` : '') ||
+    '未绑定考试'
   const course = exam.value?.courseName
   return course ? `${name}（${course}）` : name
 })
@@ -123,13 +123,13 @@ const latestBatchPageCount = computed(
 const scanDerivedTemplateActive = computed(() => contract.value?.scanDerivedTemplateActive === true)
 const primaryCtaDisabled = computed(
   () =>
-    showRegisterStateSkeleton.value
-    || (resumeAction.value === ScannerKioskResumeActionCode.RETRY_PAGE_REGISTER
-      && (!workflow.canRetryPageRegister.value || workflow.pageRegisterRetryLoading.value))
-    || (resumeAction.value !== ScannerKioskResumeActionCode.RETRY_PAGE_REGISTER
-      && resumeAction.value !== ScannerKioskResumeActionCode.RESUME_SCANNING
-      && resumeAction.value !== ScannerKioskResumeActionCode.VIEW_REGISTER_EXCEPTION
-      && !workflow.canStartDirectScan.value),
+    showRegisterStateSkeleton.value ||
+    (resumeAction.value === ScannerKioskResumeActionCode.RETRY_PAGE_REGISTER &&
+      (!workflow.canRetryPageRegister.value || workflow.pageRegisterRetryLoading.value)) ||
+    (resumeAction.value !== ScannerKioskResumeActionCode.RETRY_PAGE_REGISTER &&
+      resumeAction.value !== ScannerKioskResumeActionCode.RESUME_SCANNING &&
+      resumeAction.value !== ScannerKioskResumeActionCode.VIEW_REGISTER_EXCEPTION &&
+      !workflow.canStartDirectScan.value),
 )
 const scanStats = computed(() => workflow.kioskMetrics.value)
 
@@ -177,9 +177,9 @@ function buildFirstScanCalibrationDialog() {
     return {
       title: '试卷首次扫描核对',
       content:
-        `当前考试为整卷作答，纸型 ${paperStyle}。`
-        + '首张送纸后请在「扫描中」预览整卷切分与页序是否正常；'
-        + '若偏差，请暂停并在 Web 端调整制卷设计后再继续批量扫描。',
+        `当前考试为整卷作答，纸型 ${paperStyle}。` +
+        '首张送纸后请在「扫描中」预览整卷切分与页序是否正常；' +
+        '若偏差，请暂停并在 Web 端调整制卷设计后再继续批量扫描。',
       okText: '已了解，开始扫描',
       cancelText: '先查看制卷摘要',
     }
@@ -188,9 +188,9 @@ function buildFirstScanCalibrationDialog() {
     return {
       title: '答卷页首次扫描核对',
       content:
-        `当前考试为独立答卷页，纸型 ${paperStyle}。`
-        + '首张送纸后请在「扫描中」预览定位框与考号区是否正常；'
-        + '若偏差，请暂停并在 Web 端调整答卷页模板后再继续批量扫描。',
+        `当前考试为独立答卷页，纸型 ${paperStyle}。` +
+        '首张送纸后请在「扫描中」预览定位框与考号区是否正常；' +
+        '若偏差，请暂停并在 Web 端调整答卷页模板后再继续批量扫描。',
       okText: '已了解，开始扫描',
       cancelText: '先查看制卷摘要',
     }
@@ -268,7 +268,8 @@ onMounted(() => {
             :key="chip.key"
             class="class-chip"
             :class="{ 'class-chip--missing': chip.missing }"
-          >{{ chip.label }}</span>
+            >{{ chip.label }}</span
+          >
         </div>
         <p v-else-if="contract?.gradeSubjectText" class="sidebar__sub">
           {{ contract.gradeSubjectText }}
@@ -331,7 +332,9 @@ onMounted(() => {
               <dt>模板</dt>
               <dd>
                 {{ contract.templateDisplayName }}
-                <span v-if="scanDerivedTemplateActive" class="template-fold__derived-tag">扫描推导</span>
+                <span v-if="scanDerivedTemplateActive" class="template-fold__derived-tag"
+                  >扫描推导</span
+                >
               </dd>
             </div>
             <div>
@@ -408,8 +411,8 @@ onMounted(() => {
           :closable="false"
           title="页登记不可恢复"
           :description="
-            workflow.kioskContext.value?.pageRegisterDiagnostic
-              || '文件不可读或批次已封存 (BLOCKED)，请联系管理员。'
+            workflow.kioskContext.value?.pageRegisterDiagnostic ||
+            '文件不可读或批次已封存 (BLOCKED)，请联系管理员。'
           "
           class="setup-signal setup-signal--fatal"
         >
@@ -501,10 +504,10 @@ onMounted(() => {
 
         <p
           v-if="
-            !showRegisterStateSkeleton
-              && !resumeAction
-              && workflow.canStartDirectScan.value
-              && contract?.firstScanTemplateHint
+            !showRegisterStateSkeleton &&
+            !resumeAction &&
+            workflow.canStartDirectScan.value &&
+            contract?.firstScanTemplateHint
           "
           class="scan-control__guide scan-control__guide--first-scan"
         >
@@ -948,6 +951,16 @@ onMounted(() => {
   margin-top: -4px;
 }
 
+.setup-signal--warning :deep(.ui-alert-strip) {
+  background: #fff7e6;
+  border-color: #ffd591;
+}
+
+.setup-signal--fatal :deep(.ui-alert-strip) {
+  background: #fff2f0;
+  border-color: #ffccc7;
+}
+
 .setup-signal {
   margin-bottom: var(--kiosk-space-2);
 }
@@ -982,7 +995,7 @@ onMounted(() => {
   height: 8px;
   border-radius: 50%;
   background: var(--kiosk-danger, #ff4d4f);
-  animation: setup-signal-pulse 1.2s ease-in-out infinite;
+  animation: setup-signal-pulse 300ms ease-in-out infinite;
 }
 
 @keyframes setup-signal-pulse {

@@ -40,6 +40,19 @@ export const SemesterOptions: Array<{ value: SemesterCode, label: string }> = [
   { value: SemesterCode.SPRING, label: SemesterDescription[SemesterCode.SPRING] },
 ]
 
+/** 校验是否为 SemesterCode 枚举成员（逐值显式比对，禁止宽化承接）。 */
+export function isSemesterCode(value: SemesterCode | null | undefined): value is SemesterCode {
+  return value === SemesterCode.AUTUMN || value === SemesterCode.SPRING
+}
+
+/** 协议边界解析学期码；未知值返回 undefined。 */
+export function parseSemesterCode(value: unknown): SemesterCode | undefined {
+  if (value === SemesterCode.AUTUMN || value === SemesterCode.SPRING) {
+    return value
+  }
+  return undefined
+}
+
 /**
  * 根据学期代码获取描述文本
  *

@@ -9,11 +9,13 @@ import { computed } from 'vue'
 import { useKioskCtx } from '../composables/kioskInjection'
 import { KIOSK_STAGES } from '../composables/useStageMachine'
 
-const { stage } = useKioskCtx()
+const { stage, workflow } = useKioskCtx()
 
 const currentIndex = computed(() =>
   KIOSK_STAGES.findIndex((s) => s.id === stage.currentStage.value),
 )
+
+const stageSwitchBlocked = computed(() => workflow.pageRegisterRetryLoading.value)
 </script>
 
 <template>
@@ -27,7 +29,8 @@ const currentIndex = computed(() =>
         active: s.id === stage.currentStage.value,
         completed: currentIndex > s.order,
       }"
-      :title="`Alt+${s.order + 1}: ${s.label}`"
+      :title="stageSwitchBlocked ? '页登记重试进行中，请稍候' : `Alt+${s.order + 1}: ${s.label}`"
+      :disabled="stageSwitchBlocked"
       @click="stage.gotoStage(s.id)"
     >
       <span class="stage-index">{{ s.order + 1 }}</span>
@@ -68,8 +71,13 @@ const currentIndex = computed(() =>
   cursor: pointer;
   transition: border-color var(--kiosk-dur-fast) var(--kiosk-easing);
 }
-.stage-step:hover {
+.stage-step:hover:not(:disabled) {
   background: var(--kiosk-surface-alt);
+}
+
+.stage-step:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .stage-index {

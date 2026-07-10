@@ -63,6 +63,18 @@ export interface IndirectEvaluationItemQueryRequest extends QueryDto {
   keyword?: string
 }
 
+export interface IndirectItemContentRevisionVO {
+  id: string
+  fieldKey: string
+  fieldLabel: string
+  oldValue?: string
+  newValue?: string
+  operatorId?: string
+  operatorNickName?: string
+  effectiveTime?: string
+  operateTime?: string
+}
+
 export const indirectItemApi = {
   page: (data: IndirectEvaluationItemQueryRequest) =>
     http.post<PageResult<IndirectEvaluationItemVO>>(`${BASE}/page`, data),
@@ -70,4 +82,6 @@ export const indirectItemApi = {
   create: (data: IndirectEvaluationItemSaveRequest) => http.post<string>(`${BASE}/create`, data),
   update: (data: IndirectEvaluationItemSaveRequest) => http.post<void>(`${BASE}/update`, data),
   delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),
+  contentRevisionTimeline: (id: string) =>
+    http.post<IndirectItemContentRevisionVO[]>(`${BASE}/content-revision-timeline`, { id }),
 }

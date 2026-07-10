@@ -7,16 +7,24 @@ import type { FinalScoreRiskOverviewResponse } from './exam-score'
 import type { QuestionTypeCode } from './question-type'
 import type { MarkTeacherDashboardPendingTodoItemVO } from './teacher-dashboard'
 import type { PageResult, QueryDto } from '@/types'
+import type { ExamScanMonitorSignalActionKeyCode } from '@/types/enums/exam-scan-monitor-signal-action-key-enum'
+import { isExamScanMonitorSignalActionKeyCode } from '@/types/enums/exam-scan-monitor-signal-action-key-enum'
+import type { ExamScanMonitorSignalCode } from '@/types/enums/exam-scan-monitor-signal-code-enum'
+import { isExamScanMonitorSignalCode } from '@/types/enums/exam-scan-monitor-signal-code-enum'
+import type { ExamScanMonitorSignalToneCode } from '@/types/enums/exam-scan-monitor-signal-tone-enum'
+import { isExamScanMonitorSignalToneCode } from '@/types/enums/exam-scan-monitor-signal-tone-enum'
 import type { WorkbenchNextActionKeyCode } from '@/types/enums/exam-workbench-next-action-key-enum'
 import type { ExamWorkbenchStageKeyCode } from '@/types/enums/exam-workbench-stage-key-enum'
 import type { WorkbenchStageStatusCode } from '@/types/enums/exam-workbench-stage-status-enum'
+import type { LedgerStatusCode } from '@/types/enums/ledger-status-enum'
+import { ALL_LEDGER_STATUS_CODES } from '@/types/enums/ledger-status-enum'
 import http from '@/config/axios'
 
 export {
-  ALL_WORKBENCH_NEXT_ACTION_KEY_CODES,
-  WorkbenchNextActionKeyCode,
-  WorkbenchNextActionKeyDescription,
-} from '@/types/enums/exam-workbench-next-action-key-enum'
+  ALL_EXAM_SCAN_MONITOR_SIGNAL_ACTION_KEY_CODES,
+  ExamScanMonitorSignalActionKeyCode,
+  isExamScanMonitorSignalActionKeyCode,
+} from '@/types/enums/exam-scan-monitor-signal-action-key-enum'
 
 /** 阅卷进度响应 - 对应 MarkingProgressResponse */
 export interface MarkingProgressResponse {
@@ -66,16 +74,16 @@ export interface ReviewQuestionProgressItemResponse {
 }
 
 export {
-  ALL_EXAM_WORKBENCH_STAGE_KEY_CODES,
-  ExamWorkbenchStageKeyCode,
-  ExamWorkbenchStageKeyDescription,
-} from '@/types/enums/exam-workbench-stage-key-enum'
+  ALL_EXAM_SCAN_MONITOR_SIGNAL_CODES,
+  ExamScanMonitorSignalCode,
+  isExamScanMonitorSignalCode,
+} from '@/types/enums/exam-scan-monitor-signal-code-enum'
 
 export {
-  ALL_WORKBENCH_STAGE_STATUS_CODES,
-  WorkbenchStageStatusCode,
-  WorkbenchStageStatusDescription,
-} from '@/types/enums/exam-workbench-stage-status-enum'
+  ALL_EXAM_SCAN_MONITOR_SIGNAL_TONE_CODES,
+  ExamScanMonitorSignalToneCode,
+  isExamScanMonitorSignalToneCode,
+} from '@/types/enums/exam-scan-monitor-signal-tone-enum'
 
 /** 考试工作台阶段项 - 对应 ExamWorkbenchStageItemResponse */
 export interface ExamWorkbenchStageItemResponse {
@@ -358,6 +366,30 @@ export function getScorePanel(examId: string): Promise<ExamWorkbenchScorePanelRe
   return http.post<ExamWorkbenchScorePanelResponse>('/api/mark/exams/score-panel', { examId })
 }
 
+export {
+  ALL_WORKBENCH_NEXT_ACTION_KEY_CODES,
+  WorkbenchNextActionKeyCode,
+  WorkbenchNextActionKeyDescription,
+} from '@/types/enums/exam-workbench-next-action-key-enum'
+
+export {
+  ALL_EXAM_WORKBENCH_STAGE_KEY_CODES,
+  ExamWorkbenchStageKeyCode,
+  ExamWorkbenchStageKeyDescription,
+} from '@/types/enums/exam-workbench-stage-key-enum'
+
+export {
+  ALL_WORKBENCH_STAGE_STATUS_CODES,
+  WorkbenchStageStatusCode,
+  WorkbenchStageStatusDescription,
+} from '@/types/enums/exam-workbench-stage-status-enum'
+
+export {
+  ALL_LEDGER_STATUS_CODES,
+  LedgerStatusCode,
+  LedgerStatusDescription,
+} from '@/types/enums/ledger-status-enum'
+
 /** 扫描监控看板面板 - 对应 ExamWorkbenchScanMonitorPanelResponse */
 export interface ExamWorkbenchScanMonitorPanelResponse {
   examId: string
@@ -371,25 +403,91 @@ export interface ExamWorkbenchScanMonitorPanelResponse {
   missingCandidateCount: number
   duplicatePageCount: number
   attentionCount: number
+  abnormalAttentionCount: number
+  duplicateAttentionCount: number
   orphanPendingEventCount: number
-  ledgerStatus?: string
+  ledgerStatus?: LedgerStatusCode
   progressPercent?: number | null
   progressDisplay?: string
   diagnostic?: string
-  signalCode?: string
-  signalBandTone?: string
+  signalCode?: ExamScanMonitorSignalCode
+  signalBandTone?: ExamScanMonitorSignalToneCode
   signalBandMessage?: string
-  signalActionKey?: string | null
-  primaryMetricTone?: string
+  signalActionKey?: ExamScanMonitorSignalActionKeyCode | null
+  primaryMetricTone?: ExamScanMonitorSignalToneCode
+}
+
+function parseScanMonitorLedgerStatus(value: unknown): LedgerStatusCode | undefined {
+  if (value == null || value === '') {
+    return undefined
+  }
+  if (
+    typeof value !== 'string' ||
+    !(ALL_LEDGER_STATUS_CODES as readonly string[]).includes(value)
+  ) {
+    throw new Error(`枚举合同不同步：ledgerStatus=${String(value)}`)
+  }
+  return value as LedgerStatusCode
+}
+
+function parseScanMonitorSignalCode(value: unknown): ExamScanMonitorSignalCode | undefined {
+  if (value == null || value === '') {
+    return undefined
+  }
+  if (typeof value !== 'string' || !isExamScanMonitorSignalCode(value)) {
+    throw new Error(`枚举合同不同步：signalCode=${String(value)}`)
+  }
+  return value
+}
+
+function parseScanMonitorSignalTone(value: unknown): ExamScanMonitorSignalToneCode | undefined {
+  if (value == null || value === '') {
+    return undefined
+  }
+  if (typeof value !== 'string' || !isExamScanMonitorSignalToneCode(value)) {
+    throw new Error(`枚举合同不同步：signalTone=${String(value)}`)
+  }
+  return value
+}
+
+function parseScanMonitorSignalActionKey(
+  value: unknown,
+): ExamScanMonitorSignalActionKeyCode | null | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+  if (value === null || value === '') {
+    return null
+  }
+  if (typeof value !== 'string' || !isExamScanMonitorSignalActionKeyCode(value)) {
+    throw new Error(`枚举合同不同步：signalActionKey=${String(value)}`)
+  }
+  return value
+}
+
+/** 校验扫描监控看板枚举契约，非空无效枚举值显式失败。 */
+export function normalizeScanMonitorPanel(
+  panel: ExamWorkbenchScanMonitorPanelResponse,
+): ExamWorkbenchScanMonitorPanelResponse {
+  return {
+    ...panel,
+    ledgerStatus: parseScanMonitorLedgerStatus(panel.ledgerStatus),
+    signalCode: parseScanMonitorSignalCode(panel.signalCode),
+    signalBandTone: parseScanMonitorSignalTone(panel.signalBandTone),
+    signalActionKey: parseScanMonitorSignalActionKey(panel.signalActionKey),
+    primaryMetricTone: parseScanMonitorSignalTone(panel.primaryMetricTone),
+  }
 }
 
 /** 查询扫描监控看板（扫描监控页 Signal 真源）。 */
-export function getScanMonitorPanel(
+export async function getScanMonitorPanel(
   examId: string,
 ): Promise<ExamWorkbenchScanMonitorPanelResponse> {
-  return http.post<ExamWorkbenchScanMonitorPanelResponse>('/api/mark/exams/scan-monitor-panel', {
-    examId,
-  })
+  const panel = await http.post<ExamWorkbenchScanMonitorPanelResponse>(
+    '/api/mark/exams/scan-monitor-panel',
+    { examId },
+  )
+  return normalizeScanMonitorPanel(panel)
 }
 
 /** 考试扫描监控在线设备 - 对应 ExamScanMonitorDeviceResponse */

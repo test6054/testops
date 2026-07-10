@@ -2,6 +2,7 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { SurveyIdentityFieldVO } from '@/apis/public-survey'
 import type { IndirectEvaluationFormVO } from '@/apis/quality/indirect-form'
 import type { RespondentTypeCode } from '@/types/enums/respondent-type-enum'
+import { formatRespondentType } from '@/types/enums/respondent-type-enum'
 import {
   AchievementTargetTypeCode,
   AchievementTargetTypeDescription,
@@ -17,11 +18,73 @@ import {
   ManualConversionStatusCode,
   ManualConversionStatusDescription,
 } from '@/types/enums/manual-conversion-status-enum'
-import { formatRespondentType } from '@/types/enums/respondent-type-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export const ITEM_CONFIG_ERROR = '题项配置不完整，请检查后重试'
 export const SCALE_CONVERSION_RULE_OPTION_PAGE_SIZE = 100
+
+/** C14：同目标题项权重须全有或全无 */
+export const TARGET_WEIGHT_C14_MESSAGE =
+  '请为同一课程目标下的所有题项填写有效权重（>0），或全部留空以使用等权重（默认 1:1）。'
+
+/**
+ * 校验同目标题项权重一致性（C14 预校验，与后端 IndirectTargetItemWeightRules 一致）
+ */
+export function validateTargetWeightC14(
+  siblings: Array<{
+    id?: string
+    targetType: AchievementTargetTypeCode
+    targetId: string
+    weight?: number | null
+  }>,
+  editing: {
+    id?: string
+    targetType: AchievementTargetTypeCode
+    targetId: string
+    weight?: number | null
+  },
+): string | null {
+  let anyPositive = false
+  let anyMissing = false
+  for (const item of siblings) {
+    if (item.targetType !== editing.targetType || item.targetId !== editing.targetId) {
+      continue
+    }
+    if (item.id && item.id === editing.id) {
+      continue
+    }
+    const weight = item.weight
+    if (weight != null && weight > 0) {
+      anyPositive = true
+    } else {
+      anyMissing = true
+    }
+  }
+  const editWeight = editing.weight
+  if (editWeight != null && editWeight > 0) {
+    anyPositive = true
+  } else {
+    anyMissing = true
+  }
+  if (anyPositive && anyMissing) {
+    return TARGET_WEIGHT_C14_MESSAGE
+  }
+  return null
+}
+
+/** 统计题项权重展示：C18 等权重回退时显示「等权重（1:1）」 */
+export function formatIndirectItemWeightDisplay(
+  weight?: number | null,
+  equalWeightFallback?: boolean,
+): string {
+  if (equalWeightFallback) {
+    return '等权重（1:1）'
+  }
+  if (weight != null && weight > 0) {
+    return String(weight)
+  }
+  return '—'
+}
 
 export const formColumns: ColumnsType = [
   { title: '编码', dataIndex: 'formCode', key: 'formCode', width: 120, fixed: 'left' },
@@ -105,12 +168,12 @@ export function isFormStructureMutable(
 }
 
 /** C10：PUBLISHED 问卷改题型阻断文案 */
-export const PUBLISHED_INDIRECT_ITEM_TYPE_CHANGE_MESSAGE
-  = '该问卷已发布，请先关闭问卷（操作路径：间接评价工作台 → 关闭问卷），修改题型后将触发该题项下全部答卷状态重算。'
+export const PUBLISHED_INDIRECT_ITEM_TYPE_CHANGE_MESSAGE =
+  '该问卷已发布，请先关闭问卷（操作路径：间接评价工作台 → 关闭问卷），修改题型后将触发该题项下全部答卷状态重算。'
 
 /** Phase A：PUBLISHED 文案编辑说明（C13 保存即生效） */
-export const PUBLISHED_INDIRECT_CONTENT_EDIT_MESSAGE
-  = '已发布问卷仅允许修改题干与选项文案，保存后立即对新的公开访问生效。'
+export const PUBLISHED_INDIRECT_CONTENT_EDIT_MESSAGE =
+  '已发布问卷仅允许修改题干与选项文案，保存后立即对新的公开访问生效。'
 
 /** PUBLISHED 问卷允许编辑题项文案（题干、选项/量表标签） */
 export function isFormContentEditable(
@@ -188,9 +251,9 @@ export function canCloseForm(record: IndirectEvaluationFormVO): boolean {
 export function canShowWorkflowInsights(record: IndirectEvaluationFormVO): boolean {
   const status = record.status ?? IndirectFormStatusCode.DRAFT
   return (
-    status === IndirectFormStatusCode.PUBLISHED
-    || status === IndirectFormStatusCode.CLOSED
-    || status === IndirectFormStatusCode.ARCHIVED
+    status === IndirectFormStatusCode.PUBLISHED ||
+    status === IndirectFormStatusCode.CLOSED ||
+    status === IndirectFormStatusCode.ARCHIVED
   )
 }
 
@@ -204,7 +267,7 @@ export const DEFAULT_IDENTITY_FIELDS: SurveyIdentityFieldVO[] = [
   { fieldKey: 'CONTACT', fieldLabel: '联系方式', fieldType: 'TEXT', required: false },
 ]
 
-export const accessModeOptions: { value: IndirectFormAccessModeCode, label: string }[] = [
+export const accessModeOptions: { value: IndirectFormAccessModeCode; label: string }[] = [
   {
     value: IndirectFormAccessModeCode.PUBLIC_LINK,
     label: strictEnumLabel(
@@ -231,7 +294,7 @@ export const accessModeOptions: { value: IndirectFormAccessModeCode, label: stri
   },
 ]
 
-export const formTypeOptions: { value: IndirectFormTypeCode, label: string }[] = [
+export const formTypeOptions: { value: IndirectFormTypeCode; label: string }[] = [
   {
     value: IndirectFormTypeCode.STUDENT_SELF,
     label: strictEnumLabel(
@@ -282,7 +345,7 @@ export const formTypeOptions: { value: IndirectFormTypeCode, label: string }[] =
   },
 ]
 
-export const targetTypeOptions: { value: AchievementTargetTypeCode, label: string }[] = [
+export const targetTypeOptions: { value: AchievementTargetTypeCode; label: string }[] = [
   {
     value: AchievementTargetTypeCode.COURSE_GOAL,
     label: strictEnumLabel(
@@ -366,9 +429,9 @@ export function requiresTeacherScoreConversion(
   itemType: IndirectEvaluationItemTypeCode | undefined,
 ): boolean {
   return (
-    isSingleChoiceItemType(itemType)
-    || isMultiChoiceItemType(itemType)
-    || isOpenTextItemType(itemType)
+    isSingleChoiceItemType(itemType) ||
+    isMultiChoiceItemType(itemType) ||
+    isOpenTextItemType(itemType)
   )
 }
 

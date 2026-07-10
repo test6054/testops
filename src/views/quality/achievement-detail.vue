@@ -1,21 +1,14 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { AchievementAuditVO } from '@/apis/quality/achievement-audit'
-import type { AchievementDetailVO } from '@/apis/quality/achievement-detail'
-import type { AchievementManualReviewVO } from '@/apis/quality/achievement-manual-review'
-import type { AchievementResultVO } from '@/apis/quality/achievement-result'
-import type { AchievementDetailTypeCode, AchievementStatusCode } from '@/apis/quality/types'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-
-import { achievementApi } from '@/apis/quality/achievement'
 import { achievementAuditApi } from '@/apis/quality/achievement-audit'
+import type { AchievementDetailVO } from '@/apis/quality/achievement-detail'
 import { achievementDetailApi } from '@/apis/quality/achievement-detail'
+import type { AchievementManualReviewVO } from '@/apis/quality/achievement-manual-review'
 import { achievementManualReviewApi } from '@/apis/quality/achievement-manual-review'
+import type { AchievementResultVO } from '@/apis/quality/achievement-result'
 import { achievementResultApi } from '@/apis/quality/achievement-result'
+import type { AchievementDetailTypeCode, AchievementStatusCode } from '@/apis/quality/types'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_STATUS_COLOR,
@@ -28,6 +21,16 @@ import {
   ManualReviewDecisionCode,
   ManualReviewDecisionDescription,
 } from '@/apis/quality/types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
+import { achievementApi } from '@/apis/quality/achievement'
+import { courseGoalApi } from '@/apis/quality/course-goal'
+import { indirectFormApi } from '@/apis/quality/indirect-form'
+import { indirectItemApi } from '@/apis/quality/indirect-item'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -66,6 +69,16 @@ useQualityScopedLoader(
 const resultId = computed(() => String(route.params.resultId || ''))
 
 const result = ref<AchievementResultVO | null>(null)
+const courseGoalWeights = ref<{ directWeight?: number; indirectWeight?: number } | null>(null)
+
+interface RelatedIndirectFormLink {
+  id: string
+  formCode: string
+  formName: string
+}
+
+const relatedIndirectForms = ref<RelatedIndirectFormLink[]>([])
+const relatedIndirectFormsLoading = ref(false)
 const details = ref<AchievementDetailVO[]>([])
 const audits = ref<AchievementAuditVO[]>([])
 const reviews = ref<AchievementManualReviewVO[]>([])
@@ -82,7 +95,7 @@ const auditTotal = ref(0)
 const reviewPageNum = ref(1)
 const reviewPageSize = ref(10)
 const reviewTotal = ref(0)
-const reviewForm = reactive<{ decision: ManualReviewDecisionCode, reviewRemark: string }>({
+const reviewForm = reactive<{ decision: ManualReviewDecisionCode; reviewRemark: string }>({
   decision: ManualReviewDecisionCode.CONFIRMED,
   reviewRemark: '',
 })
@@ -186,18 +199,18 @@ const targetTypeToComputeKind: Partial<Record<AchievementTargetTypeCode, string>
 function canRecomputeResult(value: AchievementResultVO | null): boolean {
   if (!value) return false
   return (
-    value.auditStatus === AchievementAuditStatusCode.RETURNED
-    || isResultStale(value)
-    || value.auditStatus === AchievementAuditStatusCode.DRAFT
-    || value.auditStatus === AchievementAuditStatusCode.CALCULATED
+    value.auditStatus === AchievementAuditStatusCode.RETURNED ||
+    isResultStale(value) ||
+    value.auditStatus === AchievementAuditStatusCode.DRAFT ||
+    value.auditStatus === AchievementAuditStatusCode.CALCULATED
   )
 }
 
 function canSubmitManualReview(value: AchievementResultVO | null): boolean {
   if (!value?.auditStatus) return false
   return (
-    value.auditStatus === AchievementAuditStatusCode.SUBMITTED
-    || value.auditStatus === AchievementAuditStatusCode.CONFIRMED
+    value.auditStatus === AchievementAuditStatusCode.SUBMITTED ||
+    value.auditStatus === AchievementAuditStatusCode.CONFIRMED
   )
 }
 
@@ -255,11 +268,92 @@ async function handleRecompute() {
   }
 }
 
+function formatAchievementDecimal(value?: number | null): string {
+  return value == null ? '-' : value.toFixed(3)
+}
+
+function formatDirectIndirectWeights(
+  directWeight?: number,
+  indirectWeight?: number,
+): string | null {
+  if (directWeight == null && indirectWeight == null) return null
+  const direct = directWeight == null ? '-' : String(directWeight)
+  const indirect = indirectWeight == null ? '-' : String(indirectWeight)
+  return `${direct} / ${indirect}`
+}
+
+function hasDirectIndirectSynthesis(value: AchievementResultVO | null): boolean {
+  if (!value) return false
+  return value.directValue != null || value.indirectValue != null || value.finalValue != null
+}
+
+const showDirectIndirectSynthesisPanel = computed(
+  () => result.value?.targetType === AchievementTargetTypeCode.COURSE_GOAL,
+)
+
+async function loadRelatedIndirectForms(record: AchievementResultVO) {
+  relatedIndirectFormsLoading.value = true
+  relatedIndirectForms.value = []
+  try {
+    const page = await indirectItemApi.page({
+      targetType: AchievementTargetTypeCode.COURSE_GOAL,
+      targetId: record.targetId,
+      pageNum: 1,
+      pageSize: 200,
+    })
+    const formIds = [...new Set(page.list.map((item) => item.formId))]
+    if (!formIds.length) {
+      return
+    }
+    const forms = await Promise.all(formIds.map((id) => indirectFormApi.detail(id)))
+    relatedIndirectForms.value = forms
+      .filter((form) => !record.programId || form.programId === record.programId)
+      .map((form) => ({
+        id: form.id,
+        formCode: form.formCode,
+        formName: form.formName,
+      }))
+  } finally {
+    relatedIndirectFormsLoading.value = false
+  }
+}
+
+function openIndirectStatistics(formId: string) {
+  void router.push({
+    name: 'QualityIngestIndirectEvaluation',
+    query: { formId, openStatistics: '1' },
+  })
+}
+
+function openIndirectWeightedHelp(formId?: string) {
+  void router.push({
+    name: 'QualityHelpIndirectWeightedAttainment',
+    query: {
+      ...(formId ? { formId } : {}),
+      from: 'achievement',
+      resultId: resultId.value,
+    },
+  })
+}
+
 async function loadResult() {
   if (!resultId.value) return
   loading.value = true
   try {
     result.value = await achievementResultApi.detail(resultId.value)
+    courseGoalWeights.value = null
+    relatedIndirectForms.value = []
+    if (
+      result.value?.targetType === AchievementTargetTypeCode.COURSE_GOAL &&
+      result.value.targetId
+    ) {
+      const goal = await courseGoalApi.detail(result.value.targetId)
+      courseGoalWeights.value = {
+        directWeight: goal.directWeight,
+        indirectWeight: goal.indirectWeight,
+      }
+      await loadRelatedIndirectForms(result.value)
+    }
   } finally {
     loading.value = false
   }
@@ -330,7 +424,7 @@ async function loadAll() {
   await Promise.all([loadResult(), loadDetails(), loadAudits(), loadReviews()])
 }
 
-function handleDetailPageChange(page: { current: number, pageSize: number }) {
+function handleDetailPageChange(page: { current: number; pageSize: number }) {
   detailPageNum.value = page.current
   detailPageSize.value = page.pageSize
   void loadDetails()
@@ -397,13 +491,43 @@ const signals = computed<SignalMetric[]>(() => {
   const finalValue = r.finalValue
   const threshold = r.thresholdValue
   const isBelow = threshold != null && finalValue != null && Number(finalValue) < Number(threshold)
-  return [
+  const weightLabel = formatDirectIndirectWeights(
+    courseGoalWeights.value?.directWeight,
+    courseGoalWeights.value?.indirectWeight,
+  )
+  const metrics: SignalMetric[] = [
     {
       key: 'final',
-      label: '达成值',
+      label: '达成值 C',
       value: finalValue == null ? '-' : finalValue.toFixed(3),
       tone: isBelow ? 'red' : finalValue == null ? 'gray' : 'green',
     },
+  ]
+  if (hasDirectIndirectSynthesis(r)) {
+    metrics.push(
+      {
+        key: 'direct',
+        label: '直接 D',
+        value: formatAchievementDecimal(r.directValue),
+        tone: r.directValue == null ? 'gray' : 'blue',
+      },
+      {
+        key: 'indirect',
+        label: '间接 I',
+        value: formatAchievementDecimal(r.indirectValue),
+        tone: r.indirectValue == null ? 'gray' : 'blue',
+      },
+    )
+    if (weightLabel) {
+      metrics.push({
+        key: 'weights',
+        label: '权重 w',
+        value: weightLabel,
+        tone: 'gray',
+      })
+    }
+  }
+  metrics.push(
     {
       key: 'threshold',
       label: '阈值',
@@ -440,7 +564,8 @@ const signals = computed<SignalMetric[]>(() => {
       value: reviewTotal.value,
       tone: reviewTotal.value > 0 ? 'green' : 'gray',
     },
-  ]
+  )
+  return metrics
 })
 
 const reviewVisible = ref(false)
@@ -523,6 +648,59 @@ onActivated(() => {
 
     <template v-else-if="result">
       <SignalBand :metrics="signals" compact class="achievement-detail__signals" />
+
+      <UiCard v-if="showDirectIndirectSynthesisPanel" class="achievement-detail__synthesis-card">
+        <template #title>直间接合成</template>
+        <template #extra>
+          <UiButton
+            variant="ghost"
+            size="sm"
+            @click="openIndirectWeightedHelp(relatedIndirectForms[0]?.id)"
+          >
+            题项加权说明
+          </UiButton>
+        </template>
+        <a-descriptions :column="2" size="small" bordered>
+          <a-descriptions-item label="直接 D">
+            {{ formatAchievementDecimal(result.directValue) }}
+          </a-descriptions-item>
+          <a-descriptions-item label="间接 I">
+            {{ formatAchievementDecimal(result.indirectValue) }}
+          </a-descriptions-item>
+          <a-descriptions-item label="权重 w">
+            {{
+              formatDirectIndirectWeights(
+                courseGoalWeights?.directWeight,
+                courseGoalWeights?.indirectWeight,
+              ) || '-'
+            }}
+          </a-descriptions-item>
+          <a-descriptions-item label="综合 C">
+            {{ formatAchievementDecimal(result.finalValue) }}
+            <UiTag v-if="isResultStale(result)" tone="red" size="sm">已过期</UiTag>
+          </a-descriptions-item>
+        </a-descriptions>
+        <div class="achievement-detail__synthesis-links">
+          <p class="achievement-detail__synthesis-links-title">关联间接问卷</p>
+          <UiEmpty
+            v-if="!relatedIndirectFormsLoading && !relatedIndirectForms.length"
+            size="sm"
+            description="暂无含本课程目标的间接评价问卷"
+          />
+          <ul v-else class="achievement-detail__synthesis-form-list">
+            <li
+              v-for="form in relatedIndirectForms"
+              :key="form.id"
+              class="achievement-detail__synthesis-form-row"
+            >
+              <span>{{ form.formName }}（{{ form.formCode }}）</span>
+              <UiButton variant="outline" size="sm" @click="openIndirectStatistics(form.id)">
+                查看问卷统计
+              </UiButton>
+            </li>
+          </ul>
+        </div>
+      </UiCard>
 
       <UiCard class="achievement-detail__meta-card">
         <template #title>结果元数据</template>
@@ -759,6 +937,43 @@ onActivated(() => {
 
   &__signals {
     margin-bottom: 12px;
+  }
+
+  &__synthesis-card {
+    margin-bottom: 16px;
+  }
+
+  &__synthesis-links {
+    margin-top: 16px;
+  }
+
+  &__synthesis-links-title {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: var(--dp-font-weight-title);
+    color: var(--dp-text-primary);
+  }
+
+  &__synthesis-form-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__synthesis-form-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+    border-top: 1px solid var(--dp-border-subtle);
+    font-size: 14px;
+    color: var(--dp-text-secondary);
+
+    &:first-child {
+      border-top: none;
+      padding-top: 0;
+    }
   }
 
   &__panel {

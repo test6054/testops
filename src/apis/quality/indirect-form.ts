@@ -90,11 +90,33 @@ export interface IndirectEvaluationProgressVO {
   scoredResponseCount?: number
   pendingConversionCount?: number
   noSubstantiveCount?: number
+  /** 待确认有效样本数（valid_flag IS NULL，AI/文档导入草稿） */
+  pendingConfirmCount?: number
   expectedSample?: number
   completionRate?: number
   responseCollectionRate?: number
   startTime?: string
   endTime?: string
+}
+
+export interface TargetWeightedScoreVO {
+  targetType: AchievementTargetTypeCode
+  targetId: string
+  targetLabel?: string
+  overallScore?: number
+  itemCount?: number
+  pendingBlocked?: boolean
+  equalWeightFallback?: boolean
+  success?: boolean
+  errorMessage?: string
+  directValue?: number
+  indirectAchievementValue?: number
+  directWeight?: number
+  indirectWeight?: number
+  compositeValue?: number
+  achievementStaleFlag?: boolean
+  achievementCalculatedTime?: string
+  achievementResultId?: string
 }
 
 export interface IndirectEvaluationStatisticsVO {
@@ -104,6 +126,10 @@ export interface IndirectEvaluationStatisticsVO {
   overallScoredCount?: number
   pendingConversionCount?: number
   noSubstantiveCount?: number
+  /** 待确认有效样本总数（valid_flag IS NULL） */
+  pendingConfirmCount?: number
+  /** 按评价目标分组的加权统计（C19） */
+  targetScores?: TargetWeightedScoreVO[]
 }
 
 export interface IndirectEvaluationFormItemStatisticsQueryRequest extends QueryDto {
@@ -121,12 +147,18 @@ export interface IndirectEvaluationItemStatisticsVO {
   scoredCount?: number
   pendingConversionCount?: number
   noSubstantiveCount?: number
+  pendingConfirmCount?: number
   mean?: number
   median?: number
   stdDev?: number
   distributionBuckets?: IndirectEvaluationScaleDistributionBucketVO[]
   openTextSummaries?: IndirectEvaluationOpenTextSummaryVO[]
   convertedScore?: number
+  weight?: number
+  effectiveWeight?: number
+  weightedContribution?: number
+  /** 同目标题项是否触发等权重 1:1 回退（C18） */
+  equalWeightFallback?: boolean
 }
 
 export interface IndirectEvaluationScaleDistributionBucketVO {
@@ -139,6 +171,14 @@ export interface IndirectEvaluationScaleDistributionBucketVO {
 export interface IndirectEvaluationOpenTextSummaryVO {
   content: string
   count: number
+}
+
+export interface IndirectAchievementContributionExportResultVO {
+  fileName: string
+  fileNodeId: string
+  rowCount: number
+  staleFlag?: boolean
+  staleMessage?: string
 }
 
 export const indirectFormApi = {
@@ -156,4 +196,6 @@ export const indirectFormApi = {
     http.post<IndirectEvaluationStatisticsVO>(`${BASE}/statistics`, { id }),
   statisticsItemPage: (data: IndirectEvaluationFormItemStatisticsQueryRequest) =>
     http.post<PageResult<IndirectEvaluationItemStatisticsVO>>(`${BASE}/statistics-item-page`, data),
+  exportContribution: (formId: string) =>
+    http.post<IndirectAchievementContributionExportResultVO>(`${BASE}/export-contribution`, { formId }),
 }
