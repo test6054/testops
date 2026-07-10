@@ -69,8 +69,8 @@
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
                 v-if="
-                  record.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE &&
-                  canExportCampaign
+                  record.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE
+                    && canExportCampaign
                 "
                 :items="buildCampaignActions(record)"
                 split
@@ -179,14 +179,6 @@ import type {
   ArchiveEvaluationCampaignStatsVO,
   ArchiveEvaluationVolumeReadinessResponse,
 } from '@/apis/mark/archive-volume'
-import {
-  ArchiveEvaluationCampaignStatusCode,
-  ArchiveEvaluationCampaignStatusDescription,
-  exportEvaluationArchivePackage,
-  getEvaluationCampaignReadinessPanel,
-  getEvaluationCampaignStats,
-  pageEvaluationCampaigns,
-} from '@/apis/mark/archive-volume'
 import type {
   BadgeTone,
   UiSectionTabItem,
@@ -198,6 +190,14 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
 import { ArchiveDutyTypeCode } from '@/apis/mark/archive-config'
+import {
+  ArchiveEvaluationCampaignStatusCode,
+  ArchiveEvaluationCampaignStatusDescription,
+  exportEvaluationArchivePackage,
+  getEvaluationCampaignReadinessPanel,
+  getEvaluationCampaignStats,
+  pageEvaluationCampaigns,
+} from '@/apis/mark/archive-volume'
 import ArchiveReadinessRateBar from '@/components/archive-volume/ArchiveReadinessRateBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -450,7 +450,7 @@ async function loadCampaigns(): Promise<void> {
   }
 }
 
-function handleCampaignPageChange(page: { current: number; pageSize: number }): void {
+function handleCampaignPageChange(page: { current: number, pageSize: number }): void {
   campaignPagination.pageNum = page.current
   campaignPagination.pageSize = page.pageSize
   void loadCampaigns()

@@ -223,7 +223,6 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
-import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
 import type {
   FormalSessionResponse,
   MarkingTaskClaimRequest,
@@ -231,15 +230,6 @@ import type {
   MarkingTaskResponse,
   TeacherClaimContextResponse,
   TrialSessionResponse,
-} from '@/apis/mark/marking-organization'
-import {
-  FormalSessionStatusDescription,
-  getMarkingQuestionView,
-  getOrganization,
-  MARKING_TASK_STATUS_OPTIONS,
-  MARKING_TASK_STATUS_TONE,
-  MarkingTaskStatusDescription,
-  TrialSessionStatusDescription,
 } from '@/apis/mark/marking-organization'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -250,6 +240,16 @@ import message from 'ant-design-vue/es/message'
 import { storeToRefs } from 'pinia'
 import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
+import {
+  FormalSessionStatusDescription,
+  getMarkingQuestionView,
+  getOrganization,
+  MARKING_TASK_STATUS_OPTIONS,
+  MARKING_TASK_STATUS_TONE,
+  MarkingTaskStatusDescription,
+  TrialSessionStatusDescription,
+} from '@/apis/mark/marking-organization'
 import { MarkingTaskStreamSubscribeScopeCode } from '@/apis/mark/marking-task-stream'
 import MarkingBatchScoreDrawer from '@/components/mark/MarkingBatchScoreDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -379,8 +379,8 @@ const selectedTasks = computed(() =>
 
 function isBatchSelectable(task: MarkingTaskResponse): boolean {
   return (
-    task.taskStatus === MarkingTaskStatusCode.ALLOCATED ||
-    task.taskStatus === MarkingTaskStatusCode.IN_PROGRESS
+    task.taskStatus === MarkingTaskStatusCode.ALLOCATED
+    || task.taskStatus === MarkingTaskStatusCode.IN_PROGRESS
   )
 }
 
@@ -397,8 +397,8 @@ function handleSelectionChange(keys: (string | number)[]): void {
     clearBatchSelection()
     return
   }
-  const anchor =
-    batchSelectionAnchor.value ?? tasks.value.find((task) => task.id === typedKeys[0]) ?? null
+  const anchor
+    = batchSelectionAnchor.value ?? tasks.value.find((task) => task.id === typedKeys[0]) ?? null
   if (!anchor || !isBatchSelectable(anchor)) {
     clearBatchSelection()
     return
@@ -501,9 +501,9 @@ const groupLeaderStream = useMarkingTaskStream({
     }
     // exam Topic 事件携带单 session 计数，须回源 claimContext 做 exam 级聚合
     if (
-      event.eventType === 'SESSION_PROGRESS' ||
-      event.eventType === 'SESSION_PAUSED' ||
-      event.eventType === 'SESSION_RESUMED'
+      event.eventType === 'SESSION_PROGRESS'
+      || event.eventType === 'SESSION_PAUSED'
+      || event.eventType === 'SESSION_RESUMED'
     ) {
       void loadClaimContext()
     }
@@ -530,8 +530,8 @@ function getPollingIntervalMs(): number {
     return 5000
   }
   if (
-    teacherTaskStream.connectionPhase.value === 'failed' ||
-    (isGroupLeader.value && groupLeaderStream.connectionPhase.value === 'failed')
+    teacherTaskStream.connectionPhase.value === 'failed'
+    || (isGroupLeader.value && groupLeaderStream.connectionPhase.value === 'failed')
   ) {
     return 30000
   }
@@ -566,7 +566,7 @@ const columns = computed<ColumnType<MarkingTaskResponse>[]>(() => [
   { title: '操作', key: 'actions', width: 140 },
 ])
 
-async function loadTasks(options?: { silent?: boolean; resetPage?: boolean }): Promise<void> {
+async function loadTasks(options?: { silent?: boolean, resetPage?: boolean }): Promise<void> {
   if (!selectedExamId.value) {
     markTaskStore.clearTasks()
     tasksLoadError.value = ''

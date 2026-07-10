@@ -29,35 +29,43 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  *   - /api/quality/accreditation-standards          认证标准条目
  */
 import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
-import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import type {
   GraduationRequirementSaveRequest,
   GraduationRequirementVO,
 } from '@/apis/quality/graduation-requirement'
-import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
 import type {
   RequirementIndicatorSaveRequest,
   RequirementIndicatorVO,
 } from '@/apis/quality/requirement-indicator'
-import { requirementIndicatorApi } from '@/apis/quality/requirement-indicator'
 import type {
   RequirementStandardMappingSaveRequest,
   RequirementStandardMappingVO,
 } from '@/apis/quality/requirement-standard-mapping'
-import { requirementStandardMappingApi } from '@/apis/quality/requirement-standard-mapping'
 import type {
   TrainingObjectiveSaveRequest,
   TrainingObjectiveVO,
 } from '@/apis/quality/training-objective'
-import { trainingObjectiveApi } from '@/apis/quality/training-objective'
 import type {
   TrainingObjectiveRequirementSaveRequest,
   TrainingObjectiveRequirementVO,
 } from '@/apis/quality/training-objective-requirement'
-import { trainingObjectiveRequirementApi } from '@/apis/quality/training-objective-requirement'
 import type { TrainingPlanSaveRequest, TrainingPlanVO } from '@/apis/quality/training-plan'
-import { trainingPlanApi } from '@/apis/quality/training-plan'
 import type { CivicDimensionCode } from '@/apis/quality/types'
+import type { TrainingPlanWorkbenchSignalSummaryVO } from '@/apis/quality/workbench'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/matrix-types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
+import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
+import { professionAlgorithmProfileApi } from '@/apis/quality/profession-algorithm-profile'
+import { requirementIndicatorApi } from '@/apis/quality/requirement-indicator'
+import { requirementStandardMappingApi } from '@/apis/quality/requirement-standard-mapping'
+import { trainingObjectiveApi } from '@/apis/quality/training-objective'
+import { trainingObjectiveRequirementApi } from '@/apis/quality/training-objective-requirement'
+import { trainingPlanApi } from '@/apis/quality/training-plan'
 import {
   AggregationFunctionCode,
   AggregationFunctionDescription,
@@ -67,15 +75,7 @@ import {
   ConfirmationStatusCode,
   ConfirmationStatusDescription,
 } from '@/apis/quality/types'
-import type { TrainingPlanWorkbenchSignalSummaryVO } from '@/apis/quality/workbench'
 import { workbenchApi } from '@/apis/quality/workbench'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/matrix-types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { professionAlgorithmProfileApi } from '@/apis/quality/profession-algorithm-profile'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
@@ -210,7 +210,7 @@ async function loadObjectives() {
   }
 }
 
-function handleObjectivePageChange(page: { current: number; pageSize: number }) {
+function handleObjectivePageChange(page: { current: number, pageSize: number }) {
   objectivePageNum.value = page.current
   objectivePageSize.value = page.pageSize
   void loadObjectives()
@@ -255,7 +255,7 @@ async function loadRequirements() {
   }
 }
 
-function handleRequirementPageChange(page: { current: number; pageSize: number }) {
+function handleRequirementPageChange(page: { current: number, pageSize: number }) {
   requirementPageNum.value = page.current
   requirementPageSize.value = page.pageSize
   void loadRequirements()
@@ -320,7 +320,7 @@ async function loadSelectedRequirementIndicators() {
   }
 }
 
-function handleIndicatorPageChange(page: { current: number; pageSize: number }) {
+function handleIndicatorPageChange(page: { current: number, pageSize: number }) {
   indicatorPageNum.value = page.current
   indicatorPageSize.value = page.pageSize
   void loadSelectedRequirementIndicators()
@@ -392,7 +392,7 @@ async function loadObjectiveRequirementMappings() {
   }
 }
 
-function handleObjMappingPageChange(page: { current: number; pageSize: number }) {
+function handleObjMappingPageChange(page: { current: number, pageSize: number }) {
   objMappingPageNum.value = page.current
   objMappingPageSize.value = page.pageSize
   void loadObjectiveRequirementMappings()
@@ -478,7 +478,7 @@ async function loadStandardMappings() {
   }
 }
 
-function handleStdMappingPageChange(page: { current: number; pageSize: number }) {
+function handleStdMappingPageChange(page: { current: number, pageSize: number }) {
   stdMappingPageNum.value = page.current
   stdMappingPageSize.value = page.pageSize
   void loadStandardMappings()
@@ -514,9 +514,9 @@ const planConfirmationStatus = computed<ConfirmationStatusCode | undefined>(() =
 
 const canConfirmPlan = computed(
   () =>
-    !!currentPlan.value &&
-    (planConfirmationStatus.value === ConfirmationStatusCode.DRAFT ||
-      planConfirmationStatus.value === ConfirmationStatusCode.RETURNED),
+    !!currentPlan.value
+    && (planConfirmationStatus.value === ConfirmationStatusCode.DRAFT
+      || planConfirmationStatus.value === ConfirmationStatusCode.RETURNED),
 )
 
 const canRevokePlan = computed(
@@ -711,10 +711,10 @@ function openPlanEdit() {
 async function submitPlan() {
   if (planEditorMode.value === 'edit' && !guardPlanStructureEditable('编辑方案')) return
   if (
-    !planEditor.programId.trim() ||
-    !planEditor.planCode.trim() ||
-    !planEditor.planName.trim() ||
-    !planEditor.schoolYear.trim()
+    !planEditor.programId.trim()
+    || !planEditor.planCode.trim()
+    || !planEditor.planName.trim()
+    || !planEditor.schoolYear.trim()
   ) {
     message.error('请选择专业，并填写方案编码、方案名称和入学学年')
     return
@@ -946,8 +946,8 @@ function handleObjectiveRequirementCellClick(cellEvent: {
   if (cellEvent.cell) {
     const mapping = objectiveRequirementMappings.value.find(
       (item) =>
-        item.trainingObjectiveId === cellEvent.row.key &&
-        item.graduationRequirementId === cellEvent.col.key,
+        item.trainingObjectiveId === cellEvent.row.key
+        && item.graduationRequirementId === cellEvent.col.key,
     )
     if (mapping) openObjMappingEdit(mapping)
     return
@@ -972,9 +972,9 @@ async function submitObjMapping() {
     return
   }
   if (
-    objMappingEditor.weight == null ||
-    objMappingEditor.weight < 0 ||
-    objMappingEditor.weight > 1
+    objMappingEditor.weight == null
+    || objMappingEditor.weight < 0
+    || objMappingEditor.weight > 1
   ) {
     message.error('权重必须在 0~1 之间')
     return
@@ -1157,9 +1157,9 @@ async function submitIndicator() {
     return
   }
   if (
-    indicatorEditor.requirementWeight == null ||
-    indicatorEditor.requirementWeight <= 0 ||
-    indicatorEditor.requirementWeight > 1
+    indicatorEditor.requirementWeight == null
+    || indicatorEditor.requirementWeight <= 0
+    || indicatorEditor.requirementWeight > 1
   ) {
     message.error('观测点权重必须在 (0, 1] 之间')
     return
@@ -1408,8 +1408,8 @@ const aggregationOptions = ALL_AGGREGATION_FUNCTION_CODES.map((value) => ({
   label: strictEnumLabel(AggregationFunctionDescription, value, '聚合函数'),
 }))
 
-const civicDimensionOptions: Array<{ value: CivicDimensionCode; label: string }> =
-  ALL_CIVIC_DIMENSION_CODES.map((value) => ({
+const civicDimensionOptions: Array<{ value: CivicDimensionCode, label: string }>
+  = ALL_CIVIC_DIMENSION_CODES.map((value) => ({
     value,
     label: strictEnumLabel(CivicDimensionDescription, value, '课程思政维度'),
   }))
@@ -1743,9 +1743,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                         <UiTag v-for="d in record.civicDimensions ?? []" :key="d" tone="purple">
                           {{ strictEnumLabel(CivicDimensionDescription, d, '课程思政维度') }}
                         </UiTag>
-                        <span v-if="!(record.civicDimensions ?? []).length" class="tpw__muted"
-                          >-</span
-                        >
+                        <span v-if="!(record.civicDimensions ?? []).length" class="tpw__muted">-</span>
                       </a-space>
                     </template>
                     <template v-else-if="column.key === 'actions'">

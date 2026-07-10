@@ -39,10 +39,10 @@ const selectedExamStillVisible = computed(() => {
 
 const canConfirmBind = computed(
   () =>
-    selectedExamStillVisible.value &&
-    !binding.value &&
-    !workflow.bindExamCandidateLoading.value &&
-    !workflow.bindExamCandidateLoadIssue.value,
+    selectedExamStillVisible.value
+    && !binding.value
+    && !workflow.bindExamCandidateLoading.value
+    && !workflow.bindExamCandidateLoadIssue.value,
 )
 
 async function submitBind() {

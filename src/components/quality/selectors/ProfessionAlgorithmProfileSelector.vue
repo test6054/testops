@@ -7,10 +7,10 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ProfessionAlgorithmProfileVO } from '@/apis/quality/profession-algorithm-profile'
-import { professionAlgorithmProfileApi } from '@/apis/quality/profession-algorithm-profile'
 import type { AccreditationTypeCode } from '@/apis/quality/types'
-import { AccreditationTypeDescription } from '@/apis/quality/types'
 import { onMounted, ref, watch } from 'vue'
+import { professionAlgorithmProfileApi } from '@/apis/quality/profession-algorithm-profile'
+import { AccreditationTypeDescription } from '@/apis/quality/types'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { loadSelectorFirstPage, QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS } from './page-contract'
@@ -37,7 +37,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: ProfessionAlgorithmProfileVO]
+  "change": [value: string | null, option?: ProfessionAlgorithmProfileVO]
 }>()
 
 const options = ref<ProfessionAlgorithmProfileVO[]>([])

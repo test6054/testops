@@ -59,15 +59,9 @@ const metrics = computed(() => workflow.kioskMetrics.value)
       <span class="session-strip__scanner">{{ scannerLabel }}</span>
     </div>
     <div class="session-strip__metrics">
-      <span
-        >已扫页 <strong>{{ metrics.scannedPages }}</strong></span
-      >
-      <span
-        >试卷 <strong>{{ metrics.paperInstances }}</strong></span
-      >
-      <span
-        >异常 <strong>{{ metrics.attentionCount }}</strong></span
-      >
+      <span>已扫页 <strong>{{ metrics.scannedPages }}</strong></span>
+      <span>试卷 <strong>{{ metrics.paperInstances }}</strong></span>
+      <span>异常 <strong>{{ metrics.attentionCount }}</strong></span>
     </div>
     <button type="button" class="session-strip__settings" @click="ui.openSettings()">
       <SettingOutlined />

@@ -2,6 +2,8 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { Key } from 'ant-design-vue/es/table/interface'
 import type { ArchiveScanBatchSnapshotItemVO } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   batchRetryArchiveScanBatches,
   pageArchiveScanBatchSnapshots,
@@ -9,8 +11,6 @@ import {
   ScanBatchQualityFlagCode,
   ScanBatchQualityFlagDescription,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   SCAN_WORK_ORDER_STATUS_TONE,
   ScanWorkOrderStatusDescription,

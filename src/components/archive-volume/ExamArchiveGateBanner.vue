@@ -47,8 +47,8 @@
 
 <script lang="ts" setup>
 import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
-import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
 import { computed, ref, watch } from 'vue'
+import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -78,7 +78,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   'go-close-exam': []
-  loaded: [ArchiveVolumeExamGateResponse]
+  "loaded": [ArchiveVolumeExamGateResponse]
 }>()
 
 const loading = ref(false)
@@ -156,8 +156,8 @@ const showCloseReadyAction = computed(
 
 const showClassTable = computed(
   () =>
-    (gate.value?.classPublishProgress?.length ?? 0) > 0 &&
-    (gate.value?.unpublishedBoundPaperCount ?? 0) > 0,
+    (gate.value?.classPublishProgress?.length ?? 0) > 0
+    && (gate.value?.unpublishedBoundPaperCount ?? 0) > 0,
 )
 
 const classColumns = [

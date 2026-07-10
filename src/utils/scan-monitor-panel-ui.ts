@@ -1,10 +1,10 @@
 import type { ExamWorkbenchScanMonitorPanelResponse } from '@/apis/mark/exam-progress'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import {
   ExamScanMonitorSignalActionKeyCode,
   ExamScanMonitorSignalCode,
 } from '@/apis/mark/exam-progress'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
 import { ExamScanBatchWorkbenchSignalBandToneCode } from '@/types/enums/exam-scan-batch-workbench-signal-band-tone-enum'
 import { ExamScanMonitorSignalToneCode } from '@/types/enums/exam-scan-monitor-signal-tone-enum'
 
