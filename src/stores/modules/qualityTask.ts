@@ -4,7 +4,7 @@
  * 业务边界：跨质量评价页面共享"在飞 / 待关注"任务的运行态汇总：
  * - 在飞 AI 任务（PENDING / PROCESSING）
  * - 在导出报告（PENDING / PROCESSING）
- * - 未关闭的改进任务（OPEN / IN_PROGRESS / SUBMITTED / REVIEWED）
+ * - 未关闭的改进任务（OPEN / IN_PROGRESS / SUBMITTED / RETURNED）
  *
  * 用途：
  * - dashboard 页面 / 顶部 SignalBand 直接展示"待关注任务数"
@@ -79,7 +79,7 @@ export const useQualityTaskStore = defineStore('qualityTask', () => {
     aiTasksInFlight.value.length
     + reportExportsInFlight.value.length
     + reportExportsFailed.value.length
-    + improvementTasksOpen.value.filter((t) => t.status === ImprovementTaskStatusCode.SUBMITTED || t.status === ImprovementTaskStatusCode.REVIEWED).length,
+    + improvementTasksOpen.value.filter((t) => t.status === ImprovementTaskStatusCode.SUBMITTED).length,
   )
 
   /* ---------- Actions ---------- */

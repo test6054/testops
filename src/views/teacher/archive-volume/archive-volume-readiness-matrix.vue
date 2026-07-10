@@ -38,6 +38,14 @@
             :options="termCountOptions"
             style="width: 120px"
           />
+          <a-select
+            v-model:value="filterForm.campaignId"
+            :loading="campaignOptionLoading"
+            :options="campaignOptions"
+            allow-clear
+            placeholder="迎评批次（可选）"
+            style="width: 280px"
+          />
           <UiButton size="sm" @click="handleSearch">查询</UiButton>
         </div>
       </template>
@@ -95,10 +103,10 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
+  ArchiveEvaluationCampaignResponse,
   ArchiveReadinessCellVO,
   ArchiveReadinessMatrixMetaResponse,
-  ArchiveReadinessMatrixRowVO,
-  ArchiveReadinessTermColumnVO,
+  ArchiveReadinessMatrixRowVO, ArchiveReadinessTermColumnVO 
 } from '@/apis/mark/archive-volume'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { SignalMetric } from '@/types/workbench'
@@ -106,6 +114,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   getSupervisionReadinessMatrixMeta,
+  pageEvaluationCampaigns,
   pageSupervisionReadinessMatrix,
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -116,7 +125,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
-import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { DEFAULT_LIST_PAGE_SIZE, EXPORT_PAGE_SIZE } from '@/constants/pagination'
 import { formatAcademicYearSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearStartOptions } from '@/utils/academic-year'
 import {
@@ -136,6 +145,8 @@ defineOptions({ name: 'ArchiveVolumeReadinessMatrix' })
 
 const router = useRouter()
 const loading = ref(false)
+const campaignOptionLoading = ref(false)
+const campaignSelectOptions = ref<ArchiveEvaluationCampaignResponse[]>([])
 const matrixMeta = ref<ArchiveReadinessMatrixMetaResponse | null>(null)
 const matrixRows = ref<ArchiveReadinessMatrixRowVO[]>([])
 const pagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
@@ -150,10 +161,19 @@ const filterForm = reactive<{
   academicYearEndYear: number | undefined
   semester: SemesterCode | undefined
   termCount: number
+  campaignId: string | undefined
 }>({
   ...createAcademicYearSemesterTripleDefaults(true),
   termCount: 4,
+  campaignId: undefined,
 })
+
+const campaignOptions = computed(() =>
+  campaignSelectOptions.value.map((campaign) => ({
+    value: campaign.campaignId,
+    label: campaign.campaignName,
+  })),
+)
 
 const termCountOptions = [
   { value: 4, label: '近 4 学期' },
@@ -258,6 +278,7 @@ function buildMatrixRequest() {
     endAcademicYear,
     endSemester: filterForm.semester,
     termCount: filterForm.termCount,
+    campaignId: filterForm.campaignId,
   }
 }
 
@@ -331,8 +352,31 @@ watch(
 )
 
 onMounted(() => {
+  void loadCampaignOptions()
   void loadMatrix()
 })
+
+async function loadCampaignOptions(): Promise<void> {
+  campaignOptionLoading.value = true
+  try {
+    const all: ArchiveEvaluationCampaignResponse[] = []
+    let pageNum = 1
+    while (true) {
+      const page = await pageEvaluationCampaigns({ pageNum, pageSize: EXPORT_PAGE_SIZE })
+      all.push(...page.list)
+      if (all.length >= page.total) {
+        break
+      }
+      pageNum += 1
+    }
+    campaignSelectOptions.value = all
+  } catch (error) {
+    campaignSelectOptions.value = []
+    showUserError(error, '迎评批次选项加载失败')
+  } finally {
+    campaignOptionLoading.value = false
+  }
+}
 </script>
 
 <style scoped>

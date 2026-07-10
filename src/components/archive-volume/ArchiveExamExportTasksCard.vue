@@ -39,6 +39,8 @@ const EXPORT_STATUS_TONE = {
   COMPLETED: 'green',
 
   FAILED: 'red',
+
+  CANCELLED: 'gray',
 } as const
 
 const router = useRouter()

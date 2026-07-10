@@ -904,12 +904,14 @@ function buildAchievementActions(record: AchievementResultVO): UiTableRowActionI
   if (canRecomputeRecord(record)) {
     actions.push({ key: 'recompute', label: '重新计算', tone: 'primary' })
   }
-  for (const to of nextStatuses(record.auditStatus)) {
-    actions.push({
-      key: to,
-      label: `→ ${auditStatusLabel(to)}`,
-      tone: to === AchievementAuditStatusCode.RETURNED ? 'danger' : 'primary',
-    })
+  if (!isResultStale(record)) {
+    for (const to of nextStatuses(record.auditStatus)) {
+      actions.push({
+        key: to,
+        label: `→ ${auditStatusLabel(to)}`,
+        tone: to === AchievementAuditStatusCode.RETURNED ? 'danger' : 'primary',
+      })
+    }
   }
   actions.push({ key: 'audit', label: '审计' })
   return actions

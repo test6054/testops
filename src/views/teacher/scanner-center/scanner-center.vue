@@ -354,6 +354,16 @@ function handleTabChange(key: Key) {
   void router.replace({ query: buildTabQuery(parseTab(key)) })
 }
 
+async function navigateMixedBatchScanReview(): Promise<void> {
+  if (mixedBatchCount.value <= 0) {
+    return
+  }
+  void router.push({
+    name: 'TeacherArchiveVolumeEvalCampaign',
+    query: { tab: 'mixed-review' },
+  })
+}
+
 function handleHeaderMetricClick(key: string) {
   if (key === 'failed-ticket') {
     void router.replace({
@@ -364,10 +374,13 @@ function handleHeaderMetricClick(key: string) {
     })
     return
   }
+  if (key === 'mixed-batch') {
+    void navigateMixedBatchScanReview()
+    return
+  }
   const exceptionQueryByKey: Record<string, { tab: 'exception', kind: string }> = {
     'committing-work-order': { tab: 'exception', kind: 'COMMITTING' },
     'failed-work-order': { tab: 'exception', kind: 'WORK_ORDER' },
-    'mixed-batch': { tab: 'exception', kind: 'MIXED_BATCH' },
     'page-register-blocked': { tab: 'exception', kind: 'PAGE_REGISTER_BLOCKED' },
   }
   const dispatchStatusByKey: Record<string, ScanDispatchTicketStatusCode> = {

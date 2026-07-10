@@ -28,6 +28,7 @@ export const EXPORT_STATUS_TONE: Record<ExportTaskStatusCode, 'gray' | 'blue' | 
   [ExportTaskStatusCode.GENERATING]: 'blue',
   [ExportTaskStatusCode.COMPLETED]: 'green',
   [ExportTaskStatusCode.FAILED]: 'red',
+  [ExportTaskStatusCode.CANCELLED]: 'gray',
 }
 
 /** 导出任务主流程状态链（不含 FAILED 分支），供列表页流程 hint 展示 */

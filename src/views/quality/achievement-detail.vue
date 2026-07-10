@@ -181,6 +181,7 @@ const auditTransitMap: Record<AchievementAuditStatusCode, AchievementAuditStatus
 }
 
 const nextStatuses = computed<AchievementAuditStatusCode[]>(() => {
+  if (isResultStale(result.value)) return []
   const status = result.value?.auditStatus
   if (!status) return []
   return strictEnumValue(auditTransitMap, status, '达成审核状态')
@@ -207,7 +208,7 @@ function canRecomputeResult(value: AchievementResultVO | null): boolean {
 }
 
 function canSubmitManualReview(value: AchievementResultVO | null): boolean {
-  if (!value?.auditStatus) return false
+  if (!value?.auditStatus || isResultStale(value)) return false
   return (
     value.auditStatus === AchievementAuditStatusCode.SUBMITTED
     || value.auditStatus === AchievementAuditStatusCode.CONFIRMED
@@ -444,6 +445,10 @@ function handleReviewPageChange(page: number, pageSize: number) {
 
 async function handleTransit(to: AchievementAuditStatusCode) {
   if (!result.value) return
+  if (isResultStale(result.value)) {
+    message.warning('结果已过期，请先按最新成绩或配置重新计算')
+    return
+  }
   const fromStatus = result.value.auditStatus
   if (!fromStatus) return
   const remark = await promptInputAsync({
