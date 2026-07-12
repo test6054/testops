@@ -206,17 +206,6 @@ $create-form-page-max-width: 1120px;
     color: var(--dp-text-primary);
   }
 
-  .create-form__hint {
-    margin-top: 4px;
-    font-size: 12px;
-    line-height: 1.5;
-    color: var(--dp-text-secondary);
-  }
-
-  .create-form__hint--extra {
-    margin-top: 0;
-  }
-
   .create-form__split-row {
     > .ant-col > .ant-form-item {
       margin-bottom: 16px;
