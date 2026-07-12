@@ -126,28 +126,28 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { GradingExperienceCaseResponse } from '@/apis/mark/grading-experience'
-import {
-  ExperienceCaseStatusCode,
-  ExperienceCaseStatusDescription,
-  pageExperiences,
-} from '@/apis/mark/grading-experience'
 import type { QuestionTypeCode } from '@/apis/mark/question-type'
-import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import type {
   ExperienceEffectivenessEvalEvidenceResponse,
   ExperienceEffectivenessEvalResponse,
   ExperienceRecommendationCode,
-} from '@/apis/mark/school-quality'
-import {
-  evaluateExperienceEffectiveness,
-  ExperienceRecommendationDescription,
-  listExperienceEvals,
 } from '@/apis/mark/school-quality'
 import type { UiBarChartItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
+import {
+  ExperienceCaseStatusCode,
+  ExperienceCaseStatusDescription,
+  pageExperiences,
+} from '@/apis/mark/grading-experience'
+import { QuestionTypeDescription } from '@/apis/mark/question-type'
+import {
+  evaluateExperienceEffectiveness,
+  ExperienceRecommendationDescription,
+  listExperienceEvals,
+} from '@/apis/mark/school-quality'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisConfigCollapse from '@/components/mark/analysis/AiAnalysisConfigCollapse.vue'
@@ -237,9 +237,9 @@ const experienceOptions = computed(() =>
   experiences.value
     .filter(
       (item): item is GradingExperienceCaseResponse & { id: string } =>
-        Boolean(item.id) &&
-        item.caseStatus === ExperienceCaseStatusCode.CONFIRMED &&
-        item.analysisStatus === AiAnalysisStatusCode.SUCCESS,
+        Boolean(item.id)
+        && item.caseStatus === ExperienceCaseStatusCode.CONFIRMED
+        && item.analysisStatus === AiAnalysisStatusCode.SUCCESS,
     )
     .map((item) => ({
       label: [
@@ -338,8 +338,8 @@ const effectivenessTrendPoints = computed((): UiTrendPoint[] => {
   const successRecords = [...historyRecords.value]
     .filter(
       (item) =>
-        item.analysisStatus === AiAnalysisStatusCode.SUCCESS &&
-        toConsistencyPercent(item.consistencyRate) != null,
+        item.analysisStatus === AiAnalysisStatusCode.SUCCESS
+        && toConsistencyPercent(item.consistencyRate) != null,
     )
     .reverse()
   return successRecords.map((item, index) => {

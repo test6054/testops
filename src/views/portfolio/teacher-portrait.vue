@@ -5,32 +5,31 @@ import type {
   PortfolioAnalysisTrainingRecommendVO,
   PortfolioPortraitCreditCurveVO,
 } from '@/apis/portfolio/analysis'
-import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import type { PortfolioPortraitDimensionCode } from '@/apis/portfolio/enums'
-import {
-  PortfolioArchiveRecordStatusDescription,
-  PortfolioPortraitDimensionReadinessCode,
-  PortfolioPortraitDimensionReadinessDescription,
-  PortfolioPortraitIndicatorEvidenceTypeDescription,
-} from '@/apis/portfolio/enums'
 import type { PortfolioDevelopmentPlanCompletionVO } from '@/apis/portfolio/teacher-platform'
-import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import type {
   PortfolioTeacherPortraitCohortCompareVO,
   PortfolioTeacherPortraitIndicatorDetailVO,
   PortfolioTeacherPortraitTrendVO,
   PortfolioTeacherPortraitVO,
 } from '@/apis/portfolio/types'
-import {
-  PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
-  PORTFOLIO_PORTRAIT_DIMENSION_READINESS_TONE,
-} from '@/apis/portfolio/types'
 import type { PortfolioSuggestionTypeCode } from '@/types/enums/portfolio-suggestion-type-enum'
-import { PortfolioSuggestionTypeDescription } from '@/types/enums/portfolio-suggestion-type-enum'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
+import {
+  PortfolioArchiveRecordStatusDescription,
+  PortfolioPortraitDimensionReadinessCode,
+  PortfolioPortraitDimensionReadinessDescription,
+  PortfolioPortraitIndicatorEvidenceTypeDescription,
+} from '@/apis/portfolio/enums'
+import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
+import {
+  PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
+  PORTFOLIO_PORTRAIT_DIMENSION_READINESS_TONE,
+} from '@/apis/portfolio/types'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import MarkChartCard from '@/components/chart/MarkChartCard.vue'
 import UiAlert from '@/components/ui-guide/ui/Alert.vue'
@@ -53,6 +52,7 @@ import {
   PortfolioPortraitCohortTypeDescription,
 } from '@/types/enums/portfolio-portrait-cohort-type-enum'
 import { PortfolioPortraitStageDescription } from '@/types/enums/portfolio-portrait-stage-code-enum'
+import { PortfolioSuggestionTypeDescription } from '@/types/enums/portfolio-suggestion-type-enum'
 import {
   PortfolioTrainingRecommendStatusCode,
   PortfolioTrainingRecommendStatusDescription,
@@ -624,14 +624,14 @@ watch(cohortType, () => {
               <p>{{ item.recommendReason }}</p>
               <div
                 v-if="
-                  item.recommendStatus === PortfolioTrainingRecommendStatusCode.PENDING &&
-                  !canPickTeachers
+                  item.recommendStatus === PortfolioTrainingRecommendStatusCode.PENDING
+                    && !canPickTeachers
                 "
                 class="teacher-portrait__insight-actions"
               >
-                <UiButton variant="ghost" @click="registerRecommendedTraining(item)"
-                  >登记培训</UiButton
-                >
+                <UiButton variant="ghost" @click="registerRecommendedTraining(item)">
+                  登记培训
+                </UiButton>
                 <UiButton
                   variant="ghost"
                   :loading="trainingRecommendationActionId === item.id"

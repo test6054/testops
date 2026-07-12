@@ -3,13 +3,13 @@ import type {
   ExamStatSnapshotResponse,
   SemesterGrowthItemResponse
 } from '@/apis/mark/cross-exam-analysis'
-import { CourseObjectiveDimensionDescription } from '@/apis/mark/cross-exam-analysis'
 import type { ErrorCauseClusterItemVO } from '@/apis/mark/error-cause-cluster'
 import type { ReviewQuestionProgressItemResponse } from '@/apis/mark/exam-progress'
 import type { ProgressMonitorRecordResponse } from '@/apis/mark/marking-quality'
 import type { ExamQuestionAnalysisRecordResponse } from '@/apis/mark/question-analysis'
 import type { BadgeTone, UiBarChartItem, UiScatterSeries, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import type { MarkHeatmapCell } from '@/utils/mark-echarts-options'
+import { CourseObjectiveDimensionDescription } from '@/apis/mark/cross-exam-analysis'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import { formatScore, formatScorePercent } from '@/utils/format'
 import { rateTone } from '@/utils/score-tone'

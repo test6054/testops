@@ -1,26 +1,25 @@
 <script setup lang="ts">
-import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { Key } from 'ant-design-vue/es/_util/type'
+import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PortfolioMajorGroupPeriodCompareVO,
   PortfolioMajorGroupPortfolioSectionItemVO,
   PortfolioMajorGroupPortfolioVO
 } from '@/apis/portfolio/governance'
-import { portfolioMajorGroupApi } from '@/apis/portfolio/governance'
 import type { PortfolioOrgTreeNodeVO } from '@/apis/portfolio/types'
+import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
-import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { PortfolioOrgUnitTypeCode } from '@/apis/portfolio/enums'
+import { portfolioMajorGroupApi } from '@/apis/portfolio/governance'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
-import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -28,6 +27,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { PortfolioAlertStatusCode, PortfolioAlertStatusDescription } from '@/types/enums/portfolio-alert-status-enum'
+import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import {
   ALL_PORTFOLIO_MAJOR_GROUP_SECTION_CODES,
   PortfolioMajorGroupSectionCode,
@@ -275,7 +275,7 @@ function onSectionTableChange(changeEvent: UiDataTableChangeEvent) {
 }
 
 /** 路由深链必须驱动当前专业群上下文，避免同页切换后仍停留在旧专业群。 */
-function syncPortfolioOrgFromRoute(preferDefault = false) {
+function syncPortfolioOrgFromRoute() {
   const queryOrgId = readRouteStringParam(route.query.portfolioOrgId)
   if (queryOrgId && majorGroupOptions.value.some(option => option.value === queryOrgId)) {
     portfolioOrgId.value = queryOrgId
@@ -307,13 +307,13 @@ watch(
 
 onMounted(async () => {
   await loadTree()
-  syncPortfolioOrgFromRoute(false)
+  syncPortfolioOrgFromRoute()
 })
 
 watch(
   () => route.query.portfolioOrgId,
   () => {
-    syncPortfolioOrgFromRoute(false)
+    syncPortfolioOrgFromRoute()
   },
 )
 </script>
@@ -336,7 +336,8 @@ watch(
           placeholder="选择专业群"
           :options="majorGroupOptions"
         />
-        
+        <UiButton
+          v-if="portfolioOrgId"
           :loading="exportLoading"
           @click="openExportModal"
         >

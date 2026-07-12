@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { AccreditationCockpitVO, AccreditationCycleVO } from '@/apis/quality/accreditation'
-import { accreditationApi } from '@/apis/quality/accreditation'
 import type {
   ArchiveQueryRequest,
   ArchiveSaveRequest,
@@ -9,13 +8,14 @@ import type {
   ArchiveVO,
   ExpertPackageExportRequest,
 } from '@/apis/quality/archive'
-import { archiveApi } from '@/apis/quality/archive'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { accreditationApi } from '@/apis/quality/accreditation'
+import { archiveApi } from '@/apis/quality/archive'
 import {
   ALL_ARCHIVE_BUSINESS_TYPE_CODES,
   ArchiveBusinessTypeCode,
@@ -298,7 +298,7 @@ async function handleScopeChange(): Promise<void> {
 
 useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false })
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -654,8 +654,8 @@ watch(
   () => ({ packageType: exportForm.packageType, targetId: exportForm.targetId }),
   async (exportState) => {
     if (
-      exportState.packageType !== ExpertPackageTypeCode.PROGRAM_ACCREDITATION ||
-      !exportState.targetId.trim()
+      exportState.packageType !== ExpertPackageTypeCode.PROGRAM_ACCREDITATION
+      || !exportState.targetId.trim()
     ) {
       exportCockpit.value = undefined
       exportActiveCycle.value = undefined
@@ -822,8 +822,8 @@ onMounted(async () => {
         </a-form-item>
         <div
           v-if="
-            exportForm.packageType === ExpertPackageTypeCode.PROGRAM_ACCREDITATION &&
-            exportForm.targetId
+            exportForm.packageType === ExpertPackageTypeCode.PROGRAM_ACCREDITATION
+              && exportForm.targetId
           "
           class="archive-page__export-readiness"
         >

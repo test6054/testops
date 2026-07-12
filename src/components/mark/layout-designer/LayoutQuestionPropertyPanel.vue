@@ -5,11 +5,11 @@ import type {
   ExamQuestionStandardAnswerOptionRequest,
   ObjectiveComparePolicyCode,
 } from '@/apis/mark/exam-standard-answer'
+import { computed } from 'vue'
 import {
   OBJECTIVE_COMPARE_POLICY_OPTIONS,
   ObjectiveComparePolicyCode as ObjectiveComparePolicy,
 } from '@/apis/mark/exam-standard-answer'
-import { computed } from 'vue'
 import { QuestionTypeCode, QuestionTypeDescription } from '@/apis/mark/question-type'
 import {
   ALL_MARK_OCR_SCENE_CODES,

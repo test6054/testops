@@ -1,5 +1,5 @@
-import type { PortfolioTeachingExtensionKindCode } from '@/types/enums/portfolio-teaching-extension-kind-enum'
 import type { PortfolioArchiveRecordStatusCode } from '@/types/enums/portfolio-archive-record-status-enum'
+import type { PortfolioTeachingExtensionKindCode } from '@/types/enums/portfolio-teaching-extension-kind-enum'
 import http from '@/config/axios'
 
 export interface PortfolioPresetCategoryVO {

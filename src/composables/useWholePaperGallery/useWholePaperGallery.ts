@@ -1,16 +1,16 @@
 import type { Ref } from 'vue'
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import type {
   MarkingPageAnnotationSubmitItem,
   MarkingQuestionScoreSubmitItem,
   QuestionMarkingGroupQuestionResponse,
   ScannedPageRef,
 } from '@/apis/mark/marking-organization'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { getImageBlobUrl } from '@/apis/edu/file-management'
 import {
   getMarkingScanPageDisplayBlobUrl,
   getWholePaperView,
 } from '@/apis/mark/marking-organization'
-import { getImageBlobUrl } from '@/apis/edu/file-management'
 import {
   failFormValidation,
   showFormValidationMessage,
@@ -203,10 +203,10 @@ export function useWholePaperGallery(
     const examId = options.getExamId()
     const taskId = options.getTaskId()
     if (
-      !examId ||
-      !taskId ||
-      wholePageImageUrls[page.pageId] ||
-      wholePageImageLoading[page.pageId]
+      !examId
+      || !taskId
+      || wholePageImageUrls[page.pageId]
+      || wholePageImageLoading[page.pageId]
     ) {
       return
     }

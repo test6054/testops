@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentPlanStatusCode } from '@/apis/portfolio/enums'
-import {
-  PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
-  PortfolioDevelopmentPlanStatusDescription,
-} from '@/apis/portfolio/enums'
 import type {
   PortfolioDeptOneTableSummaryVO,
   PortfolioDeptOneTableTeacherRowVO,
 } from '@/apis/portfolio/teacher'
-import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import {
+  PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
+  PortfolioDevelopmentPlanStatusDescription,
+} from '@/apis/portfolio/enums'
+import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import MarkChartCard from '@/components/chart/MarkChartCard.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -207,7 +207,7 @@ function structureCount(key: (typeof titleStructureRows)[number]['key']) {
   return summary.value?.[key] ?? 0
 }
 
-function handleTeacherPageChange(page: { current: number; pageSize: number }) {
+function handleTeacherPageChange(page: { current: number, pageSize: number }) {
   teacherQuery.pageNum = page.current
   teacherQuery.pageSize = page.pageSize
   void loadTeachers()
@@ -241,7 +241,8 @@ onMounted(async () => {
   try {
     const teacher = await portfolioTeacherApi.get(currentUserId)
     if (!teacher.departmentId) {
-      throw new Error('当前教师未关联院系')
+      showUserError(new Error('当前教师未关联院系'), '定位当前用户所属院系失败')
+      return
     }
     filter.departmentId = teacher.departmentId
   } catch (error) {

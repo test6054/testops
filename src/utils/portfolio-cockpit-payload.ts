@@ -10,8 +10,7 @@ export function parsePortfolioCockpitAskPayload(
     throw new Error(COCKPIT_PAYLOAD_ERROR)
   }
   try {
-    const parsed: PortfolioCockpitAskResultPayload = JSON.parse(draftMarkdown)
-    return parsed
+    return JSON.parse(draftMarkdown)
   } catch {
     throw new Error(COCKPIT_PAYLOAD_ERROR)
   }

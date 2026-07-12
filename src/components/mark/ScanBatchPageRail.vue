@@ -53,11 +53,11 @@
 
 <script lang="ts" setup>
 import type { ExamScannerBatchWorkbenchPageVO } from '@/apis/mark/exam-scan'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import {
   ScanBatchWorkbenchRegisterStatusCode,
   ScanBatchWorkbenchRegisterStatusDescription,
 } from '@/apis/mark/exam-scan'
-import { onMounted, onUnmounted, ref, watch } from 'vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import { ScanBatchWorkbenchBindingStatusCode } from '@/types/enums/scan-batch-workbench-binding-status-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -81,7 +81,7 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  select: [pageKey: string]
+  "select": [pageKey: string]
   'reach-end': []
 }>()
 
@@ -158,14 +158,14 @@ function rowSecondaryLabel(item: ExamScannerBatchWorkbenchPageVO): string {
     return item.studentNo
   }
   if (
-    item.registerStatus === ScanBatchWorkbenchRegisterStatusCode.REGISTERED &&
-    item.bindingStatus === ScanBatchWorkbenchBindingStatusCode.CONFLICT
+    item.registerStatus === ScanBatchWorkbenchRegisterStatusCode.REGISTERED
+    && item.bindingStatus === ScanBatchWorkbenchBindingStatusCode.CONFLICT
   ) {
     return '绑定冲突'
   }
   if (
-    item.registerStatus === ScanBatchWorkbenchRegisterStatusCode.REGISTERED &&
-    item.bindingStatus === ScanBatchWorkbenchBindingStatusCode.UNBOUND
+    item.registerStatus === ScanBatchWorkbenchRegisterStatusCode.REGISTERED
+    && item.bindingStatus === ScanBatchWorkbenchBindingStatusCode.UNBOUND
   ) {
     const ocrHint = formatOcrIdentityHint(item)
     if (ocrHint) {
@@ -174,8 +174,8 @@ function rowSecondaryLabel(item: ExamScannerBatchWorkbenchPageVO): string {
     return '待绑定'
   }
   if (
-    item.registerStatus === ScanBatchWorkbenchRegisterStatusCode.REGISTERED &&
-    item.hasException
+    item.registerStatus === ScanBatchWorkbenchRegisterStatusCode.REGISTERED
+    && item.hasException
   ) {
     const ocrHint = formatOcrIdentityHint(item)
     if (ocrHint) {

@@ -73,8 +73,7 @@ function handleSelect(step: PrepStepCard): void {
           <span
             v-if="props.variant === 'compact' && hint"
             class="prep-step-pipeline__hint-inline"
-            >{{ hint }}</span
-          >
+          >{{ hint }}</span>
         </div>
         <div v-if="$slots.actions" class="prep-step-pipeline__head-actions">
           <slot name="actions" />

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { PortfolioDualTeacherApplicationVO } from '@/apis/portfolio/teacher-platform'
-import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
@@ -8,6 +7,7 @@ import {
   PortfolioDualTeacherApplicationStatusCode,
   PortfolioDualTeacherApplicationStatusDescription,
 } from '@/apis/portfolio/enums'
+import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -61,9 +61,9 @@ const canEdit = () => {
     return !form.id
   }
   return (
-    status === PortfolioDualTeacherApplicationStatusCode.DRAFT ||
-    status === PortfolioDualTeacherApplicationStatusCode.COLLEGE_RETURNED ||
-    status === PortfolioDualTeacherApplicationStatusCode.ACADEMIC_RETURNED
+    status === PortfolioDualTeacherApplicationStatusCode.DRAFT
+    || status === PortfolioDualTeacherApplicationStatusCode.COLLEGE_RETURNED
+    || status === PortfolioDualTeacherApplicationStatusCode.ACADEMIC_RETURNED
   )
 }
 

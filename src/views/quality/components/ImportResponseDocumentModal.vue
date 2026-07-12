@@ -27,9 +27,7 @@
       </div>
 
       <div v-if="sourceFileId" class="ird__selected-file">
-        <span class="ird__file-label"
-          >已选择：{{ sourceFileName }}（{{ formatBytes(sourceFileSize ?? 0) }}）</span
-        >
+        <span class="ird__file-label">已选择：{{ sourceFileName }}（{{ formatBytes(sourceFileSize ?? 0) }}）</span>
         <div class="ird__action-row ird__action-row--upload">
           <UiButton
             variant="outline"
@@ -127,11 +125,11 @@
 
 <script setup lang="ts">
 import type { IndirectResponseDocumentExtractionVO } from '@/apis/quality/indirect-response'
-import { indirectResponseApi } from '@/apis/quality/indirect-response'
 import { message } from 'ant-design-vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { aiTaskApi } from '@/apis/quality/ai-task'
+import { indirectResponseApi } from '@/apis/quality/indirect-response'
 import {
   AI_TASK_STATUS_COLOR,
   AiTaskStatusCode,

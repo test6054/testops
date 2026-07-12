@@ -52,10 +52,10 @@ export function buildPortraitRadarChartOption(
       data: [{ value: personalValues, name: '个人' }],
     },
   ]
-  const showCohortMedian =
-    cohort &&
-    cohort.displayMode !== PortfolioPortraitCohortDisplayModeCode.INSUFFICIENT &&
-    cohort.dimensions.some((item) => item.cohortMedian != null)
+  const showCohortMedian
+    = cohort
+      && cohort.displayMode !== PortfolioPortraitCohortDisplayModeCode.INSUFFICIENT
+      && cohort.dimensions.some((item) => item.cohortMedian != null)
   if (showCohortMedian) {
     const cohortMedianValues = dimensions.map((item) => {
       const cohortRow = cohort.dimensions.find((row) => row.dimensionCode === item.dimensionCode)

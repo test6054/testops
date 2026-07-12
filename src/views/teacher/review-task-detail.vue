@@ -227,31 +227,14 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import { computed, reactive, ref, watch } from 'vue'
 import type { AnnotationResponse } from '@/apis/mark/exam-annotation'
-import { listAnnotations } from '@/apis/mark/exam-annotation'
 import type {
   AiAbilityCode,
   AiExecutionStatusCode,
   ExamQuestionAiExecutionItemResponse,
 } from '@/apis/mark/exam-grade'
-import {
-  AI_ABILITY_TONE,
-  AI_EXECUTION_STATUS_TONE,
-  AiAbilityDescription,
-  AiExecutionStatusDescription,
-  listAiExecutionsForQuestion,
-  rescoreQuestionByAi,
-} from '@/apis/mark/exam-grade'
 import type { ReviewTaskDetailResponse } from '@/apis/mark/exam-review-task'
-import {
-  getReviewTaskDetail,
-  REVIEW_TASK_STATUS_TONE,
-  ReviewTaskStatusCode,
-  ReviewTaskStatusDescription,
-} from '@/apis/mark/exam-review-task'
 import type { QuestionTypeCode } from '@/apis/mark/question-type'
-import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
@@ -260,7 +243,24 @@ import PictureOutlined from '@ant-design/icons-vue/PictureOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
 import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { listAnnotations } from '@/apis/mark/exam-annotation'
+import {
+  AI_ABILITY_TONE,
+  AI_EXECUTION_STATUS_TONE,
+  AiAbilityDescription,
+  AiExecutionStatusDescription,
+  listAiExecutionsForQuestion,
+  rescoreQuestionByAi,
+} from '@/apis/mark/exam-grade'
+import {
+  getReviewTaskDetail,
+  REVIEW_TASK_STATUS_TONE,
+  ReviewTaskStatusCode,
+  ReviewTaskStatusDescription,
+} from '@/apis/mark/exam-review-task'
+import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import ExperienceAssistBadge from '@/components/mark/ExperienceAssistBadge.vue'
 import GradingImmersionChrome from '@/components/mark/GradingImmersionChrome.vue'
 import GradingImmersionSection from '@/components/mark/GradingImmersionSection.vue'
@@ -356,8 +356,8 @@ const currentAiSourceTone = computed<BadgeTone>(() => {
 const canRescoreByAi = computed(() => {
   if (rescoring.value || loading.value || !detail.value?.gradeResultId) return false
   return (
-    detail.value.status === ReviewTaskStatusCode.PENDING ||
-    detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
+    detail.value.status === ReviewTaskStatusCode.PENDING
+    || detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
   )
 })
 

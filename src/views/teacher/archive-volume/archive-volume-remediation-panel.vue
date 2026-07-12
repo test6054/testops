@@ -102,8 +102,8 @@
           <div class="remediation-card__actions">
             <UiButton
               v-if="
-                task.taskStatus === ArchiveRemediationStatusCode.OPEN ||
-                task.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
+                task.taskStatus === ArchiveRemediationStatusCode.OPEN
+                  || task.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
               "
               size="sm"
               variant="outline"
@@ -265,6 +265,11 @@ import type {
   ArchiveRemediationPriorityCode,
   ArchiveRemediationTaskResponse,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   ARCHIVE_EVALUATION_CAMPAIGN_STATUS_OPTIONS,
   ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
@@ -280,12 +285,6 @@ import {
   pageRemediationTasksByCampaign,
   saveEvaluationCampaign,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { SemesterOptions } from '@/types/enums/semester-enum'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import ArchiveReadinessRateBar from '@/components/archive-volume/ArchiveReadinessRateBar.vue'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -298,6 +297,7 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { runArchiveEvaluationExportFlow } from '@/composables/useArchiveEvaluationExportFlow'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearStartOptions } from '@/utils/academic-year'
 import {
   applyAcademicYearStartYearChange,
@@ -400,8 +400,8 @@ const campaignOptions = computed(() =>
 )
 
 function syncSelectedCampaign(campaignId?: string): void {
-  selectedCampaign.value =
-    campaignSelectOptions.value.find((item) => item.campaignId === campaignId) ?? null
+  selectedCampaign.value
+    = campaignSelectOptions.value.find((item) => item.campaignId === campaignId) ?? null
 }
 
 function handleCampaignChange(value: SelectValue): void {
@@ -490,8 +490,8 @@ function openCampaignModal(campaign?: ArchiveEvaluationCampaignResponse) {
   campaignForm.academicYearStartYear = triple.academicYearStartYear
   campaignForm.academicYearEndYear = triple.academicYearEndYear
   campaignForm.semester = triple.semester
-  campaignForm.campaignStatus =
-    campaign?.campaignStatus ?? ArchiveEvaluationCampaignStatusCode.ACTIVE
+  campaignForm.campaignStatus
+    = campaign?.campaignStatus ?? ArchiveEvaluationCampaignStatusCode.ACTIVE
   campaignForm.startTime = campaign?.startTime
   campaignForm.endTime = campaign?.endTime
   campaignForm.description = campaign?.description ?? ''

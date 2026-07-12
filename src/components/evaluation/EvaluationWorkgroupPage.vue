@@ -22,6 +22,7 @@ import { useRoute } from 'vue-router'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
   evaluationWorkgroupApi,
+  WORKGROUP_MEMBER_ROLE_OPTIONS,
   WorkgroupMemberRoleCode,
   WorkgroupMemberRoleDescription,
 } from '@/apis/quality/evaluation-workgroup'
@@ -128,11 +129,7 @@ const query = reactive<EvaluationWorkgroupQueryRequest>({
 
 const levelOptions = WORKGROUP_LEVEL_OPTIONS
 
-const memberRoleOptions: Array<{ value: WorkgroupMemberRoleCode, label: string }> = [
-  { value: WorkgroupMemberRoleCode.CONVENER, label: '召集人' },
-  { value: WorkgroupMemberRoleCode.MEMBER, label: '成员' },
-  { value: WorkgroupMemberRoleCode.EXTERNAL_EXPERT, label: '外部专家' },
-]
+const memberRoleOptions = WORKGROUP_MEMBER_ROLE_OPTIONS
 
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')

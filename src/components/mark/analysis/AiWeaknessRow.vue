@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { WeaknessLevelCode } from '@/utils/ai-analysis-display'
-import { WEAKNESS_LEVEL_TONE, WeaknessLevelDescription } from '@/utils/ai-analysis-display'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import { WEAKNESS_LEVEL_TONE, WeaknessLevelDescription } from '@/utils/ai-analysis-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AiWeaknessRow' })

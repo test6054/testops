@@ -35,8 +35,8 @@ defineOptions({ name: 'TeacherExamWorkspaceLayoutDesigner' })
 const router = useRouter()
 const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
 const { selectedExamId } = useMarkExamContext()
-const { contextBarSubtitle, examStatusLabel, examStatusTone, examDetail, examDetailLoading } =
-  useExamJourneyContextBar('制卷设计器')
+const { contextBarSubtitle, examStatusLabel, examStatusTone, examDetail, examDetailLoading }
+  = useExamJourneyContextBar('制卷设计器')
 
 const examId = computed(() => selectedExamId.value ?? '')
 
@@ -147,9 +147,9 @@ const designerStatusAlert = computed(() => {
     }
   }
   if (
-    wbLayoutWritable.value &&
-    wbIdentitySetupPending.value &&
-    wbDocument.value?.layoutEntryKind === ExamLayoutEntryKindCode.SOURCE_FILE
+    wbLayoutWritable.value
+    && wbIdentitySetupPending.value
+    && wbDocument.value?.layoutEntryKind === ExamLayoutEntryKindCode.SOURCE_FILE
   ) {
     return {
       kind: 'identity' as DesignerStatusAlertKind,
@@ -258,9 +258,9 @@ async function handleReviewSaved(): Promise<void> {
           </a-tooltip>
           <UiTag v-else-if="layoutModeLocked" tone="gray" size="sm">形态已锁定</UiTag>
           <UiTag v-if="layoutPaperLabel" tone="gray" size="sm">纸型 {{ layoutPaperLabel }}</UiTag>
-          <UiTag v-if="scanPaperStyleLabel" tone="gray" size="sm"
-            >印张 {{ scanPaperStyleLabel }}</UiTag
-          >
+          <UiTag v-if="scanPaperStyleLabel" tone="gray" size="sm">
+            印张 {{ scanPaperStyleLabel }}
+          </UiTag>
           <UiTag v-if="wbDocument && !wbLayoutPersisted" tone="orange" size="sm">
             未保存草稿
           </UiTag>

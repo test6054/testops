@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ScannerExceptionDashboardItemVO } from '@/apis/mark/scanner-dispatch'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { dismissScanBatchCollateAttention, retryScanBatchPageRegister } from '@/apis/mark/exam-scan'
 import {
   cancelScanDispatch,
   pageScannerExceptionDashboard,
   ScanDispatchTicketStatusCode,
   ScanDispatchTicketStatusDescription,
 } from '@/apis/mark/scanner-dispatch'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { dismissScanBatchCollateAttention, retryScanBatchPageRegister } from '@/apis/mark/exam-scan'
 import { ScanWorkOrderStatusDescription } from '@/apis/mark/scanner-work-order'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -41,7 +41,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'open-log': [payload: { ticketId?: string; volumeId?: string }]
+  'open-log': [payload: { ticketId?: string, volumeId?: string }]
   'metrics-changed': []
 }>()
 
@@ -156,11 +156,11 @@ function filterByKind(kind?: ExceptionDashboardRowKind) {
 function applyRouteKindFilter() {
   const kind = props.initialKind ?? route.query.kind
   if (
-    kind === ScannerExceptionItemKindCode.TICKET ||
-    kind === ScannerExceptionItemKindCode.WORK_ORDER ||
-    kind === ScannerExceptionItemKindCode.COMMITTING ||
-    kind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED ||
-    kind === ScannerExceptionItemKindCode.PARTIAL_TAIL
+    kind === ScannerExceptionItemKindCode.TICKET
+    || kind === ScannerExceptionItemKindCode.WORK_ORDER
+    || kind === ScannerExceptionItemKindCode.COMMITTING
+    || kind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED
+    || kind === ScannerExceptionItemKindCode.PARTIAL_TAIL
   ) {
     itemKindFilter.value = kind
     return
@@ -174,14 +174,14 @@ function itemKindLabel(kind: ExceptionDashboardRowKind) {
 
 function itemKindTone(kind?: ExceptionDashboardRowKind): 'red' | 'orange' | 'blue' | 'gray' {
   if (
-    kind === ScannerExceptionItemKindCode.TICKET ||
-    kind === ScannerExceptionItemKindCode.WORK_ORDER
+    kind === ScannerExceptionItemKindCode.TICKET
+    || kind === ScannerExceptionItemKindCode.WORK_ORDER
   ) {
     return 'red'
   }
   if (
-    kind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED ||
-    kind === ScannerExceptionItemKindCode.PARTIAL_TAIL
+    kind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED
+    || kind === ScannerExceptionItemKindCode.PARTIAL_TAIL
   ) {
     return 'orange'
   }
@@ -193,10 +193,10 @@ function itemKindTone(kind?: ExceptionDashboardRowKind): 'red' | 'orange' | 'blu
 
 function pageProgressLabel(row: ExceptionDashboardRow): string {
   if (
-    row.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED ||
-    row.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL ||
-    row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER ||
-    row.itemKind === ScannerExceptionItemKindCode.COMMITTING
+    row.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED
+    || row.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL
+    || row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER
+    || row.itemKind === ScannerExceptionItemKindCode.COMMITTING
   ) {
     if (row.registeredPageCount == null && row.pageCount == null) {
       return '—'
@@ -211,8 +211,8 @@ function rowIdentifier(row: ExceptionDashboardRow) {
     return row.ticketId ?? row.traceLabelCode ?? '—'
   }
   if (
-    row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER ||
-    row.itemKind === ScannerExceptionItemKindCode.COMMITTING
+    row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER
+    || row.itemKind === ScannerExceptionItemKindCode.COMMITTING
   ) {
     return row.workOrderId ?? row.batchExternalNo ?? '—'
   }
@@ -227,9 +227,9 @@ function rowIdentifier(row: ExceptionDashboardRow) {
 
 function statusLabel(row: ExceptionDashboardRow) {
   if (
-    (row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER ||
-      row.itemKind === ScannerExceptionItemKindCode.COMMITTING) &&
-    row.workOrderStatus
+    (row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER
+      || row.itemKind === ScannerExceptionItemKindCode.COMMITTING)
+    && row.workOrderStatus
   ) {
     return strictEnumLabel(ScanWorkOrderStatusDescription, row.workOrderStatus, 'workOrderStatus')
   }
@@ -242,8 +242,8 @@ function statusLabel(row: ExceptionDashboardRow) {
       return strictEnumLabel(PageRegisterStateDescription, state, 'pageRegisterState')
     }
     if (
-      state === PageRegisterStateCode.BLOCKED_RECOVERABLE ||
-      state === PageRegisterStateCode.PENDING
+      state === PageRegisterStateCode.BLOCKED_RECOVERABLE
+      || state === PageRegisterStateCode.PENDING
     ) {
       return strictEnumLabel(PageRegisterStateDescription, state, 'pageRegisterState')
     }
@@ -281,18 +281,18 @@ function rowDetail(row: ExceptionDashboardRow) {
 
 function canForceReleaseTicket(row: ExceptionDashboardRow) {
   return (
-    row.itemKind === ScannerExceptionItemKindCode.TICKET &&
-    Boolean(row.ticketId) &&
-    (row.ticketStatus === ScanDispatchTicketStatusCode.PROCESSING ||
-      row.ticketStatus === ScanDispatchTicketStatusCode.SUSPENDED)
+    row.itemKind === ScannerExceptionItemKindCode.TICKET
+    && Boolean(row.ticketId)
+    && (row.ticketStatus === ScanDispatchTicketStatusCode.PROCESSING
+      || row.ticketStatus === ScanDispatchTicketStatusCode.SUSPENDED)
   )
 }
 
 function canCancelTicket(row: ExceptionDashboardRow) {
   return (
-    row.itemKind === ScannerExceptionItemKindCode.TICKET &&
-    Boolean(row.ticketId) &&
-    row.ticketStatus === ScanDispatchTicketStatusCode.PENDING
+    row.itemKind === ScannerExceptionItemKindCode.TICKET
+    && Boolean(row.ticketId)
+    && row.ticketStatus === ScanDispatchTicketStatusCode.PENDING
   )
 }
 
@@ -336,9 +336,9 @@ function canRetryPageRegisterRow(row: ExceptionDashboardRow): boolean {
   }
   const state = row.pageRegisterState
   return (
-    state === PageRegisterStateCode.BLOCKED_RECOVERABLE ||
-    state === PageRegisterStateCode.PENDING ||
-    state == null
+    state === PageRegisterStateCode.BLOCKED_RECOVERABLE
+    || state === PageRegisterStateCode.PENDING
+    || state == null
   )
 }
 
@@ -356,10 +356,10 @@ function buildExceptionRowActions(row: ExceptionDashboardRow): UiTableRowActionI
     })
   }
   if (
-    row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER ||
-    row.itemKind === ScannerExceptionItemKindCode.COMMITTING ||
-    row.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED ||
-    row.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL
+    row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER
+    || row.itemKind === ScannerExceptionItemKindCode.COMMITTING
+    || row.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED
+    || row.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL
   ) {
     actions.push({
       key: 'goto-handle',
@@ -456,9 +456,9 @@ function openWorkOrderTarget(row: ExceptionDashboardRow) {
   }
   const batchExamId = row.contextExamId ?? row.examId
   if (
-    row.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED &&
-    batchExamId &&
-    row.scanBatchId
+    row.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED
+    && batchExamId
+    && row.scanBatchId
   ) {
     void router.push({
       name: 'TeacherExamWorkspaceScanBatchDetail',
@@ -467,9 +467,9 @@ function openWorkOrderTarget(row: ExceptionDashboardRow) {
     return
   }
   if (
-    row.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL &&
-    batchExamId &&
-    row.scanBatchId
+    row.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL
+    && batchExamId
+    && row.scanBatchId
   ) {
     void router.push({
       name: 'TeacherExamWorkspaceScanBatchDetail',
@@ -478,8 +478,8 @@ function openWorkOrderTarget(row: ExceptionDashboardRow) {
     return
   }
   if (
-    row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER ||
-    row.itemKind === ScannerExceptionItemKindCode.COMMITTING
+    row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER
+    || row.itemKind === ScannerExceptionItemKindCode.COMMITTING
   ) {
     navigateWorkOrderByTaskKind(row)
   }
@@ -487,9 +487,9 @@ function openWorkOrderTarget(row: ExceptionDashboardRow) {
 
 async function dismissPartialTail(row: ExceptionDashboardRow) {
   if (
-    row.itemKind !== ScannerExceptionItemKindCode.PARTIAL_TAIL ||
-    !row.scanBatchId ||
-    !row.examId
+    row.itemKind !== ScannerExceptionItemKindCode.PARTIAL_TAIL
+    || !row.scanBatchId
+    || !row.examId
   ) {
     return
   }
@@ -518,9 +518,9 @@ async function dismissPartialTail(row: ExceptionDashboardRow) {
 
 async function retryPageRegister(row: ExceptionDashboardRow) {
   if (
-    row.itemKind !== ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED ||
-    !row.scanBatchId ||
-    !row.examId
+    row.itemKind !== ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED
+    || !row.scanBatchId
+    || !row.examId
   ) {
     return
   }
@@ -544,7 +544,7 @@ async function retryPageRegister(row: ExceptionDashboardRow) {
   }
 }
 
-function handlePageChange(pageEvent: { current: number; pageSize: number }) {
+function handlePageChange(pageEvent: { current: number, pageSize: number }) {
   pagination.current = pageEvent.current
   pagination.pageSize = pageEvent.pageSize
   void loadPage()
@@ -645,9 +645,11 @@ watch(
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'itemKind'">
-            <UiTag :tone="itemKindTone(record.itemKind)" size="sm">{{
-              itemKindLabel(record.itemKind)
-            }}</UiTag>
+            <UiTag :tone="itemKindTone(record.itemKind)" size="sm">
+              {{
+                itemKindLabel(record.itemKind)
+              }}
+            </UiTag>
           </template>
           <template v-else-if="column.key === 'identifier'">
             <UiEllipsisText :text="rowIdentifier(record)" />

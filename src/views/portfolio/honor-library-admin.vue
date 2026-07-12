@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioHonorStatsVO } from '@/apis/portfolio/teacher-platform'
-import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { reactive, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { PortfolioDevelopmentRecordTypeCode } from '@/apis/portfolio/enums'
+import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -46,8 +46,8 @@ const form = reactive({
   categoryCode: '',
   descriptionText: '',
 })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
-  usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
+  = usePortfolioTeacherSearch()
 const {
   loading,
   rows,

@@ -319,8 +319,8 @@ function syncByClassScope(addedClassIds: string[]): void {
         return
       }
       rosterPreviewError.value = ''
-      const nextCandidates =
-        scopeMode === ExamRosterScopeModeCode.BY_CLASS
+      const nextCandidates
+        = scopeMode === ExamRosterScopeModeCode.BY_CLASS
           ? previewCandidates
           : mergePreviewCandidates(rosterForm.candidates, previewCandidates)
       emit('sync-class-scope', nextCandidates, [...classIds])

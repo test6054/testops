@@ -4,7 +4,6 @@
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { ScorePolicyCode } from '@/types/enums/score-policy-enum'
-import { ALL_SCORE_POLICY_CODES, ScorePolicyDescription } from '@/types/enums/score-policy-enum'
 import http from '@/config/axios'
 import {
   AbsenceReasonCode,
@@ -12,6 +11,7 @@ import {
   ALL_ABSENCE_REASON_CODES,
 } from '@/types/enums/absence-reason-enum'
 import { AbsenceStatusCode } from '@/types/enums/absence-status-enum'
+import { ALL_SCORE_POLICY_CODES, ScorePolicyDescription } from '@/types/enums/score-policy-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {

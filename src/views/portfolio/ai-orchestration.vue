@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { PortfolioAiAnalysisDetailVO, PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
-import { PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -15,6 +14,7 @@ import {
 } from '@/apis/portfolio/enums'
 import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
+import { PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE } from '@/apis/portfolio/types'
 import { AiTaskStatusCode } from '@/apis/quality/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
@@ -122,8 +122,8 @@ function isAnalysisType(type: PortfolioAiAnalysisTypeCode) {
 const supportedOrchestrationAnalysis = computed(() => {
   const type = analysisDetail.value?.analysisType
   return (
-    type === PortfolioAiAnalysisTypeCode.MATERIAL_QA ||
-    type === PortfolioAiAnalysisTypeCode.POLICY_MATCH
+    type === PortfolioAiAnalysisTypeCode.MATERIAL_QA
+    || type === PortfolioAiAnalysisTypeCode.POLICY_MATCH
   )
 })
 

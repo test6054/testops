@@ -27,8 +27,8 @@ export const PROCESSING_TASK_TYPE_TONE: Record<ProcessingTaskTypeCode, BadgeTone
   [ProcessingTaskTypeCode.DELAYED_FINAL_SCORE_CONFIRM]: 'orange',
 }
 
-export const PROCESSING_TASK_TYPE_OPTIONS: Array<{ value: ProcessingTaskTypeCode; label: string }> =
-  ALL_PROCESSING_TASK_TYPE_CODES.map((value) => ({
+export const PROCESSING_TASK_TYPE_OPTIONS: Array<{ value: ProcessingTaskTypeCode, label: string }>
+  = ALL_PROCESSING_TASK_TYPE_CODES.map((value) => ({
     value,
     label: strictEnumLabel(ProcessingTaskTypeDescription, value, '处理任务类型'),
   }))

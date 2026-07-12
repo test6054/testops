@@ -16,8 +16,8 @@ export {
   PortraitWidgetTypeDescription,
 } from '@/types/enums/portrait-widget-type-enum'
 
-export const PORTRAIT_WIDGET_TYPE_OPTIONS: Array<{ value: PortraitWidgetTypeCode; label: string }> =
-  ALL_PORTRAIT_WIDGET_TYPE_CODES.map((value) => ({
+export const PORTRAIT_WIDGET_TYPE_OPTIONS: Array<{ value: PortraitWidgetTypeCode, label: string }>
+  = ALL_PORTRAIT_WIDGET_TYPE_CODES.map((value) => ({
     value,
     label: strictEnumLabel(PortraitWidgetTypeDescription, value, '画像组件类型'),
   }))
@@ -40,10 +40,10 @@ const DIMENSION_CODES = new Set<string>(ALL_PORTFOLIO_PORTRAIT_DIMENSION_CODES)
 
 function isPortraitWidget(value: string): value is PortraitWidgetTypeCode {
   return (
-    value === PortraitWidgetTypeCode.RADAR ||
-    value === PortraitWidgetTypeCode.TIMELINE ||
-    value === PortraitWidgetTypeCode.BAR ||
-    value === PortraitWidgetTypeCode.SCORE_CARD
+    value === PortraitWidgetTypeCode.RADAR
+    || value === PortraitWidgetTypeCode.TIMELINE
+    || value === PortraitWidgetTypeCode.BAR
+    || value === PortraitWidgetTypeCode.SCORE_CARD
   )
 }
 

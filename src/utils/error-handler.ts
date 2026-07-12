@@ -206,10 +206,7 @@ export function isNonUserFacingMessage(text: string | undefined | null): boolean
     return true
   }
   // 纯英文 code / token
-  if (USER_MSG_ASCII_TOKEN.test(trimmed) && trimmed.length <= 64) {
-    return true
-  }
-  return false
+  return USER_MSG_ASCII_TOKEN.test(trimmed) && trimmed.length <= 64;
 }
 
 function getErrorMessage(error: HandledError, errorType: ErrorType): string {

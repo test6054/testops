@@ -553,39 +553,13 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamPaperBatchBindResponse } from '@/apis/mark/exam-mark-scanner'
-import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
 import type {
   ExamScanMonitorDeviceResponse,
   ExamWorkbenchScanMonitorPanelResponse,
 } from '@/apis/mark/exam-progress'
-import {
-  ExamScanMonitorSignalActionKeyCode,
-  ExamScanMonitorSignalCode,
-  getScanMonitorPanel,
-  listExamScanMonitorDevices,
-} from '@/apis/mark/exam-progress'
 import type { ExamScannerBatchResponse, ScanAttentionItemResponse } from '@/apis/mark/exam-scan'
-import {
-  listScanAttentions,
-  pageScannerBatches,
-  QUALITY_DECISION_TONE,
-  QualityDecisionDescription,
-  SCAN_ATTENTION_TYPE_OPTIONS,
-  SCAN_ATTENTION_TYPE_TONE,
-  SCAN_BATCH_STATUS_OPTIONS,
-  SCAN_BATCH_STATUS_TONE,
-  ScanAttentionQueryGroupCode,
-  ScanAttentionSourceTypeDescription,
-  ScanAttentionTypeCode,
-  ScanAttentionTypeDescription,
-  ScanBatchStatusCode,
-  ScanBatchStatusDescription,
-} from '@/apis/mark/exam-scan'
-import { ScanAttentionSourceTypeCode } from '@/types/enums/scan-attention-source-type-enum'
 import type { ExamCandidateResponse } from '@/apis/mark/exam-scope'
-import { CandidateStatusDescription, pageExamCandidates } from '@/apis/mark/exam-scope'
 import type { ExamScoreSummaryItemResponse } from '@/apis/mark/exam-score'
-import { pageExamScoreSummary } from '@/apis/mark/exam-score'
 import type {
   BadgeTone,
   FilterField,
@@ -603,6 +577,31 @@ import {
   DuplicateResolutionStatusDescription,
 } from '@/apis/mark/duplicate-resolution-status'
 import { BindingStatusDescription, bindPaper } from '@/apis/mark/exam-binding'
+import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
+import {
+  ExamScanMonitorSignalActionKeyCode,
+  ExamScanMonitorSignalCode,
+  getScanMonitorPanel,
+  listExamScanMonitorDevices,
+} from '@/apis/mark/exam-progress'
+import {
+  listScanAttentions,
+  pageScannerBatches,
+  QUALITY_DECISION_TONE,
+  QualityDecisionDescription,
+  SCAN_ATTENTION_TYPE_OPTIONS,
+  SCAN_ATTENTION_TYPE_TONE,
+  SCAN_BATCH_STATUS_OPTIONS,
+  SCAN_BATCH_STATUS_TONE,
+  ScanAttentionQueryGroupCode,
+  ScanAttentionSourceTypeDescription,
+  ScanAttentionTypeCode,
+  ScanAttentionTypeDescription,
+  ScanBatchStatusCode,
+  ScanBatchStatusDescription,
+} from '@/apis/mark/exam-scan'
+import { CandidateStatusDescription, pageExamCandidates } from '@/apis/mark/exam-scope'
+import { pageExamScoreSummary } from '@/apis/mark/exam-score'
 import { FinalScoreStatusDescription } from '@/apis/mark/final-score-status'
 import { GRADE_STATUS_TONE, GradeStatusDescription } from '@/apis/mark/grade-status'
 import { discardScannedPage } from '@/apis/mark/scanner-kiosk'
@@ -643,6 +642,7 @@ import { useWorkspaceConfidentialContext } from '@/composables/useWorkspaceConfi
 import { DEFAULT_LIST_PAGE_SIZE, REMOTE_SEARCH_PAGE_SIZE } from '@/constants/pagination'
 import { AttemptStatusCode } from '@/types/enums/attempt-status-enum'
 import { CandidateStatusCode } from '@/types/enums/candidate-status-enum'
+import { ScanAttentionSourceTypeCode } from '@/types/enums/scan-attention-source-type-enum'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
 import mittBus from '@/utils/mitt'
@@ -671,9 +671,9 @@ enum ScanMonitorTabQuery {
 
 function isScanMonitorTabQuery(value: unknown): value is ScanMonitorTabQuery {
   return (
-    value === ScanMonitorTabQuery.NORMAL ||
-    value === ScanMonitorTabQuery.ABNORMAL ||
-    value === ScanMonitorTabQuery.DUPLICATE
+    value === ScanMonitorTabQuery.NORMAL
+    || value === ScanMonitorTabQuery.ABNORMAL
+    || value === ScanMonitorTabQuery.DUPLICATE
   )
 }
 
@@ -688,8 +688,8 @@ const scanMonitorContextSubtitle = computed(() => {
   return journeySubtitle
 })
 const { refreshSnapshot } = useWorkspaceExamId()
-const { isExamConfidential, examConfidentialLabel, watermarkLines } =
-  useWorkspaceConfidentialContext()
+const { isExamConfidential, examConfidentialLabel, watermarkLines }
+  = useWorkspaceConfidentialContext()
 
 /** 扫描链写操作后同步 StageRail 与本页数据。 */
 async function syncScanWorkbenchState(): Promise<void> {
@@ -799,10 +799,10 @@ const normalTableEmptyDescription = computed(() => {
 
 const hasActiveNormalFilters = computed(() =>
   Boolean(
-    normalFilterApplied.keyword ||
-    normalFilterApplied.scanBatchId ||
-    normalFilterApplied.batchStatus ||
-    normalFilterApplied.scannerDeviceId,
+    normalFilterApplied.keyword
+    || normalFilterApplied.scanBatchId
+    || normalFilterApplied.batchStatus
+    || normalFilterApplied.scannerDeviceId,
   ),
 )
 
@@ -962,7 +962,7 @@ function openMonitorBatchDetail(batch: ExamScannerBatchResponse): void {
   })
 }
 
-function handleMonitorBatchPageChange(pageEvent: { current: number; pageSize: number }): void {
+function handleMonitorBatchPageChange(pageEvent: { current: number, pageSize: number }): void {
   monitorBatchPagination.current = pageEvent.current
   monitorBatchPagination.pageSize = pageEvent.pageSize
   void loadMonitorBatches()
@@ -1292,8 +1292,8 @@ async function loadConnectedScannerDevices(): Promise<void> {
       return
     }
     if (
-      filterForm.monitorDeviceId &&
-      !scannerDevices.value.some((device) => device.scannerDeviceId === filterForm.monitorDeviceId)
+      filterForm.monitorDeviceId
+      && !scannerDevices.value.some((device) => device.scannerDeviceId === filterForm.monitorDeviceId)
     ) {
       filterForm.monitorDeviceId = ''
     }
@@ -1333,8 +1333,8 @@ function tickMonitorFallbackPoll(): void {
 
 function startMonitorFallbackPolling(): void {
   stopMonitorFallbackPolling()
-  const intervalMs =
-    activeTab.value === 'normal'
+  const intervalMs
+    = activeTab.value === 'normal'
       ? SCANNER_DEVICE_POLL_INTERVAL_MS
       : ATTENTION_FALLBACK_POLL_INTERVAL_MS
   monitorFallbackPollTimer = setInterval(tickMonitorFallbackPoll, intervalMs)
@@ -1509,7 +1509,7 @@ function reloadAttentionsFromFirstPage(): void {
   void loadAttentions()
 }
 
-function handleAttentionPageChange(pageEvent: { current: number; pageSize: number }): void {
+function handleAttentionPageChange(pageEvent: { current: number, pageSize: number }): void {
   attentionPagination.current = pageEvent.current
   attentionPagination.pageSize = pageEvent.pageSize
   selectedRowKeys.value = []
@@ -2075,8 +2075,8 @@ function buildAttentionActions(record: ScanAttentionItemResponse): UiTableRowAct
   } else if (record.attentionType === ScanAttentionTypeCode.DUPLICATE_PENDING) {
     actions.push({ key: 'ledger', label: '去影像账本处置', tone: 'primary' })
   } else if (
-    record.attentionType === ScanAttentionTypeCode.QUALITY_BLOCK ||
-    record.attentionType === ScanAttentionTypeCode.PROCESSING_BLOCK
+    record.attentionType === ScanAttentionTypeCode.QUALITY_BLOCK
+    || record.attentionType === ScanAttentionTypeCode.PROCESSING_BLOCK
   ) {
     actions.push({ key: 'dispose', label: '查看处置', tone: 'primary' })
     if (record.paperInstanceId && record.scanBatchId) {
@@ -2171,9 +2171,9 @@ const rowSelection = computed(() => ({
   },
   getCheckboxProps: (record: ScanAttentionItemResponse) => ({
     disabled:
-      record.attentionType !== ScanAttentionTypeCode.BINDING_CONFLICT ||
-      !record.paperInstanceId ||
-      !record.scanBatchId,
+      record.attentionType !== ScanAttentionTypeCode.BINDING_CONFLICT
+      || !record.paperInstanceId
+      || !record.scanBatchId,
   }),
 }))
 
@@ -2184,10 +2184,10 @@ async function handleBatchBind(): Promise<void> {
   }
   const selected = attentions.value.filter(
     (item) =>
-      selectedRowKeys.value.includes(item.id) &&
-      item.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT &&
-      item.paperInstanceId &&
-      item.scanBatchId,
+      selectedRowKeys.value.includes(item.id)
+      && item.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT
+      && item.paperInstanceId
+      && item.scanBatchId,
   )
   if (selected.length === 0) {
     message.error('请选择可身份绑定的绑定冲突异常项')

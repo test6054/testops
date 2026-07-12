@@ -19,7 +19,7 @@ defineProps<{
 defineEmits<{
   'generate-sheet': [paperSpec: string, questions: ExamLayoutGenerateQuestionRequest[]]
   'auto-detect': [sourcePdfFileId: string]
-  patch: [document: ExamLayoutDocument]
+  "patch": [document: ExamLayoutDocument]
   'focus-upload': []
 }>()
 </script>

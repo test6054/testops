@@ -1,17 +1,17 @@
 import type { Ref } from 'vue'
-import { computed, reactive, ref } from 'vue'
 import type {
   PortfolioArchiveRecordFieldInput,
   PortfolioMaterialIntakeStatusVO,
 } from '@/apis/portfolio/types'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { portfolioIntakeApi } from '@/apis/portfolio/intake'
 import {
   PortfolioArchiveRecordStatusCode,
   PortfolioMaterialIntakeStageCode,
   PortfolioMaterialTypeCode,
 } from '@/apis/portfolio/types'
-import { message } from 'ant-design-vue'
-import { useRoute, useRouter } from 'vue-router'
-import { portfolioIntakeApi } from '@/apis/portfolio/intake'
 import { AiTaskStatusCode } from '@/apis/quality/types'
 import { usePolling } from '@/composables/usePolling'
 import { showUserError } from '@/utils/error-handler'
@@ -84,28 +84,28 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     }
     const stage = status.value.stage
     if (
-      stage === PortfolioMaterialIntakeStageCode.SUBMITTED ||
-      stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW
+      stage === PortfolioMaterialIntakeStageCode.SUBMITTED
+      || stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW
     ) {
       return true
     }
     if (
-      stage === PortfolioMaterialIntakeStageCode.OCR_PENDING ||
-      stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
+      stage === PortfolioMaterialIntakeStageCode.OCR_PENDING
+      || stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
     ) {
       return true
     }
     return (
-      status.value.recordStatus === PortfolioArchiveRecordStatusCode.PENDING_CONFIRM ||
-      status.value.recordStatus === PortfolioArchiveRecordStatusCode.OFFICIAL
+      status.value.recordStatus === PortfolioArchiveRecordStatusCode.PENDING_CONFIRM
+      || status.value.recordStatus === PortfolioArchiveRecordStatusCode.OFFICIAL
     )
   })
 
   const aiCandidateReadOnly = computed(() => {
     const stage = status.value?.stage
     if (
-      stage === PortfolioMaterialIntakeStageCode.SUBMITTED ||
-      stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW
+      stage === PortfolioMaterialIntakeStageCode.SUBMITTED
+      || stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW
     ) {
       return true
     }
@@ -203,12 +203,12 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     const effectiveDemoMode = options?.demoMode ?? demoMode.value
     const effectiveCategoryId = categoryId.value || undefined
     const aiFailedStage = status.value?.stage === PortfolioMaterialIntakeStageCode.AI_FAILED
-    const shouldSubmitAi =
-      options?.submitAi === true ||
-      (options?.submitAi !== false &&
-        !effectiveDemoMode &&
-        Boolean(effectiveCategoryId) &&
-        !aiFailedStage)
+    const shouldSubmitAi
+      = options?.submitAi === true
+        || (options?.submitAi !== false
+          && !effectiveDemoMode
+          && Boolean(effectiveCategoryId)
+          && !aiFailedStage)
     loading.value = true
     try {
       let frozenProviderChain: string | undefined

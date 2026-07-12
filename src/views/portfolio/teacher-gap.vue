@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import type { PortfolioGapTaskStatusCode } from '@/apis/portfolio/enums'
-import { PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import type {
   PortfolioArchiveRecordFieldInput,
   PortfolioGapTaskDetailVO,
 } from '@/apis/portfolio/types'
 import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
-import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -14,6 +12,7 @@ import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scann
 import { PortfolioCollectModeCode, ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
+import { PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import { portfolioGapApi } from '@/apis/portfolio/gap'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -28,6 +27,7 @@ import {
 } from '@/composables/usePortfolioPageScope'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 
 function gapTaskStatusLabel(status: PortfolioGapTaskStatusCode): string {
   return strictEnumLabel(PortfolioGapTaskStatusDescription, status, '补采任务状态')
@@ -283,8 +283,8 @@ watch(
     if (value !== '1') {
       return
     }
-    const fileNodeId =
-      typeof route.query.scanFileNodeId === 'string' ? route.query.scanFileNodeId : ''
+    const fileNodeId
+      = typeof route.query.scanFileNodeId === 'string' ? route.query.scanFileNodeId : ''
     const nextQuery = { ...route.query }
     delete nextQuery.scanCommitted
     delete nextQuery.scanFileNodeId

@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { PortfolioPortraitDimensionCode } from '@/apis/portfolio/enums'
 import type { PortfolioPortraitLayoutWidget } from '@/utils/portrait-layout'
+import { computed, ref } from 'vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import {
   PORTRAIT_DIMENSION_OPTIONS,
   PORTRAIT_WIDGET_TYPE_OPTIONS,
   PortraitWidgetTypeCode,
   PortraitWidgetTypeDescription,
 } from '@/utils/portrait-layout'
-import { computed, ref } from 'vue'
-import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const props = defineProps<{
@@ -51,7 +51,7 @@ function updateSelectedDimension(index: number, value: unknown) {
 }
 
 const canvasCells = computed(() => {
-  const cells: Array<{ col: number; row: number; key: string }> = []
+  const cells: Array<{ col: number, row: number, key: string }> = []
   for (let row = 0; row < GRID_ROWS; row += 1) {
     for (let col = 0; col < GRID_COLS; col += 1) {
       cells.push({ col, row, key: `${col}-${row}` })

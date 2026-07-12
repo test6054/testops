@@ -69,9 +69,7 @@
                 当前第 {{ currentQueueIndex }} 份，剩余
                 {{ Math.max(0, queueTotal - currentQueueIndex) }} 份待复核
               </span>
-              <span class="review-workspace__keyboard-hint"
-                >J/K 或 ←/→ 切换份数 · 0-9 快捷给分</span
-              >
+              <span class="review-workspace__keyboard-hint">J/K 或 ←/→ 切换份数 · 0-9 快捷给分</span>
             </div>
             <a-progress
               :percent="queueProgressPercent"
@@ -404,34 +402,13 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { AnnotationResponse } from '@/apis/mark/exam-annotation'
-import { listAnnotations } from '@/apis/mark/exam-annotation'
 import type {
   AiAbilityCode,
   AiExecutionStatusCode,
   ExamQuestionAiExecutionItemResponse,
 } from '@/apis/mark/exam-grade'
-import {
-  AI_ABILITY_TONE,
-  AI_EXECUTION_STATUS_TONE,
-  AiAbilityDescription,
-  AiExecutionStatusDescription,
-  confirmQuestionGrade,
-  listAiExecutionsForQuestion,
-  rejectQuestionGrade,
-  rescoreQuestionByAi,
-} from '@/apis/mark/exam-grade'
 import type { ReviewTaskDetailResponse, ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
-import {
-  claimReviewTask,
-  getReviewTaskDetail,
-  getReviewTaskPipeline,
-  REVIEW_TASK_STATUS_TONE,
-  ReviewTaskStatusCode,
-  ReviewTaskStatusDescription,
-  ReviewTaskTypeCode,
-} from '@/apis/mark/exam-review-task'
 import type { ObjectiveComparePolicyCode } from '@/apis/mark/exam-standard-answer'
-import { ObjectiveComparePolicyDescription } from '@/apis/mark/exam-standard-answer'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
@@ -442,6 +419,27 @@ import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { listAnnotations } from '@/apis/mark/exam-annotation'
+import {
+  AI_ABILITY_TONE,
+  AI_EXECUTION_STATUS_TONE,
+  AiAbilityDescription,
+  AiExecutionStatusDescription,
+  confirmQuestionGrade,
+  listAiExecutionsForQuestion,
+  rejectQuestionGrade,
+  rescoreQuestionByAi,
+} from '@/apis/mark/exam-grade'
+import {
+  claimReviewTask,
+  getReviewTaskDetail,
+  getReviewTaskPipeline,
+  REVIEW_TASK_STATUS_TONE,
+  ReviewTaskStatusCode,
+  ReviewTaskStatusDescription,
+  ReviewTaskTypeCode,
+} from '@/apis/mark/exam-review-task'
+import { ObjectiveComparePolicyDescription } from '@/apis/mark/exam-standard-answer'
 import ExperienceAssistBadge from '@/components/mark/ExperienceAssistBadge.vue'
 import GradingImmersionChrome from '@/components/mark/GradingImmersionChrome.vue'
 import GradingImmersionSection from '@/components/mark/GradingImmersionSection.vue'
@@ -620,10 +618,10 @@ const pipelineCurrentIndex = ref(0)
  */
 async function loadReviewQueue(): Promise<void> {
   if (
-    !examId.value ||
-    !detail.value?.layoutQuestionId ||
-    !detail.value.reviewType ||
-    !detail.value.gradeSource
+    !examId.value
+    || !detail.value?.layoutQuestionId
+    || !detail.value.reviewType
+    || !detail.value.gradeSource
   ) {
     reviewQueue.value = []
     return
@@ -776,8 +774,8 @@ const canRescoreByAi = computed<boolean>(() => {
   if (!examId.value) return false
   if (!detail.value) return false
   return (
-    detail.value.status === ReviewTaskStatusCode.PENDING ||
-    detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
+    detail.value.status === ReviewTaskStatusCode.PENDING
+    || detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
   )
 })
 
@@ -791,9 +789,9 @@ async function loadTask(): Promise<void> {
   try {
     const loadedDetail = await loadReviewTaskDetail()
     if (
-      generation !== loadTaskGeneration ||
-      expectedExamId !== examId.value ||
-      expectedTaskId !== taskId.value
+      generation !== loadTaskGeneration
+      || expectedExamId !== examId.value
+      || expectedTaskId !== taskId.value
     ) {
       return
     }
@@ -845,8 +843,8 @@ async function loadReviewTaskDetail(): Promise<ReviewTaskDetailResponse> {
     reviewTaskId: taskId.value,
   })
   if (
-    preview.status === ReviewTaskStatusCode.PENDING ||
-    preview.status === ReviewTaskStatusCode.IN_PROGRESS
+    preview.status === ReviewTaskStatusCode.PENDING
+    || preview.status === ReviewTaskStatusCode.IN_PROGRESS
   ) {
     return claimReviewTask({
       examId: examId.value,
@@ -1071,8 +1069,8 @@ async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
   }
   const fullScore = detail.value.fullScore
   const teacherReviewScore = gradeForm.teacherReviewScore
-  const ratio =
-    fullScore && fullScore > 0 && typeof teacherReviewScore === 'number'
+  const ratio
+    = fullScore && fullScore > 0 && typeof teacherReviewScore === 'number'
       ? `${Math.round((teacherReviewScore / fullScore) * 100)}%`
       : '-'
   // 取下一份模式下额外提示队列剩余信息，让教师清楚复核会继续

@@ -1,23 +1,23 @@
 <script lang="ts" setup>
 import type { TableColumnsType } from 'ant-design-vue'
 import type { ExamWorkbenchMarkingProgressPanelResponse } from '@/apis/mark/exam-progress'
-import { getMarkingProgressPanel } from '@/apis/mark/exam-progress'
 import type {
   FormalSessionResponse,
   FormalSessionStatusCode,
   TrialSessionResponse,
   TrialSessionStatusCode,
 } from '@/apis/mark/marking-organization'
+import type { SignalMetric } from '@/types/workbench'
+import { TableOutlined } from '@ant-design/icons-vue'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getMarkingProgressPanel } from '@/apis/mark/exam-progress'
 import {
   FORMAL_SESSION_STATUS_TONE,
   FormalSessionStatusDescription,
   TRIAL_SESSION_STATUS_TONE,
   TrialSessionStatusDescription,
 } from '@/apis/mark/marking-organization'
-import type { SignalMetric } from '@/types/workbench'
-import { TableOutlined } from '@ant-design/icons-vue'
-import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'

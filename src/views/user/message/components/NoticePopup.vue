@@ -70,15 +70,15 @@
 
 <script lang="ts" setup>
 import type { PublishedSystemAnnouncementResponse } from '@/apis/edu/message'
+import HistoryOutlined from '@ant-design/icons-vue/HistoryOutlined'
+import ScheduleOutlined from '@ant-design/icons-vue/ScheduleOutlined'
+import UserOutlined from '@ant-design/icons-vue/UserOutlined'
+import { computed, ref, watch } from 'vue'
 import {
   AnnouncementStatusEnum,
   getPublishedAnnouncementDetail,
   getPublishedAnnouncementList,
 } from '@/apis/edu/message'
-import HistoryOutlined from '@ant-design/icons-vue/HistoryOutlined'
-import ScheduleOutlined from '@ant-design/icons-vue/ScheduleOutlined'
-import UserOutlined from '@ant-design/icons-vue/UserOutlined'
-import { computed, ref, watch } from 'vue'
 import AiEditor from '@/components/AiEditor/index.vue'
 import { showUserError } from '@/utils/error-handler'
 import mittBus from '@/utils/mitt'

@@ -2,10 +2,10 @@
  * 扫描实时看板 composable：管理 SSE 订阅、断线补差、滚动缓冲区，并按需托管页级账本补差。
  */
 import type { Ref } from 'vue'
-import { computed, ref } from 'vue'
 import type { ScanLiveEventVO, ScanLiveSubscribeFilter } from '@/apis/mark/scan-live'
-import { listRecentScanEvents, ScanLiveFatalAuthError, subscribeScanLive } from '@/apis/mark/scan-live'
 import type { ExamScannerPageLedgerRequest, ExamScannerPageLedgerVO } from '@/apis/mark/scanner-kiosk'
+import { computed, ref } from 'vue'
+import { listRecentScanEvents, ScanLiveFatalAuthError, subscribeScanLive } from '@/apis/mark/scan-live'
 import { fetchScannerPageLedger } from '@/apis/mark/scanner-kiosk'
 import { useAuthStore } from '@/stores/modules/auth'
 import { toUserError } from '@/utils/error-handler'

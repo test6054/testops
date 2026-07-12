@@ -4,12 +4,12 @@ import type {
   PortfolioCourseArchiveCourseVO,
   PortfolioCourseArchiveFrameworkVO,
 } from '@/apis/portfolio/course-archive'
-import { portfolioCourseArchiveApi } from '@/apis/portfolio/course-archive'
 import type { PortfolioTeacherCustomCategoryVO } from '@/apis/portfolio/teacher-custom-category'
-import { portfolioTeacherCustomCategoryApi } from '@/apis/portfolio/teacher-custom-category'
 import { Form, Input, message, Modal } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { portfolioCourseArchiveApi } from '@/apis/portfolio/course-archive'
+import { portfolioTeacherCustomCategoryApi } from '@/apis/portfolio/teacher-custom-category'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -51,10 +51,7 @@ const displayedCourses = computed(() => {
     if (code && item.courseCode !== code) {
       return false
     }
-    if (semester && item.semester !== semester) {
-      return false
-    }
-    return true
+    return !(semester && item.semester !== semester);
   })
 })
 
@@ -82,10 +79,10 @@ const customColumns: ColumnsType = [
 
 /** 路由 query 决定课程档案上下文；缺省时也必须清空旧筛选，避免复用页残留。 */
 function applyRouteQueryFilters() {
-  academicYearFilter.value =
-    typeof route.query.academicYear === 'string' ? route.query.academicYear : ''
-  highlightCourseCode.value =
-    typeof route.query.courseCode === 'string' ? route.query.courseCode : ''
+  academicYearFilter.value
+    = typeof route.query.academicYear === 'string' ? route.query.academicYear : ''
+  highlightCourseCode.value
+    = typeof route.query.courseCode === 'string' ? route.query.courseCode : ''
   semesterFilter.value = typeof route.query.semester === 'string' ? route.query.semester : ''
 }
 
@@ -324,9 +321,9 @@ watch(
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'actions'">
-              <UiButton variant="ghost" @click="openCustomCategoryArchive(record)"
-                >进入档案</UiButton
-              >
+              <UiButton variant="ghost" @click="openCustomCategoryArchive(record)">
+                进入档案
+              </UiButton>
               <UiButton
                 v-if="!readonlyMode"
                 variant="ghost"

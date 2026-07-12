@@ -2,9 +2,9 @@
   <StageWorkbenchShell class="score-finalize-page">
     <template
       v-if="
-        effectiveRiskOverview?.readyToPublish ||
-        blockingRiskReasons.length > 0 ||
-        canBatchConfirmSafe
+        effectiveRiskOverview?.readyToPublish
+          || blockingRiskReasons.length > 0
+          || canBatchConfirmSafe
       "
       #context
     >
@@ -451,8 +451,8 @@
             variant="outline"
             :loading="riskReviewSavingReasonCode === reason.reasonCode"
             :disabled="
-              riskReviewSavingReasonCode !== null &&
-              riskReviewSavingReasonCode !== reason.reasonCode
+              riskReviewSavingReasonCode !== null
+                && riskReviewSavingReasonCode !== reason.reasonCode
             "
             @click="toggleRiskReasonReviewed(reason.reasonCode)"
           >
@@ -539,21 +539,34 @@ import type { Key } from 'ant-design-vue/es/_util/type'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
 import type { OperationLogResponse, OperationTypeCode } from '@/apis/mark/admin-audit'
+import type { ExamDetailResponse } from '@/apis/mark/exam'
+import type { ExamPaperScoreResponse, ExamQuestionScoreResponse } from '@/apis/mark/exam-grade'
+import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
+import type {
+  ExamScoreSummaryItemResponse,
+  FinalScoreRiskOverviewResponse,
+} from '@/apis/mark/exam-score'
+import type { ScoreBiasLevelCode } from '@/apis/mark/score-bias'
+import type {
+  BadgeTone,
+  FilterField,
+  UiTableRowActionItem,
+  UiTrendPoint,
+} from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import type { ScoreStatusTabKey } from '@/utils/score-workbench-analytics'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   AuditTargetTypeCode,
   listOperationLogs,
   OperationTypeDescription,
 } from '@/apis/mark/admin-audit'
-import type { ExamDetailResponse } from '@/apis/mark/exam'
 import { getExamDetail, pageExams } from '@/apis/mark/exam'
-import type { ExamPaperScoreResponse, ExamQuestionScoreResponse } from '@/apis/mark/exam-grade'
 import { getPaperScore } from '@/apis/mark/exam-grade'
-import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
 import { getScorePanel } from '@/apis/mark/exam-progress'
-import type {
-  ExamScoreSummaryItemResponse,
-  FinalScoreRiskOverviewResponse,
-} from '@/apis/mark/exam-score'
 import {
   batchConfirmSafeFinalScores,
   confirmFinalScore,
@@ -564,7 +577,12 @@ import {
   saveFinalScoreRiskReview,
   withdrawFinalScore,
 } from '@/apis/mark/exam-score'
-import type { ScoreBiasLevelCode } from '@/apis/mark/score-bias'
+import {
+  FINAL_SCORE_STATUS_TONE,
+  FinalScoreStatusCode,
+  FinalScoreStatusDescription,
+} from '@/apis/mark/final-score-status'
+import { GradeStatusCode } from '@/apis/mark/grade-status'
 import {
   classifyScoreBias,
   computeScoreBiasStats,
@@ -572,28 +590,6 @@ import {
   SCORE_BIAS_LEVEL_TONE,
   ScoreBiasLevelDescription,
 } from '@/apis/mark/score-bias'
-import type {
-  BadgeTone,
-  FilterField,
-  UiTableRowActionItem,
-  UiTrendPoint,
-} from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import type { ScoreStatusTabKey } from '@/utils/score-workbench-analytics'
-import {
-  buildScoreConfirmStatusTabItems,
-  SCORE_STATUS_TAB_ALL,
-} from '@/utils/score-workbench-analytics'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import {
-  FINAL_SCORE_STATUS_TONE,
-  FinalScoreStatusCode,
-  FinalScoreStatusDescription,
-} from '@/apis/mark/final-score-status'
-import { GradeStatusCode } from '@/apis/mark/grade-status'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -626,6 +622,10 @@ import { formatDateTime, formatDateTimeWithSeconds } from '@/utils/format'
 import { formatTrendAriaLabel, MARK_CHART_EMPTY } from '@/utils/mark-chart-accessibility'
 import { buildTrendChartInsight } from '@/utils/mark-chart-insights'
 import { buildTrendLineChartOption } from '@/utils/mark-echarts-options'
+import {
+  buildScoreConfirmStatusTabItems,
+  SCORE_STATUS_TAB_ALL,
+} from '@/utils/score-workbench-analytics'
 import { buildScoreFinalizeSignalMetrics } from '@/utils/score-workbench-signal'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -734,8 +734,8 @@ const panelNotice = computed(() => {
   return null
 })
 
-const { ensureScorePublishPreconditions, ensureScoreConfirmPreconditions } =
-  useScorePublishPreconditions({
+const { ensureScorePublishPreconditions, ensureScoreConfirmPreconditions }
+  = useScorePublishPreconditions({
     examId: selectedExamId,
     riskOverview: effectiveRiskOverview,
     scorePanel,
@@ -871,7 +871,7 @@ function handleStatusTabChange(tabKey: Key): void {
   void loadCandidates()
 }
 
-function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void loadCandidates()
@@ -882,10 +882,10 @@ function canConfirm(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
   const s = record.finalScoreStatus
   return (
-    s === FinalScoreStatusCode.PENDING ||
-    s === FinalScoreStatusCode.CALCULATED ||
-    s === FinalScoreStatusCode.WITHDRAWN ||
-    s === FinalScoreStatusCode.CORRECTED
+    s === FinalScoreStatusCode.PENDING
+    || s === FinalScoreStatusCode.CALCULATED
+    || s === FinalScoreStatusCode.WITHDRAWN
+    || s === FinalScoreStatusCode.CORRECTED
   )
 }
 function confirmButtonLabel(record: ExamScoreSummaryItemResponse): string {
@@ -900,9 +900,9 @@ function canPublish(record: ExamScoreSummaryItemResponse): boolean {
   const s = record.finalScoreStatus
   // CONFIRMED / WITHDRAWN / CORRECTED 可以发布
   return (
-    s === FinalScoreStatusCode.CONFIRMED ||
-    s === FinalScoreStatusCode.WITHDRAWN ||
-    s === FinalScoreStatusCode.CORRECTED
+    s === FinalScoreStatusCode.CONFIRMED
+    || s === FinalScoreStatusCode.WITHDRAWN
+    || s === FinalScoreStatusCode.CORRECTED
   )
 }
 function publishButtonLabel(record: ExamScoreSummaryItemResponse): string {
@@ -927,8 +927,8 @@ const hasHardBlockingRisks = computed(() => hardBlockingRiskReasons.value.length
 const hasUnreviewedBlockingRisks = computed(() => {
   return blockingRiskReasons.value.some(
     (reason) =>
-      !HARD_BLOCKING_RISK_REASON_CODES.has(reason.reasonCode) &&
-      !reviewedRiskReasonCodes.value.has(reason.reasonCode),
+      !HARD_BLOCKING_RISK_REASON_CODES.has(reason.reasonCode)
+      && !reviewedRiskReasonCodes.value.has(reason.reasonCode),
   )
 })
 
@@ -1005,12 +1005,12 @@ function warnUnreviewedBlockingRisks(): boolean {
 const canBatchConfirmSafe = computed(() => {
   const overview = effectiveRiskOverview.value
   return Boolean(
-    overview &&
-    overview.safeConfirmableCount > 0 &&
-    blockingRiskReasons.value.length === 0 &&
-    !hasHardBlockingRisks.value &&
-    !hasDailyScoreConfig.value &&
-    !batchConfirming.value,
+    overview
+    && overview.safeConfirmableCount > 0
+    && blockingRiskReasons.value.length === 0
+    && !hasHardBlockingRisks.value
+    && !hasDailyScoreConfig.value
+    && !batchConfirming.value,
   )
 })
 
@@ -1484,8 +1484,8 @@ function resolveConfirmExamScorePreview(score: ExamPaperScoreResponse): number {
   }
   const questions = score.questions ?? []
   if (
-    questions.length === 0 ||
-    questions.some(
+    questions.length === 0
+    || questions.some(
       (question) =>
         question.gradeStatus !== GradeStatusCode.CONFIRMED || question.teacherReviewScore == null,
     )
@@ -1566,11 +1566,11 @@ function deriveNextStepSuggestion(): void {
     return
   }
   // 当前页找下一份未确认
-  const next =
-    candidates.value.find(
+  const next
+    = candidates.value.find(
       (c) =>
-        c.finalScoreStatus === FinalScoreStatusCode.CALCULATED ||
-        c.finalScoreStatus === FinalScoreStatusCode.PENDING,
+        c.finalScoreStatus === FinalScoreStatusCode.CALCULATED
+        || c.finalScoreStatus === FinalScoreStatusCode.PENDING,
     ) ?? null
   if (next) {
     nextStep.value = {

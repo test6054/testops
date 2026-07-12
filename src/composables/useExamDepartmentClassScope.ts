@@ -1,12 +1,12 @@
 import type { Ref } from 'vue'
-import { computed, ref, watch } from 'vue'
 import type { ClassInfoDto } from '@/apis/edu/class'
-import { getClassesByDepartment } from '@/apis/edu/class'
 import type { ClassSelectOption } from '@/views/teacher/candidate-roster/class-scope'
-import { mergeClassSelectOptions } from '@/views/teacher/candidate-roster/class-scope'
+import { computed, ref, watch } from 'vue'
+import { getClassesByDepartment } from '@/apis/edu/class'
 import { listCreateEnrollableClasses } from '@/apis/mark/exam'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import { showUserError } from '@/utils/error-handler'
+import { mergeClassSelectOptions } from '@/views/teacher/candidate-roster/class-scope'
 
 export interface ExamDepartmentClassScopeSeed {
   classId: string
@@ -24,7 +24,7 @@ export function useExamDepartmentClassScope(options: {
 }) {
   const departmentId = ref<string | undefined>()
   const departmentLoading = ref(false)
-  const departmentOptions = ref<Array<{ value: string; label: string }>>([])
+  const departmentOptions = ref<Array<{ value: string, label: string }>>([])
   const classOptionsLoading = ref(false)
   const departmentClassOptions = ref<ClassSelectOption[]>([])
   const cumulativeClassLabels = ref<Map<string, string>>(new Map())

@@ -230,6 +230,12 @@ import type {
   ExamScannerBatchAttributionItemVO,
   ExamScannerBatchPageInspectorVO,
 } from '@/apis/mark/exam-scan'
+import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
+
+import PaperClipOutlined from '@ant-design/icons-vue/PaperClipOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import { bindPaper } from '@/apis/mark/exam-binding'
 import {
   QUALITY_DECISION_TONE,
   QualityDecisionDescription,
@@ -238,12 +244,6 @@ import {
   ScanBatchWorkbenchRosterMatchStatusDescription,
   ScanBatchWorkbenchRosterMatchStatusTone,
 } from '@/apis/mark/exam-scan'
-
-import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
-import PaperClipOutlined from '@ant-design/icons-vue/PaperClipOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
-import { bindPaper } from '@/apis/mark/exam-binding'
 import { TASK_STATUS_TONE, TaskStatusDescription } from '@/apis/mark/task-status'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -366,9 +366,9 @@ const bindingStatusLabel = computed(() => {
     return '已绑定'
   }
   if (
-    page.registerStatus === ScanBatchWorkbenchRegisterStatusCode.REGISTERED &&
-    (page.bindingStatus === ScanBatchWorkbenchBindingStatusCode.UNBOUND ||
-      page.bindingStatus === ScanBatchWorkbenchBindingStatusCode.CONFLICT)
+    page.registerStatus === ScanBatchWorkbenchRegisterStatusCode.REGISTERED
+    && (page.bindingStatus === ScanBatchWorkbenchBindingStatusCode.UNBOUND
+      || page.bindingStatus === ScanBatchWorkbenchBindingStatusCode.CONFLICT)
   ) {
     return '待绑定'
   }
@@ -414,9 +414,9 @@ const boundIdentityLine = computed(() => {
 const showBindForm = computed(() => {
   const page = props.inspector?.page
   if (
-    !page ||
-    page.registerStatus === ScanBatchWorkbenchRegisterStatusCode.PENDING ||
-    page.bindingStatus === ScanBatchWorkbenchBindingStatusCode.BOUND
+    !page
+    || page.registerStatus === ScanBatchWorkbenchRegisterStatusCode.PENDING
+    || page.bindingStatus === ScanBatchWorkbenchBindingStatusCode.BOUND
   ) {
     return false
   }
@@ -426,9 +426,9 @@ const showBindForm = computed(() => {
 const showBindBlocked = computed(() => {
   const page = props.inspector?.page
   if (
-    !page ||
-    page.registerStatus === ScanBatchWorkbenchRegisterStatusCode.PENDING ||
-    page.bindingStatus === ScanBatchWorkbenchBindingStatusCode.BOUND
+    !page
+    || page.registerStatus === ScanBatchWorkbenchRegisterStatusCode.PENDING
+    || page.bindingStatus === ScanBatchWorkbenchBindingStatusCode.BOUND
   ) {
     return false
   }
@@ -447,9 +447,9 @@ const reassignTargetOptions = computed(() => {
   return (props.attributionItems ?? [])
     .filter(
       (item) =>
-        !item.unassignedBucket &&
-        item.paperInstanceId &&
-        item.paperInstanceId !== currentPaperInstanceId,
+        !item.unassignedBucket
+        && item.paperInstanceId
+        && item.paperInstanceId !== currentPaperInstanceId,
     )
     .map((item) => {
       const identityParts = [
@@ -494,9 +494,9 @@ const showReassignSection = computed(() => {
     return false
   }
   return (
-    page.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING &&
-    page.templatePageNo !== undefined &&
-    reassignTargetOptions.value.length > 0
+    page.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING
+    && page.templatePageNo !== undefined
+    && reassignTargetOptions.value.length > 0
   )
 })
 

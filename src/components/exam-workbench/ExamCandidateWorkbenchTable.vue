@@ -101,8 +101,8 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  'page-change': [pageEvent: { current: number; pageSize: number }]
-  action: [key: string, item: ExamCandidateRosterWorkbenchItemResponse]
+  'page-change': [pageEvent: { current: number, pageSize: number }]
+  "action": [key: string, item: ExamCandidateRosterWorkbenchItemResponse]
 }>()
 
 const columns = computed<ColumnType<ExamCandidateRosterWorkbenchItemResponse>[]>(() => {
@@ -134,8 +134,8 @@ function buildActions(item: ExamCandidateRosterWorkbenchItemResponse): UiTableRo
     actions.push({ key: 'supplement-missing', label: '去补扫', tone: 'primary' })
   }
   if (
-    item.scanProgressStatus === CandidateScanProgressStatusCode.ATTENTION_OPEN ||
-    item.scanProgressStatus === CandidateScanProgressStatusCode.CONFLICT
+    item.scanProgressStatus === CandidateScanProgressStatusCode.ATTENTION_OPEN
+    || item.scanProgressStatus === CandidateScanProgressStatusCode.CONFLICT
   ) {
     actions.push({ key: 'handle-attention', label: '处理异常', tone: 'danger' })
   }

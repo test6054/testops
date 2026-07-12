@@ -8,6 +8,13 @@ import type {
   AuditSupervisionSaveRequest,
   AuditSupervisionVO,
 } from '@/apis/quality/audit-supervision'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type {
+  QualitySelectorChangeValue,
+  WorkbenchSignalRefreshHandler,
+} from '@/composables/quality/improvement'
+import { message } from 'ant-design-vue'
+import { reactive, ref } from 'vue'
 import {
   AUDIT_SUPERVISION_CONCLUSION_OPTIONS,
   AUDIT_SUPERVISION_CONCLUSION_TONE,
@@ -17,14 +24,6 @@ import {
   AuditSupervisionScopeCode,
   AuditSupervisionScopeDescription,
 } from '@/apis/quality/audit-supervision'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type {
-  QualitySelectorChangeValue,
-  WorkbenchSignalRefreshHandler,
-} from '@/composables/quality/improvement'
-import { refreshWorkbenchSignalsAfterMutation, selectedId } from '@/composables/quality/improvement'
-import { message } from 'ant-design-vue'
-import { reactive, ref } from 'vue'
 import { AuditSupervisionTypeCode, AuditSupervisionTypeDescription } from '@/apis/quality/types'
 import ImprovementWorkbenchPanel from '@/components/quality/improvement/ImprovementWorkbenchPanel.vue'
 import {
@@ -42,6 +41,7 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import { refreshWorkbenchSignalsAfterMutation, selectedId } from '@/composables/quality/improvement'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
   assertQualityScopeFresh,
@@ -77,7 +77,7 @@ const supColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 160 },
 ]
 
-const supervisionTypeOptions: Array<{ value: AuditSupervisionTypeCode; label: string }> = [
+const supervisionTypeOptions: Array<{ value: AuditSupervisionTypeCode, label: string }> = [
   { value: AuditSupervisionTypeCode.DAILY, label: AuditSupervisionTypeDescription.DAILY },
   { value: AuditSupervisionTypeCode.SPECIAL, label: AuditSupervisionTypeDescription.SPECIAL },
   {
@@ -290,7 +290,7 @@ async function loadList(options?: { refreshSignals?: boolean }) {
   }
 }
 
-function handleSupPageChange(page: { current: number; pageSize: number }) {
+function handleSupPageChange(page: { current: number, pageSize: number }) {
   supQuery.pageNum = page.current
   supQuery.pageSize = page.pageSize
   loadList()
@@ -370,9 +370,9 @@ function openSupEdit(record: AuditSupervisionVO) {
 
 async function submitSupEditor() {
   if (
-    !supEditor.supervisionCode.trim() ||
-    !supEditor.supervisionTitle.trim() ||
-    !supEditor.supervisionType
+    !supEditor.supervisionCode.trim()
+    || !supEditor.supervisionTitle.trim()
+    || !supEditor.supervisionType
   ) {
     message.error('请填写编码、标题、督导类型')
     return

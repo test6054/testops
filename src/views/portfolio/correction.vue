@@ -2,14 +2,12 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioCorrectionRequestStatusCode } from '@/apis/portfolio/enums'
-import { PortfolioCorrectionRequestStatusDescription } from '@/apis/portfolio/enums'
 import type {
   PortfolioCorrectionDetailVO,
   PortfolioCorrectionSummaryVO,
   PortfolioTargetFieldDefinition,
   PortfolioTeacherOneTableCategoryVO,
 } from '@/apis/portfolio/types'
-import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
@@ -17,6 +15,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
+import { PortfolioCorrectionRequestStatusDescription } from '@/apis/portfolio/enums'
+import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -130,8 +130,8 @@ function resetDetailContext() {
 /** 路由深链是纠错上下文真源；切换记录时必须清空旧表单，避免误提到上一条档案。 */
 function applyRoutePrefill() {
   form.categoryId = typeof route.query.categoryId === 'string' ? route.query.categoryId : ''
-  form.archiveRecordId =
-    typeof route.query.archiveRecordId === 'string' ? route.query.archiveRecordId : ''
+  form.archiveRecordId
+    = typeof route.query.archiveRecordId === 'string' ? route.query.archiveRecordId : ''
   form.fieldCode = typeof route.query.fieldCode === 'string' ? route.query.fieldCode : ''
   form.fieldLabel = typeof route.query.fieldLabel === 'string' ? route.query.fieldLabel : ''
   form.wrongValue = typeof route.query.wrongValue === 'string' ? route.query.wrongValue : ''
@@ -282,7 +282,7 @@ async function handleSubmit() {
   }
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   pageNum.value = page.current
   pageSize.value = page.pageSize
   void loadCorrections()

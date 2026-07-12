@@ -165,7 +165,7 @@ const stepTitle = computed(() => {
 
 function mapTreeNodes(
   nodes: PortfolioArchiveCategoryTreeNodeVO[],
-): Array<{ key: string; title: string; children?: ReturnType<typeof mapTreeNodes> }> {
+): Array<{ key: string, title: string, children?: ReturnType<typeof mapTreeNodes> }> {
   return nodes.map((node) => ({
     key: node.id,
     title: node.categoryName,
@@ -243,8 +243,8 @@ async function loadReviewContent() {
 async function loadCategoryTree() {
   const requestToken = onboardingRequestToken.value
   try {
-    const nextCategoryTree =
-      (await portfolioArchiveTemplateApi.listCategoryTree({
+    const nextCategoryTree
+      = (await portfolioArchiveTemplateApi.listCategoryTree({
         teacherId: targetTeacherId.value || undefined,
       })) ?? []
     if (onboardingRequestToken.value !== requestToken) {
@@ -285,18 +285,18 @@ async function loadPreviewFields(categoryId: string) {
   try {
     const published = await portfolioArchiveTemplateApi.listPublishedFields({ categoryId })
     if (
-      onboardingRequestToken.value !== requestToken ||
-      previewFieldRequestToken.value !== fieldRequestToken ||
-      previewCategoryId.value !== categoryId
+      onboardingRequestToken.value !== requestToken
+      || previewFieldRequestToken.value !== fieldRequestToken
+      || previewCategoryId.value !== categoryId
     ) {
       return
     }
     previewFields.value = published.targetFields
   } catch (error) {
     if (
-      onboardingRequestToken.value !== requestToken ||
-      previewFieldRequestToken.value !== fieldRequestToken ||
-      previewCategoryId.value !== categoryId
+      onboardingRequestToken.value !== requestToken
+      || previewFieldRequestToken.value !== fieldRequestToken
+      || previewCategoryId.value !== categoryId
     ) {
       return
     }

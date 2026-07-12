@@ -1,7 +1,7 @@
 import type { ArchiveExternalImportResultVO } from '@/apis/mark/archive-volume'
-import { ArchiveImportBatchStatusDescription } from '@/apis/mark/archive-volume'
 import type { ExcelImportResult } from '@/apis/platform/types'
 import type { UiAlertStripTone } from '@/components/ui-guide/ui/types'
+import { ArchiveImportBatchStatusDescription } from '@/apis/mark/archive-volume'
 import { ArchiveImportBatchStatusCode } from '@/types/enums/archive-import-batch-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'

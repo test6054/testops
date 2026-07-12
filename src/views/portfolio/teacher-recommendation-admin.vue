@@ -6,9 +6,7 @@ import type {
   PortfolioTeacherRecommendRuleVO,
   PortfolioTeacherRecommendRunVO,
 } from '@/apis/portfolio/teacher-platform'
-import { portfolioTeacherRecommendationApi } from '@/apis/portfolio/teacher-platform'
 import type { AiTaskStatusCode } from '@/apis/quality/types'
-import { AiTaskStatusDescription } from '@/apis/quality/types'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -19,7 +17,9 @@ import {
   PortfolioTeacherRecommendSceneCode,
   PortfolioTeacherRecommendSceneDescription,
 } from '@/apis/portfolio/enums'
+import { portfolioTeacherRecommendationApi } from '@/apis/portfolio/teacher-platform'
 import { aiTaskApi } from '@/apis/quality/ai-task'
+import { AiTaskStatusDescription } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'

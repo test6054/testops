@@ -9,7 +9,6 @@ import type {
 } from '@/apis/portfolio/types'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { UserStatusEnum } from '@/types/enums/user-status'
-import { getUserStatusLabel, USER_STATUS_FILTER_OPTIONS } from '@/types/enums/user-status'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -37,6 +36,7 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
+import { getUserStatusLabel, USER_STATUS_FILTER_OPTIONS } from '@/types/enums/user-status'
 import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -205,7 +205,7 @@ function handleSearch() {
   loadPage()
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadPage()
@@ -320,7 +320,7 @@ async function reloadDetail() {
   await loadTeacherExtensions(userId, requestToken)
 }
 
-function openIdentityCreate(context: { userId: string; nickName?: string; departmentId?: string }) {
+function openIdentityCreate(context: { userId: string, nickName?: string, departmentId?: string }) {
   identityMode.value = 'create'
   identityEditor.teacherUserId = context.userId
   identityEditor.id = undefined

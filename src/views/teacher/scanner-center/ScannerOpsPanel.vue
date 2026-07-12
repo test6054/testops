@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ScannerOpsDeptTimingVO } from '@/apis/mark/scanner-ops'
-import { loadScannerOpsDashboard } from '@/apis/mark/scanner-ops'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { loadScannerOpsDashboard } from '@/apis/mark/scanner-ops'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -133,8 +133,8 @@ const opsConclusion = computed(() => {
     return {
       tone: 'warning' as const,
       title:
-        `混扫需关注：混扫率 ${mixedRatePercent.toFixed(1)}%` +
-        (mixedPending > 0 ? `，待复核 ${mixedPending}` : ''),
+        `混扫需关注：混扫率 ${mixedRatePercent.toFixed(1)}%`
+        + (mixedPending > 0 ? `，待复核 ${mixedPending}` : ''),
       description: `本时段 ${pages} 页 / ${orders} 工单；失败 ${failed}（${failureRatePercent.toFixed(1)}%）。混扫待办全组可见，可进入复核或返回异常队列。`,
       actionLabel: mixedPending > 0 ? '打开混扫复核' : '返回异常处置',
       actionKey: mixedPending > 0 ? ('mixed' as const) : ('exception' as const),

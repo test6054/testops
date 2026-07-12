@@ -12,8 +12,8 @@ import { formatScore, formatScorePercent } from '@/utils/format'
 import { prefersReducedMotion } from '@/utils/mark-chart-accessibility'
 import { SCATTER_ZONE_COLORS } from '@/utils/mark-statistics-chart'
 
-const DP_FONT_FAMILY_SANS =
-  '-apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif'
+const DP_FONT_FAMILY_SANS
+  = '-apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif'
 
 /** mark-vue ECharts 色板：与 --dp/--ant 主题对齐的十六进制真源 */
 interface MarkEchartsPalette {
@@ -194,8 +194,8 @@ export function buildTrendLineChartOption(
           const point = points[index]
           if (!point) return ''
           const delta = index > 0 ? values[index] - values[index - 1] : null
-          const deltaText =
-            delta == null
+          const deltaText
+            = delta == null
               ? ''
               : `<br/>较上一场 ${delta >= 0 ? '+' : ''}${formatScore(delta, 'score')}`
           return `${point.label}<br/>${config.yAxisName || '数值'}：${formatScore(values[index], 'score')}${deltaText}`
@@ -275,7 +275,7 @@ export interface MarkBarChartConfig extends MarkChartToolboxConfig {
   /** 柱体内嵌人数与占比标签，如「12人 (24%)」 */
   innerCountLabel?: boolean
   innerCountLabelUnit?: string
-  markLines?: Array<{ value: number; name: string; color?: string }>
+  markLines?: Array<{ value: number, name: string, color?: string }>
   emptyText?: string
 }
 
@@ -288,8 +288,8 @@ export function buildCategoryBarChartOption(
     return emptyChartOption(config.emptyText || '当前没有可展示的内容')
   }
   const orientation = config.orientation || 'vertical'
-  const maxValue =
-    config.maxValue && config.maxValue > 0
+  const maxValue
+    = config.maxValue && config.maxValue > 0
       ? config.maxValue
       : Math.max(...items.map((item) => Number(item.value)), 0)
   const categories = items.map((item) => item.label)
@@ -444,8 +444,8 @@ export function buildDashboardPublishedInsightChartOption(
             return ''
           }
           const avg = exam.averageScore != null ? formatScore(exam.averageScore, 'score') : '—'
-          const pass =
-            exam.passRatePercent != null ? formatScorePercent(exam.passRatePercent, '—') : '—'
+          const pass
+            = exam.passRatePercent != null ? formatScorePercent(exam.passRatePercent, '—') : '—'
           return `${exam.examName}<br/>平均分：${avg}<br/>及格率：${pass}`
         },
       },
@@ -578,7 +578,7 @@ export function buildScatterChartOption(
       tooltip: {
         trigger: 'item',
         formatter: (param: CallbackDataParams) => {
-          const data = param.data as { label?: string; helper?: string; value?: [number, number] }
+          const data = param.data as { label?: string, helper?: string, value?: [number, number] }
           if (!data?.value) return ''
           const label = data.label || param.seriesName || ''
           return `${label}<br/>难度 ${formatScore(data.value[0], 'achievement')} · 区分度 ${formatScore(data.value[1], 'achievement')}${data.helper ? `<br/>${data.helper}` : ''}`
@@ -665,8 +665,8 @@ export function buildGaugeChartOption(
   config: MarkGaugeChartConfig = {},
 ): EChartsCoreOption {
   const safePercent = Math.max(0, Math.min(100, Math.round(percent)))
-  const color =
-    config.color || resolveThemeColor('--ant-color-primary', MARK_ECHARTS_PALETTE.primary)
+  const color
+    = config.color || resolveThemeColor('--ant-color-primary', MARK_ECHARTS_PALETTE.primary)
   const sizeKey = config.size || 'md'
   const sizeSpec = GAUGE_SIZE_MAP[sizeKey]
   const animate = config.reduceMotion === false ? true : !prefersReducedMotion()
@@ -822,8 +822,8 @@ export function buildHeatmapChartOption(
     : -1
   const data = cells.map((cell, index) => [index, 0, cell.value])
   const rotateLabels = labels.length > 12
-  const seriesData =
-    highlightIndex >= 0
+  const seriesData
+    = highlightIndex >= 0
       ? data.map((entry, index) => {
           if (index !== highlightIndex) {
             return entry

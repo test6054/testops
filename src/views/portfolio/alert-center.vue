@@ -4,23 +4,18 @@ import type {
   PortfolioAnalysisAlertVO,
   PortfolioAnalysisComplianceAlertVO,
 } from '@/apis/portfolio/analysis'
-import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
+import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
 import type { PortfolioAlertTypeCode } from '@/types/enums/portfolio-alert-type-enum'
-import {
-  ALL_PORTFOLIO_ALERT_TYPE_CODES,
-  PortfolioAlertTypeDescription,
-} from '@/types/enums/portfolio-alert-type-enum'
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
-import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
-import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -30,6 +25,11 @@ import {
   PortfolioAlertStatusCode,
   PortfolioAlertStatusDescription,
 } from '@/types/enums/portfolio-alert-status-enum'
+import {
+  ALL_PORTFOLIO_ALERT_TYPE_CODES,
+  PortfolioAlertTypeDescription,
+} from '@/types/enums/portfolio-alert-type-enum'
+import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import {
   PortfolioComplianceScopeTypeCode,
   PortfolioComplianceScopeTypeDescription,
@@ -54,8 +54,8 @@ const portraitTotal = ref(0)
 const complianceTotal = ref(0)
 const loading = computed(
   () =>
-    actionLoading.value ||
-    (activeTab.value === 'portrait' ? portraitLoading.value : complianceLoading.value),
+    actionLoading.value
+    || (activeTab.value === 'portrait' ? portraitLoading.value : complianceLoading.value),
 )
 
 const portraitFilter = reactive({
@@ -430,8 +430,8 @@ onMounted(() => {
             </template>
             <template v-else-if="column.key === 'department'">
               {{
-                record.departmentName ||
-                (record.departmentId ? `院系 ${record.departmentId}` : '全校')
+                record.departmentName
+                  || (record.departmentId ? `院系 ${record.departmentId}` : '全校')
               }}
             </template>
             <template v-else-if="column.key === 'alertType'">

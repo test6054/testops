@@ -34,9 +34,7 @@
               <div>
                 <div class="exam-status-card__stat-value exam-status-card__stat-value--green">
                   {{ markingProgress?.gradablePaperCount ?? 0 }}
-                  <span class="exam-status-card__stat-sub"
-                    >/{{ markingProgress?.paperCount ?? 0 }}</span
-                  >
+                  <span class="exam-status-card__stat-sub">/{{ markingProgress?.paperCount ?? 0 }}</span>
                 </div>
                 <div class="exam-status-card__stat-label">可阅卷</div>
               </div>
@@ -105,9 +103,9 @@
           <template #head>
             <div class="exam-overview-dash__quality-head">
               <h3 class="exam-overview-dash__panel-title">质量概览</h3>
-              <UiButton variant="ghost" size="sm" @click="emit('enter-quality')"
-                >查看完整报告</UiButton
-              >
+              <UiButton variant="ghost" size="sm" @click="emit('enter-quality')">
+                查看完整报告
+              </UiButton>
             </div>
           </template>
           <UiEmpty v-if="!qualityItems.length && !qualityRadarHasData" description="暂无质量数据" />
@@ -294,8 +292,8 @@ const examMeta = computed(() => {
   const term = [props.detail.academicYear, formatSemester(props.detail.semester)]
     .filter(Boolean)
     .join(' · ')
-  const time =
-    props.detail.examStartTime && props.detail.examEndTime
+  const time
+    = props.detail.examStartTime && props.detail.examEndTime
       ? `${formatDateTime(props.detail.examStartTime)} — ${formatDateTime(props.detail.examEndTime)}`
       : ''
   return [term, time].filter(Boolean).join(' | ')

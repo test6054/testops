@@ -8,16 +8,16 @@ import type { AuditSupervisionTypeCode } from './types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { AuditSupervisionScopeCode } from '@/types/enums/audit-supervision-scope-enum'
-import {
-  ALL_AUDIT_SUPERVISION_SCOPE_CODES,
-  AuditSupervisionScopeDescription,
-} from '@/types/enums/audit-supervision-scope-enum'
 import http from '@/config/axios'
 import {
   ALL_AUDIT_SUPERVISION_CONCLUSION_CODES,
   AuditSupervisionConclusionCode,
   AuditSupervisionConclusionDescription,
 } from '@/types/enums/audit-supervision-conclusion-enum'
+import {
+  ALL_AUDIT_SUPERVISION_SCOPE_CODES,
+  AuditSupervisionScopeDescription,
+} from '@/types/enums/audit-supervision-scope-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const BASE = '/api/quality/audit-evaluation/supervisions'

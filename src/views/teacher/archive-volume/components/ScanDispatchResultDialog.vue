@@ -43,7 +43,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  cancelled: []
+  "cancelled": []
 }>()
 
 const cancelling = ref(false)
@@ -117,9 +117,9 @@ async function loadPendingTickets() {
         status: item.status,
         taskKind: item.taskKind,
         contextLabel:
-          item.portfolioSnapshot?.gapTaskTitle ??
-          item.portfolioSnapshot?.categoryName ??
-          item.archiveSnapshot?.archiveTitle,
+          item.portfolioSnapshot?.gapTaskTitle
+          ?? item.portfolioSnapshot?.categoryName
+          ?? item.archiveSnapshot?.archiveTitle,
         gapTaskId: item.portfolioSnapshot?.gapTaskId,
       }))
   } catch (error) {

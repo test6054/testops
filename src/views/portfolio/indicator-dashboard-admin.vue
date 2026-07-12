@@ -8,10 +8,10 @@ import type {
   PortfolioIndicatorTrendVO,
   PortfolioIndicatorUsageFrequencyVO,
 } from '@/apis/portfolio/indicator-types'
-import { PF_SCENE_CODE_OPTIONS, PfSceneCodeDescription } from '@/apis/portfolio/indicator-types'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioIndicatorDashboardApi } from '@/apis/portfolio/indicator'
+import { PF_SCENE_CODE_OPTIONS, PfSceneCodeDescription } from '@/apis/portfolio/indicator-types'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -166,8 +166,8 @@ async function loadDashboard() {
     topLimit: query.topLimit,
   }
   try {
-    const [summaryResult, usageResult, trendResult, collegeResult, teacherTypeResult] =
-      await Promise.all([
+    const [summaryResult, usageResult, trendResult, collegeResult, teacherTypeResult]
+      = await Promise.all([
         portfolioIndicatorDashboardApi.summary(requestQuery),
         portfolioIndicatorDashboardApi.usageFrequency(requestQuery),
         portfolioIndicatorDashboardApi.trend(requestQuery),

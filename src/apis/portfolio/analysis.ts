@@ -180,7 +180,7 @@ export const portfolioAnalysisApi = {
     ),
   pkCompare: (data: PortfolioTeacherRecommendPkCompareRequest) =>
     http.post<PortfolioTeacherPkCompareVO>('/api/portfolio/analysis/pk/compare', data),
-  generateAnnualReport: (data: { teacherId: string; reportYear: string }) =>
+  generateAnnualReport: (data: { teacherId: string, reportYear: string }) =>
     http.post<PortfolioAnalysisAnnualReportVO>(
       '/api/portfolio/analysis/report/annual/generate',
       data,
@@ -198,7 +198,7 @@ export const portfolioAnalysisApi = {
       '/api/portfolio/analysis/report/annual/page',
       data,
     ),
-  resolvePortraitAlert: (data: { alertId: string; alertStatus: string; resolveRemark?: string }) =>
+  resolvePortraitAlert: (data: { alertId: string, alertStatus: string, resolveRemark?: string }) =>
     http.post<void>('/api/portfolio/analysis/alert/resolve', data),
   resolveComplianceAlert: (data: {
     alertId: string

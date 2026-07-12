@@ -1,21 +1,21 @@
 <script setup lang="ts">
 import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
+import type { DispatchQueueStatusFilterCode } from '@/types/enums/dispatch-queue-status-filter-enum'
+import type { PortfolioCollectModeCode } from '@/types/enums/portfolio-collect-mode-enum'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   ALL_SCAN_DISPATCH_TICKET_STATUS_CODES,
   ScanDispatchTicketStatusDescription,
 } from '@/apis/mark/scanner-dispatch'
-import type { DispatchQueueStatusFilterCode } from '@/types/enums/dispatch-queue-status-filter-enum'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import {
   ALL_DISPATCH_QUEUE_STATUS_FILTER_CODES,
   DispatchQueueStatusFilterDescription,
 } from '@/types/enums/dispatch-queue-status-filter-enum'
-import type { PortfolioCollectModeCode } from '@/types/enums/portfolio-collect-mode-enum'
 import { PortfolioCollectModeDescription } from '@/types/enums/portfolio-collect-mode-enum'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import {
   ALL_KIOSK_DISPATCH_SCAN_TASK_KIND_CODES,
   KioskDispatchScanTaskKindDescription,
@@ -33,7 +33,7 @@ function portfolioCollectModeLabel(value: PortfolioCollectModeCode | undefined):
   return strictEnumLabel(PortfolioCollectModeDescription, value, '档案袋采集模式')
 }
 
-function ticketStatusLabel(item: { status?: string; failureReason?: string }) {
+function ticketStatusLabel(item: { status?: string, failureReason?: string }) {
   if (item.failureReason) {
     return '失败待办'
   }
@@ -187,9 +187,9 @@ async function changePage(page: number) {
           <div class="dispatch-queue__item-top">
             <strong v-if="item.taskKind === ScanTaskKindCode.PORTFOLIO_COLLECT">
               {{
-                item.portfolioSnapshot?.gapTaskTitle ||
-                item.portfolioSnapshot?.teacherName ||
-                '档案袋派单'
+                item.portfolioSnapshot?.gapTaskTitle
+                  || item.portfolioSnapshot?.teacherName
+                  || '档案袋派单'
               }}
             </strong>
             <strong v-else>{{ item.archiveSnapshot?.archiveTitle || '归档卷派单' }}</strong>
@@ -203,8 +203,7 @@ async function changePage(page: number) {
           <p v-if="item.taskKind === ScanTaskKindCode.PORTFOLIO_COLLECT">
             {{ portfolioCollectModeLabel(item.portfolioSnapshot?.collectMode) }}
             <span v-if="item.portfolioSnapshot?.categoryName">
-              · {{ item.portfolioSnapshot.categoryName }}</span
-            >
+              · {{ item.portfolioSnapshot.categoryName }}</span>
           </p>
           <p v-else>柜位 {{ item.archiveSnapshot?.physicalStorageLocation || '—' }}</p>
           <p class="dispatch-queue__meta">{{ item.traceLabelCode }}</p>
@@ -229,15 +228,13 @@ async function changePage(page: number) {
       >
         上一页
       </UiButton>
-      <span
-        >{{ queue.pageNum.value }} / {{ Math.ceil(queue.total.value / queue.pageSize.value) }}</span
-      >
+      <span>{{ queue.pageNum.value }} / {{ Math.ceil(queue.total.value / queue.pageSize.value) }}</span>
       <UiButton
         size="sm"
         variant="outline"
         :disabled="
-          queue.pageNum.value >= Math.ceil(queue.total.value / queue.pageSize.value) ||
-          queue.loading.value
+          queue.pageNum.value >= Math.ceil(queue.total.value / queue.pageSize.value)
+            || queue.loading.value
         "
         @click="changePage(queue.pageNum.value + 1)"
       >

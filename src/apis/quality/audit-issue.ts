@@ -8,16 +8,16 @@ import type { AuditIssueStatusCode } from './types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { AuditIssueSourceCode } from '@/types/enums/audit-issue-source-enum'
-import {
-  ALL_AUDIT_ISSUE_SOURCE_CODES,
-  AuditIssueSourceDescription,
-} from '@/types/enums/audit-issue-source-enum'
 import http from '@/config/axios'
 import {
   ALL_AUDIT_ISSUE_SEVERITY_CODES,
   AuditIssueSeverityCode,
   AuditIssueSeverityDescription,
 } from '@/types/enums/audit-issue-severity-enum'
+import {
+  ALL_AUDIT_ISSUE_SOURCE_CODES,
+  AuditIssueSourceDescription,
+} from '@/types/enums/audit-issue-source-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const BASE = '/api/quality/audit-evaluation/issues'
@@ -41,14 +41,14 @@ export const AUDIT_ISSUE_SEVERITY_TONE: Record<AuditIssueSeverityCode, BadgeTone
   [AuditIssueSeverityCode.CRITICAL]: 'red',
 }
 
-export const AUDIT_ISSUE_SOURCE_OPTIONS: Array<{ value: AuditIssueSourceCode; label: string }> =
-  ALL_AUDIT_ISSUE_SOURCE_CODES.map((value) => ({
+export const AUDIT_ISSUE_SOURCE_OPTIONS: Array<{ value: AuditIssueSourceCode, label: string }>
+  = ALL_AUDIT_ISSUE_SOURCE_CODES.map((value) => ({
     value,
     label: strictEnumLabel(AuditIssueSourceDescription, value, '审核问题来源'),
   }))
 
-export const AUDIT_ISSUE_SEVERITY_OPTIONS: Array<{ value: AuditIssueSeverityCode; label: string }> =
-  ALL_AUDIT_ISSUE_SEVERITY_CODES.map((value) => ({
+export const AUDIT_ISSUE_SEVERITY_OPTIONS: Array<{ value: AuditIssueSeverityCode, label: string }>
+  = ALL_AUDIT_ISSUE_SEVERITY_CODES.map((value) => ({
     value,
     label: strictEnumLabel(AuditIssueSeverityDescription, value, '审核问题严重级别'),
   }))

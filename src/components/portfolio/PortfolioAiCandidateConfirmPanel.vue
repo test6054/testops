@@ -38,8 +38,8 @@
           <template v-else-if="column.key === 'candidateValue'">
             <template
               v-if="
-                rowNeedsManualFill(record) &&
-                record.confirmStatus !== PortfolioCandidateConfirmStatusCode.CONFIRMED
+                rowNeedsManualFill(record)
+                  && record.confirmStatus !== PortfolioCandidateConfirmStatusCode.CONFIRMED
               "
             >
               <a-input
@@ -70,8 +70,8 @@
                   label: '驳回',
                   tone: 'danger',
                   hidden:
-                    record.confirmStatus === PortfolioCandidateConfirmStatusCode.CONFIRMED ||
-                    record.confirmStatus === PortfolioCandidateConfirmStatusCode.REJECTED,
+                    record.confirmStatus === PortfolioCandidateConfirmStatusCode.CONFIRMED
+                    || record.confirmStatus === PortfolioCandidateConfirmStatusCode.REJECTED,
                   disabled: confirming,
                 },
               ]"
@@ -92,7 +92,6 @@
 <script lang="ts" setup>
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioCandidateFieldVO } from '@/apis/portfolio/types'
-import { PORTFOLIO_CANDIDATE_CONFIRM_STATUS_TONE } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
@@ -101,6 +100,7 @@ import {
   PortfolioCandidateConfirmStatusCode,
   PortfolioCandidateConfirmStatusDescription,
 } from '@/apis/portfolio/enums'
+import { PORTFOLIO_CANDIDATE_CONFIRM_STATUS_TONE } from '@/apis/portfolio/types'
 import { AiTaskStatusCode } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -145,15 +145,15 @@ const manualFillPendingCount = computed(
   () =>
     candidateRows.value.filter(
       (item) =>
-        item.manualFillRequired ||
-        item.confirmStatus === PortfolioCandidateConfirmStatusCode.NEEDS_MANUAL_FILL,
+        item.manualFillRequired
+        || item.confirmStatus === PortfolioCandidateConfirmStatusCode.NEEDS_MANUAL_FILL,
     ).length,
 )
 
 const pendingTaskPolling = computed(
   () =>
-    taskStatus.value === AiTaskStatusCode.PENDING ||
-    taskStatus.value === AiTaskStatusCode.PROCESSING,
+    taskStatus.value === AiTaskStatusCode.PENDING
+    || taskStatus.value === AiTaskStatusCode.PROCESSING,
 )
 
 function resetCandidateContext() {
@@ -183,8 +183,8 @@ function candidateStatusTone(row: PortfolioCandidateFieldVO): BadgeTone {
 
 function rowNeedsManualFill(row: PortfolioCandidateFieldVO): boolean {
   return (
-    Boolean(row.manualFillRequired) ||
-    row.confirmStatus === PortfolioCandidateConfirmStatusCode.NEEDS_MANUAL_FILL
+    Boolean(row.manualFillRequired)
+    || row.confirmStatus === PortfolioCandidateConfirmStatusCode.NEEDS_MANUAL_FILL
   )
 }
 
@@ -197,8 +197,8 @@ function canConfirmRow(row: PortfolioCandidateFieldVO): boolean {
     return false
   }
   if (
-    row.confirmStatus === PortfolioCandidateConfirmStatusCode.CONFIRMED ||
-    row.confirmStatus === PortfolioCandidateConfirmStatusCode.REJECTED
+    row.confirmStatus === PortfolioCandidateConfirmStatusCode.CONFIRMED
+    || row.confirmStatus === PortfolioCandidateConfirmStatusCode.REJECTED
   ) {
     return false
   }

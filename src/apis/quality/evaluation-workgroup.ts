@@ -7,11 +7,11 @@
 import type { WorkgroupLevelCode } from './types'
 import type { PageResult, QueryDto } from '@/types'
 import type { WorkgroupMemberRoleCode } from '@/types/enums/workgroup-member-role-enum'
+import http from '@/config/axios'
 import {
   ALL_WORKGROUP_MEMBER_ROLE_CODES,
   WorkgroupMemberRoleDescription,
 } from '@/types/enums/workgroup-member-role-enum'
-import http from '@/config/axios'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const BASE = '/api/quality/evaluation-workgroups'

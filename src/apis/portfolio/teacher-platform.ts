@@ -27,14 +27,14 @@ import type {
 import type { AiTaskStatusCode } from '@/apis/quality/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { PortfolioArchiveScoreRuleTypeCode } from '@/types/enums/portfolio-archive-score-rule-type-enum'
-import {
-  ALL_PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_CODES,
-  PortfolioArchiveScoreRuleTypeDescription,
-} from '@/types/enums/portfolio-archive-score-rule-type-enum'
 import type { PortfolioPortraitTemplateStatusCode } from '@/types/enums/portfolio-portrait-template-status-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import {
+  ALL_PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_CODES,
+  PortfolioArchiveScoreRuleTypeDescription,
+} from '@/types/enums/portfolio-archive-score-rule-type-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export const portfolioArchiveBagApi = {

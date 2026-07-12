@@ -4,10 +4,10 @@ import type {
   PortfolioTeacherHonorCategoryVO,
   PortfolioTeacherHonorVO,
 } from '@/apis/portfolio/teacher-honor'
-import { portfolioTeacherHonorApi } from '@/apis/portfolio/teacher-honor'
 import { DatePicker, Form, Input, message, Modal } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioTeacherHonorApi } from '@/apis/portfolio/teacher-honor'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -318,9 +318,9 @@ watch(
               <UiButton variant="ghost" @click="openModal(record)">
                 {{ readonlyMode ? '查看' : '编辑' }}
               </UiButton>
-              <UiButton v-if="!readonlyMode" variant="ghost" danger @click="removeHonor(record)"
-                >删除</UiButton
-              >
+              <UiButton v-if="!readonlyMode" variant="ghost" danger @click="removeHonor(record)">
+                删除
+              </UiButton>
             </template>
           </template>
         </UiDataTable>

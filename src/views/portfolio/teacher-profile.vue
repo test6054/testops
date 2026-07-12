@@ -5,12 +5,11 @@ import type {
   PortfolioTeacherTaughtCourseSaveRequest,
   PortfolioTeacherTaughtCourseVO,
 } from '@/apis/portfolio/teacher-profile'
-import { portfolioTeacherProfileApi } from '@/apis/portfolio/teacher-profile'
 import type { TeacherTaughtCourseSourceTypeCode } from '@/types/enums/teacher-taught-course-source-type-enum'
-import { TeacherTaughtCourseSourceTypeDescription } from '@/types/enums/teacher-taught-course-source-type-enum'
 import { Form, Input, InputNumber, message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { portfolioTeacherCohortProfileApi } from '@/apis/portfolio/teacher-cohort-profile'
+import { portfolioTeacherProfileApi } from '@/apis/portfolio/teacher-profile'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -24,6 +23,7 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { TeacherTaughtCourseSourceTypeDescription } from '@/types/enums/teacher-taught-course-source-type-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -260,7 +260,7 @@ async function removeCourse(row: PortfolioTeacherTaughtCourseVO) {
   }
 }
 
-function onCoursePageChange(pageEvent: { current: number; pageSize: number }) {
+function onCoursePageChange(pageEvent: { current: number, pageSize: number }) {
   coursePageNum.value = pageEvent.current
   void loadCourses()
 }

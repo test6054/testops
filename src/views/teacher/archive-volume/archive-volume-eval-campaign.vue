@@ -69,8 +69,8 @@
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
                 v-if="
-                  record.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE &&
-                  canExportCampaign
+                  record.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE
+                    && canExportCampaign
                 "
                 :items="buildCampaignActions(record)"
                 split
@@ -213,6 +213,16 @@ import type {
   ArchiveEvaluationCampaignStatsVO,
   ArchiveEvaluationVolumeReadinessResponse,
 } from '@/apis/mark/archive-volume'
+import type {
+  BadgeTone,
+  UiSectionTabItem,
+  UiTableRowActionItem,
+} from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ArchiveDutyTypeCode } from '@/apis/mark/archive-config'
 import {
   ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
   ArchiveEvaluationCampaignStatusCode,
@@ -224,16 +234,6 @@ import {
   pageEvaluationCampaigns,
   resolveEvaluationCampaignByVolume,
 } from '@/apis/mark/archive-volume'
-import type {
-  BadgeTone,
-  UiSectionTabItem,
-  UiTableRowActionItem,
-} from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { ArchiveDutyTypeCode } from '@/apis/mark/archive-config'
 import ArchiveReadinessRateBar from '@/components/archive-volume/ArchiveReadinessRateBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -481,9 +481,9 @@ async function loadCampaignOptions(): Promise<void> {
   try {
     campaignSelectOptions.value = await loadAllCampaignOptions()
     if (
-      !focusVolumeId.value &&
-      !selectedCampaignId.value &&
-      campaignSelectOptions.value.length > 0
+      !focusVolumeId.value
+      && !selectedCampaignId.value
+      && campaignSelectOptions.value.length > 0
     ) {
       selectedCampaignId.value = campaignSelectOptions.value[0].campaignId
       if (activeTab.value === 'readiness') {
@@ -518,7 +518,7 @@ async function loadCampaigns(): Promise<void> {
   }
 }
 
-function handleCampaignPageChange(page: { current: number; pageSize: number }): void {
+function handleCampaignPageChange(page: { current: number, pageSize: number }): void {
   campaignPagination.pageNum = page.current
   campaignPagination.pageSize = page.pageSize
   void loadCampaigns()
@@ -535,10 +535,10 @@ async function bootstrapFromVolumeQuery(volumeId: string): Promise<void> {
       readinessPagination.total = 0
       return
     }
-    const autoPick =
-      !resolveResult.truncated &&
-      resolveResult.campaigns.length === 1 &&
-      resolveResult.suggestedCampaignId
+    const autoPick
+      = !resolveResult.truncated
+        && resolveResult.campaigns.length === 1
+        && resolveResult.suggestedCampaignId
     if (autoPick) {
       selectedCampaignId.value = resolveResult.suggestedCampaignId
       readinessPagination.pageNum = 1

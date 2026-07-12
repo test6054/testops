@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
 import type { PortfolioCollectModeCode } from '@/types/enums/portfolio-collect-mode-enum'
-import { PortfolioCollectModeDescription } from '@/types/enums/portfolio-collect-mode-enum'
 import { computed, onUnmounted, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import { PortfolioCollectModeDescription } from '@/types/enums/portfolio-collect-mode-enum'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { isScannerKioskBrowserPage } from '@/utils/kiosk-auth'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -16,8 +16,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  confirm: []
-  cancel: []
+  "confirm": []
+  "cancel": []
 }>()
 
 function portfolioCollectModeLabel(value: PortfolioCollectModeCode | undefined): string {

@@ -274,6 +274,14 @@ import type {
   ArchiveTenantTemplateAuditItemVO,
   ArchiveTenantTemplateSetResponse,
 } from '@/apis/mark/archive-platform-template'
+import type { ArchiveExamFormCode } from '@/apis/mark/archive-volume'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type {
+  ArchiveTemplateMaterialEditRow,
+  ArchiveTemplateSelfCheckEditRow,
+} from '@/views/teacher/archive-volume/components/archive-template-editor-types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   copyAllArchivePlatformTemplatesToTenant,
   copyArchivePlatformTemplateToTenant,
@@ -285,20 +293,12 @@ import {
   resyncArchiveTenantTemplateSet,
   saveArchiveTenantTemplateSet,
 } from '@/apis/mark/archive-platform-template'
-import type { ArchiveExamFormCode } from '@/apis/mark/archive-volume'
-import { ArchiveExamFormDescription } from '@/apis/mark/archive-volume'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type {
-  ArchiveTemplateMaterialEditRow,
-  ArchiveTemplateSelfCheckEditRow,
-} from '@/views/teacher/archive-volume/components/archive-template-editor-types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   ArchiveTemplateScopeCode,
   archiveTemplateScopeLabel,
   archiveTemplateScopeTone,
 } from '@/apis/mark/archive-template-scope'
+import { ArchiveExamFormDescription } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -606,8 +606,8 @@ function findTenantSetByPlatformSource(sourceSetCode: string) {
   return (
     templateSets.value.find(
       (item) => item.templateScope === 'TENANT' && item.forkSourceSetCode === sourceSetCode,
-    ) ??
-    templateSets.value.find(
+    )
+    ?? templateSets.value.find(
       (item) => item.templateScope === 'TENANT' && item.templateSetCode === sourceSetCode,
     )
   )
@@ -746,7 +746,7 @@ async function loadAuditRows(): Promise<void> {
   }
 }
 
-function handleAuditPageChange(page: { current: number; pageSize: number }): void {
+function handleAuditPageChange(page: { current: number, pageSize: number }): void {
   auditPagination.pageNum = page.current
   auditPagination.pageSize = page.pageSize
   void loadAuditRows()

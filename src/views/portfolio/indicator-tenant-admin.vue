@@ -6,13 +6,6 @@ import type {
   PortfolioIndustryPackVO,
   PortfolioTenantIndicatorConfigVO,
 } from '@/apis/portfolio/indicator-types'
-import {
-  PF_SCENE_CODE_OPTIONS,
-  PfIndicatorStatusDescription,
-  PfModelStatusDescription,
-  PfSceneCode,
-  PfSceneCodeDescription,
-} from '@/apis/portfolio/indicator-types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -20,6 +13,13 @@ import {
   portfolioIndicatorPlatformApi,
   portfolioIndicatorTenantApi,
 } from '@/apis/portfolio/indicator'
+import {
+  PF_SCENE_CODE_OPTIONS,
+  PfIndicatorStatusDescription,
+  PfModelStatusDescription,
+  PfSceneCode,
+  PfSceneCodeDescription,
+} from '@/apis/portfolio/indicator-types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -81,8 +81,8 @@ const filteredConfigs = computed(() => {
   }
   return configRows.value.filter(
     (row) =>
-      row.indicatorCode.toLowerCase().includes(keyword) ||
-      row.indicatorName.toLowerCase().includes(keyword),
+      row.indicatorCode.toLowerCase().includes(keyword)
+      || row.indicatorName.toLowerCase().includes(keyword),
   )
 })
 

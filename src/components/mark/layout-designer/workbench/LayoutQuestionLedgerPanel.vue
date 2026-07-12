@@ -20,7 +20,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  patch: [document: ExamLayoutDocument]
+  "patch": [document: ExamLayoutDocument]
   'focus-question': [question: ExamLayoutQuestionDto | null]
   'locate-roi': [question: ExamLayoutQuestionDto]
 }>()
@@ -50,10 +50,10 @@ const rows = computed((): QuestionRow[] =>
       fullScore: question.fullScore ?? 0,
       roiReady: isLayoutQuestionRoiReady(props.document, question.id),
       answerReady: Boolean(
-        question.answer?.standardAnswer?.trim() ||
-        question.answer?.gradingRubric?.trim() ||
-        (question.answer?.choiceOptions?.length ?? 0) > 0 ||
-        question.answer?.numericExpectedValue != null,
+        question.answer?.standardAnswer?.trim()
+        || question.answer?.gradingRubric?.trim()
+        || (question.answer?.choiceOptions?.length ?? 0) > 0
+        || question.answer?.numericExpectedValue != null,
       ),
     })),
 )

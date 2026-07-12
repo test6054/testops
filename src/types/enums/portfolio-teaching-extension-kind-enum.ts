@@ -5,8 +5,8 @@ export enum PortfolioTeachingExtensionKindCode {
   OTHER = 'OTHER',
 }
 
-export const ALL_PORTFOLIO_TEACHING_EXTENSION_KIND_CODES: readonly PortfolioTeachingExtensionKindCode[] =
-  [PortfolioTeachingExtensionKindCode.TRAINING, PortfolioTeachingExtensionKindCode.OTHER]
+export const ALL_PORTFOLIO_TEACHING_EXTENSION_KIND_CODES: readonly PortfolioTeachingExtensionKindCode[]
+  = [PortfolioTeachingExtensionKindCode.TRAINING, PortfolioTeachingExtensionKindCode.OTHER]
 
 export const PortfolioTeachingExtensionKindDescription: Record<
   PortfolioTeachingExtensionKindCode,
@@ -16,8 +16,8 @@ export const PortfolioTeachingExtensionKindDescription: Record<
   [PortfolioTeachingExtensionKindCode.OTHER]: '其他活动',
 }
 
-export const PortfolioTeachingExtensionKindOptions =
-  ALL_PORTFOLIO_TEACHING_EXTENSION_KIND_CODES.map((value) => ({
+export const PortfolioTeachingExtensionKindOptions
+  = ALL_PORTFOLIO_TEACHING_EXTENSION_KIND_CODES.map((value) => ({
     value,
     label: strictEnumLabel(PortfolioTeachingExtensionKindDescription, value, '活动大类'),
   }))

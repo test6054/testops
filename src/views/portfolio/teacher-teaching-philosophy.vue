@@ -4,9 +4,9 @@ import type {
   PortfolioTeachingPhilosophySaveRequest,
   PortfolioTeachingPhilosophyVO,
 } from '@/apis/portfolio/teaching-philosophy'
-import { portfolioTeachingPhilosophyApi } from '@/apis/portfolio/teaching-philosophy'
 import { Form, Input, message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
+import { portfolioTeachingPhilosophyApi } from '@/apis/portfolio/teaching-philosophy'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -168,9 +168,9 @@ watch(
             <UiButton variant="ghost" @click="openModal(record)">
               {{ readonlyMode ? '查看' : '编辑' }}
             </UiButton>
-            <UiButton v-if="!readonlyMode" variant="ghost" danger @click="remove(record)"
-              >删除</UiButton
-            >
+            <UiButton v-if="!readonlyMode" variant="ghost" danger @click="remove(record)">
+              删除
+            </UiButton>
           </template>
         </template>
       </UiDataTable>

@@ -4,11 +4,12 @@ import type {
   PortfolioTeachingExtensionActivityVO,
   PortfolioTeachingExtensionCategoryVO,
 } from '@/apis/portfolio/teaching-extension'
-import { portfolioTeachingExtensionApi } from '@/apis/portfolio/teaching-extension'
 import { DatePicker, Form, Input, InputNumber, message, Modal } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioTeachingExtensionApi } from '@/apis/portfolio/teaching-extension'
+import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -22,13 +23,12 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
+import { PortfolioArchiveRecordStatusDescription } from '@/types/enums/portfolio-archive-record-status-enum'
 import {
   PortfolioTeachingExtensionKindCode,
   PortfolioTeachingExtensionKindDescription,
   PortfolioTeachingExtensionKindOptions,
 } from '@/types/enums/portfolio-teaching-extension-kind-enum'
-import { PortfolioArchiveRecordStatusDescription } from '@/types/enums/portfolio-archive-record-status-enum'
-import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -211,10 +211,10 @@ function openModal(row?: PortfolioTeachingExtensionActivityVO) {
   form.fileId = row?.fileId || ''
   form.attachmentName = row?.fileId ? `附件 ${row.fileId}` : ''
   if (!row && !recommendationIntentConsumed.value) {
-    form.trainingRecommendationId =
-      typeof route.query.recommendationId === 'string' ? route.query.recommendationId : ''
-    form.activityName =
-      typeof route.query.activityName === 'string' ? route.query.activityName : form.activityName
+    form.trainingRecommendationId
+      = typeof route.query.recommendationId === 'string' ? route.query.recommendationId : ''
+    form.activityName
+      = typeof route.query.activityName === 'string' ? route.query.activityName : form.activityName
     recommendationIntentConsumed.value = true
   }
   modalOpen.value = true
@@ -451,9 +451,9 @@ watch(
               </UiButton>
               <UiButton
                 v-if="
-                  !readonlyMode &&
-                  record.activityKind === PortfolioTeachingExtensionKindCode.TRAINING &&
-                  !record.archiveRecordId
+                  !readonlyMode
+                    && record.activityKind === PortfolioTeachingExtensionKindCode.TRAINING
+                    && !record.archiveRecordId
                 "
                 variant="ghost"
                 :loading="submittingTrainingId === record.id"
@@ -483,8 +483,9 @@ watch(
                 variant="ghost"
                 danger
                 @click="removeActivity(record)"
-                >删除</UiButton
               >
+                删除
+              </UiButton>
             </template>
           </template>
         </UiDataTable>

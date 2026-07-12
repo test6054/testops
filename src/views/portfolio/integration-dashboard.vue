@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { SelectValue } from 'ant-design-vue/es/select'
+import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PortfolioConflictTicketVO,
   PortfolioIdentityUnmatchedVO,
@@ -9,15 +9,16 @@ import type {
   PortfolioIntegrationHealthDashboardVO,
   PortfolioIntegrationSyncTaskVO,
 } from '@/apis/portfolio/integration'
-import { portfolioIntegrationApi } from '@/apis/portfolio/integration'
 import type {
   PortfolioArchiveCategoryTreeNodeVO,
   PortfolioTargetFieldDefinition,
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
+import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
+import { portfolioIntegrationApi } from '@/apis/portfolio/integration'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
   QUALITY_SELECTOR_PAGE_SIZE,
@@ -25,11 +26,10 @@ import {
 } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
-import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -95,16 +95,16 @@ const datasourcePathwayOptions = computed(() => {
 function changeDatasourceChannel(value: SelectValue) {
   const channelCode = typeof value === 'string' ? value : String(value ?? '')
   dsForm.channelCode = channelCode
-  dsForm.pathwayCode =
-    channelCode === 'HR_PERSONNEL' || channelCode === 'NATIONAL_TEACHER_SYSTEM' ? 'OPENAPI' : 'JDBC'
+  dsForm.pathwayCode
+    = channelCode === 'HR_PERSONNEL' || channelCode === 'NATIONAL_TEACHER_SYSTEM' ? 'OPENAPI' : 'JDBC'
 }
 
 function applyNationalTeacherPreset(direction: 'OUTBOUND' | 'INBOUND') {
   dsForm.channelCode = 'NATIONAL_TEACHER_SYSTEM'
   dsForm.pathwayCode = 'OPENAPI'
   dsForm.datasourceName = direction === 'OUTBOUND' ? '全国教师系统上报' : '全国教师系统回流'
-  dsForm.connectionConfigJson =
-    direction === 'OUTBOUND'
+  dsForm.connectionConfigJson
+    = direction === 'OUTBOUND'
       ? JSON.stringify({ syncDirection: 'OUTBOUND' })
       : JSON.stringify({ syncDirection: 'INBOUND', inboundRecords: [] })
 }
@@ -296,8 +296,8 @@ async function loadDatasources() {
     datasources.value = res.list ?? []
     datasourceTotal.value = res.total ?? 0
     if (
-      selectedDatasourceId.value &&
-      !datasources.value.some((item) => item.id === selectedDatasourceId.value)
+      selectedDatasourceId.value
+      && !datasources.value.some((item) => item.id === selectedDatasourceId.value)
     ) {
       selectedDatasourceId.value = ''
       mappings.value = []
@@ -470,9 +470,9 @@ async function resolveIdentityUnmatched(
     return
   }
   if (
-    action === 'RESOLVED' &&
-    needsTeacherNumber(row) &&
-    !identityResolveTeacherNumber.value.trim()
+    action === 'RESOLVED'
+    && needsTeacherNumber(row)
+    && !identityResolveTeacherNumber.value.trim()
   ) {
     message.warning('缺少工号待匹配须补录工号')
     return
@@ -562,7 +562,7 @@ onMounted(async () => {
         <input
           v-model="dsForm.connectionConfigJson"
           class="integration-dashboard__input integration-dashboard__input--wide"
-          placeholder='{"syncDirection":"OUTBOUND"}'
+          placeholder="{&quot;syncDirection&quot;:&quot;OUTBOUND&quot;}"
         />
         <UiButton tone="primary" :loading="loading" @click="saveDatasource"> 保存数据源 </UiButton>
       </div>

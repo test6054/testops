@@ -127,16 +127,16 @@ export const portfolioIntegrationApi = {
   }) {
     return http.post<PageResult<PortfolioIntegrationSyncTaskVO>>(`${BASE}/sync/log/page`, data)
   },
-  pageIdentityUnmatched(data: { pageNum: number; pageSize: number; status?: string }) {
+  pageIdentityUnmatched(data: { pageNum: number, pageSize: number, status?: string }) {
     return http.post<PageResult<PortfolioIdentityUnmatchedVO>>(
       `${BASE}/identity/unmatched/page`,
       data,
     )
   },
-  pageConflict(data: { pageNum: number; pageSize: number; ticketStatus?: string }) {
+  pageConflict(data: { pageNum: number, pageSize: number, ticketStatus?: string }) {
     return http.post<PageResult<PortfolioConflictTicketVO>>(`${BASE}/conflict/page`, data)
   },
-  resolveConflict(data: { conflictTicketId: string; action: string; resolveRemark?: string }) {
+  resolveConflict(data: { conflictTicketId: string, action: string, resolveRemark?: string }) {
     return http.post<void>(`${BASE}/conflict/resolve`, data)
   },
   resolveIdentityUnmatched(data: {

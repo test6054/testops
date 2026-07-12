@@ -31,8 +31,8 @@ const identityAreaTypeOptions = PaperMasterIdentityAreaTypeOptions
 const questionOptions = computed(() => {
   const questions = (props.document?.questions ?? []).filter((question) => {
     if (
-      props.block?.blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX ||
-      props.block?.blockType === ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER
+      props.block?.blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX
+      || props.block?.blockType === ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER
     ) {
       return expectedAnswerBlockTypeForOcrScene(question.ocrScene) === props.block?.blockType
     }
@@ -60,8 +60,8 @@ function patchBlock(partial: Partial<ExamLayoutBlockDto>): void {
   const blocks = props.document.blocks.map((item) =>
     item.id === props.block?.id ? nextBlock : item,
   )
-  const blockOptions =
-    nextBlock.blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX
+  const blockOptions
+    = nextBlock.blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX
       ? props.document.blockOptions
       : props.document.blockOptions?.filter((option) => option.blockId !== props.block?.id)
   emit('patch', { ...props.document, blocks, blockOptions })
@@ -103,8 +103,8 @@ function onBlockTypeChange(
     return
   }
   if (
-    blockType === ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER ||
-    blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX
+    blockType === ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER
+    || blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX
   ) {
     patchBlock({ blockType, identityAreaType: undefined })
     return

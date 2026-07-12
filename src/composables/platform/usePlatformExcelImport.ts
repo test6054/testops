@@ -39,9 +39,9 @@ export async function pollPlatformExcelImportBatch(
     const batch = await getExcelImportBatch({ sceneKey, batchId })
     const status = batch.asyncStatus ?? batch.batchStatus
     if (
-      status === ScoreBatchStatusCode.PREVIEW_READY ||
-      status === ScoreBatchStatusCode.VALIDATED ||
-      status === ScoreBatchStatusCode.CONFIRMED
+      status === ScoreBatchStatusCode.PREVIEW_READY
+      || status === ScoreBatchStatusCode.VALIDATED
+      || status === ScoreBatchStatusCode.CONFIRMED
     ) {
       return batch
     }

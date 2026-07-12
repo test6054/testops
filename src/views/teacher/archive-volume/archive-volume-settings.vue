@@ -324,6 +324,10 @@ import type {
   ArchiveSecurityPolicyItemRequest,
   ArchiveTenantCollaborationPolicySaveRequest,
 } from '@/apis/mark/archive-config'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   ARCHIVE_DUTY_TYPE_OPTIONS,
   ArchiveDutyTypeCode,
@@ -336,10 +340,6 @@ import {
   saveArchiveDutyGrants,
   saveArchiveSecurityPolicy,
 } from '@/apis/mark/archive-config'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import { ARCHIVE_SECURITY_LEVEL_OPTIONS } from '@/apis/mark/archive-volume'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
@@ -422,7 +422,7 @@ const kioskHubListModeOptions = ALL_ARCHIVE_KIOSK_HUB_LIST_MODE_CODES.map((value
   value,
   label: strictEnumLabel(ArchiveKioskHubListModeDescription, value, '一体机 Hub 列表模式'),
 }))
-const departmentOptions = ref<Array<{ value: string; label: string }>>([])
+const departmentOptions = ref<Array<{ value: string, label: string }>>([])
 const tenantTemplateSetCount = ref(0)
 
 function goArchiveList() {
@@ -456,9 +456,9 @@ function validateDutyRows(): boolean {
       return false
     }
     if (
-      !row.tenantWide &&
-      !row.scopeDepartmentId &&
-      row.dutyType !== ArchiveDutyTypeCode.VOLUME_OWNER
+      !row.tenantWide
+      && !row.scopeDepartmentId
+      && row.dutyType !== ArchiveDutyTypeCode.VOLUME_OWNER
     ) {
       message.warning('非全校授权须选择院系')
       return false

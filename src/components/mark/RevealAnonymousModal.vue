@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { AnonymousRevealResponse } from '@/apis/mark/marking-organization'
-import { revealAnonymous } from '@/apis/mark/marking-organization'
 import { message } from 'ant-design-vue'
 import { reactive, ref, watch } from 'vue'
+import { revealAnonymous } from '@/apis/mark/marking-organization'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { showUserError } from '@/utils/error-handler'
 
@@ -22,7 +22,7 @@ const emit = defineEmits<{
 
 const submitting = ref(false)
 const formRef = ref<FormInstance>()
-const form = reactive<{ currentPassword: string; reason: string }>({
+const form = reactive<{ currentPassword: string, reason: string }>({
   currentPassword: '',
   reason: '',
 })

@@ -45,9 +45,7 @@ function handleSelect(nextPhase: LayoutDesignPhaseCode): void {
   >
     <div v-if="props.showTitle" class="layout-design-phase-rail__title-block">
       <span class="layout-design-phase-rail__title">制卷设计</span>
-      <span class="layout-design-phase-rail__subtitle"
-        >在线制卷 · 上传识别或生成答题卡后划区校验</span
-      >
+      <span class="layout-design-phase-rail__subtitle">在线制卷 · 上传识别或生成答题卡后划区校验</span>
     </div>
     <nav
       class="layout-design-phase-rail"

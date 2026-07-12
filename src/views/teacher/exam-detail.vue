@@ -70,13 +70,13 @@
 
 <script lang="ts" setup>
 import type { ExamDetailResponse } from '@/apis/mark/exam'
-import { EXAM_KIND_TONE, ExamKindDescription } from '@/apis/mark/exam'
 import type { ExamWorkbenchStageKeyCode } from '@/apis/mark/exam-progress'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
 import { storeToRefs } from 'pinia'
 import { computed, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
+import { EXAM_KIND_TONE, ExamKindDescription } from '@/apis/mark/exam'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -124,8 +124,8 @@ const { suggestedStageKey, orderedStages } = storeToRefs(markStageStore)
 const detail = computed(() => examDetail?.value ?? null)
 const pageLoading = computed(
   () =>
-    (snapshotLoading.value && !snapshot.value) ||
-    (examDetailLoading?.value === true && !detail.value),
+    (snapshotLoading.value && !snapshot.value)
+    || (examDetailLoading?.value === true && !detail.value),
 )
 
 const suggestedStage = computed<WorkbenchStage | null>(() => {
@@ -152,8 +152,8 @@ const recommendedPrimaryLabel = computed(() => {
   }
   const progress = markingProgress?.value
   if (
-    progress &&
-    countBlockingScanAttention(progress.scanAttentionCount, progress.needReviewGradeResultCount) > 0
+    progress
+    && countBlockingScanAttention(progress.scanAttentionCount, progress.needReviewGradeResultCount) > 0
   ) {
     return '处理扫描异常'
   }
@@ -172,8 +172,8 @@ const recommendedSecondaryLabel = computed(() => {
   }
   const progress = markingProgress?.value
   if (
-    progress &&
-    countBlockingScanAttention(progress.scanAttentionCount, progress.needReviewGradeResultCount) > 0
+    progress
+    && countBlockingScanAttention(progress.scanAttentionCount, progress.needReviewGradeResultCount) > 0
   ) {
     return '扫描批次'
   }
@@ -283,8 +283,8 @@ function runRecommendedPrimaryAction(): void {
   }
   const progress = markingProgress?.value
   if (
-    progress &&
-    countBlockingScanAttention(progress.scanAttentionCount, progress.needReviewGradeResultCount) > 0
+    progress
+    && countBlockingScanAttention(progress.scanAttentionCount, progress.needReviewGradeResultCount) > 0
   ) {
     goScanMonitor()
     return
@@ -317,8 +317,8 @@ function runRecommendedSecondaryAction(): void {
   }
   const progress = markingProgress?.value
   if (
-    progress &&
-    countBlockingScanAttention(progress.scanAttentionCount, progress.needReviewGradeResultCount) > 0
+    progress
+    && countBlockingScanAttention(progress.scanAttentionCount, progress.needReviewGradeResultCount) > 0
   ) {
     goScanBatches()
     return

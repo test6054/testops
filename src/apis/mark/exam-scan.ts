@@ -13,7 +13,6 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { BindingStatusCode } from '@/types/enums/binding-status-enum'
 import type { ExamScanBatchWorkbenchSignalBandToneCode } from '@/types/enums/exam-scan-batch-workbench-signal-band-tone-enum'
-import { isExamScanBatchWorkbenchSignalBandToneCode } from '@/types/enums/exam-scan-batch-workbench-signal-band-tone-enum'
 import type { PageRegisterStateCode } from '@/types/enums/page-register-state-enum'
 import type { ScanAttentionQueryGroupCode } from '@/types/enums/scan-attention-query-group-enum'
 import type { ScanAttentionSourceTypeCode } from '@/types/enums/scan-attention-source-type-enum'
@@ -25,6 +24,7 @@ import type { ScanBatchWorkbenchRegisterStatusCode } from '@/types/enums/scan-ba
 import type { ScanBatchWorkbenchRosterMatchStatusCode } from '@/types/enums/scan-batch-workbench-roster-match-status-enum'
 import type { ScanBatchWorkbenchTopActionCode } from '@/types/enums/scan-batch-workbench-top-action-enum'
 import http from '@/config/axios'
+import { isExamScanBatchWorkbenchSignalBandToneCode } from '@/types/enums/exam-scan-batch-workbench-signal-band-tone-enum'
 import { QualityDecisionCode } from '@/types/enums/quality-decision-enum'
 import {
   ALL_SCAN_ATTENTION_TYPE_CODES,
@@ -104,8 +104,8 @@ export const SCAN_ATTENTION_TYPE_TONE: Record<ScanAttentionTypeCode, BadgeTone> 
   [ScanAttentionTypeCode.MISSING_CANDIDATE_ROSTER]: 'orange',
 }
 
-export const SCAN_ATTENTION_TYPE_OPTIONS: Array<{ label: string; value: ScanAttentionTypeCode }> =
-  ALL_SCAN_ATTENTION_TYPE_CODES.map((value) => ({
+export const SCAN_ATTENTION_TYPE_OPTIONS: Array<{ label: string, value: ScanAttentionTypeCode }>
+  = ALL_SCAN_ATTENTION_TYPE_CODES.map((value) => ({
     value,
     label: strictEnumLabel(ScanAttentionTypeDescription, value, '扫描异常类型'),
   }))
@@ -189,8 +189,8 @@ export const SCAN_BATCH_STATUS_TONE: Record<ScanBatchStatusCode, BadgeTone> = {
   [ScanBatchStatusCode.DISCARDED]: 'gray',
 }
 
-export const SCAN_BATCH_STATUS_OPTIONS: Array<{ value: ScanBatchStatusCode; label: string }> =
-  ALL_SCAN_BATCH_STATUS_CODES.map((value) => ({
+export const SCAN_BATCH_STATUS_OPTIONS: Array<{ value: ScanBatchStatusCode, label: string }>
+  = ALL_SCAN_BATCH_STATUS_CODES.map((value) => ({
     value,
     label: strictEnumLabel(ScanBatchStatusDescription, value, '扫描批次状态'),
   }))

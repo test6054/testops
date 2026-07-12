@@ -22,8 +22,8 @@ import type {
   ExamCandidateRosterPaperScannedPageItemResponse,
   ExamCandidateRosterWorkbenchItemResponse,
 } from '@/apis/mark/exam-candidate-roster'
-import { listCandidateRosterPaperScannedPages } from '@/apis/mark/exam-candidate-roster'
 import { computed, ref, watch } from 'vue'
+import { listCandidateRosterPaperScannedPages } from '@/apis/mark/exam-candidate-roster'
 import FilePreviewDialog from '@/components/FilePreviewDialog.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'

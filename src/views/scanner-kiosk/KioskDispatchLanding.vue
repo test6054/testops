@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { PortfolioCollectModeCode } from '@/types/enums/portfolio-collect-mode-enum'
-import { PortfolioCollectModeDescription } from '@/types/enums/portfolio-collect-mode-enum'
 import { computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ScanDispatchTicketStatusDescription } from '@/apis/mark/scanner-dispatch'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import { PortfolioCollectModeDescription } from '@/types/enums/portfolio-collect-mode-enum'
 import { ScanDispatchTicketStatusCode } from '@/types/enums/scan-dispatch-ticket-status-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import CognitiveConfirmModal from './components/CognitiveConfirmModal.vue'
@@ -33,9 +33,9 @@ const session = useDispatchSession()
 const ticketStatus = computed(() => session.ticket.value?.status)
 const isTerminalStatus = computed(
   () =>
-    ticketStatus.value === ScanDispatchTicketStatusCode.DONE ||
-    ticketStatus.value === ScanDispatchTicketStatusCode.EXPIRED ||
-    ticketStatus.value === ScanDispatchTicketStatusCode.CANCELLED,
+    ticketStatus.value === ScanDispatchTicketStatusCode.DONE
+    || ticketStatus.value === ScanDispatchTicketStatusCode.EXPIRED
+    || ticketStatus.value === ScanDispatchTicketStatusCode.CANCELLED,
 )
 const terminalHint = computed(() => {
   if (ticketStatus.value === ScanDispatchTicketStatusCode.DONE) {
@@ -51,13 +51,13 @@ const terminalHint = computed(() => {
 })
 const canContinueScan = computed(
   () =>
-    ticketStatus.value === ScanDispatchTicketStatusCode.PROCESSING &&
-    Boolean(session.ticket.value?.workOrderId),
+    ticketStatus.value === ScanDispatchTicketStatusCode.PROCESSING
+    && Boolean(session.ticket.value?.workOrderId),
 )
 const isFailedPending = computed(
   () =>
-    ticketStatus.value === ScanDispatchTicketStatusCode.PENDING &&
-    Boolean(session.ticket.value?.failureReason?.trim()),
+    ticketStatus.value === ScanDispatchTicketStatusCode.PENDING
+    && Boolean(session.ticket.value?.failureReason?.trim()),
 )
 const failedPendingReason = computed(() => session.ticket.value?.failureReason?.trim() ?? '')
 const leaseBlocked = computed(() => session.lease.leaseLost.value)

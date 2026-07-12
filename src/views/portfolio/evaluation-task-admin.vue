@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationTaskStatusCode } from '@/apis/portfolio/enums'
+import type { PortfolioEvaluationSubjectTeacherOptionVO } from '@/apis/portfolio/teacher-platform'
+import type { PortfolioEvaluationMaterialPreviewVO } from '@/apis/portfolio/types'
+import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
 import {
   PORTFOLIO_EVALUATION_MODE_OPTIONS,
   PORTFOLIO_EVALUATION_TASK_STATUS_OPTIONS,
@@ -9,14 +14,9 @@ import {
   PortfolioEvaluationModeDescription,
   PortfolioEvaluationTaskStatusDescription,
 } from '@/apis/portfolio/enums'
-import type { PortfolioEvaluationSubjectTeacherOptionVO } from '@/apis/portfolio/teacher-platform'
-import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
-import type { PortfolioEvaluationMaterialPreviewVO } from '@/apis/portfolio/types'
-import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
-import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
+import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
+import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
 import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -33,7 +33,7 @@ import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const workgroups = ref<EvaluationWorkgroupVO[]>([])
-const previewTeacherOptions = ref<Array<{ value: string; label: string }>>([])
+const previewTeacherOptions = ref<Array<{ value: string, label: string }>>([])
 const previewOpen = ref(false)
 const previewLoading = ref(false)
 const previewTaskId = ref('')
@@ -192,18 +192,18 @@ async function loadMaterialPreview() {
       teacherId,
     })
     if (
-      currentToken !== previewRequestToken.value ||
-      previewTaskId.value !== taskId ||
-      previewTeacherId.value !== teacherId
+      currentToken !== previewRequestToken.value
+      || previewTaskId.value !== taskId
+      || previewTeacherId.value !== teacherId
     ) {
       return
     }
     preview.value = nextPreview
   } catch (error) {
     if (
-      currentToken !== previewRequestToken.value ||
-      previewTaskId.value !== taskId ||
-      previewTeacherId.value !== teacherId
+      currentToken !== previewRequestToken.value
+      || previewTaskId.value !== taskId
+      || previewTeacherId.value !== teacherId
     ) {
       return
     }
@@ -211,9 +211,9 @@ async function loadMaterialPreview() {
     showUserError(error, '加载材料预览失败')
   } finally {
     if (
-      currentToken === previewRequestToken.value &&
-      previewTaskId.value === taskId &&
-      previewTeacherId.value === teacherId
+      currentToken === previewRequestToken.value
+      && previewTaskId.value === taskId
+      && previewTeacherId.value === teacherId
     ) {
       previewLoading.value = false
     }
@@ -389,9 +389,9 @@ onMounted(async () => {
           style="width: 240px"
           option-label-prop="label"
         />
-        <UiButton variant="primary" :loading="previewLoading" @click="loadMaterialPreview"
-          >加载预览</UiButton
-        >
+        <UiButton variant="primary" :loading="previewLoading" @click="loadMaterialPreview">
+          加载预览
+        </UiButton>
       </div>
       <template v-if="preview">
         <p class="evaluation-task-admin__preview-meta">

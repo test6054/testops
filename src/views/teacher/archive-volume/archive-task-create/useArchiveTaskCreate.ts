@@ -5,12 +5,11 @@ import type {
   ArchiveTaskCreateSectionKey,
   ArchiveTaskCreateWizardState,
 } from './archive-task-create-context'
-import { ARCHIVE_TASK_CREATE_SECTION_ORDER } from './archive-task-create-context'
 import type { ArchiveTenantTemplateSetResponse } from '@/apis/mark/archive-platform-template'
-import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import {
   ArchiveScoreSourceCode,
   ArchiveSecurityLevelCode,
@@ -24,6 +23,7 @@ import {
   parseAcademicYearStart,
 } from '@/utils/academic-year'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { ARCHIVE_TASK_CREATE_SECTION_ORDER } from './archive-task-create-context'
 
 export type {
   ArchiveTaskCreateBasicForm,
@@ -81,8 +81,8 @@ export function useArchiveTaskCreate() {
   const planFormRef = ref<FormInstance>()
 
   const defaultTerm = getDefaultAcademicYearAndSemester()
-  const defaultStartYear =
-    parseAcademicYearStart(defaultTerm.academicYear) ?? new Date().getFullYear()
+  const defaultStartYear
+    = parseAcademicYearStart(defaultTerm.academicYear) ?? new Date().getFullYear()
 
   const wizardState = reactive<ArchiveTaskCreateWizardState>({
     provenance: parseRouteProvenance(route.query.provenance),
@@ -201,7 +201,7 @@ export function useArchiveTaskCreate() {
     code: string | null,
     name: string,
     examForm?: ArchiveTaskCreatePlanForm['examForm'],
-    retention?: { defaultPermanentRetention?: boolean; defaultRetentionYears?: number },
+    retention?: { defaultPermanentRetention?: boolean, defaultRetentionYears?: number },
   ): void {
     planForm.templateSetCode = code
     planForm.templateSetName = name
@@ -212,8 +212,8 @@ export function useArchiveTaskCreate() {
       planForm.permanentRetention = true
       planForm.retentionYears = undefined
     } else if (
-      retention?.defaultPermanentRetention === false &&
-      retention.defaultRetentionYears != null
+      retention?.defaultPermanentRetention === false
+      && retention.defaultRetentionYears != null
     ) {
       planForm.permanentRetention = false
       planForm.retentionYears = retention.defaultRetentionYears

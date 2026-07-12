@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import type { PortfolioDepartmentPortraitVO } from '@/apis/portfolio/analysis'
-import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import type { PortfolioCockpitSummaryVO } from '@/apis/portfolio/types'
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
-import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import { portfolioCockpitApi } from '@/apis/portfolio/cockpit'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -22,6 +21,7 @@ import {
   PortfolioAlertStatusCode,
   PortfolioAlertStatusDescription,
 } from '@/types/enums/portfolio-alert-status-enum'
+import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioCockpitAskPanel from '@/views/portfolio/components/PortfolioCockpitAskPanel.vue'
@@ -143,8 +143,8 @@ async function syncDepartmentContext() {
   const currentToken = ++departmentSyncToken.value
   const queryDepartmentId = readRouteStringParam(route.query.departmentId)
   if (
-    queryDepartmentId &&
-    departmentOptions.value.some((option) => option.value === queryDepartmentId)
+    queryDepartmentId
+    && departmentOptions.value.some((option) => option.value === queryDepartmentId)
   ) {
     departmentId.value = queryDepartmentId
     return
@@ -162,7 +162,9 @@ async function syncDepartmentContext() {
     // 未指定路由院系时，教师档案是当前用户所属院系的唯一业务依据。
     // 教师必须归属院系，缺失关联属于数据异常，不能静默降级为空范围。
     if (!detail.departmentId) {
-      throw new Error('当前教师未关联院系')
+      departmentId.value = ''
+      showUserError(new Error('当前教师未关联院系'), '定位当前教师所属院系失败')
+      return
     }
     departmentId.value = detail.departmentId
   } catch (error) {

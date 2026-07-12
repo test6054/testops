@@ -1,8 +1,8 @@
 import type { ArchiveEvaluationExportResponse } from '@/apis/mark/archive-volume'
-import { cancelEvaluationExport, getEvaluationExportProgress } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
 import { ref } from 'vue'
 import { downloadFile } from '@/apis/edu/file-management'
+import { cancelEvaluationExport, getEvaluationExportProgress } from '@/apis/mark/archive-volume'
 import { ArchiveEvaluationExportModeCode } from '@/types/enums/archive-evaluation-export-mode-enum'
 import {
   ExportTaskStatusCode,
@@ -38,9 +38,9 @@ let pollAbortRequested = false
 
 function isTerminalStatus(status: ExportTaskStatusCode): boolean {
   return (
-    status === ExportTaskStatusCode.COMPLETED ||
-    status === ExportTaskStatusCode.FAILED ||
-    status === ExportTaskStatusCode.CANCELLED
+    status === ExportTaskStatusCode.COMPLETED
+    || status === ExportTaskStatusCode.FAILED
+    || status === ExportTaskStatusCode.CANCELLED
   )
 }
 

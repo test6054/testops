@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentPlanVO } from '@/apis/portfolio/teacher-platform'
-import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
@@ -12,6 +11,7 @@ import {
   PortfolioDevelopmentPlanStatusCode,
   PortfolioDevelopmentPlanStatusDescription,
 } from '@/apis/portfolio/enums'
+import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -170,7 +170,7 @@ function handleSearch() {
   void loadPage()
 }
 
-function handlePageChange(event: { current: number; pageSize: number }) {
+function handlePageChange(event: { current: number, pageSize: number }) {
   pageNum.value = event.current
   pageSize.value = event.pageSize
   resetReviewContext()
