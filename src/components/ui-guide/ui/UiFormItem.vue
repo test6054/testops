@@ -7,6 +7,7 @@
     :required="props.required"
     :help="props.help"
     :extra="props.extra"
+    :tooltip="props.tooltip"
     :validate-status="props.validateStatus"
     v-bind="$attrs"
   >
@@ -34,6 +35,7 @@ const props = withDefaults(
     required?: boolean
     help?: string
     extra?: string
+    tooltip?: string
     validateStatus?: '' | 'success' | 'warning' | 'error' | 'validating'
   }>(),
   {
@@ -41,8 +43,6 @@ const props = withDefaults(
     name: undefined,
     rules: undefined,
     required: false,
-    help: '',
-    extra: '',
     validateStatus: '',
   },
 )

@@ -6,6 +6,7 @@ import {
   MarkTeacherDashboardTodoTypeDescription
 } from '@/types/enums/mark-teacher-dashboard-todo-type-enum'
 import { formatAcademicYearSemester } from '@/types/enums/semester-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 /** 待办紧急度档位，前后端语义对齐。 */
 export type MarkDashboardTodoUrgency = 'urgent' | 'attention' | 'info' | 'normal'
@@ -130,7 +131,7 @@ export function resolveTodoRowTitle(todo: MarkTeacherDashboardPendingTodoItemVO)
   if (examName) {
     return examName
   }
-  return MarkTeacherDashboardTodoTypeDescription[todo.todoType]
+  return strictEnumLabel(MarkTeacherDashboardTodoTypeDescription, todo.todoType, '教师待办类型')
 }
 
 /** 待办行任务文案：仅消费后端 label。 */
@@ -142,7 +143,7 @@ export function resolveTodoRowLabel(todo: MarkTeacherDashboardPendingTodoItemVO)
   if (todo.count > 0) {
     return `${todo.count.toLocaleString('zh-CN')} ${MARK_DASHBOARD_TODO_COUNT_UNIT[todo.todoType]}`
   }
-  return MarkTeacherDashboardTodoTypeDescription[todo.todoType]
+  return strictEnumLabel(MarkTeacherDashboardTodoTypeDescription, todo.todoType, '教师待办类型')
 }
 
 /** 待办行考试上下文：标题已有考试名时只展示学年学期，避免编号重复。 */

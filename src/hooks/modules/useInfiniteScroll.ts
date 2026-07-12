@@ -1,6 +1,6 @@
 import type { Ref } from 'vue'
-import type { PageResult, QueryDto } from '@/types'
 import { computed, ref } from 'vue'
+import type { PageResult, QueryDto } from '@/types'
 import { showUserError } from '@/utils/error-handler'
 
 interface InfiniteScrollOptions<T, U> {
@@ -90,7 +90,7 @@ export function useInfiniteScroll<T extends U, U = T>(
       onSuccess?.()
     } catch (err) {
       error.value = err instanceof Error ? err : new Error(String(err))
-      showUserError(err, '数据加载失败，请稍后重试')
+      showUserError(err, '数据加载失败')
       if (!isLoadMore) {
         dataList.value = []
         hasMore.value = false

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TreeProps } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PortfolioOrgAliasSaveRequest,
@@ -9,7 +10,6 @@ import type {
   PortfolioOrgTreeNodeVO,
   PortfolioOrgUnitSaveRequest,
 } from '@/apis/portfolio/types'
-import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
   PORTFOLIO_ORG_UNIT_TYPE_OPTIONS,
@@ -36,6 +36,7 @@ import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
 import { hasTeacherTenantPermission } from '@/utils/permission'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 interface TreeNode {
   key: string
@@ -48,11 +49,11 @@ interface TreeNode {
 
 function isTreeNode(value: unknown): value is TreeNode {
   return (
-    typeof value === 'object'
-    && value !== null
-    && 'key' in value
-    && 'title' in value
-    && 'raw' in value
+    typeof value === 'object' &&
+    value !== null &&
+    'key' in value &&
+    'title' in value &&
+    'raw' in value
   )
 }
 
@@ -106,21 +107,47 @@ function nodeTypeLabel(nodeType?: PortfolioOrgTreeNodeVO['nodeType']) {
   }
   switch (nodeType) {
     case PortfolioEduUserOrgTreeNodeTypeCode.SCHOOL:
-      return PortfolioEduUserOrgTreeNodeTypeDescription[PortfolioEduUserOrgTreeNodeTypeCode.SCHOOL]
+      return strictEnumLabel(
+        PortfolioEduUserOrgTreeNodeTypeDescription,
+        PortfolioEduUserOrgTreeNodeTypeCode.SCHOOL,
+        '组织树节点类型',
+      )
     case PortfolioEduUserOrgTreeNodeTypeCode.DEPARTMENT:
-      return PortfolioEduUserOrgTreeNodeTypeDescription[
-        PortfolioEduUserOrgTreeNodeTypeCode.DEPARTMENT
-      ]
+      return strictEnumLabel(
+        PortfolioEduUserOrgTreeNodeTypeDescription,
+        PortfolioEduUserOrgTreeNodeTypeCode.DEPARTMENT,
+        '组织树节点类型',
+      )
     case PortfolioEduUserOrgTreeNodeTypeCode.MAJOR:
-      return PortfolioEduUserOrgTreeNodeTypeDescription[PortfolioEduUserOrgTreeNodeTypeCode.MAJOR]
+      return strictEnumLabel(
+        PortfolioEduUserOrgTreeNodeTypeDescription,
+        PortfolioEduUserOrgTreeNodeTypeCode.MAJOR,
+        '组织树节点类型',
+      )
     case PortfolioEduUserOrgTreeNodeTypeCode.CLASS:
-      return PortfolioEduUserOrgTreeNodeTypeDescription[PortfolioEduUserOrgTreeNodeTypeCode.CLASS]
+      return strictEnumLabel(
+        PortfolioEduUserOrgTreeNodeTypeDescription,
+        PortfolioEduUserOrgTreeNodeTypeCode.CLASS,
+        '组织树节点类型',
+      )
     case PortfolioOrgUnitTypeCode.MAJOR_GROUP:
-      return PortfolioOrgUnitTypeDescription[PortfolioOrgUnitTypeCode.MAJOR_GROUP]
+      return strictEnumLabel(
+        PortfolioOrgUnitTypeDescription,
+        PortfolioOrgUnitTypeCode.MAJOR_GROUP,
+        '组织单元类型',
+      )
     case PortfolioOrgUnitTypeCode.TEACHING_RESEARCH_OFFICE:
-      return PortfolioOrgUnitTypeDescription[PortfolioOrgUnitTypeCode.TEACHING_RESEARCH_OFFICE]
+      return strictEnumLabel(
+        PortfolioOrgUnitTypeDescription,
+        PortfolioOrgUnitTypeCode.TEACHING_RESEARCH_OFFICE,
+        '组织单元类型',
+      )
     case PortfolioOrgUnitTypeCode.CAMPUS:
-      return PortfolioOrgUnitTypeDescription[PortfolioOrgUnitTypeCode.CAMPUS]
+      return strictEnumLabel(
+        PortfolioOrgUnitTypeDescription,
+        PortfolioOrgUnitTypeCode.CAMPUS,
+        '组织单元类型',
+      )
   }
 }
 
@@ -267,13 +294,13 @@ function openUnitEditor(mode: 'create' | 'edit') {
     unitEditor.orgName = ''
     unitEditor.orgCode = ''
     unitEditor.parentPortfolioOrgId = selectedNode.value?.portfolioOrgId
-    unitEditor.anchorDepartmentId
-      = selectedRaw.value?.anchorDepartmentId
-        ?? (selectedRaw.value?.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.DEPARTMENT
+    unitEditor.anchorDepartmentId =
+      selectedRaw.value?.anchorDepartmentId ??
+      (selectedRaw.value?.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.DEPARTMENT
         ? selectedRaw.value.id
         : undefined)
-    unitEditor.anchorMajorId
-      = selectedRaw.value?.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.MAJOR
+    unitEditor.anchorMajorId =
+      selectedRaw.value?.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.MAJOR
         ? selectedRaw.value.id
         : selectedRaw.value?.anchorMajorId
     unitEditor.sortOrder = 0
@@ -574,7 +601,13 @@ onMounted(async () => {
       <a-form layout="vertical">
         <a-form-item label="目标类型">
           <a-input
-            :value="PortfolioOrgAliasTargetTypeDescription[aliasEditor.targetType]"
+            :value="
+              strictEnumLabel(
+                PortfolioOrgAliasTargetTypeDescription,
+                aliasEditor.targetType,
+                '组织别名目标类型',
+              )
+            "
             disabled
           />
         </a-form-item>

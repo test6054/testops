@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import type { PortfolioPortraitDimensionCode } from '@/apis/portfolio/enums'
 import type { PortfolioPortraitLayoutWidget } from '@/utils/portrait-layout'
-import { computed, ref } from 'vue'
-import UiButton from '@/components/ui-guide/ui/Button.vue'
 import {
   PORTRAIT_DIMENSION_OPTIONS,
   PORTRAIT_WIDGET_TYPE_OPTIONS,
   PortraitWidgetTypeCode,
   PortraitWidgetTypeDescription,
 } from '@/utils/portrait-layout'
+import { computed, ref } from 'vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const props = defineProps<{
   widgets: PortfolioPortraitLayoutWidget[]
@@ -28,14 +29,14 @@ function selectPortraitWidget(value: unknown): PortraitWidgetTypeCode | undefine
   if (typeof value !== 'string') {
     return undefined
   }
-  return widgetOptions.find(option => option.value === value)?.value
+  return widgetOptions.find((option) => option.value === value)?.value
 }
 
 function selectPortraitDimension(value: unknown): PortfolioPortraitDimensionCode | undefined {
   if (typeof value !== 'string') {
     return undefined
   }
-  return PORTRAIT_DIMENSION_OPTIONS.find(option => option.value === value)?.value
+  return PORTRAIT_DIMENSION_OPTIONS.find((option) => option.value === value)?.value
 }
 
 function updateSelectedWidget(index: number, value: unknown) {
@@ -50,7 +51,7 @@ function updateSelectedDimension(index: number, value: unknown) {
 }
 
 const canvasCells = computed(() => {
-  const cells: Array<{ col: number, row: number, key: string }> = []
+  const cells: Array<{ col: number; row: number; key: string }> = []
   for (let row = 0; row < GRID_ROWS; row += 1) {
     for (let col = 0; col < GRID_COLS; col += 1) {
       cells.push({ col, row, key: `${col}-${row}` })
@@ -150,7 +151,9 @@ function selectWidget(index: number) {
         @dragstart="onDragStart(index, $event)"
         @dragend="dragIndex = null"
       >
-        <span class="layout-widget__label">{{ PortraitWidgetTypeDescription[row.widget] }}</span>
+        <span class="layout-widget__label">{{
+          strictEnumLabel(PortraitWidgetTypeDescription, row.widget, '画像组件类型')
+        }}</span>
         <span v-if="row.dimensionCode" class="layout-widget__dim">{{ row.dimensionCode }}</span>
         <div class="layout-widget__mock" />
       </div>

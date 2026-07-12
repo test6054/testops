@@ -17,10 +17,8 @@ import type { PageResult, QueryDto } from '@/types'
 import type { ExportScopeCode } from '@/types/enums/export-scope-enum'
 import type { ExportTypeCode } from '@/types/enums/export-type-enum'
 import http from '@/config/axios'
-import {
-  ExportTaskStatusCode,
-  ExportTaskStatusDescription,
-} from '@/types/enums/export-task-status-enum'
+import { ExportTaskStatusCode, ExportTaskStatusDescription } from '@/types/enums/export-task-status-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 /** 导出任务状态 BadgeTone 映射（用于 UiTag/UiBadge 等 ui-guide 组件） */
 export const EXPORT_STATUS_TONE: Record<ExportTaskStatusCode, 'gray' | 'blue' | 'green' | 'red'> = {
@@ -28,6 +26,7 @@ export const EXPORT_STATUS_TONE: Record<ExportTaskStatusCode, 'gray' | 'blue' | 
   [ExportTaskStatusCode.GENERATING]: 'blue',
   [ExportTaskStatusCode.COMPLETED]: 'green',
   [ExportTaskStatusCode.FAILED]: 'red',
+  [ExportTaskStatusCode.CANCELLED]: 'gray',
 }
 
 /** 导出任务主流程状态链（不含 FAILED 分支），供列表页流程 hint 展示 */
@@ -39,8 +38,8 @@ export const EXPORT_MAIN_FLOW_STATUSES: ExportTaskStatusCode[] = [
 
 /** 导出任务主流程 hint */
 export const EXPORT_FLOW_HINT = `${EXPORT_MAIN_FLOW_STATUSES.map(
-  (status) => ExportTaskStatusDescription[status],
-).join(' → ')} / ${ExportTaskStatusDescription[ExportTaskStatusCode.FAILED]}`
+  (status) => strictEnumLabel(ExportTaskStatusDescription, status, '导出任务状态'),
+).join(' → ')} / ${strictEnumLabel(ExportTaskStatusDescription, ExportTaskStatusCode.FAILED, '导出任务状态')}`
 
 export {
   ALL_EXPORT_SCOPE_CODES,

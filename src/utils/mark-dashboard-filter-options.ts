@@ -1,8 +1,9 @@
 import type { ExamStatusCode } from '@/types/enums/exam-status-enum'
-import type { SemesterCode } from '@/types/enums/semester-enum'
 import { ALL_EXAM_STATUS_CODES, ExamStatusDescription } from '@/types/enums/exam-status-enum'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import { ALL_SEMESTER_CODES, formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearOptions } from '@/utils/academic-year'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 /** 工作台 ContextBar 三筛选项 placeholder 文案 */
 export const MARK_DASHBOARD_FILTER_PLACEHOLDERS = {
@@ -43,6 +44,6 @@ export function buildMarkDashboardStatusSelectOptions(
     if (!ALL_EXAM_STATUS_CODES.includes(code)) {
       throw new Error(`未知考试状态: ${String(code)}`)
     }
-    return { label: ExamStatusDescription[code], value: code }
+    return { label: strictEnumLabel(ExamStatusDescription, code, '考试状态'), value: code }
   })
 }

@@ -105,14 +105,14 @@ const ERROR_CODE_TYPE_MAP: Record<number, ErrorType> = {
  * 默认错误消息
  */
 const DEFAULT_ERROR_MESSAGES: Record<ErrorType, string> = {
-  [ErrorType.NETWORK]: '网络连接异常，请检查网络后重试',
-  [ErrorType.AUTH]: '认证失败，请重新登录',
-  [ErrorType.PERMISSION]: '权限不足，请联系管理员',
-  [ErrorType.VALIDATION]: '请求参数有误，请检查后重试',
+  [ErrorType.NETWORK]: '网络连接异常，请检查网络后继续操作',
+  [ErrorType.AUTH]: '登录状态已失效，请重新登录',
+  [ErrorType.PERMISSION]: '当前账号无权执行此操作，请联系管理员',
+  [ErrorType.VALIDATION]: '请求参数不符合要求，请核对后继续',
   [ErrorType.BUSINESS]: '业务处理失败',
-  [ErrorType.AI_QUOTA]: 'AI资源不足，请联系老师',
-  [ErrorType.SYSTEM]: '系统繁忙，请稍后重试',
-  [ErrorType.UNKNOWN]: '操作未完成，请稍后重试或联系管理员'
+  [ErrorType.AI_QUOTA]: 'AI 额度不足，请联系管理员',
+  [ErrorType.SYSTEM]: '系统繁忙，请联系管理员',
+  [ErrorType.UNKNOWN]: '操作未完成，请联系管理员排查'
 }
 
 /**
@@ -176,27 +176,61 @@ function parseErrorType(error: HandledError): ErrorType {
 /**
  * 获取错误消息
  */
+const USER_MSG_HAN = /\p{Script=Han}/u
+const USER_MSG_ASCII_TOKEN = /^[\w./$:-]+$/
+
+export function isNonUserFacingMessage(text: string | undefined | null): boolean {
+  if (text == null) return true
+  const trimmed = text.trim()
+  if (!trimmed) return true
+  if (USER_MSG_HAN.test(trimmed)) return false
+  const lower = trimmed.toLowerCase()
+  if (
+    lower.includes('exception')
+    || lower.includes('error:')
+    || lower.includes('stack')
+    || lower.includes('nullpointer')
+    || lower.includes('java.')
+    || lower.includes('org.springframework')
+    || lower.includes('at com.')
+    || lower.includes('internal server error')
+    || lower.includes('bad request')
+    || lower.includes('access denied')
+    || lower.includes('forbidden')
+    || lower.includes('unauthorized')
+    || lower.includes('not found')
+    || lower.includes('timeout')
+    || lower.includes('network error')
+    || lower.includes('failed to fetch')
+  ) {
+    return true
+  }
+  // 纯英文 code / token
+  if (USER_MSG_ASCII_TOKEN.test(trimmed) && trimmed.length <= 64) {
+    return true
+  }
+  return false
+}
+
 function getErrorMessage(error: HandledError, errorType: ErrorType): string {
   const statusCode = error.response?.status
   const backendMessage = error.response?.data?.msg
     ?? error.response?.data?.message
 
-  // 对于系统级错误（5xx），优先使用友好的中文消息
+  // 5xx：固定中文系统占位，禁止透出堆栈 / 英文技术文案
   if (statusCode != null && statusCode >= 500) {
     return DEFAULT_ERROR_MESSAGES[errorType]
   }
 
-  // 1. 使用后端返回的具体消息（仅对业务错误）
-  if (backendMessage && statusCode != null && statusCode < 500) {
+  // 业务 4xx：仅展示中文业务 msg；英文 / 技术噪音走类型默认文案
+  if (backendMessage && !isNonUserFacingMessage(backendMessage)) {
     return backendMessage
   }
 
-  // 2. 对于网络错误，使用友好消息
   if (!error.response || error.message?.includes('Network Error')) {
     return DEFAULT_ERROR_MESSAGES[ErrorType.NETWORK]
   }
 
-  // 3. 使用默认消息
   return DEFAULT_ERROR_MESSAGES[errorType]
 }
 
@@ -258,21 +292,27 @@ export function readBusinessResultCode(error: unknown): number | undefined {
 
 /**
  * 提取用户可见错误文案。
- * 仅使用后端业务消息或调用方提供的 fallback，不展示前端 Error.message。
+ * 仅使用后端业务中文消息或调用方 fallback；禁止英文技术噪音 / 枚举码。
  */
-export function getUserErrorMessage(error: unknown, fallback = '操作失败，请稍后重试'): string {
+export function getUserErrorMessage(
+  error: unknown,
+  fallback = '操作未完成，请联系管理员排查',
+): string {
   const backendMessage = getResponseMessage(error)
-  if (backendMessage) {
+  if (backendMessage && !isNonUserFacingMessage(backendMessage)) {
     return backendMessage
   }
-
-  return fallback
+  const resolvedFallback = fallback.trim() || DEFAULT_ERROR_MESSAGES[ErrorType.UNKNOWN]
+  if (isNonUserFacingMessage(resolvedFallback)) {
+    return DEFAULT_ERROR_MESSAGES[ErrorType.UNKNOWN]
+  }
+  return resolvedFallback
 }
 
 /**
  * 将协议边界捕获到的异常收敛为页面错误态可直接持有的 Error。
  */
-export function toUserError(error: unknown, fallback = '操作失败，请稍后重试'): Error {
+export function toUserError(error: unknown, fallback = '操作未完成，请联系管理员排查'): Error {
   return new Error(getUserErrorMessage(error, fallback))
 }
 
@@ -282,7 +322,7 @@ export function toUserError(error: unknown, fallback = '操作失败，请稍后
  */
 export function getUserProcessFailureMessage(
   _messageText: string | undefined | null,
-  fallback = '处理未完成，请稍后重试或联系管理员',
+  fallback = '处理未完成，请联系管理员排查',
 ): string {
   return fallback
 }
@@ -291,7 +331,7 @@ export function getUserProcessFailureMessage(
  * 显示用户可见错误提示。
  * 已由 Axios 拦截器提示过的错误不重复弹出。
  */
-export function showUserError(error: unknown, fallback = '操作失败，请稍后重试') {
+export function showUserError(error: unknown, fallback = '操作未完成，请联系管理员排查') {
   if (isErrorHandled(error)) return
   message.error(getUserErrorMessage(error, fallback))
 }
@@ -360,13 +400,13 @@ function toHandledError(error: unknown): HandledError {
       _handledByInterceptor: handledByInterceptor === true,
     }
   }
-  if (typeof error === 'string') return { message: '操作未完成，请稍后重试' }
-  return { message: '操作未完成，请稍后重试' }
+  if (typeof error === 'string') return { message: '操作未完成' }
+  return { message: '操作未完成' }
 }
 
 function readMessage(error: object): string {
   const message = readProperty(error, 'message')
-  return typeof message === 'string' && message.trim() ? message : '操作未完成，请稍后重试'
+  return typeof message === 'string' && message.trim() ? message : '操作未完成'
 }
 
 function isHandledErrorResponse(value: unknown): value is HandledError['response'] {
@@ -424,8 +464,9 @@ export function showErrorMessage(standardError: StandardError, config: ErrorHand
   const displayMessage = customMessage || standardError.message
   const displayTitle = title || ERROR_TYPE_TITLES[standardError.type]
 
-  if (useNotification) {
-    // 如果有详细信息，将其附加到内容中
+  // 笔记本屏默认走紧凑顶部 message，禁止大框 notification 占内容区
+  // 仅当调用方显式 useNotification=true 且配置允许时才用 notification
+  if (useNotification && config.useNotification === true) {
     const notificationContent = standardError.detail
       ? `${displayMessage}\n${standardError.detail}`
       : displayMessage
@@ -434,18 +475,18 @@ export function showErrorMessage(standardError: StandardError, config: ErrorHand
       message: displayTitle,
       description: notificationContent,
       icon: () => iconVNode,
-      duration: 5,
+      duration: 4,
       placement: 'topRight',
     })
   } else {
     const content = standardError.detail
-      ? `${displayMessage}\n${standardError.detail}`
-      : displayMessage
+      ? `${displayTitle}：${displayMessage}（${standardError.detail}）`
+      : `${displayTitle}：${displayMessage}`
 
     message.error({
       content,
       icon: () => iconVNode,
-      duration: 4,
+      duration: 3,
     })
   }
 }

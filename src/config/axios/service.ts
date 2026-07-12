@@ -4,9 +4,9 @@
  */
 
 import type { AxiosError, AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
+import axios from 'axios'
 import type { ExtendedAxiosRequestConfig, InterceptorError } from './types'
 import message from 'ant-design-vue/es/message'
-import axios from 'axios'
 import { shouldShowError, shouldUseNotification } from '@/config/error-config'
 import { AUTH_STORAGE_KEYS, STORAGE_REFRESH_TOKEN, STORAGE_TENANT_ID } from '@/constants/storage-keys'
 import { useAuthStore } from '@/stores/modules/auth'
@@ -205,7 +205,7 @@ service.interceptors.request.use(
       if (!scannerTenantId) {
         const tenantError = onKioskPage
           ? '缺少租户信息，请重新完成一体机激活'
-          : '缺少租户信息，请重新登录后重试'
+          : '缺少租户信息，请重新登录'
         return Promise.reject(new Error(tenantError))
       }
       requestConfig.headers['X-Tenant-Id'] = scannerTenantId
@@ -240,14 +240,14 @@ service.interceptors.request.use(
       } else if (!isAuthRequest && !isPublicApi) {
         const authStore = useAuthStore()
         if (authStore.refreshingToken) {
-          return Promise.reject(new Error('认证刷新中，请稍后重试'))
+          return Promise.reject(new Error('认证刷新中，请稍候'))
         }
         const hasSessionRecoveryHint = !!getToken() || !!localStorage.getItem(STORAGE_REFRESH_TOKEN)
         if (!hasSessionRecoveryHint && !authRuntimeState.isRedirecting) {
           clearAuthAndRedirect()
           return Promise.reject(new Error('无有效认证信息，正在跳转登录页'))
         }
-        return Promise.reject(new Error('登录状态恢复中，请稍后重试'))
+        return Promise.reject(new Error('登录状态恢复中，请稍候'))
       }
     }
 
@@ -260,7 +260,7 @@ service.interceptors.request.use(
       if (!tenantId) {
         const tenantError = onKioskPage
           ? '缺少租户信息，请重新完成一体机激活'
-          : '缺少租户信息，请重新登录后重试'
+          : '缺少租户信息，请重新登录'
         return Promise.reject(new Error(tenantError))
       }
       requestConfig.headers['X-Tenant-Id'] = tenantId
@@ -340,7 +340,7 @@ service.interceptors.response.use(
 
     // 处理304 Not Modified状态码
     if (response.status === 304) {
-      return Promise.reject(new Error('服务响应异常，请稍后重试'))
+      return Promise.reject(new Error('服务响应异常，请联系管理员'))
     }
 
     // 如果是blob响应（文件下载），直接返回，不进行JSON解析
@@ -350,14 +350,14 @@ service.interceptors.response.use(
 
     // 处理空响应体的情况（如logout返回204或200但无内容）
     if (!response.data || typeof response.data !== 'object') {
-      return Promise.reject(new Error('服务响应异常，请稍后重试'))
+      return Promise.reject(new Error('服务响应异常，请联系管理员'))
     }
 
     // 特殊处理：退出登录接口 (logout)
     const isLogoutRequest = response.config?.url?.includes('/logout')
     if (isLogoutRequest && response.status === 200) {
       if (!response.data.code || response.data.code !== config.successCode) {
-        return Promise.reject(new Error('退出登录失败，请稍后重试'))
+        return Promise.reject(new Error('退出登录失败'))
       }
     }
 
@@ -437,7 +437,7 @@ service.interceptors.response.use(
       }
 
       // 创建业务错误对象
-      const businessError: InterceptorError = new Error(response.data.msg || '业务处理失败')
+      const businessError: InterceptorError = new Error((response.data.msg && String(response.data.msg).trim()) || '业务处理失败')
       const businessCode = response.data.code
       businessError.code = businessCode
       businessError.response = response

@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationTaskStatusCode } from '@/apis/portfolio/enums'
-import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import {
   PORTFOLIO_EVALUATION_MODE_OPTIONS,
   PORTFOLIO_EVALUATION_TASK_STATUS_OPTIONS,
@@ -12,8 +9,14 @@ import {
   PortfolioEvaluationModeDescription,
   PortfolioEvaluationTaskStatusDescription,
 } from '@/apis/portfolio/enums'
+import type { PortfolioEvaluationSubjectTeacherOptionVO } from '@/apis/portfolio/teacher-platform'
 import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
+import type { PortfolioEvaluationMaterialPreviewVO } from '@/apis/portfolio/types'
+import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
 import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
+import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
 import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -25,10 +28,23 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showUserError } from '@/utils/error-handler'
+import { loadAllPages } from '@/utils/load-all-pages'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const workgroups = ref<EvaluationWorkgroupVO[]>([])
+const previewTeacherOptions = ref<Array<{ value: string; label: string }>>([])
+const previewOpen = ref(false)
+const previewLoading = ref(false)
+const previewTaskId = ref('')
+const previewTeacherId = ref('')
+const preview = ref<PortfolioEvaluationMaterialPreviewVO | null>(null)
+const previewRequestToken = ref(0)
+
+const categoryColumns = [
+  { title: '分类', dataIndex: 'categoryName', key: 'categoryName' },
+  { title: '完成', key: 'completed', width: 100 },
+]
 interface PortfolioEvaluationTaskForm {
   taskName: string
   evaluationMode: PortfolioEvaluationModeCode
@@ -79,7 +95,7 @@ const columns: ColumnsType = [
   { title: '时间窗', key: 'timeWindow', width: 180 },
   { title: '状态', dataIndex: 'taskStatus', key: 'taskStatus', width: 88 },
   { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 160 },
-  { title: '操作', key: 'actions', width: 72 },
+  { title: '操作', key: 'actions', width: 140 },
 ]
 
 function evaluationModeLabel(mode: PortfolioEvaluationModeCode): string {
@@ -103,13 +119,104 @@ function workgroupName(id?: string) {
 
 async function loadWorkgroups() {
   try {
-    const page = await evaluationWorkgroupApi.page({
-      pageNum: 1,
-      pageSize: QUALITY_SELECTOR_PAGE_SIZE,
-    })
-    workgroups.value = page.list ?? []
+    workgroups.value = await loadAllPages(
+      ({ pageNum, pageSize }) =>
+        evaluationWorkgroupApi.page({
+          pageNum,
+          pageSize,
+        }),
+      QUALITY_SELECTOR_PAGE_SIZE,
+    )
   } catch (error) {
     showUserError(error)
+  }
+}
+
+/** 材料预览必须限定在当前评价任务参评教师范围内，避免误用全局教师名册第一页导致错人预览。 */
+function buildPreviewTeacherOptions(rows: PortfolioEvaluationSubjectTeacherOptionVO[]) {
+  return rows.map((item) => ({
+    value: item.teacherUserId,
+    label: item.fullName?.trim() ? item.fullName : item.teacherUserId,
+  }))
+}
+
+async function openMaterialPreview(taskId: string) {
+  const currentToken = ++previewRequestToken.value
+  previewTaskId.value = taskId
+  previewTeacherId.value = ''
+  previewTeacherOptions.value = []
+  preview.value = null
+  previewOpen.value = true
+  previewLoading.value = true
+  try {
+    const fillContext = await portfolioEvaluationTaskApi.fillContext({ id: taskId })
+    if (currentToken !== previewRequestToken.value || previewTaskId.value !== taskId) {
+      return
+    }
+    previewTeacherOptions.value = buildPreviewTeacherOptions(
+      fillContext.subjectTeacherOptions ?? [],
+    )
+    previewTeacherId.value = previewTeacherOptions.value[0]?.value ?? ''
+    if (!previewTeacherId.value) {
+      preview.value = null
+      return
+    }
+    await loadMaterialPreview()
+  } catch (error) {
+    if (currentToken !== previewRequestToken.value || previewTaskId.value !== taskId) {
+      return
+    }
+    previewTeacherOptions.value = []
+    previewTeacherId.value = ''
+    preview.value = null
+    showUserError(error, '加载任务参评教师失败')
+  } finally {
+    if (currentToken === previewRequestToken.value && previewTaskId.value === taskId) {
+      previewLoading.value = false
+    }
+  }
+}
+
+async function loadMaterialPreview() {
+  const currentToken = ++previewRequestToken.value
+  if (!previewTaskId.value || !previewTeacherId.value) {
+    message.warning('请选择教师后再预览材料')
+    return
+  }
+  const taskId = previewTaskId.value
+  const teacherId = previewTeacherId.value
+  previewLoading.value = true
+  try {
+    const nextPreview = await portfolioEvaluationNoticeApi.materialPreview({
+      evaluationTaskId: taskId,
+      teacherId,
+    })
+    if (
+      currentToken !== previewRequestToken.value ||
+      previewTaskId.value !== taskId ||
+      previewTeacherId.value !== teacherId
+    ) {
+      return
+    }
+    preview.value = nextPreview
+  } catch (error) {
+    if (
+      currentToken !== previewRequestToken.value ||
+      previewTaskId.value !== taskId ||
+      previewTeacherId.value !== teacherId
+    ) {
+      return
+    }
+    preview.value = null
+    showUserError(error, '加载材料预览失败')
+  } finally {
+    if (
+      currentToken === previewRequestToken.value &&
+      previewTaskId.value === taskId &&
+      previewTeacherId.value === teacherId
+    ) {
+      previewLoading.value = false
+    }
   }
 }
 
@@ -261,14 +368,58 @@ onMounted(async () => {
                   label: '发布',
                   hidden: record.taskStatus === 'PUBLISHED' || record.taskStatus === 'CLOSED',
                 },
+                { key: 'preview', label: '材料预览' },
               ]"
               split
-              @action="() => publishTask(record.id)"
+              @action="
+                (key) =>
+                  key === 'preview' ? openMaterialPreview(record.id) : publishTask(record.id)
+              "
             />
           </template>
         </template>
       </UiDataTable>
     </UiCard>
+    <a-modal v-model:open="previewOpen" title="评价材料预览" width="720px" :footer="null">
+      <div class="evaluation-task-admin__preview-bar">
+        <a-select
+          v-model:value="previewTeacherId"
+          placeholder="选择教师"
+          :options="previewTeacherOptions"
+          style="width: 240px"
+          option-label-prop="label"
+        />
+        <UiButton variant="primary" :loading="previewLoading" @click="loadMaterialPreview"
+          >加载预览</UiButton
+        >
+      </div>
+      <template v-if="preview">
+        <p class="evaluation-task-admin__preview-meta">
+          任务：{{ preview.taskName }} · 完整度 {{ preview.completenessPercent }}% · 必填分类
+          {{ preview.requiredCategoryDone }} / {{ preview.requiredCategoryTotal }}
+        </p>
+        <UiDataTable
+          v-if="preview.categories?.length"
+          row-key="categoryId"
+          size="small"
+          pagination-mode="none"
+          :columns="categoryColumns"
+          :data-source="preview.categories"
+          :show-pagination="false"
+          :sticky-header="false"
+          flat
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'completed'">
+              <UiTag :tone="record.completed ? 'green' : 'orange'">
+                {{ record.completed ? '已完成' : '未完成' }}
+              </UiTag>
+            </template>
+          </template>
+        </UiDataTable>
+        <UiEmpty v-else description="暂无分类明细" />
+      </template>
+    </a-modal>
   </StageWorkbenchShell>
 </template>
 
@@ -289,5 +440,16 @@ onMounted(async () => {
 .input--wide {
   flex: 1;
   min-width: 200px;
+}
+.evaluation-task-admin__preview-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.evaluation-task-admin__preview-meta {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--nybc-text-secondary, #666);
 }
 </style>

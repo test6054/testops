@@ -22,6 +22,7 @@ import {
   RejudgePlanStatusCode,
   RejudgePlanStatusDescription,
 } from '@/types/enums/rejudge-plan-status-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 // ─── 题目质量分析 ─────────────────────────────────
 
@@ -249,7 +250,7 @@ export const REJUDGE_PLAN_STATUS_OPTIONS: Array<{
   value: RejudgePlanStatusCode
 }> = ALL_REJUDGE_PLAN_STATUS_CODES.map((value) => ({
   value,
-  label: RejudgePlanStatusDescription[value],
+  label: strictEnumLabel(RejudgePlanStatusDescription, value, '重判计划状态'),
 }))
 
 /** 重判计划题目业务引用 */

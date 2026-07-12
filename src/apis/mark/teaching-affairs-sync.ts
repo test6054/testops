@@ -4,11 +4,11 @@
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { ExternalSystemTypeCode } from '@/types/enums/external-system-type-enum'
-import http from '@/config/axios'
 import {
   ALL_EXTERNAL_SYSTEM_TYPE_CODES,
   ExternalSystemTypeDescription,
 } from '@/types/enums/external-system-type-enum'
+import http from '@/config/axios'
 import {
   ALL_PASSBACK_STATUS_CODES,
   PassbackStatusCode,
@@ -25,6 +25,7 @@ import {
   TeachingAffairsSyncTypeCode,
   TeachingAffairsSyncTypeDescription,
 } from '@/types/enums/teaching-affairs-sync-type-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
   ALL_EXTERNAL_SYSTEM_TYPE_CODES,
@@ -59,7 +60,11 @@ export const CREATABLE_SYNC_TYPE_OPTIONS: Array<{
 }> = [
   {
     value: TeachingAffairsSyncTypeCode.GRADE_EXPORT,
-    label: TeachingAffairsSyncTypeDescription[TeachingAffairsSyncTypeCode.GRADE_EXPORT],
+    label: strictEnumLabel(
+      TeachingAffairsSyncTypeDescription,
+      TeachingAffairsSyncTypeCode.GRADE_EXPORT,
+      '教务同步类型',
+    ),
   },
 ]
 
@@ -79,13 +84,13 @@ export const SYNC_TASK_MAIN_FLOW_STATUSES: SyncTaskStatusCode[] = [
 ]
 
 export const SYNC_TASK_BRANCH_STATUS_DESCRIPTIONS: string[] = [
-  SyncTaskStatusDescription[SyncTaskStatusCode.PARTIAL_SUCCESS],
-  SyncTaskStatusDescription[SyncTaskStatusCode.FAILED],
-  SyncTaskStatusDescription[SyncTaskStatusCode.CANCELLED],
+  strictEnumLabel(SyncTaskStatusDescription, SyncTaskStatusCode.PARTIAL_SUCCESS, '同步任务状态'),
+  strictEnumLabel(SyncTaskStatusDescription, SyncTaskStatusCode.FAILED, '同步任务状态'),
+  strictEnumLabel(SyncTaskStatusDescription, SyncTaskStatusCode.CANCELLED, '同步任务状态'),
 ]
 
 export const SYNC_TASK_FLOW_HINT = `${SYNC_TASK_MAIN_FLOW_STATUSES.map(
-  (status) => SyncTaskStatusDescription[status],
+  (status) => strictEnumLabel(SyncTaskStatusDescription, status, '同步任务状态'),
 ).join(' → ')} / ${SYNC_TASK_BRANCH_STATUS_DESCRIPTIONS.join(' / ')}`
 
 /** 归档卷教务成绩完成同步门禁说明（线下/纯归档卷） */
@@ -103,13 +108,13 @@ export const PASSBACK_STATUS_TONE: Record<PassbackStatusCode, BadgeTone> = {
 export const SYNC_TASK_STATUS_OPTIONS: Array<{ value: SyncTaskStatusCode, label: string }>
   = ALL_SYNC_TASK_STATUS_CODES.map((value) => ({
     value,
-    label: SyncTaskStatusDescription[value],
+    label: strictEnumLabel(SyncTaskStatusDescription, value, '同步任务状态'),
   }))
 
 export const PASSBACK_STATUS_OPTIONS: Array<{ value: PassbackStatusCode, label: string }>
   = ALL_PASSBACK_STATUS_CODES.map((value) => ({
     value,
-    label: PassbackStatusDescription[value],
+    label: strictEnumLabel(PassbackStatusDescription, value, '回写状态'),
   }))
 
 export const RECONCILE_STATUS_TONE: Record<ReconcileStatusCode, BadgeTone> = {
@@ -121,7 +126,7 @@ export const RECONCILE_STATUS_TONE: Record<ReconcileStatusCode, BadgeTone> = {
 export const EXTERNAL_SYSTEM_TYPE_OPTIONS: Array<{ value: ExternalSystemTypeCode, label: string }>
   = ALL_EXTERNAL_SYSTEM_TYPE_CODES.map((value) => ({
     value,
-    label: ExternalSystemTypeDescription[value],
+    label: strictEnumLabel(ExternalSystemTypeDescription, value, '外部系统类型'),
   }))
 
 export const TEACHING_AFFAIRS_SYNC_TYPE_OPTIONS: Array<{
@@ -129,7 +134,7 @@ export const TEACHING_AFFAIRS_SYNC_TYPE_OPTIONS: Array<{
   label: string
 }> = ALL_TEACHING_AFFAIRS_SYNC_TYPE_CODES.map((value) => ({
   value,
-  label: TeachingAffairsSyncTypeDescription[value],
+  label: strictEnumLabel(TeachingAffairsSyncTypeDescription, value, '教务同步类型'),
 }))
 
 // ─── DTO ─────────────────────────────────

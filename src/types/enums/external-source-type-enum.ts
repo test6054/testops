@@ -1,4 +1,6 @@
-/** 外部数据源类型 - ExternalSourceTypeEnum */
+import { strictEnumLabel } from '@/utils/strict-enum'
+
+/** 外部数据源类型 - ExternalSourceTypeEnum；label 与后端枚举 label 逐值一致 */
 export enum ExternalSourceTypeCode {
   POSTGRESQL = 'POSTGRESQL',
   MYSQL = 'MYSQL',
@@ -25,3 +27,9 @@ export const ExternalSourceTypeDescription: Record<ExternalSourceTypeCode, strin
   [ExternalSourceTypeCode.DM]: '达梦',
   [ExternalSourceTypeCode.KINGBASE]: '人大金仓',
 }
+
+export const EXTERNAL_SOURCE_TYPE_OPTIONS: Array<{ label: string, value: ExternalSourceTypeCode }>
+  = ALL_EXTERNAL_SOURCE_TYPE_CODES.map(value => ({
+    value,
+    label: strictEnumLabel(ExternalSourceTypeDescription, value, '外部数据源类型'),
+  }))

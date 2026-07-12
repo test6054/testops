@@ -277,22 +277,25 @@
         <div class="progress-counts">
           <UiTag tone="gray" size="sm">总数 {{ detailProgress.totalCount }}</UiTag>
           <UiTag :tone="PASSBACK_STATUS_TONE[PassbackStatusCode.PENDING]" size="sm">
-            {{ PassbackStatusDescription[PassbackStatusCode.PENDING] }}
+            {{ strictEnumLabel(PassbackStatusDescription, PassbackStatusCode.PENDING, '回写状态') }}
             {{ detailProgress.pendingCount }}
           </UiTag>
           <UiTag :tone="PASSBACK_STATUS_TONE[PassbackStatusCode.SENT]" size="sm">
-            {{ PassbackStatusDescription[PassbackStatusCode.SENT] }} {{ detailProgress.sentCount }}
+            {{ strictEnumLabel(PassbackStatusDescription, PassbackStatusCode.SENT, '回写状态') }}
+            {{ detailProgress.sentCount }}
           </UiTag>
           <UiTag :tone="PASSBACK_STATUS_TONE[PassbackStatusCode.SUCCESS]" size="sm">
-            {{ PassbackStatusDescription[PassbackStatusCode.SUCCESS] }}
+            {{ strictEnumLabel(PassbackStatusDescription, PassbackStatusCode.SUCCESS, '回写状态') }}
             {{ detailProgress.successCount }}
           </UiTag>
           <UiTag :tone="PASSBACK_STATUS_TONE[PassbackStatusCode.FAILED]" size="sm">
-            {{ PassbackStatusDescription[PassbackStatusCode.FAILED] }}
+            {{ strictEnumLabel(PassbackStatusDescription, PassbackStatusCode.FAILED, '回写状态') }}
             {{ detailProgress.failedCount }}
           </UiTag>
           <UiTag :tone="PASSBACK_STATUS_TONE[PassbackStatusCode.WITHDRAWN]" size="sm">
-            {{ PassbackStatusDescription[PassbackStatusCode.WITHDRAWN] }}
+            {{
+              strictEnumLabel(PassbackStatusDescription, PassbackStatusCode.WITHDRAWN, '回写状态')
+            }}
             {{ detailProgress.withdrawnCount }}
           </UiTag>
         </div>
@@ -362,16 +365,6 @@ import type {
   PassbackRecordResponse,
   ReconcileStatusCode,
 } from '@/apis/mark/teaching-affairs-sync'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
-import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
 import {
   cancelSyncTask,
   CREATABLE_SYNC_TYPE_OPTIONS,
@@ -399,6 +392,16 @@ import {
   TeachingAffairsSyncTypeCode,
   TeachingAffairsSyncTypeDescription,
 } from '@/apis/mark/teaching-affairs-sync'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
+import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -534,7 +537,7 @@ function handleSyncFilterReset(): void {
   reloadSyncTasksFromFirstPage()
 }
 
-function handleSyncPageChange(pageInfo: { current: number, pageSize: number }): void {
+function handleSyncPageChange(pageInfo: { current: number; pageSize: number }): void {
   syncPagination.pageNum = pageInfo.current
   syncPagination.pageSize = pageInfo.pageSize
   void loadSyncTasks()
@@ -546,8 +549,8 @@ function syncSyncPolling(): void {
   const syncingTask = syncingTaskTotal.value > 0
   const pendingPassback = passbackRecords.value.some(
     (record) =>
-      record.passbackStatus === PassbackStatusCode.PENDING
-      || record.passbackStatus === PassbackStatusCode.SENT,
+      record.passbackStatus === PassbackStatusCode.PENDING ||
+      record.passbackStatus === PassbackStatusCode.SENT,
   )
   const shouldPoll = syncingTask || pendingPassback
   if (shouldPoll && !syncPollTimer) {
@@ -795,7 +798,7 @@ async function handleReconcile(record: ExamTeachingAffairsSyncTask): Promise<voi
 const passbackRecords = ref<PassbackRecordResponse[]>([])
 const passbackLoading = ref(false)
 
-const passbackFilterForm = reactive<{ syncTaskId?: string, passbackStatus?: PassbackStatusCode }>(
+const passbackFilterForm = reactive<{ syncTaskId?: string; passbackStatus?: PassbackStatusCode }>(
   {},
 )
 
@@ -897,7 +900,7 @@ function handlePassbackFilterReset(): void {
   reloadPassbackRecordsFromFirstPage()
 }
 
-function handlePassbackPageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePassbackPageChange(pageInfo: { current: number; pageSize: number }): void {
   passbackPagination.pageNum = pageInfo.current
   passbackPagination.pageSize = pageInfo.pageSize
   void loadPassbackRecords()

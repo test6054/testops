@@ -366,6 +366,7 @@
       </a-form-item>
     </a-form>
   </UiDrawer>
+  <ArchiveEvaluationExportTaskModal />
 </template>
 
 <script setup lang="ts">
@@ -383,14 +384,6 @@ import type {
   ArchiveVolumeSourceTypeCode,
   ArchiveVolumeStatusCode,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
   ARCHIVE_VOLUME_STATUS_TONE,
@@ -413,6 +406,14 @@ import {
   pageSupervisionReadinessMatrixPreview,
   pageSupervisionRemediationTasks,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { SemesterOptions } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -425,8 +426,8 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
+import { runArchiveEvaluationExportFlow } from '@/composables/useArchiveEvaluationExportFlow'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearStartOptions } from '@/utils/academic-year'
 import {
   applyAcademicYearStartYearChange,
@@ -444,6 +445,7 @@ import {
 import { remediationAssigneeLabel } from '@/utils/archive-remediation-display'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import ArchiveEvaluationExportTaskModal from '@/views/teacher/archive-volume/components/ArchiveEvaluationExportTaskModal.vue'
 
 defineOptions({ name: 'ArchiveVolumeSupervisionPanel' })
 
@@ -631,6 +633,13 @@ const campaignSelectOptions = computed(() =>
   })),
 )
 
+const exportCampaignLabel = computed(() => {
+  if (!exportCampaignId.value) {
+    return undefined
+  }
+  return campaignSelectOptions.value.find((item) => item.value === exportCampaignId.value)?.label
+})
+
 function volumeStatusLabel(code: ArchiveVolumeStatusCode) {
   return strictEnumLabel(ArchiveVolumeStatusDescription, code, 'volumeStatus')
 }
@@ -689,15 +698,13 @@ async function handleExportManifest() {
   if (!exportCampaignId.value) return
   exportingManifest.value = true
   try {
-    const result = await exportEvaluationPackage(exportCampaignId.value)
-    if (!result.exportFileId) {
-      message.error('导出未返回文件 ID')
-      return
-    }
-    await downloadFile({ nodeId: result.exportFileId })
-    message.success(
-      `评估 manifest 已导出，共 ${result.volumeCount ?? 0} 卷（${ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT}）`,
-    )
+    await runArchiveEvaluationExportFlow({
+      campaignId: exportCampaignId.value,
+      exportFn: exportEvaluationPackage,
+      successMessage: '评估 manifest 已导出',
+      scopeHint: ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
+      campaignLabel: exportCampaignLabel.value,
+    })
   } catch (error) {
     showUserError(error)
   } finally {
@@ -709,15 +716,13 @@ async function handleExportArchive() {
   if (!exportCampaignId.value) return
   exportingArchive.value = true
   try {
-    const result = await exportEvaluationArchivePackage(exportCampaignId.value)
-    if (!result.exportFileId) {
-      message.error('导出未返回文件 ID')
-      return
-    }
-    await downloadFile({ nodeId: result.exportFileId })
-    message.success(
-      `四级目录包已导出，共 ${result.volumeCount ?? 0} 卷（${ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT}）`,
-    )
+    await runArchiveEvaluationExportFlow({
+      campaignId: exportCampaignId.value,
+      exportFn: exportEvaluationArchivePackage,
+      successMessage: '四级目录包已导出',
+      scopeHint: ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
+      campaignLabel: exportCampaignLabel.value,
+    })
   } catch (error) {
     showUserError(error)
   } finally {

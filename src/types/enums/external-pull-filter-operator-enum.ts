@@ -1,3 +1,5 @@
+import { strictEnumLabel } from '@/utils/strict-enum'
+
 /** 外部拔取筛选操作符 */
 export enum ExternalPullFilterOperatorCode {
   EQ = 'EQ',
@@ -37,5 +39,5 @@ export const EXTERNAL_PULL_FILTER_OPERATOR_OPTIONS: Array<{
   label: string
 }> = ALL_EXTERNAL_PULL_FILTER_OPERATOR_CODES.map((value) => ({
   value,
-  label: ExternalPullFilterOperatorDescription[value],
+  label: strictEnumLabel(ExternalPullFilterOperatorDescription, value, '外部拔取筛选操作符'),
 }))

@@ -4,6 +4,7 @@ import {
   ArchiveMaterialOcrStatusCode,
   ArchiveMaterialOcrStatusDescription,
 } from '@/types/enums/archive-material-ocr-status-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
   ALL_ARCHIVE_MATERIAL_OCR_STATUS_CODES,
@@ -24,5 +25,5 @@ export const ARCHIVE_MATERIAL_OCR_STATUS_OPTIONS: Array<{
   value: ArchiveMaterialOcrStatusCode
 }> = ALL_ARCHIVE_MATERIAL_OCR_STATUS_CODES.map((value) => ({
   value,
-  label: ArchiveMaterialOcrStatusDescription[value],
+  label: strictEnumLabel(ArchiveMaterialOcrStatusDescription, value, '归档材料 OCR 状态'),
 }))

@@ -30,6 +30,7 @@ const emit = defineEmits<{
 
 const loading = ref(false)
 const cockpit = ref<PortfolioTeacherProgressCockpitVO | null>(null)
+const requestToken = ref(0)
 
 const metrics = computed((): SignalMetric[] => {
   if (!cockpit.value) {
@@ -88,24 +89,43 @@ const metrics = computed((): SignalMetric[] => {
 })
 
 async function loadCockpit() {
+  const currentToken = requestToken.value
   if (!props.teacherId) {
     cockpit.value = null
     return
   }
+  cockpit.value = null
   loading.value = true
   try {
-    cockpit.value = await portfolioAnalysisApi.getProgressCockpit({ teacherId: props.teacherId })
+    const nextCockpit = await portfolioAnalysisApi.getProgressCockpit({
+      teacherId: props.teacherId,
+    })
+    if (requestToken.value !== currentToken) {
+      return
+    }
+    cockpit.value = nextCockpit
   } catch (error) {
+    if (requestToken.value !== currentToken) {
+      return
+    }
     cockpit.value = null
     showUserError(error, '加载进度驾驶舱失败')
   } finally {
-    loading.value = false
+    if (requestToken.value === currentToken) {
+      loading.value = false
+    }
   }
 }
 
 watch(
   () => props.teacherId,
-  () => {
+  (teacherId) => {
+    requestToken.value += 1
+    if (!teacherId) {
+      cockpit.value = null
+      loading.value = false
+      return
+    }
     void loadCockpit()
   },
   { immediate: true },

@@ -60,7 +60,7 @@ function parseFileNameFromHeaders(headers: Record<string, unknown>, fallback: st
  */
 async function validateBlobResponse(response: BlobDownloadResponse): Promise<string | null> {
   if (response.status !== 200) {
-    return '文件暂不能下载，请稍后重试'
+    return '文件暂不能下载'
   }
   if (!response.data || response.data.size === 0) {
     return '文件内容为空，暂不能下载'
@@ -68,7 +68,7 @@ async function validateBlobResponse(response: BlobDownloadResponse): Promise<str
   // 服务端可能返回 JSON 错误信息而非真正的文件
   if (response.data.type === 'text/plain' || response.data.type === 'application/json') {
     await response.data.text()
-    return '文件暂不能下载，请稍后重试'
+    return '文件暂不能下载'
   }
   return null
 }
@@ -119,7 +119,7 @@ export async function handleBlobDownload(
     showSuccessMessage = false,
     showErrorMessage = true,
     successMessage = '下载成功',
-    errorMessage = '下载失败，请稍后重试',
+    errorMessage = '下载失败',
   } = options
 
   try {
@@ -155,7 +155,7 @@ export async function handleDownloadFile(file: FileItem, options: DownloadOption
     showSuccessMessage = true,
     showErrorMessage = true,
     successMessage = '文件下载成功',
-    errorMessage = '文件下载失败，请稍后重试'
+    errorMessage = '文件下载失败'
   } = options
 
   if (file.fileId === undefined || file.fileId === null || file.fileId === '') {

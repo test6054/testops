@@ -1,6 +1,8 @@
 /**
  * 试卷母版身份填涂区类型；须与 edu-common PaperMasterIdentityAreaType 逐值一致。
  */
+import { strictEnumLabel } from '@/utils/strict-enum'
+
 export enum PaperMasterIdentityAreaTypeCode {
   STUDENT_NO = 'STUDENT_NO',
   CLASS_NAME = 'CLASS_NAME',
@@ -22,29 +24,41 @@ export const PaperMasterIdentityAreaTypeDescription: Record<PaperMasterIdentityA
 export const PaperMasterIdentityAreaTypeOptions: Array<{ value: PaperMasterIdentityAreaTypeCode, label: string }> = [
   {
     value: PaperMasterIdentityAreaTypeCode.STUDENT_NO,
-    label: PaperMasterIdentityAreaTypeDescription[PaperMasterIdentityAreaTypeCode.STUDENT_NO],
+    label: strictEnumLabel(
+      PaperMasterIdentityAreaTypeDescription,
+      PaperMasterIdentityAreaTypeCode.STUDENT_NO,
+      '身份填涂区类型',
+    ),
   },
   {
     value: PaperMasterIdentityAreaTypeCode.CLASS_NAME,
-    label: PaperMasterIdentityAreaTypeDescription[PaperMasterIdentityAreaTypeCode.CLASS_NAME],
+    label: strictEnumLabel(
+      PaperMasterIdentityAreaTypeDescription,
+      PaperMasterIdentityAreaTypeCode.CLASS_NAME,
+      '身份填涂区类型',
+    ),
   },
   {
     value: PaperMasterIdentityAreaTypeCode.STUDENT_NAME,
-    label: PaperMasterIdentityAreaTypeDescription[PaperMasterIdentityAreaTypeCode.STUDENT_NAME],
+    label: strictEnumLabel(
+      PaperMasterIdentityAreaTypeDescription,
+      PaperMasterIdentityAreaTypeCode.STUDENT_NAME,
+      '身份填涂区类型',
+    ),
   },
 ]
 
 export function getPaperMasterIdentityAreaTypeDescription(code: PaperMasterIdentityAreaTypeCode): string {
-  return PaperMasterIdentityAreaTypeDescription[code]
+  return strictEnumLabel(PaperMasterIdentityAreaTypeDescription, code, '身份填涂区类型')
 }
 
 export function requirePaperMasterIdentityAreaTypeCode(value: unknown): PaperMasterIdentityAreaTypeCode {
   if (typeof value !== 'string') {
-    throw new TypeError('身份填涂区类型契约异常，请刷新后重试')
+    throw new TypeError('身份填涂区类型契约异常')
   }
   const code = ALL_PAPER_MASTER_IDENTITY_AREA_TYPE_CODES.find((item) => item === value)
   if (!code) {
-    throw new Error('身份填涂区类型契约异常，请刷新后重试')
+    throw new Error('身份填涂区类型契约异常')
   }
   return code
 }

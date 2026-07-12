@@ -7,6 +7,7 @@ import type {
   ReportSaveRequest,
   ReportVO,
 } from '@/apis/quality/report'
+import { reportApi } from '@/apis/quality/report'
 /**
  * 质量评价 - 报告生成与确认台
  *
@@ -29,7 +30,6 @@ import { message } from 'ant-design-vue'
 import Modal from 'ant-design-vue/es/modal'
 import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
-import { reportApi } from '@/apis/quality/report'
 import {
   ALL_REPORT_STATUS_CODES,
   ALL_REPORT_TYPE_CODES,
@@ -93,7 +93,7 @@ function exportStatusColor(value: ReportExportStatusCode): BadgeTone {
 function reportExportFailureMessage(errorMessage?: string): string {
   return getUserProcessFailureMessage(
     errorMessage,
-    '报告文件生成未完成，请稍后重试；如多次失败，请联系管理员核对报告模板和附件材料。',
+    '报告文件生成未完成；如多次失败，请联系管理员核对报告模板和附件材料。',
   )
 }
 
@@ -131,14 +131,20 @@ const submitting = ref(false)
 
 function handleEditorProgramChange(value: string | null): void {
   editor.programId = value ?? ''
+  editor.trainingPlanId = ''
+  editor.qualityCourseId = ''
+  editor.achievementResultId = ''
 }
 
 function handleEditorTrainingPlanChange(value: string | null): void {
   editor.trainingPlanId = value ?? ''
+  editor.qualityCourseId = ''
+  editor.achievementResultId = ''
 }
 
 function handleEditorQualityCourseChange(value: string | null): void {
   editor.qualityCourseId = value ?? ''
+  editor.achievementResultId = ''
 }
 
 function handleQueryQualityCourseChange(value: string | null): void {
@@ -153,13 +159,13 @@ const detailVisible = ref(false)
 const detailRecord = ref<ReportVO | null>(null)
 const detailLoading = ref(false)
 
-const reportTypeOptions: Array<{ value: ReportTypeCode, label: string }>
-  = ALL_REPORT_TYPE_CODES.map((value) => ({
+const reportTypeOptions: Array<{ value: ReportTypeCode; label: string }> =
+  ALL_REPORT_TYPE_CODES.map((value) => ({
     value,
-    label: ReportTypeDescription[value],
+    label: strictEnumLabel(ReportTypeDescription, value, '报告类型'),
   }))
-const statusOptions: Array<{ value: ReportStatusCode, label: string }>
-  = ALL_REPORT_STATUS_CODES.map((value) => ({
+const statusOptions: Array<{ value: ReportStatusCode; label: string }> =
+  ALL_REPORT_STATUS_CODES.map((value) => ({
     value,
     label: strictEnumLabel(ReportStatusDescription, value, '报告状态'),
   }))
@@ -287,7 +293,7 @@ useQualityScopedLoader(handleScopeChange, {
   reloadOnActivated: false,
 })
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -376,6 +382,20 @@ async function submitEditor() {
   if (!editor.programId) {
     message.error('请选择报告所属专业')
     return
+  }
+  if (editor.reportType === ReportTypeCode.COURSE_ACHIEVEMENT && !editor.qualityCourseId) {
+    message.error('课程目标达成情况评价报告必须关联质量评价课程')
+    return
+  }
+  if (editor.reportType === ReportTypeCode.PROGRAM_QUALITY) {
+    if (!editor.trainingPlanId) {
+      message.error('专业质量分析报告必须关联培养方案')
+      return
+    }
+    if (editor.qualityCourseId) {
+      message.error('专业质量分析报告不能关联单门质量评价课程')
+      return
+    }
   }
   const semester = editor.semester
   const selectedSemester = ALL_SEMESTER_CODES.find((code) => code === semester)
@@ -483,7 +503,7 @@ async function pollExportStatus(id: string) {
       }
     }
     message.warning(
-      `报告导出已超过 ${(EXPORT_POLL_INTERVAL_MS * EXPORT_POLL_MAX_ATTEMPTS) / 60_000} 分钟未完成，已停止轮询；请稍后手工刷新列表查看最新状态。`,
+      `报告导出已超过 ${(EXPORT_POLL_INTERVAL_MS * EXPORT_POLL_MAX_ATTEMPTS) / 60_000} 分钟未完成，已停止轮询；请手工刷新列表查看最新状态。`,
     )
   } finally {
     if (exportPollTokens.get(id) === token) {
@@ -500,8 +520,8 @@ function reportTitle(record: ReportVO): string {
 async function handleExport(record: ReportVO) {
   const currentExport = record.exportStatus
   if (
-    currentExport === ReportExportStatusCode.PENDING
-    || currentExport === ReportExportStatusCode.PROCESSING
+    currentExport === ReportExportStatusCode.PENDING ||
+    currentExport === ReportExportStatusCode.PROCESSING
   ) {
     message.info(
       `${reportTitle(record)}当前处于「${exportStatusLabel(currentExport)}」，请等待完成`,
@@ -543,8 +563,8 @@ function resumeExportPollingForList() {
 }
 
 async function downloadReportExportFile(record: ReportVO, kind: 'word' | 'pdf' | 'excel') {
-  const fileId
-    = kind === 'word' ? record.wordFileId : kind === 'pdf' ? record.pdfFileId : record.excelFileId
+  const fileId =
+    kind === 'word' ? record.wordFileId : kind === 'pdf' ? record.pdfFileId : record.excelFileId
   if (!fileId) {
     message.warning('该格式文件尚未生成')
     return
@@ -627,7 +647,7 @@ const exportBuckets = computed(() => buildReportExportBuckets(reportStatusCounts
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const order: Array<{ key: ReportStatusCode, title: string }> = [
+  const order: Array<{ key: ReportStatusCode; title: string }> = [
     { key: ReportStatusCode.DRAFT, title: '草稿' },
     { key: ReportStatusCode.SUBMITTED, title: '待确认' },
     { key: ReportStatusCode.CONFIRMED, title: '已确认' },
@@ -751,7 +771,7 @@ const reportResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleReportResultAction(actionEvent: { item: TaskResultItem, action: { key: string } }) {
+function handleReportResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
   const record = list.value.find((r) => r.id === actionEvent.item.id)
   if (record && actionEvent.action.key === 'detail') openDetail(record)
 }
@@ -773,9 +793,9 @@ function buildReportActions(record: ReportVO): UiTableRowActionItem[] {
     })
   }
   if (
-    record.status === ReportStatusCode.SUBMITTED
-    || record.status === ReportStatusCode.CONFIRMED
-    || record.status === ReportStatusCode.ARCHIVED
+    record.status === ReportStatusCode.SUBMITTED ||
+    record.status === ReportStatusCode.CONFIRMED ||
+    record.status === ReportStatusCode.ARCHIVED
   ) {
     actions.push({
       key: 'export',
@@ -993,6 +1013,14 @@ onBeforeUnmount(() => {
                   v-model:value="editor.reportType"
                   :options="reportTypeOptions"
                   :disabled="editorMode === 'edit'"
+                  @change="
+                    () => {
+                      if (editor.reportType === ReportTypeCode.PROGRAM_QUALITY) {
+                        editor.qualityCourseId = ''
+                        editor.achievementResultId = ''
+                      }
+                    }
+                  "
                 />
               </a-form-item>
             </a-col>
@@ -1003,7 +1031,7 @@ onBeforeUnmount(() => {
                 <ProgramSelector
                   :value="editor.programId || null"
                   placeholder="选择专业"
-                  :disabled="editorMode === 'edit'"
+                  :disabled="editorMode === 'edit' || Boolean(qualityStore.currentTrainingPlanId)"
                   @change="handleEditorProgramChange"
                 />
               </a-form-item>
@@ -1012,8 +1040,9 @@ onBeforeUnmount(() => {
               <a-form-item label="培养方案">
                 <TrainingPlanSelector
                   :value="editor.trainingPlanId || null"
+                  :program-id="editor.programId || null"
                   placeholder="选择培养方案（可选）"
-                  :disabled="editorMode === 'edit'"
+                  :disabled="editorMode === 'edit' || Boolean(qualityStore.currentTrainingPlanId)"
                   @change="handleEditorTrainingPlanChange"
                 />
               </a-form-item>
@@ -1076,7 +1105,11 @@ onBeforeUnmount(() => {
       </UiDrawer>
 
       <UiDrawer v-model:open="detailVisible" title="报告详情" :width="760" :hide-footer="true">
-        <UiEmpty v-if="!detailRecord && !detailLoading" description="暂无数据" size="sm" />
+        <UiEmpty
+          v-if="!detailRecord && !detailLoading"
+          description="当前没有可展示的内容"
+          size="sm"
+        />
         <a-descriptions v-if="detailRecord" :column="2" size="small" bordered>
           <a-descriptions-item label="类型">
             {{ reportTypeLabel(detailRecord.reportType) }}
@@ -1105,7 +1138,8 @@ onBeforeUnmount(() => {
           <a-descriptions-item label="学年 / 学期">
             {{ detailRecord.schoolYear
             }}<span v-if="detailRecord.semester">
-              / {{ formatSemester(detailRecord.semester) }}</span>
+              / {{ formatSemester(detailRecord.semester) }}</span
+            >
           </a-descriptions-item>
           <a-descriptions-item label="Word 文件">
             <UiTextAction
@@ -1168,7 +1202,7 @@ onBeforeUnmount(() => {
         <div v-if="detailRecord?.bodyContent" class="report__body-preview">
           {{ detailRecord.bodyContent }}
         </div>
-        <UiEmpty v-else description="暂无数据" size="sm" />
+        <UiEmpty v-else description="当前没有可展示的内容" size="sm" />
       </UiDrawer>
     </template>
 

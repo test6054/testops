@@ -25,7 +25,10 @@
       <span class="archive-task-provenance__divider">·</span>
       <UiTextAction @click="emit('batch-excel')">批量 Excel 导入</UiTextAction>
     </div>
-    <p v-if="wizardState.provenance === historicalCode" class="create-form__hint">
+    <p
+      v-if="wizardState.provenance === historicalCode"
+      class="section-desc archive-task-provenance__selected-note"
+    >
       已选历史档案数字化，请继续填写任务信息与归档方案。
     </p>
   </div>
@@ -38,7 +41,7 @@ import { ArchiveTaskProvenanceCode } from '@/types/enums/archive-task-provenance
 import { useInjectedArchiveTaskCreateWizardState } from './archive-task-create-context'
 
 const emit = defineEmits<{
-  "select": [provenance: ArchiveTaskProvenanceCode]
+  select: [provenance: ArchiveTaskProvenanceCode]
   'batch-excel': []
 }>()
 
@@ -90,5 +93,10 @@ const historicalCode = ArchiveTaskProvenanceCode.HISTORICAL_DIGITIZE
 
 .archive-task-provenance__divider {
   color: var(--dp-text-muted);
+}
+
+.archive-task-provenance__selected-note {
+  margin-top: 16px;
+  margin-bottom: 0;
 }
 </style>

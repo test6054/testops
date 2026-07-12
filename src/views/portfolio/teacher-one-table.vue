@@ -1,20 +1,21 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioTeacherIdentityTypeCode } from '@/apis/portfolio/enums'
+import { PortfolioTeacherIdentityTypeDescription } from '@/apis/portfolio/enums'
 import type {
   PortfolioDeptStructureStatVO,
   PortfolioTeacherOneTableSummaryVO,
 } from '@/apis/portfolio/teacher'
+import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import { message } from 'ant-design-vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { PortfolioTeacherIdentityTypeDescription } from '@/apis/portfolio/enums'
-import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import {
@@ -32,11 +33,13 @@ const exporting = ref(false)
 const loadFailed = ref(false)
 const summary = ref<PortfolioTeacherOneTableSummaryVO | null>(null)
 const deptStats = ref<PortfolioDeptStructureStatVO | null>(null)
+const requestToken = ref(0)
 
 const categoryColumns: ColumnsType = [
   { title: '档案分类', dataIndex: 'categoryName', key: 'categoryName' },
   { title: '记录数', dataIndex: 'recordCount', key: 'recordCount', width: 88, align: 'right' },
   { title: '正式档案', dataIndex: 'officialRecordId', key: 'officialRecordId', width: 120 },
+  { title: '操作', key: 'actions', width: 180 },
 ]
 
 const deptStructureColumns: ColumnsType = [
@@ -45,6 +48,8 @@ const deptStructureColumns: ColumnsType = [
 ]
 
 async function loadSummary() {
+  const currentToken = requestToken.value + 1
+  requestToken.value = currentToken
   if (canPickTeachers.value && !targetTeacherId.value) {
     summary.value = null
     deptStats.value = null
@@ -53,15 +58,28 @@ async function loadSummary() {
   loading.value = true
   loadFailed.value = false
   try {
-    summary.value = await portfolioTeacherApi.getOneTableSummary({
+    const nextSummary = await portfolioTeacherApi.getOneTableSummary({
       teacherId: targetTeacherId.value || undefined,
     })
-    deptStats.value = await portfolioTeacherApi.deptStructureStats()
+    if (requestToken.value !== currentToken) {
+      return
+    }
+    const nextDeptStats = await portfolioTeacherApi.deptStructureStats()
+    if (requestToken.value !== currentToken) {
+      return
+    }
+    summary.value = nextSummary
+    deptStats.value = nextDeptStats
   } catch (error) {
+    if (requestToken.value !== currentToken) {
+      return
+    }
     loadFailed.value = true
     showUserError(error)
   } finally {
-    loading.value = false
+    if (requestToken.value === currentToken) {
+      loading.value = false
+    }
   }
 }
 
@@ -70,7 +88,37 @@ function identityLabel(tag: PortfolioTeacherIdentityTypeCode) {
 }
 
 function openCorrection() {
-  router.push('/portfolio/teacher/correction')
+  void router.push({
+    path: '/portfolio/teacher/correction',
+    query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+  })
+}
+
+function openCategoryArchive(categoryId: string, recordId?: string) {
+  const query: Record<string, string> = targetTeacherId.value
+    ? { teacherId: targetTeacherId.value }
+    : {}
+  if (recordId) {
+    query.recordId = recordId
+  }
+  void router.push({
+    path: `/portfolio/teacher/archive/${categoryId}`,
+    query,
+  })
+}
+
+function openCategoryCorrection(categoryId: string, recordId?: string) {
+  const query: Record<string, string> = targetTeacherId.value
+    ? { teacherId: targetTeacherId.value }
+    : {}
+  query.categoryId = categoryId
+  if (recordId) {
+    query.archiveRecordId = recordId
+  }
+  void router.push({
+    path: '/portfolio/teacher/correction',
+    query,
+  })
 }
 
 async function exportOneTable() {
@@ -178,7 +226,27 @@ usePortfolioScopedLoader(
           :show-pagination="false"
           :sticky-header="false"
           :total="summary.categories.length"
-        />
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'actions'">
+              <UiTableActions
+                :items="[
+                  { key: 'archive', label: '查看档案' },
+                  { key: 'correction', label: '发起纠错' },
+                ]"
+                @action="
+                  (key) => {
+                    if (key === 'archive') {
+                      openCategoryArchive(record.categoryId, record.officialRecordId)
+                      return
+                    }
+                    openCategoryCorrection(record.categoryId, record.officialRecordId)
+                  }
+                "
+              />
+            </template>
+          </template>
+        </UiDataTable>
       </UiCard>
       <UiCard v-if="deptStats" title="院系师资结构" style="margin-top: 16px">
         <p class="dept-total">教师总数 {{ deptStats.totalTeacherCount }}</p>

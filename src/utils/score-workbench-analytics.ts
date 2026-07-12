@@ -6,6 +6,7 @@ import {
   FinalScoreStatusCode,
   FinalScoreStatusDescription,
 } from '@/apis/mark/final-score-status'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export type ScoreWorkbenchAnalyticsMode = 'confirm' | 'publish'
 
@@ -92,9 +93,9 @@ function resolveFlowEmphasis(
       return true
     }
     return (
-      code === FinalScoreStatusCode.PENDING
-      && overview.pendingCount > 0
-      && overview.calculatedCount === 0
+      code === FinalScoreStatusCode.PENDING &&
+      overview.pendingCount > 0 &&
+      overview.calculatedCount === 0
     )
   }
   if (code === FinalScoreStatusCode.CONFIRMED && publishableCount > 0) {
@@ -112,8 +113,8 @@ export function buildScoreDistributionStatItems(
   publishableCount: number,
 ): ScoreAnalyticsStatItem[] {
   const overview = panel.riskOverview
-  const workflowTail
-    = mode === 'publish'
+  const workflowTail =
+    mode === 'publish'
       ? [
           {
             key: 'publishable',
@@ -179,7 +180,7 @@ export function buildScoreAnalyticsFlowSteps(
 ): ScoreAnalyticsFlowStep[] {
   return STATUS_FLOW_ORDER.map((code) => ({
     code,
-    label: FinalScoreStatusDescription[code],
+    label: strictEnumLabel(FinalScoreStatusDescription, code, '最终成绩状态'),
     tone: FINAL_SCORE_STATUS_TONE[code],
     count: statusCount(overview, code),
     emphasis: resolveFlowEmphasis(code, mode, overview, publishableCount),
@@ -205,7 +206,7 @@ export function buildScoreConfirmStatusTabItems(
       { key: SCORE_STATUS_TAB_ALL, label: '全部', disabled: true },
       ...STATUS_FLOW_ORDER.map((code) => ({
         key: code,
-        label: FinalScoreStatusDescription[code],
+        label: strictEnumLabel(FinalScoreStatusDescription, code, '最终成绩状态'),
         disabled: true,
       })),
     ]
@@ -219,7 +220,7 @@ export function buildScoreConfirmStatusTabItems(
     },
     ...STATUS_FLOW_ORDER.map((code) => ({
       key: code,
-      label: FinalScoreStatusDescription[code],
+      label: strictEnumLabel(FinalScoreStatusDescription, code, '最终成绩状态'),
       count: statusCount(overview, code),
       badgeTone: FINAL_SCORE_STATUS_TONE[code],
     })),

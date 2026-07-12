@@ -3,7 +3,9 @@
     <div class="section-header">
       <h3 class="section-title">确认创建</h3>
     </div>
-    <p class="section-desc">请核对以下信息，确认无误后点击底部「创建归档任务」。</p>
+    <p class="section-desc">
+      请核对以下信息，确认无误后点击底部「创建归档任务」；创建后将进入任务详情登记材料。
+    </p>
 
     <div class="archive-create-summary">
       <section class="archive-create-summary__group">
@@ -82,9 +84,6 @@
         </dl>
       </section>
     </div>
-    <p class="create-form__hint">
-      创建后将进入归档任务详情，按所选模板套登记材料并执行完整性检查。
-    </p>
   </div>
 </template>
 
@@ -99,6 +98,7 @@ import { ArchiveTaskProvenanceDescription } from '@/types/enums/archive-task-pro
 import { formatSemester } from '@/types/enums/semester-enum'
 import { composeAcademicYear } from '@/utils/academic-year'
 import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel } from '@/utils/strict-enum'
 import {
   useInjectedArchiveTaskCreateBasicForm,
   useInjectedArchiveTaskCreatePlanForm,
@@ -115,7 +115,7 @@ const wizardState = useInjectedArchiveTaskCreateWizardState()
 
 const provenanceText = computed(() => {
   if (!wizardState.provenance) return '未选择'
-  return ArchiveTaskProvenanceDescription[wizardState.provenance]
+  return strictEnumLabel(ArchiveTaskProvenanceDescription, wizardState.provenance, '归档任务来源')
 })
 
 const academicTermText = computed(() => {
@@ -128,16 +128,24 @@ const academicTermText = computed(() => {
 })
 
 const examFormText = computed(() =>
-  planForm.examForm ? ArchiveExamFormDescription[planForm.examForm] : '—',
+  planForm.examForm
+    ? strictEnumLabel(ArchiveExamFormDescription, planForm.examForm, '考试形式')
+    : '—',
 )
 
-const scoreSourceText = computed(() => ArchiveScoreSourceDescription[planForm.scoreSource])
-
-const securityLevelText = computed(() => ArchiveSecurityLevelDescription[planForm.securityLevel])
-
-const retentionText = computed(() =>
-  planForm.permanentRetention ? '永久保管' : `${planForm.retentionYears} 年`,
+const scoreSourceText = computed(() =>
+  strictEnumLabel(ArchiveScoreSourceDescription, planForm.scoreSource, '成绩来源'),
 )
+
+const securityLevelText = computed(() =>
+  strictEnumLabel(ArchiveSecurityLevelDescription, planForm.securityLevel, '密级'),
+)
+
+const retentionText = computed(() => {
+  if (planForm.permanentRetention) return '永久保管'
+  if (planForm.retentionYears != null) return `${planForm.retentionYears} 年`
+  return '—'
+})
 
 const archiveDueText = computed(() =>
   planForm.archiveDueTimeOverride

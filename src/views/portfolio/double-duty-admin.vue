@@ -82,9 +82,7 @@ async function revokeRegistry(id: string) {
 
 async function exportRoster() {
   try {
-    const result = await portfolioDoubleDutyApi.exportRoster({
-      registryStatus: PortfolioKeyTeacherRegistryStatusCode.ACTIVE,
-    })
+    const result = await portfolioDoubleDutyApi.exportRoster({})
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {

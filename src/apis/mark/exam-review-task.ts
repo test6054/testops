@@ -13,6 +13,7 @@ import type { ReviewTaskTypeCode } from '@/types/enums/review-task-type-enum'
 import http from '@/config/axios'
 import { GradeSourceCode } from '@/types/enums/grade-source-enum'
 import { ReviewTaskStatusCode, ReviewTaskStatusDescription } from '@/types/enums/review-task-status-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 /** 匿名批阅任务查询请求 - 对应 ReviewTaskQueryRequest */
 export interface ReviewTaskQueryRequest extends QueryDto {
@@ -68,15 +69,15 @@ export const REVIEW_TASK_HUB_STATUS_FILTER_OPTIONS: Array<{
   value: ReviewTaskStatusCode
 }> = [
   {
-    label: ReviewTaskStatusDescription[ReviewTaskStatusCode.PENDING],
+    label: strictEnumLabel(ReviewTaskStatusDescription, ReviewTaskStatusCode.PENDING, '阅卷任务状态'),
     value: ReviewTaskStatusCode.PENDING,
   },
   {
-    label: ReviewTaskStatusDescription[ReviewTaskStatusCode.IN_PROGRESS],
+    label: strictEnumLabel(ReviewTaskStatusDescription, ReviewTaskStatusCode.IN_PROGRESS, '阅卷任务状态'),
     value: ReviewTaskStatusCode.IN_PROGRESS,
   },
   {
-    label: ReviewTaskStatusDescription[ReviewTaskStatusCode.INVALIDATED],
+    label: strictEnumLabel(ReviewTaskStatusDescription, ReviewTaskStatusCode.INVALIDATED, '阅卷任务状态'),
     value: ReviewTaskStatusCode.INVALIDATED,
   },
 ]

@@ -7,18 +7,19 @@ import type { PageResult, QueryDto } from '@/types'
 import type { PageRegisterStateCode } from '@/types/enums/page-register-state-enum'
 import type { ScanBatchQualityFlagCode } from '@/types/enums/scan-batch-quality-flag-enum'
 import type { ScanDispatchTicketStatusCode } from '@/types/enums/scan-dispatch-ticket-status-enum'
-import type { ScanOperationActionCode } from '@/types/enums/scan-operation-action-enum'
-import type { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
-import type { ScannerExceptionItemKindCode } from '@/types/enums/scanner-exception-item-kind-enum'
-import http from '@/config/axios'
 import {
   ALL_SCAN_DISPATCH_TICKET_STATUS_CODES,
   ScanDispatchTicketStatusDescription,
 } from '@/types/enums/scan-dispatch-ticket-status-enum'
+import type { ScanOperationActionCode } from '@/types/enums/scan-operation-action-enum'
 import {
   ALL_SCAN_OPERATION_ACTION_CODES,
   ScanOperationActionDescription,
 } from '@/types/enums/scan-operation-action-enum'
+import type { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
+import type { ScannerExceptionItemKindCode } from '@/types/enums/scanner-exception-item-kind-enum'
+import http from '@/config/axios'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
   ALL_SCAN_BATCH_QUALITY_FLAG_CODES,
@@ -36,7 +37,7 @@ export const SCAN_DISPATCH_TICKET_STATUS_OPTIONS: Array<{
   label: string
 }> = ALL_SCAN_DISPATCH_TICKET_STATUS_CODES.map((value) => ({
   value,
-  label: ScanDispatchTicketStatusDescription[value],
+  label: strictEnumLabel(ScanDispatchTicketStatusDescription, value, '派单票据状态'),
 }))
 
 export {
@@ -185,17 +186,11 @@ export interface FailedWorkOrderItemVO {
   contextGapTaskId?: string
 }
 
-/** 疑似混扫批次条目，对应后端 SuspectedMixedBatchItemVO */
-export interface SuspectedMixedBatchItemVO {
-  workOrderId?: string
-  volumeId?: string
-  batchQualityFlag?: ScanBatchQualityFlagCode
-  diagnostic?: string
-}
-
 /** 扫描异常看板分页条目，对应后端 ScannerExceptionDashboardItemVO */
 export interface ScannerExceptionDashboardItemVO {
   itemKind?: ScannerExceptionItemKindCode
+  /** 最近更新时间 */
+  updateTime?: string
   ticketId?: string
   workOrderId?: string
   volumeId?: string
@@ -231,9 +226,10 @@ export interface ScannerExceptionDashboardPageRequest extends QueryDto {
 export interface ScannerExceptionMetricCountsVO {
   failedTicketCount?: number
   failedWorkOrderCount?: number
-  suspectedMixedBatchCount?: number
   pageRegisterBlockedCount?: number
   committingWorkOrderCount?: number
+  /** 待处置切卷余页批次数 */
+  partialTailPendingCount?: number
 }
 
 /** 扫描异常看板聚合 VO，对应后端 ScannerExceptionDashboardVO */
@@ -244,8 +240,6 @@ export interface ScannerExceptionDashboardVO {
   failedWorkOrderCount?: number
   committingWorkOrders?: FailedWorkOrderItemVO[]
   committingWorkOrderCount?: number
-  suspectedMixedBatches?: SuspectedMixedBatchItemVO[]
-  suspectedMixedBatchCount?: number
   pageRegisterBlockedBatches?: PageRegisterBlockedBatchItemVO[]
   pageRegisterBlockedCount?: number
 }
@@ -347,13 +341,6 @@ export function forceReleaseScanDispatch(request: ScanDispatchForceReleaseReques
   return http.post<ScanDispatchTicketVO>('/api/mark/scanner/dispatch/force-release', request)
 }
 
-export function loadScannerExceptionDashboard() {
-  return http.post<ScannerExceptionDashboardVO>(
-    '/api/mark/scanner/exception/dashboard/aggregate',
-    {},
-  )
-}
-
 export function loadScannerExceptionMetrics() {
   return http.post<ScannerExceptionMetricCountsVO>(
     '/api/mark/scanner/exception/dashboard/metrics',
@@ -374,7 +361,6 @@ export interface ScanDispatchQueueSummaryVO {
   suspendedCount?: number
   failedTicketCount?: number
   committingWorkOrderCount?: number
-  suspectedMixedCount?: number
 }
 
 export interface ScanDispatchQueueSummaryRequest {
@@ -391,7 +377,7 @@ export const SCAN_OPERATION_ACTION_OPTIONS: Array<{
   label: string
 }> = ALL_SCAN_OPERATION_ACTION_CODES.map((value) => ({
   value,
-  label: ScanOperationActionDescription[value],
+  label: strictEnumLabel(ScanOperationActionDescription, value, '扫描操作动作'),
 }))
 
 export interface ScanOperationLogPageRequest extends QueryDto {

@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ScanOperationActionCode, ScanOperationLogItemVO } from '@/apis/mark/scanner-dispatch'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   pageScanOperationLogs,
   SCAN_OPERATION_ACTION_OPTIONS,
   ScanOperationActionDescription,
 } from '@/apis/mark/scanner-dispatch'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -123,7 +123,7 @@ async function loadLogs() {
   } catch (error) {
     logs.value = []
     pagination.total = 0
-    showUserError(error, '扫描操作日志加载失败')
+    showUserError(error, '处置日志加载失败')
   } finally {
     loading.value = false
   }
@@ -142,7 +142,7 @@ function handleResetSearch() {
   void loadLogs()
 }
 
-function handlePageChange(pageEvent: { current: number, pageSize: number }) {
+function handlePageChange(pageEvent: { current: number; pageSize: number }) {
   pagination.current = pageEvent.current
   pagination.pageSize = pageEvent.pageSize
   void loadLogs()
@@ -178,7 +178,7 @@ onMounted(() => {
     >
       <template #actions>
         <UiButton size="sm" variant="outline" @click="emit('return-dispatch')">
-          返回派单调度
+          返回派单结案
         </UiButton>
       </template>
     </UiAlertStrip>
@@ -209,7 +209,7 @@ onMounted(() => {
         flat
         zebra
         sticky-header
-        empty-description="暂无操作日志"
+        empty-description="当前条件下没有处置日志；可从异常处置或派单结案打开单条记录回溯"
         @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">

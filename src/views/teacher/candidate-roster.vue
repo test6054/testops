@@ -63,7 +63,9 @@
         <div class="exam-scope-classes">
           <div class="exam-scope-classes__head">
             <span class="exam-scope-classes__title">参考班级</span>
-            <span v-if="scopedClassTags.length" class="exam-scope-classes__count">{{ scopedClassTags.length }} 个</span>
+            <span v-if="scopedClassTags.length" class="exam-scope-classes__count"
+              >{{ scopedClassTags.length }} 个</span
+            >
           </div>
           <div v-if="scopedClassTags.length" class="exam-scope-classes__tags">
             <UiTag v-for="item in scopedClassTags" :key="item.classId" tone="blue" size="sm">
@@ -288,13 +290,25 @@
 <script lang="ts" setup>
 import type { TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { ClassStudentTreeConfirmPayload } from '@/apis/edu/class'
-import type { ExamClassRefVO, ExamRosterScopeModeCode } from '@/apis/mark/exam'
+import type { ExamClassRefVO } from '@/apis/mark/exam'
+import { ExamRosterScopeModeDescription, ExamStatusCode, getExamDetail } from '@/apis/mark/exam'
+import { ExamRosterScopeModeCode } from '@/types/enums/exam-roster-scope-mode-enum'
 import type { ExamCandidateRosterWorkbenchItemResponse } from '@/apis/mark/exam-candidate-roster'
+import { pageCandidateRosterWorkbench } from '@/apis/mark/exam-candidate-roster'
 import type {
   ExamWorkbenchCandidateRosterPanelQueryRequest,
   ExamWorkbenchCandidateRosterPanelResponse,
 } from '@/apis/mark/exam-progress'
+import { getCandidateRosterPanel } from '@/apis/mark/exam-progress'
 import type { ExamCandidateRosterRequest } from '@/apis/mark/exam-scope'
+import {
+  listExamCandidateStudentUserIds,
+  mergeExamCandidates,
+  previewExamCandidates,
+  removeExamCandidates,
+  saveCurrentExamScope,
+  saveExamClassScope,
+} from '@/apis/mark/exam-scope'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { UserDto } from '@/types/api-types.d'
 import type { SignalMetric } from '@/types/workbench'
@@ -304,18 +318,7 @@ import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import UserAddOutlined from '@ant-design/icons-vue/UserAddOutlined'
 import message from 'ant-design-vue/es/message'
 import { useRouter } from 'vue-router'
-import { ExamRosterScopeModeDescription, getExamDetail } from '@/apis/mark/exam'
-import { pageCandidateRosterWorkbench } from '@/apis/mark/exam-candidate-roster'
-import { getCandidateRosterPanel } from '@/apis/mark/exam-progress'
 import { pageScannerBatches } from '@/apis/mark/exam-scan'
-import {
-  listExamCandidateStudentUserIds,
-  mergeExamCandidates,
-  previewExamCandidates,
-  removeExamCandidates,
-  saveCurrentExamScope,
-  saveExamClassScope,
-} from '@/apis/mark/exam-scope'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import ClassStudentTreeSelectorDrawer from '@/components/edu/ClassStudentTreeSelectorDrawer.vue'
 import ExamCandidatePaperImagesDrawer from '@/components/exam-workbench/ExamCandidatePaperImagesDrawer.vue'
@@ -341,6 +344,7 @@ import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { CandidateScanProgressStatusCode } from '@/types/enums/candidate-scan-progress-status-enum'
 import { ErrorType, handleError, showUserError } from '@/utils/error-handler'
+import { strictEnumLabel } from '@/utils/strict-enum'
 import { buildScopedClassTags } from './candidate-roster/class-scope'
 import {
   buildExamCandidateMergeRequests,
@@ -355,7 +359,7 @@ const router = useRouter()
 
 const classIds = ref<string[]>([])
 const classScopePersisted = ref(true)
-const examStatus = ref<'ACTIVE' | 'CLOSED' | null>(null)
+const examStatus = ref<ExamStatusCode | null>(null)
 const archiveClassScopeRecoveryAllowed = ref(false)
 const examClassRefs = ref<ExamClassRefVO[]>([])
 const classScopeHydrating = ref(false)
@@ -370,8 +374,8 @@ let classScopeSaveTimer: ReturnType<typeof setTimeout> | null = null
 let loadContextSeq = 0
 let loadTableSeq = 0
 
-const { departmentId, classOptionsLoading, classSelectOptions, loadClassesForDepartment }
-  = useExamDepartmentClassScope({
+const { departmentId, classOptionsLoading, classSelectOptions, loadClassesForDepartment } =
+  useExamDepartmentClassScope({
     selectedClassIds: classIds,
     seedOptions: computed(() =>
       examClassRefs.value.flatMap((item) => {
@@ -515,7 +519,7 @@ const classScopeReadOnly = computed(() => {
   if (rosterWriteForbidden.value) {
     return true
   }
-  if (examStatus.value === 'CLOSED') {
+  if (examStatus.value === ExamStatusCode.CLOSED) {
     return !archiveClassScopeRecoveryAllowed.value
   }
   return false
@@ -526,16 +530,19 @@ const showRosterContextBar = computed(
 )
 
 const candidateRosterWriteAllowed = computed(
-  () => examStatus.value !== 'CLOSED' && !classScopeReadOnly.value && !rosterLocked.value,
+  () =>
+    examStatus.value !== ExamStatusCode.CLOSED && !classScopeReadOnly.value && !rosterLocked.value,
 )
 
-const allowsManualCandidateEdit = computed(() => rosterScopeMode.value !== 'BY_CLASS')
+const allowsManualCandidateEdit = computed(
+  () => rosterScopeMode.value !== ExamRosterScopeModeCode.BY_CLASS,
+)
 
 const rosterScopeModeDisplay = computed(() => {
   if (!rosterScopeMode.value) {
     return undefined
   }
-  return ExamRosterScopeModeDescription[rosterScopeMode.value]
+  return strictEnumLabel(ExamRosterScopeModeDescription, rosterScopeMode.value, '名册范围模式')
 })
 
 const canAddClassScope = computed(() => !classScopeReadOnly.value && !!departmentId.value)
@@ -813,8 +820,8 @@ async function loadExamContext(): Promise<void> {
     rosterLocked.value = locked
     examStatus.value = detail.status
     rosterScopeMode.value = detail.rosterScopeMode
-    archiveClassScopeRecoveryAllowed.value
-      = detail.archiveAutoCreateClassScopeRecoveryAllowed === true
+    archiveClassScopeRecoveryAllowed.value =
+      detail.archiveAutoCreateClassScopeRecoveryAllowed === true
     examClassRefs.value = [...(detail.classRefs ?? [])]
     candidateTotal.value = detail.candidateCount ?? 0
     classIds.value = [...new Set(detail.classIds ?? [])]
@@ -871,7 +878,7 @@ function handleRosterReset(): void {
   void reloadRosterData()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void loadCandidatePage()

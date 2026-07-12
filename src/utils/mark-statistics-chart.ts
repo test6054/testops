@@ -1,12 +1,15 @@
-import type { DashboardGradingMetricsVO } from '@/apis/mark/admin-dashboard'
-import type { CourseAchievementItemResponse, ExamStatSnapshotResponse, SemesterGrowthItemResponse } from '@/apis/mark/cross-exam-analysis'
+import type {
+  CourseAchievementItemResponse,
+  ExamStatSnapshotResponse,
+  SemesterGrowthItemResponse
+} from '@/apis/mark/cross-exam-analysis'
+import { CourseObjectiveDimensionDescription } from '@/apis/mark/cross-exam-analysis'
 import type { ErrorCauseClusterItemVO } from '@/apis/mark/error-cause-cluster'
 import type { ReviewQuestionProgressItemResponse } from '@/apis/mark/exam-progress'
 import type { ProgressMonitorRecordResponse } from '@/apis/mark/marking-quality'
 import type { ExamQuestionAnalysisRecordResponse } from '@/apis/mark/question-analysis'
 import type { BadgeTone, UiBarChartItem, UiScatterSeries, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import type { MarkHeatmapCell } from '@/utils/mark-echarts-options'
-import { CourseObjectiveDimensionDescription } from '@/apis/mark/cross-exam-analysis'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import { formatScore, formatScorePercent } from '@/utils/format'
 import { rateTone } from '@/utils/score-tone'
@@ -234,49 +237,6 @@ export function buildQuestionQualityScatterSeries(
       points: lowDiscrim,
     },
   ].filter((series) => series.points.length > 0)
-}
-
-/** 租户批改进度指标 → 柱状图条目 */
-export function gradingMetricsToBarItems(metrics: DashboardGradingMetricsVO): UiBarChartItem[] {
-  const items: UiBarChartItem[] = [
-    {
-      key: 'published',
-      label: '已发布',
-      value: metrics.publishedScoreCount,
-      tone: 'green',
-    },
-    {
-      key: 'confirmed',
-      label: '已确认未发布',
-      value: metrics.confirmedScoreCount,
-      tone: 'blue',
-    },
-    {
-      key: 'pending',
-      label: '待计算',
-      value: metrics.pendingScoreCount,
-      tone: metrics.pendingScoreCount > 0 ? 'orange' : 'gray',
-    },
-    {
-      key: 'openReview',
-      label: '待复核',
-      value: metrics.openReviewTaskCount,
-      tone: metrics.openReviewTaskCount > 0 ? 'orange' : 'gray',
-    },
-    {
-      key: 'openProcessing',
-      label: '未闭合任务',
-      value: metrics.openProcessingTaskCount,
-      tone: metrics.openProcessingTaskCount > 0 ? 'orange' : 'gray',
-    },
-    {
-      key: 'confirmedQuestion',
-      label: '已确认题目',
-      value: metrics.confirmedQuestionResultCount,
-      tone: 'blue',
-    },
-  ]
-  return items.filter((item) => item.value > 0)
 }
 
 /** 阅卷进度快照序列 → 完成率趋势点 */

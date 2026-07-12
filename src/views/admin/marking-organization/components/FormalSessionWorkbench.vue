@@ -87,13 +87,6 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { FormalSessionResponse } from '@/apis/mark/marking-organization'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { WorkflowPrerequisiteEmptyViewModel } from '@/components/workbench/workflow-readiness/types'
-import type { MarkingOrgSessionFilterModel } from '@/composables/useMarkingOrgSessionWorkspace'
-import { Modal } from 'ant-design-vue'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   AllocationUnitDescription,
   completeFormalSession,
@@ -103,6 +96,13 @@ import {
   resumeFormalSession,
   startFormalSession,
 } from '@/apis/mark/marking-organization'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { WorkflowPrerequisiteEmptyViewModel } from '@/components/workbench/workflow-readiness/types'
+import type { MarkingOrgSessionFilterModel } from '@/composables/useMarkingOrgSessionWorkspace'
+import { Modal } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -154,10 +154,10 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  "refresh": []
-  "search": [model: Record<string, unknown>]
-  "reset": []
-  'page-change': [page: { current: number, pageSize: number }]
+  refresh: []
+  search: [model: Record<string, unknown>]
+  reset: []
+  'page-change': [page: { current: number; pageSize: number }]
   'open-lifecycle': [action: 'pauseFormal' | 'closeFormal', sessionId: string]
 }>()
 
@@ -193,7 +193,7 @@ const sessionColumns: ColumnType<FormalSessionResponse>[] = [
 const statusFilterOptions = computed(() =>
   ALL_FORMAL_SESSION_STATUS_CODES.map((status) => ({
     value: status,
-    label: FormalSessionStatusDescription[status],
+    label: strictEnumLabel(FormalSessionStatusDescription, status, '正评会话状态'),
   })),
 )
 
@@ -238,9 +238,9 @@ watch(
 
 const hasActiveFilter = computed(
   () =>
-    Boolean(props.filterModel.keyword.trim())
-    || Boolean(props.filterModel.status)
-    || Boolean(props.filterModel.groupId),
+    Boolean(props.filterModel.keyword.trim()) ||
+    Boolean(props.filterModel.status) ||
+    Boolean(props.filterModel.groupId),
 )
 
 const sessionTableEmptyDescription = computed(() => {
@@ -264,7 +264,7 @@ function emitReset(): void {
   emit('reset')
 }
 
-function emitPageChange(page: { current: number, pageSize: number }): void {
+function emitPageChange(page: { current: number; pageSize: number }): void {
   emit('page-change', page)
 }
 
@@ -274,9 +274,9 @@ function canStart(status: FormalSessionStatusCode): boolean {
 
 function canComplete(record: FormalSessionResponse): boolean {
   return (
-    props.canManage
-    && record.sessionStatus === FormalSessionStatusCode.SESSION_ACTIVE
-    && record.sessionTaskCompletionReady
+    props.canManage &&
+    record.sessionStatus === FormalSessionStatusCode.SESSION_ACTIVE &&
+    record.sessionTaskCompletionReady
   )
 }
 
@@ -290,10 +290,10 @@ function canResume(status: FormalSessionStatusCode): boolean {
 
 function canClose(status: FormalSessionStatusCode): boolean {
   return (
-    props.canManage
-    && (status === FormalSessionStatusCode.SESSION_ACTIVE
-      || status === FormalSessionStatusCode.SESSION_PAUSED
-      || status === FormalSessionStatusCode.SESSION_COMPLETED)
+    props.canManage &&
+    (status === FormalSessionStatusCode.SESSION_ACTIVE ||
+      status === FormalSessionStatusCode.SESSION_PAUSED ||
+      status === FormalSessionStatusCode.SESSION_COMPLETED)
   )
 }
 
@@ -356,10 +356,10 @@ function guardManageAction(): boolean {
 function handleFormalStartError(error: unknown): void {
   const detail = getUserErrorMessage(error, '')
   const isConflict = readBusinessResultCode(error) === ResultCode.CONFLICT
-  const isExperienceAssistBlock
-    = isConflict
-      && (detail.includes(EXPERIENCE_ASSIST_BASELINE_BLOCKING_PREFIX)
-        || detail.includes(EXPERIENCE_ASSIST_BINDING_BLOCKING_PREFIX))
+  const isExperienceAssistBlock =
+    isConflict &&
+    (detail.includes(EXPERIENCE_ASSIST_BASELINE_BLOCKING_PREFIX) ||
+      detail.includes(EXPERIENCE_ASSIST_BINDING_BLOCKING_PREFIX))
   if (isExperienceAssistBlock && props.examId) {
     Modal.warning({
       title: '无法启动正评',

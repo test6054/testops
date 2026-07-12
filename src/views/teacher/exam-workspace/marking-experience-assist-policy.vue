@@ -6,51 +6,12 @@
     <UiSkeletonState v-else-if="loading" variant="card" :card-count="2" compact />
     <template v-else>
       <UiAlertStrip
-        v-if="policy?.policyStatus === GradingExperienceAssistPolicyStatusCode.FROZEN"
-        tone="warning"
-        title="本场定标策略已冻结"
-        description="正评任务已生成，不能再变更启用状态或题目绑定；已生效的定标经验仍会在 AI 复评中引用。"
+        v-if="policyAlert"
+        :tone="policyAlert.tone"
+        :title="policyAlert.title"
+        :description="policyAlert.description"
         dense
-        class="experience-assist-policy__alert"
-      />
-      <UiAlertStrip
-        v-else-if="subjectiveQuestionCount === 0 && policy?.enabled"
-        tone="warning"
-        title="待主观题入库"
-        description="本场已启用经验辅助评阅，但尚无主观题；请完成制卷录入或扫描推导后再做定标绑定，正评前将校验就绪。"
-        dense
-        class="experience-assist-policy__alert"
-      />
-      <UiAlertStrip
-        v-else-if="baselineMissingCount > 0 && !policy?.enabled"
-        tone="warning"
-        title="标答评分基线未锁定"
-        :description="`共 ${baselineMissingCount} 道主观题须先在「标答与评分基线」确认生效，再启用经验辅助评阅。`"
-        dense
-        class="experience-assist-policy__alert"
-      />
-      <UiAlertStrip
-        v-else-if="requiresExplicitBinding && unboundSubjectiveCount > 0 && !policy?.enabled"
-        tone="warning"
-        title="尚有主观题未完成定标绑定"
-        :description="`共 ${unboundSubjectiveCount} 道主观题待绑定，完成后方可启用本场经验辅助评阅。`"
-        dense
-        class="experience-assist-policy__alert"
-      />
-      <UiAlertStrip
-        v-else-if="!requiresExplicitBinding && needsExplicitBindingCount > 0 && policy?.enabled"
-        tone="warning"
-        title="部分主观题无法自动匹配定标"
-        :description="`共 ${needsExplicitBindingCount} 道非相似题须显式绑定定标经验，否则正评前无法生成任务。`"
-        dense
-        class="experience-assist-policy__alert"
-      />
-      <UiAlertStrip
-        v-else-if="requiresExplicitBinding"
-        tone="info"
-        title="本场须逐题显式定标"
-        :description="explicitBindingHint"
-        dense
+        inline
         class="experience-assist-policy__alert"
       />
 
@@ -217,11 +178,6 @@ import type {
   ExamQuestionExperienceAssistBindingResponse,
   GradingExperienceAssistReadinessResponse,
 } from '@/apis/mark/grading-experience-assist'
-import type { ExamExperienceAssistPolicyConfigMode } from '@/components/mark/ExamExperienceAssistPolicyEnableModal.vue'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { ExperienceAssistBindingFilterQuery } from '@/utils/experience-assist-binding-filter'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   disableExamGradingExperienceAssistPolicy,
   getExamGradingExperienceAssistPolicy,
@@ -229,7 +185,17 @@ import {
   pageExamExperienceAssistBindings,
   saveExamExperienceAssistBinding,
 } from '@/apis/mark/grading-experience-assist'
+import type { ExamExperienceAssistPolicyConfigMode } from '@/components/mark/ExamExperienceAssistPolicyEnableModal.vue'
 import ExamExperienceAssistPolicyEnableModal from '@/components/mark/ExamExperienceAssistPolicyEnableModal.vue'
+import type {
+  BadgeTone,
+  FilterField,
+  UiAlertStripTone,
+  UiTableRowActionItem,
+} from '@/components/ui-guide/ui/types'
+import type { ExperienceAssistBindingFilterQuery } from '@/utils/experience-assist-binding-filter'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
 import QuestionExperienceAssistBindingModal from '@/components/mark/QuestionExperienceAssistBindingModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -257,6 +223,7 @@ import {
 } from '@/types/enums/grading-experience-assist-question-resolution-enum'
 import { showUserError } from '@/utils/error-handler'
 import { buildEmptyPageResult } from '@/utils/page-result'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherExamWorkspaceMarkingExperienceAssistPolicy' })
 
@@ -317,7 +284,11 @@ const bindingFilterModel = computed<Record<string, unknown>>({
 
 const bindingResolutionOptions = Object.values(GradingExperienceAssistQuestionResolutionCode).map(
   (code) => ({
-    label: GradingExperienceAssistQuestionResolutionDescription[code],
+    label: strictEnumLabel(
+      GradingExperienceAssistQuestionResolutionDescription,
+      code,
+      '经验辅助题目定标状态',
+    ),
     value: code,
   }),
 )
@@ -360,7 +331,7 @@ const requiresExplicitBinding = computed(() => policy.value?.autoMatchSupported 
 const examKindLabel = computed(() => {
   const kind = policy.value?.examKind
   if (!kind) return '本场考试'
-  return ExamKindDescription[kind]
+  return strictEnumLabel(ExamKindDescription, kind, '考试类型')
 })
 
 const explicitBindingHint = computed(
@@ -378,16 +349,24 @@ const bindingGuideText = computed(() => {
 const policyStatusLabel = computed(() => {
   const status = policy.value?.policyStatus
   if (status === GradingExperienceAssistPolicyStatusCode.FROZEN) {
-    return GradingExperienceAssistPolicyStatusDescription[status]
+    return strictEnumLabel(
+      GradingExperienceAssistPolicyStatusDescription,
+      status,
+      '经验辅助策略状态',
+    )
   }
   if (policy.value?.enabled) {
-    return GradingExperienceAssistPolicyStatusDescription[
-      GradingExperienceAssistPolicyStatusCode.ENABLED
-    ]
-}
-  return GradingExperienceAssistPolicyStatusDescription[
-    GradingExperienceAssistPolicyStatusCode.DISABLED
-  ]
+    return strictEnumLabel(
+      GradingExperienceAssistPolicyStatusDescription,
+      GradingExperienceAssistPolicyStatusCode.ENABLED,
+      '经验辅助策略状态',
+    )
+  }
+  return strictEnumLabel(
+    GradingExperienceAssistPolicyStatusDescription,
+    GradingExperienceAssistPolicyStatusCode.DISABLED,
+    '经验辅助策略状态',
+  )
 })
 
 const policyTone = computed((): BadgeTone => {
@@ -397,25 +376,25 @@ const policyTone = computed((): BadgeTone => {
 
 const canEnable = computed(() =>
   Boolean(
-    policy.value?.tenantExperienceAssistEnabled
-    && policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN
-    && !bindingsLoading.value
-    && unresolvedSubjectiveCount.value === 0,
+    policy.value?.tenantExperienceAssistEnabled &&
+    policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN &&
+    !bindingsLoading.value &&
+    unresolvedSubjectiveCount.value === 0,
   ),
 )
 
 const canDisable = computed(() =>
   Boolean(
-    policy.value?.enabled
-    && policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN,
+    policy.value?.enabled &&
+    policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN,
   ),
 )
 
 const canEditConfig = computed(() =>
   Boolean(
-    policy.value?.tenantExperienceAssistEnabled
-    && policy.value?.enabled
-    && policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN,
+    policy.value?.tenantExperienceAssistEnabled &&
+    policy.value?.enabled &&
+    policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN,
   ),
 )
 
@@ -432,18 +411,81 @@ const needsExplicitBindingCount = unboundSubjectiveCount
 
 const subjectiveQuestionCount = computed(() => readiness.value?.subjectiveQuestionCount ?? 0)
 
+/** 单行策略摘要：多条件互斥，避免多条 warning 叠占笔记本屏 */
+const policyAlert = computed(
+  (): { tone: UiAlertStripTone; title: string; description: string } | null => {
+    if (policy.value?.policyStatus === GradingExperienceAssistPolicyStatusCode.FROZEN) {
+      return {
+        tone: 'warning',
+        title: '本场定标策略已冻结',
+        description:
+          '正评任务已生成，不能再变更启用状态或题目绑定；已生效的定标经验仍会在 AI 复评中引用。',
+      }
+    }
+    if (subjectiveQuestionCount.value === 0 && policy.value?.enabled) {
+      return {
+        tone: 'warning',
+        title: '待主观题入库',
+        description:
+          '本场已启用经验辅助评阅，但尚无主观题；请完成制卷录入或扫描推导后再做定标绑定。',
+      }
+    }
+    if (baselineMissingCount.value > 0 && !policy.value?.enabled) {
+      return {
+        tone: 'warning',
+        title: '标答评分基线未锁定',
+        description: `共 ${baselineMissingCount.value} 道主观题须先在「标答与评分基线」确认生效，再启用经验辅助评阅。`,
+      }
+    }
+    if (
+      requiresExplicitBinding.value &&
+      unboundSubjectiveCount.value > 0 &&
+      !policy.value?.enabled
+    ) {
+      return {
+        tone: 'warning',
+        title: '尚有主观题未完成定标绑定',
+        description: `共 ${unboundSubjectiveCount.value} 道主观题待绑定，完成后方可启用本场经验辅助评阅。`,
+      }
+    }
+    if (
+      !requiresExplicitBinding.value &&
+      needsExplicitBindingCount.value > 0 &&
+      policy.value?.enabled
+    ) {
+      return {
+        tone: 'warning',
+        title: '部分主观题无法自动匹配定标',
+        description: `共 ${needsExplicitBindingCount.value} 道非相似题须显式绑定定标经验，否则正评前无法生成任务。`,
+      }
+    }
+    if (requiresExplicitBinding.value) {
+      return {
+        tone: 'info',
+        title: '本场须逐题显式定标',
+        description: explicitBindingHint.value,
+      }
+    }
+    return null
+  },
+)
+
 function resolutionLabel(
   status?: GradingExperienceAssistQuestionResolutionCode,
   row?: ExamQuestionExperienceAssistBindingResponse,
 ): string {
   if (!status) return '—'
   if (
-    status === GradingExperienceAssistQuestionResolutionCode.NEEDS_EXPLICIT_BINDING
-    && row?.experienceCaseId
+    status === GradingExperienceAssistQuestionResolutionCode.NEEDS_EXPLICIT_BINDING &&
+    row?.experienceCaseId
   ) {
     return '定标引用失效'
   }
-  return GradingExperienceAssistQuestionResolutionDescription[status]
+  return strictEnumLabel(
+    GradingExperienceAssistQuestionResolutionDescription,
+    status,
+    '经验辅助题目定标状态',
+  )
 }
 
 function resolutionTone(status?: GradingExperienceAssistQuestionResolutionCode) {
@@ -578,11 +620,11 @@ function openBindingModal(row: ExamQuestionExperienceAssistBindingResponse): voi
 
 function confirmUnbind(row: ExamQuestionExperienceAssistBindingResponse): void {
   if (
-    !examId.value
-    || policy.value?.policyStatus === GradingExperienceAssistPolicyStatusCode.FROZEN
+    !examId.value ||
+    policy.value?.policyStatus === GradingExperienceAssistPolicyStatusCode.FROZEN
   ) {
     return
-}
+  }
   void confirmAsync({
     title: '解除题目定标绑定？',
     content: `题号 ${row.questionNo ?? row.layoutQuestionId} 将不再引用显式定标经验。`,

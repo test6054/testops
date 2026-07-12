@@ -275,13 +275,13 @@ export async function getFileArrayBuffer(data: DownloadFileRequestDTO): Promise<
   })
 
   if (!response.ok) {
-    return rejectUserError('文件下载失败，请稍后重试')
+    return rejectUserError('文件下载失败')
   }
 
   // 检查响应类型，确保不是接口错误响应
   const contentType = response.headers.get('content-type')
   if (contentType?.includes('application/json')) {
-    return rejectUserError('文件下载失败，请稍后重试')
+    return rejectUserError('文件下载失败')
   }
 
   return await response.arrayBuffer()
@@ -350,7 +350,7 @@ export async function fetchStoragePreviewBlobUrl(previewUrl: string): Promise<st
     },
   })
   if (!response.ok) {
-    return rejectUserError('图片加载失败，请稍后重试')
+    return rejectUserError('图片加载失败')
   }
   const blob = await response.blob()
   return URL.createObjectURL(blob)
@@ -380,7 +380,7 @@ export async function getImageBlobUrl(nodeId: string): Promise<string> {
   })
 
   if (!response.ok) {
-    return rejectUserError('图片加载失败，请稍后重试')
+    return rejectUserError('图片加载失败')
   }
 
   const blob = await response.blob()

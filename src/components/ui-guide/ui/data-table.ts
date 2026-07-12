@@ -9,7 +9,7 @@
  * 误用：`server` + `total > pageSize` 且未绑 `@page-change` 时，dev 环境 `console.warn`，分页栏自动隐藏。
  *
  * ## emptyKind
- * - `default`：通用「暂无数据」
+ * - `default`：通用「当前没有可展示的内容」
  * - `first-run`：首次无记录，可配 `#empty-action`
  * - `no-result`：筛选无结果
  * 也可传 `emptyTitle` / `emptyDescription` 或完全自定义 `#empty` slot。
@@ -74,7 +74,7 @@ export interface UiDataTableEmptyPreset {
 export const UI_DATA_TABLE_EMPTY_PRESETS: Record<UiDataTableEmptyKind, UiDataTableEmptyPreset> = {
   'default': {
     title: '',
-    description: '暂无数据',
+    description: '当前没有可展示的内容',
   },
   'first-run': {
     title: '暂无记录',
@@ -497,4 +497,15 @@ export function sliceDataTablePage<T>(
   }
   const start = (current - 1) * pageSize
   return dataSource.slice(start, start + pageSize)
+}
+
+/** 从 UiDataTable change 事件读取分页参数 */
+export function readUiDataTablePagination(
+  changeEvent: UiDataTableChangeEvent,
+  defaultPageSize: number,
+): { pageNum: number, pageSize: number } {
+  return {
+    pageNum: changeEvent.pagination?.current ?? 1,
+    pageSize: changeEvent.pagination?.pageSize ?? defaultPageSize,
+  }
 }

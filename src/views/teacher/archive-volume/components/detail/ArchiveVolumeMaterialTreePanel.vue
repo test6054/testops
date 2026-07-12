@@ -1,6 +1,6 @@
 <template>
   <aside class="archive-volume-material-tree">
-    <UiEmpty v-if="catalogLoadFailed" description="目录加载失败，请刷新后重试" />
+    <UiEmpty v-if="catalogLoadFailed" description="目录加载失败" />
     <UiEmpty v-else-if="!treeGroups.length" description="暂无目录项" />
     <div v-else class="catalog-tree">
       <template v-for="group in treeGroups" :key="group.category">
@@ -48,12 +48,12 @@ import type {
   ArchiveVolumeCatalogLineVO,
   ArchiveVolumeMaterialCatalogReadySummaryVO,
 } from '@/apis/mark/archive-volume'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   ArchiveMaterialTypeDescription,
   getArchiveVolumeCatalog,
   getArchiveVolumeMaterialStats,
 } from '@/apis/mark/archive-volume'
+import { computed, onMounted, ref, watch } from 'vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { ALL_ARCHIVE_MATERIAL_TYPE_CODES } from '@/types/enums/archive-material-type-enum'

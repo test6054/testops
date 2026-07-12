@@ -33,7 +33,7 @@
       :loading="loading"
       :generating="generating"
       :has-content="record != null"
-      empty-description="暂无数据，可点击重新生成"
+      empty-description="当前没有可展示的内容，可点击重新生成"
       progress-title="AI 教学改进方案生成中"
       :progress-waiting-text="
         props.classId
@@ -58,7 +58,7 @@
 
         <AiAnalysisMetaCollapse
           :record="record"
-          failure-fallback="AI 教学改进方案未完成，请稍后重新生成"
+          failure-fallback="AI 教学改进方案未完成，可重新生成"
         />
       </div>
     </AiAnalysisCardBody>
@@ -71,17 +71,17 @@ import type {
   TeachingImprovementItemResponse,
   TeachingImprovementSeverityCode,
 } from '@/apis/mark/teaching-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
-import { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
-import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import {
   generateTeachingImprovement,
   getLatestTeachingImprovement,
   TEACHING_IMPROVEMENT_SEVERITY_TONE,
   TeachingImprovementSeverityDescription,
 } from '@/apis/mark/teaching-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
+import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import AiAnalysisCardBody from '@/components/mark/analysis/AiAnalysisCardBody.vue'
 import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.vue'
 import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCollapse.vue'

@@ -93,10 +93,9 @@
         :confirm-loading="operatingAction === 'execute'"
         @ok="handleExecute"
       >
-        <a-alert
-          type="warning"
-          show-icon
-          message="执行后会重算受影响题目的成绩与考试统计，此操作不可撤销。"
+        <UiAlertStrip
+          tone="warning"
+          title="执行后会重算受影响题目的成绩与考试统计，此操作不可撤销。"
           style="margin-bottom: 12px"
         />
         <a-textarea
@@ -118,9 +117,6 @@ import type {
   RejudgePlanStatusCode,
   RejudgeTriggerTypeCode,
 } from '@/apis/mark/question-analysis'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   approveRejudgePlan,
   executeRejudgePlan,
@@ -130,9 +126,13 @@ import {
   RejudgePlanStatusDescription,
   RejudgeTriggerTypeDescription,
 } from '@/apis/mark/question-analysis'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
@@ -252,7 +252,7 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()

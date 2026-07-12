@@ -69,7 +69,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
         name: 'TeacherArchiveVolumeList',
         component: () => import('@/views/teacher/archive-volume/archive-volume-list.vue'),
         meta: {
-          title: '归档工作台',
+          title: '课程考核归档卷',
           roles: TEACHER_ROLES,
           icon: 'container',
           hideInMenu: false,
@@ -92,7 +92,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
               : undefined,
         }),
         meta: {
-          title: '归档配置',
+          title: '课程考核归档卷配置',
           roles: TEACHER_ROLES,
           hideInMenu: true,
           keepAlive: true,
@@ -177,11 +177,24 @@ export const teacherRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'archive-volumes/suspected-mixed-scan',
+        name: 'TeacherArchiveVolumeSuspectedMixedScan',
+        component: () =>
+          import('@/views/teacher/archive-volume/archive-volume-suspected-mixed-scan.vue'),
+        meta: {
+          title: '混扫复核待办',
+          roles: TEACHER_ROLES,
+          hideInMenu: true,
+          keepAlive: true,
+          activeMenu: '/teacher/archive-volumes',
+        },
+      },
+      {
         path: 'archive-volumes/audit',
         name: 'TeacherArchiveVolumeAudit',
         component: () => import('@/views/teacher/archive-volume/archive-volume-audit.vue'),
         meta: {
-          title: '归档审计',
+          title: '课程考核归档卷审计',
           roles: TEACHER_ROLES,
           hideInMenu: true,
           keepAlive: true,
@@ -223,13 +236,13 @@ export const teacherRoutes: RouteRecordRaw[] = [
         name: 'TeacherScannerCenter',
         component: () => import('@/views/teacher/scanner-center/scanner-center.vue'),
         meta: {
-          title: '扫描中心',
+          title: '扫描值班台',
           roles: TEACHER_ROLES,
           icon: 'scan',
           hideInMenu: false,
           keepAlive: true,
           menuGroup: 'scan-center',
-          menuGroupTitle: '扫描中心',
+          menuGroupTitle: '扫描运营',
           menuGroupIcon: 'scan',
           menuGroupOrder: 3,
         },

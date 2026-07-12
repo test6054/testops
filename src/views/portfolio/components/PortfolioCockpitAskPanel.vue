@@ -22,6 +22,7 @@ import { parsePortfolioCockpitAskPayload } from '@/utils/portfolio-cockpit-paylo
 
 const props = defineProps<{
   departmentId?: string
+  schoolScopeOnly?: boolean
   /** 通知深链携带的 AI 任务 ID，用于自动加载问数结果 */
   initialTaskId?: string
 }>()
@@ -35,6 +36,8 @@ const historyLoading = ref(false)
 const analysisDetail = ref<PortfolioAiAnalysisDetailVO | null>(null)
 const askPayload = ref<PortfolioCockpitAskResultPayload | null>(null)
 const historyRows = ref<PortfolioAiAnalysisSummaryVO[]>([])
+const historyRequestToken = ref(0)
+const resultRequestToken = ref(0)
 
 const teacherColumns: ColumnsType = [
   { title: '姓名', dataIndex: 'nickName', key: 'nickName', width: 100, fixed: 'left' },
@@ -82,6 +85,12 @@ function navigateDrillLink(link: string) {
   void router.push(link)
 }
 
+function resetAskResultContext() {
+  resultRequestToken.value += 1
+  analysisDetail.value = null
+  askPayload.value = null
+}
+
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -96,19 +105,31 @@ function applyAnalysisDetail(detail: PortfolioAiAnalysisDetailVO) {
 }
 
 async function loadHistory() {
+  const currentToken = ++historyRequestToken.value
   historyLoading.value = true
+  historyRows.value = []
   try {
     const page = await portfolioAiJobApi.pageAnalysis({
       pageNum: 1,
       pageSize: 10,
       analysisType: PortfolioAiAnalysisTypeCode.COCKPIT_ASK,
       departmentId: props.departmentId,
+      schoolScopeOnly: props.schoolScopeOnly,
     })
+    if (currentToken !== historyRequestToken.value) {
+      return
+    }
     historyRows.value = page.list
   } catch (error) {
+    if (currentToken !== historyRequestToken.value) {
+      return
+    }
+    historyRows.value = []
     showUserError(error, '加载驾驶舱问数历史失败')
   } finally {
-    historyLoading.value = false
+    if (currentToken === historyRequestToken.value) {
+      historyLoading.value = false
+    }
   }
 }
 
@@ -116,37 +137,60 @@ async function openHistoryRow(row: PortfolioAiAnalysisSummaryVO) {
   if (!row.aiTaskId) {
     return
   }
+  const currentToken = ++resultRequestToken.value
   loading.value = true
   try {
     const detail = await portfolioAiJobApi.getAnalysisByTask(row.aiTaskId)
+    if (currentToken !== resultRequestToken.value) {
+      return
+    }
     applyAnalysisDetail(detail)
   } catch (error) {
+    if (currentToken !== resultRequestToken.value) {
+      return
+    }
     showUserError(error, '加载问数结果失败')
   } finally {
-    loading.value = false
+    if (currentToken === resultRequestToken.value) {
+      loading.value = false
+    }
   }
 }
 
-async function pollAnalysis(taskId: string) {
+async function pollAnalysis(taskId: string, requestToken = resultRequestToken.value) {
   polling.value = true
   try {
     for (let attempt = 0; attempt < 60; attempt++) {
+      if (requestToken !== resultRequestToken.value) {
+        return
+      }
       const task = await portfolioAiJobApi.get(taskId)
+      if (requestToken !== resultRequestToken.value) {
+        return
+      }
       if (task.status === 'SUCCEEDED') {
         const detail = await portfolioAiJobApi.getAnalysisByTask(taskId)
+        if (requestToken !== resultRequestToken.value) {
+          return
+        }
         applyAnalysisDetail(detail)
         await loadHistory()
         return
       }
       if (task.status === AiTaskStatusCode.FAILED || task.status === AiTaskStatusCode.CANCELLED) {
-        showUserError(null, 'AI 问数任务失败，请稍后重试或重新提交')
+        if (requestToken !== resultRequestToken.value) {
+          return
+        }
+        showUserError(null, 'AI 问数任务失败，请在问数历史查看原因后重新提交')
         return
       }
       await sleep(2000)
     }
-    showUserError(null, 'AI 任务超时，请稍后在问数历史中查看')
+    showUserError(null, 'AI 任务超时，请在问数历史中查看结果')
   } finally {
-    polling.value = false
+    if (requestToken === resultRequestToken.value) {
+      polling.value = false
+    }
   }
 }
 
@@ -156,6 +200,7 @@ async function submitAsk() {
     message.warning('请输入指标问数问题')
     return
   }
+  const currentToken = ++resultRequestToken.value
   loading.value = true
   analysisDetail.value = null
   askPayload.value = null
@@ -164,13 +209,24 @@ async function submitAsk() {
       departmentId: props.departmentId,
       userQuestion: question,
     })
+    if (currentToken !== resultRequestToken.value) {
+      return
+    }
     message.info('问数任务已提交，正在等待结果…')
-    await pollAnalysis(submitResult.taskId)
+    await pollAnalysis(submitResult.taskId, currentToken)
+    if (currentToken !== resultRequestToken.value) {
+      return
+    }
     message.success('问数完成')
   } catch (error) {
+    if (currentToken !== resultRequestToken.value) {
+      return
+    }
     showUserError(error, '提交驾驶舱问数失败')
   } finally {
-    loading.value = false
+    if (currentToken === resultRequestToken.value) {
+      loading.value = false
+    }
   }
 }
 
@@ -184,7 +240,11 @@ onMounted(() => {
 watch(
   () => props.departmentId,
   () => {
+    resetAskResultContext()
     void loadHistory()
+    if (props.initialTaskId) {
+      void openTaskResult(props.initialTaskId)
+    }
   },
 )
 
@@ -193,29 +253,50 @@ watch(
   (taskId) => {
     if (taskId) {
       void openTaskResult(taskId)
+      return
     }
+    resetAskResultContext()
   },
 )
 
 /** 按通知深链 taskId 加载问数结果；任务未完成时轮询直至成功或失败。 */
 async function openTaskResult(taskId: string) {
+  const currentToken = ++resultRequestToken.value
   loading.value = true
+  analysisDetail.value = null
+  askPayload.value = null
   try {
     const task = await portfolioAiJobApi.get(taskId)
+    if (currentToken !== resultRequestToken.value) {
+      return
+    }
     if (task.status === 'SUCCEEDED') {
       const detail = await portfolioAiJobApi.getAnalysisByTask(taskId)
+      if (currentToken !== resultRequestToken.value) {
+        return
+      }
       applyAnalysisDetail(detail)
       return
     }
     if (task.status === AiTaskStatusCode.FAILED || task.status === AiTaskStatusCode.CANCELLED) {
-      showUserError(null, 'AI 问数任务失败，请稍后重试或重新提交')
+      if (currentToken !== resultRequestToken.value) {
+        return
+      }
+      showUserError(null, 'AI 问数任务失败，请在问数历史查看原因后重新提交')
       return
     }
-    await pollAnalysis(taskId)
+    await pollAnalysis(taskId, currentToken)
   } catch (error) {
+    if (currentToken !== resultRequestToken.value) {
+      return
+    }
+    analysisDetail.value = null
+    askPayload.value = null
     showUserError(error, '加载问数结果失败')
   } finally {
-    loading.value = false
+    if (currentToken === resultRequestToken.value) {
+      loading.value = false
+    }
   }
 }
 </script>

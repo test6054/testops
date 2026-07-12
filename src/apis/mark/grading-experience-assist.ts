@@ -26,7 +26,7 @@ export interface MarkTenantGradingPolicyResponse {
   minConsistencyRate: number
   maxHammingDistance: number
   maxExperienceItems: number
-  sourceExamKinds?: string
+  sourceExamKind?: ExamKindCode
   requireSameCourse?: boolean
   requireEffectivenessEval?: boolean
   manualFinalScoreConfirmRequired: boolean
@@ -38,7 +38,7 @@ export interface MarkTenantGradingPolicySaveRequest {
   minConsistencyRate: number
   maxHammingDistance: number
   maxExperienceItems: number
-  sourceExamKinds?: string
+  sourceExamKind?: ExamKindCode
   requireSameCourse?: boolean
   requireEffectivenessEval?: boolean
   manualFinalScoreConfirmRequired: boolean
@@ -66,8 +66,8 @@ export interface ExamGradingExperienceAssistPolicyEnableRequest {
   maxExperienceItems: number
 }
 
-export type ExamGradingExperienceAssistPolicySaveRequest
-  = ExamGradingExperienceAssistPolicyEnableRequest
+export type ExamGradingExperienceAssistPolicySaveRequest =
+  ExamGradingExperienceAssistPolicyEnableRequest
 
 export interface ExamQuestionExperienceAssistBindingResponse {
   id?: string

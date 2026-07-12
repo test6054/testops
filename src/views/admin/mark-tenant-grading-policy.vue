@@ -76,6 +76,15 @@
               <a-input-number v-model:value="form.maxExperienceItems" :min="1" :max="10" />
             </label>
 
+            <label class="tenant-policy__field">
+              <span>允许引用的来源考试性质</span>
+              <a-select
+                v-model:value="form.sourceExamKind"
+                :options="sourceExamKindOptions"
+                placeholder="请选择来源考试性质"
+              />
+            </label>
+
             <label class="tenant-policy__field tenant-policy__field--switch">
               <span>须同课程来源</span>
               <a-switch v-model:checked="form.requireSameCourse" />
@@ -139,13 +148,13 @@ import type {
   MarkTenantGradingPolicyResponse,
   MarkTenantGradingPolicySaveRequest,
 } from '@/apis/mark/grading-experience-assist'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   getTenantGradingOpsOverview,
   getTenantGradingPolicy,
   saveTenantGradingPolicy,
 } from '@/apis/mark/grading-experience-assist'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -156,7 +165,13 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
+import {
+  ALL_EXAM_KIND_CODES,
+  ExamKindCode,
+  ExamKindDescription,
+} from '@/types/enums/exam-kind-enum'
 import { showUserError } from '@/utils/error-handler'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminMarkTenantGradingPolicy' })
 
@@ -170,13 +185,17 @@ const loading = ref(false)
 const saving = ref(false)
 const opsLoading = ref(false)
 const opsOverview = ref<MarkTenantGradingOpsOverviewResponse | null>(null)
+const sourceExamKindOptions = ALL_EXAM_KIND_CODES.map((code) => ({
+  label: strictEnumLabel(ExamKindDescription, code, 'sourceExamKind'),
+  value: code,
+}))
 
 const form = reactive<MarkTenantGradingPolicySaveRequest>({
   experienceAssistEnabled: true,
   minConsistencyRate: 0.75,
   maxHammingDistance: 16,
   maxExperienceItems: 5,
-  sourceExamKinds: 'REGULAR',
+  sourceExamKind: ExamKindCode.REGULAR,
   requireSameCourse: true,
   requireEffectivenessEval: true,
   manualFinalScoreConfirmRequired: true,
@@ -236,7 +255,7 @@ function applyPolicy(policy: MarkTenantGradingPolicyResponse): void {
   form.minConsistencyRate = policy.minConsistencyRate
   form.maxHammingDistance = policy.maxHammingDistance
   form.maxExperienceItems = policy.maxExperienceItems
-  form.sourceExamKinds = policy.sourceExamKinds ?? 'REGULAR'
+  form.sourceExamKind = policy.sourceExamKind ?? ExamKindCode.REGULAR
   form.requireSameCourse = policy.requireSameCourse ?? true
   form.requireEffectivenessEval = policy.requireEffectivenessEval ?? true
   form.manualFinalScoreConfirmRequired = policy.manualFinalScoreConfirmRequired ?? true
@@ -271,7 +290,12 @@ async function handleSave(): Promise<void> {
   if (!canManage.value) return
   saving.value = true
   try {
-    applyPolicy(await saveTenantGradingPolicy({ ...form }))
+    applyPolicy(
+      await saveTenantGradingPolicy({
+        ...form,
+        sourceExamKind: form.sourceExamKind ?? ExamKindCode.REGULAR,
+      }),
+    )
     message.success('租户策略已保存')
     await loadOpsOverview()
   } catch (error) {

@@ -95,7 +95,7 @@
 
         <AiAnalysisMetaCollapse
           :record="record"
-          failure-fallback="AI 班级薄弱题型分析未完成，请稍后重新生成"
+          failure-fallback="AI 班级薄弱题型分析未完成，可重新生成"
           :extra-items="record.scopeId ? [{ label: '班级编号', value: record.scopeId }] : []"
         />
       </div>
@@ -109,14 +109,14 @@ import type {
   ClassWeaknessItemResponse,
   TeachingAnalysisRecordResponse,
 } from '@/apis/mark/teaching-analysis'
-import type { MarkClassOption } from '@/composables/useMarkExamRoster'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
-import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import {
   generateClassWeaknessAnalysis,
   getLatestClassWeaknessAnalysis,
 } from '@/apis/mark/teaching-analysis'
+import type { MarkClassOption } from '@/composables/useMarkExamRoster'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import AiAnalysisCardBody from '@/components/mark/analysis/AiAnalysisCardBody.vue'
 import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.vue'
 import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCollapse.vue'

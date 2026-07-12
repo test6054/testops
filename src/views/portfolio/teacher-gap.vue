@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { PortfolioGapTaskStatusCode } from '@/apis/portfolio/enums'
+import { PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import type {
   PortfolioArchiveRecordFieldInput,
   PortfolioGapTaskDetailVO,
 } from '@/apis/portfolio/types'
 import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
+import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -12,7 +14,6 @@ import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scann
 import { PortfolioCollectModeCode, ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
-import { PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import { portfolioGapApi } from '@/apis/portfolio/gap'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -27,7 +28,6 @@ import {
 } from '@/composables/usePortfolioPageScope'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 
 function gapTaskStatusLabel(status: PortfolioGapTaskStatusCode): string {
   return strictEnumLabel(PortfolioGapTaskStatusDescription, status, '补采任务状态')
@@ -52,6 +52,7 @@ const fieldValues = reactive<Record<string, string>>({})
 const evidenceRefs = reactive<Record<string, string>>({})
 const attachmentFileNodeId = ref<string>()
 const attachmentFileName = ref<string>()
+const scopeRequestToken = ref(0)
 
 const gapTaskId = computed(() => readRouteParamString(route.params.taskId))
 const teacherRequest = computed(() =>
@@ -63,6 +64,7 @@ const statusLabel = computed(() =>
 )
 
 function resetFormState() {
+  scopeRequestToken.value += 1
   for (const key of Object.keys(fieldValues)) {
     delete fieldValues[key]
   }
@@ -71,10 +73,16 @@ function resetFormState() {
   }
   attachmentFileNodeId.value = undefined
   attachmentFileName.value = undefined
+  dispatchResultOpen.value = false
+  dispatchResult.value = null
 }
 
 async function loadTask() {
+  const requestToken = scopeRequestToken.value + 1
+  scopeRequestToken.value = requestToken
   if (!gapTaskId.value) {
+    detail.value = null
+    resetFormState()
     return
   }
   loading.value = true
@@ -82,15 +90,32 @@ async function loadTask() {
   resetFormState()
   try {
     const task = await portfolioGapApi.getTask(gapTaskId.value)
+    if (scopeRequestToken.value !== requestToken) {
+      return
+    }
     detail.value = task
     for (const field of task.missingFields) {
       fieldValues[field.fieldCode] = field.currentValue ?? ''
       evidenceRefs[field.fieldCode] = ''
     }
+    if (task.courseCode) {
+      fieldValues.courseCode = task.courseCode
+    }
+    if (task.academicYear) {
+      fieldValues.academicYear = task.academicYear
+    }
+    if (task.semester) {
+      fieldValues.semester = task.semester
+    }
   } catch (error) {
+    if (scopeRequestToken.value !== requestToken) {
+      return
+    }
     showUserError(error, '加载补采任务失败')
   } finally {
-    loading.value = false
+    if (scopeRequestToken.value === requestToken) {
+      loading.value = false
+    }
   }
 }
 
@@ -98,17 +123,41 @@ function buildFieldInputs(): PortfolioArchiveRecordFieldInput[] {
   if (!detail.value) {
     return []
   }
-  return detail.value.missingFields.map((field) => ({
+  const inputs = detail.value.missingFields.map((field) => ({
     fieldCode: field.fieldCode,
     fieldValue: fieldValues[field.fieldCode] ?? '',
     evidenceRef: evidenceRefs[field.fieldCode] || undefined,
   }))
+  const fieldCodes = new Set(inputs.map((item) => item.fieldCode))
+  if (detail.value.courseCode && !fieldCodes.has('courseCode')) {
+    inputs.push({
+      fieldCode: 'courseCode',
+      fieldValue: detail.value.courseCode,
+      evidenceRef: undefined,
+    })
+  }
+  if (detail.value.academicYear && !fieldCodes.has('academicYear')) {
+    inputs.push({
+      fieldCode: 'academicYear',
+      fieldValue: detail.value.academicYear,
+      evidenceRef: undefined,
+    })
+  }
+  if (detail.value.semester && !fieldCodes.has('semester')) {
+    inputs.push({
+      fieldCode: 'semester',
+      fieldValue: detail.value.semester,
+      evidenceRef: undefined,
+    })
+  }
+  return inputs
 }
 
 async function handleSaveDraft() {
   if (!detail.value) {
     return
   }
+  const requestToken = scopeRequestToken.value
   saving.value = true
   try {
     await portfolioArchiveApi.saveDraft({
@@ -117,12 +166,20 @@ async function handleSaveDraft() {
       categoryId: detail.value.categoryId,
       fields: buildFieldInputs(),
     })
+    if (scopeRequestToken.value !== requestToken) {
+      return
+    }
     message.success('草稿已保存')
     await loadTask()
   } catch (error) {
+    if (scopeRequestToken.value !== requestToken) {
+      return
+    }
     showUserError(error, '保存草稿失败')
   } finally {
-    saving.value = false
+    if (scopeRequestToken.value === requestToken) {
+      saving.value = false
+    }
   }
 }
 
@@ -130,6 +187,7 @@ async function handleSubmit() {
   if (!detail.value) {
     return
   }
+  const requestToken = scopeRequestToken.value
   submitting.value = true
   try {
     await portfolioGapApi.submitTask({
@@ -138,15 +196,23 @@ async function handleSubmit() {
       fileNodeId: attachmentFileNodeId.value,
       fields: buildFieldInputs(),
     })
+    if (scopeRequestToken.value !== requestToken) {
+      return
+    }
     message.success('补采已提交审核')
     void router.push({
       path: '/portfolio/teacher/home',
       query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
     })
   } catch (error) {
+    if (scopeRequestToken.value !== requestToken) {
+      return
+    }
     showUserError(error, '提交补采失败')
   } finally {
-    submitting.value = false
+    if (scopeRequestToken.value === requestToken) {
+      submitting.value = false
+    }
   }
 }
 
@@ -162,6 +228,7 @@ async function openPortfolioGapScan() {
     message.warning('补采任务或教师信息未就绪')
     return
   }
+  const requestToken = scopeRequestToken.value
   scanOpening.value = true
   try {
     const created = await createScanDispatch({
@@ -173,7 +240,13 @@ async function openPortfolioGapScan() {
     })
     const ticket = created.ticket
     if (!ticket?.ticketId) {
+      if (scopeRequestToken.value !== requestToken) {
+        return
+      }
       showUserError(null, '创建档案袋派单失败')
+      return
+    }
+    if (scopeRequestToken.value !== requestToken) {
       return
     }
     dispatchResult.value = {
@@ -186,9 +259,14 @@ async function openPortfolioGapScan() {
     }
     dispatchResultOpen.value = true
   } catch (error) {
+    if (scopeRequestToken.value !== requestToken) {
+      return
+    }
     showUserError(error, '创建档案袋扫描派单失败')
   } finally {
-    scanOpening.value = false
+    if (scopeRequestToken.value === requestToken) {
+      scanOpening.value = false
+    }
   }
 }
 
@@ -205,13 +283,16 @@ watch(
     if (value !== '1') {
       return
     }
-    const fileNodeId
-      = typeof route.query.scanFileNodeId === 'string' ? route.query.scanFileNodeId : ''
+    const fileNodeId =
+      typeof route.query.scanFileNodeId === 'string' ? route.query.scanFileNodeId : ''
     const nextQuery = { ...route.query }
     delete nextQuery.scanCommitted
     delete nextQuery.scanFileNodeId
     void router.replace({ path: route.path, query: nextQuery })
     await loadTask()
+    if (!detail.value) {
+      return
+    }
     if (fileNodeId) {
       attachmentFileNodeId.value = fileNodeId
     }

@@ -5,9 +5,12 @@ import type {
   PortfolioArchiveBagPreviewVO,
   PortfolioArchiveScoreResultVO,
 } from '@/apis/portfolio/bag-types'
-import type {
-  PortfolioArchiveRecordSourceTypeCode,
+import { PortfolioArchiveBagSourceTypeDescription } from '@/apis/portfolio/bag-types'
+import type { PortfolioArchiveRecordSourceTypeCode } from '@/apis/portfolio/enums'
+import {
+  PortfolioArchiveRecordSourceTypeDescription,
   PortfolioArchiveRecordStatusCode,
+  PortfolioArchiveRecordStatusDescription,
 } from '@/apis/portfolio/enums'
 import type {
   PortfolioArchiveRecordDetailVO,
@@ -15,19 +18,15 @@ import type {
   PortfolioArchiveTimelineItemVO,
   PortfolioTeacherOneTableCategoryVO,
 } from '@/apis/portfolio/types'
+import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
-import { PortfolioArchiveBagSourceTypeDescription } from '@/apis/portfolio/bag-types'
-import {
-  PortfolioArchiveRecordSourceTypeDescription,
-  PortfolioArchiveRecordStatusDescription,
-} from '@/apis/portfolio/enums'
 import { portfolioArchiveBagApi } from '@/apis/portfolio/teacher-platform'
-import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -42,7 +41,6 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
-import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -87,6 +85,7 @@ const bagFilterFields: FilterField[] = [
 
 const recordColumns: ColumnsType = [
   { title: '分类', dataIndex: 'categoryName', key: 'categoryName', width: 140, fixed: 'left' },
+  { title: '版本', key: 'documentVersionNo', width: 72 },
   { title: '状态', key: 'recordStatus', width: 100 },
   { title: '来源', key: 'sourceType', width: 100 },
   { title: '参与评价', key: 'evaluationIncluded', width: 96 },
@@ -124,6 +123,8 @@ const bagPreview = ref<PortfolioArchiveBagPreviewVO | null>(null)
 const scoreResult = ref<PortfolioArchiveScoreResultVO | null>(null)
 const scoreLoading = ref(false)
 const exportConfirmOpen = ref(false)
+const requestToken = ref(0)
+const recordRequestToken = ref(0)
 const bagFilter = ref<{
   academicYear: string
   semester: SemesterCode | undefined
@@ -159,30 +160,55 @@ const canLoadTeacherArchive = computed(
   () => Boolean(targetTeacherId.value) || !canPickTeachers.value,
 )
 
+/** 教师范围变化后必须清空旧档案袋派生结果，避免继续展示上一位教师的评分/预览。 */
+function resetArchiveDerivedContext() {
+  bagSummary.value = null
+  bagPreview.value = null
+  scoreResult.value = null
+  exportConfirmOpen.value = false
+}
+
 async function loadOneTable() {
+  const currentToken = requestToken.value
   if (!canLoadTeacherArchive.value) {
     categories.value = []
     selectedCategoryId.value = undefined
+    resetArchiveDerivedContext()
     return
   }
   oneTableLoading.value = true
   try {
     const vo = await portfolioArchiveApi.getOneTable(teacherRequest.value)
+    if (requestToken.value !== currentToken) {
+      return
+    }
     categories.value = vo.categories
-    if (!categories.value.some((item) => item.categoryId === selectedCategoryId.value)) {
-      selectedCategoryId.value = categories.value[0]?.categoryId
+    if (
+      selectedCategoryId.value &&
+      !categories.value.some((item) => item.categoryId === selectedCategoryId.value)
+    ) {
+      selectedCategoryId.value = undefined
     }
   } catch (error) {
+    if (requestToken.value !== currentToken) {
+      return
+    }
     showUserError(error, '加载教师一张表失败')
   } finally {
-    oneTableLoading.value = false
+    if (requestToken.value === currentToken) {
+      oneTableLoading.value = false
+    }
   }
 }
 
 async function loadRecords() {
+  const currentScopeToken = requestToken.value
+  const currentToken = ++recordRequestToken.value
   if (!canLoadTeacherArchive.value) {
     records.value = []
     pageTotal.value = 0
+    drawerOpen.value = false
+    recordDetail.value = null
     return
   }
   recordLoading.value = true
@@ -198,44 +224,121 @@ async function loadRecords() {
       pageNum: pageNum.value,
       pageSize: pageSize.value,
     })
+    if (requestToken.value !== currentScopeToken || recordRequestToken.value !== currentToken) {
+      return
+    }
     records.value = page.list
     pageTotal.value = page.total
   } catch (error) {
+    if (requestToken.value !== currentScopeToken || recordRequestToken.value !== currentToken) {
+      return
+    }
     showUserError(error, '加载档案记录失败')
   } finally {
-    recordLoading.value = false
+    if (requestToken.value === currentScopeToken && recordRequestToken.value === currentToken) {
+      recordLoading.value = false
+    }
   }
 }
 
 async function loadTimeline() {
+  const currentToken = requestToken.value
   if (!canLoadTeacherArchive.value) {
     timeline.value = []
     return
   }
   timelineLoading.value = true
   try {
-    timeline.value = await portfolioArchiveApi.listTimeline({
+    const nextTimeline = await portfolioArchiveApi.listTimeline({
       ...teacherRequest.value,
       limit: 30,
     })
+    if (requestToken.value !== currentToken) {
+      return
+    }
+    timeline.value = nextTimeline
   } catch (error) {
+    if (requestToken.value !== currentToken) {
+      return
+    }
     showUserError(error, '加载成长时间轴失败')
   } finally {
-    timelineLoading.value = false
+    if (requestToken.value === currentToken) {
+      timelineLoading.value = false
+    }
   }
 }
 
 async function openRecordById(recordId: string) {
+  const currentToken = requestToken.value
   drawerOpen.value = true
   recordDetail.value = null
   detailLoading.value = true
   try {
-    recordDetail.value = await portfolioArchiveApi.getRecord(recordId)
+    const nextRecordDetail = await portfolioArchiveApi.getRecord(recordId)
+    if (requestToken.value !== currentToken) {
+      return
+    }
+    recordDetail.value = nextRecordDetail
+    if (
+      recordDetail.value?.categoryId &&
+      selectedCategoryId.value !== recordDetail.value.categoryId
+    ) {
+      selectedCategoryId.value = recordDetail.value.categoryId
+      pageNum.value = 1
+      await loadRecords()
+    }
   } catch (error) {
+    if (requestToken.value !== currentToken) {
+      return
+    }
     showUserError(error, '加载档案详情失败')
   } finally {
-    detailLoading.value = false
+    if (requestToken.value === currentToken) {
+      detailLoading.value = false
+    }
   }
+}
+
+const revisionLoading = ref(false)
+
+const canCreateRevision = computed(() => {
+  if (!recordDetail.value) {
+    return false
+  }
+  return (
+    recordDetail.value.recordStatus === PortfolioArchiveRecordStatusCode.OFFICIAL ||
+    recordDetail.value.recordStatus === PortfolioArchiveRecordStatusCode.SUPERSEDED
+  )
+})
+
+async function createRevision() {
+  if (!recordDetail.value) {
+    return
+  }
+  revisionLoading.value = true
+  try {
+    const result = await portfolioArchiveApi.createRevision(
+      recordDetail.value.id,
+      targetTeacherId.value || undefined,
+    )
+    message.success('修订草稿已创建')
+    await loadRecords()
+    if (result.recordId) {
+      void openRecordById(result.recordId)
+    }
+  } catch (error) {
+    showUserError(error, '创建修订草稿失败')
+  } finally {
+    revisionLoading.value = false
+  }
+}
+
+function openVersionRecord(recordId: string) {
+  if (recordDetail.value?.id === recordId) {
+    return
+  }
+  void openRecordById(recordId)
 }
 
 function openRecord(row: PortfolioArchiveRecordSummaryVO) {
@@ -255,7 +358,7 @@ function selectCategory(categoryId: string) {
   void loadRecords()
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   pageNum.value = page.current
   pageSize.value = page.pageSize
   void loadRecords()
@@ -297,19 +400,29 @@ function goFieldCorrection(fieldCode: string, fieldLabel?: string, fieldValue?: 
 }
 
 async function refreshBagScore(silent = false) {
+  const currentToken = requestToken.value
   if (!canLoadTeacherArchive.value) {
     return
   }
   scoreLoading.value = true
   try {
-    scoreResult.value = await portfolioArchiveBagApi.computeScore(bagRequest.value)
+    const nextScoreResult = await portfolioArchiveBagApi.computeScore(bagRequest.value)
+    if (requestToken.value !== currentToken) {
+      return
+    }
+    scoreResult.value = nextScoreResult
     if (!silent) {
       message.success(`档案袋评分 ${scoreResult.value.totalScore}`)
     }
   } catch (error) {
+    if (requestToken.value !== currentToken) {
+      return
+    }
     showUserError(error, '计算档案袋评分失败')
   } finally {
-    scoreLoading.value = false
+    if (requestToken.value === currentToken) {
+      scoreLoading.value = false
+    }
   }
 }
 
@@ -318,42 +431,65 @@ async function computeArchiveScore() {
 }
 
 async function assembleBag() {
+  const currentToken = requestToken.value
   if (!canLoadTeacherArchive.value) {
     return
   }
   bagLoading.value = true
   try {
     const result = await portfolioArchiveBagApi.assemble(bagRequest.value)
+    if (requestToken.value !== currentToken) {
+      return
+    }
     bagSummary.value = result
     bagPreview.value = result.preview ?? null
     message.success(`档案袋完整度 ${result.completenessPercent}%`)
     await refreshBagScore(true)
   } catch (error) {
+    if (requestToken.value !== currentToken) {
+      return
+    }
     showUserError(error, '汇聚档案袋失败')
   } finally {
-    bagLoading.value = false
+    if (requestToken.value === currentToken) {
+      bagLoading.value = false
+    }
   }
 }
 
-async function previewBag() {
+async function previewBag(): Promise<boolean> {
+  const currentToken = requestToken.value
   if (!canLoadTeacherArchive.value) {
-    return
+    return false
   }
   bagLoading.value = true
   try {
-    bagPreview.value = await portfolioArchiveBagApi.preview(bagRequest.value)
+    const nextBagPreview = await portfolioArchiveBagApi.preview(bagRequest.value)
+    if (requestToken.value !== currentToken) {
+      return false
+    }
+    bagPreview.value = nextBagPreview
     await refreshBagScore(true)
+    return true
   } catch (error) {
+    if (requestToken.value !== currentToken) {
+      return false
+    }
     showUserError(error, '加载档案袋预览失败')
+    return false
   } finally {
-    bagLoading.value = false
+    if (requestToken.value === currentToken) {
+      bagLoading.value = false
+    }
   }
 }
 
 function openExportConfirm() {
   if (!bagPreview.value) {
-    void previewBag().then(() => {
-      exportConfirmOpen.value = true
+    void previewBag().then((previewed) => {
+      if (previewed) {
+        exportConfirmOpen.value = true
+      }
     })
     return
   }
@@ -361,12 +497,16 @@ function openExportConfirm() {
 }
 
 async function confirmExportBag() {
+  const currentToken = requestToken.value
   if (!canLoadTeacherArchive.value) {
     return
   }
   bagLoading.value = true
   try {
     const result = await portfolioArchiveBagApi.buildMaterialPackage(bagRequest.value)
+    if (requestToken.value !== currentToken) {
+      return
+    }
     if (!result.fileNodeId) {
       showUserError(new Error('导出未返回 ZIP 文件 ID'), '导出档案袋失败')
       return
@@ -378,16 +518,21 @@ async function confirmExportBag() {
     exportConfirmOpen.value = false
     await previewBag()
   } catch (error) {
+    if (requestToken.value !== currentToken) {
+      return
+    }
     showUserError(error, '导出档案袋失败')
   } finally {
-    bagLoading.value = false
+    if (requestToken.value === currentToken) {
+      bagLoading.value = false
+    }
   }
 }
 
-function applyBagFilter() {
-  void previewBag()
-  void loadRecords()
-  void refreshBagScore(true)
+async function applyBagFilter() {
+  requestToken.value += 1
+  resetArchiveDerivedContext()
+  await Promise.all([loadRecords(), previewBag()])
 }
 
 async function exportBag() {
@@ -404,6 +549,8 @@ async function reloadAll() {
 async function openRecordFromRouteQuery() {
   const recordId = typeof route.query.recordId === 'string' ? route.query.recordId : ''
   if (!recordId) {
+    drawerOpen.value = false
+    recordDetail.value = null
     return
   }
   await openRecordById(recordId)
@@ -411,7 +558,9 @@ async function openRecordFromRouteQuery() {
 
 usePortfolioScopedLoader(
   async () => {
+    requestToken.value += 1
     pageNum.value = 1
+    resetArchiveDerivedContext()
     await reloadAll()
     await openRecordFromRouteQuery()
   },
@@ -572,6 +721,9 @@ watch(
                 {{ archiveRecordStatusLabel(record.recordStatus) }}
               </UiTag>
             </template>
+            <template v-else-if="column.key === 'documentVersionNo'">
+              v{{ record.documentVersionNo ?? 1 }}
+            </template>
             <template v-else-if="column.key === 'sourceType'">
               {{ archiveRecordSourceTypeLabel(record.sourceType) }}
             </template>
@@ -622,7 +774,33 @@ watch(
             {{ recordDetail.categoryName }}
             · {{ archiveRecordStatusLabel(recordDetail.recordStatus) }} ·
             {{ archiveRecordSourceTypeLabel(recordDetail.sourceType) }}
+            <template v-if="recordDetail.documentVersionNo">
+              · v{{ recordDetail.documentVersionNo }}
+            </template>
           </p>
+          <div v-if="canCreateRevision" class="teacher-archive__detail-actions">
+            <UiButton :loading="revisionLoading" @click="createRevision"> 创建修订版 </UiButton>
+          </div>
+          <section
+            v-if="recordDetail.versionHistory?.length"
+            class="teacher-archive__version-history"
+          >
+            <h4 class="teacher-archive__version-title">版本历史</h4>
+            <ul class="teacher-archive__version-list">
+              <li
+                v-for="item in recordDetail.versionHistory"
+                :key="item.id"
+                class="teacher-archive__version-item"
+                @click="openVersionRecord(item.id)"
+              >
+                <span>v{{ item.documentVersionNo ?? 1 }}</span>
+                <UiTag :tone="archiveRecordStatusTone(item.recordStatus)">
+                  {{ archiveRecordStatusLabel(item.recordStatus) }}
+                </UiTag>
+                <span class="teacher-archive__version-time">{{ item.updateTime }}</span>
+              </li>
+            </ul>
+          </section>
           <p class="teacher-archive__detail-meta">
             更新时间 {{ recordDetail.updateTime }} · 参与评价
             {{ recordDetail.evaluationIncluded ? '是' : '否' }}
@@ -769,6 +947,41 @@ watch(
 .teacher-archive__detail-meta {
   margin: 0 0 var(--dp-space-2);
   font-size: 13px;
+  color: var(--dp-text-secondary);
+}
+
+.teacher-archive__detail-actions {
+  margin-bottom: var(--dp-space-3);
+}
+
+.teacher-archive__version-history {
+  margin-bottom: var(--dp-space-3);
+}
+
+.teacher-archive__version-title {
+  margin: 0 0 var(--dp-space-2);
+  font-size: 14px;
+  font-weight: var(--dp-font-weight-medium);
+}
+
+.teacher-archive__version-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.teacher-archive__version-item {
+  display: flex;
+  align-items: center;
+  gap: var(--dp-space-2);
+  padding: var(--dp-space-2) 0;
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.teacher-archive__version-time {
+  margin-left: auto;
   color: var(--dp-text-secondary);
 }
 

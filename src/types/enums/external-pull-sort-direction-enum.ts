@@ -1,3 +1,5 @@
+import { strictEnumLabel } from '@/utils/strict-enum'
+
 /** 外部拔取排序方向 */
 export enum ExternalPullSortDirectionCode {
   ASC = 'ASC',
@@ -19,5 +21,5 @@ export const EXTERNAL_PULL_SORT_DIRECTION_OPTIONS: Array<{
   label: string
 }> = ALL_EXTERNAL_PULL_SORT_DIRECTION_CODES.map((value) => ({
   value,
-  label: ExternalPullSortDirectionDescription[value],
+  label: strictEnumLabel(ExternalPullSortDirectionDescription, value, '外部拔取排序方向'),
 }))

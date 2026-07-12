@@ -140,7 +140,7 @@
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'question'">
               <a-space direction="vertical" :size="2">
-                <a-typography-text v-if="record.taskUnit === 'WHOLE_PAPER'" strong>
+                <a-typography-text v-if="record.taskUnit === AllocationUnitCode.WHOLE_PAPER" strong>
                   整卷批阅
                 </a-typography-text>
                 <a-typography-text v-else strong>
@@ -149,7 +149,10 @@
               </a-space>
             </template>
             <template v-else-if="column.key === 'anonymityMode'">
-              <UiTag :tone="record.anonymityMode === 'ANONYMOUS' ? 'blue' : 'gray'" size="sm">
+              <UiTag
+                :tone="record.anonymityMode === AnonymityModeCode.ANONYMOUS ? 'blue' : 'gray'"
+                size="sm"
+              >
                 {{ anonymityModeLabel(record.anonymityMode) }}
               </UiTag>
             </template>
@@ -171,7 +174,10 @@
             </template>
             <template v-else-if="column.key === 'session'">
               <a-space direction="vertical" :size="2">
-                <UiTag :tone="record.markingPhase === 'TRIAL' ? 'orange' : 'green'" size="sm">
+                <UiTag
+                  :tone="record.markingPhase === MarkingSessionPhaseCode.TRIAL ? 'orange' : 'green'"
+                  size="sm"
+                >
                   {{ record.sessionStatusMessage }}
                 </UiTag>
                 <span class="muted">{{ formatDateTime(record.sessionStartTime) }}</span>
@@ -222,14 +228,22 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
-import type {
-  FormalSessionResponse,
+import { AnonymityModeCode } from '@/types/enums/anonymity-mode-enum'
+import {
+  AllocationUnitCode,
+  type FormalSessionResponse,
+  FormalSessionStatusDescription,
+  getMarkingQuestionView,
+  getOrganization,
+  MARKING_TASK_STATUS_OPTIONS,
+  MARKING_TASK_STATUS_TONE,
   MarkingTaskClaimRequest,
   MarkingTaskQueryRequest,
   MarkingTaskResponse,
+  MarkingTaskStatusDescription,
   TeacherClaimContextResponse,
   TrialSessionResponse,
+  TrialSessionStatusDescription,
 } from '@/apis/mark/marking-organization'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -242,15 +256,9 @@ import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } fr
 import { useRoute, useRouter } from 'vue-router'
 import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
 import {
-  FormalSessionStatusDescription,
-  getMarkingQuestionView,
-  getOrganization,
-  MARKING_TASK_STATUS_OPTIONS,
-  MARKING_TASK_STATUS_TONE,
-  MarkingTaskStatusDescription,
-  TrialSessionStatusDescription,
-} from '@/apis/mark/marking-organization'
-import { MarkingTaskStreamSubscribeScopeCode } from '@/apis/mark/marking-task-stream'
+  MarkingTaskStreamEventTypeCode,
+  MarkingTaskStreamSubscribeScopeCode,
+} from '@/apis/mark/marking-task-stream'
 import MarkingBatchScoreDrawer from '@/components/mark/MarkingBatchScoreDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -379,13 +387,16 @@ const selectedTasks = computed(() =>
 
 function isBatchSelectable(task: MarkingTaskResponse): boolean {
   return (
-    task.taskStatus === MarkingTaskStatusCode.ALLOCATED
-    || task.taskStatus === MarkingTaskStatusCode.IN_PROGRESS
+    task.taskStatus === MarkingTaskStatusCode.ALLOCATED ||
+    task.taskStatus === MarkingTaskStatusCode.IN_PROGRESS
   )
 }
 
 function isSameBatchGroup(task: MarkingTaskResponse, anchor: MarkingTaskResponse): boolean {
-  if (task.taskUnit === 'WHOLE_PAPER' || anchor.taskUnit === 'WHOLE_PAPER') {
+  if (
+    task.taskUnit === AllocationUnitCode.WHOLE_PAPER ||
+    anchor.taskUnit === AllocationUnitCode.WHOLE_PAPER
+  ) {
     return false
   }
   return task.groupId === anchor.groupId && task.questionNo === anchor.questionNo
@@ -397,8 +408,8 @@ function handleSelectionChange(keys: (string | number)[]): void {
     clearBatchSelection()
     return
   }
-  const anchor
-    = batchSelectionAnchor.value ?? tasks.value.find((task) => task.id === typedKeys[0]) ?? null
+  const anchor =
+    batchSelectionAnchor.value ?? tasks.value.find((task) => task.id === typedKeys[0]) ?? null
   if (!anchor || !isBatchSelectable(anchor)) {
     clearBatchSelection()
     return
@@ -463,13 +474,13 @@ const teacherTaskStream = useMarkingTaskStream({
   }),
   when: () => Boolean(selectedExamId.value && currentUserId.value),
   onEvent: (event) => {
-    if (event.eventType === 'SESSION_PAUSED') {
+    if (event.eventType === MarkingTaskStreamEventTypeCode.SESSION_PAUSED) {
       sessionPausedAlert.value = true
       void loadTasks({ silent: true })
       taskListPolling.syncPolling()
       return
     }
-    if (event.eventType === 'SESSION_RESUMED') {
+    if (event.eventType === MarkingTaskStreamEventTypeCode.SESSION_RESUMED) {
       sessionPausedAlert.value = false
       void loadTasks({ silent: true })
       taskListPolling.syncPolling()
@@ -480,7 +491,7 @@ const teacherTaskStream = useMarkingTaskStream({
       void loadTasks({ silent: true })
       return
     }
-    if (event.eventType === 'TASK_ALLOCATED' && event.taskId) {
+    if (event.eventType === MarkingTaskStreamEventTypeCode.TASK_ALLOCATED && event.taskId) {
       highlightTaskRow(event.taskId)
     }
   },
@@ -493,17 +504,17 @@ const groupLeaderStream = useMarkingTaskStream({
   }),
   when: () => Boolean(selectedExamId.value && isGroupLeader.value),
   onEvent: (event) => {
-    if (event.eventType === 'SESSION_PAUSED') {
+    if (event.eventType === MarkingTaskStreamEventTypeCode.SESSION_PAUSED) {
       sessionPausedAlert.value = true
     }
-    if (event.eventType === 'SESSION_RESUMED') {
+    if (event.eventType === MarkingTaskStreamEventTypeCode.SESSION_RESUMED) {
       sessionPausedAlert.value = false
     }
     // exam Topic 事件携带单 session 计数，须回源 claimContext 做 exam 级聚合
     if (
-      event.eventType === 'SESSION_PROGRESS'
-      || event.eventType === 'SESSION_PAUSED'
-      || event.eventType === 'SESSION_RESUMED'
+      event.eventType === MarkingTaskStreamEventTypeCode.SESSION_PROGRESS ||
+      event.eventType === MarkingTaskStreamEventTypeCode.SESSION_PAUSED ||
+      event.eventType === MarkingTaskStreamEventTypeCode.SESSION_RESUMED
     ) {
       void loadClaimContext()
     }
@@ -530,8 +541,8 @@ function getPollingIntervalMs(): number {
     return 5000
   }
   if (
-    teacherTaskStream.connectionPhase.value === 'failed'
-    || (isGroupLeader.value && groupLeaderStream.connectionPhase.value === 'failed')
+    teacherTaskStream.connectionPhase.value === 'failed' ||
+    (isGroupLeader.value && groupLeaderStream.connectionPhase.value === 'failed')
   ) {
     return 30000
   }
@@ -566,7 +577,7 @@ const columns = computed<ColumnType<MarkingTaskResponse>[]>(() => [
   { title: '操作', key: 'actions', width: 140 },
 ])
 
-async function loadTasks(options?: { silent?: boolean, resetPage?: boolean }): Promise<void> {
+async function loadTasks(options?: { silent?: boolean; resetPage?: boolean }): Promise<void> {
   if (!selectedExamId.value) {
     markTaskStore.clearTasks()
     tasksLoadError.value = ''

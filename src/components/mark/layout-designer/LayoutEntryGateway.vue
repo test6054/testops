@@ -4,11 +4,19 @@ import type {
   ExamLayoutDocument,
   ExamLayoutGenerateQuestionRequest,
 } from '@/apis/mark/exam-layout-design'
-import type {LayoutQuestionDraft} from '@/utils/layout-question-templates';
+import { fetchExamLayoutPageUploadMeta } from '@/apis/mark/exam-layout-design'
+import type { LayoutQuestionDraft } from '@/utils/layout-question-templates'
+import {
+  buildGenerateQuestionsFromDrafts,
+  createAnswerSheetDefaultQuestionRows,
+  createQuestionDraft,
+  defaultFullScore,
+  defaultOptionCount,
+  deriveQuestionType,
+} from '@/utils/layout-question-templates'
+import QuestionCircleOutlined from '@ant-design/icons-vue/QuestionCircleOutlined'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
-import { ExamMaterialLayoutModeDescription } from '@/apis/mark/exam'
-import { fetchExamLayoutPageUploadMeta } from '@/apis/mark/exam-layout-design'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -20,29 +28,15 @@ import {
   defaultBlankSheetPaperSpec,
   ExamLayoutPaperSpecCode,
   ExamLayoutPaperSpecOptions,
-  getExamLayoutPaperSpecDescription,
 } from '@/types/enums/exam-layout-paper-spec-enum'
 import { createClientUuid } from '@/utils/client-uuid'
 import { showUserError } from '@/utils/error-handler'
 import { layoutHasSourceFileDetectResult } from '@/utils/exam-layout-designer'
-import {
-  buildGenerateQuestionsFromDrafts,
-  createAnswerSheetDefaultQuestionRows,
-  createQuestionDraft,
-  defaultFullScore,
-  defaultOptionCount,
-  deriveQuestionType
-
-} from '@/utils/layout-question-templates'
-
-import { strictEnumLabel } from '@/utils/strict-enum'
 
 const props = defineProps<{
   document: ExamLayoutDocument | null
   examId: string
   materialLayoutMode?: ExamMaterialLayoutModeCode
-  materialLayoutModeMessage?: string
-  layoutPaperSpecMessage?: string
   generating?: boolean
   detecting?: boolean
   readonly?: boolean
@@ -51,7 +45,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'generate-sheet': [paperSpec: string, questions: ExamLayoutGenerateQuestionRequest[]]
   'auto-detect': [sourcePdfFileId: string]
-  "patch": [document: ExamLayoutDocument]
+  patch: [document: ExamLayoutDocument]
 }>()
 
 const OCR_SCENE_OPTIONS = [
@@ -82,7 +76,12 @@ const QUICK_SCENE_OPTIONS = [
   { label: '作图', value: 'DRAWING' },
   { label: '编程', value: 'PROGRAMMING' },
 ]
-new Set(['CHOICE', 'TRUE_FALSE', 'FILL_BLANK', 'NUMERIC'])
+
+const PAPER_SPEC_TOOLTIP: Partial<Record<ExamLayoutPaperSpecCode, string>> = {
+  [ExamLayoutPaperSpecCode.A3_2COL]: 'A3 横版：适合 1 张 2 面双面扫描；客观左栏、主观右栏',
+  [ExamLayoutPaperSpecCode.A4_1COL]: 'A4 单栏：通常 1 张 1 面单面扫描；多页时按总页数推导印张',
+}
+
 const sourcePdfFileId = ref(props.document?.sourcePdfFileId ?? '')
 const sourcePdfFileName = ref('')
 const sourceFileCanAutoDetect = computed(() => {
@@ -95,8 +94,8 @@ const sourceFileCanAutoDetect = computed(() => {
   return /\.(pdf|doc|docx|png|jpe?g)$/i.test(sourcePdfFileName.value)
 })
 const paperSpec = ref<ExamLayoutPaperSpecCode>(
-  ALL_EXAM_LAYOUT_PAPER_SPEC_CODES.find((code) => code === props.document?.paperSpec)
-  ?? defaultBlankSheetPaperSpec(),
+  ALL_EXAM_LAYOUT_PAPER_SPEC_CODES.find((code) => code === props.document?.paperSpec) ??
+    defaultBlankSheetPaperSpec(),
 )
 const layoutName = ref(props.document?.layoutName ?? '')
 const printSafeMarginMm = ref(props.document?.printSafeMarginMm ?? 5)
@@ -133,34 +132,11 @@ const isAnswerSheetMode = computed(() => props.materialLayoutMode === 'ANSWER_SH
 const isFullPaperMode = computed(() => props.materialLayoutMode === 'FULL_PAPER')
 const entryReadonly = computed(() => props.readonly || !props.materialLayoutMode || props.detecting)
 
-const materialLayoutModeLabel = computed(() => {
-  if (props.materialLayoutModeMessage) {
-    return props.materialLayoutModeMessage
-  }
-  if (props.materialLayoutMode) {
-    return strictEnumLabel(ExamMaterialLayoutModeDescription, props.materialLayoutMode, '制卷形态')
-  }
-  return '制卷形态未选择'
-})
-
-const displayedPaperSpecMessage = computed(() => {
-  if (props.layoutPaperSpecMessage) {
-    return props.layoutPaperSpecMessage
-  }
-  if (isAnswerSheetMode.value) {
-    return getExamLayoutPaperSpecDescription(paperSpec.value)
-  }
-  return ''
-})
-
 const paperSpecOptions = ExamLayoutPaperSpecOptions
 
-const paperSpecHint = computed(() => {
-  if (paperSpec.value === ExamLayoutPaperSpecCode.A3_2COL) {
-    return 'A3 横版：适合 1 张 2 面双面扫描；客观左栏、主观右栏'
-  }
-  return 'A4 单栏：通常 1 张 1 面单面扫描；多页时按总页数推导印张'
-})
+const paperSpecTooltip = computed(
+  () => PAPER_SPEC_TOOLTIP[paperSpec.value] ?? PAPER_SPEC_TOOLTIP[ExamLayoutPaperSpecCode.A4_1COL],
+)
 
 function patchDocument(partial: Partial<ExamLayoutDocument>): void {
   if (!props.document) {
@@ -352,18 +328,21 @@ function onSourcePdfChange(fileId: string | undefined): void {
 
 <template>
   <section class="layout-entry-gateway">
-    <h2 class="layout-entry-gateway__title">制卷入口</h2>
-    <dl class="layout-entry-gateway__meta">
-      <div class="layout-entry-gateway__meta-row">
-        <dt>制卷形态</dt>
-        <dd>{{ materialLayoutModeLabel }}</dd>
-      </div>
-      <div v-if="displayedPaperSpecMessage" class="layout-entry-gateway__meta-row">
-        <dt>纸型</dt>
-        <dd>{{ displayedPaperSpecMessage }}</dd>
-      </div>
-    </dl>
     <a-form layout="vertical" class="layout-entry-gateway__form">
+      <a-tooltip
+        v-if="!materialLayoutMode"
+        title="请先回到考试准备页保存答卷页模式或整卷模式，再进入制卷设计。"
+      >
+        <UiAlertStrip
+          tone="warning"
+          title="制卷形态未保存"
+          dense
+          inline
+          :closable="false"
+          class="layout-entry-gateway__alert"
+        />
+      </a-tooltip>
+
       <a-form-item label="制卷名称">
         <a-input
           v-model:value="layoutName"
@@ -372,7 +351,15 @@ function onSourcePdfChange(fileId: string | undefined): void {
           @blur="patchDocument({ layoutName })"
         />
       </a-form-item>
-      <a-form-item label="安全边距（mm）">
+      <a-form-item>
+        <template #label>
+          <span class="layout-entry-gateway__label">
+            安全边距（mm）
+            <a-tooltip title="印刷裁切留白，影响页边识别区与题区排版。">
+              <QuestionCircleOutlined class="layout-entry-gateway__label-icon" />
+            </a-tooltip>
+          </span>
+        </template>
         <a-input-number
           v-model:value="printSafeMarginMm"
           :min="3"
@@ -382,22 +369,16 @@ function onSourcePdfChange(fileId: string | undefined): void {
         />
       </a-form-item>
 
-      <UiAlertStrip
-        v-if="!materialLayoutMode"
-        tone="warning"
-        title="制卷形态未保存"
-        description="请先回到考试准备页保存答卷页模式或整卷模式，再进入制卷设计。"
-        dense
-        :closable="false"
-      />
-
       <template v-if="isFullPaperMode">
-        <a-divider />
-        <h3 class="layout-entry-gateway__section">整卷试卷 · 源文件</h3>
-        <p class="layout-entry-gateway__hint">
-          上传 PDF、Word 或图片后将异步识别题目、分页入库并生成题单。
-        </p>
-        <a-form-item label="整卷源文件">
+        <a-form-item>
+          <template #label>
+            <span class="layout-entry-gateway__label">
+              整卷源文件
+              <a-tooltip title="上传 PDF、Word 或图片后将异步识别题目、分页入库并生成题单。">
+                <QuestionCircleOutlined class="layout-entry-gateway__label-icon" />
+              </a-tooltip>
+            </span>
+          </template>
           <UiPlatformFileField
             v-model:file-node-id="sourcePdfFileId"
             v-model:file-name="sourcePdfFileName"
@@ -405,7 +386,6 @@ function onSourcePdfChange(fileId: string | undefined): void {
             accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg"
             :disabled="entryReadonly"
             button-text="上传源文件"
-            tip="PDF / Word / 图片上传后自动预划题区"
             @update:file-node-id="onSourcePdfChange"
           />
         </a-form-item>
@@ -421,9 +401,15 @@ function onSourcePdfChange(fileId: string | undefined): void {
       </template>
 
       <template v-if="isAnswerSheetMode">
-        <a-divider />
-        <h3 class="layout-entry-gateway__section">纸型规格（答题卡）</h3>
-        <a-form-item label="纸型">
+        <a-form-item>
+          <template #label>
+            <span class="layout-entry-gateway__label">
+              纸型
+              <a-tooltip :title="paperSpecTooltip">
+                <QuestionCircleOutlined class="layout-entry-gateway__label-icon" />
+              </a-tooltip>
+            </span>
+          </template>
           <a-select
             v-model:value="paperSpec"
             :options="paperSpecOptions"
@@ -506,7 +492,6 @@ function onSourcePdfChange(fileId: string | undefined): void {
             </div>
           </div>
         </a-form-item>
-        <p class="layout-entry-gateway__hint">{{ paperSpecHint }}</p>
         <UiButton
           block
           variant="primary"
@@ -523,59 +508,23 @@ function onSourcePdfChange(fileId: string | undefined): void {
 
 <style scoped lang="scss">
 .layout-entry-gateway {
-  height: 100%;
-  padding: 12px;
-  border: 1px solid var(--dp-border-subtle);
-  border-radius: var(--dp-radius-panel);
-  background: #fff;
-  overflow: auto;
+  max-width: 720px;
+  padding: 16px;
 
-  &__title {
-    margin: 0 0 4px;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--dp-text-primary);
+  &__alert {
+    margin-bottom: 12px;
   }
 
-  &__meta {
-    margin: 0 0 12px;
-    display: flex;
-    flex-direction: column;
+  &__label {
+    display: inline-flex;
+    align-items: center;
     gap: 4px;
   }
 
-  &__meta-row {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    margin: 0;
+  &__label-icon {
     font-size: 12px;
-
-    dt {
-      flex: 0 0 auto;
-      margin: 0;
-      color: var(--dp-text-secondary);
-    }
-
-    dd {
-      margin: 0;
-      font-weight: 500;
-      color: var(--dp-text-primary);
-    }
-  }
-
-  &__section {
-    margin: 0 0 8px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--dp-text-primary);
-  }
-
-  &__hint {
-    margin: -4px 0 12px;
-    font-size: 12px;
-    line-height: 1.5;
-    color: var(--dp-text-secondary);
+    color: var(--dp-text-muted);
+    cursor: help;
   }
 
   &__quick-actions {

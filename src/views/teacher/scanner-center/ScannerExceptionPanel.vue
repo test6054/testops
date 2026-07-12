@@ -1,18 +1,17 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ScannerExceptionDashboardItemVO } from '@/apis/mark/scanner-dispatch'
+import {
+  cancelScanDispatch,
+  pageScannerExceptionDashboard,
+  ScanDispatchTicketStatusCode,
+  ScanDispatchTicketStatusDescription,
+} from '@/apis/mark/scanner-dispatch'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { dismissScanBatchCollateAttention, retryScanBatchPageRegister } from '@/apis/mark/exam-scan'
-import {
-  cancelScanDispatch,
-  pageScannerExceptionDashboard,
-  ScanBatchQualityFlagDescription,
-  ScanDispatchTicketStatusCode,
-  ScanDispatchTicketStatusDescription,
-} from '@/apis/mark/scanner-dispatch'
 import { ScanWorkOrderStatusDescription } from '@/apis/mark/scanner-work-order'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -26,8 +25,12 @@ import {
   PageRegisterStateCode,
   PageRegisterStateDescription,
 } from '@/types/enums/page-register-state-enum'
-import { ScannerExceptionItemKindCode } from '@/types/enums/scanner-exception-item-kind-enum'
+import {
+  ScannerExceptionItemKindCode,
+  ScannerExceptionItemKindDescription,
+} from '@/types/enums/scanner-exception-item-kind-enum'
 import { showUserError } from '@/utils/error-handler'
+import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ScanDispatchForceReleaseDialog from '@/views/teacher/archive-volume/components/ScanDispatchForceReleaseDialog.vue'
 
@@ -38,7 +41,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'open-log': [payload: { ticketId?: string, volumeId?: string }]
+  'open-log': [payload: { ticketId?: string; volumeId?: string }]
   'metrics-changed': []
 }>()
 
@@ -62,19 +65,26 @@ const pagination = reactive({ current: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, tota
 let pageLoadGeneration = 0
 
 const columns: ColumnsType<ExceptionDashboardRow> = [
-  { title: '类型', key: 'itemKind', dataIndex: 'itemKind', width: 88, fixed: 'left' },
+  { title: '类型', key: 'itemKind', dataIndex: 'itemKind', width: 100, fixed: 'left' },
   { title: '标识', key: 'identifier', dataIndex: 'identifier', width: 168, ellipsis: true },
-  { title: '状态', key: 'status', dataIndex: 'status', width: 108 },
+  { title: '状态', key: 'status', dataIndex: 'status', width: 112 },
+  {
+    title: '页进度',
+    key: 'pageProgress',
+    width: 96,
+    align: 'right',
+  },
   {
     title: '说明',
     key: 'detail',
     dataIndex: 'detail',
-    minWidth: 320,
+    minWidth: 280,
     ellipsis: true,
     align: 'left',
     className: 'ui-data-table__col--text-left',
   },
-  { title: '操作', key: 'actions', width: 248 },
+  { title: '更新时间', key: 'updateTime', width: 156 },
+  { title: '操作', key: 'actions', width: 360, fixed: 'right' },
 ]
 
 function buildRowKey(item: ScannerExceptionDashboardItemVO): string {
@@ -86,9 +96,6 @@ function buildRowKey(item: ScannerExceptionDashboardItemVO): string {
   }
   if (item.itemKind === ScannerExceptionItemKindCode.COMMITTING) {
     return `committing-${item.workOrderId ?? ''}`
-  }
-  if (item.itemKind === ScannerExceptionItemKindCode.MIXED_BATCH) {
-    return `mixed-${item.workOrderId ?? ''}-${item.volumeId ?? ''}`
   }
   if (item.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED) {
     return `page-register-${item.scanBatchId ?? ''}`
@@ -149,12 +156,11 @@ function filterByKind(kind?: ExceptionDashboardRowKind) {
 function applyRouteKindFilter() {
   const kind = props.initialKind ?? route.query.kind
   if (
-    kind === ScannerExceptionItemKindCode.TICKET
-    || kind === ScannerExceptionItemKindCode.WORK_ORDER
-    || kind === ScannerExceptionItemKindCode.COMMITTING
-    || kind === ScannerExceptionItemKindCode.MIXED_BATCH
-    || kind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED
-    || kind === ScannerExceptionItemKindCode.PARTIAL_TAIL
+    kind === ScannerExceptionItemKindCode.TICKET ||
+    kind === ScannerExceptionItemKindCode.WORK_ORDER ||
+    kind === ScannerExceptionItemKindCode.COMMITTING ||
+    kind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED ||
+    kind === ScannerExceptionItemKindCode.PARTIAL_TAIL
   ) {
     itemKindFilter.value = kind
     return
@@ -163,12 +169,41 @@ function applyRouteKindFilter() {
 }
 
 function itemKindLabel(kind: ExceptionDashboardRowKind) {
-  if (kind === ScannerExceptionItemKindCode.TICKET) return '派单'
-  if (kind === ScannerExceptionItemKindCode.WORK_ORDER) return '工单'
-  if (kind === ScannerExceptionItemKindCode.COMMITTING) return '合成中'
-  if (kind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED) return '页登记阻断'
-  if (kind === ScannerExceptionItemKindCode.PARTIAL_TAIL) return '余页未切卷'
-  return '混扫批次'
+  return strictEnumLabel(ScannerExceptionItemKindDescription, kind, 'itemKind')
+}
+
+function itemKindTone(kind?: ExceptionDashboardRowKind): 'red' | 'orange' | 'blue' | 'gray' {
+  if (
+    kind === ScannerExceptionItemKindCode.TICKET ||
+    kind === ScannerExceptionItemKindCode.WORK_ORDER
+  ) {
+    return 'red'
+  }
+  if (
+    kind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED ||
+    kind === ScannerExceptionItemKindCode.PARTIAL_TAIL
+  ) {
+    return 'orange'
+  }
+  if (kind === ScannerExceptionItemKindCode.COMMITTING) {
+    return 'blue'
+  }
+  return 'gray'
+}
+
+function pageProgressLabel(row: ExceptionDashboardRow): string {
+  if (
+    row.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED ||
+    row.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL ||
+    row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER ||
+    row.itemKind === ScannerExceptionItemKindCode.COMMITTING
+  ) {
+    if (row.registeredPageCount == null && row.pageCount == null) {
+      return '—'
+    }
+    return formatPageProgress(row.registeredPageCount, row.pageCount)
+  }
+  return '—'
 }
 
 function rowIdentifier(row: ExceptionDashboardRow) {
@@ -176,8 +211,8 @@ function rowIdentifier(row: ExceptionDashboardRow) {
     return row.ticketId ?? row.traceLabelCode ?? '—'
   }
   if (
-    row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER
-    || row.itemKind === ScannerExceptionItemKindCode.COMMITTING
+    row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER ||
+    row.itemKind === ScannerExceptionItemKindCode.COMMITTING
   ) {
     return row.workOrderId ?? row.batchExternalNo ?? '—'
   }
@@ -192,21 +227,14 @@ function rowIdentifier(row: ExceptionDashboardRow) {
 
 function statusLabel(row: ExceptionDashboardRow) {
   if (
-    (row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER
-      || row.itemKind === ScannerExceptionItemKindCode.COMMITTING)
-    && row.workOrderStatus
+    (row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER ||
+      row.itemKind === ScannerExceptionItemKindCode.COMMITTING) &&
+    row.workOrderStatus
   ) {
     return strictEnumLabel(ScanWorkOrderStatusDescription, row.workOrderStatus, 'workOrderStatus')
   }
   if (row.itemKind === ScannerExceptionItemKindCode.TICKET && row.ticketStatus) {
     return strictEnumLabel(ScanDispatchTicketStatusDescription, row.ticketStatus, 'ticketStatus')
-  }
-  if (row.itemKind === ScannerExceptionItemKindCode.MIXED_BATCH && row.batchQualityFlag) {
-    return strictEnumLabel(
-      ScanBatchQualityFlagDescription,
-      row.batchQualityFlag,
-      'batchQualityFlag',
-    )
   }
   if (row.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED) {
     const state = row.pageRegisterState
@@ -214,8 +242,8 @@ function statusLabel(row: ExceptionDashboardRow) {
       return strictEnumLabel(PageRegisterStateDescription, state, 'pageRegisterState')
     }
     if (
-      state === PageRegisterStateCode.BLOCKED_RECOVERABLE
-      || state === PageRegisterStateCode.PENDING
+      state === PageRegisterStateCode.BLOCKED_RECOVERABLE ||
+      state === PageRegisterStateCode.PENDING
     ) {
       return strictEnumLabel(PageRegisterStateDescription, state, 'pageRegisterState')
     }
@@ -227,16 +255,22 @@ function statusLabel(row: ExceptionDashboardRow) {
   return '—'
 }
 
+function formatPageProgress(registered?: number, total?: number): string {
+  const registeredText = registered == null ? '—' : String(registered)
+  const totalText = total == null ? '—' : String(total)
+  return `${registeredText}/${totalText} 页`
+}
+
 function rowDetail(row: ExceptionDashboardRow) {
   if (row.itemKind === ScannerExceptionItemKindCode.TICKET) {
     return row.failureReason ?? row.traceLabelCode ?? '—'
   }
   if (row.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED) {
-    const progress = `${row.registeredPageCount ?? 0}/${row.pageCount ?? 0} 页`
+    const progress = formatPageProgress(row.registeredPageCount, row.pageCount)
     return row.pageRegisterDiagnostic ?? row.diagnostic ?? progress
   }
   if (row.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL) {
-    const progress = `${row.registeredPageCount ?? 0}/${row.pageCount ?? 0} 页已落库`
+    const progress = `${formatPageProgress(row.registeredPageCount, row.pageCount)}已落库`
     return row.diagnostic ?? progress
   }
   if (row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER) {
@@ -247,18 +281,18 @@ function rowDetail(row: ExceptionDashboardRow) {
 
 function canForceReleaseTicket(row: ExceptionDashboardRow) {
   return (
-    row.itemKind === ScannerExceptionItemKindCode.TICKET
-    && Boolean(row.ticketId)
-    && (row.ticketStatus === ScanDispatchTicketStatusCode.PROCESSING
-      || row.ticketStatus === ScanDispatchTicketStatusCode.SUSPENDED)
+    row.itemKind === ScannerExceptionItemKindCode.TICKET &&
+    Boolean(row.ticketId) &&
+    (row.ticketStatus === ScanDispatchTicketStatusCode.PROCESSING ||
+      row.ticketStatus === ScanDispatchTicketStatusCode.SUSPENDED)
   )
 }
 
 function canCancelTicket(row: ExceptionDashboardRow) {
   return (
-    row.itemKind === ScannerExceptionItemKindCode.TICKET
-    && Boolean(row.ticketId)
-    && row.ticketStatus === ScanDispatchTicketStatusCode.PENDING
+    row.itemKind === ScannerExceptionItemKindCode.TICKET &&
+    Boolean(row.ticketId) &&
+    row.ticketStatus === ScanDispatchTicketStatusCode.PENDING
   )
 }
 
@@ -302,9 +336,9 @@ function canRetryPageRegisterRow(row: ExceptionDashboardRow): boolean {
   }
   const state = row.pageRegisterState
   return (
-    state === PageRegisterStateCode.BLOCKED_RECOVERABLE
-    || state === PageRegisterStateCode.PENDING
-    || state == null
+    state === PageRegisterStateCode.BLOCKED_RECOVERABLE ||
+    state === PageRegisterStateCode.PENDING ||
+    state == null
   )
 }
 
@@ -322,11 +356,10 @@ function buildExceptionRowActions(row: ExceptionDashboardRow): UiTableRowActionI
     })
   }
   if (
-    row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER
-    || row.itemKind === ScannerExceptionItemKindCode.COMMITTING
-    || row.itemKind === ScannerExceptionItemKindCode.MIXED_BATCH
-    || row.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED
-    || row.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL
+    row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER ||
+    row.itemKind === ScannerExceptionItemKindCode.COMMITTING ||
+    row.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED ||
+    row.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL
   ) {
     actions.push({
       key: 'goto-handle',
@@ -343,7 +376,7 @@ function buildExceptionRowActions(row: ExceptionDashboardRow): UiTableRowActionI
     })
     actions.push({ key: 'manual-merge', label: '人工合并', tone: 'default' })
   }
-  actions.push({ key: 'logs', label: '操作日志' })
+  actions.push({ key: 'logs', label: '处置日志' })
   if (canCancelTicket(row)) {
     actions.push({
       key: 'cancel',
@@ -421,35 +454,32 @@ function openWorkOrderTarget(row: ExceptionDashboardRow) {
     void router.push({ path: `/scanner-kiosk/dispatch/${row.ticketId}` })
     return
   }
-  if (row.itemKind === ScannerExceptionItemKindCode.MIXED_BATCH && row.volumeId) {
-    void router.push({ name: 'TeacherArchiveVolumeDetail', params: { volumeId: row.volumeId } })
-    return
-  }
+  const batchExamId = row.contextExamId ?? row.examId
   if (
-    row.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED
-    && row.contextExamId
-    && row.scanBatchId
+    row.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED &&
+    batchExamId &&
+    row.scanBatchId
   ) {
     void router.push({
       name: 'TeacherExamWorkspaceScanBatchDetail',
-      params: { examId: row.contextExamId, scanBatchId: row.scanBatchId },
+      params: { examId: batchExamId, scanBatchId: row.scanBatchId },
     })
     return
   }
   if (
-    row.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL
-    && row.contextExamId
-    && row.scanBatchId
+    row.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL &&
+    batchExamId &&
+    row.scanBatchId
   ) {
     void router.push({
       name: 'TeacherExamWorkspaceScanBatchDetail',
-      params: { examId: row.contextExamId, scanBatchId: row.scanBatchId },
+      params: { examId: batchExamId, scanBatchId: row.scanBatchId },
     })
     return
   }
   if (
-    row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER
-    || row.itemKind === ScannerExceptionItemKindCode.COMMITTING
+    row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER ||
+    row.itemKind === ScannerExceptionItemKindCode.COMMITTING
   ) {
     navigateWorkOrderByTaskKind(row)
   }
@@ -457,9 +487,9 @@ function openWorkOrderTarget(row: ExceptionDashboardRow) {
 
 async function dismissPartialTail(row: ExceptionDashboardRow) {
   if (
-    row.itemKind !== ScannerExceptionItemKindCode.PARTIAL_TAIL
-    || !row.scanBatchId
-    || !row.examId
+    row.itemKind !== ScannerExceptionItemKindCode.PARTIAL_TAIL ||
+    !row.scanBatchId ||
+    !row.examId
   ) {
     return
   }
@@ -488,9 +518,9 @@ async function dismissPartialTail(row: ExceptionDashboardRow) {
 
 async function retryPageRegister(row: ExceptionDashboardRow) {
   if (
-    row.itemKind !== ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED
-    || !row.scanBatchId
-    || !row.examId
+    row.itemKind !== ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED ||
+    !row.scanBatchId ||
+    !row.examId
   ) {
     return
   }
@@ -514,7 +544,7 @@ async function retryPageRegister(row: ExceptionDashboardRow) {
   }
 }
 
-function handlePageChange(pageEvent: { current: number, pageSize: number }) {
+function handlePageChange(pageEvent: { current: number; pageSize: number }) {
   pagination.current = pageEvent.current
   pagination.pageSize = pageEvent.pageSize
   void loadPage()
@@ -577,15 +607,6 @@ watch(
           <UiButton
             size="sm"
             :variant="
-              itemKindFilter === ScannerExceptionItemKindCode.MIXED_BATCH ? 'primary' : 'outline'
-            "
-            @click="filterByKind(ScannerExceptionItemKindCode.MIXED_BATCH)"
-          >
-            混扫
-          </UiButton>
-          <UiButton
-            size="sm"
-            :variant="
               itemKindFilter === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED
                 ? 'primary'
                 : 'outline'
@@ -617,12 +638,16 @@ watch(
         row-key="rowKey"
         size="middle"
         flat
-        empty-description="暂无异常记录"
+        zebra
+        sticky-header
+        empty-description="当前筛选下没有可处置异常；可切换类型筛选，或从顶部待办指标进入其它队列"
         @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'itemKind'">
-            <UiTag tone="blue" size="sm">{{ itemKindLabel(record.itemKind) }}</UiTag>
+            <UiTag :tone="itemKindTone(record.itemKind)" size="sm">{{
+              itemKindLabel(record.itemKind)
+            }}</UiTag>
           </template>
           <template v-else-if="column.key === 'identifier'">
             <UiEllipsisText :text="rowIdentifier(record)" />
@@ -630,12 +655,19 @@ watch(
           <template v-else-if="column.key === 'status'">
             {{ statusLabel(record) }}
           </template>
+          <template v-else-if="column.key === 'pageProgress'">
+            {{ pageProgressLabel(record) }}
+          </template>
           <template v-else-if="column.key === 'detail'">
             <UiEllipsisText :text="rowDetail(record)" tone="secondary" />
+          </template>
+          <template v-else-if="column.key === 'updateTime'">
+            {{ record.updateTime ? formatDateTime(record.updateTime) : '—' }}
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
               :items="buildExceptionRowActions(record)"
+              :max-visible="8"
               split
               @action="(key) => handleExceptionRowAction(key, record)"
             />

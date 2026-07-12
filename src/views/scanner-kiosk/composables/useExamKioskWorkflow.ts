@@ -14,6 +14,7 @@
  */
 
 import type { LocationQueryValue } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import type {
   AgentHealthStatusCode,
   ScanJobListResponse,
@@ -21,29 +22,6 @@ import type {
   ScannerDeviceInfo,
   ScannerListResponse,
 } from '@/apis/mark/scanner-agent-local'
-import type {
-  ExamScannerBatchResponse,
-  ExamScannerBoundPaperItemVO,
-  ExamScannerKioskBatchHistoryRequest,
-  ExamScannerKioskBindExamCandidatePageRequest,
-  ExamScannerKioskBindExamCandidateVO,
-  ExamScannerKioskContextVO,
-  ExamScannerPageLedgerVO,
-  ExamScannerScanConfigOptionsVO,
-  ExamScannerScanConfigVO,
-} from '@/apis/mark/scanner-kiosk'
-import type { ScanWorkOrderLifecycleVO } from '@/apis/mark/scanner-work-order'
-import type { SemesterCode } from '@/types/enums'
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import {
-  ScannerColorModeCode,
-  ScannerColorModeDescription,
-  ScannerDuplexModeCode,
-  ScannerDuplexModeDescription,
-  ScannerEndpointOnlineStatusDescription,
-} from '@/apis/mark/exam-mark-scanner'
-import { ScanAttentionTypeCode, ScanAttentionTypeDescription } from '@/apis/mark/exam-scan'
 import {
   AgentHealthStatusDescription,
   AgentUpdateStatusCode,
@@ -77,6 +55,17 @@ import {
   setPreferredLocalScanner,
   startScanJob,
 } from '@/apis/mark/scanner-agent-local'
+import type {
+  ExamScannerBatchResponse,
+  ExamScannerBoundPaperItemVO,
+  ExamScannerKioskBatchHistoryRequest,
+  ExamScannerKioskBindExamCandidatePageRequest,
+  ExamScannerKioskBindExamCandidateVO,
+  ExamScannerKioskContextVO,
+  ExamScannerPageLedgerVO,
+  ExamScannerScanConfigOptionsVO,
+  ExamScannerScanConfigVO,
+} from '@/apis/mark/scanner-kiosk'
 import {
   bindScannerKioskExam,
   discardScannedPage,
@@ -97,16 +86,27 @@ import {
   ScannerKioskScanModeCode,
   ScannerKioskScanModeDescription,
 } from '@/apis/mark/scanner-kiosk'
+import type { ScanWorkOrderLifecycleVO } from '@/apis/mark/scanner-work-order'
 import {
   commitExamScanWorkOrder,
   discardExamScanWorkOrder,
   retryExamScanWorkOrderPageRegister,
   startExamScanWorkOrder,
 } from '@/apis/mark/scanner-work-order'
+import type { SemesterCode } from '@/types/enums'
+import { getSemesterDescription, SemesterOptions } from '@/types/enums'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import {
+  ScannerColorModeCode,
+  ScannerColorModeDescription,
+  ScannerDuplexModeCode,
+  ScannerDuplexModeDescription,
+  ScannerEndpointOnlineStatusDescription,
+} from '@/apis/mark/exam-mark-scanner'
+import { ScanAttentionTypeCode, ScanAttentionTypeDescription } from '@/apis/mark/exam-scan'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
-import { getSemesterDescription, SemesterOptions } from '@/types/enums'
 import { DirectScanProviderChainDescription } from '@/types/enums/direct-scan-provider-chain-enum'
 import { ExamScannerPageUploadStatusCode } from '@/types/enums/exam-scanner-page-upload-status-enum'
 import {
@@ -1286,7 +1286,7 @@ export function useExamKioskWorkflow() {
     const sha = item.sha256 ?? ''
     const pageNo = item.pageNo
     if (!Number.isFinite(pageNo)) {
-      throw toUserError(null, '页级账本缺少页号，请刷新后重试')
+      throw toUserError(null, '页级账本缺少页号')
     }
     const local = item.localPageId ?? ''
     return `${batchNo}#${pageNo}#${sha || local || 'nokey'}`
@@ -1439,7 +1439,7 @@ export function useExamKioskWorkflow() {
           return
         }
         if (lifecycle.pageRegisterPending) {
-          errorMessage.value = `页登记待重试：${pageRegisterDiagnostic.value || '请稍后重试'}`
+          errorMessage.value = `页登记待重试：${pageRegisterDiagnostic.value || '请查看登记诊断'}`
           return
         }
         if (lifecycle.committedExamBatchId) {
@@ -1462,7 +1462,7 @@ export function useExamKioskWorkflow() {
       }
       if (response.pageRegisterPending) {
         applyPageRegisterState(false, true, response.pageRegisterDiagnostic)
-        errorMessage.value = `页登记待重试：${pageRegisterDiagnostic.value || '请稍后重试'}`
+        errorMessage.value = `页登记待重试：${pageRegisterDiagnostic.value || '请查看登记诊断'}`
         return
       }
       applyPageRegisterState(false, false)
@@ -2189,7 +2189,7 @@ export function useExamKioskWorkflow() {
     const apiLabel = kioskContext.value?.scanConfigOptions?.directScanProviderChainLabel?.trim()
     if (apiLabel) return apiLabel
     if (chain) {
-      return DirectScanProviderChainDescription[chain]
+      return strictEnumLabel(DirectScanProviderChainDescription, chain, '直扫识别链路')
     }
     return '租户 OCR 未启用'
   }
@@ -2840,7 +2840,7 @@ export function useExamKioskWorkflow() {
     ) {
       return {
         ok: false,
-        errorMessage: '扫描工单班级范围与当前考试不一致，请刷新后重新启动扫描',
+        errorMessage: '扫描工单班级范围与当前考试不一致，请重新启动扫描',
       }
     }
     if (lifecycle.examScanMode !== ScannerKioskScanModeCode.SUPPLEMENT) {
@@ -3451,7 +3451,7 @@ export function useExamKioskWorkflow() {
 
   async function discardLedgerPage(item: { localPageId?: string, pageNo: number }) {
     if (!Number.isFinite(item.pageNo)) {
-      throw toUserError(null, '页级账本缺少页号，请刷新后重试')
+      throw toUserError(null, '页级账本缺少页号')
     }
     if (!canDiscardLedgerPage.value) {
       errorMessage.value = '当前扫描任务未结束，不能废弃已落库扫描页'
@@ -3661,7 +3661,7 @@ export function useExamKioskWorkflow() {
         typeof lifecycle.pendingPageCount !== 'number'
         || !Number.isFinite(lifecycle.pendingPageCount)
       ) {
-        throw toUserError(null, '扫描批次关闭结果异常，请刷新后重试')
+        throw toUserError(null, '扫描批次关闭结果异常')
       }
       if (lifecycle.pendingPageCount > 0) {
         const diagnostic = lifecycle.pendingPagesDiagnostic?.trim()

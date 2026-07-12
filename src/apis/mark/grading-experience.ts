@@ -5,11 +5,13 @@ import type { AiAnalysisStatusCode } from './ai-analysis-status'
 import type { QuestionTypeCode } from './question-type'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { ExperienceRecommendationCode } from '@/types/enums/experience-recommendation-enum'
 import http from '@/config/axios'
 import {
   ExperienceCaseStatusCode,
   ExperienceCaseStatusDescription,
 } from '@/types/enums/experience-case-status-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
   ALL_EXPERIENCE_CASE_STATUS_CODES,
@@ -31,8 +33,8 @@ export const EXPERIENCE_CASE_MAIN_FLOW_STATUSES: ExperienceCaseStatusCode[] = [
 
 /** 经验案例主流程 hint */
 export const EXPERIENCE_CASE_FLOW_HINT = `${EXPERIENCE_CASE_MAIN_FLOW_STATUSES.map(
-  (status) => ExperienceCaseStatusDescription[status],
-).join(' → ')} / ${ExperienceCaseStatusDescription[ExperienceCaseStatusCode.DEPRECATED]}`
+  (status) => strictEnumLabel(ExperienceCaseStatusDescription, status, '经验案例状态'),
+).join(' → ')} / ${strictEnumLabel(ExperienceCaseStatusDescription, ExperienceCaseStatusCode.DEPRECATED, '经验案例状态')}`
 
 /** 经验辅助定标引导：有效性评估通过后才可绑定或自动匹配 */
 export const EXPERIENCE_ASSIST_CALIBRATION_HINT
@@ -133,7 +135,7 @@ export interface GradingExperienceCaseResponse {
   /** 评阅引用次数（最新 SUCCESS 有效性评估） */
   reuseCount?: number
   /** 最新有效性评估推荐 KEEP/UPDATE/DEPRECATE */
-  latestEffectivenessRecommendation?: string
+  latestEffectivenessRecommendation?: ExperienceRecommendationCode
   /** 是否满足经验辅助定标门禁 */
   assistEligible?: boolean
 }

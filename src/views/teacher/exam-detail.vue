@@ -1,7 +1,12 @@
 <template>
   <StageWorkbenchShell>
     <template v-if="detail" #context>
-      <ContextBar layout="workbench" show-title :title="contextBarTitle" :subtitle="contextBarSubtitle">
+      <ContextBar
+        layout="workbench"
+        show-title
+        :title="contextBarTitle"
+        :subtitle="contextBarSubtitle"
+      >
         <template #status>
           <UiTag v-if="chromeExamStatusLabel" :tone="chromeExamStatusTone" size="sm">
             {{ chromeExamStatusLabel }}
@@ -38,7 +43,7 @@
 
     <UiEmpty
       v-else-if="!detail || !snapshot?.dashboardPanel"
-      description="暂无考试概览数据"
+      description="当前没有可展示的考试概览"
       class="exam-overview__empty"
     />
 
@@ -50,9 +55,13 @@
       :dashboard-panel="snapshot.dashboardPanel"
       :suggested-stage-title="suggestedStage?.title"
       :suggested-stage-status="suggestedStageStatus"
+      :recommended-primary-label="recommendedPrimaryLabel"
+      :recommended-secondary-label="recommendedSecondaryLabel"
+      :recommended-primary-disabled="recommendedPrimaryDisabled"
+      :recommended-primary-disabled-reason="recommendedPrimaryDisabledReason"
       @stage-click="handleStageClick"
-      @enter-marking="goMarkingTaskPool"
-      @enter-scan="goScanBatches"
+      @primary-action="runRecommendedPrimaryAction"
+      @secondary-action="runRecommendedSecondaryAction"
       @enter-quality="goMarkQuality"
       @todo-navigate="handleTodoNavigate"
     />
@@ -61,13 +70,13 @@
 
 <script lang="ts" setup>
 import type { ExamDetailResponse } from '@/apis/mark/exam'
+import { EXAM_KIND_TONE, ExamKindDescription } from '@/apis/mark/exam'
 import type { ExamWorkbenchStageKeyCode } from '@/apis/mark/exam-progress'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
 import { storeToRefs } from 'pinia'
 import { computed, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
-import { EXAM_KIND_TONE, ExamKindDescription } from '@/apis/mark/exam'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -78,6 +87,13 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
 import { useMarkStageStore } from '@/stores/modules/markStage'
+import { WorkbenchNextActionKeyCode } from '@/types/enums/exam-workbench-next-action-key-enum'
+import {
+  countBlockingScanAttention,
+  hasPrepHardBlocking,
+  resolveNextActionRouteName,
+  resolvePrimaryEnabledNextAction,
+} from '@/utils/exam-workspace-entry-gates'
 import { navigateToMarkStage } from '@/utils/mark-stage-navigation'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ExamWorkbenchOverviewDashboard from '@/views/teacher/exam-workspace/ExamWorkbenchOverviewDashboard.vue'
@@ -106,9 +122,10 @@ const markStageStore = useMarkStageStore()
 const { suggestedStageKey, orderedStages } = storeToRefs(markStageStore)
 
 const detail = computed(() => examDetail?.value ?? null)
-const pageLoading = computed(() =>
-  (snapshotLoading.value && !snapshot.value)
-  || (examDetailLoading?.value === true && !detail.value),
+const pageLoading = computed(
+  () =>
+    (snapshotLoading.value && !snapshot.value) ||
+    (examDetailLoading?.value === true && !detail.value),
 )
 
 const suggestedStage = computed<WorkbenchStage | null>(() => {
@@ -122,6 +139,52 @@ const suggestedStageStatus = computed(() => {
   if (!key || !snapshot.value) return undefined
   return snapshot.value.stages.find((stage) => stage.key === key)?.status
 })
+
+const prepBlockingReasons = computed(() => snapshot.value?.prepBlockingReasons ?? [])
+const nextActions = computed(() => snapshot.value?.nextActions ?? [])
+const primaryNextAction = computed(() =>
+  resolvePrimaryEnabledNextAction(nextActions.value, suggestedStageKey.value),
+)
+
+const recommendedPrimaryLabel = computed(() => {
+  if (hasPrepHardBlocking(prepBlockingReasons.value)) {
+    return '处理准备阻断'
+  }
+  const progress = markingProgress?.value
+  if (
+    progress &&
+    countBlockingScanAttention(progress.scanAttentionCount, progress.needReviewGradeResultCount) > 0
+  ) {
+    return '处理扫描异常'
+  }
+  if (primaryNextAction.value?.label?.trim()) {
+    return primaryNextAction.value.label.trim()
+  }
+  if (suggestedStage.value?.title) {
+    return `前往${suggestedStage.value.title}`
+  }
+  return '进入阅卷'
+})
+
+const recommendedSecondaryLabel = computed(() => {
+  if (hasPrepHardBlocking(prepBlockingReasons.value)) {
+    return '查看概览'
+  }
+  const progress = markingProgress?.value
+  if (
+    progress &&
+    countBlockingScanAttention(progress.scanAttentionCount, progress.needReviewGradeResultCount) > 0
+  ) {
+    return '扫描批次'
+  }
+  if (primaryNextAction.value?.actionKey === WorkbenchNextActionKeyCode.START_SCAN) {
+    return '准备工作台'
+  }
+  return '扫描中心'
+})
+
+const recommendedPrimaryDisabled = computed(() => false)
+const recommendedPrimaryDisabledReason = computed(() => '')
 
 const markingPercent = computed(() => {
   const progress = markingProgress?.value
@@ -191,11 +254,80 @@ function handleStageClick(key: ExamWorkbenchStageKeyCode): void {
 }
 
 function goMarkingTaskPool(): void {
-  void router.push({ name: 'TeacherExamWorkspaceMarkingTaskPool', params: { examId: examId.value } })
+  void router.push({
+    name: 'TeacherExamWorkspaceMarkingTaskPool',
+    params: { examId: examId.value },
+  })
 }
 
 function goScanBatches(): void {
   void router.push({ name: 'TeacherExamWorkspaceScanBatches', params: { examId: examId.value } })
+}
+
+function goPrepWorkbench(): void {
+  void router.push({ name: 'TeacherExamWorkspacePrep', params: { examId: examId.value } })
+}
+
+function goScanMonitor(): void {
+  void router.push({ name: 'TeacherExamWorkspaceScanMonitor', params: { examId: examId.value } })
+}
+
+/** 概览主按钮：阻断 > 扫描异常 > 后端 nextAction > 建议阶段 > 阅卷任务池 */
+function runRecommendedPrimaryAction(): void {
+  if (!examId.value) {
+    return
+  }
+  if (hasPrepHardBlocking(prepBlockingReasons.value)) {
+    goPrepWorkbench()
+    return
+  }
+  const progress = markingProgress?.value
+  if (
+    progress &&
+    countBlockingScanAttention(progress.scanAttentionCount, progress.needReviewGradeResultCount) > 0
+  ) {
+    goScanMonitor()
+    return
+  }
+  const action = primaryNextAction.value
+  if (action) {
+    void router.push({
+      name: resolveNextActionRouteName(
+        action.actionKey,
+        examId.value,
+        progress?.scanAttentionCount,
+      ),
+      params: { examId: examId.value },
+    })
+    return
+  }
+  if (suggestedStageKey.value) {
+    goSuggestedStage()
+    return
+  }
+  goMarkingTaskPool()
+}
+
+function runRecommendedSecondaryAction(): void {
+  if (!examId.value) {
+    return
+  }
+  if (hasPrepHardBlocking(prepBlockingReasons.value)) {
+    return
+  }
+  const progress = markingProgress?.value
+  if (
+    progress &&
+    countBlockingScanAttention(progress.scanAttentionCount, progress.needReviewGradeResultCount) > 0
+  ) {
+    goScanBatches()
+    return
+  }
+  if (primaryNextAction.value?.actionKey === WorkbenchNextActionKeyCode.START_SCAN) {
+    goPrepWorkbench()
+    return
+  }
+  goScanBatches()
 }
 
 function goMarkQuality(): void {
@@ -212,15 +344,21 @@ function handleTodoNavigate(routeName: string | undefined, targetExamId: string 
 
 function handleOverviewMetricClick(key: string): void {
   if (key === 'marking') {
-    void router.push({ name: 'TeacherExamWorkspaceMarkingProgress', params: { examId: examId.value } })
+    void router.push({
+      name: 'TeacherExamWorkspaceMarkingProgress',
+      params: { examId: examId.value },
+    })
     return
   }
   if (key === 'scanAttention') {
-    goScanBatches()
+    goScanMonitor()
     return
   }
   if (key === 'arbitration') {
-    void router.push({ name: 'TeacherExamWorkspaceMarkingArbitration', params: { examId: examId.value } })
+    void router.push({
+      name: 'TeacherExamWorkspaceMarkingArbitration',
+      params: { examId: examId.value },
+    })
   }
 }
 

@@ -5,11 +5,12 @@ import type {
   ArchiveTaskCreateSectionKey,
   ArchiveTaskCreateWizardState,
 } from './archive-task-create-context'
+import { ARCHIVE_TASK_CREATE_SECTION_ORDER } from './archive-task-create-context'
 import type { ArchiveTenantTemplateSetResponse } from '@/apis/mark/archive-platform-template'
+import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import {
   ArchiveScoreSourceCode,
   ArchiveSecurityLevelCode,
@@ -23,7 +24,6 @@ import {
   parseAcademicYearStart,
 } from '@/utils/academic-year'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
-import { ARCHIVE_TASK_CREATE_SECTION_ORDER } from './archive-task-create-context'
 
 export type {
   ArchiveTaskCreateBasicForm,
@@ -81,8 +81,8 @@ export function useArchiveTaskCreate() {
   const planFormRef = ref<FormInstance>()
 
   const defaultTerm = getDefaultAcademicYearAndSemester()
-  const defaultStartYear
-    = parseAcademicYearStart(defaultTerm.academicYear) ?? new Date().getFullYear()
+  const defaultStartYear =
+    parseAcademicYearStart(defaultTerm.academicYear) ?? new Date().getFullYear()
 
   const wizardState = reactive<ArchiveTaskCreateWizardState>({
     provenance: parseRouteProvenance(route.query.provenance),
@@ -109,7 +109,7 @@ export function useArchiveTaskCreate() {
     examForm: undefined,
     scoreSource: defaultScoreSourceForProvenance(wizardState.provenance),
     securityLevel: ArchiveSecurityLevelCode.INTERNAL,
-    retentionYears: 10,
+    retentionYears: undefined,
     permanentRetention: false,
     responsibleUserId: normalizeTeacherUserId(userStore.userInfo?.userId),
     responsibleUserName: userStore.userInfo?.nickName ?? '',
@@ -201,20 +201,25 @@ export function useArchiveTaskCreate() {
     code: string | null,
     name: string,
     examForm?: ArchiveTaskCreatePlanForm['examForm'],
-    retention?: { defaultPermanentRetention?: boolean, defaultRetentionYears?: number },
+    retention?: { defaultPermanentRetention?: boolean; defaultRetentionYears?: number },
   ): void {
     planForm.templateSetCode = code
     planForm.templateSetName = name
     if (examForm) {
       planForm.examForm = examForm
     }
-    if (retention?.defaultPermanentRetention != null) {
-      planForm.permanentRetention = retention.defaultPermanentRetention
-      if (retention.defaultPermanentRetention) {
-        planForm.retentionYears = 30
-      } else if (retention.defaultRetentionYears != null) {
-        planForm.retentionYears = retention.defaultRetentionYears
-      }
+    if (retention?.defaultPermanentRetention === true) {
+      planForm.permanentRetention = true
+      planForm.retentionYears = undefined
+    } else if (
+      retention?.defaultPermanentRetention === false &&
+      retention.defaultRetentionYears != null
+    ) {
+      planForm.permanentRetention = false
+      planForm.retentionYears = retention.defaultRetentionYears
+    } else {
+      planForm.permanentRetention = false
+      planForm.retentionYears = undefined
     }
   }
 
@@ -269,10 +274,14 @@ export function useArchiveTaskCreate() {
     if (!planFormRef.value) return false
     try {
       await planFormRef.value.validate()
-      return true
     } catch {
       return false
     }
+    if (!planForm.permanentRetention && planForm.retentionYears == null) {
+      void message.warning('请填写保管年限或勾选永久保管')
+      return false
+    }
+    return true
   }
 
   async function validateStepsBeforeSection(target: ArchiveTaskCreateSectionKey): Promise<boolean> {

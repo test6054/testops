@@ -204,7 +204,7 @@ async function handleSubmit(): Promise<void> {
       progressFailed.value = true
       message.error(
         submittedTaskIds.length > 0
-          ? `${failed.failureMessage ?? '批量提交失败'}（已成功提交 ${submittedTaskIds.length} 份，请刷新后重试剩余任务）`
+          ? `${failed.failureMessage ?? '批量提交失败'}（已成功提交 ${submittedTaskIds.length} 份，请处理剩余任务）`
           : (failed.failureMessage ?? '批量提交失败'),
       )
       if (submittedTaskIds.length > 0) {

@@ -26,7 +26,7 @@
       :loading="loading"
       :generating="generating"
       :has-content="record != null"
-      empty-description="暂无数据，可点击重新生成"
+      empty-description="当前没有可展示的内容，可点击重新生成"
       progress-title="AI 错因聚类分析生成中"
       :progress-waiting-text="
         props.classId
@@ -59,7 +59,7 @@
 
         <AiAnalysisMetaCollapse
           :record="record"
-          failure-fallback="AI 错因聚类分析未完成，请稍后重新生成"
+          failure-fallback="AI 错因聚类分析未完成，可重新生成"
           :extra-items="[{ label: '聚类数', value: clusterCountText(record) }]"
         />
       </div>
@@ -72,13 +72,13 @@ import type {
   ErrorCauseClusterItemVO,
   ErrorCauseClusterResponse,
 } from '@/apis/mark/error-cause-cluster'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { computed, ref, watch } from 'vue'
-import { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
 import {
   generateErrorCauseCluster,
   getLatestErrorCauseCluster,
 } from '@/apis/mark/error-cause-cluster'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { computed, ref, watch } from 'vue'
+import { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import AiAnalysisCardBody from '@/components/mark/analysis/AiAnalysisCardBody.vue'

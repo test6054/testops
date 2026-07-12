@@ -56,6 +56,7 @@ import {
   resolveTodoRowTitle,
   resolveTodoUrgency,
 } from '@/utils/mark-dashboard-todo'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'PendingTodoFeed' })
 
@@ -73,13 +74,13 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  "navigate": [routeName: string | undefined, examId: string | undefined]
+  navigate: [routeName: string | undefined, examId: string | undefined]
   'empty-action': []
 }>()
 
 function resolveRowTitle(todo: MarkTeacherDashboardPendingTodoItemVO): string {
   if (props.titleSource === 'todo-type') {
-    return MarkTeacherDashboardTodoTypeDescription[todo.todoType]
+    return strictEnumLabel(MarkTeacherDashboardTodoTypeDescription, todo.todoType, '教师待办类型')
   }
   return resolveTodoRowTitle(todo)
 }
@@ -93,7 +94,7 @@ function resolveRowLabel(todo: MarkTeacherDashboardPendingTodoItemVO): string {
     if (todo.count > 0) {
       return `${todo.count.toLocaleString('zh-CN')} ${MARK_DASHBOARD_TODO_COUNT_UNIT[todo.todoType]}`
     }
-    return MarkTeacherDashboardTodoTypeDescription[todo.todoType]
+    return strictEnumLabel(MarkTeacherDashboardTodoTypeDescription, todo.todoType, '教师待办类型')
   }
   return resolveTodoRowLabel(todo)
 }
@@ -207,7 +208,7 @@ function resolveRowContext(todo: MarkTeacherDashboardPendingTodoItemVO): string 
   margin-top: var(--dp-space-1);
   font-size: 12px;
   line-height: 1.5;
-  color: var(--dp-text-muted);
+  color: var(--dp-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -224,7 +225,7 @@ function resolveRowContext(todo: MarkTeacherDashboardPendingTodoItemVO): string 
   font-size: 13px;
   font-weight: 500;
   line-height: 1.5;
-  color: var(--ant-color-primary);
+  color: var(--dp-blue-600);
   white-space: nowrap;
   cursor: pointer;
   transition: color var(--dp-duration-fast) ease;

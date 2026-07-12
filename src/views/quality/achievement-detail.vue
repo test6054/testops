@@ -1,24 +1,14 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { AchievementAuditVO } from '@/apis/quality/achievement-audit'
-import type { AchievementDetailVO } from '@/apis/quality/achievement-detail'
-import type { AchievementManualReviewVO } from '@/apis/quality/achievement-manual-review'
-import type { AchievementResultVO } from '@/apis/quality/achievement-result'
-import type { AchievementDetailTypeCode, AchievementStatusCode } from '@/apis/quality/types'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { achievementApi } from '@/apis/quality/achievement'
 import { achievementAuditApi } from '@/apis/quality/achievement-audit'
+import type { AchievementDetailVO } from '@/apis/quality/achievement-detail'
 import { achievementDetailApi } from '@/apis/quality/achievement-detail'
+import type { AchievementManualReviewVO } from '@/apis/quality/achievement-manual-review'
 import { achievementManualReviewApi } from '@/apis/quality/achievement-manual-review'
+import type { AchievementResultVO } from '@/apis/quality/achievement-result'
 import { achievementResultApi } from '@/apis/quality/achievement-result'
-
-import { courseGoalApi } from '@/apis/quality/course-goal'
-import { indirectFormApi } from '@/apis/quality/indirect-form'
-import { indirectItemApi } from '@/apis/quality/indirect-item'
+import type { AchievementDetailTypeCode, AchievementStatusCode } from '@/apis/quality/types'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_STATUS_COLOR,
@@ -31,6 +21,16 @@ import {
   ManualReviewDecisionCode,
   ManualReviewDecisionDescription,
 } from '@/apis/quality/types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { achievementApi } from '@/apis/quality/achievement'
+import { courseGoalApi } from '@/apis/quality/course-goal'
+import { indirectFormApi } from '@/apis/quality/indirect-form'
+import { indirectItemApi } from '@/apis/quality/indirect-item'
+import { requirementIndicatorApi } from '@/apis/quality/requirement-indicator'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -69,7 +69,7 @@ useQualityScopedLoader(
 const resultId = computed(() => String(route.params.resultId || ''))
 
 const result = ref<AchievementResultVO | null>(null)
-const courseGoalWeights = ref<{ directWeight?: number, indirectWeight?: number } | null>(null)
+const courseGoalWeights = ref<{ directWeight?: number; indirectWeight?: number } | null>(null)
 
 interface RelatedIndirectFormLink {
   id: string
@@ -95,7 +95,7 @@ const auditTotal = ref(0)
 const reviewPageNum = ref(1)
 const reviewPageSize = ref(10)
 const reviewTotal = ref(0)
-const reviewForm = reactive<{ decision: ManualReviewDecisionCode, reviewRemark: string }>({
+const reviewForm = reactive<{ decision: ManualReviewDecisionCode; reviewRemark: string }>({
   decision: ManualReviewDecisionCode.CONFIRMED,
   reviewRemark: '',
 })
@@ -199,18 +199,18 @@ const targetTypeToComputeKind: Partial<Record<AchievementTargetTypeCode, string>
 function canRecomputeResult(value: AchievementResultVO | null): boolean {
   if (!value) return false
   return (
-    value.auditStatus === AchievementAuditStatusCode.RETURNED
-    || isResultStale(value)
-    || value.auditStatus === AchievementAuditStatusCode.DRAFT
-    || value.auditStatus === AchievementAuditStatusCode.CALCULATED
+    value.auditStatus === AchievementAuditStatusCode.RETURNED ||
+    isResultStale(value) ||
+    value.auditStatus === AchievementAuditStatusCode.DRAFT ||
+    value.auditStatus === AchievementAuditStatusCode.CALCULATED
   )
 }
 
 function canSubmitManualReview(value: AchievementResultVO | null): boolean {
   if (!value?.auditStatus) return false
   return (
-    value.auditStatus === AchievementAuditStatusCode.SUBMITTED
-    || value.auditStatus === AchievementAuditStatusCode.CONFIRMED
+    value.auditStatus === AchievementAuditStatusCode.SUBMITTED ||
+    value.auditStatus === AchievementAuditStatusCode.CONFIRMED
   )
 }
 
@@ -248,7 +248,16 @@ async function handleRecompute() {
         semester: base.semester,
       })
     } else if (computeKind === 'REQUIREMENT') {
-      await achievementApi.computeRequirement(base)
+      let requirementId: string | undefined
+      if (record.targetType === AchievementTargetTypeCode.GRADUATION_REQUIREMENT) {
+        requirementId = record.targetId
+      } else if (record.targetType === AchievementTargetTypeCode.REQUIREMENT_INDICATOR) {
+        requirementId = (await requirementIndicatorApi.detail(record.targetId)).requirementId
+      }
+      await achievementApi.computeRequirement({
+        ...base,
+        requirementId,
+      })
     } else if (computeKind === 'TRAINING_OBJECTIVE') {
       await achievementApi.computeTrainingObjective({
         ...base,
@@ -344,8 +353,8 @@ async function loadResult() {
     courseGoalWeights.value = null
     relatedIndirectForms.value = []
     if (
-      result.value?.targetType === AchievementTargetTypeCode.COURSE_GOAL
-      && result.value.targetId
+      result.value?.targetType === AchievementTargetTypeCode.COURSE_GOAL &&
+      result.value.targetId
     ) {
       const goal = await courseGoalApi.detail(result.value.targetId)
       courseGoalWeights.value = {
@@ -424,7 +433,7 @@ async function loadAll() {
   await Promise.all([loadResult(), loadDetails(), loadAudits(), loadReviews()])
 }
 
-function handleDetailPageChange(page: { current: number, pageSize: number }) {
+function handleDetailPageChange(page: { current: number; pageSize: number }) {
   detailPageNum.value = page.current
   detailPageSize.value = page.pageSize
   void loadDetails()
@@ -644,7 +653,11 @@ onActivated(() => {
       </ContextBar>
     </template>
 
-    <UiEmpty v-if="!result && !loading" description="暂无数据" class="achievement-detail__empty" />
+    <UiEmpty
+      v-if="!result && !loading"
+      description="当前没有可展示的内容"
+      class="achievement-detail__empty"
+    />
 
     <template v-else-if="result">
       <SignalBand :metrics="signals" compact class="achievement-detail__signals" />
@@ -773,7 +786,11 @@ onActivated(() => {
       <div class="achievement-detail__layout">
         <UiCard class="achievement-detail__detail-card">
           <template #title>计算明细</template>
-          <UiEmpty v-if="!details.length && !detailsLoading" description="暂无数据" size="sm" />
+          <UiEmpty
+            v-if="!details.length && !detailsLoading"
+            description="当前没有可展示的内容"
+            size="sm"
+          />
           <UiDataTable
             pagination-mode="server"
             v-else
@@ -826,7 +843,11 @@ onActivated(() => {
 
         <UiCard class="achievement-detail__audit-card">
           <template #title>审核责任链流水</template>
-          <UiEmpty v-if="!audits.length && !auditsLoading" description="暂无数据" size="sm" />
+          <UiEmpty
+            v-if="!audits.length && !auditsLoading"
+            description="当前没有可展示的内容"
+            size="sm"
+          />
           <template v-else>
             <a-spin :spinning="auditsLoading">
               <a-timeline class="achievement-detail__timeline">
@@ -873,7 +894,11 @@ onActivated(() => {
 
       <UiCard class="achievement-detail__review-card">
         <template #title>人工复核记录</template>
-        <UiEmpty v-if="!reviews.length && !reviewsLoading" description="暂无数据" size="sm" />
+        <UiEmpty
+          v-if="!reviews.length && !reviewsLoading"
+          description="当前没有可展示的内容"
+          size="sm"
+        />
         <template v-else>
           <a-spin :spinning="reviewsLoading">
             <a-list :data-source="reviews" item-layout="horizontal">

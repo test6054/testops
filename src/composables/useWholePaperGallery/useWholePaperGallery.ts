@@ -1,17 +1,22 @@
 import type { Ref } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import type {
   MarkingPageAnnotationSubmitItem,
   MarkingQuestionScoreSubmitItem,
   QuestionMarkingGroupQuestionResponse,
   ScannedPageRef,
 } from '@/apis/mark/marking-organization'
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
-import { getImageBlobUrl } from '@/apis/edu/file-management'
 import {
   getMarkingScanPageDisplayBlobUrl,
   getWholePaperView,
 } from '@/apis/mark/marking-organization'
-import { failFormValidation, showFormValidationMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { getImageBlobUrl } from '@/apis/edu/file-management'
+import {
+  failFormValidation,
+  showFormValidationMessage,
+  showUserError,
+  toUserError,
+} from '@/utils/error-handler'
 
 const WHOLE_PAGE_ESTIMATED_HEIGHT = 1180
 const WHOLE_PAGE_RENDER_BUFFER = 2
@@ -198,10 +203,10 @@ export function useWholePaperGallery(
     const examId = options.getExamId()
     const taskId = options.getTaskId()
     if (
-      !examId
-      || !taskId
-      || wholePageImageUrls[page.pageId]
-      || wholePageImageLoading[page.pageId]
+      !examId ||
+      !taskId ||
+      wholePageImageUrls[page.pageId] ||
+      wholePageImageLoading[page.pageId]
     ) {
       return
     }
@@ -319,7 +324,7 @@ export function useWholePaperGallery(
     pageAnnotations: MarkingPageAnnotationSubmitItem[]
   } | null {
     if (wholeQuestions.value.length === 0) {
-      failFormValidation('当前任务负责题目未加载，请刷新后重试')
+      failFormValidation('当前任务负责题目未加载')
       return null
     }
     const questionScores: MarkingQuestionScoreSubmitItem[] = []

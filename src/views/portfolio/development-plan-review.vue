@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentPlanVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   PORTFOLIO_DEVELOPMENT_PLAN_STATUS_OPTIONS,
@@ -11,7 +12,6 @@ import {
   PortfolioDevelopmentPlanStatusCode,
   PortfolioDevelopmentPlanStatusDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -92,6 +92,8 @@ const rows = ref<PortfolioDevelopmentPlanVO[]>([])
 const pageNum = ref(1)
 const pageSize = ref(DEFAULT_LIST_PAGE_SIZE)
 const pageTotal = ref(0)
+const reviewRequestToken = ref(0)
+const pendingLocatePlanId = ref('')
 const reviewModalOpen = ref(false)
 const reviewTargetId = ref('')
 const reviewAction = ref<'approve' | 'return'>('approve')
@@ -106,6 +108,7 @@ const columns: ColumnsType = [
 ]
 
 async function loadPage() {
+  const currentToken = ++reviewRequestToken.value
   loading.value = true
   try {
     const page = await portfolioDevelopmentPlanApi.page({
@@ -114,35 +117,63 @@ async function loadPage() {
       planYear: filterForm.planYear,
       planStatus: filterForm.planStatus,
       portfolioOrgId: filterForm.portfolioOrgId,
+      locatePlanId: pendingLocatePlanId.value || undefined,
     })
+    if (currentToken !== reviewRequestToken.value) {
+      return
+    }
     rows.value = page.list
     pageTotal.value = page.total
+    pageNum.value = page.pageNum ?? pageNum.value
+    pageSize.value = page.pageSize ?? pageSize.value
+    pendingLocatePlanId.value = ''
   } catch (error) {
+    if (currentToken !== reviewRequestToken.value) {
+      return
+    }
     showUserError(error)
   } finally {
-    loading.value = false
+    if (currentToken === reviewRequestToken.value) {
+      loading.value = false
+    }
   }
+}
+
+/** 深链规划或筛选范围变化时必须失效旧审核目标，避免上一条规划弹窗残留到当前上下文。 */
+function resetReviewContext() {
+  reviewModalOpen.value = false
+  reviewTargetId.value = ''
+  auditOpinion.value = ''
 }
 
 function openPlanFromQuery() {
   const planId = typeof route.query.planId === 'string' ? route.query.planId : ''
   if (!planId) {
+    resetReviewContext()
     return
   }
   const target = rows.value.find((item) => item.id === planId)
+  if (!target) {
+    resetReviewContext()
+    return
+  }
   if (target?.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_PENDING) {
     openReview(planId, 'approve')
+    return
   }
+  resetReviewContext()
 }
 
 function handleSearch() {
   pageNum.value = 1
+  resetReviewContext()
   void loadPage()
 }
 
-function handlePageChange(event: { current: number, pageSize: number }) {
+function handlePageChange(event: { current: number; pageSize: number }) {
   pageNum.value = event.current
   pageSize.value = event.pageSize
+  resetReviewContext()
   void loadPage()
 }
 
@@ -189,7 +220,9 @@ async function exportPlans() {
     return
   }
   try {
-    const result = await portfolioDevelopmentPlanApi.exportExcel({ planYear: filterForm.planYear })
+    const result = await portfolioDevelopmentPlanApi.exportExcel({
+      planYear: filterForm.planYear,
+    })
     await downloadPortfolioExcelExport(result)
     message.success('规划已导出')
   } catch (error) {
@@ -199,9 +232,24 @@ async function exportPlans() {
 
 onMounted(async () => {
   await loadTree()
+  pendingLocatePlanId.value = typeof route.query.planId === 'string' ? route.query.planId : ''
   await loadPage()
   openPlanFromQuery()
 })
+
+watch(
+  () => route.query.planId,
+  async (planId, previousPlanId) => {
+    if (planId === previousPlanId) {
+      return
+    }
+    pageNum.value = 1
+    resetReviewContext()
+    pendingLocatePlanId.value = typeof planId === 'string' ? planId : ''
+    await loadPage()
+    openPlanFromQuery()
+  },
+)
 </script>
 
 <template>

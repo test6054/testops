@@ -1,4 +1,5 @@
 import { showFormValidationMessage } from '@/utils/error-handler'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 /** 规则模板参数（对应后端 PortfolioIndicatorSeedTemplateParamsDto） */
 export interface PortfolioIndicatorTemplateParams {
@@ -66,7 +67,7 @@ export function templateParamFieldsForRuleType(ruleType: string): (keyof Portfol
 }
 
 export function templateParamLabel(key: keyof PortfolioIndicatorTemplateParams): string {
-  return PortfolioIndicatorTemplateParamDescription[key]
+  return strictEnumLabel(PortfolioIndicatorTemplateParamDescription, key, '指标模板参数')
 }
 
 export function parseTemplateParamsJson(json: string): PortfolioIndicatorTemplateParams | null {

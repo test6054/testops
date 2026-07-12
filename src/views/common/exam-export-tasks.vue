@@ -179,10 +179,14 @@
           </a-radio-button>
         </a-radio-group>
       </a-form-item>
-      <a-form-item v-if="createForm.exportScope === 'EXAM'" label="范围条件">
+      <a-form-item v-if="createForm.exportScope === ExportScopeCode.EXAM" label="范围条件">
         <UiTag tone="blue" size="sm">整场考试</UiTag>
       </a-form-item>
-      <a-form-item v-else-if="createForm.exportScope === 'CLASS'" label="选择班级" required>
+      <a-form-item
+        v-else-if="createForm.exportScope === ExportScopeCode.CLASS"
+        label="选择班级"
+        required
+      >
         <a-select
           v-model:value="createForm.classIds"
           mode="multiple"
@@ -193,7 +197,11 @@
           option-filter-prop="label"
         />
       </a-form-item>
-      <a-form-item v-else-if="createForm.exportScope === 'QUESTION'" label="选择题目" required>
+      <a-form-item
+        v-else-if="createForm.exportScope === ExportScopeCode.QUESTION"
+        label="选择题目"
+        required
+      >
         <a-select
           v-model:value="createForm.layoutQuestionIds"
           mode="multiple"
@@ -204,7 +212,11 @@
           option-filter-prop="label"
         />
       </a-form-item>
-      <a-form-item v-else-if="createForm.exportScope === 'STUDENT'" label="选择学生" required>
+      <a-form-item
+        v-else-if="createForm.exportScope === ExportScopeCode.STUDENT"
+        label="选择学生"
+        required
+      >
         <a-select
           v-model:value="createForm.studentUserIds"
           mode="multiple"
@@ -270,7 +282,7 @@
         <span v-else class="hint-text">{{ exportTaskProcessingText(detailTask) }}</span>
       </a-descriptions-item>
     </a-descriptions>
-    <UiEmpty v-else-if="detailError" description="暂无数据" />
+    <UiEmpty v-else-if="detailError" description="当前没有可展示的内容" />
   </UiDrawer>
 </template>
 
@@ -284,15 +296,6 @@ import type {
   ExportTaskResponse,
   ExportTaskStatusSummaryResponse,
 } from '@/apis/mark/exam-export'
-import type { ExamTemplateResponse } from '@/apis/mark/exam-layout-question'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   ALL_EXPORT_SCOPE_CODES,
   ALL_EXPORT_TASK_STATUS_CODES,
@@ -310,7 +313,16 @@ import {
   getExportTaskStatusSummary,
   listExportTasks,
 } from '@/apis/mark/exam-export'
+import type { ExamTemplateResponse } from '@/apis/mark/exam-layout-question'
 import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -375,7 +387,7 @@ const loading = ref(false)
 const loadFailed = ref(false)
 const downloadingId = ref<string | undefined>(undefined)
 const questionOptions = ref<
-  Array<{ value: string, label: string, disabled?: boolean, title?: string }>
+  Array<{ value: string; label: string; disabled?: boolean; title?: string }>
 >([])
 const layoutSummary = ref<ExamTemplateResponse | null>(null)
 const layoutRoiGap = computed(() => {
@@ -518,8 +530,8 @@ function activeTasksHiddenByStatusFilter(): boolean {
 function listHasActiveExportTask(taskList: ExportTaskResponse[]): boolean {
   return taskList.some(
     (task) =>
-      task.taskStatus === ExportTaskStatusCode.PENDING
-      || task.taskStatus === ExportTaskStatusCode.GENERATING,
+      task.taskStatus === ExportTaskStatusCode.PENDING ||
+      task.taskStatus === ExportTaskStatusCode.GENERATING,
   )
 }
 
@@ -615,7 +627,7 @@ function handleTaskFilterReset(): void {
   void loadTasks()
 }
 
-function handleTaskPageChange(page: { current: number, pageSize: number }): void {
+function handleTaskPageChange(page: { current: number; pageSize: number }): void {
   taskPagination.pageNum = page.current
   taskPagination.pageSize = page.pageSize
   void loadTasks()
@@ -640,12 +652,12 @@ function statusTone(status: ExportTaskStatusCode): BadgeTone {
 
 const exportTypeOptions = ALL_EXPORT_TYPE_CODES.map((code) => ({
   value: code,
-  label: ExportTypeDescription[code],
+  label: exportTypeLabel(code),
 }))
 
 const exportScopeOptions = ALL_EXPORT_SCOPE_CODES.map((code) => ({
   value: code,
-  label: ExportScopeDescription[code],
+  label: exportScopeLabel(code),
 }))
 
 function exportTypeLabel(code: ExportTypeCode): string {
@@ -708,12 +720,15 @@ function exportTaskProcessingText(task: ExportTaskResponse): string {
 
 function exportTaskFailureMessageText(task: ExportTaskResponse): string | undefined {
   if (task.taskStatus !== ExportTaskStatusCode.FAILED) return undefined
-  return getUserProcessFailureMessage(task.errorMessage, '导出任务未完成，请稍后重试或重新发起导出')
+  return getUserProcessFailureMessage(
+    task.errorMessage,
+    '导出任务未完成，请查看失败原因后重新发起导出',
+  )
 }
 
 function clippedExportTaskFailureMessage(task: ExportTaskResponse): string {
-  const messageText
-    = exportTaskFailureMessageText(task) ?? '导出任务未完成，请稍后重试或重新发起导出'
+  const messageText =
+    exportTaskFailureMessageText(task) ?? '导出任务未完成，请查看失败原因后重新发起导出'
   return messageText.length > 24 ? `${messageText.slice(0, 24)}…` : messageText
 }
 
@@ -880,10 +895,10 @@ async function loadQuestionOptions(examId: string | undefined): Promise<void> {
     }
     questionOptions.value = [...buildExamLayoutQuestionOptions(template.questions)].sort(
       (left, right) => {
-        const leftSort
-          = template.questions.find((q) => q.layoutQuestionId === left.value)?.sortNo ?? 0
-        const rightSort
-          = template.questions.find((q) => q.layoutQuestionId === right.value)?.sortNo ?? 0
+        const leftSort =
+          template.questions.find((q) => q.layoutQuestionId === left.value)?.sortNo ?? 0
+        const rightSort =
+          template.questions.find((q) => q.layoutQuestionId === right.value)?.sortNo ?? 0
         return leftSort - rightSort
       },
     )
@@ -912,11 +927,11 @@ async function handleCreate(): Promise<void> {
       exportType: createForm.exportType,
       exportScope: createForm.exportScope,
     }
-    if (createForm.exportScope === 'CLASS') {
+    if (createForm.exportScope === ExportScopeCode.CLASS) {
       request.scopeCondition = { classIds: createForm.classIds }
-    } else if (createForm.exportScope === 'QUESTION') {
+    } else if (createForm.exportScope === ExportScopeCode.QUESTION) {
       request.scopeCondition = { layoutQuestionIds: createForm.layoutQuestionIds }
-    } else if (createForm.exportScope === 'STUDENT') {
+    } else if (createForm.exportScope === ExportScopeCode.STUDENT) {
       request.scopeCondition = { studentUserIds: createForm.studentUserIds }
     }
     const createdTask = await createExportTask(request)
@@ -998,7 +1013,7 @@ async function handleDownload(record: ExportTaskResponse): Promise<void> {
     const blobResp = await downloadFile({ nodeId: record.fileId })
     const blob = blobResp.data
     if (!blob) {
-      message.error('导出文件暂不可下载，请稍后重试')
+      message.error('导出文件暂不可下载，请确认任务已完成后再次下载')
       return
     }
     const url = URL.createObjectURL(blob)

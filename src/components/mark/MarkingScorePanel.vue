@@ -13,7 +13,7 @@
       :disabled="!canSubmit"
     >
       <template v-if="usesWholePaperWorkspace">
-        <UiEmpty v-if="wholeQuestions.length === 0" description="暂无数据" />
+        <UiEmpty v-if="wholeQuestions.length === 0" description="当前任务暂无负责题目" />
         <a-collapse
           v-else
           v-model:active-key="expandedWholeQuestionKeyModel"
@@ -136,8 +136,8 @@
                 />
                 <p
                   v-if="
-                    question.referenceExperienceAudit?.referenceExperienceApplied
-                      && question.referenceExperienceAudit?.referenceExperienceMatchMode
+                    question.referenceExperienceAudit?.referenceExperienceApplied &&
+                    question.referenceExperienceAudit?.referenceExperienceMatchMode
                   "
                   class="marking-score-panel__match-mode"
                 >
@@ -175,7 +175,14 @@
         </p>
       </template>
 
-      <a-form-item v-else label="教师给分" name="score" required>
+      <MarkScoreTriple
+        v-if="!usesWholePaperWorkspace && questionView"
+        class="marking-score-panel__score-triple"
+        :ai-score="questionView.aiScore"
+        :teacher-review-score="scoreModel"
+        :full-score="questionView.fullScore"
+      />
+      <a-form-item v-if="!usesWholePaperWorkspace" label="教师给分" name="score" required>
         <a-input-number
           ref="innerScoreInputRef"
           v-model:value="scoreModel"
@@ -309,14 +316,15 @@ import type {
 } from '@/apis/mark/marking-organization'
 import type { WholeQuestionForm } from '@/composables/useWholePaperGallery'
 import type { GradingExperienceReferenceMatchModeCode } from '@/types/enums/grading-experience-reference-match-mode-enum'
+import { GradingExperienceReferenceMatchModeDescription } from '@/types/enums/grading-experience-reference-match-mode-enum'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import { ref, watch } from 'vue'
 import ExperienceAssistBadge from '@/components/mark/ExperienceAssistBadge.vue'
+import MarkScoreTriple from '@/components/mark/MarkScoreTriple.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import { GradingExperienceReferenceMatchModeDescription } from '@/types/enums/grading-experience-reference-match-mode-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'MarkingScorePanel' })
@@ -512,5 +520,9 @@ function quickDigitScores(fullScore: number): number[] {
     font-size: 12px;
     color: var(--dp-text-secondary);
   }
+}
+
+.marking-score-panel__score-triple {
+  margin-bottom: 10px;
 }
 </style>

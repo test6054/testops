@@ -1,42 +1,43 @@
 import type { PageResult, QueryDto } from '@/types'
 import type { PfEligibilityAuditStatusCode } from '@/types/enums/pf-eligibility-audit-status-enum'
-import type { PfEligibilityNodeTypeCode } from '@/types/enums/pf-eligibility-node-type-enum'
-import type { PfIndicatorBusinessReferenceSceneCode } from '@/types/enums/pf-indicator-business-reference-scene-enum'
-import type { PfIndicatorDataSourceChannelCode } from '@/types/enums/pf-indicator-data-source-channel-enum'
-import type { PfIndicatorStatusCode } from '@/types/enums/pf-indicator-status-enum'
-import type { PfModelStatusCode } from '@/types/enums/pf-model-status-enum'
-import type { PfScoreRuleTypeCode } from '@/types/enums/pf-score-rule-type-enum'
-import type { PortfolioIndicatorDefinitionTreeNodeTypeCode } from '@/types/enums/portfolio-indicator-definition-tree-node-type-enum'
 import {
   ALL_PF_ELIGIBILITY_AUDIT_STATUS_CODES,
   PfEligibilityAuditStatusDescription,
 } from '@/types/enums/pf-eligibility-audit-status-enum'
+import type { PfEligibilityNodeTypeCode } from '@/types/enums/pf-eligibility-node-type-enum'
 import {
   ALL_PF_ELIGIBILITY_NODE_TYPE_CODES,
   PfEligibilityNodeTypeDescription,
 } from '@/types/enums/pf-eligibility-node-type-enum'
-import { PfImpactReportStatusCode } from '@/types/enums/pf-impact-report-status-enum'
+import type { PfIndicatorBusinessReferenceSceneCode } from '@/types/enums/pf-indicator-business-reference-scene-enum'
+import type { PfIndicatorDataSourceChannelCode } from '@/types/enums/pf-indicator-data-source-channel-enum'
 import {
   ALL_PF_INDICATOR_DATA_SOURCE_CHANNEL_CODES,
   PfIndicatorDataSourceChannelDescription,
 } from '@/types/enums/pf-indicator-data-source-channel-enum'
+import type { PfIndicatorStatusCode } from '@/types/enums/pf-indicator-status-enum'
 import {
   ALL_PF_INDICATOR_STATUS_CODES,
   PfIndicatorStatusDescription,
 } from '@/types/enums/pf-indicator-status-enum'
+import type { PfModelStatusCode } from '@/types/enums/pf-model-status-enum'
 import {
   ALL_PF_MODEL_STATUS_CODES,
   PfModelStatusDescription,
 } from '@/types/enums/pf-model-status-enum'
+import type { PfScoreRuleTypeCode } from '@/types/enums/pf-score-rule-type-enum'
+import {
+  ALL_PF_SCORE_RULE_TYPE_CODES,
+  PfScoreRuleTypeDescription,
+} from '@/types/enums/pf-score-rule-type-enum'
+import type { PortfolioIndicatorDefinitionTreeNodeTypeCode } from '@/types/enums/portfolio-indicator-definition-tree-node-type-enum'
+import { PfImpactReportStatusCode } from '@/types/enums/pf-impact-report-status-enum'
 import {
   ALL_PF_SCENE_CODES,
   PfSceneCode,
   PfSceneCodeDescription,
 } from '@/types/enums/pf-scene-code-enum'
-import {
-  ALL_PF_SCORE_RULE_TYPE_CODES,
-  PfScoreRuleTypeDescription,
-} from '@/types/enums/pf-score-rule-type-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
   ALL_PF_ELIGIBILITY_AUDIT_STATUS_CODES,
@@ -44,10 +45,10 @@ export {
   PfEligibilityAuditStatusDescription,
 } from '@/types/enums/pf-eligibility-audit-status-enum'
 
-export const PF_SCENE_CODE_OPTIONS: Array<{ value: PfSceneCode, label: string }>
-  = ALL_PF_SCENE_CODES.map((value) => ({
+export const PF_SCENE_CODE_OPTIONS: Array<{ value: PfSceneCode; label: string }> =
+  ALL_PF_SCENE_CODES.map((value) => ({
     value,
-    label: PfSceneCodeDescription[value],
+    label: strictEnumLabel(PfSceneCodeDescription, value, '指标场景编码'),
   }))
 
 export {
@@ -56,10 +57,10 @@ export {
   PfEligibilityNodeTypeDescription,
 } from '@/types/enums/pf-eligibility-node-type-enum'
 
-export const PF_INDICATOR_STATUS_OPTIONS: Array<{ value: PfIndicatorStatusCode, label: string }>
-  = ALL_PF_INDICATOR_STATUS_CODES.map((value) => ({
+export const PF_INDICATOR_STATUS_OPTIONS: Array<{ value: PfIndicatorStatusCode; label: string }> =
+  ALL_PF_INDICATOR_STATUS_CODES.map((value) => ({
     value,
-    label: PfIndicatorStatusDescription[value],
+    label: strictEnumLabel(PfIndicatorStatusDescription, value, '指标状态'),
   }))
 
 export {
@@ -73,7 +74,7 @@ export const PF_INDICATOR_DATA_SOURCE_CHANNEL_OPTIONS: Array<{
   label: string
 }> = ALL_PF_INDICATOR_DATA_SOURCE_CHANNEL_CODES.map((value) => ({
   value,
-  label: PfIndicatorDataSourceChannelDescription[value],
+  label: strictEnumLabel(PfIndicatorDataSourceChannelDescription, value, '指标数据来源渠道'),
 }))
 
 /** 指标业务引用场景 - PfIndicatorBusinessReferenceSceneEnum */
@@ -83,10 +84,10 @@ export {
   PfIndicatorBusinessReferenceSceneDescription,
 } from '@/types/enums/pf-indicator-business-reference-scene-enum'
 
-export const PF_SCORE_RULE_TYPE_OPTIONS: Array<{ value: PfScoreRuleTypeCode, label: string }>
-  = ALL_PF_SCORE_RULE_TYPE_CODES.map((value) => ({
+export const PF_SCORE_RULE_TYPE_OPTIONS: Array<{ value: PfScoreRuleTypeCode; label: string }> =
+  ALL_PF_SCORE_RULE_TYPE_CODES.map((value) => ({
     value,
-    label: PfScoreRuleTypeDescription[value],
+    label: strictEnumLabel(PfScoreRuleTypeDescription, value, '计分规则类型'),
   }))
 
 export {
@@ -95,10 +96,10 @@ export {
   PfIndicatorDataSourceChannelDescription,
 } from '@/types/enums/pf-indicator-data-source-channel-enum'
 
-export const PF_MODEL_STATUS_OPTIONS: Array<{ value: PfModelStatusCode, label: string }>
-  = ALL_PF_MODEL_STATUS_CODES.map((value) => ({
+export const PF_MODEL_STATUS_OPTIONS: Array<{ value: PfModelStatusCode; label: string }> =
+  ALL_PF_MODEL_STATUS_CODES.map((value) => ({
     value,
-    label: PfModelStatusDescription[value],
+    label: strictEnumLabel(PfModelStatusDescription, value, '场景模型状态'),
   }))
 
 export {
@@ -211,6 +212,8 @@ export const PF_ELIGIBILITY_PRESET_OPTIONS = [
   { value: 'DUAL_TEACHER_APPLY', label: '双师认定申请', scene: PfSceneCode.DUAL_TEACHER },
   { value: 'ETHICS_VETO', label: '师德一票否决', scene: PfSceneCode.DEFAULT },
   { value: 'TITLE_APPLY', label: '职称申报资格', scene: PfSceneCode.TITLE },
+  { value: 'PERFORMANCE_ASSESSMENT', label: '绩效考核资格', scene: PfSceneCode.PERFORMANCE },
+  { value: 'DOUBLE_HIGH_ACCEPTANCE', label: '双高验收资格', scene: PfSceneCode.DOUBLE_HIGH },
 ]
 
 export interface PortfolioIndicatorPlatformSeedResultVO {
@@ -503,7 +506,7 @@ export const PF_ELIGIBILITY_NODE_TYPE_OPTIONS: Array<{
   label: string
 }> = ALL_PF_ELIGIBILITY_NODE_TYPE_CODES.map((value) => ({
   value,
-  label: PfEligibilityNodeTypeDescription[value],
+  label: strictEnumLabel(PfEligibilityNodeTypeDescription, value, '资格节点类型'),
 }))
 
 export {
@@ -517,7 +520,7 @@ export const PF_ELIGIBILITY_AUDIT_STATUS_OPTIONS: Array<{
   label: string
 }> = ALL_PF_ELIGIBILITY_AUDIT_STATUS_CODES.map((value) => ({
   value,
-  label: PfEligibilityAuditStatusDescription[value],
+  label: strictEnumLabel(PfEligibilityAuditStatusDescription, value, '资格审核状态'),
 }))
 
 export interface PortfolioIndicatorExportResultVO {

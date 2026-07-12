@@ -2,22 +2,6 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ExcelImportRowDiagnostic } from '@/apis/platform/types'
 import type { PortfolioDevelopmentPlanHistoryImportBatchStatusCode } from '@/apis/portfolio/enums'
-import type { PortfolioTenantIndicatorConfigVO } from '@/apis/portfolio/indicator-types'
-import type {
-  PortfolioDevelopmentPlanAchievementAttainmentItemVO,
-  PortfolioDevelopmentPlanCompletionVO,
-  PortfolioDevelopmentPlanHistoryImportBatchVO,
-  PortfolioDevelopmentPlanItemSaveRequest,
-  PortfolioDevelopmentPlanItemVO,
-  PortfolioDevelopmentPlanOrgStatVO,
-  PortfolioDevelopmentPlanVO,
-  PortfolioDevelopmentPlanYearStatVO,
-} from '@/apis/portfolio/teacher-platform'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, nextTick, onMounted, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
-import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
   PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_OPTIONS,
   PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
@@ -29,8 +13,24 @@ import {
   PortfolioDevelopmentPlanTypeCode,
   PortfolioDevelopmentPlanTypeDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
+import type { PortfolioTenantIndicatorConfigVO } from '@/apis/portfolio/indicator-types'
+import type {
+  PortfolioDevelopmentPlanAchievementAttainmentItemVO,
+  PortfolioDevelopmentPlanCompletionVO,
+  PortfolioDevelopmentPlanHistoryImportBatchVO,
+  PortfolioDevelopmentPlanItemSaveRequest,
+  PortfolioDevelopmentPlanItemVO,
+  PortfolioDevelopmentPlanOrgStatVO,
+  PortfolioDevelopmentPlanVO,
+  PortfolioDevelopmentPlanYearStatVO,
+} from '@/apis/portfolio/teacher-platform'
 import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -117,10 +117,10 @@ const historyBatchDetailDiagnostics = computed<ExcelImportRowDiagnostic[]>(() =>
           invalidReason: '导入错误报告明细格式异常',
         }
       }
-      const rowIndex
-        = 'rowIndex' in item && typeof item.rowIndex === 'number' ? item.rowIndex : index + 1
-      const message
-        = 'message' in item && typeof item.message === 'string' ? item.message : '导入失败'
+      const rowIndex =
+        'rowIndex' in item && typeof item.rowIndex === 'number' ? item.rowIndex : index + 1
+      const message =
+        'message' in item && typeof item.message === 'string' ? item.message : '导入失败'
       return {
         rowIndex,
         valid: false,
@@ -139,14 +139,17 @@ const route = useRoute()
 const showAdminStats = computed(() => canPickTeachers.value)
 
 const activeTab = ref('plans')
+const pageRequestToken = ref(0)
 const yearStats = ref<PortfolioDevelopmentPlanYearStatVO[]>([])
 const orgStats = ref<PortfolioDevelopmentPlanOrgStatVO[]>([])
 const completion = ref<PortfolioDevelopmentPlanCompletionVO | null>(null)
 const attainment = ref<PortfolioDevelopmentPlanAchievementAttainmentItemVO[]>([])
 const highlightedPlanId = ref('')
+const pendingLocatePlanId = ref('')
 const selectedPlanId = ref('')
 const itemLoading = ref(false)
 const itemSaving = ref(false)
+const planItemsRequestToken = ref(0)
 
 interface DevelopmentPlanItemEditorRow extends PortfolioDevelopmentPlanItemSaveRequest {
   rowKey: string
@@ -181,6 +184,7 @@ const {
       ...params,
       planYear: form.planYear,
       planType: PortfolioDevelopmentPlanTypeCode.TEACHER,
+      locatePlanId: pendingLocatePlanId.value || undefined,
     }),
   { immediate: false },
 )
@@ -255,8 +259,8 @@ const selectedPlan = computed(
 const planItemEditable = computed(() => {
   const status = selectedPlan.value?.planStatus
   return (
-    status === PortfolioDevelopmentPlanStatusCode.DRAFT
-    || status === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
+    status === PortfolioDevelopmentPlanStatusCode.DRAFT ||
+    status === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
   )
 })
 
@@ -268,23 +272,41 @@ const planOptions = computed(() =>
 )
 
 async function loadPage() {
+  const currentToken = ++pageRequestToken.value
+  const requestPlanYear = form.planYear
   await loadPlansPage()
+  if (currentToken !== pageRequestToken.value) {
+    return
+  }
+  pendingLocatePlanId.value = ''
   if (!rows.value.some((item) => item.id === selectedPlanId.value)) {
-    selectedPlanId.value = rows.value[0]?.id ?? ''
+    selectedPlanId.value = ''
     planItems.value = []
   }
   if (selectedPlanId.value && activeTab.value === 'items') {
     await loadPlanItems()
+    if (currentToken !== pageRequestToken.value) {
+      return
+    }
   }
   if (showAdminStats.value) {
-    yearStats.value = await portfolioDevelopmentPlanApi.statsByYear({ planYear: form.planYear })
-    orgStats.value = await portfolioDevelopmentPlanApi.statsByOrg({ planYear: form.planYear })
-    completion.value = await portfolioDevelopmentPlanApi.completionAnalysis({
-      planYear: form.planYear,
-    })
-    attainment.value = await portfolioDevelopmentPlanApi.achievementAttainment({
-      planYear: form.planYear,
-    })
+    const [nextYearStats, nextOrgStats, nextCompletion, nextAttainment] = await Promise.all([
+      portfolioDevelopmentPlanApi.statsByYear({ planYear: requestPlanYear }),
+      portfolioDevelopmentPlanApi.statsByOrg({ planYear: requestPlanYear }),
+      portfolioDevelopmentPlanApi.completionAnalysis({
+        planYear: requestPlanYear,
+      }),
+      portfolioDevelopmentPlanApi.achievementAttainment({
+        planYear: requestPlanYear,
+      }),
+    ])
+    if (currentToken !== pageRequestToken.value) {
+      return
+    }
+    yearStats.value = nextYearStats
+    orgStats.value = nextOrgStats
+    completion.value = nextCompletion
+    attainment.value = nextAttainment
   } else {
     yearStats.value = []
     orgStats.value = []
@@ -309,16 +331,23 @@ function scrollToHighlightedPlan() {
   })
 }
 
-function openPlanFromQuery() {
+async function openPlanFromQuery() {
   const planId = typeof route.query.planId === 'string' ? route.query.planId : ''
   if (!planId) {
+    highlightedPlanId.value = ''
     return
   }
   highlightedPlanId.value = planId
   const target = rows.value.find((item) => item.id === planId)
+  if (target) {
+    selectedPlanId.value = planId
+    if (activeTab.value === 'items') {
+      await loadPlanItems()
+    }
+  }
   if (
-    target?.planStatus === PortfolioDevelopmentPlanStatusCode.DRAFT
-    || target?.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
+    target?.planStatus === PortfolioDevelopmentPlanStatusCode.DRAFT ||
+    target?.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
   ) {
     activeTab.value = 'plans'
   }
@@ -354,8 +383,8 @@ function buildDevelopmentPlanRowActions(
 ): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = []
   if (
-    record.planStatus === PortfolioDevelopmentPlanStatusCode.DRAFT
-    || record.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
+    record.planStatus === PortfolioDevelopmentPlanStatusCode.DRAFT ||
+    record.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
   ) {
     actions.push({ key: 'submit', label: '提交', tone: 'primary' })
   }
@@ -437,14 +466,24 @@ async function loadPlanItems() {
     planItems.value = []
     return
   }
+  const planId = selectedPlanId.value
+  const currentToken = ++planItemsRequestToken.value
   itemLoading.value = true
   try {
-    const items = await portfolioDevelopmentPlanApi.listItems({ planId: selectedPlanId.value })
+    const items = await portfolioDevelopmentPlanApi.listItems({ planId })
+    if (currentToken !== planItemsRequestToken.value || selectedPlanId.value !== planId) {
+      return
+    }
     planItems.value = items.length ? items.map(toEditableItem) : [createEmptyPlanItem()]
   } catch (error) {
+    if (currentToken !== planItemsRequestToken.value || selectedPlanId.value !== planId) {
+      return
+    }
     showUserError(error)
   } finally {
-    itemLoading.value = false
+    if (currentToken === planItemsRequestToken.value && selectedPlanId.value === planId) {
+      itemLoading.value = false
+    }
   }
 }
 
@@ -499,13 +538,28 @@ async function savePlanItems() {
 onMounted(async () => {
   await loadTree()
   await loadIndicatorConfigs()
+  pendingLocatePlanId.value = typeof route.query.planId === 'string' ? route.query.planId : ''
   await loadPage()
   if (showAdminStats.value) {
     void loadHistoryImportBatches()
   }
-  openPlanFromQuery()
+  await openPlanFromQuery()
   scrollToHighlightedPlan()
 })
+
+watch(
+  () => route.query.planId,
+  async (planId, previousPlanId) => {
+    if (planId === previousPlanId) {
+      return
+    }
+    pageNum.value = 1
+    pendingLocatePlanId.value = typeof planId === 'string' ? planId : ''
+    await loadPage()
+    await openPlanFromQuery()
+    scrollToHighlightedPlan()
+  },
+)
 </script>
 
 <template>
@@ -521,7 +575,9 @@ onMounted(async () => {
       <div class="toolbar">
         <input v-model="form.planYear" class="input" placeholder="年度" />
         <UiButton @click="loadPage"> 刷新 </UiButton>
-        <span v-if="showAdminStats" class="stats">{{ form.planYear }} 年已通过 {{ approvedCount }} 项</span>
+        <span v-if="showAdminStats" class="stats"
+          >{{ form.planYear }} 年已通过 {{ approvedCount }} 项</span
+        >
       </div>
       <a-tabs v-model:active-key="activeTab">
         <a-tab-pane key="plans" tab="规划管理">
@@ -682,9 +738,11 @@ onMounted(async () => {
             <span>待审 {{ completion.pendingPlanCount }}</span>
             <span>退回 {{ completion.returnedPlanCount }}</span>
             <span>审批完成率 {{ completion.completionRatePercent }}%</span>
-            <span>明细项 {{ completion.completedPlanItemCount }}/{{
-              completion.totalPlanItemCount
-            }}</span>
+            <span
+              >明细项 {{ completion.completedPlanItemCount }}/{{
+                completion.totalPlanItemCount
+              }}</span
+            >
             <span>明细完成率 {{ completion.planItemCompletionRatePercent }}%</span>
             <span>平均完成度 {{ completion.averageItemCompletionPercent }}%</span>
           </div>

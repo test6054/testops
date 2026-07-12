@@ -2,6 +2,7 @@
  * 间接评价应答人类型
  * 与后端 RespondentTypeEnum 保持一致
  */
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export enum RespondentTypeCode {
   STUDENT = 'STUDENT',
@@ -47,7 +48,7 @@ export const MANUAL_RESPONDENT_TYPE_OPTIONS: Array<{ value: RespondentTypeCode, 
     && value !== RespondentTypeCode.AI_DRAFT,
   ).map((value) => ({
     value,
-    label: RespondentTypeDescription[value],
+    label: strictEnumLabel(RespondentTypeDescription, value, '应答人类型'),
   }))
 
 const RESPONDENT_TYPE_SET = new Set<string>(Object.values(RespondentTypeCode))
@@ -57,7 +58,7 @@ export function isRespondentType(value: string | null | undefined): value is Res
 }
 
 export function formatRespondentType(value: RespondentTypeCode): string {
-  return RespondentTypeDescription[value]
+  return strictEnumLabel(RespondentTypeDescription, value, '应答人类型')
 }
 
 export function isSystemCollectedRespondentType(value: RespondentTypeCode | null | undefined): boolean {

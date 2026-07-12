@@ -59,44 +59,72 @@ const emit = defineEmits<{
 
 const loading = ref(false)
 const cockpit = ref<PortfolioTeacherProgressCockpitVO | null>(null)
+const requestToken = ref(0)
 
 function formatDelta(delta: number): string {
   const sign = delta >= 0 ? '+' : ''
   return `${sign}${delta}%`
 }
 
+function resetCockpit() {
+  cockpit.value = null
+}
+
 function close() {
+  resetCockpit()
   emit('update:open', false)
 }
 
 async function loadCockpit() {
+  const currentToken = requestToken.value
   if (!props.teacherId) {
-    cockpit.value = null
+    resetCockpit()
     return
   }
+  resetCockpit()
   loading.value = true
   try {
-    cockpit.value = await portfolioAnalysisApi.getProgressCockpit({ teacherId: props.teacherId })
+    const nextCockpit = await portfolioAnalysisApi.getProgressCockpit({
+      teacherId: props.teacherId,
+    })
+    if (requestToken.value !== currentToken) {
+      return
+    }
+    cockpit.value = nextCockpit
   } catch (error) {
-    cockpit.value = null
+    if (requestToken.value !== currentToken) {
+      return
+    }
+    resetCockpit()
     showUserError(error, '加载进度对比失败')
   } finally {
-    loading.value = false
+    if (requestToken.value === currentToken) {
+      loading.value = false
+    }
   }
 }
 
 watch(
   () => props.open,
   (open) => {
-    if (open) {
-      void loadCockpit()
+    requestToken.value += 1
+    if (!open) {
+      loading.value = false
+      resetCockpit()
+      return
     }
+    void loadCockpit()
   },
 )
 
 watch(
   () => props.teacherId,
-  () => {
+  (teacherId) => {
+    requestToken.value += 1
+    if (!teacherId) {
+      resetCockpit()
+      return
+    }
     if (props.open) {
       void loadCockpit()
     }

@@ -46,19 +46,21 @@
           </template>
         </a-list>
       </div>
-      <div v-if="loadingMore" class="scan-batch-page-rail__loading-more">
-        加载更多页轨…
-      </div>
+      <div v-if="loadingMore" class="scan-batch-page-rail__loading-more">加载更多页轨…</div>
     </a-spin>
   </div>
 </template>
 
 <script lang="ts" setup>
 import type { ExamScannerBatchWorkbenchPageVO } from '@/apis/mark/exam-scan'
+import {
+  ScanBatchWorkbenchRegisterStatusCode,
+  ScanBatchWorkbenchRegisterStatusDescription,
+} from '@/apis/mark/exam-scan'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
-import { ScanBatchWorkbenchRegisterStatusCode, ScanBatchWorkbenchRegisterStatusDescription } from '@/apis/mark/exam-scan'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import { ScanBatchWorkbenchBindingStatusCode } from '@/types/enums/scan-batch-workbench-binding-status-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ScanBatchPageRail' })
 
@@ -79,7 +81,7 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  "select": [pageKey: string]
+  select: [pageKey: string]
   'reach-end': []
 }>()
 
@@ -118,7 +120,11 @@ function resolveRailTone(item: ExamScannerBatchWorkbenchPageVO): RailTone {
 
 function rowPrimaryLabel(item: ExamScannerBatchWorkbenchPageVO): string {
   if (item.registerStatus === ScanBatchWorkbenchRegisterStatusCode.PENDING) {
-    return ScanBatchWorkbenchRegisterStatusDescription[ScanBatchWorkbenchRegisterStatusCode.PENDING]
+    return strictEnumLabel(
+      ScanBatchWorkbenchRegisterStatusDescription,
+      ScanBatchWorkbenchRegisterStatusCode.PENDING,
+      '扫描页登记状态',
+    )
   }
   if (item.bindingStatus === ScanBatchWorkbenchBindingStatusCode.BOUND && item.candidateName) {
     return item.candidateName
@@ -126,7 +132,25 @@ function rowPrimaryLabel(item: ExamScannerBatchWorkbenchPageVO): string {
   if (item.pageSeq !== undefined && item.pageSeq !== null) {
     return `第 ${item.pageSeq} 页`
   }
-  return ScanBatchWorkbenchRegisterStatusDescription[item.registerStatus]
+  return strictEnumLabel(
+    ScanBatchWorkbenchRegisterStatusDescription,
+    item.registerStatus,
+    '扫描页登记状态',
+  )
+}
+
+function formatOcrIdentityHint(item: ExamScannerBatchWorkbenchPageVO): string {
+  const parts: string[] = []
+  if (item.ocrStudentNo) {
+    parts.push(item.ocrStudentNo)
+  }
+  if (item.ocrStudentName) {
+    parts.push(item.ocrStudentName)
+  }
+  if (item.ocrClassName) {
+    parts.push(item.ocrClassName)
+  }
+  return parts.join(' · ')
 }
 
 function rowSecondaryLabel(item: ExamScannerBatchWorkbenchPageVO): string {
@@ -134,26 +158,29 @@ function rowSecondaryLabel(item: ExamScannerBatchWorkbenchPageVO): string {
     return item.studentNo
   }
   if (
-    item.registerStatus === ScanBatchWorkbenchRegisterStatusCode.REGISTERED
-    && item.bindingStatus === ScanBatchWorkbenchBindingStatusCode.CONFLICT
+    item.registerStatus === ScanBatchWorkbenchRegisterStatusCode.REGISTERED &&
+    item.bindingStatus === ScanBatchWorkbenchBindingStatusCode.CONFLICT
   ) {
     return '绑定冲突'
   }
   if (
-    item.registerStatus === ScanBatchWorkbenchRegisterStatusCode.REGISTERED
-    && item.bindingStatus === ScanBatchWorkbenchBindingStatusCode.UNBOUND
+    item.registerStatus === ScanBatchWorkbenchRegisterStatusCode.REGISTERED &&
+    item.bindingStatus === ScanBatchWorkbenchBindingStatusCode.UNBOUND
   ) {
-    if (item.ocrStudentNo) {
-      return `OCR ${item.ocrStudentNo}`
+    const ocrHint = formatOcrIdentityHint(item)
+    if (ocrHint) {
+      return `OCR ${ocrHint}`
     }
     return '待绑定'
   }
   if (
-    item.registerStatus === ScanBatchWorkbenchRegisterStatusCode.REGISTERED
-    && item.hasException
-    && item.ocrStudentNo
+    item.registerStatus === ScanBatchWorkbenchRegisterStatusCode.REGISTERED &&
+    item.hasException
   ) {
-    return `OCR ${item.ocrStudentNo}`
+    const ocrHint = formatOcrIdentityHint(item)
+    if (ocrHint) {
+      return `OCR ${ocrHint}`
+    }
   }
   if (item.registerStatus === ScanBatchWorkbenchRegisterStatusCode.SUPERSEDED) {
     return '已替换'

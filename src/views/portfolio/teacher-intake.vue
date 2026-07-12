@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import type { PortfolioTeacherJourneyKey } from '@/constants/portfolio-teacher-journey'
+import {
+  PORTFOLIO_TEACHER_JOURNEY_STEPS,
+  resolvePortfolioJourneyDefaultRoute,
+} from '@/constants/portfolio-teacher-journey'
 import type { WorkbenchStage } from '@/types/workbench'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -9,10 +13,6 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
-import {
-  PORTFOLIO_TEACHER_JOURNEY_STEPS,
-  resolvePortfolioJourneyDefaultRoute,
-} from '@/constants/portfolio-teacher-journey'
 
 const route = useRoute()
 const router = useRouter()
@@ -48,9 +48,16 @@ function openArchiveCategory() {
   if (!categoryId) {
     return
   }
+  const query: Record<string, string> = {}
+  if (targetTeacherId.value) {
+    query.teacherId = targetTeacherId.value
+  }
+  if (typeof route.query.recordId === 'string' && route.query.recordId) {
+    query.recordId = route.query.recordId
+  }
   void router.push({
     path: `/portfolio/teacher/archive/${categoryId}`,
-    query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+    query,
   })
 }
 </script>

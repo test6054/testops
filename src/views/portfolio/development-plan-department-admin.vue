@@ -5,6 +5,7 @@ import type {
   PortfolioDevelopmentPlanItemSaveRequest,
   PortfolioDevelopmentPlanItemVO,
 } from '@/apis/portfolio/teacher-platform'
+import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
@@ -17,7 +18,6 @@ import {
   PortfolioDevelopmentPlanTypeCode,
 } from '@/apis/portfolio/enums'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
-import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -37,6 +37,7 @@ const activeTab = ref('plans')
 const selectedPlanId = ref('')
 const itemLoading = ref(false)
 const itemSaving = ref(false)
+const planItemsRequestToken = ref(0)
 
 interface DevelopmentPlanItemEditorRow extends PortfolioDevelopmentPlanItemSaveRequest {
   rowKey: string
@@ -120,8 +121,8 @@ const selectedPlan = computed(
 const planItemEditable = computed(() => {
   const status = selectedPlan.value?.planStatus
   return (
-    status === PortfolioDevelopmentPlanStatusCode.DRAFT
-    || status === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
+    status === PortfolioDevelopmentPlanStatusCode.DRAFT ||
+    status === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
   )
 })
 
@@ -143,7 +144,7 @@ function planStatusTone(status: PortfolioDevelopmentPlanStatusCode) {
 async function loadPage() {
   await loadPlansPage()
   if (!rows.value.some((item) => item.id === selectedPlanId.value)) {
-    selectedPlanId.value = rows.value[0]?.id ?? ''
+    selectedPlanId.value = ''
     planItems.value = []
   }
   if (selectedPlanId.value && activeTab.value === 'items') {
@@ -240,14 +241,24 @@ async function loadPlanItems() {
     planItems.value = []
     return
   }
+  const planId = selectedPlanId.value
+  const currentToken = ++planItemsRequestToken.value
   itemLoading.value = true
   try {
-    const items = await portfolioDevelopmentPlanApi.listItems({ planId: selectedPlanId.value })
+    const items = await portfolioDevelopmentPlanApi.listItems({ planId })
+    if (currentToken !== planItemsRequestToken.value || selectedPlanId.value !== planId) {
+      return
+    }
     planItems.value = items.length ? items.map(toEditableItem) : [createEmptyPlanItem()]
   } catch (error) {
+    if (currentToken !== planItemsRequestToken.value || selectedPlanId.value !== planId) {
+      return
+    }
     showUserError(error)
   } finally {
-    itemLoading.value = false
+    if (currentToken === planItemsRequestToken.value && selectedPlanId.value === planId) {
+      itemLoading.value = false
+    }
   }
 }
 
@@ -358,9 +369,9 @@ onMounted(async () => {
                       key: 'submit',
                       label: '提交',
                       hidden:
-                        record.planStatus !== PortfolioDevelopmentPlanStatusCode.DRAFT
-                        && record.planStatus
-                          !== PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED,
+                        record.planStatus !== PortfolioDevelopmentPlanStatusCode.DRAFT &&
+                        record.planStatus !==
+                          PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED,
                     },
                     { key: 'items', label: '明细' },
                   ]"

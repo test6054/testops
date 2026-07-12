@@ -3,14 +3,18 @@
  * 教学档案袋域统一教师范围选择器：写入 portfolioStore 并同步 URL query。
  */
 import type { PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
+import {
+  QUALITY_SELECTOR_PAGE_SIZE,
+  QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS,
+} from '@/components/quality/selectors/page-contract'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { usePortfolioStore } from '@/stores/modules/portfolio'
 import { showUserError } from '@/utils/error-handler'
-import { resolvePortfolioTeacherDisplayName } from '@/utils/portfolio-teacher-display'
+import { portfolioTeacherSelectOptionsFromSummaries } from '@/utils/portfolio-teacher-display'
 
 defineOptions({ name: 'PortfolioScopeHeader' })
 
@@ -25,6 +29,9 @@ const { canPickTeachers, currentUserId, resolveDefaultTeacherId } = usePortfolio
 
 const teacherOptions = ref<PortfolioTeacherSummaryVO[]>([])
 const loading = ref(false)
+const teacherListRequestToken = ref(0)
+const teacherDetailRequestToken = ref(0)
+let teacherSearchTimer: ReturnType<typeof setTimeout> | null = null
 
 const selectedTeacherId = computed({
   get: () => portfolioStore.currentTeacherId || resolveDefaultTeacherId(),
@@ -46,19 +53,72 @@ async function loadTeacherOptions(keyword?: string) {
   if (!canPickTeachers.value) {
     return
   }
+  const currentToken = ++teacherListRequestToken.value
   loading.value = true
   try {
     const page = await portfolioTeacherApi.page({
       pageNum: 1,
-      pageSize: 50,
+      pageSize: QUALITY_SELECTOR_PAGE_SIZE,
       searchText: keyword || undefined,
     })
-    teacherOptions.value = page.list
+    if (currentToken !== teacherListRequestToken.value) {
+      return
+    }
+    mergeTeacherOptions(page.list ?? [])
   } catch (error) {
+    if (currentToken !== teacherListRequestToken.value) {
+      return
+    }
     showUserError(error, '加载教师名册失败')
   } finally {
-    loading.value = false
+    if (currentToken === teacherListRequestToken.value) {
+      loading.value = false
+    }
   }
+}
+
+function mergeTeacherOptions(rows: PortfolioTeacherSummaryVO[]) {
+  const optionMap = new Map(teacherOptions.value.map((item) => [item.userId, item]))
+  for (const row of rows) {
+    optionMap.set(row.userId, row)
+  }
+  teacherOptions.value = Array.from(optionMap.values())
+}
+
+async function hydrateTeacherOption(userId: string) {
+  if (!userId || teacherOptions.value.some((item) => item.userId === userId)) {
+    return
+  }
+  const currentToken = ++teacherDetailRequestToken.value
+  try {
+    const detail = await portfolioTeacherApi.get(userId)
+    if (currentToken !== teacherDetailRequestToken.value) {
+      return
+    }
+    mergeTeacherOptions([
+      {
+        userId: detail.userId,
+        userName: detail.userName,
+        nickName: detail.nickName,
+        teacherNumber: detail.teacherNumber,
+        departmentId: detail.departmentId,
+        departmentName: detail.departmentName,
+        title: detail.title,
+        status: detail.status,
+      },
+    ])
+  } catch {
+    // 已选教师标签补水失败时不阻断页面范围切换。
+  }
+}
+
+function handleTeacherSearch(value: string) {
+  if (teacherSearchTimer) {
+    clearTimeout(teacherSearchTimer)
+  }
+  teacherSearchTimer = setTimeout(() => {
+    void loadTeacherOptions(value.trim())
+  }, QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS)
 }
 
 function syncRouteQuery(teacherId: string) {
@@ -95,8 +155,23 @@ watch(
 
 onMounted(() => {
   bootstrapFromRoute()
+  void hydrateTeacherOption(portfolioStore.currentTeacherId || resolveDefaultTeacherId())
   void loadTeacherOptions()
 })
+
+onBeforeUnmount(() => {
+  if (teacherSearchTimer) {
+    clearTimeout(teacherSearchTimer)
+    teacherSearchTimer = null
+  }
+})
+
+watch(
+  () => selectedTeacherId.value,
+  (teacherId) => {
+    void hydrateTeacherOption(teacherId)
+  },
+)
 </script>
 
 <template>
@@ -111,14 +186,10 @@ onMounted(() => {
         :loading="loading"
         placeholder="请选择目标教师"
         :filter-option="false"
-        @search="(val: string) => loadTeacherOptions(val)"
+        :options="portfolioTeacherSelectOptionsFromSummaries(teacherOptions)"
+        @search="handleTeacherSearch"
         @focus="() => loadTeacherOptions()"
-      >
-        <a-select-option v-for="item in teacherOptions" :key="item.userId" :value="item.userId">
-          {{ resolvePortfolioTeacherDisplayName(item) ?? item.userId }}
-          <template v-if="item.departmentName"> · {{ item.departmentName }} </template>
-        </a-select-option>
-      </a-select>
+      />
     </template>
     <UiTag v-else tone="blue">
       {{ selfTeacherLabel }}

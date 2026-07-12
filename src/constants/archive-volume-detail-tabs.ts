@@ -1,4 +1,6 @@
 /** 归档卷详情左栏 Tab 键，与后端 ArchiveVolumeNavigationSummaryAssembler.CHAIN_TAB_KEYS 一致 */
+import { strictEnumLabel } from '@/utils/strict-enum'
+
 export enum ArchiveVolumeDetailTabKey {
   MATERIALS = 'materials',
   SCORES = 'scores',
@@ -44,7 +46,7 @@ export const ArchiveVolumeDetailTabDescription: Record<ArchiveVolumeDetailTabKey
 
 export const ARCHIVE_VOLUME_DETAIL_SECTION_TABS = ARCHIVE_VOLUME_DETAIL_TAB_KEYS.map((key) => ({
   key,
-  label: ArchiveVolumeDetailTabDescription[key],
+  label: strictEnumLabel(ArchiveVolumeDetailTabDescription, key, '归档卷详情页签'),
 }))
 
 /** 历史深链 tab=ocr-search 重定向至全局材料检索 scoped volumeId */

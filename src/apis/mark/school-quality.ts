@@ -13,14 +13,15 @@ import type { QuestionTypeCode } from './question-type'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { ExperienceRecommendationCode } from '@/types/enums/experience-recommendation-enum'
 import type { SchoolQualityDimensionCode } from '@/types/enums/school-quality-dimension-enum'
-import type { SchoolQualityItemDimensionCode } from '@/types/enums/school-quality-item-dimension-enum'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import http from '@/config/axios'
 import {
   ALL_SCHOOL_QUALITY_DIMENSION_CODES,
   SchoolQualityDimensionDescription,
 } from '@/types/enums/school-quality-dimension-enum'
+import type { SchoolQualityItemDimensionCode } from '@/types/enums/school-quality-item-dimension-enum'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import http from '@/config/axios'
 import { SchoolQualityRatingCode } from '@/types/enums/school-quality-rating-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
   ALL_EXPERIENCE_RECOMMENDATION_CODES,
@@ -51,7 +52,7 @@ export const SCHOOL_QUALITY_DIMENSION_OPTIONS: Array<{
   label: string
 }> = ALL_SCHOOL_QUALITY_DIMENSION_CODES.map((value) => ({
   value,
-  label: SchoolQualityDimensionDescription[value],
+  label: strictEnumLabel(SchoolQualityDimensionDescription, value, '校级质量维度'),
 }))
 
 /** 校级质量评价颜色 */
@@ -147,7 +148,10 @@ export function generateQualityAnalysis(params: {
   semester?: SemesterCode
   examIds: string[]
 }): Promise<SchoolQualityAnalysisResponse> {
-  return http.post<SchoolQualityAnalysisResponse>('/api/exam/school-quality/analysis/generate', params)
+  return http.post<SchoolQualityAnalysisResponse>(
+    '/api/exam/school-quality/analysis/generate',
+    params,
+  )
 }
 
 /**
@@ -160,7 +164,10 @@ export function listQualityAnalysis(params: {
   academicYear?: string
   semester?: SemesterCode
 }): Promise<SchoolQualityAnalysisResponse[]> {
-  return http.post<SchoolQualityAnalysisResponse[]>('/api/exam/school-quality/analysis/list', params)
+  return http.post<SchoolQualityAnalysisResponse[]>(
+    '/api/exam/school-quality/analysis/list',
+    params,
+  )
 }
 
 export function evaluateExperienceEffectiveness(params: {

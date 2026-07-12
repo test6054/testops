@@ -125,10 +125,6 @@ import type {
   ReviewTaskItemResponse,
   ReviewTaskTypeCode,
 } from '@/apis/mark/exam-review-task'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   GRADE_SOURCE_TONE,
   GradeSourceDescription,
@@ -140,6 +136,10 @@ import {
   ReviewTaskTypeDescription,
   ReviewTaskTypeTone,
 } from '@/apis/mark/exam-review-task'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -155,6 +155,7 @@ import { useMarkWorkbenchContext, useWorkspaceExamId } from '@/composables/useMa
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ReviewTaskHub' })
 
@@ -188,11 +189,11 @@ const filterModel = computed<Record<string, unknown>>({
   get: () => ({ status: statusFilter.value }),
   set: (value) => {
     if (
-      value.status === ReviewTaskStatusCode.PENDING
-      || value.status === ReviewTaskStatusCode.IN_PROGRESS
-      || value.status === ReviewTaskStatusCode.APPROVED
-      || value.status === ReviewTaskStatusCode.REJECTED
-      || value.status === ReviewTaskStatusCode.INVALIDATED
+      value.status === ReviewTaskStatusCode.PENDING ||
+      value.status === ReviewTaskStatusCode.IN_PROGRESS ||
+      value.status === ReviewTaskStatusCode.APPROVED ||
+      value.status === ReviewTaskStatusCode.REJECTED ||
+      value.status === ReviewTaskStatusCode.INVALIDATED
     ) {
       statusFilter.value = value.status
     }
@@ -240,8 +241,8 @@ function handleHubSignalClick(key: string): void {
     return
   }
   if (
-    key === 'in-progress'
-    && (snapshot.value?.markingProgress?.inProgressReviewTaskCount ?? 0) > 0
+    key === 'in-progress' &&
+    (snapshot.value?.markingProgress?.inProgressReviewTaskCount ?? 0) > 0
   ) {
     statusFilter.value = ReviewTaskStatusCode.IN_PROGRESS
     onFilterChange()
@@ -272,11 +273,11 @@ function reviewStatusTone(value: ReviewTaskStatusCode): BadgeTone {
 }
 
 function reviewStatusLabel(value: ReviewTaskStatusCode): string {
-  return ReviewTaskStatusDescription[value]
+  return strictEnumLabel(ReviewTaskStatusDescription, value, '阅卷任务状态')
 }
 
 function reviewTypeLabel(value: ReviewTaskTypeCode): string {
-  return ReviewTaskTypeDescription[value]
+  return strictEnumLabel(ReviewTaskTypeDescription, value, '阅卷任务类型')
 }
 
 function reviewTypeTone(value: ReviewTaskTypeCode): BadgeTone {
@@ -291,7 +292,7 @@ function reviewTypeTone(value: ReviewTaskTypeCode): BadgeTone {
 }
 
 function gradeSourceLabel(source: GradeSourceCode): string {
-  return GradeSourceDescription[source]
+  return strictEnumLabel(GradeSourceDescription, source, '成绩来源')
 }
 
 function gradeSourceTone(source: GradeSourceCode): BadgeTone {
@@ -322,7 +323,7 @@ async function loadTasks(): Promise<void> {
   }
 }
 
-function onPageChange(page: { current: number, pageSize: number }): void {
+function onPageChange(page: { current: number; pageSize: number }): void {
   pagination.current = page.current
   pagination.pageSize = page.pageSize
   void loadTasks()

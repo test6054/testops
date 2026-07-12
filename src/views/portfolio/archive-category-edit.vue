@@ -3,6 +3,7 @@ import type {
   PortfolioArchiveRecordFieldInput,
   PortfolioTargetFieldDefinition,
 } from '@/apis/portfolio/types'
+import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -12,7 +13,6 @@ import {
   PortfolioArchiveRecordStatusCode,
   PortfolioArchiveRecordStatusDescription,
 } from '@/apis/portfolio/enums'
-import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -23,6 +23,7 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -40,6 +41,7 @@ const latestRejectReason = ref<string>()
 const fieldDefs = ref<PortfolioTargetFieldDefinition[]>([])
 const fieldValues = reactive<Record<string, string>>({})
 const evidenceRefs = reactive<Record<string, string>>({})
+const scopeRequestToken = ref(0)
 
 const categoryId = computed(() => {
   const rawCategoryId = route.params.categoryId
@@ -47,6 +49,18 @@ const categoryId = computed(() => {
 })
 const queryRecordId = computed(() =>
   typeof route.query.recordId === 'string' ? route.query.recordId : '',
+)
+const fromPage = computed(() =>
+  typeof route.query.fromPage === 'string' ? route.query.fromPage : '',
+)
+const routeAcademicYear = computed(() =>
+  typeof route.query.academicYear === 'string' ? route.query.academicYear.trim() : '',
+)
+const routeCourseCode = computed(() =>
+  typeof route.query.courseCode === 'string' ? route.query.courseCode.trim() : '',
+)
+const routeSemester = computed(() =>
+  typeof route.query.semester === 'string' ? route.query.semester.trim() : '',
 )
 const teacherRequest = computed(() =>
   targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
@@ -78,7 +92,12 @@ async function applyRecordDetail(id: string) {
 }
 
 function resetFormState() {
+  scopeRequestToken.value += 1
   recordId.value = undefined
+  categoryName.value = ''
+  recordStatus.value = undefined
+  latestRejectReason.value = undefined
+  fieldDefs.value = []
   for (const key of Object.keys(fieldValues)) {
     delete fieldValues[key]
   }
@@ -87,21 +106,94 @@ function resetFormState() {
   }
 }
 
+function routeSemesterValue(): string {
+  if (!routeSemester.value) {
+    return ''
+  }
+  const matched = SemesterOptions.find((item) => item.value === routeSemester.value)
+  return matched?.value ?? ''
+}
+
+function mergeCourseArchiveRouteDefaults() {
+  const defaults = new Map<string, string>()
+  if (routeAcademicYear.value) {
+    defaults.set('academicYear', routeAcademicYear.value)
+  }
+  if (routeCourseCode.value) {
+    defaults.set('courseCode', routeCourseCode.value)
+  }
+  const semesterValue = routeSemesterValue()
+  if (semesterValue) {
+    defaults.set('semester', semesterValue)
+  }
+  if (!defaults.size) {
+    return
+  }
+  for (const [fieldCode, fieldValue] of defaults) {
+    if (!(fieldCode in fieldValues)) {
+      continue
+    }
+    if (fieldValues[fieldCode]?.trim()) {
+      continue
+    }
+    fieldValues[fieldCode] = fieldValue
+  }
+}
+
+function buildReturnQuery(): Record<string, string> {
+  const query: Record<string, string> = {}
+  if (targetTeacherId.value) {
+    query.teacherId = targetTeacherId.value
+  }
+  if (fromPage.value === 'courseArchive') {
+    if (routeAcademicYear.value) {
+      query.academicYear = routeAcademicYear.value
+    }
+    if (routeCourseCode.value) {
+      query.courseCode = routeCourseCode.value
+    }
+    if (routeSemester.value) {
+      query.semester = routeSemester.value
+    }
+  }
+  return query
+}
+
+function returnToArchiveSource() {
+  const path =
+    fromPage.value === 'courseArchive'
+      ? '/portfolio/teacher/course-archive'
+      : fromPage.value === 'trainingExtension'
+        ? '/portfolio/teacher/extension-activity'
+        : '/portfolio/teacher/archive'
+  void router.push({
+    path,
+    query: buildReturnQuery(),
+  })
+}
+
 async function loadPage() {
+  const requestToken = scopeRequestToken.value + 1
+  scopeRequestToken.value = requestToken
   if (!categoryId.value || (canPickTeachers.value && !targetTeacherId.value)) {
+    resetFormState()
     return
   }
   loading.value = true
-  recordStatus.value = undefined
-  latestRejectReason.value = undefined
   resetFormState()
   try {
     const published = await portfolioArchiveTemplateApi.listPublishedFields({
       categoryId: categoryId.value,
     })
+    if (scopeRequestToken.value !== requestToken) {
+      return
+    }
     categoryName.value = published.templateCode
     fieldDefs.value = published.targetFields
     const oneTable = await portfolioArchiveApi.getOneTable(teacherRequest.value)
+    if (scopeRequestToken.value !== requestToken) {
+      return
+    }
     const categoryRow = oneTable.categories.find((item) => item.categoryId === categoryId.value)
     if (categoryRow?.categoryName) {
       categoryName.value = categoryRow.categoryName
@@ -112,6 +204,10 @@ async function loadPage() {
     }
     if (queryRecordId.value) {
       await applyRecordDetail(queryRecordId.value)
+      if (scopeRequestToken.value !== requestToken) {
+        return
+      }
+      mergeCourseArchiveRouteDefaults()
       return
     }
     const draftPage = await portfolioArchiveApi.pageRecords({
@@ -124,6 +220,10 @@ async function loadPage() {
     const draft = draftPage.list[0]
     if (draft) {
       await applyRecordDetail(draft.id)
+      if (scopeRequestToken.value !== requestToken) {
+        return
+      }
+      mergeCourseArchiveRouteDefaults()
       return
     }
     const returnedPage = await portfolioArchiveApi.pageRecords({
@@ -136,11 +236,22 @@ async function loadPage() {
     const returned = returnedPage.list[0]
     if (returned) {
       await applyRecordDetail(returned.id)
+      if (scopeRequestToken.value !== requestToken) {
+        return
+      }
+      mergeCourseArchiveRouteDefaults()
+      return
     }
+    mergeCourseArchiveRouteDefaults()
   } catch (error) {
+    if (scopeRequestToken.value !== requestToken) {
+      return
+    }
     showUserError(error, '加载分类填报页失败')
   } finally {
-    loading.value = false
+    if (scopeRequestToken.value === requestToken) {
+      loading.value = false
+    }
   }
 }
 
@@ -153,6 +264,7 @@ function buildFieldInputs(): PortfolioArchiveRecordFieldInput[] {
 }
 
 async function handleSaveDraft() {
+  const requestToken = scopeRequestToken.value
   saving.value = true
   try {
     const result = await portfolioArchiveApi.saveDraft({
@@ -161,17 +273,26 @@ async function handleSaveDraft() {
       categoryId: categoryId.value,
       fields: buildFieldInputs(),
     })
+    if (scopeRequestToken.value !== requestToken) {
+      return
+    }
     recordId.value = result.recordId
     recordStatus.value = result.recordStatus
     message.success('草稿已保存')
   } catch (error) {
+    if (scopeRequestToken.value !== requestToken) {
+      return
+    }
     showUserError(error, '保存草稿失败')
   } finally {
-    saving.value = false
+    if (scopeRequestToken.value === requestToken) {
+      saving.value = false
+    }
   }
 }
 
 async function handleSubmit() {
+  const requestToken = scopeRequestToken.value
   submitting.value = true
   try {
     const result = await portfolioArchiveApi.submitRecord({
@@ -180,25 +301,27 @@ async function handleSubmit() {
       categoryId: categoryId.value,
       fields: buildFieldInputs(),
     })
+    if (scopeRequestToken.value !== requestToken) {
+      return
+    }
     recordId.value = result.recordId
     recordStatus.value = result.recordStatus
     message.success('已提交审核')
-    void router.push({
-      path: '/portfolio/teacher/archive',
-      query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
-    })
+    returnToArchiveSource()
   } catch (error) {
+    if (scopeRequestToken.value !== requestToken) {
+      return
+    }
     showUserError(error, '提交审核失败')
   } finally {
-    submitting.value = false
+    if (scopeRequestToken.value === requestToken) {
+      submitting.value = false
+    }
   }
 }
 
 function goBack() {
-  void router.push({
-    path: '/portfolio/teacher/archive',
-    query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
-  })
+  returnToArchiveSource()
 }
 
 usePortfolioScopedLoader(

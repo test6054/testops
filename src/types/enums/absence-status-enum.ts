@@ -4,6 +4,7 @@ export enum AbsenceStatusCode {
   CONFIRMED = 'CONFIRMED',
   REVOKED = 'REVOKED',
   MAKEUP_ARRANGED = 'MAKEUP_ARRANGED',
+  MAKEUP_COMPLETED = 'MAKEUP_COMPLETED',
 }
 
 export const ALL_ABSENCE_STATUS_CODES: readonly AbsenceStatusCode[] = [
@@ -11,6 +12,7 @@ export const ALL_ABSENCE_STATUS_CODES: readonly AbsenceStatusCode[] = [
   AbsenceStatusCode.CONFIRMED,
   AbsenceStatusCode.REVOKED,
   AbsenceStatusCode.MAKEUP_ARRANGED,
+  AbsenceStatusCode.MAKEUP_COMPLETED,
 ]
 
 export const AbsenceStatusDescription: Record<AbsenceStatusCode, string> = {
@@ -18,5 +20,5 @@ export const AbsenceStatusDescription: Record<AbsenceStatusCode, string> = {
   [AbsenceStatusCode.CONFIRMED]: '已确认',
   [AbsenceStatusCode.REVOKED]: '已撤销',
   [AbsenceStatusCode.MAKEUP_ARRANGED]: '已安排补考',
+  [AbsenceStatusCode.MAKEUP_COMPLETED]: '已完成补考',
 }
-

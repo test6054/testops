@@ -1,9 +1,7 @@
-import type {
-  ArchiveExternalImportResultVO,
-} from '@/apis/mark/archive-volume'
+import type { ArchiveExternalImportResultVO } from '@/apis/mark/archive-volume'
+import { ArchiveImportBatchStatusDescription } from '@/apis/mark/archive-volume'
 import type { ExcelImportResult } from '@/apis/platform/types'
 import type { UiAlertStripTone } from '@/components/ui-guide/ui/types'
-import { ArchiveImportBatchStatusDescription } from '@/apis/mark/archive-volume'
 import { ArchiveImportBatchStatusCode } from '@/types/enums/archive-import-batch-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -63,11 +61,13 @@ export function buildArchiveImportResultDescription(
 function resolveArchiveImportBatchStatus(
   status: string | undefined,
 ): ArchiveImportBatchStatusCode | null {
-  if (status === ArchiveImportBatchStatusCode.PROCESSING) return ArchiveImportBatchStatusCode.PROCESSING
+  if (status === ArchiveImportBatchStatusCode.PROCESSING)
+    return ArchiveImportBatchStatusCode.PROCESSING
   if (status === ArchiveImportBatchStatusCode.SUCCESS) return ArchiveImportBatchStatusCode.SUCCESS
-  if (status === ArchiveImportBatchStatusCode.PARTIAL_FAILED) return ArchiveImportBatchStatusCode.PARTIAL_FAILED
+  if (status === ArchiveImportBatchStatusCode.PARTIAL_FAILED)
+    return ArchiveImportBatchStatusCode.PARTIAL_FAILED
   if (status === ArchiveImportBatchStatusCode.FAILED) return ArchiveImportBatchStatusCode.FAILED
-  showUserError(null, '归档导入批次状态异常，请刷新后重试')
+  showUserError(null, '归档导入批次状态异常')
   return null
 }
 

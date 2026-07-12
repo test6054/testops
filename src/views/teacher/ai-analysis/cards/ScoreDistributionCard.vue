@@ -23,7 +23,7 @@
 
     <UiSkeletonState v-if="loading" variant="card" compact />
 
-    <UiEmpty v-else-if="!distribution" description="暂无数据" />
+    <UiEmpty v-else-if="!distribution" description="当前没有可展示的内容" />
     <div v-else-if="distribution" class="score-dist">
       <SignalBand :metrics="distributionMetrics" compact class="score-dist__metrics" />
 
@@ -43,11 +43,11 @@
 <script lang="ts" setup>
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ExamScoreDistributionResponse } from '@/apis/mark/exam-score'
+import { getExamScoreDistribution } from '@/apis/mark/exam-score'
 import type { MarkClassOption } from '@/composables/useMarkExamRoster'
 import type { SignalMetric } from '@/types/workbench'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, ref, watch } from 'vue'
-import { getExamScoreDistribution } from '@/apis/mark/exam-score'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -109,7 +109,7 @@ const { chartOption: histogramChartOption } = useChartOption(() =>
 const histogramChartAriaLabel = computed(() => {
   const count = histogramBarItems.value.length
   if (count <= 0) {
-    return '五级分数分布，暂无数据'
+    return '五级分数分布，当前没有可展示的内容'
   }
   return `五级分数分布，共 ${count} 个分数段`
 })

@@ -4,21 +4,22 @@ import type {
   PortfolioIndicatorEngineReadinessVO,
   PortfolioPublishImpactReportVO,
 } from '@/apis/portfolio/indicator-types'
-import { message } from 'ant-design-vue'
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import {
   PF_SCENE_CODE_OPTIONS,
   PfIndicatorBusinessReferenceSceneDescription,
   PfSceneCode,
 } from '@/apis/portfolio/indicator-types'
+import { message } from 'ant-design-vue'
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const router = useRouter()
 const sceneCode = ref<PfSceneCode>(PfSceneCode.PERFORMANCE)
@@ -98,7 +99,10 @@ function parseImpactSummary(report: PortfolioPublishImpactReportVO): boolean {
   }
 }
 
-function readOptionalNumber(source: object, key: keyof PortfolioImpactIndicatorSummaryDto): number | undefined {
+function readOptionalNumber(
+  source: object,
+  key: keyof PortfolioImpactIndicatorSummaryDto,
+): number | undefined {
   const value = Object.getOwnPropertyDescriptor(source, key)?.value
   if (value === undefined) {
     return undefined
@@ -170,16 +174,22 @@ onMounted(loadReadiness)
     </template>
     <UiCard title="指标工程贯通">
       <div v-if="readiness" class="readiness">
-        <span>已启用 {{ readiness.enabledIndicatorCount }} /
-          {{ readiness.platformIndicatorCount }}</span>
+        <span
+          >已启用 {{ readiness.enabledIndicatorCount }} /
+          {{ readiness.platformIndicatorCount }}</span
+        >
         <span
           v-for="scene in readiness.sceneStatuses"
           :key="scene.referenceScene"
           class="scene-tag"
         >
-          {{ PfIndicatorBusinessReferenceSceneDescription[scene.referenceScene] }}：{{
-            scene.referencedIndicatorCount
-          }}
+          {{
+            strictEnumLabel(
+              PfIndicatorBusinessReferenceSceneDescription,
+              scene.referenceScene,
+              '指标业务引用场景',
+            )
+          }}：{{ scene.referencedIndicatorCount }}
         </span>
       </div>
       <UiButton variant="outline" :loading="enabling" @click="enableAllIndicators">

@@ -9,8 +9,11 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * - /api/quality/score-batches: page（按 qualityCourseId 拉批次列表）
  */
 import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
+import { assessmentItemApi } from '@/apis/quality/assessment-item'
 import type { RubricItemVO } from '@/apis/quality/rubric-item'
+import { rubricItemApi } from '@/apis/quality/rubric-item'
 import type { ScoreBatchVO } from '@/apis/quality/score-batch'
+import { scoreBatchApi } from '@/apis/quality/score-batch'
 import type {
   ScoreRecordBatchSummaryVO,
   ScoreRecordRubricScoreRequest,
@@ -18,6 +21,7 @@ import type {
   ScoreRecordUpdateRequest,
   ScoreRecordVO,
 } from '@/apis/quality/score-record'
+import { scoreRecordApi } from '@/apis/quality/score-record'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { UserDto } from '@/types/api-types.d'
 import type { SignalMetric } from '@/types/workbench'
@@ -25,10 +29,6 @@ import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ExportBusinessType } from '@/apis/edu/export'
-import { assessmentItemApi } from '@/apis/quality/assessment-item'
-import { rubricItemApi } from '@/apis/quality/rubric-item'
-import { scoreBatchApi } from '@/apis/quality/score-batch'
-import { scoreRecordApi } from '@/apis/quality/score-record'
 import {
   SCORE_BATCH_STATUS_COLOR,
   ScoreBatchStatusCode,
@@ -109,16 +109,16 @@ const batchPageNum = ref(1)
 const batchPageSize = ref(DEFAULT_LIST_PAGE_SIZE)
 const batchTotal = ref(0)
 const selectedBatch = ref<ScoreBatchVO | null>(null)
-const { exporting: scoreRecordExporting, exportExcel: exportScoreRecordExcel }
-  = useQualityTableExport()
+const { exporting: scoreRecordExporting, exportExcel: exportScoreRecordExcel } =
+  useQualityTableExport()
 
 const isBatchRecordEditable = computed(() => {
   if (!selectedBatch.value) return false
   const status = selectedBatch.value.status
   return (
-    status !== ScoreBatchStatusCode.CONFIRMED
-    && status !== ScoreBatchStatusCode.PARSING
-    && status !== ScoreBatchStatusCode.CANCELLED
+    status !== ScoreBatchStatusCode.CONFIRMED &&
+    status !== ScoreBatchStatusCode.PARSING &&
+    status !== ScoreBatchStatusCode.CANCELLED
   )
 })
 
@@ -171,7 +171,7 @@ async function loadBatches() {
     if (scope.isStale()) {
       return
     }
-    showUserError(error, '成绩批次列表加载失败，请稍后重试')
+    showUserError(error, '成绩批次列表加载失败')
   } finally {
     if (!scope.isStale()) {
       batchesLoading.value = false
@@ -180,7 +180,7 @@ async function loadBatches() {
   batchStatusPolling.syncPolling()
 }
 
-function handleBatchPageChange(page: { current: number, pageSize: number }): void {
+function handleBatchPageChange(page: { current: number; pageSize: number }): void {
   batchPageNum.value = page.current
   batchPageSize.value = page.pageSize
   void loadBatches()
@@ -190,8 +190,8 @@ const batchStatusPolling = usePolling(() => refreshBatchesQuietly(), {
   getOptions: () => ({
     intervalMs: 3000,
     when:
-      batches.value.some((batch) => batch.status === ScoreBatchStatusCode.PARSING)
-      || selectedBatch.value?.status === ScoreBatchStatusCode.PARSING,
+      batches.value.some((batch) => batch.status === ScoreBatchStatusCode.PARSING) ||
+      selectedBatch.value?.status === ScoreBatchStatusCode.PARSING,
   }),
   pauseWhenDocumentHidden: true,
 })
@@ -337,7 +337,7 @@ async function loadRecords() {
   }
 }
 
-function handleRecordPageChange(page: { current: number, pageSize: number }): void {
+function handleRecordPageChange(page: { current: number; pageSize: number }): void {
   recordPageNum.value = page.current
   recordPageSize.value = page.pageSize
   void loadRecords()
@@ -693,7 +693,7 @@ async function loadValidByItemPage() {
   } catch (error) {
     validByItemRecords.value = []
     validByItemTotal.value = 0
-    showUserError(error, '有效成绩明细加载失败，请稍后重试')
+    showUserError(error, '有效成绩明细加载失败')
   } finally {
     validByItemLoading.value = false
   }
@@ -704,7 +704,7 @@ async function queryValidByItem() {
   await loadValidByItemPage()
 }
 
-function handleValidByItemPageChange(page: { current: number, pageSize: number }): void {
+function handleValidByItemPageChange(page: { current: number; pageSize: number }): void {
   validByItemPageNum.value = page.current
   validByItemPageSize.value = page.pageSize
   void loadValidByItemPage()
@@ -1045,7 +1045,7 @@ function handleCourseChange(courseId: string | null) {
                 />
               </div>
             </div>
-            <UiEmpty description="暂无数据" class="score-record__rubric-empty" />
+            <UiEmpty description="当前没有可展示的内容" class="score-record__rubric-empty" />
           </a-spin>
         </a-form-item>
         <a-row :gutter="12">

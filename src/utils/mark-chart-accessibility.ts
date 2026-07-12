@@ -37,7 +37,7 @@ export function formatTrendAriaLabel(
 ): string {
   const safeTitle = title.trim() || '趋势图'
   if (pointCount <= 0) {
-    return `${safeTitle}，暂无数据`
+    return `${safeTitle}，当前没有可展示的内容`
   }
   if (pointCount < MARK_TREND_MIN_POINTS) {
     return `${safeTitle}，共 ${pointCount} 个数据点，不足以绘制走势`

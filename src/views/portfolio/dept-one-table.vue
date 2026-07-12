@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentPlanStatusCode } from '@/apis/portfolio/enums'
-import type {
-  PortfolioDeptOneTableSummaryVO,
-  PortfolioDeptOneTableTeacherRowVO,
-} from '@/apis/portfolio/teacher'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
   PortfolioDevelopmentPlanStatusDescription,
 } from '@/apis/portfolio/enums'
+import type {
+  PortfolioDeptOneTableSummaryVO,
+  PortfolioDeptOneTableTeacherRowVO,
+} from '@/apis/portfolio/teacher'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import MarkChartCard from '@/components/chart/MarkChartCard.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -23,15 +23,19 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
+import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const { loadTree, departmentOptions: loadDepartmentOptions } = usePortfolioOrgTree()
 const departmentOptions = computed(() => loadDepartmentOptions())
+const userStore = useUserStore()
 const loading = ref(false)
 const teacherLoading = ref(false)
 const exporting = ref(false)
+const summaryRequestToken = ref(0)
+const teacherRequestToken = ref(0)
 const summary = ref<PortfolioDeptOneTableSummaryVO | null>(null)
 const teacherRows = ref<PortfolioDeptOneTableTeacherRowVO[]>([])
 const teacherTotal = ref(0)
@@ -105,51 +109,76 @@ const titleChartOption = computed(() => {
 })
 
 async function loadSummary() {
+  const currentToken = ++summaryRequestToken.value
   if (!filter.departmentId) {
     summary.value = null
     teacherRows.value = []
     teacherTotal.value = 0
+    loading.value = false
     return
   }
   loading.value = true
+  const request = {
+    departmentId: filter.departmentId,
+    planYear: filter.planYear.trim() || undefined,
+  }
   try {
-    summary.value = await portfolioTeacherApi.getDeptOneTableSummary({
-      departmentId: filter.departmentId,
-      planYear: filter.planYear.trim() || undefined,
-    })
+    const nextSummary = await portfolioTeacherApi.getDeptOneTableSummary(request)
+    if (currentToken !== summaryRequestToken.value) {
+      return
+    }
+    summary.value = nextSummary
   } catch (error) {
+    if (currentToken !== summaryRequestToken.value) {
+      return
+    }
     showUserError(error)
   } finally {
-    loading.value = false
+    if (currentToken === summaryRequestToken.value) {
+      loading.value = false
+    }
   }
 }
 
 async function loadTeachers() {
+  const currentToken = ++teacherRequestToken.value
   if (!filter.departmentId) {
     teacherRows.value = []
     teacherTotal.value = 0
+    teacherLoading.value = false
     return
   }
   teacherLoading.value = true
+  const request = {
+    departmentId: filter.departmentId,
+    planYear: filter.planYear.trim() || undefined,
+    pageNum: teacherQuery.pageNum,
+    pageSize: teacherQuery.pageSize,
+  }
   try {
-    const page = await portfolioTeacherApi.pageDeptOneTableTeachers({
-      departmentId: filter.departmentId,
-      planYear: filter.planYear.trim() || undefined,
-      pageNum: teacherQuery.pageNum,
-      pageSize: teacherQuery.pageSize,
-    })
+    const page = await portfolioTeacherApi.pageDeptOneTableTeachers(request)
+    if (currentToken !== teacherRequestToken.value) {
+      return
+    }
     teacherRows.value = page.list
     teacherQuery.pageNum = page.pageNum
     teacherQuery.pageSize = page.pageSize
     teacherTotal.value = page.total
   } catch (error) {
+    if (currentToken !== teacherRequestToken.value) {
+      return
+    }
     showUserError(error)
   } finally {
-    teacherLoading.value = false
+    if (currentToken === teacherRequestToken.value) {
+      teacherLoading.value = false
+    }
   }
 }
 
 async function reloadAll() {
+  summaryRequestToken.value += 1
+  teacherRequestToken.value += 1
   teacherQuery.pageNum = 1
   await Promise.all([loadSummary(), loadTeachers()])
 }
@@ -178,7 +207,7 @@ function structureCount(key: (typeof titleStructureRows)[number]['key']) {
   return summary.value?.[key] ?? 0
 }
 
-function handleTeacherPageChange(page: { current: number, pageSize: number }) {
+function handleTeacherPageChange(page: { current: number; pageSize: number }) {
   teacherQuery.pageNum = page.current
   teacherQuery.pageSize = page.pageSize
   void loadTeachers()
@@ -204,8 +233,19 @@ function planStatusTone(status?: PortfolioDevelopmentPlanStatusCode): BadgeTone 
 
 onMounted(async () => {
   await loadTree()
-  if (departmentOptions.value.length === 1) {
-    filter.departmentId = departmentOptions.value[0].value
+  const currentUserId = userStore.userInfo.userId
+  if (!currentUserId) {
+    showUserError(new Error('当前登录用户缺失'), '定位当前用户所属院系失败')
+    return
+  }
+  try {
+    const teacher = await portfolioTeacherApi.get(currentUserId)
+    if (!teacher.departmentId) {
+      throw new Error('当前教师未关联院系')
+    }
+    filter.departmentId = teacher.departmentId
+  } catch (error) {
+    showUserError(error, '定位当前用户所属院系失败')
   }
 })
 

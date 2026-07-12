@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationObjectionSummaryVO } from '@/apis/portfolio/types'
+import {
+  PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
+  PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE,
+} from '@/apis/portfolio/types'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { Input, InputNumber, message, Select } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
@@ -14,10 +18,6 @@ import {
   PortfolioEvaluationObjectionTypeDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
-import {
-  PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
-  PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE,
-} from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -65,8 +65,8 @@ function actionTone(action: PortfolioEvaluationObjectionHandleActionCode) {
 
 function requiresDangerConfirm(action: PortfolioEvaluationObjectionHandleActionCode): boolean {
   return (
-    action === PortfolioEvaluationObjectionHandleActionCode.REVOKE
-    || action === PortfolioEvaluationObjectionHandleActionCode.RE_REVIEW
+    action === PortfolioEvaluationObjectionHandleActionCode.REVOKE ||
+    action === PortfolioEvaluationObjectionHandleActionCode.RE_REVIEW
   )
 }
 
@@ -83,15 +83,15 @@ const STATUS_FILTER_OPTIONS: Array<{
 
 function requiresCorrectedScore(objectionType: PortfolioEvaluationObjectionTypeCode): boolean {
   return (
-    objectionType === PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE
-    || objectionType === PortfolioEvaluationObjectionTypeCode.SCORE_DISPUTE
+    objectionType === PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE ||
+    objectionType === PortfolioEvaluationObjectionTypeCode.SCORE_DISPUTE
   )
 }
 
 function requiresOpinion(action: PortfolioEvaluationObjectionHandleActionCode): boolean {
   return (
-    action === PortfolioEvaluationObjectionHandleActionCode.MAINTAIN
-    || action === PortfolioEvaluationObjectionHandleActionCode.RE_REVIEW
+    action === PortfolioEvaluationObjectionHandleActionCode.MAINTAIN ||
+    action === PortfolioEvaluationObjectionHandleActionCode.RE_REVIEW
   )
 }
 
@@ -122,8 +122,8 @@ const showCorrectedScore = computed(() => {
     return false
   }
   return (
-    reviewForm.action === PortfolioEvaluationObjectionHandleActionCode.CORRECT
-    && requiresCorrectedScore(reviewTarget.value.objectionType)
+    reviewForm.action === PortfolioEvaluationObjectionHandleActionCode.CORRECT &&
+    requiresCorrectedScore(reviewTarget.value.objectionType)
   )
 })
 
@@ -138,6 +138,15 @@ const columns: ColumnsType<PortfolioEvaluationObjectionSummaryVO> = [
   { title: '佐证', key: 'evidenceRef', width: 100, align: 'center' },
   { title: '操作', key: 'actions', width: 120 },
 ]
+
+/** 深链任务切换后必须清空旧复核上下文，避免继续操作上一任务的异议单。 */
+function resetReviewContext() {
+  reviewDrawerOpen.value = false
+  reviewTarget.value = null
+  reviewForm.action = PortfolioEvaluationObjectionHandleActionCode.CORRECT
+  reviewForm.handleOpinion = ''
+  reviewForm.correctedScore = undefined
+}
 
 async function downloadEvidence(row: PortfolioEvaluationObjectionSummaryVO) {
   if (!row.evidenceRef) {
@@ -157,6 +166,12 @@ async function loadPage() {
     })
     rows.value = page.list
     pageTotal.value = page.total
+    if (
+      reviewTarget.value &&
+      !rows.value.some((item) => item.objectionId === reviewTarget.value?.objectionId)
+    ) {
+      resetReviewContext()
+    }
   } catch (error) {
     showUserError(error, '加载公示异议失败')
   } finally {
@@ -207,11 +222,7 @@ async function submitReview() {
       ...(reviewForm.correctedScore != null ? { correctedScore: reviewForm.correctedScore } : {}),
     })
     message.success('复核完成')
-    reviewDrawerOpen.value = false
-    reviewTarget.value = null
-    reviewForm.action = PortfolioEvaluationObjectionHandleActionCode.CORRECT
-    reviewForm.handleOpinion = ''
-    reviewForm.correctedScore = undefined
+    resetReviewContext()
     await loadPage()
   } catch (error) {
     showUserError(error, '复核异议失败')
@@ -235,6 +246,7 @@ watch(
   (value) => {
     evaluationTaskId.value = typeof value === 'string' ? value : ''
     pageNum.value = 1
+    resetReviewContext()
     void loadPage()
   },
 )

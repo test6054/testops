@@ -8,10 +8,10 @@ import type {
   PortfolioIndicatorTrendVO,
   PortfolioIndicatorUsageFrequencyVO,
 } from '@/apis/portfolio/indicator-types'
+import { PF_SCENE_CODE_OPTIONS, PfSceneCodeDescription } from '@/apis/portfolio/indicator-types'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioIndicatorDashboardApi } from '@/apis/portfolio/indicator'
-import { PF_SCENE_CODE_OPTIONS, PfSceneCodeDescription } from '@/apis/portfolio/indicator-types'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -23,9 +23,11 @@ import {
   buildCategoryBarChartOption,
   buildTrendLineChartOption,
 } from '@/utils/mark-echarts-options'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const loading = ref(false)
 const sceneCode = ref<PfSceneCode | undefined>(undefined)
+const dashboardRequestToken = ref(0)
 const summary = ref<PortfolioIndicatorDashboardSummaryVO | null>(null)
 const usageFrequency = ref<PortfolioIndicatorUsageFrequencyVO | null>(null)
 const trend = ref<PortfolioIndicatorTrendVO | null>(null)
@@ -157,26 +159,38 @@ const teacherTypeChartOption = computed<EChartsCoreOption>(() =>
 )
 
 async function loadDashboard() {
+  const currentToken = ++dashboardRequestToken.value
   loading.value = true
-  query.sceneCode = sceneCode.value
+  const requestQuery: DashboardQuery = {
+    sceneCode: sceneCode.value,
+    topLimit: query.topLimit,
+  }
   try {
-    const [summaryResult, usageResult, trendResult, collegeResult, teacherTypeResult]
-      = await Promise.all([
-        portfolioIndicatorDashboardApi.summary(query),
-        portfolioIndicatorDashboardApi.usageFrequency(query),
-        portfolioIndicatorDashboardApi.trend(query),
-        portfolioIndicatorDashboardApi.collegeCompare(query),
-        portfolioIndicatorDashboardApi.teacherTypeCompare(query),
+    const [summaryResult, usageResult, trendResult, collegeResult, teacherTypeResult] =
+      await Promise.all([
+        portfolioIndicatorDashboardApi.summary(requestQuery),
+        portfolioIndicatorDashboardApi.usageFrequency(requestQuery),
+        portfolioIndicatorDashboardApi.trend(requestQuery),
+        portfolioIndicatorDashboardApi.collegeCompare(requestQuery),
+        portfolioIndicatorDashboardApi.teacherTypeCompare(requestQuery),
       ])
+    if (currentToken !== dashboardRequestToken.value) {
+      return
+    }
     summary.value = summaryResult
     usageFrequency.value = usageResult
     trend.value = trendResult
     collegeCompare.value = collegeResult
     teacherTypeCompare.value = teacherTypeResult
   } catch (error) {
+    if (currentToken !== dashboardRequestToken.value) {
+      return
+    }
     showUserError(error)
   } finally {
-    loading.value = false
+    if (currentToken === dashboardRequestToken.value) {
+      loading.value = false
+    }
   }
 }
 
@@ -190,7 +204,11 @@ onMounted(loadDashboard)
         layout="workbench"
         show-title
         title="指标看板"
-        :subtitle="sceneCode ? `${PfSceneCodeDescription[sceneCode]} 统计` : ''"
+        :subtitle="
+          sceneCode
+            ? `${strictEnumLabel(PfSceneCodeDescription, sceneCode, '指标场景编码')} 统计`
+            : ''
+        "
       />
     </template>
     <div class="toolbar">

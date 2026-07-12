@@ -1,11 +1,20 @@
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 
-import type {
-  PortfolioEvaluationModeCode} from '@/types/enums/portfolio-evaluation-mode-enum';
-import type {
-  PortfolioExternalTeacherDataStatusCode} from '@/types/enums/portfolio-external-teacher-data-status-enum';
-import type {
-  PortfolioKeyTeacherRegistryTypeCode} from '@/types/enums/portfolio-key-teacher-registry-type-enum';
+import type { PortfolioEvaluationModeCode } from '@/types/enums/portfolio-evaluation-mode-enum'
+import {
+  ALL_PORTFOLIO_EVALUATION_MODE_CODES,
+  PortfolioEvaluationModeDescription,
+} from '@/types/enums/portfolio-evaluation-mode-enum'
+import type { PortfolioExternalTeacherDataStatusCode } from '@/types/enums/portfolio-external-teacher-data-status-enum'
+import {
+  ALL_PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_CODES,
+  PortfolioExternalTeacherDataStatusDescription,
+} from '@/types/enums/portfolio-external-teacher-data-status-enum'
+import type { PortfolioKeyTeacherRegistryTypeCode } from '@/types/enums/portfolio-key-teacher-registry-type-enum'
+import {
+  ALL_PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_CODES,
+  PortfolioKeyTeacherRegistryTypeDescription,
+} from '@/types/enums/portfolio-key-teacher-registry-type-enum'
 import {
   ALL_PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_CODES,
   PortfolioDevelopmentPlanItemStatusCode,
@@ -17,22 +26,47 @@ import {
   PortfolioDevelopmentPlanStatusDescription,
 } from '@/types/enums/portfolio-development-plan-status-enum'
 import {
-  ALL_PORTFOLIO_EVALUATION_MODE_CODES,
-  PortfolioEvaluationModeDescription,
-} from '@/types/enums/portfolio-evaluation-mode-enum'
-import {
   ALL_PORTFOLIO_EVALUATION_TASK_STATUS_CODES,
   PortfolioEvaluationTaskStatusCode,
   PortfolioEvaluationTaskStatusDescription,
 } from '@/types/enums/portfolio-evaluation-task-status-enum'
+import type { PortfolioArchiveRecordStatusCode } from '@/types/enums/portfolio-archive-record-status-enum'
 import {
-  ALL_PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_CODES,
-  PortfolioExternalTeacherDataStatusDescription,
-} from '@/types/enums/portfolio-external-teacher-data-status-enum'
+  ALL_PORTFOLIO_ARCHIVE_RECORD_STATUS_CODES,
+  PortfolioArchiveRecordStatusDescription,
+} from '@/types/enums/portfolio-archive-record-status-enum'
+import type { PortfolioEvaluationObjectionTypeCode } from '@/types/enums/portfolio-evaluation-objection-type-enum'
 import {
-  ALL_PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_CODES,
-  PortfolioKeyTeacherRegistryTypeDescription,
-} from '@/types/enums/portfolio-key-teacher-registry-type-enum'
+  ALL_PORTFOLIO_EVALUATION_OBJECTION_TYPE_CODES,
+  PortfolioEvaluationObjectionTypeDescription,
+} from '@/types/enums/portfolio-evaluation-objection-type-enum'
+import type { PortfolioMaterialStatusCode } from '@/types/enums/portfolio-material-status-enum'
+import {
+  ALL_PORTFOLIO_MATERIAL_STATUS_CODES,
+  PortfolioMaterialStatusDescription,
+} from '@/types/enums/portfolio-material-status-enum'
+import type { PortfolioMaterialTypeCode } from '@/types/enums/portfolio-material-type-enum'
+import {
+  ALL_PORTFOLIO_MATERIAL_TYPE_CODES,
+  PortfolioMaterialTypeDescription,
+} from '@/types/enums/portfolio-material-type-enum'
+import type { PortfolioOrgUnitTypeCode } from '@/types/enums/portfolio-org-unit-type-enum'
+import {
+  ALL_PORTFOLIO_ORG_UNIT_TYPE_CODES,
+  PortfolioOrgUnitTypeDescription,
+} from '@/types/enums/portfolio-org-unit-type-enum'
+import type { PortfolioTeacherIdentityStatusCode } from '@/types/enums/portfolio-teacher-identity-status-enum'
+import {
+  ALL_PORTFOLIO_TEACHER_IDENTITY_STATUS_CODES,
+  PortfolioTeacherIdentityStatusDescription,
+} from '@/types/enums/portfolio-teacher-identity-status-enum'
+import type { PortfolioTeacherIdentityTypeCode } from '@/types/enums/portfolio-teacher-identity-type-enum'
+import {
+  ALL_PORTFOLIO_TEACHER_IDENTITY_TYPE_CODES,
+  PortfolioTeacherIdentityTypeDescription,
+} from '@/types/enums/portfolio-teacher-identity-type-enum'
+import { PortfolioPortraitDimensionCode } from '@/types/enums/portfolio-portrait-dimension-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
   ALL_PORTFOLIO_AI_ANALYSIS_REVIEW_STATUS_CODES,
@@ -290,91 +324,61 @@ export {
   PortfolioTeacherRecommendSceneDescription,
 } from '@/types/enums/portfolio-teacher-recommend-scene-enum'
 
-import type {
-  PortfolioArchiveRecordStatusCode} from '@/types/enums/portfolio-archive-record-status-enum';
-import type {
-  PortfolioEvaluationObjectionTypeCode} from '@/types/enums/portfolio-evaluation-objection-type-enum';
-import type {
-  PortfolioMaterialStatusCode} from '@/types/enums/portfolio-material-status-enum';
-import type {
-  PortfolioMaterialTypeCode} from '@/types/enums/portfolio-material-type-enum';
-import type {
-  PortfolioOrgUnitTypeCode} from '@/types/enums/portfolio-org-unit-type-enum';
-import type {
-  PortfolioTeacherIdentityStatusCode} from '@/types/enums/portfolio-teacher-identity-status-enum';
-import type {
-  PortfolioTeacherIdentityTypeCode} from '@/types/enums/portfolio-teacher-identity-type-enum';
-import {
-  ALL_PORTFOLIO_ARCHIVE_RECORD_STATUS_CODES,
-  PortfolioArchiveRecordStatusDescription,
-} from '@/types/enums/portfolio-archive-record-status-enum'
-import {
-  ALL_PORTFOLIO_EVALUATION_OBJECTION_TYPE_CODES,
-  PortfolioEvaluationObjectionTypeDescription,
-} from '@/types/enums/portfolio-evaluation-objection-type-enum'
-import {
-  ALL_PORTFOLIO_MATERIAL_STATUS_CODES,
-  PortfolioMaterialStatusDescription,
-} from '@/types/enums/portfolio-material-status-enum'
-import {
-  ALL_PORTFOLIO_MATERIAL_TYPE_CODES,
-  PortfolioMaterialTypeDescription,
-} from '@/types/enums/portfolio-material-type-enum'
-import {
-  ALL_PORTFOLIO_ORG_UNIT_TYPE_CODES,
-  PortfolioOrgUnitTypeDescription,
-} from '@/types/enums/portfolio-org-unit-type-enum'
-import { PortfolioPortraitDimensionCode } from '@/types/enums/portfolio-portrait-dimension-enum'
-import {
-  ALL_PORTFOLIO_TEACHER_IDENTITY_STATUS_CODES,
-  PortfolioTeacherIdentityStatusDescription,
-} from '@/types/enums/portfolio-teacher-identity-status-enum'
-import {
-  ALL_PORTFOLIO_TEACHER_IDENTITY_TYPE_CODES,
-  PortfolioTeacherIdentityTypeDescription,
-} from '@/types/enums/portfolio-teacher-identity-type-enum'
+export const PORTFOLIO_ARCHIVE_RECORD_STATUS_OPTIONS: Array<{
+  value: PortfolioArchiveRecordStatusCode
+  label: string
+}> = ALL_PORTFOLIO_ARCHIVE_RECORD_STATUS_CODES.map((value) => ({
+  value,
+  label: strictEnumLabel(PortfolioArchiveRecordStatusDescription, value, '档案记录状态'),
+}))
 
-export const PORTFOLIO_ARCHIVE_RECORD_STATUS_OPTIONS: Array<{ value: PortfolioArchiveRecordStatusCode, label: string }>
-  = ALL_PORTFOLIO_ARCHIVE_RECORD_STATUS_CODES.map((value) => ({
-    value,
-    label: PortfolioArchiveRecordStatusDescription[value],
-  }))
+export const PORTFOLIO_EVALUATION_OBJECTION_TYPE_OPTIONS: Array<{
+  value: PortfolioEvaluationObjectionTypeCode
+  label: string
+}> = ALL_PORTFOLIO_EVALUATION_OBJECTION_TYPE_CODES.map((value) => ({
+  value,
+  label: strictEnumLabel(PortfolioEvaluationObjectionTypeDescription, value, '评价异议类型'),
+}))
 
-export const PORTFOLIO_EVALUATION_OBJECTION_TYPE_OPTIONS: Array<{ value: PortfolioEvaluationObjectionTypeCode, label: string }>
-  = ALL_PORTFOLIO_EVALUATION_OBJECTION_TYPE_CODES.map((value) => ({
-    value,
-    label: PortfolioEvaluationObjectionTypeDescription[value],
-  }))
+export const PORTFOLIO_MATERIAL_STATUS_OPTIONS: Array<{
+  value: PortfolioMaterialStatusCode
+  label: string
+}> = ALL_PORTFOLIO_MATERIAL_STATUS_CODES.map((value) => ({
+  value,
+  label: strictEnumLabel(PortfolioMaterialStatusDescription, value, '材料状态'),
+}))
 
-export const PORTFOLIO_MATERIAL_STATUS_OPTIONS: Array<{ value: PortfolioMaterialStatusCode, label: string }>
-  = ALL_PORTFOLIO_MATERIAL_STATUS_CODES.map((value) => ({
-    value,
-    label: PortfolioMaterialStatusDescription[value],
-  }))
+export const PORTFOLIO_MATERIAL_TYPE_OPTIONS: Array<{
+  value: PortfolioMaterialTypeCode
+  label: string
+}> = ALL_PORTFOLIO_MATERIAL_TYPE_CODES.map((value) => ({
+  value,
+  label: strictEnumLabel(PortfolioMaterialTypeDescription, value, '材料类型'),
+}))
 
-export const PORTFOLIO_MATERIAL_TYPE_OPTIONS: Array<{ value: PortfolioMaterialTypeCode, label: string }>
-  = ALL_PORTFOLIO_MATERIAL_TYPE_CODES.map((value) => ({
-    value,
-    label: PortfolioMaterialTypeDescription[value],
-  }))
+export const PORTFOLIO_ORG_UNIT_TYPE_OPTIONS: Array<{
+  value: PortfolioOrgUnitTypeCode
+  label: string
+}> = ALL_PORTFOLIO_ORG_UNIT_TYPE_CODES.map((value) => ({
+  value,
+  label: strictEnumLabel(PortfolioOrgUnitTypeDescription, value, '组织单元类型'),
+}))
 
-export const PORTFOLIO_ORG_UNIT_TYPE_OPTIONS: Array<{ value: PortfolioOrgUnitTypeCode, label: string }>
-  = ALL_PORTFOLIO_ORG_UNIT_TYPE_CODES.map((value) => ({
-    value,
-    label: PortfolioOrgUnitTypeDescription[value],
-  }))
+export const PORTFOLIO_TEACHER_IDENTITY_STATUS_OPTIONS: Array<{
+  value: PortfolioTeacherIdentityStatusCode
+  label: string
+}> = ALL_PORTFOLIO_TEACHER_IDENTITY_STATUS_CODES.map((value) => ({
+  value,
+  label: strictEnumLabel(PortfolioTeacherIdentityStatusDescription, value, '教师身份状态'),
+}))
 
-export const PORTFOLIO_TEACHER_IDENTITY_STATUS_OPTIONS: Array<{ value: PortfolioTeacherIdentityStatusCode, label: string }>
-  = ALL_PORTFOLIO_TEACHER_IDENTITY_STATUS_CODES.map((value) => ({
-    value,
-    label: PortfolioTeacherIdentityStatusDescription[value],
-  }))
-
-export const PORTFOLIO_TEACHER_IDENTITY_TYPE_OPTIONS: Array<{ value: PortfolioTeacherIdentityTypeCode, label: string }>
-  = ALL_PORTFOLIO_TEACHER_IDENTITY_TYPE_CODES.map((value) => ({
-    value,
-    label: PortfolioTeacherIdentityTypeDescription[value],
-  }))
+export const PORTFOLIO_TEACHER_IDENTITY_TYPE_OPTIONS: Array<{
+  value: PortfolioTeacherIdentityTypeCode
+  label: string
+}> = ALL_PORTFOLIO_TEACHER_IDENTITY_TYPE_CODES.map((value) => ({
+  value,
+  label: strictEnumLabel(PortfolioTeacherIdentityTypeDescription, value, '教师身份类型'),
+}))
 
 /** PK 对比默认维度集（与集成测试一致） */
 export const PORTFOLIO_PK_COMPARE_DEFAULT_DIMENSIONS: PortfolioPortraitDimensionCode[] = [
@@ -384,32 +388,40 @@ export const PORTFOLIO_PK_COMPARE_DEFAULT_DIMENSIONS: PortfolioPortraitDimension
   PortfolioPortraitDimensionCode.PRACTICE,
 ]
 
-export const PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_OPTIONS: Array<{ value: PortfolioKeyTeacherRegistryTypeCode, label: string }>
-  = ALL_PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_CODES.map((value) => ({
-    value,
-    label: PortfolioKeyTeacherRegistryTypeDescription[value],
-  }))
+export const PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_OPTIONS: Array<{
+  value: PortfolioKeyTeacherRegistryTypeCode
+  label: string
+}> = ALL_PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_CODES.map((value) => ({
+  value,
+  label: strictEnumLabel(PortfolioKeyTeacherRegistryTypeDescription, value, '重点教师名录类型'),
+}))
 
-export const PORTFOLIO_EVALUATION_MODE_OPTIONS: Array<{ value: PortfolioEvaluationModeCode, label: string }>
-  = ALL_PORTFOLIO_EVALUATION_MODE_CODES.map((value) => ({
-    value,
-    label: PortfolioEvaluationModeDescription[value],
-  }))
+export const PORTFOLIO_EVALUATION_MODE_OPTIONS: Array<{
+  value: PortfolioEvaluationModeCode
+  label: string
+}> = ALL_PORTFOLIO_EVALUATION_MODE_CODES.map((value) => ({
+  value,
+  label: strictEnumLabel(PortfolioEvaluationModeDescription, value, '评价模式'),
+}))
 
 /** 多元评价填报可读任务状态（不含草稿/作废/关闭） */
-export const PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES: PortfolioEvaluationTaskStatusCode[] = [
-  PortfolioEvaluationTaskStatusCode.PUBLISHED,
-  PortfolioEvaluationTaskStatusCode.PRELIMINARY_REVIEW,
-  PortfolioEvaluationTaskStatusCode.SCHOOL_REVIEW,
-  PortfolioEvaluationTaskStatusCode.EXPERT_REVIEW,
-  PortfolioEvaluationTaskStatusCode.RESULT_SUMMARY,
-  PortfolioEvaluationTaskStatusCode.PUBLICITY,
-  PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING,
-  PortfolioEvaluationTaskStatusCode.ARCHIVED,
-  PortfolioEvaluationTaskStatusCode.SUSPENDED,
-]
+export const PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES: PortfolioEvaluationTaskStatusCode[] =
+  [
+    PortfolioEvaluationTaskStatusCode.PUBLISHED,
+    PortfolioEvaluationTaskStatusCode.PRELIMINARY_REVIEW,
+    PortfolioEvaluationTaskStatusCode.SCHOOL_REVIEW,
+    PortfolioEvaluationTaskStatusCode.EXPERT_REVIEW,
+    PortfolioEvaluationTaskStatusCode.RESULT_SUMMARY,
+    PortfolioEvaluationTaskStatusCode.PUBLICITY,
+    PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING,
+    PortfolioEvaluationTaskStatusCode.ARCHIVED,
+    PortfolioEvaluationTaskStatusCode.SUSPENDED,
+  ]
 
-export const PORTFOLIO_EVALUATION_TASK_STATUS_TONE: Record<PortfolioEvaluationTaskStatusCode, BadgeTone> = {
+export const PORTFOLIO_EVALUATION_TASK_STATUS_TONE: Record<
+  PortfolioEvaluationTaskStatusCode,
+  BadgeTone
+> = {
   [PortfolioEvaluationTaskStatusCode.DRAFT]: 'gray',
   [PortfolioEvaluationTaskStatusCode.PUBLISHED]: 'green',
   [PortfolioEvaluationTaskStatusCode.PRELIMINARY_REVIEW]: 'blue',
@@ -424,13 +436,18 @@ export const PORTFOLIO_EVALUATION_TASK_STATUS_TONE: Record<PortfolioEvaluationTa
   [PortfolioEvaluationTaskStatusCode.CLOSED]: 'blue',
 }
 
-export const PORTFOLIO_EVALUATION_TASK_STATUS_OPTIONS: Array<{ value: PortfolioEvaluationTaskStatusCode, label: string }>
-  = ALL_PORTFOLIO_EVALUATION_TASK_STATUS_CODES.map((value) => ({
-    value,
-    label: PortfolioEvaluationTaskStatusDescription[value],
-  }))
+export const PORTFOLIO_EVALUATION_TASK_STATUS_OPTIONS: Array<{
+  value: PortfolioEvaluationTaskStatusCode
+  label: string
+}> = ALL_PORTFOLIO_EVALUATION_TASK_STATUS_CODES.map((value) => ({
+  value,
+  label: strictEnumLabel(PortfolioEvaluationTaskStatusDescription, value, '评价任务状态'),
+}))
 
-export const PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE: Record<PortfolioDevelopmentPlanStatusCode, BadgeTone> = {
+export const PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE: Record<
+  PortfolioDevelopmentPlanStatusCode,
+  BadgeTone
+> = {
   [PortfolioDevelopmentPlanStatusCode.DRAFT]: 'gray',
   [PortfolioDevelopmentPlanStatusCode.DEPARTMENT_PENDING]: 'blue',
   [PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED]: 'orange',
@@ -438,26 +455,35 @@ export const PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE: Record<PortfolioDevelopment
   [PortfolioDevelopmentPlanStatusCode.HISTORICAL]: 'gray',
 }
 
-export const PORTFOLIO_DEVELOPMENT_PLAN_STATUS_OPTIONS: Array<{ value: PortfolioDevelopmentPlanStatusCode, label: string }>
-  = ALL_PORTFOLIO_DEVELOPMENT_PLAN_STATUS_CODES.map((value) => ({
-    value,
-    label: PortfolioDevelopmentPlanStatusDescription[value],
-  }))
+export const PORTFOLIO_DEVELOPMENT_PLAN_STATUS_OPTIONS: Array<{
+  value: PortfolioDevelopmentPlanStatusCode
+  label: string
+}> = ALL_PORTFOLIO_DEVELOPMENT_PLAN_STATUS_CODES.map((value) => ({
+  value,
+  label: strictEnumLabel(PortfolioDevelopmentPlanStatusDescription, value, '发展计划状态'),
+}))
 
-export const PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_TONE: Record<PortfolioDevelopmentPlanItemStatusCode, BadgeTone> = {
+export const PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_TONE: Record<
+  PortfolioDevelopmentPlanItemStatusCode,
+  BadgeTone
+> = {
   [PortfolioDevelopmentPlanItemStatusCode.NOT_STARTED]: 'gray',
   [PortfolioDevelopmentPlanItemStatusCode.IN_PROGRESS]: 'blue',
   [PortfolioDevelopmentPlanItemStatusCode.COMPLETED]: 'green',
 }
 
-export const PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_OPTIONS: Array<{ value: PortfolioDevelopmentPlanItemStatusCode, label: string }>
-  = ALL_PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_CODES.map((value) => ({
-    value,
-    label: PortfolioDevelopmentPlanItemStatusDescription[value],
-  }))
+export const PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_OPTIONS: Array<{
+  value: PortfolioDevelopmentPlanItemStatusCode
+  label: string
+}> = ALL_PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_CODES.map((value) => ({
+  value,
+  label: strictEnumLabel(PortfolioDevelopmentPlanItemStatusDescription, value, '发展计划条目状态'),
+}))
 
-export const PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS: Array<{ value: PortfolioExternalTeacherDataStatusCode, label: string }>
-  = ALL_PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_CODES.map((value) => ({
-    value,
-    label: PortfolioExternalTeacherDataStatusDescription[value],
-  }))
+export const PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS: Array<{
+  value: PortfolioExternalTeacherDataStatusCode
+  label: string
+}> = ALL_PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_CODES.map((value) => ({
+  value,
+  label: strictEnumLabel(PortfolioExternalTeacherDataStatusDescription, value, '外部教师数据状态'),
+}))

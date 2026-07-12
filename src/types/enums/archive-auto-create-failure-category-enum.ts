@@ -38,7 +38,7 @@ export const ArchiveAutoCreateFailureCategoryHintDescription: Record<ArchiveAuto
   [ArchiveAutoCreateFailureCategoryCode.DEPARTMENT_MISSING]:
     '参考班级未关联院系，无法确定归档归属。请联系教务维护班级院系信息后重试。',
   [ArchiveAutoCreateFailureCategoryCode.CLASS_INFO_UNAVAILABLE]:
-    '班级或院系信息暂时不可读取。请稍后重试或联系管理员。',
+    '班级或院系信息暂时不可读取，请联系管理员。',
   [ArchiveAutoCreateFailureCategoryCode.AGGREGATE_FAILED]:
     '归档卷已创建但材料聚合失败。请查看事件诊断并联系管理员。',
   [ArchiveAutoCreateFailureCategoryCode.EXISTING_STUB_BLOCKS]:

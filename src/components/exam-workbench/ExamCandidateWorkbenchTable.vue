@@ -78,6 +78,7 @@ import {
   CandidateScanProgressStatusCode,
   CandidateScanProgressStatusDescription,
 } from '@/types/enums/candidate-scan-progress-status-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ExamCandidateWorkbenchTable' })
 
@@ -100,8 +101,8 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  'page-change': [pageEvent: { current: number, pageSize: number }]
-  "action": [key: string, item: ExamCandidateRosterWorkbenchItemResponse]
+  'page-change': [pageEvent: { current: number; pageSize: number }]
+  action: [key: string, item: ExamCandidateRosterWorkbenchItemResponse]
 }>()
 
 const columns = computed<ColumnType<ExamCandidateRosterWorkbenchItemResponse>[]>(() => {
@@ -117,7 +118,7 @@ const columns = computed<ColumnType<ExamCandidateRosterWorkbenchItemResponse>[]>
 })
 
 function scanProgressLabel(status: CandidateScanProgressStatusCode): string {
-  return CandidateScanProgressStatusDescription[status]
+  return strictEnumLabel(CandidateScanProgressStatusDescription, status, '考生扫描进度状态')
 }
 
 function scanProgressTone(status: CandidateScanProgressStatusCode) {
@@ -133,8 +134,8 @@ function buildActions(item: ExamCandidateRosterWorkbenchItemResponse): UiTableRo
     actions.push({ key: 'supplement-missing', label: '去补扫', tone: 'primary' })
   }
   if (
-    item.scanProgressStatus === CandidateScanProgressStatusCode.ATTENTION_OPEN
-    || item.scanProgressStatus === CandidateScanProgressStatusCode.CONFLICT
+    item.scanProgressStatus === CandidateScanProgressStatusCode.ATTENTION_OPEN ||
+    item.scanProgressStatus === CandidateScanProgressStatusCode.CONFLICT
   ) {
     actions.push({ key: 'handle-attention', label: '处理异常', tone: 'danger' })
   }

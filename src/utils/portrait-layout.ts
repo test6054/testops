@@ -8,6 +8,7 @@ import {
   PortraitWidgetTypeCode,
   PortraitWidgetTypeDescription,
 } from '@/types/enums/portrait-widget-type-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
   ALL_PORTRAIT_WIDGET_TYPE_CODES,
@@ -15,10 +16,10 @@ export {
   PortraitWidgetTypeDescription,
 } from '@/types/enums/portrait-widget-type-enum'
 
-export const PORTRAIT_WIDGET_TYPE_OPTIONS: Array<{ value: PortraitWidgetTypeCode, label: string }>
-  = ALL_PORTRAIT_WIDGET_TYPE_CODES.map((value) => ({
+export const PORTRAIT_WIDGET_TYPE_OPTIONS: Array<{ value: PortraitWidgetTypeCode; label: string }> =
+  ALL_PORTRAIT_WIDGET_TYPE_CODES.map((value) => ({
     value,
-    label: PortraitWidgetTypeDescription[value],
+    label: strictEnumLabel(PortraitWidgetTypeDescription, value, '画像组件类型'),
   }))
 
 export interface PortfolioPortraitLayoutWidget {
@@ -38,10 +39,12 @@ export interface PortfolioPortraitChartConfigEntry {
 const DIMENSION_CODES = new Set<string>(ALL_PORTFOLIO_PORTRAIT_DIMENSION_CODES)
 
 function isPortraitWidget(value: string): value is PortraitWidgetTypeCode {
-  return value === PortraitWidgetTypeCode.RADAR
-    || value === PortraitWidgetTypeCode.TIMELINE
-    || value === PortraitWidgetTypeCode.BAR
-    || value === PortraitWidgetTypeCode.SCORE_CARD
+  return (
+    value === PortraitWidgetTypeCode.RADAR ||
+    value === PortraitWidgetTypeCode.TIMELINE ||
+    value === PortraitWidgetTypeCode.BAR ||
+    value === PortraitWidgetTypeCode.SCORE_CARD
+  )
 }
 
 function isPortraitDimension(value: string): value is PortfolioPortraitDimensionCode {
@@ -54,9 +57,7 @@ export function parsePortraitLayoutJson(json: string): PortfolioPortraitLayoutWi
     return []
   }
   const raw: unknown = JSON.parse(json)
-  const list = Array.isArray(raw)
-    ? raw
-    : readUnknownArrayProperty(raw, 'widgets')
+  const list = Array.isArray(raw) ? raw : readUnknownArrayProperty(raw, 'widgets')
   const widgets: PortfolioPortraitLayoutWidget[] = []
   for (const item of list) {
     if (typeof item !== 'object' || item === null) {
@@ -99,11 +100,11 @@ export function mergeChartConfigIntoWidgets(
   chartConfigJson?: string,
 ): PortfolioPortraitLayoutWidget[] {
   if (!chartConfigJson?.trim()) {
-    return widgets.map(row => ({ ...row }))
+    return widgets.map((row) => ({ ...row }))
   }
   const entries = parsePortraitChartConfigJson(chartConfigJson)
   return widgets.map((row, index) => {
-    const entry = entries.find(item => item.widgetIndex === index)
+    const entry = entries.find((item) => item.widgetIndex === index)
     if (!entry) {
       return { ...row }
     }
@@ -148,15 +149,47 @@ export function serializePortraitChartConfig(widgets: PortfolioPortraitLayoutWid
 
 export function defaultPortraitLayout(): PortfolioPortraitLayoutWidget[] {
   return [
-    { widget: PortraitWidgetTypeCode.RADAR, x: 0, y: 0, w: 6, h: 4, dimensionCode: PortfolioPortraitDimensionCode.TEACHING },
-    { widget: PortraitWidgetTypeCode.TIMELINE, x: 6, y: 0, w: 6, h: 4, dimensionCode: PortfolioPortraitDimensionCode.DEVELOPMENT_CORE },
+    {
+      widget: PortraitWidgetTypeCode.RADAR,
+      x: 0,
+      y: 0,
+      w: 6,
+      h: 4,
+      dimensionCode: PortfolioPortraitDimensionCode.TEACHING,
+    },
+    {
+      widget: PortraitWidgetTypeCode.TIMELINE,
+      x: 6,
+      y: 0,
+      w: 6,
+      h: 4,
+      dimensionCode: PortfolioPortraitDimensionCode.DEVELOPMENT_CORE,
+    },
   ]
 }
 
-export const PORTRAIT_DIMENSION_OPTIONS: Array<{ value: PortfolioPortraitDimensionCode, label: string }> = [
-  { value: PortfolioPortraitDimensionCode.DEVELOPMENT_CORE, label: PortfolioPortraitDimensionDescription.DEVELOPMENT_CORE },
-  { value: PortfolioPortraitDimensionCode.TEACHING, label: PortfolioPortraitDimensionDescription.TEACHING },
-  { value: PortfolioPortraitDimensionCode.RESEARCH, label: PortfolioPortraitDimensionDescription.RESEARCH },
-  { value: PortfolioPortraitDimensionCode.TRAINING, label: PortfolioPortraitDimensionDescription.TRAINING },
-  { value: PortfolioPortraitDimensionCode.PRACTICE, label: PortfolioPortraitDimensionDescription.PRACTICE },
+export const PORTRAIT_DIMENSION_OPTIONS: Array<{
+  value: PortfolioPortraitDimensionCode
+  label: string
+}> = [
+  {
+    value: PortfolioPortraitDimensionCode.DEVELOPMENT_CORE,
+    label: PortfolioPortraitDimensionDescription.DEVELOPMENT_CORE,
+  },
+  {
+    value: PortfolioPortraitDimensionCode.TEACHING,
+    label: PortfolioPortraitDimensionDescription.TEACHING,
+  },
+  {
+    value: PortfolioPortraitDimensionCode.RESEARCH,
+    label: PortfolioPortraitDimensionDescription.RESEARCH,
+  },
+  {
+    value: PortfolioPortraitDimensionCode.TRAINING,
+    label: PortfolioPortraitDimensionDescription.TRAINING,
+  },
+  {
+    value: PortfolioPortraitDimensionCode.PRACTICE,
+    label: PortfolioPortraitDimensionDescription.PRACTICE,
+  },
 ]

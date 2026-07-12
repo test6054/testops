@@ -7,6 +7,8 @@ export interface ExamWorkspaceMenuItem {
   label: string
   routeName: string
   markStageKey: MarkStageKey
+  /** primary=当前步主路径；secondary=次要入口（侧栏仍全量展示，不折叠为「更多」） */
+  tier?: 'primary' | 'secondary'
 }
 
 export interface ExamWorkspaceMenuGroup {
@@ -54,18 +56,21 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
       {
         key: 'candidate-roster',
         label: '考生名册',
+        tier: 'secondary',
         routeName: 'TeacherExamWorkspaceCandidateRoster',
         markStageKey: 'CANDIDATE_ROSTER',
       },
       {
         key: 'print-package',
         label: '印刷包',
+        tier: 'secondary',
         routeName: 'TeacherExamWorkspacePrintPackage',
         markStageKey: 'EXAM_PREP',
       },
       {
         key: 'marking-experience-assist',
         label: '经验辅助评阅',
+        tier: 'secondary',
         routeName: 'TeacherExamWorkspaceMarkingExperienceAssistPolicy',
         markStageKey: 'EXAM_PREP',
       },
@@ -86,6 +91,7 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
       {
         key: 'scan-manual-entry',
         label: '手动补录',
+        tier: 'secondary',
         routeName: 'TeacherExamWorkspaceScanManualEntry',
         markStageKey: 'SCAN',
       },
@@ -98,18 +104,21 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
       {
         key: 'scan-ledger',
         label: '影像账本',
+        tier: 'secondary',
         routeName: 'TeacherExamWorkspaceScanLedger',
         markStageKey: 'SCAN',
       },
       {
         key: 'scan-devices',
         label: '扫描设备',
+        tier: 'secondary',
         routeName: 'TeacherExamWorkspaceScanDevices',
         markStageKey: 'SCAN',
       },
       {
         key: 'scan-ocr',
         label: 'OCR 配置',
+        tier: 'secondary',
         routeName: 'TeacherExamWorkspaceScanOcr',
         markStageKey: 'SCAN',
       },
@@ -130,6 +139,7 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
       {
         key: 'marking-org-trial',
         label: '试评定标',
+        tier: 'secondary',
         routeName: 'TeacherExamWorkspaceMarkingOrgTrialHub',
         markStageKey: 'MARKING_ORG',
       },
@@ -156,6 +166,7 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
       {
         key: 'trial-progress',
         label: '试评进度',
+        tier: 'secondary',
         routeName: 'TeacherExamWorkspaceTrialProgress',
         markStageKey: 'TRIAL_MARKING',
       },
@@ -176,24 +187,28 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
       {
         key: 'marking-progress',
         label: '进度看板',
+        tier: 'primary',
         routeName: 'TeacherExamWorkspaceMarkingProgress',
         markStageKey: 'FORMAL_MARKING',
       },
       {
         key: 'marking-review-progress',
         label: '复核进度',
+        tier: 'secondary',
         routeName: 'TeacherExamWorkspaceMarkingReviewProgress',
         markStageKey: 'FORMAL_MARKING',
       },
       {
         key: 'marking-review',
         label: 'OCR/AI 复核',
+        tier: 'secondary',
         routeName: 'TeacherExamWorkspaceMarkingReview',
         markStageKey: 'FORMAL_MARKING',
       },
       {
         key: 'marking-review-batch',
         label: '批量复核确认',
+        tier: 'secondary',
         routeName: 'TeacherExamWorkspaceReviewBatchConfirm',
         markStageKey: 'FORMAL_MARKING',
       },
@@ -214,18 +229,21 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
       {
         key: 'marking-quality',
         label: '抽检处理',
+        tier: 'secondary',
         routeName: 'TeacherExamWorkspaceMarkingQuality',
         markStageKey: 'FORMAL_MARKING',
       },
       {
         key: 'marking-quality-monitor',
         label: '阅卷质量监控',
+        tier: 'secondary',
         routeName: 'TeacherExamWorkspaceMarkingQualityMonitor',
         markStageKey: 'FORMAL_MARKING',
       },
       {
         key: 'marking-audit-trail',
         label: '批改审计',
+        tier: 'secondary',
         routeName: 'TeacherExamWorkspaceMarkingAuditTrail',
         markStageKey: 'FORMAL_MARKING',
       },
@@ -252,12 +270,14 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
       {
         key: 'score-absence',
         label: '缺考确认',
+        tier: 'secondary',
         routeName: 'TeacherExamWorkspaceScoreAbsence',
         markStageKey: 'SCORE_PUBLISH',
       },
       {
         key: 'score-appeal',
         label: '复核申诉',
+        tier: 'secondary',
         routeName: 'TeacherExamWorkspaceScoreAppeal',
         markStageKey: 'SCORE_PUBLISH',
       },
@@ -265,49 +285,55 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
   },
   {
     key: 'archive',
-    title: '课程考核归档',
+    title: '课程考核归档卷',
     journeyKey: MarkTeacherDashboardJourneyKeyCode.ARCHIVE,
     stageKeys: ['ARCHIVE'],
     items: [
       {
         key: 'archive-package',
-        label: '归档复盘',
+        label: '本考归档复盘',
         routeName: 'TeacherExamWorkspaceArchivePackage',
         markStageKey: 'ARCHIVE',
       },
       {
         key: 'archive-ai-analysis',
         label: 'AI 分析',
+        tier: 'secondary',
         routeName: 'TeacherExamWorkspaceArchiveAiAnalysis',
         markStageKey: 'ARCHIVE',
       },
       {
         key: 'archive-question-analysis',
         label: '题目分析',
+        tier: 'secondary',
         routeName: 'TeacherExamWorkspaceArchiveQuestionAnalysis',
         markStageKey: 'ARCHIVE',
       },
       {
         key: 'archive-statistics',
         label: '成绩统计',
+        tier: 'secondary',
         routeName: 'TeacherExamWorkspaceArchiveStatistics',
         markStageKey: 'ARCHIVE',
       },
       {
         key: 'archive-grading-experience',
         label: '阅卷经验库',
+        tier: 'secondary',
         routeName: 'TeacherExamWorkspaceGradingExperience',
         markStageKey: 'ARCHIVE',
       },
       {
         key: 'archive-exports',
         label: '导出任务',
+        tier: 'secondary',
         routeName: 'TeacherExamWorkspaceArchiveExports',
         markStageKey: 'ARCHIVE',
       },
       {
         key: 'archive-teaching-affairs',
         label: '教务同步',
+        tier: 'secondary',
         routeName: 'TeacherExamWorkspaceArchiveTeachingAffairs',
         markStageKey: 'ARCHIVE',
       },
@@ -370,7 +396,7 @@ function filterMenuItems(
 
 export function getMenuGroupsForJourney(
   journeyKey: ExamWorkspaceJourneyKey,
-  options?: { experienceAssistPendingCount?: number, tenantExperienceAssistEnabled?: boolean },
+  options?: { experienceAssistPendingCount?: number; tenantExperienceAssistEnabled?: boolean },
 ): ExamWorkspaceMenuGroup[] {
   if (journeyKey === 'overview') {
     const groups = EXAM_WORKSPACE_MENU_GROUPS.filter((group) => group.journeyKey === 'overview')
@@ -429,5 +455,10 @@ export function findExamWorkspaceMenuItem(menuKey: string): ExamWorkspaceMenuIte
 }
 
 /** 所有菜单项 key，供侧栏图标映射使用 */
-export type ExamWorkspaceMenuKey
-   = (typeof EXAM_WORKSPACE_MENU_GROUPS)[number]['items'][number]['key']
+export type ExamWorkspaceMenuKey =
+  (typeof EXAM_WORKSPACE_MENU_GROUPS)[number]['items'][number]['key']
+
+/** 主路径菜单项（历史分层标记；导航层不再据此隐藏） */
+export function isPrimaryMenuItem(item: ExamWorkspaceMenuItem): boolean {
+  return item.tier !== 'secondary'
+}

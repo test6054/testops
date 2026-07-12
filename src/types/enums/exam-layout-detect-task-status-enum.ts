@@ -27,11 +27,11 @@ export const ExamLayoutDetectTaskStatusDescription: Record<ExamLayoutDetectTaskS
 
 export function requireExamLayoutDetectTaskStatusCode(value: unknown): ExamLayoutDetectTaskStatusCode {
   if (typeof value !== 'string') {
-    throw new TypeError('制卷识别任务状态契约异常，请刷新后重试')
+    throw new TypeError('制卷识别任务状态契约异常')
   }
   const code = ALL_EXAM_LAYOUT_DETECT_TASK_STATUS_CODES.find((item) => item === value)
   if (!code) {
-    throw new Error('制卷识别任务状态契约异常，请刷新后重试')
+    throw new Error('制卷识别任务状态契约异常')
   }
   return code
 }

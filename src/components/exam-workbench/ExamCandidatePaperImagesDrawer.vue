@@ -22,8 +22,8 @@ import type {
   ExamCandidateRosterPaperScannedPageItemResponse,
   ExamCandidateRosterWorkbenchItemResponse,
 } from '@/apis/mark/exam-candidate-roster'
-import { computed, ref, watch } from 'vue'
 import { listCandidateRosterPaperScannedPages } from '@/apis/mark/exam-candidate-roster'
+import { computed, ref, watch } from 'vue'
 import FilePreviewDialog from '@/components/FilePreviewDialog.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -36,6 +36,7 @@ import {
   QualityDecisionDescription,
 } from '@/types/enums/quality-decision-enum'
 import { showUserError } from '@/utils/error-handler'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ExamCandidatePaperImagesDrawer' })
 
@@ -86,7 +87,7 @@ function previewPage(page: ExamCandidateRosterPaperScannedPageItemResponse): voi
 }
 
 function qualityLabel(code: QualityDecisionCode): string {
-  return QualityDecisionDescription[code]
+  return strictEnumLabel(QualityDecisionDescription, code, '影像质检结论')
 }
 
 function qualityTone(code: QualityDecisionCode): 'gray' | 'orange' {

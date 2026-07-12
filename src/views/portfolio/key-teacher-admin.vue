@@ -20,6 +20,7 @@ import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSear
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const REGISTRY_TABS = PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_OPTIONS.map((item) => ({
   key: item.value,
@@ -36,10 +37,10 @@ const form = reactive({
   appointYear: '',
   dutyScope: '',
 })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
-  = usePortfolioTeacherSearch()
-const { loading, rows, pageNum, pageSize, pageTotal, loadPage, search, handlePageChange }
-  = useQueryTable(
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
+  usePortfolioTeacherSearch()
+const { loading, rows, pageNum, pageSize, pageTotal, loadPage, search, handlePageChange } =
+  useQueryTable(
     (params) =>
       portfolioKeyTeacherApi.page({
         ...params,
@@ -62,7 +63,7 @@ const columns: ColumnsType = [
 ]
 
 function registryStatusLabel(status: PortfolioKeyTeacherRegistryStatusCode): string {
-  return PortfolioKeyTeacherRegistryStatusDescription[status]
+  return strictEnumLabel(PortfolioKeyTeacherRegistryStatusDescription, status, '重点教师名录状态')
 }
 
 async function saveRegistry() {

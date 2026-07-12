@@ -126,19 +126,19 @@ import type {
   ExamGradeBatchConfirmFailureItem,
   ExamGradeBatchConfirmResponse,
 } from '@/apis/mark/exam-grade'
-import type { GradeSourceCode, ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { batchConfirmQuestionGrades } from '@/apis/mark/exam-grade'
+import type { GradeSourceCode, ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
 import {
   GRADE_SOURCE_TONE,
   GradeSourceDescription,
   listReviewTasks,
   ReviewTaskStatusCode,
 } from '@/apis/mark/exam-review-task'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -153,6 +153,7 @@ import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkWorkbenchContext, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherReviewBatchConfirm' })
 
@@ -207,7 +208,7 @@ const rowSelection = computed(() => ({
 }))
 
 function gradeSourceLabel(source: GradeSourceCode): string {
-  return GradeSourceDescription[source]
+  return strictEnumLabel(GradeSourceDescription, source, '成绩来源')
 }
 
 function gradeSourceTone(source: GradeSourceCode): BadgeTone {
@@ -266,7 +267,7 @@ async function loadTasks(): Promise<void> {
   }
 }
 
-function onPageChange(page: { current: number, pageSize: number }): void {
+function onPageChange(page: { current: number; pageSize: number }): void {
   pagination.current = page.current
   pagination.pageSize = page.pageSize
   void loadTasks()

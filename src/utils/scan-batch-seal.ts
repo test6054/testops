@@ -26,6 +26,10 @@ export function batchSealBlockedReason(batch: ExamScannerBatchResponse): string 
   if (pending > 0) return `仍有 ${pending} 页未落库`
   const attention = batch.attentionItemCount ?? 0
   if (attention > 0) return `仍有 ${attention} 项扫描异常未处置`
+  const missingProcessed = batch.missingProcessedPageCount ?? 0
+  if (missingProcessed > 0) {
+    return `仍有 ${missingProcessed} 页缺少匿名展示影像，请先补跑脱敏`
+  }
   if (batch.orderAuditAttentionPending === true) {
     return '存在余页 collate attention 待确认，请先忽略并继续或人工合并后再封存'
   }
@@ -36,7 +40,7 @@ export function batchSealBlockedReason(batch: ExamScannerBatchResponse): string 
         ? `顺序审计未通过，存在 ${issueCount} 项顺序异常`
         : '顺序审计未通过，请先补扫或废弃后再封存'
     }
-    return '顺序审计尚未完成，请刷新后重试'
+    return '顺序审计尚未完成'
   }
   return ''
 }
@@ -53,6 +57,7 @@ export function buildBatchSealChecklist(batch: ExamScannerBatchResponse): BatchS
   const received = batch.receivedPageCount ?? 0
   const pending = batch.pendingUploadCount ?? Math.max(0, declared - received)
   const attention = batch.attentionItemCount ?? 0
+  const missingProcessed = batch.missingProcessedPageCount ?? 0
   return [
     {
       key: 'not-sealed',
@@ -89,6 +94,14 @@ export function buildBatchSealChecklist(batch: ExamScannerBatchResponse): BatchS
       ok: attention === 0,
       label: '无未处理异常项',
       detail: attention === 0 ? '所有异常已处置' : `仍有 ${attention} 项未处理`,
+    },
+    {
+      key: 'processed-images',
+      ok: missingProcessed === 0,
+      label: '匿名展示影像齐全',
+      detail: missingProcessed === 0
+        ? '所有已登记页均有脱敏预览'
+        : `仍有 ${missingProcessed} 页待补跑脱敏`,
     },
     {
       key: 'collate-attention',

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { PortfolioEligibilityEvalResultDto } from '@/apis/portfolio/indicator-types'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import PortfolioIndicatorExplainDrawer from '@/components/portfolio/PortfolioIndicatorExplainDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -16,15 +16,20 @@ const { targetTeacherId, canPickTeachers, scopeReady } = usePortfolioPageScope()
 const evaluating = ref(false)
 const result = ref<PortfolioEligibilityEvalResultDto | null>(null)
 const explainOpen = ref(false)
+const requestToken = ref(0)
 
-const eligibilityOptions = [
-  { value: 'DUAL_TEACHER_APPLY', label: '双师认定申请' },
-]
+const eligibilityOptions = [{ value: 'DUAL_TEACHER_APPLY', label: '双师认定申请' }]
 
 const eligibilityCode = ref('DUAL_TEACHER_APPLY')
 const dualTeacherCert = ref(true)
 const ethicsApproved = ref(true)
 const teachingYears = ref(3)
+
+/** 教师作用域切换后必须回收旧评估结果与解释，避免继续显示上一位教师的资格结论。 */
+function resetEvaluationContext() {
+  result.value = null
+  explainOpen.value = false
+}
 
 const evaluateRequest = computed(() => ({
   teacherId: targetTeacherId.value,
@@ -45,17 +50,33 @@ async function evaluate() {
   if (!targetTeacherId.value) {
     return
   }
+  const currentToken = requestToken.value
   evaluating.value = true
   try {
-    result.value = await portfolioIndicatorTenantApi.evaluateEligibility(evaluateRequest.value)
-  }
-  catch (error) {
+    const nextResult = await portfolioIndicatorTenantApi.evaluateEligibility(evaluateRequest.value)
+    if (requestToken.value !== currentToken) {
+      return
+    }
+    result.value = nextResult
+  } catch (error) {
+    if (requestToken.value !== currentToken) {
+      return
+    }
     showUserError(error)
-  }
-  finally {
-    evaluating.value = false
+  } finally {
+    if (requestToken.value === currentToken) {
+      evaluating.value = false
+    }
   }
 }
+
+watch(
+  () => targetTeacherId.value,
+  () => {
+    requestToken.value += 1
+    resetEvaluationContext()
+  },
+)
 </script>
 
 <template>
@@ -70,7 +91,11 @@ async function evaluate() {
     <UiCard v-else>
       <a-form layout="vertical">
         <a-form-item label="评估类型">
-          <a-select v-model:value="eligibilityCode" :options="eligibilityOptions" style="width: 240px" />
+          <a-select
+            v-model:value="eligibilityCode"
+            :options="eligibilityOptions"
+            style="width: 240px"
+          />
         </a-form-item>
         <a-form-item label="双师证书">
           <a-switch v-model:checked="dualTeacherCert" />
@@ -91,9 +116,7 @@ async function evaluate() {
         >
           开始评估
         </UiButton>
-        <UiButton v-if="result" @click="explainOpen = true">
-          查看解释
-        </UiButton>
+        <UiButton v-if="result" @click="explainOpen = true"> 查看解释 </UiButton>
       </div>
       <template v-if="result">
         <UiTag :tone="result.eligible ? 'green' : 'red'" style="margin-bottom: 12px">

@@ -2,6 +2,11 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { AiResultIssueSeverityCode, AiResultVO } from '@/apis/quality/ai-result'
+import {
+  aiResultApi,
+  aiResultImprovementPriorityLabel,
+  aiResultIssueSeverityLabel,
+} from '@/apis/quality/ai-result'
 /**
  * 质量评价 / AI 能力 - AI 任务与结果审计台
  *
@@ -17,7 +22,9 @@ import type {
   AiTaskVO,
   QualityStatusCountsResponse,
 } from '@/apis/quality/ai-task'
+import { aiTaskApi } from '@/apis/quality/ai-task'
 import type { AiTaskSubmitRequest } from '@/apis/quality/ai-task-trigger'
+import { aiTaskTriggerApi } from '@/apis/quality/ai-task-trigger'
 import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { AiResultImprovementPriorityCode } from '@/types/enums/ai-result-improvement-priority-enum'
@@ -33,13 +40,6 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import {
-  aiResultApi,
-  aiResultImprovementPriorityLabel,
-  aiResultIssueSeverityLabel,
-} from '@/apis/quality/ai-result'
-import { aiTaskApi } from '@/apis/quality/ai-task'
-import { aiTaskTriggerApi } from '@/apis/quality/ai-task-trigger'
 import {
   AI_OUTPUT_VALIDATION_COLOR,
   AI_TASK_STATUS_COLOR,
@@ -70,6 +70,7 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
@@ -228,8 +229,11 @@ const PORTFOLIO_AI_TASK_TYPES: readonly AiTaskTypeCode[] = [
 
 function mapTaskTypeOptions(
   types: readonly AiTaskTypeCode[],
-): Array<{ value: AiTaskTypeCode, label: string }> {
-  return types.map((value) => ({ value, label: AiTaskTypeDescription[value] }))
+): Array<{ value: AiTaskTypeCode; label: string }> {
+  return types.map((value) => ({
+    value,
+    label: strictEnumLabel(AiTaskTypeDescription, value, 'AI 任务类型'),
+  }))
 }
 
 /** OBE 主链可提交能力 */
@@ -237,14 +241,14 @@ const submitTaskTypeOptions = mapTaskTypeOptions(OBE_AI_TASK_TYPES)
 
 /** 审计台筛选能力（含教学档案袋，只读审计不在此页提交） */
 const auditTaskTypeOptions = mapTaskTypeOptions([...OBE_AI_TASK_TYPES, ...PORTFOLIO_AI_TASK_TYPES])
-const statusOptions: Array<{ value: AiTaskStatusCode, label: string }> = [
+const statusOptions: Array<{ value: AiTaskStatusCode; label: string }> = [
   { value: AiTaskStatusCode.PENDING, label: AiTaskStatusDescription.PENDING },
   { value: AiTaskStatusCode.PROCESSING, label: AiTaskStatusDescription.PROCESSING },
   { value: AiTaskStatusCode.SUCCEEDED, label: AiTaskStatusDescription.SUCCEEDED },
   { value: AiTaskStatusCode.FAILED, label: AiTaskStatusDescription.FAILED },
   { value: AiTaskStatusCode.CANCELLED, label: AiTaskStatusDescription.CANCELLED },
 ]
-const businessTypeOptions: { value: AiTaskBusinessTypeCode, label: string }[] = [
+const businessTypeOptions: { value: AiTaskBusinessTypeCode; label: string }[] = [
   {
     value: AiTaskBusinessTypeCode.ACHIEVEMENT_RESULT,
     label: AiTaskBusinessTypeDescription.ACHIEVEMENT_RESULT,
@@ -288,12 +292,12 @@ const taskBusinessTypeMap: Record<AiTaskTypeCode, AiTaskBusinessTypeCode> = {
   [AiTaskTypeCode.SYLLABUS_PARSE]: AiTaskBusinessTypeCode.QUALITY_COURSE,
   [AiTaskTypeCode.TRAINING_PLAN_PARSE]: AiTaskBusinessTypeCode.TRAINING_PLAN,
 }
-const validationOptions: { value: AiOutputValidationCode, label: string, color: string }[] = [
+const validationOptions: { value: AiOutputValidationCode; label: string; color: string }[] = [
   { value: AiOutputValidationCode.PASSED, label: '通过（接受）', color: 'green' },
   { value: AiOutputValidationCode.WARN, label: '警告（需人工审核）', color: 'orange' },
   { value: AiOutputValidationCode.REJECTED, label: '退回（拒绝）', color: 'red' },
 ]
-const manualHandlingOptions: { value: AiManualHandlingStatusCode, label: string }[] = [
+const manualHandlingOptions: { value: AiManualHandlingStatusCode; label: string }[] = [
   { value: AiManualHandlingStatusCode.NONE, label: AiManualHandlingStatusDescription.NONE },
   { value: AiManualHandlingStatusCode.PENDING, label: AiManualHandlingStatusDescription.PENDING },
   {
@@ -399,47 +403,47 @@ function validateAiTaskSubmit(form: AiTaskSubmitRequest): boolean {
     case AiTaskTypeCode.ACHIEVEMENT_DIAGNOSIS:
     case AiTaskTypeCode.IMPROVEMENT_SUGGESTION_GENERATE:
       return (
-        form.businessType === AiTaskBusinessTypeCode.ACHIEVEMENT_RESULT
-        && !!form.achievementResultId?.trim()
-        && businessId === form.achievementResultId.trim()
+        form.businessType === AiTaskBusinessTypeCode.ACHIEVEMENT_RESULT &&
+        !!form.achievementResultId?.trim() &&
+        businessId === form.achievementResultId.trim()
       )
     case AiTaskTypeCode.COURSE_REPORT_GENERATE:
       return (
-        form.businessType === AiTaskBusinessTypeCode.REPORT
-        && !!form.qualityCourseId?.trim()
-        && !!form.reportId?.trim()
-        && businessId === form.reportId.trim()
+        form.businessType === AiTaskBusinessTypeCode.REPORT &&
+        !!form.qualityCourseId?.trim() &&
+        !!form.reportId?.trim() &&
+        businessId === form.reportId.trim()
       )
     case AiTaskTypeCode.PROGRAM_REPORT_GENERATE:
       return (
-        form.businessType === AiTaskBusinessTypeCode.REPORT
-        && !!form.programId?.trim()
-        && !!form.trainingPlanId?.trim()
-        && !!form.reportId?.trim()
-        && businessId === form.reportId.trim()
+        form.businessType === AiTaskBusinessTypeCode.REPORT &&
+        !!form.programId?.trim() &&
+        !!form.trainingPlanId?.trim() &&
+        !!form.reportId?.trim() &&
+        businessId === form.reportId.trim()
       )
     case AiTaskTypeCode.SYLLABUS_PARSE:
       return (
-        form.businessType === AiTaskBusinessTypeCode.QUALITY_COURSE
-        && !!form.fileNodeId?.trim()
-        && !!form.qualityCourseId?.trim()
-        && businessId === form.qualityCourseId.trim()
+        form.businessType === AiTaskBusinessTypeCode.QUALITY_COURSE &&
+        !!form.fileNodeId?.trim() &&
+        !!form.qualityCourseId?.trim() &&
+        businessId === form.qualityCourseId.trim()
       )
     case AiTaskTypeCode.TRAINING_PLAN_PARSE:
       return (
-        form.businessType === AiTaskBusinessTypeCode.TRAINING_PLAN
-        && !!form.fileNodeId?.trim()
-        && !!form.programId?.trim()
-        && !!form.trainingPlanId?.trim()
-        && businessId === form.trainingPlanId.trim()
+        form.businessType === AiTaskBusinessTypeCode.TRAINING_PLAN &&
+        !!form.fileNodeId?.trim() &&
+        !!form.programId?.trim() &&
+        !!form.trainingPlanId?.trim() &&
+        businessId === form.trainingPlanId.trim()
       )
     case AiTaskTypeCode.MATERIAL_QA:
       return (
-        form.businessType === AiTaskBusinessTypeCode.QUALITY_COURSE
-        && !!form.qualityCourseId?.trim()
-        && businessId === form.qualityCourseId.trim()
-        && !!form.fileNodeId?.trim()
-        && !!form.question?.trim()
+        form.businessType === AiTaskBusinessTypeCode.QUALITY_COURSE &&
+        !!form.qualityCourseId?.trim() &&
+        businessId === form.qualityCourseId.trim() &&
+        !!form.fileNodeId?.trim() &&
+        !!form.question?.trim()
       )
     case AiTaskTypeCode.INDIRECT_RESPONSE_DOC_PARSE:
       return form.businessType === AiTaskBusinessTypeCode.INDIRECT_FORM && !!form.fileNodeId?.trim()
@@ -521,8 +525,8 @@ async function loadList() {
 function syncAiTaskStorePolling(): void {
   for (const record of list.value) {
     if (
-      record.status === AiTaskStatusCode.PENDING
-      || record.status === AiTaskStatusCode.PROCESSING
+      record.status === AiTaskStatusCode.PENDING ||
+      record.status === AiTaskStatusCode.PROCESSING
     ) {
       aiTaskStore.startPolling(record.id)
     }
@@ -582,7 +586,7 @@ async function handleScopeChange(): Promise<void> {
 
 useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false })
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -669,10 +673,10 @@ function handleQueryReportChange(value: string | null): void {
 
 function openSubmitPrefill(
   taskType?: AiTaskTypeCode,
-  scope?: { programId?: string, trainingPlanId?: string },
+  scope?: { programId?: string; trainingPlanId?: string },
 ) {
-  const resolvedType
-    = taskType && submitTaskTypeOptions.some((o) => o.value === taskType)
+  const resolvedType =
+    taskType && submitTaskTypeOptions.some((o) => o.value === taskType)
       ? taskType
       : AiTaskTypeCode.ACHIEVEMENT_DIAGNOSIS
   Object.assign(submitForm, {
@@ -706,16 +710,16 @@ function applyAccreditationRoutePrefill() {
   }
   const routeTaskType = routeTaskTypeOption.value
   const programId = typeof route.query.programId === 'string' ? route.query.programId : undefined
-  const trainingPlanId
-    = typeof route.query.trainingPlanId === 'string' ? route.query.trainingPlanId : undefined
+  const trainingPlanId =
+    typeof route.query.trainingPlanId === 'string' ? route.query.trainingPlanId : undefined
   if (programId) qualityStore.setProgram(programId)
   if (trainingPlanId) qualityStore.setTrainingPlan(trainingPlanId)
   query.taskType = routeTaskType
   query.trainingPlanId = trainingPlanId || qualityStore.currentTrainingPlanId || ''
   query.programId = programId || qualityStore.currentProgramId || ''
   if (
-    route.query.openSubmit === '1'
-    && submitTaskTypeOptions.some((option) => option.value === routeTaskType)
+    route.query.openSubmit === '1' &&
+    submitTaskTypeOptions.some((option) => option.value === routeTaskType)
   ) {
     openSubmitPrefill(routeTaskType, { programId, trainingPlanId })
   }
@@ -990,9 +994,9 @@ function handleAiTaskAction(key: string, record: AiTaskVO): void {
 /** 判断任务是否已达终态（如果已终态，抽屉不需轮询） */
 function isTerminalAiStatus(status: AiTaskStatusCode | undefined): boolean {
   return (
-    status === AiTaskStatusCode.SUCCEEDED
-    || status === AiTaskStatusCode.FAILED
-    || status === AiTaskStatusCode.CANCELLED
+    status === AiTaskStatusCode.SUCCEEDED ||
+    status === AiTaskStatusCode.FAILED ||
+    status === AiTaskStatusCode.CANCELLED
   )
 }
 
@@ -1014,10 +1018,10 @@ watch(
     if (cached.id !== detailRecord.value.id) return
     // 仅在状态变化时赋值，避免不必要的引用改变
     if (
-      cached.status !== detailRecord.value.status
-      || cached.failurePhase !== detailRecord.value.failurePhase
-      || cached.failureReason !== detailRecord.value.failureReason
-      || cached.finishedTime !== detailRecord.value.finishedTime
+      cached.status !== detailRecord.value.status ||
+      cached.failurePhase !== detailRecord.value.failurePhase ||
+      cached.failureReason !== detailRecord.value.failureReason ||
+      cached.finishedTime !== detailRecord.value.finishedTime
     ) {
       detailRecord.value = { ...detailRecord.value, ...cached }
       // 达到终态后重拉一次结果 + 快照，避免抽屉中“状态已成功但 result 为空”的错误
@@ -1112,7 +1116,7 @@ const taskResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleTaskResultAction(actionEvent: { item: TaskResultItem, action: { key: string } }) {
+function handleTaskResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
   const record = list.value.find((t) => t.id === actionEvent.item.id)
   if (record && actionEvent.action.key === 'detail') openDetail(record)
 }
@@ -1158,7 +1162,7 @@ const statusBuckets = computed(() => buildAiTaskStatusBuckets(taskStatusCounts.v
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const order: Array<{ key: AiTaskStatusCode, title: string, completed?: boolean }> = [
+  const order: Array<{ key: AiTaskStatusCode; title: string; completed?: boolean }> = [
     { key: AiTaskStatusCode.PENDING, title: '待处理' },
     { key: AiTaskStatusCode.PROCESSING, title: '运行中' },
     { key: AiTaskStatusCode.SUCCEEDED, title: '成功', completed: true },
@@ -1572,10 +1576,9 @@ onMounted(async () => {
         ok-text="确认重置"
         @ok="submitResetProcessing"
       >
-        <a-alert
-          type="warning"
-          show-icon
-          message="仅平台超级管理员可执行。重置后任务回到待处理队列，备注会写入审计日志。"
+        <UiAlertStrip
+          tone="warning"
+          title="仅平台超级管理员可执行。重置后任务回到待处理队列，备注会写入审计日志。"
           class="ai-task__reset-alert"
         />
         <a-form layout="vertical" class="ai-task__reset-form">
@@ -1619,7 +1622,11 @@ onMounted(async () => {
       </UiDrawer>
 
       <UiDrawer v-model:open="detailVisible" title="AI 任务详情" :width="840" :hide-footer="true">
-        <UiEmpty v-if="!detailRecord && !detailLoading" description="暂无数据" size="sm" />
+        <UiEmpty
+          v-if="!detailRecord && !detailLoading"
+          description="当前没有可展示的内容"
+          size="sm"
+        />
         <a-descriptions v-if="detailRecord" :column="1" size="small" bordered>
           <a-descriptions-item label="能力">
             {{ aiTaskTypeLabel(detailRecord.taskType) }}
@@ -1661,8 +1668,8 @@ onMounted(async () => {
           <a-descriptions-item label="开始 / 结束">
             {{ detailRecord.startedTime || '未开始' }} ～
             {{
-              detailRecord.finishedTime
-                || (detailRecord.status === AiTaskStatusCode.PROCESSING ? '执行中' : '未结束')
+              detailRecord.finishedTime ||
+              (detailRecord.status === AiTaskStatusCode.PROCESSING ? '执行中' : '未结束')
             }}
           </a-descriptions-item>
           <a-descriptions-item label="失败阶段">
@@ -1682,9 +1689,9 @@ onMounted(async () => {
               {{
                 detailRecord.failureReason
                   ? getUserProcessFailureMessage(
-                    detailRecord.failureReason,
-                    'AI 分析未完成，请稍后重试或联系管理员查看任务处理情况',
-                  )
+                      detailRecord.failureReason,
+                      'AI 分析未完成，请在任务列表查看处理进度',
+                    )
                   : '无未完成说明'
               }}
             </span>
@@ -1713,7 +1720,7 @@ onMounted(async () => {
 
         <a-tabs v-if="detailRecord" default-active-key="result">
           <a-tab-pane key="result" tab="AI 结果">
-            <UiEmpty v-if="!detailResult" description="暂无数据" size="sm" />
+            <UiEmpty v-if="!detailResult" description="当前没有可展示的内容" size="sm" />
             <template v-else>
               <a-descriptions :column="2" size="small" bordered>
                 <a-descriptions-item label="输出校验">

@@ -1,21 +1,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-status'
-import type { PortfolioMaterialStatusCode } from '@/apis/portfolio/enums'
-import type {
-  PortfolioMaterialSaveRequest,
-  PortfolioMaterialSearchResponse,
-  PortfolioMaterialVO,
-} from '@/apis/portfolio/types'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { Input, message } from 'ant-design-vue'
-import { computed, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   ARCHIVE_MATERIAL_OCR_STATUS_TONE,
   ArchiveMaterialOcrStatusDescription,
 } from '@/apis/mark/archive-ocr-status'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import type { PortfolioMaterialStatusCode } from '@/apis/portfolio/enums'
 import {
   PORTFOLIO_MATERIAL_STATUS_OPTIONS,
   PORTFOLIO_MATERIAL_TYPE_OPTIONS,
@@ -23,8 +13,18 @@ import {
   PortfolioMaterialTypeCode,
   PortfolioMaterialTypeDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioMaterialApi } from '@/apis/portfolio/material'
+import type {
+  PortfolioMaterialSaveRequest,
+  PortfolioMaterialSearchResponse,
+  PortfolioMaterialVO,
+} from '@/apis/portfolio/types'
 import { PORTFOLIO_MATERIAL_STATUS_TONE } from '@/apis/portfolio/types'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import { Input, message } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -103,6 +103,7 @@ const searchColumns: ColumnsType<PortfolioMaterialSearchResponse> = [
   { title: '标题', dataIndex: 'materialTitle', key: 'materialTitle', fixed: 'left' },
   { title: '类型', key: 'materialType', width: 120 },
   { title: '命中摘要', dataIndex: 'snippet', key: 'snippet' },
+  { title: '操作', key: 'actions', width: 240 },
 ]
 
 const loading = ref(false)
@@ -127,11 +128,23 @@ const form = reactive<PortfolioMaterialSaveRequest>({
   categoryCode: '',
 })
 const attachmentFileName = ref<string>()
+const requestToken = ref(0)
 
 const modalTitle = computed(() => (editingId.value ? '编辑材料' : '登记材料'))
 const showSearchResults = computed(() => searchKeyword.value.trim().length > 0)
 
+/** 教师作用域切换或关闭弹窗时必须清空旧材料编辑态，避免跨教师保存到错误对象。 */
+function resetFormContext() {
+  editingId.value = undefined
+  form.materialType = PortfolioMaterialTypeCode.DOCUMENT
+  form.materialTitle = ''
+  form.fileNodeId = ''
+  form.categoryCode = ''
+  attachmentFileName.value = undefined
+}
+
 async function loadPage() {
+  const currentToken = requestToken.value
   loading.value = true
   try {
     const page = await portfolioMaterialApi.page({
@@ -141,16 +154,25 @@ async function loadPage() {
       pageNum: pageNum.value,
       pageSize: pageSize.value,
     })
+    if (requestToken.value !== currentToken) {
+      return
+    }
     rows.value = page.list
     pageTotal.value = page.total
   } catch (error) {
+    if (requestToken.value !== currentToken) {
+      return
+    }
     showUserError(error, '加载材料库失败')
   } finally {
-    loading.value = false
+    if (requestToken.value === currentToken) {
+      loading.value = false
+    }
   }
 }
 
 async function searchOcr() {
+  const currentToken = requestToken.value
   const keyword = searchKeyword.value.trim()
   if (!keyword) {
     searchRows.value = []
@@ -166,12 +188,20 @@ async function searchOcr() {
       pageNum: searchPageNum.value,
       pageSize: searchPageSize.value,
     })
+    if (requestToken.value !== currentToken) {
+      return
+    }
     searchRows.value = page.list
     searchPageTotal.value = page.total
   } catch (error) {
+    if (requestToken.value !== currentToken) {
+      return
+    }
     showUserError(error, 'OCR 检索失败')
   } finally {
-    searchLoading.value = false
+    if (requestToken.value === currentToken) {
+      searchLoading.value = false
+    }
   }
 }
 
@@ -185,12 +215,7 @@ function handleSearch() {
 }
 
 function openCreateModal() {
-  editingId.value = undefined
-  form.materialType = PortfolioMaterialTypeCode.DOCUMENT
-  form.materialTitle = ''
-  form.fileNodeId = ''
-  form.categoryCode = ''
-  attachmentFileName.value = undefined
+  resetFormContext()
   formModalOpen.value = true
 }
 
@@ -281,11 +306,53 @@ function openAiExtract(row: PortfolioMaterialVO) {
     message.warning('请先选择教师')
     return
   }
+  const query: Record<string, string> = {
+    teacherId,
+    materialId: row.id,
+  }
+  if (row.categoryId) {
+    query.categoryId = row.categoryId
+  }
+  if (row.archiveRecordId) {
+    query.recordId = row.archiveRecordId
+  }
   void router.push({
-    path: '/portfolio/ai-candidate-confirm',
+    path: '/portfolio/teacher/intake',
+    query,
+  })
+}
+
+function openSearchHitAiExtract(row: PortfolioMaterialSearchResponse) {
+  const teacherId = targetTeacherId.value ?? row.teacherId
+  if (!teacherId) {
+    message.warning('请先选择教师')
+    return
+  }
+  const query: Record<string, string> = {
+    teacherId,
+    materialId: row.materialId,
+  }
+  void router.push({
+    path: '/portfolio/teacher/intake',
+    query,
+  })
+}
+
+function openSearchHitAiOrchestration(
+  row: PortfolioMaterialSearchResponse,
+  tab: 'ask' | 'policy' = 'ask',
+) {
+  const teacherId = targetTeacherId.value ?? row.teacherId
+  if (!teacherId) {
+    message.warning('请先选择教师')
+    return
+  }
+  void router.push({
+    path: '/portfolio/ai-orchestration',
     query: {
       teacherId,
-      materialId: row.id,
+      materialId: row.materialId,
+      tab,
     },
   })
 }
@@ -347,10 +414,21 @@ function handleMaterialRowAction(key: string, row: PortfolioMaterialVO): void {
 
 usePortfolioScopedLoader(
   () => {
+    requestToken.value += 1
     pageNum.value = 1
     void loadPage()
   },
   () => targetTeacherId.value,
+)
+watch(
+  () => targetTeacherId.value,
+  () => {
+    requestToken.value += 1
+    formModalOpen.value = false
+    resetFormContext()
+    searchRows.value = []
+    searchPageTotal.value = 0
+  },
 )
 </script>
 
@@ -390,6 +468,28 @@ usePortfolioScopedLoader(
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'materialType'">
             {{ materialTypeLabel(record.materialType) }}
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <UiTableActions
+              :items="[
+                { key: 'aiExtract', label: 'AI 抽取' },
+                { key: 'aiAsk', label: '智能问数' },
+                { key: 'aiPolicy', label: '政策核验' },
+              ]"
+              @action="
+                (key) => {
+                  if (key === 'aiExtract') {
+                    openSearchHitAiExtract(record)
+                    return
+                  }
+                  if (key === 'aiAsk') {
+                    openSearchHitAiOrchestration(record, 'ask')
+                    return
+                  }
+                  openSearchHitAiOrchestration(record, 'policy')
+                }
+              "
+            />
           </template>
         </template>
       </UiDataTable>
@@ -437,6 +537,7 @@ usePortfolioScopedLoader(
       cancel-text="取消"
       :confirm-loading="saving"
       @ok="() => void submitForm()"
+      @cancel="resetFormContext"
     >
       <Input
         v-model:value="form.materialTitle"

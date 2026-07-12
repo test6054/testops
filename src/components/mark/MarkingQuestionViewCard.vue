@@ -4,7 +4,7 @@
       <FileImageOutlined />
       <span>阅卷影像</span>
     </template>
-    <UiEmpty v-if="showWholePaperPlaceholder" description="暂无数据" />
+    <UiEmpty v-if="showWholePaperPlaceholder" description="整卷任务请在影像区查看" />
     <a-spin v-else :spinning="loading" tip="加载题目信息中...">
       <UiEmpty v-if="!loaded && !loading" description="题目信息尚未加载" />
       <div v-else-if="questionView" class="question-viewer">

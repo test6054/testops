@@ -157,7 +157,11 @@ const {
       </template>
     </UiAlertStrip>
 
-    <UiEmpty v-if="!taskId" description="暂无数据" class="marking-task-detail-page__empty" />
+    <UiEmpty
+      v-if="!taskId"
+      description="缺少阅卷任务，请从任务池进入"
+      class="marking-task-detail-page__empty"
+    />
 
     <UiSkeletonState
       v-else-if="loading && !task"
@@ -169,7 +173,7 @@ const {
 
     <UiEmpty
       v-else-if="!loading && !task"
-      description="暂无数据"
+      description="任务详情不可用，请从任务池重新进入"
       class="marking-task-detail-page__empty"
     />
 

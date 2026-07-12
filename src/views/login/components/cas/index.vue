@@ -114,9 +114,9 @@ const handleCasLogin = async () => {
     // 获取CAS登录URL并跳转
     window.location.href = await getCasLoginUrl(props.tenantId)
   } catch (error: unknown) {
-    const msg = getUserErrorMessage(error, '获取统一认证登录地址失败，请稍后重试')
+    const msg = getUserErrorMessage(error, '获取统一认证登录地址失败')
     errorMessage.value = msg
-    showUserError(error, '获取统一认证登录地址失败，请稍后重试')
+    showUserError(error, '获取统一认证登录地址失败')
     emit('login-error', msg)
   } finally {
     loading.value = false

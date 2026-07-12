@@ -9,12 +9,6 @@ import type {
   PortfolioIndicatorSourceMappingVO,
   PortfolioIndustryPackVO,
 } from '@/apis/portfolio/indicator-types'
-import type { PortfolioIndustryPackDefForm } from '@/utils/indicator-industry-pack-def'
-import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
-import { portfolioIndicatorPlatformApi } from '@/apis/portfolio/indicator'
 import {
   PF_INDICATOR_DATA_SOURCE_CHANNEL_OPTIONS,
   PF_INDICATOR_STATUS_OPTIONS,
@@ -26,12 +20,29 @@ import {
   PfScoreRuleTypeCode,
   PfScoreRuleTypeDescription,
 } from '@/apis/portfolio/indicator-types'
+import type { PortfolioIndustryPackDefForm } from '@/utils/indicator-industry-pack-def'
+import {
+  buildNewIndustryPackDefJson,
+  mergeIndustryPackDefJson,
+  parseIndustryPackDefJson,
+} from '@/utils/indicator-industry-pack-def'
+import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
+import {
+  defaultTemplateParams,
+  parseTemplateParamsJson,
+  serializeTemplateParams,
+} from '@/utils/indicator-template-params'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioIndicatorPlatformApi } from '@/apis/portfolio/indicator'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/PortfolioIndicatorTemplateParamsForm.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -39,16 +50,6 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { PortfolioIndicatorDefinitionTreeNodeTypeCode } from '@/types/enums/portfolio-indicator-definition-tree-node-type-enum'
 import { showUserError } from '@/utils/error-handler'
-import {
-  buildNewIndustryPackDefJson,
-  mergeIndustryPackDefJson,
-  parseIndustryPackDefJson,
-} from '@/utils/indicator-industry-pack-def'
-import {
-  defaultTemplateParams,
-  parseTemplateParamsJson,
-  serializeTemplateParams,
-} from '@/utils/indicator-template-params'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 function dataSourceLabel(value: PfIndicatorDataSourceChannelCode): string {
@@ -186,6 +187,13 @@ const treeFieldNames = { title: 'title', key: 'key', children: 'children' }
 
 const treeNodes = computed<DataNode[]>(() => treeData.value.map(toIndicatorDataNode))
 
+/** 详情抽屉切换目标或关闭时必须清空旧详情，避免加载失败后仍展示上一个指标。 */
+function resetDetailContext() {
+  detail.value = null
+  detailLoading.value = false
+  editMode.value = false
+}
+
 function toIndicatorDataNode(node: PortfolioIndicatorDefinitionTreeNodeVO): DataNode {
   return {
     key: node.nodeKey,
@@ -255,13 +263,13 @@ async function loadTemplates() {
   }
 }
 
-function handleDefinitionPageChange(event: { current: number, pageSize: number }) {
+function handleDefinitionPageChange(event: { current: number; pageSize: number }) {
   query.pageNum = event.current
   query.pageSize = event.pageSize
   void loadPage()
 }
 
-function handleTemplatePageChange(event: { current: number, pageSize: number }) {
+function handleTemplatePageChange(event: { current: number; pageSize: number }) {
   templateQuery.pageNum = event.current
   templateQuery.pageSize = event.pageSize
   void loadTemplates()
@@ -310,13 +318,14 @@ async function reloadTab() {
 
 async function openDetail(indicatorCode: string, openAsEdit = false) {
   detailOpen.value = true
+  resetDetailContext()
   detailLoading.value = true
-  editMode.value = false
   try {
     detail.value = await portfolioIndicatorPlatformApi.getDefinition({ indicatorCode })
     fillEditForm(detail.value)
     editMode.value = openAsEdit
   } catch (error) {
+    detailOpen.value = false
     showUserError(error)
   } finally {
     detailLoading.value = false
@@ -395,7 +404,7 @@ async function saveDefinition() {
 }
 
 function openNewIndicator() {
-  detail.value = null
+  resetDetailContext()
   editForm.id = ''
   editForm.indicatorCode = ''
   editForm.indicatorName = ''
@@ -421,8 +430,8 @@ function openTemplateEdit(record?: PortfolioIndicatorRuleTemplateVO) {
     templateForm.templateCode = record.templateCode
     templateForm.templateName = record.templateName
     templateForm.ruleType = record.ruleType
-    templateParams.value
-      = parseTemplateParamsJson(record.paramsJson) ?? defaultTemplateParams(record.ruleType)
+    templateParams.value =
+      parseTemplateParamsJson(record.paramsJson) ?? defaultTemplateParams(record.ruleType)
     templateForm.description = ''
     templateForm.status = record.status
   } else {
@@ -573,12 +582,11 @@ onMounted(async () => {
         </template>
       </ContextBar>
     </template>
-    <a-alert
+    <UiAlertStrip
       v-if="summary"
-      :type="summary.t001T100Ready ? 'success' : 'warning'"
-      show-icon
-      :message="`平台指标 ${summary.platformIndicatorCount} 项已就绪，行业包 ${summary.industryPackCount} 个`"
-      style="margin-bottom: 16px"
+      :tone="summary.t001T100Ready ? 'success' : 'warning'"
+      :title="`平台指标 ${summary.platformIndicatorCount} 项已就绪，行业包 ${summary.industryPackCount} 个`"
+      style="margin-bottom: 12px"
     />
     <UiCard>
       <a-tabs :active-key="activeTab" @change="onTabChange">
@@ -598,7 +606,9 @@ onMounted(async () => {
                 {{ indicatorCode }} ·
                 {{ defaultDataSource ? dataSourceLabel(defaultDataSource) : '—' }} ·
                 {{ status ? indicatorStatusLabel(status) : '—' }}
-                <a v-if="indicatorCode" class="detail-link" @click.stop="openDetail(indicatorCode)">详情</a>
+                <a v-if="indicatorCode" class="detail-link" @click.stop="openDetail(indicatorCode)"
+                  >详情</a
+                >
               </span>
             </template>
           </a-tree>
@@ -761,7 +771,7 @@ onMounted(async () => {
         </a-tab-pane>
       </a-tabs>
     </UiCard>
-    <a-drawer v-model:open="detailOpen" title="指标详情" width="520" @close="editMode = false">
+    <a-drawer v-model:open="detailOpen" title="指标详情" width="520" @close="resetDetailContext">
       <a-spin :spinning="detailLoading">
         <template v-if="detail && !editMode">
           <p>

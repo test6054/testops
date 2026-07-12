@@ -39,9 +39,9 @@ export async function pollPlatformExcelImportBatch(
     const batch = await getExcelImportBatch({ sceneKey, batchId })
     const status = batch.asyncStatus ?? batch.batchStatus
     if (
-      status === ScoreBatchStatusCode.PREVIEW_READY
-      || status === ScoreBatchStatusCode.VALIDATED
-      || status === ScoreBatchStatusCode.CONFIRMED
+      status === ScoreBatchStatusCode.PREVIEW_READY ||
+      status === ScoreBatchStatusCode.VALIDATED ||
+      status === ScoreBatchStatusCode.CONFIRMED
     ) {
       return batch
     }
@@ -50,7 +50,7 @@ export async function pollPlatformExcelImportBatch(
     }
     await sleep(ASYNC_POLL_INTERVAL_MS)
   }
-  showFormValidationMessage('成绩导入解析超时，请稍后在批次列表中查看')
+  showFormValidationMessage('成绩导入解析超时，请在批次列表中查看结果')
   return null
 }
 

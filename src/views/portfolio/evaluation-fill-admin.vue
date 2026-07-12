@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationModeCode } from '@/apis/portfolio/enums'
+import {
+  PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES,
+  PortfolioEvaluationModeDescription,
+} from '@/apis/portfolio/enums'
 import type {
   PortfolioEvaluationEntrySummaryItemVO,
   PortfolioEvaluationEntrySummaryVO,
@@ -9,17 +13,13 @@ import type {
   PortfolioEvaluationSubjectTeacherOptionVO,
   PortfolioEvaluationTaskVO,
 } from '@/apis/portfolio/teacher-platform'
-import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import {
-  PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES,
-  PortfolioEvaluationModeDescription,
-} from '@/apis/portfolio/enums'
 import {
   portfolioEvaluationEntryApi,
   portfolioEvaluationTaskApi,
 } from '@/apis/portfolio/teacher-platform'
+import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -30,6 +30,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showUserError } from '@/utils/error-handler'
+import { loadAllPages } from '@/utils/load-all-pages'
 import { buildEmptyPageResult } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -179,16 +180,17 @@ const selectableTasks = computed(() => {
 async function loadTasks() {
   loading.value = true
   try {
-    const page = await portfolioEvaluationTaskApi.page({
-      pageNum: 1,
-      pageSize: QUALITY_SELECTOR_PAGE_SIZE,
-    })
-    tasks.value = page.list
+    tasks.value = await loadAllPages(
+      ({ pageNum, pageSize }) =>
+        portfolioEvaluationTaskApi.page({
+          pageNum,
+          pageSize,
+        }),
+      QUALITY_SELECTOR_PAGE_SIZE,
+    )
     const pool = selectableTasks.value
-    if (!selectedTaskId.value && pool.length) {
-      selectedTaskId.value = pool[0].id
-    } else if (selectedTaskId.value && !pool.some((item) => item.id === selectedTaskId.value)) {
-      selectedTaskId.value = pool[0]?.id ?? ''
+    if (selectedTaskId.value && !pool.some((item) => item.id === selectedTaskId.value)) {
+      selectedTaskId.value = ''
     }
   } catch (error) {
     showUserError(error)
@@ -302,7 +304,7 @@ watch(selectedTaskId, async () => {
 watch(activeTab, (tab) => {
   const pool = selectableTasks.value
   if (selectedTaskId.value && !pool.some((item) => item.id === selectedTaskId.value)) {
-    selectedTaskId.value = pool[0]?.id ?? ''
+    selectedTaskId.value = ''
   }
   if (tab === 'summary') {
     void loadSummary()

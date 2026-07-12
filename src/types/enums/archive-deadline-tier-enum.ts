@@ -1,3 +1,5 @@
+import { strictEnumLabel } from '@/utils/strict-enum'
+
 /** 归档时限法规档位 */
 export enum ArchiveDeadlineTierCode {
   FACULTY_WINTER_BREAK = 'FACULTY_WINTER_BREAK',
@@ -16,5 +18,5 @@ export const ArchiveDeadlineTierDescription: Record<ArchiveDeadlineTierCode, str
 
 export const ARCHIVE_DEADLINE_TIER_OPTIONS = ALL_ARCHIVE_DEADLINE_TIER_CODES.map((value) => ({
   value,
-  label: ArchiveDeadlineTierDescription[value],
+  label: strictEnumLabel(ArchiveDeadlineTierDescription, value, '归档时限档位'),
 }))

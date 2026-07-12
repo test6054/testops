@@ -30,7 +30,11 @@
       :wrapper-col="{ flex: 1 }"
       class="create-form"
     >
-      <a-form-item label="纳入方式" name="scopeMode">
+      <a-form-item
+        label="纳入方式"
+        name="scopeMode"
+        tooltip="整班纳入自动列出全部在籍学生；按人勾选可在班级基础上移除或追加考生。"
+      >
         <a-segmented
           :value="rosterForm.scopeMode"
           :options="scopeModeOptions"
@@ -39,9 +43,15 @@
         />
       </a-form-item>
 
-      <a-row :gutter="24">
+      <a-row :gutter="24" class="create-form__split-row">
         <a-col :span="12">
-          <a-form-item label="院系" required :label-col="labelCol">
+          <a-form-item
+            label="院系"
+            required
+            tooltip="须先选择院系，再选择该院系下的参考班级。"
+            :label-col="labelCol"
+            :wrapper-col="wrapperCol"
+          >
             <a-select
               v-model:value="departmentId"
               placeholder="请选择院系"
@@ -54,7 +64,13 @@
           </a-form-item>
         </a-col>
         <a-col :span="12">
-          <a-form-item label="参考班级" name="classIds" :label-col="labelCol">
+          <a-form-item
+            label="参考班级"
+            name="classIds"
+            :tooltip="referenceClassTip"
+            :label-col="labelCol"
+            :wrapper-col="wrapperCol"
+          >
             <a-select
               v-model:value="rosterForm.classIds"
               mode="multiple"
@@ -66,14 +82,6 @@
               option-filter-prop="label"
               allow-clear
             />
-            <p class="create-form__hint">
-              <template v-if="rosterForm.scopeMode === ExamRosterScopeModeCode.BY_CLASS">
-                正考场景：按院系选择班级后自动纳入该班全部在籍学生。
-              </template>
-              <template v-else>
-                补考或部分考生：可移除不参加本场考试的学生，或通过「按学生选择」追加。
-              </template>
-            </p>
           </a-form-item>
         </a-col>
       </a-row>
@@ -153,6 +161,7 @@ import {
 import { useInjectedExamCreateRosterForm } from './exam-create-context'
 import {
   buildRosterRequestsFromDrawerSelection,
+  isPreviewEmptyClassBusinessError,
   mergePreviewCandidates,
   requirePreviewCandidates,
 } from './exam-create-roster'
@@ -172,6 +181,7 @@ const emit = defineEmits<{
 const rosterForm = useInjectedExamCreateRosterForm()
 
 const labelCol = { style: { width: '88px' } }
+const wrapperCol = { flex: 1 }
 const formRef = ref<FormInstance>()
 const studentDrawerOpen = ref(false)
 const classScopeSyncing = ref(false)
@@ -190,6 +200,7 @@ const {
   loadDepartments,
 } = useExamDepartmentClassScope({
   selectedClassIds: toRef(rosterForm, 'classIds'),
+  enrollableOnly: true,
 })
 
 watch(departmentId, (id) => {
@@ -198,16 +209,28 @@ watch(departmentId, (id) => {
 
 const scopeModeOptions = EXAM_ROSTER_SCOPE_MODE_OPTIONS
 
+const referenceClassTip = computed(() =>
+  rosterForm.scopeMode === ExamRosterScopeModeCode.BY_CLASS
+    ? '正考整班纳入：选中班级后自动列出全部在籍学生。'
+    : '按人勾选：可先选班级再移除或追加个别考生。',
+)
+
 const selectedStudentIds = computed(() => rosterForm.candidates.map((row) => row.studentUserId))
 
 const emptyDescription = computed(() => {
+  if (!departmentId.value) {
+    return '请先选择院系与参考班级'
+  }
+  if (!rosterForm.classIds.length) {
+    return '请选择参考班级'
+  }
+  if (classScopeSyncing.value) {
+    return '正在加载考生名册…'
+  }
   if (rosterForm.scopeMode === ExamRosterScopeModeCode.BY_CLASS) {
-    return '选择参考班级后将自动纳入全部在籍学生'
+    return '所选班级暂无在籍学生，请改选其他班级'
   }
-  if (rosterForm.classIds.length > 0) {
-    return classScopeSyncing.value ? '正在加载所选班级学生…' : '所选班级暂无在籍学生'
-  }
-  return '选择参考班级后将自动列出在籍学生'
+  return '所选班级暂无在籍学生，可改用「按学生选择」追加'
 })
 
 const columns: ColumnType<ExamCandidateResponse>[] = [
@@ -288,20 +311,32 @@ function syncByClassScope(addedClassIds: string[]): void {
   })
     .then((preview) => {
       if (syncSeq !== classScopeSyncSeq) return
-      const previewCandidates = requirePreviewCandidates(preview.candidates)
-      if (!previewCandidates) return
-      const nextCandidates
-        = scopeMode === ExamRosterScopeModeCode.BY_CLASS
+      const previewCandidates = requirePreviewCandidates(preview.candidates) ?? []
+      if (scopeMode === ExamRosterScopeModeCode.BY_CLASS && previewCandidates.length === 0) {
+        rosterPreviewError.value = '所选班级暂无在籍学生，请改选其他班级。'
+        trackedClassIds = []
+        emit('sync-class-scope', [], [])
+        return
+      }
+      rosterPreviewError.value = ''
+      const nextCandidates =
+        scopeMode === ExamRosterScopeModeCode.BY_CLASS
           ? previewCandidates
           : mergePreviewCandidates(rosterForm.candidates, previewCandidates)
       emit('sync-class-scope', nextCandidates, [...classIds])
     })
     .catch((error) => {
       if (syncSeq !== classScopeSyncSeq) return
+      if (isPreviewEmptyClassBusinessError(error)) {
+        rosterPreviewError.value = '所选班级暂无在籍学生，请改选其他班级。'
+        trackedClassIds = []
+        emit('sync-class-scope', [], [])
+        return
+      }
       const message = error instanceof Error ? error.message : '名册预览失败'
       rosterPreviewError.value = shouldClearClassScopeOnPreviewError(error)
         ? `${message}。参考班级已清空，请重新选择。`
-        : `${message}。请稍后重试或重新选择班级。`
+        : `${message}。请重新选择班级。`
       showUserError(error, '名册预览失败')
       if (shouldClearClassScopeOnPreviewError(error)) {
         emit('sync-class-scope', [], [])

@@ -195,19 +195,19 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamTemplateResponse } from '@/apis/mark/exam-layout-question'
+import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import type {
   ExamQuestionAnalysisRecordResponse,
   QuestionAnalysisListQueryRequest,
 } from '@/apis/mark/question-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { computed, ref, watch } from 'vue'
-import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import {
   generateAllQuestionAnalysis,
   generateQuestionAnalysis,
   loadQuestionAnalysisChartRows,
   pageQuestionAnalysis,
 } from '@/apis/mark/question-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { computed, ref, watch } from 'vue'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkScatterSection from '@/components/chart/MarkScatterSection.vue'
@@ -261,7 +261,7 @@ const generatingId = ref<string>('')
 const selectedLayoutQuestionId = ref<string>()
 const questionLoading = ref(false)
 const questionOptions = ref<
-  Array<{ value: string, label: string, disabled?: boolean, title?: string }>
+  Array<{ value: string; label: string; disabled?: boolean; title?: string }>
 >([])
 const layoutSummary = ref<ExamTemplateResponse | null>(null)
 const layoutRoiGap = computed(() => {
@@ -385,7 +385,7 @@ async function reload(): Promise<void> {
   await Promise.all([loadChartRows(), loadTablePage(1, tablePageSize.value)])
 }
 
-function handleTablePageChange(event: { current: number, pageSize: number }): void {
+function handleTablePageChange(event: { current: number; pageSize: number }): void {
   void loadTablePage(event.current, event.pageSize)
 }
 
@@ -404,8 +404,8 @@ async function loadQuestionOptions(): Promise<void> {
     }
     questionOptions.value = buildExamLayoutQuestionOptions(template.questions)
     if (
-      selectedLayoutQuestionId.value
-      && !template.questions.some(
+      selectedLayoutQuestionId.value &&
+      !template.questions.some(
         (q) => q.layoutQuestionId === selectedLayoutQuestionId.value && q.roiReady,
       )
     ) {
@@ -455,9 +455,9 @@ async function handleGenerateOne(layoutQuestionId: string): Promise<void> {
       successMessage: '已重新生成',
       onSuccess: async () => {
         await reload()
-        const matched
-          = tableRows.value.find((item) => item.layoutQuestionId === layoutQuestionId)
-            ?? chartRows.value.find((item) => item.layoutQuestionId === layoutQuestionId)
+        const matched =
+          tableRows.value.find((item) => item.layoutQuestionId === layoutQuestionId) ??
+          chartRows.value.find((item) => item.layoutQuestionId === layoutQuestionId)
         generationSummary.value = matched
           ? `已生成题 ${matched.questionNo} 的质量分析，可查看难度、区分度与正确率。`
           : '已生成该题质量分析，可查看难度、区分度与正确率。'
@@ -589,7 +589,7 @@ const scatterChartAriaLabel = computed(() => {
     0,
   )
   if (totalPoints <= 0) {
-    return '难度区分度分布，暂无数据'
+    return '难度区分度分布，当前没有可展示的内容'
   }
   return `难度区分度分布，共 ${totalPoints} 道题目`
 })
@@ -597,7 +597,7 @@ const scatterChartAriaLabel = computed(() => {
 const correctRatioChartAriaLabel = computed(() => {
   const count = correctRatioBarItems.value.length
   if (count <= 0) {
-    return '各题正确率，暂无数据'
+    return '各题正确率，当前没有可展示的内容'
   }
   return `各题正确率，共 ${count} 道题`
 })

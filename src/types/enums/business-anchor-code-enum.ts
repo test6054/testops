@@ -1,3 +1,5 @@
+import { strictEnumLabel } from '@/utils/strict-enum'
+
 /** 外部拔取业务归属锚点 */
 export enum BusinessAnchorCode {
   TRAINING_PLAN = 'TRAINING_PLAN',
@@ -32,6 +34,5 @@ export const BusinessAnchorCodeDescription: Record<BusinessAnchorCode, string> =
 export const BUSINESS_ANCHOR_OPTIONS: Array<{ value: BusinessAnchorCode, label: string }>
   = ALL_BUSINESS_ANCHOR_CODES.map((value) => ({
     value,
-    label: BusinessAnchorCodeDescription[value],
+    label: strictEnumLabel(BusinessAnchorCodeDescription, value, '业务归属锚点'),
   }))
-

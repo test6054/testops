@@ -109,6 +109,8 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   TeacherCreateArchiveTask: () => import('@/views/teacher/archive-volume/archive-task-create/archive-task-create.vue'),
   TeacherArchiveVolumeStatistics: () => import('@/views/teacher/archive-volume/archive-volume-statistics.vue'),
   TeacherArchiveVolumeEvalCampaign: () => import('@/views/teacher/archive-volume/archive-volume-eval-campaign.vue'),
+  TeacherArchiveVolumeSuspectedMixedScan: () =>
+    import('@/views/teacher/archive-volume/archive-volume-suspected-mixed-scan.vue'),
   TeacherArchiveVolumeReadinessMatrix: () => import('@/views/teacher/archive-volume/archive-volume-readiness-matrix.vue'),
   TeacherArchiveVolumeAudit: () => import('@/views/teacher/archive-volume/archive-volume-audit.vue'),
   TeacherArchiveVolumeLedger: () => import('@/views/teacher/archive-volume/archive-volume-ledger.vue'),
@@ -155,7 +157,7 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   PortfolioOrgAdmin: () => import('@/views/portfolio/org-admin.vue'),
   PortfolioTemplateAdmin: () => import('@/views/portfolio/template-admin.vue'),
   PortfolioTeacherDirectory: () => import('@/views/portfolio/teacher-directory.vue'),
-  PortfolioAiCandidateConfirm: () => import('@/views/portfolio/ai-candidate-confirm.vue'),
+  PortfolioAiCandidateConfirm: () => import('@/views/portfolio/teacher-intake.vue'),
   PortfolioAiOrchestration: () => import('@/views/portfolio/ai-orchestration.vue'),
   PortfolioDepartmentReview: () => import('@/views/portfolio/department-review.vue'),
   PortfolioIndicatorPlatform: () => import('@/views/portfolio/indicator-platform-admin.vue'),

@@ -118,13 +118,13 @@ const props = withDefaults(
     searchPlaceholder?: string
     loading?: boolean
     treeData?: UiTreeNode[]
-    checkedKeys?: Key[] | { checked: Key[], halfChecked: Key[] }
+    checkedKeys?: Key[] | { checked: Key[]; halfChecked: Key[] }
     selectedKeys?: Array<string | number>
     defaultExpandAll?: boolean
     defaultExpandedKeys?: Array<string | number>
     checkable?: boolean
     selectable?: boolean
-    fieldNames?: { title: string, key: string, children: string }
+    fieldNames?: { title: string; key: string; children: string }
     treeProps?: Record<string, unknown>
     showStats?: boolean
     selectedCount?: number
@@ -163,7 +163,7 @@ const props = withDefaults(
     confirmDisabled: false,
     okText: '确定',
     cancelText: '取消',
-    emptyTitle: '暂无数据',
+    emptyTitle: '当前没有可选择内容',
     emptyDescription: '当前没有可选择内容。',
   },
 )
@@ -172,7 +172,7 @@ const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
   (e: 'search', value: string): void
   (e: 'clear'): void
-  (e: 'check', checkedKeys: Key[] | { checked: Key[], halfChecked: Key[] }, info: CheckInfo): void
+  (e: 'check', checkedKeys: Key[] | { checked: Key[]; halfChecked: Key[] }, info: CheckInfo): void
   (e: 'select', selectedKeys: Key[], info: unknown): void
   (e: 'confirm'): void
   (e: 'cancel'): void
@@ -198,7 +198,7 @@ function handleOpenChange(value: boolean): void {
 }
 
 const handleCheck = (
-  checkedKeys: Key[] | { checked: Key[], halfChecked: Key[] },
+  checkedKeys: Key[] | { checked: Key[]; halfChecked: Key[] },
   info: CheckInfo,
 ) => {
   emit('check', checkedKeys, info)

@@ -6,10 +6,6 @@ import type {
   PortfolioPublishImpactReportVO,
   PortfolioRulePublishSnapshotVO,
 } from '@/apis/portfolio/indicator-types'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import {
   PF_IMPACT_REPORT_STATUS_TONE,
   PF_SCENE_CODE_OPTIONS,
@@ -18,6 +14,10 @@ import {
   PfSceneCode,
   PfSceneCodeDescription,
 } from '@/apis/portfolio/indicator-types'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -50,7 +50,13 @@ function impactReportStatusTone(value: PfImpactReportStatusCode) {
 const router = useRouter()
 const activeTab = ref('history')
 const sceneCode = ref<PfSceneCode>(PfSceneCode.PERFORMANCE)
+const historyLoading = ref(false)
+const impactLoading = ref(false)
 const loading = ref(false)
+const historyRequestToken = ref(0)
+const impactRequestToken = ref(0)
+const retroactiveRequestToken = ref(0)
+const impactDetailRequestToken = ref(0)
 const rows = ref<PortfolioRulePublishSnapshotVO[]>([])
 const historyTotal = ref(0)
 const historyQuery = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
@@ -79,7 +85,17 @@ const impactColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 120 },
 ]
 
+/** 切换场景或页签后，必须清空旧快照/旧影响报告详情，避免把上一上下文内容展示到当前页。 */
+function resetDetailContext() {
+  retroactiveRequestToken.value += 1
+  impactDetailRequestToken.value += 1
+  retroactive.value = null
+  impactDetail.value = null
+}
+
 async function loadHistory() {
+  const currentToken = ++historyRequestToken.value
+  historyLoading.value = true
   loading.value = true
   try {
     const page = await portfolioIndicatorTenantApi.pageRuleHistory({
@@ -87,37 +103,57 @@ async function loadHistory() {
       pageNum: historyQuery.pageNum,
       pageSize: historyQuery.pageSize,
     })
+    if (currentToken !== historyRequestToken.value) {
+      return
+    }
     rows.value = page.list
     historyTotal.value = page.total
   } catch (error) {
+    if (currentToken !== historyRequestToken.value) {
+      return
+    }
     showUserError(error)
   } finally {
-    loading.value = false
+    if (currentToken === historyRequestToken.value) {
+      historyLoading.value = false
+      loading.value = historyLoading.value || impactLoading.value
+    }
   }
 }
 
-function handleHistoryPageChange(event: { current: number, pageSize: number }) {
+function handleHistoryPageChange(event: { current: number; pageSize: number }) {
   historyQuery.pageNum = event.current
   historyQuery.pageSize = event.pageSize
   void loadHistory()
 }
 
-function handleImpactPageChange(event: { current: number, pageSize: number }) {
+function handleImpactPageChange(event: { current: number; pageSize: number }) {
   impactQuery.pageNum = event.current
   impactQuery.pageSize = event.pageSize
   void loadImpactReports()
 }
 
 async function loadImpactReports() {
+  const currentToken = ++impactRequestToken.value
+  impactLoading.value = true
   loading.value = true
   try {
     const page = await portfolioIndicatorTenantApi.pageImpactReport(impactQuery)
+    if (currentToken !== impactRequestToken.value) {
+      return
+    }
     impactRows.value = page.list
     impactTotal.value = page.total
   } catch (error) {
+    if (currentToken !== impactRequestToken.value) {
+      return
+    }
     showUserError(error)
   } finally {
-    loading.value = false
+    if (currentToken === impactRequestToken.value) {
+      impactLoading.value = false
+      loading.value = historyLoading.value || impactLoading.value
+    }
   }
 }
 
@@ -125,20 +161,36 @@ async function loadRetroactive() {
   if (!selectedSnapshotId.value) {
     return
   }
+  const currentToken = ++retroactiveRequestToken.value
   try {
-    retroactive.value = await portfolioIndicatorTenantApi.retroactiveGet({
+    const detail = await portfolioIndicatorTenantApi.retroactiveGet({
       sceneCode: sceneCode.value,
       snapshotId: selectedSnapshotId.value,
     })
+    if (currentToken !== retroactiveRequestToken.value || detail.id !== selectedSnapshotId.value) {
+      return
+    }
+    retroactive.value = detail
   } catch (error) {
+    if (currentToken !== retroactiveRequestToken.value) {
+      return
+    }
     showUserError(error)
   }
 }
 
 async function loadImpactDetail(id: string) {
+  const currentToken = ++impactDetailRequestToken.value
   try {
-    impactDetail.value = await portfolioIndicatorTenantApi.getImpactReport({ id })
+    const detail = await portfolioIndicatorTenantApi.getImpactReport({ id })
+    if (currentToken !== impactDetailRequestToken.value || detail.id !== id) {
+      return
+    }
+    impactDetail.value = detail
   } catch (error) {
+    if (currentToken !== impactDetailRequestToken.value) {
+      return
+    }
     showUserError(error)
   }
 }
@@ -195,6 +247,7 @@ function handleImpactRowAction(key: string, reportId: string) {
 
 function onTabChange(key: string | number) {
   activeTab.value = String(key)
+  resetDetailContext()
   if (activeTab.value === 'impact') {
     impactQuery.pageNum = 1
     loadImpactReports()
@@ -205,9 +258,15 @@ function onTabChange(key: string | number) {
 }
 
 watch(sceneCode, () => {
+  resetDetailContext()
+  selectedSnapshotId.value = ''
+  diffSnapshotIdB.value = ''
   if (activeTab.value === 'history') {
     historyQuery.pageNum = 1
     loadHistory()
+  } else if (activeTab.value === 'impact') {
+    impactQuery.pageNum = 1
+    loadImpactReports()
   }
 })
 onMounted(loadHistory)

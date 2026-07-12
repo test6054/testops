@@ -1,6 +1,10 @@
 <template>
   <div class="review-task-detail-page grading-immersion-page grading-workspace-page">
-    <UiEmpty v-if="!hasParams" description="暂无数据" class="review-task-detail-page__empty" />
+    <UiEmpty
+      v-if="!hasParams"
+      description="缺少复核任务，请从复核列表进入"
+      class="review-task-detail-page__empty"
+    />
 
     <UiSkeletonState
       v-else-if="loading && !detail"
@@ -61,7 +65,10 @@
 
           <GradingImmersionSection title="阅卷影像">
             <template #icon><PictureOutlined /></template>
-            <UiEmpty v-if="!detail.sliceFileId && !detail.sourceScanPage" description="暂无数据" />
+            <UiEmpty
+              v-if="!detail.sliceFileId && !detail.sourceScanPage"
+              description="本题暂无阅卷影像"
+            />
             <MarkingScanMaterialPanel
               v-else
               :slice-file-id="detail.sliceFileId"
@@ -75,7 +82,7 @@
 
           <GradingImmersionSection title="识别答案">
             <template #icon><FileTextOutlined /></template>
-            <UiEmpty v-if="!detail.recognizedAnswer" description="暂无数据" />
+            <UiEmpty v-if="!detail.recognizedAnswer" description="本题暂无 OCR 识别答案" />
             <div v-else class="review-task-detail-page__text-block">
               {{ detail.recognizedAnswer }}
             </div>
@@ -116,7 +123,7 @@
                 重新 AI 复评
               </UiButton>
             </template>
-            <UiEmpty v-if="!detail.aiDiagnostic" description="暂无数据" />
+            <UiEmpty v-if="!detail.aiDiagnostic" description="暂无 AI 复评说明" />
             <div v-else class="review-task-detail-page__text-block">
               {{ aiReviewDiagnosticText(detail.aiDiagnostic) }}
             </div>
@@ -131,16 +138,15 @@
                 {{ detail.paperDisplay.primaryText }}
               </a-descriptions-item>
               <a-descriptions-item label="题目">
-                题{{ detail.questionNo }} · {{ detail.questionType }}
+                题{{ detail.questionNo }} · {{ questionTypeLabel(detail.questionType) }}
               </a-descriptions-item>
-              <a-descriptions-item label="满分">
-                {{ detail.fullScore }}
-              </a-descriptions-item>
-              <a-descriptions-item label="AI 评分">
-                <span v-if="detail.aiScore !== undefined && detail.aiScore !== null">
-                  {{ detail.aiScore }}
-                </span>
-                <span v-else class="muted">-</span>
+              <a-descriptions-item label="评分">
+                <MarkScoreTriple
+                  :ai-score="detail.aiScore"
+                  :teacher-review-score="null"
+                  :full-score="detail.fullScore"
+                  compact
+                />
               </a-descriptions-item>
               <a-descriptions-item label="处理追踪编号">
                 <a-typography-text v-if="detail.aiTraceId" copyable>
@@ -160,7 +166,7 @@
           <GradingImmersionSection title="批注历史">
             <template #icon><CommentOutlined /></template>
             <UiSkeletonState v-if="annotationsLoading" variant="card" compact />
-            <UiEmpty v-else-if="annotations.length === 0" description="暂无数据" />
+            <UiEmpty v-else-if="annotations.length === 0" description="暂无批注历史" />
             <template v-else>
               <a-list :data-source="annotations" size="small">
                 <template #renderItem="{ item }">
@@ -221,24 +227,14 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import type { AnnotationResponse } from '@/apis/mark/exam-annotation'
+import { listAnnotations } from '@/apis/mark/exam-annotation'
 import type {
   AiAbilityCode,
   AiExecutionStatusCode,
   ExamQuestionAiExecutionItemResponse,
 } from '@/apis/mark/exam-grade'
-import type { ReviewTaskDetailResponse } from '@/apis/mark/exam-review-task'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
-import EditOutlined from '@ant-design/icons-vue/EditOutlined'
-import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
-import PictureOutlined from '@ant-design/icons-vue/PictureOutlined'
-import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
-import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { listAnnotations } from '@/apis/mark/exam-annotation'
 import {
   AI_ABILITY_TONE,
   AI_EXECUTION_STATUS_TONE,
@@ -247,18 +243,31 @@ import {
   listAiExecutionsForQuestion,
   rescoreQuestionByAi,
 } from '@/apis/mark/exam-grade'
+import type { ReviewTaskDetailResponse } from '@/apis/mark/exam-review-task'
 import {
   getReviewTaskDetail,
   REVIEW_TASK_STATUS_TONE,
   ReviewTaskStatusCode,
   ReviewTaskStatusDescription,
 } from '@/apis/mark/exam-review-task'
+import type { QuestionTypeCode } from '@/apis/mark/question-type'
+import { QuestionTypeDescription } from '@/apis/mark/question-type'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
+import EditOutlined from '@ant-design/icons-vue/EditOutlined'
+import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
+import PictureOutlined from '@ant-design/icons-vue/PictureOutlined'
+import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
+import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
+import message from 'ant-design-vue/es/message'
+import { useRoute, useRouter } from 'vue-router'
 import ExperienceAssistBadge from '@/components/mark/ExperienceAssistBadge.vue'
 import GradingImmersionChrome from '@/components/mark/GradingImmersionChrome.vue'
 import GradingImmersionSection from '@/components/mark/GradingImmersionSection.vue'
 import GradingWorkspaceLayout from '@/components/mark/GradingWorkspaceLayout.vue'
 import MarkingAiAssistDrawer from '@/components/mark/MarkingAiAssistDrawer.vue'
 import MarkingScanMaterialPanel from '@/components/mark/MarkingScanMaterialPanel.vue'
+import MarkScoreTriple from '@/components/mark/MarkScoreTriple.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -278,6 +287,10 @@ function reviewStatusTone(value: ReviewTaskStatusCode): BadgeTone {
 
 function reviewStatusLabel(value: ReviewTaskStatusCode): string {
   return strictEnumLabel(ReviewTaskStatusDescription, value, '复核任务状态')
+}
+
+function questionTypeLabel(value: QuestionTypeCode): string {
+  return strictEnumLabel(QuestionTypeDescription, value, '题型')
 }
 
 function aiReviewDiagnosticText(diagnostic?: string): string {
@@ -343,8 +356,8 @@ const currentAiSourceTone = computed<BadgeTone>(() => {
 const canRescoreByAi = computed(() => {
   if (rescoring.value || loading.value || !detail.value?.gradeResultId) return false
   return (
-    detail.value.status === ReviewTaskStatusCode.PENDING
-    || detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
+    detail.value.status === ReviewTaskStatusCode.PENDING ||
+    detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
   )
 })
 

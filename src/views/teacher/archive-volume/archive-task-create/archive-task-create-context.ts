@@ -1,4 +1,5 @@
 import type { InjectionKey } from 'vue'
+import { inject } from 'vue'
 import type {
   ArchiveExamFormCode,
   ArchiveScoreCompletionStatusCode,
@@ -7,13 +8,9 @@ import type {
 } from '@/apis/mark/archive-volume'
 import type { ArchiveTaskProvenanceCode } from '@/types/enums/archive-task-provenance-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
-import { inject } from 'vue'
 
-export type ArchiveTaskCreateSectionKey
-  = | 'archive-task-provenance'
-    | 'archive-task-basic'
-    | 'archive-task-plan'
-    | 'archive-task-confirm'
+export type ArchiveTaskCreateSectionKey =
+  'archive-task-provenance' | 'archive-task-basic' | 'archive-task-plan' | 'archive-task-confirm'
 
 export const ARCHIVE_TASK_CREATE_SECTION_ORDER: ArchiveTaskCreateSectionKey[] = [
   'archive-task-provenance',
@@ -48,7 +45,7 @@ export interface ArchiveTaskCreatePlanForm {
   scoreCompletionStatus?: ArchiveScoreCompletionStatusCode
   scoreProofFileId?: string | null
   securityLevel: ArchiveSecurityLevelCode
-  retentionYears: number
+  retentionYears?: number
   permanentRetention: boolean
   responsibleUserId: string | null
   responsibleUserName: string

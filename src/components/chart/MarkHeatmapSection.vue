@@ -58,7 +58,7 @@ const resolvedAriaLabel = computed(() => {
   if (props.ariaLabel.trim()) {
     return props.ariaLabel.trim()
   }
-  return `${props.title}，${props.cellCount > 0 ? `共 ${props.cellCount} 格` : '暂无数据'}`
+  return `${props.title}，${props.cellCount > 0 ? `共 ${props.cellCount} 格` : '当前没有可展示的内容'}`
 })
 
 /** 将 ECharts 热力图点击映射为单元格下标，供页面选中题目。 */

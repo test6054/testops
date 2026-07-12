@@ -9,8 +9,10 @@ import {
   ScanDispatchTicketStatusCode,
   ScanDispatchTicketStatusDescription,
 } from '@/apis/mark/scanner-dispatch'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -19,6 +21,10 @@ import {
   DispatchQueueStatusFilterDescription,
 } from '@/types/enums/dispatch-queue-status-filter-enum'
 import { ScannerExceptionItemKindCode } from '@/types/enums/scanner-exception-item-kind-enum'
+import {
+  buildSuspectedMixedScanQueueRoute,
+  fetchArchiveSuspectedMixedPendingTotal,
+} from '@/utils/archive-suspected-mixed-navigation'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ScannerDispatchPanel from './ScannerDispatchPanel.vue'
@@ -48,20 +54,21 @@ const route = useRoute()
 const router = useRouter()
 const overviewLoading = ref(false)
 const overviewLoadFailed = ref(false)
-const failedTicketCount = ref(0)
-const failedWorkOrderCount = ref(0)
-const mixedBatchCount = ref(0)
-const pageRegisterBlockedCount = ref(0)
-const pendingDispatchCount = ref(0)
-const processingDispatchCount = ref(0)
-const suspendedDispatchCount = ref(0)
-const committingWorkOrderCount = ref(0)
+const failedTicketCount = ref<number | null>(null)
+const failedWorkOrderCount = ref<number | null>(null)
+const archiveMixedPendingTotal = ref<number | null>(null)
+const pageRegisterBlockedCount = ref<number | null>(null)
+const partialTailPendingCount = ref<number | null>(null)
+const pendingDispatchCount = ref<number | null>(null)
+const processingDispatchCount = ref<number | null>(null)
+const suspendedDispatchCount = ref<number | null>(null)
+const committingWorkOrderCount = ref<number | null>(null)
 
 const tabItems = [
-  { key: 'exception', label: '异常看板' },
-  { key: 'ops', label: '运营统计' },
-  { key: 'log', label: '操作日志' },
-  { key: 'dispatch', label: '派单调度' },
+  { key: 'exception', label: '异常处置' },
+  { key: 'dispatch', label: '派单结案' },
+  { key: 'ops', label: '运营体检' },
+  { key: 'log', label: '处置日志' },
 ]
 
 function parseTab(value: unknown): ScannerCenterTab {
@@ -118,7 +125,7 @@ function buildDispatchTabQuery(context: DispatchRouteContext): Record<string, st
 }
 
 function buildLogTabQuery(
-  payload: { ticketId?: string, volumeId?: string },
+  payload: { ticketId?: string; volumeId?: string },
   dispatchContext: DispatchRouteContext,
 ): Record<string, string> {
   const query: Record<string, string> = { tab: 'log' }
@@ -138,13 +145,13 @@ function buildLogTabQuery(
 
 function resolveLogReturnDispatchLabel(context: DispatchRouteContext): string | undefined {
   if (context.dispatchFilter === DispatchQueueStatusFilterCode.FAILED) {
-    return `派单调度 · ${strictEnumLabel(DispatchQueueStatusFilterDescription, DispatchQueueStatusFilterCode.FAILED, 'dispatchQueueStatusFilter')}`
+    return `派单结案 · ${strictEnumLabel(DispatchQueueStatusFilterDescription, DispatchQueueStatusFilterCode.FAILED, 'dispatchQueueStatusFilter')}`
   }
   const status = ALL_SCAN_DISPATCH_TICKET_STATUS_CODES.find(
     (code) => code === context.dispatchStatus,
   )
   if (status) {
-    return `派单调度 · ${strictEnumLabel(ScanDispatchTicketStatusDescription, status, 'ticketStatus')}`
+    return `派单结案 · ${strictEnumLabel(ScanDispatchTicketStatusDescription, status, 'ticketStatus')}`
   }
   return undefined
 }
@@ -184,8 +191,8 @@ watch(
 function buildTabQuery(tab: ScannerCenterTab): Record<string, string> {
   const query: Record<string, string> = { tab }
   if (tab === 'exception') {
-    const kind
-      = route.query.tab === 'exception'
+    const kind =
+      route.query.tab === 'exception'
         ? asQueryString(route.query.kind)
         : exceptionKindSnapshot.value
     if (kind) {
@@ -246,107 +253,278 @@ function isExceptionKindActive(kind: ScannerExceptionItemKindCode): boolean {
   return activeTab.value === 'exception' && exceptionKind.value === kind
 }
 
-const headerSignalMetrics = computed<SignalMetric[]>(() => [
-  {
-    key: 'failed-ticket',
-    label: '失败派单',
-    value: String(failedTicketCount.value),
-    tone: failedTicketCount.value > 0 ? 'red' : 'green',
+function metricValue(count: number | null): string {
+  return count == null ? '—' : String(count)
+}
+
+function metricTone(count: number | null, activeTone: SignalMetric['tone']): SignalMetric['tone'] {
+  if (count == null) {
+    return 'gray'
+  }
+  return count > 0 ? activeTone : 'green'
+}
+
+interface DutyMetric {
+  key: string
+  label: string
+  count: number | null
+  tone: SignalMetric['tone']
+  active: boolean
+  helper?: string
+}
+
+/** 共享值班台：固定完整待办看板，零值也展示，避免单卡拉伸留白。 */
+const dutyBoardMetrics = computed<DutyMetric[]>(() => {
+  const metrics: DutyMetric[] = [
+    {
+      key: 'page-register-blocked',
+      label: '页登记阻断',
+      count: pageRegisterBlockedCount.value,
+      tone: metricTone(pageRegisterBlockedCount.value, 'red'),
+      active: isExceptionKindActive(ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED),
+      helper: '阻断续扫',
+    },
+    {
+      key: 'failed-ticket',
+      label: '失败派单',
+      count: failedTicketCount.value,
+      tone: metricTone(failedTicketCount.value, 'red'),
+      active: isDispatchFailedQueueActive.value,
+      helper: '失败队列',
+    },
+    {
+      key: 'failed-work-order',
+      label: '失败工单',
+      count: failedWorkOrderCount.value,
+      tone: metricTone(failedWorkOrderCount.value, 'red'),
+      active: isExceptionKindActive(ScannerExceptionItemKindCode.WORK_ORDER),
+      helper: '工单失败',
+    },
+    {
+      key: 'partial-tail',
+      label: '余页未切卷',
+      count: partialTailPendingCount.value,
+      tone: metricTone(partialTailPendingCount.value, 'orange'),
+      active: isExceptionKindActive(ScannerExceptionItemKindCode.PARTIAL_TAIL),
+      helper: '人工确认',
+    },
+    {
+      key: 'committing-work-order',
+      label: '合成中',
+      count: committingWorkOrderCount.value,
+      tone: metricTone(committingWorkOrderCount.value, 'orange'),
+      active: isExceptionKindActive(ScannerExceptionItemKindCode.COMMITTING),
+      helper: '合成进行中',
+    },
+    {
+      key: 'pending-dispatch',
+      label: '待处理派单',
+      count: pendingDispatchCount.value,
+      tone: metricTone(pendingDispatchCount.value, 'orange'),
+      active:
+        activeTab.value === 'dispatch' &&
+        dispatchStatus.value === ScanDispatchTicketStatusCode.PENDING &&
+        dispatchFilter.value !== DispatchQueueStatusFilterCode.FAILED,
+      helper: '可领取',
+    },
+    {
+      key: 'processing-dispatch',
+      label: '处理中派单',
+      count: processingDispatchCount.value,
+      tone: metricTone(processingDispatchCount.value, 'blue'),
+      active:
+        activeTab.value === 'dispatch' &&
+        dispatchStatus.value === ScanDispatchTicketStatusCode.PROCESSING,
+      helper: '工位占用中',
+    },
+    {
+      key: 'suspended-dispatch',
+      label: '挂起派单',
+      count: suspendedDispatchCount.value,
+      tone: metricTone(suspendedDispatchCount.value, 'orange'),
+      active:
+        activeTab.value === 'dispatch' &&
+        dispatchStatus.value === ScanDispatchTicketStatusCode.SUSPENDED,
+      helper: '待恢复',
+    },
+  ]
+  if (archiveMixedPendingTotal.value != null && archiveMixedPendingTotal.value > 0) {
+    metrics.splice(1, 0, {
+      key: 'mixed-batch',
+      label: '混扫复核',
+      count: archiveMixedPendingTotal.value,
+      tone: 'orange',
+      active: false,
+      helper: '归档待办',
+    })
+  }
+  return metrics
+})
+
+const backlogDutyMetrics = computed(() =>
+  dutyBoardMetrics.value.filter((metric) => metric.count != null && metric.count > 0),
+)
+
+const headerSignalMetrics = computed<SignalMetric[]>(() =>
+  dutyBoardMetrics.value.map((metric) => ({
+    key: metric.key,
+    label: metric.label,
+    value: metricValue(metric.count),
+    tone: metric.tone,
     clickable: true,
-    active: isDispatchFailedQueueActive.value,
-    helper: failedTicketCount.value > 0 ? '打开失败队列' : undefined,
-  },
-  {
-    key: 'failed-work-order',
-    label: '失败工单',
-    value: String(failedWorkOrderCount.value),
-    tone: failedWorkOrderCount.value > 0 ? 'red' : 'green',
-    clickable: true,
-    active: isExceptionKindActive(ScannerExceptionItemKindCode.WORK_ORDER),
-  },
-  {
-    key: 'mixed-batch',
-    label: '疑似混扫',
-    value: String(mixedBatchCount.value),
-    tone: mixedBatchCount.value > 0 ? 'orange' : 'green',
-    clickable: true,
-    active: isExceptionKindActive(ScannerExceptionItemKindCode.MIXED_BATCH),
-  },
-  {
-    key: 'page-register-blocked',
-    label: '页登记阻断',
-    value: String(pageRegisterBlockedCount.value),
-    tone: pageRegisterBlockedCount.value > 0 ? 'red' : 'green',
-    clickable: true,
-    active: isExceptionKindActive(ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED),
-  },
-  {
-    key: 'committing-work-order',
-    label: '合成中工单',
-    value: String(committingWorkOrderCount.value),
-    tone: committingWorkOrderCount.value > 0 ? 'orange' : 'green',
-    clickable: true,
-    active: isExceptionKindActive(ScannerExceptionItemKindCode.COMMITTING),
-  },
-  {
-    key: 'pending-dispatch',
-    label: '待处理派单',
-    value: String(pendingDispatchCount.value),
-    tone: pendingDispatchCount.value > 0 ? 'orange' : 'green',
-    clickable: true,
-    active:
-      activeTab.value === 'dispatch'
-      && dispatchStatus.value === ScanDispatchTicketStatusCode.PENDING
-      && dispatchFilter.value !== DispatchQueueStatusFilterCode.FAILED,
-  },
-  {
-    key: 'processing-dispatch',
-    label: '处理中派单',
-    value: String(processingDispatchCount.value),
-    tone: processingDispatchCount.value > 0 ? 'blue' : 'green',
-    clickable: true,
-    active:
-      activeTab.value === 'dispatch'
-      && dispatchStatus.value === ScanDispatchTicketStatusCode.PROCESSING,
-  },
-  {
-    key: 'suspended-dispatch',
-    label: '挂起派单',
-    value: String(suspendedDispatchCount.value),
-    tone: suspendedDispatchCount.value > 0 ? 'orange' : 'green',
-    clickable: true,
-    active:
-      activeTab.value === 'dispatch'
-      && dispatchStatus.value === ScanDispatchTicketStatusCode.SUSPENDED,
-  },
-])
+    active: metric.active,
+    helper: metric.count != null && metric.count > 0 ? metric.helper : '正常',
+  })),
+)
+
+const totalBacklogCount = computed(() =>
+  backlogDutyMetrics.value.reduce((sum, metric) => sum + (metric.count ?? 0), 0),
+)
+
+const recommendedDutyAction = computed(() => {
+  if (overviewLoading.value) {
+    return null
+  }
+  if (overviewLoadFailed.value) {
+    return {
+      key: 'reload-overview',
+      tone: 'error' as const,
+      title: '值班概览未加载成功',
+      description: '共享队列数字不可用，请先恢复概览后再分工处置。',
+      actionLabel: '重新加载概览',
+    }
+  }
+  const pageBlocked = pageRegisterBlockedCount.value ?? 0
+  if (pageBlocked > 0) {
+    return {
+      key: 'page-register-blocked',
+      tone: 'error' as const,
+      title: `当前推荐：处理 ${pageBlocked} 条页登记阻断`,
+      description: '全组可见同一队列；任一带队老师/协助人员均可点开结案。',
+      actionLabel: '进入异常处置',
+    }
+  }
+  const failedTickets = failedTicketCount.value ?? 0
+  if (failedTickets > 0) {
+    return {
+      key: 'failed-ticket',
+      tone: 'error' as const,
+      title: `当前推荐：清理 ${failedTickets} 条失败派单`,
+      description: '失败派单影响现场续扫，优先打开失败队列分工处理。',
+      actionLabel: '打开失败派单',
+    }
+  }
+  const failedOrders = failedWorkOrderCount.value ?? 0
+  if (failedOrders > 0) {
+    return {
+      key: 'failed-work-order',
+      tone: 'error' as const,
+      title: `当前推荐：处理 ${failedOrders} 条失败工单`,
+      description: '失败工单需回看批次与影像后分工处理。',
+      actionLabel: '进入失败工单',
+    }
+  }
+  const mixedPending = archiveMixedPendingTotal.value ?? 0
+  if (mixedPending > 0) {
+    return {
+      key: 'mixed-batch',
+      tone: 'warning' as const,
+      title: `当前推荐：复核 ${mixedPending} 条混扫待办`,
+      description: '混扫待办在归档复核链结案，全组共享同一待办池。',
+      actionLabel: '打开混扫复核',
+    }
+  }
+  const partialTail = partialTailPendingCount.value ?? 0
+  if (partialTail > 0) {
+    return {
+      key: 'partial-tail',
+      tone: 'warning' as const,
+      title: `当前推荐：确认 ${partialTail} 条余页未切卷`,
+      description: '切卷余页需教师确认忽略或人工合并，全组共享同一待办池。',
+      actionLabel: '进入余页处置',
+    }
+  }
+  const suspended = suspendedDispatchCount.value ?? 0
+  if (suspended > 0) {
+    return {
+      key: 'suspended-dispatch',
+      tone: 'warning' as const,
+      title: `当前推荐：跟进 ${suspended} 条挂起派单`,
+      description: '挂起派单通常对应设备/现场待确认，可转派或恢复处理。',
+      actionLabel: '查看挂起派单',
+    }
+  }
+  const pending = pendingDispatchCount.value ?? 0
+  if (pending > 0) {
+    return {
+      key: 'pending-dispatch',
+      tone: 'warning' as const,
+      title: `当前推荐：领取 ${pending} 条待处理派单`,
+      description: '待处理派单可供现场继续扫描或补扫。',
+      actionLabel: '打开待处理派单',
+    }
+  }
+  if (totalBacklogCount.value === 0 && !overviewLoading.value) {
+    return {
+      key: 'healthy',
+      tone: 'success' as const,
+      title: '当前无待处置积压',
+      description: '可切换运营体检查看吞吐与混扫，或在处置日志回溯历史结案。',
+      actionLabel: '查看运营体检',
+    }
+  }
+  return null
+})
+
+const dutyContextSubtitle = computed(() => {
+  if (overviewLoadFailed.value) {
+    return '共享协作值班台 · 概览不可用 · 请刷新队列'
+  }
+  if (totalBacklogCount.value > 0) {
+    const hot = backlogDutyMetrics.value
+      .slice(0, 3)
+      .map((metric) => `${metric.label} ${metric.count}`)
+      .join(' · ')
+    return `共享协作值班台 · 待处置 ${totalBacklogCount.value} 项 · ${hot}`
+  }
+  return '共享协作值班台 · 全组可见同一队列 · 当前无积压'
+})
 
 async function loadOverview() {
   overviewLoading.value = true
   overviewLoadFailed.value = false
   try {
     const overview = await loadScannerCenterOverview()
-    failedTicketCount.value = Number(overview.failedTicketCount ?? 0)
-    failedWorkOrderCount.value = Number(overview.failedWorkOrderCount ?? 0)
-    mixedBatchCount.value = Number(overview.mixedBatchCount ?? 0)
-    pageRegisterBlockedCount.value = Number(overview.pageRegisterBlockedCount ?? 0)
-    committingWorkOrderCount.value = Number(overview.committingWorkOrderCount ?? 0)
-    pendingDispatchCount.value = Number(overview.pendingDispatchCount ?? 0)
-    processingDispatchCount.value = Number(overview.processingDispatchCount ?? 0)
-    suspendedDispatchCount.value = Number(overview.suspendedDispatchCount ?? 0)
+    failedTicketCount.value = overview.failedTicketCount ?? null
+    failedWorkOrderCount.value = overview.failedWorkOrderCount ?? null
+    pageRegisterBlockedCount.value = overview.pageRegisterBlockedCount ?? null
+    committingWorkOrderCount.value = overview.committingWorkOrderCount ?? null
+    partialTailPendingCount.value = overview.partialTailPendingCount ?? null
+    pendingDispatchCount.value = overview.pendingDispatchCount ?? null
+    processingDispatchCount.value = overview.processingDispatchCount ?? null
+    suspendedDispatchCount.value = overview.suspendedDispatchCount ?? null
   } catch (error) {
-    failedTicketCount.value = 0
-    failedWorkOrderCount.value = 0
-    mixedBatchCount.value = 0
-    pageRegisterBlockedCount.value = 0
-    committingWorkOrderCount.value = 0
-    pendingDispatchCount.value = 0
-    processingDispatchCount.value = 0
-    suspendedDispatchCount.value = 0
+    failedTicketCount.value = null
+    failedWorkOrderCount.value = null
+    pageRegisterBlockedCount.value = null
+    committingWorkOrderCount.value = null
+    partialTailPendingCount.value = null
+    pendingDispatchCount.value = null
+    processingDispatchCount.value = null
+    suspendedDispatchCount.value = null
+    archiveMixedPendingTotal.value = null
     overviewLoadFailed.value = true
-    showUserError(error, '扫描中心概览加载失败')
+    showUserError(error, '扫描值班台概览加载失败')
+    return
   } finally {
     overviewLoading.value = false
+  }
+  try {
+    const mixedPendingTotal = await fetchArchiveSuspectedMixedPendingTotal()
+    archiveMixedPendingTotal.value = mixedPendingTotal > 0 ? mixedPendingTotal : null
+  } catch (mixedError) {
+    archiveMixedPendingTotal.value = null
+    showUserError(mixedError, '混扫复核待办加载失败')
   }
 }
 
@@ -364,11 +542,15 @@ function handleHeaderMetricClick(key: string) {
     })
     return
   }
-  const exceptionQueryByKey: Record<string, { tab: 'exception', kind: string }> = {
+  if (key === 'mixed-batch') {
+    void router.push(buildSuspectedMixedScanQueueRoute())
+    return
+  }
+  const exceptionQueryByKey: Record<string, { tab: 'exception'; kind: string }> = {
     'committing-work-order': { tab: 'exception', kind: 'COMMITTING' },
     'failed-work-order': { tab: 'exception', kind: 'WORK_ORDER' },
-    'mixed-batch': { tab: 'exception', kind: 'MIXED_BATCH' },
     'page-register-blocked': { tab: 'exception', kind: 'PAGE_REGISTER_BLOCKED' },
+    'partial-tail': { tab: 'exception', kind: 'PARTIAL_TAIL' },
   }
   const dispatchStatusByKey: Record<string, ScanDispatchTicketStatusCode> = {
     'pending-dispatch': ScanDispatchTicketStatusCode.PENDING,
@@ -384,6 +566,22 @@ function handleHeaderMetricClick(key: string) {
   if (status) {
     void router.replace({ query: buildDispatchTabQuery({ dispatchStatus: status }) })
   }
+}
+
+function handleRecommendedAction() {
+  const action = recommendedDutyAction.value
+  if (!action) {
+    return
+  }
+  if (action.key === 'reload-overview') {
+    void loadOverview()
+    return
+  }
+  if (action.key === 'healthy') {
+    void router.replace({ query: { tab: 'ops' } })
+    return
+  }
+  handleHeaderMetricClick(action.key)
 }
 
 function resolveDispatchContextForOpenLog(payload: OpenLogPayload): DispatchRouteContext {
@@ -431,23 +629,47 @@ watch(
 
 <template>
   <StageWorkbenchShell>
+    <template #context>
+      <ContextBar layout="workbench" title="扫描值班台" :subtitle="dutyContextSubtitle">
+        <template #actions>
+          <UiButton
+            size="sm"
+            variant="outline"
+            :loading="overviewLoading"
+            @click="() => loadOverview()"
+          >
+            刷新队列
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
+
     <template #signal>
+      <UiAlertStrip
+        v-if="recommendedDutyAction"
+        dense
+        :tone="recommendedDutyAction.tone"
+        :title="recommendedDutyAction.title"
+        :description="recommendedDutyAction.description"
+        class="scanner-center__recommend"
+      >
+        <template #actions>
+          <UiButton size="sm" variant="outline" @click="handleRecommendedAction">
+            {{ recommendedDutyAction.actionLabel }}
+          </UiButton>
+        </template>
+      </UiAlertStrip>
       <SignalBand
-        variant="tiles"
+        v-if="headerSignalMetrics.length > 0 && !overviewLoadFailed"
+        variant="panel"
         compact
+        class="scanner-center__metrics"
         :metrics="headerSignalMetrics"
         @metric-click="handleHeaderMetricClick"
       />
     </template>
 
-    <UiEmpty
-      v-if="overviewLoadFailed"
-      description="扫描中心概览加载失败"
-      action-label="重试"
-      @action="() => loadOverview()"
-    />
-
-    <WorkbenchSurfaceCard v-else flush>
+    <WorkbenchSurfaceCard flush class="scanner-center__surface">
       <template #head>
         <UiSectionTabs
           :model-value="activeTab"
@@ -485,3 +707,13 @@ watch(
     </WorkbenchSurfaceCard>
   </StageWorkbenchShell>
 </template>
+
+<style scoped>
+.scanner-center__recommend {
+  margin-bottom: 8px;
+}
+
+.scanner-center__surface {
+  min-height: 0;
+}
+</style>

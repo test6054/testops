@@ -53,17 +53,17 @@
       tone="error"
       dense
       title="正评创建条件加载失败"
-      description="创建条件暂时不可用，请刷新页面后重试。"
+      description="创建条件暂时不可用，请返回后重新进入本页。"
       class="org-sessions__readiness-error"
     />
 
     <WorkflowReadinessPanel
       v-if="
-        organization
-          && canManageOrganization
-          && !canCreateSession
-          && !sessionCreateReadinessLoadFailed
-          && sessionCreateWorkflow.steps.length
+        organization &&
+        canManageOrganization &&
+        !canCreateSession &&
+        !sessionCreateReadinessLoadFailed &&
+        sessionCreateWorkflow.steps.length
       "
       :title="sessionCreateWorkflow.panelTitle"
       :steps="sessionCreateWorkflow.steps"
@@ -117,6 +117,7 @@
 
 <script lang="ts" setup>
 import type { LifecycleAction } from './components/SessionLifecycleReasonModal.vue'
+import SessionLifecycleReasonModal from './components/SessionLifecycleReasonModal.vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -139,12 +140,11 @@ import { resolveMarkingOrganizationTrialSessionsRoute } from '@/utils/marking-or
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import FormalSessionCreateDialog from './components/FormalSessionCreateDialog.vue'
 import FormalSessionWorkbench from './components/FormalSessionWorkbench.vue'
-import SessionLifecycleReasonModal from './components/SessionLifecycleReasonModal.vue'
 
 defineOptions({ name: 'AdminMarkingOrganizationFormalSessions' })
 
-const { isJourneyChrome, examStatusLabel, examStatusTone }
-  = useOptionalExamJourneyContextBar('正评会话')
+const { isJourneyChrome, examStatusLabel, examStatusTone } =
+  useOptionalExamJourneyContextBar('正评会话')
 
 const router = useRouter()
 const {

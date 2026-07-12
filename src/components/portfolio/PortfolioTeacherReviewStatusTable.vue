@@ -38,18 +38,18 @@ import type {
   PortfolioArchiveRecordStatusCode,
   PortfolioReviewTaskStatusCode,
 } from '@/apis/portfolio/enums'
-import type { PortfolioTeacherReviewStatusRowVO } from '@/apis/portfolio/types'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { ref, watch } from 'vue'
 import {
   PortfolioArchiveRecordStatusDescription,
   PortfolioReviewTaskStatusDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioReviewStatusApi } from '@/apis/portfolio/review-status'
+import type { PortfolioTeacherReviewStatusRowVO } from '@/apis/portfolio/types'
 import {
   PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
   PORTFOLIO_REVIEW_TASK_STATUS_TONE,
 } from '@/apis/portfolio/types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { ref, watch } from 'vue'
+import { portfolioReviewStatusApi } from '@/apis/portfolio/review-status'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -77,6 +77,8 @@ const rows = ref<PortfolioTeacherReviewStatusRowVO[]>([])
 const pageNum = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
+const pendingLocateRecordId = ref<string>()
+const requestToken = ref(0)
 
 function archiveRecordStatusLabel(status: PortfolioArchiveRecordStatusCode): string {
   return strictEnumLabel(PortfolioArchiveRecordStatusDescription, status, '档案记录状态')
@@ -101,6 +103,7 @@ function rowClassName(record: PortfolioTeacherReviewStatusRowVO): string {
 }
 
 async function loadPage() {
+  const currentToken = requestToken.value
   loading.value = true
   try {
     const page = await portfolioReviewStatusApi.list({
@@ -109,26 +112,40 @@ async function loadPage() {
       recordStatus: props.recordStatus,
       pageNum: pageNum.value,
       pageSize: pageSize.value,
+      locateRecordId: pendingLocateRecordId.value,
     })
+    if (requestToken.value !== currentToken) {
+      return
+    }
     rows.value = page.list
     total.value = page.total
+    pageNum.value = page.pageNum ?? pageNum.value
+    pageSize.value = page.pageSize ?? pageSize.value
+    pendingLocateRecordId.value = undefined
   } catch (error) {
+    if (requestToken.value !== currentToken) {
+      return
+    }
     showUserError(error, '加载审核进度失败')
   } finally {
-    loading.value = false
+    if (requestToken.value === currentToken) {
+      loading.value = false
+    }
   }
 }
 
-function handlePageChange(next: { current: number, pageSize: number }) {
+function handlePageChange(next: { current: number; pageSize: number }) {
   pageNum.value = next.current
   pageSize.value = next.pageSize
   void loadPage()
 }
 
 watch(
-  () => [props.teacherId, props.academicYear, props.recordStatus],
+  () => [props.teacherId, props.academicYear, props.recordStatus, props.highlightRecordId],
   () => {
+    requestToken.value += 1
     pageNum.value = 1
+    pendingLocateRecordId.value = props.highlightRecordId
     void loadPage()
   },
   { immediate: true },

@@ -6,6 +6,14 @@ import type {
   PortfolioMaterialRiskLevelCode,
   PortfolioReviewActionTypeCode,
 } from '@/apis/portfolio/enums'
+import {
+  PortfolioArchiveRecordSourceTypeDescription,
+  PortfolioArchiveRecordStatusDescription,
+  PortfolioMaterialRiskLevelDescription,
+  PortfolioReviewActionTypeDescription,
+  PortfolioReviewTaskStatusCode,
+  PortfolioReviewTaskStatusDescription,
+} from '@/apis/portfolio/enums'
 import type {
   PortfolioAiAnalysisDetailVO,
   PortfolioArchiveCategoryTreeNodeVO,
@@ -15,19 +23,6 @@ import type {
   PortfolioReviewTaskPageRequest,
   PortfolioReviewTaskSummaryVO,
 } from '@/apis/portfolio/types'
-import type { BadgeTone, FilterField, FilterOption } from '@/components/ui-guide/ui/types'
-import { Input, message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
-import {
-  PortfolioArchiveRecordSourceTypeDescription,
-  PortfolioArchiveRecordStatusDescription,
-  PortfolioMaterialRiskLevelDescription,
-  PortfolioReviewActionTypeDescription,
-  PortfolioReviewTaskStatusCode,
-  PortfolioReviewTaskStatusDescription,
-} from '@/apis/portfolio/enums'
-import { portfolioReviewApi } from '@/apis/portfolio/review'
 import {
   PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
   PORTFOLIO_DEFAULT_AUDIT_FLOW_CODE,
@@ -35,6 +30,12 @@ import {
   PORTFOLIO_REVIEW_TASK_STATUS_TONE,
   PORTFOLIO_SCHOOL_REVIEW_FLOW_CODE,
 } from '@/apis/portfolio/types'
+import type { BadgeTone, FilterField, FilterOption } from '@/components/ui-guide/ui/types'
+import { Input, message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
+import { portfolioReviewApi } from '@/apis/portfolio/review'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
@@ -156,7 +157,7 @@ const filterModel = computed<Record<string, unknown>>({
   },
 })
 
-const categoryOptions = ref<{ label: string, value: string }[]>([])
+const categoryOptions = ref<{ label: string; value: string }[]>([])
 
 const filterFields = computed<FilterField[]>(() => [
   {
@@ -209,6 +210,12 @@ const rows = ref<PortfolioReviewTaskSummaryVO[]>([])
 const pageNum = ref(1)
 const pageSize = ref(DEFAULT_LIST_PAGE_SIZE)
 const pageTotal = ref(0)
+const categoryRequestToken = ref(0)
+const pageRequestToken = ref(0)
+const detailRequestToken = ref(0)
+const fieldRequestToken = ref(0)
+const logRequestToken = ref(0)
+const aiPreReviewRequestToken = ref(0)
 const selectedRowKeys = ref<string[]>([])
 const batchSubmitting = ref(false)
 const batchRejectSubmitting = ref(false)
@@ -235,24 +242,96 @@ const returnDeadline = ref('')
 const batchRejectReason = ref('')
 const batchReturnDeadline = ref('')
 const escalateReason = ref('')
+const router = useRouter()
 
 const batchSelectableKeys = computed(() =>
   rows.value.filter((item) => item.batchApproveAllowed).map((item) => item.id),
 )
 
+/** 列表或筛选变化后，若当前审核任务已失效，必须关闭抽屉并清空旧复核上下文。 */
+function resetReviewDetailContext() {
+  detailRequestToken.value += 1
+  fieldRequestToken.value += 1
+  logRequestToken.value += 1
+  aiPreReviewRequestToken.value += 1
+  drawerOpen.value = false
+  activeRow.value = null
+  recordDetail.value = null
+  aiPreReview.value = null
+  aiPreReviewAbsent.value = false
+  fieldRows.value = []
+  fieldTotal.value = 0
+  fieldPageNum.value = 1
+  logRows.value = []
+  logTotal.value = 0
+  logPageNum.value = 1
+  approveOpinion.value = ''
+  rejectReason.value = ''
+  dismissReason.value = ''
+  returnDeadline.value = ''
+  escalateReason.value = ''
+}
+
 async function loadCategories() {
+  const currentToken = ++categoryRequestToken.value
   try {
-    const tree = await portfolioArchiveTemplateApi.listCategoryTree()
+    const tree = await portfolioArchiveTemplateApi.listCategoryTree({
+      teacherId: filterForm.teacherId,
+    })
+    if (currentToken !== categoryRequestToken.value) {
+      return
+    }
     categoryOptions.value = flattenCategoryTree(tree ?? [])
   } catch (error) {
+    if (currentToken !== categoryRequestToken.value) {
+      return
+    }
     showUserError(error, '加载档案分类失败')
   }
 }
 
+function reviewRecordFieldValue(fieldCode: string): string | undefined {
+  if (fieldCode === 'academicYear') {
+    const fromRecordColumn = recordDetail.value?.academicYear?.trim()
+    if (fromRecordColumn) {
+      return fromRecordColumn
+    }
+  }
+  const fromDetail = recordDetail.value?.fields
+    ?.find((item) => item.fieldCode === fieldCode)
+    ?.fieldValue?.trim()
+  if (fromDetail) {
+    return fromDetail
+  }
+  return (
+    fieldRows.value.find((item) => item.fieldCode === fieldCode)?.fieldValue?.trim() || undefined
+  )
+}
+
+function goCourseArchive(teacherId: string) {
+  const query: Record<string, string> = { teacherId }
+  const courseCode = reviewRecordFieldValue('courseCode')
+  const academicYear = reviewRecordFieldValue('academicYear')
+  const semester = reviewRecordFieldValue('semester')
+  if (courseCode) {
+    query.courseCode = courseCode
+  }
+  if (academicYear) {
+    query.academicYear = academicYear
+  }
+  if (semester) {
+    query.semester = semester
+  }
+  void router.push({
+    path: '/portfolio/teacher/course-archive',
+    query,
+  })
+}
+
 function flattenCategoryTree(
   nodes: PortfolioArchiveCategoryTreeNodeVO[],
-): { label: string, value: string }[] {
-  const options: { label: string, value: string }[] = []
+): { label: string; value: string }[] {
+  const options: { label: string; value: string }[] = []
   for (const node of nodes) {
     options.push({ label: node.categoryName, value: node.id })
     if (node.children?.length) {
@@ -263,6 +342,7 @@ function flattenCategoryTree(
 }
 
 async function loadPage() {
+  const currentToken = ++pageRequestToken.value
   loading.value = true
   try {
     const result = await portfolioReviewApi.pageTasks({
@@ -274,26 +354,39 @@ async function loadPage() {
       auditFlowCode: filterForm.auditFlowCode,
       reviewStatus: filterForm.reviewStatus,
     })
+    if (currentToken !== pageRequestToken.value) {
+      return
+    }
     rows.value = result.list
     pageTotal.value = result.total
     selectedRowKeys.value = selectedRowKeys.value.filter((id) =>
       batchSelectableKeys.value.includes(id),
     )
+    if (activeRow.value && !rows.value.some((item) => item.id === activeRow.value?.id)) {
+      resetReviewDetailContext()
+    }
   } catch (error) {
+    if (currentToken !== pageRequestToken.value) {
+      return
+    }
     showUserError(error, '加载审核待办失败')
   } finally {
-    loading.value = false
+    if (currentToken === pageRequestToken.value) {
+      loading.value = false
+    }
   }
 }
 
 function handleSearch() {
   pageNum.value = 1
+  resetReviewDetailContext()
   void loadPage()
 }
 
-function handlePageChange(event: { current: number, pageSize: number }) {
+function handlePageChange(event: { current: number; pageSize: number }) {
   pageNum.value = event.current
   pageSize.value = event.pageSize
+  resetReviewDetailContext()
   void loadPage()
 }
 
@@ -301,11 +394,16 @@ async function loadFieldPage() {
   if (!activeRow.value) {
     return
   }
+  const requestTaskId = activeRow.value.id
+  const currentToken = ++fieldRequestToken.value
   const page = await portfolioReviewApi.pageArchiveRecordFields({
     archiveRecordId: activeRow.value.archiveRecordId,
     pageNum: fieldPageNum.value,
     pageSize: fieldPageSize.value,
   })
+  if (currentToken !== fieldRequestToken.value || activeRow.value?.id !== requestTaskId) {
+    return
+  }
   fieldRows.value = page.list
   fieldTotal.value = page.total
 }
@@ -314,28 +412,37 @@ async function loadLogPage() {
   if (!activeRow.value) {
     return
   }
+  const requestTaskId = activeRow.value.id
+  const currentToken = ++logRequestToken.value
   const page = await portfolioReviewApi.pageLogs({
     reviewTaskId: activeRow.value.id,
     pageNum: logPageNum.value,
     pageSize: logPageSize.value,
   })
+  if (currentToken !== logRequestToken.value || activeRow.value?.id !== requestTaskId) {
+    return
+  }
   logRows.value = page.list
   logTotal.value = page.total
 }
 
-function handleFieldPageChange(event: { current: number, pageSize: number }) {
+function handleFieldPageChange(event: { current: number; pageSize: number }) {
   fieldPageNum.value = event.current
   fieldPageSize.value = event.pageSize
   void loadFieldPage()
 }
 
-function handleLogPageChange(event: { current: number, pageSize: number }) {
+function handleLogPageChange(event: { current: number; pageSize: number }) {
   logPageNum.value = event.current
   logPageSize.value = event.pageSize
   void loadLogPage()
 }
 
 async function openDetail(row: PortfolioReviewTaskSummaryVO) {
+  const currentToken = ++detailRequestToken.value
+  fieldRequestToken.value += 1
+  logRequestToken.value += 1
+  aiPreReviewRequestToken.value += 1
   activeRow.value = row
   drawerOpen.value = true
   approveOpinion.value = ''
@@ -354,12 +461,31 @@ async function openDetail(row: PortfolioReviewTaskSummaryVO) {
   logTotal.value = 0
   logPageNum.value = 1
   try {
-    recordDetail.value = await portfolioReviewApi.getArchiveRecord(row.archiveRecordId)
+    const detail = await portfolioReviewApi.getArchiveRecord(row.archiveRecordId)
+    if (currentToken !== detailRequestToken.value || activeRow.value?.id !== row.id) {
+      return
+    }
+    recordDetail.value = detail
     if (row.reviewActionAllowed) {
       await Promise.all([loadFieldPage(), loadLogPage()])
+      if (currentToken !== detailRequestToken.value || activeRow.value?.id !== row.id) {
+        return
+      }
       try {
-        aiPreReview.value = await portfolioReviewApi.getAiPreReview(row.id)
+        const aiRequestToken = ++aiPreReviewRequestToken.value
+        const aiDetail = await portfolioReviewApi.getAiPreReview(row.id)
+        if (
+          aiRequestToken !== aiPreReviewRequestToken.value ||
+          currentToken !== detailRequestToken.value ||
+          activeRow.value?.id !== row.id
+        ) {
+          return
+        }
+        aiPreReview.value = aiDetail
       } catch (error) {
+        if (currentToken !== detailRequestToken.value || activeRow.value?.id !== row.id) {
+          return
+        }
         if (readBusinessResultCode(error) === ResultCode.DATA_NOT_FOUND) {
           aiPreReviewAbsent.value = true
         } else {
@@ -368,9 +494,14 @@ async function openDetail(row: PortfolioReviewTaskSummaryVO) {
       }
     }
   } catch (error) {
+    if (currentToken !== detailRequestToken.value || activeRow.value?.id !== row.id) {
+      return
+    }
     showUserError(error, '加载审核详情失败')
   } finally {
-    detailLoading.value = false
+    if (currentToken === detailRequestToken.value && activeRow.value?.id === row.id) {
+      detailLoading.value = false
+    }
   }
 }
 
@@ -385,7 +516,7 @@ async function handleApprove() {
       opinion: approveOpinion.value.trim() || undefined,
     })
     message.success('审核已通过')
-    drawerOpen.value = false
+    resetReviewDetailContext()
     await loadPage()
   } catch (error) {
     showUserError(error, '审核通过失败')
@@ -407,7 +538,7 @@ async function handleReject() {
       returnDeadline: returnDeadline.value.trim(),
     })
     message.success('已退回修改')
-    drawerOpen.value = false
+    resetReviewDetailContext()
     await loadPage()
   } catch (error) {
     showUserError(error, '审核退回失败')
@@ -436,7 +567,7 @@ async function handleDismiss() {
       reason: dismissReason.value.trim(),
     })
     message.success('已驳回')
-    drawerOpen.value = false
+    resetReviewDetailContext()
     await loadPage()
   } catch (error) {
     showUserError(error, '审核驳回失败')
@@ -511,7 +642,7 @@ async function handleEscalate() {
       reason: escalateReason.value.trim(),
     })
     message.success('已转复审')
-    drawerOpen.value = false
+    resetReviewDetailContext()
     await loadPage()
   } catch (error) {
     showUserError(error, '转复审失败')
@@ -525,6 +656,17 @@ onMounted(async () => {
   await loadCategories()
   await loadPage()
 })
+
+watch(
+  () => filterForm.teacherId,
+  (teacherId, previousTeacherId) => {
+    if (teacherId === previousTeacherId) {
+      return
+    }
+    filterForm.categoryId = undefined
+    void loadCategories()
+  },
+)
 </script>
 
 <template>
@@ -639,12 +781,25 @@ onMounted(async () => {
       </UiDataTable>
     </UiCard>
 
-    <UiDrawer v-model:open="drawerOpen" title="审核复核" width="720">
+    <UiDrawer
+      v-model:open="drawerOpen"
+      title="审核复核"
+      width="720"
+      @close="resetReviewDetailContext"
+    >
       <template v-if="activeRow">
         <p class="review-meta">
           {{ activeRow.teacherName }} · {{ activeRow.categoryName }} ·
           {{ reviewTaskStatusLabel(activeRow.reviewStatus) }}
         </p>
+        <UiButton
+          v-if="activeRow.teacherId"
+          variant="ghost"
+          class="review-course-archive-link"
+          @click="goCourseArchive(activeRow.teacherId)"
+        >
+          查看课程档案
+        </UiButton>
         <p v-if="aiPreReview?.summary" class="review-ai-summary">
           AI 初审：{{ aiPreReview.summary }}
         </p>

@@ -1,6 +1,8 @@
 import type { ArchiveTemplateScopeCode } from '@/apis/mark/archive-template-scope'
 import type { ArchiveExamFormCode, ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
+import type { PageResult, QueryDto } from '@/types'
 import type { ArchiveSetupActionLinkCode } from '@/types/enums/archive-setup-action-link-enum'
+import type { ArchiveTenantTemplateOperationTypeCode } from '@/types/enums/archive-tenant-template-operation-type-enum'
 import http from '@/config/axios'
 
 export interface ArchivePlatformTemplateSetResponse {
@@ -246,4 +248,35 @@ export function getArchiveTenantSetupReadiness(): Promise<ArchiveTenantSetupRead
     '/api/mark/archive-volumes/tenant/setup-readiness',
     {},
   )
+}
+
+export interface ArchiveTenantTemplateAuditPageRequest extends QueryDto {
+  templateSetCode: string
+}
+
+export interface ArchiveTenantTemplateAuditItemVO {
+  auditId: string
+  templateSetCode: string
+  operationType: ArchiveTenantTemplateOperationTypeCode
+  operatorUserId?: string
+  createTime?: string
+}
+
+export interface ArchivePlatformTemplateRestoreFromAuditRequest {
+  auditId: string
+}
+
+export function pageArchiveTenantTemplateAudit(
+  request: ArchiveTenantTemplateAuditPageRequest,
+): Promise<PageResult<ArchiveTenantTemplateAuditItemVO>> {
+  return http.post<PageResult<ArchiveTenantTemplateAuditItemVO>>(
+    '/api/mark/archive-volumes/platform-template/audit/page',
+    request,
+  )
+}
+
+export function restoreArchiveTenantTemplateFromAudit(
+  request: ArchivePlatformTemplateRestoreFromAuditRequest,
+): Promise<void> {
+  return http.post<void>('/api/mark/archive-volumes/platform-template/restore-from-audit', request)
 }

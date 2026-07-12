@@ -8,7 +8,9 @@
           <article class="exam-status-card">
             <header class="exam-status-card__head">
               <div class="exam-status-card__head-main">
-                <p v-if="examMeta" class="exam-status-card__meta exam-status-card__meta--lead">{{ examMeta }}</p>
+                <p v-if="examMeta" class="exam-status-card__meta exam-status-card__meta--lead">
+                  {{ examMeta }}
+                </p>
               </div>
               <UiTag v-if="stageTagLabel" :tone="stageTagTone" size="sm">{{ stageTagLabel }}</UiTag>
             </header>
@@ -32,18 +34,25 @@
               <div>
                 <div class="exam-status-card__stat-value exam-status-card__stat-value--green">
                   {{ markingProgress?.gradablePaperCount ?? 0 }}
-                  <span class="exam-status-card__stat-sub">/{{ markingProgress?.paperCount ?? 0 }}</span>
+                  <span class="exam-status-card__stat-sub"
+                    >/{{ markingProgress?.paperCount ?? 0 }}</span
+                  >
                 </div>
                 <div class="exam-status-card__stat-label">可阅卷</div>
               </div>
               <div v-if="markingPercent > 0 || (markingProgress?.totalQuestionGradeCount ?? 0) > 0">
-                <div class="exam-status-card__stat-value exam-status-card__stat-value--blue">{{ markingPercent }}%</div>
+                <div class="exam-status-card__stat-value exam-status-card__stat-value--blue">
+                  {{ markingPercent }}%
+                </div>
                 <div class="exam-status-card__stat-label">批阅进度</div>
               </div>
               <div v-if="(markingProgress?.scanAttentionCount ?? 0) > 0">
                 <div
                   class="exam-status-card__stat-value"
-                  :class="{ 'exam-status-card__stat-value--orange': (markingProgress?.scanAttentionCount ?? 0) > 0 }"
+                  :class="{
+                    'exam-status-card__stat-value--orange':
+                      (markingProgress?.scanAttentionCount ?? 0) > 0,
+                  }"
                 >
                   {{ markingProgress?.scanAttentionCount ?? 0 }}
                 </div>
@@ -51,8 +60,18 @@
               </div>
             </div>
             <footer class="exam-status-card__foot">
-              <UiButton size="sm" variant="primary" @click="emit('enter-marking')">进入阅卷</UiButton>
-              <UiButton size="sm" variant="outline" @click="emit('enter-scan')">扫描中心</UiButton>
+              <UiButton
+                size="sm"
+                variant="primary"
+                :disabled="recommendedPrimaryDisabled"
+                :title="recommendedPrimaryDisabledReason || undefined"
+                @click="emit('primary-action')"
+              >
+                {{ recommendedPrimaryLabel }}
+              </UiButton>
+              <UiButton size="sm" variant="outline" @click="emit('secondary-action')">
+                {{ recommendedSecondaryLabel }}
+              </UiButton>
             </footer>
           </article>
         </WorkbenchSurfaceCard>
@@ -68,14 +87,8 @@
             </div>
             <div class="analytics-stats__label">已完成</div>
           </div>
-          <div
-            v-if="examConsistencyRate != null"
-            class="analytics-stats__card"
-          >
-            <div
-              class="analytics-stats__value"
-              :class="consistencyValueClass"
-            >
+          <div v-if="examConsistencyRate != null" class="analytics-stats__card">
+            <div class="analytics-stats__value" :class="consistencyValueClass">
               {{ examConsistencyRate }}%
             </div>
             <div class="analytics-stats__label">评阅一致性</div>
@@ -92,13 +105,12 @@
           <template #head>
             <div class="exam-overview-dash__quality-head">
               <h3 class="exam-overview-dash__panel-title">质量概览</h3>
-              <UiButton variant="ghost" size="sm" @click="emit('enter-quality')">查看完整报告</UiButton>
+              <UiButton variant="ghost" size="sm" @click="emit('enter-quality')"
+                >查看完整报告</UiButton
+              >
             </div>
           </template>
-          <UiEmpty
-            v-if="!qualityItems.length && !qualityRadarHasData"
-            description="暂无质量数据"
-          />
+          <UiEmpty v-if="!qualityItems.length && !qualityRadarHasData" description="暂无质量数据" />
           <template v-else>
             <MarkChart
               v-if="qualityRadarHasData"
@@ -108,7 +120,11 @@
               class="exam-overview-dash__radar"
             />
             <ul v-if="qualityItems.length > 0" class="exam-overview-dash__quality-list">
-              <li v-for="item in qualityItems" :key="item.reviewerUserId" class="exam-overview-dash__quality-row">
+              <li
+                v-for="item in qualityItems"
+                :key="item.reviewerUserId"
+                class="exam-overview-dash__quality-row"
+              >
                 <span class="exam-overview-dash__quality-name">{{ item.reviewerDisplayName }}</span>
                 <div class="exam-overview-dash__quality-bar">
                   <div
@@ -129,7 +145,9 @@
           <template #head>
             <h3 class="exam-overview-dash__panel-title">
               待办事项
-              <span v-if="urgentTodoCount > 0" class="exam-overview-dash__todo-count">{{ urgentTodoCount }}</span>
+              <span v-if="urgentTodoCount > 0" class="exam-overview-dash__todo-count">{{
+                urgentTodoCount
+              }}</span>
             </h3>
           </template>
           <PendingTodoFeed
@@ -145,11 +163,21 @@
             <h3 class="exam-overview-dash__panel-title">快速统计</h3>
           </template>
           <ul class="exam-overview-dash__quick-list">
-            <li><span>阅卷教师</span><strong>{{ quickStats.reviewerCount }} 人</strong></li>
-            <li><span>题组数</span><strong>{{ quickStats.groupCount }} 组</strong></li>
-            <li><span>已回收</span><strong>{{ quickStats.recycledTaskCount }} 份</strong></li>
-            <li><span>仲裁中</span><strong>{{ quickStats.arbitrationPendingCount }} 份</strong></li>
-            <li><span>待抽检</span><strong>{{ quickStats.spotCheckPendingCount }} 项</strong></li>
+            <li>
+              <span>阅卷教师</span><strong>{{ quickStats.reviewerCount }} 人</strong>
+            </li>
+            <li>
+              <span>题组数</span><strong>{{ quickStats.groupCount }} 组</strong>
+            </li>
+            <li>
+              <span>已回收</span><strong>{{ quickStats.recycledTaskCount }} 份</strong>
+            </li>
+            <li>
+              <span>仲裁中</span><strong>{{ quickStats.arbitrationPendingCount }} 份</strong>
+            </li>
+            <li>
+              <span>待抽检</span><strong>{{ quickStats.spotCheckPendingCount }} 项</strong>
+            </li>
           </ul>
         </WorkbenchSurfaceCard>
       </aside>
@@ -192,15 +220,28 @@ const props = defineProps<{
   dashboardPanel: ExamWorkbenchDashboardPanelResponse | null
   suggestedStageTitle?: string
   suggestedStageStatus?: WorkbenchStageStatusCode
+  recommendedPrimaryLabel?: string
+  recommendedSecondaryLabel?: string
+  recommendedPrimaryDisabled?: boolean
+  recommendedPrimaryDisabledReason?: string
 }>()
 
 const emit = defineEmits<{
   'stage-click': [key: ExamWorkbenchStageKeyCode]
-  'enter-marking': []
-  'enter-scan': []
+  'primary-action': []
+  'secondary-action': []
   'enter-quality': []
   'todo-navigate': [routeName: string | undefined, examId: string | undefined]
 }>()
+
+const recommendedPrimaryLabel = computed(() => props.recommendedPrimaryLabel?.trim() || '进入阅卷')
+const recommendedSecondaryLabel = computed(
+  () => props.recommendedSecondaryLabel?.trim() || '扫描中心',
+)
+const recommendedPrimaryDisabled = computed(() => Boolean(props.recommendedPrimaryDisabled))
+const recommendedPrimaryDisabledReason = computed(
+  () => props.recommendedPrimaryDisabledReason?.trim() || '',
+)
 
 const taskSummary = computed(() => props.dashboardPanel?.markingTaskSummary ?? null)
 const quickStats = computed(() => props.dashboardPanel?.quickStats ?? null)
@@ -209,14 +250,16 @@ const qualityItems = computed(() => props.dashboardPanel?.qualityOverviewItems ?
 const qualityDimensionItems = computed(() => props.dashboardPanel?.qualityDimensionItems ?? [])
 
 const qualityRadarHasData = computed(() =>
-  qualityDimensionItems.value.some(item => item.score != null),
+  qualityDimensionItems.value.some((item) => item.score != null),
 )
 
 const { chartOption: qualityRadarOption } = useChartOption(() =>
   buildExamQualityRadarChartOption(qualityDimensionItems.value),
 )
 
-const examConsistencyRate = computed(() => props.dashboardPanel?.qualitySummary?.examConsistencyRate ?? null)
+const examConsistencyRate = computed(
+  () => props.dashboardPanel?.qualitySummary?.examConsistencyRate ?? null,
+)
 
 const showTaskAnalyticsRow = computed(() => {
   const summary = taskSummary.value
@@ -226,9 +269,9 @@ const showTaskAnalyticsRow = computed(() => {
   if (examConsistencyRate.value != null) {
     return true
   }
-  return summary.totalTaskCount > 0
-    || summary.finalizedTaskCount > 0
-    || summary.pendingTaskCount > 0
+  return (
+    summary.totalTaskCount > 0 || summary.finalizedTaskCount > 0 || summary.pendingTaskCount > 0
+  )
 })
 
 const consistencyValueClass = computed(() => {
@@ -248,17 +291,24 @@ const markingPercent = computed(() => {
 })
 
 const examMeta = computed(() => {
-  const term = [props.detail.academicYear, formatSemester(props.detail.semester)].filter(Boolean).join(' · ')
-  const time = props.detail.examStartTime && props.detail.examEndTime
-    ? `${formatDateTime(props.detail.examStartTime)} — ${formatDateTime(props.detail.examEndTime)}`
-    : ''
+  const term = [props.detail.academicYear, formatSemester(props.detail.semester)]
+    .filter(Boolean)
+    .join(' · ')
+  const time =
+    props.detail.examStartTime && props.detail.examEndTime
+      ? `${formatDateTime(props.detail.examStartTime)} — ${formatDateTime(props.detail.examEndTime)}`
+      : ''
   return [term, time].filter(Boolean).join(' | ')
 })
 
 const stageTagLabel = computed(() => props.suggestedStageTitle ?? '')
 const stageTagTone = computed((): BadgeTone => {
   if (!props.suggestedStageStatus) return 'blue'
-  return strictEnumTone(WORKSPACE_STAGE_STATUS_TONE, props.suggestedStageStatus, '考试工作台阶段状态')
+  return strictEnumTone(
+    WORKSPACE_STAGE_STATUS_TONE,
+    props.suggestedStageStatus,
+    '考试工作台阶段状态',
+  )
 })
 
 const urgentTodoCount = computed(() => countUrgentTodos(pendingTodos.value))
@@ -284,9 +334,13 @@ function qualityFillClass(rate: number): string {
     line-height: 1.5;
   }
 
-  &__quality { margin-bottom: var(--dp-space-4); }
+  &__quality {
+    margin-bottom: var(--dp-space-4);
+  }
 
-  &__radar { margin-bottom: var(--dp-space-3); }
+  &__radar {
+    margin-bottom: var(--dp-space-3);
+  }
 
   &__quality-head,
   &__panel-title {
@@ -334,8 +388,12 @@ function qualityFillClass(rate: number): string {
     background: var(--ant-color-primary);
     border-radius: inherit;
 
-    &--green { background: var(--dp-green-500); }
-    &--orange { background: var(--dp-orange-500); }
+    &--green {
+      background: var(--dp-green-500);
+    }
+    &--orange {
+      background: var(--dp-orange-500);
+    }
   }
 
   &__quality-rate {
@@ -346,7 +404,9 @@ function qualityFillClass(rate: number): string {
     font-variant-numeric: tabular-nums;
   }
 
-  &__panel { margin-bottom: var(--dp-space-4); }
+  &__panel {
+    margin-bottom: var(--dp-space-4);
+  }
 
   &__todo-count {
     display: inline-flex;
@@ -374,7 +434,9 @@ function qualityFillClass(rate: number): string {
       font-size: 13px;
       border-bottom: 1px solid var(--dp-border);
 
-      &:last-child { border-bottom: none; }
+      &:last-child {
+        border-bottom: none;
+      }
     }
 
     strong {

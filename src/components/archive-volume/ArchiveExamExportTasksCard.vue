@@ -1,10 +1,11 @@
 <script lang="ts" setup>
 import type { ExportTaskResponse } from '@/apis/mark/exam-export'
+import { createExportTask, EXPORT_STATUS_TONE, listExportTasks } from '@/apis/mark/exam-export'
 import type { ExportTypeCode } from '@/types/enums/export-type-enum'
+import { ALL_EXPORT_TYPE_CODES, ExportTypeDescription } from '@/types/enums/export-type-enum'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { createExportTask, listExportTasks } from '@/apis/mark/exam-export'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -16,7 +17,6 @@ import {
   ExportTaskStatusCode,
   ExportTaskStatusDescription,
 } from '@/types/enums/export-task-status-enum'
-import { ALL_EXPORT_TYPE_CODES, ExportTypeDescription } from '@/types/enums/export-type-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatFileSize } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -30,16 +30,6 @@ const props = defineProps<{
 
   canCreate?: boolean
 }>()
-
-const EXPORT_STATUS_TONE = {
-  PENDING: 'gray',
-
-  GENERATING: 'orange',
-
-  COMPLETED: 'green',
-
-  FAILED: 'red',
-} as const
 
 const router = useRouter()
 
@@ -70,8 +60,8 @@ const busyExportTypes = computed(() => {
 
   for (const task of tasks.value) {
     if (
-      task.taskStatus === ExportTaskStatusCode.PENDING
-      || task.taskStatus === ExportTaskStatusCode.GENERATING
+      task.taskStatus === ExportTaskStatusCode.PENDING ||
+      task.taskStatus === ExportTaskStatusCode.GENERATING
     ) {
       set.add(task.exportType)
     }
@@ -84,7 +74,7 @@ const selectableExportTypes = computed(() =>
   ALL_EXPORT_TYPE_CODES.map((exportType) => ({
     exportType,
 
-    label: ExportTypeDescription[exportType],
+    label: exportTypeLabel(exportType),
 
     disabled: busyExportTypes.value.has(exportType),
 

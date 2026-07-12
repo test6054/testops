@@ -1,13 +1,17 @@
 import type { Ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import type {
   PortfolioArchiveRecordFieldInput,
   PortfolioMaterialIntakeStatusVO,
 } from '@/apis/portfolio/types'
+import {
+  PortfolioArchiveRecordStatusCode,
+  PortfolioMaterialIntakeStageCode,
+  PortfolioMaterialTypeCode,
+} from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
-import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioIntakeApi } from '@/apis/portfolio/intake'
-import { PortfolioArchiveRecordStatusCode, PortfolioMaterialIntakeStageCode, PortfolioMaterialTypeCode } from '@/apis/portfolio/types'
 import { AiTaskStatusCode } from '@/apis/quality/types'
 import { usePolling } from '@/composables/usePolling'
 import { showUserError } from '@/utils/error-handler'
@@ -54,6 +58,7 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
   const taskId = ref(readRouteQueryString(route.query.taskId))
   const fieldValues = reactive<Record<string, string>>({})
   const evidenceRefs = reactive<Record<string, string>>({})
+  const intakeRequestToken = ref(0)
 
   const demoMode = computed(
     () => readDemoModeFromRoute(route.query.demoMode) || status.value?.demoMode === true,
@@ -78,27 +83,51 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
       return false
     }
     const stage = status.value.stage
-    if (stage === PortfolioMaterialIntakeStageCode.SUBMITTED || stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW) {
+    if (
+      stage === PortfolioMaterialIntakeStageCode.SUBMITTED ||
+      stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW
+    ) {
       return true
     }
-    if (stage === PortfolioMaterialIntakeStageCode.OCR_PENDING || stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING) {
+    if (
+      stage === PortfolioMaterialIntakeStageCode.OCR_PENDING ||
+      stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
+    ) {
       return true
     }
     return (
-      status.value.recordStatus === PortfolioArchiveRecordStatusCode.PENDING_CONFIRM
-      || status.value.recordStatus === PortfolioArchiveRecordStatusCode.OFFICIAL
+      status.value.recordStatus === PortfolioArchiveRecordStatusCode.PENDING_CONFIRM ||
+      status.value.recordStatus === PortfolioArchiveRecordStatusCode.OFFICIAL
     )
   })
 
   const aiCandidateReadOnly = computed(() => {
     const stage = status.value?.stage
-    if (stage === PortfolioMaterialIntakeStageCode.SUBMITTED || stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW) {
+    if (
+      stage === PortfolioMaterialIntakeStageCode.SUBMITTED ||
+      stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW
+    ) {
       return true
     }
     return status.value?.recordStatus === PortfolioArchiveRecordStatusCode.OFFICIAL
   })
 
   const readOnly = fieldReadOnly
+
+  function resetIntakeContext() {
+    intakeRequestToken.value += 1
+    status.value = null
+    categoryId.value = ''
+    materialId.value = ''
+    archiveRecordId.value = ''
+    taskId.value = ''
+    for (const key of Object.keys(fieldValues)) {
+      delete fieldValues[key]
+    }
+    for (const key of Object.keys(evidenceRefs)) {
+      delete evidenceRefs[key]
+    }
+  }
 
   function syncFieldValuesFromStatus(next: PortfolioMaterialIntakeStatusVO) {
     for (const key of Object.keys(fieldValues)) {
@@ -120,15 +149,18 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
   function applyStatus(next: PortfolioMaterialIntakeStatusVO) {
     status.value = next
     materialId.value = next.materialId
-    archiveRecordId.value = next.archiveRecordId ?? archiveRecordId.value
-    categoryId.value = next.categoryId ?? categoryId.value
-    taskId.value = next.aiTaskId ?? taskId.value
+    archiveRecordId.value = next.archiveRecordId ?? ''
+    categoryId.value = next.categoryId ?? ''
+    taskId.value = next.aiTaskId ?? ''
     syncFieldValuesFromStatus(next)
   }
 
   async function refreshStatus() {
-    if (!materialId.value) {
-      status.value = null
+    const requestToken = intakeRequestToken.value
+    if (!materialId.value && !taskId.value) {
+      if (intakeRequestToken.value === requestToken) {
+        status.value = null
+      }
       return
     }
     loading.value = true
@@ -136,13 +168,22 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
       const next = await portfolioIntakeApi.getStatus({
         ...teacherRequest.value,
         materialId: materialId.value || undefined,
+        aiTaskId: taskId.value || undefined,
         demoMode: demoMode.value || undefined,
       })
+      if (intakeRequestToken.value !== requestToken) {
+        return
+      }
       applyStatus(next)
     } catch (error) {
+      if (intakeRequestToken.value !== requestToken) {
+        return
+      }
       showUserError(error, '加载采集状态失败')
     } finally {
-      loading.value = false
+      if (intakeRequestToken.value === requestToken) {
+        loading.value = false
+      }
     }
   }
 
@@ -158,15 +199,16 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
       message.error('请先选择教师')
       return
     }
+    const requestToken = intakeRequestToken.value
     const effectiveDemoMode = options?.demoMode ?? demoMode.value
     const effectiveCategoryId = categoryId.value || undefined
     const aiFailedStage = status.value?.stage === PortfolioMaterialIntakeStageCode.AI_FAILED
-    const shouldSubmitAi
-      = options?.submitAi === true
-        || (options?.submitAi !== false
-          && !effectiveDemoMode
-          && Boolean(effectiveCategoryId)
-          && !aiFailedStage)
+    const shouldSubmitAi =
+      options?.submitAi === true ||
+      (options?.submitAi !== false &&
+        !effectiveDemoMode &&
+        Boolean(effectiveCategoryId) &&
+        !aiFailedStage)
     loading.value = true
     try {
       let frozenProviderChain: string | undefined
@@ -185,14 +227,22 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
         demoMode: effectiveDemoMode || undefined,
         frozenProviderChain,
       })
+      if (intakeRequestToken.value !== requestToken) {
+        return
+      }
       materialId.value = result.materialId
-      taskId.value = result.aiTaskId ?? taskId.value
+      taskId.value = result.aiTaskId ?? ''
       await refreshStatus()
       return result
     } catch (error) {
+      if (intakeRequestToken.value !== requestToken) {
+        return
+      }
       showUserError(error, '启动材料采集失败')
     } finally {
-      loading.value = false
+      if (intakeRequestToken.value === requestToken) {
+        loading.value = false
+      }
     }
   }
 
@@ -230,6 +280,7 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     if (warnPendingCategoryChange()) {
       return
     }
+    const requestToken = intakeRequestToken.value
     saving.value = true
     try {
       const result = await portfolioIntakeApi.saveDraft({
@@ -240,12 +291,20 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
         fields: buildFieldInputs(),
         demoMode: demoMode.value || undefined,
       })
+      if (intakeRequestToken.value !== requestToken) {
+        return
+      }
       applyStatus(result)
       message.success('草稿已保存')
     } catch (error) {
+      if (intakeRequestToken.value !== requestToken) {
+        return
+      }
       showUserError(error, '保存草稿失败')
     } finally {
-      saving.value = false
+      if (intakeRequestToken.value === requestToken) {
+        saving.value = false
+      }
     }
   }
 
@@ -261,6 +320,7 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     if (warnPendingCategoryChange()) {
       return
     }
+    const requestToken = intakeRequestToken.value
     submitting.value = true
     try {
       const result = await portfolioIntakeApi.submit({
@@ -271,13 +331,21 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
         fields: buildFieldInputs(),
         demoMode: demoMode.value || undefined,
       })
+      if (intakeRequestToken.value !== requestToken) {
+        return
+      }
       applyStatus(result)
       message.success('已提交审核')
       return result
     } catch (error) {
+      if (intakeRequestToken.value !== requestToken) {
+        return
+      }
       showUserError(error, '提交审核失败')
     } finally {
-      submitting.value = false
+      if (intakeRequestToken.value === requestToken) {
+        submitting.value = false
+      }
     }
   }
 
@@ -290,6 +358,7 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
       message.warning('目标分类与当前分类相同，请选择其他分类')
       return
     }
+    const requestToken = intakeRequestToken.value
     reassigning.value = true
     try {
       const result = await portfolioIntakeApi.reassignCategory({
@@ -297,16 +366,24 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
         materialId: status.value.materialId,
         targetCategoryId,
       })
+      if (intakeRequestToken.value !== requestToken) {
+        return
+      }
       categoryId.value = targetCategoryId
-      archiveRecordId.value = result.archiveRecordId
+      archiveRecordId.value = result.archiveRecordId ?? ''
       message.success(
         `重分类完成，复用 ${result.reusedFieldCount} 项，清空 ${result.clearedFieldCount} 项`,
       )
       await refreshStatus()
     } catch (error) {
+      if (intakeRequestToken.value !== requestToken) {
+        return
+      }
       showUserError(error, '重分类失败')
     } finally {
-      reassigning.value = false
+      if (intakeRequestToken.value === requestToken) {
+        reassigning.value = false
+      }
     }
   }
 
@@ -392,6 +469,7 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     submitIntake,
     reassignCategory,
     clearScanCommittedQuery,
+    resetIntakeContext,
   }
 }
 

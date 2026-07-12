@@ -5,13 +5,18 @@ import type {
   ImprovementTaskSaveRequest,
   ImprovementTaskVO,
 } from '@/apis/quality/improvement-task'
+import { improvementTaskApi } from '@/apis/quality/improvement-task'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { WorkbenchSignalRefreshHandler } from '@/composables/quality/improvement'
+import {
+  normalizeTextareaLineItems,
+  refreshWorkbenchSignalsAfterMutation,
+  selectedId,
+} from '@/composables/quality/improvement'
 import { message } from 'ant-design-vue'
 import { reactive, ref, watch } from 'vue'
 import { aiTaskApi } from '@/apis/quality/ai-task'
 import { aiTaskTriggerApi } from '@/apis/quality/ai-task-trigger'
-import { improvementTaskApi } from '@/apis/quality/improvement-task'
 import {
   AiTaskBusinessTypeCode,
   AiTaskTypeCode,
@@ -34,11 +39,6 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
-import {
-  normalizeTextareaLineItems,
-  refreshWorkbenchSignalsAfterMutation,
-  selectedId,
-} from '@/composables/quality/improvement'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import {
@@ -85,7 +85,7 @@ const improvementQuery = reactive<ImprovementTaskQueryRequest>({
   keyword: '',
 })
 
-const improvementStatusOptions: Array<{ value: ImprovementTaskStatusCode, label: string }> = [
+const improvementStatusOptions: Array<{ value: ImprovementTaskStatusCode; label: string }> = [
   { value: ImprovementTaskStatusCode.OPEN, label: ImprovementTaskStatusDescription.OPEN },
   {
     value: ImprovementTaskStatusCode.IN_PROGRESS,
@@ -192,7 +192,7 @@ function handleImprovementFilterSearch(): void {
   void loadList()
 }
 
-function handleImprovementPageChange(page: { current: number, pageSize: number }): void {
+function handleImprovementPageChange(page: { current: number; pageSize: number }): void {
   improvementQuery.pageNum = page.current
   improvementQuery.pageSize = page.pageSize
   void loadList()
@@ -216,6 +216,7 @@ function handleImprovementProgramChange(value: string | null | undefined): void 
   improvementEditor.programId = selectedId(value)
   improvementEditor.qualityCourseId = ''
   improvementEditor.achievementResultId = ''
+  improvementEditor.reportId = ''
 }
 
 watch(
@@ -229,6 +230,8 @@ watch(
 
 function handleImprovementCourseChange(value: string | null | undefined): void {
   improvementEditor.qualityCourseId = selectedId(value)
+  improvementEditor.achievementResultId = ''
+  improvementEditor.reportId = ''
 }
 
 function handleImprovementQueryCourseChange(value: string | null | undefined): void {
@@ -267,9 +270,9 @@ async function loadList(options?: { refreshSignals?: boolean }): Promise<void> {
     improvementQuery.pageSize = page.pageSize
     improvementTotal.value = page.total
     if (
-      improvementList.value.length === 0
-      && improvementTotal.value > 0
-      && improvementQuery.pageNum > 1
+      improvementList.value.length === 0 &&
+      improvementTotal.value > 0 &&
+      improvementQuery.pageNum > 1
     ) {
       improvementQuery.pageNum -= 1
       await loadList(options)
@@ -280,7 +283,7 @@ async function loadList(options?: { refreshSignals?: boolean }): Promise<void> {
         scope,
         props.onWorkbenchRefresh,
         props.onLoadError,
-        '工作台指标加载失败，请稍后重试',
+        '工作台指标加载失败',
       )
     }
   } catch (error) {
@@ -374,20 +377,20 @@ async function submitImprovementEditor(): Promise<void> {
     }
   }
   if (
-    !improvementEditor.taskTitle.trim()
-    || !improvementEditor.problemSummary.trim()
-    || !improvementEditor.proposedAction.trim()
-    || !improvementEditor.programId
-    || !improvementEditor.ownerUserId
-    || !improvementEditor.dueDate
+    !improvementEditor.taskTitle.trim() ||
+    !improvementEditor.problemSummary.trim() ||
+    !improvementEditor.proposedAction.trim() ||
+    !improvementEditor.programId ||
+    !improvementEditor.ownerUserId ||
+    !improvementEditor.dueDate
   ) {
     message.error('请填写标题、问题概述、改进措施、专业、负责人和截止日期')
     return
   }
   if (
-    improvementEditorMode.value === 'create'
-    && submitAiSuggestionDraft.value
-    && !improvementEditor.achievementResultId
+    improvementEditorMode.value === 'create' &&
+    submitAiSuggestionDraft.value &&
+    !improvementEditor.achievementResultId
   ) {
     message.error('生成 AI 改进草稿需要先关联达成度计算结果')
     return
@@ -461,8 +464,8 @@ async function handleImprovementTransit(
   to: ImprovementTaskStatusCode,
 ): Promise<void> {
   if (
-    record.status === ImprovementTaskStatusCode.SUBMITTED
-    && (to === ImprovementTaskStatusCode.CLOSED || to === ImprovementTaskStatusCode.RETURNED)
+    record.status === ImprovementTaskStatusCode.SUBMITTED &&
+    (to === ImprovementTaskStatusCode.CLOSED || to === ImprovementTaskStatusCode.RETURNED)
   ) {
     const reviewRemark = await promptInputAsync({
       title: to === ImprovementTaskStatusCode.CLOSED ? '复评通过并闭环' : '复评退回任务',
@@ -765,6 +768,7 @@ defineExpose({
           <a-form-item label="关联专业">
             <ProgramSelector
               :value="improvementEditor.programId || null"
+              :disabled="Boolean(qualityStore.currentTrainingPlanId)"
               @change="handleImprovementProgramChange"
             />
           </a-form-item>
@@ -798,6 +802,7 @@ defineExpose({
               :value="improvementEditor.reportId || null"
               :program-id="improvementEditor.programId || null"
               :training-plan-id="improvementEditor.trainingPlanId || null"
+              :quality-course-id="improvementEditor.qualityCourseId || null"
               @change="handleImprovementReportChange"
             />
           </a-form-item>
@@ -844,7 +849,7 @@ defineExpose({
   >
     <UiEmpty
       v-if="!improvementDetailRecord && !improvementDetailLoading"
-      description="暂无数据"
+      description="当前没有可展示的内容"
       size="sm"
     />
     <a-descriptions v-if="improvementDetailRecord" :column="1" size="small" bordered>

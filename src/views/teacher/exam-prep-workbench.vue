@@ -3,16 +3,17 @@
  * 考试准备聚合工作台：Signal 五 KPI、信息双栏、横向步骤流水线（含主操作）、制卷形态配置。
  */
 import type { ExamPrintSourceModeCode } from '@/apis/mark/exam'
+import { ExamMaterialLayoutModeCode, saveMaterialLayout } from '@/apis/mark/exam'
 import type { ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
+import { loadExamLayoutDesign } from '@/apis/mark/exam-layout-design'
 import type { SignalMetric } from '@/types/workbench'
 import type { PrepStepCard } from '@/utils/exam-prep-step-ui'
+import { buildPrepStepCards, resolvePrepStepRouteLocation } from '@/utils/exam-prep-step-ui'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import ScanOutlined from '@ant-design/icons-vue/ScanOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, inject, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ExamMaterialLayoutModeCode, saveMaterialLayout } from '@/apis/mark/exam'
-import { loadExamLayoutDesign } from '@/apis/mark/exam-layout-design'
 import { WorkbenchNextActionKeyCode } from '@/apis/mark/exam-progress'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -27,7 +28,6 @@ import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
-import { buildPrepStepCards, resolvePrepStepRouteLocation } from '@/utils/exam-prep-step-ui'
 import {
   canEnterReviewBatch,
   canStartScanRegistration,
@@ -68,8 +68,8 @@ const scanEntryEnabled = computed(() =>
 )
 const scanEntryDisabledReason = computed(
   () =>
-    resolveNextActionDisabledReason(nextActions.value, WorkbenchNextActionKeyCode.START_SCAN)
-    ?? prepBlockingReasons.value[0],
+    resolveNextActionDisabledReason(nextActions.value, WorkbenchNextActionKeyCode.START_SCAN) ??
+    prepBlockingReasons.value[0],
 )
 const reviewEntryEnabled = computed(() =>
   canEnterReviewBatch(nextActions.value, markingProgress.value),
@@ -100,7 +100,7 @@ computed(() => {
     return 0
   }
   return Math.round((completedPrepCount.value / prepSteps.value.length) * 100)
-});
+})
 const prepSignalMetrics = computed((): SignalMetric[] => {
   const detail = examDetail.value
   const total = prepSteps.value.length
@@ -181,9 +181,9 @@ const layoutDirty = computed(() => {
     return false
   }
   return (
-    draftLayoutMode.value !== detail.materialLayoutMode
-    || (draftLayoutMode.value === ExamMaterialLayoutModeCode.FULL_PAPER
-      && draftPrintSource.value !== detail.printSourceMode)
+    draftLayoutMode.value !== detail.materialLayoutMode ||
+    (draftLayoutMode.value === ExamMaterialLayoutModeCode.FULL_PAPER &&
+      draftPrintSource.value !== detail.printSourceMode)
   )
 })
 
@@ -335,7 +335,10 @@ watch(
     <UiSkeletonState v-if="pageLoading" variant="card" compact />
 
     <template v-else>
-      <UiEmpty v-if="!snapshot?.prepSteps?.length" description="准备诊断加载失败，请刷新后重试" />
+      <UiEmpty
+        v-if="!snapshot?.prepSteps?.length"
+        description="准备诊断未加载完成，请返回考试列表后重新进入"
+      />
 
       <template v-else-if="examDetail && prepSteps.length > 0">
         <ExamPrepInfoPanels
@@ -358,8 +361,8 @@ watch(
             </UiButton>
             <a-tooltip
               :title="
-                contextPrimaryAction?.tooltip
-                  ?? (contextPrimaryAction?.disabled ? scanEntryDisabledReason : undefined)
+                contextPrimaryAction?.tooltip ??
+                (contextPrimaryAction?.disabled ? scanEntryDisabledReason : undefined)
               "
             >
               <UiButton

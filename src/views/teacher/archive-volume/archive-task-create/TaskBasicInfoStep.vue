@@ -32,9 +32,9 @@
         />
       </a-form-item>
 
-      <a-row :gutter="24">
+      <a-row :gutter="24" class="create-form__split-row">
         <a-col :span="12">
-          <a-form-item label="档案编号" :label-col="labelCol">
+          <a-form-item label="档案编号" :label-col="labelCol" :wrapper-col="wrapperCol">
             <a-input
               v-model:value="basicForm.archiveNo"
               placeholder="不填则自动生成"
@@ -48,6 +48,7 @@
             name="academicYearStartYear"
             required
             :label-col="labelCol"
+            :wrapper-col="wrapperCol"
           >
             <a-select
               v-model:value="basicForm.academicYearStartYear"
@@ -58,14 +59,20 @@
         </a-col>
       </a-row>
 
-      <a-row :gutter="24">
+      <a-row :gutter="24" class="create-form__split-row">
         <a-col :span="12">
-          <a-form-item label="学年结束年" :label-col="labelCol">
+          <a-form-item label="学年结束年" :label-col="labelCol" :wrapper-col="wrapperCol">
             <a-input :value="academicYearEndYear" disabled />
           </a-form-item>
         </a-col>
         <a-col :span="12">
-          <a-form-item label="学期" name="semester" required :label-col="labelCol">
+          <a-form-item
+            label="学期"
+            name="semester"
+            required
+            :label-col="labelCol"
+            :wrapper-col="wrapperCol"
+          >
             <a-select
               v-model:value="basicForm.semester"
               :options="SemesterOptions"
@@ -75,9 +82,14 @@
         </a-col>
       </a-row>
 
-      <a-row :gutter="24">
+      <a-row :gutter="24" class="create-form__split-row">
         <a-col :span="12">
-          <a-form-item label="院系" name="departmentId" :label-col="labelCol">
+          <a-form-item
+            label="院系"
+            name="departmentId"
+            :label-col="labelCol"
+            :wrapper-col="wrapperCol"
+          >
             <a-select
               v-model:value="departmentIdSelectValue"
               :options="departmentOptions"
@@ -92,9 +104,14 @@
         </a-col>
       </a-row>
 
-      <a-row :gutter="24">
+      <a-row :gutter="24" class="create-form__split-row">
         <a-col :span="12">
-          <a-form-item label="授课班级" name="teachingClassId" :label-col="labelCol">
+          <a-form-item
+            label="授课班级"
+            name="teachingClassId"
+            :label-col="labelCol"
+            :wrapper-col="wrapperCol"
+          >
             <ClassSelector
               v-model:value="basicForm.teachingClassId"
               :department-id="basicForm.departmentId"
@@ -105,7 +122,12 @@
           </a-form-item>
         </a-col>
         <a-col :span="12">
-          <a-form-item label="关联考试" :label-col="labelCol">
+          <a-form-item
+            label="关联考试"
+            tooltip="可选项，用于挂接线上考试记录。"
+            :label-col="labelCol"
+            :wrapper-col="wrapperCol"
+          >
             <a-select
               v-model:value="relatedExamIdSelectValue"
               :options="relatedExamOptions"
@@ -121,7 +143,6 @@
           </a-form-item>
         </a-col>
       </a-row>
-      <p class="create-form__hint">关联考试为可选项，用于挂接线上考试记录。</p>
     </div>
   </a-form>
 </template>
@@ -131,10 +152,10 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ClassInfoDto } from '@/apis/edu/class'
 import type { ExamSummaryResponse } from '@/apis/mark/exam'
-import type { CourseListVO } from '@/apis/quality/user-catalog'
-import { computed, onMounted, ref, watch } from 'vue'
 import { pageExams } from '@/apis/mark/exam'
+import type { CourseListVO } from '@/apis/quality/user-catalog'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
+import { computed, onMounted, ref, watch } from 'vue'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
 import { SemesterOptions } from '@/types/enums/semester-enum'
@@ -160,6 +181,7 @@ const emit = defineEmits<{
 }>()
 
 const labelCol = { style: { width: '88px' } }
+const wrapperCol = { flex: 1 }
 
 const basicForm = useInjectedArchiveTaskCreateBasicForm()
 const formRef = ref<FormInstance>()
@@ -177,9 +199,9 @@ const relatedExamIdSelectValue = computed({
   },
 })
 const departmentLoading = ref(false)
-const departmentOptions = ref<Array<{ value: string, label: string }>>([])
+const departmentOptions = ref<Array<{ value: string; label: string }>>([])
 const relatedExamLoading = ref(false)
-const relatedExamOptions = ref<Array<{ value: string, label: string }>>([])
+const relatedExamOptions = ref<Array<{ value: string; label: string }>>([])
 
 const academicYearStartOptions = generateAcademicYearStartOptions().map((year) => ({
   value: year,

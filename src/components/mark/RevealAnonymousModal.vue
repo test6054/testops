@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { AnonymousRevealResponse } from '@/apis/mark/marking-organization'
+import { revealAnonymous } from '@/apis/mark/marking-organization'
 import { message } from 'ant-design-vue'
 import { reactive, ref, watch } from 'vue'
-import { revealAnonymous } from '@/apis/mark/marking-organization'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'RevealAnonymousModal' })
@@ -21,7 +22,7 @@ const emit = defineEmits<{
 
 const submitting = ref(false)
 const formRef = ref<FormInstance>()
-const form = reactive<{ currentPassword: string, reason: string }>({
+const form = reactive<{ currentPassword: string; reason: string }>({
   currentPassword: '',
   reason: '',
 })
@@ -87,12 +88,12 @@ watch(open, (value) => {
     cancel-text="取消"
     @ok="submitReveal"
   >
-    <a-alert
-      type="warning"
-      show-icon
-      message="解匿名仅开放 5 分钟临时查看"
+    <UiAlertStrip
+      tone="warning"
+      title="解匿名仅开放 5 分钟临时查看"
       description="按 R7 规则：仅考试主考老师本人可解匿名，且需登录密码二次验证。每次解匿名理由都会写入操作审计。"
-      style="margin-bottom: 16px"
+      :inline="false"
+      style="margin-bottom: 12px"
     />
     <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
       <a-form-item label="登录密码" name="currentPassword" required>

@@ -1,0 +1,139 @@
+import type { PortfolioAnalysisComplianceAlertVO } from '@/apis/portfolio/analysis'
+import type { PageResult } from '@/types'
+import http from '@/config/axios'
+
+export interface PortfolioExportApprovalVO {
+  id: string
+  applicantUserId: string
+  exportType: string
+  businessRefJson: string
+  exportPurpose: string
+  approvalStatus: string
+  approverUserId?: string
+  approvedTime?: string
+  rejectReason?: string
+  downloadTime?: string
+  createTime: string
+}
+
+export interface PortfolioMajorGroupPortfolioSectionSummaryVO {
+  sectionCode: string
+  sectionTitle: string
+  itemCount: number
+}
+
+export interface PortfolioMajorGroupPortfolioVO {
+  portfolioOrgId: string
+  majorGroupName: string
+  majorGroupCode: string
+  teacherCount: number
+  portraitTeacherCount: number
+  avgCompositeScore: string
+  dualTeacherCount: number
+  officialArchiveCount: number
+  developmentPlanCount: number
+  complianceAlerts: PortfolioAnalysisComplianceAlertVO[]
+  sections: PortfolioMajorGroupPortfolioSectionSummaryVO[]
+}
+
+export interface PortfolioMajorGroupPortfolioSectionItemVO {
+  businessId: string
+  teacherId: string
+  categoryCode: string
+  categoryLabel: string
+  recordTitle: string
+  periodLabel: string
+  statusLabel: string
+}
+
+export interface PortfolioMaskRuleVO {
+  id: string
+  fieldType: string
+  exportScope: string
+  maskStrategy: string
+  enabled: boolean
+  updateTime: string
+}
+
+export interface PortfolioAuditLogVO {
+  id: string
+  operatorUserId: string
+  actionType: string
+  resourceType: string
+  resourceId?: string
+  actionSummary: string
+  detailJson?: string
+  createTime: string
+}
+
+export const portfolioSecurityApi = {
+  applyExport: (data: { exportType: string; businessRefJson: string; exportPurpose: string }) =>
+    http.post<PortfolioExportApprovalVO>('/api/portfolio/security/export/apply', data),
+  approveExport: (data: { id: string; approved: boolean; rejectReason?: string }) =>
+    http.post<PortfolioExportApprovalVO>('/api/portfolio/security/export/approve', data),
+  pageExport: (data: {
+    pageNum: number
+    pageSize: number
+    approvalStatus?: string
+    applicantUserId?: string
+  }) =>
+    http.post<PageResult<PortfolioExportApprovalVO>>('/api/portfolio/security/export/page', data),
+  saveMaskRule: (data: {
+    fieldType: string
+    exportScope: string
+    maskStrategy: string
+    enabled?: boolean
+  }) => http.post<PortfolioMaskRuleVO>('/api/portfolio/security/mask-rule/save', data),
+  pageMaskRule: (data: {
+    pageNum: number
+    pageSize: number
+    fieldType?: string
+    exportScope?: string
+    enabled?: boolean
+  }) => http.post<PageResult<PortfolioMaskRuleVO>>('/api/portfolio/security/mask-rule/page', data),
+  pageAudit: (data: {
+    pageNum: number
+    pageSize: number
+    actionType?: string
+    resourceType?: string
+    operatorUserId?: string
+  }) => http.post<PageResult<PortfolioAuditLogVO>>('/api/portfolio/security/audit/page', data),
+}
+
+export interface PortfolioMajorGroupPeriodCompareVO {
+  portfolioOrgId: string
+  baselinePeriodYear: string
+  comparePeriodYear: string
+  baselineOfficialArchiveCount: number
+  compareOfficialArchiveCount: number
+  officialArchiveCountDelta: number
+  baselineDevelopmentPlanCount: number
+  compareDevelopmentPlanCount: number
+  developmentPlanCountDelta: number
+}
+
+export const portfolioMajorGroupApi = {
+  getPortfolio: (data: { portfolioOrgId: string }) =>
+    http.post<PortfolioMajorGroupPortfolioVO>('/api/portfolio/major-group/portfolio/get', data),
+  pageSection: (data: {
+    portfolioOrgId: string
+    sectionCode: string
+    pageNum: number
+    pageSize: number
+  }) =>
+    http.post<PageResult<PortfolioMajorGroupPortfolioSectionItemVO>>(
+      '/api/portfolio/major-group/portfolio/section/page',
+      data,
+    ),
+  exportPortfolio: (data: { portfolioOrgId: string; exportPurpose: string }) =>
+    http.post<PortfolioExportApprovalVO>('/api/portfolio/major-group/portfolio/export', data),
+  comparePeriods: (data: {
+    portfolioOrgId: string
+    baselinePeriodYear: string
+    comparePeriodYear: string
+  }) =>
+    http.post<PortfolioMajorGroupPeriodCompareVO>(
+      '/api/portfolio/major-group/portfolio/period/compare',
+      data,
+    ),
+}

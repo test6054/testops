@@ -65,7 +65,15 @@
           </div>
           <div class="create-form-summary__row">
             <dt>阅卷策略</dt>
-            <dd>{{ ExamGradingStrategyDescription[ExamGradingStrategyCode.SINGLE] }}</dd>
+            <dd>
+              {{
+                strictEnumLabel(
+                  ExamGradingStrategyDescription,
+                  ExamGradingStrategyCode.SINGLE,
+                  '阅卷策略',
+                )
+              }}
+            </dd>
           </div>
         </dl>
       </section>
@@ -107,6 +115,7 @@ import {
 } from '@/apis/mark/exam'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel } from '@/utils/strict-enum'
 import {
   useInjectedExamCreateBasicForm,
   useInjectedExamCreateMarkingTeamForm,
@@ -117,7 +126,9 @@ const examForm = useInjectedExamCreateBasicForm()
 const markingTeamForm = useInjectedExamCreateMarkingTeamForm()
 const rosterForm = useInjectedExamCreateRosterForm()
 
-const examKindText = computed(() => ExamKindDescription[examForm.examKind])
+const examKindText = computed(() =>
+  strictEnumLabel(ExamKindDescription, examForm.examKind, '考试类型'),
+)
 
 const academicTermText = computed(() => {
   const year = examForm.academicYear?.trim()
@@ -146,7 +157,7 @@ const selectionModeText = computed(() => {
   if (!rosterForm.candidates.length) {
     return '创建后补录'
   }
-  return ExamRosterScopeModeDescription[rosterForm.scopeMode]
+  return strictEnumLabel(ExamRosterScopeModeDescription, rosterForm.scopeMode, '名册范围模式')
 })
 
 const reviewerText = computed(() => {

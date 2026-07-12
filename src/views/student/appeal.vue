@@ -42,7 +42,7 @@
 
       <a-skeleton v-if="loadingExams" active :paragraph="{ rows: 3 }" />
 
-      <UiEmpty v-else-if="appealableExams.length === 0" description="暂无数据" />
+      <UiEmpty v-else-if="appealableExams.length === 0" description="当前没有可展示的内容" />
 
       <div v-else-if="!loadingExams && appealableExams.length > 0" class="exam-pick-list">
         <article
@@ -256,10 +256,29 @@ import type {
   GradeReviewEvidenceFileRefVO,
   StudentGradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
+import {
+  countMyPendingReviewRequests,
+  GRADE_REVIEW_REASON_TYPE_OPTIONS,
+  GradeReviewReasonTypeCode,
+  GradeReviewReasonTypeDescription,
+  GradeReviewRequestStatusCode,
+  GradeReviewRequestStatusDescription,
+  listMyReviewRequests,
+  REVIEW_REQUEST_STATUS_OPTIONS,
+  REVIEW_REQUEST_STATUS_TONE,
+  submitReviewRequest,
+} from '@/apis/mark/grade-review'
 import type {
   StudentExamItemVO,
   StudentExamStatsResponse,
   StudentQuestionScoreVO,
+} from '@/apis/mark/student-exam'
+import {
+  getMyExamStats,
+  getMyScoreDetail,
+  pageMyExams,
+  ReviewWindowPolicyStatusDescription,
+  STUDENT_REVIEW_WINDOW_STATUS_TONE,
 } from '@/apis/mark/student-exam'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
@@ -274,25 +293,6 @@ import {
   FINAL_SCORE_STATUS_TONE,
   FinalScoreStatusDescription,
 } from '@/apis/mark/final-score-status'
-import {
-  countMyPendingReviewRequests,
-  GRADE_REVIEW_REASON_TYPE_OPTIONS,
-  GradeReviewReasonTypeCode,
-  GradeReviewReasonTypeDescription,
-  GradeReviewRequestStatusCode,
-  GradeReviewRequestStatusDescription,
-  listMyReviewRequests,
-  REVIEW_REQUEST_STATUS_OPTIONS,
-  REVIEW_REQUEST_STATUS_TONE,
-  submitReviewRequest,
-} from '@/apis/mark/grade-review'
-import {
-  getMyExamStats,
-  getMyScoreDetail,
-  pageMyExams,
-  ReviewWindowPolicyStatusDescription,
-  STUDENT_REVIEW_WINDOW_STATUS_TONE,
-} from '@/apis/mark/student-exam'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -340,8 +340,8 @@ const sourceQuestionId = ref<string | undefined>(undefined)
 
 const reasonTypeOptions = GRADE_REVIEW_REASON_TYPE_OPTIONS
 
-const statusOptions: Array<{ value: GradeReviewRequestStatusCode, label: string }>
-  = REVIEW_REQUEST_STATUS_OPTIONS
+const statusOptions: Array<{ value: GradeReviewRequestStatusCode; label: string }> =
+  REVIEW_REQUEST_STATUS_OPTIONS
 
 const requestFilterForm = reactive<{
   status?: GradeReviewRequestStatusCode
@@ -352,7 +352,7 @@ const requestFilterForm = reactive<{
 })
 
 const STUDENT_EXAM_OPTION_PAGE_SIZE = MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE
-const examFilterOptions = ref<Array<{ value: string, label: string }>>([])
+const examFilterOptions = ref<Array<{ value: string; label: string }>>([])
 
 const requestFilterFields = computed<FilterField[]>(() => [
   {
@@ -554,9 +554,9 @@ async function loadRequests() {
     requestPagination.current = result.pageNum ?? requestPagination.current
     requestPagination.pageSize = result.pageSize ?? requestPagination.pageSize
     if (
-      requests.value.length === 0
-      && requestPagination.total > 0
-      && requestPagination.current > 1
+      requests.value.length === 0 &&
+      requestPagination.total > 0 &&
+      requestPagination.current > 1
     ) {
       requestPagination.current -= 1
       await Promise.all([loadRequests(), loadPendingRequestCount()])
@@ -570,7 +570,7 @@ async function loadRequests() {
   }
 }
 
-function handleRequestPageChange(pageInfo: { current: number, pageSize: number }): void {
+function handleRequestPageChange(pageInfo: { current: number; pageSize: number }): void {
   requestPagination.current = pageInfo.current
   requestPagination.pageSize = pageInfo.pageSize
   void loadRequests()
@@ -632,7 +632,7 @@ function requestStatusLabel(status: GradeReviewRequestStatusCode): string {
 function reviewNoteText(item: StudentGradeReviewRequestItemResponse): string {
   if (item.reviewNote) return item.reviewNote
   if (item.requestStatus === GradeReviewRequestStatusCode.PENDING) return '等待复核处理'
-  if (item.requestStatus === 'IN_REVIEW') return '复核处理中'
+  if (item.requestStatus === GradeReviewRequestStatusCode.IN_REVIEW) return '复核处理中'
   return '未填写复核意见'
 }
 

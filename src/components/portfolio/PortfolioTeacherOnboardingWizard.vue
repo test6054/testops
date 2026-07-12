@@ -12,7 +12,7 @@
       tone="error"
       :closable="false"
       title="档案袋就绪状态暂不可用"
-      description="无法确认模板与引导状态，请稍后重试或联系管理员。"
+      description="无法确认模板与引导状态，请联系管理员。"
     />
 
     <template v-if="effectiveReadonly">
@@ -63,7 +63,10 @@
           block-node
         />
         <div v-if="currentStep === 3" class="portfolio-onboarding-wizard__picker">
-          <PortfolioCategoryTreePicker v-model:model-value="previewCategoryId" />
+          <PortfolioCategoryTreePicker
+            v-model:model-value="previewCategoryId"
+            :teacher-id="targetTeacherId ?? undefined"
+          />
           <UiDataTable
             v-if="previewFields.length"
             row-key="fieldCode"
@@ -144,6 +147,8 @@ const categoryTree = ref<PortfolioArchiveCategoryTreeNodeVO[]>([])
 const previewCategoryId = ref('')
 const previewFields = ref<PortfolioTargetFieldDefinition[]>([])
 const completedReadonly = ref(false)
+const onboardingRequestToken = ref(0)
+const previewFieldRequestToken = ref(0)
 
 const effectiveReadonly = computed(() => props.readonlyMode || completedReadonly.value)
 
@@ -160,7 +165,7 @@ const stepTitle = computed(() => {
 
 function mapTreeNodes(
   nodes: PortfolioArchiveCategoryTreeNodeVO[],
-): Array<{ key: string, title: string, children?: ReturnType<typeof mapTreeNodes> }> {
+): Array<{ key: string; title: string; children?: ReturnType<typeof mapTreeNodes> }> {
   return nodes.map((node) => ({
     key: node.id,
     title: node.categoryName,
@@ -175,10 +180,32 @@ const teacherRequest = computed(() =>
   targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
 )
 
+function resetInteractiveState() {
+  onboardingRequestToken.value += 1
+  previewFieldRequestToken.value += 1
+  currentStep.value = 1
+  templateReady.value = false
+  categoryTree.value = []
+  previewCategoryId.value = ''
+  previewFields.value = []
+  onboardingState.value = null
+}
+
+function resetReadonlyState() {
+  completedReadonly.value = false
+  reviewContent.value = null
+  readiness.value = null
+}
+
 async function loadState() {
+  const requestToken = onboardingRequestToken.value
   loading.value = true
   try {
-    onboardingState.value = await portfolioOnboardingApi.getState(teacherRequest.value)
+    const nextState = await portfolioOnboardingApi.getState(teacherRequest.value)
+    if (onboardingRequestToken.value !== requestToken) {
+      return
+    }
+    onboardingState.value = nextState
     currentStep.value = onboardingState.value.currentStep || 1
     templateReady.value = Boolean(onboardingState.value.templateReady)
     completedReadonly.value = Boolean(onboardingState.value.completed)
@@ -186,45 +213,93 @@ async function loadState() {
       await loadReviewContent()
     }
   } catch (error) {
+    if (onboardingRequestToken.value !== requestToken) {
+      return
+    }
     showUserError(error, '加载引导状态失败')
   } finally {
-    loading.value = false
+    if (onboardingRequestToken.value === requestToken) {
+      loading.value = false
+    }
   }
 }
 
 async function loadReviewContent() {
+  const requestToken = onboardingRequestToken.value
   try {
-    reviewContent.value = await portfolioOnboardingApi.getReviewContent(teacherRequest.value)
+    const nextReviewContent = await portfolioOnboardingApi.getReviewContent(teacherRequest.value)
+    if (onboardingRequestToken.value !== requestToken) {
+      return
+    }
+    reviewContent.value = nextReviewContent
   } catch (error) {
+    if (onboardingRequestToken.value !== requestToken) {
+      return
+    }
     showUserError(error, '加载引导回顾内容失败')
   }
 }
 
 async function loadCategoryTree() {
+  const requestToken = onboardingRequestToken.value
   try {
-    categoryTree.value = (await portfolioArchiveTemplateApi.listCategoryTree()) ?? []
+    const nextCategoryTree =
+      (await portfolioArchiveTemplateApi.listCategoryTree({
+        teacherId: targetTeacherId.value || undefined,
+      })) ?? []
+    if (onboardingRequestToken.value !== requestToken) {
+      return
+    }
+    categoryTree.value = nextCategoryTree
   } catch (error) {
+    if (onboardingRequestToken.value !== requestToken) {
+      return
+    }
     showUserError(error, '加载档案分类树失败')
   }
 }
 
 async function loadReadiness() {
+  const requestToken = onboardingRequestToken.value
   try {
-    readiness.value = await portfolioArchiveTemplateApi.getTeacherReadiness()
+    const nextReadiness = await portfolioArchiveTemplateApi.getTeacherReadiness()
+    if (onboardingRequestToken.value !== requestToken) {
+      return
+    }
+    readiness.value = nextReadiness
   } catch (error) {
+    if (onboardingRequestToken.value !== requestToken) {
+      return
+    }
     showUserError(error, '加载模板就绪状态失败')
   }
 }
 
 async function loadPreviewFields(categoryId: string) {
+  const requestToken = onboardingRequestToken.value
+  const fieldRequestToken = ++previewFieldRequestToken.value
   if (!categoryId) {
     previewFields.value = []
     return
   }
   try {
     const published = await portfolioArchiveTemplateApi.listPublishedFields({ categoryId })
+    if (
+      onboardingRequestToken.value !== requestToken ||
+      previewFieldRequestToken.value !== fieldRequestToken ||
+      previewCategoryId.value !== categoryId
+    ) {
+      return
+    }
     previewFields.value = published.targetFields
   } catch (error) {
+    if (
+      onboardingRequestToken.value !== requestToken ||
+      previewFieldRequestToken.value !== fieldRequestToken ||
+      previewCategoryId.value !== categoryId
+    ) {
+      return
+    }
     previewFields.value = []
     showUserError(error, '加载字段规格失败')
   }
@@ -301,6 +376,8 @@ watch(
     targetTeacherId.value,
   ],
   () => {
+    resetInteractiveState()
+    resetReadonlyState()
     if (props.readonlyMode || props.blockedByTemplate || props.blockedByReadiness) {
       if (props.readonlyMode) {
         void loadReviewContent()

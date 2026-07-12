@@ -6,7 +6,9 @@ import type {
   PortfolioTeacherRecommendRuleVO,
   PortfolioTeacherRecommendRunVO,
 } from '@/apis/portfolio/teacher-platform'
+import { portfolioTeacherRecommendationApi } from '@/apis/portfolio/teacher-platform'
 import type { AiTaskStatusCode } from '@/apis/quality/types'
+import { AiTaskStatusDescription } from '@/apis/quality/types'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -17,9 +19,7 @@ import {
   PortfolioTeacherRecommendSceneCode,
   PortfolioTeacherRecommendSceneDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioTeacherRecommendationApi } from '@/apis/portfolio/teacher-platform'
 import { aiTaskApi } from '@/apis/quality/ai-task'
-import { AiTaskStatusDescription } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -41,6 +41,7 @@ const pkResult = ref<PortfolioTeacherPkCompareVO | null>(null)
 const selectedRuleId = ref('')
 const lastRunId = ref('')
 const loading = ref(false)
+const routeRequestToken = ref(0)
 
 const ruleForm = reactive({
   ruleName: '',
@@ -119,6 +120,17 @@ async function loadCandidates() {
   await loadCandidatesPage()
 }
 
+function resetRouteDrivenContext() {
+  explainDrawerOpen.value = false
+  explainLoading.value = false
+  explainStatus.value = null
+  explainRunId.value = ''
+  lastRunId.value = ''
+  candidates.value = []
+  pageTotal.value = 0
+  pageNum.value = 1
+}
+
 function aiTaskStatusLabel(status?: AiTaskStatusCode): string {
   if (!status) {
     return '未提交'
@@ -142,25 +154,35 @@ function openExplainAiTask() {
 
 /** 消费通知深链 runId / taskId，定位推荐运行并打开 AI 解释抽屉。 */
 async function applyRouteDeepLink() {
+  const currentToken = ++routeRequestToken.value
   const runId = readRouteStringParam(route.query.runId)
   if (runId) {
     viewRunCandidates(runId)
-    await loadExplainStatus(runId)
+    await loadExplainStatus(runId, currentToken)
     return
   }
   const taskId = readRouteStringParam(route.query.taskId)
   if (!taskId) {
+    resetRouteDrivenContext()
     return
   }
   try {
     const task = await aiTaskApi.detail(taskId)
+    if (currentToken !== routeRequestToken.value) {
+      return
+    }
     if (!task.businessId) {
+      resetRouteDrivenContext()
       showUserError(null, '推荐解释任务缺少运行 ID')
       return
     }
     viewRunCandidates(task.businessId)
-    await loadExplainStatus(task.businessId)
+    await loadExplainStatus(task.businessId, currentToken)
   } catch (error) {
+    if (currentToken !== routeRequestToken.value) {
+      return
+    }
+    resetRouteDrivenContext()
     showUserError(error, '推荐解释深链加载失败')
   }
 }
@@ -180,8 +202,8 @@ function sceneLabel(scene: PortfolioTeacherRecommendSceneCode): string {
 async function loadRules() {
   try {
     rules.value = await portfolioTeacherRecommendationApi.listRules()
-    if (!selectedRuleId.value && rules.value.length > 0) {
-      selectedRuleId.value = rules.value[0].id
+    if (selectedRuleId.value && !rules.value.some((item) => item.id === selectedRuleId.value)) {
+      selectedRuleId.value = ''
     }
   } catch (error) {
     showUserError(error)
@@ -256,17 +278,26 @@ function viewRunCandidates(runId: string) {
   void loadCandidates()
 }
 
-async function loadExplainStatus(runId: string) {
+async function loadExplainStatus(runId: string, requestToken = routeRequestToken.value) {
   explainRunId.value = runId
   explainDrawerOpen.value = true
   explainLoading.value = true
   explainStatus.value = null
   try {
-    explainStatus.value = await portfolioTeacherRecommendationApi.explainStatus({ runId })
+    const nextStatus = await portfolioTeacherRecommendationApi.explainStatus({ runId })
+    if (requestToken !== routeRequestToken.value || explainRunId.value !== runId) {
+      return
+    }
+    explainStatus.value = nextStatus
   } catch (error) {
+    if (requestToken !== routeRequestToken.value || explainRunId.value !== runId) {
+      return
+    }
     showUserError(error)
   } finally {
-    explainLoading.value = false
+    if (requestToken === routeRequestToken.value && explainRunId.value === runId) {
+      explainLoading.value = false
+    }
   }
 }
 
@@ -300,6 +331,16 @@ onMounted(async () => {
   await loadRuns()
   await applyRouteDeepLink()
 })
+
+watch(
+  () => [route.query.runId, route.query.taskId],
+  ([runId, taskId], [previousRunId, previousTaskId]) => {
+    if (runId === previousRunId && taskId === previousTaskId) {
+      return
+    }
+    void applyRouteDeepLink()
+  },
+)
 </script>
 
 <template>

@@ -5,35 +5,35 @@ import type { MarkAiReferenceExperienceAuditResponse } from '@/apis/mark/grading
 import type { WorkflowBlockingItem } from '@/components/workbench/workflow-readiness/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { AllocationUnitCode } from '@/types/enums/allocation-unit-enum'
-import type { AnonymityModeCode } from '@/types/enums/anonymity-mode-enum'
-import type { AnonymousTokenPolicyCode } from '@/types/enums/anonymous-token-policy-enum'
-import type { EffectiveStatusCode } from '@/types/enums/effective-status-enum'
-import type { MarkingAllocationModeCode } from '@/types/enums/marking-allocation-mode-enum'
-import type { MarkingReassignModeCode } from '@/types/enums/marking-reassign-mode-enum'
-import type { MarkingSessionPhaseCode } from '@/types/enums/marking-session-phase-enum'
-import http from '@/config/axios'
 /** 阅卷组织列表默认分页大小（SessionListQuery / MarkingTaskQuery 缺省时使用） */
 import {
   ALL_ALLOCATION_UNIT_CODES,
   AllocationUnitDescription,
 } from '@/types/enums/allocation-unit-enum'
+import type { AnonymityModeCode } from '@/types/enums/anonymity-mode-enum'
+import type { AnonymousTokenPolicyCode } from '@/types/enums/anonymous-token-policy-enum'
 import {
   ALL_ANONYMOUS_TOKEN_POLICY_CODES,
   AnonymousTokenPolicyDescription,
 } from '@/types/enums/anonymous-token-policy-enum'
-import {
-  FormalSessionStatusCode,
-  FormalSessionStatusDescription,
-} from '@/types/enums/formal-session-status-enum'
+import type { EffectiveStatusCode } from '@/types/enums/effective-status-enum'
+import type { MarkingAllocationModeCode } from '@/types/enums/marking-allocation-mode-enum'
 import {
   ALL_MARKING_ALLOCATION_MODE_CODES,
   MarkingAllocationModeDescription,
 } from '@/types/enums/marking-allocation-mode-enum'
-import { MarkingOrganizationStatusCode } from '@/types/enums/marking-organization-status-enum'
+import type { MarkingReassignModeCode } from '@/types/enums/marking-reassign-mode-enum'
 import {
   ALL_MARKING_REASSIGN_MODE_CODES,
   MarkingReassignModeDescription,
 } from '@/types/enums/marking-reassign-mode-enum'
+import type { MarkingSessionPhaseCode } from '@/types/enums/marking-session-phase-enum'
+import http from '@/config/axios'
+import {
+  FormalSessionStatusCode,
+  FormalSessionStatusDescription,
+} from '@/types/enums/formal-session-status-enum'
+import { MarkingOrganizationStatusCode } from '@/types/enums/marking-organization-status-enum'
 import {
   ALL_MARKING_TASK_STATUS_CODES,
   MarkingTaskStatusCode,
@@ -46,6 +46,7 @@ import {
   TrialSessionStatusDescription,
 } from '@/types/enums/trial-session-status-enum'
 import { rejectUserError } from '@/utils/error-handler'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export { ALL_ALLOCATION_UNIT_CODES, AllocationUnitCode } from '@/types/enums/allocation-unit-enum'
 export { AllocationUnitDescription } from '@/types/enums/allocation-unit-enum'
@@ -126,13 +127,13 @@ export const MARKING_ALLOCATION_MODE_OPTIONS: Array<{
   label: string
 }> = ALL_MARKING_ALLOCATION_MODE_CODES.map((value) => ({
   value,
-  label: MarkingAllocationModeDescription[value],
+  label: strictEnumLabel(MarkingAllocationModeDescription, value, '阅卷分配模式'),
 }))
 
-export const ALLOCATION_UNIT_OPTIONS: Array<{ value: AllocationUnitCode, label: string }>
-  = ALL_ALLOCATION_UNIT_CODES.map((value) => ({
+export const ALLOCATION_UNIT_OPTIONS: Array<{ value: AllocationUnitCode; label: string }> =
+  ALL_ALLOCATION_UNIT_CODES.map((value) => ({
     value,
-    label: AllocationUnitDescription[value],
+    label: strictEnumLabel(AllocationUnitDescription, value, '批阅任务单元'),
   }))
 
 export const MARKING_REASSIGN_MODE_OPTIONS: Array<{
@@ -140,7 +141,7 @@ export const MARKING_REASSIGN_MODE_OPTIONS: Array<{
   label: string
 }> = ALL_MARKING_REASSIGN_MODE_CODES.map((value) => ({
   value,
-  label: MarkingReassignModeDescription[value],
+  label: strictEnumLabel(MarkingReassignModeDescription, value, '阅卷改派模式'),
 }))
 
 export const ANONYMOUS_TOKEN_POLICY_OPTIONS: Array<{
@@ -148,7 +149,7 @@ export const ANONYMOUS_TOKEN_POLICY_OPTIONS: Array<{
   label: string
 }> = ALL_ANONYMOUS_TOKEN_POLICY_CODES.map((value) => ({
   value,
-  label: AnonymousTokenPolicyDescription[value],
+  label: strictEnumLabel(AnonymousTokenPolicyDescription, value, '匿名令牌策略'),
 }))
 
 export const MARKING_TASK_STATUS_TONE: Record<
@@ -168,7 +169,7 @@ export const MARKING_TASK_STATUS_OPTIONS: Array<{
   value: MarkingTaskStatusCode
 }> = ALL_MARKING_TASK_STATUS_CODES.map((value) => ({
   value,
-  label: MarkingTaskStatusDescription[value],
+  label: strictEnumLabel(MarkingTaskStatusDescription, value, '阅卷任务状态'),
 }))
 
 /** 创建阅卷组织请求 - 对应后端 OrganizationCreateRequest */
@@ -504,12 +505,12 @@ export const FORMAL_SESSION_STATUS_TONE: Record<
 }
 
 /** 试评会话主流程 hint，文案与 TrialSessionStatusDescription 一致 */
-export const TRIAL_SESSION_FLOW_HINT = TRIAL_SESSION_MAIN_FLOW_STATUS_CODES.map(
-  (status) => TrialSessionStatusDescription[status],
+export const TRIAL_SESSION_FLOW_HINT = TRIAL_SESSION_MAIN_FLOW_STATUS_CODES.map((status) =>
+  strictEnumLabel(TrialSessionStatusDescription, status, '试评会话状态'),
 ).join(' → ')
 
 /** 正评会话主流程 hint，文案与 FormalSessionStatusDescription 一致（进行中与已暂停可往返） */
-export const FORMAL_SESSION_FLOW_HINT = `${FormalSessionStatusDescription[FormalSessionStatusCode.SESSION_CREATED]} → ${FormalSessionStatusDescription[FormalSessionStatusCode.SESSION_ACTIVE]} ⇄ ${FormalSessionStatusDescription[FormalSessionStatusCode.SESSION_PAUSED]} → ${FormalSessionStatusDescription[FormalSessionStatusCode.SESSION_COMPLETED]} → ${FormalSessionStatusDescription[FormalSessionStatusCode.SESSION_CLOSED]}`
+export const FORMAL_SESSION_FLOW_HINT = `${strictEnumLabel(FormalSessionStatusDescription, FormalSessionStatusCode.SESSION_CREATED, '正评会话状态')} → ${strictEnumLabel(FormalSessionStatusDescription, FormalSessionStatusCode.SESSION_ACTIVE, '正评会话状态')} ⇄ ${strictEnumLabel(FormalSessionStatusDescription, FormalSessionStatusCode.SESSION_PAUSED, '正评会话状态')} → ${strictEnumLabel(FormalSessionStatusDescription, FormalSessionStatusCode.SESSION_COMPLETED, '正评会话状态')} → ${strictEnumLabel(FormalSessionStatusDescription, FormalSessionStatusCode.SESSION_CLOSED, '正评会话状态')}`
 
 /** 阅卷组织会话页范围说明，供 ContextBar 副标题展示 */
 export const MARKING_SESSIONS_SCOPE_HINT = '按题组创建试评校准与正评启停，推进阅卷组织生效'
@@ -685,7 +686,7 @@ export interface FormalSessionResponse {
   updateTime?: string
 }
 
-const MARKING_ORG_DATA_ERROR = '阅卷组织数据异常，请刷新后重试'
+const MARKING_ORG_DATA_ERROR = '阅卷组织数据异常'
 
 /** 读取已配置阅卷组织的组织 ID；configured 为 true 但 id 缺失时拒绝继续。 */
 export function requireMarkingOrganizationId(record: MarkingOrganizationResponse): string {
@@ -1178,8 +1179,8 @@ export async function getMarkingScanPageDisplayBlobUrl(
     request,
   )
   const rawContentType = response.headers['content-type']
-  const contentType
-    = typeof rawContentType === 'string'
+  const contentType =
+    typeof rawContentType === 'string'
       ? rawContentType
       : Array.isArray(rawContentType)
         ? rawContentType.join(';')

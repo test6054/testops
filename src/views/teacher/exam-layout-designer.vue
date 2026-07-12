@@ -1,25 +1,20 @@
 <script setup lang="ts">
 import type { ExamLayoutQuestionDto } from '@/apis/mark/exam-layout-design'
-import type { PrepStepCard } from '@/utils/exam-prep-step-ui'
 import { computed, inject, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { EXAM_LAYOUT_DESIGN_FLOW_HINT } from '@/apis/mark/exam-layout-design'
-import LayoutIdentitySetupStrip from '@/components/mark/layout-designer/LayoutIdentitySetupStrip.vue'
 import LayoutPreviewDrawer from '@/components/mark/layout-designer/LayoutPreviewDrawer.vue'
 import LayoutReviewDrawer from '@/components/mark/layout-designer/LayoutReviewDrawer.vue'
 import LayoutDesignLayoutPhase from '@/components/mark/layout-designer/workbench/LayoutDesignLayoutPhase.vue'
-import LayoutDesignPhaseRail from '@/components/mark/layout-designer/workbench/LayoutDesignPhaseRail.vue'
 import LayoutDesignQuestionPhase from '@/components/mark/layout-designer/workbench/LayoutDesignQuestionPhase.vue'
 import LayoutDesignReviewPhase from '@/components/mark/layout-designer/workbench/LayoutDesignReviewPhase.vue'
 import LayoutDesignSourcePhase from '@/components/mark/layout-designer/workbench/LayoutDesignSourcePhase.vue'
+import LayoutDesignWorkflowRail from '@/components/mark/layout-designer/workbench/LayoutDesignWorkflowRail.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
-import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
-import PrepStepPipelineRow from '@/components/workbench/PrepStepPipelineRow.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -27,14 +22,12 @@ import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar
 import { useLayoutDesignWorkbench } from '@/composables/useLayoutDesignWorkbench'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
+import { ExamLayoutBlockTypeCode } from '@/types/enums/exam-layout-block-type-enum'
+import { ExamLayoutEntryKindCode } from '@/types/enums/exam-layout-entry-kind-enum'
 import { ALL_EXAM_LAYOUT_PAPER_SPEC_CODES } from '@/types/enums/exam-layout-paper-spec-enum'
 import { LayoutDesignPhaseCode } from '@/types/enums/layout-design-phase-enum'
-import { resolvePaperSpecLabel } from '@/utils/exam-layout-designer'
-import {
-  buildLayoutDesignerSignalMetrics,
-  filterLayoutDesignerPrepSteps,
-} from '@/utils/exam-layout-designer-signal'
-import { buildPrepStepCards, resolvePrepStepRouteLocation } from '@/utils/exam-prep-step-ui'
+import { createDefaultBlock, resolvePaperSpecLabel } from '@/utils/exam-layout-designer'
+import { buildLayoutDesignerSignalMetrics } from '@/utils/exam-layout-designer-signal'
 import { documentHasPages } from '@/utils/layout-design-workspace'
 
 defineOptions({ name: 'TeacherExamWorkspaceLayoutDesigner' })
@@ -42,13 +35,8 @@ defineOptions({ name: 'TeacherExamWorkspaceLayoutDesigner' })
 const router = useRouter()
 const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
 const { selectedExamId } = useMarkExamContext()
-const {
-  contextBarSubtitle,
-  examStatusLabel,
-  examStatusTone,
-  examDetail,
-  examDetailLoading,
-} = useExamJourneyContextBar('制卷设计器')
+const { contextBarSubtitle, examStatusLabel, examStatusTone, examDetail, examDetailLoading } =
+  useExamJourneyContextBar('制卷设计器')
 
 const examId = computed(() => selectedExamId.value ?? '')
 
@@ -97,23 +85,9 @@ const {
   handleGenerateSheet: wbHandleGenerateSheet,
   handleAutoDetect: wbHandleAutoDetect,
   handleCancelDetect: wbHandleCancelDetect,
-  isPhaseAccessible: wbIsPhaseAccessible,
-  phaseLockReason: wbPhaseLockReason,
 } = wb
 
 const sourcePanelRef = ref<HTMLElement | null>(null)
-
-const snapshot = computed(() => workbenchContext?.snapshot.value ?? null)
-const prepAdvisoryReasons = computed(() => snapshot.value?.prepAdvisoryReasons ?? [])
-
-const designerPrepSteps = computed(() => {
-  const backendSteps = snapshot.value?.prepSteps
-  const detail = examDetail.value
-  if (!backendSteps?.length || !detail) {
-    return []
-  }
-  return filterLayoutDesignerPrepSteps(buildPrepStepCards(backendSteps, detail))
-})
 
 const layoutModeLocked = computed(() => examDetail.value?.layoutModeLocked === true)
 
@@ -149,9 +123,7 @@ const layoutPaperLabel = computed(() => {
   return ''
 })
 
-const materialLayoutModeLabel = computed(
-  () => examDetail.value?.materialLayoutModeMessage ?? '',
-)
+const materialLayoutModeLabel = computed(() => examDetail.value?.materialLayoutModeMessage ?? '')
 
 const materialLayoutMode = computed(() => examDetail.value?.materialLayoutMode)
 
@@ -163,32 +135,37 @@ const pageLoading = computed(
 
 const hasPages = computed(() => documentHasPages(wbDocument.value))
 
-const designerPipelineHint = computed((): string => {
-  const parts: string[] = []
-  const layoutStep = designerPrepSteps.value.find((step) => step.key === 'layoutDesign')
-  if (layoutStep?.advisoryReason?.trim()) {
-    parts.push(layoutStep.advisoryReason.trim())
-  }
-  for (const reason of prepAdvisoryReasons.value) {
-    const trimmed = reason.trim()
-    if (trimmed && !parts.includes(trimmed)) {
-      parts.push(trimmed)
+type DesignerStatusAlertKind = 'detect' | 'identity'
+
+const designerStatusAlert = computed(() => {
+  if (wbDetecting.value) {
+    return {
+      kind: 'detect' as DesignerStatusAlertKind,
+      tone: 'info' as const,
+      title: wbDetectProgressText.value || '正在识别题目并生成划区',
+      tooltip: '识别在后台异步执行；离开本页后返回将自动续查进度。',
     }
   }
-  if (wbDetecting.value) {
-    return parts.slice(0, 2).join('；')
+  if (
+    wbLayoutWritable.value &&
+    wbIdentitySetupPending.value &&
+    wbDocument.value?.layoutEntryKind === ExamLayoutEntryKindCode.SOURCE_FILE
+  ) {
+    return {
+      kind: 'identity' as DesignerStatusAlertKind,
+      tone: 'warning' as const,
+      title: '尚未配置身份填涂区',
+      tooltip: '扫描阅卷前须在第 1 页框选学号/班级等身份填涂区。',
+    }
   }
-  if (wbIdentitySetupPending.value) {
-    parts.push('保存前须先配置身份识别区')
-  } else if (wbLayoutRoiStats.value.notReadyQuestionNos.length > 0) {
-    parts.push(`${wbLayoutRoiStats.value.notReadyQuestionNos.length} 道题尚未配置作答区`)
-  } else if (wbSaveBlockingReasons.value.length > 0) {
-    parts.push(wbSaveBlockingReasons.value[0])
-  } else if (!wbLayoutWritable.value && wbWriteLockReason.value) {
-    parts.push(wbWriteLockReason.value)
-  }
-  return parts.slice(0, 2).join('；')
+  return null
 })
+
+const writeLockTooltip = computed(() =>
+  wbWriteLockReason.value
+    ? `${wbWriteLockReason.value}；仍可查看与预览，印后或扫后不可再改。`
+    : undefined,
+)
 
 const contextPrimaryAction = computed(() => {
   if (wbPhase.value === LayoutDesignPhaseCode.REVIEW) {
@@ -213,24 +190,6 @@ const contextPrimaryAction = computed(() => {
 
 function scrollToSourcePanel(): void {
   sourcePanelRef.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-}
-
-function goDesignerPrepStep(step: PrepStepCard): void {
-  if (!examId.value || !examDetail.value) {
-    return
-  }
-  if (step.key === 'layoutDesign') {
-    return
-  }
-  if (!examDetail.value.materialLayoutMode) {
-    return
-  }
-  const location = resolvePrepStepRouteLocation(step.key, examDetail.value, wbDocument.value)
-  void router.push({
-    name: location.name,
-    params: { examId: examId.value },
-    query: location.query,
-  })
 }
 
 function handleSignalMetricClick(key: string): void {
@@ -258,6 +217,18 @@ function handleFocusIdentityLayers(): void {
   wbGoPhase(LayoutDesignPhaseCode.LAYOUT)
 }
 
+function handleAddStudentNoBlock(): void {
+  if (!wbDocument.value || wbLayoutCanvasReadonly.value) {
+    return
+  }
+  const maxLayer = wbDocument.value.blocks.reduce(
+    (max, block) => Math.max(max, block.layer ?? 0),
+    0,
+  )
+  const block = createDefaultBlock(1, ExamLayoutBlockTypeCode.IDENTITY_BUBBLE, maxLayer + 1)
+  wbHandleAddIdentityBlock(block)
+}
+
 async function handleReviewSave(): Promise<void> {
   const saved = await wbHandleSave()
   if (saved) {
@@ -282,22 +253,29 @@ async function handleReviewSaved(): Promise<void> {
           <UiTag v-if="materialLayoutModeLabel" tone="blue" size="sm">
             形态 {{ materialLayoutModeLabel }}
           </UiTag>
-          <UiTag v-if="layoutModeLocked" tone="gray" size="sm">形态已锁定</UiTag>
+          <a-tooltip v-if="!wbLayoutWritable && writeLockTooltip" :title="writeLockTooltip">
+            <UiTag tone="orange" size="sm">制卷已锁定</UiTag>
+          </a-tooltip>
+          <UiTag v-else-if="layoutModeLocked" tone="gray" size="sm">形态已锁定</UiTag>
           <UiTag v-if="layoutPaperLabel" tone="gray" size="sm">纸型 {{ layoutPaperLabel }}</UiTag>
-          <UiTag v-if="scanPaperStyleLabel" tone="gray" size="sm">印张 {{ scanPaperStyleLabel }}</UiTag>
-          <UiTag
-            v-if="wbDocument && !wbLayoutPersisted"
-            tone="orange"
-            size="sm"
+          <UiTag v-if="scanPaperStyleLabel" tone="gray" size="sm"
+            >印张 {{ scanPaperStyleLabel }}</UiTag
           >
+          <UiTag v-if="wbDocument && !wbLayoutPersisted" tone="orange" size="sm">
             未保存草稿
           </UiTag>
           <UiTag
             v-if="wbLayoutRoiStats.totalQuestionCount > 0"
-            :tone="wbLayoutRoiStats.roiReadyQuestionCount === wbLayoutRoiStats.totalQuestionCount ? 'green' : 'orange'"
+            :tone="
+              wbLayoutRoiStats.roiReadyQuestionCount === wbLayoutRoiStats.totalQuestionCount
+                ? 'green'
+                : 'orange'
+            "
             size="sm"
           >
-            ROI {{ wbLayoutRoiStats.roiReadyQuestionCount }}/{{ wbLayoutRoiStats.totalQuestionCount }}
+            ROI {{ wbLayoutRoiStats.roiReadyQuestionCount }}/{{
+              wbLayoutRoiStats.totalQuestionCount
+            }}
           </UiTag>
         </template>
         <template #actions>
@@ -342,69 +320,56 @@ async function handleReviewSaved(): Promise<void> {
 
     <UiEmpty v-if="!examId" description="缺少考试上下文，请从考试工作台进入" />
     <template v-else>
-      <ExamWorkspaceJourneySubNav />
-
-      <PrepStepPipelineRow
-        v-if="examDetail && designerPrepSteps.length > 0"
-        class="layout-designer-pipeline"
-        :steps="designerPrepSteps"
-        current-step-key="layoutDesign"
-        :locked="!examDetail.materialLayoutMode"
-        :hint="designerPipelineHint || undefined"
-        @select="goDesignerPrepStep"
-      />
-
-      <LayoutDesignPhaseRail
+      <LayoutDesignWorkflowRail
         :phase="wbPhase"
-        :is-phase-accessible="wbIsPhaseAccessible"
-        :phase-lock-reason="wbPhaseLockReason"
+        :document="wbDocument"
+        :exam-detail="examDetail"
+        :layout-writable="wbLayoutWritable"
         @select="wbGoPhase"
       />
 
-      <UiAlertStrip
-        v-if="!wbLayoutWritable && wbWriteLockReason"
-        tone="warning"
-        :closable="false"
-        dense
-        :title="wbWriteLockReason"
-        class="layout-designer-lock-banner"
-      />
-      <UiAlertStrip
-        v-if="wbDetecting"
-        tone="info"
-        :closable="false"
-        dense
-        :title="wbDetectProgressText || '正在识别题目并生成划区'"
-        description="识别在后台异步执行；离开本页后返回将自动续查进度，也可手动取消识别。"
-        class="layout-designer-lock-banner"
-      >
-        <template #actions>
-          <UiButton
-            size="sm"
-            variant="outline"
-            :loading="wbCancellingDetect"
-            :disabled="!wbActiveDetectTaskId || wbCancellingDetect"
-            @click="wbHandleCancelDetect()"
-          >
-            取消识别
-          </UiButton>
-        </template>
-      </UiAlertStrip>
-      <LayoutIdentitySetupStrip
-        v-if="!wbDetecting && wbIdentitySetupPending"
-        :document="wbDocument"
-        :detecting="wbDetecting"
-        :readonly="wbLayoutCanvasReadonly"
-        class="layout-designer-lock-banner"
-        @add-identity-block="wbHandleAddIdentityBlock"
-        @focus-layers="handleFocusIdentityLayers"
-      />
+      <a-tooltip v-if="designerStatusAlert" :title="designerStatusAlert.tooltip">
+        <UiAlertStrip
+          :tone="designerStatusAlert.tone"
+          :closable="false"
+          dense
+          inline
+          :title="designerStatusAlert.title"
+          class="layout-designer-status-strip"
+        >
+          <template v-if="designerStatusAlert.kind === 'detect'" #actions>
+            <UiButton
+              size="sm"
+              variant="outline"
+              :loading="wbCancellingDetect"
+              :disabled="!wbActiveDetectTaskId || wbCancellingDetect"
+              @click="wbHandleCancelDetect()"
+            >
+              取消识别
+            </UiButton>
+          </template>
+          <template v-else-if="designerStatusAlert.kind === 'identity'" #actions>
+            <UiButton
+              size="sm"
+              variant="primary"
+              :disabled="wbLayoutCanvasReadonly"
+              @click="handleAddStudentNoBlock"
+            >
+              在第 1 页添加学号填涂区
+            </UiButton>
+            <UiButton
+              size="sm"
+              variant="outline"
+              :disabled="wbLayoutCanvasReadonly"
+              @click="handleFocusIdentityLayers"
+            >
+              打开识别图层
+            </UiButton>
+          </template>
+        </UiAlertStrip>
+      </a-tooltip>
 
       <WorkbenchSurfaceCard flush class="layout-designer__surface">
-        <template #toolbar>
-          <span class="layout-designer__flow-hint">{{ EXAM_LAYOUT_DESIGN_FLOW_HINT }}</span>
-        </template>
-
         <UiSkeletonState v-if="pageLoading" variant="card" :card-count="2" compact />
         <div v-else ref="sourcePanelRef">
           <LayoutDesignSourcePhase
@@ -412,8 +377,6 @@ async function handleReviewSaved(): Promise<void> {
             :document="wbDocument"
             :exam-id="examId"
             :material-layout-mode="materialLayoutMode"
-            :material-layout-mode-message="materialLayoutModeLabel"
-            :layout-paper-spec-message="layoutPaperLabel"
             :generating="wbGenerating"
             :detecting="wbDetecting"
             :readonly="wbLayoutCanvasReadonly"
@@ -477,14 +440,7 @@ async function handleReviewSaved(): Promise<void> {
 </template>
 
 <style scoped lang="scss">
-.layout-designer-pipeline,
-.layout-designer-lock-banner {
-  margin-bottom: 12px;
-}
-
-.layout-designer__flow-hint {
-  font-size: 12px;
-  color: var(--ant-color-text-tertiary);
-  line-height: 1.5;
+.layout-designer-status-strip {
+  margin-bottom: 8px;
 }
 </style>

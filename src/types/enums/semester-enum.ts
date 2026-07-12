@@ -6,6 +6,7 @@
  * @author 庆之
  * @version 1.0
  */
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 /**
  * 学期代码枚举
@@ -36,8 +37,14 @@ export const SemesterDescription: Record<SemesterCode, string> = {
  * 学期选项列表（用于 Select 组件）
  */
 export const SemesterOptions: Array<{ value: SemesterCode, label: string }> = [
-  { value: SemesterCode.AUTUMN, label: SemesterDescription[SemesterCode.AUTUMN] },
-  { value: SemesterCode.SPRING, label: SemesterDescription[SemesterCode.SPRING] },
+  {
+    value: SemesterCode.AUTUMN,
+    label: strictEnumLabel(SemesterDescription, SemesterCode.AUTUMN, '学期'),
+  },
+  {
+    value: SemesterCode.SPRING,
+    label: strictEnumLabel(SemesterDescription, SemesterCode.SPRING, '学期'),
+  },
 ]
 
 /** 校验是否为 SemesterCode 枚举成员（逐值显式比对，禁止宽化承接）。 */
@@ -63,7 +70,7 @@ export function getSemesterDescription(code: SemesterCode | null | undefined): s
   if (code === null || code === undefined) {
     return ''
   }
-  return SemesterDescription[code]
+  return strictEnumLabel(SemesterDescription, code, '学期')
 }
 
 /**

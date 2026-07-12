@@ -21,7 +21,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  "retry": []
+  retry: []
   'go-candidate-roster': []
 }>()
 
@@ -51,7 +51,7 @@ const activeAlert = computed(() => {
     return {
       tone: 'warning' as const,
       title: '建卷仍在进行',
-      description: '系统仍在后台创建归档卷，请稍后点击刷新查看进度。',
+      description: '系统仍在后台创建归档卷，可点击刷新查看进度。',
       showRetry: false,
       showRoster: false,
     }

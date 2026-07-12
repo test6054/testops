@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentRecordStatusCode } from '@/apis/portfolio/enums'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref } from 'vue'
-import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
   PortfolioDevelopmentRecordStatusDescription,
   PortfolioDevelopmentRecordTypeCode,
   PortfolioDevelopmentRecordTypeDescription,
 } from '@/apis/portfolio/enums'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref } from 'vue'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -30,17 +30,17 @@ const RECORD_TAB_KEYS: PortfolioDevelopmentRecordTypeCode[] = [
 ]
 const RECORD_TABS = RECORD_TAB_KEYS.map((key) => ({
   key,
-  label: PortfolioDevelopmentRecordTypeDescription[key],
+  label: strictEnumLabel(PortfolioDevelopmentRecordTypeDescription, key, '发展档案记录类型'),
 }))
 
 type RecordType = (typeof RECORD_TAB_KEYS)[number]
 
 const activeType = ref<RecordType>(PortfolioDevelopmentRecordTypeCode.ACHIEVEMENT)
 const importModalOpen = ref(false)
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
-  = usePortfolioTeacherSearch()
-const { loading, rows, pageNum, pageSize, pageTotal, loadPage, search, handlePageChange }
-  = useQueryTable(
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
+  usePortfolioTeacherSearch()
+const { loading, rows, pageNum, pageSize, pageTotal, loadPage, search, handlePageChange } =
+  useQueryTable(
     (params) =>
       portfolioDevelopmentRecordApi.page({
         ...params,

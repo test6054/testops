@@ -158,7 +158,7 @@
           :src="previewPdfUrl"
           class="print-package__preview-frame"
         />
-        <UiEmpty v-else description="暂无数据" />
+        <UiEmpty v-else description="当前没有可展示的内容" />
       </UiDrawer>
     </template>
   </StageWorkbenchShell>
@@ -167,15 +167,8 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamWorkbenchPrintPackagePanelResponse } from '@/apis/mark/exam-progress'
-import type { ExamPrintPackageResponse, PrintPackageItemVO } from '@/apis/mark/print-package'
-import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { downloadFile, getFileArrayBuffer } from '@/apis/edu/file-management'
-import { getExamDetail } from '@/apis/mark/exam'
 import { getPrintPackagePanel } from '@/apis/mark/exam-progress'
+import type { ExamPrintPackageResponse, PrintPackageItemVO } from '@/apis/mark/print-package'
 import {
   generatePrintPackage,
   isLayoutNotReadyError,
@@ -185,6 +178,13 @@ import {
   PRINT_PACKAGE_STATUS_TONE,
   PrintPackageStatusDescription,
 } from '@/apis/mark/print-package'
+import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { downloadFile, getFileArrayBuffer } from '@/apis/edu/file-management'
+import { getExamDetail } from '@/apis/mark/exam'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -352,7 +352,7 @@ async function loadPackageList() {
   }
 }
 
-function handlePackagePageChange(pageEvent: { current: number, pageSize: number }): void {
+function handlePackagePageChange(pageEvent: { current: number; pageSize: number }): void {
   pagination.pageNum = pageEvent.current
   pagination.pageSize = pageEvent.pageSize
   loadPackageList()
@@ -431,7 +431,7 @@ async function downloadPackagePdf(pkg: ExamPrintPackageResponse) {
   try {
     await downloadFile({ nodeId: pkg.packageFileId })
   } catch (error) {
-    showUserError(error, '印刷包文件下载失败，请稍后重试')
+    showUserError(error, '印刷包文件下载失败')
   }
 }
 
@@ -515,13 +515,13 @@ async function loadDetailItems(): Promise<void> {
   } catch (error) {
     detailItems.value = []
     detailPagination.total = 0
-    showUserError(error, '印刷包明细加载失败，请稍后重试')
+    showUserError(error, '印刷包明细加载失败')
   } finally {
     detailLoading.value = false
   }
 }
 
-function handleDetailPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleDetailPageChange(pageEvent: { current: number; pageSize: number }): void {
   detailPagination.pageNum = pageEvent.current
   detailPagination.pageSize = pageEvent.pageSize
   void loadDetailItems()

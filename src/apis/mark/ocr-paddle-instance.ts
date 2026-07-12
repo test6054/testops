@@ -1,5 +1,6 @@
 import type { MarkOcrHealthStatusCode } from './ocr-types'
 import type { PageResult, QueryDto } from '@/types'
+import type { PaddleOcrDeviceKindCode } from '@/types/enums/paddle-ocr-device-kind-enum'
 import http from '@/config/axios'
 
 /**
@@ -13,7 +14,8 @@ export interface PaddleOcrInstanceResponse {
   id: string
   instanceName: string
   serviceUrl: string
-  deviceType: string
+  deviceKind: PaddleOcrDeviceKindCode
+  deviceIndex?: number
   healthStatus: MarkOcrHealthStatusCode
   lastHealthCheckTime?: string
   lastHealthMessage?: string
@@ -25,7 +27,8 @@ export interface PaddleOcrInstanceResponse {
 export interface PaddleOcrInstanceRegisterRequest {
   instanceName: string
   serviceUrl: string
-  deviceType: string
+  deviceKind: PaddleOcrDeviceKindCode
+  deviceIndex?: number
   localAutoDeploy?: boolean
 }
 

@@ -8,16 +8,17 @@ import type { AuditSupervisionTypeCode } from './types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { AuditSupervisionScopeCode } from '@/types/enums/audit-supervision-scope-enum'
+import {
+  ALL_AUDIT_SUPERVISION_SCOPE_CODES,
+  AuditSupervisionScopeDescription,
+} from '@/types/enums/audit-supervision-scope-enum'
 import http from '@/config/axios'
 import {
   ALL_AUDIT_SUPERVISION_CONCLUSION_CODES,
   AuditSupervisionConclusionCode,
   AuditSupervisionConclusionDescription,
 } from '@/types/enums/audit-supervision-conclusion-enum'
-import {
-  ALL_AUDIT_SUPERVISION_SCOPE_CODES,
-  AuditSupervisionScopeDescription,
-} from '@/types/enums/audit-supervision-scope-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const BASE = '/api/quality/audit-evaluation/supervisions'
 
@@ -43,7 +44,7 @@ export const AUDIT_SUPERVISION_CONCLUSION_TONE: Record<AuditSupervisionConclusio
 export const AUDIT_SUPERVISION_SCOPE_OPTIONS: Array<{ value: AuditSupervisionScopeCode, label: string }>
   = ALL_AUDIT_SUPERVISION_SCOPE_CODES.map((value) => ({
     value,
-    label: AuditSupervisionScopeDescription[value],
+    label: strictEnumLabel(AuditSupervisionScopeDescription, value, '督导范围'),
   }))
 
 export const AUDIT_SUPERVISION_CONCLUSION_OPTIONS: Array<{
@@ -52,7 +53,7 @@ export const AUDIT_SUPERVISION_CONCLUSION_OPTIONS: Array<{
   tone: BadgeTone
 }> = ALL_AUDIT_SUPERVISION_CONCLUSION_CODES.map((value) => ({
   value,
-  label: AuditSupervisionConclusionDescription[value],
+  label: strictEnumLabel(AuditSupervisionConclusionDescription, value, '督导结论'),
   tone: AUDIT_SUPERVISION_CONCLUSION_TONE[value],
 }))
 

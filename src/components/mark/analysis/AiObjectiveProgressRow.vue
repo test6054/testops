@@ -6,6 +6,7 @@ import {
 } from '@/apis/mark/cross-exam-analysis'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { formatAnalysisRate } from '@/utils/ai-analysis-display'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AiObjectiveProgressRow' })
 
@@ -40,12 +41,8 @@ function barWidth(rate?: number): string {
       />
     </div>
     <span class="ai-objective-row__rate">{{ formatAnalysisRate(achievementRate) }}</span>
-    <UiTag
-      v-if="status"
-      :tone="COURSE_ACHIEVEMENT_STATUS_TONE[status]"
-      size="sm"
-    >
-      {{ CourseAchievementStatusDescription[status] }}
+    <UiTag v-if="status" :tone="COURSE_ACHIEVEMENT_STATUS_TONE[status]" size="sm">
+      {{ strictEnumLabel(CourseAchievementStatusDescription, status, '课程目标达成状态') }}
     </UiTag>
   </div>
 </template>

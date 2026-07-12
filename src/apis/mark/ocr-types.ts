@@ -5,6 +5,7 @@ import {
   MarkOcrProviderTypeCode,
   MarkOcrProviderTypeDescription,
 } from '@/types/enums/mark-ocr-provider-type-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
   ALL_MARK_OCR_HEALTH_STATUS_CODES,
@@ -24,7 +25,7 @@ export const MARK_OCR_PROVIDER_OPTIONS: Array<{
   value: MarkOcrProviderTypeCode
 }> = ALL_MARK_OCR_PROVIDER_TYPE_CODES.map((value) => ({
   value,
-  label: MarkOcrProviderTypeDescription[value],
+  label: strictEnumLabel(MarkOcrProviderTypeDescription, value, 'OCR 渠道类型'),
 }))
 
 export const MARK_OCR_PROVIDER_DESCRIPTION: Record<MarkOcrProviderTypeCode, string> = {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PortfolioAiAnalysisDetailVO, PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
+import { PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -14,7 +15,6 @@ import {
 } from '@/apis/portfolio/enums'
 import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
-import { PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE } from '@/apis/portfolio/types'
 import { AiTaskStatusCode } from '@/apis/quality/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
@@ -52,6 +52,7 @@ const materialFileName = ref<string>()
 const materialType = ref<PortfolioMaterialTypeCode>(PortfolioMaterialTypeCode.DOCUMENT)
 const analysisDetail = ref<PortfolioAiAnalysisDetailVO | null>(null)
 const teacherOptions = ref<PortfolioTeacherSummaryVO[]>([])
+const orchestrationToken = ref(0)
 
 const askForm = reactive({
   userQuestion: '',
@@ -93,6 +94,27 @@ const policyConclusionTone = computed<BadgeTone>(() => {
   return strictEnumTone(PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE, code, '政策匹配结论')
 })
 
+/** 清空当前教师绑定的材料上下文，避免跨教师残留旧材料。 */
+function resetMaterialContext() {
+  registeredMaterialId.value = undefined
+  materialFileNodeId.value = undefined
+  materialFileName.value = undefined
+  materialType.value = PortfolioMaterialTypeCode.DOCUMENT
+}
+
+/** 清空当前页已展示的 AI 结果，避免深链失败后继续显示旧教师结果。 */
+function resetAnalysisContext() {
+  analysisDetail.value = null
+}
+
+/** 教师范围切换后重置本页上下文，确保材料、专业、结果都回到当前教师。 */
+function resetTeacherScopeContext() {
+  orchestrationToken.value += 1
+  selectedTeacherProgramId.value = undefined
+  resetMaterialContext()
+  resetAnalysisContext()
+}
+
 function isAnalysisType(type: PortfolioAiAnalysisTypeCode) {
   return analysisDetail.value!.analysisType === type
 }
@@ -100,8 +122,8 @@ function isAnalysisType(type: PortfolioAiAnalysisTypeCode) {
 const supportedOrchestrationAnalysis = computed(() => {
   const type = analysisDetail.value?.analysisType
   return (
-    type === PortfolioAiAnalysisTypeCode.MATERIAL_QA
-    || type === PortfolioAiAnalysisTypeCode.POLICY_MATCH
+    type === PortfolioAiAnalysisTypeCode.MATERIAL_QA ||
+    type === PortfolioAiAnalysisTypeCode.POLICY_MATCH
   )
 })
 
@@ -113,31 +135,49 @@ async function loadTeacherProgram() {
   if (!targetTeacherId.value) {
     return
   }
+  const requestToken = orchestrationToken.value
   try {
     const detail = await portfolioTeacherApi.get(targetTeacherId.value)
+    if (orchestrationToken.value !== requestToken) {
+      return
+    }
     selectedTeacherProgramId.value = detail.programId
     const page = await portfolioTeacherApi.page({
       pageNum: 1,
       pageSize: QUALITY_SELECTOR_PAGE_SIZE,
     })
+    if (orchestrationToken.value !== requestToken) {
+      return
+    }
     teacherOptions.value = page.list
   } catch (error) {
+    if (orchestrationToken.value !== requestToken) {
+      return
+    }
     showUserError(error, '加载教师专业信息失败')
   }
 }
 
 async function loadRegisteredMaterial(materialId: string) {
+  const requestToken = orchestrationToken.value
   try {
     const material = await portfolioMaterialApi.get(materialId)
+    if (orchestrationToken.value !== requestToken) {
+      return
+    }
     if (!targetTeacherId.value) {
+      resetMaterialContext()
       message.error('请先选择教师')
       return
     }
     if (material.teacherId !== targetTeacherId.value) {
+      resetMaterialContext()
+      resetAnalysisContext()
       message.error('材料所属教师与当前页教师不一致')
       return
     }
     if (!material.fileNodeId) {
+      resetMaterialContext()
       message.error('材料未关联文件')
       return
     }
@@ -146,6 +186,10 @@ async function loadRegisteredMaterial(materialId: string) {
     materialFileName.value = material.materialTitle ?? material.fileNodeId
     materialType.value = material.materialType
   } catch (error) {
+    if (orchestrationToken.value !== requestToken) {
+      return
+    }
+    resetMaterialContext()
     showUserError(error, '加载材料失败')
   }
 }
@@ -184,25 +228,42 @@ function applyOrchestrationAnalysisDetail(detail: PortfolioAiAnalysisDetailVO) {
   }
 }
 
-async function pollAnalysis(taskId: string) {
+async function pollAnalysis(taskId: string, taskToken = orchestrationToken.value) {
   polling.value = true
   try {
     for (let attempt = 0; attempt < 60; attempt++) {
+      if (orchestrationToken.value !== taskToken) {
+        return
+      }
       const task = await portfolioAiJobApi.get(taskId)
+      if (orchestrationToken.value !== taskToken) {
+        return
+      }
       if (task.status === 'SUCCEEDED') {
         const detail = await portfolioAiJobApi.getAnalysisByTask(taskId)
+        if (orchestrationToken.value !== taskToken) {
+          return
+        }
         applyOrchestrationAnalysisDetail(detail)
         return
       }
       if (task.status === AiTaskStatusCode.FAILED || task.status === AiTaskStatusCode.CANCELLED) {
-        showUserError(null, 'AI 任务失败，请稍后重试或重新提交')
+        if (orchestrationToken.value !== taskToken) {
+          return
+        }
+        showUserError(null, 'AI 任务失败，请在任务列表查看原因后重新提交')
         return
       }
       await sleep(2000)
     }
-    showUserError(null, 'AI 任务超时，请稍后在任务列表查看')
+    if (orchestrationToken.value !== taskToken) {
+      return
+    }
+    showUserError(null, 'AI 任务超时，请在任务列表查看结果')
   } finally {
-    polling.value = false
+    if (orchestrationToken.value === taskToken) {
+      polling.value = false
+    }
   }
 }
 
@@ -224,7 +285,8 @@ async function submitAsk() {
     return
   }
   loading.value = true
-  analysisDetail.value = null
+  const taskToken = orchestrationToken.value
+  resetAnalysisContext()
   try {
     const materialId = await ensureMaterialRegistered()
     if (!materialId) {
@@ -238,13 +300,24 @@ async function submitAsk() {
       userQuestion: askForm.userQuestion.trim(),
       programId: selectedTeacherProgramId.value,
     })
+    if (orchestrationToken.value !== taskToken) {
+      return
+    }
     message.info('问数任务已提交，正在等待结果…')
-    await pollAnalysis(submitResult.taskId)
+    await pollAnalysis(submitResult.taskId, taskToken)
+    if (orchestrationToken.value !== taskToken) {
+      return
+    }
     message.success('问数完成')
   } catch (error) {
+    if (orchestrationToken.value !== taskToken) {
+      return
+    }
     showUserError(error, '提交智能问数失败')
   } finally {
-    loading.value = false
+    if (orchestrationToken.value === taskToken) {
+      loading.value = false
+    }
   }
 }
 
@@ -266,7 +339,8 @@ async function submitPolicyCheck() {
     return
   }
   loading.value = true
-  analysisDetail.value = null
+  const taskToken = orchestrationToken.value
+  resetAnalysisContext()
   try {
     let materialId: string | undefined
     let fileNodeId: string | undefined
@@ -287,13 +361,24 @@ async function submitPolicyCheck() {
       teacherProfileSummary: policyForm.teacherProfileSummary.trim() || undefined,
       programId: selectedTeacherProgramId.value,
     })
+    if (orchestrationToken.value !== taskToken) {
+      return
+    }
     message.info('政策核验任务已提交，正在等待结果…')
-    await pollAnalysis(submitResult.taskId)
+    await pollAnalysis(submitResult.taskId, taskToken)
+    if (orchestrationToken.value !== taskToken) {
+      return
+    }
     message.success('政策核验完成')
   } catch (error) {
+    if (orchestrationToken.value !== taskToken) {
+      return
+    }
     showUserError(error, '提交政策核验失败')
   } finally {
-    loading.value = false
+    if (orchestrationToken.value === taskToken) {
+      loading.value = false
+    }
   }
 }
 
@@ -301,9 +386,14 @@ watch(
   () => route.query.materialId,
   (value) => {
     const materialId = readRouteStringParam(value)
-    if (materialId && scopeReady.value) {
-      void loadRegisteredMaterial(materialId)
+    if (!scopeReady.value) {
+      return
     }
+    if (!materialId) {
+      resetMaterialContext()
+      return
+    }
+    void loadRegisteredMaterial(materialId)
   },
   { immediate: true },
 )
@@ -311,14 +401,35 @@ watch(
 watch(
   () => ({ ready: scopeReady.value, taskId: readRouteStringParam(route.query.taskId) }),
   (routeState) => {
-    if (!routeState.taskId || !routeState.ready) {
+    if (!routeState.ready) {
       return
     }
-    void pollAnalysis(routeState.taskId).catch((error) => {
+    if (!routeState.taskId) {
+      orchestrationToken.value += 1
+      resetAnalysisContext()
+      return
+    }
+    orchestrationToken.value += 1
+    resetAnalysisContext()
+    const taskToken = orchestrationToken.value
+    void pollAnalysis(routeState.taskId, taskToken).catch((error) => {
+      if (orchestrationToken.value !== taskToken) {
+        return
+      }
       showUserError(error, '加载 AI 分析结果失败')
     })
   },
   { immediate: true },
+)
+
+watch(
+  () => targetTeacherId.value,
+  (teacherId, previousTeacherId) => {
+    if (!teacherId || teacherId === previousTeacherId) {
+      return
+    }
+    resetTeacherScopeContext()
+  },
 )
 
 usePortfolioScopedLoader(
@@ -496,7 +607,7 @@ onMounted(() => {
         v-else
         status="error"
         title="分析结果类型异常"
-        sub-title="当前页面仅支持材料问数与政策核验结果展示，请刷新后重试"
+        sub-title="当前页面仅支持材料问数与政策核验结果展示"
       />
     </UiCard>
   </StageWorkbenchShell>

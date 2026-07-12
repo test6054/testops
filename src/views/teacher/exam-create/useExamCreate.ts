@@ -6,15 +6,12 @@ import type {
   ExamCreateRosterForm,
   ExamCreateSectionKey,
 } from './exam-create-context'
+import { EXAM_CREATE_SECTION_ORDER } from './exam-create-context'
 import type {
   ExamCreateBundleRequest,
   ExamCreateRequest,
   ExamRosterCreateRequest,
 } from '@/apis/mark/exam'
-import type { ExamCandidateResponse, ExamCandidateRosterRequest } from '@/apis/mark/exam-scope'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   createExamBundle,
   ExamGradingStrategyCode,
@@ -24,10 +21,17 @@ import {
   ExamScorePolicyCode,
   previewCreateExamRoster,
 } from '@/apis/mark/exam'
+import type { ExamCandidateResponse, ExamCandidateRosterRequest } from '@/apis/mark/exam-scope'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/modules/user'
 import { getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
-import { rejectFormValidation, showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { EXAM_CREATE_SECTION_ORDER } from './exam-create-context'
+import {
+  rejectFormValidation,
+  showFormValidationMessage,
+  showUserError,
+} from '@/utils/error-handler'
 import { mergePreviewCandidates, requirePreviewCandidates } from './exam-create-roster'
 
 export type {
@@ -62,7 +66,7 @@ export function useExamCreate() {
   /** 整班纳入 preview 请求进行中；提交前须等待完成，避免携带过期考生快照。 */
   const rosterPreviewSyncing = ref(false)
   /** 提交校验失败时，用于滚动定位到首个错误表单项。 */
-  const lastInvalidField = ref<{ section: ExamCreateSectionKey, name: NamePath } | null>(null)
+  const lastInvalidField = ref<{ section: ExamCreateSectionKey; name: NamePath } | null>(null)
 
   function captureFormValidationError(section: ExamCreateSectionKey, error: unknown): void {
     const errorFields = (error as { errorFields?: Array<{ name: NamePath }> })?.errorFields
@@ -74,13 +78,14 @@ export function useExamCreate() {
   function scrollToFirstInvalidField(): void {
     const target = lastInvalidField.value
     if (!target) return
-    const formRef = target.section === 'exam-create-basic'
-      ? basicFormRef.value
-      : target.section === 'exam-create-marking-team'
-        ? markingTeamFormRef.value
-        : target.section === 'exam-create-candidates'
-          ? rosterFormRef.value
-          : undefined
+    const formRef =
+      target.section === 'exam-create-basic'
+        ? basicFormRef.value
+        : target.section === 'exam-create-marking-team'
+          ? markingTeamFormRef.value
+          : target.section === 'exam-create-candidates'
+            ? rosterFormRef.value
+            : undefined
     formRef?.scrollToField(target.name, { behavior: 'smooth', block: 'center' })
     lastInvalidField.value = null
   }
@@ -158,9 +163,7 @@ export function useExamCreate() {
         trigger: 'blur',
       },
     ],
-    semester: [
-      { required: true, message: '请选择学期', trigger: 'change' },
-    ],
+    semester: [{ required: true, message: '请选择学期', trigger: 'change' }],
     examWindow: [
       {
         validator: async (): Promise<void> => {
@@ -227,16 +230,6 @@ export function useExamCreate() {
       },
       {
         validator: async (): Promise<void> => {
-          if (rosterForm.scopeMode !== ExamRosterScopeModeCode.BY_CLASS) return
-          if (!rosterForm.classIds.length) return
-          if (rosterForm.candidates.length === 0) {
-            return rejectFormValidation('整班纳入须包含所选班级的全部学生')
-          }
-        },
-        trigger: 'change',
-      },
-      {
-        validator: async (): Promise<void> => {
           if (rosterForm.scopeMode !== ExamRosterScopeModeCode.BY_STUDENT) return
           if (rosterForm.candidates.length === 0) return
           if (!rosterForm.classIds.length) {
@@ -252,7 +245,7 @@ export function useExamCreate() {
           if (rosterForm.candidates.length === 0) return
           const classSet = new Set(rosterForm.classIds)
           const invalid = rosterForm.candidates.find(
-            candidate => !candidate.classId || !classSet.has(candidate.classId),
+            (candidate) => !candidate.classId || !classSet.has(candidate.classId),
           )
           if (invalid) {
             return rejectFormValidation('存在考生班级不在参考班级范围内')
@@ -280,7 +273,7 @@ export function useExamCreate() {
     chiefId: string,
     chiefName: string,
   ): void {
-    const pairs: Array<{ id: string, name: string }> = []
+    const pairs: Array<{ id: string; name: string }> = []
     for (let index = 0; index < markingTeamForm.reviewerUserIds.length; index += 1) {
       pairs.push({
         id: markingTeamForm.reviewerUserIds[index],
@@ -290,15 +283,15 @@ export function useExamCreate() {
 
     let nextPairs = pairs
     if (previousChiefId && previousChiefId !== chiefId) {
-      nextPairs = nextPairs.filter(pair => pair.id !== previousChiefId)
+      nextPairs = nextPairs.filter((pair) => pair.id !== previousChiefId)
     }
-    nextPairs = nextPairs.filter(pair => pair.id !== chiefId)
+    nextPairs = nextPairs.filter((pair) => pair.id !== chiefId)
 
     const trimmedChiefName = chiefName.trim()
-    markingTeamForm.reviewerUserIds = [chiefId, ...nextPairs.map(pair => pair.id)]
+    markingTeamForm.reviewerUserIds = [chiefId, ...nextPairs.map((pair) => pair.id)]
     markingTeamForm.reviewerNickNames = trimmedChiefName
-      ? [trimmedChiefName, ...nextPairs.map(pair => pair.name).filter(Boolean)]
-      : nextPairs.map(pair => pair.name).filter(Boolean)
+      ? [trimmedChiefName, ...nextPairs.map((pair) => pair.name).filter(Boolean)]
+      : nextPairs.map((pair) => pair.name).filter(Boolean)
   }
 
   function ensureChiefInReviewers(): void {
@@ -353,10 +346,13 @@ export function useExamCreate() {
   function isSameStringIdSet(left: string[], right: string[]): boolean {
     if (left.length !== right.length) return false
     const leftSet = new Set(left)
-    return right.every(id => leftSet.has(id))
+    return right.every((id) => leftSet.has(id))
   }
 
-  function isSameCandidateSnapshot(left: ExamCandidateResponse[], right: ExamCandidateResponse[]): boolean {
+  function isSameCandidateSnapshot(
+    left: ExamCandidateResponse[],
+    right: ExamCandidateResponse[],
+  ): boolean {
     if (left.length !== right.length) return false
     return left.every((row, index) => row.studentUserId === right[index]?.studentUserId)
   }
@@ -371,7 +367,9 @@ export function useExamCreate() {
   }
 
   function removeCandidate(studentUserId: string): void {
-    rosterForm.candidates = rosterForm.candidates.filter(row => row.studentUserId !== studentUserId)
+    rosterForm.candidates = rosterForm.candidates.filter(
+      (row) => row.studentUserId !== studentUserId,
+    )
   }
 
   /** 按人勾选时，参考班级缩窄后同步剔除不在范围内的考生预览行。 */
@@ -379,7 +377,7 @@ export function useExamCreate() {
     if (rosterForm.scopeMode !== ExamRosterScopeModeCode.BY_STUDENT) return
     const allowedClassIds = new Set(rosterForm.classIds)
     const pruned = rosterForm.candidates.filter(
-      candidate => candidate.classId != null && allowedClassIds.has(candidate.classId),
+      (candidate) => candidate.classId != null && allowedClassIds.has(candidate.classId),
     )
     if (pruned.length === rosterForm.candidates.length) return
     rosterForm.candidates = pruned
@@ -396,7 +394,11 @@ export function useExamCreate() {
       return '请选择参考班级'
     }
     const classSet = new Set(rosterForm.classIds)
-    if (rosterForm.candidates.some(candidate => !candidate.classId || !classSet.has(candidate.classId))) {
+    if (
+      rosterForm.candidates.some(
+        (candidate) => !candidate.classId || !classSet.has(candidate.classId),
+      )
+    ) {
       return '存在考生班级不在参考班级范围内'
     }
     return null
@@ -433,10 +435,11 @@ export function useExamCreate() {
       examKind: examForm.examKind,
       sourceExamId: examForm.sourceExamId,
       scorePolicy: resolveSubmitScorePolicy(),
-      dailyScoreFull: examForm.examKind === ExamKindCode.REGULAR
-        && examForm.scoreCompositionMode === 'EXAM_WITH_DAILY'
-        ? examForm.dailyScoreFull
-        : null,
+      dailyScoreFull:
+        examForm.examKind === ExamKindCode.REGULAR &&
+        examForm.scoreCompositionMode === 'EXAM_WITH_DAILY'
+          ? examForm.dailyScoreFull
+          : null,
       confidential: examForm.confidential,
       remark: examForm.remark?.trim() || undefined,
     }
@@ -521,19 +524,17 @@ export function useExamCreate() {
       return false
     }
     if (
-      rosterForm.scopeMode === ExamRosterScopeModeCode.BY_CLASS
-      && rosterForm.classIds.length > 0
-      && rosterForm.candidates.length === 0
+      rosterForm.scopeMode === ExamRosterScopeModeCode.BY_CLASS &&
+      rosterForm.classIds.length > 0 &&
+      rosterForm.candidates.length === 0
     ) {
-      void message.error('整班纳入须包含所选班级的全部学生')
       return false
     }
     if (
-      rosterForm.scopeMode === ExamRosterScopeModeCode.BY_STUDENT
-      && rosterForm.classIds.length > 0
-      && rosterForm.candidates.length === 0
+      rosterForm.scopeMode === ExamRosterScopeModeCode.BY_STUDENT &&
+      rosterForm.classIds.length > 0 &&
+      rosterForm.candidates.length === 0
     ) {
-      void message.error('所选参考班级暂无在籍学生，请重新选择或通过「按学生选择」追加')
       return false
     }
     const inlineError = validateRosterScopeInline()
@@ -543,7 +544,7 @@ export function useExamCreate() {
     }
     if (rosterForm.candidates.length === 0) return true
     if (!rosterFormRef.value) {
-      void message.error('考生范围表单尚未就绪，请稍后重试')
+      void message.error('考生范围表单尚未就绪')
       return false
     }
     try {
@@ -604,7 +605,10 @@ export function useExamCreate() {
   }
 
   async function refreshByClassRosterBeforeSubmit(): Promise<boolean> {
-    if (rosterForm.scopeMode !== ExamRosterScopeModeCode.BY_CLASS || rosterForm.classIds.length === 0) {
+    if (
+      rosterForm.scopeMode !== ExamRosterScopeModeCode.BY_CLASS ||
+      rosterForm.classIds.length === 0
+    ) {
       return true
     }
     if (rosterForm.candidates.length === 0) {
@@ -645,6 +649,9 @@ export function useExamCreate() {
     try {
       const response = await createExamBundle(request)
       createdExamId.value = response.examId
+      if (response.ocrScanAdvisory) {
+        message.warning(response.ocrScanAdvisory)
+      }
       showSuccessModal.value = true
     } catch (error) {
       showUserError(error, '创建考试失败')
@@ -692,7 +699,11 @@ export function useExamCreate() {
   )
 
   watch(
-    () => rosterForm.classIds.map(id => id).sort().join(','),
+    () =>
+      rosterForm.classIds
+        .map((id) => id)
+        .sort()
+        .join(','),
     () => pruneCandidatesToClassScope(),
   )
 

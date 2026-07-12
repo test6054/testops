@@ -252,9 +252,18 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamProcessingTaskItemResponse } from '@/apis/mark/exam-processing-task'
+import {
+  pageExamProcessingTasks,
+  retryPaperGradeSuggestion,
+} from '@/apis/mark/exam-processing-task'
 import type {
   MarkingProgressResponse,
   ReviewQuestionProgressItemResponse,
+} from '@/apis/mark/exam-progress'
+import {
+  getMarkingProgress,
+  getReviewQuestionProgressSummary,
+  pageReviewQuestionProgress,
 } from '@/apis/mark/exam-progress'
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -265,15 +274,6 @@ import TableOutlined from '@ant-design/icons-vue/TableOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, inject, onActivated, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import {
-  pageExamProcessingTasks,
-  retryPaperGradeSuggestion,
-} from '@/apis/mark/exam-processing-task'
-import {
-  getMarkingProgress,
-  getReviewQuestionProgressSummary,
-  pageReviewQuestionProgress,
-} from '@/apis/mark/exam-progress'
 import {
   REVIEW_TASK_STATUS_TONE,
   ReviewTaskStatusCode,
@@ -395,15 +395,15 @@ function processingTaskStatusTone(value: TaskStatusCode) {
 function canRetryPaperGrade(record: ExamProcessingTaskItemResponse): boolean {
   if (!record.paperInstanceId) return false
   if (
-    record.taskType !== ProcessingTaskTypeCode.SUBJECTIVE_AI_REVIEW
-    && record.taskType !== ProcessingTaskTypeCode.OBJECTIVE_AI_REVIEW
+    record.taskType !== ProcessingTaskTypeCode.SUBJECTIVE_AI_REVIEW &&
+    record.taskType !== ProcessingTaskTypeCode.OBJECTIVE_AI_REVIEW
   ) {
     return false
   }
   return (
-    record.status === TaskStatusCode.FAILED
-    || record.status === TaskStatusCode.BLOCKED
-    || record.status === TaskStatusCode.PROCESSING
+    record.status === TaskStatusCode.FAILED ||
+    record.status === TaskStatusCode.BLOCKED ||
+    record.status === TaskStatusCode.PROCESSING
   )
 }
 
@@ -467,7 +467,7 @@ async function reloadProcessingTasksFromRoute(resetPage = true): Promise<void> {
   await loadProcessingTasks()
 }
 
-function handleProcessingTaskPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleProcessingTaskPageChange(pageEvent: { current: number; pageSize: number }): void {
   processingTaskPageNum.value = pageEvent.current
   processingTaskPageSize.value = pageEvent.pageSize
   void loadProcessingTasks()
@@ -502,9 +502,9 @@ const processingTaskColumns: ColumnType<ExamProcessingTaskItemResponse>[] = [
 
 const contextProgress = computed(
   () =>
-    workbenchContext?.markingProgress?.value
-    ?? workbenchContext?.snapshot.value?.markingProgress
-    ?? null,
+    workbenchContext?.markingProgress?.value ??
+    workbenchContext?.snapshot.value?.markingProgress ??
+    null,
 )
 
 watch(
@@ -515,8 +515,8 @@ watch(
       progress.value = null
       return
     }
-    const contextExamId
-      = workbenchContext?.examId?.value ?? workbenchContext?.snapshot.value?.examId
+    const contextExamId =
+      workbenchContext?.examId?.value ?? workbenchContext?.snapshot.value?.examId
     if (contextExamId && String(contextExamId) !== String(examId)) {
       return
     }
@@ -720,7 +720,7 @@ const { chartOption: questionHeatmapOption } = useChartOption(() =>
 const questionHeatmapAriaLabel = computed(() => {
   const count = questionHeatmapCells.value.length
   if (count <= 0) {
-    return '题号确认率热力图，暂无数据'
+    return '题号确认率热力图，当前没有可展示的内容'
   }
   return `题号确认率热力图，共 ${count} 道题`
 })
@@ -744,7 +744,7 @@ const { chartOption: reviewProgressChartOption } = useChartOption(() =>
 const reviewProgressChartAriaLabel = computed(() => {
   const count = reviewProgressBarItems.value.length
   if (count <= 0) {
-    return '按题目维度的复核进度，暂无数据'
+    return '按题目维度的复核进度，当前没有可展示的内容'
   }
   return `按题目维度的复核进度，共 ${count} 道题`
 })

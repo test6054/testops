@@ -174,7 +174,16 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ReviewQuestionProgressItemResponse } from '@/apis/mark/exam-progress'
+import { getReviewQuestionProgressSummary } from '@/apis/mark/exam-progress'
 import type { ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
+import {
+  getReviewArbitrationSummary,
+  listReviewTasks,
+  REVIEW_TASK_STATUS_TONE,
+  ReviewTaskStatusCode,
+  ReviewTaskStatusDescription,
+  ReviewTaskTypeCode,
+} from '@/apis/mark/exam-review-task'
 import type {
   BadgeTone,
   FilterField,
@@ -184,15 +193,6 @@ import type {
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onActivated, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { getReviewQuestionProgressSummary } from '@/apis/mark/exam-progress'
-import {
-  getReviewArbitrationSummary,
-  listReviewTasks,
-  REVIEW_TASK_STATUS_TONE,
-  ReviewTaskStatusCode,
-  ReviewTaskStatusDescription,
-  ReviewTaskTypeCode,
-} from '@/apis/mark/exam-review-task'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -212,6 +212,7 @@ import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherReviewArbitration' })
 
@@ -239,7 +240,7 @@ const statusTab = ref<StatusTabKey>('pending')
 const filterQuestion = ref('')
 const filterTeacherUserId = ref('')
 const expandedRowKeys = ref<string[]>([])
-const questionOptions = ref<Array<{ label: string, value: string }>>([])
+const questionOptions = ref<Array<{ label: string; value: string }>>([])
 const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
 
 const actionableCount = computed(() => pendingCount.value + inProgressMineCount.value)
@@ -351,7 +352,7 @@ function reviewStatusTone(value: ReviewTaskStatusCode): BadgeTone {
 }
 
 function reviewStatusLabel(value: ReviewTaskStatusCode): string {
-  return ReviewTaskStatusDescription[value]
+  return strictEnumLabel(ReviewTaskStatusDescription, value, '复核任务状态')
 }
 
 function getSuggestedRatio(record: ReviewTaskItemResponse): number | null {
@@ -422,8 +423,8 @@ function isActionableTask(record: ReviewTaskItemResponse): boolean {
     return true
   }
   return (
-    record.status === ReviewTaskStatusCode.IN_PROGRESS
-    && record.assignedTeacherUserId === currentUserId.value
+    record.status === ReviewTaskStatusCode.IN_PROGRESS &&
+    record.assignedTeacherUserId === currentUserId.value
   )
 }
 
@@ -454,7 +455,7 @@ function resetFilters(): void {
   void loadTasks()
 }
 
-function handlePageChange(event: { current: number, pageSize: number }): void {
+function handlePageChange(event: { current: number; pageSize: number }): void {
   pageNum.value = event.current
   pageSize.value = event.pageSize
   void loadTasks()

@@ -22,7 +22,6 @@ export interface ScannerOpsDashboardVO {
   totalPages?: number
   failedWorkOrders?: number
   failureRate?: number
-  suspectedMixedBatches?: number
   mixedRate?: number
   deptTimings?: ScannerOpsDeptTimingVO[]
 }

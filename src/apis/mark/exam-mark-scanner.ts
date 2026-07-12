@@ -13,16 +13,16 @@ import type { AttemptStatusCode } from '@/types/enums/attempt-status-enum'
 import type { ScannerActivationCodeStatusCode } from '@/types/enums/scanner-activation-code-status-enum'
 import type { ScannerAgentDiagnosticStatusCode } from '@/types/enums/scanner-agent-diagnostic-status-enum'
 import type { ScannerColorModeCode } from '@/types/enums/scanner-color-mode-enum'
+import { ALL_SCANNER_COLOR_MODE_CODES, ScannerColorModeDescription } from '@/types/enums/scanner-color-mode-enum'
 import type { ScannerDuplexModeCode } from '@/types/enums/scanner-duplex-mode-enum'
+import { ALL_SCANNER_DUPLEX_MODE_CODES, ScannerDuplexModeDescription } from '@/types/enums/scanner-duplex-mode-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
-import { ALL_SCANNER_COLOR_MODE_CODES, ScannerColorModeDescription } from '@/types/enums/scanner-color-mode-enum'
 import {
   ALL_SCANNER_DEVICE_STATUS_CODES,
   ScannerDeviceStatusCode,
   ScannerDeviceStatusDescription
 } from '@/types/enums/scanner-device-status-enum'
-import { ALL_SCANNER_DUPLEX_MODE_CODES, ScannerDuplexModeDescription } from '@/types/enums/scanner-duplex-mode-enum'
 import {
   ALL_SCANNER_ENDPOINT_ONLINE_STATUS_CODES,
   ScannerEndpointOnlineStatusCode,
@@ -33,6 +33,7 @@ import {
   ScannerInterfaceModeCode,
   ScannerInterfaceModeDescription
 } from '@/types/enums/scanner-interface-mode-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 /** 扫描 Agent 激活码状态编码 */
 export {
   ALL_SCANNER_ACTIVATION_CODE_STATUS_CODES,
@@ -75,7 +76,7 @@ export const SCANNER_INTERFACE_MODE_OPTIONS: Array<{
   label: string
 }> = ALL_SCANNER_INTERFACE_MODE_CODES.map((value) => ({
   value,
-  label: ScannerInterfaceModeDescription[value],
+  label: strictEnumLabel(ScannerInterfaceModeDescription, value, '扫描仪接口模式'),
 }))
 
 export {
@@ -100,7 +101,7 @@ export const SCANNER_DEVICE_STATUS_OPTIONS: Array<{
   label: string
 }> = ALL_SCANNER_DEVICE_STATUS_CODES.map((value) => ({
   value,
-  label: ScannerDeviceStatusDescription[value],
+  label: strictEnumLabel(ScannerDeviceStatusDescription, value, '扫描仪设备状态'),
 }))
 
 /** 设备状态颜色（统一 BadgeTone） */
@@ -117,19 +118,19 @@ export const SCANNER_ENDPOINT_ONLINE_STATUS_OPTIONS: Array<{
   label: string
 }> = ALL_SCANNER_ENDPOINT_ONLINE_STATUS_CODES.map((value) => ({
   value,
-  label: ScannerEndpointOnlineStatusDescription[value],
+  label: strictEnumLabel(ScannerEndpointOnlineStatusDescription, value, '扫描端点在线状态'),
 }))
 
 export const SCANNER_COLOR_MODE_OPTIONS: Array<{ value: ScannerColorModeCode, label: string }>
   = ALL_SCANNER_COLOR_MODE_CODES.map((value) => ({
     value,
-    label: ScannerColorModeDescription[value],
+    label: strictEnumLabel(ScannerColorModeDescription, value, '扫描色彩模式'),
   }))
 
 export const SCANNER_DUPLEX_MODE_OPTIONS: Array<{ value: ScannerDuplexModeCode, label: string }>
   = ALL_SCANNER_DUPLEX_MODE_CODES.map((value) => ({
     value,
-    label: ScannerDuplexModeDescription[value],
+    label: strictEnumLabel(ScannerDuplexModeDescription, value, '单面/双面扫描方式'),
   }))
 
 /** 扫描设备分页查询请求 - 对应 ExamScannerDeviceQueryRequest */

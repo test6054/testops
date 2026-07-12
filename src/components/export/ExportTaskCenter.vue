@@ -89,7 +89,10 @@
           <template v-else-if="column.key === 'status'">
             <UiTag :tone="statusColor(record.status)">
               <LoadingOutlined
-                v-if="record.status === AsyncTaskStatusEnum.PROCESSING || record.status === AsyncTaskStatusEnum.PENDING"
+                v-if="
+                  record.status === AsyncTaskStatusEnum.PROCESSING ||
+                  record.status === AsyncTaskStatusEnum.PENDING
+                "
                 spin
                 style="margin-right: 4px"
               />
@@ -108,7 +111,10 @@
           <!-- 进度 -->
           <template v-else-if="column.key === 'progress'">
             <div
-              v-if="record.status === AsyncTaskStatusEnum.PROCESSING || record.status === AsyncTaskStatusEnum.PENDING"
+              v-if="
+                record.status === AsyncTaskStatusEnum.PROCESSING ||
+                record.status === AsyncTaskStatusEnum.PENDING
+              "
               class="progress-cell"
             >
               <a-progress
@@ -158,7 +164,10 @@
               </a-button>
               <a-popconfirm title="确定删除这条导出记录吗？" @ok="deleteTask(record.jobId)">
                 <a-button
-                  v-if="record.status === AsyncTaskStatusEnum.COMPLETED || record.status === AsyncTaskStatusEnum.FAILED"
+                  v-if="
+                    record.status === AsyncTaskStatusEnum.COMPLETED ||
+                    record.status === AsyncTaskStatusEnum.FAILED
+                  "
                   danger
                   size="small"
                   type="text"
@@ -188,6 +197,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExportJobQueryRequest, ExportJobStatusVO } from '@/apis/edu/export'
+import { ExportBusinessType } from '@/apis/edu/export'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import CalendarOutlined from '@ant-design/icons-vue/CalendarOutlined'
 import CheckCircleFilled from '@ant-design/icons-vue/CheckCircleFilled'
@@ -202,7 +212,6 @@ import LoadingOutlined from '@ant-design/icons-vue/LoadingOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { ExportBusinessType } from '@/apis/edu/export'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -270,7 +279,7 @@ const filterFields: FilterField[] = [
 ]
 
 // 分页变化处理
-function handleExportTablePageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleExportTablePageChange(pageEvent: { current: number; pageSize: number }): void {
   exportTaskStore.fetchTasks({ pageNum: pageEvent.current, pageSize: pageEvent.pageSize })
 }
 
@@ -393,7 +402,7 @@ onMounted(() => {
   }
 })
 
-const statusMap: Record<AsyncTaskStatusEnum, { label: string, color: BadgeTone }> = {
+const statusMap: Record<AsyncTaskStatusEnum, { label: string; color: BadgeTone }> = {
   [AsyncTaskStatusEnum.PENDING]: { label: '排队中', color: 'blue' },
   [AsyncTaskStatusEnum.PROCESSING]: { label: '处理中', color: 'orange' },
   [AsyncTaskStatusEnum.COMPLETED]: { label: '已完成', color: 'green' },
@@ -447,7 +456,7 @@ const downloadFile = async (task: ExportJobStatusVO) => {
     )
     // 下载成功消息已在 handleDownloadFile 内部处理，不再重复显示
   } catch (error) {
-    showUserError(error, '导出文件下载失败，请稍后重试')
+    showUserError(error, '导出文件下载失败')
   } finally {
     downloadingJobId.value = null
   }
@@ -472,7 +481,7 @@ const deleteTask = async (jobId: string) => {
     await exportTaskStore.deleteTask(jobId)
     message.success('删除成功')
   } catch (error) {
-    showUserError(error, '导出任务删除失败，请稍后重试')
+    showUserError(error, '导出任务删除失败')
   }
 }
 

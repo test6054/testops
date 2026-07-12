@@ -6,6 +6,7 @@ import type { PageResult, QueryDto } from '@/types'
  * 阅卷考试成绩汇总与最终成绩 API - 对接 /api/mark/exams/score-* 与 final-scores 接口。
  */
 import type { FinalScoreRiskReasonCode } from '@/types/enums/final-score-risk-reason-enum'
+import type { PaperInstanceDisplayModeCode } from '@/types/enums/paper-instance-display-mode-enum'
 import http from '@/config/axios'
 
 export {
@@ -14,9 +15,15 @@ export {
   FinalScoreRiskReasonDescription,
 } from '@/types/enums/final-score-risk-reason-enum'
 
+export {
+  ALL_PAPER_INSTANCE_DISPLAY_MODE_CODES,
+  PaperInstanceDisplayModeCode,
+  PaperInstanceDisplayModeDescription,
+} from '@/types/enums/paper-instance-display-mode-enum'
+
 /** 答卷展示信息 - 对应 PaperInstanceDisplayVO */
 export interface PaperInstanceDisplayVO {
-  displayMode?: 'REAL_NAME' | 'ANONYMOUS' | 'UNBOUND'
+  displayMode?: PaperInstanceDisplayModeCode
   paperInstanceId?: string
   candidateRosterId?: string
   studentUserId?: string

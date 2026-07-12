@@ -83,7 +83,8 @@ const props = withDefaults(
     badgeTone: 'blue',
     size: 'md',
     minHeight: '',
-    compact: false,
+    // 笔记本优先：默认紧凑，避免大框占屏；需要全页状态页时显式 compact=false
+    compact: true,
   },
 )
 
@@ -126,11 +127,11 @@ const mergedDescription = computed(() => {
   if (props.description) return props.description
 
   const descriptionMap: Record<UiStateBlockState, string> = {
-    empty: '当前没有可展示的数据，可以调整筛选条件或稍后再试。',
+    empty: '当前没有可展示的业务记录，请调整筛选条件或确认前置条件是否完成。',
     loading: '数据正在准备中，请稍候。',
     success: '当前结果已生成，可以继续查看详情或进入下一步。',
     warning: '当前结果存在风险项，请先查看提示信息再继续操作。',
-    error: '当前请求未成功完成，请检查参数或稍后重试。',
+    error: '当前请求未成功完成，请查看具体错误说明后继续处理。',
     info: '当前模块已准备就绪，可继续执行下一步操作。',
   }
 
@@ -157,9 +158,9 @@ const containerStyle = computed(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
-  min-height: 220px;
-  padding: 28px 24px;
+  gap: 10px;
+  min-height: 120px;
+  padding: 16px 14px;
   border: 1px solid var(--state-border);
   border-radius: var(--dp-radius-panel);
   background: var(--state-surface);
@@ -167,18 +168,18 @@ const containerStyle = computed(() => {
 }
 
 .ui-state-block--compact {
-  gap: 14px;
-  min-height: 180px;
-  padding: 22px 18px;
+  gap: 8px;
+  min-height: 96px;
+  padding: 12px 12px;
 }
 
 .ui-state-block--sm {
-  min-height: 180px;
+  min-height: 96px;
 }
 
 .ui-state-block--lg {
-  min-height: 260px;
-  padding: 34px 28px;
+  min-height: 160px;
+  padding: 20px 16px;
 }
 
 .ui-state-block--empty {

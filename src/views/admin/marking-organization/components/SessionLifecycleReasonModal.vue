@@ -9,13 +9,12 @@
     @update:open="handleOpenChange"
     @close="handleOpenChange(false)"
   >
-    <a-alert :message="modalAlert" type="warning" show-icon style="margin-bottom: 12px" />
-    <a-alert
+    <UiAlertStrip tone="warning" :title="modalAlert" style="margin-bottom: 12px" />
+    <UiAlertStrip
       v-if="submitError"
-      type="error"
-      show-icon
+      tone="error"
+      :title="submitError"
       style="margin-bottom: 12px"
-      :message="submitError"
     />
     <a-form layout="vertical">
       <a-form-item label="操作原因" required>
@@ -44,6 +43,7 @@ import {
   pauseFormalSession,
 } from '@/apis/mark/marking-organization'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 
@@ -60,7 +60,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "success": []
+  success: []
 }>()
 
 const reason = ref('')

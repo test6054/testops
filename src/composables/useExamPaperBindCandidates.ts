@@ -1,21 +1,22 @@
 import type { DefaultOptionType } from 'ant-design-vue/es/select'
 import type { ExamCandidateResponse } from '@/apis/mark/exam-scope'
-import type { AttemptStatusCode } from '@/types/enums/attempt-status-enum'
-import { ref } from 'vue'
 import { CandidateStatusDescription, pageExamCandidates } from '@/apis/mark/exam-scope'
+import type { AttemptStatusCode } from '@/types/enums/attempt-status-enum'
 import {
   AttemptStatusDescription,
   BINDABLE_ATTEMPT_STATUS_CODES,
 } from '@/types/enums/attempt-status-enum'
+import { ref } from 'vue'
 import { CandidateStatusCode } from '@/types/enums/candidate-status-enum'
 import { showUserError } from '@/utils/error-handler'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const CANDIDATE_BIND_SEARCH_PAGE_SIZE = 20
 
-export const BINDABLE_ATTEMPT_STATUS_OPTIONS: Array<{ label: string, value: AttemptStatusCode }>
-  = BINDABLE_ATTEMPT_STATUS_CODES.map((value) => ({
+export const BINDABLE_ATTEMPT_STATUS_OPTIONS: Array<{ label: string; value: AttemptStatusCode }> =
+  BINDABLE_ATTEMPT_STATUS_CODES.map((value) => ({
     value,
-    label: AttemptStatusDescription[value],
+    label: strictEnumLabel(AttemptStatusDescription, value, '答卷尝试状态'),
   }))
 
 function isCandidateBindable(candidate: ExamCandidateResponse): boolean {
@@ -23,10 +24,10 @@ function isCandidateBindable(candidate: ExamCandidateResponse): boolean {
 }
 
 function candidateStatusLabel(status: CandidateStatusCode | undefined): string {
-  if (!status || !CandidateStatusDescription[status]) {
-    return '状态异常'
+  if (!status) {
+    throw new Error('枚举合同不同步：考生状态=（空）')
   }
-  return CandidateStatusDescription[status]
+  return strictEnumLabel(CandidateStatusDescription, status, '考生状态')
 }
 
 function mapCandidateOption(

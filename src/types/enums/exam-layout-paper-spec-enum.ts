@@ -1,6 +1,7 @@
 /**
  * 标准答题卡纸张规格
  */
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export enum ExamLayoutPaperSpecCode {
   A4_1COL = 'A4_1COL',
@@ -29,8 +30,14 @@ export const ExamLayoutPaperSpecMm: Record<
 }
 
 export const ExamLayoutPaperSpecOptions: Array<{ value: ExamLayoutPaperSpecCode, label: string }> = [
-  { value: ExamLayoutPaperSpecCode.A3_2COL, label: ExamLayoutPaperSpecDescription[ExamLayoutPaperSpecCode.A3_2COL] },
-  { value: ExamLayoutPaperSpecCode.A4_1COL, label: ExamLayoutPaperSpecDescription[ExamLayoutPaperSpecCode.A4_1COL] },
+  {
+    value: ExamLayoutPaperSpecCode.A3_2COL,
+    label: strictEnumLabel(ExamLayoutPaperSpecDescription, ExamLayoutPaperSpecCode.A3_2COL, '纸张规格'),
+  },
+  {
+    value: ExamLayoutPaperSpecCode.A4_1COL,
+    label: strictEnumLabel(ExamLayoutPaperSpecDescription, ExamLayoutPaperSpecCode.A4_1COL, '纸张规格'),
+  },
 ]
 
 /** 高校期末默认空白答题卡规格 - 与 ExamLayoutPaperSpec.defaultBlankSheet() 一致 */
@@ -39,17 +46,17 @@ export function defaultBlankSheetPaperSpec(): ExamLayoutPaperSpecCode {
 }
 
 export function getExamLayoutPaperSpecDescription(code: ExamLayoutPaperSpecCode): string {
-  return ExamLayoutPaperSpecDescription[code]
+  return strictEnumLabel(ExamLayoutPaperSpecDescription, code, '纸张规格')
 }
 
 /** 协议边界：非法时显式失败。 */
 export function requireExamLayoutPaperSpecCode(value: unknown): ExamLayoutPaperSpecCode {
   if (typeof value !== 'string') {
-    throw new TypeError('纸张规格契约异常，请刷新后重试')
+    throw new TypeError('纸张规格契约异常')
   }
   const code = ALL_EXAM_LAYOUT_PAPER_SPEC_CODES.find((item) => item === value)
   if (!code) {
-    throw new Error('纸张规格契约异常，请刷新后重试')
+    throw new Error('纸张规格契约异常')
   }
   return code
 }

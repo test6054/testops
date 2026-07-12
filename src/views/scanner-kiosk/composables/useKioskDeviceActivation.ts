@@ -2,7 +2,6 @@ import type {
   AgentHealthResponse,
   AgentSetupContextResponse,
 } from '@/apis/mark/scanner-agent-local'
-import { computed, ref } from 'vue'
 import {
   activateLocalAgent,
   getAgentHealth,
@@ -10,6 +9,7 @@ import {
   LOCAL_AGENT_UNAVAILABLE_ERROR,
   LocalAgentUnavailableError,
 } from '@/apis/mark/scanner-agent-local'
+import { computed, ref } from 'vue'
 import { AgentDiagnosticStatusCode } from '@/types/enums/agent-diagnostic-status-enum'
 import {
   KioskActivationGateReasonCode,
@@ -25,6 +25,7 @@ import {
   recoverKioskBrowserSessionFromAgent,
   saveKioskAuthSession,
 } from '@/utils/kiosk-auth'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const gatewayBaseUrlEnv = import.meta.env.VITE_SCANNER_GATEWAY_BASE_URL
 const defaultGatewayFromEnv = typeof gatewayBaseUrlEnv === 'string' ? gatewayBaseUrlEnv.trim() : ''
@@ -64,9 +65,9 @@ function createKioskDeviceActivation() {
   const isDeviceBound = computed(() => Boolean(health.value?.bound))
   const activationModalForced = computed(
     () =>
-      !health.value?.bound
-      || Boolean(health.value?.tokenResetRequired)
-      || Boolean(health.value?.rebindRequired),
+      !health.value?.bound ||
+      Boolean(health.value?.tokenResetRequired) ||
+      Boolean(health.value?.rebindRequired),
   )
   const needsActivationGate = computed(
     () => activationModalForced.value || manualActivationGateOpen.value,
@@ -84,12 +85,18 @@ function createKioskDeviceActivation() {
   const activationTitle = computed(() => {
     const reason = activationGateReason.value
     if (reason === KioskActivationGateReasonCode.REBIND_REQUIRED) {
-      return KioskActivationGateReasonDescription[KioskActivationGateReasonCode.REBIND_REQUIRED]
+      return strictEnumLabel(
+        KioskActivationGateReasonDescription,
+        KioskActivationGateReasonCode.REBIND_REQUIRED,
+        '一体机激活门禁原因',
+      )
     }
     if (reason === KioskActivationGateReasonCode.TOKEN_RESET_REQUIRED) {
-      return KioskActivationGateReasonDescription[
-        KioskActivationGateReasonCode.TOKEN_RESET_REQUIRED
-      ]
+      return strictEnumLabel(
+        KioskActivationGateReasonDescription,
+        KioskActivationGateReasonCode.TOKEN_RESET_REQUIRED,
+        '一体机激活门禁原因',
+      )
     }
     return isDeviceBound.value ? '重新激活一体机' : '激活扫描一体机'
   })
@@ -150,9 +157,9 @@ function createKioskDeviceActivation() {
 
   function isActivatedForMarkApis(): boolean {
     return (
-      hasActiveDeviceActivation()
-      && !health.value?.tokenResetRequired
-      && !health.value?.rebindRequired
+      hasActiveDeviceActivation() &&
+      !health.value?.tokenResetRequired &&
+      !health.value?.rebindRequired
     )
   }
 
@@ -201,7 +208,7 @@ function createKioskDeviceActivation() {
         activationCode: string
         endpointName: string
       }
-      | {
+    | {
         ok: false
         errorMessage: string
       } {

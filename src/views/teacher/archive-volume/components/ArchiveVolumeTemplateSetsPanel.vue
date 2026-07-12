@@ -218,6 +218,52 @@
         </UiButton>
       </template>
     </UiDrawer>
+
+    <UiDrawer
+      :open="auditOpen"
+      title="模板版本历史"
+      :width="640"
+      :hide-footer="true"
+      @update:open="(v: boolean) => (auditOpen = v)"
+      @close="auditOpen = false"
+    >
+      <p v-if="auditTarget" class="archive-template-sets-panel__audit-meta">
+        模板套：{{ auditTarget.templateSetName || auditTarget.templateSetCode }}
+      </p>
+      <UiDataTable
+        v-model:current="auditPagination.pageNum"
+        v-model:page-size="auditPagination.pageSize"
+        pagination-mode="server"
+        :columns="auditColumns"
+        :data-source="auditRows"
+        :loading="auditLoading"
+        flat
+        row-key="auditId"
+        size="middle"
+        :total="auditPagination.total"
+        empty-description="暂无审计快照"
+        @page-change="handleAuditPageChange"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'operationType'">
+            {{ archiveTenantTemplateOperationTypeLabel(record.operationType) }}
+          </template>
+          <template v-else-if="column.key === 'createTime'">
+            {{ formatDateTime(record.createTime) }}
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <UiButton
+              size="sm"
+              variant="outline"
+              :loading="restoringAuditId === record.auditId"
+              @click="submitRestoreFromAudit(record.auditId)"
+            >
+              恢复此版本
+            </UiButton>
+          </template>
+        </template>
+      </UiDataTable>
+    </UiDrawer>
   </div>
 </template>
 
@@ -225,9 +271,22 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchivePlatformTemplatePreviewResponse,
+  ArchiveTenantTemplateAuditItemVO,
   ArchiveTenantTemplateSetResponse,
 } from '@/apis/mark/archive-platform-template'
+import {
+  copyAllArchivePlatformTemplatesToTenant,
+  copyArchivePlatformTemplateToTenant,
+  getArchiveTenantTemplateSetDetail,
+  listArchiveTenantTemplateSets,
+  pageArchiveTenantTemplateAudit,
+  previewArchivePlatformTemplateSet,
+  restoreArchiveTenantTemplateFromAudit,
+  resyncArchiveTenantTemplateSet,
+  saveArchiveTenantTemplateSet,
+} from '@/apis/mark/archive-platform-template'
 import type { ArchiveExamFormCode } from '@/apis/mark/archive-volume'
+import { ArchiveExamFormDescription } from '@/apis/mark/archive-volume'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type {
   ArchiveTemplateMaterialEditRow,
@@ -236,20 +295,10 @@ import type {
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
-  copyAllArchivePlatformTemplatesToTenant,
-  copyArchivePlatformTemplateToTenant,
-  getArchiveTenantTemplateSetDetail,
-  listArchiveTenantTemplateSets,
-  previewArchivePlatformTemplateSet,
-  resyncArchiveTenantTemplateSet,
-  saveArchiveTenantTemplateSet,
-} from '@/apis/mark/archive-platform-template'
-import {
   ArchiveTemplateScopeCode,
   archiveTemplateScopeLabel,
   archiveTemplateScopeTone,
 } from '@/apis/mark/archive-template-scope'
-import { ArchiveExamFormDescription } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -257,7 +306,11 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { archiveTenantTemplateOperationTypeLabel } from '@/types/enums/archive-tenant-template-operation-type-enum'
 import { showUserError } from '@/utils/error-handler'
+import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ArchiveTemplateSetEditorDrawer from '@/views/teacher/archive-volume/components/ArchiveTemplateSetEditorDrawer.vue'
 import ArchiveTemplateSetPreviewDrawer from '@/views/teacher/archive-volume/components/ArchiveTemplateSetPreviewDrawer.vue'
@@ -295,6 +348,12 @@ const selectedSetCode = ref('')
 const editorDrawerOpen = ref(false)
 const copySource = ref<ArchiveTenantTemplateSetResponse | null>(null)
 const resyncTarget = ref<ArchiveTenantTemplateSetResponse | null>(null)
+const auditOpen = ref(false)
+const auditLoading = ref(false)
+const auditTarget = ref<ArchiveTenantTemplateSetResponse | null>(null)
+const auditRows = ref<ArchiveTenantTemplateAuditItemVO[]>([])
+const restoringAuditId = ref('')
+const auditPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 const previewData = ref<ArchivePlatformTemplatePreviewResponse | null>(null)
 const previewCategoryGroupMap = ref<Map<string, string>>(new Map())
 const previewForkSourceSetCode = ref<string | undefined>(undefined)
@@ -312,7 +371,7 @@ interface ArchiveVolumeTemplateEditorMeta {
 const editorMeta = reactive<ArchiveVolumeTemplateEditorMeta>({
   templateSetName: '',
   forkSourceSetCode: undefined,
-  defaultPermanentRetention: false,
+  defaultPermanentRetention: undefined,
   defaultRetentionYears: undefined,
 })
 
@@ -334,7 +393,14 @@ const tenantColumns: ColumnsType<ArchiveTenantTemplateSetResponse> = [
   { title: '保管期限', key: 'retention', width: 100 },
   { title: '来源模板', dataIndex: 'forkSourceSetCode', key: 'forkSourceSetCode', width: 160 },
   { title: '发版标签', key: 'release', width: 180 },
-  { title: '操作', key: 'actions', width: 160 },
+  { title: '操作', key: 'actions', width: 200 },
+]
+
+const auditColumns: ColumnsType<ArchiveTenantTemplateAuditItemVO> = [
+  { title: '操作类型', key: 'operationType', width: 120 },
+  { title: '操作人', dataIndex: 'operatorUserId', key: 'operatorUserId', width: 120 },
+  { title: '时间', key: 'createTime', width: 160 },
+  { title: '操作', key: 'actions', width: 120, fixed: 'right' },
 ]
 
 const editorDrawerTitle = computed(() =>
@@ -355,7 +421,7 @@ function resetEditor() {
   editorMeta.templateSetName = ''
   editorMeta.examForm = undefined
   editorMeta.forkSourceSetCode = undefined
-  editorMeta.defaultPermanentRetention = false
+  editorMeta.defaultPermanentRetention = undefined
   editorMeta.defaultRetentionYears = undefined
   materialRows.value = []
   selfCheckRows.value = []
@@ -505,7 +571,7 @@ async function loadTenantSetDetail(templateSetCode: string) {
     editorMeta.templateSetName = detail.templateSetName
     editorMeta.examForm = detail.examForm
     editorMeta.forkSourceSetCode = detail.forkSourceSetCode
-    editorMeta.defaultPermanentRetention = detail.defaultPermanentRetention ?? false
+    editorMeta.defaultPermanentRetention = detail.defaultPermanentRetention
     editorMeta.defaultRetentionYears = detail.defaultRetentionYears
     await loadCategoryGroups(detail.forkSourceSetCode)
     materialRows.value = (detail.materialItems ?? []).map((item, index) => ({
@@ -540,8 +606,8 @@ function findTenantSetByPlatformSource(sourceSetCode: string) {
   return (
     templateSets.value.find(
       (item) => item.templateScope === 'TENANT' && item.forkSourceSetCode === sourceSetCode,
-    )
-    ?? templateSets.value.find(
+    ) ??
+    templateSets.value.find(
       (item) => item.templateScope === 'TENANT' && item.templateSetCode === sourceSetCode,
     )
   )
@@ -636,13 +702,80 @@ function buildTenantTemplateRowActions(
 ): UiTableRowActionItem[] {
   return [
     { key: 'edit', label: '编辑' },
+    { key: 'history', label: '版本历史' },
     { key: 'resync', label: '重新同步', hidden: !canResyncTenantSet(record) },
   ]
 }
 
 function handleTenantTemplateRowAction(key: string, record: ArchiveTenantTemplateSetResponse) {
   if (key === 'edit') void openEditDrawer(record.templateSetCode)
+  else if (key === 'history') void openAuditDrawer(record)
   else if (key === 'resync') openResyncModal(record)
+}
+
+async function openAuditDrawer(record: ArchiveTenantTemplateSetResponse): Promise<void> {
+  auditTarget.value = record
+  auditPagination.pageNum = 1
+  auditOpen.value = true
+  await loadAuditRows()
+}
+
+async function loadAuditRows(): Promise<void> {
+  if (!auditTarget.value) {
+    auditRows.value = []
+    auditPagination.total = 0
+    return
+  }
+  auditLoading.value = true
+  try {
+    const page = await pageArchiveTenantTemplateAudit({
+      templateSetCode: auditTarget.value.templateSetCode,
+      pageNum: auditPagination.pageNum,
+      pageSize: auditPagination.pageSize,
+    })
+    auditRows.value = page.list
+    auditPagination.total = page.total
+    auditPagination.pageNum = page.pageNum
+    auditPagination.pageSize = page.pageSize
+  } catch (error) {
+    auditRows.value = []
+    auditPagination.total = 0
+    showUserError(error, '加载模板版本历史失败')
+  } finally {
+    auditLoading.value = false
+  }
+}
+
+function handleAuditPageChange(page: { current: number; pageSize: number }): void {
+  auditPagination.pageNum = page.current
+  auditPagination.pageSize = page.pageSize
+  void loadAuditRows()
+}
+
+async function submitRestoreFromAudit(auditId: string): Promise<void> {
+  if (!auditTarget.value) {
+    return
+  }
+  const templateSetCode = auditTarget.value.templateSetCode
+  await confirmAsync({
+    title: '恢复模板版本',
+    content: '恢复将覆盖当前模板集内容；若已有归档任务引用该套模板，恢复将被拒绝。',
+    type: 'warning',
+    onOk: async () => {
+      restoringAuditId.value = auditId
+      try {
+        await restoreArchiveTenantTemplateFromAudit({ auditId })
+        message.success('模板版本已恢复')
+        auditOpen.value = false
+        await refreshAll()
+        await openEditDrawer(templateSetCode)
+      } catch (error) {
+        showUserError(error, '恢复模板版本失败')
+      } finally {
+        restoringAuditId.value = ''
+      }
+    },
+  })
 }
 
 async function submitResync() {
@@ -678,6 +811,10 @@ async function saveTenantSet() {
     message.warning('至少保留一条自查项')
     return
   }
+  if (editorMeta.defaultPermanentRetention !== true && editorMeta.defaultRetentionYears == null) {
+    message.warning('请填写保管年限或勾选永久')
+    return
+  }
   for (const row of materialRows.value) {
     if (!row.catalogName?.trim()) {
       message.warning('材料目录名称不能为空')
@@ -696,7 +833,7 @@ async function saveTenantSet() {
       templateSetCode: selectedSetCode.value,
       templateSetName: editorMeta.templateSetName,
       examForm: editorMeta.examForm,
-      defaultPermanentRetention: editorMeta.defaultPermanentRetention,
+      defaultPermanentRetention: editorMeta.defaultPermanentRetention === true,
       defaultRetentionYears: editorMeta.defaultPermanentRetention
         ? undefined
         : editorMeta.defaultRetentionYears,
@@ -773,6 +910,12 @@ onMounted(() => {
 
 .archive-template-sets-panel__resync-form {
   margin-top: var(--dp-space-2);
+}
+
+.archive-template-sets-panel__audit-meta {
+  margin: 0 0 var(--dp-space-3);
+  font-size: 13px;
+  color: var(--dp-text-secondary);
 }
 
 .archive-template-editor__retention {

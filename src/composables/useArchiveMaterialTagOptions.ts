@@ -1,33 +1,36 @@
 import { ref } from 'vue'
 import { suggestArchiveVolumeMaterialTags } from '@/apis/mark/archive-volume'
-import { showUserError } from '@/utils/error-handler'
 
 const cachedOptions = ref<string[]>([])
 let loaded = false
 
 /**
- * 加载租户内材料标签建议，供登记/派单/编辑标签下拉复用。
+ * 按关键字前缀加载材料标签建议；searchScopeOnly 为 true 时与检索可见范围一致。
  */
-export async function loadArchiveMaterialTagOptions(keyword?: string): Promise<string[]> {
+export async function loadArchiveMaterialTagOptions(
+  keyword?: string,
+  limit = 20,
+  searchScopeOnly = false,
+): Promise<string[]> {
   try {
     const tags = await suggestArchiveVolumeMaterialTags({
       keyword: keyword?.trim() || undefined,
-      limit: 30,
+      limit,
+      searchScopeOnly,
     })
-    if (!keyword?.trim()) {
+    if (!keyword?.trim() && !searchScopeOnly) {
       cachedOptions.value = tags
       loaded = true
     }
     return tags
-  } catch (error) {
-    showUserError(error, '标签建议加载失败')
-    return loaded ? cachedOptions.value : []
+  } catch {
+    return searchScopeOnly ? [] : loaded ? cachedOptions.value : []
   }
 }
 
 export function useArchiveMaterialTagOptions() {
   return {
-    tagOptions: cachedOptions,
+    cachedOptions,
     loadArchiveMaterialTagOptions,
   }
 }

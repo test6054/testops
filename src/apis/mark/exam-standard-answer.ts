@@ -9,6 +9,7 @@ import {
   ObjectiveComparePolicyCode,
   ObjectiveComparePolicyDescription,
 } from '@/types/enums/objective-compare-policy-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
   ALL_OBJECTIVE_COMPARE_POLICY_CODES,
@@ -22,7 +23,7 @@ export const OBJECTIVE_COMPARE_POLICY_OPTIONS: Array<{
   label: string
 }> = ALL_OBJECTIVE_COMPARE_POLICY_CODES.map((value) => ({
   value,
-  label: ObjectiveComparePolicyDescription[value],
+  label: strictEnumLabel(ObjectiveComparePolicyDescription, value, '客观题比较策略'),
 }))
 
 /** 选择题标准答案选项请求 - 对应后端 ExamQuestionStandardAnswerOptionRequest */
@@ -109,5 +110,8 @@ export function saveStandardAnswer(request: ExamStandardAnswerSaveRequest): Prom
 export function getStandardAnswer(
   request: ExamStandardAnswerQueryRequest,
 ): Promise<ExamStandardAnswerResponse | null> {
-  return http.post<ExamStandardAnswerResponse | null>('/api/mark/exams/standard-answer/get', request)
+  return http.post<ExamStandardAnswerResponse | null>(
+    '/api/mark/exams/standard-answer/get',
+    request,
+  )
 }

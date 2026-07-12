@@ -14,7 +14,12 @@
       </div>
       <p class="section-desc">选定目录模板套、密级与成绩事实；模板决定材料目录与自查项。</p>
 
-      <a-form-item label="目录模板套" name="templateSetCode" required>
+      <a-form-item
+        label="目录模板套"
+        name="templateSetCode"
+        required
+        tooltip="含平台母版与本校副本；创建任务后按此套解析材料目录与自查项。"
+      >
         <a-select
           v-model:value="templateSetCodeSelectValue"
           :options="templateSetOptions"
@@ -24,14 +29,11 @@
           option-filter-prop="label"
           @change="handleTemplateChange"
         />
-        <p class="create-form__hint">
-          含平台母版与本校副本；创建任务后按此套解析材料目录与自查项。
-        </p>
       </a-form-item>
 
-      <a-row :gutter="24">
+      <a-row :gutter="24" class="create-form__split-row">
         <a-col :span="12">
-          <a-form-item label="考核形式" :label-col="labelCol">
+          <a-form-item label="考核形式" :label-col="labelCol" :wrapper-col="wrapperCol">
             <a-select
               v-model:value="planForm.examForm"
               :options="examFormOptions"
@@ -41,20 +43,39 @@
           </a-form-item>
         </a-col>
         <a-col :span="12">
-          <a-form-item label="成绩事实源" name="scoreSource" required :label-col="labelCol">
+          <a-form-item
+            label="成绩事实源"
+            name="scoreSource"
+            required
+            :label-col="labelCol"
+            :wrapper-col="wrapperCol"
+          >
             <a-select v-model:value="planForm.scoreSource" :options="scoreSourceOptions" />
           </a-form-item>
         </a-col>
       </a-row>
 
-      <a-row :gutter="24">
+      <a-row :gutter="24" class="create-form__split-row">
         <a-col :span="12">
-          <a-form-item label="密级" name="securityLevel" required :label-col="labelCol">
+          <a-form-item
+            label="密级"
+            name="securityLevel"
+            required
+            :label-col="labelCol"
+            :wrapper-col="wrapperCol"
+          >
             <a-select v-model:value="planForm.securityLevel" :options="securityLevelOptions" />
           </a-form-item>
         </a-col>
         <a-col :span="12">
-          <a-form-item label="归档责任人" name="responsibleUserId" required :label-col="labelCol">
+          <a-form-item
+            label="归档责任人"
+            name="responsibleUserId"
+            required
+            tooltip="缺省为当前用户；责任人可登记材料并提交本任务。"
+            :label-col="labelCol"
+            :wrapper-col="wrapperCol"
+          >
             <TeacherSelector
               :value="planForm.responsibleUserId"
               placeholder="默认当前用户"
@@ -75,10 +96,9 @@
           <span class="retention-field__unit">年</span>
           <a-checkbox v-model:checked="planForm.permanentRetention">永久保管</a-checkbox>
         </div>
-        <p class="create-form__hint">缺省责任人为当前用户；责任人可登记材料并提交本任务。</p>
       </a-form-item>
 
-      <a-form-item label="归档截止">
+      <a-form-item label="归档截止" tooltip="可选；留空时由租户归档时限策略自动计算。">
         <a-date-picker
           v-model:value="archiveDueOverrideValue"
           show-time
@@ -87,10 +107,13 @@
           style="width: 100%"
           allow-clear
         />
-        <p class="create-form__hint">可选；留空时由租户归档时限策略自动计算。</p>
       </a-form-item>
 
-      <a-form-item v-if="requiresScoreProof" label="成绩证明">
+      <a-form-item
+        v-if="requiresScoreProof"
+        label="成绩证明"
+        tooltip="教务或线下确认成绩时须上传成绩证明文件。"
+      >
         <div class="score-proof-field">
           <a-upload
             :show-upload-list="false"
@@ -105,7 +128,6 @@
             文件 ID：{{ planForm.scoreProofFileId }}
           </span>
         </div>
-        <p class="create-form__hint">教务或线下确认成绩时须上传成绩证明文件。</p>
       </a-form-item>
     </div>
   </a-form>
@@ -115,22 +137,23 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { Dayjs } from 'dayjs'
-import type { ArchiveExamFormCode } from '@/apis/mark/archive-volume'
-import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
-import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
-import { computed, ref, watch } from 'vue'
+import type { ArchiveExamFormCode } from '@/apis/mark/archive-volume'
 import {
   ARCHIVE_EXAM_FORM_OPTIONS,
   ARCHIVE_SECURITY_LEVEL_OPTIONS,
   ArchiveScoreSourceDescription,
 } from '@/apis/mark/archive-volume'
+import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
+import { message } from 'ant-design-vue'
+import { computed, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { TeacherSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { ArchiveScoreSourceCode } from '@/types/enums/archive-score-source-enum'
 import { ArchiveTaskProvenanceCode } from '@/types/enums/archive-task-provenance-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 import {
   useInjectedArchiveTaskCreatePlanForm,
   useInjectedArchiveTaskCreateWizardState,
@@ -154,13 +177,14 @@ const emit = defineEmits<{
     code: string | null,
     name: string,
     examForm?: ArchiveExamFormCode,
-    retention?: { defaultPermanentRetention?: boolean, defaultRetentionYears?: number },
+    retention?: { defaultPermanentRetention?: boolean; defaultRetentionYears?: number },
   ]
   'responsible-change': [userId: string | null, nickName: string]
   'update:plan-form-ref': [form: FormInstance | undefined]
 }>()
 
 const labelCol = { style: { width: '88px' } }
+const wrapperCol = { flex: 1 }
 
 const planForm = useInjectedArchiveTaskCreatePlanForm()
 const wizardState = useInjectedArchiveTaskCreateWizardState()
@@ -169,8 +193,8 @@ const scoreProofUploading = ref(false)
 
 const requiresScoreProof = computed(
   () =>
-    planForm.scoreSource === ArchiveScoreSourceCode.TEACHING_AFFAIRS
-    || planForm.scoreSource === ArchiveScoreSourceCode.OFFLINE_CONFIRMED,
+    planForm.scoreSource === ArchiveScoreSourceCode.TEACHING_AFFAIRS ||
+    planForm.scoreSource === ArchiveScoreSourceCode.OFFLINE_CONFIRMED,
 )
 
 async function handleScoreProofBeforeUpload(file: File): Promise<boolean> {
@@ -219,7 +243,7 @@ const scoreSourceOptions = computed(() => {
     return [ArchiveScoreSourceCode.TEACHING_AFFAIRS, ArchiveScoreSourceCode.OFFLINE_CONFIRMED].map(
       (value) => ({
         value,
-        label: ArchiveScoreSourceDescription[value],
+        label: strictEnumLabel(ArchiveScoreSourceDescription, value, '成绩来源'),
       }),
     )
   }
@@ -230,7 +254,7 @@ const scoreSourceOptions = computed(() => {
       ArchiveScoreSourceCode.OFFLINE_CONFIRMED,
     ].map((value) => ({
       value,
-      label: ArchiveScoreSourceDescription[value],
+      label: strictEnumLabel(ArchiveScoreSourceDescription, value, '成绩来源'),
     }))
   }
   return []
@@ -258,6 +282,15 @@ function handleResponsibleChange(
   const userId = typeof value === 'string' ? value : null
   emit('responsible-change', userId, teacher?.nickName?.trim() ?? '')
 }
+
+watch(
+  () => planForm.permanentRetention,
+  (permanent) => {
+    if (permanent) {
+      planForm.retentionYears = undefined
+    }
+  },
+)
 
 watch(
   formRef,

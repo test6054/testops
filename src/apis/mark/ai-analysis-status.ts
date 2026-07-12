@@ -35,11 +35,11 @@ export const AI_ANALYSIS_MAIN_FLOW_STATUSES: AiAnalysisStatusCode[] = [
 
 /** AI 分析分支终态 hint 文案 */
 export const AI_ANALYSIS_BRANCH_STATUS_DESCRIPTIONS: string[] = [
-  AiAnalysisStatusDescription[AiAnalysisStatusCode.FAILED],
-  AiAnalysisStatusDescription[AiAnalysisStatusCode.BLOCKED],
+  strictEnumLabel(AiAnalysisStatusDescription, AiAnalysisStatusCode.FAILED, 'AI 分析状态'),
+  strictEnumLabel(AiAnalysisStatusDescription, AiAnalysisStatusCode.BLOCKED, 'AI 分析状态'),
 ]
 
 /** AI 分析主流程 hint */
-export const AI_ANALYSIS_FLOW_HINT = `${AI_ANALYSIS_MAIN_FLOW_STATUSES.map(
-  (status) => AiAnalysisStatusDescription[status],
+export const AI_ANALYSIS_FLOW_HINT = `${AI_ANALYSIS_MAIN_FLOW_STATUSES.map((status) =>
+  strictEnumLabel(AiAnalysisStatusDescription, status, 'AI 分析状态'),
 ).join(' → ')} / ${AI_ANALYSIS_BRANCH_STATUS_DESCRIPTIONS.join(' / ')}`

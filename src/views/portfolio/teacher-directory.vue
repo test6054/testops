@@ -9,6 +9,7 @@ import type {
 } from '@/apis/portfolio/types'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { UserStatusEnum } from '@/types/enums/user-status'
+import { getUserStatusLabel, USER_STATUS_FILTER_OPTIONS } from '@/types/enums/user-status'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -36,9 +37,9 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
-import { getUserStatusLabel, USER_STATUS_FILTER_OPTIONS } from '@/types/enums/user-status'
 import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const listColumns: ColumnsType = [
   { title: '工号', dataIndex: 'teacherNumber', key: 'teacherNumber', width: 120, fixed: 'left' },
@@ -145,6 +146,7 @@ const detailVisible = ref(false)
 const detail = ref<PortfolioTeacherDetailVO | null>(null)
 const salarySummary = ref('')
 const librarySummary = ref('')
+const detailRequestToken = ref(0)
 
 const identityVisible = ref(false)
 const identityMode = ref<'create' | 'edit'>('create')
@@ -161,14 +163,22 @@ function identityTypeLabel(type?: PortfolioTeacherIdentityVO['identityType']) {
   if (!type) {
     return '—'
   }
-  return PortfolioTeacherIdentityTypeDescription[type]
+  return strictEnumLabel(PortfolioTeacherIdentityTypeDescription, type, '教师身份类型')
 }
 
 function identityStatusLabel(status?: PortfolioTeacherIdentityVO['identityStatus']) {
   if (!status) {
     return '—'
   }
-  return PortfolioTeacherIdentityStatusDescription[status]
+  return strictEnumLabel(PortfolioTeacherIdentityStatusDescription, status, '教师身份状态')
+}
+
+/** 切换教师详情目标或关闭抽屉时，必须失效旧请求并回收摘要，避免旧教师结果回填当前抽屉。 */
+function resetDetailContext() {
+  detailRequestToken.value += 1
+  detail.value = null
+  salarySummary.value = ''
+  librarySummary.value = ''
 }
 
 async function loadPage() {
@@ -195,7 +205,7 @@ function handleSearch() {
   loadPage()
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadPage()
@@ -211,7 +221,7 @@ function buildTeacherDirectoryRowActions(
     { key: 'one-table', label: '一张表' },
   ]
   if (canManageTeacherAi(record.userId)) {
-    actions.push({ key: 'ai-confirm', label: 'AI 确认' })
+    actions.push({ key: 'intake', label: '材料采集' })
   }
   actions.push({ key: 'identity', label: '身份' })
   return actions
@@ -231,8 +241,8 @@ function handleTeacherDirectoryAction(key: string, record: PortfolioTeacherSumma
     case 'one-table':
       openOneTable(record.userId)
       break
-    case 'ai-confirm':
-      openAiCandidateConfirm(record.userId)
+    case 'intake':
+      openTeacherIntake(record.userId)
       break
     case 'identity':
       openIdentityCreate({
@@ -245,16 +255,28 @@ function handleTeacherDirectoryAction(key: string, record: PortfolioTeacherSumma
 }
 
 async function openDetail(row: PortfolioTeacherSummaryVO) {
+  const requestToken = detailRequestToken.value + 1
+  detailRequestToken.value = requestToken
+  detail.value = null
+  salarySummary.value = ''
+  librarySummary.value = ''
   try {
-    detail.value = await portfolioTeacherApi.get(row.userId)
+    const nextDetail = await portfolioTeacherApi.get(row.userId)
+    if (detailRequestToken.value !== requestToken) {
+      return
+    }
+    detail.value = nextDetail
     detailVisible.value = true
-    await loadTeacherExtensions(row.userId)
+    await loadTeacherExtensions(row.userId, requestToken)
   } catch (error) {
+    if (detailRequestToken.value !== requestToken) {
+      return
+    }
     showUserError(error, '加载教师详情失败')
   }
 }
 
-async function loadTeacherExtensions(userId: string) {
+async function loadTeacherExtensions(userId: string, requestToken = detailRequestToken.value) {
   salarySummary.value = ''
   librarySummary.value = ''
   try {
@@ -264,12 +286,21 @@ async function loadTeacherExtensions(userId: string) {
       pageSize: 1,
     })
     const latest = salaryPage.list?.[0]
+    if (detailRequestToken.value !== requestToken) {
+      return
+    }
     if (latest) {
       salarySummary.value = `${latest.salaryMonth} 基本 ${latest.baseAmountDisplay ?? '—'}`
     }
     const libStats = await portfolioTeacherLibraryApi.stats({ teacherUserId: userId })
+    if (detailRequestToken.value !== requestToken) {
+      return
+    }
     librarySummary.value = `在借 ${libStats.activeBorrowCount} · 逾期 ${libStats.overdueCount}`
   } catch {
+    if (detailRequestToken.value !== requestToken) {
+      return
+    }
     salarySummary.value = ''
     librarySummary.value = ''
   }
@@ -279,11 +310,17 @@ async function reloadDetail() {
   if (!detail.value?.userId) {
     return
   }
-  detail.value = await portfolioTeacherApi.get(detail.value.userId)
-  await loadTeacherExtensions(detail.value.userId)
+  const userId = detail.value.userId
+  const requestToken = detailRequestToken.value + 1
+  detailRequestToken.value = requestToken
+  detail.value = await portfolioTeacherApi.get(userId)
+  if (detailRequestToken.value !== requestToken) {
+    return
+  }
+  await loadTeacherExtensions(userId, requestToken)
 }
 
-function openIdentityCreate(context: { userId: string, nickName?: string, departmentId?: string }) {
+function openIdentityCreate(context: { userId: string; nickName?: string; departmentId?: string }) {
   identityMode.value = 'create'
   identityEditor.teacherUserId = context.userId
   identityEditor.id = undefined
@@ -349,9 +386,9 @@ async function submitIdentity() {
 
 const router = useRouter()
 
-function openAiCandidateConfirm(userId: string) {
+function openTeacherIntake(userId: string) {
   router.push({
-    path: '/portfolio/ai-candidate-confirm',
+    path: '/portfolio/teacher/intake',
     query: { teacherId: userId },
   })
 }
@@ -453,7 +490,13 @@ onMounted(async () => {
         </template>
       </UiDataTable>
     </UiCard>
-    <UiDrawer v-model:open="detailVisible" title="教师详情" width="640" hide-footer>
+    <UiDrawer
+      v-model:open="detailVisible"
+      title="教师详情"
+      width="640"
+      hide-footer
+      @close="resetDetailContext"
+    >
       <template v-if="detail">
         <a-descriptions :column="2" size="small" bordered>
           <a-descriptions-item label="工号">

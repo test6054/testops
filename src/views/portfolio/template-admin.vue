@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TreeProps } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
@@ -12,7 +13,13 @@ import type {
   PortfolioArchiveTemplateDiffSummary,
   PortfolioArchiveTemplateVersionVO,
 } from '@/apis/portfolio/types'
-import { message } from 'ant-design-vue'
+import {
+  PORTFOLIO_ARCHIVE_CATEGORY_SCOPE_OPTIONS,
+  PORTFOLIO_ARCHIVE_CATEGORY_STATUS_OPTIONS,
+  PORTFOLIO_ARCHIVE_FIELD_SOURCE_TYPE_OPTIONS,
+  PORTFOLIO_ARCHIVE_FIELD_TYPE_OPTIONS,
+  PORTFOLIO_DEFAULT_AUDIT_FLOW_CODE,
+} from '@/apis/portfolio/types'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import {
@@ -26,13 +33,6 @@ import {
   PortfolioArchiveTemplateVersionStatusCode,
   PortfolioArchiveTemplateVersionStatusDescription,
 } from '@/apis/portfolio/enums'
-import {
-  PORTFOLIO_ARCHIVE_CATEGORY_SCOPE_OPTIONS,
-  PORTFOLIO_ARCHIVE_CATEGORY_STATUS_OPTIONS,
-  PORTFOLIO_ARCHIVE_FIELD_SOURCE_TYPE_OPTIONS,
-  PORTFOLIO_ARCHIVE_FIELD_TYPE_OPTIONS,
-  PORTFOLIO_DEFAULT_AUDIT_FLOW_CODE,
-} from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -59,24 +59,24 @@ interface TreeNode {
 
 function isTreeNode(value: unknown): value is TreeNode {
   return (
-    typeof value === 'object'
-    && value !== null
-    && 'key' in value
-    && 'title' in value
-    && 'raw' in value
+    typeof value === 'object' &&
+    value !== null &&
+    'key' in value &&
+    'title' in value &&
+    'raw' in value
   )
 }
 
 function isArchiveFieldRecord(record: unknown): record is PortfolioArchiveFieldDefVO {
   return (
-    typeof record === 'object'
-    && record !== null
-    && 'id' in record
-    && 'templateVersionId' in record
-    && 'fieldCode' in record
-    && 'fieldLabel' in record
-    && 'fieldType' in record
-    && 'sourceType' in record
+    typeof record === 'object' &&
+    record !== null &&
+    'id' in record &&
+    'templateVersionId' in record &&
+    'fieldCode' in record &&
+    'fieldLabel' in record &&
+    'fieldType' in record &&
+    'sourceType' in record
   )
 }
 
@@ -91,13 +91,13 @@ function isArchiveTemplateVersionRecord(
   record: unknown,
 ): record is PortfolioArchiveTemplateVersionVO {
   return (
-    typeof record === 'object'
-    && record !== null
-    && 'id' in record
-    && 'categoryId' in record
-    && 'templateCode' in record
-    && 'versionNo' in record
-    && 'status' in record
+    typeof record === 'object' &&
+    record !== null &&
+    'id' in record &&
+    'categoryId' in record &&
+    'templateCode' in record &&
+    'versionNo' in record &&
+    'status' in record
   )
 }
 
@@ -139,6 +139,8 @@ const activeVersionId = ref<string | null>(null)
 const fields = ref<PortfolioArchiveFieldDefVO[]>([])
 const versionHistory = ref<PortfolioArchiveTemplateVersionVO[]>([])
 const changeLogs = ref<PortfolioArchiveTemplateChangeLogVO[]>([])
+const categoryRequestToken = ref(0)
+const fieldRequestToken = ref(0)
 const historyVisible = ref(false)
 const auditFlowCode = ref('')
 const categoryVisible = ref(false)
@@ -196,7 +198,7 @@ const activeVersion = computed(
 
 const versionOptions = computed(() =>
   versionHistory.value.map(
-    (item): { value: PortfolioArchiveTemplateVersionVO['id'], label: string } => ({
+    (item): { value: PortfolioArchiveTemplateVersionVO['id']; label: string } => ({
       value: item.id,
       label: `${item.versionNo} (${strictEnumLabel(PortfolioArchiveTemplateVersionStatusDescription, item.status, '模板版本状态')})`,
     }),
@@ -205,8 +207,8 @@ const versionOptions = computed(() =>
 
 const canEditFields = computed(
   () =>
-    activeVersion.value?.status === PortfolioArchiveTemplateVersionStatusCode.DRAFT
-    || activeVersion.value?.status === PortfolioArchiveTemplateVersionStatusCode.TRIAL,
+    activeVersion.value?.status === PortfolioArchiveTemplateVersionStatusCode.DRAFT ||
+    activeVersion.value?.status === PortfolioArchiveTemplateVersionStatusCode.TRIAL,
 )
 
 const canDeprecate = computed(() => activeVersion.value?.status === 'PUBLISHED')
@@ -237,7 +239,7 @@ const parsedChangeLogs = computed(() =>
 )
 
 function flattenCategoryOptions(nodes: TreeNode[], excludeId?: string) {
-  const options: { value: string, label: string }[] = []
+  const options: { value: string; label: string }[] = []
   for (const node of nodes) {
     if (excludeId && node.key === excludeId) continue
     options.push({ value: node.key, label: node.title })
@@ -314,26 +316,33 @@ function findTreeNode(nodes: TreeNode[], key: string): TreeNode | null {
 }
 
 async function selectCategory(node: TreeNode) {
+  const currentToken = ++categoryRequestToken.value
   selectedNode.value = node
   activeVersionId.value = node.raw.draftVersionId ?? node.raw.publishedVersionId ?? null
-  await loadHistory()
-  await loadAuditFlowBinding()
+  fields.value = []
+  await loadHistory(currentToken)
+  if (currentToken !== categoryRequestToken.value) return
+  await loadAuditFlowBinding(currentToken)
+  if (currentToken !== categoryRequestToken.value) return
   if (!activeVersionId.value && versionHistory.value.length)
     activeVersionId.value = versionHistory.value[0].id
   await loadFields()
 }
 
-async function loadAuditFlowBinding() {
+async function loadAuditFlowBinding(expectedToken = categoryRequestToken.value) {
   if (!selectedCategory.value) {
     auditFlowCode.value = ''
     return
   }
+  const categoryId = selectedCategory.value.id
   try {
     const binding = await portfolioArchiveTemplateApi.getAuditFlowBinding({
-      categoryId: selectedCategory.value.id,
+      categoryId,
     })
+    if (expectedToken !== categoryRequestToken.value) return
     auditFlowCode.value = binding?.auditFlowCode ?? ''
   } catch (error) {
+    if (expectedToken !== categoryRequestToken.value) return
     showUserError(error, '加载审核流绑定失败')
   }
 }
@@ -377,32 +386,42 @@ function selectVersionFromHistory(record: PortfolioArchiveTemplateVersionVO) {
 }
 
 async function loadFields() {
+  const currentToken = ++fieldRequestToken.value
   if (!activeVersionId.value) {
     fields.value = []
     return
   }
+  const versionId = activeVersionId.value
+  fields.value = []
   try {
-    fields.value
-      = (await portfolioArchiveTemplateApi.listFieldDefs({
-        templateVersionId: activeVersionId.value,
-      })) ?? []
+    const nextFields = await portfolioArchiveTemplateApi.listFieldDefs({
+      templateVersionId: versionId,
+    })
+    if (currentToken !== fieldRequestToken.value || activeVersionId.value !== versionId) return
+    fields.value = nextFields ?? []
   } catch (error) {
+    if (currentToken !== fieldRequestToken.value || activeVersionId.value !== versionId) return
     showUserError(error, '加载字段失败')
   }
 }
 
-async function loadHistory() {
+async function loadHistory(expectedToken = categoryRequestToken.value) {
   if (!selectedCategory.value) {
     versionHistory.value = []
     changeLogs.value = []
     return
   }
+  const categoryId = selectedCategory.value.id
   try {
-    const categoryId = selectedCategory.value.id
-    versionHistory.value
-      = (await portfolioArchiveTemplateApi.listVersionHistory({ categoryId })) ?? []
-    changeLogs.value = (await portfolioArchiveTemplateApi.listChangeHistory({ categoryId })) ?? []
+    const [nextVersionHistory, nextChangeLogs] = await Promise.all([
+      portfolioArchiveTemplateApi.listVersionHistory({ categoryId }),
+      portfolioArchiveTemplateApi.listChangeHistory({ categoryId }),
+    ])
+    if (expectedToken !== categoryRequestToken.value) return
+    versionHistory.value = nextVersionHistory ?? []
+    changeLogs.value = nextChangeLogs ?? []
   } catch (error) {
+    if (expectedToken !== categoryRequestToken.value) return
     showUserError(error, '加载版本历史失败')
   }
 }
@@ -453,8 +472,8 @@ function openEditCategory() {
 
 async function deactivateCategory() {
   if (
-    !selectedCategory.value
-    || selectedCategory.value.status === PortfolioArchiveCategoryStatusCode.INACTIVE
+    !selectedCategory.value ||
+    selectedCategory.value.status === PortfolioArchiveCategoryStatusCode.INACTIVE
   ) {
     return
   }
@@ -495,6 +514,8 @@ async function deleteCategory() {
   try {
     await portfolioArchiveTemplateApi.deleteCategory({ categoryId: selectedCategory.value.id })
     message.success('分类已删除')
+    categoryRequestToken.value += 1
+    fieldRequestToken.value += 1
     selectedNode.value = null
     fields.value = []
     versionHistory.value = []
@@ -507,6 +528,8 @@ async function deleteCategory() {
 }
 
 async function onScopeFilterChange() {
+  categoryRequestToken.value += 1
+  fieldRequestToken.value += 1
   selectedNode.value = null
   fields.value = []
   versionHistory.value = []

@@ -27,7 +27,9 @@
       </div>
 
       <div v-if="sourceFileId" class="ird__selected-file">
-        <span class="ird__file-label">已选择：{{ sourceFileName }}（{{ formatBytes(sourceFileSize ?? 0) }}）</span>
+        <span class="ird__file-label"
+          >已选择：{{ sourceFileName }}（{{ formatBytes(sourceFileSize ?? 0) }}）</span
+        >
         <div class="ird__action-row ird__action-row--upload">
           <UiButton
             variant="outline"
@@ -125,11 +127,11 @@
 
 <script setup lang="ts">
 import type { IndirectResponseDocumentExtractionVO } from '@/apis/quality/indirect-response'
+import { indirectResponseApi } from '@/apis/quality/indirect-response'
 import { message } from 'ant-design-vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { aiTaskApi } from '@/apis/quality/ai-task'
-import { indirectResponseApi } from '@/apis/quality/indirect-response'
 import {
   AI_TASK_STATUS_COLOR,
   AiTaskStatusCode,
@@ -307,7 +309,7 @@ async function pollTaskStatus() {
 
   if (pollCount.value > MAX_POLL_COUNT) {
     stopPolling()
-    failureReason.value = '轮询超时（超过 6 分钟），请稍后在任务列表中查看结果。'
+    failureReason.value = '轮询超时（超过 6 分钟），请在任务列表中查看结果。'
     phase.value = 'failed'
     return
   }
@@ -334,7 +336,7 @@ async function pollTaskStatus() {
     pollFailureCount.value++
     if (pollFailureCount.value >= MAX_POLL_FAILURE_COUNT) {
       stopPolling()
-      failureReason.value = '连续查询 AI 任务状态失败，请稍后在 AI 任务列表查看处理结果。'
+      failureReason.value = '连续查询 AI 任务状态失败，请在 AI 任务列表查看处理结果。'
       phase.value = 'failed'
     }
   }

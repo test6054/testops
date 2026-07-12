@@ -1,5 +1,5 @@
 import type { ExamCandidateResponse, ExamCandidateRosterRequest } from '@/apis/mark/exam-scope'
-import { showFormValidationMessage } from '@/utils/error-handler'
+import { getUserErrorMessage, showFormValidationMessage } from '@/utils/error-handler'
 
 /** 班级学生树抽屉勾选结果，与 ClassStudentTreeSelectorDrawer confirm 事件一致。 */
 export interface ClassStudentDrawerSelectionInfo {
@@ -51,4 +51,10 @@ export function buildRosterRequestsFromDrawerSelection(
     })
   }
   return requests
+}
+
+/** 名册预览接口返回的零学生班级业务错误，前端应走内联提示而非 toast。 */
+export function isPreviewEmptyClassBusinessError(error: unknown): boolean {
+  const message = getUserErrorMessage(error, '')
+  return message.includes('没有可纳入的学生') || message.includes('暂无在籍学生')
 }

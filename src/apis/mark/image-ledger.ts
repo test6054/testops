@@ -54,16 +54,6 @@ export interface ImageLedgerDetailResponse {
 }
 
 /**
- * 归一化影像账本详情：后端在未初始化账本时仅返回 examId 占位，不得当作有效账本渲染。
- */
-export function normalizeImageLedgerDetail(
-  detail: ImageLedgerDetailResponse | null | undefined,
-): ImageLedgerDetailResponse | null {
-  if (!detail?.ledgerId) return null
-  return detail
-}
-
-/**
  * 查询影像账本详情和对账状态
  * POST /api/mark/exams/image-ledger/detail
  */

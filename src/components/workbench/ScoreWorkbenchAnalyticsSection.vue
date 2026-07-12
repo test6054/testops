@@ -55,6 +55,11 @@
 <script lang="ts" setup>
 import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
 import type { ScoreWorkbenchAnalyticsMode } from '@/utils/score-workbench-analytics'
+import {
+  buildScoreAnalyticsFlowSteps,
+  buildScoreDistributionStatItems,
+  resolveScoreAnalyticsOverviewTitle,
+} from '@/utils/score-workbench-analytics'
 import { computed } from 'vue'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import ScoreAnalyticsStatusFlow from '@/components/workbench/ScoreAnalyticsStatusFlow.vue'
@@ -63,11 +68,6 @@ import { useChartOption } from '@/hooks/modules/useChartOption'
 import { buildBarChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
 import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
 import { scoreHistogramToBarItems } from '@/utils/mark-statistics-chart'
-import {
-  buildScoreAnalyticsFlowSteps,
-  buildScoreDistributionStatItems,
-  resolveScoreAnalyticsOverviewTitle,
-} from '@/utils/score-workbench-analytics'
 
 defineOptions({ name: 'ScoreWorkbenchAnalyticsSection' })
 
@@ -145,7 +145,7 @@ const { chartOption: histogramChartOption } = useChartOption(() =>
 const histogramChartAriaLabel = computed(() => {
   const count = histogramBarItems.value.length
   if (count <= 0) {
-    return '成绩分布，暂无数据'
+    return '成绩分布，当前没有可展示的内容'
   }
   return `成绩分布，共 ${count} 个分数段`
 })

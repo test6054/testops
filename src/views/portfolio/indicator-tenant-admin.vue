@@ -6,13 +6,6 @@ import type {
   PortfolioIndustryPackVO,
   PortfolioTenantIndicatorConfigVO,
 } from '@/apis/portfolio/indicator-types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import {
-  portfolioIndicatorPlatformApi,
-  portfolioIndicatorTenantApi,
-} from '@/apis/portfolio/indicator'
 import {
   PF_SCENE_CODE_OPTIONS,
   PfIndicatorStatusDescription,
@@ -20,6 +13,13 @@ import {
   PfSceneCode,
   PfSceneCodeDescription,
 } from '@/apis/portfolio/indicator-types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  portfolioIndicatorPlatformApi,
+  portfolioIndicatorTenantApi,
+} from '@/apis/portfolio/indicator'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -70,7 +70,9 @@ const editForm = reactive<{
   applicableScenes: '',
 })
 
-const sceneLabel = computed(() => PfSceneCodeDescription[sceneCode.value])
+const sceneLabel = computed(() =>
+  strictEnumLabel(PfSceneCodeDescription, sceneCode.value, '指标场景编码'),
+)
 
 const filteredConfigs = computed(() => {
   const keyword = configFilter.value.trim().toLowerCase()
@@ -79,8 +81,8 @@ const filteredConfigs = computed(() => {
   }
   return configRows.value.filter(
     (row) =>
-      row.indicatorCode.toLowerCase().includes(keyword)
-      || row.indicatorName.toLowerCase().includes(keyword),
+      row.indicatorCode.toLowerCase().includes(keyword) ||
+      row.indicatorName.toLowerCase().includes(keyword),
   )
 })
 

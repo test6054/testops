@@ -30,7 +30,7 @@ export async function ensureQualityPlanConfirmedForNavigation(
     })
   }
   if (qualityStore.trainingPlanLoading) {
-    message.warning('培养方案信息加载中，请稍后重试')
+    message.warning('培养方案信息加载中')
     return false
   }
   const plan = qualityStore.currentPlan

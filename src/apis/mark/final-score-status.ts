@@ -4,6 +4,7 @@ import {
   FinalScoreStatusCode,
   FinalScoreStatusDescription,
 } from '@/types/enums/final-score-status-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
   ALL_FINAL_SCORE_STATUS_CODES,
@@ -25,7 +26,7 @@ export const FINAL_SCORE_STATUS_OPTIONS: Array<{
   value: FinalScoreStatusCode
 }> = ALL_FINAL_SCORE_STATUS_CODES.map((value) => ({
   value,
-  label: FinalScoreStatusDescription[value],
+  label: strictEnumLabel(FinalScoreStatusDescription, value, '最终成绩状态'),
 }))
 
 export const FINAL_SCORE_STATUS_CODES: FinalScoreStatusCode[] = [...ALL_FINAL_SCORE_STATUS_CODES]

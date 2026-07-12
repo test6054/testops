@@ -87,6 +87,11 @@ declare module 'vue-router' {
     menuGroupIcon?: string
     /** 菜单分组排序 */
     menuGroupOrder?: number
+    /**
+     * 侧栏菜单层级：primary 默认展示；secondary 收进「更多」。
+     * 未声明视为 primary。
+     */
+    menuTier?: 'primary' | 'secondary'
     /** 批阅页宽布局：Main 容器放宽至全宽（上限 1680px） */
     layoutWide?: boolean
     /** 创建页全屏表单：取消 Main 内边距与宽度限制，使用 CreateFormPageShell */

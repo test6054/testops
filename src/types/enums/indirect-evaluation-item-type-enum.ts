@@ -2,6 +2,7 @@
  * 间接评价题项题型枚举
  * 取值与展示文案以后端 {@code IndirectEvaluationItemTypeEnum} 为真源，须逐值同步。
  */
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export enum IndirectEvaluationItemTypeCode {
   SCALE = 'SCALE',
@@ -30,7 +31,7 @@ export const INDIRECT_EVALUATION_ITEM_TYPE_OPTIONS: Array<{
   label: string
 }> = ALL_INDIRECT_EVALUATION_ITEM_TYPE_CODES.map((value) => ({
   value,
-  label: IndirectEvaluationItemTypeDescription[value],
+  label: strictEnumLabel(IndirectEvaluationItemTypeDescription, value, '间接评价题项题型'),
 }))
 
 const ITEM_TYPE_SET = new Set<string>(Object.values(IndirectEvaluationItemTypeCode))
@@ -44,7 +45,7 @@ export function isIndirectEvaluationItemType(
 export function formatIndirectEvaluationItemType(
   value: IndirectEvaluationItemTypeCode,
 ): string {
-  return IndirectEvaluationItemTypeDescription[value]
+  return strictEnumLabel(IndirectEvaluationItemTypeDescription, value, '间接评价题项题型')
 }
 
 export function formatPublicSurveyItemType(

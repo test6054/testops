@@ -1,20 +1,22 @@
 <template>
   <div class="platform-error-page" :class="{ 'platform-error-page--embedded': embedded }">
     <section class="platform-error-page__panel">
-      <a-result :status="resultStatus" :title="copy.title" :sub-title="copy.subtitle">
-        <template #extra>
-          <div class="platform-error-page__actions">
-            <UiButton variant="primary" size="md" @click="refreshPage">刷新页面</UiButton>
-            <UiButton variant="outline" size="md" @click="goHome">{{ backLabel }}</UiButton>
-          </div>
-        </template>
-      </a-result>
+      <div class="platform-error-page__badge" aria-hidden="true">{{ copy.badge }}</div>
+      <h1 class="platform-error-page__title">{{ copy.title }}</h1>
+      <p class="platform-error-page__subtitle">{{ copy.subtitle }}</p>
+      <div class="platform-error-page__actions">
+        <UiButton variant="primary" size="md" @click="goHome">{{ backLabel }}</UiButton>
+        <UiButton v-if="showSecondary" variant="outline" size="md" @click="goSecondary">
+          {{ secondaryLabel }}
+        </UiButton>
+      </div>
     </section>
   </div>
 </template>
 
 <script lang="ts" setup>
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { useAuthStore } from '@/stores'
 import { resolveAppPath } from '@/utils/app-path'
@@ -45,32 +47,25 @@ const resolvedKind = computed(() => {
   return props.code === 403 ? 'forbidden' : 'not-found'
 })
 
-const resultStatus = computed(() => {
-  if (resolvedKind.value === 'render-error') {
-    return 'error'
-  }
-  if (resolvedKind.value === 'forbidden') {
-    return '403'
-  }
-  return '404'
-})
-
 const copy = computed(() => {
   if (resolvedKind.value === 'render-error') {
     return {
-      title: '页面渲染异常',
-      subtitle: '当前页面遇到意外错误，请先刷新页面；若仍无法恢复，再返回工作台继续其他操作',
+      badge: '页面异常',
+      title: '当前页面暂时无法展示',
+      subtitle: '可返回工作台继续其他业务；若多次出现，请联系管理员排查。',
     }
   }
   if (resolvedKind.value === 'forbidden') {
     return {
-      title: '无访问权限',
-      subtitle: '当前账号无权访问此页面，请确认登录身份或联系管理员开通权限',
+      badge: '权限不足',
+      title: '当前账号无权访问此页面',
+      subtitle: '请确认登录身份，或联系管理员开通对应权限。',
     }
   }
   return {
-    title: '页面不存在',
-    subtitle: '地址可能已变更或输入有误，可先刷新页面；仍无法访问时返回工作台',
+    badge: '地址无效',
+    title: '页面不存在或已变更',
+    subtitle: '请检查地址，或返回工作台从菜单重新进入。',
   }
 })
 
@@ -102,12 +97,22 @@ const backLabel = computed(() => {
   return '返回登录'
 })
 
-function refreshPage() {
-  window.location.reload()
-}
+const showSecondary = computed(
+  () => resolvedKind.value !== 'render-error' && authStore.userRole != null,
+)
+
+const secondaryLabel = computed(() => '返回上一页')
 
 function goHome() {
   router.replace({ path: resolveHomePath() })
+}
+
+function goSecondary() {
+  if (window.history.length > 1) {
+    router.back()
+    return
+  }
+  goHome()
 }
 </script>
 
@@ -118,46 +123,59 @@ function goHome() {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--dp-space-6);
+  padding: var(--dp-space-4);
   background: var(--ant-color-bg-layout);
 
   &--embedded {
-    min-height: 100%;
+    min-height: 240px;
     background: var(--ant-color-bg-container);
-    padding: var(--dp-space-8) var(--dp-space-4);
+    padding: var(--dp-space-4);
   }
 }
 
 .platform-error-page__panel {
-  width: min(520px, 100%);
-  padding: var(--dp-space-6) var(--dp-space-5);
-  border: 1px solid var(--dp-border);
+  width: min(420px, 100%);
+  padding: 20px 18px;
+  border: 1px solid var(--ant-color-border-secondary);
   border-radius: var(--dp-radius-panel);
   background: var(--ant-color-bg-container);
-  box-shadow: var(--dp-shadow-xs);
+  text-align: center;
+}
+
+.platform-error-page__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  padding: 0 8px;
+  margin-bottom: 10px;
+  border-radius: var(--dp-radius-control);
+  background: var(--ant-color-fill-tertiary);
+  color: var(--ant-color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.platform-error-page__title {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+  color: var(--ant-color-text);
+}
+
+.platform-error-page__subtitle {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--ant-color-text-secondary);
 }
 
 .platform-error-page__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-3);
+  gap: 8px;
   justify-content: center;
-}
-
-:deep(.ant-result) {
-  padding: var(--dp-space-4) 0;
-}
-
-:deep(.ant-result-title) {
-  font-size: var(--dp-type-h1-size);
-  line-height: var(--dp-type-h1-line-height);
-  font-weight: var(--dp-type-h1-weight);
-  color: var(--ant-color-text);
-}
-
-:deep(.ant-result-subtitle) {
-  font-size: var(--dp-font-size-md);
-  line-height: var(--dp-line-height-normal);
-  color: var(--ant-color-text-secondary);
 }
 </style>

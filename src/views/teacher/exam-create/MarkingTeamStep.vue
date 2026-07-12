@@ -20,6 +20,7 @@
             label="主考教师"
             name="chiefExaminerUserId"
             required
+            tooltip="默认为当前创建人，须同时出现在阅卷教师名单中。"
             :label-col="labelCol"
             :wrapper-col="wrapperCol"
           >
@@ -28,17 +29,13 @@
               placeholder="默认当前创建人，可调整"
               @change="handleChiefSelect"
             />
-            <template #extra>
-              <p class="create-form__hint create-form__hint--extra">
-                主考默认为创建人，须同时属于阅卷教师名单。
-              </p>
-            </template>
           </a-form-item>
         </a-col>
         <a-col :span="12">
           <a-form-item
             label="匿名阅卷"
             name="anonymousMode"
+            :tooltip="anonymousModeTip"
             :label-col="labelCol"
             :wrapper-col="wrapperCol"
           >
@@ -48,11 +45,6 @@
                 {{ markingTeamForm.anonymousMode ? '启用匿名' : '关闭匿名' }}
               </span>
             </div>
-            <template #extra>
-              <p class="create-form__hint create-form__hint--extra">
-                启用后，阅卷教师查看答卷时不显示考生姓名与学号。
-              </p>
-            </template>
           </a-form-item>
         </a-col>
       </a-row>
@@ -82,7 +74,7 @@
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { TeacherSelector } from '@/components/quality/selectors'
 import { useInjectedExamCreateMarkingTeamForm } from './exam-create-context'
 
@@ -100,6 +92,11 @@ const labelCol = { style: { width: '88px' } }
 const wrapperCol = { flex: 1 }
 const markingTeamForm = useInjectedExamCreateMarkingTeamForm()
 const formRef = ref<FormInstance>()
+const anonymousModeTip = computed(() =>
+  markingTeamForm.anonymousMode
+    ? '阅卷页已隐藏考生姓名与学号。'
+    : '启用后阅卷页不展示考生姓名与学号。',
+)
 
 function handleReviewersChange(
   _value: string | string[] | null,

@@ -17,8 +17,9 @@ import {
   ScanTaskKindCode,
   ScanTaskKindDescription,
 } from '@/types/enums/scan-task-kind-enum'
-
 import { ScanWorkOrderStatusCode } from '@/types/enums/scan-work-order-status-enum'
+
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
   ALL_ARCHIVE_SCAN_BATCH_MODE_CODES,
@@ -32,10 +33,10 @@ export {
   PortfolioCollectModeDescription,
 } from '@/types/enums/portfolio-collect-mode-enum'
 
-export const SCAN_TASK_KIND_OPTIONS: Array<{ value: ScanTaskKindCode, label: string }>
-  = ALL_SCAN_TASK_KIND_CODES.map((value) => ({
+export const SCAN_TASK_KIND_OPTIONS: Array<{ value: ScanTaskKindCode; label: string }> =
+  ALL_SCAN_TASK_KIND_CODES.map((value) => ({
     value,
-    label: ScanTaskKindDescription[value],
+    label: strictEnumLabel(ScanTaskKindDescription, value, '扫描任务类型'),
   }))
 
 export const SCAN_WORK_ORDER_STATUS_TONE: Record<

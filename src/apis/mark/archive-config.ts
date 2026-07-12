@@ -4,13 +4,14 @@
 import type { ArchiveSecurityLevelCode } from '@/apis/mark/archive-volume'
 import type { ArchiveDeadlineTierCode } from '@/types/enums/archive-deadline-tier-enum'
 import type { ArchiveDutyTypeCode } from '@/types/enums/archive-duty-type-enum'
-import type { ArchiveKioskHubListModeCode } from '@/types/enums/archive-kiosk-hub-list-mode-enum'
-import type { ArchiveSubmitModeCode } from '@/types/enums/archive-submit-mode-enum'
-import http from '@/config/axios'
 import {
   ALL_ARCHIVE_DUTY_TYPE_CODES,
   ArchiveDutyTypeDescription,
 } from '@/types/enums/archive-duty-type-enum'
+import type { ArchiveKioskHubListModeCode } from '@/types/enums/archive-kiosk-hub-list-mode-enum'
+import type { ArchiveSubmitModeCode } from '@/types/enums/archive-submit-mode-enum'
+import http from '@/config/axios'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
   ALL_ARCHIVE_DUTY_TYPE_CODES,
@@ -21,7 +22,7 @@ export {
 export const ARCHIVE_DUTY_TYPE_OPTIONS: Array<{ value: ArchiveDutyTypeCode, label: string }>
   = ALL_ARCHIVE_DUTY_TYPE_CODES.map((value) => ({
     value,
-    label: ArchiveDutyTypeDescription[value],
+    label: strictEnumLabel(ArchiveDutyTypeDescription, value, '归档职责类型'),
   }))
 
 export interface ArchiveDutyGrantResponse {

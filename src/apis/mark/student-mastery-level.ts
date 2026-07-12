@@ -4,6 +4,7 @@ import {
   MasteryLevelCode,
   MasteryLevelDescription,
 } from '@/types/enums/mastery-level-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
   ALL_MASTERY_LEVEL_CODES,
@@ -19,8 +20,8 @@ export const MASTERY_LEVEL_TONE: Record<MasteryLevelCode, BadgeTone> = {
   [MasteryLevelCode.CRITICAL]: 'red',
 }
 
-export const MASTERY_LEVEL_OPTIONS: Array<{ label: string, value: MasteryLevelCode }>
-  = ALL_MASTERY_LEVEL_CODES.map((value) => ({
+export const MASTERY_LEVEL_OPTIONS: Array<{ label: string; value: MasteryLevelCode }> =
+  ALL_MASTERY_LEVEL_CODES.map((value) => ({
     value,
-    label: MasteryLevelDescription[value],
+    label: strictEnumLabel(MasteryLevelDescription, value, '知识掌握等级'),
   }))

@@ -15,6 +15,7 @@
         title="协作权限说明"
         :description="detail.capabilityDeniedHint"
         dense
+        inline
         class="archive-volume-detail__alert"
       />
       <UiAlertStrip
@@ -23,11 +24,12 @@
         title="提交待办清单加载失败"
         :description="submitChecklistLoadError"
         dense
+        inline
         class="archive-volume-detail__alert"
       >
         <template #actions>
           <UiButton size="sm" variant="outline" @click="() => loadSubmitChecklist()">
-            重试
+            重新加载
           </UiButton>
         </template>
       </UiAlertStrip>
@@ -37,28 +39,31 @@
         title="岗位职责加载失败"
         description="鉴定、销毁与查阅审批操作不可用"
         dense
+        inline
         class="archive-volume-detail__alert"
       />
       <UiAlertStrip
         v-if="
-          detail.volume.integrityStatus === ArchiveIntegrityStatusCode.UNKNOWN
-            || detail.volume.integrityStatus === ArchiveIntegrityStatusCode.FAILED
+          detail.volume.integrityStatus === ArchiveIntegrityStatusCode.UNKNOWN ||
+          detail.volume.integrityStatus === ArchiveIntegrityStatusCode.FAILED
         "
         tone="warning"
         title="请先执行完整性自检"
         description="完整性未通过前无法提交归档"
         dense
+        inline
         class="archive-volume-detail__alert"
       />
       <UiAlertStrip
         v-if="
-          !detail.latestFourPropertyCheck
-            && detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
+          !detail.latestFourPropertyCheck &&
+          detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
         "
         tone="warning"
         title="尚未执行四性检测"
         description="提交归档前须完成四性检测"
         dense
+        inline
         class="archive-volume-detail__alert"
       />
       <UiAlertStrip
@@ -67,6 +72,7 @@
         title="四性结论已失效"
         description="四性结论已失效，请确认密级定密后重新执行四性检测"
         dense
+        inline
         class="archive-volume-detail__alert"
       />
       <UiAlertStrip
@@ -75,6 +81,7 @@
         title="四性检测: 安全性未通过"
         :description="securityFourPropertyDescription"
         dense
+        inline
         class="archive-volume-detail__alert"
       >
         <template v-if="activeTab !== 'integrity'" #actions>
@@ -89,18 +96,20 @@
         title="四性检测: 可靠性未通过"
         :description="reliabilityFourPropertyDescription"
         dense
+        inline
         class="archive-volume-detail__alert"
       />
       <UiAlertStrip
         v-else-if="
-          detail.latestFourPropertyCheck
-            && !detail.latestFourPropertyCheck.overallPassed
-            && detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
+          detail.latestFourPropertyCheck &&
+          !detail.latestFourPropertyCheck.overallPassed &&
+          detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
         "
         tone="warning"
         title="四性检测未通过"
         description="请先补正材料并重新执行四性检测"
         dense
+        inline
         class="archive-volume-detail__alert"
       />
       <UiAlertStrip
@@ -109,6 +118,7 @@
         :title="scoreSubmitBlockReason"
         description="成绩证明未满足提交前置条件"
         dense
+        inline
         class="archive-volume-detail__alert"
       />
       <UiAlertStrip
@@ -117,6 +127,7 @@
         title="迎评整改进行中"
         :description="remediationOpenDescription"
         dense
+        inline
         class="archive-volume-detail__alert"
       >
         <template v-if="focusedRemediationTask" #meta>
@@ -139,8 +150,8 @@
           </UiButton>
           <UiButton
             v-if="
-              canAdvanceRemediation
-                && focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.OPEN
+              canAdvanceRemediation &&
+              focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.OPEN
             "
             size="sm"
             variant="outline"
@@ -151,8 +162,8 @@
           </UiButton>
           <UiButton
             v-if="
-              canAdvanceRemediation
-                && focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
+              canAdvanceRemediation &&
+              focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
             "
             size="sm"
             variant="outline"
@@ -163,8 +174,8 @@
           </UiButton>
           <UiButton
             v-if="
-              canManageCoordinatorRemediation
-                && focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.OPEN
+              canManageCoordinatorRemediation &&
+              focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.OPEN
             "
             size="sm"
             variant="outline"
@@ -175,8 +186,8 @@
           </UiButton>
           <UiButton
             v-if="
-              canManageCoordinatorRemediation
-                && focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
+              canManageCoordinatorRemediation &&
+              focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
             "
             size="sm"
             variant="outline"
@@ -187,8 +198,8 @@
           </UiButton>
           <UiButton
             v-if="
-              canManageCoordinatorRemediation
-                && focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED
+              canManageCoordinatorRemediation &&
+              focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED
             "
             size="sm"
             variant="outline"
@@ -199,9 +210,9 @@
           </UiButton>
           <UiButton
             v-if="
-              canManageCoordinatorRemediation
-                && (focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.OPEN
-                  || focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS)
+              canManageCoordinatorRemediation &&
+              (focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.OPEN ||
+                focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS)
             "
             size="sm"
             variant="ghost"
@@ -527,11 +538,6 @@ import type {
   ArchiveVolumeDetailResponse,
   ArchiveVolumeSubmitChecklistItemVO,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   ARCHIVE_REMEDIATION_STATUS_TONE,
   ArchiveIntegrityStatusCode,
@@ -549,6 +555,11 @@ import {
   submitArchiveVolume,
   updateRemediationTask,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import ArchiveLifecyclePipe from '@/components/archive-volume/ArchiveLifecyclePipe.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -672,14 +683,14 @@ const canSyncTeachingAffairs = computed(() => {
   const volume = detailValue.volume
   if (volume.scoreSource === 'MARK_INTERNAL') return false
   if (
-    volume.volumeStatus !== ArchiveVolumeStatusCode.DRAFT
-    && volume.volumeStatus !== ArchiveVolumeStatusCode.COLLECTING
+    volume.volumeStatus !== ArchiveVolumeStatusCode.DRAFT &&
+    volume.volumeStatus !== ArchiveVolumeStatusCode.COLLECTING
   ) {
     return false
-}
+  }
   return (
-    volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.PENDING
-    || volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.NOT_REQUIRED
+    volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.PENDING ||
+    volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.NOT_REQUIRED
   )
 })
 
@@ -721,17 +732,17 @@ const canConfirmScoreCompletion = computed(() => {
   if (!d) return false
   const vol = d.volume
   if (!detailScope.volumeAcceptsScoreCompletion(vol.volumeStatus)) return false
-  const canManageScores
-    = detailScope.capabilities.canManageMaterials === true
-      || detailScope.capabilities.canSubmitVolume === true
-      || detailScope.capabilities.canManageCollaborators === true
+  const canManageScores =
+    detailScope.capabilities.canManageMaterials === true ||
+    detailScope.capabilities.canSubmitVolume === true ||
+    detailScope.capabilities.canManageCollaborators === true
   if (!canManageScores) return false
   if (
-    vol.scoreSource !== ArchiveScoreSourceCode.TEACHING_AFFAIRS
-    && vol.scoreSource !== ArchiveScoreSourceCode.OFFLINE_CONFIRMED
+    vol.scoreSource !== ArchiveScoreSourceCode.TEACHING_AFFAIRS &&
+    vol.scoreSource !== ArchiveScoreSourceCode.OFFLINE_CONFIRMED
   ) {
     return false
-}
+  }
   return vol.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.PENDING
 })
 
@@ -810,8 +821,8 @@ const remediationOpenDescription = computed(() => {
   const d = detail.value
   if (task) {
     if (
-      task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED
-      && task.assigneeUserId === currentUserId.value
+      task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED &&
+      task.assigneeUserId === currentUserId.value
     ) {
       return '材料已重提，等待院系协调人复检关闭'
     }
@@ -825,18 +836,18 @@ const remediationOpenDescription = computed(() => {
       parts.push(`截止 ${formatDateTime(task.dueTime)}`)
     }
     if (
-      d?.hasBlockingRemediationForSubmit
-      && d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
-      && detailScope.canSubmitVolume
+      d?.hasBlockingRemediationForSubmit &&
+      d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING &&
+      detailScope.canSubmitVolume
     ) {
       parts.push('须关闭整改任务后再提交归档')
     }
     return parts.join(' · ')
   }
   if (
-    d?.hasBlockingRemediationForSubmit
-    && d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
-    && detailScope.canSubmitVolume
+    d?.hasBlockingRemediationForSubmit &&
+    d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING &&
+    detailScope.canSubmitVolume
   ) {
     return '存在未关闭整改任务，须关闭后再提交归档'
   }
@@ -913,9 +924,9 @@ const canReviewScanBatches = computed(() => detailScope.capabilities.canManageMa
 const canAdvanceRemediation = computed(() => {
   const task = focusedRemediationTask.value
   if (
-    !task
-    || task.taskStatus === ArchiveRemediationStatusCode.CLOSED
-    || task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED
+    !task ||
+    task.taskStatus === ArchiveRemediationStatusCode.CLOSED ||
+    task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED
   ) {
     return false
   }
@@ -926,9 +937,9 @@ const canManageCoordinatorRemediation = computed(() => {
   const d = detail.value
   const task = focusedRemediationTask.value
   if (
-    !d?.hasOpenRemediationTask
-    || !task
-    || task.taskStatus === ArchiveRemediationStatusCode.CLOSED
+    !d?.hasOpenRemediationTask ||
+    !task ||
+    task.taskStatus === ArchiveRemediationStatusCode.CLOSED
   ) {
     return false
   }

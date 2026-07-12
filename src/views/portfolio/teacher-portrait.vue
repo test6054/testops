@@ -1,28 +1,36 @@
 <script setup lang="ts">
 import type { EChartsCoreOption } from 'echarts/core'
-import type { PortfolioPortraitDimensionCode } from '@/apis/portfolio/enums'
-import type { PortfolioDevelopmentPlanCompletionVO } from '@/apis/portfolio/teacher-platform'
 import type {
-  PortfolioTeacherPortraitCohortCompareVO,
-  PortfolioTeacherPortraitIndicatorDetailVO,
-  PortfolioTeacherPortraitTrendVO,
-  PortfolioTeacherPortraitVO,
-} from '@/apis/portfolio/types'
-import type { SignalMetric } from '@/types/workbench'
-import { computed, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+  PortfolioAnalysisSuggestionVO,
+  PortfolioAnalysisTrainingRecommendVO,
+  PortfolioPortraitCreditCurveVO,
+} from '@/apis/portfolio/analysis'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
+import type { PortfolioPortraitDimensionCode } from '@/apis/portfolio/enums'
 import {
   PortfolioArchiveRecordStatusDescription,
   PortfolioPortraitDimensionReadinessCode,
   PortfolioPortraitDimensionReadinessDescription,
   PortfolioPortraitIndicatorEvidenceTypeDescription,
 } from '@/apis/portfolio/enums'
+import type { PortfolioDevelopmentPlanCompletionVO } from '@/apis/portfolio/teacher-platform'
 import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
+import type {
+  PortfolioTeacherPortraitCohortCompareVO,
+  PortfolioTeacherPortraitIndicatorDetailVO,
+  PortfolioTeacherPortraitTrendVO,
+  PortfolioTeacherPortraitVO,
+} from '@/apis/portfolio/types'
 import {
   PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
   PORTFOLIO_PORTRAIT_DIMENSION_READINESS_TONE,
 } from '@/apis/portfolio/types'
+import type { PortfolioSuggestionTypeCode } from '@/types/enums/portfolio-suggestion-type-enum'
+import { PortfolioSuggestionTypeDescription } from '@/types/enums/portfolio-suggestion-type-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import MarkChartCard from '@/components/chart/MarkChartCard.vue'
 import UiAlert from '@/components/ui-guide/ui/Alert.vue'
@@ -31,6 +39,7 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -38,11 +47,22 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
+import {
+  ALL_PORTFOLIO_PORTRAIT_COHORT_TYPE_CODES,
+  PortfolioPortraitCohortTypeCode,
+  PortfolioPortraitCohortTypeDescription,
+} from '@/types/enums/portfolio-portrait-cohort-type-enum'
+import { PortfolioPortraitStageDescription } from '@/types/enums/portfolio-portrait-stage-code-enum'
+import {
+  PortfolioTrainingRecommendStatusCode,
+  PortfolioTrainingRecommendStatusDescription,
+} from '@/types/enums/portfolio-training-recommend-status-enum'
 import { ResultCode } from '@/types/enums/result-code'
 import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
 import {
   buildPortraitCohortRangeChartOption,
   buildPortraitCompositeTrendChartOption,
+  buildPortraitCreditCurveChartOption,
   buildPortraitRadarChartOption,
   resolveCohortHint,
 } from '@/utils/portfolio-portrait-charts'
@@ -61,7 +81,29 @@ const portraitAbsent = ref(false)
 const detailOpen = ref(false)
 const indicatorDetail = ref<PortfolioTeacherPortraitIndicatorDetailVO | null>(null)
 const planCompletion = ref<PortfolioDevelopmentPlanCompletionVO | null>(null)
+const suggestions = ref<PortfolioAnalysisSuggestionVO[]>([])
+const trainingRecommendations = ref<PortfolioAnalysisTrainingRecommendVO[]>([])
+const creditCurve = ref<PortfolioPortraitCreditCurveVO | null>(null)
 const planYear = String(new Date().getFullYear())
+const cohortType = ref<PortfolioPortraitCohortTypeCode>(PortfolioPortraitCohortTypeCode.DEPARTMENT)
+const portraitRequestToken = ref(0)
+const trainingRecommendationActionId = ref('')
+
+const cohortTabItems = ALL_PORTFOLIO_PORTRAIT_COHORT_TYPE_CODES.map((code) => ({
+  key: code,
+  label: PortfolioPortraitCohortTypeDescription[code],
+}))
+
+const stageLabel = computed(() => {
+  if (!portrait.value?.stageCode) {
+    return ''
+  }
+  return strictEnumLabel(
+    PortfolioPortraitStageDescription,
+    portrait.value.stageCode,
+    '教师职业阶段',
+  )
+})
 
 const compositeItems = computed((): SignalMetric[] => {
   if (!portrait.value) {
@@ -122,14 +164,104 @@ const trendOption = computed((): EChartsCoreOption => {
   return buildPortraitCompositeTrendChartOption(trend.value?.points ?? [])
 })
 
+const creditCurveOption = computed((): EChartsCoreOption => {
+  return buildPortraitCreditCurveChartOption(creditCurve.value?.points ?? [])
+})
+
+/** 教师范围变化后必须清空旧指标明细抽屉，避免继续展示上一位教师的画像证据。 */
+function resetIndicatorDetailContext() {
+  detailOpen.value = false
+  indicatorDetail.value = null
+}
+
+function resetPortraitBundleContext() {
+  portraitRequestToken.value += 1
+  resetIndicatorDetailContext()
+  portraitAbsent.value = false
+  portrait.value = null
+  cohort.value = null
+  trend.value = null
+  planCompletion.value = null
+  suggestions.value = []
+  trainingRecommendations.value = []
+  creditCurve.value = null
+}
+
 function buildPortraitRequest() {
   return targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}
 }
 
-async function loadPlanCompletion() {
+function buildCohortRequest() {
+  return {
+    ...buildPortraitRequest(),
+    cohortType: cohortType.value,
+  }
+}
+
+/** 教师本人登记培训后才将推荐置为已采纳，管理视图不能替教师执行该动作。 */
+function registerRecommendedTraining(item: PortfolioAnalysisTrainingRecommendVO) {
+  void router.push({
+    name: 'PortfolioTeacherExtensionActivity',
+    query: {
+      teacherId: targetTeacherId.value,
+      recommendationId: item.id,
+      activityName: item.recommendTitle,
+    },
+  })
+}
+
+async function dismissTrainingRecommendation(item: PortfolioAnalysisTrainingRecommendVO) {
+  trainingRecommendationActionId.value = item.id
   try {
-    planCompletion.value = await portfolioDevelopmentPlanApi.completionAnalysis({ planYear })
+    await portfolioAnalysisApi.dismissTrainingRecommendation({ recommendationId: item.id })
+    item.recommendStatus = PortfolioTrainingRecommendStatusCode.DISMISSED
+    message.success('已忽略培训推荐')
+  } catch (error) {
+    showUserError(error, '忽略培训推荐失败')
+  } finally {
+    trainingRecommendationActionId.value = ''
+  }
+}
+
+async function loadCohortCompare() {
+  if (!portrait.value) {
+    return
+  }
+  const requestToken = portraitRequestToken.value
+  try {
+    const nextCohort = await portfolioAnalysisApi.getPortraitCohortCompare(buildCohortRequest())
+    if (portraitRequestToken.value !== requestToken) {
+      return
+    }
+    cohort.value = nextCohort
+  } catch (error) {
+    if (portraitRequestToken.value !== requestToken) {
+      return
+    }
+    cohort.value = null
+    showUserError(error, '加载同群体对比失败')
+  }
+}
+
+async function loadPlanCompletion() {
+  if (!targetTeacherId.value) {
+    planCompletion.value = null
+    return
+  }
+  const requestToken = portraitRequestToken.value
+  try {
+    const nextPlanCompletion = await portfolioDevelopmentPlanApi.completionAnalysis({
+      planYear,
+      teacherId: targetTeacherId.value,
+    })
+    if (portraitRequestToken.value !== requestToken) {
+      return
+    }
+    planCompletion.value = nextPlanCompletion
   } catch {
+    if (portraitRequestToken.value !== requestToken) {
+      return
+    }
     planCompletion.value = null
   }
 }
@@ -138,12 +270,23 @@ async function loadSecondaryPortraitData() {
   if (!portrait.value) {
     return
   }
+  const requestToken = portraitRequestToken.value
   const request = buildPortraitRequest()
-  const [cohortSettled, trendSettled] = await Promise.allSettled([
-    portfolioAnalysisApi.getPortraitCohortCompare(request),
+  const teacherId = targetTeacherId.value
+  const settled = await Promise.allSettled([
+    portfolioAnalysisApi.getPortraitCohortCompare(buildCohortRequest()),
     portfolioAnalysisApi.getPortraitTrend({ ...request, limit: 12 }),
     loadPlanCompletion(),
+    teacherId ? portfolioAnalysisApi.listSuggestions({ teacherId }) : Promise.resolve([]),
+    teacherId
+      ? portfolioAnalysisApi.listTrainingRecommendations({ teacherId })
+      : Promise.resolve([]),
+    teacherId ? portfolioAnalysisApi.getCreditCurve({ teacherId }) : Promise.resolve(null),
   ])
+  const [cohortSettled, trendSettled, , suggestionSettled, trainingSettled, creditSettled] = settled
+  if (portraitRequestToken.value !== requestToken) {
+    return
+  }
   if (cohortSettled.status === 'fulfilled') {
     cohort.value = cohortSettled.value
   } else {
@@ -156,52 +299,92 @@ async function loadSecondaryPortraitData() {
     trend.value = null
     showUserError(trendSettled.reason, '加载历史趋势失败')
   }
+  if (suggestionSettled.status === 'fulfilled') {
+    suggestions.value = suggestionSettled.value
+  } else {
+    suggestions.value = []
+    showUserError(suggestionSettled.reason, '加载发展建议失败')
+  }
+  if (trainingSettled.status === 'fulfilled') {
+    trainingRecommendations.value = trainingSettled.value
+  } else {
+    trainingRecommendations.value = []
+    showUserError(trainingSettled.reason, '加载培训推荐失败')
+  }
+  if (creditSettled.status === 'fulfilled') {
+    creditCurve.value = creditSettled.value
+  } else {
+    creditCurve.value = null
+    showUserError(creditSettled.reason, '加载学分曲线失败')
+  }
 }
 
 async function loadPortraitBundle() {
+  const requestToken = portraitRequestToken.value + 1
+  portraitRequestToken.value = requestToken
   if (!targetTeacherId.value && canPickTeachers.value) {
+    resetPortraitBundleContext()
     portraitAbsent.value = true
-    portrait.value = null
-    cohort.value = null
-    trend.value = null
-    planCompletion.value = null
     return
   }
   loading.value = true
+  resetIndicatorDetailContext()
   portraitAbsent.value = false
   portrait.value = null
   cohort.value = null
   trend.value = null
   planCompletion.value = null
+  suggestions.value = []
+  trainingRecommendations.value = []
+  creditCurve.value = null
   try {
     const request = buildPortraitRequest()
-    portrait.value = await portfolioAnalysisApi.getPortrait(request)
+    const nextPortrait = await portfolioAnalysisApi.getPortrait(request)
+    if (portraitRequestToken.value !== requestToken) {
+      return
+    }
+    portrait.value = nextPortrait
     await loadSecondaryPortraitData()
   } catch (error) {
+    if (portraitRequestToken.value !== requestToken) {
+      return
+    }
     if (readBusinessResultCode(error) === ResultCode.DATA_NOT_FOUND) {
       portraitAbsent.value = true
     } else {
       showUserError(error, '加载教师画像失败')
     }
   } finally {
-    loading.value = false
+    if (portraitRequestToken.value === requestToken) {
+      loading.value = false
+    }
   }
 }
 
 async function openIndicatorDetail(dimensionCode: PortfolioPortraitDimensionCode) {
+  const requestToken = portraitRequestToken.value
   detailOpen.value = true
   indicatorDetail.value = null
   detailLoading.value = true
   try {
-    indicatorDetail.value = await portfolioAnalysisApi.getPortraitIndicatorDetail({
+    const nextIndicatorDetail = await portfolioAnalysisApi.getPortraitIndicatorDetail({
       ...buildPortraitRequest(),
       dimensionCode,
     })
+    if (portraitRequestToken.value !== requestToken) {
+      return
+    }
+    indicatorDetail.value = nextIndicatorDetail
   } catch (error) {
+    if (portraitRequestToken.value !== requestToken) {
+      return
+    }
     showUserError(error, '加载指标明细失败')
     detailOpen.value = false
   } finally {
-    detailLoading.value = false
+    if (portraitRequestToken.value === requestToken) {
+      detailLoading.value = false
+    }
   }
 }
 
@@ -224,6 +407,10 @@ usePortfolioScopedLoader(
   },
   () => targetTeacherId.value,
 )
+
+watch(cohortType, () => {
+  void loadCohortCompare()
+})
 </script>
 
 <template>
@@ -249,6 +436,11 @@ usePortfolioScopedLoader(
             <template v-if="portrait.computedTime">
               · 最近重算 {{ portrait.computedTime }}
             </template>
+            <template v-if="portrait.ruleSnapshotId">
+              · 规则快照 {{ portrait.ruleSnapshotId }}
+            </template>
+            <template v-if="stageLabel"> · 职业阶段 {{ stageLabel }} </template>
+            <template v-if="portrait.dataSource"> · {{ portrait.dataSource }} </template>
             <template v-if="portrait.lastArchiveRecordId">
               · 触发档案 {{ portrait.lastArchiveRecordId }}
             </template>
@@ -328,6 +520,11 @@ usePortfolioScopedLoader(
         </MarkChartCard>
 
         <MarkChartCard title="同群体对比" :loading="loading" chart-min-height="320">
+          <UiSectionTabs
+            v-model="cohortType"
+            :items="cohortTabItems"
+            class="teacher-portrait__cohort-tabs"
+          />
           <UiAlert
             v-if="cohort?.displayMode === 'INSUFFICIENT'"
             type="warning"
@@ -360,6 +557,93 @@ usePortfolioScopedLoader(
       >
         <MarkChart :option="trendOption" height="280px" aria-label="教师画像综合分历史趋势图" />
       </MarkChartCard>
+
+      <MarkChartCard
+        v-if="portrait && creditCurve"
+        title="培训学分曲线"
+        :loading="loading"
+        chart-min-height="280"
+        class="teacher-portrait__credit"
+      >
+        <p class="teacher-portrait__meta">
+          数据来源：{{ creditCurve.dataSource }} · 累计 {{ creditCurve.totalCredits }} 学分
+        </p>
+        <UiEmpty
+          v-if="!creditCurve.points.length"
+          description="暂无正式培训学分记录，完成培训档案审核后将在此展示"
+        />
+        <MarkChart
+          v-else
+          :option="creditCurveOption"
+          height="280px"
+          aria-label="教师培训学分累积曲线"
+        />
+      </MarkChartCard>
+
+      <div v-if="portrait" class="teacher-portrait__insight">
+        <UiCard title="发展建议" class="teacher-portrait__suggestions">
+          <UiEmpty v-if="!suggestions.length" description="暂无发展建议，画像重算后将自动生成" />
+          <ul v-else class="teacher-portrait__insight-list">
+            <li v-for="item in suggestions" :key="item.id" class="teacher-portrait__insight-item">
+              <div class="teacher-portrait__insight-head">
+                <strong>{{ item.suggestionTitle }}</strong>
+                <UiTag tone="blue">
+                  {{
+                    strictEnumLabel(
+                      PortfolioSuggestionTypeDescription,
+                      item.suggestionType as PortfolioSuggestionTypeCode,
+                      '发展建议类型',
+                    )
+                  }}
+                </UiTag>
+              </div>
+              <p>{{ item.suggestionContent }}</p>
+            </li>
+          </ul>
+        </UiCard>
+        <UiCard title="培训推荐" class="teacher-portrait__training">
+          <UiEmpty v-if="!trainingRecommendations.length" description="暂无培训推荐" />
+          <ul v-else class="teacher-portrait__insight-list">
+            <li
+              v-for="item in trainingRecommendations"
+              :key="item.id"
+              class="teacher-portrait__insight-item"
+            >
+              <div class="teacher-portrait__insight-head">
+                <strong>{{ item.recommendTitle }}</strong>
+                <UiTag tone="gray">
+                  {{
+                    strictEnumLabel(
+                      PortfolioTrainingRecommendStatusDescription,
+                      item.recommendStatus as PortfolioTrainingRecommendStatusCode,
+                      '培训推荐状态',
+                    )
+                  }}
+                </UiTag>
+              </div>
+              <p>{{ item.recommendReason }}</p>
+              <div
+                v-if="
+                  item.recommendStatus === PortfolioTrainingRecommendStatusCode.PENDING &&
+                  !canPickTeachers
+                "
+                class="teacher-portrait__insight-actions"
+              >
+                <UiButton variant="ghost" @click="registerRecommendedTraining(item)"
+                  >登记培训</UiButton
+                >
+                <UiButton
+                  variant="ghost"
+                  :loading="trainingRecommendationActionId === item.id"
+                  @click="dismissTrainingRecommendation(item)"
+                >
+                  忽略
+                </UiButton>
+              </div>
+            </li>
+          </ul>
+        </UiCard>
+      </div>
 
       <UiCard v-if="portrait" title="维度明细" class="teacher-portrait__dimensions">
         <p class="teacher-portrait__hint-text">点击维度行查看得分依据与关联档案</p>
@@ -407,6 +691,43 @@ usePortfolioScopedLoader(
                 </UiTag>
               </td>
               <td class="teacher-portrait__action">下钻</td>
+            </tr>
+          </tbody>
+        </table>
+      </UiCard>
+
+      <UiCard
+        v-if="portrait && portrait.strengthTags.length"
+        title="优势标签"
+        class="teacher-portrait__tags"
+      >
+        <div class="teacher-portrait__tag-list">
+          <UiTag v-for="tag in portrait.strengthTags" :key="tag.tagCode" tone="green">
+            {{ tag.tagLabel }} · {{ tag.score }} 分
+          </UiTag>
+        </div>
+      </UiCard>
+
+      <UiCard
+        v-if="portrait && portrait.gapItems.length"
+        title="短板清单"
+        class="teacher-portrait__gaps"
+      >
+        <table class="teacher-portrait__table">
+          <thead>
+            <tr>
+              <th>指标</th>
+              <th>维度</th>
+              <th>得分</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in portrait.gapItems" :key="item.indicatorCode">
+              <td>{{ item.indicatorName }}</td>
+              <td>{{ item.dimensionL1Name || '—' }}</td>
+              <td>{{ item.calcScore ?? '—' }}</td>
+              <td>{{ item.gapReason }}</td>
             </tr>
           </tbody>
         </table>
@@ -527,6 +848,11 @@ usePortfolioScopedLoader(
   color: var(--dp-text-secondary);
 }
 
+.teacher-portrait__insight-actions {
+  display: flex;
+  gap: var(--dp-space-2);
+}
+
 .teacher-portrait__charts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -538,8 +864,54 @@ usePortfolioScopedLoader(
   margin-top: var(--dp-space-4);
 }
 
+.teacher-portrait__credit {
+  margin-top: var(--dp-space-4);
+}
+
+.teacher-portrait__insight {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--dp-space-4);
+  margin-top: var(--dp-space-4);
+}
+
+.teacher-portrait__insight-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.teacher-portrait__insight-item + .teacher-portrait__insight-item {
+  margin-top: var(--dp-space-3);
+  padding-top: var(--dp-space-3);
+  border-top: 1px solid var(--dp-border);
+}
+
+.teacher-portrait__insight-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dp-space-2);
+  margin-bottom: var(--dp-space-1);
+}
+
 .teacher-portrait__cohort-alert {
   margin: 0 var(--dp-space-4) var(--dp-space-3);
+}
+
+.teacher-portrait__cohort-tabs {
+  margin: 0 var(--dp-space-4) var(--dp-space-3);
+}
+
+.teacher-portrait__tags,
+.teacher-portrait__gaps {
+  margin-top: var(--dp-space-4);
+}
+
+.teacher-portrait__tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dp-space-2);
 }
 
 .teacher-portrait__dimensions {
@@ -608,6 +980,10 @@ usePortfolioScopedLoader(
 
 @media (max-width: 960px) {
   .teacher-portrait__charts {
+    grid-template-columns: 1fr;
+  }
+
+  .teacher-portrait__insight {
     grid-template-columns: 1fr;
   }
 

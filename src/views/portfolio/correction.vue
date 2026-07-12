@@ -2,12 +2,14 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioCorrectionRequestStatusCode } from '@/apis/portfolio/enums'
+import { PortfolioCorrectionRequestStatusDescription } from '@/apis/portfolio/enums'
 import type {
   PortfolioCorrectionDetailVO,
   PortfolioCorrectionSummaryVO,
   PortfolioTargetFieldDefinition,
   PortfolioTeacherOneTableCategoryVO,
 } from '@/apis/portfolio/types'
+import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
@@ -15,8 +17,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
-import { PortfolioCorrectionRequestStatusDescription } from '@/apis/portfolio/enums'
-import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -66,6 +66,10 @@ const rows = ref<PortfolioCorrectionSummaryVO[]>([])
 const pageNum = ref(1)
 const pageSize = ref(10)
 const pageTotal = ref(0)
+const categoryRequestToken = ref(0)
+const fieldRequestToken = ref(0)
+const correctionListRequestToken = ref(0)
+const detailRequestToken = ref(0)
 const categories = ref<PortfolioTeacherOneTableCategoryVO[]>([])
 const publishedFields = ref<PortfolioTargetFieldDefinition[]>([])
 const drawerOpen = ref(false)
@@ -101,61 +105,97 @@ const fieldOptions = computed(() =>
   })),
 )
 
+const archiveReturnQuery = computed(() => {
+  const query: Record<string, string> = {}
+  if (targetTeacherId.value) {
+    query.teacherId = targetTeacherId.value
+  }
+  if (form.categoryId) {
+    query.categoryId = form.categoryId
+  }
+  if (form.archiveRecordId) {
+    query.recordId = form.archiveRecordId
+  }
+  return query
+})
+
+/** 教师或路由上下文切换后必须清空旧纠错详情，避免继续查看上一位教师或上一条工单。 */
+function resetDetailContext() {
+  detailRequestToken.value += 1
+  drawerOpen.value = false
+  detailLoading.value = false
+  detail.value = null
+}
+
+/** 路由深链是纠错上下文真源；切换记录时必须清空旧表单，避免误提到上一条档案。 */
 function applyRoutePrefill() {
-  const categoryId = typeof route.query.categoryId === 'string' ? route.query.categoryId : ''
-  const archiveRecordId
-    = typeof route.query.archiveRecordId === 'string' ? route.query.archiveRecordId : ''
-  const fieldCode = typeof route.query.fieldCode === 'string' ? route.query.fieldCode : ''
-  const fieldLabel = typeof route.query.fieldLabel === 'string' ? route.query.fieldLabel : ''
-  const wrongValue = typeof route.query.wrongValue === 'string' ? route.query.wrongValue : ''
-  if (categoryId) {
-    form.categoryId = categoryId
-  }
-  if (archiveRecordId) {
-    form.archiveRecordId = archiveRecordId
-  }
-  if (fieldCode) {
-    form.fieldCode = fieldCode
-  }
-  if (fieldLabel) {
-    form.fieldLabel = fieldLabel
-  }
-  if (wrongValue) {
-    form.wrongValue = wrongValue
-  }
+  form.categoryId = typeof route.query.categoryId === 'string' ? route.query.categoryId : ''
+  form.archiveRecordId =
+    typeof route.query.archiveRecordId === 'string' ? route.query.archiveRecordId : ''
+  form.fieldCode = typeof route.query.fieldCode === 'string' ? route.query.fieldCode : ''
+  form.fieldLabel = typeof route.query.fieldLabel === 'string' ? route.query.fieldLabel : ''
+  form.wrongValue = typeof route.query.wrongValue === 'string' ? route.query.wrongValue : ''
+  form.expectedValue = ''
+  form.reason = ''
+  form.evidenceRef = ''
 }
 
 async function loadPublishedFields(categoryId: string) {
+  const currentToken = ++fieldRequestToken.value
   if (!categoryId) {
     publishedFields.value = []
     return
   }
-  const published = await portfolioArchiveTemplateApi.listPublishedFields({ categoryId })
-  publishedFields.value = published.targetFields
+  try {
+    const published = await portfolioArchiveTemplateApi.listPublishedFields({ categoryId })
+    if (currentToken !== fieldRequestToken.value || form.categoryId !== categoryId) {
+      return
+    }
+    publishedFields.value = published.targetFields
+  } catch (error) {
+    if (currentToken !== fieldRequestToken.value || form.categoryId !== categoryId) {
+      return
+    }
+    publishedFields.value = []
+    showUserError(error, '加载字段规格失败')
+  }
 }
 
 async function loadCategories() {
+  const currentToken = ++categoryRequestToken.value
   if (canPickTeachers.value && !targetTeacherId.value) {
     categories.value = []
+    publishedFields.value = []
     return
   }
   try {
     const vo = await portfolioArchiveApi.getOneTable(teacherRequest.value)
+    if (currentToken !== categoryRequestToken.value) {
+      return
+    }
     categories.value = vo.categories
     applyRoutePrefill()
-    if (!form.categoryId && categories.value.length) {
-      form.categoryId = categories.value[0].categoryId
-      form.archiveRecordId = categories.value[0].officialRecordId ?? ''
-    }
-    if (form.categoryId) {
+    const matchedCategory = form.categoryId
+      ? categories.value.find((item) => item.categoryId === form.categoryId)
+      : null
+    if (matchedCategory) {
+      form.archiveRecordId = matchedCategory.officialRecordId ?? ''
       await loadPublishedFields(form.categoryId)
+      return
     }
+    form.categoryId = ''
+    form.archiveRecordId = ''
+    publishedFields.value = []
   } catch (error) {
+    if (currentToken !== categoryRequestToken.value) {
+      return
+    }
     showUserError(error, '加载档案分类失败')
   }
 }
 
 async function loadCorrections() {
+  const currentToken = ++correctionListRequestToken.value
   if (canPickTeachers.value && !targetTeacherId.value) {
     rows.value = []
     pageTotal.value = 0
@@ -168,25 +208,43 @@ async function loadCorrections() {
       pageNum: pageNum.value,
       pageSize: pageSize.value,
     })
+    if (currentToken !== correctionListRequestToken.value) {
+      return
+    }
     rows.value = page.list
     pageTotal.value = page.total
   } catch (error) {
+    if (currentToken !== correctionListRequestToken.value) {
+      return
+    }
     showUserError(error, '加载纠错列表失败')
   } finally {
-    loading.value = false
+    if (currentToken === correctionListRequestToken.value) {
+      loading.value = false
+    }
   }
 }
 
 async function openDetail(id: string) {
+  const currentToken = ++detailRequestToken.value
   drawerOpen.value = true
   detail.value = null
   detailLoading.value = true
   try {
-    detail.value = await portfolioCorrectionApi.getCorrection(id)
+    const nextDetail = await portfolioCorrectionApi.getCorrection(id)
+    if (currentToken !== detailRequestToken.value) {
+      return
+    }
+    detail.value = nextDetail
   } catch (error) {
+    if (currentToken !== detailRequestToken.value) {
+      return
+    }
     showUserError(error, '加载纠错详情失败')
   } finally {
-    detailLoading.value = false
+    if (currentToken === detailRequestToken.value) {
+      detailLoading.value = false
+    }
   }
 }
 
@@ -224,7 +282,7 @@ async function handleSubmit() {
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   pageNum.value = page.current
   pageSize.value = page.pageSize
   void loadCorrections()
@@ -254,7 +312,10 @@ function openCorrectionDetail(row: PortfolioCorrectionSummaryVO): void {
 
 usePortfolioScopedLoader(
   () => {
+    fieldRequestToken.value += 1
+    correctionListRequestToken.value += 1
     pageNum.value = 1
+    resetDetailContext()
     void loadCategories()
     void loadCorrections()
   },
@@ -264,10 +325,13 @@ usePortfolioScopedLoader(
 watch(
   () => route.query,
   () => {
+    fieldRequestToken.value += 1
     applyRoutePrefill()
     if (form.categoryId) {
       void loadPublishedFields(form.categoryId)
+      return
     }
+    publishedFields.value = []
   },
   { deep: true },
 )
@@ -279,7 +343,7 @@ watch(
       <ContextBar show-title layout="workbench" title="我的纠错">
         <template #actions>
           <UiButton
-            @click="router.push({ path: '/portfolio/teacher/archive', query: teacherRequest })"
+            @click="router.push({ path: '/portfolio/teacher/archive', query: archiveReturnQuery })"
           >
             返回档案
           </UiButton>
@@ -359,7 +423,7 @@ watch(
       </UiCard>
     </template>
 
-    <UiDrawer v-model:open="drawerOpen" title="纠错详情" width="560">
+    <UiDrawer v-model:open="drawerOpen" title="纠错详情" width="560" @close="resetDetailContext">
       <a-spin :spinning="detailLoading">
         <template v-if="detail">
           <p class="correction-page__detail-line">

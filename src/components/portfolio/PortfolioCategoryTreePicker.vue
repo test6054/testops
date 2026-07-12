@@ -21,7 +21,7 @@
 
 <script lang="ts" setup>
 import type { PortfolioArchiveCategoryTreeNodeVO } from '@/apis/portfolio/types'
-import { onMounted, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { PortfolioArchiveCategoryStatusCode } from '@/apis/portfolio/enums'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -32,6 +32,8 @@ defineOptions({ name: 'PortfolioCategoryTreePicker' })
 const props = defineProps<{
   modelValue: string
   readonly?: boolean
+  /** 传入时加载 PortfolioArchiveCategoryScopeCode.TEACHER 范围且归属该教师的分类 */
+  teacherId?: string
 }>()
 
 const emit = defineEmits<{
@@ -47,6 +49,7 @@ interface TreeSelectNode {
 
 const loading = ref(false)
 const treeData = ref<TreeSelectNode[]>([])
+const treeRequestToken = ref(0)
 
 function mapCategoryNodes(nodes: PortfolioArchiveCategoryTreeNodeVO[]): TreeSelectNode[] {
   return nodes
@@ -63,15 +66,26 @@ function mapCategoryNodes(nodes: PortfolioArchiveCategoryTreeNodeVO[]): TreeSele
 }
 
 async function loadTree() {
+  const currentToken = ++treeRequestToken.value
   loading.value = true
   try {
-    const tree = await portfolioArchiveTemplateApi.listCategoryTree()
+    const tree = await portfolioArchiveTemplateApi.listCategoryTree({
+      teacherId: props.teacherId || undefined,
+    })
+    if (currentToken !== treeRequestToken.value) {
+      return
+    }
     treeData.value = mapCategoryNodes(tree ?? [])
   } catch (error) {
+    if (currentToken !== treeRequestToken.value) {
+      return
+    }
     treeData.value = []
     showUserError(error, '加载档案分类树失败')
   } finally {
-    loading.value = false
+    if (currentToken === treeRequestToken.value) {
+      loading.value = false
+    }
   }
 }
 
@@ -80,15 +94,11 @@ function handleChange(value: string | undefined) {
 }
 
 watch(
-  () => props.readonly,
+  () => [props.readonly, props.teacherId] as const,
   () => {
-    if (!treeData.value.length) {
-      void loadTree()
-    }
+    treeData.value = []
+    void loadTree()
   },
+  { immediate: true },
 )
-
-onMounted(() => {
-  void loadTree()
-})
 </script>

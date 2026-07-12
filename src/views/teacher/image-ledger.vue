@@ -54,15 +54,11 @@ import type {
   ExamPaperDuplicateResolutionVO,
   ImageLedgerDetailResponse,
 } from '@/apis/mark/image-ledger'
+import { executeImageLedgerBalance, getImageLedgerDetail } from '@/apis/mark/image-ledger'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  executeImageLedgerBalance,
-  getImageLedgerDetail,
-  normalizeImageLedgerDetail,
-} from '@/apis/mark/image-ledger'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -145,9 +141,7 @@ async function loadDetail(): Promise<void> {
   if (!selectedExamId.value) return
   loadingDetail.value = true
   try {
-    ledger.value = normalizeImageLedgerDetail(
-      await getImageLedgerDetail({ examId: selectedExamId.value }),
-    )
+    ledger.value = await getImageLedgerDetail({ examId: selectedExamId.value })
   } catch (e) {
     showUserError(e, '影像账本加载失败')
   } finally {

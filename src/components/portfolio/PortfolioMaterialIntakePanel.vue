@@ -55,6 +55,7 @@
         <div class="portfolio-intake-panel__label">档案分类</div>
         <PortfolioCategoryTreePicker
           v-model:model-value="categoryIdModel"
+          :teacher-id="targetTeacherId ?? undefined"
           :readonly="readOnly || reassigning"
         />
         <UiButton
@@ -129,15 +130,23 @@
 <script lang="ts" setup>
 import type { BadgeTone, UiAlertStripTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
-import type {ScanDispatchResultPayload} from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue';
+import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
+import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scanner-dispatch'
 import { PortfolioCollectModeCode, ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { PortfolioArchiveRecordStatusCode, PortfolioMaterialIntakeStageCode, PortfolioMaterialIntakeStageDescription } from '@/apis/portfolio/enums'
-import { PORTFOLIO_MATERIAL_INTAKE_STAGE_TONE, PORTFOLIO_TEMPLATE_CODE_CERTIFICATE } from '@/apis/portfolio/types'
+import {
+  PortfolioArchiveRecordStatusCode,
+  PortfolioMaterialIntakeStageCode,
+  PortfolioMaterialIntakeStageDescription,
+} from '@/apis/portfolio/enums'
+import {
+  PORTFOLIO_MATERIAL_INTAKE_STAGE_TONE,
+  PORTFOLIO_TEMPLATE_CODE_CERTIFICATE,
+} from '@/apis/portfolio/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import PortfolioAiCandidateConfirmPanel from '@/components/portfolio/PortfolioAiCandidateConfirmPanel.vue'
 import PortfolioCategoryTreePicker from '@/components/portfolio/PortfolioCategoryTreePicker.vue'
@@ -156,7 +165,6 @@ import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 
 defineOptions({ name: 'PortfolioMaterialIntakePanel' })
 
@@ -175,6 +183,7 @@ const dispatchResultOpen = ref(false)
 const dispatchResult = ref<ScanDispatchResultPayload | null>(null)
 const starting = ref(false)
 const retryingAi = ref(false)
+const intakeScopeToken = ref(0)
 
 const {
   loading,
@@ -196,6 +205,7 @@ const {
   submitIntake,
   reassignCategory,
   clearScanCommittedQuery,
+  resetIntakeContext,
 } = usePortfolioIntake(targetTeacherId)
 
 const categoryIdModel = computed({
@@ -212,18 +222,26 @@ const editableFields = computed(() =>
 const materialRegistered = computed(() => Boolean(materialId.value || status.value?.materialId))
 
 const showRegisterStart = computed(() => {
-  return !(status.value?.stage === PortfolioMaterialIntakeStageCode.AI_FAILED && materialRegistered.value)
+  return !(
+    status.value?.stage === PortfolioMaterialIntakeStageCode.AI_FAILED && materialRegistered.value
+  )
 })
 
 const showRetryAi = computed(
-  () => !demoMode.value && status.value?.stage === PortfolioMaterialIntakeStageCode.AI_FAILED && Boolean(categoryId.value),
+  () =>
+    !demoMode.value &&
+    status.value?.stage === PortfolioMaterialIntakeStageCode.AI_FAILED &&
+    Boolean(categoryId.value),
 )
 
 const reassignBlocked = computed(() => {
   if (!status.value) {
     return false
   }
-  return status.value.stage === PortfolioMaterialIntakeStageCode.OCR_PENDING || status.value.stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
+  return (
+    status.value.stage === PortfolioMaterialIntakeStageCode.OCR_PENDING ||
+    status.value.stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
+  )
 })
 
 const reassignAllowed = computed(() => {
@@ -231,14 +249,17 @@ const reassignAllowed = computed(() => {
     return false
   }
   const recordStatus = status.value.recordStatus
-  return recordStatus === PortfolioArchiveRecordStatusCode.DRAFT || recordStatus === PortfolioArchiveRecordStatusCode.RETURNED
+  return (
+    recordStatus === PortfolioArchiveRecordStatusCode.DRAFT ||
+    recordStatus === PortfolioArchiveRecordStatusCode.RETURNED
+  )
 })
 
 const reassignReady = computed(
   () =>
-    reassignAllowed.value
-    && Boolean(categoryIdModel.value)
-    && categoryIdModel.value !== status.value?.categoryId,
+    reassignAllowed.value &&
+    Boolean(categoryIdModel.value) &&
+    categoryIdModel.value !== status.value?.categoryId,
 )
 
 const clearedFieldsHint = computed(() => {
@@ -259,7 +280,11 @@ const stageLabel = computed(() => {
   if (!status.value?.stage) {
     return '尚未开始采集'
   }
-  return strictEnumLabel(PortfolioMaterialIntakeStageDescription, status.value.stage, '材料采集阶段')
+  return strictEnumLabel(
+    PortfolioMaterialIntakeStageDescription,
+    status.value.stage,
+    '材料采集阶段',
+  )
 })
 
 /** BadgeTone 与 UiAlertStrip 四色语义不一致，展示前映射到 alert strip 合同。 */
@@ -316,12 +341,15 @@ const archiveActionHint = computed(() => {
     return '请先登记材料'
   }
   if (
-    status.value.recordStatus === PortfolioArchiveRecordStatusCode.PENDING_CONFIRM
-    || (status.value.pendingCandidateCount ?? 0) > 0
+    status.value.recordStatus === PortfolioArchiveRecordStatusCode.PENDING_CONFIRM ||
+    (status.value.pendingCandidateCount ?? 0) > 0
   ) {
     return '请先确认 AI 候选字段后再保存或提交'
   }
-  if (status.value.stage === PortfolioMaterialIntakeStageCode.OCR_PENDING || status.value.stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING) {
+  if (
+    status.value.stage === PortfolioMaterialIntakeStageCode.OCR_PENDING ||
+    status.value.stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
+  ) {
     return '材料处理中，请等待完成后再保存或提交'
   }
   if (status.value.stage === PortfolioMaterialIntakeStageCode.AI_FAILED) {
@@ -336,7 +364,10 @@ const archiveActionHint = computed(() => {
     }
     return '审核已退回，请修改字段后保存并重新提交'
   }
-  if (status.value.stage === PortfolioMaterialIntakeStageCode.SUBMITTED || status.value.stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW) {
+  if (
+    status.value.stage === PortfolioMaterialIntakeStageCode.SUBMITTED ||
+    status.value.stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW
+  ) {
     return '材料已提交，可在审核进度页查看状态'
   }
   if (status.value.stage === PortfolioMaterialIntakeStageCode.FIELDS_INCOMPLETE) {
@@ -353,6 +384,17 @@ const archiveActionHint = computed(() => {
   }
   return '当前不可操作'
 })
+
+/** 切换教师或采集上下文时先清空本地材料源与扫描派单状态，避免上一位教师材料残留到当前页。 */
+function resetLocalIntakeSourceContext() {
+  intakeScopeToken.value += 1
+  resetIntakeContext()
+  materialTitle.value = ''
+  fileNodeId.value = undefined
+  fileName.value = undefined
+  dispatchResultOpen.value = false
+  dispatchResult.value = null
+}
 
 async function handleStart() {
   if (!fileNodeId.value) {
@@ -397,6 +439,7 @@ async function openScan() {
     message.error('请先选择教师')
     return
   }
+  const requestToken = intakeScopeToken.value
   scanOpening.value = true
   try {
     const query: Record<string, string> = {
@@ -419,6 +462,9 @@ async function openScan() {
       templateCode: PORTFOLIO_TEMPLATE_CODE_CERTIFICATE,
       archiveRecordId: archiveRecordId.value || undefined,
     })
+    if (intakeScopeToken.value !== requestToken) {
+      return
+    }
     const ticket = created.ticket
     if (!ticket?.ticketId) {
       showUserError(new Error('创建档案袋派单失败'), '创建档案袋扫描派单失败')
@@ -433,14 +479,42 @@ async function openScan() {
     }
     dispatchResultOpen.value = true
   } catch (error) {
+    if (intakeScopeToken.value !== requestToken) {
+      return
+    }
     showUserError(error, '创建档案袋扫描派单失败')
   } finally {
-    scanOpening.value = false
+    if (intakeScopeToken.value === requestToken) {
+      scanOpening.value = false
+    }
   }
 }
 
 function materialIdFromRoute(): string {
   return typeof route.query.materialId === 'string' ? route.query.materialId : ''
+}
+
+function syncMaterialSourceFromStatus() {
+  if (!status.value) {
+    return
+  }
+  if (!materialTitle.value.trim() && status.value.materialTitle?.trim()) {
+    materialTitle.value = status.value.materialTitle.trim()
+  }
+  if (!fileNodeId.value && status.value.fileNodeId) {
+    fileNodeId.value = status.value.fileNodeId
+  }
+  if (!fileName.value && status.value.materialTitle?.trim()) {
+    fileName.value = status.value.materialTitle.trim()
+  }
+}
+
+/** 路由 query 是采集上下文真源；缺省字段也必须显式清空，避免复用组件时残留旧材料。 */
+function syncIntakeContextFromRoute() {
+  categoryId.value = typeof route.query.categoryId === 'string' ? route.query.categoryId : ''
+  materialId.value = typeof route.query.materialId === 'string' ? route.query.materialId : ''
+  archiveRecordId.value = typeof route.query.recordId === 'string' ? route.query.recordId : ''
+  taskId.value = typeof route.query.taskId === 'string' ? route.query.taskId : ''
 }
 
 async function handleReassign() {
@@ -474,19 +548,11 @@ watch(
     targetTeacherId.value,
   ],
   () => {
-    if (typeof route.query.categoryId === 'string') {
-      categoryId.value = route.query.categoryId
-    }
-    if (typeof route.query.materialId === 'string') {
-      materialId.value = route.query.materialId
-    }
-    if (typeof route.query.recordId === 'string') {
-      archiveRecordId.value = route.query.recordId
-    }
-    if (typeof route.query.taskId === 'string') {
-      taskId.value = route.query.taskId
-    }
-    void refreshStatus()
+    resetLocalIntakeSourceContext()
+    syncIntakeContextFromRoute()
+    void refreshStatus().then(() => {
+      syncMaterialSourceFromStatus()
+    })
   },
   { immediate: true },
 )

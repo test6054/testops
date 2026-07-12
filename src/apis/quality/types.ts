@@ -227,6 +227,7 @@ import {
   WorkgroupLevelCode,
   WorkgroupLevelDescription,
 } from '@/types/enums/workgroup-level-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
   AccreditationTypeCode,
@@ -427,7 +428,7 @@ export const IMPROVEMENT_TASK_STATUS_COLOR: Record<ImprovementTaskStatusCode, Ba
 export const IMPROVEMENT_TASK_STATUS_OPTIONS: Array<{ value: ImprovementTaskStatusCode, label: string }>
   = ALL_IMPROVEMENT_TASK_STATUS_CODES.map(value => ({
     value,
-    label: ImprovementTaskStatusDescription[value],
+    label: strictEnumLabel(ImprovementTaskStatusDescription, value, '改进任务状态'),
   }))
 
 export const REPORT_STATUS_COLOR: Record<ReportStatusCode, BadgeTone> = {
@@ -469,7 +470,7 @@ export const AUDIT_ISSUE_STATUS_COLOR: Record<AuditIssueStatusCode, BadgeTone> =
 export const AUDIT_ISSUE_STATUS_OPTIONS: Array<{ value: AuditIssueStatusCode, label: string }>
   = ALL_AUDIT_ISSUE_STATUS_CODES.map(value => ({
     value,
-    label: AuditIssueStatusDescription[value],
+    label: strictEnumLabel(AuditIssueStatusDescription, value, '审核问题状态'),
   }))
 
 export const AUDIT_RECTIFICATION_STATUS_COLOR: Record<AuditRectificationStatusCode, BadgeTone> = {
@@ -484,26 +485,22 @@ export const AUDIT_RECTIFICATION_STATUS_COLOR: Record<AuditRectificationStatusCo
 export const AUDIT_RECTIFICATION_STATUS_OPTIONS: Array<{ value: AuditRectificationStatusCode, label: string }>
   = ALL_AUDIT_RECTIFICATION_STATUS_CODES.map(value => ({
     value,
-    label: AuditRectificationStatusDescription[value],
+    label: strictEnumLabel(AuditRectificationStatusDescription, value, '整改状态'),
   }))
 
 export const AUDIT_SUPERVISION_TYPE_OPTIONS: Array<{ value: AuditSupervisionTypeCode, label: string }>
   = ALL_AUDIT_SUPERVISION_TYPE_CODES.map(value => ({
     value,
-    label: AuditSupervisionTypeDescription[value],
+    label: strictEnumLabel(AuditSupervisionTypeDescription, value, '督导类型'),
   }))
 
 export const WORKGROUP_LEVEL_OPTIONS: Array<{ label: string, value: WorkgroupLevelCode }>
   = ALL_WORKGROUP_LEVEL_CODES.map(value => ({
     value,
-    label: WorkgroupLevelDescription[value],
+    label: strictEnumLabel(WorkgroupLevelDescription, value, '工作组层级'),
   }))
 
-export const EXTERNAL_SOURCE_TYPE_OPTIONS: Array<{ label: string, value: ExternalSourceTypeCode }>
-  = ALL_EXTERNAL_SOURCE_TYPE_CODES.map(value => ({
-    value,
-    label: ExternalSourceTypeDescription[value],
-  }))
+export { EXTERNAL_SOURCE_TYPE_OPTIONS } from '@/types/enums/external-source-type-enum'
 
 export const EXTERNAL_PULL_TASK_STATUS_COLOR: Record<ExternalPullTaskStatusCode, BadgeTone> = {
   [ExternalPullTaskStatusCode.PENDING]: 'gray',
@@ -516,7 +513,7 @@ export const EXTERNAL_PULL_TASK_STATUS_COLOR: Record<ExternalPullTaskStatusCode,
 export const EXTERNAL_PULL_TASK_STATUS_OPTIONS: Array<{ label: string, value: ExternalPullTaskStatusCode }>
   = ALL_EXTERNAL_PULL_TASK_STATUS_CODES.map(value => ({
     value,
-    label: ExternalPullTaskStatusDescription[value],
+    label: strictEnumLabel(ExternalPullTaskStatusDescription, value, '外部拉取任务状态'),
   }))
 
 export const EXTERNAL_PULL_CONFIRMATION_STATUS_COLOR: Record<ExternalPullConfirmationStatusCode, BadgeTone> = {
@@ -549,7 +546,7 @@ export const CONFIRMATION_STATUS_COLOR: Record<ConfirmationStatusCode, BadgeTone
 export const PROCESS_NODE_TYPE_OPTIONS: Array<{ label: string, value: ProcessNodeTypeCode }>
   = ALL_PROCESS_NODE_TYPE_CODES.map(value => ({
     value,
-    label: ProcessNodeTypeDescription[value],
+    label: strictEnumLabel(ProcessNodeTypeDescription, value, '过程节点类型'),
   }))
 
 /** 间接评价应答人类型 - 对应 RespondentTypeEnum */

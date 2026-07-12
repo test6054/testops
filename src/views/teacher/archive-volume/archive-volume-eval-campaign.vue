@@ -69,8 +69,8 @@
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
                 v-if="
-                  record.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE
-                    && canExportCampaign
+                  record.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE &&
+                  canExportCampaign
                 "
                 :items="buildCampaignActions(record)"
                 split
@@ -84,6 +84,12 @@
 
       <div v-else class="archive-eval-campaign__pane">
         <h3 class="archive-eval-campaign__readiness-title">归档任务迎评就绪度</h3>
+        <p v-if="readinessFocusVolumeId" class="archive-eval-campaign__focus-hint">
+          当前聚焦卷：<UiTextAction tone="primary" @click="goVolumeDetail(readinessFocusVolumeId)">
+            {{ readinessFocusVolumeId }}
+          </UiTextAction>
+          <UiTextAction tone="default" @click="dismissReadinessVolumeFocus">查看整批</UiTextAction>
+        </p>
         <div class="archive-eval-campaign__readiness-toolbar">
           <a-select
             v-model:value="selectedCampaignId"
@@ -169,15 +175,54 @@
         </UiDataTable>
       </div>
     </WorkbenchSurfaceCard>
+
+    <a-modal
+      v-model:open="campaignPickOpen"
+      title="选择迎评批次"
+      ok-text="确认"
+      cancel-text="取消"
+      :ok-button-props="{ disabled: !campaignPickPendingId }"
+      @ok="confirmCampaignPick"
+    >
+      <p v-if="campaignPickTruncated" class="archive-eval-campaign__pick-hint">
+        命中批次较多，仅展示部分结果，请手动选择。
+      </p>
+      <a-radio-group
+        v-model:value="campaignPickPendingId"
+        class="archive-eval-campaign__pick-group"
+      >
+        <a-radio
+          v-for="item in pendingCampaignOptions"
+          :key="item.campaignId"
+          :value="item.campaignId"
+          class="archive-eval-campaign__pick-item"
+        >
+          {{ item.campaignName }}
+        </a-radio>
+      </a-radio-group>
+    </a-modal>
+    <ArchiveEvaluationExportTaskModal />
   </StageWorkbenchShell>
 </template>
 
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
+  ArchiveEvaluationCampaignResolveItem,
   ArchiveEvaluationCampaignResponse,
   ArchiveEvaluationCampaignStatsVO,
   ArchiveEvaluationVolumeReadinessResponse,
+} from '@/apis/mark/archive-volume'
+import {
+  ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
+  ArchiveEvaluationCampaignStatusCode,
+  ArchiveEvaluationCampaignStatusDescription,
+  exportEvaluationArchivePackage,
+  exportEvaluationPackage,
+  getEvaluationCampaignReadinessPanel,
+  getEvaluationCampaignStats,
+  pageEvaluationCampaigns,
+  resolveEvaluationCampaignByVolume,
 } from '@/apis/mark/archive-volume'
 import type {
   BadgeTone,
@@ -188,16 +233,7 @@ import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
 import { ArchiveDutyTypeCode } from '@/apis/mark/archive-config'
-import {
-  ArchiveEvaluationCampaignStatusCode,
-  ArchiveEvaluationCampaignStatusDescription,
-  exportEvaluationArchivePackage,
-  getEvaluationCampaignReadinessPanel,
-  getEvaluationCampaignStats,
-  pageEvaluationCampaigns,
-} from '@/apis/mark/archive-volume'
 import ArchiveReadinessRateBar from '@/components/archive-volume/ArchiveReadinessRateBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -210,6 +246,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
+import { runArchiveEvaluationExportFlow } from '@/composables/useArchiveEvaluationExportFlow'
 import { DEFAULT_LIST_PAGE_SIZE, EXPORT_PAGE_SIZE } from '@/constants/pagination'
 import {
   ArchiveEvaluationDimensionReadyCode,
@@ -220,6 +257,7 @@ import { formatSemester } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import ArchiveEvaluationExportTaskModal from '@/views/teacher/archive-volume/components/ArchiveEvaluationExportTaskModal.vue'
 
 defineOptions({ name: 'TeacherArchiveVolumeEvalCampaign' })
 
@@ -241,6 +279,21 @@ const campaignStats = ref<ArchiveEvaluationCampaignStatsVO | null>(null)
 const selectedCampaignId = ref<string>()
 const readinessRows = ref<ArchiveEvaluationVolumeReadinessResponse[]>([])
 const readinessPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
+const campaignPickOpen = ref(false)
+const campaignPickTruncated = ref(false)
+const campaignPickPendingId = ref<string>()
+const pendingCampaignOptions = ref<ArchiveEvaluationCampaignResolveItem[]>([])
+
+const focusVolumeDismissed = ref(false)
+
+const focusVolumeId = computed(() => {
+  const volumeId = route.query.volumeId
+  return typeof volumeId === 'string' && volumeId ? volumeId : undefined
+})
+
+const readinessFocusVolumeId = computed(() =>
+  focusVolumeDismissed.value ? undefined : focusVolumeId.value,
+)
 
 const canExportCampaign = computed(() => hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR))
 
@@ -298,7 +351,7 @@ const campaignColumns: ColumnsType<ArchiveEvaluationCampaignResponse> = [
   { title: '就绪卷', key: 'readyVolumeCount', width: 80, align: 'right' },
   { title: '就绪率', key: 'readinessRatePercent', width: 140 },
   { title: '截止日', key: 'endTime', width: 150 },
-  { title: '操作', key: 'actions', width: 110 },
+  { title: '操作', key: 'actions', width: 200 },
 ]
 
 const readinessColumns: ColumnsType<ArchiveEvaluationVolumeReadinessResponse> = [
@@ -362,12 +415,17 @@ function goReadinessMatrix(): void {
 }
 
 function buildCampaignActions(_record: ArchiveEvaluationCampaignResponse): UiTableRowActionItem[] {
-  return [{ key: 'export', label: '导出目录包', tone: 'primary' }]
+  return [
+    { key: 'export-manifest', label: '导出材料清单' },
+    { key: 'export-archive', label: '导出目录包', tone: 'primary' },
+  ]
 }
 
 function handleCampaignAction(key: string, record: ArchiveEvaluationCampaignResponse): void {
-  if (key === 'export') {
-    void handleExportArchive(record.campaignId)
+  if (key === 'export-manifest') {
+    void handleExportManifest(record)
+  } else if (key === 'export-archive') {
+    void handleExportArchive(record)
   }
 }
 
@@ -384,6 +442,12 @@ function handleReadinessAction(
   if (key === 'detail') {
     goVolumeDetail(record.volumeId)
   }
+}
+
+function dismissReadinessVolumeFocus(): void {
+  focusVolumeDismissed.value = true
+  readinessPagination.pageNum = 1
+  void loadReadinessVolumes()
 }
 
 function goVolumeDetail(volumeId: string): void {
@@ -416,7 +480,11 @@ async function loadCampaignOptions(): Promise<void> {
   campaignOptionLoading.value = true
   try {
     campaignSelectOptions.value = await loadAllCampaignOptions()
-    if (!selectedCampaignId.value && campaignSelectOptions.value.length > 0) {
+    if (
+      !focusVolumeId.value &&
+      !selectedCampaignId.value &&
+      campaignSelectOptions.value.length > 0
+    ) {
       selectedCampaignId.value = campaignSelectOptions.value[0].campaignId
       if (activeTab.value === 'readiness') {
         void loadReadinessVolumes()
@@ -450,10 +518,56 @@ async function loadCampaigns(): Promise<void> {
   }
 }
 
-function handleCampaignPageChange(page: { current: number, pageSize: number }): void {
+function handleCampaignPageChange(page: { current: number; pageSize: number }): void {
   campaignPagination.pageNum = page.current
   campaignPagination.pageSize = page.pageSize
   void loadCampaigns()
+}
+
+async function bootstrapFromVolumeQuery(volumeId: string): Promise<void> {
+  activeTab.value = 'readiness'
+  try {
+    const resolveResult = await resolveEvaluationCampaignByVolume({ volumeId })
+    if (!resolveResult.campaigns.length) {
+      message.warning('未找到该卷所属的进行中迎评批次')
+      selectedCampaignId.value = undefined
+      readinessRows.value = []
+      readinessPagination.total = 0
+      return
+    }
+    const autoPick =
+      !resolveResult.truncated &&
+      resolveResult.campaigns.length === 1 &&
+      resolveResult.suggestedCampaignId
+    if (autoPick) {
+      selectedCampaignId.value = resolveResult.suggestedCampaignId
+      readinessPagination.pageNum = 1
+      await loadReadinessVolumes()
+      return
+    }
+    selectedCampaignId.value = undefined
+    readinessRows.value = []
+    readinessPagination.total = 0
+    pendingCampaignOptions.value = resolveResult.campaigns
+    campaignPickTruncated.value = resolveResult.truncated
+    campaignPickPendingId.value = undefined
+    campaignPickOpen.value = true
+    if (resolveResult.truncated) {
+      message.warning('命中批次较多，请手动选择迎评批次')
+    }
+  } catch (error) {
+    showUserError(error, '迎评批次反查失败')
+  }
+}
+
+function confirmCampaignPick(): void {
+  if (!campaignPickPendingId.value) {
+    return
+  }
+  selectedCampaignId.value = campaignPickPendingId.value
+  campaignPickOpen.value = false
+  readinessPagination.pageNum = 1
+  void loadReadinessVolumes()
 }
 
 async function loadReadinessVolumes(): Promise<void> {
@@ -468,6 +582,7 @@ async function loadReadinessVolumes(): Promise<void> {
       campaignId: selectedCampaignId.value,
       pageNum: readinessPagination.pageNum,
       pageSize: readinessPagination.pageSize,
+      volumeId: readinessFocusVolumeId.value,
     })
     readinessRows.value = result.list
     readinessPagination.total = result.total
@@ -496,17 +611,39 @@ watch(selectedCampaignId, (campaignId) => {
   void loadReadinessVolumes()
 })
 
-async function handleExportArchive(campaignId: string): Promise<void> {
+async function handleExportManifest(record: ArchiveEvaluationCampaignResponse): Promise<void> {
   if (exportingCampaignId.value) {
     return
   }
-  exportingCampaignId.value = campaignId
+  exportingCampaignId.value = record.campaignId
   try {
-    const result = await exportEvaluationArchivePackage(campaignId)
-    if (result.exportFileId) {
-      await downloadFile({ nodeId: result.exportFileId })
-      message.success('四级目录包导出成功')
-    }
+    await runArchiveEvaluationExportFlow({
+      campaignId: record.campaignId,
+      exportFn: exportEvaluationPackage,
+      successMessage: '评估材料清单已导出',
+      scopeHint: ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
+      campaignLabel: record.campaignName,
+    })
+  } catch (error) {
+    showUserError(error, '导出评估材料清单失败')
+  } finally {
+    exportingCampaignId.value = ''
+  }
+}
+
+async function handleExportArchive(record: ArchiveEvaluationCampaignResponse): Promise<void> {
+  if (exportingCampaignId.value) {
+    return
+  }
+  exportingCampaignId.value = record.campaignId
+  try {
+    await runArchiveEvaluationExportFlow({
+      campaignId: record.campaignId,
+      exportFn: exportEvaluationArchivePackage,
+      successMessage: '四级目录包导出成功',
+      scopeHint: ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
+      campaignLabel: record.campaignName,
+    })
   } catch (error) {
     showUserError(error, '导出四级目录包失败')
   } finally {
@@ -517,21 +654,19 @@ async function handleExportArchive(campaignId: string): Promise<void> {
 onMounted(async () => {
   await loadGrants()
   void loadCampaignStats()
-  void loadCampaignOptions()
+  await loadCampaignOptions()
   await loadCampaigns()
-  const volumeId = typeof route.query.volumeId === 'string' ? route.query.volumeId : undefined
-  if (volumeId) {
-    activeTab.value = 'readiness'
-    void loadReadinessVolumes()
+  if (focusVolumeId.value) {
+    await bootstrapFromVolumeQuery(focusVolumeId.value)
   }
 })
 
 watch(
   () => route.query.volumeId,
   (volumeId) => {
+    focusVolumeDismissed.value = false
     if (typeof volumeId === 'string' && volumeId) {
-      activeTab.value = 'readiness'
-      void loadReadinessVolumes()
+      void bootstrapFromVolumeQuery(volumeId)
     }
   },
 )
@@ -552,6 +687,12 @@ watch(
     color: var(--dp-text-primary);
   }
 
+  &__focus-hint {
+    margin: 0;
+    font-size: 13px;
+    color: var(--dp-text-secondary);
+  }
+
   &__readiness-toolbar {
     display: flex;
     flex-wrap: wrap;
@@ -566,6 +707,22 @@ watch(
     &--strong {
       font-weight: 600;
     }
+  }
+
+  &__pick-hint {
+    margin: 0 0 var(--dp-space-2);
+    font-size: 13px;
+    color: var(--dp-text-secondary);
+  }
+
+  &__pick-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--dp-space-2);
+  }
+
+  &__pick-item {
+    display: flex;
   }
 }
 </style>

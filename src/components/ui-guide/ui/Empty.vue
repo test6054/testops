@@ -1,23 +1,8 @@
 <template>
   <div class="ui-empty" :class="`ui-empty--${props.size}`" v-bind="$attrs">
-    <div class="ui-empty__icon" aria-hidden="true">
+    <div v-if="props.showIcon" class="ui-empty__icon" aria-hidden="true">
       <slot name="image">
-        <svg
-          class="ui-empty__default-icon"
-          viewBox="0 0 64 41"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <g transform="translate(0 1)" fill="none" fill-rule="evenodd">
-            <ellipse fill="#e8eef8" cx="32" cy="33" rx="32" ry="7" />
-            <g fill-rule="nonzero" stroke="#cbd5e1">
-              <path d="M55 12.76L44.854 1.258C44.367.474 43.656 0 42.907 0H21.093c-.749 0-1.46.474-1.947 1.257L9 12.761V22h46v-9.24z" />
-              <path
-                d="M41.613 15.931c0-1.605.994-2.93 2.227-2.931H55v18.137C55 33.26 53.68 35 52.05 35h-40.1C10.32 35 9 33.259 9 31.137V13h11.16c1.233 0 2.227 1.323 2.227 2.928v.022c0 1.605 1.005 2.901 2.237 2.901h14.752c1.232 0 2.237-1.308 2.237-2.913v-.007z"
-                fill="#fff"
-              />
-            </g>
-          </g>
-        </svg>
+        <span class="ui-empty__dot" />
       </slot>
     </div>
     <div v-if="props.title || $slots.title" class="ui-empty__title">
@@ -39,10 +24,13 @@ const props = withDefaults(defineProps<{
   title?: string
   description?: string
   size?: 'sm' | 'md'
+  /** 默认不展示大插画，减少占屏 */
+  showIcon?: boolean
 }>(), {
   title: '',
-  description: '暂无数据',
-  size: 'md',
+  description: '当前没有可展示的内容',
+  size: 'sm',
+  showIcon: false,
 })
 </script>
 
@@ -53,48 +41,48 @@ const props = withDefaults(defineProps<{
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 32px 16px;
+  padding: 16px 12px;
 }
 
 .ui-empty--sm {
-  padding: 24px 12px;
+  padding: 12px 8px;
 }
 
 .ui-empty--md {
-  padding: 40px 20px;
+  padding: 20px 12px;
 }
 
 .ui-empty__icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 84px;
-  height: 84px;
-  margin-bottom: 16px;
-  border-radius: var(--dp-radius-panel);
-  background: var(--dp-surface-subtle);
+  width: 28px;
+  height: 28px;
+  margin-bottom: 8px;
 }
 
-.ui-empty__default-icon {
-  width: 64px;
-  height: 41px;
+.ui-empty__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ant-color-border);
 }
 
 .ui-empty__title {
-  margin-bottom: 6px;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--dp-text-primary);
+  margin-bottom: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ant-color-text);
 }
 
 .ui-empty__description {
-  max-width: 420px;
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--dp-text-muted);
+  max-width: 360px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ant-color-text-secondary);
 }
 
 .ui-empty__action {
-  margin-top: 16px;
+  margin-top: 10px;
 }
 </style>

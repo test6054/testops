@@ -30,6 +30,7 @@ import {
   ReviewerMetricStatusDescription,
 } from '@/types/enums/reviewer-metric-status-enum'
 import { SpotCheckStatusCode } from '@/types/enums/spot-check-status-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
   ALL_BATCH_REPROCESS_SCOPE_CODES,
@@ -72,7 +73,7 @@ export const REVIEWER_METRIC_STATUS_OPTIONS: Array<{
   label: string
 }> = ALL_REVIEWER_METRIC_STATUS_CODES.map((value) => ({
   value,
-  label: ReviewerMetricStatusDescription[value],
+  label: strictEnumLabel(ReviewerMetricStatusDescription, value, '阅卷员指标状态'),
 }))
 
 export const PROGRESS_RISK_LEVEL_TONE: Record<ProgressRiskLevelCode, BadgeTone> = {
@@ -220,7 +221,10 @@ export function refreshReviewerMetrics(request: ProgressSnapshotRequest): Promis
 export function getLatestProgress(
   request: ProgressSnapshotRequest,
 ): Promise<ProgressMonitorRecordResponse | null> {
-  return http.post<ProgressMonitorRecordResponse | null>('/api/mark/quality/progress/latest', request)
+  return http.post<ProgressMonitorRecordResponse | null>(
+    '/api/mark/quality/progress/latest',
+    request,
+  )
 }
 
 /**

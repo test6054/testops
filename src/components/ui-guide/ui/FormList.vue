@@ -125,7 +125,7 @@ const props = withDefaults(
     addText: '添加一行',
     min: 0,
     sortable: true,
-    emptyText: '暂无数据，点击添加一行',
+    emptyText: '当前没有可展示的内容，点击添加一行',
     formItemProps: () => ({}),
   },
 )
@@ -133,7 +133,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   add: [item: T, index: number]
   remove: [item: T, index: number]
-  reorder: [moveEvent: { from: number, to: number }]
+  reorder: [moveEvent: { from: number; to: number }]
 }>()
 
 const list = computed(() => modelValue.value || [])

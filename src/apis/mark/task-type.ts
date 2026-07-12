@@ -4,6 +4,7 @@ import {
   ProcessingTaskTypeCode,
   ProcessingTaskTypeDescription,
 } from '@/types/enums/processing-task-type-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
   ALL_PROCESSING_TASK_TYPE_CODES,
@@ -26,8 +27,8 @@ export const PROCESSING_TASK_TYPE_TONE: Record<ProcessingTaskTypeCode, BadgeTone
   [ProcessingTaskTypeCode.DELAYED_FINAL_SCORE_CONFIRM]: 'orange',
 }
 
-export const PROCESSING_TASK_TYPE_OPTIONS: Array<{ value: ProcessingTaskTypeCode, label: string }>
-  = ALL_PROCESSING_TASK_TYPE_CODES.map((value) => ({
+export const PROCESSING_TASK_TYPE_OPTIONS: Array<{ value: ProcessingTaskTypeCode; label: string }> =
+  ALL_PROCESSING_TASK_TYPE_CODES.map((value) => ({
     value,
-    label: ProcessingTaskTypeDescription[value],
+    label: strictEnumLabel(ProcessingTaskTypeDescription, value, '处理任务类型'),
   }))

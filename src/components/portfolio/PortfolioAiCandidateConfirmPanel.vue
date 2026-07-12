@@ -12,7 +12,10 @@
         tone="warning"
         :title="`有 ${manualFillPendingCount} 个字段含脱敏占位符，请补全真实值后再确认`"
       />
-      <div v-if="taskStatus === AiTaskStatusCode.SUCCEEDED" class="portfolio-ai-candidate-panel__actions">
+      <div
+        v-if="taskStatus === AiTaskStatusCode.SUCCEEDED"
+        class="portfolio-ai-candidate-panel__actions"
+      >
         <UiButton size="sm" :loading="confirming" @click="confirmAllEligible">
           确认全部可自动通过项
         </UiButton>
@@ -35,8 +38,8 @@
           <template v-else-if="column.key === 'candidateValue'">
             <template
               v-if="
-                rowNeedsManualFill(record)
-                  && record.confirmStatus !== PortfolioCandidateConfirmStatusCode.CONFIRMED
+                rowNeedsManualFill(record) &&
+                record.confirmStatus !== PortfolioCandidateConfirmStatusCode.CONFIRMED
               "
             >
               <a-input
@@ -67,8 +70,8 @@
                   label: '驳回',
                   tone: 'danger',
                   hidden:
-                    record.confirmStatus === PortfolioCandidateConfirmStatusCode.CONFIRMED
-                    || record.confirmStatus === PortfolioCandidateConfirmStatusCode.REJECTED,
+                    record.confirmStatus === PortfolioCandidateConfirmStatusCode.CONFIRMED ||
+                    record.confirmStatus === PortfolioCandidateConfirmStatusCode.REJECTED,
                   disabled: confirming,
                 },
               ]"
@@ -89,6 +92,7 @@
 <script lang="ts" setup>
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioCandidateFieldVO } from '@/apis/portfolio/types'
+import { PORTFOLIO_CANDIDATE_CONFIRM_STATUS_TONE } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
@@ -97,7 +101,6 @@ import {
   PortfolioCandidateConfirmStatusCode,
   PortfolioCandidateConfirmStatusDescription,
 } from '@/apis/portfolio/enums'
-import { PORTFOLIO_CANDIDATE_CONFIRM_STATUS_TONE } from '@/apis/portfolio/types'
 import { AiTaskStatusCode } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -136,19 +139,31 @@ const confirming = ref(false)
 const candidateRows = ref<PortfolioCandidateFieldVO[]>([])
 const correctedValues = reactive<Record<string, string>>({})
 const taskStatus = ref<AiTaskStatusCode>()
+const candidateRequestToken = ref(0)
 
 const manualFillPendingCount = computed(
   () =>
     candidateRows.value.filter(
       (item) =>
-        item.manualFillRequired
-        || item.confirmStatus === PortfolioCandidateConfirmStatusCode.NEEDS_MANUAL_FILL,
+        item.manualFillRequired ||
+        item.confirmStatus === PortfolioCandidateConfirmStatusCode.NEEDS_MANUAL_FILL,
     ).length,
 )
 
 const pendingTaskPolling = computed(
-  () => taskStatus.value === AiTaskStatusCode.PENDING || taskStatus.value === AiTaskStatusCode.PROCESSING,
+  () =>
+    taskStatus.value === AiTaskStatusCode.PENDING ||
+    taskStatus.value === AiTaskStatusCode.PROCESSING,
 )
+
+function resetCandidateContext() {
+  candidateRequestToken.value += 1
+  candidateRows.value = []
+  taskStatus.value = undefined
+  for (const key of Object.keys(correctedValues)) {
+    delete correctedValues[key]
+  }
+}
 
 function candidateStatusLabel(row: PortfolioCandidateFieldVO): string {
   return strictEnumLabel(
@@ -168,8 +183,8 @@ function candidateStatusTone(row: PortfolioCandidateFieldVO): BadgeTone {
 
 function rowNeedsManualFill(row: PortfolioCandidateFieldVO): boolean {
   return (
-    Boolean(row.manualFillRequired)
-    || row.confirmStatus === PortfolioCandidateConfirmStatusCode.NEEDS_MANUAL_FILL
+    Boolean(row.manualFillRequired) ||
+    row.confirmStatus === PortfolioCandidateConfirmStatusCode.NEEDS_MANUAL_FILL
   )
 }
 
@@ -182,8 +197,8 @@ function canConfirmRow(row: PortfolioCandidateFieldVO): boolean {
     return false
   }
   if (
-    row.confirmStatus === PortfolioCandidateConfirmStatusCode.CONFIRMED
-    || row.confirmStatus === PortfolioCandidateConfirmStatusCode.REJECTED
+    row.confirmStatus === PortfolioCandidateConfirmStatusCode.CONFIRMED ||
+    row.confirmStatus === PortfolioCandidateConfirmStatusCode.REJECTED
   ) {
     return false
   }
@@ -195,20 +210,29 @@ function canConfirmRow(row: PortfolioCandidateFieldVO): boolean {
 }
 
 async function loadCandidates() {
+  const requestToken = candidateRequestToken.value
   if (!props.taskId) {
-    candidateRows.value = []
-    taskStatus.value = undefined
+    if (candidateRequestToken.value === requestToken) {
+      candidateRows.value = []
+      taskStatus.value = undefined
+    }
     return
   }
   loading.value = true
   try {
     const detail = await portfolioAiJobApi.get(props.taskId)
+    if (candidateRequestToken.value !== requestToken) {
+      return
+    }
     taskStatus.value = detail.status
     if (detail.status !== 'SUCCEEDED') {
       candidateRows.value = []
       return
     }
     const rows = (await portfolioAiJobApi.listCandidates(props.taskId)) ?? []
+    if (candidateRequestToken.value !== requestToken) {
+      return
+    }
     candidateRows.value = rows
     for (const row of rows) {
       if (!correctedValues[row.id]) {
@@ -216,9 +240,14 @@ async function loadCandidates() {
       }
     }
   } catch (error) {
+    if (candidateRequestToken.value !== requestToken) {
+      return
+    }
     showUserError(error, '加载候选字段失败')
   } finally {
-    loading.value = false
+    if (candidateRequestToken.value === requestToken) {
+      loading.value = false
+    }
   }
 }
 
@@ -321,6 +350,7 @@ usePolling(
 watch(
   () => props.taskId,
   () => {
+    resetCandidateContext()
     void loadCandidates()
   },
   { immediate: true },

@@ -6,10 +6,6 @@ import type {
   ExamLayoutGenerateQuestionRequest,
   ExamLayoutQuestionDto,
 } from '@/apis/mark/exam-layout-design'
-import type { MarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
-import { message } from 'ant-design-vue'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   autoDetectExamLayout,
   bootstrapExamLayoutDesign,
@@ -21,8 +17,16 @@ import {
   resolveExamLayoutDetectPollDeadlineMs,
   saveExamLayoutDesign,
 } from '@/apis/mark/exam-layout-design'
+import type { MarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
+import { message } from 'ant-design-vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { ExamLayoutDetectTaskStatusCode, isExamLayoutDetectInFlightStatus, requireExamLayoutDetectTaskStatusCode } from '@/types/enums/exam-layout-detect-task-status-enum'
+import {
+  ExamLayoutDetectTaskStatusCode,
+  isExamLayoutDetectInFlightStatus,
+  requireExamLayoutDetectTaskStatusCode,
+} from '@/types/enums/exam-layout-detect-task-status-enum'
 import { ExamMaterialLayoutModeCode } from '@/types/enums/exam-material-layout-mode-enum'
 import { LayoutDesignPhaseCode } from '@/types/enums/layout-design-phase-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -77,11 +81,8 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
   )
 
   const phase = computed({
-    get: () => resolveAccessibleLayoutDesignPhase(
-      document.value,
-      route.query.phase,
-      defaultPhase.value,
-    ),
+    get: () =>
+      resolveAccessibleLayoutDesignPhase(document.value, route.query.phase, defaultPhase.value),
     set: (value: LayoutDesignPhaseCode) => {
       void router.replace({
         query: {
@@ -101,8 +102,8 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     )
     const normalized = normalizeLayoutDesignPhaseQuery(phaseQuery)
     const raw = Array.isArray(normalized) ? normalized[0] : normalized
-    const needsReplace = !raw?.trim()
-      || layoutDesignPhaseQueryDrifted(document.value, phaseQuery, defaultPhase.value)
+    const needsReplace =
+      !raw?.trim() || layoutDesignPhaseQueryDrifted(document.value, phaseQuery, defaultPhase.value)
     if (!needsReplace || raw === resolved) {
       return
     }
@@ -128,10 +129,11 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
   const layoutRoiStats = computed(() => computeLayoutRoiStats(document.value))
 
   const identitySetupPending = computed(
-    () => options.examDetail()?.materialLayoutMode === ExamMaterialLayoutModeCode.FULL_PAPER
-      && !detecting.value
-      && Boolean(document.value)
-      && !hasIdentityBlock(document.value),
+    () =>
+      options.examDetail()?.materialLayoutMode === ExamMaterialLayoutModeCode.FULL_PAPER &&
+      !detecting.value &&
+      Boolean(document.value) &&
+      !hasIdentityBlock(document.value),
   )
 
   const saveBlockingReasons = computed(() => validateLayoutDocumentForSave(document.value))
@@ -228,7 +230,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
   async function pollDetectStatus(detectTaskId: string, session: number): Promise<void> {
     const pollMs = resolveExamLayoutDetectPollDeadlineMs(detectPollingPolicy.value)
     if (pollMs == null) {
-      showUserError(null, '制卷识别轮询策略缺失或无效，请刷新页面后重试')
+      showUserError(null, '制卷识别轮询策略缺失或无效')
       return
     }
     const deadline = Date.now() + pollMs
@@ -297,9 +299,10 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     if (loadResponse.detectPollingPolicy) {
       detectPollingPolicy.value = loadResponse.detectPollingPolicy
     }
-    detectProgressText.value = loadResponse.activeDetect?.status === ExamLayoutDetectTaskStatusCode.QUEUED
-      ? '识别任务排队中'
-      : '正在识别题目并生成划区'
+    detectProgressText.value =
+      loadResponse.activeDetect?.status === ExamLayoutDetectTaskStatusCode.QUEUED
+        ? '识别任务排队中'
+        : '正在识别题目并生成划区'
     try {
       await pollDetectStatus(detectTaskId, session)
     } catch (error) {
@@ -329,7 +332,12 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     const inFlightStatus = res.activeDetect?.status
       ? requireExamLayoutDetectTaskStatusCode(res.activeDetect.status)
       : null
-    if (!detectTaskId || !inFlightStatus || !isExamLayoutDetectInFlightStatus(inFlightStatus) || !layoutWritable.value) {
+    if (
+      !detectTaskId ||
+      !inFlightStatus ||
+      !isExamLayoutDetectInFlightStatus(inFlightStatus) ||
+      !layoutWritable.value
+    ) {
       return false
     }
     if (session !== detectSessionSeq) {
@@ -375,11 +383,13 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       const inFlightStatus = res.activeDetect?.status
         ? requireExamLayoutDetectTaskStatusCode(res.activeDetect.status)
         : null
-      const shouldResumeDetect = Boolean(inFlightTaskId
-        && inFlightStatus
-        && isExamLayoutDetectInFlightStatus(inFlightStatus)
-        && layoutWritable.value
-        && !detecting.value)
+      const shouldResumeDetect = Boolean(
+        inFlightTaskId &&
+        inFlightStatus &&
+        isExamLayoutDetectInFlightStatus(inFlightStatus) &&
+        layoutWritable.value &&
+        !detecting.value,
+      )
       loading.value = false
       ensurePhaseQuery()
       if (shouldResumeDetect && inFlightTaskId) {
@@ -393,7 +403,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       focusedQuestionId.value = null
       currentPageNo.value = 1
       layoutWritable.value = false
-      writeLockReason.value = '加载制卷设计失败，请刷新页面后重试'
+      writeLockReason.value = '加载制卷设计失败，请返回后重新进入'
       showUserError(error, '加载制卷设计失败')
       loading.value = false
     }

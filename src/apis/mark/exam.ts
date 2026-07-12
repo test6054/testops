@@ -8,44 +8,41 @@ import type { ExamCandidateResponse, ExamCandidateRosterRequest } from '@/apis/m
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { ExamRosterScopeModeCode } from '@/types/enums/exam-roster-scope-mode-enum'
+import {
+  ALL_EXAM_ROSTER_SCOPE_MODE_CODES,
+  ExamRosterScopeModeDescription
+} from '@/types/enums/exam-roster-scope-mode-enum'
 import type { MarkingOrganizationStatusCode } from '@/types/enums/marking-organization-status-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 import {
   ALL_EXAM_GRADING_STRATEGY_CODES,
   ExamGradingStrategyCode,
-  ExamGradingStrategyDescription,
+  ExamGradingStrategyDescription
 } from '@/types/enums/exam-grading-strategy-enum'
-import {
-  ALL_EXAM_KIND_CODES,
-  ExamKindCode,
-  ExamKindDescription,
-} from '@/types/enums/exam-kind-enum'
+import { ALL_EXAM_KIND_CODES, ExamKindCode, ExamKindDescription } from '@/types/enums/exam-kind-enum'
 import {
   ALL_EXAM_LIST_SCOPE_CODES,
   ExamListScopeCode,
-  ExamListScopeDescription,
+  ExamListScopeDescription
 } from '@/types/enums/exam-list-scope-enum'
 import {
   ALL_EXAM_MATERIAL_LAYOUT_MODE_CODES,
   ExamMaterialLayoutModeCode,
-  ExamMaterialLayoutModeDescription,
+  ExamMaterialLayoutModeDescription
 } from '@/types/enums/exam-material-layout-mode-enum'
 import {
   ALL_EXAM_PRINT_SOURCE_MODE_CODES,
   ExamPrintSourceModeCode,
-  ExamPrintSourceModeDescription,
+  ExamPrintSourceModeDescription
 } from '@/types/enums/exam-print-source-mode-enum'
 import {
   ALL_EXAM_SCORE_POLICY_CODES,
   ExamScorePolicyCode,
-  ExamScorePolicyDescription,
+  ExamScorePolicyDescription
 } from '@/types/enums/exam-score-policy-enum'
-import {
-  ALL_EXAM_STATUS_CODES,
-  ExamStatusCode,
-  ExamStatusDescription,
-} from '@/types/enums/exam-status-enum'
+import { ALL_EXAM_STATUS_CODES, ExamStatusCode, ExamStatusDescription } from '@/types/enums/exam-status-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 /** 考试状态 BadgeTone 映射（用于 UiTag/UiBadge） */
 export const EXAM_STATUS_TONE: Record<ExamStatusCode, BadgeTone> = {
@@ -56,7 +53,7 @@ export const EXAM_STATUS_TONE: Record<ExamStatusCode, BadgeTone> = {
 /** 考试状态筛选项（Select 专用，首屏即带中文 label，不依赖接口 filterOptions） */
 export const EXAM_STATUS_FILTER_OPTIONS: Array<{ label: string, value: ExamStatusCode }>
   = ALL_EXAM_STATUS_CODES.map((value) => ({
-    label: ExamStatusDescription[value],
+    label: strictEnumLabel(ExamStatusDescription, value, '考试状态'),
     value,
   }))
 
@@ -87,7 +84,7 @@ export const GRADING_STRATEGY_FILTER_OPTIONS: Array<{
   label: string
   value: ExamGradingStrategyCode
 }> = ALL_EXAM_GRADING_STRATEGY_CODES.map((value) => ({
-  label: ExamGradingStrategyDescription[value],
+  label: strictEnumLabel(ExamGradingStrategyDescription, value, '阅卷策略'),
   value,
 }))
 
@@ -103,7 +100,7 @@ export const EXAM_KIND_TONE: Record<ExamKindCode, BadgeTone> = {
 /** 考试性质筛选项 */
 export const EXAM_KIND_FILTER_OPTIONS: Array<{ label: string, value: ExamKindCode }>
   = ALL_EXAM_KIND_CODES.map((value) => ({
-    label: ExamKindDescription[value],
+    label: strictEnumLabel(ExamKindDescription, value, '考试类型'),
     value,
   }))
 
@@ -133,7 +130,7 @@ export const EXAM_PRINT_SOURCE_MODE_OPTIONS: Array<{
   label: string
 }> = ALL_EXAM_PRINT_SOURCE_MODE_CODES.map((value) => ({
   value,
-  label: ExamPrintSourceModeDescription[value],
+  label: strictEnumLabel(ExamPrintSourceModeDescription, value, '印刷来源模式'),
 }))
 
 /** 考试列表 Tab 范围产品说明（列表头 scope hint，非 mock 数据） */
@@ -454,6 +451,10 @@ export interface ExamUpdateRequest {
   dailyScoreFull?: number | null
   /** 是否涉密考试场次 */
   confidential?: boolean
+  /** 开课学年；与 teachingSemester 须同时填写或同时留空 */
+  teachingAcademicYear?: string
+  /** 开课学期；与 teachingAcademicYear 须同时填写或同时留空 */
+  teachingSemester?: SemesterCode
 }
 
 /** 删除考试请求 - 对应 ExamDeleteRequest */
@@ -475,11 +476,6 @@ export interface ExamMarkingTeamCreateRequest {
   remark?: string
 }
 
-import {
-  ALL_EXAM_ROSTER_SCOPE_MODE_CODES,
-  ExamRosterScopeModeDescription,
-} from '@/types/enums/exam-roster-scope-mode-enum'
-
 export {
   ALL_EXAM_STATUS_CODES,
   ExamStatusCode,
@@ -491,7 +487,7 @@ export const EXAM_ROSTER_SCOPE_MODE_OPTIONS: Array<{
   label: string
   value: ExamRosterScopeModeCode
 }> = ALL_EXAM_ROSTER_SCOPE_MODE_CODES.map((value) => ({
-  label: ExamRosterScopeModeDescription[value],
+  label: strictEnumLabel(ExamRosterScopeModeDescription, value, '名册范围模式'),
   value,
 }))
 
@@ -519,6 +515,18 @@ export interface ExamCreateRosterPreviewResponse {
   candidateCount: number
 }
 
+/** 创建考试前可纳入参考班级查询请求 - 对应 ExamCreateEnrollableClassesQueryRequest */
+export interface ExamCreateEnrollableClassesQueryRequest {
+  referenceDepartmentId: string
+}
+
+/** 创建考试可纳入参考班级选项 - 对应 ExamEnrollableClassOptionResponse */
+export interface ExamEnrollableClassOptionResponse {
+  classId: string
+  className: string
+  studentCount: number
+}
+
 /** 创建考试打包请求 - 对应 ExamCreateBundleRequest */
 export interface ExamCreateBundleRequest {
   exam: ExamCreateRequest
@@ -532,6 +540,8 @@ export interface ExamCreateBundleResponse {
   organizationId: string
   organizationStatus: MarkingOrganizationStatusCode
   reviewerCount: number
+  /** 租户 OCR 扫描渠道提示，未启用 OCR 时返回说明文案 */
+  ocrScanAdvisory?: string
 }
 
 /** 分页查询考试列表。 */
@@ -576,6 +586,16 @@ export function previewCreateExamRoster(
 ): Promise<ExamCreateRosterPreviewResponse> {
   return http.post<ExamCreateRosterPreviewResponse>(
     '/api/mark/exams/create-roster-preview',
+    request,
+  )
+}
+
+/** 创建考试前按院系查询可纳入参考班级（过滤零学生班级）。 */
+export function listCreateEnrollableClasses(
+  request: ExamCreateEnrollableClassesQueryRequest,
+): Promise<ExamEnrollableClassOptionResponse[]> {
+  return http.post<ExamEnrollableClassOptionResponse[]>(
+    '/api/mark/exams/create-enrollable-classes',
     request,
   )
 }

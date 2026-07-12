@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import type { ScanDispatchQueueSummaryVO } from '@/apis/mark/scanner-dispatch'
+import { loadScanDispatchQueueSummary } from '@/apis/mark/scanner-dispatch'
 import { ReloadOutlined, ScanOutlined } from '@ant-design/icons-vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { loadScanDispatchQueueSummary } from '@/apis/mark/scanner-dispatch'
 import { getKioskArchiveCollaborationPolicy } from '@/apis/mark/scanner-kiosk'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { ArchiveKioskHubListModeCode } from '@/types/enums/archive-kiosk-hub-list-mode-enum'
 import { DispatchQueueStatusFilterCode } from '@/types/enums/dispatch-queue-status-filter-enum'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
+import { fetchArchiveSuspectedMixedPendingTotal } from '@/utils/archive-suspected-mixed-navigation'
 import { getUserErrorMessage } from '@/utils/error-handler'
 import KioskArchivePickPanel from './components/KioskArchivePickPanel.vue'
 import KioskDeviceActivationPanel from './components/KioskDeviceActivationPanel.vue'
@@ -77,6 +78,7 @@ const archiveHubListMode = ref<ArchiveKioskHubListModeCode>(
 const queueSummaryLoading = ref(false)
 const queueSummary = ref<ScanDispatchQueueSummaryVO | null>(null)
 const queueSummaryError = ref('')
+const archiveMixedPendingTotal = ref<number | null>(null)
 const QUEUE_SUMMARY_POLL_MS = 30_000
 let queueSummaryTimer: ReturnType<typeof setInterval> | undefined
 
@@ -87,9 +89,9 @@ const scannerDeviceId = computed(() => deviceActivation.setup.value?.scannerDevi
 const scannerStationId = computed(() => deviceActivation.setup.value?.scannerStationId ?? '')
 
 const endpointLabel = computed(() => {
-  const name
-    = deviceActivation.setup.value?.deviceName?.trim()
-      || deviceActivation.activationForm.value.endpointName.trim()
+  const name =
+    deviceActivation.setup.value?.deviceName?.trim() ||
+    deviceActivation.activationForm.value.endpointName.trim()
   return name || '未命名工位'
 })
 
@@ -104,25 +106,25 @@ const stationLedTone = computed<'green' | 'gray'>(() =>
 
 const showAgentOfflineHint = computed(
   () =>
-    !hubLoading.value
-    && !deviceActivation.loading.value
-    && !deviceActivation.localAgentReachable.value
-    && (deviceActivation.isDeviceBound.value || !deviceActivation.needsActivationGate.value),
+    !hubLoading.value &&
+    !deviceActivation.loading.value &&
+    !deviceActivation.localAgentReachable.value &&
+    (deviceActivation.isDeviceBound.value || !deviceActivation.needsActivationGate.value),
 )
 
 const showTaskKindCards = computed(
   () =>
-    deviceActivation.localAgentReachable.value
-    && deviceActivation.isDeviceBound.value
-    && !deviceActivation.needsActivationGate.value,
+    deviceActivation.localAgentReachable.value &&
+    deviceActivation.isDeviceBound.value &&
+    !deviceActivation.needsActivationGate.value,
 )
 
 const showFailedAlert = computed(
   () =>
-    showTaskKindCards.value
-    && !queueSummaryLoading.value
-    && ((queueSummary.value?.failedTicketCount ?? 0) > 0
-      || (queueSummary.value?.committingWorkOrderCount ?? 0) > 0),
+    showTaskKindCards.value &&
+    !queueSummaryLoading.value &&
+    ((queueSummary.value?.failedTicketCount ?? 0) > 0 ||
+      (queueSummary.value?.committingWorkOrderCount ?? 0) > 0),
 )
 
 const contextSubtitle = computed(() => {
@@ -253,13 +255,13 @@ const hubSignals = computed<HubSignalItem[]>(() => {
     })
   }
 
-  if (bound && (queueSummary.value?.suspectedMixedCount ?? 0) > 0) {
+  if (bound && archiveMixedPendingTotal.value != null && archiveMixedPendingTotal.value > 0) {
     metrics.push({
       key: 'mixed',
       label: '疑似混扫',
-      value: String(queueSummary.value?.suspectedMixedCount ?? 0),
+      value: String(archiveMixedPendingTotal.value),
       ledTone: 'orange',
-      sub: 'PC 异常看板查看混扫批次',
+      sub: '归档混扫复核待办',
       clickable: true,
     })
   }
@@ -302,18 +304,28 @@ async function loadArchiveHubPolicy() {
   }
 }
 
+async function loadArchiveMixedPendingTotal() {
+  const total = await fetchArchiveSuspectedMixedPendingTotal().catch(() => 0)
+  archiveMixedPendingTotal.value = total > 0 ? total : null
+}
+
 async function loadQueueSummary() {
   if (!deviceActivation.isDeviceBound.value) {
     queueSummary.value = null
+    archiveMixedPendingTotal.value = null
     return
   }
   queueSummaryLoading.value = true
   queueSummaryError.value = ''
   try {
-    queueSummary.value = await loadScanDispatchQueueSummary({
-      scannerDeviceId: scannerDeviceId.value || undefined,
-      scannerStationId: scannerStationId.value || undefined,
-    })
+    const [summary] = await Promise.all([
+      loadScanDispatchQueueSummary({
+        scannerDeviceId: scannerDeviceId.value || undefined,
+        scannerStationId: scannerStationId.value || undefined,
+      }),
+      loadArchiveMixedPendingTotal(),
+    ])
+    queueSummary.value = summary
   } catch (error) {
     queueSummary.value = null
     queueSummaryError.value = getUserErrorMessage(error)
@@ -366,11 +378,7 @@ function handleMetricClick(key: string) {
     return
   }
   if (key === 'mixed') {
-    window.open(
-      '/teacher/scanner-center?tab=exception&kind=MIXED_BATCH',
-      '_blank',
-      'noopener,noreferrer',
-    )
+    window.open('/teacher/archive-volumes/suspected-mixed-scan', '_blank', 'noopener,noreferrer')
     return
   }
   if (key === 'committing') {
@@ -433,8 +441,8 @@ function enterArchiveQueue() {
 function enterCard(card: TaskKindCard) {
   if (card.deeplinkOnly) return
   if (
-    card.kind === ScanTaskKindCode.EXAM_ARCHIVE
-    || card.kind === ScanTaskKindCode.PORTFOLIO_COLLECT
+    card.kind === ScanTaskKindCode.EXAM_ARCHIVE ||
+    card.kind === ScanTaskKindCode.PORTFOLIO_COLLECT
   ) {
     void router.push({ path: card.route, query: { taskKind: card.kind } })
     return

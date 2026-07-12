@@ -64,7 +64,10 @@
             </UiButton>
           </div>
 
-          <UiEmpty v-if="!loadingMessages && messages.length === 0" description="暂无数据" />
+          <UiEmpty
+            v-if="!loadingMessages && messages.length === 0"
+            description="当前没有可展示的内容"
+          />
 
           <a-list
             v-else
@@ -149,7 +152,7 @@
 
           <UiEmpty
             v-if="!loadingAnnouncements && announcements.length === 0"
-            description="暂无数据"
+            description="当前没有可展示的内容"
           />
 
           <a-list
@@ -263,15 +266,6 @@ import type {
   InboxMessageListItemDTO,
   PublishedSystemAnnouncementResponse,
 } from '@/apis/edu/message'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { UserDto } from '@/types/api-types.d'
-import BellOutlined from '@ant-design/icons-vue/BellOutlined'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
-import { storeToRefs } from 'pinia'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   confirmReadAnnouncement,
   getInboxMessages,
@@ -284,6 +278,15 @@ import {
   MessageOperationTypeEnum,
   updateMessageStatus,
 } from '@/apis/edu/message'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { UserDto } from '@/types/api-types.d'
+import BellOutlined from '@ant-design/icons-vue/BellOutlined'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { message } from 'ant-design-vue'
+import { storeToRefs } from 'pinia'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -317,7 +320,7 @@ const activeTab = ref<'inbox' | 'announcement'>('inbox')
 // ─── 站内信 ──────────────────────────────────
 const messages = ref<InboxMessageListItemDTO[]>([])
 const loadingMessages = ref(false)
-const inboxFilter = reactive<{ keyword?: string, isRead?: string }>({})
+const inboxFilter = reactive<{ keyword?: string; isRead?: string }>({})
 const messagePageState = reactive({ pageNum: 1, pageSize: 10, total: 0 })
 const messagePagination = computed(() => ({
   current: messagePageState.pageNum,

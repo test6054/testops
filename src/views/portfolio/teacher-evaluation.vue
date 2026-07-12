@@ -1,18 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationObjectionHandleActionCode } from '@/apis/portfolio/enums'
-import type {
-  PortfolioEvaluationMaterialCategoryItemVO,
-  PortfolioEvaluationMaterialPreviewVO,
-  PortfolioEvaluationPublicityListItemVO,
-  PortfolioEvaluationTeacherNoticeVO,
-  PortfolioEvaluationTeacherResultSummaryVO,
-} from '@/apis/portfolio/types'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { Input, message, Select } from 'ant-design-vue'
-import { computed, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   PORTFOLIO_EVALUATION_OBJECTION_TYPE_OPTIONS,
   PortfolioEvaluationObjectionHandleActionDescription,
@@ -22,14 +10,26 @@ import {
   PortfolioEvaluationTeacherNoticeStatusCode,
   PortfolioEvaluationTeacherNoticeStatusDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
-import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
+import type {
+  PortfolioEvaluationMaterialCategoryItemVO,
+  PortfolioEvaluationMaterialPreviewVO,
+  PortfolioEvaluationPublicityListItemVO,
+  PortfolioEvaluationTeacherNoticeVO,
+  PortfolioEvaluationTeacherResultSummaryVO,
+} from '@/apis/portfolio/types'
 import {
   PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
   PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE,
   PORTFOLIO_EVALUATION_PUBLICITY_STATUS_TONE,
   PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE,
 } from '@/apis/portfolio/types'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import { Input, message, Select } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
+import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -119,8 +119,12 @@ const objectionForm = reactive({
 })
 const objectionEvidenceFileNodeId = ref('')
 const objectionEvidenceFileName = ref('')
+const evaluationRequestToken = ref(0)
 
 const objectionTypeOptions = PORTFOLIO_EVALUATION_OBJECTION_TYPE_OPTIONS
+const deepLinkedEvaluationTaskId = computed(() =>
+  typeof route.query.evaluationTaskId === 'string' ? route.query.evaluationTaskId : '',
+)
 
 const selectedNotice = computed(
   () => notices.value.find((item) => item.id === selectedNoticeId.value) ?? null,
@@ -161,14 +165,29 @@ const resultColumns: ColumnsType<
   { title: '评语', dataIndex: 'commentText', key: 'commentText' },
 ]
 
+function resetEvaluationContext() {
+  evaluationRequestToken.value += 1
+  notices.value = []
+  publicityRows.value = []
+  resultSummary.value = null
+  preview.value = null
+  selectedNoticeId.value = ''
+  objectionModalOpen.value = false
+  objectionTarget.value = null
+  objectionForm.objectionType = PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE
+  objectionForm.objectionReason = ''
+  objectionEvidenceFileNodeId.value = ''
+  objectionEvidenceFileName.value = ''
+}
+
 function canViewerSubmitObjection(record: PortfolioEvaluationPublicityListItemVO): boolean {
   if (!record.canSubmitObjection) {
     return false
   }
   return !(
-    canPickTeachers.value
-    && targetTeacherId.value
-    && targetTeacherId.value !== currentUserId.value
+    canPickTeachers.value &&
+    targetTeacherId.value &&
+    targetTeacherId.value !== currentUserId.value
   )
 }
 
@@ -178,91 +197,138 @@ function publicityRowKey(record: unknown): string {
 }
 
 async function loadNotices() {
+  const requestToken = evaluationRequestToken.value
   loading.value = true
   preview.value = null
   try {
+    const routeNoticeId = typeof route.query.noticeId === 'string' ? route.query.noticeId : ''
     const page = await portfolioEvaluationNoticeApi.pageNotices({
       ...(targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}),
       pageNum: pageNum.value,
       pageSize: pageSize.value,
+      locateNoticeId: routeNoticeId || undefined,
     })
+    if (evaluationRequestToken.value !== requestToken) {
+      return
+    }
     notices.value = page.list
     pageTotal.value = page.total
-    const routeNoticeId = typeof route.query.noticeId === 'string' ? route.query.noticeId : ''
-    const matched = routeNoticeId
-      ? notices.value.find((item) => item.id === routeNoticeId)
-      : notices.value[0]
-    selectedNoticeId.value = matched?.id ?? notices.value[0]?.id ?? ''
+    pageNum.value = page.pageNum ?? pageNum.value
+    pageSize.value = page.pageSize ?? pageSize.value
+    const matched = routeNoticeId ? notices.value.find((item) => item.id === routeNoticeId) : null
+    selectedNoticeId.value = matched?.id ?? ''
     if (selectedNoticeId.value) {
       await loadPreview(selectedNoticeId.value)
     }
   } catch (error) {
+    if (evaluationRequestToken.value !== requestToken) {
+      return
+    }
     showUserError(error, '加载评价待办失败')
   } finally {
-    loading.value = false
+    if (evaluationRequestToken.value === requestToken) {
+      loading.value = false
+    }
   }
 }
 
 async function loadPublicity() {
+  const requestToken = evaluationRequestToken.value
   publicityLoading.value = true
+  resultSummary.value = null
   try {
-    publicityRows.value = await portfolioEvaluationPublicityApi.listPublicity(
+    const rows = await portfolioEvaluationPublicityApi.listPublicity(
       targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
     )
-    const firstRow = publicityRows.value[0]
-    if (firstRow) {
-      await loadResultSummary(firstRow.evaluationTaskId)
-    } else {
-      resultSummary.value = null
+    if (evaluationRequestToken.value !== requestToken) {
+      return
+    }
+    publicityRows.value = rows
+    const matchedRow = deepLinkedEvaluationTaskId.value
+      ? publicityRows.value.find(
+          (item) => item.evaluationTaskId === deepLinkedEvaluationTaskId.value,
+        )
+      : null
+    if (matchedRow) {
+      await loadResultSummary(matchedRow.evaluationTaskId)
     }
   } catch (error) {
+    if (evaluationRequestToken.value !== requestToken) {
+      return
+    }
     showUserError(error, '加载评价公示失败')
   } finally {
-    publicityLoading.value = false
+    if (evaluationRequestToken.value === requestToken) {
+      publicityLoading.value = false
+    }
   }
 }
 
 async function loadResultSummary(evaluationTaskId: string) {
+  const requestToken = evaluationRequestToken.value
   resultLoading.value = true
   try {
-    resultSummary.value = await portfolioEvaluationPublicityApi.summarizeTeacherResult({
+    const nextSummary = await portfolioEvaluationPublicityApi.summarizeTeacherResult({
       evaluationTaskId,
       ...(targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}),
     })
+    if (evaluationRequestToken.value !== requestToken) {
+      return
+    }
+    resultSummary.value = nextSummary
   } catch (error) {
+    if (evaluationRequestToken.value !== requestToken) {
+      return
+    }
     resultSummary.value = null
     showUserError(error, '加载评价结果失败')
   } finally {
-    resultLoading.value = false
+    if (evaluationRequestToken.value === requestToken) {
+      resultLoading.value = false
+    }
   }
 }
 
 async function loadPreview(noticeId: string) {
+  const requestToken = evaluationRequestToken.value
   const notice = notices.value.find((item) => item.id === noticeId)
   if (!notice) {
     preview.value = null
     return
   }
   selectedNoticeId.value = noticeId
-  preview.value = await portfolioEvaluationNoticeApi.materialPreview({
+  const nextPreview = await portfolioEvaluationNoticeApi.materialPreview({
     evaluationTaskId: notice.evaluationTaskId,
     ...(targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}),
   })
+  if (evaluationRequestToken.value !== requestToken) {
+    return
+  }
+  preview.value = nextPreview
 }
 
 async function confirmSelected() {
   if (!selectedNotice.value) {
     return
   }
+  const requestToken = evaluationRequestToken.value
   confirming.value = true
   try {
     await portfolioEvaluationNoticeApi.confirmMaterial({ noticeId: selectedNotice.value.id })
+    if (evaluationRequestToken.value !== requestToken) {
+      return
+    }
     message.success('材料已确认')
     await loadNotices()
   } catch (error) {
+    if (evaluationRequestToken.value !== requestToken) {
+      return
+    }
     showUserError(error, '确认材料失败')
   } finally {
-    confirming.value = false
+    if (evaluationRequestToken.value === requestToken) {
+      confirming.value = false
+    }
   }
 }
 
@@ -284,6 +350,7 @@ async function submitObjection() {
     message.warning('请填写异议理由')
     return
   }
+  const requestToken = evaluationRequestToken.value
   submittingObjection.value = true
   try {
     await portfolioEvaluationPublicityApi.submitObjection({
@@ -293,6 +360,9 @@ async function submitObjection() {
       objectionReason: reason,
       evidenceRef: objectionEvidenceFileNodeId.value || undefined,
     })
+    if (evaluationRequestToken.value !== requestToken) {
+      return
+    }
     message.success('异议已提交')
     objectionModalOpen.value = false
     await loadPublicity()
@@ -300,9 +370,14 @@ async function submitObjection() {
       await loadResultSummary(objectionTarget.value.evaluationTaskId)
     }
   } catch (error) {
+    if (evaluationRequestToken.value !== requestToken) {
+      return
+    }
     showUserError(error, '提交异议失败')
   } finally {
-    submittingObjection.value = false
+    if (evaluationRequestToken.value === requestToken) {
+      submittingObjection.value = false
+    }
   }
 }
 
@@ -372,11 +447,57 @@ function handlePublicityRowAction(
 
 usePortfolioScopedLoader(
   () => {
+    resetEvaluationContext()
     pageNum.value = 1
     void loadNotices()
     void loadPublicity()
   },
   () => targetTeacherId.value,
+)
+
+watch(
+  () => route.query.noticeId,
+  (noticeId, previousNoticeId) => {
+    if (noticeId === previousNoticeId) {
+      return
+    }
+    pageNum.value = 1
+    void loadNotices()
+  },
+)
+
+watch(
+  () => [pageNum.value, pageSize.value],
+  ([currentPageNum, currentPageSize], [previousPageNum, previousPageSize]) => {
+    if (currentPageNum === previousPageNum && currentPageSize === previousPageSize) {
+      return
+    }
+    const routeNoticeId = typeof route.query.noticeId === 'string' ? route.query.noticeId : ''
+    if (!routeNoticeId) {
+      return
+    }
+    const matched = notices.value.some((item) => item.id === routeNoticeId)
+    if (matched) {
+      return
+    }
+    void router.replace({
+      path: route.path,
+      query: {
+        ...route.query,
+        noticeId: undefined,
+      },
+    })
+  },
+)
+
+watch(
+  () => route.query.evaluationTaskId,
+  (evaluationTaskId, previousEvaluationTaskId) => {
+    if (evaluationTaskId === previousEvaluationTaskId) {
+      return
+    }
+    void loadPublicity()
+  },
 )
 </script>
 

@@ -3,11 +3,24 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamDetailResponse } from '@/apis/mark/exam'
+import { getExamDetail } from '@/apis/mark/exam'
 import type { ExamScoreSummaryItemResponse } from '@/apis/mark/exam-score'
+import { pageExamScoreSummary } from '@/apis/mark/exam-score'
 import type { MarkOcrConfigResponse } from '@/apis/mark/ocr-config'
+import { checkMarkOcrHealth, getCurrentMarkOcrConfig } from '@/apis/mark/ocr-config'
 import type { PaddleOcrInstanceResponse } from '@/apis/mark/ocr-paddle-instance'
+import { pagePaddleOcrInstances } from '@/apis/mark/ocr-paddle-instance'
+import type {
+  MarkOcrPlatformProviderResponse,
+  MarkOcrPlatformProviderSaveRequest,
+} from '@/apis/mark/ocr-platform-provider'
+import {
+  checkMarkOcrPlatformProviderHealth,
+  listMarkOcrPlatformProviders,
+  saveMarkOcrPlatformProvider,
+} from '@/apis/mark/ocr-platform-provider'
 import type { MarkOcrPaperSliceVO, MarkOcrRecognizeResponse } from '@/apis/mark/ocr-recognition'
-import type { MarkOcrHealthStatusCode, MarkOcrProviderTypeCode } from '@/apis/mark/ocr-types'
+import { listMarkOcrPaperSlices, recognizeMarkOcr } from '@/apis/mark/ocr-recognition'
 import type { SignalMetric } from '@/types/workbench'
 import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
 import ClusterOutlined from '@ant-design/icons-vue/ClusterOutlined'
@@ -15,24 +28,21 @@ import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { getExamDetail } from '@/apis/mark/exam'
 import { BindingStatusCode, BindingStatusDescription } from '@/apis/mark/exam-binding'
-import { pageExamScoreSummary } from '@/apis/mark/exam-score'
 import { FinalScoreStatusDescription } from '@/apis/mark/final-score-status'
-import { checkMarkOcrHealth, getCurrentMarkOcrConfig } from '@/apis/mark/ocr-config'
-import { pagePaddleOcrInstances } from '@/apis/mark/ocr-paddle-instance'
-import { listMarkOcrPaperSlices, recognizeMarkOcr } from '@/apis/mark/ocr-recognition'
 import {
   MARK_OCR_HEALTH_STATUS_TONE,
   MARK_OCR_PAPER_CUT_CAPABILITY,
   MARK_OCR_PROVIDER_DESCRIPTION,
   MarkOcrHealthStatusDescription,
+  MarkOcrProviderTypeCode,
   MarkOcrProviderTypeDescription,
 } from '@/apis/mark/ocr-types'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -45,6 +55,9 @@ import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useAuthStore } from '@/stores/modules/auth'
 import { RoleEnum } from '@/types/enums'
+import { ExamMaterialLayoutModeCode } from '@/types/enums/exam-material-layout-mode-enum'
+import { MarkOcrHealthStatusCode } from '@/types/enums/mark-ocr-health-status-enum'
+import { PaddleOcrDeviceKindCode } from '@/types/enums/paddle-ocr-device-kind-enum'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import mittBus from '@/utils/mitt'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -77,6 +90,7 @@ const ocrDebugAllowed = computed(() => authStore.userRole === RoleEnum.SUPER_ADM
 
 /** OCR 渠道健康检查会写入租户配置状态，仅超级管理员可执行。 */
 const ocrHealthCheckAllowed = computed(() => authStore.userRole === RoleEnum.SUPER_ADMIN)
+const ocrPlatformProviderManageAllowed = computed(() => authStore.userRole === RoleEnum.SUPER_ADMIN)
 
 // 仅 PADDLE 渠道相关：展示后端已注册的 PaddleOCR 服务实例列表。
 // 用 watch(currentConfig.providerType) 自动开关加载，无需手动触发。
@@ -90,15 +104,40 @@ const paperCandidatesLoading = ref(false)
 const paperCandidateKeyword = ref('')
 const examDetail = ref<ExamDetailResponse | null>(null)
 const examDetailLoading = ref(false)
+const platformProviders = ref<MarkOcrPlatformProviderResponse[]>([])
+const platformProvidersLoading = ref(false)
+const platformProviderHealthLoading = ref<string>('')
+const platformProviderEditorVisible = ref(false)
+const platformProviderSubmitting = ref(false)
+const platformProviderEditor = reactive<MarkOcrPlatformProviderSaveRequest>({
+  providerType: MarkOcrProviderTypeCode.BAIDU,
+  enabled: false,
+  appId: '',
+  apiKey: '',
+  secretKey: '',
+  region: '',
+  tokenEndpoint: '',
+  ocrEndpoint: '',
+  handwritingEndpoint: '',
+  docAnalysisEndpoint: '',
+  handwritingCompositionCreateTaskEndpoint: '',
+  handwritingCompositionGetResultEndpoint: '',
+})
+const platformProviderEditorIsBaidu = computed(
+  () => platformProviderEditor.providerType === MarkOcrProviderTypeCode.BAIDU,
+)
+const platformProviderEditorIsPaddle = computed(
+  () => platformProviderEditor.providerType === MarkOcrProviderTypeCode.PADDLE,
+)
 
 const examMaterialLayoutMode = computed(() => examDetail.value?.materialLayoutMode)
 
 const paperInstanceFieldLabel = computed(() => {
   const mode = examMaterialLayoutMode.value
-  if (mode === 'ANSWER_SHEET') {
+  if (mode === ExamMaterialLayoutModeCode.ANSWER_SHEET) {
     return '扫描答卷'
   }
-  if (mode === 'FULL_PAPER') {
+  if (mode === ExamMaterialLayoutModeCode.FULL_PAPER) {
     return '扫描试卷'
   }
   return '试卷实例'
@@ -173,11 +212,11 @@ const paperCutCapability = computed(() => {
 
 const canRecognize = computed(() =>
   Boolean(
-    ocrDebugReady.value
-    && currentConfig.value?.providerType
-    && currentConfig.value.enabled
-    && debugForm.value.paperInstanceId
-    && debugForm.value.responseSliceId,
+    ocrDebugReady.value &&
+    currentConfig.value?.providerType &&
+    currentConfig.value.enabled &&
+    debugForm.value.paperInstanceId &&
+    debugForm.value.responseSliceId,
   ),
 )
 const currentPaperSlice = computed(() =>
@@ -224,6 +263,52 @@ function providerLabel(providerType: MarkOcrProviderTypeCode): string {
   return strictEnumLabel(MarkOcrProviderTypeDescription, providerType, 'OCR 渠道')
 }
 
+function isPaddleProviderType(providerType: MarkOcrProviderTypeCode): boolean {
+  return providerType === MarkOcrProviderTypeCode.PADDLE
+}
+
+function platformProviderCredentialText(configured?: boolean, masked?: string): string {
+  if (!configured) {
+    return '未配置'
+  }
+  return masked || '已配置'
+}
+
+/** 平台 OCR 供应商摘要按真实厂商差异展示，避免把百度专属字段错误映射到 Paddle。 */
+function platformProviderSummary(record: MarkOcrPlatformProviderResponse): string[] {
+  if (isPaddleProviderType(record.providerType)) {
+    return [
+      '本地集群接入型供应商',
+      record.enabled
+        ? '允许租户选择 Paddle 本地 OCR 集群'
+        : '当前不允许租户选择 Paddle 本地 OCR 集群',
+    ]
+  }
+  return [
+    `AppId：${platformProviderCredentialText(record.appIdConfigured, record.appIdMasked)}`,
+    `ApiKey：${platformProviderCredentialText(record.apiKeyConfigured, record.apiKeyMasked)}`,
+    `SecretKey：${platformProviderCredentialText(record.secretKeyConfigured, record.secretKeyMasked)}`,
+  ]
+}
+
+/** 按供应商类型归一化保存请求，禁止把百度专属配置误写入 Paddle 平台配置。 */
+function buildPlatformProviderSavePayload(): MarkOcrPlatformProviderSaveRequest {
+  const request: MarkOcrPlatformProviderSaveRequest = { ...platformProviderEditor }
+  if (isPaddleProviderType(request.providerType)) {
+    request.appId = ''
+    request.apiKey = ''
+    request.secretKey = ''
+    request.region = ''
+    request.tokenEndpoint = ''
+    request.ocrEndpoint = ''
+    request.handwritingEndpoint = ''
+    request.docAnalysisEndpoint = ''
+    request.handwritingCompositionCreateTaskEndpoint = ''
+    request.handwritingCompositionGetResultEndpoint = ''
+  }
+  return request
+}
+
 /** 将 OCR 调试诊断转为可展示的识别处理说明，避免暴露引擎和接口调试细节。 */
 function ocrDiagnosticText(diagnostic?: string): string {
   return getUserErrorMessage(
@@ -254,6 +339,70 @@ async function loadConfig(): Promise<void> {
     showUserError(error, 'OCR 识别配置加载失败')
   } finally {
     loading.value = false
+  }
+}
+
+async function loadPlatformProviders(): Promise<void> {
+  if (!ocrPlatformProviderManageAllowed.value) {
+    platformProviders.value = []
+    return
+  }
+  platformProvidersLoading.value = true
+  try {
+    platformProviders.value = await listMarkOcrPlatformProviders()
+  } catch (error) {
+    platformProviders.value = []
+    showUserError(error, 'OCR 平台供应商配置加载失败')
+  } finally {
+    platformProvidersLoading.value = false
+  }
+}
+
+function openPlatformProviderEditor(record: MarkOcrPlatformProviderResponse): void {
+  platformProviderEditor.id = record.id
+  platformProviderEditor.providerType = record.providerType
+  platformProviderEditor.enabled = record.enabled
+  platformProviderEditor.appId = ''
+  platformProviderEditor.apiKey = ''
+  platformProviderEditor.secretKey = ''
+  platformProviderEditor.region = record.region || ''
+  platformProviderEditor.tokenEndpoint = record.tokenEndpoint || ''
+  platformProviderEditor.ocrEndpoint = record.ocrEndpoint || ''
+  platformProviderEditor.handwritingEndpoint = record.handwritingEndpoint || ''
+  platformProviderEditor.docAnalysisEndpoint = record.docAnalysisEndpoint || ''
+  platformProviderEditor.handwritingCompositionCreateTaskEndpoint =
+    record.handwritingCompositionCreateTaskEndpoint || ''
+  platformProviderEditor.handwritingCompositionGetResultEndpoint =
+    record.handwritingCompositionGetResultEndpoint || ''
+  platformProviderEditorVisible.value = true
+}
+
+async function handlePlatformProviderSave(): Promise<void> {
+  platformProviderSubmitting.value = true
+  try {
+    await saveMarkOcrPlatformProvider(buildPlatformProviderSavePayload())
+    platformProviderEditorVisible.value = false
+    message.success('OCR 平台供应商配置已保存')
+    await Promise.all([loadPlatformProviders(), loadConfig()])
+  } catch (error) {
+    showUserError(error, 'OCR 平台供应商配置保存失败')
+  } finally {
+    platformProviderSubmitting.value = false
+  }
+}
+
+async function handlePlatformProviderHealthCheck(
+  providerType: MarkOcrProviderTypeCode,
+): Promise<void> {
+  platformProviderHealthLoading.value = providerType
+  try {
+    await checkMarkOcrPlatformProviderHealth({ providerType })
+    message.success(`${providerLabel(providerType)} 平台健康检查完成`)
+    await Promise.all([loadPlatformProviders(), loadConfig()])
+  } catch (error) {
+    showUserError(error, `${providerLabel(providerType)} 平台健康检查失败`)
+  } finally {
+    platformProviderHealthLoading.value = ''
   }
 }
 
@@ -375,20 +524,31 @@ function handlePaperCandidateChange(value: SelectValue): void {
 }
 
 // PADDLE 实例列表：当当前渠道为 PADDLE 时显示，跟随 currentConfig.providerType 变化自动加载
-const isPaddleProvider = computed(() => currentConfig.value?.providerType === 'PADDLE')
+const isPaddleProvider = computed(
+  () => currentConfig.value?.providerType === MarkOcrProviderTypeCode.PADDLE,
+)
 
 const paddleHealthyCount = computed(
-  () => paddleInstances.value.filter((it) => it.healthStatus === 'HEALTHY').length,
+  () =>
+    paddleInstances.value.filter((it) => it.healthStatus === MarkOcrHealthStatusCode.HEALTHY)
+      .length,
 )
 
 const paddleInstanceColumns: ColumnType<PaddleOcrInstanceResponse>[] = [
   { title: '实例', key: 'instanceName', width: 180, ellipsis: true, fixed: 'left' },
   { title: '健康', key: 'healthStatus', width: 100 },
-  { title: '设备类型', dataIndex: 'deviceType', key: 'deviceType', width: 100 },
+  { title: '设备类型', key: 'deviceKind', width: 100 },
   { title: '服务地址', key: 'serviceUrl', width: 140 },
   { title: '最近探活', key: 'lastHealthCheckTime', width: 170 },
   { title: '诊断', key: 'lastHealthMessage', ellipsis: true },
 ]
+
+function paddleInstanceDeviceLabel(record: PaddleOcrInstanceResponse): string {
+  if (record.deviceKind === PaddleOcrDeviceKindCode.GPU) {
+    return `GPU:${record.deviceIndex ?? 0}`
+  }
+  return 'CPU'
+}
 
 async function loadPaddleInstances(): Promise<void> {
   paddleInstancesLoading.value = true
@@ -452,6 +612,7 @@ function paddleInstanceHealthLabel(status: MarkOcrHealthStatusCode): string {
 
 async function reloadOcrWorkbench(): Promise<void> {
   await loadConfig()
+  await loadPlatformProviders()
   const examId = selectedExamId.value
   if (!examId) {
     return
@@ -464,6 +625,7 @@ async function reloadOcrWorkbench(): Promise<void> {
 
 onMounted(async () => {
   await loadConfig()
+  await loadPlatformProviders()
   mittBus.on('scan-workbench:refresh', reloadOcrWorkbench)
 })
 
@@ -537,8 +699,8 @@ onBeforeUnmount(() => {
             <p class="ocr-channel__desc">{{ providerDescription }}</p>
             <p class="ocr-channel__capability">{{ paperCutCapability }}</p>
             <a-descriptions :column="1" size="small" bordered class="ocr-channel__meta">
-              <a-descriptions-item label="渠道编码">
-                {{ currentConfig.providerType }}
+              <a-descriptions-item label="当前渠道">
+                {{ currentProviderLabel }}
               </a-descriptions-item>
               <a-descriptions-item v-if="currentConfig.lastHealthMessage" label="最近诊断">
                 {{ ocrHealthMessageText(currentConfig.lastHealthMessage) }}
@@ -626,6 +788,9 @@ onBeforeUnmount(() => {
             <template v-else-if="column.key === 'serviceUrl'">
               {{ record.serviceUrl ? '识别服务地址已配置' : '识别服务地址未配置' }}
             </template>
+            <template v-else-if="column.key === 'deviceKind'">
+              {{ paddleInstanceDeviceLabel(record) }}
+            </template>
             <template v-else-if="column.key === 'lastHealthCheckTime'">
               {{ record.lastHealthCheckTime || '未探活' }}
             </template>
@@ -637,6 +802,87 @@ onBeforeUnmount(() => {
             </template>
           </template>
         </UiDataTable>
+      </WorkbenchSurfaceCard>
+
+      <WorkbenchSurfaceCard
+        v-if="ocrPlatformProviderManageAllowed"
+        class="ocr-settings__panel ocr-settings__panel--provider-admin"
+      >
+        <template #head>
+          <div class="ocr-settings__panel-head">
+            <h3 class="ocr-settings__panel-title">
+              <ClusterOutlined />
+              <span>平台 OCR 供应商配置</span>
+            </h3>
+            <span class="ocr-settings__panel-desc">仅超级管理员可维护百度 / Paddle 平台配置</span>
+          </div>
+        </template>
+        <template #toolbar>
+          <UiButton
+            variant="outline"
+            size="sm"
+            :loading="platformProvidersLoading"
+            @click="loadPlatformProviders"
+          >
+            <template #icon><ReloadOutlined /></template>
+            刷新
+          </UiButton>
+        </template>
+
+        <a-table
+          :data-source="platformProviders"
+          :loading="platformProvidersLoading"
+          :pagination="false"
+          row-key="providerType"
+          size="small"
+        >
+          <a-table-column title="供应商" key="providerType" width="120">
+            <template #default="{ record }">
+              {{ providerLabel(record.providerType) }}
+            </template>
+          </a-table-column>
+          <a-table-column title="启用" key="enabled" width="90">
+            <template #default="{ record }">
+              <UiTag :tone="record.enabled ? 'green' : 'gray'" size="sm">
+                {{ record.enabled ? '已启用' : '未启用' }}
+              </UiTag>
+            </template>
+          </a-table-column>
+          <a-table-column title="凭证 / 接口摘要" key="credentials">
+            <template #default="{ record }">
+              <div class="provider-admin__credential">
+                <div
+                  v-for="summary in platformProviderSummary(record)"
+                  :key="`${record.providerType}-${summary}`"
+                >
+                  {{ summary }}
+                </div>
+              </div>
+            </template>
+          </a-table-column>
+          <a-table-column title="更新时间" key="updateTime" width="170">
+            <template #default="{ record }">
+              {{ record.updateTime || '未配置' }}
+            </template>
+          </a-table-column>
+          <a-table-column title="操作" key="actions" width="180" fixed="right">
+            <template #default="{ record }">
+              <a-space size="small">
+                <UiButton size="sm" variant="outline" @click="openPlatformProviderEditor(record)">
+                  编辑
+                </UiButton>
+                <UiButton
+                  size="sm"
+                  variant="outline"
+                  :loading="platformProviderHealthLoading === record.providerType"
+                  @click="handlePlatformProviderHealthCheck(record.providerType)"
+                >
+                  健康检查
+                </UiButton>
+              </a-space>
+            </template>
+          </a-table-column>
+        </a-table>
       </WorkbenchSurfaceCard>
 
       <WorkbenchSurfaceCard v-if="ocrDebugAllowed" class="ocr-settings__panel">
@@ -708,8 +954,74 @@ onBeforeUnmount(() => {
             <div class="result-text-content">{{ recognizeResult.recognizedText }}</div>
           </div>
         </template>
-        <UiEmpty v-else-if="!recognizing" description="暂无数据" />
+        <UiEmpty v-else-if="!recognizing" description="当前没有可展示的内容" />
       </WorkbenchSurfaceCard>
+
+      <a-modal
+        v-model:open="platformProviderEditorVisible"
+        :title="`编辑 ${providerLabel(platformProviderEditor.providerType)} 平台配置`"
+        width="720px"
+        :confirm-loading="platformProviderSubmitting"
+        @ok="handlePlatformProviderSave"
+      >
+        <a-form layout="vertical">
+          <a-form-item label="供应商类型">
+            <a-input :value="providerLabel(platformProviderEditor.providerType)" disabled />
+          </a-form-item>
+          <a-form-item label="启用状态">
+            <a-switch v-model:checked="platformProviderEditor.enabled" />
+          </a-form-item>
+          <template v-if="platformProviderEditorIsBaidu">
+            <a-form-item label="AppId">
+              <a-input
+                v-model:value="platformProviderEditor.appId"
+                placeholder="留空表示不修改 / 不配置"
+              />
+            </a-form-item>
+            <a-form-item label="ApiKey">
+              <a-input-password
+                v-model:value="platformProviderEditor.apiKey"
+                placeholder="留空表示保留原值"
+              />
+            </a-form-item>
+            <a-form-item label="SecretKey">
+              <a-input-password
+                v-model:value="platformProviderEditor.secretKey"
+                placeholder="留空表示保留原值"
+              />
+            </a-form-item>
+            <a-form-item label="Token Endpoint">
+              <a-input v-model:value="platformProviderEditor.tokenEndpoint" />
+            </a-form-item>
+            <a-form-item label="高精度 OCR Endpoint">
+              <a-input v-model:value="platformProviderEditor.ocrEndpoint" />
+            </a-form-item>
+            <a-form-item label="手写 OCR Endpoint">
+              <a-input v-model:value="platformProviderEditor.handwritingEndpoint" />
+            </a-form-item>
+            <a-form-item label="文档分析 Endpoint">
+              <a-input v-model:value="platformProviderEditor.docAnalysisEndpoint" />
+            </a-form-item>
+            <a-form-item label="手写作文提交 Endpoint">
+              <a-input
+                v-model:value="platformProviderEditor.handwritingCompositionCreateTaskEndpoint"
+              />
+            </a-form-item>
+            <a-form-item label="手写作文结果查询 Endpoint">
+              <a-input
+                v-model:value="platformProviderEditor.handwritingCompositionGetResultEndpoint"
+              />
+            </a-form-item>
+          </template>
+          <UiAlertStrip
+            v-else-if="platformProviderEditorIsPaddle"
+            tone="info"
+            title="Paddle 为本地集群接入型 OCR 供应商"
+            description="该平台配置页只控制是否允许租户选择 Paddle 通道。实例地址、设备规格与运行健康由 Paddle 实例注册链单独维护，不在这里录入百度类凭证与 Endpoint。"
+            :inline="false"
+          />
+        </a-form>
+      </a-modal>
     </template>
   </StageWorkbenchShell>
 </template>

@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioExternalTeacherImportBatchStatusCode } from '@/apis/portfolio/enums'
+import {
+  PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS,
+  PortfolioExternalTeacherDataStatusCode,
+  PortfolioExternalTeacherDataStatusDescription,
+  PortfolioExternalTeacherImportBatchStatusDescription,
+} from '@/apis/portfolio/enums'
 import type {
   PortfolioExternalTeacherImportBatchVO,
   PortfolioExternalTeacherPageRequest,
@@ -8,17 +14,11 @@ import type {
   PortfolioExternalTeacherStatsVO,
   PortfolioExternalTeacherVO,
 } from '@/apis/portfolio/teacher-platform'
+import { portfolioExternalTeacherApi } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import {
-  PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS,
-  PortfolioExternalTeacherDataStatusCode,
-  PortfolioExternalTeacherDataStatusDescription,
-  PortfolioExternalTeacherImportBatchStatusDescription,
-} from '@/apis/portfolio/enums'
-import { portfolioExternalTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -39,6 +39,7 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 const activeTab = ref('roster')
 const statsLoading = ref(false)
 const saving = ref(false)
+const editLoading = ref(false)
 const stats = ref<PortfolioExternalTeacherStatsVO | null>(null)
 const drawerOpen = ref(false)
 const batchDetailOpen = ref(false)
@@ -48,11 +49,11 @@ const importModalOpen = ref(false)
 type ExternalTeacherFilters = Pick<
   PortfolioExternalTeacherPageRequest,
   'dataStatus' | 'teachSubject' | 'teacherSource' | 'contractStatus'
->
-& Record<string, unknown>
+> &
+  Record<string, unknown>
 
-const { loading, rows, pageNum, pageSize, pageTotal, filters, loadPage, search, handlePageChange }
-  = useQueryTable<PortfolioExternalTeacherVO, ExternalTeacherFilters>(
+const { loading, rows, pageNum, pageSize, pageTotal, filters, loadPage, search, handlePageChange } =
+  useQueryTable<PortfolioExternalTeacherVO, ExternalTeacherFilters>(
     (params) =>
       portfolioExternalTeacherApi.page({
         pageNum: params.pageNum,
@@ -190,6 +191,17 @@ function resetForm() {
   attachmentItems.value = []
 }
 
+/** 编辑详情切换或失败时必须回收抽屉上下文，避免误把失败编辑当成新增保存。 */
+function resetEditorContext() {
+  resetForm()
+  editLoading.value = false
+}
+
+/** 导入批次详情失败后关闭抽屉，避免停留在无目标的空白详情态。 */
+function resetBatchDetailContext() {
+  batchDetail.value = null
+}
+
 function attachmentFileIds(): string[] {
   return attachmentItems.value.map((item) => item.fileNodeId)
 }
@@ -229,15 +241,29 @@ function removeAttachment(fileNodeId: string) {
   attachmentItems.value = attachmentItems.value.filter((item) => item.fileNodeId !== fileNodeId)
 }
 
+/** 统一当前名册筛选口径，保证列表、统计与导出使用同一组过滤条件。 */
+function buildRosterFilters() {
+  return {
+    dataStatus: filters.value.dataStatus,
+    teachSubject: filters.value.teachSubject?.trim() || undefined,
+    teacherSource: filters.value.teacherSource?.trim() || undefined,
+    contractStatus: filters.value.contractStatus?.trim() || undefined,
+  }
+}
+
 async function loadStats() {
   statsLoading.value = true
   try {
-    stats.value = await portfolioExternalTeacherApi.stats()
+    stats.value = await portfolioExternalTeacherApi.stats(buildRosterFilters())
   } catch (error) {
     showUserError(error)
   } finally {
     statsLoading.value = false
   }
+}
+
+async function searchRoster() {
+  await Promise.all([search(), loadStats()])
 }
 
 function openCreate() {
@@ -266,7 +292,8 @@ function handleExternalTeacherAction(key: string, record: PortfolioExternalTeach
 }
 
 async function openEdit(id: string) {
-  resetForm()
+  resetEditorContext()
+  editLoading.value = true
   drawerOpen.value = true
   try {
     const detail = await portfolioExternalTeacherApi.get({ id })
@@ -296,7 +323,11 @@ async function openEdit(id: string) {
       fileName: fileNodeId,
     }))
   } catch (error) {
+    drawerOpen.value = false
+    resetEditorContext()
     showUserError(error)
+  } finally {
+    editLoading.value = false
   }
 }
 
@@ -366,17 +397,19 @@ async function handleImportSuccess() {
 
 async function openBatchDetail(id: string) {
   batchDetailOpen.value = true
-  batchDetail.value = null
+  resetBatchDetailContext()
   try {
     batchDetail.value = await portfolioExternalTeacherApi.importBatchGet({ id })
   } catch (error) {
+    batchDetailOpen.value = false
+    resetBatchDetailContext()
     showUserError(error)
   }
 }
 
 async function exportRoster() {
   try {
-    const result = await portfolioExternalTeacherApi.exportRoster()
+    const result = await portfolioExternalTeacherApi.exportRoster(buildRosterFilters())
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
@@ -419,28 +452,28 @@ onMounted(async () => {
               placeholder="数据状态"
               style="width: 120px"
               :options="dataStatusOptions"
-              @change="search"
+              @change="searchRoster"
             />
             <a-input
               v-model:value="filters.teachSubject"
               allow-clear
               placeholder="任教科目"
               style="width: 120px"
-              @press-enter="search"
+              @press-enter="searchRoster"
             />
             <a-input
               v-model:value="filters.teacherSource"
               allow-clear
               placeholder="教师来源"
               style="width: 120px"
-              @press-enter="search"
+              @press-enter="searchRoster"
             />
             <a-input
               v-model:value="filters.contractStatus"
               allow-clear
               placeholder="合同状态"
               style="width: 120px"
-              @press-enter="search"
+              @press-enter="searchRoster"
             />
             <UiButton @click="loadPage"> 刷新 </UiButton>
             <UiButton variant="outline" @click="exportRoster"> 导出台账 </UiButton>
@@ -569,98 +602,106 @@ onMounted(async () => {
       v-model:open="drawerOpen"
       :title="form.id ? '编辑外聘教师' : '新增外聘教师'"
       width="480"
+      @close="resetEditorContext"
     >
-      <a-form layout="vertical">
-        <a-form-item label="姓名" required>
-          <a-input v-model:value="form.fullName" />
-        </a-form-item>
-        <a-form-item label="性别">
-          <a-input v-model:value="form.gender" />
-        </a-form-item>
-        <a-form-item label="专业">
-          <a-input v-model:value="form.major" />
-        </a-form-item>
-        <a-form-item label="职称">
-          <a-input v-model:value="form.title" />
-        </a-form-item>
-        <a-form-item label="年龄">
-          <a-input-number v-model:value="form.age" :min="0" style="width: 100%" />
-        </a-form-item>
-        <a-form-item label="身份证号">
-          <a-input v-model:value="form.idCardNo" />
-        </a-form-item>
-        <a-form-item label="聘任学期">
-          <a-input v-model:value="form.hireTerm" />
-        </a-form-item>
-        <a-form-item label="任教科目">
-          <a-input v-model:value="form.teachSubject" />
-        </a-form-item>
-        <a-form-item label="授课学时">
-          <a-input-number v-model:value="form.teachHours" style="width: 100%" />
-        </a-form-item>
-        <a-form-item label="任职单位">
-          <a-input v-model:value="form.employerUnit" />
-        </a-form-item>
-        <a-form-item label="任教专业">
-          <a-input v-model:value="form.teachMajor" />
-        </a-form-item>
-        <a-form-item label="教师来源">
-          <a-input v-model:value="form.teacherSource" />
-        </a-form-item>
-        <a-form-item label="试讲成绩">
-          <a-input v-model:value="form.trialScore" />
-        </a-form-item>
-        <a-form-item label="行业经历">
-          <a-input v-model:value="form.industryExperience" />
-        </a-form-item>
-        <a-form-item label="合同状态">
-          <a-input v-model:value="form.contractStatus" />
-        </a-form-item>
-        <a-form-item label="联系电话">
-          <a-input v-model:value="form.contactPhone" />
-        </a-form-item>
-        <a-form-item label="联系邮箱">
-          <a-input v-model:value="form.contactEmail" />
-        </a-form-item>
-        <a-form-item label="聘期开始">
-          <a-date-picker
-            v-model:value="form.hireStartDate"
-            value-format="YYYY-MM-DD"
-            style="width: 100%"
-          />
-        </a-form-item>
-        <a-form-item label="聘期结束">
-          <a-date-picker
-            v-model:value="form.hireEndDate"
-            value-format="YYYY-MM-DD"
-            style="width: 100%"
-          />
-        </a-form-item>
-        <a-form-item label="数据状态">
-          <a-select v-model:value="form.dataStatus" :options="dataStatusOptions" />
-        </a-form-item>
-        <a-form-item label="附件材料">
-          <input
-            ref="attachmentInputRef"
-            type="file"
-            multiple
-            class="sr-only"
-            @change="onAttachmentPick"
-          />
-          <UiButton :loading="uploadingAttachment" @click="openAttachmentPicker">
-            上传附件
-          </UiButton>
-          <ul v-if="attachmentItems.length" class="attachment-list">
-            <li v-for="item in attachmentItems" :key="item.fileNodeId">
-              {{ item.fileName }}
-              <UiTextAction @click="removeAttachment(item.fileNodeId)"> 移除 </UiTextAction>
-            </li>
-          </ul>
-        </a-form-item>
-        <UiButton variant="primary" :loading="saving" @click="saveRecord"> 保存 </UiButton>
-      </a-form>
+      <a-spin :spinning="editLoading">
+        <a-form layout="vertical">
+          <a-form-item label="姓名" required>
+            <a-input v-model:value="form.fullName" />
+          </a-form-item>
+          <a-form-item label="性别">
+            <a-input v-model:value="form.gender" />
+          </a-form-item>
+          <a-form-item label="专业">
+            <a-input v-model:value="form.major" />
+          </a-form-item>
+          <a-form-item label="职称">
+            <a-input v-model:value="form.title" />
+          </a-form-item>
+          <a-form-item label="年龄">
+            <a-input-number v-model:value="form.age" :min="0" style="width: 100%" />
+          </a-form-item>
+          <a-form-item label="身份证号">
+            <a-input v-model:value="form.idCardNo" />
+          </a-form-item>
+          <a-form-item label="聘任学期">
+            <a-input v-model:value="form.hireTerm" />
+          </a-form-item>
+          <a-form-item label="任教科目">
+            <a-input v-model:value="form.teachSubject" />
+          </a-form-item>
+          <a-form-item label="授课学时">
+            <a-input-number v-model:value="form.teachHours" style="width: 100%" />
+          </a-form-item>
+          <a-form-item label="任职单位">
+            <a-input v-model:value="form.employerUnit" />
+          </a-form-item>
+          <a-form-item label="任教专业">
+            <a-input v-model:value="form.teachMajor" />
+          </a-form-item>
+          <a-form-item label="教师来源">
+            <a-input v-model:value="form.teacherSource" />
+          </a-form-item>
+          <a-form-item label="试讲成绩">
+            <a-input v-model:value="form.trialScore" />
+          </a-form-item>
+          <a-form-item label="行业经历">
+            <a-input v-model:value="form.industryExperience" />
+          </a-form-item>
+          <a-form-item label="合同状态">
+            <a-input v-model:value="form.contractStatus" />
+          </a-form-item>
+          <a-form-item label="联系电话">
+            <a-input v-model:value="form.contactPhone" />
+          </a-form-item>
+          <a-form-item label="联系邮箱">
+            <a-input v-model:value="form.contactEmail" />
+          </a-form-item>
+          <a-form-item label="聘期开始">
+            <a-date-picker
+              v-model:value="form.hireStartDate"
+              value-format="YYYY-MM-DD"
+              style="width: 100%"
+            />
+          </a-form-item>
+          <a-form-item label="聘期结束">
+            <a-date-picker
+              v-model:value="form.hireEndDate"
+              value-format="YYYY-MM-DD"
+              style="width: 100%"
+            />
+          </a-form-item>
+          <a-form-item label="数据状态">
+            <a-select v-model:value="form.dataStatus" :options="dataStatusOptions" />
+          </a-form-item>
+          <a-form-item label="附件材料">
+            <input
+              ref="attachmentInputRef"
+              type="file"
+              multiple
+              class="sr-only"
+              @change="onAttachmentPick"
+            />
+            <UiButton :loading="uploadingAttachment" @click="openAttachmentPicker">
+              上传附件
+            </UiButton>
+            <ul v-if="attachmentItems.length" class="attachment-list">
+              <li v-for="item in attachmentItems" :key="item.fileNodeId">
+                {{ item.fileName }}
+                <UiTextAction @click="removeAttachment(item.fileNodeId)"> 移除 </UiTextAction>
+              </li>
+            </ul>
+          </a-form-item>
+          <UiButton variant="primary" :loading="saving" @click="saveRecord"> 保存 </UiButton>
+        </a-form>
+      </a-spin>
     </a-drawer>
-    <a-drawer v-model:open="batchDetailOpen" title="导入批次详情" width="480">
+    <a-drawer
+      v-model:open="batchDetailOpen"
+      title="导入批次详情"
+      width="480"
+      @close="resetBatchDetailContext"
+    >
       <template v-if="batchDetail">
         <p>文件 {{ batchDetail.fileName ?? '—' }}</p>
         <p>成功 {{ batchDetail.successRows ?? 0 }} · 失败 {{ batchDetail.failedRows ?? 0 }}</p>

@@ -1,17 +1,21 @@
 <script setup lang="ts">
 import type { PortfolioAiAnalysisDetailVO, PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
-import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
-import { PortfolioMaterialTypeCode } from '@/apis/portfolio/enums'
-import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
   PORTFOLIO_REPORT_SCENE_OPTIONS,
   PortfolioAiTaskTypeCode,
   PortfolioReportSceneCode,
+  PortfolioReportSceneDescription,
 } from '@/apis/portfolio/types'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
+import { PortfolioMaterialTypeCode } from '@/apis/portfolio/enums'
+import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import { AiTaskStatusCode } from '@/apis/quality/types'
-import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
+import {
+  QUALITY_SELECTOR_PAGE_SIZE,
+  QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS,
+} from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -32,9 +36,14 @@ const loading = ref(false)
 const polling = ref(false)
 const teachers = ref<PortfolioTeacherSummaryVO[]>([])
 const reportDetail = ref<PortfolioAiAnalysisDetailVO | null>(null)
+const reportRequestToken = ref(0)
+const deepLinkedTaskId = computed(() => readRouteStringParam(route.query.taskId))
+const deepLinkedTeacherId = computed(() => readRouteStringParam(route.query.teacherId))
+const deepLinkedResultView = computed(() => Boolean(deepLinkedTaskId.value))
+let teacherSearchTimer: ReturnType<typeof setTimeout> | null = null
 const form = reactive({
   teacherId: '',
-  reportScene: PortfolioReportSceneCode.ANNUAL_SUMMARY,
+  reportScene: PortfolioReportSceneCode.ANNUAL_DEVELOPMENT,
   reportPeriodLabel: `${new Date().getFullYear()} 年度`,
 })
 
@@ -42,26 +51,113 @@ const teacherSelectOptions = computed(() =>
   portfolioTeacherSelectOptionsFromSummaries(teachers.value),
 )
 
+const resolvedReportScene = computed(() => {
+  const scene = reportDetail.value?.reportScene || form.reportScene
+  if (!scene) {
+    return ''
+  }
+  if (scene in PortfolioReportSceneDescription) {
+    return PortfolioReportSceneDescription[scene as PortfolioReportSceneCode]
+  }
+  return scene
+})
+
+const pageTitle = computed(() => resolvedReportScene.value || '文本分析报告')
+
+const pageSubtitle = computed(() => {
+  if (reportDetail.value?.reportPeriodLabel) {
+    return reportDetail.value.reportPeriodLabel
+  }
+  if (deepLinkedTaskId.value) {
+    return '按年度报告任务查看 AI 结果'
+  }
+  return '按教师场景生成教学档案袋文本分析结果'
+})
+
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-async function loadTeachers() {
+function resetGenerateForm(preserveTeacherId = false) {
+  if (!preserveTeacherId) {
+    form.teacherId = ''
+  }
+  form.reportScene = PortfolioReportSceneCode.ANNUAL_DEVELOPMENT
+  form.reportPeriodLabel = `${new Date().getFullYear()} 年度`
+}
+
+/** 路由任务/教师范围变化时清理旧报告上下文，避免旧轮询与旧教师补水覆盖当前页。 */
+function resetReportContext(preserveTeacherId = false) {
+  reportDetail.value = null
+  polling.value = false
+  resetGenerateForm(preserveTeacherId)
+}
+
+function mergeTeacherOptions(rows: PortfolioTeacherSummaryVO[]) {
+  const optionMap = new Map(teachers.value.map((item) => [item.userId, item]))
+  for (const row of rows) {
+    optionMap.set(row.userId, row)
+  }
+  teachers.value = Array.from(optionMap.values())
+}
+
+/** 深链教师必须进入选择器选项，避免“重新生成其他报告”默认落到错误教师。 */
+async function ensureTeacherOptionLoaded(teacherId: string) {
+  if (!teacherId) {
+    return
+  }
+  if (teachers.value.some((item) => item.userId === teacherId)) {
+    form.teacherId = teacherId
+    return
+  }
+  const currentToken = reportRequestToken.value
+  try {
+    const detail = await portfolioTeacherApi.get(teacherId)
+    if (currentToken !== reportRequestToken.value) {
+      return
+    }
+    mergeTeacherOptions([
+      {
+        userId: detail.userId,
+        userName: detail.userName,
+        nickName: detail.nickName,
+        teacherNumber: detail.teacherNumber,
+        departmentId: detail.departmentId,
+        departmentName: detail.departmentName,
+        title: detail.title,
+        status: detail.status,
+      },
+    ])
+    form.teacherId = teacherId
+  } catch (error) {
+    showUserError(error, '加载报告所属教师失败')
+  }
+}
+
+async function loadTeachers(keyword?: string) {
+  const currentToken = reportRequestToken.value
   try {
     const page = await portfolioTeacherApi.page({
       pageNum: 1,
       pageSize: QUALITY_SELECTOR_PAGE_SIZE,
+      searchText: keyword || undefined,
     })
-    teachers.value = page.list
-    if (!form.teacherId) {
-      const firstOption = portfolioTeacherSelectOptionsFromSummaries(teachers.value)[0]
-      if (firstOption) {
-        form.teacherId = firstOption.value
-      }
+    if (currentToken !== reportRequestToken.value) {
+      return
     }
+    mergeTeacherOptions(page.list)
   } catch (error) {
     showUserError(error)
   }
+}
+
+function handleTeacherSearch(value: string) {
+  if (teacherSearchTimer) {
+    clearTimeout(teacherSearchTimer)
+  }
+  teacherSearchTimer = setTimeout(() => {
+    void loadTeachers(value.trim())
+  }, QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS)
 }
 
 function selectedTeacherName(): string | null {
@@ -79,18 +175,32 @@ function selectedTeacherName(): string | null {
 }
 
 async function pollAnalysis(taskId: string): Promise<PortfolioAiAnalysisDetailVO | null> {
+  const currentToken = reportRequestToken.value
   for (let attempt = 0; attempt < 60; attempt++) {
+    if (currentToken !== reportRequestToken.value) {
+      return null
+    }
     const task = await portfolioAiJobApi.get(taskId)
+    if (currentToken !== reportRequestToken.value) {
+      return null
+    }
     if (task.status === 'SUCCEEDED') {
-      return portfolioAiJobApi.getAnalysisByTask(taskId)
+      const detail = await portfolioAiJobApi.getAnalysisByTask(taskId)
+      if (currentToken !== reportRequestToken.value) {
+        return null
+      }
+      return detail
     }
     if (task.status === AiTaskStatusCode.FAILED || task.status === AiTaskStatusCode.CANCELLED) {
-      showUserError(null, '报告生成失败，请稍后重试')
+      if (currentToken !== reportRequestToken.value) {
+        return null
+      }
+      showUserError(null, '报告生成失败，请查看任务状态后重新发起')
       return null
     }
     await sleep(2000)
   }
-  showUserError(null, '报告生成超时，请稍后重试')
+  showUserError(null, '报告生成超时，请在任务列表查看结果')
   return null
 }
 
@@ -106,6 +216,7 @@ async function submitReport() {
   loading.value = true
   polling.value = true
   reportDetail.value = null
+  const currentToken = ++reportRequestToken.value
   try {
     const teacherName = selectedTeacherName()
     if (!teacherName) {
@@ -121,8 +232,14 @@ async function submitReport() {
         teacherName,
       },
     })
+    if (currentToken !== reportRequestToken.value) {
+      return
+    }
     message.info('报告生成任务已提交，正在等待结果…')
     reportDetail.value = await pollAnalysis(submitResult.taskId)
+    if (currentToken !== reportRequestToken.value) {
+      return
+    }
     if (!reportDetail.value) {
       return
     }
@@ -130,8 +247,10 @@ async function submitReport() {
   } catch (error) {
     showUserError(error)
   } finally {
-    loading.value = false
-    polling.value = false
+    if (currentToken === reportRequestToken.value) {
+      loading.value = false
+      polling.value = false
+    }
   }
 }
 
@@ -150,32 +269,79 @@ function downloadMarkdown() {
 }
 
 async function bootstrapPage() {
-  await loadTeachers()
-  const taskId = readRouteStringParam(route.query.taskId)
-  if (!taskId) {
+  const currentToken = ++reportRequestToken.value
+  const taskId = deepLinkedTaskId.value
+  if (taskId) {
+    resetReportContext(Boolean(deepLinkedTeacherId.value))
+    polling.value = true
+    try {
+      reportDetail.value = await pollAnalysis(taskId)
+      if (currentToken !== reportRequestToken.value) {
+        return
+      }
+      const teacherId = reportDetail.value?.teacherId || deepLinkedTeacherId.value
+      if (teacherId) {
+        await ensureTeacherOptionLoaded(teacherId)
+        if (currentToken !== reportRequestToken.value) {
+          return
+        }
+      }
+      if (reportDetail.value?.reportScene) {
+        form.reportScene = reportDetail.value.reportScene as PortfolioReportSceneCode
+      }
+      if (reportDetail.value?.reportPeriodLabel) {
+        form.reportPeriodLabel = reportDetail.value.reportPeriodLabel
+      }
+    } catch (error) {
+      if (currentToken !== reportRequestToken.value) {
+        return
+      }
+      showUserError(error)
+    } finally {
+      if (currentToken === reportRequestToken.value) {
+        polling.value = false
+      }
+    }
     return
   }
-  polling.value = true
-  try {
-    reportDetail.value = await pollAnalysis(taskId)
-  } catch (error) {
-    showUserError(error)
-  } finally {
-    polling.value = false
+  resetReportContext(Boolean(deepLinkedTeacherId.value))
+  await loadTeachers()
+  if (currentToken !== reportRequestToken.value) {
+    return
+  }
+  if (deepLinkedTeacherId.value) {
+    await ensureTeacherOptionLoaded(deepLinkedTeacherId.value)
   }
 }
 
 onMounted(() => {
   void bootstrapPage()
 })
+
+onUnmounted(() => {
+  if (teacherSearchTimer) {
+    clearTimeout(teacherSearchTimer)
+    teacherSearchTimer = null
+  }
+})
+
+watch(
+  () => [route.query.taskId, route.query.teacherId],
+  ([taskId, teacherId], [previousTaskId, previousTeacherId]) => {
+    if (taskId === previousTaskId && teacherId === previousTeacherId) {
+      return
+    }
+    void bootstrapPage()
+  },
+)
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="文本分析报告" />
+      <ContextBar show-title layout="workbench" :title="pageTitle" :subtitle="pageSubtitle" />
     </template>
-    <UiCard title="生成参数">
+    <UiCard :title="deepLinkedResultView ? '重新生成其他报告' : '生成参数'">
       <div class="toolbar">
         <a-select
           v-model:value="form.teacherId"
@@ -183,7 +349,10 @@ onMounted(() => {
           placeholder="选择教师"
           style="width: 180px"
           show-search
-          option-filter-prop="label"
+          :filter-option="false"
+          option-label-prop="label"
+          @focus="() => loadTeachers()"
+          @search="handleTeacherSearch"
         />
         <a-select
           v-model:value="form.reportScene"
@@ -203,7 +372,32 @@ onMounted(() => {
     </UiCard>
     <UiCard v-if="reportDetail" title="报告预览">
       <div class="report-meta">
-        <span>{{ reportDetail.resultTitle }}</span>
+        <div class="report-meta__summary">
+          <span>{{ reportDetail.resultTitle }}</span>
+          <span
+            v-if="reportDetail.reportScene || reportDetail.reportPeriodLabel"
+            class="report-meta__extra"
+          >
+            {{ resolvedReportScene
+            }}<template v-if="reportDetail.reportPeriodLabel">
+              · {{ reportDetail.reportPeriodLabel }}</template
+            >
+          </span>
+          <span
+            v-if="
+              reportDetail.teacherName || reportDetail.teacherNumber || reportDetail.departmentName
+            "
+            class="report-meta__extra"
+          >
+            {{ reportDetail.teacherName || `教师ID ${reportDetail.teacherId}` }}
+            <template v-if="reportDetail.teacherNumber">
+              · {{ reportDetail.teacherNumber }}</template
+            >
+            <template v-if="reportDetail.departmentName">
+              · {{ reportDetail.departmentName }}</template
+            >
+          </span>
+        </div>
         <UiButton size="sm" @click="downloadMarkdown"> 下载 Markdown </UiButton>
       </div>
       <pre class="markdown">{{ reportDetail.draftMarkdown }}</pre>
@@ -229,6 +423,15 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
+}
+.report-meta__summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.report-meta__extra {
+  font-size: 13px;
+  color: var(--dp-text-secondary);
 }
 .markdown {
   margin: 0;

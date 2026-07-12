@@ -1,4 +1,5 @@
 import { AnonymityModeCode, AnonymityModeDescription } from '@/types/enums/anonymity-mode-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
   ALL_ANONYMITY_MODE_CODES,
@@ -12,7 +13,10 @@ export const ANONYMITY_MODE_OPTIONS: Array<{
 }> = [
   {
     value: AnonymityModeCode.ANONYMOUS,
-    label: AnonymityModeDescription[AnonymityModeCode.ANONYMOUS],
+    label: strictEnumLabel(AnonymityModeDescription, AnonymityModeCode.ANONYMOUS, '匿名模式'),
   },
-  { value: AnonymityModeCode.NAMED, label: AnonymityModeDescription[AnonymityModeCode.NAMED] },
+  {
+    value: AnonymityModeCode.NAMED,
+    label: strictEnumLabel(AnonymityModeDescription, AnonymityModeCode.NAMED, '匿名模式'),
+  },
 ]

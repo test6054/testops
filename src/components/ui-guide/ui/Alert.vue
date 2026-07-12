@@ -56,12 +56,12 @@ const iconComponent = computed(() => {
   --alert-border: var(--dp-blue-200);
   --alert-icon: var(--dp-blue-600);
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: flex-start;
   border: 1px solid var(--alert-border);
   background: var(--alert-bg);
   border-radius: var(--dp-radius-panel);
-  padding: 14px 16px;
+  padding: 8px 10px;
   color: var(--dp-text-primary);
 }
 
@@ -95,7 +95,7 @@ const iconComponent = computed(() => {
   align-items: center;
   justify-content: center;
   padding-top: 1px;
-  font-size: 16px;
+  font-size: 14px;
   color: var(--alert-icon);
 }
 

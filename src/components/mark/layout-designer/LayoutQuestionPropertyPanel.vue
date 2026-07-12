@@ -5,8 +5,11 @@ import type {
   ExamQuestionStandardAnswerOptionRequest,
   ObjectiveComparePolicyCode,
 } from '@/apis/mark/exam-standard-answer'
+import {
+  OBJECTIVE_COMPARE_POLICY_OPTIONS,
+  ObjectiveComparePolicyCode as ObjectiveComparePolicy,
+} from '@/apis/mark/exam-standard-answer'
 import { computed } from 'vue'
-import { OBJECTIVE_COMPARE_POLICY_OPTIONS, ObjectiveComparePolicyCode as ObjectiveComparePolicy } from '@/apis/mark/exam-standard-answer'
 import { QuestionTypeCode, QuestionTypeDescription } from '@/apis/mark/question-type'
 import {
   ALL_MARK_OCR_SCENE_CODES,
@@ -17,6 +20,7 @@ import {
   findPrimaryAnswerBlockForQuestion,
   isLayoutQuestionRoiReady,
 } from '@/utils/exam-layout-designer'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const props = defineProps<{
   document: ExamLayoutDocument | null
@@ -29,7 +33,7 @@ const emit = defineEmits<{
 
 const OCR_SCENE_OPTIONS = ALL_MARK_OCR_SCENE_CODES.map((value) => ({
   value,
-  label: MarkOcrSceneDescription[value],
+  label: strictEnumLabel(MarkOcrSceneDescription, value, 'OCR 场景'),
 }))
 
 const focusedQuestion = computed(() => props.question)
@@ -79,8 +83,7 @@ const focusedOcrScene = computed({
 })
 
 const focusedComparePolicy = computed({
-  get: (): ObjectiveComparePolicyCode | undefined =>
-    focusedQuestion.value?.answer?.comparePolicy,
+  get: (): ObjectiveComparePolicyCode | undefined => focusedQuestion.value?.answer?.comparePolicy,
   set: (value: ObjectiveComparePolicyCode | undefined) => {
     if (value) {
       updateComparePolicy(value)
@@ -97,7 +100,9 @@ function onOcrSceneChange(value: MarkOcrSceneCode): void {
   ])
   patchQuestion({
     ocrScene: value,
-    questionType: objectiveScenes.has(value) ? QuestionTypeCode.OBJECTIVE : QuestionTypeCode.SUBJECTIVE,
+    questionType: objectiveScenes.has(value)
+      ? QuestionTypeCode.OBJECTIVE
+      : QuestionTypeCode.SUBJECTIVE,
     answer: {
       ...(focusedQuestion.value?.answer ?? {}),
       comparePolicy: defaultComparePolicy(value),
@@ -107,7 +112,7 @@ function onOcrSceneChange(value: MarkOcrSceneCode): void {
 }
 
 function formatQuestionTypeLabel(question: ExamLayoutQuestionDto): string {
-  return QuestionTypeDescription[question.questionType]
+  return strictEnumLabel(QuestionTypeDescription, question.questionType, '题型')
 }
 
 function defaultComparePolicy(ocrScene?: MarkOcrSceneCode): ObjectiveComparePolicyCode | undefined {
@@ -135,7 +140,9 @@ function parseOptionText(value: string): ExamQuestionDeclaredOptionRequest[] {
     .map((optionLabel, index) => ({ optionLabel, sortNo: index + 1 }))
 }
 
-function formatOptions(options?: Array<ExamQuestionDeclaredOptionRequest | ExamQuestionStandardAnswerOptionRequest>): string {
+function formatOptions(
+  options?: Array<ExamQuestionDeclaredOptionRequest | ExamQuestionStandardAnswerOptionRequest>,
+): string {
   return (options ?? [])
     .slice()
     .sort((a, b) => (a.sortNo ?? 0) - (b.sortNo ?? 0))
@@ -186,20 +193,19 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
       <a-form-item label="题号">
         <a-input
           :value="focusedQuestion.questionNo"
-          @change="patchQuestion({ questionNo: ($event.target as HTMLInputElement).value, normalizedQuestionNo: ($event.target as HTMLInputElement).value })"
+          @change="
+            patchQuestion({
+              questionNo: ($event.target as HTMLInputElement).value,
+              normalizedQuestionNo: ($event.target as HTMLInputElement).value,
+            })
+          "
         />
       </a-form-item>
       <a-form-item label="OCR 场景">
-        <a-select
-          v-model:value="focusedOcrScene"
-          :options="OCR_SCENE_OPTIONS"
-        />
+        <a-select v-model:value="focusedOcrScene" :options="OCR_SCENE_OPTIONS" />
       </a-form-item>
       <a-form-item label="题型">
-        <a-input
-          :value="formatQuestionTypeLabel(focusedQuestion)"
-          disabled
-        />
+        <a-input :value="formatQuestionTypeLabel(focusedQuestion)" disabled />
       </a-form-item>
       <a-form-item label="满分">
         <a-input-number
@@ -223,7 +229,10 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
       <a-form-item label="答案资产状态">
         <a-input :value="answerCompletenessHint(focusedQuestion)" disabled />
       </a-form-item>
-      <a-form-item v-if="focusedQuestion.questionType === QuestionTypeCode.OBJECTIVE" label="比较策略">
+      <a-form-item
+        v-if="focusedQuestion.questionType === QuestionTypeCode.OBJECTIVE"
+        label="比较策略"
+      >
         <a-select
           v-model:value="focusedComparePolicy"
           :options="OBJECTIVE_COMPARE_POLICY_OPTIONS"
@@ -245,12 +254,18 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
           />
         </a-form-item>
       </template>
-      <template v-else-if="focusedQuestion.answer?.comparePolicy === ObjectiveComparePolicy.NUMERIC_TOLERANCE">
+      <template
+        v-else-if="
+          focusedQuestion.answer?.comparePolicy === ObjectiveComparePolicy.NUMERIC_TOLERANCE
+        "
+      >
         <a-form-item label="数值标准值">
           <a-input-number
             :value="focusedQuestion.answer?.numericExpectedValue"
             style="width: 100%"
-            @change="patchQuestionAnswer({ numericExpectedValue: Number($event), effectiveNow: true })"
+            @change="
+              patchQuestionAnswer({ numericExpectedValue: Number($event), effectiveNow: true })
+            "
           />
         </a-form-item>
         <a-form-item label="允许误差">
@@ -264,7 +279,12 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
         <a-form-item label="单位">
           <a-input
             :value="focusedQuestion.answer?.numericUnit"
-            @change="patchQuestionAnswer({ numericUnit: ($event.target as HTMLInputElement).value, effectiveNow: true })"
+            @change="
+              patchQuestionAnswer({
+                numericUnit: ($event.target as HTMLInputElement).value,
+                effectiveNow: true,
+              })
+            "
           />
         </a-form-item>
       </template>
@@ -272,28 +292,48 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
         <a-textarea
           :value="focusedQuestion.answer?.standardAnswer"
           :rows="3"
-          @change="patchQuestionAnswer({ standardAnswer: ($event.target as HTMLTextAreaElement).value, effectiveNow: true })"
+          @change="
+            patchQuestionAnswer({
+              standardAnswer: ($event.target as HTMLTextAreaElement).value,
+              effectiveNow: true,
+            })
+          "
         />
       </a-form-item>
       <a-form-item label="答案解析">
         <a-textarea
           :value="focusedQuestion.answer?.answerExplain"
           :rows="3"
-          @change="patchQuestionAnswer({ answerExplain: ($event.target as HTMLTextAreaElement).value, effectiveNow: true })"
+          @change="
+            patchQuestionAnswer({
+              answerExplain: ($event.target as HTMLTextAreaElement).value,
+              effectiveNow: true,
+            })
+          "
         />
       </a-form-item>
       <a-form-item label="评分细则">
         <a-textarea
           :value="focusedQuestion.answer?.gradingRubric"
           :rows="4"
-          @change="patchQuestionAnswer({ gradingRubric: ($event.target as HTMLTextAreaElement).value, effectiveNow: true })"
+          @change="
+            patchQuestionAnswer({
+              gradingRubric: ($event.target as HTMLTextAreaElement).value,
+              effectiveNow: true,
+            })
+          "
         />
       </a-form-item>
       <a-form-item label="AI 评分提示">
         <a-textarea
           :value="focusedQuestion.answer?.aiHint"
           :rows="3"
-          @change="patchQuestionAnswer({ aiHint: ($event.target as HTMLTextAreaElement).value, effectiveNow: true })"
+          @change="
+            patchQuestionAnswer({
+              aiHint: ($event.target as HTMLTextAreaElement).value,
+              effectiveNow: true,
+            })
+          "
         />
       </a-form-item>
       <a-form-item label="页面来源">

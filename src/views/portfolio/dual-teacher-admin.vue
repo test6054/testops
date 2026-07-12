@@ -4,6 +4,7 @@ import type {
   PortfolioDualTeacherApplicationVO,
   PortfolioDualTeacherEligibilityFreezeVO,
 } from '@/apis/portfolio/teacher-platform'
+import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { message, Modal } from 'ant-design-vue'
 import { computed, ref } from 'vue'
@@ -12,7 +13,6 @@ import {
   PortfolioDualTeacherApplicationStatusCode,
   PortfolioDualTeacherApplicationStatusDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -26,13 +26,14 @@ import { useQueryTable } from '@/composables/useQueryTable'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
-import { hasTeacherTenantPermission } from '@/utils/permission'
+import { hasTeacherTenantPermission, RoleEnum } from '@/utils/permission'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const authStore = useAuthStore()
 const userStore = useUserStore()
 const collegeEligibilityById = ref<Record<string, PortfolioDualTeacherEligibilityFreezeVO>>({})
-const canCollegeReview = computed(() => false)
+const canCollegeReview = computed(() => authStore.userRole === RoleEnum.CROP_ADMIN)
 const canAcademicReview = computed(() =>
   hasTeacherTenantPermission({
     roleKey: authStore.userRole,
@@ -42,7 +43,7 @@ const canAcademicReview = computed(() =>
 const canExport = computed(() => canAcademicReview.value)
 
 function statusLabel(status: PortfolioDualTeacherApplicationVO['applicationStatus']) {
-  return PortfolioDualTeacherApplicationStatusDescription[status]
+  return strictEnumLabel(PortfolioDualTeacherApplicationStatusDescription, status, '双师申请状态')
 }
 
 const importModalOpen = ref(false)
@@ -106,15 +107,15 @@ function buildDualTeacherRowActions(
 ): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = []
   if (
-    record.applicationStatus === PortfolioDualTeacherApplicationStatusCode.DRAFT
-    || record.applicationStatus === 'COLLEGE_RETURNED'
-    || record.applicationStatus === 'ACADEMIC_RETURNED'
+    record.applicationStatus === PortfolioDualTeacherApplicationStatusCode.DRAFT ||
+    record.applicationStatus === 'COLLEGE_RETURNED' ||
+    record.applicationStatus === 'ACADEMIC_RETURNED'
   ) {
     actions.push({ key: 'submit', label: '提交' })
   }
   if (
-    canCollegeReview.value
-    && record.applicationStatus === PortfolioDualTeacherApplicationStatusCode.COLLEGE_PENDING
+    canCollegeReview.value &&
+    record.applicationStatus === PortfolioDualTeacherApplicationStatusCode.COLLEGE_PENDING
   ) {
     actions.push({ key: 'preview', label: '预览资格' })
   }
@@ -122,8 +123,8 @@ function buildDualTeacherRowActions(
     actions.push({ key: 'collegeApprove', label: '院审通过', tone: 'primary' })
   }
   if (
-    canCollegeReview.value
-    && record.applicationStatus === PortfolioDualTeacherApplicationStatusCode.COLLEGE_PENDING
+    canCollegeReview.value &&
+    record.applicationStatus === PortfolioDualTeacherApplicationStatusCode.COLLEGE_PENDING
   ) {
     actions.push({ key: 'collegeReturn', label: '院审退回' })
   }
@@ -131,8 +132,8 @@ function buildDualTeacherRowActions(
     actions.push({ key: 'academicApprove', label: '教务通过', tone: 'primary' })
   }
   if (
-    canAcademicReview.value
-    && record.applicationStatus === PortfolioDualTeacherApplicationStatusCode.ACADEMIC_PENDING
+    canAcademicReview.value &&
+    record.applicationStatus === PortfolioDualTeacherApplicationStatusCode.ACADEMIC_PENDING
   ) {
     actions.push({ key: 'academicReturn', label: '教务退回' })
     actions.push({ key: 'academicReject', label: '教务驳回', tone: 'danger' })
@@ -140,13 +141,13 @@ function buildDualTeacherRowActions(
   return actions
 }
 
-type DualTeacherWorkflowAction
-  = | 'submit'
-    | 'collegeApprove'
-    | 'collegeReturn'
-    | 'academicApprove'
-    | 'academicReturn'
-    | 'academicReject'
+type DualTeacherWorkflowAction =
+  | 'submit'
+  | 'collegeApprove'
+  | 'collegeReturn'
+  | 'academicApprove'
+  | 'academicReturn'
+  | 'academicReject'
 
 function handleDualTeacherRowAction(key: string, record: PortfolioDualTeacherApplicationVO): void {
   if (key === 'preview') {
@@ -248,10 +249,11 @@ async function handleImportSuccess() {
             </UiTag>
             <span
               v-else-if="
-                record.applicationStatus
-                  === PortfolioDualTeacherApplicationStatusCode.COLLEGE_PENDING
+                record.applicationStatus ===
+                PortfolioDualTeacherApplicationStatusCode.COLLEGE_PENDING
               "
-            >待院审冻结</span>
+              >待院审冻结</span
+            >
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions

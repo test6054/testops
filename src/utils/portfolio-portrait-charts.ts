@@ -1,5 +1,6 @@
 import type { RadarSeriesOption } from 'echarts/charts'
 import type { EChartsCoreOption } from 'echarts/core'
+import type { PortfolioPortraitCreditCurvePointVO } from '@/apis/portfolio/analysis'
 import type {
   PortfolioTeacherPortraitCohortCompareVO,
   PortfolioTeacherPortraitTrendPointVO,
@@ -34,11 +35,11 @@ export function buildPortraitRadarChartOption(
   if (dimensions.length === 0) {
     return emptyChartOption('暂无维度数据')
   }
-  const indicators = dimensions.map(item => ({
+  const indicators = dimensions.map((item) => ({
     name: item.dimensionLabel,
     max: PORTRAIT_SCORE_MAX,
   }))
-  const personalValues = dimensions.map(item => Number(item.score))
+  const personalValues = dimensions.map((item) => Number(item.score))
   const series: RadarSeriesOption[] = [
     {
       type: 'radar',
@@ -51,12 +52,13 @@ export function buildPortraitRadarChartOption(
       data: [{ value: personalValues, name: '个人' }],
     },
   ]
-  const showCohortMedian = cohort
-    && cohort.displayMode !== PortfolioPortraitCohortDisplayModeCode.INSUFFICIENT
-    && cohort.dimensions.some(item => item.cohortMedian != null)
+  const showCohortMedian =
+    cohort &&
+    cohort.displayMode !== PortfolioPortraitCohortDisplayModeCode.INSUFFICIENT &&
+    cohort.dimensions.some((item) => item.cohortMedian != null)
   if (showCohortMedian) {
     const cohortMedianValues = dimensions.map((item) => {
-      const cohortRow = cohort.dimensions.find(row => row.dimensionCode === item.dimensionCode)
+      const cohortRow = cohort.dimensions.find((row) => row.dimensionCode === item.dimensionCode)
       return cohortRow?.cohortMedian != null ? Number(cohortRow.cohortMedian) : 0
     })
     series.push({
@@ -102,19 +104,19 @@ export function buildPortraitCohortRangeChartOption(
   if (cohort.displayMode === PortfolioPortraitCohortDisplayModeCode.INSUFFICIENT) {
     return emptyChartOption('同院系样本不足，暂不展示群体区间')
   }
-  const rows = cohort.dimensions.filter(item =>
-    item.cohortPercentileLow != null && item.cohortPercentileHigh != null,
+  const rows = cohort.dimensions.filter(
+    (item) => item.cohortPercentileLow != null && item.cohortPercentileHigh != null,
   )
   if (rows.length === 0) {
     return emptyChartOption('暂无群体分布数据')
   }
-  const categories = rows.map(item => item.dimensionLabel)
-  const lowValues = rows.map(item => Number(item.cohortPercentileLow))
-  const bandValues = rows.map(item =>
-    Number(item.cohortPercentileHigh) - Number(item.cohortPercentileLow),
+  const categories = rows.map((item) => item.dimensionLabel)
+  const lowValues = rows.map((item) => Number(item.cohortPercentileLow))
+  const bandValues = rows.map(
+    (item) => Number(item.cohortPercentileHigh) - Number(item.cohortPercentileLow),
   )
-  const personalValues = rows.map(item => Number(item.personalScore))
-  const medianValues = rows.map(item => Number(item.cohortMedian ?? item.cohortAverage ?? 0))
+  const personalValues = rows.map((item) => Number(item.personalScore))
+  const medianValues = rows.map((item) => Number(item.cohortMedian ?? item.cohortAverage ?? 0))
   const bandColor = resolveThemeColor('--ant-color-warning-bg', 'rgba(245, 158, 11, 0.28)')
   const medianColor = MARK_ECHARTS_PALETTE.warning
 
@@ -190,6 +192,24 @@ export function buildPortraitCohortRangeChartOption(
         data: personalValues.map((value, index) => [value, index]),
       },
     ],
+  })
+}
+
+export function buildPortraitCreditCurveChartOption(
+  points: PortfolioPortraitCreditCurvePointVO[],
+): EChartsCoreOption {
+  if (points.length === 0) {
+    return emptyChartOption('暂无官方培训学分记录')
+  }
+  const trendPoints = points.map((point, index) => ({
+    key: String(index),
+    label: point.academicYear,
+    value: Number(point.cumulativeCredits),
+  }))
+  return buildTrendLineChartOption(trendPoints, {
+    yAxisName: '累计学分',
+    area: true,
+    emptyText: '暂无官方培训学分记录',
   })
 }
 

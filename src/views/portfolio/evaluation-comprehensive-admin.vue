@@ -6,7 +6,12 @@ import type {
   PortfolioEvaluationComprehensiveTeacherRowVO,
   PortfolioEvaluationTaskVO,
 } from '@/apis/portfolio/teacher-platform'
+import {
+  portfolioEvaluationEntryApi,
+  portfolioEvaluationTaskApi,
+} from '@/apis/portfolio/teacher-platform'
 import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
+import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
@@ -14,11 +19,6 @@ import {
   PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES,
   PortfolioEvaluationModeDescription,
 } from '@/apis/portfolio/enums'
-import {
-  portfolioEvaluationEntryApi,
-  portfolioEvaluationTaskApi,
-} from '@/apis/portfolio/teacher-platform'
-import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
 import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -29,15 +29,18 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { showUserError } from '@/utils/error-handler'
+import { loadAllPages } from '@/utils/load-all-pages'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const loading = ref(false)
 const exporting = ref(false)
 const tasksLoading = ref(false)
+const analysisRequestToken = ref(0)
 const tasks = ref<PortfolioEvaluationTaskVO[]>([])
 const workgroups = ref<EvaluationWorkgroupVO[]>([])
 const analysis = ref<PortfolioEvaluationComprehensiveAnalysisVO | null>(null)
+const analysisParamsSnapshot = ref<ReturnType<typeof buildAnalysisParams> | null>(null)
 interface PortfolioEvaluationComprehensiveFilter {
   planYear: string
   workgroupId: string
@@ -119,6 +122,13 @@ function buildAnalysisParams() {
   }
 }
 
+/** 筛选改变后，旧分析结论不再代表当前条件，必须失效显示与导出快照。 */
+function resetAnalysisContext() {
+  analysisRequestToken.value += 1
+  analysis.value = null
+  analysisParamsSnapshot.value = null
+}
+
 function canRunAnalysis(): boolean {
   if (filter.selectedTaskIds.length > 0) {
     return true
@@ -128,11 +138,14 @@ function canRunAnalysis(): boolean {
 
 async function loadWorkgroups() {
   try {
-    const page = await evaluationWorkgroupApi.page({
-      pageNum: 1,
-      pageSize: QUALITY_SELECTOR_PAGE_SIZE,
-    })
-    workgroups.value = page.list ?? []
+    workgroups.value = await loadAllPages(
+      ({ pageNum, pageSize }) =>
+        evaluationWorkgroupApi.page({
+          pageNum,
+          pageSize,
+        }),
+      QUALITY_SELECTOR_PAGE_SIZE,
+    )
   } catch (error) {
     showUserError(error)
   }
@@ -141,11 +154,15 @@ async function loadWorkgroups() {
 async function loadTasks() {
   tasksLoading.value = true
   try {
-    const page = await portfolioEvaluationTaskApi.page({
-      pageNum: 1,
-      pageSize: QUALITY_SELECTOR_PAGE_SIZE,
-    })
-    tasks.value = page.list.filter((item) =>
+    const taskRows = await loadAllPages(
+      ({ pageNum, pageSize }) =>
+        portfolioEvaluationTaskApi.page({
+          pageNum,
+          pageSize,
+        }),
+      QUALITY_SELECTOR_PAGE_SIZE,
+    )
+    tasks.value = taskRows.filter((item) =>
       PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES.includes(item.taskStatus),
     )
   } catch (error) {
@@ -157,31 +174,43 @@ async function loadTasks() {
 
 async function runAnalysis() {
   if (!canRunAnalysis()) {
-    analysis.value = null
+    resetAnalysisContext()
     message.warning('当前筛选下无可分析任务，请调整评价组、年度或任务范围')
     return
   }
+  const currentToken = ++analysisRequestToken.value
+  const params = buildAnalysisParams()
   loading.value = true
   analysis.value = null
   try {
-    const result = await portfolioEvaluationEntryApi.comprehensiveAnalysis(buildAnalysisParams())
+    const result = await portfolioEvaluationEntryApi.comprehensiveAnalysis(params)
+    if (currentToken !== analysisRequestToken.value) {
+      return
+    }
     analysis.value = result
+    analysisParamsSnapshot.value = params
     await hydrateTeacherLabels(result.teacherRows.map((row) => row.subjectTeacherUserId))
   } catch (error) {
+    if (currentToken !== analysisRequestToken.value) {
+      return
+    }
     showUserError(error)
   } finally {
-    loading.value = false
+    if (currentToken === analysisRequestToken.value) {
+      loading.value = false
+    }
   }
 }
 
 async function exportAnalysis() {
-  if (!analysis.value) {
+  if (!analysis.value || !analysisParamsSnapshot.value) {
     return
   }
   exporting.value = true
   try {
-    const result
-      = await portfolioEvaluationEntryApi.exportComprehensiveAnalysis(buildAnalysisParams())
+    const result = await portfolioEvaluationEntryApi.exportComprehensiveAnalysis(
+      analysisParamsSnapshot.value,
+    )
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条填报`)
   } catch (error) {
@@ -194,12 +223,20 @@ async function exportAnalysis() {
 watch(
   () => filter.workgroupId,
   () => {
+    resetAnalysisContext()
     if (!filter.workgroupId) {
       return
     }
     filter.selectedTaskIds = filter.selectedTaskIds.filter((id) =>
       tasks.value.some((task) => task.id === id && task.workgroupId === filter.workgroupId),
     )
+  },
+)
+
+watch(
+  () => [filter.planYear, filter.selectedTaskIds.join(',')],
+  () => {
+    resetAnalysisContext()
   },
 )
 

@@ -5,11 +5,31 @@ import type { QueryDto } from '@/types'
 import type { PortfolioAiAnalysisReviewStatusCode } from '@/types/enums/portfolio-ai-analysis-review-status-enum'
 import type { PortfolioAiAnalysisTypeCode } from '@/types/enums/portfolio-ai-analysis-type-enum'
 import type { PortfolioAiExtractTaskTypeCode } from '@/types/enums/portfolio-ai-extract-task-type-enum'
+import {
+  ALL_PORTFOLIO_AI_EXTRACT_TASK_TYPE_CODES,
+  PortfolioAiExtractTaskTypeDescription
+} from '@/types/enums/portfolio-ai-extract-task-type-enum'
 import type { PortfolioAiTaskTypeCode } from '@/types/enums/portfolio-ai-task-type-enum'
 import type { PortfolioArchiveCategoryScopeCode } from '@/types/enums/portfolio-archive-category-scope-enum'
+import {
+  ALL_PORTFOLIO_ARCHIVE_CATEGORY_SCOPE_CODES,
+  PortfolioArchiveCategoryScopeDescription
+} from '@/types/enums/portfolio-archive-category-scope-enum'
 import type { PortfolioArchiveCategoryStatusCode } from '@/types/enums/portfolio-archive-category-status-enum'
+import {
+  ALL_PORTFOLIO_ARCHIVE_CATEGORY_STATUS_CODES,
+  PortfolioArchiveCategoryStatusDescription
+} from '@/types/enums/portfolio-archive-category-status-enum'
 import type { PortfolioArchiveFieldSourceTypeCode } from '@/types/enums/portfolio-archive-field-source-type-enum'
+import {
+  ALL_PORTFOLIO_ARCHIVE_FIELD_SOURCE_TYPE_CODES,
+  PortfolioArchiveFieldSourceTypeDescription
+} from '@/types/enums/portfolio-archive-field-source-type-enum'
 import type { PortfolioArchiveFieldTypeCode } from '@/types/enums/portfolio-archive-field-type-enum'
+import {
+  ALL_PORTFOLIO_ARCHIVE_FIELD_TYPE_CODES,
+  PortfolioArchiveFieldTypeDescription
+} from '@/types/enums/portfolio-archive-field-type-enum'
 import type { PortfolioArchiveRecordSourceTypeCode } from '@/types/enums/portfolio-archive-record-source-type-enum'
 import type {
   PortfolioArchiveTemplateVersionStatusCode
@@ -17,44 +37,52 @@ import type {
 import type { PortfolioCorrectionHandleActionCode } from '@/types/enums/portfolio-correction-handle-action-enum'
 import type { PortfolioEduUserOrgTreeNodeTypeCode } from '@/types/enums/portfolio-edu-user-org-tree-node-type-enum'
 import type { PortfolioEvaluationObjectionTypeCode } from '@/types/enums/portfolio-evaluation-objection-type-enum'
+import {
+  ALL_PORTFOLIO_EVALUATION_OBJECTION_TYPE_CODES,
+  PortfolioEvaluationObjectionTypeDescription
+} from '@/types/enums/portfolio-evaluation-objection-type-enum'
 import type {
   PortfolioEvaluationTaskAdvanceActionCode
 } from '@/types/enums/portfolio-evaluation-task-advance-action-enum'
 import type { PortfolioEvaluationTaskStatusCode } from '@/types/enums/portfolio-evaluation-task-status-enum'
 import type { PortfolioGapTaskStatusCode } from '@/types/enums/portfolio-gap-task-status-enum'
 import type { PortfolioMaterialTypeCode } from '@/types/enums/portfolio-material-type-enum'
+import {
+  ALL_PORTFOLIO_MATERIAL_TYPE_CODES,
+  PortfolioMaterialTypeDescription
+} from '@/types/enums/portfolio-material-type-enum'
 import type { PortfolioOrgAliasTargetTypeCode } from '@/types/enums/portfolio-org-alias-target-type-enum'
 import type { PortfolioOrgUnitTypeCode } from '@/types/enums/portfolio-org-unit-type-enum'
+import {
+  ALL_PORTFOLIO_ORG_UNIT_TYPE_CODES,
+  PortfolioOrgUnitTypeDescription
+} from '@/types/enums/portfolio-org-unit-type-enum'
+import type { PortfolioPortraitCohortTypeCode } from '@/types/enums/portfolio-portrait-cohort-type-enum'
 import type { PortfolioPortraitCohortDisplayModeCode } from '@/types/enums/portfolio-portrait-cohort-display-mode-enum'
 import type { PortfolioPortraitDimensionCode } from '@/types/enums/portfolio-portrait-dimension-enum'
 import type {
   PortfolioPortraitIndicatorEvidenceTypeCode
 } from '@/types/enums/portfolio-portrait-indicator-evidence-type-enum'
+import type { PortfolioPortraitStageCode } from '@/types/enums/portfolio-portrait-stage-code-enum'
 import type { PortfolioReportSceneCode } from '@/types/enums/portfolio-report-scene-enum'
+import {
+  ALL_PORTFOLIO_REPORT_SCENE_CODES,
+  PortfolioReportSceneDescription
+} from '@/types/enums/portfolio-report-scene-enum'
 import type { PortfolioReviewActionTypeCode } from '@/types/enums/portfolio-review-action-type-enum'
 import type { PortfolioTeacherIdentityStatusCode } from '@/types/enums/portfolio-teacher-identity-status-enum'
+import {
+  ALL_PORTFOLIO_TEACHER_IDENTITY_STATUS_CODES,
+  PortfolioTeacherIdentityStatusDescription
+} from '@/types/enums/portfolio-teacher-identity-status-enum'
 import type { PortfolioTeacherIdentityTypeCode } from '@/types/enums/portfolio-teacher-identity-type-enum'
+import {
+  ALL_PORTFOLIO_TEACHER_IDENTITY_TYPE_CODES,
+  PortfolioTeacherIdentityTypeDescription
+} from '@/types/enums/portfolio-teacher-identity-type-enum'
 import type { PortfolioTodoTypeCode } from '@/types/enums/portfolio-todo-type-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { UserStatusEnum } from '@/types/enums/user-status'
-import { ALL_PORTFOLIO_AI_EXTRACT_TASK_TYPE_CODES } from '@/types/enums/portfolio-ai-extract-task-type-enum'
-import { PortfolioAiTaskTypeDescription } from '@/types/enums/portfolio-ai-task-type-enum'
-import {
-  ALL_PORTFOLIO_ARCHIVE_CATEGORY_SCOPE_CODES,
-  PortfolioArchiveCategoryScopeDescription
-} from '@/types/enums/portfolio-archive-category-scope-enum'
-import {
-  ALL_PORTFOLIO_ARCHIVE_CATEGORY_STATUS_CODES,
-  PortfolioArchiveCategoryStatusDescription
-} from '@/types/enums/portfolio-archive-category-status-enum'
-import {
-  ALL_PORTFOLIO_ARCHIVE_FIELD_SOURCE_TYPE_CODES,
-  PortfolioArchiveFieldSourceTypeDescription
-} from '@/types/enums/portfolio-archive-field-source-type-enum'
-import {
-  ALL_PORTFOLIO_ARCHIVE_FIELD_TYPE_CODES,
-  PortfolioArchiveFieldTypeDescription
-} from '@/types/enums/portfolio-archive-field-type-enum'
 import {
   ALL_PORTFOLIO_ARCHIVE_RECORD_STATUS_CODES,
   PortfolioArchiveRecordStatusCode,
@@ -67,10 +95,6 @@ import {
   PortfolioEvaluationObjectionHandleActionCode
 } from '@/types/enums/portfolio-evaluation-objection-handle-action-enum'
 import { PortfolioEvaluationObjectionStatusCode } from '@/types/enums/portfolio-evaluation-objection-status-enum'
-import {
-  ALL_PORTFOLIO_EVALUATION_OBJECTION_TYPE_CODES,
-  PortfolioEvaluationObjectionTypeDescription
-} from '@/types/enums/portfolio-evaluation-objection-type-enum'
 import { PortfolioEvaluationPublicityStatusCode } from '@/types/enums/portfolio-evaluation-publicity-status-enum'
 import {
   PortfolioEvaluationTeacherNoticeStatusCode
@@ -82,29 +106,10 @@ import {
   PortfolioMaterialStatusCode,
   PortfolioMaterialStatusDescription
 } from '@/types/enums/portfolio-material-status-enum'
-import {
-  ALL_PORTFOLIO_MATERIAL_TYPE_CODES,
-  PortfolioMaterialTypeDescription
-} from '@/types/enums/portfolio-material-type-enum'
-import {
-  ALL_PORTFOLIO_ORG_UNIT_TYPE_CODES,
-  PortfolioOrgUnitTypeDescription
-} from '@/types/enums/portfolio-org-unit-type-enum'
 import { PortfolioPolicyMatchConclusionCode } from '@/types/enums/portfolio-policy-match-conclusion-enum'
 import { PortfolioPortraitDimensionReadinessCode } from '@/types/enums/portfolio-portrait-dimension-readiness-enum'
-import {
-  ALL_PORTFOLIO_REPORT_SCENE_CODES,
-  PortfolioReportSceneDescription
-} from '@/types/enums/portfolio-report-scene-enum'
 import { PortfolioReviewTaskStatusCode } from '@/types/enums/portfolio-review-task-status-enum'
-import {
-  ALL_PORTFOLIO_TEACHER_IDENTITY_STATUS_CODES,
-  PortfolioTeacherIdentityStatusDescription
-} from '@/types/enums/portfolio-teacher-identity-status-enum'
-import {
-  ALL_PORTFOLIO_TEACHER_IDENTITY_TYPE_CODES,
-  PortfolioTeacherIdentityTypeDescription
-} from '@/types/enums/portfolio-teacher-identity-type-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 /**
  * 教学档案袋 API 共享类型 - 对应 edu-quality 标准包（controller/model 扁平化后）
@@ -119,7 +124,7 @@ export {
 export const PORTFOLIO_ORG_UNIT_TYPE_OPTIONS: Array<{ value: PortfolioOrgUnitTypeCode, label: string }>
   = ALL_PORTFOLIO_ORG_UNIT_TYPE_CODES.map((value) => ({
     value,
-    label: PortfolioOrgUnitTypeDescription[value],
+    label: strictEnumLabel(PortfolioOrgUnitTypeDescription, value, '组织单元类型'),
   }))
 
 export {
@@ -131,12 +136,13 @@ export {
 export {
   ALL_PORTFOLIO_AI_EXTRACT_TASK_TYPE_CODES,
   PortfolioAiExtractTaskTypeCode,
+  PortfolioAiExtractTaskTypeDescription,
 } from '@/types/enums/portfolio-ai-extract-task-type-enum'
 
 export const PORTFOLIO_TEACHER_IDENTITY_TYPE_OPTIONS: Array<{ value: PortfolioTeacherIdentityTypeCode, label: string }>
   = ALL_PORTFOLIO_TEACHER_IDENTITY_TYPE_CODES.map((value) => ({
     value,
-    label: PortfolioTeacherIdentityTypeDescription[value],
+    label: strictEnumLabel(PortfolioTeacherIdentityTypeDescription, value, '教师身份类型'),
   }))
 
 export {
@@ -148,7 +154,7 @@ export {
 export const PORTFOLIO_TEACHER_IDENTITY_STATUS_OPTIONS: Array<{ value: PortfolioTeacherIdentityStatusCode, label: string }>
   = ALL_PORTFOLIO_TEACHER_IDENTITY_STATUS_CODES.map((value) => ({
     value,
-    label: PortfolioTeacherIdentityStatusDescription[value],
+    label: strictEnumLabel(PortfolioTeacherIdentityStatusDescription, value, '教师身份状态'),
   }))
 
 export {
@@ -166,7 +172,7 @@ export {
 export const PORTFOLIO_ARCHIVE_CATEGORY_SCOPE_OPTIONS: Array<{ value: PortfolioArchiveCategoryScopeCode, label: string }>
   = ALL_PORTFOLIO_ARCHIVE_CATEGORY_SCOPE_CODES.map((value) => ({
     value,
-    label: PortfolioArchiveCategoryScopeDescription[value],
+    label: strictEnumLabel(PortfolioArchiveCategoryScopeDescription, value, '档案类目范围'),
   }))
 
 export {
@@ -178,7 +184,7 @@ export {
 export const PORTFOLIO_ARCHIVE_CATEGORY_STATUS_OPTIONS: Array<{ value: PortfolioArchiveCategoryStatusCode, label: string }>
   = ALL_PORTFOLIO_ARCHIVE_CATEGORY_STATUS_CODES.map((value) => ({
     value,
-    label: PortfolioArchiveCategoryStatusDescription[value],
+    label: strictEnumLabel(PortfolioArchiveCategoryStatusDescription, value, '档案类目状态'),
   }))
 
 export {
@@ -196,7 +202,7 @@ export {
 export const PORTFOLIO_ARCHIVE_FIELD_TYPE_OPTIONS: Array<{ value: PortfolioArchiveFieldTypeCode, label: string }>
   = ALL_PORTFOLIO_ARCHIVE_FIELD_TYPE_CODES.map((value) => ({
     value,
-    label: PortfolioArchiveFieldTypeDescription[value],
+    label: strictEnumLabel(PortfolioArchiveFieldTypeDescription, value, '档案字段类型'),
   }))
 
 export {
@@ -208,7 +214,7 @@ export {
 export const PORTFOLIO_ARCHIVE_FIELD_SOURCE_TYPE_OPTIONS: Array<{ value: PortfolioArchiveFieldSourceTypeCode, label: string }>
   = ALL_PORTFOLIO_ARCHIVE_FIELD_SOURCE_TYPE_CODES.map((value) => ({
     value,
-    label: PortfolioArchiveFieldSourceTypeDescription[value],
+    label: strictEnumLabel(PortfolioArchiveFieldSourceTypeDescription, value, '档案字段来源类型'),
   }))
 
 export {
@@ -250,7 +256,7 @@ export {
 export const PORTFOLIO_AI_EXTRACT_TASK_TYPE_OPTIONS: Array<{ value: PortfolioAiExtractTaskTypeCode, label: string }>
   = ALL_PORTFOLIO_AI_EXTRACT_TASK_TYPE_CODES.map((value) => ({
     value,
-    label: PortfolioAiTaskTypeDescription[value],
+    label: strictEnumLabel(PortfolioAiExtractTaskTypeDescription, value, '档案袋 AI 抽取任务类型'),
   }))
 
 export {
@@ -262,7 +268,7 @@ export {
 export const PORTFOLIO_MATERIAL_TYPE_OPTIONS: Array<{ value: PortfolioMaterialTypeCode, label: string }>
   = ALL_PORTFOLIO_MATERIAL_TYPE_CODES.map((value) => ({
     value,
-    label: PortfolioMaterialTypeDescription[value],
+    label: strictEnumLabel(PortfolioMaterialTypeDescription, value, '材料类型'),
   }))
 
 export {
@@ -297,7 +303,7 @@ export {
 export const PORTFOLIO_REPORT_SCENE_OPTIONS: Array<{ value: PortfolioReportSceneCode, label: string }>
   = ALL_PORTFOLIO_REPORT_SCENE_CODES.map((value) => ({
     value,
-    label: PortfolioReportSceneDescription[value],
+    label: strictEnumLabel(PortfolioReportSceneDescription, value, '报告场景'),
   }))
 
 export {
@@ -337,6 +343,7 @@ export const PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE: Record<PortfolioArchiveRecord
   [PortfolioArchiveRecordStatusCode.PENDING_CONFIRM]: 'blue',
   [PortfolioArchiveRecordStatusCode.PENDING_REVIEW]: 'blue',
   [PortfolioArchiveRecordStatusCode.OFFICIAL]: 'green',
+  [PortfolioArchiveRecordStatusCode.SUPERSEDED]: 'gray',
   [PortfolioArchiveRecordStatusCode.RETURNED]: 'orange',
   [PortfolioArchiveRecordStatusCode.VOID]: 'gray',
 }
@@ -344,7 +351,7 @@ export const PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE: Record<PortfolioArchiveRecord
 export const PORTFOLIO_ARCHIVE_RECORD_STATUS_OPTIONS: Array<{ value: PortfolioArchiveRecordStatusCode, label: string }>
   = ALL_PORTFOLIO_ARCHIVE_RECORD_STATUS_CODES.map((value) => ({
     value,
-    label: PortfolioArchiveRecordStatusDescription[value],
+    label: strictEnumLabel(PortfolioArchiveRecordStatusDescription, value, '档案记录状态'),
   }))
 
 export {
@@ -500,7 +507,7 @@ export {
 export const PORTFOLIO_EVALUATION_OBJECTION_TYPE_OPTIONS: Array<{ value: PortfolioEvaluationObjectionTypeCode, label: string }>
   = ALL_PORTFOLIO_EVALUATION_OBJECTION_TYPE_CODES.map((value) => ({
     value,
-    label: PortfolioEvaluationObjectionTypeDescription[value],
+    label: strictEnumLabel(PortfolioEvaluationObjectionTypeDescription, value, '评价异议类型'),
   }))
 
 export {
@@ -534,7 +541,7 @@ export const PORTFOLIO_MATERIAL_STATUS_TONE: Record<PortfolioMaterialStatusCode,
 export const PORTFOLIO_MATERIAL_STATUS_OPTIONS: Array<{ value: PortfolioMaterialStatusCode, label: string }>
   = ALL_PORTFOLIO_MATERIAL_STATUS_CODES.map((value) => ({
     value,
-    label: PortfolioMaterialStatusDescription[value],
+    label: strictEnumLabel(PortfolioMaterialStatusDescription, value, '材料状态'),
   }))
 
 export interface PortfolioOrgAliasVO {
@@ -799,6 +806,7 @@ export interface PortfolioCockpitAskResultPayload {
 
 export interface PortfolioArchiveCategoryListRequest {
   scope?: PortfolioArchiveCategoryScopeCode
+  teacherId?: string
 }
 
 export interface PortfolioArchiveCategoryDeleteRequest {
@@ -976,6 +984,9 @@ export interface PortfolioAiAnalysisSummaryVO {
   aiTaskId: string
   aiJobId?: string
   teacherId?: string
+  teacherName?: string
+  teacherNumber?: string
+  departmentName?: string
   fileNodeId?: string
   analysisType: PortfolioAiAnalysisTypeCode
   resultTitle: string
@@ -1012,6 +1023,8 @@ export interface PortfolioAiAnalysisPageRequest extends QueryDto {
   searchText?: string
   /** 驾驶舱问数院系 scope；仅 COCKPIT_ASK 时生效 */
   departmentId?: string
+  /** 驾驶舱问数仅全校范围；仅 COCKPIT_ASK 时生效 */
+  schoolScopeOnly?: boolean
 }
 
 export interface PortfolioReviewTaskPageRequest extends QueryDto {
@@ -1113,6 +1126,7 @@ export interface PortfolioReviewArchiveRecordDetailVO {
   recordStatus: PortfolioArchiveRecordStatusCode
   sourceType: PortfolioArchiveRecordSourceTypeCode
   aiTaskId?: string
+  academicYear?: string
   fields: PortfolioReviewRecordFieldVO[]
 }
 
@@ -1230,6 +1244,7 @@ export interface PortfolioTeacherReviewStatusPageRequest extends QueryDto {
   teacherId?: string
   academicYear?: string
   recordStatus?: PortfolioArchiveRecordStatusCode
+  locateRecordId?: string
 }
 
 export interface PortfolioTeacherReviewStatusRowVO {
@@ -1263,6 +1278,23 @@ export interface PortfolioTeacherCompletenessVO {
 
 export interface PortfolioTeacherPortraitGetRequest {
   teacherId?: string
+  cohortType?: PortfolioPortraitCohortTypeCode
+}
+
+export interface PortfolioPortraitStrengthTagVO {
+  tagCode: string
+  tagLabel: string
+  score: number
+  tagType: string
+}
+
+export interface PortfolioPortraitGapItemVO {
+  indicatorCode: string
+  indicatorName: string
+  dimensionL1Name?: string
+  portraitDimensionCode?: string
+  gapReason: string
+  calcScore?: number
 }
 
 export interface PortfolioTeacherPortraitDimensionVO {
@@ -1285,6 +1317,11 @@ export interface PortfolioTeacherPortraitVO {
   officialRecordCount: number
   lastArchiveRecordId?: string
   computedTime?: string
+  ruleSnapshotId?: string
+  stageCode?: PortfolioPortraitStageCode
+  dataSource?: string
+  strengthTags: PortfolioPortraitStrengthTagVO[]
+  gapItems: PortfolioPortraitGapItemVO[]
   dimensions: PortfolioTeacherPortraitDimensionVO[]
 }
 
@@ -1321,7 +1358,8 @@ export interface PortfolioTeacherPortraitCohortDimensionVO {
 export interface PortfolioTeacherPortraitCohortCompareVO {
   teacherId: string
   cohortLabel?: string
-  /** 已有画像快照的同院系教师数，非院系名册总人数 */
+  cohortType?: PortfolioPortraitCohortTypeCode
+  /** 已有画像快照的同群体教师数 */
   sampleSize: number
   displayMode: PortfolioPortraitCohortDisplayModeCode
   dimensions: PortfolioTeacherPortraitCohortDimensionVO[]
@@ -1375,6 +1413,18 @@ export interface PortfolioArchiveRecordSummaryVO {
   evaluationIncluded: boolean
   referenceAiTaskId?: string
   createTime?: string
+  documentVersionNo?: number
+  currentOfficial?: boolean
+}
+
+export interface PortfolioArchiveRecordVersionVO {
+  id: string
+  rootRecordId?: string
+  documentVersionNo?: number
+  recordStatus: PortfolioArchiveRecordStatusCode
+  supersededById?: string
+  currentOfficial?: boolean
+  updateTime?: string
 }
 
 export interface PortfolioArchiveRecordFieldVO {
@@ -1399,6 +1449,10 @@ export interface PortfolioArchiveRecordDetailVO {
   referenceAiTaskId?: string
   latestRejectReason?: string
   fields: PortfolioArchiveRecordFieldVO[]
+  rootRecordId?: string
+  documentVersionNo?: number
+  supersededById?: string
+  versionHistory?: PortfolioArchiveRecordVersionVO[]
 }
 
 export interface PortfolioArchiveTimelineRequest {
@@ -1446,6 +1500,7 @@ export interface PortfolioArchiveRecordSaveDraftRequest {
   teacherId?: string
   recordId?: string
   categoryId?: string
+  fileNodeId?: string
   fields: PortfolioArchiveRecordFieldInput[]
 }
 
@@ -1558,6 +1613,9 @@ export interface PortfolioGapTaskDetailVO {
   returnReason?: string
   archiveRecordId?: string
   officialRecordId?: string
+  courseCode?: string
+  academicYear?: string
+  semester?: string
   missingFields: PortfolioGapMissingFieldVO[]
 }
 
@@ -1611,6 +1669,7 @@ export interface PortfolioEvaluationTeacherNoticeVO {
 export interface PortfolioEvaluationTeacherNoticePageRequest extends QueryDto {
   teacherId?: string
   noticeStatus?: PortfolioEvaluationTeacherNoticeStatusCode
+  locateNoticeId?: string
 }
 
 export interface PortfolioEvaluationTeacherNoticeConfirmRequest {

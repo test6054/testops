@@ -59,7 +59,7 @@
         v-if="scanMonitorPanelLoadFailed"
         tone="error"
         title="扫描监控指标加载失败"
-        description="批次汇总与实时指标暂不可用，请刷新后重试。"
+        description="批次汇总与实时指标暂不可用。"
         dense
         class="scan-monitor__panel-alert"
       />
@@ -276,14 +276,6 @@
         </div>
       </WorkbenchSurfaceCard>
 
-      <ScanBatchDetailDrawer
-        v-model:open="batchDetailDrawerOpen"
-        :exam-id="selectedExamId || ''"
-        :scan-batch-id="batchDetailBatchId"
-        :batch-summary="batchDetailSummary"
-        @updated="handleMonitorBatchUpdated"
-      />
-
       <!-- 身份绑定抽屉 -->
       <UiDrawer
         :open="bindDrawerOpen"
@@ -325,9 +317,13 @@
                   :watermark-lines="watermarkLines"
                   :min-height="220"
                   caption="手写身份区切片"
-                  empty-text="暂无数据"
+                  empty-text="当前没有可展示的内容"
                 />
-                <UiEmpty v-else description="暂无数据" class="scan-monitor__identity-empty" />
+                <UiEmpty
+                  v-else
+                  description="当前没有可展示的内容"
+                  class="scan-monitor__identity-empty"
+                />
               </div>
               <div class="scan-monitor__identity-pane">
                 <div class="scan-monitor__identity-pane-title">原始扫描页</div>
@@ -345,9 +341,13 @@
                   :watermark-lines="watermarkLines"
                   :min-height="220"
                   caption="原始扫描页"
-                  empty-text="暂无数据"
+                  empty-text="当前没有可展示的内容"
                 />
-                <UiEmpty v-else description="暂无数据" class="scan-monitor__identity-empty" />
+                <UiEmpty
+                  v-else
+                  description="当前没有可展示的内容"
+                  class="scan-monitor__identity-empty"
+                />
               </div>
             </div>
           </section>
@@ -553,41 +553,18 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamPaperBatchBindResponse } from '@/apis/mark/exam-mark-scanner'
+import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
 import type {
   ExamScanMonitorDeviceResponse,
   ExamWorkbenchScanMonitorPanelResponse,
 } from '@/apis/mark/exam-progress'
-import type {
-  ExamScannerBatchResponse,
-  ScanAttentionItemResponse,
-  ScanAttentionSourceTypeCode,
-} from '@/apis/mark/exam-scan'
-import type { ExamCandidateResponse } from '@/apis/mark/exam-scope'
-import type { ExamScoreSummaryItemResponse } from '@/apis/mark/exam-score'
-import type {
-  BadgeTone,
-  FilterField,
-  UiSectionTabItem,
-  UiSelectOption,
-  UiTableRowActionItem,
-} from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { getImageBlobUrl } from '@/apis/edu/file-management'
-import {
-  DUPLICATE_RESOLUTION_STATUS_TONE,
-  DuplicateResolutionStatusDescription,
-} from '@/apis/mark/duplicate-resolution-status'
-import { BindingStatusDescription, bindPaper } from '@/apis/mark/exam-binding'
-import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
 import {
   ExamScanMonitorSignalActionKeyCode,
   ExamScanMonitorSignalCode,
   getScanMonitorPanel,
   listExamScanMonitorDevices,
 } from '@/apis/mark/exam-progress'
+import type { ExamScannerBatchResponse, ScanAttentionItemResponse } from '@/apis/mark/exam-scan'
 import {
   listScanAttentions,
   pageScannerBatches,
@@ -604,13 +581,32 @@ import {
   ScanBatchStatusCode,
   ScanBatchStatusDescription,
 } from '@/apis/mark/exam-scan'
+import { ScanAttentionSourceTypeCode } from '@/types/enums/scan-attention-source-type-enum'
+import type { ExamCandidateResponse } from '@/apis/mark/exam-scope'
 import { CandidateStatusDescription, pageExamCandidates } from '@/apis/mark/exam-scope'
+import type { ExamScoreSummaryItemResponse } from '@/apis/mark/exam-score'
 import { pageExamScoreSummary } from '@/apis/mark/exam-score'
+import type {
+  BadgeTone,
+  FilterField,
+  UiSectionTabItem,
+  UiSelectOption,
+  UiTableRowActionItem,
+} from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { fetchStoragePreviewBlobUrl } from '@/apis/edu/file-management'
+import {
+  DUPLICATE_RESOLUTION_STATUS_TONE,
+  DuplicateResolutionStatusDescription,
+} from '@/apis/mark/duplicate-resolution-status'
+import { BindingStatusDescription, bindPaper } from '@/apis/mark/exam-binding'
 import { FinalScoreStatusDescription } from '@/apis/mark/final-score-status'
 import { GRADE_STATUS_TONE, GradeStatusDescription } from '@/apis/mark/grade-status'
 import { discardScannedPage } from '@/apis/mark/scanner-kiosk'
 import { TASK_STATUS_TONE, TaskStatusDescription } from '@/apis/mark/task-status'
-import ScanBatchDetailDrawer from '@/components/mark/ScanBatchDetailDrawer.vue'
 import ScanDeviceCardGrid from '@/components/mark/ScanDeviceCardGrid.vue'
 import ScanImageStage from '@/components/mark/ScanImageStage.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -675,9 +671,9 @@ enum ScanMonitorTabQuery {
 
 function isScanMonitorTabQuery(value: unknown): value is ScanMonitorTabQuery {
   return (
-    value === ScanMonitorTabQuery.NORMAL
-    || value === ScanMonitorTabQuery.ABNORMAL
-    || value === ScanMonitorTabQuery.DUPLICATE
+    value === ScanMonitorTabQuery.NORMAL ||
+    value === ScanMonitorTabQuery.ABNORMAL ||
+    value === ScanMonitorTabQuery.DUPLICATE
   )
 }
 
@@ -692,8 +688,8 @@ const scanMonitorContextSubtitle = computed(() => {
   return journeySubtitle
 })
 const { refreshSnapshot } = useWorkspaceExamId()
-const { isExamConfidential, examConfidentialLabel, watermarkLines }
-  = useWorkspaceConfidentialContext()
+const { isExamConfidential, examConfidentialLabel, watermarkLines } =
+  useWorkspaceConfidentialContext()
 
 /** 扫描链写操作后同步 StageRail 与本页数据。 */
 async function syncScanWorkbenchState(): Promise<void> {
@@ -803,10 +799,10 @@ const normalTableEmptyDescription = computed(() => {
 
 const hasActiveNormalFilters = computed(() =>
   Boolean(
-    normalFilterApplied.keyword
-    || normalFilterApplied.scanBatchId
-    || normalFilterApplied.batchStatus
-    || normalFilterApplied.scannerDeviceId,
+    normalFilterApplied.keyword ||
+    normalFilterApplied.scanBatchId ||
+    normalFilterApplied.batchStatus ||
+    normalFilterApplied.scannerDeviceId,
   ),
 )
 
@@ -914,10 +910,6 @@ const monitorBatchPagination = reactive({
   pageSize: MONITOR_BATCH_PAGE_SIZE,
   total: 0,
 })
-const batchDetailDrawerOpen = ref(false)
-const batchDetailBatchId = ref<string | null>(null)
-const batchDetailSummary = ref<ExamScannerBatchResponse | null>(null)
-
 const monitorBatchColumns: ColumnType<ExamScannerBatchResponse>[] = [
   { title: '批次号', key: 'batchNo', width: 200, ellipsis: true, fixed: 'left' },
   { title: '状态', key: 'status', width: 100, align: 'center' },
@@ -958,17 +950,19 @@ function formatMonitorBatchDeviceLabel(deviceId?: string): string {
 }
 
 function openMonitorBatchDetail(batch: ExamScannerBatchResponse): void {
-  batchDetailBatchId.value = batch.scanBatchId
-  batchDetailSummary.value = batch
-  batchDetailDrawerOpen.value = true
+  if (!selectedExamId.value || !batch.scanBatchId) {
+    return
+  }
+  void router.push({
+    name: 'TeacherExamWorkspaceScanBatchDetail',
+    params: {
+      examId: selectedExamId.value,
+      scanBatchId: batch.scanBatchId,
+    },
+  })
 }
 
-function handleMonitorBatchUpdated(): void {
-  void loadMonitorBatches()
-  void loadScanOverview(selectedExamId.value!)
-}
-
-function handleMonitorBatchPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleMonitorBatchPageChange(pageEvent: { current: number; pageSize: number }): void {
   monitorBatchPagination.current = pageEvent.current
   monitorBatchPagination.pageSize = pageEvent.pageSize
   void loadMonitorBatches()
@@ -1298,8 +1292,8 @@ async function loadConnectedScannerDevices(): Promise<void> {
       return
     }
     if (
-      filterForm.monitorDeviceId
-      && !scannerDevices.value.some((device) => device.scannerDeviceId === filterForm.monitorDeviceId)
+      filterForm.monitorDeviceId &&
+      !scannerDevices.value.some((device) => device.scannerDeviceId === filterForm.monitorDeviceId)
     ) {
       filterForm.monitorDeviceId = ''
     }
@@ -1339,8 +1333,8 @@ function tickMonitorFallbackPoll(): void {
 
 function startMonitorFallbackPolling(): void {
   stopMonitorFallbackPolling()
-  const intervalMs
-    = activeTab.value === 'normal'
+  const intervalMs =
+    activeTab.value === 'normal'
       ? SCANNER_DEVICE_POLL_INTERVAL_MS
       : ATTENTION_FALLBACK_POLL_INTERVAL_MS
   monitorFallbackPollTimer = setInterval(tickMonitorFallbackPoll, intervalMs)
@@ -1393,6 +1387,17 @@ function goToManualSupplementFromAttention(record: ScanAttentionItemResponse): v
       paperInstanceId: record.paperInstanceId,
       ...(record.scanBatchId ? { scanBatchId: record.scanBatchId } : {}),
       ...(record.candidateRosterId ? { candidateRosterId: record.candidateRosterId } : {}),
+    },
+  })
+}
+
+function goToScanBatchWorkbenchFromAttention(record: ScanAttentionItemResponse): void {
+  if (!selectedExamId.value || !record.scanBatchId) return
+  void router.push({
+    name: 'TeacherExamWorkspaceScanBatchDetail',
+    params: {
+      examId: selectedExamId.value,
+      scanBatchId: record.scanBatchId,
     },
   })
 }
@@ -1504,7 +1509,7 @@ function reloadAttentionsFromFirstPage(): void {
   void loadAttentions()
 }
 
-function handleAttentionPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleAttentionPageChange(pageEvent: { current: number; pageSize: number }): void {
   attentionPagination.current = pageEvent.current
   attentionPagination.pageSize = pageEvent.pageSize
   selectedRowKeys.value = []
@@ -1616,7 +1621,7 @@ function sourceTypeLabel(type: ScanAttentionSourceTypeCode): string {
 }
 
 function assertNeverScanAttentionType(_type: never): never {
-  throw toUserError(null, '扫描异常类型无法识别，请刷新后重试')
+  throw toUserError(null, '扫描异常类型无法识别')
 }
 
 function scanAttentionStatusLabel(record: ScanAttentionItemResponse): string {
@@ -1635,6 +1640,10 @@ function scanAttentionStatusLabel(record: ScanAttentionItemResponse): string {
       return strictEnumLabel(GradeStatusDescription, record.gradeStatus, '题目阅卷状态')
     case ScanAttentionTypeCode.BINDING_CONFLICT:
       return '待人工绑定'
+    case ScanAttentionTypeCode.UNASSIGNED_PAGE:
+      return '待人工归卷'
+    case ScanAttentionTypeCode.BOUND_INCOMPLETE:
+      return '待补齐页'
     case ScanAttentionTypeCode.MISSING_CANDIDATE_ROSTER:
       return '待补录名单'
     default:
@@ -1657,6 +1666,10 @@ function scanAttentionStatusTone(record: ScanAttentionItemResponse): BadgeTone {
     case ScanAttentionTypeCode.RECOGNITION_REVIEW:
       return strictEnumTone(GRADE_STATUS_TONE, record.gradeStatus, '题目阅卷状态')
     case ScanAttentionTypeCode.BINDING_CONFLICT:
+      return 'orange'
+    case ScanAttentionTypeCode.UNASSIGNED_PAGE:
+      return 'orange'
+    case ScanAttentionTypeCode.BOUND_INCOMPLETE:
       return 'orange'
     case ScanAttentionTypeCode.MISSING_CANDIDATE_ROSTER:
       return 'orange'
@@ -1707,7 +1720,7 @@ const pageDiscardTarget = ref<ScanAttentionItemResponse | null>(null)
 const pageDiscardReason = ref('')
 const pageDiscardReasonError = ref('')
 async function onDiscardPage(record: ScanAttentionItemResponse): Promise<void> {
-  if (record.sourceType !== 'SCANNED_PAGE' || !record.pageId) {
+  if (record.sourceType !== ScanAttentionSourceTypeCode.SCANNED_PAGE || !record.pageId) {
     message.warning('该异常不是扫描页来源，无法废弃')
     return
   }
@@ -1794,49 +1807,52 @@ const CANDIDATE_BIND_SEARCH_PAGE_SIZE = 20
 const candidateCache = ref<Map<string, ExamCandidateResponse>>(new Map())
 const candidateOptions = ref<DefaultOptionType[]>([])
 const candidatesLoading = ref(false)
-const bindIdentitySliceFileId = ref('')
+const bindPageId = ref('')
+const bindShowIdentitySliceEvidence = ref(false)
+const bindShowSourcePageEvidence = ref(false)
 const bindIdentitySliceImageUrl = ref('')
 const bindIdentitySliceLoading = ref(false)
 const bindIdentitySliceLoadFailed = ref(false)
-const bindSourcePageFileId = ref('')
 const bindSourcePageImageUrl = ref('')
 const bindSourcePageLoading = ref(false)
 const bindSourcePageLoadFailed = ref(false)
 
 /**
- * 证据门禁：有身份切片时须切片可见；原页有 fileId 时须原页可见。
+ * 证据门禁：有身份切片时须切片可见；原页证据时须主考预览链可见。
  * pageId 缺失时允许切片+名册人工确认（与 kiosk 异常面板一致）。
  */
 const bindIdentityEvidenceBlockReason = computed(() => {
   if (!bindDrawerOpen.value) return ''
-  if (bindIdentitySliceFileId.value) {
+  if (bindShowIdentitySliceEvidence.value) {
     if (bindIdentitySliceLoading.value) return '手写身份切片仍在加载，确认可见后才能提交身份绑定。'
-    if (bindIdentitySliceLoadFailed.value) return '手写身份切片加载失败，请刷新影像后重试身份绑定。'
+    if (bindIdentitySliceLoadFailed.value)
+      return '手写身份切片加载失败，请重新加载影像后再做身份绑定。'
     if (!bindIdentitySliceImageUrl.value) return '手写身份切片尚未显示，不能提交身份绑定。'
-    if (bindSourcePageFileId.value) {
+    if (bindShowSourcePageEvidence.value) {
       if (bindSourcePageLoading.value) return '原始扫描页仍在加载，确认可见后才能提交身份绑定。'
-      if (bindSourcePageLoadFailed.value) return '原始扫描页加载失败，请刷新影像后重试身份绑定。'
+      if (bindSourcePageLoadFailed.value)
+        return '原始扫描页加载失败，请重新加载影像后再做身份绑定。'
       if (!bindSourcePageImageUrl.value) return '原始扫描页尚未显示，不能提交身份绑定。'
     }
     return ''
   }
-  if (bindSourcePageFileId.value) {
+  if (bindShowSourcePageEvidence.value) {
     if (bindSourcePageLoading.value) return '原始扫描页仍在加载，确认可见后才能提交身份绑定。'
-    if (bindSourcePageLoadFailed.value) return '原始扫描页加载失败，请刷新影像后重试身份绑定。'
+    if (bindSourcePageLoadFailed.value) return '原始扫描页加载失败，请重新加载影像后再做身份绑定。'
     if (!bindSourcePageImageUrl.value) return '原始扫描页尚未显示，不能提交身份绑定。'
   }
   return ''
 })
 
 const bindEvidenceTagLabel = computed(() => {
-  if (bindIdentitySliceFileId.value && bindSourcePageFileId.value) return '双证据'
-  if (bindIdentitySliceFileId.value) return '切片证据'
-  if (bindSourcePageFileId.value) return '原页证据'
+  if (bindShowIdentitySliceEvidence.value && bindShowSourcePageEvidence.value) return '双证据'
+  if (bindShowIdentitySliceEvidence.value) return '切片证据'
+  if (bindShowSourcePageEvidence.value) return '原页证据'
   return '名册人工确认'
 })
 
 const bindEvidenceTagTone = computed(() =>
-  bindIdentitySliceFileId.value || bindSourcePageFileId.value ? 'blue' : 'orange',
+  bindShowIdentitySliceEvidence.value || bindShowSourcePageEvidence.value ? 'blue' : 'orange',
 )
 
 function mapCandidateOption(item: ExamCandidateResponse): DefaultOptionType {
@@ -1878,10 +1894,10 @@ function isCandidateBindable(candidate: ExamCandidateResponse): boolean {
 
 /** 输出名册状态文案，状态缺失或未知时显式暴露合同异常而不是默认按正常处理。 */
 function candidateStatusLabel(status: CandidateStatusCode | undefined): string {
-  if (!status || !CandidateStatusDescription[status]) {
-    return '状态异常'
+  if (!status) {
+    throw new Error(`枚举合同不同步：考生状态=${String(status ?? '')}`)
   }
-  return CandidateStatusDescription[status]
+  return strictEnumLabel(CandidateStatusDescription, status, '考生状态')
 }
 
 /** 按名册绑定规则解析被教师选中的考生，不存在、缺考或状态异常时返回可展示的阻断原因。 */
@@ -1916,12 +1932,13 @@ function releaseBindSourcePageImage(): void {
 async function loadBindIdentitySliceImage(): Promise<void> {
   releaseBindIdentitySliceImage()
   bindIdentitySliceLoadFailed.value = false
-  if (!bindIdentitySliceFileId.value) {
+  if (!bindShowIdentitySliceEvidence.value || !bindPageId.value || !selectedExamId.value) {
     return
   }
   bindIdentitySliceLoading.value = true
   try {
-    bindIdentitySliceImageUrl.value = await getImageBlobUrl(bindIdentitySliceFileId.value)
+    const previewPath = `/api/mark/exams/scanner-batches/pages/identity-slice?examId=${selectedExamId.value}&pageId=${bindPageId.value}`
+    bindIdentitySliceImageUrl.value = await fetchStoragePreviewBlobUrl(previewPath)
   } catch (error) {
     bindIdentitySliceLoadFailed.value = true
     showUserError(error, '手写身份切片加载失败')
@@ -1933,12 +1950,13 @@ async function loadBindIdentitySliceImage(): Promise<void> {
 async function loadBindSourcePageImage(): Promise<void> {
   releaseBindSourcePageImage()
   bindSourcePageLoadFailed.value = false
-  if (!bindSourcePageFileId.value) {
+  if (!bindShowSourcePageEvidence.value || !bindPageId.value || !selectedExamId.value) {
     return
   }
   bindSourcePageLoading.value = true
   try {
-    bindSourcePageImageUrl.value = await getImageBlobUrl(bindSourcePageFileId.value)
+    const previewPath = `/api/mark/exams/scanner-batches/pages/original-image?examId=${selectedExamId.value}&pageId=${bindPageId.value}`
+    bindSourcePageImageUrl.value = await fetchStoragePreviewBlobUrl(previewPath)
   } catch (error) {
     bindSourcePageLoadFailed.value = true
     showUserError(error, '原始扫描页加载失败')
@@ -1960,8 +1978,9 @@ function openBindDrawer(record: ScanAttentionItemResponse): void {
   bindForm.confirmedCandidateRosterId = undefined
   bindForm.attemptStatus = AttemptStatusCode.NORMAL
   bindForm.attemptNo = ''
-  bindIdentitySliceFileId.value = record.identitySliceFileId || ''
-  bindSourcePageFileId.value = record.sourceScanPage?.fileId || ''
+  bindPageId.value = record.pageId ? String(record.pageId) : ''
+  bindShowIdentitySliceEvidence.value = Boolean(record.identitySliceFileId)
+  bindShowSourcePageEvidence.value = Boolean(record.sourceScanPage?.fileId)
   bindDrawerOpen.value = true
   void loadBindIdentitySliceImage()
   void loadBindSourcePageImage()
@@ -2027,27 +2046,44 @@ function handleMonitorBatchAction(key: string, batch: ExamScannerBatchResponse):
 
 function buildAttentionActions(record: ScanAttentionItemResponse): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = [{ key: 'detail', label: '详情' }]
-  if (record.attentionType === 'BINDING_CONFLICT') {
+  if (record.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT) {
     actions.push({
       key: 'bind',
       label: '身份绑定',
       tone: 'primary',
       disabled: !record.paperInstanceId || !record.scanBatchId,
     })
-  } else if (record.attentionType === 'RECOGNITION_REVIEW') {
+  } else if (record.attentionType === ScanAttentionTypeCode.UNASSIGNED_PAGE) {
+    actions.push({
+      key: 'workbench',
+      label: '去归卷工作台',
+      tone: 'primary',
+      disabled: !record.scanBatchId,
+    })
+  } else if (record.attentionType === ScanAttentionTypeCode.BOUND_INCOMPLETE) {
+    actions.push({
+      key: 'workbench',
+      label: '去归卷工作台',
+      tone: 'primary',
+      disabled: !record.scanBatchId,
+    })
+    if (record.paperInstanceId && record.scanBatchId) {
+      actions.push({ key: 'supplement', label: '去补扫', tone: 'primary' })
+    }
+  } else if (record.attentionType === ScanAttentionTypeCode.RECOGNITION_REVIEW) {
     actions.push({ key: 'review', label: 'OCR/AI 复核', tone: 'primary' })
   } else if (record.attentionType === ScanAttentionTypeCode.DUPLICATE_PENDING) {
     actions.push({ key: 'ledger', label: '去影像账本处置', tone: 'primary' })
   } else if (
-    record.attentionType === ScanAttentionTypeCode.QUALITY_BLOCK
-    || record.attentionType === ScanAttentionTypeCode.PROCESSING_BLOCK
+    record.attentionType === ScanAttentionTypeCode.QUALITY_BLOCK ||
+    record.attentionType === ScanAttentionTypeCode.PROCESSING_BLOCK
   ) {
     actions.push({ key: 'dispose', label: '查看处置', tone: 'primary' })
     if (record.paperInstanceId && record.scanBatchId) {
       actions.push({ key: 'supplement', label: '去补扫', tone: 'primary' })
     }
   }
-  if (record.sourceType === 'SCANNED_PAGE' && record.pageId) {
+  if (record.sourceType === ScanAttentionSourceTypeCode.SCANNED_PAGE && record.pageId) {
     actions.push({
       key: 'discard',
       label: '废弃此页',
@@ -2065,6 +2101,9 @@ function handleAttentionAction(key: string, record: ScanAttentionItemResponse): 
       break
     case 'bind':
       openBindDrawer(record)
+      break
+    case 'workbench':
+      goToScanBatchWorkbenchFromAttention(record)
       break
     case 'review':
       openAttentionReviewWorkspace()
@@ -2132,7 +2171,9 @@ const rowSelection = computed(() => ({
   },
   getCheckboxProps: (record: ScanAttentionItemResponse) => ({
     disabled:
-      record.attentionType !== 'BINDING_CONFLICT' || !record.paperInstanceId || !record.scanBatchId,
+      record.attentionType !== ScanAttentionTypeCode.BINDING_CONFLICT ||
+      !record.paperInstanceId ||
+      !record.scanBatchId,
   }),
 }))
 
@@ -2143,10 +2184,10 @@ async function handleBatchBind(): Promise<void> {
   }
   const selected = attentions.value.filter(
     (item) =>
-      selectedRowKeys.value.includes(item.id)
-      && item.attentionType === 'BINDING_CONFLICT'
-      && item.paperInstanceId
-      && item.scanBatchId,
+      selectedRowKeys.value.includes(item.id) &&
+      item.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT &&
+      item.paperInstanceId &&
+      item.scanBatchId,
   )
   if (selected.length === 0) {
     message.error('请选择可身份绑定的绑定冲突异常项')
@@ -2263,8 +2304,9 @@ watch(
     monitorBatches.value = []
     monitorBatchPagination.current = 1
     monitorBatchPagination.total = 0
-    bindIdentitySliceFileId.value = ''
-    bindSourcePageFileId.value = ''
+    bindPageId.value = ''
+    bindShowIdentitySliceEvidence.value = false
+    bindShowSourcePageEvidence.value = false
     releaseBindIdentitySliceImage()
     releaseBindSourcePageImage()
     bindIdentitySliceLoadFailed.value = false
@@ -2340,8 +2382,9 @@ watch(
 
 watch(bindDrawerOpen, (open) => {
   if (!open) {
-    bindIdentitySliceFileId.value = ''
-    bindSourcePageFileId.value = ''
+    bindPageId.value = ''
+    bindShowIdentitySliceEvidence.value = false
+    bindShowSourcePageEvidence.value = false
     bindIdentitySliceLoadFailed.value = false
     bindSourcePageLoadFailed.value = false
     releaseBindIdentitySliceImage()

@@ -34,7 +34,7 @@ export const DEFAULT_ERROR_CONFIG: GlobalErrorConfig = {
   enabled: true,
   showMessage: true,
   useNotificationForErrors: false,
-  useNotificationForNetwork: true,
+  useNotificationForNetwork: false,
   enableConsoleLog: true,
   specificErrorConfig: {
     // 认证失败 - 不显示提示（会自动跳转登录页）
@@ -53,41 +53,49 @@ export const DEFAULT_ERROR_CONFIG: GlobalErrorConfig = {
     // AI配额错误 - 使用通知
     4003: {
       showMessage: true,
-      useNotification: true,
-      customMessage: 'AI配额不足，请联系管理员增加配额或稍后再试'
+      useNotification: false,
+      customMessage: 'AI 额度不足，请联系管理员增加配额'
     },
 
     4290: {
       showMessage: true,
       useNotification: false,
-      customMessage: 'AI资源不足，请联系老师'
+      customMessage: 'AI 资源不足，请联系老师'
     },
 
     // 网络超时 - 使用通知
     408: {
       showMessage: true,
-      useNotification: true,
-      customMessage: '请求超时，请检查网络连接后重试'
+      useNotification: false,
+      customMessage: '请求超时，请检查网络连接后继续操作'
     },
 
-    // 服务器错误 - 静默处理，不展示给用户
+    // 服务器错误 - 必须中文占位，禁止空失败
     500: {
-      showMessage: false
+      showMessage: true,
+      useNotification: false,
+      customMessage: '服务处理失败，请联系管理员'
     },
 
-    // 网关错误 - 静默处理
+    // 网关错误
     502: {
-      showMessage: false
+      showMessage: true,
+      useNotification: false,
+      customMessage: '网关异常，请联系管理员'
     },
 
-    // 服务不可用 - 静默处理
+    // 服务不可用
     503: {
-      showMessage: false
+      showMessage: true,
+      useNotification: false,
+      customMessage: '服务暂时不可用，请联系管理员'
     },
 
-    // 网关超时 - 静默处理
+    // 网关超时
     504: {
-      showMessage: false
+      showMessage: true,
+      useNotification: false,
+      customMessage: '网关超时，请联系管理员'
     }
   }
 }

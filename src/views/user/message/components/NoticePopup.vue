@@ -70,15 +70,15 @@
 
 <script lang="ts" setup>
 import type { PublishedSystemAnnouncementResponse } from '@/apis/edu/message'
-import HistoryOutlined from '@ant-design/icons-vue/HistoryOutlined'
-import ScheduleOutlined from '@ant-design/icons-vue/ScheduleOutlined'
-import UserOutlined from '@ant-design/icons-vue/UserOutlined'
-import { computed, ref, watch } from 'vue'
 import {
   AnnouncementStatusEnum,
   getPublishedAnnouncementDetail,
   getPublishedAnnouncementList,
 } from '@/apis/edu/message'
+import HistoryOutlined from '@ant-design/icons-vue/HistoryOutlined'
+import ScheduleOutlined from '@ant-design/icons-vue/ScheduleOutlined'
+import UserOutlined from '@ant-design/icons-vue/UserOutlined'
+import { computed, ref, watch } from 'vue'
 import AiEditor from '@/components/AiEditor/index.vue'
 import { showUserError } from '@/utils/error-handler'
 import mittBus from '@/utils/mitt'
@@ -144,7 +144,7 @@ const fetchNoticeDetail = async (index: number) => {
     // 触发刷新未读计数事件
     mittBus.emit('count-refresh')
   } catch (error) {
-    showUserError(error, '公告详情加载失败，请稍后重试')
+    showUserError(error, '公告详情加载失败')
   } finally {
     contentLoading.value = false
   }
@@ -179,7 +179,7 @@ const fetchUnreadNotices = async () => {
       currentIndex.value = 0
     }
   } catch (error) {
-    showUserError(error, '未读公告加载失败，请稍后重试')
+    showUserError(error, '未读公告加载失败')
   } finally {
     loading.value = false
   }

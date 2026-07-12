@@ -190,7 +190,9 @@
                       :style="{ width: `${Math.min(100, Math.max(0, item.consistencyRate))}%` }"
                     />
                   </div>
-                  <span class="quality-dashboard__consistency-rate">{{ item.consistencyRate }}%</span>
+                  <span class="quality-dashboard__consistency-rate"
+                    >{{ item.consistencyRate }}%</span
+                  >
                 </li>
               </ul>
               <UiEmpty v-else description="暂无评阅员一致性样本" />
@@ -854,11 +856,19 @@
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamWorkbenchQualityPanelResponse } from '@/apis/mark/exam-progress'
+import { getQualityPanel } from '@/apis/mark/exam-progress'
 import type { ExamScannerBatchResponse } from '@/apis/mark/exam-scan'
+import { pageScannerBatches } from '@/apis/mark/exam-scan'
 import type {
   MarkingOrganizationResponse,
   QuestionGroupReviewerResponse,
   QuestionMarkingGroupResponse,
+} from '@/apis/mark/marking-organization'
+import {
+  getOrganization,
+  MarkingOrganizationStatusDescription,
+  QUESTION_GROUP_STATUS_TONE,
+  QuestionMarkingGroupStatusDescription,
 } from '@/apis/mark/marking-organization'
 import type {
   ExamSpotCheckRecordItemResponse,
@@ -869,28 +879,6 @@ import type {
   ReviewerQualityMetricResponse,
   SpotCheckStatusCode,
 } from '@/apis/mark/marking-quality'
-import type {
-  BadgeTone,
-  FilterField,
-  UiBarChartItem,
-  UiSectionTabItem,
-} from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { getQualityPanel } from '@/apis/mark/exam-progress'
-import { pageScannerBatches } from '@/apis/mark/exam-scan'
-import {
-  getOrganization,
-  MarkingOrganizationStatusDescription,
-  QUESTION_GROUP_STATUS_TONE,
-  QuestionMarkingGroupStatusDescription,
-} from '@/apis/mark/marking-organization'
 import {
   BatchReprocessScopeCode,
   createSpotCheckTasks,
@@ -911,6 +899,20 @@ import {
   SpotCheckStatusDescription,
   takeProgressSnapshot,
 } from '@/apis/mark/marking-quality'
+import type {
+  BadgeTone,
+  FilterField,
+  UiBarChartItem,
+  UiSectionTabItem,
+} from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
@@ -955,8 +957,8 @@ const route = useRoute()
 const router = useRouter()
 const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
 
-const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
-  = useOptionalExamJourneyContextBar('阅卷质控')
+const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useOptionalExamJourneyContextBar('阅卷质控')
 
 const {
   examOptions,
@@ -974,11 +976,11 @@ type QualityTabKey = 'overview' | 'progress' | 'reviewer' | 'spotcheck' | 'repro
 function resolveInitialTab(): QualityTabKey {
   const queryTab = route.query.tab
   if (
-    queryTab === 'overview'
-    || queryTab === 'progress'
-    || queryTab === 'reviewer'
-    || queryTab === 'spotcheck'
-    || queryTab === 'reprocess'
+    queryTab === 'overview' ||
+    queryTab === 'progress' ||
+    queryTab === 'reviewer' ||
+    queryTab === 'spotcheck' ||
+    queryTab === 'reprocess'
   ) {
     return queryTab
   }
@@ -1021,8 +1023,8 @@ const scopeValid = computed(() => Boolean(selectedExamId.value && selectedOrgani
 
 const showGroupScope = computed(
   () =>
-    isExamWorkspaceRoute.value
-    && (activeTab.value === 'progress' || activeTab.value === 'spotcheck'),
+    isExamWorkspaceRoute.value &&
+    (activeTab.value === 'progress' || activeTab.value === 'spotcheck'),
 )
 
 const showProgressGroupSummary = computed(
@@ -1203,7 +1205,7 @@ const { chartOption: progressTaskBarOption } = useChartOption(() =>
 const progressTaskBarAriaLabel = computed(() => {
   const count = progressTaskBarItems.value.length
   if (count <= 0) {
-    return '当前任务状态分布，暂无数据'
+    return '当前任务状态分布，当前没有可展示的内容'
   }
   return `当前任务状态分布，共 ${count} 种状态`
 })
@@ -1264,7 +1266,7 @@ async function loadExamSpotCheckRecords(): Promise<void> {
   }
 }
 
-function handleExamSpotCheckPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleExamSpotCheckPageChange(pageEvent: { current: number; pageSize: number }): void {
   examSpotCheckPagination.pageNum = pageEvent.current
   examSpotCheckPagination.pageSize = pageEvent.pageSize
   void loadExamSpotCheckRecords()
@@ -1319,7 +1321,7 @@ async function loadMyPendingSpotChecks(): Promise<void> {
   }
 }
 
-function handleMySpotCheckPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleMySpotCheckPageChange(pageEvent: { current: number; pageSize: number }): void {
   mySpotCheckPagination.pageNum = pageEvent.current
   mySpotCheckPagination.pageSize = pageEvent.pageSize
   void loadMyPendingSpotChecks()
@@ -1495,7 +1497,7 @@ async function loadReviewerMetrics(): Promise<void> {
   }
 }
 
-function handleReviewerPageChange(event: { current: number, pageSize: number }): void {
+function handleReviewerPageChange(event: { current: number; pageSize: number }): void {
   reviewerPageNum.value = event.current
   reviewerPageSize.value = event.pageSize
   void loadReviewerMetrics()
@@ -1623,8 +1625,8 @@ async function loadExamQualityPanel(): Promise<void> {
     examQualityPanel.value = null
     return
   }
-  const shouldLoad
-    = isExamWorkspaceRoute.value || activeTab.value === 'overview' || activeTab.value === 'spotcheck'
+  const shouldLoad =
+    isExamWorkspaceRoute.value || activeTab.value === 'overview' || activeTab.value === 'spotcheck'
   if (!shouldLoad) {
     examQualityPanel.value = null
     return
@@ -1638,11 +1640,11 @@ async function loadExamQualityPanel(): Promise<void> {
 }
 
 const signalMetrics = computed<SignalMetric[]>(() => {
-  const useExamQualitySignals
-    = examQualityPanel.value
-      && (isExamWorkspaceRoute.value
-        || activeTab.value === 'overview'
-        || activeTab.value === 'spotcheck')
+  const useExamQualitySignals =
+    examQualityPanel.value &&
+    (isExamWorkspaceRoute.value ||
+      activeTab.value === 'overview' ||
+      activeTab.value === 'spotcheck')
   if (useExamQualitySignals) {
     const panel = examQualityPanel.value!
     const summary = panel.qualitySummary
@@ -1691,8 +1693,8 @@ const signalMetrics = computed<SignalMetric[]>(() => {
   const reviewerWarning = reviewerStatusStats.value.warning
   const reviewerSuspended = reviewerStatusStats.value.suspended
 
-  const completionRate
-    = typeof p?.completionRate === 'number' ? `${p.completionRate.toFixed(1)}%` : '-'
+  const completionRate =
+    typeof p?.completionRate === 'number' ? `${p.completionRate.toFixed(1)}%` : '-'
   const recycledCount = p?.recycledTasks ?? 0
   const inProgressCount = p?.inProgressTasks ?? 0
   const finalizedCount = p?.finalizedTasks ?? 0

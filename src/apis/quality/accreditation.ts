@@ -58,6 +58,7 @@ import {
   SelfAssessmentReviewDecisionCode,
   SelfAssessmentReviewDecisionDescription,
 } from '@/types/enums/self-assessment-review-decision-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
   AccreditationConclusionTypeCode,
@@ -478,8 +479,8 @@ export interface AccreditationLinkedExamOptionVO {
   label: string
 }
 
-export const ANNUAL_REPORT_MATERIAL_STATUS_TONE: Record<AnnualReportMaterialStatusCode, BadgeTone>
-  = {
+export const ANNUAL_REPORT_MATERIAL_STATUS_TONE: Record<AnnualReportMaterialStatusCode, BadgeTone> =
+  {
     [AnnualReportMaterialStatusCode.DRAFT]: 'gray',
     [AnnualReportMaterialStatusCode.SUBMITTED]: 'blue',
     [AnnualReportMaterialStatusCode.APPROVED]: 'green',
@@ -491,7 +492,7 @@ export const ANNUAL_REPORT_MATERIAL_CATEGORY_OPTIONS: Array<{
   label: string
 }> = ALL_ANNUAL_REPORT_MATERIAL_CATEGORY_CODES.map((value) => ({
   value,
-  label: AnnualReportMaterialCategoryDescription[value],
+  label: strictEnumLabel(AnnualReportMaterialCategoryDescription, value, '年报材料类别'),
 }))
 
 export const accreditationApi = {
@@ -560,7 +561,7 @@ export const accreditationApi = {
     http.post<void>(`${BASE}/support-profiles/confirm`, { id }),
   evidencePage: (data: AccreditationEvidenceQueryRequest) =>
     http.post<PageResult<AccreditationEvidenceVO>>(`${BASE}/evidences/page`, data),
-  linkedExamOptions: (data: { trainingPlanId: string, programId?: string }) =>
+  linkedExamOptions: (data: { trainingPlanId: string; programId?: string }) =>
     http.post<AccreditationLinkedExamOptionVO[]>(`${BASE}/evidences/linked-exam-options`, data),
   evidenceCreate: (data: AccreditationEvidenceSaveRequest) =>
     http.post<string>(`${BASE}/evidences/create`, data),

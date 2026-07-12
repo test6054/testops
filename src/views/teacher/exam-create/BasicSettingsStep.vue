@@ -64,7 +64,12 @@
         </a-col>
       </a-row>
 
-      <a-form-item label="成绩构成" name="scoreCompositionMode" required>
+      <a-form-item
+        label="成绩构成"
+        name="scoreCompositionMode"
+        required
+        :tooltip="scoreCompositionTip"
+      >
         <a-radio-group
           v-model:value="examForm.scoreCompositionMode"
           :disabled="nonRegularScoreLocked"
@@ -72,26 +77,15 @@
           <a-radio value="EXAM_ONLY">仅计入考试成绩（期末笔试）</a-radio>
           <a-radio value="EXAM_WITH_DAILY">期末考试 + 平时成绩合成</a-radio>
         </a-radio-group>
-        <p class="create-form__hint">
-          <template
-            v-if="
-              examForm.examKind === ExamKindCode.MAKEUP
-                || examForm.examKind === ExamKindCode.REEXAM
-                || examForm.examKind === ExamKindCode.DEFERRED
-            "
-          >
-            补考、重考、缓考按非正考成绩规则处理，合成后封顶 60 分。
-          </template>
-          <template v-else-if="examForm.examKind === ExamKindCode.RETAKE">
-            重修仅计入本次考试实际成绩，不纳入原正考平时分。
-          </template>
-          <template v-else>
-            平时成绩指出勤、作业、课堂表现等；选择合成后，成绩确认时需为每位考生录入平时分。
-          </template>
-        </p>
       </a-form-item>
 
-      <a-form-item v-if="showSourceExamField" label="原考试" name="sourceExamId" required>
+      <a-form-item
+        v-if="showSourceExamField"
+        label="原考试"
+        name="sourceExamId"
+        required
+        tooltip="须关联已关闭的正考；跨学期补考时开课学期须与原正考一致。"
+      >
         <a-select
           v-model:value="examForm.sourceExamId"
           :options="sourceExamOptions"
@@ -105,7 +99,6 @@
           @change="handleSourceExamChange"
           @dropdown-visible-change="handleSourceExamDropdown"
         />
-        <p class="create-form__hint">须关联已关闭的正考；跨学期补考时开课学期须与原正考一致。</p>
       </a-form-item>
 
       <a-form-item
@@ -173,7 +166,13 @@
             :wrapper-col="wrapperCol"
           >
             <a-input
-              :value="ExamGradingStrategyDescription[ExamGradingStrategyCode.SINGLE]"
+              :value="
+                strictEnumLabel(
+                  ExamGradingStrategyDescription,
+                  ExamGradingStrategyCode.SINGLE,
+                  '阅卷策略',
+                )
+              "
               disabled
             />
           </a-form-item>
@@ -182,6 +181,7 @@
           <a-form-item
             label="涉密场次"
             name="confidential"
+            :tooltip="confidentialFieldTip"
             :label-col="labelCol"
             :wrapper-col="wrapperCol"
           >
@@ -191,16 +191,6 @@
                 {{ examForm.confidential ? '已开启强制水印' : '未开启' }}
               </span>
             </div>
-            <template #extra>
-              <p class="create-form__hint create-form__hint--extra">
-                <template v-if="examForm.confidential">
-                  本场考试将启用强制水印与涉密切换警示，请确认考务流程符合保密要求。
-                </template>
-                <template v-else>
-                  统考或涉密试卷须开启；创建后阅卷、扫描与成绩页面将强制水印并展示警示条。
-                </template>
-              </p>
-            </template>
           </a-form-item>
         </a-col>
       </a-row>
@@ -222,8 +212,6 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ExamSummaryResponse } from '@/apis/mark/exam'
-import type { CourseListVO } from '@/apis/quality/user-catalog'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   EXAM_KIND_FILTER_OPTIONS,
   ExamGradingStrategyCode,
@@ -233,9 +221,12 @@ import {
   ExamStatusCode,
   pageExams,
 } from '@/apis/mark/exam'
+import type { CourseListVO } from '@/apis/quality/user-catalog'
+import { computed, onMounted, ref, watch } from 'vue'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
+import { strictEnumLabel } from '@/utils/strict-enum'
 import { useInjectedExamCreateBasicForm } from './exam-create-context'
 
 defineProps<{
@@ -252,13 +243,31 @@ const wrapperCol = { flex: 1 }
 const examForm = useInjectedExamCreateBasicForm()
 const formRef = ref<FormInstance>()
 const sourceExamLoading = ref(false)
-const sourceExamOptions = ref<Array<{ label: string, value: string }>>([])
+const sourceExamOptions = ref<Array<{ label: string; value: string }>>([])
 
 const SOURCE_EXAM_PAGE_SIZE = 50
 let sourceExamSearchTimer: ReturnType<typeof setTimeout> | undefined
 
 const showSourceExamField = computed(() => examKindRequiresSource(examForm.examKind))
 const nonRegularScoreLocked = computed(() => examKindRequiresSource(examForm.examKind))
+const confidentialFieldTip = computed(() =>
+  examForm.confidential
+    ? '本场考试将启用强制水印与涉密警示条，请确认考务流程符合保密要求。'
+    : '统考或涉密试卷须开启；创建后阅卷、扫描与成绩页面将强制水印并展示警示条。',
+)
+const scoreCompositionTip = computed(() => {
+  if (
+    examForm.examKind === ExamKindCode.MAKEUP ||
+    examForm.examKind === ExamKindCode.REEXAM ||
+    examForm.examKind === ExamKindCode.DEFERRED
+  ) {
+    return '补考、重考、缓考按非正考成绩规则处理，合成后封顶 60 分。'
+  }
+  if (examForm.examKind === ExamKindCode.RETAKE) {
+    return '重修仅计入本次考试实际成绩，不纳入原正考平时分。'
+  }
+  return '平时成绩含出勤、作业、课堂表现等；选择合成后，成绩确认时需录入平时分。'
+})
 
 function handleCourseChange(courseId: string | null, option?: CourseListVO): void {
   emit('course-change', courseId, option?.courseName?.trim() ?? '')

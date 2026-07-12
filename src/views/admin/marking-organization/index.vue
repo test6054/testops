@@ -82,13 +82,13 @@
     <UiSkeletonState v-if="loading" variant="card" compact />
 
     <WorkbenchSurfaceCard v-else-if="organization" class="org-index__overview-card">
-      <a-alert
+      <UiAlertStrip
         v-if="!canManageExamOwner"
-        type="info"
-        show-icon
+        tone="info"
         class="org-index__readonly-banner"
-        message="当前为只读视图"
+        title="当前为只读视图"
         description="阅卷方案由考试主考老师配置；如需调整题组、策略或启动正评，请联系主考老师。"
+        :inline="false"
       />
       <template #head>
         <div class="org-index__overview-title">
@@ -258,16 +258,12 @@
  */
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { RouteLocationRaw } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import type {
   MarkingOrganizationResponse,
   OrganizationCreateRequest,
   OrganizationUpdateRequest,
 } from '@/apis/mark/marking-organization'
-import type { SignalMetric } from '@/types/workbench'
-import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, inject, onActivated, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   createOrganization,
   deleteOrganization,
@@ -277,10 +273,15 @@ import {
   requireMarkingOrganizationId,
   updateOrganization,
 } from '@/apis/mark/marking-organization'
+import type { SignalMetric } from '@/types/workbench'
+import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, inject, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -309,8 +310,8 @@ defineOptions({ name: 'AdminMarkingOrganizationIndex' })
 const router = useRouter()
 const route = useRoute()
 
-const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
-  = useOptionalExamJourneyContextBar('阅卷安排')
+const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useOptionalExamJourneyContextBar('阅卷安排')
 
 const {
   examOptions,

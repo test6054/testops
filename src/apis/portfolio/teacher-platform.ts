@@ -27,14 +27,15 @@ import type {
 import type { AiTaskStatusCode } from '@/apis/quality/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { PortfolioArchiveScoreRuleTypeCode } from '@/types/enums/portfolio-archive-score-rule-type-enum'
-import type { PortfolioPortraitTemplateStatusCode } from '@/types/enums/portfolio-portrait-template-status-enum'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import http from '@/config/axios'
-import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import {
   ALL_PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_CODES,
   PortfolioArchiveScoreRuleTypeDescription,
 } from '@/types/enums/portfolio-archive-score-rule-type-enum'
+import type { PortfolioPortraitTemplateStatusCode } from '@/types/enums/portfolio-portrait-template-status-enum'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import http from '@/config/axios'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export const portfolioArchiveBagApi = {
   assemble: (data: PortfolioArchiveBagTeacherRequest = {}) =>
@@ -65,7 +66,7 @@ export const PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_OPTIONS: Array<{
 }> = [
   ...ALL_PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_CODES.map((value) => ({
     value,
-    label: PortfolioArchiveScoreRuleTypeDescription[value],
+    label: strictEnumLabel(PortfolioArchiveScoreRuleTypeDescription, value, '档案袋计分规则类型'),
   })),
 ]
 
@@ -291,11 +292,25 @@ export interface PortfolioExternalTeacherPageRequest extends QueryDto {
   contractStatus?: string
 }
 
+export interface PortfolioExternalTeacherStatsRequest {
+  dataStatus?: PortfolioExternalTeacherDataStatusCode
+  teachSubject?: string
+  teacherSource?: string
+  contractStatus?: string
+}
+
+export interface PortfolioExternalTeacherExportRequest {
+  dataStatus?: PortfolioExternalTeacherDataStatusCode
+  teachSubject?: string
+  teacherSource?: string
+  contractStatus?: string
+}
+
 export const portfolioExternalTeacherApi = {
   page: (data: PortfolioExternalTeacherPageRequest) =>
     http.post<PageResult<PortfolioExternalTeacherVO>>('/api/portfolio/external-teacher/page', data),
-  stats: () =>
-    http.post<PortfolioExternalTeacherStatsVO>('/api/portfolio/external-teacher/stats', {}),
+  stats: (data: PortfolioExternalTeacherStatsRequest = {}) =>
+    http.post<PortfolioExternalTeacherStatsVO>('/api/portfolio/external-teacher/stats', data),
   get: (data: { id: string }) =>
     http.post<PortfolioExternalTeacherVO>('/api/portfolio/external-teacher/get', data),
   save: (data: PortfolioExternalTeacherSaveRequest) =>
@@ -311,10 +326,10 @@ export const portfolioExternalTeacherApi = {
       '/api/portfolio/external-teacher/import-batch/get',
       data,
     ),
-  exportRoster: () =>
+  exportRoster: (data: PortfolioExternalTeacherExportRequest = {}) =>
     http.post<PortfolioArchiveBagExportResultVO>(
       '/api/portfolio/external-teacher/export-roster',
-      {},
+      data,
     ),
 }
 
@@ -410,6 +425,7 @@ export interface PortfolioDevelopmentPlanPageRequest extends QueryDto {
   planStatus?: PortfolioDevelopmentPlanStatusCode
   ownerUserId?: string
   portfolioOrgId?: string
+  locatePlanId?: string
 }
 
 export interface PortfolioDevelopmentPlanWorkflowRequest {
@@ -419,6 +435,7 @@ export interface PortfolioDevelopmentPlanWorkflowRequest {
 
 export interface PortfolioDevelopmentPlanStatsRequest {
   planYear: string
+  teacherId?: string
   planType?: PortfolioDevelopmentPlanTypeCode
 }
 

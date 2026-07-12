@@ -21,7 +21,11 @@
     @open-change="onOpenChange"
   >
     <template v-if="isRoleLayoutRoute">
-      <MenuItem v-for="item in groupedMenus.ungrouped" :key="item.path || item.name" :item="item" />
+      <MenuItem
+        v-for="item in primaryGroupItems(groupedMenus.ungrouped)"
+        :key="item.path || item.name"
+        :item="item"
+      />
       <a-sub-menu v-for="group in groupedMenus.groups" :key="group.key">
         <template #title>{{ group.title }}</template>
         <template #icon>
@@ -32,7 +36,11 @@
             <MenuIcon :icon="group.icon" />
           </MenuCollapsedTooltip>
         </template>
-        <MenuItem v-for="item in group.items" :key="item.path || item.name" :item="item" />
+        <MenuItem
+          v-for="item in primaryGroupItems(group.items)"
+          :key="item.path || item.name"
+          :item="item"
+        />
       </a-sub-menu>
     </template>
     <template v-else>
@@ -44,10 +52,10 @@
 <script lang="ts" setup>
 import type { Key } from 'ant-design-vue/es/_util/type'
 import type { CSSProperties } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { debounce } from 'lodash-es'
-import { computed, ref, watch } from 'vue'
 import { ConfirmationStatusCode } from '@/apis/quality/types'
 import { useDevice } from '@/hooks'
 import { useAppStore, useAuthStore, useQualityStore, useRouteStore, useUserStore } from '@/stores'
@@ -96,8 +104,8 @@ function isPlatformAdminRoute(item: RouteRecordRaw): boolean {
 
 function isSidebarMenuRoute(routeRecord: RouteRecordRaw): boolean {
   return (
-    !routeRecord.meta?.hideInMenu
-    && !(routeRecord.redirect && !routeRecord.component && !routeRecord.components)
+    !routeRecord.meta?.hideInMenu &&
+    !(routeRecord.redirect && !routeRecord.component && !routeRecord.components)
   )
 }
 
@@ -174,7 +182,7 @@ function numberMetaValue(value: unknown): number | undefined {
   return value
 }
 
-function emptyMenuGroups(): { ungrouped: RouteRecordRaw[], groups: MenuGroup[] } {
+function emptyMenuGroups(): { ungrouped: RouteRecordRaw[]; groups: MenuGroup[] } {
   return { ungrouped: [], groups: [] }
 }
 
@@ -209,6 +217,11 @@ function groupRoutes(routes: RouteRecordRaw[]): {
   }
 }
 
+/** 侧栏全量展示菜单项，禁止「更多」折叠隐藏入口 */
+function primaryGroupItems(items: RouteRecordRaw[]): RouteRecordRaw[] {
+  return items
+}
+
 const layoutRouteSource = computed(() => {
   return routeStore.routes.length > 0 ? routeStore.routes : routeStore.getMenuRoutes()
 })
@@ -230,9 +243,9 @@ const isDualTeacherQualityMenu = computed(() => {
     return false
   }
   return (
-    route.path.startsWith('/teacher')
-    || isQualityEvaluationRoute(route.path)
-    || route.path.startsWith(PORTFOLIO_ROUTE_PREFIX)
+    route.path.startsWith('/teacher') ||
+    isQualityEvaluationRoute(route.path) ||
+    route.path.startsWith(PORTFOLIO_ROUTE_PREFIX)
   )
 })
 

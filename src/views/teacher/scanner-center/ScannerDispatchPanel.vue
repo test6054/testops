@@ -1,11 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
-import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   ALL_SCAN_DISPATCH_TICKET_STATUS_CODES,
   cancelScanDispatch,
@@ -15,7 +10,12 @@ import {
   ScanDispatchTicketStatusCode,
   ScanDispatchTicketStatusDescription,
 } from '@/apis/mark/scanner-dispatch'
+import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import { SCAN_TASK_KIND_OPTIONS, ScanTaskKindDescription } from '@/apis/mark/scanner-work-order'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -122,7 +122,7 @@ const columns = computed<ColumnsType<ScanDispatchTicketVO>>(() => {
   base.push(
     { title: '业务上下文', key: 'archiveTitle', minWidth: 200, ellipsis: true },
     { title: '创建时间', key: 'createTime', width: 148 },
-    { title: '操作', key: 'actions', width: 168 },
+    { title: '操作', key: 'actions', width: 280, fixed: 'right' },
   )
   return base
 })
@@ -171,7 +171,9 @@ const signalMetrics = computed<SignalMetric[]>(() => {
 })
 
 const tableEmptyDescription = computed(() =>
-  isFailedQueueView.value ? '暂无失败派单' : '暂无派单记录',
+  isFailedQueueView.value
+    ? '当前没有失败派单；失败队列全组共享，新的失败会立即进入待办'
+    : '当前筛选下没有待结案派单；可切换队列状态或从值班推荐动作进入',
 )
 
 function resolveLifecycleFilter(
@@ -337,8 +339,8 @@ async function loadTickets() {
       pageSize: pagination.pageSize,
       failureOnly: filter === DispatchQueueStatusFilterCode.FAILED ? true : undefined,
       excludeFailed:
-        filter === DispatchQueueStatusFilterCode.ALL
-        || filter === DispatchQueueStatusFilterCode.PENDING
+        filter === DispatchQueueStatusFilterCode.ALL ||
+        filter === DispatchQueueStatusFilterCode.PENDING
           ? true
           : undefined,
     })
@@ -390,7 +392,7 @@ function handleResetSearch() {
   void loadTickets()
 }
 
-function handlePageChange(pageEvent: { current: number, pageSize: number }) {
+function handlePageChange(pageEvent: { current: number; pageSize: number }) {
   pagination.current = pageEvent.current
   pagination.pageSize = pageEvent.pageSize
   void loadTickets()
@@ -430,7 +432,7 @@ function buildDispatchRowActions(record: ScanDispatchTicketVO): UiTableRowAction
   if (canForceReleaseTicket(record)) {
     actions.push({ key: 'force-release', label: '强制解锁', tone: 'danger' })
   }
-  actions.push({ key: 'logs', label: '操作日志' })
+  actions.push({ key: 'logs', label: '处置日志' })
   return actions
 }
 
@@ -465,9 +467,9 @@ function canCancelTicket(record: ScanDispatchTicketVO) {
 
 function canForceReleaseTicket(record: ScanDispatchTicketVO) {
   return (
-    Boolean(record.ticketId)
-    && (record.status === ScanDispatchTicketStatusCode.PROCESSING
-      || record.status === ScanDispatchTicketStatusCode.SUSPENDED)
+    Boolean(record.ticketId) &&
+    (record.status === ScanDispatchTicketStatusCode.PROCESSING ||
+      record.status === ScanDispatchTicketStatusCode.SUSPENDED)
   )
 }
 
@@ -525,8 +527,8 @@ watch(
     const lifecycle = resolveLifecycleFilter(dispatchQuery.statusRaw)
     if (lifecycle !== undefined) {
       if (
-        queueFilter.value === lifecycle
-        && filters.status === lifecycleFilterToStatus(lifecycle)
+        queueFilter.value === lifecycle &&
+        filters.status === lifecycleFilterToStatus(lifecycle)
       ) {
         return
       }
@@ -555,7 +557,7 @@ onMounted(() => {
   <div class="scanner-dispatch-panel">
     <SignalBand
       v-if="signalMetrics.length"
-      variant="tiles"
+      variant="panel"
       compact
       :metrics="signalMetrics"
       class="scanner-dispatch-panel__signal"
@@ -567,7 +569,7 @@ onMounted(() => {
       tone="error"
       dense
       title="失败派单队列"
-      description="以下均为待处理（PENDING）且已写入 failure_reason 的派单，可取消派单或打开工位确认现场。占用工位锁的处理中/挂起派单请在本页切换队列或使用行内强制释放。"
+      description="以下均为待处理且已记录失败原因的派单，可取消派单或打开工位确认现场。占用工位锁的处理中/挂起派单请在本页切换队列或使用行内强制解锁。"
     >
       <template #actions>
         <UiButton
@@ -642,6 +644,7 @@ onMounted(() => {
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
               :items="buildDispatchRowActions(record)"
+              :max-visible="6"
               split
               @action="(key) => handleDispatchRowAction(key, record)"
             />

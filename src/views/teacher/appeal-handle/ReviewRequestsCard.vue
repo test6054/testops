@@ -16,7 +16,9 @@
           @search="handleSearch"
           @reset="handleFilterReset"
         />
-        <span v-if="pagination.total > 0" class="appeal-section__count">{{ pagination.total }} 条</span>
+        <span v-if="pagination.total > 0" class="appeal-section__count"
+          >{{ pagination.total }} 条</span
+        >
       </div>
 
       <UiDataTable
@@ -70,13 +72,12 @@
         @confirm="submitHandle"
       >
         <a-form layout="vertical">
-          <a-alert
-            :type="
+          <UiAlertStrip
+            :tone="
               conclusionDraft === GradeReviewRequestStatusCode.APPROVED ? 'success' : 'warning'
             "
-            show-icon
             style="margin-bottom: 12px"
-            :message="
+            :title="
               conclusionDraft === GradeReviewRequestStatusCode.APPROVED
                 ? '通过后允许进入成绩更正流程。'
                 : '驳回后申请关闭，无法恢复。'
@@ -137,9 +138,6 @@ import type {
   GradeReviewReasonTypeCode,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   claimReviewRequest,
   getReviewSummary,
@@ -152,21 +150,26 @@ import {
   REVIEW_REQUEST_STATUS_OPTIONS,
   REVIEW_REQUEST_STATUS_TONE,
 } from '@/apis/mark/grade-review'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ReviewRequestsCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 const emit = defineEmits<{
   (e: 'handled'): void
   (e: 'pending-change', count: number): void
@@ -175,6 +178,8 @@ const emit = defineEmits<{
 const rows = ref<GradeReviewRequestItemResponse[]>([])
 const loading = ref(false)
 const pendingCount = ref(0)
+const userStore = useUserStore()
+const currentUserId = computed(() => userStore.userInfo.userId || '')
 
 const pagination = reactive({
   current: 1,
@@ -182,7 +187,7 @@ const pagination = reactive({
   total: 0,
 })
 
-const filterForm = reactive<{ status?: GradeReviewRequestStatusCode, keyword: string }>({
+const filterForm = reactive<{ status?: GradeReviewRequestStatusCode; keyword: string }>({
   keyword: '',
 })
 
@@ -241,16 +246,20 @@ function canClaimReviewRequest(status: GradeReviewRequestStatusCode): boolean {
   return status === GradeReviewRequestStatusCode.PENDING
 }
 
-/** 后端要求先领取（IN_REVIEW）后再 handleReviewRequest。 */
-function canHandleReviewRequest(status: GradeReviewRequestStatusCode): boolean {
-  return status === GradeReviewRequestStatusCode.IN_REVIEW
+/** 后端要求先领取且仅领取人可处理（IN_REVIEW）后再 handleReviewRequest。 */
+function canHandleReviewRequest(record: GradeReviewRequestItemResponse): boolean {
+  return (
+    record.requestStatus === GradeReviewRequestStatusCode.IN_REVIEW &&
+    Boolean(currentUserId.value) &&
+    record.reviewerUserId === currentUserId.value
+  )
 }
 
 function buildReviewRequestActions(record: GradeReviewRequestItemResponse): UiTableRowActionItem[] {
   if (canClaimReviewRequest(record.requestStatus)) {
     return [{ key: 'claim', label: '领取' }]
   }
-  if (!canHandleReviewRequest(record.requestStatus)) {
+  if (!canHandleReviewRequest(record)) {
     return []
   }
   return [
@@ -290,7 +299,7 @@ function openHandleModal(
   record: GradeReviewRequestItemResponse,
   conclusion: GradeReviewRequestStatusCode,
 ): void {
-  if (!canHandleReviewRequest(record.requestStatus)) {
+  if (!canHandleReviewRequest(record)) {
     return
   }
   targetRequest.value = record
@@ -348,7 +357,7 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()
@@ -359,7 +368,7 @@ async function submitHandle(): Promise<void> {
     message.warning('未选中申请')
     return
   }
-  if (!canHandleReviewRequest(targetRequest.value.requestStatus)) {
+  if (!canHandleReviewRequest(targetRequest.value)) {
     message.warning('当前申请状态不可处理')
     return
   }
@@ -401,11 +410,11 @@ function primaryQuestionNo(record: GradeReviewRequestItemResponse): string {
 }
 
 function handleResultLabel(record: GradeReviewRequestItemResponse): string {
-  if (
-    record.requestStatus === GradeReviewRequestStatusCode.PENDING
-    || record.requestStatus === GradeReviewRequestStatusCode.IN_REVIEW
-  ) {
+  if (record.requestStatus === GradeReviewRequestStatusCode.PENDING) {
     return '—'
+  }
+  if (record.requestStatus === GradeReviewRequestStatusCode.IN_REVIEW) {
+    return canHandleReviewRequest(record) ? '处理中' : '已由其他教师领取'
   }
   if (record.reviewNote?.trim()) {
     return record.reviewNote.trim()

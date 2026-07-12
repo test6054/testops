@@ -16,6 +16,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { showUserError } from '@/utils/error-handler'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export interface ScanDispatchResultPayload {
   ticketId: string
@@ -42,7 +43,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "cancelled": []
+  cancelled: []
 }>()
 
 const cancelling = ref(false)
@@ -116,9 +117,9 @@ async function loadPendingTickets() {
         status: item.status,
         taskKind: item.taskKind,
         contextLabel:
-          item.portfolioSnapshot?.gapTaskTitle
-          ?? item.portfolioSnapshot?.categoryName
-          ?? item.archiveSnapshot?.archiveTitle,
+          item.portfolioSnapshot?.gapTaskTitle ??
+          item.portfolioSnapshot?.categoryName ??
+          item.archiveSnapshot?.archiveTitle,
         gapTaskId: item.portfolioSnapshot?.gapTaskId,
       }))
   } catch (error) {
@@ -194,9 +195,7 @@ async function handleCancel() {
       </p>
       <div v-if="payload.status" class="scan-dispatch-result__status">
         <UiTag tone="blue" size="sm">
-          {{
-            ScanDispatchTicketStatusDescription[payload.status]
-          }}
+          {{ strictEnumLabel(ScanDispatchTicketStatusDescription, payload.status, '派单票据状态') }}
         </UiTag>
         <span v-if="payload.traceLabelCode">追溯码 {{ payload.traceLabelCode }}</span>
       </div>
@@ -241,7 +240,9 @@ async function handleCancel() {
           <li v-for="item in otherPendingTickets" :key="item.ticketId">
             <span>{{ item.contextLabel || item.traceLabelCode || item.ticketId }}</span>
             <UiTag v-if="item.status" tone="gray" size="sm">
-              {{ ScanDispatchTicketStatusDescription[item.status] }}
+              {{
+                strictEnumLabel(ScanDispatchTicketStatusDescription, item.status, '派单票据状态')
+              }}
             </UiTag>
           </li>
         </ul>

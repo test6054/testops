@@ -23,6 +23,6 @@ export const BINDABLE_ATTEMPT_STATUS_CODES: readonly AttemptStatusCode[] = [
 export const AttemptStatusDescription: Record<AttemptStatusCode, string> = {
   [AttemptStatusCode.NORMAL]: '正常',
   [AttemptStatusCode.MAKEUP]: '补考',
-  [AttemptStatusCode.RETAKE]: '重考',
+  [AttemptStatusCode.RETAKE]: '重修',
   [AttemptStatusCode.ABSENT]: '缺考',
 }

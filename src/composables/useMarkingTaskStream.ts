@@ -1,6 +1,6 @@
 import type { Ref } from 'vue'
-import type { MarkingTaskStreamEventVO, MarkingTaskStreamSubscribeScopeCode } from '@/apis/mark/marking-task-stream'
 import { computed, onBeforeUnmount, ref } from 'vue'
+import type { MarkingTaskStreamEventVO, MarkingTaskStreamSubscribeScopeCode } from '@/apis/mark/marking-task-stream'
 import {
   listRecentMarkingTaskEvents,
   MarkingTaskStreamFatalAuthError,
@@ -196,7 +196,7 @@ export function useMarkingTaskStream(
       onAuthRefreshRequired: async () => {
         const refreshed = await authStore.refreshTokenAutomatically()
         if (!refreshed) {
-          markFailed(null, '阅卷任务实时订阅失败，请刷新页面后重试')
+          markFailed(null, '阅卷任务实时订阅失败')
           stop()
         }
       },

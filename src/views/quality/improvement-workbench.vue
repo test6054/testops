@@ -28,7 +28,7 @@ let scopeChangeSerial = 0
 
 interface TabLoadExpose {
   loadList: () => Promise<void>
-  openByDeepLink?: (payload: { improvementTaskId: string, aiTaskId?: string }) => Promise<void>
+  openByDeepLink?: (payload: { improvementTaskId: string; aiTaskId?: string }) => Promise<void>
 }
 
 const improvementTaskTabRef = ref<TabLoadExpose | null>(null)
@@ -65,7 +65,7 @@ async function loadTabLists(): Promise<void> {
   const rectTab = auditRectificationTabRef.value
   const supTab = auditSupervisionTabRef.value
   if (!improvementTab || !issueTab || !rectTab || !supTab) {
-    throw toUserError(null, '工作台 Tab 尚未就绪，请稍后重试')
+    throw toUserError(null, '工作台 Tab 尚未就绪')
   }
   await Promise.all([
     improvementTab.loadList(),
@@ -76,15 +76,15 @@ async function loadTabLists(): Promise<void> {
 }
 
 async function consumeImprovementDeepLink(): Promise<void> {
-  const improvementTaskId
-    = typeof route.query.improvementTaskId === 'string' ? route.query.improvementTaskId.trim() : ''
+  const improvementTaskId =
+    typeof route.query.improvementTaskId === 'string' ? route.query.improvementTaskId.trim() : ''
   if (!improvementTaskId) {
     return
   }
   activeTab.value = 'improvement'
   await nextTick()
-  const aiTaskId
-    = typeof route.query.aiTaskId === 'string' ? route.query.aiTaskId.trim() : undefined
+  const aiTaskId =
+    typeof route.query.aiTaskId === 'string' ? route.query.aiTaskId.trim() : undefined
   await improvementTaskTabRef.value?.openByDeepLink?.({ improvementTaskId, aiTaskId })
 }
 
@@ -101,7 +101,7 @@ async function handleScopeChange(): Promise<void> {
       return
     }
     if (!signalsApplied) {
-      handleTabLoadError(toUserError(null, '工作台指标加载失败，请稍后重试'))
+      handleTabLoadError(toUserError(null, '工作台指标加载失败'))
     }
     await consumeImprovementDeepLink()
   } catch (error) {
@@ -169,10 +169,10 @@ onActivated(async () => {
 
     <UiEmpty
       v-if="
-        !loading
-          && qualityStore.currentTrainingPlanId
-          && activeTab === 'improvement'
-          && !signalSummary?.improvementTotal
+        !loading &&
+        qualityStore.currentTrainingPlanId &&
+        activeTab === 'improvement' &&
+        !signalSummary?.improvementTotal
       "
       description="当前范围无改进任务"
       class="iwb__empty"

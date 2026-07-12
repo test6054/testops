@@ -20,15 +20,15 @@
     </UiEmpty>
 
     <template v-else-if="detail">
-      <div
+      <UiAlertStrip
         v-if="detail.status === ReviewTaskStatusCode.INVALIDATED"
+        tone="warning"
+        title="复核任务已失效"
+        description="原作答影像已补扫替换，待新复核任务生成后再处理"
+        dense
+        inline
         class="review-workspace__invalidated-banner"
-      >
-        <div class="review-workspace__invalidated-title">当前复核任务已因补扫替换失效</div>
-        <div class="review-workspace__invalidated-text">
-          原作答影像已被替换，系统已重新进入识别 / 切片链路，待新复核任务生成后再处理。
-        </div>
-      </div>
+      />
       <!-- B-7 流水线进度：当前任务在同题复核队列中的位次 -->
       <GradingWorkspaceLayout
         :confidential="isExamConfidential"
@@ -69,7 +69,9 @@
                 当前第 {{ currentQueueIndex }} 份，剩余
                 {{ Math.max(0, queueTotal - currentQueueIndex) }} 份待复核
               </span>
-              <span class="review-workspace__keyboard-hint">J/K 或 ←/→ 切换份数 · 0-9 快捷给分</span>
+              <span class="review-workspace__keyboard-hint"
+                >J/K 或 ←/→ 切换份数 · 0-9 快捷给分</span
+              >
             </div>
             <a-progress
               :percent="queueProgressPercent"
@@ -115,7 +117,7 @@
               v-if="
                 !detail?.sliceFileId && !detail?.sourceScanPage && !detail?.layoutPaperPage?.fileId
               "
-              description="暂无数据"
+              description="本题暂无阅卷影像"
             />
             <MarkingScanMaterialPanel
               v-else
@@ -130,7 +132,7 @@
 
           <GradingImmersionSection title="识别答案">
             <template #icon><FileTextOutlined /></template>
-            <UiEmpty v-if="!detail?.recognizedAnswer" description="暂无数据" />
+            <UiEmpty v-if="!detail?.recognizedAnswer" description="本题暂无 OCR 识别答案" />
             <div v-else class="review-workspace__text-block">{{ detail.recognizedAnswer }}</div>
           </GradingImmersionSection>
 
@@ -189,7 +191,10 @@
                 重新生成 AI 复评
               </UiButton>
             </template>
-            <UiEmpty v-if="!detail?.aiDiagnostic" description="暂无数据" />
+            <UiEmpty
+              v-if="!detail?.aiDiagnostic"
+              description="暂无 AI 复评说明，可人工给分或重新生成 AI 复评"
+            />
             <div v-else class="review-workspace__text-block">
               {{ executionDiagnosticText(detail.aiDiagnostic) }}
             </div>
@@ -233,6 +238,12 @@
               layout="vertical"
               :disabled="!canConfirm"
             >
+              <MarkScoreTriple
+                class="review-workspace__score-triple"
+                :ai-score="detail?.aiScore"
+                :teacher-review-score="gradeForm.teacherReviewScore"
+                :full-score="detail?.fullScore"
+              />
               <a-form-item label="教师复核评分" name="teacherReviewScore" required>
                 <a-input-number
                   v-model:value="gradeForm.teacherReviewScore"
@@ -303,7 +314,7 @@
           <GradingImmersionSection title="批注历史">
             <template #icon><CommentOutlined /></template>
             <UiSkeletonState v-if="annotationsLoading" variant="card" compact />
-            <UiEmpty v-else-if="annotations.length === 0" description="暂无数据" />
+            <UiEmpty v-else-if="annotations.length === 0" description="暂无批注历史" />
             <template v-else>
               <a-list :data-source="annotations" size="small">
                 <template #renderItem="{ item }">
@@ -393,24 +404,12 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { AnnotationResponse } from '@/apis/mark/exam-annotation'
+import { listAnnotations } from '@/apis/mark/exam-annotation'
 import type {
   AiAbilityCode,
   AiExecutionStatusCode,
   ExamQuestionAiExecutionItemResponse,
 } from '@/apis/mark/exam-grade'
-import type { ReviewTaskDetailResponse, ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
-import type { ObjectiveComparePolicyCode } from '@/apis/mark/exam-standard-answer'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
-import EditOutlined from '@ant-design/icons-vue/EditOutlined'
-import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
-import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
-import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { listAnnotations } from '@/apis/mark/exam-annotation'
 import {
   AI_ABILITY_TONE,
   AI_EXECUTION_STATUS_TONE,
@@ -421,6 +420,7 @@ import {
   rejectQuestionGrade,
   rescoreQuestionByAi,
 } from '@/apis/mark/exam-grade'
+import type { ReviewTaskDetailResponse, ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
 import {
   claimReviewTask,
   getReviewTaskDetail,
@@ -430,16 +430,29 @@ import {
   ReviewTaskStatusDescription,
   ReviewTaskTypeCode,
 } from '@/apis/mark/exam-review-task'
+import type { ObjectiveComparePolicyCode } from '@/apis/mark/exam-standard-answer'
 import { ObjectiveComparePolicyDescription } from '@/apis/mark/exam-standard-answer'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
+import EditOutlined from '@ant-design/icons-vue/EditOutlined'
+import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
+import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
+import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import ExperienceAssistBadge from '@/components/mark/ExperienceAssistBadge.vue'
 import GradingImmersionChrome from '@/components/mark/GradingImmersionChrome.vue'
 import GradingImmersionSection from '@/components/mark/GradingImmersionSection.vue'
 import GradingWorkspaceLayout from '@/components/mark/GradingWorkspaceLayout.vue'
 import MarkingAiAssistDrawer from '@/components/mark/MarkingAiAssistDrawer.vue'
 import MarkingScanMaterialPanel from '@/components/mark/MarkingScanMaterialPanel.vue'
+import MarkScoreTriple from '@/components/mark/MarkScoreTriple.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { isExamConfidentialFlag, useExamConfidential } from '@/composables/useConfidentialWatermark'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -607,10 +620,10 @@ const pipelineCurrentIndex = ref(0)
  */
 async function loadReviewQueue(): Promise<void> {
   if (
-    !examId.value
-    || !detail.value?.layoutQuestionId
-    || !detail.value.reviewType
-    || !detail.value.gradeSource
+    !examId.value ||
+    !detail.value?.layoutQuestionId ||
+    !detail.value.reviewType ||
+    !detail.value.gradeSource
   ) {
     reviewQueue.value = []
     return
@@ -763,8 +776,8 @@ const canRescoreByAi = computed<boolean>(() => {
   if (!examId.value) return false
   if (!detail.value) return false
   return (
-    detail.value.status === ReviewTaskStatusCode.PENDING
-    || detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
+    detail.value.status === ReviewTaskStatusCode.PENDING ||
+    detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
   )
 })
 
@@ -778,29 +791,15 @@ async function loadTask(): Promise<void> {
   try {
     const loadedDetail = await loadReviewTaskDetail()
     if (
-      generation !== loadTaskGeneration
-      || expectedExamId !== examId.value
-      || expectedTaskId !== taskId.value
+      generation !== loadTaskGeneration ||
+      expectedExamId !== examId.value ||
+      expectedTaskId !== taskId.value
     ) {
       return
     }
     detail.value = loadedDetail
     syncExperienceAssistMetaFromDetail(detail.value)
     await Promise.all([loadAnnotations(), loadReviewQueue()])
-    if (
-      generation !== loadTaskGeneration
-      || expectedExamId !== examId.value
-      || expectedTaskId !== taskId.value
-    ) {
-      return
-    }
-    if (
-      gradeForm.teacherReviewScore === undefined
-      && detail.value?.aiScore !== undefined
-      && detail.value?.aiScore !== null
-    ) {
-      gradeForm.teacherReviewScore = detail.value.aiScore
-    }
   } catch (error) {
     if (generation !== loadTaskGeneration) {
       return
@@ -846,8 +845,8 @@ async function loadReviewTaskDetail(): Promise<ReviewTaskDetailResponse> {
     reviewTaskId: taskId.value,
   })
   if (
-    preview.status === ReviewTaskStatusCode.PENDING
-    || preview.status === ReviewTaskStatusCode.IN_PROGRESS
+    preview.status === ReviewTaskStatusCode.PENDING ||
+    preview.status === ReviewTaskStatusCode.IN_PROGRESS
   ) {
     return claimReviewTask({
       examId: examId.value,
@@ -1072,8 +1071,8 @@ async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
   }
   const fullScore = detail.value.fullScore
   const teacherReviewScore = gradeForm.teacherReviewScore
-  const ratio
-    = fullScore && fullScore > 0 && typeof teacherReviewScore === 'number'
+  const ratio =
+    fullScore && fullScore > 0 && typeof teacherReviewScore === 'number'
       ? `${Math.round((teacherReviewScore / fullScore) * 100)}%`
       : '-'
   // 取下一份模式下额外提示队列剩余信息，让教师清楚复核会继续
@@ -1254,24 +1253,7 @@ onBeforeUnmount(() => {
   }
 
   &__invalidated-banner {
-    margin-bottom: 12px;
-    padding: 12px 16px;
-    border: 1px solid var(--dp-border);
-    border-radius: 8px;
-    background: var(--dp-surface-soft);
-  }
-
-  &__invalidated-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--dp-text-primary);
-  }
-
-  &__invalidated-text {
-    margin-top: 4px;
-    font-size: 12px;
-    line-height: 1.6;
-    color: var(--dp-text-secondary);
+    margin-bottom: 8px;
   }
 
   &__queue-progress-meta {
@@ -1380,5 +1362,13 @@ onBeforeUnmount(() => {
     color: var(--dp-text-muted);
     margin-left: 8px;
   }
+}
+
+.review-workspace__score-triple {
+  margin-bottom: 10px;
+}
+
+.review-workspace__invalidated-banner {
+  margin-bottom: 8px;
 }
 </style>

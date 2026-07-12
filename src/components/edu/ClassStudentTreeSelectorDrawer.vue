@@ -75,7 +75,9 @@
               <template #title="nodeData">
                 <div class="custom-tree-node" @click.stop="handleTitleClick">
                   <!-- 院系节点 -->
-                  <template v-if="nodeData.nodeType === ExamClassStudentTreeNodeTypeCode.DEPARTMENT">
+                  <template
+                    v-if="nodeData.nodeType === ExamClassStudentTreeNodeTypeCode.DEPARTMENT"
+                  >
                     <AppstoreOutlined class="icon-department" />
                     <span
                       class="node-name"
@@ -96,7 +98,9 @@
                   </template>
 
                   <!-- 班级节点 -->
-                  <template v-else-if="nodeData.nodeType === ExamClassStudentTreeNodeTypeCode.CLASS">
+                  <template
+                    v-else-if="nodeData.nodeType === ExamClassStudentTreeNodeTypeCode.CLASS"
+                  >
                     <TeamOutlined class="icon-class" />
                     <span
                       class="node-name"
@@ -117,7 +121,9 @@
                   </template>
 
                   <!-- 学生节点 -->
-                  <template v-else-if="nodeData.nodeType === ExamClassStudentTreeNodeTypeCode.STUDENT">
+                  <template
+                    v-else-if="nodeData.nodeType === ExamClassStudentTreeNodeTypeCode.STUDENT"
+                  >
                     <UserOutlined class="icon-student" />
                     <span
                       class="node-name"
@@ -169,12 +175,12 @@
 import type { DataNode } from 'ant-design-vue/es/vc-tree/interface'
 import type { CheckInfo } from 'ant-design-vue/es/vc-tree/props'
 import type { ClassStudentTreeConfirmPayload, ClassStudentTreeNode } from '@/apis/edu/class'
+import { getAvailableStudentTree, getClassStudentTree } from '@/apis/edu/class'
 import AppstoreOutlined from '@ant-design/icons-vue/AppstoreOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
-import { getAvailableStudentTree, getClassStudentTree } from '@/apis/edu/class'
 import { listExamStudentTree } from '@/apis/mark/exam-scope'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -378,14 +384,22 @@ const calculateDisabledKeys = () => {
         keys.push(node.id)
       }
       return isExcluded
-    } else if (node.nodeType === ExamClassStudentTreeNodeTypeCode.CLASS && node.children && node.children.length > 0) {
+    } else if (
+      node.nodeType === ExamClassStudentTreeNodeTypeCode.CLASS &&
+      node.children &&
+      node.children.length > 0
+    ) {
       // 班级节点：检查所有学生是否都被禁用
       const allStudentsDisabled = node.children.every((child) => checkNode(child))
       if (allStudentsDisabled) {
         keys.push(node.id)
       }
       return allStudentsDisabled
-    } else if (node.nodeType === ExamClassStudentTreeNodeTypeCode.DEPARTMENT && node.children && node.children.length > 0) {
+    } else if (
+      node.nodeType === ExamClassStudentTreeNodeTypeCode.DEPARTMENT &&
+      node.children &&
+      node.children.length > 0
+    ) {
       // 院系节点：检查所有班级是否都被禁用
       const allClassesDisabled = node.children.every((child) => checkNode(child))
       if (allClassesDisabled) {
@@ -419,7 +433,10 @@ function filterTreeByClassScope(nodes: ClassStudentTreeNode[]): ClassStudentTree
         }
         continue
       }
-      if (node.nodeType === ExamClassStudentTreeNodeTypeCode.CLASS && allowedSet.has(String(node.originalId))) {
+      if (
+        node.nodeType === ExamClassStudentTreeNodeTypeCode.CLASS &&
+        allowedSet.has(String(node.originalId))
+      ) {
         result.push({ ...node, children: node.children ?? [] })
       }
     }
@@ -458,7 +475,7 @@ const loadTreeData = async () => {
     // 计算禁用的节点（已被其他规则选中的学生）
     calculateDisabledKeys()
   } catch (error) {
-    showUserError(error, '班级学生名单加载失败，请稍后重试')
+    showUserError(error, '班级学生名单加载失败')
   } finally {
     loading.value = false
   }
@@ -515,7 +532,7 @@ watch(
  * @param _info 选中事件附加信息
  */
 const handleCheck = (
-  checked: (string | number)[] | { checked: (string | number)[], halfChecked: (string | number)[] },
+  checked: (string | number)[] | { checked: (string | number)[]; halfChecked: (string | number)[] },
   _info: CheckInfo,
 ) => {
   // 提取 keys 数组（兼容 check-strictly 模式下的对象格式）

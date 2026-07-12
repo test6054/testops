@@ -26,7 +26,7 @@
           style="width: 100%"
         />
       </a-form-item>
-      <a-form-item label="默认自由标签" extra="应用于各行；可在表格中单独调整">
+      <a-form-item label="默认自由标签" tooltip="应用于各行；可在表格中单独调整">
         <ArchiveMaterialTagSelect v-model="defaultTags" />
       </a-form-item>
       <a-form-item label="待登记文件" required>
@@ -80,8 +80,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { ref, watch } from 'vue'
 import {
   ARCHIVE_MATERIAL_TYPE_OPTIONS,
   ArchiveElectronicOriginalStatusCode,
@@ -89,6 +87,8 @@ import {
   ArchiveMaterialSortRuleCode,
   batchRegisterArchiveVolumeMaterials,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -110,7 +110,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "success": []
+  success: []
 }>()
 
 interface BatchRow {

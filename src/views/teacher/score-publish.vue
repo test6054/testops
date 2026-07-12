@@ -42,6 +42,7 @@
         title="仍有缺考记录待确认"
         :description="`当前还有 ${pendingAbsenceCountForDisplay} 条待确认缺考，发布前须完成核对。`"
         dense
+        inline
         class="score-publish__alert"
       >
         <template #actions>
@@ -55,6 +56,7 @@
         title="仍有成绩风险未复核"
         :description="`当前有 ${effectiveFinalScoreOverview?.blockedCount ?? 0} 项成绩风险未处置，须先在成绩确认页完成集中复核后再发布。`"
         dense
+        inline
         class="score-publish__alert"
       >
         <template #actions>
@@ -70,6 +72,7 @@
         title="延迟自动确认连续失败"
         :description="blockedDelayedAutoConfirmNotice"
         dense
+        inline
         class="score-publish__alert"
       >
         <template #actions>
@@ -86,6 +89,7 @@
         title="存在已更正未重发布成绩"
         :description="correctedRepublishNotice"
         dense
+        inline
         class="score-publish__alert"
       >
         <template #actions>
@@ -379,22 +383,16 @@ import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
 import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
 import type { ExamDetailResponse } from '@/apis/mark/exam'
+import { getExamDetail } from '@/apis/mark/exam'
 import type { ExamPaperScoreResponse, ExamQuestionScoreResponse } from '@/apis/mark/exam-grade'
+import { getPaperScore } from '@/apis/mark/exam-grade'
 import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
+import { getScorePanel } from '@/apis/mark/exam-progress'
 import type {
   ExamScoreSummaryItemResponse,
   FinalScoreBatchPublishResponse,
   FinalScoreRiskOverviewResponse,
 } from '@/apis/mark/exam-score'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { ScoreStatusTabKey } from '@/utils/score-workbench-analytics'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { getExamDetail } from '@/apis/mark/exam'
-import { getPaperScore } from '@/apis/mark/exam-grade'
-import { getScorePanel } from '@/apis/mark/exam-progress'
 import {
   batchPublishFinalScores,
   getFinalScoreRiskOverview,
@@ -402,6 +400,17 @@ import {
   publishFinalScore,
   withdrawFinalScore,
 } from '@/apis/mark/exam-score'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { ScoreStatusTabKey } from '@/utils/score-workbench-analytics'
+import {
+  buildScoreBulkPublishModalStatItems,
+  buildScoreConfirmStatusTabItems,
+  SCORE_STATUS_TAB_ALL,
+} from '@/utils/score-workbench-analytics'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   FINAL_SCORE_STATUS_TONE,
   FinalScoreStatusCode,
@@ -433,11 +442,6 @@ import { showUserError } from '@/utils/error-handler'
 import { buildExamScoreSummaryTableColumns } from '@/utils/exam-score-summary-table-columns'
 import { formatDateTime } from '@/utils/format'
 import { isExamScoresFullyPublished } from '@/utils/score-release-readiness'
-import {
-  buildScoreBulkPublishModalStatItems,
-  buildScoreConfirmStatusTabItems,
-  SCORE_STATUS_TAB_ALL,
-} from '@/utils/score-workbench-analytics'
 import { buildScorePublishSignalMetrics } from '@/utils/score-workbench-signal'
 import { toSignalMetrics } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -661,7 +665,7 @@ async function loadCandidates(): Promise<void> {
       pagination.pageSize = result.pageSize
     }
   } catch (error) {
-    showUserError(error, '成绩发布名单加载失败，请稍后重试')
+    showUserError(error, '成绩发布名单加载失败')
   } finally {
     loading.value = false
   }
@@ -683,10 +687,8 @@ async function loadFinalScoreOverview(): Promise<void> {
     scorePanel.value = panel
   } catch (error) {
     finalScoreOverview.value = null
-    if (!scorePanel.value?.riskOverview) {
-      scorePanel.value = null
-      showUserError(error, '全场成绩概览加载失败')
-    }
+    scorePanel.value = null
+    showUserError(error, '全场成绩概览加载失败')
   } finally {
     finalScoreOverviewLoading.value = false
   }
@@ -722,7 +724,7 @@ function handleStatusTabChange(tabKey: Key): void {
   void loadCandidates()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void loadCandidates()
@@ -759,10 +761,10 @@ function bulkModalValueClass(valClass?: string): string | undefined {
 
 const canBulkPublish = computed(
   () =>
-    Boolean(selectedExamId.value)
-    && publishableOverviewCount.value > 0
-    && finalScoreOverview.value?.readyToPublish === true
-    && (finalScoreOverview.value?.blockedCount ?? 0) === 0,
+    Boolean(selectedExamId.value) &&
+    publishableOverviewCount.value > 0 &&
+    finalScoreOverview.value?.readyToPublish === true &&
+    (finalScoreOverview.value?.blockedCount ?? 0) === 0,
 )
 
 const bulkOpen = ref(false)
@@ -854,9 +856,9 @@ function canPublish(record: ExamScoreSummaryItemResponse): boolean {
   }
   const s = record.finalScoreStatus
   return (
-    s === FinalScoreStatusCode.CONFIRMED
-    || s === FinalScoreStatusCode.WITHDRAWN
-    || s === FinalScoreStatusCode.CORRECTED
+    s === FinalScoreStatusCode.CONFIRMED ||
+    s === FinalScoreStatusCode.WITHDRAWN ||
+    s === FinalScoreStatusCode.CORRECTED
   )
 }
 function publishButtonLabel(record: ExamScoreSummaryItemResponse): string {

@@ -19,7 +19,7 @@
     <UiEmpty v-if="!loaded && !loading" description="正在加载扫描页…" />
     <UiEmpty v-else-if="error" :description="scanPagesErrorText" />
     <a-spin v-else :spinning="loading" tip="加载扫描页中...">
-      <UiEmpty v-if="loaded && pages.length === 0" description="暂无数据" />
+      <UiEmpty v-if="loaded && pages.length === 0" description="暂无试卷页影像" />
       <div
         v-else
         ref="galleryViewportRef"
@@ -61,7 +61,7 @@
               :min-height="480"
               class="whole-paper-gallery__image"
             />
-            <UiEmpty v-else-if="imageErrors[item.page.pageId]" description="暂无数据" />
+            <UiEmpty v-else-if="imageErrors[item.page.pageId]" description="暂无试卷页影像" />
             <div v-else class="whole-paper-gallery__image-placeholder">
               <a-spin :spinning="Boolean(imageLoading[item.page.pageId])" />
               <span>扫描页图片加载中</span>
@@ -156,7 +156,7 @@ const resolvedWatermarkLines = computed(() => {
 })
 const watermarkDensity = computed(() => (props.confidential ? 'dense' : 'normal'))
 const scanPagesErrorText = computed(() =>
-  getUserProcessFailureMessage(props.error?.message, '扫描页加载失败，请刷新后重试'),
+  getUserProcessFailureMessage(props.error?.message, '扫描页加载失败'),
 )
 
 function onConfidentialContextMenu(event: MouseEvent): void {

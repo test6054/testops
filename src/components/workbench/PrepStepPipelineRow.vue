@@ -13,13 +13,18 @@ import { strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'PrepStepPipelineRow' })
 
-const props = defineProps<{
-  steps: PrepStepCard[]
-  currentStepKey?: string | null
-  locked?: boolean
-  /** 准备步骤区轻量提示：软建议、保存前置条件等，不用 Alert 条。 */
-  hint?: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    steps: PrepStepCard[]
+    currentStepKey?: string | null
+    locked?: boolean
+    /** 准备步骤区轻量提示：软建议、保存前置条件等，不用 Alert 条。 */
+    hint?: string
+    /** default：考试准备页完整卡片；compact：制卷设计器单行 chip，节省垂直空间。 */
+    variant?: 'default' | 'compact'
+  }>(),
+  { variant: 'default' },
+)
 
 const emit = defineEmits<{
   select: [step: PrepStepCard]
@@ -51,22 +56,32 @@ function handleSelect(step: PrepStepCard): void {
 </script>
 
 <template>
-  <WorkbenchSurfaceCard class="prep-step-pipeline">
+  <WorkbenchSurfaceCard
+    class="prep-step-pipeline"
+    :class="{ 'prep-step-pipeline--compact': props.variant === 'compact' }"
+  >
     <template #head>
       <div class="prep-step-pipeline__head">
         <div class="prep-step-pipeline__head-main">
-          <span class="prep-step-pipeline__title">准备步骤</span>
+          <span class="prep-step-pipeline__title">{{
+            props.variant === 'compact' ? '准备' : '准备步骤'
+          }}</span>
           <span class="prep-step-pipeline__meta">
             {{ steps.filter((item) => item.status === 'completed').length }} /
             {{ steps.length }} 已完成
           </span>
+          <span
+            v-if="props.variant === 'compact' && hint"
+            class="prep-step-pipeline__hint-inline"
+            >{{ hint }}</span
+          >
         </div>
         <div v-if="$slots.actions" class="prep-step-pipeline__head-actions">
           <slot name="actions" />
         </div>
       </div>
     </template>
-    <p v-if="hint" class="prep-step-pipeline__hint">{{ hint }}</p>
+    <p v-if="props.variant !== 'compact' && hint" class="prep-step-pipeline__hint">{{ hint }}</p>
     <div class="prep-step-pipeline__track">
       <button
         v-for="(step, index) in steps"
@@ -78,12 +93,13 @@ function handleSelect(step: PrepStepCard): void {
           {
             'prep-step-pipeline__step--current': currentStepKey === step.key,
             'prep-step-pipeline__step--locked': locked && step.key !== 'materialLayout',
+            'prep-step-pipeline__step--chip': props.variant === 'compact',
           },
         ]"
         @click="handleSelect(step)"
       >
         <span
-          v-if="index < steps.length - 1"
+          v-if="props.variant !== 'compact' && index < steps.length - 1"
           class="prep-step-pipeline__connector"
           aria-hidden="true"
         />
@@ -91,7 +107,9 @@ function handleSelect(step: PrepStepCard): void {
           <component :is="resolveIcon(step.key)" class="prep-step-pipeline__icon" />
           <span class="prep-step-pipeline__label">{{ step.title }}</span>
         </span>
-        <p class="prep-step-pipeline__desc">{{ step.description }}</p>
+        <p v-if="props.variant !== 'compact'" class="prep-step-pipeline__desc">
+          {{ step.description }}
+        </p>
         <UiTag :tone="stepTone(step)" size="sm">{{ step.statusText }}</UiTag>
       </button>
     </div>
@@ -131,6 +149,51 @@ function handleSelect(step: PrepStepCard): void {
   &__meta {
     font-size: 12px;
     color: var(--dp-text-muted);
+  }
+
+  &__hint-inline {
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--dp-text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: min(420px, 40vw);
+  }
+
+  &--compact {
+    :deep(.workbench-surface-card__body) {
+      padding-top: 0;
+    }
+
+    .prep-step-pipeline__track {
+      gap: 8px;
+      padding-bottom: 0;
+    }
+
+    .prep-step-pipeline__step--chip {
+      flex: 0 0 auto;
+      min-width: 0;
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+
+    .prep-step-pipeline__step--chip .prep-step-pipeline__step-head {
+      gap: 6px;
+    }
+
+    .prep-step-pipeline__step--chip .prep-step-pipeline__icon {
+      font-size: 14px;
+    }
+
+    .prep-step-pipeline__step--chip .prep-step-pipeline__label {
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
   }
 
   &__hint {

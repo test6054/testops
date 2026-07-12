@@ -13,6 +13,10 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { GradeCorrectionTypeCode } from '@/types/enums/grade-correction-type-enum'
 import type { GradeReviewReasonTypeCode } from '@/types/enums/grade-review-reason-type-enum'
+import {
+  ALL_GRADE_REVIEW_REASON_TYPE_CODES,
+  GradeReviewReasonTypeDescription,
+} from '@/types/enums/grade-review-reason-type-enum'
 import type { VisibleMaterialScopeCode } from '@/types/enums/visible-material-scope-enum'
 import http from '@/config/axios'
 import {
@@ -22,10 +26,6 @@ import {
 } from '@/types/enums/batch-correction-approval-status-enum'
 import { GradeCorrectionStatusCode } from '@/types/enums/grade-correction-status-enum'
 import {
-  ALL_GRADE_REVIEW_REASON_TYPE_CODES,
-  GradeReviewReasonTypeDescription,
-} from '@/types/enums/grade-review-reason-type-enum'
-import {
   ALL_GRADE_REVIEW_REQUEST_STATUS_CODES,
   GradeReviewRequestStatusCode,
   GradeReviewRequestStatusDescription,
@@ -34,6 +34,7 @@ import {
   ReviewWindowPolicyStatusCode,
   ReviewWindowPolicyStatusDescription,
 } from '@/types/enums/review-window-policy-status-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
   ALL_BATCH_CORRECTION_APPROVAL_STATUS_CODES,
@@ -94,8 +95,8 @@ export const REVIEW_WINDOW_MAIN_FLOW_STATUSES: ReviewWindowPolicyStatusCode[] = 
 ]
 
 /** 复核窗口主流程 hint */
-export const REVIEW_WINDOW_FLOW_HINT = REVIEW_WINDOW_MAIN_FLOW_STATUSES.map(
-  (status) => ReviewWindowPolicyStatusDescription[status],
+export const REVIEW_WINDOW_FLOW_HINT = REVIEW_WINDOW_MAIN_FLOW_STATUSES.map((status) =>
+  strictEnumLabel(ReviewWindowPolicyStatusDescription, status, '复核窗口状态'),
 ).join(' → ')
 
 /** 复核窗口策略保存请求 - 对应 ReviewWindowPolicySaveRequest */
@@ -169,7 +170,7 @@ export const REVIEW_REQUEST_STATUS_OPTIONS: Array<{
   value: GradeReviewRequestStatusCode
 }> = ALL_GRADE_REVIEW_REQUEST_STATUS_CODES.map((value) => ({
   value,
-  label: GradeReviewRequestStatusDescription[value],
+  label: strictEnumLabel(GradeReviewRequestStatusDescription, value, '复核申请状态'),
 }))
 
 /** 复核申请主流程状态链（不含驳回终止分支），供列表页流程 hint 展示 */
@@ -181,9 +182,11 @@ export const REVIEW_REQUEST_MAIN_FLOW_STATUSES: GradeReviewRequestStatusCode[] =
 ]
 
 /** 复核申请主流程 hint */
-export const REVIEW_REQUEST_FLOW_HINT = `${REVIEW_REQUEST_MAIN_FLOW_STATUSES.map(
-  (status) => GradeReviewRequestStatusDescription[status],
-).join(' → ')}（${GradeReviewRequestStatusDescription[GradeReviewRequestStatusCode.REJECTED]}终止）`
+export const REVIEW_REQUEST_FLOW_HINT = `${REVIEW_REQUEST_MAIN_FLOW_STATUSES.map((status) =>
+  strictEnumLabel(GradeReviewRequestStatusDescription, status, '复核申请状态'),
+).join(
+  ' → ',
+)}（${strictEnumLabel(GradeReviewRequestStatusDescription, GradeReviewRequestStatusCode.REJECTED, '复核申请状态')}终止）`
 
 /** 复核原因类型下拉选项 */
 export const GRADE_REVIEW_REASON_TYPE_OPTIONS: Array<{
@@ -191,7 +194,7 @@ export const GRADE_REVIEW_REASON_TYPE_OPTIONS: Array<{
   value: GradeReviewReasonTypeCode
 }> = ALL_GRADE_REVIEW_REASON_TYPE_CODES.map((value) => ({
   value,
-  label: GradeReviewReasonTypeDescription[value],
+  label: strictEnumLabel(GradeReviewReasonTypeDescription, value, '复核原因类型'),
 }))
 
 /** 复核申请提交请求 - 对应 GradeReviewSubmitRequest */
@@ -494,7 +497,7 @@ export const BATCH_CORRECTION_STATUS_OPTIONS: Array<{
   value: BatchCorrectionApprovalStatusCode
 }> = ALL_BATCH_CORRECTION_APPROVAL_STATUS_CODES.map((value) => ({
   value,
-  label: BatchCorrectionApprovalStatusDescription[value],
+  label: strictEnumLabel(BatchCorrectionApprovalStatusDescription, value, '批量更正审批状态'),
 }))
 
 /** 批量更正主流程状态链（不含 REJECTED 分支），供列表页流程 hint 展示 */
@@ -507,8 +510,8 @@ export const BATCH_CORRECTION_MAIN_FLOW_STATUSES: BatchCorrectionApprovalStatusC
 ]
 
 /** 批量更正主流程 hint */
-export const BATCH_CORRECTION_FLOW_HINT = BATCH_CORRECTION_MAIN_FLOW_STATUSES.map(
-  (status) => BatchCorrectionApprovalStatusDescription[status],
+export const BATCH_CORRECTION_FLOW_HINT = BATCH_CORRECTION_MAIN_FLOW_STATUSES.map((status) =>
+  strictEnumLabel(BatchCorrectionApprovalStatusDescription, status, '批量更正审批状态'),
 ).join(' → ')
 
 /** 批量成绩更正计划 - 对应 ExamBatchGradeCorrectionPlan */
@@ -632,8 +635,8 @@ export function computeSingleQuestionCorrectionCompositeTotal(
     return null
   }
   const dailyScore = request.currentDailyScore ?? 0
-  const correctedExamScore
-    = request.currentExamScore - questionRef.currentTeacherReviewScore + afterScore
+  const correctedExamScore =
+    request.currentExamScore - questionRef.currentTeacherReviewScore + afterScore
   return correctedExamScore + dailyScore
 }
 

@@ -1,6 +1,6 @@
 import type { Ref } from 'vue'
-import type { PageResult, QueryDto } from '@/types'
 import { ref } from 'vue'
+import type { PageResult, QueryDto } from '@/types'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
 
@@ -17,7 +17,7 @@ export interface UseQueryTableOptions<T, F extends Record<string, unknown>> {
   defaultFilters?: () => F
   immediate?: boolean
   errorMessage?: string
-  onLoaded?: (rows: T[]) => void
+  onLoaded?: (rows: T[], params: QueryDto & F) => void | Promise<void>
 }
 
 /**
@@ -34,15 +34,21 @@ export function useQueryTable<T, F extends Record<string, unknown> = Record<stri
   const pageSize = ref(DEFAULT_LIST_PAGE_SIZE)
   const pageTotal = ref(0)
   const filters = ref((options?.defaultFilters?.() ?? {}) as F) as Ref<F>
+  const requestToken = ref(0)
 
   async function loadPage(): Promise<void> {
+    const currentToken = ++requestToken.value
+    const requestParams = {
+      ...filters.value,
+      pageNum: pageNum.value,
+      pageSize: pageSize.value,
+    } as QueryDto & F
     loading.value = true
     try {
-      const page = await loadFn({
-        ...filters.value,
-        pageNum: pageNum.value,
-        pageSize: pageSize.value,
-      } as QueryDto & F)
+      const page = await loadFn(requestParams)
+      if (currentToken !== requestToken.value) {
+        return
+      }
       rows.value = page.list
       pageTotal.value = page.total
       if (page.pageNum != null) {
@@ -51,13 +57,18 @@ export function useQueryTable<T, F extends Record<string, unknown> = Record<stri
       if (page.pageSize != null) {
         pageSize.value = page.pageSize
       }
-      options?.onLoaded?.(rows.value)
+      await options?.onLoaded?.(rows.value, requestParams)
     } catch (error) {
+      if (currentToken !== requestToken.value) {
+        return
+      }
       rows.value = []
       pageTotal.value = 0
       showUserError(error, options?.errorMessage ?? '数据加载失败')
     } finally {
-      loading.value = false
+      if (currentToken === requestToken.value) {
+        loading.value = false
+      }
     }
   }
 

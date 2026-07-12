@@ -2,20 +2,21 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { AuditEvidenceItemRequest } from '@/apis/quality/audit-evidence'
 import type { AuditIssueVO } from '@/apis/quality/audit-issue'
+import { auditIssueApi } from '@/apis/quality/audit-issue'
 import type {
   AuditRectificationQueryRequest,
   AuditRectificationSaveRequest,
   AuditRectificationVO,
 } from '@/apis/quality/audit-rectification'
+import { auditRectificationApi } from '@/apis/quality/audit-rectification'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type {
   QualitySelectorChangeValue,
   WorkbenchSignalRefreshHandler,
 } from '@/composables/quality/improvement'
+import { refreshWorkbenchSignalsAfterMutation, selectedId } from '@/composables/quality/improvement'
 import { message } from 'ant-design-vue'
 import { reactive, ref } from 'vue'
-import { auditIssueApi } from '@/apis/quality/audit-issue'
-import { auditRectificationApi } from '@/apis/quality/audit-rectification'
 import {
   AUDIT_RECTIFICATION_STATUS_COLOR,
   AuditRectificationStatusCode,
@@ -33,7 +34,6 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
-import { refreshWorkbenchSignalsAfterMutation, selectedId } from '@/composables/quality/improvement'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import {
@@ -53,7 +53,13 @@ const props = defineProps<{
 }>()
 
 const rectColumns: ColumnsType = [
-  { title: '编码', dataIndex: 'rectificationCode', key: 'rectificationCode', width: 140, fixed: 'left' },
+  {
+    title: '编码',
+    dataIndex: 'rectificationCode',
+    key: 'rectificationCode',
+    width: 140,
+    fixed: 'left',
+  },
   { title: '标题', key: 'rectTitle' },
   { title: '责任人', key: 'ownerRef', width: 140 },
   { title: '截止', dataIndex: 'dueDate', key: 'dueDate', width: 110 },
@@ -206,7 +212,7 @@ async function loadList(options?: { refreshSignals?: boolean }) {
         scope,
         props.onWorkbenchRefresh,
         props.onLoadError,
-        '工作台指标加载失败，请稍后重试',
+        '工作台指标加载失败',
       )
     }
   } catch (error) {
@@ -228,7 +234,7 @@ function rectIssueCode(value: string | null | undefined): string {
   return issue?.issueCode?.trim() || '—'
 }
 
-function handleRectPageChange(page: { current: number, pageSize: number }) {
+function handleRectPageChange(page: { current: number; pageSize: number }) {
   rectQuery.pageNum = page.current
   rectQuery.pageSize = page.pageSize
   loadList()
@@ -284,11 +290,11 @@ async function submitRectEditor() {
     }
   }
   if (
-    !rectEditor.auditIssueId
-    || !rectEditor.rectificationCode.trim()
-    || !rectEditor.rectificationTitle.trim()
-    || !rectEditor.ownerUserId
-    || !rectEditor.dueDate
+    !rectEditor.auditIssueId ||
+    !rectEditor.rectificationCode.trim() ||
+    !rectEditor.rectificationTitle.trim() ||
+    !rectEditor.ownerUserId ||
+    !rectEditor.dueDate
   ) {
     message.error('请填写关联问题、编码、标题、责任人、截止日期')
     return
@@ -329,9 +335,9 @@ async function handleRectDelete(record: AuditRectificationVO) {
 
 function canEditAuditRectification(status: AuditRectificationStatusCode): boolean {
   return (
-    status === AuditRectificationStatusCode.PLANNED
-    || status === AuditRectificationStatusCode.IN_PROGRESS
-    || status === AuditRectificationStatusCode.RETURNED
+    status === AuditRectificationStatusCode.PLANNED ||
+    status === AuditRectificationStatusCode.IN_PROGRESS ||
+    status === AuditRectificationStatusCode.RETURNED
   )
 }
 

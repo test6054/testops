@@ -5,6 +5,8 @@ export enum ScanAttentionTypeCode {
   DUPLICATE_PENDING = 'DUPLICATE_PENDING',
   RECOGNITION_REVIEW = 'RECOGNITION_REVIEW',
   BINDING_CONFLICT = 'BINDING_CONFLICT',
+  UNASSIGNED_PAGE = 'UNASSIGNED_PAGE',
+  BOUND_INCOMPLETE = 'BOUND_INCOMPLETE',
   MISSING_CANDIDATE_ROSTER = 'MISSING_CANDIDATE_ROSTER',
 }
 
@@ -14,6 +16,8 @@ export const ALL_SCAN_ATTENTION_TYPE_CODES: readonly ScanAttentionTypeCode[] = [
   ScanAttentionTypeCode.DUPLICATE_PENDING,
   ScanAttentionTypeCode.RECOGNITION_REVIEW,
   ScanAttentionTypeCode.BINDING_CONFLICT,
+  ScanAttentionTypeCode.UNASSIGNED_PAGE,
+  ScanAttentionTypeCode.BOUND_INCOMPLETE,
   ScanAttentionTypeCode.MISSING_CANDIDATE_ROSTER,
 ]
 
@@ -23,6 +27,7 @@ export const ScanAttentionTypeDescription: Record<ScanAttentionTypeCode, string>
   [ScanAttentionTypeCode.DUPLICATE_PENDING]: '重复影像',
   [ScanAttentionTypeCode.RECOGNITION_REVIEW]: '识别复核',
   [ScanAttentionTypeCode.BINDING_CONFLICT]: '身份绑定冲突',
+  [ScanAttentionTypeCode.UNASSIGNED_PAGE]: '未归卷扫描页',
+  [ScanAttentionTypeCode.BOUND_INCOMPLETE]: '已绑定缺页',
   [ScanAttentionTypeCode.MISSING_CANDIDATE_ROSTER]: '缺少考生名单',
 }
-

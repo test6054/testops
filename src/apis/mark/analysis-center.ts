@@ -4,9 +4,10 @@ import http from '@/config/axios'
 export interface ScannerCenterOverviewResponse {
   failedTicketCount?: number
   failedWorkOrderCount?: number
-  mixedBatchCount?: number
   pageRegisterBlockedCount?: number
   committingWorkOrderCount?: number
+  /** 待处置切卷余页批次数 */
+  partialTailPendingCount?: number
   pendingDispatchCount?: number
   processingDispatchCount?: number
   suspendedDispatchCount?: number

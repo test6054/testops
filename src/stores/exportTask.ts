@@ -1,7 +1,7 @@
 import type { ExportJobQueryRequest, ExportJobStatusVO } from '@/apis/edu/export'
+import { deleteExportJob, queryExportJobs } from '@/apis/edu/export'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
-import { deleteExportJob, queryExportJobs } from '@/apis/edu/export'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { AsyncTaskStatusEnum } from '@/types/enums'
 import { showUserError } from '@/utils/error-handler'
@@ -57,7 +57,7 @@ export const useExportTaskStore = defineStore('export-task', () => {
         pagination.value = { total: result.total, pages: result.pages }
       } catch (error) {
         stopPolling()
-        showUserError(error, '导出任务状态刷新失败，请稍后重试')
+        showUserError(error, '导出任务状态刷新失败')
       }
     }, POLLING_INTERVAL)
   }

@@ -4,6 +4,7 @@ export enum ExportTaskStatusCode {
   GENERATING = 'GENERATING',
   COMPLETED = 'COMPLETED',
   FAILED = 'FAILED',
+  CANCELLED = 'CANCELLED',
 }
 
 export const ALL_EXPORT_TASK_STATUS_CODES: readonly ExportTaskStatusCode[] = [
@@ -11,6 +12,7 @@ export const ALL_EXPORT_TASK_STATUS_CODES: readonly ExportTaskStatusCode[] = [
   ExportTaskStatusCode.GENERATING,
   ExportTaskStatusCode.COMPLETED,
   ExportTaskStatusCode.FAILED,
+  ExportTaskStatusCode.CANCELLED,
 ]
 
 export const ExportTaskStatusDescription: Record<ExportTaskStatusCode, string> = {
@@ -18,5 +20,6 @@ export const ExportTaskStatusDescription: Record<ExportTaskStatusCode, string> =
   [ExportTaskStatusCode.GENERATING]: '生成中',
   [ExportTaskStatusCode.COMPLETED]: '已完成',
   [ExportTaskStatusCode.FAILED]: '失败',
+  [ExportTaskStatusCode.CANCELLED]: '已取消',
 }
 

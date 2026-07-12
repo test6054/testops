@@ -19,7 +19,7 @@
       <div class="notif-list">
         <div v-if="loadError" class="notif-empty notif-empty--error">
           <span>加载失败，</span>
-          <button type="button" class="notif-retry" @click="getMessageData">点击重试</button>
+          <button type="button" class="notif-retry" @click="getMessageData">重新加载</button>
         </div>
 
         <div v-else-if="!messageList.length" class="notif-empty">暂无未读消息</div>
@@ -54,10 +54,6 @@ import type {
   InboxMessageListItemDTO,
   PublishedSystemAnnouncementResponse,
 } from '@/apis/edu/message'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { storeToRefs } from 'pinia'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   getInboxMessages,
   getPublishedAnnouncementList,
@@ -65,6 +61,10 @@ import {
   markAllAsRead,
   MessageFolderEnum,
 } from '@/apis/edu/message'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { storeToRefs } from 'pinia'
+import { computed, onMounted, reactive, ref } from 'vue'
 import router from '@/router'
 import { useNotificationStore } from '@/stores/modules/notification'
 import { isErrorHandled, showUserError } from '@/utils/error-handler'
@@ -133,27 +133,27 @@ function resolveNotifTone(
   if (!messageTypeCode) return 'info'
   const code = messageTypeCode.toUpperCase()
   if (
-    code.includes('FAILED')
-    || code.includes('ERROR')
-    || code.includes('OVERDUE')
-    || code.includes('INCONSISTENCY')
-    || code.includes('WITHDRAWN')
+    code.includes('FAILED') ||
+    code.includes('ERROR') ||
+    code.includes('OVERDUE') ||
+    code.includes('INCONSISTENCY') ||
+    code.includes('WITHDRAWN')
   ) {
     return 'error'
   }
   if (
-    code.includes('REMINDER')
-    || code.includes('PENDING')
-    || code.includes('WARNING')
-    || code.includes('UPCOMING')
+    code.includes('REMINDER') ||
+    code.includes('PENDING') ||
+    code.includes('WARNING') ||
+    code.includes('UPCOMING')
   ) {
     return 'warn'
   }
   if (
-    code.includes('COMPLETED')
-    || code.includes('PUBLISHED')
-    || code.includes('CONFIRMED')
-    || code.includes('SUCCESS')
+    code.includes('COMPLETED') ||
+    code.includes('PUBLISHED') ||
+    code.includes('CONFIRMED') ||
+    code.includes('SUCCESS')
   ) {
     return 'success'
   }
@@ -217,13 +217,13 @@ const getMessageData = async () => {
       loadError.value = true
       messageList.value = []
       if (!isErrorHandled(inboxResult.reason)) {
-        showUserError(inboxResult.reason, '未读消息加载失败，请稍后重试')
+        showUserError(inboxResult.reason, '未读消息加载失败')
       }
       return
     }
 
-    const inboxMessages: UnifiedMessageItem[]
-      = inboxResult.status === 'fulfilled'
+    const inboxMessages: UnifiedMessageItem[] =
+      inboxResult.status === 'fulfilled'
         ? inboxResult.value.list.map((item: InboxMessageListItemDTO) =>
             buildMessageItem(
               {
@@ -239,8 +239,8 @@ const getMessageData = async () => {
           )
         : []
 
-    const announcementMessages: UnifiedMessageItem[]
-      = announcementResult.status === 'fulfilled'
+    const announcementMessages: UnifiedMessageItem[] =
+      announcementResult.status === 'fulfilled'
         ? announcementResult.value.list.map((item: PublishedSystemAnnouncementResponse) =>
             buildMessageItem({
               id: item.id,
@@ -254,14 +254,14 @@ const getMessageData = async () => {
         : []
 
     if (
-      inboxResult.status === 'rejected'
-      && inboxMessages.length === 0
-      && announcementMessages.length === 0
+      inboxResult.status === 'rejected' &&
+      inboxMessages.length === 0 &&
+      announcementMessages.length === 0
     ) {
       loadError.value = true
       messageList.value = []
       if (!isErrorHandled(inboxResult.reason)) {
-        showUserError(inboxResult.reason, '未读消息加载失败，请稍后重试')
+        showUserError(inboxResult.reason, '未读消息加载失败')
       }
       return
     }
@@ -272,7 +272,7 @@ const getMessageData = async () => {
   } catch (error) {
     loadError.value = true
     messageList.value = []
-    showUserError(error, '未读消息加载失败，请稍后重试')
+    showUserError(error, '未读消息加载失败')
   } finally {
     loading.value = false
   }
@@ -303,7 +303,7 @@ const handleReadAll = async () => {
     messageList.value = []
     emit('readall-success')
   } catch (error) {
-    showUserError(error, '消息已读状态更新失败，请稍后重试')
+    showUserError(error, '消息已读状态更新失败')
   } finally {
     readAllLoading.value = false
   }

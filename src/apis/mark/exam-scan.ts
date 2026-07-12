@@ -11,10 +11,13 @@ import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { BindingStatusCode } from '@/types/enums/binding-status-enum'
 import type { ExamScanBatchWorkbenchSignalBandToneCode } from '@/types/enums/exam-scan-batch-workbench-signal-band-tone-enum'
+import { isExamScanBatchWorkbenchSignalBandToneCode } from '@/types/enums/exam-scan-batch-workbench-signal-band-tone-enum'
 import type { PageRegisterStateCode } from '@/types/enums/page-register-state-enum'
 import type { ScanAttentionQueryGroupCode } from '@/types/enums/scan-attention-query-group-enum'
 import type { ScanAttentionSourceTypeCode } from '@/types/enums/scan-attention-source-type-enum'
+import type { ScanBatchAttributionReviewStatusCode } from '@/types/enums/scan-batch-attribution-review-status-enum'
 import type { ScanBatchOrderAuditCode } from '@/types/enums/scan-batch-order-audit-enum'
 import type { ScanBatchWorkbenchBindingStatusCode } from '@/types/enums/scan-batch-workbench-binding-status-enum'
 import type { ScanBatchWorkbenchPageStatusFilterCode } from '@/types/enums/scan-batch-workbench-page-status-filter-enum'
@@ -22,7 +25,6 @@ import type { ScanBatchWorkbenchRegisterStatusCode } from '@/types/enums/scan-ba
 import type { ScanBatchWorkbenchRosterMatchStatusCode } from '@/types/enums/scan-batch-workbench-roster-match-status-enum'
 import type { ScanBatchWorkbenchTopActionCode } from '@/types/enums/scan-batch-workbench-top-action-enum'
 import http from '@/config/axios'
-import { isExamScanBatchWorkbenchSignalBandToneCode } from '@/types/enums/exam-scan-batch-workbench-signal-band-tone-enum'
 import { QualityDecisionCode } from '@/types/enums/quality-decision-enum'
 import {
   ALL_SCAN_ATTENTION_TYPE_CODES,
@@ -34,6 +36,7 @@ import {
   ScanBatchStatusCode,
   ScanBatchStatusDescription,
 } from '@/types/enums/scan-batch-status-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
   ALL_EXAM_SCAN_BATCH_WORKBENCH_SIGNAL_BAND_TONE_CODES,
@@ -66,6 +69,12 @@ export {
 } from '@/types/enums/scan-attention-type-enum'
 
 export {
+  ALL_SCAN_BATCH_ATTRIBUTION_REVIEW_STATUS_CODES,
+  ScanBatchAttributionReviewStatusCode,
+  ScanBatchAttributionReviewStatusDescription,
+} from '@/types/enums/scan-batch-attribution-review-status-enum'
+
+export {
   ALL_SCAN_BATCH_ORDER_AUDIT_CODES,
   ScanBatchOrderAuditCode,
   ScanBatchOrderAuditDescription,
@@ -90,13 +99,15 @@ export const SCAN_ATTENTION_TYPE_TONE: Record<ScanAttentionTypeCode, BadgeTone> 
   [ScanAttentionTypeCode.DUPLICATE_PENDING]: 'purple',
   [ScanAttentionTypeCode.RECOGNITION_REVIEW]: 'blue',
   [ScanAttentionTypeCode.BINDING_CONFLICT]: 'gray',
+  [ScanAttentionTypeCode.UNASSIGNED_PAGE]: 'orange',
+  [ScanAttentionTypeCode.BOUND_INCOMPLETE]: 'orange',
   [ScanAttentionTypeCode.MISSING_CANDIDATE_ROSTER]: 'orange',
 }
 
-export const SCAN_ATTENTION_TYPE_OPTIONS: Array<{ label: string, value: ScanAttentionTypeCode }>
-  = ALL_SCAN_ATTENTION_TYPE_CODES.map((value) => ({
+export const SCAN_ATTENTION_TYPE_OPTIONS: Array<{ label: string; value: ScanAttentionTypeCode }> =
+  ALL_SCAN_ATTENTION_TYPE_CODES.map((value) => ({
     value,
-    label: ScanAttentionTypeDescription[value],
+    label: strictEnumLabel(ScanAttentionTypeDescription, value, '扫描异常类型'),
   }))
 
 /** 阅卷原始扫描页引用 - 与后端 ScannedPageRef 字段对齐 */
@@ -178,10 +189,10 @@ export const SCAN_BATCH_STATUS_TONE: Record<ScanBatchStatusCode, BadgeTone> = {
   [ScanBatchStatusCode.DISCARDED]: 'gray',
 }
 
-export const SCAN_BATCH_STATUS_OPTIONS: Array<{ value: ScanBatchStatusCode, label: string }>
-  = ALL_SCAN_BATCH_STATUS_CODES.map((value) => ({
+export const SCAN_BATCH_STATUS_OPTIONS: Array<{ value: ScanBatchStatusCode; label: string }> =
+  ALL_SCAN_BATCH_STATUS_CODES.map((value) => ({
     value,
-    label: ScanBatchStatusDescription[value],
+    label: strictEnumLabel(ScanBatchStatusDescription, value, '扫描批次状态'),
   }))
 
 /** 扫描批次视图 - 对应 ExamScannerBatchResponse */
@@ -210,6 +221,8 @@ export interface ExamScannerBatchResponse {
   pendingUploadCount?: number
   /** 批次内未处置异常项数量 */
   attentionItemCount?: number
+  /** 缺少有效匿名展示影像的 ACTIVE 扫描页数量 */
+  missingProcessedPageCount?: number
   status: ScanBatchStatusCode
   statusMessage: string
   diagnostic?: string
@@ -460,6 +473,23 @@ export function retryScanBatchPageRegister(
   )
 }
 
+/** 补跑已登记扫描页的制卷模板脱敏处理影像。 */
+export function retryScanBatchProcessedImages(
+  request: ExamScanBatchPageRegisterRetryRequest,
+): Promise<number> {
+  return http.post<number>('/api/mark/exams/scanner-batches/processed-images/retry', request)
+}
+
+/** 合成图物理页重建：作废错页并重新切分登记（仅 DIRECT 批次）。 */
+export function rebuildCompositeScanPages(
+  request: ExamScanBatchPageRegisterRetryRequest,
+): Promise<ExamScanBatchPageRegisterRetryResponse> {
+  return http.post<ExamScanBatchPageRegisterRetryResponse>(
+    '/api/mark/exams/scanner-batches/composite-page-rebuild',
+    request,
+  )
+}
+
 export {
   ALL_SCAN_BATCH_WORKBENCH_BINDING_STATUS_CODES,
   ScanBatchWorkbenchBindingStatusCode,
@@ -531,6 +561,41 @@ export interface ExamScannerBatchWorkbenchPageVO {
   attentionCount?: number
 }
 
+/** 扫描批次归卷页摘要 - 对应 ExamScannerBatchAttributionPageVO */
+export interface ExamScannerBatchAttributionPageVO {
+  pageId: string
+  pageKey: string
+  fileOrder: number
+  pageSeq?: number
+  templatePageNo?: number
+  hasException?: boolean
+}
+
+/** 扫描批次学生归卷摘要 - 对应 ExamScannerBatchAttributionItemVO */
+export interface ExamScannerBatchAttributionItemVO {
+  bucketKey: string
+  unassignedBucket?: boolean
+  paperInstanceId?: string
+  candidateRosterId?: string
+  studentNo?: string
+  studentName?: string
+  classId?: string
+  className?: string
+  bindingStatus?: BindingStatusCode
+  reviewStatus: ScanBatchAttributionReviewStatusCode
+  recognizedStudentNo?: string
+  recognizedStudentName?: string
+  recognizedClassId?: string
+  recognizedClassName?: string
+  expectedPageCount?: number
+  registeredPageCount?: number
+  completePaper?: boolean
+  manualReviewRequired?: boolean
+  suspectedMixed?: boolean
+  diagnostic?: string
+  pages: ExamScannerBatchAttributionPageVO[]
+}
+
 /** 扫描批次工作台聚合响应 - 对应 ExamScannerBatchWorkbenchResponse */
 export interface ExamScannerBatchWorkbenchResponse {
   batch: ExamScannerBatchResponse
@@ -545,8 +610,10 @@ export interface ExamScannerBatchWorkbenchResponse {
   pageRegisteredCount?: number
   paperBoundCount?: number
   topActions?: ScanBatchWorkbenchTopActionCode[]
+  canViewOriginalImage?: boolean
   initialPageKey?: string
   initialPageItems?: ExamScannerBatchWorkbenchPageVO[]
+  attributionItems?: ExamScannerBatchAttributionItemVO[]
 }
 
 /** 页轨游标查询请求 - 对应 ScannerBatchWorkbenchPageQueryRequest */
@@ -582,6 +649,23 @@ export interface ExamScannerBatchPageInspectorVO {
   page: ExamScannerBatchWorkbenchPageVO
   inspectorHint?: string
   exceptionSummary?: string
+}
+
+/** 扫描批次工作台人工调卷请求 - 对应 ExamScannerBatchPageReassignRequest */
+export interface ExamScannerBatchPageReassignRequest {
+  examId: string
+  scanBatchId: string
+  pageId: string
+  targetPaperInstanceId: string
+}
+
+/** 扫描批次工作台人工调卷响应 - 对应 ExamScannerBatchPageReassignResponse */
+export interface ExamScannerBatchPageReassignResponse {
+  pageId?: string
+  sourcePaperInstanceId?: string
+  targetPaperInstanceId?: string
+  swappedPageId?: string
+  diagnostic?: string
 }
 
 function parseScanBatchWorkbenchSignalBandTone(
@@ -633,6 +717,16 @@ export function getScannerBatchPageInspector(
 ): Promise<ExamScannerBatchPageInspectorVO> {
   return http.post<ExamScannerBatchPageInspectorVO>(
     '/api/mark/exams/scanner-batches/workbench/page-inspector',
+    request,
+  )
+}
+
+/** 人工调整扫描页归卷。 */
+export function reassignScannerBatchPage(
+  request: ExamScannerBatchPageReassignRequest,
+): Promise<ExamScannerBatchPageReassignResponse> {
+  return http.post<ExamScannerBatchPageReassignResponse>(
+    '/api/mark/exams/scanner-batches/workbench/reassign-page',
     request,
   )
 }

@@ -1,8 +1,8 @@
 import type { Ref } from 'vue'
+import { ref } from 'vue'
 import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
 import type { FinalScoreRiskOverviewResponse } from '@/apis/mark/exam-score'
 import message from 'ant-design-vue/es/message'
-import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getAbsenceExamStats } from '@/apis/mark/absence'
 import { useScoreReleaseNavigation } from '@/composables/useScoreReleaseNavigation'
@@ -49,7 +49,7 @@ export function useScorePublishPreconditions(options: {
     }
     await refreshPendingAbsenceCount()
     if (pendingAbsenceCount.value === null) {
-      message.error('待确认缺考状态未知，请刷新后重试')
+      message.error('待确认缺考状态未知')
       return false
     }
     if (pendingAbsenceCount.value > 0) {
@@ -60,14 +60,18 @@ export function useScorePublishPreconditions(options: {
       return false
     }
     const overview = options.riskOverview.value
-    if (overview && overview.unreconciledAbsenceCount > 0) {
+    if (!overview) {
+      message.error('成绩风险概览不可用，不能发布成绩')
+      return false
+    }
+    if (overview.unreconciledAbsenceCount > 0) {
       message.warning(
         `仍有 ${overview.unreconciledAbsenceCount} 名应考学生未完成缺考核对，请先完成缺考 reconcile 后再发布`,
       )
       goToAbsenceConfirm()
       return false
     }
-    if (overview && !overview.readyToPublish) {
+    if (!overview.readyToPublish) {
       message.warning('当前考试尚未满足发布前置条件，请先完成成绩确认或风险复核后再发布')
       return false
     }
@@ -92,7 +96,7 @@ export function useScorePublishPreconditions(options: {
     }
     await refreshPendingAbsenceCount()
     if (pendingAbsenceCount.value === null) {
-      message.error('待确认缺考状态未知，请刷新后重试')
+      message.error('待确认缺考状态未知')
       return false
     }
     if (pendingAbsenceCount.value > 0) {
@@ -103,7 +107,11 @@ export function useScorePublishPreconditions(options: {
       return false
     }
     const overview = options.riskOverview.value
-    if (overview && overview.unreconciledAbsenceCount > 0) {
+    if (!overview) {
+      message.error('成绩风险概览不可用，不能确认成绩')
+      return false
+    }
+    if (overview.unreconciledAbsenceCount > 0) {
       message.warning(
         `仍有 ${overview.unreconciledAbsenceCount} 名应考学生未完成缺考核对，请先完成缺考 reconcile 后再确认`,
       )

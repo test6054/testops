@@ -2,14 +2,15 @@ import type {
   ArchiveDutyGrantResponse,
   ArchiveSecurityPolicyResponse,
 } from '@/apis/mark/archive-config'
-import { computed, ref } from 'vue'
 import {
   ArchiveDutyTypeCode,
   listArchiveSecurityPolicy,
   listMyArchiveDutyGrants,
 } from '@/apis/mark/archive-config'
+import { computed, ref } from 'vue'
 import { ArchiveSecurityLevelCode } from '@/apis/mark/archive-volume'
 import { useUserStore } from '@/stores/modules/user'
+import { canViewArchiveDepartmentQueueFromGrants } from '@/utils/archive-department-queue-access'
 import { showUserError } from '@/utils/error-handler'
 
 const ARCHIVE_SECURITY_LEVEL_ORDER: Record<ArchiveSecurityLevelCode, number> = {
@@ -125,8 +126,8 @@ export function useArchiveDutyAccess() {
   }
 
   function filterListDepartmentOptions(
-    all: Array<{ value: string, label: string }>,
-  ): Array<{ value: string, label: string }> {
+    all: Array<{ value: string; label: string }>,
+  ): Array<{ value: string; label: string }> {
     const scopeIds = listScopedDepartmentIds.value
     if (scopeIds.length === 0) {
       return all
@@ -137,8 +138,8 @@ export function useArchiveDutyAccess() {
   const canViewCollegeBoard = computed(() => canViewDepartmentTasks.value)
   const canViewDepartmentTasks = computed(
     () =>
-      hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR)
-      || hasDuty(ArchiveDutyTypeCode.DEPARTMENT_ARCHIVIST),
+      hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR) ||
+      hasDuty(ArchiveDutyTypeCode.DEPARTMENT_ARCHIVIST),
   )
   const canViewArchiveReviewer = computed(
     () =>
@@ -156,33 +157,36 @@ export function useArchiveDutyAccess() {
   )
   const canRejectTransfer = computed(
     () =>
-      hasDuty(ArchiveDutyTypeCode.TRANSFER_REVIEWER)
-      || hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR)
-      || hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN),
+      hasDuty(ArchiveDutyTypeCode.TRANSFER_REVIEWER) ||
+      hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR) ||
+      hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN),
   )
   const canViewStatisticsKpi = computed(
     () =>
-      hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR)
-      || hasDuty(ArchiveDutyTypeCode.DEPARTMENT_ARCHIVIST)
-      || hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN),
+      hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR) ||
+      hasDuty(ArchiveDutyTypeCode.DEPARTMENT_ARCHIVIST) ||
+      hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN),
   )
   const isDepartmentArchivistOnly = computed(
     () =>
-      hasDuty(ArchiveDutyTypeCode.DEPARTMENT_ARCHIVIST)
-      && !hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR),
+      hasDuty(ArchiveDutyTypeCode.DEPARTMENT_ARCHIVIST) &&
+      !hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR),
   )
   const canRemindArchiveDue = computed(
     () =>
-      hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR)
-      || hasDuty(ArchiveDutyTypeCode.DEPARTMENT_ARCHIVIST),
+      hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR) ||
+      hasDuty(ArchiveDutyTypeCode.DEPARTMENT_ARCHIVIST),
   )
   const canViewSearchAudit = computed(
     () =>
-      hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN)
-      || hasDuty(ArchiveDutyTypeCode.SUPERVISION_INSPECTOR)
-      || hasDuty(ArchiveDutyTypeCode.TRANSFER_REVIEWER)
-      || hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR)
-      || hasDuty(ArchiveDutyTypeCode.DEPARTMENT_ARCHIVIST),
+      hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN) ||
+      hasDuty(ArchiveDutyTypeCode.SUPERVISION_INSPECTOR) ||
+      hasDuty(ArchiveDutyTypeCode.TRANSFER_REVIEWER) ||
+      hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR) ||
+      hasDuty(ArchiveDutyTypeCode.DEPARTMENT_ARCHIVIST),
+  )
+  const canViewArchiveDepartmentQueue = computed(() =>
+    canViewArchiveDepartmentQueueFromGrants(grants.value),
   )
 
   async function loadGrants() {
@@ -228,6 +232,7 @@ export function useArchiveDutyAccess() {
     canViewStatisticsKpi,
     canRemindArchiveDue,
     canViewSearchAudit,
+    canViewArchiveDepartmentQueue,
     isDepartmentArchivistOnly,
     loadGrants,
   }

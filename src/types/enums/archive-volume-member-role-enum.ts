@@ -1,3 +1,5 @@
+import { strictEnumLabel } from '@/utils/strict-enum'
+
 /** 归档卷协作成员角色 */
 export enum ArchiveVolumeMemberRoleCode {
   ORGANIZER = 'ORGANIZER',
@@ -28,5 +30,5 @@ export function archiveVolumeMemberRoleLabel(role?: ArchiveVolumeMemberRoleCode 
   if (!role) {
     return '协作成员'
   }
-  return ArchiveVolumeMemberRoleDescription[role]
+  return strictEnumLabel(ArchiveVolumeMemberRoleDescription, role, '归档卷协作成员角色')
 }

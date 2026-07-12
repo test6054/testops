@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioCorrectionSummaryVO } from '@/apis/portfolio/types'
+import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { Input, message } from 'ant-design-vue'
 import { reactive, ref } from 'vue'
@@ -10,7 +11,6 @@ import {
   PortfolioCorrectionRequestStatusCode,
   PortfolioCorrectionRequestStatusDescription,
 } from '@/apis/portfolio/enums'
-import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -50,6 +50,13 @@ const columns: ColumnsType<PortfolioCorrectionSummaryVO> = [
   { title: '操作', key: 'actions', width: 220 },
 ]
 
+/** 列表刷新或处理完成后必须清空失效的驳回上下文，避免继续操作旧工单。 */
+function resetRejectContext() {
+  rejectDrawerOpen.value = false
+  rejectTarget.value = null
+  rejectForm.handleOpinion = ''
+}
+
 async function loadPage() {
   loading.value = true
   try {
@@ -59,6 +66,9 @@ async function loadPage() {
     })
     rows.value = page.list
     pageTotal.value = page.total
+    if (rejectTarget.value && !rows.value.some((item) => item.id === rejectTarget.value?.id)) {
+      resetRejectContext()
+    }
   } catch (error) {
     showUserError(error, '加载纠错工单失败')
   } finally {
@@ -79,9 +89,7 @@ async function handleRow(
       ...(handleOpinion ? { handleOpinion } : {}),
     })
     message.success('处理成功')
-    rejectDrawerOpen.value = false
-    rejectTarget.value = null
-    rejectForm.handleOpinion = ''
+    resetRejectContext()
     await loadPage()
   } catch (error) {
     showUserError(error, '处理纠错失败')
@@ -223,7 +231,7 @@ void loadPage()
         placeholder="请填写驳回意见"
       />
       <template #footer>
-        <UiButton variant="ghost" @click="rejectDrawerOpen = false"> 取消 </UiButton>
+        <UiButton variant="ghost" @click="resetRejectContext"> 取消 </UiButton>
         <UiButton variant="primary" :loading="!!handlingId" @click="() => void submitReject()">
           确认驳回
         </UiButton>

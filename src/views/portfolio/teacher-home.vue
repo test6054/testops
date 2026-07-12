@@ -4,6 +4,7 @@ import type {
   PortfolioTeacherWorkbenchSummaryVO,
   PortfolioTodoSummaryVO,
 } from '@/apis/portfolio/types'
+import { PORTFOLIO_COMPLETENESS_LEVEL_TONE } from '@/apis/portfolio/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
@@ -14,7 +15,6 @@ import {
   PortfolioPortraitDimensionReadinessCode,
 } from '@/apis/portfolio/enums'
 import { portfolioTodoApi } from '@/apis/portfolio/todo'
-import { PORTFOLIO_COMPLETENESS_LEVEL_TONE } from '@/apis/portfolio/types'
 import PortfolioProgressCockpitBand from '@/components/portfolio/PortfolioProgressCockpitBand.vue'
 import PortfolioProgressCompareDrawer from '@/components/portfolio/PortfolioProgressCompareDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -29,6 +29,7 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { PortfolioTodoTypeCode } from '@/types/enums/portfolio-todo-type-enum'
 import { ResultCode } from '@/types/enums/result-code'
 import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -46,6 +47,7 @@ const workbenchSummary = ref<PortfolioTeacherWorkbenchSummaryVO | null>(null)
 const workbenchSummaryLoading = ref(false)
 const compareDrawerOpen = ref(false)
 const cockpitBandRef = ref<InstanceType<typeof PortfolioProgressCockpitBand> | null>(null)
+const homeRequestToken = ref(0)
 
 const completenessPercentText = computed(() => {
   if (!workbenchSummary.value) {
@@ -80,16 +82,29 @@ const portraitDataInsufficient = computed(() => {
     return false
   }
   return (
-    portrait.value.officialRecordCount === 0
-    && portrait.value.dimensions.every(
+    portrait.value.officialRecordCount === 0 &&
+    portrait.value.dimensions.every(
       (item) => item.readiness === PortfolioPortraitDimensionReadinessCode.PENDING,
     )
   )
 })
 
+/** 教师首页切换目标教师时必须让旧首页请求失效，避免上一位教师画像/待办回填当前首页。 */
+function resetHomeContext() {
+  homeRequestToken.value += 1
+  portrait.value = null
+  portraitAbsent.value = false
+  todos.value = []
+  workbenchSummary.value = null
+  compareDrawerOpen.value = false
+}
+
 async function loadDashboard() {
+  const requestToken = homeRequestToken.value
   if (!targetTeacherId.value && canPickTeachers.value) {
-    portraitAbsent.value = true
+    if (homeRequestToken.value === requestToken) {
+      portraitAbsent.value = true
+    }
     return
   }
   loading.value = true
@@ -97,8 +112,15 @@ async function loadDashboard() {
   portrait.value = null
   const request = targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}
   try {
-    portrait.value = await portfolioAnalysisApi.getPortrait(request)
+    const nextPortrait = await portfolioAnalysisApi.getPortrait(request)
+    if (homeRequestToken.value !== requestToken) {
+      return
+    }
+    portrait.value = nextPortrait
   } catch (error) {
+    if (homeRequestToken.value !== requestToken) {
+      return
+    }
     const code = readBusinessResultCode(error)
     if (code === ResultCode.DATA_NOT_FOUND) {
       portraitAbsent.value = true
@@ -106,30 +128,47 @@ async function loadDashboard() {
       showUserError(error, '加载画像摘要失败')
     }
   } finally {
-    loading.value = false
+    if (homeRequestToken.value === requestToken) {
+      loading.value = false
+    }
   }
 }
 
 async function loadWorkbenchSummary() {
+  const requestToken = homeRequestToken.value
   if (!targetTeacherId.value && canPickTeachers.value) {
-    workbenchSummary.value = null
+    if (homeRequestToken.value === requestToken) {
+      workbenchSummary.value = null
+    }
     return
   }
   workbenchSummaryLoading.value = true
   try {
     const request = targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}
-    workbenchSummary.value = await portfolioAnalysisApi.getWorkbenchSummary(request)
+    const nextSummary = await portfolioAnalysisApi.getWorkbenchSummary(request)
+    if (homeRequestToken.value !== requestToken) {
+      return
+    }
+    workbenchSummary.value = nextSummary
   } catch (error) {
+    if (homeRequestToken.value !== requestToken) {
+      return
+    }
     workbenchSummary.value = null
     showUserError(error, '加载工作台摘要失败')
   } finally {
-    workbenchSummaryLoading.value = false
+    if (homeRequestToken.value === requestToken) {
+      workbenchSummaryLoading.value = false
+    }
   }
 }
 
 async function loadTodos() {
+  const requestToken = homeRequestToken.value
   if (!targetTeacherId.value && canPickTeachers.value) {
-    todos.value = []
+    if (homeRequestToken.value === requestToken) {
+      todos.value = []
+    }
     return
   }
   todoLoading.value = true
@@ -139,12 +178,38 @@ async function loadTodos() {
       pageNum: 1,
       pageSize: DEFAULT_LIST_PAGE_SIZE,
     })
+    if (homeRequestToken.value !== requestToken) {
+      return
+    }
     todos.value = page.list
   } catch (error) {
+    if (homeRequestToken.value !== requestToken) {
+      return
+    }
     showUserError(error, '加载待办失败')
   } finally {
-    todoLoading.value = false
+    if (homeRequestToken.value === requestToken) {
+      todoLoading.value = false
+    }
   }
+}
+
+async function loadFirstTodoByTypes(
+  todoTypes: PortfolioTodoTypeCode[],
+): Promise<PortfolioTodoSummaryVO | null> {
+  for (const todoType of todoTypes) {
+    const page = await portfolioTodoApi.pageTodos({
+      ...(targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}),
+      todoType,
+      pageNum: 1,
+      pageSize: 1,
+    })
+    const row = page.list?.[0]
+    if (row) {
+      return row
+    }
+  }
+  return null
 }
 
 function openTodo(item: PortfolioTodoSummaryVO) {
@@ -152,15 +217,29 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     ? { teacherId: targetTeacherId.value }
     : {}
   if (
-    item.archiveRecordId
-    && (item.todoType === 'ARCHIVE_RETURNED' || item.todoType === 'ARCHIVE_DRAFT')
+    item.archiveRecordId &&
+    (item.todoType === 'ARCHIVE_RETURNED' || item.todoType === 'ARCHIVE_DRAFT')
   ) {
     query.recordId = item.archiveRecordId
   }
   if (item.todoType === 'ARCHIVE_PENDING_CONFIRM') {
+    if (!item.referenceAiTaskId) {
+      if (item.categoryId) {
+        void router.push({
+          path: `/portfolio/teacher/archive/${item.categoryId}`,
+          query: item.archiveRecordId ? { ...query, recordId: item.archiveRecordId } : query,
+        })
+        return
+      }
+      void router.push({
+        path: '/portfolio/teacher/archive',
+        query: item.archiveRecordId ? { ...query, recordId: item.archiveRecordId } : query,
+      })
+      return
+    }
     void router.push({
       path: '/portfolio/teacher/intake',
-      query: item.referenceAiTaskId ? { ...query, taskId: item.referenceAiTaskId } : query,
+      query: { ...query, taskId: item.referenceAiTaskId },
     })
     return
   }
@@ -182,8 +261,8 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     return
   }
   if (
-    item.todoType === 'EVALUATION_MATERIAL_CONFIRM'
-    || item.todoType === 'EVALUATION_RETURNED_SUPPLEMENT'
+    item.todoType === 'EVALUATION_MATERIAL_CONFIRM' ||
+    item.todoType === 'EVALUATION_RETURNED_SUPPLEMENT'
   ) {
     void router.push({
       path: '/portfolio/teacher/evaluation',
@@ -210,9 +289,12 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     return
   }
   if (item.categoryId) {
+    const categoryQuery = item.archiveRecordId
+      ? { ...query, recordId: item.archiveRecordId }
+      : query
     void router.push({
       path: `/portfolio/teacher/archive/${item.categoryId}`,
-      query,
+      query: categoryQuery,
     })
     return
   }
@@ -264,14 +346,30 @@ function handleCockpitMetricClick(key: string, context?: { academicYear?: string
     return
   }
   if (key === 'openGap') {
-    const gapTodo = todos.value.find(
-      (item) => item.todoType === 'GAP_PENDING' || item.todoType === 'GAP_RETURNED',
-    )
-    if (gapTodo) {
-      openTodo(gapTodo)
-      return
-    }
-    message.info('暂无补采待办')
+    void (async () => {
+      const cachedGapTodo = todos.value.find(
+        (item) =>
+          item.todoType === PortfolioTodoTypeCode.GAP_PENDING ||
+          item.todoType === PortfolioTodoTypeCode.GAP_RETURNED,
+      )
+      if (cachedGapTodo) {
+        openTodo(cachedGapTodo)
+        return
+      }
+      try {
+        const gapTodo = await loadFirstTodoByTypes([
+          PortfolioTodoTypeCode.GAP_PENDING,
+          PortfolioTodoTypeCode.GAP_RETURNED,
+        ])
+        if (gapTodo) {
+          openTodo(gapTodo)
+          return
+        }
+        message.info('暂无补采待办')
+      } catch (error) {
+        showUserError(error, '加载补采待办失败')
+      }
+    })()
   }
 }
 
@@ -303,6 +401,41 @@ function goOneTable() {
   })
 }
 
+function goProfile() {
+  void router.push({
+    path: '/portfolio/teacher/profile',
+    query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+  })
+}
+
+function goTeachingPhilosophy() {
+  void router.push({
+    path: '/portfolio/teacher/philosophy',
+    query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+  })
+}
+
+function goCourseArchive() {
+  void router.push({
+    path: '/portfolio/teacher/course-archive',
+    query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+  })
+}
+
+function goHonor() {
+  void router.push({
+    path: '/portfolio/teacher/honor',
+    query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+  })
+}
+
+function goExtensionActivity() {
+  void router.push({
+    path: '/portfolio/teacher/extension-activity',
+    query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+  })
+}
+
 function reloadHomeData() {
   void loadDashboard()
   void loadWorkbenchSummary()
@@ -316,7 +449,14 @@ function handleVisibilityChange() {
   }
 }
 
-usePortfolioScopedLoader(reloadHomeData, () => targetTeacherId.value, { reloadOnActivated: true })
+usePortfolioScopedLoader(
+  () => {
+    resetHomeContext()
+    reloadHomeData()
+  },
+  () => targetTeacherId.value,
+  { reloadOnActivated: true },
+)
 
 onMounted(() => {
   document.addEventListener('visibilitychange', handleVisibilityChange)
@@ -387,8 +527,8 @@ onUnmounted(() => {
             </p>
             <p
               v-if="
-                workbenchSummary.completenessPercent === 0
-                  && (workbenchSummary.requiredCategoryDone ?? 0) === 0
+                workbenchSummary.completenessPercent === 0 &&
+                (workbenchSummary.requiredCategoryDone ?? 0) === 0
               "
               class="teacher-home__onboarding"
             >
@@ -427,6 +567,11 @@ onUnmounted(() => {
         <div class="teacher-home__actions">
           <UiButton @click="goIntake"> 材料采集 </UiButton>
           <UiButton @click="goArchive"> 我的档案 </UiButton>
+          <UiButton @click="goCourseArchive"> 课程档案 </UiButton>
+          <UiButton @click="goTeachingPhilosophy"> 教学理念 </UiButton>
+          <UiButton @click="goHonor"> 获奖情况 </UiButton>
+          <UiButton @click="goExtensionActivity"> 教学拓展 </UiButton>
+          <UiButton @click="goProfile"> 个人资料 </UiButton>
           <UiButton @click="goPortrait"> 教师画像 </UiButton>
           <UiButton @click="goCorrection"> 我的纠错 </UiButton>
           <UiButton @click="goDualTeacherApply"> 双师认定申请 </UiButton>

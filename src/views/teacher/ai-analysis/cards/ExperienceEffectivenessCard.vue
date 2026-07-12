@@ -116,7 +116,7 @@
 
       <AiAnalysisMetaCollapse
         :record="record"
-        failure-fallback="AI 经验案例有效性评估未完成，请稍后重新评估"
+        failure-fallback="AI 经验案例有效性评估未完成，可重新评估"
         :extra-items="metaExtraItems"
       />
     </div>
@@ -126,28 +126,28 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { GradingExperienceCaseResponse } from '@/apis/mark/grading-experience'
+import {
+  ExperienceCaseStatusCode,
+  ExperienceCaseStatusDescription,
+  pageExperiences,
+} from '@/apis/mark/grading-experience'
 import type { QuestionTypeCode } from '@/apis/mark/question-type'
+import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import type {
   ExperienceEffectivenessEvalEvidenceResponse,
   ExperienceEffectivenessEvalResponse,
   ExperienceRecommendationCode,
+} from '@/apis/mark/school-quality'
+import {
+  evaluateExperienceEffectiveness,
+  ExperienceRecommendationDescription,
+  listExperienceEvals,
 } from '@/apis/mark/school-quality'
 import type { UiBarChartItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
-import {
-  ExperienceCaseStatusCode,
-  ExperienceCaseStatusDescription,
-  pageExperiences,
-} from '@/apis/mark/grading-experience'
-import { QuestionTypeDescription } from '@/apis/mark/question-type'
-import {
-  evaluateExperienceEffectiveness,
-  ExperienceRecommendationDescription,
-  listExperienceEvals,
-} from '@/apis/mark/school-quality'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisConfigCollapse from '@/components/mark/analysis/AiAnalysisConfigCollapse.vue'
@@ -237,9 +237,9 @@ const experienceOptions = computed(() =>
   experiences.value
     .filter(
       (item): item is GradingExperienceCaseResponse & { id: string } =>
-        Boolean(item.id)
-        && item.caseStatus === ExperienceCaseStatusCode.CONFIRMED
-        && item.analysisStatus === AiAnalysisStatusCode.SUCCESS,
+        Boolean(item.id) &&
+        item.caseStatus === ExperienceCaseStatusCode.CONFIRMED &&
+        item.analysisStatus === AiAnalysisStatusCode.SUCCESS,
     )
     .map((item) => ({
       label: [
@@ -330,7 +330,7 @@ const { chartOption: effectivenessBarOption } = useChartOption(() =>
 
 const effectivenessBarAriaLabel = computed(() => {
   const count = effectivenessBarItems.value.length
-  if (count <= 0) return '当前评估指标，暂无数据'
+  if (count <= 0) return '当前评估指标，当前没有可展示的内容'
   return `当前评估指标，共 ${count} 项`
 })
 
@@ -338,8 +338,8 @@ const effectivenessTrendPoints = computed((): UiTrendPoint[] => {
   const successRecords = [...historyRecords.value]
     .filter(
       (item) =>
-        item.analysisStatus === AiAnalysisStatusCode.SUCCESS
-        && toConsistencyPercent(item.consistencyRate) != null,
+        item.analysisStatus === AiAnalysisStatusCode.SUCCESS &&
+        toConsistencyPercent(item.consistencyRate) != null,
     )
     .reverse()
   return successRecords.map((item, index) => {
@@ -458,7 +458,7 @@ function formatScoreDiff(aiScore?: number, teacherScore?: number): string {
 }
 
 function analysisFailureMessage(errorMessage?: string): string {
-  return getUserProcessFailureMessage(errorMessage, 'AI 经验案例有效性评估未完成，请稍后重新评估')
+  return getUserProcessFailureMessage(errorMessage, 'AI 经验案例有效性评估未完成，可重新评估')
 }
 
 function questionTypeLabel(value: QuestionTypeCode): string {
@@ -476,7 +476,7 @@ function experienceCaseStatusLabel(value: GradingExperienceCaseResponse['caseSta
 function requireText(value: string | undefined, _fieldName: string): string {
   const normalized = value?.trim()
   if (!normalized) {
-    return '经验有效性评估数据不完整，请刷新后重试'
+    return '经验有效性评估数据不完整'
   }
   return normalized
 }

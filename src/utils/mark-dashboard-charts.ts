@@ -8,6 +8,7 @@ import type {
 import type { UiBarChartItem } from '@/components/ui-guide/ui/types'
 import { EXAM_JOURNEY_STEPS } from '@/constants/exam-journey'
 import { MarkTeacherDashboardTodoTypeDescription } from '@/types/enums/mark-teacher-dashboard-todo-type-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const TODO_TYPE_TONE: Record<MarkTeacherDashboardTodoTypeCode, UiBarChartItem['tone']> = {
   SCAN_ATTENTION: 'orange',
@@ -125,7 +126,7 @@ export function buildTodoTypeChartItems(
 ): UiBarChartItem[] {
   return summary.map((item) => ({
     key: item.todoType,
-    label: MarkTeacherDashboardTodoTypeDescription[item.todoType],
+    label: strictEnumLabel(MarkTeacherDashboardTodoTypeDescription, item.todoType, '教师待办类型'),
     value: item.count,
     tone: TODO_TYPE_TONE[item.todoType],
   }))

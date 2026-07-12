@@ -11,18 +11,19 @@ import type {
   PortfolioPublishImpactReportVO,
   PortfolioTenantConfigAuditLogVO,
 } from '@/apis/portfolio/indicator-types'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import {
   PF_IMPACT_REPORT_STATUS_TONE,
   PF_SCORE_RULE_TYPE_OPTIONS,
   PfImpactReportStatusDescription,
   PfSceneCodeDescription,
 } from '@/apis/portfolio/indicator-types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
+import { defaultTemplateParams, serializeTemplateParams } from '@/utils/indicator-template-params'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import PortfolioIndicatorExplainDrawer from '@/components/portfolio/PortfolioIndicatorExplainDrawer.vue'
 import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/PortfolioIndicatorTemplateParamsForm.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -35,7 +36,6 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
-import { defaultTemplateParams, serializeTemplateParams } from '@/utils/indicator-template-params'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -327,7 +327,7 @@ async function loadCollectPage() {
   }
 }
 
-function handleCollectPageChange(event: { current: number, pageSize: number }) {
+function handleCollectPageChange(event: { current: number; pageSize: number }) {
   collectPageNum.value = event.current
   collectPageSize.value = event.pageSize
   void loadCollectPage()
@@ -347,7 +347,7 @@ function onTabChange(key: string | number) {
   }
 }
 
-function handlePageChange(event: { current: number, pageSize: number }) {
+function handlePageChange(event: { current: number; pageSize: number }) {
   pageQuery.pageNum = event.current
   pageQuery.pageSize = event.pageSize
   if (activeTab.value === 'compute-log') {
@@ -361,14 +361,28 @@ function handlePageChange(event: { current: number, pageSize: number }) {
   }
 }
 
-onMounted(() => {
+/** 快照深链是运维页上下文真源；同页切换快照时必须同步，避免继续操作旧快照。 */
+function syncSnapshotFromRoute() {
   const snapshotId = route.query.snapshotId
   if (typeof snapshotId === 'string' && snapshotId) {
     snapshotForm.snapshotId = snapshotId
     activeTab.value = 'snapshot'
+    return
   }
+  snapshotForm.snapshotId = ''
+}
+
+onMounted(() => {
+  syncSnapshotFromRoute()
   loadComputeLogs()
 })
+
+watch(
+  () => route.query.snapshotId,
+  () => {
+    syncSnapshotFromRoute()
+  },
+)
 </script>
 
 <template>

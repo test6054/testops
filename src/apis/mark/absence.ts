@@ -4,6 +4,7 @@
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { ScorePolicyCode } from '@/types/enums/score-policy-enum'
+import { ALL_SCORE_POLICY_CODES, ScorePolicyDescription } from '@/types/enums/score-policy-enum'
 import http from '@/config/axios'
 import {
   AbsenceReasonCode,
@@ -11,7 +12,7 @@ import {
   ALL_ABSENCE_REASON_CODES,
 } from '@/types/enums/absence-reason-enum'
 import { AbsenceStatusCode } from '@/types/enums/absence-status-enum'
-import { ALL_SCORE_POLICY_CODES, ScorePolicyDescription } from '@/types/enums/score-policy-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
   AbsenceReasonCode,
@@ -36,9 +37,10 @@ export const ABSENCE_STATUS_TONE: Record<AbsenceStatusCode, BadgeTone> = {
   [AbsenceStatusCode.CONFIRMED]: 'red',
   [AbsenceStatusCode.REVOKED]: 'gray',
   [AbsenceStatusCode.MAKEUP_ARRANGED]: 'blue',
+  [AbsenceStatusCode.MAKEUP_COMPLETED]: 'green',
 }
 
-export const ABSENCE_STATUS_FLOW_HINT = '待确认 → 已确认 → 已安排补考；已确认可撤销回待确认'
+export const ABSENCE_STATUS_FLOW_HINT = '待确认 → 已确认 → 已安排补考 → 已完成补考；已确认可撤销回待确认'
 
 export const ABSENCE_REASON_TONE: Record<AbsenceReasonCode, BadgeTone> = {
   [AbsenceReasonCode.ABSENT]: 'red',
@@ -51,13 +53,13 @@ export const ABSENCE_REASON_TONE: Record<AbsenceReasonCode, BadgeTone> = {
 export const ABSENCE_REASON_OPTIONS: Array<{ value: AbsenceReasonCode, label: string }>
   = ALL_ABSENCE_REASON_CODES.map((value) => ({
     value,
-    label: AbsenceReasonDescription[value],
+    label: strictEnumLabel(AbsenceReasonDescription, value, '缺考原因'),
   }))
 
 export const SCORE_POLICY_OPTIONS: Array<{ value: ScorePolicyCode, label: string }>
   = ALL_SCORE_POLICY_CODES.map((value) => ({
     value,
-    label: ScorePolicyDescription[value],
+    label: strictEnumLabel(ScorePolicyDescription, value, '成绩策略'),
   }))
 
 export interface AttendanceReconcileRequest {

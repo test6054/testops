@@ -1,10 +1,10 @@
 import type { Ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { Options } from '@/hooks'
+import { useBreakpoint, usePagination } from '@/hooks'
 import type { PageResult, QueryDto } from '@/types'
 import message from 'ant-design-vue/es/message'
-import { computed, ref } from 'vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useBreakpoint, usePagination } from '@/hooks'
 import { showUserError } from '@/utils/error-handler'
 
 interface UseTableOptions<T, U> {
@@ -45,7 +45,7 @@ export function useTable<T extends U, U = T>(api: Api<T>, options?: UseTableOpti
         tableError.value = contractError
         tableData.value = []
         setTotal(0)
-        showUserError(contractError, '数据加载失败，请稍后重试')
+        showUserError(contractError, '数据加载失败')
         return
       }
       const data = actualData.list
@@ -57,7 +57,7 @@ export function useTable<T extends U, U = T>(api: Api<T>, options?: UseTableOpti
       tableError.value = err instanceof Error ? err : new Error(String(err))
       tableData.value = []
       setTotal(0)
-      showUserError(err, '数据加载失败，请稍后重试')
+      showUserError(err, '数据加载失败')
     } finally {
       loading.value = false
     }

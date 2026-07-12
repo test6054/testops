@@ -1,9 +1,6 @@
 import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
-import {
-  formatMarkingWithdrawWindowLabel,
-  resolveMarkingWithdrawWindowMs,
-} from '@/apis/mark/marking-withdraw'
+import { formatMarkingWithdrawWindowLabel, resolveMarkingWithdrawWindowMs } from '@/apis/mark/marking-withdraw'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 import { showUserError } from '@/utils/error-handler'
 
@@ -51,7 +48,7 @@ export function useTenantMarkingWithdrawPolicy() {
   function requireWithdrawWindowMinutes(): number | null {
     const minutes = withdrawWindowMinutes.value
     if (minutes == null) {
-      showUserError(null, '工作台快照缺少租户撤回窗口配置，请刷新后重试')
+      showUserError(null, '工作台快照缺少租户撤回窗口配置')
       return null
     }
     return minutes

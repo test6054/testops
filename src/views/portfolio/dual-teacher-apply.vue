@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PortfolioDualTeacherApplicationVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
@@ -7,7 +8,6 @@ import {
   PortfolioDualTeacherApplicationStatusCode,
   PortfolioDualTeacherApplicationStatusDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -15,6 +15,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { showUserError } from '@/utils/error-handler'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const { currentUserId } = usePortfolioTeacherAccess()
 const saving = ref(false)
@@ -28,6 +29,7 @@ const attachmentItems = ref<AttachmentItem[]>([])
 const attachmentInputRef = ref<HTMLInputElement | null>(null)
 const uploading = ref(false)
 const application = ref<PortfolioDualTeacherApplicationVO | null>(null)
+const applicationRequestToken = ref(0)
 
 const form = reactive({
   id: '',
@@ -36,8 +38,18 @@ const form = reactive({
   enterprisePracticeDays: 0,
 })
 
+/** 申请单作用域变化时清空旧表单，避免旧加载结果回写当前申请页。 */
+function resetApplicationContext() {
+  application.value = null
+  form.id = ''
+  form.certLevel = ''
+  form.certYear = String(new Date().getFullYear())
+  form.enterprisePracticeDays = 0
+  attachmentItems.value = []
+}
+
 function statusLabel(status: PortfolioDualTeacherApplicationVO['applicationStatus']) {
-  return PortfolioDualTeacherApplicationStatusDescription[status]
+  return strictEnumLabel(PortfolioDualTeacherApplicationStatusDescription, status, '双师申请状态')
 }
 
 const canEdit = () => {
@@ -49,16 +61,18 @@ const canEdit = () => {
     return !form.id
   }
   return (
-    status === PortfolioDualTeacherApplicationStatusCode.DRAFT
-    || status === PortfolioDualTeacherApplicationStatusCode.COLLEGE_RETURNED
-    || status === PortfolioDualTeacherApplicationStatusCode.ACADEMIC_RETURNED
+    status === PortfolioDualTeacherApplicationStatusCode.DRAFT ||
+    status === PortfolioDualTeacherApplicationStatusCode.COLLEGE_RETURNED ||
+    status === PortfolioDualTeacherApplicationStatusCode.ACADEMIC_RETURNED
   )
 }
 
 const canSubmit = () => canEdit()
 
 async function loadMine() {
+  const currentToken = ++applicationRequestToken.value
   if (!currentUserId.value) {
+    resetApplicationContext()
     return
   }
   try {
@@ -67,14 +81,19 @@ async function loadMine() {
       pageSize: 1,
       teacherUserId: currentUserId.value,
     })
-    const mine = page.list?.[0]
-    if (!mine) {
-      application.value = null
-      form.id = ''
-      attachmentItems.value = []
+    if (currentToken !== applicationRequestToken.value) {
       return
     }
-    application.value = await portfolioDualTeacherApi.get({ id: mine.id })
+    const mine = page.list?.[0]
+    if (!mine) {
+      resetApplicationContext()
+      return
+    }
+    const detail = await portfolioDualTeacherApi.get({ id: mine.id })
+    if (currentToken !== applicationRequestToken.value) {
+      return
+    }
+    application.value = detail
     if (
       application.value.applicationStatus === PortfolioDualTeacherApplicationStatusCode.REJECTED
     ) {

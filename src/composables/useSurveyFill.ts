@@ -1,4 +1,5 @@
 import type { PublicSurveyItemVO, PublicSurveyVO } from '@/apis/public-survey'
+import { publicSurveyApi } from '@/apis/public-survey'
 import { message } from 'ant-design-vue'
 /**
  * 公开问卷填写共享逻辑。
@@ -6,11 +7,12 @@ import { message } from 'ant-design-vue'
  */
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { publicSurveyApi } from '@/apis/public-survey'
+import { IndirectEvaluationItemTypeCode } from '@/types/enums/indirect-evaluation-item-type-enum'
 import {
-  IndirectEvaluationItemTypeCode,
-} from '@/types/enums/indirect-evaluation-item-type-enum'
-import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
+  getUserErrorMessage,
+  showFormValidationMessage,
+  showUserError,
+} from '@/utils/error-handler'
 
 export function useSurveyFill() {
   const route = useRoute()
@@ -135,12 +137,11 @@ export function useSurveyFill() {
       })
       .filter(
         (answer): answer is NonNullable<typeof answer> =>
-          answer != null && (
-            answer.scaleValue != null
-            || !!answer.singleChoiceValue
-            || !!answer.multipleChoiceValues?.length
-            || !!answer.openText?.trim()
-          ),
+          answer != null &&
+          (answer.scaleValue != null ||
+            !!answer.singleChoiceValue ||
+            !!answer.multipleChoiceValues?.length ||
+            !!answer.openText?.trim()),
       )
   }
 
@@ -193,7 +194,7 @@ export function useSurveyFill() {
       return true
     } catch (err) {
       if (!(err instanceof Error)) throw err
-      showUserError(err, '提交失败，请稍后重试')
+      showUserError(err, '提交失败')
       return false
     } finally {
       submitting.value = false

@@ -24,6 +24,7 @@ export interface PortfolioMaterialIntakeStartRequest {
 export interface PortfolioMaterialIntakeGetStatusRequest {
   teacherId?: string
   materialId?: string
+  aiTaskId?: string
   demoMode?: boolean
 }
 

@@ -86,18 +86,20 @@
 
           <template v-else>
             <UiAlertStrip
-              v-if="
-                activeJourneyKey === 'prep'
-                  && prepBlockingReasons.length > 0
-                  && !isImmersiveWorkspace
-                  && !isPrepSelfManagedPage
-              "
-              tone="warning"
-              title="考试准备硬阻断"
-              :description="prepBlockingReasons.join('；')"
+              v-if="workspaceBlockingVisible"
+              :tone="workspaceBlockingTone"
+              :title="workspaceBlockingTitle"
+              :description="workspaceBlockingDescription"
               dense
-              class="exam-detail-layout__prep-blocking"
-            />
+              inline
+              class="exam-detail-layout__workspace-blocking"
+            >
+              <template #actions>
+                <UiButton size="sm" variant="primary" @click="goPrepBlockingAction">
+                  去处理
+                </UiButton>
+              </template>
+            </UiAlertStrip>
             <ConfidentialStatusBar
               v-if="isExamConfidential && !isImmersiveWorkspace"
               class="exam-detail-layout__confidential-strip"
@@ -142,11 +144,20 @@
 <script lang="ts" setup>
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { Component } from 'vue'
+import { computed, provide, ref, watch } from 'vue'
 import type { RouteLocationNormalized } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import type { ExamStatusCode } from '@/apis/mark/exam'
+import { EXAM_STATUS_TONE, ExamStatusDescription } from '@/apis/mark/exam'
 import type { ExamSwitcherOption } from '@/components/workbench/ExamSwitcher.vue'
+import ExamSwitcher from '@/components/workbench/ExamSwitcher.vue'
 import type { ExamJourneyKey } from '@/constants/exam-journey'
+import { EXAM_JOURNEY_STEPS } from '@/constants/exam-journey'
 import type { ExamWorkspaceMenuKey } from '@/constants/exam-workspace-menu'
+import {
+  findExamWorkspaceMenuItem,
+  resolveExamWorkspaceMenuKey,
+} from '@/constants/exam-workspace-menu'
 import type { MarkStageKey } from '@/stores/modules/markStage'
 import AimOutlined from '@ant-design/icons-vue/AimOutlined'
 import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
@@ -175,16 +186,12 @@ import ScanOutlined from '@ant-design/icons-vue/ScanOutlined'
 import SettingOutlined from '@ant-design/icons-vue/SettingOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import { useBreakpoints } from '@vueuse/core'
-import { computed, provide, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { EXAM_STATUS_TONE, ExamStatusDescription } from '@/apis/mark/exam'
 import ConfidentialStatusBar from '@/components/mark/ConfidentialStatusBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ExamSubSidebar from '@/components/workbench/ExamSubSidebar.vue'
-import ExamSwitcher from '@/components/workbench/ExamSwitcher.vue'
 import ExamWorkflowTaskDock from '@/components/workbench/ExamWorkflowTaskDock.vue'
 import ExamWorkspaceChildFrame from '@/components/workbench/ExamWorkspaceChildFrame.vue'
 import ExamWorkspaceChrome from '@/components/workbench/ExamWorkspaceChrome.vue'
@@ -199,22 +206,18 @@ import {
 import { useMarkWorkbenchSnapshot } from '@/composables/useMarkWorkbenchSnapshot'
 import { useWorkspaceConfidentialContext } from '@/composables/useWorkspaceConfidentialContext'
 import { DESKTOP_MARKING_MIN } from '@/constants/breakpoints'
-import { EXAM_JOURNEY_STEPS } from '@/constants/exam-journey'
-import {
-  findExamWorkspaceMenuItem,
-  resolveExamWorkspaceMenuKey,
-} from '@/constants/exam-workspace-menu'
 import HeaderRightBar from '@/layout/components/HeaderRightBar/index.vue'
 import { useAppStore } from '@/stores/modules/app'
 import { MarkTeacherDashboardJourneyKeyCode } from '@/types/enums/mark-teacher-dashboard-journey-key-enum'
 import { formatMarkExamOptionLabel } from '@/utils/mark-exam-option'
 import { navigateToJourneyStep } from '@/utils/mark-stage-navigation'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ExamWorkspaceLayout' })
 
 const menuIconMap: Record<ExamWorkspaceMenuKey, Component> = {
-  "overview": DashboardOutlined,
-  "prep": ContainerOutlined,
+  overview: DashboardOutlined,
+  prep: ContainerOutlined,
   'layout-designer': ProfileOutlined,
   'candidate-roster': TeamOutlined,
   'print-package': PrinterOutlined,
@@ -360,8 +363,8 @@ const stageSuggestionDescription = computed(() => {
 
 const nextActions = computed(() => snapshot.value?.nextActions ?? [])
 
-const { activeTask, showTaskDock, dismissActiveTask, runActiveTaskAction }
-  = useExamWorkflowTaskDock({
+const { activeTask, showTaskDock, dismissActiveTask, runActiveTaskAction } =
+  useExamWorkflowTaskDock({
     examId,
     route,
     isImmersiveWorkspace,
@@ -387,7 +390,7 @@ const examStatusLabel = computed(() => {
   if (!status) {
     return ''
   }
-  return ExamStatusDescription[status]
+  return strictEnumLabel(ExamStatusDescription, status, 'examStatus')
 })
 
 const examStatusTone = computed(() => {
@@ -395,8 +398,41 @@ const examStatusTone = computed(() => {
   if (!status) {
     return undefined
   }
-  return EXAM_STATUS_TONE[status]
+  return strictEnumTone(EXAM_STATUS_TONE, status, 'examStatus')
 })
+
+/** 工作台顶栏阻断：单行 inline，禁止大框占屏；非沉浸态统一展示 */
+const workspaceBlockingVisible = computed(() => {
+  if (isImmersiveWorkspace.value) {
+    return false
+  }
+  if (isPrepSelfManagedPage.value) {
+    return false
+  }
+  return prepBlockingReasons.value.length > 0
+})
+
+const workspaceBlockingTone = computed(() => 'warning' as const)
+
+const workspaceBlockingTitle = computed(() => {
+  if (activeJourneyKey.value === 'prep') {
+    return '准备硬阻断'
+  }
+  return '主链阻断'
+})
+
+const workspaceBlockingDescription = computed(() => prepBlockingReasons.value.join('；'))
+
+/** 阻断条主行动：优先回准备工作台处理硬门禁 */
+function goPrepBlockingAction(): void {
+  if (!examId.value) {
+    return
+  }
+  void router.push({
+    name: 'TeacherExamWorkspacePrep',
+    params: { examId: examId.value },
+  })
+}
 
 function toExamSwitcherOption(exam: {
   examId: string
@@ -412,8 +448,8 @@ function toExamSwitcherOption(exam: {
       examName: exam.examName,
       examNo: exam.examNo ?? '',
     }),
-    statusLabel: status ? ExamStatusDescription[status] : undefined,
-    statusTone: status ? EXAM_STATUS_TONE[status] : undefined,
+    statusLabel: status ? strictEnumLabel(ExamStatusDescription, status, 'examStatus') : undefined,
+    statusTone: status ? strictEnumTone(EXAM_STATUS_TONE, status, 'examStatus') : undefined,
   }
 }
 

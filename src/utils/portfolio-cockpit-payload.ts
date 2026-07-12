@@ -1,6 +1,6 @@
 import type { PortfolioCockpitAskResultPayload } from '@/apis/portfolio/types'
 
-const COCKPIT_PAYLOAD_ERROR = '驾驶舱问数结果数据异常，请刷新后重试'
+const COCKPIT_PAYLOAD_ERROR = '驾驶舱问数结果数据异常'
 
 /** 解析 COCKPIT_ASK 正式结果 draftMarkdown JSON 载荷。 */
 export function parsePortfolioCockpitAskPayload(

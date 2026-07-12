@@ -14,6 +14,7 @@ import {
   PaperMasterIdentityAreaTypeOptions,
 } from '@/types/enums/paper-master-identity-area-type-enum'
 import { expectedAnswerBlockTypeForOcrScene } from '@/utils/exam-layout-designer'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const props = defineProps<{
   document: ExamLayoutDocument | null
@@ -29,8 +30,10 @@ const identityAreaTypeOptions = PaperMasterIdentityAreaTypeOptions
 
 const questionOptions = computed(() => {
   const questions = (props.document?.questions ?? []).filter((question) => {
-    if (props.block?.blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX
-      || props.block?.blockType === ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER) {
+    if (
+      props.block?.blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX ||
+      props.block?.blockType === ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER
+    ) {
       return expectedAnswerBlockTypeForOcrScene(question.ocrScene) === props.block?.blockType
     }
     return true
@@ -38,8 +41,11 @@ const questionOptions = computed(() => {
   return questions.map((question) => ({
     value: question.id,
     label: `${question.questionNo} · ${
-      QuestionTypeDescription[question.questionType as keyof typeof QuestionTypeDescription]
-      ?? question.questionType
+      strictEnumLabel(
+        QuestionTypeDescription,
+        question.questionType as keyof typeof QuestionTypeDescription,
+        '题型',
+      ) ?? question.questionType
     }`,
   }))
 })
@@ -54,8 +60,8 @@ function patchBlock(partial: Partial<ExamLayoutBlockDto>): void {
   const blocks = props.document.blocks.map((item) =>
     item.id === props.block?.id ? nextBlock : item,
   )
-  const blockOptions
-    = nextBlock.blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX
+  const blockOptions =
+    nextBlock.blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX
       ? props.document.blockOptions
       : props.document.blockOptions?.filter((option) => option.blockId !== props.block?.id)
   emit('patch', { ...props.document, blocks, blockOptions })
@@ -96,8 +102,10 @@ function onBlockTypeChange(
     })
     return
   }
-  if (blockType === ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER
-    || blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX) {
+  if (
+    blockType === ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER ||
+    blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX
+  ) {
     patchBlock({ blockType, identityAreaType: undefined })
     return
   }

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
 import type { ScanDispatchTicketStatusCode } from '@/apis/mark/scanner-dispatch'
+import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scanner-dispatch'
 import { message } from 'ant-design-vue'
 import { reactive, ref, watch } from 'vue'
-import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scanner-dispatch'
 import { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -23,7 +23,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "created": [
+  created: [
     payload: {
       ticketId: string
       kioskUrl: string
@@ -125,7 +125,7 @@ async function handleSubmit() {
       <a-form-item label="柜位说明">
         <a-input v-model:value="form.physicalLocationNote" placeholder="可选补充说明" />
       </a-form-item>
-      <a-form-item label="材料标签" extra="扫描 commit 登记时写入材料，便于后续检索">
+      <a-form-item label="材料标签" tooltip="扫描 commit 登记时写入材料，便于后续检索">
         <ArchiveMaterialTagSelect v-model="form.materialTags" />
       </a-form-item>
       <a-form-item>

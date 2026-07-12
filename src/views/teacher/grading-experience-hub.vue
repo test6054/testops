@@ -432,24 +432,6 @@ import type {
   GradingExperienceStatsResponse,
   QuestionSignatureResponse,
 } from '@/apis/mark/grading-experience'
-import type { QuestionTypeCode } from '@/apis/mark/question-type'
-import type {
-  BadgeTone,
-  FilterField,
-  UiSectionTabItem,
-  UiTableRowActionItem,
-} from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import Modal from 'ant-design-vue/es/modal'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import {
-  AI_ANALYSIS_FLOW_HINT,
-  AI_ANALYSIS_STATUS_TONE,
-  AiAnalysisStatusCode,
-  AiAnalysisStatusDescription,
-} from '@/apis/mark/ai-analysis-status'
 import {
   confirmExperienceCase,
   deprecateExperienceCase,
@@ -467,7 +449,25 @@ import {
   pageSignatures,
   searchSimilar,
 } from '@/apis/mark/grading-experience'
+import type { QuestionTypeCode } from '@/apis/mark/question-type'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
+import type {
+  BadgeTone,
+  FilterField,
+  UiSectionTabItem,
+  UiTableRowActionItem,
+} from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import Modal from 'ant-design-vue/es/modal'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import {
+  AI_ANALYSIS_FLOW_HINT,
+  AI_ANALYSIS_STATUS_TONE,
+  AiAnalysisStatusCode,
+  AiAnalysisStatusDescription,
+} from '@/apis/mark/ai-analysis-status'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -813,16 +813,16 @@ const deprecatingExperience = ref(false)
 
 const canConfirmExperience = computed(
   () =>
-    detailExperience.value?.caseStatus === ExperienceCaseStatusCode.DRAFT
-    && detailExperience.value?.analysisStatus === AiAnalysisStatusCode.SUCCESS
-    && Boolean(detailExperience.value?.id),
+    detailExperience.value?.caseStatus === ExperienceCaseStatusCode.DRAFT &&
+    detailExperience.value?.analysisStatus === AiAnalysisStatusCode.SUCCESS &&
+    Boolean(detailExperience.value?.id),
 )
 
 const canDeprecateExperience = computed(
   () =>
-    detailExperience.value?.caseStatus === ExperienceCaseStatusCode.CONFIRMED
-    && detailExperience.value?.analysisStatus === AiAnalysisStatusCode.SUCCESS
-    && Boolean(detailExperience.value?.id),
+    detailExperience.value?.caseStatus === ExperienceCaseStatusCode.CONFIRMED &&
+    detailExperience.value?.analysisStatus === AiAnalysisStatusCode.SUCCESS &&
+    Boolean(detailExperience.value?.id),
 )
 
 async function handleConfirmExperience(): Promise<void> {
@@ -1006,11 +1006,11 @@ function experienceApplicableScopeText(item: GradingExperienceCaseResponse): str
 }
 
 function aiClusterFailureMessage(errorMessage?: string): string {
-  return getUserProcessFailureMessage(errorMessage, 'AI 答案聚类未完成，请稍后重新生成')
+  return getUserProcessFailureMessage(errorMessage, 'AI 答案聚类未完成，请重新生成')
 }
 
 function gradingExperienceFailureMessage(errorMessage?: string): string {
-  return getUserProcessFailureMessage(errorMessage, '阅卷经验提取未完成，请稍后重新提取')
+  return getUserProcessFailureMessage(errorMessage, '阅卷经验提取未完成，请重新提取')
 }
 
 async function loadPageSummary(): Promise<void> {

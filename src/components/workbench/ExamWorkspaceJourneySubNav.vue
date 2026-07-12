@@ -22,6 +22,11 @@
 <script lang="ts" setup>
 import type { ExamWorkspaceJourneyKey } from '@/constants/exam-journey'
 import type { ExamWorkspaceMenuItem } from '@/constants/exam-workspace-menu'
+import {
+  getMenuGroupsForJourney,
+  resolveExamWorkspaceMenuGroupKey,
+  resolveExamWorkspaceMenuKey,
+} from '@/constants/exam-workspace-menu'
 import { computed, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -30,11 +35,6 @@ import {
   MARK_WORKBENCH_CONTEXT_KEY,
   useWorkspaceExamId,
 } from '@/composables/useMarkWorkbenchContext'
-import {
-  getMenuGroupsForJourney,
-  resolveExamWorkspaceMenuGroupKey,
-  resolveExamWorkspaceMenuKey,
-} from '@/constants/exam-workspace-menu'
 
 defineOptions({ name: 'ExamWorkspaceJourneySubNav' })
 

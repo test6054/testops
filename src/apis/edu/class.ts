@@ -152,8 +152,8 @@ export function createClass(data: ClassInfoDto) {
 export function updateClass(data: ClassInfoDto) {
   // 确保data中包含id字段
   if (!data.id) {
-    showFormValidationMessage('班级信息保存失败，请刷新后重试')
-    return Promise.reject(new Error('班级信息保存失败，请刷新后重试'))
+    showFormValidationMessage('班级信息保存失败')
+    return Promise.reject(new Error('班级信息保存失败'))
   }
   return http.post<void>(`/api/user/admin/classes/update`, data)
 }

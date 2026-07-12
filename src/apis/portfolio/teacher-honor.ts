@@ -1,0 +1,80 @@
+import type { PortfolioHonorLevelCode } from '@/types/enums/portfolio-honor-level-enum'
+import http from '@/config/axios'
+
+export interface PortfolioPresetCategoryVO {
+  categoryCode: string
+  categoryName: string
+}
+
+export interface PortfolioTeacherHonorVO {
+  id: string
+  teacherUserId: string
+  recordTitle: string
+  categoryCode: string
+  categoryName?: string
+  levelCode: PortfolioHonorLevelCode
+  levelName?: string
+  awardUnit?: string
+  recordDate?: string
+  descriptionText?: string
+  fileId?: string
+  updateTime?: string
+}
+
+export interface PortfolioTeacherHonorCategoryVO {
+  id?: string
+  categoryCode: string
+  categoryName: string
+  preset?: boolean
+}
+
+export interface PortfolioTeacherHonorListRequest {
+  teacherId?: string
+}
+
+export interface PortfolioTeacherHonorSaveRequest {
+  id?: string
+  teacherId?: string
+  recordTitle: string
+  categoryCode: string
+  levelCode: PortfolioHonorLevelCode
+  awardUnit?: string
+  recordDate?: string
+  descriptionText?: string
+  fileId?: string
+}
+
+export interface PortfolioTeacherHonorDeleteRequest {
+  id: string
+  teacherId?: string
+}
+
+export interface PortfolioTeacherHonorCategoryCreateRequest {
+  categoryName: string
+  teacherId?: string
+}
+
+export interface PortfolioTeacherHonorCategoryDeleteRequest {
+  id: string
+  teacherId?: string
+}
+
+export const portfolioTeacherHonorApi = {
+  list: (request: PortfolioTeacherHonorListRequest = {}) =>
+    http.post<PortfolioTeacherHonorVO[]>('/api/portfolio/teacher-honor/list', request),
+  save: (request: PortfolioTeacherHonorSaveRequest) =>
+    http.post<string>('/api/portfolio/teacher-honor/save', request),
+  delete: (request: PortfolioTeacherHonorDeleteRequest) =>
+    http.post<void>('/api/portfolio/teacher-honor/delete', request),
+  listCategories: (request: PortfolioTeacherHonorListRequest = {}) =>
+    http.post<PortfolioTeacherHonorCategoryVO[]>(
+      '/api/portfolio/teacher-honor/category/list',
+      request,
+    ),
+  createCategory: (request: PortfolioTeacherHonorCategoryCreateRequest) =>
+    http.post<string>('/api/portfolio/teacher-honor/category/create', request),
+  deleteCategory: (request: PortfolioTeacherHonorCategoryDeleteRequest) =>
+    http.post<void>('/api/portfolio/teacher-honor/category/delete', request),
+  presetCategories: () =>
+    http.post<PortfolioPresetCategoryVO[]>('/api/portfolio/teacher-honor/preset-categories', {}),
+}

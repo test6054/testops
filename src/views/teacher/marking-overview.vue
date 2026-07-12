@@ -239,6 +239,13 @@
 
 <script lang="ts" setup>
 import type { MarkDashboardPendingTodoTabKey } from '@/utils/mark-dashboard-todo'
+import {
+  buildPendingTodoHint,
+  buildPendingTodoTabItems,
+  filterPendingTodosByTab,
+  resolveDefaultPendingTodoTab,
+  resolvePendingTodoFocusTone,
+} from '@/utils/mark-dashboard-todo'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import MarkingOverviewAnalytics from '@/components/mark/dashboard/MarkingOverviewAnalytics.vue'
@@ -262,13 +269,7 @@ import { ExamStatusDescription } from '@/types/enums/exam-status-enum'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { buildExamListRoute } from '@/utils/exam-list-navigation'
 import { MARK_DASHBOARD_FILTER_PLACEHOLDERS } from '@/utils/mark-dashboard-filter-options'
-import {
-  buildPendingTodoHint,
-  buildPendingTodoTabItems,
-  filterPendingTodosByTab,
-  resolveDefaultPendingTodoTab,
-  resolvePendingTodoFocusTone,
-} from '@/utils/mark-dashboard-todo'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherMarkingOverview' })
 
@@ -311,7 +312,8 @@ const pageSubtitle = computed(() => {
   const parts: string[] = []
   if (filter.value.academicYear) parts.push(filter.value.academicYear)
   if (filter.value.semester) parts.push(formatSemester(filter.value.semester))
-  if (filter.value.status) parts.push(ExamStatusDescription[filter.value.status])
+  if (filter.value.status)
+    parts.push(strictEnumLabel(ExamStatusDescription, filter.value.status, '考试状态'))
   const scope = parts.length ? parts.join(' · ') : '全部学年学期'
 
   if (filterRefreshing.value) {

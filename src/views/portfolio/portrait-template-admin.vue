@@ -1,16 +1,7 @@
 <script setup lang="ts">
 import type { PortfolioPortraitTemplateVO } from '@/apis/portfolio/teacher-platform'
-import type { PortfolioPortraitLayoutWidget } from '@/utils/portrait-layout'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import { portfolioPortraitTemplateApi } from '@/apis/portfolio/teacher-platform'
-import PortfolioPortraitLayoutEditor from '@/components/portfolio/PortfolioPortraitLayoutEditor.vue'
-import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import ContextBar from '@/components/workbench/ContextBar.vue'
-import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { showUserError } from '@/utils/error-handler'
+import type { PortfolioPortraitLayoutWidget } from '@/utils/portrait-layout'
 import {
   defaultPortraitLayout,
   mergeChartConfigIntoWidgets,
@@ -18,35 +9,59 @@ import {
   serializePortraitChartConfig,
   serializePortraitLayout,
 } from '@/utils/portrait-layout'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
+import PortfolioPortraitLayoutEditor from '@/components/portfolio/PortfolioPortraitLayoutEditor.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { showUserError } from '@/utils/error-handler'
 
 const loading = ref(false)
 const templates = ref<PortfolioPortraitTemplateVO[]>([])
 const selectedId = ref<string>()
 const layoutWidgets = ref<PortfolioPortraitLayoutWidget[]>(defaultPortraitLayout())
+const listRequestToken = ref(0)
+const detailRequestToken = ref(0)
 const form = reactive({
   templateName: '',
   academicYear: String(new Date().getFullYear()),
 })
 
 async function loadList() {
+  const currentToken = ++listRequestToken.value
   loading.value = true
   try {
-    templates.value = await portfolioPortraitTemplateApi.list()
-    if (!selectedId.value && templates.value.length) {
-      selectedId.value = templates.value[0].id
-      await loadDetail(selectedId.value)
+    const nextTemplates = await portfolioPortraitTemplateApi.list()
+    if (currentToken !== listRequestToken.value) {
+      return
+    }
+    templates.value = nextTemplates
+    if (selectedId.value && !templates.value.some((template) => template.id === selectedId.value)) {
+      newTemplate()
     }
   } catch (error) {
+    if (currentToken !== listRequestToken.value) {
+      return
+    }
     showUserError(error)
   } finally {
-    loading.value = false
+    if (currentToken === listRequestToken.value) {
+      loading.value = false
+    }
   }
 }
 
 async function loadDetail(id: string) {
+  const currentToken = ++detailRequestToken.value
   selectedId.value = id
   try {
     const detail = await portfolioPortraitTemplateApi.get({ id })
+    if (currentToken !== detailRequestToken.value || selectedId.value !== id) {
+      return
+    }
     form.templateName = detail.templateName
     form.academicYear = detail.academicYear ?? form.academicYear
     layoutWidgets.value = detail.layoutJson
@@ -85,8 +100,10 @@ async function saveTemplate() {
 }
 
 function newTemplate() {
+  detailRequestToken.value += 1
   selectedId.value = undefined
   form.templateName = ''
+  form.academicYear = String(new Date().getFullYear())
   layoutWidgets.value = defaultPortraitLayout()
 }
 

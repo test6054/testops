@@ -11,6 +11,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { isLayoutQuestionRoiReady } from '@/utils/exam-layout-designer'
 import { ROI_NOT_CONFIGURED_LABEL } from '@/utils/format-exam-layout-question-summary'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const props = defineProps<{
   document: ExamLayoutDocument | null
@@ -19,7 +20,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  "patch": [document: ExamLayoutDocument]
+  patch: [document: ExamLayoutDocument]
   'focus-question': [question: ExamLayoutQuestionDto | null]
   'locate-roi': [question: ExamLayoutQuestionDto]
 }>()
@@ -42,15 +43,17 @@ const rows = computed((): QuestionRow[] =>
       key: question.id,
       question,
       questionNo: question.questionNo,
-      ocrSceneLabel: question.ocrScene ? MarkOcrSceneDescription[question.ocrScene] : '',
-      questionTypeLabel: QuestionTypeDescription[question.questionType],
+      ocrSceneLabel: question.ocrScene
+        ? strictEnumLabel(MarkOcrSceneDescription, question.ocrScene, 'OCR 场景')
+        : '',
+      questionTypeLabel: strictEnumLabel(QuestionTypeDescription, question.questionType, '题型'),
       fullScore: question.fullScore ?? 0,
       roiReady: isLayoutQuestionRoiReady(props.document, question.id),
       answerReady: Boolean(
-        question.answer?.standardAnswer?.trim()
-        || question.answer?.gradingRubric?.trim()
-        || (question.answer?.choiceOptions?.length ?? 0) > 0
-        || question.answer?.numericExpectedValue != null,
+        question.answer?.standardAnswer?.trim() ||
+        question.answer?.gradingRubric?.trim() ||
+        (question.answer?.choiceOptions?.length ?? 0) > 0 ||
+        question.answer?.numericExpectedValue != null,
       ),
     })),
 )
@@ -65,8 +68,8 @@ const columns: ColumnsType<QuestionRow> = [
   { title: '操作', key: 'actions', width: 96, align: 'center' },
 ]
 
-const selectedQuestion = computed(() =>
-  rows.value.find((row) => row.key === props.focusedQuestionId)?.question ?? null,
+const selectedQuestion = computed(
+  () => rows.value.find((row) => row.key === props.focusedQuestionId)?.question ?? null,
 )
 
 const tableScrollY = ref(360)
@@ -95,10 +98,15 @@ function handleRowClick(record: QuestionRow): void {
         flat
         size="small"
         row-key="key"
-        :custom-row="(record) => ({
-          onClick: () => handleRowClick(record as QuestionRow),
-          class: focusedQuestionId === (record as QuestionRow).key ? 'layout-question-ledger__row--active' : '',
-        })"
+        :custom-row="
+          (record) => ({
+            onClick: () => handleRowClick(record as QuestionRow),
+            class:
+              focusedQuestionId === (record as QuestionRow).key
+                ? 'layout-question-ledger__row--active'
+                : '',
+          })
+        "
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'roi'">

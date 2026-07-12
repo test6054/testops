@@ -19,9 +19,14 @@
     <div v-if="!collapsed && journeyStages.length" class="exam-sub-sidebar__progress">
       <div class="exam-sub-sidebar__progress-meta">
         <span>{{ journeyProgressLabel }}</span>
-        <span>{{ journeyProgressPercent }}%</span>
+        <span :class="{ 'exam-sub-sidebar__progress-pct--attention': journeyAttentionCount > 0 }">
+          {{ journeyProgressPercent }}%
+        </span>
       </div>
-      <div class="exam-sub-sidebar__progress-bar">
+      <div
+        class="exam-sub-sidebar__progress-bar"
+        :class="{ 'exam-sub-sidebar__progress-bar--attention': journeyAttentionCount > 0 }"
+      >
         <div
           class="exam-sub-sidebar__progress-fill"
           :style="{ width: `${journeyProgressPercent}%` }"
@@ -70,6 +75,7 @@
 
 <script lang="ts" setup>
 import type { Component } from 'vue'
+import { computed } from 'vue'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { ExamWorkspaceJourneyKey } from '@/constants/exam-journey'
 import type { ExamWorkspaceMenuKey } from '@/constants/exam-workspace-menu'
@@ -77,7 +83,6 @@ import type { MarkStageKey } from '@/stores/modules/markStage'
 import type { WorkbenchStage } from '@/types/workbench'
 import MenuFoldOutlined from '@ant-design/icons-vue/MenuFoldOutlined'
 import MenuUnfoldOutlined from '@ant-design/icons-vue/MenuUnfoldOutlined'
-import { computed } from 'vue'
 import ExamJourneySidebarNav from '@/components/workbench/ExamJourneySidebarNav.vue'
 import ExamSidebarExamSwitch from '@/components/workbench/ExamSidebarExamSwitch.vue'
 import ExamSubSidebarNav from '@/components/workbench/ExamSubSidebarNav.vue'
@@ -118,12 +123,22 @@ const journeyProgressPercent = computed(() => {
   return Math.round((completedCount / stages.length) * 100)
 })
 
+const journeyAttentionCount = computed(() => {
+  return props.journeyStages.filter(
+    (stage) => stage.status === 'blocked' || stage.status === 'warning' || stage.status === 'error',
+  ).length
+})
+
 const journeyProgressLabel = computed(() => {
   const stages = props.journeyStages
   if (!stages.length) {
     return '旅程进度'
   }
   const completedCount = stages.filter((stage) => stage.status === 'completed').length
+  const attention = journeyAttentionCount.value
+  if (attention > 0) {
+    return `已完成 ${completedCount}/${stages.length} · ${attention} 步需处理`
+  }
   return `已完成 ${completedCount}/${stages.length} 步`
 })
 </script>
@@ -225,5 +240,14 @@ const journeyProgressLabel = computed(() => {
       width: 260px;
     }
   }
+}
+
+.exam-sub-sidebar__progress-pct--attention {
+  color: var(--ant-color-warning);
+  font-weight: 600;
+}
+
+.exam-sub-sidebar__progress-bar--attention {
+  box-shadow: inset 0 0 0 1px var(--ant-color-warning-border);
 }
 </style>
