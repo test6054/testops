@@ -423,7 +423,10 @@ import {
   remediationDiagnosticLabel,
   remediationVolumeDetailTabKey,
 } from '@/utils/archive-remediation-diagnostic'
-import { remediationAssigneeLabel } from '@/utils/archive-remediation-display'
+import {
+  remediationAssigneeLabel,
+  remediationCreatorLabel,
+} from '@/utils/archive-remediation-display'
 import {
   ARCHIVE_REMEDIATION_PRIORITY_TONE,
   ArchiveRemediationPriorityDescription,
@@ -503,6 +506,11 @@ const signalMetrics = computed<SignalMetric[]>(() => {
       key: 'assignee',
       label: '责任人',
       value: remediationAssigneeLabel(task),
+    },
+    {
+      key: 'creator',
+      label: '发现人',
+      value: remediationCreatorLabel(task),
     },
     {
       key: 'due',

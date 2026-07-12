@@ -420,7 +420,6 @@ export const IMPROVEMENT_TASK_STATUS_COLOR: Record<ImprovementTaskStatusCode, Ba
   [ImprovementTaskStatusCode.OPEN]: 'orange',
   [ImprovementTaskStatusCode.IN_PROGRESS]: 'blue',
   [ImprovementTaskStatusCode.SUBMITTED]: 'blue',
-  [ImprovementTaskStatusCode.REVIEWED]: 'purple',
   [ImprovementTaskStatusCode.CLOSED]: 'green',
   [ImprovementTaskStatusCode.RETURNED]: 'red',
 }

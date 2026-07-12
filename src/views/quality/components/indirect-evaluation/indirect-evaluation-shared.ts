@@ -169,7 +169,7 @@ export function isFormStructureMutable(
 
 /** C10：PUBLISHED 问卷改题型阻断文案 */
 export const PUBLISHED_INDIRECT_ITEM_TYPE_CHANGE_MESSAGE
-  = '该问卷已发布，请先关闭问卷（操作路径：间接评价工作台 → 关闭问卷），修改题型后将触发该题项下全部答卷状态重算。'
+  = '该问卷已发布，请先关闭问卷（操作路径：间接评价 → 问卷管理 → 关闭问卷），修改题型后将触发该题项下全部答卷状态重算。'
 
 /** Phase A：PUBLISHED 文案编辑说明（C13 保存即生效） */
 export const PUBLISHED_INDIRECT_CONTENT_EDIT_MESSAGE

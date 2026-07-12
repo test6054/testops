@@ -67,6 +67,9 @@ const teacherRequest = computed(() =>
 )
 
 const editableFields = computed(() => fieldDefs.value.filter((item) => !item.readonly))
+const recordEditable = computed(() => !recordStatus.value
+  || recordStatus.value === PortfolioArchiveRecordStatusCode.DRAFT
+  || recordStatus.value === PortfolioArchiveRecordStatusCode.RETURNED)
 
 const statusHint = computed(() => {
   if (recordStatus.value === PortfolioArchiveRecordStatusCode.RETURNED) {
@@ -76,6 +79,12 @@ const statusHint = computed(() => {
   }
   if (recordStatus.value === PortfolioArchiveRecordStatusCode.DRAFT) {
     return '草稿待提交'
+  }
+  if (recordStatus.value === PortfolioArchiveRecordStatusCode.PENDING_REVIEW) {
+    return '审核处理中，档案内容已锁定'
+  }
+  if (recordStatus.value === PortfolioArchiveRecordStatusCode.OFFICIAL) {
+    return '审核通过，正式档案不可直接修改'
   }
   return ''
 })
@@ -342,10 +351,10 @@ usePortfolioScopedLoader(
       >
         <template #actions>
           <UiButton @click="goBack"> 返回档案 </UiButton>
-          <UiButton :loading="saving" :disabled="loading" @click="handleSaveDraft">
+          <UiButton :loading="saving" :disabled="loading || !recordEditable" @click="handleSaveDraft">
             保存草稿
           </UiButton>
-          <UiButton :loading="submitting" :disabled="loading" @click="handleSubmit">
+          <UiButton :loading="submitting" :disabled="loading || !recordEditable" @click="handleSubmit">
             提交审核
           </UiButton>
         </template>
@@ -366,7 +375,7 @@ usePortfolioScopedLoader(
         </UiTag>
         <span v-if="statusHint" class="archive-category-edit__status-hint">{{ statusHint }}</span>
       </p>
-      <UiCard v-if="editableFields.length" title="可编辑字段">
+      <UiCard v-if="editableFields.length" title="档案字段">
         <a-form layout="vertical">
           <a-form-item
             v-for="field in editableFields"
@@ -376,10 +385,12 @@ usePortfolioScopedLoader(
           >
             <a-input
               v-model:value="fieldValues[field.fieldCode]"
+              :disabled="!recordEditable"
               :placeholder="field.required ? '必填' : '选填'"
             />
             <a-input
               v-model:value="evidenceRefs[field.fieldCode]"
+              :disabled="!recordEditable"
               class="archive-category-edit__evidence"
               placeholder="证据引用（可选）"
             />

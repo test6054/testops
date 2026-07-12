@@ -95,6 +95,7 @@
             {{ task.taskDescription }}
           </p>
           <div class="remediation-card__meta">
+            <span v-if="task.createUserId">发现人: {{ remediationCreatorLabel(task) }}</span>
             <span>负责人: {{ remediationAssigneeLabel(task) }}</span>
             <span v-if="task.dueTime">截止: {{ formatDateTime(task.dueTime) }}</span>
             <span v-if="task.createTime">创建: {{ formatDateTime(task.createTime) }}</span>
@@ -306,7 +307,10 @@ import {
   parseTripleFromAcademicYear,
   resolveAcademicYearFromTriple,
 } from '@/utils/academic-year-semester-triple-filter'
-import { remediationAssigneeLabel } from '@/utils/archive-remediation-display'
+import {
+  remediationAssigneeLabel,
+  remediationCreatorLabel,
+} from '@/utils/archive-remediation-display'
 import {
   ARCHIVE_REMEDIATION_PRIORITY_TONE,
   ArchiveRemediationPriorityDescription,

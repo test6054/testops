@@ -10,7 +10,10 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import { remediationAssigneeLabel } from '@/utils/archive-remediation-display'
+import {
+  remediationAssigneeLabel,
+  remediationCreatorLabel,
+} from '@/utils/archive-remediation-display'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -74,7 +77,11 @@ function remediationStatusTone(code: ArchiveRemediationStatusCode): BadgeTone {
       <UiTag :tone="remediationStatusTone(task.taskStatus)" size="sm">
         {{ remediationStatusLabel(task.taskStatus) }}
       </UiTag>
-      <span v-if="assigneeLabel" class="archive-volume-remediation-strip__assignee">
+      <span v-if="task.createUserId" class="archive-volume-remediation-strip__meta">
+        发现人 {{ remediationCreatorLabel(task) }}
+        <template v-if="task.createTime"> · {{ formatDateTime(task.createTime) }}</template>
+      </span>
+      <span v-if="assigneeLabel" class="archive-volume-remediation-strip__meta">
         责任人 {{ assigneeLabel }}
       </span>
     </template>
@@ -136,7 +143,7 @@ function remediationStatusTone(code: ArchiveRemediationStatusCode): BadgeTone {
   margin-bottom: var(--dp-space-4);
 }
 
-.archive-volume-remediation-strip__assignee {
+.archive-volume-remediation-strip__meta {
   color: var(--dp-text-secondary);
   font-size: 13px;
 }

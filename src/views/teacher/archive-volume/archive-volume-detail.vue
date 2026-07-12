@@ -9,6 +9,11 @@
     />
 
     <template v-else-if="detail">
+      <UiAlertStrip tone="info" dense class="archive-volume-detail__alert">
+        本页为<strong>课程考核归档材料</strong>，用于本科教学评估迎检。OBE 达成度、间接评价与认证证据请在
+        <RouterLink :to="{ name: 'QualityDashboard' }">「质量评价」</RouterLink>
+        工作台处理。
+      </UiAlertStrip>
       <UiAlertStrip
         v-if="detail.capabilityDeniedHint"
         tone="info"
@@ -583,7 +588,10 @@ import {
   isSecurityRemediationDiagnostic,
   remediationDiagnosticLabel,
 } from '@/utils/archive-remediation-diagnostic'
-import { remediationAssigneeLabel } from '@/utils/archive-remediation-display'
+import {
+  remediationAssigneeLabel,
+  remediationCreatorLabel,
+} from '@/utils/archive-remediation-display'
 import { isArchiveDueOverdue } from '@/utils/archive-volume-list-ui'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -834,6 +842,12 @@ const remediationOpenDescription = computed(() => {
     }
     if (task.dueTime) {
       parts.push(`截止 ${formatDateTime(task.dueTime)}`)
+    }
+    if (task.createUserId) {
+      const creator = remediationCreatorLabel(task)
+      parts.push(
+        task.createTime ? `发现人 ${creator} · ${formatDateTime(task.createTime)}` : `发现人 ${creator}`,
+      )
     }
     if (
       d?.hasBlockingRemediationForSubmit

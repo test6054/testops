@@ -22,7 +22,6 @@ import {
 } from '@/types/enums/dispatch-queue-status-filter-enum'
 import { ScannerExceptionItemKindCode } from '@/types/enums/scanner-exception-item-kind-enum'
 import {
-  buildSuspectedMixedScanQueueRoute,
   fetchArchiveSuspectedMixedPendingTotal,
 } from '@/utils/archive-suspected-mixed-navigation'
 import { showUserError } from '@/utils/error-handler'
@@ -532,6 +531,16 @@ function handleTabChange(key: Key) {
   void router.replace({ query: buildTabQuery(parseTab(key)) })
 }
 
+async function navigateMixedBatchScanReview(): Promise<void> {
+  if ((archiveMixedPendingTotal.value ?? 0) <= 0) {
+    return
+  }
+  void router.push({
+    name: 'TeacherArchiveVolumeEvalCampaign',
+    query: { tab: 'mixed-review' },
+  })
+}
+
 function handleHeaderMetricClick(key: string) {
   if (key === 'failed-ticket') {
     void router.replace({
@@ -543,7 +552,7 @@ function handleHeaderMetricClick(key: string) {
     return
   }
   if (key === 'mixed-batch') {
-    void router.push(buildSuspectedMixedScanQueueRoute())
+    void navigateMixedBatchScanReview()
     return
   }
   const exceptionQueryByKey: Record<string, { tab: 'exception', kind: string }> = {

@@ -7,11 +7,11 @@ export enum ArchiveEvaluationCampaignResolveMatchKindCode {
   NONE = 'NONE',
 }
 
-export const ALL_ARCHIVE_EVALUATION_CAMPAIGN_RESOLVE_MATCH_KIND_CODES = [
+export const ALL_ARCHIVE_EVALUATION_CAMPAIGN_RESOLVE_MATCH_KIND_CODES: readonly ArchiveEvaluationCampaignResolveMatchKindCode[] = [
   ArchiveEvaluationCampaignResolveMatchKindCode.TERM_SCOPE,
   ArchiveEvaluationCampaignResolveMatchKindCode.REMEDIATION_SCOPE,
   ArchiveEvaluationCampaignResolveMatchKindCode.NONE,
-] as const
+]
 
 export const ArchiveEvaluationCampaignResolveMatchKindDescription: Record<
   ArchiveEvaluationCampaignResolveMatchKindCode,

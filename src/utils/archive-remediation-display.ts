@@ -7,6 +7,13 @@ export function remediationAssigneeLabel(task: ArchiveRemediationTaskResponse) {
   return task.assigneeNickName?.trim() || `用户 ${task.assigneeUserId}`
 }
 
+export function remediationCreatorLabel(task: ArchiveRemediationTaskResponse) {
+  if (!task.createUserId) {
+    return '—'
+  }
+  return task.createUserNickName?.trim() || `用户 ${task.createUserId}`
+}
+
 /**
  * 详情/横幅用的一句责任人摘要；无 assignee 时返回 null。
  */

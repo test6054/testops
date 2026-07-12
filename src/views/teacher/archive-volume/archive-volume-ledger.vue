@@ -70,6 +70,7 @@
               </p>
               <p class="approval-card__meta">
                 <span v-if="record.departmentName">{{ record.departmentName }}</span>
+                <span v-if="record.campaignName"> · 批次: {{ record.campaignName }}</span>
                 <span v-if="record.approverNickName"> · 审批: {{ record.approverNickName }}</span>
                 <span v-if="record.expireTime">
                   · 到期: {{ formatDateTime(record.expireTime) }}</span>
@@ -467,6 +468,7 @@ function handleSearchAuditReset() {
 const tenantAccessColumns: ColumnsType<ArchiveVolumeAccessLedgerRowResponse> = [
   { title: '档案号', dataIndex: 'archiveNo', width: 140, fixed: 'left' },
   { title: '院系', dataIndex: 'departmentName', width: 140 },
+  { title: '迎评批次', dataIndex: 'campaignName', width: 160, ellipsis: true },
   { title: '申请人', key: 'applicant', width: 120 },
   { title: '审批人', key: 'approver', width: 120 },
   { title: '最近阅读页', dataIndex: 'lastReadPage', width: 100, align: 'right' },

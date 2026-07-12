@@ -166,7 +166,6 @@ const improvementTransitMap: Record<ImprovementTaskStatusCode, ImprovementTaskSt
     ImprovementTaskStatusCode.CLOSED,
     ImprovementTaskStatusCode.RETURNED,
   ],
-  [ImprovementTaskStatusCode.REVIEWED]: [],
   [ImprovementTaskStatusCode.RETURNED]: [ImprovementTaskStatusCode.IN_PROGRESS],
   [ImprovementTaskStatusCode.CLOSED]: [],
 }
@@ -613,7 +612,6 @@ function handleImprovementTaskAction(key: string, record: ImprovementTaskVO): vo
     case ImprovementTaskStatusCode.OPEN:
     case ImprovementTaskStatusCode.IN_PROGRESS:
     case ImprovementTaskStatusCode.SUBMITTED:
-    case ImprovementTaskStatusCode.REVIEWED:
     case ImprovementTaskStatusCode.CLOSED:
     case ImprovementTaskStatusCode.RETURNED:
       void handleImprovementTransit(record, key)

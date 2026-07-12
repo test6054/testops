@@ -132,15 +132,15 @@ function focusPendingConversionTab() {
 }
 
 const responseListFilterOptions = computed(() => {
-  const pendingConfirmLabel
-    = pendingConfirmResponseCount.value > 0
-      ? `待确认 (${pendingConfirmResponseCount.value})`
-      : '待确认'
   const options: Array<{ label: string, value: ResponseListFilter }> = [
     { label: '全部', value: 'all' },
-    { label: pendingConfirmLabel, value: 'pendingConfirm' },
   ]
   if (!showConversionWorkflow.value) {
+    const pendingConfirmLabel
+      = pendingConfirmResponseCount.value > 0
+        ? `待确认 (${pendingConfirmResponseCount.value})`
+        : '待确认'
+    options.push({ label: pendingConfirmLabel, value: 'pendingConfirm' })
     return options
   }
   const pendingLabel
@@ -149,10 +149,15 @@ const responseListFilterOptions = computed(() => {
     = noSubstantiveResponseCount.value > 0
       ? `无实质作答 (${noSubstantiveResponseCount.value})`
       : '无实质作答'
+  const pendingConfirmLabel
+    = pendingConfirmResponseCount.value > 0
+      ? `待确认 (${pendingConfirmResponseCount.value})`
+      : '待确认'
   options.push(
     { label: pendingLabel, value: 'pending' },
     { label: '已换算', value: 'scored' },
     { label: noSubstantiveLabel, value: 'noSubstantive' },
+    { label: pendingConfirmLabel, value: 'pendingConfirm' },
   )
   return options
 })

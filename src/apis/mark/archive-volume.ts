@@ -11,7 +11,9 @@ import type { ArchiveAppraisalDecisionCode } from '@/types/enums/archive-apprais
 import type { ArchiveDestructionDecisionCode } from '@/types/enums/archive-destruction-decision-enum'
 import type { ArchiveElectronicOriginalStatusCode } from '@/types/enums/archive-electronic-original-status-enum'
 import type { ArchiveEvaluationCampaignResolveMatchKindCode } from '@/types/enums/archive-evaluation-campaign-resolve-match-kind-enum'
+import type { ArchiveEvaluationCampaignScopeMatchKindCode } from '@/types/enums/archive-evaluation-campaign-scope-match-kind-enum'
 import type { ArchiveEvaluationCampaignStatusCode } from '@/types/enums/archive-evaluation-campaign-status-enum'
+import type { ArchiveEvaluationExportModeCode } from '@/types/enums/archive-evaluation-export-mode-enum'
 import type { ArchiveExamFormCode } from '@/types/enums/archive-exam-form-enum'
 import type { ArchiveImportBatchStatusCode } from '@/types/enums/archive-import-batch-status-enum'
 import type { ArchiveMaterialDeliveryModeCode } from '@/types/enums/archive-material-delivery-mode-enum'
@@ -40,6 +42,7 @@ import type { DocumentMaterialBindingStatusCode } from '@/types/enums/document-m
 import type { DocumentOcrPageResultStatusCode } from '@/types/enums/document-ocr-page-result-status-enum'
 import type { DocumentOcrTaskStatusCode } from '@/types/enums/document-ocr-task-status-enum'
 import type { ExamKindCode } from '@/types/enums/exam-kind-enum'
+import type { ExportTaskStatusCode } from '@/types/enums/export-task-status-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 import {
@@ -787,6 +790,8 @@ export interface ArchiveRemediationTaskResponse {
   taskPriority: ArchiveRemediationPriorityCode
   assigneeUserId?: string
   assigneeNickName?: string
+  createUserId?: string
+  createUserNickName?: string
   dueTime?: string
   closedTime?: string
   createTime?: string
@@ -821,6 +826,7 @@ export interface ArchiveEvaluationCampaignResponse {
   totalVolumeCount?: number
   readyVolumeCount?: number
   readinessRatePercent?: number
+  openRemediationTaskCount?: number
 }
 
 export interface ArchiveEvaluationVolumeReadinessResponse {
@@ -833,6 +839,10 @@ export interface ArchiveEvaluationVolumeReadinessResponse {
   fourPropertyReady?: boolean
   transferReady?: boolean
   overallReady?: boolean
+  hasDomainOpenRemediation?: boolean
+  openRemediationTaskCount?: number
+  primaryOpenRemediationTaskId?: string
+  scopeMatchKind?: ArchiveEvaluationCampaignScopeMatchKindCode
 }
 
 export interface ArchiveVolumePageRequest extends QueryDto {
@@ -1255,14 +1265,52 @@ export function pageSupervisionReadinessMatrixPreview(
 
 export interface ArchiveEvaluationCampaignReadinessPanelRequest extends QueryDto {
   campaignId: string
+  onlyOpenRemediation?: boolean
   volumeId?: string
+}
+
+export interface ArchiveEvaluationCampaignScopeSummaryVO {
+  totalVolumeCount: number
+  readyVolumeCount: number
+  readinessRatePercent: number
+}
+
+export interface ArchiveEvaluationCampaignReadinessPanelResponse {
+  scopeSummary: ArchiveEvaluationCampaignScopeSummaryVO
+  volumePage: PageResult<ArchiveEvaluationVolumeReadinessResponse>
 }
 
 export function getEvaluationCampaignReadinessPanel(
   request: ArchiveEvaluationCampaignReadinessPanelRequest,
-): Promise<PageResult<ArchiveEvaluationVolumeReadinessResponse>> {
-  return http.post<PageResult<ArchiveEvaluationVolumeReadinessResponse>>(
+): Promise<ArchiveEvaluationCampaignReadinessPanelResponse> {
+  return http.post<ArchiveEvaluationCampaignReadinessPanelResponse>(
     '/api/mark/archive-volumes/evaluation/campaign/readiness-panel',
+    request,
+  )
+}
+
+export interface ArchiveEvaluationCampaignResolveByVolumeRequest {
+  volumeId: string
+}
+
+export interface ArchiveEvaluationCampaignResolveItemVO {
+  campaignId: string
+  campaignName: string
+  endTime?: string
+}
+
+export interface ArchiveEvaluationCampaignResolveByVolumeResponse {
+  campaigns: ArchiveEvaluationCampaignResolveItemVO[]
+  truncated: boolean
+  suggestedCampaignId?: string
+  matchedBy: ArchiveEvaluationCampaignResolveMatchKindCode
+}
+
+export function resolveEvaluationCampaignByVolume(
+  request: ArchiveEvaluationCampaignResolveByVolumeRequest,
+): Promise<ArchiveEvaluationCampaignResolveByVolumeResponse> {
+  return http.post<ArchiveEvaluationCampaignResolveByVolumeResponse>(
+    '/api/mark/archive-volumes/evaluation/campaign/resolve-by-volume',
     request,
   )
 }
@@ -1419,20 +1467,20 @@ export function saveEvaluationCampaign(
 export interface ArchiveEvaluationExportResponse {
   exportFileId?: string
   exportFileName?: string
-  exportFileSize?: string
+  exportFileSize?: number
   volumeCount?: number
-  exportMode?: import('@/types/enums/archive-evaluation-export-mode-enum').ArchiveEvaluationExportModeCode
+  exportMode?: ArchiveEvaluationExportModeCode
   taskId?: string
-  status?: import('@/types/enums/export-task-status-enum').ExportTaskStatusCode
+  status?: ExportTaskStatusCode
   pollUrl?: string
 }
 
 export interface ArchiveEvaluationExportProgressResponse {
   taskId: string
-  status: import('@/types/enums/export-task-status-enum').ExportTaskStatusCode
+  status: ExportTaskStatusCode
   exportFileId?: string
   exportFileName?: string
-  exportFileSize?: string
+  exportFileSize?: number
   volumeCount?: number
   errorMessage?: string
 }
@@ -1486,6 +1534,7 @@ export interface ArchiveReadinessMatrixRequest {
   endSemester: SemesterCode
   termCount?: number
   departmentId?: string
+  campaignId?: string
 }
 
 export interface ArchiveReadinessTermColumnVO {
@@ -1834,6 +1883,8 @@ export function retryArchiveVolumeAutoCreate(examId: string): Promise<void> {
 export interface ArchiveVolumeAccessRecordResponse {
   accessRecordId: string
   volumeId: string
+  campaignId?: string
+  campaignName?: string
   materialId?: string
   applicantUserId?: string
   applicantNickName?: string
@@ -2682,6 +2733,8 @@ export interface ArchiveVolumeAccessLedgerRowResponse {
   archiveTitle?: string
   departmentName?: string
   lastReadPage?: number
+  campaignId?: string
+  campaignName?: string
 }
 
 export function pageAccessLedger(
@@ -2896,7 +2949,7 @@ export function batchDiscardArchiveScanBatches(
 }
 
 export interface ArchiveSuspectedMixedScanBatchItemVO {
-  sourceBatchId?: string
+  sourceBatchId: string
   batchExternalNo?: string
   volumeId: string
   archiveNo?: string
@@ -2921,31 +2974,5 @@ export function pageSuspectedMixedScanBatches(
     '/api/mark/archive-volumes/scan-batch-snapshots/suspected-mixed/page',
     request,
     config,
-  )
-}
-
-export interface ArchiveEvaluationCampaignResolveByVolumeRequest {
-  volumeId: string
-}
-
-export interface ArchiveEvaluationCampaignResolveItem {
-  campaignId: string
-  campaignName: string
-  endTime?: string
-}
-
-export interface ArchiveEvaluationCampaignResolveByVolumeResponse {
-  campaigns: ArchiveEvaluationCampaignResolveItem[]
-  truncated: boolean
-  suggestedCampaignId?: string
-  matchedBy: ArchiveEvaluationCampaignResolveMatchKindCode
-}
-
-export function resolveEvaluationCampaignByVolume(
-  request: ArchiveEvaluationCampaignResolveByVolumeRequest,
-): Promise<ArchiveEvaluationCampaignResolveByVolumeResponse> {
-  return http.post<ArchiveEvaluationCampaignResolveByVolumeResponse>(
-    '/api/mark/archive-volumes/evaluation/campaign/resolve-by-volume',
-    request,
   )
 }
