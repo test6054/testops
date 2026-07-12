@@ -28,6 +28,9 @@
       <template v-else-if="column.key === 'latestRejectReason'">
         {{ record.latestRejectReason || '—' }}
       </template>
+      <template v-else-if="column.key === 'latestReturnDeadline'">
+        {{ record.latestReturnDeadline || '—' }}
+      </template>
     </template>
   </UiDataTable>
 </template>
@@ -38,18 +41,18 @@ import type {
   PortfolioArchiveRecordStatusCode,
   PortfolioReviewTaskStatusCode,
 } from '@/apis/portfolio/enums'
-import type { PortfolioTeacherReviewStatusRowVO } from '@/apis/portfolio/types'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { ref, watch } from 'vue'
 import {
   PortfolioArchiveRecordStatusDescription,
   PortfolioReviewTaskStatusDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioReviewStatusApi } from '@/apis/portfolio/review-status'
+import type { PortfolioTeacherReviewStatusRowVO } from '@/apis/portfolio/types'
 import {
   PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
   PORTFOLIO_REVIEW_TASK_STATUS_TONE,
 } from '@/apis/portfolio/types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { ref, watch } from 'vue'
+import { portfolioReviewStatusApi } from '@/apis/portfolio/review-status'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -70,6 +73,7 @@ const columns: ColumnsType = [
   { title: '审核状态', key: 'reviewTaskStatus', width: 110, align: 'center' },
   { title: '更新时间', dataIndex: 'updateTime', key: 'updateTime', width: 170, align: 'right' },
   { title: '退回原因', key: 'latestRejectReason' },
+  { title: '重提期限', key: 'latestReturnDeadline', width: 170, align: 'right' },
 ]
 
 const loading = ref(false)
@@ -134,7 +138,7 @@ async function loadPage() {
   }
 }
 
-function handlePageChange(next: { current: number, pageSize: number }) {
+function handlePageChange(next: { current: number; pageSize: number }) {
   pageNum.value = next.current
   pageSize.value = next.pageSize
   void loadPage()

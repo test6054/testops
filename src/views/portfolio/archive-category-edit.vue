@@ -3,6 +3,7 @@ import type {
   PortfolioArchiveRecordFieldInput,
   PortfolioTargetFieldDefinition,
 } from '@/apis/portfolio/types'
+import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -12,7 +13,6 @@ import {
   PortfolioArchiveRecordStatusCode,
   PortfolioArchiveRecordStatusDescription,
 } from '@/apis/portfolio/enums'
-import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -38,6 +38,7 @@ const categoryName = ref('')
 const recordId = ref<string>()
 const recordStatus = ref<PortfolioArchiveRecordStatusCode>()
 const latestRejectReason = ref<string>()
+const latestReturnDeadline = ref<string>()
 const fieldDefs = ref<PortfolioTargetFieldDefinition[]>([])
 const fieldValues = reactive<Record<string, string>>({})
 const evidenceRefs = reactive<Record<string, string>>({})
@@ -67,15 +68,21 @@ const teacherRequest = computed(() =>
 )
 
 const editableFields = computed(() => fieldDefs.value.filter((item) => !item.readonly))
-const recordEditable = computed(() => !recordStatus.value
-  || recordStatus.value === PortfolioArchiveRecordStatusCode.DRAFT
-  || recordStatus.value === PortfolioArchiveRecordStatusCode.RETURNED)
+const recordEditable = computed(
+  () =>
+    !recordStatus.value ||
+    recordStatus.value === PortfolioArchiveRecordStatusCode.DRAFT ||
+    recordStatus.value === PortfolioArchiveRecordStatusCode.RETURNED,
+)
 
 const statusHint = computed(() => {
   if (recordStatus.value === PortfolioArchiveRecordStatusCode.RETURNED) {
-    return latestRejectReason.value
+    const reason = latestRejectReason.value
       ? `审核退回：${latestRejectReason.value}`
       : '审核退回，请修改后重新提交'
+    return latestReturnDeadline.value
+      ? `${reason}；重提期限：${latestReturnDeadline.value}`
+      : reason
   }
   if (recordStatus.value === PortfolioArchiveRecordStatusCode.DRAFT) {
     return '草稿待提交'
@@ -94,6 +101,7 @@ async function applyRecordDetail(id: string) {
   const detail = await portfolioArchiveApi.getRecord(id)
   recordStatus.value = detail.recordStatus
   latestRejectReason.value = detail.latestRejectReason
+  latestReturnDeadline.value = detail.latestReturnDeadline
   for (const field of detail.fields) {
     fieldValues[field.fieldCode] = field.fieldValue ?? ''
     evidenceRefs[field.fieldCode] = field.evidenceRef ?? ''
@@ -106,6 +114,7 @@ function resetFormState() {
   categoryName.value = ''
   recordStatus.value = undefined
   latestRejectReason.value = undefined
+  latestReturnDeadline.value = undefined
   fieldDefs.value = []
   for (const key of Object.keys(fieldValues)) {
     delete fieldValues[key]
@@ -169,8 +178,8 @@ function buildReturnQuery(): Record<string, string> {
 }
 
 function returnToArchiveSource() {
-  const path
-    = fromPage.value === 'courseArchive'
+  const path =
+    fromPage.value === 'courseArchive'
       ? '/portfolio/teacher/course-archive'
       : fromPage.value === 'trainingExtension'
         ? '/portfolio/teacher/extension-activity'
@@ -351,10 +360,18 @@ usePortfolioScopedLoader(
       >
         <template #actions>
           <UiButton @click="goBack"> 返回档案 </UiButton>
-          <UiButton :loading="saving" :disabled="loading || !recordEditable" @click="handleSaveDraft">
+          <UiButton
+            :loading="saving"
+            :disabled="loading || !recordEditable"
+            @click="handleSaveDraft"
+          >
             保存草稿
           </UiButton>
-          <UiButton :loading="submitting" :disabled="loading || !recordEditable" @click="handleSubmit">
+          <UiButton
+            :loading="submitting"
+            :disabled="loading || !recordEditable"
+            @click="handleSubmit"
+          >
             提交审核
           </UiButton>
         </template>

@@ -4,11 +4,11 @@ import type {
   PortfolioTeachingExtensionActivityVO,
   PortfolioTeachingExtensionCategoryVO,
 } from '@/apis/portfolio/teaching-extension'
+import { portfolioTeachingExtensionApi } from '@/apis/portfolio/teaching-extension'
 import { DatePicker, Form, Input, InputNumber, message, Modal } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { portfolioTeachingExtensionApi } from '@/apis/portfolio/teaching-extension'
 import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -23,7 +23,10 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
-import { PortfolioArchiveRecordStatusDescription } from '@/types/enums/portfolio-archive-record-status-enum'
+import {
+  PortfolioArchiveRecordStatusCode,
+  PortfolioArchiveRecordStatusDescription,
+} from '@/types/enums/portfolio-archive-record-status-enum'
 import {
   PortfolioTeachingExtensionKindCode,
   PortfolioTeachingExtensionKindDescription,
@@ -74,6 +77,14 @@ const categoryForm = reactive({ categoryName: '' })
 const readonlyMode = computed(() => canPickTeachers.value && !!targetTeacherId.value)
 
 const isTraining = computed(() => form.activityKind === PortfolioTeachingExtensionKindCode.TRAINING)
+
+function canEditActivity(row: PortfolioTeachingExtensionActivityVO) {
+  return (
+    !row.archiveRecordId ||
+    row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.DRAFT ||
+    row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.RETURNED
+  )
+}
 
 const categoryOptions = computed(() =>
   categories.value.map((item) => ({
@@ -175,6 +186,14 @@ async function loadData() {
     }
     rows.value = activityRows
     categories.value = categoryRows
+    if (
+      typeof route.query.recommendationId === 'string' &&
+      !recommendationIntentConsumed.value &&
+      !readonlyMode.value &&
+      !modalOpen.value
+    ) {
+      openModal()
+    }
   } catch (error) {
     if (requestToken.value !== currentToken) {
       return
@@ -190,8 +209,8 @@ async function loadData() {
 }
 
 function openModal(row?: PortfolioTeachingExtensionActivityVO) {
-  if (row?.archiveRecordId) {
-    message.info('该培训活动已关联档案审核，请在档案审核链查看或修订')
+  if (row?.archiveRecordId && !canEditActivity(row)) {
+    message.info('该培训活动的档案正在审核或已正式归档，不可修改')
     return
   }
   if (readonlyMode.value && !row) {
@@ -211,10 +230,10 @@ function openModal(row?: PortfolioTeachingExtensionActivityVO) {
   form.fileId = row?.fileId || ''
   form.attachmentName = row?.fileId ? `附件 ${row.fileId}` : ''
   if (!row && !recommendationIntentConsumed.value) {
-    form.trainingRecommendationId
-      = typeof route.query.recommendationId === 'string' ? route.query.recommendationId : ''
-    form.activityName
-      = typeof route.query.activityName === 'string' ? route.query.activityName : form.activityName
+    form.trainingRecommendationId =
+      typeof route.query.recommendationId === 'string' ? route.query.recommendationId : ''
+    form.activityName =
+      typeof route.query.activityName === 'string' ? route.query.activityName : form.activityName
     recommendationIntentConsumed.value = true
   }
   modalOpen.value = true
@@ -447,13 +466,13 @@ watch(
                 {{ archiveStatusLabel(record) }}
               </UiTag>
               <UiButton variant="ghost" @click="openModal(record)">
-                {{ readonlyMode || record.archiveRecordId ? '查看' : '编辑' }}
+                {{ readonlyMode || !canEditActivity(record) ? '查看' : '编辑' }}
               </UiButton>
               <UiButton
                 v-if="
-                  !readonlyMode
-                    && record.activityKind === PortfolioTeachingExtensionKindCode.TRAINING
-                    && !record.archiveRecordId
+                  !readonlyMode &&
+                  record.activityKind === PortfolioTeachingExtensionKindCode.TRAINING &&
+                  !record.archiveRecordId
                 "
                 variant="ghost"
                 :loading="submittingTrainingId === record.id"
