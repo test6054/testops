@@ -13,16 +13,16 @@ import type { AttemptStatusCode } from '@/types/enums/attempt-status-enum'
 import type { ScannerActivationCodeStatusCode } from '@/types/enums/scanner-activation-code-status-enum'
 import type { ScannerAgentDiagnosticStatusCode } from '@/types/enums/scanner-agent-diagnostic-status-enum'
 import type { ScannerColorModeCode } from '@/types/enums/scanner-color-mode-enum'
+import { ALL_SCANNER_COLOR_MODE_CODES, ScannerColorModeDescription } from '@/types/enums/scanner-color-mode-enum'
 import type { ScannerDuplexModeCode } from '@/types/enums/scanner-duplex-mode-enum'
+import { ALL_SCANNER_DUPLEX_MODE_CODES, ScannerDuplexModeDescription } from '@/types/enums/scanner-duplex-mode-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
-import { ALL_SCANNER_COLOR_MODE_CODES, ScannerColorModeDescription } from '@/types/enums/scanner-color-mode-enum'
 import {
   ALL_SCANNER_DEVICE_STATUS_CODES,
   ScannerDeviceStatusCode,
   ScannerDeviceStatusDescription
 } from '@/types/enums/scanner-device-status-enum'
-import { ALL_SCANNER_DUPLEX_MODE_CODES, ScannerDuplexModeDescription } from '@/types/enums/scanner-duplex-mode-enum'
 import {
   ALL_SCANNER_ENDPOINT_ONLINE_STATUS_CODES,
   ScannerEndpointOnlineStatusCode,
@@ -209,14 +209,6 @@ export interface ExamScannerDeviceActivationHandoffResponse {
   deviceName: string
   activationCode?: string
   expireTime?: string
-}
-
-/** 扫描设备 token 响应 - 对应 ExamScannerDeviceTokenResponse（历史接口，教师侧不再使用） */
-export interface ExamScannerDeviceTokenVO {
-  id: string
-  pushToken: string
-  pushUrl: string
-  authorizationHeader: string
 }
 
 /** 扫描设备创建请求 - 对应 ExamScannerDeviceCreateRequest */
