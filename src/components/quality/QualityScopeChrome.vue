@@ -8,7 +8,7 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { trainingPlanApi } from '@/apis/quality/training-plan'
-import { CONFIRMATION_STATUS_COLOR, ConfirmationStatusDescription } from '@/apis/quality/types'
+import { CONFIRMATION_STATUS_COLOR, ConfirmationStatusCode, ConfirmationStatusDescription } from '@/apis/quality/types'
 import {
   CourseSelector,
   ProgramSelector,
@@ -23,6 +23,10 @@ import {
   generateAcademicYearOptions,
   getDefaultAcademicYearAndSemester,
 } from '@/utils/academic-year'
+import {
+  buildQualityPlanWorkbenchLocation,
+  QUALITY_PLAN_GATE_REASON_UNCONFIRMED,
+} from '@/utils/quality-plan-guard'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'QualityScopeChrome' })
@@ -52,6 +56,13 @@ const showPeriod = computed(
 const showCourse = computed(() => scopeProfile.value === 'plan-course')
 
 const needsPlanSelection = computed(() => showPlan.value && !trainingPlanId.value)
+
+const needsPlanConfirmation = computed(() => {
+  if (!showPlan.value || !trainingPlanId.value) {
+    return false
+  }
+  return qualityStore.currentPlan?.confirmationStatus !== ConfirmationStatusCode.CONFIRMED
+})
 
 const schoolYearOptions = computed(() => {
   const years = generateAcademicYearOptions()
@@ -178,6 +189,10 @@ function goSelectPlan(): void {
   void router.push({ name: 'QualityTrainingPlanWorkbench' })
 }
 
+function goConfirmPlan(): void {
+  void router.push(buildQualityPlanWorkbenchLocation(QUALITY_PLAN_GATE_REASON_UNCONFIRMED))
+}
+
 onMounted(() => {
   qualityStore.sanitizePersistedScope()
   void restorePersistedScope()
@@ -245,6 +260,13 @@ onMounted(() => {
       <UiTag v-if="showPlan && planConfirmationLabel" :tone="planConfirmationTone" size="sm">
         {{ planConfirmationLabel }}
       </UiTag>
+      <UiButton
+        v-if="needsPlanConfirmation"
+        size="sm"
+        @click="goConfirmPlan"
+      >
+        去确认方案
+      </UiButton>
     </template>
   </div>
 </template>

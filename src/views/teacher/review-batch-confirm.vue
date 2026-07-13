@@ -9,14 +9,14 @@
           </UiTag>
         </template>
         <template #actions>
-          <UiButton variant="outline" size="sm" @click="goSingleReview"> OCR/AI 单题复核 </UiButton>
+          <UiButton variant="outline" size="sm" @click="goSingleReview"> 单题复核 </UiButton>
           <UiButton
             size="sm"
             variant="outline"
             :disabled="rows.length === 0"
             @click="applyAiScores"
           >
-            采纳 AI 建议分
+            填入建议分
           </UiButton>
           <UiButton
             size="sm"
@@ -42,7 +42,7 @@
       <WorkbenchSurfaceCard flush>
         <UiEmpty
           v-if="!loading && rows.length === 0"
-          description="当前暂无待批量确认的复核任务"
+          description="当前暂无待批量确认的复核任务（硬判/AI 建议确认后会出现在此）"
           class="batch-confirm__empty"
         />
         <UiDataTable
@@ -196,7 +196,7 @@ const columns: ColumnType<ReviewTaskItemResponse>[] = [
   { title: '答卷', key: 'paper', width: 220, ellipsis: true, fixed: 'left' },
   { title: '题号', key: 'question', width: 100 },
   { title: '来源', key: 'gradeSource', width: 110 },
-  { title: 'AI 建议分', key: 'aiScore', width: 100, align: 'right' },
+  { title: '系统建议分', key: 'aiScore', width: 100, align: 'right' },
   { title: '确认得分', key: 'teacherReviewScore', width: 140 },
 ]
 
@@ -232,12 +232,25 @@ function updateScore(gradeResultId: string, value: number | string | null): void
 }
 
 function applyAiScores(): void {
+  let filled = 0
+  let skipped = 0
   for (const record of rows.value) {
     if (record.aiScore != null) {
       scoreDraftMap[record.gradeResultId] = record.aiScore
+      filled += 1
+    } else {
+      skipped += 1
     }
   }
-  message.success('已用 AI 建议分填充当前页得分')
+  if (filled === 0) {
+    message.warning('当前页没有可填入的系统建议分（硬判失败或 AI 未出分须人工给分）')
+    return
+  }
+  message.success(
+    skipped > 0
+      ? `已用系统建议分填充 ${filled} 条，${skipped} 条无建议分需人工填写`
+      : `已用系统建议分填充当前页 ${filled} 条（含客观题硬判与 AI 建议）`,
+  )
 }
 
 async function loadTasks(): Promise<void> {
@@ -291,8 +304,8 @@ function openConfirm(): void {
     return
   }
   void confirmAsync({
-    title: '批量确认复核得分',
-    content: `将批量确认 ${selectedRowKeys.value.length} 条复核得分，确认后写入教师复核分并推进复核任务状态。`,
+    title: '批量确认教师复核分',
+    content: `将把 ${selectedRowKeys.value.length} 条题目写入教师复核分（CONFIRMED）。客观题硬判与 AI 建议仅作线索，确认后才进入最终成绩汇总。`,
     okText: '确认提交',
     onOk: submitBatch,
   })

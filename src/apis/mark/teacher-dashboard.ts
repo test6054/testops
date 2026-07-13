@@ -4,7 +4,9 @@ import type { ExamStatusCode } from '@/apis/mark/exam'
  */
 import type { ExtendedAxiosRequestConfig } from '@/config/axios/types'
 import type { MarkStageKey } from '@/stores/modules/markStage'
+import type { PageResult, QueryDto } from '@/types'
 import type { MarkTeacherDashboardJourneyKeyCode } from '@/types/enums/mark-teacher-dashboard-journey-key-enum'
+import type { MarkTeacherDashboardPendingTodoScopeCode } from '@/types/enums/mark-teacher-dashboard-pending-todo-scope-enum'
 import type { MarkTeacherDashboardTodoTypeCode } from '@/types/enums/mark-teacher-dashboard-todo-type-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
@@ -39,6 +41,7 @@ export interface MarkTeacherDashboardSignalMetricsVO {
   arbitrationPendingCount: number
   spotCheckPendingCount: number
   attentionTodoCount: number
+  pendingTodoRowCount: number
 }
 
 export interface MarkTeacherDashboardMarkingProgressSummaryVO {
@@ -119,22 +122,28 @@ export interface MarkTeacherDashboardOverviewVO {
   markingProgressSummary: MarkTeacherDashboardMarkingProgressSummaryVO
   todoTypeSummary: MarkTeacherDashboardTodoTypeSummaryItemVO[]
   journeyStageSummary: MarkTeacherDashboardJourneyStageSummaryItemVO[]
-  ongoingExams: MarkTeacherDashboardOngoingExamItemVO[]
-  pendingTodos: MarkTeacherDashboardPendingTodoItemVO[]
+  ongoingExamPage: PageResult<MarkTeacherDashboardOngoingExamItemVO>
+  pendingTodoPage: PageResult<MarkTeacherDashboardPendingTodoItemVO>
   publishedExamInsights: MarkTeacherDashboardPublishedExamInsightItemVO[]
+}
+
+export interface MarkTeacherDashboardOngoingExamPageQuery extends QueryDto {}
+
+export interface MarkTeacherDashboardPendingTodoPageQuery extends QueryDto {
+  todoScope?: MarkTeacherDashboardPendingTodoScopeCode
 }
 
 export interface MarkTeacherDashboardQuery {
   academicYear?: string
   semester?: SemesterCode
   status?: ExamStatusCode
-  ongoingLimit?: number
   publishedInsightLimit?: number
-  todoLimit?: number
 }
 
 export interface MarkTeacherDashboardSectionQuery extends MarkTeacherDashboardQuery {
   loadKey: string
+  ongoingExamPage?: MarkTeacherDashboardOngoingExamPageQuery
+  pendingTodoPage?: MarkTeacherDashboardPendingTodoPageQuery
 }
 
 export interface MarkTeacherDashboardSignalSectionVO {
@@ -146,7 +155,7 @@ export interface MarkTeacherDashboardSignalSectionVO {
 }
 
 export interface MarkTeacherDashboardExamsSectionVO {
-  ongoingExams: MarkTeacherDashboardOngoingExamItemVO[]
+  ongoingExamPage: PageResult<MarkTeacherDashboardOngoingExamItemVO>
   publishedExamInsights: MarkTeacherDashboardPublishedExamInsightItemVO[]
   journeyStageSummary: MarkTeacherDashboardJourneyStageSummaryItemVO[]
   todoTypeSummary: MarkTeacherDashboardTodoTypeSummaryItemVO[]
@@ -155,7 +164,7 @@ export interface MarkTeacherDashboardExamsSectionVO {
 }
 
 export interface MarkTeacherDashboardTodosSectionVO {
-  pendingTodos: MarkTeacherDashboardPendingTodoItemVO[]
+  pendingTodoPage: PageResult<MarkTeacherDashboardPendingTodoItemVO>
   todoTypeSummary: MarkTeacherDashboardTodoTypeSummaryItemVO[]
 }
 

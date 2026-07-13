@@ -3,12 +3,20 @@ import type { Key } from 'ant-design-vue/es/_util/type'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { loadScannerCenterOverview } from '@/apis/mark/analysis-center'
+import {
+  loadArchiveScanOpsOverview,
+  loadExamScanOpsOverview,
+  loadPortfolioScanOpsOverview,
+} from '@/apis/mark/scan-ops'
 import {
   ALL_SCAN_DISPATCH_TICKET_STATUS_CODES,
   ScanDispatchTicketStatusCode,
   ScanDispatchTicketStatusDescription,
 } from '@/apis/mark/scanner-dispatch'
+import ScanDispatchPanel from '@/components/scanner-ops/ScanDispatchPanel.vue'
+import ScanExceptionPanel from '@/components/scanner-ops/ScanExceptionPanel.vue'
+import ScanOperationLogPanel from '@/components/scanner-ops/ScanOperationLogPanel.vue'
+import ScanOpsPanel from '@/components/scanner-ops/ScanOpsPanel.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
@@ -20,20 +28,23 @@ import {
   DispatchQueueStatusFilterCode,
   DispatchQueueStatusFilterDescription,
 } from '@/types/enums/dispatch-queue-status-filter-enum'
+import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { ScannerExceptionItemKindCode } from '@/types/enums/scanner-exception-item-kind-enum'
 import {
   fetchArchiveSuspectedMixedPendingTotal,
 } from '@/utils/archive-suspected-mixed-navigation'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import ScannerDispatchPanel from './ScannerDispatchPanel.vue'
-import ScannerExceptionPanel from './ScannerExceptionPanel.vue'
-import ScannerOperationLogPanel from './ScannerOperationLogPanel.vue'
-import ScannerOpsPanel from './ScannerOpsPanel.vue'
 
-defineOptions({ name: 'TeacherScannerCenter' })
+defineOptions({ name: 'ScanOpsWorkbench' })
 
-type ScannerCenterTab = 'exception' | 'ops' | 'log' | 'dispatch'
+const props = defineProps<{
+  domain: ScanOpsDomain
+  title: string
+  examId?: string
+}>()
+export type ScanOpsDomain = 'exam' | 'archive' | 'portfolio'
+type ScanOpsTab = 'exception' | 'ops' | 'log' | 'dispatch'
 
 interface DispatchRouteContext {
   dispatchFilter?: string
@@ -63,21 +74,47 @@ const processingDispatchCount = ref<number | null>(null)
 const suspendedDispatchCount = ref<number | null>(null)
 const committingWorkOrderCount = ref<number | null>(null)
 
-const tabItems = [
-  { key: 'exception', label: '异常处置' },
-  { key: 'dispatch', label: '派单结案' },
-  { key: 'ops', label: '运营体检' },
-  { key: 'log', label: '处置日志' },
-]
+const tabItems = computed(() => {
+  if (props.domain === 'exam') {
+    return [
+      { key: 'exception', label: '异常处置' },
+      { key: 'log', label: '处置日志' },
+    ]
+  }
+  if (props.domain === 'archive') {
+    return [
+      { key: 'exception', label: '异常处置' },
+      { key: 'dispatch', label: '派单结案' },
+      { key: 'ops', label: '运营体检' },
+      { key: 'log', label: '处置日志' },
+    ]
+  }
+  return [
+    { key: 'exception', label: '异常处置' },
+    { key: 'dispatch', label: '派单结案' },
+    { key: 'log', label: '处置日志' },
+  ]
+})
 
-function parseTab(value: unknown): ScannerCenterTab {
-  if (value === 'ops' || value === 'log' || value === 'dispatch') {
-    return value
+const dispatchTaskKind = computed(() => {
+  if (props.domain === 'archive') {
+    return ScanTaskKindCode.EXAM_ARCHIVE
+  }
+  if (props.domain === 'portfolio') {
+    return ScanTaskKindCode.PORTFOLIO_COLLECT
+  }
+  return undefined
+})
+
+function parseTab(value: unknown): ScanOpsTab {
+  const allowed = tabItems.value.map((item) => item.key)
+  if (typeof value === 'string' && allowed.includes(value)) {
+    return value as ScanOpsTab
   }
   return 'exception'
 }
 
-const activeTab = computed<ScannerCenterTab>(() => parseTab(route.query.tab))
+const activeTab = computed<ScanOpsTab>(() => parseTab(route.query.tab))
 
 const dispatchRouteSnapshot = ref<DispatchRouteContext>({})
 const exceptionKindSnapshot = ref<string | undefined>()
@@ -164,30 +201,30 @@ watch(
     tab: route.query.tab,
     kind: route.query.kind,
   }),
-  (scannerCenterQuery) => {
-    if (scannerCenterQuery.tab === 'dispatch') {
+  (scanOpsQuery) => {
+    if (scanOpsQuery.tab === 'dispatch') {
       dispatchRouteSnapshot.value = {
-        dispatchFilter: asQueryString(scannerCenterQuery.dispatchFilter),
-        dispatchStatus: asQueryString(scannerCenterQuery.dispatchStatus),
+        dispatchFilter: asQueryString(scanOpsQuery.dispatchFilter),
+        dispatchStatus: asQueryString(scanOpsQuery.dispatchStatus),
       }
       return
     }
-    if (scannerCenterQuery.tab === 'log') {
-      const returnFilter = asQueryString(scannerCenterQuery.returnDispatchFilter)
-      const returnStatus = asQueryString(scannerCenterQuery.returnDispatchStatus)
+    if (scanOpsQuery.tab === 'log') {
+      const returnFilter = asQueryString(scanOpsQuery.returnDispatchFilter)
+      const returnStatus = asQueryString(scanOpsQuery.returnDispatchStatus)
       if (returnFilter || returnStatus) {
         dispatchRouteSnapshot.value = { dispatchFilter: returnFilter, dispatchStatus: returnStatus }
       }
       return
     }
-    if (scannerCenterQuery.tab === 'exception') {
-      exceptionKindSnapshot.value = asQueryString(scannerCenterQuery.kind)
+    if (scanOpsQuery.tab === 'exception') {
+      exceptionKindSnapshot.value = asQueryString(scanOpsQuery.kind)
     }
   },
   { immediate: true },
 )
 
-function buildTabQuery(tab: ScannerCenterTab): Record<string, string> {
+function buildTabQuery(tab: ScanOpsTab): Record<string, string> {
   const query: Record<string, string> = { tab }
   if (tab === 'exception') {
     const kind
@@ -272,17 +309,32 @@ interface DutyMetric {
   helper?: string
 }
 
-/** 共享值班台：固定完整待办看板，零值也展示，避免单卡拉伸留白。 */
 const dutyBoardMetrics = computed<DutyMetric[]>(() => {
-  const metrics: DutyMetric[] = [
-    {
-      key: 'page-register-blocked',
-      label: '页登记阻断',
-      count: pageRegisterBlockedCount.value,
-      tone: metricTone(pageRegisterBlockedCount.value, 'red'),
-      active: isExceptionKindActive(ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED),
-      helper: '阻断续扫',
-    },
+  const metrics: DutyMetric[] = []
+
+  if (props.domain === 'exam') {
+    metrics.push(
+      {
+        key: 'page-register-blocked',
+        label: '页登记阻断',
+        count: pageRegisterBlockedCount.value,
+        tone: metricTone(pageRegisterBlockedCount.value, 'red'),
+        active: isExceptionKindActive(ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED),
+        helper: '阻断续扫',
+      },
+      {
+        key: 'partial-tail',
+        label: '余页未切卷',
+        count: partialTailPendingCount.value,
+        tone: metricTone(partialTailPendingCount.value, 'orange'),
+        active: isExceptionKindActive(ScannerExceptionItemKindCode.PARTIAL_TAIL),
+        helper: '人工确认',
+      },
+    )
+    return metrics
+  }
+
+  metrics.push(
     {
       key: 'failed-ticket',
       label: '失败派单',
@@ -298,14 +350,6 @@ const dutyBoardMetrics = computed<DutyMetric[]>(() => {
       tone: metricTone(failedWorkOrderCount.value, 'red'),
       active: isExceptionKindActive(ScannerExceptionItemKindCode.WORK_ORDER),
       helper: '工单失败',
-    },
-    {
-      key: 'partial-tail',
-      label: '余页未切卷',
-      count: partialTailPendingCount.value,
-      tone: metricTone(partialTailPendingCount.value, 'orange'),
-      active: isExceptionKindActive(ScannerExceptionItemKindCode.PARTIAL_TAIL),
-      helper: '人工确认',
     },
     {
       key: 'committing-work-order',
@@ -346,9 +390,10 @@ const dutyBoardMetrics = computed<DutyMetric[]>(() => {
         && dispatchStatus.value === ScanDispatchTicketStatusCode.SUSPENDED,
       helper: '待恢复',
     },
-  ]
-  if (archiveMixedPendingTotal.value != null && archiveMixedPendingTotal.value > 0) {
-    metrics.splice(1, 0, {
+  )
+
+  if (props.domain === 'archive' && archiveMixedPendingTotal.value != null && archiveMixedPendingTotal.value > 0) {
+    metrics.splice(2, 0, {
       key: 'mixed-batch',
       label: '混扫复核',
       count: archiveMixedPendingTotal.value,
@@ -357,6 +402,7 @@ const dutyBoardMetrics = computed<DutyMetric[]>(() => {
       helper: '归档待办',
     })
   }
+
   return metrics
 })
 
@@ -380,6 +426,16 @@ const totalBacklogCount = computed(() =>
   backlogDutyMetrics.value.reduce((sum, metric) => sum + (metric.count ?? 0), 0),
 )
 
+const domainSubtitlePrefix = computed(() => {
+  if (props.domain === 'exam') {
+    return '考试扫描运营'
+  }
+  if (props.domain === 'archive') {
+    return '归档扫描运营'
+  }
+  return '档案袋扫描运营'
+})
+
 const recommendedDutyAction = computed(() => {
   if (overviewLoading.value) {
     return null
@@ -388,88 +444,99 @@ const recommendedDutyAction = computed(() => {
     return {
       key: 'reload-overview',
       tone: 'error' as const,
-      title: '值班概览未加载成功',
-      description: '共享队列数字不可用，请先恢复概览后再分工处置。',
+      title: '运营概览未加载成功',
+      description: '队列数字不可用，请先恢复概览后再分工处置。',
       actionLabel: '重新加载概览',
     }
   }
-  const pageBlocked = pageRegisterBlockedCount.value ?? 0
-  if (pageBlocked > 0) {
-    return {
-      key: 'page-register-blocked',
-      tone: 'error' as const,
-      title: `当前推荐：处理 ${pageBlocked} 条页登记阻断`,
-      description: '全组可见同一队列；任一带队老师/协助人员均可点开结案。',
-      actionLabel: '进入异常处置',
+
+  if (props.domain === 'exam') {
+    const pageBlocked = pageRegisterBlockedCount.value ?? 0
+    if (pageBlocked > 0) {
+      return {
+        key: 'page-register-blocked',
+        tone: 'error' as const,
+        title: `当前推荐：处理 ${pageBlocked} 条页登记阻断`,
+        description: '页登记阻断会阻断续扫，优先进入异常处置。',
+        actionLabel: '进入异常处置',
+      }
+    }
+    const partialTail = partialTailPendingCount.value ?? 0
+    if (partialTail > 0) {
+      return {
+        key: 'partial-tail',
+        tone: 'warning' as const,
+        title: `当前推荐：确认 ${partialTail} 条余页未切卷`,
+        description: '切卷余页需教师确认忽略或人工合并。',
+        actionLabel: '进入余页处置',
+      }
+    }
+  } else {
+    const failedTickets = failedTicketCount.value ?? 0
+    if (failedTickets > 0) {
+      return {
+        key: 'failed-ticket',
+        tone: 'error' as const,
+        title: `当前推荐：清理 ${failedTickets} 条失败派单`,
+        description: '失败派单影响现场续扫，优先打开失败队列分工处理。',
+        actionLabel: '打开失败派单',
+      }
+    }
+    const failedOrders = failedWorkOrderCount.value ?? 0
+    if (failedOrders > 0) {
+      return {
+        key: 'failed-work-order',
+        tone: 'error' as const,
+        title: `当前推荐：处理 ${failedOrders} 条失败工单`,
+        description: '失败工单需回看批次与影像后分工处理。',
+        actionLabel: '进入失败工单',
+      }
+    }
+    if (props.domain === 'archive') {
+      const mixedPending = archiveMixedPendingTotal.value ?? 0
+      if (mixedPending > 0) {
+        return {
+          key: 'mixed-batch',
+          tone: 'warning' as const,
+          title: `当前推荐：复核 ${mixedPending} 条混扫待办`,
+          description: '混扫待办在归档复核链结案。',
+          actionLabel: '打开混扫复核',
+        }
+      }
+    }
+    const suspended = suspendedDispatchCount.value ?? 0
+    if (suspended > 0) {
+      return {
+        key: 'suspended-dispatch',
+        tone: 'warning' as const,
+        title: `当前推荐：跟进 ${suspended} 条挂起派单`,
+        description: '挂起派单通常对应设备/现场待确认，可转派或恢复处理。',
+        actionLabel: '查看挂起派单',
+      }
+    }
+    const pending = pendingDispatchCount.value ?? 0
+    if (pending > 0) {
+      return {
+        key: 'pending-dispatch',
+        tone: 'warning' as const,
+        title: `当前推荐：领取 ${pending} 条待处理派单`,
+        description: '待处理派单可供现场继续扫描或补扫。',
+        actionLabel: '打开待处理派单',
+      }
     }
   }
-  const failedTickets = failedTicketCount.value ?? 0
-  if (failedTickets > 0) {
-    return {
-      key: 'failed-ticket',
-      tone: 'error' as const,
-      title: `当前推荐：清理 ${failedTickets} 条失败派单`,
-      description: '失败派单影响现场续扫，优先打开失败队列分工处理。',
-      actionLabel: '打开失败派单',
-    }
-  }
-  const failedOrders = failedWorkOrderCount.value ?? 0
-  if (failedOrders > 0) {
-    return {
-      key: 'failed-work-order',
-      tone: 'error' as const,
-      title: `当前推荐：处理 ${failedOrders} 条失败工单`,
-      description: '失败工单需回看批次与影像后分工处理。',
-      actionLabel: '进入失败工单',
-    }
-  }
-  const mixedPending = archiveMixedPendingTotal.value ?? 0
-  if (mixedPending > 0) {
-    return {
-      key: 'mixed-batch',
-      tone: 'warning' as const,
-      title: `当前推荐：复核 ${mixedPending} 条混扫待办`,
-      description: '混扫待办在归档复核链结案，全组共享同一待办池。',
-      actionLabel: '打开混扫复核',
-    }
-  }
-  const partialTail = partialTailPendingCount.value ?? 0
-  if (partialTail > 0) {
-    return {
-      key: 'partial-tail',
-      tone: 'warning' as const,
-      title: `当前推荐：确认 ${partialTail} 条余页未切卷`,
-      description: '切卷余页需教师确认忽略或人工合并，全组共享同一待办池。',
-      actionLabel: '进入余页处置',
-    }
-  }
-  const suspended = suspendedDispatchCount.value ?? 0
-  if (suspended > 0) {
-    return {
-      key: 'suspended-dispatch',
-      tone: 'warning' as const,
-      title: `当前推荐：跟进 ${suspended} 条挂起派单`,
-      description: '挂起派单通常对应设备/现场待确认，可转派或恢复处理。',
-      actionLabel: '查看挂起派单',
-    }
-  }
-  const pending = pendingDispatchCount.value ?? 0
-  if (pending > 0) {
-    return {
-      key: 'pending-dispatch',
-      tone: 'warning' as const,
-      title: `当前推荐：领取 ${pending} 条待处理派单`,
-      description: '待处理派单可供现场继续扫描或补扫。',
-      actionLabel: '打开待处理派单',
-    }
-  }
+
   if (totalBacklogCount.value === 0 && !overviewLoading.value) {
+    const healthyAction = props.domain === 'archive'
+      ? { key: 'healthy', actionLabel: '查看运营体检', tab: 'ops' as const }
+      : { key: 'healthy', actionLabel: '查看处置日志', tab: 'log' as const }
     return {
-      key: 'healthy',
+      key: healthyAction.key,
       tone: 'success' as const,
       title: '当前无待处置积压',
-      description: '可切换运营体检查看吞吐与混扫，或在处置日志回溯历史结案。',
-      actionLabel: '查看运营体检',
+      description: '队列正常，可切换其它 Tab 查看日志或运营数据。',
+      actionLabel: healthyAction.actionLabel,
+      tab: healthyAction.tab,
     }
   }
   return null
@@ -477,23 +544,33 @@ const recommendedDutyAction = computed(() => {
 
 const dutyContextSubtitle = computed(() => {
   if (overviewLoadFailed.value) {
-    return '共享协作值班台 · 概览不可用 · 请刷新队列'
+    return `${domainSubtitlePrefix.value} · 概览不可用 · 请刷新队列`
   }
   if (totalBacklogCount.value > 0) {
     const hot = backlogDutyMetrics.value
       .slice(0, 3)
       .map((metric) => `${metric.label} ${metric.count}`)
       .join(' · ')
-    return `共享协作值班台 · 待处置 ${totalBacklogCount.value} 项 · ${hot}`
+    return `${domainSubtitlePrefix.value} · 待处置 ${totalBacklogCount.value} 项 · ${hot}`
   }
-  return '共享协作值班台 · 全组可见同一队列 · 当前无积压'
+  return `${domainSubtitlePrefix.value} · 当前无积压`
 })
 
 async function loadOverview() {
   overviewLoading.value = true
   overviewLoadFailed.value = false
   try {
-    const overview = await loadScannerCenterOverview()
+    let overview
+    if (props.domain === 'exam') {
+      if (!props.examId?.trim()) {
+        throw new Error('考试 ID 缺失，无法加载扫描运营概览')
+      }
+      overview = await loadExamScanOpsOverview(props.examId)
+    } else if (props.domain === 'archive') {
+      overview = await loadArchiveScanOpsOverview()
+    } else {
+      overview = await loadPortfolioScanOpsOverview()
+    }
     failedTicketCount.value = overview.failedTicketCount ?? null
     failedWorkOrderCount.value = overview.failedWorkOrderCount ?? null
     pageRegisterBlockedCount.value = overview.pageRegisterBlockedCount ?? null
@@ -513,22 +590,30 @@ async function loadOverview() {
     suspendedDispatchCount.value = null
     archiveMixedPendingTotal.value = null
     overviewLoadFailed.value = true
-    showUserError(error, '扫描值班台概览加载失败')
+    showUserError(error, '扫描运营概览加载失败')
     return
   } finally {
     overviewLoading.value = false
   }
-  try {
-    const mixedPendingTotal = await fetchArchiveSuspectedMixedPendingTotal()
-    archiveMixedPendingTotal.value = mixedPendingTotal > 0 ? mixedPendingTotal : null
-  } catch (mixedError) {
+  if (props.domain === 'archive') {
+    try {
+      const mixedPendingTotal = await fetchArchiveSuspectedMixedPendingTotal()
+      archiveMixedPendingTotal.value = mixedPendingTotal > 0 ? mixedPendingTotal : null
+    } catch (mixedError) {
+      archiveMixedPendingTotal.value = null
+      showUserError(mixedError, '混扫复核待办加载失败')
+    }
+  } else {
     archiveMixedPendingTotal.value = null
-    showUserError(mixedError, '混扫复核待办加载失败')
   }
 }
 
 function handleTabChange(key: Key) {
   void router.replace({ query: buildTabQuery(parseTab(key)) })
+}
+
+function switchTab(tab: ScanOpsTab) {
+  void router.replace({ query: buildTabQuery(tab) })
 }
 
 async function navigateMixedBatchScanReview(): Promise<void> {
@@ -586,8 +671,8 @@ function handleRecommendedAction() {
     void loadOverview()
     return
   }
-  if (action.key === 'healthy') {
-    void router.replace({ query: { tab: 'ops' } })
+  if (action.key === 'healthy' && 'tab' in action && action.tab) {
+    switchTab(action.tab)
     return
   }
   handleHeaderMetricClick(action.key)
@@ -626,11 +711,9 @@ function handleOpenLog(payload: OpenLogPayload) {
 }
 
 watch(
-  () => route.fullPath,
+  () => [route.fullPath, props.domain, props.examId],
   () => {
-    if (route.name === 'TeacherScannerCenter') {
-      void loadOverview()
-    }
+    void loadOverview()
   },
   { immediate: true },
 )
@@ -639,7 +722,7 @@ watch(
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" title="扫描值班台" :subtitle="dutyContextSubtitle">
+      <ContextBar layout="workbench" :title="title" :subtitle="dutyContextSubtitle">
         <template #actions>
           <UiButton
             size="sm"
@@ -660,7 +743,7 @@ watch(
         :tone="recommendedDutyAction.tone"
         :title="recommendedDutyAction.title"
         :description="recommendedDutyAction.description"
-        class="scanner-center__recommend"
+        class="scan-ops__recommend"
       >
         <template #actions>
           <UiButton size="sm" variant="outline" @click="handleRecommendedAction">
@@ -672,13 +755,13 @@ watch(
         v-if="headerSignalMetrics.length > 0 && !overviewLoadFailed"
         variant="panel"
         compact
-        class="scanner-center__metrics"
+        class="scan-ops__metrics"
         :metrics="headerSignalMetrics"
         @metric-click="handleHeaderMetricClick"
       />
     </template>
 
-    <WorkbenchSurfaceCard flush class="scanner-center__surface">
+    <WorkbenchSurfaceCard flush class="scan-ops__surface">
       <template #head>
         <UiSectionTabs
           :model-value="activeTab"
@@ -689,14 +772,20 @@ watch(
         />
       </template>
 
-      <ScannerExceptionPanel
+      <ScanExceptionPanel
         v-if="activeTab === 'exception'"
         :initial-kind="exceptionKind"
+        :task-kind="dispatchTaskKind"
+        :exam-id="examId"
         @open-log="handleOpenLog"
         @metrics-changed="loadOverview"
       />
-      <ScannerOpsPanel v-else-if="activeTab === 'ops'" />
-      <ScannerOperationLogPanel
+      <ScanOpsPanel
+        v-else-if="activeTab === 'ops' && dispatchTaskKind"
+        :task-kind="dispatchTaskKind"
+        @switch-tab="switchTab"
+      />
+      <ScanOperationLogPanel
         v-else-if="activeTab === 'log'"
         :ticket-id="logTicketId"
         :volume-id="logVolumeId"
@@ -706,8 +795,9 @@ watch(
             void router.replace({ query: buildDispatchTabQuery(readDispatchContextForRestore()) })
         "
       />
-      <ScannerDispatchPanel
-        v-else-if="activeTab === 'dispatch'"
+      <ScanDispatchPanel
+        v-else-if="activeTab === 'dispatch' && dispatchTaskKind"
+        :task-kind="dispatchTaskKind"
         :initial-status="dispatchStatus"
         :initial-dispatch-filter="dispatchFilter"
         @open-log="handleOpenLog"
@@ -718,11 +808,11 @@ watch(
 </template>
 
 <style scoped>
-.scanner-center__recommend {
+.scan-ops__recommend {
   margin-bottom: 8px;
 }
 
-.scanner-center__surface {
+.scan-ops__surface {
   min-height: 0;
 }
 </style>

@@ -1,8 +1,11 @@
 import type { QueryDto } from '@/types'
+import type { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import http from '@/config/axios'
 
 /** 扫描室运营看板查询请求，对应后端 ScannerOpsDashboardQueryRequest */
 export interface ScannerOpsDashboardQueryRequest extends QueryDto {
+  /** 归档扫描运营固定传 EXAM_ARCHIVE */
+  taskKind: ScanTaskKindCode
   startTime?: string
   endTime?: string
   departmentIds?: string[]

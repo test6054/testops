@@ -3,11 +3,16 @@
  * layout 级 OBE 七步快捷导航（32px、低饱和、无 KPI 数字）。
  */
 import type { ObeJourneyStepVO } from '@/apis/quality/workbench'
+import { message } from 'ant-design-vue'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ConfirmationStatusCode } from '@/apis/quality/types'
 import { useObeJourneySummary } from '@/composables/useObeJourneySummary'
 import { useQualityStore } from '@/stores/modules/quality'
+import {
+  buildQualityPlanWorkbenchLocation,
+  QUALITY_PLAN_GATE_REASON_UNCONFIRMED,
+} from '@/utils/quality-plan-guard'
 
 defineOptions({ name: 'QualityObeJourneyStrip' })
 
@@ -33,7 +38,8 @@ function goStep(step: ObeJourneyStepVO): void {
     PLAN_CONFIRMED_ROUTE_NAMES.has(step.routeName)
     && qualityStore.currentPlan?.confirmationStatus !== ConfirmationStatusCode.CONFIRMED
   ) {
-    void router.push({ name: 'QualityTrainingPlanWorkbench' })
+    message.warning('培养方案尚未确认。请先完成确认，再进入达成度结果与质量报告')
+    void router.push(buildQualityPlanWorkbenchLocation(QUALITY_PLAN_GATE_REASON_UNCONFIRMED))
     return
   }
   if (step.routeName === 'QualityIngestHub') {

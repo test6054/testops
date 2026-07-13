@@ -102,6 +102,12 @@ export interface StudentScoreDetailResponse {
   dailyScoreFull?: number
   fullScore?: number
   publishedTime?: string
+  /** 题目教师复核评分之和；总分更正后可能与 examScore 不同 */
+  questionScoreSum?: number
+  /** 题分之和是否等于正式考试分 */
+  questionScoreSumMatchesExamScore?: boolean
+  /** 最近一次已执行更正是否为总分更正；true 时官方卷面分以 examScore/totalScore 为准 */
+  latestTotalScoreCorrectionApplied?: boolean
   questions: StudentQuestionScoreVO[]
   reviewWindowOpenTime?: string
   reviewWindowCloseTime?: string

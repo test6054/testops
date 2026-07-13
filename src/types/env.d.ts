@@ -110,6 +110,8 @@ declare module 'vue-router' {
     scopeProfile?: import('@/constants/quality-scope-profile').QualityScopeProfile
     /** Publish 门控：培养方案已确认 */
     qualityGate?: import('@/constants/quality-scope-profile').QualityGate
+    /** 培养方案门控阻断：可点击跳转工作台，非 RBAC */
+    qualityGateBlocked?: boolean
     /** 覆盖默认 scope watch 字段 */
     scopeWatchFields?: import('@/constants/quality-scope-profile').QualityStoreScopeField[]
     /** 侧栏项禁用（由 Menu 根据业务状态写入） */

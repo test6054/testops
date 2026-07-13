@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
-import type { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -15,7 +15,7 @@ import {
   ScanDispatchTicketStatusCode,
   ScanDispatchTicketStatusDescription,
 } from '@/apis/mark/scanner-dispatch'
-import { SCAN_TASK_KIND_OPTIONS, ScanTaskKindDescription } from '@/apis/mark/scanner-work-order'
+import { ScanTaskKindDescription } from '@/apis/mark/scanner-work-order'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -33,9 +33,10 @@ import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ScanDispatchForceReleaseDialog from '@/views/teacher/archive-volume/components/ScanDispatchForceReleaseDialog.vue'
 
-defineOptions({ name: 'ScannerDispatchPanel' })
+defineOptions({ name: 'ScanDispatchPanel' })
 
 const props = defineProps<{
+  taskKind: ScanTaskKindCode
   initialStatus?: string
   initialDispatchFilter?: string
 }>()
@@ -76,13 +77,11 @@ const tickets = ref<ScanDispatchTicketVO[]>([])
 const queueSummary = ref<Awaited<ReturnType<typeof loadScanDispatchQueueSummary>> | null>(null)
 const pagination = reactive({ current: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 const queueFilter = ref<DispatchQueueStatusFilterCode>(DispatchQueueStatusFilterCode.ALL)
-/** 丢弃过期派单列表/概览请求，避免快切队列或并发刷新覆盖。 */
 let ticketsLoadGeneration = 0
 let summaryLoadGeneration = 0
 
 interface DispatchFilters {
   status?: ScanDispatchTicketStatusCode
-  taskKind?: ScanTaskKindCode
 }
 
 const filters = reactive<DispatchFilters>({})
@@ -90,14 +89,6 @@ const filters = reactive<DispatchFilters>({})
 const isFailedQueueView = computed(() => queueFilter.value === DispatchQueueStatusFilterCode.FAILED)
 
 const filterFields = computed<FilterField[]>(() => [
-  {
-    key: 'taskKind',
-    label: '任务类型',
-    type: 'select',
-    placeholder: '全部',
-    allowClear: true,
-    options: SCAN_TASK_KIND_OPTIONS,
-  },
   {
     key: 'status',
     label: '派单状态',
@@ -206,7 +197,7 @@ function lifecycleFilterToStatus(
     return ScanDispatchTicketStatusCode.PROCESSING
   }
   if (filter === DispatchQueueStatusFilterCode.SUSPENDED) {
-    return ScanDispatchTicketStatusCode.SUSPENDED
+    return DispatchQueueStatusFilterCode.SUSPENDED
   }
   return undefined
 }
@@ -309,7 +300,7 @@ async function loadSummary() {
   const generation = ++summaryLoadGeneration
   summaryLoading.value = true
   try {
-    const summary = await loadScanDispatchQueueSummary()
+    const summary = await loadScanDispatchQueueSummary({ taskKind: props.taskKind })
     if (generation !== summaryLoadGeneration) {
       return
     }
@@ -333,7 +324,7 @@ async function loadTickets() {
   try {
     const filter = queueFilter.value
     const result = await pageScanDispatchTickets({
-      taskKind: filters.taskKind,
+      taskKind: props.taskKind,
       statusList: STATUS_FILTER_MAP[filter],
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
@@ -385,7 +376,6 @@ function handleSearch() {
 
 function handleResetSearch() {
   filters.status = undefined
-  filters.taskKind = undefined
   queueFilter.value = DispatchQueueStatusFilterCode.ALL
   pagination.current = 1
   syncDispatchRouteQuery()
@@ -512,6 +502,7 @@ watch(
   () => ({
     filterRaw: props.initialDispatchFilter ?? route.query.dispatchFilter,
     statusRaw: props.initialStatus ?? route.query.dispatchStatus,
+    taskKind: props.taskKind,
   }),
   (dispatchQuery) => {
     if (dispatchQuery.filterRaw === DispatchQueueStatusFilterCode.FAILED) {
@@ -554,13 +545,13 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="scanner-dispatch-panel">
+  <div class="scan-dispatch-panel">
     <SignalBand
       v-if="signalMetrics.length"
       variant="panel"
       compact
       :metrics="signalMetrics"
-      class="scanner-dispatch-panel__signal"
+      class="scan-dispatch-panel__signal"
       @metric-click="handleSignalMetricClick"
     />
 
@@ -591,7 +582,7 @@ onMounted(() => {
 
     <WorkbenchSurfaceCard flush>
       <template #toolbar>
-        <div class="scanner-dispatch-panel__toolbar">
+        <div class="scan-dispatch-panel__toolbar">
           <UiFilterBar
             variant="plain"
             :model-value="filters"
@@ -662,22 +653,16 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.scanner-dispatch-panel__signal {
+.scan-dispatch-panel__signal {
   margin-bottom: 12px;
 }
 
-.scanner-dispatch-panel__toolbar {
+.scan-dispatch-panel__toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
   gap: 12px;
   width: 100%;
-}
-
-.scanner-dispatch-panel__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
 }
 </style>

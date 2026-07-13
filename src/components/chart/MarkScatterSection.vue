@@ -5,25 +5,21 @@
       <span v-if="hint" class="mark-scatter-section__hint">{{ hint }}</span>
     </header>
     <MarkChart
-      v-if="ready"
       ref="markChartRef"
-      :option="option"
+      :option="resolvedOption"
       :height="height"
       :aria-label="resolvedAriaLabel"
       class="mark-scatter-section__canvas"
       @brush-selected="(params) => emit('brush-selected', params)"
     />
-    <div v-else class="mark-scatter-section__empty">
-      <UiEmpty size="sm" :description="emptyDescription" />
-    </div>
   </section>
 </template>
 
 <script lang="ts" setup>
 import type { EChartsCoreOption } from 'echarts/core'
 import { computed, ref } from 'vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import { MARK_CHART_EMPTY } from '@/utils/mark-chart-accessibility'
+import { resolveMarkChartSectionOption } from '@/utils/mark-echarts-options'
 import MarkChart from './MarkChart.vue'
 
 defineOptions({ name: 'MarkScatterSection' })
@@ -55,6 +51,10 @@ const emit = defineEmits<{
 const markChartRef = ref<InstanceType<typeof MarkChart> | null>(null)
 
 const ready = computed(() => props.pointCount > 0)
+
+const resolvedOption = computed(() =>
+  resolveMarkChartSectionOption(ready.value, props.option, 'scatter', props.emptyDescription),
+)
 
 const resolvedAriaLabel = computed(() => {
   if (props.ariaLabel.trim()) {

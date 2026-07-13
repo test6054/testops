@@ -14,6 +14,13 @@ export type MarkDashboardTodoUrgency = 'urgent' | 'attention' | 'info' | 'normal
 /** 概览待办 Tab 键：按处理优先级分组，避免同屏重复堆叠。 */
 export type MarkDashboardPendingTodoTabKey = 'all' | 'urgent' | 'attention'
 
+/** 后端 signalMetrics 待办行计数，与 TopN 列表解耦。 */
+export interface MarkDashboardPendingTodoTotals {
+  pendingTodoRowCount: number
+  urgentTodoCount: number
+  attentionTodoCount: number
+}
+
 /** 待办数量单位，与后端 count 语义一致。 */
 export const MARK_DASHBOARD_TODO_COUNT_UNIT: Record<MarkTeacherDashboardTodoTypeCode, string> = {
   [MarkTeacherDashboardTodoTypeCode.SCAN_ATTENTION]: '份',
@@ -59,13 +66,18 @@ export function resolveTodoUrgency(todo: MarkTeacherDashboardPendingTodoItemVO):
 }
 
 /** 概览待办区副标题文案。 */
-export function buildPendingTodoHint(todos: MarkTeacherDashboardPendingTodoItemVO[]): string {
-  if (!todos.length) return '暂无待处理事项'
-  const urgent = todos.filter(isUrgentTodo).length
-  if (urgent > 0) return `共 ${todos.length} 项待处理，${urgent} 项紧急（含仲裁）`
-  const attention = todos.filter(isAttentionTodo).length
-  if (attention > 0) return `共 ${todos.length} 项待处理，${attention} 项需关注`
-  return `共 ${todos.length} 项待处理`
+export function buildPendingTodoHint(
+  todos: MarkTeacherDashboardPendingTodoItemVO[],
+  totals?: MarkDashboardPendingTodoTotals,
+): string {
+  const total = totals?.pendingTodoRowCount ?? todos.length
+  if (total <= 0) return '暂无待处理事项'
+  const urgent = totals?.urgentTodoCount ?? countUrgentTodos(todos)
+  if (urgent > 0) return `共 ${total} 项待处理，${urgent} 项紧急（含仲裁）`
+  const attention = totals?.attentionTodoCount
+    ?? todos.filter((todo) => !isUrgentTodo(todo) && isAttentionTodo(todo)).length
+  if (attention > 0) return `共 ${total} 项待处理，${attention} 项需关注`
+  return `共 ${total} 项待处理`
 }
 
 export function countUrgentTodos(todos: MarkTeacherDashboardPendingTodoItemVO[]): number {
@@ -164,6 +176,14 @@ export function resolveTodoRowContext(todo: MarkTeacherDashboardPendingTodoItemV
   return parts.length > 0 ? parts.join(' · ') : undefined
 }
 
+export function resolvePendingTodoScopeByTab(
+  tab: MarkDashboardPendingTodoTabKey,
+): 'ALL' | 'URGENT' | 'ATTENTION' {
+  if (tab === 'urgent') return 'URGENT'
+  if (tab === 'attention') return 'ATTENTION'
+  return 'ALL'
+}
+
 export function resolveDefaultPendingTodoTab(
   todos: MarkTeacherDashboardPendingTodoItemVO[],
 ): MarkDashboardPendingTodoTabKey {
@@ -183,14 +203,15 @@ export function filterPendingTodosByTab(
   return todos
 }
 
-/** 构建概览待办 Tab 项；计数来自完整待办列表，不用分页推导。 */
+/** 构建概览待办 Tab 项；计数优先消费 signalMetrics 全量行数，避免 TopN 与 KPI 漂移。 */
 export function buildPendingTodoTabItems(
   todos: MarkTeacherDashboardPendingTodoItemVO[],
+  totals?: MarkDashboardPendingTodoTotals,
 ): UiSectionTabItem[] {
-  const urgentCount = countUrgentTodos(todos)
-  const attentionOnlyCount = todos.filter(
-    (todo) => !isUrgentTodo(todo) && isAttentionTodo(todo),
-  ).length
+  const urgentCount = totals?.urgentTodoCount ?? countUrgentTodos(todos)
+  const attentionOnlyCount = totals?.attentionTodoCount
+    ?? todos.filter((todo) => !isUrgentTodo(todo) && isAttentionTodo(todo)).length
+  const allCount = totals?.pendingTodoRowCount ?? todos.length
   return [
     {
       key: 'urgent',
@@ -211,7 +232,7 @@ export function buildPendingTodoTabItems(
     {
       key: 'all',
       label: '全部',
-      count: todos.length,
+      count: allCount,
     },
   ]
 }

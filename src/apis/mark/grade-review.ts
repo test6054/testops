@@ -366,7 +366,7 @@ export function listMyReviewRequests(
 }
 
 /**
- * 统计当前学生待处理复核申请数量（PENDING + IN_REVIEW）
+ * 统计当前学生待处理复核申请数量（PENDING + IN_REVIEW + APPROVED）
  * POST /api/exam/grade-review/request/student-pending-count
  */
 export function countMyPendingReviewRequests(): Promise<number> {
@@ -443,6 +443,10 @@ export interface ExamGradeCorrectionRecordResponse {
   updateTime?: string
   /** 更正前成绩已发布时须重新发布 */
   requiresRepublish?: boolean
+  /** 更正后复核申请状态；多题申请可在全部题目更正前保持 APPROVED */
+  reviewRequestStatusAfterCorrection?: GradeReviewRequestStatusCode
+  /** 按题复核申请中尚未完成单题更正的题目数 */
+  remainingUncorrectedQuestionCount?: number
   /** 更正后最终成绩状态 */
   finalScoreStatusAfterCorrection?: FinalScoreStatusCode
 }
@@ -653,3 +657,4 @@ export function isMakeupCap60SingleQuestionCorrectionExceeded(
   )
   return projected != null && projected > 60
 }
+

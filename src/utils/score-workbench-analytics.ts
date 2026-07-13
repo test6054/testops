@@ -98,7 +98,11 @@ function resolveFlowEmphasis(
       && overview.calculatedCount === 0
     )
   }
-  if (code === FinalScoreStatusCode.CONFIRMED && publishableCount > 0) {
+  // 发布态：可发布优先高亮 CONFIRMED；若有已更正待重发，高亮 CORRECTED，避免误以为已闭环。
+  if (code === FinalScoreStatusCode.CORRECTED && overview.correctedCount > 0) {
+    return true
+  }
+  if (code === FinalScoreStatusCode.CONFIRMED && publishableCount > 0 && overview.correctedCount <= 0) {
     return true
   }
   return (

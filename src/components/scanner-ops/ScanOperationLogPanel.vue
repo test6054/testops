@@ -19,7 +19,7 @@ import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-defineOptions({ name: 'ScannerOperationLogPanel' })
+defineOptions({ name: 'ScanOperationLogPanel' })
 
 const props = defineProps<{
   ticketId?: string
@@ -168,7 +168,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="scanner-operation-log-panel">
+  <div class="scan-operation-log-panel">
     <UiAlertStrip
       v-if="returnDispatchLabel"
       tone="info"

@@ -71,6 +71,7 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   TeacherExamWorkspaceScanLedger: () => import('@/views/teacher/image-ledger.vue'),
   TeacherExamWorkspaceScanDevices: () => import('@/views/teacher/printer-management.vue'),
   TeacherExamWorkspaceScanOcr: () => import('@/views/teacher/ocr-settings.vue'),
+  TeacherExamWorkspaceScanOps: () => import('@/views/teacher/exam-scan-ops.vue'),
   TeacherExamWorkspaceMarkingOrg: () => import('@/views/admin/marking-organization/marking-org-entry.vue'),
   TeacherExamWorkspaceMarkingOrgDetail: () => import('@/views/admin/marking-organization/detail.vue'),
   TeacherExamWorkspaceMarkingOrgTrialHub: () => import('@/views/admin/marking-organization/marking-org-session-hub.vue'),
@@ -116,9 +117,9 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   TeacherArchiveVolumeLedger: () => import('@/views/teacher/archive-volume/archive-volume-ledger.vue'),
   TeacherArchiveVolumeSearch: () => import('@/views/teacher/archive-volume-search.vue'),
   TeacherArchiveVolumeRemediationDetail: () => import('@/views/teacher/archive-volume/archive-volume-remediation-detail.vue'),
+  TeacherArchiveScanOps: () => import('@/views/teacher/archive-volume/archive-scan-ops.vue'),
 
-  // ── 教师 扫描中心 / AI 分析 ─────────────────────────
-  TeacherScannerCenter: () => import('@/views/teacher/scanner-center/scanner-center.vue'),
+  // ── 教师 AI 分析 ─────────────────────────
   TeacherAiAnalysisCenter: () => import('@/views/teacher/ai-analysis-center.vue'),
 
   // ── 管理员 ───────────────────────────────────────
@@ -167,6 +168,7 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   PortfolioIndicatorHistory: () => import('@/views/portfolio/indicator-history.vue'),
   PortfolioIndicatorOps: () => import('@/views/portfolio/indicator-ops-admin.vue'),
   PortfolioIndicatorDashboard: () => import('@/views/portfolio/indicator-dashboard-admin.vue'),
+  PortfolioScanOps: () => import('@/views/portfolio/portfolio-scan-ops.vue'),
   PortfolioDepartmentCockpit: () => import('@/views/portfolio/department-cockpit.vue'),
   PortfolioSchoolCockpit: () => import('@/views/portfolio/school-cockpit.vue'),
   PortfolioTeacherIndicator: () => import('@/views/portfolio/teacher-indicator.vue'),
@@ -248,6 +250,7 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
     'TeacherExamWorkspaceScanBatches',
     'TeacherExamWorkspaceScanBatchDetail',
     'TeacherExamWorkspaceScanLedger',
+    'TeacherExamWorkspaceScanOps',
   ],
   TeacherExamWorkspaceMarkingTaskPool: ['TeacherExamWorkspaceMarkingTaskDetail', 'TeacherExamWorkspaceMarkingQuality'],
   TeacherExamWorkspaceMarkingQuality: ['TeacherExamWorkspaceMarkingQualityMonitor', 'TeacherExamWorkspaceMarkingAuditTrail'],
@@ -295,13 +298,13 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
   TeacherExamWorkspaceArchivePackage: ['TeacherExamWorkspaceArchivePackage', 'TeacherArchiveVolumeList'],
   TeacherExamWorkspaceArchiveExports: ['TeacherExamWorkspaceArchiveTeachingAffairs', 'TeacherExamWorkspaceArchivePackage'],
   TeacherExamWorkspaceArchiveTeachingAffairs: ['TeacherExamWorkspaceArchiveExports', 'TeacherExamWorkspaceArchivePackage'],
-  TeacherArchiveVolumeList: ['TeacherArchiveVolumeWorkspace', 'TeacherArchiveVolumeDetail', 'TeacherArchiveVolumeSearch', 'TeacherArchiveVolumeRemediationDetail'],
-  TeacherArchiveVolumeDetail: ['TeacherArchiveVolumeList'],
-  TeacherArchiveVolumeWorkspace: ['TeacherArchiveVolumeList'],
+  TeacherArchiveVolumeList: ['TeacherArchiveVolumeWorkspace', 'TeacherArchiveVolumeDetail', 'TeacherArchiveVolumeSearch', 'TeacherArchiveVolumeRemediationDetail', 'TeacherArchiveScanOps'],
+  TeacherArchiveVolumeDetail: ['TeacherArchiveVolumeList', 'TeacherArchiveScanOps'],
+  TeacherArchiveVolumeWorkspace: ['TeacherArchiveVolumeList', 'TeacherArchiveScanOps'],
+  TeacherArchiveScanOps: ['TeacherArchiveVolumeList', 'TeacherArchiveVolumeEvalCampaign'],
 
   // ── 管理员 ───────────────────────────────────────
-  TeacherMarkingOverview: ['TeacherAiAnalysisCenter', 'TeacherScannerCenter', 'AdminArchivePlatformTemplates', 'TeacherExamList'],
-  TeacherScannerCenter: ['TeacherExamList', 'TeacherArchiveVolumeList', 'TeacherMarkingOverview'],
+  TeacherMarkingOverview: ['TeacherAiAnalysisCenter', 'TeacherArchiveScanOps', 'AdminArchivePlatformTemplates', 'TeacherExamList'],
   TeacherAiAnalysisCenter: ['TeacherMarkingOverview', 'TeacherExamList'],
   AdminExamExports: ['AdminTeachingAffairsSync', 'TeacherMarkingOverview'],
   AdminTeachingAffairsSync: ['AdminExamExports', 'TeacherMarkingOverview'],

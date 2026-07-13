@@ -79,20 +79,220 @@ export function resolveThemeColor(cssVarName: string, fallback: string): string 
   return value || fallback
 }
 
-export function emptyChartOption(message = '当前没有可展示的内容'): EChartsCoreOption {
+/** 空态图表壳类型：与 Mark*Section 组件一一对应 */
+export type MarkEmptyChartShellKind
+  = | 'trend'
+    | 'bar'
+    | 'bar-horizontal'
+    | 'scatter'
+    | 'distribution'
+    | 'heatmap'
+
+function shellAxisStyle() {
   return {
-    title: {
-      text: message,
+    axisLine: { lineStyle: { color: MARK_ECHARTS_PALETTE.axisLine } },
+    axisLabel: { ...MARK_CHART_AXIS_LABEL_STYLE },
+    splitLine: { lineStyle: { color: MARK_ECHARTS_PALETTE.splitLine, type: 'dashed' as const } },
+  }
+}
+
+function shellCaptionGraphic(caption: string) {
+  return [
+    {
+      type: 'text' as const,
       left: 'center',
-      top: 'middle',
-      textStyle: {
-        color: MARK_ECHARTS_PALETTE.axisLabel,
-        fontSize: 13,
-        fontWeight: 400,
+      bottom: 6,
+      style: {
+        text: caption,
+        fill: MARK_ECHARTS_PALETTE.axisLabel,
+        fontSize: 12,
         fontFamily: DP_FONT_FAMILY_SANS,
+        fontWeight: 400,
       },
     },
+  ]
+}
+
+/** 无数据时仍渲染坐标轴与网格，避免 Section 退化为纯文字空态 */
+export function buildEmptyChartShellOption(
+  kind: MarkEmptyChartShellKind,
+  caption = '配置范围并生成分析后展示',
+): EChartsCoreOption {
+  const axis = shellAxisStyle()
+  const grid = baseGrid({ bottom: caption ? 44 : 36 })
+  const graphic = caption ? shellCaptionGraphic(caption) : undefined
+
+  if (kind === 'trend') {
+    return {
+      grid,
+      graphic,
+      xAxis: {
+        type: 'category',
+        data: ['', '', '', ''],
+        boundaryGap: false,
+        ...axis,
+      },
+      yAxis: {
+        type: 'value',
+        min: 0,
+        max: 100,
+        name: '%',
+        nameTextStyle: { color: MARK_ECHARTS_PALETTE.axisLabel, fontSize: 11 },
+        ...axis,
+      },
+      series: [],
+    }
   }
+
+  if (kind === 'bar-horizontal') {
+    return {
+      grid: baseGrid({ left: 72, bottom: caption ? 44 : 36 }),
+      graphic,
+      xAxis: {
+        type: 'value',
+        min: 0,
+        max: 100,
+        name: '%',
+        nameTextStyle: { color: MARK_ECHARTS_PALETTE.axisLabel, fontSize: 11 },
+        ...axis,
+      },
+      yAxis: {
+        type: 'category',
+        data: ['', '', '', ''],
+        inverse: true,
+        ...axis,
+      },
+      series: [],
+    }
+  }
+
+  if (kind === 'bar') {
+    return {
+      grid,
+      graphic,
+      xAxis: {
+        type: 'category',
+        data: ['', '', '', ''],
+        ...axis,
+      },
+      yAxis: {
+        type: 'value',
+        min: 0,
+        max: 100,
+        ...axis,
+      },
+      series: [],
+    }
+  }
+
+  if (kind === 'scatter') {
+    return {
+      grid: baseGrid({ top: 40, bottom: caption ? 44 : 36 }),
+      graphic,
+      legend: {
+        top: 0,
+        left: 0,
+        itemWidth: 10,
+        itemHeight: 10,
+        data: ['理想区间', '偏难', '偏易', '区分度不足'],
+        textStyle: { color: MARK_ECHARTS_PALETTE.axisLabel, fontSize: 12 },
+      },
+      xAxis: {
+        type: 'value',
+        name: '难度系数',
+        min: 0,
+        max: 1,
+        nameTextStyle: { color: MARK_ECHARTS_PALETTE.axisLabel, fontSize: 11 },
+        ...axis,
+      },
+      yAxis: {
+        type: 'value',
+        name: '区分度',
+        min: 0,
+        max: 1,
+        nameTextStyle: { color: MARK_ECHARTS_PALETTE.axisLabel, fontSize: 11 },
+        ...axis,
+      },
+      series: [
+        {
+          type: 'scatter',
+          name: '理想区间',
+          data: [],
+          markArea: {
+            silent: true,
+            itemStyle: { color: `${SCATTER_ZONE_COLORS.ideal}22` },
+            data: [
+              [
+                { xAxis: 0.3, yAxis: 0.4 },
+                { xAxis: 0.8, yAxis: 1 },
+              ],
+            ],
+          },
+        },
+      ],
+    }
+  }
+
+  if (kind === 'distribution') {
+    return {
+      grid: baseGrid({ left: 12, right: 12, top: 8, bottom: caption ? 28 : 16 }),
+      graphic,
+      xAxis: { type: 'value', min: 0, max: 100, show: false },
+      yAxis: { type: 'category', data: [''], show: false },
+      series: [
+        {
+          type: 'bar',
+          data: [0],
+          barWidth: 12,
+          itemStyle: { color: `${MARK_ECHARTS_PALETTE.splitLine}88`, borderRadius: 4 },
+        },
+      ],
+    }
+  }
+
+  return {
+    grid: baseGrid({ top: 28, bottom: caption ? 44 : 36 }),
+    graphic,
+    xAxis: {
+      type: 'category',
+      data: ['', '', '', ''],
+      ...axis,
+    },
+    yAxis: {
+      type: 'category',
+      data: ['', '', ''],
+      ...axis,
+    },
+    visualMap: {
+      min: 0,
+      max: 1,
+      show: false,
+      inRange: { color: ['#f1f5f9', '#cbd5e1'] },
+    },
+    series: [
+      {
+        type: 'heatmap',
+        data: [],
+      },
+    ],
+  }
+}
+
+export function emptyChartOption(message = '当前没有可展示的内容'): EChartsCoreOption {
+  return buildEmptyChartShellOption('bar', message)
+}
+
+/** Mark*Section：有数据用业务 option，无数据用坐标轴空壳 */
+export function resolveMarkChartSectionOption(
+  ready: boolean,
+  dataOption: EChartsCoreOption,
+  shellKind: MarkEmptyChartShellKind,
+  caption: string,
+): EChartsCoreOption {
+  if (ready) {
+    return dataOption
+  }
+  return buildEmptyChartShellOption(shellKind, caption)
 }
 
 function baseGrid(extra?: GridComponentOption): GridComponentOption {

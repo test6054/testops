@@ -80,33 +80,29 @@
     <AiAnalysisCardBody
       :loading="loading"
       :generating="generating"
-      :has-content="record != null"
+      :has-content="true"
       :empty-description="emptyDescription"
       progress-title="AI 学生学情分析生成中"
       progress-waiting-text="正在等待后端返回该学生的真实学情画像。"
     >
-      <div v-if="record != null" class="ai-analysis-section__body ai-analysis-section__body--flush">
-        <p v-if="record.overallSummary" class="ai-analysis-summary">
-          {{ record.overallSummary }}
-        </p>
-
-        <div v-if="record.scoreComposition" class="ai-profile-score-grid">
+      <div class="ai-analysis-section__body ai-analysis-section__body--flush">
+        <div class="ai-profile-score-grid">
           <div class="ai-profile-score-item">
             <span class="ai-profile-score-label">卷面得分</span>
             <span class="ai-profile-score-value">
-              {{ formatScore(record.scoreComposition.examScore) }}
-              <span v-if="record.scoreComposition.paperFullScore != null" class="score-full">
-                / {{ formatScore(record.scoreComposition.paperFullScore) }}
+              {{ formatScore(scoreComposition?.examScore) }}
+              <span v-if="scoreComposition?.paperFullScore != null" class="score-full">
+                / {{ formatScore(scoreComposition?.paperFullScore) }}
               </span>
             </span>
           </div>
           <div class="ai-profile-score-item">
             <span class="ai-profile-score-label">平时成绩</span>
             <span class="ai-profile-score-value">
-              <template v-if="record.scoreComposition.dailyScoreFull != null">
-                {{ formatScore(record.scoreComposition.dailyScore) }}
+              <template v-if="scoreComposition?.dailyScoreFull != null">
+                {{ formatScore(scoreComposition.dailyScore) }}
                 <span class="score-full">
-                  / {{ formatScore(record.scoreComposition.dailyScoreFull) }}
+                  / {{ formatScore(scoreComposition.dailyScoreFull) }}
                 </span>
               </template>
               <span v-else class="text-muted">未配置</span>
@@ -115,14 +111,14 @@
           <div class="ai-profile-score-item">
             <span class="ai-profile-score-label">总成绩</span>
             <span class="ai-profile-score-value">
-              <template v-if="record.scoreComposition.totalScore != null">
-                {{ formatScore(record.scoreComposition.totalScore) }} 分
+              <template v-if="scoreComposition?.totalScore != null">
+                {{ formatScore(scoreComposition.totalScore) }} 分
                 <UiTag
-                  v-if="record.scoreComposition.finalScoreStatus"
+                  v-if="scoreComposition.finalScoreStatus"
                   size="sm"
-                  :tone="finalScoreTone(record.scoreComposition.finalScoreStatus)"
+                  :tone="finalScoreTone(scoreComposition.finalScoreStatus)"
                 >
-                  {{ finalScoreLabel(record.scoreComposition.finalScoreStatus) }}
+                  {{ finalScoreLabel(scoreComposition.finalScoreStatus) }}
                 </UiTag>
               </template>
               <span v-else class="text-muted">未录入</span>
@@ -130,51 +126,71 @@
           </div>
         </div>
 
-        <div v-if="record.suggestions && record.suggestions.length > 0" class="ai-profile-block">
-          <h5 class="ai-profile-block__title">学习建议</h5>
-          <ul class="ai-profile-suggestion-list">
-            <li v-for="(item, index) in record.suggestions" :key="index">{{ item }}</li>
-          </ul>
-        </div>
+        <MarkBarSection
+          title="各题型掌握得分率"
+          :hint="diagnosisChartHint"
+          :item-count="diagnosisBarItems.length"
+          :option="diagnosisChartOption"
+          height="220px"
+          orientation="horizontal"
+          :empty-description="
+            selectedStudentUserId
+              ? '生成学情分析后展示各题型掌握得分率'
+              : '选择学生并生成分析后展示各题型掌握得分率'
+          "
+        />
 
-        <div
-          v-if="record.diagnosisItems && record.diagnosisItems.length > 0"
-          class="ai-profile-block"
-        >
-          <h5 class="ai-profile-block__title">知识掌握分析</h5>
-          <div class="ai-profile-diagnosis-list">
-            <div
-              v-for="(item, index) in record.diagnosisItems"
-              :key="index"
-              class="ai-profile-diagnosis-item"
-            >
-              <div class="diagnosis-header">
-                <UiTag :tone="masteryColor(item.masteryLevel)">
-                  {{ masteryLabel(item.masteryLevel) }}
-                </UiTag>
-                <span v-if="item.questionType" class="diagnosis-type">
-                  {{ questionTypeLabel(item.questionType) }}
-                </span>
-                <span class="diagnosis-rate">得分率 {{ formatRate(item.scoreRate) }}</span>
-              </div>
-              <p v-if="item.causeAnalysis" class="diagnosis-text">{{ item.causeAnalysis }}</p>
-              <p v-if="item.suggestion" class="diagnosis-text diagnosis-text--hint">
-                {{ item.suggestion }}
-              </p>
-              <p
-                v-if="item.lostQuestionNos && item.lostQuestionNos.length"
-                class="diagnosis-text diagnosis-text--muted"
+        <template v-if="record != null">
+          <p v-if="record.overallSummary" class="ai-analysis-summary">
+            {{ record.overallSummary }}
+          </p>
+
+          <div v-if="record.suggestions && record.suggestions.length > 0" class="ai-profile-block">
+            <h5 class="ai-profile-block__title">学习建议</h5>
+            <ul class="ai-profile-suggestion-list">
+              <li v-for="(item, index) in record.suggestions" :key="index">{{ item }}</li>
+            </ul>
+          </div>
+
+          <div
+            v-if="record.diagnosisItems && record.diagnosisItems.length > 0"
+            class="ai-profile-block"
+          >
+            <h5 class="ai-profile-block__title">知识掌握分析</h5>
+            <div class="ai-profile-diagnosis-list">
+              <div
+                v-for="(item, index) in record.diagnosisItems"
+                :key="index"
+                class="ai-profile-diagnosis-item"
               >
-                失分题号：{{ item.lostQuestionNos.join('、') }}
-              </p>
+                <div class="diagnosis-header">
+                  <UiTag :tone="masteryColor(item.masteryLevel)">
+                    {{ masteryLabel(item.masteryLevel) }}
+                  </UiTag>
+                  <span v-if="item.questionType" class="diagnosis-type">
+                    {{ questionTypeLabel(item.questionType) }}
+                  </span>
+                  <span class="diagnosis-rate">得分率 {{ formatRate(item.scoreRate) }}</span>
+                </div>
+                <p v-if="item.causeAnalysis" class="diagnosis-text">{{ item.causeAnalysis }}</p>
+                <p v-if="item.suggestion" class="diagnosis-text diagnosis-text--hint">
+                  {{ item.suggestion }}
+                </p>
+                <p
+                  v-if="item.lostQuestionNos && item.lostQuestionNos.length"
+                  class="diagnosis-text diagnosis-text--muted"
+                >
+                  失分题号：{{ item.lostQuestionNos.join('、') }}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
 
-        <AiAnalysisMetaCollapse
-          :record="record"
-          failure-fallback="AI 学生学情分析未完成，可重新生成"
-        />
+          <AiAnalysisMetaCollapse
+            :record="record"
+            failure-fallback="AI 学生学情分析未完成，可重新生成"
+          />
+        </template>
       </div>
     </AiAnalysisCardBody>
   </AiAnalysisCardShell>
@@ -199,13 +215,18 @@ import {
   generateStudentLearningProfile,
   getLatestStudentLearningProfile,
 } from '@/apis/mark/teaching-analysis'
+import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import AiAnalysisCardBody from '@/components/mark/analysis/AiAnalysisCardBody.vue'
 import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.vue'
 import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCollapse.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { useAiAnalysisGenerationFeedback } from '@/composables/useAiAnalysisGenerationFeedback'
+import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError } from '@/utils/error-handler'
+import { buildBarChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
+import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
+import { studentDiagnosisToBarItems } from '@/utils/mark-statistics-chart'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'StudentLearningProfileCard' })
@@ -241,6 +262,26 @@ const filteredStudentOptions = computed<MarkStudentOption[]>(() => {
 
 const emptyDescription = computed(() =>
   selectedStudentUserId.value ? '暂无学情分析，可点击重新生成' : '请选择学生后查看学情分析',
+)
+
+const scoreComposition = computed(() => record.value?.scoreComposition)
+
+const diagnosisBarItems = computed(() =>
+  studentDiagnosisToBarItems(record.value?.diagnosisItems ?? []),
+)
+
+const diagnosisChartHint = computed(() =>
+  mergeChartHint('悬停查看各题型掌握得分率', buildBarChartInsight(diagnosisBarItems.value)),
+)
+
+const { chartOption: diagnosisChartOption } = useChartOption(() =>
+  buildCategoryBarChartOption(diagnosisBarItems.value, {
+    orientation: 'horizontal',
+    maxValue: 100,
+    xAxisName: '得分率 %',
+    unit: '%',
+    emptyText: '暂无题型掌握数据',
+  }),
 )
 
 async function reload(): Promise<void> {

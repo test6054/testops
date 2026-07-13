@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import type { SemesterCode } from '@/types/enums/semester-enum'
-import { ReloadOutlined } from '@ant-design/icons-vue'
 import { onMounted, ref, watch } from 'vue'
 import { pageExams } from '@/apis/mark/exam'
+import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
 import {
   CROSS_EXAM_TREND_MIN_AUTO_SELECT_COUNT,
   loadExamsForAcademicYearSemester,
@@ -41,12 +41,17 @@ const props = withDefaults(
     autoSelectScopedExams?: boolean
     /** 与 scope 联用时自动勾选范围内最大课程簇（≥2 场），供跨考趋势等同课程分析 */
     autoSelectLargestCourseClusterInScope?: boolean
+    /** 范围未就绪时置灰，并通过 Tooltip 展示原因 */
+    disabled?: boolean
+    disabledTitle?: string
   }>(),
   {
     placeholder: '请选择参与分析的考试',
     defaultRecentSemesterCount: 0,
     autoSelectScopedExams: false,
     autoSelectLargestCourseClusterInScope: false,
+    disabled: false,
+    disabledTitle: '',
   },
 )
 
@@ -229,6 +234,17 @@ function handleExamSearch(keyword: string): void {
 }
 
 watch(
+  () => props.disabled,
+  (disabled) => {
+    if (disabled) {
+      resetScopeState()
+      return
+    }
+    void loadExamOptions()
+  },
+)
+
+watch(
   () => [
     props.scopeCourseId,
     props.scopeClassId,
@@ -251,16 +267,32 @@ watch(
       return
     }
     resetScopeState()
+    if (props.disabled) {
+      return
+    }
     void loadExamOptions()
   },
 )
 
-onMounted(loadExamOptions)
+onMounted(() => {
+  if (!props.disabled) {
+    void loadExamOptions()
+  }
+})
 </script>
 
 <template>
   <div class="analysis-exam-select">
+    <UiTooltip v-if="disabled" :title="disabledTitle">
+      <a-select
+        mode="multiple"
+        disabled
+        :placeholder="placeholder"
+        :value="[]"
+      />
+    </UiTooltip>
     <a-select
+      v-else
       v-model:value="selectedExamIds"
       mode="multiple"
       :options="examOptions"
@@ -279,32 +311,21 @@ onMounted(loadExamOptions)
         }
       "
     />
-    <a-button
-      class="analysis-exam-select__reload"
-      size="small"
-      :loading="loading"
-      title="刷新考试列表"
-      @click="() => loadExamOptions()"
-    >
-      <template #icon><ReloadOutlined /></template>
-    </a-button>
   </div>
 </template>
 
 <style scoped lang="scss">
 .analysis-exam-select {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 320px;
+  width: 100%;
+  min-width: 0;
+
+  :deep(.ui-tooltip) {
+    display: block;
+    width: 100%;
+  }
 
   :deep(.ant-select) {
-    flex: 1;
-    min-width: 0;
+    width: 100%;
   }
-}
-
-.analysis-exam-select__reload {
-  flex: 0 0 auto;
 }
 </style>

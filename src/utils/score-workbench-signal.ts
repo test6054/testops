@@ -8,6 +8,7 @@ import type { StatMetricLike } from '@/utils/stat-metric-helpers'
 export function buildScoreFinalizeSignalMetrics(
   panel: ExamWorkbenchScorePanelResponse | null,
   overview: FinalScoreRiskOverviewResponse | null,
+  hasDailyScoreConfig = false,
 ): SignalMetric[] {
   if (panel?.distributionAvailable) {
     const total = overview?.totalCandidateCount ?? 0
@@ -47,6 +48,8 @@ export function buildScoreFinalizeSignalMetrics(
   const confirmed = overview?.confirmedCount ?? 0
   const published = overview?.publishedCount ?? 0
   const blocked = overview?.blockedCount ?? 0
+  const unconfirmedQuestions = overview?.unconfirmedQuestionGradeCount ?? 0
+  const safeConfirmable = overview?.safeConfirmableCount ?? 0
   const pendingDelayed = panel?.pendingDelayedFinalScoreConfirmCount ?? 0
   const blockedDelayed = panel?.blockedDelayedFinalScoreConfirmCount ?? 0
   const delayedMinutes = panel?.delayedFinalScoreConfirmMinutes
@@ -61,10 +64,24 @@ export function buildScoreFinalizeSignalMetrics(
     },
     {
       key: 'calculated',
-      label: '可确认',
+      label: '卷级可确认',
       value: calculated,
       unit: '人',
       tone: calculated > 0 ? 'blue' : 'gray',
+    },
+    {
+      key: 'unconfirmedQuestions',
+      label: '题未教师确认',
+      value: unconfirmedQuestions,
+      unit: '卷',
+      tone: unconfirmedQuestions > 0 ? 'orange' : 'gray',
+    },
+    {
+      key: 'safeConfirmable',
+      label: '可安全批确认',
+      value: safeConfirmable,
+      unit: '卷',
+      tone: safeConfirmable > 0 ? 'green' : 'gray',
     },
     {
       key: 'confirmed',
@@ -88,7 +105,12 @@ export function buildScoreFinalizeSignalMetrics(
       tone: blocked > 0 ? 'red' : 'gray',
     },
   ]
-  if (panel?.manualFinalScoreConfirmRequired === false && pendingDelayed > 0 && delayedMinutes != null) {
+  if (
+    !hasDailyScoreConfig
+    && panel?.manualFinalScoreConfirmRequired === false
+    && pendingDelayed > 0
+    && delayedMinutes != null
+  ) {
     metrics.push({
       key: 'delayedConfirm',
       label: '延迟自动确认',

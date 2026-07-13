@@ -6,7 +6,6 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
-import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -26,19 +25,10 @@ const route = useRoute()
 const router = useRouter()
 
 const {
-  academicYear,
-  semester,
-  examFilterCourseId,
   examId,
-  classId,
-  examsLoading,
   overview,
   overviewLoadFailed,
   reloadToken,
-  academicYearOptions,
-  semesterOptions,
-  courseOptions,
-  examOptions,
   selectedExamLabel,
   setClassScope,
   refreshAnalysis,
@@ -106,10 +96,6 @@ const headerSignalMetrics = computed<SignalMetric[]>(() => {
   return metrics
 })
 
-const showTeachingScopeFilters = computed(
-  () => activeTab.value === 'teaching' || activeTab.value === 'cluster',
-)
-
 function handleTabChange(key: Key) {
   activeTab.value = parseTab(key)
 }
@@ -126,45 +112,7 @@ function handleClusterDataChanged(): void {
 <template>
   <StageWorkbenchShell>
     <template v-if="!examLocked" #context>
-      <ContextBar layout="workbench" show-title title="AI 分析中心">
-        <template #status>
-          <div class="ai-analysis-center__scope-field ai-analysis-center__scope-field--year">
-            <UiSelect
-              v-model="academicYear"
-              :options="academicYearOptions"
-              placeholder="学年"
-              :allow-clear="false"
-            />
-          </div>
-          <div class="ai-analysis-center__scope-field ai-analysis-center__scope-field--semester">
-            <UiSelect
-              v-model="semester"
-              :options="semesterOptions"
-              placeholder="学期"
-              :allow-clear="false"
-            />
-          </div>
-          <template v-if="showTeachingScopeFilters">
-            <div class="ai-analysis-center__scope-field ai-analysis-center__scope-field--course">
-              <UiSelect
-                v-model="examFilterCourseId"
-                :options="courseOptions"
-                placeholder="课程（可选）"
-                allow-search
-              />
-            </div>
-            <div class="ai-analysis-center__scope-field ai-analysis-center__scope-field--exam">
-              <UiSelect
-                v-model="examId"
-                :options="examOptions"
-                :loading="examsLoading"
-                placeholder="考试（教学/聚类必填）"
-                allow-search
-              />
-            </div>
-          </template>
-        </template>
-      </ContextBar>
+      <ContextBar layout="workbench" show-title title="AI 分析中心" />
     </template>
 
     <template #signal>
@@ -189,17 +137,14 @@ function handleClusterDataChanged(): void {
 
         <AiAnalysisTeachingTab
           v-if="activeTab === 'teaching'"
-          :exam-id="examId"
           :reload-token="reloadToken"
-          :class-id="classId"
           @class-change="handleClassSelectChange"
         />
         <AiAnalysisTrendTab v-else-if="activeTab === 'trend'" />
         <AiAnalysisClusterTab
           v-else-if="activeTab === 'cluster'"
-          :exam-id="examId"
           :reload-token="reloadToken"
-          :class-id="classId"
+          :cluster-signal="overview?.clusterSignal"
           @changed="handleClusterDataChanged"
         />
         <AiAnalysisSchoolTab v-else-if="activeTab === 'school'" />
@@ -207,22 +152,3 @@ function handleClusterDataChanged(): void {
     </template>
   </StageWorkbenchShell>
 </template>
-
-<style lang="scss" scoped>
-.ai-analysis-center__scope-field {
-  flex: 0 0 auto;
-
-  &--year,
-  &--semester {
-    width: 120px;
-  }
-
-  &--course {
-    width: 200px;
-  }
-
-  &--exam {
-    width: 240px;
-  }
-}
-</style>

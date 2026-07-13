@@ -5,6 +5,7 @@
         effectiveRiskOverview?.readyToPublish
           || blockingRiskReasons.length > 0
           || canBatchConfirmSafe
+          || unconfirmedQuestionGradeCount > 0
       "
       #context
     >
@@ -25,6 +26,14 @@
             @click="handleGoScorePublish"
           >
             前往成绩发布
+          </UiButton>
+          <UiButton
+            v-if="unconfirmedQuestionGradeCount > 0"
+            variant="outline"
+            size="sm"
+            @click="goQuestionReviewBatch"
+          >
+            题目分待确认 {{ unconfirmedQuestionGradeCount }}
           </UiButton>
           <UiButton
             v-if="canBatchConfirmSafe"
@@ -68,18 +77,53 @@
       </WorkbenchNoticeBanner>
 
       <UiAlertStrip
-        v-if="blockingRiskReasons.length > 0"
+        v-if="unconfirmedQuestionGradeCount > 0"
         tone="warning"
-        title="存在阻塞性成绩风险"
-        :description="`共 ${blockingRiskReasons.length} 类风险待处理，确认或发布前须完成复核。`"
+        title="题目成绩待教师确认"
+        :description="`有 ${unconfirmedQuestionGradeCount} 份答卷仍存在未确认题目分（含客观题硬判/AI 建议）。须在复核台确认或正评 submit 后，才可进入卷级最终成绩确认与发布。`"
         dense
         inline
         class="score-finalize__alert"
       >
         <template #actions>
-          <UiButton variant="primary" size="sm" @click="openRiskReviewDrawer"> 集中复核 </UiButton>
+          <UiButton variant="primary" size="sm" @click="goQuestionReviewBatch">
+            去批量确认题目分
+          </UiButton>
+          <UiButton variant="outline" size="sm" @click="goQuestionReviewSingle">
+            去单题复核
+          </UiButton>
         </template>
       </UiAlertStrip>
+      <UiAlertStrip
+        v-if="blockingRiskReasons.length > 0"
+        tone="warning"
+        title="存在阻塞性成绩风险"
+        :description="`共 ${blockingRiskReasons.length} 类风险待处理，确认或发布前须完成处理。`"
+        dense
+        inline
+        class="score-finalize__alert"
+      >
+        <template #actions>
+          <UiButton
+            v-if="unconfirmedQuestionGradeCount > 0"
+            variant="primary"
+            size="sm"
+            @click="goQuestionReviewBatch"
+          >
+            去题目复核
+          </UiButton>
+          <UiButton variant="outline" size="sm" @click="openRiskReviewDrawer"> 集中复核风险 </UiButton>
+        </template>
+      </UiAlertStrip>
+      <UiAlertStrip
+        v-if="dailyScoreManualConfirmNotice"
+        tone="warning"
+        title="日常分须手工确认"
+        :description="dailyScoreManualConfirmNotice"
+        dense
+        inline
+        class="score-finalize__alert"
+      />
       <UiAlertStrip
         v-if="delayedAutoConfirmNotice"
         tone="info"
@@ -178,8 +222,18 @@
                 {{ candidates[index].studentName || '—' }}
               </template>
               <template v-else-if="column.key === 'examScore'">
-                <span v-if="candidates[index].examScore != null" class="score-summary-table__score">
+                <span
+                  v-if="candidates[index].examScore != null"
+                  class="score-summary-table__score"
+                >
                   {{ candidates[index].examScore }}
+                </span>
+                <span
+                  v-else-if="candidates[index].estimatedExamScore != null"
+                  class="score-finalize__hint"
+                  :title="`AI预估卷面分 ${candidates[index].estimatedExamScore}，非正式成绩`"
+                >
+                  预估 {{ candidates[index].estimatedExamScore }}
                 </span>
                 <span v-else class="score-finalize__hint">—</span>
               </template>
@@ -198,6 +252,13 @@
                   class="score-summary-table__score score-summary-table__score--total"
                 >
                   {{ candidates[index].finalScore }}
+                </span>
+                <span
+                  v-else-if="candidates[index].estimatedTotalScore != null"
+                  class="score-finalize__hint"
+                  :title="`AI预估总分 ${candidates[index].estimatedTotalScore}，非正式成绩`"
+                >
+                  预估 {{ candidates[index].estimatedTotalScore }}
                 </span>
                 <span v-else class="score-finalize__hint">—</span>
               </template>
@@ -265,7 +326,7 @@
           </a-descriptions-item>
           <a-descriptions-item v-if="hasDailyScoreConfig" label="考试分">
             <span class="score-summary-table__score">{{
-              formatScorePoints(paperScore.examScore)
+              formatScorePoints(paperScore.examScore ?? paperScore.estimatedExamScore)
             }}</span>
           </a-descriptions-item>
           <a-descriptions-item v-if="hasDailyScoreConfig" label="日常分">
@@ -275,7 +336,7 @@
           </a-descriptions-item>
           <a-descriptions-item :label="hasDailyScoreConfig ? '总成绩' : '总分'">
             <span class="score-summary-table__score score-summary-table__score--total">
-              {{ formatScorePoints(paperScore.totalScore) }}
+              {{ formatScorePoints(paperScore.totalScore ?? paperScore.estimatedTotalScore) }}
             </span>
           </a-descriptions-item>
           <a-descriptions-item label="最终状态" :span="2">
@@ -283,7 +344,25 @@
               {{ finalScoreStatusLabel(paperScore.finalScoreStatus) }}
             </UiTag>
           </a-descriptions-item>
+          <a-descriptions-item
+            v-if="paperScore.finalScoreStatus === FinalScoreStatusCode.CALCULATED"
+            label="预估说明"
+            :span="2"
+          >
+            当前为 AI 预估分（非正式），须题目全部教师确认或正评提交后，方可确认最终成绩。
+          </a-descriptions-item>
         </a-descriptions>
+
+        <UiAlertStrip
+          v-if="paperTotalScoreCorrectionNotice"
+          tone="warning"
+          title="本卷已经总分更正"
+          :description="paperTotalScoreCorrectionNotice"
+          dense
+          inline
+          class="score-finalize__detail-correction-alert"
+          style="margin: 12px 0"
+        />
 
         <h4 class="score-finalize__detail-section-title">题目得分明细</h4>
         <UiDataTable
@@ -376,12 +455,14 @@
           :label="
             hasDailyScoreConfig
               ? '考试分（各题教师复核评分之和）'
-              : '试卷计算总分将作为教师复核评分'
+              : '考试分（仅各题教师复核评分之和）'
           "
         >
           <a-input
             :value="
-              confirmComputedExamScore != null ? `${confirmComputedExamScore} 分` : '加载中...'
+              confirmComputedExamScore != null
+                ? `${confirmComputedExamScore} 分`
+                : '各题教师复核评分尚未齐全'
             "
             disabled
           />
@@ -447,6 +528,23 @@
             前往缺考核对
           </UiButton>
           <UiButton
+            v-else-if="reason.reasonCode === FinalScoreRiskReasonCode.ABNORMAL_PAPER"
+            size="sm"
+            variant="outline"
+            @click="goScanBindingAttention"
+          >
+            去扫描处置绑定
+          </UiButton>
+          <UiButton
+            v-else-if="isQuestionConfirmRiskReason(reason.reasonCode)"
+            size="sm"
+            variant="primary"
+            @click="goQuestionReviewBatch"
+          >
+            去题目复核确认
+          </UiButton>
+          <UiButton
+            v-if="!isHardBlockingRiskReason(reason.reasonCode) && !isQuestionConfirmRiskReason(reason.reasonCode)"
             size="sm"
             variant="outline"
             :loading="riskReviewSavingReasonCode === reason.reasonCode"
@@ -734,7 +832,7 @@ const panelNotice = computed(() => {
   return null
 })
 
-const { ensureScorePublishPreconditions, ensureScoreConfirmPreconditions }
+const { ensureScorePublishPreconditions, ensureSinglePaperPublishPreconditions, ensureScoreConfirmPreconditions }
   = useScorePublishPreconditions({
     examId: selectedExamId,
     riskOverview: effectiveRiskOverview,
@@ -896,9 +994,9 @@ function confirmButtonLabel(record: ExamScoreSummaryItemResponse): string {
 }
 function canPublish(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
-  if (hasHardBlockingRisks.value || hasUnreviewedBlockingRisks.value) return false
+  // 仅缺考硬阻断禁用按钮；绑定异常等软风险在点击发布时集中复核，不整场灰掉已确认卷。
+  if (hasHardBlockingRisks.value) return false
   const s = record.finalScoreStatus
-  // CONFIRMED / WITHDRAWN / CORRECTED 可以发布
   return (
     s === FinalScoreStatusCode.CONFIRMED
     || s === FinalScoreStatusCode.WITHDRAWN
@@ -925,9 +1023,11 @@ const hardBlockingRiskReasons = computed(() => {
 const hasHardBlockingRisks = computed(() => hardBlockingRiskReasons.value.length > 0)
 
 const hasUnreviewedBlockingRisks = computed(() => {
+  // 未确认题目分 / 缺批改：产品硬门禁，不走「标记已复核」软通过，由 Alert + 后端卷级校验处理
   return blockingRiskReasons.value.some(
     (reason) =>
       !HARD_BLOCKING_RISK_REASON_CODES.has(reason.reasonCode)
+      && !isQuestionConfirmRiskReason(reason.reasonCode)
       && !reviewedRiskReasonCodes.value.has(reason.reasonCode),
   )
 })
@@ -944,13 +1044,20 @@ function isHardBlockingRiskReason(reasonCode: FinalScoreRiskReasonCode): boolean
   return HARD_BLOCKING_RISK_REASON_CODES.has(reasonCode)
 }
 
+function isQuestionConfirmRiskReason(reasonCode: FinalScoreRiskReasonCode): boolean {
+  return reasonCode === FinalScoreRiskReasonCode.UNCONFIRMED_QUESTION_GRADE
+    || reasonCode === FinalScoreRiskReasonCode.MISSING_QUESTION_GRADE
+}
+
 function riskReasonStatusTone(reasonCode: FinalScoreRiskReasonCode): 'green' | 'red' {
-  if (isHardBlockingRiskReason(reasonCode)) return 'red'
+  if (isHardBlockingRiskReason(reasonCode) || isQuestionConfirmRiskReason(reasonCode)) return 'red'
   return isRiskReasonReviewed(reasonCode) ? 'green' : 'red'
 }
 
 function riskReasonStatusLabel(reasonCode: FinalScoreRiskReasonCode): string {
   if (isHardBlockingRiskReason(reasonCode)) return '需处理'
+  if (isQuestionConfirmRiskReason(reasonCode)) return '须题目确认'
+  if (reasonCode === FinalScoreRiskReasonCode.ABNORMAL_PAPER) return '须扫描处置'
   return isRiskReasonReviewed(reasonCode) ? '已复核' : '待复核'
 }
 
@@ -963,8 +1070,29 @@ function goAbsenceConfirm(): void {
   })
 }
 
+/** 绑定异常/未绑定卷走扫描批次与异常待办，不能当缺考销账。 */
+function goScanBindingAttention(): void {
+  const examId = selectedExamId.value
+  riskReviewDrawerOpen.value = false
+  void router.push({
+    name: 'TeacherExamWorkspaceScanBatches',
+    params: examId ? { examId } : {},
+  })
+}
+
 async function toggleRiskReasonReviewed(reasonCode: FinalScoreRiskReasonCode): Promise<void> {
   if (HARD_BLOCKING_RISK_REASON_CODES.has(reasonCode)) return
+  // ABNORMAL_PAPER 可标记已复核（允许先发其它已确认卷），但引导去扫描处置，不能当缺考。
+  if (reasonCode === FinalScoreRiskReasonCode.UNCONFIRMED_QUESTION_GRADE
+    || reasonCode === FinalScoreRiskReasonCode.MISSING_QUESTION_GRADE) {
+    message.warning(
+      reasonCode === FinalScoreRiskReasonCode.MISSING_QUESTION_GRADE
+        ? '题目批改结果缺失须先完成识别与批改，不能仅标记风险已复核'
+        : '未确认题目分须在复核台确认或正评提交，不能仅标记风险已复核',
+    )
+    goQuestionReviewBatch()
+    return
+  }
   if (!selectedExamId.value || riskReviewSavingReasonCode.value) return
   const next = new Set(reviewedRiskReasonCodes.value)
   if (next.has(reasonCode)) {
@@ -990,6 +1118,11 @@ async function toggleRiskReasonReviewed(reasonCode: FinalScoreRiskReasonCode): P
   }
 }
 
+/**
+ * 全场硬阻塞（缺考等）与未标记的软风险。
+ * 不把「未确认题目分」当作整场禁止：单卷确认/发布由后端卷级门禁校验；
+ * 题目待确认由页面 Alert 引导去复核台。
+ */
 function warnUnreviewedBlockingRisks(): boolean {
   if (hasHardBlockingRisks.value) {
     riskReviewDrawerOpen.value = true
@@ -1002,21 +1135,58 @@ function warnUnreviewedBlockingRisks(): boolean {
   return true
 }
 
+/** 安全批量确认仅检查全场级门禁（与后端 collectSafeBatchConfirmBlockingReasons 对齐） */
+function warnFieldWideSafeBatchBlockers(): boolean {
+  if (hasHardBlockingRisks.value || hasFieldWideSafeBatchBlockers.value) {
+    if (hasHardBlockingRisks.value) {
+      riskReviewDrawerOpen.value = true
+      message.warning('存在未完成缺考核对学生，请先完成缺考核对后再批量确认成绩')
+    } else {
+      message.warning('存在全场阻塞事件或未处置重复影像，暂不可安全批量确认最终成绩')
+    }
+    return true
+  }
+  return false
+}
+
+/** 未确认题目得分的答卷数（产品门禁：硬判/AI 仍须教师确认） */
+const unconfirmedQuestionGradeCount = computed(
+  () => effectiveRiskOverview.value?.unconfirmedQuestionGradeCount ?? 0,
+)
+
+/**
+ * 安全批量确认卷级最终成绩：仅依赖 safeConfirmableCount + 全场级硬阻塞。
+ * 未确认题目分由后端按卷过滤，不应因场内仍有待复核卷而禁用「已全题确认」卷的批量确认。
+ */
 const canBatchConfirmSafe = computed(() => {
   const overview = effectiveRiskOverview.value
   return Boolean(
     overview
     && overview.safeConfirmableCount > 0
-    && blockingRiskReasons.value.length === 0
     && !hasHardBlockingRisks.value
+    && !hasFieldWideSafeBatchBlockers.value
     && !hasDailyScoreConfig.value
     && !batchConfirming.value,
   )
 })
 
+/** 与后端 collectSafeBatchConfirmBlockingReasons 对齐的全场级阻断 */
+const FIELD_WIDE_SAFE_BATCH_BLOCKERS = new Set<FinalScoreRiskReasonCode>([
+  FinalScoreRiskReasonCode.UNRECONCILED_ABSENCE,
+  FinalScoreRiskReasonCode.BLOCKING_INCIDENT,
+  FinalScoreRiskReasonCode.PENDING_DUPLICATE_IMAGE,
+])
+
+const hasFieldWideSafeBatchBlockers = computed(() => {
+  return (effectiveRiskOverview.value?.riskReasons ?? []).some(
+    (reason) =>
+      reason.count > 0 && FIELD_WIDE_SAFE_BATCH_BLOCKERS.has(reason.reasonCode),
+  )
+})
+
 async function handleBatchConfirmSafe(): Promise<void> {
   if (!selectedExamId.value || !effectiveRiskOverview.value) return
-  if (warnUnreviewedBlockingRisks()) return
+  if (warnFieldWideSafeBatchBlockers()) return
   const canContinue = await ensureScoreConfirmPreconditions()
   if (!canContinue) {
     return
@@ -1046,12 +1216,12 @@ async function handleBatchConfirmSafe(): Promise<void> {
 }
 
 const statMetrics = computed((): SignalMetric[] =>
-  buildScoreFinalizeSignalMetrics(scorePanel.value, effectiveRiskOverview.value),
+  buildScoreFinalizeSignalMetrics(scorePanel.value, effectiveRiskOverview.value, hasDailyScoreConfig.value),
 )
 
 const delayedAutoConfirmNotice = computed(() => {
   const panel = scorePanel.value
-  if (!panel || panel.manualFinalScoreConfirmRequired) {
+  if (!panel || panel.manualFinalScoreConfirmRequired || hasDailyScoreConfig.value) {
     return null
   }
   const pending = panel.pendingDelayedFinalScoreConfirmCount
@@ -1059,6 +1229,14 @@ const delayedAutoConfirmNotice = computed(() => {
     return null
   }
   return `当前有 ${pending} 份答卷处于 ${panel.delayedFinalScoreConfirmMinutes} 分钟延迟自动确认窗口内，到期后将自动汇总确认最终成绩。`
+})
+
+/** 配置了日常分的考试：Worker 无法代填日常分，须逐人录日常分后手工确认。 */
+const dailyScoreManualConfirmNotice = computed(() => {
+  if (!hasDailyScoreConfig.value) {
+    return null
+  }
+  return '本场考试配置了日常分，系统不会延迟自动确认最终成绩。请在题目分全部教师确认后，逐人录入日常分并手工确认总成绩。'
 })
 
 const blockedDelayedAutoConfirmNotice = computed(() => {
@@ -1083,6 +1261,25 @@ function goDelayedConfirmTasks(): void {
     query: { taskType: 'DELAYED_FINAL_SCORE_CONFIRM' },
   })
 }
+
+function goQuestionReviewBatch(): void {
+  const examId = selectedExamId.value
+  if (!examId) return
+  void router.push({
+    name: 'TeacherExamWorkspaceReviewBatchConfirm',
+    params: { examId },
+  })
+}
+
+function goQuestionReviewSingle(): void {
+  const examId = selectedExamId.value
+  if (!examId) return
+  void router.push({
+    name: 'TeacherExamWorkspaceMarkingReview',
+    params: { examId },
+  })
+}
+
 
 /** 当前页候选状态分桶，仅用于页内偏差提示与下一份核对引导。 */
 const candidateBuckets = computed<Record<FinalScoreStatusCode, number>>(() => {
@@ -1173,6 +1370,23 @@ const paperScore = ref<ExamPaperScoreResponse | null>(null)
 const paperQuestions = computed<ExamQuestionScoreResponse[]>(
   () => paperScore.value?.questions ?? [],
 )
+
+/** 官方卷面分与题分明细可不一致（总分更正、或总分后再单题更正），确认/发布以官方 examScore/totalScore 为准。 */
+const paperTotalScoreCorrectionNotice = computed(() => {
+  const score = paperScore.value
+  if (!score) return null
+  // 题分之和与官方考试分不一致时始终提示；不依赖「最近一条更正是否为总分」。
+  if (score.questionScoreSumMatchesExamScore !== false && !score.latestTotalScoreCorrectionApplied) {
+    return null
+  }
+  const examScore = score.examScore
+  const questionSum = score.questionScoreSum
+  if (examScore == null || questionSum == null) {
+    return '本卷官方考试分与题分明细可不一致，题目列表展示原复核分；发布与学生可见分以官方 examScore/totalScore 为准。'
+  }
+  return `本卷官方考试分 ${examScore}，题分明细合计 ${questionSum}（可不一致）。题目列表展示原复核分，不以题分之和覆盖官方分。`
+})
+
 
 const paperItemColumns: ColumnType<ExamQuestionScoreResponse>[] = [
   { title: '题号', key: 'questionNo', width: 80, fixed: 'left' },
@@ -1474,23 +1688,34 @@ function formatScorePoints(score: number | null | undefined): string {
   return score != null ? `${score} 分` : '—'
 }
 
-/** 按试卷题目明细计算确认弹窗卷面分预览；后端 confirmFinalScore 仍是最终写入真源。 */
-function resolveConfirmExamScorePreview(score: ExamPaperScoreResponse): number {
-  if (score.examScore != null) {
+/** 确认弹窗卷面分预览：只汇总已教师确认题分；不把 CALCULATED 的 AI 预估 examScore 当正式分。 */
+function resolveConfirmExamScorePreview(score: ExamPaperScoreResponse): number | null {
+  // 仅正式态（已确认/已发布/已更正/已撤回）才信任后端 formal examScore
+  const formalStatuses = new Set([
+    FinalScoreStatusCode.CONFIRMED,
+    FinalScoreStatusCode.PUBLISHED,
+    FinalScoreStatusCode.CORRECTED,
+    FinalScoreStatusCode.WITHDRAWN,
+  ])
+  if (
+    score.examScore != null
+    && score.finalScoreStatus
+    && formalStatuses.has(score.finalScoreStatus)
+  ) {
     return score.examScore
   }
-  if (score.totalScore != null && !hasDailyScoreConfig.value) {
-    return score.totalScore
-  }
   const questions = score.questions ?? []
+  if (questions.length === 0) {
+    return null
+  }
   if (
-    questions.length === 0
-    || questions.some(
+    questions.some(
       (question) =>
         question.gradeStatus !== GradeStatusCode.CONFIRMED || question.teacherReviewScore == null,
     )
   ) {
-    return 0
+    // 题分未全部教师确认：不展示 0 分假预览，也不展示 AI 预估
+    return null
   }
   return Number(
     questions
@@ -1512,6 +1737,9 @@ async function openConfirmModal(record: ExamScoreSummaryItemResponse): Promise<v
       paperInstanceId: record.paperInstanceId,
     })
     confirmComputedExamScore.value = resolveConfirmExamScorePreview(score)
+    if (confirmComputedExamScore.value == null) {
+      message.warning('题目分尚未全部教师确认，或当前仅为 AI 预估分。请先完成题目复核/正评后再确认最终成绩。')
+    }
     if (hasDailyScoreConfig.value) {
       confirmDailyScore.value = score.dailyScore ?? undefined
     }
@@ -1616,7 +1844,16 @@ async function handleGoScorePublish(): Promise<void> {
 
 async function handleConfirm(): Promise<void> {
   if (!selectedExamId.value || !confirmCandidate.value?.paperInstanceId) return
-  if (warnUnreviewedBlockingRisks()) return
+  // 单卷确认仅场级缺考硬阻断；软风险（绑定异常等）不阻止确认，发布时再集中复核。
+  if (hasHardBlockingRisks.value) {
+    riskReviewDrawerOpen.value = true
+    message.warning('存在未完成缺考核对学生，请先完成缺考核对后再确认成绩')
+    return
+  }
+  if (confirmComputedExamScore.value == null) {
+    message.warning('题目分尚未全部教师确认，不能确认最终成绩。请先完成复核台确认或正评提交。')
+    return
+  }
   if (hasDailyScoreConfig.value && confirmDailyScore.value == null) {
     message.warning('请录入日常成绩')
     return
@@ -1631,7 +1868,14 @@ async function handleConfirm(): Promise<void> {
       dailyScore: hasDailyScoreConfig.value ? (confirmDailyScore.value ?? undefined) : undefined,
     })
     if (confirmAndPublish.value) {
-      const canContinue = await ensureScorePublishPreconditions()
+      if (warnUnreviewedBlockingRisks()) {
+        message.success('成绩已确认，发布前请先完成异常风险集中复核')
+        confirmOpen.value = false
+        await refreshAfterScoreWrite()
+        deriveNextStepSuggestion()
+        return
+      }
+      const canContinue = await ensureSinglePaperPublishPreconditions()
       if (!canContinue) {
         message.success('成绩已确认，发布前请先完成缺考核对或风险处置')
         confirmOpen.value = false
@@ -1658,7 +1902,7 @@ async function handleConfirm(): Promise<void> {
 async function handlePublish(record: ExamScoreSummaryItemResponse): Promise<void> {
   if (!selectedExamId.value || !record.paperInstanceId) return
   if (warnUnreviewedBlockingRisks()) return
-  const canContinue = await ensureScorePublishPreconditions()
+  const canContinue = await ensureSinglePaperPublishPreconditions()
   if (!canContinue) {
     return
   }

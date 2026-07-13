@@ -5,25 +5,20 @@
       <span v-if="hint" class="mark-heatmap-section__hint">{{ hint }}</span>
     </header>
     <MarkChart
-      v-if="ready"
-      :option="option"
+      :option="resolvedOption"
       :height="height"
       :aria-label="resolvedAriaLabel"
       class="mark-heatmap-section__canvas"
       @chart-click="handleChartClick"
     />
-    <div v-else class="mark-heatmap-section__empty">
-      <UiEmpty size="sm" :description="emptyDescription" />
-    </div>
   </section>
 </template>
 
 <script lang="ts" setup>
 import type { EChartsCoreOption } from 'echarts/core'
 import { computed } from 'vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import { MARK_CHART_EMPTY } from '@/utils/mark-chart-accessibility'
-import { resolveHeatmapDataValue } from '@/utils/mark-echarts-options'
+import { resolveHeatmapDataValue, resolveMarkChartSectionOption } from '@/utils/mark-echarts-options'
 import MarkChart from './MarkChart.vue'
 
 defineOptions({ name: 'MarkHeatmapSection' })
@@ -53,6 +48,10 @@ const emit = defineEmits<{
 }>()
 
 const ready = computed(() => props.cellCount > 0)
+
+const resolvedOption = computed(() =>
+  resolveMarkChartSectionOption(ready.value, props.option, 'heatmap', props.emptyDescription),
+)
 
 const resolvedAriaLabel = computed(() => {
   if (props.ariaLabel.trim()) {

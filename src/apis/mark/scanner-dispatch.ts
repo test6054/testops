@@ -220,16 +220,8 @@ export interface ScannerExceptionDashboardItemVO {
 
 export interface ScannerExceptionDashboardPageRequest extends QueryDto {
   itemKind?: ScannerExceptionItemKindCode
-}
-
-/** 扫描异常 KPI 计数，对应后端 ScannerExceptionMetricCounts */
-export interface ScannerExceptionMetricCountsVO {
-  failedTicketCount?: number
-  failedWorkOrderCount?: number
-  pageRegisterBlockedCount?: number
-  committingWorkOrderCount?: number
-  /** 待处置切卷余页批次数 */
-  partialTailPendingCount?: number
+  taskKind?: ScanTaskKindCode
+  examId?: string
 }
 
 /** 扫描异常看板聚合 VO，对应后端 ScannerExceptionDashboardVO */
@@ -341,13 +333,6 @@ export function forceReleaseScanDispatch(request: ScanDispatchForceReleaseReques
   return http.post<ScanDispatchTicketVO>('/api/mark/scanner/dispatch/force-release', request)
 }
 
-export function loadScannerExceptionMetrics() {
-  return http.post<ScannerExceptionMetricCountsVO>(
-    '/api/mark/scanner/exception/dashboard/metrics',
-    {},
-  )
-}
-
 export function pageScannerExceptionDashboard(request: ScannerExceptionDashboardPageRequest) {
   return http.post<PageResult<ScannerExceptionDashboardItemVO>>(
     '/api/mark/scanner/exception/dashboard/page',
@@ -366,6 +351,8 @@ export interface ScanDispatchQueueSummaryVO {
 export interface ScanDispatchQueueSummaryRequest {
   scannerDeviceId?: string
   scannerStationId?: string
+  /** 分域扫描运营 / 派单结案必传；工位 Hub 可省略以看租户级合计数 */
+  taskKind?: ScanTaskKindCode
 }
 
 export function loadScanDispatchQueueSummary(request: ScanDispatchQueueSummaryRequest = {}) {

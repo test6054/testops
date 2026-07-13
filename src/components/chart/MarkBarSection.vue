@@ -5,23 +5,19 @@
       <span v-if="hint" class="mark-bar-section__hint">{{ hint }}</span>
     </header>
     <MarkChart
-      v-if="ready"
-      :option="option"
+      :option="resolvedOption"
       :height="height"
       :aria-label="resolvedAriaLabel"
       class="mark-bar-section__canvas"
     />
-    <div v-else class="mark-bar-section__empty">
-      <UiEmpty size="sm" :description="emptyDescription" />
-    </div>
   </section>
 </template>
 
 <script lang="ts" setup>
 import type { EChartsCoreOption } from 'echarts/core'
 import { computed } from 'vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import { MARK_CHART_EMPTY } from '@/utils/mark-chart-accessibility'
+import { resolveMarkChartSectionOption } from '@/utils/mark-echarts-options'
 import MarkChart from './MarkChart.vue'
 
 defineOptions({ name: 'MarkBarSection' })
@@ -36,6 +32,8 @@ const props = withDefaults(
     ariaLabel?: string
     emptyDescription?: string
     visible?: boolean
+    /** 横向条形图空壳与纵向柱状图轴布局不同 */
+    orientation?: 'vertical' | 'horizontal'
   }>(),
   {
     hint: '',
@@ -43,10 +41,24 @@ const props = withDefaults(
     ariaLabel: '',
     emptyDescription: MARK_CHART_EMPTY.barNoData,
     visible: true,
+    orientation: 'vertical',
   },
 )
 
 const ready = computed(() => props.itemCount > 0)
+
+const shellKind = computed(() =>
+  props.orientation === 'horizontal' ? 'bar-horizontal' : 'bar',
+)
+
+const resolvedOption = computed(() =>
+  resolveMarkChartSectionOption(
+    ready.value,
+    props.option,
+    shellKind.value,
+    props.emptyDescription,
+  ),
+)
 
 const resolvedAriaLabel = computed(() => {
   if (props.ariaLabel.trim()) {

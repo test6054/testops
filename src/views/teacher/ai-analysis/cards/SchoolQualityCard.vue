@@ -8,92 +8,42 @@
       </UiButton>
     </template>
 
-    <AiAnalysisConfigCollapse title="校级质量分析范围">
-      <div class="ai-form">
-        <a-form layout="inline" :model="form" size="small">
-          <a-form-item label="分析维度">
-            <a-select v-model:value="form.analysisDimension" style="width: 140px">
-              <a-select-option
-                v-for="item in SCHOOL_QUALITY_DIMENSION_OPTIONS"
-                :key="item.value"
-                :value="item.value"
-              >
-                {{ item.label }}
-              </a-select-option>
-            </a-select>
-          </a-form-item>
-          <a-form-item
-            v-if="form.analysisDimension === SchoolQualityDimensionCode.COURSE"
-            label="课程"
-          >
-            <CatalogCourseSelector
-              v-model:value="form.dimensionId"
-              placeholder="请选择课程"
-              :allow-clear="false"
-              width="220px"
-            />
-          </a-form-item>
-          <a-form-item
-            v-if="form.analysisDimension === SchoolQualityDimensionCode.CLASS"
-            label="班级"
-          >
-            <ClassSelector
-              v-model:value="form.dimensionId"
-              :department-id="examSelectScopeReferenceDepartmentId"
-              placeholder="请选择班级"
-              :allow-clear="false"
-              width="220px"
-            />
-          </a-form-item>
-          <a-form-item label="学年">
-            <AnalysisSemesterSelect
-              v-model:academic-year="form.academicYear"
-              v-model:semester="form.semester"
-              :course-id="examSelectScopeCourseId"
-              :class-id="examSelectScopeClassId"
-              :reference-department-id="examSelectScopeReferenceDepartmentId"
-              :allow-clear="form.analysisDimension !== SchoolQualityDimensionCode.SEMESTER"
-              :default-recent-semester-count="
-                form.analysisDimension === SchoolQualityDimensionCode.SEMESTER ? 1 : 0
-              "
-            />
-          </a-form-item>
-          <p
-            v-if="form.analysisDimension === SchoolQualityDimensionCode.SEMESTER"
-            class="semester-dimension-hint"
-          >
-            学期维度须同时选择学年与学期；课程/班级维度查看历史可不选学期，生成分析须选择学年与学期
-          </p>
-          <p
-            v-else-if="form.analysisDimension === SchoolQualityDimensionCode.CLASS"
-            class="semester-dimension-hint"
-          >
-            班级维度须手动勾选至少 2 场包含该班级的考试
-          </p>
-          <a-form-item label="参与考试列表" style="flex: 1; min-width: 320px">
-            <AnalysisExamMultiSelect
-              v-if="examSelectReady"
-              v-model="form.examIds"
-              :scope-course-id="examSelectScopeCourseId"
-              :scope-class-id="examSelectScopeClassId"
-              :scope-reference-department-id="examSelectScopeReferenceDepartmentId"
-              :scope-academic-year="form.academicYear"
-              :scope-semester="form.semester"
-              :auto-select-scoped-exams="examSelectAutoSelectScoped"
-              placeholder="请选择至少 2 场考试"
-            />
-            <span v-else class="exam-hint">{{ examSelectHint }}</span>
-          </a-form-item>
-        </a-form>
-      </div>
-    </AiAnalysisConfigCollapse>
+    <UiFilterBar
+      v-model="qualityFilterModel"
+      :fields="qualityFilterFields"
+      variant="plain"
+      show-labels
+      search-text="应用"
+      reset-text="清空考试"
+      @search="() => {}"
+      @reset="handleQualityFilterReset"
+    >
+      <template #field-examIds>
+        <AnalysisExamMultiSelect
+          v-model="form.examIds"
+          :disabled="!examSelectReady"
+          :disabled-title="examSelectHint"
+          :scope-course-id="examSelectScopeCourseId"
+          :scope-class-id="examSelectScopeClassId"
+          :scope-reference-department-id="examSelectScopeReferenceDepartmentId"
+          :scope-academic-year="effectiveAcademicYear"
+          :scope-semester="effectiveSemester"
+          :auto-select-scoped-exams="examSelectAutoSelectScoped"
+          placeholder="请选择至少 2 场考试"
+        />
+      </template>
+    </UiFilterBar>
 
     <UiSkeletonState v-if="loading || generating" variant="card" compact />
-    <UiEmpty v-else-if="!record" description="配置范围后生成或查看校级质量分析" />
-    <div v-else-if="record" class="ai-analysis-section__body ai-analysis-section__body--flush">
-      <SignalBand :metrics="qualitySignalMetrics" compact variant="inline" />
+    <div v-else class="ai-analysis-section__body ai-analysis-section__body--flush">
+      <SignalBand
+        v-if="record"
+        :metrics="qualitySignalMetrics"
+        compact
+        variant="inline"
+      />
 
-      <p v-if="record.qualitySummary" class="ai-analysis-summary">{{ record.qualitySummary }}</p>
+      <p v-if="record?.qualitySummary" class="ai-analysis-summary">{{ record.qualitySummary }}</p>
 
       <MarkTrendSection
         title="参与考试得分走势"
@@ -130,6 +80,7 @@
       </div>
 
       <AiAnalysisMetaCollapse
+        v-if="record"
         :record="record"
         failure-fallback="AI 校级质量分析未完成，请核对考试范围后重新生成"
         :extra-items="metaExtraItems"
@@ -139,16 +90,12 @@
 </template>
 
 <script lang="ts" setup>
-import type {
-  SchoolQualityAnalysisResponse,
-  SchoolQualityItemResponse,
-  SchoolQualityRatingCode,
-} from '@/apis/mark/school-quality'
-import type { BadgeTone, UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import type { SchoolQualityAnalysisResponse, SchoolQualityItemResponse, SchoolQualityRatingCode } from '@/apis/mark/school-quality'
+import type { BadgeTone, FilterField, UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, toRef, watch } from 'vue'
 import {
   generateQualityAnalysis,
   listQualityAnalysis,
@@ -160,16 +107,12 @@ import {
   SchoolQualityRatingDescription,
 } from '@/apis/mark/school-quality'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
-import AiAnalysisConfigCollapse from '@/components/mark/analysis/AiAnalysisConfigCollapse.vue'
 import AiAnalysisHistorySelect from '@/components/mark/analysis/AiAnalysisHistorySelect.vue'
 import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCollapse.vue'
 import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
-import AnalysisSemesterSelect from '@/components/mark/AnalysisSemesterSelect.vue'
-import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
-import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -198,26 +141,29 @@ const props = withDefaults(
     scopeReferenceDepartmentId?: string | null
     scopeOrgCourseId?: string | null
     scopeOrgClassId?: string | null
+    scopeAcademicYear?: string
+    scopeSemester?: SemesterCode
   }>(),
   {
     scopeReferenceDepartmentId: null,
     scopeOrgCourseId: null,
     scopeOrgClassId: null,
+    scopeAcademicYear: undefined,
+    scopeSemester: undefined,
   },
 )
+
+const effectiveAcademicYear = toRef(() => props.scopeAcademicYear)
+const effectiveSemester = toRef(() => props.scopeSemester)
 
 interface SchoolQualityForm {
   analysisDimension: SchoolQualityDimensionCode
   dimensionId: string
-  academicYear: string | undefined
-  semester: SemesterCode | undefined
   examIds: string[]
 }
 const form = reactive<SchoolQualityForm>({
   analysisDimension: SchoolQualityDimensionCode.COURSE,
   dimensionId: '',
-  academicYear: undefined,
-  semester: undefined,
   examIds: [],
 })
 
@@ -245,18 +191,8 @@ const historyRows = computed(() =>
 const loading = ref(false)
 const generating = ref(false)
 
-const examSelectScopeCourseId = computed(() => {
-  if (form.analysisDimension === SchoolQualityDimensionCode.COURSE && form.dimensionId) {
-    return form.dimensionId
-  }
-  return props.scopeOrgCourseId?.trim() || undefined
-})
-const examSelectScopeClassId = computed(() => {
-  if (form.analysisDimension === SchoolQualityDimensionCode.CLASS && form.dimensionId) {
-    return form.dimensionId
-  }
-  return props.scopeOrgClassId?.trim() || undefined
-})
+const examSelectScopeCourseId = computed(() => props.scopeOrgCourseId?.trim() || undefined)
+const examSelectScopeClassId = computed(() => props.scopeOrgClassId?.trim() || undefined)
 const examSelectScopeReferenceDepartmentId = computed(
   () => props.scopeReferenceDepartmentId?.trim() || undefined,
 )
@@ -266,22 +202,71 @@ const examSelectAutoSelectScoped = computed(
     || form.analysisDimension === SchoolQualityDimensionCode.COURSE,
 )
 const examSelectReady = computed(() => {
-  if (!form.academicYear || !form.semester) {
+  if (!effectiveAcademicYear.value || !effectiveSemester.value) {
     return false
   }
-  if (form.analysisDimension === SchoolQualityDimensionCode.COURSE && !form.dimensionId) {
+  if (form.analysisDimension === SchoolQualityDimensionCode.COURSE && !props.scopeOrgCourseId?.trim()) {
     return false
   }
-  return !(form.analysisDimension === SchoolQualityDimensionCode.CLASS && !form.dimensionId)
+  return !(form.analysisDimension === SchoolQualityDimensionCode.CLASS && !props.scopeOrgClassId?.trim())
 })
+
+const qualityFilterFields = computed<FilterField[]>(() => [
+  {
+    key: 'analysisDimension',
+    type: 'select',
+    label: '分析维度',
+    width: 140,
+    minWidth: 120,
+    maxWidth: 160,
+    allowClear: false,
+    triggerSearchOnChange: true,
+    options: SCHOOL_QUALITY_DIMENSION_OPTIONS.map((item) => ({
+      label: item.label,
+      value: item.value,
+    })),
+  },
+  {
+    key: 'examIds',
+    type: 'custom',
+    label: '参与考试',
+    flex: 1,
+    minWidth: 360,
+    maxWidth: 9999,
+  },
+])
+
+const qualityFilterModel = computed<Record<string, unknown>>({
+  get: () => ({
+    analysisDimension: form.analysisDimension,
+    examIds: form.examIds,
+  }),
+  set: (value) => {
+    if (value.analysisDimension !== undefined) {
+      form.analysisDimension = value.analysisDimension as SchoolQualityDimensionCode
+    }
+    if (value.examIds !== undefined && Array.isArray(value.examIds)) {
+      form.examIds = value.examIds.map((item) => String(item))
+    }
+  },
+})
+
+function handleQualityFilterReset(): void {
+  form.examIds = []
+  clearHistory()
+}
+
 const examSelectHint = computed(() => {
-  if (form.analysisDimension === SchoolQualityDimensionCode.COURSE && !form.dimensionId) {
-    return '请先选择课程'
+  if (!effectiveAcademicYear.value || !effectiveSemester.value) {
+    return '请先在上方范围栏选择学年与学期'
   }
-  if (form.analysisDimension === SchoolQualityDimensionCode.CLASS && !form.dimensionId) {
-    return '请先选择班级'
+  if (form.analysisDimension === SchoolQualityDimensionCode.COURSE && !props.scopeOrgCourseId?.trim()) {
+    return '课程维度请先在上方范围栏选择课程'
   }
-  return '生成分析须先选择学年与学期'
+  if (form.analysisDimension === SchoolQualityDimensionCode.CLASS && !props.scopeOrgClassId?.trim()) {
+    return '班级维度请先在上方范围栏选择班级'
+  }
+  return '请选择至少 2 场考试'
 })
 
 const qualityItems = computed(() => record.value?.qualityItems ?? [])
@@ -397,23 +382,24 @@ function qualityItemTitle(item: SchoolQualityItemResponse): string {
 watch(
   () => form.analysisDimension,
   () => {
-    form.dimensionId = ''
-    form.academicYear = undefined
-    form.semester = undefined
+    syncDimensionFromPageScope()
     form.examIds = []
     clearHistory()
   },
 )
 
 watch(
-  () => form.dimensionId,
+  () => [props.scopeOrgCourseId, props.scopeOrgClassId] as const,
   () => {
+    syncDimensionFromPageScope()
+    form.examIds = []
     clearHistory()
   },
+  { immediate: true },
 )
 
 watch(
-  () => [form.academicYear, form.semester],
+  () => [effectiveAcademicYear.value, effectiveSemester.value] as const,
   () => {
     form.examIds = []
     clearHistory()
@@ -424,32 +410,53 @@ function schoolQualityDimensionLabel(value: SchoolQualityDimensionCode): string 
   return strictEnumLabel(SchoolQualityDimensionDescription, value, '校级质量分析维度')
 }
 
+function syncDimensionFromPageScope(): void {
+  if (form.analysisDimension === SchoolQualityDimensionCode.COURSE) {
+    form.dimensionId = props.scopeOrgCourseId?.trim() ?? ''
+    return
+  }
+  if (form.analysisDimension === SchoolQualityDimensionCode.CLASS) {
+    form.dimensionId = props.scopeOrgClassId?.trim() ?? ''
+    return
+  }
+  form.dimensionId = ''
+}
+
 function qualityListDimensionId(): string | undefined {
   if (form.analysisDimension === SchoolQualityDimensionCode.SEMESTER) {
     return undefined
+  }
+  if (form.analysisDimension === SchoolQualityDimensionCode.COURSE) {
+    return props.scopeOrgCourseId?.trim() || undefined
+  }
+  if (form.analysisDimension === SchoolQualityDimensionCode.CLASS) {
+    return props.scopeOrgClassId?.trim() || undefined
   }
   return form.dimensionId || undefined
 }
 
 async function reload(): Promise<void> {
-  if (form.analysisDimension === SchoolQualityDimensionCode.COURSE && !form.dimensionId) {
-    message.warning('请选择课程')
+  if (form.analysisDimension === SchoolQualityDimensionCode.COURSE && !props.scopeOrgCourseId?.trim()) {
+    message.warning('请先在上方范围栏选择课程')
     return
   }
-  if (form.analysisDimension === SchoolQualityDimensionCode.CLASS && !form.dimensionId) {
-    message.warning('请选择班级')
+  if (form.analysisDimension === SchoolQualityDimensionCode.CLASS && !props.scopeOrgClassId?.trim()) {
+    message.warning('请先在上方范围栏选择班级')
     return
   }
   if (
     form.analysisDimension === SchoolQualityDimensionCode.SEMESTER
-    && !ensureRequiredAcademicYearSemester(form.academicYear, form.semester)
+    && !ensureRequiredAcademicYearSemester(effectiveAcademicYear.value, effectiveSemester.value)
   ) {
     return
   }
-  if (!ensureAcademicYearSemesterPair(form.academicYear, form.semester)) {
+  if (!ensureAcademicYearSemesterPair(effectiveAcademicYear.value, effectiveSemester.value)) {
     return
   }
-  const termQuery = buildOptionalAcademicYearSemesterQuery(form.academicYear, form.semester)
+  const termQuery = buildOptionalAcademicYearSemesterQuery(
+    effectiveAcademicYear.value,
+    effectiveSemester.value,
+  )
   if (termQuery === null) {
     return
   }
@@ -471,15 +478,18 @@ async function reload(): Promise<void> {
 
 async function handleGenerate(): Promise<void> {
   const examIds = form.examIds
-  if (form.analysisDimension === SchoolQualityDimensionCode.COURSE && !form.dimensionId) {
-    message.warning('请选择课程')
+  if (form.analysisDimension === SchoolQualityDimensionCode.COURSE && !props.scopeOrgCourseId?.trim()) {
+    message.warning('请先在上方范围栏选择课程')
     return
   }
-  if (form.analysisDimension === SchoolQualityDimensionCode.CLASS && !form.dimensionId) {
-    message.warning('请选择班级')
+  if (form.analysisDimension === SchoolQualityDimensionCode.CLASS && !props.scopeOrgClassId?.trim()) {
+    message.warning('请先在上方范围栏选择班级')
     return
   }
-  const termQuery = buildRequiredAcademicYearSemesterQuery(form.academicYear, form.semester)
+  const termQuery = buildRequiredAcademicYearSemesterQuery(
+    effectiveAcademicYear.value,
+    effectiveSemester.value,
+  )
   if (!termQuery) {
     message.warning('生成分析须同时选择学年与学期')
     return
@@ -507,21 +517,6 @@ async function handleGenerate(): Promise<void> {
 </script>
 
 <style lang="scss" scoped>
-.ai-form {
-  width: 100%;
-}
-.exam-hint {
-  font-size: 14px;
-  color: var(--dp-text-secondary);
-  line-height: 32px;
-}
-.semester-dimension-hint {
-  flex: 1 1 100%;
-  margin: 0 0 4px;
-  font-size: 12px;
-  color: var(--dp-text-secondary);
-  line-height: 1.5;
-}
 .diagnosis-header {
   display: flex;
   align-items: center;

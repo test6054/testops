@@ -7,13 +7,23 @@ import type { ErrorCauseClusterItemVO } from '@/apis/mark/error-cause-cluster'
 import type { ReviewQuestionProgressItemResponse } from '@/apis/mark/exam-progress'
 import type { ProgressMonitorRecordResponse } from '@/apis/mark/marking-quality'
 import type { ExamQuestionAnalysisRecordResponse } from '@/apis/mark/question-analysis'
+import type {
+  ClassWeaknessItemResponse,
+  StudentLearningDiagnosisItemResponse,
+  TeachingImprovementItemResponse,
+} from '@/apis/mark/teaching-analysis'
 import type { BadgeTone, UiBarChartItem, UiScatterSeries, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import type { MarkHeatmapCell } from '@/utils/mark-echarts-options'
 import { CourseObjectiveDimensionDescription } from '@/apis/mark/cross-exam-analysis'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
+import {
+  TEACHING_IMPROVEMENT_SEVERITY_TONE,
+  TeachingImprovementSeverityDescription,
+} from '@/apis/mark/teaching-analysis'
+import { TeachingImprovementSeverityCode } from '@/types/enums/teaching-improvement-severity-enum'
 import { formatScore, formatScorePercent } from '@/utils/format'
 import { rateTone } from '@/utils/score-tone'
-import { strictEnumLabel } from '@/utils/strict-enum'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 /** UiScatterChart 区段色：canvas/SVG 不解析 CSS 变量，故用十六进制单一真源，取值与 --dp/--ant 主题色对齐 */
 const CHART_PALETTE: Record<string, string> = {
@@ -291,6 +301,69 @@ export function scoreSheetToHeatmapCells(
       key: question.layoutQuestionId,
       label: String(question.questionNo),
       value: percent,
+    }
+  })
+}
+
+/** 教学改进项 → 按严重程度计数的柱状条目 */
+export function teachingImprovementToBarItems(
+  items: TeachingImprovementItemResponse[],
+): UiBarChartItem[] {
+  if (items.length === 0) {
+    return []
+  }
+  const severityOrder: TeachingImprovementSeverityCode[] = [
+    TeachingImprovementSeverityCode.HIGH,
+    TeachingImprovementSeverityCode.MEDIUM,
+    TeachingImprovementSeverityCode.LOW,
+  ]
+  const counts = new Map<TeachingImprovementSeverityCode, number>()
+  for (const item of items) {
+    const severity = item.severity ?? TeachingImprovementSeverityCode.MEDIUM
+    counts.set(severity, (counts.get(severity) ?? 0) + 1)
+  }
+  return severityOrder
+    .filter((severity) => (counts.get(severity) ?? 0) > 0)
+    .map((severity) => ({
+      key: severity,
+      label: strictEnumLabel(TeachingImprovementSeverityDescription, severity, '严重程度'),
+      value: counts.get(severity) ?? 0,
+      tone: strictEnumTone(TEACHING_IMPROVEMENT_SEVERITY_TONE, severity, '严重程度'),
+    }))
+}
+
+/** 班级薄弱题型 → 得分率横向柱图条目（百分制） */
+export function classWeaknessToBarItems(items: ClassWeaknessItemResponse[]): UiBarChartItem[] {
+  if (items.length === 0) {
+    return []
+  }
+  return items.map((item, index) => {
+    const rate = toPercent(item.avgScoreRate)
+    return {
+      key: item.questionType || `weak-${index}`,
+      label: strictEnumLabel(QuestionTypeDescription, item.questionType, '题目类型'),
+      value: rate ?? 0,
+      tone: item.avgScoreRate == null ? 'gray' : rateTone(item.avgScoreRate),
+      helper: formatPercentText(item.avgScoreRate),
+    }
+  })
+}
+
+/** 学生学情诊断 → 各题型得分率柱图条目（百分制） */
+export function studentDiagnosisToBarItems(
+  items: StudentLearningDiagnosisItemResponse[],
+): UiBarChartItem[] {
+  if (items.length === 0) {
+    return []
+  }
+  return items.map((item, index) => {
+    const rate = toPercent(Number(item.scoreRate))
+    return {
+      key: `${item.questionType}-${index}`,
+      label: strictEnumLabel(QuestionTypeDescription, item.questionType, '题目类型'),
+      value: rate ?? 0,
+      tone: rate == null ? 'gray' : rateTone(Number(item.scoreRate)),
+      helper: formatPercentText(Number(item.scoreRate)),
     }
   })
 }

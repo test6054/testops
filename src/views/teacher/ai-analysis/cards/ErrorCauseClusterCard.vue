@@ -25,7 +25,7 @@
     <AiAnalysisCardBody
       :loading="loading"
       :generating="generating"
-      :has-content="record != null"
+      :has-content="true"
       empty-description="当前没有可展示的内容，可点击重新生成"
       progress-title="AI 错因聚类分析生成中"
       :progress-waiting-text="
@@ -34,8 +34,8 @@
           : '正在等待后端返回本场考试的真实错因聚类结果。'
       "
     >
-      <div v-if="record != null" class="ai-analysis-section__body ai-analysis-section__body--flush">
-        <p v-if="record.overallSummary" class="ai-analysis-summary">{{ record.overallSummary }}</p>
+      <div class="ai-analysis-section__body ai-analysis-section__body--flush">
+        <p v-if="record?.overallSummary" class="ai-analysis-summary">{{ record.overallSummary }}</p>
 
         <MarkBarSection
           title="错因占比分布"
@@ -43,11 +43,13 @@
           :item-count="clusterBarItems.length"
           :option="clusterChartOption"
           height="280px"
+          orientation="horizontal"
+          empty-description="选定考试并生成分析后展示错因占比"
         />
 
-        <div v-if="(record.clusterItems?.length ?? 0) > 0" class="ai-cluster-grid">
+        <div v-if="(record?.clusterItems?.length ?? 0) > 0" class="ai-cluster-grid">
           <AiClusterTile
-            v-for="(item, index) in record.clusterItems"
+            v-for="(item, index) in record?.clusterItems ?? []"
             :key="`${item.causeName ?? 'cluster'}-${index}`"
             :label="clusterItemTitle(item)"
             :proportion-text="item.proportion != null ? formatPercent(item.proportion) : '—'"
@@ -58,6 +60,7 @@
         </div>
 
         <AiAnalysisMetaCollapse
+          v-if="record"
           :record="record"
           failure-fallback="AI 错因聚类分析未完成，可重新生成"
           :extra-items="[{ label: '聚类数', value: clusterCountText(record) }]"
@@ -106,6 +109,8 @@ const props = withDefaults(
   }>(),
   { embedded: false },
 )
+
+const emit = defineEmits<{ changed: [] }>()
 
 const record = ref<ErrorCauseClusterResponse | null>(null)
 const loading = ref(false)
@@ -176,6 +181,7 @@ async function handleGenerate(): Promise<void> {
       successMessage: '已生成最新错因聚类',
       onSuccess: (generated) => {
         record.value = generated
+        emit('changed')
       },
       onFailure: () => {
         record.value = null

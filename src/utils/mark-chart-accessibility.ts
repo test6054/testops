@@ -8,13 +8,13 @@ export const MARK_TREND_MIN_POINTS = 2
 
 /** mark-vue 图表空态与无障碍文案真源 */
 export const MARK_CHART_EMPTY: Record<string, string> = {
-  trendNeedMoreExams: '至少需要 2 场考试才能展示走势',
-  trendSingleExam: '本课程仅有当前 1 场考试，暂无纵向趋势可对照',
-  trendNoHistory: '该学生在本课程暂无可对照的历次成绩',
-  barNoData: '暂无柱状图数据',
-  distributionNoData: '暂无分布数据',
-  scatterNoData: '暂无散点图数据',
-  heatmapNoData: '暂无热力图数据',
+  trendNeedMoreExams: '至少需要 2 场考试；配置范围并生成分析后展示走势',
+  trendSingleExam: '本课程仅有 1 场考试，暂无纵向趋势可对照',
+  trendNoHistory: '选定学生后展示历次成绩走势',
+  barNoData: '生成分析后展示分布',
+  distributionNoData: '生成分析后展示分布',
+  scatterNoData: '全量生成题目质量分析后展示散点',
+  heatmapNoData: '生成分析后展示热力分布',
 }
 
 /** 环形进度读屏文案：指标名 + 百分比 + 可选明细 */

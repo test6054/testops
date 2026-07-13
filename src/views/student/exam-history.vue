@@ -249,6 +249,12 @@ function unpublishedScoreText(status: FinalScoreStatusCode): string {
   if (status === FinalScoreStatusCode.PUBLISHED) {
     return '--'
   }
+  if (status === FinalScoreStatusCode.CORRECTED) {
+    return '更正待重发'
+  }
+  if (status === FinalScoreStatusCode.WITHDRAWN) {
+    return '成绩已撤回'
+  }
   return '尚未公布'
 }
 

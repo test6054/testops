@@ -32,7 +32,7 @@
     <AiAnalysisCardBody
       :loading="loading"
       :generating="generating"
-      :has-content="record != null"
+      :has-content="true"
       empty-description="当前没有可展示的内容，可点击重新生成"
       progress-title="AI 教学改进方案生成中"
       :progress-waiting-text="
@@ -41,25 +41,36 @@
           : '正在等待后端返回本场考试的真实教学改进方案。'
       "
     >
-      <div v-if="record != null" class="ai-analysis-section__body ai-analysis-section__body--flush">
-        <p v-if="record.overallSummary" class="ai-analysis-summary">
-          {{ record.overallSummary }}
-        </p>
-
-        <AiRecommendationBlock
-          v-for="(item, index) in record.improvementItems ?? []"
-          :key="`${item.questionType ?? 'item'}-${index}`"
-          :area-label="item.questionType ? questionTypeLabel(item.questionType) : '教学改进'"
-          :issue="item.problemDescription"
-          :suggestion="item.suggestion ?? '—'"
-          :severity-label="item.severity ? severityLabel(item.severity) : undefined"
-          :severity-tone="item.severity ? severityTone(item.severity) : undefined"
+      <div class="ai-analysis-section__body ai-analysis-section__body--flush">
+        <MarkBarSection
+          title="改进项严重程度分布"
+          :hint="improvementChartHint"
+          :item-count="improvementBarItems.length"
+          :option="improvementChartOption"
+          height="220px"
+          empty-description="生成教学改进方案后展示各严重等级改进项数量"
         />
 
-        <AiAnalysisMetaCollapse
-          :record="record"
-          failure-fallback="AI 教学改进方案未完成，可重新生成"
-        />
+        <template v-if="record != null">
+          <p v-if="record.overallSummary" class="ai-analysis-summary">
+            {{ record.overallSummary }}
+          </p>
+
+          <AiRecommendationBlock
+            v-for="(item, index) in record.improvementItems ?? []"
+            :key="`${item.questionType ?? 'item'}-${index}`"
+            :area-label="item.questionType ? questionTypeLabel(item.questionType) : '教学改进'"
+            :issue="item.problemDescription"
+            :suggestion="item.suggestion ?? '—'"
+            :severity-label="item.severity ? severityLabel(item.severity) : undefined"
+            :severity-tone="item.severity ? severityTone(item.severity) : undefined"
+          />
+
+          <AiAnalysisMetaCollapse
+            :record="record"
+            failure-fallback="AI 教学改进方案未完成，可重新生成"
+          />
+        </template>
       </div>
     </AiAnalysisCardBody>
   </AiAnalysisCardShell>
@@ -82,14 +93,19 @@ import {
   TEACHING_IMPROVEMENT_SEVERITY_TONE,
   TeachingImprovementSeverityDescription,
 } from '@/apis/mark/teaching-analysis'
+import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import AiAnalysisCardBody from '@/components/mark/analysis/AiAnalysisCardBody.vue'
 import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.vue'
 import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCollapse.vue'
 import AiRecommendationBlock from '@/components/mark/analysis/AiRecommendationBlock.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { useAiAnalysisGenerationFeedback } from '@/composables/useAiAnalysisGenerationFeedback'
+import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { buildBarChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
+import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
+import { teachingImprovementToBarItems } from '@/utils/mark-statistics-chart'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeachingImprovementCard' })
@@ -110,6 +126,22 @@ const loading = ref(false)
 const { generating, runGeneration } = useAiAnalysisGenerationFeedback()
 
 const canShareRecord = computed(() => record.value?.analysisStatus === AiAnalysisStatusCode.SUCCESS)
+
+const improvementBarItems = computed(() =>
+  teachingImprovementToBarItems(record.value?.improvementItems ?? []),
+)
+
+const improvementChartHint = computed(() =>
+  mergeChartHint('按严重等级统计改进项', buildBarChartInsight(improvementBarItems.value)),
+)
+
+const { chartOption: improvementChartOption } = useChartOption(() =>
+  buildCategoryBarChartOption(improvementBarItems.value, {
+    yAxisName: '项数',
+    unit: '项',
+    emptyText: '暂无改进项分布',
+  }),
+)
 
 function questionTypeLabel(value: TeachingImprovementItemResponse['questionType']): string {
   return strictEnumLabel(QuestionTypeDescription, value, '题目类型')

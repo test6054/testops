@@ -306,6 +306,10 @@ function openHandleModal(
   handleOpen.value = true
 }
 
+/**
+ * 顶栏/Tab 待处理：领取前 + 处理中 + 已通过待更正（与工作台 approvedAwaitingCorrection 口径对齐）。
+ * 仅 PENDING+IN_REVIEW 会漏掉「已通过但尚未写分」的高校常见积压。
+ */
 async function loadPendingCount(): Promise<void> {
   if (!props.examId) {
     pendingCount.value = 0
@@ -313,7 +317,7 @@ async function loadPendingCount(): Promise<void> {
     return
   }
   const summary = await getReviewSummary(props.examId)
-  pendingCount.value = summary.pendingRequestCount + summary.inReviewRequestCount
+  pendingCount.value = summary.pendingRequestCount + summary.inReviewRequestCount + summary.approvedRequestCount
   emit('pending-change', pendingCount.value)
 }
 

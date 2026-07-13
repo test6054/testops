@@ -43,41 +43,44 @@
     </template>
 
     <template v-if="embedded" #actions>
-      <a-select
-        v-model:value="selectedLayoutQuestionId"
-        placeholder="选择题目"
-        class="stats-card__select stats-card__select--question"
-        :options="questionOptions"
-        :loading="questionLoading"
-        show-search
-        option-filter-prop="label"
-        allow-clear
-        @change="reload"
-      />
-      <UiButton
-        variant="outline"
-        size="sm"
-        :disabled="!selectedQuestionForCorrection"
-        @click="handleOpenSelectedQuestionCorrection"
-      >
-        修正答案并生效
-      </UiButton>
-      <UiButton
-        variant="outline"
-        size="sm"
-        :loading="generating && !generatingAllMode"
-        :disabled="!selectedLayoutQuestionId"
-        @click="handleGenerateSelected"
-      >
-        生成当前题
-      </UiButton>
-      <UiButton variant="outline" size="sm" :loading="generating" @click="handleGenerateAll">
-        全量生成
-      </UiButton>
-      <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 刷新 </UiButton>
+      <span class="question-analysis-card__ideal-hint">理想区间：难度 0.3–0.8 · 区分度 ≥ 0.4</span>
     </template>
 
     <div class="question-analysis-card" :class="{ 'question-analysis-card--embedded': embedded }">
+      <div v-if="embedded" class="question-analysis-card__toolbar">
+        <a-select
+          v-model:value="selectedLayoutQuestionId"
+          placeholder="选择题目"
+          class="stats-card__select stats-card__select--question"
+          :options="questionOptions"
+          :loading="questionLoading"
+          show-search
+          option-filter-prop="label"
+          allow-clear
+          @change="reload"
+        />
+        <UiButton
+          variant="outline"
+          size="sm"
+          :disabled="!selectedQuestionForCorrection"
+          @click="handleOpenSelectedQuestionCorrection"
+        >
+          修正答案并生效
+        </UiButton>
+        <UiButton
+          variant="outline"
+          size="sm"
+          :loading="generating && !generatingAllMode"
+          :disabled="!selectedLayoutQuestionId"
+          @click="handleGenerateSelected"
+        >
+          生成当前题
+        </UiButton>
+        <UiButton variant="primary" size="sm" :loading="generating" @click="handleGenerateAll">
+          全量生成
+        </UiButton>
+        <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 刷新 </UiButton>
+      </div>
       <UiAlertStrip
         v-if="layoutRoiGap > 0 && !generating"
         tone="warning"
@@ -98,18 +101,31 @@
       />
 
       <template v-else>
-        <MarkScatterSection
-          ref="scatterSectionRef"
-          title="难度-区分度分布"
-          :hint="scatterChartHint"
-          :point-count="scatterPointCount"
-          :option="scatterChartOption"
-          height="300px"
-          :aria-label="scatterChartAriaLabel"
-          :visible="!chartLoading"
-          class="question-analysis-card__chart"
-          @brush-selected="handleScatterBrushSelected"
-        />
+        <div class="question-analysis-card__chart-grid">
+          <MarkScatterSection
+            ref="scatterSectionRef"
+            title="难度-区分度分布"
+            :hint="scatterChartHint"
+            :point-count="scatterPointCount"
+            :option="scatterChartOption"
+            height="300px"
+            :aria-label="scatterChartAriaLabel"
+            :visible="!chartLoading"
+            class="question-analysis-card__chart"
+            @brush-selected="handleScatterBrushSelected"
+          />
+
+          <MarkBarSection
+            title="各题正确率"
+            :hint="correctRatioChartHint"
+            :item-count="correctRatioBarItems.length"
+            :option="correctRatioChartOption"
+            height="300px"
+            :aria-label="correctRatioChartAriaLabel"
+            :visible="!chartLoading"
+            class="question-analysis-card__chart"
+          />
+        </div>
 
         <section v-if="brushSelectedRows.length > 0" class="question-analysis-card__brush-list">
           <header class="question-analysis-card__brush-head">
@@ -130,17 +146,6 @@
             </li>
           </ul>
         </section>
-
-        <MarkBarSection
-          title="各题正确率"
-          :hint="correctRatioChartHint"
-          :item-count="correctRatioBarItems.length"
-          :option="correctRatioChartOption"
-          height="300px"
-          :aria-label="correctRatioChartAriaLabel"
-          :visible="!chartLoading"
-          class="question-analysis-card__chart"
-        />
 
         <a-typography-paragraph
           v-if="generationSummary"
@@ -195,17 +200,15 @@
             </a-space>
           </template>
           <template #bodyCell="{ column, record: item }">
-            <template v-if="column.key === 'question'">
-              <div class="question-analysis-card__question-cell">
-                <div class="question-analysis-card__question-title">
-                  题{{ item.questionNo }} · {{ questionTypeLabel(item.questionType) }} ·
-                  {{ fmtNum(item.fullScore) }} 分
-                </div>
-                <div v-if="item.questionStem" class="question-analysis-card__question-stem">
-                  {{ formatQuestionStemPreview(item.questionStem) }}
-                </div>
-              </div>
-            </template>
+            <ExamQuestionIdentityCells
+              v-if="
+                column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.questionType
+                  || column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.questionStem
+                  || column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.fullScore
+              "
+              :column-key="String(column.key)"
+              :record="item"
+            />
             <template v-else-if="column.key === 'difficultyIndex'">
               {{ fmtNum(item.difficultyIndex) }}
             </template>
@@ -271,6 +274,7 @@ import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkScatterSection from '@/components/chart/MarkScatterSection.vue'
 import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.vue'
+import ExamQuestionIdentityCells from '@/components/mark/analysis/ExamQuestionIdentityCells.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { buildNumericColumn } from '@/components/ui-guide/ui/data-table'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -287,6 +291,10 @@ import {
   mergeChartHint,
 } from '@/utils/mark-chart-insights'
 import { buildCategoryBarChartOption, buildScatterChartOption } from '@/utils/mark-echarts-options'
+import {
+  buildExamQuestionIdentityColumns,
+  EXAM_QUESTION_IDENTITY_COLUMN_KEYS,
+} from '@/utils/mark-exam-question-table-columns'
 import {
   buildQuestionQualityScatterSeries,
   correctRatioToBarItems,
@@ -384,7 +392,7 @@ function clearQuestionFilter(): void {
 }
 
 const columns: ColumnType<ExamQuestionAnalysisRecordResponse>[] = [
-  { title: '题目', key: 'question', width: 260, fixed: 'left' },
+  ...buildExamQuestionIdentityColumns<ExamQuestionAnalysisRecordResponse>(),
   buildNumericColumn({ title: '总人数', dataIndex: 'totalCount', key: 'totalCount', width: 90 }),
   { title: '正确率', key: 'correctRatio', width: 110, align: 'right' },
   buildNumericColumn({
@@ -392,11 +400,22 @@ const columns: ColumnType<ExamQuestionAnalysisRecordResponse>[] = [
     dataIndex: 'needReviewCount',
     key: 'needReviewCount',
     width: 90,
+    meta: { hideBelow: 'md' },
   }),
-  buildNumericColumn({ title: '难度系数', key: 'difficultyIndex', width: 110 }),
-  buildNumericColumn({ title: '区分度', key: 'discriminationIndex', width: 100 }),
-  { title: '平均分/满分', key: 'avgScore', width: 140, align: 'right' },
-  { title: '快照时间', key: 'snapshotTime', width: 160 },
+  buildNumericColumn({
+    title: '难度系数',
+    key: 'difficultyIndex',
+    width: 110,
+    meta: { hideBelow: 'md' },
+  }),
+  buildNumericColumn({
+    title: '区分度',
+    key: 'discriminationIndex',
+    width: 100,
+    meta: { hideBelow: 'md' },
+  }),
+  { title: '平均分/满分', key: 'avgScore', width: 140, align: 'right', meta: { hideBelow: 'lg' } },
+  { title: '快照时间', key: 'snapshotTime', width: 160, meta: { hideBelow: 'lg' } },
   { title: '操作', key: 'actions', width: 190 },
 ]
 
@@ -633,11 +652,6 @@ function acceptQuestionAnalysisRows(
 function fmtNum(v?: number): string {
   if (v == null) return '-'
   return Number(v).toFixed(2)
-}
-
-/** 表格题干预览：超长截断，空值由调用方 v-if 控制不展示。 */
-function formatQuestionStemPreview(stem: string): string {
-  return stem.length > 36 ? `${stem.slice(0, 36)}...` : stem
 }
 
 function correctRatio(r: ExamQuestionAnalysisRecordResponse): string {

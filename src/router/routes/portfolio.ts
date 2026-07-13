@@ -97,6 +97,18 @@ export const portfolioRoutes: RouteRecordRaw[] = [
     },
     children: [
       {
+        path: 'scan-ops',
+        name: 'PortfolioScanOps',
+        component: () => import('@/views/portfolio/portfolio-scan-ops.vue'),
+        meta: {
+          title: '档案袋扫描运营',
+          ...PORTFOLIO_ADMIN_ROUTE_META,
+          icon: 'scan',
+          hideInMenu: true,
+          keepAlive: true,
+        },
+      },
+      {
         path: 'teacher/home',
         name: 'PortfolioTeacherHome',
         component: () => import('@/views/portfolio/teacher-home.vue'),

@@ -467,9 +467,18 @@ async function submit(): Promise<void> {
       reason: form.reason.trim(),
       reviewRequestId: request.id,
     })
-    const successMessage = form.layoutQuestionId
+    let successMessage = form.layoutQuestionId
       ? '单题更正已执行，题目统计已同步刷新'
       : '总分更正已执行'
+    const remaining = result.remainingUncorrectedQuestionCount ?? 0
+    if (form.layoutQuestionId && remaining > 0) {
+      successMessage = `单题更正已执行，同申请尚有 ${remaining} 题待更正，申请仍保持已通过`
+    } else if (
+      form.layoutQuestionId
+      && result.reviewRequestStatusAfterCorrection === GradeReviewRequestStatusCode.CORRECTED
+    ) {
+      successMessage = '单题更正已执行，申请范围内题目均已更正'
+    }
     message.success(successMessage)
     createOpen.value = false
     await reload()
@@ -523,3 +532,4 @@ watch(
   { immediate: true },
 )
 </script>
+

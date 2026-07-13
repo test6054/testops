@@ -383,7 +383,7 @@ function handleMetricClick(key: string) {
   }
   if (key === 'committing') {
     window.open(
-      '/teacher/scanner-center?tab=exception&kind=COMMITTING',
+      '/teacher/archive-volumes/scan-ops?tab=exception&kind=COMMITTING',
       '_blank',
       'noopener,noreferrer',
     )

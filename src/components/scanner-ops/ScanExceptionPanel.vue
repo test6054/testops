@@ -3,7 +3,7 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ScannerExceptionDashboardItemVO } from '@/apis/mark/scanner-dispatch'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { dismissScanBatchCollateAttention, retryScanBatchPageRegister } from '@/apis/mark/exam-scan'
 import {
@@ -25,6 +25,7 @@ import {
   PageRegisterStateCode,
   PageRegisterStateDescription,
 } from '@/types/enums/page-register-state-enum'
+import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import {
   ScannerExceptionItemKindCode,
   ScannerExceptionItemKindDescription,
@@ -34,10 +35,12 @@ import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ScanDispatchForceReleaseDialog from '@/views/teacher/archive-volume/components/ScanDispatchForceReleaseDialog.vue'
 
-defineOptions({ name: 'ScannerExceptionPanel' })
+defineOptions({ name: 'ScanExceptionPanel' })
 
 const props = defineProps<{
   initialKind?: string
+  taskKind?: ScanTaskKindCode
+  examId?: string
 }>()
 
 const emit = defineEmits<{
@@ -50,6 +53,23 @@ type ExceptionDashboardRowKind = ScannerExceptionItemKindCode
 interface ExceptionDashboardRow extends ScannerExceptionDashboardItemVO {
   rowKey: string
 }
+
+const EXAM_EXCEPTION_KINDS: readonly ScannerExceptionItemKindCode[] = [
+  ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED,
+  ScannerExceptionItemKindCode.PARTIAL_TAIL,
+]
+
+const DISPATCH_EXCEPTION_KINDS: readonly ScannerExceptionItemKindCode[] = [
+  ScannerExceptionItemKindCode.TICKET,
+  ScannerExceptionItemKindCode.WORK_ORDER,
+  ScannerExceptionItemKindCode.COMMITTING,
+]
+
+const isExamScope = computed(() => Boolean(props.examId?.trim()))
+
+const availableKindFilters = computed(() =>
+  isExamScope.value ? EXAM_EXCEPTION_KINDS : DISPATCH_EXCEPTION_KINDS,
+)
 
 const router = useRouter()
 const route = useRoute()
@@ -110,6 +130,16 @@ function toExceptionDashboardRow(item: ScannerExceptionDashboardItemVO): Excepti
   return { ...item, rowKey: buildRowKey(item) }
 }
 
+function resolveApiTaskKind(): ScanTaskKindCode | undefined {
+  if (props.taskKind) {
+    return props.taskKind
+  }
+  if (props.examId) {
+    return ScanTaskKindCode.EXAM_MARKING
+  }
+  return undefined
+}
+
 async function loadPage() {
   const generation = ++pageLoadGeneration
   loading.value = true
@@ -118,6 +148,8 @@ async function loadPage() {
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
       itemKind: itemKindFilter.value,
+      taskKind: resolveApiTaskKind(),
+      examId: props.examId,
     })
     if (generation !== pageLoadGeneration) {
       return
@@ -162,8 +194,10 @@ function applyRouteKindFilter() {
     || kind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED
     || kind === ScannerExceptionItemKindCode.PARTIAL_TAIL
   ) {
-    itemKindFilter.value = kind
-    return
+    if (availableKindFilters.value.includes(kind)) {
+      itemKindFilter.value = kind
+      return
+    }
   }
   itemKindFilter.value = undefined
 }
@@ -425,28 +459,21 @@ function openOperationLogs(row: ExceptionDashboardRow) {
   })
 }
 
-function navigateWorkOrderByTaskKind(row: ExceptionDashboardRow) {
-  if (row.taskKind === 'EXAM_ARCHIVE' && row.contextVolumeId) {
+function navigateArchiveWorkOrder(row: ExceptionDashboardRow) {
+  if (row.contextVolumeId) {
     void router.push({
       name: 'TeacherArchiveVolumeDetail',
       params: { volumeId: row.contextVolumeId },
     })
+  }
+}
+
+function navigatePortfolioWorkOrder(row: ExceptionDashboardRow) {
+  if (row.contextGapTaskId) {
+    void router.push({ name: 'PortfolioTeacherGap', params: { taskId: row.contextGapTaskId } })
     return
   }
-  if (row.taskKind === 'EXAM_MARKING' && row.contextExamId) {
-    void router.push({
-      name: 'TeacherExamWorkspaceScanBatches',
-      params: { examId: row.contextExamId },
-    })
-    return
-  }
-  if (row.taskKind === 'PORTFOLIO_COLLECT') {
-    if (row.contextGapTaskId) {
-      void router.push({ name: 'PortfolioTeacherGap', params: { taskId: row.contextGapTaskId } })
-      return
-    }
-    void router.push({ path: '/portfolio/teacher/gap' })
-  }
+  void router.push({ path: '/portfolio/teacher/gap' })
 }
 
 function openWorkOrderTarget(row: ExceptionDashboardRow) {
@@ -454,7 +481,7 @@ function openWorkOrderTarget(row: ExceptionDashboardRow) {
     void router.push({ path: `/scanner-kiosk/dispatch/${row.ticketId}` })
     return
   }
-  const batchExamId = row.contextExamId ?? row.examId
+  const batchExamId = props.examId ?? row.contextExamId ?? row.examId
   if (
     row.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED
     && batchExamId
@@ -481,7 +508,13 @@ function openWorkOrderTarget(row: ExceptionDashboardRow) {
     row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER
     || row.itemKind === ScannerExceptionItemKindCode.COMMITTING
   ) {
-    navigateWorkOrderByTaskKind(row)
+    if (props.taskKind === ScanTaskKindCode.EXAM_ARCHIVE) {
+      navigateArchiveWorkOrder(row)
+      return
+    }
+    if (props.taskKind === ScanTaskKindCode.PORTFOLIO_COLLECT) {
+      navigatePortfolioWorkOrder(row)
+    }
   }
 }
 
@@ -556,7 +589,7 @@ onMounted(() => {
 })
 
 watch(
-  () => props.initialKind ?? route.query.kind,
+  () => [props.initialKind, route.query.kind, props.taskKind, props.examId],
   () => {
     applyRouteKindFilter()
     pagination.current = 1
@@ -566,10 +599,10 @@ watch(
 </script>
 
 <template>
-  <div class="scanner-exception-panel">
+  <div class="scan-exception-panel">
     <WorkbenchSurfaceCard flush>
       <template #toolbar>
-        <div class="scanner-exception-panel__filters">
+        <div class="scan-exception-panel__filters">
           <UiButton
             size="sm"
             :variant="itemKindFilter === undefined ? 'primary' : 'outline'"
@@ -578,51 +611,13 @@ watch(
             全部
           </UiButton>
           <UiButton
+            v-for="kind in availableKindFilters"
+            :key="kind"
             size="sm"
-            :variant="
-              itemKindFilter === ScannerExceptionItemKindCode.TICKET ? 'primary' : 'outline'
-            "
-            @click="filterByKind(ScannerExceptionItemKindCode.TICKET)"
+            :variant="itemKindFilter === kind ? 'primary' : 'outline'"
+            @click="filterByKind(kind)"
           >
-            派单
-          </UiButton>
-          <UiButton
-            size="sm"
-            :variant="
-              itemKindFilter === ScannerExceptionItemKindCode.WORK_ORDER ? 'primary' : 'outline'
-            "
-            @click="filterByKind(ScannerExceptionItemKindCode.WORK_ORDER)"
-          >
-            工单
-          </UiButton>
-          <UiButton
-            size="sm"
-            :variant="
-              itemKindFilter === ScannerExceptionItemKindCode.COMMITTING ? 'primary' : 'outline'
-            "
-            @click="filterByKind(ScannerExceptionItemKindCode.COMMITTING)"
-          >
-            合成中
-          </UiButton>
-          <UiButton
-            size="sm"
-            :variant="
-              itemKindFilter === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED
-                ? 'primary'
-                : 'outline'
-            "
-            @click="filterByKind(ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED)"
-          >
-            页登记阻断
-          </UiButton>
-          <UiButton
-            size="sm"
-            :variant="
-              itemKindFilter === ScannerExceptionItemKindCode.PARTIAL_TAIL ? 'primary' : 'outline'
-            "
-            @click="filterByKind(ScannerExceptionItemKindCode.PARTIAL_TAIL)"
-          >
-            余页未切卷
+            {{ itemKindLabel(kind) }}
           </UiButton>
         </div>
       </template>
@@ -646,9 +641,7 @@ watch(
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'itemKind'">
             <UiTag :tone="itemKindTone(record.itemKind)" size="sm">
-              {{
-                itemKindLabel(record.itemKind)
-              }}
+              {{ itemKindLabel(record.itemKind) }}
             </UiTag>
           </template>
           <template v-else-if="column.key === 'identifier'">
@@ -691,7 +684,7 @@ watch(
 </template>
 
 <style scoped>
-.scanner-exception-panel__filters {
+.scan-exception-panel__filters {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;

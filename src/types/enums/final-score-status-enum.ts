@@ -19,7 +19,7 @@ export const ALL_FINAL_SCORE_STATUS_CODES: readonly FinalScoreStatusCode[] = [
 
 export const FinalScoreStatusDescription: Record<FinalScoreStatusCode, string> = {
   [FinalScoreStatusCode.PENDING]: '待计算',
-  [FinalScoreStatusCode.CALCULATED]: '已计算',
+  [FinalScoreStatusCode.CALCULATED]: 'AI预估待确认',
   [FinalScoreStatusCode.CONFIRMED]: '已确认',
   [FinalScoreStatusCode.CORRECTED]: '已更正',
   [FinalScoreStatusCode.PUBLISHED]: '已发布',

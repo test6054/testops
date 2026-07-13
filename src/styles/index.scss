@@ -26,7 +26,7 @@
   @include meta.load-css('global/prototype-workbench');
   @include meta.load-css('workbench/exam-workspace-shell');
   @include meta.load-css('workbench/analysis-center');
-  @include meta.load-css('workbench/scanner-center');
+  @include meta.load-css('workbench/scan-ops');
   @include meta.load-css('global/focus');
   @include meta.load-css('global/reduced-motion');
 }

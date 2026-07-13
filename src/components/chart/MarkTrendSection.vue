@@ -5,27 +5,23 @@
       <span v-if="hint" class="mark-trend-section__hint">{{ hint }}</span>
     </header>
     <MarkChart
-      v-if="ready"
-      :option="option"
+      :option="resolvedOption"
       :height="height"
       :aria-label="resolvedAriaLabel"
       class="mark-trend-section__canvas"
     />
-    <div v-else class="mark-trend-section__empty">
-      <UiEmpty size="sm" :description="emptyMessage" />
-    </div>
   </section>
 </template>
 
 <script lang="ts" setup>
 import type { EChartsCoreOption } from 'echarts/core'
 import { computed } from 'vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import {
   formatTrendAriaLabel,
   MARK_CHART_EMPTY,
   MARK_TREND_MIN_POINTS,
 } from '@/utils/mark-chart-accessibility'
+import { resolveMarkChartSectionOption } from '@/utils/mark-echarts-options'
 import MarkChart from './MarkChart.vue'
 
 defineOptions({ name: 'MarkTrendSection' })
@@ -60,15 +56,16 @@ const props = withDefaults(
 
 const ready = computed(() => props.pointCount >= props.minPoints)
 
-const emptyMessage = computed(() => {
+const emptyCaption = computed(() => {
   if (props.pointCount === 1) {
     return props.singlePointDescription
   }
-  if (props.pointCount <= 0) {
-    return props.emptyDescription
-  }
   return props.emptyDescription
 })
+
+const resolvedOption = computed(() =>
+  resolveMarkChartSectionOption(ready.value, props.option, 'trend', emptyCaption.value),
+)
 
 const resolvedAriaLabel = computed(() => {
   if (props.ariaLabel.trim()) {

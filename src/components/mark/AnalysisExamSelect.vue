@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { ExamSummaryResponse } from '@/apis/mark/exam'
-import { ReloadOutlined } from '@ant-design/icons-vue'
 import { onMounted, ref, watch } from 'vue'
 import { pageExams } from '@/apis/mark/exam'
 import { formatAcademicYearSemester } from '@/types/enums/semester-enum'
@@ -123,32 +122,16 @@ onMounted(loadExamOptions)
         }
       "
     />
-    <a-button
-      class="analysis-exam-select__reload"
-      size="small"
-      :loading="loading"
-      title="刷新考试列表"
-      @click="() => loadExamOptions()"
-    >
-      <template #icon><ReloadOutlined /></template>
-    </a-button>
   </div>
 </template>
 
 <style scoped lang="scss">
 .analysis-exam-select {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 320px;
+  width: 100%;
+  min-width: 0;
 
   :deep(.ant-select) {
-    flex: 1;
-    min-width: 0;
+    width: 100%;
   }
-}
-
-.analysis-exam-select__reload {
-  flex: 0 0 auto;
 }
 </style>

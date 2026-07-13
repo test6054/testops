@@ -5,24 +5,20 @@
       <span v-if="hint" class="mark-distribution-section__hint">{{ hint }}</span>
     </header>
     <MarkChart
-      v-if="ready"
-      :option="option"
+      :option="resolvedOption"
       variant="distribution"
       :height="height"
       :aria-label="resolvedAriaLabel"
       class="mark-distribution-section__canvas"
     />
-    <div v-else class="mark-distribution-section__empty">
-      <UiEmpty size="sm" :description="emptyDescription" />
-    </div>
   </section>
 </template>
 
 <script lang="ts" setup>
 import type { EChartsCoreOption } from 'echarts/core'
 import { computed } from 'vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import { MARK_CHART_EMPTY } from '@/utils/mark-chart-accessibility'
+import { resolveMarkChartSectionOption } from '@/utils/mark-echarts-options'
 import MarkChart from './MarkChart.vue'
 
 defineOptions({ name: 'MarkDistributionSection' })
@@ -48,6 +44,15 @@ const props = withDefaults(
 )
 
 const ready = computed(() => props.total > 0)
+
+const resolvedOption = computed(() =>
+  resolveMarkChartSectionOption(
+    ready.value,
+    props.option,
+    'distribution',
+    props.emptyDescription,
+  ),
+)
 
 const resolvedAriaLabel = computed(() => {
   if (props.ariaLabel.trim()) {

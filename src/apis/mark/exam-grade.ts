@@ -44,10 +44,22 @@ export interface ExamPaperScoreResponse {
   studentUserId: string
   studentNo: string
   studentName: string
+  /** 正式卷面分；CALCULATED 不返回 */
   examScore?: number
   dailyScore?: number
+  /** 正式总分；CALCULATED 不返回 */
   totalScore?: number
+  /** AI 预估卷面分（非正式） */
+  estimatedExamScore?: number
+  /** AI 预估总分（非正式） */
+  estimatedTotalScore?: number
   finalScoreStatus: FinalScoreStatusCode
+  /** 题目教师复核评分之和；总分更正后可能与 examScore 不同 */
+  questionScoreSum?: number
+  /** 题分之和是否等于正式考试分 */
+  questionScoreSumMatchesExamScore?: boolean
+  /** 最近一次已执行更正是否为总分更正；true 时官方卷面分以 examScore/totalScore 为准 */
+  latestTotalScoreCorrectionApplied?: boolean
   questions?: ExamQuestionScoreResponse[]
 }
 

@@ -1,14 +1,12 @@
 <template>
-  <AiAnalysisCardShell :embedded="embedded" title="重判计划" card-class="stats-card">
+  <AiAnalysisCardShell
+    :embedded="embedded"
+    :headless="embedded"
+    title="重判计划"
+    card-class="stats-card"
+  >
     <template v-if="!embedded" #head>
       <h3 class="stats-card__title">重判计划</h3>
-    </template>
-    <template v-if="!embedded" #toolbar>
-      <UiTag tone="blue" size="sm">全考试治理</UiTag>
-    </template>
-
-    <template v-if="embedded" #actions>
-      <UiTag tone="blue" size="sm">全考试治理</UiTag>
     </template>
 
     <div class="rejudge-plan-card" :class="{ 'rejudge-plan-card--embedded': embedded }">
@@ -32,6 +30,9 @@
         row-key="id"
         size="small"
         :total="pagination.total"
+        :empty-kind="tableEmptyKind"
+        :empty-title="tableEmptyTitle"
+        :empty-description="tableEmptyDescription"
         flat
         @page-change="handlePageChange"
       >
@@ -200,6 +201,19 @@ const rejectReason = ref('')
 const executeModalOpen = ref(false)
 const executePlanId = ref<string>('')
 const executeReason = ref('')
+
+const tableEmptyKind = computed(() => (filterForm.status ? 'no-result' : 'first-run'))
+
+const tableEmptyTitle = computed(() =>
+  filterForm.status ? '无匹配计划' : '暂无重判计划',
+)
+
+const tableEmptyDescription = computed(() => {
+  if (filterForm.status) {
+    return '当前筛选状态下暂无重判计划，请调整状态或等待系统根据答案修正与题目质量诊断自动触发。'
+  }
+  return '本场考试尚未产生重判任务；当教师修正标准答案或治理低质量题目时，系统将自动生成待审批计划。'
+})
 
 const columns: ColumnType<ExamRejudgePlan>[] = [
   { title: '触发类型', key: 'triggerType', width: 110, fixed: 'left' },

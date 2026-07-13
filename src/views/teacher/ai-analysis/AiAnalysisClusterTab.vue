@@ -1,51 +1,41 @@
 <script setup lang="ts">
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import ErrorCauseClusterCard from '@/views/teacher/ai-analysis/cards/ErrorCauseClusterCard.vue'
-import ExamQuestionCourseGoalMappingCard from '@/views/teacher/ai-analysis/cards/ExamQuestionCourseGoalMappingCard.vue'
-import QuestionAnalysisCard from '@/views/teacher/ai-analysis/cards/QuestionAnalysisCard.vue'
-import RejudgePlanCard from '@/views/teacher/ai-analysis/cards/RejudgePlanCard.vue'
+import type { AiAnalysisClusterSignalResponse } from '@/apis/mark/analysis-center'
+import { computed } from 'vue'
+import AiAnalysisExamScopePanel from '@/components/mark/analysis/AiAnalysisExamScopePanel.vue'
+import { useAiAnalysisScopeContext } from '@/composables/useAiAnalysisScope'
+import AiAnalysisClusterWorkbench from '@/views/teacher/ai-analysis/AiAnalysisClusterWorkbench.vue'
 
 defineProps<{
-  examId?: string
   reloadToken: number
-  classId?: string
+  clusterSignal?: AiAnalysisClusterSignalResponse | null
 }>()
 
 const emit = defineEmits<{
   changed: []
 }>()
 
-function handleClusterDataChanged(): void {
-  emit('changed')
-}
+const { examId, classId } = useAiAnalysisScopeContext()
+
+const resolvedExamId = computed(() => examId.value)
 </script>
 
 <template>
-  <UiEmpty v-if="!examId" description="请选择考试后查看错因聚类与题目分析" />
-  <div v-else class="ai-analysis-cluster-tab">
-    <ErrorCauseClusterCard
-      :exam-id="examId"
+  <div class="ai-analysis-cluster-tab">
+    <AiAnalysisExamScopePanel />
+    <AiAnalysisClusterWorkbench
+      :exam-id="resolvedExamId"
       :reload-token="reloadToken"
       :class-id="classId"
-      embedded
-    />
-    <QuestionAnalysisCard
-      :exam-id="examId"
-      :reload-token="reloadToken"
-      :class-id="classId"
-      embedded
-      @generated="handleClusterDataChanged"
-    />
-    <ExamQuestionCourseGoalMappingCard
-      :exam-id="examId"
-      :reload-token="reloadToken"
-      embedded
-    />
-    <RejudgePlanCard
-      :exam-id="examId"
-      :reload-token="reloadToken"
-      embedded
-      @changed="handleClusterDataChanged"
+      :cluster-signal="clusterSignal"
+      @changed="emit('changed')"
     />
   </div>
 </template>
+
+<style scoped lang="scss">
+.ai-analysis-cluster-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+</style>

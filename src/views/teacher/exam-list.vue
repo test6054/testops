@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="考试列表" :subtitle="pageSubtitle">
+      <ContextBar layout="workbench" show-title title="考试列表">
         <template #status>
           <a-select
             v-model:value="filterForm.academicYear"
@@ -490,17 +490,6 @@ const semesterSelectOptions = computed(() =>
 const statusSelectOptions = computed(() =>
   buildMarkDashboardStatusSelectOptions(dashboardFilterOptions.value?.statuses),
 )
-
-const pageSubtitle = computed(() => {
-  const parts: string[] = []
-  if (filterForm.academicYear) parts.push(filterForm.academicYear)
-  if (filterForm.semester) parts.push(formatSemester(filterForm.semester))
-  if (filterForm.status) {
-    parts.push(strictEnumLabel(ExamStatusDescription, filterForm.status, '考试状态'))
-  }
-  const scope = parts.length ? parts.join(' · ') : '全部学年学期'
-  return `${scope} · 共 ${allBadgeTotal.value} 场考试`
-})
 
 const filterFields = computed<FilterField[]>(() => [
   {

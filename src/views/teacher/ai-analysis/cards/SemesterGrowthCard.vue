@@ -2,91 +2,69 @@
   <AiAnalysisSection title="AI 学期能力成长曲线">
     <template #actions>
       <AiAnalysisHistorySelect v-model="historySelectedId" :rows="historyRows" :loading="loading" />
+      <UiRadioGroup
+        v-model="form.examScopeMode"
+        size="sm"
+        :options="examScopeModeOptions"
+      />
       <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 查看历史 </UiButton>
       <UiButton variant="primary" size="sm" :loading="generating" @click="handleGenerate">
         生成成长曲线
       </UiButton>
     </template>
 
-    <AiAnalysisConfigCollapse title="成长分析范围">
-      <div class="ai-form">
-        <a-form layout="inline" :model="form" size="small">
-          <a-form-item label="开课学年">
-            <AnalysisSemesterSelect
-              v-model:academic-year="form.teachingAcademicYear"
-              v-model:semester="form.teachingSemester"
-              term-source="TEACHING"
-              :allow-clear="false"
-              :default-recent-semester-count="defaultRecentSemesterCount"
-            />
-          </a-form-item>
-          <a-form-item label="考试范围">
-            <a-radio-group v-model:value="form.examScopeMode" size="small">
-              <a-radio-button value="AUTO">按开课学期自动选考</a-radio-button>
-              <a-radio-button value="MANUAL">手动选择考试</a-radio-button>
-            </a-radio-group>
-          </a-form-item>
-          <a-form-item v-if="form.examScopeMode === 'AUTO'" label="课程">
-            <span v-if="scopeOrgCourseId?.trim()" class="scope-hint">{{
-              scopeCourseLabel || form.courseId || '—'
-            }}</span>
-            <CatalogCourseSelector
-              v-else
-              v-model:value="form.courseId"
-              placeholder="请选择课程"
-              :allow-clear="false"
-              width="240px"
-            />
-          </a-form-item>
-          <a-form-item label="班级">
-            <ClassSelector
-              v-if="form.examScopeMode === 'AUTO'"
-              v-model:value="form.classId"
-              :department-id="examSelectScopeReferenceDepartmentId"
-              placeholder="请选择班级"
-              :allow-clear="false"
-              width="240px"
-            />
-            <a-select
-              v-else
-              v-model:value="form.classId"
-              :options="classOptions"
-              :loading="classLoading"
-              placeholder="请选择所选考试共有班级"
-              show-search
-              option-filter-prop="label"
-              allow-clear
-              style="width: 240px"
-            />
-          </a-form-item>
-          <a-form-item
-            v-if="form.examScopeMode === 'MANUAL'"
-            label="参与考试列表"
-            style="flex: 1; min-width: 360px"
-          >
-            <AnalysisExamMultiSelect
-              v-if="form.teachingAcademicYear && form.teachingSemester"
-              v-model="form.examIds"
-              :scope-course-id="examSelectScopeCourseId"
-              :scope-teaching-academic-year="form.teachingAcademicYear"
-              :scope-teaching-semester="form.teachingSemester"
-              :scope-class-id="examSelectScopeClassId"
-              :scope-reference-department-id="examSelectScopeReferenceDepartmentId"
-              placeholder="请选择至少 2 场考试"
-              @selected-exams-change="selectedExams = $event"
-            />
-            <span v-else class="text-muted">请先选择开课学年与学期</span>
-          </a-form-item>
-        </a-form>
-      </div>
-    </AiAnalysisConfigCollapse>
+    <UiFilterBar
+      v-if="showGrowthFilterBar"
+      v-model="growthFilterModel"
+      :fields="growthFilterFields"
+      variant="plain"
+      show-labels
+      search-text="应用"
+      reset-text="清空考试"
+      @search="() => {}"
+      @reset="handleGrowthFilterReset"
+    >
+      <template #field-classId>
+        <ClassSelector
+          v-if="form.examScopeMode === 'AUTO'"
+          v-model:value="form.classId"
+          :department-id="examSelectScopeReferenceDepartmentId"
+          placeholder="请选择班级"
+          :allow-clear="false"
+          width="100%"
+        />
+        <a-select
+          v-else
+          v-model:value="form.classId"
+          :options="classOptions"
+          :loading="classLoading"
+          placeholder="请选择所选考试共有班级"
+          show-search
+          option-filter-prop="label"
+          allow-clear
+        />
+      </template>
+      <template #field-examIds>
+        <AnalysisExamMultiSelect
+          v-model="form.examIds"
+          :disabled="!growthExamSelectReady"
+          disabled-title="请先在上方范围栏选择学年与学期"
+          :scope-course-id="examSelectScopeCourseId"
+          :scope-teaching-academic-year="effectiveTeachingAcademicYear"
+          :scope-teaching-semester="effectiveTeachingSemester"
+          :scope-class-id="examSelectScopeClassId"
+          :scope-reference-department-id="examSelectScopeReferenceDepartmentId"
+          placeholder="请选择至少 2 场考试"
+          @selected-exams-change="selectedExams = $event"
+        />
+      </template>
+    </UiFilterBar>
 
     <UiSkeletonState v-if="loading || generating" variant="card" compact />
-    <UiEmpty v-else-if="!record" description="配置范围后生成或查看学期成长曲线" />
-    <div v-else-if="record" class="ai-analysis-section__body ai-analysis-section__body--flush">
-      <div v-if="record.growthSummary || record.growthTrend" class="ai-analysis-summary-row">
-        <p v-if="record.growthSummary" class="ai-analysis-summary">{{ record.growthSummary }}</p>
-        <UiTag v-if="record.growthTrend" :tone="trendColor(record.growthTrend)" size="sm">
+    <div v-else class="ai-analysis-section__body ai-analysis-section__body--flush">
+      <div v-if="record?.growthSummary || record?.growthTrend" class="ai-analysis-summary-row">
+        <p v-if="record?.growthSummary" class="ai-analysis-summary">{{ record.growthSummary }}</p>
+        <UiTag v-if="record?.growthTrend" :tone="trendColor(record.growthTrend)" size="sm">
           {{ trendLabel(record.growthTrend) }}
         </UiTag>
       </div>
@@ -137,6 +115,7 @@
       </div>
 
       <AiAnalysisMetaCollapse
+        v-if="record"
         :record="record"
         failure-fallback="AI 学期能力成长分析未完成，可重新生成"
         :extra-items="metaExtraItems"
@@ -151,7 +130,7 @@ import type {
   SemesterGrowthTrendCode,
 } from '@/apis/mark/cross-exam-analysis'
 import type { ExamSummaryResponse } from '@/apis/mark/exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
@@ -168,17 +147,15 @@ import {
 } from '@/apis/mark/cross-exam-analysis'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
-import AiAnalysisConfigCollapse from '@/components/mark/analysis/AiAnalysisConfigCollapse.vue'
 import AiAnalysisHistorySelect from '@/components/mark/analysis/AiAnalysisHistorySelect.vue'
 import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCollapse.vue'
 import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
-import AnalysisSemesterSelect from '@/components/mark/AnalysisSemesterSelect.vue'
-import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
 import { useChartOption } from '@/hooks/modules/useChartOption'
@@ -208,7 +185,6 @@ defineOptions({ name: 'SemesterGrowthCard' })
 
 const props = withDefaults(
   defineProps<{
-    defaultRecentSemesterCount?: number
     drillClassId?: string | null
     drillClassLabel?: string
     scopeReferenceDepartmentId?: string | null
@@ -216,12 +192,8 @@ const props = withDefaults(
     scopeOrgClassId?: string | null
     scopeAcademicYear?: string
     scopeSemester?: SemesterCode
-    examScopeLocked?: boolean
-    scopeTermLabel?: string
-    scopeCourseLabel?: string
   }>(),
   {
-    defaultRecentSemesterCount: 0,
     drillClassId: null,
     drillClassLabel: '',
     scopeReferenceDepartmentId: null,
@@ -229,29 +201,28 @@ const props = withDefaults(
     scopeOrgClassId: null,
     scopeAcademicYear: undefined,
     scopeSemester: undefined,
-    examScopeLocked: false,
-    scopeTermLabel: '',
-    scopeCourseLabel: '',
   },
 )
 
+const examScopeModeOptions = [
+  { label: '自动选考', value: 'AUTO' },
+  { label: '手动选考', value: 'MANUAL' },
+] as const
+
 interface SemesterGrowthForm {
-  teachingAcademicYear: string | undefined
-  teachingSemester: SemesterCode | undefined
   examScopeMode: 'AUTO' | 'MANUAL'
-  courseId: string | null
   classId: string
   examIds: string[]
 }
 
 const form = reactive<SemesterGrowthForm>({
-  teachingAcademicYear: undefined,
-  teachingSemester: undefined,
   examScopeMode: 'AUTO',
-  courseId: null,
   classId: '',
   examIds: [],
 })
+
+const effectiveTeachingAcademicYear = computed(() => props.scopeAcademicYear?.trim() || '')
+const effectiveTeachingSemester = computed(() => props.scopeSemester)
 
 const {
   records: historyRecords,
@@ -345,13 +316,7 @@ const examSelectScopeClassId = computed(() => {
   return undefined
 })
 
-const examSelectScopeCourseId = computed(() => {
-  const orgCourseId = props.scopeOrgCourseId?.trim()
-  if (orgCourseId) {
-    return orgCourseId
-  }
-  return form.courseId?.trim() || undefined
-})
+const examSelectScopeCourseId = computed(() => props.scopeOrgCourseId?.trim() || undefined)
 
 const examSelectScopeReferenceDepartmentId = computed(
   () => props.scopeReferenceDepartmentId?.trim() || undefined,
@@ -360,6 +325,65 @@ const examSelectScopeReferenceDepartmentId = computed(
 const effectiveClassId = computed(() => examSelectScopeClassId.value?.trim() || '')
 
 const effectiveCourseId = computed(() => examSelectScopeCourseId.value?.trim() || '')
+
+const showGrowthClassField = computed(() => {
+  if (props.scopeOrgClassId?.trim()) {
+    return false
+  }
+  if (form.examScopeMode === 'AUTO') {
+    return true
+  }
+  return form.examIds.length > 0
+})
+
+const showGrowthFilterBar = computed(
+  () => form.examScopeMode === 'MANUAL' || showGrowthClassField.value,
+)
+
+const growthExamSelectReady = computed(
+  () => Boolean(effectiveTeachingAcademicYear.value && effectiveTeachingSemester.value),
+)
+
+const growthFilterFields = computed<FilterField[]>(() => {
+  const fields: FilterField[] = []
+  if (showGrowthClassField.value) {
+    fields.push({
+      key: 'classId',
+      type: 'custom',
+      label: '班级',
+      width: 200,
+      minWidth: 180,
+      maxWidth: 240,
+    })
+  }
+  if (form.examScopeMode === 'MANUAL') {
+    fields.push({
+      key: 'examIds',
+      type: 'custom',
+      label: '参与考试',
+      flex: 1,
+      minWidth: 360,
+      maxWidth: 9999,
+    })
+  }
+  return fields
+})
+
+const growthFilterModel = computed<Record<string, unknown>>({
+  get: () => ({
+    classId: form.classId,
+    examIds: form.examIds,
+  }),
+  set: () => {},
+})
+
+function handleGrowthFilterReset(): void {
+  form.examIds = []
+  form.classId = props.scopeOrgClassId?.trim() ?? ''
+  selectedExams.value = []
+  classOptions.value = []
+  clearHistory()
+}
 
 const metaExtraItems = computed(() => {
   const value = record.value
@@ -414,12 +438,13 @@ function applyDrillClassSelection(): void {
 }
 
 watch(
-  () => props.scopeOrgCourseId,
-  (courseId) => {
-    if (!courseId?.trim()) {
+  () => props.scopeOrgClassId,
+  (classId) => {
+    if (!classId?.trim()) {
       return
     }
-    form.courseId = courseId.trim()
+    form.classId = classId.trim()
+    applyDrillClassSelection()
   },
   { immediate: true },
 )
@@ -437,7 +462,7 @@ watch(
 )
 
 watch(
-  () => [form.teachingAcademicYear, form.teachingSemester],
+  () => [props.scopeAcademicYear, props.scopeSemester] as const,
   () => {
     clearHistory()
     if (form.examScopeMode !== 'MANUAL') {
@@ -457,10 +482,12 @@ watch(
       selectedExams.value = []
       classOptions.value = []
       classLoading.value = false
+      form.classId = props.scopeOrgClassId?.trim() ?? ''
       return
     }
-    form.courseId = null
-    form.classId = ''
+    if (!props.scopeOrgClassId?.trim()) {
+      form.classId = ''
+    }
   },
 )
 
@@ -472,15 +499,6 @@ watch(
 )
 
 watch(
-  () => [form.teachingAcademicYear, form.teachingSemester],
-  () => {
-    if (form.examScopeMode === 'AUTO') {
-      form.courseId = null
-    }
-  },
-)
-
-watch(
   () => [...form.examIds],
   async (examIds) => {
     if (form.examScopeMode !== 'MANUAL') {
@@ -488,7 +506,13 @@ watch(
     }
     form.classId = ''
     classOptions.value = []
-    if (examIds.length === 0) return
+    if (examIds.length === 0) {
+      return
+    }
+    if (props.scopeOrgClassId?.trim()) {
+      form.classId = props.scopeOrgClassId.trim()
+      return
+    }
     classLoading.value = true
     try {
       const classRefs = await listCommonClassScopes(examIds)
@@ -509,12 +533,12 @@ watch(
 )
 
 async function reload(): Promise<void> {
-  if (!ensureRequiredAcademicYearSemester(form.teachingAcademicYear, form.teachingSemester)) {
+  if (!ensureRequiredAcademicYearSemester(effectiveTeachingAcademicYear.value, effectiveTeachingSemester.value)) {
     return
   }
   const termQuery = buildRequiredAcademicYearSemesterQuery(
-    form.teachingAcademicYear,
-    form.teachingSemester,
+    effectiveTeachingAcademicYear.value,
+    effectiveTeachingSemester.value,
   )
   if (!termQuery) {
     return
@@ -541,12 +565,12 @@ async function reload(): Promise<void> {
 }
 
 async function handleGenerate(): Promise<void> {
-  if (!ensureRequiredAcademicYearSemester(form.teachingAcademicYear, form.teachingSemester)) {
+  if (!ensureRequiredAcademicYearSemester(effectiveTeachingAcademicYear.value, effectiveTeachingSemester.value)) {
     return
   }
   const termQuery = buildRequiredAcademicYearSemesterQuery(
-    form.teachingAcademicYear,
-    form.teachingSemester,
+    effectiveTeachingAcademicYear.value,
+    effectiveTeachingSemester.value,
   )
   if (!termQuery) {
     return
@@ -559,7 +583,7 @@ async function handleGenerate(): Promise<void> {
 
   if (form.examScopeMode === 'AUTO') {
     if (!effectiveCourseId.value) {
-      message.warning('请选择课程')
+      message.warning('请先在上方范围栏选择课程')
       return
     }
     generating.value = true
@@ -638,9 +662,6 @@ function growthValueText(value: number | undefined): string {
 </script>
 
 <style lang="scss" scoped>
-.ai-form {
-  width: 100%;
-}
 .ai-analysis-summary-row {
   display: flex;
   flex-wrap: wrap;

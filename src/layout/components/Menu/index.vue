@@ -65,6 +65,11 @@ import {
   PORTFOLIO_ROUTE_PREFIX,
   QUALITY_ADMIN_MENU_GROUP,
 } from '@/utils/portfolio-route'
+import {
+  buildQualityPlanWorkbenchLocation,
+  QUALITY_PLAN_GATE_REASON_NO_PLAN,
+  QUALITY_PLAN_GATE_REASON_UNCONFIRMED,
+} from '@/utils/quality-plan-guard'
 import { isExternal } from '@/utils/validate'
 import DualDomainSideNav from './DualDomainSideNav.vue'
 import MenuCollapsedTooltip from './MenuCollapsedTooltip.vue'
@@ -114,12 +119,16 @@ function toAbsoluteLayoutPath(prefix: string, child: RouteRecordRaw): RouteRecor
   return { ...child, path: absPath }
 }
 
-function isMenuItemDisabled(item: RouteRecordRaw): boolean {
-  if (item.meta?.qualityGate === 'plan-confirmed') {
-    const qualityStore = useQualityStore()
-    return qualityStore.currentPlan?.confirmationStatus !== ConfirmationStatusCode.CONFIRMED
+/** 培养方案未确认时门控阻断（可点击引导；勿用 Ant disabled 假权限态） */
+function isMenuItemQualityGateBlocked(item: RouteRecordRaw): boolean {
+  if (item.meta?.qualityGate !== 'plan-confirmed') {
+    return false
   }
-  return false
+  const qualityStore = useQualityStore()
+  if (!qualityStore.currentTrainingPlanId) {
+    return true
+  }
+  return qualityStore.currentPlan?.confirmationStatus !== ConfirmationStatusCode.CONFIRMED
 }
 
 function buildLayoutChildren(prefix: string): RouteRecordRaw[] {
@@ -149,7 +158,7 @@ function buildLayoutChildren(prefix: string): RouteRecordRaw[] {
       ...child,
       meta: {
         ...child.meta,
-        disabled: isMenuItemDisabled(child),
+        qualityGateBlocked: isMenuItemQualityGateBlocked(child),
       },
     }))
 }
@@ -428,8 +437,16 @@ const onMenuItemClick = ({ key }: { key: Key }) => {
   const menuItem = findSidebarItemByKey(
     keyStr.startsWith('/') ? keyStr : `${activeLayoutPrefix.value}/${keyStr}`,
   )
-  if (menuItem?.meta?.disabled) {
-    message.error('培养方案尚未确认，请先在「培养方案体系工作台」完成确认')
+  if (menuItem?.meta?.qualityGateBlocked) {
+    const reason = useQualityStore().currentTrainingPlanId
+      ? QUALITY_PLAN_GATE_REASON_UNCONFIRMED
+      : QUALITY_PLAN_GATE_REASON_NO_PLAN
+    message.warning(
+      reason === QUALITY_PLAN_GATE_REASON_NO_PLAN
+        ? '请先选择并确认培养方案，再进入达成度结果与质量报告'
+        : '培养方案尚未确认。请先在培养方案体系工作台完成确认，再进入达成度与报告',
+    )
+    void router.push(buildQualityPlanWorkbenchLocation(reason))
     return
   }
   if (keyStr.startsWith('/')) {

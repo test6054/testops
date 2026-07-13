@@ -69,7 +69,7 @@
         v-if="unreconciledAbsenceCount > 0"
         tone="warning"
         title="仍有应考学生未完成缺考核对"
-        :description="`当前还有 ${unreconciledAbsenceCount} 名应考学生未对账，仅出勤核对不足以发布成绩，请执行「核对并新建待确认记录」后逐条确认。`"
+        :description="`当前还有 ${unreconciledAbsenceCount} 名应考学生未对账（含无卷或最新卷为废卷 DISCARDED）。到场但未绑定/冲突卷不会出现在此列表，须先在扫描批次处理。请执行「核对并新建待确认记录」后逐条确认。`"
         dense
         class="absence-page__alert"
       >

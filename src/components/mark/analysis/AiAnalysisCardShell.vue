@@ -12,11 +12,14 @@ withDefaults(
     title: string
     /** embedded 模式下右上角上下文文案 */
     context?: string
+    /** embedded 模式下隐藏区块标题（折叠治理等场景） */
+    headless?: boolean
     /** 非 embedded 时 WorkbenchSurfaceCard 附加 class */
     cardClass?: string
   }>(),
   {
     embedded: false,
+    headless: false,
   },
 )
 
@@ -41,7 +44,7 @@ defineSlots<{
     </template>
     <slot />
   </WorkbenchSurfaceCard>
-  <AiAnalysisSection v-else :title="title" :context="context">
+  <AiAnalysisSection v-else :title="title" :context="context" :headless="headless">
     <template v-if="$slots.actions" #actions>
       <slot name="actions" />
     </template>

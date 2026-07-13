@@ -1,23 +1,26 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { MarkClassOption } from '@/composables/useMarkExamRoster'
-import { watch } from 'vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import { computed, watch } from 'vue'
+import AiAnalysisExamScopePanel from '@/components/mark/analysis/AiAnalysisExamScopePanel.vue'
+import { useAiAnalysisScopeContext } from '@/composables/useAiAnalysisScope'
 import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
 import ClassWeaknessCard from '@/views/teacher/ai-analysis/cards/ClassWeaknessCard.vue'
 import PaperQualityCard from '@/views/teacher/ai-analysis/cards/PaperQualityCard.vue'
 import StudentLearningProfileCard from '@/views/teacher/ai-analysis/cards/StudentLearningProfileCard.vue'
 import TeachingImprovementCard from '@/views/teacher/ai-analysis/cards/TeachingImprovementCard.vue'
 
-const props = defineProps<{
-  examId?: string
+defineProps<{
   reloadToken: number
-  classId?: string
 }>()
 
 const emit = defineEmits<{
   (e: 'class-change', classId?: string, option?: MarkClassOption): void
 }>()
+
+const { examId, classId } = useAiAnalysisScopeContext()
+
+const resolvedExamId = computed(() => examId.value ?? '')
 
 const {
   classOptions,
@@ -29,21 +32,21 @@ const {
 } = useMarkExamRoster()
 
 watch(
-  () => props.examId,
-  (examId) => {
+  examId,
+  (nextExamId) => {
     resetRoster()
-    if (examId) {
-      void loadRoster(examId)
+    if (nextExamId) {
+      void loadRoster(nextExamId)
     }
   },
   { immediate: true },
 )
 
 watch(
-  () => props.classId,
-  (classId) => {
-    if (props.examId) {
-      void searchStudents('', classId)
+  classId,
+  (nextClassId) => {
+    if (examId.value) {
+      void searchStudents('', nextClassId)
     }
   },
 )
@@ -56,16 +59,16 @@ function handleClassChange(value?: SelectValue): void {
 </script>
 
 <template>
-  <UiEmpty v-if="!examId" description="请选择考试后查看教学分析" />
-  <div v-else class="ai-analysis-teaching-tab">
+  <div class="ai-analysis-teaching-tab">
+    <AiAnalysisExamScopePanel />
     <TeachingImprovementCard
-      :exam-id="examId"
+      :exam-id="resolvedExamId"
       :reload-token="reloadToken"
       :class-id="classId"
       embedded
     />
     <ClassWeaknessCard
-      :exam-id="examId"
+      :exam-id="resolvedExamId"
       :reload-token="reloadToken"
       :class-id="classId"
       :class-options="classOptions"
@@ -74,7 +77,7 @@ function handleClassChange(value?: SelectValue): void {
       @class-change="handleClassChange"
     />
     <StudentLearningProfileCard
-      :exam-id="examId"
+      :exam-id="resolvedExamId"
       :reload-token="reloadToken"
       :class-id-hint="classId"
       :student-options="studentOptions"
@@ -82,6 +85,19 @@ function handleClassChange(value?: SelectValue): void {
       :on-student-search="searchStudents"
       embedded
     />
-    <PaperQualityCard :exam-id="examId" :reload-token="reloadToken" :class-id="classId" embedded />
+    <PaperQualityCard
+      :exam-id="resolvedExamId"
+      :reload-token="reloadToken"
+      :class-id="classId"
+      embedded
+    />
   </div>
 </template>
+
+<style scoped lang="scss">
+.ai-analysis-teaching-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+</style>

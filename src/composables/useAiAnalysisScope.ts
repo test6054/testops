@@ -1,11 +1,13 @@
 import type { ComputedRef, InjectionKey, Ref } from 'vue'
 import type { AiAnalysisCenterOverviewResponse } from '@/apis/mark/analysis-center'
 import type { ExamSummaryResponse } from '@/apis/mark/exam'
+import type { CourseListVO } from '@/apis/quality/user-catalog'
 import type { MarkClassOption } from '@/composables/useMarkExamRoster'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import { computed, inject, provide, ref, watch } from 'vue'
 import { loadAiAnalysisCenterOverview } from '@/apis/mark/analysis-center'
 import { getExamDetail, pageExams } from '@/apis/mark/exam'
+import { courseCatalogApi } from '@/apis/quality/user-catalog'
 import { MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE } from '@/composables/useMarkExamSelector'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearOptions, getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
@@ -54,6 +56,31 @@ export const AI_ANALYSIS_SEMESTER_KEY: InjectionKey<Ref<SemesterCode>> = Symbol(
 /** 是否处于考试工作台锁定上下文 */
 export const AI_ANALYSIS_EXAM_LOCKED_KEY: InjectionKey<ComputedRef<boolean>> = Symbol('aiAnalysisExamLocked')
 
+/** 教学/聚类 Tab 选定考试 */
+export const AI_ANALYSIS_EXAM_ID_KEY: InjectionKey<Ref<string | undefined>> = Symbol('aiAnalysisExamId')
+
+/** 教学/聚类 Tab 课程筛考试 */
+export const AI_ANALYSIS_EXAM_FILTER_COURSE_ID_KEY: InjectionKey<Ref<string | undefined>> = Symbol('aiAnalysisExamFilterCourseId')
+
+/** 教学/聚类 Tab 考试列表加载态 */
+export const AI_ANALYSIS_EXAMS_LOADING_KEY: InjectionKey<Ref<boolean>> = Symbol('aiAnalysisExamsLoading')
+
+/** 学年学期选项与考试选项（范围面板只读消费） */
+export const AI_ANALYSIS_ACADEMIC_YEAR_OPTIONS_KEY: InjectionKey<ComputedRef<Array<{ label: string, value: string }>>> = Symbol('aiAnalysisAcademicYearOptions')
+export const AI_ANALYSIS_SEMESTER_OPTIONS_KEY: InjectionKey<ComputedRef<Array<{ label: string, value: string }>>> = Symbol('aiAnalysisSemesterOptions')
+export const AI_ANALYSIS_EXAM_OPTIONS_KEY: InjectionKey<ComputedRef<Array<{ label: string, value: string }>>> = Symbol('aiAnalysisExamOptions')
+
+/** 范围面板动作：课程筛选、组织范围展示名 */
+export interface AiAnalysisScopePanelActions {
+  setExamFilterCourse: (courseId: string | null, option?: CourseListVO) => void
+  setOrgDepartmentLabel: (label: string) => void
+  setOrgCourseLabel: (label: string) => void
+  setOrgClassLabel: (label: string, classId?: string | null) => void
+}
+
+export const AI_ANALYSIS_SCOPE_PANEL_ACTIONS_KEY: InjectionKey<AiAnalysisScopePanelActions> = Symbol('aiAnalysisScopePanelActions')
+
+
 /** 工作台内覆盖 AI 分析页 ContextBar 标题 */
 export interface AiAnalysisWorkspaceChrome {
   title: string
@@ -80,18 +107,10 @@ export function useAiAnalysisScope() {
   const classId = ref<string | undefined>(undefined)
   const classLabel = ref('')
   const referenceDepartmentId = ref<string | undefined>(undefined)
-  provide(AI_ANALYSIS_REFERENCE_DEPARTMENT_ID_KEY, referenceDepartmentId)
-  provide(AI_ANALYSIS_COURSE_ID_KEY, scopeCourseId)
-  provide(AI_ANALYSIS_REFERENCE_DEPARTMENT_LABEL_KEY, referenceDepartmentLabel)
-  provide(AI_ANALYSIS_SCOPE_COURSE_LABEL_KEY, scopeCourseLabel)
-  provide(AI_ANALYSIS_CLASS_ID_KEY, classId)
-  provide(AI_ANALYSIS_CLASS_LABEL_KEY, classLabel)
-  provide(AI_ANALYSIS_ACADEMIC_YEAR_KEY, academicYear)
-  provide(AI_ANALYSIS_SEMESTER_KEY, semester)
-  provide(AI_ANALYSIS_EXAM_LOCKED_KEY, examLocked)
   const examsLoading = ref(false)
   const exams = ref<ExamSummaryResponse[]>([])
   const pinnedExam = ref<ExamSummaryResponse | null>(null)
+  const authorizedCourses = ref<CourseListVO[]>([])
   const overview = ref<AiAnalysisCenterOverviewResponse | null>(null)
   const overviewLoading = ref(false)
   const overviewLoadFailed = ref(false)
@@ -115,31 +134,18 @@ export function useAiAnalysisScope() {
     })).filter(option => option.value),
   )
 
-  const courseOptions = computed(() => {
-    const courseMap = new Map<string, string>()
-    const mergedExams = pinnedExam.value
-      ? [pinnedExam.value, ...exams.value.filter(exam => exam.examId !== pinnedExam.value!.examId)]
-      : exams.value
-    mergedExams.forEach((exam) => {
-      if (!exam.courseId) {
-        return
-      }
-      const label = exam.courseName?.trim() || exam.courseId
-      courseMap.set(exam.courseId, label)
-    })
-    return Array.from(courseMap.entries())
-      .map(([value, label]) => ({ value, label }))
-      .sort((a, b) => a.label.localeCompare(b.label, 'zh-CN'))
-  })
+  const courseOptions = computed(() =>
+    authorizedCourses.value.map(course => ({
+      value: course.id,
+      label: course.courseName,
+    })),
+  )
 
   const filteredExams = computed(() => {
     const mergedExams = pinnedExam.value
       ? [pinnedExam.value, ...exams.value.filter(exam => exam.examId !== pinnedExam.value!.examId)]
       : exams.value
-    if (!examFilterCourseId.value) {
-      return mergedExams
-    }
-    return mergedExams.filter(exam => exam.courseId === examFilterCourseId.value)
+    return mergedExams
   })
 
   const filteredExamOptions = computed(() =>
@@ -181,6 +187,36 @@ export function useAiAnalysisScope() {
   function setClassScope(value: string | undefined, option?: MarkClassOption): void {
     classId.value = value
     classLabel.value = option?.className ?? ''
+  }
+
+  /** 教学/聚类顶栏课程筛选：edu-user 目录真源；未选课程时不传 courseId，按学年学期查全部可见考试。 */
+  function setExamFilterCourse(courseId: string | null, option?: CourseListVO): void {
+    const lockedCourseId = lockTerm?.value?.courseId
+    if (examLocked.value && lockedCourseId) {
+      examFilterCourseId.value = lockedCourseId
+      return
+    }
+    examFilterCourseId.value = courseId ?? undefined
+    const courseName = option?.courseName?.trim()
+    if (courseName) {
+      scopeCourseLabel.value = courseName
+    }
+    else if (!courseId) {
+      scopeCourseLabel.value = ''
+    }
+    if (!examLocked.value) {
+      scopeCourseId.value = courseId ?? undefined
+    }
+  }
+
+  async function loadAuthorizedCourses(): Promise<void> {
+    try {
+      authorizedCourses.value = await courseCatalogApi.authorizedList()
+    }
+    catch (error) {
+      authorizedCourses.value = []
+      showUserError(error, '课程目录加载失败')
+    }
   }
 
   /** 从考试列表项同步趋势/校级 org scope，禁止跨院系跨课程分析 */
@@ -287,9 +323,6 @@ export function useAiAnalysisScope() {
           examId.value = undefined
         }
       }
-      if (examFilterCourseId.value && !mergedExams.some(exam => exam.courseId === examFilterCourseId.value)) {
-        examFilterCourseId.value = undefined
-      }
     }
     catch (error) {
       exams.value = []
@@ -306,7 +339,7 @@ export function useAiAnalysisScope() {
     void loadExams()
   }
 
-  watch([academicYear, semester, referenceDepartmentId, classId], () => {
+  watch([academicYear, semester, referenceDepartmentId, classId, examFilterCourseId], () => {
     void loadExams()
     void loadOverview()
   }, { immediate: true })
@@ -359,6 +392,18 @@ export function useAiAnalysisScope() {
     if (examLocked.value) {
       return
     }
+    if (!value) {
+      scopeCourseLabel.value = ''
+      if (!examId.value) {
+        scopeCourseId.value = undefined
+      }
+    }
+    else {
+      const courseName = authorizedCourses.value.find(course => course.id === value)?.courseName?.trim()
+      if (courseName) {
+        scopeCourseLabel.value = courseName
+      }
+    }
     if (examId.value && !filteredExams.value.some(exam => exam.examId === examId.value)) {
       examId.value = undefined
     }
@@ -386,15 +431,6 @@ export function useAiAnalysisScope() {
 
   watch([examFilterCourseId, examId, scopeCourseId, referenceDepartmentId], () => {
     void loadOverview()
-  })
-
-  watch(examFilterCourseId, () => {
-    if (examLocked.value) {
-      return
-    }
-    if (examId.value && !filteredExams.value.some(exam => exam.examId === examId.value)) {
-      examId.value = undefined
-    }
   })
 
   watch(examId, (id) => {
@@ -426,6 +462,41 @@ export function useAiAnalysisScope() {
     }
   })
 
+  void loadAuthorizedCourses()
+
+  const scopePanelActions: AiAnalysisScopePanelActions = {
+    setExamFilterCourse,
+    setOrgDepartmentLabel(label: string) {
+      referenceDepartmentLabel.value = label
+    },
+    setOrgCourseLabel(label: string) {
+      scopeCourseLabel.value = label
+    },
+    setOrgClassLabel(label: string, classIdValue?: string | null) {
+      classLabel.value = label
+      if (!classIdValue) {
+        classLabel.value = ''
+      }
+    },
+  }
+
+  provide(AI_ANALYSIS_REFERENCE_DEPARTMENT_ID_KEY, referenceDepartmentId)
+  provide(AI_ANALYSIS_COURSE_ID_KEY, scopeCourseId)
+  provide(AI_ANALYSIS_REFERENCE_DEPARTMENT_LABEL_KEY, referenceDepartmentLabel)
+  provide(AI_ANALYSIS_SCOPE_COURSE_LABEL_KEY, scopeCourseLabel)
+  provide(AI_ANALYSIS_CLASS_ID_KEY, classId)
+  provide(AI_ANALYSIS_CLASS_LABEL_KEY, classLabel)
+  provide(AI_ANALYSIS_ACADEMIC_YEAR_KEY, academicYear)
+  provide(AI_ANALYSIS_SEMESTER_KEY, semester)
+  provide(AI_ANALYSIS_EXAM_ID_KEY, examId)
+  provide(AI_ANALYSIS_EXAM_FILTER_COURSE_ID_KEY, examFilterCourseId)
+  provide(AI_ANALYSIS_EXAMS_LOADING_KEY, examsLoading)
+  provide(AI_ANALYSIS_ACADEMIC_YEAR_OPTIONS_KEY, academicYearOptions)
+  provide(AI_ANALYSIS_SEMESTER_OPTIONS_KEY, semesterOptions)
+  provide(AI_ANALYSIS_EXAM_OPTIONS_KEY, filteredExamOptions)
+  provide(AI_ANALYSIS_EXAM_LOCKED_KEY, examLocked)
+  provide(AI_ANALYSIS_SCOPE_PANEL_ACTIONS_KEY, scopePanelActions)
+
   return {
     academicYear,
     semester,
@@ -449,8 +520,72 @@ export function useAiAnalysisScope() {
     selectedExamLabel,
     scopeSummary,
     setClassScope,
+    setExamFilterCourse,
     loadExams,
     refreshAnalysis,
     examLocked,
+  }
+}
+
+/** Tab 内范围面板注入上下文；须在已调用 useAiAnalysisScope 的父级下使用 */
+export function useAiAnalysisScopeContext() {
+  const academicYear = inject(AI_ANALYSIS_ACADEMIC_YEAR_KEY, null)
+  const semester = inject(AI_ANALYSIS_SEMESTER_KEY, null)
+  const examId = inject(AI_ANALYSIS_EXAM_ID_KEY, null)
+  const examFilterCourseId = inject(AI_ANALYSIS_EXAM_FILTER_COURSE_ID_KEY, null)
+  const referenceDepartmentId = inject(AI_ANALYSIS_REFERENCE_DEPARTMENT_ID_KEY, null)
+  const scopeCourseId = inject(AI_ANALYSIS_COURSE_ID_KEY, null)
+  const classId = inject(AI_ANALYSIS_CLASS_ID_KEY, null)
+  const referenceDepartmentLabel = inject(AI_ANALYSIS_REFERENCE_DEPARTMENT_LABEL_KEY, null)
+  const scopeCourseLabel = inject(AI_ANALYSIS_SCOPE_COURSE_LABEL_KEY, null)
+  const classLabel = inject(AI_ANALYSIS_CLASS_LABEL_KEY, null)
+  const examsLoading = inject(AI_ANALYSIS_EXAMS_LOADING_KEY, null)
+  const academicYearOptions = inject(AI_ANALYSIS_ACADEMIC_YEAR_OPTIONS_KEY, null)
+  const semesterOptions = inject(AI_ANALYSIS_SEMESTER_OPTIONS_KEY, null)
+  const examOptions = inject(AI_ANALYSIS_EXAM_OPTIONS_KEY, null)
+  const examLocked = inject(AI_ANALYSIS_EXAM_LOCKED_KEY, null)
+  const actions = inject(AI_ANALYSIS_SCOPE_PANEL_ACTIONS_KEY, null)
+
+  if (
+    !academicYear
+    || !semester
+    || !examId
+    || !examFilterCourseId
+    || !referenceDepartmentId
+    || !scopeCourseId
+    || !classId
+    || !referenceDepartmentLabel
+    || !scopeCourseLabel
+    || !classLabel
+    || !examsLoading
+    || !academicYearOptions
+    || !semesterOptions
+    || !examOptions
+    || !examLocked
+    || !actions
+  ) {
+    throw new Error('AI 分析中心未提供 scope 上下文')
+  }
+
+  return {
+    academicYear,
+    semester,
+    examId,
+    examFilterCourseId,
+    referenceDepartmentId,
+    scopeCourseId,
+    classId,
+    referenceDepartmentLabel,
+    scopeCourseLabel,
+    classLabel,
+    examsLoading,
+    academicYearOptions,
+    semesterOptions,
+    examOptions,
+    examLocked,
+    setExamFilterCourse: actions.setExamFilterCourse,
+    setOrgDepartmentLabel: actions.setOrgDepartmentLabel,
+    setOrgCourseLabel: actions.setOrgCourseLabel,
+    setOrgClassLabel: actions.setOrgClassLabel,
   }
 }

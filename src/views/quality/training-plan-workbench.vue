@@ -57,6 +57,7 @@ import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/ma
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
@@ -102,6 +103,11 @@ import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError } from '@/utils/error-handler'
+import {
+  QUALITY_PLAN_GATE_REASON_NO_PLAN,
+  QUALITY_PLAN_GATE_REASON_QUERY,
+  QUALITY_PLAN_GATE_REASON_UNCONFIRMED,
+} from '@/utils/quality-plan-guard'
 
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { isWeightSumHealthy } from '@/utils/weight-sum-health'
@@ -144,6 +150,31 @@ const stdMappingColumns: ColumnsType = [
 ]
 
 const qualityStore = useQualityStore()
+const route = useRoute()
+
+const planGateReason = computed(() => {
+  const value = route.query[QUALITY_PLAN_GATE_REASON_QUERY]
+  return typeof value === 'string' ? value : undefined
+})
+
+const planGateStrip = computed(() => {
+  if (planGateReason.value === QUALITY_PLAN_GATE_REASON_NO_PLAN) {
+    return {
+      tone: 'warning' as const,
+      title: '达成度 / 质量报告入口需要先选择培养方案',
+      description: '请在页头范围中选择培养方案，完成体系维护后点击「提交确认」，再返回达成度或报告页。',
+    }
+  }
+  if (planGateReason.value === QUALITY_PLAN_GATE_REASON_UNCONFIRMED) {
+    return {
+      tone: 'warning' as const,
+      title: '培养方案尚未确认，达成度与正式质量报告暂不可进入',
+      description:
+        '工程教育认证链路中，未确认方案不得作为达成度计算与正式报告底座。请核对目标 / 毕业要求 / 观测点后点击「提交确认」。',
+    }
+  }
+  return null
+})
 
 const WORKBENCH_TABLE_PAGE_SIZE = 20
 
@@ -1458,6 +1489,15 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
         </template>
       </QualityPageContextBar>
     </template>
+
+    <UiAlertStrip
+      v-if="planGateStrip"
+      :tone="planGateStrip.tone"
+      :title="planGateStrip.title"
+      :description="planGateStrip.description"
+      dense
+      class="tpw__scope-hint"
+    />
 
     <UiAlertStrip
       v-if="!qualityStore.currentTrainingPlanId"

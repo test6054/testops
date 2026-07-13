@@ -23,7 +23,12 @@
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
-          <UiButton size="sm" :disabled="!selectedAppealableExam" @click="openSubmitModal">
+          <UiButton
+            size="sm"
+            :disabled="!selectedAppealableExam || selectedExamHasOpenReviewRequest"
+            :title="selectedExamHasOpenReviewRequest ? '当前考试已有待领取、处理中或已通过待更正的复核申请' : undefined"
+            @click="openSubmitModal"
+          >
             <template #icon><FormOutlined /></template>
             提交复核申请
           </UiButton>
@@ -406,6 +411,19 @@ const selectedAppealableExam = computed<StudentExamItemVO | null>(() => {
   return appealableExams.value.find((e) => e.examId === selectedExamId.value) ?? null
 })
 
+/** 当前选中考试是否已有开放中的复核申请（PENDING/IN_REVIEW/APPROVED），与后端提交门禁对齐。 */
+const selectedExamHasOpenReviewRequest = computed(() => {
+  const examId = selectedExamId.value
+  if (!examId) return false
+  return requests.value.some(
+    (item) =>
+      item.examId === examId
+      && (item.requestStatus === GradeReviewRequestStatusCode.PENDING
+        || item.requestStatus === GradeReviewRequestStatusCode.IN_REVIEW
+        || item.requestStatus === GradeReviewRequestStatusCode.APPROVED),
+  )
+})
+
 const questionOptions = computed(() =>
   selectedExamQuestions.value.map((question) => ({
     value: question.layoutQuestionId,
@@ -696,6 +714,10 @@ function removeEvidence(fileNodeId: string): void {
 
 function openSubmitModal() {
   if (!selectedAppealableExam.value) return
+  if (selectedExamHasOpenReviewRequest.value) {
+    message.warning('当前考试已有待领取、处理中或已通过待更正的复核申请，请等待教师处理完成后再提交')
+    return
+  }
   sourceQuestionId.value = undefined
   form.reasonType = DEFAULT_REASON_TYPE
   form.requestReason = ''
@@ -708,6 +730,10 @@ function openSubmitModal() {
 async function submit() {
   if (!selectedAppealableExam.value) {
     message.warning('请选择一个考试')
+    return
+  }
+  if (selectedExamHasOpenReviewRequest.value) {
+    message.warning('当前考试已有待领取、处理中或已通过待更正的复核申请，请等待教师处理完成后再提交')
     return
   }
   if (!form.requestReason.trim()) {

@@ -12,57 +12,45 @@
       </UiButton>
     </template>
 
-    <AiAnalysisConfigCollapse title="趋势分析范围">
-      <div class="ai-form">
-        <a-form layout="inline" :model="form" size="small">
-          <a-form-item label="学年">
-            <span v-if="scopeTermLabel" class="scope-hint">{{ scopeTermLabel }}</span>
-            <AnalysisSemesterSelect
-              v-else
-              v-model:academic-year="form.academicYear"
-              v-model:semester="form.semester"
-              :course-id="examSelectScopeCourseId"
-              :class-id="examSelectScopeClassId"
-              :reference-department-id="examSelectScopeReferenceDepartmentId"
-              :allow-clear="false"
-              :default-recent-semester-count="1"
-            />
-          </a-form-item>
-          <a-form-item v-if="scopeMode === AnalysisScopeTypeCode.CLASS" label="班级">
-            <a-select
-              v-model:value="form.classId"
-              :options="classOptions"
-              :loading="classLoading"
-              placeholder="请选择所选考试共有班级"
-              show-search
-              option-filter-prop="label"
-              allow-clear
-              style="width: 240px"
-            />
-          </a-form-item>
-          <a-form-item label="参与考试列表" style="flex: 1; min-width: 360px">
-            <AnalysisExamMultiSelect
-              v-if="form.academicYear && form.semester"
-              v-model="form.examIds"
-              :scope-course-id="examSelectScopeCourseId"
-              :scope-academic-year="form.academicYear"
-              :scope-semester="form.semester"
-              :scope-class-id="examSelectScopeClassId"
-              :scope-reference-department-id="examSelectScopeReferenceDepartmentId"
-              :auto-select-largest-course-cluster-in-scope="examSelectAutoSelectLargestCluster"
-              :placeholder="examSelectPlaceholder"
-              @selected-exams-change="selectedExams = $event"
-            />
-            <span v-else class="scope-hint">请先选择学年与学期</span>
-          </a-form-item>
-        </a-form>
-      </div>
-    </AiAnalysisConfigCollapse>
+    <UiFilterBar
+      v-model="trendFilterModel"
+      :fields="trendFilterFields"
+      variant="plain"
+      show-labels
+      search-text="应用"
+      reset-text="清空考试"
+      @search="() => {}"
+      @reset="handleTrendFilterReset"
+    >
+      <template #field-commonClassId>
+        <UiSelect
+          v-model="form.classId"
+          :options="classOptions"
+          :loading="classLoading"
+          placeholder="请选择所选考试共有班级"
+          allow-search
+        />
+      </template>
+      <template #field-examIds>
+        <AnalysisExamMultiSelect
+          v-model="form.examIds"
+          :disabled="!examSelectReady"
+          disabled-title="请先在上方范围栏选择学年与学期"
+          :scope-course-id="examSelectScopeCourseId"
+          :scope-academic-year="form.academicYear"
+          :scope-semester="form.semester"
+          :scope-class-id="examSelectScopeClassId"
+          :scope-reference-department-id="examSelectScopeReferenceDepartmentId"
+          :auto-select-largest-course-cluster-in-scope="examSelectAutoSelectLargestCluster"
+          :placeholder="examSelectPlaceholder"
+          @selected-exams-change="selectedExams = $event"
+        />
+      </template>
+    </UiFilterBar>
 
     <UiSkeletonState v-if="loading || generating" variant="card" compact />
-    <UiEmpty v-else-if="!record" description="配置范围后生成或查看跨考趋势" />
-    <div v-else-if="record" class="ai-analysis-section__body ai-analysis-section__body--flush">
-      <p v-if="record.trendSummary" class="ai-analysis-summary">{{ record.trendSummary }}</p>
+    <div v-else class="ai-analysis-section__body ai-analysis-section__body--flush">
+      <p v-if="record?.trendSummary" class="ai-analysis-summary">{{ record.trendSummary }}</p>
 
       <MarkTrendSection
         title="考试得分趋势"
@@ -98,6 +86,7 @@
       </div>
 
       <AiAnalysisMetaCollapse
+        v-if="record"
         :record="record"
         failure-fallback="AI 跨考试趋势分析未完成，请核对考试范围后重新生成"
         :extra-items="metaExtraItems"
@@ -109,6 +98,7 @@
 <script lang="ts" setup>
 import type { CrossExamTrendAnalysisResponse } from '@/apis/mark/cross-exam-analysis'
 import type { ExamSummaryResponse } from '@/apis/mark/exam'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
@@ -123,15 +113,14 @@ import {
   listTrends,
 } from '@/apis/mark/cross-exam-analysis'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
-import AiAnalysisConfigCollapse from '@/components/mark/analysis/AiAnalysisConfigCollapse.vue'
 import AiAnalysisHistorySelect from '@/components/mark/analysis/AiAnalysisHistorySelect.vue'
 import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCollapse.vue'
 import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
-import AnalysisSemesterSelect from '@/components/mark/AnalysisSemesterSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
 import { useChartOption } from '@/hooks/modules/useChartOption'
@@ -274,12 +263,70 @@ const examSelectAutoSelectLargestCluster = computed(
   () => scopeMode.value === AnalysisScopeTypeCode.COURSE || Boolean(examSelectScopeClassId.value),
 )
 
+const examSelectReady = computed(
+  () => Boolean(form.academicYear?.trim() && form.semester),
+)
+
 const examSelectPlaceholder = computed(() => {
   if (scopeMode.value === AnalysisScopeTypeCode.CLASS && !examSelectScopeClassId.value) {
     return '请先手动选择考试，再选共有班级'
   }
   return '已自动纳入同学期同课程考试（≥2 场），可减选'
 })
+
+const showCommonClassField = computed(
+  () =>
+    scopeMode.value === AnalysisScopeTypeCode.CLASS
+    && !props.scopeOrgClassId?.trim()
+    && !props.drillClassId?.trim(),
+)
+
+const trendFilterFields = computed<FilterField[]>(() => {
+  const fields: FilterField[] = []
+  if (showCommonClassField.value) {
+    fields.push({
+      key: 'commonClassId',
+      type: 'custom',
+      label: '共有班级',
+      width: 200,
+      minWidth: 180,
+      maxWidth: 240,
+    })
+  }
+  fields.push({
+    key: 'examIds',
+    type: 'custom',
+    label: '参与考试',
+    flex: 1,
+    minWidth: 360,
+    maxWidth: 9999,
+  })
+  return fields
+})
+
+const trendFilterModel = computed<Record<string, unknown>>({
+  get: () => ({
+    commonClassId: form.classId,
+    examIds: form.examIds,
+  }),
+  set: (value) => {
+    if (value.commonClassId !== undefined) {
+      form.classId = String(value.commonClassId ?? '')
+    }
+    if (Array.isArray(value.examIds)) {
+      form.examIds = value.examIds.map((item) => String(item))
+    }
+  },
+})
+
+function handleTrendFilterReset(): void {
+  form.examIds = []
+  selectedExams.value = []
+  if (!props.scopeOrgClassId?.trim() && !props.drillClassId?.trim()) {
+    form.classId = ''
+  }
+  clearHistory()
+}
 
 const metaExtraItems = computed(() => {
   const value = record.value
@@ -507,9 +554,6 @@ async function handleGenerate(): Promise<void> {
 </script>
 
 <style lang="scss" scoped>
-.ai-form {
-  width: 100%;
-}
 .diagnosis-header {
   display: flex;
   align-items: center;

@@ -16,54 +16,55 @@
       </UiButton>
     </template>
 
-    <AiAnalysisConfigCollapse title="评估范围">
-      <div class="ai-form">
-        <a-form layout="inline" :model="form" size="small">
-          <a-form-item label="来源考试">
-            <AnalysisExamSelect
-              v-model="form.sourceExamId"
-              placeholder="请选择经验来源考试"
-              :scope-course-id="examSelectScopeCourseId"
-              :scope-class-id="examSelectScopeClassId"
-              :scope-reference-department-id="examSelectScopeReferenceDepartmentId"
-            />
-          </a-form-item>
-          <a-form-item label="经验案例">
-            <a-select
-              v-model:value="form.experienceCaseId"
-              :options="experienceOptions"
-              :loading="experienceLoading"
-              placeholder="请选择来源考试下的经验案例"
-              show-search
-              option-filter-prop="label"
-              allow-clear
-              style="width: 360px"
-              :disabled="!form.sourceExamId"
-            />
-          </a-form-item>
-          <a-form-item label="评估所用考试">
-            <AnalysisExamSelect
-              v-model="form.evalExamId"
-              placeholder="请选择评估所用考试"
-              :scope-course-id="examSelectScopeCourseId"
-              :scope-class-id="examSelectScopeClassId"
-              :scope-reference-department-id="examSelectScopeReferenceDepartmentId"
-            />
-          </a-form-item>
-        </a-form>
-      </div>
-    </AiAnalysisConfigCollapse>
+    <UiFilterBar
+      v-model="effectivenessFilterModel"
+      class="experience-effectiveness-filter"
+      :fields="effectivenessFilterFields"
+      variant="plain"
+      show-labels
+      hide-actions
+    >
+      <template #field-sourceExamId>
+        <AnalysisExamSelect
+          v-model="form.sourceExamId"
+          placeholder="请选择经验来源考试"
+          :scope-course-id="examSelectScopeCourseId"
+          :scope-class-id="examSelectScopeClassId"
+          :scope-reference-department-id="examSelectScopeReferenceDepartmentId"
+        />
+      </template>
+      <template #field-experienceCaseId>
+        <a-select
+          v-model:value="form.experienceCaseId"
+          :options="experienceOptions"
+          :loading="experienceLoading"
+          placeholder="请选择来源考试下的经验案例"
+          show-search
+          option-filter-prop="label"
+          allow-clear
+          :disabled="!form.sourceExamId"
+        />
+      </template>
+      <template #field-evalExamId>
+        <AnalysisExamSelect
+          v-model="form.evalExamId"
+          placeholder="请选择评估所用考试"
+          :scope-course-id="examSelectScopeCourseId"
+          :scope-class-id="examSelectScopeClassId"
+          :scope-reference-department-id="examSelectScopeReferenceDepartmentId"
+        />
+      </template>
+    </UiFilterBar>
 
     <UiSkeletonState v-if="loading || generating" variant="card" compact />
-    <UiEmpty v-else-if="!record" description="选择经验案例后评估有效性" />
-    <div v-else-if="record" class="ai-analysis-section__body ai-analysis-section__body--flush">
+    <div v-else class="ai-analysis-section__body ai-analysis-section__body--flush">
       <SignalBand
-        v-if="record.analysisStatus === AiAnalysisStatusCode.SUCCESS"
+        v-if="record && record.analysisStatus === AiAnalysisStatusCode.SUCCESS"
         :metrics="effectivenessMetrics"
         compact
       />
 
-      <div v-if="record.analysisStatus === AiAnalysisStatusCode.SUCCESS" class="ai-record__charts">
+      <div class="ai-record__charts">
         <MarkBarSection
           title="当前评估指标"
           :hint="effectivenessBarHint"
@@ -84,41 +85,43 @@
         />
       </div>
 
-      <p v-if="record.evalSummary" class="ai-analysis-summary">{{ record.evalSummary }}</p>
-      <p v-if="record.detailedAnalysis" class="ai-analysis-summary">
-        {{ record.detailedAnalysis }}
-      </p>
-      <p v-if="record.recommendation" class="ai-analysis-summary">
-        维护动作：{{ recommendationLabel(record.recommendation) }}
-      </p>
+      <template v-if="record">
+        <p v-if="record.evalSummary" class="ai-analysis-summary">{{ record.evalSummary }}</p>
+        <p v-if="record.detailedAnalysis" class="ai-analysis-summary">
+          {{ record.detailedAnalysis }}
+        </p>
+        <p v-if="record.recommendation" class="ai-analysis-summary">
+          维护动作：{{ recommendationLabel(record.recommendation) }}
+        </p>
 
-      <div v-if="record.analysisStatus === AiAnalysisStatusCode.SUCCESS" class="ai-evidence">
-        <div class="ai-evidence__header">
-          <strong>评估脱敏样本</strong>
-          <span class="text-muted">共 {{ evidenceRows.length }} 条，供复核 AI 一致性依据</span>
+        <div v-if="record.analysisStatus === AiAnalysisStatusCode.SUCCESS" class="ai-evidence">
+          <div class="ai-evidence__header">
+            <strong>评估脱敏样本</strong>
+            <span class="text-muted">共 {{ evidenceRows.length }} 条，供复核 AI 一致性依据</span>
+          </div>
+          <UiDataTable
+            v-if="evidenceRows.length"
+            :columns="evidenceColumns"
+            :data-source="evidenceRows"
+            row-key="rowKey"
+            size="small"
+            flat
+            bordered
+            pagination-mode="none"
+            :show-pagination="false"
+            :sticky-header="false"
+            :scroll="{ x: 1200 }"
+            :total="evidenceRows.length"
+          />
+          <p v-else class="ai-analysis-shell-caption">评估考试无同题型作答样本</p>
         </div>
-        <UiDataTable
-          v-if="evidenceRows.length"
-          :columns="evidenceColumns"
-          :data-source="evidenceRows"
-          row-key="rowKey"
-          size="small"
-          flat
-          bordered
-          pagination-mode="none"
-          :show-pagination="false"
-          :sticky-header="false"
-          :scroll="{ x: 1200 }"
-          :total="evidenceRows.length"
-        />
-        <UiEmpty v-else description="评估考试无同题型作答样本" />
-      </div>
 
-      <AiAnalysisMetaCollapse
-        :record="record"
-        failure-fallback="AI 经验案例有效性评估未完成，可重新评估"
-        :extra-items="metaExtraItems"
-      />
+        <AiAnalysisMetaCollapse
+          :record="record"
+          failure-fallback="AI 经验案例有效性评估未完成，可重新评估"
+          :extra-items="metaExtraItems"
+        />
+      </template>
     </div>
   </AiAnalysisSection>
 </template>
@@ -132,7 +135,7 @@ import type {
   ExperienceEffectivenessEvalResponse,
   ExperienceRecommendationCode,
 } from '@/apis/mark/school-quality'
-import type { UiBarChartItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
+import type { FilterField, UiBarChartItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
@@ -150,13 +153,12 @@ import {
 } from '@/apis/mark/school-quality'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
-import AiAnalysisConfigCollapse from '@/components/mark/analysis/AiAnalysisConfigCollapse.vue'
 import AiAnalysisHistorySelect from '@/components/mark/analysis/AiAnalysisHistorySelect.vue'
 import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCollapse.vue'
 import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'
 import AnalysisExamSelect from '@/components/mark/AnalysisExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -208,6 +210,42 @@ const form = reactive<ExperienceEffectivenessForm>({
   sourceExamId: undefined,
   experienceCaseId: undefined,
   evalExamId: undefined,
+})
+
+const effectivenessFilterFields = computed<FilterField[]>(() => [
+  {
+    key: 'sourceExamId',
+    type: 'custom',
+    label: '来源考试',
+    flex: 1,
+    minWidth: 0,
+    maxWidth: 9999,
+  },
+  {
+    key: 'experienceCaseId',
+    type: 'custom',
+    label: '经验案例',
+    flex: 1,
+    minWidth: 0,
+    maxWidth: 9999,
+  },
+  {
+    key: 'evalExamId',
+    type: 'custom',
+    label: '评估考试',
+    flex: 1,
+    minWidth: 0,
+    maxWidth: 9999,
+  },
+])
+
+const effectivenessFilterModel = computed<Record<string, unknown>>({
+  get: () => ({
+    sourceExamId: form.sourceExamId,
+    experienceCaseId: form.experienceCaseId,
+    evalExamId: form.evalExamId,
+  }),
+  set: () => {},
 })
 
 const {
@@ -609,5 +647,29 @@ watch(
 }
 .text-muted {
   color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45));
+}
+.experience-effectiveness-filter {
+  width: 100%;
+
+  :deep(.dp-filter-bar) {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: end;
+    gap: 12px;
+    width: 100%;
+  }
+
+  :deep(.dp-filter-bar__field) {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    flex: none !important;
+  }
+
+  :deep(.dp-filter-bar__control),
+  :deep(.analysis-exam-select),
+  :deep(.ant-select) {
+    width: 100%;
+  }
 }
 </style>

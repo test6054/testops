@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ScannerOpsDeptTimingVO } from '@/apis/mark/scanner-ops'
+import type { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -16,7 +17,15 @@ import {
 } from '@/utils/archive-suspected-mixed-navigation'
 import { showUserError } from '@/utils/error-handler'
 
-defineOptions({ name: 'ScannerOpsPanel' })
+defineOptions({ name: 'ScanOpsPanel' })
+
+const props = defineProps<{
+  taskKind: ScanTaskKindCode
+}>()
+
+const emit = defineEmits<{
+  'switch-tab': [tab: 'exception']
+}>()
 
 const router = useRouter()
 const loading = ref(false)
@@ -189,6 +198,7 @@ async function loadDashboard() {
   try {
     const [nextDashboard] = await Promise.all([
       loadScannerOpsDashboard({
+        taskKind: props.taskKind,
         startTime: dateRange.value?.[0] ? `${dateRange.value[0]}T00:00:00` : undefined,
         endTime: dateRange.value?.[1] ? `${dateRange.value[1]}T23:59:59` : undefined,
       }),
@@ -214,7 +224,7 @@ function handleConclusionAction(actionKey: 'exception' | 'mixed') {
     void router.push(buildSuspectedMixedScanQueueRoute())
     return
   }
-  void router.replace({ query: { tab: 'exception' } })
+  emit('switch-tab', 'exception')
 }
 
 onMounted(() => {
@@ -223,8 +233,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="scanner-ops-panel">
-    <div class="scanner-ops-panel__toolbar">
+  <div class="scan-ops-panel">
+    <div class="scan-ops-panel__toolbar">
       <a-range-picker value-format="YYYY-MM-DD" @change="handleDateChange" />
       <UiButton size="sm" variant="outline" :loading="loading" @click="() => loadDashboard()">
         刷新
@@ -237,7 +247,7 @@ onMounted(() => {
       :tone="opsConclusion.tone"
       :title="opsConclusion.title"
       :description="opsConclusion.description"
-      class="scanner-ops-panel__conclusion"
+      class="scan-ops-panel__conclusion"
     >
       <template #actions>
         <UiButton
@@ -255,7 +265,7 @@ onMounted(() => {
       variant="panel"
       :metrics="signalMetrics"
       compact
-      class="scanner-ops-panel__signal"
+      class="scan-ops-panel__signal"
     />
 
     <WorkbenchSurfaceCard flush>
@@ -292,7 +302,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.scanner-ops-panel__toolbar {
+.scan-ops-panel__toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -300,11 +310,11 @@ onMounted(() => {
   margin-bottom: 12px;
 }
 
-.scanner-ops-panel__conclusion {
+.scan-ops-panel__conclusion {
   margin-bottom: 12px;
 }
 
-.scanner-ops-panel__signal {
+.scan-ops-panel__signal {
   margin-bottom: 12px;
 }
 </style>

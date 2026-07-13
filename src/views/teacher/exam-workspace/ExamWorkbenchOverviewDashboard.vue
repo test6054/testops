@@ -234,7 +234,7 @@ const emit = defineEmits<{
 
 const recommendedPrimaryLabel = computed(() => props.recommendedPrimaryLabel?.trim() || '进入阅卷')
 const recommendedSecondaryLabel = computed(
-  () => props.recommendedSecondaryLabel?.trim() || '扫描中心',
+  () => props.recommendedSecondaryLabel?.trim() || '扫描运营',
 )
 const recommendedPrimaryDisabled = computed(() => Boolean(props.recommendedPrimaryDisabled))
 const recommendedPrimaryDisabledReason = computed(

@@ -6,16 +6,13 @@ import type {
 import type { WorkbenchStage } from '@/types/workbench'
 import { computed, toValue } from 'vue'
 import {
-  buildJourneyStageSummaryFromExams,
   buildMarkDashboardJourneyRail,
   buildMarkDashboardJourneyRailFromSummary,
-  resolvePrimaryJourneyBottleneck,
 } from '@/utils/mark-dashboard-stages'
 
 export interface UseMarkingOverviewStagesOptions {
   exams: MaybeRefOrGetter<MarkTeacherDashboardOngoingExamItemVO[]>
   journeyStageSummary: MaybeRefOrGetter<MarkTeacherDashboardJourneyStageSummaryItemVO[]>
-  filteredCount: MaybeRefOrGetter<number>
 }
 
 /** 阅卷概览 StageRail：将 dashboard 旅程 DTO 映射为工作台阶段轨展示模型。 */
@@ -26,20 +23,6 @@ export function useMarkingOverviewStages(options: UseMarkingOverviewStagesOption
       return buildMarkDashboardJourneyRailFromSummary(summary)
     }
     return buildMarkDashboardJourneyRail(toValue(options.exams))
-  })
-
-  const journeyHint = computed(() => {
-    if (toValue(options.filteredCount) <= 0) {
-      return ''
-    }
-    const summary = toValue(options.journeyStageSummary)
-    const resolvedSummary
-      = summary.length > 0 ? summary : buildJourneyStageSummaryFromExams(toValue(options.exams))
-    const bottleneck = resolvePrimaryJourneyBottleneck(resolvedSummary)
-    if (!bottleneck) {
-      return ''
-    }
-    return `${bottleneck.waitingCount.toLocaleString('zh-CN')} 场考试等待进入${bottleneck.targetStageTitle}阶段`
   })
 
   const activeStageKey = computed(() => {
@@ -53,7 +36,6 @@ export function useMarkingOverviewStages(options: UseMarkingOverviewStagesOption
 
   return {
     stages,
-    journeyHint,
     activeStageKey,
   }
 }

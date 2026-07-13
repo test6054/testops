@@ -50,6 +50,36 @@
     <template v-else-if="detail">
       <ConfidentialStatusBar v-if="isExamConfidential" class="score-detail__confidential-strip" />
 
+      <UiAlertStrip
+        v-if="detail.finalScoreStatus === FinalScoreStatusCode.CORRECTED"
+        tone="warning"
+        title="成绩更正待重新发布"
+        description="教师已完成成绩更正，最新分数将在重新发布后可见；此前已发布成绩暂不展示。"
+        dense
+        inline
+        class="score-detail__correction-alert"
+      />
+
+      <UiAlertStrip
+        v-else-if="detail.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN"
+        tone="warning"
+        title="成绩已撤回"
+        description="教师已撤回本场成绩发布，分数暂不可见；重新发布后可查看。"
+        dense
+        inline
+        class="score-detail__correction-alert"
+      />
+
+      <UiAlertStrip
+        v-if="totalScoreCorrectionNotice"
+        tone="warning"
+        title="本成绩已经总分更正"
+        :description="totalScoreCorrectionNotice"
+        dense
+        inline
+        class="score-detail__correction-alert"
+      />
+
       <div
         v-if="detail.finalScoreStatus === FinalScoreStatusCode.PUBLISHED"
         class="score-detail__layout"
@@ -447,6 +477,7 @@ import ScanImageStage from '@/components/mark/ScanImageStage.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -655,6 +686,25 @@ function formatPublishedScoreSummary(item: StudentScoreDetailResponse): string {
   }
   return `${formatPublishedTotalScore(item)} / ${formatPublishedFullScore(item)}`
 }
+
+/**
+ * 官方卷面分与题分明细可不一致（总分更正、或总分后再单题更正）；提示学生以官方总分为准。
+ */
+const totalScoreCorrectionNotice = computed(() => {
+  const item = detail.value
+  if (!item || item.finalScoreStatus !== FinalScoreStatusCode.PUBLISHED) {
+    return null
+  }
+  if (item.questionScoreSumMatchesExamScore !== false && !item.latestTotalScoreCorrectionApplied) {
+    return null
+  }
+  const questionSum = item.questionScoreSum
+  const examScore = item.examScore
+  if (questionSum == null || examScore == null) {
+    return '本成绩官方考试分与题分明细可不一致，题目列表展示原复核分；请以页面顶部官方总分为准。'
+  }
+  return `本成绩官方考试分 ${formatScore(examScore, 'score')}，题分明细合计 ${formatScore(questionSum, 'score')}（可不一致）。题目列表展示原复核分，不以题分之和覆盖官方分。`
+})
 
 function formatPublishedFullScore(item: StudentScoreDetailResponse): string {
   return formatScore(item.fullScore, 'score')

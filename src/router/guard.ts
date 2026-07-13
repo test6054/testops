@@ -17,6 +17,7 @@ import { isValidRole } from '@/utils/permission'
 import { isQualityEvaluationRoute } from '@/utils/portfolio-route'
 import {
   ensureQualityPlanConfirmedForNavigation,
+  resolveQualityPlanGateRedirect,
   routeRequiresPlanConfirmed,
 } from '@/utils/quality-plan-guard'
 import { applySeoMeta } from '@/utils/seo'
@@ -187,7 +188,9 @@ async function runProtectedRouteGuard(to: RouteLocationNormalized): Promise<Navi
   if (isQualityEvaluationRoute(to.path) && routeRequiresPlanConfirmed(to.matched)) {
     const planOk = await ensureQualityPlanConfirmedForNavigation(to.matched)
     if (!planOk) {
-      return { path: '/quality/training-plan-workbench' }
+      return resolveQualityPlanGateRedirect(to.matched) ?? {
+        name: 'QualityTrainingPlanWorkbench',
+      }
     }
   }
 }

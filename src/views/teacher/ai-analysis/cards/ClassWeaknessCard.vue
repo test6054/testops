@@ -72,32 +72,48 @@
     <AiAnalysisCardBody
       :loading="loading"
       :generating="generating"
-      :has-content="record != null"
+      :has-content="true"
       :empty-description="emptyDescription"
       progress-title="AI 班级薄弱题型分析生成中"
       progress-waiting-text="正在等待后端返回该班级的真实薄弱题型分析。"
     >
-      <div v-if="record != null" class="ai-analysis-section__body ai-analysis-section__body--flush">
-        <p v-if="classContextLabel" class="ai-analysis-summary">{{ classContextLabel }}</p>
-        <p v-if="record.overallSummary" class="ai-analysis-summary">
-          {{ record.overallSummary }}
-        </p>
-
-        <AiWeaknessRow
-          v-for="(item, index) in record.weaknessItems ?? []"
-          :key="`${item.questionType ?? 'weak'}-${index}`"
-          :title="item.questionType ? questionTypeLabel(item.questionType) : '薄弱题型'"
-          :weakness-level="deriveWeaknessLevel(item.errorRate, item.avgScoreRate)"
-          :metric-text="
-            item.avgScoreRate != null ? `得分率 ${formatRate(item.avgScoreRate)}` : undefined
+      <div class="ai-analysis-section__body ai-analysis-section__body--flush">
+        <MarkBarSection
+          title="薄弱题型得分率"
+          :hint="weaknessChartHint"
+          :item-count="weaknessBarItems.length"
+          :option="weaknessChartOption"
+          height="240px"
+          orientation="horizontal"
+          :empty-description="
+            props.classId
+              ? '生成班级薄弱题型分析后展示各题型班级得分率'
+              : '选择班级并生成分析后展示薄弱题型得分率'
           "
         />
 
-        <AiAnalysisMetaCollapse
-          :record="record"
-          failure-fallback="AI 班级薄弱题型分析未完成，可重新生成"
-          :extra-items="record.scopeId ? [{ label: '班级编号', value: record.scopeId }] : []"
-        />
+        <template v-if="record != null">
+          <p v-if="classContextLabel" class="ai-analysis-summary">{{ classContextLabel }}</p>
+          <p v-if="record.overallSummary" class="ai-analysis-summary">
+            {{ record.overallSummary }}
+          </p>
+
+          <AiWeaknessRow
+            v-for="(item, index) in record.weaknessItems ?? []"
+            :key="`${item.questionType ?? 'weak'}-${index}`"
+            :title="item.questionType ? questionTypeLabel(item.questionType) : '薄弱题型'"
+            :weakness-level="deriveWeaknessLevel(item.errorRate, item.avgScoreRate)"
+            :metric-text="
+              item.avgScoreRate != null ? `得分率 ${formatRate(item.avgScoreRate)}` : undefined
+            "
+          />
+
+          <AiAnalysisMetaCollapse
+            :record="record"
+            failure-fallback="AI 班级薄弱题型分析未完成，可重新生成"
+            :extra-items="record.scopeId ? [{ label: '班级编号', value: record.scopeId }] : []"
+          />
+        </template>
       </div>
     </AiAnalysisCardBody>
   </AiAnalysisCardShell>
@@ -117,14 +133,19 @@ import {
   generateClassWeaknessAnalysis,
   getLatestClassWeaknessAnalysis,
 } from '@/apis/mark/teaching-analysis'
+import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import AiAnalysisCardBody from '@/components/mark/analysis/AiAnalysisCardBody.vue'
 import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.vue'
 import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCollapse.vue'
 import AiWeaknessRow from '@/components/mark/analysis/AiWeaknessRow.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { useAiAnalysisGenerationFeedback } from '@/composables/useAiAnalysisGenerationFeedback'
+import { useChartOption } from '@/hooks/modules/useChartOption'
 import { deriveWeaknessLevel } from '@/utils/ai-analysis-display'
 import { showUserError } from '@/utils/error-handler'
+import { buildBarChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
+import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
+import { classWeaknessToBarItems } from '@/utils/mark-statistics-chart'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ClassWeaknessCard' })
@@ -157,6 +178,22 @@ const classContextLabel = computed(() => {
   const option = props.classOptions.find((item) => item.value === props.classId)
   return option?.className ? `班级：${option.className}` : ''
 })
+
+const weaknessBarItems = computed(() => classWeaknessToBarItems(record.value?.weaknessItems ?? []))
+
+const weaknessChartHint = computed(() =>
+  mergeChartHint('悬停查看各薄弱题型班级得分率', buildBarChartInsight(weaknessBarItems.value)),
+)
+
+const { chartOption: weaknessChartOption } = useChartOption(() =>
+  buildCategoryBarChartOption(weaknessBarItems.value, {
+    orientation: 'horizontal',
+    maxValue: 100,
+    xAxisName: '得分率 %',
+    unit: '%',
+    emptyText: '暂无薄弱题型得分率',
+  }),
+)
 
 async function reload(): Promise<void> {
   const classId = props.classId

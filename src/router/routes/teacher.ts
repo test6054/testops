@@ -3,7 +3,6 @@
  *
  * L0 全局左栏：
  *   - 教师业务：阅卷概览、考试列表、归档工作台
- *   - 扫描中心：异常 / 运营 / 日志 / 调度（单页 4 Tab）
  *   - AI 分析中心：教学 / 趋势 / 聚类 / 校级（单页 4 Tab）
  * L1：/teacher/exam-workspace/:examId/* 考试详情工作台
  */
@@ -232,19 +231,15 @@ export const teacherRoutes: RouteRecordRaw[] = [
         },
       },
       {
-        path: 'scanner-center',
-        name: 'TeacherScannerCenter',
-        component: () => import('@/views/teacher/scanner-center/scanner-center.vue'),
+        path: 'archive-volumes/scan-ops',
+        name: 'TeacherArchiveScanOps',
+        component: () => import('@/views/teacher/archive-volume/archive-scan-ops.vue'),
         meta: {
-          title: '扫描值班台',
+          title: '归档扫描运营',
           roles: TEACHER_ROLES,
-          icon: 'scan',
-          hideInMenu: false,
+          hideInMenu: true,
           keepAlive: true,
-          menuGroup: 'scan-center',
-          menuGroupTitle: '扫描运营',
-          menuGroupIcon: 'scan',
-          menuGroupOrder: 3,
+          activeMenu: '/teacher/archive-volumes',
         },
       },
       {

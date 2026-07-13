@@ -191,7 +191,11 @@
             </template>
             <UiEmpty
               v-if="!detail?.aiDiagnostic"
-              description="暂无 AI 复评说明，可人工给分或重新生成 AI 复评"
+              :description="
+                isHardJudgeSource
+                  ? '客观题本地硬判无 AI 诊断；请核对识别结果后确认建议分或改人工给分'
+                  : '暂无 AI 复评说明，可人工给分或重新生成 AI 复评'
+              "
             />
             <div v-else class="review-workspace__text-block">
               {{ executionDiagnosticText(detail.aiDiagnostic) }}
@@ -204,7 +208,7 @@
                 :loading="submitting"
                 @click="adoptAiSuggestionAndSubmit"
               >
-                采纳评分并提交
+                {{ adoptSuggestionLabel }}
               </UiButton>
               <UiButton
                 size="sm"
@@ -212,7 +216,7 @@
                 :disabled="!canAdoptAiSuggestion"
                 @click="adoptAiSuggestion"
               >
-                填入表单（微调）
+                {{ fillSuggestionLabel }}
               </UiButton>
               <UiButton
                 size="sm"
@@ -220,7 +224,7 @@
                 :disabled="!canConfirm"
                 @click="clearAiSuggestionToManual"
               >
-                清空 AI 评分改人工
+                {{ clearSuggestionLabel }}
               </UiButton>
             </div>
           </GradingImmersionSection>
@@ -284,7 +288,7 @@
                     :disabled="!canConfirm"
                     @click="setQuickScore(detail.aiScore)"
                   >
-                    填入 AI 分
+                    {{ isHardJudgeSource ? '填入硬判分' : '填入 AI 分' }}
                   </UiButton>
                 </a-space>
               </a-form-item>
@@ -434,6 +438,7 @@ import {
   claimReviewTask,
   getReviewTaskDetail,
   getReviewTaskPipeline,
+  GradeSourceCode,
   REVIEW_TASK_STATUS_TONE,
   ReviewTaskStatusCode,
   ReviewTaskStatusDescription,
@@ -962,22 +967,43 @@ function executionDiagnosticText(diagnostic?: string): string {
   )
 }
 
-/** 是否可采纳 AI 评分：同时要求任务可提交、存在 AI 评分 */
+/** 当前题是否为客观题硬判来源（系统建议分，非模型 AI） */
+const isHardJudgeSource = computed<boolean>(() => {
+  return detail.value?.gradeSource === GradeSourceCode.AUTO_OBJECTIVE
+})
+
+/** 是否可采纳系统建议分（AI 或硬判）：任务可提交且存在 aiScore */
 const canAdoptAiSuggestion = computed<boolean>(() => {
   if (!canConfirm.value) return false
   return detail.value?.aiScore != null
 })
-/** 一键采纳当前 AI 评分到教师复核评分表单，并重走表单校验 */
+
+/** 采纳按钮文案：硬判与模型 AI 区分 */
+const adoptSuggestionLabel = computed(() =>
+  isHardJudgeSource.value ? '确认硬判分并提交' : '采纳 AI 评分并提交',
+)
+const fillSuggestionLabel = computed(() =>
+  isHardJudgeSource.value ? '填入硬判分（微调）' : '填入表单（微调）',
+)
+const clearSuggestionLabel = computed(() =>
+  isHardJudgeSource.value ? '清空建议分改人工' : '清空 AI 评分改人工',
+)
+
+/** 一键采纳系统建议分到教师复核评分表单 */
 function adoptAiSuggestion(): void {
   if (!canAdoptAiSuggestion.value) return
   const aiScore = detail.value?.aiScore
   if (aiScore == null) return
   gradeForm.teacherReviewScore = aiScore
   void gradeFormRef.value?.validateFields(['teacherReviewScore'])
-  message.success(`已填入 AI 评分 ${aiScore}，可微调后提交`)
+  message.success(
+    isHardJudgeSource.value
+      ? `已填入硬判建议分 ${aiScore}，确认后才计入最终成绩`
+      : `已填入 AI 评分 ${aiScore}，可微调后提交`,
+  )
 }
 
-/** 采纳当前 AI 评分并立即提交教师复核结论，成功后进入下一份流水线。 */
+/** 采纳建议分并立即提交教师复核结论 */
 async function adoptAiSuggestionAndSubmit(): Promise<void> {
   if (!canAdoptAiSuggestion.value) return
   const aiScore = detail.value?.aiScore
@@ -990,14 +1016,22 @@ async function adoptAiSuggestionAndSubmit(): Promise<void> {
   }
   const ok = await submitGrade()
   if (!ok) return
-  message.success('已采纳 AI 评分并提交，正在为你取下一份…')
+  message.success(
+    isHardJudgeSource.value
+      ? '已确认硬判分并提交，正在为你取下一份…'
+      : '已采纳 AI 评分并提交，正在为你取下一份…',
+  )
   await takeNextTask()
 }
 
-/** 清空 AI 评分转人工评分，仅重置表单不会反向写库 */
+/** 清空建议分转人工评分，仅重置表单 */
 function clearAiSuggestionToManual(): void {
   gradeForm.teacherReviewScore = undefined
-  message.info('已清空 AI 评分，请按题目原则手工输入教师复核评分')
+  message.info(
+    isHardJudgeSource.value
+      ? '已清空硬判建议分，请手工输入教师复核评分'
+      : '已清空 AI 评分，请按题目原则手工输入教师复核评分',
+  )
 }
 
 // AI 历史执行记录抽屉状态

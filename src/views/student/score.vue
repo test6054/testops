@@ -138,6 +138,8 @@
               <template v-if="record.finalScoreStatus === FinalScoreStatusCode.PUBLISHED">
                 {{ formatPublishedScore(record) }}
               </template>
+              <span v-else-if="record.finalScoreStatus === FinalScoreStatusCode.CORRECTED" class="student-score__muted">更正待重发</span>
+              <span v-else-if="record.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN" class="student-score__muted">成绩已撤回</span>
               <span v-else class="student-score__muted">—</span>
             </template>
             <template v-else-if="column.key === 'publishedTime'">

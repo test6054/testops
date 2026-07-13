@@ -2,23 +2,19 @@
   <AiAnalysisSection
     v-if="embedded"
     title="试题-课程目标映射"
+    headless
     class="exam-goal-mapping-card exam-goal-mapping-card--section"
   >
-    <template #actions>
-      <UiButton size="sm" variant="outline" :loading="loading" @click="loadData">刷新</UiButton>
-    </template>
-
-    <p class="exam-goal-mapping-card__desc exam-goal-mapping-card__desc--embedded">
-      维护各题与质量评价课程目标的支撑关系，供归档卷生成课程目标达成报告。
-    </p>
-
     <ExamQuestionCourseGoalMappingTable
       :loading="loading"
+      :course-goal-configured="workspace?.courseGoalConfigured"
+      :readiness="workspace?.readiness"
       :course-goals="courseGoals"
-      :columns="columns"
       :rows="rows"
       :goal-options="goalOptions"
       @mapping-row-action="handleMappingRowAction"
+      @goal-change="handleGoalChange"
+      @weight-change="handleWeightChange"
     />
   </AiAnalysisSection>
 
@@ -30,39 +26,40 @@
           维护本场考试各题与质量评价课程目标的支撑关系，供归档卷生成课程目标达成报告。
         </p>
       </div>
-      <UiButton size="sm" variant="outline" :loading="loading" @click="loadData">刷新</UiButton>
     </header>
 
     <ExamQuestionCourseGoalMappingTable
       :loading="loading"
+      :course-goal-configured="workspace?.courseGoalConfigured"
+      :readiness="workspace?.readiness"
       :course-goals="courseGoals"
-      :columns="columns"
       :rows="rows"
       :goal-options="goalOptions"
       @mapping-row-action="handleMappingRowAction"
+      @goal-change="handleGoalChange"
+      @weight-change="handleWeightChange"
     />
   </article>
 </template>
 
 <script setup lang="ts">
-import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { MappingEditableRow } from './ExamQuestionCourseGoalMappingTable.vue'
 import type {
-  ExamQuestionCourseGoalMappingVO,
+  ExamQuestionCourseGoalMappingWorkspaceVO,
   QualityCourseGoalForMarkVO,
 } from '@/apis/mark/exam-question-course-goal-mapping'
-import type { ExamQuestionAnalysisRecordResponse } from '@/apis/mark/question-analysis'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import {
   deleteExamQuestionCourseGoalMapping,
-  listExamCourseGoalsForMapping,
-  listExamQuestionCourseGoalMappings,
+  loadExamQuestionCourseGoalMappingWorkspace,
   saveExamQuestionCourseGoalMapping,
 } from '@/apis/mark/exam-question-course-goal-mapping'
-import { loadQuestionAnalysisChartRows } from '@/apis/mark/question-analysis'
 import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'
-import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import {
+  ExamQuestionCourseGoalMappingStatusCode,
+} from '@/types/enums/exam-question-course-goal-mapping-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import ExamQuestionCourseGoalMappingTable from './ExamQuestionCourseGoalMappingTable.vue'
 
@@ -78,22 +75,13 @@ const props = withDefaults(
   { embedded: false },
 )
 
-interface MappingRow {
-  layoutQuestionId: string
-  questionNo: string
-  fullScore?: number
-  mappingId?: string
-  qualityCourseGoalId?: string
-  weight: number
-  saving: boolean
-  deleting: boolean
-}
+const emit = defineEmits<{ changed: [] }>()
 
 const loading = ref(false)
-const courseGoals = ref<QualityCourseGoalForMarkVO[]>([])
-const mappings = ref<ExamQuestionCourseGoalMappingVO[]>([])
-const questions = ref<ExamQuestionAnalysisRecordResponse[]>([])
-const rows = ref<MappingRow[]>([])
+const workspace = ref<ExamQuestionCourseGoalMappingWorkspaceVO | null>(null)
+const rows = ref<MappingEditableRow[]>([])
+
+const courseGoals = computed<QualityCourseGoalForMarkVO[]>(() => workspace.value?.courseGoals ?? [])
 
 const goalOptions = computed(() =>
   courseGoals.value.map((goal) => ({
@@ -102,61 +90,83 @@ const goalOptions = computed(() =>
   })),
 )
 
-const columns: ColumnsType<MappingRow> = [
-  { title: '题号', dataIndex: 'questionNo', width: 88 },
-  { title: '满分', dataIndex: 'fullScore', width: 72 },
-  { title: '课程目标', key: 'goal', width: 220 },
-  { title: '权重', key: 'weight', width: 120 },
-  { title: '操作', key: 'actions', width: 120 },
-]
-
-function buildRows() {
-  const mappingByQuestion = new Map<string, ExamQuestionCourseGoalMappingVO>()
-  for (const item of mappings.value) {
-    mappingByQuestion.set(item.layoutQuestionId, item)
+const goalIndex = computed(() => {
+  const index = new Map<string, QualityCourseGoalForMarkVO>()
+  for (const goal of courseGoals.value) {
+    index.set(goal.goalId, goal)
   }
-  rows.value = questions.value.map((question) => {
-    const mapped = mappingByQuestion.get(question.layoutQuestionId)
-    return {
-      layoutQuestionId: question.layoutQuestionId,
-      questionNo: question.questionNo,
-      fullScore: question.fullScore,
-      mappingId: mapped?.id,
-      qualityCourseGoalId: mapped?.qualityCourseGoalId,
-      weight: mapped?.weight ?? 1,
-      saving: false,
-      deleting: false,
-    }
-  })
+  return index
+})
+
+function toEditableRows(
+  sourceRows: ExamQuestionCourseGoalMappingWorkspaceVO['rows'],
+): MappingEditableRow[] {
+  return sourceRows.map((row) => ({
+    ...row,
+    fullScore: row.questionFullScore,
+    weight: row.weight ?? 1,
+    saving: false,
+    deleting: false,
+  }))
+}
+
+function syncGoalMeta(row: MappingEditableRow): void {
+  if (!row.qualityCourseGoalId) {
+    row.goalCode = undefined
+    row.goalName = undefined
+    row.goalThresholdValue = undefined
+    row.weightedScoreContribution = undefined
+    return
+  }
+  const goal = goalIndex.value.get(row.qualityCourseGoalId)
+  if (!goal) {
+    return
+  }
+  row.goalCode = goal.goalCode
+  row.goalName = goal.goalName
+  row.goalThresholdValue = goal.thresholdValue
+}
+
+function syncWeightedContribution(row: MappingEditableRow): void {
+  const fullScore = row.questionFullScore
+  const weight = row.weight
+  if (fullScore == null || weight == null || fullScore <= 0) {
+    row.weightedScoreContribution = undefined
+    return
+  }
+  row.weightedScoreContribution = Number((fullScore * weight).toFixed(4))
+}
+
+function handleGoalChange(row: MappingEditableRow): void {
+  syncGoalMeta(row)
+  syncWeightedContribution(row)
+}
+
+function handleWeightChange(row: MappingEditableRow): void {
+  syncWeightedContribution(row)
 }
 
 async function loadData() {
   if (!props.examId) {
-    courseGoals.value = []
-    mappings.value = []
-    questions.value = []
+    workspace.value = null
     rows.value = []
     return
   }
   loading.value = true
   try {
-    const [goalList, mappingList, questionList] = await Promise.all([
-      listExamCourseGoalsForMapping(props.examId),
-      listExamQuestionCourseGoalMappings(props.examId),
-      loadQuestionAnalysisChartRows({ examId: props.examId }),
-    ])
-    courseGoals.value = goalList
-    mappings.value = mappingList
-    questions.value = questionList
-    buildRows()
+    const result = await loadExamQuestionCourseGoalMappingWorkspace(props.examId)
+    workspace.value = result
+    rows.value = toEditableRows(result.rows ?? [])
   } catch (error) {
+    workspace.value = null
+    rows.value = []
     showUserError(error, '加载试题-课程目标映射失败')
   } finally {
     loading.value = false
   }
 }
 
-async function saveRow(row: MappingRow) {
+async function saveRow(row: MappingEditableRow) {
   if (!props.examId || !row.qualityCourseGoalId) {
     message.warning('请选择课程目标')
     return
@@ -168,9 +178,11 @@ async function saveRow(row: MappingRow) {
       examId: props.examId,
       layoutQuestionId: row.layoutQuestionId,
       qualityCourseGoalId: row.qualityCourseGoalId,
-      weight: row.weight,
+      weight: row.weight ?? 1,
     })
+    row.mappingStatus = ExamQuestionCourseGoalMappingStatusCode.MAPPED
     message.success('映射已保存')
+    emit('changed')
     await loadData()
   } catch (error) {
     showUserError(error, '保存映射失败')
@@ -179,7 +191,7 @@ async function saveRow(row: MappingRow) {
   }
 }
 
-async function deleteRow(row: MappingRow) {
+async function deleteRow(row: MappingEditableRow) {
   if (!row.mappingId) return
   const confirmed = await confirmAsync({
     title: '清除映射',
@@ -190,6 +202,7 @@ async function deleteRow(row: MappingRow) {
   try {
     await deleteExamQuestionCourseGoalMapping({ id: row.mappingId })
     message.success('映射已清除')
+    emit('changed')
     await loadData()
   } catch (error) {
     showUserError(error, '清除映射失败')
@@ -198,7 +211,7 @@ async function deleteRow(row: MappingRow) {
   }
 }
 
-function handleMappingRowAction(key: string, row: MappingRow) {
+function handleMappingRowAction(key: string, row: MappingEditableRow) {
   if (key === 'save') void saveRow(row)
   else if (key === 'clear') void deleteRow(row)
 }
@@ -241,14 +254,5 @@ watch(
   font-size: 13px;
   color: var(--dp-text-secondary);
   line-height: 1.5;
-}
-.exam-goal-mapping-card__desc--embedded {
-  margin-top: 0;
-}
-.exam-goal-mapping-card__select {
-  width: 100%;
-}
-.exam-goal-mapping-card__weight {
-  width: 100%;
 }
 </style>

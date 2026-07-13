@@ -1,6 +1,6 @@
 <template>
   <template v-if="isRenderableMenuNode">
-    <a-menu-item v-if="shouldShowAsMenuItem" :key="menuItemKey" :disabled="menuItemDisabled">
+    <a-menu-item v-if="shouldShowAsMenuItem" :key="menuItemKey">
       <template #icon>
         <MenuCollapsedTooltip :collapsed="menuCollapsed" :label="menuItemTitle ?? ''">
           <MenuIcon :icon="menuItemIcon" />
@@ -116,7 +116,15 @@ const menuItemIcon = computed(() => {
 
 // 菜单项的标题
 const menuItemTitle = computed(() => {
-  return menuData.value.onlyOneChild?.meta?.title
+  const target = menuData.value.onlyOneChild ?? props.item
+  const title = target.meta?.title
+  if (typeof title !== 'string') {
+    return title
+  }
+  if (target.meta?.qualityGateBlocked) {
+    return `${title} · 待确认`
+  }
+  return title
 })
 
 // 子菜单的图标

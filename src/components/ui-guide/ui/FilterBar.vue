@@ -92,7 +92,11 @@
       </div>
     </template>
 
-    <div class="dp-advanced-filter__actions" :class="[`dp-filter-bar__actions--${actionsAlign}`]">
+    <div
+      v-if="!hideActions"
+      class="dp-advanced-filter__actions"
+      :class="[`dp-filter-bar__actions--${actionsAlign}`]"
+    >
       <slot name="actions">
         <UiButton size="sm" class="dp-button-row__btn" @click="handleSearchClick">
           <SearchOutlined />
@@ -136,6 +140,7 @@ const {
   actionsAlign = 'start',
   showLabels = false,
   variant = 'plain',
+  hideActions = false,
 } = defineProps<{
   fields?: FilterField[]
   searchText?: string
@@ -144,6 +149,8 @@ const {
   showLabels?: boolean
   /** panel：工作台筛选壳；plain：卡片内嵌无壳（默认） */
   variant?: 'panel' | 'plain'
+  /** 隐藏搜索/重置操作区（卡片内纯选择器场景） */
+  hideActions?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -370,8 +377,8 @@ const resolveAntSize = (size?: FilterField['size']): SizeType => {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: nowrap;
-  flex: 0 0 auto;
+  flex-wrap: wrap;
+  flex: 0 1 auto;
   flex-shrink: 0;
   margin-left: auto;
   align-self: flex-end;

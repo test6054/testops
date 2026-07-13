@@ -180,7 +180,7 @@ const recommendedSecondaryLabel = computed(() => {
   if (primaryNextAction.value?.actionKey === WorkbenchNextActionKeyCode.START_SCAN) {
     return '准备工作台'
   }
-  return '扫描中心'
+  return '扫描运营'
 })
 
 const recommendedPrimaryDisabled = computed(() => false)
@@ -327,7 +327,10 @@ function runRecommendedSecondaryAction(): void {
     goPrepWorkbench()
     return
   }
-  goScanBatches()
+  void router.push({
+    name: 'TeacherExamWorkspaceScanOps',
+    params: { examId: examId.value },
+  })
 }
 
 function goMarkQuality(): void {

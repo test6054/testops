@@ -12,21 +12,12 @@
 
     <UiSkeletonState v-if="loading" variant="card" compact />
 
-    <UiEmpty v-else-if="qualityMetrics.length === 0" description="暂无整卷质量数据" />
-
     <SignalBand
       v-else-if="showSignalBand"
-      :metrics="qualityMetrics"
+      :metrics="displayMetrics"
       compact
       class="paper-quality-card__metrics"
     />
-
-    <div v-else class="paper-quality-card__summary">
-      <p class="paper-quality-card__summary-text">{{ qualitySummary }}</p>
-      <p v-if="qualitySnapshotMeta" class="paper-quality-card__summary-meta">
-        {{ qualitySnapshotMeta }}
-      </p>
-    </div>
   </AiAnalysisCardShell>
 </template>
 
@@ -38,10 +29,8 @@ import { computed, ref, watch } from 'vue'
 import { getExamPaperAnalysis } from '@/apis/mark/question-analysis'
 import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
-import { formatDateTime } from '@/utils/format'
 import { buildPaperQualitySignalMetrics } from '@/utils/paper-quality-signals'
 
 defineOptions({ name: 'PaperQualityCard' })
@@ -67,37 +56,15 @@ const qualityMetrics = computed((): SignalMetric[] =>
   buildPaperQualitySignalMetrics(analysis.value),
 )
 
-const qualitySummary = computed(() => {
-  if (!analysis.value) {
-    return ''
+const displayMetrics = computed((): SignalMetric[] => {
+  if (qualityMetrics.value.length > 0) {
+    return qualityMetrics.value
   }
-  const pieces: string[] = []
-  if (analysis.value.cronbachAlpha == null) {
-    pieces.push('Cronbach α 样本不足（<30），暂无法计算信度')
-  } else {
-    pieces.push(`Cronbach α ${analysis.value.cronbachAlpha.toFixed(3)}`)
-  }
-  if (analysis.value.paperDiscriminationIndex != null) {
-    pieces.push(`平均区分度 ${analysis.value.paperDiscriminationIndex.toFixed(3)}`)
-  }
-  if (analysis.value.paperDifficultyIndex != null) {
-    pieces.push(`平均难度 ${analysis.value.paperDifficultyIndex.toFixed(3)}`)
-  }
-  return pieces.join('；')
-})
-
-const qualitySnapshotMeta = computed(() => {
-  if (!analysis.value) {
-    return ''
-  }
-  const pieces: string[] = []
-  if (analysis.value.reliabilitySampleCount != null) {
-    pieces.push(`有效样本 ${analysis.value.reliabilitySampleCount}`)
-  }
-  if (analysis.value.snapshotTime) {
-    pieces.push(`快照时间 ${formatDateTime(analysis.value.snapshotTime)}`)
-  }
-  return pieces.join(' · ')
+  return [
+    { key: 'cronbach', label: 'Cronbach α', value: '—', tone: 'gray' },
+    { key: 'discrimination', label: '平均区分度', value: '—', tone: 'gray' },
+    { key: 'difficulty', label: '平均难度', value: '—', tone: 'gray' },
+  ]
 })
 
 async function reload(): Promise<void> {
@@ -143,26 +110,5 @@ watch(
 <style lang="scss" scoped>
 .paper-quality-card__metrics {
   margin-top: 4px;
-}
-
-.paper-quality-card__summary {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 4px;
-}
-
-.paper-quality-card__summary-text,
-.paper-quality-card__summary-meta {
-  margin: 0;
-}
-
-.paper-quality-card__summary-text {
-  color: var(--dp-text-primary);
-}
-
-.paper-quality-card__summary-meta {
-  font-size: 12px;
-  color: var(--dp-text-secondary);
 }
 </style>

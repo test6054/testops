@@ -64,9 +64,15 @@ export interface ExamScoreSummaryItemResponse {
   scanBatchId?: string
   finalScoreStatus: FinalScoreStatusCode
   finalScoreStatusMessage: string
+  /** 正式总分；CALCULATED 不返回 */
   finalScore?: number
+  /** 正式卷面分；CALCULATED 不返回 */
   examScore?: number
   dailyScore?: number
+  /** AI 预估卷面分（非正式，仅 CALCULATED） */
+  estimatedExamScore?: number
+  /** AI 预估总分（非正式，仅 CALCULATED） */
+  estimatedTotalScore?: number
   confirmedTime?: string
   confirmedUserId?: string
   paperDisplay: PaperInstanceDisplayVO

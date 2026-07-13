@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ExamDistinctTermItemResponse } from '@/apis/mark/exam'
 import type { SemesterCode } from '@/types/enums/semester-enum'
-import { ReloadOutlined } from '@ant-design/icons-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { listDistinctExamTerms, listDistinctTeachingExamTerms } from '@/apis/mark/exam'
 import { getSemesterDescription } from '@/types/enums/semester-enum'
@@ -166,15 +165,6 @@ onMounted(() => loadSemesterOptions(true))
       option-filter-prop="label"
       style="width: 120px"
     />
-    <a-button
-      class="analysis-semester-select__reload"
-      size="small"
-      :loading="loading"
-      title="刷新学年学期列表"
-      @click="loadSemesterOptions(false)"
-    >
-      <template #icon><ReloadOutlined /></template>
-    </a-button>
   </div>
 </template>
 
@@ -183,10 +173,6 @@ onMounted(() => loadSemesterOptions(true))
   display: flex;
   align-items: center;
   gap: 8px;
-  min-width: 280px;
-}
-
-.analysis-semester-select__reload {
-  flex: 0 0 auto;
+  min-width: 248px;
 }
 </style>

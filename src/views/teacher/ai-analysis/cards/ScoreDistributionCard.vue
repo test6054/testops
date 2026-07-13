@@ -23,9 +23,8 @@
 
     <UiSkeletonState v-if="loading" variant="card" compact />
 
-    <UiEmpty v-else-if="!distribution" description="当前没有可展示的内容" />
-    <div v-else-if="distribution" class="score-dist">
-      <SignalBand :metrics="distributionMetrics" compact class="score-dist__metrics" />
+    <div v-else class="score-dist">
+      <SignalBand :metrics="displayMetrics" compact class="score-dist__metrics" />
 
       <MarkBarSection
         title="五级分数分布"
@@ -34,6 +33,7 @@
         :option="histogramChartOption"
         height="300px"
         :aria-label="histogramChartAriaLabel"
+        empty-description="选定考试并刷新后展示分数段分布"
         class="score-dist__chart"
       />
     </div>
@@ -50,7 +50,6 @@ import { computed, ref, watch } from 'vue'
 import { getExamScoreDistribution } from '@/apis/mark/exam-score'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -112,6 +111,18 @@ const histogramChartAriaLabel = computed(() => {
     return '五级分数分布，当前没有可展示的内容'
   }
   return `五级分数分布，共 ${count} 个分数段`
+})
+
+const displayMetrics = computed((): SignalMetric[] => {
+  if (distributionMetrics.value.length > 0) {
+    return distributionMetrics.value
+  }
+  return [
+    { key: 'participantCount', label: '统计人数', value: '—', unit: '人' },
+    { key: 'passCount', label: '及格人数', value: '—', unit: '人', tone: 'green' },
+    { key: 'avgScore', label: '平均分', value: '—' },
+    { key: 'stdDev', label: '标准差', value: '—' },
+  ]
 })
 
 const distributionMetrics = computed((): SignalMetric[] => {

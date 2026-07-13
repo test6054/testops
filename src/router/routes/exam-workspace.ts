@@ -159,6 +159,14 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       keepAlive: true,
       hasWorkbenchShell: true,
     }),
+    workspaceChild('scan/ops', 'TeacherExamWorkspaceScanOps', () => import('@/views/teacher/exam-scan-ops.vue'), {
+      title: '扫描运营',
+      markStageKey: 'SCAN',
+      journeyKey: 'scan',
+      workspacePhase: 'scan',
+      keepAlive: true,
+      hasWorkbenchShell: true,
+    }),
     workspaceChild('marking-org', 'TeacherExamWorkspaceMarkingOrg', () => import('@/views/admin/marking-organization/marking-org-entry.vue'), {
       title: '阅卷组织',
       markStageKey: 'MARKING_ORG',

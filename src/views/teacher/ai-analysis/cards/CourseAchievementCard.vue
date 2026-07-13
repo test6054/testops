@@ -8,60 +8,16 @@
       </UiButton>
     </template>
 
-    <AiAnalysisConfigCollapse title="达成度分析范围">
-      <div class="ai-form">
-        <a-form layout="inline" :model="form" size="small">
-          <a-form-item label="课程">
-            <span v-if="scopeOrgCourseId?.trim()" class="scope-hint">{{
-              scopeCourseLabel || effectiveCourseId || '—'
-            }}</span>
-            <CatalogCourseSelector
-              v-else
-              v-model:value="form.courseId"
-              placeholder="请选择课程"
-              :allow-clear="false"
-              width="220px"
-            />
-          </a-form-item>
-          <a-form-item label="学年">
-            <span v-if="scopeTermLabel" class="scope-hint">{{ scopeTermLabel }}</span>
-            <AnalysisSemesterSelect
-              v-else-if="effectiveCourseId"
-              v-model:academic-year="form.academicYear"
-              v-model:semester="form.semester"
-              :course-id="effectiveCourseId"
-              :class-id="examSelectScopeClassId"
-              :reference-department-id="examSelectScopeReferenceDepartmentId"
-              :default-recent-semester-count="1"
-            />
-            <span v-else class="scope-hint">请先选择课程</span>
-          </a-form-item>
-          <a-form-item label="考核环节" style="flex: 1; min-width: 320px">
-            <template v-if="effectiveCourseId && form.academicYear && form.semester">
-              <AnalysisExamMultiSelect
-                v-model="form.examIds"
-                :scope-course-id="effectiveCourseId"
-                :scope-class-id="examSelectScopeClassId"
-                :scope-reference-department-id="examSelectScopeReferenceDepartmentId"
-                :scope-academic-year="form.academicYear"
-                :scope-semester="form.semester"
-                auto-select-scoped-exams
-                placeholder="已自动纳入本课程本学期全部考试，可减选"
-              />
-              <p class="scope-hint">默认统计评价规则内已挂接的全部考核；可取消勾选以排除某次考试</p>
-            </template>
-            <span v-else class="scope-hint">选定课程与学年、学期后自动纳入考核环节</span>
-          </a-form-item>
-        </a-form>
-      </div>
-    </AiAnalysisConfigCollapse>
-
     <UiSkeletonState v-if="loading || generating" variant="card" compact />
-    <UiEmpty v-else-if="!record" description="配置范围后生成或查看课程目标达成度" />
-    <div v-else-if="record" class="ai-analysis-section__body ai-analysis-section__body--flush">
-      <SignalBand :metrics="achievementSignalMetrics" compact variant="inline" />
+    <div v-else class="ai-analysis-section__body ai-analysis-section__body--flush">
+      <SignalBand
+        v-if="record"
+        :metrics="achievementSignalMetrics"
+        compact
+        variant="inline"
+      />
 
-      <p v-if="record.achievementSummary" class="ai-analysis-summary">
+      <p v-if="record?.achievementSummary" class="ai-analysis-summary">
         {{ record.achievementSummary }}
       </p>
 
@@ -106,6 +62,7 @@
       </div>
 
       <AiAnalysisMetaCollapse
+        v-if="record"
         :record="record"
         failure-fallback="AI 课程目标达成度分析未完成，请核对考试范围后重新生成"
         :extra-items="metaExtraItems"
@@ -123,7 +80,7 @@ import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
 import {
   CourseObjectiveDimensionDescription,
@@ -132,19 +89,15 @@ import {
 } from '@/apis/mark/cross-exam-analysis'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
-import AiAnalysisConfigCollapse from '@/components/mark/analysis/AiAnalysisConfigCollapse.vue'
 import AiAnalysisHistorySelect from '@/components/mark/analysis/AiAnalysisHistorySelect.vue'
 import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCollapse.vue'
 import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'
 import AiObjectiveProgressRow from '@/components/mark/analysis/AiObjectiveProgressRow.vue'
-import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
-import AnalysisSemesterSelect from '@/components/mark/AnalysisSemesterSelect.vue'
-import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
+import { loadExamsForCourseAcademicYearSemester } from '@/composables/useCrossExamDefaultScope'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { formatSemester } from '@/types/enums/semester-enum'
 import {
@@ -181,9 +134,6 @@ const props = withDefaults(
     scopeOrgClassId?: string | null
     scopeAcademicYear?: string
     scopeSemester?: SemesterCode
-    examScopeLocked?: boolean
-    scopeTermLabel?: string
-    scopeCourseLabel?: string
   }>(),
   {
     scopeReferenceDepartmentId: null,
@@ -191,35 +141,50 @@ const props = withDefaults(
     scopeOrgClassId: null,
     scopeAcademicYear: undefined,
     scopeSemester: undefined,
-    examScopeLocked: false,
-    scopeTermLabel: '',
-    scopeCourseLabel: '',
   },
 )
 
-interface CourseAchievementForm {
-  courseId: string
-  academicYear: string | undefined
-  semester: SemesterCode | undefined
-  examIds: string[]
-}
-
-const form = reactive<CourseAchievementForm>({
-  courseId: '',
-  academicYear: undefined,
-  semester: undefined,
-  examIds: [],
-})
-
-const effectiveCourseId = computed(
-  () => form.courseId.trim() || props.scopeOrgCourseId?.trim() || '',
-)
+const effectiveCourseId = computed(() => props.scopeOrgCourseId?.trim() || '')
+const effectiveAcademicYear = computed(() => props.scopeAcademicYear?.trim() || '')
+const effectiveSemester = computed(() => props.scopeSemester)
 
 const examSelectScopeClassId = computed(() => props.scopeOrgClassId?.trim() || undefined)
 
 const examSelectScopeReferenceDepartmentId = computed(
   () => props.scopeReferenceDepartmentId?.trim() || undefined,
 )
+
+const scopedExamIds = ref<string[]>([])
+
+const scopeReady = computed(
+  () => Boolean(effectiveCourseId.value && effectiveAcademicYear.value && effectiveSemester.value),
+)
+
+/** 按 Tab 范围同步本课程本学期全部考核环节。 */
+async function syncScopedExams(): Promise<void> {
+  if (!scopeReady.value) {
+    scopedExamIds.value = []
+    return
+  }
+  try {
+    const exams = await loadExamsForCourseAcademicYearSemester(
+      effectiveCourseId.value,
+      effectiveAcademicYear.value,
+      effectiveSemester.value,
+      {
+        classId: examSelectScopeClassId.value,
+        referenceDepartmentId: examSelectScopeReferenceDepartmentId.value,
+      },
+    )
+    scopedExamIds.value = exams
+      .map((exam) => exam.examId)
+      .filter((examId): examId is string => Boolean(examId))
+  }
+  catch (error) {
+    scopedExamIds.value = []
+    showUserError(error, '考核环节加载失败')
+  }
+}
 
 const {
   records: historyRecords,
@@ -231,47 +196,21 @@ const {
 } = useAiAnalysisHistoryPicker<CourseObjectiveAchievementResponse>()
 
 watch(
-  () => [props.scopeOrgCourseId, props.scopeAcademicYear, props.scopeSemester] as const,
-  ([courseId, year, semesterCode]) => {
-    if (courseId?.trim()) {
-      form.courseId = courseId.trim()
-    }
-    if (year) {
-      form.academicYear = year
-    }
-    if (semesterCode) {
-      form.semester = semesterCode
+  () => [
+    props.scopeOrgCourseId,
+    props.scopeAcademicYear,
+    props.scopeSemester,
+    props.scopeOrgClassId,
+    props.scopeReferenceDepartmentId,
+  ] as const,
+  async () => {
+    clearHistory()
+    await syncScopedExams()
+    if (scopeReady.value) {
+      await reload({ silent: true })
     }
   },
   { immediate: true },
-)
-
-watch(
-  () => form.courseId,
-  () => {
-    form.academicYear = undefined
-    form.semester = undefined
-    form.examIds = []
-    clearHistory()
-  },
-)
-
-watch(
-  () => props.scopeOrgCourseId,
-  (courseId) => {
-    if (courseId?.trim() && !form.courseId.trim()) {
-      form.courseId = courseId.trim()
-    }
-  },
-  { immediate: true },
-)
-
-watch(
-  () => [form.academicYear, form.semester],
-  () => {
-    form.examIds = []
-    clearHistory()
-  },
 )
 
 const historyRows = computed(() =>
@@ -398,15 +337,23 @@ function examScopeSummary(value: CourseObjectiveAchievementResponse): string {
     .join('；')
 }
 
-async function reload(): Promise<void> {
+async function reload(options?: { silent?: boolean }): Promise<void> {
   if (!effectiveCourseId.value) {
-    message.warning('请选择课程')
+    if (!options?.silent) {
+      message.warning('请先在上方范围栏选择课程')
+    }
     return
   }
-  if (!ensureAcademicYearSemesterPair(form.academicYear, form.semester)) {
+  if (!ensureAcademicYearSemesterPair(effectiveAcademicYear.value, effectiveSemester.value)) {
+    if (!options?.silent) {
+      message.warning('请先在上方范围栏选择学年与学期')
+    }
     return
   }
-  const termQuery = buildOptionalAcademicYearSemesterQuery(form.academicYear, form.semester)
+  const termQuery = buildOptionalAcademicYearSemesterQuery(
+    effectiveAcademicYear.value,
+    effectiveSemester.value,
+  )
   if (termQuery === null) {
     return
   }
@@ -417,30 +364,37 @@ async function reload(): Promise<void> {
       ...termQuery,
     })
     const count = applyLoadedList(list)
-    if (count === 0) message.info('暂无历史记录')
-  } catch (e) {
+    if (!options?.silent && count === 0) {
+      message.info('暂无历史记录')
+    }
+  }
+  catch (e) {
     showUserError(e, '课程达成度分析加载失败')
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
 
 async function handleGenerate(): Promise<void> {
   const courseId = effectiveCourseId.value
-  const examIds = form.examIds
+  const examIds = scopedExamIds.value
   if (!courseId) {
-    message.warning('请选择课程')
+    message.warning('请先在上方范围栏选择课程')
     return
   }
-  if (!ensureRequiredAcademicYearSemester(form.academicYear, form.semester)) {
+  if (!ensureRequiredAcademicYearSemester(effectiveAcademicYear.value, effectiveSemester.value)) {
     return
   }
-  const termQuery = buildRequiredAcademicYearSemesterQuery(form.academicYear, form.semester)
+  const termQuery = buildRequiredAcademicYearSemesterQuery(
+    effectiveAcademicYear.value,
+    effectiveSemester.value,
+  )
   if (!termQuery) {
     return
   }
   if (examIds.length < 2) {
-    message.warning('课程目标达成度分析至少需要 2 场考核')
+    message.warning('当前范围内考核环节不足 2 场，无法生成达成度分析')
     return
   }
   generating.value = true

@@ -167,7 +167,13 @@
                 <span v-if="candidates[index].examScore != null" class="score-summary-table__score">
                   {{ candidates[index].examScore }}
                 </span>
-                <span v-else class="score-publish__hint">—</span>
+                <span
+                  v-else-if="candidates[index].estimatedExamScore != null"
+                  class="score-finalize__hint"
+                >
+                  预估 {{ candidates[index].estimatedExamScore }}
+                </span>
+                <span v-else class="score-finalize__hint">—</span>
               </template>
               <template v-else-if="column.key === 'dailyScore'">
                 <span
@@ -185,7 +191,13 @@
                 >
                   {{ candidates[index].finalScore }}
                 </span>
-                <span v-else class="score-publish__hint">—</span>
+                <span
+                  v-else-if="candidates[index].estimatedTotalScore != null"
+                  class="score-finalize__hint"
+                >
+                  预估 {{ candidates[index].estimatedTotalScore }}
+                </span>
+                <span v-else class="score-finalize__hint">—</span>
               </template>
               <template v-else-if="column.key === 'finalScoreStatus'">
                 <UiTag :tone="finalScoreStatusTone(candidates[index].finalScoreStatus)" size="sm">
@@ -231,7 +243,7 @@
           </a-descriptions-item>
           <a-descriptions-item v-if="hasDailyScoreConfig" label="考试分">
             <span class="score-summary-table__score">{{
-              formatScorePoints(paperScore.examScore)
+              formatScorePoints(paperScore.examScore ?? paperScore.estimatedExamScore)
             }}</span>
           </a-descriptions-item>
           <a-descriptions-item v-if="hasDailyScoreConfig" label="日常分">
@@ -241,7 +253,7 @@
           </a-descriptions-item>
           <a-descriptions-item :label="hasDailyScoreConfig ? '总成绩' : '总分'">
             <span class="score-summary-table__score score-summary-table__score--total">
-              {{ formatScorePoints(paperScore.totalScore) }}
+              {{ formatScorePoints(paperScore.totalScore ?? paperScore.estimatedTotalScore) }}
             </span>
           </a-descriptions-item>
           <a-descriptions-item label="最终状态" :span="2">
@@ -250,6 +262,17 @@
             </UiTag>
           </a-descriptions-item>
         </a-descriptions>
+
+        <UiAlertStrip
+          v-if="paperTotalScoreCorrectionNotice"
+          tone="warning"
+          title="本卷已经总分更正"
+          :description="paperTotalScoreCorrectionNotice"
+          dense
+          inline
+          class="score-publish__detail-correction-alert"
+          style="margin: 12px 0"
+        />
 
         <h4 class="score-publish__detail-section-title">题目得分明细</h4>
         <UiDataTable
@@ -527,7 +550,7 @@ const blockedDelayedAutoConfirmNotice = computed(() => {
   if (blocked <= 0) {
     return null
   }
-  return `有 ${blocked} 份答卷延迟自动确认连续失败，成绩仍停留在可确认态。须先在成绩确认页逐份确认，暂不可发布。`
+  return `有 ${blocked} 份答卷延迟自动确认连续失败。已确认卷仍可单卷发布；未确认卷请回成绩确认页逐份确认，或查看批改进度中的任务诊断。`
 })
 
 function filterCorrectedOnly(): void {
@@ -624,6 +647,7 @@ const {
   pendingAbsenceCount,
   refreshPendingAbsenceCount,
   ensureScorePublishPreconditions,
+  ensureSinglePaperPublishPreconditions,
   goToAbsenceConfirm: goAbsenceConfirm,
 } = useScorePublishPreconditions({
   examId: selectedExamId,
@@ -850,10 +874,7 @@ const publishSignalMetrics = computed(() =>
 // ─── 状态机按钮 ─────────────────────────────
 function canPublish(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
-  const overview = effectiveFinalScoreOverview.value
-  if (overview && (!overview.readyToPublish || overview.blockedCount > 0)) {
-    return false
-  }
+  // 单卷发布不要求全场 readyToPublish；缺考等场级阻断仍在 handlePublish 门禁校验。
   const s = record.finalScoreStatus
   return (
     s === FinalScoreStatusCode.CONFIRMED
@@ -862,7 +883,11 @@ function canPublish(record: ExamScoreSummaryItemResponse): boolean {
   )
 }
 function publishButtonLabel(record: ExamScoreSummaryItemResponse): string {
-  return record.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN ? '重新发布' : '发布'
+  // WITHDRAWN / CORRECTED 均为学生端不可见后的再发；文案须引导「重新发布」。
+  return record.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN
+    || record.finalScoreStatus === FinalScoreStatusCode.CORRECTED
+    ? '重新发布'
+    : '发布'
 }
 function canWithdraw(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
@@ -899,7 +924,7 @@ function handlePublishRowAction(key: string, record: ExamScoreSummaryItemRespons
 
 async function handlePublish(record: ExamScoreSummaryItemResponse): Promise<void> {
   if (!selectedExamId.value || !record.paperInstanceId) return
-  const canContinue = await ensureScorePublishPreconditions()
+  const canContinue = await ensureSinglePaperPublishPreconditions()
   if (!canContinue) {
     return
   }
@@ -971,6 +996,23 @@ const paperScore = ref<ExamPaperScoreResponse | null>(null)
 const paperQuestions = computed<ExamQuestionScoreResponse[]>(
   () => paperScore.value?.questions ?? [],
 )
+
+/** 官方卷面分与题分明细可不一致（总分更正、或总分后再单题更正），确认/发布以官方 examScore/totalScore 为准。 */
+const paperTotalScoreCorrectionNotice = computed(() => {
+  const score = paperScore.value
+  if (!score) return null
+  // 题分之和与官方考试分不一致时始终提示；不依赖「最近一条更正是否为总分」。
+  if (score.questionScoreSumMatchesExamScore !== false && !score.latestTotalScoreCorrectionApplied) {
+    return null
+  }
+  const examScore = score.examScore
+  const questionSum = score.questionScoreSum
+  if (examScore == null || questionSum == null) {
+    return '本卷官方考试分与题分明细可不一致，题目列表展示原复核分；发布与学生可见分以官方 examScore/totalScore 为准。'
+  }
+  return `本卷官方考试分 ${examScore}，题分明细合计 ${questionSum}（可不一致）。题目列表展示原复核分，不以题分之和覆盖官方分。`
+})
+
 
 const paperItemColumns: ColumnType<ExamQuestionScoreResponse>[] = [
   { title: '题号', key: 'questionNo', width: 80, fixed: 'left' },

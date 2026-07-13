@@ -30,28 +30,42 @@
         </template>
         <span>{{ item.meta?.title }}</span>
       </a-menu-item>
-      <a-sub-menu v-for="group in markingGrouped.groups" :key="group.key">
-        <template #title>
-          <span>{{ group.title }}</span>
-        </template>
-        <template #icon>
-          <MenuCollapsedTooltip :collapsed="collapsed" :label="group.title">
-            <MenuIcon :icon="group.icon" />
-          </MenuCollapsedTooltip>
-        </template>
+      <template v-for="group in markingGrouped.groups" :key="group.key">
         <a-menu-item
-          v-for="item in primaryGroupItems(group.items)"
-          :key="item.path"
-          :disabled="item.meta?.disabled"
+          v-if="isFlattenedMenuGroup(group)"
+          :key="flattenedMenuGroupItem(group).path"
+          :disabled="flattenedMenuGroupItem(group).meta?.disabled"
         >
           <template #icon>
-            <MenuCollapsedTooltip :collapsed="collapsed" :label="routeTitle(item)">
-              <MenuIcon :icon="routeIcon(item, 'folder')" />
+            <MenuCollapsedTooltip :collapsed="collapsed" :label="group.title">
+              <MenuIcon :icon="group.icon" />
             </MenuCollapsedTooltip>
           </template>
-          <span>{{ item.meta?.title }}</span>
+          <span>{{ group.title }}</span>
         </a-menu-item>
-      </a-sub-menu>
+        <a-sub-menu v-else :key="group.key">
+          <template #title>
+            <span>{{ group.title }}</span>
+          </template>
+          <template #icon>
+            <MenuCollapsedTooltip :collapsed="collapsed" :label="group.title">
+              <MenuIcon :icon="group.icon" />
+            </MenuCollapsedTooltip>
+          </template>
+          <a-menu-item
+            v-for="item in primaryGroupItems(group.items)"
+            :key="item.path"
+            :disabled="item.meta?.disabled"
+          >
+            <template #icon>
+              <MenuCollapsedTooltip :collapsed="collapsed" :label="routeTitle(item)">
+                <MenuIcon :icon="routeIcon(item, 'folder')" />
+              </MenuCollapsedTooltip>
+            </template>
+            <span>{{ item.meta?.title }}</span>
+          </a-menu-item>
+        </a-sub-menu>
+      </template>
     </a-sub-menu>
 
     <a-sub-menu key="domain-quality">
@@ -66,37 +80,48 @@
       <a-menu-item
         v-for="item in primaryGroupItems(qualityGrouped.ungrouped)"
         :key="item.path"
-        :disabled="item.meta?.disabled"
       >
         <template #icon>
           <MenuCollapsedTooltip :collapsed="collapsed" :label="routeTitle(item)">
             <MenuIcon :icon="routeIcon(item, 'dashboard')" />
           </MenuCollapsedTooltip>
         </template>
-        <span>{{ item.meta?.title }}</span>
+        <span>{{ menuRouteLabel(item) }}</span>
       </a-menu-item>
-      <a-sub-menu v-for="group in qualityGrouped.groups" :key="group.key">
-        <template #title>
-          <span>{{ group.title }}</span>
-        </template>
-        <template #icon>
-          <MenuCollapsedTooltip :collapsed="collapsed" :label="group.title">
-            <MenuIcon :icon="group.icon" />
-          </MenuCollapsedTooltip>
-        </template>
+      <template v-for="group in qualityGrouped.groups" :key="group.key">
         <a-menu-item
-          v-for="item in primaryGroupItems(group.items)"
-          :key="item.path"
-          :disabled="item.meta?.disabled"
+          v-if="isFlattenedMenuGroup(group)"
+          :key="flattenedMenuGroupItem(group).path"
         >
           <template #icon>
-            <MenuCollapsedTooltip :collapsed="collapsed" :label="routeTitle(item)">
-              <MenuIcon :icon="routeIcon(item, 'folder')" />
+            <MenuCollapsedTooltip :collapsed="collapsed" :label="group.title">
+              <MenuIcon :icon="group.icon" />
             </MenuCollapsedTooltip>
           </template>
-          <span>{{ item.meta?.title }}</span>
+          <span>{{ group.title }}</span>
         </a-menu-item>
-      </a-sub-menu>
+        <a-sub-menu v-else :key="group.key">
+          <template #title>
+            <span>{{ group.title }}</span>
+          </template>
+          <template #icon>
+            <MenuCollapsedTooltip :collapsed="collapsed" :label="group.title">
+              <MenuIcon :icon="group.icon" />
+            </MenuCollapsedTooltip>
+          </template>
+          <a-menu-item
+            v-for="item in primaryGroupItems(group.items)"
+            :key="item.path"
+          >
+            <template #icon>
+              <MenuCollapsedTooltip :collapsed="collapsed" :label="routeTitle(item)">
+                <MenuIcon :icon="routeIcon(item, 'folder')" />
+              </MenuCollapsedTooltip>
+            </template>
+            <span>{{ menuRouteLabel(item) }}</span>
+          </a-menu-item>
+        </a-sub-menu>
+      </template>
     </a-sub-menu>
 
     <a-sub-menu key="domain-portfolio">
@@ -120,28 +145,42 @@
         </template>
         <span>{{ item.meta?.title }}</span>
       </a-menu-item>
-      <a-sub-menu v-for="group in portfolioGrouped.groups" :key="group.key">
-        <template #title>
-          <span>{{ group.title }}</span>
-        </template>
-        <template #icon>
-          <MenuCollapsedTooltip :collapsed="collapsed" :label="group.title">
-            <MenuIcon :icon="group.icon" />
-          </MenuCollapsedTooltip>
-        </template>
+      <template v-for="group in portfolioGrouped.groups" :key="group.key">
         <a-menu-item
-          v-for="item in primaryGroupItems(group.items)"
-          :key="item.path"
-          :disabled="item.meta?.disabled"
+          v-if="isFlattenedMenuGroup(group)"
+          :key="flattenedMenuGroupItem(group).path"
+          :disabled="flattenedMenuGroupItem(group).meta?.disabled"
         >
           <template #icon>
-            <MenuCollapsedTooltip :collapsed="collapsed" :label="routeTitle(item)">
-              <MenuIcon :icon="routeIcon(item, 'folder')" />
+            <MenuCollapsedTooltip :collapsed="collapsed" :label="group.title">
+              <MenuIcon :icon="group.icon" />
             </MenuCollapsedTooltip>
           </template>
-          <span>{{ item.meta?.title }}</span>
+          <span>{{ group.title }}</span>
         </a-menu-item>
-      </a-sub-menu>
+        <a-sub-menu v-else :key="group.key">
+          <template #title>
+            <span>{{ group.title }}</span>
+          </template>
+          <template #icon>
+            <MenuCollapsedTooltip :collapsed="collapsed" :label="group.title">
+              <MenuIcon :icon="group.icon" />
+            </MenuCollapsedTooltip>
+          </template>
+          <a-menu-item
+            v-for="item in primaryGroupItems(group.items)"
+            :key="item.path"
+            :disabled="item.meta?.disabled"
+          >
+            <template #icon>
+              <MenuCollapsedTooltip :collapsed="collapsed" :label="routeTitle(item)">
+                <MenuIcon :icon="routeIcon(item, 'folder')" />
+              </MenuCollapsedTooltip>
+            </template>
+            <span>{{ item.meta?.title }}</span>
+          </a-menu-item>
+        </a-sub-menu>
+      </template>
     </a-sub-menu>
 
     <a-sub-menu v-if="platformMenuItems.length > 0" key="domain-platform">
@@ -175,7 +214,13 @@ import type { RouteRecordRaw } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useQualityStore } from '@/stores/modules/quality'
 import { isPortfolioRoute, QUALITY_ADMIN_MENU_GROUP } from '@/utils/portfolio-route'
+import {
+  buildQualityPlanWorkbenchLocation,
+  QUALITY_PLAN_GATE_REASON_NO_PLAN,
+  QUALITY_PLAN_GATE_REASON_UNCONFIRMED,
+} from '@/utils/quality-plan-guard'
 import { isExternal } from '@/utils/validate'
 import MenuCollapsedTooltip from './MenuCollapsedTooltip.vue'
 import MenuIcon from './MenuIcon.vue'
@@ -238,9 +283,35 @@ function routeTitle(item: RouteRecordRaw): string {
   return stringMetaValue(item.meta?.title) ?? ''
 }
 
+/** 门控未通过时旁注「待确认」，避免灰禁用被误读为无权限 */
+function menuRouteLabel(item: RouteRecordRaw): string {
+  const title = routeTitle(item)
+  if (item.meta?.qualityGateBlocked) {
+    return `${title} · 待确认`
+  }
+  return title
+}
+
 /** 四域侧栏全量展示菜单项，禁止「更多」折叠隐藏入口 */
 function primaryGroupItems(items: RouteRecordRaw[]): RouteRecordRaw[] {
   return items
+}
+
+/** 仅含一个页面的分组在侧栏展平为一级菜单项，不再展开二级子菜单。 */
+function isFlattenedMenuGroup(group: MenuGroup): boolean {
+  return group.items.length === 1
+}
+
+function flattenedMenuGroupItem(group: MenuGroup): RouteRecordRaw {
+  return group.items[0]
+}
+
+function shouldOpenMenuGroup(
+  groupKey: string,
+  grouped: { groups: MenuGroup[] },
+): boolean {
+  const group = grouped.groups.find((entry) => entry.key === groupKey)
+  return group !== undefined && !isFlattenedMenuGroup(group)
 }
 
 const activeMenuKeys = computed<Key[]>(() => {
@@ -361,7 +432,7 @@ function resolveDefaultOpenKeys(): Key[] {
 
   if (route.path.startsWith('/teacher')) {
     keys.push(MARKING_DOMAIN_KEY)
-    if (groupKey) {
+    if (groupKey && shouldOpenMenuGroup(groupKey, props.markingGrouped)) {
       keys.push(groupKey)
     }
     return keys
@@ -369,7 +440,7 @@ function resolveDefaultOpenKeys(): Key[] {
 
   if (isPortfolioRoute(route.path)) {
     keys.push(PORTFOLIO_DOMAIN_KEY)
-    if (groupKey) {
+    if (groupKey && shouldOpenMenuGroup(groupKey, props.portfolioGrouped)) {
       keys.push(groupKey)
     }
     return keys
@@ -377,7 +448,7 @@ function resolveDefaultOpenKeys(): Key[] {
 
   if (route.path.startsWith('/quality')) {
     keys.push(QUALITY_DOMAIN_KEY)
-    if (groupKey) {
+    if (groupKey && shouldOpenMenuGroup(groupKey, props.qualityGrouped)) {
       keys.push(groupKey)
     }
   }
@@ -421,8 +492,17 @@ function onMenuClick({ key }: { key: Key }) {
     ...collectGroupedRoutes(props.portfolioGrouped),
   ]
   const menuItem = allRoutes.find((item) => item.path === keyStr)
-  if (menuItem?.meta?.disabled) {
-    message.error('培养方案尚未确认，请先在「培养方案体系工作台」完成确认')
+  if (menuItem?.meta?.qualityGateBlocked) {
+    const qualityStore = useQualityStore()
+    const reason = qualityStore.currentTrainingPlanId
+      ? QUALITY_PLAN_GATE_REASON_UNCONFIRMED
+      : QUALITY_PLAN_GATE_REASON_NO_PLAN
+    message.warning(
+      reason === QUALITY_PLAN_GATE_REASON_NO_PLAN
+        ? '请先选择并确认培养方案，再进入达成度结果与质量报告'
+        : '培养方案尚未确认。请先在培养方案体系工作台完成确认，再进入达成度与报告',
+    )
+    void router.push(buildQualityPlanWorkbenchLocation(reason))
     return
   }
   if (route.path !== keyStr) {

@@ -80,6 +80,7 @@ import type { UiSectionTabItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, ref, watch } from 'vue'
 import {
+  getReviewSummary,
   getReviewWindowPolicy,
   REVIEW_WINDOW_STATUS_TONE,
   ReviewWindowPolicyStatusDescription,
@@ -173,7 +174,7 @@ const appealSignalMetrics = computed((): SignalMetric[] => {
     },
     {
       key: 'pending',
-      label: '待处理',
+      label: '待办复核',
       value: pendingCount.value,
       unit: '条',
       tone: pendingCount.value > 0 ? 'orange' : 'green',
@@ -186,6 +187,23 @@ const requestReloadToken = ref(0)
 const correctionReloadToken = ref(0)
 const batchReloadToken = ref(0)
 
+
+async function loadPendingSummary(): Promise<void> {
+  if (!currentExamId.value) {
+    pendingCount.value = 0
+    return
+  }
+  try {
+    const summary = await getReviewSummary(currentExamId.value)
+    // PENDING + IN_REVIEW + APPROVED：已通过待更正必须计入待办，避免只在「复核申请」Tab 才可见
+    pendingCount.value = summary.pendingRequestCount
+      + summary.inReviewRequestCount
+      + summary.approvedRequestCount
+  }
+  catch {
+    pendingCount.value = 0
+  }
+}
 async function loadWindowPolicy(): Promise<void> {
   if (!currentExamId.value) {
     windowPolicy.value = null
@@ -200,6 +218,7 @@ function reloadAll(): void {
   correctionReloadToken.value += 1
   batchReloadToken.value += 1
   void loadWindowPolicy()
+  void loadPendingSummary()
 }
 
 async function onRequestHandled(): Promise<void> {
@@ -207,6 +226,7 @@ async function onRequestHandled(): Promise<void> {
   correctionReloadToken.value += 1
   await refreshSnapshot()
   await loadWindowPolicy()
+  await loadPendingSummary()
 }
 
 async function onCorrectionCreated(): Promise<void> {
@@ -214,6 +234,7 @@ async function onCorrectionCreated(): Promise<void> {
   requestReloadToken.value += 1
   await refreshSnapshot()
   await loadWindowPolicy()
+  await loadPendingSummary()
 }
 
 async function onAppealFlowChanged(): Promise<void> {

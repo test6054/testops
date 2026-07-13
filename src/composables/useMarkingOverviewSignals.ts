@@ -30,11 +30,7 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
     const markingPercent
       = totalQuestions > 0 ? Math.round((confirmedQuestions / totalQuestions) * 1000) / 10 : 0
 
-    const pendingExceptionCount = progress
-      ? (progress.scanAttentionCount ?? 0)
-      + (progress.pendingReviewTaskCount ?? 0)
-      + (progress.pendingGradeCount ?? 0)
-      : dash
+    const pendingTodoRowCount = m?.pendingTodoRowCount ?? dash
 
     const activeExamCount = m?.activeExamCount ?? dash
     const unpublishedCount = m?.confirmedUnpublishedScoreCount ?? 0
@@ -67,11 +63,11 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
       })
     }
 
-    if (typeof pendingExceptionCount === 'number' && pendingExceptionCount > 0) {
+    if (typeof pendingTodoRowCount === 'number' && pendingTodoRowCount > 0) {
       tiles.push({
         key: 'exceptions',
-        label: '待处理异常',
-        value: pendingExceptionCount,
+        label: '待处理事项',
+        value: pendingTodoRowCount,
         unit: '项',
         tone: 'red',
         trendPolarity: 'negative',
@@ -112,6 +108,29 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
         trendPolarity: 'positive',
         helper: `${confirmedQuestions.toLocaleString('zh-CN')} / ${totalQuestions.toLocaleString('zh-CN')} 题`,
       })
+    }
+
+    if (!tiles.length && placeholder) {
+      tiles.push(
+        {
+          key: 'active',
+          label: '进行中考试',
+          value: '—',
+          tone: 'gray',
+        },
+        {
+          key: 'marking-progress',
+          label: '阅卷进度',
+          value: '—',
+          tone: 'gray',
+        },
+        {
+          key: 'exceptions',
+          label: '待处理事项',
+          value: '—',
+          tone: 'gray',
+        },
+      )
     }
 
     if (!tiles.length && !placeholder && (filterContext?.filteredExamCount ?? 0) > 0) {
