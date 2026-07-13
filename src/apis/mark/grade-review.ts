@@ -11,6 +11,7 @@ import type { QuestionTypeCode } from './question-type'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { FinalScoreStatusCode } from '@/types/enums/final-score-status-enum'
+import type { GradeCorrectionStatusCode } from '@/types/enums/grade-correction-status-enum'
 import type { GradeCorrectionTypeCode } from '@/types/enums/grade-correction-type-enum'
 import type { GradeReviewReasonTypeCode } from '@/types/enums/grade-review-reason-type-enum'
 import type { VisibleMaterialScopeCode } from '@/types/enums/visible-material-scope-enum'
@@ -20,7 +21,6 @@ import {
   BatchCorrectionApprovalStatusCode,
   BatchCorrectionApprovalStatusDescription,
 } from '@/types/enums/batch-correction-approval-status-enum'
-import { GradeCorrectionStatusCode } from '@/types/enums/grade-correction-status-enum'
 import {
   ALL_GRADE_REVIEW_REASON_TYPE_CODES,
   GradeReviewReasonTypeDescription,
@@ -400,15 +400,6 @@ export function handleReviewRequest(request: GradeReviewHandleRequest): Promise<
 }
 
 // ─── 成绩更正 ─────────────────────────────────
-
-/** 更正状态徽标颜色（统一 BadgeTone，cyan→blue） */
-export const GRADE_CORRECTION_STATUS_TONE: Record<GradeCorrectionStatusCode, BadgeTone> = {
-  [GradeCorrectionStatusCode.PENDING]: 'orange',
-  [GradeCorrectionStatusCode.APPROVED]: 'blue',
-  [GradeCorrectionStatusCode.EXECUTED]: 'green',
-  [GradeCorrectionStatusCode.REJECTED]: 'red',
-}
-
 /** 成绩更正请求 - 对应 GradeCorrectionRequest */
 export interface GradeCorrectionRequest {
   examId: string
