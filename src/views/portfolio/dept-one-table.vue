@@ -8,8 +8,11 @@ import type {
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
+  PortfolioCompletenessLevelCode,
+  PortfolioCompletenessLevelDescription,
   PortfolioDevelopmentPlanStatusDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
@@ -20,6 +23,7 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
@@ -29,6 +33,8 @@ import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const { loadTree, departmentOptions: loadDepartmentOptions } = usePortfolioOrgTree()
+const route = useRoute()
+const router = useRouter()
 const departmentOptions = computed(() => loadDepartmentOptions())
 const userStore = useUserStore()
 const loading = ref(false)
@@ -52,6 +58,37 @@ const teacherQuery = reactive({
   pageNum: 1,
   pageSize: 10,
 })
+const completenessLevelFilter = ref<PortfolioCompletenessLevelCode | ''>('')
+
+const completenessDistributionRows: Array<{
+  key: PortfolioCompletenessLevelCode
+  label: string
+  summaryKey:
+    | 'completenessCompleteCount'
+    | 'completenessBasicCount'
+    | 'completenessPendingCount'
+    | 'completenessSevereCount'
+}> = [
+  { key: PortfolioCompletenessLevelCode.COMPLETE, label: '完整', summaryKey: 'completenessCompleteCount' },
+  { key: PortfolioCompletenessLevelCode.BASIC, label: '基本完整', summaryKey: 'completenessBasicCount' },
+  { key: PortfolioCompletenessLevelCode.PENDING, label: '待补充', summaryKey: 'completenessPendingCount' },
+  { key: PortfolioCompletenessLevelCode.SEVERE, label: '严重缺失', summaryKey: 'completenessSevereCount' },
+]
+
+function readRouteStringParam(value: unknown): string {
+  return typeof value === 'string' ? value : ''
+}
+
+function readCompletenessLevelParam(value: unknown): PortfolioCompletenessLevelCode | '' {
+  const raw = readRouteStringParam(value)
+  if (!raw) {
+    return ''
+  }
+  if (completenessDistributionRows.some((row) => row.key === raw)) {
+    return raw as PortfolioCompletenessLevelCode
+  }
+  return ''
+}
 
 const titleStructureRows: Array<{
   key:
@@ -78,6 +115,8 @@ const teacherColumns: ColumnsType = [
   { title: '姓名', dataIndex: 'nickName', key: 'nickName', width: 100 },
   { title: '工号', dataIndex: 'teacherNumber', key: 'teacherNumber', width: 100 },
   { title: '职称', dataIndex: 'title', key: 'title', width: 100 },
+  { title: '完整度', key: 'completenessPercent', width: 88 },
+  { title: '五框架', key: 'courseArchiveFramework', width: 96 },
   { title: '双师', key: 'dualTeacherApproved', width: 64 },
   { title: '骨干', key: 'keyTeacherActive', width: 64 },
   { title: '外聘', key: 'externalTeacher', width: 64 },
@@ -85,6 +124,7 @@ const teacherColumns: ColumnsType = [
   { title: '荣誉', dataIndex: 'honorCount', key: 'honorCount', width: 64 },
   { title: '规划状态', key: 'developmentPlanStatus', width: 88 },
   { title: '明细完成度', key: 'developmentPlanItemCompletionPercent', width: 96 },
+  { title: '操作', key: 'actions', width: 200, fixed: 'right' },
 ]
 
 const titleChartOption = computed(() => {
@@ -154,6 +194,7 @@ async function loadTeachers() {
     planYear: filter.planYear.trim() || undefined,
     pageNum: teacherQuery.pageNum,
     pageSize: teacherQuery.pageSize,
+    completenessLevel: completenessLevelFilter.value || undefined,
   }
   try {
     const page = await portfolioTeacherApi.pageDeptOneTableTeachers(request)
@@ -181,6 +222,33 @@ async function reloadAll() {
   teacherRequestToken.value += 1
   teacherQuery.pageNum = 1
   await Promise.all([loadSummary(), loadTeachers()])
+}
+
+function applyCompletenessFilter(level: PortfolioCompletenessLevelCode | '') {
+  completenessLevelFilter.value = level
+  teacherQuery.pageNum = 1
+  const query: Record<string, string> = {}
+  if (filter.departmentId) {
+    query.departmentId = filter.departmentId
+  }
+  if (filter.planYear.trim()) {
+    query.planYear = filter.planYear.trim()
+  }
+  if (level) {
+    query.completenessLevel = level
+  }
+  void router.replace({ path: route.path, query })
+  void loadTeachers()
+}
+
+function completenessFilterLabel(level: PortfolioCompletenessLevelCode): string {
+  return strictEnumLabel(PortfolioCompletenessLevelDescription, level, '档案完整度分级')
+}
+
+function distributionCount(
+  key: (typeof completenessDistributionRows)[number]['summaryKey'],
+): number {
+  return summary.value?.[key] ?? 0
 }
 
 async function exportDeptOneTable() {
@@ -231,8 +299,54 @@ function planStatusTone(status?: PortfolioDevelopmentPlanStatusCode): BadgeTone 
   return PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE[status]
 }
 
+function completenessLabel(record: PortfolioDeptOneTableTeacherRowVO): string {
+  if (record.completenessPercent == null) {
+    return '—'
+  }
+  const level = record.completenessLevel
+    ? strictEnumLabel(PortfolioCompletenessLevelDescription, record.completenessLevel, '档案完整度分级')
+    : ''
+  return level ? `${record.completenessPercent}% · ${level}` : `${record.completenessPercent}%`
+}
+
+function courseArchiveLabel(record: PortfolioDeptOneTableTeacherRowVO): string {
+  if ((record.courseArchiveFrameworkSlotTotal ?? 0) <= 0) {
+    return '—'
+  }
+  const slot = `${record.courseArchiveFrameworkSlotDone ?? 0}/${record.courseArchiveFrameworkSlotTotal ?? 0}`
+  const complete = record.courseArchiveFullyCompleteCount ?? 0
+  return `${slot} · 齐备 ${complete} 门`
+}
+
+function goTeacherHome(teacherUserId: string) {
+  void router.push({ path: '/portfolio/teacher/home', query: { teacherId: teacherUserId } })
+}
+
+function goTeacherOneTable(teacherUserId: string) {
+  void router.push({ path: '/portfolio/teacher/one-table', query: { teacherId: teacherUserId } })
+}
+
+function goCourseArchive(teacherUserId: string) {
+  void router.push({ path: '/portfolio/teacher/course-archive', query: { teacherId: teacherUserId } })
+}
+
 onMounted(async () => {
   await loadTree()
+  const queryDepartmentId = readRouteStringParam(route.query.departmentId)
+  if (
+    queryDepartmentId
+    && departmentOptions.value.some((option) => option.value === queryDepartmentId)
+  ) {
+    filter.departmentId = queryDepartmentId
+  }
+  const queryPlanYear = readRouteStringParam(route.query.planYear)
+  if (queryPlanYear) {
+    filter.planYear = queryPlanYear
+  }
+  completenessLevelFilter.value = readCompletenessLevelParam(route.query.completenessLevel)
+  if (filter.departmentId) {
+    return
+  }
   const currentUserId = userStore.userInfo.userId
   if (!currentUserId) {
     showUserError(new Error('当前登录用户缺失'), '定位当前用户所属院系失败')
@@ -254,6 +368,18 @@ watch(
   () => [filter.departmentId, filter.planYear],
   () => {
     void reloadAll()
+  },
+)
+
+watch(
+  () => route.query.completenessLevel,
+  (value) => {
+    const nextLevel = readCompletenessLevelParam(value)
+    if (nextLevel !== completenessLevelFilter.value) {
+      completenessLevelFilter.value = nextLevel
+      teacherQuery.pageNum = 1
+      void loadTeachers()
+    }
   },
 )
 </script>
@@ -308,6 +434,36 @@ watch(
             <a-descriptions-item label="荣誉总数">
               {{ summary.honorTotalCount ?? 0 }}
             </a-descriptions-item>
+            <template v-if="summary.currentAcademicYear">
+              <a-descriptions-item label="统计学年">
+                {{ summary.currentAcademicYear }}
+              </a-descriptions-item>
+              <a-descriptions-item label="完整度分布">
+                <span class="completeness-distribution">
+                  <button
+                    v-for="item in completenessDistributionRows"
+                    :key="item.key"
+                    type="button"
+                    class="completeness-chip"
+                    :class="{ 'completeness-chip--active': completenessLevelFilter === item.key }"
+                    @click="applyCompletenessFilter(
+                      completenessLevelFilter === item.key ? '' : item.key,
+                    )"
+                  >
+                    {{ item.label }} {{ distributionCount(item.summaryKey) }}
+                  </button>
+                </span>
+              </a-descriptions-item>
+              <a-descriptions-item
+                v-if="(summary.courseArchiveFrameworkSlotTotal ?? 0) > 0"
+                label="五框架槽位"
+              >
+                {{ summary.courseArchiveFrameworkSlotDone ?? 0 }}/{{
+                  summary.courseArchiveFrameworkSlotTotal ?? 0
+                }}
+                · 齐备 {{ summary.courseArchiveFullyCompleteCount ?? 0 }} 门
+              </a-descriptions-item>
+            </template>
             <template v-if="summary.planYear">
               <a-descriptions-item label="规划年度">
                 {{ summary.planYear }}
@@ -346,6 +502,10 @@ watch(
             </MarkChartCard>
           </div>
           <UiCard title="教师明细" style="margin-top: 16px">
+            <p v-if="completenessLevelFilter" class="teacher-filter-hint">
+              当前筛选：{{ completenessFilterLabel(completenessLevelFilter) }}
+              <a class="op-link" @click="applyCompletenessFilter('')">清除筛选</a>
+            </p>
             <UiDataTable
               v-model:current="teacherQuery.pageNum"
               v-model:page-size="teacherQuery.pageSize"
@@ -358,7 +518,13 @@ watch(
               @page-change="handleTeacherPageChange"
             >
               <template #bodyCell="{ column, record }">
-                <template v-if="column.key === 'dualTeacherApproved'">
+                <template v-if="column.key === 'completenessPercent'">
+                  {{ completenessLabel(record) }}
+                </template>
+                <template v-else-if="column.key === 'courseArchiveFramework'">
+                  {{ courseArchiveLabel(record) }}
+                </template>
+                <template v-else-if="column.key === 'dualTeacherApproved'">
                   {{ boolLabel(record.dualTeacherApproved) }}
                 </template>
                 <template v-else-if="column.key === 'keyTeacherActive'">
@@ -384,6 +550,20 @@ watch(
                       : '—'
                   }}
                 </template>
+                <template v-else-if="column.key === 'actions'">
+                  <UiTableActions
+                    :items="[
+                      { key: 'home', label: '档案首页' },
+                      { key: 'one-table', label: '一张表' },
+                      { key: 'course-archive', label: '课程档案' },
+                    ]"
+                    @action="(key) => {
+                      if (key === 'home') goTeacherHome(record.teacherUserId)
+                      else if (key === 'one-table') goTeacherOneTable(record.teacherUserId)
+                      else goCourseArchive(record.teacherUserId)
+                    }"
+                  />
+                </template>
               </template>
             </UiDataTable>
           </UiCard>
@@ -404,6 +584,29 @@ watch(
   grid-template-columns: 1fr 1fr;
   gap: 16px;
   margin-top: 16px;
+}
+.completeness-distribution {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.completeness-chip {
+  padding: 2px 8px;
+  border: 1px solid var(--dp-border, #e8e8e8);
+  border-radius: 4px;
+  background: transparent;
+  font-size: 13px;
+  cursor: pointer;
+}
+.completeness-chip--active {
+  border-color: var(--ant-color-primary);
+  color: var(--ant-color-primary);
+  background: var(--ant-color-primary-bg);
+}
+.teacher-filter-hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--dp-text-secondary);
 }
 @media (max-width: 960px) {
   .detail-grid {

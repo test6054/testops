@@ -258,11 +258,12 @@ async function loadPlanCompletion() {
       return
     }
     planCompletion.value = nextPlanCompletion
-  } catch {
+  } catch (error) {
     if (portraitRequestToken.value !== requestToken) {
       return
     }
     planCompletion.value = null
+    showUserError(error, '加载发展规划完成度失败')
   }
 }
 

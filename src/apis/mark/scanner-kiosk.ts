@@ -769,6 +769,9 @@ export interface PortfolioGapTaskSummaryInternalVO {
   returnReason?: string
   dueTime?: string
   updateTime?: string
+  courseCode?: string
+  academicYear?: string
+  semester?: string
 }
 
 export interface ScanDispatchAdhocTicketCreateRequest {

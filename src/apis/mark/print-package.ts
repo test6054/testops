@@ -27,7 +27,15 @@ export const PRINT_PACKAGE_STATUS_TONE: Record<PrintPackageStatusCode, BadgeTone
 }
 
 /** 印刷包主流程 hint：名册与制卷设计就绪后生成，再预览或下载 PDF */
-export const PRINT_PACKAGE_FLOW_HINT = '名册与制卷设计就绪 → 生成印刷包 → 预览 / 下载'
+export const PRINT_PACKAGE_FLOW_HINT = '名册与制卷设计就绪 → 生成印刷包 → 预览 / 下载送印'
+
+/** 独立答卷页不适用系统印刷包 */
+export const PRINT_PACKAGE_ANSWER_SHEET_HINT
+  = '本场为教考分离（独立答卷页），试题卷线下印制，系统不生成印刷包。'
+
+/** 外带已印整卷不适用系统印刷包 */
+export const PRINT_PACKAGE_EXTERNAL_PRINT_HINT
+  = '本场为外带已印试卷，系统只上传同款 PDF 母版用于扫描对齐，不生成印刷包。'
 
 export {
   ALL_PRINT_PACKAGE_STATUS_CODES,

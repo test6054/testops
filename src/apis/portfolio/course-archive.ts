@@ -23,6 +23,10 @@ export interface PortfolioCourseArchiveCourseVO {
 
 export interface PortfolioCourseArchiveOverviewVO {
   teacherId: string
+  taughtCourseCount: number
+  fullyCompleteCourseCount: number
+  frameworkSlotDone: number
+  frameworkSlotTotal: number
   courses: PortfolioCourseArchiveCourseVO[]
 }
 

@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import type { ExamPrintSourceModeCode } from '@/apis/mark/exam'
-import { EXAM_PRINT_SOURCE_MODE_OPTIONS, ExamMaterialLayoutModeCode } from '@/apis/mark/exam'
+import { computed } from 'vue'
+import { EXAM_PRINT_SOURCE_MODE_OPTIONS, ExamMaterialLayoutModeCode, ExamPrintSourceModeCode } from '@/apis/mark/exam'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 
@@ -10,7 +10,7 @@ const open = defineModel<boolean>('open', { required: true })
 const draftLayoutMode = defineModel<ExamMaterialLayoutModeCode | undefined>('draftLayoutMode')
 const draftPrintSource = defineModel<ExamPrintSourceModeCode | undefined>('draftPrintSource')
 
-defineProps<{
+const props = defineProps<{
   layoutModeLocked: boolean
   layoutDirty: boolean
   layoutSaving: boolean
@@ -25,6 +25,19 @@ const emit = defineEmits<{
 }>()
 
 const printSourceOptions = EXAM_PRINT_SOURCE_MODE_OPTIONS
+
+const printSourceHint = computed(() => {
+  if (draftLayoutMode.value !== ExamMaterialLayoutModeCode.FULL_PAPER) {
+    return ''
+  }
+  if (draftPrintSource.value === ExamPrintSourceModeCode.SYSTEM_PRINT) {
+    return '按考生名册生成个性化印刷包，送指定保密印刷厂加印个人信息与防伪码。'
+  }
+  if (draftPrintSource.value === ExamPrintSourceModeCode.EXTERNAL_PRINT) {
+    return '试卷已线下印制完成，系统只上传同款 PDF 母版用于扫描对齐，不生成印刷包。'
+  }
+  return '整卷作答须选择系统制卷或外带已印试卷。'
+})
 
 function handleSave(): void {
   emit('save')
@@ -45,9 +58,9 @@ function handleSave(): void {
         :disabled="layoutModeLocked"
         @click="draftLayoutMode = ExamMaterialLayoutModeCode.ANSWER_SHEET"
       >
-        <span class="material-layout-modal__mode-option-title">答卷页模式</span>
+        <span class="material-layout-modal__mode-option-title">独立答卷页（教考分离）</span>
         <span class="material-layout-modal__mode-option-desc">
-          适合外部试卷或答题卡；后续处理身份绑定、题目区域与成绩确认。
+          试题卷教研室命题、教务处审核后外印；系统只配置答题卡，考后仅扫描答题卡入库。
         </span>
       </button>
       <button
@@ -60,9 +73,9 @@ function handleSave(): void {
         :disabled="layoutModeLocked"
         @click="draftLayoutMode = ExamMaterialLayoutModeCode.FULL_PAPER"
       >
-        <span class="material-layout-modal__mode-option-title">整卷模式</span>
+        <span class="material-layout-modal__mode-option-title">整卷作答</span>
         <span class="material-layout-modal__mode-option-desc">
-          使用整卷 PDF 母版，配置身份区与客观题区，适合系统拆页与印刷包。
+          试题与作答在同一卷面；上传整卷 PDF 母版，配置身份区与客观填涂区后扫描或送印。
         </span>
       </button>
     </div>
@@ -81,6 +94,7 @@ function handleSave(): void {
         />
       </a-form-item>
     </a-form>
+    <p v-if="printSourceHint" class="material-layout-modal__hint">{{ printSourceHint }}</p>
     <p v-if="layoutModeLocked" class="material-layout-modal__hint">
       已开印或已扫描，制卷形态不可修改
     </p>

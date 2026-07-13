@@ -4,10 +4,11 @@ import type { PortfolioCockpitSummaryVO } from '@/apis/portfolio/types'
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import { portfolioCockpitApi } from '@/apis/portfolio/cockpit'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -31,6 +32,7 @@ function readRouteStringParam(value: unknown): string {
 }
 
 const route = useRoute()
+const router = useRouter()
 const userStore = useUserStore()
 const { loadTree, departmentOptions: loadDepartmentOptions } = usePortfolioOrgTree()
 const departmentOptions = computed(() => loadDepartmentOptions())
@@ -46,25 +48,105 @@ const signals = computed<SignalMetric[]>(() => {
   if (!summary.value) {
     return []
   }
-  return [
-    { key: 'teacher', label: '教师总数', value: summary.value.teacherCount ?? 0, tone: 'blue' },
-    { key: 'dual', label: '双师认定', value: summary.value.dualTeacherCount ?? 0, tone: 'green' },
-    { key: 'key', label: '骨干教师', value: summary.value.keyTeacherCount ?? 0, tone: 'purple' },
+  const row = summary.value
+  const items: SignalMetric[] = [
+    { key: 'teacher', label: '教师总数', value: row.teacherCount ?? 0, tone: 'blue' },
+    { key: 'dual', label: '双师认定', value: row.dualTeacherCount ?? 0, tone: 'green' },
+    { key: 'key', label: '骨干教师', value: row.keyTeacherCount ?? 0, tone: 'purple' },
     {
       key: 'achievement',
       label: '成果合计',
-      value: summary.value.achievementTotalCount ?? 0,
+      value: row.achievementTotalCount ?? 0,
       tone: 'orange',
     },
-    { key: 'honor', label: '荣誉合计', value: summary.value.honorTotalCount ?? 0, tone: 'gray' },
+    { key: 'honor', label: '荣誉合计', value: row.honorTotalCount ?? 0, tone: 'gray' },
     {
       key: 'indicator',
       label: '启用指标',
-      value: summary.value.tenantEnabledIndicatorCount ?? 0,
+      value: row.tenantEnabledIndicatorCount ?? 0,
       tone: 'blue',
     },
   ]
+  if ((row.courseArchiveFrameworkSlotTotal ?? 0) > 0) {
+    items.push({
+      key: 'courseArchive',
+      label: `${row.currentAcademicYear ?? '本学年'} 五框架`,
+      value: row.courseArchiveFrameworkSlotDone ?? 0,
+      unit: `/${row.courseArchiveFrameworkSlotTotal ?? 0}`,
+      tone:
+        (row.courseArchiveFrameworkSlotDone ?? 0) >= (row.courseArchiveFrameworkSlotTotal ?? 0)
+          ? 'green'
+          : 'orange',
+      clickable: true,
+      helper: '跳转部门一张表',
+    })
+  }
+  if (row.currentAcademicYear) {
+    items.push(
+      {
+        key: 'completenessComplete',
+        label: '完整',
+        value: row.completenessCompleteCount ?? 0,
+        tone: 'green',
+        clickable: true,
+        helper: '筛选完整教师',
+      },
+      {
+        key: 'completenessBasic',
+        label: '基本完整',
+        value: row.completenessBasicCount ?? 0,
+        tone: 'blue',
+        clickable: true,
+        helper: '筛选基本完整教师',
+      },
+      {
+        key: 'completenessPending',
+        label: '待补充',
+        value: row.completenessPendingCount ?? 0,
+        tone: 'orange',
+        clickable: true,
+        helper: '筛选待补充教师',
+      },
+      {
+        key: 'completenessSevere',
+        label: '严重缺失',
+        value: row.completenessSevereCount ?? 0,
+        tone: 'red',
+        clickable: true,
+        helper: '筛选严重缺失教师',
+      },
+    )
+  }
+  return items
 })
+
+function goDeptOneTable(completenessLevel?: string) {
+  if (!departmentId.value) {
+    return
+  }
+  const query: Record<string, string> = { departmentId: departmentId.value }
+  if (completenessLevel) {
+    query.completenessLevel = completenessLevel
+  }
+  void router.push({ path: '/portfolio/admin/dept-one-table', query })
+}
+
+function handleSignalMetricClick(key: string) {
+  const completenessLevelMap: Record<string, string> = {
+    completenessComplete: 'COMPLETE',
+    completenessBasic: 'BASIC',
+    completenessPending: 'PENDING',
+    completenessSevere: 'SEVERE',
+  }
+  const level = completenessLevelMap[key]
+  if (level) {
+    goDeptOneTable(level)
+    return
+  }
+  if (key === 'courseArchive') {
+    goDeptOneTable()
+  }
+}
 
 const portraitStats = computed(() => {
   if (!portrait.value) {
@@ -208,7 +290,13 @@ watch(
         show-title
         title="院系驾驶舱"
         :subtitle="summary?.departmentName || portrait?.departmentName"
-      />
+      >
+        <template #actions>
+          <UiButton :disabled="!departmentId" @click="goDeptOneTable()">
+            部门一张表
+          </UiButton>
+        </template>
+      </ContextBar>
     </template>
     <UiCard title="组织范围">
       <a-select
@@ -219,7 +307,7 @@ watch(
       />
     </UiCard>
     <template #signal>
-      <SignalBand v-if="summary" :metrics="signals" compact />
+      <SignalBand v-if="summary" :metrics="signals" compact @metric-click="handleSignalMetricClick" />
     </template>
     <a-spin :spinning="loading">
       <UiEmpty v-if="!loading && !departmentId" description="请选择院系" />

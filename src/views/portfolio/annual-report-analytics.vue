@@ -200,6 +200,11 @@ async function generateReport() {
     showUserError(null, '报告年度必须为 4 位自然年')
     return
   }
+  const reportYear = Number(reportYearFilter.value)
+  if (reportYear < 2000 || reportYear > new Date().getFullYear()) {
+    showUserError(null, '报告年度须在 2000 年至当前自然年之间')
+    return
+  }
   loading.value = true
   try {
     latestTask.value = await portfolioAnalysisApi.generateAnnualReport({

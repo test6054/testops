@@ -140,14 +140,14 @@ function applyRoutePrefill() {
   form.evidenceRef = ''
 }
 
-async function loadPublishedFields(categoryId: string) {
+async function loadPublishedFields(categoryId: string, archiveRecordId?: string) {
   const currentToken = ++fieldRequestToken.value
   if (!categoryId) {
     publishedFields.value = []
     return
   }
   try {
-    const published = await portfolioArchiveTemplateApi.listPublishedFields({ categoryId })
+    const published = await portfolioArchiveTemplateApi.listPublishedFields({ categoryId, archiveRecordId })
     if (currentToken !== fieldRequestToken.value || form.categoryId !== categoryId) {
       return
     }
@@ -179,8 +179,10 @@ async function loadCategories() {
       ? categories.value.find((item) => item.categoryId === form.categoryId)
       : null
     if (matchedCategory) {
-      form.archiveRecordId = matchedCategory.officialRecordId ?? ''
-      await loadPublishedFields(form.categoryId)
+      if (!form.archiveRecordId) {
+        form.archiveRecordId = matchedCategory.officialRecordId ?? ''
+      }
+      await loadPublishedFields(form.categoryId, form.archiveRecordId || undefined)
       return
     }
     form.categoryId = ''
@@ -249,8 +251,8 @@ async function openDetail(id: string) {
 }
 
 async function handleSubmit() {
-  if (!form.categoryId || !form.fieldCode.trim() || !form.reason.trim()) {
-    message.warning('请填写分类、字段与纠错原因')
+  if (!form.categoryId || !form.fieldCode.trim() || !form.expectedValue.trim() || !form.reason.trim()) {
+    message.warning('请填写分类、字段、期望正确值与纠错原因')
     return
   }
   submitting.value = true
@@ -262,7 +264,7 @@ async function handleSubmit() {
       fieldCode: form.fieldCode.trim(),
       fieldLabel: form.fieldLabel.trim() || undefined,
       wrongValue: form.wrongValue.trim() || undefined,
-      expectedValue: form.expectedValue.trim() || undefined,
+      expectedValue: form.expectedValue.trim(),
       reason: form.reason.trim(),
       evidenceRef: form.evidenceRef.trim() || undefined,
     })
@@ -293,7 +295,7 @@ async function applyCategoryChange(categoryId: string) {
   form.archiveRecordId = row?.officialRecordId ?? ''
   form.fieldCode = ''
   form.fieldLabel = ''
-  await loadPublishedFields(categoryId)
+  await loadPublishedFields(categoryId, form.archiveRecordId || undefined)
 }
 
 function onCategoryChange(value: SelectValue): void {
@@ -328,7 +330,7 @@ watch(
     fieldRequestToken.value += 1
     applyRoutePrefill()
     if (form.categoryId) {
-      void loadPublishedFields(form.categoryId)
+      void loadPublishedFields(form.categoryId, form.archiveRecordId || undefined)
       return
     }
     publishedFields.value = []
@@ -379,7 +381,7 @@ watch(
           <a-form-item label="当前错误值">
             <a-input v-model:value="form.wrongValue" />
           </a-form-item>
-          <a-form-item label="期望正确值">
+          <a-form-item label="期望正确值" required>
             <a-input v-model:value="form.expectedValue" />
           </a-form-item>
           <a-form-item label="纠错原因" required>

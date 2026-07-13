@@ -49,6 +49,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { isPortfolioCourseFrameworkCategoryCode } from '@/constants/portfolio-archive-category-codes'
 import { ResultCode } from '@/types/enums/result-code'
 import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -328,6 +329,18 @@ function goCourseArchive(teacherId: string) {
     query,
   })
 }
+
+function goTeacherPortfolioPage(path: string, teacherId: string) {
+  void router.push({
+    path,
+    query: { teacherId },
+  })
+}
+
+const showCourseArchiveLink = computed(() =>
+  activeRow.value?.teacherId != null
+  && isPortfolioCourseFrameworkCategoryCode(activeRow.value.categoryCode),
+)
 
 function flattenCategoryTree(
   nodes: PortfolioArchiveCategoryTreeNodeVO[],
@@ -793,14 +806,39 @@ watch(
           {{ activeRow.teacherName }} · {{ activeRow.categoryName }} ·
           {{ reviewTaskStatusLabel(activeRow.reviewStatus) }}
         </p>
-        <UiButton
-          v-if="activeRow.teacherId"
-          variant="ghost"
-          class="review-course-archive-link"
-          @click="goCourseArchive(activeRow.teacherId)"
-        >
-          查看课程档案
-        </UiButton>
+        <div v-if="activeRow.teacherId" class="review-teacher-links">
+          <UiButton
+            v-if="showCourseArchiveLink"
+            variant="ghost"
+            @click="goCourseArchive(activeRow.teacherId)"
+          >
+            查看课程档案
+          </UiButton>
+          <UiButton
+            variant="ghost"
+            @click="goTeacherPortfolioPage('/portfolio/teacher/philosophy', activeRow.teacherId)"
+          >
+            教学理念
+          </UiButton>
+          <UiButton
+            variant="ghost"
+            @click="goTeacherPortfolioPage('/portfolio/teacher/profile', activeRow.teacherId)"
+          >
+            个人资料
+          </UiButton>
+          <UiButton
+            variant="ghost"
+            @click="goTeacherPortfolioPage('/portfolio/teacher/honor', activeRow.teacherId)"
+          >
+            获奖情况
+          </UiButton>
+          <UiButton
+            variant="ghost"
+            @click="goTeacherPortfolioPage('/portfolio/teacher/extension-activity', activeRow.teacherId)"
+          >
+            教学拓展
+          </UiButton>
+        </div>
         <p v-if="aiPreReview?.summary" class="review-ai-summary">
           AI 初审：{{ aiPreReview.summary }}
         </p>
@@ -915,6 +953,12 @@ watch(
 .review-meta {
   margin: 0 0 12px;
   color: var(--dp-color-text-secondary);
+}
+.review-teacher-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-bottom: 12px;
 }
 .review-ai-summary {
   margin: 0 0 8px;

@@ -281,6 +281,15 @@ export interface ExamFileRefVO {
   fileName: string
 }
 
+/** 考试准备场景引导 - 对应 ExamPrepScenarioGuideResponse */
+export interface ExamPrepScenarioGuideResponse {
+  scenarioTitle: string
+  scenarioSummary: string
+  operationalSteps: string[]
+  scanGuidance: string
+  printGuidance?: string
+}
+
 /** 考试详情 - 对应 ExamDetailResponse */
 export interface ExamDetailResponse {
   examId: string
@@ -360,6 +369,8 @@ export interface ExamDetailResponse {
   prepAdvisoryReasons: string[]
   /** 准备硬阻断项（当前为空列表；扫描登记不依赖制卷形态硬阻断） */
   prepBlockingReasons: string[]
+  /** 按制卷形态与印刷来源生成的教务场景引导 */
+  prepScenarioGuide?: ExamPrepScenarioGuideResponse
   /** 涉密 / 统考涉密场次；为 true 时前端启用强制水印与警示条 */
   confidential?: boolean
   /** 名册纳入方式；创建时未配置名册则为 undefined */

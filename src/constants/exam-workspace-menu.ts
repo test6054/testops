@@ -1,6 +1,9 @@
 import type { ExamWorkspaceJourneyKey } from '@/constants/exam-journey'
 import type { MarkStageKey } from '@/stores/modules/markStage'
+import type { ExamMaterialLayoutModeCode } from '@/types/enums/exam-material-layout-mode-enum'
+import type { ExamPrintSourceModeCode } from '@/types/enums/exam-print-source-mode-enum'
 import { MarkTeacherDashboardJourneyKeyCode } from '@/types/enums/mark-teacher-dashboard-journey-key-enum'
+import { isPrintPackageMenuApplicable } from '@/utils/exam-print-package-applicable'
 
 export interface ExamWorkspaceMenuItem {
   key: string
@@ -383,20 +386,32 @@ export function resolveExamWorkspaceMenuGroupKey(
 }
 
 const EXPERIENCE_ASSIST_MENU_KEY = 'marking-experience-assist'
+const PRINT_PACKAGE_MENU_KEY = 'print-package'
+
+export interface ExamWorkspaceMenuFilterOptions {
+  tenantExperienceAssistEnabled?: boolean
+  experienceAssistPendingCount?: number
+  materialLayoutMode?: ExamMaterialLayoutModeCode
+  printSourceMode?: ExamPrintSourceModeCode
+}
 
 function filterMenuItems(
   items: ExamWorkspaceMenuItem[],
-  options?: { tenantExperienceAssistEnabled?: boolean },
+  options?: ExamWorkspaceMenuFilterOptions,
 ): ExamWorkspaceMenuItem[] {
+  let filtered = items
   if (options?.tenantExperienceAssistEnabled === false) {
-    return items.filter((item) => item.key !== EXPERIENCE_ASSIST_MENU_KEY)
+    filtered = filtered.filter((item) => item.key !== EXPERIENCE_ASSIST_MENU_KEY)
   }
-  return items
+  if (!isPrintPackageMenuApplicable(options?.materialLayoutMode, options?.printSourceMode)) {
+    filtered = filtered.filter((item) => item.key !== PRINT_PACKAGE_MENU_KEY)
+  }
+  return filtered
 }
 
 export function getMenuGroupsForJourney(
   journeyKey: ExamWorkspaceJourneyKey,
-  options?: { experienceAssistPendingCount?: number, tenantExperienceAssistEnabled?: boolean },
+  options?: ExamWorkspaceMenuFilterOptions,
 ): ExamWorkspaceMenuGroup[] {
   if (journeyKey === 'overview') {
     const groups = EXAM_WORKSPACE_MENU_GROUPS.filter((group) => group.journeyKey === 'overview')

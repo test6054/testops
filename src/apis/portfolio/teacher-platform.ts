@@ -1094,7 +1094,9 @@ export interface PortfolioEvaluationTaskFillContextVO {
   id: string
   taskName: string
   evaluationMode: PortfolioEvaluationModeCode
+  targetIndicatorCode?: string
   taskStatus: PortfolioEvaluationTaskStatusCode
+  suspendedFromStatus?: PortfolioEvaluationTaskStatusCode
   workgroupId?: string
   startTime?: string
   endTime?: string
@@ -1107,6 +1109,7 @@ export interface PortfolioEvaluationTaskVO {
   id: string
   taskName: string
   evaluationMode: PortfolioEvaluationModeCode
+  targetIndicatorCode?: string
   taskStatus: PortfolioEvaluationTaskStatusCode
   workgroupId?: string
   startTime?: string
@@ -1123,9 +1126,30 @@ export interface PortfolioEvaluationTaskPageRequest extends QueryDto {
 export interface PortfolioEvaluationTaskCreateRequest {
   taskName: string
   evaluationMode: PortfolioEvaluationModeCode
+  targetIndicatorCode?: string
   workgroupId: string
   startTime?: string
   endTime?: string
+}
+
+/** 可用于创建评价任务的启用工作组。 */
+export interface PortfolioEvaluationWorkgroupOptionVO {
+  id: string
+  workgroupName: string
+  workgroupCode: string
+  enabled: boolean
+}
+
+export interface PortfolioEvaluationWorkgroupPageRequest extends QueryDto {
+  enabled?: boolean
+}
+
+export const portfolioEvaluationWorkgroupApi = {
+  page: (data: PortfolioEvaluationWorkgroupPageRequest) =>
+    http.post<PageResult<PortfolioEvaluationWorkgroupOptionVO>>(
+      '/api/quality/evaluation-workgroups/page',
+      data,
+    ),
 }
 
 export const portfolioEvaluationTaskApi = {

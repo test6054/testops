@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
+  PortfolioCompletenessLevelCode,
   PortfolioTeacherDetailVO,
   PortfolioTeacherIdentitySaveRequest,
   PortfolioTeacherIdentityVO,
@@ -11,10 +12,12 @@ import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui
 import type { UserStatusEnum } from '@/types/enums/user-status'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
+  ALL_PORTFOLIO_COMPLETENESS_LEVEL_CODES,
   PORTFOLIO_TEACHER_IDENTITY_STATUS_OPTIONS,
   PORTFOLIO_TEACHER_IDENTITY_TYPE_OPTIONS,
+  PortfolioCompletenessLevelDescription,
   PortfolioTeacherIdentityStatusCode,
   PortfolioTeacherIdentityStatusDescription,
   PortfolioTeacherIdentityTypeCode,
@@ -41,26 +44,10 @@ import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-const listColumns: ColumnsType = [
-  { title: '工号', dataIndex: 'teacherNumber', key: 'teacherNumber', width: 120, fixed: 'left' },
-  { title: '姓名', dataIndex: 'nickName', key: 'nickName', width: 120 },
-  { title: '账号', dataIndex: 'userName', key: 'userName', width: 140 },
-  { title: '院系', dataIndex: 'departmentName', key: 'departmentName' },
-  { title: '职称', dataIndex: 'title', key: 'title', width: 100 },
-  { title: '身份标签', key: 'identityTags', width: 160 },
-  { title: '账号状态', key: 'userStatus', width: 100 },
-  { title: '主身份', key: 'primaryIdentityType', width: 120 },
-  { title: '操作', key: 'actions', width: 240 },
-]
-
-const identityColumns: ColumnsType = [
-  { title: '身份类型', key: 'identityType', width: 120, fixed: 'left' },
-  { title: '状态', key: 'identityStatus', width: 80 },
-  { title: '聘任编号', dataIndex: 'appointmentNo', key: 'appointmentNo', width: 120 },
-  { title: '展示名称', dataIndex: 'displayName', key: 'displayName' },
-  { title: '企业/单位', dataIndex: 'enterpriseName', key: 'enterpriseName' },
-  { title: '操作', key: 'actions', width: 80 },
-]
+const completenessLevelOptions = ALL_PORTFOLIO_COMPLETENESS_LEVEL_CODES.map((code) => ({
+  label: strictEnumLabel(PortfolioCompletenessLevelDescription, code, '档案完整度分级'),
+  value: code,
+}))
 
 interface TeacherFilterModel extends Record<string, unknown> {
   searchText?: string
@@ -69,10 +56,64 @@ interface TeacherFilterModel extends Record<string, unknown> {
   departmentId?: string
   portfolioOrgId?: string
   status?: UserStatusEnum
+  completenessLevel?: PortfolioCompletenessLevelCode
 }
 
+function readRouteStringParam(value: unknown): string {
+  return typeof value === 'string' ? value : ''
+}
+
+function readCompletenessLevelParam(value: unknown): PortfolioCompletenessLevelCode | undefined {
+  const raw = readRouteStringParam(value)
+  if (!raw) {
+    return undefined
+  }
+  return ALL_PORTFOLIO_COMPLETENESS_LEVEL_CODES.includes(raw as PortfolioCompletenessLevelCode)
+    ? raw as PortfolioCompletenessLevelCode
+    : undefined
+}
+
+const route = useRoute()
+const router = useRouter()
 const { loadTree, departmentOptions, portfolioOrgOptions } = usePortfolioOrgTree()
 const { canManageTeacherAi } = usePortfolioTeacherAccess()
+
+const query = reactive<PortfolioTeacherPageRequest>({
+  pageNum: 1,
+  pageSize: 10,
+  searchText: '',
+  title: '',
+  identityType: undefined,
+  departmentId: undefined,
+  portfolioOrgId: undefined,
+  status: undefined,
+  completenessLevel: undefined,
+})
+
+const showCompletenessColumns = computed(() => !!query.completenessLevel)
+
+const listColumns = computed<ColumnsType>(() => {
+  const columns: ColumnsType = [
+    { title: '工号', dataIndex: 'teacherNumber', key: 'teacherNumber', width: 120, fixed: 'left' },
+    { title: '姓名', dataIndex: 'nickName', key: 'nickName', width: 120 },
+    { title: '账号', dataIndex: 'userName', key: 'userName', width: 140 },
+    { title: '院系', dataIndex: 'departmentName', key: 'departmentName' },
+    { title: '职称', dataIndex: 'title', key: 'title', width: 100 },
+  ]
+  if (showCompletenessColumns.value) {
+    columns.push(
+      { title: '完整度', key: 'completenessPercent', width: 120 },
+      { title: '五框架', key: 'courseArchiveFramework', width: 120 },
+    )
+  }
+  columns.push(
+    { title: '身份标签', key: 'identityTags', width: 160 },
+    { title: '账号状态', key: 'userStatus', width: 100 },
+    { title: '主身份', key: 'primaryIdentityType', width: 120 },
+    { title: '操作', key: 'actions', width: 240 },
+  )
+  return columns
+})
 
 const filterForm = reactive<TeacherFilterModel>({
   searchText: '',
@@ -81,6 +122,7 @@ const filterForm = reactive<TeacherFilterModel>({
   departmentId: undefined,
   portfolioOrgId: undefined,
   status: undefined,
+  completenessLevel: undefined,
 })
 
 const filterModel = computed<Record<string, unknown>>({
@@ -125,18 +167,24 @@ const filterFields = computed<FilterField[]>(() => [
     width: 120,
     options: USER_STATUS_FILTER_OPTIONS,
   },
+  {
+    key: 'completenessLevel',
+    type: 'select',
+    label: '完整度分级',
+    allowClear: true,
+    width: 140,
+    options: completenessLevelOptions,
+  },
 ])
 
-const query = reactive<PortfolioTeacherPageRequest>({
-  pageNum: 1,
-  pageSize: 10,
-  searchText: '',
-  title: '',
-  identityType: undefined,
-  departmentId: undefined,
-  portfolioOrgId: undefined,
-  status: undefined,
-})
+const identityColumns: ColumnsType = [
+  { title: '身份类型', key: 'identityType', width: 120, fixed: 'left' },
+  { title: '状态', key: 'identityStatus', width: 80 },
+  { title: '聘任编号', dataIndex: 'appointmentNo', key: 'appointmentNo', width: 120 },
+  { title: '展示名称', dataIndex: 'displayName', key: 'displayName' },
+  { title: '企业/单位', dataIndex: 'enterpriseName', key: 'enterpriseName' },
+  { title: '操作', key: 'actions', width: 80 },
+]
 
 const list = ref<PortfolioTeacherSummaryVO[]>([])
 const total = ref(0)
@@ -173,6 +221,31 @@ function identityStatusLabel(status?: PortfolioTeacherIdentityVO['identityStatus
   return strictEnumLabel(PortfolioTeacherIdentityStatusDescription, status, '教师身份状态')
 }
 
+function completenessRowLabel(record: PortfolioTeacherSummaryVO): string {
+  if (record.completenessPercent == null) {
+    return '—'
+  }
+  const level = record.completenessLevel
+    ? strictEnumLabel(PortfolioCompletenessLevelDescription, record.completenessLevel, '档案完整度分级')
+    : ''
+  return level ? `${record.completenessPercent}% · ${level}` : `${record.completenessPercent}%`
+}
+
+function courseArchiveRowLabel(record: PortfolioTeacherSummaryVO): string {
+  if ((record.courseArchiveFrameworkSlotTotal ?? 0) <= 0) {
+    return '—'
+  }
+  return `${record.courseArchiveFrameworkSlotDone ?? 0}/${record.courseArchiveFrameworkSlotTotal ?? 0} · 齐备 ${record.courseArchiveFullyCompleteCount ?? 0} 门`
+}
+
+function syncCompletenessRouteQuery() {
+  const nextQuery: Record<string, string> = {}
+  if (query.completenessLevel) {
+    nextQuery.completenessLevel = query.completenessLevel
+  }
+  void router.replace({ path: route.path, query: nextQuery })
+}
+
 /** 切换教师详情目标或关闭抽屉时，必须失效旧请求并回收摘要，避免旧教师结果回填当前抽屉。 */
 function resetDetailContext() {
   detailRequestToken.value += 1
@@ -202,6 +275,8 @@ function handleSearch() {
   query.departmentId = filterForm.departmentId
   query.portfolioOrgId = filterForm.portfolioOrgId
   query.status = filterForm.status
+  query.completenessLevel = filterForm.completenessLevel
+  syncCompletenessRouteQuery()
   loadPage()
 }
 
@@ -384,8 +459,6 @@ async function submitIdentity() {
   }
 }
 
-const router = useRouter()
-
 function openTeacherIntake(userId: string) {
   router.push({
     path: '/portfolio/teacher/intake',
@@ -426,6 +499,11 @@ async function exportRoster() {
 
 onMounted(async () => {
   await loadTree(false)
+  const routeLevel = readCompletenessLevelParam(route.query.completenessLevel)
+  if (routeLevel) {
+    filterForm.completenessLevel = routeLevel
+    query.completenessLevel = routeLevel
+  }
   await loadPage()
 })
 </script>
@@ -473,6 +551,12 @@ onMounted(async () => {
               {{ identityTypeLabel(tag) }}
             </UiTag>
             <span v-if="!record.identityTags?.length">—</span>
+          </template>
+          <template v-else-if="column.key === 'completenessPercent'">
+            {{ completenessRowLabel(record) }}
+          </template>
+          <template v-else-if="column.key === 'courseArchiveFramework'">
+            {{ courseArchiveRowLabel(record) }}
           </template>
           <template v-else-if="column.key === 'userStatus'">
             <span v-if="record.status">

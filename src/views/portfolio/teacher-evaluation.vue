@@ -157,10 +157,43 @@ const noticeColumns: ColumnsType<PortfolioEvaluationTeacherNoticeVO> = [
   { title: '操作', key: 'actions', width: 160 },
 ]
 
+function evaluationMaterialCourseScopeLabel(record: unknown): string {
+  const category = record as PortfolioEvaluationMaterialCategoryItemVO
+  if (!category.courseCode) {
+    return '—'
+  }
+  const parts = [category.courseCode]
+  if (category.academicYear) {
+    parts.push(category.academicYear)
+  }
+  if (category.semester) {
+    parts.push(`第${category.semester}学期`)
+  }
+  return parts.join(' · ')
+}
+
+function evaluationCourseArchiveMeta(preview: PortfolioEvaluationMaterialPreviewVO): string {
+  if ((preview.courseArchiveTaughtCourseCount ?? 0) <= 0) {
+    return ''
+  }
+  return ` · 讲授 ${preview.courseArchiveTaughtCourseCount} 门 · 五框架 ${preview.courseArchiveFrameworkSlotDone ?? 0}/${preview.courseArchiveFrameworkSlotTotal ?? 0}`
+}
+
 const categoryColumns: ColumnsType<PortfolioEvaluationMaterialCategoryItemVO> = [
   { title: '档案分类', dataIndex: 'categoryName', key: 'categoryName', fixed: 'left' },
+  { title: '课程维度', key: 'courseScope', width: 140 },
   { title: '完成', key: 'completed', width: 100 },
 ]
+
+function evaluationMaterialRowKey(record: unknown): string {
+  const category = record as PortfolioEvaluationMaterialCategoryItemVO
+  return [
+    category.categoryId,
+    category.courseCode ?? '',
+    category.academicYear ?? '',
+    category.semester ?? '',
+  ].join(':')
+}
 
 const publicityColumns: ColumnsType<PortfolioEvaluationPublicityListItemVO> = [
   { title: '任务', dataIndex: 'taskName', key: 'taskName', fixed: 'left' },
@@ -587,12 +620,12 @@ watch(
     <UiCard v-if="preview" title="材料清单预览" class="teacher-evaluation__block">
       <p class="teacher-evaluation__meta">
         任务：{{ preview.taskName }} · 完整度 {{ preview.completenessPercent }}% · 必填分类
-        {{ preview.requiredCategoryDone }} / {{ preview.requiredCategoryTotal }}
+        {{ preview.requiredCategoryDone }} / {{ preview.requiredCategoryTotal }}{{ evaluationCourseArchiveMeta(preview) }}
       </p>
       <p v-if="preview.endTime" class="teacher-evaluation__meta">评价截止 {{ preview.endTime }}</p>
       <UiDataTable
         v-if="preview.categories?.length"
-        row-key="categoryId"
+        :row-key="evaluationMaterialRowKey"
         size="small"
         pagination-mode="none"
         :columns="categoryColumns"
@@ -603,7 +636,10 @@ watch(
         class="teacher-evaluation__category-table"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'completed'">
+          <template v-if="column.key === 'courseScope'">
+            {{ evaluationMaterialCourseScopeLabel(record) }}
+          </template>
+          <template v-else-if="column.key === 'completed'">
             <UiTag :tone="record.completed ? 'green' : 'orange'">
               {{ record.completed ? '已完成' : '未完成' }}
             </UiTag>
@@ -693,7 +729,7 @@ watch(
           <UiEmpty v-else description="暂无评价依据明细" />
           <UiDataTable
             v-if="resultSummary.materialCategories?.length"
-            row-key="categoryId"
+            :row-key="evaluationMaterialRowKey"
             size="small"
             pagination-mode="none"
             :columns="categoryColumns"

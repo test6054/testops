@@ -135,14 +135,6 @@ function buildCorrectionRowActions(row: PortfolioCorrectionSummaryVO): UiTableRo
       { key: 'sourceFix', label: '源系统整改', disabled: busy },
     )
   }
-  if (row.requestStatus === 'SOURCE_FIXING') {
-    actions.push({
-      key: 'pendingVerify',
-      label: '标记待验证',
-      tone: 'primary',
-      disabled: busy,
-    })
-  }
   if (row.requestStatus === 'PENDING_VERIFY' || row.requestStatus === 'ARCHIVE_CORRECTING') {
     actions.push({
       key: 'close',
@@ -167,9 +159,6 @@ function handleCorrectionRowAction(key: string, row: PortfolioCorrectionSummaryV
       break
     case 'sourceFix':
       void handleRow(row, PortfolioCorrectionHandleActionCode.MARK_SOURCE_FIXING)
-      break
-    case 'pendingVerify':
-      void handleRow(row, PortfolioCorrectionHandleActionCode.MARK_PENDING_VERIFY)
       break
     case 'close':
       void handleRow(row, PortfolioCorrectionHandleActionCode.CLOSE)

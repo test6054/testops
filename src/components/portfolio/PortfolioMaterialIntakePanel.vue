@@ -21,7 +21,16 @@
           />
         </div>
       </div>
-      <div v-if="!readOnly" class="portfolio-intake-panel__actions">
+      <div v-if="showRestartRejected" class="portfolio-intake-panel__actions">
+        <UiButton
+          variant="outline"
+          :loading="restartingRejected"
+          @click="handleRestartRejected"
+        >
+          恢复重新采集
+        </UiButton>
+      </div>
+      <div v-else-if="!readOnly" class="portfolio-intake-panel__actions">
         <UiButton variant="outline" :loading="scanOpening" @click="openScan"> 一体机扫描 </UiButton>
         <UiButton v-if="showRegisterStart" :loading="starting" @click="handleStart">
           登记并开始处理
@@ -207,6 +216,7 @@ const {
   saveDraft,
   submitIntake,
   reassignCategory,
+  restartRejectedCandidates,
   clearScanCommittedQuery,
   resetIntakeContext,
 } = usePortfolioIntake(targetTeacherId)
@@ -235,6 +245,10 @@ const showRetryAi = computed(
     !demoMode.value
     && status.value?.stage === PortfolioMaterialIntakeStageCode.AI_FAILED
     && Boolean(categoryId.value),
+)
+
+const showRestartRejected = computed(
+  () => status.value?.stage === PortfolioMaterialIntakeStageCode.CANDIDATES_REJECTED,
 )
 
 const reassignBlocked = computed(() => {
@@ -358,6 +372,9 @@ const archiveActionHint = computed(() => {
   if (status.value.stage === PortfolioMaterialIntakeStageCode.AI_FAILED) {
     return '请补全下方字段后保存草稿（手工补采）；需重新识别时再点「重新 AI 抽取」'
   }
+  if (status.value.stage === PortfolioMaterialIntakeStageCode.CANDIDATES_REJECTED) {
+    return 'AI 候选已全部驳回，原候选和作废档案将保留审计记录；请恢复后重新选择分类并采集。'
+  }
   if (status.value.recordStatus === PortfolioArchiveRecordStatusCode.OFFICIAL) {
     return '材料已审核通过，可在档案页查看正式记录'
   }
@@ -435,6 +452,25 @@ async function handleRetryAi() {
       }
     },
   })
+}
+
+const restartingRejected = ref(false)
+
+async function handleRestartRejected() {
+  const confirmed = await confirmAsync({
+    title: '恢复重新采集',
+    content: '将保留原 AI 候选和作废档案作为审计依据，并解除该材料的作废关联。恢复后请重新选择分类并开始采集。',
+    type: 'warning',
+  })
+  if (!confirmed) {
+    return
+  }
+  restartingRejected.value = true
+  try {
+    await restartRejectedCandidates()
+  } finally {
+    restartingRejected.value = false
+  }
 }
 
 async function openScan() {

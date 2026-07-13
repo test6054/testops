@@ -16,8 +16,10 @@ import { loadExamLayoutDesign } from '@/apis/mark/exam-layout-design'
 import { WorkbenchNextActionKeyCode } from '@/apis/mark/exam-progress'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ExamPrepInfoPanels from '@/components/workbench/ExamPrepInfoPanels.vue'
+import ExamPrepScenarioPanel from '@/components/workbench/ExamPrepScenarioPanel.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import MaterialLayoutConfigModal from '@/components/workbench/MaterialLayoutConfigModal.vue'
 import PrepStepPipelineRow from '@/components/workbench/PrepStepPipelineRow.vue'
@@ -55,6 +57,12 @@ const markingProgress = computed(
   () => workbenchContext?.markingProgress?.value ?? snapshot.value?.markingProgress ?? null,
 )
 const prepBlockingReasons = computed(() => snapshot.value?.prepBlockingReasons ?? [])
+const prepAdvisoryReasons = computed(() => snapshot.value?.prepAdvisoryReasons ?? [])
+const prepScenarioGuide = computed(
+  () => snapshot.value?.prepScenarioGuide ?? examDetail.value?.prepScenarioGuide ?? null,
+)
+const prepBlockingDescription = computed(() => prepBlockingReasons.value.join('；'))
+const prepAdvisoryDescription = computed(() => prepAdvisoryReasons.value.join('；'))
 
 const startScanAction = computed(() =>
   findWorkbenchNextAction(nextActions.value, WorkbenchNextActionKeyCode.START_SCAN),
@@ -95,12 +103,7 @@ const firstPendingPrepStep = computed(
 const materialLayoutStep = computed(
   () => prepSteps.value.find((step) => step.key === 'materialLayout') ?? null,
 )
-computed(() => {
-  if (prepSteps.value.length === 0) {
-    return 0
-  }
-  return Math.round((completedPrepCount.value / prepSteps.value.length) * 100)
-})
+
 const prepSignalMetrics = computed((): SignalMetric[] => {
   const detail = examDetail.value
   const total = prepSteps.value.length
@@ -272,6 +275,17 @@ function goFirstPendingPrepStep(): void {
   goPrepStep(step)
 }
 
+function goPrepBlockingAction(): void {
+  if (prepBlockingReasons.value.some((reason) => reason.includes('制卷设计'))) {
+    const layoutStep = prepSteps.value.find((step) => step.key === 'layoutDesign')
+    if (layoutStep) {
+      goPrepStep(layoutStep)
+      return
+    }
+  }
+  goFirstPendingPrepStep()
+}
+
 function goScanEntry(): void {
   if (!selectedExamId.value || !startScanAction.value?.enabled) {
     return
@@ -341,10 +355,41 @@ watch(
       />
 
       <template v-else-if="examDetail && prepSteps.length > 0">
+        <UiAlertStrip
+          v-if="prepBlockingReasons.length > 0"
+          tone="error"
+          title="扫描登记暂不可用"
+          :description="prepBlockingDescription"
+          :closable="false"
+          dense
+          class="exam-prep__blocking-strip"
+        >
+          <template #actions>
+            <UiButton size="sm" variant="primary" @click="goPrepBlockingAction">
+              去处理
+            </UiButton>
+          </template>
+        </UiAlertStrip>
+
+        <UiAlertStrip
+          v-else-if="prepAdvisoryReasons.length > 0"
+          tone="warning"
+          title="准备项待完善"
+          :description="prepAdvisoryDescription"
+          dense
+          class="exam-prep__blocking-strip"
+        />
+
         <ExamPrepInfoPanels
           :detail="examDetail"
           :exam-full-score="examFullScore"
           class="exam-prep__info"
+        />
+
+        <ExamPrepScenarioPanel
+          v-if="prepScenarioGuide"
+          :guide="prepScenarioGuide"
+          class="exam-prep__scenario"
         />
 
         <PrepStepPipelineRow
@@ -409,6 +454,7 @@ watch(
   }
 
   &__info,
+  &__scenario,
   &__pipeline-row {
     margin-bottom: 16px;
   }

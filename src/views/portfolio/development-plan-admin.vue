@@ -170,6 +170,8 @@ const form = reactive<DevelopmentPlanForm>({
   planSummary: '',
   portfolioOrgId: '',
 })
+const minimumPlanYear = 2000
+const maximumPlanYear = new Date().getFullYear() + 2
 const {
   loading,
   rows,
@@ -354,6 +356,11 @@ async function openPlanFromQuery() {
 }
 
 async function createPlan() {
+  const planYear = Number(form.planYear)
+  if (!/^\d{4}$/.test(form.planYear) || planYear < minimumPlanYear || planYear > maximumPlanYear) {
+    message.warning(`规划年度须在 ${minimumPlanYear} 年至 ${maximumPlanYear} 年之间`)
+    return
+  }
   if (!form.planTitle.trim()) {
     message.warning('请填写规划标题')
     return
@@ -404,6 +411,11 @@ function handleDevelopmentPlanAction(key: string, record: PortfolioDevelopmentPl
 
 async function submitPlan(id: string) {
   try {
+    const items = await portfolioDevelopmentPlanApi.listItems({ planId: id })
+    if (!items.length) {
+      message.warning('请先保存至少一条规划目标明细')
+      return
+    }
     await portfolioDevelopmentPlanApi.submit({ id })
     message.success('已提交')
     await loadPage()
@@ -573,7 +585,15 @@ watch(
     </template>
     <UiCard>
       <div class="toolbar">
-        <input v-model="form.planYear" class="input" placeholder="年度" />
+        <input
+          v-model="form.planYear"
+          class="input"
+          type="number"
+          :min="minimumPlanYear"
+          :max="maximumPlanYear"
+          step="1"
+          placeholder="年度"
+        />
         <UiButton @click="loadPage"> 刷新 </UiButton>
         <span v-if="showAdminStats" class="stats">{{ form.planYear }} 年已通过 {{ approvedCount }} 项</span>
       </div>

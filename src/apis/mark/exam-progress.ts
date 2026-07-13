@@ -182,6 +182,8 @@ export interface ExamWorkbenchDashboardPanelResponse {
   qualityDimensionItems: ExamWorkbenchQualityDimensionItemResponse[]
 }
 
+import type { ExamPrepScenarioGuideResponse } from '@/apis/mark/exam'
+
 /** 考试工作台阶段快照 - 对应 ExamWorkbenchStageSnapshotResponse */
 export interface ExamWorkbenchStageSnapshotResponse {
   examId: string
@@ -193,6 +195,7 @@ export interface ExamWorkbenchStageSnapshotResponse {
   prepSteps: ExamWorkbenchPrepStepResponse[]
   prepAdvisoryReasons: string[]
   prepBlockingReasons: string[]
+  prepScenarioGuide?: ExamPrepScenarioGuideResponse
   /** 租户是否启用经验辅助评阅 */
   tenantExperienceAssistEnabled: boolean
   markingProgress: MarkingProgressResponse

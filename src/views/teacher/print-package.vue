@@ -8,7 +8,7 @@
           </UiTag>
         </template>
         <template #actions>
-          <a-tooltip :title="generateDisabledReason">
+          <a-tooltip v-if="printPackageApplicable" :title="generateDisabledReason">
             <UiButton
               size="sm"
               :loading="generating"
@@ -24,12 +24,12 @@
     </template>
 
     <WorkflowReadinessPanel
-      v-if="selectedExamId && printPackagePrepWorkflowSteps.length"
+      v-if="selectedExamId && printPackageApplicable && printPackagePrepWorkflowSteps.length"
       title="完成以下准备步骤后可生成印刷包"
       :steps="printPackagePrepWorkflowSteps"
     />
 
-    <template v-if="selectedExamId" #signal>
+    <template v-if="selectedExamId && printPackageApplicable" #signal>
       <SignalBand variant="tiles" compact :metrics="packageSignalMetrics" />
     </template>
 
@@ -38,128 +38,146 @@
     <template v-else>
       <ExamWorkspaceJourneySubNav />
 
-      <WorkbenchSurfaceCard flush>
-        <template #toolbar>
-          <span class="print-package-page__flow-hint">{{ PRINT_PACKAGE_FLOW_HINT }}</span>
-        </template>
-        <UiDataTable
-          v-model:current="pagination.pageNum"
-          v-model:page-size="pagination.pageSize"
-          pagination-mode="server"
-          :columns="packageColumns"
-          :data-source="packageList"
-          :loading="loading"
-          :total="pagination.total"
-          row-key="printPackageId"
-          size="middle"
-          flat
-          @page-change="handlePackagePageChange"
-        >
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'packageName'">
-              {{ record.packageName }}
-            </template>
-            <template v-else-if="column.key === 'status'">
-              <UiTag :tone="statusTone(record.status)" size="sm">
-                {{ statusLabel(record.status) }}
-              </UiTag>
-            </template>
-            <template v-else-if="column.key === 'sealRemark'">
-              {{ record.sealRemark || '未填写封装备注' }}
-            </template>
-            <template v-else-if="column.key === 'actions'">
-              <UiTableActions
-                :items="buildPackageActions(record)"
-                split
-                @action="(key) => handlePackageAction(key, record)"
-              />
-            </template>
-          </template>
-        </UiDataTable>
-      </WorkbenchSurfaceCard>
-
-      <!-- 一键生成印刷包 -->
-      <UiDrawer
-        v-model:open="generateModalVisible"
-        title="一键生成印刷包"
-        :width="560"
-        :hide-footer="false"
-        ok-text="开始生成"
-        cancel-text="取消"
-        :confirm-loading="generating"
-        @ok="handleGenerate"
+      <UiEmpty
+        v-if="!printPackageApplicable"
+        :description="printPackageSkipHint"
+        class="print-package-page__empty"
       >
-        <a-form layout="vertical" style="margin-top: 8px">
-          <a-form-item label="印刷包编号" required>
-            <a-input
-              v-model:value="generateForm.packageNo"
-              placeholder="例如：PKG-2026-001"
-              :maxlength="50"
-            />
-          </a-form-item>
-          <a-form-item label="印刷包名称" required>
-            <a-input
-              v-model:value="generateForm.packageName"
-              placeholder="例如：期末A卷-第一批次"
-              :maxlength="100"
-            />
-          </a-form-item>
-          <a-form-item label="封装备注">
-            <a-textarea
-              v-model:value="generateForm.sealRemark"
-              :rows="2"
-              :maxlength="500"
-              placeholder="可选"
-            />
-          </a-form-item>
-        </a-form>
-      </UiDrawer>
+        <UiButton variant="primary" @click="goPrepWorkbench">
+          返回准备工作台
+        </UiButton>
+      </UiEmpty>
 
-      <!-- 印刷包明细 -->
-      <UiDrawer
-        v-model:open="detailModalVisible"
-        :title="`印刷包明细 - ${detailPackage?.packageName ?? ''}`"
-        :width="960"
-        hide-footer
-      >
-        <UiSkeletonState v-if="detailLoading && detailItems.length === 0" variant="table" compact />
-        <UiDataTable
-          v-else
-          v-model:current="detailPagination.pageNum"
-          v-model:page-size="detailPagination.pageSize"
-          pagination-mode="server"
-          :columns="detailColumns"
-          :data-source="detailItems"
-          :loading="detailLoading"
-          :total="detailPagination.total"
-          :sticky-header="false"
-          flat
-          row-key="printPackageItemId"
-          size="small"
-          bordered
-          :scroll="{ y: 400 }"
-          @page-change="handleDetailPageChange"
-        >
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'status'">
-              <UiTag :tone="record.status === 'PRINTED' ? 'green' : 'gray'" size="sm">
-                {{ record.status === 'PRINTED' ? '已印刷' : '待印刷' }}
-              </UiTag>
-            </template>
-          </template>
-        </UiDataTable>
-      </UiDrawer>
-
-      <!-- PDF 预览 -->
-      <UiDrawer v-model:open="previewModalOpen" title="印刷包 PDF 预览" :width="900" hide-footer>
-        <UiSkeletonState v-if="previewLoading" variant="card" compact />
-        <iframe
-          v-else-if="previewPdfUrl"
-          :src="previewPdfUrl"
-          class="print-package__preview-frame"
+      <template v-else>
+        <ExamPrepScenarioPanel
+          v-if="examDetail?.prepScenarioGuide"
+          :guide="examDetail.prepScenarioGuide"
+          class="print-package-page__scenario"
         />
-        <UiEmpty v-else description="当前没有可展示的内容" />
-      </UiDrawer>
+
+        <WorkbenchSurfaceCard flush>
+          <template #toolbar>
+            <span class="print-package-page__flow-hint">{{ printPackageFlowHint }}</span>
+          </template>
+          <UiDataTable
+            v-model:current="pagination.pageNum"
+            v-model:page-size="pagination.pageSize"
+            pagination-mode="server"
+            :columns="packageColumns"
+            :data-source="packageList"
+            :loading="loading"
+            :total="pagination.total"
+            row-key="printPackageId"
+            size="middle"
+            flat
+            @page-change="handlePackagePageChange"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'packageName'">
+                {{ record.packageName }}
+              </template>
+              <template v-else-if="column.key === 'status'">
+                <UiTag :tone="statusTone(record.status)" size="sm">
+                  {{ statusLabel(record.status) }}
+                </UiTag>
+              </template>
+              <template v-else-if="column.key === 'sealRemark'">
+                {{ record.sealRemark || '未填写封装备注' }}
+              </template>
+              <template v-else-if="column.key === 'actions'">
+                <UiTableActions
+                  :items="buildPackageActions(record)"
+                  split
+                  @action="(key) => handlePackageAction(key, record)"
+                />
+              </template>
+            </template>
+          </UiDataTable>
+        </WorkbenchSurfaceCard>
+
+        <!-- 一键生成印刷包 -->
+        <UiDrawer
+          v-model:open="generateModalVisible"
+          title="一键生成印刷包"
+          :width="560"
+          :hide-footer="false"
+          ok-text="开始生成"
+          cancel-text="取消"
+          :confirm-loading="generating"
+          @ok="handleGenerate"
+        >
+          <a-form layout="vertical" style="margin-top: 8px">
+            <a-form-item label="印刷包编号" required>
+              <a-input
+                v-model:value="generateForm.packageNo"
+                placeholder="例如：PKG-2026-001"
+                :maxlength="50"
+              />
+            </a-form-item>
+            <a-form-item label="印刷包名称" required>
+              <a-input
+                v-model:value="generateForm.packageName"
+                placeholder="例如：期末A卷-第一批次"
+                :maxlength="100"
+              />
+            </a-form-item>
+            <a-form-item label="封装备注">
+              <a-textarea
+                v-model:value="generateForm.sealRemark"
+                :rows="2"
+                :maxlength="500"
+                placeholder="可选"
+              />
+            </a-form-item>
+          </a-form>
+        </UiDrawer>
+
+        <!-- 印刷包明细 -->
+        <UiDrawer
+          v-model:open="detailModalVisible"
+          :title="`印刷包明细 - ${detailPackage?.packageName ?? ''}`"
+          :width="960"
+          hide-footer
+        >
+          <UiSkeletonState v-if="detailLoading && detailItems.length === 0" variant="table" compact />
+          <UiDataTable
+            v-else
+            v-model:current="detailPagination.pageNum"
+            v-model:page-size="detailPagination.pageSize"
+            pagination-mode="server"
+            :columns="detailColumns"
+            :data-source="detailItems"
+            :loading="detailLoading"
+            :total="detailPagination.total"
+            :sticky-header="false"
+            flat
+            row-key="printPackageItemId"
+            size="small"
+            bordered
+            :scroll="{ y: 400 }"
+            @page-change="handleDetailPageChange"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'status'">
+                <UiTag :tone="record.status === 'PRINTED' ? 'green' : 'gray'" size="sm">
+                  {{ record.status === 'PRINTED' ? '已印刷' : '待印刷' }}
+                </UiTag>
+              </template>
+            </template>
+          </UiDataTable>
+        </UiDrawer>
+
+        <!-- PDF 预览 -->
+        <UiDrawer v-model:open="previewModalOpen" title="印刷包 PDF 预览" :width="900" hide-footer>
+          <UiSkeletonState v-if="previewLoading" variant="card" compact />
+          <iframe
+            v-else-if="previewPdfUrl"
+            :src="previewPdfUrl"
+            class="print-package__preview-frame"
+          />
+          <UiEmpty v-else description="当前没有可展示的内容" />
+        </UiDrawer>
+      </template>
     </template>
   </StageWorkbenchShell>
 </template>
@@ -173,14 +191,17 @@ import type { SignalMetric } from '@/types/workbench'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { downloadFile, getFileArrayBuffer } from '@/apis/edu/file-management'
-import { getExamDetail } from '@/apis/mark/exam'
+import { ExamMaterialLayoutModeCode, ExamPrintSourceModeCode, getExamDetail } from '@/apis/mark/exam'
 import { getPrintPackagePanel } from '@/apis/mark/exam-progress'
 import {
   generatePrintPackage,
   isLayoutNotReadyError,
   pagePrintPackageItems,
   pagePrintPackages,
+  PRINT_PACKAGE_ANSWER_SHEET_HINT,
+  PRINT_PACKAGE_EXTERNAL_PRINT_HINT,
   PRINT_PACKAGE_FLOW_HINT,
   PRINT_PACKAGE_STATUS_TONE,
   PrintPackageStatusDescription,
@@ -193,6 +214,7 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamPrepScenarioPanel from '@/components/workbench/ExamPrepScenarioPanel.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -203,11 +225,13 @@ import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkWorkbenchContext, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
 import { buildPrepStepCards } from '@/utils/exam-prep-step-ui'
+import { isPrintPackageMenuApplicable } from '@/utils/exam-print-package-applicable'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import { resolvePrintPackageGenerateGate } from '@/utils/workflow-readiness/print-package-prep-readiness'
 
 defineOptions({ name: 'TeacherPrintPackage' })
 
+const router = useRouter()
 const { selectedExamId } = useMarkExamContext()
 const workbenchContext = useMarkWorkbenchContext()
 const { examStatusLabel, examStatusTone } = useExamJourneyContextBar('印刷包')
@@ -246,6 +270,42 @@ const printPackageGenerateGate = computed(() => {
 const generateBlocked = computed(() => printPackageGenerateGate.value.generateBlocked)
 const printPackagePrepWorkflowSteps = computed(() => printPackageGenerateGate.value.panelSteps)
 const generateDisabledReason = computed(() => printPackageGenerateGate.value.disabledTooltip)
+
+const printPackageApplicable = computed(() => {
+  const detail = examDetail.value
+  if (!detail?.materialLayoutMode) {
+    return false
+  }
+  return isPrintPackageMenuApplicable(detail.materialLayoutMode, detail.printSourceMode)
+})
+
+const printPackageSkipHint = computed(() => {
+  const detail = examDetail.value
+  if (!detail?.materialLayoutMode) {
+    return '请先在工作台保存制卷形态。'
+  }
+  if (detail.materialLayoutMode === ExamMaterialLayoutModeCode.ANSWER_SHEET) {
+    return PRINT_PACKAGE_ANSWER_SHEET_HINT
+  }
+  if (detail.printSourceMode === ExamPrintSourceModeCode.EXTERNAL_PRINT) {
+    return PRINT_PACKAGE_EXTERNAL_PRINT_HINT
+  }
+  return ''
+})
+
+const printPackageFlowHint = computed(
+  () => examDetail.value?.prepScenarioGuide?.printGuidance ?? PRINT_PACKAGE_FLOW_HINT,
+)
+
+function goPrepWorkbench(): void {
+  if (!selectedExamId.value) {
+    return
+  }
+  void router.push({
+    name: 'TeacherExamWorkspacePrep',
+    params: { examId: selectedExamId.value },
+  })
+}
 
 // ─── 印刷包分页列表 ─────────────────────────────────────────────────
 
@@ -550,13 +610,20 @@ async function loadExamDetailForPrep(examId: string): Promise<void> {
 }
 
 watch(
-  selectedExamId,
-  (val) => {
+  [selectedExamId, printPackageApplicable],
+  ([val, applicable]) => {
     pagination.pageNum = 1
-    if (val) {
-      void Promise.all([loadPackageList(), loadPrintPackagePanel(), loadExamDetailForPrep(val)])
-    } else {
+    if (!val) {
       examDetail.value = null
+      packageList.value = []
+      printPackagePanel.value = null
+      pagination.total = 0
+      return
+    }
+    void loadExamDetailForPrep(val)
+    if (applicable) {
+      void Promise.all([loadPackageList(), loadPrintPackagePanel()])
+    } else {
       packageList.value = []
       printPackagePanel.value = null
       pagination.total = 0
@@ -580,6 +647,10 @@ watch(
     font-size: 12px;
     color: var(--ant-color-text-tertiary);
     line-height: 1.5;
+  }
+
+  &__scenario {
+    margin-bottom: var(--dp-space-4);
   }
 
   &__list-card {

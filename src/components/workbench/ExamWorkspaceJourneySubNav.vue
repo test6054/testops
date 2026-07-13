@@ -62,6 +62,8 @@ const items = computed((): ExamWorkspaceMenuItem[] => {
   const groups = getMenuGroupsForJourney(resolvedGroupKey.value as ExamWorkspaceJourneyKey, {
     experienceAssistPendingCount: experienceAssistPendingCount.value,
     tenantExperienceAssistEnabled: workbenchContext?.snapshot.value?.tenantExperienceAssistEnabled,
+    materialLayoutMode: workbenchContext?.examDetail?.value?.materialLayoutMode,
+    printSourceMode: workbenchContext?.examDetail?.value?.printSourceMode,
   })
   return (
     groups.find((entry) => entry.key === resolvedGroupKey.value)?.items ?? groups[0]?.items ?? []

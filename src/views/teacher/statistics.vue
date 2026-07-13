@@ -261,6 +261,7 @@ const paperAnalysis = ref<ExamPaperAnalysisResponse | null>(null)
 const paperAnalysisLoading = ref(false)
 const rosterLoadNotice = ref('')
 const paperAnalysisNotice = ref('')
+let paperAnalysisLoadSequence = 0
 
 const PAPER_QUALITY_SIGNAL_PLACEHOLDERS: SignalMetric[] = [
   { key: 'cronbachAlpha', label: 'Cronbach α', value: '—', tone: 'gray' },
@@ -307,27 +308,40 @@ const statsSignalMetrics = computed((): SignalMetric[] => {
 })
 
 async function loadPaperAnalysis(): Promise<void> {
+  const currentLoad = ++paperAnalysisLoadSequence
   if (!currentExamId.value) {
     paperAnalysis.value = null
     paperAnalysisLoading.value = false
+    paperAnalysisNotice.value = ''
     return
   }
   paperAnalysisLoading.value = true
   try {
-    paperAnalysis.value = await getExamPaperAnalysis({
+    const response = await getExamPaperAnalysis({
       examId: currentExamId.value,
+      classId: activeClassId.value || undefined,
     })
+    if (currentLoad !== paperAnalysisLoadSequence) {
+      return
+    }
+    paperAnalysis.value = response
     paperAnalysisNotice.value = ''
   } catch (error) {
+    if (currentLoad !== paperAnalysisLoadSequence) {
+      return
+    }
     paperAnalysis.value = null
     paperAnalysisNotice.value = getUserErrorMessage(error, '整卷质量指标暂不可用')
   } finally {
-    paperAnalysisLoading.value = false
+    if (currentLoad === paperAnalysisLoadSequence) {
+      paperAnalysisLoading.value = false
+    }
   }
 }
 
 function handleClassChange(value?: SelectValue): void {
   activeClassId.value = typeof value === 'string' ? value : ''
+  void loadPaperAnalysis()
   void searchStudents('', activeClassId.value || undefined)
   if (
     activeStudentUserId.value
@@ -345,8 +359,12 @@ function handleStudentChange(studentUserId: string): void {
 }
 
 function clearLinkage(): void {
+  const hadClassScope = !!activeClassId.value
   activeClassId.value = ''
   activeStudentUserId.value = ''
+  if (hadClassScope && currentExamId.value) {
+    void loadPaperAnalysis()
+  }
 }
 
 async function reloadAll(): Promise<void> {
@@ -375,6 +393,8 @@ function reloadRejudge(): void {
 }
 
 function onQuestionAnalysisGenerated(): void {
+  void loadPaperAnalysis()
+  paperQualityToken.value += 1
   reloadRejudge()
   goalMappingToken.value += 1
 }
@@ -413,6 +433,10 @@ watch(
       void loadRoster(v)
       reloadAll()
     } else {
+      paperAnalysisLoadSequence += 1
+      paperAnalysis.value = null
+      paperAnalysisLoading.value = false
+      paperAnalysisNotice.value = ''
       resetRoster()
     }
   },

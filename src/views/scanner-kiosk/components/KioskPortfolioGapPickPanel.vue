@@ -39,6 +39,7 @@ const canPick = computed(() => Boolean(props.scannerDeviceId && props.scannerSta
 
 const columns = [
   { title: '分类', key: 'categoryName', dataIndex: 'categoryName', width: 120 },
+  { title: '课程维度', key: 'courseScope', width: 140 },
   { title: '任务', key: 'taskTitle', dataIndex: 'taskTitle', ellipsis: true },
   { title: '教师', key: 'teacherId', dataIndex: 'teacherId', width: 120 },
   { title: '状态', key: 'taskStatus', dataIndex: 'taskStatus', width: 96 },
@@ -86,6 +87,20 @@ function handlePageChange(pageEvent: { current: number, pageSize: number }) {
 
 function gapStatusLabel(status: PortfolioGapTaskSummaryInternalVO['taskStatus']) {
   return strictEnumLabel(PortfolioGapTaskStatusDescription, status, 'taskStatus')
+}
+
+function gapCourseScopeLabel(row: PortfolioGapTaskSummaryInternalVO): string {
+  if (!row.courseCode) {
+    return '—'
+  }
+  const parts = [row.courseCode]
+  if (row.academicYear) {
+    parts.push(row.academicYear)
+  }
+  if (row.semester) {
+    parts.push(`第${row.semester}学期`)
+  }
+  return parts.join(' · ')
 }
 
 async function openGapScan(row: PortfolioGapTaskSummaryInternalVO) {
@@ -166,6 +181,9 @@ async function openGapScan(row: PortfolioGapTaskSummaryInternalVO) {
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'categoryName'">
             {{ record.categoryName || '—' }}
+          </template>
+          <template v-else-if="column.key === 'courseScope'">
+            {{ gapCourseScopeLabel(record) }}
           </template>
           <template v-else-if="column.key === 'taskStatus'">
             <UiTag tone="blue" size="sm">{{ gapStatusLabel(record.taskStatus) }}</UiTag>

@@ -1,5 +1,6 @@
 import type {
   PortfolioGapTaskDetailVO,
+  PortfolioGapTaskExtendRequest,
   PortfolioGapTaskPageRequest,
   PortfolioGapTaskSubmitRequest,
   PortfolioGapTaskSummaryVO,
@@ -20,4 +21,5 @@ export const portfolioGapApi = {
     data: PortfolioGapTaskPageRequest = { pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE },
   ) => http.post<PageResult<PortfolioGapTaskSummaryVO>>(`${BASE}/task/page`, data),
   urgeTask: (data: PortfolioGapUrgeRequest) => http.post<void>(`${BASE}/urge`, data),
+  extendTask: (data: PortfolioGapTaskExtendRequest) => http.post<void>(`${BASE}/task/extend`, data),
 }

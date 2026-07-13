@@ -1,5 +1,6 @@
 import type { PortfolioArchiveBagSectionTypeCode } from '@/types/enums/portfolio-archive-bag-section-type-enum'
 import type { PortfolioArchiveBagSourceTypeCode } from '@/types/enums/portfolio-archive-bag-source-type-enum'
+import type { PortfolioCompletenessLevelCode } from '@/types/enums/portfolio-completeness-level-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 
 export {
@@ -68,6 +69,14 @@ export interface PortfolioArchiveBagSectionVO {
 export interface PortfolioArchiveBagPreviewVO {
   teacherId: string
   completenessPercent: number
+  completenessLevel?: PortfolioCompletenessLevelCode
+  currentAcademicYear?: string
+  requiredCategoryTotal?: number
+  requiredCategoryDone?: number
+  courseArchiveTaughtCourseCount?: number
+  courseArchiveFullyCompleteCount?: number
+  courseArchiveFrameworkSlotDone?: number
+  courseArchiveFrameworkSlotTotal?: number
   missingCategoryNames: string[]
   openGapTaskCount: number
   archivedCategoryCount: number

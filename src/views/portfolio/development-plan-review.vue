@@ -193,6 +193,10 @@ async function confirmReview() {
   if (!reviewTargetId.value) {
     return
   }
+  if (reviewAction.value === 'return' && !auditOpinion.value.trim()) {
+    message.warning('请填写退回意见')
+    return
+  }
   try {
     if (reviewAction.value === 'approve') {
       await portfolioDevelopmentPlanApi.departmentApprove({
@@ -316,7 +320,11 @@ watch(
       cancel-text="取消"
       @ok="confirmReview"
     >
-      <a-textarea v-model:value="auditOpinion" placeholder="审核意见（可选）" :rows="3" />
+      <a-textarea
+        v-model:value="auditOpinion"
+        :placeholder="reviewAction === 'return' ? '请填写退回意见' : '审核意见（可选）'"
+        :rows="3"
+      />
     </a-modal>
   </StageWorkbenchShell>
 </template>

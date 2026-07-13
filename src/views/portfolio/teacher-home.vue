@@ -29,6 +29,7 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { PortfolioArchiveRecordStatusCode } from '@/types/enums/portfolio-archive-record-status-enum'
 import { PortfolioTodoTypeCode } from '@/types/enums/portfolio-todo-type-enum'
 import { ResultCode } from '@/types/enums/result-code'
 import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
@@ -47,6 +48,20 @@ const workbenchSummary = ref<PortfolioTeacherWorkbenchSummaryVO | null>(null)
 const workbenchSummaryLoading = ref(false)
 const compareDrawerOpen = ref(false)
 const cockpitBandRef = ref<InstanceType<typeof PortfolioProgressCockpitBand> | null>(null)
+
+function todoCourseScopeLabel(item: PortfolioTodoSummaryVO): string {
+  if (!item.courseCode) {
+    return ''
+  }
+  const parts = [item.courseCode]
+  if (item.academicYear) {
+    parts.push(item.academicYear)
+  }
+  if (item.semester) {
+    parts.push(`第${item.semester}学期`)
+  }
+  return parts.join(' · ')
+}
 const homeRequestToken = ref(0)
 
 const completenessPercentText = computed(() => {
@@ -218,11 +233,12 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     : {}
   if (
     item.archiveRecordId
-    && (item.todoType === 'ARCHIVE_RETURNED' || item.todoType === 'ARCHIVE_DRAFT')
+    && (item.todoType === PortfolioTodoTypeCode.ARCHIVE_RETURNED
+      || item.todoType === PortfolioTodoTypeCode.ARCHIVE_DRAFT)
   ) {
     query.recordId = item.archiveRecordId
   }
-  if (item.todoType === 'ARCHIVE_PENDING_CONFIRM') {
+  if (item.todoType === PortfolioTodoTypeCode.ARCHIVE_PENDING_CONFIRM) {
     if (!item.referenceAiTaskId) {
       if (item.categoryId) {
         void router.push({
@@ -243,7 +259,10 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     })
     return
   }
-  if (item.todoType === 'CORRECTION_REJECTED' || item.todoType === 'CORRECTION_IN_PROGRESS') {
+  if (
+    item.todoType === PortfolioTodoTypeCode.CORRECTION_REJECTED
+    || item.todoType === PortfolioTodoTypeCode.CORRECTION_IN_PROGRESS
+  ) {
     if (item.categoryId) {
       query.categoryId = item.categoryId
     }
@@ -253,7 +272,10 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     void router.push({ path: '/portfolio/teacher/correction', query })
     return
   }
-  if (item.todoType === 'GAP_PENDING' || item.todoType === 'GAP_RETURNED') {
+  if (
+    item.todoType === PortfolioTodoTypeCode.GAP_PENDING
+    || item.todoType === PortfolioTodoTypeCode.GAP_RETURNED
+  ) {
     void router.push({
       path: `/portfolio/teacher/gap/${item.refId}`,
       query,
@@ -261,8 +283,8 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     return
   }
   if (
-    item.todoType === 'EVALUATION_MATERIAL_CONFIRM'
-    || item.todoType === 'EVALUATION_RETURNED_SUPPLEMENT'
+    item.todoType === PortfolioTodoTypeCode.EVALUATION_MATERIAL_CONFIRM
+    || item.todoType === PortfolioTodoTypeCode.EVALUATION_RETURNED_SUPPLEMENT
   ) {
     void router.push({
       path: '/portfolio/teacher/evaluation',
@@ -270,21 +292,24 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     })
     return
   }
-  if (item.todoType === 'DEVELOPMENT_PLAN_PENDING') {
+  if (item.todoType === PortfolioTodoTypeCode.DEVELOPMENT_PLAN_PENDING) {
     void router.push({
       path: '/portfolio/admin/development-plan',
       query: { ...query, planId: item.refId },
     })
     return
   }
-  if (item.todoType === 'DEVELOPMENT_PLAN_REVIEW') {
+  if (item.todoType === PortfolioTodoTypeCode.DEVELOPMENT_PLAN_REVIEW) {
     void router.push({
       path: '/portfolio/admin/development-plan-review',
       query: { ...query, planId: item.refId },
     })
     return
   }
-  if (item.todoType === 'DUAL_TEACHER_DRAFT' || item.todoType === 'DUAL_TEACHER_RETURNED') {
+  if (
+    item.todoType === PortfolioTodoTypeCode.DUAL_TEACHER_DRAFT
+    || item.todoType === PortfolioTodoTypeCode.DUAL_TEACHER_RETURNED
+  ) {
     void router.push({ path: '/portfolio/teacher/dual-teacher-apply', query })
     return
   }
@@ -331,17 +356,21 @@ function handleCockpitMetricClick(key: string, context?: { academicYear?: string
     compareDrawerOpen.value = true
     return
   }
+  if (key === 'courseArchive') {
+    void router.push({ path: '/portfolio/teacher/course-archive', query })
+    return
+  }
   if (key === 'pendingReview') {
     void router.push({
       path: '/portfolio/teacher/review-status',
-      query: { ...query, recordStatus: 'PENDING_REVIEW' },
+      query: { ...query, recordStatus: PortfolioArchiveRecordStatusCode.PENDING_REVIEW },
     })
     return
   }
   if (key === 'returned') {
     void router.push({
       path: '/portfolio/teacher/review-status',
-      query: { ...query, recordStatus: 'RETURNED' },
+      query: { ...query, recordStatus: PortfolioArchiveRecordStatusCode.RETURNED },
     })
     return
   }
@@ -420,6 +449,16 @@ function goCourseArchive() {
     path: '/portfolio/teacher/course-archive',
     query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
   })
+}
+
+function goCourseArchiveWithAcademicYear(academicYear?: string) {
+  const query: Record<string, string> = targetTeacherId.value
+    ? { teacherId: targetTeacherId.value }
+    : {}
+  if (academicYear) {
+    query.academicYear = academicYear
+  }
+  void router.push({ path: '/portfolio/teacher/course-archive', query })
 }
 
 function goHonor() {
@@ -525,6 +564,20 @@ onUnmounted(() => {
               必填分类 {{ workbenchSummary.requiredCategoryDone ?? 0 }} /
               {{ workbenchSummary.requiredCategoryTotal ?? 0 }}
             </p>
+            <p class="teacher-home__meta">
+              荣誉 {{ workbenchSummary.honorTotalCount ?? 0 }} 条 · 拓展活动
+              {{ workbenchSummary.extensionActivityTotalCount ?? 0 }} 条
+            </p>
+            <p
+              v-if="(workbenchSummary.courseArchiveTaughtCourseCount ?? 0) > 0"
+              class="teacher-home__meta teacher-home__meta--link"
+              @click="goCourseArchiveWithAcademicYear(workbenchSummary?.currentAcademicYear)"
+            >
+              本学年讲授 {{ workbenchSummary.courseArchiveTaughtCourseCount }} 门 · 五框架齐备
+              {{ workbenchSummary.courseArchiveFullyCompleteCount ?? 0 }} 门（{{
+                workbenchSummary.courseArchiveFrameworkSlotDone ?? 0
+              }}/{{ workbenchSummary.courseArchiveFrameworkSlotTotal ?? 0 }}）
+            </p>
             <p
               v-if="
                 workbenchSummary.completenessPercent === 0
@@ -599,6 +652,9 @@ onUnmounted(() => {
               <p v-if="item.summary" class="teacher-home__meta">
                 {{ item.summary }}
               </p>
+              <p v-if="todoCourseScopeLabel(item)" class="teacher-home__meta">
+                课程 {{ todoCourseScopeLabel(item) }}
+              </p>
               <p v-if="item.dueTime" class="teacher-home__meta">截止 {{ item.dueTime }}</p>
             </li>
           </ul>
@@ -638,6 +694,13 @@ onUnmounted(() => {
   margin: var(--dp-space-3) 0 0;
   font-size: 14px;
   color: var(--dp-text-secondary);
+}
+.teacher-home__meta--link {
+  color: var(--dp-color-primary);
+  cursor: pointer;
+}
+.teacher-home__meta--link:hover {
+  text-decoration: underline;
 }
 
 .teacher-home__onboarding {

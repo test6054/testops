@@ -16,6 +16,23 @@
           allow-clear
           @change="reload"
         />
+        <UiButton
+          variant="outline"
+          size="sm"
+          :disabled="!selectedQuestionForCorrection"
+          @click="handleOpenSelectedQuestionCorrection"
+        >
+          修正答案并生效
+        </UiButton>
+        <UiButton
+          variant="outline"
+          size="sm"
+          :loading="generating && !generatingAllMode"
+          :disabled="!selectedLayoutQuestionId"
+          @click="handleGenerateSelected"
+        >
+          生成当前题
+        </UiButton>
         <UiButton variant="outline" size="sm" :loading="generating" @click="handleGenerateAll">
           全量生成
         </UiButton>
@@ -37,6 +54,23 @@
         allow-clear
         @change="reload"
       />
+      <UiButton
+        variant="outline"
+        size="sm"
+        :disabled="!selectedQuestionForCorrection"
+        @click="handleOpenSelectedQuestionCorrection"
+      >
+        修正答案并生效
+      </UiButton>
+      <UiButton
+        variant="outline"
+        size="sm"
+        :loading="generating && !generatingAllMode"
+        :disabled="!selectedLayoutQuestionId"
+        @click="handleGenerateSelected"
+      >
+        生成当前题
+      </UiButton>
       <UiButton variant="outline" size="sm" :loading="generating" @click="handleGenerateAll">
         全量生成
       </UiButton>
@@ -131,23 +165,34 @@
           @page-change="handleTablePageChange"
         >
           <template #empty-action>
-            <UiButton
-              v-if="tableEmptyKind === 'first-run'"
-              variant="outline"
-              size="sm"
-              :loading="generating"
-              @click="handleGenerateAll"
-            >
-              全量生成
-            </UiButton>
-            <UiButton
-              v-else-if="tableEmptyKind === 'no-result'"
-              variant="outline"
-              size="sm"
-              @click="clearQuestionFilter"
-            >
-              清除题目筛选
-            </UiButton>
+            <a-space v-if="tableEmptyKind === 'first-run'">
+              <UiButton
+                variant="outline"
+                size="sm"
+                :loading="generating"
+                @click="handleGenerateAll"
+              >
+                全量生成
+              </UiButton>
+            </a-space>
+            <a-space v-else-if="tableEmptyKind === 'no-result'">
+              <UiButton
+                variant="outline"
+                size="sm"
+                :loading="generating && !generatingAllMode"
+                :disabled="!selectedLayoutQuestionId"
+                @click="handleGenerateSelected"
+              >
+                生成当前题
+              </UiButton>
+              <UiButton
+                variant="outline"
+                size="sm"
+                @click="clearQuestionFilter"
+              >
+                清除题目筛选
+              </UiButton>
+            </a-space>
           </template>
           <template #bodyCell="{ column, record: item }">
             <template v-if="column.key === 'question'">
@@ -180,21 +225,35 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
-                :items="[{ key: 'regenerate', label: '重新生成' }]"
+                :items="[
+                  { key: 'correct-answer', label: '修正答案并生效' },
+                  { key: 'regenerate', label: '重新生成' },
+                ]"
                 split
-                @action="() => handleGenerateOne(item.layoutQuestionId)"
+                @action="(key) => handleRowAction(key, item)"
               />
             </template>
           </template>
         </UiDataTable>
       </template>
     </div>
+
+    <QuestionAnswerCorrectionDialog
+      :open="correctionDialogOpen"
+      :exam-id="props.examId"
+      :question="editingQuestion"
+      @close="closeCorrectionDialog"
+      @corrected="handleAnswerCorrected"
+    />
   </AiAnalysisCardShell>
 </template>
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ExamTemplateResponse } from '@/apis/mark/exam-layout-question'
+import type {
+  ExamLayoutQuestionViewResponse,
+  ExamTemplateResponse,
+} from '@/apis/mark/exam-layout-question'
 import type {
   ExamQuestionAnalysisRecordResponse,
   QuestionAnalysisListQueryRequest,
@@ -234,6 +293,7 @@ import {
 } from '@/utils/mark-statistics-chart'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import AiGenerationProgressPanel from './AiGenerationProgressPanel.vue'
+import QuestionAnswerCorrectionDialog from './QuestionAnswerCorrectionDialog.vue'
 
 defineOptions({ name: 'QuestionAnalysisCard' })
 
@@ -278,6 +338,23 @@ const tablePageSize = ref(20)
 const tableTotal = ref(0)
 const brushSelectedRows = ref<ExamQuestionAnalysisRecordResponse[]>([])
 const scatterSectionRef = ref<InstanceType<typeof MarkScatterSection> | null>(null)
+const correctionDialogOpen = ref(false)
+let chartLoadSequence = 0
+let tableLoadSequence = 0
+let questionOptionsLoadSequence = 0
+type CorrectionQuestion = Pick<
+  ExamQuestionAnalysisRecordResponse,
+  'layoutQuestionId' | 'questionNo' | 'questionType' | 'questionStem' | 'fullScore'
+>
+const editingQuestion = ref<CorrectionQuestion | null>(null)
+const selectedQuestionForCorrection = computed<CorrectionQuestion | null>(() => {
+  const layoutQuestionId = selectedLayoutQuestionId.value
+  if (!layoutQuestionId) {
+    return null
+  }
+  const question = layoutSummary.value?.questions.find((item) => item.layoutQuestionId === layoutQuestionId)
+  return question ? toCorrectionQuestion(question) : null
+})
 
 interface ScatterBrushSelectedBatch {
   selected?: Array<{
@@ -320,7 +397,7 @@ const columns: ColumnType<ExamQuestionAnalysisRecordResponse>[] = [
   buildNumericColumn({ title: '区分度', key: 'discriminationIndex', width: 100 }),
   { title: '平均分/满分', key: 'avgScore', width: 140, align: 'right' },
   { title: '快照时间', key: 'snapshotTime', width: 160 },
-  { title: '操作', key: 'actions', width: 110 },
+  { title: '操作', key: 'actions', width: 190 },
 ]
 
 function buildListQueryBase(): Omit<QuestionAnalysisListQueryRequest, 'pageNum' | 'pageSize'> {
@@ -332,6 +409,7 @@ function buildListQueryBase(): Omit<QuestionAnalysisListQueryRequest, 'pageNum' 
 }
 
 async function loadChartRows(): Promise<void> {
+  const currentLoad = ++chartLoadSequence
   if (!props.examId) {
     chartRows.value = []
     brushSelectedRows.value = []
@@ -340,13 +418,21 @@ async function loadChartRows(): Promise<void> {
   chartLoading.value = true
   try {
     const records = await loadQuestionAnalysisChartRows(buildListQueryBase())
+    if (currentLoad !== chartLoadSequence) {
+      return
+    }
     chartRows.value = acceptQuestionAnalysisRows(records)
   } catch (e) {
+    if (currentLoad !== chartLoadSequence) {
+      return
+    }
     chartRows.value = []
     brushSelectedRows.value = []
     showUserError(e, '题目质量分析图表加载失败')
   } finally {
-    chartLoading.value = false
+    if (currentLoad === chartLoadSequence) {
+      chartLoading.value = false
+    }
   }
 }
 
@@ -354,6 +440,7 @@ async function loadTablePage(
   pageNum = tablePageNum.value,
   pageSize = tablePageSize.value,
 ): Promise<void> {
+  const currentLoad = ++tableLoadSequence
   if (!props.examId) {
     tableRows.value = []
     tableTotal.value = 0
@@ -366,16 +453,24 @@ async function loadTablePage(
       pageNum,
       pageSize,
     })
+    if (currentLoad !== tableLoadSequence) {
+      return
+    }
     tableRows.value = acceptQuestionAnalysisRows(page.list)
     tableTotal.value = page.total
     tablePageNum.value = page.pageNum
     tablePageSize.value = page.pageSize
   } catch (e) {
+    if (currentLoad !== tableLoadSequence) {
+      return
+    }
     tableRows.value = []
     tableTotal.value = 0
     showUserError(e, '题目质量分析列表加载失败')
   } finally {
-    tableLoading.value = false
+    if (currentLoad === tableLoadSequence) {
+      tableLoading.value = false
+    }
   }
 }
 
@@ -390,16 +485,23 @@ function handleTablePageChange(event: { current: number, pageSize: number }): vo
 }
 
 async function loadQuestionOptions(): Promise<void> {
+  const currentLoad = ++questionOptionsLoadSequence
   if (!props.examId) {
     questionOptions.value = []
+    layoutSummary.value = null
+    selectedLayoutQuestionId.value = undefined
     return
   }
   questionLoading.value = true
   try {
     const template = await getExamLayoutQuestionSummary(props.examId)
+    if (currentLoad !== questionOptionsLoadSequence) {
+      return
+    }
     layoutSummary.value = template
     if (!template.configured) {
       questionOptions.value = []
+      selectedLayoutQuestionId.value = undefined
       return
     }
     questionOptions.value = buildExamLayoutQuestionOptions(template.questions)
@@ -412,11 +514,24 @@ async function loadQuestionOptions(): Promise<void> {
       selectedLayoutQuestionId.value = undefined
     }
   } catch (e) {
+    if (currentLoad !== questionOptionsLoadSequence) {
+      return
+    }
+    layoutSummary.value = null
     questionOptions.value = []
+    selectedLayoutQuestionId.value = undefined
     showUserError(e, '题目列表加载失败')
   } finally {
-    questionLoading.value = false
+    if (currentLoad === questionOptionsLoadSequence) {
+      questionLoading.value = false
+    }
   }
+}
+
+/** 切换考试/联动范围后先校正题目筛选，再按最新筛选重新加载图表与列表，避免沿用旧考试题目 ID 查空数据。 */
+async function reloadCurrentScope(): Promise<void> {
+  await loadQuestionOptions()
+  await reload()
 }
 
 async function handleGenerateAll(): Promise<void> {
@@ -468,6 +583,47 @@ async function handleGenerateOne(layoutQuestionId: string): Promise<void> {
   generatingId.value = ''
 }
 
+async function handleGenerateSelected(): Promise<void> {
+  if (!selectedLayoutQuestionId.value) {
+    showUserError(null, '请先选择需要生成分析的题目')
+    return
+  }
+  await handleGenerateOne(selectedLayoutQuestionId.value)
+}
+
+function handleRowAction(actionKey: string, item: ExamQuestionAnalysisRecordResponse): void {
+  if (actionKey === 'regenerate') {
+    void handleGenerateOne(item.layoutQuestionId)
+    return
+  }
+  if (actionKey === 'correct-answer') {
+    openCorrectionDialog(item)
+  }
+}
+
+function handleOpenSelectedQuestionCorrection(): void {
+  if (!selectedQuestionForCorrection.value) {
+    showUserError(null, '请先选择需要修正答案的题目')
+    return
+  }
+  openCorrectionDialog(selectedQuestionForCorrection.value)
+}
+
+function openCorrectionDialog(question: CorrectionQuestion): void {
+  editingQuestion.value = question
+  correctionDialogOpen.value = true
+}
+
+function closeCorrectionDialog(): void {
+  correctionDialogOpen.value = false
+  editingQuestion.value = null
+}
+
+async function handleAnswerCorrected(): Promise<void> {
+  await reload()
+  emit('generated')
+}
+
 function acceptQuestionAnalysisRows(
   records: ExamQuestionAnalysisRecordResponse[],
 ): ExamQuestionAnalysisRecordResponse[] {
@@ -506,6 +662,17 @@ function questionTypeLabel(
   questionType: ExamQuestionAnalysisRecordResponse['questionType'],
 ): string {
   return strictEnumLabel(QuestionTypeDescription, questionType, '题型')
+}
+
+/** 将制卷题目摘要映射为修正答案弹窗所需的最小题目上下文。 */
+function toCorrectionQuestion(question: ExamLayoutQuestionViewResponse): CorrectionQuestion {
+  return {
+    layoutQuestionId: question.layoutQuestionId,
+    questionNo: question.questionNo,
+    questionType: question.questionType,
+    questionStem: question.questionStem,
+    fullScore: question.fullScore,
+  }
 }
 
 const questionQualityScatterSeries = computed(() =>
@@ -605,10 +772,7 @@ const correctRatioChartAriaLabel = computed(() => {
 watch(
   () => [props.examId, props.reloadToken, props.classId],
   () => {
-    if (props.examId) {
-      void loadQuestionOptions()
-      void reload()
-    }
+    void reloadCurrentScope()
   },
   { immediate: true },
 )

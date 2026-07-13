@@ -1,5 +1,6 @@
 import type { PortfolioArchiveBagExportResultVO } from '@/apis/portfolio/bag-types'
 import type {
+  PortfolioCompletenessLevelCode,
   PortfolioTeacherDetailVO,
   PortfolioTeacherIdentitySaveRequest,
   PortfolioTeacherIdentityTypeCode,
@@ -23,6 +24,13 @@ export interface PortfolioTeacherOneTableSummaryVO {
   correctionPending?: boolean
   recentChangeSummary: string[]
   categories: PortfolioTeacherOneTableCategoryVO[]
+  currentAcademicYear?: string
+  completenessPercent?: number
+  completenessLevel?: PortfolioCompletenessLevelCode
+  courseArchiveTaughtCourseCount?: number
+  courseArchiveFullyCompleteCount?: number
+  courseArchiveFrameworkSlotDone?: number
+  courseArchiveFrameworkSlotTotal?: number
 }
 
 export interface PortfolioDeptOneTableSummaryVO {
@@ -43,6 +51,16 @@ export interface PortfolioDeptOneTableSummaryVO {
   developmentPlanTotalCount?: number
   developmentPlanApprovedCount?: number
   developmentPlanCompletionRatePercent?: number
+  currentAcademicYear?: string
+  completenessCompleteCount?: number
+  completenessBasicCount?: number
+  completenessPendingCount?: number
+  completenessSevereCount?: number
+  completenessUncalculatedCount?: number
+  courseArchiveTaughtCourseCount?: number
+  courseArchiveFullyCompleteCount?: number
+  courseArchiveFrameworkSlotDone?: number
+  courseArchiveFrameworkSlotTotal?: number
 }
 
 export interface PortfolioDeptOneTableTeacherRowVO {
@@ -59,6 +77,12 @@ export interface PortfolioDeptOneTableTeacherRowVO {
   planYear?: string
   developmentPlanStatus?: string
   developmentPlanItemCompletionPercent?: number
+  completenessPercent?: number
+  completenessLevel?: PortfolioCompletenessLevelCode
+  courseArchiveTaughtCourseCount?: number
+  courseArchiveFullyCompleteCount?: number
+  courseArchiveFrameworkSlotDone?: number
+  courseArchiveFrameworkSlotTotal?: number
 }
 
 export interface PortfolioDeptStructureStatVO {
@@ -85,6 +109,7 @@ export interface PortfolioDeptOneTableExportRequest {
 export interface PortfolioDeptOneTableTeacherPageRequest extends QueryDto {
   departmentId: string
   planYear?: string
+  completenessLevel?: PortfolioCompletenessLevelCode
 }
 
 const BASE = '/api/portfolio/teacher'

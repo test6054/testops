@@ -10,8 +10,12 @@ import type {
   PortfolioDualTeacherAnalyticsVO,
   PortfolioExternalTeacherStatsVO,
 } from '@/apis/portfolio/teacher-platform'
+import type { PortfolioCockpitSummaryVO } from '@/apis/portfolio/types'
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { portfolioCockpitApi } from '@/apis/portfolio/cockpit'
 import {
+  PortfolioCompletenessLevelCode,
   PortfolioDualTeacherApplicationStatusDescription,
   PortfolioKeyTeacherRegistryStatusDescription,
 } from '@/apis/portfolio/enums'
@@ -31,7 +35,9 @@ import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const loading = ref(false)
+const router = useRouter()
 const deptStats = ref<PortfolioDeptStructureStatVO | null>(null)
+const schoolSummary = ref<PortfolioCockpitSummaryVO | null>(null)
 const dualStats = ref<PortfolioDualTeacherAnalyticsVO | null>(null)
 const doubleDutyStats = ref<PortfolioDoubleDutyAnalyticsVO | null>(null)
 const externalStats = ref<PortfolioExternalTeacherStatsVO | null>(null)
@@ -78,16 +84,44 @@ function registryStatusLabel(status: PortfolioKeyTeacherRegistryStatusCode): str
   return strictEnumLabel(PortfolioKeyTeacherRegistryStatusDescription, status, '台账状态')
 }
 
+const completenessDistributionRows: Array<{
+  key: PortfolioCompletenessLevelCode
+  label: string
+  summaryKey:
+    | 'completenessCompleteCount'
+    | 'completenessBasicCount'
+    | 'completenessPendingCount'
+    | 'completenessSevereCount'
+}> = [
+  { key: PortfolioCompletenessLevelCode.COMPLETE, label: '完整', summaryKey: 'completenessCompleteCount' },
+  { key: PortfolioCompletenessLevelCode.BASIC, label: '基本完整', summaryKey: 'completenessBasicCount' },
+  { key: PortfolioCompletenessLevelCode.PENDING, label: '待补充', summaryKey: 'completenessPendingCount' },
+  { key: PortfolioCompletenessLevelCode.SEVERE, label: '严重缺失', summaryKey: 'completenessSevereCount' },
+]
+
+function distributionCount(summary: PortfolioCockpitSummaryVO, key: (typeof completenessDistributionRows)[number]['summaryKey']): number {
+  return summary[key] ?? 0
+}
+
+function goTeacherDirectory(completenessLevel: PortfolioCompletenessLevelCode) {
+  void router.push({
+    path: '/portfolio/teachers',
+    query: { completenessLevel },
+  })
+}
+
 async function loadAll() {
   loading.value = true
   try {
-    const [dept, dual, doubleDuty, external] = await Promise.all([
+    const [dept, school, dual, doubleDuty, external] = await Promise.all([
       portfolioTeacherApi.deptStructureStats(),
+      portfolioCockpitApi.schoolSummary(),
       portfolioDualTeacherApi.analyticsStats(),
       portfolioDoubleDutyApi.analyticsStats(),
       portfolioExternalTeacherApi.stats(),
     ])
     deptStats.value = dept
+    schoolSummary.value = school
     dualStats.value = dual
     doubleDutyStats.value = doubleDuty
     externalStats.value = external
@@ -103,13 +137,51 @@ onMounted(loadAll)
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="师资分析看板" subtitle="院系结构 · 双师认定 · 双肩挑 · 外聘教师" />
+    <ContextBar title="师资分析看板" subtitle="院系结构 · 档案完整度 · 五框架 · 双师 · 外聘" />
     <a-spin :spinning="loading">
       <UiEmpty
-        v-if="!loading && !deptStats && !dualStats && !externalStats"
+        v-if="!loading && !deptStats && !dualStats && !externalStats && !schoolSummary"
         description="暂无师资分析数据"
       />
       <div v-else class="grid">
+        <UiCard v-if="schoolSummary" title="全校档案完整度与五框架">
+          <div class="analytics-completeness">
+            <button
+              v-for="item in completenessDistributionRows"
+              :key="item.key"
+              type="button"
+              class="analytics-completeness__chip"
+              @click="goTeacherDirectory(item.key)"
+            >
+              {{ item.label }} {{ distributionCount(schoolSummary, item.summaryKey) }}
+            </button>
+          </div>
+          <UiStatPanel
+            :items="[
+              ...(schoolSummary.courseArchiveFrameworkSlotTotal
+                ? [{
+                  key: 'framework',
+                  label: `${schoolSummary.currentAcademicYear ?? '本学年'} 五框架`,
+                  value: String(schoolSummary.courseArchiveFrameworkSlotDone ?? 0),
+                  unit: `/${schoolSummary.courseArchiveFrameworkSlotTotal ?? 0}`,
+                  tone: 'blue' as const,
+                }]
+                : []),
+              ...(schoolSummary.courseArchiveFullyCompleteCount != null
+                ? [{
+                  key: 'fullyComplete',
+                  label: '齐备课程',
+                  value: String(schoolSummary.courseArchiveFullyCompleteCount),
+                  unit: '门',
+                  tone: 'green' as const,
+                }]
+                : []),
+            ]"
+            :columns="2"
+            variant="grid"
+            compact
+          />
+        </UiCard>
         <UiCard v-if="deptStats" title="院系教师结构">
           <UiStatPanel
             :items="[
@@ -267,5 +339,23 @@ onMounted(loadAll)
   display: grid;
   gap: 16px;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+.analytics-completeness {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.analytics-completeness__chip {
+  padding: 4px 10px;
+  border: 1px solid var(--dp-border, #e8e8e8);
+  border-radius: 4px;
+  background: transparent;
+  font-size: 13px;
+  cursor: pointer;
+}
+.analytics-completeness__chip:hover {
+  border-color: var(--ant-color-primary);
+  color: var(--ant-color-primary);
 }
 </style>

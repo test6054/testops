@@ -2,8 +2,8 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioGapTaskStatusCode } from '@/apis/portfolio/enums'
 import type { PortfolioGapTaskSummaryVO } from '@/apis/portfolio/types'
-import { message } from 'ant-design-vue'
-import { ref } from 'vue'
+import { DatePicker, Input, message } from 'ant-design-vue'
+import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import { portfolioGapApi } from '@/apis/portfolio/gap'
@@ -25,14 +25,33 @@ function gapStatusLabel(status: PortfolioGapTaskStatusCode): string {
 const router = useRouter()
 const loading = ref(false)
 const urgingId = ref('')
+const extendingId = ref('')
+const extendDialogOpen = ref(false)
+const extendingTask = ref<PortfolioGapTaskSummaryVO | null>(null)
+const extensionForm = reactive({ dueTime: '', reason: '' })
 const rows = ref<PortfolioGapTaskSummaryVO[]>([])
 const pageNum = ref(1)
 const pageSize = ref(10)
 const pageTotal = ref(0)
 
+function gapCourseScopeLabel(row: PortfolioGapTaskSummaryVO): string {
+  if (!row.courseCode) {
+    return '—'
+  }
+  const parts = [row.courseCode]
+  if (row.academicYear) {
+    parts.push(row.academicYear)
+  }
+  if (row.semester) {
+    parts.push(`第${row.semester}学期`)
+  }
+  return parts.join(' · ')
+}
+
 const columns: ColumnsType<PortfolioGapTaskSummaryVO> = [
   { title: '教师', dataIndex: 'teacherId', key: 'teacherId', width: 100, fixed: 'left' },
   { title: '分类', dataIndex: 'categoryName', key: 'categoryName', width: 140 },
+  { title: '课程维度', key: 'courseScope', width: 160 },
   { title: '任务', dataIndex: 'taskTitle', key: 'taskTitle' },
   { title: '状态', key: 'taskStatus', width: 100 },
   { title: '截止', dataIndex: 'dueTime', key: 'dueTime', width: 170 },
@@ -68,6 +87,35 @@ async function urgeTask(row: PortfolioGapTaskSummaryVO) {
   }
 }
 
+function openExtendDialog(row: PortfolioGapTaskSummaryVO) {
+  extendingTask.value = row
+  extensionForm.dueTime = ''
+  extensionForm.reason = ''
+  extendDialogOpen.value = true
+}
+
+async function extendTask() {
+  if (!extendingTask.value || !extensionForm.dueTime || !extensionForm.reason.trim()) {
+    message.warning('请填写新的截止时间和延期理由')
+    return
+  }
+  extendingId.value = extendingTask.value.id
+  try {
+    await portfolioGapApi.extendTask({
+      gapTaskId: extendingTask.value.id,
+      dueTime: extensionForm.dueTime,
+      reason: extensionForm.reason.trim(),
+    })
+    message.success('延期已生效，教师已收到新的补采期限')
+    extendDialogOpen.value = false
+    await loadPage()
+  } catch (error) {
+    showUserError(error, '延期失败')
+  } finally {
+    extendingId.value = ''
+  }
+}
+
 function openTask(row: PortfolioGapTaskSummaryVO) {
   void router.push({
     path: `/portfolio/teacher/gap/${row.id}`,
@@ -78,6 +126,7 @@ function openTask(row: PortfolioGapTaskSummaryVO) {
 function handleGapRowAction(key: string, row: PortfolioGapTaskSummaryVO) {
   if (key === 'view') openTask(row)
   else if (key === 'urge') void urgeTask(row)
+  else if (key === 'extend') openExtendDialog(row)
 }
 
 void loadPage()
@@ -105,7 +154,10 @@ void loadPage()
         @page-change="() => void loadPage()"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'taskStatus'">
+          <template v-if="column.key === 'courseScope'">
+            {{ gapCourseScopeLabel(record) }}
+          </template>
+          <template v-else-if="column.key === 'taskStatus'">
             <UiTag>{{ gapStatusLabel(record.taskStatus) }}</UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
@@ -113,6 +165,7 @@ void loadPage()
               :items="[
                 { key: 'view', label: '查看' },
                 { key: 'urge', label: '催办', disabled: urgingId === record.id },
+                { key: 'extend', label: '延期', disabled: extendingId === record.id },
               ]"
               split
               @action="(key) => handleGapRowAction(key, record)"
@@ -122,5 +175,20 @@ void loadPage()
       </UiDataTable>
       <UiEmpty v-else description="暂无开放补采任务" />
     </UiCard>
+    <a-modal v-model:open="extendDialogOpen" title="延期补采任务" :confirm-loading="Boolean(extendingId)" @ok="extendTask">
+      <a-form layout="vertical">
+        <a-form-item label="新的截止时间" required>
+          <DatePicker
+            v-model:value="extensionForm.dueTime"
+            show-time
+            value-format="YYYY-MM-DD HH:mm:ss"
+            style="width: 100%"
+          />
+        </a-form-item>
+        <a-form-item label="延期理由" required>
+          <Input v-model:value="extensionForm.reason" :maxlength="500" show-count />
+        </a-form-item>
+      </a-form>
+    </a-modal>
   </StageWorkbenchShell>
 </template>

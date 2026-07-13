@@ -86,6 +86,7 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     if (
       stage === PortfolioMaterialIntakeStageCode.SUBMITTED
       || stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW
+      || stage === PortfolioMaterialIntakeStageCode.CANDIDATES_REJECTED
     ) {
       return true
     }
@@ -308,6 +309,34 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     }
   }
 
+  /** 恢复候选均驳回材料，保留原作废档案证据并回到可重新选择分类的待采集状态。 */
+  async function restartRejectedCandidates() {
+    if (!status.value) {
+      return
+    }
+    const requestToken = intakeRequestToken.value
+    loading.value = true
+    try {
+      const next = await portfolioIntakeApi.restartRejected({
+        ...teacherRequest.value,
+        materialId: status.value.materialId,
+      })
+      if (intakeRequestToken.value !== requestToken) {
+        return
+      }
+      applyStatus(next)
+    } catch (error) {
+      if (intakeRequestToken.value !== requestToken) {
+        return
+      }
+      showUserError(error, '恢复重新采集失败')
+    } finally {
+      if (intakeRequestToken.value === requestToken) {
+        loading.value = false
+      }
+    }
+  }
+
   async function submitIntake() {
     if (fieldReadOnly.value) {
       message.warning('当前阶段不可提交，请先完成 AI 候选确认或等待处理结束')
@@ -468,6 +497,7 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     saveDraft,
     submitIntake,
     reassignCategory,
+    restartRejectedCandidates,
     clearScanCommittedQuery,
     resetIntakeContext,
   }

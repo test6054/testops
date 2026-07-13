@@ -15,7 +15,7 @@ export interface PrintPackageGenerateGateViewModel {
   disabledTooltip?: string
 }
 
-/** 印刷包生成门禁：按钮仍读 prepBlockingReasons；Panel/ tooltip 与 prepSteps 结构化引导对齐。 */
+/** 印刷包生成门禁：未完成名册/制卷设计等前置步骤时禁用；硬阻断 prepBlockingReasons 仍生效。 */
 export function resolvePrintPackageGenerateGate(
   input: ResolvePrintPackageGenerateGateInput,
 ): PrintPackageGenerateGateViewModel {
@@ -24,9 +24,12 @@ export function resolvePrintPackageGenerateGate(
     backendPrepSteps: input.backendPrepSteps,
     prepStepCards: input.prepStepCards,
   })
-  const generateBlocked = input.prepBlockingReasons.length > 0
-  const firstStep = panelSteps[0]
-  const disabledTooltip = generateBlocked ? (firstStep?.description ?? firstStep?.label) : undefined
+  const blockingPrepSteps = panelSteps.filter((step) => step.code !== 'printPackage')
+  const generateBlocked = input.prepBlockingReasons.length > 0 || blockingPrepSteps.length > 0
+  const firstStep = blockingPrepSteps[0]
+  const disabledTooltip = generateBlocked
+    ? (input.prepBlockingReasons[0] ?? firstStep?.description ?? firstStep?.label)
+    : undefined
   return {
     generateBlocked,
     panelSteps,

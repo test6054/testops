@@ -88,13 +88,6 @@ function requiresCorrectedScore(objectionType: PortfolioEvaluationObjectionTypeC
   )
 }
 
-function requiresOpinion(action: PortfolioEvaluationObjectionHandleActionCode): boolean {
-  return (
-    action === PortfolioEvaluationObjectionHandleActionCode.MAINTAIN
-    || action === PortfolioEvaluationObjectionHandleActionCode.RE_REVIEW
-  )
-}
-
 const route = useRoute()
 const loading = ref(false)
 const handlingId = ref('')
@@ -185,12 +178,8 @@ async function submitReview() {
     return
   }
   const opinion = reviewForm.handleOpinion.trim()
-  if (requiresOpinion(reviewForm.action) && !opinion) {
-    message.warning(
-      reviewForm.action === PortfolioEvaluationObjectionHandleActionCode.MAINTAIN
-        ? '维持原结果须填写复核意见'
-        : '重新评审须填写复核说明',
-    )
+  if (!opinion) {
+    message.warning('请填写异议复核处理意见')
     return
   }
   if (showCorrectedScore.value && reviewForm.correctedScore == null) {
@@ -406,7 +395,7 @@ void loadPage()
       <Input.TextArea
         v-model:value="reviewForm.handleOpinion"
         :rows="4"
-        :placeholder="requiresOpinion(reviewForm.action) ? '请填写复核意见' : '复核意见（选填）'"
+        placeholder="请填写复核意见"
       />
       <template #footer>
         <UiButton variant="ghost" @click="reviewDrawerOpen = false"> 取消 </UiButton>

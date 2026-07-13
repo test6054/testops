@@ -1,6 +1,10 @@
 import type { AnalysisScopeTypeCode } from './analysis-scope-type'
 import type { EffectiveStatusCode } from './effective-status'
-import type { ObjectiveComparePolicyCode } from './exam-standard-answer'
+import type {
+  ExamQuestionDeclaredOptionRequest,
+  ExamQuestionStandardAnswerOptionRequest,
+  ObjectiveComparePolicyCode,
+} from './exam-standard-answer'
 import type { GradeStatusCode } from './grade-status'
 import type { ObjectiveResultCode } from './objective-result'
 import type { QuestionTypeCode } from './question-type'
@@ -197,6 +201,24 @@ export interface ExamAnswerEffectiveConfig {
   confirmedTime?: string
 }
 
+/** 考后答案修正并生效请求 - 对应 AnswerEffectiveCorrectionRequest */
+export interface AnswerEffectiveCorrectionRequest {
+  examId: string
+  layoutQuestionId: string
+  standardAnswer?: string
+  declaredOptions?: ExamQuestionDeclaredOptionRequest[]
+  choiceOptions?: ExamQuestionStandardAnswerOptionRequest[]
+  answerExplain?: string
+  comparePolicy?: ObjectiveComparePolicyCode
+  numericExpectedValue?: number
+  numericTolerance?: number
+  numericUnit?: string
+  gradingRubric?: string
+  aiHint?: string
+  aiReviewHintId?: string
+  knowledgePointIds?: string[]
+}
+
 /**
  * 确认标准答案生效；已有批改结果时自动创建重判计划
  * POST /api/exam/question-analysis/answer-effective/confirm
@@ -217,6 +239,15 @@ export function getEffectiveAnswerConfig(params: {
   return http.post<ExamAnswerEffectiveConfig | null>(
     '/api/exam/question-analysis/answer-effective/get',
     params,
+  )
+}
+
+export function correctAnswerAndConfirmEffective(
+  request: AnswerEffectiveCorrectionRequest,
+): Promise<ExamAnswerEffectiveConfig> {
+  return http.post<ExamAnswerEffectiveConfig>(
+    '/api/exam/question-analysis/answer-effective/correct-and-confirm',
+    request,
   )
 }
 

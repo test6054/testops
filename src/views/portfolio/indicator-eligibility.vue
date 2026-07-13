@@ -57,6 +57,10 @@ async function loadRule() {
 }
 
 async function saveRule() {
+  if (!eligibilityName.value.trim()) {
+    message.warning('请填写资格规则名称')
+    return
+  }
   const validationError = validateEligibilityTree(treeRoot.value)
   if (validationError) {
     message.warning(validationError)

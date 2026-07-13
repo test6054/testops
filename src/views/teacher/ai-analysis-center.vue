@@ -41,6 +41,7 @@ const {
   examOptions,
   selectedExamLabel,
   setClassScope,
+  refreshAnalysis,
   examLocked,
 } = useAiAnalysisScope()
 
@@ -115,6 +116,10 @@ function handleTabChange(key: Key) {
 
 function handleClassSelectChange(classIdValue?: string, option?: MarkClassOption) {
   setClassScope(classIdValue, option)
+}
+
+function handleClusterDataChanged(): void {
+  refreshAnalysis()
 }
 </script>
 
@@ -195,6 +200,7 @@ function handleClassSelectChange(classIdValue?: string, option?: MarkClassOption
           :exam-id="examId"
           :reload-token="reloadToken"
           :class-id="classId"
+          @changed="handleClusterDataChanged"
         />
         <AiAnalysisSchoolTab v-else-if="activeTab === 'school'" />
       </WorkbenchSurfaceCard>

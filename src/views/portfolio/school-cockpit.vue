@@ -4,8 +4,9 @@ import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-c
 import type { PortfolioComplianceScopeTypeCode } from '@/types/enums/portfolio-compliance-scope-type-enum'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -27,6 +28,7 @@ function readRouteStringParam(value: unknown): string {
 }
 
 const route = useRoute()
+const router = useRouter()
 const loading = ref(false)
 const cockpit = ref<PortfolioSchoolPortraitCockpitVO | null>(null)
 const deepLinkTaskId = computed(() => readRouteStringParam(route.query.taskId))
@@ -36,7 +38,7 @@ const signals = computed<SignalMetric[]>(() => {
     return []
   }
   const summary = cockpit.value.summary
-  return [
+  const items: SignalMetric[] = [
     { key: 'teacher', label: '教师总数', value: summary.teacherCount ?? 0, tone: 'blue' },
     { key: 'dual', label: '双师认定', value: summary.dualTeacherCount ?? 0, tone: 'green' },
     { key: 'key', label: '骨干教师', value: summary.keyTeacherCount ?? 0, tone: 'purple' },
@@ -54,7 +56,71 @@ const signals = computed<SignalMetric[]>(() => {
       tone: 'blue',
     },
   ]
+  if ((summary.courseArchiveFrameworkSlotTotal ?? 0) > 0) {
+    items.push({
+      key: 'courseArchive',
+      label: `${summary.currentAcademicYear ?? '本学年'} 五框架`,
+      value: summary.courseArchiveFrameworkSlotDone ?? 0,
+      unit: `/${summary.courseArchiveFrameworkSlotTotal ?? 0}`,
+      tone:
+        (summary.courseArchiveFrameworkSlotDone ?? 0) >= (summary.courseArchiveFrameworkSlotTotal ?? 0)
+          ? 'green'
+          : 'orange',
+      clickable: true,
+      helper: '查看师资分析',
+    })
+  }
+  if (summary.currentAcademicYear) {
+    items.push(
+      {
+        key: 'completenessComplete',
+        label: '完整',
+        value: summary.completenessCompleteCount ?? 0,
+        tone: 'green',
+        clickable: true,
+        helper: '查看全校完整度分布',
+      },
+      {
+        key: 'completenessBasic',
+        label: '基本完整',
+        value: summary.completenessBasicCount ?? 0,
+        tone: 'blue',
+        clickable: true,
+        helper: '查看全校完整度分布',
+      },
+      {
+        key: 'completenessPending',
+        label: '待补充',
+        value: summary.completenessPendingCount ?? 0,
+        tone: 'orange',
+        clickable: true,
+        helper: '查看全校完整度分布',
+      },
+      {
+        key: 'completenessSevere',
+        label: '严重缺失',
+        value: summary.completenessSevereCount ?? 0,
+        tone: 'red',
+        clickable: true,
+        helper: '查看全校完整度分布',
+      },
+    )
+  }
+  return items
 })
+
+function goTeacherAnalytics() {
+  void router.push({ path: '/portfolio/admin/teacher-analytics' })
+}
+
+function handleSignalMetricClick(key: string) {
+  if (
+    key === 'courseArchive'
+    || key.startsWith('completeness')
+  ) {
+    goTeacherAnalytics()
+  }
+}
 
 const openComplianceAlerts = computed(() =>
   (cockpit.value?.complianceAlerts ?? []).filter(
@@ -112,10 +178,21 @@ onMounted(() => {
         show-title
         title="学校驾驶舱"
         subtitle="全校师资与结构合规概览"
-      />
+      >
+        <template #actions>
+          <UiButton @click="goTeacherAnalytics">
+            师资分析看板
+          </UiButton>
+        </template>
+      </ContextBar>
     </template>
     <template #signal>
-      <SignalBand v-if="cockpit?.summary" :metrics="signals" compact />
+      <SignalBand
+        v-if="cockpit?.summary"
+        :metrics="signals"
+        compact
+        @metric-click="handleSignalMetricClick"
+      />
     </template>
     <a-spin :spinning="loading">
       <UiEmpty v-if="!loading && !cockpit" description="暂无学校驾驶舱数据" />

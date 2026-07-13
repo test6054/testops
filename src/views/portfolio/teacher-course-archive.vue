@@ -34,6 +34,12 @@ const creating = ref(false)
 const deletingCategoryId = ref('')
 const loadFailed = ref(false)
 const courses = ref<PortfolioCourseArchiveCourseVO[]>([])
+const overviewSummary = ref({
+  taughtCourseCount: 0,
+  fullyCompleteCourseCount: 0,
+  frameworkSlotDone: 0,
+  frameworkSlotTotal: 0,
+})
 const customCategories = ref<PortfolioTeacherCustomCategoryVO[]>([])
 const customModalOpen = ref(false)
 const customForm = reactive({ categoryName: '' })
@@ -122,6 +128,12 @@ async function loadOverview() {
       return
     }
     courses.value = overview.courses ?? []
+    overviewSummary.value = {
+      taughtCourseCount: overview.taughtCourseCount ?? 0,
+      fullyCompleteCourseCount: overview.fullyCompleteCourseCount ?? 0,
+      frameworkSlotDone: overview.frameworkSlotDone ?? 0,
+      frameworkSlotTotal: overview.frameworkSlotTotal ?? 0,
+    }
     customCategories.value = customList ?? []
   } catch (error) {
     if (currentToken !== overviewRequestToken.value) {
@@ -178,6 +190,13 @@ function openCustomModal() {
 }
 
 async function createCustomCategory() {
+  if (!customForm.categoryName.trim()) {
+    message.warning('请填写分类名称')
+    return
+  }
+  if (creating.value) {
+    return
+  }
   creating.value = true
   try {
     await portfolioTeacherCustomCategoryApi.create({
@@ -249,7 +268,15 @@ watch(
     </UiCard>
 
     <template v-else>
-      <UiCard title="讲授课程 · 五框架" :loading="loading">
+      <UiCard v-if="overviewSummary.taughtCourseCount > 0" title="本学年课程档案概览">
+        <p class="course-archive__summary">
+          讲授 {{ overviewSummary.taughtCourseCount }} 门 · 五框架齐备
+          {{ overviewSummary.fullyCompleteCourseCount }} 门 · 槽位完成
+          {{ overviewSummary.frameworkSlotDone }}/{{ overviewSummary.frameworkSlotTotal }}
+        </p>
+      </UiCard>
+
+      <UiCard title="讲授课程 · 五框架" :loading="loading" style="margin-top: 16px">
         <template #extra>
           <Input
             v-model:value="academicYearFilter"
@@ -353,3 +380,11 @@ watch(
     </Form>
   </a-modal>
 </template>
+
+<style scoped>
+.course-archive__summary {
+  margin: 0;
+  font-size: 14px;
+  color: var(--nybc-text-secondary, #595959);
+}
+</style>

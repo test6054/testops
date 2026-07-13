@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationTaskStatusCode } from '@/apis/portfolio/enums'
+import type { PortfolioTenantIndicatorConfigVO } from '@/apis/portfolio/indicator-types'
 import type { PortfolioEvaluationSubjectTeacherOptionVO } from '@/apis/portfolio/teacher-platform'
 import type { PortfolioEvaluationMaterialPreviewVO } from '@/apis/portfolio/types'
 import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
@@ -15,6 +16,7 @@ import {
   PortfolioEvaluationTaskStatusDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
+import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
 import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
 import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
@@ -33,6 +35,7 @@ import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const workgroups = ref<EvaluationWorkgroupVO[]>([])
+const indicatorConfigs = ref<PortfolioTenantIndicatorConfigVO[]>([])
 const previewTeacherOptions = ref<Array<{ value: string, label: string }>>([])
 const previewOpen = ref(false)
 const previewLoading = ref(false)
@@ -43,11 +46,45 @@ const previewRequestToken = ref(0)
 
 const categoryColumns = [
   { title: '分类', dataIndex: 'categoryName', key: 'categoryName' },
+  { title: '课程维度', key: 'courseScope', width: 140 },
   { title: '完成', key: 'completed', width: 100 },
 ]
+
+function evaluationMaterialCourseScopeLabel(record: unknown): string {
+  const category = record as NonNullable<PortfolioEvaluationMaterialPreviewVO['categories']>[number]
+  if (!category.courseCode) {
+    return '—'
+  }
+  const parts = [category.courseCode]
+  if (category.academicYear) {
+    parts.push(category.academicYear)
+  }
+  if (category.semester) {
+    parts.push(`第${category.semester}学期`)
+  }
+  return parts.join(' · ')
+}
+
+function evaluationCourseArchiveMeta(preview: PortfolioEvaluationMaterialPreviewVO): string {
+  if ((preview.courseArchiveTaughtCourseCount ?? 0) <= 0) {
+    return ''
+  }
+  return ` · 讲授 ${preview.courseArchiveTaughtCourseCount} 门 · 五框架 ${preview.courseArchiveFrameworkSlotDone ?? 0}/${preview.courseArchiveFrameworkSlotTotal ?? 0}`
+}
+
+function evaluationMaterialRowKey(record: unknown): string {
+  const category = record as NonNullable<PortfolioEvaluationMaterialPreviewVO['categories']>[number]
+  return [
+    category.categoryId,
+    category.courseCode ?? '',
+    category.academicYear ?? '',
+    category.semester ?? '',
+  ].join(':')
+}
 interface PortfolioEvaluationTaskForm {
   taskName: string
   evaluationMode: PortfolioEvaluationModeCode
+  targetIndicatorCode: string
   workgroupId: string
   startTime: string
   endTime: string
@@ -58,6 +95,7 @@ type PortfolioEvaluationTaskStatusFilter = '' | PortfolioEvaluationTaskStatusCod
 const form = reactive<PortfolioEvaluationTaskForm>({
   taskName: '',
   evaluationMode: PortfolioEvaluationModeCode.BY_PERSON,
+  targetIndicatorCode: '',
   workgroupId: '',
   startTime: '',
   endTime: '',
@@ -91,6 +129,7 @@ const taskStatusOptions = PORTFOLIO_EVALUATION_TASK_STATUS_OPTIONS
 const columns: ColumnsType = [
   { title: '任务名称', dataIndex: 'taskName', key: 'taskName' },
   { title: '模式', dataIndex: 'evaluationMode', key: 'evaluationMode', width: 100 },
+  { title: '回流指标', dataIndex: 'targetIndicatorCode', key: 'targetIndicatorCode', width: 120 },
   { title: '工作组', dataIndex: 'workgroupId', key: 'workgroupId', width: 100 },
   { title: '时间窗', key: 'timeWindow', width: 180 },
   { title: '状态', dataIndex: 'taskStatus', key: 'taskStatus', width: 88 },
@@ -129,6 +168,15 @@ async function loadWorkgroups() {
     )
   } catch (error) {
     showUserError(error)
+  }
+}
+
+async function loadIndicatorConfigs() {
+  try {
+    indicatorConfigs.value = (await portfolioIndicatorTenantApi.listConfig())
+      .filter((item) => item.enabled === true)
+  } catch (error) {
+    showUserError(error, '加载可回流指标失败')
   }
 }
 
@@ -229,6 +277,10 @@ async function createTask() {
     message.warning('请选择评价工作组')
     return
   }
+  if (form.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON && !form.targetIndicatorCode.trim()) {
+    message.warning('按人评价须填写画像回流目标指标编码')
+    return
+  }
   if (!form.startTime) {
     message.warning('请填写开始时间')
     return
@@ -241,6 +293,9 @@ async function createTask() {
     await portfolioEvaluationTaskApi.create({
       taskName: form.taskName.trim(),
       evaluationMode: form.evaluationMode,
+      targetIndicatorCode: form.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON
+        ? form.targetIndicatorCode.trim()
+        : undefined,
       workgroupId: form.workgroupId,
       startTime: form.startTime,
       endTime: form.endTime,
@@ -248,6 +303,7 @@ async function createTask() {
     message.success('评价任务已创建')
     form.taskName = ''
     form.workgroupId = ''
+    form.targetIndicatorCode = ''
     form.startTime = ''
     form.endTime = ''
     await loadPage()
@@ -277,7 +333,7 @@ async function exportExcel() {
 }
 
 onMounted(async () => {
-  await loadWorkgroups()
+  await Promise.all([loadWorkgroups(), loadIndicatorConfigs()])
   await loadPage()
 })
 </script>
@@ -300,6 +356,16 @@ onMounted(async () => {
           style="width: 120px"
           :options="evaluationModeOptions"
         />
+        <a-select
+          v-if="form.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON"
+          v-model:value="form.targetIndicatorCode"
+          placeholder="选择画像回流指标"
+          style="width: 180px"
+        >
+          <a-select-option v-for="indicator in indicatorConfigs" :key="indicator.indicatorCode" :value="indicator.indicatorCode">
+            {{ indicator.indicatorName || indicator.indicatorCode }}
+          </a-select-option>
+        </a-select>
         <a-select v-model:value="form.workgroupId" placeholder="评价工作组" style="width: 200px">
           <a-select-option v-for="wg in workgroups" :key="wg.id" :value="wg.id">
             {{ wg.workgroupName }}
@@ -396,11 +462,11 @@ onMounted(async () => {
       <template v-if="preview">
         <p class="evaluation-task-admin__preview-meta">
           任务：{{ preview.taskName }} · 完整度 {{ preview.completenessPercent }}% · 必填分类
-          {{ preview.requiredCategoryDone }} / {{ preview.requiredCategoryTotal }}
+          {{ preview.requiredCategoryDone }} / {{ preview.requiredCategoryTotal }}{{ evaluationCourseArchiveMeta(preview) }}
         </p>
         <UiDataTable
           v-if="preview.categories?.length"
-          row-key="categoryId"
+          :row-key="evaluationMaterialRowKey"
           size="small"
           pagination-mode="none"
           :columns="categoryColumns"
@@ -410,7 +476,10 @@ onMounted(async () => {
           flat
         >
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'completed'">
+            <template v-if="column.key === 'courseScope'">
+              {{ evaluationMaterialCourseScopeLabel(record) }}
+            </template>
+            <template v-else-if="column.key === 'completed'">
               <UiTag :tone="record.completed ? 'green' : 'orange'">
                 {{ record.completed ? '已完成' : '未完成' }}
               </UiTag>

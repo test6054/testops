@@ -129,6 +129,13 @@ const materialLayoutMode = computed(() => examDetail.value?.materialLayoutMode)
 
 const scanPaperStyleLabel = computed(() => examDetail.value?.scanPaperStyleText ?? '')
 
+const prepScenarioGuide = computed(
+  () =>
+    examDetail.value?.prepScenarioGuide
+    ?? workbenchContext?.snapshot.value?.prepScenarioGuide
+    ?? null,
+)
+
 const pageLoading = computed(
   () => wbLoading.value || (examDetailLoading.value && !examDetail.value),
 )
@@ -159,6 +166,19 @@ const designerStatusAlert = computed(() => {
     }
   }
   return null
+})
+
+/** 场景引导 info strip：与 detect/identity 状态条互斥，避免同屏堆叠 */
+const layoutDesignerScenarioAlert = computed(() => {
+  if (designerStatusAlert.value || !prepScenarioGuide.value) {
+    return null
+  }
+  const guide = prepScenarioGuide.value
+  const descriptionParts = [guide.scenarioSummary, guide.scanGuidance, guide.printGuidance].filter(Boolean)
+  return {
+    title: guide.scenarioTitle,
+    description: descriptionParts.join(' '),
+  }
 })
 
 const writeLockTooltip = computed(() =>
@@ -320,6 +340,16 @@ async function handleReviewSaved(): Promise<void> {
 
     <UiEmpty v-if="!examId" description="缺少考试上下文，请从考试工作台进入" />
     <template v-else>
+      <UiAlertStrip
+        v-if="layoutDesignerScenarioAlert"
+        tone="info"
+        :title="layoutDesignerScenarioAlert.title"
+        :description="layoutDesignerScenarioAlert.description"
+        :closable="false"
+        dense
+        class="layout-designer-scenario-strip"
+      />
+
       <LayoutDesignWorkflowRail
         :phase="wbPhase"
         :document="wbDocument"
@@ -440,6 +470,7 @@ async function handleReviewSaved(): Promise<void> {
 </template>
 
 <style scoped lang="scss">
+.layout-designer-scenario-strip,
 .layout-designer-status-strip {
   margin-bottom: 8px;
 }

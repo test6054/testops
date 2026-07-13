@@ -22,6 +22,11 @@
             待审 {{ row.pendingReviewCount ?? 0 }} 条 · 退回 {{ row.returnedCount ?? 0 }} 条 ·
             {{ row.academicYear === cockpit?.currentAcademicYear ? '补采' : '缺口' }}
             {{ row.openGapCount ?? 0 }} 项
+            <template v-if="(row.courseArchiveFrameworkSlotTotal ?? 0) > 0">
+              · 五框架 {{ row.courseArchiveFrameworkSlotDone ?? 0 }}/{{
+                row.courseArchiveFrameworkSlotTotal ?? 0
+              }}
+            </template>
           </p>
           <div v-if="row.topGapCategoryNames?.length" class="portfolio-progress-compare__gaps">
             <span class="portfolio-progress-compare__gaps-label">TOP 缺口分类</span>

@@ -10,6 +10,14 @@ defineProps<{
   reloadToken: number
   classId?: string
 }>()
+
+const emit = defineEmits<{
+  changed: []
+}>()
+
+function handleClusterDataChanged(): void {
+  emit('changed')
+}
 </script>
 
 <template>
@@ -26,6 +34,7 @@ defineProps<{
       :reload-token="reloadToken"
       :class-id="classId"
       embedded
+      @generated="handleClusterDataChanged"
     />
     <ExamQuestionCourseGoalMappingCard
       :exam-id="examId"
@@ -36,6 +45,7 @@ defineProps<{
       :exam-id="examId"
       :reload-token="reloadToken"
       embedded
+      @changed="handleClusterDataChanged"
     />
   </div>
 </template>

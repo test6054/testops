@@ -71,6 +71,19 @@ const metrics = computed((): SignalMetric[] => {
       clickable: true,
     },
   ]
+  if ((row.courseArchiveTaughtCourseCount ?? 0) > 0) {
+    items.push({
+      key: 'courseArchive',
+      label: '课程五框架',
+      value: String(row.courseArchiveFrameworkSlotDone ?? 0),
+      unit: `/${row.courseArchiveFrameworkSlotTotal ?? 0}`,
+      tone:
+        (row.courseArchiveFrameworkSlotDone ?? 0) >= (row.courseArchiveFrameworkSlotTotal ?? 0)
+          ? 'green'
+          : 'orange',
+      clickable: true,
+    })
+  }
   if (row.completenessDeltaVsPreviousYear !== undefined) {
     items.push({
       key: 'delta',

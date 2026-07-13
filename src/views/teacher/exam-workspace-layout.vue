@@ -412,7 +412,7 @@ const workspaceBlockingVisible = computed(() => {
   return prepBlockingReasons.value.length > 0
 })
 
-const workspaceBlockingTone = computed(() => 'warning' as const)
+const workspaceBlockingTone = computed(() => 'error' as const)
 
 const workspaceBlockingTitle = computed(() => {
   if (activeJourneyKey.value === 'prep') {

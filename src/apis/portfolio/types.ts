@@ -391,6 +391,7 @@ export const PORTFOLIO_MATERIAL_INTAKE_STAGE_TONE: Record<PortfolioMaterialIntak
   [PortfolioMaterialIntakeStageCode.OCR_PENDING]: 'blue',
   [PortfolioMaterialIntakeStageCode.AI_PROCESSING]: 'blue',
   [PortfolioMaterialIntakeStageCode.AI_FAILED]: 'red',
+  [PortfolioMaterialIntakeStageCode.CANDIDATES_REJECTED]: 'orange',
   [PortfolioMaterialIntakeStageCode.CATEGORY_PENDING]: 'orange',
   [PortfolioMaterialIntakeStageCode.FIELDS_INCOMPLETE]: 'orange',
   [PortfolioMaterialIntakeStageCode.READY_TO_SUBMIT]: 'green',
@@ -628,6 +629,8 @@ export interface PortfolioTeacherPageRequest extends QueryDto {
   identityType?: PortfolioTeacherIdentityTypeCode
   searchText?: string
   status?: UserStatusEnum
+  completenessLevel?: PortfolioCompletenessLevelCode
+  includeCompletenessMetrics?: boolean
 }
 
 export interface PortfolioTeacherSummaryVO {
@@ -641,6 +644,13 @@ export interface PortfolioTeacherSummaryVO {
   status?: string
   primaryIdentityType?: PortfolioTeacherIdentityTypeCode
   identityTags?: PortfolioTeacherIdentityTypeCode[]
+  currentAcademicYear?: string
+  completenessPercent?: number
+  completenessLevel?: PortfolioCompletenessLevelCode
+  courseArchiveTaughtCourseCount?: number
+  courseArchiveFullyCompleteCount?: number
+  courseArchiveFrameworkSlotDone?: number
+  courseArchiveFrameworkSlotTotal?: number
 }
 
 export interface PortfolioTeacherIdentityVO {
@@ -777,6 +787,16 @@ export interface PortfolioCockpitSummaryVO {
   achievementTotalCount?: number
   honorTotalCount?: number
   tenantEnabledIndicatorCount?: number
+  currentAcademicYear?: string
+  courseArchiveTaughtCourseCount?: number
+  courseArchiveFullyCompleteCount?: number
+  courseArchiveFrameworkSlotDone?: number
+  courseArchiveFrameworkSlotTotal?: number
+  completenessCompleteCount?: number
+  completenessBasicCount?: number
+  completenessPendingCount?: number
+  completenessSevereCount?: number
+  completenessUncalculatedCount?: number
 }
 
 /** 驾驶舱问数教师行 - PortfolioCockpitAskTeacherRow */
@@ -904,6 +924,8 @@ export interface PortfolioArchiveTemplateChangeLogVO {
 
 export interface PortfolioArchivePublishedFieldsRequest {
   categoryId?: string
+  /** 指定历史档案时按其绑定模板版本读取字段 */
+  archiveRecordId?: string
   templateCode?: string
 }
 
@@ -1054,6 +1076,7 @@ export interface PortfolioReviewTaskSummaryVO {
   departmentName?: string
   categoryId: string
   categoryName?: string
+  categoryCode?: string
   reviewStatus: PortfolioReviewTaskStatusCode
   recordStatus?: PortfolioArchiveRecordStatusCode
   sourceType?: PortfolioArchiveRecordSourceTypeCode
@@ -1150,6 +1173,12 @@ export interface PortfolioTeacherWorkbenchSummaryVO {
   pendingReviewCount?: number
   returnedCount?: number
   openGapCount?: number
+  honorTotalCount?: number
+  extensionActivityTotalCount?: number
+  courseArchiveTaughtCourseCount?: number
+  courseArchiveFullyCompleteCount?: number
+  courseArchiveFrameworkSlotDone?: number
+  courseArchiveFrameworkSlotTotal?: number
 }
 
 export interface PortfolioTeacherOnboardingStateVO {
@@ -1228,6 +1257,10 @@ export interface PortfolioTeacherProgressPeriodRowVO {
   returnedCount?: number
   openGapCount?: number
   topGapCategoryNames: string[]
+  courseArchiveTaughtCourseCount?: number
+  courseArchiveFullyCompleteCount?: number
+  courseArchiveFrameworkSlotDone?: number
+  courseArchiveFrameworkSlotTotal?: number
 }
 
 export interface PortfolioTeacherProgressCockpitVO {
@@ -1238,6 +1271,10 @@ export interface PortfolioTeacherProgressCockpitVO {
   returnedCount: number
   openGapCount: number
   completenessDeltaVsPreviousYear?: number
+  courseArchiveTaughtCourseCount?: number
+  courseArchiveFullyCompleteCount?: number
+  courseArchiveFrameworkSlotDone?: number
+  courseArchiveFrameworkSlotTotal?: number
   periodRows: PortfolioTeacherProgressPeriodRowVO[]
 }
 
@@ -1276,6 +1313,11 @@ export interface PortfolioTeacherCompletenessVO {
   requiredCategoryTotal: number
   requiredCategoryDone: number
   computedTime?: string
+  currentAcademicYear?: string
+  courseArchiveTaughtCourseCount?: number
+  courseArchiveFullyCompleteCount?: number
+  courseArchiveFrameworkSlotDone?: number
+  courseArchiveFrameworkSlotTotal?: number
 }
 
 export interface PortfolioTeacherPortraitGetRequest {
@@ -1540,6 +1582,9 @@ export interface PortfolioTodoSummaryVO {
   categoryName?: string
   archiveRecordId?: string
   referenceAiTaskId?: string
+  courseCode?: string
+  academicYear?: string
+  semester?: string
   updateTime?: string
 }
 
@@ -1550,7 +1595,7 @@ export interface PortfolioCorrectionSubmitRequest {
   fieldCode: string
   fieldLabel?: string
   wrongValue?: string
-  expectedValue?: string
+  expectedValue: string
   reason: string
   evidenceRef?: string
 }
@@ -1639,6 +1684,9 @@ export interface PortfolioGapTaskSummaryVO {
   returnReason?: string
   dueTime?: string
   updateTime?: string
+  courseCode?: string
+  academicYear?: string
+  semester?: string
 }
 
 export interface PortfolioGapTaskPageRequest extends QueryDto {
@@ -1650,6 +1698,12 @@ export interface PortfolioGapTaskPageRequest extends QueryDto {
 
 export interface PortfolioGapUrgeRequest {
   gapTaskId: string
+}
+
+export interface PortfolioGapTaskExtendRequest {
+  gapTaskId: string
+  dueTime: string
+  reason: string
 }
 
 export interface PortfolioCorrectionHandleRequest {
@@ -1694,6 +1748,9 @@ export interface PortfolioEvaluationMaterialCategoryItemVO {
   categoryId: string
   categoryName?: string
   completed?: boolean
+  courseCode?: string
+  academicYear?: string
+  semester?: string
 }
 
 export interface PortfolioEvaluationMaterialPreviewVO {
@@ -1706,6 +1763,10 @@ export interface PortfolioEvaluationMaterialPreviewVO {
   completenessPercent?: number
   requiredCategoryDone?: number
   requiredCategoryTotal?: number
+  courseArchiveTaughtCourseCount?: number
+  courseArchiveFullyCompleteCount?: number
+  courseArchiveFrameworkSlotDone?: number
+  courseArchiveFrameworkSlotTotal?: number
   categories?: PortfolioEvaluationMaterialCategoryItemVO[]
 }
 

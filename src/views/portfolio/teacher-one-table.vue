@@ -8,8 +8,9 @@ import type {
 import { message } from 'ant-design-vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { PortfolioTeacherIdentityTypeDescription } from '@/apis/portfolio/enums'
+import { PortfolioCompletenessLevelDescription, PortfolioTeacherIdentityTypeDescription } from '@/apis/portfolio/enums'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
+import { PORTFOLIO_COMPLETENESS_LEVEL_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -92,6 +93,30 @@ function openCorrection() {
     path: '/portfolio/teacher/correction',
     query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
   })
+}
+
+function openCourseArchive() {
+  void router.push({
+    path: '/portfolio/teacher/course-archive',
+    query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+  })
+}
+
+function completenessSummaryText(summaryData: PortfolioTeacherOneTableSummaryVO): string {
+  if (summaryData.completenessPercent == null) {
+    return '—'
+  }
+  const level = summaryData.completenessLevel
+    ? strictEnumLabel(PortfolioCompletenessLevelDescription, summaryData.completenessLevel, '档案完整度分级')
+    : ''
+  return level ? `${summaryData.completenessPercent}% · ${level}` : `${summaryData.completenessPercent}%`
+}
+
+function courseArchiveSummaryText(summaryData: PortfolioTeacherOneTableSummaryVO): string {
+  if ((summaryData.courseArchiveFrameworkSlotTotal ?? 0) <= 0) {
+    return '—'
+  }
+  return `${summaryData.currentAcademicYear ?? '本学年'} · 讲授 ${summaryData.courseArchiveTaughtCourseCount ?? 0} 门 · 五框架 ${summaryData.courseArchiveFrameworkSlotDone ?? 0}/${summaryData.courseArchiveFrameworkSlotTotal ?? 0} · 齐备 ${summaryData.courseArchiveFullyCompleteCount ?? 0} 门`
 }
 
 function openCategoryArchive(categoryId: string, recordId?: string) {
@@ -193,6 +218,19 @@ usePortfolioScopedLoader(
           <a-descriptions-item label="荣誉数">
             {{ summary.honorCount ?? 0 }}
           </a-descriptions-item>
+          <a-descriptions-item label="完整度">
+            <UiTag
+              v-if="summary.completenessLevel"
+              :tone="PORTFOLIO_COMPLETENESS_LEVEL_TONE[summary.completenessLevel]"
+              size="sm"
+            >
+              {{ completenessSummaryText(summary) }}
+            </UiTag>
+            <span v-else>{{ completenessSummaryText(summary) }}</span>
+          </a-descriptions-item>
+          <a-descriptions-item label="课程五框架" :span="2">
+            {{ courseArchiveSummaryText(summary) }}
+          </a-descriptions-item>
           <a-descriptions-item label="身份标签" :span="3">
             <UiTag
               v-for="tag in summary.identityTags"
@@ -207,6 +245,12 @@ usePortfolioScopedLoader(
         </a-descriptions>
         <div class="actions">
           <UiButton @click="openCorrection"> 数据纠错 </UiButton>
+          <UiButton
+            v-if="(summary.courseArchiveTaughtCourseCount ?? 0) > 0"
+            @click="openCourseArchive"
+          >
+            课程档案
+          </UiButton>
         </div>
       </UiCard>
       <UiCard v-if="summary?.recentChangeSummary?.length" title="近期变更" style="margin-top: 16px">

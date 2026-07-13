@@ -212,8 +212,6 @@ export const PF_ELIGIBILITY_PRESET_OPTIONS = [
   { value: 'DUAL_TEACHER_APPLY', label: '双师认定申请', scene: PfSceneCode.DUAL_TEACHER },
   { value: 'ETHICS_VETO', label: '师德一票否决', scene: PfSceneCode.DEFAULT },
   { value: 'TITLE_APPLY', label: '职称申报资格', scene: PfSceneCode.TITLE },
-  { value: 'PERFORMANCE_ASSESSMENT', label: '绩效考核资格', scene: PfSceneCode.PERFORMANCE },
-  { value: 'DOUBLE_HIGH_ACCEPTANCE', label: '双高验收资格', scene: PfSceneCode.DOUBLE_HIGH },
 ]
 
 export interface PortfolioIndicatorPlatformSeedResultVO {

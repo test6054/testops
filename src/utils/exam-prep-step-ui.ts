@@ -69,12 +69,12 @@ function resolvePrepStepDescription(step: ExamWorkbenchPrepStepResponse, detail:
   switch (step.key) {
     case 'materialLayout':
       if (!detail.materialLayoutMode) {
-        return '先确定答卷页或整卷作答形态，后续扫描、身份识别与印刷包都按该形态执行'
+        return '先确定教考分离（独立答卷页）或整卷内作答，后续扫描、身份识别与印刷流程均按该形态执行'
       }
       return `${strictEnumLabel(ExamMaterialLayoutModeDescription, detail.materialLayoutMode, '制卷形态')}，${
         detail.printSourceMode
           ? strictEnumLabel(ExamPrintSourceModeDescription, detail.printSourceMode, '印刷来源')
-          : '无需系统印刷'
+          : '试题卷线下印制，系统只配置答题卡'
       }`
     case 'candidateRoster':
       if (detail.candidateCount > 0) {
@@ -102,24 +102,24 @@ function resolvePrepStepDescription(step: ExamWorkbenchPrepStepResponse, detail:
     case 'layoutDesign':
       if (detail.materialLayoutMode === 'ANSWER_SHEET') {
         return detail.pageTemplateReady === true
-          ? `已配置 ${detail.totalPages ?? 0} 页扫描底图`
-          : '上传答卷页并完成制卷设计，供扫描对齐与坐标缩放'
+          ? `答题卡已配置 ${detail.totalPages ?? 0} 页，考后按页序扫描登记`
+          : '上传答题卡 PDF 或配置标准底图，供扫描对齐与身份/客观题识别'
       }
       {
         const layoutReady = detail.layoutConfigured === true && detail.layoutRegionReady === true
         const pageSynced = detail.pageTemplateReady === true
         if (layoutReady && pageSynced) {
-          return `制卷设计「${detail.layoutName ?? ''}」已就绪，${detail.totalPages ?? 0} 页已同步`
+          return `整卷母版「${detail.layoutName ?? ''}」已就绪，${detail.totalPages ?? 0} 页已同步`
         }
         if (layoutReady) {
           return '整卷 PDF 已上传，请确认身份区 / 客观填涂区并等待拆页同步'
         }
-        return '上传整卷 PDF 并完成制卷设计，配置身份区与客观题填涂区'
+        return '上传与印制版一致的整卷 PDF，配置身份区与客观题填涂区'
       }
     case 'printPackage':
       return (detail.printPackageCount ?? 0) > 0
-        ? `已生成 ${detail.printPackageCount} 个印刷包`
-        : '按考生名册生成个性化印刷 PDF'
+        ? `已生成 ${detail.printPackageCount} 个印刷包，可送指定保密印刷厂`
+        : '按考生名册生成个性化印刷 PDF 后送印'
     case 'experienceAssist':
       return step.status === 'completed'
         ? '本场经验辅助评阅策略已配置'

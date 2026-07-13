@@ -58,6 +58,8 @@ const form = reactive<DevelopmentPlanDepartmentForm>({
   planSummary: '',
   portfolioOrgId: '',
 })
+const minimumPlanYear = 2000
+const maximumPlanYear = new Date().getFullYear() + 2
 const {
   loading,
   rows,
@@ -153,6 +155,11 @@ async function loadPage() {
 }
 
 async function createPlan() {
+  const planYear = Number(form.planYear)
+  if (!/^\d{4}$/.test(form.planYear) || planYear < minimumPlanYear || planYear > maximumPlanYear) {
+    message.warning(`规划年度须在 ${minimumPlanYear} 年至 ${maximumPlanYear} 年之间`)
+    return
+  }
   if (!form.planTitle.trim()) {
     message.warning('请填写规划标题')
     return
@@ -326,7 +333,15 @@ onMounted(async () => {
     </ContextBar>
     <UiCard>
       <div class="toolbar">
-        <input v-model="form.planYear" class="input" placeholder="年度" />
+        <input
+          v-model="form.planYear"
+          class="input"
+          type="number"
+          :min="minimumPlanYear"
+          :max="maximumPlanYear"
+          step="1"
+          placeholder="年度"
+        />
         <UiButton @click="loadPage"> 刷新 </UiButton>
       </div>
       <a-tabs v-model:active-key="activeTab">

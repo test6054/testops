@@ -10,6 +10,7 @@ import type {
   PortfolioArchiveRecordDetailVO,
   PortfolioArchiveRecordSummaryVO,
   PortfolioArchiveTimelineItemVO,
+  PortfolioCompletenessLevelCode,
   PortfolioTeacherOneTableCategoryVO,
 } from '@/apis/portfolio/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
@@ -23,9 +24,10 @@ import {
   PortfolioArchiveRecordSourceTypeDescription,
   PortfolioArchiveRecordStatusCode,
   PortfolioArchiveRecordStatusDescription,
+  PortfolioCompletenessLevelDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioArchiveBagApi } from '@/apis/portfolio/teacher-platform'
-import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
+import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE, PORTFOLIO_COMPLETENESS_LEVEL_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -65,6 +67,44 @@ function bagSourceTypeLabel(
   sourceType: PortfolioArchiveBagPreviewVO['catalogItems'][number]['sourceType'],
 ): string {
   return strictEnumLabel(PortfolioArchiveBagSourceTypeDescription, sourceType, '档案袋来源类型')
+}
+
+function completenessLevelLabel(level?: PortfolioCompletenessLevelCode): string {
+  if (!level) {
+    return ''
+  }
+  return strictEnumLabel(PortfolioCompletenessLevelDescription, level, '档案完整度分级')
+}
+
+function completenessLevelTone(level?: PortfolioCompletenessLevelCode): BadgeTone {
+  if (!level) {
+    return 'gray'
+  }
+  return strictEnumTone(PORTFOLIO_COMPLETENESS_LEVEL_TONE, level, '档案完整度分级')
+}
+
+function bagCompletenessHeadline(preview: PortfolioArchiveBagPreviewVO | PortfolioArchiveBagAssembleVO): string {
+  const level = 'completenessLevel' in preview && preview.completenessLevel
+    ? completenessLevelLabel(preview.completenessLevel)
+    : ''
+  const percent = preview.completenessPercent ?? '—'
+  return level ? `${percent}% · ${level}` : `${percent}%`
+}
+
+function bagCourseArchiveLabel(preview: PortfolioArchiveBagPreviewVO): string {
+  if ((preview.courseArchiveFrameworkSlotTotal ?? 0) <= 0) {
+    return ''
+  }
+  const slot = `${preview.courseArchiveFrameworkSlotDone ?? 0}/${preview.courseArchiveFrameworkSlotTotal ?? 0}`
+  const complete = preview.courseArchiveFullyCompleteCount ?? 0
+  return `${preview.currentAcademicYear ?? '本学年'} 五框架 ${slot} · 齐备 ${complete} 门`
+}
+
+function bagAssembleCompletenessHeadline(summary: PortfolioArchiveBagAssembleVO): string {
+  if (summary.preview) {
+    return bagCompletenessHeadline(summary.preview)
+  }
+  return `${summary.completenessPercent ?? '—'}%`
 }
 
 const bagFilterFields: FilterField[] = [
@@ -626,9 +666,21 @@ watch(
     </UiCard>
 
     <UiCard v-if="bagSummary" title="档案袋汇聚" class="teacher-archive__bag">
+      <div class="teacher-archive__completeness-head">
+        <span>{{ bagAssembleCompletenessHeadline(bagSummary) }}</span>
+        <UiTag
+          v-if="bagSummary.preview?.completenessLevel"
+          :tone="completenessLevelTone(bagSummary.preview.completenessLevel)"
+          size="sm"
+        >
+          {{ completenessLevelLabel(bagSummary.preview.completenessLevel) }}
+        </UiTag>
+      </div>
       <p>
-        完整度 {{ bagSummary.completenessPercent }}% · 已归档
-        {{ bagSummary.archivedCategoryCount }} 类 · 开放补采 {{ bagSummary.openGapTaskCount }} 项
+        已归档 {{ bagSummary.archivedCategoryCount }} 类 · 开放补采 {{ bagSummary.openGapTaskCount }} 项
+        <template v-if="bagSummary.preview && bagCourseArchiveLabel(bagSummary.preview)">
+          · {{ bagCourseArchiveLabel(bagSummary.preview) }}
+        </template>
       </p>
       <p v-if="bagSummary.missingCategoryNames.length">
         缺失：{{ bagSummary.missingCategoryNames.join('、') }}
@@ -636,6 +688,22 @@ watch(
     </UiCard>
 
     <UiCard v-if="bagPreview" title="结构化预览" class="teacher-archive__bag-preview">
+      <div class="teacher-archive__completeness-head">
+        <span>{{ bagCompletenessHeadline(bagPreview) }}</span>
+        <UiTag
+          v-if="bagPreview.completenessLevel"
+          :tone="completenessLevelTone(bagPreview.completenessLevel)"
+          size="sm"
+        >
+          {{ completenessLevelLabel(bagPreview.completenessLevel) }}
+        </UiTag>
+      </div>
+      <p v-if="bagPreview.requiredCategoryTotal != null">
+        必填项 {{ bagPreview.requiredCategoryDone ?? 0 }}/{{ bagPreview.requiredCategoryTotal }}
+        <template v-if="bagCourseArchiveLabel(bagPreview)">
+          · {{ bagCourseArchiveLabel(bagPreview) }}
+        </template>
+      </p>
       <p>
         附件 {{ bagPreview.totalAttachmentCount }} 个 · 目录 {{ bagPreview.catalogItems.length }} 条
       </p>
@@ -999,6 +1067,14 @@ watch(
 .teacher-archive__bag-filter,
 .teacher-archive__bag-preview {
   margin-bottom: var(--dp-space-4);
+}
+
+.teacher-archive__completeness-head {
+  display: flex;
+  align-items: center;
+  gap: var(--dp-space-2);
+  margin-bottom: 8px;
+  font-weight: var(--dp-font-weight-medium);
 }
 
 .teacher-archive__filter-row {

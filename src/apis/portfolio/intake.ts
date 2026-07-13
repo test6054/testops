@@ -56,6 +56,11 @@ export interface PortfolioMaterialIntakeProviderChainVO {
   providerChain?: string
 }
 
+export interface PortfolioMaterialIntakeRestartRejectedRequest {
+  teacherId?: string
+  materialId: string
+}
+
 export const portfolioIntakeApi = {
   start: (data: PortfolioMaterialIntakeStartRequest) =>
     http.post<PortfolioMaterialIntakeStartResultVO>(`${INTAKE_BASE}/start`, data),
@@ -65,6 +70,8 @@ export const portfolioIntakeApi = {
     http.post<PortfolioMaterialIntakeStatusVO>(`${INTAKE_BASE}/save-draft`, data),
   submit: (data: PortfolioMaterialIntakeSubmitRequest) =>
     http.post<PortfolioMaterialIntakeStatusVO>(`${INTAKE_BASE}/submit`, data),
+  restartRejected: (data: PortfolioMaterialIntakeRestartRejectedRequest) =>
+    http.post<PortfolioMaterialIntakeStatusVO>(`${INTAKE_BASE}/restart-rejected`, data),
   getProviderChain: () =>
     http.post<PortfolioMaterialIntakeProviderChainVO>(`${INTAKE_BASE}/provider-chain/get`, {}),
   reassignCategory: (data: PortfolioMaterialReassignCategoryRequest) =>

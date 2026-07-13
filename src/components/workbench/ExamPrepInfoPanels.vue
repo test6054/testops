@@ -76,6 +76,9 @@ const configRows = computed((): InfoRow[] => {
   return [
     { label: '制卷形态', value: layoutLabel },
     { label: '印刷来源', value: printLabel },
+    { label: '制卷入口', value: d.layoutEntryKindMessage ?? '—' },
+    { label: '纸张规格', value: d.layoutPaperSpecMessage ?? '—' },
+    { label: '扫描印张', value: d.scanPaperStyleText ?? '—' },
     { label: '试卷模板', value: d.templateName ?? '—' },
     { label: '试卷页数', value: d.totalPages != null ? String(d.totalPages) : '—' },
     { label: '题目数', value: String(d.questionCount) },

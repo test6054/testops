@@ -75,6 +75,8 @@ const menuGroups = computed(() =>
   getMenuGroupsForJourney(props.activeJourneyKey, {
     experienceAssistPendingCount: experienceAssistPendingCount.value,
     tenantExperienceAssistEnabled: workbenchContext?.snapshot.value?.tenantExperienceAssistEnabled,
+    materialLayoutMode: workbenchContext?.examDetail?.value?.materialLayoutMode,
+    printSourceMode: workbenchContext?.examDetail?.value?.printSourceMode,
   }),
 )
 const { pendingCount: experienceAssistPendingCount } = useExperienceAssistTrialPendingCount()

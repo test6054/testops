@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { PortfolioGapTaskStatusCode } from '@/apis/portfolio/enums'
 import type {
   PortfolioArchiveRecordFieldInput,
   PortfolioGapTaskDetailVO,
@@ -12,7 +11,7 @@ import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scann
 import { PortfolioCollectModeCode, ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
-import { PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
+import { PortfolioGapTaskStatusCode, PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import { portfolioGapApi } from '@/apis/portfolio/gap'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -62,6 +61,36 @@ const teacherRequest = computed(() =>
 const statusLabel = computed(() =>
   detail.value ? gapTaskStatusLabel(detail.value.taskStatus) : '',
 )
+
+const courseScopeText = computed(() => {
+  if (!detail.value?.courseCode) {
+    return ''
+  }
+  const parts = [detail.value.courseCode]
+  if (detail.value.academicYear) {
+    parts.push(detail.value.academicYear)
+  }
+  if (detail.value.semester) {
+    parts.push(`第${detail.value.semester}学期`)
+  }
+  return parts.join(' · ')
+})
+
+const gapSubmissionAvailable = computed(() => {
+  if (!detail.value) {
+    return false
+  }
+  if (
+    detail.value.taskStatus !== PortfolioGapTaskStatusCode.PENDING
+    && detail.value.taskStatus !== PortfolioGapTaskStatusCode.RETURNED
+  ) {
+    return false
+  }
+  if (!detail.value.dueTime) {
+    return true
+  }
+  return new Date(detail.value.dueTime.replace(' ', 'T')).getTime() > Date.now()
+})
 
 function resetFormState() {
   scopeRequestToken.value += 1
@@ -154,7 +183,7 @@ function buildFieldInputs(): PortfolioArchiveRecordFieldInput[] {
 }
 
 async function handleSaveDraft() {
-  if (!detail.value) {
+  if (!detail.value || !gapSubmissionAvailable.value) {
     return
   }
   const requestToken = scopeRequestToken.value
@@ -184,7 +213,8 @@ async function handleSaveDraft() {
 }
 
 async function handleSubmit() {
-  if (!detail.value) {
+  if (!detail.value || !gapSubmissionAvailable.value) {
+    message.warning('补采任务已逾期或已结束，请联系院系办理延期')
     return
   }
   const requestToken = scopeRequestToken.value
@@ -226,6 +256,10 @@ function goBack() {
 async function openPortfolioGapScan() {
   if (!detail.value || !targetTeacherId.value) {
     message.warning('补采任务或教师信息未就绪')
+    return
+  }
+  if (!gapSubmissionAvailable.value) {
+    message.warning('补采任务已逾期或已结束，不能创建扫描派单')
     return
   }
   const requestToken = scopeRequestToken.value
@@ -307,10 +341,10 @@ watch(
       <ContextBar show-title layout="workbench" :title="detail?.taskTitle ?? '补采任务'">
         <template #actions>
           <UiButton @click="goBack"> 返回首页 </UiButton>
-          <UiButton :loading="saving" :disabled="loading || !detail" @click="handleSaveDraft">
+          <UiButton :loading="saving" :disabled="loading || !gapSubmissionAvailable" @click="handleSaveDraft">
             保存草稿
           </UiButton>
-          <UiButton :loading="submitting" :disabled="loading || !detail" @click="handleSubmit">
+          <UiButton :loading="submitting" :disabled="loading || !gapSubmissionAvailable" @click="handleSubmit">
             提交补采
           </UiButton>
         </template>
@@ -323,6 +357,7 @@ watch(
             {{ statusLabel }}
           </UiTag>
           <span v-if="detail.categoryName">{{ detail.categoryName }}</span>
+          <span v-if="courseScopeText">课程 {{ courseScopeText }}</span>
           <span v-if="detail.dueTime">截止 {{ detail.dueTime }}</span>
         </p>
         <p v-if="detail.returnReason" class="teacher-gap__return">
@@ -334,6 +369,7 @@ watch(
               <UiPlatformFileField
                 v-model:file-node-id="attachmentFileNodeId"
                 v-model:file-name="attachmentFileName"
+                :disabled="!gapSubmissionAvailable"
                 :scene-key="FileUploadSceneKey.PORTFOLIO_MATERIAL"
                 accept=".pdf,.doc,.docx,.png,.jpg"
                 button-text="上传附件"
@@ -342,6 +378,7 @@ watch(
                 class="teacher-gap__scan-btn"
                 variant="outline"
                 :loading="scanOpening"
+                :disabled="!gapSubmissionAvailable"
                 @click="openPortfolioGapScan"
               >
                 一体机扫描
@@ -353,10 +390,15 @@ watch(
               :label="field.fieldLabel ?? field.fieldCode"
               :required="field.missing"
             >
-              <a-input v-model:value="fieldValues[field.fieldCode]" placeholder="必填" />
+              <a-input
+                v-model:value="fieldValues[field.fieldCode]"
+                :disabled="!gapSubmissionAvailable"
+                placeholder="必填"
+              />
               <a-input
                 v-model:value="evidenceRefs[field.fieldCode]"
                 class="teacher-gap__evidence"
+                :disabled="!gapSubmissionAvailable"
                 placeholder="证据引用（可选）"
               />
             </a-form-item>

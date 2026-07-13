@@ -45,6 +45,7 @@ const teacherColumns: ColumnsType = [
   { title: '院系', dataIndex: 'departmentName', key: 'departmentName', width: 120 },
   { title: '指标', dataIndex: 'metricCode', key: 'metricCode', width: 88 },
   { title: '指标值', dataIndex: 'metricValue', key: 'metricValue', width: 120 },
+  { title: '操作', key: 'actions', width: 200, fixed: 'right' },
 ]
 
 const historyColumns: ColumnsType = [
@@ -83,6 +84,18 @@ const drillLinks = computed(() => askPayload.value?.drillLinks ?? [])
 
 function navigateDrillLink(link: string) {
   void router.push(link)
+}
+
+function goTeacherHome(teacherUserId: string) {
+  void router.push({ path: '/portfolio/teacher/home', query: { teacherId: teacherUserId } })
+}
+
+function goTeacherOneTable(teacherUserId: string) {
+  void router.push({ path: '/portfolio/teacher/one-table', query: { teacherId: teacherUserId } })
+}
+
+function goCourseArchive(teacherUserId: string) {
+  void router.push({ path: '/portfolio/teacher/course-archive', query: { teacherId: teacherUserId } })
 }
 
 function resetAskResultContext() {
@@ -379,7 +392,26 @@ async function openTaskResult(taskId: string) {
       size="small"
       :sticky-header="false"
       flat
-    />
+    >
+      <template #bodyCell="{ column, record }">
+        <template v-if="column.key === 'actions'">
+          <UiTableActions
+            v-if="record.teacherUserId"
+            :items="[
+              { key: 'home', label: '档案首页' },
+              { key: 'one-table', label: '一张表' },
+              { key: 'course-archive', label: '课程档案' },
+            ]"
+            @action="(key) => {
+              if (key === 'home') goTeacherHome(record.teacherUserId)
+              else if (key === 'one-table') goTeacherOneTable(record.teacherUserId)
+              else goCourseArchive(record.teacherUserId)
+            }"
+          />
+          <span v-else>—</span>
+        </template>
+      </template>
+    </UiDataTable>
   </UiCard>
 </template>
 
