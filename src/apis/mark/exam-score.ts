@@ -73,6 +73,12 @@ export interface ExamScoreSummaryItemResponse {
   estimatedExamScore?: number
   /** AI 预估总分（非正式，仅 CALCULATED） */
   estimatedTotalScore?: number
+  /** 题目教师复核评分之和；总分更正后可能与 examScore 不同 */
+  questionScoreSum?: number
+  /** 题分之和是否等于正式考试分；false 时官方分以 examScore 为准 */
+  questionScoreSumMatchesExamScore?: boolean
+  /** 最近一次已执行更正是否为总分更正 */
+  latestTotalScoreCorrectionApplied?: boolean
   confirmedTime?: string
   confirmedUserId?: string
   paperDisplay: PaperInstanceDisplayVO

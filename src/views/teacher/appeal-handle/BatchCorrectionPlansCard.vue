@@ -220,12 +220,6 @@ import type {
   GradeReviewQuestionRefVO,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import Modal from 'ant-design-vue/es/modal'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   approveBatchCorrectionPlan,
   BATCH_CORRECTION_FLOW_HINT,
@@ -245,6 +239,13 @@ import {
   listReviewRequests,
   submitBatchCorrectionPlan,
 } from '@/apis/mark/grade-review'
+import { FinalScoreStatusCode } from '@/types/enums/final-score-status-enum'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import Modal from 'ant-design-vue/es/modal'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -289,7 +290,7 @@ const pagination = reactive({
   total: 0,
 })
 
-const filterForm = reactive<{ status?: BatchCorrectionApprovalStatusCode, keyword: string }>({
+const filterForm = reactive<{ status?: BatchCorrectionApprovalStatusCode; keyword: string }>({
   keyword: '',
 })
 
@@ -334,10 +335,10 @@ const executeModalOpen = ref(false)
 const executePlanId = ref('')
 const executeReason = ref('')
 const nextLocalId = ref(1)
-const reviewRequestOptions = ref<{ value: string, label: string }[]>([])
+const reviewRequestOptions = ref<{ value: string; label: string }[]>([])
 const reviewRequestCache = ref<Map<string, GradeReviewRequestItemResponse>>(new Map())
 const reviewRequestLoading = ref(false)
-const questionOptions = ref<{ value: string, label: string }[]>([])
+const questionOptions = ref<{ value: string; label: string }[]>([])
 const questionOptionsLoading = ref(false)
 let reviewRequestSearchTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -371,11 +372,11 @@ const batchTotalScoreMax = computed(() =>
 
 function batchItemProjectionHint(item: PlanItemForm): string {
   if (
-    !makeupCap60Hint.value
-    || form.correctionType !== GradeCorrectionTypeCode.SINGLE_QUESTION
-    || !form.layoutQuestionId
-    || !item.reviewRequestId
-    || typeof item.afterScore !== 'number'
+    !makeupCap60Hint.value ||
+    form.correctionType !== GradeCorrectionTypeCode.SINGLE_QUESTION ||
+    !form.layoutQuestionId ||
+    !item.reviewRequestId ||
+    typeof item.afterScore !== 'number'
   ) {
     return ''
   }
@@ -418,7 +419,7 @@ const correctionTypeOptions = [
 
 const itemReviewRequestOptions = computed(() => reviewRequestOptions.value)
 
-function buildQuestionOption(question: GradeReviewQuestionRefVO): { value: string, label: string } {
+function buildQuestionOption(question: GradeReviewQuestionRefVO): { value: string; label: string } {
   return {
     value: question.layoutQuestionId,
     label: `第 ${question.questionNo} 题 · ${question.questionType} · 满分 ${question.fullScore} 分`,
@@ -439,6 +440,26 @@ function cacheReviewRequests(requests: GradeReviewRequestItemResponse[]): void {
   for (const request of requests) {
     reviewRequestCache.value.set(request.id, request)
   }
+}
+
+/** 撤回/已确认/已发布/已更正卷可纳入批量更正；与后端 applyGradeCorrection 门禁一致。 */
+function isFinalScoreCorrectable(request: GradeReviewRequestItemResponse): boolean {
+  const status = request.finalScoreStatus
+  if (!status) {
+    return true
+  }
+  return (
+    status === FinalScoreStatusCode.CONFIRMED ||
+    status === FinalScoreStatusCode.PUBLISHED ||
+    status === FinalScoreStatusCode.CORRECTED ||
+    status === FinalScoreStatusCode.WITHDRAWN
+  )
+}
+
+function filterCorrectableReviewRequests(
+  requests: GradeReviewRequestItemResponse[],
+): GradeReviewRequestItemResponse[] {
+  return requests.filter((request) => isFinalScoreCorrectable(request))
 }
 
 const columns: ColumnType<ExamBatchGradeCorrectionPlan>[] = [
@@ -497,7 +518,7 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()
@@ -546,8 +567,9 @@ async function loadReviewRequestOptions(keyword?: string): Promise<void> {
       pageNum: 1,
       pageSize: APPROVED_REVIEW_REQUEST_PAGE_SIZE,
     })
-    cacheReviewRequests(result.list)
-    reviewRequestOptions.value = result.list.map((request) => buildReviewRequestOption(request))
+    const correctable = filterCorrectableReviewRequests(result.list)
+    cacheReviewRequests(correctable)
+    reviewRequestOptions.value = correctable.map((request) => buildReviewRequestOption(request))
     for (const item of form.items) {
       if (item.reviewRequestId && !reviewRequestCache.value.has(item.reviewRequestId)) {
         await pinReviewRequestById(item.reviewRequestId)
@@ -570,8 +592,10 @@ async function pinReviewRequestById(reviewRequestId: string): Promise<void> {
     pageSize: 1,
   })
   if (result.list.length === 0) return
-  cacheReviewRequests(result.list)
-  const option = buildReviewRequestOption(result.list[0])
+  const correctable = filterCorrectableReviewRequests(result.list)
+  if (correctable.length === 0) return
+  cacheReviewRequests(correctable)
+  const option = buildReviewRequestOption(correctable[0])
   if (!reviewRequestOptions.value.some((item) => item.value === option.value)) {
     reviewRequestOptions.value = [option, ...reviewRequestOptions.value]
   }
@@ -653,8 +677,8 @@ function buildCreateRequest(): BatchCorrectionPlanCreateRequest | null {
       return null
     }
     if (
-      form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION
-      && !request.questionRefs.some((question) => question.layoutQuestionId === form.layoutQuestionId)
+      form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION &&
+      !request.questionRefs.some((question) => question.layoutQuestionId === form.layoutQuestionId)
     ) {
       message.warning('更正明细包含未申请该题目的学生')
       return null
@@ -664,18 +688,18 @@ function buildCreateRequest(): BatchCorrectionPlanCreateRequest | null {
       return null
     }
     if (
-      form.correctionType === GradeCorrectionTypeCode.TOTAL_SCORE
-      && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60
-      && item.afterScore > 60
+      form.correctionType === GradeCorrectionTypeCode.TOTAL_SCORE &&
+      props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60 &&
+      item.afterScore > 60
     ) {
       message.warning('补考成绩策略为封顶60分，更正后总成绩不能超过60分')
       return null
     }
     if (
-      form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION
-      && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60
-      && form.layoutQuestionId
-      && isMakeupCap60SingleQuestionCorrectionExceeded(request, form.layoutQuestionId, item.afterScore)
+      form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION &&
+      props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60 &&
+      form.layoutQuestionId &&
+      isMakeupCap60SingleQuestionCorrectionExceeded(request, form.layoutQuestionId, item.afterScore)
     ) {
       message.warning('补考成绩策略为封顶60分，单题更正后合成总成绩不能超过60分')
       return null
@@ -841,8 +865,8 @@ function isOperating(planId: string, action: OperationAction): boolean {
 
 function canSubmit(row: ExamBatchGradeCorrectionPlan): boolean {
   return (
-    row.approvalStatus === BatchCorrectionApprovalStatusCode.DRAFT
-    || row.approvalStatus === BatchCorrectionApprovalStatusCode.REJECTED
+    row.approvalStatus === BatchCorrectionApprovalStatusCode.DRAFT ||
+    row.approvalStatus === BatchCorrectionApprovalStatusCode.REJECTED
   )
 }
 

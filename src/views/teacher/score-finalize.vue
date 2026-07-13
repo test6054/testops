@@ -980,10 +980,19 @@ function canConfirm(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
   const s = record.finalScoreStatus
   // CORRECTED 官方更正分已落账，禁止再走 confirm 重算；只允许发布页/本页「重新发布」。
+  if (s === FinalScoreStatusCode.WITHDRAWN) {
+    // 列表合同：总分更正官方分与题分不一致时禁用「重新确认」，须「重新发布」保留更正分。
+    if (
+      record.latestTotalScoreCorrectionApplied
+      || record.questionScoreSumMatchesExamScore === false
+    ) {
+      return false
+    }
+    return true
+  }
   return (
     s === FinalScoreStatusCode.PENDING
     || s === FinalScoreStatusCode.CALCULATED
-    || s === FinalScoreStatusCode.WITHDRAWN
   )
 }
 function confirmButtonLabel(record: ExamScoreSummaryItemResponse): string {
@@ -1741,6 +1750,21 @@ async function openConfirmModal(record: ExamScoreSummaryItemResponse): Promise<v
       examId: selectedExamId.value,
       paperInstanceId: record.paperInstanceId,
     })
+    // 总分更正后 WITHDRAWN：官方分可与题分之和不一致；重新确认会覆盖官方更正分，须引导重发布。
+    if (
+      record.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN
+      && (
+        score.latestTotalScoreCorrectionApplied
+        || score.questionScoreSumMatchesExamScore === false
+      )
+    ) {
+      confirmOpen.value = false
+      confirmCandidate.value = null
+      message.warning(
+        '本卷含官方更正分（与题分明细不一致）。请直接「重新发布」保留更正分；若需按题分重算，请先走成绩更正调整题目分。',
+      )
+      return
+    }
     confirmComputedExamScore.value = resolveConfirmExamScorePreview(score)
     if (confirmComputedExamScore.value == null) {
       message.warning('题目分尚未全部教师确认，或当前仅为 AI 预估分。请先完成题目复核/正评后再确认最终成绩。')

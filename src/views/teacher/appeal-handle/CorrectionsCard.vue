@@ -143,6 +143,7 @@ import message from 'ant-design-vue/es/message'
 import Modal from 'ant-design-vue/es/modal'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { FinalScoreStatusCode } from '@/types/enums/final-score-status-enum'
 import {
   computeSingleQuestionCorrectionCompositeTotal,
   createCorrection,
@@ -253,6 +254,27 @@ function cacheReviewRequests(requests: GradeReviewRequestItemResponse[]): void {
   }
 }
 
+/** 撤回/已确认/已发布/已更正卷可执行成绩更正；CALCULATED/PENDING 不可改官方分。 */
+function isFinalScoreCorrectable(request: GradeReviewRequestItemResponse): boolean {
+  const status = request.finalScoreStatus
+  if (!status) {
+    // 兼容旧后端未回填状态：交由服务端门禁裁决
+    return true
+  }
+  return (
+    status === FinalScoreStatusCode.CONFIRMED
+    || status === FinalScoreStatusCode.PUBLISHED
+    || status === FinalScoreStatusCode.CORRECTED
+    || status === FinalScoreStatusCode.WITHDRAWN
+  )
+}
+
+function filterCorrectableReviewRequests(
+  requests: GradeReviewRequestItemResponse[],
+): GradeReviewRequestItemResponse[] {
+  return requests.filter((request) => isFinalScoreCorrectable(request))
+}
+
 const selectedReviewQuestionOptions = computed(
   () =>
     selectedReviewRequest.value?.questionRefs.map((question) => ({
@@ -333,8 +355,9 @@ async function loadReviewRequestOptions(keyword?: string): Promise<void> {
       pageNum: 1,
       pageSize: APPROVED_REVIEW_REQUEST_PAGE_SIZE,
     })
-    cacheReviewRequests(result.list)
-    reviewRequestOptions.value = result.list.map((request) => buildReviewRequestOption(request))
+    const correctable = filterCorrectableReviewRequests(result.list)
+    cacheReviewRequests(correctable)
+    reviewRequestOptions.value = correctable.map((request) => buildReviewRequestOption(request))
     if (form.reviewRequestId && !reviewRequestCache.value.has(form.reviewRequestId)) {
       await pinReviewRequestById(form.reviewRequestId)
     }
@@ -355,8 +378,10 @@ async function pinReviewRequestById(reviewRequestId: string): Promise<void> {
     pageSize: 1,
   })
   if (result.list.length === 0) return
-  cacheReviewRequests(result.list)
-  const option = buildReviewRequestOption(result.list[0])
+  const correctable = filterCorrectableReviewRequests(result.list)
+  if (correctable.length === 0) return
+  cacheReviewRequests(correctable)
+  const option = buildReviewRequestOption(correctable[0])
   if (!reviewRequestOptions.value.some((item) => item.value === option.value)) {
     reviewRequestOptions.value = [option, ...reviewRequestOptions.value]
   }
@@ -427,6 +452,10 @@ async function submit(): Promise<void> {
     message.warning('请选择已通过的复核申请')
     return
   }
+  if (!isFinalScoreCorrectable(request)) {
+    message.warning('当前卷成绩状态不允许更正（仅已确认/已发布/已更正/已撤回待重发可更正）')
+    return
+  }
   if (!form.reason.trim()) {
     message.warning('更正原因必填')
     return
@@ -486,7 +515,7 @@ async function submit(): Promise<void> {
     if (result.requiresRepublish) {
       Modal.confirm({
         title: '需重新发布成绩',
-        content: '更正前成绩已发布，学生端暂不可见最新分数。请前往成绩发布页重新发布。',
+        content: '成绩已更正（含撤回后改分），学生端暂不可见最新分数。请前往成绩发布页重新发布。',
         okText: '前往发布',
         cancelText: '稍后处理',
         onOk: () =>

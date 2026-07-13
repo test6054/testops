@@ -1,4 +1,4 @@
-import type { FinalScoreStatusCode } from './final-score-status'
+import type { FinalScoreStatusCode } from '@/types/enums/final-score-status-enum'
 import type { QuestionTypeCode } from './question-type'
 /**
  * 成绩复核与更正 API - 对接 edu-mark 模块 GradeReviewController
@@ -13,6 +13,10 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { GradeCorrectionTypeCode } from '@/types/enums/grade-correction-type-enum'
 import type { GradeReviewReasonTypeCode } from '@/types/enums/grade-review-reason-type-enum'
+import {
+  ALL_GRADE_REVIEW_REASON_TYPE_CODES,
+  GradeReviewReasonTypeDescription,
+} from '@/types/enums/grade-review-reason-type-enum'
 import type { VisibleMaterialScopeCode } from '@/types/enums/visible-material-scope-enum'
 import http from '@/config/axios'
 import {
@@ -21,10 +25,6 @@ import {
   BatchCorrectionApprovalStatusDescription,
 } from '@/types/enums/batch-correction-approval-status-enum'
 import { GradeCorrectionStatusCode } from '@/types/enums/grade-correction-status-enum'
-import {
-  ALL_GRADE_REVIEW_REASON_TYPE_CODES,
-  GradeReviewReasonTypeDescription,
-} from '@/types/enums/grade-review-reason-type-enum'
 import {
   ALL_GRADE_REVIEW_REQUEST_STATUS_CODES,
   GradeReviewRequestStatusCode,
@@ -255,6 +255,8 @@ export interface GradeReviewRequestItemResponse {
   currentTotalScore?: number
   /** 当前平时分，单题更正合成总分时参与计算 */
   currentDailyScore?: number
+  /** 当前卷级最终成绩状态；WITHDRAWN 撤回待重发仍可执行成绩更正 */
+  finalScoreStatus?: FinalScoreStatusCode
 }
 
 /** 复核处理汇总 - 对应 GradeReviewSummaryResponse */
@@ -639,8 +641,8 @@ export function computeSingleQuestionCorrectionCompositeTotal(
     return null
   }
   const dailyScore = request.currentDailyScore ?? 0
-  const correctedExamScore
-    = request.currentExamScore - questionRef.currentTeacherReviewScore + afterScore
+  const correctedExamScore =
+    request.currentExamScore - questionRef.currentTeacherReviewScore + afterScore
   return correctedExamScore + dailyScore
 }
 
@@ -657,4 +659,3 @@ export function isMakeupCap60SingleQuestionCorrectionExceeded(
   )
   return projected != null && projected > 60
 }
-
