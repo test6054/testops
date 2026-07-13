@@ -1,21 +1,21 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentPlanStatusCode } from '@/apis/portfolio/enums'
-import type {
-  PortfolioDeptOneTableSummaryVO,
-  PortfolioDeptOneTableTeacherRowVO,
-} from '@/apis/portfolio/teacher'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
   PortfolioCompletenessLevelCode,
   PortfolioCompletenessLevelDescription,
   PortfolioDevelopmentPlanStatusDescription,
 } from '@/apis/portfolio/enums'
+import type {
+  PortfolioDeptOneTableSummaryVO,
+  PortfolioDeptOneTableTeacherRowVO,
+} from '@/apis/portfolio/teacher'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import MarkChartCard from '@/components/chart/MarkChartCard.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -69,10 +69,26 @@ const completenessDistributionRows: Array<{
     | 'completenessPendingCount'
     | 'completenessSevereCount'
 }> = [
-  { key: PortfolioCompletenessLevelCode.COMPLETE, label: '完整', summaryKey: 'completenessCompleteCount' },
-  { key: PortfolioCompletenessLevelCode.BASIC, label: '基本完整', summaryKey: 'completenessBasicCount' },
-  { key: PortfolioCompletenessLevelCode.PENDING, label: '待补充', summaryKey: 'completenessPendingCount' },
-  { key: PortfolioCompletenessLevelCode.SEVERE, label: '严重缺失', summaryKey: 'completenessSevereCount' },
+  {
+    key: PortfolioCompletenessLevelCode.COMPLETE,
+    label: '完整',
+    summaryKey: 'completenessCompleteCount',
+  },
+  {
+    key: PortfolioCompletenessLevelCode.BASIC,
+    label: '基本完整',
+    summaryKey: 'completenessBasicCount',
+  },
+  {
+    key: PortfolioCompletenessLevelCode.PENDING,
+    label: '待补充',
+    summaryKey: 'completenessPendingCount',
+  },
+  {
+    key: PortfolioCompletenessLevelCode.SEVERE,
+    label: '严重缺失',
+    summaryKey: 'completenessSevereCount',
+  },
 ]
 
 function readRouteStringParam(value: unknown): string {
@@ -161,6 +177,7 @@ async function loadSummary() {
   const request = {
     departmentId: filter.departmentId,
     planYear: filter.planYear.trim() || undefined,
+    completenessLevel: completenessLevelFilter.value || undefined,
   }
   try {
     const nextSummary = await portfolioTeacherApi.getDeptOneTableSummary(request)
@@ -238,7 +255,7 @@ function applyCompletenessFilter(level: PortfolioCompletenessLevelCode | '') {
     query.completenessLevel = level
   }
   void router.replace({ path: route.path, query })
-  void loadTeachers()
+  void reloadAll()
 }
 
 function completenessFilterLabel(level: PortfolioCompletenessLevelCode): string {
@@ -275,7 +292,7 @@ function structureCount(key: (typeof titleStructureRows)[number]['key']) {
   return summary.value?.[key] ?? 0
 }
 
-function handleTeacherPageChange(page: { current: number, pageSize: number }) {
+function handleTeacherPageChange(page: { current: number; pageSize: number }) {
   teacherQuery.pageNum = page.current
   teacherQuery.pageSize = page.pageSize
   void loadTeachers()
@@ -304,7 +321,11 @@ function completenessLabel(record: PortfolioDeptOneTableTeacherRowVO): string {
     return '—'
   }
   const level = record.completenessLevel
-    ? strictEnumLabel(PortfolioCompletenessLevelDescription, record.completenessLevel, '档案完整度分级')
+    ? strictEnumLabel(
+        PortfolioCompletenessLevelDescription,
+        record.completenessLevel,
+        '档案完整度分级',
+      )
     : ''
   return level ? `${record.completenessPercent}% · ${level}` : `${record.completenessPercent}%`
 }
@@ -327,15 +348,18 @@ function goTeacherOneTable(teacherUserId: string) {
 }
 
 function goCourseArchive(teacherUserId: string) {
-  void router.push({ path: '/portfolio/teacher/course-archive', query: { teacherId: teacherUserId } })
+  void router.push({
+    path: '/portfolio/teacher/course-archive',
+    query: { teacherId: teacherUserId },
+  })
 }
 
 onMounted(async () => {
   await loadTree()
   const queryDepartmentId = readRouteStringParam(route.query.departmentId)
   if (
-    queryDepartmentId
-    && departmentOptions.value.some((option) => option.value === queryDepartmentId)
+    queryDepartmentId &&
+    departmentOptions.value.some((option) => option.value === queryDepartmentId)
   ) {
     filter.departmentId = queryDepartmentId
   }
@@ -446,9 +470,9 @@ watch(
                     type="button"
                     class="completeness-chip"
                     :class="{ 'completeness-chip--active': completenessLevelFilter === item.key }"
-                    @click="applyCompletenessFilter(
-                      completenessLevelFilter === item.key ? '' : item.key,
-                    )"
+                    @click="
+                      applyCompletenessFilter(completenessLevelFilter === item.key ? '' : item.key)
+                    "
                   >
                     {{ item.label }} {{ distributionCount(item.summaryKey) }}
                   </button>
@@ -557,11 +581,13 @@ watch(
                       { key: 'one-table', label: '一张表' },
                       { key: 'course-archive', label: '课程档案' },
                     ]"
-                    @action="(key) => {
-                      if (key === 'home') goTeacherHome(record.teacherUserId)
-                      else if (key === 'one-table') goTeacherOneTable(record.teacherUserId)
-                      else goCourseArchive(record.teacherUserId)
-                    }"
+                    @action="
+                      (key) => {
+                        if (key === 'home') goTeacherHome(record.teacherUserId)
+                        else if (key === 'one-table') goTeacherOneTable(record.teacherUserId)
+                        else goCourseArchive(record.teacherUserId)
+                      }
+                    "
                   />
                 </template>
               </template>

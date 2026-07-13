@@ -99,6 +99,7 @@ export interface PortfolioDeptStructureStatItemVO {
 export interface PortfolioDeptOneTableGetRequest {
   departmentId: string
   planYear?: string
+  completenessLevel?: PortfolioCompletenessLevelCode
 }
 
 export interface PortfolioDeptOneTableExportRequest {
