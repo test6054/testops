@@ -979,18 +979,15 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 function canConfirm(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
   const s = record.finalScoreStatus
+  // CORRECTED 官方更正分已落账，禁止再走 confirm 重算；只允许发布页/本页「重新发布」。
   return (
     s === FinalScoreStatusCode.PENDING
     || s === FinalScoreStatusCode.CALCULATED
     || s === FinalScoreStatusCode.WITHDRAWN
-    || s === FinalScoreStatusCode.CORRECTED
   )
 }
 function confirmButtonLabel(record: ExamScoreSummaryItemResponse): string {
-  const s = record.finalScoreStatus
-  if (s === FinalScoreStatusCode.WITHDRAWN || s === FinalScoreStatusCode.CORRECTED)
-    return '重新确认'
-  return '确认'
+  return record.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN ? '重新确认' : '确认'
 }
 function canPublish(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
@@ -1004,7 +1001,11 @@ function canPublish(record: ExamScoreSummaryItemResponse): boolean {
   )
 }
 function publishButtonLabel(record: ExamScoreSummaryItemResponse): string {
-  return record.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN ? '重新发布' : '发布'
+  // WITHDRAWN / CORRECTED 均为学生端不可见后的再发；文案须引导「重新发布」。
+  return record.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN
+    || record.finalScoreStatus === FinalScoreStatusCode.CORRECTED
+    ? '重新发布'
+    : '发布'
 }
 
 const blockingRiskReasons = computed(() => {
@@ -1726,6 +1727,10 @@ function resolveConfirmExamScorePreview(score: ExamPaperScoreResponse): number |
 
 async function openConfirmModal(record: ExamScoreSummaryItemResponse): Promise<void> {
   if (!selectedExamId.value || !record.paperInstanceId) return
+  if (record.finalScoreStatus === FinalScoreStatusCode.CORRECTED) {
+    message.warning('成绩已更正，请直接重新发布；禁止确认覆盖官方更正分。如需再改请走成绩更正流程。')
+    return
+  }
   confirmCandidate.value = record
   confirmOpen.value = true
   confirmComputedExamScore.value = null

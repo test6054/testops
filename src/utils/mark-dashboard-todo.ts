@@ -1,11 +1,11 @@
 import type { MarkTeacherDashboardPendingTodoItemVO } from '@/apis/mark/teacher-dashboard'
 import type { UiSectionTabItem } from '@/components/ui-guide/ui/types'
+import { MarkTeacherDashboardPendingTodoScopeCode } from '@/types/enums/mark-teacher-dashboard-pending-todo-scope-enum'
 import {
   ALL_MARK_TEACHER_DASHBOARD_TODO_TYPE_CODES,
   MarkTeacherDashboardTodoTypeCode,
   MarkTeacherDashboardTodoTypeDescription
 } from '@/types/enums/mark-teacher-dashboard-todo-type-enum'
-import { MarkTeacherDashboardPendingTodoScopeCode } from '@/types/enums/mark-teacher-dashboard-pending-todo-scope-enum'
 import { formatAcademicYearSemester } from '@/types/enums/semester-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
