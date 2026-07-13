@@ -143,7 +143,6 @@ import message from 'ant-design-vue/es/message'
 import Modal from 'ant-design-vue/es/modal'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { FinalScoreStatusCode } from '@/types/enums/final-score-status-enum'
 import {
   computeSingleQuestionCorrectionCompositeTotal,
   createCorrection,
@@ -160,6 +159,7 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { ExamScorePolicyCode } from '@/types/enums/exam-score-policy-enum'
+import { FinalScoreStatusCode } from '@/types/enums/final-score-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 

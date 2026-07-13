@@ -220,6 +220,12 @@ import type {
   GradeReviewQuestionRefVO,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import Modal from 'ant-design-vue/es/modal'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   approveBatchCorrectionPlan,
   BATCH_CORRECTION_FLOW_HINT,
@@ -239,13 +245,6 @@ import {
   listReviewRequests,
   submitBatchCorrectionPlan,
 } from '@/apis/mark/grade-review'
-import { FinalScoreStatusCode } from '@/types/enums/final-score-status-enum'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import Modal from 'ant-design-vue/es/modal'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -256,6 +255,7 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { ExamScorePolicyCode } from '@/types/enums/exam-score-policy-enum'
+import { FinalScoreStatusCode } from '@/types/enums/final-score-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -290,7 +290,7 @@ const pagination = reactive({
   total: 0,
 })
 
-const filterForm = reactive<{ status?: BatchCorrectionApprovalStatusCode; keyword: string }>({
+const filterForm = reactive<{ status?: BatchCorrectionApprovalStatusCode, keyword: string }>({
   keyword: '',
 })
 
@@ -335,10 +335,10 @@ const executeModalOpen = ref(false)
 const executePlanId = ref('')
 const executeReason = ref('')
 const nextLocalId = ref(1)
-const reviewRequestOptions = ref<{ value: string; label: string }[]>([])
+const reviewRequestOptions = ref<{ value: string, label: string }[]>([])
 const reviewRequestCache = ref<Map<string, GradeReviewRequestItemResponse>>(new Map())
 const reviewRequestLoading = ref(false)
-const questionOptions = ref<{ value: string; label: string }[]>([])
+const questionOptions = ref<{ value: string, label: string }[]>([])
 const questionOptionsLoading = ref(false)
 let reviewRequestSearchTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -372,11 +372,11 @@ const batchTotalScoreMax = computed(() =>
 
 function batchItemProjectionHint(item: PlanItemForm): string {
   if (
-    !makeupCap60Hint.value ||
-    form.correctionType !== GradeCorrectionTypeCode.SINGLE_QUESTION ||
-    !form.layoutQuestionId ||
-    !item.reviewRequestId ||
-    typeof item.afterScore !== 'number'
+    !makeupCap60Hint.value
+    || form.correctionType !== GradeCorrectionTypeCode.SINGLE_QUESTION
+    || !form.layoutQuestionId
+    || !item.reviewRequestId
+    || typeof item.afterScore !== 'number'
   ) {
     return ''
   }
@@ -419,7 +419,7 @@ const correctionTypeOptions = [
 
 const itemReviewRequestOptions = computed(() => reviewRequestOptions.value)
 
-function buildQuestionOption(question: GradeReviewQuestionRefVO): { value: string; label: string } {
+function buildQuestionOption(question: GradeReviewQuestionRefVO): { value: string, label: string } {
   return {
     value: question.layoutQuestionId,
     label: `第 ${question.questionNo} 题 · ${question.questionType} · 满分 ${question.fullScore} 分`,
@@ -449,10 +449,10 @@ function isFinalScoreCorrectable(request: GradeReviewRequestItemResponse): boole
     return true
   }
   return (
-    status === FinalScoreStatusCode.CONFIRMED ||
-    status === FinalScoreStatusCode.PUBLISHED ||
-    status === FinalScoreStatusCode.CORRECTED ||
-    status === FinalScoreStatusCode.WITHDRAWN
+    status === FinalScoreStatusCode.CONFIRMED
+    || status === FinalScoreStatusCode.PUBLISHED
+    || status === FinalScoreStatusCode.CORRECTED
+    || status === FinalScoreStatusCode.WITHDRAWN
   )
 }
 
@@ -518,7 +518,7 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()
@@ -677,8 +677,8 @@ function buildCreateRequest(): BatchCorrectionPlanCreateRequest | null {
       return null
     }
     if (
-      form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION &&
-      !request.questionRefs.some((question) => question.layoutQuestionId === form.layoutQuestionId)
+      form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION
+      && !request.questionRefs.some((question) => question.layoutQuestionId === form.layoutQuestionId)
     ) {
       message.warning('更正明细包含未申请该题目的学生')
       return null
@@ -688,18 +688,18 @@ function buildCreateRequest(): BatchCorrectionPlanCreateRequest | null {
       return null
     }
     if (
-      form.correctionType === GradeCorrectionTypeCode.TOTAL_SCORE &&
-      props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60 &&
-      item.afterScore > 60
+      form.correctionType === GradeCorrectionTypeCode.TOTAL_SCORE
+      && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60
+      && item.afterScore > 60
     ) {
       message.warning('补考成绩策略为封顶60分，更正后总成绩不能超过60分')
       return null
     }
     if (
-      form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION &&
-      props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60 &&
-      form.layoutQuestionId &&
-      isMakeupCap60SingleQuestionCorrectionExceeded(request, form.layoutQuestionId, item.afterScore)
+      form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION
+      && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60
+      && form.layoutQuestionId
+      && isMakeupCap60SingleQuestionCorrectionExceeded(request, form.layoutQuestionId, item.afterScore)
     ) {
       message.warning('补考成绩策略为封顶60分，单题更正后合成总成绩不能超过60分')
       return null
@@ -865,8 +865,8 @@ function isOperating(planId: string, action: OperationAction): boolean {
 
 function canSubmit(row: ExamBatchGradeCorrectionPlan): boolean {
   return (
-    row.approvalStatus === BatchCorrectionApprovalStatusCode.DRAFT ||
-    row.approvalStatus === BatchCorrectionApprovalStatusCode.REJECTED
+    row.approvalStatus === BatchCorrectionApprovalStatusCode.DRAFT
+    || row.approvalStatus === BatchCorrectionApprovalStatusCode.REJECTED
   )
 }
 

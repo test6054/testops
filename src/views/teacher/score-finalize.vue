@@ -982,13 +982,9 @@ function canConfirm(record: ExamScoreSummaryItemResponse): boolean {
   // CORRECTED 官方更正分已落账，禁止再走 confirm 重算；只允许发布页/本页「重新发布」。
   if (s === FinalScoreStatusCode.WITHDRAWN) {
     // 列表合同：总分更正官方分与题分不一致时禁用「重新确认」，须「重新发布」保留更正分。
-    if (
-      record.latestTotalScoreCorrectionApplied
-      || record.questionScoreSumMatchesExamScore === false
-    ) {
-      return false
-    }
-    return true
+    return !(record.latestTotalScoreCorrectionApplied
+      || record.questionScoreSumMatchesExamScore === false);
+
   }
   return (
     s === FinalScoreStatusCode.PENDING

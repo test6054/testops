@@ -1,4 +1,3 @@
-import type { FinalScoreStatusCode } from '@/types/enums/final-score-status-enum'
 import type { QuestionTypeCode } from './question-type'
 /**
  * 成绩复核与更正 API - 对接 edu-mark 模块 GradeReviewController
@@ -11,12 +10,9 @@ import type { QuestionTypeCode } from './question-type'
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { FinalScoreStatusCode } from '@/types/enums/final-score-status-enum'
 import type { GradeCorrectionTypeCode } from '@/types/enums/grade-correction-type-enum'
 import type { GradeReviewReasonTypeCode } from '@/types/enums/grade-review-reason-type-enum'
-import {
-  ALL_GRADE_REVIEW_REASON_TYPE_CODES,
-  GradeReviewReasonTypeDescription,
-} from '@/types/enums/grade-review-reason-type-enum'
 import type { VisibleMaterialScopeCode } from '@/types/enums/visible-material-scope-enum'
 import http from '@/config/axios'
 import {
@@ -25,6 +21,10 @@ import {
   BatchCorrectionApprovalStatusDescription,
 } from '@/types/enums/batch-correction-approval-status-enum'
 import { GradeCorrectionStatusCode } from '@/types/enums/grade-correction-status-enum'
+import {
+  ALL_GRADE_REVIEW_REASON_TYPE_CODES,
+  GradeReviewReasonTypeDescription,
+} from '@/types/enums/grade-review-reason-type-enum'
 import {
   ALL_GRADE_REVIEW_REQUEST_STATUS_CODES,
   GradeReviewRequestStatusCode,
@@ -641,8 +641,8 @@ export function computeSingleQuestionCorrectionCompositeTotal(
     return null
   }
   const dailyScore = request.currentDailyScore ?? 0
-  const correctedExamScore =
-    request.currentExamScore - questionRef.currentTeacherReviewScore + afterScore
+  const correctedExamScore
+    = request.currentExamScore - questionRef.currentTeacherReviewScore + afterScore
   return correctedExamScore + dailyScore
 }
 
