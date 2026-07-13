@@ -28,6 +28,8 @@ export const portfolioAiJobApi = {
     http.post<PortfolioAiAnalysisDetailVO>(`${BASE}/analysis/get`, { id }),
   getAnalysisByTask: (id: string) =>
     http.post<PortfolioAiAnalysisDetailVO>(`${BASE}/analysis/task/get`, { id }),
+  getAnnualReportAnalysisByTask: (id: string) =>
+    http.post<PortfolioAiAnalysisDetailVO>(`${BASE}/analysis/report/get`, { id }),
   pageAnalysis: (data: PortfolioAiAnalysisPageRequest) =>
     http.post<PageResult<PortfolioAiAnalysisSummaryVO>>(`${BASE}/analysis/page`, data),
 }

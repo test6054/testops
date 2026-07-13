@@ -3,7 +3,6 @@ import type {
   PortfolioArchiveRecordFieldInput,
   PortfolioTargetFieldDefinition,
 } from '@/apis/portfolio/types'
-import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -13,6 +12,7 @@ import {
   PortfolioArchiveRecordStatusCode,
   PortfolioArchiveRecordStatusDescription,
 } from '@/apis/portfolio/enums'
+import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -70,9 +70,9 @@ const teacherRequest = computed(() =>
 const editableFields = computed(() => fieldDefs.value.filter((item) => !item.readonly))
 const recordEditable = computed(
   () =>
-    !recordStatus.value ||
-    recordStatus.value === PortfolioArchiveRecordStatusCode.DRAFT ||
-    recordStatus.value === PortfolioArchiveRecordStatusCode.RETURNED,
+    !recordStatus.value
+    || recordStatus.value === PortfolioArchiveRecordStatusCode.DRAFT
+    || recordStatus.value === PortfolioArchiveRecordStatusCode.RETURNED,
 )
 
 const statusHint = computed(() => {
@@ -178,8 +178,8 @@ function buildReturnQuery(): Record<string, string> {
 }
 
 function returnToArchiveSource() {
-  const path =
-    fromPage.value === 'courseArchive'
+  const path
+    = fromPage.value === 'courseArchive'
       ? '/portfolio/teacher/course-archive'
       : fromPage.value === 'trainingExtension'
         ? '/portfolio/teacher/extension-activity'

@@ -13,6 +13,9 @@ export enum AuditTargetTypeCode {
   PASSBACK_RECORD = 'PASSBACK_RECORD',
   EXAM_EXPORT_TASK = 'EXAM_EXPORT_TASK',
   EXAM_ARCHIVE_PACKAGE = 'EXAM_ARCHIVE_PACKAGE',
+  ARCHIVE_VOLUME = 'ARCHIVE_VOLUME',
+  ARCHIVE_VOLUME_ACCESS = 'ARCHIVE_VOLUME_ACCESS',
+  ARCHIVE_VOLUME_DESTRUCTION = 'ARCHIVE_VOLUME_DESTRUCTION',
 }
 
 export const ALL_AUDIT_TARGET_TYPE_CODES: readonly AuditTargetTypeCode[] = [
@@ -29,6 +32,9 @@ export const ALL_AUDIT_TARGET_TYPE_CODES: readonly AuditTargetTypeCode[] = [
   AuditTargetTypeCode.PASSBACK_RECORD,
   AuditTargetTypeCode.EXAM_EXPORT_TASK,
   AuditTargetTypeCode.EXAM_ARCHIVE_PACKAGE,
+  AuditTargetTypeCode.ARCHIVE_VOLUME,
+  AuditTargetTypeCode.ARCHIVE_VOLUME_ACCESS,
+  AuditTargetTypeCode.ARCHIVE_VOLUME_DESTRUCTION,
 ]
 
 export const AuditTargetTypeDescription: Record<AuditTargetTypeCode, string> = {
@@ -45,5 +51,7 @@ export const AuditTargetTypeDescription: Record<AuditTargetTypeCode, string> = {
   [AuditTargetTypeCode.PASSBACK_RECORD]: '成绩回写记录',
   [AuditTargetTypeCode.EXAM_EXPORT_TASK]: '导出任务',
   [AuditTargetTypeCode.EXAM_ARCHIVE_PACKAGE]: '考后归档包',
+  [AuditTargetTypeCode.ARCHIVE_VOLUME]: '归档卷',
+  [AuditTargetTypeCode.ARCHIVE_VOLUME_ACCESS]: '归档卷查阅记录',
+  [AuditTargetTypeCode.ARCHIVE_VOLUME_DESTRUCTION]: '归档卷销毁记录',
 }
-

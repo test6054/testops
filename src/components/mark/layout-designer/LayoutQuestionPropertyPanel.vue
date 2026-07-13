@@ -158,6 +158,17 @@ function updateChoiceOptions(value: string): void {
   patchQuestionAnswer({ choiceOptions: parseOptionText(value), effectiveNow: true })
 }
 
+function requiresDeclaredOptions(question: ExamLayoutQuestionDto): boolean {
+  return question.questionType === QuestionTypeCode.OBJECTIVE
+    && (question.ocrScene === MarkOcrSceneCode.CHOICE || question.ocrScene === MarkOcrSceneCode.TRUE_FALSE)
+}
+
+function hasNonBlankOption(
+  options?: Array<ExamQuestionDeclaredOptionRequest | ExamQuestionStandardAnswerOptionRequest>,
+): boolean {
+  return Boolean(options?.some((option) => option.optionLabel?.trim()))
+}
+
 function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
   const answer = question.answer
   if (question.questionType === QuestionTypeCode.SUBJECTIVE) {
@@ -169,11 +180,14 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
   if (!answer?.comparePolicy) {
     return '客观题需选择比较策略'
   }
+  if (requiresDeclaredOptions(question) && !hasNonBlankOption(answer.declaredOptions)) {
+    return '当前题型需填写选项空间'
+  }
   if (answer.comparePolicy === ObjectiveComparePolicy.CHOICE_SET) {
-    if ((answer.declaredOptions?.length ?? 0) > 0 && (answer.choiceOptions?.length ?? 0) > 0) {
+    if (hasNonBlankOption(answer.choiceOptions)) {
       return '已配置选项空间与正确答案'
     }
-    return '选择题需填写选项空间和正确选项'
+    return '当前策略需填写正确选项'
   }
   if (answer.comparePolicy === ObjectiveComparePolicy.NUMERIC_TOLERANCE) {
     return answer.numericExpectedValue != null ? '已配置数值容差答案' : '数值题需填写标准值'

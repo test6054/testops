@@ -115,6 +115,7 @@ const objectionModalOpen = ref(false)
 const objectionTarget = ref<PortfolioEvaluationPublicityListItemVO | null>(null)
 const objectionForm = reactive({
   objectionType: PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE,
+  indicatorCode: '',
   objectionReason: '',
 })
 const objectionEvidenceFileNodeId = ref('')
@@ -122,6 +123,25 @@ const objectionEvidenceFileName = ref('')
 const evaluationRequestToken = ref(0)
 
 const objectionTypeOptions = PORTFOLIO_EVALUATION_OBJECTION_TYPE_OPTIONS
+const objectionIndicatorOptions = computed(() => {
+  const indicatorCodes = new Set<string>()
+  for (const entry of resultSummary.value?.entries ?? []) {
+    if (entry.indicatorCode) {
+      indicatorCodes.add(entry.indicatorCode)
+    }
+  }
+  return Array.from(indicatorCodes).map((indicatorCode) => ({
+    value: indicatorCode,
+    label: indicatorCode,
+  }))
+})
+const scoreOrResultDispute = computed(() => (
+  objectionForm.objectionType === PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE
+  || objectionForm.objectionType === PortfolioEvaluationObjectionTypeCode.SCORE_DISPUTE
+))
+const showObjectionIndicatorSelect = computed(() => (
+  scoreOrResultDispute.value && objectionIndicatorOptions.value.length > 0
+))
 const deepLinkedEvaluationTaskId = computed(() =>
   typeof route.query.evaluationTaskId === 'string' ? route.query.evaluationTaskId : '',
 )
@@ -175,6 +195,7 @@ function resetEvaluationContext() {
   objectionModalOpen.value = false
   objectionTarget.value = null
   objectionForm.objectionType = PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE
+  objectionForm.indicatorCode = ''
   objectionForm.objectionReason = ''
   objectionEvidenceFileNodeId.value = ''
   objectionEvidenceFileName.value = ''
@@ -335,10 +356,12 @@ async function confirmSelected() {
 function openObjectionModal(row: PortfolioEvaluationPublicityListItemVO) {
   objectionTarget.value = row
   objectionForm.objectionType = PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE
+  objectionForm.indicatorCode = ''
   objectionForm.objectionReason = ''
   objectionEvidenceFileNodeId.value = ''
   objectionEvidenceFileName.value = ''
   objectionModalOpen.value = true
+  void loadResultSummary(row.evaluationTaskId)
 }
 
 async function submitObjection() {
@@ -350,6 +373,16 @@ async function submitObjection() {
     message.warning('请填写异议理由')
     return
   }
+  if (scoreOrResultDispute.value) {
+    if (resultSummary.value?.evaluationTaskId !== objectionTarget.value.evaluationTaskId) {
+      message.warning('评价结果仍在加载，请稍后提交异议')
+      return
+    }
+    if (showObjectionIndicatorSelect.value && !objectionForm.indicatorCode) {
+      message.warning('请选择争议指标')
+      return
+    }
+  }
   const requestToken = evaluationRequestToken.value
   submittingObjection.value = true
   try {
@@ -357,6 +390,7 @@ async function submitObjection() {
       evaluationTaskId: objectionTarget.value.evaluationTaskId,
       publicityId: objectionTarget.value.publicityId,
       objectionType: objectionForm.objectionType,
+      ...(objectionForm.indicatorCode ? { indicatorCode: objectionForm.indicatorCode } : {}),
       objectionReason: reason,
       evidenceRef: objectionEvidenceFileNodeId.value || undefined,
     })
@@ -646,7 +680,7 @@ watch(
           </p>
           <UiDataTable
             v-if="resultSummary.entries?.length"
-            row-key="indicatorCode"
+            row-key="entryId"
             size="small"
             pagination-mode="none"
             :columns="resultColumns"
@@ -689,6 +723,13 @@ watch(
         class="teacher-evaluation__form-field"
         :options="objectionTypeOptions"
         placeholder="异议类型"
+      />
+      <Select
+        v-if="showObjectionIndicatorSelect"
+        v-model:value="objectionForm.indicatorCode"
+        class="teacher-evaluation__form-field"
+        :options="objectionIndicatorOptions"
+        placeholder="请选择争议指标"
       />
       <Input.TextArea
         v-model:value="objectionForm.objectionReason"

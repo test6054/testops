@@ -4,11 +4,11 @@ import type {
   PortfolioTeachingExtensionActivityVO,
   PortfolioTeachingExtensionCategoryVO,
 } from '@/apis/portfolio/teaching-extension'
-import { portfolioTeachingExtensionApi } from '@/apis/portfolio/teaching-extension'
 import { DatePicker, Form, Input, InputNumber, message, Modal } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioTeachingExtensionApi } from '@/apis/portfolio/teaching-extension'
 import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -80,9 +80,9 @@ const isTraining = computed(() => form.activityKind === PortfolioTeachingExtensi
 
 function canEditActivity(row: PortfolioTeachingExtensionActivityVO) {
   return (
-    !row.archiveRecordId ||
-    row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.DRAFT ||
-    row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.RETURNED
+    !row.archiveRecordId
+    || row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.DRAFT
+    || row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.RETURNED
   )
 }
 
@@ -187,10 +187,10 @@ async function loadData() {
     rows.value = activityRows
     categories.value = categoryRows
     if (
-      typeof route.query.recommendationId === 'string' &&
-      !recommendationIntentConsumed.value &&
-      !readonlyMode.value &&
-      !modalOpen.value
+      typeof route.query.recommendationId === 'string'
+      && !recommendationIntentConsumed.value
+      && !readonlyMode.value
+      && !modalOpen.value
     ) {
       openModal()
     }
@@ -230,10 +230,10 @@ function openModal(row?: PortfolioTeachingExtensionActivityVO) {
   form.fileId = row?.fileId || ''
   form.attachmentName = row?.fileId ? `附件 ${row.fileId}` : ''
   if (!row && !recommendationIntentConsumed.value) {
-    form.trainingRecommendationId =
-      typeof route.query.recommendationId === 'string' ? route.query.recommendationId : ''
-    form.activityName =
-      typeof route.query.activityName === 'string' ? route.query.activityName : form.activityName
+    form.trainingRecommendationId
+      = typeof route.query.recommendationId === 'string' ? route.query.recommendationId : ''
+    form.activityName
+      = typeof route.query.activityName === 'string' ? route.query.activityName : form.activityName
     recommendationIntentConsumed.value = true
   }
   modalOpen.value = true
@@ -470,9 +470,9 @@ watch(
               </UiButton>
               <UiButton
                 v-if="
-                  !readonlyMode &&
-                  record.activityKind === PortfolioTeachingExtensionKindCode.TRAINING &&
-                  !record.archiveRecordId
+                  !readonlyMode
+                    && record.activityKind === PortfolioTeachingExtensionKindCode.TRAINING
+                    && !record.archiveRecordId
                 "
                 variant="ghost"
                 :loading="submittingTrainingId === record.id"

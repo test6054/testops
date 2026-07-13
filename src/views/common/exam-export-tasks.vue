@@ -174,10 +174,14 @@
             v-for="option in exportScopeOptions"
             :key="option.value"
             :value="option.value"
+            :disabled="option.disabled"
           >
             {{ option.label }}
           </a-radio-button>
         </a-radio-group>
+      </a-form-item>
+      <a-form-item v-if="exportConstraintHint" label="导出约束">
+        <UiTag tone="blue" size="sm">{{ exportConstraintHint }}</UiTag>
       </a-form-item>
       <a-form-item v-if="createForm.exportScope === ExportScopeCode.EXAM" label="范围条件">
         <UiTag tone="blue" size="sm">整场考试</UiTag>
@@ -655,10 +659,52 @@ const exportTypeOptions = ALL_EXPORT_TYPE_CODES.map((code) => ({
   label: exportTypeLabel(code),
 }))
 
-const exportScopeOptions = ALL_EXPORT_SCOPE_CODES.map((code) => ({
+const EXPORT_SCOPE_SUPPORT_MATRIX: Record<ExportTypeCode, ExportScopeCode[]> = {
+  [ExportTypeCode.SCORE_EXCEL]: [
+    ExportScopeCode.EXAM,
+    ExportScopeCode.CLASS,
+    ExportScopeCode.QUESTION,
+    ExportScopeCode.STUDENT,
+  ],
+  [ExportTypeCode.SCORE_PDF]: [
+    ExportScopeCode.EXAM,
+    ExportScopeCode.CLASS,
+    ExportScopeCode.STUDENT,
+  ],
+  [ExportTypeCode.ANALYSIS_REPORT]: [ExportScopeCode.EXAM],
+  [ExportTypeCode.IMAGE_ARCHIVE]: [
+    ExportScopeCode.EXAM,
+    ExportScopeCode.CLASS,
+    ExportScopeCode.STUDENT,
+  ],
+}
+
+function isExportScopeSupported(exportType: ExportTypeCode, exportScope: ExportScopeCode): boolean {
+  return EXPORT_SCOPE_SUPPORT_MATRIX[exportType].includes(exportScope)
+}
+
+function firstSupportedExportScope(exportType: ExportTypeCode): ExportScopeCode {
+  return EXPORT_SCOPE_SUPPORT_MATRIX[exportType][0]
+}
+
+const exportScopeOptions = computed(() => ALL_EXPORT_SCOPE_CODES.map((code) => ({
   value: code,
   label: exportScopeLabel(code),
-}))
+  disabled: !isExportScopeSupported(createForm.exportType, code),
+})))
+
+const exportConstraintHint = computed(() => {
+  if (createForm.exportType === ExportTypeCode.ANALYSIS_REPORT) {
+    return '分析报告仅支持整场考试导出'
+  }
+  if (createForm.exportType === ExportTypeCode.SCORE_PDF) {
+    return '成绩 PDF 支持整场考试、班级和学生范围，不支持按题导出'
+  }
+  if (createForm.exportType === ExportTypeCode.IMAGE_ARCHIVE) {
+    return '影像归档包支持整场考试、班级和学生范围，不支持按题导出'
+  }
+  return '按题导出仅支持成绩 Excel'
+})
 
 function exportTypeLabel(code: ExportTypeCode): string {
   return strictEnumLabel(ExportTypeDescription, code, '导出类型')
@@ -864,6 +910,7 @@ const createForm = reactive<{
 
 const createValid = computed(() => {
   if (!selectedExamId.value || !createForm.exportType || !createForm.exportScope) return false
+  if (!isExportScopeSupported(createForm.exportType, createForm.exportScope)) return false
   if (createForm.exportScope === ExportScopeCode.CLASS) return createForm.classIds.length > 0
   if (createForm.exportScope === ExportScopeCode.QUESTION)
     return createForm.layoutQuestionIds.length > 0
@@ -1054,6 +1101,15 @@ watch(
     createForm.classIds = []
     createForm.layoutQuestionIds = []
     createForm.studentUserIds = []
+  },
+)
+
+watch(
+  () => createForm.exportType,
+  (exportType) => {
+    if (!isExportScopeSupported(exportType, createForm.exportScope)) {
+      createForm.exportScope = firstSupportedExportScope(exportType)
+    }
   },
 )
 

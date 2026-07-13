@@ -18,6 +18,7 @@ import {
   getExamLayoutPaperSpecDescription,
   requireExamLayoutPaperSpecCode,
 } from '@/types/enums/exam-layout-paper-spec-enum'
+import { MarkOcrSceneCode } from '@/types/enums/mark-ocr-scene-enum'
 import { ObjectiveComparePolicyCode } from '@/types/enums/objective-compare-policy-enum'
 import {
   ALL_PAPER_MASTER_IDENTITY_AREA_TYPE_CODES,
@@ -611,6 +612,7 @@ function validateQuestionAnswerAsset(question: {
   id?: string
   questionNo?: string
   questionType?: string
+  ocrScene?: string
   answer?: {
     standardAnswer?: string
     comparePolicy?: string
@@ -631,10 +633,10 @@ function validateQuestionAnswerAsset(question: {
   if (!answer?.comparePolicy) {
     return [`${label} 需配置客观题比较策略`]
   }
+  if (requiresDeclaredOptions(question) && !hasNonBlankOption(answer.declaredOptions)) {
+    return [`${label} 需填写选项空间`]
+  }
   if (answer.comparePolicy === ObjectiveComparePolicyCode.CHOICE_SET) {
-    if (!hasNonBlankOption(answer.declaredOptions)) {
-      return [`${label} 需填写选项空间`]
-    }
     if (!hasNonBlankOption(answer.choiceOptions)) {
       return [`${label} 需填写正确选项`]
     }
@@ -654,6 +656,14 @@ function validateQuestionAnswerAsset(question: {
  */
 function hasNonBlankOption(options?: Array<{ optionLabel?: string }>): boolean {
   return Boolean(options?.some((option) => option.optionLabel?.trim()))
+}
+
+/**
+ * 判断当前题目后续识别/评分链是否强依赖正式声明选项空间。
+ */
+function requiresDeclaredOptions(question: { questionType?: string, ocrScene?: string }): boolean {
+  return question.questionType === 'OBJECTIVE'
+    && (question.ocrScene === MarkOcrSceneCode.CHOICE || question.ocrScene === MarkOcrSceneCode.TRUE_FALSE)
 }
 
 export function snapStageValue(

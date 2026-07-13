@@ -132,6 +132,7 @@ const columns: ColumnsType<PortfolioEvaluationObjectionSummaryVO> = [
   { title: '任务', dataIndex: 'taskName', key: 'taskName' },
   { title: '公示标题', dataIndex: 'publicityTitle', key: 'publicityTitle' },
   { title: '异议类型', key: 'objectionType', width: 120 },
+  { title: '争议指标', dataIndex: 'indicatorCode', key: 'indicatorCode', width: 150 },
   { title: '状态', key: 'objectionStatus', width: 110 },
   { title: '复核结论', key: 'handleAction', width: 120 },
   { title: '理由', dataIndex: 'objectionReason', key: 'objectionReason' },
@@ -205,8 +206,8 @@ async function submitReview() {
           : '确认退回重新评审？',
       content:
         reviewForm.action === PortfolioEvaluationObjectionHandleActionCode.REVOKE
-          ? '将软删该教师当前评价条目并重算画像，操作不可自动恢复。'
-          : '将关闭公示、软删评价条目并回退任务至专家评审，需重新组织评审。',
+          ? `将撤销${reviewTarget.value.indicatorCode ? `指标“${reviewTarget.value.indicatorCode}”的` : '该教师全部'}当前评价条目并重算画像，操作不可自动恢复。`
+          : `将关闭公示、撤销${reviewTarget.value.indicatorCode ? `指标“${reviewTarget.value.indicatorCode}”的` : '该教师全部'}评价条目并回退任务至专家评审，需重新组织评审。`,
       okText: '确认提交',
     })
     if (!confirmed) {
@@ -335,6 +336,9 @@ void loadPage()
                 '评价异议类型',
               )
             }}
+          </template>
+          <template v-else-if="column.key === 'indicatorCode'">
+            {{ record.indicatorCode || '按人评价' }}
           </template>
           <template v-else-if="column.key === 'objectionStatus'">
             <UiTag :tone="statusTone(record.objectionStatus)">

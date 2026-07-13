@@ -185,7 +185,7 @@ async function pollAnalysis(taskId: string): Promise<PortfolioAiAnalysisDetailVO
       return null
     }
     if (task.status === 'SUCCEEDED') {
-      const detail = await portfolioAiJobApi.getAnalysisByTask(taskId)
+      const detail = await portfolioAiJobApi.getAnnualReportAnalysisByTask(taskId)
       if (currentToken !== reportRequestToken.value) {
         return null
       }
