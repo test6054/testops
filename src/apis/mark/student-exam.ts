@@ -62,6 +62,16 @@ export interface StudentExamItemVO {
   reviewWindowOpenTime?: string
   reviewWindowCloseTime?: string
   reviewWindowStatus: ReviewWindowPolicyStatusCode
+  /** 复核最大申请次数 */
+  maxRequestCount?: number
+  /** 本卷已使用申请次数（不含已驳回） */
+  usedReviewRequestCount?: number
+  /** 本卷开放中申请数 */
+  openReviewRequestCount?: number
+  /** 当前是否在复核时间窗内 */
+  reviewWindowWithinTime?: boolean
+  /** 服务端真源：是否可提交复核 */
+  canSubmitReviewRequest?: boolean
   /** 涉密 / 统考涉密场次 */
   confidential?: boolean
 }
@@ -112,6 +122,11 @@ export interface StudentScoreDetailResponse {
   reviewWindowOpenTime?: string
   reviewWindowCloseTime?: string
   reviewWindowStatus: ReviewWindowPolicyStatusCode
+  maxRequestCount?: number
+  usedReviewRequestCount?: number
+  openReviewRequestCount?: number
+  reviewWindowWithinTime?: boolean
+  canSubmitReviewRequest?: boolean
   /** 涉密 / 统考涉密场次 */
   confidential?: boolean
 }
@@ -229,9 +244,36 @@ export function getMyQuestionAnswerDetail(
   )
 }
 
+/**
+ * 学生是否可提交复核申请。
+ * 优先使用后端 canSubmitReviewRequest 真源；缺省时回退到本地时间窗/开放申请/次数判断，避免旧接口短暂不一致。
+ */
 export function canSubmitReview(item: StudentExamItemVO | StudentScoreDetailResponse): boolean {
-  return (
-    item.finalScoreStatus === FinalScoreStatusCode.PUBLISHED
-    && item.reviewWindowStatus === ReviewWindowPolicyStatusCode.ACTIVE
-  )
+  if (typeof item.canSubmitReviewRequest === 'boolean') {
+    return item.canSubmitReviewRequest
+  }
+  if (item.finalScoreStatus !== FinalScoreStatusCode.PUBLISHED) {
+    return false
+  }
+  if (item.reviewWindowStatus !== ReviewWindowPolicyStatusCode.ACTIVE) {
+    return false
+  }
+  if (item.reviewWindowWithinTime === false) {
+    return false
+  }
+  if ((item.openReviewRequestCount ?? 0) > 0) {
+    return false
+  }
+  if (item.maxRequestCount != null && (item.usedReviewRequestCount ?? 0) >= item.maxRequestCount) {
+    return false
+  }
+  if (item.reviewWindowOpenTime && item.reviewWindowCloseTime) {
+    const now = Date.now()
+    const openAt = new Date(item.reviewWindowOpenTime).getTime()
+    const closeAt = new Date(item.reviewWindowCloseTime).getTime()
+    if (Number.isFinite(openAt) && Number.isFinite(closeAt) && (now < openAt || now > closeAt)) {
+      return false
+    }
+  }
+  return true
 }
