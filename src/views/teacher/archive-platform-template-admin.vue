@@ -66,8 +66,6 @@ const editorDrawerTitle = computed(() =>
   editorSetCode.value ? `编辑模板：${editorSetCode.value}` : '新建模板套',
 )
 
-const examFormOptions = ARCHIVE_EXAM_FORM_OPTIONS
-
 const platformColumns: ColumnsType<ArchivePlatformTemplateSetResponse> = [
   { title: '作用域', key: 'templateScope', width: 100, align: 'center' },
   { title: '套编码', dataIndex: 'setCode', key: 'setCode', width: 180 },
@@ -315,7 +313,7 @@ onMounted(loadPlatformSets)
               <span>考核形式</span>
               <a-select
                 v-model:value="editorMeta.examForm"
-                :options="examFormOptions"
+                :options="ARCHIVE_EXAM_FORM_OPTIONS"
                 style="width: 100%"
               />
             </label>

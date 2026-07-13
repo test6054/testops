@@ -66,7 +66,7 @@
                 <template v-else-if="column.key === 'dutyType'">
                   <UiSelect
                     v-model="dutyRows[index].dutyType"
-                    :options="dutyTypeOptions"
+                    :options="ARCHIVE_DUTY_TYPE_OPTIONS"
                     :allow-clear="false"
                   />
                 </template>
@@ -139,14 +139,14 @@
                 <template v-if="column.key === 'dutyType'">
                   <a-select
                     v-model:value="policyRows[index].dutyType"
-                    :options="dutyTypeOptions"
+                    :options="ARCHIVE_DUTY_TYPE_OPTIONS"
                     style="width: 100%"
                   />
                 </template>
                 <template v-else-if="column.key === 'maxSecurityLevel'">
                   <a-select
                     v-model:value="policyRows[index].maxSecurityLevel"
-                    :options="securityLevelOptions"
+                    :options="ARCHIVE_SECURITY_LEVEL_OPTIONS"
                     style="width: 100%"
                   />
                 </template>
@@ -271,7 +271,7 @@
                 <template v-else-if="column.key === 'deadlineTier'">
                   <UiSelect
                     v-model="deadlineRows[index].deadlineTier"
-                    :options="deadlineTierOptions"
+                    :options="ARCHIVE_DEADLINE_TIER_OPTIONS"
                     :allow-clear="false"
                   />
                 </template>
@@ -505,10 +505,6 @@ function syncRouteQueryTab(tab: string) {
     },
   })
 }
-
-const dutyTypeOptions = ARCHIVE_DUTY_TYPE_OPTIONS
-const securityLevelOptions = ARCHIVE_SECURITY_LEVEL_OPTIONS
-const deadlineTierOptions = ARCHIVE_DEADLINE_TIER_OPTIONS
 
 const dutyColumns: ColumnsType<DutyRow> = [
   { title: '用户', key: 'userId', width: 220 },

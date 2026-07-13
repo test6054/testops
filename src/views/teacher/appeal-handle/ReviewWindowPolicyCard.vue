@@ -62,7 +62,7 @@
                 v-model:value="form.allowedReasonTypes"
                 mode="multiple"
                 allow-clear
-                :options="reasonTypeOptions"
+                :options="GRADE_REVIEW_REASON_TYPE_OPTIONS"
               />
             </a-form-item>
           </a-col>
@@ -183,8 +183,6 @@ const scopeOptions: { label: string, value: VisibleMaterialScopeCode }[] = [
     value: VisibleMaterialScopeCode.FULL,
   },
 ]
-
-const reasonTypeOptions = GRADE_REVIEW_REASON_TYPE_OPTIONS
 
 async function reload(): Promise<void> {
   if (!props.examId) return

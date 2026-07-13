@@ -358,8 +358,6 @@ const filterModel = computed<Record<string, unknown>>({
   },
 })
 
-const statusOptions = MARKING_TASK_STATUS_OPTIONS
-
 const taskPoolSummary = computed(() => claimContext.value?.taskSummary ?? null)
 
 const completedTaskCount = computed(() => {
@@ -789,7 +787,7 @@ const taskFilterFields = computed<FilterField[]>(() => [
     placeholder: '全部状态',
     allowClear: true,
     width: 160,
-    options: statusOptions.map((item) => ({ label: item.label, value: item.value })),
+    options: MARKING_TASK_STATUS_OPTIONS.map((item) => ({ label: item.label, value: item.value })),
   },
   {
     key: 'groupId',

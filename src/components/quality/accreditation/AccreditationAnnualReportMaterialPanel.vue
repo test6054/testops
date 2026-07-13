@@ -45,8 +45,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{ refresh: [] }>()
 
-const MATERIAL_CATEGORY_OPTIONS = ANNUAL_REPORT_MATERIAL_CATEGORY_OPTIONS
-
 const MATERIAL_STATUS_OPTIONS: { label: string, value: AnnualReportMaterialStatusCode }[]
   = ALL_ANNUAL_REPORT_MATERIAL_STATUS_CODES.map((value) => ({
     value,
@@ -458,7 +456,7 @@ defineExpose({ loadMaterials, openCreate })
         placeholder="材料类别"
       >
         <a-select-option
-          v-for="item in MATERIAL_CATEGORY_OPTIONS"
+          v-for="item in ANNUAL_REPORT_MATERIAL_CATEGORY_OPTIONS"
           :key="item.value"
           :value="item.value"
         >
@@ -570,7 +568,7 @@ defineExpose({ loadMaterials, openCreate })
         <a-form-item label="材料类别" required>
           <a-select v-model:value="form.materialCategory" :disabled="!!form.id">
             <a-select-option
-              v-for="item in MATERIAL_CATEGORY_OPTIONS"
+              v-for="item in ANNUAL_REPORT_MATERIAL_CATEGORY_OPTIONS"
               :key="item.value"
               :value="item.value"
             >

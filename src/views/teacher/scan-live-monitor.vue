@@ -656,10 +656,6 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScanLiveMonitor' })
 
-const SCAN_BATCH_FILTER_PAGE_SIZE = REMOTE_SEARCH_PAGE_SIZE
-const MONITOR_BATCH_PAGE_SIZE = DEFAULT_LIST_PAGE_SIZE
-const PAPER_CANDIDATE_FILTER_PAGE_SIZE = REMOTE_SEARCH_PAGE_SIZE
-
 const router = useRouter()
 const route = useRoute()
 
@@ -868,7 +864,7 @@ const attentionFilterFields = computed<FilterField[]>(() => {
       width: 160,
       minWidth: 140,
       maxWidth: 200,
-      options: attentionTypeOptions.map((item) => ({
+      options: SCAN_ATTENTION_TYPE_OPTIONS.map((item) => ({
         value: item.value,
         label: item.label,
       })),
@@ -907,7 +903,7 @@ const monitorBatches = ref<ExamScannerBatchResponse[]>([])
 const monitorBatchLoading = ref(false)
 const monitorBatchPagination = reactive({
   current: 1,
-  pageSize: MONITOR_BATCH_PAGE_SIZE,
+  pageSize: DEFAULT_LIST_PAGE_SIZE,
   total: 0,
 })
 const monitorBatchColumns: ColumnType<ExamScannerBatchResponse>[] = [
@@ -1410,8 +1406,6 @@ function openAttentionReviewWorkspace(): void {
   })
 }
 
-const attentionTypeOptions = SCAN_ATTENTION_TYPE_OPTIONS
-
 function scanBatchStatusLabel(batch: ExamScannerBatchResponse): string {
   return strictEnumLabel(ScanBatchStatusDescription, batch.status, '扫描批次状态')
 }
@@ -1528,7 +1522,7 @@ async function loadScanBatches(keyword = scanBatchKeyword.value): Promise<void> 
     const page = await pageScannerBatches({
       examId,
       pageNum: 1,
-      pageSize: SCAN_BATCH_FILTER_PAGE_SIZE,
+      pageSize: REMOTE_SEARCH_PAGE_SIZE,
       keyword: normalizedKeyword || undefined,
       includeDiscarded: false,
     })
@@ -1553,7 +1547,7 @@ async function loadPaperCandidates(keyword = paperCandidateKeyword.value): Promi
     const page = await pageExamScoreSummary({
       examId,
       pageNum: 1,
-      pageSize: PAPER_CANDIDATE_FILTER_PAGE_SIZE,
+      pageSize: REMOTE_SEARCH_PAGE_SIZE,
       keyword: normalizedKeyword || undefined,
     })
     paperCandidates.value = page.list.filter((item) => item.paperInstanceId)

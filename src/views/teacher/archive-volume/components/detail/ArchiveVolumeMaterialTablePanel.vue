@@ -161,7 +161,7 @@
         <a-form-item label="材料类型" required>
           <a-select
             v-model:value="uploadForm.materialType"
-            :options="materialTypeOptions"
+            :options="ARCHIVE_MATERIAL_TYPE_OPTIONS"
             placeholder="选择材料类型"
           />
         </a-form-item>
@@ -405,8 +405,6 @@ const sharedRefTypeOptions = [
   { value: ArchiveSharedMaterialRefTypeCode.UNIFIED_EXAM_PUBLIC, label: '统考公用' },
   { value: ArchiveSharedMaterialRefTypeCode.MERGED_CLASS_SHARED, label: '合班合用' },
 ]
-
-const materialTypeOptions = ARCHIVE_MATERIAL_TYPE_OPTIONS
 
 const materialColumns: ColumnsType<ArchiveVolumeMaterialResponse> = [
   { title: '类别', key: 'materialType', width: 160 },

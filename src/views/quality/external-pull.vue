@@ -169,10 +169,6 @@ const detailResultColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 180 },
 ]
 
-const filterOperatorOptions = EXTERNAL_PULL_FILTER_OPERATOR_OPTIONS
-
-const sortDirectionOptions = EXTERNAL_PULL_SORT_DIRECTION_OPTIONS
-
 const sources = ref<ExternalDataSourceVO[]>([])
 const sourceTotal = ref(0)
 const sourceLoading = ref(false)
@@ -239,10 +235,6 @@ const detailAuditPageNum = ref(1)
 const detailAuditPageSize = ref(20)
 const detailAuditTotal = ref(0)
 
-const sourceTypeOptions = EXTERNAL_SOURCE_TYPE_OPTIONS
-const taskStatusOptions = EXTERNAL_PULL_TASK_STATUS_OPTIONS
-const businessAnchorOptions = BUSINESS_ANCHOR_OPTIONS
-
 interface ExternalPullTaskFilterModel {
   [key: string]: unknown
   sourceId?: string
@@ -278,7 +270,7 @@ const taskFilterFields = computed<FilterField[]>(() => [
     placeholder: '状态',
     allowClear: true,
     width: 120,
-    options: taskStatusOptions,
+    options: EXTERNAL_PULL_TASK_STATUS_OPTIONS,
   },
   {
     key: 'businessAnchor',
@@ -286,7 +278,7 @@ const taskFilterFields = computed<FilterField[]>(() => [
     placeholder: '业务归属',
     allowClear: true,
     width: 160,
-    options: businessAnchorOptions,
+    options: BUSINESS_ANCHOR_OPTIONS,
   },
 ])
 
@@ -468,7 +460,7 @@ function auditCheckStatusLabel(value: ExternalPullAuditCheckStatusCode): string 
 }
 
 function filterOperatorText(operator: ExternalPullFilterOperatorCode): string {
-  const option = filterOperatorOptions.find((item) => item.value === operator)
+  const option = EXTERNAL_PULL_FILTER_OPERATOR_OPTIONS.find((item) => item.value === operator)
   if (!option) return ' '
   return option.label
 }
@@ -1323,7 +1315,7 @@ onMounted(async () => {
         <a-row :gutter="12">
           <a-col :span="12">
             <a-form-item label="数据库类型" required>
-              <a-select v-model:value="sourceForm.sourceType" :options="sourceTypeOptions" />
+              <a-select v-model:value="sourceForm.sourceType" :options="EXTERNAL_SOURCE_TYPE_OPTIONS" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
@@ -1456,7 +1448,7 @@ onMounted(async () => {
               <a-select
                 v-model:value="taskForm.businessAnchor"
                 placeholder="选择业务归属"
-                :options="businessAnchorOptions"
+                :options="BUSINESS_ANCHOR_OPTIONS"
                 @change="handleTaskBusinessAnchorChange"
               />
             </a-form-item>
@@ -1563,7 +1555,7 @@ onMounted(async () => {
                 <a-col :span="6">
                   <a-select
                     v-model:value="entry.operator"
-                    :options="filterOperatorOptions"
+                    :options="EXTERNAL_PULL_FILTER_OPERATOR_OPTIONS"
                     @change="handleFilterOperatorChange(entry)"
                   />
                 </a-col>
@@ -1605,7 +1597,7 @@ onMounted(async () => {
                   />
                 </a-col>
                 <a-col :span="8">
-                  <a-select v-model:value="entry.sortDirection" :options="sortDirectionOptions" />
+                  <a-select v-model:value="entry.sortDirection" :options="EXTERNAL_PULL_SORT_DIRECTION_OPTIONS" />
                 </a-col>
                 <a-col :span="6">
                   <UiTextAction tone="danger" @click="taskSorts.splice(index, 1)">

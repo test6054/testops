@@ -127,10 +127,6 @@ const query = reactive<EvaluationWorkgroupQueryRequest>({
   levelCode: undefined,
 })
 
-const levelOptions = WORKGROUP_LEVEL_OPTIONS
-
-const memberRoleOptions = WORKGROUP_MEMBER_ROLE_OPTIONS
-
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
 type EvaluationWorkgroupEditor = EvaluationWorkgroupSaveRequest & {
@@ -590,7 +586,7 @@ onActivated(() => {
             <a-form-item label="层级" required>
               <a-select
                 v-model:value="editor.levelCode"
-                :options="levelOptions"
+                :options="WORKGROUP_LEVEL_OPTIONS"
                 :disabled="editorMode === 'edit'"
               />
             </a-form-item>
@@ -651,7 +647,7 @@ onActivated(() => {
                 <a-col :span="5">
                   <a-select
                     v-model:value="member.role"
-                    :options="memberRoleOptions"
+                    :options="WORKGROUP_MEMBER_ROLE_OPTIONS"
                     placeholder="角色"
                   />
                 </a-col>

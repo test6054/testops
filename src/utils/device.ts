@@ -25,7 +25,6 @@ const EPOCH = 1704067200000n
 const WORKER_ID_BITS = 5n
 const DATACENTER_ID_BITS = 5n
 const SEQUENCE_BITS = 12n
-const WORKER_ID_SHIFT = SEQUENCE_BITS
 const DATACENTER_ID_SHIFT = SEQUENCE_BITS + WORKER_ID_BITS
 const TIMESTAMP_LEFT_SHIFT = SEQUENCE_BITS + WORKER_ID_BITS + DATACENTER_ID_BITS
 const SEQUENCE_MASK = (1n << SEQUENCE_BITS) - 1n
@@ -83,7 +82,7 @@ function generateSnowflakeId(): string {
   const id
     = ((timestamp - EPOCH) << TIMESTAMP_LEFT_SHIFT)
       | (datacenterId << DATACENTER_ID_SHIFT)
-      | (workerId << WORKER_ID_SHIFT)
+      | (workerId << SEQUENCE_BITS)
       | sequence
 
   return id.toString()

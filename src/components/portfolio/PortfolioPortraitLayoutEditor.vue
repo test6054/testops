@@ -23,13 +23,11 @@ const GRID_ROWS = 8
 const dragIndex = ref<number | null>(null)
 const selectedIndex = ref<number | null>(null)
 
-const widgetOptions = PORTRAIT_WIDGET_TYPE_OPTIONS
-
 function selectPortraitWidget(value: unknown): PortraitWidgetTypeCode | undefined {
   if (typeof value !== 'string') {
     return undefined
   }
-  return widgetOptions.find((option) => option.value === value)?.value
+  return PORTRAIT_WIDGET_TYPE_OPTIONS.find((option) => option.value === value)?.value
 }
 
 function selectPortraitDimension(value: unknown): PortfolioPortraitDimensionCode | undefined {
@@ -161,7 +159,7 @@ function selectWidget(index: number) {
     <div v-if="selectedIndex != null && widgets[selectedIndex]" class="layout-props">
       <a-select
         :value="widgets[selectedIndex].widget"
-        :options="widgetOptions"
+        :options="PORTRAIT_WIDGET_TYPE_OPTIONS"
         style="width: 120px"
         @update:value="updateSelectedWidget(selectedIndex, $event)"
       />

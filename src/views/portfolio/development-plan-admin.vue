@@ -224,8 +224,6 @@ const orgColumns: ColumnsType = [
   { title: '数量', dataIndex: 'planCount', key: 'planCount', width: 80 },
 ]
 
-const itemStatusOptions = PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_OPTIONS
-
 const itemColumns: ColumnsType = [
   { title: '标题', dataIndex: 'itemTitle', key: 'itemTitle', width: 160 },
   { title: '目标', dataIndex: 'itemGoal', key: 'itemGoal', width: 160 },
@@ -729,7 +727,7 @@ watch(
                   v-if="planItemEditable"
                   v-model:value="record.itemStatus"
                   style="width: 100%"
-                  :options="itemStatusOptions"
+                  :options="PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_OPTIONS"
                 />
                 <UiTag v-else tone="blue">
                   {{

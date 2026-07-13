@@ -23,7 +23,8 @@ export interface PrepStepRouteLocation {
   query?: Record<string, string>
 }
 
-const PREP_STEP_ROUTES: Record<string, string> = {
+/** 准备步骤 key → 工作台路由名真源，供 snapshot 级 workflow 映射复用。 */
+export const PREP_STEP_ROUTE_BY_KEY: Readonly<Record<string, string>> = {
   materialLayout: 'TeacherExamWorkspacePrep',
   candidateRoster: 'TeacherExamWorkspaceCandidateRoster',
   paperTemplate: 'TeacherExamWorkspaceLayoutDesigner',
@@ -31,9 +32,6 @@ const PREP_STEP_ROUTES: Record<string, string> = {
   printPackage: 'TeacherExamWorkspacePrintPackage',
   experienceAssist: 'TeacherExamWorkspaceMarkingExperienceAssistPolicy',
 }
-
-/** 准备步骤 key → 工作台路由名真源，供 snapshot 级 workflow 映射复用。 */
-export const PREP_STEP_ROUTE_BY_KEY: Readonly<Record<string, string>> = PREP_STEP_ROUTES
 
 export function resolvePrepStepRouteName(stepKey: string): string {
   const routeName = PREP_STEP_ROUTE_BY_KEY[stepKey]
@@ -164,7 +162,7 @@ export function buildPrepStepCards(
   detail: ExamDetailResponse,
 ): PrepStepCard[] {
   return backendSteps.map((step) => {
-    const routeName = PREP_STEP_ROUTES[step.key]
+    const routeName = PREP_STEP_ROUTE_BY_KEY[step.key]
     if (!routeName) {
       throw new Error(`未知准备步骤键：${step.key}`)
     }

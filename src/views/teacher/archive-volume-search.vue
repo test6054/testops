@@ -165,7 +165,7 @@
                 v-model:value="filterForm.materialType"
                 allow-clear
                 class="archive-search-advanced__select"
-                :options="materialTypeOptions"
+                :options="ARCHIVE_MATERIAL_TYPE_OPTIONS"
                 placeholder="全部类型"
               />
             </div>
@@ -540,8 +540,6 @@ const selectedOwnedProfile = computed(() => {
   const profile = searchProfiles.value.find((item) => item.profileId === selectedProfileId.value)
   return Boolean(profile?.ownedByCurrentUser)
 })
-
-const materialTypeOptions = ARCHIVE_MATERIAL_TYPE_OPTIONS
 
 const ocrStatusOptions = ARCHIVE_MATERIAL_OCR_STATUS_OPTIONS.map((item) => ({
   label: item.label,

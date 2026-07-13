@@ -24,8 +24,6 @@ const emit = defineEmits<{
   save: []
 }>()
 
-const printSourceOptions = EXAM_PRINT_SOURCE_MODE_OPTIONS
-
 const printSourceHint = computed(() => {
   if (draftLayoutMode.value !== ExamMaterialLayoutModeCode.FULL_PAPER) {
     return ''
@@ -89,7 +87,7 @@ function handleSave(): void {
           v-model:value="draftPrintSource"
           :disabled="layoutModeLocked"
           placeholder="选择印刷来源"
-          :options="printSourceOptions"
+          :options="EXAM_PRINT_SOURCE_MODE_OPTIONS"
           style="width: 200px"
         />
       </a-form-item>

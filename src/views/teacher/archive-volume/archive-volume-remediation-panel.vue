@@ -171,7 +171,7 @@
         <a-form-item label="状态" required>
           <a-select
             v-model:value="campaignForm.campaignStatus"
-            :options="campaignStatusOptions"
+            :options="ARCHIVE_EVALUATION_CAMPAIGN_STATUS_OPTIONS"
             style="width: 100%"
           />
         </a-form-item>
@@ -233,7 +233,7 @@
         <a-form-item label="诊断码">
           <a-select
             v-model:value="createTaskForm.diagnosticCode"
-            :options="remediationDiagnosticOptions"
+            :options="ARCHIVE_REMEDIATION_DIAGNOSTIC_CODE_OPTIONS"
             allow-clear
             placeholder="选择诊断类型"
             style="width: 100%"
@@ -344,10 +344,6 @@ const selectedCampaign = ref<ArchiveEvaluationCampaignResponse | null>(null)
 const tasks = ref<ArchiveRemediationTaskResponse[]>([])
 const selectedCampaignId = ref<string>()
 const taskPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
-
-const remediationDiagnosticOptions = ARCHIVE_REMEDIATION_DIAGNOSTIC_CODE_OPTIONS
-
-const campaignStatusOptions = ARCHIVE_EVALUATION_CAMPAIGN_STATUS_OPTIONS
 
 interface RemediationCampaignForm {
   campaignId: string | undefined

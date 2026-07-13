@@ -122,7 +122,7 @@
           </a-col>
           <a-col :span="12">
             <a-form-item name="status" label="设备状态">
-              <a-select v-model:value="formData.status" :options="statusOptions" />
+              <a-select v-model:value="formData.status" :options="SCANNER_DEVICE_STATUS_OPTIONS" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
@@ -415,8 +415,6 @@ const showActivationCodeModal = ref(false)
 const activationCodeInfo = ref<ExamScannerActivationCodeResponse | null>(null)
 const activationCodeDeviceName = ref('')
 
-const statusOptions = SCANNER_DEVICE_STATUS_OPTIONS
-
 const deviceFilterFields = computed<FilterField[]>(() => [
   {
     key: 'scannerDeviceIdKeyword',
@@ -440,7 +438,7 @@ const deviceFilterFields = computed<FilterField[]>(() => [
     placeholder: '设备状态',
     allowClear: true,
     width: 160,
-    options: statusOptions.map((item) => ({ label: item.label, value: item.value })),
+    options: SCANNER_DEVICE_STATUS_OPTIONS.map((item) => ({ label: item.label, value: item.value })),
   },
 ])
 

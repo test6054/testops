@@ -44,7 +44,7 @@
           <template v-if="column.key === 'materialType'">
             <a-select
               v-model:value="rows[index].materialType"
-              :options="materialTypeOptions"
+              :options="ARCHIVE_MATERIAL_TYPE_OPTIONS"
               style="width: 100%"
             />
           </template>
@@ -132,8 +132,6 @@ const form = ref({
 const rows = ref<SyncRow[]>([])
 const rowFileInputRef = ref<HTMLInputElement | null>(null)
 const activeRowIndex = ref<number | null>(null)
-
-const materialTypeOptions = ARCHIVE_MATERIAL_TYPE_OPTIONS
 
 const columns: ColumnsType<SyncRow> = [
   { title: '材料类型', key: 'materialType', width: 180 },

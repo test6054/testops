@@ -37,7 +37,7 @@
       >
         <a-segmented
           :value="rosterForm.scopeMode"
-          :options="scopeModeOptions"
+          :options="EXAM_ROSTER_SCOPE_MODE_OPTIONS"
           block
           @change="handleScopeModeChange"
         />
@@ -206,8 +206,6 @@ const {
 watch(departmentId, (id) => {
   rosterForm.referenceDepartmentId = id
 })
-
-const scopeModeOptions = EXAM_ROSTER_SCOPE_MODE_OPTIONS
 
 const referenceClassTip = computed(() =>
   rosterForm.scopeMode === ExamRosterScopeModeCode.BY_CLASS

@@ -89,9 +89,6 @@ const supervisionTypeOptions: Array<{ value: AuditSupervisionTypeCode, label: st
     label: AuditSupervisionTypeDescription.ACCREDITATION_AUDIT,
   },
 ]
-const supScopeOptions = AUDIT_SUPERVISION_SCOPE_OPTIONS
-const supConclusionOptions = AUDIT_SUPERVISION_CONCLUSION_OPTIONS
-
 function supervisionTypeLabel(value: AuditSupervisionTypeCode): string {
   return strictEnumLabel(AuditSupervisionTypeDescription, value, '督导类型')
 }
@@ -147,7 +144,7 @@ const supFilterFields: FilterField[] = [
     placeholder: '结论',
     allowClear: true,
     width: 120,
-    options: supConclusionOptions.map((item) => ({ value: item.value, label: item.label })),
+    options: AUDIT_SUPERVISION_CONCLUSION_OPTIONS.map((item) => ({ value: item.value, label: item.label })),
   },
   {
     key: 'keyword',
@@ -615,7 +612,7 @@ defineExpose({
           <a-form-item label="范围">
             <a-select
               v-model:value="supEditor.supervisionScope"
-              :options="supScopeOptions"
+              :options="AUDIT_SUPERVISION_SCOPE_OPTIONS"
               :disabled="supEditorMode === 'edit'"
             />
           </a-form-item>
@@ -688,7 +685,7 @@ defineExpose({
         <a-col :span="12">
           <a-form-item label="结论">
             <a-select v-model:value="supEditor.conclusion" allow-clear>
-              <a-select-option v-for="c in supConclusionOptions" :key="c.value" :value="c.value">
+              <a-select-option v-for="c in AUDIT_SUPERVISION_CONCLUSION_OPTIONS" :key="c.value" :value="c.value">
                 {{ c.label }}
               </a-select-option>
             </a-select>

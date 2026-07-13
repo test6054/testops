@@ -164,28 +164,6 @@ export interface ScanDispatchTicketPageRequest extends QueryDto {
   excludeFailed?: boolean
 }
 
-/** 失败派单 ticket 条目，对应后端 FailedTicketItemVO */
-export interface FailedTicketItemVO {
-  ticketId?: string
-  status?: ScanDispatchTicketStatusCode
-  failureReason?: string
-  traceLabelCode?: string
-}
-
-/** 失败扫描工单条目，对应后端 FailedWorkOrderItemVO */
-export interface FailedWorkOrderItemVO {
-  workOrderId?: string
-  batchExternalNo?: string
-  status?: ScanWorkOrderStatusCode
-  diagnostic?: string
-  taskKind?: ScanTaskKindCode
-  contextExamId?: string
-  contextVolumeId?: string
-  contextCollectMode?: PortfolioCollectModeCode
-  contextTeacherId?: string
-  contextGapTaskId?: string
-}
-
 /** 扫描异常看板分页条目，对应后端 ScannerExceptionDashboardItemVO */
 export interface ScannerExceptionDashboardItemVO {
   itemKind?: ScannerExceptionItemKindCode
@@ -222,33 +200,6 @@ export interface ScannerExceptionDashboardPageRequest extends QueryDto {
   itemKind?: ScannerExceptionItemKindCode
   taskKind?: ScanTaskKindCode
   examId?: string
-}
-
-/** 扫描异常看板聚合 VO，对应后端 ScannerExceptionDashboardVO */
-export interface ScannerExceptionDashboardVO {
-  failedTickets?: FailedTicketItemVO[]
-  failedTicketCount?: number
-  failedWorkOrders?: FailedWorkOrderItemVO[]
-  failedWorkOrderCount?: number
-  committingWorkOrders?: FailedWorkOrderItemVO[]
-  committingWorkOrderCount?: number
-  pageRegisterBlockedBatches?: PageRegisterBlockedBatchItemVO[]
-  pageRegisterBlockedCount?: number
-}
-
-/** 页登记阻断批次条目，对应 ScannerExceptionDashboardVO.PageRegisterBlockedBatchItemVO */
-export interface PageRegisterBlockedBatchItemVO {
-  scanBatchId?: string
-  examId?: string
-  batchExternalNo?: string
-  batchNo?: string
-  pageCount?: number
-  registeredPageCount?: number
-  batchDiagnostic?: string
-  pageRegisterDiagnostic?: string
-  workOrderId?: string
-  taskKind?: ScanTaskKindCode
-  workOrderBatchExternalNo?: string
 }
 
 export interface ScanDispatchForceReleaseRequest {

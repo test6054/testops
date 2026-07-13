@@ -122,10 +122,6 @@ const {
   },
 )
 
-const evaluationModeOptions = PORTFOLIO_EVALUATION_MODE_OPTIONS
-
-const taskStatusOptions = PORTFOLIO_EVALUATION_TASK_STATUS_OPTIONS
-
 const columns: ColumnsType = [
   { title: '任务名称', dataIndex: 'taskName', key: 'taskName' },
   { title: '模式', dataIndex: 'evaluationMode', key: 'evaluationMode', width: 100 },
@@ -354,7 +350,7 @@ onMounted(async () => {
           v-model:value="form.evaluationMode"
           placeholder="评价模式"
           style="width: 120px"
-          :options="evaluationModeOptions"
+          :options="PORTFOLIO_EVALUATION_MODE_OPTIONS"
         />
         <a-select
           v-if="form.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON"
@@ -391,7 +387,7 @@ onMounted(async () => {
           allow-clear
           placeholder="任务状态"
           style="width: 120px"
-          :options="taskStatusOptions"
+          :options="PORTFOLIO_EVALUATION_TASK_STATUS_OPTIONS"
           @change="search"
         />
         <UiButton @click="search"> 查询 </UiButton>

@@ -197,7 +197,7 @@ function lifecycleFilterToStatus(
     return ScanDispatchTicketStatusCode.PROCESSING
   }
   if (filter === DispatchQueueStatusFilterCode.SUSPENDED) {
-    return DispatchQueueStatusFilterCode.SUSPENDED
+    return ScanDispatchTicketStatusCode.SUSPENDED
   }
   return undefined
 }

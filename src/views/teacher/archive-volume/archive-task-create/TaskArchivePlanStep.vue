@@ -36,7 +36,7 @@
           <a-form-item label="考核形式" :label-col="labelCol" :wrapper-col="wrapperCol">
             <a-select
               v-model:value="planForm.examForm"
-              :options="examFormOptions"
+              :options="ARCHIVE_EXAM_FORM_OPTIONS"
               allow-clear
               placeholder="可选"
             />
@@ -64,7 +64,7 @@
             :label-col="labelCol"
             :wrapper-col="wrapperCol"
           >
-            <a-select v-model:value="planForm.securityLevel" :options="securityLevelOptions" />
+            <a-select v-model:value="planForm.securityLevel" :options="ARCHIVE_SECURITY_LEVEL_OPTIONS" />
           </a-form-item>
         </a-col>
         <a-col :span="12">
@@ -234,9 +234,6 @@ const templateSetCodeSelectValue = computed({
     planForm.templateSetCode = selectValueToNullableString(value)
   },
 })
-
-const examFormOptions = ARCHIVE_EXAM_FORM_OPTIONS
-const securityLevelOptions = ARCHIVE_SECURITY_LEVEL_OPTIONS
 
 const scoreSourceOptions = computed(() => {
   if (wizardState.provenance === ArchiveTaskProvenanceCode.CURRENT_TERM_OFFLINE) {

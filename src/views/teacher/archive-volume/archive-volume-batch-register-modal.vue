@@ -20,7 +20,7 @@
       <a-form-item label="默认材料类型">
         <a-select
           v-model:value="defaultMaterialType"
-          :options="materialTypeOptions"
+          :options="ARCHIVE_MATERIAL_TYPE_OPTIONS"
           allow-clear
           placeholder="可为每行单独设置"
           style="width: 100%"
@@ -55,7 +55,7 @@
         <template v-if="column.key === 'materialType'">
           <a-select
             v-model:value="rows[index].materialType"
-            :options="materialTypeOptions"
+            :options="ARCHIVE_MATERIAL_TYPE_OPTIONS"
             style="width: 100%"
           />
         </template>
@@ -126,8 +126,6 @@ const defaultMaterialType = ref<ArchiveMaterialTypeCode>()
 const defaultTags = ref<string[]>([])
 const rows = ref<BatchRow[]>([])
 const fileInputRef = ref<HTMLInputElement | null>(null)
-
-const materialTypeOptions = ARCHIVE_MATERIAL_TYPE_OPTIONS
 
 const columns: ColumnsType<BatchRow> = [
   { title: '文件名', key: 'fileName' },

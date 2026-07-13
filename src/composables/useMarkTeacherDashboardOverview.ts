@@ -6,7 +6,6 @@ import type {
   MarkTeacherDashboardSignalSectionVO,
   MarkTeacherDashboardTodosSectionVO,
 } from '@/apis/mark/teacher-dashboard'
-import type { MarkTeacherDashboardPendingTodoScopeCode } from '@/types/enums/mark-teacher-dashboard-pending-todo-scope-enum'
 import { debounce } from 'lodash-es'
 import { computed, onUnmounted, ref } from 'vue'
 import { ExamStatusCode } from '@/apis/mark/exam'
@@ -19,7 +18,7 @@ import {
 import {
   MARK_DASHBOARD_ONGOING_EXAM_PAGE_SIZE,
   MARK_DASHBOARD_PENDING_TODO_PAGE_SIZE,
-  MarkTeacherDashboardPendingTodoScopeCode as PendingTodoScopeCode,
+  MarkTeacherDashboardPendingTodoScopeCode,
 } from '@/types/enums/mark-teacher-dashboard-pending-todo-scope-enum'
 import {
   getDefaultAcademicYearAndSemester,
@@ -76,7 +75,7 @@ export function useMarkTeacherDashboardOverview(
   const ongoingExamPageSize = ref(MARK_DASHBOARD_ONGOING_EXAM_PAGE_SIZE)
   const pendingTodoPageNum = ref(1)
   const pendingTodoPageSize = ref(MARK_DASHBOARD_PENDING_TODO_PAGE_SIZE)
-  const pendingTodoScope = ref<MarkTeacherDashboardPendingTodoScopeCode>(PendingTodoScopeCode.ALL)
+  const pendingTodoScope = ref<MarkTeacherDashboardPendingTodoScopeCode>(MarkTeacherDashboardPendingTodoScopeCode.ALL)
 
   let loadGeneration = 0
   let syncingFilterFromServer = false

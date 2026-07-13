@@ -27,8 +27,6 @@ const emit = defineEmits<{
 
 const pageBlocks = computed(() => blocksOnPage(props.document, props.pageNo))
 
-const addableTypes = ALL_EXAM_LAYOUT_BLOCK_TYPE_CODES
-
 function addBlock(blockType: ExamLayoutBlockTypeCode): void {
   if (!props.document) {
     return
@@ -82,7 +80,7 @@ function moveLayer(delta: number): void {
         <template #overlay>
           <a-menu>
             <a-menu-item
-              v-for="blockType in addableTypes"
+              v-for="blockType in ALL_EXAM_LAYOUT_BLOCK_TYPE_CODES"
               :key="blockType"
               @click="addBlock(blockType)"
             >

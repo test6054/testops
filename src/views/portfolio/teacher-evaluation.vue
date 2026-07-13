@@ -122,7 +122,6 @@ const objectionEvidenceFileNodeId = ref('')
 const objectionEvidenceFileName = ref('')
 const evaluationRequestToken = ref(0)
 
-const objectionTypeOptions = PORTFOLIO_EVALUATION_OBJECTION_TYPE_OPTIONS
 const objectionIndicatorOptions = computed(() => {
   const indicatorCodes = new Set<string>()
   for (const entry of resultSummary.value?.entries ?? []) {
@@ -757,7 +756,7 @@ watch(
       <Select
         v-model:value="objectionForm.objectionType"
         class="teacher-evaluation__form-field"
-        :options="objectionTypeOptions"
+        :options="PORTFOLIO_EVALUATION_OBJECTION_TYPE_OPTIONS"
         placeholder="异议类型"
       />
       <Select

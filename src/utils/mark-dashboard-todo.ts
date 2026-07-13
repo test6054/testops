@@ -5,6 +5,7 @@ import {
   MarkTeacherDashboardTodoTypeCode,
   MarkTeacherDashboardTodoTypeDescription
 } from '@/types/enums/mark-teacher-dashboard-todo-type-enum'
+import { MarkTeacherDashboardPendingTodoScopeCode } from '@/types/enums/mark-teacher-dashboard-pending-todo-scope-enum'
 import { formatAcademicYearSemester } from '@/types/enums/semester-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -178,10 +179,10 @@ export function resolveTodoRowContext(todo: MarkTeacherDashboardPendingTodoItemV
 
 export function resolvePendingTodoScopeByTab(
   tab: MarkDashboardPendingTodoTabKey,
-): 'ALL' | 'URGENT' | 'ATTENTION' {
-  if (tab === 'urgent') return 'URGENT'
-  if (tab === 'attention') return 'ATTENTION'
-  return 'ALL'
+): MarkTeacherDashboardPendingTodoScopeCode {
+  if (tab === 'urgent') return MarkTeacherDashboardPendingTodoScopeCode.URGENT
+  if (tab === 'attention') return MarkTeacherDashboardPendingTodoScopeCode.ATTENTION
+  return MarkTeacherDashboardPendingTodoScopeCode.ALL
 }
 
 export function resolveDefaultPendingTodoTab(

@@ -144,8 +144,6 @@ const nodePageSize = ref(20)
 const nodeTotal = ref(0)
 const selectedNode = ref<ProcessEvaluationNodeVO | null>(null)
 
-const nodeTypeOptions = PROCESS_NODE_TYPE_OPTIONS
-
 async function loadNodes() {
   if (!qualityStore.currentQualityCourseId) {
     nodes.value = []
@@ -1059,7 +1057,7 @@ function handleCourseChange(courseId: string | null) {
           </a-col>
           <a-col :span="8">
             <a-form-item label="节点类型" required>
-              <a-select v-model:value="nodeEditor.nodeType" :options="nodeTypeOptions" />
+              <a-select v-model:value="nodeEditor.nodeType" :options="PROCESS_NODE_TYPE_OPTIONS" />
             </a-form-item>
           </a-col>
           <a-col :span="8">

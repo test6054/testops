@@ -35,8 +35,6 @@ const form = reactive<PortfolioArchiveScoreRuleSaveRequest>({
   officialOnly: 1,
 })
 
-const ruleTypeOptions = PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_OPTIONS
-
 const columns: ColumnsType = [
   { title: '规则名称', dataIndex: 'ruleName', key: 'ruleName' },
   { title: '类型', dataIndex: 'ruleType', key: 'ruleType', width: 120 },
@@ -189,7 +187,7 @@ onMounted(loadRules)
     >
       <a-form layout="vertical">
         <a-form-item label="规则类型" required>
-          <a-select v-model:value="form.ruleType" :options="ruleTypeOptions" />
+          <a-select v-model:value="form.ruleType" :options="PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_OPTIONS" />
         </a-form-item>
         <a-form-item label="规则名称" required>
           <a-input v-model:value="form.ruleName" />

@@ -264,7 +264,7 @@
         <a-form-item label="新密级" required>
           <a-select
             v-model:value="updateSecurityLevelForm.securityLevel"
-            :options="securityLevelOptions"
+            :options="ARCHIVE_SECURITY_LEVEL_OPTIONS"
             placeholder="选择密级"
           />
         </a-form-item>
@@ -361,7 +361,6 @@ interface UpdateSecurityLevelForm {
 const updateSecurityLevelForm = reactive<UpdateSecurityLevelForm>({
   reason: '',
 })
-const securityLevelOptions = ARCHIVE_SECURITY_LEVEL_OPTIONS
 const delayAllowTarget = ref<ArchiveIntegrityMissingItemVO | null>(null)
 const waiveMissingTarget = ref<ArchiveIntegrityMissingItemVO | null>(null)
 interface ArchiveIntegrityDelayAllowForm {

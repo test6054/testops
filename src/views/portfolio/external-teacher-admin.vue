@@ -119,8 +119,6 @@ const form = reactive<PortfolioExternalTeacherSaveRequest>({
   dataStatus: PortfolioExternalTeacherDataStatusCode.ACTIVE,
 })
 
-const dataStatusOptions = PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS
-
 const columns: ColumnsType<PortfolioExternalTeacherVO> = [
   { title: '姓名', dataIndex: 'fullName', key: 'fullName', width: 88, fixed: 'left' },
   { title: '性别', dataIndex: 'gender', key: 'gender', width: 56 },
@@ -451,7 +449,7 @@ onMounted(async () => {
               allow-clear
               placeholder="数据状态"
               style="width: 120px"
-              :options="dataStatusOptions"
+              :options="PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS"
               @change="searchRoster"
             />
             <a-input
@@ -672,7 +670,7 @@ onMounted(async () => {
             />
           </a-form-item>
           <a-form-item label="数据状态">
-            <a-select v-model:value="form.dataStatus" :options="dataStatusOptions" />
+            <a-select v-model:value="form.dataStatus" :options="PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS" />
           </a-form-item>
           <a-form-item label="附件材料">
             <input
