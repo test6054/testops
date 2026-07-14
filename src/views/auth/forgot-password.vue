@@ -415,13 +415,13 @@ onUnmounted(() => {
   color: rgba(255, 255, 255, 0.7);
 
   .brand-step--active & {
-    background: #fff;
-    color: #2563eb;
+    background: var(--ant-color-white);
+    color: var(--ant-color-primary);
   }
 
   .brand-step--done & {
     background: rgba(255, 255, 255, 0.2);
-    color: #fff;
+    color: var(--ant-color-white);
   }
 }
 
@@ -430,7 +430,7 @@ onUnmounted(() => {
   color: rgba(255, 255, 255, 0.7);
 
   .brand-step--active & {
-    color: #fff;
+    color: var(--ant-color-white);
     font-weight: 600;
   }
 }
@@ -490,7 +490,7 @@ onUnmounted(() => {
 
 .step-dot--active .step-dot__num {
   background: var(--dp-blue-600);
-  color: #fff;
+  color: var(--ant-color-white);
 }
 
 .step-dot--active .step-dot__label {
@@ -590,19 +590,19 @@ onUnmounted(() => {
     background-color 0.3s;
 
   &.strength-1 {
-    background: #ef4444;
+    background: var(--ant-color-error);
   }
   &.strength-2 {
-    background: #f59e0b;
+    background: var(--ant-color-warning);
   }
   &.strength-3 {
-    background: #eab308;
+    background: var(--dp-yellow-500);
   }
   &.strength-4 {
-    background: #22c55e;
+    background: var(--ant-color-success);
   }
   &.strength-5 {
-    background: #2563eb;
+    background: var(--ant-color-primary);
   }
 }
 

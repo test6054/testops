@@ -6,7 +6,7 @@ import type {
 } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { message, Modal } from 'ant-design-vue'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
   PortfolioDualTeacherApplicationStatusCode,
@@ -15,25 +15,33 @@ import {
 import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { usePortfolioReviewAccess } from '@/composables/usePortfolioReviewAccess'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
-import { hasTeacherTenantPermission, RoleEnum } from '@/utils/permission'
+import { hasTeacherTenantPermission } from '@/utils/permission'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const authStore = useAuthStore()
 const userStore = useUserStore()
+const { accessScope, ensureLoaded } = usePortfolioReviewAccess()
 const collegeEligibilityById = ref<Record<string, PortfolioDualTeacherEligibilityFreezeVO>>({})
-const canCollegeReview = computed(() => authStore.userRole === RoleEnum.CROP_ADMIN)
+/** 双师院审：受管教研室负责人或租户全校范围（与后端 assertCanCollegeReviewDualTeacher 一致） */
+const canCollegeReview = computed(() => {
+  const scope = accessScope.value
+  if (!scope?.reviewAccess) {
+    return false
+  }
+  return Boolean(scope.teachingGroupLeader || scope.tenantWide)
+})
 const canAcademicReview = computed(() =>
   hasTeacherTenantPermission({
     roleKey: authStore.userRole,
@@ -41,6 +49,10 @@ const canAcademicReview = computed(() =>
   }),
 )
 const canExport = computed(() => canAcademicReview.value)
+
+onMounted(() => {
+  void ensureLoaded()
+})
 
 function statusLabel(status: PortfolioDualTeacherApplicationVO['applicationStatus']) {
   return strictEnumLabel(PortfolioDualTeacherApplicationStatusDescription, status, '双师申请状态')
@@ -207,23 +219,25 @@ async function handleImportSuccess() {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="双师认定台账" />
+      <ContextBar show-title layout="workbench" title="双师认定台账">
+        <template #actions>
+          <UiButton size="sm" variant="outline" @click="loadPage"> 刷新 </UiButton>
+          <UiButton v-if="canExport" size="sm" variant="outline" @click="importModalOpen = true">
+            Excel 导入
+          </UiButton>
+          <UiButton v-if="canExport" size="sm" variant="primary" @click="exportRoster">
+            导出台账
+          </UiButton>
+        </template>
+      </ContextBar>
     </template>
-    <UiCard title="历史数据导入">
-      <UiButton v-if="canExport" @click="importModalOpen = true"> Excel 批量导入 </UiButton>
-    </UiCard>
     <UiPlatformExcelImportModal
       v-model:open="importModalOpen"
       :scene-key="ExcelImportSceneKey.PORTFOLIO_DUAL_TEACHER"
       entity-label="双师认定历史数据"
       @success="handleImportSuccess"
     />
-    <UiCard>
-      <div class="toolbar">
-        <UiButton @click="loadPage"> 刷新 </UiButton>
-        <UiButton variant="primary" v-if="canExport" @click="exportRoster"> 导出台账 </UiButton>
-      </div>
-      <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无双师认定记录" />
+    <WorkbenchSurfaceCard flush>
       <UiDataTable
         v-model:current="pageNum"
         v-model:page-size="pageSize"
@@ -233,7 +247,9 @@ async function handleImportSuccess() {
         :data-source="rows"
         :loading="loading"
         row-key="id"
-        style="margin-top: 16px"
+        flat
+        empty-kind="first-run"
+        empty-description="当前无双师认定申请。院审/教务待办出现后会出现在此台账；勿将空表理解为流程已清零。"
         @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">
@@ -263,13 +279,6 @@ async function handleImportSuccess() {
           </template>
         </template>
       </UiDataTable>
-    </UiCard>
+    </WorkbenchSurfaceCard>
   </StageWorkbenchShell>
 </template>
-
-<style scoped>
-.toolbar {
-  display: flex;
-  gap: 8px;
-}
-</style>

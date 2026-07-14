@@ -11,6 +11,7 @@ import {
   QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS,
 } from '@/components/quality/selectors/page-contract'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import { usePortfolioReviewAccess } from '@/composables/usePortfolioReviewAccess'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { usePortfolioStore } from '@/stores/modules/portfolio'
 import { showUserError } from '@/utils/error-handler'
@@ -25,7 +26,8 @@ const emit = defineEmits<{
 const route = useRoute()
 const router = useRouter()
 const portfolioStore = usePortfolioStore()
-const { canPickTeachers, currentUserId, resolveDefaultTeacherId } = usePortfolioTeacherAccess()
+const { canPickTeachers, canReviewPortfolio, currentUserId, resolveDefaultTeacherId } = usePortfolioTeacherAccess()
+const { accessScope, ensureLoaded } = usePortfolioReviewAccess()
 
 const teacherOptions = ref<PortfolioTeacherSummaryVO[]>([])
 const loading = ref(false)
@@ -46,8 +48,14 @@ const selfTeacherLabel = computed(() => {
   if (canPickTeachers.value) {
     return ''
   }
+  if (selectedTeacherId.value && selectedTeacherId.value !== currentUserId.value) {
+    const teacher = teacherOptions.value.find((item) => item.userId === selectedTeacherId.value)
+    return `当前查看教师：${teacher?.nickName || teacher?.teacherNumber || selectedTeacherId.value}`
+  }
   return '当前教师：本人'
 })
+
+const canFollowTeacherQuery = computed(() => canPickTeachers.value || canReviewPortfolio.value)
 
 async function loadTeacherOptions(keyword?: string) {
   if (!canPickTeachers.value) {
@@ -133,12 +141,15 @@ function syncRouteQuery(teacherId: string) {
 
 function bootstrapFromRoute() {
   const queryId = typeof route.query.teacherId === 'string' ? route.query.teacherId : ''
-  if (queryId) {
+  if (queryId && canFollowTeacherQuery.value) {
     portfolioStore.currentTeacherId = queryId
     return
   }
   if (!canPickTeachers.value && currentUserId.value) {
     portfolioStore.currentTeacherId = currentUserId.value
+    if (queryId && queryId !== currentUserId.value) {
+      syncRouteQuery(currentUserId.value)
+    }
   }
 }
 
@@ -146,6 +157,17 @@ watch(
   () => route.query.teacherId,
   (teacherId) => {
     const id = typeof teacherId === 'string' ? teacherId : ''
+    if (!canPickTeachers.value && accessScope.value === null) {
+      return
+    }
+    if (!canFollowTeacherQuery.value) {
+      const selfId = currentUserId.value
+      if (selfId && id !== selfId) {
+        portfolioStore.currentTeacherId = selfId
+        syncRouteQuery(selfId)
+      }
+      return
+    }
     if (id && id !== portfolioStore.currentTeacherId) {
       portfolioStore.currentTeacherId = id
       portfolioStore.bumpScopeChangeEpoch()
@@ -153,7 +175,8 @@ watch(
   },
 )
 
-onMounted(() => {
+onMounted(async () => {
+  await ensureLoaded()
   bootstrapFromRoute()
   void hydrateTeacherOption(portfolioStore.currentTeacherId || resolveDefaultTeacherId())
   void loadTeacherOptions()

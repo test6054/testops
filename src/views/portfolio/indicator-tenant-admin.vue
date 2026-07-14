@@ -367,7 +367,7 @@ onMounted(loadConfig)
               <template v-if="column.key === 'enabled'">
                 <a-switch
                   :checked="record.enabled"
-                  @change="(v) => handleConfigEnabledChange(record, v)"
+                  @change="handleConfigEnabledChange(record, $event)"
                 />
               </template>
               <template v-else-if="column.key === 'actions'">
@@ -412,7 +412,7 @@ onMounted(loadConfig)
                   <template v-if="column.key === 'enabled'">
                     <a-switch
                       :checked="record.enabled"
-                      @change="(v) => handleSceneEnabledChange(record.indicatorCode, v)"
+                      @change="handleSceneEnabledChange(record.indicatorCode, $event)"
                     />
                   </template>
                   <template v-else-if="column.key === 'weight'">
@@ -421,7 +421,7 @@ onMounted(loadConfig)
                       :min="0"
                       :max="100"
                       style="width: 100px"
-                      @change="(v) => handleSceneWeightChange(record.indicatorCode, v)"
+                      @change="handleSceneWeightChange(record.indicatorCode, $event)"
                     />
                   </template>
                 </template>

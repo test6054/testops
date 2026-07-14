@@ -119,7 +119,7 @@ function handleAction(action: ArchiveVolumeNextStepActionVO): void {
 }
 
 .archive-next-steps__item--primary {
-  border-left: 3px solid var(--dp-orange-500);
+  border-color: var(--dp-orange-500);
   background: color-mix(in srgb, var(--dp-orange-500) 6%, var(--dp-surface));
 }
 

@@ -4,6 +4,7 @@ import { cloneDeep } from 'lodash-es'
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import XEUtils from 'xe-utils'
+import { passesPortfolioReviewerGate } from '@/router/permission'
 import { commonRoutes } from '@/router/routes/common'
 import { portfolioRoutes } from '@/router/routes/portfolio'
 import { qualityRoutes } from '@/router/routes/quality'
@@ -78,10 +79,11 @@ const storeSetup = (): RouteStoreState => {
     asyncRoutes.value = data
   }
 
-  // 监听租户管理员权限变化，自动重新生成菜单
   const userStore = useUserStore()
+
+  // 权限版本是服务端授权投影的失效信号；变化后必须整表重建菜单。
   watch(
-    () => userStore.userInfo.isTenantAdmin,
+    () => [userStore.userInfo.permissionVersion, userStore.userInfo.isTenantAdmin],
     () => {
       void generateMenus()
     },
@@ -143,9 +145,9 @@ const storeSetup = (): RouteStoreState => {
           }
         }
 
-        // 档案审核台：院系负责人 / 租户管理员 / 超管
+        // 档案审核台由服务端审核范围投影决定，教研室负责人须为具备受管教研室的 SCH_TECH。
         if (route.meta?.requirePortfolioReviewer) {
-          return userRole === RoleEnum.SUPER_ADMIN || userIsTenantAdmin
+          return passesPortfolioReviewerGate(userRole as RoleEnum, userIsTenantAdmin)
         }
 
         return true

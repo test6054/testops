@@ -93,7 +93,7 @@ const copyright = computed(() => appStore.getCopyright())
   display: flex;
   min-height: 100vh;
   position: relative;
-  background: #fff;
+  background: var(--ant-color-bg-container);
 }
 
 .auth-brand {
@@ -128,7 +128,7 @@ const copyright = computed(() => appStore.getCopyright())
   font-size: 23px;
   line-height: 1;
   font-weight: 800;
-  color: #23426f;
+  color: var(--dp-text-primary);
 }
 
 .auth-brand__product-sub {
@@ -168,7 +168,7 @@ const copyright = computed(() => appStore.getCopyright())
   font-size: 12px;
   line-height: 1;
   font-weight: 700;
-  color: #4e6487;
+  color: var(--dp-text-secondary);
   background: rgba(239, 244, 251, 0.92);
   border: 1px solid rgba(188, 202, 223, 0.9);
   box-shadow: none;
@@ -222,7 +222,7 @@ const copyright = computed(() => appStore.getCopyright())
   padding: 72px 40px 132px;
   position: relative;
   overflow-y: auto;
-  background: #fff;
+  background: var(--ant-color-bg-container);
 
   .auth-layout--wide & {
     min-width: 100%;
@@ -280,8 +280,8 @@ const copyright = computed(() => appStore.getCopyright())
     align-items: center;
     gap: 10px;
     padding: 14px 20px;
-    background: #1e3a5f;
-    color: #fff;
+    background: var(--ant-color-primary);
+    color: var(--ant-color-white);
   }
 
   .auth-mobile-bar__logo {

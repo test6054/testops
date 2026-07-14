@@ -30,6 +30,21 @@
         </template>
         <span>{{ item.meta?.title }}</span>
       </a-menu-item>
+      <a-sub-menu
+        v-if="secondaryGroupItems(markingGrouped.ungrouped).length > 0"
+        :key="moreMenuKey(MARKING_DOMAIN_KEY)"
+      >
+        <template #title>
+          <span>{{ moreMenuLabel('marking', markingGrouped.ungrouped) }}</span>
+        </template>
+        <a-menu-item
+          v-for="item in secondaryGroupItems(markingGrouped.ungrouped)"
+          :key="item.path"
+          :disabled="item.meta?.disabled"
+        >
+          <span>{{ item.meta?.title }}</span>
+        </a-menu-item>
+      </a-sub-menu>
       <template v-for="group in markingGrouped.groups" :key="group.key">
         <a-menu-item
           v-if="isFlattenedMenuGroup(group)"
@@ -64,6 +79,21 @@
             </template>
             <span>{{ item.meta?.title }}</span>
           </a-menu-item>
+          <a-sub-menu
+            v-if="secondaryGroupItems(group.items).length > 0"
+            :key="moreMenuKey(group.key)"
+          >
+            <template #title>
+              <span>{{ moreMenuLabel('group', group.items, group.title) }}</span>
+            </template>
+            <a-menu-item
+              v-for="item in secondaryGroupItems(group.items)"
+              :key="item.path"
+              :disabled="item.meta?.disabled"
+            >
+              <span>{{ item.meta?.title }}</span>
+            </a-menu-item>
+          </a-sub-menu>
         </a-sub-menu>
       </template>
     </a-sub-menu>
@@ -88,6 +118,20 @@
         </template>
         <span>{{ menuRouteLabel(item) }}</span>
       </a-menu-item>
+      <a-sub-menu
+        v-if="secondaryGroupItems(qualityGrouped.ungrouped).length > 0"
+        :key="moreMenuKey(QUALITY_DOMAIN_KEY)"
+      >
+        <template #title>
+          <span>{{ moreMenuLabel('quality', qualityGrouped.ungrouped) }}</span>
+        </template>
+        <a-menu-item
+          v-for="item in secondaryGroupItems(qualityGrouped.ungrouped)"
+          :key="item.path"
+        >
+          <span>{{ menuRouteLabel(item) }}</span>
+        </a-menu-item>
+      </a-sub-menu>
       <template v-for="group in qualityGrouped.groups" :key="group.key">
         <a-menu-item
           v-if="isFlattenedMenuGroup(group)"
@@ -120,6 +164,20 @@
             </template>
             <span>{{ menuRouteLabel(item) }}</span>
           </a-menu-item>
+          <a-sub-menu
+            v-if="secondaryGroupItems(group.items).length > 0"
+            :key="moreMenuKey(group.key)"
+          >
+            <template #title>
+              <span>{{ moreMenuLabel('group', group.items, group.title) }}</span>
+            </template>
+            <a-menu-item
+              v-for="item in secondaryGroupItems(group.items)"
+              :key="item.path"
+            >
+              <span>{{ menuRouteLabel(item) }}</span>
+            </a-menu-item>
+          </a-sub-menu>
         </a-sub-menu>
       </template>
     </a-sub-menu>
@@ -145,6 +203,21 @@
         </template>
         <span>{{ item.meta?.title }}</span>
       </a-menu-item>
+      <a-sub-menu
+        v-if="secondaryGroupItems(portfolioGrouped.ungrouped).length > 0"
+        :key="moreMenuKey(PORTFOLIO_DOMAIN_KEY)"
+      >
+        <template #title>
+          <span>{{ moreMenuLabel('portfolio', portfolioGrouped.ungrouped) }}</span>
+        </template>
+        <a-menu-item
+          v-for="item in secondaryGroupItems(portfolioGrouped.ungrouped)"
+          :key="item.path"
+          :disabled="item.meta?.disabled"
+        >
+          <span>{{ item.meta?.title }}</span>
+        </a-menu-item>
+      </a-sub-menu>
       <template v-for="group in portfolioGrouped.groups" :key="group.key">
         <a-menu-item
           v-if="isFlattenedMenuGroup(group)"
@@ -179,6 +252,21 @@
             </template>
             <span>{{ item.meta?.title }}</span>
           </a-menu-item>
+          <a-sub-menu
+            v-if="secondaryGroupItems(group.items).length > 0"
+            :key="moreMenuKey(group.key)"
+          >
+            <template #title>
+              <span>{{ moreMenuLabel('group', group.items, group.title) }}</span>
+            </template>
+            <a-menu-item
+              v-for="item in secondaryGroupItems(group.items)"
+              :key="item.path"
+              :disabled="item.meta?.disabled"
+            >
+              <span>{{ item.meta?.title }}</span>
+            </a-menu-item>
+          </a-sub-menu>
         </a-sub-menu>
       </template>
     </a-sub-menu>
@@ -204,6 +292,21 @@
         </template>
         <span>{{ item.meta?.title }}</span>
       </a-menu-item>
+      <a-sub-menu
+        v-if="secondaryGroupItems(platformMenuItems).length > 0"
+        :key="moreMenuKey(PLATFORM_DOMAIN_KEY)"
+      >
+        <template #title>
+          <span>{{ moreMenuLabel('platform', platformMenuItems) }}</span>
+        </template>
+        <a-menu-item
+          v-for="item in secondaryGroupItems(platformMenuItems)"
+          :key="item.path"
+          :disabled="item.meta?.disabled"
+        >
+          <span>{{ item.meta?.title }}</span>
+        </a-menu-item>
+      </a-sub-menu>
     </a-sub-menu>
   </a-menu>
 </template>
@@ -221,6 +324,12 @@ import {
   QUALITY_PLAN_GATE_REASON_NO_PLAN,
   QUALITY_PLAN_GATE_REASON_UNCONFIRMED,
 } from '@/utils/quality-plan-guard'
+import {
+  primarySideMenuRoutes,
+  secondarySideMenuRoutes,
+  visiblePrimarySideMenuRoutes,
+  visibleSecondarySideMenuRoutes,
+} from '@/utils/side-menu-tier'
 import { isExternal } from '@/utils/validate'
 import MenuCollapsedTooltip from './MenuCollapsedTooltip.vue'
 import MenuIcon from './MenuIcon.vue'
@@ -292,14 +401,56 @@ function menuRouteLabel(item: RouteRecordRaw): string {
   return title
 }
 
-/** 四域侧栏全量展示菜单项，禁止「更多」折叠隐藏入口 */
+/** primary 入口 + 当前激活的 secondary（避免选中项不可见） */
 function primaryGroupItems(items: RouteRecordRaw[]): RouteRecordRaw[] {
-  return items
+  return visiblePrimarySideMenuRoutes(items, route.path)
 }
 
-/** 仅含一个页面的分组在侧栏展平为一级菜单项，不再展开二级子菜单。 */
+/** 低频 secondary 收进语义化「更多入口」，避免仅显示「更多」导致需靠记忆找路径 */
+function secondaryGroupItems(items: RouteRecordRaw[]): RouteRecordRaw[] {
+  return visibleSecondarySideMenuRoutes(items, route.path)
+}
+
+function moreMenuLabel(
+  scope: 'marking' | 'quality' | 'portfolio' | 'platform' | 'group',
+  items: RouteRecordRaw[],
+  groupTitle?: string,
+): string {
+  const count = secondaryGroupItems(items).length
+  const suffix = count > 0 ? `（${count}）` : ''
+  switch (scope) {
+    case 'marking':
+      return `阅卷辅助与配置${suffix}`
+    case 'quality':
+      return `质量配置与台账${suffix}`
+    case 'portfolio':
+      return `档案袋管理入口${suffix}`
+    case 'platform':
+      return `平台管理入口${suffix}`
+    case 'group':
+      return `${groupTitle ?? '本组'}·更多入口${suffix}`
+  }
+}
+
+function moreMenuKey(parentKey: string): string {
+  return `${parentKey}__more`
+}
+
+/** 仅含一个 primary 且无 secondary 时展平，避免误藏「更多」。 */
 function isFlattenedMenuGroup(group: MenuGroup): boolean {
-  return group.items.length === 1
+  return (
+    primarySideMenuRoutes(group.items).length === 1
+    && secondarySideMenuRoutes(group.items).length === 0
+  )
+}
+
+function shouldOpenMoreSubmenu(items: RouteRecordRaw[]): boolean {
+  return secondarySideMenuRoutes(items).some((item) => {
+    if (!item.path) {
+      return false
+    }
+    return route.path === item.path || route.path.startsWith(`${item.path}/`)
+  })
 }
 
 function flattenedMenuGroupItem(group: MenuGroup): RouteRecordRaw {
@@ -432,24 +583,45 @@ function resolveDefaultOpenKeys(): Key[] {
 
   if (route.path.startsWith('/teacher')) {
     keys.push(MARKING_DOMAIN_KEY)
+    if (shouldOpenMoreSubmenu(props.markingGrouped.ungrouped)) {
+      keys.push(moreMenuKey(MARKING_DOMAIN_KEY))
+    }
     if (groupKey && shouldOpenMenuGroup(groupKey, props.markingGrouped)) {
       keys.push(groupKey)
+      const group = props.markingGrouped.groups.find((entry) => entry.key === groupKey)
+      if (group && shouldOpenMoreSubmenu(group.items)) {
+        keys.push(moreMenuKey(groupKey))
+      }
     }
     return keys
   }
 
   if (isPortfolioRoute(route.path)) {
     keys.push(PORTFOLIO_DOMAIN_KEY)
+    if (shouldOpenMoreSubmenu(props.portfolioGrouped.ungrouped)) {
+      keys.push(moreMenuKey(PORTFOLIO_DOMAIN_KEY))
+    }
     if (groupKey && shouldOpenMenuGroup(groupKey, props.portfolioGrouped)) {
       keys.push(groupKey)
+      const group = props.portfolioGrouped.groups.find((entry) => entry.key === groupKey)
+      if (group && shouldOpenMoreSubmenu(group.items)) {
+        keys.push(moreMenuKey(groupKey))
+      }
     }
     return keys
   }
 
   if (route.path.startsWith('/quality')) {
     keys.push(QUALITY_DOMAIN_KEY)
+    if (shouldOpenMoreSubmenu(props.qualityGrouped.ungrouped)) {
+      keys.push(moreMenuKey(QUALITY_DOMAIN_KEY))
+    }
     if (groupKey && shouldOpenMenuGroup(groupKey, props.qualityGrouped)) {
       keys.push(groupKey)
+      const group = props.qualityGrouped.groups.find((entry) => entry.key === groupKey)
+      if (group && shouldOpenMoreSubmenu(group.items)) {
+        keys.push(moreMenuKey(groupKey))
+      }
     }
   }
 
@@ -540,6 +712,18 @@ function onMenuClick({ key }: { key: Key }) {
     // 二级分组下页面项
     .ant-menu-sub.ant-menu-inline > .ant-menu-item {
       padding: 0 12px 0 48px !important;
+    }
+
+    // 「更多」三级入口
+    .ant-menu-sub.ant-menu-inline > .ant-menu-submenu > .ant-menu-submenu-title {
+      padding: 0 12px 0 48px !important;
+    }
+
+    .ant-menu-sub.ant-menu-inline
+      > .ant-menu-submenu
+      > .ant-menu-sub.ant-menu-inline
+      > .ant-menu-item {
+      padding: 0 12px 0 64px !important;
     }
   }
 }

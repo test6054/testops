@@ -114,8 +114,6 @@ export interface UserLoginResponseDto {
   studentDetails?: StudentDetailsDto
   /** 教师详情（如果是教师） */
   teacherDetails?: TeacherLoginDetailsDto
-  /** 企业助教详情（如果是企业助教） */
-  corporateUserDetails?: CorporateUserDetailsDto
   /** 当前登录提供商类型 */
   currentLoginProviderType?: string
   /** 当前登录提供商唯一ID */
@@ -166,16 +164,4 @@ export interface TeacherLoginDetailsDto {
   schoolId?: string
   /** 所属学校名称 */
   schoolName?: string
-}
-
-/**
- * 企业助教详情DTO - 与后端CorporateUserDetailsDto对应
- */
-export interface CorporateUserDetailsDto {
-  /** 企业助教详情ID */
-  corporateUserDetailId: string
-  /** 所属公司ID */
-  companyId?: string
-  /** 企业内职位 */
-  corporatePosition?: string
 }

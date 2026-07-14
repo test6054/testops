@@ -540,7 +540,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
     padding: 0 8px;
     border: 1px solid var(--dp-border-subtle);
     border-radius: 6px;
-    background: #fff;
+    background: var(--ant-color-bg-container);
     color: var(--dp-text-primary);
     font-size: 12px;
     line-height: 24px;
@@ -581,7 +581,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
     top: 0;
     z-index: 1;
     min-height: 24px;
-    background: #fff;
+    background: var(--ant-color-bg-container);
     color: var(--dp-text-secondary);
     font-size: 12px;
   }
@@ -600,13 +600,13 @@ function onSourcePdfChange(fileId: string | undefined): void {
     font-weight: 500;
 
     &--objective {
-      background: #eef6ff;
-      color: #1558a8;
+      background: var(--ant-color-primary-bg);
+      color: var(--ant-color-primary-active);
     }
 
     &--subjective {
-      background: #f6f3ff;
-      color: #5b3fb2;
+      background: var(--dp-purple-50);
+      color: var(--dp-purple-700);
     }
   }
 

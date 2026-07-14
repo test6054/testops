@@ -415,7 +415,7 @@ function qualityFillClass(rate: number): string {
     padding: 0 5px;
     border-radius: var(--dp-radius-full);
     background: var(--dp-red-500);
-    color: #fff;
+    color: var(--ant-color-white);
     font-size: 11px;
     font-weight: 600;
   }

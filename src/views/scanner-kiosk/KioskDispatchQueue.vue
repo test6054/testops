@@ -263,7 +263,7 @@ async function changePage(page: number) {
 }
 .dispatch-queue__head p {
   margin: 4px 0 0;
-  color: var(--nybc-text-secondary, #8c8c8c);
+  color: var(--kiosk-ink-tertiary);
 }
 .dispatch-queue__head-actions {
   display: flex;
@@ -276,7 +276,7 @@ async function changePage(page: number) {
   margin-bottom: 16px;
 }
 .dispatch-queue__error {
-  color: #cf1322;
+  color: var(--kiosk-danger);
   margin-bottom: 12px;
 }
 .dispatch-queue__list {
@@ -289,10 +289,10 @@ async function changePage(page: number) {
 .dispatch-queue__item {
   width: 100%;
   text-align: left;
-  border: 1px solid var(--nybc-border, #e8e8e8);
+  border: 1px solid var(--kiosk-divider);
   border-radius: 6px;
   padding: 12px 16px;
-  background: #fff;
+  background: var(--kiosk-surface);
   cursor: pointer;
 }
 .dispatch-queue__item-top {
@@ -304,12 +304,12 @@ async function changePage(page: number) {
 .dispatch-queue__meta {
   margin: 4px 0 0;
   font-size: 12px;
-  color: var(--nybc-text-secondary, #8c8c8c);
+  color: var(--kiosk-ink-tertiary);
 }
 .dispatch-queue__failure {
   margin: 4px 0 0;
   font-size: 13px;
-  color: #cf1322;
+  color: var(--kiosk-danger);
 }
 .dispatch-queue__pager {
   display: flex;
@@ -319,6 +319,6 @@ async function changePage(page: number) {
   margin-top: 16px;
 }
 .dispatch-queue__empty {
-  color: var(--nybc-text-secondary, #8c8c8c);
+  color: var(--kiosk-ink-tertiary);
 }
 </style>

@@ -124,7 +124,7 @@ function moveLayer(delta: number): void {
   padding: 12px;
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
-  background: #fff;
+  background: var(--ant-color-bg-container);
 
   &__header {
     display: flex;

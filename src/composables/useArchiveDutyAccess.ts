@@ -161,6 +161,25 @@ export function useArchiveDutyAccess() {
       || hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR)
       || hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN),
   )
+
+  function canApproveDestructionForDepartment(departmentId?: string): boolean {
+    return hasDutyForDepartment(ArchiveDutyTypeCode.DESTRUCTION_APPROVER, departmentId)
+  }
+
+  function canReviewTransferForDepartment(departmentId?: string): boolean {
+    return (
+      hasDutyForDepartment(ArchiveDutyTypeCode.TRANSFER_REVIEWER, departmentId)
+      || hasDutyForDepartment(ArchiveDutyTypeCode.ARCHIVE_ADMIN, departmentId)
+    )
+  }
+
+  function canRejectTransferForDepartment(departmentId?: string): boolean {
+    return (
+      hasDutyForDepartment(ArchiveDutyTypeCode.TRANSFER_REVIEWER, departmentId)
+      || hasDutyForDepartment(ArchiveDutyTypeCode.COLLEGE_COORDINATOR, departmentId)
+      || hasDutyForDepartment(ArchiveDutyTypeCode.ARCHIVE_ADMIN, departmentId)
+    )
+  }
   const canViewStatisticsKpi = computed(
     () =>
       hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR)
@@ -218,6 +237,7 @@ export function useArchiveDutyAccess() {
     isTenantAdmin,
     isTenantWideCollegeCoordinator,
     hasDuty,
+    hasDutyForDepartment,
     canApproveAccessForVolume,
     canManageRemediationAsCoordinator,
     filterListDepartmentOptions,
@@ -226,9 +246,12 @@ export function useArchiveDutyAccess() {
     canViewArchiveReviewer,
     canViewSupervision,
     canApproveDestruction,
+    canApproveDestructionForDepartment,
     canApproveAccess,
     canReviewTransfer,
+    canReviewTransferForDepartment,
     canRejectTransfer,
+    canRejectTransferForDepartment,
     canViewStatisticsKpi,
     canRemindArchiveDue,
     canViewSearchAudit,

@@ -54,48 +54,48 @@ export const DEFAULT_ERROR_CONFIG: GlobalErrorConfig = {
     4003: {
       showMessage: true,
       useNotification: false,
-      customMessage: 'AI 额度不足，请联系管理员增加配额'
+      customMessage: 'AI额度不足'
     },
 
     4290: {
       showMessage: true,
       useNotification: false,
-      customMessage: 'AI 资源不足，请联系老师'
+      customMessage: 'AI额度不足'
     },
 
     // 网络超时 - 使用通知
     408: {
       showMessage: true,
       useNotification: false,
-      customMessage: '请求超时，请检查网络连接后继续操作'
+      customMessage: '网络异常'
     },
 
     // 服务器错误 - 必须中文占位，禁止空失败
     500: {
       showMessage: true,
       useNotification: false,
-      customMessage: '服务处理失败，请联系管理员'
+      customMessage: '系统繁忙'
     },
 
     // 网关错误
     502: {
       showMessage: true,
       useNotification: false,
-      customMessage: '网关异常，请联系管理员'
+      customMessage: '系统繁忙'
     },
 
     // 服务不可用
     503: {
       showMessage: true,
       useNotification: false,
-      customMessage: '服务暂时不可用，请联系管理员'
+      customMessage: '系统繁忙'
     },
 
     // 网关超时
     504: {
       showMessage: true,
       useNotification: false,
-      customMessage: '网关超时，请联系管理员'
+      customMessage: '网络异常'
     }
   }
 }

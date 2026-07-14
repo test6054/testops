@@ -408,6 +408,32 @@ export function sealScanBatchByTeacher(
   return http.post<boolean>('/api/mark/exams/scanner-batches/seal', request)
 }
 
+/** 教师 Web 废弃扫描批次请求 - 对应 ExamScanBatchDiscardRequest */
+export interface ExamScanBatchDiscardByTeacherRequest {
+  scanBatchId: string
+  discardReason: string
+}
+
+/** 教师在 Web 端废弃未封存扫描批次（主考权限，非一体机 push_token）。 */
+export function discardScanBatchByTeacher(
+  request: ExamScanBatchDiscardByTeacherRequest,
+): Promise<boolean> {
+  return http.post<boolean>('/api/mark/exams/scanner-batches/discard', request)
+}
+
+/** 教师 Web 废弃单页请求 - 对应 ExamScannedPageDiscardRequest */
+export interface ExamScannedPageDiscardByTeacherRequest {
+  scannedPageId: string
+  discardReason: string
+}
+
+/** 教师在 Web 端废弃单张扫描页（主考权限，非一体机 push_token）。 */
+export function discardScannedPageByTeacher(
+  request: ExamScannedPageDiscardByTeacherRequest,
+): Promise<boolean> {
+  return http.post<boolean>('/api/mark/exams/scanned-pages/discard', request)
+}
+
 /** 查询扫描批次顺序审计结果。 */
 export function getScanBatchOrderAudit(
   request: ScanBatchOrderAuditQueryRequest,

@@ -317,7 +317,7 @@ watch(
   display: block;
   max-width: 100%;
   max-height: 100%;
-  background: #fff;
+  background: var(--ant-color-bg-container);
   box-shadow: var(--scan-paper-shadow);
   user-select: none;
   transform-origin: center center;
@@ -398,8 +398,8 @@ watch(
   box-shadow: 0 0 0 3px var(--dp-focus-ring);
 }
 .scan-stage__btn--toggle.scan-stage__btn--active {
-  background: var(--ant-color-primary, #1677ff);
-  color: #fff;
+  background: var(--ant-color-primary);
+  color: var(--ant-color-white);
 }
 
 .scan-stage__info {

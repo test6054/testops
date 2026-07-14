@@ -4,6 +4,7 @@
  */
 
 import type { RouteRecordRaw } from 'vue-router'
+import { readPortfolioReviewAccessFlag } from '@/composables/usePortfolioReviewAccess'
 import { archiveVolumeWorkspaceRoutes } from '@/router/routes/archive-volume-workspace'
 import { commonRoutes, errorRoutes } from '@/router/routes/common'
 import { constantRoutes } from '@/router/routes/constant'
@@ -151,8 +152,14 @@ function passesTenantAdminRouteGate(userRole: RoleEnum, isTenantAdmin: boolean):
     return userRole === RoleEnum.SUPER_ADMIN || isTenantAdmin
 }
 
-function passesPortfolioReviewerGate(userRole: RoleEnum, isTenantAdmin: boolean): boolean {
-    return userRole === RoleEnum.SUPER_ADMIN || isTenantAdmin
+export function passesPortfolioReviewerGate(userRole: RoleEnum, isTenantAdmin: boolean): boolean {
+  if (userRole === RoleEnum.SUPER_ADMIN || isTenantAdmin) {
+    return true
+  }
+  if (userRole === RoleEnum.SCH_TECH) {
+    return readPortfolioReviewAccessFlag() === true
+  }
+  return false
 }
 
 /**

@@ -225,8 +225,8 @@ function handleExitAction() {
   z-index: var(--kiosk-z-bottom);
 }
 .bottom-bar--orphan {
-  border-color: #f5c7d1;
-  background: #fff8fa;
+  border-color: color-mix(in srgb, var(--kiosk-danger) 40%, var(--kiosk-divider));
+  background: var(--kiosk-danger-soft);
 }
 .orphan-hint {
   position: absolute;
@@ -239,7 +239,7 @@ function handleExitAction() {
   line-height: 1.4;
   color: var(--kiosk-danger);
   background: var(--kiosk-danger-soft);
-  border: 1px solid #f5c7d1;
+  border: 1px solid color-mix(in srgb, var(--kiosk-danger) 40%, var(--kiosk-divider));
   border-radius: var(--kiosk-radius-md);
   white-space: nowrap;
   overflow: hidden;
@@ -316,19 +316,19 @@ function handleExitAction() {
   font-size: 18px;
 }
 .action-btn--secondary:hover:not(:disabled) {
-  background: #eef3ff;
-  border-color: #cad8ff;
+  background: var(--kiosk-primary-soft);
+  border-color: color-mix(in srgb, var(--kiosk-primary) 45%, var(--kiosk-divider));
 }
 .action-btn--primary {
   background: var(--kiosk-primary);
   color: var(--kiosk-primary-on);
   border-color: var(--kiosk-primary);
-  box-shadow: 0 8px 18px rgba(31, 95, 255, 0.18);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--kiosk-primary) 22%, transparent);
 }
 .action-btn--primary:hover:not(:disabled) {
   background: var(--kiosk-primary-pressed);
   border-color: var(--kiosk-primary-pressed);
-  box-shadow: 0 10px 20px rgba(20, 72, 204, 0.24);
+  box-shadow: 0 10px 20px color-mix(in srgb, var(--kiosk-primary-pressed) 28%, transparent);
 }
 .action-btn--ghost {
   background: transparent;
@@ -341,11 +341,11 @@ function handleExitAction() {
 .action-btn--danger {
   background: var(--kiosk-danger-soft);
   color: var(--kiosk-danger);
-  border-color: #f5c7d1;
+  border-color: color-mix(in srgb, var(--kiosk-danger) 40%, var(--kiosk-divider));
 }
 .action-btn--danger:hover:not(:disabled) {
-  background: #f9e2e7;
-  border-color: #ec9bad;
+  background: color-mix(in srgb, var(--kiosk-danger) 14%, var(--kiosk-surface));
+  border-color: color-mix(in srgb, var(--kiosk-danger) 55%, var(--kiosk-divider));
 }
 
 .summary-metric {

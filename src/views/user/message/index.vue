@@ -752,9 +752,9 @@ onActivated(() => {
 .msg-item {
   &--unread {
     :deep(.ant-list-item) {
-      border-color: var(--ant-color-primary-border);
-      border-left: 3px solid var(--ant-color-primary);
+      border-color: var(--ant-color-primary);
       background: var(--dp-blue-50);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ant-color-primary) 35%, transparent);
     }
   }
 

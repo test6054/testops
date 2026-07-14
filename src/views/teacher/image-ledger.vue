@@ -58,7 +58,11 @@ import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { executeImageLedgerBalance, getImageLedgerDetail } from '@/apis/mark/image-ledger'
+import {
+  executeImageLedgerBalance,
+  getImageLedgerDetail,
+  LedgerStatusCode,
+} from '@/apis/mark/image-ledger'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -169,8 +173,12 @@ async function handleBalance(): Promise<void> {
   }
   balancing.value = true
   try {
-    await executeImageLedgerBalance({ examId: selectedExamId.value })
-    message.success('账本对账已执行')
+    const detail = await executeImageLedgerBalance({ examId: selectedExamId.value })
+    if (detail?.ledgerStatus === LedgerStatusCode.BALANCED) {
+      message.success('影像账本已平账')
+    } else {
+      message.warning(detail?.diagnostic || '对账已执行，仍存在未关闭异常，请处理后再发布成绩')
+    }
     await loadAll()
     await refreshSnapshot()
     mittBus.emit('scan-workbench:refresh')

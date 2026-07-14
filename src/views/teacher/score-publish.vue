@@ -37,37 +37,7 @@
       />
 
       <UiAlertStrip
-        v-if="hasPendingAbsence"
-        tone="warning"
-        title="仍有缺考记录待确认"
-        :description="`当前还有 ${pendingAbsenceCountForDisplay} 条待确认缺考，发布前须完成核对。`"
-        dense
-        inline
-        class="score-publish__alert"
-      >
-        <template #actions>
-          <UiButton variant="primary" size="sm" @click="goAbsenceConfirm"> 前往缺考确认 </UiButton>
-        </template>
-      </UiAlertStrip>
-
-      <UiAlertStrip
-        v-if="publishRiskBlocked"
-        tone="warning"
-        title="仍有成绩风险未复核"
-        :description="`当前有 ${effectiveFinalScoreOverview?.blockedCount ?? 0} 项成绩风险未处置，须先在成绩确认页完成集中复核后再发布。`"
-        dense
-        inline
-        class="score-publish__alert"
-      >
-        <template #actions>
-          <UiButton variant="primary" size="sm" @click="goScoreConfirm">
-            前往成绩确认复核
-          </UiButton>
-        </template>
-      </UiAlertStrip>
-
-      <UiAlertStrip
-        v-if="blockedDelayedAutoConfirmNotice"
+        v-if="isPublishGateVisible('delayedAutoConfirm')"
         tone="error"
         title="延迟自动确认连续失败"
         :description="blockedDelayedAutoConfirmNotice"
@@ -84,7 +54,59 @@
       </UiAlertStrip>
 
       <UiAlertStrip
-        v-if="correctedRepublishNotice"
+        v-if="isPublishGateVisible('pendingAbsence')"
+        tone="warning"
+        title="仍有缺考记录待确认"
+        :description="`当前还有 ${pendingAbsenceCountForDisplay} 条待确认缺考，发布前须完成核对。`"
+        dense
+        inline
+        class="score-publish__alert"
+      >
+        <template #actions>
+          <UiButton variant="primary" size="sm" @click="goAbsenceConfirm"> 前往缺考确认 </UiButton>
+        </template>
+      </UiAlertStrip>
+
+      <UiAlertStrip
+        v-if="isPublishGateVisible('scoreZero')"
+        tone="warning"
+        title="缺考计零终分待补齐"
+        :description="`本场有 ${missingAbsenceScoreZeroFinalCount} 名已确认计零的缺考生尚未写入正式零分终分，全场发布前须先补齐。`"
+        dense
+        inline
+        class="score-publish__alert"
+      >
+        <template #actions>
+          <UiButton
+            variant="primary"
+            size="sm"
+            :loading="repairingScoreZero"
+            @click="handleRepairScoreZero"
+          >
+            一键补齐计零终分
+          </UiButton>
+          <UiButton variant="outline" size="sm" @click="goAbsenceConfirm"> 前往缺考确认 </UiButton>
+        </template>
+      </UiAlertStrip>
+
+      <UiAlertStrip
+        v-if="isPublishGateVisible('risk')"
+        tone="warning"
+        title="仍有成绩风险未复核"
+        :description="`当前有 ${effectiveFinalScoreOverview?.blockedCount ?? 0} 项成绩风险未处置，须先在成绩确认页完成集中复核后再发布。`"
+        dense
+        inline
+        class="score-publish__alert"
+      >
+        <template #actions>
+          <UiButton variant="primary" size="sm" @click="goScoreConfirm">
+            前往成绩确认复核
+          </UiButton>
+        </template>
+      </UiAlertStrip>
+
+      <UiAlertStrip
+        v-if="isPublishGateVisible('corrected')"
         tone="warning"
         title="存在已更正未重发布成绩"
         :description="correctedRepublishNotice"
@@ -96,6 +118,26 @@
           <UiButton variant="primary" size="sm" @click="filterCorrectedOnly"> 仅看已更正 </UiButton>
         </template>
       </UiAlertStrip>
+
+      <div v-if="publishSecondaryGateKeys.length > 0" class="score-publish__more-gates">
+        <button
+          type="button"
+          class="score-publish__more-gates-toggle"
+          @click="publishSecondaryGatesExpanded = !publishSecondaryGatesExpanded"
+        >
+          {{
+            publishSecondaryGatesExpanded
+              ? '收起其余发布条件'
+              : `还有 ${publishSecondaryGateKeys.length} 项发布条件`
+          }}
+        </button>
+        <span
+          v-if="!publishSecondaryGatesExpanded"
+          class="score-publish__more-gates-summary"
+        >
+          {{ publishSecondaryGateSummary }}
+        </span>
+      </div>
 
       <ExamArchiveGateBanner
         ref="gateBannerRef"
@@ -161,7 +203,17 @@
                 }}</span>
               </template>
               <template v-else-if="column.key === 'studentName'">
-                {{ candidates[index].studentName || '—' }}
+                <span class="flex items-center gap-2 min-w-0">
+                  <span class="truncate">{{ candidates[index].studentName || '—' }}</span>
+                  <UiTag
+                    v-if="candidates[index].absenceScoreZero"
+                    tone="orange"
+                    size="sm"
+                    title="缺考计零合成卷，无扫描影像"
+                  >
+                    缺考计零
+                  </UiTag>
+                </span>
               </template>
               <template v-else-if="column.key === 'examScore'">
                 <span v-if="candidates[index].examScore != null" class="score-summary-table__score">
@@ -234,6 +286,15 @@
       <UiSkeletonState v-if="detailLoading" variant="card" compact />
       <UiEmpty v-else-if="!paperScore" description="暂无成绩明细" />
       <div v-else>
+        <UiAlertStrip
+          v-if="detailCandidate?.absenceScoreZero"
+          tone="info"
+          title="缺考计零合成卷"
+          description="该生为缺考计零，本卷无扫描影像与题目批改明细，正式成绩为 0 分；确认后可直接发布。"
+          dense
+          inline
+          style="margin-bottom: 12px"
+        />
         <a-descriptions :column="2" size="small" bordered class="score-publish__detail-summary">
           <a-descriptions-item label="答卷">
             {{ detailCandidate?.paperDisplay.primaryText }}
@@ -419,6 +480,7 @@ import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { repairScoreZeroFinalScores } from '@/apis/mark/absence'
 import { getExamDetail } from '@/apis/mark/exam'
 import { getPaperScore } from '@/apis/mark/exam-grade'
 import { getScorePanel } from '@/apis/mark/exam-progress'
@@ -658,6 +720,34 @@ const {
 const pendingAbsenceCountForDisplay = computed(() => pendingAbsenceCount.value ?? 0)
 const hasPendingAbsence = computed(() => pendingAbsenceCountForDisplay.value > 0)
 
+const missingAbsenceScoreZeroFinalCount = computed(
+  () => effectiveFinalScoreOverview.value?.missingAbsenceScoreZeroFinalCount ?? 0,
+)
+
+const repairingScoreZero = ref(false)
+
+async function handleRepairScoreZero(): Promise<void> {
+  if (!selectedExamId.value) return
+  repairingScoreZero.value = true
+  try {
+    const result = await repairScoreZeroFinalScores({ examId: selectedExamId.value })
+    message.success(
+      result.repairedCount > 0
+        ? `已补齐 ${result.repairedCount} 条计零终分`
+        : '本场无待补齐的计零缺考',
+    )
+    await Promise.all([
+      loadCandidates(),
+      loadFinalScoreOverview(),
+      refreshPendingAbsenceCount(),
+    ])
+  } catch (error) {
+    showUserError(error, '补齐计零终分失败')
+  } finally {
+    repairingScoreZero.value = false
+  }
+}
+
 const pagination = reactive<TablePaginationConfig>({
   current: 1,
   pageSize: DEFAULT_LIST_PAGE_SIZE,
@@ -764,6 +854,44 @@ const publishRiskBlocked = computed(() => {
   const overview = effectiveFinalScoreOverview.value
   return Boolean(overview && !overview.readyToPublish)
 })
+
+/** 发布闸门：只置顶一条阻断，其余折叠，避免告警墙淹没「全场发布」。 */
+type PublishGateKey
+  = | 'delayedAutoConfirm'
+    | 'pendingAbsence'
+    | 'scoreZero'
+    | 'risk'
+    | 'corrected'
+
+const PUBLISH_GATE_LABEL: Record<PublishGateKey, string> = {
+  delayedAutoConfirm: '延迟自动确认失败',
+  pendingAbsence: '缺考待确认',
+  scoreZero: '计零终分待补齐',
+  risk: '成绩风险未复核',
+  corrected: '已更正未重发布',
+}
+
+const publishGatePriorityKeys = computed((): PublishGateKey[] => {
+  const keys: PublishGateKey[] = []
+  if (blockedDelayedAutoConfirmNotice.value) keys.push('delayedAutoConfirm')
+  if (hasPendingAbsence.value) keys.push('pendingAbsence')
+  if (missingAbsenceScoreZeroFinalCount.value > 0) keys.push('scoreZero')
+  if (publishRiskBlocked.value) keys.push('risk')
+  if (correctedRepublishNotice.value) keys.push('corrected')
+  return keys
+})
+
+const publishPrimaryGateKey = computed(() => publishGatePriorityKeys.value[0] ?? null)
+const publishSecondaryGateKeys = computed(() => publishGatePriorityKeys.value.slice(1))
+const publishSecondaryGatesExpanded = ref(false)
+const publishSecondaryGateSummary = computed(() =>
+  publishSecondaryGateKeys.value.map((key) => PUBLISH_GATE_LABEL[key]).join(' · '),
+)
+
+function isPublishGateVisible(key: PublishGateKey): boolean {
+  if (publishPrimaryGateKey.value === key) return true
+  return publishSecondaryGatesExpanded.value && publishSecondaryGateKeys.value.includes(key)
+}
 
 const bulkModalStatItems = computed(() => {
   const overview = effectiveFinalScoreOverview.value
@@ -897,7 +1025,7 @@ function canWithdraw(record: ExamScoreSummaryItemResponse): boolean {
 
 function buildPublishActions(record: ExamScoreSummaryItemResponse): UiTableRowActionItem[] {
   return [
-    { key: 'detail', label: '明细' },
+    { key: 'detail', label: record.absenceScoreZero ? '计零说明' : '明细' },
     {
       key: 'publish',
       label: publishButtonLabel(record),
@@ -1074,6 +1202,30 @@ watch(
 }
 
 .score-publish {
+  &__more-gates {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px 12px;
+    margin: 0 0 var(--dp-space-3);
+  }
+
+  &__more-gates-toggle {
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    font-size: var(--dp-font-size-sm);
+    font-weight: var(--dp-font-weight-emphasis);
+    color: var(--ant-color-primary);
+    cursor: pointer;
+  }
+
+  &__more-gates-summary {
+    font-size: var(--dp-font-size-sm);
+    color: var(--dp-text-secondary);
+  }
+
   &__alert {
     margin-top: var(--dp-space-3);
   }
@@ -1150,7 +1302,7 @@ watch(
 
     &--active {
       border-color: var(--dp-primary);
-      background: color-mix(in srgb, var(--dp-primary) 8%, #fff);
+      background: color-mix(in srgb, var(--dp-primary) 8%, var(--ant-color-bg-container));
       color: var(--dp-primary);
       font-weight: 600;
     }

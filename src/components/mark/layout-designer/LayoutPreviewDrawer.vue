@@ -72,6 +72,6 @@ onBeforeUnmount(() => {
   min-height: 72vh;
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-control);
-  background: #fff;
+  background: var(--ant-color-bg-container);
 }
 </style>

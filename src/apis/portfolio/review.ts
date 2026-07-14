@@ -1,5 +1,6 @@
 import type {
   PortfolioAiAnalysisDetailVO,
+  PortfolioReviewAccessScopeVO,
   PortfolioReviewArchiveRecordDetailVO,
   PortfolioReviewArchiveRecordFieldPageRequest,
   PortfolioReviewLogPageRequest,
@@ -20,6 +21,8 @@ import http from '@/config/axios'
 const BASE = '/api/portfolio/review'
 
 export const portfolioReviewApi = {
+  getAccessScope: () =>
+    http.post<PortfolioReviewAccessScopeVO>(`${BASE}/access-scope`, {}),
   pageTasks: (data: PortfolioReviewTaskPageRequest) =>
     http.post<PageResult<PortfolioReviewTaskSummaryVO>>(`${BASE}/task/page`, data),
   approve: (data: PortfolioReviewTaskApproveRequest) =>

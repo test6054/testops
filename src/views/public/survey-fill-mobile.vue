@@ -77,7 +77,7 @@
       <!-- 身份信息页 -->
       <div v-else-if="currentStep === 'identity'" class="m-survey__page">
         <div class="m-survey__progress">
-          <div class="m-survey__progress-bar" :style="{ width: '0%' }" />
+          <div class="m-survey__progress-bar" :style="{ transform: 'scaleX(0)' }" />
         </div>
         <div class="m-survey__page-body">
           <div class="m-survey__identity-icon">
@@ -133,7 +133,7 @@
         }"
       >
         <div class="m-survey__progress">
-          <div class="m-survey__progress-bar" :style="{ width: `${progressPercent}%` }" />
+          <div class="m-survey__progress-bar" :style="{ transform: `scaleX(${Math.max(0, Math.min(Number(progressPercent), 100)) / 100})` }" />
           <span class="m-survey__progress-text">{{ currentIndex + 1 }} / {{ totalCount }}</span>
           <div class="m-survey__height-toggle">
             <button
@@ -418,21 +418,24 @@ async function handleSubmit() {
    参考问卷星移动端设计语言
    ============================================================ */
 .m-survey {
-  --survey-page-bg: var(--ant-color-bg-layout, #f5f5f5);
-  --survey-border: var(--ant-color-border-secondary, #e8e8e8);
-  --survey-border-light: var(--ant-color-border-secondary, #f0f0f0);
-  --survey-surface: var(--ant-color-bg-container, #fff);
-  --survey-surface-muted: var(--ant-color-fill-quaternary, #f7f8fc);
+  --survey-page-bg: var(--ant-color-bg-layout);
+  --survey-border: var(--ant-color-border-secondary);
+  --survey-border-light: var(--ant-color-border-secondary);
+  --survey-surface: var(--ant-color-bg-container);
+  --survey-surface-muted: var(--ant-color-fill-quaternary);
   --survey-text: var(--dp-text-primary);
   --survey-text-secondary: var(--dp-text-secondary);
   --survey-text-muted: var(--dp-text-tertiary);
-  --survey-text-placeholder: var(--ant-color-text-quaternary, #bbb);
-  --survey-warning-bg: var(--ant-color-warning-bg, #fff3e0);
-  --survey-warning-text: var(--ant-color-warning, #f57c00);
-  --survey-success-bg: var(--ant-color-success-bg, #e8f5e9);
-  --survey-success-text: var(--ant-color-success, #43a047);
-  --survey-danger: var(--ant-color-error, #ff4d4f);
-  --survey-on-primary: var(--ant-color-text-light-solid, #fff);
+  --survey-text-placeholder: var(--ant-color-text-quaternary);
+  --survey-warning-bg: var(--ant-color-warning-bg);
+  --survey-warning-text: var(--ant-color-warning);
+  --survey-success-bg: var(--ant-color-success-bg);
+  --survey-success-text: var(--ant-color-success);
+  --survey-danger: var(--ant-color-error);
+  --survey-on-primary: var(--ant-color-text-light-solid);
+  --survey-primary: var(--ant-color-primary);
+  --survey-primary-bg: var(--ant-color-primary-bg);
+  --survey-primary-border: var(--ant-color-primary-border);
 
   min-height: 100vh;
   min-height: 100dvh;
@@ -460,7 +463,7 @@ async function handleSubmit() {
   width: 40px;
   height: 40px;
   border: 3px solid var(--survey-border);
-  border-top-color: var(--ant-color-primary, #1677ff);
+  border-top-color: var(--survey-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -523,7 +526,7 @@ async function handleSubmit() {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: var(--ant-color-bg-container, #fff);
+  background: var(--survey-surface);
 }
 
 .m-survey__cover-header {
@@ -534,9 +537,9 @@ async function handleSubmit() {
 .m-survey__cover-badge {
   display: inline-block;
   padding: 4px 16px;
-  background: var(--ant-color-primary-bg, #e6f4ff);
+  background: var(--survey-primary-bg);
   border-radius: 20px;
-  color: var(--ant-color-primary, #1677ff);
+  color: var(--survey-primary);
   font-size: 13px;
   font-weight: 500;
   letter-spacing: 2px;
@@ -662,7 +665,7 @@ async function handleSubmit() {
 }
 
 .m-survey__height-btn--active {
-  background: var(--ant-color-primary, #1677ff);
+  background: var(--survey-primary);
   color: var(--survey-on-primary);
 }
 
@@ -675,10 +678,12 @@ async function handleSubmit() {
 }
 
 .m-survey__progress-bar {
+  width: 100%;
   height: 100%;
-  background: var(--ant-color-primary, #1677ff);
-  border-radius: 0 2px 2px 0;
-  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: left center;
+  background: var(--survey-primary);
+  border-radius: 3px;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .m-survey__progress-text {
@@ -693,7 +698,7 @@ async function handleSubmit() {
 /* --- 身份表单 --- */
 .m-survey__identity-icon {
   text-align: center;
-  color: var(--ant-color-primary, #1677ff);
+  color: var(--survey-primary);
   margin-top: 40px;
 }
 
@@ -724,7 +729,7 @@ async function handleSubmit() {
   -webkit-appearance: none;
 
   &:focus {
-    border-color: var(--ant-color-primary, #1677ff);
+    border-color: var(--survey-primary);
     box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.12);
   }
 
@@ -752,7 +757,7 @@ async function handleSubmit() {
   min-width: 36px;
   height: 28px;
   padding: 0 8px;
-  background: var(--ant-color-primary, #1677ff);
+  background: var(--survey-primary);
   color: var(--survey-on-primary);
   font-size: 13px;
   font-weight: 700;
@@ -821,8 +826,8 @@ async function handleSubmit() {
 }
 
 .m-survey__scale-btn--active {
-  border-color: var(--ant-color-primary, #1677ff);
-  background: var(--ant-color-primary, #1677ff);
+  border-color: var(--survey-primary);
+  background: var(--survey-primary);
   color: var(--survey-on-primary);
   box-shadow: 0 4px 12px rgba(22, 119, 255, 0.25);
   transform: scale(1.05);
@@ -840,7 +845,7 @@ async function handleSubmit() {
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
-  border: 1.5px solid #e8e8e8;
+  border: 1.5px solid var(--survey-border);
   border-radius: 12px;
   background: var(--survey-surface);
   font-size: 15px;
@@ -857,12 +862,12 @@ async function handleSubmit() {
 }
 
 .m-survey__choice--active {
-  border-color: var(--ant-color-primary, #1677ff);
-  background: var(--ant-color-primary-bg, #e6f4ff);
-  color: var(--ant-color-primary, #1677ff);
+  border-color: var(--survey-primary);
+  background: var(--survey-primary-bg);
+  color: var(--survey-primary);
 
   .m-survey__choice-letter {
-    background: var(--ant-color-primary, #1677ff);
+    background: var(--survey-primary);
     color: var(--survey-on-primary);
     border-color: transparent;
   }
@@ -875,7 +880,7 @@ async function handleSubmit() {
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  border: 1.5px solid var(--ant-color-border, #d0d0d0);
+  border: 1.5px solid var(--survey-border);
   font-size: 13px;
   font-weight: 600;
   color: var(--survey-text-secondary);
@@ -890,7 +895,7 @@ async function handleSubmit() {
 
 .m-survey__choice-check {
   font-size: 16px;
-  color: var(--ant-color-primary, #1677ff);
+  color: var(--survey-primary);
   font-weight: 700;
 }
 
@@ -922,7 +927,7 @@ async function handleSubmit() {
   -webkit-appearance: none;
 
   &:focus {
-    border-color: var(--ant-color-primary, #1677ff);
+    border-color: var(--survey-primary);
     box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.12);
   }
 
@@ -977,19 +982,19 @@ async function handleSubmit() {
 }
 
 .m-survey__btn--primary {
-  background: var(--ant-color-primary, #1677ff);
+  background: var(--survey-primary);
   color: var(--survey-on-primary);
   box-shadow: 0 4px 14px rgba(22, 119, 255, 0.25);
 }
 
 .m-survey__btn--submit {
-  background: var(--ant-color-success, #52c41a);
+  background: var(--ant-color-success);
   color: var(--survey-on-primary);
   box-shadow: 0 4px 14px rgba(82, 196, 26, 0.25);
 }
 
 .m-survey__btn--ghost {
-  background: var(--ant-color-fill-tertiary, #f5f5f5);
+  background: var(--survey-surface-muted);
   color: var(--survey-text-secondary);
 }
 
@@ -999,8 +1004,8 @@ async function handleSubmit() {
   height: 44px;
   border: none;
   border-radius: 22px;
-  background: var(--ant-color-primary, #1677ff);
-  color: #fff;
+  background: var(--survey-primary);
+  color: var(--survey-on-primary);
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;

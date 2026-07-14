@@ -14,14 +14,14 @@ product
 
 `gi_*` legacy 工具类已淘汰；布局工具保留 `w-full` / `flex-1` 等无前缀原子类。
 
-- 主色：`--ant-color-primary: #2563eb`
-- 成功：`--ant-color-success: #22c55e`
-- 警告：`--ant-color-warning: #f59e0b`
-- 错误：`--ant-color-error: #ef4444`
-- 页面背景：`--ant-color-bg-layout: #f8fafc`
+- 主色：`--ant-color-primary: #1677ff`（品牌锁定；禁止紫/靛 chrome 与 `#2563eb` 第二主色）
+- 成功：`--ant-color-success: #52c41a`
+- 警告：`--ant-color-warning: #faad14`
+- 错误：`--ant-color-error: #ff4d4f`
+- 页面背景：`--ant-color-bg-layout: #f5f5f5`
 - 容器背景：`--ant-color-bg-container: #ffffff`
-- 正文：`--ant-color-text: #0f172a`
-- 次级文字：`--ant-color-text-secondary: #475569`
+- 正文：`--ant-color-text: rgba(0, 0, 0, 0.88)`
+- 次级文字：`--ant-color-text-secondary: rgba(0, 0, 0, 0.65)`
 - 字体：系统中文字体栈，优先 `PingFang SC`、`Noto Sans SC`、`Microsoft YaHei`
 - 基础字号：12、13、14、16、18、20、24
 - 间距：4、8、12、16、20、24、28、32、40
@@ -57,4 +57,3 @@ product
 - 动效服务于队列刷新、抽屉展开、扫描识别进度、保存发布反馈和错误定位。
 - 不动画化布局属性，不使用弹跳或夸张过渡。
 - 高频工作流优先使用内联反馈和右侧抽屉，模态框只用于必须阻断的确认或表单。
-

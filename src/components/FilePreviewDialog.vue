@@ -252,7 +252,7 @@ const dialogWidth = computed(() => {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  background: #0f172a;
+  background: var(--dp-text-primary);
   flex: 1;
 }
 
@@ -293,7 +293,7 @@ const dialogWidth = computed(() => {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  background: #0f172a;
+  background: var(--dp-text-primary);
   flex: 1;
 }
 
@@ -308,41 +308,41 @@ const dialogWidth = computed(() => {
   color: var(--ant-color-text-secondary);
 
   &.file-icon--pdf {
-    background: #fff1f0;
-    color: #cf1322;
+    background: var(--ant-color-error-bg);
+    color: var(--ant-color-error);
   }
   &.file-icon--image {
-    background: #f3e8ff;
-    color: #7e22ce;
+    background: var(--dp-purple-50);
+    color: var(--dp-purple-700);
   }
   &.file-icon--word {
-    background: #eaf2ff;
-    color: #1d4ed8;
+    background: var(--ant-color-primary-bg);
+    color: var(--ant-color-primary-active);
   }
   &.file-icon--excel {
-    background: #eaf8ef;
-    color: #16834a;
+    background: var(--ant-color-success-bg);
+    color: var(--dp-green-700);
   }
   &.file-icon--ppt {
-    background: #fff4e6;
-    color: #d46b08;
+    background: var(--ant-color-warning-bg);
+    color: var(--dp-orange-500);
   }
   &.file-icon--zip {
-    background: #fff8db;
-    color: #ad6800;
+    background: var(--dp-yellow-50);
+    color: var(--dp-yellow-700);
   }
   &.file-icon--audio {
-    background: #eef2ff;
-    color: #4f46e5;
+    background: var(--dp-purple-50);
+    color: var(--dp-purple-700);
   }
   &.file-icon--video {
-    background: #fff0f6;
-    color: #c41d7f;
+    background: var(--ant-color-error-bg);
+    color: var(--ant-color-error);
   }
   &.file-icon--markdown,
   &.file-icon--code {
-    background: #eef1f6;
-    color: #344054;
+    background: var(--ant-color-fill-quaternary);
+    color: var(--ant-color-text-secondary);
   }
   &.file-icon--text,
   &.file-icon--document,

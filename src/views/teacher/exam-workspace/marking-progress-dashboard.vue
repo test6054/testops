@@ -39,6 +39,7 @@ import {
   resolveMarkingOrganizationIndexRoute,
   resolveMarkingOrganizationTrialSessionsRoute,
 } from '@/utils/marking-organization-navigation'
+import { toneToColor } from '@/utils/score-tone'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherExamWorkspaceMarkingProgressDashboard' })
@@ -46,6 +47,9 @@ defineOptions({ name: 'TeacherExamWorkspaceMarkingProgressDashboard' })
 const route = useRoute()
 const router = useRouter()
 const { examId } = useWorkspaceExamId()
+
+const successColor = toneToColor('green')
+const primaryColor = toneToColor('blue')
 
 const isTrialPhase = computed(() => route.name === 'TeacherExamWorkspaceTrialProgress')
 const sessionPhase = computed(() => (isTrialPhase.value ? ('trial' as const) : ('formal' as const)))
@@ -328,8 +332,8 @@ watch(examId, () => loadPanel(), { immediate: true })
                 size="small"
                 :stroke-color="
                   record.finalizedTaskCount >= record.totalTaskCount && record.totalTaskCount > 0
-                    ? '#52c41a'
-                    : '#1677ff'
+                    ? successColor
+                    : primaryColor
                 "
               />
             </template>
@@ -375,8 +379,8 @@ watch(examId, () => loadPanel(), { immediate: true })
                 size="small"
                 :stroke-color="
                   record.finalizedTaskCount >= record.totalTaskCount && record.totalTaskCount > 0
-                    ? '#52c41a'
-                    : '#1677ff'
+                    ? successColor
+                    : primaryColor
                 "
               />
             </template>

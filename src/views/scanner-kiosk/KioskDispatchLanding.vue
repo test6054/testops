@@ -283,17 +283,17 @@ function goHub() {
   gap: 8px;
 }
 .dispatch-landing__error {
-  color: #cf1322;
+  color: var(--kiosk-danger);
 }
 .dispatch-landing__hint {
   margin: 12px 0 0;
-  color: var(--nybc-text-secondary, #8c8c8c);
+  color: var(--kiosk-ink-tertiary);
 }
 .dispatch-landing__hint--danger {
-  color: #cf1322;
+  color: var(--kiosk-danger);
 }
 .dispatch-landing__panel {
-  border: 1px solid var(--nybc-border, #e8e8e8);
+  border: 1px solid var(--kiosk-divider);
   border-radius: 6px;
   padding: 16px;
 }

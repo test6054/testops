@@ -105,14 +105,14 @@ const ERROR_CODE_TYPE_MAP: Record<number, ErrorType> = {
  * 默认错误消息
  */
 const DEFAULT_ERROR_MESSAGES: Record<ErrorType, string> = {
-  [ErrorType.NETWORK]: '网络连接异常，请检查网络后继续操作',
-  [ErrorType.AUTH]: '登录状态已失效，请重新登录',
-  [ErrorType.PERMISSION]: '当前账号无权执行此操作，请联系管理员',
-  [ErrorType.VALIDATION]: '请求参数不符合要求，请核对后继续',
-  [ErrorType.BUSINESS]: '业务处理失败',
-  [ErrorType.AI_QUOTA]: 'AI 额度不足，请联系管理员',
-  [ErrorType.SYSTEM]: '系统繁忙，请联系管理员',
-  [ErrorType.UNKNOWN]: '操作未完成，请联系管理员排查'
+  [ErrorType.NETWORK]: '网络异常',
+  [ErrorType.AUTH]: '请重新登录',
+  [ErrorType.PERMISSION]: '无权限',
+  [ErrorType.VALIDATION]: '参数有误',
+  [ErrorType.BUSINESS]: '操作失败',
+  [ErrorType.AI_QUOTA]: 'AI额度不足',
+  [ErrorType.SYSTEM]: '系统繁忙',
+  [ErrorType.UNKNOWN]: '操作失败',
 }
 
 /**
@@ -293,7 +293,7 @@ export function readBusinessResultCode(error: unknown): number | undefined {
  */
 export function getUserErrorMessage(
   error: unknown,
-  fallback = '操作未完成，请联系管理员排查',
+  fallback = '操作失败',
 ): string {
   const backendMessage = getResponseMessage(error)
   if (backendMessage && !isNonUserFacingMessage(backendMessage)) {
@@ -309,7 +309,7 @@ export function getUserErrorMessage(
 /**
  * 将协议边界捕获到的异常收敛为页面错误态可直接持有的 Error。
  */
-export function toUserError(error: unknown, fallback = '操作未完成，请联系管理员排查'): Error {
+export function toUserError(error: unknown, fallback = '操作失败'): Error {
   return new Error(getUserErrorMessage(error, fallback))
 }
 
@@ -319,7 +319,7 @@ export function toUserError(error: unknown, fallback = '操作未完成，请联
  */
 export function getUserProcessFailureMessage(
   _messageText: string | undefined | null,
-  fallback = '处理未完成，请联系管理员排查',
+  fallback = '处理失败',
 ): string {
   return fallback
 }
@@ -328,7 +328,7 @@ export function getUserProcessFailureMessage(
  * 显示用户可见错误提示。
  * 已由 Axios 拦截器提示过的错误不重复弹出。
  */
-export function showUserError(error: unknown, fallback = '操作未完成，请联系管理员排查') {
+export function showUserError(error: unknown, fallback = '操作失败') {
   if (isErrorHandled(error)) return
   message.error(getUserErrorMessage(error, fallback))
 }
@@ -397,13 +397,13 @@ function toHandledError(error: unknown): HandledError {
       _handledByInterceptor: handledByInterceptor === true,
     }
   }
-  if (typeof error === 'string') return { message: '操作未完成' }
-  return { message: '操作未完成' }
+  if (typeof error === 'string') return { message: '操作失败' }
+  return { message: '操作失败' }
 }
 
 function readMessage(error: object): string {
   const message = readProperty(error, 'message')
-  return typeof message === 'string' && message.trim() ? message : '操作未完成'
+  return typeof message === 'string' && message.trim() ? message : '操作失败'
 }
 
 function isHandledErrorResponse(value: unknown): value is HandledError['response'] {
@@ -458,30 +458,23 @@ export function showErrorMessage(standardError: StandardError, config: ErrorHand
   }
 
   const iconVNode = ERROR_TYPE_ICONS[standardError.type]
-  const displayMessage = customMessage || standardError.message
-  const displayTitle = title || ERROR_TYPE_TITLES[standardError.type]
+  // 教师向：单句短文案，不拼 title+说明，不展示 notification description
+  const displayMessage = (customMessage || standardError.message || DEFAULT_ERROR_MESSAGES[ErrorType.UNKNOWN]).trim()
+    || DEFAULT_ERROR_MESSAGES[ErrorType.UNKNOWN]
 
   // 笔记本屏默认走紧凑顶部 message，禁止大框 notification 占内容区
   // 仅当调用方显式 useNotification=true 且配置允许时才用 notification
   if (useNotification && config.useNotification === true) {
-    const notificationContent = standardError.detail
-      ? `${displayMessage}\n${standardError.detail}`
-      : displayMessage
-
     notification.error({
-      message: displayTitle,
-      description: notificationContent,
+      message: displayMessage,
+      description: undefined,
       icon: () => iconVNode,
-      duration: 4,
+      duration: 3,
       placement: 'topRight',
     })
   } else {
-    const content = standardError.detail
-      ? `${displayTitle}：${displayMessage}（${standardError.detail}）`
-      : `${displayTitle}：${displayMessage}`
-
     message.error({
-      content,
+      content: displayMessage,
       icon: () => iconVNode,
       duration: 3,
     })

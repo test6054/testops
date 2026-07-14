@@ -442,23 +442,23 @@ onMounted(() => {
   flex-shrink: 0;
 
   &--warn {
-    background: #fef3e2;
-    color: #e67e22;
+    background: var(--ant-color-warning-bg);
+    color: var(--ant-color-warning);
   }
 
   &--success {
-    background: #ecfdf5;
-    color: #10b981;
+    background: var(--ant-color-success-bg);
+    color: var(--ant-color-success);
   }
 
   &--error {
-    background: #fef2f2;
-    color: #ef4444;
+    background: var(--ant-color-error-bg);
+    color: var(--ant-color-error);
   }
 
   &--info {
-    background: #eff6ff;
-    color: #3b82f6;
+    background: var(--ant-color-primary-bg);
+    color: var(--ant-color-primary);
   }
 }
 

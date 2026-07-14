@@ -13,13 +13,15 @@ import {
   ScanDispatchTicketStatusDescription,
 } from '@/apis/mark/scanner-dispatch'
 import { ScanWorkOrderStatusDescription } from '@/apis/mark/scanner-work-order'
-import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import { resolveUiDataTableEmptyKind } from '@/components/ui-guide/ui/data-table'
+import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiEllipsisText from '@/components/ui-guide/ui/UiEllipsisText.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import {
   PageRegisterStateCode,
@@ -57,6 +59,7 @@ interface ExceptionDashboardRow extends ScannerExceptionDashboardItemVO {
 const EXAM_EXCEPTION_KINDS: readonly ScannerExceptionItemKindCode[] = [
   ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED,
   ScannerExceptionItemKindCode.PARTIAL_TAIL,
+  ScannerExceptionItemKindCode.BINDING_CONFLICT,
 ]
 
 const DISPATCH_EXCEPTION_KINDS: readonly ScannerExceptionItemKindCode[] = [
@@ -74,6 +77,8 @@ const availableKindFilters = computed(() =>
 const router = useRouter()
 const route = useRoute()
 const loading = ref(false)
+const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
+const loadPageError = ref(false)
 const rows = ref<ExceptionDashboardRow[]>([])
 const itemKindFilter = ref<ExceptionDashboardRowKind | undefined>(undefined)
 const forceReleaseOpen = ref(false)
@@ -83,6 +88,33 @@ const pageRegisterRetryingKey = ref<string | null>(null)
 const partialTailDismissingKey = ref<string | null>(null)
 const pagination = reactive({ current: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 let pageLoadGeneration = 0
+
+const tableEmptyKind = computed(() =>
+  resolveUiDataTableEmptyKind({
+    hasError: loadPageError.value,
+    hasActiveFilters: itemKindFilter.value != null,
+    isFirstRun: itemKindFilter.value == null,
+  }),
+)
+
+const tableEmptyDescription = computed(() => {
+  if (loadPageError.value) {
+    return ''
+  }
+  if (itemKindFilter.value === ScannerExceptionItemKindCode.BINDING_CONFLICT) {
+    return '当前无身份绑定冲突；若刚完成扫描请刷新。有冲突时须手工确认绑定，不可当作“无问题”。'
+  }
+  if (itemKindFilter.value === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED) {
+    return '当前无页登记阻断；出现阻断时请重试页登记或进入批次处理。'
+  }
+  if (itemKindFilter.value === ScannerExceptionItemKindCode.PARTIAL_TAIL) {
+    return '当前无余页待确认；余页须「忽略并继续」或人工合并后才能封存。'
+  }
+  if (itemKindFilter.value != null) {
+    return `当前筛选下无「${itemKindLabel(itemKindFilter.value)}」异常`
+  }
+  return '当前无扫描异常待处置。异常出现后须按行完成重试、手工绑定或强制解锁，勿将空表理解为系统无风险。'
+})
 
 const columns: ColumnsType<ExceptionDashboardRow> = [
   { title: '类型', key: 'itemKind', dataIndex: 'itemKind', width: 100, fixed: 'left' },
@@ -123,6 +155,9 @@ function buildRowKey(item: ScannerExceptionDashboardItemVO): string {
   if (item.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL) {
     return `partial-tail-${item.scanBatchId ?? ''}`
   }
+  if (item.itemKind === ScannerExceptionItemKindCode.BINDING_CONFLICT) {
+    return `binding-${item.paperInstanceId ?? ''}`
+  }
   return `exception-${item.workOrderId ?? item.ticketId ?? item.scanBatchId ?? ''}`
 }
 
@@ -141,8 +176,10 @@ function resolveApiTaskKind(): ScanTaskKindCode | undefined {
 }
 
 async function loadPage() {
+  beginLoad()
   const generation = ++pageLoadGeneration
   loading.value = true
+  loadPageError.value = false
   try {
     const page = await pageScannerExceptionDashboard({
       pageNum: pagination.current,
@@ -156,13 +193,17 @@ async function loadPage() {
     }
     pagination.total = Number(page.total ?? 0)
     rows.value = (page.list ?? []).map(toExceptionDashboardRow)
+  
+    okLoad()
   } catch (error) {
+    failLoad()
     if (generation !== pageLoadGeneration) {
       return
     }
+    loadPageError.value = true
     rows.value = []
     pagination.total = 0
-    showUserError(error, '扫描异常看板加载失败')
+    showUserError(error, '加载失败')
   } finally {
     if (generation === pageLoadGeneration) {
       loading.value = false
@@ -193,6 +234,7 @@ function applyRouteKindFilter() {
     || kind === ScannerExceptionItemKindCode.COMMITTING
     || kind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED
     || kind === ScannerExceptionItemKindCode.PARTIAL_TAIL
+    || kind === ScannerExceptionItemKindCode.BINDING_CONFLICT
   ) {
     if (availableKindFilters.value.includes(kind)) {
       itemKindFilter.value = kind
@@ -210,6 +252,7 @@ function itemKindTone(kind?: ExceptionDashboardRowKind): 'red' | 'orange' | 'blu
   if (
     kind === ScannerExceptionItemKindCode.TICKET
     || kind === ScannerExceptionItemKindCode.WORK_ORDER
+    || kind === ScannerExceptionItemKindCode.BINDING_CONFLICT
   ) {
     return 'red'
   }
@@ -256,6 +299,9 @@ function rowIdentifier(row: ExceptionDashboardRow) {
   if (row.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL) {
     return row.batchNo ?? row.batchExternalNo ?? row.scanBatchId ?? '—'
   }
+  if (row.itemKind === ScannerExceptionItemKindCode.BINDING_CONFLICT) {
+    return row.paperInstanceId ?? row.batchNo ?? '—'
+  }
   return row.volumeId ?? row.workOrderId ?? '—'
 }
 
@@ -286,6 +332,9 @@ function statusLabel(row: ExceptionDashboardRow) {
   if (row.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL) {
     return '余页待确认'
   }
+  if (row.itemKind === ScannerExceptionItemKindCode.BINDING_CONFLICT) {
+    return '身份绑定冲突'
+  }
   return '—'
 }
 
@@ -306,6 +355,9 @@ function rowDetail(row: ExceptionDashboardRow) {
   if (row.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL) {
     const progress = `${formatPageProgress(row.registeredPageCount, row.pageCount)}已落库`
     return row.diagnostic ?? progress
+  }
+  if (row.itemKind === ScannerExceptionItemKindCode.BINDING_CONFLICT) {
+    return row.diagnostic ?? 'OCR 身份与名册冲突，需人工确认绑定'
   }
   if (row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER) {
     return row.diagnostic ?? row.batchExternalNo ?? '—'
@@ -389,7 +441,13 @@ function buildExceptionRowActions(row: ExceptionDashboardRow): UiTableRowActionI
       disabled: pageRegisterRetryingKey.value === row.rowKey,
     })
   }
-  if (
+  if (row.itemKind === ScannerExceptionItemKindCode.BINDING_CONFLICT) {
+    actions.push({
+      key: 'goto-handle',
+      label: '手工绑定',
+      tone: 'primary',
+    })
+  } else if (
     row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER
     || row.itemKind === ScannerExceptionItemKindCode.COMMITTING
     || row.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED
@@ -501,6 +559,16 @@ function openWorkOrderTarget(row: ExceptionDashboardRow) {
     void router.push({
       name: 'TeacherExamWorkspaceScanBatchDetail',
       params: { examId: batchExamId, scanBatchId: row.scanBatchId },
+    })
+    return
+  }
+  if (row.itemKind === ScannerExceptionItemKindCode.BINDING_CONFLICT && batchExamId) {
+    void router.push({
+      name: 'TeacherExamWorkspaceScanMonitor',
+      params: { examId: batchExamId },
+      query: row.paperInstanceId
+        ? { attentionType: 'BINDING_CONFLICT', paperInstanceId: row.paperInstanceId }
+        : { attentionType: 'BINDING_CONFLICT' },
     })
     return
   }
@@ -629,13 +697,15 @@ watch(
         :columns="columns"
         :data-source="rows"
         :loading="loading"
+        :load-error="loadError"
         :total="pagination.total"
         row-key="rowKey"
         size="middle"
         flat
         zebra
         sticky-header
-        empty-description="当前筛选下没有可处置异常；可切换类型筛选，或从顶部待办指标进入其它队列"
+        :empty-kind="tableEmptyKind"
+        :empty-description="tableEmptyDescription"
         @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">

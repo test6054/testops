@@ -351,7 +351,7 @@ function goNextPage() {
 
 .exam-pick__issue {
   max-width: 520px;
-  color: var(--kiosk-danger, #cf1322);
+  color: var(--kiosk-danger);
   line-height: 1.5;
 }
 
@@ -488,7 +488,7 @@ function goNextPage() {
 }
 
 .exam-tile--resume {
-  border-color: var(--kiosk-warning, #d48806);
+  border-color: var(--kiosk-warning);
 }
 
 .exam-tile--selected {
@@ -520,8 +520,8 @@ function goNextPage() {
 }
 
 .exam-tile__badge--active {
-  background: rgba(212, 136, 6, 0.14);
-  color: var(--kiosk-warning, #ad6800);
+  background: var(--kiosk-warning-soft);
+  color: var(--kiosk-warning);
   font-weight: var(--kiosk-fw-semibold);
 }
 

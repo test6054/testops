@@ -429,7 +429,7 @@ async function confirmSupplement() {
 .action-btn--primary {
   background: var(--kiosk-warning);
   border: none;
-  color: #fff;
+  color: var(--kiosk-primary-on);
 }
 
 .action-btn--primary:disabled {

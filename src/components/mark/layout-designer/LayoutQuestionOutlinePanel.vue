@@ -121,7 +121,7 @@ function formatQuestionTypeLabel(question: ExamLayoutQuestionDto): string {
   padding: 12px;
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
-  background: #fff;
+  background: var(--ant-color-bg-container);
   overflow: auto;
   display: flex;
   flex-direction: column;
@@ -174,11 +174,12 @@ function formatQuestionTypeLabel(question: ExamLayoutQuestionDto): string {
 
     &--active {
       border-color: var(--dp-color-primary);
-      background: #f0f7ff;
+      background: var(--ant-color-primary-bg);
     }
 
     &--warning {
-      border-left: 3px solid #fa8c16;
+      border-color: var(--ant-color-warning);
+      background: var(--ant-color-warning-bg);
     }
   }
 

@@ -175,7 +175,7 @@ defineExpose({
   font-size: 11px;
 
   &--pass {
-    color: #fff;
+    color: var(--ant-color-white);
     background: var(--dp-green-600);
   }
 

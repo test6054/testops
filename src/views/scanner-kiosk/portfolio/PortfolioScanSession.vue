@@ -454,7 +454,7 @@ function goBack() {
 }
 
 .portfolio-scan-session__block {
-  color: var(--nybc-color-danger, #cf1322);
+  color: var(--kiosk-danger);
 }
 
 .portfolio-scan-session__actions {
@@ -465,11 +465,11 @@ function goBack() {
 
 .portfolio-scan-session__hint {
   font-size: 13px;
-  color: var(--nybc-color-text-secondary, #666);
+  color: var(--kiosk-ink-secondary);
 }
 
 .portfolio-scan-session__error {
-  color: #dc2626;
+  color: var(--kiosk-danger);
   font-size: 13px;
 }
 </style>

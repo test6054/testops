@@ -543,24 +543,177 @@ const planConfirmationStatus = computed<ConfirmationStatusCode | undefined>(() =
   return currentPlan.value?.confirmationStatus
 })
 
-const canConfirmPlan = computed(
+const canSubmitPlan = computed(
   () =>
     !!currentPlan.value
     && (planConfirmationStatus.value === ConfirmationStatusCode.DRAFT
       || planConfirmationStatus.value === ConfirmationStatusCode.RETURNED),
 )
 
-const canRevokePlan = computed(
-  () => !!currentPlan.value && planConfirmationStatus.value === ConfirmationStatusCode.CONFIRMED,
+const isPlanStructureEditable = computed(
+  () =>
+    !!currentPlan.value
+    && planConfirmationStatus.value !== ConfirmationStatusCode.SUBMITTED
+    && planConfirmationStatus.value !== ConfirmationStatusCode.CONFIRMED,
 )
 
-const isPlanStructureEditable = computed(
-  () => !!currentPlan.value && planConfirmationStatus.value !== ConfirmationStatusCode.CONFIRMED,
+/**
+ * 体系搭建阶段：按认证工作流只暴露当前阶段主行动，避免页头「新建/编辑/院审/删除」并陈。
+ * 阶段语义：选方案 → 建目标 → 映射毕业要求 → 建观测点 → 权重健康后提交院审。
+ */
+type PlanBuildStageKey
+  = | 'select_plan'
+    | 'build_objectives'
+    | 'map_requirements'
+    | 'build_indicators'
+    | 'ready_submit'
+    | 'awaiting_review'
+    | 'confirmed'
+
+const planBuildStage = computed((): PlanBuildStageKey => {
+  if (!qualityStore.currentTrainingPlanId || !currentPlan.value) {
+    return 'select_plan'
+  }
+  const status = planConfirmationStatus.value
+  if (status === ConfirmationStatusCode.CONFIRMED) {
+    return 'confirmed'
+  }
+  if (status === ConfirmationStatusCode.SUBMITTED) {
+    return 'awaiting_review'
+  }
+  if (objectives.value.length === 0) {
+    return 'build_objectives'
+  }
+  if (objectivesHealthy.value < objectives.value.length || requirements.value.length === 0) {
+    return 'map_requirements'
+  }
+  if (totalIndicators.value === 0 || requirementsHealthy.value < requirements.value.length) {
+    return 'build_indicators'
+  }
+  return 'ready_submit'
+})
+
+const planStageGuidance = computed(() => {
+  switch (planBuildStage.value) {
+    case 'select_plan':
+      return {
+        tone: 'info' as const,
+        title: '当前阶段：选择或新建培养方案',
+        description: '在页头范围选择已有方案，或点击「新建方案」后维护目标—毕业要求—观测点体系。',
+      }
+    case 'build_objectives':
+      return {
+        tone: 'warning' as const,
+        title: '当前阶段：维护培养目标',
+        description: '先新增培养目标，再配置目标到毕业要求的映射权重（各目标权重和须为 1）。',
+      }
+    case 'map_requirements':
+      return {
+        tone: 'warning' as const,
+        title: '当前阶段：完善目标→毕业要求映射',
+        description:
+          requirements.value.length === 0
+            ? '尚无毕业要求：请切换到「② 毕业要求」页签新建，并回本页完成权重映射。'
+            : '仍有目标映射权重未健康，或毕业要求未齐套；请补齐映射后再进入观测点阶段。',
+      }
+    case 'build_indicators':
+      return {
+        tone: 'warning' as const,
+        title: '当前阶段：维护观测点与标准条款',
+        description: '在「② 毕业要求」页签为每条毕业要求拆分观测点，并保证观测点权重和为 1。',
+      }
+    case 'ready_submit':
+      return {
+        tone: 'success' as const,
+        title: '当前阶段：提交院审',
+        description: '目标 / 毕业要求 / 观测点权重已就绪，请核对后提交学院确认，方可进入达成度与正式报告。',
+      }
+    case 'awaiting_review':
+      return {
+        tone: 'info' as const,
+        title: '当前阶段：等待院审确认',
+        description: '方案已提交，体系结构已锁定；待学院确认人审核通过后可进入达成度计算。',
+      }
+    case 'confirmed':
+      return {
+        tone: 'success' as const,
+        title: '培养方案已确认',
+        description: '确认态不可再改结构；若需修订请按业务流程撤回后再编辑。',
+      }
+    default:
+      return null
+  }
+})
+
+const showPlanMoreActions = ref(false)
+
+function focusPlanStageWorkbench(): void {
+  if (
+    planBuildStage.value === 'build_indicators'
+    || (planBuildStage.value === 'map_requirements' && requirements.value.length === 0)
+  ) {
+    activeTab.value = 'requirement'
+    return
+  }
+  activeTab.value = 'objective'
+}
+
+async function runPlanPrimaryStageAction(): Promise<void> {
+  switch (planBuildStage.value) {
+    case 'select_plan':
+      openPlanCreate()
+      break
+    case 'build_objectives':
+      activeTab.value = 'objective'
+      openObjectiveCreate()
+      break
+    case 'map_requirements':
+      focusPlanStageWorkbench()
+      if (requirements.value.length === 0) {
+        openRequirementCreate()
+      }
+      break
+    case 'build_indicators':
+      activeTab.value = 'requirement'
+      if (requirements.value.length > 0 && !selectedRequirement.value) {
+        selectedRequirement.value = requirements.value[0] ?? null
+      }
+      break
+    case 'ready_submit':
+      await submitPlanForReview()
+      break
+    default:
+      break
+  }
+}
+
+const planPrimaryStageActionLabel = computed(() => {
+  switch (planBuildStage.value) {
+    case 'select_plan':
+      return '新建方案'
+    case 'build_objectives':
+      return '新建培养目标'
+    case 'map_requirements':
+      return requirements.value.length === 0 ? '新建毕业要求' : '去完善映射'
+    case 'build_indicators':
+      return '去维护观测点'
+    case 'ready_submit':
+      return '提交院审'
+    default:
+      return ''
+  }
+})
+
+const showPlanPrimaryStageAction = computed(
+  () =>
+    planBuildStage.value !== 'awaiting_review'
+    && planBuildStage.value !== 'confirmed'
+    && !!planPrimaryStageActionLabel.value,
 )
 
 function guardPlanStructureEditable(action: string): boolean {
   if (isPlanStructureEditable.value) return true
-  message.error(`培养方案已确认，请先撤回后再${action}`)
+  message.error('培养方案已提交院审或确认发布，请先退回或撤回后再' + action)
   return false
 }
 
@@ -780,34 +933,17 @@ async function submitPlan() {
   }
 }
 
-async function confirmPlan() {
-  if (!currentPlan.value || !canConfirmPlan.value) return
-  const planId = currentPlan.value.id
+async function submitPlanForReview() {
+  if (!currentPlan.value || !canSubmitPlan.value) return
+  const plan = currentPlan.value
   void confirmAsync({
-    title: `确认提交培养方案 ${currentPlan.value.planCode}？`,
-    content: '确认后将进入"已确认"状态，可参与达成度计算和后续审核流程。',
+    title: `提交培养方案 ${plan.planCode} 进入院审？`,
+    content: '提交后将锁定体系结构，待具备发布权限的学院确认人完成审核后才可进入达成度计算和正式报告。',
     type: 'info',
-    okText: '确认',
+    okText: '提交院审',
     onOk: async () => {
-      await trainingPlanApi.confirm(planId)
-      message.success('培养方案已确认')
-      await loadCurrentPlan()
-      await qualityStore.loadTrainingPlanOptions()
-    },
-  })
-}
-
-async function revokePlan() {
-  if (!currentPlan.value || !canRevokePlan.value) return
-  const planId = currentPlan.value.id
-  void confirmAsync({
-    title: `撤回培养方案 ${currentPlan.value.planCode}？`,
-    content: '撤回后方案回到起草状态，可继续编辑体系数据并重新提交确认。',
-    type: 'warning',
-    okText: '撤回',
-    onOk: async () => {
-      await trainingPlanApi.revoke(planId)
-      message.success('培养方案已撤回')
+      await trainingPlanApi.submit({ id: plan.id, statusVersion: plan.statusVersion })
+      message.success('培养方案已提交院审')
       await loadCurrentPlan()
       await qualityStore.loadTrainingPlanOptions()
     },
@@ -1470,22 +1606,45 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
           </span>
         </template>
         <template #actions>
-          <UiTextAction @click="openPlanCreate">新建方案</UiTextAction>
           <UiButton
-            v-if="isPlanStructureEditable"
-            variant="outline"
+            v-if="showPlanPrimaryStageAction"
+            variant="primary"
             size="sm"
-            @click="openPlanEdit"
+            :disabled="planBuildStage === 'ready_submit' && !canSubmitPlan"
+            @click="() => void runPlanPrimaryStageAction()"
           >
-            编辑方案
+            {{ planPrimaryStageActionLabel }}
           </UiButton>
-          <UiButton size="sm" :disabled="!canConfirmPlan" @click="confirmPlan">提交确认</UiButton>
-          <UiButton v-if="canRevokePlan" variant="outline" size="sm" @click="revokePlan">
-            撤回修订
-          </UiButton>
-          <UiTextAction v-if="isPlanStructureEditable" tone="danger" @click="deletePlan">
-            删除方案
+          <UiTextAction @click="showPlanMoreActions = !showPlanMoreActions">
+            {{ showPlanMoreActions ? '收起更多' : '更多操作' }}
           </UiTextAction>
+          <template v-if="showPlanMoreActions">
+            <UiTextAction
+              v-if="planBuildStage !== 'select_plan'"
+              @click="openPlanCreate"
+            >
+              新建方案
+            </UiTextAction>
+            <UiButton
+              v-if="isPlanStructureEditable"
+              variant="outline"
+              size="sm"
+              @click="openPlanEdit"
+            >
+              编辑方案
+            </UiButton>
+            <UiButton
+              v-if="planBuildStage !== 'ready_submit' && canSubmitPlan"
+              size="sm"
+              variant="outline"
+              @click="submitPlanForReview"
+            >
+              提交院审
+            </UiButton>
+            <UiTextAction v-if="isPlanStructureEditable" tone="danger" @click="deletePlan">
+              删除方案
+            </UiTextAction>
+          </template>
         </template>
       </QualityPageContextBar>
     </template>
@@ -1500,10 +1659,10 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
     />
 
     <UiAlertStrip
-      v-if="!qualityStore.currentTrainingPlanId"
-      tone="info"
-      title="请选择培养方案"
-      description="在页头质量评价范围中选择培养方案后，方可维护培养目标、毕业要求与观测点映射。"
+      v-else-if="planStageGuidance"
+      :tone="planStageGuidance.tone"
+      :title="planStageGuidance.title"
+      :description="planStageGuidance.description"
       dense
       class="tpw__scope-hint"
     />

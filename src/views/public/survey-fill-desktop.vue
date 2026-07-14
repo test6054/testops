@@ -46,7 +46,7 @@
       <!-- 粘性进度条 -->
       <div class="d-survey__progress-wrap">
         <div class="d-survey__progress">
-          <div class="d-survey__progress-bar" :style="{ width: `${progressPercent}%` }" />
+          <div class="d-survey__progress-bar" :style="{ transform: `scaleX(${Math.max(0, Math.min(Number(progressPercent), 100)) / 100})` }" />
         </div>
         <span class="d-survey__progress-label">已完成 {{ answeredCount }}/{{ totalCount }} 题（{{ progressPercent }}%）</span>
       </div>
@@ -373,21 +373,24 @@ async function handleSubmit() {
    PC 端问卷 — 全页展示模式
    ============================================================ */
 .d-survey {
-  --survey-page-bg: var(--ant-color-bg-layout, #f5f5f5);
-  --survey-border: var(--ant-color-border-secondary, #e8e8e8);
-  --survey-border-light: var(--ant-color-border-secondary, #f0f0f0);
-  --survey-surface: var(--ant-color-bg-container, #fff);
-  --survey-surface-muted: var(--ant-color-fill-quaternary, #fafafa);
+  --survey-page-bg: var(--ant-color-bg-layout);
+  --survey-border: var(--ant-color-border-secondary);
+  --survey-border-light: var(--ant-color-border-secondary);
+  --survey-surface: var(--ant-color-bg-container);
+  --survey-surface-muted: var(--ant-color-fill-quaternary);
   --survey-text: var(--dp-text-primary);
   --survey-text-secondary: var(--dp-text-secondary);
   --survey-text-muted: var(--dp-text-tertiary);
-  --survey-text-placeholder: var(--ant-color-text-quaternary, #bbb);
-  --survey-warning-bg: var(--ant-color-warning-bg, #fff3e0);
-  --survey-warning-text: var(--ant-color-warning, #f57c00);
-  --survey-success-bg: var(--ant-color-success-bg, #e8f5e9);
-  --survey-success-text: var(--ant-color-success, #43a047);
-  --survey-danger: var(--ant-color-error, #ff4d4f);
-  --survey-on-primary: var(--ant-color-text-light-solid, #fff);
+  --survey-text-placeholder: var(--ant-color-text-quaternary);
+  --survey-warning-bg: var(--ant-color-warning-bg);
+  --survey-warning-text: var(--ant-color-warning);
+  --survey-success-bg: var(--ant-color-success-bg);
+  --survey-success-text: var(--ant-color-success);
+  --survey-danger: var(--ant-color-error);
+  --survey-on-primary: var(--ant-color-text-light-solid);
+  --survey-primary: var(--ant-color-primary);
+  --survey-primary-bg: var(--ant-color-primary-bg);
+  --survey-primary-border: var(--ant-color-primary-border);
 
   min-height: 100vh;
   background: var(--survey-page-bg);
@@ -411,7 +414,7 @@ async function handleSubmit() {
   width: 40px;
   height: 40px;
   border: 3px solid var(--survey-border);
-  border-top-color: var(--ant-color-primary, #1677ff);
+  border-top-color: var(--survey-primary);
   border-radius: 50%;
   animation: d-spin 0.8s linear infinite;
 }
@@ -470,10 +473,10 @@ async function handleSubmit() {
 
 /* --- 横幅 --- */
 .d-survey__banner {
-  background: var(--ant-color-bg-container, #fff);
+  background: var(--survey-surface);
   padding: 48px 24px 40px;
   text-align: center;
-  border-bottom: 1px solid var(--ant-color-border-secondary, #f0f0f0);
+  border-bottom: 1px solid var(--survey-border-light);
 }
 
 .d-survey__banner-inner {
@@ -484,9 +487,9 @@ async function handleSubmit() {
 .d-survey__banner-badge {
   display: inline-block;
   padding: 4px 16px;
-  background: var(--ant-color-primary-bg, #e6f4ff);
+  background: var(--survey-primary-bg);
   border-radius: 20px;
-  color: var(--ant-color-primary, #1677ff);
+  color: var(--survey-primary);
   font-size: 13px;
   font-weight: 500;
   letter-spacing: 2px;
@@ -532,10 +535,12 @@ async function handleSubmit() {
 }
 
 .d-survey__progress-bar {
+  width: 100%;
   height: 100%;
-  background: var(--ant-color-primary, #1677ff);
+  transform-origin: left center;
+  background: var(--survey-primary);
   border-radius: 3px;
-  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .d-survey__progress-label {
@@ -559,7 +564,8 @@ async function handleSubmit() {
   background: var(--survey-surface);
   padding: 20px 24px;
   border-radius: 12px;
-  border-left: 4px solid var(--ant-color-primary, #1677ff);
+  border: 1px solid var(--survey-primary-border);
+  background: color-mix(in srgb, var(--survey-primary) 6%, var(--survey-surface));
   margin-bottom: 20px;
   font-size: 15px;
   color: var(--survey-text);
@@ -633,7 +639,7 @@ async function handleSubmit() {
   transition: all 0.2s;
 
   &:focus {
-    border-color: var(--ant-color-primary, #1677ff);
+    border-color: var(--survey-primary);
     background: var(--survey-surface);
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.08);
   }
@@ -661,12 +667,12 @@ async function handleSubmit() {
 }
 
 .d-survey__item--answered {
-  border-color: rgba(102, 126, 234, 0.15);
+  border-color: color-mix(in srgb, var(--survey-primary) 18%, transparent);
 }
 
 .d-survey__item--shake {
   animation: item-shake 0.5s ease;
-  border-color: #ff4d4f;
+  border-color: var(--survey-danger);
 }
 
 @keyframes item-shake {
@@ -708,14 +714,14 @@ async function handleSubmit() {
 }
 
 .d-survey__item-dot--done {
-  border-color: var(--ant-color-success, #52c41a);
-  background: var(--ant-color-success, #52c41a);
+  border-color: var(--ant-color-success);
+  background: var(--ant-color-success);
   color: var(--survey-on-primary);
   font-size: 14px;
 }
 
 .d-survey__item-dot--req {
-  border-color: var(--ant-color-error-border, #ff7875);
+  border-color: var(--ant-color-error-border);
   color: var(--survey-danger);
 }
 
@@ -784,14 +790,14 @@ async function handleSubmit() {
   transition: all 0.15s;
 
   &:hover {
-    border-color: #c0c0c0;
-    background: #f0f0f0;
+    border-color: var(--survey-border);
+    background: var(--survey-surface-muted);
   }
 }
 
 .d-survey__scale-btn--active {
-  border-color: var(--ant-color-primary, #1677ff);
-  background: var(--ant-color-primary, #1677ff);
+  border-color: var(--survey-primary);
+  background: var(--survey-primary);
   color: var(--survey-on-primary);
   box-shadow: 0 3px 10px rgba(102, 126, 234, 0.25);
   transform: scale(1.08);
@@ -809,7 +815,7 @@ async function handleSubmit() {
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  border: 1.5px solid #e8e8e8;
+  border: 1.5px solid var(--survey-border);
   border-radius: 10px;
   background: var(--survey-surface-muted);
   font-size: 14px;
@@ -820,17 +826,17 @@ async function handleSubmit() {
   width: 100%;
 
   &:hover {
-    border-color: #c8c8c8;
-    background: #f5f5f5;
+    border-color: var(--survey-border);
+    background: var(--survey-surface-muted);
   }
 }
 
 .d-survey__choice--active {
-  border-color: var(--ant-color-primary, #1677ff);
-  background: #f0f3ff;
+  border-color: var(--survey-primary);
+  background: var(--survey-primary-bg);
 
   .d-survey__choice-letter {
-    background: var(--ant-color-primary, #1677ff);
+    background: var(--survey-primary);
     color: var(--survey-on-primary);
     border-color: transparent;
   }
@@ -840,7 +846,7 @@ async function handleSubmit() {
   width: 26px;
   height: 26px;
   border-radius: 8px;
-  border: 1.5px solid #d0d0d0;
+  border: 1.5px solid var(--survey-border);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -858,7 +864,7 @@ async function handleSubmit() {
 
 .d-survey__choice-check {
   font-size: 15px;
-  color: var(--ant-color-primary, #1677ff);
+  color: var(--survey-primary);
   font-weight: 700;
 }
 
@@ -884,7 +890,7 @@ async function handleSubmit() {
   font-family: inherit;
 
   &:focus {
-    border-color: var(--ant-color-primary, #1677ff);
+    border-color: var(--survey-primary);
     background: var(--survey-surface);
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.08);
   }
@@ -919,7 +925,7 @@ async function handleSubmit() {
   font-size: 16px;
   font-weight: 600;
   color: var(--survey-on-primary);
-  background: var(--ant-color-primary, #1677ff);
+  background: var(--survey-primary);
   box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
   cursor: pointer;
   transition: all 0.2s;

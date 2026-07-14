@@ -14,6 +14,12 @@ export interface PortfolioExportApprovalVO {
   rejectReason?: string
   downloadTime?: string
   createTime: string
+  fileNodeId?: string
+  fileName?: string
+  expireTime?: string
+  revokeReason?: string
+  revokeUserId?: string
+  revokeTime?: string
 }
 
 export interface PortfolioMajorGroupPortfolioSectionSummaryVO {
@@ -78,6 +84,8 @@ export const portfolioSecurityApi = {
     applicantUserId?: string
   }) =>
     http.post<PageResult<PortfolioExportApprovalVO>>('/api/portfolio/security/export/page', data),
+  downloadExport: (data: { id: string }) =>
+    http.post<PortfolioExportApprovalVO>('/api/portfolio/security/export/download', data),
   saveMaskRule: (data: {
     fieldType: string
     exportScope: string

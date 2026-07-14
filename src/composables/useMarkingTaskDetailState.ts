@@ -260,11 +260,15 @@ export function useMarkingTaskDetailState() {
     when: () => Boolean(task.value?.examId),
     onEvent: (event) => {
       if (event.eventType === MarkingTaskStreamEventTypeCode.SESSION_PAUSED) {
-        sessionPausedAlert.value = true
+        if (!event.sessionId || event.sessionId === task.value?.sessionId) {
+          sessionPausedAlert.value = true
+        }
         return
       }
       if (event.eventType === MarkingTaskStreamEventTypeCode.SESSION_RESUMED) {
-        sessionPausedAlert.value = false
+        if (!event.sessionId || event.sessionId === task.value?.sessionId) {
+          sessionPausedAlert.value = false
+        }
         return
       }
       if (

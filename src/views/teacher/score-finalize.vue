@@ -95,6 +95,27 @@
         </template>
       </UiAlertStrip>
       <UiAlertStrip
+        v-if="missingAbsenceScoreZeroFinalCount > 0"
+        tone="warning"
+        title="缺考计零终分待补齐"
+        :description="`本场有 ${missingAbsenceScoreZeroFinalCount} 名已确认计零的缺考生尚未写入正式零分终分，全场发布前须先补齐；补齐后列表会标记「缺考计零」，无扫描影像。`"
+        dense
+        inline
+        class="score-finalize__alert"
+      >
+        <template #actions>
+          <UiButton
+            variant="primary"
+            size="sm"
+            :loading="repairingScoreZero"
+            @click="handleRepairScoreZero"
+          >
+            一键补齐计零终分
+          </UiButton>
+          <UiButton variant="outline" size="sm" @click="goAbsenceConfirm"> 前往缺考确认 </UiButton>
+        </template>
+      </UiAlertStrip>
+      <UiAlertStrip
         v-if="blockingRiskReasons.length > 0"
         tone="warning"
         title="存在阻塞性成绩风险"
@@ -219,7 +240,17 @@
                 }}</span>
               </template>
               <template v-else-if="column.key === 'studentName'">
-                {{ candidates[index].studentName || '—' }}
+                <span class="flex items-center gap-2 min-w-0">
+                  <span class="truncate">{{ candidates[index].studentName || '—' }}</span>
+                  <UiTag
+                    v-if="candidates[index].absenceScoreZero"
+                    tone="orange"
+                    size="sm"
+                    title="缺考计零合成卷，无扫描影像"
+                  >
+                    缺考计零
+                  </UiTag>
+                </span>
               </template>
               <template v-else-if="column.key === 'examScore'">
                 <span
@@ -317,6 +348,16 @@
       <UiSkeletonState v-if="detailLoading" variant="card" compact />
       <UiEmpty v-else-if="!paperScore" description="暂无成绩明细" />
       <div v-else>
+        <UiAlertStrip
+          v-if="detailCandidate?.absenceScoreZero"
+          tone="info"
+          title="缺考计零合成卷"
+          description="该生为缺考计零，本卷无扫描影像与题目批改明细，正式成绩为 0 分；请在确认后直接发布，不必打开影像阅卷。"
+          dense
+          inline
+          class="score-finalize__detail-absence-alert"
+          style="margin-bottom: 12px"
+        />
         <a-descriptions :column="2" size="small" bordered class="score-finalize__detail-summary">
           <a-descriptions-item label="答卷">
             {{ detailCandidate?.paperDisplay.primaryText }}
@@ -544,7 +585,20 @@
             去题目复核确认
           </UiButton>
           <UiButton
-            v-if="!isHardBlockingRiskReason(reason.reasonCode) && !isQuestionConfirmRiskReason(reason.reasonCode)"
+            v-else-if="reason.reasonCode === FinalScoreRiskReasonCode.MISSING_ABSENCE_SCORE_ZERO_FINAL"
+            size="sm"
+            variant="primary"
+            :loading="repairingScoreZero"
+            @click="handleRepairScoreZero"
+          >
+            一键补齐计零终分
+          </UiButton>
+          <UiButton
+            v-if="
+              !isHardBlockingRiskReason(reason.reasonCode)
+                && !isQuestionConfirmRiskReason(reason.reasonCode)
+                && reason.reasonCode !== FinalScoreRiskReasonCode.MISSING_ABSENCE_SCORE_ZERO_FINAL
+            "
             size="sm"
             variant="outline"
             :loading="riskReviewSavingReasonCode === reason.reasonCode"
@@ -657,6 +711,7 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { repairScoreZeroFinalScores } from '@/apis/mark/absence'
 import {
   AuditTargetTypeCode,
   listOperationLogs,
@@ -984,7 +1039,6 @@ function canConfirm(record: ExamScoreSummaryItemResponse): boolean {
     // 列表合同：总分更正官方分与题分不一致时禁用「重新确认」，须「重新发布」保留更正分。
     return !(record.latestTotalScoreCorrectionApplied
       || record.questionScoreSumMatchesExamScore === false);
-
   }
   return (
     s === FinalScoreStatusCode.PENDING
@@ -1029,11 +1083,12 @@ const hardBlockingRiskReasons = computed(() => {
 const hasHardBlockingRisks = computed(() => hardBlockingRiskReasons.value.length > 0)
 
 const hasUnreviewedBlockingRisks = computed(() => {
-  // 未确认题目分 / 缺批改：产品硬门禁，不走「标记已复核」软通过，由 Alert + 后端卷级校验处理
+  // 未确认题目分 / 缺批改 / 计零终分待补齐：硬引导处置，不走「标记已复核」软通过
   return blockingRiskReasons.value.some(
     (reason) =>
       !HARD_BLOCKING_RISK_REASON_CODES.has(reason.reasonCode)
       && !isQuestionConfirmRiskReason(reason.reasonCode)
+      && reason.reasonCode !== FinalScoreRiskReasonCode.MISSING_ABSENCE_SCORE_ZERO_FINAL
       && !reviewedRiskReasonCodes.value.has(reason.reasonCode),
   )
 })
@@ -1063,6 +1118,7 @@ function riskReasonStatusTone(reasonCode: FinalScoreRiskReasonCode): 'green' | '
 function riskReasonStatusLabel(reasonCode: FinalScoreRiskReasonCode): string {
   if (isHardBlockingRiskReason(reasonCode)) return '需处理'
   if (isQuestionConfirmRiskReason(reasonCode)) return '须题目确认'
+  if (reasonCode === FinalScoreRiskReasonCode.MISSING_ABSENCE_SCORE_ZERO_FINAL) return '须补齐计零'
   if (reasonCode === FinalScoreRiskReasonCode.ABNORMAL_PAPER) return '须扫描处置'
   return isRiskReasonReviewed(reasonCode) ? '已复核' : '待复核'
 }
@@ -1097,6 +1153,11 @@ async function toggleRiskReasonReviewed(reasonCode: FinalScoreRiskReasonCode): P
         : '未确认题目分须在复核台确认或正评提交，不能仅标记风险已复核',
     )
     goQuestionReviewBatch()
+    return
+  }
+  if (reasonCode === FinalScoreRiskReasonCode.MISSING_ABSENCE_SCORE_ZERO_FINAL) {
+    message.warning('缺考计零终分待补齐须先执行补齐，不能仅标记风险已复核')
+    void handleRepairScoreZero()
     return
   }
   if (!selectedExamId.value || riskReviewSavingReasonCode.value) return
@@ -1135,6 +1196,10 @@ function warnUnreviewedBlockingRisks(): boolean {
     message.warning('存在未完成缺考核对学生，请先完成缺考核对后再确认或发布成绩')
     return true
   }
+  if (missingAbsenceScoreZeroFinalCount.value > 0) {
+    message.warning('存在缺考计零终分待补齐，请先一键补齐后再确认或发布成绩')
+    return true
+  }
   if (!hasUnreviewedBlockingRisks.value) return false
   riskReviewDrawerOpen.value = true
   message.warning('存在未复核的异常成绩，请先完成集中复核后再发布')
@@ -1160,6 +1225,31 @@ const unconfirmedQuestionGradeCount = computed(
   () => effectiveRiskOverview.value?.unconfirmedQuestionGradeCount ?? 0,
 )
 
+/** 已确认计零但尚未写入正式零分终分的人数（须一键补齐，不自动洗库） */
+const missingAbsenceScoreZeroFinalCount = computed(
+  () => effectiveRiskOverview.value?.missingAbsenceScoreZeroFinalCount ?? 0,
+)
+
+const repairingScoreZero = ref(false)
+
+async function handleRepairScoreZero(): Promise<void> {
+  if (!selectedExamId.value) return
+  repairingScoreZero.value = true
+  try {
+    const result = await repairScoreZeroFinalScores({ examId: selectedExamId.value })
+    message.success(
+      result.repairedCount > 0
+        ? `已补齐 ${result.repairedCount} 条计零终分`
+        : '本场无待补齐的计零缺考',
+    )
+    await Promise.all([loadCandidates(), loadRiskOverview(), refreshSnapshot().catch(() => undefined)])
+  } catch (error) {
+    showUserError(error, '补齐计零终分失败')
+  } finally {
+    repairingScoreZero.value = false
+  }
+}
+
 /**
  * 安全批量确认卷级最终成绩：仅依赖 safeConfirmableCount + 全场级硬阻塞。
  * 未确认题目分由后端按卷过滤，不应因场内仍有待复核卷而禁用「已全题确认」卷的批量确认。
@@ -1179,6 +1269,7 @@ const canBatchConfirmSafe = computed(() => {
 /** 与后端 collectSafeBatchConfirmBlockingReasons 对齐的全场级阻断 */
 const FIELD_WIDE_SAFE_BATCH_BLOCKERS = new Set<FinalScoreRiskReasonCode>([
   FinalScoreRiskReasonCode.UNRECONCILED_ABSENCE,
+  FinalScoreRiskReasonCode.MISSING_ABSENCE_SCORE_ZERO_FINAL,
   FinalScoreRiskReasonCode.BLOCKING_INCIDENT,
   FinalScoreRiskReasonCode.PENDING_DUPLICATE_IMAGE,
 ])
@@ -1328,7 +1419,11 @@ function biasLevelTone(level: ScoreBiasLevelCode): BadgeTone {
 
 function buildFinalizeActions(record: ExamScoreSummaryItemResponse): UiTableRowActionItem[] {
   return [
-    { key: 'detail', label: '明细', disabled: !record.paperInstanceId },
+    {
+      key: 'detail',
+      label: record.absenceScoreZero ? '计零说明' : '明细',
+      disabled: !record.paperInstanceId,
+    },
     {
       key: 'confirm',
       label: confirmButtonLabel(record),

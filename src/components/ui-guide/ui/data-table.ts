@@ -9,10 +9,11 @@
  * 误用：`server` + `total > pageSize` 且未绑 `@page-change` 时，dev 环境 `console.warn`，分页栏自动隐藏。
  *
  * ## emptyKind
- * - `default`：通用「当前没有可展示的内容」
- * - `first-run`：首次无记录，可配 `#empty-action`
- * - `no-result`：筛选无结果
- * 也可传 `emptyTitle` / `emptyDescription` 或完全自定义 `#empty` slot。
+ * - `default`：通用「暂无数据」（仅标题）
+ * - `first-run`：首次无记录「暂无记录」，可配 `#empty-action`
+ * - `no-result`：筛选无结果「无匹配结果」
+ * - 请求失败请传 `loadError`，勿与空数据混淆
+ * 也可传 `emptyTitle` / `emptyDescription`（默认 description 为空）或完全自定义 `#empty` slot。
  *
  * ## 列固定
  * - 操作列（key=actions）默认 fixed:right
@@ -67,23 +68,49 @@ export interface UiDataTableChangeEvent<RecordType = Record<string, unknown>> {
 
 export interface UiDataTableEmptyPreset {
   title: string
+  /** 教师向空态默认无说明；空字符串表示不渲染 description */
   description: string
 }
 
-/** UiDataTable 内置空态文案预设 */
+/** UiDataTable 内置空态文案预设：仅短标题，无 description */
 export const UI_DATA_TABLE_EMPTY_PRESETS: Record<UiDataTableEmptyKind, UiDataTableEmptyPreset> = {
   'default': {
-    title: '',
-    description: '当前没有可展示的内容',
+    title: '暂无数据',
+    description: '',
   },
   'first-run': {
     title: '暂无记录',
-    description: '当前还没有可展示的数据，请先完成创建或生成。',
+    description: '',
   },
   'no-result': {
     title: '无匹配结果',
-    description: '请调整筛选条件后重试。',
+    description: '',
   },
+}
+
+export interface ResolveUiDataTableEmptyKindInput {
+  /** 请求失败（优先于空数据语义） */
+  hasError?: boolean
+  /** 当前是否有筛选条件 */
+  hasActiveFilters?: boolean
+  /** 首次进入、尚未产生业务数据 */
+  isFirstRun?: boolean
+}
+
+/**
+ * 解析列表空态 kind。
+ * 失败态由 UiDataTable.loadError 单独覆盖；此处只映射空数据语义。
+ */
+export function resolveUiDataTableEmptyKind(
+  input: ResolveUiDataTableEmptyKindInput = {},
+): UiDataTableEmptyKind {
+  if (input.hasActiveFilters) {
+    return 'no-result'
+  }
+  if (input.isFirstRun) {
+    return 'first-run'
+  }
+  return 'default'
 }
 
 /** 推断时始终保留的主列 key */

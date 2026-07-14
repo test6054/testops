@@ -479,7 +479,7 @@ function handleRowClick(row: MatrixRow) {
   height: 14px;
   border-radius: 50%;
   background: var(--dp-color-danger);
-  color: #fff;
+  color: var(--ant-color-white);
   font-size: 11px;
   font-weight: 700;
   line-height: 14px;
@@ -525,31 +525,31 @@ function handleRowClick(row: MatrixRow) {
 
 .matrix-workbench__tone--blue {
   background: rgba(59, 130, 246, 0.16);
-  color: #1d4ed8;
+  color: var(--ant-color-primary-active);
 }
 
 .matrix-workbench__tone--green {
   background: rgba(34, 197, 94, 0.18);
-  color: #15803d;
+  color: var(--dp-green-700);
 }
 
 .matrix-workbench__tone--orange {
   background: rgba(249, 115, 22, 0.18);
-  color: #c2410c;
+  color: var(--dp-orange-700);
 }
 
 .matrix-workbench__tone--yellow {
   background: rgba(234, 179, 8, 0.2);
-  color: #a16207;
+  color: var(--dp-yellow-700);
 }
 
 .matrix-workbench__tone--red {
   background: rgba(220, 38, 38, 0.18);
-  color: #b91c1c;
+  color: var(--dp-red-700);
 }
 
 .matrix-workbench__tone--purple {
   background: rgba(168, 85, 247, 0.16);
-  color: #7e22ce;
+  color: var(--dp-purple-700);
 }
 </style>

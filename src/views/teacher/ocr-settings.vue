@@ -263,6 +263,14 @@ function providerLabel(providerType: MarkOcrProviderTypeCode): string {
   return strictEnumLabel(MarkOcrProviderTypeDescription, providerType, 'OCR 渠道')
 }
 
+const platformProviderColumns: ColumnType<MarkOcrPlatformProviderResponse>[] = [
+  { title: '供应商', key: 'providerType', dataIndex: 'providerType', width: 120 },
+  { title: '启用', key: 'enabled', dataIndex: 'enabled', width: 90 },
+  { title: '凭证 / 接口摘要', key: 'credentials', dataIndex: 'credentials', align: 'left' },
+  { title: '更新时间', key: 'updateTime', dataIndex: 'updateTime', width: 170 },
+  { title: '操作', key: 'actions', width: 180, fixed: 'right' },
+]
+
 function isPaddleProviderType(providerType: MarkOcrProviderTypeCode): boolean {
   return providerType === MarkOcrProviderTypeCode.PADDLE
 }
@@ -829,27 +837,29 @@ onBeforeUnmount(() => {
           </UiButton>
         </template>
 
-        <a-table
+        <UiDataTable
+          pagination-mode="none"
+          :columns="platformProviderColumns"
           :data-source="platformProviders"
           :loading="platformProvidersLoading"
-          :pagination="false"
+          :show-pagination="false"
+          :total="platformProviders.length"
           row-key="providerType"
           size="small"
+          flat
+          empty-kind="first-run"
+          empty-description="尚未配置平台 OCR 供应商；超级管理员须先维护后再做健康检查。"
         >
-          <a-table-column title="供应商" key="providerType" width="120">
-            <template #default="{ record }">
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'providerType'">
               {{ providerLabel(record.providerType) }}
             </template>
-          </a-table-column>
-          <a-table-column title="启用" key="enabled" width="90">
-            <template #default="{ record }">
+            <template v-else-if="column.key === 'enabled'">
               <UiTag :tone="record.enabled ? 'green' : 'gray'" size="sm">
                 {{ record.enabled ? '已启用' : '未启用' }}
               </UiTag>
             </template>
-          </a-table-column>
-          <a-table-column title="凭证 / 接口摘要" key="credentials">
-            <template #default="{ record }">
+            <template v-else-if="column.key === 'credentials'">
               <div class="provider-admin__credential">
                 <div
                   v-for="summary in platformProviderSummary(record)"
@@ -859,14 +869,10 @@ onBeforeUnmount(() => {
                 </div>
               </div>
             </template>
-          </a-table-column>
-          <a-table-column title="更新时间" key="updateTime" width="170">
-            <template #default="{ record }">
+            <template v-else-if="column.key === 'updateTime'">
               {{ record.updateTime || '未配置' }}
             </template>
-          </a-table-column>
-          <a-table-column title="操作" key="actions" width="180" fixed="right">
-            <template #default="{ record }">
+            <template v-else-if="column.key === 'actions'">
               <a-space size="small">
                 <UiButton size="sm" variant="outline" @click="openPlatformProviderEditor(record)">
                   编辑
@@ -881,8 +887,8 @@ onBeforeUnmount(() => {
                 </UiButton>
               </a-space>
             </template>
-          </a-table-column>
-        </a-table>
+          </template>
+        </UiDataTable>
       </WorkbenchSurfaceCard>
 
       <WorkbenchSurfaceCard v-if="ocrDebugAllowed" class="ocr-settings__panel">

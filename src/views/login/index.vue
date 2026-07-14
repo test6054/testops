@@ -258,11 +258,11 @@ onMounted(async () => {
 }
 
 .login-page {
-  --login-bg: #f5f8fc;
-  --login-surface: #fff;
-  --login-text: #17345d;
-  --login-muted: #607696;
-  --login-accent: #2563eb;
+  --login-bg: var(--ant-color-bg-layout);
+  --login-surface: var(--ant-color-bg-container);
+  --login-text: var(--dp-text-primary);
+  --login-muted: var(--dp-text-secondary);
+  --login-accent: var(--ant-color-primary);
   box-sizing: border-box;
   position: relative;
   display: flex;
@@ -445,7 +445,7 @@ onMounted(async () => {
   padding: 24px 24px 16px;
   border-radius: var(--dp-radius-panel) var(--dp-radius-panel) 0 0;
   background: var(--login-surface);
-  border: 1px solid var(--ant-color-border-secondary, #e5e7eb);
+  border: 1px solid var(--ant-color-border-secondary);
   border-bottom: none;
 }
 
@@ -468,7 +468,7 @@ onMounted(async () => {
   padding: 20px 24px 24px;
   border-radius: 0 0 var(--dp-radius-panel) var(--dp-radius-panel);
   background: var(--login-surface);
-  border: 1px solid var(--ant-color-border-secondary, #e5e7eb);
+  border: 1px solid var(--ant-color-border-secondary);
   border-top: none;
 }
 
@@ -484,9 +484,8 @@ onMounted(async () => {
   :deep(.ui-radio-group :where(.ant-radio-group)) {
     gap: 3px;
     padding: 3px;
-    border-color: rgba(207, 217, 232, 0.92);
-    background: #eef2f7;
-    box-shadow: inset 0 1px 1px rgba(15, 23, 42, 0.03);
+    border-color: var(--ant-color-border-secondary);
+    background: var(--ant-color-fill-quaternary);
   }
 
   :deep(.ui-radio-group .ant-radio-button-wrapper) {
@@ -495,19 +494,17 @@ onMounted(async () => {
     font-size: 13px;
     font-weight: 600;
     line-height: 34px;
-    color: #60708a;
+    color: var(--dp-text-secondary);
   }
 
   :deep(.ui-radio-group .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled)) {
-    background: #fff;
-    color: #16345d;
-    box-shadow:
-      0 1px 2px rgba(15, 23, 42, 0.08),
-      0 0 0 1px rgba(210, 219, 232, 0.9) inset;
+    background: var(--ant-color-bg-container);
+    color: var(--dp-text-primary);
+    box-shadow: 0 0 0 1px var(--ant-color-border) inset;
   }
 
   :deep(.ui-radio-group .ant-radio-button-wrapper:hover:not(.ant-radio-button-wrapper-disabled)) {
-    color: #27476f;
+    color: var(--dp-text-primary);
   }
 
   :deep(.ant-form-item) {
@@ -521,12 +518,12 @@ onMounted(async () => {
   :deep(.ui-input__control),
   :deep(.ui-password-input__control),
   :deep(.school-autocomplete__input .ant-select-selector) {
-    border-radius: 14px;
+    border-radius: var(--dp-radius-control);
   }
 
   :deep(.ui-button--size-lg) {
     min-height: 48px;
-    border-radius: 14px;
+    border-radius: var(--dp-radius-control);
     font-weight: 700;
   }
 }

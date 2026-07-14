@@ -116,6 +116,8 @@ export interface WechatLoginStatusDTO {
 export interface TenantAdminPermissionDTO {
   /** 是否为租户管理员 */
   isTenantAdmin: boolean
+  /** 服务端权限投影版本，变更后客户端必须丢弃旧菜单 */
+  permissionVersion: number
 }
 
 export interface LoginRequest {

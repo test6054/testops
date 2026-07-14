@@ -17,6 +17,7 @@ export const useUserStore = defineStore(
         schoolName?: string
         tenantType?: string
         isTenantAdmin?: boolean
+        permissionVersion?: number
         forcePasswordChange?: boolean
         currentLoginProviderType?: string
         sourceFrom?: string
@@ -39,6 +40,7 @@ export const useUserStore = defineStore(
       schoolName: '',
       tenantType: '',
       isTenantAdmin: undefined,
+      permissionVersion: undefined,
       lastLoginTime: '',
       passwordLastChangedTime: '',
       gender: undefined,
@@ -133,6 +135,7 @@ export const useUserStore = defineStore(
         schoolName: '',
         tenantType: '',
         isTenantAdmin: undefined,
+        permissionVersion: undefined,
         lastLoginTime: '',
         passwordLastChangedTime: '',
         gender: undefined,
@@ -237,30 +240,19 @@ export const useUserStore = defineStore(
       }
     }
 
-    // 获取租户管理员权限 - edu-user check-permission 为真源；失败时保留已有 true，避免菜单闪失
+    // 获取权限投影：服务端版本变化必须触发菜单全量重建，查询失败时清空旧特权投影。
     const fetchTenantAdminPermission = async (skipIfAlreadySet = false) => {
-      const authStore = useAuthStore()
-
       if (skipIfAlreadySet && userInfo.isTenantAdmin !== undefined) {
         return
       }
 
-      if (authStore.userRole === RoleEnum.SUPER_ADMIN) {
-        userInfo.isTenantAdmin = true
-        return
-      }
-
-      const preservedTenantAdmin = userInfo.isTenantAdmin === true
-
       try {
         const response = await checkTenantAdminPermission()
-        userInfo.isTenantAdmin = response?.isTenantAdmin === true
+        userInfo.isTenantAdmin = response.isTenantAdmin === true
+        userInfo.permissionVersion = response.permissionVersion
       } catch {
-        if (preservedTenantAdmin) {
-          userInfo.isTenantAdmin = true
-          return
-        }
         userInfo.isTenantAdmin = false
+        userInfo.permissionVersion = undefined
       }
     }
 

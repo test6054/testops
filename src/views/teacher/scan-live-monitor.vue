@@ -585,6 +585,7 @@ import {
   listExamScanMonitorDevices,
 } from '@/apis/mark/exam-progress'
 import {
+  discardScannedPageByTeacher,
   listScanAttentions,
   pageScannerBatches,
   QUALITY_DECISION_TONE,
@@ -597,14 +598,12 @@ import {
   ScanAttentionSourceTypeDescription,
   ScanAttentionTypeCode,
   ScanAttentionTypeDescription,
-  ScanBatchStatusCode,
-  ScanBatchStatusDescription,
+  ScanBatchStatusCode, ScanBatchStatusDescription 
 } from '@/apis/mark/exam-scan'
 import { CandidateStatusDescription, pageExamCandidates } from '@/apis/mark/exam-scope'
 import { pageExamScoreSummary } from '@/apis/mark/exam-score'
 import { FinalScoreStatusDescription } from '@/apis/mark/final-score-status'
 import { GRADE_STATUS_TONE, GradeStatusDescription } from '@/apis/mark/grade-status'
-import { discardScannedPage } from '@/apis/mark/scanner-kiosk'
 import { TASK_STATUS_TONE, TaskStatusDescription } from '@/apis/mark/task-status'
 import ScanDeviceCardGrid from '@/components/mark/ScanDeviceCardGrid.vue'
 import ScanImageStage from '@/components/mark/ScanImageStage.vue'
@@ -1750,7 +1749,7 @@ async function confirmDiscardPage(): Promise<void> {
   pageDiscardReasonError.value = ''
   pageDiscarding.value = record.pageId
   try {
-    await discardScannedPage({ scannedPageId: record.pageId, discardReason: trimmed })
+    await discardScannedPageByTeacher({ scannedPageId: record.pageId, discardReason: trimmed })
     message.success('扫描页已废弃')
     pageDiscardModalOpen.value = false
     pageDiscardTarget.value = null
@@ -2634,9 +2633,9 @@ onBeforeUnmount(() => {
     min-height: 200px;
     max-height: 360px;
     padding: 12px;
-    border: 1px solid var(--scan-canvas-border, #dde2ea);
+    border: 1px solid var(--scan-canvas-border);
     border-radius: 6px;
-    background: var(--scan-canvas-bg, #f1f3f7);
+    background: var(--scan-canvas-bg);
   }
 
   &__identity-image {
@@ -2646,7 +2645,7 @@ onBeforeUnmount(() => {
     height: auto;
     max-height: 336px;
     object-fit: contain;
-    background: #fff;
+    background: var(--ant-color-bg-container);
     box-shadow: var(--scan-paper-shadow, 0 6px 24px rgba(15, 23, 42, 0.12));
   }
 

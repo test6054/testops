@@ -94,6 +94,7 @@ export function useDispatchSession() {
       return false
     }
     if (!ticketId.value || !scannerDeviceId.value || !scannerStationId.value) {
+      errorMessage.value = '请先完成一体机设备激活后再领取派单'
       return false
     }
     actionLoading.value = true
@@ -121,6 +122,7 @@ export function useDispatchSession() {
       return false
     }
     if (!ticketId.value || !scannerDeviceId.value || !scannerStationId.value) {
+      errorMessage.value = '请先完成一体机设备激活后再确认进纸'
       return false
     }
     actionLoading.value = true

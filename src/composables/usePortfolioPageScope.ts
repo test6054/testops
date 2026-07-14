@@ -9,7 +9,7 @@ export function usePortfolioPageScope() {
   const route = useRoute()
   const portfolioStore = usePortfolioStore()
   const layoutScopeProvided = inject(portfolioLayoutScopeProvidedKey, undefined)
-  const { canPickTeachers, resolveDefaultTeacherId, currentUserId } = usePortfolioTeacherAccess()
+  const { canPickTeachers, canReviewPortfolio, resolveDefaultTeacherId, currentUserId } = usePortfolioTeacherAccess()
 
   const queryTeacherId = computed(() =>
     typeof route.query.teacherId === 'string' ? route.query.teacherId : '')
@@ -20,7 +20,7 @@ export function usePortfolioPageScope() {
     }
     const queryId = queryTeacherId.value
     if (queryId) {
-      if (canPickTeachers.value) {
+      if (canPickTeachers.value || canReviewPortfolio.value) {
         return queryId
       }
       if (queryId === currentUserId.value) {

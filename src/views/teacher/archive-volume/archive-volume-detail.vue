@@ -13,18 +13,13 @@
         本页为<strong>课程考核归档材料</strong>，用于本科教学评估迎检。OBE 达成度、间接评价与认证证据请在
         <RouterLink :to="{ name: 'QualityDashboard' }">「质量评价」</RouterLink>
         工作台处理。
+        <template v-if="detail.capabilityDeniedHint">
+          · {{ detail.capabilityDeniedHint }}
+        </template>
       </UiAlertStrip>
+
       <UiAlertStrip
-        v-if="detail.capabilityDeniedHint"
-        tone="info"
-        title="协作权限说明"
-        :description="detail.capabilityDeniedHint"
-        dense
-        inline
-        class="archive-volume-detail__alert"
-      />
-      <UiAlertStrip
-        v-if="submitChecklistLoadError"
+        v-if="isArchiveGateVisible('checklistFail')"
         tone="warning"
         title="提交待办清单加载失败"
         :description="submitChecklistLoadError"
@@ -39,7 +34,7 @@
         </template>
       </UiAlertStrip>
       <UiAlertStrip
-        v-if="grantsLoadFailed"
+        v-if="isArchiveGateVisible('grantsFail')"
         tone="warning"
         title="岗位职责加载失败"
         description="鉴定、销毁与查阅审批操作不可用"
@@ -48,10 +43,7 @@
         class="archive-volume-detail__alert"
       />
       <UiAlertStrip
-        v-if="
-          detail.volume.integrityStatus === ArchiveIntegrityStatusCode.UNKNOWN
-            || detail.volume.integrityStatus === ArchiveIntegrityStatusCode.FAILED
-        "
+        v-if="isArchiveGateVisible('integrity')"
         tone="warning"
         title="请先执行完整性自检"
         description="完整性未通过前无法提交归档"
@@ -61,7 +53,8 @@
       />
       <UiAlertStrip
         v-if="
-          !detail.latestFourPropertyCheck
+          isArchiveGateVisible('fourProperty')
+            && !detail.latestFourPropertyCheck
             && detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
         "
         tone="warning"
@@ -72,7 +65,7 @@
         class="archive-volume-detail__alert"
       />
       <UiAlertStrip
-        v-else-if="detail.fourPropertyStale"
+        v-else-if="isArchiveGateVisible('fourProperty') && detail.fourPropertyStale"
         tone="warning"
         title="四性结论已失效"
         description="四性结论已失效，请确认密级定密后重新执行四性检测"
@@ -81,7 +74,7 @@
         class="archive-volume-detail__alert"
       />
       <UiAlertStrip
-        v-else-if="showSecurityFourPropertyAlert"
+        v-else-if="isArchiveGateVisible('fourProperty') && showSecurityFourPropertyAlert"
         tone="warning"
         title="四性检测: 安全性未通过"
         :description="securityFourPropertyDescription"
@@ -96,7 +89,7 @@
         </template>
       </UiAlertStrip>
       <UiAlertStrip
-        v-else-if="showReliabilityFourPropertyAlert"
+        v-else-if="isArchiveGateVisible('fourProperty') && showReliabilityFourPropertyAlert"
         tone="warning"
         title="四性检测: 可靠性未通过"
         :description="reliabilityFourPropertyDescription"
@@ -106,7 +99,8 @@
       />
       <UiAlertStrip
         v-else-if="
-          detail.latestFourPropertyCheck
+          isArchiveGateVisible('fourProperty')
+            && detail.latestFourPropertyCheck
             && !detail.latestFourPropertyCheck.overallPassed
             && detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
         "
@@ -118,7 +112,7 @@
         class="archive-volume-detail__alert"
       />
       <UiAlertStrip
-        v-if="scoreSubmitBlockReason"
+        v-if="isArchiveGateVisible('scoreSubmit') && scoreSubmitBlockReason"
         tone="warning"
         :title="scoreSubmitBlockReason"
         description="成绩证明未满足提交前置条件"
@@ -127,7 +121,7 @@
         class="archive-volume-detail__alert"
       />
       <UiAlertStrip
-        v-if="showRemediationWorkflowStrip"
+        v-if="isArchiveGateVisible('remediation')"
         tone="warning"
         title="迎评整改进行中"
         :description="remediationOpenDescription"
@@ -229,7 +223,7 @@
         </template>
       </UiAlertStrip>
       <UiAlertStrip
-        v-if="showAppraisalGuidanceStrip"
+        v-if="isArchiveGateVisible('appraisal')"
         tone="warning"
         title="鉴定待办"
         :description="appraisalGuidanceDescription"
@@ -242,6 +236,29 @@
           </UiButton>
         </template>
       </UiAlertStrip>
+
+      <div
+        v-if="archiveSecondaryGateKeys.length > 0"
+        class="archive-volume-detail__more-gates"
+      >
+        <button
+          type="button"
+          class="archive-volume-detail__more-gates-toggle"
+          @click="archiveSecondaryGatesExpanded = !archiveSecondaryGatesExpanded"
+        >
+          {{
+            archiveSecondaryGatesExpanded
+              ? '收起其余条件'
+              : `还有 ${archiveSecondaryGateKeys.length} 项归档条件`
+          }}
+        </button>
+        <span
+          v-if="!archiveSecondaryGatesExpanded"
+          class="archive-volume-detail__more-gates-summary"
+        >
+          {{ archiveSecondaryGateSummary }}
+        </span>
+      </div>
 
       <ArchiveVolumeCollaboratorStrip
         v-if="detail?.collaborators?.length"
@@ -631,15 +648,24 @@ const activeTab = workbench.activeTab
 const setActiveTab = workbench.setActiveTab
 const userStore = useUserStore()
 const {
-  canApproveDestruction,
+  canApproveDestructionForDepartment,
   canApproveAccessForVolume,
   canManageRemediationAsCoordinator,
-  canReviewTransfer,
-  canRejectTransfer,
+  canReviewTransferForDepartment,
+  canRejectTransferForDepartment,
   grantsLoadFailed,
   loadGrants,
 } = useArchiveDutyAccess()
 const currentUserId = computed(() => String(userStore.userInfo?.userId ?? ''))
+const canApproveDestruction = computed(() =>
+  canApproveDestructionForDepartment(detail.value?.departmentId),
+)
+const canReviewTransfer = computed(() =>
+  canReviewTransferForDepartment(detail.value?.departmentId),
+)
+const canRejectTransfer = computed(() =>
+  canRejectTransferForDepartment(detail.value?.departmentId),
+)
 
 const detailScope = useArchiveVolumeDetailScope(detail, currentUserId)
 const focusedRemediationTask = ref<ArchiveRemediationTaskResponse | null>(null)
@@ -787,6 +813,75 @@ const showAppraisalGuidanceStrip = computed(() => {
   const appraisalStep = summary.chainSteps.find((step) => step.tabKey === 'appraisal')
   return appraisalStep?.chainStatus === 'warn' || appraisalStep?.chainStatus === 'current'
 })
+
+/** 归档条件闸门：只置顶一条「下一必做」，其余折叠，避免迎检告警墙。 */
+type ArchiveGateKey
+  = | 'checklistFail'
+    | 'grantsFail'
+    | 'remediation'
+    | 'appraisal'
+    | 'integrity'
+    | 'fourProperty'
+    | 'scoreSubmit'
+
+const ARCHIVE_GATE_LABEL: Record<ArchiveGateKey, string> = {
+  checklistFail: '待办清单加载失败',
+  grantsFail: '岗位职责加载失败',
+  remediation: '迎评整改进行中',
+  appraisal: '鉴定待办',
+  integrity: '完整性自检',
+  fourProperty: '四性检测',
+  scoreSubmit: '成绩证明门禁',
+}
+
+const showIntegrityGate = computed(() => {
+  const status = detail.value?.volume.integrityStatus
+  return (
+    status === ArchiveIntegrityStatusCode.UNKNOWN || status === ArchiveIntegrityStatusCode.FAILED
+  )
+})
+
+const showFourPropertyGate = computed(() => {
+  const d = detail.value
+  if (!d) return false
+  if (
+    !d.latestFourPropertyCheck
+    && d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
+  ) {
+    return true
+  }
+  if (d.fourPropertyStale) return true
+  if (showSecurityFourPropertyAlert.value || showReliabilityFourPropertyAlert.value) return true
+  return (
+    !!d.latestFourPropertyCheck
+    && !d.latestFourPropertyCheck.overallPassed
+    && d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
+  )
+})
+
+const archiveGatePriorityKeys = computed((): ArchiveGateKey[] => {
+  const keys: ArchiveGateKey[] = []
+  if (submitChecklistLoadError.value) keys.push('checklistFail')
+  if (grantsLoadFailed.value) keys.push('grantsFail')
+  if (showRemediationWorkflowStrip.value) keys.push('remediation')
+  if (showAppraisalGuidanceStrip.value) keys.push('appraisal')
+  if (showIntegrityGate.value) keys.push('integrity')
+  if (showFourPropertyGate.value) keys.push('fourProperty')
+  if (scoreSubmitBlockReason.value) keys.push('scoreSubmit')
+  return keys
+})
+
+const archivePrimaryGateKey = computed(() => archiveGatePriorityKeys.value[0] ?? null)
+const archiveSecondaryGateKeys = computed(() => archiveGatePriorityKeys.value.slice(1))
+const archiveSecondaryGatesExpanded = ref(false)
+const archiveSecondaryGateSummary = computed(() =>
+  archiveSecondaryGateKeys.value.map((key) => ARCHIVE_GATE_LABEL[key]).join(' · '),
+)
+
+function isArchiveGateVisible(key: ArchiveGateKey): boolean {
+  if (archivePrimaryGateKey.value === key) return true
+  return archiveSecondaryGatesExpanded.value && archiveSecondaryGateKeys.value.includes(key)
+}
 
 const appraisalGuidanceDescription = computed(() => {
   const volume = detail.value?.volume
@@ -1219,6 +1314,30 @@ watch(
 @use '@/styles/breakpoints' as bp;
 .archive-volume-detail__alert {
   margin-bottom: var(--dp-space-4);
+}
+
+.archive-volume-detail__more-gates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+  margin: -4px 0 var(--dp-space-4);
+}
+
+.archive-volume-detail__more-gates-toggle {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: var(--dp-font-size-sm);
+  font-weight: var(--dp-font-weight-emphasis);
+  color: var(--ant-color-primary);
+  cursor: pointer;
+}
+
+.archive-volume-detail__more-gates-summary {
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
 }
 
 .archive-volume-detail__remediation-assignee {

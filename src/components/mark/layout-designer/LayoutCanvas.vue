@@ -25,6 +25,7 @@ import {
   snapStageValue,
   stageRectToNorm,
 } from '@/utils/exam-layout-designer'
+import { resolveThemeColor } from '@/utils/mark-echarts-options'
 
 const props = withDefaults(
   defineProps<{
@@ -143,7 +144,7 @@ const safeMarginConfig = computed(() => {
     y: marginY,
     width: stageSize.value.width - marginX * 2,
     height: stageSize.value.height - marginY * 2,
-    stroke: '#ff7875',
+    stroke: resolveThemeColor('--ant-color-error-hover', ''),
     dash: [6, 4],
     strokeWidth: 1,
     listening: false,
@@ -176,7 +177,7 @@ const marqueePreviewConfig = computed(() => {
     y: marqueeDraft.value.y,
     width: marqueeDraft.value.width,
     height: marqueeDraft.value.height,
-    stroke: '#1677ff',
+    stroke: resolveThemeColor('--ant-color-primary', ''),
     dash: [6, 4],
     strokeWidth: 1.5,
     fill: 'rgba(22, 119, 255, 0.08)',
@@ -254,7 +255,7 @@ function blockConfig(block: ExamLayoutBlockDto) {
     width: rect.width,
     height: rect.height,
     fill: resolveBlockFill(block.blockType),
-    stroke: focused ? '#1677ff' : resolveBlockStroke(block.blockType),
+    stroke: focused ? resolveThemeColor('--ant-color-primary', '') : resolveBlockStroke(block.blockType),
     strokeWidth: focused ? 2 : 1,
     draggable: blockDraggable(),
     listening: canvasTool.value === 'select',
@@ -269,7 +270,7 @@ function labelConfig(block: ExamLayoutBlockDto) {
     y: rect.y + 4,
     text: block.blockType,
     fontSize: 11,
-    fill: '#334155',
+    fill: resolveThemeColor('--dp-text-secondary', ''),
     listening: false,
   }
 }
@@ -522,8 +523,8 @@ onMounted(() => {
                 y: 0,
                 width: stageSize.width,
                 height: stageSize.height,
-                fill: '#f8fafc',
-                stroke: '#e2e8f0',
+                fill: resolveThemeColor('--dp-gray-50', ''),
+                stroke: resolveThemeColor('--dp-gray-200', ''),
                 listening: false,
               }"
             />
@@ -534,7 +535,7 @@ onMounted(() => {
               :key="line.key"
               :config="{
                 points: line.points,
-                stroke: '#e2e8f0',
+                stroke: resolveThemeColor('--dp-gray-200', ''),
                 strokeWidth: 1,
                 listening: false,
               }"
@@ -589,7 +590,7 @@ onMounted(() => {
   height: 100%;
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
-  background: #fff;
+  background: var(--ant-color-bg-container);
   padding: 12px;
 
   &__viewport {

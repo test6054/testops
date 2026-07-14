@@ -137,6 +137,8 @@ const props = withDefaults(
     emptyKind?: UiDataTableEmptyKind
     emptyTitle?: string
     emptyDescription?: string
+    /** 列表加载失败：展示「加载失败」，禁止伪装成暂无数据 */
+    loadError?: boolean
     /** 粘性表头：CSS sticky，不强制 scroll.y，避免与 scroll.x 冲突 */
     stickyHeader?: boolean
     /** 表格纵向滚动高度，stickyHeader 默认 480 */
@@ -172,6 +174,7 @@ const props = withDefaults(
     emptyKind: 'default',
     emptyTitle: '',
     emptyDescription: '',
+    loadError: false,
     stickyHeader: true,
     scrollY: undefined,
     zebra: true,
@@ -251,6 +254,9 @@ const resolvedColumns = computed(() => {
 const emptyPreset = computed(() => UI_DATA_TABLE_EMPTY_PRESETS[props.emptyKind])
 
 const resolvedEmptyTitle = computed(() => {
+  if (props.loadError) {
+    return '加载失败'
+  }
   if (props.emptyTitle) {
     return props.emptyTitle
   }
@@ -258,6 +264,10 @@ const resolvedEmptyTitle = computed(() => {
 })
 
 const resolvedEmptyDescription = computed(() => {
+  // 失败态与默认预设均不展示说明；仅页面显式传入非空 emptyDescription 时展示
+  if (props.loadError) {
+    return ''
+  }
   if (props.emptyDescription) {
     return props.emptyDescription
   }

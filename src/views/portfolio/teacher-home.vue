@@ -310,7 +310,7 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     item.todoType === PortfolioTodoTypeCode.DUAL_TEACHER_DRAFT
     || item.todoType === PortfolioTodoTypeCode.DUAL_TEACHER_RETURNED
   ) {
-    void router.push({ path: '/portfolio/teacher/dual-teacher-apply', query })
+    void router.push({ path: '/portfolio/scene/dual-teacher', query })
     return
   }
   if (item.categoryId) {
@@ -416,12 +416,28 @@ function goIntake() {
   })
 }
 
-function goDualTeacherApply() {
+function goReviewStatus() {
   void router.push({
-    path: '/portfolio/teacher/dual-teacher-apply',
+    path: '/portfolio/teacher/review-status',
     query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
   })
 }
+
+function goPromotionScene() {
+  void router.push({
+    path: '/portfolio/scene/promotion',
+    query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+  })
+}
+
+function goDualTeacherApply() {
+  void router.push({
+    path: '/portfolio/scene/dual-teacher',
+    query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+  })
+}
+
+const moreHomeActionsOpen = ref(false)
 
 function goOneTable() {
   void router.push({
@@ -616,18 +632,25 @@ onUnmounted(() => {
         </a-spin>
       </UiCard>
 
-      <UiCard title="快捷入口" class="teacher-home__card teacher-home__card--actions">
+      <UiCard title="今日任务入口" class="teacher-home__card teacher-home__card--actions">
         <div class="teacher-home__actions">
-          <UiButton @click="goIntake"> 材料采集 </UiButton>
+          <UiButton variant="primary" @click="goIntake"> 材料采集 </UiButton>
+          <UiButton @click="goReviewStatus"> 审核进度 </UiButton>
           <UiButton @click="goArchive"> 我的档案 </UiButton>
+          <UiButton @click="goDualTeacherApply"> 资格与认定 </UiButton>
           <UiButton @click="goCourseArchive"> 课程档案 </UiButton>
+          <UiButton variant="outline" @click="moreHomeActionsOpen = !moreHomeActionsOpen">
+            {{ moreHomeActionsOpen ? '收起更多' : '更多入口' }}
+          </UiButton>
+        </div>
+        <div v-if="moreHomeActionsOpen" class="teacher-home__actions teacher-home__actions--more">
+          <UiButton @click="goPromotionScene"> 职称材料包 </UiButton>
           <UiButton @click="goTeachingPhilosophy"> 教学理念 </UiButton>
           <UiButton @click="goHonor"> 获奖情况 </UiButton>
           <UiButton @click="goExtensionActivity"> 教学拓展 </UiButton>
           <UiButton @click="goProfile"> 个人资料 </UiButton>
           <UiButton @click="goPortrait"> 教师画像 </UiButton>
           <UiButton @click="goCorrection"> 我的纠错 </UiButton>
-          <UiButton @click="goDualTeacherApply"> 双师认定申请 </UiButton>
           <UiButton @click="goOneTable"> 教师一张表 </UiButton>
         </div>
       </UiCard>
@@ -658,7 +681,10 @@ onUnmounted(() => {
               <p v-if="item.dueTime" class="teacher-home__meta">截止 {{ item.dueTime }}</p>
             </li>
           </ul>
-          <UiEmpty v-else description="暂无待办" />
+          <UiEmpty
+            v-else
+            description="当前无未完成待办。若刚提交材料请刷新；缺口与退回会出现在此列表，不会被隐藏。"
+          />
         </a-spin>
       </UiCard>
     </div>
@@ -713,6 +739,12 @@ onUnmounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: var(--dp-space-2);
+}
+
+.teacher-home__actions--more {
+  margin-top: var(--dp-space-3);
+  padding-top: var(--dp-space-3);
+  border-top: 1px solid var(--ant-color-border-secondary);
 }
 
 .teacher-home__todo-list {

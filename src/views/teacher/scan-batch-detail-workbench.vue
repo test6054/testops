@@ -288,6 +288,7 @@ import { computed, h, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchStoragePreviewBlobUrl } from '@/apis/edu/file-management'
 import {
+  discardScanBatchByTeacher,
   dismissScanBatchCollateAttention,
   getScanBatchOrderAudit,
   getScannerBatchPageInspector,
@@ -304,7 +305,6 @@ import {
   ScanBatchWorkbenchTopActionDescription,
   sealScanBatchByTeacher,
 } from '@/apis/mark/exam-scan'
-import { discardScannerKioskBatch } from '@/apis/mark/scanner-kiosk'
 import ScanBatchDiscardDialog from '@/components/mark/ScanBatchDiscardDialog.vue'
 import ScanBatchPageInspectorPanel from '@/components/mark/ScanBatchPageInspectorPanel.vue'
 import ScanBatchPageRail from '@/components/mark/ScanBatchPageRail.vue'
@@ -1241,7 +1241,7 @@ async function confirmDiscardBatch(reason: string): Promise<void> {
   }
   actionLoading.value = ScanBatchWorkbenchTopActionCode.DISCARD
   try {
-    await discardScannerKioskBatch({ scanBatchId: batch.scanBatchId, discardReason: reason })
+    await discardScanBatchByTeacher({ scanBatchId: batch.scanBatchId, discardReason: reason })
     message.success(`扫描批次已废弃：${batch.batchNo}`)
     discardModalOpen.value = false
     await loadWorkbench()
@@ -1289,8 +1289,8 @@ onUnmounted(() => {
 }
 
 .scan-batch-detail-workbench__collate-alert :deep(.ui-alert-strip) {
-  background: #fff7e6;
-  border-color: #ffd591;
+  background: var(--ant-color-warning-bg);
+  border-color: var(--ant-color-warning-border);
 }
 
 .scan-batch-detail-workbench__filters {

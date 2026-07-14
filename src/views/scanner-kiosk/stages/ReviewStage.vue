@@ -108,7 +108,9 @@ const ledgerAttentionTodos = computed<ReviewItem[]>(() => {
     const titlePrefix
       = pageNo > 0
         ? workflow.scanPageDisplayTitleByNo(pageNo)
-        : `答卷 ${att.paperInstanceId ?? '未知'}`
+        : att.paperInstanceId
+          ? `答卷 ${att.paperInstanceId}`
+          : '答卷标识缺失（paperInstanceId）'
     items.push({
       key: `attention-${att.id}`,
       pageNo,
@@ -650,8 +652,8 @@ const registerProgressText = computed(() => {
 }
 
 .review-register-progress :deep(.ui-alert-strip) {
-  background: #fff7e6;
-  border-color: #ffd591;
+  background: var(--kiosk-warning-soft);
+  border-color: color-mix(in srgb, var(--kiosk-warning) 45%, var(--kiosk-divider));
 }
 
 .panel-bound {
@@ -775,10 +777,12 @@ const registerProgressText = computed(() => {
   box-shadow: 0 0 0 2px rgba(31, 95, 255, 0.18);
 }
 .issue-item.item-failed button {
-  border-left: 3px solid var(--kiosk-danger);
+  border-color: var(--kiosk-danger);
+  background: color-mix(in srgb, var(--kiosk-danger) 10%, var(--ant-color-bg-container));
 }
 .issue-item.item-attention button {
-  border-left: 3px solid var(--kiosk-warning);
+  border-color: var(--kiosk-warning);
+  background: color-mix(in srgb, var(--kiosk-warning) 12%, var(--ant-color-bg-container));
 }
 
 .issue-item-icon {
@@ -864,7 +868,7 @@ const registerProgressText = computed(() => {
 .preview-image {
   max-width: calc(100% - var(--kiosk-space-6) * 2);
   max-height: calc(100% - var(--kiosk-space-6) * 2);
-  background: #fff;
+  background: var(--kiosk-surface);
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
   user-select: none;
 }
@@ -1007,7 +1011,7 @@ const registerProgressText = computed(() => {
   margin: 0 0 var(--kiosk-space-2);
   font-size: var(--kiosk-fz-body);
   font-weight: var(--kiosk-fw-semibold);
-  color: #ad6800;
+  color: var(--kiosk-warning);
 }
 .page-register-block__desc {
   margin: 0 0 var(--kiosk-space-3);
@@ -1016,8 +1020,8 @@ const registerProgressText = computed(() => {
   line-height: 1.5;
 }
 .op-btn--warn {
-  border-color: rgba(212, 136, 6, 0.45);
-  color: #ad6800;
+  border-color: color-mix(in srgb, var(--kiosk-warning) 45%, var(--kiosk-divider));
+  color: var(--kiosk-warning);
 }
 
 /* ============ 鎵规鎽樿 KV ============ */

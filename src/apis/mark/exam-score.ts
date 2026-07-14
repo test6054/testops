@@ -62,6 +62,8 @@ export interface ExamScoreSummaryItemResponse {
   paperInstanceId?: string
   bindingStatus: BindingStatusCode
   scanBatchId?: string
+  /** 缺考计零（SCORE_ZERO）：无扫描影像的合成卷锚点 */
+  absenceScoreZero?: boolean
   finalScoreStatus: FinalScoreStatusCode
   finalScoreStatusMessage: string
   /** 正式总分；CALCULATED 不返回 */
@@ -111,6 +113,8 @@ export interface FinalScoreRiskOverviewResponse {
   unconfirmedQuestionGradeCount: number
   abnormalPaperCount: number
   unreconciledAbsenceCount: number
+  /** 已确认计零但尚未写入正式终分的人数 */
+  missingAbsenceScoreZeroFinalCount: number
   blockingIncidentCount: number
   pendingDuplicateImageCount: number
   readyToPublish: boolean

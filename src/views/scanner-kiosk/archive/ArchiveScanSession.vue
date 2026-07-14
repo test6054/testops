@@ -394,7 +394,7 @@ function goBack() {
 
 .archive-scan-session__block {
   margin: 0;
-  color: #dc2626;
+  color: var(--kiosk-danger);
   font-size: 13px;
 }
 
@@ -418,13 +418,13 @@ function goBack() {
 
 .archive-scan-session__error {
   margin: 0;
-  color: #dc2626;
+  color: var(--kiosk-danger);
   font-size: 13px;
 }
 
 .archive-scan-session__success {
   margin: 0;
-  color: #059669;
+  color: var(--kiosk-success);
   font-size: 13px;
 }
 </style>

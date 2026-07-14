@@ -53,8 +53,8 @@
             size="small"
             :stroke-color="
               record.finalizedTaskCount >= record.totalTaskCount && record.totalTaskCount > 0
-                ? '#52c41a'
-                : '#1677ff'
+                ? 'var(--ant-color-success)'
+                : 'var(--ant-color-primary)'
             "
           />
         </template>

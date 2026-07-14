@@ -119,7 +119,7 @@ watch(
   padding: 8px 10px;
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
-  background: #fff;
+  background: var(--ant-color-bg-container);
 
   &__header {
     display: flex;
@@ -163,7 +163,7 @@ watch(
     padding: 6px;
     border: 1px solid var(--dp-border-subtle);
     border-radius: 6px;
-    background: #fff;
+    background: var(--ant-color-bg-container);
     cursor: pointer;
     text-align: left;
 
@@ -177,7 +177,7 @@ watch(
     width: 100%;
     max-height: 96px;
     object-fit: contain;
-    background: #f8fafc;
+    background: var(--dp-gray-50);
     border-radius: 4px;
   }
 }

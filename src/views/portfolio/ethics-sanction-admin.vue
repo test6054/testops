@@ -1,0 +1,527 @@
+<script setup lang="ts">
+import type { ColumnsType } from 'ant-design-vue/es/table'
+import type {Dayjs} from 'dayjs';
+import type {
+  PortfolioEthicsReviewLogVO,
+  PortfolioEthicsSanctionVO,
+} from '@/apis/portfolio/ethics-sanction'
+import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
+import { DatePicker, Input, message, Select, Textarea } from 'ant-design-vue'
+import dayjs from 'dayjs'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { portfolioEthicsSanctionApi } from '@/apis/portfolio/ethics-sanction'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
+import UiButton from '@/components/ui-guide/ui/UiButton.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
+import UiTag from '@/components/ui-guide/ui/UiTag.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import {
+  ALL_PORTFOLIO_ETHICS_EVENT_TYPE_CODES,
+  PortfolioEthicsEventTypeCode,
+  PortfolioEthicsEventTypeDescription,
+} from '@/types/enums/portfolio-ethics-event-type-enum'
+import {
+  ALL_PORTFOLIO_ETHICS_IMPACT_SCOPE_CODES,
+  PortfolioEthicsImpactScopeCode,
+  PortfolioEthicsImpactScopeDescription,
+} from '@/types/enums/portfolio-ethics-impact-scope-enum'
+import {
+  ALL_PORTFOLIO_ETHICS_REVIEW_CONCLUSION_CODES,
+  PortfolioEthicsReviewConclusionCode,
+  PortfolioEthicsReviewConclusionDescription,
+} from '@/types/enums/portfolio-ethics-review-conclusion-enum'
+import {
+  ALL_PORTFOLIO_ETHICS_SANCTION_STATUS_CODES,
+  PortfolioEthicsSanctionStatusCode,
+  PortfolioEthicsSanctionStatusDescription,
+} from '@/types/enums/portfolio-ethics-sanction-status-enum'
+import { showUserError } from '@/utils/error-handler'
+import { strictEnumLabel } from '@/utils/strict-enum'
+
+const loading = ref(false)
+const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
+const saving = ref(false)
+const reviewing = ref(false)
+const rows = ref<PortfolioEthicsSanctionVO[]>([])
+const total = ref(0)
+const editorOpen = ref(false)
+const reviewOpen = ref(false)
+const detailOpen = ref(false)
+const editingId = ref<string | undefined>()
+const reviewTarget = ref<PortfolioEthicsSanctionVO | null>(null)
+const detailRow = ref<PortfolioEthicsSanctionVO | null>(null)
+const reviewLogs = ref<PortfolioEthicsReviewLogVO[]>([])
+
+const query = reactive({
+  pageNum: 1,
+  pageSize: DEFAULT_LIST_PAGE_SIZE,
+  teacherId: '',
+  sanctionStatus: undefined as PortfolioEthicsSanctionStatusCode | undefined,
+})
+
+const form = reactive({
+  teacherId: '',
+  eventType: PortfolioEthicsEventTypeCode.TEACHER_ETHICS_VIOLATION,
+  handlingBasis: '',
+  dateRange: undefined as [Dayjs, Dayjs] | undefined,
+  impactScope: PortfolioEthicsImpactScopeCode.ALL,
+  releaseCondition: '',
+  reviewDepartment: '',
+  publicSummary: '',
+  detailDescription: '',
+})
+
+const reviewForm = reactive({
+  reviewConclusion: PortfolioEthicsReviewConclusionCode.RELEASE,
+  reviewOpinion: '',
+  newSanctionEndDate: undefined as Dayjs | undefined,
+})
+
+const columns: ColumnsType = [
+  { title: '教师ID', dataIndex: 'teacherId', key: 'teacherId', width: 120 },
+  { title: '事件', key: 'eventType', width: 110 },
+  { title: '起止', key: 'dateRange', width: 200 },
+  { title: '影响', key: 'impactScope', width: 120 },
+  { title: '状态', key: 'sanctionStatus', width: 110 },
+  { title: '约束', key: 'constraintActive', width: 80 },
+  { title: '公开摘要', dataIndex: 'publicSummary', key: 'publicSummary', ellipsis: true },
+  { title: '操作', key: 'actions', width: 200 },
+]
+
+const pagination = computed(() => ({
+  current: query.pageNum,
+  pageSize: query.pageSize,
+  total: total.value,
+}))
+
+const statusFilterOptions = ALL_PORTFOLIO_ETHICS_SANCTION_STATUS_CODES.map(code => ({
+  value: code,
+  label: PortfolioEthicsSanctionStatusDescription[code],
+}))
+
+const eventOptions = ALL_PORTFOLIO_ETHICS_EVENT_TYPE_CODES.map(code => ({
+  value: code,
+  label: PortfolioEthicsEventTypeDescription[code],
+}))
+
+const impactOptions = ALL_PORTFOLIO_ETHICS_IMPACT_SCOPE_CODES.map(code => ({
+  value: code,
+  label: PortfolioEthicsImpactScopeDescription[code],
+}))
+
+const conclusionOptions = ALL_PORTFOLIO_ETHICS_REVIEW_CONCLUSION_CODES.map(code => ({
+  value: code,
+  label: PortfolioEthicsReviewConclusionDescription[code],
+}))
+
+function statusLabel(code: string) {
+  return strictEnumLabel(
+    PortfolioEthicsSanctionStatusDescription,
+    code as PortfolioEthicsSanctionStatusCode,
+    '处分状态',
+  )
+}
+
+function eventLabel(code: string) {
+  return strictEnumLabel(
+    PortfolioEthicsEventTypeDescription,
+    code as PortfolioEthicsEventTypeCode,
+    '事件类型',
+  )
+}
+
+function impactLabel(code: string) {
+  return strictEnumLabel(
+    PortfolioEthicsImpactScopeDescription,
+    code as PortfolioEthicsImpactScopeCode,
+    '影响范围',
+  )
+}
+
+function conclusionLabel(code: string) {
+  return strictEnumLabel(
+    PortfolioEthicsReviewConclusionDescription,
+    code as PortfolioEthicsReviewConclusionCode,
+    '复核结论',
+  )
+}
+
+function statusTone(code: string) {
+  if (code === PortfolioEthicsSanctionStatusCode.PENDING_REVIEW) return 'yellow'
+  if (code === PortfolioEthicsSanctionStatusCode.RELEASED) return 'green'
+  return 'red'
+}
+
+function resetForm() {
+  form.teacherId = ''
+  form.eventType = PortfolioEthicsEventTypeCode.TEACHER_ETHICS_VIOLATION
+  form.handlingBasis = ''
+  form.dateRange = undefined
+  form.impactScope = PortfolioEthicsImpactScopeCode.ALL
+  form.releaseCondition = ''
+  form.reviewDepartment = ''
+  form.publicSummary = ''
+  form.detailDescription = ''
+}
+
+function openCreate() {
+  editingId.value = undefined
+  resetForm()
+  editorOpen.value = true
+}
+
+function openEdit(row: PortfolioEthicsSanctionVO) {
+  if (row.sanctionStatus !== PortfolioEthicsSanctionStatusCode.IN_EFFECT) {
+    message.warning('仅处分期内记录可编辑')
+    return
+  }
+  editingId.value = row.id
+  form.teacherId = row.teacherId
+  form.eventType = row.eventType as PortfolioEthicsEventTypeCode
+  form.handlingBasis = row.handlingBasis
+  form.dateRange = [dayjs(row.sanctionStartDate), dayjs(row.sanctionEndDate)]
+  form.impactScope = row.impactScope as PortfolioEthicsImpactScopeCode
+  form.releaseCondition = row.releaseCondition
+  form.reviewDepartment = row.reviewDepartment
+  form.publicSummary = row.publicSummary
+  form.detailDescription = row.detailDescription ?? ''
+  editorOpen.value = true
+}
+
+function openReview(row: PortfolioEthicsSanctionVO) {
+  if (row.sanctionStatus !== PortfolioEthicsSanctionStatusCode.PENDING_REVIEW) {
+    message.warning('仅期满待复核记录可提交结论')
+    return
+  }
+  reviewTarget.value = row
+  reviewForm.reviewConclusion = PortfolioEthicsReviewConclusionCode.RELEASE
+  reviewForm.reviewOpinion = ''
+  reviewForm.newSanctionEndDate = undefined
+  reviewOpen.value = true
+}
+
+async function openDetail(row: PortfolioEthicsSanctionVO) {
+  detailOpen.value = true
+  detailRow.value = null
+  reviewLogs.value = []
+  try {
+    detailRow.value = await portfolioEthicsSanctionApi.get({ id: row.id })
+    reviewLogs.value = await portfolioEthicsSanctionApi.listReviewLogs({ id: row.id })
+  } catch (error) {
+    showUserError(error, '加载处分详情失败')
+    detailOpen.value = false
+  }
+}
+
+async function loadPage() {
+  beginLoad()
+  loading.value = true
+  try {
+    const result = await portfolioEthicsSanctionApi.page({
+      pageNum: query.pageNum,
+      pageSize: query.pageSize,
+      teacherId: query.teacherId.trim() || undefined,
+      sanctionStatus: query.sanctionStatus,
+    })
+    rows.value = result.list ?? []
+    total.value = result.total ?? 0
+  
+    okLoad()
+  } catch (error) {
+    failLoad()
+    showUserError(error, '加载师德处分失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+async function saveSanction() {
+  if (!form.teacherId.trim()) {
+    message.error('请填写教师用户 ID')
+    return
+  }
+  if (!form.dateRange?.[0] || !form.dateRange?.[1]) {
+    message.error('请选择处分起止日期')
+    return
+  }
+  if (!form.handlingBasis.trim() || !form.releaseCondition.trim()
+    || !form.reviewDepartment.trim() || !form.publicSummary.trim()) {
+    message.error('处理依据、解除条件、复核')
+    return
+  }
+  saving.value = true
+  try {
+    await portfolioEthicsSanctionApi.save({
+      id: editingId.value,
+      teacherId: form.teacherId.trim(),
+      eventType: form.eventType,
+      handlingBasis: form.handlingBasis.trim(),
+      sanctionStartDate: form.dateRange[0].format('YYYY-MM-DD'),
+      sanctionEndDate: form.dateRange[1].format('YYYY-MM-DD'),
+      impactScope: form.impactScope,
+      releaseCondition: form.releaseCondition.trim(),
+      reviewDepartment: form.reviewDepartment.trim(),
+      publicSummary: form.publicSummary.trim(),
+      detailDescription: form.detailDescription.trim() || undefined,
+    })
+    message.success(editingId.value ? '处分已更新' : '处分已登记并进入约束')
+    editorOpen.value = false
+    await loadPage()
+  } catch (error) {
+    showUserError(error, '保存师德处分失败')
+  } finally {
+    saving.value = false
+  }
+}
+
+async function submitReview() {
+  if (!reviewTarget.value) return
+  if (reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND
+    && !reviewForm.newSanctionEndDate) {
+    message.error('延长处分须选择新的结束日期')
+    return
+  }
+  reviewing.value = true
+  try {
+    await portfolioEthicsSanctionApi.submitReview({
+      sanctionId: reviewTarget.value.id,
+      reviewConclusion: reviewForm.reviewConclusion,
+      reviewOpinion: reviewForm.reviewOpinion.trim() || undefined,
+      newSanctionEndDate: reviewForm.newSanctionEndDate?.format('YYYY-MM-DD'),
+    })
+    message.success('复核结论已提交')
+    reviewOpen.value = false
+    await loadPage()
+  } catch (error) {
+    showUserError(error, '提交复核失败')
+  } finally {
+    reviewing.value = false
+  }
+}
+
+function onTableChange(changeEvent: UiDataTableChangeEvent) {
+  const { pageNum, pageSize } = readUiDataTablePagination(changeEvent, DEFAULT_LIST_PAGE_SIZE)
+  query.pageNum = pageNum
+  query.pageSize = pageSize
+  void loadPage()
+}
+
+function search() {
+  query.pageNum = 1
+  void loadPage()
+}
+
+onMounted(() => {
+  void loadPage()
+})
+</script>
+
+<template>
+  <StageWorkbenchShell>
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="师德处分"
+        subtitle="登记处分、期满复核；不得"
+      >
+        <template #actions>
+          <UiButton @click="openCreate">
+            登记处分
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
+    <UiCard>
+      <div class="ethics-admin__filters">
+        <Input
+          v-model:value="query.teacherId"
+          allow-clear
+          placeholder="教师用户 ID"
+          style="width: 180px"
+          @press-enter="search"
+        />
+        <Select
+          v-model:value="query.sanctionStatus"
+          allow-clear
+          placeholder="处分状态"
+          style="width: 160px"
+          :options="statusFilterOptions"
+        />
+        <UiButton variant="soft" @click="search">
+          查询
+        </UiButton>
+      </div>
+      <a-spin :spinning="loading">
+        <UiEmpty v-if="!loading && !rows.length" description="暂无师德处分记录" />
+        <UiDataTable
+          :load-error="loadError"
+          v-else
+          row-key="id"
+          :columns="columns"
+          :data-source="rows"
+          :pagination="pagination"
+          @change="onTableChange"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'eventType'">
+              {{ eventLabel(record.eventType) }}
+            </template>
+            <template v-else-if="column.key === 'dateRange'">
+              {{ record.sanctionStartDate }} ~ {{ record.sanctionEndDate }}
+            </template>
+            <template v-else-if="column.key === 'impactScope'">
+              {{ impactLabel(record.impactScope) }}
+            </template>
+            <template v-else-if="column.key === 'sanctionStatus'">
+              <UiTag :tone="statusTone(record.sanctionStatus)">
+                {{ statusLabel(record.sanctionStatus) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'constraintActive'">
+              <UiTag :tone="record.constraintActive ? 'red' : 'gray'">
+                {{ record.constraintActive ? '约束中' : '已解除' }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiButton size="sm" variant="soft" @click="openDetail(record)">
+                详情
+              </UiButton>
+              <UiButton
+                v-if="record.sanctionStatus === 'IN_EFFECT'"
+                size="sm"
+                variant="soft"
+                @click="openEdit(record)"
+              >
+                编辑
+              </UiButton>
+              <UiButton
+                v-if="record.sanctionStatus === 'PENDING_REVIEW'"
+                size="sm"
+                @click="openReview(record)"
+              >
+                复核
+              </UiButton>
+            </template>
+          </template>
+        </UiDataTable>
+      </a-spin>
+    </UiCard>
+
+    <UiDrawer
+      v-model:open="editorOpen"
+      :title="editingId ? '编辑师德处分' : '新建师德处分'"
+      width="520"
+    >
+      <div class="ethics-admin__form">
+        <label>教师用户 ID</label>
+        <Input v-model:value="form.teacherId" :disabled="!!editingId" placeholder="教师 userId" />
+        <label>事件类型</label>
+        <Select v-model:value="form.eventType" :options="eventOptions" />
+        <label>处理依据</label>
+        <Input v-model:value="form.handlingBasis" placeholder="决定文件/制度条款" />
+        <label>处分起止</label>
+        <DatePicker.RangePicker v-model:value="form.dateRange" style="width: 100%" />
+        <label>影响范围</label>
+        <Select v-model:value="form.impactScope" :options="impactOptions" />
+        <label>解除条件</label>
+        <Input v-model:value="form.releaseCondition" />
+        <label>复核部门</label>
+        <Input v-model:value="form.reviewDepartment" />
+        <label>公开摘要（画像可见）</label>
+        <Input v-model:value="form.publicSummary" placeholder="不含敏感细节" />
+        <label>敏感明细（仅管理端）</label>
+        <Textarea v-model:value="form.detailDescription" :rows="3" />
+      </div>
+      <template #footer>
+        <UiButton variant="soft" @click="editorOpen = false">
+          取消
+        </UiButton>
+        <UiButton :loading="saving" @click="saveSanction">
+          保存
+        </UiButton>
+      </template>
+    </UiDrawer>
+
+    <UiDrawer v-model:open="reviewOpen" title="期满复核" width="480">
+      <div v-if="reviewTarget" class="ethics-admin__form">
+        <p>教师 {{ reviewTarget.teacherId }} · 原结束日 {{ reviewTarget.sanctionEndDate }}</p>
+        <label>复核结论</label>
+        <Select v-model:value="reviewForm.reviewConclusion" :options="conclusionOptions" />
+        <label v-if="reviewForm.reviewConclusion === 'EXTEND'">新结束日期</label>
+        <DatePicker
+          v-if="reviewForm.reviewConclusion === 'EXTEND'"
+          v-model:value="reviewForm.newSanctionEndDate"
+          style="width: 100%"
+        />
+        <label>复核意见</label>
+        <Textarea v-model:value="reviewForm.reviewOpinion" :rows="3" />
+      </div>
+      <template #footer>
+        <UiButton variant="soft" @click="reviewOpen = false">
+          取消
+        </UiButton>
+        <UiButton :loading="reviewing" @click="submitReview">
+          提交结论
+        </UiButton>
+      </template>
+    </UiDrawer>
+
+    <UiDrawer v-model:open="detailOpen" title="处分详情" width="560">
+      <div v-if="detailRow" class="ethics-admin__form">
+        <p>状态：{{ statusLabel(detailRow.sanctionStatus) }}</p>
+        <p>事件：{{ eventLabel(detailRow.eventType) }}</p>
+        <p>依据：{{ detailRow.handlingBasis }}</p>
+        <p>起止：{{ detailRow.sanctionStartDate }} ~ {{ detailRow.sanctionEndDate }}</p>
+        <p>影响：{{ impactLabel(detailRow.impactScope) }}</p>
+        <p>解除条件：{{ detailRow.releaseCondition }}</p>
+        <p>复核部门：{{ detailRow.reviewDepartment }}</p>
+        <p>公开摘要：{{ detailRow.publicSummary }}</p>
+        <p>敏感明细：{{ detailRow.detailDescription || '—' }}</p>
+        <p v-if="detailRow.lastReviewConclusion">
+          最近结论：{{ conclusionLabel(detailRow.lastReviewConclusion) }}
+          · {{ detailRow.lastReviewOpinion || '无意见' }}
+        </p>
+        <h4>复核历史</h4>
+        <UiEmpty v-if="!reviewLogs.length" description="尚无复核记录" />
+        <ul v-else class="ethics-admin__logs">
+          <li v-for="log in reviewLogs" :key="log.id">
+            {{ log.createTime }} · {{ conclusionLabel(log.reviewConclusion) }}
+            · {{ log.fromStatus }} → {{ log.toStatus }}
+            <span v-if="log.newEndDate"> · 结束日 {{ log.newEndDate }}</span>
+          </li>
+        </ul>
+      </div>
+    </UiDrawer>
+  </StageWorkbenchShell>
+</template>
+
+<style scoped>
+.ethics-admin__filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+.ethics-admin__form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ethics-admin__form label {
+  font-size: 13px;
+  color: var(--dp-text-secondary, #64748b);
+}
+.ethics-admin__logs {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+</style>

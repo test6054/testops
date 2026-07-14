@@ -1,6 +1,7 @@
 import type { Ref } from 'vue'
 import type { PageResult, QueryDto } from '@/types'
 import { ref } from 'vue'
+import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
 
@@ -22,6 +23,7 @@ export interface UseQueryTableOptions<T, F extends Record<string, unknown>> {
 
 /**
  * 标准后端分页列表：QueryDto + PageResult + UiDataTable server 模式。
+ * 内建 loadError，失败时勿把空列表伪装成「暂无数据」。
  * 筛选变更调用 search() 重置到第 1 页；翻页调用 handlePageChange。
  */
 export function useQueryTable<T, F extends Record<string, unknown> = Record<string, never>>(
@@ -35,6 +37,7 @@ export function useQueryTable<T, F extends Record<string, unknown> = Record<stri
   const pageTotal = ref(0)
   const filters = ref((options?.defaultFilters?.() ?? {}) as F) as Ref<F>
   const requestToken = ref(0)
+  const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 
   async function loadPage(): Promise<void> {
     const currentToken = ++requestToken.value
@@ -44,6 +47,7 @@ export function useQueryTable<T, F extends Record<string, unknown> = Record<stri
       pageSize: pageSize.value,
     } as QueryDto & F
     loading.value = true
+    beginLoad()
     try {
       const page = await loadFn(requestParams)
       if (currentToken !== requestToken.value) {
@@ -57,6 +61,7 @@ export function useQueryTable<T, F extends Record<string, unknown> = Record<stri
       if (page.pageSize != null) {
         pageSize.value = page.pageSize
       }
+      okLoad()
       await options?.onLoaded?.(rows.value, requestParams)
     } catch (error) {
       if (currentToken !== requestToken.value) {
@@ -64,7 +69,8 @@ export function useQueryTable<T, F extends Record<string, unknown> = Record<stri
       }
       rows.value = []
       pageTotal.value = 0
-      showUserError(error, options?.errorMessage ?? '数据加载失败')
+      failLoad()
+      showUserError(error, options?.errorMessage ?? '加载失败')
     } finally {
       if (currentToken === requestToken.value) {
         loading.value = false
@@ -99,6 +105,7 @@ export function useQueryTable<T, F extends Record<string, unknown> = Record<stri
     pageSize,
     pageTotal,
     filters,
+    loadError,
     loadPage,
     reload: loadPage,
     search,

@@ -10,22 +10,23 @@ export interface QualityRouteContractEntry {
   qualityGate?: QualityGate
 }
 
-/** 25 条叶子路由 scopeProfile / qualityGate 契约表 */
+/** 26 条叶子路由 scopeProfile / qualityGate 契约表 */
 export const QUALITY_ROUTE_CONTRACT: QualityRouteContractEntry[] = [
   { name: 'QualityDashboard', scopeProfile: 'plan-period' },
   { name: 'QualityAccreditationCockpit', scopeProfile: 'accreditation' },
   { name: 'QualityRationalityAudit', scopeProfile: 'plan-period' },
   { name: 'QualityTrainingPlanWorkbench', scopeProfile: 'none' },
+  { name: 'QualityTrainingPlanReviewQueue', scopeProfile: 'none' },
   { name: 'QualityCourseMatrix', scopeProfile: 'plan' },
-  { name: 'QualityIngestHub', scopeProfile: 'plan-period' },
-  { name: 'QualityIngestScoreBatch', scopeProfile: 'plan-course' },
-  { name: 'QualityIngestScoreRecord', scopeProfile: 'plan-course' },
-  { name: 'QualityIngestProcessEvaluation', scopeProfile: 'plan-course' },
-  { name: 'QualityIngestIndirectEvaluation', scopeProfile: 'plan-course' },
-  { name: 'QualityIngestExternalPull', scopeProfile: 'plan-course' },
+  { name: 'QualityIngestHub', scopeProfile: 'plan-period', qualityGate: 'plan-confirmed' },
+  { name: 'QualityIngestScoreBatch', scopeProfile: 'plan-course', qualityGate: 'plan-confirmed' },
+  { name: 'QualityIngestScoreRecord', scopeProfile: 'plan-course', qualityGate: 'plan-confirmed' },
+  { name: 'QualityIngestProcessEvaluation', scopeProfile: 'plan-course', qualityGate: 'plan-confirmed' },
+  { name: 'QualityIngestIndirectEvaluation', scopeProfile: 'plan-course', qualityGate: 'plan-confirmed' },
+  { name: 'QualityIngestExternalPull', scopeProfile: 'plan-course', qualityGate: 'plan-confirmed' },
   { name: 'QualityAchievement', scopeProfile: 'plan-period', qualityGate: 'plan-confirmed' },
   { name: 'QualityAchievementDetail', scopeProfile: 'plan-period', qualityGate: 'plan-confirmed' },
-  { name: 'QualityImprovementWorkbench', scopeProfile: 'plan' },
+  { name: 'QualityImprovementWorkbench', scopeProfile: 'plan', qualityGate: 'plan-confirmed' },
   { name: 'QualityReport', scopeProfile: 'plan-period', qualityGate: 'plan-confirmed' },
   { name: 'QualityArchive', scopeProfile: 'accreditation' },
   { name: 'QualityAiTask', scopeProfile: 'plan-period' },

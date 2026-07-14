@@ -415,6 +415,7 @@ const {
   canViewArchiveDepartmentQueue,
   canRemindArchiveDue,
   hasDuty,
+  hasDutyForDepartment,
   isDepartmentArchivistOnly,
   grants,
   loadGrants,
@@ -904,7 +905,9 @@ function buildVolumeActions(record: ArchiveVolumeResponse): UiTableRowActionItem
       key: 'appraisal',
       label: '鉴定',
       tone: 'primary',
-      hidden: record.appraisalStatus !== ArchiveAppraisalStatusCode.REMINDER_SENT,
+      hidden:
+        record.appraisalStatus !== ArchiveAppraisalStatusCode.REMINDER_SENT
+        || !hasDutyForDepartment(ArchiveDutyTypeCode.ARCHIVE_ADMIN, record.departmentId),
     },
     {
       key: 'remediation',
@@ -1436,8 +1439,8 @@ async function goDetailForSubmitBlocker(volumeId: string) {
       goDetailWithTab(volumeId, routeTarget.detailTabKey)
       return
     }
-  } catch {
-    // 预览失败时仍进入详情首屏
+  } catch (error) {
+    showUserError(error, '加载提交清单失败，已进入详情')
   }
   goDetail(volumeId)
 }

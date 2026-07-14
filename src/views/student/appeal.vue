@@ -47,7 +47,17 @@
 
       <a-skeleton v-if="loadingExams" active :paragraph="{ rows: 3 }" />
 
-      <UiEmpty v-else-if="appealableExams.length === 0" description="当前没有可展示的内容" />
+      <UiEmpty
+        v-else-if="appealableExams.length === 0"
+        title="当前没有可申诉的考试"
+        :description="appealableEmptyDescription"
+      >
+        <template #action>
+          <UiButton variant="outline" size="sm" :loading="loadingExams" @click="reloadAll">
+            刷新列表
+          </UiButton>
+        </template>
+      </UiEmpty>
 
       <div v-else-if="!loadingExams && appealableExams.length > 0" class="exam-pick-list">
         <article
@@ -336,6 +346,24 @@ const scoreDetailLoading = ref(false)
 const exams = ref<StudentExamItemVO[]>([])
 const appealableExams = ref<StudentExamItemVO[]>([])
 const examStats = ref<StudentExamStatsResponse | null>(null)
+
+/** 空态说明：说清「为何不可申诉」与窗口/发布状态，避免笼统「没有可展示的内容」。 */
+const appealableEmptyDescription = computed(() => {
+  const stats = examStats.value
+  if (!stats) {
+    return '成绩发布后且复核窗口开放时，才会出现可申请场次。若你刚收到成绩，可点击刷新。'
+  }
+  if (stats.totalExamCount === 0) {
+    return '你名下暂无关联考试。请确认已报名对应教学班，或联系任课教师。'
+  }
+  if (stats.publishedCount === 0) {
+    return `你有 ${stats.totalExamCount} 场考试，但成绩尚未发布；发布后且复核窗口开启方可申诉。`
+  }
+  if (stats.reviewOpenCount === 0) {
+    return `已发布 ${stats.publishedCount} 场，但当前没有处于开放中的复核窗口（未开窗或已截止）。`
+  }
+  return `有 ${stats.reviewOpenCount} 场复核窗口开放，但当前均不可提交申请（可能已达次数上限或成绩状态不允许）。可在下方「我的复核申请」查看历史记录，或稍后刷新。`
+})
 const requests = ref<StudentGradeReviewRequestItemResponse[]>([])
 const requestPagination = reactive({
   current: 1,
@@ -906,7 +934,7 @@ async function loadSelectedExamQuestions(): Promise<void> {
   border: 1px solid var(--ant-color-border-secondary);
   border-radius: var(--dp-radius-panel);
   cursor: pointer;
-  background: #fff;
+  background: var(--ant-color-bg-container);
   transition:
     border-color 0.2s ease,
     background 0.2s ease,
@@ -919,8 +947,8 @@ async function loadSelectedExamQuestions(): Promise<void> {
 
   &--active {
     border-color: var(--ant-color-primary);
-    border-left: 3px solid var(--ant-color-primary);
     background: var(--dp-blue-50);
+    box-shadow: inset 0 0 0 1px var(--ant-color-primary);
   }
 
   &__radio {

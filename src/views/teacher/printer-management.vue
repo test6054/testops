@@ -898,7 +898,7 @@ onBeforeUnmount(() => {
 }
 
 .text-muted {
-  color: #94a3b8;
+  color: var(--dp-gray-400);
 }
 
 .token-row {
@@ -921,22 +921,22 @@ onBeforeUnmount(() => {
 
   &__hint {
     width: 100%;
-    color: #64748b;
+    color: var(--dp-text-muted);
     font-size: 13px;
     line-height: 1.5;
     text-align: left;
   }
 
   &__device {
-    color: #334155;
+    color: var(--dp-text-secondary);
     font-weight: 600;
   }
 
   &__code {
     padding: 10px 14px;
     border-radius: 10px;
-    background: #f8fafc;
-    color: #0f172a;
+    background: var(--dp-gray-50);
+    color: var(--dp-gray-900);
     font-size: 20px;
     font-weight: 600;
     letter-spacing: 0.08em;
@@ -948,7 +948,7 @@ onBeforeUnmount(() => {
     flex-direction: column;
     gap: 6px;
     width: 100%;
-    color: #64748b;
+    color: var(--dp-text-muted);
     font-size: 13px;
   }
 

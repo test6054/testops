@@ -305,7 +305,10 @@ onMounted(() => {
 
         <div v-if="expectedPages != null && expectedPages > 0" class="progress-bar-wrap">
           <div class="progress-bar">
-            <div class="progress-bar__fill" :style="{ width: `${progressPercent}%` }" />
+            <div
+              class="progress-bar__fill"
+              :style="{ transform: `scaleX(${Math.max(0, Math.min(progressPercent, 100)) / 100})` }"
+            />
           </div>
           <span class="progress-bar__pct">{{ progressPercent }}%</span>
         </div>
@@ -683,10 +686,12 @@ onMounted(() => {
 }
 
 .progress-bar__fill {
+  width: 100%;
   height: 100%;
+  transform-origin: left center;
   background: var(--kiosk-primary);
   border-radius: var(--kiosk-radius-pill);
-  transition: width var(--kiosk-dur-base) var(--kiosk-easing);
+  transition: transform var(--kiosk-dur-base) var(--kiosk-easing);
 }
 
 .progress-bar__pct {
@@ -785,16 +790,17 @@ onMounted(() => {
 }
 
 .scan-control--success {
-  border-left: 4px solid var(--kiosk-success);
+  border-color: var(--kiosk-success);
+  background: color-mix(in srgb, var(--kiosk-success) 12%, var(--kiosk-surface-alt));
 }
 
 .scan-control--warning {
-  border-left: 4px solid var(--kiosk-warning);
+  border-color: var(--kiosk-warning);
   background: var(--kiosk-warning-soft);
 }
 
 .scan-control--danger {
-  border-left: 4px solid var(--kiosk-danger);
+  border-color: var(--kiosk-danger);
   background: var(--kiosk-danger-soft);
 }
 
@@ -851,19 +857,19 @@ onMounted(() => {
 .scan-cta--direct {
   background: var(--kiosk-primary);
   border: none;
-  color: #fff;
+  color: var(--ant-color-white);
 }
 
 .scan-cta--warning {
-  background: #faad14;
+  background: var(--kiosk-warning);
   border: none;
-  color: #fff;
+  color: var(--ant-color-white);
 }
 
 .scan-cta--fatal {
-  background: var(--kiosk-danger, #ff4d4f);
+  background: var(--kiosk-danger);
   border: none;
-  color: #fff;
+  color: var(--ant-color-white);
 }
 
 .scan-cta--supplement {
@@ -928,14 +934,14 @@ onMounted(() => {
 .scan-control__hard-block {
   padding: var(--kiosk-space-3) var(--kiosk-space-4);
   border-radius: var(--kiosk-radius-md);
-  background: var(--kiosk-danger-soft, #fff1f0);
-  border: 1px solid var(--kiosk-danger, #cf1322);
+  background: var(--kiosk-danger-soft);
+  border: 1px solid var(--kiosk-danger);
 }
 
 .scan-control__hard-block p {
   margin: 0;
   font-size: var(--kiosk-fz-label);
-  color: var(--kiosk-danger, #cf1322);
+  color: var(--kiosk-danger);
   line-height: var(--kiosk-lh-base);
 }
 
@@ -944,18 +950,18 @@ onMounted(() => {
 }
 
 .scan-control__guide--first-scan {
-  color: #8c8c8c;
+  color: var(--kiosk-ink-tertiary);
   margin-top: -4px;
 }
 
 .setup-signal--warning :deep(.ui-alert-strip) {
-  background: #fff7e6;
-  border-color: #ffd591;
+  background: var(--ant-color-warning-bg);
+  border-color: var(--ant-color-warning-border);
 }
 
 .setup-signal--fatal :deep(.ui-alert-strip) {
-  background: #fff2f0;
-  border-color: #ffccc7;
+  background: var(--ant-color-error-bg);
+  border-color: var(--ant-color-error-border);
 }
 
 .setup-signal {
@@ -991,7 +997,7 @@ onMounted(() => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--kiosk-danger, #ff4d4f);
+  background: var(--kiosk-danger);
   animation: setup-signal-pulse 300ms ease-in-out infinite;
 }
 
@@ -1009,8 +1015,8 @@ onMounted(() => {
   margin-left: var(--kiosk-space-2);
   padding: 0 var(--kiosk-space-2);
   border-radius: var(--kiosk-radius-sm);
-  background: #e6f4ff;
-  color: #0958d9;
+  background: var(--ant-color-primary-bg);
+  color: var(--ant-color-primary-active);
   font-size: 10px;
 }
 

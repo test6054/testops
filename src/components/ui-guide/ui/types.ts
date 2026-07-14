@@ -23,7 +23,7 @@ export type UiComponentSize = 'sm' | 'md' | 'lg'
 export type UiFieldStatus = 'default' | 'error' | 'warning' | 'success'
 
 /** 按钮变体 */
-export type UiButtonVariant = 'primary' | 'outline' | 'ghost' | 'destructive' | 'soft'
+export type UiButtonVariant = 'primary' | 'outline' | 'ghost' | 'destructive' | 'soft' | 'secondary'
 
 /** 按钮状态 */
 export type UiButtonStatus = 'normal' | 'danger' | 'success' | 'warning'

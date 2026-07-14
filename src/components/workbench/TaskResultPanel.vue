@@ -176,38 +176,38 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 }
 
 .task-result-panel__item-badge--green {
-  color: #15803d;
-  background: #f0fdf4;
+  color: var(--dp-green-700);
+  background: var(--dp-green-50);
 }
 
 .task-result-panel__item-badge--blue {
-  color: #1d4ed8;
-  background: #eff6ff;
+  color: var(--ant-color-primary-active);
+  background: var(--ant-color-primary-bg);
 }
 
 .task-result-panel__item-badge--orange {
-  color: #c2410c;
-  background: #fff7ed;
+  color: var(--dp-orange-700);
+  background: var(--dp-orange-50);
 }
 
 .task-result-panel__item-badge--red {
-  color: #b91c1c;
-  background: #fef2f2;
+  color: var(--ant-color-error);
+  background: var(--ant-color-error-bg);
 }
 
 .task-result-panel__item-badge--gray {
-  color: #475569;
-  background: #f1f5f9;
+  color: var(--dp-text-secondary);
+  background: var(--ant-color-fill-quaternary);
 }
 
 .task-result-panel__item-badge--yellow {
-  color: #a16207;
-  background: #fefce8;
+  color: var(--dp-yellow-700);
+  background: var(--dp-yellow-50);
 }
 
 .task-result-panel__item-badge--purple {
-  color: #6d28d9;
-  background: #f5f3ff;
+  color: var(--dp-purple-700);
+  background: var(--dp-purple-50);
 }
 
 .task-result-panel__item-desc {
@@ -240,9 +240,9 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
   padding: 2px 10px;
   font-size: 12px;
   font-weight: 500;
-  color: var(--ant-color-primary, #2563eb);
+  color: var(--ant-color-primary);
   background: transparent;
-  border: 1px solid var(--ant-color-primary, #2563eb);
+  border: 1px solid var(--ant-color-primary);
   border-radius: var(--dp-radius-control-inner);
   cursor: pointer;
   transition: all 0.15s ease;
@@ -254,8 +254,8 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 }
 
 .task-result-panel__action:hover:not(:disabled) {
-  background: var(--ant-color-primary, #2563eb);
-  color: #fff;
+  background: var(--ant-color-primary);
+  color: var(--ant-color-white);
 }
 
 .task-result-panel__action:disabled {
@@ -264,12 +264,12 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 }
 
 .task-result-panel__action--danger {
-  color: var(--ant-color-error, #dc2626);
-  border-color: var(--ant-color-error, #dc2626);
+  color: var(--ant-color-error);
+  border-color: var(--ant-color-error);
 }
 
 .task-result-panel__action--danger:hover:not(:disabled) {
-  background: var(--ant-color-error, #dc2626);
-  color: #fff;
+  background: var(--ant-color-error);
+  color: var(--ant-color-white);
 }
 </style>

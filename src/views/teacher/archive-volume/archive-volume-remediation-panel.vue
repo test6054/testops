@@ -702,15 +702,18 @@ watch(
 }
 
 .remediation-card--high {
-  border-left: 3px solid var(--dp-danger);
+  border-color: var(--dp-danger);
+  background: color-mix(in srgb, var(--dp-danger) 6%, var(--dp-surface));
 }
 
 .remediation-card--medium {
-  border-left: 3px solid var(--dp-warning);
+  border-color: var(--dp-warning);
+  background: color-mix(in srgb, var(--dp-warning) 8%, var(--dp-surface));
 }
 
 .remediation-card--low {
-  border-left: 3px solid var(--dp-primary);
+  border-color: var(--dp-primary);
+  background: color-mix(in srgb, var(--dp-primary) 6%, var(--dp-surface));
 }
 
 .remediation-card__head {

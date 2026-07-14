@@ -115,8 +115,8 @@ watch(visible, (show) => {
   margin: 0;
   padding: var(--kiosk-space-3) var(--kiosk-space-4);
   border-radius: var(--kiosk-radius-md);
-  background: rgba(207, 19, 34, 0.08);
-  color: var(--kiosk-danger, #cf1322);
+  background: var(--kiosk-danger-soft);
+  color: var(--kiosk-danger);
   font-size: var(--kiosk-fz-body);
   line-height: 1.5;
 }

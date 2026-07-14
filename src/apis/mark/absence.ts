@@ -185,3 +185,23 @@ export function countPendingMakeupAbsences(
     request,
   )
 }
+
+export interface AbsenceScoreZeroRepairRequest {
+  examId: string
+}
+
+export interface AbsenceScoreZeroRepairResponse {
+  examId: string
+  repairedCount: number
+  scannedMissingCount: number
+}
+
+/** 补齐本场已确认计零但尚未写入零分终分的历史缺考 */
+export function repairScoreZeroFinalScores(
+  request: AbsenceScoreZeroRepairRequest,
+): Promise<AbsenceScoreZeroRepairResponse> {
+  return http.post<AbsenceScoreZeroRepairResponse>(
+    '/api/mark/exams/absence/score-zero/repair',
+    request,
+  )
+}

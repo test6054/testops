@@ -656,7 +656,11 @@ async function handleGenerateSignatures(): Promise<void> {
   generatingSignatures.value = true
   try {
     const result = await generateSignatures(selectedExamId.value)
-    message.success(`已生成 ${result.length} 条题目签名`)
+    if (result.length <= 0) {
+      message.warning('本场无可签名的主观题，未写入题目签名')
+    } else {
+      message.success(`已生成 ${result.length} 条题目签名`)
+    }
     await Promise.all([searchSignatures(), loadQuestionOptions(), loadExperienceStats()])
     await refreshSnapshot()
   } catch (error) {
@@ -1135,7 +1139,7 @@ onActivated(() => {
 }
 
 .error-text {
-  color: #d4380d;
+  color: var(--ant-color-error);
   font-size: 12px;
 }
 
@@ -1177,10 +1181,10 @@ onActivated(() => {
 
 .answer-sample {
   padding: 8px 10px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--dp-gray-50);
+  border: 1px solid var(--ant-color-border-secondary);
   border-radius: 6px;
-  color: #334155;
+  color: var(--dp-text-secondary);
   font-size: 13px;
   line-height: 1.6;
 }

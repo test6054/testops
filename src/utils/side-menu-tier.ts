@@ -1,6 +1,9 @@
 import type { RouteRecordRaw } from 'vue-router'
 
-/** 侧栏主路径分层：未声明 menuTier 视为 primary。导航层已全量展示，不再依赖折叠「更多」。 */
+/**
+ * 侧栏主路径分层：未声明 menuTier 视为 primary。
+ * secondary 收进分组「更多」，路由仍可达；激活中的 secondary 会提升到主列表。
+ */
 export function isPrimarySideMenuRoute(route: RouteRecordRaw): boolean {
   return route.meta?.menuTier !== 'secondary'
 }

@@ -5,10 +5,6 @@
 export enum RoleEnum {
   /** 超级管理员 */
   SUPER_ADMIN = 'SUPER_ADMIN',
-  /** 企业负责人 */
-  CROP_ADMIN = 'CROP_ADMIN',
-  /** 企业助教 */
-  CROP_USER = 'CROP_USER',
   /** 教师 */
   SCH_TECH = 'SCH_TECH',
   /** 学生 */
@@ -23,16 +19,6 @@ export const ROLE_CONFIG: Record<RoleEnum, { name: string, description: string, 
     name: '超级管理员',
     description: '平台超级管理员，拥有所有权限',
     color: 'var(--ant-color-error)'
-  },
-  [RoleEnum.CROP_ADMIN]: {
-    name: '企业负责人',
-    description: '企业/机构负责人',
-    color: 'var(--ant-color-primary-hover)'
-  },
-  [RoleEnum.CROP_USER]: {
-    name: '企业助教',
-    description: '企业/机构助教人员',
-    color: 'var(--ant-color-success-hover)'
   },
   [RoleEnum.SCH_TECH]: {
     name: '教师',

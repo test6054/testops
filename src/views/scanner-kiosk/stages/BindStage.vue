@@ -166,7 +166,7 @@ onMounted(() => {
   padding: var(--kiosk-space-3) var(--kiosk-space-4);
   border-radius: var(--kiosk-radius-md);
   background: rgba(207, 19, 34, 0.08);
-  color: var(--kiosk-danger, #cf1322);
+  color: var(--kiosk-danger);
   font-size: var(--kiosk-fz-body);
   line-height: 1.5;
 }
@@ -184,7 +184,7 @@ onMounted(() => {
   border: none;
   border-radius: var(--kiosk-radius-md);
   background: var(--kiosk-primary);
-  color: #fff;
+  color: var(--kiosk-primary-on);
   font-family: inherit;
   font-size: 18px;
   font-weight: var(--kiosk-fw-semibold);

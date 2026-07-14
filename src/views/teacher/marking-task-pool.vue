@@ -15,10 +15,10 @@
     <ExamWorkspaceJourneySubNav />
 
     <UiAlertStrip
-      v-if="sessionPausedAlert"
+      v-if="selectedClaimSessionPaused"
       tone="warning"
-      title="正评会话已暂停"
-      description="暂停期间无法领取新任务，请等待组长恢复。"
+      title="当前正评会话已暂停"
+      description="所选举会话暂停期间无法领取新任务；其它进行中的会话仍可正常领取。"
       dense
     />
 
@@ -377,8 +377,27 @@ const batchLayoutQuestionId = ref('')
 const batchFullScore = ref(0)
 const batchGroupId = ref('')
 const tasksLoadError = ref('')
-const sessionPausedAlert = ref(false)
+/** 考试内已暂停的正评会话 ID；告警 / 领取门禁仅绑定当前选中的领取会话 */
+const pausedSessionIds = ref<Set<string>>(new Set())
 const isGroupLeader = ref(false)
+
+function markSessionPaused(sessionId: string | undefined): void {
+  if (!sessionId) {
+    return
+  }
+  const next = new Set(pausedSessionIds.value)
+  next.add(sessionId)
+  pausedSessionIds.value = next
+}
+
+function markSessionResumed(sessionId: string | undefined): void {
+  if (!sessionId) {
+    return
+  }
+  const next = new Set(pausedSessionIds.value)
+  next.delete(sessionId)
+  pausedSessionIds.value = next
+}
 
 const selectedTasks = computed(() =>
   tasks.value.filter((task) => selectedRowKeys.value.includes(task.id)),
@@ -474,13 +493,13 @@ const teacherTaskStream = useMarkingTaskStream({
   when: () => Boolean(selectedExamId.value && currentUserId.value),
   onEvent: (event) => {
     if (event.eventType === MarkingTaskStreamEventTypeCode.SESSION_PAUSED) {
-      sessionPausedAlert.value = true
+      markSessionPaused(event.sessionId)
       void loadTasks({ silent: true })
       taskListPolling.syncPolling()
       return
     }
     if (event.eventType === MarkingTaskStreamEventTypeCode.SESSION_RESUMED) {
-      sessionPausedAlert.value = false
+      markSessionResumed(event.sessionId)
       void loadTasks({ silent: true })
       taskListPolling.syncPolling()
       return
@@ -504,10 +523,10 @@ const groupLeaderStream = useMarkingTaskStream({
   when: () => Boolean(selectedExamId.value && isGroupLeader.value),
   onEvent: (event) => {
     if (event.eventType === MarkingTaskStreamEventTypeCode.SESSION_PAUSED) {
-      sessionPausedAlert.value = true
+      markSessionPaused(event.sessionId)
     }
     if (event.eventType === MarkingTaskStreamEventTypeCode.SESSION_RESUMED) {
-      sessionPausedAlert.value = false
+      markSessionResumed(event.sessionId)
     }
     // exam Topic 事件携带单 session 计数，须回源 claimContext 做 exam 级聚合
     if (
@@ -528,9 +547,6 @@ function allRequiredTaskStreamsReady(): boolean {
 }
 
 function getPollingIntervalMs(): number {
-  if (sessionPausedAlert.value) {
-    return 0
-  }
   if (allRequiredTaskStreamsReady()) {
     return 0
   }
@@ -708,8 +724,17 @@ const claimForm = reactive<MarkingTaskClaimRequest>({
   markingPhase: MarkingSessionPhaseCode.FORMAL,
 })
 
+/** 仅当「领取区」当前选中的会话被暂停时禁领 / 提示，不波及其它 ACTIVE 会话 */
+const selectedClaimSessionPaused = computed(() => {
+  const sessionId = claimForm.sessionId.trim()
+  return !!sessionId && pausedSessionIds.value.has(sessionId)
+})
+
 const canClaim = computed(
-  () => !sessionPausedAlert.value && !!claimForm.sessionId.trim() && !!claimForm.groupId.trim(),
+  () =>
+    !selectedClaimSessionPaused.value
+    && !!claimForm.sessionId.trim()
+    && !!claimForm.groupId.trim(),
 )
 
 const claimContext = computed<TeacherClaimContextResponse | null>(() =>
@@ -829,8 +854,8 @@ function onClaimGroupChange(): void {
 const claiming = ref(false)
 
 async function submitClaim(): Promise<void> {
-  if (sessionPausedAlert.value) {
-    message.warning('正评已暂停，暂停期间无法领取新任务')
+  if (selectedClaimSessionPaused.value) {
+    message.warning('当前正评会话已暂停，暂停期间无法领取新任务')
     return
   }
   if (!canClaim.value) {
@@ -911,7 +936,7 @@ watch(
     claimForm.groupId = ''
     claimForm.sessionId = ''
     claimForm.markingPhase = markingPhase.value
-    sessionPausedAlert.value = false
+    pausedSessionIds.value = new Set()
     tasksLoadError.value = ''
     clearBatchSelection()
     batchMode.value = false

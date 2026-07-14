@@ -4,6 +4,8 @@ export enum PortfolioExportApprovalStatusCode {
   APPROVED = 'APPROVED',
   REJECTED = 'REJECTED',
   DOWNLOADED = 'DOWNLOADED',
+  EXPIRED = 'EXPIRED',
+  REVOKED = 'REVOKED',
 }
 
 export const ALL_PORTFOLIO_EXPORT_APPROVAL_STATUS_CODES: readonly PortfolioExportApprovalStatusCode[] = [
@@ -11,6 +13,8 @@ export const ALL_PORTFOLIO_EXPORT_APPROVAL_STATUS_CODES: readonly PortfolioExpor
   PortfolioExportApprovalStatusCode.APPROVED,
   PortfolioExportApprovalStatusCode.REJECTED,
   PortfolioExportApprovalStatusCode.DOWNLOADED,
+  PortfolioExportApprovalStatusCode.EXPIRED,
+  PortfolioExportApprovalStatusCode.REVOKED,
 ]
 
 export const PortfolioExportApprovalStatusDescription: Record<PortfolioExportApprovalStatusCode, string> = {
@@ -18,4 +22,6 @@ export const PortfolioExportApprovalStatusDescription: Record<PortfolioExportApp
   [PortfolioExportApprovalStatusCode.APPROVED]: '已批准',
   [PortfolioExportApprovalStatusCode.REJECTED]: '已驳回',
   [PortfolioExportApprovalStatusCode.DOWNLOADED]: '已下载',
+  [PortfolioExportApprovalStatusCode.EXPIRED]: '已过期',
+  [PortfolioExportApprovalStatusCode.REVOKED]: '已撤销',
 }

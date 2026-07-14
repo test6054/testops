@@ -1,4 +1,5 @@
 import type { PortfolioArchiveBagExportResultVO } from '@/apis/portfolio/bag-types'
+import type { PortfolioExportApprovalVO } from '@/apis/portfolio/governance'
 import type {
   PortfolioCompletenessLevelCode,
   PortfolioTeacherDetailVO,
@@ -100,17 +101,30 @@ export interface PortfolioDeptOneTableGetRequest {
   departmentId: string
   planYear?: string
   completenessLevel?: PortfolioCompletenessLevelCode
+  portfolioOrgId?: string
+  teachingGroupId?: string
 }
 
 export interface PortfolioDeptOneTableExportRequest {
   departmentId: string
   planYear?: string
+  completenessLevel?: PortfolioCompletenessLevelCode
+  portfolioOrgId?: string
+  teachingGroupId?: string
 }
 
 export interface PortfolioDeptOneTableTeacherPageRequest extends QueryDto {
   departmentId: string
   planYear?: string
   completenessLevel?: PortfolioCompletenessLevelCode
+  portfolioOrgId?: string
+  teachingGroupId?: string
+}
+
+export interface PortfolioDepartmentReportExportApplyRequest extends PortfolioDeptOneTableExportRequest {
+  constructionPeriodLabel?: string
+  baselinePeriodLabel?: string
+  exportPurpose: string
 }
 
 const BASE = '/api/portfolio/teacher'
@@ -133,6 +147,8 @@ export const portfolioTeacherApi = {
     http.post<PortfolioDeptOneTableSummaryVO>(`${BASE}/dept-one-table/summary/get`, data),
   exportDeptOneTable: (data: PortfolioDeptOneTableExportRequest) =>
     http.post<PortfolioArchiveBagExportResultVO>(`${BASE}/dept-one-table/export`, data),
+  applyDeptReportExport: (data: PortfolioDepartmentReportExportApplyRequest) =>
+    http.post<PortfolioExportApprovalVO>(`${BASE}/dept-report/export/apply`, data),
   pageDeptOneTableTeachers: (data: PortfolioDeptOneTableTeacherPageRequest) =>
     http.post<PageResult<PortfolioDeptOneTableTeacherRowVO>>(
       `${BASE}/dept-one-table/teacher/page`,

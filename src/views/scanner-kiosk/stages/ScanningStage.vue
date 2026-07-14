@@ -341,7 +341,12 @@ onMounted(() => {
       </div>
       <div v-if="hasJob" class="ribbon-progress">
         <div class="progress-bar">
-          <div class="progress-fill" :style="{ width: `${workflow.scanProgress.value}%` }" />
+          <div
+            class="progress-fill"
+            :style="{
+              transform: `scaleX(${Math.max(0, Math.min(1, workflow.scanProgress.value / 100))})`,
+            }"
+          />
         </div>
         <span class="progress-pct">{{ workflow.scanProgress.value }}%</span>
       </div>
@@ -700,9 +705,11 @@ onMounted(() => {
 }
 .progress-fill {
   height: 100%;
+  width: 100%;
+  transform-origin: left center;
   background: var(--kiosk-primary);
   border-radius: var(--kiosk-radius-pill);
-  transition: width var(--kiosk-dur-base) var(--kiosk-easing);
+  transition: transform var(--kiosk-dur-base) var(--kiosk-easing);
 }
 .progress-pct {
   font-variant-numeric: tabular-nums;
@@ -819,7 +826,7 @@ onMounted(() => {
   left: 50%;
   max-width: calc(100% - var(--kiosk-space-6) * 2);
   max-height: calc(100% - var(--kiosk-space-6) * 2);
-  background: #fff;
+  background: var(--kiosk-surface);
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
   user-select: none;
   transform-origin: center center;
@@ -912,7 +919,7 @@ onMounted(() => {
 }
 
 .canvas-empty-btn--primary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--kiosk-primary) 82%, #fff 18%);
+  background: color-mix(in srgb, var(--kiosk-primary) 82%, var(--kiosk-surface) 18%);
 }
 
 /* ----------- Floating tools ----------- */

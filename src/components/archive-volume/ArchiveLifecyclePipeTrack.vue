@@ -110,12 +110,12 @@ function connectorClass(index: number): string {
 
   &--done {
     background: var(--dp-success);
-    color: #fff;
+    color: var(--ant-color-white);
   }
 
   &--active {
     background: var(--dp-primary);
-    color: #fff;
+    color: var(--ant-color-white);
     box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.15);
   }
 
@@ -127,7 +127,7 @@ function connectorClass(index: number): string {
 
   &--warn {
     background: var(--dp-warning);
-    color: #fff;
+    color: var(--ant-color-white);
   }
 }
 

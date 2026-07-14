@@ -1,4 +1,5 @@
 import type {
+  PortfolioArchiveRecordCompareVO,
   PortfolioArchiveRecordDetailVO,
   PortfolioArchiveRecordPageRequest,
   PortfolioArchiveRecordSaveDraftRequest,
@@ -42,6 +43,11 @@ export const portfolioArchiveApi = {
   listVersionHistory: (id: string) =>
     http.post<PortfolioArchiveRecordVersionVO[]>('/api/portfolio/archive/record/version-history', {
       id,
+    }),
+  compareVersions: (leftRecordId: string, rightRecordId: string) =>
+    http.post<PortfolioArchiveRecordCompareVO>('/api/portfolio/archive/record/compare', {
+      leftRecordId,
+      rightRecordId,
     }),
   getOneTable: (data: PortfolioTeacherOneTableGetRequest = {}) =>
     http.post<PortfolioTeacherOneTableVO>('/api/portfolio/teacher-one-table/get', data),

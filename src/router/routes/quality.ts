@@ -129,6 +129,21 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
     },
   },
   {
+    path: 'training-plan-review',
+    name: 'QualityTrainingPlanReviewQueue',
+    component: () => import('@/views/quality/training-plan-review-queue.vue'),
+    meta: {
+      title: '培养方案院审',
+      roles: ALL_ROLES,
+      icon: 'audit',
+      hideInMenu: false,
+      menuTier: 'secondary',
+      keepAlive: true,
+      ...SCOPE_NONE,
+      ...SYSTEM_GROUP,
+    },
+  },
+  {
     path: 'quality-course-matrix',
     name: 'QualityCourseMatrix',
     component: () => import('@/views/quality/quality-course-matrix.vue'),
@@ -155,6 +170,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
       hideInMenu: false,
       keepAlive: true,
       ...SCOPE_PLAN_PERIOD,
+      ...GATE_PLAN_CONFIRMED,
       ...DATA_GROUP,
     },
     children: [
@@ -169,6 +185,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
           keepAlive: true,
           activeMenu: '/quality/ingest-hub',
           ...SCOPE_PLAN_COURSE,
+          ...GATE_PLAN_CONFIRMED,
         },
       },
       {
@@ -182,6 +199,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
           keepAlive: true,
           activeMenu: '/quality/ingest-hub',
           ...SCOPE_PLAN_COURSE,
+          ...GATE_PLAN_CONFIRMED,
         },
       },
       {
@@ -195,6 +213,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
           keepAlive: true,
           activeMenu: '/quality/ingest-hub',
           ...SCOPE_PLAN_COURSE,
+          ...GATE_PLAN_CONFIRMED,
         },
       },
       {
@@ -208,6 +227,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
           keepAlive: true,
           activeMenu: '/quality/ingest-hub',
           ...SCOPE_PLAN_COURSE,
+          ...GATE_PLAN_CONFIRMED,
         },
       },
       {
@@ -221,6 +241,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
           keepAlive: true,
           activeMenu: '/quality/ingest-hub',
           ...SCOPE_PLAN_COURSE,
+          ...GATE_PLAN_CONFIRMED,
         },
       },
     ],
@@ -267,6 +288,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
       hideInMenu: false,
       keepAlive: true,
       ...SCOPE_PLAN,
+      ...GATE_PLAN_CONFIRMED,
       ...OUTPUT_GROUP,
     },
   },

@@ -1191,7 +1191,7 @@ onBeforeUnmount(() => {
 }
 
 .error-text {
-  color: #d4380d;
+  color: var(--ant-color-error-active, var(--ant-color-error));
   font-size: 12px;
 }
 

@@ -8,6 +8,7 @@ import type { PortfolioAiExtractTaskTypeCode } from '@/types/enums/portfolio-ai-
 import type { PortfolioAiTaskTypeCode } from '@/types/enums/portfolio-ai-task-type-enum'
 import type { PortfolioArchiveCategoryScopeCode } from '@/types/enums/portfolio-archive-category-scope-enum'
 import type { PortfolioArchiveCategoryStatusCode } from '@/types/enums/portfolio-archive-category-status-enum'
+import type { PortfolioArchiveFieldDiffChangeTypeCode } from '@/types/enums/portfolio-archive-field-diff-change-type-enum'
 import type { PortfolioArchiveFieldSourceTypeCode } from '@/types/enums/portfolio-archive-field-source-type-enum'
 import type { PortfolioArchiveFieldTypeCode } from '@/types/enums/portfolio-archive-field-type-enum'
 import type { PortfolioArchiveRecordSourceTypeCode } from '@/types/enums/portfolio-archive-record-source-type-enum'
@@ -625,6 +626,7 @@ export interface PortfolioOrgSyncLogVO {
 export interface PortfolioTeacherPageRequest extends QueryDto {
   departmentId?: string
   portfolioOrgId?: string
+  teachingGroupId?: string
   title?: string
   identityType?: PortfolioTeacherIdentityTypeCode
   searchText?: string
@@ -964,6 +966,13 @@ export interface PortfolioAiJobContext {
   scanWorkOrderId?: string
   archiveRecordId?: string
   departmentId?: string
+  /** AI 任务提交时由后端冻结，前端不应自行填写。 */
+  teacherDepartmentId?: string
+  sourceText?: string
+  evaluationSummary?: string
+  developmentFocusArea?: string
+  generateScene?: string
+  generateBrief?: string
 }
 
 export interface PortfolioAiJobSubmitVO {
@@ -1054,7 +1063,28 @@ export interface PortfolioReviewTaskPageRequest extends QueryDto {
   teacherId?: string
   categoryId?: string
   departmentId?: string
+  teachingGroupId?: string
   auditFlowCode?: string
+}
+
+/** 教学档案袋工作壳编码 - PortfolioWorkShellEnum */
+export type PortfolioWorkShellCode
+  = | 'TEACHER'
+    | 'DEPARTMENT_REVIEW'
+    | 'SCHOOL_GOVERNANCE'
+    | 'CONFIGURATION'
+
+/** 档案审核台访问范围 - PortfolioReviewAccessScopeVO */
+export interface PortfolioReviewAccessScopeVO {
+  reviewAccess?: boolean
+  tenantWide?: boolean
+  teachingGroupLeader?: boolean
+  reviewerDepartmentId?: string
+  managedTeachingGroupIds?: string[]
+  defaultWorkShell?: PortfolioWorkShellCode
+  defaultWorkShellRoute?: string
+  availableWorkShells?: PortfolioWorkShellCode[]
+  workShellRoutes?: Partial<Record<PortfolioWorkShellCode, string>>
 }
 
 /** 审核任务操作日志分页查询 */
@@ -1471,6 +1501,27 @@ export interface PortfolioArchiveRecordVersionVO {
   updateTime?: string
 }
 
+/** 档案版本字段级差异 */
+export interface PortfolioArchiveRecordFieldDiffVO {
+  fieldCode: string
+  fieldLabel?: string
+  leftValue?: string
+  rightValue?: string
+  leftEvidenceRef?: string
+  rightEvidenceRef?: string
+  changeType: PortfolioArchiveFieldDiffChangeTypeCode
+}
+
+/** 同一档案版本链的双版本对比结果 */
+export interface PortfolioArchiveRecordCompareVO {
+  rootRecordId?: string
+  leftVersion?: PortfolioArchiveRecordVersionVO
+  rightVersion?: PortfolioArchiveRecordVersionVO
+  fieldDiffs: PortfolioArchiveRecordFieldDiffVO[]
+  changedFieldCount?: number
+  unchangedFieldCount?: number
+}
+
 export interface PortfolioArchiveRecordFieldVO {
   fieldCode: string
   fieldLabel?: string
@@ -1720,12 +1771,16 @@ export interface PortfolioEvaluationTeacherNoticeVO {
   noticeStatus: PortfolioEvaluationTeacherNoticeStatusCode
   returnReason?: string
   dueTime?: string
+  taskSceneCode?: string
+  taskStartTime?: string
   updateTime?: string
 }
 
 export interface PortfolioEvaluationTeacherNoticePageRequest extends QueryDto {
   teacherId?: string
   noticeStatus?: PortfolioEvaluationTeacherNoticeStatusCode
+  sceneCode?: string
+  activeWindowOnly?: boolean
   locateNoticeId?: string
 }
 

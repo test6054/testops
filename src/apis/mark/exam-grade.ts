@@ -68,6 +68,8 @@ export interface ExamGradeRejectRequest {
   examId: string
   gradeResultId: string
   rejectReason: string
+  /** 主考代办审计原因；接管他人 IN_PROGRESS 时必填 */
+  ownerOverrideReason?: string
 }
 
 /** 题目成绩批量确认条目 - 对应 ExamGradeBatchConfirmRequest.Item */

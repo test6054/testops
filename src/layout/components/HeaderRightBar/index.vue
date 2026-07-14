@@ -322,7 +322,7 @@ const openExportTaskCenter = () => {
   height: 14px;
   padding: 0 3px;
   background: var(--ant-color-primary);
-  color: #fff;
+  color: var(--ant-color-white);
   font-size: 8px;
   font-weight: 700;
   line-height: 14px;

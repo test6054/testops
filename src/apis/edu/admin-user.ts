@@ -65,11 +65,6 @@ export interface AdminCreateUserRequest {
   title?: string
   /** 专业 ID（学生创建时从班级信息中推导） */
   majorId?: string
-  // --- 企业助教特定字段 ---
-  /** 所属公司ID */
-  companyId?: string
-  /** 企业内职位 */
-  corporatePosition?: string
 }
 
 /** 管理员更新用户请求 - 与后端AdminUpdateUserRequestDto保持一致 */
@@ -111,12 +106,6 @@ export interface AdminUpdateUserRequest {
   /** 职称/职务 */
   title?: string
 
-  // --- 企业助教特定字段 ---
-  /** 所属公司ID */
-  companyId?: string
-  /** 企业内职位 */
-  corporatePosition?: string
-
 }
 
 /** 用户详情请求 */
@@ -143,12 +132,6 @@ export interface AssignRolesRequest {
     department?: string
     position?: string
     title?: string
-  }
-  /** 企业助教详细信息 */
-  corporateUserDetail?: {
-    companyName?: string
-    position?: string
-    department?: string
   }
 }
 
@@ -185,8 +168,6 @@ export interface UserListItemDto {
   classId?: string
   /** 部门ID */
   departmentId?: string
-  /** 公司名称 */
-  companyName?: string
   /** 职位 */
   title?: string
   /** 学号/工号 */
@@ -273,7 +254,7 @@ export interface UserQueryDto extends QueryDto {
   roleKey?: string
   /** 部门ID筛选 */
   departmentId?: string
-  /** 部门名称筛选（用于教师或企业助教） */
+  /** 部门名称筛选（用于教师） */
   department?: string
   /** 班级ID筛选 */
   classId?: string

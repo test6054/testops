@@ -2,9 +2,15 @@ import type { NavigationGuardReturn, RouteLocationNormalized, Router } from 'vue
 import type { SeoMeta } from '@/utils/seo'
 import NProgress from 'nprogress'
 import {
+  ensurePortfolioReviewAccessLoaded,
+  readPortfolioReviewAccessProjection,
+  resetPortfolioReviewAccessCache,
+} from '@/composables/usePortfolioReviewAccess'
+import {
   scheduleDeferredRouteBootstrap,
   schedulePostTimeoutAuthRecovery,
 } from '@/router/guards/deferred-route-bootstrap'
+import { runPortfolioPrivacyConsentGuard } from '@/router/guards/portfolio-privacy-consent'
 import { runPortfolioTeacherReadinessGuard } from '@/router/guards/portfolio-teacher-readiness'
 import { getDefaultRoute, hasRoutePermission, requiresAuth } from '@/router/permission'
 import { useAuthStore, useRouteStore, useUserStore } from '@/stores'
@@ -13,8 +19,8 @@ import { isAuthRequestFailure, isTransientRequestError } from '@/utils/error-han
 import { message } from '@/utils/feedback'
 import { prefersReducedMotion } from '@/utils/motion-preference'
 import { shouldEnforcePasswordChange } from '@/utils/password-change-enforcement'
-import { isValidRole } from '@/utils/permission'
-import { isQualityEvaluationRoute } from '@/utils/portfolio-route'
+import { isValidRole, RoleEnum } from '@/utils/permission'
+import { isPortfolioRoute, isQualityEvaluationRoute } from '@/utils/portfolio-route'
 import {
   ensureQualityPlanConfirmedForNavigation,
   resolveQualityPlanGateRedirect,
@@ -110,7 +116,7 @@ async function runProtectedRouteGuard(to: RouteLocationNormalized): Promise<Navi
   }
 
   let userInfoLoadFailed = false
-  const tenantAdminBeforeRefresh = userStore.userInfo.isTenantAdmin
+  const permissionVersionBeforeRefresh = userStore.userInfo.permissionVersion
   if (!userStore.userInfo.userId) {
     try {
       await userStore.getInfo()
@@ -129,9 +135,19 @@ async function runProtectedRouteGuard(to: RouteLocationNormalized): Promise<Navi
   }
 
   const routeStore = useRouteStore()
-  const tenantAdminAfterRefresh = userStore.userInfo.isTenantAdmin
-  const tenantAdminChanged = tenantAdminBeforeRefresh !== tenantAdminAfterRefresh
-  if (!hasMenuFlag || routeStore.asyncRoutes.length === 0 || tenantAdminChanged) {
+  const permissionVersionChanged = permissionVersionBeforeRefresh !== userStore.userInfo.permissionVersion
+  if (permissionVersionChanged) {
+    resetPortfolioReviewAccessCache()
+  }
+  const userRole = authStore.userRole
+  const reviewAccessBeforeLoad = readPortfolioReviewAccessProjection()
+  let reviewAccessChanged = false
+  if (userRole && isValidRole(userRole) && (isPortfolioRoute(to.path) || userRole === RoleEnum.SCH_TECH)) {
+    const reviewAccessScope = await ensurePortfolioReviewAccessLoaded(isPortfolioRoute(to.path))
+    reviewAccessChanged = reviewAccessScope !== null
+      && reviewAccessBeforeLoad !== readPortfolioReviewAccessProjection()
+  }
+  if (!hasMenuFlag || routeStore.asyncRoutes.length === 0 || permissionVersionChanged || reviewAccessChanged) {
     try {
       await routeStore.generateMenus()
       hasMenuFlag = true
@@ -169,7 +185,6 @@ async function runProtectedRouteGuard(to: RouteLocationNormalized): Promise<Navi
     return '/change-password'
   }
 
-  const userRole = authStore.userRole
   const userIsTenantAdmin = userStore.isTenantAdmin
 
   if (!hasRoutePermission(to.path, userRole, userIsTenantAdmin)) {
@@ -178,6 +193,11 @@ async function runProtectedRouteGuard(to: RouteLocationNormalized): Promise<Navi
       return defaultRoute
     }
     return '/403'
+  }
+
+  const portfolioConsentRedirect = await runPortfolioPrivacyConsentGuard(to)
+  if (portfolioConsentRedirect) {
+    return portfolioConsentRedirect
   }
 
   const portfolioRedirect = await runPortfolioTeacherReadinessGuard(to)
@@ -235,7 +255,9 @@ export const setupRouterGuard = (router: Router) => {
       return
     }
 
-    const guardOutcome = await runBeforeEachWithTimeout(() => runProtectedRouteGuard(to))
+    const guardOutcome = routeRequiresPlanConfirmed(to.matched) || isPortfolioRoute(to.path)
+      ? { timedOut: false as const, result: await runProtectedRouteGuard(to) }
+      : await runBeforeEachWithTimeout(() => runProtectedRouteGuard(to))
     if (guardOutcome.timedOut) {
       message.warning('网络较慢，页面已先行展示，部分数据仍在加载')
       schedulePostTimeoutAuthRecovery(to)

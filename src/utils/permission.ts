@@ -9,8 +9,6 @@ export {RoleEnum}
 export const ROLE_NAMES: Record<RoleEnum, string> = {
   [RoleEnum.SUPER_ADMIN]: ROLE_CONFIG[RoleEnum.SUPER_ADMIN].name,
   [RoleEnum.SCH_TECH]: ROLE_CONFIG[RoleEnum.SCH_TECH].name,
-  [RoleEnum.CROP_ADMIN]: ROLE_CONFIG[RoleEnum.CROP_ADMIN].name,
-  [RoleEnum.CROP_USER]: ROLE_CONFIG[RoleEnum.CROP_USER].name,
   [RoleEnum.SCH_STU]: ROLE_CONFIG[RoleEnum.SCH_STU].name,
   [RoleEnum.SYSTEM]: ROLE_CONFIG[RoleEnum.SYSTEM].name,
 }

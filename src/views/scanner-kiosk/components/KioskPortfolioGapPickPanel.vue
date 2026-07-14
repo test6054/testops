@@ -207,7 +207,7 @@ async function openGapScan(row: PortfolioGapTaskSummaryInternalVO) {
 .kiosk-portfolio-pick__hint {
   margin: 0 0 12px;
   font-size: 13px;
-  color: var(--nybc-text-secondary, #595959);
+  color: var(--kiosk-ink-secondary);
 }
 .kiosk-portfolio-pick__search {
   flex: 1;
@@ -216,6 +216,6 @@ async function openGapScan(row: PortfolioGapTaskSummaryInternalVO) {
 .kiosk-portfolio-pick__error {
   margin: 0 0 12px;
   padding: 0 var(--dp-space-5);
-  color: #cf1322;
+  color: var(--kiosk-danger);
 }
 </style>

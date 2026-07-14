@@ -27,8 +27,75 @@ export interface TrainingPlanVO {
   confirmationStatus?: ConfirmationStatusCode
   confirmedUserId?: string
   confirmedTime?: string
+  submittedAt?: string
+  returnedAt?: string
+  returnComment?: string
+  revokedAt?: string
+  revokeReason?: string
+  statusVersion: number
   createTime?: string
   updateTime?: string
+}
+
+/** 培养方案状态机动作请求，必须携带详情读取到的乐观锁版本。 */
+export interface TrainingPlanStatusTransitionRequest {
+  id: string
+  statusVersion: number
+  comment?: string
+}
+
+/** 培养方案状态机动作结果。 */
+export interface TrainingPlanStatusTransitionVO {
+  id: string
+  confirmationStatus: ConfirmationStatusCode
+  statusVersion: number
+  idempotent: boolean
+  staleResultCount: number
+}
+
+/** 发布 Checklist 单项结果。 */
+export interface TrainingPlanChecklistItemVO {
+  code: string
+  field: string
+  passed: boolean
+  message: string
+}
+
+/** 发布 Checklist 汇总。 */
+export interface TrainingPlanChecklistVO {
+  trainingPlanId: string
+  passed: boolean
+  items: TrainingPlanChecklistItemVO[]
+  failedItems: TrainingPlanChecklistItemVO[]
+}
+
+/** AI 诊断中的单项修复建议。 */
+export interface TrainingPlanDiagnosisSuggestionVO {
+  checklistCode: string
+  message: string
+  suggestion: string
+  deepLink: string
+}
+
+/** 基于 Checklist 的建设诊断与确认风险摘要。 */
+export interface TrainingPlanDiagnosisVO {
+  trainingPlanId: string
+  checklistPassed: boolean
+  summary: string
+  riskSummary: string
+  suggestions: TrainingPlanDiagnosisSuggestionVO[]
+}
+
+/** 培养方案院审状态审计记录。 */
+export interface TrainingPlanStatusAuditVO {
+  id: string
+  trainingPlanId: string
+  previousStatus: ConfirmationStatusCode
+  currentStatus: ConfirmationStatusCode
+  actionCode: 'SUBMIT' | 'CONFIRM' | 'RETURN' | 'REVOKE'
+  comment?: string
+  operatorUserId: string
+  createTime: string
 }
 
 /** 分页查询请求 */
@@ -102,6 +169,16 @@ export const trainingPlanApi = {
   create: (data: TrainingPlanSaveRequest) => http.post<string>(`${BASE}/create`, data),
   update: (data: TrainingPlanSaveRequest) => http.post<void>(`${BASE}/update`, data),
   delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),
-  confirm: (id: string) => http.post<void>(`${BASE}/confirm`, { id }),
-  revoke: (id: string) => http.post<void>(`${BASE}/revoke`, { id }),
+  checklist: (id: string) => http.post<TrainingPlanChecklistVO>(`${BASE}/checklist`, { id }),
+  diagnose: (id: string) => http.post<TrainingPlanDiagnosisVO>(`${BASE}/diagnose`, { id }),
+  statusAudits: (id: string) => http.post<TrainingPlanStatusAuditVO[]>(`${BASE}/status-audits`, { id }),
+  submit: (data: TrainingPlanStatusTransitionRequest) =>
+    http.post<TrainingPlanStatusTransitionVO>(`${BASE}/submit`, data),
+  confirm: (data: TrainingPlanStatusTransitionRequest) =>
+    http.post<TrainingPlanStatusTransitionVO>(`${BASE}/confirm`, data),
+  returnForRevision: (data: TrainingPlanStatusTransitionRequest) =>
+    http.post<TrainingPlanStatusTransitionVO>(`${BASE}/return`, data),
+  revoke: (data: TrainingPlanStatusTransitionRequest) =>
+    http.post<TrainingPlanStatusTransitionVO>(`${BASE}/revoke`, data),
+  remindReview: (id: string) => http.post<number>(`${BASE}/remind-review`, { id }),
 }

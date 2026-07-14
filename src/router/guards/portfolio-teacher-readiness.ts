@@ -7,6 +7,7 @@ import { RoleEnum } from '@/utils/permission'
 
 const TEACHER_PORTFOLIO_PREFIX = '/portfolio/teacher/'
 const ONBOARDING_PATH = '/portfolio/teacher/onboarding'
+const PRIVACY_CONSENT_PATH = '/portfolio/teacher/privacy-consent'
 const HOME_PATH = '/portfolio/teacher/home'
 
 const PORTFOLIO_TEACHER_ROLES = new Set<string>([RoleEnum.SCH_TECH, RoleEnum.SUPER_ADMIN])
@@ -50,6 +51,9 @@ export async function runPortfolioTeacherReadinessGuard(
 
   const authStore = useAuthStore()
   if (!PORTFOLIO_TEACHER_ROLES.has(authStore.userRole)) {
+    return
+  }
+  if (to.path === PRIVACY_CONSENT_PATH) {
     return
   }
 

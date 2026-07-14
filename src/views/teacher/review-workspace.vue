@@ -29,6 +29,24 @@
         inline
         class="review-workspace__invalidated-banner"
       />
+      <UiAlertStrip
+        v-else-if="ownerOverrideMode"
+        tone="warning"
+        title="主考代办"
+        description="该任务已被其他教师领取。提交确认或驳回时须填写代办原因，系统将强制审计。"
+        dense
+        inline
+        class="review-workspace__owner-override-banner"
+      />
+      <UiAlertStrip
+        v-else-if="claimBlockedByOther"
+        tone="error"
+        title="任务已被其他教师领取"
+        description="仅认领人或主考可写分。请稍后再试，或联系主考代办。"
+        dense
+        inline
+        class="review-workspace__claim-blocked-banner"
+      />
       <!-- B-7 流水线进度：当前任务在同题复核队列中的位次 -->
       <GradingWorkspaceLayout
         :confidential="isExamConfidential"
@@ -459,15 +477,24 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { isExamConfidentialFlag, useExamConfidential } from '@/composables/useConfidentialWatermark'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useExamOwnerPermission } from '@/composables/useExamOwnerPermission'
 import {
   EXAM_WORKSPACE_CHROME_KEY,
+  MARK_WORKBENCH_CONTEXT_KEY,
   useWorkspaceExamId,
 } from '@/composables/useMarkWorkbenchContext'
+import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useUserStore } from '@/stores/modules/user'
-import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { ResultCode } from '@/types/enums/result-code'
+import { getUserErrorMessage, readBusinessResultCode, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { isGradingKeyboardInputTarget } from '@/utils/grading-keyboard'
+import {
+  isBusinessConflict,
+  isFinalScoreConfirmLockConflict,
+  isScoreWriteBlockedByFinalScoreGate,
+} from '@/utils/marking-workflow-conflict'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ReviewTaskHub from '@/views/teacher/review-task-hub.vue'
 
@@ -488,8 +515,11 @@ function comparePolicyLabel(code: ObjectiveComparePolicyCode): string {
 const route = useRoute()
 const router = useRouter()
 const chrome = inject(EXAM_WORKSPACE_CHROME_KEY, null)
+const workbench = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
 const { refreshSnapshot } = useWorkspaceExamId()
 const userStore = useUserStore()
+const examOwnerSource = computed(() => workbench?.examDetail?.value ?? null)
+const { isExamOwner } = useExamOwnerPermission(examOwnerSource)
 
 const examId = computed(() => (route.params.examId ? String(route.params.examId) : ''))
 const {
@@ -546,6 +576,10 @@ function goBack(): void {
 // ─── 复核任务详情 ──────────────────────────
 const detail = ref<ReviewTaskDetailResponse | null>(null)
 const loading = ref(false)
+/** 主考打开他人已领取任务：允许写分但须带代办原因 */
+const ownerOverrideMode = ref(false)
+/** 非主考打开他人已领取任务：只读禁写 */
+const claimBlockedByOther = ref(false)
 /** 丢弃过期的复核任务加载，避免 J/K 导航与 claim 并发覆盖 detail。 */
 let loadTaskGeneration = 0
 
@@ -569,10 +603,16 @@ const immersionSubtitle = computed(() => {
 
 const canSubmit = computed(() => !!examId.value && !!taskId.value)
 
-/** 当前任务是否允许提交复核（PENDING / IN_PROGRESS） */
+/** 当前任务是否允许提交复核（活跃态且具备写权限） */
 const canConfirm = computed(() => {
   const status = detail.value?.status
-  return status === ReviewTaskStatusCode.PENDING || status === ReviewTaskStatusCode.IN_PROGRESS
+  if (status !== ReviewTaskStatusCode.PENDING && status !== ReviewTaskStatusCode.IN_PROGRESS) {
+    return false
+  }
+  if (claimBlockedByOther.value) {
+    return false
+  }
+  return true
 })
 
 /** 仅首次复核任务可驳回升级仲裁；仲裁任务本身不可再次驳回。 */
@@ -829,6 +869,8 @@ function resetGradeForm(): void {
 function resetTaskState(): void {
   resetGradeForm()
   detail.value = null
+  ownerOverrideMode.value = false
+  claimBlockedByOther.value = false
   annotations.value = []
   annotationPagination.pageNum = 1
   annotationPagination.total = 0
@@ -840,7 +882,8 @@ function resetTaskState(): void {
 }
 
 /**
- * 加载复核任务详情：活跃态任务先 claim 绑定当前教师，只读态（APPROVED/REJECTED 已关闭）走 detail。
+ * 加载复核任务详情：活跃态任务先 claim 绑定当前教师；
+ * 他人已领取时主考进入代办模式，非主考只读禁写。
  */
 async function loadReviewTaskDetail(): Promise<ReviewTaskDetailResponse> {
   const preview = await getReviewTaskDetail({
@@ -848,15 +891,54 @@ async function loadReviewTaskDetail(): Promise<ReviewTaskDetailResponse> {
     reviewTaskId: taskId.value,
   })
   if (
-    preview.status === ReviewTaskStatusCode.PENDING
-    || preview.status === ReviewTaskStatusCode.IN_PROGRESS
+    preview.status !== ReviewTaskStatusCode.PENDING
+    && preview.status !== ReviewTaskStatusCode.IN_PROGRESS
   ) {
-    return claimReviewTask({
+    return preview
+  }
+  try {
+    const claimed = await claimReviewTask({
       examId: examId.value,
       reviewTaskId: taskId.value,
     })
+    ownerOverrideMode.value = false
+    claimBlockedByOther.value = false
+    return claimed
+  } catch (error) {
+    if (!isBusinessConflict(error)) {
+      throw error
+    }
+    const heldByOther = preview.status === ReviewTaskStatusCode.IN_PROGRESS
+      && !!preview.assignedTeacherUserId
+      && preview.assignedTeacherUserId !== currentUserId.value
+    if (heldByOther && isExamOwner.value) {
+      ownerOverrideMode.value = true
+      claimBlockedByOther.value = false
+      return preview
+    }
+    if (heldByOther) {
+      ownerOverrideMode.value = false
+      claimBlockedByOther.value = true
+      return preview
+    }
+    throw error
   }
-  return preview
+}
+
+/** 主考代办写分前采集强制审计原因；非代办模式返回 undefined。 */
+async function resolveOwnerOverrideReason(): Promise<string | undefined | null> {
+  if (!ownerOverrideMode.value) {
+    return undefined
+  }
+  return promptInputAsync({
+    title: '主考代办原因（必填）',
+    placeholder: '说明为何接管他人进行中的复核任务并直接写分',
+    required: true,
+    emptyErrorMessage: '主考代办须填写代办原因',
+    okText: '确认代办写分',
+    cancelText: '取消',
+    type: 'warning',
+  })
 }
 
 /** FIX-10: 快捷给分按钮 */
@@ -1127,6 +1209,10 @@ async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
 /** 提交核心：仅提交教师复核给分，成功返回 true；失败已提示并返回 false */
 async function submitGrade(): Promise<boolean> {
   if (!examId.value || !detail.value) return false
+  const ownerOverrideReason = await resolveOwnerOverrideReason()
+  if (ownerOverrideReason === null) {
+    return false
+  }
   submitting.value = true
   try {
     await confirmQuestionGrade({
@@ -1135,7 +1221,9 @@ async function submitGrade(): Promise<boolean> {
       teacherReviewScore: gradeForm.teacherReviewScore!,
       commentText: gradeForm.commentText?.trim() || undefined,
       annotationText: gradeForm.annotationText?.trim() || undefined,
+      ownerOverrideReason,
     })
+    ownerOverrideMode.value = false
     try {
       await refreshSnapshot()
     } catch {
@@ -1143,6 +1231,25 @@ async function submitGrade(): Promise<boolean> {
     }
     return true
   } catch (error) {
+    if (isFinalScoreConfirmLockConflict(error)) {
+      message.warning('处理中')
+      return false
+    }
+    if (isScoreWriteBlockedByFinalScoreGate(error)) {
+      message.warning('最终成绩已确认/发布/更正，不能再改题分')
+      return false
+    }
+    if (readBusinessResultCode(error) === ResultCode.PARAM_ERROR
+      && getUserErrorMessage(error, '').includes('主考代办')) {
+      message.warning(getUserErrorMessage(error, '主考代办须填写代办原因'))
+      return false
+    }
+    if (isBusinessConflict(error) && getUserErrorMessage(error, '').includes('已被其他教师领取')) {
+      claimBlockedByOther.value = !isExamOwner.value
+      ownerOverrideMode.value = isExamOwner.value
+      message.warning(getUserErrorMessage(error, '复核任务已被其他教师领取'))
+      return false
+    }
     showUserError(error, '确认复核失败')
     return false
   } finally {
@@ -1164,13 +1271,19 @@ function openRejectConfirm(): void {
 
 async function handleReject(): Promise<void> {
   if (!examId.value || !detail.value?.gradeResultId) return
+  const ownerOverrideReason = await resolveOwnerOverrideReason()
+  if (ownerOverrideReason === null) {
+    return
+  }
   rejecting.value = true
   try {
     await rejectQuestionGrade({
       examId: examId.value,
       gradeResultId: detail.value.gradeResultId,
       rejectReason: gradeForm.commentText?.trim() || '教师驳回复核结论',
+      ownerOverrideReason,
     })
+    ownerOverrideMode.value = false
     message.success('已驳回，任务已进入仲裁队列')
     try {
       await refreshSnapshot()
@@ -1179,6 +1292,25 @@ async function handleReject(): Promise<void> {
     }
     goBack()
   } catch (error) {
+    if (isFinalScoreConfirmLockConflict(error)) {
+      message.warning('处理中')
+      return
+    }
+    if (isScoreWriteBlockedByFinalScoreGate(error)) {
+      message.warning('最终成绩已确认/发布/更正，不能再改题分')
+      return
+    }
+    if (readBusinessResultCode(error) === ResultCode.PARAM_ERROR
+      && getUserErrorMessage(error, '').includes('主考代办')) {
+      message.warning(getUserErrorMessage(error, '主考代办须填写代办原因'))
+      return
+    }
+    if (isBusinessConflict(error) && getUserErrorMessage(error, '').includes('已被其他教师领取')) {
+      claimBlockedByOther.value = !isExamOwner.value
+      ownerOverrideMode.value = isExamOwner.value
+      message.warning(getUserErrorMessage(error, '复核任务已被其他教师领取'))
+      return
+    }
     showUserError(error, '驳回复核失败')
   } finally {
     rejecting.value = false

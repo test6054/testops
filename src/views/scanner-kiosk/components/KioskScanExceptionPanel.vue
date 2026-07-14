@@ -442,7 +442,7 @@ function gotoReview() {
 .action-primary {
   background: var(--kiosk-primary);
   border: none;
-  color: #fff;
+  color: var(--kiosk-primary-on);
 }
 
 .action-primary:disabled {

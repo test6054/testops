@@ -29,6 +29,14 @@
           <UiButton v-if="pendingMakeupCount > 0" size="sm" @click="openDeriveMakeupModal">
             派生补考
           </UiButton>
+          <UiButton
+            size="sm"
+            variant="outline"
+            :loading="repairingScoreZero"
+            @click="handleRepairScoreZero"
+          >
+            补齐计零终分
+          </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -85,7 +93,13 @@
         </template>
       </UiAlertStrip>
 
-      <UiEmpty v-if="!reconcileVO && !recordLoading" description="暂无核对数据，请先执行出勤核对" />
+      <UiEmpty v-if="!reconcileVO && !recordLoading" description="尚未执行出勤核对，无法确认缺考名单">
+        <template #action>
+          <UiButton variant="primary" size="sm" :loading="reconciling" @click="handleReconcile(false)">
+            立即出勤核对
+          </UiButton>
+        </template>
+      </UiEmpty>
 
       <WorkbenchSurfaceCard
         v-if="reconcileVO && reconcileVO.absentCount > 0"
@@ -168,6 +182,9 @@
                 {{ reasonLabel(records[index].absenceReason) }}
               </UiTag>
             </template>
+            <template v-else-if="column.key === 'scorePolicy'">
+              {{ scorePolicyLabel(records[index].scorePolicy) }}
+            </template>
             <template v-else-if="column.key === 'confirmState'">
               <UiTag :tone="confirmStateTone(records[index].absenceStatus)" size="sm">
                 {{ confirmStateLabel(records[index].absenceStatus) }}
@@ -238,6 +255,13 @@
             </a-select-option>
           </a-select>
         </a-form-item>
+        <UiAlertStrip
+          v-if="confirmForm.scorePolicy === ScorePolicyCode.SCORE_ZERO"
+          tone="info"
+          title="计零分将立即写入正式零分"
+          description="确认后卷面分/总分记 0 并同步质量评价样本，可在成绩确认/发布页直接发布；撤销缺考前若已发布须先撤回成绩。"
+          dense
+        />
       </a-form>
       <template #footer>
         <UiButton variant="outline" @click="confirmModalOpen = false">取消</UiButton>
@@ -360,9 +384,11 @@ import {
   pageAbsenceRecords,
   pageReconcileAbsentStudents,
   reconcileAttendance,
+  repairScoreZeroFinalScores,
   revokeAbsence,
   SCORE_POLICY_OPTIONS,
   ScorePolicyCode,
+  ScorePolicyDescription,
 } from '@/apis/mark/absence'
 import { deriveMakeupExam, getExamDetail } from '@/apis/mark/exam'
 import { getScorePanel } from '@/apis/mark/exam-progress'
@@ -529,6 +555,7 @@ const recordColumns: ColumnType<AbsenceRecordResponse>[] = [
   { title: '学号', key: 'studentNo', width: 120, fixed: 'left' },
   { title: '姓名', key: 'studentName', dataIndex: 'studentName', width: 96 },
   { title: '缺考类型', key: 'absenceReason', width: 100 },
+  { title: '成绩策略', key: 'scorePolicy', width: 110 },
   { title: '已确认', key: 'confirmState', width: 96 },
   { title: '确认人', key: 'confirmedBy', width: 120 },
   { title: '可补考', key: 'makeupEligible', width: 88 },
@@ -564,6 +591,10 @@ function confirmStateTone(status: AbsenceStatusCode): BadgeTone {
 
 function reasonLabel(reason: AbsenceReasonCode): string {
   return strictEnumLabel(AbsenceReasonDescription, reason, '缺考原因')
+}
+
+function scorePolicyLabel(policy: ScorePolicyCode): string {
+  return strictEnumLabel(ScorePolicyDescription, policy, '成绩策略')
 }
 
 function isPendingMakeupRecord(record: AbsenceRecordResponse): boolean {
@@ -788,6 +819,26 @@ function openConfirmModal(studentUserId: string, displayName: string): void {
   confirmModalOpen.value = true
 }
 
+const repairingScoreZero = ref(false)
+
+async function handleRepairScoreZero(): Promise<void> {
+  if (!selectedExamId.value) return
+  repairingScoreZero.value = true
+  try {
+    const result = await repairScoreZeroFinalScores({ examId: selectedExamId.value })
+    message.success(
+      result.repairedCount > 0
+        ? `已补齐 ${result.repairedCount} 条计零终分`
+        : '本场无待补齐的计零缺考',
+    )
+    await loadRecords()
+  } catch (error) {
+    showUserError(error, '补齐计零终分失败')
+  } finally {
+    repairingScoreZero.value = false
+  }
+}
+
 async function handleConfirm(): Promise<void> {
   if (!selectedExamId.value || !confirmValid.value) return
   const reason = confirmForm.absenceReason
@@ -801,7 +852,11 @@ async function handleConfirm(): Promise<void> {
       absenceReason: reason,
       scorePolicy: policy,
     })
-    message.success('已确认缺考')
+    message.success(
+      policy === ScorePolicyCode.SCORE_ZERO
+        ? '已确认缺考并写入零分终分，可前往成绩发布'
+        : '已确认缺考',
+    )
     confirmModalOpen.value = false
     await Promise.all([loadRecords(), handleReconcile(false)])
     try {
