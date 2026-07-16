@@ -4,10 +4,6 @@ import type {
   PortfolioCorrectionImpactVO,
   PortfolioCorrectionSummaryVO,
 } from '@/apis/portfolio/types'
-import {
-  PORTFOLIO_CORRECTION_IMPACT_RECOMPUTE_STATUS_TONE,
-  PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE,
-} from '@/apis/portfolio/types'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { Input, message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
@@ -19,6 +15,10 @@ import {
   PortfolioCorrectionRequestStatusCode,
   PortfolioCorrectionRequestStatusDescription,
 } from '@/apis/portfolio/enums'
+import {
+  PORTFOLIO_CORRECTION_IMPACT_RECOMPUTE_STATUS_TONE,
+  PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE,
+} from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -28,7 +28,7 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 function statusLabel(status: PortfolioCorrectionRequestStatusCode): string {
@@ -156,7 +156,7 @@ async function submitReject() {
   }
   const opinion = rejectForm.handleOpinion.trim()
   if (!opinion) {
-    message.warning('请填写驳回意见')
+    showFormValidationMessage('请填写驳回意见')
     return
   }
   await handleRow(rejectTarget.value, PortfolioCorrectionHandleActionCode.REJECT, opinion)
@@ -355,8 +355,8 @@ void loadPage()
               {{
                 impactDetail.recomputeStatus === PortfolioCorrectionImpactRecomputeStatusCode.FAILED
                   ? '重新重算'
-                  : impactDetail.recomputeStatus ===
-                      PortfolioCorrectionImpactRecomputeStatusCode.RUNNING
+                  : impactDetail.recomputeStatus
+                    === PortfolioCorrectionImpactRecomputeStatusCode.RUNNING
                     ? '接管重试'
                     : '执行重算'
               }}

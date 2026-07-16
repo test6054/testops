@@ -35,7 +35,7 @@ import {
   MANUAL_RESPONDENT_TYPE_OPTIONS,
   RespondentTypeCode,
 } from '@/types/enums/respondent-type-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import ImportResponseDocumentModal from '../ImportResponseDocumentModal.vue'
 import {
   formatConversionAuditAction,
@@ -221,7 +221,7 @@ function handleResponseClassChange(value: string | null | undefined) {
 
 function handleResponseRespondentChange(value: string | string[] | null) {
   if (Array.isArray(value)) {
-    message.warning('请单选应答人')
+    showFormValidationMessage('请单选应答人')
     return
   }
   responseEditor.value.respondentId = value ?? ''
@@ -259,6 +259,20 @@ async function loadResponses() {
     })
     responses.value = page.list
     responseTotal.value = page.total
+  } catch (error) {
+    responses.value = []
+    responseTotal.value = 0
+    pendingConfirmResponseCount.value = 0
+    pendingResponseCount.value = 0
+    convertedResponseCount.value = 0
+    noSubstantiveResponseCount.value = 0
+    showUserError(error, '间接评价答卷列表加载失败')
+    return
+  } finally {
+    responsesLoading.value = false
+  }
+  // 附属信号失败不拖垮答卷列表
+  try {
     const signal = await indirectResponseApi.itemSignalSummary(props.selectedItem.id)
     pendingConfirmResponseCount.value = signal.pendingConfirmCount ?? 0
     if (showConversionWorkflow.value) {
@@ -270,8 +284,12 @@ async function loadResponses() {
       convertedResponseCount.value = 0
       noSubstantiveResponseCount.value = 0
     }
-  } finally {
-    responsesLoading.value = false
+  } catch (error) {
+    pendingConfirmResponseCount.value = 0
+    pendingResponseCount.value = 0
+    convertedResponseCount.value = 0
+    noSubstantiveResponseCount.value = 0
+    showUserError(error, '间接评价答卷信号加载失败')
   }
 }
 
@@ -463,7 +481,7 @@ async function submitResponse() {
     v.identityValues = []
   }
   if (!props.selectedItem) {
-    message.warning('请先选择题项')
+    showFormValidationMessage('请先选择题项')
     return
   }
   if (!selectedItemTypeKnown()) {

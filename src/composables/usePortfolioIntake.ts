@@ -1,17 +1,17 @@
 import type { Ref } from 'vue'
-import { computed, reactive, ref } from 'vue'
 import type {
   PortfolioArchiveRecordFieldInput,
   PortfolioMaterialIntakeStatusVO,
 } from '@/apis/portfolio/types'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { portfolioIntakeApi } from '@/apis/portfolio/intake'
 import {
   PortfolioArchiveRecordStatusCode,
   PortfolioMaterialIntakeStageCode,
   PortfolioMaterialTypeCode,
 } from '@/apis/portfolio/types'
-import { message } from 'ant-design-vue'
-import { useRoute, useRouter } from 'vue-router'
-import { portfolioIntakeApi } from '@/apis/portfolio/intake'
 import { AiTaskStatusCode } from '@/apis/quality/types'
 import { usePolling } from '@/composables/usePolling'
 import { showUserError } from '@/utils/error-handler'
@@ -76,29 +76,29 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     }
     const stage = status.value.stage
     if (
-      stage === PortfolioMaterialIntakeStageCode.SUBMITTED ||
-      stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW ||
-      stage === PortfolioMaterialIntakeStageCode.CANDIDATES_REJECTED
+      stage === PortfolioMaterialIntakeStageCode.SUBMITTED
+      || stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW
+      || stage === PortfolioMaterialIntakeStageCode.CANDIDATES_REJECTED
     ) {
       return true
     }
     if (
-      stage === PortfolioMaterialIntakeStageCode.OCR_PENDING ||
-      stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
+      stage === PortfolioMaterialIntakeStageCode.OCR_PENDING
+      || stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
     ) {
       return true
     }
     return (
-      status.value.recordStatus === PortfolioArchiveRecordStatusCode.PENDING_CONFIRM ||
-      status.value.recordStatus === PortfolioArchiveRecordStatusCode.OFFICIAL
+      status.value.recordStatus === PortfolioArchiveRecordStatusCode.PENDING_CONFIRM
+      || status.value.recordStatus === PortfolioArchiveRecordStatusCode.OFFICIAL
     )
   })
 
   const aiCandidateReadOnly = computed(() => {
     const stage = status.value?.stage
     if (
-      stage === PortfolioMaterialIntakeStageCode.SUBMITTED ||
-      stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW
+      stage === PortfolioMaterialIntakeStageCode.SUBMITTED
+      || stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW
     ) {
       return true
     }
@@ -200,9 +200,9 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     const requestToken = intakeRequestToken.value
     const effectiveCategoryId = categoryId.value || undefined
     const aiFailedStage = status.value?.stage === PortfolioMaterialIntakeStageCode.AI_FAILED
-    const shouldSubmitAi =
-      options?.submitAi === true ||
-      (options?.submitAi !== false && Boolean(effectiveCategoryId) && !aiFailedStage)
+    const shouldSubmitAi
+      = options?.submitAi === true
+        || (options?.submitAi !== false && Boolean(effectiveCategoryId) && !aiFailedStage)
     loading.value = true
     try {
       const chainResult = await portfolioIntakeApi.getProviderChain()
@@ -263,7 +263,7 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
       return
     }
     if (fieldReadOnly.value) {
-      message.warning('当前阶段不可保存草稿，请先完成 AI 候选确认或等待处理结束')
+      message.warning('当前阶段不可保存草稿，请先完成智能分析候选确认或等待处理结束')
       return
     }
     if (!status.value || !categoryId.value) {
@@ -338,7 +338,7 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
       return
     }
     if (fieldReadOnly.value) {
-      message.warning('当前阶段不可提交，请先完成 AI 候选确认或等待处理结束')
+      message.warning('当前阶段不可提交，请先完成智能分析候选确认或等待处理结束')
       return
     }
     if (!status.value || !categoryId.value) {

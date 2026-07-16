@@ -810,7 +810,7 @@ async function loadLearningReport(): Promise<void> {
   try {
     learningReport.value = await getMyAiLearningReport(detail.value.examId)
   } catch (error) {
-    showUserError(error, 'AI 学习报告加载失败')
+    showUserError(error, '智能学习报告加载失败')
     learningReport.value = null
   } finally {
     reportLoading.value = false

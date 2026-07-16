@@ -142,7 +142,7 @@ import {
 import { correctAnswerAndConfirmEffective, getEffectiveAnswerConfig } from '@/apis/mark/question-analysis'
 import { QuestionTypeCode, QuestionTypeDescription } from '@/apis/mark/question-type'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -250,22 +250,27 @@ watch(
     const currentLoad = ++loadSequence
     loading.value = true
     try {
-      const [answer, config] = await Promise.all([
-        getStandardAnswer({ examId, layoutQuestionId }),
-        getEffectiveAnswerConfig({ examId, layoutQuestionId }),
-      ])
+      const answer = await getStandardAnswer({ examId, layoutQuestionId })
       if (currentLoad !== loadSequence) {
         return
       }
-      effectiveConfig.value = config
       applyAnswerToForm(answer)
+      try {
+        effectiveConfig.value = await getEffectiveAnswerConfig({ examId, layoutQuestionId })
+      } catch (error) {
+        if (currentLoad !== loadSequence) {
+          return
+        }
+        effectiveConfig.value = null
+        showUserError(error, '题目答案生效配置加载失败')
+      }
     } catch (error) {
       if (currentLoad !== loadSequence) {
         return
       }
       effectiveConfig.value = null
       resetForm()
-      showUserError(error, '题目答案配置加载失败')
+      showUserError(error, '题目标准答案加载失败')
     } finally {
       if (currentLoad === loadSequence) {
         loading.value = false
@@ -372,7 +377,7 @@ function validateForm(): boolean {
     return false
   }
   if (form.comparePolicy === ObjectiveComparePolicy.AI_GRADE && !trimToUndefined(form.gradingRubric)) {
-    showUserError(null, 'AI 评分策略必须填写评分细则')
+    showFormValidationMessage('智能评分策略必须填写评分细则')
     return false
   }
   if (requireStandardAnswer.value && !trimToUndefined(form.standardAnswer)) {

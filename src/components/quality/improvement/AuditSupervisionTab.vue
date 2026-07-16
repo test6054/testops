@@ -49,7 +49,7 @@ import {
   isQualityScopeStaleError,
 } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AuditSupervisionTab' })
@@ -468,7 +468,7 @@ function handleAuditSupervisionAction(key: string, record: AuditSupervisionVO): 
 
 function handleSupSupervisorChange(value: string | string[] | null) {
   if (Array.isArray(value)) {
-    showUserError(null, '督导人只能单选，请重新选择')
+    showFormValidationMessage('督导人只能单选，请重新选择')
     return
   }
   supEditor.supervisorUserId = value ?? ''

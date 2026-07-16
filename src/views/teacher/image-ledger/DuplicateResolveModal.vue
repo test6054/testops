@@ -38,7 +38,7 @@ import message from 'ant-design-vue/es/message'
 import { ref, watch } from 'vue'
 import { resolveDuplicate } from '@/apis/mark/image-ledger'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
-import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'DuplicateResolveModal' })
 
@@ -72,12 +72,12 @@ async function handleOk(): Promise<void> {
   const reason = resolutionReason.value.trim()
   if (!reason) {
     submitError.value = '请填写处置原因'
-    message.warning('请填写处置原因')
+    showFormValidationMessage('请填写处置原因')
     return
   }
   if (!selectedPaperInstanceId.value) {
     submitError.value = '请选择要保留的试卷'
-    message.warning('请选择要保留的试卷')
+    showFormValidationMessage('请选择要保留的试卷')
     return
   }
   if (!props.resolution) {

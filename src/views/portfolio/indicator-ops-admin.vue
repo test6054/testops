@@ -11,19 +11,18 @@ import type {
   PortfolioPublishImpactReportVO,
   PortfolioTenantConfigAuditLogVO,
 } from '@/apis/portfolio/indicator-types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import {
   PF_IMPACT_REPORT_STATUS_TONE,
   PF_SCORE_RULE_TYPE_OPTIONS,
   PfImpactReportStatusDescription,
   PfSceneCodeDescription,
 } from '@/apis/portfolio/indicator-types'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
-import { defaultTemplateParams, serializeTemplateParams } from '@/utils/indicator-template-params'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import PortfolioIndicatorExplainDrawer from '@/components/portfolio/PortfolioIndicatorExplainDrawer.vue'
 import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/PortfolioIndicatorTemplateParamsForm.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -36,7 +35,8 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { defaultTemplateParams, serializeTemplateParams } from '@/utils/indicator-template-params'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -164,7 +164,7 @@ const impactColumns: ColumnsType = [
   { title: '场景', dataIndex: 'sceneCode', key: 'sceneCode', width: 100 },
   { title: '状态', dataIndex: 'reportStatus', key: 'reportStatus', width: 100 },
   { title: '过期', dataIndex: 'expiredTime', key: 'expiredTime', width: 160 },
-  { title: 'ID', dataIndex: 'id', key: 'id' },
+  { title: '编号', dataIndex: 'id', key: 'id' },
   { title: '操作', key: 'actions', width: 80 },
 ]
 
@@ -184,7 +184,7 @@ async function runTrial() {
     paramsJson: serializeTemplateParams(trialParams.value),
   }
   if (!request.indicatorCode) {
-    message.warning('请填写指标编码')
+    showFormValidationMessage('请填写指标编码')
     endOperation(operation)
     return
   }
@@ -196,7 +196,7 @@ async function runTrial() {
       result.finalScore != null ? `试算得分 ${result.finalScore}` : '试算完成，待审核',
     )
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '指标试算失败')
   } finally {
     endOperation(operation)
   }
@@ -210,7 +210,7 @@ async function runSnapshotCompute() {
     rawValue: snapshotForm.rawValue,
   }
   if (!request.teacherId || !request.snapshotId || !request.indicatorCode) {
-    message.warning('请填写教师、快照和指标编码')
+    showFormValidationMessage('请填写教师、快照和指标编码')
     return
   }
   const operation = `compute:snapshot:${request.snapshotId}:${request.teacherId}:${request.indicatorCode}`
@@ -229,9 +229,9 @@ async function runSnapshotCompute() {
   try {
     const result = await portfolioIndicatorTenantApi.computeSnapshot(request)
     if (
-      snapshotForm.snapshotId.trim() !== request.snapshotId ||
-      snapshotForm.teacherId.trim() !== request.teacherId ||
-      snapshotForm.indicatorCode.trim() !== request.indicatorCode
+      snapshotForm.snapshotId.trim() !== request.snapshotId
+      || snapshotForm.teacherId.trim() !== request.teacherId
+      || snapshotForm.indicatorCode.trim() !== request.indicatorCode
     ) {
       return
     }
@@ -241,7 +241,7 @@ async function runSnapshotCompute() {
     )
     await loadComputeLogs()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '正式计分失败')
   } finally {
     endOperation(operation)
   }
@@ -351,13 +351,13 @@ async function openExplain(
     explainOpen.value = true
   } catch (error) {
     if (requestToken.explain !== currentToken) return
-    showUserError(error)
+    showUserError(error, '加载计分解释失败')
   }
 }
 
 async function exportSnapshotDiff() {
   if (!diffForm.snapshotIdA || !diffForm.snapshotIdB) {
-    message.warning('请填写两个快照 ID')
+    showFormValidationMessage('请填写两个快照编号')
     return
   }
   const snapshotIdA = diffForm.snapshotIdA.trim()
@@ -372,7 +372,7 @@ async function exportSnapshotDiff() {
     await downloadPortfolioIndicatorExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条差异`)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出快照差异失败')
   } finally {
     endOperation(operation)
   }
@@ -386,7 +386,7 @@ async function exportImpact(id: string) {
     await downloadPortfolioIndicatorExcelExport(result)
     message.success('影响报告已导出')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出影响报告失败')
   } finally {
     endOperation(operation)
   }
@@ -395,7 +395,7 @@ async function exportImpact(id: string) {
 async function runAutoCollect() {
   const teacherId = collectTeacherId.value.trim()
   if (!teacherId) {
-    message.warning('请填写教师 ID')
+    showFormValidationMessage('请填写教师编号')
     return
   }
   const operation = `collect:${teacherId}`
@@ -420,7 +420,7 @@ async function runAutoCollect() {
     collectItems.value = []
     collectTotal.value = 0
     loadError.collect = true
-    showUserError(error)
+    showUserError(error, '指标自动采集失败')
   } finally {
     if (requestToken.collect === currentToken) loadState.collect = false
     endOperation(operation)
@@ -452,13 +452,13 @@ async function loadCollectPage() {
     collectItems.value = []
     collectTotal.value = 0
     loadError.collect = true
-    showUserError(error)
+    showUserError(error, '加载采集明细失败')
   } finally {
     if (requestToken.collect === currentToken) loadState.collect = false
   }
 }
 
-function handleCollectPageChange(event: { current: number; pageSize: number }) {
+function handleCollectPageChange(event: { current: number, pageSize: number }) {
   collectPageNum.value = event.current
   collectPageSize.value = event.pageSize
   void loadCollectPage()
@@ -480,7 +480,7 @@ function onTabChange(key: string | number) {
   }
 }
 
-function handlePageChange(event: { current: number; pageSize: number }) {
+function handlePageChange(event: { current: number, pageSize: number }) {
   pageQuery.pageNum = event.current
   pageQuery.pageSize = event.pageSize
   if (activeTab.value === 'compute-log') {
@@ -594,12 +594,12 @@ watch(
           <div class="form-grid">
             <a-input
               v-model:value="snapshotForm.teacherId"
-              placeholder="教师 ID"
+              placeholder="教师编号"
               :disabled="operating"
             />
             <a-input
               v-model:value="snapshotForm.snapshotId"
-              placeholder="快照 ID"
+              placeholder="快照编号"
               :disabled="operating"
             />
             <a-input
@@ -628,12 +628,12 @@ watch(
           <div class="form-grid">
             <a-input
               v-model:value="diffForm.snapshotIdA"
-              placeholder="快照 A ID"
+              placeholder="快照甲编号"
               :disabled="operating"
             />
             <a-input
               v-model:value="diffForm.snapshotIdB"
-              placeholder="快照 B ID"
+              placeholder="快照乙编号"
               :disabled="operating"
             />
             <UiButton
@@ -641,7 +641,7 @@ watch(
               :disabled="operating"
               @click="exportSnapshotDiff"
             >
-              导出差异 CSV
+              导出差异表格
             </UiButton>
           </div>
         </a-tab-pane>

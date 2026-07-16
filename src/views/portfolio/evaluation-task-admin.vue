@@ -1,6 +1,15 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationTaskStatusCode } from '@/apis/portfolio/enums'
+import type { PortfolioTenantIndicatorConfigVO } from '@/apis/portfolio/indicator-types'
+import type { PortfolioEvaluationSubjectTeacherOptionVO } from '@/apis/portfolio/teacher-platform'
+import type {
+  PortfolioEvaluationMaterialPreviewVO,
+  PortfolioEvaluationTeacherNoticeVO,
+} from '@/apis/portfolio/types'
+import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   PORTFOLIO_EVALUATION_MODE_OPTIONS,
   PORTFOLIO_EVALUATION_TASK_STATUS_OPTIONS,
@@ -11,20 +20,11 @@ import {
   PortfolioEvaluationTeacherNoticeStatusCode,
   PortfolioEvaluationTeacherNoticeStatusDescription,
 } from '@/apis/portfolio/enums'
-import type { PortfolioTenantIndicatorConfigVO } from '@/apis/portfolio/indicator-types'
-import type { PortfolioEvaluationSubjectTeacherOptionVO } from '@/apis/portfolio/teacher-platform'
-import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
-import type {
-  PortfolioEvaluationMaterialPreviewVO,
-  PortfolioEvaluationTeacherNoticeVO,
-} from '@/apis/portfolio/types'
-import { PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE } from '@/apis/portfolio/types'
-import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
-import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
+import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
+import { PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE } from '@/apis/portfolio/types'
+import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
 import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -36,14 +36,14 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQueryTable } from '@/composables/useQueryTable'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { loadAllPages } from '@/utils/load-all-pages'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const workgroups = ref<EvaluationWorkgroupVO[]>([])
 const indicatorConfigs = ref<PortfolioTenantIndicatorConfigVO[]>([])
-const previewTeacherOptions = ref<Array<{ value: string; label: string }>>([])
+const previewTeacherOptions = ref<Array<{ value: string, label: string }>>([])
 const previewOpen = ref(false)
 const previewLoading = ref(false)
 const previewTaskId = ref('')
@@ -172,8 +172,8 @@ function noticeStatusTone(status: PortfolioEvaluationTeacherNoticeStatusCode) {
 
 function canReturnNotice(notice: PortfolioEvaluationTeacherNoticeVO | null): boolean {
   return (
-    notice?.noticeStatus === PortfolioEvaluationTeacherNoticeStatusCode.MATERIAL_CONFIRM ||
-    notice?.noticeStatus === PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED
+    notice?.noticeStatus === PortfolioEvaluationTeacherNoticeStatusCode.MATERIAL_CONFIRM
+    || notice?.noticeStatus === PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED
   )
 }
 
@@ -195,14 +195,14 @@ async function loadWorkgroups() {
       QUALITY_SELECTOR_PAGE_SIZE,
     )
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '加载评价工作组失败')
   }
 }
 
 async function loadIndicatorConfigs() {
   try {
     indicatorConfigs.value = (await portfolioIndicatorTenantApi.listConfig()).filter(
-      (item) => item.enabled === true,
+      (item) => item.enabled,
     )
   } catch (error) {
     showUserError(error, '加载可回流指标失败')
@@ -261,7 +261,7 @@ async function openMaterialPreview(taskId: string) {
 async function loadMaterialPreview() {
   const currentToken = ++previewRequestToken.value
   if (!previewTaskId.value || !previewTeacherId.value) {
-    message.warning('请选择教师后再预览材料')
+    showFormValidationMessage('请选择教师后再预览材料')
     return
   }
   const taskId = previewTaskId.value
@@ -272,33 +272,51 @@ async function loadMaterialPreview() {
   returnDueTime.value = ''
   previewLoading.value = true
   try {
-    const [nextPreview, noticePage] = await Promise.all([
-      portfolioEvaluationNoticeApi.materialPreview({
-        evaluationTaskId: taskId,
-        teacherId,
-      }),
-      portfolioEvaluationNoticeApi.pageNotices({
-        pageNum: 1,
-        pageSize: 10,
-        evaluationTaskId: taskId,
-        teacherId,
-      }),
-    ])
+    const nextPreview = await portfolioEvaluationNoticeApi.materialPreview({
+      evaluationTaskId: taskId,
+      teacherId,
+    })
     if (
-      currentToken !== previewRequestToken.value ||
-      previewTaskId.value !== taskId ||
-      previewTeacherId.value !== teacherId
+      currentToken !== previewRequestToken.value
+      || previewTaskId.value !== taskId
+      || previewTeacherId.value !== teacherId
     ) {
       return
     }
     preview.value = nextPreview
-    previewNotice.value = noticePage.list?.[0] ?? null
-    returnDueTime.value = previewNotice.value?.dueTime ?? nextPreview.endTime ?? ''
+    returnDueTime.value = nextPreview.endTime ?? ''
+    try {
+      const noticePage = await portfolioEvaluationNoticeApi.pageNotices({
+        pageNum: 1,
+        pageSize: 10,
+        evaluationTaskId: taskId,
+        teacherId,
+      })
+      if (
+        currentToken !== previewRequestToken.value
+        || previewTaskId.value !== taskId
+        || previewTeacherId.value !== teacherId
+      ) {
+        return
+      }
+      previewNotice.value = noticePage.list?.[0] ?? null
+      returnDueTime.value = previewNotice.value?.dueTime ?? nextPreview.endTime ?? ''
+    } catch (error) {
+      if (
+        currentToken !== previewRequestToken.value
+        || previewTaskId.value !== taskId
+        || previewTeacherId.value !== teacherId
+      ) {
+        return
+      }
+      previewNotice.value = null
+      showUserError(error, '加载材料预览通知失败')
+    }
   } catch (error) {
     if (
-      currentToken !== previewRequestToken.value ||
-      previewTaskId.value !== taskId ||
-      previewTeacherId.value !== teacherId
+      currentToken !== previewRequestToken.value
+      || previewTaskId.value !== taskId
+      || previewTeacherId.value !== teacherId
     ) {
       return
     }
@@ -307,9 +325,9 @@ async function loadMaterialPreview() {
     showUserError(error, '加载材料预览失败')
   } finally {
     if (
-      currentToken === previewRequestToken.value &&
-      previewTaskId.value === taskId &&
-      previewTeacherId.value === teacherId
+      currentToken === previewRequestToken.value
+      && previewTaskId.value === taskId
+      && previewTeacherId.value === teacherId
     ) {
       previewLoading.value = false
     }
@@ -320,11 +338,11 @@ async function returnMaterialForSupplement() {
   const notice = previewNotice.value
   const reason = returnReason.value.trim()
   if (!notice || !canReturnNotice(notice)) {
-    message.warning('当前材料通知状态不可退回')
+    showFormValidationMessage('当前材料通知状态不可退回')
     return
   }
   if (!reason) {
-    message.warning('请填写退回补充原因')
+    showFormValidationMessage('请填写退回补充原因')
     return
   }
   const confirmed = await confirmAsync({
@@ -358,26 +376,26 @@ async function returnMaterialForSupplement() {
 async function createTask() {
   if (taskWriting.value) return
   if (!form.taskName.trim()) {
-    message.warning('请填写任务名称')
+    showFormValidationMessage('请填写任务名称')
     return
   }
   if (!form.workgroupId) {
-    message.warning('请选择评价工作组')
+    showFormValidationMessage('请选择评价工作组')
     return
   }
   if (
-    form.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON &&
-    !form.targetIndicatorCode.trim()
+    form.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON
+    && !form.targetIndicatorCode.trim()
   ) {
-    message.warning('按人评价须填写画像回流目标指标编码')
+    showFormValidationMessage('按人评价须填写画像回流目标指标编码')
     return
   }
   if (!form.startTime) {
-    message.warning('请填写开始时间')
+    showFormValidationMessage('请填写开始时间')
     return
   }
   if (!form.endTime) {
-    message.warning('请填写结束时间')
+    showFormValidationMessage('请填写结束时间')
     return
   }
   taskOperationKey.value = 'create'
@@ -401,7 +419,7 @@ async function createTask() {
     form.endTime = ''
     await loadPage()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '创建评价任务失败')
   } finally {
     if (taskOperationKey.value === 'create') taskOperationKey.value = ''
   }
@@ -423,7 +441,7 @@ async function publishTask(id: string) {
     message.success('任务已发布')
     await loadPage()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '发布评价任务失败')
   } finally {
     if (taskOperationKey.value === operation) taskOperationKey.value = ''
   }
@@ -435,7 +453,7 @@ async function exportExcel() {
     await downloadPortfolioExcelExport(result)
     message.success('评价任务已导出')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出评价任务失败')
   }
 }
 
@@ -450,7 +468,7 @@ onMounted(async () => {
     <template #context>
       <ContextBar show-title layout="workbench" title="多元评价任务">
         <template #actions>
-          <UiButton :disabled="taskWriting" @click="exportExcel"> 导出 Excel </UiButton>
+          <UiButton :disabled="taskWriting" @click="exportExcel"> 导出表格文件 </UiButton>
         </template>
       </ContextBar>
     </template>

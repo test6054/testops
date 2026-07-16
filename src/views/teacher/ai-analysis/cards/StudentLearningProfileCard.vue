@@ -203,7 +203,6 @@ import type { TeachingAnalysisRecordResponse } from '@/apis/mark/teaching-analys
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { MarkStudentOption } from '@/composables/useMarkExamRoster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import {
   FINAL_SCORE_STATUS_TONE,
@@ -223,7 +222,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { useAiAnalysisGenerationFeedback } from '@/composables/useAiAnalysisGenerationFeedback'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { buildBarChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
 import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
 import { studentDiagnosisToBarItems } from '@/utils/mark-statistics-chart'
@@ -303,7 +302,7 @@ async function reload(): Promise<void> {
 async function handleGenerate(): Promise<void> {
   const studentUserId = selectedStudentUserId.value
   if (!studentUserId) {
-    message.warning('请先选择学生')
+    showFormValidationMessage('请先选择学生')
     return
   }
   hasQueried.value = true

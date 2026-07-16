@@ -171,7 +171,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { ALL_SEMESTER_CODES, SemesterOptions } from '@/types/enums/semester-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'QualityRationalityAudit' })
@@ -268,23 +268,31 @@ async function loadList() {
   const trainingPlanId = qualityStore.currentTrainingPlanId
   const { schoolYear, semester } = filterForm
   if (!trainingPlanId || !schoolYear || !semester) {
-    message.warning('请选择培养方案、学年和学期')
+    showFormValidationMessage('请选择培养方案、学年和学期')
     return
   }
   loading.value = true
   try {
     const scope = { trainingPlanId, schoolYear, semester }
-    const [overviewResult, pageResult] = await Promise.all([
-      getRationalityAuditCourseLedgerOverview(scope),
-      pageRationalityAuditCourseLedger({
-        ...scope,
-        pageNum: pageNum.value,
-        pageSize: pageSize.value,
-      }),
-    ])
-    overview.value = overviewResult
+    const pageResult = await pageRationalityAuditCourseLedger({
+      ...scope,
+      pageNum: pageNum.value,
+      pageSize: pageSize.value,
+    })
     list.value = pageResult.list
     listTotal.value = pageResult.total
+    try {
+      overview.value = await getRationalityAuditCourseLedgerOverview(scope)
+    } catch (e: unknown) {
+      overview.value = {
+        totalCourseCount: 0,
+        auditedCourseCount: 0,
+        approvedCourseCount: 0,
+        pendingCourseCount: 0,
+        coverageRate: 0,
+      }
+      showUserError(e, '审核覆盖率概览加载失败')
+    }
   } catch (e: unknown) {
     list.value = []
     listTotal.value = 0

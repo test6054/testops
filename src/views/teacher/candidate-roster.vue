@@ -341,7 +341,7 @@ import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { CandidateScanProgressStatusCode } from '@/types/enums/candidate-scan-progress-status-enum'
 import { ExamRosterScopeModeCode } from '@/types/enums/exam-roster-scope-mode-enum'
-import { ErrorType, handleError, showUserError } from '@/utils/error-handler'
+import { ErrorType, handleError, showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { buildScopedClassTags } from './candidate-roster/class-scope'
 import {
@@ -706,7 +706,7 @@ async function openAddClassModal(): Promise<void> {
 
 async function handleAddClassSubmit(): Promise<void> {
   if (!pendingAddClassIds.value.length) {
-    message.warning('请选择要新增的班级')
+    showFormValidationMessage('请选择要新增的班级')
     return
   }
   addClassSubmitting.value = true
@@ -724,7 +724,7 @@ async function loadRosterStudentIds(examId: string): Promise<void> {
     rosterStudentUserIds.value = response.studentUserIds
   } catch (error) {
     rosterStudentUserIds.value = []
-    showUserError(error, '考生 ID 列表加载失败')
+    showUserError(error, '考生编号列表加载失败')
   }
 }
 
@@ -810,12 +810,20 @@ async function loadExamContext(): Promise<void> {
   rosterWriteForbidden.value = false
   classScopeHydrating.value = true
   try {
-    const [detail, locked] = await Promise.all([getExamDetail(examId), probeRosterLocked(examId)])
+    const detail = await getExamDetail(examId)
+    try {
+      rosterLocked.value = await probeRosterLocked(examId)
+    } catch (error) {
+      if (seq !== loadContextSeq) {
+        return
+      }
+      rosterLocked.value = false
+      showUserError(error, '名册锁定状态加载失败')
+    }
     await loadRosterPanel(examId)
     if (seq !== loadContextSeq) {
       return
     }
-    rosterLocked.value = locked
     examStatus.value = detail.status
     rosterScopeMode.value = detail.rosterScopeMode
     archiveClassScopeRecoveryAllowed.value
@@ -884,7 +892,7 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 
 function openSelectDrawer(): void {
   if (!classIds.value.length) {
-    message.warning('请先选择班级范围')
+    showFormValidationMessage('请先选择班级范围')
     return
   }
   selectDrawerOpen.value = true
@@ -916,7 +924,7 @@ async function mergeCandidatesWithPreview(
 
 async function confirmSaveFullScope(): Promise<void> {
   if (!selectedExamId.value || !classIds.value.length) {
-    message.warning('请先选择班级范围')
+    showFormValidationMessage('请先选择班级范围')
     return
   }
   const confirmed = await confirmAsync({
@@ -986,12 +994,12 @@ async function handleSingleAddSubmit(): Promise<void> {
     return
   }
   if (!singleAddClassId.value) {
-    message.warning('请选择班级')
+    showFormValidationMessage('请选择班级')
     return
   }
   const student = singleAddStudent.value
   if (!student?.id) {
-    message.warning('请选择学生')
+    showFormValidationMessage('请选择学生')
     return
   }
   const studentUserId = String(student.id).trim()

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioTeacherLibraryBorrowStatsVO } from '@/apis/portfolio/teacher-platform'
-import { portfolioTeacherLibraryApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, reactive, ref } from 'vue'
+import { portfolioTeacherLibraryApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -15,7 +15,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useQueryTable } from '@/composables/useQueryTable'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 
 const stats = ref<PortfolioTeacherLibraryBorrowStatsVO | null>(null)
@@ -27,10 +27,10 @@ const form = reactive({
   borrowTime: '',
   dueTime: '',
 })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
-  usePortfolioTeacherSearch()
-const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange } =
-  useQueryTable(portfolioTeacherLibraryApi.page, {
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
+  = usePortfolioTeacherSearch()
+const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange }
+  = useQueryTable(portfolioTeacherLibraryApi.page, {
     onLoaded: async (list) => {
       await hydrateTeacherLabels(list.map((row) => row.teacherUserId ?? ''))
     },
@@ -72,7 +72,7 @@ async function loadStats() {
 const columns: ColumnsType = [
   { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },
   { title: '书名', dataIndex: 'bookTitle', key: 'bookTitle' },
-  { title: 'ISBN', dataIndex: 'bookIsbn', key: 'bookIsbn', width: 120 },
+  { title: '书号', dataIndex: 'bookIsbn', key: 'bookIsbn', width: 120 },
   { title: '借阅时间', dataIndex: 'borrowTime', key: 'borrowTime', width: 160 },
   { title: '应还时间', dataIndex: 'dueTime', key: 'dueTime', width: 160 },
   { title: '归还时间', dataIndex: 'returnTime', key: 'returnTime', width: 160 },
@@ -105,19 +105,19 @@ function editBorrow(row: (typeof rows.value)[number]) {
 
 async function saveBorrow() {
   if (!form.teacherUserId || !form.bookTitle.trim()) {
-    message.warning('请选择教师并填写书名')
+    showFormValidationMessage('请选择教师并填写书名')
     return
   }
   if (!form.borrowTime || !form.dueTime) {
-    message.warning('请选择借阅时间和应还时间')
+    showFormValidationMessage('请选择借阅时间和应还时间')
     return
   }
   if (
-    !dayjs(form.borrowTime).isValid() ||
-    !dayjs(form.dueTime).isValid() ||
-    dayjs(form.dueTime).isBefore(dayjs(form.borrowTime))
+    !dayjs(form.borrowTime).isValid()
+    || !dayjs(form.dueTime).isValid()
+    || dayjs(form.dueTime).isBefore(dayjs(form.borrowTime))
   ) {
-    message.warning('应还时间不能早于借阅时间')
+    showFormValidationMessage('应还时间不能早于借阅时间')
     return
   }
   const operation = `borrow:save:${form.id || 'new'}`
@@ -137,7 +137,7 @@ async function saveBorrow() {
     resetForm()
     await Promise.all([loadPage(), loadStats()])
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存借阅记录失败')
   } finally {
     endOperation(operation)
   }
@@ -145,7 +145,7 @@ async function saveBorrow() {
 
 async function returnBorrow(row: (typeof rows.value)[number]) {
   if (!row.borrowTime || !row.dueTime) {
-    message.warning('该记录缺少借阅或应还时间，请先编辑补齐')
+    showFormValidationMessage('该记录缺少借阅或应还时间，请先编辑补齐')
     return
   }
   const operation = `borrow:return:${row.id}`
@@ -194,7 +194,7 @@ async function exportCsv() {
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出借阅记录失败')
   } finally {
     endOperation(operation)
   }
@@ -234,7 +234,7 @@ void loadStats()
         />
         <a-input
           v-model:value="form.bookIsbn"
-          placeholder="ISBN"
+          placeholder="书号"
           style="width: 140px"
           :disabled="operating"
         />

@@ -1,4 +1,5 @@
 import type { ImprovementTaskStatusCode } from './types'
+import type { ExtendedAxiosRequestConfig } from '@/config/axios/types'
 /**
  * 持续改进任务 API - 对接 edu-quality / ImprovementTaskController
  *
@@ -99,8 +100,8 @@ export interface ImprovementTaskCloseRequest {
 }
 
 export const improvementTaskApi = {
-  page: (data: ImprovementTaskQueryRequest) =>
-    http.post<PageResult<ImprovementTaskVO>>(`${BASE}/page`, data),
+  page: (data: ImprovementTaskQueryRequest, config?: ExtendedAxiosRequestConfig) =>
+    http.post<PageResult<ImprovementTaskVO>>(`${BASE}/page`, data, config),
   detail: (id: string) => http.post<ImprovementTaskVO>(`${BASE}/detail`, { id }),
   create: (data: ImprovementTaskSaveRequest) => http.post<string>(`${BASE}/create`, data),
   update: (data: ImprovementTaskSaveRequest) => http.post<void>(`${BASE}/update`, data),

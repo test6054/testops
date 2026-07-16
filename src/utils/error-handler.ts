@@ -110,7 +110,7 @@ const DEFAULT_ERROR_MESSAGES: Record<ErrorType, string> = {
   [ErrorType.PERMISSION]: '无权限',
   [ErrorType.VALIDATION]: '参数有误',
   [ErrorType.BUSINESS]: '操作失败',
-  [ErrorType.AI_QUOTA]: 'AI额度不足',
+  [ErrorType.AI_QUOTA]: '智能分析额度不足',
   [ErrorType.SYSTEM]: '系统繁忙',
   [ErrorType.UNKNOWN]: '操作失败',
 }
@@ -125,9 +125,9 @@ const ERROR_TYPE_TITLES: Record<ErrorType, string> = {
   [ErrorType.PERMISSION]: '权限不足',
   [ErrorType.VALIDATION]: '参数有误',
   [ErrorType.BUSINESS]: '业务异常',
-  [ErrorType.AI_QUOTA]: 'AI 资源不足',
+  [ErrorType.AI_QUOTA]: '智能分析资源不足',
   [ErrorType.SYSTEM]: '系统繁忙',
-  [ErrorType.UNKNOWN]: '操作失败'
+  [ErrorType.UNKNOWN]: '操作失败',
 }
 
 /**
@@ -177,12 +177,40 @@ function parseErrorType(error: HandledError): ErrorType {
  * 获取错误消息
  */
 const USER_MSG_HAN = /\p{Script=Han}/u
+/** 用户可见文案禁止任何拉丁字母（含混排英文技术词） */
+const USER_MSG_LATIN = /[a-z]/i
 const USER_MSG_ASCII_TOKEN = /^[\w./$:-]+$/
+
+/**
+ * 是否含拉丁字母。面向教师的提示必须全中文，禁止英文缩写与字段名。
+ */
+export function containsLatinLetters(text: string | undefined | null): boolean {
+  if (text == null) return false
+  return USER_MSG_LATIN.test(text)
+}
+
+/**
+ * 收敛为可展示的中文用户文案：无汉字、含拉丁字母或技术噪音时改用 fallback。
+ */
+export function toUserFacingChinese(text: string | undefined | null, fallback = '操作失败'): string {
+  const resolvedFallback = fallback.trim() || DEFAULT_ERROR_MESSAGES[ErrorType.UNKNOWN]
+  if (containsLatinLetters(resolvedFallback) || !USER_MSG_HAN.test(resolvedFallback)) {
+    return DEFAULT_ERROR_MESSAGES[ErrorType.UNKNOWN]
+  }
+  if (text == null) return resolvedFallback
+  const trimmed = text.trim()
+  if (!trimmed || !USER_MSG_HAN.test(trimmed) || containsLatinLetters(trimmed) || isNonUserFacingMessage(trimmed)) {
+    return resolvedFallback
+  }
+  return trimmed
+}
 
 export function isNonUserFacingMessage(text: string | undefined | null): boolean {
   if (text == null) return true
   const trimmed = text.trim()
   if (!trimmed) return true
+  // 含拉丁字母（含中英混排）一律不直接展示给用户
+  if (USER_MSG_LATIN.test(trimmed)) return true
   if (USER_MSG_HAN.test(trimmed)) return false
   const lower = trimmed.toLowerCase()
   if (
@@ -206,7 +234,7 @@ export function isNonUserFacingMessage(text: string | undefined | null): boolean
     return true
   }
   // 纯英文 code / token
-  return USER_MSG_ASCII_TOKEN.test(trimmed) && trimmed.length <= 64;
+  return USER_MSG_ASCII_TOKEN.test(trimmed) && trimmed.length <= 64
 }
 
 function getErrorMessage(error: HandledError, errorType: ErrorType): string {
@@ -219,13 +247,23 @@ function getErrorMessage(error: HandledError, errorType: ErrorType): string {
     return DEFAULT_ERROR_MESSAGES[errorType]
   }
 
-  // 业务 4xx：仅展示中文业务 msg；英文 / 技术噪音走类型默认文案
+  // 业务 4xx / HTTP 协议错误：仅展示中文业务 msg；英文 / 技术噪音走类型默认文案
   if (backendMessage && !isNonUserFacingMessage(backendMessage)) {
     return backendMessage
   }
 
+  // 拦截器或本地抛出的中文 Error.message
+  if (error.message && !isNonUserFacingMessage(error.message) && !error.message.includes('Network Error')) {
+    return error.message
+  }
+
   if (!error.response || error.message?.includes('Network Error')) {
     return DEFAULT_ERROR_MESSAGES[ErrorType.NETWORK]
+  }
+
+  // HTTP 404 不得伪装成「系统繁忙」
+  if (statusCode === 404) {
+    return '请求的资源不存在或已变更'
   }
 
   return DEFAULT_ERROR_MESSAGES[errorType]
@@ -233,15 +271,31 @@ function getErrorMessage(error: HandledError, errorType: ErrorType): string {
 
 function getResponseMessage(error: unknown): string | undefined {
   if (error == null || typeof error !== 'object') return undefined
-  const directMsg = readProperty(error, 'msg')
-  if (typeof directMsg === 'string' && directMsg.trim()) return directMsg
 
+  // 优先后端 ResultInfo.msg（含拦截器挂载的 response.data）
   const response = readProperty(error, 'response')
-  if (response == null || typeof response !== 'object') return undefined
-  const data = readProperty(response, 'data')
-  if (data == null || typeof data !== 'object') return undefined
-  const backendMsg = readProperty(data, 'msg') ?? readProperty(data, 'message')
-  return typeof backendMsg === 'string' && backendMsg.trim() ? backendMsg : undefined
+  if (response != null && typeof response === 'object') {
+    const data = readProperty(response, 'data')
+    if (data != null && typeof data === 'object') {
+      const backendMsg = readProperty(data, 'msg') ?? readProperty(data, 'message')
+      if (typeof backendMsg === 'string' && backendMsg.trim()) {
+        return backendMsg
+      }
+    }
+  }
+
+  // 兼容直接挂载的业务 msg（非 Axios 形状）
+  const directMsg = readProperty(error, 'msg')
+  if (typeof directMsg === 'string' && directMsg.trim()) {
+    return directMsg
+  }
+
+  // Error.message / 调用方 { message }：本地校验与拦截器 new Error(中文) 均走此路径
+  const messageText = readProperty(error, 'message')
+  if (typeof messageText === 'string' && messageText.trim()) {
+    return messageText
+  }
+  return undefined
 }
 
 function readProperty(source: object, key: string): unknown {
@@ -289,21 +343,13 @@ export function readBusinessResultCode(error: unknown): number | undefined {
 
 /**
  * 提取用户可见错误文案。
- * 仅使用后端业务中文消息或调用方 fallback；禁止英文技术噪音 / 枚举码。
+ * 仅使用全中文业务消息或调用方 fallback；含拉丁字母 / 技术噪音一律替换。
  */
 export function getUserErrorMessage(
   error: unknown,
   fallback = '操作失败',
 ): string {
-  const backendMessage = getResponseMessage(error)
-  if (backendMessage && !isNonUserFacingMessage(backendMessage)) {
-    return backendMessage
-  }
-  const resolvedFallback = fallback.trim() || DEFAULT_ERROR_MESSAGES[ErrorType.UNKNOWN]
-  if (isNonUserFacingMessage(resolvedFallback)) {
-    return DEFAULT_ERROR_MESSAGES[ErrorType.UNKNOWN]
-  }
-  return resolvedFallback
+  return toUserFacingChinese(getResponseMessage(error), fallback)
 }
 
 /**
@@ -314,14 +360,14 @@ export function toUserError(error: unknown, fallback = '操作失败'): Error {
 }
 
 /**
- * 提取异步任务、导出任务、AI 分析记录中的用户可见处理说明。
- * 这类字段是持久化失败原因，默认比普通接口业务错误更保守，避免把堆栈、字段名、路径或接口合同诊断展示给用户。
+ * 提取异步任务、导出任务、智能分析记录中的用户可见处理说明。
+ * 仅透出全中文业务说明；技术堆栈 / 英文协议噪音一律回落 fallback。
  */
 export function getUserProcessFailureMessage(
-  _messageText: string | undefined | null,
+  messageText: string | undefined | null,
   fallback = '处理失败',
 ): string {
-  return fallback
+  return toUserFacingChinese(messageText, fallback)
 }
 
 /**
@@ -334,10 +380,10 @@ export function showUserError(error: unknown, fallback = '操作失败') {
 }
 
 /**
- * 表单 / 步骤校验提示：统一走 feedback message.warning。
+ * 表单 / 步骤校验提示：统一走 feedback message.warning；禁止拉丁字母。
  */
 export function showFormValidationMessage(text: string): void {
-  message.warning(text)
+  message.warning(toUserFacingChinese(text, '请检查填写内容'))
 }
 
 /**
@@ -458,9 +504,11 @@ export function showErrorMessage(standardError: StandardError, config: ErrorHand
   }
 
   const iconVNode = ERROR_TYPE_ICONS[standardError.type]
-  // 教师向：单句短文案，不拼 title+说明，不展示 notification description
-  const displayMessage = (customMessage || standardError.message || DEFAULT_ERROR_MESSAGES[ErrorType.UNKNOWN]).trim()
-    || DEFAULT_ERROR_MESSAGES[ErrorType.UNKNOWN]
+  // 教师向：单句短文案，不拼 title+说明；禁止拉丁字母与技术噪音
+  const displayMessage = toUserFacingChinese(
+    customMessage || standardError.message,
+    DEFAULT_ERROR_MESSAGES[ErrorType.UNKNOWN],
+  )
 
   // 笔记本屏默认走紧凑顶部 message，禁止大框 notification 占内容区
   // 仅当调用方显式 useNotification=true 且配置允许时才用 notification

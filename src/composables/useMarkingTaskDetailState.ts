@@ -70,7 +70,7 @@ import { useWholePaperGallery } from '@/composables/useWholePaperGallery'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useTenantStore } from '@/stores/modules/tenant'
 import { PaperInstanceDisplayModeCode } from '@/types/enums/paper-instance-display-mode-enum'
-import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -637,7 +637,7 @@ export function useMarkingTaskDetailState() {
   function aiRescoreDiagnosticText(diagnostic?: string): string {
     return getUserErrorMessage(
       { message: diagnostic },
-      'AI 复评暂未生成可采纳评分，请按题目评分细则继续人工给分',
+      '智能复评暂未生成可采纳评分，请按题目评分细则继续人工给分',
     )
   }
 
@@ -651,7 +651,7 @@ export function useMarkingTaskDetailState() {
       const result = await rescoreQuestionByAi({ examId, gradeResultId })
       syncExperienceAssistMetaFromAudit(result.referenceExperienceAudit)
       if (Boolean(result.scored) && result.aiScore != null) {
-        message.success(`AI 复评完成，AI 评分 ${result.aiScore} 分`)
+        message.success(`智能复评完成，智能评分 ${result.aiScore} 分`)
       } else {
         message.warning(aiRescoreDiagnosticText(result.diagnostic))
       }
@@ -660,7 +660,7 @@ export function useMarkingTaskDetailState() {
         await loadAiExecutions(gradeResultId)
       }
     } catch (error) {
-      showUserError(error, 'AI 复评调用失败')
+      showUserError(error, '智能复评调用失败')
     } finally {
       rescoringGradeResultId.value = null
     }
@@ -726,7 +726,7 @@ export function useMarkingTaskDetailState() {
         strictEnumLabel(AiExecutionStatusDescription, record.status, 'AI 执行状态')
       })
     } catch (error) {
-      showUserError(error, 'AI 复评历史加载失败')
+      showUserError(error, '智能复评历史加载失败')
       aiExecutions.value = []
     } finally {
       executionsLoading.value = false
@@ -847,7 +847,7 @@ export function useMarkingTaskDetailState() {
   function fillWholeQuestionAiScore(question: QuestionMarkingGroupQuestionResponse): void {
     if (question.aiScore == null) return
     getWholeQuestionForm(question.layoutQuestionId).score = question.aiScore
-    message.success(`已填入第 ${question.questionNo} 题 AI 建议分`)
+    message.success(`已填入第 ${question.questionNo} 题智能建议分`)
   }
 
   async function acceptWholeQuestionAiScore(
@@ -858,7 +858,7 @@ export function useMarkingTaskDetailState() {
     getWholeQuestionForm(question.layoutQuestionId).score = question.aiScore
     if (questionIndex < wholeQuestions.value.length - 1) {
       focusWholeQuestionScoreInput(questionIndex + 1)
-      message.success(`已采纳第 ${question.questionNo} 题 AI 分`)
+      message.success(`已采纳第 ${question.questionNo} 题智能分`)
       return
     }
     await submitCtx.submit()
@@ -896,7 +896,7 @@ export function useMarkingTaskDetailState() {
     }
     const expireAt = Date.parse(result.revealExpireTime)
     if (!Number.isFinite(expireAt)) {
-      showUserError(null, '身份查看时间异常')
+      showFormValidationMessage('身份查看时间异常')
       return
     }
     revealExpireTimer = window.setTimeout(clearRevealedIdentity, Math.max(expireAt - Date.now(), 0))

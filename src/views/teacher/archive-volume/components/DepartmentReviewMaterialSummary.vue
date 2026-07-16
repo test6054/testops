@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { ArchiveVolumeDetailResponse } from '@/apis/mark/archive-volume'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   ArchiveCatalogStatusDescription,
   ArchiveVolumeSubmitChecklistPhaseDescription,
   getArchiveVolumeMaterialStats,
 } from '@/apis/mark/archive-volume'
-import { computed, onMounted, ref, watch } from 'vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import {
@@ -116,9 +116,7 @@ onMounted(() => {
   <section class="dept-review-summary">
     <div class="dept-review-summary__head">
       <span class="dept-review-summary__title">材料与提交前摘要</span>
-      <span class="dept-review-summary__hint"
-        >院系档案员审核前可在此核对完整性，无需进入详情逐 Tab 切换</span
-      >
+      <span class="dept-review-summary__hint">院系档案员审核前可在此核对完整性，无需进入详情逐 Tab 切换</span>
     </div>
     <dl class="dept-review-summary__grid">
       <div class="dept-review-summary__item">

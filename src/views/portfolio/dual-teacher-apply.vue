@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { PortfolioDualTeacherApplicationVO } from '@/apis/portfolio/teacher-platform'
-import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
@@ -8,13 +7,14 @@ import {
   PortfolioDualTeacherApplicationStatusCode,
   PortfolioDualTeacherApplicationStatusDescription,
 } from '@/apis/portfolio/enums'
+import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const { currentUserId } = usePortfolioTeacherAccess()
@@ -66,9 +66,9 @@ const canEdit = computed(() => {
     return !form.id
   }
   return (
-    status === PortfolioDualTeacherApplicationStatusCode.DRAFT ||
-    status === PortfolioDualTeacherApplicationStatusCode.COLLEGE_RETURNED ||
-    status === PortfolioDualTeacherApplicationStatusCode.ACADEMIC_RETURNED
+    status === PortfolioDualTeacherApplicationStatusCode.DRAFT
+    || status === PortfolioDualTeacherApplicationStatusCode.COLLEGE_RETURNED
+    || status === PortfolioDualTeacherApplicationStatusCode.ACADEMIC_RETURNED
   )
 })
 
@@ -122,7 +122,7 @@ async function loadMine() {
       return
     }
     resetApplicationContext()
-    showUserError(error)
+    showUserError(error, '加载双师认定申请失败')
   }
 }
 
@@ -191,7 +191,7 @@ async function persistDraft() {
 
 async function saveDraft() {
   if (!currentUserId.value) {
-    message.warning('未获取当前用户')
+    showFormValidationMessage('未获取当前用户')
     return
   }
   if (!canEdit.value || operationPending.value) {
@@ -203,7 +203,7 @@ async function saveDraft() {
     message.success('草稿已保存')
     await loadMine()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存双师认定草稿失败')
   } finally {
     saving.value = false
   }
@@ -211,19 +211,19 @@ async function saveDraft() {
 
 async function submitApplication() {
   if (!currentUserId.value) {
-    message.warning('未获取当前用户')
+    showFormValidationMessage('未获取当前用户')
     return
   }
   if (!canEdit.value || operationPending.value) {
-    message.warning('当前状态不可提交')
+    showFormValidationMessage('当前状态不可提交')
     return
   }
   if (!form.certLevel.trim()) {
-    message.warning('请填写认定等级')
+    showFormValidationMessage('请填写认定等级')
     return
   }
   if (!/^\d{4}$/.test(form.certYear.trim())) {
-    message.warning('认定年度须为 4 位自然年')
+    showFormValidationMessage('认定年度须为 4 位自然年')
     return
   }
   submitting.value = true
@@ -233,7 +233,7 @@ async function submitApplication() {
     message.success('已提交审核')
     await loadMine()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '提交双师认定申请失败')
   } finally {
     submitting.value = false
   }
@@ -297,9 +297,7 @@ watch(
           <ul v-if="attachmentItems.length" class="attachment-list">
             <li v-for="item in attachmentItems" :key="item.fileNodeId">
               <span>{{ item.fileName }}</span>
-              <a v-if="canEdit && !operationPending" @click="removeAttachment(item.fileNodeId)"
-                >移除</a
-              >
+              <a v-if="canEdit && !operationPending" @click="removeAttachment(item.fileNodeId)">移除</a>
             </li>
           </ul>
         </a-form-item>

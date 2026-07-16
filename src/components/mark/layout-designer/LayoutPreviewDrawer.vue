@@ -27,7 +27,7 @@ async function loadPreview(fileId: string): Promise<void> {
     const buffer = await getFileArrayBuffer({ nodeId: fileId })
     previewUrl.value = URL.createObjectURL(new Blob([buffer], { type: 'application/pdf' }))
   } catch (error) {
-    showUserError(error, '预览 PDF 加载失败')
+    showUserError(error, '预览便携文档加载失败')
   } finally {
     loading.value = false
   }
@@ -54,14 +54,14 @@ onBeforeUnmount(() => {
 <template>
   <a-drawer v-model:open="open" title="制卷预览" width="min(920px, 96vw)" destroy-on-close>
     <a-spin :spinning="loading">
-      <UiEmpty v-if="!previewPdfFileId" description="请先生成预览 PDF" />
+      <UiEmpty v-if="!previewPdfFileId" description="请先生成预览便携文档" />
       <iframe
         v-else-if="previewUrl"
         :src="previewUrl"
-        title="制卷预览 PDF"
+        title="制卷预览便携文档"
         class="layout-preview-drawer__frame"
       />
-      <UiEmpty v-else description="预览 PDF 尚未就绪" />
+      <UiEmpty v-else description="预览便携文档尚未就绪" />
     </a-spin>
   </a-drawer>
 </template>

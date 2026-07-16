@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import type { PortfolioAnalysisAnnualReportVO } from '@/apis/portfolio/analysis'
-import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import type { PortfolioEvaluationTeacherNoticeVO } from '@/apis/portfolio/types'
 import type { PortfolioAnnualReportTaskStatusCode } from '@/types/enums/portfolio-annual-report-task-status-enum'
-import { PortfolioAnnualReportTaskStatusDescription } from '@/types/enums/portfolio-annual-report-task-status-enum'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import {
   PortfolioEvaluationTeacherNoticeStatusCode,
   PortfolioEvaluationTeacherNoticeStatusDescription,
@@ -21,6 +20,7 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
+import { PortfolioAnnualReportTaskStatusDescription } from '@/types/enums/portfolio-annual-report-task-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -79,16 +79,16 @@ async function loadAnnualReport() {
       pageSize: 1,
     })
     if (
-      scopeRequestToken.value !== currentScopeToken ||
-      reportRequestToken.value !== currentToken
+      scopeRequestToken.value !== currentScopeToken
+      || reportRequestToken.value !== currentToken
     ) {
       return
     }
     annualReport.value = page.list[0] ?? null
   } catch (error) {
     if (
-      scopeRequestToken.value !== currentScopeToken ||
-      reportRequestToken.value !== currentToken
+      scopeRequestToken.value !== currentScopeToken
+      || reportRequestToken.value !== currentToken
     ) {
       return
     }
@@ -96,8 +96,8 @@ async function loadAnnualReport() {
     showUserError(error, '加载失败')
   } finally {
     if (
-      scopeRequestToken.value === currentScopeToken &&
-      reportRequestToken.value === currentToken
+      scopeRequestToken.value === currentScopeToken
+      && reportRequestToken.value === currentToken
     ) {
       loading.value = false
     }
@@ -124,16 +124,16 @@ async function loadAnnualReviewNotices() {
       pageSize: 100,
     })
     if (
-      scopeRequestToken.value !== currentScopeToken ||
-      noticeRequestToken.value !== currentToken
+      scopeRequestToken.value !== currentScopeToken
+      || noticeRequestToken.value !== currentToken
     ) {
       return
     }
     annualNotices.value = page.list
   } catch (error) {
     if (
-      scopeRequestToken.value !== currentScopeToken ||
-      noticeRequestToken.value !== currentToken
+      scopeRequestToken.value !== currentScopeToken
+      || noticeRequestToken.value !== currentToken
     ) {
       return
     }
@@ -231,9 +231,9 @@ usePortfolioScopedLoader(
       <ContextBar show-title layout="workbench" title="年度考核准备">
         <template #actions>
           <a-date-picker v-model:value="reportYear" picker="year" value-format="YYYY" />
-          <UiButton :loading="loading" :disabled="!canOperate" @click="loadAnnualReport"
-            >刷新</UiButton
-          >
+          <UiButton :loading="loading" :disabled="!canOperate" @click="loadAnnualReport">
+            刷新
+          </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -269,8 +269,8 @@ usePortfolioScopedLoader(
                 :tone="
                   notice.noticeStatus === PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED
                     ? 'green'
-                    : notice.noticeStatus ===
-                        PortfolioEvaluationTeacherNoticeStatusCode.RETURNED_SUPPLEMENT
+                    : notice.noticeStatus
+                      === PortfolioEvaluationTeacherNoticeStatusCode.RETURNED_SUPPLEMENT
                       ? 'orange'
                       : 'blue'
                 "
@@ -299,8 +299,9 @@ usePortfolioScopedLoader(
             :loading="generating"
             :disabled="!canOperate"
             @click="generateAnnualReport"
-            >生成年度报告</UiButton
           >
+            生成年度报告
+          </UiButton>
         </template>
         <template v-if="annualReport">
           <p class="annual-review__hint">{{ annualReport.reportYear }} 年度报告任务</p>

@@ -6,7 +6,6 @@ import type {
   PortfolioAchievementGapAnalysisVO,
   PortfolioNationalAchievementCatalogVO,
 } from '@/apis/portfolio/national-achievement'
-import { portfolioNationalAchievementApi } from '@/apis/portfolio/national-achievement'
 import type {
   PortfolioDevelopmentPlanAchievementAttainmentItemVO,
   PortfolioDevelopmentPlanCompletionVO,
@@ -19,7 +18,6 @@ import type {
   PortfolioPlanningSyncConfigSaveRequest,
   PortfolioPlanningSyncConfigVO,
 } from '@/apis/portfolio/teacher-platform'
-import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { ReloadOutlined, SaveOutlined, UploadOutlined } from '@ant-design/icons-vue'
 import { message, Modal } from 'ant-design-vue'
@@ -39,6 +37,8 @@ import {
   PortfolioDevelopmentPlanTypeDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
+import { portfolioNationalAchievementApi } from '@/apis/portfolio/national-achievement'
+import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -62,7 +62,7 @@ import {
   PortfolioPlanningSyncOrgScopeCode,
   PortfolioPlanningSyncOrgScopeDescription,
 } from '@/types/enums/portfolio-planning-sync-org-scope-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -86,7 +86,7 @@ const historySyncForm = reactive<PortfolioPlanningSyncConfigSaveRequest>({
   planType: PortfolioDevelopmentPlanTypeCode.TEACHER,
   conflictStrategy: PortfolioPlanningSyncConflictStrategyCode.SKIP,
   fieldMapping: {
-    ownerUserIdColumn: '负责人用户ID',
+    ownerUserIdColumn: '负责人用户编号',
     planYearColumn: '规划年度',
     itemTitleColumn: '明细标题',
     itemGoalColumn: '明细目标',
@@ -112,10 +112,10 @@ const historyPlanTypeOptions = [
 
 const historyWriteBusy = computed(
   () =>
-    historyConfigLoading.value ||
-    historyConfigSaving.value ||
-    Boolean(historyRollbackBatchId.value) ||
-    historyImportModalOpen.value,
+    historyConfigLoading.value
+    || historyConfigSaving.value
+    || Boolean(historyRollbackBatchId.value)
+    || historyImportModalOpen.value,
 )
 const historyImportAvailable = computed(
   () => Boolean(historySyncConfig.value?.enabled) && !historyConfigLoading.value,
@@ -123,8 +123,8 @@ const historyImportAvailable = computed(
 const historyImportContext = computed(() => ({
   expectedConfigUpdateToken: historySyncConfig.value?.updateToken,
   confirmManualConflicts:
-    historySyncConfig.value?.conflictStrategy ===
-    PortfolioPlanningSyncConflictStrategyCode.MANUAL_CONFIRM,
+    historySyncConfig.value?.conflictStrategy
+    === PortfolioPlanningSyncConflictStrategyCode.MANUAL_CONFIRM,
 }))
 const {
   loading: historyBatchLoading,
@@ -182,7 +182,7 @@ async function openHistoryBatchDetail(id: string) {
     }
   } catch (error) {
     if (requestToken === historyBatchDetailRequestToken.value) {
-      showUserError(error)
+      showUserError(error, '加载历史导入批次详情失败')
     }
   } finally {
     if (requestToken === historyBatchDetailRequestToken.value) {
@@ -216,33 +216,31 @@ async function loadHistorySyncConfig() {
   try {
     applyHistorySyncConfig(await portfolioDevelopmentPlanApi.getHistorySyncConfig())
   } catch (error) {
-    showUserError(error)
-  } finally {
-    historyConfigLoading.value = false
+    showUserError(error, '加载历史规划同步设置失败')
   }
 }
 
 async function saveHistorySyncConfig() {
   if (
-    historySyncForm.yearFrom < minimumHistoryYear ||
-    historySyncForm.yearTo > maximumHistoryYear
+    historySyncForm.yearFrom < minimumHistoryYear
+    || historySyncForm.yearTo > maximumHistoryYear
   ) {
-    message.warning(`历史规划年度须在 ${minimumHistoryYear} 年至 ${maximumHistoryYear} 年之间`)
+    showFormValidationMessage(`历史规划年度须在 ${minimumHistoryYear} 年至 ${maximumHistoryYear} 年之间`)
     return
   }
   if (historySyncForm.yearFrom > historySyncForm.yearTo) {
-    message.warning('起始年度不能晚于结束年度')
+    showFormValidationMessage('起始年度不能晚于结束年度')
     return
   }
   if (historySyncForm.yearTo - historySyncForm.yearFrom + 1 > 10) {
-    message.warning('同步年度区间最多 10 年')
+    showFormValidationMessage('同步年度区间最多 10 年')
     return
   }
   if (
-    historySyncForm.orgScopeType === PortfolioPlanningSyncOrgScopeCode.ORG_UNIT &&
-    !historySyncForm.portfolioOrgId
+    historySyncForm.orgScopeType === PortfolioPlanningSyncOrgScopeCode.ORG_UNIT
+    && !historySyncForm.portfolioOrgId
   ) {
-    message.warning('请选择同步组织范围')
+    showFormValidationMessage('请选择同步组织范围')
     return
   }
   const fieldMapping: PortfolioPlanningSyncConfigSaveRequest['fieldMapping'] = {
@@ -254,7 +252,7 @@ async function saveHistorySyncConfig() {
     itemStatusColumn: historySyncForm.fieldMapping.itemStatusColumn.trim(),
   }
   if (Object.values(fieldMapping).some((value) => !value)) {
-    message.warning('字段映射列名不能为空')
+    showFormValidationMessage('字段映射列名不能为空')
     return
   }
   historyConfigSaving.value = true
@@ -270,19 +268,17 @@ async function saveHistorySyncConfig() {
     applyHistorySyncConfig(saved)
     message.success('历史规划同步设置已保存')
   } catch (error) {
-    showUserError(error)
-  } finally {
-    historyConfigSaving.value = false
+    showUserError(error, '保存历史规划同步设置失败')
   }
 }
 
 function openHistoryImport() {
   if (!historySyncConfig.value) {
-    message.warning('请先保存历史规划同步设置')
+    showFormValidationMessage('请先保存历史规划同步设置')
     return
   }
   if (!historySyncConfig.value.enabled) {
-    message.warning('请先启用历史规划同步设置')
+    showFormValidationMessage('请先启用历史规划同步设置')
     return
   }
   historyImportModalOpen.value = true
@@ -290,8 +286,8 @@ function openHistoryImport() {
 
 function canRollbackHistoryBatch(status: PortfolioDevelopmentPlanHistoryImportBatchStatusCode) {
   return (
-    status === PortfolioDevelopmentPlanHistoryImportBatchStatusCode.COMPLETED ||
-    status === PortfolioDevelopmentPlanHistoryImportBatchStatusCode.STAGED
+    status === PortfolioDevelopmentPlanHistoryImportBatchStatusCode.COMPLETED
+    || status === PortfolioDevelopmentPlanHistoryImportBatchStatusCode.STAGED
   )
 }
 
@@ -338,8 +334,7 @@ function handleHistoryBatchAction(
         }
         await Promise.all([loadHistoryImportBatches(), loadPage()])
       } catch (error) {
-        showUserError(error)
-        throw error
+        showUserError(error, '回滚历史规划导入批次失败')
       } finally {
         historyRollbackBatchId.value = ''
       }
@@ -378,14 +373,14 @@ const historyBatchDetailDiagnostics = computed<ExcelImportRowDiagnostic[]>(() =>
         })
         return
       }
-      const message =
-        'message' in item && typeof item.message === 'string' ? item.message : '导入失败'
-      const errorCode =
-        'conflictAction' in item && typeof item.conflictAction === 'string'
+      const message
+        = 'message' in item && typeof item.message === 'string' ? item.message : '导入失败'
+      const errorCode
+        = 'conflictAction' in item && typeof item.conflictAction === 'string'
           ? item.conflictAction
           : undefined
-      const rowIndexes =
-        'rowIndexes' in item && Array.isArray(item.rowIndexes)
+      const rowIndexes
+        = 'rowIndexes' in item && Array.isArray(item.rowIndexes)
           ? (item.rowIndexes as unknown[]).filter(
               (rowIndex: unknown): rowIndex is number => typeof rowIndex === 'number',
             )
@@ -396,13 +391,13 @@ const historyBatchDetailDiagnostics = computed<ExcelImportRowDiagnostic[]>(() =>
         })
         return
       }
-      const rowIndex =
-        'rowIndex' in item && typeof item.rowIndex === 'number' ? item.rowIndex : -(index + 1)
+      const rowIndex
+        = 'rowIndex' in item && typeof item.rowIndex === 'number' ? item.rowIndex : -(index + 1)
       diagnostics.push({ rowIndex, valid: false, invalidReason: message, errorCode })
     })
     return diagnostics
   } catch {
-    return [{ rowIndex: 1, valid: false, invalidReason: '导入错误报告不是合法 JSON' }]
+    return [{ rowIndex: 1, valid: false, invalidReason: '导入错误报告不是合法结构化文本' }]
   }
 })
 
@@ -503,7 +498,7 @@ const columns: ColumnsType = [
 
 const orgColumns: ColumnsType = [
   { title: '科室', dataIndex: 'orgName', key: 'orgName' },
-  { title: '科室 ID', dataIndex: 'portfolioOrgId', key: 'portfolioOrgId', width: 120 },
+  { title: '科室编号', dataIndex: 'portfolioOrgId', key: 'portfolioOrgId', width: 120 },
   { title: '状态', dataIndex: 'planStatus', key: 'planStatus', width: 120 },
   { title: '数量', dataIndex: 'planCount', key: 'planCount', width: 80 },
 ]
@@ -539,7 +534,7 @@ async function loadIndicatorConfigs() {
   try {
     indicatorConfigs.value = await portfolioIndicatorTenantApi.listConfig()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '加载指标配置失败')
   }
 }
 
@@ -551,9 +546,12 @@ async function loadAchievementCatalogs() {
       pageSize: 200,
       enabled: true,
     })
-    achievementCatalogs.value = firstPage.list ?? []
-    if ((firstPage.total ?? 0) > achievementCatalogs.value.length) {
-      throw new Error('启用的成果目录超过 200 条，请先在成果治理页收敛目录或增加精确检索')
+    const catalogs = firstPage.list ?? []
+    if ((firstPage.total ?? 0) > catalogs.length) {
+      achievementCatalogs.value = []
+      showUserError(null, '启用的成果目录超过 200 条，请先在成果治理页收敛目录或增加精确检索')
+    } else {
+      achievementCatalogs.value = catalogs
     }
   } catch (error) {
     achievementCatalogs.value = []
@@ -570,8 +568,8 @@ const selectedPlan = computed(
 const planItemEditable = computed(() => {
   const status = selectedPlan.value?.planStatus
   return (
-    status === PortfolioDevelopmentPlanStatusCode.DRAFT ||
-    status === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
+    status === PortfolioDevelopmentPlanStatusCode.DRAFT
+    || status === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
   )
 })
 
@@ -601,23 +599,55 @@ async function loadPage() {
     }
   }
   if (showAdminStats.value) {
-    const [nextYearStats, nextOrgStats, nextCompletion, nextAttainment] = await Promise.all([
-      portfolioDevelopmentPlanApi.statsByYear({ planYear: requestPlanYear }),
-      portfolioDevelopmentPlanApi.statsByOrg({ planYear: requestPlanYear }),
-      portfolioDevelopmentPlanApi.completionAnalysis({
-        planYear: requestPlanYear,
-      }),
-      portfolioDevelopmentPlanApi.achievementAttainment({
-        planYear: requestPlanYear,
-      }),
-    ])
+    try {
+      yearStats.value = await portfolioDevelopmentPlanApi.statsByYear({ planYear: requestPlanYear })
+    } catch (error) {
+      if (currentToken !== pageRequestToken.value) {
+        return
+      }
+      yearStats.value = []
+      showUserError(error, '规划年度统计加载失败')
+    }
     if (currentToken !== pageRequestToken.value) {
       return
     }
-    yearStats.value = nextYearStats
-    orgStats.value = nextOrgStats
-    completion.value = nextCompletion
-    attainment.value = nextAttainment
+    try {
+      orgStats.value = await portfolioDevelopmentPlanApi.statsByOrg({ planYear: requestPlanYear })
+    } catch (error) {
+      if (currentToken !== pageRequestToken.value) {
+        return
+      }
+      orgStats.value = []
+      showUserError(error, '规划组织统计加载失败')
+    }
+    if (currentToken !== pageRequestToken.value) {
+      return
+    }
+    try {
+      completion.value = await portfolioDevelopmentPlanApi.completionAnalysis({
+        planYear: requestPlanYear,
+      })
+    } catch (error) {
+      if (currentToken !== pageRequestToken.value) {
+        return
+      }
+      completion.value = null
+      showUserError(error, '规划完成度分析加载失败')
+    }
+    if (currentToken !== pageRequestToken.value) {
+      return
+    }
+    try {
+      attainment.value = await portfolioDevelopmentPlanApi.achievementAttainment({
+        planYear: requestPlanYear,
+      })
+    } catch (error) {
+      if (currentToken !== pageRequestToken.value) {
+        return
+      }
+      attainment.value = []
+      showUserError(error, '规划成果达成分析加载失败')
+    }
   } else {
     yearStats.value = []
     orgStats.value = []
@@ -657,8 +687,8 @@ async function openPlanFromQuery() {
     }
   }
   if (
-    target?.planStatus === PortfolioDevelopmentPlanStatusCode.DRAFT ||
-    target?.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
+    target?.planStatus === PortfolioDevelopmentPlanStatusCode.DRAFT
+    || target?.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
   ) {
     activeTab.value = 'plans'
   }
@@ -667,15 +697,15 @@ async function openPlanFromQuery() {
 async function createPlan() {
   const planYear = Number(form.planYear)
   if (!/^\d{4}$/.test(form.planYear) || planYear < minimumPlanYear || planYear > maximumPlanYear) {
-    message.warning(`规划年度须在 ${minimumPlanYear} 年至 ${maximumPlanYear} 年之间`)
+    showFormValidationMessage(`规划年度须在 ${minimumPlanYear} 年至 ${maximumPlanYear} 年之间`)
     return
   }
   if (!form.planTitle.trim()) {
-    message.warning('请填写规划标题')
+    showFormValidationMessage('请填写规划标题')
     return
   }
   if (!form.portfolioOrgId) {
-    message.warning('请选择归属科室')
+    showFormValidationMessage('请选择归属科室')
     return
   }
   try {
@@ -690,7 +720,7 @@ async function createPlan() {
     form.planSummary = ''
     await loadPage()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '创建教师年度规划失败')
   }
 }
 
@@ -699,8 +729,8 @@ function buildDevelopmentPlanRowActions(
 ): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = []
   if (
-    record.planStatus === PortfolioDevelopmentPlanStatusCode.DRAFT ||
-    record.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
+    record.planStatus === PortfolioDevelopmentPlanStatusCode.DRAFT
+    || record.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
   ) {
     actions.push({ key: 'submit', label: '提交', tone: 'primary' })
   }
@@ -722,14 +752,14 @@ async function submitPlan(id: string) {
   try {
     const items = await portfolioDevelopmentPlanApi.listItems({ planId: id })
     if (!items.length) {
-      message.warning('请先保存至少一条规划目标明细')
+      showFormValidationMessage('请先保存至少一条规划目标明细')
       return
     }
     await portfolioDevelopmentPlanApi.submit({ id })
     message.success('已提交')
     await loadPage()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '提交规划失败')
   }
 }
 
@@ -747,7 +777,7 @@ async function exportPlans() {
     await downloadPortfolioExcelExport(result)
     message.success('规划已导出')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出规划失败')
   }
 }
 
@@ -808,7 +838,7 @@ async function loadPlanItems() {
     if (currentToken !== planItemsRequestToken.value || selectedPlanId.value !== planId) {
       return
     }
-    showUserError(error)
+    showUserError(error, '加载规划明细失败')
   } finally {
     if (currentToken === planItemsRequestToken.value && selectedPlanId.value === planId) {
       itemLoading.value = false
@@ -829,7 +859,7 @@ function removePlanItemRow(index: number) {
 
 async function savePlanItems() {
   if (!selectedPlanId.value) {
-    message.warning('请选择规划')
+    showFormValidationMessage('请选择规划')
     return
   }
   const items: PortfolioDevelopmentPlanItemSaveRequest[] = []
@@ -851,7 +881,7 @@ async function savePlanItems() {
     })
   })
   if (items.length === 0) {
-    message.warning('请至少填写一条明细标题')
+    showFormValidationMessage('请至少填写一条明细标题')
     return
   }
   itemSaving.value = true
@@ -860,19 +890,17 @@ async function savePlanItems() {
     message.success('规划明细已保存')
     await loadPlanItems()
   } catch (error) {
-    showUserError(error)
-  } finally {
-    itemSaving.value = false
+    showUserError(error, '保存规划明细失败')
   }
 }
 
 async function linkAchievement(item: DevelopmentPlanItemEditorRow) {
   if (!item.id) {
-    message.warning('请先保存规划明细，再建立成果关联')
+    showFormValidationMessage('请先保存规划明细，再建立成果关联')
     return
   }
   if (!item.catalogId) {
-    message.warning('请选择成果目标')
+    showFormValidationMessage('请选择成果目标')
     return
   }
   const itemId = item.id
@@ -890,7 +918,7 @@ async function linkAchievement(item: DevelopmentPlanItemEditorRow) {
 
 async function openAchievementGap(item: DevelopmentPlanItemEditorRow) {
   if (!item.id || !item.catalogId) {
-    message.warning('当前规划明细尚未关联成果目标')
+    showFormValidationMessage('当前规划明细尚未关联成果目标')
     return
   }
   gapOpen.value = true
@@ -946,7 +974,7 @@ watch(
     <template #context>
       <ContextBar show-title layout="workbench" title="教师年度规划">
         <template v-if="showAdminStats" #actions>
-          <UiButton @click="exportPlans"> 导出 Excel </UiButton>
+          <UiButton @click="exportPlans"> 导出表格文件 </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -962,9 +990,7 @@ watch(
           placeholder="年度"
         />
         <UiButton @click="loadPage"> 刷新 </UiButton>
-        <span v-if="showAdminStats" class="stats"
-          >{{ form.planYear }} 年已通过 {{ approvedCount }} 项</span
-        >
+        <span v-if="showAdminStats" class="stats">{{ form.planYear }} 年已通过 {{ approvedCount }} 项</span>
       </div>
       <a-tabs v-model:active-key="activeTab">
         <a-tab-pane key="plans" tab="规划管理">
@@ -1096,9 +1122,7 @@ watch(
                   >
                     {{ record.achievementLinkStatus === 'LOCKED' ? '已锁定' : '草稿关联' }}
                   </UiTag>
-                  <span v-if="record.achievementCompletionRate != null"
-                    >完成度 {{ record.achievementCompletionRate }}%</span
-                  >
+                  <span v-if="record.achievementCompletionRate != null">完成度 {{ record.achievementCompletionRate }}%</span>
                 </div>
               </template>
               <template v-else-if="column.key === 'milestoneText'">
@@ -1149,11 +1173,12 @@ watch(
                     v-if="record.id && record.catalogId"
                     size="sm"
                     @click="openAchievementGap(record)"
-                    >差距</UiButton
                   >
-                  <UiButton v-if="planItemEditable" size="sm" @click="removePlanItemRow(index)"
-                    >删除</UiButton
-                  >
+                    差距
+                  </UiButton>
+                  <UiButton v-if="planItemEditable" size="sm" @click="removePlanItemRow(index)">
+                    删除
+                  </UiButton>
                 </div>
               </template>
             </template>
@@ -1166,11 +1191,9 @@ watch(
             <span>待审 {{ completion.pendingPlanCount }}</span>
             <span>退回 {{ completion.returnedPlanCount }}</span>
             <span>审批完成率 {{ completion.completionRatePercent }}%</span>
-            <span
-              >明细项 {{ completion.completedPlanItemCount }}/{{
-                completion.totalPlanItemCount
-              }}</span
-            >
+            <span>明细项 {{ completion.completedPlanItemCount }}/{{
+              completion.totalPlanItemCount
+            }}</span>
             <span>明细完成率 {{ completion.planItemCompletionRatePercent }}%</span>
             <span>平均完成度 {{ completion.averageItemCompletionPercent }}%</span>
           </div>
@@ -1283,7 +1306,7 @@ watch(
                 />
               </a-form-item>
             </a-form>
-            <h4>Excel 字段映射</h4>
+            <h4>表格文件字段映射</h4>
             <div class="history-field-grid">
               <a-input
                 v-model:value="historySyncForm.fieldMapping.ownerUserIdColumn"
@@ -1341,7 +1364,7 @@ watch(
                   @click="openHistoryImport"
                 >
                   <UploadOutlined />
-                  导入 Excel
+                  导入表格文件
                 </UiButton>
                 <UiButton
                   :loading="historyBatchLoading"

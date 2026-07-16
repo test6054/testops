@@ -168,7 +168,7 @@
         </UiDrawer>
 
         <!-- PDF 预览 -->
-        <UiDrawer v-model:open="previewModalOpen" title="印刷包 PDF 预览" :width="900" hide-footer>
+        <UiDrawer v-model:open="previewModalOpen" title="印刷包便携文档预览" :width="900" hide-footer>
           <UiSkeletonState v-if="previewLoading" variant="card" compact />
           <iframe
             v-else-if="previewPdfUrl"
@@ -223,7 +223,7 @@ import WorkflowReadinessPanel from '@/components/workbench/workflow-readiness/Wo
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkWorkbenchContext, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { buildPrepStepCards } from '@/utils/exam-prep-step-ui'
 import { isPrintPackageMenuApplicable } from '@/utils/exam-print-package-applicable'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -453,11 +453,11 @@ function openGenerateModal() {
 async function handleGenerate() {
   if (!selectedExamId.value) return
   if (!generateForm.packageNo.trim()) {
-    message.warning('请填写印刷包编号')
+    showFormValidationMessage('请填写印刷包编号')
     return
   }
   if (!generateForm.packageName.trim()) {
-    message.warning('请填写印刷包名称')
+    showFormValidationMessage('请填写印刷包名称')
     return
   }
 
@@ -476,10 +476,10 @@ async function handleGenerate() {
     await refreshSnapshot()
   } catch (error) {
     if (error instanceof Error && isLayoutNotReadyError(error)) {
-      showUserError(error, '请先完成制卷设计并生成可打印 PDF，再生成印刷包')
+      showUserError(error, '请先完成制卷设计并生成可打印便携文档，再生成印刷包')
       return
     }
-    showUserError(error, '印刷包生成失败，请确认考生名册已配置且制卷设计可打印 PDF 已就绪')
+    showUserError(error, '印刷包生成失败，请确认考生名册已配置且制卷设计可打印便携文档已就绪')
   } finally {
     generating.value = false
   }
@@ -527,7 +527,7 @@ function buildPackageActions(pkg: ExamPrintPackageResponse): UiTableRowActionIte
   return [
     { key: 'detail', label: '查看明细' },
     { key: 'preview', label: '预览', tone: 'primary', hidden: !pkg.packageFileId },
-    { key: 'download', label: '下载 PDF', hidden: !pkg.packageFileId },
+    { key: 'download', label: '下载便携文档', hidden: !pkg.packageFileId },
   ]
 }
 

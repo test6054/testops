@@ -105,7 +105,7 @@ function goHub() {
         </UiTag>
       </div>
       <div class="dispatch-landing__head-actions">
-        <UiButton size="sm" variant="ghost" @click="goHub">回 Hub</UiButton>
+        <UiButton size="sm" variant="ghost" @click="goHub">回扫描台首页</UiButton>
         <UiButton size="sm" variant="ghost" @click="goQueue">返回队列</UiButton>
       </div>
     </header>
@@ -125,7 +125,7 @@ function goHub() {
         教师 {{ session.ticket.value.portfolioSnapshot.teacherName }}
       </p>
       <p v-else-if="session.ticket.value.portfolioSnapshot.teacherId">
-        教师 ID {{ session.ticket.value.portfolioSnapshot.teacherId }}
+        教师编号 {{ session.ticket.value.portfolioSnapshot.teacherId }}
       </p>
       <p v-if="session.ticket.value.portfolioSnapshot.gapTaskTitle">
         补采任务 {{ session.ticket.value.portfolioSnapshot.gapTaskTitle }}
@@ -143,7 +143,7 @@ function goHub() {
       <p v-else-if="isTerminalStatus" class="dispatch-landing__hint">{{ terminalHint }}</p>
       <div v-if="isTerminalStatus" class="dispatch-landing__actions">
         <UiButton variant="primary" @click="goQueue">返回队列</UiButton>
-        <UiButton variant="outline" @click="goHub">回 Hub</UiButton>
+        <UiButton variant="outline" @click="goHub">回扫描台首页</UiButton>
       </div>
       <div
         v-else-if="ticketStatus === ScanDispatchTicketStatusCode.SUSPENDED"
@@ -203,7 +203,7 @@ function goHub() {
       <p v-else-if="isTerminalStatus" class="dispatch-landing__hint">{{ terminalHint }}</p>
       <div v-if="isTerminalStatus" class="dispatch-landing__actions">
         <UiButton variant="primary" @click="goQueue">返回队列</UiButton>
-        <UiButton variant="outline" @click="goHub">回 Hub</UiButton>
+        <UiButton variant="outline" @click="goHub">回扫描台首页</UiButton>
       </div>
       <div
         v-else-if="ticketStatus === ScanDispatchTicketStatusCode.SUSPENDED"

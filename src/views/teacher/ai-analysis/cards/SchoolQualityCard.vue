@@ -125,7 +125,7 @@ import {
   ensureAcademicYearSemesterPair,
   ensureRequiredAcademicYearSemester,
 } from '@/utils/academic-year-semester-query'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { buildTrendChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
 import { buildTrendLineChartOption } from '@/utils/mark-echarts-options'
@@ -437,11 +437,11 @@ function qualityListDimensionId(): string | undefined {
 
 async function reload(): Promise<void> {
   if (form.analysisDimension === SchoolQualityDimensionCode.COURSE && !props.scopeOrgCourseId?.trim()) {
-    message.warning('请先在上方范围栏选择课程')
+    showFormValidationMessage('请先在上方范围栏选择课程')
     return
   }
   if (form.analysisDimension === SchoolQualityDimensionCode.CLASS && !props.scopeOrgClassId?.trim()) {
-    message.warning('请先在上方范围栏选择班级')
+    showFormValidationMessage('请先在上方范围栏选择班级')
     return
   }
   if (
@@ -479,11 +479,11 @@ async function reload(): Promise<void> {
 async function handleGenerate(): Promise<void> {
   const examIds = form.examIds
   if (form.analysisDimension === SchoolQualityDimensionCode.COURSE && !props.scopeOrgCourseId?.trim()) {
-    message.warning('请先在上方范围栏选择课程')
+    showFormValidationMessage('请先在上方范围栏选择课程')
     return
   }
   if (form.analysisDimension === SchoolQualityDimensionCode.CLASS && !props.scopeOrgClassId?.trim()) {
-    message.warning('请先在上方范围栏选择班级')
+    showFormValidationMessage('请先在上方范围栏选择班级')
     return
   }
   const termQuery = buildRequiredAcademicYearSemesterQuery(
@@ -491,11 +491,11 @@ async function handleGenerate(): Promise<void> {
     effectiveSemester.value,
   )
   if (!termQuery) {
-    message.warning('生成分析须同时选择学年与学期')
+    showFormValidationMessage('生成分析须同时选择学年与学期')
     return
   }
   if (examIds.length < 2) {
-    message.warning('至少需要选择 2 场考试')
+    showFormValidationMessage('至少需要选择 2 场考试')
     return
   }
   generating.value = true

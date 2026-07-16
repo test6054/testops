@@ -260,12 +260,8 @@ async function loadList() {
   loading.value = true
   try {
     const listQuery = buildReportListQuery()
-    const [page, counts] = await Promise.all([
-      reportApi.page(listQuery),
-      reportApi.statusCounts(listQuery),
-    ])
+    const page = await reportApi.page(listQuery)
     list.value = page.list
-    reportStatusCounts.value = counts
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
     total.value = page.total
@@ -274,8 +270,16 @@ async function loadList() {
       await loadList()
       return
     }
+    try {
+      reportStatusCounts.value = await reportApi.statusCounts(listQuery)
+    } catch (error) {
+      reportStatusCounts.value = null
+      showUserError(error, '质量报告状态统计加载失败')
+    }
     resumeExportPollingForList()
   } catch (error) {
+    list.value = []
+    total.value = 0
     reportStatusCounts.value = null
     showUserError(error, '质量报告加载失败')
   } finally {

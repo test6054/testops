@@ -31,7 +31,7 @@
         :closable="false"
         dense
         title="整卷首扫待推导模板"
-        description="当前考试尚无 ACTIVE 模板，首扫后将自动生成「扫描推导模板」作为切卷真源。"
+        description="当前考试尚无现行模板，首扫后将自动生成「扫描推导模板」作为切卷真源。"
         class="scan-batch-workbench__template-alert"
       />
 
@@ -298,8 +298,8 @@ const scanDerivedTemplateAlertDescription = computed(() => {
   const name = summary.value?.activePaperTemplateName?.trim() || '扫描推导模板'
   const pages = summary.value?.activePaperTemplateTotalPages
   return pages != null && pages > 0
-    ? `当前 ACTIVE 模板「${name}」（${pages} 页/卷）由首扫自动推导，请勿在 Web 端手工覆盖页数。`
-    : `当前 ACTIVE 模板「${name}」由首扫自动推导。`
+    ? `当前现行模板「${name}」（${pages} 页/卷）由首扫自动推导，请勿在网页端手工覆盖页数。`
+    : `当前现行模板「${name}」由首扫自动推导。`
 })
 
 const fullPaperFirstScanAlertVisible = computed(
@@ -347,9 +347,9 @@ const summaryMetrics = computed((): SignalMetric[] => {
   const data = summary.value
   if (!data) {
     if (summaryLoadFailed.value) {
-      return [{ key: 'kpi-error', label: '批次 KPI', value: '加载失败', tone: 'red' }]
+      return [{ key: 'kpi-error', label: '批次关键指标', value: '加载失败', tone: 'red' }]
     }
-    return [{ key: 'kpi-pending', label: '批次 KPI', value: '—', tone: 'gray' }]
+    return [{ key: 'kpi-pending', label: '批次关键指标', value: '—', tone: 'gray' }]
   }
   const metrics: SignalMetric[] = [
     { key: 'batchTotal', label: '批次总数', value: data.batchTotal, unit: '个', tone: 'blue' },
@@ -588,7 +588,7 @@ async function loadSummary(): Promise<void> {
   } catch (error) {
     summary.value = null
     summaryLoadFailed.value = true
-    showUserError(error, '扫描批次 KPI 加载失败')
+    showUserError(error, '扫描批次关键指标加载失败')
   }
 }
 

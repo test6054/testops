@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { PortfolioDoubleHighMonitorVO } from '@/apis/portfolio/double-high'
-import { portfolioDoubleHighApi } from '@/apis/portfolio/double-high'
 import type { PortfolioCompletenessLevelCode } from '@/apis/portfolio/enums'
-import { PortfolioCompletenessLevelDescription } from '@/apis/portfolio/enums'
 import type { PortfolioDeptOneTableSummaryVO } from '@/apis/portfolio/teacher'
-import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { portfolioDoubleHighApi } from '@/apis/portfolio/double-high'
+import { PortfolioCompletenessLevelDescription } from '@/apis/portfolio/enums'
+import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
@@ -20,7 +20,7 @@ import {
   flattenTeachingGroupOptions,
   usePortfolioOrgTree,
 } from '@/composables/usePortfolioOrgTree'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
 const { loadTree, departmentOptions: loadDepartmentOptions, treeRoots } = usePortfolioOrgTree()
 const router = useRouter()
@@ -135,11 +135,11 @@ function buildExportPayload() {
 
 async function loadPreview() {
   if (!filter.departmentId) {
-    message.warning('请选择院系')
+    showFormValidationMessage('请选择院系')
     return
   }
   if (filter.baselinePeriodLabel.trim() && !filter.constructionPeriodLabel.trim()) {
-    message.warning('填写基线周期时必须同时指定建设周期')
+    showFormValidationMessage('填写基线周期时必须同时指定建设周期')
     return
   }
   if (busy.value) {
@@ -151,33 +151,38 @@ async function loadPreview() {
   const payload = buildExportPayload()
   previewLoading.value = true
   try {
-    const [summary, monitor] = await Promise.all([
-      portfolioTeacherApi.getDeptOneTableSummary({
-        departmentId: payload.departmentId,
-        planYear: payload.planYear,
-        portfolioOrgId: payload.portfolioOrgId,
-        teachingGroupId: payload.teachingGroupId,
-        completenessLevel: payload.completenessLevel,
-      }),
-      portfolioDoubleHighApi.getMonitor({
-        departmentId: payload.departmentId,
-        portfolioOrgId: payload.portfolioOrgId,
-        constructionPeriodLabel: payload.constructionPeriodLabel,
-        baselinePeriodLabel: payload.baselinePeriodLabel,
-      }),
-    ])
+    const summary = await portfolioTeacherApi.getDeptOneTableSummary({
+      departmentId: payload.departmentId,
+      planYear: payload.planYear,
+      portfolioOrgId: payload.portfolioOrgId,
+      teachingGroupId: payload.teachingGroupId,
+      completenessLevel: payload.completenessLevel,
+    })
     if (reportContextToken.value !== contextToken || previewRequestToken.value !== requestToken) {
       return
     }
     deptSummary.value = summary
-    doubleHighMonitor.value = monitor
+    try {
+      doubleHighMonitor.value = await portfolioDoubleHighApi.getMonitor({
+        departmentId: payload.departmentId,
+        portfolioOrgId: payload.portfolioOrgId,
+        constructionPeriodLabel: payload.constructionPeriodLabel,
+        baselinePeriodLabel: payload.baselinePeriodLabel,
+      })
+    } catch (error) {
+      if (reportContextToken.value !== contextToken || previewRequestToken.value !== requestToken) {
+        return
+      }
+      doubleHighMonitor.value = null
+      showUserError(error, '双高监测预览加载失败')
+    }
   } catch (error) {
     if (reportContextToken.value !== contextToken || previewRequestToken.value !== requestToken) {
       return
     }
     deptSummary.value = null
     doubleHighMonitor.value = null
-    showUserError(error, '加载失败')
+    showUserError(error, '院系一表预览加载失败')
   } finally {
     if (reportContextToken.value === contextToken && previewRequestToken.value === requestToken) {
       previewLoading.value = false
@@ -187,15 +192,15 @@ async function loadPreview() {
 
 async function applyExport() {
   if (!filter.departmentId) {
-    message.warning('请选择院系')
+    showFormValidationMessage('请选择院系')
     return
   }
   if (!filter.exportPurpose.trim()) {
-    message.warning('请填写导出用途')
+    showFormValidationMessage('请填写导出用途')
     return
   }
   if (filter.baselinePeriodLabel.trim() && !filter.constructionPeriodLabel.trim()) {
-    message.warning('填写基线周期时必须同时指定建设周期')
+    showFormValidationMessage('填写基线周期时必须同时指定建设周期')
     return
   }
   if (busy.value) {

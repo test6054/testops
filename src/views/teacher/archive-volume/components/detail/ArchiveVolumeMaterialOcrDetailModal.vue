@@ -1,7 +1,7 @@
 <template>
   <UiDrawer
     v-model:open="open"
-    title="文档 OCR 详情"
+    title="文档文字识别详情"
     :width="720"
     hide-footer
   >

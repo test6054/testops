@@ -204,9 +204,9 @@ export const portfolioAnalysisApi = {
       '/api/portfolio/analysis/pk/session/page',
       data,
     ),
-  exportPkSession: (data: { sessionId: string; maskMode?: boolean }) =>
+  exportPkSession: (data: { sessionId: string, maskMode?: boolean }) =>
     http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/analysis/pk/export', data),
-  generateAnnualReport: (data: { teacherId: string; reportYear: string }) =>
+  generateAnnualReport: (data: { teacherId: string, reportYear: string }) =>
     http.post<PortfolioAnalysisAnnualReportVO>(
       '/api/portfolio/analysis/report/annual/generate',
       data,
@@ -224,7 +224,7 @@ export const portfolioAnalysisApi = {
       '/api/portfolio/analysis/report/annual/page',
       data,
     ),
-  resolvePortraitAlert: (data: { alertId: string; alertStatus: string; resolveRemark?: string }) =>
+  resolvePortraitAlert: (data: { alertId: string, alertStatus: string, resolveRemark?: string }) =>
     http.post<void>('/api/portfolio/analysis/alert/resolve', data),
   resolveComplianceAlert: (data: {
     alertId: string

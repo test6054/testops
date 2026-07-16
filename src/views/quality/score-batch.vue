@@ -76,7 +76,7 @@ import { useQualityTableExport } from '@/composables/useQualityTableExport'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
-import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
+import { getUserProcessFailureMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const qualityStore = useQualityStore()
@@ -197,7 +197,7 @@ function handleReset() {
 
 function handleExportScoreBatch(): void {
   if (!qualityStore.currentTrainingPlanId) {
-    message.warning('请先选择培养方案')
+    showFormValidationMessage('请先选择培养方案')
     return
   }
   void exportScoreBatchExcel({
@@ -378,14 +378,19 @@ async function loadCourses(keyword?: string) {
     courseOptions.value = []
     return
   }
-  const page = await qualityCourseApi.page({
-    pageNum: 1,
-    pageSize: QUALITY_SELECTOR_PAGE_SIZE,
-    trainingPlanId: qualityStore.currentTrainingPlanId,
-    enabled: true,
-    keyword: keyword?.trim() || undefined,
-  })
-  courseOptions.value = page.list
+  try {
+    const page = await qualityCourseApi.page({
+      pageNum: 1,
+      pageSize: QUALITY_SELECTOR_PAGE_SIZE,
+      trainingPlanId: qualityStore.currentTrainingPlanId,
+      enabled: true,
+      keyword: keyword?.trim() || undefined,
+    })
+    courseOptions.value = page.list
+  } catch (error) {
+    courseOptions.value = []
+    showUserError(error, '质量课程选项加载失败')
+  }
 }
 
 async function loadUploadAssessmentItems(qualityCourseId: string | undefined) {
@@ -398,6 +403,9 @@ async function loadUploadAssessmentItems(qualityCourseId: string | undefined) {
     uploadAssessmentItems.value = await loadSelectorFirstPage((pageNum, pageSize) =>
       assessmentItemApi.page({ pageNum, pageSize, qualityCourseId }),
     )
+  } catch (error) {
+    uploadAssessmentItems.value = []
+    showUserError(error, '上传区考核环节加载失败')
   } finally {
     uploadAssessmentLoading.value = false
   }
@@ -413,6 +421,9 @@ async function loadQueryAssessmentItems(qualityCourseId: string | undefined) {
     queryAssessmentItems.value = await loadSelectorFirstPage((pageNum, pageSize) =>
       assessmentItemApi.page({ pageNum, pageSize, qualityCourseId }),
     )
+  } catch (error) {
+    queryAssessmentItems.value = []
+    showUserError(error, '查询区考核环节加载失败')
   } finally {
     queryAssessmentLoading.value = false
   }
@@ -430,15 +441,11 @@ async function loadBatches() {
   loading.value = true
   try {
     const listQuery = buildBatchListQuery()
-    const [page, counts] = await Promise.all([
-      scoreBatchApi.page(listQuery),
-      scoreBatchApi.statusCounts(listQuery),
-    ])
+    const page = await scoreBatchApi.page(listQuery)
     if (scope.isStale()) {
       return
     }
     batches.value = page.list
-    batchStatusCounts.value = counts
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
     total.value = page.total
@@ -446,6 +453,16 @@ async function loadBatches() {
       query.pageNum -= 1
       await loadBatches()
       return
+    }
+    try {
+      const counts = await scoreBatchApi.statusCounts(listQuery)
+      if (!scope.isStale()) {
+        batchStatusCounts.value = counts
+      }
+    } catch (error) {
+      if (!scope.isStale()) {
+        showUserError(error, '成绩批次状态统计加载失败')
+      }
     }
     batchPolling.syncPolling()
   } catch (error) {
@@ -475,18 +492,23 @@ async function loadBatchesQuietly(): Promise<void> {
   const scope = beginQualityScopeRequest()
   try {
     const listQuery = buildBatchListQuery()
-    const [page, counts] = await Promise.all([
-      scoreBatchApi.page(listQuery),
-      scoreBatchApi.statusCounts(listQuery),
-    ])
+    const quiet = { showErrorMessage: false as const }
+    const page = await scoreBatchApi.page(listQuery, quiet)
     if (scope.isStale()) {
       return
     }
     batches.value = page.list
-    batchStatusCounts.value = counts
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
     total.value = page.total
+    try {
+      const counts = await scoreBatchApi.statusCounts(listQuery, quiet)
+      if (!scope.isStale()) {
+        batchStatusCounts.value = counts
+      }
+    } catch {
+      // 轮询：统计失败不覆盖列表
+    }
     batchPolling.syncPolling()
   } catch {
     // 轮询刷新失败时不打断当前页面操作
@@ -546,14 +568,20 @@ function previewErrorCodes(record: ScoreRecordVO): string[] {
 }
 
 async function loadPreviewDiagnostics(batchId: string) {
-  const page = await scoreRecordApi.pageByBatch({
-    batchId,
-    validFlag: false,
-    pageNum: previewPageNum.value,
-    pageSize: previewPageSize.value,
-  })
-  previewDiagnostics.value = page.list
-  previewDiagnosticTotal.value = page.total
+  try {
+    const page = await scoreRecordApi.pageByBatch({
+      batchId,
+      validFlag: false,
+      pageNum: previewPageNum.value,
+      pageSize: previewPageSize.value,
+    })
+    previewDiagnostics.value = page.list
+    previewDiagnosticTotal.value = page.total
+  } catch (error) {
+    previewDiagnostics.value = []
+    previewDiagnosticTotal.value = 0
+    showUserError(error, '成绩批次预览诊断加载失败')
+  }
 }
 
 function handlePreviewPageChange(pageEvent: { current: number, pageSize: number }) {
@@ -580,19 +608,19 @@ function resetQuery() {
 
 async function submitScoreImport() {
   if (!uploadForm.qualityCourseId) {
-    message.warning('请先选择质量评价课程')
+    showFormValidationMessage('请先选择质量评价课程')
     return
   }
   if (!uploadForm.assessmentItemId) {
-    message.warning('请选择或填写考核环节')
+    showFormValidationMessage('请选择或填写考核环节')
     return
   }
   if (!uploadForm.batchCode.trim() || !uploadForm.batchName.trim()) {
-    message.warning('请填写批次编码与名称')
+    showFormValidationMessage('请填写批次编码与名称')
     return
   }
   if (!uploadFileNodeId.value) {
-    message.warning('请先选择 Excel 文件')
+    showFormValidationMessage('请先选择表格文件')
     return
   }
   uploading.value = true
@@ -616,7 +644,7 @@ async function submitScoreImport() {
     uploadFileName.value = undefined
     await loadBatches()
   } catch (err) {
-    message.error(err instanceof Error ? err.message : String(err))
+    showUserError(err, '成绩批次导入提交失败')
   } finally {
     uploading.value = false
   }
@@ -761,7 +789,7 @@ async function submitEditor() {
     return
   }
   if (!editor.id) {
-    message.error('批次 ID 不能为空')
+    message.error('批次编号不能为空')
     return
   }
   editorSubmitting.value = true
@@ -1028,7 +1056,7 @@ onMounted(async () => {
       <div class="score-batch__upload">
         <header class="score-batch__upload-header">
           <div class="score-batch__upload-heading">
-            <h3 class="score-batch__upload-title">Excel 成绩导入</h3>
+            <h3 class="score-batch__upload-title">表格文件成绩导入</h3>
             <UiButton
               variant="outline"
               size="sm"
@@ -1107,7 +1135,7 @@ onMounted(async () => {
               v-model:file-name="uploadFileName"
               :scene-key="FileUploadSceneKey.QUALITY_SCORE_IMPORT"
               accept=".xlsx,.xls"
-              button-text="选择 Excel"
+              button-text="选择表格文件"
             />
           </a-form-item>
           <a-form-item>
@@ -1128,7 +1156,7 @@ onMounted(async () => {
             @click="handleExportScoreBatch"
           >
             <template #icon><DownloadOutlined /></template>
-            导出 Excel
+            导出表格文件
           </UiButton>
         </template>
 

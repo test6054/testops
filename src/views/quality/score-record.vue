@@ -58,7 +58,7 @@ import { useQualityTableExport } from '@/composables/useQualityTableExport'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useQualityStore } from '@/stores/modules/quality'
-import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
+import { getUserProcessFailureMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatScore } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -202,11 +202,14 @@ async function refreshBatchesQuietly(): Promise<void> {
   }
   const scope = beginQualityScopeRequest()
   try {
-    const page = await scoreBatchApi.page({
-      pageNum: batchPageNum.value,
-      pageSize: batchPageSize.value,
-      qualityCourseId: qualityStore.currentQualityCourseId,
-    })
+    const page = await scoreBatchApi.page(
+      {
+        pageNum: batchPageNum.value,
+        pageSize: batchPageSize.value,
+        qualityCourseId: qualityStore.currentQualityCourseId,
+      },
+      { showErrorMessage: false },
+    )
     if (scope.isStale()) {
       return
     }
@@ -295,7 +298,7 @@ function handleReset() {
 
 function handleExportScoreRecords(): void {
   if (!selectedBatch.value) {
-    message.warning('请先选择成绩批次')
+    showFormValidationMessage('请先选择成绩批次')
     return
   }
   syncFilterToView()
@@ -318,20 +321,27 @@ async function loadRecords() {
   }
   recordsLoading.value = true
   try {
-    const [page, summary] = await Promise.all([
-      scoreRecordApi.pageByBatch({
-        batchId: selectedBatch.value.id,
-        validFlag: validFilter.value,
-        pageNum: recordPageNum.value,
-        pageSize: recordPageSize.value,
-      }),
-      scoreRecordApi.getBatchSummary(selectedBatch.value.id),
-    ])
+    const page = await scoreRecordApi.pageByBatch({
+      batchId: selectedBatch.value.id,
+      validFlag: validFilter.value,
+      pageNum: recordPageNum.value,
+      pageSize: recordPageSize.value,
+    })
     records.value = page.list
     recordTotal.value = page.total
     recordPageNum.value = page.pageNum ?? recordPageNum.value
     recordPageSize.value = page.pageSize ?? recordPageSize.value
-    recordSummary.value = summary
+    try {
+      recordSummary.value = await scoreRecordApi.getBatchSummary(selectedBatch.value.id)
+    } catch (error) {
+      recordSummary.value = null
+      showUserError(error, '成绩明细汇总加载失败')
+    }
+  } catch (error) {
+    records.value = []
+    recordTotal.value = 0
+    recordSummary.value = null
+    showUserError(error, '成绩明细加载失败')
   } finally {
     recordsLoading.value = false
   }
@@ -348,13 +358,18 @@ async function loadAssessmentItems() {
     assessmentItems.value = []
     return
   }
-  assessmentItems.value = await loadSelectorFirstPage((pageNum, pageSize) =>
-    assessmentItemApi.page({
-      pageNum,
-      pageSize,
-      qualityCourseId: qualityStore.currentQualityCourseId!,
-    }),
-  )
+  try {
+    assessmentItems.value = await loadSelectorFirstPage((pageNum, pageSize) =>
+      assessmentItemApi.page({
+        pageNum,
+        pageSize,
+        qualityCourseId: qualityStore.currentQualityCourseId!,
+      }),
+    )
+  } catch (error) {
+    assessmentItems.value = []
+    showUserError(error, '考核环节选项加载失败')
+  }
 }
 
 /* ========== 信号指标带（SignalBand） ========== */
@@ -454,6 +469,10 @@ async function loadEditorRubrics(assessmentItemId: string, record?: ScoreRecordV
       rubricItemId: rubric.id,
       score: existingScores.get(rubric.id) ?? 0,
     }))
+  } catch (error) {
+    editorRubrics.value = []
+    editorRubricScores.value = []
+    showUserError(error, '成绩明细评分标准加载失败')
   } finally {
     editorRubricsLoading.value = false
   }
@@ -461,12 +480,12 @@ async function loadEditorRubrics(assessmentItemId: string, record?: ScoreRecordV
 
 async function handleEditorAssessmentChange(value: SelectValue): Promise<void> {
   if (typeof value !== 'string') {
-    showUserError(null, '考核环节选择无效，请重新选择')
+    showFormValidationMessage('考核环节选择无效，请重新选择')
     return
   }
   const selected = assessmentItems.value.find((item) => item.id === value)
   if (!selected) {
-    showUserError(null, '所选考核环节不存在，请重新选择')
+    showFormValidationMessage('所选考核环节不存在，请重新选择')
     return
   }
   editor.value.fullScore = selected.fullScore
@@ -588,7 +607,7 @@ async function submitEditor() {
       await scoreRecordApi.create(request)
     } else {
       if (!v.id) {
-        message.error('成绩明细 ID 缺失，无法更新')
+        message.error('成绩明细编号缺失，无法更新')
         return
       }
       const request: ScoreRecordUpdateRequest = {
@@ -675,7 +694,7 @@ function openValidByItem() {
 
 async function loadValidByItemPage() {
   if (!validByItemId.value) {
-    message.warning('请选择考核环节')
+    showFormValidationMessage('请选择考核环节')
     return
   }
   validByItemLoading.value = true
@@ -864,7 +883,7 @@ function handleCourseChange(courseId: string | null) {
                 @click="handleExportScoreRecords"
               >
                 <template #icon><DownloadOutlined /></template>
-                导出 Excel
+                导出表格文件
               </UiButton>
               <UiTextAction @click="openValidByItem">按考核环节查有效</UiTextAction>
               <router-link
@@ -872,7 +891,7 @@ function handleCourseChange(courseId: string | null) {
                 :to="{ name: 'QualityScoreBatch' }"
                 class="score-record__import-link"
               >
-                <UiButton variant="outline" size="sm">批量导入（Excel）</UiButton>
+                <UiButton variant="outline" size="sm">批量导入（表格文件）</UiButton>
               </router-link>
               <UiButton
                 v-if="isBatchRecordEditable"

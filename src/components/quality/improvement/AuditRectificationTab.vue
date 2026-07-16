@@ -42,7 +42,7 @@ import {
   isQualityScopeStaleError,
 } from '@/composables/useScopeRequestGuard'
 import { AuditRectificationVerifyDecisionCode } from '@/types/enums/audit-rectification-verify-decision-enum'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AuditRectificationTab' })
@@ -536,7 +536,7 @@ function handleRectEditorAuditIssueChange(value: string | null | undefined) {
 
 function handleRectEditorOwnerChange(value: string | string[] | null) {
   if (Array.isArray(value)) {
-    showUserError(null, '整改责任人只能单选，请重新选择')
+    showFormValidationMessage('整改责任人只能单选，请重新选择')
     return
   }
   rectEditor.ownerUserId = value ?? ''

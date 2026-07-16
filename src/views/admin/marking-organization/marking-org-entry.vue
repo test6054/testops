@@ -96,7 +96,7 @@ import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkingOrgPermission } from '@/composables/useMarkingOrgPermission'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import {
   resolveMarkingOrganizationDetailRoute,
   resolveMarkingOrganizationFormalHubRoute,
@@ -168,7 +168,7 @@ async function redirectToDetailIfConfigured(): Promise<void> {
 
 function guardExamOwnerAction(): boolean {
   if (canManageExamOwner.value) return true
-  message.warning('仅考试主考老师可执行该操作')
+  showFormValidationMessage('仅考试主考老师可执行该操作')
   return false
 }
 
@@ -193,7 +193,7 @@ const createRules: Record<string, Rule[]> = {
 function openCreateDrawer(): void {
   if (!guardExamOwnerAction()) return
   if (!selectedExamId.value) {
-    message.warning('请先选择考试')
+    showFormValidationMessage('请先选择考试')
     return
   }
   createForm.anonymousMode = true

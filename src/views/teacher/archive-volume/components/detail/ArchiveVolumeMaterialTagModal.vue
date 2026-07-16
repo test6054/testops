@@ -25,7 +25,7 @@ import { ref, watch } from 'vue'
 import { updateArchiveVolumeMaterialTags } from '@/apis/mark/archive-volume'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { normalizeMaterialTagsForUpdate } from '@/utils/archive-material-tag'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import ArchiveMaterialTagSelect from '@/views/teacher/archive-volume/components/ArchiveMaterialTagSelect.vue'
 
 defineOptions({ name: 'ArchiveVolumeMaterialTagModal' })
@@ -40,7 +40,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  success: []
+  "success": []
 }>()
 
 const saving = ref(false)
@@ -58,7 +58,7 @@ watch(
 
 async function handleSave() {
   if (!props.materialId) {
-    message.warning('材料 ID 缺失')
+    showFormValidationMessage('材料编号缺失，请关闭后重新打开材料标签')
     return
   }
   const tags = normalizeMaterialTagsForUpdate(tagValues.value)

@@ -41,7 +41,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const pageNum = ref(1)
@@ -153,8 +153,9 @@ async function loadActiveProfiles() {
       pageSize: 10,
     })
     activeProfiles.value = page.list
-  } catch {
+  } catch (error) {
     activeProfiles.value = []
+    showUserError(error, '已启用模型配置加载失败')
   }
 }
 
@@ -162,21 +163,23 @@ async function loadList() {
   loading.value = true
   try {
     const listQuery = buildAiModelListQuery()
-    const [page, summary] = await Promise.all([
-      aiModelProfileApi.page(listQuery),
-      aiModelProfileApi.signalSummary(listQuery),
-    ])
+    const page = await aiModelProfileApi.page(listQuery)
     list.value = page.list
-    signalSummary.value = summary
     pageNum.value = page.pageNum
     pageSize.value = page.pageSize
     pageTotal.value = page.total
+    try {
+      signalSummary.value = await aiModelProfileApi.signalSummary(listQuery)
+    } catch (error) {
+      signalSummary.value = null
+      showUserError(error, '模型配置状态统计加载失败')
+    }
     await loadActiveProfiles()
   } catch (error) {
     list.value = []
     pageTotal.value = 0
     signalSummary.value = null
-    showUserError(error, '平台 AI 模型配置列表加载失败')
+    showUserError(error, '平台智能模型配置列表加载失败')
   } finally {
     loading.value = false
   }
@@ -242,35 +245,35 @@ async function submitEditor() {
   const modelName = editor.modelName.trim()
   const apiHost = editor.apiHost.trim()
   if (!profileName || !modelName) {
-    message.error('请填写配置名称 / 模型名')
+    showFormValidationMessage('请填写配置名称 / 模型名')
     return
   }
   if (!apiHost) {
-    message.error('请填写模型服务地址')
+    showFormValidationMessage('请填写模型服务地址')
     return
   }
   if (editorMode.value === 'create' && !editor.apiKey?.trim()) {
-    message.error('新建模型配置时必须填写模型访问密钥')
+    showFormValidationMessage('新建模型配置时必须填写模型访问密钥')
     return
   }
   if (!editor.maxInputChars || editor.maxInputChars <= 0) {
-    message.error('最大输入字符数必须大于 0')
+    showFormValidationMessage('最大输入字符数必须大于 0')
     return
   }
   if (editor.temperature != null && (editor.temperature < 0 || editor.temperature > 1)) {
-    message.error('温度参数必须在 0 到 1 之间')
+    showFormValidationMessage('温度参数必须在 0 到 1 之间')
     return
   }
   if (editor.maxTokens != null && editor.maxTokens <= 0) {
-    message.error('最大输出 Token 数必须大于 0')
+    showFormValidationMessage('最大输出长度必须大于零')
     return
   }
   if (editor.connectTimeoutSecs != null && editor.connectTimeoutSecs <= 0) {
-    message.error('连接超时秒数必须大于 0')
+    showFormValidationMessage('连接超时秒数必须大于 0')
     return
   }
   if (editor.readTimeoutSecs != null && editor.readTimeoutSecs <= 0) {
-    message.error('读取超时秒数必须大于 0')
+    showFormValidationMessage('读取超时秒数必须大于 0')
     return
   }
   submitting.value = true
@@ -406,11 +409,11 @@ async function handleHealthCheck(record: AiModelProfileVO) {
   try {
     const result = await aiModelProfileApi.healthCheck({ profileId: record.id })
     if (result.healthStatus === 'HEALTHY') {
-      message.success('AI 模型连通检测通过')
+      message.success('智能模型连通检测通过')
     } else {
       const healthMessage = getUserErrorMessage(
         { message: result.healthMessage },
-        'AI 模型连通校验失败，请检查模型地址、密钥和网络配置',
+        '智能模型连通校验失败，请检查模型地址、密钥和网络配置',
       )
       message.error(healthMessage)
     }

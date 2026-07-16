@@ -76,8 +76,8 @@
 
         <div
           v-if="
-            record.accessStatus === ArchiveAccessStatusCode.PENDING &&
-            canApproveAccessRecord(record)
+            record.accessStatus === ArchiveAccessStatusCode.PENDING
+              && canApproveAccessRecord(record)
           "
           class="approval-card__actions"
         >
@@ -139,8 +139,8 @@
 
         <div
           v-if="
-            record.accessStatus === ArchiveAccessStatusCode.ACTIVE &&
-            record.applicantUserId === currentUserId
+            record.accessStatus === ArchiveAccessStatusCode.ACTIVE
+              && record.applicantUserId === currentUserId
           "
           class="approval-card__actions"
         >
@@ -231,6 +231,8 @@ import type {
   ArchiveVolumeAccessRecordResponse,
   ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   approveArchiveVolumeAccess,
   ArchiveAccessStatusCode,
@@ -241,8 +243,6 @@ import {
   rejectArchiveVolumeAccess,
   requestArchiveVolumeAccess,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -255,7 +255,7 @@ import {
   archiveAccessStatusLabel,
   archiveAccessStatusTone,
 } from '@/utils/archive-access-record-ui'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleBlobDownload } from '@/utils/file-download'
 import { formatDateTime } from '@/utils/format'
 
@@ -312,7 +312,7 @@ async function loadAccessRecords() {
     accessRecords.value = records
     accessLoadFailed.value = false
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '加载查阅记录失败')
     accessLoadFailed.value = true
   } finally {
     accessLoading.value = false
@@ -399,7 +399,7 @@ async function submitReadPage() {
     return
   }
   if (readPageForm.lastReadPage < 1) {
-    message.warning('请输入有效页码')
+    showFormValidationMessage('请输入有效页码')
     return
   }
   readPageSubmitting.value = true
@@ -413,7 +413,7 @@ async function submitReadPage() {
     resetReadPageForm()
     await loadAccessRecords()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存阅读页码失败')
   } finally {
     readPageSubmitting.value = false
   }
@@ -431,7 +431,7 @@ function resolveAccessMaterialId(record: ArchiveVolumeAccessRecordResponse): str
 
 async function submitAccessRequest() {
   if (!accessReason.value.trim()) {
-    message.warning('请填写查阅原因')
+    showFormValidationMessage('请填写查阅原因')
     return
   }
   accessSubmitting.value = true
@@ -445,7 +445,7 @@ async function submitAccessRequest() {
     accessModalOpen.value = false
     await loadAccessRecords()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '提交查阅申请失败')
   } finally {
     accessSubmitting.value = false
   }
@@ -475,7 +475,7 @@ async function submitApproveAccess(accessRecordId: string) {
     cancelApprove()
     await loadAccessRecords()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '批准查阅失败')
   } finally {
     approveAccessSubmitting.value = false
   }
@@ -495,7 +495,7 @@ function cancelReject() {
 
 async function submitRejectAccess(accessRecordId: string) {
   if (!rejectAccessComment.value.trim()) {
-    message.warning('请填写驳回原因')
+    showFormValidationMessage('请填写驳回原因')
     return
   }
   rejectAccessSubmitting.value = true
@@ -508,7 +508,7 @@ async function submitRejectAccess(accessRecordId: string) {
     cancelReject()
     await loadAccessRecords()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '驳回查阅失败')
   } finally {
     rejectAccessSubmitting.value = false
   }

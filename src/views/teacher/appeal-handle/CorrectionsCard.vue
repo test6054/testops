@@ -160,7 +160,7 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { ExamScorePolicyCode } from '@/types/enums/exam-score-policy-enum'
 import { FinalScoreStatusCode } from '@/types/enums/final-score-status-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'CorrectionsCard' })
@@ -449,7 +449,7 @@ function handleReviewRequestChange(): void {
 async function submit(): Promise<void> {
   const request = selectedReviewRequest.value
   if (!request) {
-    message.warning('请选择已通过的复核申请')
+    showFormValidationMessage('请选择已通过的复核申请')
     return
   }
   if (!isFinalScoreCorrectable(request)) {

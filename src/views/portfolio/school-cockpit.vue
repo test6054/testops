@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import type { PortfolioSchoolPortraitCockpitVO } from '@/apis/portfolio/analysis'
-import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
-import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import type { PortfolioComplianceScopeTypeCode } from '@/types/enums/portfolio-compliance-scope-type-enum'
-import { PortfolioComplianceScopeTypeDescription } from '@/types/enums/portfolio-compliance-scope-type-enum'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -19,6 +17,8 @@ import {
   PortfolioAlertStatusCode,
   PortfolioAlertStatusDescription,
 } from '@/types/enums/portfolio-alert-status-enum'
+import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
+import { PortfolioComplianceScopeTypeDescription } from '@/types/enums/portfolio-compliance-scope-type-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioCockpitAskPanel from '@/views/portfolio/components/PortfolioCockpitAskPanel.vue'
@@ -65,8 +65,8 @@ const signals = computed<SignalMetric[]>(() => {
       value: summary.courseArchiveFrameworkSlotDone ?? 0,
       unit: `/${summary.courseArchiveFrameworkSlotTotal ?? 0}`,
       tone:
-        (summary.courseArchiveFrameworkSlotDone ?? 0) >=
-        (summary.courseArchiveFrameworkSlotTotal ?? 0)
+        (summary.courseArchiveFrameworkSlotDone ?? 0)
+        >= (summary.courseArchiveFrameworkSlotTotal ?? 0)
           ? 'green'
           : 'orange',
       clickable: true,

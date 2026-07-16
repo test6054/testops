@@ -165,7 +165,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
 import { EXPORT_PAGE_SIZE } from '@/constants/pagination'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
+import { getUserProcessFailureMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import {
   buildBarChartInsight,
@@ -530,7 +530,7 @@ function experienceCaseSummaryText(item: GradingExperienceCaseResponse): string 
 async function reload(): Promise<void> {
   const experienceCaseId = form.experienceCaseId
   if (!experienceCaseId) {
-    message.warning('请选择经验案例')
+    showFormValidationMessage('请选择经验案例')
     return
   }
   loading.value = true
@@ -549,16 +549,16 @@ async function handleGenerate(): Promise<void> {
   const experienceCaseId = form.experienceCaseId
   const evalExamId = form.evalExamId
   if (!experienceCaseId || !evalExamId) {
-    message.warning('经验案例和评估所用考试都必填')
+    showFormValidationMessage('经验案例和评估所用考试都必填')
     return
   }
   const selectedCase = experiences.value.find((item) => item.id === experienceCaseId)
   if (!selectedCase || selectedCase.caseStatus !== ExperienceCaseStatusCode.CONFIRMED) {
-    message.warning('请先在阅卷经验库确认该经验案例后再评估有效性')
+    showFormValidationMessage('请先在阅卷经验库确认该经验案例后再评估有效性')
     return
   }
   if (selectedCase.sourceExamId === evalExamId) {
-    message.warning('评估所用考试不能与经验来源考试相同')
+    showFormValidationMessage('评估所用考试不能与经验来源考试相同')
     return
   }
   generating.value = true

@@ -188,8 +188,14 @@ const deptEmptyDescription = computed(() => {
 })
 
 async function loadArchiveMixedPendingTotal() {
-  const total = await fetchArchiveSuspectedMixedPendingTotal().catch(() => 0)
-  archiveMixedPendingTotal.value = total > 0 ? total : null
+  try {
+    const total = await fetchArchiveSuspectedMixedPendingTotal()
+    archiveMixedPendingTotal.value = total > 0 ? total : null
+  } catch (error) {
+    // 附属计数失败不影响运营看板主体；禁止把失败伪装成 0 条
+    archiveMixedPendingTotal.value = null
+    showUserError(error, '疑似混扫待处理数量加载失败')
+  }
 }
 
 async function loadDashboard() {

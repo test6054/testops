@@ -5,14 +5,13 @@ import type {
   PortfolioMajorGroupPortfolioSectionItemVO,
   PortfolioMajorGroupPortfolioVO,
 } from '@/apis/portfolio/governance'
-import { portfolioMajorGroupApi } from '@/apis/portfolio/governance'
 import type { PortfolioOrgTreeNodeVO } from '@/apis/portfolio/types'
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
-import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { PortfolioOrgUnitTypeCode } from '@/apis/portfolio/enums'
+import { portfolioMajorGroupApi } from '@/apis/portfolio/governance'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -28,12 +27,13 @@ import {
   PortfolioAlertStatusCode,
   PortfolioAlertStatusDescription,
 } from '@/types/enums/portfolio-alert-status-enum'
+import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import {
   ALL_PORTFOLIO_MAJOR_GROUP_SECTION_CODES,
   PortfolioMajorGroupSectionCode,
   PortfolioMajorGroupSectionDescription,
 } from '@/types/enums/portfolio-major-group-section-code-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 function readRouteStringParam(value: unknown): string {
@@ -41,7 +41,7 @@ function readRouteStringParam(value: unknown): string {
 }
 
 function flattenMajorGroupOptions(roots: PortfolioOrgTreeNodeVO[]) {
-  const result: { value: string; label: string }[] = []
+  const result: { value: string, label: string }[] = []
   function walk(nodes: PortfolioOrgTreeNodeVO[], prefix = '') {
     for (const node of nodes) {
       const label = prefix ? `${prefix} / ${node.name}` : node.name
@@ -116,7 +116,7 @@ const openComplianceAlerts = computed(() =>
 )
 
 const sectionColumns: ColumnsType = [
-  { title: '教师 ID', dataIndex: 'teacherId', key: 'teacherId', width: 120 },
+  { title: '教师编号', dataIndex: 'teacherId', key: 'teacherId', width: 120 },
   { title: '分类', dataIndex: 'categoryLabel', key: 'categoryLabel', width: 140 },
   { title: '标题', dataIndex: 'recordTitle', key: 'recordTitle' },
   { title: '周期', dataIndex: 'periodLabel', key: 'periodLabel', width: 120 },
@@ -220,7 +220,7 @@ async function submitExport() {
   }
   const purpose = exportPurpose.value.trim()
   if (!purpose) {
-    message.warning('请填写导出用途')
+    showFormValidationMessage('请填写导出用途')
     return
   }
   if (exportLoading.value) {
@@ -282,7 +282,7 @@ async function comparePeriods() {
   }
 }
 
-function onSectionPageChange(page: { current: number; pageSize: number }) {
+function onSectionPageChange(page: { current: number, pageSize: number }) {
   sectionFilter.pageNum = page.current
   sectionFilter.pageSize = page.pageSize
 }

@@ -2,14 +2,14 @@
   <WorkbenchSurfaceCard flush class="archive-volume-external-import">
     <template #head>
       <div class="archive-volume-external-import__section-head">
-        <h3 class="archive-volume-external-import__section-title">外部 Excel 批量导入</h3>
+        <h3 class="archive-volume-external-import__section-title">外部表格文件批量导入</h3>
         <p class="archive-volume-external-import__section-subtitle">
           教务系统等外部来源 · 批量创建归档任务并登记材料
         </p>
       </div>
     </template>
     <template #toolbar>
-      <UiButton size="sm" variant="outline" @click="openImportModal"> Excel 批量导入 </UiButton>
+      <UiButton size="sm" variant="outline" @click="openImportModal"> 表格文件批量导入 </UiButton>
     </template>
     <UiAlertStrip
       tone="info"
@@ -59,12 +59,12 @@
 
 <script setup lang="ts">
 import type { ArchiveExternalImportResultVO } from '@/apis/mark/archive-volume'
+import type { ExcelImportResult } from '@/apis/platform/types'
+import { computed, ref } from 'vue'
 import {
   ArchiveExternalImportTypeCode,
   ArchiveExternalImportTypeDescription,
 } from '@/apis/mark/archive-volume'
-import type { ExcelImportResult } from '@/apis/platform/types'
-import { computed, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'

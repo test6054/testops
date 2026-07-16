@@ -4,11 +4,11 @@ import type {
   PortfolioTeacherHonorCategoryVO,
   PortfolioTeacherHonorVO,
 } from '@/apis/portfolio/teacher-honor'
-import { portfolioTeacherHonorApi } from '@/apis/portfolio/teacher-honor'
 import { DatePicker, Form, Input, message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioTeacherHonorApi } from '@/apis/portfolio/teacher-honor'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -26,7 +26,7 @@ import {
   PortfolioHonorLevelDescription,
   PortfolioHonorLevelOptions,
 } from '@/types/enums/portfolio-honor-level-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
@@ -125,15 +125,24 @@ async function loadData() {
   categoryLoading.value = true
   loadFailed.value = false
   try {
-    const [honorRows, categoryRows] = await Promise.all([
-      portfolioTeacherHonorApi.list({ teacherId: scopeTeacherId() }),
-      portfolioTeacherHonorApi.listCategories({ teacherId: scopeTeacherId() }),
-    ])
+    const honorRows = await portfolioTeacherHonorApi.list({ teacherId: scopeTeacherId() })
     if (requestToken.value !== currentToken) {
       return
     }
     rows.value = honorRows
-    categories.value = categoryRows
+    try {
+      const categoryRows = await portfolioTeacherHonorApi.listCategories({
+        teacherId: scopeTeacherId(),
+      })
+      if (requestToken.value === currentToken) {
+        categories.value = categoryRows
+      }
+    } catch (error) {
+      if (requestToken.value === currentToken) {
+        categories.value = []
+        showUserError(error, '荣誉分类加载失败')
+      }
+    }
   } catch (error) {
     if (requestToken.value !== currentToken) {
       return
@@ -141,7 +150,7 @@ async function loadData() {
     rows.value = []
     categories.value = []
     loadFailed.value = true
-    showUserError(error)
+    showUserError(error, '加载荣誉记录失败')
   } finally {
     if (requestToken.value === currentToken) {
       loading.value = false
@@ -152,7 +161,7 @@ async function loadData() {
 
 function openModal(row?: PortfolioTeacherHonorVO) {
   if (readonlyMode.value && !row) {
-    message.warning('管理员查看模式下不可新增荣誉')
+    showFormValidationMessage('管理员查看模式下不可新增荣誉')
     return
   }
   editing.value = row || null
@@ -186,7 +195,7 @@ async function saveHonor() {
     resetForm()
     await loadData()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存荣誉记录失败')
   } finally {
     saving.value = false
   }
@@ -213,7 +222,7 @@ async function removeHonor(row: PortfolioTeacherHonorVO) {
     await loadData()
   } catch (error) {
     if (requestToken.value !== operationToken) return
-    showUserError(error)
+    showUserError(error, '删除荣誉记录失败')
   } finally {
     if (deletingHonorId.value === row.id) deletingHonorId.value = ''
   }
@@ -224,7 +233,7 @@ async function prepareArchiveDraft(row: PortfolioTeacherHonorVO) {
     return
   }
   if (!row.fileId) {
-    message.warning('请先编辑荣誉并上传证明材料')
+    showFormValidationMessage('请先编辑荣誉并上传证明材料')
     return
   }
   preparingArchiveId.value = row.id
@@ -248,7 +257,7 @@ async function prepareArchiveDraft(row: PortfolioTeacherHonorVO) {
 
 function openCategoryModal() {
   if (readonlyMode.value) {
-    message.warning('管理员查看模式下不可创建分类')
+    showFormValidationMessage('管理员查看模式下不可创建分类')
     return
   }
   categoryForm.categoryName = ''
@@ -266,7 +275,7 @@ async function createCategory() {
     categoryModalOpen.value = false
     await loadData()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '创建自建分类失败')
   } finally {
     creatingCategory.value = false
   }
@@ -297,7 +306,7 @@ async function confirmDeleteCategory(row: PortfolioTeacherHonorCategoryVO) {
     await loadData()
   } catch (error) {
     if (requestToken.value !== operationToken) return
-    showUserError(error)
+    showUserError(error, '删除荣誉记录失败')
   } finally {
     if (deletingCategoryId.value === categoryId) deletingCategoryId.value = ''
   }

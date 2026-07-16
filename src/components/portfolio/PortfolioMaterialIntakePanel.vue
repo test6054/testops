@@ -55,7 +55,7 @@
           :disabled="writePending"
           @click="handleRetryAi"
         >
-          重新 AI 抽取
+          重新智能抽取
         </UiButton>
       </div>
     </UiCard>
@@ -72,12 +72,12 @@
       <UiAlertStrip
         v-else-if="status?.stage === PortfolioMaterialIntakeStageCode.AI_FAILED"
         tone="error"
-        title="AI 抽取失败"
-        description="请直接在下方补全字段并保存草稿（手工补采）；仅当需要重新识别材料时再点「重新 AI 抽取」。"
+        title="智能抽取失败"
+        description="请直接在下方补全字段并保存草稿（手工补采）；仅当需要重新识别材料时再点「重新智能抽取」。"
       />
       <UiAlertStrip v-else-if="status?.stage" :tone="stageTone" :title="stageLabel" />
       <p v-if="status?.ocrStatus" class="portfolio-intake-panel__meta">
-        OCR 状态：{{ status.ocrStatus }}
+        文字识别状态：{{ status.ocrStatus }}
       </p>
     </UiCard>
 
@@ -166,7 +166,6 @@
 import type { BadgeTone, UiAlertStripTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
-import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -200,6 +199,7 @@ import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 
 defineOptions({ name: 'PortfolioMaterialIntakePanel' })
 
@@ -262,8 +262,8 @@ const showRegisterStart = computed(() => {
     return true
   }
   return (
-    status.value.stage === PortfolioMaterialIntakeStageCode.CATEGORY_PENDING ||
-    status.value.stage === PortfolioMaterialIntakeStageCode.UPLOADED
+    status.value.stage === PortfolioMaterialIntakeStageCode.CATEGORY_PENDING
+    || status.value.stage === PortfolioMaterialIntakeStageCode.UPLOADED
   )
 })
 
@@ -281,8 +281,8 @@ const reassignBlocked = computed(() => {
     return false
   }
   return (
-    status.value.stage === PortfolioMaterialIntakeStageCode.OCR_PENDING ||
-    status.value.stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
+    status.value.stage === PortfolioMaterialIntakeStageCode.OCR_PENDING
+    || status.value.stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
   )
 })
 
@@ -292,16 +292,16 @@ const reassignAllowed = computed(() => {
   }
   const recordStatus = status.value.recordStatus
   return (
-    recordStatus === PortfolioArchiveRecordStatusCode.DRAFT ||
-    recordStatus === PortfolioArchiveRecordStatusCode.RETURNED
+    recordStatus === PortfolioArchiveRecordStatusCode.DRAFT
+    || recordStatus === PortfolioArchiveRecordStatusCode.RETURNED
   )
 })
 
 const reassignReady = computed(
   () =>
-    reassignAllowed.value &&
-    Boolean(categoryIdModel.value) &&
-    categoryIdModel.value !== status.value?.categoryId,
+    reassignAllowed.value
+    && Boolean(categoryIdModel.value)
+    && categoryIdModel.value !== status.value?.categoryId,
 )
 
 const clearedFieldsHint = computed(() => {
@@ -369,7 +369,7 @@ const signalMetrics = computed((): SignalMetric[] => {
   if (status.value.pendingCandidateCount !== undefined) {
     metrics.push({
       key: 'candidate',
-      label: '待确认 AI 字段',
+      label: '待确认智能字段',
       value: String(status.value.pendingCandidateCount),
       unit: '项',
       tone: status.value.pendingCandidateCount > 0 ? 'blue' : 'green',
@@ -383,22 +383,22 @@ const archiveActionHint = computed(() => {
     return '请先登记材料'
   }
   if (
-    status.value.recordStatus === PortfolioArchiveRecordStatusCode.PENDING_CONFIRM ||
-    (status.value.pendingCandidateCount ?? 0) > 0
+    status.value.recordStatus === PortfolioArchiveRecordStatusCode.PENDING_CONFIRM
+    || (status.value.pendingCandidateCount ?? 0) > 0
   ) {
-    return '请先确认 AI 候选字段后再保存或提交'
+    return '请先确认智能候选字段后再保存或提交'
   }
   if (
-    status.value.stage === PortfolioMaterialIntakeStageCode.OCR_PENDING ||
-    status.value.stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
+    status.value.stage === PortfolioMaterialIntakeStageCode.OCR_PENDING
+    || status.value.stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
   ) {
     return '材料处理中，请等待完成后再保存或提交'
   }
   if (status.value.stage === PortfolioMaterialIntakeStageCode.AI_FAILED) {
-    return '请补全下方字段后保存草稿（手工补采）；需重新识别时再点「重新 AI 抽取」'
+    return '请补全下方字段后保存草稿（手工补采）；需重新识别时再点「重新智能抽取」'
   }
   if (status.value.stage === PortfolioMaterialIntakeStageCode.CANDIDATES_REJECTED) {
-    return 'AI 候选已全部驳回，原候选和作废档案将保留审计记录；请恢复后重新选择分类并采集。'
+    return '智能候选已全部驳回，原候选和作废档案将保留审计记录；请恢复后重新选择分类并采集。'
   }
   if (status.value.recordStatus === PortfolioArchiveRecordStatusCode.OFFICIAL) {
     return '材料已审核通过，可在档案页查看正式记录'
@@ -410,8 +410,8 @@ const archiveActionHint = computed(() => {
     return '审核已退回，请修改字段后保存并重新提交'
   }
   if (
-    status.value.stage === PortfolioMaterialIntakeStageCode.SUBMITTED ||
-    status.value.stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW
+    status.value.stage === PortfolioMaterialIntakeStageCode.SUBMITTED
+    || status.value.stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW
   ) {
     return '材料已提交，可在审核进度页查看状态'
   }
@@ -464,8 +464,8 @@ async function handleRetryAi() {
     return
   }
   void confirmAsync({
-    title: '重新 AI 抽取？',
-    content: '将新建一次 AI 识别任务；若字段已手工填写，请先保存草稿。',
+    title: '重新智能抽取？',
+    content: '将新建一次智能识别任务；若字段已手工填写，请先保存草稿。',
     type: 'warning',
     onOk: async () => {
       retryingAi.value = true
@@ -484,7 +484,7 @@ async function handleRestartRejected() {
   const confirmed = await confirmAsync({
     title: '恢复重新采集',
     content:
-      '将保留原 AI 候选和作废档案作为审计依据，并解除该材料的作废关联。恢复后请重新选择分类并开始采集。',
+      '将保留原智能候选和作废档案作为审计依据，并解除该材料的作废关联。恢复后请重新选择分类并开始采集。',
     type: 'warning',
   })
   if (!confirmed) {
@@ -588,7 +588,7 @@ async function handleReassign() {
   }
   void confirmAsync({
     title: '确认重分类？',
-    content: '切换分类将重置部分字段值，并失效已有 AI 候选字段，请确认后继续。',
+    content: '切换分类将重置部分字段值，并失效已有智能候选字段，请确认后继续。',
     type: 'warning',
     onOk: async () => {
       await reassignCategory(categoryIdModel.value)

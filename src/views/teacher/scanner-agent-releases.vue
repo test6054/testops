@@ -28,7 +28,7 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useAuthStore } from '@/stores/modules/auth'
 import { RoleEnum } from '@/types/enums'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime, formatFileSize } from '@/utils/format'
 
 defineOptions({ name: 'ScannerAgentReleasesPage' })
@@ -145,7 +145,7 @@ async function loadReleases() {
   } catch (error) {
     releases.value = []
     pagination.total = 0
-    showUserError(error, 'Agent 发布包列表加载失败')
+    showUserError(error, '扫描端安装包列表加载失败')
   } finally {
     loading.value = false
   }
@@ -154,11 +154,11 @@ async function loadReleases() {
 async function submitRegister() {
   const version = registerForm.version.trim()
   if (!version) {
-    message.warning('请填写版本号')
+    showFormValidationMessage('请填写版本号')
     return
   }
   if (!registerForm.fileNodeId) {
-    message.warning('请上传 Agent 安装包')
+    showFormValidationMessage('请上传扫描端安装包')
     return
   }
   saving.value = true
@@ -225,7 +225,7 @@ async function submitPublish() {
 
 async function confirmDelete(record: ScannerAgentReleaseResponse) {
   if (record.published) {
-    message.warning('当前发布版本不能删除')
+    showFormValidationMessage('当前发布版本不能删除')
     return
   }
   const confirmed = await confirmAsync({
@@ -274,8 +274,8 @@ onMounted(() => {
       <ContextBar
         layout="workbench"
         show-title
-        title="一体机 Agent 版本发布"
-        subtitle="注册 MSI/EXE 安装包、切换当前发布版本，MSI 可启用次日 01:00 主动推送"
+        title="一体机扫描端版本发布"
+        subtitle="注册安装包、切换当前发布版本，安装包格式可启用次日 01:00 主动推送"
       >
         <template #actions>
           <UiButton
@@ -295,7 +295,7 @@ onMounted(() => {
       <SignalBand v-if="signalMetrics.length" variant="tiles" :metrics="signalMetrics" compact />
     </template>
 
-    <UiEmpty v-if="!canManage" description="仅平台超级管理员可维护 Agent 发布包" />
+    <UiEmpty v-if="!canManage" description="仅平台超级管理员可维护扫描端发布包" />
 
     <WorkbenchSurfaceCard v-else flush>
       <template #toolbar>
@@ -320,7 +320,7 @@ onMounted(() => {
         :total="pagination.total"
         row-key="id"
         flat
-        empty-description="暂无 Agent 发布包，请先注册安装包"
+        empty-description="暂无扫描端发布包，请先注册安装包"
         @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">
@@ -365,7 +365,7 @@ onMounted(() => {
 
     <UiDialog
       v-model:open="registerOpen"
-      title="注册 Agent 发布包"
+      title="注册扫描端发布包"
       :width="520"
       :confirm-loading="saving"
       ok-text="注册"
@@ -381,8 +381,8 @@ onMounted(() => {
             v-model:file-name="registerForm.fileName"
             :scene-key="FileUploadSceneKey.MARK_SCANNER_AGENT_RELEASE"
             accept=".msi,.exe"
-            button-text="选择 MSI / EXE"
-            tip="支持 NybcScannerAgentSetup.msi 或 AgentSetup.exe；交互式引导包不支持服务端下发"
+            button-text="选择安装包"
+            tip="支持主流安装包格式；交互式引导包不支持服务端下发"
           />
         </a-form-item>
         <a-form-item label="发布说明">
@@ -399,7 +399,7 @@ onMounted(() => {
 
     <UiDialog
       v-model:open="publishOpen"
-      title="发布 Agent 版本"
+      title="发布扫描端版本"
       :width="520"
       :confirm-loading="publishing"
       ok-text="确认发布"
@@ -410,11 +410,11 @@ onMounted(() => {
       </p>
       <a-form-item v-if="publishTarget && isMsiPackage(publishTarget)" label="主动推送更新">
         <a-checkbox v-model:checked="publishPushEnabled">
-          启用后将于发布次日 01:00 向在线一体机推送 MSI 更新
+          启用后将于发布次日 01:00 向在线一体机推送安装包更新
         </a-checkbox>
       </a-form-item>
       <p v-else-if="publishTarget" class="scanner-agent-releases__hint">
-        EXE 安装包不支持主动推送，一体机需通过 Agent 自更新或人工安装。
+        可执行安装包不支持主动推送，一体机需通过扫描端自更新或人工安装。
       </p>
     </UiDialog>
   </StageWorkbenchShell>

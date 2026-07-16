@@ -494,22 +494,29 @@ async function loadSyncTasks(options?: { quiet?: boolean }): Promise<void> {
     loadFailed.value = false
   }
   try {
-    const page = await pageSyncTasks({
-      examId: selectedExamId.value,
-      taskStatus: syncFilterForm.status,
-      pageNum: syncPagination.pageNum,
-      pageSize: syncPagination.pageSize,
-    })
+    const quietConfig = options?.quiet ? { showErrorMessage: false as const } : undefined
+    const page = await pageSyncTasks(
+      {
+        examId: selectedExamId.value,
+        taskStatus: syncFilterForm.status,
+        pageNum: syncPagination.pageNum,
+        pageSize: syncPagination.pageSize,
+      },
+      quietConfig,
+    )
     syncTasks.value = page.list
     syncTaskTotal.value = page.total
     syncPagination.pageNum = page.pageNum ?? syncPagination.pageNum
     syncPagination.pageSize = page.pageSize ?? syncPagination.pageSize
-    const syncingPage = await pageSyncTasks({
-      examId: selectedExamId.value,
-      taskStatus: SyncTaskStatusCode.SYNCING,
-      pageNum: 1,
-      pageSize: 1,
-    })
+    const syncingPage = await pageSyncTasks(
+      {
+        examId: selectedExamId.value,
+        taskStatus: SyncTaskStatusCode.SYNCING,
+        pageNum: 1,
+        pageSize: 1,
+      },
+      quietConfig,
+    )
     syncingTaskTotal.value = syncingPage.total
   } catch (error) {
     if (!options?.quiet) {
@@ -863,13 +870,16 @@ async function loadPassbackRecords(options?: { quiet?: boolean }): Promise<void>
     passbackLoading.value = true
   }
   try {
-    const page = await listPassbackRecords({
-      examId: selectedExamId.value,
-      syncTaskId: passbackFilterForm.syncTaskId?.trim() || undefined,
-      passbackStatus: passbackFilterForm.passbackStatus,
-      pageNum: passbackPagination.pageNum,
-      pageSize: passbackPagination.pageSize,
-    })
+    const page = await listPassbackRecords(
+      {
+        examId: selectedExamId.value,
+        syncTaskId: passbackFilterForm.syncTaskId?.trim() || undefined,
+        passbackStatus: passbackFilterForm.passbackStatus,
+        pageNum: passbackPagination.pageNum,
+        pageSize: passbackPagination.pageSize,
+      },
+      options?.quiet ? { showErrorMessage: false } : undefined,
+    )
     passbackRecords.value = page.list
     passbackPagination.pageNum = page.pageNum
     passbackPagination.pageSize = page.pageSize

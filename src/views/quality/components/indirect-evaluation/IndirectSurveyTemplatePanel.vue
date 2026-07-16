@@ -488,19 +488,24 @@ watch(selectedForm, () => {
 })
 
 async function loadScaleRules(keyword?: string) {
-  const page = await scaleConversionRuleApi.page({
-    pageNum: 1,
-    pageSize: SCALE_CONVERSION_RULE_OPTION_PAGE_SIZE,
-    enabled: true,
-  })
-  const normalizedKeyword = keyword?.trim().toLowerCase()
-  scaleRules.value = normalizedKeyword
-    ? page.list.filter((rule) =>
-        [rule.ruleCode, rule.ruleName].some((value) =>
-          value.toLowerCase().includes(normalizedKeyword),
-        ),
-      )
-    : page.list
+  try {
+    const page = await scaleConversionRuleApi.page({
+      pageNum: 1,
+      pageSize: SCALE_CONVERSION_RULE_OPTION_PAGE_SIZE,
+      enabled: true,
+    })
+    const normalizedKeyword = keyword?.trim().toLowerCase()
+    scaleRules.value = normalizedKeyword
+      ? page.list.filter((rule) =>
+          [rule.ruleCode, rule.ruleName].some((value) =>
+            value.toLowerCase().includes(normalizedKeyword),
+          ),
+        )
+      : page.list
+  } catch (error) {
+    scaleRules.value = []
+    showUserError(error, '量表换算规则加载失败')
+  }
 }
 
 function defaultScaleLabels(min: number, max: number) {

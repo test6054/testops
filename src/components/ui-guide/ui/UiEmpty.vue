@@ -11,8 +11,17 @@
     <div v-if="showDescription" class="ui-empty__description">
       <slot>{{ resolvedDescription }}</slot>
     </div>
-    <div v-if="$slots.action" class="ui-empty__action">
-      <slot name="action" />
+    <div v-if="showAction" class="ui-empty__action">
+      <slot name="action">
+        <button
+          v-if="resolvedActionLabel"
+          type="button"
+          class="ui-empty__action-btn"
+          @click="emit('action')"
+        >
+          {{ resolvedActionLabel }}
+        </button>
+      </slot>
     </div>
   </div>
 </template>
@@ -32,14 +41,28 @@ const props = withDefaults(defineProps<{
   size?: 'sm' | 'md'
   /** 默认不展示大插画，减少占屏 */
   showIcon?: boolean
+  /**
+   * 失败态恢复动作文案（如「重试」）。仅内容区操作，不替代右上角 Message 错误提示。
+   * 与 action-label 属性同义（模板 kebab 写法）。
+   */
+  actionLabel?: string
 }>(), {
   title: '',
   description: undefined,
   size: 'sm',
   showIcon: false,
+  actionLabel: undefined,
 })
 
+const emit = defineEmits<{
+  action: []
+}>()
+
 const slots = useSlots()
+
+const resolvedActionLabel = computed(() => props.actionLabel?.trim() || '')
+
+const showAction = computed(() => Boolean(slots.action) || Boolean(resolvedActionLabel.value))
 
 /** 有默认插槽，或显式非空 description，或「无标题且未显式传 description」时才展示说明区 */
 const showDescription = computed(() => {
@@ -111,5 +134,22 @@ const resolvedDescription = computed(() => {
 
 .ui-empty__action {
   margin-top: 10px;
+}
+
+.ui-empty__action-btn {
+  min-height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--ant-color-border);
+  border-radius: var(--dp-radius-control, 6px);
+  background: var(--ant-color-bg-container);
+  color: var(--ant-color-text);
+  font-size: 13px;
+  line-height: 26px;
+  cursor: pointer;
+}
+
+.ui-empty__action-btn:hover {
+  border-color: var(--ant-color-primary);
+  color: var(--ant-color-primary);
 }
 </style>

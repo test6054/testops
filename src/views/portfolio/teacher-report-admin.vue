@@ -20,7 +20,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
 import {
   portfolioTeacherSelectOptionsFromSummaries,
@@ -69,7 +69,7 @@ const pageSubtitle = computed(() => {
     return reportDetail.value.reportPeriodLabel
   }
   if (deepLinkedTaskId.value) {
-    return '按年度报告任务查看 AI 结果'
+    return '按年度报告任务查看智能结果'
   }
   return '按教师场景生成教学档案袋文本分析结果'
 })
@@ -147,7 +147,7 @@ async function loadTeachers(keyword?: string) {
     }
     mergeTeacherOptions(page.list)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '加载教师名册失败')
   }
 }
 
@@ -206,11 +206,11 @@ async function pollAnalysis(taskId: string): Promise<PortfolioAiAnalysisDetailVO
 
 async function submitReport() {
   if (!form.teacherId) {
-    message.warning('请选择教师')
+    showFormValidationMessage('请选择教师')
     return
   }
   if (!form.reportPeriodLabel.trim()) {
-    message.warning('请填写报告周期')
+    showFormValidationMessage('请填写报告周期')
     return
   }
   loading.value = true
@@ -245,7 +245,7 @@ async function submitReport() {
     }
     message.success('报告生成完成')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '提交报告生成失败')
   } finally {
     if (currentToken === reportRequestToken.value) {
       loading.value = false
@@ -256,14 +256,14 @@ async function submitReport() {
 
 function downloadMarkdown() {
   if (!reportDetail.value?.draftMarkdown) {
-    message.warning('暂无可下载内容')
+    showFormValidationMessage('暂无可下载内容')
     return
   }
   const blob = new Blob([reportDetail.value.draftMarkdown], { type: 'text/markdown;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
   anchor.href = url
-  anchor.download = `${reportDetail.value.resultTitle || 'teacher-report'}.md`
+  anchor.download = `${reportDetail.value.resultTitle || '教学报告'}.md`
   anchor.click()
   URL.revokeObjectURL(url)
 }
@@ -296,7 +296,7 @@ async function bootstrapPage() {
       if (currentToken !== reportRequestToken.value) {
         return
       }
-      showUserError(error)
+      showUserError(error, '加载报告详情失败')
     } finally {
       if (currentToken === reportRequestToken.value) {
         polling.value = false
@@ -365,7 +365,7 @@ watch(
           style="width: 160px"
         />
         <UiButton variant="primary" :loading="loading" @click="submitReport">
-          提交 AI 生成
+          提交智能生成
         </UiButton>
       </div>
       <p v-if="polling" class="hint">任务执行中，请稍候…</p>
@@ -388,14 +388,14 @@ watch(
             "
             class="report-meta__extra"
           >
-            {{ reportDetail.teacherName || `教师ID ${reportDetail.teacherId}` }}
+            {{ reportDetail.teacherName || `教师编号 ${reportDetail.teacherId}` }}
             <template v-if="reportDetail.teacherNumber">
               · {{ reportDetail.teacherNumber }}</template>
             <template v-if="reportDetail.departmentName">
               · {{ reportDetail.departmentName }}</template>
           </span>
         </div>
-        <UiButton size="sm" @click="downloadMarkdown"> 下载 Markdown </UiButton>
+        <UiButton size="sm" @click="downloadMarkdown"> 下载文稿 </UiButton>
       </div>
       <pre class="markdown">{{ reportDetail.draftMarkdown }}</pre>
     </UiCard>

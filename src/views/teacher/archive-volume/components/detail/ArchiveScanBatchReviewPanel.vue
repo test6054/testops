@@ -2,6 +2,8 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { Key } from 'ant-design-vue/es/table/interface'
 import type { ArchiveScanBatchSnapshotItemVO } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   batchConfirmNormalArchiveScanBatches,
   batchDiscardArchiveScanBatches,
@@ -10,8 +12,6 @@ import {
   ScanBatchQualityFlagCode,
   ScanBatchQualityFlagDescription,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   ScanWorkOrderStatusCode,
   ScanWorkOrderStatusDescription,
@@ -21,7 +21,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { getUserErrorMessage } from '@/utils/error-handler'
+import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -72,8 +72,8 @@ const rowSelection = computed(() =>
         },
         getCheckboxProps: (record: ArchiveScanBatchSnapshotItemVO) => ({
           disabled:
-            record.workOrderStatus !== ScanWorkOrderStatusCode.COMMITTED ||
-            record.batchQualityFlag !== ScanBatchQualityFlagCode.SUSPECTED_MIXED,
+            record.workOrderStatus !== ScanWorkOrderStatusCode.COMMITTED
+            || record.batchQualityFlag !== ScanBatchQualityFlagCode.SUSPECTED_MIXED,
         }),
       }
     : undefined,
@@ -103,7 +103,7 @@ async function loadRows() {
 
 function openBatchAction(action: 'confirm-normal' | 'discard') {
   if (selectedRowKeys.value.length === 0) {
-    message.warning('请先选择批次')
+    showFormValidationMessage('请先选择批次')
     return
   }
   pendingAction.value = action
@@ -114,21 +114,21 @@ function openBatchAction(action: 'confirm-normal' | 'discard') {
 async function submitBatchAction() {
   const reason = actionReason.value.trim()
   if (!reason) {
-    message.warning('请填写处置说明')
+    showFormValidationMessage('请填写处置说明')
     return
   }
   const selectedRows = rows.value.filter(
     (row) => row.sourceBatchId && selectedRowKeys.value.includes(String(row.sourceBatchId)),
   )
   if (
-    selectedRows.length !== selectedRowKeys.value.length ||
-    selectedRows.some(
+    selectedRows.length !== selectedRowKeys.value.length
+    || selectedRows.some(
       (row) =>
-        row.workOrderStatus !== ScanWorkOrderStatusCode.COMMITTED ||
-        row.batchQualityFlag !== ScanBatchQualityFlagCode.SUSPECTED_MIXED,
+        row.workOrderStatus !== ScanWorkOrderStatusCode.COMMITTED
+        || row.batchQualityFlag !== ScanBatchQualityFlagCode.SUSPECTED_MIXED,
     )
   ) {
-    message.warning('选中批次状态已变化，请刷新后重新选择')
+    showFormValidationMessage('选中批次状态已变化，请刷新后重新选择')
     return
   }
   actionLoading.value = true
@@ -149,7 +149,7 @@ async function submitBatchAction() {
     emit('refreshed')
     await loadRows()
   } catch (error) {
-    message.error(getUserErrorMessage(error))
+    showUserError(error, `${actionLabel.value}失败`)
   } finally {
     actionLoading.value = false
   }

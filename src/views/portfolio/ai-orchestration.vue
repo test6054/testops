@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { PortfolioAiAnalysisDetailVO, PortfolioAiJobSummaryVO } from '@/apis/portfolio/types'
-import { PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -15,6 +14,7 @@ import {
 } from '@/apis/portfolio/enums'
 import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
+import { PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE } from '@/apis/portfolio/types'
 import { AiTaskStatusCode } from '@/apis/quality/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -30,7 +30,7 @@ import {
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { AiTaskStatusDescription } from '@/types/enums/ai-task-status-enum'
 import { PortfolioAiTaskTypeDescription } from '@/types/enums/portfolio-ai-task-type-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -81,7 +81,7 @@ const analysisTypeLabel = computed(() =>
     ? strictEnumLabel(
         PortfolioAiAnalysisTypeDescription,
         analysisDetail.value.analysisType,
-        'AI 分析类型',
+        '智能分析类型',
       )
     : '',
 )
@@ -156,7 +156,7 @@ async function loadMaterialTasks() {
     if (orchestrationToken.value !== taskToken) return
     materialTaskRows.value = []
     materialTaskTotal.value = 0
-    showUserError(error, '加载材料 AI 任务失败')
+    showUserError(error, '加载材料智能分析任务失败')
   } finally {
     if (orchestrationToken.value === taskToken) materialTaskLoading.value = false
   }
@@ -175,8 +175,8 @@ function isAnalysisType(type: PortfolioAiAnalysisTypeCode) {
 const supportedOrchestrationAnalysis = computed(() => {
   const type = analysisDetail.value?.analysisType
   return (
-    type === PortfolioAiAnalysisTypeCode.MATERIAL_QA ||
-    type === PortfolioAiAnalysisTypeCode.POLICY_MATCH
+    type === PortfolioAiAnalysisTypeCode.MATERIAL_QA
+    || type === PortfolioAiAnalysisTypeCode.POLICY_MATCH
   )
 })
 
@@ -212,7 +212,7 @@ async function loadRegisteredMaterial(materialId: string) {
     }
     if (!targetTeacherId.value) {
       resetMaterialContext()
-      message.error('请先选择教师')
+      showFormValidationMessage('请先选择教师')
       return
     }
     if (material.teacherId !== targetTeacherId.value) {
@@ -243,17 +243,17 @@ async function loadRegisteredMaterial(materialId: string) {
 
 async function ensureMaterialRegistered(taskToken: number): Promise<string | null> {
   if (
-    registeredMaterialId.value &&
-    registeredMaterialFileNodeId.value === materialFileNodeId.value &&
-    registeredMaterialType.value === materialType.value
+    registeredMaterialId.value
+    && registeredMaterialFileNodeId.value === materialFileNodeId.value
+    && registeredMaterialType.value === materialType.value
   ) {
     return registeredMaterialId.value
   }
   if (!targetTeacherId.value || !materialFileNodeId.value) {
-    showUserError(null, '请先选择教师并上传材料文件')
+    showFormValidationMessage('请先选择教师并上传材料文件')
     return null
   }
-  const materialTitle = materialFileName.value?.trim() || 'AI编排材料'
+  const materialTitle = materialFileName.value?.trim() || '智能编排材料'
   const teacherId = targetTeacherId.value
   const fileNodeId = materialFileNodeId.value
   const currentMaterialType = materialType.value
@@ -278,7 +278,7 @@ function applyOrchestrationAnalysisDetail(detail: PortfolioAiAnalysisDetailVO) {
   } else if (detail.analysisType === PortfolioAiAnalysisTypeCode.MATERIAL_QA) {
     activeTab.value = 'ask'
   } else {
-    showUserError(null, '该 AI 任务不属于智能问数或政策核验')
+    showFormValidationMessage('该智能任务不属于智能问数或政策核验')
     return
   }
   analysisDetail.value = detail
@@ -310,7 +310,7 @@ async function pollAnalysis(taskId: string, taskToken = orchestrationToken.value
         if (orchestrationToken.value !== taskToken) {
           return
         }
-        showUserError(null, 'AI 任务失败，请在任务列表查看原因后重新提交')
+        showUserError(null, '智能任务失败，请在任务列表查看原因后重新提交')
         return
       }
       await sleep(2000)
@@ -318,7 +318,7 @@ async function pollAnalysis(taskId: string, taskToken = orchestrationToken.value
     if (orchestrationToken.value !== taskToken) {
       return
     }
-    showUserError(null, 'AI 任务超时，请在任务列表查看结果')
+    showUserError(null, '智能任务超时，请在任务列表查看结果')
   } finally {
     if (orchestrationToken.value === taskToken) {
       polling.value = false
@@ -332,15 +332,15 @@ async function submitAsk() {
     return
   }
   if (!askForm.userQuestion.trim()) {
-    message.warning('请输入问题')
+    showFormValidationMessage('请输入问题')
     return
   }
   if (!materialFileNodeId.value) {
-    message.warning('请上传或选择材料文件')
+    showFormValidationMessage('请上传或选择材料文件')
     return
   }
   if (!selectedTeacherProgramId.value) {
-    message.warning('当前教师未关联专业')
+    showFormValidationMessage('当前教师未关联专业')
     return
   }
   loading.value = true
@@ -386,15 +386,15 @@ async function submitPolicyCheck() {
     return
   }
   if (!policyForm.policyClauseText.trim()) {
-    message.warning('请输入政策条款文本')
+    showFormValidationMessage('请输入政策条款文本')
     return
   }
   if (policyForm.attachMaterial && !materialFileNodeId.value) {
-    message.warning('请上传或选择佐证材料')
+    showFormValidationMessage('请上传或选择佐证材料')
     return
   }
   if (!selectedTeacherProgramId.value) {
-    message.warning('当前教师未关联专业')
+    showFormValidationMessage('当前教师未关联专业')
     return
   }
   loading.value = true
@@ -475,7 +475,7 @@ watch(
       if (orchestrationToken.value !== taskToken) {
         return
       }
-      showUserError(error, '加载 AI 分析结果失败')
+      showUserError(error, '加载智能分析结果失败')
     })
   },
   { immediate: true },
@@ -506,8 +506,8 @@ usePortfolioScopedLoader(
 <template>
   <StageWorkbenchShell>
     <ContextBar
-      title="AI 智能问数与政策核验"
-      description="材料须先登记材料库，再提交 ask / policy-check 编排任务"
+      title="智能问数与政策核验"
+      description="材料须先登记材料库，再提交智能问数或政策核验编排任务"
     />
     <UiCard title="材料上下文">
       <a-select
@@ -531,7 +531,7 @@ usePortfolioScopedLoader(
       </p>
     </UiCard>
 
-    <UiCard title="材料 AI 任务">
+    <UiCard title="材料智能任务">
       <div class="ai-orchestration__task-toolbar">
         <UiButton variant="outline" :loading="materialTaskLoading" @click="loadMaterialTasks">
           刷新任务
@@ -540,15 +540,14 @@ usePortfolioScopedLoader(
       <a-spin :spinning="materialTaskLoading">
         <UiEmpty
           v-if="!materialTaskLoading && materialTaskRows.length === 0"
-          description="暂无材料 AI 任务"
+          description="暂无材料智能任务"
         />
         <ul v-else class="ai-orchestration__task-list">
           <li v-for="task in materialTaskRows" :key="task.id">
             <div>
               <strong>{{ PortfolioAiTaskTypeDescription[task.taskType] }}</strong>
               <span class="ai-orchestration__meta">
-                #{{ task.id }} · {{ task.createTime || '时间未记录' }}</span
-              >
+                #{{ task.id }} · {{ task.createTime || '时间未记录' }}</span>
             </div>
             <UiTag
               :tone="

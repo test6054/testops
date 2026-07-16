@@ -1,616 +1,536 @@
-# 组件手审账 · Batch 24（重写 · 逐文件三 Skill）
+# 组件手审账 · Batch 24
 
-> 逐文件 Read 信号 + 引用核对 · Impeccable product · Finesse D8 · Taste 3/2/8 · frontend-design-mark  
-> 替换原机械套话版 · 2026-07-16
+> 方法：逐文件 Read 源码 + 路径限定引用核对（排除 `components.d.ts`）。  
+> Skills：**Impeccable product** · **Finesse product** · **Taste audit-only**  
+> Gate：**frontend-design-mark**（`#1677ff` · 浅色 · `--dp-*`）  
+> 范围：**仅 INDEX `batch=BATCH_24` 的 27 路径**（不含 BATCH_18 标 SHELL 的 layout 壳）。  
+> Date: 2026-07-16（深审重写 · 去掉机械套话）
+
+## Design Read（本批）
+
+Reading this as: **归档详情收尾面板 · 考试创建向导步 · 影像账本 · 全局 layout 小组件**，密态工作台 — `SubmitProgressBand` 承担主进度，禁与 `ArchiveFlowContextBar` 双管道。
+
+| Dial | Value |
+|------|------:|
+| Taste VARIANCE / MOTION / DENSITY | 3 / 2 / 8 |
+| Finesse SPECTACLE / DENSITY | 2 / 8 |
+
+---
 
 ## 491. `ArchiveVolumePhysicalLocationPanel.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `views/teacher/archive-volume/components/detail/ArchiveVolumePhysicalLocationPanel.vue` |
-| 源码 | L361;refs≈1;hex=#8c8c8c;有失败处理 |
-| 注册名 | `ArchiveVolumePhysicalLocationPanel` |
-| Props要点 | volumeId、detail、canEdit |
-| 结构信号 | 严格枚举、失败toast |
+| 行数 | 360 |
+| 调用 | `archive-volume-detail.vue` |
+| Token | `var(--nybc-text-secondary, #8c8c8c)` 只读/空文案 |
+| 结构 | 结构化库位表单 · 历史时间线 · `canEdit` 门控 |
 
-**Impeccable：** 归档卷子链；严格枚举、失败toast；props volumeId、detail、canEdit。  
-**Finesse：** L361 面板。  
-**Taste：** 与 portfolio/quality 分域，禁混 Scope。  
+**Impeccable：** 实体库位登记+变更历史，失败与 historyLoadFailed 可见。  
+**Finesse：** 360 行表单+时间线偏重；filled 字段高亮有用。  
+**Taste：** 遗留 `#8c8c8c`/`--nybc-*` 应迁 `--dp-text-secondary`。  
 
 **判定：TUNE**  
-**动作：** 材料登记用归档专用 modal。  
-**禁：** 名册 Excel 模态冒充归档。
+**动作：** token 清理；历史加载错误态保持内联重试。  
+**禁：** 无库位时展示假「已上架」文案。
+
+---
 
 ## 492. `ArchiveVolumeScoresPanel.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `views/teacher/archive-volume/components/detail/ArchiveVolumeScoresPanel.vue` |
-| 源码 | L359;refs≈1;有失败处理 |
-| 注册名 | `ArchiveVolumeScoresPanel` |
-| Props要点 | volumeId、detail、canConfirmScoreCompletion |
-| 结构信号 | 表格、严格枚举、失败toast、Tag |
+| 行数 | 359 |
+| 调用 | `archive-volume-detail.vue` |
+| Props | `canConfirmScoreCompletion` |
 
-**Impeccable：** 归档卷子链；表格、严格枚举、失败toast、Tag；props volumeId、detail、canConfirmScoreCompletion。  
-**Finesse：** L359 面板。  
-**Taste：** 与 portfolio/quality 分域，禁混 Scope。  
+**Impeccable：** 成绩事实表+确认完成链，枚举 Tag 严格。  
+**Finesse：** 359 行单面板可接受。  
+**Taste：** 无装饰分数 KPI 墙。  
 
 **判定：OK**  
-**动作：** 材料登记用归档专用 modal。  
-**禁：** 名册 Excel 模态冒充归档。
+**动作：** 保持权限门控确认按钮。  
+**禁：** 未确认时绿勾假完成。
+
+---
 
 ## 493. `ArchiveVolumeSelfCheckList.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `views/teacher/archive-volume/components/detail/ArchiveVolumeSelfCheckList.vue` |
-| 源码 | L202;refs≈1;有Empty;有失败处理 |
-| 注册名 | `ArchiveVolumeSelfCheckList` |
-| Props要点 | volumeId、selfCheckStatus、readonly、embedded |
-| 结构信号 | 空态、提示条、严格枚举、Tag |
+| 行数 | 202 |
+| 调用 | `ArchiveVolumeIntegrityPanel.vue`（嵌入） |
+| Props | `embedded` `readonly` `selfCheckStatus` |
 
-**Impeccable：** 归档卷子链；空态、提示条、严格枚举、Tag；props volumeId、selfCheckStatus、readonly、embedded。  
-**Finesse：** L202 面板。  
-**Taste：** 与 portfolio/quality 分域，禁混 Scope。  
+**Impeccable：** 自检清单子件，可嵌入完整性面板。  
+**Finesse：** 202 行 checklist 密排。  
+**Taste：** dense Alert/Tag，非大卡片墙。  
 
 **判定：OK**  
-**动作：** 材料登记用归档专用 modal。  
-**禁：** 名册 Excel 模态冒充归档。
+**动作：** 保持 embedded 模式。  
+**禁：** 升独立 Tab 与完整性双轨。
+
+---
 
 ## 494. `ArchiveVolumeSubmitChecklistModal.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `views/teacher/archive-volume/components/detail/ArchiveVolumeSubmitChecklistModal.vue` |
-| 源码 | L215;refs≈1;有失败处理 |
-| 注册名 | `ArchiveVolumeSubmitChecklistModal` |
-| Props要点 | open、volumeId |
-| 结构信号 | 提示条、失败toast |
+| 行数 | 215 |
+| 调用 | `archive-volume-detail.vue` |
+| Props | `open` `volumeId` |
 
-**Impeccable：** 归档卷子链；提示条、失败toast；props open、volumeId。  
-**Finesse：** L215 面板。  
-**Taste：** 与 portfolio/quality 分域，禁混 Scope。  
+**Impeccable：** 提交前清单模态，blocking 项可导航。  
+**Finesse：** 215 行模态适中。  
+**Taste：** 提示条非全屏墙。  
 
 **判定：OK**  
-**动作：** 保持 destroy-on-close 防脏状态。  
-**禁：** 暗色监控抽屉。
+**动作：** destroy-on-close。  
+**禁：** 未通过项静默允许提交。
+
+---
 
 ## 495. `ArchiveVolumeSubmitProgressBand.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `views/teacher/archive-volume/components/detail/ArchiveVolumeSubmitProgressBand.vue` |
-| 源码 | L123;refs≈1 |
-| 注册名 | `ArchiveVolumeSubmitProgressBand` |
-| Props要点 | progress、canSubmitVolume、blockingItems |
-| 结构信号 | 严格枚举、Tag |
+| 行数 | 123 |
+| 调用 | `archive-volume-detail.vue` |
+| 结构 | `WorkbenchSurfaceCard` · 阶段 Tag · 可展开 `ArchiveVolumeSubmitTaskList` |
+| 行为 | `blockingItems` 有待办自动 `expanded` |
 
-**Impeccable：** 归档卷子链；严格枚举、Tag；props progress、canSubmitVolume、blockingItems。  
-**Finesse：** L123 面板。  
-**Taste：** 与 portfolio/quality 分域，禁混 Scope。  
+**Impeccable：** **收材期主进度带**（与 `ArchiveFlowContextBar.showPipeline=false` 对标注释一致）。  
+**Finesse：** 123 行轻量 band，展开待办用 `UiTextAction`。  
+**Taste：** **好样板** — 单条进度+可收起待办，非 Step 墙。  
 
 **判定：OK**  
-**动作：** 材料登记用归档专用 modal。  
-**禁：** 名册 Excel 模态冒充归档。
+**动作：** 保持与 Flow 管道互斥展示策略。  
+**禁：** 与顶栏 pipeline 双主进度同时全展。
+
+---
 
 ## 496. `ArchiveVolumeTransferPanel.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `views/teacher/archive-volume/components/detail/ArchiveVolumeTransferPanel.vue` |
-| 源码 | L309;refs≈1;有Empty;有失败处理 |
-| 注册名 | `ArchiveVolumeTransferPanel` |
-| Props要点 | volumeId、detail、canReviewTransfer、canRejectTransfer |
-| 结构信号 | 空态、提示条、严格枚举、失败toast |
+| 行数 | 320 |
+| 调用 | `archive-volume-detail.vue` |
+| Props | `canReviewTransfer` `canRejectTransfer` |
 
-**Impeccable：** 归档卷子链；空态、提示条、严格枚举、失败toast；props volumeId、detail、canReviewTransfer、canRejectTransfer。  
-**Finesse：** L309 面板。  
-**Taste：** 与 portfolio/quality 分域，禁混 Scope。  
+**Impeccable：** 移交审核面板，空态+失败 toast。  
+**Finesse：** 320 行。  
+**Taste：** 审批 Tag 严格枚举。  
 
 **判定：OK**  
-**动作：** 材料登记用归档专用 modal。  
-**禁：** 名册 Excel 模态冒充归档。
+**动作：** 保持双权限 props。  
+**禁：** 无权限展示通过/驳回。
+
+---
 
 ## 497. `DepartmentReviewPanel.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `views/teacher/archive-volume/components/detail/DepartmentReviewPanel.vue` |
-| 源码 | L279;refs≈1;有Empty;有失败处理 |
-| 注册名 | `DepartmentReviewPanel` |
-| Props要点 | volumeId、detail |
-| 结构信号 | 空态、失败toast、Tag |
+| 行数 | 279 |
+| 调用 | `archive-volume-detail.vue` |
 
-**Impeccable：** 归档卷子链；空态、失败toast、Tag；props volumeId、detail。  
-**Finesse：** L279 面板。  
-**Taste：** 与 portfolio/quality 分域，禁混 Scope。  
+**Impeccable：** 院系审核记录面板（详情内），与列表抽屉分工。  
+**Finesse：** 279 行。  
+**Taste：** 空态明确。  
 
 **判定：OK**  
-**动作：** 材料登记用归档专用 modal。  
-**禁：** 名册 Excel 模态冒充归档。
+**动作：** 保持详情内只读/操作边界。  
+**禁：** 与 `DepartmentReviewListDrawer` 重复主链无差异。
+
+---
 
 ## 498. `DigitalMaterialConfirmPanel.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `views/teacher/archive-volume/components/detail/DigitalMaterialConfirmPanel.vue` |
-| 源码 | L173;refs≈1;有失败处理 |
-| 注册名 | `DigitalMaterialConfirmPanel` |
-| Props要点 | volumeId、detail |
-| 结构信号 | 严格枚举、失败toast |
+| 行数 | 173 |
+| 调用 | `archive-volume-detail.vue` |
 
-**Impeccable：** 归档卷子链；严格枚举、失败toast；props volumeId、detail。  
-**Finesse：** L173 面板。  
-**Taste：** 与 portfolio/quality 分域，禁混 Scope。  
+**Impeccable：** 数字化材料确认，历史数字化路径配套。  
+**Finesse：** 173 行轻面板。  
+**Taste：** 无假确认勾选。  
 
 **判定：OK**  
-**动作：** 材料登记用归档专用 modal。  
-**禁：** 名册 Excel 模态冒充归档。
+**动作：** 保持。  
+**禁：** 未核验材料默认可提交。
+
+---
 
 ## 499. `TaskSettingsDrawer.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `views/teacher/archive-volume/components/detail/TaskSettingsDrawer.vue` |
-| 源码 | L282;refs≈1;有失败处理 |
-| 注册名 | `TaskSettingsDrawer` |
-| Props要点 | detail、canManageCollaborators、canUpdateArchiveDueTime |
-| 结构信号 | 严格枚举、失败toast |
+| 行数 | 282 |
+| 调用 | `archive-volume-detail.vue` |
+| Props | `canManageCollaborators` `canUpdateArchiveDueTime` |
 
-**Impeccable：** 归档卷子链；严格枚举、失败toast；props detail、canManageCollaborators、canUpdateArchiveDueTime。  
-**Finesse：** L282 面板。  
-**Taste：** 与 portfolio/quality 分域，禁混 Scope。  
+**Impeccable：** 任务级协作/截止设置抽屉，权限分项。  
+**Finesse：** 282 行。  
+**Taste：** UiDrawer 域一致。  
 
 **判定：OK**  
-**动作：** 保持 destroy-on-close 防脏状态。  
-**禁：** 暗色监控抽屉。
+**动作：** destroy-on-close 防脏表单。  
+**禁：** 列表页 Banner 再引租户 settings 页。
+
+---
 
 ## 500. `ScanDispatchDialog.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `views/teacher/archive-volume/components/ScanDispatchDialog.vue` |
-| 源码 | L142;refs≈1;hex=#595959,#8c8c8c;有失败处理 |
-| 注册名 | `ScanDispatchDialog` |
-| Props要点 | open、volumeId、catalogCode、materialType、archiveBatchMode |
-| 结构信号 | 失败toast |
+| 行数 | 142 |
+| 调用 | `ArchiveVolumeMaterialTablePanel.vue` |
+| Token | `#595959` `#8c8c8c` 说明文案 |
+| Props | `catalogCode` `materialType` `archiveBatchMode` |
 
-**Impeccable：** 归档卷子链；失败toast；props open、volumeId、catalogCode、materialType、archiveBatchMode。  
-**Finesse：** L142 面板。  
-**Taste：** 与 portfolio/quality 分域，禁混 Scope。  
+**Impeccable：** 归档扫描派单弹窗，材料上下文 props 齐全。  
+**Finesse：** 142 行小模态。  
+**Taste：** hex 文案应迁 `--dp-text-secondary`。  
 
 **判定：OK**  
-**动作：** 保持 destroy-on-close 防脏状态。  
-**禁：** 暗色监控抽屉。
+**动作：** 实现波次 token 清理。  
+**禁：** 无 catalog 上下文仍派单。
+
+---
 
 ## 501. `ExamListExamWindowCell.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `views/teacher/components/ExamListExamWindowCell.vue` |
-| 源码 | L54;refs≈1 |
-| 注册名 | `ExamListExamWindowCell` |
-| Props要点 | exam |
-| 结构信号 | 无 Ui* 关键件 |
+| 行数 | 54 |
+| 调用 | `exam-list.vue` |
+| 行为 | 紧凑区间 + 相对阶段 modifier + `title` 完整时间 |
 
-**Impeccable：** 页内组件；无 Ui* 关键件；props exam。  
-**Finesse：** L54 随父页工作台。  
-**Taste：** 禁重复身份条/装饰 KPI。  
+**Impeccable：** 列表考试时间窗单元格，util 格式化无宽化类型。  
+**Finesse：** 54 行纯展示，恰当。  
+**Taste：** 未设置显示 `muted`「未设置」。  
 
 **判定：OK**  
-**动作：** 保持失败可见。  
-**禁：** 假空成功；未知枚举兜底。
+**动作：** 保持 hover title 全文。  
+**禁：** 英文 phase 直出。
+
+---
 
 ## 502. `BasicSettingsStep.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `views/teacher/exam-create/BasicSettingsStep.vue` |
-| 源码 | L365;refs≈1;有失败处理 |
-| 注册名 | `BasicSettingsStep` |
-| Props要点 | basicRules |
-| 结构信号 | 严格枚举、失败toast |
+| 行数 | 365 |
+| 调用 | `exam-create.vue` |
+| Props | `basicRules` |
 
-**Impeccable：** 页内组件；严格枚举、失败toast；props basicRules。  
-**Finesse：** L365 随父页工作台。  
-**Taste：** 禁重复身份条/装饰 KPI。  
+**Impeccable：** 考试创建基本信息步，校验外置。  
+**Finesse：** 365 行单步可接受。  
+**Taste：** 向导分段非 hero 营销。  
 
 **判定：OK**  
-**动作：** 保持失败可见。  
-**禁：** 假空成功；未知枚举兜底。
+**动作：** 保持。  
+**禁：** 假默认考试名。
+
+---
 
 ## 503. `CandidateScopeStep.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `views/teacher/exam-create/CandidateScopeStep.vue` |
-| 源码 | L448;refs≈1;有Empty;有失败处理 |
-| 注册名 | `CandidateScopeStep` |
-| Props要点 | rosterRules |
-| 结构信号 | 表格、空态、提示条、失败toast |
+| 行数 | 448 |
+| 调用 | `exam-create.vue` |
+| Props | `rosterRules` |
 
-**Impeccable：** 页内组件；表格、空态、提示条、失败toast；props rosterRules。  
-**Finesse：** L448 随父页工作台。  
-**Taste：** 禁重复身份条/装饰 KPI。  
+**Impeccable：** 考生范围+名册表，空态与导入链。  
+**Finesse：** 448 行偏重但单步职责。  
+**Taste：** 表格密排。  
 
 **判定：OK**  
-**动作：** 保持失败可见。  
-**禁：** 假空成功；未知枚举兜底。
+**动作：** 保持 roster 失败可见。  
+**禁：** 空名册假「已导入」。
+
+---
 
 ## 504. `ConfirmStep.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `views/teacher/exam-create/ConfirmStep.vue` |
-| 源码 | L174;refs≈2 |
-| 注册名 | `ConfirmStep` |
-| Props要点 | 见源码 |
-| 结构信号 | 严格枚举 |
+| 行数 | 174 |
+| 调用 | `exam-create.vue` |
 
-**Impeccable：** 页内组件；严格枚举；props 见源码。  
-**Finesse：** L174 随父页工作台。  
-**Taste：** 禁重复身份条/装饰 KPI。  
+**Impeccable：** 创建确认只读摘要。  
+**Finesse：** 174 行薄确认。  
+**Taste：** 枚举展示严格。  
 
 **判定：OK**  
-**动作：** 保持失败可见。  
-**禁：** 假空成功；未知枚举兜底。
+**动作：** 保持。  
+**禁：** 确认页隐藏关键限制条件。
+
+---
 
 ## 505. `MarkingTeamStep.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `views/teacher/exam-create/MarkingTeamStep.vue` |
-| 源码 | L131;refs≈1 |
-| 注册名 | `MarkingTeamStep` |
-| Props要点 | markingTeamRules |
-| 结构信号 | 无 Ui* 关键件 |
+| 行数 | 131 |
+| 调用 | `exam-create.vue` |
+| Props | `markingTeamRules` |
 
-**Impeccable：** 页内组件；无 Ui* 关键件；props markingTeamRules。  
-**Finesse：** L131 随父页工作台。  
-**Taste：** 禁重复身份条/装饰 KPI。  
+**Impeccable：** 阅卷组配置步，规则 props 外置。  
+**Finesse：** 131 行。  
+**Taste：** 无装饰团队 KPI。  
 
 **判定：OK**  
-**动作：** 保持失败可见。  
-**禁：** 假空成功；未知枚举兜底。
+**动作：** 保持。  
+**禁：** 未配组默认可发布。
+
+---
 
 ## 506. `DuplicateResolutionCard.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `views/teacher/image-ledger/DuplicateResolutionCard.vue` |
-| 源码 | L153;refs≈1 |
-| 注册名 | `DuplicateResolutionCard` |
-| Props要点 | examId、pendingDuplicateCount |
-| 结构信号 | 表格、严格枚举、Tag |
+| 行数 | 153 |
+| 调用 | `image-ledger.vue` |
+| Props | `pendingDuplicateCount` |
 
-**Impeccable：** 页内组件；表格、严格枚举、Tag；props examId、pendingDuplicateCount。  
-**Finesse：** L153 随父页工作台。  
-**Taste：** 禁重复身份条/装饰 KPI。  
+**Impeccable：** 重复页待处理表，挂账本分页。  
+**Finesse：** 153 行卡片。  
+**Taste：** Tag 枚举严格。  
 
 **判定：OK**  
-**动作：** 保持失败可见。  
-**禁：** 假空成功；未知枚举兜底。
+**动作：** 保持与 ResolveModal 分工。  
+**禁：** 0 待处理仍红墙提示。
+
+---
 
 ## 507. `DuplicateResolveModal.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `views/teacher/image-ledger/DuplicateResolveModal.vue` |
-| 源码 | L114;refs≈1;有失败处理 |
-| 注册名 | `DuplicateResolveModal` |
-| Props要点 | open、examId、resolution |
-| 结构信号 | 失败toast |
+| 行数 | 114 |
+| 调用 | `image-ledger.vue` |
 
-**Impeccable：** 页内组件；失败toast；props open、examId、resolution。  
-**Finesse：** L114 随父页工作台。  
-**Taste：** 禁重复身份条/装饰 KPI。  
+**Impeccable：** 单条重复解析模态，destroy-on-close。  
+**Finesse：** 114 行。  
+**Taste：** 模态非暗色抽屉。  
 
 **判定：OK**  
-**动作：** 保持 destroy-on-close 防脏状态。  
-**禁：** 暗色监控抽屉。
+**动作：** 保持。  
+**禁：** 未选决议可提交。
+
+---
 
 ## 508. `LedgerSummaryCard.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `views/teacher/image-ledger/LedgerSummaryCard.vue` |
-| 源码 | L328;refs≈1;有Empty |
-| 注册名 | `LedgerSummaryCard` |
-| Props要点 | ledger、loading、balancing |
-| 结构信号 | 空态、信号带、严格枚举、Tag |
+| 行数 | 328 |
+| 调用 | `image-ledger.vue` |
+| 结构 | `MarkGaugeBlock` · 三组 `SignalBand`（收录/绑定/偏差）· 对账 CTA |
 
-**Impeccable：** 页内组件；空态、信号带、严格枚举、Tag；props ledger、loading、balancing。  
-**Finesse：** L328 随父页工作台。  
-**Taste：** 禁重复身份条/装饰 KPI。  
+**Impeccable：** 影像账本摘要，诊断文案来自 API diagnostic。  
+**Finesse：** KPI 分组有业务语义，非装饰墙。  
+**Taste：** 空 ledger 用 `UiEmpty` 说明后续动作。  
 
 **判定：OK**  
-**动作：** 保持失败可见。  
-**禁：** 假空成功；未知枚举兜底。
+**动作：** 保持 gauge+SignalBand 组合。  
+**禁：** 无 ledger 画满进度环。
+
+---
 
 ## 509. `NoticePopup.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `views/user/message/components/NoticePopup.vue` |
-| 源码 | L349;refs≈1;有失败处理 |
-| 注册名 | `NoticePopup` |
-| Props要点 | noticeId |
-| 结构信号 | 模态、失败toast |
+| 行数 | 349 |
+| 调用 | `LayoutDefault.vue`（`ref.open()` 延迟 1s） |
 
-**Impeccable：** 页内组件；模态、失败toast；props noticeId。  
-**Finesse：** L349 随父页工作台。  
-**Taste：** 禁重复身份条/装饰 KPI。  
+**Impeccable：** 登录后未读公告弹层，token 门控。  
+**Finesse：** 349 行公告 UI 可接受。  
+**Taste：** 非营销全屏 overlay。  
 
 **判定：OK**  
-**动作：** 保持失败可见。  
-**禁：** 假空成功；未知枚举兜底。
+**动作：** 保持 Layout 统一挂载。  
+**禁：** 页内第二套公告弹窗。
 
-## 510. `index.vue`
+---
 
-| 项 | 事实 |
-|----|------|
-| 路径 | `layout/index.vue` |
-| 源码 | L10;refs≈27;薄 |
-| 注册名 | `Layout` |
-| Props要点 | 见源码 |
-| 结构信号 | 无 Ui* 关键件 |
-
-**Impeccable：** 应用壳；无 Ui* 关键件。  
-**Finesse：** 全局滚动/导航承载。  
-**Taste：** 永久浅色 #1677ff。  
-
-**判定：OK**  
-**动作：** 保持 light。  
-**禁：** 暗色壳/紫渐变顶栏。
-
-## 511. `Logo.vue`
+## 510. `Logo.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `layout/components/Logo.vue` |
-| 源码 | L88;refs≈2 |
-| 注册名 | `Logo` |
-| Props要点 | 见源码 |
-| 结构信号 | 无 Ui* 关键件 |
+| 行数 | 88 |
+| 调用 | `Asider` · `MenuFoldBtn` |
 
-**Impeccable：** 应用壳；无 Ui* 关键件。  
-**Finesse：** 全局滚动/导航承载。  
-**Taste：** 永久浅色 #1677ff。  
+**Impeccable：** 侧栏品牌标，折叠态适配。  
+**Finesse：** 88 行轻量。  
+**Taste：** 浅色品牌，无渐变 hero。  
 
 **判定：OK**  
-**动作：** 保持 light。  
-**禁：** 暗色壳/紫渐变顶栏。
+**动作：** 保持。  
+**禁：** 工作台内容区重复 Logo 条。
 
-## 512. `index.vue`
+---
 
-| 项 | 事实 |
-|----|------|
-| 路径 | `layout/components/HeaderRightBar/index.vue` |
-| 源码 | L411;refs≈27 |
-| 注册名 | `HeaderRight` |
-| Props要点 | variant |
-| 结构信号 | 无 Ui* 关键件 |
-
-**Impeccable：** 应用壳；无 Ui* 关键件。  
-**Finesse：** 全局滚动/导航承载。  
-**Taste：** 永久浅色 #1677ff。  
-
-**判定：OK**  
-**动作：** 保持 light。  
-**禁：** 暗色壳/紫渐变顶栏。
-
-## 513. `MenuCollapsedTooltip.vue`
+## 511. `MenuCollapsedTooltip.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `layout/components/Menu/MenuCollapsedTooltip.vue` |
-| 源码 | L41;refs≈3;薄 |
-| 注册名 | `MenuCollapsedTooltip` |
-| Props要点 | collapsed、label |
-| 结构信号 | 无 Ui* 关键件 |
+| 行数 | 41 |
+| 调用 | `Menu/index` · `DualDomainSideNav` |
 
-**Impeccable：** 应用壳；无 Ui* 关键件。  
-**Finesse：** 全局滚动/导航承载。  
-**Taste：** 永久浅色 #1677ff。  
+**Impeccable：** 侧栏折叠 tooltip 包装，有 collapsed/label props。  
+**Finesse：** 41 行微组件有明确职责。  
+**Taste：** 非 SHELL — 折叠可达性需要。  
 
 **判定：OK**  
-**动作：** 保持 light。  
-**禁：** 暗色壳/紫渐变顶栏。
+**动作：** 保持。  
+**禁：** 删除后折叠菜单无 label。
 
-## 514. `MenuIcon.vue`
+---
+
+## 512. `MenuIcon.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `layout/components/Menu/MenuIcon.vue` |
-| 源码 | L251;refs≈4 |
-| 注册名 | `MenuIcon` |
-| Props要点 | icon |
-| 结构信号 | 无 Ui* 关键件 |
+| 行数 | 251 |
+| 调用 | `Menu/index` · `DualDomainSideNav` |
 
-**Impeccable：** 应用壳；无 Ui* 关键件。  
-**Finesse：** 全局滚动/导航承载。  
-**Taste：** 永久浅色 #1677ff。  
+**Impeccable：** 菜单图标映射表（路由/域图标合同）。  
+**Finesse：** 251 行为映射数据+渲染，非空壳。  
+**Taste：** 图标尺寸一致。  
 
 **判定：OK**  
-**动作：** 保持 light。  
-**禁：** 暗色壳/紫渐变顶栏。
+**动作：** 新路由须登记映射。  
+**禁：** 未知路由空白图标无告警。
 
-## 515. `index.vue`
+---
 
-| 项 | 事实 |
-|----|------|
-| 路径 | `layout/components/Menu/index.vue` |
-| 源码 | L526;refs≈27 |
-| 注册名 | `AppMenu` |
-| Props要点 | 见源码 |
-| 结构信号 | 无 Ui* 关键件 |
-
-**Impeccable：** 应用壳；无 Ui* 关键件。  
-**Finesse：** 全局滚动/导航承载。  
-**Taste：** 永久浅色 #1677ff。  
-
-**判定：OK**  
-**动作：** 保持 light。  
-**禁：** 暗色壳/紫渐变顶栏。
-
-## 516. `MenuFoldBtn.vue`
+## 513. `MenuFoldBtn.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `layout/components/MenuFoldBtn.vue` |
-| 源码 | L92;refs≈2 |
-| 注册名 | `MenuFoldBtn` |
-| Props要点 | 见源码 |
-| 结构信号 | 抽屉 |
+| 行数 | 92 |
+| 调用 | `Asider` · `Header` |
 
-**Impeccable：** 应用壳；抽屉。  
-**Finesse：** 全局滚动/导航承载。  
-**Taste：** 永久浅色 #1677ff。  
+**Impeccable：** 侧栏折叠按钮，Header/Asider 双挂载点。  
+**Finesse：** 92 行。  
+**Taste：** ghost 控件。  
 
 **判定：OK**  
-**动作：** 保持 light。  
-**禁：** 暗色壳/紫渐变顶栏。
+**动作：** 保持单一折叠状态源。  
+**禁：** 页面内第三折叠钮。
 
-## 517. `AiTaskRunningBar.vue`
+---
+
+## 514. `AiTaskRunningBar.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `layout/components/AiTaskRunningBar.vue` |
-| 源码 | L107;refs≈1 |
-| 注册名 | `AiTaskRunningBar` |
-| Props要点 | 见源码 |
-| 结构信号 | 无 Ui* 关键件 |
+| 行数 | 107 |
+| 调用 | `quality-workspace-layout.vue`（**quality 域专用**） |
+| 行为 | 15s 轮询 `qualityTaskStore`；`role="status"`；跳转 QualityAiTask |
 
-**Impeccable：** 应用壳；无 Ui* 关键件。  
-**Finesse：** 全局滚动/导航承载。  
-**Taste：** 永久浅色 #1677ff。  
-
-**判定：OK**  
-**动作：** 保持 light。  
-**禁：** 暗色壳/紫渐变顶栏。
-
-## 518. `index.vue`
-
-| 项 | 事实 |
-|----|------|
-| 路径 | `layout/components/Asider/index.vue` |
-| 源码 | L120;refs≈27 |
-| 注册名 | `Asider` |
-| Props要点 | 见源码 |
-| 结构信号 | 无 Ui* 关键件 |
-
-**Impeccable：** 应用壳；无 Ui* 关键件。  
-**Finesse：** 全局滚动/导航承载。  
-**Taste：** 永久浅色 #1677ff。  
+**Impeccable：** 质量域 AI 任务条，in-flight 计数真实。  
+**Finesse：** 细条 `ant-color-primary-bg`，非 banner 墙。  
+**Taste：** 注释明确域边界，勿挂 mark 工作台。  
 
 **判定：OK**  
-**动作：** 保持 light。  
-**禁：** 暗色壳/紫渐变顶栏。
+**动作：** 保持仅 quality layout 挂载。  
+**禁：** mark/teacher 壳复制此条。
 
-## 519. `index.vue`
+---
 
-| 项 | 事实 |
-|----|------|
-| 路径 | `layout/components/Breadcrumb/index.vue` |
-| 源码 | L121;refs≈27 |
-| 注册名 | `Breadcrumb` |
-| Props要点 | 见源码 |
-| 结构信号 | 无 Ui* 关键件 |
-
-**Impeccable：** 应用壳；无 Ui* 关键件。  
-**Finesse：** 全局滚动/导航承载。  
-**Taste：** 永久浅色 #1677ff。  
-
-**判定：OK**  
-**动作：** 保持 light。  
-**禁：** 暗色壳/紫渐变顶栏。
-
-## 520. `index.vue`
-
-| 项 | 事实 |
-|----|------|
-| 路径 | `layout/components/Header/index.vue` |
-| 源码 | L74;refs≈27 |
-| 注册名 | `LayoutHeader` |
-| Props要点 | 见源码 |
-| 结构信号 | 无 Ui* 关键件 |
-
-**Impeccable：** 应用壳；无 Ui* 关键件。  
-**Finesse：** 全局滚动/导航承载。  
-**Taste：** 永久浅色 #1677ff。  
-
-**判定：OK**  
-**动作：** 保持 light。  
-**禁：** 暗色壳/紫渐变顶栏。
-
-## 521. `Message.vue`
+## 515. `Message.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `layout/components/HeaderRightBar/Message.vue` |
-| 源码 | L523;refs≈27;有失败处理 |
-| 注册名 | `Message` |
-| Props要点 | variant |
-| 结构信号 | 失败toast |
+| 行数 | 523 |
+| 调用 | `HeaderRightBar/index.vue` |
+| Props | `variant` |
 
-**Impeccable：** 应用壳；失败toast。  
-**Finesse：** 全局滚动/导航承载。  
-**Taste：** 永久浅色 #1677ff。  
+**Impeccable：** 顶栏站内信下拉，列表+已读+失败 toast。  
+**Finesse：** 523 行偏重，属 Header 核心入口。  
+**Taste：** 下拉密表非全屏消息中心。  
 
 **判定：OK**  
-**动作：** 保持 light。  
-**禁：** 暗色壳/紫渐变顶栏。
+**动作：** 保持 variant 分考试/质量顶栏。  
+**禁：** 页面内再造第二消息铃铛。
 
-## 522. `MenuItem.vue`
+---
+
+## 516. `MenuItem.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `layout/components/Menu/MenuItem.vue` |
-| 源码 | L135;refs≈1 |
-| 注册名 | `MenuItem` |
-| Props要点 | 见源码 |
-| 结构信号 | 无 Ui* 关键件 |
+| 行数 | 135 |
+| 调用 | `Menu/index.vue` |
 
-**Impeccable：** 应用壳；无 Ui* 关键件。  
-**Finesse：** 全局滚动/导航承载。  
-**Taste：** 永久浅色 #1677ff。  
+**Impeccable：** 递归菜单项，active/children 渲染。  
+**Finesse：** 135 行 Menu 子件，非 SHELL（对比 BATCH_18 `Menu/index` 整体壳）。  
+**Taste：** 浅色侧栏选中态。  
 
 **判定：OK**  
-**动作：** 保持 light。  
-**禁：** 暗色壳/紫渐变顶栏。
+**动作：** 保持与 `MenuIcon` 联动。  
+**禁：** 页内平行侧栏项组件。
 
-## 523. `index.vue`
+---
 
-| 项 | 事实 |
-|----|------|
-| 路径 | `layout/components/TabBar/index.vue` |
-| 源码 | L199;refs≈27 |
-| 注册名 | `TabBar` |
-| Props要点 | 见源码 |
-| 结构信号 | 无 Ui* 关键件 |
-
-**Impeccable：** 应用壳；无 Ui* 关键件。  
-**Finesse：** 全局滚动/导航承载。  
-**Taste：** 永久浅色 #1677ff。  
-
-**判定：OK**  
-**动作：** 保持 light。  
-**禁：** 暗色壳/紫渐变顶栏。
-
-## 524. `LayoutDefault.vue`
+## 517. `LayoutDefault.vue`
 
 | 项 | 事实 |
 |----|------|
 | 路径 | `layout/LayoutDefault.vue` |
-| 源码 | L119;refs≈1 |
-| 注册名 | `LayoutDefault` |
-| Props要点 | 见源码 |
-| 结构信号 | 无 Ui* 关键件 |
+| 行数 | 119 |
+| 调用 | `layout/index.vue` |
+| 结构 | skip-link · Asider/Header/Main/TabBar · `PortfolioLayoutContext` · `NoticePopup` |
 
-**Impeccable：** 制卷；无 Ui* 关键件；props 见源码。  
-**Finesse：** 画布+侧栏属性密度。  
-**Taste：** 浅色 ROI，拒监控暗色。  
+**Impeccable：** 默认应用壳编排，移动端 TabBar 分叉清楚。  
+**Finesse：** 119 行薄编排（Main/Menu 等重件在 BATCH_18）。  
+**Taste：** skip-link a11y；`--dp-*` 圆角 token。  
 
 **判定：OK**  
-**动作：** 保持 light。  
-**禁：** 暗色壳/紫渐变顶栏。
+**动作：** 保持 Notice 延迟挂载策略。  
+**禁：** 暗色全局 layout 切换。
+
+---
+
+## Batch 24 小结
+
+| 判定 | 数量 | 代表 |
+|------|-----:|------|
+| OK | 26 | `ArchiveVolumeSubmitProgressBand` 主进度带 · `LedgerSummaryCard` 业务 KPI · `AiTaskRunningBar` quality 域 |
+| TUNE | 1 | `ArchiveVolumePhysicalLocationPanel` 遗留 `#8c8c8c`/`--nybc-*` |
+| REWORK | 0 | — |
+| SHELL | 0 | —（`layout/index`、`Menu/index` 等见 **BATCH_18**） |
+| DEAD? | 0 | — |
+
+**索引注：** 本批 **不含** INDEX 标 `BATCH_18 · SHELL` 的 `layout/index`、`HeaderRightBar/index`、`Menu/index`、`Asider/index` 等；那些已在 Batch 18 深审。

@@ -166,27 +166,63 @@ async function loadDashboard() {
     topLimit: query.topLimit,
   }
   try {
-    const [summaryResult, usageResult, trendResult, collegeResult, teacherTypeResult]
-      = await Promise.all([
-        portfolioIndicatorDashboardApi.summary(requestQuery),
-        portfolioIndicatorDashboardApi.usageFrequency(requestQuery),
-        portfolioIndicatorDashboardApi.trend(requestQuery),
-        portfolioIndicatorDashboardApi.collegeCompare(requestQuery),
-        portfolioIndicatorDashboardApi.teacherTypeCompare(requestQuery),
-      ])
+    try {
+      summary.value = await portfolioIndicatorDashboardApi.summary(requestQuery)
+    } catch (error) {
+      if (currentToken !== dashboardRequestToken.value) {
+        return
+      }
+      summary.value = null
+      showUserError(error, '指标汇总加载失败')
+    }
     if (currentToken !== dashboardRequestToken.value) {
       return
     }
-    summary.value = summaryResult
-    usageFrequency.value = usageResult
-    trend.value = trendResult
-    collegeCompare.value = collegeResult
-    teacherTypeCompare.value = teacherTypeResult
-  } catch (error) {
+    try {
+      usageFrequency.value = await portfolioIndicatorDashboardApi.usageFrequency(requestQuery)
+    } catch (error) {
+      if (currentToken !== dashboardRequestToken.value) {
+        return
+      }
+      usageFrequency.value = null
+      showUserError(error, '指标使用频次加载失败')
+    }
     if (currentToken !== dashboardRequestToken.value) {
       return
     }
-    showUserError(error)
+    try {
+      trend.value = await portfolioIndicatorDashboardApi.trend(requestQuery)
+    } catch (error) {
+      if (currentToken !== dashboardRequestToken.value) {
+        return
+      }
+      trend.value = null
+      showUserError(error, '指标趋势加载失败')
+    }
+    if (currentToken !== dashboardRequestToken.value) {
+      return
+    }
+    try {
+      collegeCompare.value = await portfolioIndicatorDashboardApi.collegeCompare(requestQuery)
+    } catch (error) {
+      if (currentToken !== dashboardRequestToken.value) {
+        return
+      }
+      collegeCompare.value = null
+      showUserError(error, '学院对比加载失败')
+    }
+    if (currentToken !== dashboardRequestToken.value) {
+      return
+    }
+    try {
+      teacherTypeCompare.value = await portfolioIndicatorDashboardApi.teacherTypeCompare(requestQuery)
+    } catch (error) {
+      if (currentToken !== dashboardRequestToken.value) {
+        return
+      }
+      teacherTypeCompare.value = null
+      showUserError(error, '教师类型对比加载失败')
+    }
   } finally {
     if (currentToken === dashboardRequestToken.value) {
       loading.value = false

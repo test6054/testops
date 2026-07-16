@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationObjectionSummaryVO } from '@/apis/portfolio/types'
-import {
-  PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
-  PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE,
-} from '@/apis/portfolio/types'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { Input, InputNumber, message, Select } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
@@ -18,6 +14,10 @@ import {
   PortfolioEvaluationObjectionTypeDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
+import {
+  PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
+  PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE,
+} from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -28,7 +28,7 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -65,8 +65,8 @@ function actionTone(action: PortfolioEvaluationObjectionHandleActionCode) {
 
 function requiresDangerConfirm(action: PortfolioEvaluationObjectionHandleActionCode): boolean {
   return (
-    action === PortfolioEvaluationObjectionHandleActionCode.REVOKE ||
-    action === PortfolioEvaluationObjectionHandleActionCode.RE_REVIEW
+    action === PortfolioEvaluationObjectionHandleActionCode.REVOKE
+    || action === PortfolioEvaluationObjectionHandleActionCode.RE_REVIEW
   )
 }
 
@@ -83,8 +83,8 @@ const STATUS_FILTER_OPTIONS: Array<{
 
 function requiresCorrectedScore(objectionType: PortfolioEvaluationObjectionTypeCode): boolean {
   return (
-    objectionType === PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE ||
-    objectionType === PortfolioEvaluationObjectionTypeCode.SCORE_DISPUTE
+    objectionType === PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE
+    || objectionType === PortfolioEvaluationObjectionTypeCode.SCORE_DISPUTE
   )
 }
 
@@ -117,8 +117,8 @@ const showCorrectedScore = computed(() => {
     return false
   }
   return (
-    reviewForm.action === PortfolioEvaluationObjectionHandleActionCode.CORRECT &&
-    requiresCorrectedScore(reviewTarget.value.objectionType)
+    reviewForm.action === PortfolioEvaluationObjectionHandleActionCode.CORRECT
+    && requiresCorrectedScore(reviewTarget.value.objectionType)
   )
 })
 
@@ -169,8 +169,8 @@ async function loadPage() {
     rows.value = page.list
     pageTotal.value = page.total
     if (
-      reviewTarget.value &&
-      !rows.value.some((item) => item.objectionId === reviewTarget.value?.objectionId)
+      reviewTarget.value
+      && !rows.value.some((item) => item.objectionId === reviewTarget.value?.objectionId)
     ) {
       resetReviewContext()
     }
@@ -195,11 +195,11 @@ async function submitReview() {
   }
   const opinion = reviewForm.handleOpinion.trim()
   if (!opinion) {
-    message.warning('请填写异议复核处理意见')
+    showFormValidationMessage('请填写异议复核处理意见')
     return
   }
   if (showCorrectedScore.value && reviewForm.correctedScore == null) {
-    message.warning('修正评价结果时须填写修正得分')
+    showFormValidationMessage('修正评价结果时须填写修正得分')
     return
   }
   if (handlingId.value) {

@@ -85,7 +85,7 @@ const description = computed(() => {
 })
 
 const failureSummary = computed(() =>
-  `${failureItems.value.length} 个设备分组未成功聚合，请检查 Agent 端点或扫描时间后重试。`,
+  `${failureItems.value.length} 个设备分组未成功聚合，请检查扫描端连接或扫描时间后重试。`,
 )
 
 watch(() => props.examId, () => {
@@ -115,8 +115,8 @@ async function handleRecover(): Promise<void> {
     return
   }
   const confirmed = await confirmAsync({
-    title: '一键补救 orphan 扫描事件',
-    content: `将按扫描设备时间窗自动创建批次，聚合 ${props.orphanPendingEventCount} 条 orphan 事件（共 ${props.orphanPendingPageCount} 页）。确认继续？`,
+    title: '一键补救孤立扫描事件',
+    content: `将按扫描设备时间窗自动创建批次，聚合 ${props.orphanPendingEventCount} 条孤立事件（共 ${props.orphanPendingPageCount} 页）。确认继续？`,
     okText: '确认补救',
     cancelText: '取消',
     type: 'warning',
@@ -137,11 +137,11 @@ async function handleRecover(): Promise<void> {
     } else if (failCount > 0) {
       message.error(`补救失败：${failCount} 个设备分组无法聚合`)
     } else {
-      message.info('未发现可补救的 orphan 事件')
+      message.info('未发现可补救的孤立扫描事件')
     }
     emit('recovered')
   } catch (error) {
-    showUserError(error, 'orphan 扫描事件补救失败')
+    showUserError(error, '孤立扫描事件补救失败')
   } finally {
     recovering.value = false
   }

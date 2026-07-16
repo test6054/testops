@@ -24,7 +24,7 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 
@@ -214,7 +214,7 @@ async function handleSaveDraft() {
 
 async function handleSubmit() {
   if (!detail.value || !gapSubmissionAvailable.value) {
-    message.warning('补采任务已逾期或已结束，请联系院系办理延期')
+    showFormValidationMessage('补采任务已逾期或已结束，请联系院系办理延期')
     return
   }
   const requestToken = scopeRequestToken.value
@@ -255,11 +255,11 @@ function goBack() {
 
 async function openPortfolioGapScan() {
   if (!detail.value || !targetTeacherId.value) {
-    message.warning('补采任务或教师信息未就绪')
+    showFormValidationMessage('补采任务或教师信息未就绪')
     return
   }
   if (!gapSubmissionAvailable.value) {
-    message.warning('补采任务已逾期或已结束，不能创建扫描派单')
+    showFormValidationMessage('补采任务已逾期或已结束，不能创建扫描派单')
     return
   }
   const requestToken = scopeRequestToken.value

@@ -236,16 +236,6 @@ import type {
   TeacherClaimContextResponse,
   TrialSessionResponse,
 } from '@/apis/mark/marking-organization'
-import {
-  AllocationUnitCode,
-  FormalSessionStatusDescription,
-  getMarkingQuestionView,
-  getOrganization,
-  MARKING_TASK_STATUS_OPTIONS,
-  MARKING_TASK_STATUS_TONE,
-  MarkingTaskStatusDescription,
-  TrialSessionStatusDescription,
-} from '@/apis/mark/marking-organization'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -256,6 +246,16 @@ import { storeToRefs } from 'pinia'
 import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
+import {
+  AllocationUnitCode,
+  FormalSessionStatusDescription,
+  getMarkingQuestionView,
+  getOrganization,
+  MARKING_TASK_STATUS_OPTIONS,
+  MARKING_TASK_STATUS_TONE,
+  MarkingTaskStatusDescription,
+  TrialSessionStatusDescription,
+} from '@/apis/mark/marking-organization'
 import {
   MarkingTaskStreamEventTypeCode,
   MarkingTaskStreamSubscribeScopeCode,
@@ -406,15 +406,15 @@ const selectedTasks = computed(() =>
 
 function isBatchSelectable(task: MarkingTaskResponse): boolean {
   return (
-    task.taskStatus === MarkingTaskStatusCode.ALLOCATED ||
-    task.taskStatus === MarkingTaskStatusCode.IN_PROGRESS
+    task.taskStatus === MarkingTaskStatusCode.ALLOCATED
+    || task.taskStatus === MarkingTaskStatusCode.IN_PROGRESS
   )
 }
 
 function isSameBatchGroup(task: MarkingTaskResponse, anchor: MarkingTaskResponse): boolean {
   if (
-    task.taskUnit === AllocationUnitCode.WHOLE_PAPER ||
-    anchor.taskUnit === AllocationUnitCode.WHOLE_PAPER
+    task.taskUnit === AllocationUnitCode.WHOLE_PAPER
+    || anchor.taskUnit === AllocationUnitCode.WHOLE_PAPER
   ) {
     return false
   }
@@ -427,8 +427,8 @@ function handleSelectionChange(keys: (string | number)[]): void {
     clearBatchSelection()
     return
   }
-  const anchor =
-    batchSelectionAnchor.value ?? tasks.value.find((task) => task.id === typedKeys[0]) ?? null
+  const anchor
+    = batchSelectionAnchor.value ?? tasks.value.find((task) => task.id === typedKeys[0]) ?? null
   if (!anchor || !isBatchSelectable(anchor)) {
     clearBatchSelection()
     return
@@ -480,8 +480,9 @@ async function loadGroupLeaderFlag(): Promise<void> {
   try {
     const org = await getOrganization({ examId: selectedExamId.value })
     isGroupLeader.value = org.groups.some((group) => group.leaderUserId === currentUserId.value)
-  } catch {
+  } catch (error) {
     isGroupLeader.value = false
+    showUserError(error, '阅卷组织信息加载失败')
   }
 }
 
@@ -531,9 +532,9 @@ const groupLeaderStream = useMarkingTaskStream({
     }
     // exam Topic 事件携带单 session 计数，须回源 claimContext 做 exam 级聚合
     if (
-      event.eventType === MarkingTaskStreamEventTypeCode.SESSION_PROGRESS ||
-      event.eventType === MarkingTaskStreamEventTypeCode.SESSION_PAUSED ||
-      event.eventType === MarkingTaskStreamEventTypeCode.SESSION_RESUMED
+      event.eventType === MarkingTaskStreamEventTypeCode.SESSION_PROGRESS
+      || event.eventType === MarkingTaskStreamEventTypeCode.SESSION_PAUSED
+      || event.eventType === MarkingTaskStreamEventTypeCode.SESSION_RESUMED
     ) {
       void loadClaimContext()
     }
@@ -557,8 +558,8 @@ function getPollingIntervalMs(): number {
     return 5000
   }
   if (
-    teacherTaskStream.connectionPhase.value === 'failed' ||
-    (isGroupLeader.value && groupLeaderStream.connectionPhase.value === 'failed')
+    teacherTaskStream.connectionPhase.value === 'failed'
+    || (isGroupLeader.value && groupLeaderStream.connectionPhase.value === 'failed')
   ) {
     return 30000
   }
@@ -593,7 +594,7 @@ const columns = computed<ColumnType<MarkingTaskResponse>[]>(() => [
   { title: '操作', key: 'actions', width: 140 },
 ])
 
-async function loadTasks(options?: { silent?: boolean; resetPage?: boolean }): Promise<void> {
+async function loadTasks(options?: { silent?: boolean, resetPage?: boolean }): Promise<void> {
   if (!selectedExamId.value) {
     markTaskStore.clearTasks()
     tasksLoadError.value = ''
@@ -875,8 +876,8 @@ async function submitClaim(): Promise<void> {
       await Promise.all([loadTasks(), loadClaimContext()])
       try {
         await refreshSnapshot()
-      } catch {
-        // 非工作台上下文时忽略
+      } catch (error) {
+        showUserError(error, '考试工作台状态刷新失败')
       }
     }
   } catch (error) {

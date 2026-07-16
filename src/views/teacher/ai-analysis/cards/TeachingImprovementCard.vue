@@ -215,7 +215,7 @@ function buildShareText(): string | null {
 async function copyShareText(): Promise<void> {
   const text = buildShareText()
   if (!text) {
-    showUserError(null, '暂无可分享的 AI 教学改进方案')
+    showUserError(null, '暂无可分享的智能教学改进方案')
     return
   }
   await navigator.clipboard.writeText(text)
@@ -225,7 +225,7 @@ async function copyShareText(): Promise<void> {
 function exportRecordText(): void {
   const text = buildShareText()
   if (!text) {
-    showUserError(null, '暂无可分享的 AI 教学改进方案')
+    showUserError(null, '暂无可分享的智能教学改进方案')
     return
   }
   const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })

@@ -129,7 +129,7 @@
             <a-form-item name="scannerIp" label="设备地址">
               <a-input
                 v-model:value="formData.scannerIp"
-                placeholder="可选，一体机 Agent 心跳会自动刷新"
+                placeholder="可选，一体机扫描客户端心跳会自动刷新"
               />
             </a-form-item>
           </a-col>
@@ -399,7 +399,7 @@ const deviceSignalMetrics = computed((): SignalMetric[] => [
   },
   {
     key: 'activated',
-    label: '已激活 Agent',
+    label: '已激活扫描客户端',
     value: deviceSummary.value?.agentActivatedCount ?? 0,
     unit: '台',
     tone: 'green',
@@ -547,23 +547,25 @@ async function loadDevices(): Promise<void> {
       location: searchForm.location,
       interfaceMode: searchForm.interfaceMode,
     }
-    const [result, summary] = await Promise.all([
-      pageScannerDevices(query),
-      summarizeScannerDevices({
-        status: searchForm.status,
-        scannerDeviceIdKeyword: searchForm.scannerDeviceIdKeyword,
-        location: searchForm.location,
-        interfaceMode: searchForm.interfaceMode,
-      }),
-    ])
+    const result = await pageScannerDevices(query)
     devices.value = result.list
-    deviceSummary.value = summary
     pagination.total = result.total
     if (result.pageNum != null) {
       pagination.current = result.pageNum
     }
     if (result.pageSize != null) {
       pagination.pageSize = result.pageSize
+    }
+    try {
+      deviceSummary.value = await summarizeScannerDevices({
+        status: searchForm.status,
+        scannerDeviceIdKeyword: searchForm.scannerDeviceIdKeyword,
+        location: searchForm.location,
+        interfaceMode: searchForm.interfaceMode,
+      })
+    } catch (error) {
+      deviceSummary.value = null
+      showUserError(error, '扫描设备汇总加载失败')
     }
   } catch (error) {
     devices.value = []
@@ -803,7 +805,7 @@ function copyText(value?: string | null): void {
     )
     return
   }
-  message.warning('当前浏览器不支持剪贴板 API，请手动复制')
+  message.warning('当前浏览器不支持剪贴板接口，请手动复制')
 }
 
 // ─── 详情弹窗 ────────────────────────────────────────

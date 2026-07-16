@@ -420,7 +420,7 @@ async function doRescoreByAi(): Promise<void> {
       gradeResultId: detail.value.gradeResultId,
     })
     if (Boolean(result.scored) && result.aiScore != null) {
-      message.success(`AI 复评完成，AI 评分 ${result.aiScore} 分`)
+      message.success(`智能复评完成，智能评分 ${result.aiScore} 分`)
     } else {
       message.warning(executionDiagnosticText(result.diagnostic))
     }
@@ -429,7 +429,7 @@ async function doRescoreByAi(): Promise<void> {
       await loadAiExecutions()
     }
   } catch (error) {
-    showUserError(error, 'AI 复评调用失败')
+    showUserError(error, '智能复评调用失败')
   } finally {
     rescoring.value = false
   }
@@ -455,7 +455,7 @@ async function loadAiExecutions(): Promise<void> {
       strictEnumLabel(AiExecutionStatusDescription, record.status, 'AI 执行状态')
     })
   } catch (error) {
-    showUserError(error, 'AI 复评历史加载失败')
+    showUserError(error, '智能复评历史加载失败')
     aiExecutions.value = []
   } finally {
     executionsLoading.value = false

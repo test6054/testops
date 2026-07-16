@@ -4,9 +4,9 @@ import type {
   PortfolioComplianceMetricVO,
   PortfolioComplianceThresholdVO,
 } from '@/apis/portfolio/compliance'
-import { portfolioComplianceApi } from '@/apis/portfolio/compliance'
 import { InputNumber, message, Switch } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { portfolioComplianceApi } from '@/apis/portfolio/compliance'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -91,8 +91,8 @@ const metricColumns: ColumnsType = [
 
 const needsDenominator = computed(
   () =>
-    form.metricCode === PortfolioComplianceAlertTypeCode.C002 ||
-    form.metricCode === PortfolioComplianceAlertTypeCode.C003,
+    form.metricCode === PortfolioComplianceAlertTypeCode.C002
+    || form.metricCode === PortfolioComplianceAlertTypeCode.C003,
 )
 
 function metricLabel(code: string) {
@@ -233,8 +233,8 @@ async function saveRow() {
   if (writing.value) {
     return
   }
-  const ordered =
-    form.compareDirection === PortfolioComplianceCompareDirectionCode.LOWER_IS_WORSE
+  const ordered
+    = form.compareDirection === PortfolioComplianceCompareDirectionCode.LOWER_IS_WORSE
       ? form.targetValue > form.yellowThreshold && form.yellowThreshold > form.redThreshold
       : form.targetValue < form.yellowThreshold && form.yellowThreshold < form.redThreshold
   if (!ordered) {
@@ -383,9 +383,11 @@ onMounted(() => {
           row-key="metricCode"
         >
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'metricCode'">{{
-              metricLabel(record.metricCode)
-            }}</template>
+            <template v-if="column.key === 'metricCode'">
+              {{
+                metricLabel(record.metricCode)
+              }}
+            </template>
             <template v-else-if="column.key === 'fraction'">
               {{ record.numeratorValue ?? '—' }} / {{ record.denominatorValue ?? '—' }}
             </template>
@@ -401,9 +403,11 @@ onMounted(() => {
               </UiTag>
             </template>
             <template v-else-if="column.key === 'alertLevel'">
-              <UiTag :tone="alertLevelTone(record.alertLevel)">{{
-                alertLevelLabel(record.alertLevel)
-              }}</UiTag>
+              <UiTag :tone="alertLevelTone(record.alertLevel)">
+                {{
+                  alertLevelLabel(record.alertLevel)
+                }}
+              </UiTag>
             </template>
           </template>
         </UiDataTable>

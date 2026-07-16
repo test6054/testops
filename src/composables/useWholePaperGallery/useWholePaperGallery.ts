@@ -190,8 +190,8 @@ export function useWholePaperGallery(
       })
     }
     if (!page.fileId) {
-      showFormValidationMessage('扫描页缺少展示文件ID')
-      return Promise.reject(new Error('扫描页缺少展示文件ID'))
+      showFormValidationMessage('扫描页缺少展示文件编号')
+      return Promise.reject(new Error('扫描页缺少展示文件编号'))
     }
     return getImageBlobUrl(page.fileId)
   }

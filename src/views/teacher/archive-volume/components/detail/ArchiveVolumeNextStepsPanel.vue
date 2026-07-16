@@ -60,7 +60,7 @@ function handleAction(action: ArchiveVolumeNextStepActionVO): void {
     return
   }
   if (!isArchiveVolumeNextStepExternalRouteKey(action.externalRouteKey)) {
-    showUserError(new Error(`未知卷外路由键：${action.externalRouteKey}`))
+    showUserError(new Error('未知卷外跳转目标'), '未知卷外跳转目标')
     return
   }
   void router.push(

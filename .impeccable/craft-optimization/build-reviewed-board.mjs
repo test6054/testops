@@ -39,32 +39,32 @@ function renderFileRows() {
         .concat(item.evidence)
         .join(' ')
       return (
-        '<tr data-level="' +
-        item.priority +
-        '" data-domain="' +
-        escapeHtml(item.domain) +
-        '" data-query="' +
-        escapeHtml(query) +
-        '">' +
-        '<td><span class="status ' +
-        statusClass(item.priority) +
-        '">' +
-        item.priority +
-        '</span></td>' +
-        '<td><code>' +
-        escapeHtml(item.path) +
-        '</code></td>' +
-        '<td>' +
-        escapeHtml(item.evidence.join('；')) +
-        '</td>' +
-        '<td><strong>' +
-        escapeHtml(item.responsibility) +
-        '</strong><br>' +
-        escapeHtml(item.action) +
-        '<br><span class="avoid">禁止：' +
-        escapeHtml(item.avoid) +
-        '</span></td>' +
-        '</tr>'
+        '<tr data-level="'
+        + item.priority
+        + '" data-domain="'
+        + escapeHtml(item.domain)
+        + '" data-query="'
+        + escapeHtml(query)
+        + '">'
+        + '<td><span class="status '
+        + statusClass(item.priority)
+        + '">'
+        + item.priority
+        + '</span></td>'
+        + '<td><code>'
+        + escapeHtml(item.path)
+        + '</code></td>'
+        + '<td>'
+        + escapeHtml(item.evidence.join('；'))
+        + '</td>'
+        + '<td><strong>'
+        + escapeHtml(item.responsibility)
+        + '</strong><br>'
+        + escapeHtml(item.action)
+        + '<br><span class="avoid">禁止：'
+        + escapeHtml(item.avoid)
+        + '</span></td>'
+        + '</tr>'
       )
     })
     .join('\n')
@@ -85,37 +85,37 @@ function renderComponentRows() {
         .concat(review.evidence)
         .join(' ')
       return (
-        '<tr data-level="' +
-        item.status +
-        '" data-domain="' +
-        escapeHtml(item.package) +
-        '" data-query="' +
-        escapeHtml(query) +
-        '">' +
-        '<td><span class="status ' +
-        statusClass(item.status) +
-        '">' +
-        item.status +
-        '</span></td>' +
-        '<td><strong>' +
-        escapeHtml(item.name) +
-        '</strong><br><code>' +
-        escapeHtml(item.path) +
-        '</code></td>' +
-        '<td class="number">' +
-        item.ref_total +
-        '</td>' +
-        '<td>' +
-        escapeHtml(review.evidence.join('；')) +
-        '</td>' +
-        '<td><strong>' +
-        escapeHtml(review.responsibility) +
-        '</strong><br>' +
-        escapeHtml(review.action) +
-        '<br><span class="avoid">禁止：' +
-        escapeHtml(review.avoid) +
-        '</span></td>' +
-        '</tr>'
+        '<tr data-level="'
+        + item.status
+        + '" data-domain="'
+        + escapeHtml(item.package)
+        + '" data-query="'
+        + escapeHtml(query)
+        + '">'
+        + '<td><span class="status '
+        + statusClass(item.status)
+        + '">'
+        + item.status
+        + '</span></td>'
+        + '<td><strong>'
+        + escapeHtml(item.name)
+        + '</strong><br><code>'
+        + escapeHtml(item.path)
+        + '</code></td>'
+        + '<td class="number">'
+        + item.ref_total
+        + '</td>'
+        + '<td>'
+        + escapeHtml(review.evidence.join('；'))
+        + '</td>'
+        + '<td><strong>'
+        + escapeHtml(review.responsibility)
+        + '</strong><br>'
+        + escapeHtml(review.action)
+        + '<br><span class="avoid">禁止：'
+        + escapeHtml(review.avoid)
+        + '</span></td>'
+        + '</tr>'
       )
     })
     .join('\n')

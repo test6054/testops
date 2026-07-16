@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { AccreditationCockpitVO, AccreditationCycleVO } from '@/apis/quality/accreditation'
-import { accreditationApi } from '@/apis/quality/accreditation'
 import type {
   ArchiveDestructionFlowRecordVO,
   ArchiveQueryRequest,
@@ -10,7 +9,6 @@ import type {
   ArchiveVO,
   ExpertPackageExportRequest,
 } from '@/apis/quality/archive'
-import { archiveApi } from '@/apis/quality/archive'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
@@ -18,6 +16,8 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { accreditationApi } from '@/apis/quality/accreditation'
+import { archiveApi } from '@/apis/quality/archive'
 import {
   ALL_ARCHIVE_BUSINESS_TYPE_CODES,
   ArchiveBusinessTypeCode,
@@ -67,7 +67,7 @@ import {
   QualityArchiveDestructionStatusCode,
   QualityArchiveDestructionStatusDescription,
 } from '@/types/enums/quality-archive-destruction-status-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -90,16 +90,12 @@ function destructionStatusTone(value: QualityArchiveDestructionStatusCode): Badg
   return strictEnumTone(QUALITY_ARCHIVE_DESTRUCTION_STATUS_TONE, value, '销毁状态')
 }
 
-function isExpertPackageRecord(value: ArchiveBusinessTypeCode): boolean {
-  return value === ArchiveBusinessTypeCode.EXPERT_PACKAGE
-}
-
 function canDownloadArchive(record: ArchiveVO): boolean {
   return (
-    Boolean(record.fileId) &&
-    record.destructionStatus !== QualityArchiveDestructionStatusCode.EXECUTING &&
-    record.destructionStatus !== QualityArchiveDestructionStatusCode.EXECUTED &&
-    record.destructionStatus !== QualityArchiveDestructionStatusCode.SUPERVISED
+    Boolean(record.fileId)
+    && record.destructionStatus !== QualityArchiveDestructionStatusCode.EXECUTING
+    && record.destructionStatus !== QualityArchiveDestructionStatusCode.EXECUTED
+    && record.destructionStatus !== QualityArchiveDestructionStatusCode.SUPERVISED
   )
 }
 
@@ -261,7 +257,7 @@ async function loadProgramExportReadiness(trainingPlanId: string) {
     exportCockpit.value = undefined
     exportActiveCycle.value = undefined
     exportEvidenceCount.value = 0
-    showUserError(error)
+    showUserError(error, '认证导出就绪状态加载失败')
   } finally {
     exportReadinessLoading.value = false
   }
@@ -305,15 +301,17 @@ async function loadList() {
   loading.value = true
   try {
     const listQuery = buildArchiveListQuery()
-    const [page, summary] = await Promise.all([
-      archiveApi.page(listQuery),
-      archiveApi.signalSummary(listQuery),
-    ])
+    const page = await archiveApi.page(listQuery)
     list.value = page.list
-    signalSummary.value = summary
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
     total.value = page.total
+    try {
+      signalSummary.value = await archiveApi.signalSummary(listQuery)
+    } catch (error) {
+      signalSummary.value = null
+      showUserError(error, '归档状态统计加载失败')
+    }
     if (list.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadList()
@@ -359,7 +357,7 @@ async function handleScopeChange(): Promise<void> {
 
 useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false })
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -445,7 +443,7 @@ async function submitExport() {
 
 async function downloadArchiveFile(record: ArchiveVO) {
   if (!record.fileId) {
-    message.warning('归档记录缺少文件')
+    showFormValidationMessage('归档记录缺少文件')
     return
   }
   await handleDownloadFile({
@@ -646,7 +644,7 @@ function handleConfirmArchiveOffice(record: ArchiveVO) {
 
 function handleDelete(record: ArchiveVO) {
   if (record.archiveOfficeConfirmed) {
-    message.warning('已确认档案必须经过销毁审批流程，不能直接删除')
+    showFormValidationMessage('已确认档案必须经过销毁审批流程，不能直接删除')
     return
   }
   void confirmAsync({
@@ -707,26 +705,26 @@ function openDestructionRequest(record: ArchiveVO) {
 async function submitDestructionRequest() {
   if (!destructionTarget.value) return
   if (!destructionReason.value.trim()) {
-    message.warning('请填写销毁原因')
+    showFormValidationMessage('请填写销毁原因')
     return
   }
   if (!destructionLedgerDecision.value) {
-    message.warning('销毁前必须选择是否先导出清册')
+    showFormValidationMessage('销毁前必须选择是否先导出清册')
     return
   }
   if (
-    destructionLedgerDecision.value ===
-      QualityArchiveDestructionLedgerExportDecisionCode.SKIP_CONFIRMED &&
-    !destructionLedgerSkipReason.value.trim()
+    destructionLedgerDecision.value
+    === QualityArchiveDestructionLedgerExportDecisionCode.SKIP_CONFIRMED
+    && !destructionLedgerSkipReason.value.trim()
   ) {
-    message.warning('确认跳过清册导出时必须填写原因')
+    showFormValidationMessage('确认跳过清册导出时必须填写原因')
     return
   }
   const confirmed = await confirmAsync({
     title: '确认发起销毁申请',
     content:
-      destructionLedgerDecision.value ===
-      QualityArchiveDestructionLedgerExportDecisionCode.EXPORT_FIRST
+      destructionLedgerDecision.value
+      === QualityArchiveDestructionLedgerExportDecisionCode.EXPORT_FIRST
         ? '将先生成并归档本份材料的销毁清册，再提交销毁申请。确认后不可撤销该申请单据。'
         : '你已确认跳过电子清册导出。确认后将直接提交销毁申请。',
     okText: '确认并提交',
@@ -739,27 +737,30 @@ async function submitDestructionRequest() {
       reason: destructionReason.value.trim(),
       ledgerExportDecision: destructionLedgerDecision.value,
       ledgerSkipReason:
-        destructionLedgerDecision.value ===
-        QualityArchiveDestructionLedgerExportDecisionCode.SKIP_CONFIRMED
+        destructionLedgerDecision.value
+        === QualityArchiveDestructionLedgerExportDecisionCode.SKIP_CONFIRMED
           ? destructionLedgerSkipReason.value.trim()
           : undefined,
     })
     message.success(
-      destructionLedgerDecision.value ===
-        QualityArchiveDestructionLedgerExportDecisionCode.EXPORT_FIRST
+      destructionLedgerDecision.value
+      === QualityArchiveDestructionLedgerExportDecisionCode.EXPORT_FIRST
         ? '清册已导出并提交销毁申请'
         : '销毁申请已提交',
     )
     destructionRequestOpen.value = false
     await loadList()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '销毁申请提交失败')
   } finally {
     destructionSubmitting.value = false
   }
 }
 
-function openDestructionApproval(record: ArchiveVO, decision: ArchiveDestructionDecisionCode) {
+function openDestructionApproval(
+  record: ArchiveVO,
+  decision: ArchiveDestructionDecisionCode,
+) {
   destructionTarget.value = record
   destructionDecision.value = decision
   destructionRemark.value = ''
@@ -769,10 +770,10 @@ function openDestructionApproval(record: ArchiveVO, decision: ArchiveDestruction
 async function submitDestructionApproval() {
   if (!destructionTarget.value) return
   if (
-    destructionDecision.value === ArchiveDestructionDecisionCode.REJECTED &&
-    !destructionRemark.value.trim()
+    destructionDecision.value === ArchiveDestructionDecisionCode.REJECTED
+    && !destructionRemark.value.trim()
   ) {
-    message.warning('驳回销毁申请必须填写审批意见')
+    showFormValidationMessage('驳回销毁申请必须填写审批意见')
     return
   }
   destructionSubmitting.value = true
@@ -786,7 +787,7 @@ async function submitDestructionApproval() {
     destructionApprovalOpen.value = false
     await loadList()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '销毁审批提交失败')
   } finally {
     destructionSubmitting.value = false
   }
@@ -838,7 +839,7 @@ async function submitDestructionSupervise() {
     destructionSuperviseOpen.value = false
     await loadList()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '监销确认失败')
   } finally {
     destructionSubmitting.value = false
   }
@@ -852,7 +853,7 @@ async function openDestructionFlow(record: ArchiveVO) {
   try {
     destructionFlowRecords.value = await archiveApi.listDestructionFlowRecords(record.id)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '销毁流程记录加载失败')
   } finally {
     destructionFlowLoading.value = false
   }
@@ -964,8 +965,8 @@ watch(
   () => ({ packageType: exportForm.packageType, targetId: exportForm.targetId }),
   async (exportState) => {
     if (
-      exportState.packageType !== ExpertPackageTypeCode.PROGRAM_ACCREDITATION ||
-      !exportState.targetId.trim()
+      exportState.packageType !== ExpertPackageTypeCode.PROGRAM_ACCREDITATION
+      || !exportState.targetId.trim()
     ) {
       exportCockpit.value = undefined
       exportActiveCycle.value = undefined
@@ -1064,15 +1065,13 @@ onMounted(async () => {
             </UiTextAction>
             <span
               v-else-if="record.destructionStatus === QualityArchiveDestructionStatusCode.EXECUTING"
-              >物理销毁中</span
-            >
+            >物理销毁中</span>
             <span
               v-else-if="
-                record.destructionStatus === QualityArchiveDestructionStatusCode.EXECUTED ||
-                record.destructionStatus === QualityArchiveDestructionStatusCode.SUPERVISED
+                record.destructionStatus === QualityArchiveDestructionStatusCode.EXECUTED
+                  || record.destructionStatus === QualityArchiveDestructionStatusCode.SUPERVISED
               "
-              >已物理销毁</span
-            >
+            >已物理销毁</span>
             <span v-else>文件不可用</span>
           </template>
           <template v-else-if="column.key === 'retentionYears'">
@@ -1156,8 +1155,8 @@ onMounted(async () => {
         </a-form-item>
         <div
           v-if="
-            exportForm.packageType === ExpertPackageTypeCode.PROGRAM_ACCREDITATION &&
-            exportForm.targetId
+            exportForm.packageType === ExpertPackageTypeCode.PROGRAM_ACCREDITATION
+              && exportForm.targetId
           "
           class="archive-page__export-readiness"
         >
@@ -1440,8 +1439,8 @@ onMounted(async () => {
         </a-form-item>
         <a-form-item
           v-if="
-            destructionLedgerDecision ===
-            QualityArchiveDestructionLedgerExportDecisionCode.SKIP_CONFIRMED
+            destructionLedgerDecision
+              === QualityArchiveDestructionLedgerExportDecisionCode.SKIP_CONFIRMED
           "
           label="跳过清册导出原因"
           required

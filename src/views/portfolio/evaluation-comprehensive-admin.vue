@@ -28,7 +28,7 @@ import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { loadAllPages } from '@/utils/load-all-pages'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -147,7 +147,7 @@ async function loadWorkgroups() {
       QUALITY_SELECTOR_PAGE_SIZE,
     )
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '加载评价工作组失败')
   }
 }
 
@@ -166,7 +166,7 @@ async function loadTasks() {
       PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES.includes(item.taskStatus),
     )
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '加载评价任务失败')
   } finally {
     tasksLoading.value = false
   }
@@ -175,7 +175,7 @@ async function loadTasks() {
 async function runAnalysis() {
   if (!canRunAnalysis()) {
     resetAnalysisContext()
-    message.warning('当前筛选下无可分析任务，请调整评价组、年度或任务范围')
+    showFormValidationMessage('当前筛选下无可分析任务，请调整评价组、年度或任务范围')
     return
   }
   const currentToken = ++analysisRequestToken.value
@@ -194,7 +194,7 @@ async function runAnalysis() {
     if (currentToken !== analysisRequestToken.value) {
       return
     }
-    showUserError(error)
+    showUserError(error, '评价综合分析失败')
   } finally {
     if (currentToken === analysisRequestToken.value) {
       loading.value = false
@@ -214,7 +214,7 @@ async function exportAnalysis() {
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条填报`)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出综合分析失败')
   } finally {
     exporting.value = false
   }
@@ -248,7 +248,7 @@ onMounted(async () => {
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="评价综合分析" subtitle="多任务数据采集 · 跨任务汇总 · Excel 导出" />
+    <ContextBar title="评价综合分析" subtitle="多任务数据采集 · 跨任务汇总 · 表格文件导出" />
     <UiCard>
       <div class="filter-row">
         <a-select
@@ -281,7 +281,7 @@ onMounted(async () => {
           分析
         </UiButton>
         <UiButton :loading="exporting" :disabled="!analysis" @click="exportAnalysis">
-          导出 Excel
+          导出表格文件
         </UiButton>
       </div>
       <UiEmpty

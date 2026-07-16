@@ -116,7 +116,7 @@ import {
   FormalSessionStatusCode,
 } from '@/types/enums/formal-session-status-enum'
 import { ResultCode } from '@/types/enums/result-code'
-import { getUserErrorMessage, readBusinessResultCode, showUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, readBusinessResultCode, showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import {
   formatFormalSessionGradeClosureProgress,
   formatFormalSessionQuestionScope,
@@ -349,7 +349,7 @@ function guardManageAction(): boolean {
   if (props.canManage) {
     return true
   }
-  message.warning('仅考试主考老师可管理正评会话')
+  showFormValidationMessage('仅考试主考老师可管理正评会话')
   return false
 }
 

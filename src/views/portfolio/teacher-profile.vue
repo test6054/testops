@@ -8,14 +8,13 @@ import type {
   PortfolioTeacherTaughtCourseSaveRequest,
   PortfolioTeacherTaughtCourseVO,
 } from '@/apis/portfolio/teacher-profile'
-import { portfolioTeacherProfileApi } from '@/apis/portfolio/teacher-profile'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { TeacherTaughtCourseSourceTypeCode } from '@/types/enums/teacher-taught-course-source-type-enum'
-import { TeacherTaughtCourseSourceTypeDescription } from '@/types/enums/teacher-taught-course-source-type-enum'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import { DatePicker, Form, Input, InputNumber, message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { portfolioTeacherCohortProfileApi } from '@/apis/portfolio/teacher-cohort-profile'
+import { portfolioTeacherProfileApi } from '@/apis/portfolio/teacher-profile'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -30,7 +29,8 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { showUserError } from '@/utils/error-handler'
+import { TeacherTaughtCourseSourceTypeDescription } from '@/types/enums/teacher-taught-course-source-type-enum'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
@@ -62,10 +62,10 @@ const academicExperiences = ref<PortfolioTeacherAcademicExperienceVO[]>([])
 const academicAppointments = ref<PortfolioTeacherAcademicAppointmentVO[]>([])
 
 type CvKind = 'education' | 'academicExperience' | 'academicAppointment'
-type CvRecord =
-  | PortfolioTeacherEducationVO
-  | PortfolioTeacherAcademicExperienceVO
-  | PortfolioTeacherAcademicAppointmentVO
+type CvRecord
+  = | PortfolioTeacherEducationVO
+    | PortfolioTeacherAcademicExperienceVO
+    | PortfolioTeacherAcademicAppointmentVO
 
 const cvForm = reactive({
   schoolName: '',
@@ -207,7 +207,7 @@ async function loadProfile() {
     courses.value = []
     courseTotal.value = 0
     loadFailed.value = true
-    showUserError(error)
+    showUserError(error, '加载教师档案失败')
   } finally {
     if (requestToken.value === currentToken) {
       loading.value = false
@@ -235,7 +235,7 @@ async function saveCohortProfile() {
     if (requestToken.value !== scopeToken || targetTeacherId.value !== teacherId) {
       return
     }
-    showUserError(error)
+    showUserError(error, '保存画像对标主数据失败')
   } finally {
     if (requestToken.value === scopeToken && targetTeacherId.value === teacherId) {
       savingCohortProfile.value = false
@@ -266,7 +266,7 @@ async function loadCourses() {
     }
     courses.value = []
     courseTotal.value = 0
-    showUserError(error)
+    showUserError(error, '加载讲授课程失败')
   } finally {
     if (requestToken.value === scopeToken && courseRequestToken.value === currentToken) {
       courseLoading.value = false
@@ -274,7 +274,7 @@ async function loadCourses() {
   }
 }
 
-/** 教师履历三类列表必须按同一教师 Scope 原子替换，任一失败时不保留上一位教师数据。 */
+/** 教师履历三类列表按同一教师 Scope 加载；各类失败互不影响，成功项可展示。 */
 async function loadCvRecords() {
   const scopeToken = requestToken.value
   const currentToken = ++cvRequestToken.value
@@ -282,33 +282,36 @@ async function loadCvRecords() {
   cvLoading.value = true
   try {
     const request = { teacherId: teacherId || undefined }
-    const [nextEducations, nextExperiences, nextAppointments] = await Promise.all([
+    const [eduResult, expResult, apptResult] = await Promise.allSettled([
       portfolioTeacherProfileApi.listEducations(request),
       portfolioTeacherProfileApi.listAcademicExperiences(request),
       portfolioTeacherProfileApi.listAcademicAppointments(request),
     ])
     if (
-      requestToken.value !== scopeToken ||
-      cvRequestToken.value !== currentToken ||
-      targetTeacherId.value !== teacherId
+      requestToken.value !== scopeToken
+      || cvRequestToken.value !== currentToken
+      || targetTeacherId.value !== teacherId
     ) {
       return
     }
-    educations.value = nextEducations
-    academicExperiences.value = nextExperiences
-    academicAppointments.value = nextAppointments
-  } catch (error) {
-    if (
-      requestToken.value !== scopeToken ||
-      cvRequestToken.value !== currentToken ||
-      targetTeacherId.value !== teacherId
-    ) {
-      return
+    if (eduResult.status === 'fulfilled') {
+      educations.value = eduResult.value
+    } else {
+      educations.value = []
+      showUserError(eduResult.reason, '教育经历加载失败')
     }
-    educations.value = []
-    academicExperiences.value = []
-    academicAppointments.value = []
-    showUserError(error)
+    if (expResult.status === 'fulfilled') {
+      academicExperiences.value = expResult.value
+    } else {
+      academicExperiences.value = []
+      showUserError(expResult.reason, '学术经历加载失败')
+    }
+    if (apptResult.status === 'fulfilled') {
+      academicAppointments.value = apptResult.value
+    } else {
+      academicAppointments.value = []
+      showUserError(apptResult.reason, '学术任职加载失败')
+    }
   } finally {
     if (cvRequestToken.value === currentToken && targetTeacherId.value === teacherId) {
       cvLoading.value = false
@@ -351,26 +354,26 @@ function openCvModal(kind: CvKind, row?: CvRecord) {
 
 function validateCvForm(): boolean {
   if (!cvForm.startYearMonth) {
-    message.warning('请选择开始年月')
+    showFormValidationMessage('请选择开始年月')
     return false
   }
   if (cvForm.endYearMonth && cvForm.endYearMonth < cvForm.startYearMonth) {
-    message.warning('结束年月不能早于开始年月')
+    showFormValidationMessage('结束年月不能早于开始年月')
     return false
   }
   if (cvKind.value === 'education') {
     if (!cvForm.schoolName.trim() || !cvForm.degreeName.trim()) {
-      message.warning('请填写学校和学位')
+      showFormValidationMessage('请填写学校和学位')
       return false
     }
     return true
   }
   if (!cvForm.organizationUnit.trim()) {
-    message.warning('请填写单位')
+    showFormValidationMessage('请填写单位')
     return false
   }
   if (cvKind.value === 'academicAppointment' && !cvForm.positionTitle.trim()) {
-    message.warning('请填写职务')
+    showFormValidationMessage('请填写职务')
     return false
   }
   return true
@@ -420,7 +423,7 @@ async function saveCvRecord() {
     await loadCvRecords()
   } catch (error) {
     if (requestToken.value === scopeToken && targetTeacherId.value === teacherId) {
-      showUserError(error)
+      showUserError(error, '保存履历记录失败')
     }
   } finally {
     if (requestToken.value === scopeToken && targetTeacherId.value === teacherId) {
@@ -476,7 +479,7 @@ async function handleCvAction(key: string, kind: CvKind, row: CvRecord) {
     await loadCvRecords()
   } catch (error) {
     if (requestToken.value === scopeToken && targetTeacherId.value === teacherId) {
-      showUserError(error)
+      showUserError(error, '删除履历记录失败')
     }
   } finally {
     if (requestToken.value === scopeToken && targetTeacherId.value === teacherId) {
@@ -491,7 +494,7 @@ function cvPeriod(row: CvRecord) {
 
 async function saveProfile() {
   if (readonlyProfile.value) {
-    message.warning('管理员查看模式下不可编辑个人资料')
+    showFormValidationMessage('管理员查看模式下不可编辑个人资料')
     return
   }
   savingProfile.value = true
@@ -503,7 +506,7 @@ async function saveProfile() {
     message.success('个人资料已保存')
     await loadProfile()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存个人资料失败')
   } finally {
     savingProfile.value = false
   }
@@ -511,7 +514,7 @@ async function saveProfile() {
 
 function openCourseModal(row?: PortfolioTeacherTaughtCourseVO) {
   if (readonlyProfile.value) {
-    message.warning('管理员查看模式下不可维护讲授课程')
+    showFormValidationMessage('管理员查看模式下不可维护讲授课程')
     return
   }
   editingCourse.value = row || null
@@ -543,7 +546,7 @@ async function saveCourse() {
     courseModalOpen.value = false
     await loadCourses()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存讲授课程失败')
   } finally {
     courseSaving.value = false
   }
@@ -551,7 +554,7 @@ async function saveCourse() {
 
 async function removeCourse(row: PortfolioTeacherTaughtCourseVO) {
   if (row.sourceType !== 'MANUAL') {
-    message.warning('教务同步课程不可删除')
+    showFormValidationMessage('教务同步课程不可删除')
     return
   }
   if (readonlyProfile.value || courseWriteBusy.value) return
@@ -571,13 +574,13 @@ async function removeCourse(row: PortfolioTeacherTaughtCourseVO) {
     await loadCourses()
   } catch (error) {
     if (courseRequestToken.value !== operationToken) return
-    showUserError(error)
+    showUserError(error, '删除讲授课程失败')
   } finally {
     if (courseDeletingId.value === row.id) courseDeletingId.value = ''
   }
 }
 
-function onCoursePageChange(pageEvent: { current: number; pageSize: number }) {
+function onCoursePageChange(pageEvent: { current: number, pageSize: number }) {
   coursePageNum.value = pageEvent.current
   coursePageSize.value = pageEvent.pageSize
   void loadCourses()

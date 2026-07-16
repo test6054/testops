@@ -316,9 +316,15 @@ async function loadPendingCount(): Promise<void> {
     emit('pending-change', 0)
     return
   }
-  const summary = await getReviewSummary(props.examId)
-  pendingCount.value = summary.pendingRequestCount + summary.inReviewRequestCount + summary.approvedRequestCount
-  emit('pending-change', pendingCount.value)
+  try {
+    const summary = await getReviewSummary(props.examId)
+    pendingCount.value = summary.pendingRequestCount + summary.inReviewRequestCount + summary.approvedRequestCount
+    emit('pending-change', pendingCount.value)
+  } catch (error) {
+    pendingCount.value = 0
+    emit('pending-change', 0)
+    showUserError(error, '复核待处理数量加载失败')
+  }
 }
 
 async function reload(): Promise<void> {

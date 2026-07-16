@@ -39,7 +39,7 @@ import {
   canSubmitSelfAssessment,
 } from '@/composables/useAccreditationWorkbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const props = defineProps<{
@@ -142,7 +142,7 @@ async function loadStandards(keyword?: string) {
     standards.value = page.list
   } catch (e) {
     standards.value = []
-    showUserError(e)
+    showUserError(e, '认证标准列表加载失败')
   }
 }
 
@@ -157,7 +157,7 @@ async function loadCycles() {
     })
     cycles.value = page.list
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '认证周期列表加载失败')
   } finally {
     loading.value = false
   }
@@ -195,7 +195,7 @@ async function openDetail(row: AccreditationCycleVO) {
     detailRecord.value = await accreditationApi.cycleDetail(row.id)
     detailOpen.value = true
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '认证周期详情加载失败')
   }
 }
 
@@ -231,7 +231,7 @@ async function submitCycle() {
     await loadCycles()
     emit('refresh')
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '认证周期保存失败')
   }
 }
 
@@ -246,7 +246,7 @@ async function runAction(fn: () => Promise<void>, confirmTitle?: string) {
     await loadCycles()
     emit('refresh')
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '认证周期操作失败')
   }
 }
 
@@ -381,12 +381,12 @@ async function handleCycleRowAction(key: string, record: AccreditationCycleVO) {
 
 async function handleCycleMenuClick(row: AccreditationCycleVO, event: MenuInfo) {
   if (typeof event.key !== 'string') {
-    showUserError(null, '流程操作无效，请重新选择')
+    showFormValidationMessage('流程操作无效，请重新选择')
     return
   }
   const matchedItem = buildMenuItems(row).find((item) => item.key === event.key)
   if (!matchedItem) {
-    showUserError(null, '当前周期不可执行该流程操作')
+    showFormValidationMessage('当前周期不可执行该流程操作')
     return
   }
   if (matchedItem.key === 'application') {

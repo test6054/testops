@@ -1,5 +1,5 @@
 import type { ExamLayoutGenerateQuestionRequest } from '@/apis/mark/exam-layout-design'
-import { createClientUuid } from '@/utils/client-uuid'
+import { createClientSnowflakeId } from '@/utils/client-snowflake'
 
 export type LayoutQuestionType = 'OBJECTIVE' | 'SUBJECTIVE'
 
@@ -48,7 +48,7 @@ export function defaultOptionCount(ocrScene: string): number | undefined {
 
 export function createQuestionDraft(ocrScene: string, sortNo: number): LayoutQuestionDraft {
   return {
-    id: createClientUuid(),
+    id: createClientSnowflakeId(),
     questionNo: String(sortNo),
     ocrScene,
     questionType: deriveQuestionType(ocrScene),

@@ -112,7 +112,7 @@ import {
   ALL_TRIAL_SESSION_STATUS_CODES,
   TrialSessionStatusCode,
 } from '@/types/enums/trial-session-status-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import TrialSessionCalibrateDrawer from './TrialSessionCalibrateDrawer.vue'
@@ -326,7 +326,7 @@ function guardManageAction(): boolean {
   if (props.canManage) {
     return true
   }
-  message.warning('仅考试主考老师可管理试评会话')
+  showFormValidationMessage('仅考试主考老师可管理试评会话')
   return false
 }
 

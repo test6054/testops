@@ -635,7 +635,7 @@ export function useExamKioskWorkflow() {
 
   function onPreviewImageLoadError() {
     previewImageUrl.value = ''
-    previewLoadError.value = '本地影像加载失败，请确认 Agent 已启动且该页已扫描'
+    previewLoadError.value = '本地影像加载失败，请确认本机扫描服务已启动且该页已扫描'
   }
 
   watch(
@@ -837,7 +837,7 @@ export function useExamKioskWorkflow() {
         || '当前不允许首次扫描'
     }
     if (!context.device) return '考试未绑定可用扫描设备'
-    if (!context.capabilities?.loaded) return '扫描仪能力未上报，请确认 Agent 心跳正常'
+    if (!context.capabilities?.loaded) return '扫描仪能力未上报，请确认本机扫描服务心跳正常'
     if (!scanConfig.value.dpi) return '扫描参数未就绪，请刷新工作台'
     return ''
   })
@@ -853,7 +853,7 @@ export function useExamKioskWorkflow() {
       return context.supplementBlockReason || '当前不允许补扫'
     }
     if (!context.device) return '考试未绑定可用扫描设备'
-    if (!context.capabilities?.loaded) return '扫描仪能力未上报，请确认 Agent 心跳正常'
+    if (!context.capabilities?.loaded) return '扫描仪能力未上报，请确认本机扫描服务心跳正常'
     if (!scanConfig.value.dpi) return '扫描参数未就绪，请刷新工作台'
     return ''
   })
@@ -945,14 +945,14 @@ export function useExamKioskWorkflow() {
       if (health.value?.bound || hasMarkScannerKioskAuth()) {
         return {
           tone: 'warning',
-          statusText: '本机 Agent 未连接',
+          statusText: '本机扫描服务未连接',
           headline: '本地扫描服务暂时不可用',
           detail: `${LOCAL_AGENT_UNAVAILABLE_ERROR}；服务恢复后会自动重连，无需重新激活。`,
         }
       }
       return {
         tone: 'warning',
-        statusText: '本机 Agent 未连接',
+        statusText: '本机扫描服务未连接',
         headline: '请先启动本机扫描服务',
         detail: LOCAL_AGENT_UNAVAILABLE_ERROR,
       }
@@ -972,7 +972,7 @@ export function useExamKioskWorkflow() {
           tone: 'danger',
           statusText: kioskActivationGateReasonLabel(reason),
           headline: '需要重新激活一体机',
-          detail: 'push_token 已变更，请重新输入激活码（一次激活，三类采集共用）。',
+          detail: '工位凭证已变更，请重新输入激活码（一次激活，三类采集共用）。',
         }
       }
       return {
@@ -981,14 +981,14 @@ export function useExamKioskWorkflow() {
           ? kioskActivationGateReasonLabel(reason)
           : '一体机未激活',
         headline: '请先激活本机扫描工位',
-        detail: '设备激活与业务类型无关：完成一次激活后，考试扫描、考后归档、档案袋采集共用同一 push_token。',
+        detail: '设备激活与业务类型无关：完成一次激活后，考试扫描、考后归档、档案袋采集共用同一工位凭证。',
       }
     }
     if (kioskBrowserSessionSyncNeeded.value) {
       return {
         tone: 'warning',
         statusText: '会话同步中',
-        headline: '正在同步本机 Agent 会话',
+        headline: '正在同步本机扫描服务会话',
         detail: KIOSK_BROWSER_SESSION_SYNC_MESSAGE,
       }
     }
@@ -1079,7 +1079,7 @@ export function useExamKioskWorkflow() {
     }
     if (activeBackendScanSession.value) {
       if (!localAgentReachable.value) {
-        return { text: '等待本机 Agent', tone: 'warning' }
+        return { text: '等待本机扫描服务', tone: 'warning' }
       }
       return { text: '恢复批次中', tone: 'running' }
     }
@@ -1094,7 +1094,7 @@ export function useExamKioskWorkflow() {
       }
       if (activeBackendScanSession.value) {
         if (!localAgentReachable.value) {
-          return '服务端批次已创建，本机 Agent 离线；恢复连接后将自动续扫，或使用底部「结束未完成进程」清理'
+          return '服务端批次已创建，本机扫描服务离线；恢复连接后将自动续扫，或使用底部「结束未完成进程」清理'
         }
         return activeBackendScanSessionReason.value || '正在恢复本地扫描任务…'
       }
@@ -1380,7 +1380,7 @@ export function useExamKioskWorkflow() {
       return
     }
     if (context.resumeAction === ScannerKioskResumeActionCode.VIEW_REGISTER_EXCEPTION) {
-      activeScanBatchId.value = context.pageRegisterPendingBatchId?.trim()
+      activeScanBatchId.value = context.pageRegisterPendingBatchId
         || context.latestBatch?.scanBatchId?.trim()
         || ''
       activeBatchExternalNo.value = context.latestBatch?.batchExternalNo?.trim() || ''
@@ -1394,7 +1394,7 @@ export function useExamKioskWorkflow() {
       activeScanBatchId.value = ''
       return
     }
-    activeScanBatchId.value = context.pageRegisterPendingBatchId?.trim()
+    activeScanBatchId.value = context.pageRegisterPendingBatchId
       || context.latestBatch?.scanBatchId?.trim()
       || ''
     activeBatchExternalNo.value = context.latestBatch?.batchExternalNo?.trim() || ''
@@ -1777,7 +1777,7 @@ export function useExamKioskWorkflow() {
           executeRefreshAll(),
           new Promise<never>((_, reject) => {
             window.setTimeout(() => {
-              reject(new Error('设备状态刷新超时，请检查本机 Agent 与网关连接'))
+              reject(new Error('设备状态刷新超时，请检查本机扫描服务与网关连接'))
             }, REFRESH_ALL_TIMEOUT_MS)
           }),
         ])
@@ -2163,7 +2163,7 @@ export function useExamKioskWorkflow() {
       {
         value: DirectScanProviderChainCode.BAIDU_QWEN,
         label: '云端 AI',
-        description: '百度 OCR + 千问版面切题，适合云端部署',
+        description: '百度文字识别 + 千问版面切题，适合云端部署',
       },
       {
         value: DirectScanProviderChainCode.PADDLE_LOCAL,
@@ -2191,7 +2191,7 @@ export function useExamKioskWorkflow() {
     if (chain) {
       return strictEnumLabel(DirectScanProviderChainDescription, chain, '直扫识别链路')
     }
-    return '租户 OCR 未启用'
+    return '租户文字识别未启用'
   }
 
   function resolveStartScanProviderChain(): DirectScanProviderChainCode | undefined {
@@ -2463,7 +2463,7 @@ export function useExamKioskWorkflow() {
           executeLoadBindExamCandidates(),
           new Promise<never>((_, reject) => {
             window.setTimeout(() => {
-              reject(new Error('可扫描考试列表加载超时，请检查本机 Agent 与网关连接后刷新'))
+              reject(new Error('可扫描考试列表加载超时，请检查本机扫描服务与网关连接后刷新'))
             }, BIND_EXAM_CANDIDATE_LOAD_TIMEOUT_MS)
           }),
         ])
@@ -3053,7 +3053,7 @@ export function useExamKioskWorkflow() {
       if (rawScanBatchId == null || String(rawScanBatchId).trim() === '') {
         await handleScanJobStartFailure(
           null,
-          '扫描工单创建结果缺少批次 ID，无法启动本地扫描',
+          '扫描工单创建结果缺少批次编号，无法启动本地扫描',
         )
         return false
       }
@@ -3062,7 +3062,7 @@ export function useExamKioskWorkflow() {
       if (!batchLifecycle.reportId) {
         await handleScanJobStartFailure(
           null,
-          '扫描批次创建结果缺少扫描报告 ID，无法启动本地扫描',
+          '扫描批次创建结果缺少扫描报告编号，无法启动本地扫描',
         )
         return false
       }
@@ -3258,7 +3258,7 @@ export function useExamKioskWorkflow() {
       throw toUserError(null, '缺少冻结扫描参数，无法通过浏览器提交批次')
     }
     if (!activeReportId.value.trim()) {
-      throw toUserError(null, '缺少扫描报告 ID，无法通过浏览器提交批次')
+      throw toUserError(null, '缺少扫描报告编号，无法通过浏览器提交批次')
     }
     const uploadedPages = job.pages
       .filter((page) => page.status !== LocalScanPageStatusCode.DELETED && page.uploadedFileId)

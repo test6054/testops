@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioHonorStatsVO } from '@/apis/portfolio/teacher-platform'
-import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { PortfolioDevelopmentRecordTypeCode } from '@/apis/portfolio/enums'
+import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -17,7 +17,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useQueryTable } from '@/composables/useQueryTable'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 
 const importModalOpen = ref(false)
@@ -49,8 +49,8 @@ const form = reactive({
   categoryCode: '',
   descriptionText: '',
 })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
-  usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
+  = usePortfolioTeacherSearch()
 const {
   loading,
   rows,
@@ -102,11 +102,11 @@ const {
 async function saveRecord() {
   if (writing.value) return
   if (!form.recordTitle.trim()) {
-    message.warning('请填写荣誉标题')
+    showFormValidationMessage('请填写荣誉标题')
     return
   }
   if (!form.teacherUserId) {
-    message.warning('荣誉条目须选择所属教师')
+    showFormValidationMessage('荣誉条目须选择所属教师')
     return
   }
   operationKey.value = 'save'
@@ -131,7 +131,7 @@ async function saveRecord() {
     form.descriptionText = ''
     await loadPage()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存荣誉记录失败')
   } finally {
     if (operationKey.value === 'save') operationKey.value = ''
   }
@@ -153,7 +153,7 @@ async function removeRecord(id: string, title: string) {
     message.success('已删除')
     await loadPage()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '删除荣誉记录失败')
   } finally {
     if (operationKey.value === operation) operationKey.value = ''
   }
@@ -171,7 +171,7 @@ async function exportHonor() {
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出荣誉库失败')
   }
 }
 </script>

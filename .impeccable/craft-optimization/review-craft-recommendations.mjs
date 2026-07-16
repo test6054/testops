@@ -212,20 +212,22 @@ function genericReview(filePath, source, sourceLabels, metrics) {
       '教师代办范围或用指标卡替代评价证据和改进任务',
     ]
   }
-  if (metrics.tables)
+  if (metrics.tables) {
     return [
       'P2',
       '负责“' + pageName + '”的查询、办理和结果反馈',
       '筛选与后端分页同源；批量动作跟随选择状态，行操作按业务状态收敛。',
       '装饰 KPI、第二套筛选或解释整张表用途的长文案',
     ]
-  if (metrics.cards >= 3)
+}
+  if (metrics.cards >= 3) {
     return [
       'P1',
       '负责“' + pageName + '”的主任务和状态概览',
       '按主任务重排首屏，只保留可下钻或推动流程的状态。',
       '同权卡片阵列、彩色图标墙和重复数字制造驾驶舱感',
     ]
+}
   return [
     'P3',
     '负责“' + pageName + '”的当前状态和可执行动作',
@@ -284,8 +286,8 @@ const files = walk(sourceRoot)
   .map(inspect)
   .sort((left, right) => {
     return (
-      priorityOrder[left.priority] - priorityOrder[right.priority] ||
-      left.path.localeCompare(right.path)
+      priorityOrder[left.priority] - priorityOrder[right.priority]
+      || left.path.localeCompare(right.path)
     )
   })
 const fileMap = new Map(files.map((item) => [item.path, item]))
@@ -343,9 +345,9 @@ const components = oldComponents.all
   })
   .sort((left, right) => {
     return (
-      statusOrder[left.status] - statusOrder[right.status] ||
-      right.ref_total - left.ref_total ||
-      left.path.localeCompare(right.path)
+      statusOrder[left.status] - statusOrder[right.status]
+      || right.ref_total - left.ref_total
+      || left.path.localeCompare(right.path)
     )
   })
 const componentSummary = components.reduce(
@@ -413,67 +415,67 @@ function renderFileSection() {
         .concat(item.evidence, [item.responsibility, item.action, item.avoid])
         .join(' ')
       return (
-        '<tr data-pri="' +
-        item.priority +
-        '" data-dom="' +
-        escapeHtml(item.domain) +
-        '" data-q="' +
-        escapeHtml(query) +
-        '"><td><span class="chip ' +
-        badge(item.priority) +
-        '">' +
-        item.priority +
-        '</span></td><td>' +
-        escapeHtml(item.domain) +
-        '</td><td>' +
-        escapeHtml(item.surface) +
-        '</td><td class="audit-path">' +
-        escapeHtml(item.path) +
-        '</td><td>' +
-        escapeHtml(item.evidence.join('；')) +
-        '</td><td><b>' +
-        escapeHtml(item.responsibility) +
-        '</b><br>' +
-        escapeHtml(item.action) +
-        '<br><span class="audit-avoid">禁：' +
-        escapeHtml(item.avoid) +
-        '</span></td><td>' +
-        item.lines +
-        '</td></tr>'
+        '<tr data-pri="'
+        + item.priority
+        + '" data-dom="'
+        + escapeHtml(item.domain)
+        + '" data-q="'
+        + escapeHtml(query)
+        + '"><td><span class="chip '
+        + badge(item.priority)
+        + '">'
+        + item.priority
+        + '</span></td><td>'
+        + escapeHtml(item.domain)
+        + '</td><td>'
+        + escapeHtml(item.surface)
+        + '</td><td class="audit-path">'
+        + escapeHtml(item.path)
+        + '</td><td>'
+        + escapeHtml(item.evidence.join('；'))
+        + '</td><td><b>'
+        + escapeHtml(item.responsibility)
+        + '</b><br>'
+        + escapeHtml(item.action)
+        + '<br><span class="audit-avoid">禁：'
+        + escapeHtml(item.avoid)
+        + '</span></td><td>'
+        + item.lines
+        + '</td></tr>'
       )
     })
     .join('\n')
   const counts = fileSummary.byPriority
   return (
-    '<!-- CRAFT_VUE_REGISTRY_START -->\n' +
-    '<style id="craft-reg-css">.audit-sum{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:12px 0}.audit-sum .k{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px}.audit-sum b{display:block;font-size:21px}.audit-rule{padding:12px 14px;margin:12px 0;border:1px solid var(--border);border-radius:8px;background:#fafbfc;font-size:12px;line-height:1.7}.audit-filters{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.audit-filters input,.audit-filters select{height:32px;border:1px solid #d9d9d9;border-radius:6px;padding:0 10px}.audit-filters input{min-width:280px}.audit-wrap{max-height:680px;overflow:auto;border:1px solid var(--border);border-radius:8px}.audit-table{width:100%;border-collapse:collapse;font-size:12px;background:#fff}.audit-table th,.audit-table td{padding:8px 10px;border-bottom:1px solid #f0f0f0;text-align:left;vertical-align:top;line-height:1.5}.audit-table th{position:sticky;top:0;z-index:1;background:#fafbfc}.audit-path{font:11px var(--mono);color:#0958d9;word-break:break-all}.audit-avoid{color:#8c8c8c}@media(max-width:1000px){.audit-sum{grid-template-columns:repeat(2,1fr)}}</style>\n' +
-    '<section class="section" id="sec-vuefiles"><div class="sec-head"><div><h2>12 · Vue 文件逐项审查（' +
-    files.length +
-    '）</h2><p>每条结论来自当前 SFC 的文案、组件依赖和交互信号，不再使用“随父壳继承”等空泛模板。</p></div><div class="chips"><span class="chip no">P0 ' +
-    (counts.P0 || 0) +
-    '</span><span class="chip warn">P1 ' +
-    (counts.P1 || 0) +
-    '</span><span class="chip">P2 ' +
-    (counts.P2 || 0) +
-    '</span><span class="chip ok">HOLD ' +
-    (counts.HOLD || 0) +
-    '</span></div></div>' +
-    '<div class="audit-sum"><div class="k"><b>' +
-    files.length +
-    '</b><span>Vue 文件</span></div><div class="k"><b>' +
-    (counts.P0 || 0) +
-    '</b><span>业务和范围必改</span></div><div class="k"><b>' +
-    (counts.P1 || 0) +
-    '</b><span>主链体验收敛</span></div><div class="k"><b>' +
-    components.length +
-    '</b><span>组件引用复核</span></div><div class="k"><b>4</b><span>证据 / 归属 / 动作 / 禁改</span></div></div>' +
-    '<div class="audit-rule"><strong>去 AI 化门槛：</strong>同一身份只出现一次；同一状态只保留一个真源；说明文字不能替代状态和动作；卡片必须对应实体或业务分组；建议必须指向当前文件或明确的共享组件。TasteSkill 只做 anti-slop 检查。</div>' +
-    '<div class="audit-filters"><input id="regSearch" type="search" placeholder="搜索路径、源码证据、动作或禁改项"><select id="regPri"><option value="">全部优先级</option><option>P0</option><option>P1</option><option>P2</option><option>P3</option><option>HOLD</option></select><select id="regDom"><option value="">全部域</option></select><span id="regCount" class="hint"></span></div>' +
-    '<div class="audit-wrap"><table class="audit-table" id="regTable"><thead><tr><th>级别</th><th>域</th><th>职责面</th><th>文件</th><th>源码证据</th><th>责任归属与优化动作</th><th>行</th></tr></thead><tbody>' +
-    rows +
-    '</tbody></table></div>' +
-    '<div class="sec-confirm" data-confirm-sec="vuefiles" id="sc-vuefiles"><div class="sc-txt"><b>12 Vue 文件逐项审查</b> · 结论必须可由源码证据复核<br><span class="sc-state">本幕尚未确认</span></div><div class="sc-actions"><button type="button" class="btn primary sc-ok" data-sec="vuefiles">确认本幕</button><button type="button" class="btn sc-revoke" data-sec="vuefiles" hidden>撤销确认</button></div></div></section>' +
-    '<script id="craft-reg-js">(function(){const s=document.getElementById("regSearch"),p=document.getElementById("regPri"),d=document.getElementById("regDom"),t=document.getElementById("regTable"),c=document.getElementById("regCount");if(!t||t.dataset.bound==="1")return;t.dataset.bound="1";const r=[...t.querySelectorAll("tbody tr")];[...new Set(r.map(x=>x.dataset.dom))].sort().forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;d.appendChild(o)});function a(){const q=(s.value||"").trim().toLowerCase();let n=0;r.forEach(x=>{const ok=(!p.value||x.dataset.pri===p.value)&&(!d.value||x.dataset.dom===d.value)&&(!q||(x.dataset.q||"").toLowerCase().includes(q));x.style.display=ok?"":"none";if(ok)n++});c.textContent="显示 "+n+" / "+r.length}s.addEventListener("input",a);p.addEventListener("change",a);d.addEventListener("change",a);a()})();</script>\n<!-- CRAFT_VUE_REGISTRY_END -->'
+    '<!-- CRAFT_VUE_REGISTRY_START -->\n'
+    + '<style id="craft-reg-css">.audit-sum{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:12px 0}.audit-sum .k{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px}.audit-sum b{display:block;font-size:21px}.audit-rule{padding:12px 14px;margin:12px 0;border:1px solid var(--border);border-radius:8px;background:#fafbfc;font-size:12px;line-height:1.7}.audit-filters{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.audit-filters input,.audit-filters select{height:32px;border:1px solid #d9d9d9;border-radius:6px;padding:0 10px}.audit-filters input{min-width:280px}.audit-wrap{max-height:680px;overflow:auto;border:1px solid var(--border);border-radius:8px}.audit-table{width:100%;border-collapse:collapse;font-size:12px;background:#fff}.audit-table th,.audit-table td{padding:8px 10px;border-bottom:1px solid #f0f0f0;text-align:left;vertical-align:top;line-height:1.5}.audit-table th{position:sticky;top:0;z-index:1;background:#fafbfc}.audit-path{font:11px var(--mono);color:#0958d9;word-break:break-all}.audit-avoid{color:#8c8c8c}@media(max-width:1000px){.audit-sum{grid-template-columns:repeat(2,1fr)}}</style>\n'
+    + '<section class="section" id="sec-vuefiles"><div class="sec-head"><div><h2>12 · Vue 文件逐项审查（'
+    + files.length
+    + '）</h2><p>每条结论来自当前 SFC 的文案、组件依赖和交互信号，不再使用“随父壳继承”等空泛模板。</p></div><div class="chips"><span class="chip no">P0 '
+    + (counts.P0 || 0)
+    + '</span><span class="chip warn">P1 '
+    + (counts.P1 || 0)
+    + '</span><span class="chip">P2 '
+    + (counts.P2 || 0)
+    + '</span><span class="chip ok">HOLD '
+    + (counts.HOLD || 0)
+    + '</span></div></div>'
+    + '<div class="audit-sum"><div class="k"><b>'
+    + files.length
+    + '</b><span>Vue 文件</span></div><div class="k"><b>'
+    + (counts.P0 || 0)
+    + '</b><span>业务和范围必改</span></div><div class="k"><b>'
+    + (counts.P1 || 0)
+    + '</b><span>主链体验收敛</span></div><div class="k"><b>'
+    + components.length
+    + '</b><span>组件引用复核</span></div><div class="k"><b>4</b><span>证据 / 归属 / 动作 / 禁改</span></div></div>'
+    + '<div class="audit-rule"><strong>去 AI 化门槛：</strong>同一身份只出现一次；同一状态只保留一个真源；说明文字不能替代状态和动作；卡片必须对应实体或业务分组；建议必须指向当前文件或明确的共享组件。TasteSkill 只做 anti-slop 检查。</div>'
+    + '<div class="audit-filters"><input id="regSearch" type="search" placeholder="搜索路径、源码证据、动作或禁改项"><select id="regPri"><option value="">全部优先级</option><option>P0</option><option>P1</option><option>P2</option><option>P3</option><option>HOLD</option></select><select id="regDom"><option value="">全部域</option></select><span id="regCount" class="hint"></span></div>'
+    + '<div class="audit-wrap"><table class="audit-table" id="regTable"><thead><tr><th>级别</th><th>域</th><th>职责面</th><th>文件</th><th>源码证据</th><th>责任归属与优化动作</th><th>行</th></tr></thead><tbody>'
+    + rows
+    + '</tbody></table></div>'
+    + '<div class="sec-confirm" data-confirm-sec="vuefiles" id="sc-vuefiles"><div class="sc-txt"><b>12 Vue 文件逐项审查</b> · 结论必须可由源码证据复核<br><span class="sc-state">本幕尚未确认</span></div><div class="sc-actions"><button type="button" class="btn primary sc-ok" data-sec="vuefiles">确认本幕</button><button type="button" class="btn sc-revoke" data-sec="vuefiles" hidden>撤销确认</button></div></div></section>'
+    + '<script id="craft-reg-js">(function(){const s=document.getElementById("regSearch"),p=document.getElementById("regPri"),d=document.getElementById("regDom"),t=document.getElementById("regTable"),c=document.getElementById("regCount");if(!t||t.dataset.bound==="1")return;t.dataset.bound="1";const r=[...t.querySelectorAll("tbody tr")];[...new Set(r.map(x=>x.dataset.dom))].sort().forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;d.appendChild(o)});function a(){const q=(s.value||"").trim().toLowerCase();let n=0;r.forEach(x=>{const ok=(!p.value||x.dataset.pri===p.value)&&(!d.value||x.dataset.dom===d.value)&&(!q||(x.dataset.q||"").toLowerCase().includes(q));x.style.display=ok?"":"none";if(ok)n++});c.textContent="显示 "+n+" / "+r.length}s.addEventListener("input",a);p.addEventListener("change",a);d.addEventListener("change",a);a()})();</script>\n<!-- CRAFT_VUE_REGISTRY_END -->'
   )
 }
 
@@ -485,71 +487,71 @@ function renderComponentSection() {
         .concat(review.evidence, [review.responsibility, review.action, review.avoid])
         .join(' ')
       return (
-        '<tr data-status="' +
-        item.status +
-        '" data-layer="' +
-        item.layer +
-        '" data-pkg="' +
-        escapeHtml(item.package) +
-        '" data-q="' +
-        escapeHtml(query) +
-        '"><td><span class="chip ' +
-        badge(item.status) +
-        '">' +
-        item.status +
-        '</span></td><td>' +
-        item.layer +
-        '</td><td>' +
-        escapeHtml(item.package) +
-        '</td><td><b>' +
-        escapeHtml(item.name) +
-        '</b><div class="audit-path">' +
-        escapeHtml(item.path) +
-        '</div></td><td>' +
-        item.ref_total +
-        '</td><td>' +
-        escapeHtml(review.evidence.join('；')) +
-        '</td><td><b>' +
-        escapeHtml(review.responsibility) +
-        '</b><br>' +
-        escapeHtml(review.action) +
-        '<br><span class="audit-avoid">禁：' +
-        escapeHtml(review.avoid) +
-        '</span></td></tr>'
+        '<tr data-status="'
+        + item.status
+        + '" data-layer="'
+        + item.layer
+        + '" data-pkg="'
+        + escapeHtml(item.package)
+        + '" data-q="'
+        + escapeHtml(query)
+        + '"><td><span class="chip '
+        + badge(item.status)
+        + '">'
+        + item.status
+        + '</span></td><td>'
+        + item.layer
+        + '</td><td>'
+        + escapeHtml(item.package)
+        + '</td><td><b>'
+        + escapeHtml(item.name)
+        + '</b><div class="audit-path">'
+        + escapeHtml(item.path)
+        + '</div></td><td>'
+        + item.ref_total
+        + '</td><td>'
+        + escapeHtml(review.evidence.join('；'))
+        + '</td><td><b>'
+        + escapeHtml(review.responsibility)
+        + '</b><br>'
+        + escapeHtml(review.action)
+        + '<br><span class="audit-avoid">禁：'
+        + escapeHtml(review.avoid)
+        + '</span></td></tr>'
       )
     })
     .join('\n')
   const counts = componentSummary.byStatus
   return (
-    '<!-- CRAFT_COMP_AUDIT_START -->\n<section class="section" id="sec-compaudit"><div class="sec-head"><div><h2>14 · 组件逐项审查（' +
-    components.length +
-    '）</h2><p>引用关系只判断影响面；结论同时核对组件源码、职责边界和调用场景。</p></div><div class="chips"><span class="chip no">REWORK ' +
-    (counts.REWORK || 0) +
-    '</span><span class="chip warn">TUNE ' +
-    (counts.TUNE || 0) +
-    '</span><span class="chip">DEAD ' +
-    (counts.DEAD || 0) +
-    '</span><span class="chip ok">HOLD ' +
-    (counts.HOLD || 0) +
-    '</span></div></div>' +
-    '<div class="audit-sum"><div class="k"><b>' +
-    components.length +
-    '</b><span>组件</span></div><div class="k"><b>' +
-    (counts.REWORK || 0) +
-    '</b><span>职责或形态重做</span></div><div class="k"><b>' +
-    (counts.TUNE || 0) +
-    '</b><span>调用面统一</span></div><div class="k"><b>' +
-    (counts.DEAD || 0) +
-    '</b><span>零引用待核</span></div><div class="k"><b>' +
-    (counts.HOLD || 0) +
-    '</b><span>保持合同</span></div></div>' +
-    '<div class="audit-rule"><strong>组件门槛：</strong>共享组件解决跨页面重复问题，页面组件只负责业务编排；零引用先核对动态入口；没有真实调用缺口不得扩展设计系统；教师范围、质量范围、考试上下文各自保持单一真源。</div>' +
-    '<div class="audit-filters"><input id="compSearch" type="search" placeholder="搜索组件、证据、职责或禁改项"><select id="compStatus"><option value="">全部状态</option><option>REWORK</option><option>TUNE</option><option>DEAD</option><option>OK</option><option>HOLD</option></select><select id="compLayer"><option value="">全部层</option></select><select id="compPkg"><option value="">全部包</option></select><span id="compCount" class="hint"></span></div>' +
-    '<div class="audit-wrap"><table class="audit-table" id="compAllTable"><thead><tr><th>状态</th><th>层</th><th>包</th><th>组件</th><th>引用</th><th>源码证据</th><th>责任归属与优化动作</th></tr></thead><tbody>' +
-    rows +
-    '</tbody></table></div>' +
-    '<div class="sec-confirm" data-confirm-sec="compaudit" id="sc-compaudit"><div class="sc-txt"><b>14 组件逐项审查</b> · 删除和扩展前核对引用与职责<br><span class="sc-state">本幕尚未确认</span></div><div class="sc-actions"><button type="button" class="btn primary sc-ok" data-sec="compaudit">确认本幕</button><button type="button" class="btn sc-revoke" data-sec="compaudit" hidden>撤销确认</button></div></div></section>' +
-    '<script id="craft-comp-js">(function(){const s=document.getElementById("compSearch"),st=document.getElementById("compStatus"),l=document.getElementById("compLayer"),p=document.getElementById("compPkg"),t=document.getElementById("compAllTable"),c=document.getElementById("compCount");if(!t||t.dataset.bound==="1")return;t.dataset.bound="1";const r=[...t.querySelectorAll("tbody tr")];function f(e,k){[...new Set(r.map(x=>x.dataset[k]))].sort().forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;e.appendChild(o)})}f(l,"layer");f(p,"pkg");function a(){const q=(s.value||"").trim().toLowerCase();let n=0;r.forEach(x=>{const ok=(!st.value||x.dataset.status===st.value)&&(!l.value||x.dataset.layer===l.value)&&(!p.value||x.dataset.pkg===p.value)&&(!q||(x.dataset.q||"").toLowerCase().includes(q));x.style.display=ok?"":"none";if(ok)n++});c.textContent="显示 "+n+" / "+r.length}s.addEventListener("input",a);st.addEventListener("change",a);l.addEventListener("change",a);p.addEventListener("change",a);a()})();</script>\n<!-- CRAFT_COMP_AUDIT_END -->'
+    '<!-- CRAFT_COMP_AUDIT_START -->\n<section class="section" id="sec-compaudit"><div class="sec-head"><div><h2>14 · 组件逐项审查（'
+    + components.length
+    + '）</h2><p>引用关系只判断影响面；结论同时核对组件源码、职责边界和调用场景。</p></div><div class="chips"><span class="chip no">REWORK '
+    + (counts.REWORK || 0)
+    + '</span><span class="chip warn">TUNE '
+    + (counts.TUNE || 0)
+    + '</span><span class="chip">DEAD '
+    + (counts.DEAD || 0)
+    + '</span><span class="chip ok">HOLD '
+    + (counts.HOLD || 0)
+    + '</span></div></div>'
+    + '<div class="audit-sum"><div class="k"><b>'
+    + components.length
+    + '</b><span>组件</span></div><div class="k"><b>'
+    + (counts.REWORK || 0)
+    + '</b><span>职责或形态重做</span></div><div class="k"><b>'
+    + (counts.TUNE || 0)
+    + '</b><span>调用面统一</span></div><div class="k"><b>'
+    + (counts.DEAD || 0)
+    + '</b><span>零引用待核</span></div><div class="k"><b>'
+    + (counts.HOLD || 0)
+    + '</b><span>保持合同</span></div></div>'
+    + '<div class="audit-rule"><strong>组件门槛：</strong>共享组件解决跨页面重复问题，页面组件只负责业务编排；零引用先核对动态入口；没有真实调用缺口不得扩展设计系统；教师范围、质量范围、考试上下文各自保持单一真源。</div>'
+    + '<div class="audit-filters"><input id="compSearch" type="search" placeholder="搜索组件、证据、职责或禁改项"><select id="compStatus"><option value="">全部状态</option><option>REWORK</option><option>TUNE</option><option>DEAD</option><option>OK</option><option>HOLD</option></select><select id="compLayer"><option value="">全部层</option></select><select id="compPkg"><option value="">全部包</option></select><span id="compCount" class="hint"></span></div>'
+    + '<div class="audit-wrap"><table class="audit-table" id="compAllTable"><thead><tr><th>状态</th><th>层</th><th>包</th><th>组件</th><th>引用</th><th>源码证据</th><th>责任归属与优化动作</th></tr></thead><tbody>'
+    + rows
+    + '</tbody></table></div>'
+    + '<div class="sec-confirm" data-confirm-sec="compaudit" id="sc-compaudit"><div class="sc-txt"><b>14 组件逐项审查</b> · 删除和扩展前核对引用与职责<br><span class="sc-state">本幕尚未确认</span></div><div class="sc-actions"><button type="button" class="btn primary sc-ok" data-sec="compaudit">确认本幕</button><button type="button" class="btn sc-revoke" data-sec="compaudit" hidden>撤销确认</button></div></div></section>'
+    + '<script id="craft-comp-js">(function(){const s=document.getElementById("compSearch"),st=document.getElementById("compStatus"),l=document.getElementById("compLayer"),p=document.getElementById("compPkg"),t=document.getElementById("compAllTable"),c=document.getElementById("compCount");if(!t||t.dataset.bound==="1")return;t.dataset.bound="1";const r=[...t.querySelectorAll("tbody tr")];function f(e,k){[...new Set(r.map(x=>x.dataset[k]))].sort().forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;e.appendChild(o)})}f(l,"layer");f(p,"pkg");function a(){const q=(s.value||"").trim().toLowerCase();let n=0;r.forEach(x=>{const ok=(!st.value||x.dataset.status===st.value)&&(!l.value||x.dataset.layer===l.value)&&(!p.value||x.dataset.pkg===p.value)&&(!q||(x.dataset.q||"").toLowerCase().includes(q));x.style.display=ok?"":"none";if(ok)n++});c.textContent="显示 "+n+" / "+r.length}s.addEventListener("input",a);st.addEventListener("change",a);l.addEventListener("change",a);p.addEventListener("change",a);a()})();</script>\n<!-- CRAFT_COMP_AUDIT_END -->'
   )
 }
 

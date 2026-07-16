@@ -293,7 +293,7 @@
               <div>
                 <h3 class="scan-monitor__identity-evidence-title">身份区证据对比</h3>
                 <p class="scan-monitor__identity-evidence-subtitle">
-                  左侧为 OCR 自动裁切身份区，右侧为原始扫描页，用于人工核对姓名、学号与卷面来源
+                  左侧为文字识别自动裁切身份区，右侧为原始扫描页，用于人工核对姓名、学号与卷面来源
                 </p>
               </div>
               <UiTag :tone="bindEvidenceTagTone" size="sm">
@@ -360,7 +360,7 @@
           <a-form-item label="识别学号（可选，留空表示未能识别）" name="recognizedStudentNo">
             <a-input
               v-model:value="bindForm.recognizedStudentNo"
-              placeholder="OCR / 二维码识别到的学号线索，供后续审计使用"
+              placeholder="文字识别或二维码识别到的学号线索，供后续审计使用"
               :maxlength="64"
             />
           </a-form-item>
@@ -1467,33 +1467,42 @@ async function loadAttentionPage(queryGroup: ScanAttentionQueryGroupCode): Promi
     attentionPagination.total = 0
     return
   }
-  const result = await listScanAttentions({
-    examId,
-    pageNum: attentionPagination.current,
-    pageSize: attentionPagination.pageSize,
-    queryGroup,
-    attentionType: currentAttentionType(),
-    scanBatchId: filterForm.scanBatchId?.trim() || undefined,
-    paperInstanceId: filterForm.paperInstanceId?.trim() || undefined,
-  })
-  if (loadGeneration !== attentionLoadGeneration) {
-    return
+  try {
+    const result = await listScanAttentions({
+      examId,
+      pageNum: attentionPagination.current,
+      pageSize: attentionPagination.pageSize,
+      queryGroup,
+      attentionType: currentAttentionType(),
+      scanBatchId: filterForm.scanBatchId?.trim() || undefined,
+      paperInstanceId: filterForm.paperInstanceId?.trim() || undefined,
+    })
+    if (loadGeneration !== attentionLoadGeneration) {
+      return
+    }
+    const total = result.total
+    const rows = result.list
+    if (rows.length === 0 && total > 0 && attentionPagination.current > 1) {
+      attentionPagination.current = Math.ceil(total / attentionPagination.pageSize)
+      await loadAttentionPage(queryGroup)
+      return
+    }
+    attentionPagination.total = total
+    if (result.pageNum != null) {
+      attentionPagination.current = result.pageNum
+    }
+    if (result.pageSize != null) {
+      attentionPagination.pageSize = result.pageSize
+    }
+    attentions.value = rows
+  } catch (error) {
+    if (loadGeneration !== attentionLoadGeneration) {
+      return
+    }
+    attentions.value = []
+    attentionPagination.total = 0
+    showUserError(error, '扫描关注列表加载失败')
   }
-  const total = result.total
-  const rows = result.list
-  if (rows.length === 0 && total > 0 && attentionPagination.current > 1) {
-    attentionPagination.current = Math.ceil(total / attentionPagination.pageSize)
-    await loadAttentionPage(queryGroup)
-    return
-  }
-  attentionPagination.total = total
-  if (result.pageNum != null) {
-    attentionPagination.current = result.pageNum
-  }
-  if (result.pageSize != null) {
-    attentionPagination.pageSize = result.pageSize
-  }
-  attentions.value = rows
 }
 
 function reloadAttentionsFromFirstPage(): void {
@@ -2064,7 +2073,7 @@ function buildAttentionActions(record: ScanAttentionItemResponse): UiTableRowAct
       actions.push({ key: 'supplement', label: '去补扫', tone: 'primary' })
     }
   } else if (record.attentionType === ScanAttentionTypeCode.RECOGNITION_REVIEW) {
-    actions.push({ key: 'review', label: 'OCR/AI 复核', tone: 'primary' })
+    actions.push({ key: 'review', label: '文字识别/智能复核', tone: 'primary' })
   } else if (record.attentionType === ScanAttentionTypeCode.DUPLICATE_PENDING) {
     actions.push({ key: 'ledger', label: '去影像账本处置', tone: 'primary' })
   } else if (

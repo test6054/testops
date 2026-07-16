@@ -141,14 +141,15 @@
             tone="primary"
             @click="openMaterialOcrDetail(record)"
           >
-            查看 OCR
+            查看文字识别
           </UiTextAction>
           <UiTextAction
             v-if="canRetryMaterialOcr(record)"
             tone="primary"
+            :disabled="retryingMaterialIds.has(record.materialId)"
             @click="confirmRetryMaterialOcr(record)"
           >
-            重试 OCR
+            {{ retryingMaterialIds.has(record.materialId) ? '提交中' : '重试文字识别' }}
           </UiTextAction>
         </template>
       </template>
@@ -224,14 +225,14 @@
             placeholder="选择引用类型"
           />
         </a-form-item>
-        <a-form-item label="目标卷 ID" required>
+        <a-form-item label="目标卷编号" required>
           <a-input
             v-model:value="sharedRefForm.targetVolumeId"
-            placeholder="合用材料所在归档任务 ID"
+            placeholder="合用材料所在归档任务编号"
           />
         </a-form-item>
-        <a-form-item label="目标材料 ID" required>
-          <a-input v-model:value="sharedRefForm.targetMaterialId" placeholder="目标材料 ID" />
+        <a-form-item label="目标材料编号" required>
+          <a-input v-model:value="sharedRefForm.targetMaterialId" placeholder="目标材料编号" />
         </a-form-item>
         <a-form-item label="目录备注">
           <a-input v-model:value="sharedRefForm.catalogNote" placeholder="如 合用材料见××班级卷" />
@@ -293,6 +294,17 @@ import type {
   ArchiveVolumeMaterialResponse,
   ArchiveVolumeMaterialStatsResponse,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
+import {
+  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
+  ArchiveMaterialOcrStatusCode,
+  ArchiveMaterialOcrStatusDescription,
+} from '@/apis/mark/archive-ocr-status'
 import {
   ALL_ARCHIVE_MATERIAL_TYPE_CODES,
   ARCHIVE_MATERIAL_TYPE_OPTIONS,
@@ -310,18 +322,6 @@ import {
   registerArchiveVolumeMaterial,
   triggerArchiveVolumeMaterialOcr,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
-import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
-import {
-  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
-  ArchiveMaterialOcrStatusCode,
-  ArchiveMaterialOcrStatusDescription,
-} from '@/apis/mark/archive-ocr-status'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import FilePreviewDialog from '@/components/FilePreviewDialog.vue'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
@@ -337,7 +337,7 @@ import { useFilePreview } from '@/composables/useFilePreview'
 import { archiveMissingItemTargetsCatalogKey } from '@/utils/archive-catalog-material-key'
 import { buildArchiveMaterialStatusView } from '@/utils/archive-material-status-ui'
 import { normalizeMaterialTagsForRegister } from '@/utils/archive-material-tag'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ArchiveVolumeBatchRegisterModal from '@/views/teacher/archive-volume/archive-volume-batch-register-modal.vue'
 import ArchiveVolumeCourseSyncModal from '@/views/teacher/archive-volume/archive-volume-course-sync-modal.vue'
@@ -345,6 +345,7 @@ import ArchiveMaterialTagSelect from '@/views/teacher/archive-volume/components/
 import ArchiveVolumeMaterialOcrDetailModal from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialOcrDetailModal.vue'
 import ArchiveVolumeMaterialTagModal from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialTagModal.vue'
 import ScanDispatchDialog from '@/views/teacher/archive-volume/components/ScanDispatchDialog.vue'
+import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 
 defineOptions({ name: 'ArchiveVolumeMaterialTablePanel' })
 
@@ -356,7 +357,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  refreshed: [options?: { silent?: boolean }]
+  "refreshed": [options?: { silent?: boolean }]
   'ocr-completed-stale': []
 }>()
 
@@ -386,6 +387,7 @@ const materialsLoading = ref(false)
 const materialsLoadFailed = ref(false)
 const materialStats = ref<ArchiveVolumeMaterialStatsResponse | null>(null)
 const materialStatsLoadFailed = ref(false)
+const retryingMaterialIds = reactive(new Set<string>())
 
 const scanDispatchMaterialType = computed(() =>
   ALL_ARCHIVE_MATERIAL_TYPE_CODES.find((code) => code === scanDispatchQuery.value?.materialType),
@@ -431,7 +433,7 @@ const materialColumns: ColumnsType<ArchiveVolumeMaterialResponse> = [
   { title: '学号', dataIndex: 'studentNo', width: 120 },
   { title: '标签', key: 'tags', width: 160 },
   { title: '状态', key: 'submissionStatus', width: 120 },
-  { title: 'OCR 状态', key: 'ocrStatus', width: 160 },
+  { title: '文字识别状态', key: 'ocrStatus', width: 160 },
   { title: '操作', key: 'materialActions', width: 280 },
 ]
 
@@ -546,21 +548,21 @@ const courseObjectiveMappingHint = computed(() => {
   const goalTotal = props.detail.courseObjectiveTotalGoalCount
   const goalCovered = props.detail.courseObjectiveCoveredGoalCount
   if (
-    total != null &&
-    mapped != null &&
-    total > 0 &&
-    mapped >= total &&
-    goalTotal != null &&
-    goalCovered != null &&
-    goalTotal > 0 &&
-    goalCovered < goalTotal
+    total != null
+    && mapped != null
+    && total > 0
+    && mapped >= total
+    && goalTotal != null
+    && goalCovered != null
+    && goalTotal > 0
+    && goalCovered < goalTotal
   ) {
-    return `quality 课程目标覆盖 ${goalCovered}/${goalTotal} 未完成，须确保每个课程目标至少映射一题后再生成达成度报告。`
+    return `质量评价课程目标覆盖 ${goalCovered}/${goalTotal} 未完成，须确保每个课程目标至少映射一题后再生成达成度报告。`
   }
   if (total == null || mapped == null) {
-    return '生成课程目标达成报告前，须先在考试统计页完成全部试题的课程目标映射，并覆盖全部 quality 课程目标。'
+    return '生成课程目标达成报告前，须先在考试统计页完成全部试题的课程目标映射，并覆盖全部质量评价课程目标。'
   }
-  return `试题-课程目标映射 ${mapped}/${total} 未完成，生成达成度报告前须补全全部映射并覆盖每个 quality 课程目标。`
+  return `试题-课程目标映射 ${mapped}/${total} 未完成，生成达成度报告前须补全全部映射并覆盖每个质量评价课程目标。`
 })
 
 async function handleGenerateExamAnalysis(): Promise<void> {
@@ -581,7 +583,7 @@ async function handleGenerateExamAnalysis(): Promise<void> {
 
 async function handleGenerateCourseObjective(): Promise<void> {
   if (props.detail.courseObjectiveReportReady === false) {
-    message.warning(courseObjectiveMappingHint.value ?? '请先完成试题-课程目标映射')
+    showFormValidationMessage(courseObjectiveMappingHint.value ?? '请先完成试题-课程目标映射')
     return
   }
   generatingCourseObjective.value = true
@@ -645,9 +647,9 @@ async function handleDownloadMaterial(material: ArchiveVolumeMaterialResponse): 
 
 function canViewMaterialOcr(material: ArchiveVolumeMaterialResponse): boolean {
   return (
-    material.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED ||
-    material.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED ||
-    material.ocrStatus === ArchiveMaterialOcrStatusCode.RUNNING
+    material.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED
+    || material.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED
+    || material.ocrStatus === ArchiveMaterialOcrStatusCode.RUNNING
   )
 }
 
@@ -667,19 +669,24 @@ function emitRefreshed(options?: { silent?: boolean }) {
 }
 
 function confirmRetryMaterialOcr(material: ArchiveVolumeMaterialResponse): void {
+  if (retryingMaterialIds.has(material.materialId)) return
   void confirmAsync({
-    title: '重试 OCR 识别？',
-    content: `材料「${material.fileName ?? material.materialId}」将重新进入 OCR 队列。`,
+    title: '重试文字识别？',
+    content: `材料「${material.fileName ?? material.materialId}」将重新进入文字识别队列。`,
     type: 'info',
     okText: '入队',
     cancelText: '取消',
     onOk: async () => {
+      if (retryingMaterialIds.has(material.materialId)) return
+      retryingMaterialIds.add(material.materialId)
       try {
         await triggerArchiveVolumeMaterialOcr(material.materialId)
         message.success('已入队，等待识别')
         emitRefreshed()
       } catch (error) {
-        showUserError(error, 'OCR 重试提交失败')
+        showUserError(error, '文字识别重试提交失败')
+      } finally {
+        retryingMaterialIds.delete(material.materialId)
       }
     },
   })
@@ -803,7 +810,7 @@ function resolveArchiveScanQuery(): Record<string, string> | null {
 function openArchiveScan() {
   const query = resolveArchiveScanQuery()
   if (!query) {
-    message.warning('请先在左侧目录选择可登记的材料项')
+    showFormValidationMessage('请先在左侧目录选择可登记的材料项')
     return
   }
   scanDispatchQuery.value = query
@@ -825,7 +832,7 @@ function openSharedRefModal() {
 
 async function submitMaterial() {
   if (!uploadForm.materialType || !uploadForm.fileNodeId) {
-    message.warning('请选择材料类型和文件')
+    showFormValidationMessage('请选择材料类型和文件')
     return
   }
   const tags = normalizeMaterialTagsForRegister(uploadForm.tags)
@@ -855,7 +862,7 @@ async function submitMaterial() {
     uploadModalOpen.value = false
     emitRefreshed()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '材料登记失败')
   } finally {
     uploading.value = false
   }
@@ -863,7 +870,7 @@ async function submitMaterial() {
 
 async function submitSharedRef() {
   if (!sharedRefForm.targetVolumeId.trim() || !sharedRefForm.targetMaterialId.trim()) {
-    message.warning('请填写目标卷与材料 ID')
+    showFormValidationMessage('请填写目标卷与材料编号')
     return
   }
   sharedRefSubmitting.value = true
@@ -879,7 +886,7 @@ async function submitSharedRef() {
     sharedRefModalOpen.value = false
     emitRefreshed()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '材料登记失败')
   } finally {
     sharedRefSubmitting.value = false
   }

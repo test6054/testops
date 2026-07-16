@@ -8,12 +8,13 @@ import {
   rejectArchiveVolumeDepartmentReview,
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { ArchiveVolumeStatusCode } from '@/types/enums/archive-volume-status-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import DepartmentReviewMaterialSummary from '@/views/teacher/archive-volume/components/DepartmentReviewMaterialSummary.vue'
 
 const props = defineProps<{
@@ -34,6 +35,9 @@ const approving = ref(false)
 const rejecting = ref(false)
 const rejectReason = ref('')
 const showRejectForm = ref(false)
+let loadSequence = 0
+
+const actionBusy = computed(() => approving.value || rejecting.value)
 
 const canApprove = computed(
   () =>
@@ -55,6 +59,7 @@ watch(
   () => [props.open, props.volumeId] as const,
   ([open, volumeId]) => {
     if (!open || !volumeId) {
+      loadSequence += 1
       detail.value = null
       loadFailed.value = false
       showRejectForm.value = false
@@ -66,16 +71,22 @@ watch(
 )
 
 async function loadDetail(volumeId: string) {
+  const requestSequence = ++loadSequence
   loading.value = true
   loadFailed.value = false
   try {
-    detail.value = await getArchiveVolumeDetail(volumeId)
+    const data = await getArchiveVolumeDetail(volumeId)
+    if (requestSequence !== loadSequence || !props.open || volumeId !== props.volumeId) return
+    detail.value = data
   } catch (error) {
+    if (requestSequence !== loadSequence || !props.open || volumeId !== props.volumeId) return
     loadFailed.value = true
     detail.value = null
     showUserError(error, '加载院系审核材料摘要失败')
   } finally {
-    loading.value = false
+    if (requestSequence === loadSequence) {
+      loading.value = false
+    }
   }
 }
 
@@ -84,7 +95,7 @@ function closeDrawer() {
 }
 
 async function handleApprove() {
-  if (!props.volumeId) return
+  if (!props.volumeId || actionBusy.value) return
   approving.value = true
   try {
     await approveArchiveVolumeDepartmentReview({ volumeId: props.volumeId })
@@ -99,9 +110,9 @@ async function handleApprove() {
 }
 
 async function handleReject() {
-  if (!props.volumeId) return
+  if (!props.volumeId || actionBusy.value) return
   if (!rejectReason.value.trim()) {
-    message.warning('请填写驳回原因')
+    showFormValidationMessage('请填写驳回原因')
     return
   }
   rejecting.value = true
@@ -137,11 +148,12 @@ function openDetail(tabKey?: string) {
     @close="closeDrawer"
   >
     <UiSkeletonState v-if="loading" variant="card" compact />
-    <a-result
+    <UiEmpty
       v-else-if="loadFailed"
-      status="error"
-      title="材料摘要加载失败"
-      sub-title="请打开详情页查看完整材料"
+      title="院系审核材料加载失败"
+      description="无法读取最新材料摘要与审核权限。"
+      action-label="重新加载"
+      @action="volumeId && loadDetail(volumeId)"
     />
     <template v-else-if="detail">
       <div class="dept-review-list-drawer__meta">
@@ -163,20 +175,40 @@ function openDetail(tabKey?: string) {
         <UiTextAction @click="openDetail('integrity')">打开详情 · 完整性与四性</UiTextAction>
       </div>
       <div v-if="canApprove" class="dept-review-list-drawer__actions">
-        <UiButton variant="primary" size="sm" :loading="approving" @click="handleApprove">
+        <UiButton
+          variant="primary"
+          size="sm"
+          :loading="approving"
+          :disabled="actionBusy && !approving"
+          @click="handleApprove"
+        >
           审核通过
         </UiButton>
-        <UiButton v-if="!showRejectForm" variant="outline" size="sm" @click="showRejectForm = true">
+        <UiButton
+          v-if="!showRejectForm"
+          variant="outline"
+          size="sm"
+          :disabled="actionBusy"
+          @click="showRejectForm = true"
+        >
           驳回
         </UiButton>
       </div>
       <div v-if="canApprove && showRejectForm" class="dept-review-list-drawer__reject">
-        <a-textarea v-model:value="rejectReason" :rows="3" placeholder="驳回原因" />
+        <a-textarea
+          v-model:value="rejectReason"
+          :rows="3"
+          placeholder="驳回原因"
+          :maxlength="500"
+          show-count
+        />
         <div class="dept-review-list-drawer__reject-actions">
           <UiButton variant="outline" size="sm" :loading="rejecting" @click="handleReject">
             确认驳回
           </UiButton>
-          <UiButton variant="ghost" size="sm" @click="showRejectForm = false">取消</UiButton>
+          <UiButton variant="ghost" size="sm" :disabled="actionBusy" @click="showRejectForm = false">
+            取消
+          </UiButton>
         </div>
       </div>
     </template>

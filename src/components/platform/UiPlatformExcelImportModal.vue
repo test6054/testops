@@ -13,9 +13,7 @@
   >
     <div v-if="phase === 'upload'" class="platform-excel-import-modal__upload">
       <div v-if="!props.hideTemplateDownload" class="platform-excel-import-modal__template">
-        <span class="platform-excel-import-modal__template-text"
-          >请先下载模板，按格式填写后上传</span
-        >
+        <span class="platform-excel-import-modal__template-text">请先下载模板，按格式填写后上传</span>
         <UiButton
           variant="outline"
           size="sm"
@@ -42,12 +40,10 @@
       >
         <UploadOutlined class="platform-excel-import-modal__dropzone-icon" />
         <p class="platform-excel-import-modal__dropzone-hint">
-          拖拽文件到此处，或<span class="platform-excel-import-modal__dropzone-link"
-            >点击选择文件</span
-          >
+          拖拽文件到此处，或<span class="platform-excel-import-modal__dropzone-link">点击选择文件</span>
         </p>
         <p class="platform-excel-import-modal__dropzone-desc">
-          支持 .xlsx、.xls，单文件不超过 30MB
+          支持表格文件格式，单文件不超过三十兆字节
         </p>
         <input
           ref="fileInputRef"
@@ -61,7 +57,7 @@
         <FileOutlined />
         <span class="platform-excel-import-modal__file-name">{{ stagedFile.name }}</span>
         <span class="platform-excel-import-modal__file-size">{{
-          formatFileSize(stagedFile.size)
+          formatChineseFileSize(stagedFile.size)
         }}</span>
         <UiTag tone="green">已选择</UiTag>
         <UiButton variant="ghost" size="sm" @click="clearFile">移除</UiButton>
@@ -147,9 +143,7 @@
         <div class="platform-excel-import-modal__summary-stats">
           <span>总计 {{ result?.totalRows ?? 0 }}</span>
           <span class="is-success">成功 {{ result?.successRows ?? 0 }}</span>
-          <span v-if="result?.createdCount != null" class="is-success"
-            >新建 {{ result.createdCount }}</span
-          >
+          <span v-if="result?.createdCount != null" class="is-success">新建 {{ result.createdCount }}</span>
           <span v-if="result?.updatedCount != null">更新 {{ result.updatedCount }}</span>
           <span class="is-fail">失败 {{ result?.errorRows ?? 0 }}</span>
         </div>
@@ -180,20 +174,20 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
-import { resolveFileStageSceneForExcel } from '@/apis/platform/scene-keys'
 import type {
   ExcelImportResult,
   ExcelImportRosterPreviewRow,
   ExcelImportRowDiagnostic,
   PlatformJsonObject,
 } from '@/apis/platform/types'
-import { ExcelImportExecutionMode } from '@/apis/platform/types'
 import { FileOutlined, UploadOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { downloadFile } from '@/apis/edu/file-management'
 import { downloadExcelImportTemplate, submitExcelImport } from '@/apis/platform/excel-import'
 import { stagePlatformFile } from '@/apis/platform/file'
+import { resolveFileStageSceneForExcel } from '@/apis/platform/scene-keys'
+import { ExcelImportExecutionMode } from '@/apis/platform/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -203,9 +197,6 @@ import {
   getUserProcessFailureMessage,
   showFormValidationMessage,
 } from '@/utils/error-handler'
-import { formatFileSize } from '@/utils/format'
-
-type ImportPhase = 'upload' | 'preview' | 'result'
 
 const props = defineProps<{
   open: boolean
@@ -227,6 +218,15 @@ const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
   (e: 'success', result: ExcelImportResult): void
 }>()
+
+function formatChineseFileSize(bytes: number): string {
+  if (!bytes || bytes === 0) return '零字节'
+  if (bytes < 1024) return `${bytes} 字节`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} 千字节`
+  return `${(bytes / 1024 / 1024).toFixed(2)} 兆字节`
+}
+
+type ImportPhase = 'upload' | 'preview' | 'result'
 
 const visible = computed({
   get: () => props.open,
@@ -284,8 +284,8 @@ const okDisabled = computed(() => {
       return false
     }
     return !(
-      props.allowManualConflictCommit &&
-      previewDiagnostics.value.some((item) => item.errorCode === 'MANUAL_CONFIRM')
+      props.allowManualConflictCommit
+      && previewDiagnostics.value.some((item) => item.errorCode === 'MANUAL_CONFIRM')
     )
   }
   return !stagedFileNodeId.value
@@ -445,7 +445,7 @@ async function handleDownloadTemplate() {
 
 async function submitImport(commit: boolean): Promise<ExcelImportResult | null> {
   if (!stagedFileNodeId.value) {
-    showFormValidationMessage('请先选择 Excel 文件')
+    showFormValidationMessage('请先选择表格文件')
     return null
   }
   return submitExcelImport({
@@ -501,8 +501,8 @@ async function handleOk() {
     result.value = importResult
     phase.value = 'result'
     if (
-      (importResult.successRows ?? 0) > 0 ||
-      importResult.executionMode === ExcelImportExecutionMode.ASYNC
+      (importResult.successRows ?? 0) > 0
+      || importResult.executionMode === ExcelImportExecutionMode.ASYNC
     ) {
       emit('success', importResult)
     }

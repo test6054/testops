@@ -31,8 +31,8 @@
           </UiButton>
           <UiButton
             v-if="
-              isTenantWideCollegeCoordinator &&
-              selectedCampaign?.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE
+              isTenantWideCollegeCoordinator
+                && selectedCampaign?.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE
             "
             size="sm"
             variant="outline"
@@ -106,8 +106,8 @@
           <div class="remediation-card__actions">
             <UiButton
               v-if="
-                task.taskStatus === ArchiveRemediationStatusCode.OPEN ||
-                task.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
+                task.taskStatus === ArchiveRemediationStatusCode.OPEN
+                  || task.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
               "
               size="sm"
               variant="outline"
@@ -233,7 +233,7 @@
             style="width: 100%"
           />
         </a-form-item>
-        <a-form-item label="卷 ID" required>
+        <a-form-item label="卷编号" required>
           <a-input v-model:value="createTaskForm.volumeId" />
         </a-form-item>
         <a-form-item label="任务标题" required>
@@ -280,6 +280,11 @@ import type {
   ArchiveRemediationPriorityCode,
   ArchiveRemediationTaskResponse,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   ARCHIVE_EVALUATION_CAMPAIGN_STATUS_OPTIONS,
   ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
@@ -295,12 +300,6 @@ import {
   pageRemediationTasksByCampaign,
   saveEvaluationCampaign,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { SemesterOptions } from '@/types/enums/semester-enum'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import ArchiveReadinessRateBar from '@/components/archive-volume/ArchiveReadinessRateBar.vue'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -313,6 +312,7 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { runArchiveEvaluationExportFlow } from '@/composables/useArchiveEvaluationExportFlow'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearStartOptions } from '@/utils/academic-year'
 import {
   applyAcademicYearStartYearChange,
@@ -330,7 +330,7 @@ import {
   ArchiveRemediationPriorityDescription,
   remediationPriorityCardClass,
 } from '@/utils/archive-remediation-priority'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ArchiveEvaluationExportTaskModal from '@/views/teacher/archive-volume/components/ArchiveEvaluationExportTaskModal.vue'
@@ -423,8 +423,8 @@ const activeCampaignOptions = computed(() =>
 )
 
 function syncSelectedCampaign(campaignId?: string): void {
-  selectedCampaign.value =
-    campaignSelectOptions.value.find((item) => item.campaignId === campaignId) ?? null
+  selectedCampaign.value
+    = campaignSelectOptions.value.find((item) => item.campaignId === campaignId) ?? null
 }
 
 function handleCampaignChange(value: SelectValue): void {
@@ -436,8 +436,8 @@ function handleCampaignChange(value: SelectValue): void {
 
 const canShowCreateRemediationTask = computed(
   () =>
-    (isTenantWideCollegeCoordinator.value || scopedDepartmentIds.value.length > 0) &&
-    selectedCampaign.value?.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE,
+    (isTenantWideCollegeCoordinator.value || scopedDepartmentIds.value.length > 0)
+    && selectedCampaign.value?.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE,
 )
 
 function remediationStatusLabel(code: ArchiveRemediationStatusCode) {
@@ -470,7 +470,7 @@ async function loadCampaigns() {
       await loadTasks()
     }
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '评估批次列表加载失败')
   } finally {
     campaignLoading.value = false
   }
@@ -494,7 +494,7 @@ async function loadTasks() {
     taskPagination.pageSize = page.pageSize
     taskPagination.total = page.total
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '整改任务列表加载失败')
     tasks.value = []
     taskPagination.total = 0
   } finally {
@@ -515,8 +515,8 @@ function openCampaignModal(campaign?: ArchiveEvaluationCampaignResponse) {
   campaignForm.academicYearStartYear = triple.academicYearStartYear
   campaignForm.academicYearEndYear = triple.academicYearEndYear
   campaignForm.semester = triple.semester
-  campaignForm.campaignStatus =
-    campaign?.campaignStatus ?? ArchiveEvaluationCampaignStatusCode.ACTIVE
+  campaignForm.campaignStatus
+    = campaign?.campaignStatus ?? ArchiveEvaluationCampaignStatusCode.ACTIVE
   campaignForm.startTime = campaign?.startTime
   campaignForm.endTime = campaign?.endTime
   campaignForm.description = campaign?.description ?? ''
@@ -525,18 +525,18 @@ function openCampaignModal(campaign?: ArchiveEvaluationCampaignResponse) {
 
 async function submitCampaign() {
   if (!campaignForm.campaignName.trim()) {
-    message.warning('请填写批次名称')
+    showFormValidationMessage('请填写批次名称')
     return
   }
   if (!ensureTriplePeriodPair(campaignForm)) {
     return
   }
   if (!campaignForm.startTime || !campaignForm.endTime) {
-    message.warning('请选择批次开始时间和结束时间')
+    showFormValidationMessage('请选择批次开始时间和结束时间')
     return
   }
   if (campaignForm.startTime >= campaignForm.endTime) {
-    message.warning('批次开始时间必须早于结束时间')
+    showFormValidationMessage('批次开始时间必须早于结束时间')
     return
   }
   const academicYear = resolveAcademicYearFromTriple(campaignForm)
@@ -560,7 +560,7 @@ async function submitCampaign() {
     taskPagination.pageNum = 1
     await loadTasks()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存评估批次失败')
   } finally {
     campaignSaving.value = false
   }
@@ -578,7 +578,7 @@ async function handleExportCampaign() {
       campaignLabel: selectedCampaign.value?.campaignName,
     })
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出评估清单失败')
   } finally {
     exporting.value = false
   }
@@ -596,7 +596,7 @@ async function handleExportArchiveCampaign() {
       campaignLabel: selectedCampaign.value?.campaignName,
     })
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出四级目录包失败')
   } finally {
     exportingArchive.value = false
   }
@@ -615,22 +615,22 @@ function openCreateTaskModal() {
 
 async function submitCreateTask() {
   if (!createTaskForm.volumeId.trim()) {
-    message.warning('请填写卷 ID')
+    showFormValidationMessage('请填写归档卷编号')
     return
   }
   if (!createTaskForm.taskTitle.trim()) {
-    message.warning('请填写任务标题')
+    showFormValidationMessage('请填写任务标题')
     return
   }
   if (!createTaskForm.assigneeUserId) {
-    message.warning('请选择责任人')
+    showFormValidationMessage('请选择责任人')
     return
   }
   createTaskSubmitting.value = true
   try {
     const volumeDetail = await getArchiveVolumeDetail(createTaskForm.volumeId.trim())
     if (!canManageRemediationAsCoordinator(volumeDetail.volume)) {
-      message.error('缺少该卷所属院系的 COLLEGE_COORDINATOR 职责，无法创建整改任务')
+      showFormValidationMessage('缺少该卷所属院系的学院协调人职责，无法创建整改任务')
       return
     }
     await createRemediationTask({
@@ -649,7 +649,7 @@ async function submitCreateTask() {
     }
     await loadTasks()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '创建整改任务失败')
   } finally {
     createTaskSubmitting.value = false
   }

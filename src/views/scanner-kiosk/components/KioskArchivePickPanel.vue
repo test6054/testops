@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import type { ScannerKioskArchiveVolumeItemVO } from '@/apis/mark/scanner-kiosk'
-import { createAdhocDispatchTicket, pageKioskArchiveVolumes } from '@/apis/mark/scanner-kiosk'
-import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   ARCHIVE_VOLUME_STATUS_TONE,
   ArchiveVolumeStatusDescription,
 } from '@/apis/mark/archive-volume'
+import { createAdhocDispatchTicket, pageKioskArchiveVolumes } from '@/apis/mark/scanner-kiosk'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -15,7 +14,7 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { ArchiveVolumeStatusCode } from '@/types/enums/archive-volume-status-enum'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
-import { getUserErrorMessage } from '@/utils/error-handler'
+import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const props = defineProps<{
@@ -85,7 +84,7 @@ async function loadVolumes() {
   }
 }
 
-function handlePageChange(pageEvent: { current: number; pageSize: number }) {
+function handlePageChange(pageEvent: { current: number, pageSize: number }) {
   pageNum.value = pageEvent.current
   pageSize.value = pageEvent.pageSize
   void loadVolumes()
@@ -93,23 +92,23 @@ function handlePageChange(pageEvent: { current: number; pageSize: number }) {
 
 function volumeAcceptsKioskPick(status?: string): boolean {
   return (
-    status === ArchiveVolumeStatusCode.COLLECTING ||
-    status === ArchiveVolumeStatusCode.STORED ||
-    status === ArchiveVolumeStatusCode.SUBMITTED
+    status === ArchiveVolumeStatusCode.COLLECTING
+    || status === ArchiveVolumeStatusCode.STORED
+    || status === ArchiveVolumeStatusCode.SUBMITTED
   )
 }
 
 async function pickVolume(row: ScannerKioskArchiveVolumeItemVO) {
   if (!canPick.value) {
-    message.error('工位未激活，无法创建临时派单')
+    showFormValidationMessage('工位未激活，无法创建临时派单')
     return
   }
   if (!volumeAcceptsKioskPick(row.volumeStatus)) {
-    message.error('当前卷状态不允许临时开单')
+    showFormValidationMessage('当前卷状态不允许临时开单')
     return
   }
   if (!row.physicalStorageLocation?.trim()) {
-    message.error('该卷尚未登记档案柜位，请先在 PC 端补录柜位后再临时开单')
+    showFormValidationMessage('该卷尚未登记档案柜位，请先在电脑端补录柜位后再临时开单')
     return
   }
   pickingVolumeId.value = row.volumeId
@@ -122,17 +121,17 @@ async function pickVolume(row: ScannerKioskArchiveVolumeItemVO) {
     })
     const ticketId = response.ticket?.ticketId
     if (!ticketId) {
-      message.error('临时派单创建失败')
+      showUserError(null, '临时派单创建失败')
       return
     }
     emit('update:open', false)
-    const kioskPath =
-      response.ticket?.kioskDispatchUrl || (ticketId ? `/scanner-kiosk/dispatch/${ticketId}` : '')
+    const kioskPath
+      = response.ticket?.kioskDispatchUrl || (ticketId ? `/scanner-kiosk/dispatch/${ticketId}` : '')
     if (kioskPath) {
       void router.push(kioskPath)
     }
   } catch (error) {
-    message.error(getUserErrorMessage(error))
+    showUserError(error, '创建临时派单失败')
   } finally {
     pickingVolumeId.value = ''
   }
@@ -208,9 +207,9 @@ function volumeStatusTone(status: ScannerKioskArchiveVolumeItemVO['volumeStatus'
                   key: 'pick',
                   label: '开单',
                   disabled:
-                    !canPick ||
-                    record.volumeStatus !== ArchiveVolumeStatusCode.COLLECTING ||
-                    pickingVolumeId === record.volumeId,
+                    !canPick
+                    || record.volumeStatus !== ArchiveVolumeStatusCode.COLLECTING
+                    || pickingVolumeId === record.volumeId,
                 },
               ]"
               split

@@ -8,10 +8,6 @@ import type { ExamCandidateResponse, ExamCandidateRosterRequest } from '@/apis/m
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { ExamRosterScopeModeCode } from '@/types/enums/exam-roster-scope-mode-enum'
-import {
-  ALL_EXAM_ROSTER_SCOPE_MODE_CODES,
-  ExamRosterScopeModeDescription
-} from '@/types/enums/exam-roster-scope-mode-enum'
 import type { MarkingOrganizationStatusCode } from '@/types/enums/marking-organization-status-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
@@ -36,6 +32,10 @@ import {
   ExamPrintSourceModeCode,
   ExamPrintSourceModeDescription
 } from '@/types/enums/exam-print-source-mode-enum'
+import {
+  ALL_EXAM_ROSTER_SCOPE_MODE_CODES,
+  ExamRosterScopeModeDescription
+} from '@/types/enums/exam-roster-scope-mode-enum'
 import {
   ALL_EXAM_SCORE_POLICY_CODES,
   ExamScorePolicyCode,

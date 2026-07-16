@@ -1,13 +1,13 @@
 import type { ArchiveVolumeSelfCheckItemVO, ArchiveVolumeSelfCheckListResponse } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, ref } from 'vue'
+import { downloadFile } from '@/apis/edu/file-management'
 import {
   ArchiveSelfCheckStatusCode,
   checkArchiveVolumeSelfCheckItem,
   exportArchiveVolumeSelfCheck,
   listArchiveVolumeSelfCheckItems
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { computed, ref } from 'vue'
-import { downloadFile } from '@/apis/edu/file-management'
 import { showUserError } from '@/utils/error-handler'
 
 /**
@@ -63,7 +63,7 @@ export function useArchiveVolumeSelfCheck(volumeId: () => string) {
       await loadSelfCheck()
     }
     catch (error) {
-      showUserError(error)
+      showUserError(error, '更新自查项失败')
     }
     finally {
       checking.value = false
@@ -77,14 +77,14 @@ export function useArchiveVolumeSelfCheck(volumeId: () => string) {
     try {
       const result = await exportArchiveVolumeSelfCheck(id)
       if (!result.exportFileId) {
-        message.error('导出未返回文件 ID')
+        showUserError(null, '导出未返回文件编号')
         return
       }
       await downloadFile({ nodeId: result.exportFileId })
       message.success('自查表导出完成')
     }
     catch (error) {
-      showUserError(error)
+      showUserError(error, '导出自查表失败')
     }
     finally {
       exporting.value = false

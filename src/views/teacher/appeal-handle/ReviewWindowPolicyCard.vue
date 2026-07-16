@@ -120,7 +120,7 @@ import {
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ReviewWindowPolicyCard' })
@@ -215,7 +215,7 @@ async function handleSaveAndActivate(): Promise<void> {
 
 async function persistPolicy(activateImmediately: boolean): Promise<void> {
   if (!form.openTime || !form.closeTime) {
-    message.warning('请选择开放和关闭时间')
+    showFormValidationMessage('请选择开放和关闭时间')
     return
   }
   if (form.openTime >= form.closeTime) {

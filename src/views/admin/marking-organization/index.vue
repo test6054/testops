@@ -295,7 +295,7 @@ import {
   MARK_WORKBENCH_CONTEXT_KEY,
   useWorkspaceExamId,
 } from '@/composables/useMarkWorkbenchContext'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import {
   resolveMarkingOrganizationDetailRoute,
@@ -338,7 +338,7 @@ const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace
 
 function guardExamOwnerAction(): boolean {
   if (canManageExamOwner.value) return true
-  message.warning('仅考试主考老师可执行该操作')
+  showFormValidationMessage('仅考试主考老师可执行该操作')
   return false
 }
 
@@ -466,7 +466,7 @@ const editRules: Record<string, Rule[]> = {
 function openCreateDrawer(): void {
   if (!guardExamOwnerAction()) return
   if (!selectedExamId.value) {
-    message.warning('请先选择考试')
+    showFormValidationMessage('请先选择考试')
     return
   }
   createForm.anonymousMode = true

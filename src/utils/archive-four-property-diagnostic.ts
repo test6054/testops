@@ -54,7 +54,6 @@ function resolveDimensionPassed(
   if (!check) return false
   if (key === ArchiveFourPropertyDimensionCode.AUTHENTICITY)
     return check.authenticityPassed === true
-  if (key === ArchiveFourPropertyDimensionCode.RELIABILITY) return check.reliabilityPassed === true
   if (key === ArchiveFourPropertyDimensionCode.INTEGRITY) return check.integrityPassed === true
   if (key === ArchiveFourPropertyDimensionCode.SECURITY) return check.securityPassed === true
   return check.usabilityPassed === true
@@ -91,8 +90,6 @@ function parseDiagnosticMessages(
 function resolveDiagnosticDimension(value: unknown): ArchiveFourPropertyDimensionCode | undefined {
   if (value === ArchiveFourPropertyDimensionCode.AUTHENTICITY)
     return ArchiveFourPropertyDimensionCode.AUTHENTICITY
-  if (value === ArchiveFourPropertyDimensionCode.RELIABILITY)
-    return ArchiveFourPropertyDimensionCode.RELIABILITY
   if (value === ArchiveFourPropertyDimensionCode.INTEGRITY)
     return ArchiveFourPropertyDimensionCode.INTEGRITY
   if (value === ArchiveFourPropertyDimensionCode.USABILITY)

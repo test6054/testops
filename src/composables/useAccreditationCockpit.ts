@@ -40,7 +40,7 @@ export function useAccreditationCockpit() {
     } catch (error) {
       cockpit.value = undefined
       cachedKey = ''
-      showUserError(error)
+      showUserError(error, '加载认证驾驶舱失败')
       return undefined
     } finally {
       cockpitLoading.value = false

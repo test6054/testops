@@ -5,14 +5,14 @@ import type {
   PortfolioReportingShareFieldCodeValue,
   PortfolioReportingTaskVO,
 } from '@/apis/portfolio/reporting'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   ALL_PORTFOLIO_REPORTING_SHARE_FIELD_CODES,
   portfolioReportingApi,
   PortfolioReportingShareFieldCode,
   PortfolioReportingShareFieldDescription,
 } from '@/apis/portfolio/reporting'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
@@ -35,7 +35,7 @@ import {
   PortfolioReportingTaskStatusCode,
   PortfolioReportingTaskStatusDescription,
 } from '@/types/enums/portfolio-reporting-task-status-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -171,8 +171,8 @@ function statusTone(code: string): 'blue' | 'green' | 'red' | 'gray' {
 
 function canPreview(row: PortfolioReportingTaskVO): boolean {
   return (
-    row.taskStatus === PortfolioReportingTaskStatusCode.DRAFT ||
-    row.taskStatus === PortfolioReportingTaskStatusCode.REJECTED
+    row.taskStatus === PortfolioReportingTaskStatusCode.DRAFT
+    || row.taskStatus === PortfolioReportingTaskStatusCode.REJECTED
   )
 }
 
@@ -223,7 +223,7 @@ function onSearch() {
   void loadPage()
 }
 
-function onPageChange(page: { current: number; pageSize: number }) {
+function onPageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   void loadPage()
@@ -246,29 +246,29 @@ function openCreateModal() {
 async function submitCreate() {
   const shareFields = [...createForm.shareFields]
   if (
-    !createForm.taskTitle.trim() ||
-    !createForm.reportPurpose.trim() ||
-    shareFields.length === 0
+    !createForm.taskTitle.trim()
+    || !createForm.reportPurpose.trim()
+    || shareFields.length === 0
   ) {
-    message.warning('请填写标题、用途与共享字段')
+    showFormValidationMessage('请填写标题、用途与共享字段')
     return
   }
   if (
-    createForm.maskMode &&
-    shareFields.some(
+    createForm.maskMode
+    && shareFields.some(
       (code) =>
-        code === PortfolioReportingShareFieldCode.TEACHER_USER_ID ||
-        code === PortfolioReportingShareFieldCode.TEACHER_NUMBER,
+        code === PortfolioReportingShareFieldCode.TEACHER_USER_ID
+        || code === PortfolioReportingShareFieldCode.TEACHER_NUMBER,
     )
   ) {
-    message.warning('脱敏报送不能共享教师用户 ID 或工号')
+    showFormValidationMessage('脱敏报送不能共享教师用户编号或工号')
     return
   }
   if (
-    createForm.scopeType === PortfolioReportingScopeTypeCode.DEPARTMENT &&
-    !createForm.departmentId.trim()
+    createForm.scopeType === PortfolioReportingScopeTypeCode.DEPARTMENT
+    && !createForm.departmentId.trim()
   ) {
-    message.warning('院系报送须填写院系 ID')
+    showFormValidationMessage('院系报送须填写院系编号')
     return
   }
   const operation = 'task:create'
@@ -303,8 +303,7 @@ async function runPreview(row: PortfolioReportingTaskVO) {
   preview.value = null
   previewTaskId.value = ''
   try {
-    const result = await portfolioReportingApi.preview({ id: taskId })
-    preview.value = result
+    preview.value = await portfolioReportingApi.preview({ id: taskId })
     previewTaskId.value = taskId
     previewOpen.value = true
     await loadPage()
@@ -367,7 +366,7 @@ async function submitReject() {
   }
   const reason = rejectReason.value.trim()
   if (!reason) {
-    message.warning('请填写驳回原因')
+    showFormValidationMessage('请填写驳回原因')
     return
   }
   const taskId = pendingRejectRow.value.id
@@ -516,9 +515,9 @@ onMounted(() => {
               :key="code"
               :value="code"
               :disabled="
-                createForm.maskMode &&
-                (code === PortfolioReportingShareFieldCode.TEACHER_USER_ID ||
-                  code === PortfolioReportingShareFieldCode.TEACHER_NUMBER)
+                createForm.maskMode
+                  && (code === PortfolioReportingShareFieldCode.TEACHER_USER_ID
+                    || code === PortfolioReportingShareFieldCode.TEACHER_NUMBER)
               "
             >
               {{ PortfolioReportingShareFieldDescription[code] }}
@@ -538,7 +537,7 @@ onMounted(() => {
         </a-form-item>
         <a-form-item
           v-if="createForm.scopeType === PortfolioReportingScopeTypeCode.DEPARTMENT"
-          label="院系 ID"
+          label="院系编号"
           required
         >
           <a-input v-model:value="createForm.departmentId" :disabled="operating" />
@@ -550,7 +549,7 @@ onMounted(() => {
     </a-modal>
     <a-modal v-model:open="previewOpen" title="报送预览" :footer="null">
       <template v-if="preview">
-        <p>任务 ID：{{ previewTaskId }}</p>
+        <p>任务编号：{{ previewTaskId }}</p>
         <p>教师人数：{{ preview.teacherCount }}</p>
         <p>正式档案条数：{{ preview.officialArchiveCount }}</p>
         <p>脱敏：{{ preview.maskMode ? '是' : '否' }}</p>

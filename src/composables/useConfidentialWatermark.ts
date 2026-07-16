@@ -3,6 +3,7 @@ import type { ExamDetailResponse } from '@/apis/mark/exam'
 import { computed, ref, watch } from 'vue'
 import { getExamDetail } from '@/apis/mark/exam'
 import { useUserStore } from '@/stores'
+import { showUserError } from '@/utils/error-handler'
 
 export interface ConfidentialWatermarkViewer {
   department?: string
@@ -61,9 +62,9 @@ export function useExamConfidential(examId: Ref<string>) {
   watch(
     examId,
     async (id) => {
-      confidential.value = false
-      examLabel.value = ''
       if (!id) {
+        confidential.value = false
+        examLabel.value = ''
         return
       }
       try {
@@ -71,9 +72,11 @@ export function useExamConfidential(examId: Ref<string>) {
         confidential.value = isExamConfidentialFlag(detail.confidential)
         examLabel.value = formatExamConfidentialLabel(detail)
       }
-      catch {
-        confidential.value = false
+      catch (error) {
+        // 失败不得静默当成“非涉密”；保守启用水印并提示教师
+        confidential.value = true
         examLabel.value = ''
+        showUserError(error, '考试涉密状态加载失败，已按涉密保护显示')
       }
     },
     { immediate: true },

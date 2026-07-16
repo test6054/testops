@@ -1,4 +1,5 @@
 import type { DataSourceModeCode, ScoreBatchStatusCode } from './types'
+import type { ExtendedAxiosRequestConfig } from '@/config/axios/types'
 /**
  * 成绩导入批次 API - 对接 edu-quality / ScoreBatchController
  *
@@ -131,10 +132,10 @@ export interface QualityStatusCountsResponse {
 }
 
 export const scoreBatchApi = {
-  page: (data: ScoreBatchQueryRequest) =>
-    http.post<PageResult<ScoreBatchVO>>(`${BASE}/page`, data),
-  statusCounts: (data: ScoreBatchQueryRequest) =>
-    http.post<QualityStatusCountsResponse>(`${BASE}/status-counts`, data),
+  page: (data: ScoreBatchQueryRequest, config?: ExtendedAxiosRequestConfig) =>
+    http.post<PageResult<ScoreBatchVO>>(`${BASE}/page`, data, config),
+  statusCounts: (data: ScoreBatchQueryRequest, config?: ExtendedAxiosRequestConfig) =>
+    http.post<QualityStatusCountsResponse>(`${BASE}/status-counts`, data, config),
   detail: (id: string) =>
     http.post<ScoreBatchVO>(`${BASE}/detail`, { id }),
   preview: (id: string) => http.post<ScoreImportPreviewVO>(`${BASE}/preview`, { id }),

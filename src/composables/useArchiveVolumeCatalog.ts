@@ -3,6 +3,9 @@ import type {
   ArchiveVolumeCatalogLineVO,
   ArchiveVolumeCatalogResponse
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, ref } from 'vue'
+import { downloadFile } from '@/apis/edu/file-management'
 import {
   ArchiveCatalogStatusCode,
   confirmArchiveVolumeCatalog,
@@ -11,9 +14,6 @@ import {
   getArchiveVolumeCatalog,
   saveArchiveVolumeCatalog
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { computed, ref } from 'vue'
-import { downloadFile } from '@/apis/edu/file-management'
 import { showUserError } from '@/utils/error-handler'
 
 /**
@@ -66,7 +66,7 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
       await loadCatalog()
     }
     catch (error) {
-      showUserError(error)
+      showUserError(error, '生成目录草稿失败')
     }
     finally {
       saving.value = false
@@ -115,7 +115,7 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
       await loadCatalog()
     }
     catch (error) {
-      showUserError(error)
+      showUserError(error, '保存归档目录失败')
     }
     finally {
       saving.value = false
@@ -137,7 +137,7 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
       await loadCatalog()
     }
     catch (error) {
-      showUserError(error)
+      showUserError(error, '确认归档目录失败')
     }
     finally {
       confirming.value = false
@@ -151,14 +151,14 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
     try {
       const result = await exportArchiveVolumeCatalog(id)
       if (!result.exportFileId) {
-        message.error('导出未返回文件 ID')
+        showUserError(null, '导出未返回文件编号')
         return
       }
       await downloadFile({ nodeId: result.exportFileId })
       message.success('目录导出完成')
     }
     catch (error) {
-      showUserError(error)
+      showUserError(error, '导出归档目录失败')
     }
     finally {
       exporting.value = false

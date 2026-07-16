@@ -81,8 +81,8 @@
         <h3 class="archive-volume-appraisal-panel__section-title">鉴定流程</h3>
         <UiTag
           v-if="
-            detail.volume.appraisalStatus &&
-            detail.volume.appraisalStatus !== ArchiveAppraisalStatusCode.NOT_DUE
+            detail.volume.appraisalStatus
+              && detail.volume.appraisalStatus !== ArchiveAppraisalStatusCode.NOT_DUE
           "
           :tone="appraisalStatusTone(detail.volume.appraisalStatus)"
           size="sm"
@@ -188,9 +188,9 @@
       </div>
       <UiEmpty
         v-if="
-          !destructionFlowLoading &&
-          !destructionFlowLoadFailed &&
-          destructionFlowRecords.length === 0
+          !destructionFlowLoading
+            && !destructionFlowLoadFailed
+            && destructionFlowRecords.length === 0
         "
         description="尚未发起销毁流程"
       />
@@ -376,6 +376,9 @@ import type {
   ArchiveVolumeDestructionFlowRecordResponse,
   ArchiveVolumeDetailResponse,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import {
   approveArchiveVolumeAppraisal,
   approveArchiveVolumeDestruction,
@@ -395,9 +398,6 @@ import {
   requestArchiveVolumeAppraisal,
   requestArchiveVolumeDestruction,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import ArchiveLifecyclePipe from '@/components/archive-volume/ArchiveLifecyclePipe.vue'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
@@ -416,7 +416,7 @@ import {
   buildArchiveDestructionLifecycleSteps,
   getArchiveDestructionStepDescriptions,
 } from '@/utils/archive-volume-lifecycle'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -481,9 +481,9 @@ const canRequestAppraisal = computed(() => {
   if (!props.canManageAppraisal) return false
   const status = vol.appraisalStatus
   if (!(
-    status === ArchiveAppraisalStatusCode.NOT_DUE ||
-    status === ArchiveAppraisalStatusCode.REMINDER_SENT ||
-    status === ArchiveAppraisalStatusCode.REJECTED
+    status === ArchiveAppraisalStatusCode.NOT_DUE
+    || status === ArchiveAppraisalStatusCode.REMINDER_SENT
+    || status === ArchiveAppraisalStatusCode.REJECTED
   )) {
     return false
   }
@@ -497,33 +497,33 @@ const canRequestAppraisal = computed(() => {
 
 const canApproveAppraisal = computed(
   () =>
-    props.canManageAppraisal &&
-    props.detail.volume.appraisalStatus === ArchiveAppraisalStatusCode.REQUESTED &&
-    Boolean(props.detail.appraisalRequestUserId) &&
-    props.detail.appraisalRequestUserId !== props.currentUserId,
+    props.canManageAppraisal
+    && props.detail.volume.appraisalStatus === ArchiveAppraisalStatusCode.REQUESTED
+    && Boolean(props.detail.appraisalRequestUserId)
+    && props.detail.appraisalRequestUserId !== props.currentUserId,
 )
 
 const canRejectAppraisal = computed(() => canApproveAppraisal.value)
 
 const canRecordAppraisalOpinion = computed(
   () =>
-    props.canManageAppraisal &&
-    props.detail.volume.appraisalStatus === ArchiveAppraisalStatusCode.APPROVED,
+    props.canManageAppraisal
+    && props.detail.volume.appraisalStatus === ArchiveAppraisalStatusCode.APPROVED,
 )
 
 const canRequestDestruction = computed(
   () =>
-    props.canManageAppraisal &&
-    props.detail.volume.appraisalStatus === ArchiveAppraisalStatusCode.OPINION_RECORDED &&
-    props.detail.appraisalDecision === ArchiveAppraisalDecisionCode.DESTROY &&
-    (props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.NONE ||
-      props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.REJECTED),
+    props.canManageAppraisal
+    && props.detail.volume.appraisalStatus === ArchiveAppraisalStatusCode.OPINION_RECORDED
+    && props.detail.appraisalDecision === ArchiveAppraisalDecisionCode.DESTROY
+    && (props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.NONE
+      || props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.REJECTED),
 )
 
 const canApproveDestructionAction = computed(() => {
   if (
-    !props.canApproveDestruction ||
-    props.detail.volume.destructionStatus !== ArchiveDestructionStatusCode.REQUESTED
+    !props.canApproveDestruction
+    || props.detail.volume.destructionStatus !== ArchiveDestructionStatusCode.REQUESTED
   ) {
     return false
   }
@@ -533,20 +533,20 @@ const canApproveDestructionAction = computed(() => {
 
 const canExecuteDestruction = computed(
   () =>
-    props.canApproveDestruction &&
-    props.detail.volume.volumeStatus === ArchiveVolumeStatusCode.STORED &&
-    props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.APPROVED &&
-    Boolean(props.detail.destructionRequestUserId) &&
-    Boolean(props.detail.destructionApproverUserId) &&
-    props.detail.destructionRequestUserId !== props.currentUserId &&
-    props.detail.destructionApproverUserId !== props.currentUserId,
+    props.canApproveDestruction
+    && props.detail.volume.volumeStatus === ArchiveVolumeStatusCode.STORED
+    && props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.APPROVED
+    && Boolean(props.detail.destructionRequestUserId)
+    && Boolean(props.detail.destructionApproverUserId)
+    && props.detail.destructionRequestUserId !== props.currentUserId
+    && props.detail.destructionApproverUserId !== props.currentUserId,
 )
 
 const canSuperviseDestruction = computed(
   () =>
-    props.canApproveDestruction &&
-    props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.EXECUTED &&
-    Boolean(props.detail.destructionExecutionUserId),
+    props.canApproveDestruction
+    && props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.EXECUTED
+    && Boolean(props.detail.destructionExecutionUserId),
 )
 
 const destructionApprovalTitle = computed(() =>
@@ -586,8 +586,8 @@ function flowRecordTitle(record: ArchiveVolumeAppraisalFlowRecordResponse): stri
 }
 
 function formatFlowRecordMeta(record: ArchiveVolumeAppraisalFlowRecordResponse): string {
-  const actor =
-    record.operatorNickName || (record.eventType === 'RETENTION_REMINDER' ? '系统自动' : '—')
+  const actor
+    = record.operatorNickName || (record.eventType === 'RETENTION_REMINDER' ? '系统自动' : '—')
   const time = record.occurredAt ? formatDateTime(record.occurredAt) : '—'
   const parts: string[] = []
   if (record.eventType === 'RETENTION_REMINDER' || record.eventType === 'APPRAISAL_REQUESTED') {
@@ -614,14 +614,14 @@ function isLatestFlowRecord(record: ArchiveVolumeAppraisalFlowRecordResponse): b
 function showRecordActions(record: ArchiveVolumeAppraisalFlowRecordResponse): boolean {
   if (!isLatestFlowRecord(record)) return false
   if (
-    record.appraisalStatus === ArchiveAppraisalStatusCode.REQUESTED &&
-    props.detail.volume.appraisalStatus === ArchiveAppraisalStatusCode.REQUESTED
+    record.appraisalStatus === ArchiveAppraisalStatusCode.REQUESTED
+    && props.detail.volume.appraisalStatus === ArchiveAppraisalStatusCode.REQUESTED
   ) {
     return canApproveAppraisal.value || canRejectAppraisal.value
   }
   if (
-    record.appraisalStatus === ArchiveAppraisalStatusCode.APPROVED &&
-    props.detail.volume.appraisalStatus === ArchiveAppraisalStatusCode.APPROVED
+    record.appraisalStatus === ArchiveAppraisalStatusCode.APPROVED
+    && props.detail.volume.appraisalStatus === ArchiveAppraisalStatusCode.APPROVED
   ) {
     return canRecordAppraisalOpinion.value
   }
@@ -634,7 +634,7 @@ async function loadAppraisalFlowRecords() {
   try {
     flowRecords.value = await listArchiveVolumeAppraisalFlowRecords(props.volumeId)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '加载鉴定流转记录失败')
     flowLoadFailed.value = true
   } finally {
     flowLoading.value = false
@@ -660,7 +660,7 @@ async function loadDestructionFlowRecords() {
   try {
     destructionFlowRecords.value = await listArchiveVolumeDestructionFlowRecords(props.volumeId)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '加载销毁流转记录失败')
     destructionFlowLoadFailed.value = true
   } finally {
     destructionFlowLoading.value = false
@@ -678,14 +678,14 @@ function refreshPanel() {
 
 function appraisalCardClass(status?: ArchiveAppraisalStatusCode): string {
   if (
-    status === ArchiveAppraisalStatusCode.APPROVED ||
-    status === ArchiveAppraisalStatusCode.OPINION_RECORDED
+    status === ArchiveAppraisalStatusCode.APPROVED
+    || status === ArchiveAppraisalStatusCode.OPINION_RECORDED
   ) {
     return 'approval-card--approved'
   }
   if (
-    status === ArchiveAppraisalStatusCode.REQUESTED ||
-    status === ArchiveAppraisalStatusCode.REMINDER_SENT
+    status === ArchiveAppraisalStatusCode.REQUESTED
+    || status === ArchiveAppraisalStatusCode.REMINDER_SENT
   ) {
     return 'approval-card--pending'
   }
@@ -715,7 +715,7 @@ async function handleApproveAppraisal() {
     message.success('鉴定审批通过')
     refreshPanel()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '通过鉴定审批失败')
   }
 }
 
@@ -726,7 +726,7 @@ function openRejectAppraisal() {
 
 async function submitRejectAppraisal() {
   if (!rejectAppraisalReason.value.trim()) {
-    message.warning('请填写驳回原因')
+    showFormValidationMessage('请填写驳回原因')
     return
   }
   rejectAppraisalSubmitting.value = true
@@ -739,7 +739,7 @@ async function submitRejectAppraisal() {
     rejectAppraisalOpen.value = false
     refreshPanel()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '驳回鉴定失败')
   } finally {
     rejectAppraisalSubmitting.value = false
   }
@@ -753,10 +753,10 @@ function openDestructionApproval(decision: ArchiveDestructionDecisionCode) {
 
 async function submitDestructionApproval() {
   if (
-    destructionApprovalDecision.value === ArchiveDestructionDecisionCode.REJECTED &&
-    !destructionApprovalRemark.value.trim()
+    destructionApprovalDecision.value === ArchiveDestructionDecisionCode.REJECTED
+    && !destructionApprovalRemark.value.trim()
   ) {
-    message.warning('请填写驳回原因')
+    showFormValidationMessage('请填写驳回原因')
     return
   }
   destructionApprovalSubmitting.value = true
@@ -770,7 +770,7 @@ async function submitDestructionApproval() {
     destructionApprovalOpen.value = false
     refreshPanel()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '提交销毁审批失败')
   } finally {
     destructionApprovalSubmitting.value = false
   }
@@ -790,7 +790,7 @@ async function handleExecuteDestruction() {
     emit('refreshed')
     startDestructionPollIfNeeded()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '执行销毁失败')
   }
 }
 
@@ -832,11 +832,11 @@ function openSuperviseModal() {
 
 async function submitSupervise() {
   if (!superviseForm.witnessUserId.trim()) {
-    message.warning('请选择见证人')
+    showFormValidationMessage('请选择见证人')
     return
   }
   if (!superviseForm.registerFileId.trim()) {
-    message.warning('请选择销毁清册文件')
+    showFormValidationMessage('请选择销毁清册文件')
     return
   }
   superviseSubmitting.value = true
@@ -850,7 +850,7 @@ async function submitSupervise() {
     superviseModalOpen.value = false
     refreshPanel()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '确认监销失败')
   } finally {
     superviseSubmitting.value = false
   }
@@ -862,7 +862,7 @@ async function handleRequestAppraisal() {
     message.success('鉴定申请已提交')
     refreshPanel()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '提交鉴定申请失败')
   }
 }
 
@@ -887,11 +887,11 @@ function syncAppraisalRetentionYears(value: string | number | null | undefined) 
 
 async function submitAppraisalOpinion() {
   if (
-    appraisalForm.decision === ArchiveAppraisalDecisionCode.RETAIN &&
-    !appraisalForm.permanentRetention &&
-    !appraisalForm.retentionExtensionYears
+    appraisalForm.decision === ArchiveAppraisalDecisionCode.RETAIN
+    && !appraisalForm.permanentRetention
+    && !appraisalForm.retentionExtensionYears
   ) {
-    message.warning('请填写延长保管年限或勾选永久保管')
+    showFormValidationMessage('请填写延长保管年限或勾选永久保管')
     return
   }
   appraisalSubmitting.value = true
@@ -900,8 +900,8 @@ async function submitAppraisalOpinion() {
       volumeId: props.volumeId,
       decision: appraisalForm.decision,
       retentionExtensionYears:
-        appraisalForm.decision === ArchiveAppraisalDecisionCode.RETAIN &&
-        !appraisalForm.permanentRetention
+        appraisalForm.decision === ArchiveAppraisalDecisionCode.RETAIN
+        && !appraisalForm.permanentRetention
           ? appraisalForm.retentionExtensionYears
           : undefined,
       permanentRetention:
@@ -914,7 +914,7 @@ async function submitAppraisalOpinion() {
     appraisalModalOpen.value = false
     refreshPanel()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '记录鉴定决议失败')
   } finally {
     appraisalSubmitting.value = false
   }
@@ -927,7 +927,7 @@ function openDestructionRequest() {
 
 async function submitDestructionRequest() {
   if (!destructionReason.value.trim()) {
-    message.warning('请填写销毁原因')
+    showFormValidationMessage('请填写销毁原因')
     return
   }
   destructionSubmitting.value = true
@@ -940,7 +940,7 @@ async function submitDestructionRequest() {
     destructionModalOpen.value = false
     refreshPanel()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '提交销毁申请失败')
   } finally {
     destructionSubmitting.value = false
   }

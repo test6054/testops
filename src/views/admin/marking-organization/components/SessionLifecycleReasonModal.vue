@@ -45,7 +45,7 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
 export type LifecycleAction = 'pauseFormal' | 'closeFormal' | 'closeTrial'
 
@@ -115,13 +115,13 @@ async function confirm(): Promise<void> {
     return
   }
   if (!props.canManage) {
-    message.warning('仅考试主考老师可管理试评 / 正评会话')
+    showFormValidationMessage('仅考试主考老师可管理试评 / 正评会话')
     return
   }
   const trimmed = reason.value.trim()
   if (!trimmed) {
     submitError.value = '请填写操作原因'
-    message.warning('请填写操作原因')
+    showFormValidationMessage('请填写操作原因')
     return
   }
   submitting.value = true

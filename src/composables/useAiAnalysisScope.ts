@@ -1,18 +1,18 @@
-import type { ComputedRef, InjectionKey, Ref } from 'vue'
-import { computed, inject, provide, ref, watch } from 'vue'
-import type { AiAnalysisCenterOverviewResponse } from '@/apis/mark/analysis-center'
-import { loadAiAnalysisCenterOverview } from '@/apis/mark/analysis-center'
-import type { ExamSummaryResponse } from '@/apis/mark/exam'
-import { getExamDetail, pageExams } from '@/apis/mark/exam'
-import type { CourseListVO } from '@/apis/quality/user-catalog'
-import { courseCatalogApi } from '@/apis/quality/user-catalog'
-import type { MarkClassOption } from '@/composables/useMarkExamRoster'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
-import { MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE } from '@/composables/useMarkExamSelector'
-import { generateAcademicYearOptions, getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
-import { showUserError } from '@/utils/error-handler'
-import { examSummaryFromDetail } from '@/utils/mark-exam-option'
+import type {ComputedRef, InjectionKey, Ref} from 'vue'
+import type {AiAnalysisCenterOverviewResponse} from '@/apis/mark/analysis-center'
+import type {ExamSummaryResponse} from '@/apis/mark/exam'
+import type {CourseListVO} from '@/apis/quality/user-catalog'
+import type {MarkClassOption} from '@/composables/useMarkExamRoster'
+import type {SemesterCode} from '@/types/enums/semester-enum'
+import {computed, inject, provide, ref, watch} from 'vue'
+import {loadAiAnalysisCenterOverview} from '@/apis/mark/analysis-center'
+import {getExamDetail, pageExams} from '@/apis/mark/exam'
+import {courseCatalogApi} from '@/apis/quality/user-catalog'
+import {MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE} from '@/composables/useMarkExamSelector'
+import {formatSemester, SemesterOptions} from '@/types/enums/semester-enum'
+import {generateAcademicYearOptions, getDefaultAcademicYearAndSemester} from '@/utils/academic-year'
+import {showUserError} from '@/utils/error-handler'
+import {examSummaryFromDetail} from '@/utils/mark-exam-option'
 
 /** 工作台内锁定 AI 分析考试范围（注入后禁止切换考试） */
 export const AI_ANALYSIS_LOCK_EXAM_ID_KEY: InjectionKey<Ref<string | undefined>> = Symbol('aiAnalysisLockExamId')
@@ -80,15 +80,6 @@ export interface AiAnalysisScopePanelActions {
 
 export const AI_ANALYSIS_SCOPE_PANEL_ACTIONS_KEY: InjectionKey<AiAnalysisScopePanelActions> = Symbol('aiAnalysisScopePanelActions')
 
-
-/** 工作台内覆盖 AI 分析页 ContextBar 标题 */
-export interface AiAnalysisWorkspaceChrome {
-  title: string
-  subtitle: string
-}
-
-export const AI_ANALYSIS_WORKSPACE_CHROME_KEY: InjectionKey<Ref<AiAnalysisWorkspaceChrome | null>> = Symbol('aiAnalysisWorkspaceChrome')
-
 /** AI 分析中心范围：学年 / 学期 / 课程 / 考试 / 班级 / 院系 */
 export function useAiAnalysisScope() {
   const lockExamId = inject(AI_ANALYSIS_LOCK_EXAM_ID_KEY, null)
@@ -144,10 +135,12 @@ export function useAiAnalysisScope() {
   )
 
   const filteredExams = computed(() => {
-    const mergedExams = pinnedExam.value
-      ? [pinnedExam.value, ...exams.value.filter(exam => exam.examId !== pinnedExam.value!.examId)]
+    return pinnedExam.value
+      ? [
+          pinnedExam.value,
+          ...exams.value.filter((exam) => exam.examId !== pinnedExam.value!.examId),
+        ]
       : exams.value
-    return mergedExams
   })
 
   const filteredExamOptions = computed(() =>
@@ -294,7 +287,7 @@ export function useAiAnalysisScope() {
       }
       overview.value = null
       overviewLoadFailed.value = true
-      showUserError(error, 'AI 分析中心概览加载失败')
+      showUserError(error, '智能分析中心概览加载失败')
     }
     finally {
       if (requestSequence === overviewRequestSequence) {
@@ -316,8 +309,9 @@ export function useAiAnalysisScope() {
     try {
       pinnedExam.value = examSummaryFromDetail(await getExamDetail(id))
     }
-    catch {
+    catch (error) {
       pinnedExam.value = null
+      showUserError(error, '考试详情加载失败')
     }
   }
 

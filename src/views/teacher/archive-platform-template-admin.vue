@@ -5,17 +5,17 @@ import type {
   ArchivePlatformTemplateSetResponse,
   ArchivePlatformTemplateSetSaveRequest,
 } from '@/apis/mark/archive-platform-template'
-import {
-  listArchivePlatformTemplateSets,
-  previewArchivePlatformTemplateSet,
-  saveArchivePlatformTemplateSet,
-} from '@/apis/mark/archive-platform-template'
 import type {
   ArchiveTemplateMaterialEditRow,
   ArchiveTemplateSelfCheckEditRow,
 } from '@/views/teacher/archive-volume/components/archive-template-editor-types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
+import {
+  listArchivePlatformTemplateSets,
+  previewArchivePlatformTemplateSet,
+  saveArchivePlatformTemplateSet,
+} from '@/apis/mark/archive-platform-template'
 import {
   archiveTemplateScopeLabel,
   archiveTemplateScopeTone,
@@ -31,7 +31,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useAuthStore } from '@/stores/modules/auth'
 import { ArchiveExamFormCode } from '@/types/enums/archive-exam-form-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ArchiveTemplateSetEditorDrawer from '@/views/teacher/archive-volume/components/ArchiveTemplateSetEditorDrawer.vue'
 import ArchiveVolumeTemplateSetsPanel from '@/views/teacher/archive-volume/components/ArchiveVolumeTemplateSetsPanel.vue'
@@ -170,14 +170,14 @@ async function loadPlatformSets() {
 
 async function submitSave() {
   if (loadFailed.value) {
-    message.warning('请先重新加载平台模板')
+    showFormValidationMessage('请先重新加载平台模板')
     return
   }
   const setCode = editorMeta.setCode.trim()
   const setName = editorMeta.setName.trim()
   const releaseTag = editorMeta.releaseTag.trim()
   if (!setCode || !setName || !releaseTag) {
-    message.warning('请填写套编码、名称与发版标签')
+    showFormValidationMessage('请填写套编码、名称与发版标签')
     return
   }
   if (materialRows.value.length === 0 || selfCheckRows.value.length === 0) {
@@ -185,7 +185,7 @@ async function submitSave() {
     return
   }
   if (!editorMeta.defaultPermanentRetention && editorMeta.defaultRetentionYears == null) {
-    message.warning('请填写保管年限或勾选永久')
+    showFormValidationMessage('请填写保管年限或勾选永久')
     return
   }
   const materialKeys = new Set<string>()
@@ -274,9 +274,7 @@ onMounted(loadPlatformSets)
         <template #toolbar>
           <div class="archive-platform-admin__toolbar-row">
             <span v-if="loadFailed" class="archive-platform-admin__hint">平台模板加载失败</span>
-            <span v-else-if="platformSets.length === 0" class="archive-platform-admin__hint"
-              >尚未配置任何平台模板</span
-            >
+            <span v-else-if="platformSets.length === 0" class="archive-platform-admin__hint">尚未配置任何平台模板</span>
             <span v-else class="archive-platform-admin__hint">共 {{ platformSets.length }} 套</span>
             <div class="archive-platform-admin__actions">
               <UiButton
@@ -284,8 +282,9 @@ onMounted(loadPlatformSets)
                 variant="primary"
                 :disabled="loadFailed || loading"
                 @click="openCreateEditor"
-                >新建模板套</UiButton
               >
+                新建模板套
+              </UiButton>
             </div>
           </div>
         </template>

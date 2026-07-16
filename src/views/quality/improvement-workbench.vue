@@ -65,7 +65,7 @@ async function loadTabLists(): Promise<void> {
   const rectTab = auditRectificationTabRef.value
   const supTab = auditSupervisionTabRef.value
   if (!improvementTab || !issueTab || !rectTab || !supTab) {
-    throw toUserError(null, '工作台 Tab 尚未就绪')
+    throw toUserError(null, '工作台页签尚未就绪')
   }
   await Promise.all([
     improvementTab.loadList(),

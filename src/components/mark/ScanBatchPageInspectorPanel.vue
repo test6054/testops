@@ -128,7 +128,7 @@
         <h3 class="scan-batch-page-inspector__section-title">
           确认身份绑定
           <UiTooltip
-            title="对照中栏登记页与 OCR 线索，从考试名册选择正确考生并确认绑定。"
+            title="对照中栏登记页与文字识别线索，从考试名册选择正确考生并确认绑定。"
             placement="topLeft"
           >
             <InfoCircleOutlined class="scan-batch-page-inspector__tip" />
@@ -144,7 +144,7 @@
           <a-form-item :label="recognizedStudentNoLabel">
             <a-input
               v-model:value="recognizedStudentNo"
-              placeholder="OCR 学号或人工修正值"
+              placeholder="文字识别学号或人工修正值"
               :maxlength="64"
             />
           </a-form-item>

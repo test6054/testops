@@ -1,6 +1,18 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationObjectionHandleActionCode } from '@/apis/portfolio/enums'
+import type {
+  PortfolioEvaluationMaterialCategoryItemVO,
+  PortfolioEvaluationMaterialPreviewVO,
+  PortfolioEvaluationPublicityListItemVO,
+  PortfolioEvaluationTeacherNoticeVO,
+  PortfolioEvaluationTeacherResultSummaryVO,
+} from '@/apis/portfolio/types'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import { Input, message, Select } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   PORTFOLIO_EVALUATION_OBJECTION_TYPE_OPTIONS,
   PortfolioEvaluationObjectionHandleActionDescription,
@@ -10,26 +22,14 @@ import {
   PortfolioEvaluationTeacherNoticeStatusCode,
   PortfolioEvaluationTeacherNoticeStatusDescription,
 } from '@/apis/portfolio/enums'
-import type {
-  PortfolioEvaluationMaterialCategoryItemVO,
-  PortfolioEvaluationMaterialPreviewVO,
-  PortfolioEvaluationPublicityListItemVO,
-  PortfolioEvaluationTeacherNoticeVO,
-  PortfolioEvaluationTeacherResultSummaryVO,
-} from '@/apis/portfolio/types'
+import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
+import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import {
   PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
   PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE,
   PORTFOLIO_EVALUATION_PUBLICITY_STATUS_TONE,
   PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE,
 } from '@/apis/portfolio/types'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { Input, message, Select } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
-import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -44,7 +44,7 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 function noticeStatusLabel(status: PortfolioEvaluationTeacherNoticeStatusCode): string {
@@ -141,8 +141,8 @@ const objectionIndicatorOptions = computed(() => {
 })
 const scoreOrResultDispute = computed(
   () =>
-    objectionForm.objectionType === PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE ||
-    objectionForm.objectionType === PortfolioEvaluationObjectionTypeCode.SCORE_DISPUTE,
+    objectionForm.objectionType === PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE
+    || objectionForm.objectionType === PortfolioEvaluationObjectionTypeCode.SCORE_DISPUTE,
 )
 const showObjectionIndicatorSelect = computed(
   () => scoreOrResultDispute.value && objectionIndicatorOptions.value.length > 0,
@@ -255,9 +255,9 @@ function canViewerSubmitObjection(record: PortfolioEvaluationPublicityListItemVO
     return false
   }
   return !(
-    canPickTeachers.value &&
-    targetTeacherId.value &&
-    targetTeacherId.value !== currentUserId.value
+    canPickTeachers.value
+    && targetTeacherId.value
+    && targetTeacherId.value !== currentUserId.value
   )
 }
 
@@ -330,8 +330,8 @@ async function loadPublicity() {
       targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
     )
     if (
-      evaluationRequestToken.value !== scopeToken ||
-      publicityRequestToken.value !== requestToken
+      evaluationRequestToken.value !== scopeToken
+      || publicityRequestToken.value !== requestToken
     ) {
       return
     }
@@ -346,8 +346,8 @@ async function loadPublicity() {
     }
   } catch (error) {
     if (
-      evaluationRequestToken.value !== scopeToken ||
-      publicityRequestToken.value !== requestToken
+      evaluationRequestToken.value !== scopeToken
+      || publicityRequestToken.value !== requestToken
     ) {
       return
     }
@@ -355,8 +355,8 @@ async function loadPublicity() {
     showUserError(error, '加载评价公示失败')
   } finally {
     if (
-      evaluationRequestToken.value === scopeToken &&
-      publicityRequestToken.value === requestToken
+      evaluationRequestToken.value === scopeToken
+      && publicityRequestToken.value === requestToken
     ) {
       publicityLoading.value = false
     }
@@ -467,16 +467,16 @@ async function submitObjection() {
   }
   const reason = objectionForm.objectionReason.trim()
   if (!reason) {
-    message.warning('请填写异议理由')
+    showFormValidationMessage('请填写异议理由')
     return
   }
   if (scoreOrResultDispute.value) {
     if (resultSummary.value?.evaluationTaskId !== objectionTarget.value.evaluationTaskId) {
-      message.warning('评价结果仍在加载，请稍后提交异议')
+      showFormValidationMessage('评价结果仍在加载，请稍后提交异议')
       return
     }
     if (showObjectionIndicatorSelect.value && !objectionForm.indicatorCode) {
-      message.warning('请选择争议指标')
+      showFormValidationMessage('请选择争议指标')
       return
     }
   }

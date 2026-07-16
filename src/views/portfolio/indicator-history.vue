@@ -27,7 +27,7 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -73,7 +73,7 @@ const columns: ColumnsType = [
   { title: '学年', dataIndex: 'academicYear', key: 'academicYear', width: 120 },
   { title: '状态', dataIndex: 'modelStatus', key: 'modelStatus', width: 100 },
   { title: '发布时间', dataIndex: 'publishedTime', key: 'publishedTime', width: 180 },
-  { title: '快照 ID', dataIndex: 'id', key: 'id' },
+  { title: '快照编号', dataIndex: 'id', key: 'id' },
   { title: '操作', key: 'actions', width: 120 },
 ]
 
@@ -81,7 +81,7 @@ const impactColumns: ColumnsType = [
   { title: '场景', dataIndex: 'sceneCode', key: 'sceneCode', width: 100 },
   { title: '状态', dataIndex: 'reportStatus', key: 'reportStatus', width: 100 },
   { title: '过期', dataIndex: 'expiredTime', key: 'expiredTime', width: 160 },
-  { title: 'ID', dataIndex: 'id', key: 'id' },
+  { title: '编号', dataIndex: 'id', key: 'id' },
   { title: '操作', key: 'actions', width: 120 },
 ]
 
@@ -112,7 +112,7 @@ async function loadHistory() {
     if (currentToken !== historyRequestToken.value) {
       return
     }
-    showUserError(error)
+    showUserError(error, '加载发布历史失败')
   } finally {
     if (currentToken === historyRequestToken.value) {
       historyLoading.value = false
@@ -148,7 +148,7 @@ async function loadImpactReports() {
     if (currentToken !== impactRequestToken.value) {
       return
     }
-    showUserError(error)
+    showUserError(error, '加载影响报告失败')
   } finally {
     if (currentToken === impactRequestToken.value) {
       impactLoading.value = false
@@ -175,7 +175,7 @@ async function loadRetroactive() {
     if (currentToken !== retroactiveRequestToken.value) {
       return
     }
-    showUserError(error)
+    showUserError(error, '加载追溯快照失败')
   }
 }
 
@@ -191,13 +191,13 @@ async function loadImpactDetail(id: string) {
     if (currentToken !== impactDetailRequestToken.value) {
       return
     }
-    showUserError(error)
+    showUserError(error, '加载影响报告详情失败')
   }
 }
 
 async function exportDiff(snapshotIdA: string) {
   if (!diffSnapshotIdB.value) {
-    message.warning('请填写对比快照 B ID')
+    showFormValidationMessage('请填写第二个对比快照编号')
     return
   }
   try {
@@ -208,7 +208,7 @@ async function exportDiff(snapshotIdA: string) {
     await downloadPortfolioIndicatorExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条差异`)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出快照差异失败')
   }
 }
 
@@ -218,7 +218,7 @@ async function exportImpact(id: string) {
     await downloadPortfolioIndicatorExcelExport(result)
     message.success('影响报告已导出')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出影响报告失败')
   }
 }
 
@@ -292,13 +292,13 @@ onMounted(loadHistory)
             />
             <a-input
               v-model:value="selectedSnapshotId"
-              placeholder="快照 ID"
+              placeholder="快照编号"
               style="width: 200px"
             />
             <UiButton @click="loadRetroactive"> retroactive 查询 </UiButton>
             <a-input
               v-model:value="diffSnapshotIdB"
-              placeholder="对比快照 B ID"
+              placeholder="对比快照乙编号"
               style="width: 200px"
             />
           </div>
@@ -322,7 +322,7 @@ onMounted(loadHistory)
                 <UiTableActions
                   :items="[
                     { key: 'view', label: '查看' },
-                    { key: 'export-diff', label: '导出 diff' },
+                    { key: 'export-diff', label: '导出差异' },
                     { key: 'score', label: '计分' },
                   ]"
                   split

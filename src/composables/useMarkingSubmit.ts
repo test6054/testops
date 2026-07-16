@@ -28,7 +28,7 @@ import {
 import { useMarkingRecentSubmit } from '@/composables/useMarkingRecentSubmit'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useTenantMarkingWithdrawPolicy } from '@/composables/useTenantMarkingWithdrawPolicy'
-import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import {
   isMultiResponseSliceConflict,
   MarkingConflictHint,
@@ -125,11 +125,11 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
 
   function buildQuestionSubmitRequest(): MarkingQuestionScoreSubmitItem | null {
     if (!options.questionView.value) {
-      showUserError(null, '题目视图未加载')
+      showFormValidationMessage('题目视图未加载')
       return null
     }
     if (options.form.score === undefined) {
-      showUserError(null, '请填写教师给分')
+      showFormValidationMessage('请填写教师给分')
       return null
     }
     return {
@@ -146,7 +146,7 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   }): number | null {
     const firstScore = submitRequest.questionScores[0]?.score
     if (firstScore === undefined) {
-      showUserError(null, '提交给分缺失')
+      showFormValidationMessage('提交给分缺失')
       return null
     }
     return firstScore

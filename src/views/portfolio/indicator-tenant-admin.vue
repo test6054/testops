@@ -5,6 +5,13 @@ import type {
   PortfolioIndustryPackVO,
   PortfolioTenantIndicatorConfigVO,
 } from '@/apis/portfolio/indicator-types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  portfolioIndicatorPlatformApi,
+  portfolioIndicatorTenantApi,
+} from '@/apis/portfolio/indicator'
 import {
   PF_SCENE_CODE_OPTIONS,
   PfIndicatorStatusDescription,
@@ -13,13 +20,6 @@ import {
   PfSceneCode,
   PfSceneCodeDescription,
 } from '@/apis/portfolio/indicator-types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import {
-  portfolioIndicatorPlatformApi,
-  portfolioIndicatorTenantApi,
-} from '@/apis/portfolio/indicator'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -28,7 +28,7 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -103,8 +103,8 @@ const filteredConfigs = computed(() => {
   }
   return configRows.value.filter(
     (row) =>
-      row.indicatorCode.toLowerCase().includes(keyword) ||
-      row.indicatorName.toLowerCase().includes(keyword),
+      row.indicatorCode.toLowerCase().includes(keyword)
+      || row.indicatorName.toLowerCase().includes(keyword),
   )
 })
 
@@ -206,7 +206,7 @@ async function enableAll() {
     if (model.value) reloads.push(loadModel())
     await Promise.all(reloads)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '启用全部平台指标失败')
   } finally {
     endOperation(operation)
   }
@@ -220,7 +220,7 @@ async function toggleEnabled(record: PortfolioTenantIndicatorConfigVO, enabled: 
     await portfolioIndicatorTenantApi.saveConfig({ indicatorCode, enabled })
     message.success(enabled ? '已启用' : '已停用')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '切换指标启用状态失败')
   } finally {
     await Promise.all([loadConfig(), model.value ? loadModel() : Promise.resolve()])
     endOperation(operation)
@@ -242,11 +242,11 @@ async function saveEdit() {
   const indicatorCode = editForm.indicatorCode
   if (!indicatorCode) return
   if (
-    editForm.standardScore != null &&
-    editForm.capScore != null &&
-    editForm.capScore < editForm.standardScore
+    editForm.standardScore != null
+    && editForm.capScore != null
+    && editForm.capScore < editForm.standardScore
   ) {
-    message.warning('封顶分不能低于标准分')
+    showFormValidationMessage('封顶分不能低于标准分')
     return
   }
   const operation = `save:config:${indicatorCode}`
@@ -264,7 +264,7 @@ async function saveEdit() {
     editDrawerOpen.value = false
     await Promise.all([loadConfig(), model.value ? loadModel() : Promise.resolve()])
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存指标配置失败')
   } finally {
     endOperation(operation)
   }
@@ -290,7 +290,7 @@ async function saveModel() {
     message.success('场景模型已保存')
     if (sceneCode.value === targetSceneCode) await loadModel()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存场景模型失败')
   } finally {
     endOperation(operation)
   }
@@ -314,7 +314,7 @@ async function trialModel() {
     modelDirty.value = false
     message.success(result.trialPassed ? '当前权重已保存，试算通过' : '试算未通过，请检查权重')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '场景模型试算失败')
   } finally {
     endOperation(operation)
   }
@@ -322,11 +322,11 @@ async function trialModel() {
 
 async function freezeModel() {
   if (modelDirty.value) {
-    message.warning('当前权重尚未保存，请先保存或试算后再冻结')
+    showFormValidationMessage('当前权重尚未保存，请先保存或试算后再冻结')
     return
   }
   if (!model.value || model.value.modelStatus !== PfModelStatusCode.PUBLISHED) {
-    message.warning('仅已发布且存在正式快照的场景模型可以冻结')
+    showFormValidationMessage('仅已发布且存在正式快照的场景模型可以冻结')
     return
   }
   const targetSceneCode = sceneCode.value
@@ -346,7 +346,7 @@ async function freezeModel() {
     message.success('场景模型已冻结')
     if (sceneCode.value === targetSceneCode) await loadModel()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '冻结场景模型失败')
   } finally {
     endOperation(operation)
   }
@@ -354,14 +354,14 @@ async function freezeModel() {
 
 async function bindPack() {
   if (!bindForm.packCode) {
-    message.warning('请选择行业包')
+    showFormValidationMessage('请选择行业包')
     return
   }
   const packCode = bindForm.packCode
   const majorGroupCode = bindForm.majorGroupCode.trim()
   const majorGroupName = bindForm.majorGroupName.trim()
   if (Boolean(majorGroupCode) !== Boolean(majorGroupName)) {
-    message.warning('专业群编码和名称必须同时填写或同时留空')
+    showFormValidationMessage('专业群编码和名称必须同时填写或同时留空')
     return
   }
   const operation = `pack:bind:${packCode}:${majorGroupCode}`
@@ -380,7 +380,7 @@ async function bindPack() {
     await portfolioIndicatorTenantApi.bindIndustryPack(request)
     message.success('行业包已挂载')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '挂载行业包失败')
   } finally {
     endOperation(operation)
   }
@@ -394,7 +394,7 @@ async function exportCatalog() {
     await downloadPortfolioIndicatorExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出指标目录失败')
   } finally {
     endOperation(operation)
   }

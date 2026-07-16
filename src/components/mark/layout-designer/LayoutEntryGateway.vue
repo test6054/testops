@@ -21,8 +21,8 @@ import {
   ExamLayoutPaperSpecCode,
   ExamLayoutPaperSpecOptions,
 } from '@/types/enums/exam-layout-paper-spec-enum'
-import { createClientUuid } from '@/utils/client-uuid'
-import { showUserError } from '@/utils/error-handler'
+import { createClientSnowflakeId } from '@/utils/client-snowflake'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { layoutHasSourceFileDetectResult } from '@/utils/exam-layout-designer'
 import {
   buildGenerateQuestionsFromDrafts,
@@ -248,7 +248,7 @@ function handleAutoDetect(): void {
     return
   }
   if (!sourceFileCanAutoDetect.value) {
-    message.warning('自动预划区仅支持 PDF、Word（doc/docx）或图片（png/jpg/jpeg）')
+    showFormValidationMessage('自动预划区仅支持便携文档、文字文档或常见图片格式')
     return
   }
   void startAutoDetect(sourcePdfFileId.value)
@@ -277,7 +277,7 @@ async function syncUploadedPageMeta(fileId: string): Promise<void> {
         )
       : [
           {
-            id: createClientUuid(),
+            id: createClientSnowflakeId(),
             pageNo: 1,
             backgroundFileId: fileId,
             naturalWidthPx: meta.naturalWidthPx,
@@ -304,7 +304,7 @@ async function syncUploadedPageMeta(fileId: string): Promise<void> {
       blocks: sourceDocument.blocks ?? [],
       blockOptions: sourceDocument.blockOptions ?? [],
     })
-    showUserError(error, '源文件页尺寸未解析，请重新上传 PDF、Word 或图片并完成题目识别')
+    showUserError(error, '源文件页尺寸未解析，请重新上传便携文档、文字文档或图片并完成题目识别')
   }
 }
 
@@ -374,7 +374,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
           <template #label>
             <span class="layout-entry-gateway__label">
               整卷源文件
-              <a-tooltip title="上传 PDF、Word 或图片后将异步识别题目、分页入库并生成题单。">
+              <a-tooltip title="上传便携文档、文字文档或图片后将异步识别题目、分页入库并生成题单。">
                 <QuestionCircleOutlined class="layout-entry-gateway__label-icon" />
               </a-tooltip>
             </span>

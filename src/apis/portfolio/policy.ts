@@ -99,7 +99,7 @@ export const portfolioPolicyApi = {
     http.post<PageResult<PortfolioPolicyDocumentVO>>('/api/portfolio/policy-document/page', data),
   get: (data: { id: string }) =>
     http.post<PortfolioPolicyDocumentDetailVO>('/api/portfolio/policy-document/get', data),
-  search: (data: { pageNum: number; pageSize: number; keyword: string }) =>
+  search: (data: { pageNum: number, pageSize: number, keyword: string }) =>
     http.post<PageResult<PortfolioPolicyDocumentSearchVO>>(
       '/api/portfolio/policy-document/search',
       data,
@@ -142,6 +142,6 @@ export const portfolioPolicyApi = {
       '/api/portfolio/policy-document/mapping/save',
       data,
     ),
-  compare: (data: { leftDocumentId: string; rightDocumentId: string }) =>
+  compare: (data: { leftDocumentId: string, rightDocumentId: string }) =>
     http.post<PortfolioPolicyDocumentCompareVO>('/api/portfolio/policy-document/compare', data),
 }

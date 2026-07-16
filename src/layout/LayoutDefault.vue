@@ -10,7 +10,6 @@
       <Header></Header>
       <PortfolioLayoutContext />
       <Main id="main-content" :class="{ 'with-tabbar': isMobile }"></Main>
-      <!-- <GiFooter v-if="appStore.copyrightDisplay && !isMobile" /> -->
     </a-layout>
 
     <!-- 底部导航栏：移动端显示 -->

@@ -24,7 +24,7 @@ import {
   ALL_PAPER_MASTER_IDENTITY_AREA_TYPE_CODES,
   PaperMasterIdentityAreaTypeCode,
 } from '@/types/enums/paper-master-identity-area-type-enum'
-import { createClientUuid } from '@/utils/client-uuid'
+import { createClientSnowflakeId } from '@/utils/client-snowflake'
 
 export {
   ALL_EXAM_LAYOUT_BLOCK_TYPE_CODES,
@@ -194,7 +194,7 @@ export function pageByNo(
 }
 
 export function createClientBlockId(): string {
-  return createClientUuid()
+  return createClientSnowflakeId()
 }
 
 export function createDefaultBlock(

@@ -226,27 +226,35 @@ function buildSpotCheckExamFilter(): string | undefined {
 }
 
 async function loadPendingCount(): Promise<void> {
-  const result = await countMyPendingSpotChecks({
-    examId: buildSpotCheckExamFilter(),
-  })
-  pendingCount.value = result.pendingCount
+  try {
+    const result = await countMyPendingSpotChecks({
+      examId: buildSpotCheckExamFilter(),
+    })
+    pendingCount.value = result.pendingCount
+  } catch (error) {
+    pendingCount.value = 0
+    showUserError(error, '抽检待处理数量加载失败')
+  }
 }
 
 async function loadList(): Promise<void> {
   loading.value = true
   try {
-    const [page] = await Promise.all([
-      listMyPendingSpotChecks({
-        examId: buildSpotCheckExamFilter(),
-        pageNum: pagination.pageNum,
-        pageSize: pagination.pageSize,
-      }),
-      loadPendingCount(),
-    ])
+    const page = await listMyPendingSpotChecks({
+      examId: buildSpotCheckExamFilter(),
+      pageNum: pagination.pageNum,
+      pageSize: pagination.pageSize,
+    })
     pendingItems.value = page.list
     pagination.total = page.total
     pagination.pageNum = page.pageNum ?? pagination.pageNum
     pagination.pageSize = page.pageSize ?? pagination.pageSize
+    try {
+      await loadPendingCount()
+    } catch (error) {
+      pendingCount.value = 0
+      showUserError(error, '待处理抽检数量加载失败')
+    }
   } catch (error) {
     showUserError(error, '待处理阅卷抽检加载失败')
     pendingItems.value = []
@@ -336,8 +344,8 @@ async function submitConclusion(): Promise<void> {
     await loadList()
     try {
       await refreshSnapshot()
-    } catch {
-      // 非工作台上下文时忽略
+    } catch (error) {
+      showUserError(error, '考试工作台状态刷新失败')
     }
   } catch (error) {
     showUserError(error, '阅卷抽检结论提交失败')

@@ -5,7 +5,7 @@
         layout="workbench"
         show-title
         title="材料检索"
-        subtitle="跨卷 OCR 全文检索 · 归档材料内容"
+        subtitle="跨卷文字识别全文检索 · 归档材料内容"
       />
     </template>
 
@@ -63,11 +63,11 @@
           </div>
           <div class="archive-search-primary">
             <div class="archive-search-primary__field archive-search-primary__field--keyword">
-              <label class="archive-search-primary__label">OCR 关键词</label>
+              <label class="archive-search-primary__label">文字识别关键词</label>
               <a-input
                 v-model:value="filterForm.keyword"
                 allow-clear
-                placeholder="搜索材料 OCR 全文..."
+                placeholder="搜索材料文字识别全文..."
                 @press-enter="handleSearch"
               />
             </div>
@@ -178,7 +178,7 @@
               />
             </div>
             <div class="archive-search-advanced__field">
-              <label class="archive-search-primary__label">OCR 状态</label>
+              <label class="archive-search-primary__label">文字识别状态</label>
               <a-select
                 v-model:value="filterForm.ocrStatus"
                 allow-clear
@@ -327,7 +327,7 @@
     <WorkbenchSurfaceCard v-if="ocrInlineMaterialId" flush class="archive-search-ocr-panel">
       <template #head>
         <div class="archive-search-ocr-panel__head">
-          <span class="archive-search-ocr-panel__title">OCR 文档详情</span>
+          <span class="archive-search-ocr-panel__title">文字识别文档详情</span>
           <span v-if="ocrInlineFileName" class="archive-search-ocr-panel__file">{{
             ocrInlineFileName
           }}</span>
@@ -391,31 +391,12 @@ import type {
   ArchiveVolumeSearchRequest,
   ArchiveVolumeSearchResponse,
 } from '@/apis/mark/archive-volume'
-import {
-  ARCHIVE_MATERIAL_TYPE_OPTIONS,
-  ArchiveMaterialTypeDescription,
-  deleteArchiveVolumeSearchProfile,
-  listArchiveVolumeSearchProfiles,
-  saveArchiveVolumeSearchProfile,
-  searchArchiveVolumes,
-  triggerArchiveVolumeMaterialOcr,
-} from '@/apis/mark/archive-volume'
 import type { CourseListVO, TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
-import { courseCatalogApi, departmentCatalogApi } from '@/apis/quality/user-catalog'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
-import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import type { SignalMetric } from '@/types/workbench'
 import type { AcademicYearSemesterTripleFilterState } from '@/utils/academic-year-semester-triple-filter'
-import {
-  applyAcademicYearStartYearChange,
-  buildTriplePeriodQuery,
-  createAcademicYearSemesterTripleDefaults,
-  ensureTriplePeriodPair,
-  parseTripleFromAcademicYear,
-} from '@/utils/academic-year-semester-triple-filter'
 import type { MarkExamSelectOption } from '@/utils/mark-exam-option'
-import { examSummaryFromDetail, toMarkExamSelectOption } from '@/utils/mark-exam-option'
 import { message, Modal } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -425,7 +406,17 @@ import {
   ArchiveMaterialOcrStatusCode,
   ArchiveMaterialOcrStatusDescription,
 } from '@/apis/mark/archive-ocr-status'
+import {
+  ARCHIVE_MATERIAL_TYPE_OPTIONS,
+  ArchiveMaterialTypeDescription,
+  deleteArchiveVolumeSearchProfile,
+  listArchiveVolumeSearchProfiles,
+  saveArchiveVolumeSearchProfile,
+  searchArchiveVolumes,
+  triggerArchiveVolumeMaterialOcr,
+} from '@/apis/mark/archive-volume'
 import { ExamStatusCode, getExamDetail, pageExams } from '@/apis/mark/exam'
+import { courseCatalogApi, departmentCatalogApi } from '@/apis/quality/user-catalog'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -437,10 +428,20 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearStartOptions } from '@/utils/academic-year'
+import {
+  applyAcademicYearStartYearChange,
+  buildTriplePeriodQuery,
+  createAcademicYearSemesterTripleDefaults,
+  ensureTriplePeriodPair,
+  parseTripleFromAcademicYear,
+} from '@/utils/academic-year-semester-triple-filter'
 import { highlightArchiveSearchSnippet } from '@/utils/archive-search-snippet'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { examSummaryFromDetail, toMarkExamSelectOption } from '@/utils/mark-exam-option'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ArchiveMaterialTagSelect from '@/views/teacher/archive-volume/components/ArchiveMaterialTagSelect.vue'
 import ArchiveVolumeMaterialOcrDetailContent from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialOcrDetailContent.vue'
@@ -473,6 +474,7 @@ const loading = ref(false)
 const profilesLoading = ref(false)
 const profilesLoadFailed = ref(false)
 const searchLoadFailed = ref(false)
+const retryingOcrMaterialIds = reactive(new Set<string>())
 const saveProfileLoading = ref(false)
 const saveProfileModalOpen = ref(false)
 const saveProfileMode = ref<'update' | 'saveAs'>('saveAs')
@@ -489,8 +491,8 @@ const tagModalFileName = ref<string>()
 const tagModalTags = ref<string[]>([])
 const hits = ref<ArchiveVolumeSearchResponse[]>([])
 const searchHitVolumeCount = ref(0)
-const departmentOptions = ref<Array<{ value: string; label: string }>>([])
-const courseOptions = ref<Array<{ value: string; label: string }>>([])
+const departmentOptions = ref<Array<{ value: string, label: string }>>([])
+const courseOptions = ref<Array<{ value: string, label: string }>>([])
 const examOptions = ref<MarkExamSelectOption[]>([])
 const examLoading = ref(false)
 const examSearching = ref(false)
@@ -586,7 +588,7 @@ const columns: ColumnsType<ArchiveVolumeSearchResponse> = [
   { title: '文件名', dataIndex: 'fileName', width: 160 },
   { title: '班级', dataIndex: 'className', width: 110 },
   { title: '材料类型', key: 'materialType', width: 130 },
-  { title: 'OCR 状态', key: 'ocrStatus', width: 110 },
+  { title: '文字识别状态', key: 'ocrStatus', width: 110 },
   { title: '命中摘要', key: 'snippet', dataIndex: 'snippet', minWidth: 280, ellipsis: true },
   { title: '操作', key: 'actions', width: 220 },
 ]
@@ -603,7 +605,7 @@ const tableEmptyDescription = computed(() => {
     return '材料检索失败，请重新检索'
   }
   if (!hasSearchCriterion()) {
-    return '填写学号、档案号、目录编码或 OCR 关键词开始检索'
+    return '填写学号、档案号、目录编码或文字识别关键词开始检索'
   }
   return ''
 })
@@ -628,29 +630,29 @@ function formatTerm(academicYear?: string, semester?: SemesterCode) {
 
 const hasAdvancedCriterion = computed(() =>
   Boolean(
-    filterForm.catalogCode.trim() ||
-    filterForm.catalogNameKeyword.trim() ||
-    filterForm.tagAny.length > 0 ||
-    filterForm.fileNameKeyword.trim() ||
-    filterForm.classNameKeyword.trim() ||
-    filterForm.departmentId ||
-    filterForm.courseId ||
-    filterForm.examId ||
-    filterForm.ocrStatus ||
-    filterForm.materialType ||
-    filterForm.academicYearStartYear != null ||
-    filterForm.semester,
+    filterForm.catalogCode.trim()
+    || filterForm.catalogNameKeyword.trim()
+    || filterForm.tagAny.length > 0
+    || filterForm.fileNameKeyword.trim()
+    || filterForm.classNameKeyword.trim()
+    || filterForm.departmentId
+    || filterForm.courseId
+    || filterForm.examId
+    || filterForm.ocrStatus
+    || filterForm.materialType
+    || filterForm.academicYearStartYear != null
+    || filterForm.semester,
   ),
 )
 
 function hasSearchCriterion(): boolean {
   return Boolean(
-    filterForm.keyword.trim() ||
-    filterForm.studentNo.trim() ||
-    filterForm.studentNameKeyword.trim() ||
-    filterForm.archiveKeyword.trim() ||
-    filterForm.volumeId ||
-    hasAdvancedCriterion.value,
+    filterForm.keyword.trim()
+    || filterForm.studentNo.trim()
+    || filterForm.studentNameKeyword.trim()
+    || filterForm.archiveKeyword.trim()
+    || filterForm.volumeId
+    || hasAdvancedCriterion.value,
   )
 }
 
@@ -756,7 +758,7 @@ async function loadDepartments() {
       label: item.deptName,
     }))
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '院系列表加载失败')
   }
 }
 
@@ -768,7 +770,7 @@ async function loadCourses() {
       label: item.courseName,
     }))
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '课程列表加载失败')
   }
 }
 
@@ -779,7 +781,7 @@ async function loadSearchProfiles() {
     profilesLoadFailed.value = false
   } catch (error) {
     profilesLoadFailed.value = true
-    showUserError(error)
+    showUserError(error, '加载已保存检索失败')
   } finally {
     profilesLoading.value = false
   }
@@ -818,7 +820,7 @@ async function loadHits() {
 
 function handleSearch() {
   if (!hasSearchCriterion()) {
-    message.warning('请至少填写一项检索条件')
+    showFormValidationMessage('请至少填写一项检索条件')
     return
   }
   if (!ensureTriplePeriodPair(filterForm)) {
@@ -872,15 +874,20 @@ function highlightSnippet(snippet: string): string {
 function buildArchiveSearchRowActions(record: ArchiveVolumeSearchResponse): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = [
     { key: 'detail', label: '查看卷', tone: 'primary' },
-    { key: 'ocr-tab', label: '跳转检索 Tab', tone: 'primary' },
+    { key: 'ocr-tab', label: '跳转检索页签', tone: 'primary' },
   ]
   if (record.canMaintainMaterial) {
     actions.push({ key: 'edit-tags', label: '编辑标签', tone: 'primary' })
     if (
-      record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED ||
-      record.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED
+      record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED
+      || record.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED
     ) {
-      actions.push({ key: 'retry-ocr', label: '重跑 OCR', tone: 'primary' })
+      actions.push({
+        key: 'retry-ocr',
+        label: retryingOcrMaterialIds.has(record.materialId) ? '提交中' : '重跑文字识别',
+        tone: 'primary',
+        disabled: retryingOcrMaterialIds.has(record.materialId),
+      })
     }
   }
   if (canViewMaterialOcr(record)) {
@@ -889,7 +896,7 @@ function buildArchiveSearchRowActions(record: ArchiveVolumeSearchResponse): UiTa
       label: record.matchPageNo ? `预览第 ${record.matchPageNo} 页` : '预览原文',
       tone: 'primary',
     })
-    actions.push({ key: 'ocr', label: '查看 OCR', tone: 'primary' })
+    actions.push({ key: 'ocr', label: '查看文字识别', tone: 'primary' })
   }
   return actions
 }
@@ -930,20 +937,32 @@ function handleTagModalSuccess(): void {
 }
 
 async function handleRetryMaterialOcr(record: ArchiveVolumeSearchResponse): Promise<void> {
+  if (retryingOcrMaterialIds.has(record.materialId)) return
+  const confirmed = await confirmAsync({
+    title: '重跑文字识别？',
+    content: `材料「${record.fileName ?? record.materialId}」将重新进入文字识别队列。`,
+    type: 'info',
+    okText: '入队',
+    cancelText: '取消',
+  })
+  if (!confirmed) return
+  retryingOcrMaterialIds.add(record.materialId)
   try {
     await triggerArchiveVolumeMaterialOcr(record.materialId)
-    message.success('已提交 OCR 重跑')
+    message.success('已提交文字识别重跑')
     await loadHits()
   } catch (error) {
-    showUserError(error, '触发 OCR 失败')
+    showUserError(error, '触发文字识别失败')
+  } finally {
+    retryingOcrMaterialIds.delete(record.materialId)
   }
 }
 
 function canViewMaterialOcr(record: ArchiveVolumeSearchResponse): boolean {
   return (
-    record.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED ||
-    record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED ||
-    record.ocrStatus === ArchiveMaterialOcrStatusCode.RUNNING
+    record.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED
+    || record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED
+    || record.ocrStatus === ArchiveMaterialOcrStatusCode.RUNNING
   )
 }
 
@@ -967,15 +986,15 @@ function closeOcrInlinePanel(): void {
 
 function openSaveProfileModal(mode: 'update' | 'saveAs') {
   if (profilesLoadFailed.value) {
-    message.warning('请先重新加载已保存检索')
+    showFormValidationMessage('请先重新加载已保存检索')
     return
   }
   if (!hasSearchCriterion()) {
-    message.warning('请至少填写一项检索条件后再保存')
+    showFormValidationMessage('请至少填写一项检索条件后再保存')
     return
   }
   if (mode === 'update' && !selectedOwnedProfile.value) {
-    message.warning('请选择本人拥有的方案后再更新')
+    showFormValidationMessage('请选择本人拥有的方案后再更新')
     return
   }
   saveProfileMode.value = mode
@@ -989,7 +1008,7 @@ async function handleSaveProfile() {
   if (profilesLoadFailed.value) return
   const profileName = saveProfileForm.profileName.trim()
   if (!profileName) {
-    message.warning('请填写方案名称')
+    showFormValidationMessage('请填写方案名称')
     return
   }
   saveProfileLoading.value = true
@@ -1017,7 +1036,7 @@ async function handleSaveProfile() {
 function applySelectedProfile() {
   const profile = searchProfiles.value.find((item) => item.profileId === selectedProfileId.value)
   if (!profile) {
-    message.warning('请选择检索方案')
+    showFormValidationMessage('请选择检索方案')
     return
   }
   applyCriteriaToFilter(profile.criteria)

@@ -3,17 +3,17 @@ import type {
   ArchivePhysicalLocationResponse,
   ArchiveVolumeDetailResponse,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   ArchiveSecurityLevelDescription,
   listArchivePhysicalLocationHistory,
   updateArchiveVolumePhysicalLocation,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -70,11 +70,10 @@ watch(
 async function loadLocationHistory() {
   historyLoading.value = true
   try {
-    const records = await listArchivePhysicalLocationHistory({
+    locationHistory.value = await listArchivePhysicalLocationHistory({
       volumeId: props.volumeId,
       limit: 20,
     })
-    locationHistory.value = records
     historyLoadFailed.value = false
     if (!form.building && !form.cabinet && locationHistory.value.length > 0) {
       const latest = locationHistory.value[0]
@@ -87,7 +86,7 @@ async function loadLocationHistory() {
       })
     }
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '加载柜位历史失败')
     historyLoadFailed.value = true
   } finally {
     historyLoading.value = false
@@ -98,7 +97,7 @@ async function handleSave() {
   const building = form.building.trim()
   const cabinet = form.cabinet.trim()
   if (!building || !cabinet) {
-    message.warning('请填写楼宇与柜号')
+    showFormValidationMessage('请填写楼宇与柜号')
     return
   }
   submitting.value = true
@@ -116,7 +115,7 @@ async function handleSave() {
     emit('refreshed')
     await loadLocationHistory()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '更新柜位失败')
   } finally {
     submitting.value = false
   }

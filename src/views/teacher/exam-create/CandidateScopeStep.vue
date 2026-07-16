@@ -248,7 +248,7 @@ async function loadClassOptions(): Promise<void> {
 
 function handleScopeModeChange(val: string | number): void {
   if (val !== ExamRosterScopeModeCode.BY_CLASS && val !== ExamRosterScopeModeCode.BY_STUDENT) {
-    showFormValidationMessage(`无效考生纳入模式: ${String(val)}`)
+    showFormValidationMessage('无效考生纳入模式，请重新选择')
     return
   }
   const mode: ExamRosterScopeModeCode = val
@@ -269,7 +269,7 @@ function handleScopeModeChange(val: string | number): void {
 
 function openStudentDrawer(): void {
   if (!rosterForm.classIds.length) {
-    message.warning('请先选择参考班级')
+    showFormValidationMessage('请先选择参考班级')
     return
   }
   studentDrawerOpen.value = true

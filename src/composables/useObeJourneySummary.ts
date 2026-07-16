@@ -32,7 +32,7 @@ export function useObeJourneySummary() {
       })
     } catch (error) {
       summary.value = undefined
-      showUserError(error)
+      showUserError(error, '加载成果导向旅程摘要失败')
     } finally {
       loading.value = false
     }

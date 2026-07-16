@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioTeacherPkSessionVO } from '@/apis/portfolio/analysis'
-import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import type {
   PortfolioTeacherPkCompareTeacherVO,
   PortfolioTeacherPkCompareVO,
 } from '@/apis/portfolio/teacher-platform'
 import type { PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
 import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
-import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import { PORTFOLIO_PK_COMPARE_DEFAULT_DIMENSIONS } from '@/apis/portfolio/enums'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
@@ -18,6 +17,7 @@ import {
 } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
@@ -25,7 +25,7 @@ import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import {
@@ -117,7 +117,7 @@ function handleTeacherSearch(value: string) {
 
 function validateTeacherSelection(): boolean {
   if (selectedTeacherIds.value.length < 2 || selectedTeacherIds.value.length > 5) {
-    message.warning('请选择 2–5 名教师')
+    showFormValidationMessage('请选择 2–5 名教师')
     return false
   }
   return true
@@ -135,7 +135,7 @@ async function previewPkCompare() {
       maskMode: maskMode.value,
     })
   } catch (error) {
-    showUserError(error, '教师 PK 预览失败')
+    showUserError(error, '教师对比预览失败')
   } finally {
     operation.value = null
   }
@@ -147,7 +147,7 @@ async function createPkSession() {
   }
   const purpose = sessionPurpose.value.trim()
   if (!purpose) {
-    message.warning('请填写对比用途')
+    showFormValidationMessage('请填写对比用途')
     return
   }
   operation.value = 'create'
@@ -162,7 +162,7 @@ async function createPkSession() {
     query.pageNum = 1
     await loadSessionPage()
   } catch (error) {
-    showUserError(error, '保存教师 PK 会话失败')
+    showUserError(error, '保存教师对比会话失败')
   } finally {
     operation.value = null
   }
@@ -186,7 +186,7 @@ async function loadSessionPage() {
     if (token === historyRequestToken) {
       sessionRows.value = []
       sessionTotal.value = 0
-      showUserError(error, '加载 PK 会话历史失败')
+      showUserError(error, '加载对比会话历史失败')
     }
   } finally {
     if (token === historyRequestToken) {
@@ -218,7 +218,7 @@ async function restoreSession(row: PortfolioTeacherPkSessionVO) {
     maskMode.value = detail.maskMode ?? row.maskMode
   } catch (error) {
     if (token === detailRequestToken) {
-      showUserError(error, '恢复 PK 会话失败')
+      showUserError(error, '恢复对比会话失败')
     }
   } finally {
     if (token === detailRequestToken) {
@@ -238,9 +238,9 @@ async function exportSession(row: PortfolioTeacherPkSessionVO) {
       maskMode: row.maskMode,
     })
     await downloadPortfolioExcelExport(result)
-    message.success('已开始下载 PK 对比报告')
+    message.success('已开始下载教师对比报告')
   } catch (error) {
-    showUserError(error, '导出 PK 对比报告失败')
+    showUserError(error, '导出教师对比报告失败')
   } finally {
     operation.value = null
   }
@@ -276,7 +276,7 @@ onUnmounted(() => {
       <ContextBar
         layout="workbench"
         show-title
-        title="教师 PK 对比"
+        title="教师对比"
         subtitle="多维画像与正式档案材料横向对比"
       />
     </template>
@@ -337,7 +337,7 @@ onUnmounted(() => {
         :spinning="operation === 'preview' || operation === 'create' || operation === 'detail'"
       >
         <UiEmpty v-if="!pkResult" description="选择教师后生成对比" />
-        <section v-else class="teacher-pk__result" aria-label="教师 PK 对比结果">
+        <section v-else class="teacher-pk__result" aria-label="教师对比结果">
           <div class="teacher-pk__result-head">
             <div>
               <strong>{{ pkResult.sessionPurpose || '即时对比预览' }}</strong>

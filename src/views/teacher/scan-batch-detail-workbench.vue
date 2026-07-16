@@ -126,7 +126,7 @@
 
       <div v-if="isNarrowViewport" class="scan-batch-detail-workbench__narrow-toolbar">
         <UiButton size="sm" variant="outline" @click="leftDrawerOpen = true"> 页轨 </UiButton>
-        <UiButton size="sm" variant="outline" @click="rightDrawerOpen = true"> Inspector </UiButton>
+        <UiButton size="sm" variant="outline" @click="rightDrawerOpen = true"> 页检视 </UiButton>
       </div>
 
       <div
@@ -215,7 +215,7 @@
       />
     </UiDrawer>
 
-    <UiDrawer v-model:open="rightDrawerOpen" title="页 Inspector" width="420" hide-footer>
+    <UiDrawer v-model:open="rightDrawerOpen" title="页检视面板" width="420" hide-footer>
       <ScanBatchPageInspectorPanel
         :inspector="pageInspector"
         :loading="inspectorLoading"
@@ -981,7 +981,7 @@ async function loadInspector(pageKey: string): Promise<void> {
     })
   } catch (error) {
     pageInspector.value = null
-    showUserError(error, 'Inspector 加载失败')
+    showUserError(error, '页检视面板加载失败')
   } finally {
     inspectorLoading.value = false
   }
@@ -1050,7 +1050,7 @@ function locateAttributionItem(item: ExamScannerBatchAttributionItemVO): void {
 
 function setPreferredReassignTarget(paperInstanceId: string): void {
   preferredTargetPaperInstanceId.value = paperInstanceId
-  message.success('已设置调卷目标，请在右侧 Inspector 选择待移动页后执行人工调卷')
+  message.success('已设置调卷目标，请在右侧页检视面板选择待移动页后执行人工调卷')
 }
 
 async function openOrderAudit(): Promise<void> {
@@ -1150,7 +1150,7 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
     void confirmAsync({
       title: '合成图物理页重建',
       content:
-        '将作废当前批次内全部已登记扫描页与错误绑定，并按 AI 切分重新登记。此操作不可撤销，确认继续？',
+        '将作废当前批次内全部已登记扫描页与错误绑定，并按智能切分重新登记。此操作不可撤销，确认继续？',
       okText: '确认重建',
       cancelText: '取消',
       type: 'warning',

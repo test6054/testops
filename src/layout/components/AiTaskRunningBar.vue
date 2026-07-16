@@ -24,9 +24,10 @@ let pollTimer: ReturnType<typeof setInterval> | null = null
 
 async function refreshInFlightTasks(): Promise<void> {
   try {
-    await qualityTaskStore.refreshAll()
+    // 顶部条轮询：不重复刷 Message；失败时保留上次条数，不阻断页面
+    await qualityTaskStore.refreshAll({}, { silent: true })
   } catch {
-    // edu-quality 不可用时 Layout 轮询不阻断页面
+    // refreshAll 已内部吞掉并保留上次数据
   }
 }
 

@@ -16,6 +16,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { showUserError } from '@/utils/error-handler'
+
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export interface ScanDispatchResultPayload {
@@ -166,7 +167,7 @@ async function handleCancel() {
     emit('cancelled')
     emit('update:open', false)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '取消扫描派单失败')
   } finally {
     cancelling.value = false
   }

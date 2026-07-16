@@ -1,6 +1,7 @@
 import type { MarkTeacherDashboardFilterOptionsVO } from '@/apis/mark/teacher-dashboard'
 import { ref } from 'vue'
 import { loadTeacherDashboardSignalSectionSilent } from '@/apis/mark/teacher-dashboard'
+import { showUserError } from '@/utils/error-handler'
 
 /**
  * 工作台 ContextBar 三筛选项真源：与 marking-overview signal 段 filterOptions 同源。
@@ -22,8 +23,9 @@ export function useMarkDashboardFilterOptions() {
       const signal = await loadTeacherDashboardSignalSectionSilent({})
       filterOptions.value = signal.filterOptions
       return filterOptions.value
-    } catch {
+    } catch (error) {
       filterOptionsFailed.value = true
+      showUserError(error, '工作台筛选条件加载失败')
       return filterOptions.value
     } finally {
       filterOptionsLoading.value = false

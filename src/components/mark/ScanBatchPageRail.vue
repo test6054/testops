@@ -169,7 +169,7 @@ function rowSecondaryLabel(item: ExamScannerBatchWorkbenchPageVO): string {
   ) {
     const ocrHint = formatOcrIdentityHint(item)
     if (ocrHint) {
-      return `OCR ${ocrHint}`
+      return `文字识别 ${ocrHint}`
     }
     return '待绑定'
   }
@@ -179,7 +179,7 @@ function rowSecondaryLabel(item: ExamScannerBatchWorkbenchPageVO): string {
   ) {
     const ocrHint = formatOcrIdentityHint(item)
     if (ocrHint) {
-      return `OCR ${ocrHint}`
+      return `文字识别 ${ocrHint}`
     }
   }
   if (item.registerStatus === ScanBatchWorkbenchRegisterStatusCode.SUPERSEDED) {

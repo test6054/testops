@@ -120,7 +120,7 @@ const prepareBlockDescription = computed(() => {
     const batchLabelText = context.activeBatchExternalNo
       ? `（${context.activeBatchExternalNo}）`
       : ''
-    return `${context.activeScanSessionReason ?? context.blockReason ?? '当前设备存在未结束扫描进程'}${batchLabelText}。请先在一体机或扫描监控结束该批次后再提交 Web 补扫。`
+    return `${context.activeScanSessionReason ?? context.blockReason ?? '当前设备存在未结束扫描进程'}${batchLabelText}。请先在一体机或扫描监控结束该批次后再提交网页补扫。`
   }
   return context.blockReason ?? context.supplementBlockReason ?? '当前设备或考试状态不允许提交补扫'
 })

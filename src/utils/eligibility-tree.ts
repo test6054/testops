@@ -9,7 +9,7 @@ export function parseEligibilityTreeJson(json: string): PfEligibilityRuleTreeNod
   }
   const root: unknown = JSON.parse(json)
   if (!isEligibilityRuleTreeNode(root)) {
-    throw new Error('资格规则树缺少 nodeType')
+    throw new Error('资格规则树缺少节点类型')
   }
   return root
 }
@@ -42,18 +42,25 @@ export function validateEligibilityTree(root: PfEligibilityRuleTreeNodeDto): str
   }
   if (root.nodeType === 'LEAF') {
     if (!root.fieldKey?.trim()) {
-      return '叶子节点缺少 fieldKey'
+      return '叶子节点缺少字段键'
     }
     return null
   }
   if (root.nodeType === 'AUDIT_GATE') {
     if (!root.fieldKey?.trim()) {
-      return '审核门禁缺少 fieldKey'
+      return '审核门禁缺少字段键'
     }
     if (!root.auditStatus?.trim()) {
-      return '审核门禁缺少 auditStatus'
+      return '审核门禁缺少审核状态'
     }
     return null
   }
-  return `不支持的节点类型：${root.nodeType}`
+  const nodeTypeLabel: Record<string, string> = {
+    AND: '合取',
+    OR: '析取',
+    NOT: '否定',
+    LEAF: '叶子',
+    AUDIT_GATE: '审核门禁',
+  }
+  return `不支持的节点类型：${nodeTypeLabel[root.nodeType] ?? '未知'}`
 }

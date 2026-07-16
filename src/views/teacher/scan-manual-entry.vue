@@ -19,7 +19,7 @@
             :tone="workbench.webSupplementDeviceCount > 0 ? 'blue' : 'orange'"
             size="sm"
           >
-            Web 工位 {{ workbench.webSupplementDeviceCount }}
+            网页补录工位 {{ workbench.webSupplementDeviceCount }}
           </UiTag>
         </template>
         <template #actions>
@@ -262,11 +262,11 @@ const candidateFilterFields = computed((): FilterField[] => [
 
 const signalMetrics = computed((): SignalMetric[] => {
   if (workbenchLoadFailed.value) {
-    return [{ key: 'load-failed', label: '补录 KPI', value: '加载失败', tone: 'red' }]
+    return [{ key: 'load-failed', label: '补录关键指标', value: '加载失败', tone: 'red' }]
   }
   const data = workbench.value
   if (!data) {
-    return [{ key: 'loading', label: '补录 KPI', value: '—', tone: 'gray' }]
+    return [{ key: 'loading', label: '补录关键指标', value: '—', tone: 'gray' }]
   }
   return [
     {
@@ -293,7 +293,7 @@ const signalMetrics = computed((): SignalMetric[] => {
     },
     {
       key: 'web-device',
-      label: 'Web 工位',
+      label: '网页补录工位',
       value: String(data.webSupplementDeviceCount),
       tone: data.webSupplementDeviceCount > 0 ? 'blue' : 'orange',
       clickable: true,

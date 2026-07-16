@@ -176,7 +176,7 @@ async function loadMaterials() {
       await loadMaterials()
     }
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '年度报备材料加载失败')
   } finally {
     loading.value = false
   }
@@ -284,7 +284,7 @@ async function submitMaterial() {
     await loadMaterials()
     emit('refresh')
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '年度报备材料保存失败')
   } finally {
     saving.value = false
   }
@@ -307,7 +307,7 @@ async function submitForReview(record: AnnualReportMaterialVO) {
     await loadMaterials()
     emit('refresh')
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '年度报备材料提交失败')
   }
 }
 
@@ -358,7 +358,7 @@ async function submitReview() {
     await loadMaterials()
     emit('refresh')
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '年度报备材料审核失败')
   } finally {
     reviewSaving.value = false
   }
@@ -377,7 +377,7 @@ async function removeMaterial(record: AnnualReportMaterialVO) {
     await loadMaterials()
     emit('refresh')
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '年度报备材料删除失败')
   }
 }
 

@@ -143,7 +143,7 @@
               allow-clear
               style="width: 120px"
             />
-            <UiButton size="sm" @click="loadReadinessPreview">查询</UiButton>
+            <UiButton size="sm" @click="queryReadinessPreview">查询</UiButton>
             <UiButton size="sm" variant="outline" @click="goReadinessMatrix">四学期矩阵</UiButton>
             <UiButton size="sm" variant="outline" @click="goMarkingQuality">阅卷督导</UiButton>
           </div>
@@ -427,6 +427,13 @@ import type {
   ArchiveVolumeSourceTypeCode,
   ArchiveVolumeStatusCode,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
   ARCHIVE_VOLUME_STATUS_TONE,
@@ -450,14 +457,6 @@ import {
   pageSupervisionReadinessMatrixPreview,
   pageSupervisionRemediationTasks,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { SemesterOptions } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -473,6 +472,7 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { runArchiveEvaluationExportFlow } from '@/composables/useArchiveEvaluationExportFlow'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearStartOptions } from '@/utils/academic-year'
 import {
   applyAcademicYearStartYearChange,
@@ -488,7 +488,7 @@ import {
   remediationVolumeDetailTabKey,
 } from '@/utils/archive-remediation-diagnostic'
 import { remediationAssigneeLabel } from '@/utils/archive-remediation-display'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ArchiveEvaluationExportTaskModal from '@/views/teacher/archive-volume/components/ArchiveEvaluationExportTaskModal.vue'
 
@@ -527,6 +527,7 @@ const volumes = ref<ArchiveVolumeResponse[]>([])
 const previewRows = ref<ArchiveReadinessMatrixPreviewRowVO[]>([])
 const previewStats = ref<ArchiveReadinessMatrixPreviewStatsVO | null>(null)
 const previewPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
+let readinessPreviewRequestSequence = 0
 const remediationTasks = ref<ArchiveRemediationTaskResponse[]>([])
 const remediationPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 const remediationOpenCount = ref(0)
@@ -633,7 +634,7 @@ const matrixPreviewColumns: ColumnsType<MatrixPreviewRow> = [
 const remediationColumns: ColumnsType<ArchiveRemediationTaskResponse> = [
   { title: '任务', dataIndex: 'taskTitle', key: 'taskTitle' },
   { title: '诊断', key: 'diagnosticCode', width: 140 },
-  { title: '卷 ID', dataIndex: 'volumeId', key: 'volumeId', width: 100 },
+  { title: '卷编号', dataIndex: 'volumeId', key: 'volumeId', width: 100 },
   { title: '状态', key: 'taskStatus', dataIndex: 'taskStatus', width: 100 },
   { title: '责任人', key: 'assigneeNickName', dataIndex: 'assigneeNickName', width: 120 },
   { title: '操作', key: 'actions', width: 88 },
@@ -759,12 +760,12 @@ async function handleExportManifest() {
     await runArchiveEvaluationExportFlow({
       campaignId: exportCampaignId.value,
       exportFn: exportEvaluationPackage,
-      successMessage: '评估 manifest 已导出',
+      successMessage: '评估清单已导出',
       scopeHint: ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
       campaignLabel: exportCampaignLabel.value,
     })
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出评估清单失败')
   } finally {
     exportingManifest.value = false
   }
@@ -782,7 +783,7 @@ async function handleExportArchive() {
       campaignLabel: exportCampaignLabel.value,
     })
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出四级目录包失败')
   } finally {
     exportingArchive.value = false
   }
@@ -815,7 +816,7 @@ async function loadVolumes() {
     volumeLoadFailed.value = false
   } catch (error) {
     volumeLoadFailed.value = true
-    showUserError(error)
+    showUserError(error, '加载归档卷列表失败')
   } finally {
     volumeLoading.value = false
   }
@@ -851,29 +852,51 @@ function buildPreviewRequest() {
 }
 
 async function loadReadinessPreview() {
+  const requestSequence = ++readinessPreviewRequestSequence
   if (!ensureTriplePeriodPair(statsFilter)) {
+    statsLoading.value = false
     return
   }
   const request = buildPreviewRequest()
-  if (!request) return
+  if (!request) {
+    statsLoading.value = false
+    return
+  }
   statsLoading.value = true
   try {
-    const [stats, page] = await Promise.all([
-      getSupervisionReadinessMatrixPreviewStats(request),
-      pageSupervisionReadinessMatrixPreview(request),
-    ])
-    previewStats.value = stats
+    const page = await pageSupervisionReadinessMatrixPreview(request)
+    if (requestSequence !== readinessPreviewRequestSequence) return
     previewRows.value = page.list
     previewPagination.total = page.total
     if (page.pageNum != null) previewPagination.pageNum = page.pageNum
     if (page.pageSize != null) previewPagination.pageSize = page.pageSize
-    statsLoadFailed.value = false
+    try {
+      previewStats.value = await getSupervisionReadinessMatrixPreviewStats(request)
+      if (requestSequence !== readinessPreviewRequestSequence) return
+      statsLoadFailed.value = false
+    } catch (error) {
+      if (requestSequence !== readinessPreviewRequestSequence) return
+      previewStats.value = null
+      statsLoadFailed.value = true
+      showUserError(error, '就绪矩阵统计加载失败')
+    }
   } catch (error) {
+    if (requestSequence !== readinessPreviewRequestSequence) return
+    previewRows.value = []
+    previewPagination.total = 0
+    previewStats.value = null
     statsLoadFailed.value = true
     showUserError(error, '加载就绪矩阵失败')
   } finally {
-    statsLoading.value = false
+    if (requestSequence === readinessPreviewRequestSequence) {
+      statsLoading.value = false
+    }
   }
+}
+
+function queryReadinessPreview() {
+  previewPagination.pageNum = 1
+  void loadReadinessPreview()
 }
 
 async function loadRemediationStats(): Promise<void> {
@@ -910,7 +933,7 @@ async function loadRemediation() {
     remediationLoadFailed.value = false
   } catch (error) {
     remediationLoadFailed.value = true
-    showUserError(error)
+    showUserError(error, '加载整改任务失败')
   } finally {
     remediationLoading.value = false
   }
@@ -930,7 +953,7 @@ async function loadCampaigns() {
     campaignLoadFailed.value = false
   } catch (error) {
     campaignLoadFailed.value = true
-    showUserError(error)
+    showUserError(error, '加载评估活动失败')
   } finally {
     campaignLoading.value = false
   }
@@ -974,7 +997,7 @@ async function openDetail(volumeId: string) {
     detail.value = await getSupervisionArchiveVolumeDetail(volumeId)
     await loadDetailMaterials()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '加载归档卷详情失败')
     detailOpen.value = false
   } finally {
     detailLoading.value = false
@@ -999,7 +1022,7 @@ function handleSupervisionVolumeRowAction(key: string, volumeId: string) {
 async function submitMarkProblem() {
   const description = markProblemDescription.value.trim()
   if (!description) {
-    message.warning('请填写问题描述')
+    showFormValidationMessage('请填写问题描述')
     return
   }
   markProblemSubmitting.value = true
@@ -1016,7 +1039,7 @@ async function submitMarkProblem() {
       void loadRemediationStats()
     }
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '标记监管问题失败')
   } finally {
     markProblemSubmitting.value = false
   }

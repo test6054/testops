@@ -125,6 +125,7 @@ import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { ensureRequiredAcademicYearSemester } from '@/utils/academic-year-semester-query'
+import { showFormValidationMessage } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { buildTrendChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
 import { buildTrendLineChartOption } from '@/utils/mark-echarts-options'
@@ -402,7 +403,7 @@ async function refreshCommonClassOptions(): Promise<void> {
     const classRefs = await listCommonClassScopes(examIds)
     classOptions.value = mapClassRefsToOptions(classRefs)
     if (classOptions.value.length === 0) {
-      message.warning('所选考试没有共同班级，请调整考试范围')
+      showFormValidationMessage('所选考试没有共同班级，请调整考试范围')
     }
     applyDrillClassSelection()
   } catch {
@@ -467,12 +468,12 @@ function classNameText(value: CrossExamTrendAnalysisResponse): string {
 
 async function reload(): Promise<void> {
   if (selectedCourseIds.value.length > 1) {
-    message.warning('请选择同一课程下的考试')
+    showFormValidationMessage('请选择同一课程下的考试')
     return
   }
   const courseId = selectedCourseIds.value[0] ?? ''
   if (!courseId) {
-    message.warning('请选择考试')
+    showFormValidationMessage('请选择考试')
     return
   }
   if (scopeMode.value === AnalysisScopeTypeCode.CLASS && !effectiveClassId.value) {
@@ -502,13 +503,13 @@ async function handleGenerate(): Promise<void> {
     return
   }
   if (selectedCourseIds.value.length > 1) {
-    message.warning('请选择同一课程下的考试')
+    showFormValidationMessage('请选择同一课程下的考试')
     return
   }
   const courseId = selectedCourseIds.value[0] ?? ''
   const examIds = form.examIds
   if (!courseId) {
-    message.warning('请选择同一课程下的考试')
+    showFormValidationMessage('请选择同一课程下的考试')
     return
   }
   if (examIds.length < 2) {
@@ -518,7 +519,7 @@ async function handleGenerate(): Promise<void> {
   const academicYear = form.academicYear
   const semester = form.semester
   if (!academicYear || !semester) {
-    message.warning('请选择学年学期')
+    showFormValidationMessage('请选择学年学期')
     return
   }
   const classId = effectiveClassId.value

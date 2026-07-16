@@ -5,12 +5,11 @@ import type {
   ArchiveTaskCreateSectionKey,
   ArchiveTaskCreateWizardState,
 } from './archive-task-create-context'
-import { ARCHIVE_TASK_CREATE_SECTION_ORDER } from './archive-task-create-context'
 import type { ArchiveTenantTemplateSetResponse } from '@/apis/mark/archive-platform-template'
-import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
+import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import {
   ArchiveScoreSourceCode,
   ArchiveSecurityLevelCode,
@@ -24,7 +23,8 @@ import {
   getDefaultAcademicYearAndSemester,
   parseAcademicYearStart,
 } from '@/utils/academic-year'
-import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { ARCHIVE_TASK_CREATE_SECTION_ORDER } from './archive-task-create-context'
 
 export type {
   ArchiveTaskCreateBasicForm,
@@ -83,8 +83,8 @@ export function useArchiveTaskCreate() {
   const planFormRef = ref<FormInstance>()
 
   const defaultTerm = getDefaultAcademicYearAndSemester()
-  const defaultStartYear =
-    parseAcademicYearStart(defaultTerm.academicYear) ?? new Date().getFullYear()
+  const defaultStartYear
+    = parseAcademicYearStart(defaultTerm.academicYear) ?? new Date().getFullYear()
 
   const wizardState = reactive<ArchiveTaskCreateWizardState>({
     provenance: parseRouteProvenance(route.query.provenance),
@@ -209,7 +209,7 @@ export function useArchiveTaskCreate() {
     code: string | null,
     name: string,
     examForm?: ArchiveTaskCreatePlanForm['examForm'],
-    retention?: { defaultPermanentRetention?: boolean; defaultRetentionYears?: number },
+    retention?: { defaultPermanentRetention?: boolean, defaultRetentionYears?: number },
   ): void {
     planForm.templateSetCode = code
     planForm.templateSetName = name
@@ -220,8 +220,8 @@ export function useArchiveTaskCreate() {
       planForm.permanentRetention = true
       planForm.retentionYears = undefined
     } else if (
-      retention?.defaultPermanentRetention === false &&
-      retention.defaultRetentionYears != null
+      retention?.defaultPermanentRetention === false
+      && retention.defaultRetentionYears != null
     ) {
       planForm.permanentRetention = false
       planForm.retentionYears = retention.defaultRetentionYears
@@ -263,7 +263,7 @@ export function useArchiveTaskCreate() {
 
   async function validateProvenanceStep(): Promise<boolean> {
     if (!wizardState.provenance) {
-      void message.warning('请选择任务来源')
+      showFormValidationMessage('请选择任务来源')
       return false
     }
     return true
@@ -287,7 +287,7 @@ export function useArchiveTaskCreate() {
       return false
     }
     if (!planForm.permanentRetention && planForm.retentionYears == null) {
-      void message.warning('请填写保管年限或勾选永久保管')
+      showFormValidationMessage('请填写保管年限或勾选永久保管')
       return false
     }
     return true
@@ -306,7 +306,7 @@ export function useArchiveTaskCreate() {
       }
       if (sectionKey === 'archive-task-basic') {
         if (!(await validateBasicStep())) {
-          void message.warning('请先完善任务信息')
+          showFormValidationMessage('请先完善任务信息')
           activeSection.value = sectionKey
           return false
         }
@@ -314,7 +314,7 @@ export function useArchiveTaskCreate() {
       }
       if (sectionKey === 'archive-task-plan') {
         if (!(await validatePlanStep())) {
-          void message.warning('请先完善归档方案')
+          showFormValidationMessage('请先完善归档方案')
           activeSection.value = sectionKey
           return false
         }
@@ -338,19 +338,19 @@ export function useArchiveTaskCreate() {
     }
     if (!(await validateBasicStep())) {
       activeSection.value = 'archive-task-basic'
-      void message.warning('请先完善任务信息')
+      showFormValidationMessage('请先完善任务信息')
       return 'archive-task-basic'
     }
     if (!(await validatePlanStep())) {
       activeSection.value = 'archive-task-plan'
-      void message.warning('请先完善归档方案')
+      showFormValidationMessage('请先完善归档方案')
       return 'archive-task-plan'
     }
     if (
-      !basicForm.courseId ||
-      !basicForm.departmentId ||
-      !planForm.templateSetCode ||
-      !wizardState.provenance
+      !basicForm.courseId
+      || !basicForm.departmentId
+      || !planForm.templateSetCode
+      || !wizardState.provenance
     ) {
       void message.error('请完善必填项')
       if (!wizardState.provenance) return 'archive-task-provenance'
@@ -385,7 +385,7 @@ export function useArchiveTaskCreate() {
       return null
     } catch (error) {
       submitErrorMessage.value = getUserErrorMessage(error, '创建归档任务失败')
-      showUserError(error)
+      showUserError(error, '创建归档任务失败')
       return null
     } finally {
       submitting.value = false

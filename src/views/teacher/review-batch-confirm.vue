@@ -42,7 +42,7 @@
       <WorkbenchSurfaceCard flush>
         <UiEmpty
           v-if="!loading && rows.length === 0"
-          description="当前暂无待批量确认的复核任务（硬判/AI 建议确认后会出现在此）"
+          description="当前暂无待批量确认的复核任务（硬判或智能建议确认后会出现在此）"
           class="batch-confirm__empty"
         />
         <UiDataTable
@@ -126,19 +126,19 @@ import type {
   ExamGradeBatchConfirmFailureItem,
   ExamGradeBatchConfirmResponse,
 } from '@/apis/mark/exam-grade'
-import { batchConfirmQuestionGrades } from '@/apis/mark/exam-grade'
 import type { GradeSourceCode, ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { batchConfirmQuestionGrades } from '@/apis/mark/exam-grade'
 import {
   GRADE_SOURCE_TONE,
   GradeSourceDescription,
   listReviewTasks,
   ReviewTaskStatusCode,
 } from '@/apis/mark/exam-review-task'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -152,7 +152,7 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkWorkbenchContext, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherReviewBatchConfirm' })
@@ -243,13 +243,13 @@ function applyAiScores(): void {
     }
   }
   if (filled === 0) {
-    message.warning('当前页没有可填入的系统建议分（硬判失败或 AI 未出分须人工给分）')
+    showFormValidationMessage('当前页没有可填入的系统建议分（硬判失败或智能未出分须人工给分）')
     return
   }
   message.success(
     skipped > 0
       ? `已用系统建议分填充 ${filled} 条，${skipped} 条无建议分需人工填写`
-      : `已用系统建议分填充当前页 ${filled} 条（含客观题硬判与 AI 建议）`,
+      : `已用系统建议分填充当前页 ${filled} 条（含客观题硬判与智能建议）`,
   )
 }
 
@@ -280,7 +280,7 @@ async function loadTasks(): Promise<void> {
   }
 }
 
-function onPageChange(page: { current: number; pageSize: number }): void {
+function onPageChange(page: { current: number, pageSize: number }): void {
   pagination.current = page.current
   pagination.pageSize = page.pageSize
   void loadTasks()
@@ -300,12 +300,12 @@ function openConfirm(): void {
   if (selectedRowKeys.value.length === 0) return
   const missingScore = selectedRowKeys.value.some((id) => scoreDraftMap[id] == null)
   if (missingScore) {
-    message.warning('请为每条选中记录填写确认得分')
+    showFormValidationMessage('请为每条选中记录填写确认得分')
     return
   }
   void confirmAsync({
     title: '批量确认教师复核分',
-    content: `将把 ${selectedRowKeys.value.length} 条题目写入教师复核分（CONFIRMED）。客观题硬判与 AI 建议仅作线索，确认后才进入最终成绩汇总。`,
+    content: `将把 ${selectedRowKeys.value.length} 条题目写入教师复核分。客观题硬判与智能建议仅作线索，确认后才进入最终成绩汇总。`,
     okText: '确认提交',
     onOk: submitBatch,
   })

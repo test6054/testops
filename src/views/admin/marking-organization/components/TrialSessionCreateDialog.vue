@@ -49,7 +49,7 @@ import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { blockingItemsToWorkflowSteps } from '@/components/workbench/workflow-readiness/workflow-blocking-items'
 import WorkflowReadinessPanel from '@/components/workbench/workflow-readiness/WorkflowReadinessPanel.vue'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import SessionGroupCreateSummary from './SessionGroupCreateSummary.vue'
 
 interface GroupOption {
@@ -129,7 +129,7 @@ watch(
 
 async function submit(): Promise<void> {
   if (!props.canManage) {
-    message.warning('仅考试主考老师可管理试评会话')
+    showFormValidationMessage('仅考试主考老师可管理试评会话')
     return
   }
   if (!props.organizationId || !groupId.value || !selectedGroupCanCreate.value) {

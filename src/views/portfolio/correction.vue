@@ -2,14 +2,12 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioCorrectionRequestStatusCode } from '@/apis/portfolio/enums'
-import { PortfolioCorrectionRequestStatusDescription } from '@/apis/portfolio/enums'
 import type {
   PortfolioCorrectionDetailVO,
   PortfolioCorrectionSummaryVO,
   PortfolioTargetFieldDefinition,
   PortfolioTeacherOneTableCategoryVO,
 } from '@/apis/portfolio/types'
-import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
@@ -17,6 +15,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
+import { PortfolioCorrectionRequestStatusDescription } from '@/apis/portfolio/enums'
+import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -29,7 +29,7 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 function resolveSelectStringValue(value: SelectValue): string {
@@ -133,8 +133,8 @@ function resetDetailContext() {
 function applyRoutePrefill() {
   formEpoch.value += 1
   form.categoryId = typeof route.query.categoryId === 'string' ? route.query.categoryId : ''
-  form.archiveRecordId =
-    typeof route.query.archiveRecordId === 'string' ? route.query.archiveRecordId : ''
+  form.archiveRecordId
+    = typeof route.query.archiveRecordId === 'string' ? route.query.archiveRecordId : ''
   form.fieldCode = typeof route.query.fieldCode === 'string' ? route.query.fieldCode : ''
   form.fieldLabel = typeof route.query.fieldLabel === 'string' ? route.query.fieldLabel : ''
   form.wrongValue = typeof route.query.wrongValue === 'string' ? route.query.wrongValue : ''
@@ -156,18 +156,18 @@ async function loadPublishedFields(categoryId: string, archiveRecordId?: string)
       archiveRecordId,
     })
     if (
-      scopeRequestToken.value !== currentScopeToken ||
-      currentToken !== fieldRequestToken.value ||
-      form.categoryId !== categoryId
+      scopeRequestToken.value !== currentScopeToken
+      || currentToken !== fieldRequestToken.value
+      || form.categoryId !== categoryId
     ) {
       return
     }
     publishedFields.value = published.targetFields
   } catch (error) {
     if (
-      scopeRequestToken.value !== currentScopeToken ||
-      currentToken !== fieldRequestToken.value ||
-      form.categoryId !== categoryId
+      scopeRequestToken.value !== currentScopeToken
+      || currentToken !== fieldRequestToken.value
+      || form.categoryId !== categoryId
     ) {
       return
     }
@@ -187,8 +187,8 @@ async function loadCategories() {
   try {
     const vo = await portfolioArchiveApi.getOneTable(teacherRequest.value)
     if (
-      scopeRequestToken.value !== currentScopeToken ||
-      currentToken !== categoryRequestToken.value
+      scopeRequestToken.value !== currentScopeToken
+      || currentToken !== categoryRequestToken.value
     ) {
       return
     }
@@ -209,8 +209,8 @@ async function loadCategories() {
     publishedFields.value = []
   } catch (error) {
     if (
-      scopeRequestToken.value !== currentScopeToken ||
-      currentToken !== categoryRequestToken.value
+      scopeRequestToken.value !== currentScopeToken
+      || currentToken !== categoryRequestToken.value
     ) {
       return
     }
@@ -236,8 +236,8 @@ async function loadCorrections() {
       pageSize: pageSize.value,
     })
     if (
-      scopeRequestToken.value !== currentScopeToken ||
-      currentToken !== correctionListRequestToken.value
+      scopeRequestToken.value !== currentScopeToken
+      || currentToken !== correctionListRequestToken.value
     ) {
       return
     }
@@ -245,8 +245,8 @@ async function loadCorrections() {
     pageTotal.value = page.total
   } catch (error) {
     if (
-      scopeRequestToken.value !== currentScopeToken ||
-      currentToken !== correctionListRequestToken.value
+      scopeRequestToken.value !== currentScopeToken
+      || currentToken !== correctionListRequestToken.value
     ) {
       return
     }
@@ -255,8 +255,8 @@ async function loadCorrections() {
     showUserError(error, '加载纠错列表失败')
   } finally {
     if (
-      scopeRequestToken.value === currentScopeToken &&
-      currentToken === correctionListRequestToken.value
+      scopeRequestToken.value === currentScopeToken
+      && currentToken === correctionListRequestToken.value
     ) {
       loading.value = false
     }
@@ -272,24 +272,24 @@ async function openDetail(id: string) {
   try {
     const nextDetail = await portfolioCorrectionApi.getCorrection(id)
     if (
-      scopeRequestToken.value !== currentScopeToken ||
-      currentToken !== detailRequestToken.value
+      scopeRequestToken.value !== currentScopeToken
+      || currentToken !== detailRequestToken.value
     ) {
       return
     }
     detail.value = nextDetail
   } catch (error) {
     if (
-      scopeRequestToken.value !== currentScopeToken ||
-      currentToken !== detailRequestToken.value
+      scopeRequestToken.value !== currentScopeToken
+      || currentToken !== detailRequestToken.value
     ) {
       return
     }
     showUserError(error, '加载纠错详情失败')
   } finally {
     if (
-      scopeRequestToken.value === currentScopeToken &&
-      currentToken === detailRequestToken.value
+      scopeRequestToken.value === currentScopeToken
+      && currentToken === detailRequestToken.value
     ) {
       detailLoading.value = false
     }
@@ -301,12 +301,12 @@ async function handleSubmit() {
     return
   }
   if (
-    !form.categoryId ||
-    !form.fieldCode.trim() ||
-    !form.expectedValue.trim() ||
-    !form.reason.trim()
+    !form.categoryId
+    || !form.fieldCode.trim()
+    || !form.expectedValue.trim()
+    || !form.reason.trim()
   ) {
-    message.warning('请填写分类、字段、期望正确值与纠错原因')
+    showFormValidationMessage('请填写分类、字段、期望正确值与纠错原因')
     return
   }
   const currentScopeToken = scopeRequestToken.value
@@ -349,7 +349,7 @@ async function handleSubmit() {
   }
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   pageNum.value = page.current
   pageSize.value = page.pageSize
   void loadCorrections()

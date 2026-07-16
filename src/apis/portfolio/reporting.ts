@@ -11,15 +11,15 @@ export const PortfolioReportingShareFieldCode = {
   OFFICIAL_ARCHIVE_COUNT: 'officialArchiveCount',
 } as const
 
-export type PortfolioReportingShareFieldCodeValue =
-  (typeof PortfolioReportingShareFieldCode)[keyof typeof PortfolioReportingShareFieldCode]
+export type PortfolioReportingShareFieldCodeValue
+  = (typeof PortfolioReportingShareFieldCode)[keyof typeof PortfolioReportingShareFieldCode]
 
 export const PortfolioReportingShareFieldDescription: Record<
   PortfolioReportingShareFieldCodeValue,
   string
 > = {
   [PortfolioReportingShareFieldCode.TEACHER_LABEL]: '教师标识',
-  [PortfolioReportingShareFieldCode.TEACHER_USER_ID]: '教师用户 ID',
+  [PortfolioReportingShareFieldCode.TEACHER_USER_ID]: '教师用户编号',
   [PortfolioReportingShareFieldCode.TEACHER_NUMBER]: '工号',
   [PortfolioReportingShareFieldCode.OFFICIAL_ARCHIVE_COUNT]: '正式档案数',
 }
@@ -79,7 +79,7 @@ export const portfolioReportingApi = {
     http.post<PortfolioReportingTaskVO>('/api/portfolio/reporting/request-approval', data),
   approve: (data: { id: string }) =>
     http.post<PortfolioReportingTaskVO>('/api/portfolio/reporting/approve', data),
-  reject: (data: { id: string; rejectReason: string }) =>
+  reject: (data: { id: string, rejectReason: string }) =>
     http.post<PortfolioReportingTaskVO>('/api/portfolio/reporting/reject', data),
   download: (data: { id: string }) =>
     http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/reporting/download', data),

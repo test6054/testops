@@ -4,11 +4,11 @@ import type {
   PortfolioTeachingExtensionActivityVO,
   PortfolioTeachingExtensionCategoryVO,
 } from '@/apis/portfolio/teaching-extension'
-import { portfolioTeachingExtensionApi } from '@/apis/portfolio/teaching-extension'
 import { DatePicker, Form, Input, InputNumber, message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioTeachingExtensionApi } from '@/apis/portfolio/teaching-extension'
 import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -32,7 +32,7 @@ import {
   PortfolioTeachingExtensionKindDescription,
   PortfolioTeachingExtensionKindOptions,
 } from '@/types/enums/portfolio-teaching-extension-kind-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
@@ -81,9 +81,9 @@ const isTraining = computed(() => form.activityKind === PortfolioTeachingExtensi
 
 function canEditActivity(row: PortfolioTeachingExtensionActivityVO) {
   return (
-    !row.archiveRecordId ||
-    row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.DRAFT ||
-    row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.RETURNED
+    !row.archiveRecordId
+    || row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.DRAFT
+    || row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.RETURNED
   )
 }
 
@@ -185,20 +185,29 @@ async function loadData() {
   categoryLoading.value = true
   loadFailed.value = false
   try {
-    const [activityRows, categoryRows] = await Promise.all([
-      portfolioTeachingExtensionApi.list({ teacherId: scopeTeacherId() }),
-      portfolioTeachingExtensionApi.listCategories({ teacherId: scopeTeacherId() }),
-    ])
+    const activityRows = await portfolioTeachingExtensionApi.list({ teacherId: scopeTeacherId() })
     if (requestToken.value !== currentToken) {
       return
     }
     rows.value = activityRows
-    categories.value = categoryRows
+    try {
+      const categoryRows = await portfolioTeachingExtensionApi.listCategories({
+        teacherId: scopeTeacherId(),
+      })
+      if (requestToken.value === currentToken) {
+        categories.value = categoryRows
+      }
+    } catch (error) {
+      if (requestToken.value === currentToken) {
+        categories.value = []
+        showUserError(error, '拓展活动分类加载失败')
+      }
+    }
     if (
-      typeof route.query.recommendationId === 'string' &&
-      !recommendationIntentConsumed.value &&
-      !readonlyMode.value &&
-      !modalOpen.value
+      typeof route.query.recommendationId === 'string'
+      && !recommendationIntentConsumed.value
+      && !readonlyMode.value
+      && !modalOpen.value
     ) {
       openModal()
     }
@@ -209,7 +218,7 @@ async function loadData() {
     rows.value = []
     categories.value = []
     loadFailed.value = true
-    showUserError(error)
+    showUserError(error, '加载拓展活动失败')
   } finally {
     if (requestToken.value === currentToken) {
       loading.value = false
@@ -224,7 +233,7 @@ function openModal(row?: PortfolioTeachingExtensionActivityVO) {
     return
   }
   if (readonlyMode.value && !row) {
-    message.warning('管理员查看模式下不可新增活动')
+    showFormValidationMessage('管理员查看模式下不可新增活动')
     return
   }
   editing.value = row || null
@@ -240,10 +249,10 @@ function openModal(row?: PortfolioTeachingExtensionActivityVO) {
   form.fileId = row?.fileId || ''
   form.attachmentName = row?.fileId ? `附件 ${row.fileId}` : ''
   if (!row && !recommendationIntentConsumed.value) {
-    form.trainingRecommendationId =
-      typeof route.query.recommendationId === 'string' ? route.query.recommendationId : ''
-    form.activityName =
-      typeof route.query.activityName === 'string' ? route.query.activityName : form.activityName
+    form.trainingRecommendationId
+      = typeof route.query.recommendationId === 'string' ? route.query.recommendationId : ''
+    form.activityName
+      = typeof route.query.activityName === 'string' ? route.query.activityName : form.activityName
     recommendationIntentConsumed.value = true
   }
   modalOpen.value = true
@@ -272,7 +281,7 @@ async function saveActivity() {
     resetForm()
     await loadData()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存拓展活动失败')
   } finally {
     saving.value = false
   }
@@ -299,7 +308,7 @@ async function removeActivity(row: PortfolioTeachingExtensionActivityVO) {
     await loadData()
   } catch (error) {
     if (requestToken.value !== operationToken) return
-    showUserError(error)
+    showUserError(error, '删除拓展活动失败')
   } finally {
     if (deletingActivityId.value === row.id) deletingActivityId.value = ''
   }
@@ -330,7 +339,7 @@ async function prepareTrainingArchiveDraft(row: PortfolioTeachingExtensionActivi
 
 function openCategoryModal() {
   if (readonlyMode.value) {
-    message.warning('管理员查看模式下不可创建分类')
+    showFormValidationMessage('管理员查看模式下不可创建分类')
     return
   }
   categoryForm.categoryName = ''
@@ -348,7 +357,7 @@ async function createCategory() {
     categoryModalOpen.value = false
     await loadData()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '创建自建分类失败')
   } finally {
     creatingCategory.value = false
   }
@@ -379,7 +388,7 @@ async function confirmDeleteCategory(row: PortfolioTeachingExtensionCategoryVO) 
     await loadData()
   } catch (error) {
     if (requestToken.value !== operationToken) return
-    showUserError(error)
+    showUserError(error, '删除拓展活动失败')
   } finally {
     if (deletingCategoryId.value === categoryId) deletingCategoryId.value = ''
   }
@@ -501,9 +510,9 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
               </UiButton>
               <UiButton
                 v-if="
-                  !readonlyMode &&
-                  record.activityKind === PortfolioTeachingExtensionKindCode.TRAINING &&
-                  !record.archiveRecordId
+                  !readonlyMode
+                    && record.activityKind === PortfolioTeachingExtensionKindCode.TRAINING
+                    && !record.archiveRecordId
                 "
                 variant="ghost"
                 :loading="submittingTrainingId === record.id"

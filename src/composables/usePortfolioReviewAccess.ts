@@ -42,10 +42,10 @@ export function readPortfolioWorkShellRoute(): string {
 /** 校验教学档案袋工作壳编码是否属于后端 PortfolioWorkShellEnum 的受控值。 */
 export function isPortfolioWorkShellCode(value: unknown): value is PortfolioWorkShellCode {
   return (
-    value === 'TEACHER' ||
-    value === 'DEPARTMENT_REVIEW' ||
-    value === 'SCHOOL_GOVERNANCE' ||
-    value === 'CONFIGURATION'
+    value === 'TEACHER'
+    || value === 'DEPARTMENT_REVIEW'
+    || value === 'SCHOOL_GOVERNANCE'
+    || value === 'CONFIGURATION'
   )
 }
 
@@ -104,9 +104,9 @@ export async function ensurePortfolioReviewAccessLoaded(
           ? scope.workShellRoutes?.[selectedWorkShell]
           : undefined
         if (
-          selectedWorkShell &&
-          selectedWorkShellRoute &&
-          scope.availableWorkShells?.includes(selectedWorkShell)
+          selectedWorkShell
+          && selectedWorkShellRoute
+          && scope.availableWorkShells?.includes(selectedWorkShell)
         ) {
           scope.defaultWorkShell = selectedWorkShell
           scope.defaultWorkShellRoute = selectedWorkShellRoute

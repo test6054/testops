@@ -51,7 +51,7 @@ import {
 } from '@/apis/mark/marking-organization'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TrialSessionCalibrateDrawer' })
@@ -83,7 +83,7 @@ watch(
 
 async function submit(): Promise<void> {
   if (!props.canManage) {
-    message.warning('仅考试主考老师可管理试评会话')
+    showFormValidationMessage('仅考试主考老师可管理试评会话')
     return
   }
   if (!props.session?.id || !calibrationSummary.value.trim()) {

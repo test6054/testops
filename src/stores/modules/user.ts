@@ -5,6 +5,7 @@ import { computed, reactive, ref } from 'vue'
 import { getUserDetailedInfo } from '@/apis/auth'
 import { checkTenantAdminPermission } from '@/apis/edu/tenant-admin'
 import { RoleEnum, UserStatusEnum } from '@/types/enums'
+import { showUserError } from '@/utils/error-handler'
 import { useAuthStore } from './auth'
 
 export const useUserStore = defineStore(
@@ -250,9 +251,11 @@ export const useUserStore = defineStore(
         const response = await checkTenantAdminPermission()
         userInfo.isTenantAdmin = response.isTenantAdmin === true
         userInfo.permissionVersion = response.permissionVersion
-      } catch {
-        userInfo.isTenantAdmin = false
+      } catch (error) {
+        // 失败不得静默降权为非管理员；保持未解析并提示
+        userInfo.isTenantAdmin = undefined
         userInfo.permissionVersion = undefined
+        showUserError(error, '管理员权限查询失败')
       }
     }
 

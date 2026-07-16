@@ -5,11 +5,11 @@ import type {
   QualityCourseGoalForMarkVO,
 } from '@/apis/mark/exam-question-course-goal-mapping'
 import type { UiDataTableColumn } from '@/components/ui-guide/ui/data-table'
-import { buildNumericColumn } from '@/components/ui-guide/ui/data-table'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, reactive } from 'vue'
 import ExamQuestionIdentityCells from '@/components/mark/analysis/ExamQuestionIdentityCells.vue'
+import { buildNumericColumn } from '@/components/ui-guide/ui/data-table'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -38,7 +38,7 @@ const props = defineProps<{
   readiness?: CourseObjectiveMappingReadinessVO | null
   courseGoals: QualityCourseGoalForMarkVO[]
   rows: MappingEditableRow[]
-  goalOptions: Array<{ value: string; label: string }>
+  goalOptions: Array<{ value: string, label: string }>
 }>()
 
 const emit = defineEmits<{
@@ -110,8 +110,8 @@ const readinessMetrics = computed<SignalMetric[]>(() => {
       label: '已映射',
       value: `${readiness.mappedQuestionCount ?? 0}/${readiness.totalQuestionCount ?? 0}`,
       tone:
-        (readiness.mappedQuestionCount ?? 0) >= (readiness.totalQuestionCount ?? 0) &&
-        (readiness.totalQuestionCount ?? 0) > 0
+        (readiness.mappedQuestionCount ?? 0) >= (readiness.totalQuestionCount ?? 0)
+        && (readiness.totalQuestionCount ?? 0) > 0
           ? 'green'
           : 'orange',
     },
@@ -220,9 +220,9 @@ function handleFilterReset(): void {
       <template #bodyCell="{ column, record }">
         <ExamQuestionIdentityCells
           v-if="
-            column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.questionType ||
-            column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.questionStem ||
-            column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.fullScore
+            column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.questionType
+              || column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.questionStem
+              || column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.fullScore
           "
           :column-key="String(column.key)"
           :record="record"

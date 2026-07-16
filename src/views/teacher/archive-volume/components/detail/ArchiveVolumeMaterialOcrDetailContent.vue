@@ -1,5 +1,12 @@
 <template>
-  <UiSkeletonState v-if="loading" variant="card" compact />
+  <UiAlertStrip v-if="loadError" tone="error" title="文字识别详情加载失败">
+    <template #actions>
+      <UiButton size="sm" variant="outline" :loading="loading" @click="loadDetail">
+        重新加载
+      </UiButton>
+    </template>
+  </UiAlertStrip>
+  <UiSkeletonState v-if="loading && !detail" variant="card" compact />
   <template v-else-if="detail">
     <div class="archive-ocr-detail__meta">
       <span>任务状态：{{ taskStatusLabel(detail.taskStatus) }}</span>
@@ -29,9 +36,9 @@
     <pre v-else-if="detail.fullText" class="archive-ocr-detail__text">{{
         detail.fullText
     }}</pre>
-    <p v-else class="archive-ocr-detail__empty">暂无 OCR 页级证据</p>
+    <p v-else class="archive-ocr-detail__empty">暂无文字识别页级证据</p>
   </template>
-  <p v-else class="archive-ocr-detail__empty">暂无 OCR 识别内容</p>
+  <p v-else class="archive-ocr-detail__empty">暂无文字识别内容</p>
 </template>
 
 <script setup lang="ts">
@@ -47,7 +54,9 @@ import {
   DocumentOcrTaskStatusDescription,
   getArchiveMaterialDocumentOcrDetail,
 } from '@/apis/mark/archive-volume'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -58,28 +67,22 @@ const props = defineProps<{
 }>()
 
 const loading = ref(false)
+const loadError = ref(false)
 const detail = ref<DocumentMaterialOcrDetailResponse | null>(null)
 const activePageKey = ref<string>()
+let requestSequence = 0
 
 watch(
-  [() => props.materialId, () => props.initialPageNo],
-  async ([materialId]) => {
+  () => props.materialId,
+  (materialId) => {
+    requestSequence += 1
+    detail.value = null
+    loadError.value = false
+    activePageKey.value = undefined
     if (!materialId) {
-      detail.value = null
-      activePageKey.value = undefined
       return
     }
-    loading.value = true
-    try {
-      detail.value = await getArchiveMaterialDocumentOcrDetail(materialId)
-      syncActivePageKey()
-    } catch (error) {
-      detail.value = null
-      activePageKey.value = undefined
-      showUserError(error, '加载 OCR 详情失败')
-    } finally {
-      loading.value = false
-    }
+    void loadDetail()
   },
   { immediate: true },
 )
@@ -90,6 +93,28 @@ watch(
     syncActivePageKey()
   },
 )
+
+async function loadDetail(): Promise<void> {
+  const materialId = props.materialId
+  if (!materialId) return
+  const currentSequence = ++requestSequence
+  loading.value = true
+  loadError.value = false
+  try {
+    const response = await getArchiveMaterialDocumentOcrDetail(materialId)
+    if (currentSequence !== requestSequence || materialId !== props.materialId) return
+    detail.value = response
+    syncActivePageKey()
+  } catch (error) {
+    if (currentSequence !== requestSequence || materialId !== props.materialId) return
+    loadError.value = true
+    showUserError(error, '加载文字识别详情失败')
+  } finally {
+    if (currentSequence === requestSequence) {
+      loading.value = false
+    }
+  }
+}
 
 function pageTabKey(pageNo?: number): string {
   return pageNo == null ? 'unknown' : String(pageNo)

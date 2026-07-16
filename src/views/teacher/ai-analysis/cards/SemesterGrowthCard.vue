@@ -125,6 +125,15 @@ import type {
   SemesterAbilityGrowthResponse,
   SemesterGrowthTrendCode,
 } from '@/apis/mark/cross-exam-analysis'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
+import type { BadgeTone, FilterField, UiSelectOption } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import {
+  AnalysisScopeTypeCode,
+  AnalysisScopeTypeDescription,
+} from '@/apis/mark/analysis-scope-type'
 import {
   generateClassGrowth,
   listCommonClassScopes,
@@ -132,16 +141,6 @@ import {
   SEMESTER_GROWTH_TREND_TONE,
   SemesterGrowthTrendDescription,
 } from '@/apis/mark/cross-exam-analysis'
-import type { ExamSummaryResponse } from '@/apis/mark/exam'
-import type { BadgeTone, FilterField, UiSelectOption } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { formatSemester } from '@/types/enums/semester-enum'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import {
-  AnalysisScopeTypeCode,
-  AnalysisScopeTypeDescription,
-} from '@/apis/mark/analysis-scope-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisHistorySelect from '@/components/mark/analysis/AiAnalysisHistorySelect.vue'
@@ -156,11 +155,12 @@ import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
 import { useChartOption } from '@/hooks/modules/useChartOption'
+import { formatSemester } from '@/types/enums/semester-enum'
 import {
   buildRequiredAcademicYearSemesterQuery,
   ensureRequiredAcademicYearSemester,
 } from '@/utils/academic-year-semester-query'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import {
   buildBarChartInsight,
@@ -242,7 +242,7 @@ const historyRows = computed(() =>
 )
 
 const selectedExams = ref<ExamSummaryResponse[]>([])
-const classOptions = ref<{ label: string; value: string }[]>([])
+const classOptions = ref<{ label: string, value: string }[]>([])
 const classLoading = ref(false)
 const loading = ref(false)
 const generating = ref(false)
@@ -517,7 +517,7 @@ watch(
         label: classRef.className,
       }))
       if (classOptions.value.length === 0 && examIds.length > 0) {
-        message.warning('所选考试没有共同班级，请调整考试范围')
+        showFormValidationMessage('所选考试没有共同班级，请调整考试范围')
       }
       applyDrillClassSelection()
     } catch (e) {
@@ -545,7 +545,7 @@ async function reload(): Promise<void> {
     return
   }
   if (!effectiveClassId.value) {
-    message.warning('请选择班级')
+    showFormValidationMessage('请选择班级')
     return
   }
   loading.value = true
@@ -582,14 +582,14 @@ async function handleGenerate(): Promise<void> {
     return
   }
   if (!effectiveClassId.value) {
-    message.warning('请选择班级')
+    showFormValidationMessage('请选择班级')
     return
   }
   const { academicYear: teachingAcademicYear, semester: teachingSemester } = termQuery
 
   if (form.examScopeMode === 'AUTO') {
     if (!effectiveCourseId.value) {
-      message.warning('请先在上方范围栏选择课程')
+      showFormValidationMessage('请先在上方范围栏选择课程')
       return
     }
     generating.value = true
@@ -613,18 +613,18 @@ async function handleGenerate(): Promise<void> {
   }
 
   if (selectedCourseIds.value.length > 1) {
-    message.warning('请选择同一课程下的考试')
+    showFormValidationMessage('请选择同一课程下的考试')
     return
   }
   const courseId = selectedCourseIds.value[0] ?? ''
   const classId = effectiveClassId.value
   const examIds = form.examIds
   if (!courseId) {
-    message.warning('请选择同一课程下的考试')
+    showFormValidationMessage('请选择同一课程下的考试')
     return
   }
   if (examIds.length < 2) {
-    message.warning('至少需要选择 2 场考试')
+    showFormValidationMessage('至少需要选择 2 场考试')
     return
   }
   generating.value = true

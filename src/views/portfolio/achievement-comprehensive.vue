@@ -71,7 +71,7 @@ async function loadPage() {
       nationalOnly: query.nationalOnly || undefined,
     })
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '加载成果综合查询失败')
   } finally {
     loading.value = false
   }

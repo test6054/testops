@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
 import type { ScanDispatchTicketStatusCode } from '@/apis/mark/scanner-dispatch'
-import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scanner-dispatch'
 import { message } from 'ant-design-vue'
 import { reactive, ref, watch } from 'vue'
+import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scanner-dispatch'
 import { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import ArchiveMaterialTagSelect from '@/views/teacher/archive-volume/components/ArchiveMaterialTagSelect.vue'
 
 const props = defineProps<{
@@ -24,7 +24,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  created: [
+  "created": [
     payload: {
       ticketId: string
       kioskUrl: string
@@ -58,11 +58,11 @@ watch(
 
 async function handleSubmit() {
   if (!props.physicalStorageLocation?.trim()) {
-    message.warning('请先登记归档卷柜位')
+    showFormValidationMessage('请先登记归档卷柜位')
     return
   }
   if (!props.materialType) {
-    message.warning('请先在材料目录选择要扫描的材料项后再派单')
+    showFormValidationMessage('请先在材料目录选择要扫描的材料项后再派单')
     return
   }
   submitting.value = true
@@ -91,7 +91,7 @@ async function handleSubmit() {
     })
     emit('update:open', false)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '创建扫描派单失败')
   } finally {
     submitting.value = false
   }
@@ -119,11 +119,11 @@ async function handleSubmit() {
         <ArchiveMaterialTagSelect v-model="form.materialTags" :volume-id="volumeId" />
       </a-form-item>
       <a-form-item>
-        <a-checkbox v-model:checked="form.generateTraceLabel">生成追溯标签 PDF</a-checkbox>
+        <a-checkbox v-model:checked="form.generateTraceLabel">生成追溯标签便携文档</a-checkbox>
       </a-form-item>
     </a-form>
     <p class="scan-dispatch-dialog__note">
-      工位通过分机 URL / QR 进入，不使用同浏览器 router.push。
+      工位通过分机链接或二维码进入，不使用同浏览器路由跳转。
     </p>
   </UiDrawer>
 </template>

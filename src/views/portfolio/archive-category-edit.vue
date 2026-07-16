@@ -4,7 +4,6 @@ import type {
   PortfolioArchiveRecordVersionVO,
   PortfolioTargetFieldDefinition,
 } from '@/apis/portfolio/types'
-import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -14,6 +13,7 @@ import {
   PortfolioArchiveRecordStatusCode,
   PortfolioArchiveRecordStatusDescription,
 } from '@/apis/portfolio/enums'
+import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import PortfolioArchiveVersionComparePanel from '@/components/portfolio/PortfolioArchiveVersionComparePanel.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -26,7 +26,7 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { SemesterOptions } from '@/types/enums/semester-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const route = useRoute()
@@ -75,17 +75,17 @@ const editableFields = computed(() => fieldDefs.value.filter((item) => !item.rea
 const writeInProgress = computed(() => saving.value || submitting.value)
 const recordEditable = computed(
   () =>
-    !recordStatus.value ||
-    recordStatus.value === PortfolioArchiveRecordStatusCode.DRAFT ||
-    recordStatus.value === PortfolioArchiveRecordStatusCode.RETURNED,
+    !recordStatus.value
+    || recordStatus.value === PortfolioArchiveRecordStatusCode.DRAFT
+    || recordStatus.value === PortfolioArchiveRecordStatusCode.RETURNED,
 )
 const writeDisabled = computed(
   () =>
-    loading.value ||
-    writeInProgress.value ||
-    !recordEditable.value ||
-    !categoryId.value ||
-    (canPickTeachers.value && !targetTeacherId.value),
+    loading.value
+    || writeInProgress.value
+    || !recordEditable.value
+    || !categoryId.value
+    || (canPickTeachers.value && !targetTeacherId.value),
 )
 
 const statusHint = computed(() => {
@@ -201,8 +201,8 @@ function buildReturnQuery(): Record<string, string> {
 }
 
 function returnToArchiveSource() {
-  const path =
-    fromPage.value === 'courseArchive'
+  const path
+    = fromPage.value === 'courseArchive'
       ? '/portfolio/teacher/course-archive'
       : fromPage.value === 'trainingExtension'
         ? '/portfolio/teacher/extension-activity'
@@ -338,7 +338,7 @@ async function handleSubmit() {
     (field) => field.required && !fieldValues[field.fieldCode]?.trim(),
   )
   if (missingRequiredField) {
-    message.warning(`请填写${missingRequiredField.fieldLabel}`)
+    showFormValidationMessage(`请填写${missingRequiredField.fieldLabel}`)
     return
   }
   const requestToken = scopeRequestToken.value

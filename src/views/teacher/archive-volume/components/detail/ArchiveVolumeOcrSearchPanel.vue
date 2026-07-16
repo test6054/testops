@@ -4,7 +4,7 @@
       <div class="archive-volume-ocr-search__head">
         <div class="archive-volume-ocr-search__head-main">
           <span class="archive-volume-ocr-search__title">卷内内容检索</span>
-          <span class="archive-volume-ocr-search__hint">卷内 OCR 全文检索 · 可跳转全局检索</span>
+          <span class="archive-volume-ocr-search__hint">卷内文字识别全文检索 · 可跳转全局检索</span>
         </div>
         <UiButton variant="ghost" size="sm" @click="goGlobalSearch"> 全局检索 </UiButton>
       </div>
@@ -14,7 +14,7 @@
       <a-input
         v-model:value="keyword"
         allow-clear
-        placeholder="搜索本卷 OCR 全文：答卷内容、标准答案、分析报告..."
+        placeholder="搜索本卷文字识别全文：答卷内容、标准答案、分析报告..."
         @press-enter="handleSearch"
       />
       <UiButton variant="primary" size="sm" :loading="loading" @click="handleSearch">
@@ -90,7 +90,7 @@
                 tone="primary"
                 @click="openMaterialOcr(record.materialId)"
               >
-                查看 OCR
+                查看文字识别
               </UiTextAction>
             </div>
           </div>
@@ -99,14 +99,14 @@
     </div>
 
     <div v-else class="archive-volume-ocr-search__empty">
-      <UiEmpty description="输入关键词搜索本卷所有 OCR 识别文本" />
-      <UiAlertStrip v-if="materialStatsLoadFailed" tone="warning" title="OCR 统计加载失败">
+      <UiEmpty description="输入关键词搜索本卷所有文字识别文本" />
+      <UiAlertStrip v-if="materialStatsLoadFailed" tone="warning" title="文字识别统计加载失败">
         <template #actions>
           <UiButton size="sm" variant="outline" @click="loadMaterialStats">重新加载</UiButton>
         </template>
       </UiAlertStrip>
       <div class="archive-volume-ocr-search__overview-head">
-        <span class="archive-volume-ocr-search__overview-title">材料 OCR 状态</span>
+        <span class="archive-volume-ocr-search__overview-title">材料文字识别状态</span>
         <UiButton
           v-if="canRegisterMaterial && pendingOcrCount > 0"
           size="sm"
@@ -114,7 +114,7 @@
           :loading="batchOcrSubmitting"
           @click="handleBatchOcr"
         >
-          批量 OCR
+          批量文字识别
         </UiButton>
       </div>
       <UiDataTable
@@ -155,7 +155,12 @@
               v-if="canViewMaterialOcrMaterial(record) || canTriggerMaterialOcr(record)"
               :items="[
                 { key: 'view', label: '查看文本', hidden: !canViewMaterialOcrMaterial(record) },
-                { key: 'trigger', label: '触发 OCR', hidden: !canTriggerMaterialOcr(record) },
+                {
+                  key: 'trigger',
+                  label: triggeringMaterialIds.has(record.materialId) ? '提交中' : '触发文字识别',
+                  hidden: !canTriggerMaterialOcr(record),
+                  disabled: triggeringMaterialIds.has(record.materialId),
+                },
               ]"
               split
               @action="(key) => handleOcrMaterialRowAction(key, record)"
@@ -181,6 +186,14 @@ import type {
   ArchiveVolumeMaterialStatsResponse,
   ArchiveVolumeSearchResponse,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
+  ArchiveMaterialOcrStatusCode,
+  ArchiveMaterialOcrStatusDescription,
+} from '@/apis/mark/archive-ocr-status'
 import {
   ArchiveMaterialTypeDescription,
   batchTriggerArchiveVolumeMaterialOcr,
@@ -189,14 +202,6 @@ import {
   searchArchiveVolumes,
   triggerArchiveVolumeMaterialOcr,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import {
-  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
-  ArchiveMaterialOcrStatusCode,
-  ArchiveMaterialOcrStatusDescription,
-} from '@/apis/mark/archive-ocr-status'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -206,7 +211,7 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { highlightArchiveSearchSnippet } from '@/utils/archive-search-snippet'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ArchiveVolumeMaterialOcrDetailModal from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialOcrDetailModal.vue'
 
@@ -218,7 +223,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  refreshed: [options?: { silent?: boolean }]
+  "refreshed": [options?: { silent?: boolean }]
   'navigate-materials': []
 }>()
 
@@ -227,6 +232,7 @@ const keyword = ref('')
 const loading = ref(false)
 const hitsLoadFailed = ref(false)
 const batchOcrSubmitting = ref(false)
+const triggeringMaterialIds = reactive(new Set<string>())
 const searched = ref(false)
 const hits = ref<ArchiveVolumeSearchResponse[]>([])
 const hitPageNum = ref(1)
@@ -251,7 +257,7 @@ const hitColumns: ColumnsType<ArchiveVolumeSearchResponse> = [{ title: '匹配',
 const overviewColumns: ColumnsType<ArchiveVolumeMaterialResponse> = [
   { title: '材料', dataIndex: 'fileName', key: 'fileName', width: 220, fixed: 'left' },
   { title: '类型', key: 'materialType', width: 120 },
-  { title: 'OCR 状态', key: 'ocrStatus', width: 120 },
+  { title: '文字识别状态', key: 'ocrStatus', width: 120 },
   { title: '操作', key: 'actions', width: 120 },
 ]
 
@@ -269,7 +275,7 @@ async function loadMaterialStats(): Promise<void> {
   } catch (error) {
     materialStats.value = null
     materialStatsLoadFailed.value = true
-    showUserError(error, '加载 OCR 统计失败')
+    showUserError(error, '加载文字识别统计失败')
   }
 }
 
@@ -293,7 +299,7 @@ async function loadOcrMaterials(): Promise<void> {
     overviewLoadFailed.value = false
   } catch (error) {
     overviewLoadFailed.value = true
-    showUserError(error, '加载 OCR 材料失败')
+    showUserError(error, '加载文字识别材料失败')
   } finally {
     overviewLoading.value = false
   }
@@ -321,27 +327,27 @@ function highlightSnippet(snippet: string): string {
 
 function canViewMaterialOcr(record: ArchiveVolumeSearchResponse): boolean {
   return (
-    record.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED ||
-    record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED ||
-    record.ocrStatus === ArchiveMaterialOcrStatusCode.RUNNING
+    record.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED
+    || record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED
+    || record.ocrStatus === ArchiveMaterialOcrStatusCode.RUNNING
   )
 }
 
 function canViewMaterialOcrMaterial(record: ArchiveVolumeMaterialResponse): boolean {
   return (
-    record.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED ||
-    record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED ||
-    record.ocrStatus === ArchiveMaterialOcrStatusCode.RUNNING
+    record.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED
+    || record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED
+    || record.ocrStatus === ArchiveMaterialOcrStatusCode.RUNNING
   )
 }
 
 function canTriggerMaterialOcr(record: ArchiveVolumeMaterialResponse): boolean {
   return (
-    props.canRegisterMaterial &&
-    Boolean(record.fileId) &&
-    (record.ocrStatus === ArchiveMaterialOcrStatusCode.PENDING ||
-      record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED ||
-      !record.ocrStatus)
+    props.canRegisterMaterial
+    && Boolean(record.fileId)
+    && (record.ocrStatus === ArchiveMaterialOcrStatusCode.PENDING
+      || record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED
+      || !record.ocrStatus)
   )
 }
 
@@ -396,7 +402,7 @@ async function loadHits(): Promise<void> {
 
 function handleSearch(): void {
   if (!keyword.value.trim()) {
-    message.warning('请输入检索关键词')
+    showFormValidationMessage('请输入检索关键词')
     return
   }
   hitPageNum.value = 1
@@ -412,12 +418,12 @@ function goGlobalSearch(): void {
 
 async function handleBatchOcr(): Promise<void> {
   if (pendingOcrCount.value <= 0) {
-    message.warning('没有可触发 OCR 的材料')
+    showFormValidationMessage('没有可触发文字识别的材料')
     return
   }
   const confirmed = await confirmAsync({
-    title: '批量触发 OCR？',
-    content: `将为 ${pendingOcrCount.value} 份材料入队 OCR 识别。`,
+    title: '批量触发文字识别？',
+    content: `将为 ${pendingOcrCount.value} 份材料入队文字识别。`,
     type: 'info',
     okText: '入队',
     cancelText: '取消',
@@ -426,31 +432,40 @@ async function handleBatchOcr(): Promise<void> {
   batchOcrSubmitting.value = true
   try {
     const result = await batchTriggerArchiveVolumeMaterialOcr(props.volumeId)
-    message.success(`已入队 ${result.triggeredCount} 份材料`)
+    if (result.triggeredCount > 0) {
+      message.success(`已入队 ${result.triggeredCount} 份材料`)
+    } else {
+      message.info('未新增入队材料，材料状态已变化并已刷新')
+    }
     emit('refreshed', { silent: true })
     await reloadOverviewData()
   } catch (error) {
-    showUserError(error, '批量 OCR 触发失败')
+    showUserError(error, '批量文字识别触发失败')
   } finally {
     batchOcrSubmitting.value = false
   }
 }
 
 function confirmTriggerOcr(material: ArchiveVolumeMaterialResponse): void {
+  if (triggeringMaterialIds.has(material.materialId)) return
   void confirmAsync({
-    title: '触发 OCR 识别？',
-    content: `材料「${material.fileName ?? material.materialId}」将进入 OCR 队列。`,
+    title: '触发文字识别？',
+    content: `材料「${material.fileName ?? material.materialId}」将进入文字识别队列。`,
     type: 'info',
     okText: '入队',
     cancelText: '取消',
     onOk: async () => {
+      if (triggeringMaterialIds.has(material.materialId)) return
+      triggeringMaterialIds.add(material.materialId)
       try {
         await triggerArchiveVolumeMaterialOcr(material.materialId)
         message.success('已入队，等待识别')
         emit('refreshed', { silent: true })
         await reloadOverviewData()
       } catch (error) {
-        showUserError(error, 'OCR 触发失败')
+        showUserError(error, '文字识别触发失败')
+      } finally {
+        triggeringMaterialIds.delete(material.materialId)
       }
     },
   })

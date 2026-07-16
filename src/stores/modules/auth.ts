@@ -526,13 +526,18 @@ export const useAuthStore = defineStore(
         criticalTasks.push(
           userStore.fetchTenantAdminPermission().then(async () => {
             await useRouteStore().generateMenus()
-          }).catch(() => {}),
+          }).catch((error) => {
+            // 菜单/权限失败不得静默：教师侧栏空白却看起来“登录成功”
+            showUserError(error, '菜单或权限加载失败，请刷新页面后重试')
+          }),
         )
         await Promise.all(criticalTasks)
 
         // Async tasks
         if (res.tenantInfo?.id) {
-          tenantStore.fetchTenantInfo(res.tenantInfo.id).catch(() => {})
+          tenantStore.fetchTenantInfo(res.tenantInfo.id).catch((error) => {
+            showUserError(error, '学校信息加载失败')
+          })
         }
       } finally {
         isLoading.value = false
@@ -560,7 +565,9 @@ export const useAuthStore = defineStore(
             tenantName: res.tenantInfo.tenantName || '',
             logoUrl: res.tenantInfo.logoUrl || '',
           })
-          tenantStore.fetchTenantInfo(res.tenantInfo.id).catch(() => {})
+          tenantStore.fetchTenantInfo(res.tenantInfo.id).catch((error) => {
+            showUserError(error, '学校信息加载失败')
+          })
         }
         // Note: Phone login
         // The original code didn't call applyLoginUserData for phone login, only tenant info.
@@ -594,17 +601,25 @@ export const useAuthStore = defineStore(
             tenantName: res.tenantInfo.tenantName || '',
             logoUrl: res.tenantInfo.logoUrl || '',
           })
-          tenantStore.fetchTenantInfo(res.tenantInfo.id).catch(() => {})
+          tenantStore.fetchTenantInfo(res.tenantInfo.id).catch((error) => {
+            showUserError(error, '学校信息加载失败')
+          })
         }
         applyLoginUserData(res)
         userStore.userInfo.isTenantAdmin = undefined
         resetHasMenuFlag()
 
-        await userStore.fetchTenantAdminPermission().catch(() => {})
-        await useRouteStore().generateMenus().catch(() => {})
+        await userStore.fetchTenantAdminPermission().catch((error) => {
+          showUserError(error, '管理员权限加载失败，请刷新页面后重试')
+        })
+        await useRouteStore().generateMenus().catch((error) => {
+          showUserError(error, '菜单加载失败，请刷新页面后重试')
+        })
 
         if (res.tenantInfo?.id) {
-          tenantStore.fetchTenantInfo(res.tenantInfo.id).catch(() => {})
+          tenantStore.fetchTenantInfo(res.tenantInfo.id).catch((error) => {
+            showUserError(error, '学校信息加载失败')
+          })
         }
       } finally {
         isLoading.value = false
@@ -643,11 +658,17 @@ export const useAuthStore = defineStore(
         userStore.userInfo.isTenantAdmin = undefined
         resetHasMenuFlag()
 
-        await userStore.fetchTenantAdminPermission().catch(() => {})
-        await useRouteStore().generateMenus().catch(() => {})
+        await userStore.fetchTenantAdminPermission().catch((error) => {
+          showUserError(error, '管理员权限加载失败，请刷新页面后重试')
+        })
+        await useRouteStore().generateMenus().catch((error) => {
+          showUserError(error, '菜单加载失败，请刷新页面后重试')
+        })
 
         if (res.tenantInfo?.id) {
-          tenantStore.fetchTenantInfo(res.tenantInfo.id).catch(() => {})
+          tenantStore.fetchTenantInfo(res.tenantInfo.id).catch((error) => {
+            showUserError(error, '学校信息加载失败')
+          })
         }
       } finally {
         isLoading.value = false

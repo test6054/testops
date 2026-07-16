@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioExpertAssignmentReviewBundleVO } from '@/apis/portfolio/expert-assignment'
-import { portfolioExpertAssignmentApi } from '@/apis/portfolio/expert-assignment'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { portfolioExpertAssignmentApi } from '@/apis/portfolio/expert-assignment'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -35,7 +35,7 @@ const assignmentId = computed(() => {
 const subjectTeacherColumns = computed<ColumnsType>(() => [
   { title: '被评教师', dataIndex: 'maskedDisplayName', key: 'maskedDisplayName' },
   ...(!bundle.value?.maskRequired
-    ? [{ title: '教师 ID', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 }]
+    ? [{ title: '教师编号', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 }]
     : []),
 ])
 

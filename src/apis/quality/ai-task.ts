@@ -1,4 +1,5 @@
 import type { AiManualHandlingStatusCode, AiTaskBusinessTypeCode, AiTaskStatusCode, AiTaskTypeCode } from './types'
+import type { ExtendedAxiosRequestConfig } from '@/config/axios/types'
 /**
  * AI 异步任务主表 API
  *
@@ -133,9 +134,10 @@ export interface QualityStatusCountsResponse {
 
 export const aiTaskApi = {
   create: (data: AiTaskCreateRequest) => http.post<string>(`${TASK}/create`, data),
-  page: (data: AiTaskQueryRequest) => http.post<PageResult<AiTaskVO>>(`${TASK}/page`, data),
-  statusCounts: (data: AiTaskQueryRequest) =>
-    http.post<QualityStatusCountsResponse>(`${TASK}/status-counts`, data),
+  page: (data: AiTaskQueryRequest, config?: ExtendedAxiosRequestConfig) =>
+    http.post<PageResult<AiTaskVO>>(`${TASK}/page`, data, config),
+  statusCounts: (data: AiTaskQueryRequest, config?: ExtendedAxiosRequestConfig) =>
+    http.post<QualityStatusCountsResponse>(`${TASK}/status-counts`, data, config),
   detail: (id: string) => http.post<AiTaskVO>(`${TASK}/detail`, { id }),
   claim: (data: AiTaskClaimRequest) => http.post<void>(`${TASK}/claim`, data),
   complete: (data: AiTaskCompleteRequest) => http.post<void>(`${TASK}/complete`, data),

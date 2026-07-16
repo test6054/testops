@@ -138,7 +138,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -301,7 +301,7 @@ function openRejectModal(planId: string): void {
 async function handleReject(): Promise<void> {
   const reason = rejectReason.value.trim()
   if (!reason) {
-    message.warning('请输入驳回原因')
+    showFormValidationMessage('请输入驳回原因')
     return
   }
   operatingId.value = rejectPlanId.value
@@ -334,7 +334,7 @@ function openExecuteModal(planId: string): void {
 async function handleExecute(): Promise<void> {
   const reason = executeReason.value.trim()
   if (reason.length < 5) {
-    message.warning('请输入不少于 5 字的执行原因')
+    showFormValidationMessage('请输入不少于 5 字的执行原因')
     return
   }
   const planId = executePlanId.value

@@ -79,7 +79,7 @@ import {
   EXTERNAL_PULL_SORT_DIRECTION_OPTIONS,
   ExternalPullSortDirectionCode,
 } from '@/types/enums/external-pull-sort-direction-enum'
-import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
+import { getUserProcessFailureMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 interface SourceFieldScopeEditorRow {
@@ -665,6 +665,12 @@ async function loadTasks() {
       return
     }
     taskPolling.syncPolling()
+  } catch (error) {
+    if (!scope.isStale()) {
+      tasks.value = []
+      taskTotal.value = 0
+      showUserError(error, '外部拉取任务加载失败')
+    }
   } finally {
     if (!scope.isStale()) {
       taskLoading.value = false
@@ -690,12 +696,15 @@ async function loadTasksQuietly(): Promise<void> {
   }
   const scope = beginQualityScopeRequest()
   try {
-    const page = await externalPullTaskApi.page({
-      ...taskQuery,
-      sourceId: taskQuery.sourceId || undefined,
-      status: taskQuery.status || undefined,
-      businessAnchor: taskQuery.businessAnchor,
-    })
+    const page = await externalPullTaskApi.page(
+      {
+        ...taskQuery,
+        sourceId: taskQuery.sourceId || undefined,
+        status: taskQuery.status || undefined,
+        businessAnchor: taskQuery.businessAnchor,
+      },
+      { showErrorMessage: false },
+    )
     if (scope.isStale()) {
       return
     }
@@ -972,7 +981,7 @@ async function cancelTask(record: ExternalPullTaskVO) {
 async function confirmResult(result: ExternalPullResultVO) {
   const confirmedRows = result.previewRows
   if (confirmedRows === null || confirmedRows === undefined) {
-    showUserError(null, '结果批次尚未生成预览数据，不能确认')
+    showFormValidationMessage('结果批次尚未生成预览数据，不能确认')
     return
   }
   if (confirmedRows <= 0) {
@@ -1010,8 +1019,20 @@ async function rejectResult(result: ExternalPullResultVO) {
 
 async function openDetail(record: ExternalPullTaskVO) {
   detailVisible.value = true
-  detailRecord.value = await externalPullTaskApi.detail(record.id)
-  await reloadDetail(record.id)
+  detailLoading.value = true
+  try {
+    detailRecord.value = await externalPullTaskApi.detail(record.id)
+    await reloadDetail(record.id)
+  } catch (error) {
+    detailRecord.value = null
+    detailResults.value = []
+    detailResultTotal.value = 0
+    detailAudits.value = []
+    detailAuditTotal.value = 0
+    showUserError(error, '拉取任务详情加载失败')
+  } finally {
+    detailLoading.value = false
+  }
 }
 
 async function reloadDetail(taskId: string) {
@@ -1019,20 +1040,27 @@ async function reloadDetail(taskId: string) {
   try {
     detailResultPageNum.value = 1
     detailAuditPageNum.value = 1
-    await Promise.all([loadDetailAudits(taskId), loadDetailResults(taskId)])
+    await loadDetailResults(taskId)
+    await loadDetailAudits(taskId)
   } finally {
     detailLoading.value = false
   }
 }
 
 async function loadDetailAudits(taskId: string) {
-  const page = await externalPullAuditApi.page({
-    pullTaskId: taskId,
-    pageNum: detailAuditPageNum.value,
-    pageSize: detailAuditPageSize.value,
-  })
-  detailAudits.value = page.list
-  detailAuditTotal.value = page.total
+  try {
+    const page = await externalPullAuditApi.page({
+      pullTaskId: taskId,
+      pageNum: detailAuditPageNum.value,
+      pageSize: detailAuditPageSize.value,
+    })
+    detailAudits.value = page.list
+    detailAuditTotal.value = page.total
+  } catch (error) {
+    detailAudits.value = []
+    detailAuditTotal.value = 0
+    showUserError(error, '拉取任务审计记录加载失败')
+  }
 }
 
 function handleDetailAuditPageChange(event: { current: number, pageSize: number }) {
@@ -1046,13 +1074,19 @@ function handleDetailAuditPageChange(event: { current: number, pageSize: number 
 }
 
 async function loadDetailResults(taskId: string) {
-  const result = await externalPullResultApi.pageByTask({
-    pullTaskId: taskId,
-    pageNum: detailResultPageNum.value,
-    pageSize: detailResultPageSize.value,
-  })
-  detailResults.value = result.list
-  detailResultTotal.value = result.total
+  try {
+    const result = await externalPullResultApi.pageByTask({
+      pullTaskId: taskId,
+      pageNum: detailResultPageNum.value,
+      pageSize: detailResultPageSize.value,
+    })
+    detailResults.value = result.list
+    detailResultTotal.value = result.total
+  } catch (error) {
+    detailResults.value = []
+    detailResultTotal.value = 0
+    showUserError(error, '拉取任务结果加载失败')
+  }
 }
 
 function handleDetailResultPageChange(event: { current: number, pageSize: number }) {

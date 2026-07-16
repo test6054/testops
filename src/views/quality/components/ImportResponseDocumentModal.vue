@@ -199,17 +199,17 @@ const extractAlertDescription = computed(() =>
 
 const statusLabel = computed(() => {
   const s = currentTaskStatus.value
-  return strictEnumLabel(AiTaskStatusDescription, s, 'AI 任务状态')
+  return strictEnumLabel(AiTaskStatusDescription, s, '智能任务状态')
 })
 const statusColor = computed(() => {
   const s = currentTaskStatus.value
-  return strictEnumTone(AI_TASK_STATUS_COLOR, s, 'AI 任务状态')
+  return strictEnumTone(AI_TASK_STATUS_COLOR, s, '智能任务状态')
 })
 
 function aiDocumentParseFailureText(messageText?: string | null): string {
   return getUserProcessFailureMessage(
     messageText,
-    'AI 文档解析未完成，请检查文件内容是否清晰完整后重新上传',
+    '智能文档解析未完成，请检查文件内容是否清晰完整后重新上传',
   )
 }
 
@@ -262,11 +262,11 @@ async function handleSubmitAiParse() {
     phase.value = 'processing'
     pollCount.value = 0
     pollFailureCount.value = 0
-    message.info('AI 解析任务已提交，正在后台处理…')
+    message.info('智能解析任务已提交，正在后台处理…')
     taskPolling.resume()
     taskPolling.syncPolling()
   } catch (error) {
-    showUserError(error, 'AI 文档解析任务提交失败')
+    showUserError(error, '智能文档解析任务提交失败')
   } finally {
     uploading.value = false
   }
@@ -320,7 +320,7 @@ async function pollTaskStatus() {
     if (task.status === 'SUCCEEDED') {
       stopPolling()
       phase.value = 'succeeded'
-      message.success('AI 文档解析完成，答卷草稿已写入')
+      message.success('智能文档解析完成，答卷草稿已写入')
     } else if (task.status === AiTaskStatusCode.FAILED) {
       stopPolling()
       failureReason.value = aiDocumentParseFailureText(task.failureReason)
@@ -334,7 +334,7 @@ async function pollTaskStatus() {
     pollFailureCount.value++
     if (pollFailureCount.value >= MAX_POLL_FAILURE_COUNT) {
       stopPolling()
-      failureReason.value = '连续查询 AI 任务状态失败，请在 AI 任务列表查看处理结果。'
+      failureReason.value = '连续查询智能任务状态失败，请在智能任务列表查看处理结果。'
       phase.value = 'failed'
     }
   }
@@ -373,9 +373,9 @@ function handleCloseAndRefresh() {
 }
 
 function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / 1024 / 1024).toFixed(2)} MB`
+  if (bytes < 1024) return `${bytes} 字节`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} 千字节`
+  return `${(bytes / 1024 / 1024).toFixed(2)} 兆字节`
 }
 </script>
 

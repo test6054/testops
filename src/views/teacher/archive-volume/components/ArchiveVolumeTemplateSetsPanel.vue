@@ -295,6 +295,14 @@ import type {
   ArchiveTenantTemplateAuditItemVO,
   ArchiveTenantTemplateSetResponse,
 } from '@/apis/mark/archive-platform-template'
+import type { ArchiveExamFormCode } from '@/apis/mark/archive-volume'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type {
+  ArchiveTemplateMaterialEditRow,
+  ArchiveTemplateSelfCheckEditRow,
+} from '@/views/teacher/archive-volume/components/archive-template-editor-types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   copyAllArchivePlatformTemplatesToTenant,
   copyArchivePlatformTemplateToTenant,
@@ -306,20 +314,12 @@ import {
   resyncArchiveTenantTemplateSet,
   saveArchiveTenantTemplateSet,
 } from '@/apis/mark/archive-platform-template'
-import type { ArchiveExamFormCode } from '@/apis/mark/archive-volume'
-import { ArchiveExamFormDescription } from '@/apis/mark/archive-volume'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type {
-  ArchiveTemplateMaterialEditRow,
-  ArchiveTemplateSelfCheckEditRow,
-} from '@/views/teacher/archive-volume/components/archive-template-editor-types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   ArchiveTemplateScopeCode,
   archiveTemplateScopeLabel,
   archiveTemplateScopeTone,
 } from '@/apis/mark/archive-template-scope'
+import { ArchiveExamFormDescription } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -331,7 +331,7 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { archiveTenantTemplateOperationTypeLabel } from '@/types/enums/archive-tenant-template-operation-type-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ArchiveTemplateSetEditorDrawer from '@/views/teacher/archive-volume/components/ArchiveTemplateSetEditorDrawer.vue'
@@ -576,8 +576,13 @@ async function loadCategoryGroups(forkSourceSetCode?: string) {
     categoryGroupMap.value = new Map()
     return
   }
-  const preview = await previewArchivePlatformTemplateSet({ sourceSetCode: forkSourceSetCode })
-  categoryGroupMap.value = buildCategoryGroupMap(preview)
+  try {
+    const preview = await previewArchivePlatformTemplateSet({ sourceSetCode: forkSourceSetCode })
+    categoryGroupMap.value = buildCategoryGroupMap(preview)
+  } catch (error) {
+    categoryGroupMap.value = new Map()
+    showUserError(error, '模板材料分组预览加载失败')
+  }
 }
 
 async function loadTenantSetDetail(templateSetCode: string) {
@@ -623,8 +628,8 @@ function findTenantSetByPlatformSource(sourceSetCode: string) {
   return (
     templateSets.value.find(
       (item) => item.templateScope === 'TENANT' && item.forkSourceSetCode === sourceSetCode,
-    ) ??
-    templateSets.value.find(
+    )
+    ?? templateSets.value.find(
       (item) => item.templateScope === 'TENANT' && item.templateSetCode === sourceSetCode,
     )
   )
@@ -650,13 +655,13 @@ function openCopyModal(record: ArchiveTenantTemplateSetResponse, defaultTargetSe
 
 async function submitCopy() {
   if (templateSetsLoadFailed.value) {
-    message.warning('请先重新加载归档模板套')
+    showFormValidationMessage('请先重新加载归档模板套')
     return
   }
   if (!copySource.value) return
   const targetSetCode = copyTargetSetCode.value.trim()
   if (!targetSetCode) {
-    message.warning('请填写目标租户套编码')
+    showFormValidationMessage('请填写目标租户套编码')
     return
   }
   copyLoading.value = true
@@ -671,7 +676,7 @@ async function submitCopy() {
     await loadTemplateSets()
     await openEditDrawer(targetSetCode)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '复制模板到本校失败')
   } finally {
     copyLoading.value = false
   }
@@ -679,12 +684,12 @@ async function submitCopy() {
 
 async function submitCopyAll() {
   if (templateSetsLoadFailed.value) {
-    message.warning('请先重新加载归档模板套')
+    showFormValidationMessage('请先重新加载归档模板套')
     return
   }
   const targetPrefix = copyAllPrefix.value.trim()
   if (!targetPrefix) {
-    message.warning('请填写目标前缀')
+    showFormValidationMessage('请填写目标前缀')
     return
   }
   copyAllLoading.value = true
@@ -696,7 +701,7 @@ async function submitCopyAll() {
     message.success('全部平台模板已复制到本校')
     await loadTemplateSets()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '批量复制平台模板失败')
   } finally {
     copyAllLoading.value = false
   }
@@ -776,7 +781,7 @@ async function loadAuditRows(): Promise<void> {
   }
 }
 
-function handleAuditPageChange(page: { current: number; pageSize: number }): void {
+function handleAuditPageChange(page: { current: number, pageSize: number }): void {
   auditPagination.pageNum = page.current
   auditPagination.pageSize = page.pageSize
   void loadAuditRows()
@@ -821,7 +826,7 @@ async function submitResync() {
     await refreshAll()
     await openEditDrawer(resyncTarget.value.templateSetCode)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '重新同步模板集失败')
   } finally {
     resyncLoading.value = false
   }
@@ -830,24 +835,24 @@ async function submitResync() {
 async function saveTenantSet() {
   if (!selectedSetCode.value || templateSetsLoadFailed.value) return
   if (!editorMeta.examForm) {
-    message.warning('模板集缺少考核形式，无法保存')
+    showFormValidationMessage('模板集缺少考核形式，无法保存')
     return
   }
   if (materialRows.value.length === 0) {
-    message.warning('至少保留一条材料目录项')
+    showFormValidationMessage('至少保留一条材料目录项')
     return
   }
   if (selfCheckRows.value.length === 0) {
-    message.warning('至少保留一条自查项')
+    showFormValidationMessage('至少保留一条自查项')
     return
   }
   if (editorMeta.defaultPermanentRetention !== true && editorMeta.defaultRetentionYears == null) {
-    message.warning('请填写保管年限或勾选永久')
+    showFormValidationMessage('请填写保管年限或勾选永久')
     return
   }
   for (const row of materialRows.value) {
     if (!row.catalogName?.trim()) {
-      message.warning('材料目录名称不能为空')
+      showFormValidationMessage('材料目录名称不能为空')
       return
     }
   }
@@ -855,7 +860,7 @@ async function saveTenantSet() {
   for (const row of materialRows.value) {
     const key = materialKey(row.materialType, row.catalogCode?.trim())
     if (materialKeys.has(key)) {
-      message.warning(`材料目录项重复：${row.catalogName.trim()}`)
+      showFormValidationMessage(`材料目录项重复：${row.catalogName.trim()}`)
       return
     }
     materialKeys.add(key)
@@ -863,12 +868,12 @@ async function saveTenantSet() {
   const selfCheckTexts = new Set<string>()
   for (const row of selfCheckRows.value) {
     if (!row.itemText?.trim()) {
-      message.warning('自查项文本不能为空')
+      showFormValidationMessage('自查项文本不能为空')
       return
     }
     const itemText = row.itemText.trim()
     if (selfCheckTexts.has(itemText)) {
-      message.warning(`自查项重复：${itemText}`)
+      showFormValidationMessage(`自查项重复：${itemText}`)
       return
     }
     selfCheckTexts.add(itemText)
@@ -901,7 +906,7 @@ async function saveTenantSet() {
     await loadTemplateSets()
     resetEditor()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存模板集失败')
   } finally {
     saving.value = false
   }

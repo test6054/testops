@@ -4,6 +4,7 @@
  * 后端路径：/api/quality/external-pull-tasks
  */
 import type { ExternalPullTaskStatusCode } from './types'
+import type { ExtendedAxiosRequestConfig } from '@/config/axios/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { BusinessAnchorCode } from '@/types/enums/business-anchor-code-enum'
 import type { ExternalPullFilterOperatorCode } from '@/types/enums/external-pull-filter-operator-enum'
@@ -124,8 +125,8 @@ export interface ExternalPullTaskFailRequest {
 }
 
 export const externalPullTaskApi = {
-  page: (data: ExternalPullTaskQueryRequest) =>
-    http.post<PageResult<ExternalPullTaskVO>>(`${BASE}/page`, data),
+  page: (data: ExternalPullTaskQueryRequest, config?: ExtendedAxiosRequestConfig) =>
+    http.post<PageResult<ExternalPullTaskVO>>(`${BASE}/page`, data, config),
   detail: (id: string) => http.post<ExternalPullTaskVO>(`${BASE}/detail`, { id }),
   create: (data: ExternalPullTaskSaveRequest) => http.post<string>(`${BASE}/create`, data),
   update: (data: ExternalPullTaskSaveRequest) => http.post<void>(`${BASE}/update`, data),

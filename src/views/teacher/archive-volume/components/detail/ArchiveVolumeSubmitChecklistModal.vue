@@ -12,10 +12,12 @@ import {
   previewArchiveVolumeSubmitChecklist,
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { showUserError } from '@/utils/error-handler'
+
 import ArchiveVolumeSubmitTaskList from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeSubmitTaskList.vue'
 
 const props = defineProps<{
@@ -29,6 +31,7 @@ const emit = defineEmits<{
 }>()
 
 const loading = ref(false)
+const loadFailed = ref(false)
 const submitting = ref(false)
 const checklist = ref<ArchiveVolumeSubmitChecklistResponse | null>(null)
 const materialCompleteConfirmed = ref(false)
@@ -43,6 +46,7 @@ const signOffState = ref<
   SCORER: { confirmed: false, signatoryName: '' },
   RECHECKER: { confirmed: false, signatoryName: '' },
 })
+let loadSequence = 0
 
 const blockingItems = computed(
   () => checklist.value?.blockingItems?.filter((item) => !item.passed) ?? [],
@@ -50,8 +54,10 @@ const blockingItems = computed(
 
 const formSignOffReady = computed(() => {
   const items = checklist.value?.signOffItems ?? []
-  if (items.length === 0) return true
-  return items.every((item) => signOffState.value[item.role].confirmed)
+  if (items.length !== ALL_ARCHIVE_VOLUME_SIGN_OFF_ROLE_CODES.length) return false
+  return ALL_ARCHIVE_VOLUME_SIGN_OFF_ROLE_CODES.every(
+    (role) => signOffState.value[role].confirmed && signOffState.value[role].signatoryName.trim().length > 0,
+  )
 })
 
 const canConfirm = computed(() => {
@@ -63,21 +69,38 @@ const canConfirm = computed(() => {
 })
 
 watch(
-  () => props.open,
-  async (open) => {
-    if (!open) return
-    loading.value = true
-    try {
-      checklist.value = await previewArchiveVolumeSubmitChecklist(props.volumeId)
-      resetFormFromChecklist(checklist.value)
-    } catch (error) {
-      showUserError(error)
-      emit('update:open', false)
-    } finally {
-      loading.value = false
+  () => [props.open, props.volumeId] as const,
+  ([open, volumeId]) => {
+    if (!open) {
+      loadSequence += 1
+      checklist.value = null
+      loadFailed.value = false
+      return
     }
+    void loadChecklist(volumeId)
   },
 )
+
+async function loadChecklist(volumeId = props.volumeId) {
+  const requestSequence = ++loadSequence
+  loading.value = true
+  loadFailed.value = false
+  try {
+    const data = await previewArchiveVolumeSubmitChecklist(volumeId)
+    if (requestSequence !== loadSequence || !props.open || volumeId !== props.volumeId) return
+    checklist.value = data
+    resetFormFromChecklist(data)
+  } catch (error) {
+    if (requestSequence !== loadSequence || !props.open || volumeId !== props.volumeId) return
+    checklist.value = null
+    loadFailed.value = true
+    showUserError(error, '加载提交自查清单失败')
+  } finally {
+    if (requestSequence === loadSequence) {
+      loading.value = false
+    }
+  }
+}
 
 function resetFormFromChecklist(data: ArchiveVolumeSubmitChecklistResponse) {
   materialCompleteConfirmed.value = false
@@ -113,7 +136,7 @@ async function handleConfirm() {
     signOffItems: ALL_ARCHIVE_VOLUME_SIGN_OFF_ROLE_CODES.map((role) => ({
       role,
       confirmed: signOffState.value[role].confirmed,
-      signatoryName: signOffState.value[role].signatoryName.trim() || undefined,
+      signatoryName: signOffState.value[role].signatoryName.trim(),
     })),
   }
   submitting.value = true
@@ -123,7 +146,7 @@ async function handleConfirm() {
     emit('confirmed')
     close()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存自查确认失败')
   } finally {
     submitting.value = false
   }
@@ -140,6 +163,13 @@ async function handleConfirm() {
     @close="close"
   >
     <UiSkeletonState v-if="loading" variant="card" compact />
+    <UiEmpty
+      v-else-if="loadFailed"
+      title="提交自查清单加载失败"
+      description="无法读取最新提交前置，请重新加载后再确认。"
+      action-label="重新加载"
+      @action="loadChecklist()"
+    />
     <template v-else-if="checklist">
       <UiAlertStrip
         v-if="blockingItems.length"
@@ -172,14 +202,22 @@ async function handleConfirm() {
             placeholder="签字人姓名"
             size="small"
             allow-clear
+            :maxlength="64"
+            show-count
           />
         </div>
       </div>
-      <a-textarea v-model:value="reason" placeholder="自查说明（可选）" :rows="2" />
+      <a-textarea
+        v-model:value="reason"
+        placeholder="自查说明（可选）"
+        :rows="2"
+        :maxlength="500"
+        show-count
+      />
     </template>
     <template #footer>
       <UiButton variant="outline" @click="close">取消</UiButton>
-      <UiButton :loading="submitting" :disabled="!canConfirm" @click="handleConfirm">
+      <UiButton :loading="submitting" :disabled="loading || loadFailed || !canConfirm" @click="handleConfirm">
         确认自查
       </UiButton>
     </template>

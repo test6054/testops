@@ -4,10 +4,10 @@ import type {
   PortfolioDoubleHighEvidenceArchiveVO,
   PortfolioDoubleHighTaskVO,
 } from '@/apis/portfolio/double-high'
-import { portfolioDoubleHighApi } from '@/apis/portfolio/double-high'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { portfolioDoubleHighApi } from '@/apis/portfolio/double-high'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -36,7 +36,7 @@ import {
   PortfolioDoubleHighTaskStatusCode,
   PortfolioDoubleHighTaskStatusDescription,
 } from '@/types/enums/portfolio-double-high-task-status-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -231,7 +231,7 @@ function isTaskResponsible(row: PortfolioDoubleHighTaskVO): boolean {
 
 /** 按责任人/治理角色裁剪操作：责任人不可见审核入口，非责任人不可见实施动作。 */
 function rowActions(row: PortfolioDoubleHighTaskVO) {
-  const items: Array<{ key: string; label: string; tone?: 'danger' }> = [
+  const items: Array<{ key: string, label: string, tone?: 'danger' }> = [
     { key: 'detail', label: '阶段明细' },
   ]
   const responsible = isTaskResponsible(row)
@@ -245,9 +245,9 @@ function rowActions(row: PortfolioDoubleHighTaskVO) {
     items.push({ key: 'submit', label: '提交阶段' })
   }
   if (
-    (row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_SUBMITTED ||
-      row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_REVIEWING) &&
-    !responsible
+    (row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_SUBMITTED
+      || row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_REVIEWING)
+    && !responsible
   ) {
     if (row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_SUBMITTED) {
       items.push({ key: 'enterReview', label: '进入审核' })
@@ -261,8 +261,8 @@ function rowActions(row: PortfolioDoubleHighTaskVO) {
     items.push({ key: 'downloadAcceptance', label: '下载验收包' })
   }
   if (
-    row.taskStatus !== PortfolioDoubleHighTaskStatusCode.ARCHIVED &&
-    row.taskStatus !== PortfolioDoubleHighTaskStatusCode.VOID
+    row.taskStatus !== PortfolioDoubleHighTaskStatusCode.ARCHIVED
+    && row.taskStatus !== PortfolioDoubleHighTaskStatusCode.VOID
   ) {
     items.push({ key: 'void', label: '作废', tone: 'danger' })
   }
@@ -312,7 +312,7 @@ function onSearch() {
   void loadPage()
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   void loadPage()
@@ -347,8 +347,8 @@ function resetCreateForm() {
   createForm.taskCode = ''
   createForm.taskTitle = ''
   createForm.taskSource = '校级双高'
-  createForm.departmentId =
-    typeof route.query.departmentId === 'string' ? route.query.departmentId : undefined
+  createForm.departmentId
+    = typeof route.query.departmentId === 'string' ? route.query.departmentId : undefined
   createForm.portfolioOrgId = undefined
   createForm.constructionPeriodLabel = ''
   createForm.baselinePeriodLabel = ''
@@ -377,7 +377,7 @@ function addCreateStage() {
 
 function removeCreateStage(index: number) {
   if (createForm.stages.length <= 1) {
-    message.warning('至少保留一个阶段')
+    showFormValidationMessage('至少保留一个阶段')
     return
   }
   createForm.stages.splice(index, 1)
@@ -413,8 +413,8 @@ async function handleAction(key: string, row: PortfolioDoubleHighTaskVO) {
       const evidenceToken = evidenceRequestToken.value + 1
       evidenceRequestToken.value = evidenceToken
       try {
-        const nextArchives =
-          (await portfolioDoubleHighApi.listEvidenceArchives({ id: row.id })) ?? []
+        const nextArchives
+          = (await portfolioDoubleHighApi.listEvidenceArchives({ id: row.id })) ?? []
         if (evidenceRequestToken.value !== evidenceToken || activeTask.value?.id !== row.id) {
           return
         }
@@ -431,7 +431,7 @@ async function handleAction(key: string, row: PortfolioDoubleHighTaskVO) {
       return
     } else if (key === 'downloadAcceptance') {
       if (!row.acceptanceFileNodeId) {
-        message.warning('验收包尚未生成')
+        showFormValidationMessage('验收包尚未生成')
         return
       }
       await handleDownloadFile({
@@ -481,7 +481,7 @@ async function submitActionModal() {
   try {
     if (actionMode.value === 'submit') {
       if (selectedArchiveIds.value.length === 0) {
-        message.warning('请至少选择一条正式档案作为阶段佐证')
+        showFormValidationMessage('请至少选择一条正式档案作为阶段佐证')
         return
       }
       const missingFile = evidenceArchives.value.filter(
@@ -489,7 +489,7 @@ async function submitActionModal() {
           selectedArchiveIds.value.includes(item.archiveRecordId) && !item.hasDownloadableFile,
       )
       if (missingFile.length > 0) {
-        message.warning('所选正式档案缺少可下载附件，请先补齐材料')
+        showFormValidationMessage('所选正式档案缺少可下载附件，请先补齐材料')
         return
       }
       await portfolioDoubleHighApi.submitStage({
@@ -501,7 +501,7 @@ async function submitActionModal() {
     } else if (actionMode.value === 'void') {
       const reason = voidReason.value.trim()
       if (!reason) {
-        message.warning('请填写作废原因')
+        showFormValidationMessage('请填写作废原因')
         return
       }
       await portfolioDoubleHighApi.voidTask({
@@ -511,7 +511,7 @@ async function submitActionModal() {
       message.success('任务已作废')
     } else {
       if (reviewApproved.value === 'false' && !reviewComment.value.trim()) {
-        message.warning('阶段退回须填写原因')
+        showFormValidationMessage('阶段退回须填写原因')
         return
       }
       await portfolioDoubleHighApi.reviewStage({
@@ -538,23 +538,23 @@ async function submitCreate() {
   const taskCode = createForm.taskCode.trim()
   const taskTitle = createForm.taskTitle.trim()
   if (!taskCode || !taskTitle) {
-    message.warning('请填写任务编码与标题')
+    showFormValidationMessage('请填写任务编码与标题')
     return
   }
   if (!createForm.departmentId) {
-    message.warning('请选择责任院系')
+    showFormValidationMessage('请选择责任院系')
     return
   }
   if (!createForm.constructionPeriodLabel.trim()) {
-    message.warning('请填写建设周期')
+    showFormValidationMessage('请填写建设周期')
     return
   }
   if (!createForm.periodStartDate || !createForm.periodEndDate) {
-    message.warning('请填写建设周期起止日期')
+    showFormValidationMessage('请填写建设周期起止日期')
     return
   }
   if (createForm.periodStartDate > createForm.periodEndDate) {
-    message.warning('建设周期开始日期不能晚于结束日期')
+    showFormValidationMessage('建设周期开始日期不能晚于结束日期')
     return
   }
   const stages = createForm.stages.map((stage, index) => ({
@@ -563,11 +563,11 @@ async function submitCreate() {
     stageDeadline: stage.stageDeadline || undefined,
   }))
   if (stages.some((stage) => !stage.stageName)) {
-    message.warning('请填写阶段名称')
+    showFormValidationMessage('请填写阶段名称')
     return
   }
   if (stages.some((stage) => !stage.stageDeadline)) {
-    message.warning('请为每个阶段设置截止日')
+    showFormValidationMessage('请为每个阶段设置截止日')
     return
   }
   actionLoading.value = true

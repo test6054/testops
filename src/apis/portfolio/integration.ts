@@ -8,9 +8,30 @@ export interface PortfolioIntegrationDatasourceVO {
   datasourceName: string
   enabled: boolean
   sourcePriority: number
+  /** JDBC 密码已脱敏为 */
   connectionConfigJson?: string
+  /** JDBC 通路是否已配置密码 */
+  passwordConfigured?: boolean
   lastSyncTime?: string
 }
+
+export interface PortfolioNationalTeacherInboundRecord {
+  teacherNumber: string
+  teacherName?: string
+  title?: string
+  employmentStatus?: string
+}
+
+export const PORTFOLIO_INTEGRATION_PASSWORD_MASK = '********'
+
+export const PORTFOLIO_EXCEL_IMPORT_SCENE_OPTIONS = [
+  { value: 'PORTFOLIO_DEVELOPMENT_RECORD', label: '发展记录导入' },
+  { value: 'PORTFOLIO_DEVELOPMENT_PLAN_HISTORY', label: '发展计划历史导入' },
+  { value: 'PORTFOLIO_DUAL_TEACHER', label: '双师认定导入' },
+  { value: 'PORTFOLIO_EXTERNAL_TEACHER', label: '外聘教师导入' },
+  { value: 'PORTFOLIO_INDICATOR_DEFINITION', label: '指标定义导入' },
+] as const
+
 
 export interface PortfolioIntegrationFieldMappingVO {
   id: string
@@ -181,16 +202,16 @@ export const portfolioIntegrationApi = {
   }) {
     return http.post<PageResult<PortfolioIntegrationSyncTaskVO>>(`${BASE}/sync/log/page`, data)
   },
-  pageIdentityUnmatched(data: { pageNum: number; pageSize: number; status?: string }) {
+  pageIdentityUnmatched(data: { pageNum: number, pageSize: number, status?: string }) {
     return http.post<PageResult<PortfolioIdentityUnmatchedVO>>(
       `${BASE}/identity/unmatched/page`,
       data,
     )
   },
-  pageConflict(data: { pageNum: number; pageSize: number; ticketStatus?: string }) {
+  pageConflict(data: { pageNum: number, pageSize: number, ticketStatus?: string }) {
     return http.post<PageResult<PortfolioConflictTicketVO>>(`${BASE}/conflict/page`, data)
   },
-  resolveConflict(data: { conflictTicketId: string; action: string; resolveRemark?: string }) {
+  resolveConflict(data: { conflictTicketId: string, action: string, resolveRemark?: string }) {
     return http.post<void>(`${BASE}/conflict/resolve`, data)
   },
   resolveIdentityUnmatched(data: {
@@ -202,7 +223,14 @@ export const portfolioIntegrationApi = {
   }) {
     return http.post<void>(`${BASE}/identity/unmatched/resolve`, data)
   },
-  pageFailedMessages(data: { pageNum: number; pageSize: number; datasourceConfigId: string }) {
+  enqueueMessage(data: {
+    datasourceConfigId: string
+    messageKey: string
+    payloadJson: string
+  }) {
+    return http.post<string>(`${BASE}/message/enqueue`, data)
+  },
+  pageFailedMessages(data: { pageNum: number, pageSize: number, datasourceConfigId: string }) {
     return http.post<PageResult<PortfolioIntegrationMessageInboxVO>>(
       `${BASE}/message/failed/page`,
       data,
@@ -211,12 +239,12 @@ export const portfolioIntegrationApi = {
   requeueFailedMessage(data: {
     messageInboxId: string
     processMessage?: string
-    correctedPayloadJson?: string
+    fieldCorrections?: Array<{ fieldCode: string, fieldValue: string }>
     triggerSync?: boolean
   }) {
     return http.post<void>(`${BASE}/message/requeue`, data)
   },
-  pageCleanLog(data: { pageNum: number; pageSize: number; datasourceConfigId?: string }) {
+  pageCleanLog(data: { pageNum: number, pageSize: number, datasourceConfigId?: string }) {
     return http.post<PageResult<PortfolioIntegrationCleanLogVO>>(`${BASE}/clean-log/page`, data)
   },
   pageCourseCodeMap(data: {
@@ -242,7 +270,7 @@ export const portfolioIntegrationApi = {
   deleteCourseCodeMap(id: string) {
     return http.post<void>(`${BASE}/course-code-map/delete`, { id })
   },
-  pageDictEntry(data: { pageNum: number; pageSize: number; dictionaryCode?: string }) {
+  pageDictEntry(data: { pageNum: number, pageSize: number, dictionaryCode?: string }) {
     return http.post<PageResult<PortfolioIntegrationDictEntryVO>>(`${BASE}/dict-entry/page`, data)
   },
   saveDictEntry(data: {

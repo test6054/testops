@@ -101,14 +101,12 @@ export const useQualityStore = defineStore(
 
     /* ========== 目录加载 ========== */
 
+    /** 失败不得伪装成“无专业大类”；保留上次缓存，由调用方 / 拦截器提示。 */
     async function loadMajorCategoryOptions(force = false) {
       if (!force && majorCategoryOptions.value.length > 0) return majorCategoryOptions.value
       majorCategoryLoading.value = true
       try {
         majorCategoryOptions.value = (await majorCategoryCatalogApi.listAll()) || []
-        return majorCategoryOptions.value
-      } catch {
-        majorCategoryOptions.value = []
         return majorCategoryOptions.value
       } finally {
         majorCategoryLoading.value = false
@@ -126,6 +124,7 @@ export const useQualityStore = defineStore(
       }
     }
 
+    /** 失败不得伪装成“无培养方案”；保留上次缓存，由调用方 / 拦截器提示。 */
     async function loadTrainingPlanOptions(opts?: { programId?: string, keyword?: string }) {
       trainingPlanLoading.value = true
       try {
@@ -137,9 +136,6 @@ export const useQualityStore = defineStore(
           keyword: opts?.keyword?.trim() || undefined,
         })
         trainingPlanOptions.value = page.list
-        return trainingPlanOptions.value
-      } catch {
-        trainingPlanOptions.value = []
         return trainingPlanOptions.value
       } finally {
         trainingPlanLoading.value = false

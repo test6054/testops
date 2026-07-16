@@ -87,7 +87,11 @@ import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useAuthStore } from '@/stores'
 import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityStore } from '@/stores/modules/quality'
-import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
+import {
+  getUserProcessFailureMessage,
+  showFormValidationMessage,
+  showUserError,
+} from '@/utils/error-handler'
 import { RoleEnum } from '@/utils/permission'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -96,27 +100,27 @@ const authStore = useAuthStore()
 const isSuperAdmin = computed(() => authStore.userRole === RoleEnum.SUPER_ADMIN)
 
 function aiTaskTypeLabel(value: AiTaskTypeCode): string {
-  return strictEnumLabel(AiTaskTypeDescription, value, 'AI 任务类型')
+  return strictEnumLabel(AiTaskTypeDescription, value, '智能任务类型')
 }
 
 function aiTaskStatusLabel(value: AiTaskStatusCode): string {
-  return strictEnumLabel(AiTaskStatusDescription, value, 'AI 任务状态')
+  return strictEnumLabel(AiTaskStatusDescription, value, '智能任务状态')
 }
 
 function aiTaskStatusColor(value: AiTaskStatusCode): BadgeTone {
-  return strictEnumTone(AI_TASK_STATUS_COLOR, value, 'AI 任务状态')
+  return strictEnumTone(AI_TASK_STATUS_COLOR, value, '智能任务状态')
 }
 
 function aiTaskBusinessTypeLabel(value: AiTaskBusinessTypeCode): string {
-  return strictEnumLabel(AiTaskBusinessTypeDescription, value, 'AI 任务业务类型')
+  return strictEnumLabel(AiTaskBusinessTypeDescription, value, '智能任务业务类型')
 }
 
 function validationLabel(value: AiOutputValidationCode): string {
-  return strictEnumLabel(AiOutputValidationDescription, value, 'AI 输出校验状态')
+  return strictEnumLabel(AiOutputValidationDescription, value, '智能输出校验状态')
 }
 
 function validationColor(value: AiOutputValidationCode): BadgeTone {
-  return strictEnumTone(AI_OUTPUT_VALIDATION_COLOR, value, 'AI 输出校验状态')
+  return strictEnumTone(AI_OUTPUT_VALIDATION_COLOR, value, '智能输出校验状态')
 }
 
 function sensitiveCheckStatusLabel(value: string | undefined): string {
@@ -131,7 +135,7 @@ function sensitiveCheckStatusColor(value: string | undefined): BadgeTone {
 }
 
 function manualHandlingStatusLabel(value: AiManualHandlingStatusCode): string {
-  return strictEnumLabel(AiManualHandlingStatusDescription, value, 'AI 人工处理状态')
+  return strictEnumLabel(AiManualHandlingStatusDescription, value, '智能人工处理状态')
 }
 
 function aiResultSeverityLabel(value: AiResultIssueSeverityCode): string {
@@ -232,7 +236,7 @@ function mapTaskTypeOptions(
 ): Array<{ value: AiTaskTypeCode, label: string }> {
   return types.map((value) => ({
     value,
-    label: strictEnumLabel(AiTaskTypeDescription, value, 'AI 任务类型'),
+    label: strictEnumLabel(AiTaskTypeDescription, value, '智能任务类型'),
   }))
 }
 
@@ -492,15 +496,11 @@ async function loadList() {
   loading.value = true
   try {
     const listQuery = buildAiTaskListQuery()
-    const [page, counts] = await Promise.all([
-      aiTaskApi.page(listQuery),
-      aiTaskApi.statusCounts(listQuery),
-    ])
+    const page = await aiTaskApi.page(listQuery)
     if (scope.isStale()) {
       return
     }
     list.value = page.list
-    taskStatusCounts.value = counts
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
     total.value = page.total
@@ -509,12 +509,22 @@ async function loadList() {
       await loadList()
       return
     }
+    try {
+      const counts = await aiTaskApi.statusCounts(listQuery)
+      if (!scope.isStale()) {
+        taskStatusCounts.value = counts
+      }
+    } catch (error) {
+      if (!scope.isStale()) {
+        showUserError(error, '智能任务状态统计加载失败')
+      }
+    }
     syncListPolling()
   } catch (error) {
     if (scope.isStale()) {
       return
     }
-    showUserError(error, 'AI 任务加载失败')
+    showUserError(error, '智能任务加载失败')
   } finally {
     if (!scope.isStale()) {
       loading.value = false
@@ -556,18 +566,23 @@ async function loadListQuietly(): Promise<void> {
   const scope = beginQualityScopeRequest()
   try {
     const listQuery = buildAiTaskListQuery()
-    const [page, counts] = await Promise.all([
-      aiTaskApi.page(listQuery),
-      aiTaskApi.statusCounts(listQuery),
-    ])
+    const quiet = { showErrorMessage: false as const }
+    const page = await aiTaskApi.page(listQuery, quiet)
     if (scope.isStale()) {
       return
     }
     list.value = page.list
-    taskStatusCounts.value = counts
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
     total.value = page.total
+    try {
+      const counts = await aiTaskApi.statusCounts(listQuery, quiet)
+      if (!scope.isStale()) {
+        taskStatusCounts.value = counts
+      }
+    } catch {
+      // 轮询：统计失败不覆盖列表
+    }
     if (detailRecord.value?.id && detailVisible.value) {
       const updated = list.value.find((item) => item.id === detailRecord.value!.id)
       if (updated) {
@@ -624,12 +639,12 @@ function handleQueryBusinessTypeChange(value: SelectValue) {
     return
   }
   if (typeof value !== 'string' || Array.isArray(value)) {
-    showUserError(null, '业务类型筛选无效，请重新选择')
+    showFormValidationMessage('业务类型筛选无效，请重新选择')
     return
   }
   const selectedOption = businessTypeOptions.find((option) => option.value === value)
   if (!selectedOption) {
-    showUserError(null, '业务类型筛选无效，请重新选择')
+    showFormValidationMessage('业务类型筛选无效，请重新选择')
     return
   }
   query.businessType = selectedOption.value
@@ -637,7 +652,7 @@ function handleQueryBusinessTypeChange(value: SelectValue) {
 
 function handleQueryBusinessObjectChange(value: string | string[] | null, _option?: unknown): void {
   if (Array.isArray(value)) {
-    showUserError(null, '业务对象筛选只能单选，请重新选择')
+    showFormValidationMessage('业务对象筛选只能单选，请重新选择')
     query.businessId = ''
     return
   }
@@ -649,7 +664,7 @@ function handleQueryOperatorChange(
   _option?: TeacherUserInfoDto | TeacherUserInfoDto[],
 ): void {
   if (Array.isArray(value)) {
-    showUserError(null, '操作人筛选只能单选，请重新选择')
+    showFormValidationMessage('操作人筛选只能单选，请重新选择')
     return
   }
   query.operatorUserId = value ?? ''
@@ -735,7 +750,7 @@ async function applyRouteTaskDeepLink() {
     const task = await aiTaskApi.detail(taskId)
     await openDetail(task)
   } catch (error) {
-    showUserError(error, 'AI 任务详情加载失败')
+    showUserError(error, '智能任务详情加载失败')
   }
 }
 
@@ -766,12 +781,12 @@ function handleSubmitTaskTypeChange(value: SelectValue) {
   submitForm.question = ''
   materialFileName.value = undefined
   if (typeof value !== 'string' || Array.isArray(value)) {
-    showUserError(null, '任务类型选择无效，请重新选择')
+    showFormValidationMessage('任务类型选择无效，请重新选择')
     return
   }
   const selectedOption = submitTaskTypeOptions.find((option) => option.value === value)
   if (!selectedOption) {
-    showUserError(null, '任务类型选择无效，请重新选择')
+    showFormValidationMessage('任务类型选择无效，请重新选择')
     return
   }
   submitForm.taskType = selectedOption.value
@@ -814,7 +829,7 @@ function syncBusinessObjectFromReport(value: string | null): void {
 
 async function submitTask() {
   if (!validateAiTaskSubmit(submitForm)) {
-    message.error('请按所选 AI 能力补齐业务锚点后再提交')
+    showFormValidationMessage('请按所选智能能力补齐业务锚点后再提交')
     return
   }
   submitting.value = true
@@ -832,7 +847,7 @@ async function submitTask() {
       fileNodeId: submitForm.fileNodeId?.trim() || undefined,
       question: submitForm.question?.trim() || undefined,
     })
-    message.success('已提交 AI 任务，系统将按队列执行')
+    message.success('已提交智能任务，系统将按队列执行')
     submitVisible.value = false
     // 提交后启动轮询：任务达到终态后自动停止，其他页面能同步看到状态跳转
     if (result.taskId) aiTaskStore.startPolling(result.taskId)
@@ -844,7 +859,7 @@ async function submitTask() {
 
 async function runNow(record: AiTaskVO) {
   void confirmAsync({
-    title: '立即同步执行当前 AI 任务？',
+    title: '立即同步执行当前智能任务？',
     content: '仅待处理状态可立即执行，常用于演示 / 运维场景。',
     type: 'info',
     onOk: async () => {
@@ -881,7 +896,7 @@ async function submitResetProcessing() {
     resetProcessingVisible.value = false
     await loadList()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '智能任务重置失败')
   } finally {
     resetProcessingSubmitting.value = false
   }
@@ -889,7 +904,7 @@ async function submitResetProcessing() {
 
 async function cancelTask(record: AiTaskVO) {
   const reason = await promptInputAsync({
-    title: `取消 AI 任务 ${record.id}`,
+    title: '取消智能任务？',
     placeholder: '请填写取消原因',
     required: true,
     okType: 'danger',
@@ -946,7 +961,7 @@ async function openDetail(record: AiTaskVO) {
   try {
     detailResult.value = await aiResultApi.getByTask(record.id)
   } catch (error) {
-    showUserError(error, 'AI 任务详情加载失败')
+    showUserError(error, '智能任务详情加载失败')
   } finally {
     detailLoading.value = false
   }
@@ -1034,7 +1049,7 @@ watch(
             }
           })
           .catch((error) => {
-            showUserError(error, 'AI 任务详情加载失败')
+            showUserError(error, '智能任务详情加载失败')
           })
       }
     }
@@ -1309,14 +1324,14 @@ onMounted(async () => {
             <TeacherSelector
               v-else-if="query.businessType === AiTaskBusinessTypeCode.PORTFOLIO_MATERIAL"
               :value="query.businessId || null"
-              placeholder="教师用户 ID"
+              placeholder="教师用户编号"
               :width="180"
               @change="handleQueryBusinessObjectChange"
             />
             <a-input
               v-else-if="query.businessType === AiTaskBusinessTypeCode.PORTFOLIO_EVALUATION"
               :value="query.businessId || ''"
-              placeholder="评价运行/院系 ID"
+              placeholder="评价运行或院系编号"
               allow-clear
               @update:value="handleQueryBusinessObjectChange"
             />
@@ -1435,7 +1450,7 @@ onMounted(async () => {
 
       <UiDrawer
         v-model:open="submitVisible"
-        title="提交 AI 任务"
+        title="提交智能任务"
         :width="560"
         :confirm-loading="submitting"
         :hide-footer="false"
@@ -1621,7 +1636,7 @@ onMounted(async () => {
         </a-form>
       </UiDrawer>
 
-      <UiDrawer v-model:open="detailVisible" title="AI 任务详情" :width="840" :hide-footer="true">
+      <UiDrawer v-model:open="detailVisible" title="智能任务详情" :width="840" :hide-footer="true">
         <UiEmpty
           v-if="!detailRecord && !detailLoading"
           description="当前没有可展示的内容"
@@ -1690,7 +1705,7 @@ onMounted(async () => {
                 detailRecord.failureReason
                   ? getUserProcessFailureMessage(
                     detailRecord.failureReason,
-                    'AI 分析未完成，请在任务列表查看处理进度',
+                    '智能分析未完成，请在任务列表查看处理进度',
                   )
                   : '无未完成说明'
               }}
@@ -1711,15 +1726,15 @@ onMounted(async () => {
               </UiTextAction>
             </a-space>
           </a-descriptions-item>
-          <a-descriptions-item label="AI 结果">
-            {{ detailRecord.resultId ? '已生成 AI 结果' : '尚未生成 AI 结果' }}
+          <a-descriptions-item label="智能结果">
+            {{ detailRecord.resultId ? '已生成智能结果' : '尚未生成智能结果' }}
           </a-descriptions-item>
         </a-descriptions>
 
         <a-divider />
 
         <a-tabs v-if="detailRecord" default-active-key="result">
-          <a-tab-pane key="result" tab="AI 结果">
+          <a-tab-pane key="result" tab="智能结果">
             <UiEmpty v-if="!detailResult" description="当前没有可展示的内容" size="sm" />
             <template v-else>
               <a-descriptions :column="2" size="small" bordered>
@@ -1854,7 +1869,7 @@ onMounted(async () => {
       v-model:open="auditDrawerOpen"
       :events="auditEvents"
       :loading="auditLoading"
-      title="AI 任务操作审计"
+      title="智能任务操作审计"
       show-diff
     />
   </StageWorkbenchShell>

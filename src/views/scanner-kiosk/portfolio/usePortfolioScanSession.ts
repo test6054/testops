@@ -45,11 +45,11 @@ export function usePortfolioScanSession() {
 
   async function loadContext(options?: { silent?: boolean }) {
     if (!dispatchTicketId.value) {
-      showUserError(null, '缺少派单 ticketId，请从 Hub 或派单页进入')
+      showUserError(null, '缺少派单信息，请从扫描台首页或派单页进入')
       return
     }
     if (!collectMode.value || !teacherId.value) {
-      showUserError(null, '缺少采集模式或教师 ID')
+      showUserError(null, '缺少采集模式或教师编号')
       return
     }
     if (!options?.silent) {
@@ -60,7 +60,7 @@ export function usePortfolioScanSession() {
       if (!setup.bound || !setup.scannerDeviceId || !setup.scannerStationId) {
         portfolioContext.value = {
           scanAllowed: false,
-          blockReason: '请先激活扫描 Agent',
+          blockReason: '请先激活本机扫描服务',
         }
         return
       }
@@ -97,11 +97,11 @@ export function usePortfolioScanSession() {
 
   async function startSession() {
     if (!dispatchTicketId.value) {
-      showUserError(null, '缺少派单 ticketId，请从 Hub 或派单页进入')
+      showUserError(null, '缺少派单信息，请从扫描台首页或派单页进入')
       return null
     }
     if (!collectMode.value || !teacherId.value) {
-      showUserError(null, '缺少采集模式或教师 ID')
+      showUserError(null, '缺少采集模式或教师编号')
       return null
     }
     if (portfolioContext.value?.scanAllowed !== true) {

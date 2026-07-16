@@ -10,7 +10,7 @@
     </template>
     <template #toolbar>
       <UiButton size="sm" variant="outline" @click="importModalOpen = true">
-        Excel 批量导入
+        表格文件批量导入
       </UiButton>
     </template>
     <UiAlertStrip

@@ -10,7 +10,6 @@ import type {
 } from '@/apis/portfolio/types'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { UserStatusEnum } from '@/types/enums/user-status'
-import { getUserStatusLabel, USER_STATUS_FILTER_OPTIONS } from '@/types/enums/user-status'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -40,7 +39,8 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
-import { showUserError } from '@/utils/error-handler'
+import { getUserStatusLabel, USER_STATUS_FILTER_OPTIONS } from '@/types/enums/user-status'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -313,7 +313,7 @@ function handleSearch() {
   loadPage()
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadPage()
@@ -436,7 +436,7 @@ async function reloadDetail() {
   }
 }
 
-function openIdentityCreate(context: { userId: string; nickName?: string; departmentId?: string }) {
+function openIdentityCreate(context: { userId: string, nickName?: string, departmentId?: string }) {
   if (interactionLocked.value) return
   identityMode.value = 'create'
   identityEditor.teacherUserId = context.userId
@@ -477,15 +477,15 @@ function openIdentityEdit(identity: PortfolioTeacherIdentityVO) {
 async function submitIdentity() {
   const teacherUserId = identityEditor.teacherUserId
   if (!teacherUserId) {
-    message.warning('教师身份上下文已失效，请重新打开')
+    showFormValidationMessage('教师身份上下文已失效，请重新打开')
     return
   }
   if (
-    identityEditor.validFrom &&
-    identityEditor.validTo &&
-    identityEditor.validFrom > identityEditor.validTo
+    identityEditor.validFrom
+    && identityEditor.validTo
+    && identityEditor.validFrom > identityEditor.validTo
   ) {
-    message.warning('有效截止日期不能早于有效起始日期')
+    showFormValidationMessage('有效截止日期不能早于有效起始日期')
     return
   }
   const targetId = identityEditor.id || 'new'
@@ -557,7 +557,7 @@ async function exportRoster() {
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出教师名册失败')
   } finally {
     endOperation(operation)
   }
@@ -789,7 +789,7 @@ onMounted(async () => {
             :disabled="writing"
           />
         </a-form-item>
-        <a-form-item label="归属扩展组织 ID">
+        <a-form-item label="归属扩展组织编号">
           <a-select
             v-model:value="identityEditor.anchorPortfolioOrgId"
             allow-clear
@@ -803,14 +803,14 @@ onMounted(async () => {
         <a-form-item label="有效起始">
           <a-input
             v-model:value="identityEditor.validFrom"
-            placeholder="YYYY-MM-DD"
+            placeholder="年-月-日，例如 2026-07-16"
             :disabled="writing"
           />
         </a-form-item>
         <a-form-item label="有效截止">
           <a-input
             v-model:value="identityEditor.validTo"
-            placeholder="YYYY-MM-DD"
+            placeholder="年-月-日，例如 2026-07-16"
             :disabled="writing"
           />
         </a-form-item>

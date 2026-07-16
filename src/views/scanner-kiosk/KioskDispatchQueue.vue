@@ -155,7 +155,7 @@ async function changePage(page: number) {
         <p>手动选单 · {{ queueScopeLabel }}</p>
       </div>
       <div class="dispatch-queue__head-actions">
-        <UiButton size="sm" variant="ghost" @click="goHub">回 Hub</UiButton>
+        <UiButton size="sm" variant="ghost" @click="goHub">回扫描台首页</UiButton>
         <UiButton
           size="sm"
           variant="outline"

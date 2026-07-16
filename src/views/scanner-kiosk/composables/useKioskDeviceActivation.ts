@@ -124,30 +124,30 @@ function createKioskDeviceActivation() {
       if (activationGateReason.value === KioskActivationGateReasonCode.TOKEN_RESET_REQUIRED) {
         return {
           headline: '需要重新激活一体机',
-          detail: 'push_token 已变更，请重新输入激活码（一次激活，三类采集共用）。',
+          detail: '工位凭证已变更，请重新输入激活码（一次激活，三类采集共用）。',
         }
       }
       if (manualActivationGateOpen.value && isDeviceBound.value) {
         return {
           headline: '重新激活本机工位',
-          detail: '输入新的激活码将替换当前工位绑定；考试 / 归档 / 档案袋共用同一 push_token。',
+          detail: '输入新的激活码将替换当前工位绑定；考试 / 归档 / 档案袋共用同一工位凭证。',
         }
       }
       return {
         headline: '请先激活本机扫描工位',
         detail:
-          '设备激活与业务类型无关：完成一次激活后，考试扫描、考后归档、档案袋采集共用同一 push_token。',
+          '设备激活与业务类型无关：完成一次激活后，考试扫描、考后归档、档案袋采集共用同一工位凭证。',
       }
     }
     if (kioskBrowserSessionSyncNeeded.value) {
       return {
-        headline: '正在同步本机 Agent 会话',
+        headline: '正在同步本机扫描服务会话',
         detail: KIOSK_BROWSER_SESSION_SYNC_MESSAGE,
       }
     }
     return {
       headline: '设备已激活',
-      detail: '本机工位已绑定，考试扫描、考后归档、档案袋采集共用同一 push_token。',
+      detail: '本机工位已绑定，考试扫描、考后归档、档案袋采集共用同一工位凭证。',
     }
   })
 

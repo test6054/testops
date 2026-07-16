@@ -2,7 +2,7 @@
 import { ref, watch } from 'vue'
 import { rejectArchiveVolumeCollection } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
 const props = defineProps<{
   open: boolean
@@ -11,7 +11,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  rejected: []
+  "rejected": []
 }>()
 
 const reason = ref('')
@@ -27,7 +27,7 @@ watch(
 async function submit() {
   const trimmed = reason.value.trim()
   if (!trimmed) {
-    showUserError(null, '请填写驳回原因')
+    showFormValidationMessage('请填写驳回原因')
     return
   }
   submitting.value = true
@@ -36,7 +36,7 @@ async function submit() {
     emit('update:open', false)
     emit('rejected')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '驳回收材失败')
   } finally {
     submitting.value = false
   }

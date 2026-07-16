@@ -6,6 +6,7 @@ import { getTenantConfig } from '@/apis/edu/tenant-config'
 import { getTenantDetail } from '@/apis/edu/tenant-management'
 import { STORAGE_TENANT_ID } from '@/constants/storage-keys'
 import { TenantStatusEnum } from '@/types/enums'
+import { showUserError } from '@/utils/error-handler'
 
 export const useTenantStore = defineStore(
   'tenant',
@@ -83,9 +84,10 @@ export const useTenantStore = defineStore(
           // 保存租户配置数据
           tenantConfig.value = response
         }
-      } catch {
+      } catch (error) {
         // 获取配置失败，清空配置数据
         tenantConfig.value = null
+        showUserError(error, '学校配置加载失败')
       }
     }
 

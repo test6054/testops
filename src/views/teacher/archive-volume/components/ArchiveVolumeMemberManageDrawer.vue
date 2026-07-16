@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ArchiveVolumeMemberDisplayVO } from '@/apis/mark/archive-volume'
-import { addArchiveVolumeMember, removeArchiveVolumeMember } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
 import { ref, watch } from 'vue'
+import { addArchiveVolumeMember, removeArchiveVolumeMember } from '@/apis/mark/archive-volume'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -10,7 +10,7 @@ import {
   ArchiveVolumeMemberRoleCode,
   archiveVolumeMemberRoleLabel,
 } from '@/types/enums/archive-volume-member-role-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
 const props = defineProps<{
   open: boolean
@@ -20,7 +20,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [boolean]
-  changed: []
+  "changed": []
 }>()
 
 const addUserId = ref('')
@@ -43,7 +43,7 @@ function close() {
 
 async function handleAdd() {
   if (!addUserId.value.trim()) {
-    message.warning('请输入用户 ID')
+    showFormValidationMessage('请输入用户编号')
     return
   }
   submitting.value = true

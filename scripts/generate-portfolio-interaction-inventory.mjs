@@ -57,9 +57,9 @@ function directiveExpression(prop) {
 function findDirective(node, name, argument) {
   return node.props.find(
     (prop) =>
-      prop.type === 7 &&
-      prop.name === name &&
-      (argument === undefined || directiveArg(prop) === argument),
+      prop.type === 7
+      && prop.name === name
+      && (argument === undefined || directiveArg(prop) === argument),
   )
 }
 
@@ -107,11 +107,11 @@ function nodeLabel(node) {
   const content = compact(values.join(' '))
   if (content) return content
   return (
-    bindingValue(node, 'aria-label') ||
-    bindingValue(node, 'title') ||
-    findStaticAttribute(node, 'aria-label') ||
-    findStaticAttribute(node, 'title') ||
-    '无静态文案'
+    bindingValue(node, 'aria-label')
+    || bindingValue(node, 'title')
+    || findStaticAttribute(node, 'aria-label')
+    || findStaticAttribute(node, 'title')
+    || '无静态文案'
   )
 }
 

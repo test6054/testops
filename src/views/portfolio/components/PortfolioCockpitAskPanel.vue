@@ -16,7 +16,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
 import { parsePortfolioCockpitAskPayload } from '@/utils/portfolio-cockpit-payload'
 
@@ -110,7 +110,7 @@ function sleep(ms: number) {
 
 function applyAnalysisDetail(detail: PortfolioAiAnalysisDetailVO) {
   if (detail.analysisType !== PortfolioAiAnalysisTypeCode.COCKPIT_ASK) {
-    showUserError(null, '该 AI 任务不属于驾驶舱智能问数')
+    showUserError(null, '该智能分析任务不属于驾驶舱智能问数')
     return
   }
   analysisDetail.value = detail
@@ -194,12 +194,12 @@ async function pollAnalysis(taskId: string, requestToken = resultRequestToken.va
         if (requestToken !== resultRequestToken.value) {
           return
         }
-        showUserError(null, 'AI 问数任务失败，请在问数历史查看原因后重新提交')
+        showUserError(null, '智能问数任务失败，请在问数历史查看原因后重新提交')
         return
       }
       await sleep(2000)
     }
-    showUserError(null, 'AI 任务超时，请在问数历史中查看结果')
+    showUserError(null, '智能分析任务超时，请在问数历史中查看结果')
   } finally {
     if (requestToken === resultRequestToken.value) {
       polling.value = false
@@ -210,7 +210,7 @@ async function pollAnalysis(taskId: string, requestToken = resultRequestToken.va
 async function submitAsk() {
   const question = userQuestion.value.trim()
   if (!question) {
-    message.warning('请输入指标问数问题')
+    showFormValidationMessage('请输入指标问数问题')
     return
   }
   const currentToken = ++resultRequestToken.value
@@ -295,7 +295,7 @@ async function openTaskResult(taskId: string) {
       if (currentToken !== resultRequestToken.value) {
         return
       }
-      showUserError(null, 'AI 问数任务失败，请在问数历史查看原因后重新提交')
+      showUserError(null, '智能问数任务失败，请在问数历史查看原因后重新提交')
       return
     }
     await pollAnalysis(taskId, currentToken)

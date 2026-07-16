@@ -19,7 +19,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useQueryTable } from '@/composables/useQueryTable'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -97,11 +97,11 @@ function resetForm() {
 
 async function saveRecord() {
   if (!form.recordTitle.trim()) {
-    message.warning('请填写标题')
+    showFormValidationMessage('请填写标题')
     return
   }
   if (requiresTeacher.value && !form.teacherUserId) {
-    message.warning('成果条目须选择所属教师')
+    showFormValidationMessage('成果条目须选择所属教师')
     return
   }
   try {
@@ -117,7 +117,7 @@ async function saveRecord() {
     resetForm()
     await loadPage()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存发展记录失败')
   }
 }
 
@@ -127,7 +127,7 @@ async function removeRecord(id: string) {
     message.success('已删除')
     await loadPage()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '删除发展记录失败')
   }
 }
 
@@ -142,7 +142,7 @@ async function exportExcel() {
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出发展记录失败')
   }
 }
 
@@ -178,7 +178,7 @@ watch(
       <div class="toolbar">
         <UiButton @click="loadPage"> 刷新 </UiButton>
         <UiButton v-if="showEditor" @click="importModalOpen = true"> 批量导入 </UiButton>
-        <UiButton @click="exportExcel"> 导出 Excel </UiButton>
+        <UiButton @click="exportExcel"> 导出表格文件 </UiButton>
       </div>
       <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无发展记录" />
       <UiDataTable

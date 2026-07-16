@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioTeacherIdentityTypeCode } from '@/apis/portfolio/enums'
+import type { PortfolioTeacherOneTableSummaryVO } from '@/apis/portfolio/teacher'
+import { message } from 'ant-design-vue'
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   PortfolioCompletenessLevelDescription,
   PortfolioTeacherIdentityTypeDescription,
 } from '@/apis/portfolio/enums'
-import type { PortfolioTeacherOneTableSummaryVO } from '@/apis/portfolio/teacher'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
-import { message } from 'ant-design-vue'
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { PORTFOLIO_COMPLETENESS_LEVEL_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -23,7 +23,7 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -70,7 +70,7 @@ async function loadSummary() {
     }
     summary.value = null
     loadFailed.value = true
-    showUserError(error)
+    showUserError(error, '加载教师一张表失败')
   } finally {
     if (requestToken.value === currentToken) {
       loading.value = false
@@ -148,7 +148,7 @@ function openCategoryCorrection(categoryId: string, recordId?: string) {
 
 async function exportOneTable() {
   if (canPickTeachers.value && !targetTeacherId.value) {
-    message.warning('请先选择目标教师')
+    showFormValidationMessage('请先选择目标教师')
     return
   }
   const scopeToken = requestToken.value
@@ -170,7 +170,7 @@ async function exportOneTable() {
     if (requestToken.value !== scopeToken || targetTeacherId.value !== teacherId) {
       return
     }
-    showUserError(error)
+    showUserError(error, '导出教师一张表失败')
   } finally {
     if (requestToken.value === scopeToken && targetTeacherId.value === teacherId) {
       exporting.value = false

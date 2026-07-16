@@ -24,7 +24,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -102,7 +102,7 @@ const auditOpinion = ref('')
 const columns: ColumnsType = [
   { title: '标题', dataIndex: 'planTitle', key: 'planTitle' },
   { title: '年度', dataIndex: 'planYear', key: 'planYear', width: 88 },
-  { title: '科室 ID', dataIndex: 'portfolioOrgId', key: 'portfolioOrgId', width: 120 },
+  { title: '科室编号', dataIndex: 'portfolioOrgId', key: 'portfolioOrgId', width: 120 },
   { title: '状态', key: 'planStatus', width: 120 },
   { title: '操作', key: 'actions', width: 120 },
 ]
@@ -131,7 +131,7 @@ async function loadPage() {
     if (currentToken !== reviewRequestToken.value) {
       return
     }
-    showUserError(error)
+    showUserError(error, '加载发展规划列表失败')
   } finally {
     if (currentToken === reviewRequestToken.value) {
       loading.value = false
@@ -194,7 +194,7 @@ async function confirmReview() {
     return
   }
   if (reviewAction.value === 'return' && !auditOpinion.value.trim()) {
-    message.warning('请填写退回意见')
+    showFormValidationMessage('请填写退回意见')
     return
   }
   try {
@@ -214,13 +214,13 @@ async function confirmReview() {
     reviewModalOpen.value = false
     await loadPage()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '审核发展规划失败')
   }
 }
 
 async function exportPlans() {
   if (!filterForm.planYear) {
-    message.warning('请填写年度')
+    showFormValidationMessage('请填写年度')
     return
   }
   try {
@@ -230,7 +230,7 @@ async function exportPlans() {
     await downloadPortfolioExcelExport(result)
     message.success('规划已导出')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出发展规划失败')
   }
 }
 
@@ -261,7 +261,7 @@ watch(
     <template #context>
       <ContextBar show-title layout="workbench" title="年度规划审核">
         <template v-if="canPickTeachers" #actions>
-          <UiButton @click="exportPlans"> 导出 Excel </UiButton>
+          <UiButton @click="exportPlans"> 导出表格文件 </UiButton>
         </template>
       </ContextBar>
     </template>

@@ -227,8 +227,15 @@ export interface SyncTaskPageRequest extends QueryDto {
  * 分页查询同步任务
  * POST /api/exam/teaching-affairs/sync-task/page
  */
-export function pageSyncTasks(request: SyncTaskPageRequest): Promise<PageResult<ExamTeachingAffairsSyncTask>> {
-  return http.post<PageResult<ExamTeachingAffairsSyncTask>>('/api/exam/teaching-affairs/sync-task/page', request)
+export function pageSyncTasks(
+  request: SyncTaskPageRequest,
+  config?: import('@/config/axios/types').ExtendedAxiosRequestConfig,
+): Promise<PageResult<ExamTeachingAffairsSyncTask>> {
+  return http.post<PageResult<ExamTeachingAffairsSyncTask>>(
+    '/api/exam/teaching-affairs/sync-task/page',
+    request,
+    config,
+  )
 }
 
 export function executeGradePassback(syncTaskId: string): Promise<void> {
@@ -249,10 +256,12 @@ export function cancelSyncTask(syncTaskId: string): Promise<void> {
  */
 export function listPassbackRecords(
   request: PassbackRecordQueryRequest,
+  config?: import('@/config/axios/types').ExtendedAxiosRequestConfig,
 ): Promise<PageResult<PassbackRecordResponse>> {
   return http.post<PageResult<PassbackRecordResponse>>(
     '/api/exam/teaching-affairs/passback/list',
     request,
+    config,
   )
 }
 

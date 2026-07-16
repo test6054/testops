@@ -105,14 +105,14 @@
 
 <script lang="ts" setup>
 import type { ArchiveVolumeAccessRecordResponse } from '@/apis/mark/archive-volume'
+import message from 'ant-design-vue/es/message'
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   approveArchiveVolumeAccess,
   listPendingArchiveAccessRecords,
   rejectArchiveVolumeAccess,
 } from '@/apis/mark/archive-volume'
-import message from 'ant-design-vue/es/message'
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -127,7 +127,7 @@ import {
   archiveAccessStatusLabel,
   archiveAccessStatusTone,
 } from '@/utils/archive-access-record-ui'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'TeacherArchiveVolumeAccessPending' })
@@ -216,7 +216,7 @@ async function submitApprove(accessRecordId: string): Promise<void> {
 
 async function submitReject(accessRecordId: string): Promise<void> {
   if (!rejectComment.value.trim()) {
-    message.warning('请填写驳回原因')
+    showFormValidationMessage('请填写驳回原因')
     return
   }
   submitting.value = true

@@ -326,7 +326,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE } from '@/composables/useMarkExamSelector'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { formatDateTime, formatScore } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -543,31 +543,38 @@ const columns: ColumnsType<StudentGradeReviewRequestItemResponse> = [
 ]
 
 async function loadExamFilterOptions(keyword?: string) {
-  const page = await pageMyExams({
-    pageNum: 1,
-    pageSize: MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE,
-    keyword: keyword?.trim() || undefined,
-  })
-  examFilterOptions.value = page.list.map((e) => ({
-    value: e.examId,
-    label: `${e.examName} (${e.examNo})`,
-  }))
+  try {
+    const page = await pageMyExams({
+      pageNum: 1,
+      pageSize: MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE,
+      keyword: keyword?.trim() || undefined,
+    })
+    examFilterOptions.value = page.list.map((e) => ({
+      value: e.examId,
+      label: `${e.examName} (${e.examNo})`,
+    }))
+  } catch (error) {
+    examFilterOptions.value = []
+    showUserError(error, '考试筛选项加载失败')
+  }
 }
 
 async function loadExams() {
   loadingExams.value = true
   try {
-    const [appealablePage, stats] = await Promise.all([
-      pageMyExams({
-        reviewWindowAppealableOnly: true,
-        pageNum: 1,
-        pageSize: MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE,
-      }),
-      getMyExamStats({}),
-    ])
+    const appealablePage = await pageMyExams({
+      reviewWindowAppealableOnly: true,
+      pageNum: 1,
+      pageSize: MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE,
+    })
     appealableExams.value = appealablePage.list
     exams.value = appealablePage.list
-    examStats.value = stats
+    try {
+      examStats.value = await getMyExamStats({})
+    } catch (error) {
+      examStats.value = null
+      showUserError(error, '考试统计加载失败')
+    }
     await loadExamFilterOptions()
     if (appealablePage.total > MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE) {
       message.warning(
@@ -581,7 +588,7 @@ async function loadExams() {
           selectedExamId.value = queryExamId
         } else if (exams.value.some((e) => e.examId === queryExamId)) {
           selectedExamId.value = undefined
-          message.warning('该考试当前不在复核窗口内，无法提交新申请')
+          showFormValidationMessage('该考试当前不在复核窗口内，无法提交新申请')
         } else {
           selectedExamId.value = appealableExams.value[0].examId
         }
@@ -731,12 +738,12 @@ async function onEvidencePick(event: Event): Promise<void> {
     return
   }
   if (file.size > EVIDENCE_MAX_BYTES) {
-    message.error('单个佐证文件不能超过 10MB')
+    showFormValidationMessage('单个佐证文件不能超过十兆字节')
     input.value = ''
     return
   }
   if (evidenceItems.value.length >= EVIDENCE_MAX_COUNT) {
-    message.warning(`最多上传 ${EVIDENCE_MAX_COUNT} 个佐证文件`)
+    showFormValidationMessage(`最多上传 ${EVIDENCE_MAX_COUNT} 个佐证文件`)
     input.value = ''
     return
   }
@@ -762,7 +769,7 @@ function removeEvidence(fileNodeId: string): void {
 function openSubmitModal() {
   if (!selectedAppealableExam.value) return
   if (selectedExamCannotSubmitReview.value) {
-    message.warning(selectedExamSubmitBlockedReason.value || '当前暂不能提交复核申请')
+    showFormValidationMessage(selectedExamSubmitBlockedReason.value || '当前暂不能提交复核申请')
     return
   }
   sourceQuestionId.value = undefined
@@ -776,15 +783,15 @@ function openSubmitModal() {
 
 async function submit() {
   if (!selectedAppealableExam.value) {
-    message.warning('请选择一个考试')
+    showFormValidationMessage('请选择一个考试')
     return
   }
   if (selectedExamCannotSubmitReview.value) {
-    message.warning(selectedExamSubmitBlockedReason.value || '当前暂不能提交复核申请')
+    showFormValidationMessage(selectedExamSubmitBlockedReason.value || '当前暂不能提交复核申请')
     return
   }
   if (!form.requestReason.trim()) {
-    message.warning('请填写申请理由')
+    showFormValidationMessage('请填写申请理由')
     return
   }
   submitting.value = true

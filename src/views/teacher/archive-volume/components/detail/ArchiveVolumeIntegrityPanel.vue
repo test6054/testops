@@ -2,11 +2,13 @@
   <WorkbenchSurfaceCard class="archive-volume-integrity-panel">
     <template #toolbar>
       <div class="archive-volume-integrity-panel__actions">
-        <UiButton size="sm" :loading="checkingIntegrity" @click="emit('run-integrity-check')">
+        <UiButton
+          v-if="canRunIntegrity"
+          size="sm"
+          :loading="checkingIntegrity"
+          @click="emit('run-integrity-check')"
+        >
           完整性自检
-        </UiButton>
-        <UiButton size="sm" :loading="checkingFourProperty" @click="runFourPropertyCheck">
-          四性检测
         </UiButton>
         <UiButton
           v-if="canWaiveIntegrity"
@@ -122,6 +124,7 @@
         </p>
         <div class="archive-volume-integrity-panel__section-actions">
           <UiButton
+            v-if="canRunFourProperty"
             size="sm"
             variant="ghost"
             :loading="checkingFourProperty"
@@ -296,6 +299,9 @@ import type {
   ArchiveSecurityLevelCode,
   ArchiveVolumeDetailResponse,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref } from 'vue'
 import {
   allowArchiveMaterialDelay,
   ARCHIVE_INTEGRITY_STATUS_TONE,
@@ -309,9 +315,6 @@ import {
   waiveArchiveMaterialMissing,
   waiveArchiveVolumeIntegrity,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref } from 'vue'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -323,7 +326,7 @@ import {
   buildFourPropertyDimensionViews,
   countFourPropertyPassed,
 } from '@/utils/archive-four-property-diagnostic'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ArchiveFourPropertyGrid from '@/views/teacher/archive-volume/components/detail/ArchiveFourPropertyGrid.vue'
 import ArchiveVolumeSelfCheckList from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeSelfCheckList.vue'
@@ -336,6 +339,8 @@ const props = defineProps<{
   displayedIntegrityResult: NonNullable<ArchiveVolumeDetailResponse['latestIntegrityCheck']> | null
   displayedFourProperty: NonNullable<ArchiveVolumeDetailResponse['latestFourPropertyCheck']> | null
   checkingIntegrity: boolean
+  canRunIntegrity: boolean
+  canRunFourProperty: boolean
   canAllowMaterialDelay: boolean
   canWaiveMaterialMissing: boolean
   canWaiveIntegrity: boolean
@@ -343,7 +348,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  refreshed: []
+  "refreshed": []
   'four-property-checked': [result: Awaited<ReturnType<typeof checkArchiveVolumeFourProperty>>]
   'run-integrity-check': []
   'open-sign-off': []
@@ -397,10 +402,10 @@ const missingColumns: ColumnsType<ArchiveIntegrityMissingItemVO> = [
 
 function isArchiveIntegrityMissingItem(record: unknown): record is ArchiveIntegrityMissingItemVO {
   return (
-    typeof record === 'object' &&
-    record !== null &&
-    'materialType' in record &&
-    'catalogCode' in record
+    typeof record === 'object'
+    && record !== null
+    && 'materialType' in record
+    && 'catalogCode' in record
   )
 }
 
@@ -441,7 +446,7 @@ function openConfirmSecurityMarkModal() {
 
 async function submitConfirmSecurityMark() {
   if (!confirmSecurityMarkReason.value.trim()) {
-    message.warning('请填写定密确认说明')
+    showFormValidationMessage('请填写定密确认说明')
     return
   }
   confirmingSecurityMark.value = true
@@ -455,7 +460,7 @@ async function submitConfirmSecurityMark() {
     confirmSecurityMarkOpen.value = false
     emit('refreshed')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '确认定密失败')
   } finally {
     confirmingSecurityMark.value = false
   }
@@ -469,15 +474,15 @@ function openUpdateSecurityLevelModal() {
 
 async function submitUpdateSecurityLevel() {
   if (!updateSecurityLevelForm.securityLevel) {
-    message.warning('请选择新密级')
+    showFormValidationMessage('请选择新密级')
     return
   }
   if (updateSecurityLevelForm.securityLevel === props.detail.volume.securityLevel) {
-    message.warning('新密级不能与当前密级相同')
+    showFormValidationMessage('新密级不能与当前密级相同')
     return
   }
   if (!updateSecurityLevelForm.reason.trim()) {
-    message.warning('请填写变更原因')
+    showFormValidationMessage('请填写变更原因')
     return
   }
   updatingSecurityLevel.value = true
@@ -492,13 +497,14 @@ async function submitUpdateSecurityLevel() {
     updateSecurityLevelOpen.value = false
     emit('refreshed')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '变更密级失败')
   } finally {
     updatingSecurityLevel.value = false
   }
 }
 
 async function runFourPropertyCheck() {
+  if (!props.canRunFourProperty || checkingFourProperty.value) return
   checkingFourProperty.value = true
   try {
     const result = await checkArchiveVolumeFourProperty(props.volumeId)
@@ -506,7 +512,7 @@ async function runFourPropertyCheck() {
     message.success('四性检测完成')
     emit('refreshed')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '四性检测失败')
   } finally {
     checkingFourProperty.value = false
   }
@@ -523,15 +529,15 @@ function openDelayAllowModal(item: ArchiveIntegrityMissingItemVO) {
 async function submitDelayAllow() {
   if (!delayAllowTarget.value) return
   if (!delayAllowForm.deadline) {
-    message.warning('请选择补交截止时间')
+    showFormValidationMessage('请选择补交截止时间')
     return
   }
   if (!delayAllowForm.responsibleUserId) {
-    message.warning('请选择延迟补交责任人')
+    showFormValidationMessage('请选择延迟补交责任人')
     return
   }
   if (!delayAllowForm.missingReason.trim()) {
-    message.warning('请填写缺失说明')
+    showFormValidationMessage('请填写缺失说明')
     return
   }
   delayAllowSubmitting.value = true
@@ -548,7 +554,7 @@ async function submitDelayAllow() {
     delayAllowOpen.value = false
     emit('refreshed')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '登记延迟补交失败')
   } finally {
     delayAllowSubmitting.value = false
   }
@@ -563,7 +569,7 @@ function openWaiveMissingModal(item: ArchiveIntegrityMissingItemVO) {
 async function submitWaiveMissing() {
   if (!waiveMissingTarget.value) return
   if (!waiveMissingReason.value.trim()) {
-    message.warning('请填写豁免原因')
+    showFormValidationMessage('请填写豁免原因')
     return
   }
   waiveMissingSubmitting.value = true
@@ -578,7 +584,7 @@ async function submitWaiveMissing() {
     waiveMissingOpen.value = false
     emit('refreshed')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '材料缺失豁免失败')
   } finally {
     waiveMissingSubmitting.value = false
   }
@@ -591,7 +597,7 @@ function openWaiveIntegrityModal() {
 
 async function submitWaiveIntegrity() {
   if (!waiveIntegrityReason.value.trim()) {
-    message.warning('请填写豁免原因')
+    showFormValidationMessage('请填写豁免原因')
     return
   }
   waivingIntegrity.value = true
@@ -604,7 +610,7 @@ async function submitWaiveIntegrity() {
     waiveIntegrityOpen.value = false
     emit('refreshed')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '完整性豁免失败')
   } finally {
     waivingIntegrity.value = false
   }

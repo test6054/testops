@@ -108,7 +108,10 @@ export const useMarkTaskStore = defineStore('markTask', () => {
       tasksLoading.value = true
     }
     try {
-      const page = await pageMarkingTasks({ ...request, pageNum, pageSize })
+      const page = await pageMarkingTasks(
+        { ...request, pageNum, pageSize },
+        options?.silent ? { showErrorMessage: false } : undefined,
+      )
       tasks.value = page.list
       tasksLoadedExamId.value = request.examId
       tasksPageNum.value = page.pageNum

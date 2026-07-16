@@ -202,15 +202,17 @@ async function loadList() {
   loading.value = true
   try {
     const listQuery = buildProfileListQuery()
-    const [page, summary] = await Promise.all([
-      professionAlgorithmProfileApi.page(listQuery),
-      professionAlgorithmProfileApi.signalSummary(listQuery),
-    ])
+    const page = await professionAlgorithmProfileApi.page(listQuery)
     list.value = page.list
-    signalSummary.value = summary
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
     total.value = page.total
+    try {
+      signalSummary.value = await professionAlgorithmProfileApi.signalSummary(listQuery)
+    } catch (error) {
+      signalSummary.value = null
+      showUserError(error, '算法实例状态统计加载失败')
+    }
     if (list.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadList()
@@ -224,22 +226,30 @@ async function loadList() {
 }
 
 async function loadDicts(templateKeyword?: string, standardKeyword?: string) {
-  const [templatePage, standardPage] = await Promise.all([
-    professionAlgorithmTemplateApi.page({
+  try {
+    const templatePage = await professionAlgorithmTemplateApi.page({
       pageNum: 1,
       pageSize: QUALITY_SELECTOR_PAGE_SIZE,
       enabled: true,
       keyword: templateKeyword?.trim() || undefined,
-    }),
-    accreditationStandardApi.page({
+    })
+    templates.value = templatePage.list
+  } catch (error) {
+    templates.value = []
+    showUserError(error, '算法模板字典加载失败')
+  }
+  try {
+    const standardPage = await accreditationStandardApi.page({
       pageNum: 1,
       pageSize: QUALITY_SELECTOR_PAGE_SIZE,
       enabled: true,
       keyword: standardKeyword?.trim() || undefined,
-    }),
-  ])
-  templates.value = templatePage.list
-  standards.value = standardPage.list
+    })
+    standards.value = standardPage.list
+  } catch (error) {
+    standards.value = []
+    showUserError(error, '认证标准字典加载失败')
+  }
 }
 
 let templateDictSearchTimer: ReturnType<typeof setTimeout> | null = null

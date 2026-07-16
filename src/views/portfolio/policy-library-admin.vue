@@ -6,9 +6,9 @@ import type {
   PortfolioPolicyDocumentVO,
   PortfolioPolicyIndicatorMappingVO,
 } from '@/apis/portfolio/policy'
-import { portfolioPolicyApi } from '@/apis/portfolio/policy'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { portfolioPolicyApi } from '@/apis/portfolio/policy'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -29,7 +29,7 @@ import {
   PortfolioPolicyLevelCode,
   PortfolioPolicyLevelDescription,
 } from '@/types/enums/portfolio-policy-level-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const loading = ref(false)
@@ -233,13 +233,13 @@ async function saveDraft() {
   const documentTitle = form.documentTitle.trim()
   const topicCategory = form.topicCategory.trim()
   if (
-    !documentCode ||
-    !documentTitle ||
-    !topicCategory ||
-    !form.publishDate ||
-    !form.fullTextContent.trim()
+    !documentCode
+    || !documentTitle
+    || !topicCategory
+    || !form.publishDate
+    || !form.fullTextContent.trim()
   ) {
-    message.warning('请完整填写文号、标题、主题分类、发布日期和政策全文')
+    showFormValidationMessage('请完整填写文号、标题、主题分类、发布日期和政策全文')
     return
   }
   const operation = `document:save:${editingId.value || 'new'}`
@@ -352,11 +352,11 @@ async function openDetail(row: PortfolioPolicyDocumentVO) {
 
 async function compareVersions() {
   if (!compareLeftId.value || !compareRightId.value) {
-    message.warning('请选择左右两个政策版本')
+    showFormValidationMessage('请选择左右两个政策版本')
     return
   }
   if (compareLeftId.value === compareRightId.value) {
-    message.warning('左右版本不能相同')
+    showFormValidationMessage('左右版本不能相同')
     return
   }
   compareLoading.value = true
@@ -395,15 +395,15 @@ async function saveMappings() {
   const incomplete = mappingRows.value.some(
     (item) =>
       Boolean(
-        item.clauseCode.trim() ||
-        item.clauseTitle.trim() ||
-        item.indicatorCode.trim() ||
-        item.materialRequirement.trim(),
-      ) &&
-      (!item.clauseCode.trim() || !item.clauseTitle.trim() || !item.indicatorCode.trim()),
+        item.clauseCode.trim()
+        || item.clauseTitle.trim()
+        || item.indicatorCode.trim()
+        || item.materialRequirement.trim(),
+      )
+      && (!item.clauseCode.trim() || !item.clauseTitle.trim() || !item.indicatorCode.trim()),
   )
   if (incomplete) {
-    message.warning('每条指标映射必须完整填写条款编码、条款标题和指标编码')
+    showFormValidationMessage('每条指标映射必须完整填写条款编码、条款标题和指标编码')
     return
   }
   const policyDocumentId = detail.value.document.id
@@ -458,13 +458,13 @@ async function submitSupersede() {
   const documentTitle = supersedeForm.documentTitle.trim()
   const topicCategory = supersedeForm.topicCategory.trim()
   if (
-    !documentCode ||
-    !documentTitle ||
-    !topicCategory ||
-    !supersedeForm.publishDate ||
-    !supersedeForm.fullTextContent.trim()
+    !documentCode
+    || !documentTitle
+    || !topicCategory
+    || !supersedeForm.publishDate
+    || !supersedeForm.fullTextContent.trim()
   ) {
-    message.warning('请完整填写修订版文号、标题、主题分类、发布日期和全文')
+    showFormValidationMessage('请完整填写修订版文号、标题、主题分类、发布日期和全文')
     return
   }
   const operation = `document:supersede:${sourceDocumentId}`
@@ -496,7 +496,7 @@ function onSearch() {
   void loadPage()
 }
 
-function onPageChange(page: { current: number; pageSize: number }) {
+function onPageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   void loadPage()
@@ -543,9 +543,9 @@ onMounted(() => {
                 { key: 'preview', label: '预览', disabled: writing },
                 ...(record.documentStatus === PortfolioPolicyDocumentStatusCode.DRAFT
                   ? [
-                      { key: 'edit', label: '编辑', disabled: writing },
-                      { key: 'publish', label: '发布', disabled: writing },
-                    ]
+                    { key: 'edit', label: '编辑', disabled: writing },
+                    { key: 'publish', label: '发布', disabled: writing },
+                  ]
                   : []),
                 ...(record.documentStatus === PortfolioPolicyDocumentStatusCode.EFFECTIVE
                   ? [{ key: 'supersede', label: '修订', disabled: writing }]
@@ -612,7 +612,7 @@ onMounted(() => {
       />
       <a-input
         v-model:value="form.publishDate"
-        placeholder="发布日期 YYYY-MM-DD"
+        placeholder="发布日期，年-月-日例如 2026-07-16"
         class="policy-admin__field"
         :disabled="writing"
       />
@@ -677,9 +677,9 @@ onMounted(() => {
           </div>
           <div class="policy-admin__mapping-actions">
             <UiButton :disabled="writing" @click="addMappingRow">新增映射</UiButton>
-            <UiButton :loading="mappingSaving" :disabled="writing" @click="saveMappings"
-              >保存映射</UiButton
-            >
+            <UiButton :loading="mappingSaving" :disabled="writing" @click="saveMappings">
+              保存映射
+            </UiButton>
           </div>
           <h4 v-if="detail.versionHistory.length" class="policy-admin__section-title">版本历史</h4>
           <div v-if="detail.versionHistory.length > 1" class="policy-admin__compare-bar">
@@ -704,9 +704,9 @@ onMounted(() => {
               "
               :disabled="compareLoading"
             />
-            <UiButton size="sm" :loading="compareLoading" @click="compareVersions"
-              >查看差异</UiButton
-            >
+            <UiButton size="sm" :loading="compareLoading" @click="compareVersions">
+              查看差异
+            </UiButton>
           </div>
           <ul v-if="detail.versionHistory.length" class="policy-admin__version-list">
             <li v-for="item in detail.versionHistory" :key="item.id">
@@ -784,7 +784,7 @@ onMounted(() => {
       />
       <a-input
         v-model:value="supersedeForm.publishDate"
-        placeholder="发布日期 YYYY-MM-DD"
+        placeholder="发布日期，年-月-日例如 2026-07-16"
         class="policy-admin__field"
         :disabled="writing"
       />

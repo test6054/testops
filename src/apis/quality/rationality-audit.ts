@@ -29,7 +29,7 @@ export interface RationalityAuditSaveRequest {
   contentAligned?: boolean
   rubricMeasurable?: boolean
   methodReasonable?: boolean
-  evidenceFileIds?: string
+  evidenceFileIds?: string[]
   remark?: string
 }
 
@@ -48,7 +48,7 @@ export interface RationalityAuditCourseLedgerItemVO {
   contentAligned?: boolean
   rubricMeasurable?: boolean
   methodReasonable?: boolean
-  evidenceFileIds?: string
+  evidenceFileIds?: string[]
   remark?: string
   createTime?: string
 }

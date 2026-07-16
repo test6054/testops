@@ -77,7 +77,7 @@ export function useArchiveScanSession() {
 
   async function loadContext(options?: { silent?: boolean }) {
     if (!volumeId.value) {
-      showUserError(null, '缺少归档卷 ID')
+      showUserError(null, '缺少归档卷编号')
       return
     }
     if (!options?.silent) {

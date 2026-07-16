@@ -76,7 +76,7 @@ export function parseTemplateParamsJson(json: string): PortfolioIndicatorTemplat
   }
   const raw: unknown = JSON.parse(json)
   if (typeof raw !== 'object' || raw === null) {
-    showFormValidationMessage('指标模板参数 JSON 必须是对象')
+    showFormValidationMessage('指标模板参数须为结构化文本对象')
     return null
   }
   const params: PortfolioIndicatorTemplateParams = {}

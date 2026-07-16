@@ -203,8 +203,9 @@ async function loadExamFullScore(examId: string): Promise<void> {
       return
     }
     examFullScore.value = questions.reduce((sum, question) => sum + (question.fullScore ?? 0), 0)
-  } catch {
+  } catch (error) {
     examFullScore.value = null
+    showUserError(error, '考试满分加载失败')
   }
 }
 

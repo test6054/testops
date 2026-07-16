@@ -324,7 +324,7 @@ async function copySurveyLink(record: IndirectEvaluationFormVO) {
     await navigator.clipboard.writeText(url)
     message.success('填答链接已复制')
   } catch {
-    message.error(`复制失败，请手动复制：${url}`)
+    message.error('复制失败，请手动复制链接')
   }
 }
 

@@ -49,11 +49,11 @@
 
 <script lang="ts" setup>
 import type { QuestionMarkingGroupResponse } from '@/apis/mark/marking-organization'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import {
   QUESTION_GROUP_STATUS_TONE,
   QuestionMarkingGroupStatusDescription,
 } from '@/apis/mark/marking-organization'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'

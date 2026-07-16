@@ -126,7 +126,6 @@ import type {
   TeachingAnalysisRecordResponse,
 } from '@/apis/mark/teaching-analysis'
 import type { MarkClassOption } from '@/composables/useMarkExamRoster'
-import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import {
@@ -142,7 +141,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { useAiAnalysisGenerationFeedback } from '@/composables/useAiAnalysisGenerationFeedback'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { deriveWeaknessLevel } from '@/utils/ai-analysis-display'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { buildBarChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
 import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
 import { classWeaknessToBarItems } from '@/utils/mark-statistics-chart'
@@ -212,7 +211,7 @@ async function reload(): Promise<void> {
 async function handleGenerate(): Promise<void> {
   const classId = props.classId
   if (!classId) {
-    message.warning('请先选择班级')
+    showFormValidationMessage('请先选择班级')
     return
   }
   await runGeneration(() => generateClassWeaknessAnalysis({ examId: props.examId, classId }), {

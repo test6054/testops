@@ -1,11 +1,21 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-status'
+import type { PortfolioMaterialStatusCode } from '@/apis/portfolio/enums'
+import type {
+  PortfolioMaterialSaveRequest,
+  PortfolioMaterialSearchResponse,
+  PortfolioMaterialVO,
+} from '@/apis/portfolio/types'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import { Input, message } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   ARCHIVE_MATERIAL_OCR_STATUS_TONE,
   ArchiveMaterialOcrStatusDescription,
 } from '@/apis/mark/archive-ocr-status'
-import type { PortfolioMaterialStatusCode } from '@/apis/portfolio/enums'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   PORTFOLIO_MATERIAL_STATUS_OPTIONS,
   PORTFOLIO_MATERIAL_TYPE_OPTIONS,
@@ -13,18 +23,8 @@ import {
   PortfolioMaterialTypeCode,
   PortfolioMaterialTypeDescription,
 } from '@/apis/portfolio/enums'
-import type {
-  PortfolioMaterialSaveRequest,
-  PortfolioMaterialSearchResponse,
-  PortfolioMaterialVO,
-} from '@/apis/portfolio/types'
-import { PORTFOLIO_MATERIAL_STATUS_TONE } from '@/apis/portfolio/types'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { Input, message } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioMaterialApi } from '@/apis/portfolio/material'
+import { PORTFOLIO_MATERIAL_STATUS_TONE } from '@/apis/portfolio/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -40,7 +40,7 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import {
   buildPortfolioIntakeReassignQuery,
   canReassignPortfolioMaterial,
@@ -68,11 +68,11 @@ function materialStatusTone(status: PortfolioMaterialStatusCode) {
 }
 
 function ocrStatusLabel(status: ArchiveMaterialOcrStatusCode): string {
-  return strictEnumLabel(ArchiveMaterialOcrStatusDescription, status, 'OCR 状态')
+  return strictEnumLabel(ArchiveMaterialOcrStatusDescription, status, '文字识别状态')
 }
 
 function ocrStatusTone(status: ArchiveMaterialOcrStatusCode) {
-  return strictEnumTone(ARCHIVE_MATERIAL_OCR_STATUS_TONE, status, 'OCR 状态')
+  return strictEnumTone(ARCHIVE_MATERIAL_OCR_STATUS_TONE, status, '文字识别状态')
 }
 
 const materialTypeOptions = PORTFOLIO_MATERIAL_TYPE_OPTIONS.map((item) => ({
@@ -95,7 +95,7 @@ const listColumns: ColumnsType<PortfolioMaterialVO> = [
   { title: '类型', key: 'materialType', width: 120 },
   { title: '分类编码', dataIndex: 'categoryCode', key: 'categoryCode', width: 120 },
   { title: '状态', key: 'status', width: 100 },
-  { title: 'OCR', key: 'ocrStatus', width: 100 },
+  { title: '文字识别', key: 'ocrStatus', width: 100 },
   { title: '操作', key: 'actions', width: 280 },
 ]
 
@@ -199,7 +199,7 @@ async function searchOcr() {
     if (requestToken.value !== currentToken) {
       return
     }
-    showUserError(error, 'OCR 检索失败')
+    showUserError(error, '文字识别检索失败')
   } finally {
     if (requestToken.value === currentToken) {
       searchLoading.value = false
@@ -236,11 +236,11 @@ function openEditModal(row: PortfolioMaterialVO) {
 async function submitForm() {
   if (writing.value) return
   if (!form.materialTitle.trim()) {
-    message.warning('请填写材料标题')
+    showFormValidationMessage('请填写材料标题')
     return
   }
   if (!form.fileNodeId) {
-    message.warning('请上传材料文件')
+    showFormValidationMessage('请上传材料文件')
     return
   }
   const scopeTeacherId = targetTeacherId.value
@@ -277,7 +277,7 @@ async function deleteMaterial(row: PortfolioMaterialVO) {
   operationKey.value = operation
   const confirmed = await confirmAsync({
     title: '删除材料',
-    content: `确认删除「${row.materialTitle ?? row.id}」？删除后该材料不再出现在材料库、OCR 检索和后续 AI 复用中；已经挂入档案的支撑材料快照仍会保留。`,
+    content: `确认删除「${row.materialTitle ?? row.id}」？删除后该材料不再出现在材料库、文字识别检索和后续智能复用中；已经挂入档案的支撑材料快照仍会保留。`,
     type: 'error',
   })
   if (!confirmed) {
@@ -299,12 +299,12 @@ async function deleteMaterial(row: PortfolioMaterialVO) {
 
 function openAiOrchestration(row: PortfolioMaterialVO, tab: 'ask' | 'policy' = 'ask') {
   if (!row.fileNodeId) {
-    message.warning('材料未关联文件')
+    showFormValidationMessage('材料未关联文件')
     return
   }
   const teacherId = targetTeacherId.value ?? row.teacherId
   if (!teacherId) {
-    message.warning('请先选择教师')
+    showFormValidationMessage('请先选择教师')
     return
   }
   void router.push({
@@ -319,12 +319,12 @@ function openAiOrchestration(row: PortfolioMaterialVO, tab: 'ask' | 'policy' = '
 
 function openAiExtract(row: PortfolioMaterialVO) {
   if (!row.fileNodeId) {
-    message.warning('材料未关联文件')
+    showFormValidationMessage('材料未关联文件')
     return
   }
   const teacherId = targetTeacherId.value ?? row.teacherId
   if (!teacherId) {
-    message.warning('请先选择教师')
+    showFormValidationMessage('请先选择教师')
     return
   }
   const query: Record<string, string> = {
@@ -346,7 +346,7 @@ function openAiExtract(row: PortfolioMaterialVO) {
 function openSearchHitAiExtract(row: PortfolioMaterialSearchResponse) {
   const teacherId = targetTeacherId.value ?? row.teacherId
   if (!teacherId) {
-    message.warning('请先选择教师')
+    showFormValidationMessage('请先选择教师')
     return
   }
   const query: Record<string, string> = {
@@ -365,7 +365,7 @@ function openSearchHitAiOrchestration(
 ) {
   const teacherId = targetTeacherId.value ?? row.teacherId
   if (!teacherId) {
-    message.warning('请先选择教师')
+    showFormValidationMessage('请先选择教师')
     return
   }
   void router.push({
@@ -381,11 +381,11 @@ function openSearchHitAiOrchestration(
 function openIntakeReassign(row: PortfolioMaterialVO) {
   const teacherId = targetTeacherId.value ?? row.teacherId
   if (!teacherId) {
-    message.warning('请先选择教师')
+    showFormValidationMessage('请先选择教师')
     return
   }
   if (!canReassignPortfolioMaterial(row)) {
-    message.warning('当前材料不可重分类，仅草稿或退回修改中的档案记录可重分类')
+    showFormValidationMessage('当前材料不可重分类，仅草稿或退回修改中的档案记录可重分类')
     return
   }
   void router.push({
@@ -401,7 +401,7 @@ function buildMaterialRowActions(row: PortfolioMaterialVO): UiTableRowActionItem
     actions.push({ key: 'reassign', label: '重分类', disabled: writing.value })
   }
   actions.push(
-    { key: 'aiExtract', label: 'AI 抽取', disabled: writing.value },
+    { key: 'aiExtract', label: '智能抽取', disabled: writing.value },
     { key: 'aiAsk', label: '智能问数', disabled: writing.value },
     { key: 'aiPolicy', label: '政策核验', disabled: writing.value },
     { key: 'edit', label: '编辑', disabled: writing.value },
@@ -460,7 +460,7 @@ watch(
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="材料库" description="教师佐证材料登记、OCR 检索与复用">
+    <ContextBar title="材料库" description="教师佐证材料登记、文字识别检索与复用">
       <template #actions>
         <UiButton variant="primary" :disabled="writing" @click="openCreateModal">
           登记材料
@@ -476,13 +476,13 @@ watch(
         <Input.Search
           v-model:value="searchKeyword"
           allow-clear
-          placeholder="OCR 全文检索"
+          placeholder="文字识别全文检索"
           @search="handleSearch"
         />
       </template>
     </UiFilterBar>
 
-    <UiCard :title="showSearchResults ? 'OCR 检索结果' : '材料列表'">
+    <UiCard :title="showSearchResults ? '文字识别检索结果' : '材料列表'">
       <UiDataTable
         v-if="showSearchResults && (searchRows.length || searchLoading)"
         v-model:current="searchPageNum"
@@ -502,7 +502,7 @@ watch(
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
               :items="[
-                { key: 'aiExtract', label: 'AI 抽取' },
+                { key: 'aiExtract', label: '智能抽取' },
                 { key: 'aiAsk', label: '智能问数' },
                 { key: 'aiPolicy', label: '政策核验' },
               ]"
@@ -557,7 +557,7 @@ watch(
           </template>
         </template>
       </UiDataTable>
-      <UiEmpty v-else :description="showSearchResults ? '未命中 OCR 结果' : '暂无材料'" />
+      <UiEmpty v-else :description="showSearchResults ? '未命中文字识别结果' : '暂无材料'" />
     </UiCard>
 
     <a-modal

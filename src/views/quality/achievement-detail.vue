@@ -43,6 +43,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { formatSemester } from '@/types/enums/semester-enum'
+import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 
 const detailColumns: ColumnsType = [
@@ -315,7 +316,16 @@ async function loadRelatedIndirectForms(record: AchievementResultVO) {
     if (!formIds.length) {
       return
     }
-    const forms = await Promise.all(formIds.map((id) => indirectFormApi.detail(id)))
+    const settled = await Promise.allSettled(formIds.map((id) => indirectFormApi.detail(id)))
+    const forms = []
+    for (const item of settled) {
+      if (item.status === 'fulfilled') {
+        forms.push(item.value)
+      }
+    }
+    if (settled.some((item) => item.status === 'rejected')) {
+      showUserError(null, '部分间接评价表单详情加载失败')
+    }
     relatedIndirectForms.value = forms
       .filter((form) => !record.programId || form.programId === record.programId)
       .map((form) => ({
@@ -323,6 +333,9 @@ async function loadRelatedIndirectForms(record: AchievementResultVO) {
         formCode: form.formCode,
         formName: form.formName,
       }))
+  } catch (error) {
+    relatedIndirectForms.value = []
+    showUserError(error, '关联间接评价表单加载失败')
   } finally {
     relatedIndirectFormsLoading.value = false
   }
@@ -357,13 +370,23 @@ async function loadResult() {
       result.value?.targetType === AchievementTargetTypeCode.COURSE_GOAL
       && result.value.targetId
     ) {
-      const goal = await courseGoalApi.detail(result.value.targetId)
-      courseGoalWeights.value = {
-        directWeight: goal.directWeight,
-        indirectWeight: goal.indirectWeight,
+      try {
+        const goal = await courseGoalApi.detail(result.value.targetId)
+        courseGoalWeights.value = {
+          directWeight: goal.directWeight,
+          indirectWeight: goal.indirectWeight,
+        }
+      } catch (error) {
+        courseGoalWeights.value = null
+        showUserError(error, '课程目标权重加载失败')
       }
       await loadRelatedIndirectForms(result.value)
     }
+  } catch (error) {
+    result.value = null
+    courseGoalWeights.value = null
+    relatedIndirectForms.value = []
+    showUserError(error, '达成结果详情加载失败')
   } finally {
     loading.value = false
   }
@@ -384,6 +407,10 @@ async function loadDetails() {
     })
     details.value = page.list
     detailTotal.value = page.total
+  } catch (error) {
+    details.value = []
+    detailTotal.value = 0
+    showUserError(error, '达成明细加载失败')
   } finally {
     detailsLoading.value = false
   }
@@ -404,6 +431,10 @@ async function loadAudits() {
     })
     audits.value = page.list
     auditTotal.value = page.total
+  } catch (error) {
+    audits.value = []
+    auditTotal.value = 0
+    showUserError(error, '达成审核记录加载失败')
   } finally {
     auditsLoading.value = false
   }
@@ -424,6 +455,10 @@ async function loadReviews() {
     })
     reviews.value = page.list
     reviewTotal.value = page.total
+  } catch (error) {
+    reviews.value = []
+    reviewTotal.value = 0
+    showUserError(error, '达成人工复核加载失败')
   } finally {
     reviewsLoading.value = false
   }
@@ -431,7 +466,9 @@ async function loadReviews() {
 
 async function loadAll() {
   if (!resultId.value) return
-  await Promise.all([loadResult(), loadDetails(), loadAudits(), loadReviews()])
+  // 主结果与附属列表隔离：任一失败不拖垮其他区块
+  await loadResult()
+  await Promise.all([loadDetails(), loadAudits(), loadReviews()])
 }
 
 function handleDetailPageChange(page: { current: number, pageSize: number }) {

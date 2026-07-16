@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioMaskRuleVO } from '@/apis/portfolio/governance'
-import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -121,7 +121,7 @@ async function saveRule() {
   }
 }
 
-function onPageChange(page: { current: number; pageSize: number }) {
+function onPageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   void loadPage()

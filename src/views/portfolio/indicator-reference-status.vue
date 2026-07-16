@@ -35,7 +35,7 @@ async function loadList() {
   try {
     rows.value = await portfolioIndicatorTenantApi.listReferenceStatus()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '加载指标引用状态失败')
   } finally {
     loading.value = false
   }

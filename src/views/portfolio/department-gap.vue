@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioGapTaskStatusCode } from '@/apis/portfolio/enums'
-import { PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import type { PortfolioGapTaskSummaryVO } from '@/apis/portfolio/types'
 import { DatePicker, Input, message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import { portfolioGapApi } from '@/apis/portfolio/gap'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -15,7 +15,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 function gapStatusLabel(status: PortfolioGapTaskStatusCode): string {
@@ -115,7 +115,7 @@ function openExtendDialog(row: PortfolioGapTaskSummaryVO) {
 
 async function extendTask() {
   if (!extendingTask.value || !extensionForm.dueTime || !extensionForm.reason.trim()) {
-    message.warning('请填写新的截止时间和延期理由')
+    showFormValidationMessage('请填写新的截止时间和延期理由')
     return
   }
   if (writing.value) {

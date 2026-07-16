@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { PortfolioGapTaskSummaryInternalVO } from '@/apis/mark/scanner-kiosk'
-import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { createAdhocDispatchTicket, pageKioskPortfolioGapTasks } from '@/apis/mark/scanner-kiosk'
@@ -12,7 +11,7 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { PortfolioCollectModeCode } from '@/types/enums/portfolio-collect-mode-enum'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
-import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const props = defineProps<{
@@ -105,7 +104,7 @@ function gapCourseScopeLabel(row: PortfolioGapTaskSummaryInternalVO): string {
 
 async function openGapScan(row: PortfolioGapTaskSummaryInternalVO) {
   if (!canPick.value) {
-    message.error('工位未激活，无法进入补采扫描')
+    showFormValidationMessage('工位未激活，无法进入补采扫描')
     return
   }
   pickingTaskId.value = row.id
@@ -126,7 +125,7 @@ async function openGapScan(row: PortfolioGapTaskSummaryInternalVO) {
     emit('update:open', false)
     void router.push(`/scanner-kiosk/dispatch/${created.ticket.ticketId}`)
   } catch (error) {
-    message.error(getUserErrorMessage(error))
+    showUserError(error, '创建档案袋派单失败')
   } finally {
     pickingTaskId.value = ''
   }

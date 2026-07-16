@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import type { PortfolioDepartmentPortraitVO } from '@/apis/portfolio/analysis'
-import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import type { PortfolioCockpitSummaryVO } from '@/apis/portfolio/types'
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
-import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import { portfolioCockpitApi } from '@/apis/portfolio/cockpit'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -23,6 +22,7 @@ import {
   PortfolioAlertStatusCode,
   PortfolioAlertStatusDescription,
 } from '@/types/enums/portfolio-alert-status-enum'
+import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioCockpitAskPanel from '@/views/portfolio/components/PortfolioCockpitAskPanel.vue'
@@ -197,15 +197,24 @@ async function loadSummary() {
   summary.value = null
   portrait.value = null
   try {
-    const [summaryResult, portraitResult] = await Promise.all([
-      portfolioCockpitApi.deptSummary({ departmentId: departmentId.value }),
-      portfolioAnalysisApi.getDepartmentPortrait({ departmentId: departmentId.value }),
-    ])
+    const summaryResult = await portfolioCockpitApi.deptSummary({
+      departmentId: departmentId.value,
+    })
     if (currentToken !== summaryRequestToken.value) {
       return
     }
     summary.value = summaryResult
-    portrait.value = portraitResult
+    try {
+      portrait.value = await portfolioAnalysisApi.getDepartmentPortrait({
+        departmentId: departmentId.value,
+      })
+    } catch (error) {
+      if (currentToken !== summaryRequestToken.value) {
+        return
+      }
+      portrait.value = null
+      showUserError(error, '科室画像加载失败')
+    }
   } catch (error) {
     if (currentToken !== summaryRequestToken.value) {
       return
@@ -225,8 +234,8 @@ async function syncDepartmentContext() {
   const currentToken = ++departmentSyncToken.value
   const queryDepartmentId = readRouteStringParam(route.query.departmentId)
   if (
-    queryDepartmentId &&
-    departmentOptions.value.some((option) => option.value === queryDepartmentId)
+    queryDepartmentId
+    && departmentOptions.value.some((option) => option.value === queryDepartmentId)
   ) {
     departmentId.value = queryDepartmentId
     return

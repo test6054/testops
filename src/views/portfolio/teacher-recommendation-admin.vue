@@ -28,7 +28,7 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQueryTable } from '@/composables/useQueryTable'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 function readRouteStringParam(value: unknown): string {
@@ -62,14 +62,14 @@ const candidateColumns: ColumnsType = [
 ]
 
 const runColumns: ColumnsType = [
-  { title: '运行 ID', dataIndex: 'id', key: 'id', width: 100 },
-  { title: '规则 ID', dataIndex: 'ruleId', key: 'ruleId', width: 100 },
+  { title: '运行编号', dataIndex: 'id', key: 'id', width: 100 },
+  { title: '规则编号', dataIndex: 'ruleId', key: 'ruleId', width: 100 },
   { title: '模式', key: 'runMode', width: 80 },
   { title: '状态', key: 'runStatus', width: 88 },
   { title: '运行时间', dataIndex: 'runTime', key: 'runTime', width: 160 },
   { title: '操作人', dataIndex: 'operatorUserId', key: 'operatorUserId', width: 100 },
   { title: '候选数', dataIndex: 'candidateCount', key: 'candidateCount', width: 72 },
-  { title: 'AI 解释', key: 'explainStatus', width: 100 },
+  { title: '智能解释', key: 'explainStatus', width: 100 },
   { title: '操作', key: 'actions', width: 120 },
 ]
 
@@ -135,7 +135,7 @@ function aiTaskStatusLabel(status?: AiTaskStatusCode): string {
   if (!status) {
     return '未提交'
   }
-  return strictEnumLabel(AiTaskStatusDescription, status, 'AI 任务状态')
+  return strictEnumLabel(AiTaskStatusDescription, status, '智能任务状态')
 }
 
 function openExplainAiTask() {
@@ -173,7 +173,7 @@ async function applyRouteDeepLink() {
     }
     if (!task.businessId) {
       resetRouteDrivenContext()
-      showUserError(null, '推荐解释任务缺少运行 ID')
+      showUserError(null, '推荐解释任务缺少运行编号')
       return
     }
     viewRunCandidates(task.businessId)
@@ -206,13 +206,13 @@ async function loadRules() {
       selectedRuleId.value = ''
     }
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '加载推荐规则失败')
   }
 }
 
 async function saveRule() {
   if (!ruleForm.ruleName.trim()) {
-    message.warning('请填写规则名称')
+    showFormValidationMessage('请填写规则名称')
     return
   }
   try {
@@ -229,13 +229,13 @@ async function saveRule() {
     ruleForm.ruleName = ''
     await loadRules()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存推荐规则失败')
   }
 }
 
 async function executeRuleRun() {
   if (!selectedRuleId.value) {
-    message.warning('请先选择规则')
+    showFormValidationMessage('请先选择规则')
     return
   }
   loading.value = true
@@ -246,7 +246,7 @@ async function executeRuleRun() {
     message.success('规则推荐已完成')
     await loadCandidates()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '执行规则推荐失败')
   } finally {
     loading.value = false
   }
@@ -254,7 +254,7 @@ async function executeRuleRun() {
 
 async function executeAiExplain() {
   if (!selectedRuleId.value) {
-    message.warning('请先选择规则')
+    showFormValidationMessage('请先选择规则')
     return
   }
   loading.value = true
@@ -263,10 +263,10 @@ async function executeAiExplain() {
       ruleId: selectedRuleId.value,
     })
     await portfolioTeacherRecommendationApi.explainSubmit({ runId: lastRunId.value })
-    message.success('规则执行完成，AI 解释任务已提交')
+    message.success('规则执行完成，智能解释任务已提交')
     await loadCandidates()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '提交智能解释任务失败')
   } finally {
     loading.value = false
   }
@@ -293,7 +293,7 @@ async function loadExplainStatus(runId: string, requestToken = routeRequestToken
     if (requestToken !== routeRequestToken.value || explainRunId.value !== runId) {
       return
     }
-    showUserError(error)
+    showUserError(error, '加载智能解释状态失败')
   } finally {
     if (requestToken === routeRequestToken.value && explainRunId.value === runId) {
       explainLoading.value = false
@@ -307,7 +307,7 @@ async function runPkCompare() {
     .map((s) => s.trim())
     .filter(Boolean)
   if (ids.length < 2 || ids.length > 5) {
-    message.warning('请选择 2–5 名教师用户 ID')
+    showFormValidationMessage('请选择二至五名教师用户编号')
     return
   }
   try {
@@ -316,7 +316,7 @@ async function runPkCompare() {
       dimensionCodes: PORTFOLIO_PK_COMPARE_DEFAULT_DIMENSIONS,
     })
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '教师对比分析失败')
   }
 }
 
@@ -377,7 +377,7 @@ watch(
           <div class="form-row">
             <UiButton :loading="loading" @click="executeRuleRun"> 规则推荐 </UiButton>
             <UiButton variant="primary" :loading="loading" @click="executeAiExplain">
-              规则执行 → AI 解释
+              规则执行 → 智能解释
             </UiButton>
             <UiButton @click="loadCandidates"> 刷新候选 </UiButton>
           </div>
@@ -434,11 +434,11 @@ watch(
         </UiCard>
       </a-tab-pane>
     </a-tabs>
-    <UiCard title="PK 多维对比" style="margin-top: 16px">
+    <UiCard title="教师多维对比" style="margin-top: 16px">
       <div class="form-row">
         <a-input
           v-model:value="pkForm.teacherUserIds"
-          placeholder="教师 ID，逗号分隔（2–5人）"
+          placeholder="教师编号，逗号分隔（2至5人）"
           style="width: 360px"
         />
         <UiButton @click="runPkCompare"> 对比 </UiButton>
@@ -452,17 +452,17 @@ watch(
         </div>
       </div>
     </UiCard>
-    <a-drawer v-model:open="explainDrawerOpen" title="AI 解释状态" width="560">
+    <a-drawer v-model:open="explainDrawerOpen" title="智能解释状态" width="560">
       <a-spin :spinning="explainLoading">
         <template v-if="explainStatus">
-          <p>运行 ID {{ explainStatus.runId }}</p>
+          <p>运行编号 {{ explainStatus.runId }}</p>
           <p v-if="explainStatus.explainTaskId">
-            任务 ID {{ explainStatus.explainTaskId }}
+            任务编号 {{ explainStatus.explainTaskId }}
             <UiButton size="sm" style="margin-left: 8px" @click="openExplainAiTask">
-              打开 AI 任务中心
+              打开智能任务中心
             </UiButton>
           </p>
-          <p v-else>尚未提交 AI 解释任务</p>
+          <p v-else>尚未提交智能解释任务</p>
           <p v-if="explainStatus.status">状态 {{ aiTaskStatusLabel(explainStatus.status) }}</p>
           <ul v-if="explainStatus.candidateItems?.length" class="explain-list">
             <li v-for="item in explainStatus.candidateItems" :key="item.teacherUserId">

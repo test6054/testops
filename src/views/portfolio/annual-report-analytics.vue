@@ -116,7 +116,7 @@ function onHistoryTableChange(changeEvent: UiDataTableChangeEvent) {
 }
 
 const historyColumns = [
-  { title: '任务 ID', dataIndex: 'id', key: 'id', width: 120 },
+  { title: '任务编号', dataIndex: 'id', key: 'id', width: 120 },
   { title: '教师', key: 'teacher', width: 180 },
   { title: '报告年度', dataIndex: 'reportYear', key: 'reportYear', width: 100 },
   { title: '状态', key: 'taskStatus', width: 100 },
@@ -178,7 +178,7 @@ function handleTeacherSearch(value: string) {
 
 function openReportDetail(row: PortfolioAnalysisAnnualReportVO) {
   if (!row.aiTaskId) {
-    showUserError(null, '当前任务尚未生成 AI 报告结果')
+    showUserError(null, '当前任务尚未生成智能报告结果')
     return
   }
   void router.push({
@@ -282,13 +282,13 @@ watch(
     <UiCard v-if="latestTask" title="最近任务" class="annual-report__result">
       <dl class="annual-report__meta">
         <div>
-          <dt>任务 ID</dt>
+          <dt>任务编号</dt>
           <dd>{{ latestTask.id }}</dd>
         </div>
         <div>
           <dt>教师</dt>
           <dd>
-            {{ latestTask.teacherName || `教师ID ${latestTask.teacherId}` }}
+            {{ latestTask.teacherName || `教师编号 ${latestTask.teacherId}` }}
             <template v-if="latestTask.teacherNumber">
               （{{ latestTask.teacherNumber }}）
             </template>
@@ -307,7 +307,7 @@ watch(
           </dd>
         </div>
         <div v-if="latestTask.aiTaskId">
-          <dt>AI 任务 ID</dt>
+          <dt>智能任务编号</dt>
           <dd>
             {{ latestTask.aiTaskId }}
             <UiButton
@@ -343,7 +343,7 @@ watch(
           </template>
           <template v-else-if="column.key === 'teacher'">
             <span>
-              {{ record.teacherName || `教师ID ${record.teacherId}` }}
+              {{ record.teacherName || `教师编号 ${record.teacherId}` }}
               <template v-if="record.teacherNumber">（{{ record.teacherNumber }}）</template>
             </span>
           </template>

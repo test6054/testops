@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationModeCode } from '@/apis/portfolio/enums'
-import {
-  PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES,
-  PortfolioEvaluationModeDescription,
-} from '@/apis/portfolio/enums'
 import type {
   PortfolioEvaluationEntrySummaryItemVO,
   PortfolioEvaluationEntrySummaryVO,
@@ -13,14 +9,18 @@ import type {
   PortfolioEvaluationSubjectTeacherOptionVO,
   PortfolioEvaluationTaskVO,
 } from '@/apis/portfolio/teacher-platform'
-import {
-  portfolioEvaluationEntryApi,
-  portfolioEvaluationTaskApi,
-} from '@/apis/portfolio/teacher-platform'
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import {
+  PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES,
+  PortfolioEvaluationModeDescription,
+} from '@/apis/portfolio/enums'
+import {
+  portfolioEvaluationEntryApi,
+  portfolioEvaluationTaskApi,
+} from '@/apis/portfolio/teacher-platform'
 import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -30,7 +30,7 @@ import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQueryTable } from '@/composables/useQueryTable'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { loadAllPages } from '@/utils/load-all-pages'
 import { buildEmptyPageResult } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
@@ -198,7 +198,7 @@ async function loadTasks() {
       selectedTaskId.value = ''
     }
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '加载评价任务失败')
   } finally {
     loading.value = false
   }
@@ -219,7 +219,7 @@ async function loadFillContext() {
     fillForm.subjectTeacherUserId = ''
     fillForm.indicatorCode = ''
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '加载填报上下文失败')
   }
 }
 
@@ -242,7 +242,7 @@ async function loadSummary() {
   try {
     summary.value = await portfolioEvaluationEntryApi.summary({ id: selectedTaskId.value })
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '加载评价汇总失败')
   } finally {
     loading.value = false
   }
@@ -250,19 +250,19 @@ async function loadSummary() {
 
 async function saveEntry() {
   if (!selectedTaskId.value) {
-    message.warning('请选择已发布任务')
+    showFormValidationMessage('请选择已发布任务')
     return
   }
   if (!canSaveEntry.value) {
-    message.warning(fillWindowBlockedReason.value || '当前不可填报')
+    showFormValidationMessage(fillWindowBlockedReason.value || '当前不可填报')
     return
   }
   if (!fillForm.subjectTeacherUserId.trim() || fillForm.score === undefined) {
-    message.warning('请填写被评教师与得分')
+    showFormValidationMessage('请填写被评教师与得分')
     return
   }
   if (isByIndicator.value && !fillForm.indicatorCode.trim()) {
-    message.warning('以指标为主模式须选择指标')
+    showFormValidationMessage('以指标为主模式须选择指标')
     return
   }
   saving.value = true
@@ -279,7 +279,7 @@ async function saveEntry() {
     fillForm.commentText = ''
     await Promise.all([loadEntries(), loadSummary()])
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存评价填报失败')
   } finally {
     saving.value = false
   }
@@ -287,7 +287,7 @@ async function saveEntry() {
 
 async function exportSummaryCsv() {
   if (!selectedTaskId.value) {
-    message.warning('请选择已发布任务')
+    showFormValidationMessage('请选择已发布任务')
     return
   }
   exporting.value = true
@@ -296,7 +296,7 @@ async function exportSummaryCsv() {
     await downloadPortfolioExcelExport(result)
     message.success('汇总已导出')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出评价汇总失败')
   } finally {
     exporting.value = false
   }
@@ -441,7 +441,7 @@ onMounted(async () => {
             <span>条目 {{ summary.entryCount }}</span>
             <span>平均分 {{ summary.averageScore }}</span>
             <span>模式 {{ evaluationModeLabel(summary.evaluationMode) }}</span>
-            <UiButton :loading="exporting" @click="exportSummaryCsv"> 导出 Excel </UiButton>
+            <UiButton :loading="exporting" @click="exportSummaryCsv"> 导出表格文件 </UiButton>
           </div>
           <UiDataTable
             pagination-mode="none"

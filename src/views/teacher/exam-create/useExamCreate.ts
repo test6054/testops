@@ -562,7 +562,7 @@ export function useExamCreate() {
       const sectionKey = EXAM_CREATE_SECTION_ORDER[i]
       if (sectionKey === 'exam-create-basic') {
         if (!(await validateBasicStep())) {
-          void message.warning('请先完善考务信息')
+          showFormValidationMessage('请先完善考务信息')
           activeSection.value = sectionKey
           return false
         }
@@ -570,7 +570,7 @@ export function useExamCreate() {
       }
       if (sectionKey === 'exam-create-marking-team') {
         if (!(await validateMarkingTeamStep())) {
-          void message.warning('请先完善阅卷队伍')
+          showFormValidationMessage('请先完善阅卷队伍')
           activeSection.value = sectionKey
           return false
         }
@@ -589,12 +589,12 @@ export function useExamCreate() {
   async function validateAllSteps(): Promise<ExamCreateSectionKey | null> {
     if (!(await validateBasicStep())) {
       activeSection.value = 'exam-create-basic'
-      void message.warning('请先完善考务信息')
+      showFormValidationMessage('请先完善考务信息')
       return 'exam-create-basic'
     }
     if (!(await validateMarkingTeamStep())) {
       activeSection.value = 'exam-create-marking-team'
-      void message.warning('请先完善阅卷队伍')
+      showFormValidationMessage('请先完善阅卷队伍')
       return 'exam-create-marking-team'
     }
     if (!(await validateRosterStep())) {

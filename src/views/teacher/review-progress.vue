@@ -481,10 +481,10 @@ async function retryPaperGradeForTask(record: ExamProcessingTaskItemResponse): P
       examId: selectedExamId.value,
       paperInstanceId: record.paperInstanceId,
     })
-    message.success('整卷 AI 重试已受理')
+    message.success('整卷智能复评重试已受理')
     await loadProcessingTasks()
   } catch (error) {
-    showUserError(error, '整卷 AI 重试失败')
+    showUserError(error, '整卷智能复评重试失败')
   } finally {
     retryingPaperInstanceId.value = null
   }
@@ -768,8 +768,13 @@ async function loadQuestionSummary(): Promise<void> {
     questionSummaryItems.value = []
     return
   }
-  const summary = await getReviewQuestionProgressSummary(selectedExamId.value)
-  questionSummaryItems.value = summary.items
+  try {
+    const summary = await getReviewQuestionProgressSummary(selectedExamId.value)
+    questionSummaryItems.value = summary.items
+  } catch (error) {
+    questionSummaryItems.value = []
+    showUserError(error, '题目进度摘要加载失败')
+  }
 }
 
 async function reloadQuestionTable(): Promise<void> {

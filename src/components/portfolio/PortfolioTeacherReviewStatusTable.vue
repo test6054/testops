@@ -41,18 +41,18 @@ import type {
   PortfolioArchiveRecordStatusCode,
   PortfolioReviewTaskStatusCode,
 } from '@/apis/portfolio/enums'
+import type { PortfolioTeacherReviewStatusRowVO } from '@/apis/portfolio/types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { ref, watch } from 'vue'
 import {
   PortfolioArchiveRecordStatusDescription,
   PortfolioReviewTaskStatusDescription,
 } from '@/apis/portfolio/enums'
-import type { PortfolioTeacherReviewStatusRowVO } from '@/apis/portfolio/types'
+import { portfolioReviewStatusApi } from '@/apis/portfolio/review-status'
 import {
   PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
   PORTFOLIO_REVIEW_TASK_STATUS_TONE,
 } from '@/apis/portfolio/types'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { ref, watch } from 'vue'
-import { portfolioReviewStatusApi } from '@/apis/portfolio/review-status'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -140,7 +140,7 @@ async function loadPage() {
   }
 }
 
-function handlePageChange(next: { current: number; pageSize: number }) {
+function handlePageChange(next: { current: number, pageSize: number }) {
   pageNum.value = next.current
   pageSize.value = next.pageSize
   void loadPage()

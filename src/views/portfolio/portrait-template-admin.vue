@@ -10,7 +10,7 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import {
   defaultPortraitLayout,
   mergeChartConfigIntoWidgets,
@@ -46,7 +46,7 @@ async function loadList() {
     if (currentToken !== listRequestToken.value) {
       return
     }
-    showUserError(error)
+    showUserError(error, '加载画像模板列表失败')
   } finally {
     if (currentToken === listRequestToken.value) {
       loading.value = false
@@ -71,17 +71,17 @@ async function loadDetail(id: string) {
         )
       : defaultPortraitLayout()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '加载画像模板详情失败')
   }
 }
 
 async function saveTemplate() {
   if (!form.templateName.trim()) {
-    message.warning('请填写模板名称')
+    showFormValidationMessage('请填写模板名称')
     return
   }
   if (!layoutWidgets.value.length) {
-    message.warning('请至少添加一个布局组件')
+    showFormValidationMessage('请至少添加一个布局组件')
     return
   }
   try {
@@ -95,7 +95,7 @@ async function saveTemplate() {
     message.success('画像模板已保存')
     await loadList()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存画像模板失败')
   }
 }
 

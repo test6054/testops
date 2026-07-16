@@ -36,9 +36,7 @@
               <div>
                 <div class="exam-status-card__stat-value exam-status-card__stat-value--green">
                   {{ markingProgress?.gradablePaperCount ?? 0 }}
-                  <span class="exam-status-card__stat-sub"
-                    >/{{ markingProgress?.paperCount ?? 0 }}</span
-                  >
+                  <span class="exam-status-card__stat-sub">/{{ markingProgress?.paperCount ?? 0 }}</span>
                 </div>
                 <div class="exam-status-card__stat-label">可阅卷</div>
               </div>
@@ -298,8 +296,8 @@ const examMeta = computed(() => {
   const term = [props.detail.academicYear, formatSemester(props.detail.semester)]
     .filter(Boolean)
     .join(' · ')
-  const time =
-    props.detail.examStartTime && props.detail.examEndTime
+  const time
+    = props.detail.examStartTime && props.detail.examEndTime
       ? `${formatDateTime(props.detail.examStartTime)} — ${formatDateTime(props.detail.examEndTime)}`
       : ''
   return [term, time].filter(Boolean).join(' | ')

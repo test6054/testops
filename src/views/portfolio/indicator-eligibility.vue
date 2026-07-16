@@ -18,7 +18,7 @@ import {
   serializeEligibilityTree,
   validateEligibilityTree,
 } from '@/utils/eligibility-tree'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
 const sceneCode = ref<PfSceneCode>(PfSceneCode.DUAL_TEACHER)
 const eligibilityCode = ref('DUAL_TEACHER_APPLY')
@@ -50,7 +50,7 @@ async function loadRule() {
     sceneCode.value = rule.sceneCode
     treeRoot.value = parseEligibilityTreeJson(rule.ruleTreeJson)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '加载资格规则失败')
   } finally {
     loading.value = false
   }
@@ -58,12 +58,12 @@ async function loadRule() {
 
 async function saveRule() {
   if (!eligibilityName.value.trim()) {
-    message.warning('请填写资格规则名称')
+    showFormValidationMessage('请填写资格规则名称')
     return
   }
   const validationError = validateEligibilityTree(treeRoot.value)
   if (validationError) {
-    message.warning(validationError)
+    showFormValidationMessage(validationError)
     return
   }
   saving.value = true
@@ -76,7 +76,7 @@ async function saveRule() {
     })
     message.success('资格规则已保存')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存资格规则失败')
   } finally {
     saving.value = false
   }
@@ -109,7 +109,7 @@ onMounted(loadRule)
         <UiButton variant="primary" :loading="saving" @click="saveRule"> 保存 </UiButton>
       </div>
       <p class="hint">
-        节点类型：叶子条件、与、或、非、审核门禁；通过下方表单编辑，无需手写 JSON。
+        节点类型：叶子条件、与、或、非、审核门禁；通过下方表单编辑，无需手写结构化规则文本。
       </p>
       <a-spin :spinning="loading">
         <PortfolioEligibilityTreeEditor v-model:node="treeRoot" />

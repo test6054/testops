@@ -18,7 +18,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useQueryTable } from '@/composables/useQueryTable'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -68,7 +68,7 @@ function registryStatusLabel(status: PortfolioKeyTeacherRegistryStatusCode): str
 
 async function saveRegistry() {
   if (!form.teacherUserId) {
-    message.warning('请选择教师')
+    showFormValidationMessage('请选择教师')
     return
   }
   try {
@@ -88,7 +88,7 @@ async function saveRegistry() {
     form.dutyScope = ''
     await loadPage()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '登记重点教师失败')
   }
 }
 
@@ -98,7 +98,7 @@ async function revokeRegistry(id: string) {
     message.success('已作废')
     await loadPage()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '作废重点教师登记失败')
   }
 }
 
@@ -108,7 +108,7 @@ async function exportRoster() {
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出重点教师名册失败')
   }
 }
 

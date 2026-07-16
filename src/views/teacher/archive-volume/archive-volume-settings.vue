@@ -200,7 +200,7 @@
             <template #toolbar>
               <div class="archive-volume-settings__section-toolbar">
                 <span class="archive-volume-settings__section-hint">
-                  控制成员自动加入、提交权、扫描台 Hub 列表模式等租户级协作规则
+                  控制成员自动加入、提交权、扫描台派单中枢列表模式等租户级协作规则
                 </span>
                 <UiButton
                   size="sm"
@@ -222,7 +222,7 @@
                 />
               </label>
               <label class="archive-volume-settings__field">
-                <span>扫描台 Hub 列表</span>
+                <span>扫描台派单中枢列表</span>
                 <UiSelect
                   v-model="collaborationForm.kioskHubListMode"
                   :options="kioskHubListModeOptions"
@@ -371,6 +371,10 @@ import type {
   ArchiveSecurityPolicyItemRequest,
   ArchiveTenantCollaborationPolicySaveRequest,
 } from '@/apis/mark/archive-config'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   ARCHIVE_DUTY_TYPE_OPTIONS,
   ArchiveDutyTypeCode,
@@ -383,10 +387,6 @@ import {
   saveArchiveDutyGrants,
   saveArchiveSecurityPolicy,
 } from '@/apis/mark/archive-config'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import { ARCHIVE_SECURITY_LEVEL_OPTIONS } from '@/apis/mark/archive-volume'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
@@ -415,7 +415,7 @@ import {
   ALL_ARCHIVE_SUBMIT_MODE_CODES,
   ArchiveSubmitModeDescription,
 } from '@/types/enums/archive-submit-mode-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ArchiveVolumeTemplateSetsPanel from './components/ArchiveVolumeTemplateSetsPanel.vue'
 
@@ -473,9 +473,9 @@ const submitModeOptions = ALL_ARCHIVE_SUBMIT_MODE_CODES.map((value) => ({
 }))
 const kioskHubListModeOptions = ALL_ARCHIVE_KIOSK_HUB_LIST_MODE_CODES.map((value) => ({
   value,
-  label: strictEnumLabel(ArchiveKioskHubListModeDescription, value, '一体机 Hub 列表模式'),
+  label: strictEnumLabel(ArchiveKioskHubListModeDescription, value, '一体机派单中枢列表模式'),
 }))
-const departmentOptions = ref<Array<{ value: string; label: string }>>([])
+const departmentOptions = ref<Array<{ value: string, label: string }>>([])
 const tenantTemplateSetCount = ref(0)
 
 function goArchiveList() {
@@ -501,25 +501,25 @@ function dutyRowKey(row: DutyRow) {
 function validateDutyRows(): boolean {
   for (const row of dutyRows.value) {
     if (!row.userId?.trim()) {
-      message.warning('职责授权需选择用户')
+      showFormValidationMessage('职责授权需选择用户')
       return false
     }
     if (row.tenantWide && row.scopeDepartmentId) {
-      message.warning('全校授权不可同时选择院系')
+      showFormValidationMessage('全校授权不可同时选择院系')
       return false
     }
     if (
-      !row.tenantWide &&
-      !row.scopeDepartmentId &&
-      row.dutyType !== ArchiveDutyTypeCode.VOLUME_OWNER
+      !row.tenantWide
+      && !row.scopeDepartmentId
+      && row.dutyType !== ArchiveDutyTypeCode.VOLUME_OWNER
     ) {
-      message.warning('非全校授权须选择院系')
+      showFormValidationMessage('非全校授权须选择院系')
       return false
     }
   }
   const keys = dutyRows.value.map(dutyRowKey)
   if (new Set(keys).size !== keys.length) {
-    message.warning('存在重复的职责授权行')
+    showFormValidationMessage('存在重复的职责授权行')
     return false
   }
   return true
@@ -627,7 +627,7 @@ async function loadDepartments() {
     }))
   } catch (error) {
     departmentLoadFailed.value = true
-    showUserError(error)
+    showUserError(error, '院系列表加载失败')
   }
 }
 
@@ -671,22 +671,22 @@ function deadlineRowKey(row: DeadlineRow) {
 function validateDeadlineRows(): boolean {
   const tenantDefaultCount = deadlineRows.value.filter((row) => row.isTenantDefault).length
   if (tenantDefaultCount !== 1) {
-    message.warning('须且仅须保留一条租户默认时限策略')
+    showFormValidationMessage('须且仅须保留一条租户默认时限策略')
     return false
   }
   for (const row of deadlineRows.value) {
     if (!row.isTenantDefault && !row.departmentId) {
-      message.warning('院系覆盖策略须选择院系')
+      showFormValidationMessage('院系覆盖策略须选择院系')
       return false
     }
     if (!row.deadlineTier || !row.leadDays) {
-      message.warning('时限策略须完整填写法规节点与临期提醒天数')
+      showFormValidationMessage('时限策略须完整填写法规节点与临期提醒天数')
       return false
     }
   }
   const keys = deadlineRows.value.map(deadlineRowKey)
   if (new Set(keys).size !== keys.length) {
-    message.warning('存在重复的院系时限策略')
+    showFormValidationMessage('存在重复的院系时限策略')
     return false
   }
   return true
@@ -713,7 +713,7 @@ async function saveCollaborationPolicyForm() {
     message.success('协作策略已保存')
     await loadCollaborationPolicy()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存协作策略失败')
   } finally {
     saving.value = false
   }
@@ -765,7 +765,7 @@ async function saveDeadlinePolicyRows() {
     message.success('时限策略已保存')
     await loadDeadlinePolicy()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存时限策略失败')
   } finally {
     saving.value = false
   }
@@ -825,7 +825,7 @@ async function saveDutyGrants() {
     message.success('职责授权已保存')
     await loadDutyGrants()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存职责授权失败')
   } finally {
     saving.value = false
   }
@@ -834,18 +834,18 @@ async function saveDutyGrants() {
 async function saveSecurityPolicyRows() {
   if (policyLoadFailed.value) return
   if (policyRows.value.length === 0) {
-    message.warning('至少保留一条密级策略')
+    showFormValidationMessage('至少保留一条密级策略')
     return
   }
   for (const row of policyRows.value) {
     if (!row.dutyType || !row.maxSecurityLevel) {
-      message.warning('密级策略须完整填写职责类型与最高密级')
+      showFormValidationMessage('密级策略须完整填写职责类型与最高密级')
       return
     }
   }
   const dutyTypes = policyRows.value.map((row) => row.dutyType)
   if (new Set(dutyTypes).size !== dutyTypes.length) {
-    message.warning('同一职责类型只能配置一条密级策略')
+    showFormValidationMessage('同一职责类型只能配置一条密级策略')
     return
   }
   saving.value = true
@@ -859,7 +859,7 @@ async function saveSecurityPolicyRows() {
     message.success('密级策略已保存')
     await loadPolicy()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存密级策略失败')
   } finally {
     saving.value = false
   }

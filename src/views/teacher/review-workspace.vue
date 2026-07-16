@@ -87,9 +87,7 @@
                 当前第 {{ currentQueueIndex }} 份，剩余
                 {{ Math.max(0, queueTotal - currentQueueIndex) }} 份待复核
               </span>
-              <span class="review-workspace__keyboard-hint"
-                >J/K 或 ←/→ 切换份数 · 0-9 快捷给分</span
-              >
+              <span class="review-workspace__keyboard-hint">J/K 或 ←/→ 切换份数 · 0-9 快捷给分</span>
             </div>
             <a-progress
               :percent="queueProgressPercent"
@@ -150,7 +148,7 @@
 
           <GradingImmersionSection title="识别答案">
             <template #icon><FileTextOutlined /></template>
-            <UiEmpty v-if="!detail?.recognizedAnswer" description="本题暂无 OCR 识别答案" />
+            <UiEmpty v-if="!detail?.recognizedAnswer" description="本题暂无文字识别答案" />
             <div v-else class="review-workspace__text-block">{{ detail.recognizedAnswer }}</div>
           </GradingImmersionSection>
 
@@ -170,7 +168,7 @@
             </div>
           </GradingImmersionSection>
 
-          <GradingImmersionSection title="AI 复评说明">
+          <GradingImmersionSection title="智能复评说明">
             <template #icon><RobotOutlined /></template>
             <template #tags>
               <UiTag v-if="currentAiSourceLabel" :tone="currentAiSourceTone" size="sm">
@@ -179,7 +177,7 @@
               <UiTag v-if="detail?.aiTraceId" tone="gray" size="sm">
                 处理追踪编号 {{ detail.aiTraceId }}
               </UiTag>
-              <UiTag v-if="detail?.aiLimited" tone="orange" size="sm">AI 限流/阻断</UiTag>
+              <UiTag v-if="detail?.aiLimited" tone="orange" size="sm">智能限流/阻断</UiTag>
               <ExperienceAssistBadge
                 clickable
                 :applied="lastExperienceAssistMeta?.applied"
@@ -196,7 +194,7 @@
                 :disabled="!detail"
                 @click="() => openExecutionsDrawer()"
               >
-                查看 AI 历史
+                查看智能历史
               </UiButton>
               <UiButton
                 size="sm"
@@ -206,15 +204,15 @@
                 @click="openRescoreConfirm"
               >
                 <template #icon><RobotOutlined /></template>
-                重新生成 AI 复评
+                重新生成智能复评
               </UiButton>
             </template>
             <UiEmpty
               v-if="!detail?.aiDiagnostic"
               :description="
                 isHardJudgeSource
-                  ? '客观题本地硬判无 AI 诊断；请核对识别结果后确认建议分或改人工给分'
-                  : '暂无 AI 复评说明，可人工给分或重新生成 AI 复评'
+                  ? '客观题本地硬判无智能诊断；请核对识别结果后确认建议分或改人工给分'
+                  : '暂无智能复评说明，可人工给分或重新生成智能复评'
               "
             />
             <div v-else class="review-workspace__text-block">
@@ -308,7 +306,7 @@
                     :disabled="!canConfirm"
                     @click="setQuickScore(detail.aiScore)"
                   >
-                    {{ isHardJudgeSource ? '填入硬判分' : '填入 AI 分' }}
+                    {{ isHardJudgeSource ? '填入硬判分' : '填入智能分' }}
                   </UiButton>
                 </a-space>
               </a-form-item>
@@ -426,35 +424,13 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { AnnotationResponse } from '@/apis/mark/exam-annotation'
-import { listAnnotations } from '@/apis/mark/exam-annotation'
 import type {
   AiAbilityCode,
   AiExecutionStatusCode,
   ExamQuestionAiExecutionItemResponse,
 } from '@/apis/mark/exam-grade'
-import {
-  AI_ABILITY_TONE,
-  AI_EXECUTION_STATUS_TONE,
-  AiAbilityDescription,
-  AiExecutionStatusDescription,
-  confirmQuestionGrade,
-  listAiExecutionsForQuestion,
-  rejectQuestionGrade,
-  rescoreQuestionByAi,
-} from '@/apis/mark/exam-grade'
 import type { ReviewTaskDetailResponse, ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
-import {
-  claimReviewTask,
-  getReviewTaskDetail,
-  getReviewTaskPipeline,
-  GradeSourceCode,
-  REVIEW_TASK_STATUS_TONE,
-  ReviewTaskStatusCode,
-  ReviewTaskStatusDescription,
-  ReviewTaskTypeCode,
-} from '@/apis/mark/exam-review-task'
 import type { ObjectiveComparePolicyCode } from '@/apis/mark/exam-standard-answer'
-import { ObjectiveComparePolicyDescription } from '@/apis/mark/exam-standard-answer'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
@@ -465,6 +441,28 @@ import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { listAnnotations } from '@/apis/mark/exam-annotation'
+import {
+  AI_ABILITY_TONE,
+  AI_EXECUTION_STATUS_TONE,
+  AiAbilityDescription,
+  AiExecutionStatusDescription,
+  confirmQuestionGrade,
+  listAiExecutionsForQuestion,
+  rejectQuestionGrade,
+  rescoreQuestionByAi,
+} from '@/apis/mark/exam-grade'
+import {
+  claimReviewTask,
+  getReviewTaskDetail,
+  getReviewTaskPipeline,
+  GradeSourceCode,
+  REVIEW_TASK_STATUS_TONE,
+  ReviewTaskStatusCode,
+  ReviewTaskStatusDescription,
+  ReviewTaskTypeCode,
+} from '@/apis/mark/exam-review-task'
+import { ObjectiveComparePolicyDescription } from '@/apis/mark/exam-standard-answer'
 import ExperienceAssistBadge from '@/components/mark/ExperienceAssistBadge.vue'
 import GradingImmersionChrome from '@/components/mark/GradingImmersionChrome.vue'
 import GradingImmersionSection from '@/components/mark/GradingImmersionSection.vue'
@@ -532,7 +530,7 @@ const {
 const isExamConfidential = computed(() => isExamConfidentialFlag(examConfidentialRef.value))
 const examConfidentialLabel = computed(() => examConfidentialLabelRef.value)
 const immersionTitle = computed(
-  () => chrome?.contextTitle.value || examConfidentialLabel.value || 'OCR/AI 复核',
+  () => chrome?.contextTitle.value || examConfidentialLabel.value || '文字识别/智能复核',
 )
 const immersionBackLabel = computed(() =>
   taskSource.value === 'arbitration' ? '返回仲裁池' : '返回复核队列',
@@ -665,10 +663,10 @@ const pipelineCurrentIndex = ref(0)
  */
 async function loadReviewQueue(): Promise<void> {
   if (
-    !examId.value ||
-    !detail.value?.layoutQuestionId ||
-    !detail.value.reviewType ||
-    !detail.value.gradeSource
+    !examId.value
+    || !detail.value?.layoutQuestionId
+    || !detail.value.reviewType
+    || !detail.value.gradeSource
   ) {
     reviewQueue.value = []
     return
@@ -821,8 +819,8 @@ const canRescoreByAi = computed<boolean>(() => {
   if (!examId.value) return false
   if (!detail.value) return false
   return (
-    detail.value.status === ReviewTaskStatusCode.PENDING ||
-    detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
+    detail.value.status === ReviewTaskStatusCode.PENDING
+    || detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
   )
 })
 
@@ -836,9 +834,9 @@ async function loadTask(): Promise<void> {
   try {
     const loadedDetail = await loadReviewTaskDetail()
     if (
-      generation !== loadTaskGeneration ||
-      expectedExamId !== examId.value ||
-      expectedTaskId !== taskId.value
+      generation !== loadTaskGeneration
+      || expectedExamId !== examId.value
+      || expectedTaskId !== taskId.value
     ) {
       return
     }
@@ -893,8 +891,8 @@ async function loadReviewTaskDetail(): Promise<ReviewTaskDetailResponse> {
     reviewTaskId: taskId.value,
   })
   if (
-    preview.status !== ReviewTaskStatusCode.PENDING &&
-    preview.status !== ReviewTaskStatusCode.IN_PROGRESS
+    preview.status !== ReviewTaskStatusCode.PENDING
+    && preview.status !== ReviewTaskStatusCode.IN_PROGRESS
   ) {
     return preview
   }
@@ -910,10 +908,10 @@ async function loadReviewTaskDetail(): Promise<ReviewTaskDetailResponse> {
     if (!isBusinessConflict(error)) {
       throw error
     }
-    const heldByOther =
-      preview.status === ReviewTaskStatusCode.IN_PROGRESS &&
-      !!preview.assignedTeacherUserId &&
-      preview.assignedTeacherUserId !== currentUserId.value
+    const heldByOther
+      = preview.status === ReviewTaskStatusCode.IN_PROGRESS
+        && !!preview.assignedTeacherUserId
+        && preview.assignedTeacherUserId !== currentUserId.value
     if (heldByOther && isExamOwner.value) {
       ownerOverrideMode.value = true
       claimBlockedByOther.value = false
@@ -990,10 +988,10 @@ const gradeFormRules: Record<string, Rule[]> = {
 function openRescoreConfirm(): void {
   if (!canRescoreByAi.value) return
   void confirmAsync({
-    title: '重新生成单题 AI 复评？',
-    content: '系统会重新生成单题 AI 复评结果。复评只更新 AI 评分和评分说明，不会写入教师复核评分。',
+    title: '重新生成单题智能复评？',
+    content: '系统会重新生成单题智能复评结果。复评只更新智能评分和评分说明，不会写入教师复核评分。',
     type: 'info',
-    okText: '生成 AI 复评',
+    okText: '生成智能复评',
     cancelText: '取消',
     onOk: () => doRescoreByAi(),
   })
@@ -1013,7 +1011,7 @@ async function doRescoreByAi(): Promise<void> {
       referenceExperienceAudit: result.referenceExperienceAudit,
     })
     if (Boolean(result.scored) && result.aiScore != null) {
-      message.success(`AI 复评完成，AI 评分 ${result.aiScore} 分`)
+      message.success(`智能复评完成，智能评分 ${result.aiScore} 分`)
     } else {
       message.warning(executionDiagnosticText(result.diagnostic))
     }
@@ -1022,7 +1020,7 @@ async function doRescoreByAi(): Promise<void> {
       void loadAiExecutions()
     }
   } catch (error) {
-    showUserError(error, 'AI 复评调用失败')
+    showUserError(error, '智能复评调用失败')
   } finally {
     rescoring.value = false
   }
@@ -1034,21 +1032,21 @@ async function doRescoreByAi(): Promise<void> {
 const currentAiSourceLabel = computed<string>(() => {
   const abilityCode = detail.value?.aiAbilityCode
   if (!abilityCode) return ''
-  return strictEnumLabel(AiAbilityDescription, abilityCode, 'AI 能力编码')
+  return strictEnumLabel(AiAbilityDescription, abilityCode, '智能能力编码')
 })
 
 /** 当前 AI 评分来源色调，与 currentAiSourceLabel 保持一致区分 */
 const currentAiSourceTone = computed<BadgeTone>(() => {
   const abilityCode = detail.value?.aiAbilityCode
   if (!abilityCode) return 'gray'
-  return strictEnumTone(AI_ABILITY_TONE, abilityCode, 'AI 能力编码')
+  return strictEnumTone(AI_ABILITY_TONE, abilityCode, '智能能力编码')
 })
 
 /** 将 AI 执行诊断转为阅卷员可理解的业务提示，避免直接暴露接口或模型内部细节。 */
 function executionDiagnosticText(diagnostic?: string): string {
   return getUserErrorMessage(
     { message: diagnostic },
-    'AI 复评暂未生成可采纳评分，请按题目评分细则继续人工复核',
+    '智能复评暂未生成可采纳评分，请按题目评分细则继续人工复核',
   )
 }
 
@@ -1065,13 +1063,13 @@ const canAdoptAiSuggestion = computed<boolean>(() => {
 
 /** 采纳按钮文案：硬判与模型 AI 区分 */
 const adoptSuggestionLabel = computed(() =>
-  isHardJudgeSource.value ? '确认硬判分并提交' : '采纳 AI 评分并提交',
+  isHardJudgeSource.value ? '确认硬判分并提交' : '采纳智能评分并提交',
 )
 const fillSuggestionLabel = computed(() =>
   isHardJudgeSource.value ? '填入硬判分（微调）' : '填入表单（微调）',
 )
 const clearSuggestionLabel = computed(() =>
-  isHardJudgeSource.value ? '清空建议分改人工' : '清空 AI 评分改人工',
+  isHardJudgeSource.value ? '清空建议分改人工' : '清空智能评分改人工',
 )
 
 /** 一键采纳系统建议分到教师复核评分表单 */
@@ -1084,7 +1082,7 @@ function adoptAiSuggestion(): void {
   message.success(
     isHardJudgeSource.value
       ? `已填入硬判建议分 ${aiScore}，确认后才计入最终成绩`
-      : `已填入 AI 评分 ${aiScore}，可微调后提交`,
+      : `已填入智能评分 ${aiScore}，可微调后提交`,
   )
 }
 
@@ -1104,7 +1102,7 @@ async function adoptAiSuggestionAndSubmit(): Promise<void> {
   message.success(
     isHardJudgeSource.value
       ? '已确认硬判分并提交，正在为你取下一份…'
-      : '已采纳 AI 评分并提交，正在为你取下一份…',
+      : '已采纳智能评分并提交，正在为你取下一份…',
   )
   await takeNextTask()
 }
@@ -1115,7 +1113,7 @@ function clearAiSuggestionToManual(): void {
   message.info(
     isHardJudgeSource.value
       ? '已清空硬判建议分，请手工输入教师复核评分'
-      : '已清空 AI 评分，请按题目原则手工输入教师复核评分',
+      : '已清空智能评分，请按题目原则手工输入教师复核评分',
   )
 }
 
@@ -1142,7 +1140,7 @@ async function loadAiExecutions(): Promise<void> {
       gradeResultId: detail.value.gradeResultId,
     })
   } catch (error) {
-    showUserError(error, 'AI 复评历史加载失败')
+    showUserError(error, '智能复评历史加载失败')
     aiExecutions.value = []
   } finally {
     executionsLoading.value = false
@@ -1151,27 +1149,27 @@ async function loadAiExecutions(): Promise<void> {
 
 /** 能力编码 -> 来源文案 */
 function abilityLabel(code: AiAbilityCode): string {
-  return strictEnumLabel(AiAbilityDescription, code, 'AI 能力编码')
+  return strictEnumLabel(AiAbilityDescription, code, '智能能力编码')
 }
 
 /** 能力编码 -> 来源色调 */
 function abilityTone(code: AiAbilityCode): BadgeTone {
-  return strictEnumTone(AI_ABILITY_TONE, code, 'AI 能力编码')
+  return strictEnumTone(AI_ABILITY_TONE, code, '智能能力编码')
 }
 
 /** 状态编码 -> 文案 */
 function statusLabel(status: AiExecutionStatusCode): string {
-  return strictEnumLabel(AiExecutionStatusDescription, status, 'AI 执行状态')
+  return strictEnumLabel(AiExecutionStatusDescription, status, '智能执行状态')
 }
 
 /** 状态编码 -> 色调 */
 function statusTone(status: AiExecutionStatusCode): BadgeTone {
-  return strictEnumTone(AI_EXECUTION_STATUS_TONE, status, 'AI 执行状态')
+  return strictEnumTone(AI_EXECUTION_STATUS_TONE, status, '智能执行状态')
 }
 
 /** 时间线节点色彩，与状态一致 */
 function timelineColor(status: AiExecutionStatusCode): string {
-  return strictEnumTone(AI_EXECUTION_STATUS_TONE, status, 'AI 执行状态')
+  return strictEnumTone(AI_EXECUTION_STATUS_TONE, status, '智能执行状态')
 }
 
 /**
@@ -1188,8 +1186,8 @@ async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
   }
   const fullScore = detail.value.fullScore
   const teacherReviewScore = gradeForm.teacherReviewScore
-  const ratio =
-    fullScore && fullScore > 0 && typeof teacherReviewScore === 'number'
+  const ratio
+    = fullScore && fullScore > 0 && typeof teacherReviewScore === 'number'
       ? `${Math.round((teacherReviewScore / fullScore) * 100)}%`
       : '-'
   // 取下一份模式下额外提示队列剩余信息，让教师清楚复核会继续
@@ -1229,8 +1227,8 @@ async function submitGrade(): Promise<boolean> {
     ownerOverrideMode.value = false
     try {
       await refreshSnapshot()
-    } catch {
-      // 非工作台上下文时忽略
+    } catch (error) {
+      showUserError(error, '考试工作台状态刷新失败')
     }
     return true
   } catch (error) {
@@ -1243,8 +1241,8 @@ async function submitGrade(): Promise<boolean> {
       return false
     }
     if (
-      readBusinessResultCode(error) === ResultCode.PARAM_ERROR &&
-      getUserErrorMessage(error, '').includes('主考代办')
+      readBusinessResultCode(error) === ResultCode.PARAM_ERROR
+      && getUserErrorMessage(error, '').includes('主考代办')
     ) {
       message.warning(getUserErrorMessage(error, '主考代办须填写代办原因'))
       return false
@@ -1292,8 +1290,8 @@ async function handleReject(): Promise<void> {
     message.success('已驳回，任务已进入仲裁队列')
     try {
       await refreshSnapshot()
-    } catch {
-      // 非工作台上下文时忽略
+    } catch (error) {
+      showUserError(error, '考试工作台状态刷新失败')
     }
     goBack()
   } catch (error) {
@@ -1306,8 +1304,8 @@ async function handleReject(): Promise<void> {
       return
     }
     if (
-      readBusinessResultCode(error) === ResultCode.PARAM_ERROR &&
-      getUserErrorMessage(error, '').includes('主考代办')
+      readBusinessResultCode(error) === ResultCode.PARAM_ERROR
+      && getUserErrorMessage(error, '').includes('主考代办')
     ) {
       message.warning(getUserErrorMessage(error, '主考代办须填写代办原因'))
       return

@@ -1,4 +1,5 @@
 import type { ReportExportStatusCode, ReportStatusCode, ReportTypeCode } from './types'
+import type { ExtendedAxiosRequestConfig } from '@/config/axios/types'
 /**
  * 教学质量评价报告 API - 对接 edu-quality / ReportController
  *
@@ -128,8 +129,8 @@ export interface QualityStatusCountsResponse {
 }
 
 export const reportApi = {
-  page: (data: ReportQueryRequest) =>
-    http.post<PageResult<ReportVO>>(`${BASE}/page`, data),
+  page: (data: ReportQueryRequest, config?: ExtendedAxiosRequestConfig) =>
+    http.post<PageResult<ReportVO>>(`${BASE}/page`, data, config),
   statusCounts: (data: ReportQueryRequest) =>
     http.post<QualityStatusCountsResponse>(`${BASE}/status-counts`, data),
   detail: (id: string) =>

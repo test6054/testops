@@ -102,7 +102,7 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import {
   QUALITY_PLAN_GATE_REASON_NO_PLAN,
   QUALITY_PLAN_GATE_REASON_QUERY,
@@ -195,6 +195,11 @@ async function loadCurrentPlan() {
       return
     }
     currentPlan.value = detail
+  } catch (error) {
+    if (!scope.isStale()) {
+      currentPlan.value = null
+      showUserError(error, '培养方案详情加载失败')
+    }
   } finally {
     if (!scope.isStale()) {
       planLoading.value = false
@@ -233,6 +238,12 @@ async function loadObjectives() {
       selectedObjective.value = matched || objectives.value[0] || null
     } else if (objectives.value.length) {
       selectedObjective.value = objectives.value[0]
+    }
+  } catch (error) {
+    if (!scope.isStale()) {
+      objectives.value = []
+      objectiveTotal.value = 0
+      showUserError(error, '培养目标列表加载失败')
     }
   } finally {
     if (!scope.isStale()) {
@@ -279,6 +290,12 @@ async function loadRequirements() {
     } else if (requirements.value.length) {
       selectedRequirement.value = requirements.value[0]
     }
+  } catch (error) {
+    if (!scope.isStale()) {
+      requirements.value = []
+      requirementTotal.value = 0
+      showUserError(error, '毕业要求列表加载失败')
+    }
   } finally {
     if (!scope.isStale()) {
       requirementsLoading.value = false
@@ -320,7 +337,7 @@ async function loadPlanLevelIndicators() {
     }
     planLevelIndicators.value = indicators
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '观测点聚合加载失败')
+    showUserError(e, '观测点聚合加载失败')
     planLevelIndicators.value = []
   }
 }
@@ -344,6 +361,12 @@ async function loadSelectedRequirementIndicators() {
     }
     selectedIndicators.value = page.list
     indicatorTotal.value = page.total
+  } catch (error) {
+    if (!scope.isStale()) {
+      selectedIndicators.value = []
+      indicatorTotal.value = 0
+      showUserError(error, '观测点列表加载失败')
+    }
   } finally {
     if (!scope.isStale()) {
       indicatorsLoading.value = false
@@ -392,7 +415,7 @@ async function loadPlanLevelMappings() {
     }
     planLevelMappings.value = mappings
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '支撑映射聚合加载失败')
+    showUserError(e, '支撑映射聚合加载失败')
     planLevelMappings.value = []
   }
 }
@@ -416,6 +439,12 @@ async function loadObjectiveRequirementMappings() {
     }
     objectiveRequirementMappings.value = page.list
     objMappingTotal.value = page.total
+  } catch (error) {
+    if (!scope.isStale()) {
+      objectiveRequirementMappings.value = []
+      objMappingTotal.value = 0
+      showUserError(error, '培养目标支撑映射加载失败')
+    }
   } finally {
     if (!scope.isStale()) {
       mappingLoading.value = false
@@ -462,16 +491,23 @@ const standardOptions = ref<AccreditationStandardVO[]>([])
 
 async function loadStandardOptions(keyword?: string) {
   const scope = beginQualityScopeRequest()
-  const page = await accreditationStandardApi.page({
-    pageNum: 1,
-    pageSize: QUALITY_SELECTOR_PAGE_SIZE,
-    enabled: true,
-    keyword: keyword?.trim() || undefined,
-  })
-  if (scope.isStale()) {
-    return
+  try {
+    const page = await accreditationStandardApi.page({
+      pageNum: 1,
+      pageSize: QUALITY_SELECTOR_PAGE_SIZE,
+      enabled: true,
+      keyword: keyword?.trim() || undefined,
+    })
+    if (scope.isStale()) {
+      return
+    }
+    standardOptions.value = page.list
+  } catch (error) {
+    if (!scope.isStale()) {
+      standardOptions.value = []
+      showUserError(error, '认证标准选项加载失败')
+    }
   }
-  standardOptions.value = page.list
 }
 
 let standardOptionSearchTimer: ReturnType<typeof setTimeout> | null = null
@@ -502,6 +538,12 @@ async function loadStandardMappings() {
     }
     standardMappings.value = page.list
     stdMappingTotal.value = page.total
+  } catch (error) {
+    if (!scope.isStale()) {
+      standardMappings.value = []
+      stdMappingTotal.value = 0
+      showUserError(error, '标准映射列表加载失败')
+    }
   } finally {
     if (!scope.isStale()) {
       standardMappingsLoading.value = false
@@ -853,8 +895,9 @@ async function openPlanCreate() {
         qualityStore.currentProgramId,
       )
       defaultAccreditationProfileId = activeProfile?.id ?? ''
-    } catch {
+    } catch (error) {
       defaultAccreditationProfileId = ''
+      showUserError(error, '当前专业认证配置加载失败')
     }
   }
   Object.assign(planEditor, {
@@ -989,7 +1032,7 @@ const objectiveSubmitting = ref(false)
 function openObjectiveCreate() {
   if (!guardPlanStructureEditable('新建培养目标')) return
   if (!qualityStore.currentTrainingPlanId) {
-    message.warning('请先选择培养方案')
+    showFormValidationMessage('请先选择培养方案')
     return
   }
   objectiveEditorMode.value = 'create'
@@ -1068,7 +1111,7 @@ function openObjMappingCreate() {
   if (!guardPlanStructureEditable('新增映射')) return
   if (!selectedObjective.value) return
   if (requirements.value.length === 0) {
-    message.warning('当前方案下没有毕业要求，请先在「毕业要求与观测点」Tab 创建')
+    message.warning('当前方案下没有毕业要求，请先在「毕业要求与观测点」页签创建')
     return
   }
   objMappingEditorMode.value = 'create'
@@ -1191,7 +1234,7 @@ const requirementSubmitting = ref(false)
 function openRequirementCreate() {
   if (!guardPlanStructureEditable('新建毕业要求')) return
   if (!qualityStore.currentTrainingPlanId) {
-    message.warning('请先选择培养方案')
+    showFormValidationMessage('请先选择培养方案')
     return
   }
   requirementEditorMode.value = 'create'

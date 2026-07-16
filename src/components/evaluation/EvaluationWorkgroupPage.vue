@@ -13,12 +13,6 @@ import type {
   EvaluationWorkgroupVO,
   WorkgroupMember,
 } from '@/apis/quality/evaluation-workgroup'
-import {
-  evaluationWorkgroupApi,
-  WORKGROUP_MEMBER_ROLE_OPTIONS,
-  WorkgroupMemberRoleCode,
-  WorkgroupMemberRoleDescription,
-} from '@/apis/quality/evaluation-workgroup'
 import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -26,6 +20,12 @@ import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
+import {
+  evaluationWorkgroupApi,
+  WORKGROUP_MEMBER_ROLE_OPTIONS,
+  WorkgroupMemberRoleCode,
+  WorkgroupMemberRoleDescription,
+} from '@/apis/quality/evaluation-workgroup'
 import {
   WORKGROUP_LEVEL_OPTIONS,
   WorkgroupLevelCode,
@@ -46,7 +46,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const props = withDefaults(
@@ -62,8 +62,8 @@ const route = useRoute()
 /** 教学档案袋 /portfolio 域独立壳层；质量评价 /quality 仍走 OBE scope 加载 */
 const isPortfolioDomain = computed(
   () =>
-    props.domainShell === 'portfolio' ||
-    (props.domainShell !== 'quality' && Boolean(route.meta.portfolioDomain)),
+    props.domainShell === 'portfolio'
+    || (props.domainShell !== 'quality' && Boolean(route.meta.portfolioDomain)),
 )
 
 interface EvaluationWorkgroupFilterModel {
@@ -197,7 +197,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -275,8 +275,8 @@ function handleEditorProgramChange(value: string | null) {
 
 function getEditorConvenerId(): string | null {
   return (
-    editor.members.find((member) => member.role === WorkgroupMemberRoleCode.CONVENER)?.userId ??
-    null
+    editor.members.find((member) => member.role === WorkgroupMemberRoleCode.CONVENER)?.userId
+    ?? null
   )
 }
 
@@ -285,7 +285,7 @@ function handleEditorConvenerChange(
   option?: TeacherUserInfoDto | TeacherUserInfoDto[],
 ) {
   if (Array.isArray(value)) {
-    showUserError(null, '召集人只能单选，请重新选择')
+    showFormValidationMessage('召集人只能单选，请重新选择')
     return
   }
   editor.members = editor.members.filter(
@@ -368,7 +368,7 @@ async function submitEditor() {
   }
   const convenerMember = members.find((member) => member.role === WorkgroupMemberRoleCode.CONVENER)
   if (!convenerMember || !convenerMember.userId) {
-    message.error('召集人必须出现在成员清单中且角色为 CONVENER')
+    message.error('召集人必须出现在成员清单中且角色为召集人')
     return
   }
   const request: EvaluationWorkgroupSaveRequest = {
@@ -400,7 +400,7 @@ async function submitEditor() {
 function buildWorkgroupActions(_record: EvaluationWorkgroupVO): UiTableRowActionItem[] {
   return [
     { key: 'members', label: '成员', disabled: interactionLocked.value },
-    { key: 'import', label: 'Excel 导入', disabled: interactionLocked.value },
+    { key: 'import', label: '表格文件导入', disabled: interactionLocked.value },
     { key: 'edit', label: '编辑', disabled: interactionLocked.value },
     { key: 'delete', label: '删除', tone: 'danger', disabled: interactionLocked.value },
   ]
@@ -479,9 +479,9 @@ function memberCountOf(record: EvaluationWorkgroupVO): number {
 
 function convenerNameOf(record: EvaluationWorkgroupVO): string {
   return (
-    record.convenerUserName ??
-    record.members?.find((member) => member.role === WorkgroupMemberRoleCode.CONVENER)?.userName ??
-    '—'
+    record.convenerUserName
+    ?? record.members?.find((member) => member.role === WorkgroupMemberRoleCode.CONVENER)?.userName
+    ?? '—'
   )
 }
 
@@ -560,9 +560,9 @@ onActivated(() => {
     <UiCard class="detail-table-card ewg__table-card">
       <template #title>工作组台账</template>
       <template v-if="!isPortfolioDomain" #extra>
-        <UiButton variant="primary" size="sm" :disabled="interactionLocked" @click="openCreate"
-          >新建工作组</UiButton
-        >
+        <UiButton variant="primary" size="sm" :disabled="interactionLocked" @click="openCreate">
+          新建工作组
+        </UiButton>
       </template>
 
       <UiFilterBar
@@ -693,9 +693,9 @@ onActivated(() => {
           <div class="ewg__member-editor">
             <div class="ewg__member-editor-header">
               <p class="ewg__member-editor-tip">支持逐行录入，也可在保存后通过 Excel 覆盖导入。</p>
-              <UiButton variant="outline" size="sm" :disabled="writing" @click="appendMember"
-                >新增成员</UiButton
-              >
+              <UiButton variant="outline" size="sm" :disabled="writing" @click="appendMember">
+                新增成员
+              </UiButton>
             </div>
             <div
               v-for="(member, index) in editor.members"
@@ -758,7 +758,7 @@ onActivated(() => {
       entity-label="工作组成员"
       :context="importContext"
       :requirements="[
-        'Excel 列顺序：工号 | 姓名 | 角色（CONVENER / MEMBER / EXTERNAL_EXPERT，留空默认 MEMBER） | 备注',
+        '表格文件列顺序：工号 | 姓名 | 角色（召集人 / 成员 / 外部专家，留空默认成员） | 备注',
         '前两列必填。导入后将覆盖该工作组现有成员。',
       ]"
       @success="handleImportFinished"

@@ -117,10 +117,10 @@
 
 <script lang="ts" setup>
 import type { TenantPublicInfo } from '@/apis/auth'
-import { getTenantList } from '@/apis/auth'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { getTenantList } from '@/apis/auth'
 import {
   casCallback,
   getCasLoginUrl,
@@ -153,7 +153,7 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  (e: 'tenant-ready', payload: { tenantId: string; casEnabled: boolean; displayName: string }): void
+  (e: 'tenant-ready', payload: { tenantId: string, casEnabled: boolean, displayName: string }): void
   (e: 'login-success'): void
   (e: 'login-error', error: string): void
 }>()
@@ -182,7 +182,7 @@ const displayName = computed(() => casDisplayName.value || '统一认证')
 
 const tenantOptions = computed(() => {
   const keyword = tenantSearch.value.trim().toLowerCase()
-  const rows: { value: string; label: string }[] = []
+  const rows: { value: string, label: string }[] = []
   for (const item of tenantCache.value) {
     const name = item.tenantName || ''
     const code = item.tenantCode || ''

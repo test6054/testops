@@ -1,22 +1,22 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentPlanStatusCode } from '@/apis/portfolio/enums'
+import type {
+  PortfolioDeptOneTableSummaryVO,
+  PortfolioDeptOneTableTeacherRowVO,
+  PortfolioDeptTeacherSegmentItemVO,
+} from '@/apis/portfolio/teacher'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
   PortfolioCompletenessLevelCode,
   PortfolioCompletenessLevelDescription,
   PortfolioDevelopmentPlanStatusDescription,
 } from '@/apis/portfolio/enums'
-import type {
-  PortfolioDeptOneTableSummaryVO,
-  PortfolioDeptOneTableTeacherRowVO,
-  PortfolioDeptTeacherSegmentItemVO,
-} from '@/apis/portfolio/teacher'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import MarkChartCard from '@/components/chart/MarkChartCard.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -29,7 +29,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { useUserStore } from '@/stores/modules/user'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -183,22 +183,31 @@ async function loadSummary() {
     completenessLevel: completenessLevelFilter.value || undefined,
   }
   try {
-    const [nextSummary, segmentSummary] = await Promise.all([
-      portfolioTeacherApi.getDeptOneTableSummary(request),
-      portfolioTeacherApi.getDeptTeacherSegments({ departmentId: filter.departmentId }),
-    ])
+    const nextSummary = await portfolioTeacherApi.getDeptOneTableSummary(request)
     if (currentToken !== summaryRequestToken.value) {
       return
     }
     summary.value = nextSummary
-    teacherSegments.value = segmentSummary.segments ?? []
+    try {
+      const segmentSummary = await portfolioTeacherApi.getDeptTeacherSegments({
+        departmentId: filter.departmentId,
+      })
+      if (currentToken === summaryRequestToken.value) {
+        teacherSegments.value = segmentSummary.segments ?? []
+      }
+    } catch (error) {
+      if (currentToken === summaryRequestToken.value) {
+        teacherSegments.value = []
+        showUserError(error, '教师完备度分段加载失败')
+      }
+    }
   } catch (error) {
     if (currentToken !== summaryRequestToken.value) {
       return
     }
     summary.value = null
     teacherSegments.value = []
-    showUserError(error)
+    showUserError(error, '加载院系一张表汇总失败')
   } finally {
     if (currentToken === summaryRequestToken.value) {
       loading.value = false
@@ -237,7 +246,7 @@ async function loadTeachers() {
     }
     teacherRows.value = []
     teacherTotal.value = 0
-    showUserError(error)
+    showUserError(error, '加载部门一张表教师列表失败')
   } finally {
     if (currentToken === teacherRequestToken.value) {
       teacherLoading.value = false
@@ -284,7 +293,7 @@ function distributionCount(
 
 async function exportDeptOneTable() {
   if (!filter.departmentId) {
-    message.warning('请先选择院系')
+    showFormValidationMessage('请先选择院系')
     return
   }
   if (exporting.value) {
@@ -301,16 +310,16 @@ async function exportDeptOneTable() {
       completenessLevel,
     })
     if (
-      filter.departmentId !== departmentId ||
-      (filter.planYear.trim() || undefined) !== planYear ||
-      (completenessLevelFilter.value || undefined) !== completenessLevel
+      filter.departmentId !== departmentId
+      || (filter.planYear.trim() || undefined) !== planYear
+      || (completenessLevelFilter.value || undefined) !== completenessLevel
     ) {
       return
     }
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 行`)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出部门一张表失败')
   } finally {
     exporting.value = false
   }
@@ -320,7 +329,7 @@ function structureCount(key: (typeof titleStructureRows)[number]['key']) {
   return summary.value?.[key] ?? 0
 }
 
-function handleTeacherPageChange(page: { current: number; pageSize: number }) {
+function handleTeacherPageChange(page: { current: number, pageSize: number }) {
   teacherQuery.pageNum = page.current
   teacherQuery.pageSize = page.pageSize
   void loadTeachers()
@@ -386,8 +395,8 @@ onMounted(async () => {
   await loadTree()
   const queryDepartmentId = readRouteStringParam(route.query.departmentId)
   if (
-    queryDepartmentId &&
-    departmentOptions.value.some((option) => option.value === queryDepartmentId)
+    queryDepartmentId
+    && departmentOptions.value.some((option) => option.value === queryDepartmentId)
   ) {
     filter.departmentId = queryDepartmentId
   }

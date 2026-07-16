@@ -61,7 +61,7 @@ import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityTableExport } from '@/composables/useQualityTableExport'
 import { useQualityStore } from '@/stores/modules/quality'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatScore } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 
@@ -542,11 +542,11 @@ const triggerButtons: Array<{
 
 async function handleTrigger(key: string, handler: () => Promise<AchievementComputeResult>) {
   if (!qualityStore.currentTrainingPlanId) {
-    message.warning('请先在顶部选择培养方案')
+    showFormValidationMessage('请先在顶部选择培养方案')
     return
   }
   if (programRequired.value) {
-    message.warning('请先在顶部选择专业')
+    showFormValidationMessage('请先在顶部选择专业')
     return
   }
   const readiness = readinessByKind.value.get(key)
@@ -688,7 +688,7 @@ async function loadSignalSummary() {
     signalSummary.value = await achievementResultApi.signalSummary(buildAchievementListQuery())
   } catch (error) {
     signalSummary.value = null
-    showUserError(error, '达成度 SignalBand 加载失败')
+    showUserError(error, '达成度工作台指标加载失败')
   }
 }
 
@@ -822,6 +822,9 @@ async function loadComputeReadiness() {
       schoolYear: triggerForm.schoolYear || undefined,
       semester: triggerForm.semester || undefined,
     })
+  } catch (error) {
+    computeReadinessItems.value = []
+    showUserError(error, '达成度计算就绪检查加载失败')
   } finally {
     readinessLoading.value = false
   }
@@ -829,7 +832,7 @@ async function loadComputeReadiness() {
 
 function openTriggerDrawer() {
   if (!qualityStore.currentTrainingPlanId) {
-    message.warning('请先在顶部选择培养方案')
+    showFormValidationMessage('请先在顶部选择培养方案')
     return
   }
   triggerVisible.value = true

@@ -16,7 +16,7 @@ import {
   PortfolioKeyTeacherRegistryStatusCode,
   PortfolioKeyTeacherRegistryStatusDescription,
 } from '@/types/enums/portfolio-key-teacher-registry-status-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -47,7 +47,7 @@ function registryStatusLabel(status: PortfolioKeyTeacherRegistryStatusCode): str
 
 async function saveRegistry() {
   if (!form.teacherUserId) {
-    message.warning('请选择教师')
+    showFormValidationMessage('请选择教师')
     return
   }
   try {
@@ -66,7 +66,7 @@ async function saveRegistry() {
     form.dutyScope = ''
     await loadPage()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '登记双肩挑台账失败')
   }
 }
 
@@ -76,7 +76,7 @@ async function revokeRegistry(id: string) {
     message.success('已作废')
     await loadPage()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '作废双肩挑登记失败')
   }
 }
 
@@ -86,7 +86,7 @@ async function exportRoster() {
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出双肩挑台账失败')
   }
 }
 </script>

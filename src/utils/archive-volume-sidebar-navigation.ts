@@ -22,9 +22,9 @@ export function buildArchiveVolumeSidebarNavGroups(
 ): ArchiveVolumeSidebarNavGroupView[] {
   const visibleTabs = tabs.filter((tab) => {
     if (tab.key === 'department-review' && departmentReviewEnabled === false) {
-      const inReviewFlow =
-        volumeStatus === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING ||
-        volumeStatus === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED
+      const inReviewFlow
+        = volumeStatus === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING
+          || volumeStatus === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED
       if (!inReviewFlow) {
         return false
       }

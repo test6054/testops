@@ -155,18 +155,32 @@ async function openReview(plan: TrainingPlanVO): Promise<void> {
   drawerOpen.value = true
   detailLoading.value = true
   try {
-    const [detail, loadedChecklist, loadedDiagnosis, loadedAudits] = await Promise.all([
-      trainingPlanApi.detail(plan.id),
-      trainingPlanApi.checklist(plan.id),
-      trainingPlanApi.diagnose(plan.id),
-      trainingPlanApi.statusAudits(plan.id),
-    ])
+    const detail = await trainingPlanApi.detail(plan.id)
     selectedPlan.value = detail
-    checklist.value = loadedChecklist
-    diagnosis.value = loadedDiagnosis
-    audits.value = loadedAudits
+    try {
+      checklist.value = await trainingPlanApi.checklist(plan.id)
+    } catch (error) {
+      checklist.value = null
+      showUserError(error, '院审检查清单加载失败')
+    }
+    try {
+      diagnosis.value = await trainingPlanApi.diagnose(plan.id)
+    } catch (error) {
+      diagnosis.value = null
+      showUserError(error, '院审诊断加载失败')
+    }
+    try {
+      audits.value = await trainingPlanApi.statusAudits(plan.id)
+    } catch (error) {
+      audits.value = []
+      showUserError(error, '院审状态审计加载失败')
+    }
   }
   catch (error) {
+    selectedPlan.value = null
+    checklist.value = null
+    diagnosis.value = null
+    audits.value = []
     showUserError(error, '院审详情加载失败')
   }
   finally {

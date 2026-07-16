@@ -2,7 +2,7 @@
 
 > `/impeccable shape` · **Taste**（adapted anti-slop）× **Impeccable product** × **Finesse product**  
 > 落地闸门：**frontend-design-mark**（浅色 · `#1677ff` · Stage/Grading 壳 · DTO）  
-> Date: 2026-07-15 · Companion UI: `craft-board-hi-fi.html`
+> Date: 2026-07-16 · Companion UI: `craft-board-hi-fi.html`（`#proxy-interaction` `#component-vision` `#pq-file-packs`）
 
 ## Design Read
 

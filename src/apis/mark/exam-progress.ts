@@ -6,20 +6,20 @@ import type { FinalScoreRiskOverviewResponse } from './exam-score'
  */
 import type { QuestionTypeCode } from './question-type'
 import type { MarkTeacherDashboardPendingTodoItemVO } from './teacher-dashboard'
+import type { ExamPrepScenarioGuideResponse } from '@/apis/mark/exam'
 import type { PageResult, QueryDto } from '@/types'
 import type { ExamScanMonitorSignalActionKeyCode } from '@/types/enums/exam-scan-monitor-signal-action-key-enum'
-import { isExamScanMonitorSignalActionKeyCode } from '@/types/enums/exam-scan-monitor-signal-action-key-enum'
 import type { ExamScanMonitorSignalCode } from '@/types/enums/exam-scan-monitor-signal-code-enum'
-import { isExamScanMonitorSignalCode } from '@/types/enums/exam-scan-monitor-signal-code-enum'
 import type { ExamScanMonitorSignalToneCode } from '@/types/enums/exam-scan-monitor-signal-tone-enum'
-import { isExamScanMonitorSignalToneCode } from '@/types/enums/exam-scan-monitor-signal-tone-enum'
 import type { WorkbenchNextActionKeyCode } from '@/types/enums/exam-workbench-next-action-key-enum'
 import type { ExamWorkbenchStageKeyCode } from '@/types/enums/exam-workbench-stage-key-enum'
 import type { WorkbenchStageStatusCode } from '@/types/enums/exam-workbench-stage-status-enum'
 import type { LedgerStatusCode } from '@/types/enums/ledger-status-enum'
-import { ALL_LEDGER_STATUS_CODES } from '@/types/enums/ledger-status-enum'
 import http from '@/config/axios'
-import type { ExamPrepScenarioGuideResponse } from '@/apis/mark/exam'
+import { isExamScanMonitorSignalActionKeyCode } from '@/types/enums/exam-scan-monitor-signal-action-key-enum'
+import { isExamScanMonitorSignalCode } from '@/types/enums/exam-scan-monitor-signal-code-enum'
+import { isExamScanMonitorSignalToneCode } from '@/types/enums/exam-scan-monitor-signal-tone-enum'
+import { ALL_LEDGER_STATUS_CODES } from '@/types/enums/ledger-status-enum'
 
 export {
   ALL_EXAM_SCAN_MONITOR_SIGNAL_ACTION_KEY_CODES,
@@ -408,8 +408,8 @@ function parseScanMonitorLedgerStatus(value: unknown): LedgerStatusCode | undefi
     return undefined
   }
   if (
-    typeof value !== 'string' ||
-    !(ALL_LEDGER_STATUS_CODES as readonly string[]).includes(value)
+    typeof value !== 'string'
+    || !(ALL_LEDGER_STATUS_CODES as readonly string[]).includes(value)
   ) {
     throw new Error(`枚举合同不同步：ledgerStatus=${String(value)}`)
   }

@@ -73,9 +73,9 @@ export interface PortfolioAuditLogVO {
 }
 
 export const portfolioSecurityApi = {
-  applyExport: (data: { exportType: string; businessRefJson: string; exportPurpose: string }) =>
+  applyExport: (data: { exportType: string, businessRefJson: string, exportPurpose: string }) =>
     http.post<PortfolioExportApprovalVO>('/api/portfolio/security/export/apply', data),
-  approveExport: (data: { id: string; approved: boolean; rejectReason?: string }) =>
+  approveExport: (data: { id: string, approved: boolean, rejectReason?: string }) =>
     http.post<PortfolioExportApprovalVO>('/api/portfolio/security/export/approve', data),
   pageExport: (data: {
     pageNum: number
@@ -86,7 +86,7 @@ export const portfolioSecurityApi = {
     http.post<PageResult<PortfolioExportApprovalVO>>('/api/portfolio/security/export/page', data),
   downloadExport: (data: { id: string }) =>
     http.post<PortfolioExportApprovalVO>('/api/portfolio/security/export/download', data),
-  revokeExport: (data: { id: string; revokeReason: string }) =>
+  revokeExport: (data: { id: string, revokeReason: string }) =>
     http.post<PortfolioExportApprovalVO>('/api/portfolio/security/export/revoke', data),
   saveMaskRule: (data: {
     fieldType: string
@@ -135,7 +135,7 @@ export const portfolioMajorGroupApi = {
       '/api/portfolio/major-group/portfolio/section/page',
       data,
     ),
-  exportPortfolio: (data: { portfolioOrgId: string; exportPurpose: string }) =>
+  exportPortfolio: (data: { portfolioOrgId: string, exportPurpose: string }) =>
     http.post<PortfolioExportApprovalVO>('/api/portfolio/major-group/portfolio/export', data),
   comparePeriods: (data: {
     portfolioOrgId: string

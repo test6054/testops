@@ -2,10 +2,10 @@
   <StageWorkbenchShell class="score-finalize-page">
     <template
       v-if="
-        effectiveRiskOverview?.readyToPublish ||
-        blockingRiskReasons.length > 0 ||
-        canBatchConfirmSafe ||
-        unconfirmedQuestionGradeCount > 0
+        effectiveRiskOverview?.readyToPublish
+          || blockingRiskReasons.length > 0
+          || canBatchConfirmSafe
+          || unconfirmedQuestionGradeCount > 0
       "
       #context
     >
@@ -59,6 +59,11 @@
 
       <ScoreReleaseStepPipeline :overview="effectiveRiskOverview" />
 
+      <ScoreAnalyticsStatusFlow
+        v-if="scoreAnalyticsFlowSteps.length > 0"
+        :steps="scoreAnalyticsFlowSteps"
+      />
+
       <WorkbenchNoticeBanner
         v-if="panelNotice"
         :title="panelNotice.title"
@@ -80,7 +85,7 @@
         v-if="unconfirmedQuestionGradeCount > 0"
         tone="warning"
         title="题目成绩待教师确认"
-        :description="`有 ${unconfirmedQuestionGradeCount} 份答卷仍存在未确认题目分（含客观题硬判/AI 建议）。须在复核台确认或正评 submit 后，才可进入卷级最终成绩确认与发布。`"
+        :description="`有 ${unconfirmedQuestionGradeCount} 份答卷仍存在未确认题目分（含客观题硬判或智能建议）。须在复核台确认或正评提交后，才可进入卷级最终成绩确认与发布。`"
         dense
         inline
         class="score-finalize__alert"
@@ -389,7 +394,7 @@
             label="预估说明"
             :span="2"
           >
-            当前为 AI 预估分（非正式），须题目全部教师确认或正评提交后，方可确认最终成绩。
+            当前为智能预估分（非正式），须题目全部教师确认或正评提交后，方可确认最终成绩。
           </a-descriptions-item>
         </a-descriptions>
 
@@ -596,16 +601,16 @@
           </UiButton>
           <UiButton
             v-if="
-              !isHardBlockingRiskReason(reason.reasonCode) &&
-              !isQuestionConfirmRiskReason(reason.reasonCode) &&
-              reason.reasonCode !== FinalScoreRiskReasonCode.MISSING_ABSENCE_SCORE_ZERO_FINAL
+              !isHardBlockingRiskReason(reason.reasonCode)
+                && !isQuestionConfirmRiskReason(reason.reasonCode)
+                && reason.reasonCode !== FinalScoreRiskReasonCode.MISSING_ABSENCE_SCORE_ZERO_FINAL
             "
             size="sm"
             variant="outline"
             :loading="riskReviewSavingReasonCode === reason.reasonCode"
             :disabled="
-              riskReviewSavingReasonCode !== null &&
-              riskReviewSavingReasonCode !== reason.reasonCode
+              riskReviewSavingReasonCode !== null
+                && riskReviewSavingReasonCode !== reason.reasonCode
             "
             @click="toggleRiskReasonReviewed(reason.reasonCode)"
           >
@@ -692,22 +697,36 @@ import type { Key } from 'ant-design-vue/es/_util/type'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
 import type { OperationLogResponse } from '@/apis/mark/admin-audit'
+import type { ExamDetailResponse } from '@/apis/mark/exam'
+import type { ExamPaperScoreResponse, ExamQuestionScoreResponse } from '@/apis/mark/exam-grade'
+import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
+import type {
+  ExamScoreSummaryItemResponse,
+  FinalScoreRiskOverviewResponse,
+} from '@/apis/mark/exam-score'
+import type { ScoreBiasLevelCode } from '@/apis/mark/score-bias'
+import type {
+  BadgeTone,
+  FilterField,
+  UiTableRowActionItem,
+  UiTrendPoint,
+} from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import type { ScoreStatusTabKey } from '@/utils/score-workbench-analytics'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { repairScoreZeroFinalScores } from '@/apis/mark/absence'
 import {
   AuditTargetTypeCode,
   listOperationLogs,
   OPERATION_TYPE_TONE,
   OperationTypeDescription,
 } from '@/apis/mark/admin-audit'
-import type { ExamDetailResponse } from '@/apis/mark/exam'
 import { getExamDetail, pageExams } from '@/apis/mark/exam'
-import type { ExamPaperScoreResponse, ExamQuestionScoreResponse } from '@/apis/mark/exam-grade'
 import { getPaperScore } from '@/apis/mark/exam-grade'
-import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
 import { getScorePanel } from '@/apis/mark/exam-progress'
-import type {
-  ExamScoreSummaryItemResponse,
-  FinalScoreRiskOverviewResponse,
-} from '@/apis/mark/exam-score'
 import {
   batchConfirmSafeFinalScores,
   confirmFinalScore,
@@ -718,7 +737,12 @@ import {
   saveFinalScoreRiskReview,
   withdrawFinalScore,
 } from '@/apis/mark/exam-score'
-import type { ScoreBiasLevelCode } from '@/apis/mark/score-bias'
+import {
+  FINAL_SCORE_STATUS_TONE,
+  FinalScoreStatusCode,
+  FinalScoreStatusDescription,
+} from '@/apis/mark/final-score-status'
+import { GradeStatusCode } from '@/apis/mark/grade-status'
 import {
   classifyScoreBias,
   computeScoreBiasStats,
@@ -726,29 +750,6 @@ import {
   SCORE_BIAS_LEVEL_TONE,
   ScoreBiasLevelDescription,
 } from '@/apis/mark/score-bias'
-import type {
-  BadgeTone,
-  FilterField,
-  UiTableRowActionItem,
-  UiTrendPoint,
-} from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import type { ScoreStatusTabKey } from '@/utils/score-workbench-analytics'
-import {
-  buildScoreConfirmStatusTabItems,
-  SCORE_STATUS_TAB_ALL,
-} from '@/utils/score-workbench-analytics'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { repairScoreZeroFinalScores } from '@/apis/mark/absence'
-import {
-  FINAL_SCORE_STATUS_TONE,
-  FinalScoreStatusCode,
-  FinalScoreStatusDescription,
-} from '@/apis/mark/final-score-status'
-import { GradeStatusCode } from '@/apis/mark/grade-status'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -764,6 +765,7 @@ import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
+import ScoreAnalyticsStatusFlow from '@/components/workbench/ScoreAnalyticsStatusFlow.vue'
 import ScoreReleaseStepPipeline from '@/components/workbench/ScoreReleaseStepPipeline.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -775,12 +777,17 @@ import { useScorePublishPreconditions } from '@/composables/useScorePublishPreco
 import { useScoreReleaseNavigation } from '@/composables/useScoreReleaseNavigation'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { buildExamScoreSummaryTableColumns } from '@/utils/exam-score-summary-table-columns'
 import { formatDateTime, formatDateTimeWithSeconds } from '@/utils/format'
 import { formatTrendAriaLabel, MARK_CHART_EMPTY } from '@/utils/mark-chart-accessibility'
 import { buildTrendChartInsight } from '@/utils/mark-chart-insights'
 import { buildTrendLineChartOption } from '@/utils/mark-echarts-options'
+import {
+  buildScoreAnalyticsFlowSteps,
+  buildScoreConfirmStatusTabItems,
+  SCORE_STATUS_TAB_ALL,
+} from '@/utils/score-workbench-analytics'
 import { buildScoreFinalizeSignalMetrics } from '@/utils/score-workbench-signal'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -982,8 +989,9 @@ async function loadScorePanel(): Promise<void> {
   }
   try {
     scorePanel.value = await getScorePanel(selectedExamId.value)
-  } catch {
+  } catch (error) {
     scorePanel.value = null
+    showUserError(error, '成绩面板加载失败')
   }
 }
 
@@ -996,8 +1004,9 @@ async function refreshAfterScoreWrite(): Promise<void> {
   await refreshScoreFinalizeData()
   try {
     await refreshSnapshot()
-  } catch {
-    // 非工作台上下文时忽略
+  } catch (error) {
+    // 非工作台上下文也可能失败；不得静默
+    showUserError(error, '成绩工作台快照刷新失败')
   }
 }
 
@@ -1029,7 +1038,7 @@ function handleStatusTabChange(tabKey: Key): void {
   void loadCandidates()
 }
 
-function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void loadCandidates()
@@ -1057,15 +1066,15 @@ function canPublish(record: ExamScoreSummaryItemResponse): boolean {
   if (hasHardBlockingRisks.value) return false
   const s = record.finalScoreStatus
   return (
-    s === FinalScoreStatusCode.CONFIRMED ||
-    s === FinalScoreStatusCode.WITHDRAWN ||
-    s === FinalScoreStatusCode.CORRECTED
+    s === FinalScoreStatusCode.CONFIRMED
+    || s === FinalScoreStatusCode.WITHDRAWN
+    || s === FinalScoreStatusCode.CORRECTED
   )
 }
 function publishButtonLabel(record: ExamScoreSummaryItemResponse): string {
   // WITHDRAWN / CORRECTED 均为学生端不可见后的再发；文案须引导「重新发布」。
-  return record.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN ||
-    record.finalScoreStatus === FinalScoreStatusCode.CORRECTED
+  return record.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN
+    || record.finalScoreStatus === FinalScoreStatusCode.CORRECTED
     ? '重新发布'
     : '发布'
 }
@@ -1089,10 +1098,10 @@ const hasUnreviewedBlockingRisks = computed(() => {
   // 未确认题目分 / 缺批改 / 计零终分待补齐：硬引导处置，不走「标记已复核」软通过
   return blockingRiskReasons.value.some(
     (reason) =>
-      !HARD_BLOCKING_RISK_REASON_CODES.has(reason.reasonCode) &&
-      !isQuestionConfirmRiskReason(reason.reasonCode) &&
-      reason.reasonCode !== FinalScoreRiskReasonCode.MISSING_ABSENCE_SCORE_ZERO_FINAL &&
-      !reviewedRiskReasonCodes.value.has(reason.reasonCode),
+      !HARD_BLOCKING_RISK_REASON_CODES.has(reason.reasonCode)
+      && !isQuestionConfirmRiskReason(reason.reasonCode)
+      && reason.reasonCode !== FinalScoreRiskReasonCode.MISSING_ABSENCE_SCORE_ZERO_FINAL
+      && !reviewedRiskReasonCodes.value.has(reason.reasonCode),
   )
 })
 
@@ -1110,8 +1119,8 @@ function isHardBlockingRiskReason(reasonCode: FinalScoreRiskReasonCode): boolean
 
 function isQuestionConfirmRiskReason(reasonCode: FinalScoreRiskReasonCode): boolean {
   return (
-    reasonCode === FinalScoreRiskReasonCode.UNCONFIRMED_QUESTION_GRADE ||
-    reasonCode === FinalScoreRiskReasonCode.MISSING_QUESTION_GRADE
+    reasonCode === FinalScoreRiskReasonCode.UNCONFIRMED_QUESTION_GRADE
+    || reasonCode === FinalScoreRiskReasonCode.MISSING_QUESTION_GRADE
   )
 }
 
@@ -1151,8 +1160,8 @@ async function toggleRiskReasonReviewed(reasonCode: FinalScoreRiskReasonCode): P
   if (HARD_BLOCKING_RISK_REASON_CODES.has(reasonCode)) return
   // ABNORMAL_PAPER 可标记已复核（允许先发其它已确认卷），但引导去扫描处置，不能当缺考。
   if (
-    reasonCode === FinalScoreRiskReasonCode.UNCONFIRMED_QUESTION_GRADE ||
-    reasonCode === FinalScoreRiskReasonCode.MISSING_QUESTION_GRADE
+    reasonCode === FinalScoreRiskReasonCode.UNCONFIRMED_QUESTION_GRADE
+    || reasonCode === FinalScoreRiskReasonCode.MISSING_QUESTION_GRADE
   ) {
     message.warning(
       reasonCode === FinalScoreRiskReasonCode.MISSING_QUESTION_GRADE
@@ -1252,7 +1261,10 @@ async function handleRepairScoreZero(): Promise<void> {
     await Promise.all([
       loadCandidates(),
       loadRiskOverview(),
-      refreshSnapshot().catch(() => undefined),
+      refreshSnapshot().catch((error) => {
+        // 附属快照失败不阻断主流程，但不得静默；右上角 Message 告知教师
+        showUserError(error, '成绩快照刷新失败')
+      }),
     ])
   } catch (error) {
     showUserError(error, '补齐计零终分失败')
@@ -1268,12 +1280,12 @@ async function handleRepairScoreZero(): Promise<void> {
 const canBatchConfirmSafe = computed(() => {
   const overview = effectiveRiskOverview.value
   return Boolean(
-    overview &&
-    overview.safeConfirmableCount > 0 &&
-    !hasHardBlockingRisks.value &&
-    !hasFieldWideSafeBatchBlockers.value &&
-    !hasDailyScoreConfig.value &&
-    !batchConfirming.value,
+    overview
+    && overview.safeConfirmableCount > 0
+    && !hasHardBlockingRisks.value
+    && !hasFieldWideSafeBatchBlockers.value
+    && !hasDailyScoreConfig.value
+    && !batchConfirming.value,
   )
 })
 
@@ -1329,6 +1341,15 @@ const statMetrics = computed((): SignalMetric[] =>
     hasDailyScoreConfig.value,
   ),
 )
+
+/** 成绩确认页：分数状态流转（人数 + 当前阶段强调），UI 唯一真源 ScoreAnalyticsStatusFlow */
+const scoreAnalyticsFlowSteps = computed(() => {
+  const overview = effectiveRiskOverview.value
+  if (!overview) {
+    return []
+  }
+  return buildScoreAnalyticsFlowSteps(overview, 'confirm', 0)
+})
 
 const delayedAutoConfirmNotice = computed(() => {
   const panel = scorePanel.value
@@ -1491,8 +1512,8 @@ const paperTotalScoreCorrectionNotice = computed(() => {
   if (!score) return null
   // 题分之和与官方考试分不一致时始终提示；不依赖「最近一条更正是否为总分」。
   if (
-    score.questionScoreSumMatchesExamScore !== false &&
-    !score.latestTotalScoreCorrectionApplied
+    score.questionScoreSumMatchesExamScore !== false
+    && !score.latestTotalScoreCorrectionApplied
   ) {
     return null
   }
@@ -1776,9 +1797,9 @@ function resolveConfirmExamScorePreview(score: ExamPaperScoreResponse): number |
     FinalScoreStatusCode.WITHDRAWN,
   ])
   if (
-    score.examScore != null &&
-    score.finalScoreStatus &&
-    formalStatuses.has(score.finalScoreStatus)
+    score.examScore != null
+    && score.finalScoreStatus
+    && formalStatuses.has(score.finalScoreStatus)
   ) {
     return score.examScore
   }
@@ -1822,8 +1843,8 @@ async function openConfirmModal(record: ExamScoreSummaryItemResponse): Promise<v
     })
     // 总分更正后 WITHDRAWN：官方分可与题分之和不一致；重新确认会覆盖官方更正分，须引导重发布。
     if (
-      record.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN &&
-      (score.latestTotalScoreCorrectionApplied || score.questionScoreSumMatchesExamScore === false)
+      record.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN
+      && (score.latestTotalScoreCorrectionApplied || score.questionScoreSumMatchesExamScore === false)
     ) {
       confirmOpen.value = false
       confirmCandidate.value = null
@@ -1835,7 +1856,7 @@ async function openConfirmModal(record: ExamScoreSummaryItemResponse): Promise<v
     confirmComputedExamScore.value = resolveConfirmExamScorePreview(score)
     if (confirmComputedExamScore.value == null) {
       message.warning(
-        '题目分尚未全部教师确认，或当前仅为 AI 预估分。请先完成题目复核/正评后再确认最终成绩。',
+        '题目分尚未全部教师确认，或当前仅为智能预估分。请先完成题目复核/正评后再确认最终成绩。',
       )
     }
     if (hasDailyScoreConfig.value) {
@@ -1892,11 +1913,11 @@ function deriveNextStepSuggestion(): void {
     return
   }
   // 当前页找下一份未确认
-  const next =
-    candidates.value.find(
+  const next
+    = candidates.value.find(
       (c) =>
-        c.finalScoreStatus === FinalScoreStatusCode.CALCULATED ||
-        c.finalScoreStatus === FinalScoreStatusCode.PENDING,
+        c.finalScoreStatus === FinalScoreStatusCode.CALCULATED
+        || c.finalScoreStatus === FinalScoreStatusCode.PENDING,
     ) ?? null
   if (next) {
     nextStep.value = {
@@ -1953,7 +1974,7 @@ async function handleConfirm(): Promise<void> {
     return
   }
   if (hasDailyScoreConfig.value && confirmDailyScore.value == null) {
-    message.warning('请录入日常成绩')
+    showFormValidationMessage('请录入日常成绩')
     return
   }
   const examId = selectedExamId.value
@@ -2032,7 +2053,7 @@ async function handleWithdraw(): Promise<void> {
   if (!selectedExamId.value || !withdrawCandidate.value?.paperInstanceId) return
   const reason = withdrawReason.value.trim()
   if (!reason) {
-    message.warning('请填写撤回原因')
+    showFormValidationMessage('请填写撤回原因')
     return
   }
   withdrawing.value = true

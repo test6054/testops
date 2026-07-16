@@ -9,6 +9,12 @@ import type {
   PortfolioIndicatorSourceMappingVO,
   PortfolioIndustryPackVO,
 } from '@/apis/portfolio/indicator-types'
+import type { PortfolioIndustryPackDefForm } from '@/utils/indicator-industry-pack-def'
+import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioIndicatorPlatformApi } from '@/apis/portfolio/indicator'
 import {
   PF_INDICATOR_DATA_SOURCE_CHANNEL_OPTIONS,
   PF_INDICATOR_STATUS_OPTIONS,
@@ -20,22 +26,6 @@ import {
   PfScoreRuleTypeCode,
   PfScoreRuleTypeDescription,
 } from '@/apis/portfolio/indicator-types'
-import type { PortfolioIndustryPackDefForm } from '@/utils/indicator-industry-pack-def'
-import {
-  buildNewIndustryPackDefJson,
-  mergeIndustryPackDefJson,
-  parseIndustryPackDefJson,
-} from '@/utils/indicator-industry-pack-def'
-import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
-import {
-  defaultTemplateParams,
-  parseTemplateParamsJson,
-  serializeTemplateParams,
-} from '@/utils/indicator-template-params'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
-import { portfolioIndicatorPlatformApi } from '@/apis/portfolio/indicator'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/PortfolioIndicatorTemplateParamsForm.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -50,7 +40,17 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { PortfolioIndicatorDefinitionTreeNodeTypeCode } from '@/types/enums/portfolio-indicator-definition-tree-node-type-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import {
+  buildNewIndustryPackDefJson,
+  mergeIndustryPackDefJson,
+  parseIndustryPackDefJson,
+} from '@/utils/indicator-industry-pack-def'
+import {
+  defaultTemplateParams,
+  parseTemplateParamsJson,
+  serializeTemplateParams,
+} from '@/utils/indicator-template-params'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 function dataSourceLabel(value: PfIndicatorDataSourceChannelCode): string {
@@ -211,11 +211,11 @@ const packDefForm = reactive<PortfolioIndustryPackDefForm>({
 })
 const interactionLocked = computed(
   () =>
-    writing.value ||
-    detailOpen.value ||
-    templateDrawerOpen.value ||
-    packDrawerOpen.value ||
-    importModalOpen.value,
+    writing.value
+    || detailOpen.value
+    || templateDrawerOpen.value
+    || packDrawerOpen.value
+    || importModalOpen.value,
 )
 
 /** 平台指标资产写操作必须串行，避免定义、模板、行业包和种子导入并发改写全租户真源。 */
@@ -343,13 +343,13 @@ async function loadTemplates() {
   }
 }
 
-function handleDefinitionPageChange(event: { current: number; pageSize: number }) {
+function handleDefinitionPageChange(event: { current: number, pageSize: number }) {
   query.pageNum = event.current
   query.pageSize = event.pageSize
   void loadPage()
 }
 
-function handleTemplatePageChange(event: { current: number; pageSize: number }) {
+function handleTemplatePageChange(event: { current: number, pageSize: number }) {
   templateQuery.pageNum = event.current
   templateQuery.pageSize = event.pageSize
   void loadTemplates()
@@ -425,7 +425,7 @@ async function openDetail(indicatorCode: string, openAsEdit = false) {
   } catch (error) {
     if (requestToken.detail !== currentToken) return
     detailOpen.value = false
-    showUserError(error)
+    showUserError(error, '加载指标定义失败')
   } finally {
     if (requestToken.detail === currentToken) detailLoading.value = false
   }
@@ -465,12 +465,12 @@ async function saveDefinition() {
   const indicatorCode = editForm.indicatorCode.trim()
   const indicatorName = editForm.indicatorName.trim()
   if (
-    !indicatorCode ||
-    !indicatorName ||
-    !editForm.dimensionL1Name.trim() ||
-    !editForm.dimensionL2Name.trim()
+    !indicatorCode
+    || !indicatorName
+    || !editForm.dimensionL1Name.trim()
+    || !editForm.dimensionL2Name.trim()
   ) {
-    message.warning('请完整填写指标编码、名称和两级维度')
+    showFormValidationMessage('请完整填写指标编码、名称和两级维度')
     return
   }
   const operation = `save:definition:${editForm.id || indicatorCode}`
@@ -502,7 +502,7 @@ async function saveDefinition() {
     fillEditForm(detail.value)
     await Promise.all([loadSummary(), reloadTab()])
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存指标定义失败')
   } finally {
     endOperation(operation)
   }
@@ -537,8 +537,8 @@ function openTemplateEdit(record?: PortfolioIndicatorRuleTemplateVO) {
     templateForm.templateCode = record.templateCode
     templateForm.templateName = record.templateName
     templateForm.ruleType = record.ruleType
-    templateParams.value =
-      parseTemplateParamsJson(record.paramsJson) ?? defaultTemplateParams(record.ruleType)
+    templateParams.value
+      = parseTemplateParamsJson(record.paramsJson) ?? defaultTemplateParams(record.ruleType)
     templateForm.description = ''
     templateForm.status = record.status
   } else {
@@ -557,7 +557,7 @@ async function saveTemplateForm() {
   const templateCode = templateForm.templateCode.trim()
   const templateName = templateForm.templateName.trim()
   if (!templateCode || !templateName) {
-    message.warning('请填写模板编码和模板名称')
+    showFormValidationMessage('请填写模板编码和模板名称')
     return
   }
   const operation = `save:template:${templateForm.id || templateCode}`
@@ -577,7 +577,7 @@ async function saveTemplateForm() {
     templateDrawerOpen.value = false
     await loadTemplates()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存规则模板失败')
   } finally {
     endOperation(operation)
   }
@@ -626,7 +626,7 @@ async function savePackForm() {
   const packName = packForm.packName.trim()
   const packVersion = packForm.packVersion.trim()
   if (!packCode || !packName || !packVersion) {
-    message.warning('请填写行业包编码、名称和版本')
+    showFormValidationMessage('请填写行业包编码、名称和版本')
     return
   }
   const packDefJson = packForm.id
@@ -657,7 +657,7 @@ async function savePackForm() {
     await loadIndustryPacks()
     await loadSummary()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存行业包失败')
   } finally {
     endOperation(operation)
   }
@@ -682,7 +682,7 @@ async function importSeed() {
     )
     await Promise.all([loadSummary(), reloadTab()])
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导入平台种子失败')
   } finally {
     endOperation(operation)
   }
@@ -748,9 +748,7 @@ onMounted(async () => {
                 {{ indicatorCode }} ·
                 {{ defaultDataSource ? dataSourceLabel(defaultDataSource) : '—' }} ·
                 {{ status ? indicatorStatusLabel(status) : '—' }}
-                <a v-if="indicatorCode" class="detail-link" @click.stop="openDetail(indicatorCode)"
-                  >详情</a
-                >
+                <a v-if="indicatorCode" class="detail-link" @click.stop="openDetail(indicatorCode)">详情</a>
               </span>
             </template>
           </a-tree>
@@ -909,10 +907,10 @@ onMounted(async () => {
             </template>
           </UiDataTable>
         </a-tab-pane>
-        <a-tab-pane key="import" tab="Excel 导入">
-          <p class="hint">请先下载模板，填写后上传 Excel 文件批量导入指标定义。</p>
+        <a-tab-pane key="import" tab="表格文件导入">
+          <p class="hint">请先下载模板，填写后上传表格文件批量导入指标定义。</p>
           <UiButton :disabled="interactionLocked" @click="importModalOpen = true">
-            Excel 批量导入
+            表格文件批量导入
           </UiButton>
         </a-tab-pane>
         <a-tab-pane key="mapping" tab="来源映射">
@@ -994,7 +992,7 @@ onMounted(async () => {
               :disabled="writing"
             />
           </a-form-item>
-          <a-form-item label="规则模板 ID">
+          <a-form-item label="规则模板编号">
             <a-input
               v-model:value="editForm.defaultRuleTemplateId"
               placeholder="绑定 Score 模板主键"

@@ -5,7 +5,7 @@ export interface PortfolioExpertAssignmentVO {
   id: string
   evaluationTaskId: string
   expertUserId: string
-  subjectTeacherIdsJson: string
+  subjectTeacherIds: string[]
   materialScopeJson: string
   accessToken?: string
   maskRequired: boolean
@@ -69,7 +69,7 @@ export const portfolioExpertAssignmentApi = {
     ),
   revoke: (data: { id: string }) =>
     http.post<PortfolioExpertAssignmentVO>('/api/portfolio/expert-assignment/revoke', data),
-  reviewBundle: (data: { accessToken?: string; assignmentId?: string }) =>
+  reviewBundle: (data: { accessToken?: string, assignmentId?: string }) =>
     http.post<PortfolioExpertAssignmentReviewBundleVO>(
       '/api/portfolio/expert-assignment/review-bundle',
       data,

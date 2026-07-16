@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioExportApprovalVO } from '@/apis/portfolio/governance'
-import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
-import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import type { SemesterCode } from '@/types/enums/semester-enum'
-import { SemesterOptions } from '@/types/enums/semester-enum'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
@@ -27,7 +26,8 @@ import {
   PortfolioExportTypeCode,
   PortfolioExportTypeDescription,
 } from '@/types/enums/portfolio-export-type-enum'
-import { showUserError } from '@/utils/error-handler'
+import { SemesterOptions } from '@/types/enums/semester-enum'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -110,16 +110,16 @@ function approvalStatusTone(code: string): 'blue' | 'green' | 'red' | 'gray' {
 
 function canDownload(row: PortfolioExportApprovalVO): boolean {
   return (
-    (row.approvalStatus === PortfolioExportApprovalStatusCode.APPROVED ||
-      row.approvalStatus === PortfolioExportApprovalStatusCode.DOWNLOADED) &&
-    Boolean(row.fileNodeId)
+    (row.approvalStatus === PortfolioExportApprovalStatusCode.APPROVED
+      || row.approvalStatus === PortfolioExportApprovalStatusCode.DOWNLOADED)
+    && Boolean(row.fileNodeId)
   )
 }
 
 function canRevoke(row: PortfolioExportApprovalVO): boolean {
   return (
-    row.approvalStatus === PortfolioExportApprovalStatusCode.APPROVED ||
-    row.approvalStatus === PortfolioExportApprovalStatusCode.DOWNLOADED
+    row.approvalStatus === PortfolioExportApprovalStatusCode.APPROVED
+    || row.approvalStatus === PortfolioExportApprovalStatusCode.DOWNLOADED
   )
 }
 
@@ -133,7 +133,7 @@ async function submitRevoke() {
   const target = revokeTarget.value
   const reason = revokeReason.value.trim()
   if (!target || !reason) {
-    message.warning('请填写撤销原因')
+    showFormValidationMessage('请填写撤销原因')
     return
   }
   revokeLoading.value = true
@@ -187,14 +187,14 @@ function onTableChange(changeEvent: UiDataTableChangeEvent) {
 
 async function downloadRow(row: PortfolioExportApprovalVO) {
   if (!row.fileNodeId) {
-    message.warning('审批产物尚未生成')
+    showFormValidationMessage('审批产物尚未生成')
     return
   }
   downloadLoading.value = true
   try {
     const result = await portfolioSecurityApi.downloadExport({ id: row.id })
     if (!result.fileNodeId) {
-      message.warning('审批产物尚未生成')
+      showFormValidationMessage('审批产物尚未生成')
       return
     }
     await downloadPortfolioExcelExport({
@@ -222,15 +222,15 @@ async function submitApply() {
   const academicYear = applyForm.academicYear.trim()
   const exportPurpose = applyForm.exportPurpose.trim()
   if (!applicantUserId) {
-    message.warning('当前登录用户信息尚未就绪')
+    showFormValidationMessage('当前登录用户信息尚未就绪')
     return
   }
   if (academicYear && !/^\d{4}-\d{4}$/.test(academicYear)) {
-    message.warning('学年格式应为 2025-2026')
+    showFormValidationMessage('学年格式应为四位年起止年，中间用短横线连接')
     return
   }
   if (!exportPurpose) {
-    message.warning('请填写导出用途')
+    showFormValidationMessage('请填写导出用途')
     return
   }
   applying.value = true

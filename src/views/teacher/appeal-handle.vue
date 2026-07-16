@@ -96,6 +96,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import BatchCorrectionPlansCard from './appeal-handle/BatchCorrectionPlansCard.vue'
@@ -209,7 +210,12 @@ async function loadWindowPolicy(): Promise<void> {
     windowPolicy.value = null
     return
   }
-  windowPolicy.value = await getReviewWindowPolicy(currentExamId.value)
+  try {
+    windowPolicy.value = await getReviewWindowPolicy(currentExamId.value)
+  } catch (error) {
+    windowPolicy.value = null
+    showUserError(error, '复核窗口策略加载失败')
+  }
 }
 
 function reloadAll(): void {

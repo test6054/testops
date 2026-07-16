@@ -32,7 +32,7 @@ import {
 } from '@/composables/useAccreditationWorkbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { ExpertPackageTypeCode } from '@/types/enums/expert-package-type-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -145,7 +145,7 @@ async function loadEvidences() {
     }
     emitCount()
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '认证证据加载失败')
   } finally {
     loading.value = false
   }
@@ -164,7 +164,7 @@ async function loadLinkedExams() {
       label: item.label,
     }))
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '关联考试选项加载失败')
   }
 }
 
@@ -276,7 +276,7 @@ async function submitEvidence() {
     evidenceOpen.value = false
     await loadEvidences()
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '认证证据保存失败')
   }
 }
 
@@ -298,7 +298,7 @@ async function deleteEvidence(id: string) {
     await accreditationApi.evidenceDelete(id)
     await loadEvidences()
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '认证证据删除失败')
   }
 }
 
@@ -310,7 +310,7 @@ function handleEvidenceRowAction(key: string, record: AccreditationEvidenceVO) {
 
 async function openMarkImport() {
   if (!canMutateEvidence.value) {
-    message.error(evidenceMutationHint.value || '当前不可同步 mark 扫描页证据')
+    message.error(evidenceMutationHint.value || '当前不可同步阅卷考试扫描页证据')
     return
   }
   await loadLinkedExams()
@@ -320,7 +320,7 @@ async function openMarkImport() {
 
 async function submitMarkImport() {
   if (selectedExamIds.value.length === 0) {
-    message.error('请选择至少一场已关联 edu-mark 的考试')
+    showFormValidationMessage('请选择至少一场已关联阅卷考试的考试')
     return
   }
   try {
@@ -333,7 +333,7 @@ async function submitMarkImport() {
     markImportOpen.value = false
     await loadEvidences()
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '扫描页证据同步失败')
   }
 }
 
@@ -355,7 +355,7 @@ async function exportExpertPackage() {
     message.success('专家材料包导出任务已提交')
     emit('exported')
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '专家材料包导出失败')
   } finally {
     exporting.value = false
   }

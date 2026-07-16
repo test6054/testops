@@ -67,7 +67,7 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { SemesterOptions } from '@/types/enums/semester-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const nodeColumns: ColumnsType = [
@@ -228,7 +228,7 @@ function handleNodeIndicatorChange(value: string | null): void {
 
 function openNodeCreate() {
   if (!qualityStore.currentQualityCourseId) {
-    message.warning('请先选择质量评价课程')
+    showFormValidationMessage('请先选择质量评价课程')
     return
   }
   nodeEditorMode.value = 'create'
@@ -306,7 +306,7 @@ async function submitNode() {
       await processNodeApi.create(request)
     } else {
       if (!v.id) {
-        message.error('过程性评价节点 ID 缺失，无法更新')
+        message.error('过程性评价节点编号缺失，无法更新')
         return
       }
       const request: ProcessEvaluationNodeUpdateRequest = {
@@ -532,7 +532,7 @@ async function submitRecord() {
       await processRecordApi.create(request)
     } else {
       if (!v.id) {
-        message.error('过程性评价记录 ID 缺失，无法更新')
+        message.error('过程性评价记录编号缺失，无法更新')
         return
       }
       const request: ProcessEvaluationRecordUpdateRequest = {
@@ -747,7 +747,7 @@ function openConfirmedByGoal() {
 
 async function queryConfirmedByGoal() {
   if (!confirmedByGoalId.value) {
-    message.warning('请选择课程目标')
+    showFormValidationMessage('请选择课程目标')
     return
   }
   confirmedByGoalLoading.value = true
@@ -979,7 +979,7 @@ function handleCourseChange(courseId: string | null) {
                 :disabled="selectedNode.confirmationStatus !== ConfirmationStatusCode.CONFIRMED"
                 @click="openImportExcel"
               >
-                Excel 导入
+                表格文件导入
               </UiButton>
               <UiButton variant="outline" size="sm" @click="openConfirmedByGoal">
                 按课程目标查有效
@@ -1219,7 +1219,7 @@ function handleCourseChange(courseId: string | null) {
       entity-label="过程性评价记录"
       :context="importRecordContext"
       :requirements="[
-        'Excel 列顺序：学号 | 姓名（可选） | 得分 | 换算得分（可选 0-1） | 备注（可选）',
+        '表格文件列顺序：学号 | 姓名（可选） | 得分 | 换算得分（可选 0-1） | 备注（可选）',
         '导入状态可在工具栏选择：起草 / 已提交 / 已确认；选「已确认」可直接进入达成度计算。',
         '选「已提交」导入后记录锁定，须先将状态改为「已退回」才能改分或删除。',
         '学号和得分必填；失败行不会入库。',

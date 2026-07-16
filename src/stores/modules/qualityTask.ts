@@ -32,6 +32,7 @@ import {
   ImprovementTaskStatusCode,
   ReportExportStatusCode,
 } from '@/apis/quality/types'
+import { showUserError } from '@/utils/error-handler'
 
 const DEFAULT_TOP_N = 50
 
@@ -88,13 +89,17 @@ export const useQualityTaskStore = defineStore('qualityTask', () => {
    * 拉取在飞 AI 任务（PENDING / PROCESSING 各前 topN/2）。
    * 后端 page 接口默认按 createTime DESC，前端只取需要展示的状态。
    */
-  async function pollAiTasks(scope: QualityTaskScopeFilter = {}): Promise<AiTaskVO[]> {
+  async function pollAiTasks(
+    scope: QualityTaskScopeFilter = {},
+    options?: { silent?: boolean },
+  ): Promise<AiTaskVO[]> {
     const topN = scope.topN ?? DEFAULT_TOP_N
+    const quiet = options?.silent ? { showErrorMessage: false as const } : undefined
     aiTasksLoading.value = true
     try {
       const [pendingPage, processingPage] = await Promise.all([
-        aiTaskApi.page({ pageNum: 1, pageSize: topN, status: AiTaskStatusCode.PENDING }),
-        aiTaskApi.page({ pageNum: 1, pageSize: topN, status: AiTaskStatusCode.PROCESSING }),
+        aiTaskApi.page({ pageNum: 1, pageSize: topN, status: AiTaskStatusCode.PENDING }, quiet),
+        aiTaskApi.page({ pageNum: 1, pageSize: topN, status: AiTaskStatusCode.PROCESSING }, quiet),
       ])
       aiTasksInFlight.value = [
         ...processingPage.list,
@@ -111,18 +116,24 @@ export const useQualityTaskStore = defineStore('qualityTask', () => {
    * 拉取在导出报告（exportStatus 为 PENDING / PROCESSING / FAILED）。
    * 后端 page 接口不直接接受 exportStatus 过滤；本 Store 拉前 200 条 SUBMITTED/CONFIRMED 状态后过滤。
    */
-  async function pollReportExports(scope: QualityTaskScopeFilter = {}): Promise<ReportVO[]> {
+  async function pollReportExports(
+    scope: QualityTaskScopeFilter = {},
+    options?: { silent?: boolean },
+  ): Promise<ReportVO[]> {
     const topN = scope.topN ?? 200
     reportExportsLoading.value = true
     try {
-      const result = await reportApi.page({
-        pageNum: 1,
-        pageSize: topN,
-        programId: scope.programId,
-        trainingPlanId: scope.trainingPlanId,
-        qualityCourseId: scope.qualityCourseId,
-        includeAchievementDisplay: false,
-      })
+      const result = await reportApi.page(
+        {
+          pageNum: 1,
+          pageSize: topN,
+          programId: scope.programId,
+          trainingPlanId: scope.trainingPlanId,
+          qualityCourseId: scope.qualityCourseId,
+          includeAchievementDisplay: false,
+        },
+        options?.silent ? { showErrorMessage: false } : undefined,
+      )
       const list = result.list
       reportExportsInFlight.value = list.filter(
         (r) => r.exportStatus === ReportExportStatusCode.PENDING || r.exportStatus === ReportExportStatusCode.PROCESSING || r.exportStatus === ReportExportStatusCode.FAILED,
@@ -137,17 +148,23 @@ export const useQualityTaskStore = defineStore('qualityTask', () => {
   /**
    * 拉取未关闭的改进任务（DRAFT / IN_PROGRESS / OWNER_VERIFY / COMMITTEE_REVIEW）。
    */
-  async function pollImprovementTasks(scope: QualityTaskScopeFilter = {}): Promise<ImprovementTaskVO[]> {
+  async function pollImprovementTasks(
+    scope: QualityTaskScopeFilter = {},
+    options?: { silent?: boolean },
+  ): Promise<ImprovementTaskVO[]> {
     const topN = scope.topN ?? DEFAULT_TOP_N
     improvementTasksLoading.value = true
     try {
-      const result = await improvementTaskApi.page({
-        pageNum: 1,
-        pageSize: topN,
-        programId: scope.programId,
-        trainingPlanId: scope.trainingPlanId,
-        qualityCourseId: scope.qualityCourseId,
-      })
+      const result = await improvementTaskApi.page(
+        {
+          pageNum: 1,
+          pageSize: topN,
+          programId: scope.programId,
+          trainingPlanId: scope.trainingPlanId,
+          qualityCourseId: scope.qualityCourseId,
+        },
+        options?.silent ? { showErrorMessage: false } : undefined,
+      )
       const list = result.list
       improvementTasksOpen.value = list.filter((t) => t.status !== ImprovementTaskStatusCode.CLOSED)
       return improvementTasksOpen.value
@@ -160,20 +177,34 @@ export const useQualityTaskStore = defineStore('qualityTask', () => {
   /**
    * 一次性刷新全部三个汇总（业务页面顶层 onMounted 调用）。
    */
-  async function refreshAll(scope: QualityTaskScopeFilter = {}): Promise<void> {
+  async function refreshAll(
+    scope: QualityTaskScopeFilter = {},
+    options?: { silent?: boolean },
+  ): Promise<void> {
+    const silent = options?.silent === true
+    // 三类汇总隔离：单项失败保留上次数据，不拖垮其它汇总
     try {
-      await Promise.all([
-        pollAiTasks(scope),
-        pollReportExports(scope),
-        pollImprovementTasks(scope),
-      ])
-      lastFetchedAt.value = Date.now()
+      await pollAiTasks(scope, { silent })
+    } catch (error) {
+      if (!silent) {
+        showUserError(error, '在飞智能任务汇总刷新失败')
+      }
     }
-    catch {
-      aiTasksInFlight.value = []
-      reportExportsInFlight.value = []
-      improvementTasksOpen.value = []
+    try {
+      await pollReportExports(scope, { silent })
+    } catch (error) {
+      if (!silent) {
+        showUserError(error, '报告导出任务汇总刷新失败')
+      }
     }
+    try {
+      await pollImprovementTasks(scope, { silent })
+    } catch (error) {
+      if (!silent) {
+        showUserError(error, '改进任务汇总刷新失败')
+      }
+    }
+    lastFetchedAt.value = Date.now()
   }
 
   function reset(): void {

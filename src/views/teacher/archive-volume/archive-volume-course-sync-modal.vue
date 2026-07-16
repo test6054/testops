@@ -83,6 +83,8 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { ref, watch } from 'vue'
 import {
   ARCHIVE_MATERIAL_TYPE_OPTIONS,
   ArchiveElectronicOriginalStatusCode,
@@ -90,8 +92,6 @@ import {
   ArchiveMaterialSortRuleCode,
   syncArchiveCoursePlatform,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -99,7 +99,7 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
 const props = defineProps<{
   open: boolean
@@ -108,7 +108,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  success: []
+  "success": []
 }>()
 
 interface SyncRow {
@@ -202,24 +202,24 @@ async function onRowFileChange(event: Event) {
 async function handleSubmit() {
   if (!props.volumeId) return
   if (!form.value.sourceSystem.trim()) {
-    message.warning('请填写来源系统')
+    showFormValidationMessage('请填写来源系统')
     return
   }
   if (!form.value.idempotencyKey.trim()) {
-    message.warning('请填写幂等键')
+    showFormValidationMessage('请填写幂等键')
     return
   }
   if (rows.value.length === 0) {
-    message.warning('请添加至少一行材料')
+    showFormValidationMessage('请添加至少一行材料')
     return
   }
   for (const row of rows.value) {
     if (!row.materialType) {
-      message.warning('每行须选择材料类型')
+      showFormValidationMessage('每行须选择材料类型')
       return
     }
     if (!row.fileId) {
-      message.warning('每行须上传文件')
+      showFormValidationMessage('每行须上传文件')
       return
     }
   }
@@ -248,7 +248,7 @@ async function handleSubmit() {
     emit('update:open', false)
     emit('success')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '同步课程平台材料失败')
   } finally {
     submitting.value = false
   }

@@ -790,6 +790,20 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'school/title-criteria-templates',
+        name: 'PortfolioTitleCriteriaTemplates',
+        component: () => import('@/views/portfolio/title-criteria-templates.vue'),
+        meta: {
+          title: '职称资格条件模板',
+          ...PORTFOLIO_ADMIN_ROUTE_META,
+          icon: 'profile',
+          hideInMenu: false,
+          ...MENU_SECONDARY,
+          keepAlive: true,
+          ...portfolioGovernanceMenuMeta,
+        },
+      },
+      {
         path: 'school/ethics-sanction',
         name: 'PortfolioEthicsSanctionAdmin',
         component: () => import('@/views/portfolio/ethics-sanction-admin.vue'),

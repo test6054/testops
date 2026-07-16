@@ -143,7 +143,7 @@ function handleOk() {
     <div v-else-if="ticket?.archiveSnapshot" class="cognitive-confirm">
       <p class="cognitive-confirm__lead">请核对柜位与卷信息后再进纸</p>
       <p v-if="!hasCabinet" class="cognitive-confirm__blocker">
-        缺少档案柜位，无法进纸。请返回 PC 端补录柜位后重新派单。
+        缺少档案柜位，无法进纸。请返回电脑端补录柜位后重新派单。
       </p>
       <p v-else-if="!hasMaterialType" class="cognitive-confirm__blocker">
         缺少扫描材料类型，无法进纸。请取消派单后重新创建。

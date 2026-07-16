@@ -4,10 +4,6 @@ import type {
   PortfolioEvaluationTaskVO,
   PortfolioEvaluationWorkgroupOptionVO,
 } from '@/apis/portfolio/teacher-platform'
-import {
-  portfolioEvaluationTaskApi,
-  portfolioEvaluationWorkgroupApi,
-} from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { Input, message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
@@ -22,6 +18,10 @@ import {
   PortfolioEvaluationTaskStatusDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
+import {
+  portfolioEvaluationTaskApi,
+  portfolioEvaluationWorkgroupApi,
+} from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -32,7 +32,7 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const ADVANCE_ACTIONS: Partial<
@@ -50,9 +50,9 @@ const ADVANCE_ACTIONS: Partial<
 
 function canArchiveTask(task: PortfolioEvaluationTaskVO): boolean {
   return (
-    (task.taskStatus === PortfolioEvaluationTaskStatusCode.PUBLICITY ||
-      task.taskStatus === PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING) &&
-    task.publicityExpiredAwaitingArchive === true
+    (task.taskStatus === PortfolioEvaluationTaskStatusCode.PUBLICITY
+      || task.taskStatus === PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING)
+    && task.publicityExpiredAwaitingArchive === true
   )
 }
 
@@ -192,19 +192,19 @@ async function submitCreateTask() {
     return
   }
   if (
-    !createForm.taskName.trim() ||
-    !createForm.workgroupId ||
-    !createForm.startTime ||
-    !createForm.endTime
+    !createForm.taskName.trim()
+    || !createForm.workgroupId
+    || !createForm.startTime
+    || !createForm.endTime
   ) {
-    message.warning('请填写任务名称、工作组和评价时间窗')
+    showFormValidationMessage('请填写任务名称、工作组和评价时间窗')
     return
   }
   if (
-    createForm.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON &&
-    !createForm.targetIndicatorCode.trim()
+    createForm.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON
+    && !createForm.targetIndicatorCode.trim()
   ) {
-    message.warning('按人评价须填写画像回流目标指标编码')
+    showFormValidationMessage('按人评价须填写画像回流目标指标编码')
     return
   }
   creating.value = true
@@ -311,11 +311,11 @@ async function submitPublish() {
     return
   }
   if (!publishForm.publicityTitle.trim()) {
-    message.warning('请填写公示标题')
+    showFormValidationMessage('请填写公示标题')
     return
   }
   if (!publishForm.startTime || !publishForm.endTime) {
-    message.warning('请填写公示起止时间')
+    showFormValidationMessage('请填写公示起止时间')
     return
   }
   if (writing.value) {

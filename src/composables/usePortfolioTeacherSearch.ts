@@ -45,7 +45,7 @@ export function usePortfolioTeacherSearch() {
       })
     }
     catch (error) {
-      showUserError(error)
+      showUserError(error, '搜索教师失败')
     }
   }
 

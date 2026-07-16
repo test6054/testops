@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { TreeProps } from 'ant-design-vue'
-import { message } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PortfolioOrgAliasSaveRequest,
@@ -10,6 +9,7 @@ import type {
   PortfolioOrgTreeNodeVO,
   PortfolioOrgUnitSaveRequest,
 } from '@/apis/portfolio/types'
+import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
   PORTFOLIO_ORG_UNIT_TYPE_OPTIONS,
@@ -34,7 +34,7 @@ import { isPortfolioUnitNode, usePortfolioOrgTree } from '@/composables/usePortf
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { hasTeacherTenantPermission } from '@/utils/permission'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -49,11 +49,11 @@ interface TreeNode {
 
 function isTreeNode(value: unknown): value is TreeNode {
   return (
-    typeof value === 'object' &&
-    value !== null &&
-    'key' in value &&
-    'title' in value &&
-    'raw' in value
+    typeof value === 'object'
+    && value !== null
+    && 'key' in value
+    && 'title' in value
+    && 'raw' in value
   )
 }
 
@@ -227,7 +227,7 @@ async function handleSync() {
     syncDiagnostics.value = result.invalidPortfolioOrgUnits ?? []
     message.success(`校验完成：院系 ${result.departmentCount}、专业 ${result.majorCount}`)
     if (syncDiagnostics.value.length > 0) {
-      message.warning(`挂接失效扩展组织 ${syncDiagnostics.value.length} 个，见下方诊断列表`)
+      showFormValidationMessage(`挂接失效扩展组织 ${syncDiagnostics.value.length} 个，见下方诊断列表`)
     }
     await refreshTree()
     await loadLatestSync()
@@ -322,13 +322,13 @@ function openUnitEditor(mode: 'create' | 'edit') {
     unitEditor.orgName = ''
     unitEditor.orgCode = ''
     unitEditor.parentPortfolioOrgId = selectedNode.value?.portfolioOrgId
-    unitEditor.anchorDepartmentId =
-      selectedRaw.value?.anchorDepartmentId ??
-      (selectedRaw.value?.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.DEPARTMENT
+    unitEditor.anchorDepartmentId
+      = selectedRaw.value?.anchorDepartmentId
+        ?? (selectedRaw.value?.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.DEPARTMENT
         ? selectedRaw.value.id
         : undefined)
-    unitEditor.anchorMajorId =
-      selectedRaw.value?.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.MAJOR
+    unitEditor.anchorMajorId
+      = selectedRaw.value?.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.MAJOR
         ? selectedRaw.value.id
         : selectedRaw.value?.anchorMajorId
     unitEditor.sortOrder = 0
@@ -341,7 +341,7 @@ function openUnitEditor(mode: 'create' | 'edit') {
 async function submitUnit() {
   const orgName = unitEditor.orgName.trim()
   if (!orgName) {
-    message.warning('请填写扩展组织名称')
+    showFormValidationMessage('请填写扩展组织名称')
     return
   }
   const targetId = unitEditor.id || 'new'
@@ -375,7 +375,7 @@ async function submitUnit() {
 async function deleteSelectedUnit() {
   const unitId = selectedNode.value?.portfolioOrgId
   if (!unitId) {
-    message.warning('请选择专业群或教研室等扩展组织节点')
+    showFormValidationMessage('请选择专业群或教研室等扩展组织节点')
     return
   }
   const operation = `unit:delete:${unitId}`
@@ -417,12 +417,12 @@ function handleOrgAliasAction(key: string, row: PortfolioOrgAliasVO): void {
 function openAliasEditor(mode: 'create' | 'edit', row?: PortfolioOrgAliasVO) {
   const node = selectedRaw.value
   if (!node) {
-    message.warning('请先选择组织节点')
+    showFormValidationMessage('请先选择组织节点')
     return
   }
   const target = resolveAliasTarget(node)
   if (!target) {
-    message.warning('当前节点不支持维护历史名称')
+    showFormValidationMessage('当前节点不支持维护历史名称')
     return
   }
   aliasMode.value = mode
@@ -447,15 +447,15 @@ function openAliasEditor(mode: 'create' | 'edit', row?: PortfolioOrgAliasVO) {
 async function submitAlias() {
   const aliasName = aliasEditor.aliasName.trim()
   if (!aliasName) {
-    message.warning('请填写历史名称')
+    showFormValidationMessage('请填写历史名称')
     return
   }
   if (
-    aliasEditor.effectiveFrom &&
-    aliasEditor.effectiveTo &&
-    aliasEditor.effectiveFrom > aliasEditor.effectiveTo
+    aliasEditor.effectiveFrom
+    && aliasEditor.effectiveTo
+    && aliasEditor.effectiveFrom > aliasEditor.effectiveTo
   ) {
-    message.warning('生效截止日期不能早于生效起始日期')
+    showFormValidationMessage('生效截止日期不能早于生效起始日期')
     return
   }
   const targetId = aliasEditor.id || `${aliasEditor.targetType}:${aliasEditor.targetId}`
@@ -558,7 +558,7 @@ onMounted(async () => {
     <UiCard v-if="syncDiagnostics.length" title="挂接失效诊断" class="org-admin__diagnostics">
       <ul class="org-admin__diagnostic-list">
         <li v-for="item in syncDiagnostics" :key="item.id">
-          {{ item.orgName }}{{ item.orgCode ? ` (${item.orgCode})` : '' }} · ID {{ item.id }}
+          {{ item.orgName }}{{ item.orgCode ? ` (${item.orgCode})` : '' }} · 编号 {{ item.id }}
         </li>
       </ul>
     </UiCard>
@@ -600,7 +600,7 @@ onMounted(async () => {
               <dd>{{ selectedRaw.anchorMajorId }}</dd>
             </div>
             <div v-if="selectedRaw.portfolioOrgId">
-              <dt>扩展组织 ID</dt>
+              <dt>扩展组织编号</dt>
               <dd>{{ selectedRaw.portfolioOrgId }}</dd>
             </div>
             <div v-if="selectedRaw.leaderUserId">
@@ -718,14 +718,14 @@ onMounted(async () => {
         <a-form-item label="生效起始">
           <a-input
             v-model:value="aliasEditor.effectiveFrom"
-            placeholder="YYYY-MM-DD"
+            placeholder="年-月-日，例如 2026-07-16"
             :disabled="writing"
           />
         </a-form-item>
         <a-form-item label="生效截止">
           <a-input
             v-model:value="aliasEditor.effectiveTo"
-            placeholder="YYYY-MM-DD"
+            placeholder="年-月-日，例如 2026-07-16"
             :disabled="writing"
           />
         </a-form-item>

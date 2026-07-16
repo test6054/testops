@@ -72,7 +72,7 @@ export function useDispatchSession() {
 
   async function loadTicket() {
     if (!ticketId.value) {
-      errorMessage.value = '缺少派单 ticketId'
+      errorMessage.value = '缺少派单信息'
       return
     }
     loading.value = true

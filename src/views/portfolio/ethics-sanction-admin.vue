@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { Dayjs } from 'dayjs'
-import dayjs from 'dayjs'
 import type {
   PortfolioEthicsConstraintStatusVO,
   PortfolioEthicsReviewLogVO,
   PortfolioEthicsSanctionVO,
 } from '@/apis/portfolio/ethics-sanction'
-import { portfolioEthicsSanctionApi } from '@/apis/portfolio/ethics-sanction'
 import { DatePicker, Input, message, Select, Textarea } from 'ant-design-vue'
+import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { portfolioEthicsSanctionApi } from '@/apis/portfolio/ethics-sanction'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -40,7 +40,7 @@ import {
   PortfolioEthicsSanctionStatusCode,
   PortfolioEthicsSanctionStatusDescription,
 } from '@/types/enums/portfolio-ethics-sanction-status-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const loading = ref(false)
@@ -86,7 +86,7 @@ const reviewForm = reactive({
 })
 
 const columns: ColumnsType = [
-  { title: '教师ID', dataIndex: 'teacherId', key: 'teacherId', width: 120 },
+  { title: '教师编号', dataIndex: 'teacherId', key: 'teacherId', width: 120 },
   { title: '事件', key: 'eventType', width: 110 },
   { title: '起止', key: 'dateRange', width: 200 },
   { title: '影响', key: 'impactScope', width: 120 },
@@ -178,7 +178,7 @@ function openCreate() {
 function openEdit(row: PortfolioEthicsSanctionVO) {
   if (writing.value) return
   if (row.sanctionStatus !== PortfolioEthicsSanctionStatusCode.IN_EFFECT) {
-    message.warning('仅处分期内记录可编辑')
+    showFormValidationMessage('仅处分期内记录可编辑')
     return
   }
   editingId.value = row.id
@@ -197,7 +197,7 @@ function openEdit(row: PortfolioEthicsSanctionVO) {
 function openReview(row: PortfolioEthicsSanctionVO) {
   if (writing.value) return
   if (row.sanctionStatus !== PortfolioEthicsSanctionStatusCode.PENDING_REVIEW) {
-    message.warning('仅期满待复核记录可提交结论')
+    showFormValidationMessage('仅期满待复核记录可提交结论')
     return
   }
   reviewTarget.value = row
@@ -215,24 +215,38 @@ async function openDetail(row: PortfolioEthicsSanctionVO) {
   constraintStatus.value = null
   reviewLogs.value = []
   try {
-    const [nextDetail, nextConstraint] = await Promise.all([
-      portfolioEthicsSanctionApi.get({ id: row.id }),
-      portfolioEthicsSanctionApi.getConstraint({ teacherId: row.teacherId }),
-    ])
-    if (detailRequestToken.value !== currentToken) {
-      return
-    }
-    const nextLogs = await portfolioEthicsSanctionApi.listReviewLogs({ id: row.id })
+    const nextDetail = await portfolioEthicsSanctionApi.get({ id: row.id })
     if (detailRequestToken.value !== currentToken) {
       return
     }
     detailRow.value = nextDetail
-    constraintStatus.value = nextConstraint
-    reviewLogs.value = nextLogs
+    try {
+      constraintStatus.value = await portfolioEthicsSanctionApi.getConstraint({
+        teacherId: row.teacherId,
+      })
+    } catch (error) {
+      if (detailRequestToken.value !== currentToken) {
+        return
+      }
+      constraintStatus.value = null
+      showUserError(error, '加载处分约束状态失败')
+    }
+    try {
+      reviewLogs.value = await portfolioEthicsSanctionApi.listReviewLogs({ id: row.id })
+    } catch (error) {
+      if (detailRequestToken.value !== currentToken) {
+        return
+      }
+      reviewLogs.value = []
+      showUserError(error, '加载处分复核记录失败')
+    }
   } catch (error) {
     if (detailRequestToken.value !== currentToken) {
       return
     }
+    detailRow.value = null
+    constraintStatus.value = null
+    reviewLogs.value = []
     showUserError(error, '加载处分详情失败')
     detailOpen.value = false
   }
@@ -276,7 +290,7 @@ async function loadPage() {
 async function saveSanction() {
   if (writing.value) return
   if (!form.teacherId.trim()) {
-    message.error('请填写教师用户 ID')
+    showFormValidationMessage('请填写教师用户编号')
     return
   }
   if (!form.dateRange?.[0] || !form.dateRange?.[1]) {
@@ -284,10 +298,10 @@ async function saveSanction() {
     return
   }
   if (
-    !form.handlingBasis.trim() ||
-    !form.releaseCondition.trim() ||
-    !form.reviewDepartment.trim() ||
-    !form.publicSummary.trim()
+    !form.handlingBasis.trim()
+    || !form.releaseCondition.trim()
+    || !form.reviewDepartment.trim()
+    || !form.publicSummary.trim()
   ) {
     message.error('请填写处理依据、解除条件、复核部门和公开摘要')
     return
@@ -320,8 +334,8 @@ async function saveSanction() {
 async function submitReview() {
   if (!reviewTarget.value || writing.value) return
   if (
-    reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND &&
-    !reviewForm.newSanctionEndDate
+    reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND
+    && !reviewForm.newSanctionEndDate
   ) {
     message.error('延长处分须选择新的结束日期')
     return
@@ -344,7 +358,7 @@ async function submitReview() {
   }
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   void loadPage()
@@ -379,7 +393,7 @@ onMounted(() => {
         <Input
           v-model:value="query.teacherId"
           allow-clear
-          placeholder="教师用户 ID"
+          placeholder="教师用户编号"
           style="width: 180px"
           @press-enter="search"
         />
@@ -455,8 +469,8 @@ onMounted(() => {
       width="520"
     >
       <div class="ethics-admin__form">
-        <label>教师用户 ID</label>
-        <Input v-model:value="form.teacherId" :disabled="!!editingId" placeholder="教师 userId" />
+        <label>教师用户编号</label>
+        <Input v-model:value="form.teacherId" :disabled="!!editingId" placeholder="教师用户编号" />
         <label>事件类型</label>
         <Select v-model:value="form.eventType" :options="eventOptions" />
         <label>处理依据</label>

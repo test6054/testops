@@ -11,9 +11,9 @@
           <UiButton variant="ghost" size="sm" @click="goRemediationList">返回整改列表</UiButton>
           <UiButton
             v-if="
-              taskDetail &&
-              showAssigneeActions &&
-              taskDetail.taskStatus === ArchiveRemediationStatusCode.OPEN
+              taskDetail
+                && showAssigneeActions
+                && taskDetail.taskStatus === ArchiveRemediationStatusCode.OPEN
             "
             variant="primary"
             size="sm"
@@ -24,9 +24,9 @@
           </UiButton>
           <UiButton
             v-if="
-              taskDetail &&
-              showAssigneeActions &&
-              taskDetail.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
+              taskDetail
+                && showAssigneeActions
+                && taskDetail.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
             "
             variant="primary"
             size="sm"
@@ -91,9 +91,7 @@
         </template>
         <template #toolbar>
           <div class="archive-remediation-detail__flow-toolbar">
-            <span class="archive-remediation-detail__flow-hint"
-              >OPEN → IN_PROGRESS → RESUBMITTED → CLOSED</span
-            >
+            <span class="archive-remediation-detail__flow-hint">OPEN → IN_PROGRESS → RESUBMITTED → CLOSED</span>
             <div class="archive-remediation-detail__completion">
               <span class="archive-remediation-detail__completion-label">任务进度</span>
               <ArchiveReadinessRateBar :percent="taskCompletionPercent" />
@@ -205,12 +203,9 @@
             v-if="taskDetail.verifierNickName || taskDetail.verifiedTime"
             class="archive-remediation-detail__verify-meta"
           >
-            <span v-if="taskDetail.verifierNickName"
-              >验证人: {{ taskDetail.verifierNickName }}</span
-            >
+            <span v-if="taskDetail.verifierNickName">验证人: {{ taskDetail.verifierNickName }}</span>
             <span v-if="taskDetail.verifiedTime">
-              · {{ formatDateTime(taskDetail.verifiedTime) }}</span
-            >
+              · {{ formatDateTime(taskDetail.verifiedTime) }}</span>
           </p>
         </div>
       </WorkbenchSurfaceCard>
@@ -302,8 +297,8 @@
           </template>
           <UiButton
             v-if="
-              taskDetail.taskStatus === ArchiveRemediationStatusCode.OPEN ||
-              taskDetail.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
+              taskDetail.taskStatus === ArchiveRemediationStatusCode.OPEN
+                || taskDetail.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
             "
             size="sm"
             variant="outline"
@@ -380,6 +375,12 @@ import type {
   ArchiveRemediationPriorityCode,
   ArchiveRemediationTaskResponse,
 } from '@/apis/mark/archive-volume'
+import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import {
   ARCHIVE_REMEDIATION_EVIDENCE_STATUS_TONE,
   ARCHIVE_REMEDIATION_STATUS_TONE,
@@ -397,12 +398,6 @@ import {
   registerRemediationEvidence,
   updateRemediationTask,
 } from '@/apis/mark/archive-volume'
-import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import ArchiveLifecyclePipe from '@/components/archive-volume/ArchiveLifecyclePipe.vue'
 import ArchiveReadinessRateBar from '@/components/archive-volume/ArchiveReadinessRateBar.vue'
@@ -435,7 +430,7 @@ import {
   ARCHIVE_REMEDIATION_PRIORITY_TONE,
   ArchiveRemediationPriorityDescription,
 } from '@/utils/archive-remediation-priority'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime, formatFileSize } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -601,8 +596,8 @@ const showVerifierPanel = computed(() => {
   const task = taskDetail.value
   if (!task) return false
   if (
-    task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED ||
-    task.taskStatus === ArchiveRemediationStatusCode.CLOSED
+    task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED
+    || task.taskStatus === ArchiveRemediationStatusCode.CLOSED
   ) {
     return Boolean(task.verificationComment || task.verifierNickName || task.verifiedTime)
   }
@@ -642,7 +637,7 @@ function openEvidenceUploadModal() {
 
 async function submitEvidenceUpload() {
   if (!taskDetail.value || !evidenceUploadFileId.value) {
-    message.warning('请选择证据文件')
+    showFormValidationMessage('请选择证据文件')
     return
   }
   evidenceUploadSubmitting.value = true
@@ -655,7 +650,7 @@ async function submitEvidenceUpload() {
     evidenceUploadOpen.value = false
     await loadTask()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '上传整改证据失败')
   } finally {
     evidenceUploadSubmitting.value = false
   }
@@ -675,13 +670,19 @@ async function loadCampaignContext(campaignId?: string) {
     campaignTaskStats.value = null
     return
   }
-  if (isSupervisionRead.value) {
-    campaignSummary.value = await getSupervisionCampaign(campaignId)
-    campaignTaskStats.value = await getSupervisionRemediationStatsByCampaign({ campaignId })
-    return
+  try {
+    if (isSupervisionRead.value) {
+      campaignSummary.value = await getSupervisionCampaign(campaignId)
+      campaignTaskStats.value = await getSupervisionRemediationStatsByCampaign({ campaignId })
+      return
+    }
+    campaignSummary.value = await getEvaluationCampaign(campaignId)
+    campaignTaskStats.value = await getRemediationStatsByCampaign({ campaignId })
+  } catch (error) {
+    campaignSummary.value = null
+    campaignTaskStats.value = null
+    showUserError(error, '整改活动上下文加载失败')
   }
-  campaignSummary.value = await getEvaluationCampaign(campaignId)
-  campaignTaskStats.value = await getRemediationStatsByCampaign({ campaignId })
 }
 
 async function loadTask() {
@@ -721,7 +722,7 @@ async function advanceStatus(status: ArchiveRemediationStatusCode) {
       await loadCampaignContext(taskDetail.value.campaignId)
     }
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '更新整改任务状态失败')
   } finally {
     updating.value = false
   }
@@ -737,7 +738,7 @@ async function reassignAssignee() {
     })
     message.success('责任人已改派')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '改派整改责任人失败')
   } finally {
     reassigning.value = false
   }
@@ -751,7 +752,7 @@ function openCloseVerifyModal() {
 async function submitCloseWithVerification() {
   if (!taskDetail.value) return
   if (!closeVerifyComment.value.trim()) {
-    message.warning('请填写验证备注')
+    showFormValidationMessage('请填写验证备注')
     return
   }
   updating.value = true
@@ -767,7 +768,7 @@ async function submitCloseWithVerification() {
       await loadCampaignContext(taskDetail.value.campaignId)
     }
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '关闭整改任务失败')
   } finally {
     updating.value = false
   }

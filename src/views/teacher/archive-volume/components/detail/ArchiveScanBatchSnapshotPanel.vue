@@ -4,12 +4,12 @@ import type {
   ArchiveScanBatchSnapshotItemVO,
   ScanBatchQualityFlagCode,
 } from '@/apis/mark/archive-volume'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   pageArchiveScanBatchSnapshots,
   SCAN_BATCH_QUALITY_FLAG_TONE,
   ScanBatchQualityFlagDescription,
 } from '@/apis/mark/archive-volume'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   SCAN_WORK_ORDER_STATUS_TONE,
   ScanWorkOrderStatusDescription,

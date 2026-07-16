@@ -36,6 +36,11 @@
         :all-scores-published="scoresFullyPublished"
       />
 
+      <ScoreAnalyticsStatusFlow
+        v-if="scoreAnalyticsFlowSteps.length > 0"
+        :steps="scoreAnalyticsFlowSteps"
+      />
+
       <UiAlertStrip
         v-if="isPublishGateVisible('delayedAutoConfirm')"
         tone="error"
@@ -464,16 +469,23 @@ import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
 import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
 import type { ExamDetailResponse } from '@/apis/mark/exam'
-import { getExamDetail } from '@/apis/mark/exam'
 import type { ExamPaperScoreResponse, ExamQuestionScoreResponse } from '@/apis/mark/exam-grade'
-import { getPaperScore } from '@/apis/mark/exam-grade'
 import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
-import { getScorePanel } from '@/apis/mark/exam-progress'
 import type {
   ExamScoreSummaryItemResponse,
   FinalScoreBatchPublishResponse,
   FinalScoreRiskOverviewResponse,
 } from '@/apis/mark/exam-score'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { ScoreStatusTabKey } from '@/utils/score-workbench-analytics'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { repairScoreZeroFinalScores } from '@/apis/mark/absence'
+import { getExamDetail } from '@/apis/mark/exam'
+import { getPaperScore } from '@/apis/mark/exam-grade'
+import { getScorePanel } from '@/apis/mark/exam-progress'
 import {
   batchPublishFinalScores,
   getFinalScoreRiskOverview,
@@ -481,18 +493,6 @@ import {
   publishFinalScore,
   withdrawFinalScore,
 } from '@/apis/mark/exam-score'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { ScoreStatusTabKey } from '@/utils/score-workbench-analytics'
-import {
-  buildScoreBulkPublishModalStatItems,
-  buildScoreConfirmStatusTabItems,
-  SCORE_STATUS_TAB_ALL,
-} from '@/utils/score-workbench-analytics'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { repairScoreZeroFinalScores } from '@/apis/mark/absence'
 import {
   FINAL_SCORE_STATUS_TONE,
   FinalScoreStatusCode,
@@ -511,6 +511,7 @@ import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
+import ScoreAnalyticsStatusFlow from '@/components/workbench/ScoreAnalyticsStatusFlow.vue'
 import ScoreReleaseStepPipeline from '@/components/workbench/ScoreReleaseStepPipeline.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -520,10 +521,16 @@ import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useScorePublishPreconditions } from '@/composables/useScorePublishPreconditions'
 import { useScoreReleaseNavigation } from '@/composables/useScoreReleaseNavigation'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { buildExamScoreSummaryTableColumns } from '@/utils/exam-score-summary-table-columns'
 import { formatDateTime } from '@/utils/format'
 import { isExamScoresFullyPublished } from '@/utils/score-release-readiness'
+import {
+  buildScoreAnalyticsFlowSteps,
+  buildScoreBulkPublishModalStatItems,
+  buildScoreConfirmStatusTabItems,
+  SCORE_STATUS_TAB_ALL,
+} from '@/utils/score-workbench-analytics'
 import { buildScorePublishSignalMetrics } from '@/utils/score-workbench-signal'
 import { toSignalMetrics } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -786,12 +793,15 @@ async function loadFinalScoreOverview(): Promise<void> {
   }
   finalScoreOverviewLoading.value = true
   try {
-    const [overview, panel] = await Promise.all([
-      getFinalScoreRiskOverview({ examId: selectedExamId.value }),
-      getScorePanel(selectedExamId.value),
-    ])
-    finalScoreOverview.value = overview
-    scorePanel.value = panel
+    finalScoreOverview.value = await getFinalScoreRiskOverview({
+      examId: selectedExamId.value,
+    })
+    try {
+      scorePanel.value = await getScorePanel(selectedExamId.value)
+    } catch (error) {
+      scorePanel.value = null
+      showUserError(error, '成绩面板加载失败')
+    }
   } catch (error) {
     finalScoreOverview.value = null
     scorePanel.value = null
@@ -831,7 +841,7 @@ function handleStatusTabChange(tabKey: Key): void {
   void loadCandidates()
 }
 
-function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void loadCandidates()
@@ -841,6 +851,15 @@ const publishableOverviewCount = computed(() => {
   const overview = effectiveFinalScoreOverview.value
   if (!overview) return 0
   return overview.confirmedCount + overview.withdrawnCount + overview.correctedCount
+})
+
+/** 成绩发布页：分数状态流转（人数 + 可发布阶段强调），UI 唯一真源 ScoreAnalyticsStatusFlow */
+const scoreAnalyticsFlowSteps = computed(() => {
+  const overview = effectiveFinalScoreOverview.value
+  if (!overview) {
+    return []
+  }
+  return buildScoreAnalyticsFlowSteps(overview, 'publish', publishableOverviewCount.value)
 })
 
 const publishRiskBlocked = computed(() => {
@@ -901,10 +920,10 @@ function bulkModalValueClass(valClass?: string): string | undefined {
 
 const canBulkPublish = computed(
   () =>
-    Boolean(selectedExamId.value) &&
-    publishableOverviewCount.value > 0 &&
-    finalScoreOverview.value?.readyToPublish === true &&
-    (finalScoreOverview.value?.blockedCount ?? 0) === 0,
+    Boolean(selectedExamId.value)
+    && publishableOverviewCount.value > 0
+    && finalScoreOverview.value?.readyToPublish === true
+    && (finalScoreOverview.value?.blockedCount ?? 0) === 0,
 )
 
 const bulkOpen = ref(false)
@@ -963,8 +982,8 @@ async function runBulkPublish(): Promise<void> {
     await Promise.all([loadCandidates(), loadFinalScoreOverview(), refreshArchiveGate()])
     try {
       await refreshSnapshot()
-    } catch {
-      // 非工作台上下文时忽略
+    } catch (error) {
+      showUserError(error, '考试工作台状态刷新失败')
     }
   } catch (error) {
     showUserError(error, '全场成绩发布失败')
@@ -993,15 +1012,15 @@ function canPublish(record: ExamScoreSummaryItemResponse): boolean {
   // 单卷发布不要求全场 readyToPublish；缺考等场级阻断仍在 handlePublish 门禁校验。
   const s = record.finalScoreStatus
   return (
-    s === FinalScoreStatusCode.CONFIRMED ||
-    s === FinalScoreStatusCode.WITHDRAWN ||
-    s === FinalScoreStatusCode.CORRECTED
+    s === FinalScoreStatusCode.CONFIRMED
+    || s === FinalScoreStatusCode.WITHDRAWN
+    || s === FinalScoreStatusCode.CORRECTED
   )
 }
 function publishButtonLabel(record: ExamScoreSummaryItemResponse): string {
   // WITHDRAWN / CORRECTED 均为学生端不可见后的再发；文案须引导「重新发布」。
-  return record.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN ||
-    record.finalScoreStatus === FinalScoreStatusCode.CORRECTED
+  return record.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN
+    || record.finalScoreStatus === FinalScoreStatusCode.CORRECTED
     ? '重新发布'
     : '发布'
 }
@@ -1053,8 +1072,8 @@ async function handlePublish(record: ExamScoreSummaryItemResponse): Promise<void
     await Promise.all([loadCandidates(), loadFinalScoreOverview(), refreshArchiveGate()])
     try {
       await refreshSnapshot()
-    } catch {
-      // 非工作台上下文时忽略
+    } catch (error) {
+      showUserError(error, '考试工作台状态刷新失败')
     }
   } catch (error) {
     showUserError(error, '成绩发布失败')
@@ -1077,7 +1096,7 @@ async function handleWithdraw(): Promise<void> {
   if (!selectedExamId.value || !withdrawCandidate.value?.paperInstanceId) return
   const reason = withdrawReason.value.trim()
   if (!reason) {
-    message.warning('请填写撤回原因')
+    showFormValidationMessage('请填写撤回原因')
     return
   }
   withdrawing.value = true
@@ -1092,8 +1111,8 @@ async function handleWithdraw(): Promise<void> {
     await Promise.all([loadCandidates(), loadFinalScoreOverview(), refreshArchiveGate()])
     try {
       await refreshSnapshot()
-    } catch {
-      // 非工作台上下文时忽略
+    } catch (error) {
+      showUserError(error, '考试工作台状态刷新失败')
     }
   } catch (error) {
     showUserError(error, '成绩撤回失败')
@@ -1119,8 +1138,8 @@ const paperTotalScoreCorrectionNotice = computed(() => {
   if (!score) return null
   // 题分之和与官方考试分不一致时始终提示；不依赖「最近一条更正是否为总分」。
   if (
-    score.questionScoreSumMatchesExamScore !== false &&
-    !score.latestTotalScoreCorrectionApplied
+    score.questionScoreSumMatchesExamScore !== false
+    && !score.latestTotalScoreCorrectionApplied
   ) {
     return null
   }

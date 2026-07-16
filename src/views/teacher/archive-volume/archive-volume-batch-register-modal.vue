@@ -80,6 +80,8 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { ref, watch } from 'vue'
 import {
   ARCHIVE_MATERIAL_TYPE_OPTIONS,
   ArchiveElectronicOriginalStatusCode,
@@ -87,8 +89,6 @@ import {
   ArchiveMaterialSortRuleCode,
   batchRegisterArchiveVolumeMaterials,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -97,7 +97,7 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { normalizeMaterialTagsForRegister } from '@/utils/archive-material-tag'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import ArchiveMaterialTagSelect from '@/views/teacher/archive-volume/components/ArchiveMaterialTagSelect.vue'
 
 const props = defineProps<{
@@ -110,7 +110,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  success: []
+  "success": []
 }>()
 
 interface BatchRow {
@@ -184,12 +184,12 @@ function removeRow(uid: string) {
 async function handleSubmit() {
   if (!props.volumeId) return
   if (rows.value.length === 0) {
-    message.warning('请添加至少一个文件')
+    showFormValidationMessage('请添加至少一个文件')
     return
   }
   for (const row of rows.value) {
     if (!row.materialType) {
-      message.warning(`请为 ${row.fileName} 选择材料类型`)
+      showFormValidationMessage(`请为 ${row.fileName} 选择材料类型`)
       return
     }
     const tags = normalizeMaterialTagsForRegister(row.tags)
@@ -225,7 +225,7 @@ async function handleSubmit() {
     emit('update:open', false)
     emit('success')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '批量登记材料失败')
   } finally {
     submitting.value = false
   }

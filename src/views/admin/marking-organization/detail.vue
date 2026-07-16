@@ -795,7 +795,7 @@ import { AnonymousTokenPolicyCode } from '@/types/enums/anonymous-token-policy-e
 import { MarkingAllocationModeCode } from '@/types/enums/marking-allocation-mode-enum'
 import { MarkingReassignModeCode } from '@/types/enums/marking-reassign-mode-enum'
 import { QuestionMarkingGroupStatusCode } from '@/types/enums/question-marking-group-status-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { buildExamLayoutQuestionOptions } from '@/utils/format-exam-layout-question-summary'
 import {
@@ -1014,7 +1014,7 @@ const { canManageExamOwner } = useMarkingOrgPermission(examCreateUserId, organiz
 
 function guardExamOwnerAction(): boolean {
   if (canManageExamOwner.value) return true
-  message.warning('仅考试主考老师可执行该操作')
+  showFormValidationMessage('仅考试主考老师可执行该操作')
   return false
 }
 
@@ -1028,24 +1028,32 @@ async function loadWorkbenchPanels(): Promise<void> {
   }
   reviewerMetricsLoading.value = true
   try {
-    const [panel, metricsResult, groupProgress] = await Promise.all([
-      getMarkingProgressPanel(activeExamId.value),
-      listReviewerMetrics({
+    try {
+      markingProgressPanel.value = await getMarkingProgressPanel(activeExamId.value)
+    } catch (error) {
+      markingProgressPanel.value = null
+      showUserError(error, '阅卷进度面板加载失败')
+    }
+    try {
+      const metricsResult = await listReviewerMetrics({
         examId: activeExamId.value,
         organizationId: organizationId.value,
         pageNum: 1,
         pageSize: 200,
-      }),
-      listOrganizationGroupTaskProgress({ organizationId: organizationId.value }),
-    ])
-    markingProgressPanel.value = panel
-    formalSessionsForGroupProgress.value = groupProgress
-    reviewerMetrics.value = metricsResult.list ?? []
-  } catch (error) {
-    markingProgressPanel.value = null
-    formalSessionsForGroupProgress.value = []
-    reviewerMetrics.value = []
-    showUserError(error, '阅卷组织看板数据加载失败')
+      })
+      reviewerMetrics.value = metricsResult.list ?? []
+    } catch (error) {
+      reviewerMetrics.value = []
+      showUserError(error, '阅卷人质量指标加载失败')
+    }
+    try {
+      formalSessionsForGroupProgress.value = await listOrganizationGroupTaskProgress({
+        organizationId: organizationId.value,
+      })
+    } catch (error) {
+      formalSessionsForGroupProgress.value = []
+      showUserError(error, '题组任务进度加载失败')
+    }
   } finally {
     reviewerMetricsLoading.value = false
   }

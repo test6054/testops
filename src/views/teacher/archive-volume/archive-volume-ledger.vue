@@ -73,8 +73,7 @@
                 <span v-if="record.campaignName"> · 批次: {{ record.campaignName }}</span>
                 <span v-if="record.approverNickName"> · 审批: {{ record.approverNickName }}</span>
                 <span v-if="record.expireTime">
-                  · 到期: {{ formatDateTime(record.expireTime) }}</span
-                >
+                  · 到期: {{ formatDateTime(record.expireTime) }}</span>
               </p>
               <p
                 v-if="
@@ -86,15 +85,14 @@
               </p>
               <p
                 v-if="
-                  record.accessStatus === ArchiveAccessStatusCode.ACTIVE &&
-                  record.lastReadPage != null
+                  record.accessStatus === ArchiveAccessStatusCode.ACTIVE
+                    && record.lastReadPage != null
                 "
                 class="approval-card__meta"
               >
                 最后阅读: 第 {{ record.lastReadPage }} 页
                 <span v-if="record.downloadCount != null">
-                  · 下载次数: {{ record.downloadCount }}</span
-                >
+                  · 下载次数: {{ record.downloadCount }}</span>
               </p>
             </article>
           </div>
@@ -212,6 +210,10 @@ import type {
   ArchiveVolumeAccessRecordResponse,
   ArchiveVolumeResponse,
 } from '@/apis/mark/archive-volume'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   ARCHIVE_ACCESS_STATUS_OPTIONS,
   ArchiveAccessStatusCode,
@@ -220,11 +222,6 @@ import {
   pageArchiveVolumes,
   pageMaterialSearchAudit,
 } from '@/apis/mark/archive-volume'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -245,7 +242,7 @@ import {
   archiveAccessStatusLabel,
   archiveAccessStatusTone,
 } from '@/utils/archive-access-record-ui'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'TeacherArchiveVolumeLedger' })
@@ -281,7 +278,7 @@ const selectedArchiveNo = ref('')
 const accessRecords = ref<ArchiveVolumeAccessRecordResponse[]>([])
 const tenantRows = ref<ArchiveVolumeAccessLedgerRowResponse[]>([])
 const searchAuditRows = ref<ArchiveMaterialSearchAuditRowResponse[]>([])
-const departmentOptions = ref<Array<{ value: string; label: string }>>([])
+const departmentOptions = ref<Array<{ value: string, label: string }>>([])
 
 interface ArchiveVolumeAccessLedgerVolumeFilterForm extends Record<string, unknown> {
   keyword: string
@@ -498,19 +495,24 @@ function applyScopedDepartmentDefault() {
 }
 
 async function loadDepartments() {
-  const departments = await departmentCatalogApi.list()
-  departmentOptions.value = departments.map((item) => ({
-    value: item.id,
-    label: item.deptName,
-  }))
-  applyScopedDepartmentDefault()
-  applySearchAuditDepartmentDefault()
+  try {
+    const departments = await departmentCatalogApi.list()
+    departmentOptions.value = departments.map((item) => ({
+      value: item.id,
+      label: item.deptName,
+    }))
+    applyScopedDepartmentDefault()
+    applySearchAuditDepartmentDefault()
+  } catch (error) {
+    departmentOptions.value = []
+    showUserError(error, '院系列表加载失败')
+  }
 }
 
 async function locateVolume() {
   const keyword = volumeFilterForm.keyword.trim()
   if (!keyword) {
-    message.warning('请输入关键词')
+    showFormValidationMessage('请输入关键词')
     return
   }
   volumeLoading.value = true
@@ -519,7 +521,7 @@ async function locateVolume() {
     const list = page.list
     const volume: ArchiveVolumeResponse | undefined = list[0]
     if (!volume) {
-      message.warning('未找到匹配的案卷')
+      showFormValidationMessage('未找到匹配的案卷')
       selectedVolumeId.value = ''
       selectedArchiveNo.value = ''
       accessRecords.value = []
@@ -529,7 +531,7 @@ async function locateVolume() {
     selectedArchiveNo.value = volume.archiveNo
     accessRecords.value = await listArchiveVolumeAccessRecords(volume.volumeId)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '定位案卷失败')
   } finally {
     volumeLoading.value = false
   }

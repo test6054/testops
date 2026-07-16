@@ -28,7 +28,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { useQueryTable } from '@/composables/useQueryTable'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -110,7 +110,7 @@ async function loadIndicatorConfigs() {
   try {
     indicatorConfigs.value = await portfolioIndicatorTenantApi.listConfig()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '加载指标配置失败')
   }
 }
 
@@ -155,15 +155,15 @@ async function loadPage() {
 async function createPlan() {
   const planYear = Number(form.planYear)
   if (!/^\d{4}$/.test(form.planYear) || planYear < minimumPlanYear || planYear > maximumPlanYear) {
-    message.warning(`规划年度须在 ${minimumPlanYear} 年至 ${maximumPlanYear} 年之间`)
+    showFormValidationMessage(`规划年度须在 ${minimumPlanYear} 年至 ${maximumPlanYear} 年之间`)
     return
   }
   if (!form.planTitle.trim()) {
-    message.warning('请填写规划标题')
+    showFormValidationMessage('请填写规划标题')
     return
   }
   if (!form.portfolioOrgId) {
-    message.warning('请选择归属科室')
+    showFormValidationMessage('请选择归属科室')
     return
   }
   try {
@@ -178,7 +178,7 @@ async function createPlan() {
     form.planSummary = ''
     await loadPage()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '创建部门规划失败')
   }
 }
 
@@ -188,7 +188,7 @@ async function submitPlan(id: string) {
     message.success('已提交')
     await loadPage()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '提交规划失败')
   }
 }
 
@@ -201,7 +201,7 @@ async function exportPlans() {
     await downloadPortfolioExcelExport(result)
     message.success('规划已导出')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出规划失败')
   }
 }
 
@@ -259,7 +259,7 @@ async function loadPlanItems() {
     if (currentToken !== planItemsRequestToken.value || selectedPlanId.value !== planId) {
       return
     }
-    showUserError(error)
+    showUserError(error, '加载规划明细失败')
   } finally {
     if (currentToken === planItemsRequestToken.value && selectedPlanId.value === planId) {
       itemLoading.value = false
@@ -280,7 +280,7 @@ function removePlanItemRow(index: number) {
 
 async function savePlanItems() {
   if (!selectedPlanId.value) {
-    message.warning('请选择规划')
+    showFormValidationMessage('请选择规划')
     return
   }
   const items: PortfolioDevelopmentPlanItemSaveRequest[] = []
@@ -300,7 +300,7 @@ async function savePlanItems() {
     })
   })
   if (items.length === 0) {
-    message.warning('请至少填写一条明细标题')
+    showFormValidationMessage('请至少填写一条明细标题')
     return
   }
   itemSaving.value = true
@@ -309,7 +309,7 @@ async function savePlanItems() {
     message.success('规划明细已保存')
     await loadPlanItems()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存规划明细失败')
   } finally {
     itemSaving.value = false
   }
@@ -326,7 +326,7 @@ onMounted(async () => {
   <StageWorkbenchShell>
     <ContextBar title="部门年度规划" subtitle="科室编制 · 提交审核 · 年度唯一">
       <template #actions>
-        <UiButton @click="exportPlans"> 导出 Excel </UiButton>
+        <UiButton @click="exportPlans"> 导出表格文件 </UiButton>
       </template>
     </ContextBar>
     <UiCard>

@@ -4,6 +4,7 @@ import { getDefaultRoute, requiresAuth } from '@/router/permission'
 import { useAuthStore, useQualityStore, useTenantStore, useUserStore } from '@/stores'
 import { getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
 import { getValidToken } from '@/utils/auth'
+import { showUserError } from '@/utils/error-handler'
 import { isQualityEvaluationRoute } from '@/utils/portfolio-route'
 
 /** 导航完成后异步补齐学校、学年学期与质量评价 scope 目录，不阻塞首屏路由。 */
@@ -26,11 +27,16 @@ async function runDeferredRouteBootstrap(to: RouteLocationNormalized): Promise<v
   const tenantId = userStore.userInfo.tenantId
 
   if (tenantId && !tenantStore.tenantInfo.tenantName?.trim()) {
-    await tenantStore.fetchTenantInfo(tenantId).catch(() => {})
+    await tenantStore.fetchTenantInfo(tenantId).catch((error) => {
+      // 不阻塞导航，但不得让学校名称缺失却无任何提示
+      showUserError(error, '学校信息加载失败')
+    })
   }
 
   if (isQualityEvaluationRoute(to.path)) {
-    await hydrateQualitySchoolPeriodContext().catch(() => {})
+    await hydrateQualitySchoolPeriodContext().catch((error) => {
+      showUserError(error, '质量评价学期与目录加载失败')
+    })
   }
 }
 
@@ -63,7 +69,10 @@ async function hydrateQualitySchoolPeriodContext(): Promise<void> {
   }
 
   const plan = qualityStore.currentPlan
-    ?? await trainingPlanApi.detail(qualityStore.currentTrainingPlanId).catch(() => undefined)
+    ?? await trainingPlanApi.detail(qualityStore.currentTrainingPlanId).catch((error) => {
+      showUserError(error, '培养方案详情加载失败')
+      return undefined
+    })
 
   const schoolYear = plan?.schoolYear?.trim()
   if (schoolYear && !qualityStore.currentSchoolYear.trim()) {
@@ -73,7 +82,9 @@ async function hydrateQualitySchoolPeriodContext(): Promise<void> {
 
 /** 每次成功导航后调度非关键 bootstrap。 */
 export function scheduleDeferredRouteBootstrap(to: RouteLocationNormalized): void {
-  void runDeferredRouteBootstrap(to).catch(() => {})
+  void runDeferredRouteBootstrap(to).catch((error) => {
+    showUserError(error, '页面辅助信息加载失败')
+  })
 }
 
 /** 守卫超时放行后，若仍停留在需认证路由则补一次轻量重定向校验。 */
@@ -87,7 +98,9 @@ export function schedulePostTimeoutAuthRecovery(to: RouteLocationNormalized): vo
 
     const userStore = useUserStore()
     if (!userStore.userInfo.userId) {
-      await userStore.getInfo().catch(() => {})
+      await userStore.getInfo().catch((error) => {
+        showUserError(error, '用户信息加载失败')
+      })
     }
 
     if (!authStore.isAuthenticated) {

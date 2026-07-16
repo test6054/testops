@@ -132,7 +132,7 @@
             </UiButton>
           </a-upload>
           <span v-if="planForm.scoreProofFileId" class="score-proof-field__id">
-            文件 ID：{{ planForm.scoreProofFileId }}
+            文件编号：{{ planForm.scoreProofFileId }}
           </span>
         </div>
       </a-form-item>
@@ -144,23 +144,24 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { Dayjs } from 'dayjs'
-import dayjs from 'dayjs'
 import type { ArchiveExamFormCode } from '@/apis/mark/archive-volume'
+import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
+import { message } from 'ant-design-vue'
+import dayjs from 'dayjs'
+import { computed, ref, watch } from 'vue'
 import {
   ARCHIVE_EXAM_FORM_OPTIONS,
   ARCHIVE_SECURITY_LEVEL_OPTIONS,
   ArchiveScoreSourceDescription,
   discardArchiveTaskScoreProof,
 } from '@/apis/mark/archive-volume'
-import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
-import { message } from 'ant-design-vue'
-import { computed, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { TeacherSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { ArchiveScoreSourceCode } from '@/types/enums/archive-score-source-enum'
 import { ArchiveTaskProvenanceCode } from '@/types/enums/archive-task-provenance-enum'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import {
   useInjectedArchiveTaskCreatePlanForm,
@@ -185,7 +186,7 @@ const emit = defineEmits<{
     code: string | null,
     name: string,
     examForm?: ArchiveExamFormCode,
-    retention?: { defaultPermanentRetention?: boolean; defaultRetentionYears?: number },
+    retention?: { defaultPermanentRetention?: boolean, defaultRetentionYears?: number },
   ]
   'responsible-change': [userId: string | null, nickName: string]
   'update:plan-form-ref': [form: FormInstance | undefined]
@@ -208,7 +209,7 @@ async function handleScoreProofBeforeUpload(file: File): Promise<boolean> {
   try {
     const node = await stageBusinessFile(FileUploadSceneKey.MARK_ARCHIVE_VOLUME_MATERIAL, file)
     if (!node?.id) {
-      message.error('上传未返回文件 ID')
+      showFormValidationMessage('上传未返回文件编号')
       return false
     }
     const previousFileId = planForm.scoreProofFileId
@@ -223,7 +224,7 @@ async function handleScoreProofBeforeUpload(file: File): Promise<boolean> {
     planForm.scoreProofFileId = node.id
     message.success('成绩证明已上传')
   } catch (error) {
-    message.error(error instanceof Error ? error.message : '上传失败')
+    showUserError(error, '成绩证明上传失败')
   } finally {
     scoreProofUploading.value = false
   }
@@ -238,7 +239,7 @@ async function handleScoreSourceChange(value: SelectValue): Promise<void> {
       await discardArchiveTaskScoreProof(planForm.scoreProofFileId)
       planForm.scoreProofFileId = null
     } catch (error) {
-      message.error(error instanceof Error ? error.message : '清理临时成绩证明失败')
+      showUserError(error, '清理临时成绩证明失败')
       return
     }
   }

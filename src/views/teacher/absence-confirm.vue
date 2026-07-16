@@ -784,8 +784,8 @@ async function handleReconcile(createPending: boolean): Promise<void> {
     await loadRecords()
     try {
       await refreshSnapshot()
-    } catch {
-      // 非工作台上下文时忽略
+    } catch (error) {
+      showUserError(error, '考试工作台状态刷新失败')
     }
   } catch (error) {
     showUserError(error, '出勤核对失败')
@@ -861,8 +861,8 @@ async function handleConfirm(): Promise<void> {
     await Promise.all([loadRecords(), handleReconcile(false)])
     try {
       await refreshSnapshot()
-    } catch {
-      // 非工作台上下文时忽略
+    } catch (error) {
+      showUserError(error, '考试工作台状态刷新失败')
     }
   } catch (error) {
     showUserError(error, '缺考确认失败')
@@ -902,8 +902,8 @@ async function handleRevoke(): Promise<void> {
     await loadRecords()
     try {
       await refreshSnapshot()
-    } catch {
-      // 非工作台上下文时忽略
+    } catch (error) {
+      showUserError(error, '考试工作台状态刷新失败')
     }
   } catch (error) {
     showUserError(error, '缺考撤销失败')
@@ -998,8 +998,8 @@ async function handleDeriveMakeup(): Promise<void> {
     await loadRecords()
     try {
       await refreshSnapshot()
-    } catch {
-      // 非工作台上下文时忽略
+    } catch (error) {
+      showUserError(error, '考试工作台状态刷新失败')
     }
     await router.push({
       name: 'TeacherExamWorkspaceOverview',

@@ -1,0 +1,6264 @@
+{
+  "generated": "2026-07-16",
+  "method": "path+defineOptions name scan src/**/*.vue,ts",
+  "total": 509,
+  "zero_ref_count": 92,
+  "items": [
+    {
+      "path": "components/chart/MarkBarSection.vue",
+      "status": "USED",
+      "refs": 14,
+      "sample": [
+        "views/admin/marking-quality-dashboard.vue",
+        "views/teacher/review-progress.vue",
+        "views/teacher/ai-analysis/cards/ScoreDistributionCard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MarkBarSection"
+      ]
+    },
+    {
+      "path": "components/chart/MarkChart.vue",
+      "status": "USED",
+      "refs": 12,
+      "sample": [
+        "views/admin/marking-quality-dashboard.vue",
+        "views/portfolio/teacher-portrait.vue",
+        "views/portfolio/dept-one-table.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MarkChart"
+      ]
+    },
+    {
+      "path": "components/chart/MarkTrendSection.vue",
+      "status": "USED",
+      "refs": 7,
+      "sample": [
+        "views/admin/marking-quality-dashboard.vue",
+        "views/teacher/score-finalize.vue",
+        "views/teacher/ai-analysis/cards/SchoolQualityCard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MarkTrendSection"
+      ]
+    },
+    {
+      "path": "components/chart/MarkGaugeBlock.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "views/teacher/review-progress.vue",
+        "views/teacher/absence-confirm.vue",
+        "views/teacher/image-ledger/LedgerSummaryCard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MarkGaugeBlock"
+      ]
+    },
+    {
+      "path": "components/chart/MarkChartCard.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/portfolio/teacher-portrait.vue",
+        "views/portfolio/dept-one-table.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "MarkChartCard"
+      ]
+    },
+    {
+      "path": "components/chart/MarkHeatmapSection.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/student/score-detail.vue",
+        "views/teacher/review-progress.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MarkHeatmapSection"
+      ]
+    },
+    {
+      "path": "layout/components/Main.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "layout/LayoutDefault.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "LayoutMain",
+        "Main"
+      ]
+    },
+    {
+      "path": "components/chart/MarkDistributionSection.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/review-progress.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MarkDistributionSection"
+      ]
+    },
+    {
+      "path": "components/chart/MarkScatterSection.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/ai-analysis/cards/QuestionAnalysisCard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MarkScatterSection"
+      ]
+    },
+    {
+      "path": "components/mark/MarkingScorePanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/marking-task-detail.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "MarkingScorePanel"
+      ]
+    },
+    {
+      "path": "components/portfolio/PortfolioScopeHeader.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/portfolio/PortfolioLayoutContext.vue"
+      ],
+      "index_verdict": "REWORK",
+      "names": [
+        "PortfolioScopeHeader"
+      ]
+    },
+    {
+      "path": "components/quality/QualityScopeChrome.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/quality/quality-workspace-layout.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "QualityScopeChrome"
+      ]
+    },
+    {
+      "path": "components/workbench/ExamSubSidebar.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/teacher/exam-workspace-layout.vue",
+        "components/workbench/ExamSubSidebarNav.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ExamSubSidebar"
+      ]
+    },
+    {
+      "path": "components/workbench/ExamSubSidebarNav.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/workbench/ExamSubSidebar.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ExamSubSidebarNav"
+      ]
+    },
+    {
+      "path": "layout/components/Menu/DualDomainSideNav.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "layout/components/Menu/index.vue"
+      ],
+      "index_verdict": "REWORK",
+      "names": [
+        "DualDomainSideNav"
+      ]
+    },
+    {
+      "path": "layout/CreatePageLayout.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "router/routes/create-routes.ts"
+      ],
+      "index_verdict": "SHELL",
+      "names": [
+        "CreatePageLayout"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/Tag.vue",
+      "status": "USED",
+      "refs": 269,
+      "sample": [
+        "views/quality/archive.vue",
+        "views/quality/score-batch.vue",
+        "views/quality/profession-algorithm-profile.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "Tag",
+        "UiTag"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiDataTable.vue",
+      "status": "USED",
+      "refs": 197,
+      "sample": [
+        "composables/useUiTableLoadError.ts",
+        "views/quality/archive.vue",
+        "views/quality/score-batch.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiDataTable"
+      ]
+    },
+    {
+      "path": "components/workbench/ContextBar.vue",
+      "status": "USED",
+      "refs": 152,
+      "sample": [
+        "views/quality/scale-conversion-rule.vue",
+        "views/quality/achievement-detail.vue",
+        "views/student/exam-history.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "ContextBar"
+      ]
+    },
+    {
+      "path": "components/workbench/WorkbenchSurfaceCard.vue",
+      "status": "USED",
+      "refs": 110,
+      "sample": [
+        "views/quality/accreditation-cockpit.vue",
+        "views/student/exam-history.vue",
+        "views/student/score-detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "WorkbenchSurfaceCard"
+      ]
+    },
+    {
+      "path": "components/workbench/SignalBand.vue",
+      "status": "USED",
+      "refs": 94,
+      "sample": [
+        "views/quality/archive.vue",
+        "views/quality/score-batch.vue",
+        "views/quality/profession-algorithm-profile.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "SignalBand"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiAlertStrip.vue",
+      "status": "USED",
+      "refs": 86,
+      "sample": [
+        "views/quality/training-plan-workbench.vue",
+        "views/quality/training-plan-review-queue.vue",
+        "views/quality/ai-task.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiAlertStrip"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/FilterBar.vue",
+      "status": "USED",
+      "refs": 81,
+      "sample": [
+        "views/quality/archive.vue",
+        "views/quality/score-batch.vue",
+        "views/quality/profession-algorithm-profile.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "FilterBar",
+        "UiFilterBar"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiSkeletonState.vue",
+      "status": "USED",
+      "refs": 68,
+      "sample": [
+        "views/admin/teaching-affairs-sync.vue",
+        "views/admin/mark-tenant-grading-policy.vue",
+        "views/common/exam-export-tasks.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "UiSkeletonState"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiSelect.vue",
+      "status": "USED",
+      "refs": 16,
+      "sample": [
+        "components/SchoolAutocomplete.vue",
+        "views/auth/cas-first-login-completion.vue",
+        "views/portfolio/department-report.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "UiSelect"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/Badge.vue",
+      "status": "USED",
+      "refs": 19,
+      "sample": [
+        "views/user/profile/index.vue",
+        "components/ui-guide/ui/UiMessageThread.vue",
+        "components/ui-guide/ui/UiActivityTimeline.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "Badge",
+        "UiBadge"
+      ]
+    },
+    {
+      "path": "components/quality/QualityPageContextBar.vue",
+      "status": "USED",
+      "refs": 17,
+      "sample": [
+        "views/quality/archive.vue",
+        "views/quality/score-batch.vue",
+        "views/quality/dashboard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "QualityPageContextBar"
+      ]
+    },
+    {
+      "path": "components/quality/selectors/CourseSelector.vue",
+      "status": "USED",
+      "refs": 16,
+      "sample": [
+        "views/quality/archive.vue",
+        "views/quality/quality-course-matrix.vue",
+        "views/quality/external-pull.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "CourseSelector"
+      ]
+    },
+    {
+      "path": "components/quality/selectors/ProgramSelector.vue",
+      "status": "USED",
+      "refs": 14,
+      "sample": [
+        "views/quality/profession-algorithm-profile.vue",
+        "views/quality/program-evaluation-profile.vue",
+        "views/quality/training-plan-workbench.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ProgramSelector"
+      ]
+    },
+    {
+      "path": "components/quality/selectors/TeacherSelector.vue",
+      "status": "USED",
+      "refs": 13,
+      "sample": [
+        "views/quality/archive.vue",
+        "views/quality/quality-course-matrix.vue",
+        "views/quality/ai-task.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "TeacherSelector"
+      ]
+    },
+    {
+      "path": "components/quality/selectors/TrainingPlanSelector.vue",
+      "status": "USED",
+      "refs": 10,
+      "sample": [
+        "views/quality/archive.vue",
+        "views/quality/quality-course-matrix.vue",
+        "views/quality/external-pull.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "TrainingPlanSelector"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiActionLink.vue",
+      "status": "USED",
+      "refs": 10,
+      "sample": [
+        "components/ui-guide/ui/UiSimpleList.vue",
+        "components/ui-guide/ui/UiDeliverableItemEditor.vue",
+        "components/ui-guide/ui/UiSessionListPanel.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiActionLink"
+      ]
+    },
+    {
+      "path": "components/workbench/StageRail.vue",
+      "status": "USED",
+      "refs": 10,
+      "sample": [
+        "views/quality/score-batch.vue",
+        "views/quality/dashboard.vue",
+        "views/quality/ai-task.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "StageRail"
+      ]
+    },
+    {
+      "path": "components/quality/selectors/ClassSelector.vue",
+      "status": "USED",
+      "refs": 9,
+      "sample": [
+        "views/quality/quality-course-matrix.vue",
+        "views/quality/achievement.vue",
+        "views/quality/score-record.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ClassSelector"
+      ]
+    },
+    {
+      "path": "components/workbench/workflow-readiness/WorkflowReadinessPanel.vue",
+      "status": "USED",
+      "refs": 8,
+      "sample": [
+        "views/teacher/print-package.vue",
+        "views/teacher/ai-analysis/AiAnalysisClusterWorkbench.vue",
+        "views/teacher/archive-volume/archive-volume-exam-progress.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "WorkflowReadinessPanel"
+      ]
+    },
+    {
+      "path": "components/quality/selectors/AchievementResultSelector.vue",
+      "status": "USED",
+      "refs": 7,
+      "sample": [
+        "views/quality/archive.vue",
+        "views/quality/external-pull.vue",
+        "views/quality/ai-task.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AchievementResultSelector"
+      ]
+    },
+    {
+      "path": "components/quality/selectors/CatalogCourseSelector.vue",
+      "status": "USED",
+      "refs": 7,
+      "sample": [
+        "views/quality/quality-course-matrix.vue",
+        "views/teacher/exam-list.vue",
+        "views/teacher/exam-create/BasicSettingsStep.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "CatalogCourseSelector"
+      ]
+    },
+    {
+      "path": "components/quality/selectors/ReportSelector.vue",
+      "status": "USED",
+      "refs": 7,
+      "sample": [
+        "views/quality/archive.vue",
+        "views/quality/external-pull.vue",
+        "views/quality/ai-task.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ReportSelector"
+      ]
+    },
+    {
+      "path": "components/quality/selectors/CourseGoalSelector.vue",
+      "status": "USED",
+      "refs": 6,
+      "sample": [
+        "views/quality/archive.vue",
+        "views/quality/process-evaluation.vue",
+        "views/quality/achievement.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "CourseGoalSelector"
+      ]
+    },
+    {
+      "path": "components/quality/QualityIngestPageShell.vue",
+      "status": "USED",
+      "refs": 5,
+      "sample": [
+        "views/quality/score-batch.vue",
+        "views/quality/indirect-evaluation.vue",
+        "views/quality/external-pull.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "QualityIngestPageShell"
+      ]
+    },
+    {
+      "path": "components/quality/selectors/StudentSelector.vue",
+      "status": "USED",
+      "refs": 5,
+      "sample": [
+        "views/quality/process-evaluation.vue",
+        "views/quality/score-record.vue",
+        "views/teacher/candidate-roster.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "StudentSelector"
+      ]
+    },
+    {
+      "path": "components/workbench/TaskResultPanel.vue",
+      "status": "USED",
+      "refs": 5,
+      "sample": [
+        "views/quality/score-batch.vue",
+        "views/quality/external-pull.vue",
+        "views/quality/ai-task.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "TaskResultPanel"
+      ]
+    },
+    {
+      "path": "components/archive-volume/ArchiveLifecyclePipe.vue",
+      "status": "USED",
+      "refs": 4,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-exam-progress.vue",
+        "views/teacher/archive-volume/archive-volume-remediation-detail.vue",
+        "views/teacher/archive-volume/archive-volume-detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveLifecyclePipe"
+      ]
+    },
+    {
+      "path": "components/quality/improvement/ImprovementWorkbenchPanel.vue",
+      "status": "USED",
+      "refs": 4,
+      "sample": [
+        "components/quality/improvement/AuditSupervisionTab.vue",
+        "components/quality/improvement/AuditRectificationTab.vue",
+        "components/quality/improvement/AuditIssueTab.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ImprovementWorkbenchPanel"
+      ]
+    },
+    {
+      "path": "components/quality/selectors/ArchiveSelector.vue",
+      "status": "USED",
+      "refs": 4,
+      "sample": [
+        "components/quality/accreditation/AccreditationOnsitePanel.vue",
+        "components/quality/improvement/AuditSupervisionTab.vue",
+        "components/quality/improvement/AuditRectificationTab.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveSelector"
+      ]
+    },
+    {
+      "path": "components/quality/selectors/AuditIssueSelector.vue",
+      "status": "USED",
+      "refs": 4,
+      "sample": [
+        "views/quality/external-pull.vue",
+        "components/quality/improvement/AuditSupervisionTab.vue",
+        "components/quality/improvement/AuditRectificationTab.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AuditIssueSelector"
+      ]
+    },
+    {
+      "path": "components/quality/selectors/AuditRectificationSelector.vue",
+      "status": "USED",
+      "refs": 4,
+      "sample": [
+        "views/quality/archive.vue",
+        "views/quality/external-pull.vue",
+        "components/quality/improvement/AuditSupervisionTab.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AuditRectificationSelector"
+      ]
+    },
+    {
+      "path": "components/quality/selectors/RequirementIndicatorSelector.vue",
+      "status": "USED",
+      "refs": 4,
+      "sample": [
+        "views/quality/process-evaluation.vue",
+        "views/quality/components/indirect-evaluation/IndirectSurveyTemplatePanel.vue",
+        "components/quality/improvement/AuditIssueTab.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "RequirementIndicatorSelector"
+      ]
+    },
+    {
+      "path": "components/archive-volume/ArchiveReadinessRateBar.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-eval-campaign.vue",
+        "views/teacher/archive-volume/archive-volume-remediation-detail.vue",
+        "views/teacher/archive-volume/archive-volume-remediation-panel.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveReadinessRateBar"
+      ]
+    },
+    {
+      "path": "components/mark/MarkingAiAssistDrawer.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "views/teacher/review-task-detail.vue",
+        "views/teacher/marking-task-detail.vue",
+        "views/teacher/review-workspace.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MarkingAiAssistDrawer"
+      ]
+    },
+    {
+      "path": "components/mark/MarkScoreTriple.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "views/teacher/review-task-detail.vue",
+        "views/teacher/review-workspace.vue",
+        "components/mark/MarkingScorePanel.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MarkScoreTriple"
+      ]
+    },
+    {
+      "path": "components/portfolio/PortfolioTeacherJourneyRail.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "views/portfolio/teacher-onboarding.vue",
+        "views/portfolio/teacher-intake.vue",
+        "views/portfolio/teacher-review-status.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "PortfolioTeacherJourneyRail"
+      ]
+    },
+    {
+      "path": "components/quality/selectors/AssessmentItemSelector.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "views/quality/external-pull.vue",
+        "views/quality/process-evaluation.vue",
+        "components/quality/selectors/index.ts"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AssessmentItemSelector"
+      ]
+    },
+    {
+      "path": "components/quality/selectors/DepartmentSelector.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "components/mark/AnalysisOrgScopeBar.vue",
+        "components/mark/analysis/AiAnalysisScopeFilterBar.vue",
+        "components/quality/selectors/index.ts"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "DepartmentSelector"
+      ]
+    },
+    {
+      "path": "components/quality/selectors/GraduationRequirementSelector.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "views/quality/archive.vue",
+        "views/quality/components/indirect-evaluation/IndirectSurveyTemplatePanel.vue",
+        "components/quality/selectors/index.ts"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "GraduationRequirementSelector"
+      ]
+    },
+    {
+      "path": "components/quality/selectors/TrainingObjectiveSelector.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "views/quality/achievement.vue",
+        "views/quality/components/indirect-evaluation/IndirectSurveyTemplatePanel.vue",
+        "components/quality/selectors/index.ts"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "TrainingObjectiveSelector"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiEntityCard.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "components/ui-guide/ui/UiTemplateCard.vue",
+        "components/ui-guide/ui/UiResourceCard.vue",
+        "components/ui-guide/ui/UiAgentCard.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "UiEntityCard"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiStateBlock.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "views/auth/cas-first-login-completion.vue",
+        "views/login/index.vue",
+        "views/login/components/cas/index.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiStateBlock"
+      ]
+    },
+    {
+      "path": "components/workbench/MatrixWorkbench.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/quality/training-plan-workbench.vue",
+        "views/quality/quality-course-matrix.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MatrixWorkbench"
+      ]
+    },
+    {
+      "path": "components/archive-volume/ArchiveDimPill.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-exam-progress.vue",
+        "views/teacher/archive-volume/archive-volume-list.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveDimPill"
+      ]
+    },
+    {
+      "path": "components/FilePreviewDialog.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "composables/useFilePreview.ts",
+        "views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialTablePanel.vue",
+        "components/exam-workbench/ExamCandidatePaperImagesDrawer.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "FilePreviewDialog"
+      ]
+    },
+    {
+      "path": "components/mark/ConfidentialStatusBar.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/student/score-detail.vue",
+        "views/teacher/exam-workspace-layout.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "ConfidentialStatusBar"
+      ]
+    },
+    {
+      "path": "components/portfolio/PortfolioCategoryTreePicker.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "components/portfolio/PortfolioMaterialIntakePanel.vue",
+        "components/portfolio/PortfolioTeacherOnboardingWizard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "PortfolioCategoryTreePicker"
+      ]
+    },
+    {
+      "path": "components/portfolio/PortfolioIndicatorExplainDrawer.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/portfolio/teacher-indicator.vue",
+        "views/portfolio/indicator-ops-admin.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "PortfolioIndicatorExplainDrawer"
+      ]
+    },
+    {
+      "path": "components/portfolio/PortfolioIndicatorTemplateParamsForm.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/portfolio/indicator-platform-admin.vue",
+        "views/portfolio/indicator-ops-admin.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "PortfolioIndicatorTemplateParamsForm"
+      ]
+    },
+    {
+      "path": "components/quality/selectors/IndirectFormSelector.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/quality/ai-task.vue",
+        "components/quality/selectors/index.ts"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "IndirectFormSelector"
+      ]
+    },
+    {
+      "path": "components/quality/selectors/ProfessionAlgorithmProfileSelector.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/quality/training-plan-workbench.vue",
+        "components/quality/selectors/index.ts"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ProfessionAlgorithmProfileSelector"
+      ]
+    },
+    {
+      "path": "components/workbench/ScoreReleaseStepPipeline.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/teacher/score-publish.vue",
+        "views/teacher/score-finalize.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ScoreReleaseStepPipeline"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialOcrDetailContent.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/teacher/archive-volume-search.vue",
+        "views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialOcrDetailModal.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "ArchiveVolumeMaterialOcrDetailContent"
+      ]
+    },
+    {
+      "path": "components/mark/layout-designer/LayoutEntryGateway.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/mark/layout-designer/workbench/LayoutDesignSourcePhase.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "LayoutEntryGateway"
+      ]
+    },
+    {
+      "path": "components/mark/layout-designer/workbench/LayoutDesignWorkflowRail.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/exam-layout-designer.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "LayoutDesignWorkflowRail"
+      ]
+    },
+    {
+      "path": "components/mark/MarkingBatchScoreDrawer.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/marking-task-pool.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MarkingBatchScoreDrawer"
+      ]
+    },
+    {
+      "path": "components/mark/ScanDeviceCardGrid.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/scan-live-monitor.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "ScanDeviceCardGrid"
+      ]
+    },
+    {
+      "path": "components/portfolio/PortfolioLayoutContext.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "layout/LayoutDefault.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "PortfolioLayoutContext"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiActivityTimeline.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/score-finalize.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "UiActivityTimeline"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiArrowTimeline.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/workbench/StageRail.vue"
+      ],
+      "index_verdict": "REWORK",
+      "names": [
+        "UiArrowTimeline"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiDescriptionGrid.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/admin/marking-organization/components/SessionGroupCreateSummary.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "UiDescriptionGrid"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiMetricCard.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/ui-guide/ui/UiStatPanel.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "UiMetricCard"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiStatisticChartCard.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/chart/MarkChartCard.vue"
+      ],
+      "index_verdict": "REWORK",
+      "names": [
+        "UiStatisticChartCard"
+      ]
+    },
+    {
+      "path": "components/workbench/ExamJourneySidebarNav.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/workbench/ExamSubSidebar.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ExamJourneySidebarNav"
+      ]
+    },
+    {
+      "path": "components/workbench/MaterialLayoutConfigModal.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/exam-prep-workbench.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "MaterialLayoutConfigModal"
+      ]
+    },
+    {
+      "path": "components/workbench/PrepStepPipelineRow.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/exam-prep-workbench.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "PrepStepPipelineRow"
+      ]
+    },
+    {
+      "path": "components/admin/DrilldownBreadcrumb.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "DrilldownBreadcrumb"
+      ]
+    },
+    {
+      "path": "components/archive-volume/ArchiveEvaluationExportProgressDialog.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "ArchiveEvaluationExportProgressDialog"
+      ]
+    },
+    {
+      "path": "components/archive-volume/ArchivePackageEventTimeline.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "ArchivePackageEventTimeline"
+      ]
+    },
+    {
+      "path": "components/archive-volume/ArchiveRelatedLinksCard.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "ArchiveRelatedLinksCard"
+      ]
+    },
+    {
+      "path": "components/common/StatusBadge.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "StatusBadge"
+      ]
+    },
+    {
+      "path": "components/mark/analysis/AiAnalysisConfigCollapse.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "AiAnalysisConfigCollapse"
+      ]
+    },
+    {
+      "path": "components/mark/analysis/AiAnalysisRangeForm.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "AiAnalysisRangeForm"
+      ]
+    },
+    {
+      "path": "components/mark/analysis/AnalysisNextSteps.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "AnalysisNextSteps"
+      ]
+    },
+    {
+      "path": "components/mark/AnalysisOrgScopeBar.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "AnalysisOrgScopeBar"
+      ]
+    },
+    {
+      "path": "components/mark/layout-designer/LayoutIdentitySetupStrip.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "LayoutIdentitySetupStrip"
+      ]
+    },
+    {
+      "path": "components/mark/layout-designer/workbench/LayoutDesignPhaseRail.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "LayoutDesignPhaseRail"
+      ]
+    },
+    {
+      "path": "components/mark/MarkExamStageRail.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "MarkExamStageRail"
+      ]
+    },
+    {
+      "path": "components/portfolio/PortfolioArchiveVersionComparePanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/portfolio/archive-category-edit.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "PortfolioArchiveVersionComparePanel"
+      ]
+    },
+    {
+      "path": "components/quality/accreditation/AccreditationWorkflowHints.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "AccreditationWorkflowHints"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/AlertDescription.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "AlertDescription",
+        "UiAlertDescription"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/AlertTitle.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "AlertTitle",
+        "UiAlertTitle"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/Descriptions.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "Descriptions",
+        "UiDescriptions"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/DescriptionsItem.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "SHELL",
+      "names": [
+        "DescriptionsItem",
+        "UiDescriptionsItem"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/FilterPills.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "FilterPills",
+        "UiFilterPills"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/FormList.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "REWORK",
+      "names": [
+        "FormList",
+        "UiFormList"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/FormModal.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "SHELL",
+      "names": [
+        "FormModal",
+        "UiFormModal"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/MetaItem.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "MetaItem",
+        "UiMetaItem"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/NativeSelect.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "NativeSelect",
+        "UiNativeSelect"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/RangePicker.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "RangePicker",
+        "UiRangePicker"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/SelectArco.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "SHELL",
+      "names": [
+        "SelectArco",
+        "UiSelectArco"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/Separator.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "Separator",
+        "UiSeparator"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/StatItem.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "REWORK",
+      "names": [
+        "StatItem",
+        "UiStatItem"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/Table.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "SHELL",
+      "names": [
+        "Table",
+        "UiTable"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/TableBody.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "TableBody",
+        "UiTableBody"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/TableCell.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "TableCell",
+        "UiTableCell"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/TableHead.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "SHELL",
+      "names": [
+        "TableHead",
+        "UiTableHead"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/TableHeader.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "TableHeader",
+        "UiTableHeader"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/TableRow.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "SHELL",
+      "names": [
+        "TableRow",
+        "UiTableRow"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/TabPane.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "SHELL",
+      "names": [
+        "TabPane",
+        "UiTabPane"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/Tabs.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "Tabs",
+        "UiTabs"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/TaskCard.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "TaskCard",
+        "UiTaskCard"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiAccordion.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "UiAccordion"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiActivityFeed.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "UiActivityFeed"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiAgentCard.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "REWORK",
+      "names": [
+        "UiAgentCard"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiAssistantEntryCard.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "UiAssistantEntryCard"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiBreadcrumbs.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "UiBreadcrumbs"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiCardSteps.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "TUNE",
+      "names": [
+        "UiCardSteps"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiCollectionToolbar.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "UiCollectionToolbar"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiColumnSettingPopover.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "UiColumnSettingPopover"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiConfirmPopover.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "SHELL",
+      "names": [
+        "UiConfirmPopover"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiConversationPanel.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "UiConversationPanel"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiDeliverableItemEditor.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "SHELL",
+      "names": [
+        "UiDeliverableItemEditor"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiDetailSection.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "SHELL",
+      "names": [
+        "UiDetailSection"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiFormActions.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "UiFormActions"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiFormItem.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "SHELL",
+      "names": [
+        "UiFormItem"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiInboxPanel.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "SHELL",
+      "names": [
+        "UiInboxPanel"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiInsightPanel.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "REWORK",
+      "names": [
+        "UiInsightPanel"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiIntentCard.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "UiIntentCard"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiLogRecordList.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "TUNE",
+      "names": [
+        "UiLogRecordList"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiLogViewer.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "TUNE",
+      "names": [
+        "UiLogViewer"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiMatrixForm.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "TUNE",
+      "names": [
+        "UiMatrixForm",
+        "UiTableForm"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiMilestoneProgress.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "TUNE",
+      "names": [
+        "UiMilestoneProgress"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiModeSwitchPanel.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "OK",
+      "names": [
+        "UiModeSwitchPanel"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiNoticeList.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "UiNoticeList"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiPageCard.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "SHELL",
+      "names": [
+        "UiPageCard"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiPageHero.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "REWORK",
+      "names": [
+        "UiPageHero"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiPendingList.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "REWORK",
+      "names": [
+        "UiPendingList"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiPillSteps.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "UiPillSteps"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiProgressMonitorCard.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "TUNE",
+      "names": [
+        "UiProgressMonitorCard"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiProgressStepList.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "TUNE",
+      "names": [
+        "UiProgressStepList"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiProgressSteps.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "UiProgressSteps"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiQuotaPanel.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "REWORK",
+      "names": [
+        "UiQuotaPanel"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiRankListCard.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "REWORK",
+      "names": [
+        "UiRankListCard"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiResourceCard.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "REWORK",
+      "names": [
+        "UiResourceCard"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiSearchTableDialog.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "TUNE",
+      "names": [
+        "UiSearchTableDialog"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiSegmentSteps.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "REWORK",
+      "names": [
+        "UiSegmentSteps"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiSelectionModal.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "SHELL",
+      "names": [
+        "UiSelectionModal"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiSelectorHeaderExtra.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "UiSelectorHeaderExtra"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiSimpleList.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "TUNE",
+      "names": [
+        "UiSimpleList"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiSimplePie.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "REWORK",
+      "names": [
+        "UiSimplePie"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiStageEditorShell.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "SHELL",
+      "names": [
+        "UiStageEditorShell"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiStatisticSummaryGrid.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "REWORK",
+      "names": [
+        "UiStatisticSummaryGrid"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiSteps.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "REWORK",
+      "names": [
+        "UiSteps"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiTabsPill.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "UiTabsPill"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiTemplateCard.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "UiTemplateCard"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiTreeSelectionDialog.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "UiTreeSelectionDialog"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiTreeSelectionDrawer.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "UiTreeSelectionDrawer"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiWarningList.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "UiWarningList"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiWorkbenchShell.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "UiWorkbenchShell"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiWorkflowStatusBar.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "UiWorkflowStatusBar"
+      ]
+    },
+    {
+      "path": "components/workbench/ExamWorkspaceFlowBar.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "OK",
+      "names": [
+        "ExamWorkspaceFlowBar"
+      ]
+    },
+    {
+      "path": "components/workbench/ScoreWorkbenchAnalyticsSection.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "OK",
+      "names": [
+        "ScoreWorkbenchAnalyticsSection"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/KioskLayout.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "router/routes/constant.ts"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "KioskLayout"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/stages/BindStage.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "router/routes/constant.ts"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "BindStage"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/stages/HistoryStage.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "router/routes/constant.ts"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "HistoryStage"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/stages/ReviewStage.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "router/routes/constant.ts"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ReviewStage"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/stages/ScanningStage.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "router/routes/constant.ts"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ScanningStage"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/stages/SetupStage.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "router/routes/constant.ts"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "SetupStage"
+      ]
+    },
+    {
+      "path": "components/platform/UiPlatformFileField.vue",
+      "status": "USED",
+      "refs": 21,
+      "sample": [
+        "views/quality/archive.vue",
+        "views/quality/score-batch.vue",
+        "views/quality/training-plan-workbench.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiPlatformFileField"
+      ]
+    },
+    {
+      "path": "components/AiEditor/index.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "config/aieditor.ts",
+        "views/user/message/components/NoticePopup.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AiEditor"
+      ]
+    },
+    {
+      "path": "components/AjCaptcha/index.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/login/components/student/index.vue",
+        "views/login/components/account/index.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AjCaptcha"
+      ]
+    },
+    {
+      "path": "components/AuthLayout/index.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/auth/cas-first-login-completion.vue",
+        "views/auth/forgot-password.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AuthLayout"
+      ]
+    },
+    {
+      "path": "components/Breadcrumb/index.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "layout/components/Header/index.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "Breadcrumb"
+      ]
+    },
+    {
+      "path": "components/CellCopy/index.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "CellCopy"
+      ]
+    },
+    {
+      "path": "components/GiFooter/index.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "layout/LayoutDefault.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "GiFooter"
+      ]
+    },
+    {
+      "path": "components/GiPageLayout/index.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "DEAD?",
+      "names": [
+        "GiPageLayout"
+      ]
+    },
+    {
+      "path": "components/platform/UiPlatformExcelImportModal.vue",
+      "status": "USED",
+      "refs": 14,
+      "sample": [
+        "views/quality/process-evaluation.vue",
+        "views/portfolio/development-record-library-view.vue",
+        "views/portfolio/development-plan-admin.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiPlatformExcelImportModal"
+      ]
+    },
+    {
+      "path": "views/login/components/student/index.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "OK",
+      "names": [
+        "Student"
+      ]
+    },
+    {
+      "path": "components/mark/analysis/AiAnalysisMetaCollapse.vue",
+      "status": "USED",
+      "refs": 9,
+      "sample": [
+        "views/teacher/ai-analysis/cards/TeachingImprovementCard.vue",
+        "views/teacher/ai-analysis/cards/ErrorCauseClusterCard.vue",
+        "views/teacher/ai-analysis/cards/StudentLearningProfileCard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AiAnalysisMetaCollapse"
+      ]
+    },
+    {
+      "path": "components/mark/analysis/AiAnalysisCardShell.vue",
+      "status": "USED",
+      "refs": 7,
+      "sample": [
+        "views/teacher/ai-analysis/cards/RejudgePlanCard.vue",
+        "views/teacher/ai-analysis/cards/TeachingImprovementCard.vue",
+        "views/teacher/ai-analysis/cards/ErrorCauseClusterCard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AiAnalysisCardShell"
+      ]
+    },
+    {
+      "path": "components/mark/analysis/AiAnalysisSection.vue",
+      "status": "USED",
+      "refs": 7,
+      "sample": [
+        "views/teacher/ai-analysis/cards/SchoolQualityCard.vue",
+        "views/teacher/ai-analysis/cards/ExamQuestionCourseGoalMappingCard.vue",
+        "views/teacher/ai-analysis/cards/ExperienceEffectivenessCard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AiAnalysisSection"
+      ]
+    },
+    {
+      "path": "components/mark/ArchiveDutyUserSelect.vue",
+      "status": "USED",
+      "refs": 7,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-ledger.vue",
+        "views/teacher/archive-volume/archive-volume-remediation-detail.vue",
+        "views/teacher/archive-volume/archive-volume-remediation-panel.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveDutyUserSelect"
+      ]
+    },
+    {
+      "path": "components/mark/MarkExamSelect.vue",
+      "status": "USED",
+      "refs": 7,
+      "sample": [
+        "views/admin/teaching-affairs-sync.vue",
+        "views/admin/marking-quality-dashboard.vue",
+        "views/admin/audit-trail.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "MarkExamSelect"
+      ]
+    },
+    {
+      "path": "components/mark/analysis/AiAnalysisHistorySelect.vue",
+      "status": "USED",
+      "refs": 5,
+      "sample": [
+        "views/teacher/ai-analysis/cards/SchoolQualityCard.vue",
+        "views/teacher/ai-analysis/cards/ExperienceEffectivenessCard.vue",
+        "views/teacher/ai-analysis/cards/SemesterGrowthCard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AiAnalysisHistorySelect"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/ArchiveMaterialTagSelect.vue",
+      "status": "USED",
+      "refs": 5,
+      "sample": [
+        "views/teacher/archive-volume-search.vue",
+        "views/teacher/archive-volume/archive-volume-batch-register-modal.vue",
+        "views/teacher/archive-volume/components/ScanDispatchDialog.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveMaterialTagSelect"
+      ]
+    },
+    {
+      "path": "components/mark/analysis/AiAnalysisCardBody.vue",
+      "status": "USED",
+      "refs": 4,
+      "sample": [
+        "views/teacher/ai-analysis/cards/TeachingImprovementCard.vue",
+        "views/teacher/ai-analysis/cards/ErrorCauseClusterCard.vue",
+        "views/teacher/ai-analysis/cards/StudentLearningProfileCard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AiAnalysisCardBody"
+      ]
+    },
+    {
+      "path": "components/mark/ExperienceAssistBadge.vue",
+      "status": "USED",
+      "refs": 4,
+      "sample": [
+        "views/teacher/review-task-detail.vue",
+        "views/teacher/review-workspace.vue",
+        "components/mark/MarkingAiAssistDrawer.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ExperienceAssistBadge"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/components/DocumentKioskActivationGate.vue",
+      "status": "USED",
+      "refs": 4,
+      "sample": [
+        "views/scanner-kiosk/KioskDispatchLanding.vue",
+        "views/scanner-kiosk/KioskDispatchQueue.vue",
+        "views/scanner-kiosk/archive/ArchiveScanSession.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "DocumentKioskActivationGate"
+      ]
+    },
+    {
+      "path": "components/GiCell/GiCellAvatar.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "components/ui-guide/ui/UiPendingList.vue",
+        "components/ui-guide/ui/UiWarningList.vue",
+        "layout/components/HeaderRightBar/index.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "GiCellAvatar"
+      ]
+    },
+    {
+      "path": "components/mark/AnalysisExamMultiSelect.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "views/teacher/ai-analysis/cards/SchoolQualityCard.vue",
+        "views/teacher/ai-analysis/cards/SemesterGrowthCard.vue",
+        "views/teacher/ai-analysis/cards/CrossExamTrendCard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AnalysisExamMultiSelect"
+      ]
+    },
+    {
+      "path": "components/mark/ConfidentialWatermarkLayer.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "components/mark/GradingWorkspaceLayout.vue",
+        "components/mark/ScanImageStage.vue",
+        "components/mark/WholePaperGallery.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ConfidentialWatermarkLayer"
+      ]
+    },
+    {
+      "path": "components/mark/GradingImmersionSection.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "views/teacher/review-task-detail.vue",
+        "views/teacher/review-workspace.vue",
+        "components/mark/MarkingTaskInfoCard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "GradingImmersionSection"
+      ]
+    },
+    {
+      "path": "components/mark/MarkingScanMaterialPanel.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "views/teacher/review-task-detail.vue",
+        "views/teacher/review-workspace.vue",
+        "components/mark/MarkingQuestionViewCard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MarkingScanMaterialPanel"
+      ]
+    },
+    {
+      "path": "components/scanner-ops/ScanOpsWorkbench.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "views/portfolio/portfolio-scan-ops.vue",
+        "views/teacher/exam-scan-ops.vue",
+        "views/teacher/archive-volume/archive-scan-ops.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ScanOpsWorkbench"
+      ]
+    },
+    {
+      "path": "views/error/components/ErrorPage.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "components/UiErrorBoundary.vue",
+        "views/error/403.vue",
+        "views/error/404.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ErrorPage"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/components/KioskBoundStudentsPanel.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "views/scanner-kiosk/stages/ScanningStage.vue",
+        "views/scanner-kiosk/stages/HistoryStage.vue",
+        "views/scanner-kiosk/stages/ReviewStage.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "KioskBoundStudentsPanel"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/components/KioskDeviceActivationPanel.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "views/scanner-kiosk/TaskKindHub.vue",
+        "views/scanner-kiosk/components/KioskActivationGate.vue",
+        "views/scanner-kiosk/components/DocumentKioskActivationGate.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "KioskDeviceActivationPanel"
+      ]
+    },
+    {
+      "path": "views/teacher/ai-analysis/cards/ExamQuestionCourseGoalMappingCard.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "views/teacher/statistics.vue",
+        "views/teacher/ai-analysis/AiAnalysisClusterWorkbench.vue",
+        "views/teacher/exam-workspace/exam-workspace-question-analysis.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ExamQuestionCourseGoalMappingCard"
+      ]
+    },
+    {
+      "path": "views/teacher/ai-analysis/cards/PaperQualityCard.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "views/teacher/statistics.vue",
+        "views/teacher/ai-analysis/AiAnalysisTeachingTab.vue",
+        "views/teacher/exam-workspace/exam-workspace-question-analysis.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "PaperQualityCard"
+      ]
+    },
+    {
+      "path": "views/teacher/ai-analysis/cards/QuestionAnalysisCard.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "views/teacher/statistics.vue",
+        "views/teacher/ai-analysis/AiAnalysisClusterWorkbench.vue",
+        "views/teacher/exam-workspace/exam-workspace-question-analysis.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "QuestionAnalysisCard"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/ArchiveEvaluationExportTaskModal.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-eval-campaign.vue",
+        "views/teacher/archive-volume/archive-volume-supervision-panel.vue",
+        "views/teacher/archive-volume/archive-volume-remediation-panel.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveEvaluationExportTaskModal"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialOcrDetailModal.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "views/teacher/archive-volume-search.vue",
+        "views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialTablePanel.vue",
+        "views/teacher/archive-volume/components/detail/ArchiveVolumeOcrSearchPanel.vue"
+      ],
+      "index_verdict": "SHELL",
+      "names": [
+        "ArchiveVolumeMaterialOcrDetailModal"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/ScanDispatchResultDialog.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "views/portfolio/teacher-gap.vue",
+        "views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialTablePanel.vue",
+        "components/portfolio/PortfolioMaterialIntakePanel.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "ScanDispatchResultDialog"
+      ]
+    },
+    {
+      "path": "components/create-form/CreateFormPageShell.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/teacher/exam-create/exam-create.vue",
+        "views/teacher/archive-volume/archive-task-create/archive-task-create.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "CreateFormPageShell"
+      ]
+    },
+    {
+      "path": "components/edu/ClassStudentTreeSelectorDrawer.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/teacher/candidate-roster.vue",
+        "views/teacher/exam-create/CandidateScopeStep.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ClassStudentTreeSelectorDrawer"
+      ]
+    },
+    {
+      "path": "components/evaluation/EvaluationWorkgroupPage.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/quality/evaluation-workgroup.vue",
+        "views/portfolio/evaluation-workgroup-admin.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "EvaluationWorkgroupPage"
+      ]
+    },
+    {
+      "path": "components/mark/analysis/AiAnalysisExamScopePanel.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/teacher/ai-analysis/AiAnalysisClusterTab.vue",
+        "views/teacher/ai-analysis/AiAnalysisTeachingTab.vue"
+      ],
+      "index_verdict": "SHELL",
+      "names": [
+        "AiAnalysisExamScopePanel"
+      ]
+    },
+    {
+      "path": "components/mark/analysis/AiAnalysisOrgTermScopePanel.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/teacher/ai-analysis/AiAnalysisSchoolTab.vue",
+        "views/teacher/ai-analysis/AiAnalysisTrendTab.vue"
+      ],
+      "index_verdict": "SHELL",
+      "names": [
+        "AiAnalysisOrgTermScopePanel"
+      ]
+    },
+    {
+      "path": "components/mark/analysis/AiAnalysisScopeFilterBar.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "components/mark/analysis/AiAnalysisExamScopePanel.vue",
+        "components/mark/analysis/AiAnalysisOrgTermScopePanel.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AiAnalysisScopeFilterBar"
+      ]
+    },
+    {
+      "path": "components/mark/analysis/ExamQuestionIdentityCells.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/teacher/ai-analysis/cards/QuestionAnalysisCard.vue",
+        "views/teacher/ai-analysis/cards/ExamQuestionCourseGoalMappingTable.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ExamQuestionIdentityCells"
+      ]
+    },
+    {
+      "path": "components/mark/dashboard/PendingTodoFeed.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/teacher/marking-overview.vue",
+        "views/teacher/exam-workspace/ExamWorkbenchOverviewDashboard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "PendingTodoFeed"
+      ]
+    },
+    {
+      "path": "components/mark/GradingImmersionChrome.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/teacher/review-task-detail.vue",
+        "views/teacher/review-workspace.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "GradingImmersionChrome"
+      ]
+    },
+    {
+      "path": "components/mark/layout-designer/LayoutCanvas.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "components/mark/layout-designer/LayoutCanvasLite.vue",
+        "components/mark/layout-designer/LayoutReviewDrawer.vue",
+        "components/mark/layout-designer/workbench/LayoutDesignLayoutPhase.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "LayoutCanvas"
+      ]
+    },
+    {
+      "path": "components/mark/layout-designer/LayoutQuestionPropertyPanel.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "components/mark/layout-designer/workbench/LayoutDesignLayoutPhase.vue",
+        "components/mark/layout-designer/workbench/LayoutQuestionLedgerPanel.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "LayoutQuestionPropertyPanel"
+      ]
+    },
+    {
+      "path": "components/mark/manual-supplement/ManualSupplementFormCore.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "components/mark/ScanBatchSupplementModal.vue",
+        "components/mark/manual-supplement/ManualSupplementWizardDrawer.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ManualSupplementFormCore"
+      ]
+    },
+    {
+      "path": "components/workbench/ExamPrepScenarioPanel.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/teacher/exam-prep-workbench.vue",
+        "views/teacher/print-package.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ExamPrepScenarioPanel"
+      ]
+    },
+    {
+      "path": "components/workbench/ScorePublishRelatedLinksCard.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/teacher/absence-confirm.vue",
+        "views/teacher/appeal-handle.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "ScorePublishRelatedLinksCard"
+      ]
+    },
+    {
+      "path": "components/workbench/workflow-readiness/WorkflowPrerequisiteEmpty.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/admin/marking-organization/components/TrialSessionWorkbench.vue",
+        "views/admin/marking-organization/components/FormalSessionWorkbench.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "WorkflowPrerequisiteEmpty"
+      ]
+    },
+    {
+      "path": "views/admin/marking-organization/components/SessionGroupCreateSummary.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/admin/marking-organization/components/FormalSessionCreateDialog.vue",
+        "views/admin/marking-organization/components/TrialSessionCreateDialog.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "SessionGroupCreateSummary"
+      ]
+    },
+    {
+      "path": "views/admin/marking-organization/components/SessionLifecycleReasonModal.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/admin/marking-organization/formal-sessions.vue",
+        "views/admin/marking-organization/trial-sessions.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "SessionLifecycleReasonModal"
+      ]
+    },
+    {
+      "path": "views/login/components/cas/index.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/login/index.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "Cas",
+        "CasLogin"
+      ]
+    },
+    {
+      "path": "views/portfolio/components/PortfolioCockpitAskPanel.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/portfolio/school-cockpit.vue",
+        "views/portfolio/department-cockpit.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "PortfolioCockpitAskPanel"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/components/KioskExamPickPanel.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/scanner-kiosk/stages/BindStage.vue",
+        "views/scanner-kiosk/components/KioskExamSwitchGate.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "KioskExamPickPanel"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/components/KioskScanExceptionPanel.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/scanner-kiosk/stages/ScanningStage.vue",
+        "views/scanner-kiosk/stages/ReviewStage.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "KioskScanExceptionPanel"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/components/KioskScanSessionStrip.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/scanner-kiosk/stages/ScanningStage.vue",
+        "views/scanner-kiosk/stages/ReviewStage.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "KioskScanSessionStrip"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/components/KioskSessionBatchPanel.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/scanner-kiosk/stages/ScanningStage.vue",
+        "views/scanner-kiosk/stages/SetupStage.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "KioskSessionBatchPanel"
+      ]
+    },
+    {
+      "path": "views/teacher/ai-analysis/cards/AiGenerationProgressPanel.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/teacher/ai-analysis/cards/QuestionAnalysisCard.vue",
+        "components/mark/analysis/AiAnalysisCardBody.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AiGenerationProgressPanel"
+      ]
+    },
+    {
+      "path": "views/teacher/ai-analysis/cards/ClassWeaknessCard.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/teacher/statistics.vue",
+        "views/teacher/ai-analysis/AiAnalysisTeachingTab.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ClassWeaknessCard"
+      ]
+    },
+    {
+      "path": "views/teacher/ai-analysis/cards/ErrorCauseClusterCard.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/teacher/statistics.vue",
+        "views/teacher/ai-analysis/AiAnalysisClusterWorkbench.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ErrorCauseClusterCard"
+      ]
+    },
+    {
+      "path": "views/teacher/ai-analysis/cards/RejudgePlanCard.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/teacher/statistics.vue",
+        "views/teacher/ai-analysis/AiAnalysisClusterWorkbench.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "RejudgePlanCard"
+      ]
+    },
+    {
+      "path": "views/teacher/ai-analysis/cards/StudentLearningProfileCard.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/teacher/statistics.vue",
+        "views/teacher/ai-analysis/AiAnalysisTeachingTab.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "StudentLearningProfileCard"
+      ]
+    },
+    {
+      "path": "views/teacher/ai-analysis/cards/TeachingImprovementCard.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/teacher/statistics.vue",
+        "views/teacher/ai-analysis/AiAnalysisTeachingTab.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "TeachingImprovementCard"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/ArchiveTemplateSetEditorDrawer.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/teacher/archive-platform-template-admin.vue",
+        "views/teacher/archive-volume/components/ArchiveVolumeTemplateSetsPanel.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveTemplateSetEditorDrawer"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/ArchiveVolumeCollaboratorStrip.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-detail.vue",
+        "views/teacher/archive-volume/components/detail/TaskSettingsDrawer.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveVolumeCollaboratorStrip"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/ArchiveVolumeTemplateSetsPanel.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/teacher/archive-platform-template-admin.vue",
+        "views/teacher/archive-volume/archive-volume-settings.vue"
+      ],
+      "index_verdict": "REWORK",
+      "names": [
+        "ArchiveVolumeTemplateSetsPanel"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/DepartmentReviewMaterialSummary.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/teacher/archive-volume/components/DepartmentReviewListDrawer.vue",
+        "views/teacher/archive-volume/components/detail/DepartmentReviewPanel.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "DepartmentReviewMaterialSummary"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialTagModal.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/teacher/archive-volume-search.vue",
+        "views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialTablePanel.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveVolumeMaterialTagModal"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/ArchiveVolumeSubmitTaskList.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/teacher/archive-volume/components/detail/ArchiveVolumeSubmitProgressBand.vue",
+        "views/teacher/archive-volume/components/detail/ArchiveVolumeSubmitChecklistModal.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveVolumeSubmitTaskList"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/ScanDispatchForceReleaseDialog.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "components/scanner-ops/ScanExceptionPanel.vue",
+        "components/scanner-ops/ScanDispatchPanel.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ScanDispatchForceReleaseDialog"
+      ]
+    },
+    {
+      "path": "components/archive-volume/ArchiveEvalCampaignScopeSummary.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-eval-campaign.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveEvalCampaignScopeSummary"
+      ]
+    },
+    {
+      "path": "components/archive-volume/ArchiveExamAutoCreateStatus.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-exam-progress.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveExamAutoCreateStatus"
+      ]
+    },
+    {
+      "path": "components/archive-volume/ArchiveExamExportTasksCard.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-exam-progress.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveExamExportTasksCard"
+      ]
+    },
+    {
+      "path": "components/archive-volume/ArchiveExamScoreGatePanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/components/detail/ArchiveVolumeScoresPanel.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveExamScoreGatePanel"
+      ]
+    },
+    {
+      "path": "components/archive-volume/ArchiveLifecyclePipeTrack.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/archive-volume/ArchiveLifecyclePipe.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveLifecyclePipeTrack"
+      ]
+    },
+    {
+      "path": "components/archive-volume/ArchivePackageTimeline.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-exam-progress.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchivePackageTimeline"
+      ]
+    },
+    {
+      "path": "components/archive-volume/ExamArchiveGateBanner.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/score-publish.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ExamArchiveGateBanner"
+      ]
+    },
+    {
+      "path": "components/exam-workbench/ExamCandidatePaperImagesDrawer.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/candidate-roster.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ExamCandidatePaperImagesDrawer"
+      ]
+    },
+    {
+      "path": "components/exam-workbench/ExamCandidateWorkbenchTable.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/candidate-roster.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ExamCandidateWorkbenchTable"
+      ]
+    },
+    {
+      "path": "components/export/ExportTaskCenter.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "layout/components/HeaderRightBar/index.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ExportTaskCenter"
+      ]
+    },
+    {
+      "path": "components/mark/analysis/AiClusterTile.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/ai-analysis/cards/ErrorCauseClusterCard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AiClusterTile"
+      ]
+    },
+    {
+      "path": "components/mark/analysis/AiObjectiveProgressRow.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/ai-analysis/cards/CourseAchievementCard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AiObjectiveProgressRow"
+      ]
+    },
+    {
+      "path": "components/mark/analysis/AiRecommendationBlock.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/ai-analysis/cards/TeachingImprovementCard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AiRecommendationBlock"
+      ]
+    },
+    {
+      "path": "components/mark/analysis/AiWeaknessRow.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/ai-analysis/cards/ClassWeaknessCard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AiWeaknessRow"
+      ]
+    },
+    {
+      "path": "components/mark/AnalysisExamSelect.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/ai-analysis/cards/ExperienceEffectivenessCard.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "AnalysisExamSelect"
+      ]
+    },
+    {
+      "path": "components/mark/ApplyScoreToRemainingModal.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/marking-task-detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ApplyScoreToRemainingModal"
+      ]
+    },
+    {
+      "path": "components/mark/dashboard/MarkingOverviewAnalytics.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/marking-overview.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MarkingOverviewAnalytics"
+      ]
+    },
+    {
+      "path": "components/mark/dashboard/OngoingExamCardGrid.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/marking-overview.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "OngoingExamCardGrid"
+      ]
+    },
+    {
+      "path": "components/mark/dashboard/PublishedExamInsightChart.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/marking-overview.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "PublishedExamInsightChart"
+      ]
+    },
+    {
+      "path": "components/mark/dashboard/PublishedExamInsightTable.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/marking-overview.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "PublishedExamInsightTable"
+      ]
+    },
+    {
+      "path": "components/mark/ExamExperienceAssistPolicyEnableModal.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/exam-workspace/marking-experience-assist-policy.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ExamExperienceAssistPolicyEnableModal"
+      ]
+    },
+    {
+      "path": "components/mark/layout-designer/LayoutBlockLayerPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/mark/layout-designer/workbench/LayoutDesignLayoutPhase.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "LayoutBlockLayerPanel"
+      ]
+    },
+    {
+      "path": "components/mark/layout-designer/LayoutCanvasLite.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/mark/layout-designer/LayoutReviewDrawer.vue"
+      ],
+      "index_verdict": "SHELL",
+      "names": [
+        "LayoutCanvasLite"
+      ]
+    },
+    {
+      "path": "components/mark/layout-designer/LayoutCanvasToolbar.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/mark/layout-designer/LayoutCanvas.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "LayoutCanvasToolbar"
+      ]
+    },
+    {
+      "path": "components/mark/layout-designer/LayoutPreviewDrawer.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/exam-layout-designer.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "LayoutPreviewDrawer"
+      ]
+    },
+    {
+      "path": "components/mark/layout-designer/LayoutPropertyDrawer.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/mark/layout-designer/workbench/LayoutDesignLayoutPhase.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "LayoutPropertyDrawer"
+      ]
+    },
+    {
+      "path": "components/mark/layout-designer/LayoutQuestionCropStrip.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/mark/layout-designer/workbench/LayoutDesignLayoutPhase.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "LayoutQuestionCropStrip"
+      ]
+    },
+    {
+      "path": "components/mark/layout-designer/LayoutQuestionOutlinePanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/mark/layout-designer/workbench/LayoutDesignLayoutPhase.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "LayoutQuestionOutlinePanel"
+      ]
+    },
+    {
+      "path": "components/mark/layout-designer/LayoutReviewDrawer.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/exam-layout-designer.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "LayoutReviewDrawer"
+      ]
+    },
+    {
+      "path": "components/mark/layout-designer/workbench/LayoutDesignLayoutPhase.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/exam-layout-designer.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "LayoutDesignLayoutPhase"
+      ]
+    },
+    {
+      "path": "components/mark/layout-designer/workbench/LayoutDesignQuestionPhase.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/exam-layout-designer.vue"
+      ],
+      "index_verdict": "SHELL",
+      "names": [
+        "LayoutDesignQuestionPhase"
+      ]
+    },
+    {
+      "path": "components/mark/layout-designer/workbench/LayoutDesignReviewPhase.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/exam-layout-designer.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "LayoutDesignReviewPhase"
+      ]
+    },
+    {
+      "path": "components/mark/layout-designer/workbench/LayoutDesignSourcePhase.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/exam-layout-designer.vue"
+      ],
+      "index_verdict": "SHELL",
+      "names": [
+        "LayoutDesignSourcePhase"
+      ]
+    },
+    {
+      "path": "components/mark/layout-designer/workbench/LayoutQuestionLedgerPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/mark/layout-designer/workbench/LayoutDesignQuestionPhase.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "LayoutQuestionLedgerPanel"
+      ]
+    },
+    {
+      "path": "components/mark/manual-supplement/ManualSupplementCandidateTable.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/scan-manual-entry.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ManualSupplementCandidateTable"
+      ]
+    },
+    {
+      "path": "components/mark/manual-supplement/ManualSupplementWizardDrawer.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/scan-manual-entry.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ManualSupplementWizardDrawer"
+      ]
+    },
+    {
+      "path": "components/mark/MarkingQuestionViewCard.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/marking-task-detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MarkingQuestionViewCard"
+      ]
+    },
+    {
+      "path": "components/mark/MarkingTaskInfoCard.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/marking-task-detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MarkingTaskInfoCard"
+      ]
+    },
+    {
+      "path": "components/mark/MarkingTaskToolbar.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/marking-task-detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MarkingTaskToolbar"
+      ]
+    },
+    {
+      "path": "components/mark/QuestionExperienceAssistBindingModal.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/exam-workspace/marking-experience-assist-policy.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "QuestionExperienceAssistBindingModal"
+      ]
+    },
+    {
+      "path": "components/mark/RevealAnonymousModal.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/marking-task-detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "RevealAnonymousModal"
+      ]
+    },
+    {
+      "path": "components/mark/ScanBatchDiscardDialog.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/scan-batch-detail-workbench.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ScanBatchDiscardDialog"
+      ]
+    },
+    {
+      "path": "components/mark/ScanBatchPageInspectorPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/scan-batch-detail-workbench.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ScanBatchPageInspectorPanel"
+      ]
+    },
+    {
+      "path": "components/mark/ScanBatchPageRail.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/scan-batch-detail-workbench.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ScanBatchPageRail"
+      ]
+    },
+    {
+      "path": "components/mark/ScanBatchSupplementModal.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/scan-batch-detail-workbench.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ScanBatchSupplementModal"
+      ]
+    },
+    {
+      "path": "components/mark/ScanOrphanRecoveryAlert.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/scan-batch-workbench.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ScanOrphanRecoveryAlert"
+      ]
+    },
+    {
+      "path": "components/mark/WholePaperGallery.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/marking-task-detail.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "WholePaperGallery"
+      ]
+    },
+    {
+      "path": "components/portfolio/PortfolioAiCandidateConfirmPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/portfolio/PortfolioMaterialIntakePanel.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "PortfolioAiCandidateConfirmPanel"
+      ]
+    },
+    {
+      "path": "components/portfolio/PortfolioEligibilityTreeEditor.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/portfolio/indicator-eligibility.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "PortfolioEligibilityTreeEditor"
+      ]
+    },
+    {
+      "path": "components/portfolio/PortfolioMaterialIntakePanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/portfolio/teacher-intake.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "PortfolioMaterialIntakePanel"
+      ]
+    },
+    {
+      "path": "components/portfolio/PortfolioPortraitLayoutEditor.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/portfolio/portrait-template-admin.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "PortfolioPortraitLayoutEditor"
+      ]
+    },
+    {
+      "path": "components/portfolio/PortfolioProgressCockpitBand.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/portfolio/teacher-home.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "PortfolioProgressCockpitBand"
+      ]
+    },
+    {
+      "path": "components/portfolio/PortfolioProgressCompareDrawer.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/portfolio/teacher-home.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "PortfolioProgressCompareDrawer"
+      ]
+    },
+    {
+      "path": "components/portfolio/PortfolioTeacherOnboardingWizard.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/portfolio/teacher-onboarding.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "PortfolioTeacherOnboardingWizard"
+      ]
+    },
+    {
+      "path": "components/portfolio/PortfolioTeacherReviewStatusTable.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/portfolio/teacher-review-status.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "PortfolioTeacherReviewStatusTable"
+      ]
+    },
+    {
+      "path": "components/quality/accreditation/AccreditationAnnualPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/quality/accreditation-cockpit.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AccreditationAnnualPanel"
+      ]
+    },
+    {
+      "path": "components/quality/accreditation/AccreditationAnnualReportMaterialPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/quality/accreditation-cockpit.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AccreditationAnnualReportMaterialPanel"
+      ]
+    },
+    {
+      "path": "components/quality/accreditation/AccreditationCyclePanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/quality/accreditation-cockpit.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AccreditationCyclePanel"
+      ]
+    },
+    {
+      "path": "components/quality/accreditation/AccreditationEvidencePanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/quality/accreditation-cockpit.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AccreditationEvidencePanel"
+      ]
+    },
+    {
+      "path": "components/quality/accreditation/AccreditationOnsitePanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/quality/accreditation-cockpit.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AccreditationOnsitePanel"
+      ]
+    },
+    {
+      "path": "components/quality/accreditation/AccreditationSupportPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/quality/accreditation-cockpit.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AccreditationSupportPanel"
+      ]
+    },
+    {
+      "path": "components/quality/accreditation/SelfAssessmentReportPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/quality/accreditation-cockpit.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "SelfAssessmentReportPanel"
+      ]
+    },
+    {
+      "path": "components/quality/GlobalPromptInputDialog.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "App.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "GlobalPromptInputDialog"
+      ]
+    },
+    {
+      "path": "components/quality/improvement/AuditIssueTab.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/quality/improvement-workbench.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AuditIssueTab"
+      ]
+    },
+    {
+      "path": "components/quality/improvement/AuditRectificationTab.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/quality/improvement-workbench.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AuditRectificationTab"
+      ]
+    },
+    {
+      "path": "components/quality/improvement/AuditSupervisionTab.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/quality/improvement-workbench.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AuditSupervisionTab"
+      ]
+    },
+    {
+      "path": "components/quality/improvement/ImprovementTaskTab.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/quality/improvement-workbench.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "ImprovementTaskTab"
+      ]
+    },
+    {
+      "path": "components/quality/MarkQualitySyncChip.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/statistics.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MarkQualitySyncChip"
+      ]
+    },
+    {
+      "path": "components/quality/QualityObeJourneyStrip.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/quality/quality-workspace-layout.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "QualityObeJourneyStrip"
+      ]
+    },
+    {
+      "path": "components/quality/QualityWorkbenchCharts.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/quality/dashboard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "QualityWorkbenchCharts"
+      ]
+    },
+    {
+      "path": "components/quality/selectors/ProgramEvaluationProfileSelector.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/quality/selectors/index.ts"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ProgramEvaluationProfileSelector"
+      ]
+    },
+    {
+      "path": "components/scanner-ops/ScanDispatchPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/scanner-ops/ScanOpsWorkbench.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ScanDispatchPanel"
+      ]
+    },
+    {
+      "path": "components/scanner-ops/ScanExceptionPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/scanner-ops/ScanOpsWorkbench.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ScanExceptionPanel"
+      ]
+    },
+    {
+      "path": "components/scanner-ops/ScanOperationLogPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/scanner-ops/ScanOpsWorkbench.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ScanOperationLogPanel"
+      ]
+    },
+    {
+      "path": "components/scanner-ops/ScanOpsPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/scanner-ops/ScanOpsWorkbench.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ScanOpsPanel"
+      ]
+    },
+    {
+      "path": "components/SchoolAutocomplete.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/login/components/student/index.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "SchoolAutocomplete"
+      ]
+    },
+    {
+      "path": "components/UiErrorBoundary.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "App.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiErrorBoundary"
+      ]
+    },
+    {
+      "path": "components/workbench/ArchiveVolumeSubSidebar.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume-detail-layout.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveVolumeSubSidebar"
+      ]
+    },
+    {
+      "path": "components/workbench/ExamJourneyMiniStrip.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/exam-workspace/ExamWorkbenchOverviewDashboard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ExamJourneyMiniStrip"
+      ]
+    },
+    {
+      "path": "components/workbench/ExamJourneyRail.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/workbench/ExamWorkspaceChrome.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ExamJourneyRail"
+      ]
+    },
+    {
+      "path": "components/workbench/ExamPrepInfoPanels.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/exam-prep-workbench.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ExamPrepInfoPanels"
+      ]
+    },
+    {
+      "path": "components/workbench/ExamSidebarExamSwitch.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/workbench/ExamSubSidebar.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ExamSidebarExamSwitch"
+      ]
+    },
+    {
+      "path": "components/workbench/ExamSubSidebarMenuIcon.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/workbench/ExamSubSidebarNav.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ExamSubSidebarMenuIcon"
+      ]
+    },
+    {
+      "path": "components/workbench/ExamSwitcher.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/exam-workspace-layout.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ExamSwitcher"
+      ]
+    },
+    {
+      "path": "components/workbench/ExamWorkflowTaskDock.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/exam-workspace-layout.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ExamWorkflowTaskDock"
+      ]
+    },
+    {
+      "path": "components/workbench/ExamWorkspaceChildFrame.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/exam-workspace-layout.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ExamWorkspaceChildFrame"
+      ]
+    },
+    {
+      "path": "components/workbench/ExamWorkspaceChrome.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/exam-workspace-layout.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ExamWorkspaceChrome"
+      ]
+    },
+    {
+      "path": "components/workbench/ExamWorkspacePageShell.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/workbench/ExamWorkspaceChildFrame.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ExamWorkspacePageShell"
+      ]
+    },
+    {
+      "path": "components/workbench/GlobalConfirmDialog.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "App.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "GlobalConfirmDialog"
+      ]
+    },
+    {
+      "path": "components/workbench/MarkQualityScopeBar.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/admin/marking-quality-dashboard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MarkQualityScopeBar"
+      ]
+    },
+    {
+      "path": "components/workbench/ScoreAnalyticsStatusFlow.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/workbench/ScoreWorkbenchAnalyticsSection.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "ScoreAnalyticsStatusFlow"
+      ]
+    },
+    {
+      "path": "components/workbench/WorkbenchNoticeBanner.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/score-finalize.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "WorkbenchNoticeBanner"
+      ]
+    },
+    {
+      "path": "views/admin/marking-organization/components/FormalSessionCreateDialog.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/admin/marking-organization/formal-sessions.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "FormalSessionCreateDialog"
+      ]
+    },
+    {
+      "path": "views/admin/marking-organization/components/FormalSessionDetailDrawer.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/admin/marking-organization/components/FormalSessionWorkbench.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "FormalSessionDetailDrawer"
+      ]
+    },
+    {
+      "path": "views/admin/marking-organization/components/FormalSessionWorkbench.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/admin/marking-organization/formal-sessions.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "FormalSessionWorkbench"
+      ]
+    },
+    {
+      "path": "views/admin/marking-organization/components/MarkingOrgAssignmentTable.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/admin/marking-organization/detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MarkingOrgAssignmentTable"
+      ]
+    },
+    {
+      "path": "views/admin/marking-organization/components/MarkingOrgGroupProgressList.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/admin/marking-organization/detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MarkingOrgGroupProgressList"
+      ]
+    },
+    {
+      "path": "views/admin/marking-organization/components/MarkingOrgReviewerRosterTable.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/admin/marking-organization/detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MarkingOrgReviewerRosterTable"
+      ]
+    },
+    {
+      "path": "views/admin/marking-organization/components/MarkingOrgStrategySummaryCard.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/admin/marking-organization/detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MarkingOrgStrategySummaryCard"
+      ]
+    },
+    {
+      "path": "views/admin/marking-organization/components/RecycledTaskReassignPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/admin/marking-organization/detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "RecycledTaskReassignPanel"
+      ]
+    },
+    {
+      "path": "views/admin/marking-organization/components/TrialSessionCalibrateDrawer.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/admin/marking-organization/components/TrialSessionWorkbench.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "TrialSessionCalibrateDrawer"
+      ]
+    },
+    {
+      "path": "views/admin/marking-organization/components/TrialSessionCreateDialog.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/admin/marking-organization/trial-sessions.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "TrialSessionCreateDialog"
+      ]
+    },
+    {
+      "path": "views/admin/marking-organization/components/TrialSessionWorkbench.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/admin/marking-organization/trial-sessions.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "TrialSessionWorkbench"
+      ]
+    },
+    {
+      "path": "views/login/components/account/index.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "TUNE",
+      "names": [
+        "Account"
+      ]
+    },
+    {
+      "path": "views/login/components/background/index.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/login/pwdExpired/index.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "Background"
+      ]
+    },
+    {
+      "path": "views/login/components/modifyPassword/index.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/login/pwdExpired/index.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ModifyPassword"
+      ]
+    },
+    {
+      "path": "views/quality/components/ImportResponseDocumentModal.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/quality/components/indirect-evaluation/IndirectResponseReviewPanel.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ImportResponseDocumentModal"
+      ]
+    },
+    {
+      "path": "views/quality/components/indirect-evaluation/IndirectResponseReviewPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/quality/indirect-evaluation.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "IndirectResponseReviewPanel"
+      ]
+    },
+    {
+      "path": "views/quality/components/indirect-evaluation/IndirectSurveyTemplatePanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/quality/indirect-evaluation.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "IndirectSurveyTemplatePanel"
+      ]
+    },
+    {
+      "path": "views/quality/components/indirect-evaluation/IndirectTaskDispatchPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/quality/indirect-evaluation.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "IndirectTaskDispatchPanel"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/components/CognitiveConfirmModal.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/scanner-kiosk/KioskDispatchLanding.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "CognitiveConfirmModal"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/components/KioskActivationGate.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/scanner-kiosk/KioskLayout.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "KioskActivationGate"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/components/KioskAppBar.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/scanner-kiosk/KioskLayout.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "KioskAppBar"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/components/KioskArchivePickPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/scanner-kiosk/TaskKindHub.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "KioskArchivePickPanel"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/components/KioskBottomBar.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/scanner-kiosk/KioskLayout.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "KioskBottomBar"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/components/KioskExamSwitchGate.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/scanner-kiosk/KioskLayout.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "KioskExamSwitchGate"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/components/KioskHistoryLedgerDrawer.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/scanner-kiosk/KioskLayout.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "KioskHistoryLedgerDrawer"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/components/KioskNoticeBand.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/scanner-kiosk/KioskLayout.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "KioskNoticeBand"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/components/KioskPortfolioGapPickPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/scanner-kiosk/TaskKindHub.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "KioskPortfolioGapPickPanel"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/components/KioskScanProfilePanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/scanner-kiosk/stages/SetupStage.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "KioskScanProfilePanel"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/components/KioskSettingsDrawer.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/scanner-kiosk/KioskLayout.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "KioskSettingsDrawer"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/components/KioskStageBar.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/scanner-kiosk/KioskLayout.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "KioskStageBar"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/components/KioskSupplementLaunchModal.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/scanner-kiosk/stages/SetupStage.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "KioskSupplementLaunchModal"
+      ]
+    },
+    {
+      "path": "views/scanner-kiosk/components/KioskWorkbenchTabs.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/scanner-kiosk/KioskLayout.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "KioskWorkbenchTabs"
+      ]
+    },
+    {
+      "path": "views/teacher/ai-analysis/AiAnalysisClusterTab.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/ai-analysis-center.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AiAnalysisClusterTab"
+      ]
+    },
+    {
+      "path": "views/teacher/ai-analysis/AiAnalysisClusterWorkbench.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/ai-analysis/AiAnalysisClusterTab.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AiAnalysisClusterWorkbench"
+      ]
+    },
+    {
+      "path": "views/teacher/ai-analysis/AiAnalysisSchoolTab.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/ai-analysis-center.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AiAnalysisSchoolTab"
+      ]
+    },
+    {
+      "path": "views/teacher/ai-analysis/AiAnalysisTeachingTab.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/ai-analysis-center.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AiAnalysisTeachingTab"
+      ]
+    },
+    {
+      "path": "views/teacher/ai-analysis/AiAnalysisTrendTab.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/ai-analysis-center.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AiAnalysisTrendTab"
+      ]
+    },
+    {
+      "path": "views/teacher/ai-analysis/cards/CourseAchievementCard.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/ai-analysis/AiAnalysisTrendTab.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "CourseAchievementCard"
+      ]
+    },
+    {
+      "path": "views/teacher/ai-analysis/cards/CrossExamTrendCard.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/ai-analysis/AiAnalysisTrendTab.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "CrossExamTrendCard"
+      ]
+    },
+    {
+      "path": "views/teacher/ai-analysis/cards/ExamQuestionCourseGoalMappingTable.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/ai-analysis/cards/ExamQuestionCourseGoalMappingCard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ExamQuestionCourseGoalMappingTable"
+      ]
+    },
+    {
+      "path": "views/teacher/ai-analysis/cards/ExperienceEffectivenessCard.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/ai-analysis/AiAnalysisSchoolTab.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ExperienceEffectivenessCard"
+      ]
+    },
+    {
+      "path": "views/teacher/ai-analysis/cards/QuestionAnswerCorrectionDialog.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/ai-analysis/cards/QuestionAnalysisCard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "QuestionAnswerCorrectionDialog"
+      ]
+    },
+    {
+      "path": "views/teacher/ai-analysis/cards/SchoolQualityCard.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/ai-analysis/AiAnalysisSchoolTab.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "SchoolQualityCard"
+      ]
+    },
+    {
+      "path": "views/teacher/ai-analysis/cards/ScoreDistributionCard.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/statistics.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ScoreDistributionCard"
+      ]
+    },
+    {
+      "path": "views/teacher/ai-analysis/cards/SemesterGrowthCard.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/ai-analysis/AiAnalysisTrendTab.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "SemesterGrowthCard"
+      ]
+    },
+    {
+      "path": "views/teacher/appeal-handle/BatchCorrectionPlansCard.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/appeal-handle.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "BatchCorrectionPlansCard"
+      ]
+    },
+    {
+      "path": "views/teacher/appeal-handle/CorrectionsCard.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/appeal-handle.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "CorrectionsCard"
+      ]
+    },
+    {
+      "path": "views/teacher/appeal-handle/ReviewRequestsCard.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/appeal-handle.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ReviewRequestsCard"
+      ]
+    },
+    {
+      "path": "views/teacher/appeal-handle/ReviewWindowPolicyCard.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/appeal-handle.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ReviewWindowPolicyCard"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/archive-task-create/TaskArchivePlanStep.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-task-create/archive-task-create.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "TaskArchivePlanStep"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/archive-task-create/TaskBasicInfoStep.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-task-create/archive-task-create.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "TaskBasicInfoStep"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/archive-task-create/TaskConfirmStep.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-task-create/archive-task-create.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "TaskConfirmStep"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/archive-task-create/TaskProvenanceStep.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-task-create/archive-task-create.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "TaskProvenanceStep"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/ArchiveCollectionRejectDialog.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveCollectionRejectDialog"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/ArchiveSetupGuideBanner.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-list.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveSetupGuideBanner"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/ArchiveTemplateSetPreviewDrawer.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/components/ArchiveVolumeTemplateSetsPanel.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveTemplateSetPreviewDrawer"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/ArchiveTemplateSortableTableShell.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/components/ArchiveTemplateSetEditorDrawer.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveTemplateSortableTableShell"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/ArchiveVolumeMemberManageDrawer.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveVolumeMemberManageDrawer"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/ArchiveVolumeMineRemediationBanner.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-list.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveVolumeMineRemediationBanner"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/DepartmentReviewListDrawer.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-list.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "DepartmentReviewListDrawer"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/ArchiveFlowContextBar.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveFlowContextBar"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/ArchiveFourPropertyGrid.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/components/detail/ArchiveVolumeIntegrityPanel.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveFourPropertyGrid"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/ArchiveScanBatchReviewPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveScanBatchReviewPanel"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/ArchiveScanBatchSnapshotPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveScanBatchSnapshotPanel"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/ArchiveVolumeAccessPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveVolumeAccessPanel"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/ArchiveVolumeAppraisalPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-detail.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "ArchiveVolumeAppraisalPanel"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/ArchiveVolumeCatalogEditor.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveVolumeCatalogEditor"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/ArchiveVolumeCatalogPreview.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/components/detail/ArchiveVolumeCatalogEditor.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveVolumeCatalogPreview"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/ArchiveVolumeEventsPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveVolumeEventsPanel"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/ArchiveVolumeEventsTimeline.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/components/detail/ArchiveVolumeEventsPanel.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveVolumeEventsTimeline"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/ArchiveVolumeIntegrityPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveVolumeIntegrityPanel"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialTablePanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-detail.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "ArchiveVolumeMaterialTablePanel"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialTreePanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveVolumeMaterialTreePanel"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/ArchiveVolumeNextStepsPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveVolumeNextStepsPanel"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/ArchiveVolumeOcrSearchPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveVolumeOcrSearchPanel"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/ArchiveVolumePhysicalLocationPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-detail.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "ArchiveVolumePhysicalLocationPanel"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/ArchiveVolumeScoresPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveVolumeScoresPanel"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/ArchiveVolumeSelfCheckList.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/components/detail/ArchiveVolumeIntegrityPanel.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveVolumeSelfCheckList"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/ArchiveVolumeSubmitChecklistModal.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveVolumeSubmitChecklistModal"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/ArchiveVolumeSubmitProgressBand.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveVolumeSubmitProgressBand"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/ArchiveVolumeTransferPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ArchiveVolumeTransferPanel"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/DepartmentReviewPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "DepartmentReviewPanel"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/DigitalMaterialConfirmPanel.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "DigitalMaterialConfirmPanel"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/detail/TaskSettingsDrawer.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/archive-volume-detail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "TaskSettingsDrawer"
+      ]
+    },
+    {
+      "path": "views/teacher/archive-volume/components/ScanDispatchDialog.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialTablePanel.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ScanDispatchDialog"
+      ]
+    },
+    {
+      "path": "views/teacher/components/ExamListExamWindowCell.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/exam-list.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ExamListExamWindowCell"
+      ]
+    },
+    {
+      "path": "views/teacher/exam-create/BasicSettingsStep.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/exam-create/exam-create.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "BasicSettingsStep"
+      ]
+    },
+    {
+      "path": "views/teacher/exam-create/CandidateScopeStep.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/exam-create/exam-create.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "CandidateScopeStep"
+      ]
+    },
+    {
+      "path": "views/teacher/exam-create/ConfirmStep.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/exam-create/exam-create.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ConfirmStep"
+      ]
+    },
+    {
+      "path": "views/teacher/exam-create/MarkingTeamStep.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/exam-create/exam-create.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MarkingTeamStep"
+      ]
+    },
+    {
+      "path": "views/teacher/image-ledger/DuplicateResolutionCard.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/image-ledger.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "DuplicateResolutionCard"
+      ]
+    },
+    {
+      "path": "views/teacher/image-ledger/DuplicateResolveModal.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/image-ledger.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "DuplicateResolveModal"
+      ]
+    },
+    {
+      "path": "views/teacher/image-ledger/LedgerSummaryCard.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/teacher/image-ledger.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "LedgerSummaryCard"
+      ]
+    },
+    {
+      "path": "views/user/message/components/NoticePopup.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "layout/LayoutDefault.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "NoticePopup"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/Button.vue",
+      "status": "USED",
+      "refs": 334,
+      "sample": [
+        "components/FilePreviewDialog.vue",
+        "views/quality/archive.vue",
+        "views/quality/score-batch.vue"
+      ],
+      "index_verdict": "REWORK",
+      "names": [
+        "Button",
+        "UiButton"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiButton.vue",
+      "status": "USED",
+      "refs": 333,
+      "sample": [
+        "components/FilePreviewDialog.vue",
+        "views/quality/archive.vue",
+        "views/quality/score-batch.vue"
+      ],
+      "index_verdict": "REWORK",
+      "names": [
+        "UiButton"
+      ]
+    },
+    {
+      "path": "layout/index.vue",
+      "status": "USED",
+      "refs": 4,
+      "sample": [
+        "router/routes/portfolio.ts",
+        "router/routes/quality.ts",
+        "router/routes/student.ts"
+      ],
+      "index_verdict": "SHELL",
+      "names": [
+        "Layout"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiTag.vue",
+      "status": "USED",
+      "refs": 268,
+      "sample": [
+        "views/quality/archive.vue",
+        "views/quality/score-batch.vue",
+        "views/quality/profession-algorithm-profile.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiTag"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/Empty.vue",
+      "status": "USED",
+      "refs": 237,
+      "sample": [
+        "views/quality/archive.vue",
+        "views/quality/score-batch.vue",
+        "views/quality/profession-algorithm-profile.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "Empty",
+        "UiEmpty"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiEmpty.vue",
+      "status": "USED",
+      "refs": 237,
+      "sample": [
+        "views/quality/archive.vue",
+        "views/quality/score-batch.vue",
+        "views/quality/profession-algorithm-profile.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "UiEmpty"
+      ]
+    },
+    {
+      "path": "components/workbench/StageWorkbenchShell.vue",
+      "status": "USED",
+      "refs": 177,
+      "sample": [
+        "views/quality/archive.vue",
+        "views/quality/profession-algorithm-profile.vue",
+        "views/quality/dashboard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "StageWorkbenchShell"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/Card.vue",
+      "status": "USED",
+      "refs": 130,
+      "sample": [
+        "views/quality/archive.vue",
+        "views/quality/score-batch.vue",
+        "views/quality/profession-algorithm-profile.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "Card",
+        "UiCard"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiTableActions.vue",
+      "status": "USED",
+      "refs": 128,
+      "sample": [
+        "views/quality/archive.vue",
+        "views/quality/score-batch.vue",
+        "views/quality/profession-algorithm-profile.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiTableActions"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiDrawer.vue",
+      "status": "USED",
+      "refs": 86,
+      "sample": [
+        "views/quality/archive.vue",
+        "views/quality/score-batch.vue",
+        "views/quality/program-evaluation-profile.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiDrawer"
+      ]
+    },
+    {
+      "path": "components/workbench/ExamWorkspaceJourneySubNav.vue",
+      "status": "USED",
+      "refs": 34,
+      "sample": [
+        "views/admin/teaching-affairs-sync.vue",
+        "views/admin/marking-quality-dashboard.vue",
+        "views/admin/audit-trail.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ExamWorkspaceJourneySubNav"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiTextAction.vue",
+      "status": "USED",
+      "refs": 33,
+      "sample": [
+        "views/quality/archive.vue",
+        "views/quality/training-plan-workbench.vue",
+        "views/quality/quality-course-matrix.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiTextAction"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiSectionTabs.vue",
+      "status": "USED",
+      "refs": 31,
+      "sample": [
+        "views/admin/marking-quality-dashboard.vue",
+        "views/admin/audit-trail.vue",
+        "views/portfolio/teacher-portrait.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiSectionTabs"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/Input.vue",
+      "status": "USED",
+      "refs": 22,
+      "sample": [
+        "views/auth/cas-first-login-completion.vue",
+        "views/auth/forgot-password.vue",
+        "views/portfolio/teacher-honor.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "Input",
+        "UiInput"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/Select.vue",
+      "status": "USED",
+      "refs": 6,
+      "sample": [
+        "views/portfolio/title-promotion-admin.vue",
+        "views/portfolio/ethics-sanction-admin.vue",
+        "views/portfolio/title-criteria-templates.vue"
+      ],
+      "index_verdict": "SHELL",
+      "names": [
+        "Select",
+        "UiSelectCompat"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiBadge.vue",
+      "status": "USED",
+      "refs": 19,
+      "sample": [
+        "views/user/profile/index.vue",
+        "components/ui-guide/ui/UiMessageThread.vue",
+        "components/ui-guide/ui/UiActivityTimeline.vue"
+      ],
+      "index_verdict": "REWORK",
+      "names": [
+        "UiBadge"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiPanelHeader.vue",
+      "status": "USED",
+      "refs": 19,
+      "sample": [
+        "components/ui-guide/ui/UiSidePanelCard.vue",
+        "components/ui-guide/ui/UiSimpleList.vue",
+        "components/ui-guide/ui/UiStatisticSummaryGrid.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiPanelHeader"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiDialog.vue",
+      "status": "USED",
+      "refs": 18,
+      "sample": [
+        "components/FilePreviewDialog.vue",
+        "views/admin/teaching-affairs-sync.vue",
+        "views/common/exam-export-tasks.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiDialog"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/DatePicker.vue",
+      "status": "USED",
+      "refs": 8,
+      "sample": [
+        "views/portfolio/teacher-honor.vue",
+        "views/portfolio/department-review.vue",
+        "views/portfolio/department-gap.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "DatePicker",
+        "UiDatePicker"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiForm.vue",
+      "status": "USED",
+      "refs": 7,
+      "sample": [
+        "views/auth/change-password.vue",
+        "views/auth/cas-first-login-completion.vue",
+        "views/auth/forgot-password.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiForm"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiStatPanel.vue",
+      "status": "USED",
+      "refs": 7,
+      "sample": [
+        "views/portfolio/teacher-portrait.vue",
+        "views/portfolio/major-group-portfolio.vue",
+        "views/portfolio/department-cockpit.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "UiStatPanel"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/Textarea.vue",
+      "status": "USED",
+      "refs": 5,
+      "sample": [
+        "views/quality/training-plan-review-queue.vue",
+        "views/portfolio/title-promotion-admin.vue",
+        "views/portfolio/ethics-sanction-admin.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "Textarea",
+        "UiTextarea"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiProgressBar.vue",
+      "status": "USED",
+      "refs": 6,
+      "sample": [
+        "views/teacher/image-ledger/LedgerSummaryCard.vue",
+        "components/ui-guide/ui/UiWorkflowStatusBar.vue",
+        "components/ui-guide/ui/UiIntentCard.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "UiProgressBar"
+      ]
+    },
+    {
+      "path": "components/mark/ScanImageStage.vue",
+      "status": "USED",
+      "refs": 5,
+      "sample": [
+        "views/student/score-detail.vue",
+        "views/teacher/scan-batch-detail-workbench.vue",
+        "views/teacher/scan-live-monitor.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "ScanImageStage"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/ConfirmModal.vue",
+      "status": "USED",
+      "refs": 5,
+      "sample": [
+        "views/teacher/exam-create/exam-create.vue",
+        "components/quality/GlobalPromptInputDialog.vue",
+        "components/mark/ScanBatchDiscardDialog.vue"
+      ],
+      "index_verdict": "SHELL",
+      "names": [
+        "ConfirmModal",
+        "UiConfirmModal"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/InputNumber.vue",
+      "status": "USED",
+      "refs": 5,
+      "sample": [
+        "views/portfolio/title-promotion-admin.vue",
+        "views/portfolio/compliance-threshold-admin.vue",
+        "views/portfolio/teacher-profile.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "InputNumber",
+        "UiInputNumber"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/Pagination.vue",
+      "status": "USED",
+      "refs": 5,
+      "sample": [
+        "views/portfolio/policy-library-browse.vue",
+        "views/teacher/marking-overview.vue",
+        "views/teacher/score-finalize.vue"
+      ],
+      "index_verdict": "REWORK",
+      "names": [
+        "Pagination",
+        "UiPagination"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/ProgressBar.vue",
+      "status": "USED",
+      "refs": 5,
+      "sample": [
+        "components/ui-guide/ui/UiWorkflowStatusBar.vue",
+        "components/ui-guide/ui/UiIntentCard.vue",
+        "components/ui-guide/ui/UiProgressMonitorCard.vue"
+      ],
+      "index_verdict": "SHELL",
+      "names": [
+        "ProgressBar"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/SearchBox.vue",
+      "status": "USED",
+      "refs": 5,
+      "sample": [
+        "views/admin/marking-organization/detail.vue",
+        "components/ui-guide/ui/UiCollectionToolbar.vue",
+        "components/ui-guide/ui/FilterBar.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "SearchBox",
+        "UiSearchBox"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiCheckbox.vue",
+      "status": "USED",
+      "refs": 5,
+      "sample": [
+        "views/portfolio/shuanggao-tasks.vue",
+        "views/login/components/account/index.vue",
+        "components/ui-guide/ui/UiColumnSettingPopover.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiCheckbox"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiEllipsisText.vue",
+      "status": "USED",
+      "refs": 5,
+      "sample": [
+        "views/admin/marking-organization/components/TrialSessionWorkbench.vue",
+        "views/admin/marking-organization/components/FormalSessionWorkbench.vue",
+        "components/scanner-ops/ScanOperationLogPanel.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "UiEllipsisText"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiPagination.vue",
+      "status": "USED",
+      "refs": 5,
+      "sample": [
+        "views/portfolio/policy-library-browse.vue",
+        "views/teacher/marking-overview.vue",
+        "views/teacher/score-finalize.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiPagination"
+      ]
+    },
+    {
+      "path": "components/workbench/AuditTimelineDrawer.vue",
+      "status": "USED",
+      "refs": 5,
+      "sample": [
+        "views/quality/archive.vue",
+        "views/quality/score-batch.vue",
+        "views/quality/ai-task.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "AuditTimelineDrawer"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/Checkbox.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/portfolio/promotion-scene.vue"
+      ],
+      "index_verdict": "SHELL",
+      "names": [
+        "Checkbox",
+        "CheckboxLegacy"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiFormField.vue",
+      "status": "USED",
+      "refs": 5,
+      "sample": [
+        "views/auth/cas-first-login-completion.vue",
+        "views/auth/forgot-password.vue",
+        "views/login/components/cas/index.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiFormField"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiRadioGroup.vue",
+      "status": "USED",
+      "refs": 4,
+      "sample": [
+        "views/portfolio/shuanggao-tasks.vue",
+        "views/login/index.vue",
+        "views/teacher/ai-analysis/cards/SemesterGrowthCard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiRadioGroup"
+      ]
+    },
+    {
+      "path": "layout/components/Logo.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "layout/components/MenuFoldBtn.vue",
+        "layout/components/Asider/index.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "Logo"
+      ]
+    },
+    {
+      "path": "components/mark/GradingWorkspaceLayout.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "views/teacher/review-task-detail.vue",
+        "views/teacher/marking-task-detail.vue",
+        "views/teacher/review-workspace.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "GradingWorkspaceLayout"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/InfoGridItem.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "views/admin/marking-organization/detail.vue",
+        "views/admin/marking-organization/components/FormalSessionDetailDrawer.vue",
+        "components/ui-guide/ui/InfoGrid.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "InfoGridItem",
+        "UiInfoGridItem"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/PasswordInput.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "views/auth/forgot-password.vue",
+        "views/login/components/student/index.vue",
+        "views/login/components/account/index.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "PasswordInput",
+        "UiPasswordInput"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/RadioGroup.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "SHELL",
+      "names": [
+        "RadioGroup",
+        "RadioGroupLegacy"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiPopoverPanel.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "components/mark/MarkingTaskToolbar.vue",
+        "components/ui-guide/ui/UiColumnSettingPopover.vue",
+        "components/ui-guide/ui/UiConfirmPopover.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiPopoverPanel"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiTooltip.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "components/mark/ScanBatchPageInspectorPanel.vue",
+        "components/mark/AnalysisExamMultiSelect.vue",
+        "components/ui-guide/ui/UiEllipsisText.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "UiTooltip"
+      ]
+    },
+    {
+      "path": "layout/components/HeaderRightBar/index.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "views/teacher/archive-volume-detail-layout.vue",
+        "views/teacher/exam-workspace-layout.vue",
+        "layout/components/Header/index.vue"
+      ],
+      "index_verdict": "SHELL",
+      "names": [
+        "HeaderRight",
+        "HeaderRightBar"
+      ]
+    },
+    {
+      "path": "layout/components/Menu/MenuCollapsedTooltip.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "layout/components/Menu/index.vue",
+        "layout/components/Menu/DualDomainSideNav.vue",
+        "layout/components/Menu/MenuItem.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MenuCollapsedTooltip"
+      ]
+    },
+    {
+      "path": "layout/components/Menu/MenuIcon.vue",
+      "status": "USED",
+      "refs": 3,
+      "sample": [
+        "layout/components/Menu/index.vue",
+        "layout/components/Menu/DualDomainSideNav.vue",
+        "layout/components/Menu/MenuItem.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MenuIcon"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/InfoGrid.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/admin/marking-organization/detail.vue",
+        "views/admin/marking-organization/components/FormalSessionDetailDrawer.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "InfoGrid",
+        "UiInfoGrid"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiBatchActionBar.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/teacher/marking-task-pool.vue",
+        "views/teacher/archive-volume/archive-volume-list.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "UiBatchActionBar"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiCheckboxGroup.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/portfolio/shuanggao-tasks.vue",
+        "components/ui-guide/ui/CheckboxGroup.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiCheckboxGroup"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiConfirmDialog.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "components/workbench/GlobalConfirmDialog.vue",
+        "components/ui-guide/ui/ConfirmModal.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiConfirmDialog"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiEditorCard.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "components/ui-guide/ui/UiDeliverableItemEditor.vue",
+        "components/ui-guide/ui/UiStageEditorShell.vue"
+      ],
+      "index_verdict": "DEAD?",
+      "names": [
+        "UiEditorCard"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiRadio.vue",
+      "status": "USED",
+      "refs": 5,
+      "sample": [
+        "views/portfolio/shuanggao-tasks.vue",
+        "views/login/index.vue",
+        "views/teacher/ai-analysis/cards/SemesterGrowthCard.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiRadio"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiSearchForm.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "components/ui-guide/ui/UiSelectionModal.vue",
+        "components/ui-guide/ui/UiSearchTableDialog.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "UiSearchForm"
+      ]
+    },
+    {
+      "path": "layout/components/Menu/index.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "layout/components/MenuFoldBtn.vue",
+        "layout/components/Asider/index.vue"
+      ],
+      "index_verdict": "SHELL",
+      "names": [
+        "AppMenu",
+        "Menu"
+      ]
+    },
+    {
+      "path": "layout/components/MenuFoldBtn.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "layout/components/Asider/index.vue",
+        "layout/components/Header/index.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MenuFoldBtn"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/Alert.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/portfolio/teacher-portrait.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "Alert",
+        "UiAlert"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/CheckboxGroup.vue",
+      "status": "ZERO_REF",
+      "refs": 0,
+      "sample": [],
+      "index_verdict": "SHELL",
+      "names": [
+        "CheckboxGroup",
+        "CheckboxGroupLegacy"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/Radio.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/portfolio/promotion-scene.vue"
+      ],
+      "index_verdict": "SHELL",
+      "names": [
+        "Radio",
+        "RadioLegacy"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/Switch.vue",
+      "status": "USED",
+      "refs": 2,
+      "sample": [
+        "views/portfolio/compliance-threshold-admin.vue",
+        "views/portfolio/title-criteria-templates.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "Switch",
+        "UiSwitch"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiChatShell.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/ui-guide/ui/UiConversationPanel.vue"
+      ],
+      "index_verdict": "DEAD?",
+      "names": [
+        "UiChatShell"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiDropdownAction.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/ui-guide/ui/UiTableActions.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiDropdownAction"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiFormSection.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/auth/change-password.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiFormSection"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiMessageThread.vue",
+      "status": "MISSING",
+      "refs": 0,
+      "index_verdict": "TUNE"
+    },
+    {
+      "path": "components/ui-guide/ui/UiMultiSelect.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/ui-guide/ui/FilterBar.vue"
+      ],
+      "index_verdict": "SHELL",
+      "names": [
+        "UiMultiSelect"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiPageHeader.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/auth/change-password.vue"
+      ],
+      "index_verdict": "TUNE",
+      "names": [
+        "UiPageHeader"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiSessionListPanel.vue",
+      "status": "MISSING",
+      "refs": 0,
+      "index_verdict": "REWORK"
+    },
+    {
+      "path": "components/ui-guide/ui/UiSidebarNav.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/create-form/CreateFormPageShell.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiSidebarNav"
+      ]
+    },
+    {
+      "path": "components/ui-guide/ui/UiSidePanelCard.vue",
+      "status": "MISSING",
+      "refs": 0,
+      "index_verdict": "TUNE"
+    },
+    {
+      "path": "components/ui-guide/ui/YearPicker.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "components/ui-guide/ui/FilterBar.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "UiYearPicker",
+        "YearPicker"
+      ]
+    },
+    {
+      "path": "layout/components/AiTaskRunningBar.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "views/quality/quality-workspace-layout.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "AiTaskRunningBar"
+      ]
+    },
+    {
+      "path": "layout/components/Asider/index.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "layout/LayoutDefault.vue"
+      ],
+      "index_verdict": "SHELL",
+      "names": [
+        "Asider"
+      ]
+    },
+    {
+      "path": "layout/components/Breadcrumb/index.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "layout/components/Header/index.vue"
+      ],
+      "index_verdict": "SHELL",
+      "names": [
+        "Breadcrumb"
+      ]
+    },
+    {
+      "path": "layout/components/Header/index.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "layout/LayoutDefault.vue"
+      ],
+      "index_verdict": "SHELL",
+      "names": [
+        "Header",
+        "LayoutHeader"
+      ]
+    },
+    {
+      "path": "layout/components/HeaderRightBar/Message.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "layout/components/HeaderRightBar/index.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "Message"
+      ]
+    },
+    {
+      "path": "layout/components/Menu/MenuItem.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "layout/components/Menu/index.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "MenuItem"
+      ]
+    },
+    {
+      "path": "layout/components/TabBar/index.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "layout/LayoutDefault.vue"
+      ],
+      "index_verdict": "SHELL",
+      "names": [
+        "TabBar"
+      ]
+    },
+    {
+      "path": "layout/LayoutDefault.vue",
+      "status": "USED",
+      "refs": 1,
+      "sample": [
+        "layout/index.vue"
+      ],
+      "index_verdict": "OK",
+      "names": [
+        "LayoutDefault"
+      ]
+    }
+  ]
+}

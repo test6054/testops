@@ -62,7 +62,7 @@ async function evaluate() {
     if (requestToken.value !== currentToken) {
       return
     }
-    showUserError(error)
+    showUserError(error, '加载教师指标结果失败')
   } finally {
     if (requestToken.value === currentToken) {
       evaluating.value = false

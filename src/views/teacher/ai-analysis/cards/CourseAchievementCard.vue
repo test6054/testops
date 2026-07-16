@@ -73,18 +73,17 @@ import type {
   CourseAchievementItemResponse,
   CourseObjectiveAchievementResponse,
 } from '@/apis/mark/cross-exam-analysis'
+import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
 import {
   CourseObjectiveDimensionDescription,
   generateAchievement,
   listAchievements,
 } from '@/apis/mark/cross-exam-analysis'
-import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { formatSemester } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
-import { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisHistorySelect from '@/components/mark/analysis/AiAnalysisHistorySelect.vue'
@@ -97,13 +96,14 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
 import { loadExamsForCourseAcademicYearSemester } from '@/composables/useCrossExamDefaultScope'
 import { useChartOption } from '@/hooks/modules/useChartOption'
+import { formatSemester } from '@/types/enums/semester-enum'
 import {
   buildOptionalAcademicYearSemesterQuery,
   buildRequiredAcademicYearSemesterQuery,
   ensureAcademicYearSemesterPair,
   ensureRequiredAcademicYearSemester,
 } from '@/utils/academic-year-semester-query'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import {
   buildBarChartInsight,
@@ -338,13 +338,13 @@ function examScopeSummary(value: CourseObjectiveAchievementResponse): string {
 async function reload(options?: { silent?: boolean }): Promise<void> {
   if (!effectiveCourseId.value) {
     if (!options?.silent) {
-      message.warning('请先在上方范围栏选择课程')
+      showFormValidationMessage('请先在上方范围栏选择课程')
     }
     return
   }
   if (!ensureAcademicYearSemesterPair(effectiveAcademicYear.value, effectiveSemester.value)) {
     if (!options?.silent) {
-      message.warning('请先在上方范围栏选择学年与学期')
+      showFormValidationMessage('请先在上方范围栏选择学年与学期')
     }
     return
   }
@@ -376,7 +376,7 @@ async function handleGenerate(): Promise<void> {
   const courseId = effectiveCourseId.value
   const examIds = scopedExamIds.value
   if (!courseId) {
-    message.warning('请先在上方范围栏选择课程')
+    showFormValidationMessage('请先在上方范围栏选择课程')
     return
   }
   if (!ensureRequiredAcademicYearSemester(effectiveAcademicYear.value, effectiveSemester.value)) {
@@ -390,7 +390,7 @@ async function handleGenerate(): Promise<void> {
     return
   }
   if (examIds.length < 2) {
-    message.warning('当前范围内考核环节不足 2 场，无法生成达成度分析')
+    showFormValidationMessage('当前范围内考核环节不足 2 场，无法生成达成度分析')
     return
   }
   generating.value = true

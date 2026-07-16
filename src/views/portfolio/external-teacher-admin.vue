@@ -2,12 +2,6 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ExcelImportRowDiagnostic } from '@/apis/platform/types'
 import type { PortfolioExternalTeacherImportBatchStatusCode } from '@/apis/portfolio/enums'
-import {
-  PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS,
-  PortfolioExternalTeacherDataStatusCode,
-  PortfolioExternalTeacherDataStatusDescription,
-  PortfolioExternalTeacherImportBatchStatusDescription,
-} from '@/apis/portfolio/enums'
 import type {
   PortfolioExternalTeacherImportBatchVO,
   PortfolioExternalTeacherPageRequest,
@@ -15,11 +9,17 @@ import type {
   PortfolioExternalTeacherStatsVO,
   PortfolioExternalTeacherVO,
 } from '@/apis/portfolio/teacher-platform'
-import { portfolioExternalTeacherApi } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import {
+  PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS,
+  PortfolioExternalTeacherDataStatusCode,
+  PortfolioExternalTeacherDataStatusDescription,
+  PortfolioExternalTeacherImportBatchStatusDescription,
+} from '@/apis/portfolio/enums'
+import { portfolioExternalTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -34,7 +34,7 @@ import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { PortfolioImportQualityGradeDescription } from '@/types/enums/portfolio-import-quality-grade-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -51,11 +51,11 @@ const importModalOpen = ref(false)
 type ExternalTeacherFilters = Pick<
   PortfolioExternalTeacherPageRequest,
   'dataStatus' | 'teachSubject' | 'teacherSource' | 'contractStatus'
-> &
-  Record<string, unknown>
+>
+& Record<string, unknown>
 
-const { loading, rows, pageNum, pageSize, pageTotal, filters, loadPage, search, handlePageChange } =
-  useQueryTable<PortfolioExternalTeacherVO, ExternalTeacherFilters>(
+const { loading, rows, pageNum, pageSize, pageTotal, filters, loadPage, search, handlePageChange }
+  = useQueryTable<PortfolioExternalTeacherVO, ExternalTeacherFilters>(
     (params) =>
       portfolioExternalTeacherApi.page({
         pageNum: params.pageNum,
@@ -173,14 +173,14 @@ const batchDetailDiagnostics = computed<ExcelImportRowDiagnostic[]>(() => {
           invalidReason: '导入错误报告明细格式异常',
         }
       }
-      const rowIndex =
-        'rowIndex' in item && typeof item.rowIndex === 'number' ? item.rowIndex : -(index + 1)
-      const invalidReason =
-        'message' in item && typeof item.message === 'string' ? item.message : '导入失败'
+      const rowIndex
+        = 'rowIndex' in item && typeof item.rowIndex === 'number' ? item.rowIndex : -(index + 1)
+      const invalidReason
+        = 'message' in item && typeof item.message === 'string' ? item.message : '导入失败'
       return { rowIndex, valid: false, invalidReason }
     })
   } catch {
-    return [{ rowIndex: -1, valid: false, invalidReason: '导入错误报告不是合法 JSON' }]
+    return [{ rowIndex: -1, valid: false, invalidReason: '导入错误报告不是合法结构化文本' }]
   }
 })
 
@@ -296,7 +296,7 @@ async function loadStats() {
   try {
     stats.value = await portfolioExternalTeacherApi.stats(buildRosterFilters())
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '加载外聘教师统计失败')
   } finally {
     statsLoading.value = false
   }
@@ -365,7 +365,7 @@ async function openEdit(id: string) {
   } catch (error) {
     drawerOpen.value = false
     resetEditorContext()
-    showUserError(error)
+    showUserError(error, '加载外聘教师详情失败')
   } finally {
     editLoading.value = false
   }
@@ -373,7 +373,7 @@ async function openEdit(id: string) {
 
 async function saveRecord() {
   if (!form.fullName.trim()) {
-    message.warning('请填写姓名')
+    showFormValidationMessage('请填写姓名')
     return
   }
   saving.value = true
@@ -406,7 +406,7 @@ async function saveRecord() {
     drawerOpen.value = false
     await loadPage()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存外聘教师失败')
   } finally {
     saving.value = false
   }
@@ -426,7 +426,7 @@ async function revokeRecord(id: string) {
     message.success('已停用')
     await loadPage()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '停用外聘教师失败')
   }
 }
 
@@ -443,7 +443,7 @@ async function openBatchDetail(id: string) {
   } catch (error) {
     batchDetailOpen.value = false
     resetBatchDetailContext()
-    showUserError(error)
+    showUserError(error, '加载导入批次详情失败')
   }
 }
 
@@ -453,7 +453,7 @@ async function exportRoster() {
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出外聘教师名册失败')
   }
 }
 
@@ -476,7 +476,7 @@ onMounted(async () => {
     <a-tabs v-model:active-key="activeTab">
       <a-tab-pane key="roster" tab="名册">
         <UiCard title="批量导入">
-          <UiButton @click="importModalOpen = true"> Excel 批量导入 </UiButton>
+          <UiButton @click="importModalOpen = true"> 表格文件批量导入 </UiButton>
         </UiCard>
         <UiPlatformExcelImportModal
           v-model:open="importModalOpen"

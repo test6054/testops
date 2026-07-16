@@ -362,7 +362,7 @@ async function loadAiTasks() {
     })
     recentAiTasks.value = page.list
   } catch (error) {
-    showUserError(error, 'AI 任务数据加载失败')
+    showUserError(error, '智能任务数据加载失败')
   } finally {
     loading.ai = false
   }

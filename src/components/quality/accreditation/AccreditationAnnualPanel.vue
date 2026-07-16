@@ -105,7 +105,7 @@ async function loadPlans() {
       else selectedPlan.value = undefined
     }
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '年度评价计划列表加载失败')
   } finally {
     loading.value = false
   }
@@ -124,7 +124,7 @@ async function selectPlan(id: string) {
     coursePageNum.value = 1
     await loadPlanCourses()
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '年度评价计划详情加载失败')
   } finally {
     detailLoading.value = false
   }
@@ -148,7 +148,7 @@ async function loadPlanCourses() {
   } catch (e) {
     courseRows.value = []
     courseTotal.value = 0
-    showUserError(e)
+    showUserError(e, '年度计划课程列表加载失败')
   } finally {
     detailLoading.value = false
   }
@@ -234,7 +234,7 @@ async function submitPlan() {
     await loadPlans()
     emit('refresh')
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '年度评价计划保存失败')
   }
 }
 
@@ -252,7 +252,7 @@ async function removePlan(id: string) {
     await loadPlans()
     emit('refresh')
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '年度评价计划删除失败')
   }
 }
 
@@ -270,7 +270,7 @@ async function updateCourseStatus(courseRowId: string, evaluationCompleted: bool
     await loadPlans()
     emit('refresh')
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '年度计划课程状态更新失败')
   }
 }
 

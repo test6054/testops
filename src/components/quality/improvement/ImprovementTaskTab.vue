@@ -48,7 +48,7 @@ import {
 } from '@/composables/useScopeRequestGuard'
 import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityStore } from '@/stores/modules/quality'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ImprovementTaskTab' })
@@ -205,7 +205,7 @@ function resetImprovementQuery(): void {
 
 function handleImprovementOwnerChange(value: string | string[] | null): void {
   if (Array.isArray(value)) {
-    showUserError(null, '负责人只能单选，请重新选择')
+    showFormValidationMessage('负责人只能单选，请重新选择')
     return
   }
   improvementEditor.ownerUserId = value ?? ''
@@ -391,7 +391,7 @@ async function submitImprovementEditor(): Promise<void> {
     && submitAiSuggestionDraft.value
     && !improvementEditor.achievementResultId
   ) {
-    message.error('生成 AI 改进草稿需要先关联达成度计算结果')
+    showFormValidationMessage('生成智能改进草稿需要先关联达成度计算结果')
     return
   }
   improvementEditorSubmitting.value = true
@@ -417,7 +417,7 @@ async function submitImprovementEditor(): Promise<void> {
       if (submitAiSuggestionDraft.value && improvementTaskId) {
         const achievementResultId = request.achievementResultId
         if (!achievementResultId) {
-          showUserError(null, '生成 AI 改进草稿需要先关联达成度计算结果')
+          showFormValidationMessage('生成智能改进草稿需要先关联达成度计算结果')
           return
         }
         const res = await aiTaskTriggerApi.submit({
@@ -430,7 +430,7 @@ async function submitImprovementEditor(): Promise<void> {
           achievementResultId,
           reportId: improvementTaskId,
         })
-        message.success('改进任务已创建，AI 改进草稿已排队生成')
+        message.success('改进任务已创建，智能改进草稿已排队生成')
         if (res.taskId) {
           aiTaskStore.startPolling(res.taskId)
         } else {
@@ -520,7 +520,7 @@ async function handleImprovementTransit(
 
 async function handleImprovementAiSuggestion(record: ImprovementTaskVO): Promise<void> {
   if (!record.achievementResultId) {
-    message.error('生成 AI 改进草稿需要先关联达成度计算结果')
+    showFormValidationMessage('生成智能改进草稿需要先关联达成度计算结果')
     return
   }
   const achievementResultId = record.achievementResultId
@@ -539,7 +539,7 @@ async function handleImprovementAiSuggestion(record: ImprovementTaskVO): Promise
         achievementResultId,
         reportId: record.id,
       })
-      message.success('已提交 AI 改进草稿任务')
+      message.success('已提交智能改进草稿任务')
       if (res.taskId) aiTaskStore.startPolling(res.taskId)
     },
   })

@@ -101,7 +101,7 @@ import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
 import { ALL_SEMESTER_CODES, formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { isWeightSumHealthy } from '@/utils/weight-sum-health'
 
@@ -173,6 +173,11 @@ async function loadCurrentCourse() {
       return
     }
     currentCourse.value = detail
+  } catch (error) {
+    if (!scope.isStale()) {
+      currentCourse.value = null
+      showUserError(error, '质量课程详情加载失败')
+    }
   } finally {
     if (!scope.isStale()) {
       courseLoading.value = false
@@ -212,7 +217,7 @@ async function loadCourseGoalsAggregate() {
     }
     courseGoals.value = goals
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '课程目标加载失败')
+    showUserError(e, '课程目标加载失败')
     courseGoals.value = []
   } finally {
     if (!scope.isStale()) {
@@ -240,6 +245,12 @@ async function loadGoalTable() {
     }
     goalTableRows.value = page.list
     goalTableTotal.value = page.total
+  } catch (error) {
+    if (!scope.isStale()) {
+      goalTableRows.value = []
+      goalTableTotal.value = 0
+      showUserError(error, '课程目标列表加载失败')
+    }
   } finally {
     if (!scope.isStale()) {
       goalTableLoading.value = false
@@ -290,7 +301,7 @@ async function loadAllSupports() {
     }
     courseGoalSupports.value = map
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '课程目标支撑映射加载失败')
+    showUserError(e, '课程目标支撑映射加载失败')
     courseGoalSupports.value = new Map()
   } finally {
     if (!scope.isStale()) {
@@ -345,7 +356,7 @@ async function loadAssessmentItemsAggregate() {
     }
     assessmentItems.value = items
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '考核环节加载失败')
+    showUserError(e, '考核环节加载失败')
     assessmentItems.value = []
   } finally {
     if (!scope.isStale()) {
@@ -373,6 +384,12 @@ async function loadItemTable() {
     }
     itemTableRows.value = page.list
     itemTableTotal.value = page.total
+  } catch (error) {
+    if (!scope.isStale()) {
+      itemTableRows.value = []
+      itemTableTotal.value = 0
+      showUserError(error, '考核环节列表加载失败')
+    }
   } finally {
     if (!scope.isStale()) {
       itemTableLoading.value = false
@@ -405,8 +422,10 @@ async function loadAllItemMeta() {
   }
   itemMetaLoading.value = true
   try {
-    const [weightList, rubricList] = await Promise.all([
-      loadBoundedPlanAggregate(
+    let weightList: AssessmentGoalWeightVO[] = []
+    let rubricList: RubricItemVO[] = []
+    try {
+      weightList = await loadBoundedPlanAggregate(
         (pageNum, pageSize) =>
           assessmentGoalWeightApi.page({
             pageNum,
@@ -414,8 +433,14 @@ async function loadAllItemMeta() {
             qualityCourseId: qualityStore.currentQualityCourseId!,
           }),
         '考核环节课程目标权重',
-      ),
-      loadBoundedPlanAggregate(
+      )
+    } catch (error) {
+      if (!scope.isStale()) {
+        showUserError(error, '考核环节课程目标权重加载失败')
+      }
+    }
+    try {
+      rubricList = await loadBoundedPlanAggregate(
         (pageNum, pageSize) =>
           rubricItemApi.page({
             pageNum,
@@ -423,8 +448,12 @@ async function loadAllItemMeta() {
             qualityCourseId: qualityStore.currentQualityCourseId!,
           }),
         '评分标准明细',
-      ),
-    ])
+      )
+    } catch (error) {
+      if (!scope.isStale()) {
+        showUserError(error, '评分标准明细加载失败')
+      }
+    }
     if (scope.isStale()) {
       return
     }
@@ -442,10 +471,10 @@ async function loadAllItemMeta() {
     }
     assessmentGoalWeights.value = wMap
     rubricsByItem.value = rMap
-  } catch (e) {
-    message.error(e instanceof Error ? e.message : '考核权重与评分标准加载失败')
+  } catch (error) {
     assessmentGoalWeights.value = new Map()
     rubricsByItem.value = new Map()
+    showUserError(error, '考核权重与评分标准加载失败')
   } finally {
     if (!scope.isStale()) {
       itemMetaLoading.value = false
@@ -511,6 +540,12 @@ async function loadReferenceData() {
         requirementIndicatorApi.page({ pageNum, pageSize, trainingPlanId: planId }),
       '毕业要求观测点',
     )
+  } catch (error) {
+    if (!scope.isStale()) {
+      requirements.value = []
+      indicators.value = []
+      showUserError(error, '毕业要求参考数据加载失败')
+    }
   } finally {
     if (!scope.isStale()) {
       referenceLoading.value = false
@@ -824,7 +859,7 @@ const syllabusFileName = ref('')
 function openCourseCreate() {
   if (!guardCourseMatrixEditable('新建课程')) return
   if (!qualityStore.currentTrainingPlanId) {
-    message.warning('请先在"培养方案体系工作台"选择培养方案')
+    showFormValidationMessage('请先在"培养方案体系工作台"选择培养方案')
     return
   }
   courseEditorMode.value = 'create'
@@ -1017,7 +1052,7 @@ const goalSubmitting = ref(false)
 function openGoalCreate() {
   if (!guardCourseMatrixEditable('新建课程目标')) return
   if (!qualityStore.currentQualityCourseId) {
-    message.warning('请先选择课程')
+    showFormValidationMessage('请先选择课程')
     return
   }
   goalEditorMode.value = 'create'
@@ -1244,7 +1279,7 @@ const itemSubmitting = ref(false)
 function openItemCreate() {
   if (!guardCourseMatrixEditable('新建考核环节')) return
   if (!qualityStore.currentQualityCourseId) {
-    message.warning('请先选择课程')
+    showFormValidationMessage('请先选择课程')
     return
   }
   itemEditorMode.value = 'create'
@@ -1352,7 +1387,7 @@ async function validateGoalWeights(goal: CourseGoalVO) {
 
 async function validateMatrixWeights() {
   if (!qualityStore.currentQualityCourseId) {
-    message.warning('请先选择质量评价课程')
+    showFormValidationMessage('请先选择质量评价课程')
     return
   }
   try {
@@ -1365,7 +1400,7 @@ async function validateMatrixWeights() {
 
 async function validateRubricFullScore(item: AssessmentItemVO) {
   await rubricItemApi.validateFullScore(item.id)
-  message.success(`考核 ${item.itemCode} 的 Rubric 满分加总校验通过`)
+  message.success(`考核 ${item.itemCode} 的评分量规满分加总校验通过`)
 }
 
 /* ========== 编辑器：考核 → 目标 权重 ========== */
@@ -1525,7 +1560,7 @@ async function loadRubricDrawerPage() {
   } catch (error: unknown) {
     rubricDrawerRows.value = []
     rubricDrawerTotal.value = 0
-    showUserError(error, 'Rubric 列表加载失败')
+    showUserError(error, '评分量规列表加载失败')
   } finally {
     rubricDrawerLoading.value = false
   }
@@ -1538,7 +1573,7 @@ function handleRubricDrawerPageChange(pageEvent: { current: number, pageSize: nu
 }
 
 function openRubricCreate() {
-  if (!guardCourseMatrixEditable('新增 Rubric')) return
+  if (!guardCourseMatrixEditable('新增评分量规')) return
   if (!rubricItem.value) return
   rubricEditorMode.value = 'create'
   Object.assign(rubricEditor, {
@@ -1555,7 +1590,7 @@ function openRubricCreate() {
 }
 
 function openRubricEdit(record: RubricItemVO) {
-  if (!guardCourseMatrixEditable('编辑 Rubric')) return
+  if (!guardCourseMatrixEditable('编辑评分量规')) return
   rubricEditorMode.value = 'edit'
   Object.assign(rubricEditor, {
     id: record.id,
@@ -1571,7 +1606,7 @@ function openRubricEdit(record: RubricItemVO) {
 }
 
 async function submitRubric() {
-  if (!guardCourseMatrixEditable('保存 Rubric')) return
+  if (!guardCourseMatrixEditable('保存评分量规')) return
   if (
     !rubricEditor.rubricName.trim()
     || rubricEditor.fullScore == null
@@ -1592,13 +1627,13 @@ async function submitRubric() {
   }
   if (rubricEditorMode.value === 'create') await rubricItemApi.create(request)
   else await rubricItemApi.update(request)
-  message.success('Rubric 已保存')
+  message.success('评分量规已保存')
   rubricEditorVisible.value = false
   await Promise.all([loadRubricDrawerPage(), loadAllItemMeta()])
 }
 
 async function deleteRubric(record: RubricItemVO) {
-  if (!guardCourseMatrixEditable('删除 Rubric')) return
+  if (!guardCourseMatrixEditable('删除评分量规')) return
   void confirmAsync({
     title: `删除 Rubric「${record.rubricName}」？`,
     type: 'error',
@@ -1764,7 +1799,8 @@ async function handleScopeChange(): Promise<void> {
   goalPageNum.value = 1
   itemPageNum.value = 1
   await loadCurrentCourse()
-  await Promise.all([loadCourseGoals(), loadAssessmentItems(), loadSignalSummary()])
+  await Promise.all([loadCourseGoals(), loadAssessmentItems()])
+  await loadSignalSummary()
   await Promise.all([loadAllSupports(), loadAllItemMeta(), loadReferenceData()])
 }
 

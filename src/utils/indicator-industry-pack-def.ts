@@ -76,7 +76,7 @@ export function parseIndustryPackDefJson(
   }
   const raw: unknown = JSON.parse(json)
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
-    showFormValidationMessage('行业包定义 JSON 必须是对象')
+    showFormValidationMessage('行业包定义须为结构化文本对象')
     return null
   }
   const weights = readObjectProperty(raw, 'weights')
@@ -102,7 +102,7 @@ export function mergeIndustryPackDefJson(form: PortfolioIndustryPackDefForm, exi
   if (existingJson.trim()) {
     const parsed: unknown = JSON.parse(existingJson)
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-      showFormValidationMessage('行业包定义 JSON 必须是对象')
+      showFormValidationMessage('行业包定义须为结构化文本对象')
       return null
     }
     for (const key of Object.keys(parsed)) {

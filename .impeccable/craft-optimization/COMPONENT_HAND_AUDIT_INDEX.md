@@ -1,9 +1,13 @@
-# 组件手审索引（509）
+# 组件手审索引（存活 252 · 三 Skill 全量）
 
-> 结论真源：`COMPONENT_HAND_AUDIT_BATCH_01.md`–`_25.md`（17–24 已去机械套话重写）。
+> **三 Skill 全量真源**：`COMPONENT_TRI_SKILL_LIVING_BATCH_27.md`（components 252）  
+> **Layout 壳**：`LAYOUT_TRI_SKILL_BATCH_28.md`（layout 18 · 只审不改）  
+> 历史深审：`COMPONENT_HAND_AUDIT_BATCH_01.md`–`_26.md`  
+> 磁盘存活 **252** · 已删 DEAD **105** · 历史路径 509（含 GONE）
 
-- **509 / 509** · pending=0
-- 分布：OK 333 · TUNE 53 · REWORK 22 · SHELL 56 · DEAD? 45
+- 存活分布（BATCH_27）：OK 203 · TUNE 37 · REWORK 5 · SHELL 7
+- ScoreAnalyticsStatusFlow = **OK（已挂载）**；孪生 UiBadge/UiPagination/GiFooter = **GONE**
+- `components.d.ts`：剥离法，禁冷启动全量 regen
 
 | # | path | package | batch | 判定 |
 |--:|------|---------|-------|------|
@@ -117,10 +121,10 @@
 | 108 | `components/ui-guide/ui/Separator.vue` | ui-kit | BATCH_10 | DEAD? |
 | 109 | `components/ui-guide/ui/StatItem.vue` | ui-kit | BATCH_10 | REWORK |
 | 110 | `components/ui-guide/ui/Table.vue` | ui-kit | BATCH_10 | SHELL |
-| 111 | `components/ui-guide/ui/TableBody.vue` | ui-kit | BATCH_10 | SHELL |
-| 112 | `components/ui-guide/ui/TableCell.vue` | ui-kit | BATCH_10 | SHELL |
+| 111 | `components/ui-guide/ui/TableBody.vue` | ui-kit | BATCH_18 | DEAD? |
+| 112 | `components/ui-guide/ui/TableCell.vue` | ui-kit | BATCH_18 | DEAD? |
 | 113 | `components/ui-guide/ui/TableHead.vue` | ui-kit | BATCH_25 | SHELL |
-| 114 | `components/ui-guide/ui/TableHeader.vue` | ui-kit | BATCH_11 | SHELL |
+| 114 | `components/ui-guide/ui/TableHeader.vue` | ui-kit | BATCH_18 | DEAD? |
 | 115 | `components/ui-guide/ui/TableRow.vue` | ui-kit | BATCH_18 | SHELL |
 | 116 | `components/ui-guide/ui/TabPane.vue` | ui-kit | BATCH_11 | SHELL |
 | 117 | `components/ui-guide/ui/Tabs.vue` | ui-kit | BATCH_11 | DEAD? |
@@ -183,26 +187,26 @@
 | 174 | `views/scanner-kiosk/stages/ScanningStage.vue` | view-scanner-kiosk | BATCH_18 | OK |
 | 175 | `views/scanner-kiosk/stages/SetupStage.vue` | view-scanner-kiosk | BATCH_18 | OK |
 | 176 | `components/platform/UiPlatformFileField.vue` | platform | BATCH_18 | OK |
-| 177 | `components/AiEditor/index.vue` | AiEditor | BATCH_18 | SHELL |
-| 178 | `components/AjCaptcha/index.vue` | AjCaptcha | BATCH_18 | SHELL |
-| 179 | `components/AuthLayout/index.vue` | AuthLayout | BATCH_18 | SHELL |
-| 180 | `components/Breadcrumb/index.vue` | Breadcrumb | BATCH_18 | SHELL |
-| 181 | `components/CellCopy/index.vue` | CellCopy | BATCH_18 | SHELL |
-| 182 | `components/GiFooter/index.vue` | GiFooter | BATCH_18 | SHELL |
-| 183 | `components/GiPageLayout/index.vue` | GiPageLayout | BATCH_18 | SHELL |
+| 177 | `components/AiEditor/index.vue` | AiEditor | BATCH_18 | OK |
+| 178 | `components/AjCaptcha/index.vue` | AjCaptcha | BATCH_18 | OK |
+| 179 | `components/AuthLayout/index.vue` | AuthLayout | BATCH_18 | OK |
+| 180 | `components/Breadcrumb/index.vue` | Breadcrumb | BATCH_18 | OK |
+| 181 | `components/CellCopy/index.vue` | CellCopy | BATCH_18 | DEAD? |
+| 182 | `components/GiFooter/index.vue` | GiFooter | BATCH_18 | OK |
+| 183 | `components/GiPageLayout/index.vue` | GiPageLayout | BATCH_18 | DEAD? |
 | 184 | `components/platform/UiPlatformExcelImportModal.vue` | platform | BATCH_18 | OK |
-| 185 | `views/login/components/student/index.vue` | view-login | BATCH_18 | SHELL |
+| 185 | `views/login/components/student/index.vue` | view-login | BATCH_18 | OK |
 | 186 | `components/mark/analysis/AiAnalysisMetaCollapse.vue` | mark | BATCH_18 | OK |
 | 187 | `components/mark/analysis/AiAnalysisCardShell.vue` | mark | BATCH_19 | OK |
 | 188 | `components/mark/analysis/AiAnalysisSection.vue` | mark | BATCH_19 | OK |
 | 189 | `components/mark/ArchiveDutyUserSelect.vue` | mark | BATCH_19 | OK |
-| 190 | `components/mark/MarkExamSelect.vue` | mark | BATCH_19 | OK |
-| 191 | `components/mark/analysis/AiAnalysisHistorySelect.vue` | mark | BATCH_19 | SHELL |
+| 190 | `components/mark/MarkExamSelect.vue` | mark | BATCH_19 | TUNE |
+| 191 | `components/mark/analysis/AiAnalysisHistorySelect.vue` | mark | BATCH_19 | OK |
 | 192 | `views/teacher/archive-volume/components/ArchiveMaterialTagSelect.vue` | view-teacher | BATCH_19 | OK |
-| 193 | `components/mark/analysis/AiAnalysisCardBody.vue` | mark | BATCH_19 | SHELL |
+| 193 | `components/mark/analysis/AiAnalysisCardBody.vue` | mark | BATCH_19 | OK |
 | 194 | `components/mark/ExperienceAssistBadge.vue` | mark | BATCH_19 | OK |
 | 195 | `views/scanner-kiosk/components/DocumentKioskActivationGate.vue` | view-scanner-kiosk | BATCH_19 | OK |
-| 196 | `components/GiCell/GiCellAvatar.vue` | GiCell | BATCH_19 | OK |
+| 196 | `components/GiCell/GiCellAvatar.vue` | GiCell | BATCH_19 | TUNE |
 | 197 | `components/mark/AnalysisExamMultiSelect.vue` | mark | BATCH_19 | OK |
 | 198 | `components/mark/ConfidentialWatermarkLayer.vue` | mark | BATCH_19 | OK |
 | 199 | `components/mark/GradingImmersionSection.vue` | mark | BATCH_19 | OK |
@@ -216,7 +220,7 @@
 | 207 | `views/teacher/ai-analysis/cards/QuestionAnalysisCard.vue` | view-teacher | BATCH_19 | OK |
 | 208 | `views/teacher/archive-volume/components/ArchiveEvaluationExportTaskModal.vue` | view-teacher | BATCH_19 | OK |
 | 209 | `views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialOcrDetailModal.vue` | view-teacher | BATCH_19 | SHELL |
-| 210 | `views/teacher/archive-volume/components/ScanDispatchResultDialog.vue` | view-teacher | BATCH_19 | OK |
+| 210 | `views/teacher/archive-volume/components/ScanDispatchResultDialog.vue` | view-teacher | BATCH_19 | TUNE |
 | 211 | `components/create-form/CreateFormPageShell.vue` | create-form | FORCE | OK |
 | 212 | `components/edu/ClassStudentTreeSelectorDrawer.vue` | edu | BATCH_19 | OK |
 | 213 | `components/evaluation/EvaluationWorkgroupPage.vue` | evaluation | BATCH_19 | OK |
@@ -230,13 +234,13 @@
 | 221 | `components/mark/layout-designer/LayoutQuestionPropertyPanel.vue` | mark | BATCH_19 | OK |
 | 222 | `components/mark/manual-supplement/ManualSupplementFormCore.vue` | mark | BATCH_19 | OK |
 | 223 | `components/workbench/ExamPrepScenarioPanel.vue` | workbench | BATCH_16 | OK |
-| 224 | `components/workbench/ScorePublishRelatedLinksCard.vue` | workbench | BATCH_19 | OK |
+| 224 | `components/workbench/ScorePublishRelatedLinksCard.vue` | workbench | BATCH_19 | TUNE |
 | 225 | `components/workbench/workflow-readiness/WorkflowPrerequisiteEmpty.vue` | workbench | BATCH_19 | OK |
 | 226 | `views/admin/marking-organization/components/SessionGroupCreateSummary.vue` | view-admin | BATCH_19 | OK |
 | 227 | `views/admin/marking-organization/components/SessionLifecycleReasonModal.vue` | view-admin | BATCH_19 | OK |
-| 228 | `views/login/components/cas/index.vue` | view-login | BATCH_18 | SHELL |
+| 228 | `views/login/components/cas/index.vue` | view-login | BATCH_19 | OK |
 | 229 | `views/portfolio/components/PortfolioCockpitAskPanel.vue` | view-portfolio | BATCH_19 | OK |
-| 230 | `views/scanner-kiosk/components/KioskExamPickPanel.vue` | view-scanner-kiosk | BATCH_19 | OK |
+| 230 | `views/scanner-kiosk/components/KioskExamPickPanel.vue` | view-scanner-kiosk | BATCH_19 | TUNE |
 | 231 | `views/scanner-kiosk/components/KioskScanExceptionPanel.vue` | view-scanner-kiosk | BATCH_20 | OK |
 | 232 | `views/scanner-kiosk/components/KioskScanSessionStrip.vue` | view-scanner-kiosk | BATCH_20 | OK |
 | 233 | `views/scanner-kiosk/components/KioskSessionBatchPanel.vue` | view-scanner-kiosk | BATCH_20 | OK |
@@ -248,7 +252,7 @@
 | 239 | `views/teacher/ai-analysis/cards/TeachingImprovementCard.vue` | view-teacher | BATCH_20 | OK |
 | 240 | `views/teacher/archive-volume/components/ArchiveTemplateSetEditorDrawer.vue` | view-teacher | BATCH_20 | OK |
 | 241 | `views/teacher/archive-volume/components/ArchiveVolumeCollaboratorStrip.vue` | view-teacher | BATCH_20 | OK |
-| 242 | `views/teacher/archive-volume/components/ArchiveVolumeTemplateSetsPanel.vue` | view-teacher | BATCH_20 | TUNE |
+| 242 | `views/teacher/archive-volume/components/ArchiveVolumeTemplateSetsPanel.vue` | view-teacher | BATCH_20 | REWORK |
 | 243 | `views/teacher/archive-volume/components/DepartmentReviewMaterialSummary.vue` | view-teacher | BATCH_20 | OK |
 | 244 | `views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialTagModal.vue` | view-teacher | BATCH_20 | OK |
 | 245 | `views/teacher/archive-volume/components/detail/ArchiveVolumeSubmitTaskList.vue` | view-teacher | BATCH_20 | OK |
@@ -267,10 +271,10 @@
 | 258 | `components/mark/analysis/AiObjectiveProgressRow.vue` | mark | BATCH_20 | OK |
 | 259 | `components/mark/analysis/AiRecommendationBlock.vue` | mark | BATCH_20 | OK |
 | 260 | `components/mark/analysis/AiWeaknessRow.vue` | mark | BATCH_20 | OK |
-| 261 | `components/mark/AnalysisExamSelect.vue` | mark | BATCH_20 | OK |
+| 261 | `components/mark/AnalysisExamSelect.vue` | mark | BATCH_20 | TUNE |
 | 262 | `components/mark/ApplyScoreToRemainingModal.vue` | mark | BATCH_20 | OK |
 | 263 | `components/mark/dashboard/MarkingOverviewAnalytics.vue` | mark | BATCH_20 | OK |
-| 264 | `components/mark/dashboard/OngoingExamCardGrid.vue` | mark | BATCH_20 | OK |
+| 264 | `components/mark/dashboard/OngoingExamCardGrid.vue` | mark | BATCH_20 | TUNE |
 | 265 | `components/mark/dashboard/PublishedExamInsightChart.vue` | mark | BATCH_20 | OK |
 | 266 | `components/mark/dashboard/PublishedExamInsightTable.vue` | mark | BATCH_20 | OK |
 | 267 | `components/mark/ExamExperienceAssistPolicyEnableModal.vue` | mark | BATCH_20 | OK |
@@ -285,7 +289,7 @@
 | 276 | `components/mark/layout-designer/workbench/LayoutDesignLayoutPhase.vue` | mark | BATCH_21 | OK |
 | 277 | `components/mark/layout-designer/workbench/LayoutDesignQuestionPhase.vue` | mark | BATCH_21 | SHELL |
 | 278 | `components/mark/layout-designer/workbench/LayoutDesignReviewPhase.vue` | mark | BATCH_21 | OK |
-| 279 | `components/mark/layout-designer/workbench/LayoutDesignSourcePhase.vue` | mark | BATCH_21 | OK |
+| 279 | `components/mark/layout-designer/workbench/LayoutDesignSourcePhase.vue` | mark | BATCH_21 | SHELL |
 | 280 | `components/mark/layout-designer/workbench/LayoutQuestionLedgerPanel.vue` | mark | BATCH_21 | OK |
 | 281 | `components/mark/manual-supplement/ManualSupplementCandidateTable.vue` | mark | BATCH_21 | OK |
 | 282 | `components/mark/manual-supplement/ManualSupplementWizardDrawer.vue` | mark | BATCH_21 | OK |
@@ -299,13 +303,13 @@
 | 290 | `components/mark/ScanBatchPageRail.vue` | mark | BATCH_21 | OK |
 | 291 | `components/mark/ScanBatchSupplementModal.vue` | mark | BATCH_21 | OK |
 | 292 | `components/mark/ScanOrphanRecoveryAlert.vue` | mark | BATCH_21 | OK |
-| 293 | `components/mark/WholePaperGallery.vue` | mark | BATCH_21 | OK |
+| 293 | `components/mark/WholePaperGallery.vue` | mark | BATCH_21 | TUNE |
 | 294 | `components/portfolio/PortfolioAiCandidateConfirmPanel.vue` | portfolio | BATCH_21 | OK |
 | 295 | `components/portfolio/PortfolioEligibilityTreeEditor.vue` | portfolio | BATCH_21 | OK |
 | 296 | `components/portfolio/PortfolioMaterialIntakePanel.vue` | portfolio | FORCE | TUNE |
 | 297 | `components/portfolio/PortfolioPortraitLayoutEditor.vue` | portfolio | BATCH_21 | OK |
 | 298 | `components/portfolio/PortfolioProgressCockpitBand.vue` | portfolio | BATCH_03 | OK |
-| 299 | `components/portfolio/PortfolioProgressCompareDrawer.vue` | portfolio | BATCH_21 | OK |
+| 299 | `components/portfolio/PortfolioProgressCompareDrawer.vue` | portfolio | BATCH_21 | TUNE |
 | 300 | `components/portfolio/PortfolioTeacherOnboardingWizard.vue` | portfolio | BATCH_21 | OK |
 | 301 | `components/portfolio/PortfolioTeacherReviewStatusTable.vue` | portfolio | BATCH_21 | OK |
 | 302 | `components/quality/accreditation/AccreditationAnnualPanel.vue` | quality | BATCH_21 | OK |
@@ -329,7 +333,7 @@
 | 320 | `components/scanner-ops/ScanOperationLogPanel.vue` | scanner-ops | BATCH_16 | OK |
 | 321 | `components/scanner-ops/ScanOpsPanel.vue` | scanner-ops | BATCH_06 | OK |
 | 322 | `components/SchoolAutocomplete.vue` | SchoolAutocomplete.vue | BATCH_22 | OK |
-| 323 | `components/UiErrorBoundary.vue` | UiErrorBoundary.vue | BATCH_22 | SHELL |
+| 323 | `components/UiErrorBoundary.vue` | UiErrorBoundary.vue | BATCH_22 | OK |
 | 324 | `components/workbench/ArchiveVolumeSubSidebar.vue` | workbench | BATCH_05 | OK |
 | 325 | `components/workbench/ExamJourneyMiniStrip.vue` | workbench | BATCH_16 | OK |
 | 326 | `components/workbench/ExamJourneyRail.vue` | workbench | BATCH_06 | OK |
@@ -356,9 +360,9 @@
 | 347 | `views/admin/marking-organization/components/TrialSessionCalibrateDrawer.vue` | view-admin | BATCH_22 | OK |
 | 348 | `views/admin/marking-organization/components/TrialSessionCreateDialog.vue` | view-admin | BATCH_22 | OK |
 | 349 | `views/admin/marking-organization/components/TrialSessionWorkbench.vue` | view-admin | BATCH_22 | OK |
-| 350 | `views/login/components/account/index.vue` | view-login | BATCH_18 | SHELL |
-| 351 | `views/login/components/background/index.vue` | view-login | BATCH_18 | SHELL |
-| 352 | `views/login/components/modifyPassword/index.vue` | view-login | BATCH_18 | SHELL |
+| 350 | `views/login/components/account/index.vue` | view-login | BATCH_22 | TUNE |
+| 351 | `views/login/components/background/index.vue` | view-login | BATCH_22 | OK |
+| 352 | `views/login/components/modifyPassword/index.vue` | view-login | BATCH_22 | OK |
 | 353 | `views/quality/components/ImportResponseDocumentModal.vue` | view-quality | BATCH_22 | OK |
 | 354 | `views/quality/components/indirect-evaluation/IndirectResponseReviewPanel.vue` | view-quality | BATCH_22 | TUNE |
 | 355 | `views/quality/components/indirect-evaluation/IndirectSurveyTemplatePanel.vue` | view-quality | BATCH_22 | TUNE |
@@ -377,9 +381,9 @@
 | 368 | `views/scanner-kiosk/components/KioskStageBar.vue` | view-scanner-kiosk | BATCH_22 | OK |
 | 369 | `views/scanner-kiosk/components/KioskSupplementLaunchModal.vue` | view-scanner-kiosk | BATCH_22 | OK |
 | 370 | `views/scanner-kiosk/components/KioskWorkbenchTabs.vue` | view-scanner-kiosk | BATCH_22 | OK |
-| 371 | `views/teacher/ai-analysis/AiAnalysisClusterTab.vue` | view-teacher | BATCH_22 | SHELL |
+| 371 | `views/teacher/ai-analysis/AiAnalysisClusterTab.vue` | view-teacher | BATCH_22 | OK |
 | 372 | `views/teacher/ai-analysis/AiAnalysisClusterWorkbench.vue` | view-teacher | BATCH_22 | OK |
-| 373 | `views/teacher/ai-analysis/AiAnalysisSchoolTab.vue` | view-teacher | BATCH_22 | SHELL |
+| 373 | `views/teacher/ai-analysis/AiAnalysisSchoolTab.vue` | view-teacher | BATCH_22 | OK |
 | 374 | `views/teacher/ai-analysis/AiAnalysisTeachingTab.vue` | view-teacher | BATCH_23 | OK |
 | 375 | `views/teacher/ai-analysis/AiAnalysisTrendTab.vue` | view-teacher | BATCH_23 | OK |
 | 376 | `views/teacher/ai-analysis/cards/CourseAchievementCard.vue` | view-teacher | BATCH_23 | OK |

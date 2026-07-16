@@ -3,24 +3,14 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamDetailResponse } from '@/apis/mark/exam'
-import { getExamDetail } from '@/apis/mark/exam'
 import type { ExamScoreSummaryItemResponse } from '@/apis/mark/exam-score'
-import { pageExamScoreSummary } from '@/apis/mark/exam-score'
 import type { MarkOcrConfigResponse } from '@/apis/mark/ocr-config'
-import { checkMarkOcrHealth, getCurrentMarkOcrConfig } from '@/apis/mark/ocr-config'
 import type { PaddleOcrInstanceResponse } from '@/apis/mark/ocr-paddle-instance'
-import { pagePaddleOcrInstances } from '@/apis/mark/ocr-paddle-instance'
 import type {
   MarkOcrPlatformProviderResponse,
   MarkOcrPlatformProviderSaveRequest,
 } from '@/apis/mark/ocr-platform-provider'
-import {
-  checkMarkOcrPlatformProviderHealth,
-  listMarkOcrPlatformProviders,
-  saveMarkOcrPlatformProvider,
-} from '@/apis/mark/ocr-platform-provider'
 import type { MarkOcrPaperSliceVO, MarkOcrRecognizeResponse } from '@/apis/mark/ocr-recognition'
-import { listMarkOcrPaperSlices, recognizeMarkOcr } from '@/apis/mark/ocr-recognition'
 import type { SignalMetric } from '@/types/workbench'
 import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
 import ClusterOutlined from '@ant-design/icons-vue/ClusterOutlined'
@@ -28,8 +18,18 @@ import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { getExamDetail } from '@/apis/mark/exam'
 import { BindingStatusCode, BindingStatusDescription } from '@/apis/mark/exam-binding'
+import { pageExamScoreSummary } from '@/apis/mark/exam-score'
 import { FinalScoreStatusDescription } from '@/apis/mark/final-score-status'
+import { checkMarkOcrHealth, getCurrentMarkOcrConfig } from '@/apis/mark/ocr-config'
+import { pagePaddleOcrInstances } from '@/apis/mark/ocr-paddle-instance'
+import {
+  checkMarkOcrPlatformProviderHealth,
+  listMarkOcrPlatformProviders,
+  saveMarkOcrPlatformProvider,
+} from '@/apis/mark/ocr-platform-provider'
+import { listMarkOcrPaperSlices, recognizeMarkOcr } from '@/apis/mark/ocr-recognition'
 import {
   MARK_OCR_HEALTH_STATUS_TONE,
   MARK_OCR_PAPER_CUT_CAPABILITY,
@@ -82,7 +82,7 @@ const currentConfig = ref<MarkOcrConfigResponse | null>(null)
 const recognizeResult = ref<MarkOcrRecognizeResponse | null>(null)
 const debugForm = ref<DebugFormState>({})
 const { selectedExamId } = useMarkExamContext()
-const { examStatusLabel, examStatusTone } = useExamJourneyContextBar('OCR 识别配置')
+const { examStatusLabel, examStatusTone } = useExamJourneyContextBar('文字识别配置')
 const authStore = useAuthStore()
 
 /** 同步调试仅平台管理员可用，教师工作台路径不暴露识别试跑入口。 */
@@ -157,12 +157,12 @@ const healthStatus = computed<MarkOcrHealthStatusCode | undefined>(
 )
 const healthColor = computed(() =>
   healthStatus.value
-    ? strictEnumTone(MARK_OCR_HEALTH_STATUS_TONE, healthStatus.value, 'OCR 健康状态')
+    ? strictEnumTone(MARK_OCR_HEALTH_STATUS_TONE, healthStatus.value, '文字识别健康状态')
     : undefined,
 )
 const healthLabel = computed(() =>
   healthStatus.value
-    ? strictEnumLabel(MarkOcrHealthStatusDescription, healthStatus.value, 'OCR 健康状态')
+    ? strictEnumLabel(MarkOcrHealthStatusDescription, healthStatus.value, '文字识别健康状态')
     : '',
 )
 
@@ -173,7 +173,7 @@ const ocrSignalMetrics = computed((): SignalMetric[] => {
   return [
     {
       key: 'provider',
-      label: 'OCR 渠道',
+      label: '文字识别渠道',
       value: currentProviderLabel.value,
       tone: 'blue',
     },
@@ -198,25 +198,25 @@ const currentProviderLabel = computed(() =>
 const providerDescription = computed(() => {
   const providerType = currentConfig.value?.providerType
   if (!providerType) {
-    return '当前租户尚未选择 OCR 渠道，请联系平台管理员完成租户渠道配置。'
+    return '当前租户尚未选择文字识别渠道，请联系平台管理员完成租户渠道配置。'
   }
-  return strictEnumLabel(MARK_OCR_PROVIDER_DESCRIPTION, providerType, 'OCR 渠道说明')
+  return strictEnumLabel(MARK_OCR_PROVIDER_DESCRIPTION, providerType, '文字识别渠道说明')
 })
 const paperCutCapability = computed(() => {
   const providerType = currentConfig.value?.providerType
   if (!providerType) {
     return ''
   }
-  return strictEnumLabel(MARK_OCR_PAPER_CUT_CAPABILITY, providerType, 'OCR 切题能力')
+  return strictEnumLabel(MARK_OCR_PAPER_CUT_CAPABILITY, providerType, '文字识别切题能力')
 })
 
 const canRecognize = computed(() =>
   Boolean(
-    ocrDebugReady.value &&
-    currentConfig.value?.providerType &&
-    currentConfig.value.enabled &&
-    debugForm.value.paperInstanceId &&
-    debugForm.value.responseSliceId,
+    ocrDebugReady.value
+    && currentConfig.value?.providerType
+    && currentConfig.value.enabled
+    && debugForm.value.paperInstanceId
+    && debugForm.value.responseSliceId,
   ),
 )
 const currentPaperSlice = computed(() =>
@@ -260,7 +260,7 @@ function bindingStatusLabel(
 }
 
 function providerLabel(providerType: MarkOcrProviderTypeCode): string {
-  return strictEnumLabel(MarkOcrProviderTypeDescription, providerType, 'OCR 渠道')
+  return strictEnumLabel(MarkOcrProviderTypeDescription, providerType, '文字识别渠道')
 }
 
 const platformProviderColumns: ColumnType<MarkOcrPlatformProviderResponse>[] = [
@@ -288,14 +288,14 @@ function platformProviderSummary(record: MarkOcrPlatformProviderResponse): strin
     return [
       '本地集群接入型供应商',
       record.enabled
-        ? '允许租户选择 Paddle 本地 OCR 集群'
-        : '当前不允许租户选择 Paddle 本地 OCR 集群',
+        ? '允许租户选择本地文字识别集群'
+        : '当前不允许租户选择本地文字识别集群',
     ]
   }
   return [
-    `AppId：${platformProviderCredentialText(record.appIdConfigured, record.appIdMasked)}`,
-    `ApiKey：${platformProviderCredentialText(record.apiKeyConfigured, record.apiKeyMasked)}`,
-    `SecretKey：${platformProviderCredentialText(record.secretKeyConfigured, record.secretKeyMasked)}`,
+    `应用编号：${platformProviderCredentialText(record.appIdConfigured, record.appIdMasked)}`,
+    `接口密钥：${platformProviderCredentialText(record.apiKeyConfigured, record.apiKeyMasked)}`,
+    `密钥：${platformProviderCredentialText(record.secretKeyConfigured, record.secretKeyMasked)}`,
   ]
 }
 
@@ -321,14 +321,14 @@ function buildPlatformProviderSavePayload(): MarkOcrPlatformProviderSaveRequest 
 function ocrDiagnosticText(diagnostic?: string): string {
   return getUserErrorMessage(
     { message: diagnostic },
-    'OCR 识别未返回可展示说明，请检查切片图像质量或稍后重试',
+    '文字识别未返回可展示说明，请检查切片图像质量或稍后重试',
   )
 }
 
 function ocrHealthMessageText(messageText?: string): string {
   return getUserErrorMessage(
     { message: messageText },
-    'OCR 渠道检测未返回可展示说明，请检查渠道配置或稍后重试',
+    '文字识别渠道检测未返回可展示说明，请检查渠道配置或稍后重试',
   )
 }
 
@@ -344,7 +344,7 @@ async function loadConfig(): Promise<void> {
   } catch (error) {
     currentConfig.value = null
     loadFailed.value = true
-    showUserError(error, 'OCR 识别配置加载失败')
+    showUserError(error, '文字识别配置加载失败')
   } finally {
     loading.value = false
   }
@@ -360,7 +360,7 @@ async function loadPlatformProviders(): Promise<void> {
     platformProviders.value = await listMarkOcrPlatformProviders()
   } catch (error) {
     platformProviders.value = []
-    showUserError(error, 'OCR 平台供应商配置加载失败')
+    showUserError(error, '平台文字识别供应商配置加载失败')
   } finally {
     platformProvidersLoading.value = false
   }
@@ -378,10 +378,10 @@ function openPlatformProviderEditor(record: MarkOcrPlatformProviderResponse): vo
   platformProviderEditor.ocrEndpoint = record.ocrEndpoint || ''
   platformProviderEditor.handwritingEndpoint = record.handwritingEndpoint || ''
   platformProviderEditor.docAnalysisEndpoint = record.docAnalysisEndpoint || ''
-  platformProviderEditor.handwritingCompositionCreateTaskEndpoint =
-    record.handwritingCompositionCreateTaskEndpoint || ''
-  platformProviderEditor.handwritingCompositionGetResultEndpoint =
-    record.handwritingCompositionGetResultEndpoint || ''
+  platformProviderEditor.handwritingCompositionCreateTaskEndpoint
+    = record.handwritingCompositionCreateTaskEndpoint || ''
+  platformProviderEditor.handwritingCompositionGetResultEndpoint
+    = record.handwritingCompositionGetResultEndpoint || ''
   platformProviderEditorVisible.value = true
 }
 
@@ -390,10 +390,10 @@ async function handlePlatformProviderSave(): Promise<void> {
   try {
     await saveMarkOcrPlatformProvider(buildPlatformProviderSavePayload())
     platformProviderEditorVisible.value = false
-    message.success('OCR 平台供应商配置已保存')
+    message.success('平台文字识别供应商配置已保存')
     await Promise.all([loadPlatformProviders(), loadConfig()])
   } catch (error) {
-    showUserError(error, 'OCR 平台供应商配置保存失败')
+    showUserError(error, '平台文字识别供应商配置保存失败')
   } finally {
     platformProviderSubmitting.value = false
   }
@@ -418,18 +418,18 @@ async function handlePlatformProviderHealthCheck(
 async function handleHealthCheck(): Promise<void> {
   const tenantId = currentConfig.value?.tenantId
   if (!tenantId) {
-    message.error('当前 OCR 配置缺少租户信息，不能执行健康检查')
+    message.error('当前文字识别配置缺少租户信息，不能执行健康检查')
     return
   }
   healthChecking.value = true
   try {
     const result = await checkMarkOcrHealth(tenantId)
     message.success(
-      `OCR 健康检查完成：${strictEnumLabel(MarkOcrHealthStatusDescription, result.healthStatus, 'OCR 健康状态')}`,
+      `文字识别健康检查完成：${strictEnumLabel(MarkOcrHealthStatusDescription, result.healthStatus, '文字识别健康状态')}`,
     )
     await loadConfig()
   } catch (error) {
-    showUserError(error, 'OCR 健康检查失败')
+    showUserError(error, '文字识别健康检查失败')
   } finally {
     healthChecking.value = false
   }
@@ -572,7 +572,7 @@ async function loadPaddleInstances(): Promise<void> {
   } catch (error) {
     paddleInstances.value = []
     paddlePagination.total = 0
-    showUserError(error, 'PaddleOCR 实例加载失败')
+    showUserError(error, '本地文字识别实例加载失败')
   } finally {
     paddleInstancesLoading.value = false
   }
@@ -611,11 +611,11 @@ watch(
 )
 
 function paddleInstanceHealthTone(status: MarkOcrHealthStatusCode) {
-  return strictEnumTone(MARK_OCR_HEALTH_STATUS_TONE, status, 'PaddleOCR 实例健康状态')
+  return strictEnumTone(MARK_OCR_HEALTH_STATUS_TONE, status, '本地文字识别实例健康状态')
 }
 
 function paddleInstanceHealthLabel(status: MarkOcrHealthStatusCode): string {
-  return strictEnumLabel(MarkOcrHealthStatusDescription, status, 'PaddleOCR 实例健康状态')
+  return strictEnumLabel(MarkOcrHealthStatusDescription, status, '本地文字识别实例健康状态')
 }
 
 async function reloadOcrWorkbench(): Promise<void> {
@@ -680,7 +680,7 @@ onBeforeUnmount(() => {
 
     <UiEmpty
       v-else-if="loadFailed"
-      description="OCR 识别配置加载失败"
+      description="文字识别配置加载失败"
       action-label="重试"
       @action="loadConfig"
     />
@@ -695,10 +695,10 @@ onBeforeUnmount(() => {
           <template #head>
             <h3 class="ocr-settings__panel-title">
               <ApiOutlined />
-              <span>当前 OCR 渠道</span>
+              <span>当前文字识别渠道</span>
             </h3>
           </template>
-          <UiEmpty v-if="!currentConfig.providerType" description="租户尚未配置 OCR 渠道" />
+          <UiEmpty v-if="!currentConfig.providerType" description="租户尚未配置文字识别渠道" />
           <template v-else>
             <div class="ocr-channel__hero">
               <span class="ocr-channel__name">{{ currentProviderLabel }}</span>
@@ -748,7 +748,7 @@ onBeforeUnmount(() => {
           <div class="ocr-settings__panel-head">
             <h3 class="ocr-settings__panel-title">
               <ClusterOutlined />
-              <span>PaddleOCR 服务实例</span>
+              <span>本地文字识别服务实例</span>
             </h3>
             <span class="ocr-settings__panel-desc">
               共 {{ paddlePagination.total }} 个实例 · 本页健康 {{ paddleHealthyCount }}
@@ -820,9 +820,9 @@ onBeforeUnmount(() => {
           <div class="ocr-settings__panel-head">
             <h3 class="ocr-settings__panel-title">
               <ClusterOutlined />
-              <span>平台 OCR 供应商配置</span>
+              <span>平台文字识别供应商配置</span>
             </h3>
-            <span class="ocr-settings__panel-desc">仅超级管理员可维护百度 / Paddle 平台配置</span>
+            <span class="ocr-settings__panel-desc">仅超级管理员可维护百度 / 本地集群平台配置</span>
           </div>
         </template>
         <template #toolbar>
@@ -848,7 +848,7 @@ onBeforeUnmount(() => {
           size="small"
           flat
           empty-kind="first-run"
-          empty-description="尚未配置平台 OCR 供应商；超级管理员须先维护后再做健康检查。"
+          empty-description="尚未配置平台文字识别供应商；超级管理员须先维护后再做健康检查。"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'providerType'">
@@ -978,42 +978,42 @@ onBeforeUnmount(() => {
             <a-switch v-model:checked="platformProviderEditor.enabled" />
           </a-form-item>
           <template v-if="platformProviderEditorIsBaidu">
-            <a-form-item label="AppId">
+            <a-form-item label="应用编号">
               <a-input
                 v-model:value="platformProviderEditor.appId"
                 placeholder="留空表示不修改 / 不配置"
               />
             </a-form-item>
-            <a-form-item label="ApiKey">
+            <a-form-item label="接口密钥">
               <a-input-password
                 v-model:value="platformProviderEditor.apiKey"
                 placeholder="留空表示保留原值"
               />
             </a-form-item>
-            <a-form-item label="SecretKey">
+            <a-form-item label="密钥">
               <a-input-password
                 v-model:value="platformProviderEditor.secretKey"
                 placeholder="留空表示保留原值"
               />
             </a-form-item>
-            <a-form-item label="Token Endpoint">
+            <a-form-item label="令牌接口地址">
               <a-input v-model:value="platformProviderEditor.tokenEndpoint" />
             </a-form-item>
-            <a-form-item label="高精度 OCR Endpoint">
+            <a-form-item label="高精度文字识别接口地址">
               <a-input v-model:value="platformProviderEditor.ocrEndpoint" />
             </a-form-item>
-            <a-form-item label="手写 OCR Endpoint">
+            <a-form-item label="手写文字识别接口地址">
               <a-input v-model:value="platformProviderEditor.handwritingEndpoint" />
             </a-form-item>
-            <a-form-item label="文档分析 Endpoint">
+            <a-form-item label="文档分析接口地址">
               <a-input v-model:value="platformProviderEditor.docAnalysisEndpoint" />
             </a-form-item>
-            <a-form-item label="手写作文提交 Endpoint">
+            <a-form-item label="手写作文提交接口地址">
               <a-input
                 v-model:value="platformProviderEditor.handwritingCompositionCreateTaskEndpoint"
               />
             </a-form-item>
-            <a-form-item label="手写作文结果查询 Endpoint">
+            <a-form-item label="手写作文结果查询接口地址">
               <a-input
                 v-model:value="platformProviderEditor.handwritingCompositionGetResultEndpoint"
               />
@@ -1022,8 +1022,8 @@ onBeforeUnmount(() => {
           <UiAlertStrip
             v-else-if="platformProviderEditorIsPaddle"
             tone="info"
-            title="Paddle 为本地集群接入型 OCR 供应商"
-            description="该平台配置页只控制是否允许租户选择 Paddle 通道。实例地址、设备规格与运行健康由 Paddle 实例注册链单独维护，不在这里录入百度类凭证与 Endpoint。"
+            title="本地集群为本地接入型文字识别供应商"
+            description="该平台配置页只控制是否允许租户选择本地集群通道。实例地址、设备规格与运行健康由本地文字识别实例注册链单独维护，不在这里录入百度类凭证与接口地址。"
             :inline="false"
           />
         </a-form>

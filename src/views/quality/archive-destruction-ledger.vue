@@ -4,14 +4,13 @@ import type {
   ArchiveDestructionLedgerPageRequest,
   ArchiveDestructionLedgerRowVO,
 } from '@/apis/quality/archive'
-import { archiveApi } from '@/apis/quality/archive'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { QualityArchiveDestructionLedgerExportDecisionCode } from '@/types/enums/quality-archive-destruction-ledger-export-decision-enum'
-import { QualityArchiveDestructionLedgerExportDecisionDescription } from '@/types/enums/quality-archive-destruction-ledger-export-decision-enum'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { archiveApi } from '@/apis/quality/archive'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -21,6 +20,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { QualityArchiveDestructionLedgerExportDecisionDescription } from '@/types/enums/quality-archive-destruction-ledger-export-decision-enum'
 import {
   ALL_QUALITY_ARCHIVE_DESTRUCTION_STATUS_CODES,
   QUALITY_ARCHIVE_DESTRUCTION_STATUS_TONE,
@@ -134,7 +134,7 @@ async function loadLedger() {
     rows.value = result.list
     pagination.total = result.total
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '销毁清册加载失败')
   } finally {
     loading.value = false
   }
@@ -164,7 +164,7 @@ async function exportExcel() {
     downloadArchiveExcelBase64(file.fileName, file.fileContentBase64)
     message.success('销毁清册已导出')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '销毁清册导出失败')
   } finally {
     exportLoading.value = false
   }
@@ -193,7 +193,7 @@ onMounted(() => {
             :disabled="!rows.length"
             @click="exportExcel"
           >
-            导出 Excel 清册
+            导出表格文件清册
           </UiButton>
         </template>
       </QualityPageContextBar>

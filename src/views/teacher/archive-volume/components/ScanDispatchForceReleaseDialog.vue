@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
-import { forceReleaseScanDispatch } from '@/apis/mark/scanner-dispatch'
 import { message } from 'ant-design-vue'
 import { reactive, ref, watch } from 'vue'
+import { forceReleaseScanDispatch } from '@/apis/mark/scanner-dispatch'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
 const props = defineProps<{
   open: boolean
@@ -13,7 +13,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  released: []
+  "released": []
 }>()
 
 const submitting = ref(false)
@@ -33,12 +33,12 @@ watch(
 async function handleSubmit() {
   const reason = form.releaseReason.trim()
   if (!reason) {
-    message.warning('请填写强制解锁原因')
+    showFormValidationMessage('请填写强制解锁原因')
     return
   }
   const ticketId = props.ticket?.ticketId
   if (!ticketId) {
-    message.error('缺少派单 ticketId')
+    showFormValidationMessage('缺少派单编号，请重新选择派单后再解锁')
     return
   }
   submitting.value = true
@@ -51,7 +51,7 @@ async function handleSubmit() {
     emit('released')
     emit('update:open', false)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '强制解锁派单失败')
   } finally {
     submitting.value = false
   }

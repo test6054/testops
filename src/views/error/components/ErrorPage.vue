@@ -5,7 +5,8 @@
       <h1 class="platform-error-page__title">{{ copy.title }}</h1>
       <p class="platform-error-page__subtitle">{{ copy.subtitle }}</p>
       <div class="platform-error-page__actions">
-        <UiButton variant="primary" size="md" @click="goHome">{{ backLabel }}</UiButton>
+        <UiButton variant="primary" size="md" @click="reloadCurrentPage">刷新当前页面</UiButton>
+        <UiButton variant="outline" size="md" @click="goHome">{{ backLabel }}</UiButton>
         <UiButton v-if="showSecondary" variant="outline" size="md" @click="goSecondary">
           {{ secondaryLabel }}
         </UiButton>
@@ -102,6 +103,11 @@ const showSecondary = computed(
 )
 
 const secondaryLabel = computed(() => '返回上一页')
+
+/** 路由 404 / 渲染异常后优先恢复当前地址，避免整页空白只能“返回工作台”。 */
+function reloadCurrentPage() {
+  window.location.reload()
+}
 
 function goHome() {
   router.replace({ path: resolveHomePath() })

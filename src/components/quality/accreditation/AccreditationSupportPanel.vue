@@ -146,7 +146,7 @@ async function loadProfile() {
     })
     syncFormFromProfile(profile.value)
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '师资与支持条件档案加载失败')
   } finally {
     loading.value = false
   }
@@ -177,7 +177,7 @@ async function loadFacultyProfiles() {
       await loadFacultyProfiles()
     }
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '教师档案列表加载失败')
   } finally {
     facultyLoading.value = false
   }
@@ -208,7 +208,7 @@ async function saveProfile() {
     await loadProfile()
     emit('refresh')
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '师资与支持条件档案保存失败')
   } finally {
     saving.value = false
   }
@@ -225,7 +225,7 @@ async function confirmProfile() {
     await loadProfile()
     emit('refresh')
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '档案确认失败')
   }
 }
 
@@ -394,7 +394,7 @@ async function submitFacultyProfile() {
     await loadFacultyProfiles()
     emit('refresh')
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '教师档案保存失败')
   } finally {
     facultySaving.value = false
   }
@@ -414,7 +414,7 @@ async function deleteFacultyProfile(record: FacultyProfileVO) {
     await loadFacultyProfiles()
     emit('refresh')
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '教师档案删除失败')
   }
 }
 

@@ -28,8 +28,8 @@ const route = useRoute()
 const router = useRouter()
 const portfolioStore = usePortfolioStore()
 const routeStore = useRouteStore()
-const { canPickTeachers, canReviewPortfolio, currentUserId, resolveDefaultTeacherId } =
-  usePortfolioTeacherAccess()
+const { canPickTeachers, canReviewPortfolio, currentUserId, resolveDefaultTeacherId }
+  = usePortfolioTeacherAccess()
 const { accessScope, ensureLoaded, selectWorkShell } = usePortfolioReviewAccess()
 
 const WORK_SHELL_LABELS: Record<PortfolioWorkShellCode, string> = {

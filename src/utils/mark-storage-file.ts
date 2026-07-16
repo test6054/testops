@@ -15,7 +15,7 @@ export async function resolveStorageNodeName(nodeId: string): Promise<string | n
   const info = await getNodeInfo({ nodeId })
   const name = (info.nodeName ?? '').trim()
   if (!name) {
-    showUserError(null, `存储节点 ${nodeId} 缺少文件名`)
+    showUserError(null, '存储节点缺少文件名')
     return null
   }
   return name
@@ -51,7 +51,7 @@ export async function hydrateTemplatePageFileNames(
     }
     const resolved = nameMap.get(row.templateFileId) ?? row.templateFileName?.trim()
     if (!resolved) {
-      showUserError(null, `模板文件 ${row.templateFileId} 缺少文件名`)
+      showUserError(null, '模板文件缺少文件名')
       return false
     }
     row.templateFileName = resolved

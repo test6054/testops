@@ -163,15 +163,17 @@ async function loadList() {
   loading.value = true
   try {
     const listQuery = buildProgramProfileListQuery()
-    const [page, summary] = await Promise.all([
-      programEvaluationProfileApi.page(listQuery),
-      programEvaluationProfileApi.signalSummary(listQuery),
-    ])
+    const page = await programEvaluationProfileApi.page(listQuery)
     list.value = page.list
-    signalSummary.value = summary
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
     total.value = page.total
+    try {
+      signalSummary.value = await programEvaluationProfileApi.signalSummary(listQuery)
+    } catch (error) {
+      signalSummary.value = null
+      showUserError(error, '专业评价口径状态统计加载失败')
+    }
     if (list.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadList()
@@ -228,13 +230,18 @@ const signals = computed<SignalMetric[]>(() => {
 })
 
 async function loadDicts(keyword?: string) {
-  const page = await accreditationStandardApi.page({
-    pageNum: 1,
-    pageSize: QUALITY_SELECTOR_PAGE_SIZE,
-    enabled: true,
-    keyword: keyword?.trim() || undefined,
-  })
-  standards.value = page.list
+  try {
+    const page = await accreditationStandardApi.page({
+      pageNum: 1,
+      pageSize: QUALITY_SELECTOR_PAGE_SIZE,
+      enabled: true,
+      keyword: keyword?.trim() || undefined,
+    })
+    standards.value = page.list
+  } catch (error) {
+    standards.value = []
+    showUserError(error, '认证标准字典加载失败')
+  }
 }
 
 let standardDictSearchTimer: ReturnType<typeof setTimeout> | null = null

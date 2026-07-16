@@ -12,7 +12,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useQueryTable } from '@/composables/useQueryTable'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 
 const form = reactive<{
@@ -28,10 +28,10 @@ const form = reactive<{
   performanceAmount: undefined,
   allowanceAmount: undefined,
 })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
-  usePortfolioTeacherSearch()
-const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange } =
-  useQueryTable(portfolioTeacherSalaryApi.page, {
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
+  = usePortfolioTeacherSearch()
+const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange }
+  = useQueryTable(portfolioTeacherSalaryApi.page, {
     onLoaded: (list) => {
       void hydrateTeacherLabels(list.map((row) => row.teacherUserId ?? ''))
     },
@@ -78,15 +78,15 @@ const columns: ColumnsType = [
 
 async function saveSalary() {
   if (!form.teacherUserId || !form.salaryMonth.trim()) {
-    message.warning('请选择教师并填写薪酬月份')
+    showFormValidationMessage('请选择教师并填写薪酬月份')
     return
   }
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(form.salaryMonth.trim())) {
-    message.warning('薪酬月份格式应为 yyyy-MM')
+    showFormValidationMessage('薪酬月份格式应为四位年份短横线两位月份')
     return
   }
   if (form.baseAmount == null && form.performanceAmount == null && form.allowanceAmount == null) {
-    message.warning('请至少填写一项薪酬金额')
+    showFormValidationMessage('请至少填写一项薪酬金额')
     return
   }
   const operation = 'salary:save'
@@ -109,7 +109,7 @@ async function saveSalary() {
     form.allowanceAmount = undefined
     await loadPage()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存教师薪酬失败')
   } finally {
     endOperation(operation)
   }
@@ -133,7 +133,7 @@ async function exportCsv() {
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出教师薪酬失败')
   } finally {
     endOperation(operation)
   }
@@ -160,7 +160,7 @@ async function exportCsv() {
         />
         <a-input
           v-model:value="form.salaryMonth"
-          placeholder="月份 yyyy-MM"
+          placeholder="月份，例如 2026-07"
           style="width: 120px"
           :disabled="operating"
         />

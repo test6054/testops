@@ -4,12 +4,12 @@ import type {
   PortfolioCourseArchiveCourseVO,
   PortfolioCourseArchiveFrameworkVO,
 } from '@/apis/portfolio/course-archive'
-import { portfolioCourseArchiveApi } from '@/apis/portfolio/course-archive'
 import type { PortfolioTeacherCustomCategoryVO } from '@/apis/portfolio/teacher-custom-category'
-import { portfolioTeacherCustomCategoryApi } from '@/apis/portfolio/teacher-custom-category'
 import { Form, Input, message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { portfolioCourseArchiveApi } from '@/apis/portfolio/course-archive'
+import { portfolioTeacherCustomCategoryApi } from '@/apis/portfolio/teacher-custom-category'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -23,7 +23,7 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { SemesterOptions } from '@/types/enums/semester-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
 const router = useRouter()
 const route = useRoute()
@@ -86,10 +86,10 @@ const customColumns: ColumnsType = [
 
 /** 路由 query 决定课程档案上下文；缺省时也必须清空旧筛选，避免复用页残留。 */
 function applyRouteQueryFilters() {
-  academicYearFilter.value =
-    typeof route.query.academicYear === 'string' ? route.query.academicYear : ''
-  highlightCourseCode.value =
-    typeof route.query.courseCode === 'string' ? route.query.courseCode : ''
+  academicYearFilter.value
+    = typeof route.query.academicYear === 'string' ? route.query.academicYear : ''
+  highlightCourseCode.value
+    = typeof route.query.courseCode === 'string' ? route.query.courseCode : ''
   semesterFilter.value = typeof route.query.semester === 'string' ? route.query.semester : ''
 }
 
@@ -125,13 +125,10 @@ async function loadOverview() {
   customLoading.value = true
   loadFailed.value = false
   try {
-    const [overview, customList] = await Promise.all([
-      portfolioCourseArchiveApi.overview({
-        teacherId: scopeTeacherId(),
-        academicYear: academicYearFilter.value.trim() || undefined,
-      }),
-      portfolioTeacherCustomCategoryApi.list({ teacherId: scopeTeacherId() }),
-    ])
+    const overview = await portfolioCourseArchiveApi.overview({
+      teacherId: scopeTeacherId(),
+      academicYear: academicYearFilter.value.trim() || undefined,
+    })
     if (currentToken !== overviewRequestToken.value) {
       return
     }
@@ -142,13 +139,25 @@ async function loadOverview() {
       frameworkSlotDone: overview.frameworkSlotDone ?? 0,
       frameworkSlotTotal: overview.frameworkSlotTotal ?? 0,
     }
-    customCategories.value = customList ?? []
+    try {
+      const customList = await portfolioTeacherCustomCategoryApi.list({
+        teacherId: scopeTeacherId(),
+      })
+      if (currentToken === overviewRequestToken.value) {
+        customCategories.value = customList ?? []
+      }
+    } catch (error) {
+      if (currentToken === overviewRequestToken.value) {
+        customCategories.value = []
+        showUserError(error, '自建分类加载失败')
+      }
+    }
   } catch (error) {
     if (currentToken !== overviewRequestToken.value) {
       return
     }
     loadFailed.value = true
-    showUserError(error)
+    showUserError(error, '加载课程档案概览失败')
   } finally {
     if (currentToken === overviewRequestToken.value) {
       loading.value = false
@@ -190,7 +199,7 @@ function openCustomCategoryArchive(row: PortfolioTeacherCustomCategoryVO) {
 
 function openCustomModal() {
   if (readonlyMode.value) {
-    message.warning('管理员查看模式下不可创建分类')
+    showFormValidationMessage('管理员查看模式下不可创建分类')
     return
   }
   customForm.categoryName = ''
@@ -199,7 +208,7 @@ function openCustomModal() {
 
 async function createCustomCategory() {
   if (!customForm.categoryName.trim()) {
-    message.warning('请填写分类名称')
+    showFormValidationMessage('请填写分类名称')
     return
   }
   if (creating.value) {
@@ -214,7 +223,7 @@ async function createCustomCategory() {
     customModalOpen.value = false
     await loadOverview()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '创建自建分类失败')
   } finally {
     creating.value = false
   }
@@ -222,7 +231,7 @@ async function createCustomCategory() {
 
 async function confirmDeleteCustomCategory(row: PortfolioTeacherCustomCategoryVO) {
   if (readonlyMode.value) {
-    message.warning('管理员查看模式下不可删除分类')
+    showFormValidationMessage('管理员查看模式下不可删除分类')
     return
   }
   if (deletingCategoryId.value) return
@@ -246,7 +255,7 @@ async function confirmDeleteCustomCategory(row: PortfolioTeacherCustomCategoryVO
     await loadOverview()
   } catch (error) {
     if (overviewRequestToken.value !== scopeToken) return
-    showUserError(error)
+    showUserError(error, '删除自建分类失败')
   } finally {
     if (deletingCategoryId.value === categoryId) deletingCategoryId.value = ''
   }

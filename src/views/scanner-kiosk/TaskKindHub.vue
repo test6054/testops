@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import type { ScanDispatchQueueSummaryVO } from '@/apis/mark/scanner-dispatch'
-import { loadScanDispatchQueueSummary } from '@/apis/mark/scanner-dispatch'
 import { ReloadOutlined, ScanOutlined } from '@ant-design/icons-vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { loadScanDispatchQueueSummary } from '@/apis/mark/scanner-dispatch'
 import { getKioskArchiveCollaborationPolicy } from '@/apis/mark/scanner-kiosk'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { ArchiveKioskHubListModeCode } from '@/types/enums/archive-kiosk-hub-list-mode-enum'
 import { DispatchQueueStatusFilterCode } from '@/types/enums/dispatch-queue-status-filter-enum'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { fetchArchiveSuspectedMixedPendingTotal } from '@/utils/archive-suspected-mixed-navigation'
-import { getUserErrorMessage } from '@/utils/error-handler'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import KioskArchivePickPanel from './components/KioskArchivePickPanel.vue'
 import KioskDeviceActivationPanel from './components/KioskDeviceActivationPanel.vue'
 import KioskPortfolioGapPickPanel from './components/KioskPortfolioGapPickPanel.vue'
@@ -51,7 +51,7 @@ const DEEPLINK_CARDS: TaskKindCard[] = [
   {
     kind: ScanTaskKindCode.EXAM_ARCHIVE,
     title: '考后归档',
-    description: '查看 PC 派单推送的归档卷待办，或临时选择收集中卷开单扫描。',
+    description: '查看电脑端派单推送的归档卷待办，或临时选择收集中卷开单扫描。',
     route: '/scanner-kiosk/queue',
     tagText: '待办队列',
     ctaText: '进入队列',
@@ -59,7 +59,7 @@ const DEEPLINK_CARDS: TaskKindCard[] = [
   {
     kind: ScanTaskKindCode.PORTFOLIO_COLLECT,
     title: '教师档案袋',
-    description: '查看授权范围内开放的补采待办，或从 PC 档案袋页创建派单后进入工位扫描。',
+    description: '查看授权范围内开放的补采待办，或从电脑端档案袋页创建派单后进入工位扫描。',
     route: '/scanner-kiosk/queue',
     tagText: '待办队列',
     ctaText: '进入队列',
@@ -89,9 +89,9 @@ const scannerDeviceId = computed(() => deviceActivation.setup.value?.scannerDevi
 const scannerStationId = computed(() => deviceActivation.setup.value?.scannerStationId ?? '')
 
 const endpointLabel = computed(() => {
-  const name =
-    deviceActivation.setup.value?.deviceName?.trim() ||
-    deviceActivation.activationForm.value.endpointName.trim()
+  const name
+    = deviceActivation.setup.value?.deviceName?.trim()
+      || deviceActivation.activationForm.value.endpointName.trim()
   return name || '未命名工位'
 })
 
@@ -106,30 +106,30 @@ const stationLedTone = computed<'green' | 'gray'>(() =>
 
 const showAgentOfflineHint = computed(
   () =>
-    !hubLoading.value &&
-    !deviceActivation.loading.value &&
-    !deviceActivation.localAgentReachable.value &&
-    (deviceActivation.isDeviceBound.value || !deviceActivation.needsActivationGate.value),
+    !hubLoading.value
+    && !deviceActivation.loading.value
+    && !deviceActivation.localAgentReachable.value
+    && (deviceActivation.isDeviceBound.value || !deviceActivation.needsActivationGate.value),
 )
 
 const showTaskKindCards = computed(
   () =>
-    deviceActivation.localAgentReachable.value &&
-    deviceActivation.isDeviceBound.value &&
-    !deviceActivation.needsActivationGate.value,
+    deviceActivation.localAgentReachable.value
+    && deviceActivation.isDeviceBound.value
+    && !deviceActivation.needsActivationGate.value,
 )
 
 const showFailedAlert = computed(
   () =>
-    showTaskKindCards.value &&
-    !queueSummaryLoading.value &&
-    ((queueSummary.value?.failedTicketCount ?? 0) > 0 ||
-      (queueSummary.value?.committingWorkOrderCount ?? 0) > 0),
+    showTaskKindCards.value
+    && !queueSummaryLoading.value
+    && ((queueSummary.value?.failedTicketCount ?? 0) > 0
+      || (queueSummary.value?.committingWorkOrderCount ?? 0) > 0),
 )
 
 const contextSubtitle = computed(() => {
   if (hubLoading.value || deviceActivation.loading.value) {
-    return '正在读取本机 Agent 与工位状态…'
+    return '正在读取本机扫描服务与工位状态…'
   }
   if (hubErrorMessage.value) {
     return '工位状态读取失败，请重试或检查本机扫描服务'
@@ -179,7 +179,7 @@ const hubSignals = computed<HubSignalItem[]>(() => {
   const metrics: HubSignalItem[] = [
     {
       key: 'agent',
-      label: 'Agent 服务',
+      label: '扫描服务',
       value: agentOnline ? '正常' : '离线',
       ledTone: agentOnline ? 'green' : 'red',
       sub: agentOnline ? '本地代理已连接' : '请先启动本机扫描服务',
@@ -250,7 +250,7 @@ const hubSignals = computed<HubSignalItem[]>(() => {
       label: '合成中',
       value: String(queueSummary.value?.committingWorkOrderCount ?? 0),
       ledTone: 'orange',
-      sub: 'PC 异常看板查看合成中工单',
+      sub: '电脑端异常看板查看合成中工单',
       clickable: true,
     })
   }
@@ -299,14 +299,21 @@ async function loadArchiveHubPolicy() {
     if (policy.kioskHubListMode) {
       archiveHubListMode.value = policy.kioskHubListMode
     }
-  } catch {
-    archiveHubListMode.value = ArchiveKioskHubListModeCode.DISPATCH_QUEUE_FIRST
+  } catch (error) {
+    // 策略失败不得伪装成「默认派单优先」成功态；保留上次模式并提示教师
+    showUserError(error, '归档协作策略加载失败')
   }
 }
 
 async function loadArchiveMixedPendingTotal() {
-  const total = await fetchArchiveSuspectedMixedPendingTotal().catch(() => 0)
-  archiveMixedPendingTotal.value = total > 0 ? total : null
+  try {
+    const total = await fetchArchiveSuspectedMixedPendingTotal()
+    archiveMixedPendingTotal.value = total > 0 ? total : null
+  } catch (error) {
+    // 附属计数失败不影响 Hub 主界面；禁止把失败伪装成 0 条
+    archiveMixedPendingTotal.value = null
+    showUserError(error, '疑似混扫待处理数量加载失败')
+  }
 }
 
 async function loadQueueSummary() {
@@ -318,20 +325,18 @@ async function loadQueueSummary() {
   queueSummaryLoading.value = true
   queueSummaryError.value = ''
   try {
-    const [summary] = await Promise.all([
-      loadScanDispatchQueueSummary({
-        scannerDeviceId: scannerDeviceId.value || undefined,
-        scannerStationId: scannerStationId.value || undefined,
-      }),
-      loadArchiveMixedPendingTotal(),
-    ])
-    queueSummary.value = summary
+    queueSummary.value = await loadScanDispatchQueueSummary({
+      scannerDeviceId: scannerDeviceId.value || undefined,
+      scannerStationId: scannerStationId.value || undefined,
+    })
   } catch (error) {
     queueSummary.value = null
     queueSummaryError.value = getUserErrorMessage(error)
   } finally {
     queueSummaryLoading.value = false
   }
+  // 附属：混扫待处理数失败不拖垮主队列摘要
+  await loadArchiveMixedPendingTotal()
 }
 
 function startQueueSummaryPolling() {
@@ -441,8 +446,8 @@ function enterArchiveQueue() {
 function enterCard(card: TaskKindCard) {
   if (card.deeplinkOnly) return
   if (
-    card.kind === ScanTaskKindCode.EXAM_ARCHIVE ||
-    card.kind === ScanTaskKindCode.PORTFOLIO_COLLECT
+    card.kind === ScanTaskKindCode.EXAM_ARCHIVE
+    || card.kind === ScanTaskKindCode.PORTFOLIO_COLLECT
   ) {
     void router.push({ path: card.route, query: { taskKind: card.kind } })
     return
@@ -548,7 +553,7 @@ onUnmounted(() => {
           v-if="showFailedAlert"
           tone="error"
           title="存在失败待办"
-          :description="`失败派单 ${queueSummary?.failedTicketCount ?? 0} 条，合成中 ${queueSummary?.committingWorkOrderCount ?? 0} 条；可点击上方指标进入队列或 PC 异常看板`"
+          :description="`失败派单 ${queueSummary?.failedTicketCount ?? 0} 条，合成中 ${queueSummary?.committingWorkOrderCount ?? 0} 条；可点击上方指标进入队列或电脑端异常看板`"
           dense
           class="hub-shell__failed-alert"
         />
@@ -579,7 +584,7 @@ onUnmounted(() => {
         <section v-else-if="showAgentOfflineHint" class="hub-shell__state">
           <p class="hub-shell__state-title">本地扫描服务暂时不可用</p>
           <p class="hub-shell__state-detail">
-            工位凭证仍有效；Agent 恢复后会自动重连。请先检查本机扫描服务是否已启动。
+            工位凭证仍有效；扫描服务恢复后会自动重连。请先检查本机扫描服务是否已启动。
           </p>
           <button type="button" class="hub-shell__cta" @click="loadHubState">重新检测</button>
         </section>

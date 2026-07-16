@@ -14,7 +14,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { ArchiveVolumeStatusCode } from '@/types/enums/archive-volume-status-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import DepartmentReviewMaterialSummary from '@/views/teacher/archive-volume/components/DepartmentReviewMaterialSummary.vue'
 
 const props = defineProps<{
@@ -34,6 +34,9 @@ const withdrawing = ref(false)
 const rejectOpen = ref(false)
 const rejectReason = ref('')
 const requestReason = ref('')
+const actionBusy = computed(
+  () => requesting.value || approving.value || rejecting.value || withdrawing.value,
+)
 
 const volumeStatus = computed(() => props.detail.volume.volumeStatus)
 const capabilities = computed(() => props.detail.capabilities)
@@ -97,6 +100,7 @@ const statusLabel = computed(() => {
 })
 
 async function handleRequest() {
+  if (actionBusy.value) return
   requesting.value = true
   try {
     await requestArchiveVolumeDepartmentReview({
@@ -107,28 +111,30 @@ async function handleRequest() {
     requestReason.value = ''
     emit('refreshed')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '发起院系审核失败')
   } finally {
     requesting.value = false
   }
 }
 
 async function handleApprove() {
+  if (actionBusy.value) return
   approving.value = true
   try {
     await approveArchiveVolumeDepartmentReview({ volumeId: props.volumeId })
     message.success('院系审核已通过')
     emit('refreshed')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '院系审核通过失败')
   } finally {
     approving.value = false
   }
 }
 
 async function handleReject() {
+  if (actionBusy.value) return
   if (!rejectReason.value.trim()) {
-    message.warning('请填写驳回原因')
+    showFormValidationMessage('请填写驳回原因')
     return
   }
   rejecting.value = true
@@ -142,20 +148,21 @@ async function handleReject() {
     rejectReason.value = ''
     emit('refreshed')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '驳回院系审核失败')
   } finally {
     rejecting.value = false
   }
 }
 
 async function handleWithdraw() {
+  if (actionBusy.value) return
   withdrawing.value = true
   try {
     await withdrawArchiveVolumeDepartmentReview({ volumeId: props.volumeId })
     message.success('已撤回院系审核，可继续补件后重新发起')
     emit('refreshed')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '撤回院系审核失败')
   } finally {
     withdrawing.value = false
   }
@@ -178,6 +185,7 @@ function navigateTab(tabKey: string) {
         size="sm"
         variant="primary"
         :loading="requesting"
+        :disabled="actionBusy && !requesting"
         @click="handleRequest"
       >
         发起院系审核
@@ -187,11 +195,18 @@ function navigateTab(tabKey: string) {
         size="sm"
         variant="primary"
         :loading="approving"
+        :disabled="actionBusy && !approving"
         @click="handleApprove"
       >
         审核通过
       </UiButton>
-      <UiButton v-if="canApprove" size="sm" variant="outline" @click="rejectOpen = true">
+      <UiButton
+        v-if="canApprove"
+        size="sm"
+        variant="outline"
+        :disabled="actionBusy"
+        @click="rejectOpen = true"
+      >
         驳回
       </UiButton>
       <UiButton
@@ -199,6 +214,7 @@ function navigateTab(tabKey: string) {
         size="sm"
         variant="outline"
         :loading="withdrawing"
+        :disabled="actionBusy && !withdrawing"
         @click="handleWithdraw"
       >
         撤回审核
@@ -221,6 +237,8 @@ function navigateTab(tabKey: string) {
         v-model:value="requestReason"
         placeholder="申请说明（可选）"
         class="dept-review-panel__input"
+        :maxlength="500"
+        show-count
       />
       <p
         v-else-if="volumeStatus === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED"
@@ -242,7 +260,13 @@ function navigateTab(tabKey: string) {
       @close="rejectOpen = false"
       @confirm="handleReject"
     >
-      <a-textarea v-model:value="rejectReason" :rows="4" placeholder="驳回原因" />
+      <a-textarea
+        v-model:value="rejectReason"
+        :rows="4"
+        placeholder="驳回原因"
+        :maxlength="500"
+        show-count
+      />
     </UiDrawer>
   </WorkbenchSurfaceCard>
 </template>

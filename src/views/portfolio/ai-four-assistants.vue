@@ -34,7 +34,7 @@ import {
   PortfolioAiAnalysisTypeDescription,
 } from '@/types/enums/portfolio-ai-analysis-type-enum'
 import { PortfolioAiTaskTypeCode } from '@/types/enums/portfolio-ai-task-type-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -185,18 +185,18 @@ function buildTaskContext(): PortfolioAiJobContext {
 
 function validateSubmit(): boolean {
   if (!targetTeacherId.value) {
-    message.warning('请先选择教师')
+    showFormValidationMessage('请先选择教师')
     return false
   }
   if (!canOperate.value) {
-    message.error('无权为该教师使用 AI 助手')
+    showUserError(null, '无权为该教师使用智能助手')
     return false
   }
   if (
-    (activeKey.value === 'optimize' || activeKey.value === 'effect') &&
-    !submitForm.sourceText.trim()
+    (activeKey.value === 'optimize' || activeKey.value === 'effect')
+    && !submitForm.sourceText.trim()
   ) {
-    message.warning('请填写待分析的教学材料正文')
+    showFormValidationMessage('请填写待分析的教学材料正文')
     return false
   }
   return true
@@ -232,7 +232,7 @@ async function loadHistory(): Promise<void> {
     historyRows.value = []
     historyTotal.value = 0
     loadFailed.value = true
-    showUserError(error, '加载 AI 助手历史结果失败')
+    showUserError(error, '加载智能助手历史结果失败')
   } finally {
     if (historyToken.value === token) {
       historyLoading.value = false
@@ -251,7 +251,7 @@ async function openDetail(row: PortfolioAiAnalysisSummaryVO): Promise<void> {
   try {
     applyDetail(await portfolioAiJobApi.getAnalysis(row.id))
   } catch (error) {
-    showUserError(error, '加载 AI 分析详情失败')
+    showUserError(error, '加载智能分析详情失败')
   }
 }
 
@@ -268,15 +268,16 @@ async function pollTask(taskId: string, token: number): Promise<void> {
       }
       applyDetail(detail)
       await loadHistory()
-      message.success('AI 结果已生成，请复核后确认采用')
+      message.success('智能分析结果已生成，请复核后确认采用')
       return
     }
     if (task.status === AiTaskStatusCode.FAILED || task.status === AiTaskStatusCode.CANCELLED) {
-      throw new Error('AI 任务执行失败，请在历史任务中查看原因')
+      showUserError(null, '智能分析任务执行失败，请在历史任务中查看原因')
+      return
     }
     await sleep(2000)
   }
-  throw new Error('AI 任务仍在执行，请稍后从历史结果查看')
+  showUserError(null, '智能分析任务仍在执行，请稍后从历史结果查看')
 }
 
 async function submitTask(): Promise<void> {
@@ -292,11 +293,11 @@ async function submitTask(): Promise<void> {
       materialType: PortfolioMaterialTypeCode.DOCUMENT,
       context: buildTaskContext(),
     })
-    message.info('AI 任务已提交，正在生成结果')
+    message.info('智能分析任务已提交，正在生成结果')
     await pollTask(result.taskId, token)
   } catch (error) {
     if (pollToken.value === token) {
-      showUserError(error, 'AI 助手任务失败')
+      showUserError(error, '智能助手任务失败')
     }
   } finally {
     if (pollToken.value === token) {
@@ -310,10 +311,10 @@ async function reviewResult(reviewStatus: PortfolioAiAnalysisReviewStatusCode): 
     return
   }
   if (
-    reviewStatus === PortfolioAiAnalysisReviewStatusCode.REJECTED &&
-    !reviewForm.reviewOpinion.trim()
+    reviewStatus === PortfolioAiAnalysisReviewStatusCode.REJECTED
+    && !reviewForm.reviewOpinion.trim()
   ) {
-    message.warning('请填写驳回原因')
+    showFormValidationMessage('请填写驳回原因')
     return
   }
   const target = activeDetail.value
@@ -325,7 +326,7 @@ async function reviewResult(reviewStatus: PortfolioAiAnalysisReviewStatusCode): 
   try {
     if (reviewStatus === PortfolioAiAnalysisReviewStatusCode.REJECTED) {
       const confirmed = await confirmAsync({
-        title: '确认驳回 AI 结果？',
+        title: '确认驳回智能分析结果？',
         content: '驳回后该结果进入终态，不会写入档案草稿或发展规划；驳回原因将保留用于审计。',
         type: 'warning',
         okText: '确认驳回',
@@ -342,9 +343,9 @@ async function reviewResult(reviewStatus: PortfolioAiAnalysisReviewStatusCode): 
       reviewOpinion: reviewForm.reviewOpinion.trim() || undefined,
     })
     if (
-      reviewToken.value !== token ||
-      targetTeacherId.value !== targetTeacherScopeId ||
-      activeKey.value !== targetAssistantKey
+      reviewToken.value !== token
+      || targetTeacherId.value !== targetTeacherScopeId
+      || activeKey.value !== targetAssistantKey
     ) {
       return
     }
@@ -355,17 +356,17 @@ async function reviewResult(reviewStatus: PortfolioAiAnalysisReviewStatusCode): 
         ? activeKey.value === 'development'
           ? '建议已写入本年度发展规划'
           : '结果已写入通用文档草稿'
-        : 'AI 结果已驳回',
+        : '智能分析结果已驳回',
     )
   } catch (error) {
     if (reviewToken.value !== token) return
-    showUserError(error, '处理 AI 分析结果失败')
+    showUserError(error, '处理智能分析结果失败')
   } finally {
     if (reviewToken.value === token) reviewLoading.value = false
   }
 }
 
-function handlePageChange(page: { current: number; pageSize: number }): void {
+function handlePageChange(page: { current: number, pageSize: number }): void {
   pageNum.value = page.current
   pageSize.value = page.pageSize
   void loadHistory()
@@ -389,7 +390,7 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
       <ContextBar
         layout="workbench"
         show-title
-        title="AI 四类助手"
+        title="智能四类助手"
         subtitle="生成结果须由教师复核确认后，才会进入档案或发展规划"
       />
     </template>
@@ -483,7 +484,7 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
                 strictEnumLabel(
                   PortfolioAiAnalysisReviewStatusDescription,
                   record.reviewStatus,
-                  'AI 分析审核状态',
+                  '智能分析审核状态',
                 )
               }}
             </UiTag>
@@ -501,7 +502,7 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
 
   <UiDrawer
     v-model:open="detailOpen"
-    :title="activeDetail?.resultTitle || 'AI 分析结果'"
+    :title="activeDetail?.resultTitle || '智能分析结果'"
     width="720"
   >
     <template v-if="activeDetail">
@@ -511,7 +512,7 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
             strictEnumLabel(
               PortfolioAiAnalysisTypeDescription,
               activeDetail.analysisType,
-              'AI 分析类型',
+              '智能分析类型',
             )
           }}
         </UiTag>
@@ -520,7 +521,7 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
             strictEnumLabel(
               PortfolioAiAnalysisReviewStatusDescription,
               activeDetail.reviewStatus,
-              'AI 分析审核状态',
+              '智能分析审核状态',
             )
           }}
         </UiTag>

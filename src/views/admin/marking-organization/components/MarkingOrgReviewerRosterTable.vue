@@ -110,7 +110,7 @@ const columns: ColumnType<RosterRow>[] = [
   { title: '平均用时', dataIndex: 'avgTimeLabel', key: 'avgTimeLabel', width: 96, align: 'right' },
 ]
 
-function formatConsistency(value: number | null | undefined): { label: string; warn: boolean } {
+function formatConsistency(value: number | null | undefined): { label: string, warn: boolean } {
   if (value == null || Number.isNaN(value)) {
     return { label: '—', warn: false }
   }
@@ -121,7 +121,7 @@ function formatConsistency(value: number | null | undefined): { label: string; w
   }
 }
 
-function formatCompletion(total: number, submitted: number): { percent: number; label: string } {
+function formatCompletion(total: number, submitted: number): { percent: number, label: string } {
   if (total <= 0) {
     return { percent: 0, label: '—' }
   }

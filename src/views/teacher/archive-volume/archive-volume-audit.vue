@@ -79,15 +79,15 @@ import type {
   ArchiveVolumeAuditEventResponse,
   ArchiveVolumeEventTypeCode,
 } from '@/apis/mark/archive-volume'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   ARCHIVE_VOLUME_EVENT_TYPE_OPTIONS,
   getArchiveGlobalAuditEventStats,
   pageArchiveGlobalAuditEvents,
 } from '@/apis/mark/archive-volume'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -135,7 +135,7 @@ interface ArchiveVolumeAuditFilterForm extends Record<string, unknown> {
 }
 
 const filterForm = reactive<ArchiveVolumeAuditFilterForm>({})
-const departmentOptions = ref<Array<{ value: string; label: string }>>([])
+const departmentOptions = ref<Array<{ value: string, label: string }>>([])
 const filterModel = computed<Record<string, unknown>>({
   get: () => filterForm,
   set: (value) => {
@@ -172,11 +172,16 @@ const columns: ColumnsType<ArchiveVolumeAuditEventResponse> = [
 ]
 
 async function loadAuditStats() {
-  const stats = await getArchiveGlobalAuditEventStats({
-    departmentId: filterForm.departmentId,
-    eventType: filterForm.eventType,
-  })
-  auditEventCount.value = stats.eventCount
+  try {
+    const stats = await getArchiveGlobalAuditEventStats({
+      departmentId: filterForm.departmentId,
+      eventType: filterForm.eventType,
+    })
+    auditEventCount.value = stats.eventCount
+  } catch (error) {
+    auditEventCount.value = 0
+    showUserError(error, '审计事件统计加载失败')
+  }
 }
 
 async function loadEvents() {
@@ -211,8 +216,8 @@ function handleSearch() {
 }
 
 function handleReset() {
-  filterForm.departmentId =
-    globalAuditScopedDepartmentIds.value.length === 1
+  filterForm.departmentId
+    = globalAuditScopedDepartmentIds.value.length === 1
       ? globalAuditScopedDepartmentIds.value[0]
       : undefined
   filterForm.eventType = undefined

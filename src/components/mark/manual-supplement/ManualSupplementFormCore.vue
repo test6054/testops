@@ -3,10 +3,10 @@
     <template v-if="mode === 'direct'">
       <a-row :gutter="16">
         <a-col :xs="24" :md="12">
-          <a-form-item label="Web 补录工位" name="deviceKey" required>
+          <a-form-item label="网页补录工位" name="deviceKey" required>
             <a-select
               v-model:value="directModel.deviceKey"
-              placeholder="选择已启用的 Web 补录工位"
+              placeholder="选择已启用的网页补录工位"
               :options="deviceOptions"
               :loading="deviceLoading"
               show-search
@@ -26,7 +26,7 @@
           </a-form-item>
         </a-col>
       </a-row>
-      <a-form-item label="扫描来源文件（PDF 或多页图片）" name="sourceFileId" required>
+      <a-form-item label="扫描来源文件（便携文档或多页图片）" name="sourceFileId" required>
         <UiPlatformFileField
           v-model:file-node-id="directModel.sourceFileId"
           v-model:file-name="directModel.sourceFileName"
@@ -180,7 +180,7 @@ const supplementModel = computed(() => props.model as ManualSupplementSupplement
 const formRules = computed((): Record<string, Rule[]> => {
   if (props.mode === 'direct') {
     return {
-      deviceKey: [{ required: true, message: '请选择 Web 补录工位' }],
+      deviceKey: [{ required: true, message: '请选择网页补录工位' }],
       sourceFileId: [
         {
           validator: async () => {

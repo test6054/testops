@@ -110,12 +110,12 @@ export function useTable<T extends U, U = T>(api: Api<T>, options?: UseTableOpti
 
   function resolveSelectedRowKey(item: U, key: keyof T | 'id'): string | number | null {
     if (typeof item !== 'object' || item === null || !(key in item)) {
-      showUserError(null, `表格行缺少选择键：${String(key)}`)
+      showUserError(null, '表格行缺少选择键，请刷新页面后重试')
       return null
     }
     const value = Object.getOwnPropertyDescriptor(item, key)?.value
     if (typeof value !== 'string' && typeof value !== 'number') {
-      showUserError(null, `表格行选择键不是字符串或数字：${String(key)}`)
+      showUserError(null, '表格行选择键类型无效，请刷新页面后重试')
       return null
     }
     return value

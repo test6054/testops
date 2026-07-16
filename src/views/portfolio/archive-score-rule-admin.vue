@@ -4,14 +4,14 @@ import type {
   PortfolioArchiveScoreRuleSaveRequest,
   PortfolioArchiveScoreRuleVO,
 } from '@/apis/portfolio/teacher-platform'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_OPTIONS,
   portfolioArchiveScoreApi,
   PortfolioArchiveScoreRuleTypeCode,
   PortfolioArchiveScoreRuleTypeDescription,
 } from '@/apis/portfolio/teacher-platform'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -20,7 +20,7 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const loading = ref(false)
@@ -42,10 +42,10 @@ const form = reactive<PortfolioArchiveScoreRuleSaveRequest>({
 const columns: ColumnsType = [
   { title: '规则名称', dataIndex: 'ruleName', key: 'ruleName' },
   { title: '类型', dataIndex: 'ruleType', key: 'ruleType', width: 120 },
-  { title: '分类 ID', dataIndex: 'categoryId', key: 'categoryId', width: 100 },
+  { title: '分类编号', dataIndex: 'categoryId', key: 'categoryId', width: 100 },
   { title: '分值', dataIndex: 'scorePoints', key: 'scorePoints', width: 80 },
   { title: '权重', dataIndex: 'weight', key: 'weight', width: 80 },
-  { title: '仅 OFFICIAL', dataIndex: 'officialOnly', key: 'officialOnly', width: 100 },
+  { title: '仅正式档案', dataIndex: 'officialOnly', key: 'officialOnly', width: 100 },
   { title: '操作', key: 'actions', width: 120 },
 ]
 
@@ -131,12 +131,12 @@ function handleRuleTypeChange() {
 
 async function handleSave() {
   if (!form.ruleName.trim() || form.scorePoints === undefined) {
-    message.warning('请填写规则名称与分值')
+    showFormValidationMessage('请填写规则名称与分值')
     return
   }
   const categoryId = form.categoryId?.trim()
   if (form.ruleType === PortfolioArchiveScoreRuleTypeCode.CATEGORY && !categoryId) {
-    message.warning('分类归档计分规则必须填写分类 ID')
+    showFormValidationMessage('分类归档计分规则必须填写分类编号')
     return
   }
   const operation = `save:${form.id || 'new'}`
@@ -157,7 +157,7 @@ async function handleSave() {
     modalOpen.value = false
     await loadRules()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存评分规则失败')
   } finally {
     endOperation(operation)
   }
@@ -181,7 +181,7 @@ async function handleDelete(id: string) {
     message.success('已删除')
     await loadRules()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '删除评分规则失败')
   } finally {
     endOperation(operation)
   }
@@ -253,10 +253,10 @@ onMounted(loadRules)
         </a-form-item>
         <a-form-item
           v-if="form.ruleType === PortfolioArchiveScoreRuleTypeCode.CATEGORY"
-          label="分类 ID"
+          label="分类编号"
           required
         >
-          <a-input v-model:value="form.categoryId" placeholder="档案分类 ID" :disabled="writing" />
+          <a-input v-model:value="form.categoryId" placeholder="档案分类编号" :disabled="writing" />
         </a-form-item>
         <a-form-item label="分值" required>
           <a-input-number
@@ -268,7 +268,7 @@ onMounted(loadRules)
         <a-form-item label="权重">
           <a-input-number v-model:value="form.weight" style="width: 100%" :disabled="writing" />
         </a-form-item>
-        <a-form-item label="仅 OFFICIAL 计分">
+        <a-form-item label="仅正式档案计分">
           <a-select
             v-model:value="form.officialOnly"
             :options="[

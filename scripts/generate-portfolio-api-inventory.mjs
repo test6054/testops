@@ -98,8 +98,8 @@ function findApiOwner(node, sourceFile) {
         }
       }
       if (
-        current.initializer &&
-        (ts.isArrowFunction(current.initializer) || ts.isFunctionExpression(current.initializer))
+        current.initializer
+        && (ts.isArrowFunction(current.initializer) || ts.isFunctionExpression(current.initializer))
       ) {
         return {
           symbol: variableName,
@@ -140,8 +140,8 @@ function resolveString(node, sourceFile, constants, resolving = new Set()) {
   }
   if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) {
     return (
-      resolveString(node.left, sourceFile, constants, resolving) +
-      resolveString(node.right, sourceFile, constants, resolving)
+      resolveString(node.left, sourceFile, constants, resolving)
+      + resolveString(node.right, sourceFile, constants, resolving)
     )
   }
   if (ts.isTemplateExpression(node)) {
@@ -169,11 +169,11 @@ function extractHttpCalls(file) {
 
   function visit(node) {
     if (
-      ts.isCallExpression(node) &&
-      ts.isPropertyAccessExpression(node.expression) &&
-      ts.isIdentifier(node.expression.expression) &&
-      node.expression.expression.text === 'http' &&
-      (node.expression.name.text === 'get' || node.expression.name.text === 'post')
+      ts.isCallExpression(node)
+      && ts.isPropertyAccessExpression(node.expression)
+      && ts.isIdentifier(node.expression.expression)
+      && node.expression.expression.text === 'http'
+      && (node.expression.name.text === 'get' || node.expression.name.text === 'post')
     ) {
       const owner = findApiOwner(node, sourceFile)
       calls.push({
@@ -211,8 +211,8 @@ function extractControllerMappings(file) {
   if (!classMatch) return []
   const [, classPrefix, className] = classMatch
   const mappings = []
-  const mappingPattern =
-    /@(PostMapping|GetMapping)\(\s*"([^"]*)"\s*\)([\s\S]*?)(?=@PostMapping|@GetMapping|$)/g
+  const mappingPattern
+    = /@(PostMapping|GetMapping)\(\s*"([^"]*)"\s*\)([\s\S]*?)(?=@PostMapping|@GetMapping|$)/g
   let mappingMatch = mappingPattern.exec(sourceText)
   while (mappingMatch !== null) {
     const currentMapping = mappingMatch

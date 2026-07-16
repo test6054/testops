@@ -646,8 +646,9 @@ async function loadSignatures(): Promise<void> {
   loadFailed.value = false
   try {
     await loadSignaturePage()
-  } catch {
+  } catch (error) {
     loadFailed.value = true
+    showUserError(error, '题目签名列表加载失败')
   }
 }
 
@@ -798,7 +799,7 @@ async function handleExtract(): Promise<void> {
       examId: selectedExamId.value,
       layoutQuestionId: experienceFilterForm.layoutQuestionId,
     })
-    message.success('AI 经验已提取')
+    message.success('智能经验已提取')
     await Promise.all([loadExperiences(), loadExperienceStats()])
     await refreshSnapshot()
   } catch (error) {
@@ -909,7 +910,7 @@ async function handleGenerateCluster(): Promise<void> {
       examId: selectedExamId.value,
       layoutQuestionId: clusterFilterForm.layoutQuestionId,
     })
-    message.success('AI 答案聚类已完成')
+    message.success('智能答案聚类已完成')
     await refreshSnapshot()
   } catch (error) {
     showUserError(error, '答案聚类分析生成失败')

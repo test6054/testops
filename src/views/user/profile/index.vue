@@ -245,14 +245,18 @@ function handleLogout() {
 }
 
 onMounted(() => {
-  notificationStore.loadUnreadCount().catch(() => {})
+  notificationStore.loadUnreadCount().catch((error) => {
+    showUserError(error, '未读消息数加载失败')
+  })
 })
 
 onActivated(() => {
   void userStore.getInfo(true).catch((error) => {
     showUserError(error, '个人信息刷新失败')
   })
-  void notificationStore.loadUnreadCount().catch(() => {})
+  void notificationStore.loadUnreadCount().catch((error) => {
+    showUserError(error, '未读消息数加载失败')
+  })
 })
 </script>
 

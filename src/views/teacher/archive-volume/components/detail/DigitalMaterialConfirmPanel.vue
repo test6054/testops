@@ -14,7 +14,7 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { ArchiveMaterialDeliveryModeCode } from '@/types/enums/archive-material-delivery-mode-enum'
 import { ArchiveMaterialSubmissionStatusCode } from '@/types/enums/archive-material-submission-status-enum'
 import { ArchiveVolumeSourceTypeCode } from '@/types/enums/archive-volume-source-type-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const props = defineProps<{
@@ -72,7 +72,7 @@ function toggleAll(checked: boolean) {
 
 async function handleConfirm() {
   if (selectedIds.value.length === 0) {
-    message.warning('请勾选待确认电子材料')
+    showFormValidationMessage('请勾选待确认电子材料')
     return
   }
   confirming.value = true
@@ -85,7 +85,7 @@ async function handleConfirm() {
     selectedIds.value = []
     emit('refreshed')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '确认电子材料失败')
   } finally {
     confirming.value = false
   }

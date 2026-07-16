@@ -54,9 +54,9 @@
       />
       <UiAlertStrip
         v-if="
-          isArchiveGateVisible('fourProperty') &&
-          !detail.latestFourPropertyCheck &&
-          detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
+          isArchiveGateVisible('fourProperty')
+            && !detail.latestFourPropertyCheck
+            && detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
         "
         tone="warning"
         title="尚未执行四性检测"
@@ -90,20 +90,11 @@
         </template>
       </UiAlertStrip>
       <UiAlertStrip
-        v-else-if="isArchiveGateVisible('fourProperty') && showReliabilityFourPropertyAlert"
-        tone="warning"
-        title="四性检测: 可靠性未通过"
-        :description="reliabilityFourPropertyDescription"
-        dense
-        inline
-        class="archive-volume-detail__alert"
-      />
-      <UiAlertStrip
         v-else-if="
-          isArchiveGateVisible('fourProperty') &&
-          detail.latestFourPropertyCheck &&
-          !detail.latestFourPropertyCheck.overallPassed &&
-          detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
+          isArchiveGateVisible('fourProperty')
+            && detail.latestFourPropertyCheck
+            && !detail.latestFourPropertyCheck.overallPassed
+            && detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
         "
         tone="warning"
         title="四性检测未通过"
@@ -150,8 +141,8 @@
           </UiButton>
           <UiButton
             v-if="
-              canAdvanceRemediation &&
-              focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.OPEN
+              canAdvanceRemediation
+                && focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.OPEN
             "
             size="sm"
             variant="outline"
@@ -162,8 +153,8 @@
           </UiButton>
           <UiButton
             v-if="
-              canAdvanceRemediation &&
-              focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
+              canAdvanceRemediation
+                && focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
             "
             size="sm"
             variant="outline"
@@ -249,11 +240,11 @@
           >
             任务设置
           </UiButton>
-          <UiButton variant="ghost" size="sm" @click="setActiveTab('ocr-search')"
-            >卷内检索</UiButton
-          >
+          <UiButton variant="ghost" size="sm" @click="setActiveTab('ocr-search')">
+            卷内检索
+          </UiButton>
           <UiButton
-            v-if="detailScope.canRunIntegrityCheck"
+            v-if="canRunIntegrityCheck"
             variant="outline"
             size="sm"
             :loading="checkingIntegrity"
@@ -394,6 +385,8 @@
           :displayed-integrity-result="displayedIntegrityResult"
           :displayed-four-property="displayedFourProperty"
           :checking-integrity="checkingIntegrity"
+          :can-run-integrity="canRunIntegrityCheck"
+          :can-run-four-property="canRunFourPropertyCheck"
           :can-allow-material-delay="canAllowMaterialDelay"
           :can-waive-material-missing="canWaiveMaterialMissing"
           :can-waive-integrity="canWaiveIntegrity"
@@ -533,6 +526,11 @@ import type {
   ArchiveVolumeDetailResponse,
   ArchiveVolumeSubmitChecklistItemVO,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import {
   ARCHIVE_REMEDIATION_STATUS_TONE,
   ArchiveIntegrityStatusCode,
@@ -550,11 +548,6 @@ import {
   submitArchiveVolume,
   updateRemediationTask,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
 import ArchiveLifecyclePipe from '@/components/archive-volume/ArchiveLifecyclePipe.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -583,7 +576,7 @@ import {
   remediationCreatorLabel,
 } from '@/utils/archive-remediation-display'
 import { isArchiveDueOverdue } from '@/utils/archive-volume-list-ui'
-import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ArchiveCollectionRejectDialog from '@/views/teacher/archive-volume/components/ArchiveCollectionRejectDialog.vue'
@@ -704,18 +697,19 @@ const securityFourPropertyDescription = computed(() =>
   resolveSecurityDiagnosticMessage(displayedFourProperty.value),
 )
 
-const showReliabilityFourPropertyAlert = computed(() => {
+const canRunIntegrityCheck = computed(() => {
   const d = detail.value
-  const check = displayedFourProperty.value
-  if (!d || !check || d.fourPropertyStale) return false
-  if (check.securityPassed === false) return false
-  return check.reliabilityPassed === false
+  if (!d || d.canManageMaterials !== true) return false
+  return d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING || d.hasOpenRemediationTask === true
 })
 
-const reliabilityFourPropertyDescription = computed(() => {
-  const diagnostic = displayedFourProperty.value?.diagnostic?.trim()
-  if (diagnostic) return diagnostic
-  return '存储可靠性校验未通过，请补正材料后重新执行四性检测'
+const canRunFourPropertyCheck = computed(() => {
+  const d = detail.value
+  if (!d) return false
+  if (d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING) {
+    return d.canManageMaterials === true
+  }
+  return d.volume.volumeStatus === ArchiveVolumeStatusCode.SUBMITTED && canReviewTransfer.value
 })
 
 const canConfirmScoreCompletion = computed(() => {
@@ -723,10 +717,10 @@ const canConfirmScoreCompletion = computed(() => {
   if (!d) return false
   const vol = d.volume
   if (!detailScope.volumeAcceptsScoreCompletion(vol.volumeStatus)) return false
-  const canManageScores =
-    detailScope.capabilities.canManageMaterials === true ||
-    detailScope.capabilities.canSubmitVolume === true ||
-    detailScope.capabilities.canManageCollaborators === true
+  const canManageScores
+    = detailScope.capabilities.canManageMaterials === true
+      || detailScope.capabilities.canSubmitVolume === true
+      || detailScope.capabilities.canManageCollaborators === true
   if (!canManageScores) return false
   if (vol.scoreSource !== ArchiveScoreSourceCode.OFFLINE_CONFIRMED) {
     return false
@@ -769,14 +763,14 @@ const showAppraisalGuidanceStrip = computed(() => {
 })
 
 /** 归档条件闸门：只置顶一条「下一必做」，其余折叠，避免迎检告警墙。 */
-type ArchiveGateKey =
-  | 'checklistFail'
-  | 'grantsFail'
-  | 'remediation'
-  | 'appraisal'
-  | 'integrity'
-  | 'fourProperty'
-  | 'scoreSubmit'
+type ArchiveGateKey
+  = | 'checklistFail'
+    | 'grantsFail'
+    | 'remediation'
+    | 'appraisal'
+    | 'integrity'
+    | 'fourProperty'
+    | 'scoreSubmit'
 
 const ARCHIVE_GATE_LABEL: Record<ArchiveGateKey, string> = {
   checklistFail: '待办清单加载失败',
@@ -802,11 +796,11 @@ const showFourPropertyGate = computed(() => {
     return true
   }
   if (d.fourPropertyStale) return true
-  if (showSecurityFourPropertyAlert.value || showReliabilityFourPropertyAlert.value) return true
+  if (showSecurityFourPropertyAlert.value) return true
   return (
-    !!d.latestFourPropertyCheck &&
-    !d.latestFourPropertyCheck.overallPassed &&
-    d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
+    !!d.latestFourPropertyCheck
+    && !d.latestFourPropertyCheck.overallPassed
+    && d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
   )
 })
 
@@ -875,8 +869,8 @@ const remediationOpenDescription = computed(() => {
   const d = detail.value
   if (task) {
     if (
-      task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED &&
-      task.assigneeUserId === currentUserId.value
+      task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED
+      && task.assigneeUserId === currentUserId.value
     ) {
       return '材料已重提，等待院系协调人复检关闭'
     }
@@ -898,18 +892,18 @@ const remediationOpenDescription = computed(() => {
       )
     }
     if (
-      d?.hasBlockingRemediationForSubmit &&
-      d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING &&
-      detailScope.canSubmitVolume
+      d?.hasBlockingRemediationForSubmit
+      && d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
+      && detailScope.canSubmitVolume
     ) {
       parts.push('须关闭整改任务后再提交归档')
     }
     return parts.join(' · ')
   }
   if (
-    d?.hasBlockingRemediationForSubmit &&
-    d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING &&
-    detailScope.canSubmitVolume
+    d?.hasBlockingRemediationForSubmit
+    && d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
+    && detailScope.canSubmitVolume
   ) {
     return '存在未关闭整改任务，须关闭后再提交归档'
   }
@@ -986,9 +980,9 @@ const canReviewScanBatches = computed(() => detailScope.capabilities.canReviewSc
 const canAdvanceRemediation = computed(() => {
   const task = focusedRemediationTask.value
   if (
-    !task ||
-    task.taskStatus === ArchiveRemediationStatusCode.CLOSED ||
-    task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED
+    !task
+    || task.taskStatus === ArchiveRemediationStatusCode.CLOSED
+    || task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED
   ) {
     return false
   }
@@ -999,9 +993,9 @@ const canManageCoordinatorRemediation = computed(() => {
   const d = detail.value
   const task = focusedRemediationTask.value
   if (
-    !d?.hasOpenRemediationTask ||
-    !task ||
-    task.taskStatus === ArchiveRemediationStatusCode.CLOSED
+    !d?.hasOpenRemediationTask
+    || !task
+    || task.taskStatus === ArchiveRemediationStatusCode.CLOSED
   ) {
     return false
   }
@@ -1043,7 +1037,7 @@ async function loadDetail(options?: { silent?: boolean }) {
 async function handleMaterialOcrCompleted() {
   await loadDetail({ silent: true })
   if (detail.value?.fourPropertyStale) {
-    message.info('OCR 已完成，请重新执行完整性/四性检测')
+    message.info('文字识别已完成，请重新执行完整性/四性检测')
   }
 }
 
@@ -1054,7 +1048,7 @@ async function runIntegrityCheck() {
     message.success('完整性检查完成')
     await loadDetail()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '完整性检查失败')
   } finally {
     checkingIntegrity.value = false
   }
@@ -1067,7 +1061,7 @@ async function handleStartCollecting() {
     message.success('已开始收材')
     await loadDetail()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '开始收材失败')
   } finally {
     startingCollecting.value = false
   }
@@ -1085,7 +1079,7 @@ async function executeSubmit(overdueReason?: string) {
     overdueSubmitReason.value = ''
     await loadDetail()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '提交归档失败')
   } finally {
     submitting.value = false
   }
@@ -1113,7 +1107,7 @@ async function handleSubmit() {
 async function confirmOverdueSubmit() {
   const reason = overdueSubmitReason.value.trim()
   if (!reason) {
-    message.warning('请填写逾期提交说明')
+    showFormValidationMessage('请填写逾期提交说明')
     return
   }
   await executeSubmit(reason)
@@ -1124,13 +1118,13 @@ async function handleExport() {
   try {
     const result = await exportArchiveVolume(volumeId.value)
     if (!result.exportFileId) {
-      message.error('导出未返回文件 ID')
+      showUserError(null, '导出未返回文件编号')
       return
     }
     await downloadFile({ nodeId: result.exportFileId })
     message.success(`导出完成，材料 ${result.materialCount ?? 0} 项`)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出归档卷失败')
   } finally {
     exporting.value = false
   }
@@ -1174,7 +1168,7 @@ async function advanceRemediation(taskStatus: ArchiveRemediationStatusCode) {
     message.success('整改任务已更新')
     await loadDetail({ silent: true })
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '更新整改任务失败')
   } finally {
     remediationUpdating.value = false
   }
@@ -1252,7 +1246,7 @@ watch(
         submitBlockingItems.value,
       )
       if (reason) {
-        message.warning(reason)
+        showFormValidationMessage(reason)
       }
       clearSubmitIntentQuery()
       return

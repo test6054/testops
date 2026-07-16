@@ -973,8 +973,13 @@ export function reassignRecycledMarkingTask(
  */
 export function pageMarkingTasks(
   request: MarkingTaskQueryRequest,
+  config?: import('@/config/axios/types').ExtendedAxiosRequestConfig,
 ): Promise<PageResult<MarkingTaskResponse>> {
-  return http.post<PageResult<MarkingTaskResponse>>('/api/mark/organization/task/list', request)
+  return http.post<PageResult<MarkingTaskResponse>>(
+    '/api/mark/organization/task/list',
+    request,
+    config,
+  )
 }
 
 /** 单任务详情查询请求 - 对应后端 MarkingTaskDetailQueryRequest */

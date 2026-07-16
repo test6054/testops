@@ -577,17 +577,24 @@ service.interceptors.response.use(
       return Promise.reject(error)
     }
 
-    // 统一处理其他错误（网络错误、系统错误等）
+    // 统一处理其他错误：网络 / 5xx / 业务 4xx（含 HTTP 404）
+    // 禁止把接口失败导到前端路由 404 页；只右上角 Message，页面继续渲染。
     if (!authRuntimeState.authFailed) {
       const errorStatusCode = response?.status || 0
       const isNetworkError = !response
+      const extendedConfig = error.config ? runtimeRequestConfig(error.config) : undefined
+      const skipErrorHandler = extendedConfig?.skipErrorHandler === true
+      const suppressErrorMessage = extendedConfig?.showErrorMessage === false
+      // 401 已在上方鉴权分支处理；此处覆盖 4xx/5xx/网络，避免静默失败
+      const shouldToastHttpError = isNetworkError
+        || (errorStatusCode > 0 && errorStatusCode !== 401)
 
-      if (isNetworkError || errorStatusCode >= 500) {
-        if (!shouldSuppressKioskPreActivationAxiosError(error)) {
+      if (shouldToastHttpError) {
+        if (!skipErrorHandler && !suppressErrorMessage && !shouldSuppressKioskPreActivationAxiosError(error)) {
           handleAxiosError(error, {
             showMessage: shouldShowError(errorStatusCode),
-            useNotification: shouldUseNotification(errorStatusCode, isNetworkError)
-          });
+            useNotification: shouldUseNotification(errorStatusCode, isNetworkError),
+          })
         }
         const interceptorError: InterceptorError = error
         markInterceptorHandled(interceptorError)

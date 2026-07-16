@@ -126,7 +126,7 @@ async function loadPlans() {
     plans.value = page.list
     planTotal.value = page.total
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '现场考查计划列表加载失败')
   } finally {
     loading.value = false
   }
@@ -145,7 +145,7 @@ async function selectPlan(id: string) {
     checklistPageNum.value = 1
     await loadChecklistItems()
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '现场考查计划详情加载失败')
   }
 }
 
@@ -168,7 +168,7 @@ async function loadChecklistItems() {
   } catch (e) {
     checklistRows.value = []
     checklistTotal.value = 0
-    showUserError(e)
+    showUserError(e, '现场考查检查清单加载失败')
   } finally {
     checklistLoading.value = false
   }
@@ -259,14 +259,14 @@ async function submitPlan() {
       if (selectedPlan.value?.id === form.id) await selectPlan(form.id)
     } else {
       const id = await accreditationApi.createOnsitePlan(request)
-      message.success('已创建考查计划并预置 10 项 CEEAA 检查清单')
+      message.success('已创建考查计划并预置十项工程教育认证检查清单')
       await selectPlan(id)
     }
     drawerOpen.value = false
     await loadPlans()
     emit('refresh')
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '现场考查计划保存失败')
   }
 }
 
@@ -283,7 +283,7 @@ async function removePlan(id: string) {
     await loadPlans()
     emit('refresh')
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '现场考查计划删除失败')
   }
 }
 
@@ -335,7 +335,7 @@ async function submitChecklistItem() {
     await loadPlans()
     emit('refresh')
   } catch (e) {
-    showUserError(e)
+    showUserError(e, '现场考查检查项更新失败')
   }
 }
 

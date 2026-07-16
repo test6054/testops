@@ -198,9 +198,9 @@
           <template #bodyCell="{ column, record: item }">
             <ExamQuestionIdentityCells
               v-if="
-                column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.questionType ||
-                column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.questionStem ||
-                column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.fullScore
+                column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.questionType
+                  || column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.questionStem
+                  || column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.fullScore
               "
               :column-key="String(column.key)"
               :record="item"
@@ -252,27 +252,27 @@ import type {
   ExamLayoutQuestionViewResponse,
   ExamTemplateResponse,
 } from '@/apis/mark/exam-layout-question'
-import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import type {
   ExamQuestionAnalysisRecordResponse,
   QuestionAnalysisListQueryRequest,
 } from '@/apis/mark/question-analysis'
+import type { UiDataTableColumn } from '@/components/ui-guide/ui/data-table'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { computed, ref, watch } from 'vue'
+import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import {
   generateAllQuestionAnalysis,
   generateQuestionAnalysis,
   loadQuestionAnalysisChartRows,
   pageQuestionAnalysis,
 } from '@/apis/mark/question-analysis'
-import type { UiDataTableColumn } from '@/components/ui-guide/ui/data-table'
-import { buildNumericColumn } from '@/components/ui-guide/ui/data-table'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { computed, ref, watch } from 'vue'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkScatterSection from '@/components/chart/MarkScatterSection.vue'
 import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.vue'
 import ExamQuestionIdentityCells from '@/components/mark/analysis/ExamQuestionIdentityCells.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import { buildNumericColumn } from '@/components/ui-guide/ui/data-table'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
@@ -325,7 +325,7 @@ const generatingId = ref<string>('')
 const selectedLayoutQuestionId = ref<string>()
 const questionLoading = ref(false)
 const questionOptions = ref<
-  Array<{ value: string; label: string; disabled?: boolean; title?: string }>
+  Array<{ value: string, label: string, disabled?: boolean, title?: string }>
 >([])
 const layoutSummary = ref<ExamTemplateResponse | null>(null)
 const layoutRoiGap = computed(() => {
@@ -497,7 +497,7 @@ async function reload(): Promise<void> {
   await Promise.all([loadChartRows(), loadTablePage(1, tablePageSize.value)])
 }
 
-function handleTablePageChange(event: { current: number; pageSize: number }): void {
+function handleTablePageChange(event: { current: number, pageSize: number }): void {
   void loadTablePage(event.current, event.pageSize)
 }
 
@@ -523,8 +523,8 @@ async function loadQuestionOptions(): Promise<void> {
     }
     questionOptions.value = buildExamLayoutQuestionOptions(template.questions)
     if (
-      selectedLayoutQuestionId.value &&
-      !template.questions.some(
+      selectedLayoutQuestionId.value
+      && !template.questions.some(
         (q) => q.layoutQuestionId === selectedLayoutQuestionId.value && q.roiReady,
       )
     ) {
@@ -587,9 +587,9 @@ async function handleGenerateOne(layoutQuestionId: string): Promise<void> {
       successMessage: '已重新生成',
       onSuccess: async () => {
         await reload()
-        const matched =
-          tableRows.value.find((item) => item.layoutQuestionId === layoutQuestionId) ??
-          chartRows.value.find((item) => item.layoutQuestionId === layoutQuestionId)
+        const matched
+          = tableRows.value.find((item) => item.layoutQuestionId === layoutQuestionId)
+            ?? chartRows.value.find((item) => item.layoutQuestionId === layoutQuestionId)
         generationSummary.value = matched
           ? `已生成题 ${matched.questionNo} 的质量分析，可查看难度、区分度与正确率。`
           : '已生成该题质量分析，可查看难度、区分度与正确率。'

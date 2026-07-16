@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDualTeacherApplicationStatusCode } from '@/apis/portfolio/enums'
-import { PortfolioDualTeacherApplicationStatusDescription } from '@/apis/portfolio/enums'
 import type { PortfolioDualTeacherAnalyticsVO } from '@/apis/portfolio/teacher-platform'
-import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import { onMounted, ref } from 'vue'
+import { PortfolioDualTeacherApplicationStatusDescription } from '@/apis/portfolio/enums'
+import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -54,7 +54,7 @@ async function loadStats() {
       return
     }
     loadFailed.value = true
-    showUserError(error)
+    showUserError(error, '加载双师认定统计失败')
   } finally {
     if (requestToken.value === currentToken) {
       loading.value = false

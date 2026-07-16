@@ -23,10 +23,10 @@
 
 <script setup lang="ts">
 import type { ArchiveVolumeDetailResponse } from '@/apis/mark/archive-volume'
-import { exportArchiveVolumeEvents } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
 import { ref } from 'vue'
 import { downloadFile } from '@/apis/edu/file-management'
+import { exportArchiveVolumeEvents } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -46,13 +46,13 @@ async function handleExport() {
   try {
     const result = await exportArchiveVolumeEvents(props.volumeId)
     if (!result.exportFileId) {
-      message.error('导出未返回文件 ID')
+      showUserError(null, '导出未返回文件编号')
       return
     }
     await downloadFile({ nodeId: result.exportFileId })
     message.success(`审计日志已导出，共 ${result.eventCount ?? 0} 条`)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出审计日志失败')
   } finally {
     exporting.value = false
   }

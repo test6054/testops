@@ -1,21 +1,21 @@
 <script setup lang="ts">
 import type { Dayjs } from 'dayjs'
-import dayjs from 'dayjs'
 import type {
   ArchiveVolumeDetailResponse,
   ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import dayjs from 'dayjs'
+import { computed, ref, watch } from 'vue'
 import {
   ArchiveMaterialSubmissionStatusCode,
   ArchiveMaterialTypeDescription,
   ArchiveSecurityLevelDescription,
   updateArchiveVolumeTaskSettings,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { computed, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ArchiveVolumeCollaboratorStrip from '@/views/teacher/archive-volume/components/ArchiveVolumeCollaboratorStrip.vue'
@@ -31,7 +31,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'manage-collaborators': []
   'open-materials': []
-  updated: []
+  "updated": []
 }>()
 
 const saving = ref(false)
@@ -84,12 +84,12 @@ watch(
 
 async function saveArchiveDueTime(): Promise<void> {
   if (!dueEditValue.value?.isValid()) {
-    message.warning('请选择归档截止时刻')
+    showFormValidationMessage('请选择归档截止时刻')
     return
   }
   const reason = dueReason.value.trim()
   if (!reason) {
-    message.warning('请填写覆盖原因')
+    showFormValidationMessage('请填写覆盖原因')
     return
   }
   saving.value = true

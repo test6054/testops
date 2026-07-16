@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioExpertAssignmentVO } from '@/apis/portfolio/expert-assignment'
-import { portfolioExpertAssignmentApi } from '@/apis/portfolio/expert-assignment'
 import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
-import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { portfolioExpertAssignmentApi } from '@/apis/portfolio/expert-assignment'
+import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
@@ -25,7 +25,7 @@ import {
   PortfolioExpertAssignmentStatusCode,
   PortfolioExpertAssignmentStatusDescription,
 } from '@/types/enums/portfolio-expert-assignment-status-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const router = useRouter()
@@ -79,9 +79,9 @@ const filterFields = computed(() => [
   {
     key: 'expertUserId',
     type: 'input' as const,
-    label: '专家用户 ID',
+    label: '专家用户编号',
     width: 160,
-    placeholder: '用户 ID',
+    placeholder: '用户编号',
   },
   {
     key: 'assignmentStatus',
@@ -105,7 +105,7 @@ const createForm = reactive({
   evaluationTaskId: '',
   expertUserId: '',
   subjectTeacherIdsText: '',
-  materialScopeJson: '{"categories":["TEACHING","RESEARCH"]}',
+  materialScopeJson: '{"categoryCodes":[]}',
   expireDays: 30,
   maskRequired: true,
 })
@@ -114,7 +114,7 @@ const columns: ColumnsType = [
   { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
   { title: '评价任务', dataIndex: 'evaluationTaskId', key: 'evaluationTaskId', width: 120 },
   { title: '专家用户', dataIndex: 'expertUserId', key: 'expertUserId', width: 120 },
-  { title: '被评教师', key: 'subjectTeacherIdsJson', width: 180, ellipsis: true },
+  { title: '被评教师', key: 'subjectTeacherIds', width: 180, ellipsis: true },
   { title: '脱敏', key: 'maskRequired', width: 80 },
   { title: '状态', key: 'assignmentStatus', width: 100 },
   { title: '过期时间', dataIndex: 'expireTime', key: 'expireTime', width: 170 },
@@ -174,16 +174,39 @@ function buildRowActions(row: PortfolioExpertAssignmentVO) {
   ]
 }
 
-function buildPublicReviewUrl(accessToken: string): string {
+function buildPublicReviewUrl(accessToken: string): string | null {
   const tenantId = userStore.userInfo.tenantId
   if (!tenantId) {
-    throw new Error('当前会话缺少 tenantId，无法生成免登链接')
+    showUserError(null, '当前登录会话缺少学校信息，无法生成免登链接，请重新登录后再试')
+    return null
   }
   const params = new URLSearchParams({
     tenantId: String(tenantId),
     accessToken,
   })
   return `${window.location.origin}/portfolio/public/expert-review#${params.toString()}`
+}
+
+/** 材料范围 JSON 校验：失败只 toast，不 throw */
+function parseMaterialScopeJson(raw: string): string | null {
+  const trimmed = raw.trim()
+  if (!trimmed) {
+    showFormValidationMessage('请填写材料范围结构化文本（材料分类编码列表）')
+    return null
+  }
+  let materialScope: unknown
+  try {
+    materialScope = JSON.parse(trimmed)
+  }
+  catch {
+    showFormValidationMessage('材料范围结构化文本格式不正确，请检查括号与引号后重试')
+    return null
+  }
+  if (!materialScope || typeof materialScope !== 'object' || Array.isArray(materialScope)) {
+    showFormValidationMessage('材料范围须为结构化文本对象，请按材料分类编码列表填写')
+    return null
+  }
+  return JSON.stringify(materialScope)
 }
 
 async function copyCreatedPublicLink() {
@@ -265,7 +288,7 @@ async function loadPage() {
     failLoad()
     rows.value = []
     total.value = 0
-    showUserError(error, '加载失败')
+    showUserError(error, '加载外部专家授权列表失败')
   } finally {
     if (pageRequestToken.value === currentToken) loading.value = false
   }
@@ -276,7 +299,7 @@ function onSearch() {
   void loadPage()
 }
 
-function onPageChange(page: { current: number; pageSize: number }) {
+function onPageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   void loadPage()
@@ -295,19 +318,12 @@ function openCreateModal() {
 
 async function submitCreate() {
   const subjectTeacherIds = [...new Set(parseSubjectTeacherIds(createForm.subjectTeacherIdsText))]
-  if (!createForm.evaluationTaskId || !createForm.expertUserId || subjectTeacherIds.length === 0) {
-    message.warning('请填写评价任务、专家用户和至少一名被评教师')
+  if (!createForm.evaluationTaskId || !createForm.expertUserId.trim() || subjectTeacherIds.length === 0) {
+    showFormValidationMessage('请填写评价任务、专家用户和至少一名被评教师')
     return
   }
-  let materialScopeJson: string
-  try {
-    const materialScope: unknown = JSON.parse(createForm.materialScopeJson.trim())
-    if (!materialScope || typeof materialScope !== 'object' || Array.isArray(materialScope)) {
-      throw new Error('material-scope-not-object')
-    }
-    materialScopeJson = JSON.stringify(materialScope)
-  } catch {
-    message.warning('材料范围必须是 JSON 对象')
+  const materialScopeJson = parseMaterialScopeJson(createForm.materialScopeJson)
+  if (!materialScopeJson) {
     return
   }
   const operation = 'assignment:create'
@@ -323,16 +339,25 @@ async function submitCreate() {
   try {
     const created = await portfolioExpertAssignmentApi.create(request)
     if (!created.accessToken) {
-      throw new Error('创建响应缺少一次性访问令牌')
+      showUserError(null, '授权已创建，但未返回一次性访问令牌，请刷新列表后重试或联系管理员')
+      await loadPage()
+      return
     }
-    createdPublicLink.value = buildPublicReviewUrl(created.accessToken)
+    const publicLink = buildPublicReviewUrl(created.accessToken)
+    if (!publicLink) {
+      await loadPage()
+      return
+    }
+    createdPublicLink.value = publicLink
     createdLinkOpen.value = true
     message.success('已创建外部专家授权，请立即保存免登链接')
     createOpen.value = false
     await loadPage()
-  } catch (error) {
-    showUserError(error, '创建授权失败')
-  } finally {
+  }
+  catch (error) {
+    showUserError(error, '创建外部专家授权失败')
+  }
+  finally {
     endOperation(operation)
   }
 }
@@ -395,8 +420,8 @@ onMounted(async () => {
         @page-change="onPageChange"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'subjectTeacherIdsJson'">
-            {{ record.subjectTeacherIdsJson }}
+          <template v-if="column.key === 'subjectTeacherIds'">
+            {{ record.subjectTeacherIds?.join('、') }}
           </template>
           <template v-else-if="column.key === 'maskRequired'">
             <UiTag :tone="record.maskRequired ? 'blue' : 'gray'">
@@ -441,25 +466,25 @@ onMounted(async () => {
             :disabled="operating || taskLoadError"
           />
         </a-form-item>
-        <a-form-item label="专家用户 ID" required>
+        <a-form-item label="专家用户编号" required>
           <a-input
             v-model:value="createForm.expertUserId"
-            placeholder="外部专家平台用户 ID"
+            placeholder="外部专家平台用户编号"
             :disabled="operating"
           />
         </a-form-item>
-        <a-form-item label="被评教师 ID" required>
+        <a-form-item label="被评教师编号" required>
           <a-textarea
             v-model:value="createForm.subjectTeacherIdsText"
-            placeholder="多个 ID 用逗号或空格分隔"
+            placeholder="多个编号用逗号或空格分隔"
             :rows="3"
             :disabled="operating"
           />
         </a-form-item>
-        <a-form-item label="材料范围 JSON" required>
+        <a-form-item label="材料范围结构化文本" required>
           <a-textarea
             v-model:value="createForm.materialScopeJson"
-            placeholder="JSON，例如分类编码列表"
+            placeholder="结构化文本，例如分类编码列表"
             :rows="3"
             :disabled="operating"
           />

@@ -4,16 +4,16 @@ import type {
   PortfolioTeacherWorkbenchSummaryVO,
   PortfolioTodoSummaryVO,
 } from '@/apis/portfolio/types'
-import { PORTFOLIO_COMPLETENESS_LEVEL_TONE } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import {
   PortfolioCompletenessLevelDescription,
   PortfolioPortraitDimensionReadinessCode,
 } from '@/apis/portfolio/enums'
 import { portfolioTodoApi } from '@/apis/portfolio/todo'
+import { PORTFOLIO_COMPLETENESS_LEVEL_TONE } from '@/apis/portfolio/types'
 import PortfolioProgressCockpitBand from '@/components/portfolio/PortfolioProgressCockpitBand.vue'
 import PortfolioProgressCompareDrawer from '@/components/portfolio/PortfolioProgressCompareDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -34,7 +34,6 @@ import { ResultCode } from '@/types/enums/result-code'
 import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
-const route = useRoute()
 const router = useRouter()
 const { targetTeacherId, canPickTeachers, currentUserId } = usePortfolioPageScope()
 
@@ -76,8 +75,8 @@ const portraitDataInsufficient = computed(() => {
     return false
   }
   return (
-    portrait.value.officialRecordCount === 0 &&
-    portrait.value.dimensions.every(
+    portrait.value.officialRecordCount === 0
+    && portrait.value.dimensions.every(
       (item) => item.readiness === PortfolioPortraitDimensionReadinessCode.PENDING,
     )
   )
@@ -215,9 +214,9 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     ? { teacherId: targetTeacherId.value }
     : {}
   if (
-    item.archiveRecordId &&
-    (item.todoType === PortfolioTodoTypeCode.ARCHIVE_RETURNED ||
-      item.todoType === PortfolioTodoTypeCode.ARCHIVE_DRAFT)
+    item.archiveRecordId
+    && (item.todoType === PortfolioTodoTypeCode.ARCHIVE_RETURNED
+      || item.todoType === PortfolioTodoTypeCode.ARCHIVE_DRAFT)
   ) {
     query.recordId = item.archiveRecordId
   }
@@ -243,8 +242,8 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     return
   }
   if (
-    item.todoType === PortfolioTodoTypeCode.CORRECTION_REJECTED ||
-    item.todoType === PortfolioTodoTypeCode.CORRECTION_IN_PROGRESS
+    item.todoType === PortfolioTodoTypeCode.CORRECTION_REJECTED
+    || item.todoType === PortfolioTodoTypeCode.CORRECTION_IN_PROGRESS
   ) {
     if (item.categoryId) {
       query.categoryId = item.categoryId
@@ -256,8 +255,8 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     return
   }
   if (
-    item.todoType === PortfolioTodoTypeCode.GAP_PENDING ||
-    item.todoType === PortfolioTodoTypeCode.GAP_RETURNED
+    item.todoType === PortfolioTodoTypeCode.GAP_PENDING
+    || item.todoType === PortfolioTodoTypeCode.GAP_RETURNED
   ) {
     void router.push({
       path: `/portfolio/teacher/gap/${item.refId}`,
@@ -266,8 +265,8 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     return
   }
   if (
-    item.todoType === PortfolioTodoTypeCode.EVALUATION_MATERIAL_CONFIRM ||
-    item.todoType === PortfolioTodoTypeCode.EVALUATION_RETURNED_SUPPLEMENT
+    item.todoType === PortfolioTodoTypeCode.EVALUATION_MATERIAL_CONFIRM
+    || item.todoType === PortfolioTodoTypeCode.EVALUATION_RETURNED_SUPPLEMENT
   ) {
     void router.push({
       path: '/portfolio/teacher/evaluation',
@@ -290,8 +289,8 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     return
   }
   if (
-    item.todoType === PortfolioTodoTypeCode.DUAL_TEACHER_DRAFT ||
-    item.todoType === PortfolioTodoTypeCode.DUAL_TEACHER_RETURNED
+    item.todoType === PortfolioTodoTypeCode.DUAL_TEACHER_DRAFT
+    || item.todoType === PortfolioTodoTypeCode.DUAL_TEACHER_RETURNED
   ) {
     void router.push({ path: '/portfolio/scene/dual-teacher', query })
     return
@@ -392,8 +391,8 @@ function handleCockpitMetricClick(key: string, context?: { academicYear?: string
     void (async () => {
       const cachedGapTodo = todos.value.find(
         (item) =>
-          item.todoType === PortfolioTodoTypeCode.GAP_PENDING ||
-          item.todoType === PortfolioTodoTypeCode.GAP_RETURNED,
+          item.todoType === PortfolioTodoTypeCode.GAP_PENDING
+          || item.todoType === PortfolioTodoTypeCode.GAP_RETURNED,
       )
       if (cachedGapTodo) {
         openTodo(cachedGapTodo)
@@ -582,9 +581,9 @@ onUnmounted(() => {
         <UiButton size="sm" @click="goPortrait">教师画像</UiButton>
         <UiButton size="sm" @click="goCorrection">我的纠错</UiButton>
         <UiButton size="sm" @click="goOneTable">教师一张表</UiButton>
-        <UiButton v-if="canManageOwnPrivacy" size="sm" @click="goPrivacySettings"
-          >隐私设置</UiButton
-        >
+        <UiButton v-if="canManageOwnPrivacy" size="sm" @click="goPrivacySettings">
+          隐私设置
+        </UiButton>
       </div>
 
       <WorkbenchSurfaceCard class="teacher-home__status">
@@ -650,8 +649,8 @@ onUnmounted(() => {
                 </p>
                 <p
                   v-if="
-                    workbenchSummary.completenessPercent === 0 &&
-                    (workbenchSummary.requiredCategoryDone ?? 0) === 0
+                    workbenchSummary.completenessPercent === 0
+                      && (workbenchSummary.requiredCategoryDone ?? 0) === 0
                   "
                   class="teacher-home__onboarding"
                 >

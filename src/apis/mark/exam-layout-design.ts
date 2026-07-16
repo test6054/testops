@@ -20,6 +20,7 @@ export interface ExamLayoutRectNorm {
 }
 
 export interface ExamLayoutPageDto {
+  /** 页 ID；草稿为雪花临时 ID，保存后为库表主键（后端 Long） */
   id: string
   pageNo: number
   backgroundFileId: string
@@ -28,6 +29,7 @@ export interface ExamLayoutPageDto {
 }
 
 export interface ExamLayoutQuestionDto {
+  /** 题目 ID；草稿为雪花临时 ID，保存后为库表主键（后端 Long） */
   id: string
   questionNo: string
   normalizedQuestionNo?: string
@@ -57,10 +59,12 @@ export interface ExamLayoutQuestionAnswerDto {
 }
 
 export interface ExamLayoutBlockDto {
+  /** 布局块 ID；草稿为雪花临时 ID，保存后为库表主键（后端 Long） */
   id: string
   pageNo: number
   blockType: string
   layer?: number
+  /** 关联题目 ID；与 ExamLayoutQuestionDto.id 同源 */
   layoutQuestionId?: string
   identityAreaType?: string
   rectNorm: ExamLayoutRectNorm
@@ -68,6 +72,7 @@ export interface ExamLayoutBlockDto {
 }
 
 export interface ExamLayoutBlockOptionDto {
+  /** 填涂格 ID；草稿为雪花临时 ID，保存后为库表主键（后端 Long） */
   id: string
   blockId: string
   layoutQuestionId: string
@@ -154,7 +159,7 @@ export interface ExamLayoutGenerateQuestionRequest {
 
 export type { ExamLayoutDetectTaskStatusCode } from '@/types/enums/exam-layout-detect-task-status-enum'
 
-/** 制卷异步识别任务 UUID（32 位十六进制）；与 auto-detect 返回一致，非 exam/layout 等数据库主键 */
+/** 制卷异步识别任务雪花 ID；对应后端 Long，非业务表主键 */
 export type ExamLayoutDetectTaskId = string
 
 export interface ExamLayoutDetectCancelRequest {

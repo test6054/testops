@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
+import { computed } from 'vue'
 import {
   templateParamFieldsForRuleType,
   templateParamLabel,
 } from '@/utils/indicator-template-params'
-import { computed } from 'vue'
 
 const props = defineProps<{
   ruleType: string

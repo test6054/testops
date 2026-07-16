@@ -4,21 +4,21 @@ import type {
   PortfolioIndicatorEngineReadinessVO,
   PortfolioPublishImpactReportVO,
 } from '@/apis/portfolio/indicator-types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import {
   PF_SCENE_CODE_OPTIONS,
   PfIndicatorBusinessReferenceSceneDescription,
   PfSceneCode,
 } from '@/apis/portfolio/indicator-types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -96,7 +96,7 @@ async function enableAllIndicators() {
     message.success(`已启用 ${result.enabledCount} 项指标`)
     await loadReadiness()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '启用全部指标失败')
   } finally {
     endOperation(operation)
   }
@@ -119,7 +119,7 @@ async function runTrial() {
     step.value = 2
     message.success('试算通过')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '指标试算失败')
   } finally {
     endOperation(operation)
   }
@@ -163,7 +163,7 @@ function readOptionalNumber(
 
 async function runImpactPreview() {
   if (!trialPassed.value || workflowSceneCode.value !== sceneCode.value) {
-    message.warning('请先对当前场景执行并通过试算')
+    showFormValidationMessage('请先对当前场景执行并通过试算')
     resetWorkflow()
     return
   }
@@ -192,7 +192,7 @@ async function runImpactPreview() {
     impactReportId.value = ''
     impactReport.value = null
     impactSummary.value = null
-    showUserError(error)
+    showUserError(error, '生成影响分析失败')
   } finally {
     endOperation(operation)
   }
@@ -203,17 +203,17 @@ async function publish() {
   const targetAcademicYear = academicYear.value.trim()
   const targetImpactReportId = impactReportId.value
   if (
-    !trialPassed.value ||
-    workflowSceneCode.value !== targetSceneCode ||
-    !targetImpactReportId ||
-    !impactReport.value
+    !trialPassed.value
+    || workflowSceneCode.value !== targetSceneCode
+    || !targetImpactReportId
+    || !impactReport.value
   ) {
-    message.warning('当前场景尚未完成试算和影响分析')
+    showFormValidationMessage('当前场景尚未完成试算和影响分析')
     resetWorkflow()
     return
   }
   if (!/^\d{4}-\d{4}$/.test(targetAcademicYear)) {
-    message.warning('学年格式应为 YYYY-YYYY')
+    showFormValidationMessage('学年格式应为四位年起止年，中间用短横线连接')
     return
   }
   const operation = 'publish'
@@ -234,10 +234,10 @@ async function publish() {
       impactReportId: targetImpactReportId,
       academicYear: targetAcademicYear,
     })
-    message.success(`发布成功，快照 ID：${snapshotId}`)
+    message.success('发布成功')
     await router.push({ name: 'PortfolioIndicatorHistory' })
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '发布指标模型失败')
   } finally {
     endOperation(operation)
   }
@@ -257,7 +257,7 @@ async function exportImpact() {
     await downloadPortfolioIndicatorExcelExport(result)
     message.success('影响报告已导出')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '导出影响报告失败')
   } finally {
     endOperation(operation)
   }
@@ -274,10 +274,8 @@ onMounted(loadReadiness)
     <UiCard title="指标工程贯通">
       <p v-if="readinessError" class="readiness-error">{{ readinessError }}</p>
       <div v-if="readiness" class="readiness">
-        <span
-          >已启用 {{ readiness.enabledIndicatorCount }} /
-          {{ readiness.platformIndicatorCount }}</span
-        >
+        <span>已启用 {{ readiness.enabledIndicatorCount }} /
+          {{ readiness.platformIndicatorCount }}</span>
         <span
           v-for="scene in readiness.sceneStatuses"
           :key="scene.referenceScene"
@@ -341,7 +339,7 @@ onMounted(loadReadiness)
         </UiButton>
       </div>
       <div v-else class="actions">
-        <p>影响报告 ID：{{ impactReportId }}</p>
+        <p>影响报告编号：{{ impactReportId }}</p>
         <UiCard v-if="impactSummary" title="影响摘要" class="impact-summary-card">
           <div class="impact-summary">
             <span>草稿指标 {{ impactSummary.draftIndicatorCount ?? 0 }}</span>
@@ -352,7 +350,7 @@ onMounted(loadReadiness)
           </div>
         </UiCard>
         <a-collapse v-if="impactReport?.indicatorSummaryJson" ghost class="impact-json-collapse">
-          <a-collapse-panel key="raw-json" header="查看原始 JSON">
+          <a-collapse-panel key="raw-json" header="查看原始结构化文本">
             <pre class="impact-json">{{ impactReport.indicatorSummaryJson }}</pre>
           </a-collapse-panel>
         </a-collapse>

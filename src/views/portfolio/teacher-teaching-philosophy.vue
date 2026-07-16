@@ -4,9 +4,9 @@ import type {
   PortfolioTeachingPhilosophySaveRequest,
   PortfolioTeachingPhilosophyVO,
 } from '@/apis/portfolio/teaching-philosophy'
-import { portfolioTeachingPhilosophyApi } from '@/apis/portfolio/teaching-philosophy'
 import { Form, Input, message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
+import { portfolioTeachingPhilosophyApi } from '@/apis/portfolio/teaching-philosophy'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -18,7 +18,7 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 
@@ -81,7 +81,7 @@ async function loadList() {
     }
     rows.value = []
     loadFailed.value = true
-    showUserError(error)
+    showUserError(error, '加载教学理念失败')
   } finally {
     if (requestToken.value === currentToken) {
       loading.value = false
@@ -91,7 +91,7 @@ async function loadList() {
 
 function openModal(row?: PortfolioTeachingPhilosophyVO) {
   if (readonlyMode.value) {
-    message.warning('管理员查看模式下不可编辑教学理念')
+    showFormValidationMessage('管理员查看模式下不可编辑教学理念')
     return
   }
   editing.value = row || null
@@ -114,7 +114,7 @@ async function save() {
     modalOpen.value = false
     await loadList()
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '保存教学理念失败')
   } finally {
     saving.value = false
   }
@@ -141,7 +141,7 @@ async function remove(row: PortfolioTeachingPhilosophyVO) {
     await loadList()
   } catch (error) {
     if (requestToken.value !== operationToken) return
-    showUserError(error)
+    showUserError(error, '删除教学理念失败')
   } finally {
     if (deletingId.value === row.id) deletingId.value = ''
   }

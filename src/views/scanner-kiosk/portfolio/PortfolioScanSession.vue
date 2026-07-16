@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { message } from 'ant-design-vue'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ScannerColorModeCode, ScannerDuplexModeCode } from '@/apis/mark/exam-mark-scanner'
@@ -8,6 +7,8 @@ import { ScanWorkOrderStatusDescription } from '@/apis/mark/scanner-work-order'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { ScanWorkOrderStatusCode } from '@/types/enums/scan-work-order-status-enum'
+import { showFormValidationMessage } from '@/utils/error-handler'
+import { message } from '@/utils/feedback'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import DocumentKioskActivationGate from '../components/DocumentKioskActivationGate.vue'
 import { useDispatchLeaseLostSessionGuard } from '../composables/useDispatchLeaseLostSessionGuard'
@@ -76,7 +77,7 @@ const portfolioWorkOrderBlockedMessage = computed(() => {
 })
 
 function handleLeaseLost() {
-  message.warning(leaseLostMessage)
+  showFormValidationMessage(leaseLostMessage)
 }
 
 function returnToDispatchQueue(scanCommitted: boolean) {
@@ -241,7 +242,7 @@ async function tryAutoResumeScan() {
 
 async function handleStart() {
   if (lease.leaseLost.value) {
-    message.warning(leaseLostMessage)
+    showFormValidationMessage(leaseLostMessage)
     return
   }
   const workOrder = await session.startSession()
@@ -406,7 +407,7 @@ function goBack() {
 
     <p v-if="scanFlow.lifecycle.value?.batchExternalNo" class="portfolio-scan-session__hint">
       工单 {{ scanFlow.lifecycle.value.batchExternalNo }}； 状态 {{ lifecycleStatusLabel }}；
-      {{ scanFlow.currentJob.value?.status ?? '等待 Agent' }}； 已扫
+      {{ scanFlow.currentJob.value?.status ?? '等待扫描服务' }}； 已扫
       {{ scanFlow.currentJob.value?.scannedPages ?? 0 }} 页
       <span v-if="scanFlow.lifecycle.value.diagnostic">
         — {{ scanFlow.lifecycle.value.diagnostic }}</span>

@@ -5,15 +5,15 @@ import type {
   PortfolioArchiveRecordFieldDiffVO,
   PortfolioArchiveRecordVersionVO,
 } from '@/apis/portfolio/types'
-import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, ref, watch } from 'vue'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { PortfolioArchiveRecordStatusDescription } from '@/apis/portfolio/enums'
+import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import {
   PORTFOLIO_ARCHIVE_FIELD_DIFF_CHANGE_TYPE_TONE,
@@ -90,7 +90,7 @@ async function runCompare() {
   try {
     compareResult.value = await portfolioArchiveApi.compareVersions(leftId.value, rightId.value)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '对比档案版本失败')
     compareResult.value = null
   } finally {
     loading.value = false

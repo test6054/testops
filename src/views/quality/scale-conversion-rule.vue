@@ -158,20 +158,25 @@ async function loadList() {
   loading.value = true
   try {
     const listQuery = { ...query }
-    const [page, summary] = await Promise.all([
-      scaleConversionRuleApi.page(listQuery),
-      scaleConversionRuleApi.signalSummary(listQuery),
-    ])
+    const page = await scaleConversionRuleApi.page(listQuery)
     list.value = page.list
-    signalSummary.value = summary
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
     total.value = page.total
     if (list.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadList()
+      return
+    }
+    try {
+      signalSummary.value = await scaleConversionRuleApi.signalSummary(listQuery)
+    } catch (error) {
+      signalSummary.value = null
+      showUserError(error, '量表换算规则状态统计加载失败')
     }
   } catch (error) {
+    list.value = []
+    total.value = 0
     signalSummary.value = null
     showUserError(error, '量表换算规则加载失败')
   } finally {

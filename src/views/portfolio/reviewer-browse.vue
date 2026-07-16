@@ -87,8 +87,8 @@ const filterFields = computed<FilterField[]>(() => {
     allowClear: true,
   })
   if (
-    accessScope.value?.teachingGroupLeader &&
-    (accessScope.value.managedTeachingGroupIds?.length ?? 0) > 1
+    accessScope.value?.teachingGroupLeader
+    && (accessScope.value.managedTeachingGroupIds?.length ?? 0) > 1
   ) {
     const groupOptions = flattenTeachingGroupOptions(
       treeRoots.value,
@@ -146,12 +146,12 @@ async function loadPage() {
 
 function handleSearch(values: Record<string, unknown>) {
   filterForm.searchText = typeof values.searchText === 'string' ? values.searchText : ''
-  filterForm.departmentId =
-    typeof values.departmentId === 'string' ? values.departmentId : undefined
-  filterForm.portfolioOrgId =
-    typeof values.portfolioOrgId === 'string' ? values.portfolioOrgId : undefined
-  filterForm.teachingGroupId =
-    typeof values.teachingGroupId === 'string' ? values.teachingGroupId : undefined
+  filterForm.departmentId
+    = typeof values.departmentId === 'string' ? values.departmentId : undefined
+  filterForm.portfolioOrgId
+    = typeof values.portfolioOrgId === 'string' ? values.portfolioOrgId : undefined
+  filterForm.teachingGroupId
+    = typeof values.teachingGroupId === 'string' ? values.teachingGroupId : undefined
   query.pageNum = 1
   query.searchText = filterForm.searchText || undefined
   query.departmentId = filterForm.departmentId
@@ -160,7 +160,7 @@ function handleSearch(values: Record<string, unknown>) {
   void loadPage()
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   void loadPage()
@@ -217,8 +217,8 @@ function handleAction(key: string, record: PortfolioTeacherSummaryVO) {
 onMounted(async () => {
   await ensureLoaded()
   await loadTree(false)
-  const requestedDepartmentId =
-    typeof route.query.departmentId === 'string' ? route.query.departmentId : undefined
+  const requestedDepartmentId
+    = typeof route.query.departmentId === 'string' ? route.query.departmentId : undefined
   if (accessScope.value?.tenantWide && requestedDepartmentId) {
     query.departmentId = requestedDepartmentId
     filterForm.departmentId = requestedDepartmentId
@@ -227,8 +227,8 @@ onMounted(async () => {
     filterForm.departmentId = accessScope.value.reviewerDepartmentId
   }
   if (
-    accessScope.value?.teachingGroupLeader &&
-    (accessScope.value.managedTeachingGroupIds?.length ?? 0) === 1
+    accessScope.value?.teachingGroupLeader
+    && (accessScope.value.managedTeachingGroupIds?.length ?? 0) === 1
   ) {
     query.teachingGroupId = accessScope.value.managedTeachingGroupIds![0]
     filterForm.teachingGroupId = accessScope.value.managedTeachingGroupIds![0]

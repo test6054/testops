@@ -62,11 +62,11 @@ function createStaticEvaluator(file, seeds = {}) {
   function evaluate(node, resolving = new Set()) {
     if (!node) return undefined
     if (
-      ts.isParenthesizedExpression(node) ||
-      ts.isAsExpression(node) ||
-      ts.isTypeAssertionExpression(node) ||
-      ts.isNonNullExpression(node) ||
-      (ts.isSatisfiesExpression && ts.isSatisfiesExpression(node))
+      ts.isParenthesizedExpression(node)
+      || ts.isAsExpression(node)
+      || ts.isTypeAssertionExpression(node)
+      || ts.isNonNullExpression(node)
+      || (ts.isSatisfiesExpression && ts.isSatisfiesExpression(node))
     ) {
       return evaluate(node.expression, resolving)
     }
@@ -251,9 +251,9 @@ for (const shell of backendShells) {
     `工作壳 ${shell.code} 默认路由不是可见菜单：${shell.defaultRoute}`,
   )
   invariant(
-    Array.isArray(defaultRoute.meta?.portfolioWorkShells) &&
-      defaultRoute.meta.portfolioWorkShells.length === 1 &&
-      defaultRoute.meta.portfolioWorkShells[0] === shell.code,
+    Array.isArray(defaultRoute.meta?.portfolioWorkShells)
+    && defaultRoute.meta.portfolioWorkShells.length === 1
+    && defaultRoute.meta.portfolioWorkShells[0] === shell.code,
     `工作壳 ${shell.code} 默认路由归属错误：${shell.defaultRoute}`,
   )
 }

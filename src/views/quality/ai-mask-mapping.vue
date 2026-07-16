@@ -14,7 +14,6 @@ import type { AiMaskMappingVO } from '@/apis/quality/ai-mask-mapping'
 import type { AiTaskVO } from '@/apis/quality/ai-task'
 import type { AiTaskBusinessTypeCode, AiTaskStatusCode, AiTaskTypeCode } from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { aiMaskMappingApi } from '@/apis/quality/ai-mask-mapping'
@@ -30,6 +29,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 function aiTaskTypeLabel(value: AiTaskTypeCode): string {
@@ -103,6 +103,9 @@ async function loadTaskOptions() {
       value: task.id,
       label: `${aiTaskTypeLabel(task.taskType)} / ${aiTaskStatusLabel(task.status)} / ${task.businessLabel}`,
     }))
+  } catch (error) {
+    taskOptions.value = []
+    showUserError(error, 'AI 任务选项加载失败')
   } finally {
     taskLoading.value = false
   }
@@ -110,7 +113,7 @@ async function loadTaskOptions() {
 
 function handleTaskChange(value: SelectValue): void {
   if (Array.isArray(value) || typeof value === 'number') {
-    message.error('AI 任务选择无效，请重新选择')
+    showFormValidationMessage('智能任务选择无效，请重新选择')
     filterForm.aiTaskId = ''
     selectedAiTaskId.value = ''
     return
@@ -141,12 +144,8 @@ async function loadMapping() {
   mappingVO.value = null
   taskVO.value = null
   try {
-    const [task, mapping] = await Promise.all([
-      aiTaskApi.detail(id),
-      aiMaskMappingApi.getByTask(id),
-    ])
+    const task = await aiTaskApi.detail(id)
     taskVO.value = task
-    mappingVO.value = mapping
     if (!taskOptions.value.some((option) => option.value === task.id)) {
       taskOptions.value = [
         {
@@ -156,8 +155,18 @@ async function loadMapping() {
         ...taskOptions.value,
       ]
     }
+    try {
+      mappingVO.value = await aiMaskMappingApi.getByTask(id)
+    } catch (error) {
+      mappingVO.value = null
+      showUserError(error, '脱敏映射记录加载失败')
+    }
     if (route.query.aiTaskId !== id)
       void router.replace({ query: { ...route.query, aiTaskId: id } })
+  } catch (error) {
+    taskVO.value = null
+    mappingVO.value = null
+    showUserError(error, 'AI 任务详情加载失败')
   } finally {
     loading.value = false
   }

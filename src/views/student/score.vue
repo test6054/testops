@@ -377,27 +377,35 @@ const summarySignalMetrics = computed(() =>
 const insightSignalMetrics = computed(() => toSignalMetrics(insightItems.value))
 
 async function loadPublishedTopExams(): Promise<void> {
-  const page = await pageMyExams({
-    finalScoreStatus: FinalScoreStatusCode.PUBLISHED,
-    orderByPublishedTimeDesc: true,
-    pageNum: 1,
-    pageSize: 2,
-  })
-  publishedTopExams.value = page.list
+  try {
+    const page = await pageMyExams({
+      finalScoreStatus: FinalScoreStatusCode.PUBLISHED,
+      orderByPublishedTimeDesc: true,
+      pageNum: 1,
+      pageSize: 2,
+    })
+    publishedTopExams.value = page.list
+  } catch (error) {
+    publishedTopExams.value = []
+    showUserError(error, '已发布成绩摘要加载失败')
+  }
 }
 
 async function loadExamStats(): Promise<void> {
-  examStats.value = await getMyExamStats({})
+  try {
+    examStats.value = await getMyExamStats({})
+  } catch (error) {
+    examStats.value = null
+    showUserError(error, '考试成绩统计加载失败')
+  }
 }
 
 async function reloadPage(): Promise<void> {
   pageBootstrapping.value = true
   try {
-    await Promise.all([loadExamStats(), loadPublishedTopExams(), reloadExamTable()])
-  } catch (error) {
-    examStats.value = null
-    publishedTopExams.value = []
-    showUserError(error, '考试成绩加载失败')
+    await reloadExamTable()
+    await loadExamStats()
+    await loadPublishedTopExams()
   } finally {
     pageBootstrapping.value = false
   }

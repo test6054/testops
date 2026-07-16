@@ -1,19 +1,19 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioAuditLogVO } from '@/apis/portfolio/governance'
-import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import type { PortfolioAuditActionTypeCode } from '@/types/enums/portfolio-audit-action-type-enum'
-import {
-  ALL_PORTFOLIO_AUDIT_ACTION_TYPE_CODES,
-  PortfolioAuditActionTypeDescription,
-} from '@/types/enums/portfolio-audit-action-type-enum'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import {
+  ALL_PORTFOLIO_AUDIT_ACTION_TYPE_CODES,
+  PortfolioAuditActionTypeDescription,
+} from '@/types/enums/portfolio-audit-action-type-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -47,7 +47,7 @@ const filterFields = computed(() => [
       label: PortfolioAuditActionTypeDescription[c],
     })),
   },
-  { key: 'operatorUserId', type: 'input' as const, label: '操作人 ID', width: 140 },
+  { key: 'operatorUserId', type: 'input' as const, label: '操作人编号', width: 140 },
 ])
 
 const query = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
@@ -100,7 +100,7 @@ function onSearch() {
   void loadPage()
 }
 
-function onPageChange(page: { current: number; pageSize: number }) {
+function onPageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   void loadPage()

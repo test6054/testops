@@ -5,14 +5,14 @@ import type {
   PortfolioNationalAchievementCatalogVO,
   PortfolioNationalAchievementRequirementSaveItem,
 } from '@/apis/portfolio/national-achievement'
+import type { PortfolioDevelopmentRecordVO } from '@/apis/portfolio/teacher-platform'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref } from 'vue'
 import {
   PortfolioAchievementEvidenceTypeCode,
   PortfolioAchievementEvidenceTypeDescription,
   portfolioNationalAchievementApi,
 } from '@/apis/portfolio/national-achievement'
-import type { PortfolioDevelopmentRecordVO } from '@/apis/portfolio/teacher-platform'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -27,7 +27,7 @@ import {
   PortfolioHonorLevelDescription,
   PortfolioHonorLevelOptions,
 } from '@/types/enums/portfolio-honor-level-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 interface CatalogFilter {
@@ -92,7 +92,7 @@ const catalogColumns: ColumnsType = [
 ]
 const recordColumns: ColumnsType = [
   { title: '成果名称', dataIndex: 'recordTitle', key: 'recordTitle' },
-  { title: '教师 ID', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 150 },
+  { title: '教师编号', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 150 },
   { title: '分类', dataIndex: 'categoryCode', key: 'categoryCode', width: 130 },
   { title: '级别', key: 'levelCode', width: 90 },
   { title: '状态', dataIndex: 'recordStatus', key: 'recordStatus', width: 100 },
@@ -241,7 +241,7 @@ function addRequirement() {
 
 function removeRequirement(index: number) {
   if (form.requirements.length <= 1) {
-    message.warning('成果目录至少保留一项标准要求')
+    showFormValidationMessage('成果目录至少保留一项标准要求')
     return
   }
   form.requirements.splice(index, 1)
@@ -256,7 +256,7 @@ async function saveCatalog() {
     sortOrder: index,
   }))
   if (!form.categoryCode.trim() || !form.catalogName.trim() || !form.standardDescription.trim()) {
-    message.warning('请填写分类编码、目录名称和标准描述')
+    showFormValidationMessage('请填写分类编码、目录名称和标准描述')
     return
   }
   if (
@@ -264,12 +264,12 @@ async function saveCatalog() {
       (item) => !item.requirementCode || !item.requirementTitle || !item.evidenceMatchValue,
     )
   ) {
-    message.warning('请完整填写所有标准要求')
+    showFormValidationMessage('请完整填写所有标准要求')
     return
   }
   const totalWeight = requirements.reduce((sum, item) => sum + Number(item.weight), 0)
   if (!Number.isFinite(totalWeight) || Math.abs(totalWeight - 100) > 0.0001) {
-    message.warning('标准要求权重合计必须等于 100')
+    showFormValidationMessage('标准要求权重合计必须等于 100')
     return
   }
   const operation = `catalog:save:${form.id ?? 'new'}`
@@ -342,8 +342,9 @@ void loadCatalogs()
             variant="primary"
             :disabled="operating"
             @click="openCreate"
-            >新建目录</UiButton
           >
+            新建目录
+          </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -373,8 +374,9 @@ void loadCatalogs()
                 pageNum = 1
                 loadCatalogs()
               "
-              >查询</UiButton
             >
+              查询
+            </UiButton>
           </div>
           <UiDataTable
             v-model:current="pageNum"
@@ -395,20 +397,28 @@ void loadCatalogs()
             "
           >
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'levelCode'">{{
-                levelLabel(record.levelCode)
-              }}</template>
-              <template v-else-if="column.key === 'buildCycleMonths'">{{
-                record.buildCycleMonths ? `${record.buildCycleMonths} 个月` : '—'
-              }}</template>
-              <template v-else-if="column.key === 'requirementCount'">{{
-                record.requirements.length
-              }}</template>
-              <template v-else-if="column.key === 'enabled'"
-                ><UiTag :tone="record.enabled ? 'green' : 'gray'">{{
-                  record.enabled ? '启用' : '停用'
-                }}</UiTag></template
-              >
+              <template v-if="column.key === 'levelCode'">
+                {{
+                  levelLabel(record.levelCode)
+                }}
+              </template>
+              <template v-else-if="column.key === 'buildCycleMonths'">
+                {{
+                  record.buildCycleMonths ? `${record.buildCycleMonths} 个月` : '—'
+                }}
+              </template>
+              <template v-else-if="column.key === 'requirementCount'">
+                {{
+                  record.requirements.length
+                }}
+              </template>
+              <template v-else-if="column.key === 'enabled'">
+                <UiTag :tone="record.enabled ? 'green' : 'gray'">
+                  {{
+                    record.enabled ? '启用' : '停用'
+                  }}
+                </UiTag>
+              </template>
               <template v-else-if="column.key === 'actions'">
                 <UiTableActions
                   :items="[
@@ -434,8 +444,9 @@ void loadCatalogs()
                 recordPageNum = 1
                 loadRecords()
               "
-              >查询</UiButton
             >
+              查询
+            </UiButton>
           </div>
           <UiDataTable
             v-model:current="recordPageNum"
@@ -456,9 +467,11 @@ void loadCatalogs()
             "
           >
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'levelCode'">{{
-                levelLabel(record.levelCode)
-              }}</template>
+              <template v-if="column.key === 'levelCode'">
+                {{
+                  levelLabel(record.levelCode)
+                }}
+              </template>
             </template>
           </UiDataTable>
         </a-tab-pane>
@@ -477,38 +490,39 @@ void loadCatalogs()
       <a-spin :spinning="editorLoading">
         <a-form layout="vertical">
           <div class="achievement-admin__form-grid">
-            <a-form-item label="分类编码" required
-              ><a-input v-model:value="form.categoryCode" :disabled="operating"
-            /></a-form-item>
-            <a-form-item label="成果级别" required
-              ><a-select
+            <a-form-item label="分类编码" required>
+              <a-input v-model:value="form.categoryCode" :disabled="operating" />
+            </a-form-item>
+            <a-form-item label="成果级别" required>
+              <a-select
                 v-model:value="form.levelCode"
                 :options="PortfolioHonorLevelOptions"
                 :disabled="operating"
-            /></a-form-item>
-            <a-form-item label="目录名称" required
-              ><a-input v-model:value="form.catalogName" :disabled="operating"
-            /></a-form-item>
-            <a-form-item label="关联指标"
-              ><a-input v-model:value="form.indicatorCode" :disabled="operating"
-            /></a-form-item>
-            <a-form-item label="打造周期（月）"
-              ><a-input-number
+              />
+            </a-form-item>
+            <a-form-item label="目录名称" required>
+              <a-input v-model:value="form.catalogName" :disabled="operating" />
+            </a-form-item>
+            <a-form-item label="关联指标">
+              <a-input v-model:value="form.indicatorCode" :disabled="operating" />
+            </a-form-item>
+            <a-form-item label="打造周期（月）">
+              <a-input-number
                 v-model:value="form.buildCycleMonths"
                 :min="1"
                 style="width: 100%"
                 :disabled="operating"
-            /></a-form-item>
-            <a-form-item label="启用"
-              ><a-switch v-model:checked="form.enabled" :disabled="operating"
-            /></a-form-item>
+              />
+            </a-form-item>
+            <a-form-item label="启用">
+              <a-switch v-model:checked="form.enabled" :disabled="operating" />
+            </a-form-item>
           </div>
-          <a-form-item label="标准描述" required
-            ><a-textarea v-model:value="form.standardDescription" :rows="3" :disabled="operating"
-          /></a-form-item>
+          <a-form-item label="标准描述" required>
+            <a-textarea v-model:value="form.standardDescription" :rows="3" :disabled="operating" />
+          </a-form-item>
           <div class="achievement-admin__requirements-head">
-            <strong>标准要求（权重合计 100）</strong
-            ><UiButton size="sm" :disabled="operating" @click="addRequirement">新增要求</UiButton>
+            <strong>标准要求（权重合计 100）</strong><UiButton size="sm" :disabled="operating" @click="addRequirement">新增要求</UiButton>
           </div>
           <div
             v-for="(requirement, index) in form.requirements"
@@ -549,8 +563,9 @@ void loadCatalogs()
               status="danger"
               :disabled="operating"
               @click="removeRequirement(index)"
-              >删除</UiButton
             >
+              删除
+            </UiButton>
           </div>
         </a-form>
       </a-spin>

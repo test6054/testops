@@ -113,7 +113,7 @@ function handleExitAction() {
 <template>
   <footer class="bottom-bar" :class="{ 'bottom-bar--orphan': hasOrphanBackendSession }">
     <p v-if="hasOrphanBackendSession" class="orphan-hint">
-      服务端仍有未完成扫描批次，本机任务未恢复。请等待 Agent 自动续扫，或结束进程后重新开批。
+      服务端仍有未完成扫描批次，本机任务未恢复。请等待本机扫描服务自动续扫，或结束进程后重新开批。
     </p>
     <div class="bottom-actions">
       <template v-if="!hasOrphanBackendSession">

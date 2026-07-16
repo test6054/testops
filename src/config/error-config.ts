@@ -50,17 +50,24 @@ export const DEFAULT_ERROR_CONFIG: GlobalErrorConfig = {
       showMessage: false
     },
 
+    // HTTP 404：接口资源不存在时只 Message，禁止跳转前端路由 404 页
+    404: {
+      showMessage: true,
+      useNotification: false,
+      customMessage: '请求的资源不存在或已变更',
+    },
+
     // AI配额错误 - 使用通知
     4003: {
       showMessage: true,
       useNotification: false,
-      customMessage: 'AI额度不足'
+      customMessage: '智能分析额度不足'
     },
 
     4290: {
       showMessage: true,
       useNotification: false,
-      customMessage: 'AI额度不足'
+      customMessage: '智能分析额度不足'
     },
 
     // 网络超时 - 使用通知

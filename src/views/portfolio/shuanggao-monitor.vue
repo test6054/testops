@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import type { PortfolioDoubleHighMonitorVO } from '@/apis/portfolio/double-high'
-import { portfolioDoubleHighApi } from '@/apis/portfolio/double-high'
 import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { portfolioDoubleHighApi } from '@/apis/portfolio/double-high'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -17,7 +16,7 @@ import {
   usePortfolioOrgTree,
 } from '@/composables/usePortfolioOrgTree'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
 interface MonitorFilterModel extends Record<string, unknown> {
   departmentId?: string
@@ -228,9 +227,9 @@ function handleShuanggaoSignalClick(key: string): void {
     return
   }
   if (key === 'index' || key === 'baseline' || key === 'valueAdded') {
-    const el =
-      document.querySelector('.shuanggao-monitor__meta')?.closest('.ui-card, .ant-card') ??
-      document.querySelector('.shuanggao-monitor__meta')
+    const el
+      = document.querySelector('.shuanggao-monitor__meta')?.closest('.ui-card, .ant-card')
+        ?? document.querySelector('.shuanggao-monitor__meta')
     if (el instanceof HTMLElement) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
@@ -247,14 +246,14 @@ async function loadMonitor() {
     loading.value = false
     monitor.value = null
     signals.value = []
-    message.warning('填写基线周期时必须同时指定建设周期')
+    showFormValidationMessage('填写基线周期时必须同时指定建设周期')
     return
   }
   if (baselinePeriodLabel && filterForm.portfolioOrgId) {
     loading.value = false
     monitor.value = null
     signals.value = []
-    message.warning('专业群监测暂不支持基线周期对比')
+    showFormValidationMessage('专业群监测暂不支持基线周期对比')
     return
   }
   const request = {
@@ -348,8 +347,8 @@ watch(
         <p v-if="monitor.baselinePeriodLabel" class="shuanggao-monitor__meta">
           基线周期：{{ monitor.baselinePeriodLabel }}
           <template v-if="monitor.periodValueAdded != null">
-            · 周期增值：{{ monitor.periodValueAdded }}</template
-          >
+            · 周期增值：{{ monitor.periodValueAdded }}
+          </template>
         </p>
       </UiCard>
       <UiCard title="七维贡献">

@@ -60,7 +60,7 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
   ExamQuestionCourseGoalMappingStatusCode,
 } from '@/types/enums/exam-question-course-goal-mapping-status-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import ExamQuestionCourseGoalMappingTable from './ExamQuestionCourseGoalMappingTable.vue'
 
 defineOptions({ name: 'ExamQuestionCourseGoalMappingCard' })
@@ -168,7 +168,7 @@ async function loadData() {
 
 async function saveRow(row: MappingEditableRow) {
   if (!props.examId || !row.qualityCourseGoalId) {
-    message.warning('请选择课程目标')
+    showFormValidationMessage('请选择课程目标')
     return
   }
   row.saving = true

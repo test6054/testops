@@ -23,7 +23,7 @@
     <div class="archive-task-provenance__secondary">
       <UiTextAction @click="emit('select', historicalCode)">历史档案数字化</UiTextAction>
       <span class="archive-task-provenance__divider">·</span>
-      <UiTextAction @click="emit('batch-excel')">批量 Excel 导入</UiTextAction>
+      <UiTextAction @click="emit('batch-excel')">批量表格文件导入</UiTextAction>
     </div>
     <p
       v-if="wizardState.provenance === historicalCode"

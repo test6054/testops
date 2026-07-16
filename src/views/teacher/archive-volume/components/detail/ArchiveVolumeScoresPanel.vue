@@ -88,6 +88,9 @@ import type {
   ArchiveVolumeExamGateResponse,
   ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   ArchiveMaterialTypeCode,
   ArchiveMaterialTypeDescription,
@@ -98,9 +101,6 @@ import {
   getArchiveVolumeExamGate,
   pageArchiveVolumeMaterials,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import { ARCHIVE_TEACHING_AFFAIRS_SCORE_COMPLETION_HINT } from '@/apis/mark/teaching-affairs-sync'
 import ArchiveExamScoreGatePanel from '@/components/archive-volume/ArchiveExamScoreGatePanel.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -145,8 +145,8 @@ const pageTotal = ref(0)
 
 const showExamGate = computed(
   () =>
-    props.detail.volume.scoreSource === ArchiveScoreSourceCode.MARK_INTERNAL &&
-    !!props.detail.volume.examId,
+    props.detail.volume.scoreSource === ArchiveScoreSourceCode.MARK_INTERNAL
+    && !!props.detail.volume.examId,
 )
 
 const showTeachingAffairsGate = computed(
@@ -155,8 +155,8 @@ const showTeachingAffairsGate = computed(
 
 const teachingAffairsGatePassed = computed(
   () =>
-    props.detail.volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.COMPLETED ||
-    props.detail.volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.VERIFIED,
+    props.detail.volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.COMPLETED
+    || props.detail.volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.VERIFIED,
 )
 
 const teachingAffairsGateLabel = computed(() => {
@@ -169,8 +169,8 @@ const teachingAffairsGateLabel = computed(() => {
 const completionTone = computed((): BadgeTone => {
   const code = props.detail.volume.scoreCompletionStatus
   if (
-    code === ArchiveScoreCompletionStatusCode.COMPLETED ||
-    code === ArchiveScoreCompletionStatusCode.VERIFIED
+    code === ArchiveScoreCompletionStatusCode.COMPLETED
+    || code === ArchiveScoreCompletionStatusCode.VERIFIED
   ) {
     return 'green'
   }
@@ -236,7 +236,7 @@ async function loadScoreMaterials(): Promise<void> {
   }
 }
 
-function handlePageChange(event: { current: number; pageSize: number }): void {
+function handlePageChange(event: { current: number, pageSize: number }): void {
   pageNum.value = event.current
   pageSize.value = event.pageSize
   void loadScoreMaterials()
@@ -252,7 +252,7 @@ async function loadExamGate() {
   try {
     examGate.value = await getArchiveVolumeExamGate(examId)
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '加载成绩门槛失败')
     examGate.value = null
   } finally {
     gateLoading.value = false
@@ -269,7 +269,7 @@ async function handleConfirmScoreCompletion() {
     message.success('成绩完成状态已确认')
     emit('refreshed')
   } catch (error) {
-    showUserError(error)
+    showUserError(error, '确认成绩完成失败')
   } finally {
     scoreConfirmSubmitting.value = false
   }

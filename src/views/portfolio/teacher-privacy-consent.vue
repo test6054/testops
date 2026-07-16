@@ -7,10 +7,10 @@ import type {
   PortfolioPrivacyConsentNoticeVO,
   PortfolioPrivacyConsentVO,
 } from '@/apis/portfolio/privacy-consent'
-import { portfolioPrivacyConsentApi } from '@/apis/portfolio/privacy-consent'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { portfolioPrivacyConsentApi } from '@/apis/portfolio/privacy-consent'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -46,20 +46,25 @@ async function load() {
   notice.value = null
   state.value = null
   try {
-    const [noticeResult, stateResult] = await Promise.all([
-      portfolioPrivacyConsentApi.getNotice(),
-      portfolioPrivacyConsentApi.getCurrent(
-        teacherId.value ? { teacherId: teacherId.value } : undefined,
-      ),
-    ])
+    const stateResult = await portfolioPrivacyConsentApi.getCurrent(
+      teacherId.value ? { teacherId: teacherId.value } : undefined,
+    )
     if (requestToken.value !== currentToken) return
-    notice.value = noticeResult
     state.value = stateResult
+    try {
+      notice.value = await portfolioPrivacyConsentApi.getNotice()
+    } catch (error) {
+      if (requestToken.value !== currentToken) return
+      notice.value = null
+      showUserError(error, '加载个人信息处理告知失败')
+    }
     if (stateResult.collectionAllowed && !manageMode.value) {
       await router.replace('/portfolio/teacher/home')
     }
   } catch (error) {
     if (requestToken.value !== currentToken) return
+    state.value = null
+    notice.value = null
     loadError.value = true
     showUserError(error, '加载个人信息处理状态失败')
   } finally {
@@ -181,9 +186,9 @@ watch(
             暂不授权
           </UiButton>
         </template>
-        <UiButton v-if="loadError" variant="outline" :loading="loading" @click="() => load()"
-          >重试</UiButton
-        >
+        <UiButton v-if="loadError" variant="outline" :loading="loading" @click="() => load()">
+          重试
+        </UiButton>
       </div>
     </UiCard>
   </StageWorkbenchShell>

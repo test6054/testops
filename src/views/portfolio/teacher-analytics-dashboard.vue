@@ -4,27 +4,27 @@ import type {
   PortfolioDualTeacherApplicationStatusCode,
   PortfolioKeyTeacherRegistryStatusCode,
 } from '@/apis/portfolio/enums'
-import {
-  PortfolioCompletenessLevelCode,
-  PortfolioDualTeacherApplicationStatusDescription,
-  PortfolioKeyTeacherRegistryStatusDescription,
-} from '@/apis/portfolio/enums'
 import type { PortfolioDeptStructureStatVO } from '@/apis/portfolio/teacher'
-import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import type {
   PortfolioDoubleDutyAnalyticsVO,
   PortfolioDualTeacherAnalyticsVO,
   PortfolioExternalTeacherStatsVO,
 } from '@/apis/portfolio/teacher-platform'
+import type { PortfolioCockpitSummaryVO } from '@/apis/portfolio/types'
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { portfolioCockpitApi } from '@/apis/portfolio/cockpit'
+import {
+  PortfolioCompletenessLevelCode,
+  PortfolioDualTeacherApplicationStatusDescription,
+  PortfolioKeyTeacherRegistryStatusDescription,
+} from '@/apis/portfolio/enums'
+import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
   portfolioDoubleDutyApi,
   portfolioDualTeacherApi,
   portfolioExternalTeacherApi,
 } from '@/apis/portfolio/teacher-platform'
-import type { PortfolioCockpitSummaryVO } from '@/apis/portfolio/types'
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { portfolioCockpitApi } from '@/apis/portfolio/cockpit'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -142,28 +142,71 @@ async function loadAll() {
   dualStats.value = null
   doubleDutyStats.value = null
   externalStats.value = null
+  const sections: Array<{
+    key: string
+    label: string
+    load: () => Promise<void>
+  }> = [
+    {
+      key: 'dept',
+      label: '院系结构统计',
+      load: async () => {
+        deptStats.value = await portfolioTeacherApi.deptStructureStats()
+      },
+    },
+    {
+      key: 'school',
+      label: '全校档案汇总',
+      load: async () => {
+        schoolSummary.value = await portfolioCockpitApi.schoolSummary()
+      },
+    },
+    {
+      key: 'dual',
+      label: '双师分析',
+      load: async () => {
+        dualStats.value = await portfolioDualTeacherApi.analyticsStats()
+      },
+    },
+    {
+      key: 'doubleDuty',
+      label: '双肩挑分析',
+      load: async () => {
+        doubleDutyStats.value = await portfolioDoubleDutyApi.analyticsStats()
+      },
+    },
+    {
+      key: 'external',
+      label: '外聘教师统计',
+      load: async () => {
+        externalStats.value = await portfolioExternalTeacherApi.stats()
+      },
+    },
+  ]
+  let anyFailed = false
   try {
-    const [dept, school, dual, doubleDuty, external] = await Promise.all([
-      portfolioTeacherApi.deptStructureStats(),
-      portfolioCockpitApi.schoolSummary(),
-      portfolioDualTeacherApi.analyticsStats(),
-      portfolioDoubleDutyApi.analyticsStats(),
-      portfolioExternalTeacherApi.stats(),
-    ])
-    if (requestToken.value !== currentToken) {
-      return
+    for (const section of sections) {
+      try {
+        await section.load()
+        if (requestToken.value !== currentToken) {
+          return
+        }
+      } catch (error) {
+        if (requestToken.value !== currentToken) {
+          return
+        }
+        anyFailed = true
+        showUserError(error, `${section.label}加载失败`)
+      }
     }
-    deptStats.value = dept
-    schoolSummary.value = school
-    dualStats.value = dual
-    doubleDutyStats.value = doubleDuty
-    externalStats.value = external
-  } catch (error) {
-    if (requestToken.value !== currentToken) {
-      return
+    if (requestToken.value === currentToken) {
+      loadFailed.value = anyFailed
+        && !deptStats.value
+        && !schoolSummary.value
+        && !dualStats.value
+        && !doubleDutyStats.value
+        && !externalStats.value
     }
-    loadFailed.value = true
-    showUserError(error)
   } finally {
     if (requestToken.value === currentToken) {
       loading.value = false
@@ -203,25 +246,25 @@ onMounted(loadAll)
             :items="[
               ...(schoolSummary.courseArchiveFrameworkSlotTotal
                 ? [
-                    {
-                      key: 'framework',
-                      label: `${schoolSummary.currentAcademicYear ?? '本学年'} 五框架`,
-                      value: String(schoolSummary.courseArchiveFrameworkSlotDone ?? 0),
-                      unit: `/${schoolSummary.courseArchiveFrameworkSlotTotal ?? 0}`,
-                      tone: 'blue' as const,
-                    },
-                  ]
+                  {
+                    key: 'framework',
+                    label: `${schoolSummary.currentAcademicYear ?? '本学年'} 五框架`,
+                    value: String(schoolSummary.courseArchiveFrameworkSlotDone ?? 0),
+                    unit: `/${schoolSummary.courseArchiveFrameworkSlotTotal ?? 0}`,
+                    tone: 'blue' as const,
+                  },
+                ]
                 : []),
               ...(schoolSummary.courseArchiveFullyCompleteCount != null
                 ? [
-                    {
-                      key: 'fullyComplete',
-                      label: '齐备课程',
-                      value: String(schoolSummary.courseArchiveFullyCompleteCount),
-                      unit: '门',
-                      tone: 'green' as const,
-                    },
-                  ]
+                  {
+                    key: 'fullyComplete',
+                    label: '齐备课程',
+                    value: String(schoolSummary.courseArchiveFullyCompleteCount),
+                    unit: '门',
+                    tone: 'green' as const,
+                  },
+                ]
                 : []),
             ]"
             :columns="2"

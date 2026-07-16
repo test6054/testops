@@ -19,12 +19,12 @@
         <UiAlertStrip
           v-if="webDevices.length === 0"
           tone="warning"
-          title="未登记 Web 补录工位"
-          description="请先在扫描设备管理页为补录工位开启「Web 补录」开关。"
+          title="未登记网页补录工位"
+          description="请先在扫描设备管理页为补录工位开启「网页补录」开关。"
           dense
         />
         <p v-else class="manual-supplement-wizard__hint">
-          文件补入将创建新的 Web 直扫批次，仅适用于已启用的 Web 补录工位。
+          文件补入将创建新的网页直扫批次，仅适用于已启用的网页补录工位。
         </p>
       </template>
       <template v-else>
@@ -128,7 +128,7 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { ScannerColorModeCode } from '@/types/enums/scanner-color-mode-enum'
 import { ScannerDuplexModeCode } from '@/types/enums/scanner-duplex-mode-enum'
 import { ScannerKioskScanModeCode } from '@/types/enums/scanner-kiosk-scan-mode-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
 export type ManualSupplementScenario = 'missing-page' | 'replace' | 'file-import'
 
@@ -269,7 +269,7 @@ const prepareBlockDescription = computed(() => {
   if (!context || context.canSubmitManualSupplement) return ''
   if (context.hasActiveScanSession) {
     const batchText = context.activeBatchExternalNo ? `（${context.activeBatchExternalNo}）` : ''
-    return `${context.activeScanSessionReason ?? context.blockReason ?? '当前设备存在未结束扫描进程'}${batchText}。请先在一体机或扫描监控结束该批次后再提交 Web 补扫。`
+    return `${context.activeScanSessionReason ?? context.blockReason ?? '当前设备存在未结束扫描进程'}${batchText}。请先在一体机或扫描监控结束该批次后再提交网页补扫。`
   }
   return context.blockReason ?? context.supplementBlockReason ?? '当前设备或考试状态不允许提交补扫'
 })
@@ -383,7 +383,7 @@ async function loadWebDevices(): Promise<void> {
     webDevices.value = response.items.filter((item) => item.webSupplementEnabled)
   } catch (error) {
     webDevices.value = []
-    showUserError(error, 'Web 补录工位加载失败')
+    showUserError(error, '网页补录工位加载失败')
   } finally {
     deviceLoading.value = false
   }
@@ -498,7 +498,7 @@ function goPrev(): void {
 async function goNext(): Promise<void> {
   if (currentStep.value === 0) {
     if (scenario.value === 'file-import' && webDevices.value.length === 0) {
-      message.warning('请先登记 Web 补录工位')
+      showFormValidationMessage('请先登记网页补录工位')
       return
     }
     if (scenarioBlockReason.value) {
