@@ -13,6 +13,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { ArchiveVolumeStatusCode } from '@/types/enums/archive-volume-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import DepartmentReviewMaterialSummary from '@/views/teacher/archive-volume/components/DepartmentReviewMaterialSummary.vue'
@@ -34,8 +35,9 @@ const withdrawing = ref(false)
 const rejectOpen = ref(false)
 const rejectReason = ref('')
 const requestReason = ref('')
+const confirming = ref(false)
 const actionBusy = computed(
-  () => requesting.value || approving.value || rejecting.value || withdrawing.value,
+  () => confirming.value || requesting.value || approving.value || rejecting.value || withdrawing.value,
 )
 
 const volumeStatus = computed(() => props.detail.volume.volumeStatus)
@@ -101,6 +103,15 @@ const statusLabel = computed(() => {
 
 async function handleRequest() {
   if (actionBusy.value) return
+  confirming.value = true
+  const confirmed = await confirmAsync({
+    title: '发起院系审核？',
+    content: '发起后系统会停止在途归档扫描并冻结材料补录，审核退回或主动撤回后才能继续补件。',
+    type: 'warning',
+    okText: '发起审核',
+  })
+  confirming.value = false
+  if (!confirmed) return
   requesting.value = true
   try {
     await requestArchiveVolumeDepartmentReview({
@@ -156,6 +167,15 @@ async function handleReject() {
 
 async function handleWithdraw() {
   if (actionBusy.value) return
+  confirming.value = true
+  const confirmed = await confirmAsync({
+    title: '撤回院系审核？',
+    content: '撤回后归档卷回到材料收集状态，原审核通过结果失效；补件完成后需要重新发起院系审核。',
+    type: 'warning',
+    okText: '确认撤回',
+  })
+  confirming.value = false
+  if (!confirmed) return
   withdrawing.value = true
   try {
     await withdrawArchiveVolumeDepartmentReview({ volumeId: props.volumeId })

@@ -355,6 +355,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { resolveSubmitChecklistRoute } from '@/composables/useArchiveSubmitChecklistRouter'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useArchiveTenantSetupReadiness } from '@/composables/useArchiveTenantSetupReadiness'
 import { useArchiveVolumeFilterPresets } from '@/composables/useArchiveVolumeFilterPresets'
 import { canSubmitArchiveVolumeRow } from '@/composables/useArchiveVolumeSubmitGate'
@@ -1456,6 +1457,13 @@ function goRemediationVolumeByVolumeId(volumeId: string) {
 }
 
 async function requestDepartmentReviewFromList(record: ArchiveVolumeResponse) {
+  const confirmed = await confirmAsync({
+    title: '发起院系审核？',
+    content: '发起后系统会停止在途归档扫描并冻结材料补录，审核退回或主动撤回后才能继续补件。',
+    type: 'warning',
+    okText: '发起审核',
+  })
+  if (!confirmed) return
   try {
     await requestArchiveVolumeDepartmentReview({ volumeId: record.volumeId })
     message.success('已发起院系审核')
@@ -1482,6 +1490,13 @@ async function goDetailForSubmitBlocker(volumeId: string) {
 }
 
 async function withdrawDepartmentReviewFromList(record: ArchiveVolumeResponse) {
+  const confirmed = await confirmAsync({
+    title: '撤回院系审核？',
+    content: '撤回后归档卷回到材料收集状态，原审核通过结果失效；补件完成后需要重新发起院系审核。',
+    type: 'warning',
+    okText: '确认撤回',
+  })
+  if (!confirmed) return
   try {
     await withdrawArchiveVolumeDepartmentReview({ volumeId: record.volumeId })
     message.success('已撤回院系审核，可继续补件')

@@ -205,3 +205,12 @@ Reading this as: **OBE quality workbench gate (regulated HE)** — user already 
 - `teacher-portrait.vue` / `correction.vue` / `archive-category-edit.vue` / `teacher-evaluation.vue` 等：`请从…选择目标教师` UiEmpty  
 - 看板旧推荐：`代办办理中` mock-title + `.gate` 粉卡 → **已改 B 钉条**
 
+## 12. AI 四助手 IA 定案（2026-07-16 用户确认）
+
+| mock | 结论 |
+|------|------|
+| 本人办理 | **SHIP** — 四 Tab + 单栏草稿 + 版本 chips +「确认写入档案」 |
+| 管理员代办 / 未选 | **SHIP** — 代办 Tag +「提交教师确认」；未选 B 钉条「选择教师」 |
+| IDE 三栏任务轨 | **否决** |
+
+业务 Vue 落地另批；与档案袋大卡/空态 B 钉条同构。
