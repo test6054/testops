@@ -6,23 +6,21 @@
  * - 租户与操作人从 UserHold 注入，前端只传业务字段
  * - 后端 Long ID 统一用 string 表达到前端（保持与其他模块一致）
  */
-import type { ExamStatusCode, ExamSummaryResponse } from './exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { AttemptStatusCode } from '@/types/enums/attempt-status-enum'
 import type { ScannerActivationCodeStatusCode } from '@/types/enums/scanner-activation-code-status-enum'
 import type { ScannerAgentDiagnosticStatusCode } from '@/types/enums/scanner-agent-diagnostic-status-enum'
 import type { ScannerColorModeCode } from '@/types/enums/scanner-color-mode-enum'
-import type { ScannerDuplexModeCode } from '@/types/enums/scanner-duplex-mode-enum'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import http from '@/config/axios'
 import { ALL_SCANNER_COLOR_MODE_CODES, ScannerColorModeDescription } from '@/types/enums/scanner-color-mode-enum'
+import type { ScannerDuplexModeCode } from '@/types/enums/scanner-duplex-mode-enum'
+import { ALL_SCANNER_DUPLEX_MODE_CODES, ScannerDuplexModeDescription } from '@/types/enums/scanner-duplex-mode-enum'
+import http from '@/config/axios'
 import {
   ALL_SCANNER_DEVICE_STATUS_CODES,
   ScannerDeviceStatusCode,
   ScannerDeviceStatusDescription
 } from '@/types/enums/scanner-device-status-enum'
-import { ALL_SCANNER_DUPLEX_MODE_CODES, ScannerDuplexModeDescription } from '@/types/enums/scanner-duplex-mode-enum'
 import {
   ALL_SCANNER_ENDPOINT_ONLINE_STATUS_CODES,
   ScannerEndpointOnlineStatusCode,
@@ -397,40 +395,6 @@ export function batchBindPapers(
   request: ExamPaperBatchBindRequest,
 ): Promise<ExamPaperBatchBindResponse> {
   return http.post<ExamPaperBatchBindResponse>('/api/mark/exams/papers/batch-bind', request)
-}
-
-// ─── 考试列表（供设备管理选择关联考试） ─────────────────────────────────
-
-/** 考试分页查询请求 - 对应 ExamPageQueryRequest */
-export interface MarkExamPageQueryRequest extends QueryDto {
-  /** 课程ID（可选筛选） */
-  courseId?: string
-  status?: ExamStatusCode
-  academicYear?: string
-  semester?: SemesterCode
-  /** 班级 ID；按考试参考班级范围过滤 */
-  classId?: string
-  /** 参考院系 ID；按考试参考院系过滤 */
-  referenceDepartmentId?: string
-  /** 开课学年；用于跨考试分析按课程实际开课周期过滤 */
-  teachingAcademicYear?: string
-  /** 创建时间范围下界 */
-  startTime?: string
-  /** 创建时间范围上界 */
-  endTime?: string
-  /** 开课学期；用于跨考试分析按课程实际开课周期过滤 */
-  teachingSemester?: SemesterCode
-  keyword?: string
-}
-
-/**
- * 分页查询考试列表（ACTIVE 状态）
- * POST /api/mark/exams/page
- */
-export function pageMarkExams(
-  request: MarkExamPageQueryRequest,
-): Promise<PageResult<ExamSummaryResponse>> {
-  return http.post<PageResult<ExamSummaryResponse>>('/api/mark/exams/page', request)
 }
 
 const ACTIVE_SCANNER_DEVICE_PAGE_SIZE = 100

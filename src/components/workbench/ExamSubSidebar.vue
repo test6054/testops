@@ -29,7 +29,9 @@
       >
         <div
           class="exam-sub-sidebar__progress-fill"
-          :style="{ width: `${journeyProgressPercent}%` }"
+          :style="{
+            transform: `scaleX(${Math.max(0, Math.min(1, journeyProgressPercent / 100))})`,
+          }"
         />
       </div>
     </div>
@@ -75,6 +77,7 @@
 
 <script lang="ts" setup>
 import type { Component } from 'vue'
+import { computed } from 'vue'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { ExamWorkspaceJourneyKey } from '@/constants/exam-journey'
 import type { ExamWorkspaceMenuKey } from '@/constants/exam-workspace-menu'
@@ -82,7 +85,6 @@ import type { MarkStageKey } from '@/stores/modules/markStage'
 import type { WorkbenchStage } from '@/types/workbench'
 import MenuFoldOutlined from '@ant-design/icons-vue/MenuFoldOutlined'
 import MenuUnfoldOutlined from '@ant-design/icons-vue/MenuUnfoldOutlined'
-import { computed } from 'vue'
 import ExamJourneySidebarNav from '@/components/workbench/ExamJourneySidebarNav.vue'
 import ExamSidebarExamSwitch from '@/components/workbench/ExamSidebarExamSwitch.vue'
 import ExamSubSidebarNav from '@/components/workbench/ExamSubSidebarNav.vue'

@@ -27,7 +27,7 @@
         />
       </a-form-item>
       <a-form-item label="默认自由标签" tooltip="应用于各行；可在表格中单独调整">
-        <ArchiveMaterialTagSelect v-model="defaultTags" />
+        <ArchiveMaterialTagSelect v-model="defaultTags" :volume-id="volumeId" />
       </a-form-item>
       <a-form-item label="待登记文件" required>
         <UiButton size="sm" variant="outline" @click="openFilePicker">添加文件</UiButton>
@@ -60,7 +60,7 @@
           />
         </template>
         <template v-else-if="column.key === 'tags'">
-          <ArchiveMaterialTagSelect v-model="rows[index].tags" />
+          <ArchiveMaterialTagSelect v-model="rows[index].tags" :volume-id="volumeId" />
         </template>
         <template v-else-if="column.key === 'fileName'">
           {{ record.fileName }}
@@ -80,8 +80,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { ref, watch } from 'vue'
 import {
   ARCHIVE_MATERIAL_TYPE_OPTIONS,
   ArchiveElectronicOriginalStatusCode,
@@ -89,6 +87,8 @@ import {
   ArchiveMaterialSortRuleCode,
   batchRegisterArchiveVolumeMaterials,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -110,7 +110,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "success": []
+  success: []
 }>()
 
 interface BatchRow {
@@ -207,7 +207,6 @@ async function handleSubmit() {
       )
       const tags = normalizeMaterialTagsForRegister(row.tags)
       materials.push({
-        volumeId: props.volumeId,
         materialType: row.materialType!,
         catalogCode: props.catalogCode,
         fileId: String(node.id),

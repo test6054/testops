@@ -73,7 +73,8 @@
                 <span v-if="record.campaignName"> · 批次: {{ record.campaignName }}</span>
                 <span v-if="record.approverNickName"> · 审批: {{ record.approverNickName }}</span>
                 <span v-if="record.expireTime">
-                  · 到期: {{ formatDateTime(record.expireTime) }}</span>
+                  · 到期: {{ formatDateTime(record.expireTime) }}</span
+                >
               </p>
               <p
                 v-if="
@@ -85,14 +86,15 @@
               </p>
               <p
                 v-if="
-                  record.accessStatus === ArchiveAccessStatusCode.ACTIVE
-                    && record.lastReadPage != null
+                  record.accessStatus === ArchiveAccessStatusCode.ACTIVE &&
+                  record.lastReadPage != null
                 "
                 class="approval-card__meta"
               >
                 最后阅读: 第 {{ record.lastReadPage }} 页
                 <span v-if="record.downloadCount != null">
-                  · 下载次数: {{ record.downloadCount }}</span>
+                  · 下载次数: {{ record.downloadCount }}</span
+                >
               </p>
             </article>
           </div>
@@ -210,11 +212,6 @@ import type {
   ArchiveVolumeAccessRecordResponse,
   ArchiveVolumeResponse,
 } from '@/apis/mark/archive-volume'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   ARCHIVE_ACCESS_STATUS_OPTIONS,
   ArchiveAccessStatusCode,
@@ -223,6 +220,11 @@ import {
   pageArchiveVolumes,
   pageMaterialSearchAudit,
 } from '@/apis/mark/archive-volume'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -251,18 +253,21 @@ defineOptions({ name: 'TeacherArchiveVolumeLedger' })
 const router = useRouter()
 const {
   grantsLoadFailed,
-  listScopedDepartmentIds,
-  filterListDepartmentOptions,
+  accessLedgerScopedDepartmentIds,
+  searchAuditScopedDepartmentIds,
+  filterAccessLedgerDepartmentOptions,
+  filterSearchAuditDepartmentOptions,
+  canViewAccessLedger,
   canViewSearchAudit,
   loadGrants,
 } = useArchiveDutyAccess()
 
 const ledgerTab = ref('volume')
 const ledgerTabs = computed(() => {
-  const tabs = [
-    { key: 'volume', label: '单卷台账' },
-    { key: 'tenant', label: '租户台账' },
-  ]
+  const tabs = [{ key: 'volume', label: '单卷台账' }]
+  if (canViewAccessLedger.value) {
+    tabs.push({ key: 'tenant', label: '全局查阅台账' })
+  }
   if (canViewSearchAudit.value) {
     tabs.push({ key: 'searchAudit', label: '检索留痕' })
   }
@@ -276,7 +281,7 @@ const selectedArchiveNo = ref('')
 const accessRecords = ref<ArchiveVolumeAccessRecordResponse[]>([])
 const tenantRows = ref<ArchiveVolumeAccessLedgerRowResponse[]>([])
 const searchAuditRows = ref<ArchiveMaterialSearchAuditRowResponse[]>([])
-const departmentOptions = ref<Array<{ value: string, label: string }>>([])
+const departmentOptions = ref<Array<{ value: string; label: string }>>([])
 
 interface ArchiveVolumeAccessLedgerVolumeFilterForm extends Record<string, unknown> {
   keyword: string
@@ -343,9 +348,15 @@ const volumeFilterFields: FilterField[] = [
   { key: 'keyword', label: '档案号 / 标题', type: 'input', placeholder: '关键词' },
 ]
 
-const scopedDepartmentOptions = computed(() => filterListDepartmentOptions(departmentOptions.value))
+const scopedDepartmentOptions = computed(() =>
+  filterAccessLedgerDepartmentOptions(departmentOptions.value),
+)
 
-const tenantDepartmentDisabled = computed(() => listScopedDepartmentIds.value.length === 1)
+const searchAuditDepartmentOptions = computed(() =>
+  filterSearchAuditDepartmentOptions(departmentOptions.value),
+)
+
+const tenantDepartmentDisabled = computed(() => accessLedgerScopedDepartmentIds.value.length === 1)
 
 const tenantFilterFields = computed<FilterField[]>(() => [
   {
@@ -385,14 +396,16 @@ const searchAuditFilterModel = computed<Record<string, unknown>>({
   },
 })
 
-const searchAuditDepartmentDisabled = computed(() => listScopedDepartmentIds.value.length === 1)
+const searchAuditDepartmentDisabled = computed(
+  () => searchAuditScopedDepartmentIds.value.length === 1,
+)
 
 const searchAuditFilterFields = computed<FilterField[]>(() => [
   {
     key: 'departmentId',
-    label: '学院',
+    label: '命中学院',
     type: 'select',
-    options: scopedDepartmentOptions.value,
+    options: searchAuditDepartmentOptions.value,
     allowClear: !searchAuditDepartmentDisabled.value,
     disabled: searchAuditDepartmentDisabled.value,
   },
@@ -417,7 +430,7 @@ const searchAuditFilterFields = computed<FilterField[]>(() => [
 const searchAuditColumns: ColumnsType<ArchiveMaterialSearchAuditRowResponse> = [
   { title: '操作人', key: 'searcher', width: 120, fixed: 'left' },
   { title: '检索条件', dataIndex: 'criteriaSummary', minWidth: 280 },
-  { title: '筛选学院', dataIndex: 'filterDepartmentName', width: 120 },
+  { title: '命中学院', dataIndex: 'hitDepartmentNames', width: 160 },
   { title: '命中材料', dataIndex: 'hitCount', width: 90, align: 'right' },
   { title: '涉及卷数', dataIndex: 'hitVolumeCount', width: 90, align: 'right' },
   { title: '可见路径', key: 'visibilityPaths', width: 140 },
@@ -425,7 +438,7 @@ const searchAuditColumns: ColumnsType<ArchiveMaterialSearchAuditRowResponse> = [
 ]
 
 function applySearchAuditDepartmentDefault() {
-  const scopeIds = listScopedDepartmentIds.value
+  const scopeIds = searchAuditScopedDepartmentIds.value
   if (scopeIds.length === 1) {
     searchAuditFilterForm.departmentId = scopeIds[0]
   }
@@ -455,14 +468,13 @@ async function loadSearchAudit() {
 
 function handleSearchAuditReset() {
   searchAuditFilterForm.departmentId = searchAuditDepartmentDisabled.value
-    ? listScopedDepartmentIds.value[0]
+    ? searchAuditScopedDepartmentIds.value[0]
     : undefined
   searchAuditFilterForm.searcherUserId = undefined
   searchAuditFilterForm.startTime = undefined
   searchAuditFilterForm.endTime = undefined
   searchAuditPagination.pageNum = 1
-  searchAuditRows.value = []
-  searchAuditPagination.total = 0
+  void loadSearchAudit()
 }
 
 const tenantAccessColumns: ColumnsType<ArchiveVolumeAccessLedgerRowResponse> = [
@@ -479,7 +491,7 @@ const tenantAccessColumns: ColumnsType<ArchiveVolumeAccessLedgerRowResponse> = [
 ]
 
 function applyScopedDepartmentDefault() {
-  const scopeIds = listScopedDepartmentIds.value
+  const scopeIds = accessLedgerScopedDepartmentIds.value
   if (scopeIds.length === 1) {
     tenantFilterForm.departmentId = scopeIds[0]
   }
@@ -553,7 +565,7 @@ function handleVolumeReset() {
 function handleTenantReset() {
   tenantFilterForm.accessStatus = undefined
   tenantFilterForm.departmentId = tenantDepartmentDisabled.value
-    ? listScopedDepartmentIds.value[0]
+    ? accessLedgerScopedDepartmentIds.value[0]
     : undefined
   tenantPagination.pageNum = 1
   tenantRows.value = []

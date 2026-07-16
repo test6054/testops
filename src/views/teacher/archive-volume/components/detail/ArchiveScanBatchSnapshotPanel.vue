@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { ArchiveScanBatchSnapshotItemVO,
-  ScanBatchQualityFlagCode} from '@/apis/mark/archive-volume'
-import { computed, onMounted, reactive, ref } from 'vue'
+import type {
+  ArchiveScanBatchSnapshotItemVO,
+  ScanBatchQualityFlagCode,
+} from '@/apis/mark/archive-volume'
 import {
   pageArchiveScanBatchSnapshots,
   SCAN_BATCH_QUALITY_FLAG_TONE,
   ScanBatchQualityFlagDescription,
 } from '@/apis/mark/archive-volume'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   SCAN_WORK_ORDER_STATUS_TONE,
   ScanWorkOrderStatusDescription,
@@ -65,8 +67,6 @@ async function loadRows() {
     pagination.pageSize = result.pageSize
   } catch (error) {
     errorMessage.value = getUserErrorMessage(error)
-    rows.value = []
-    pagination.total = 0
   } finally {
     loading.value = false
   }
@@ -195,11 +195,11 @@ onMounted(() => {
 .archive-scan-batch-snapshot__hint {
   margin: 0;
   font-size: 13px;
-  color: var(--nybc-text-secondary, #595959);
+  color: var(--dp-text-secondary);
 }
 .archive-scan-batch-snapshot__error {
   margin: 0 0 12px;
-  color: #cf1322;
+  color: var(--ant-color-error);
 }
 .archive-scan-batch-snapshot__score {
   font-weight: 600;

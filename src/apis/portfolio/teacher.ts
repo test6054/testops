@@ -86,6 +86,18 @@ export interface PortfolioDeptOneTableTeacherRowVO {
   courseArchiveFrameworkSlotTotal?: number
 }
 
+export interface PortfolioDeptTeacherSegmentItemVO {
+  segmentCode: 'NEEDS_SUPPORT' | 'HIGH_POTENTIAL' | 'DATA_ANOMALY'
+  segmentLabel: string
+  teacherCount: number
+  sampleTeacherUserIds: string[]
+}
+
+export interface PortfolioDeptTeacherSegmentSummaryVO {
+  departmentId: string
+  segments: PortfolioDeptTeacherSegmentItemVO[]
+}
+
 export interface PortfolioDeptStructureStatVO {
   totalTeacherCount: number
   departments: PortfolioDeptStructureStatItemVO[]
@@ -152,6 +164,15 @@ export const portfolioTeacherApi = {
   pageDeptOneTableTeachers: (data: PortfolioDeptOneTableTeacherPageRequest) =>
     http.post<PageResult<PortfolioDeptOneTableTeacherRowVO>>(
       `${BASE}/dept-one-table/teacher/page`,
+      data,
+    ),
+  getDeptTeacherSegments: (data: {
+    departmentId: string
+    portfolioOrgId?: string
+    teachingGroupId?: string
+  }) =>
+    http.post<PortfolioDeptTeacherSegmentSummaryVO>(
+      `${BASE}/dept-one-table/teacher-segments/get`,
       data,
     ),
 }

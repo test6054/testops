@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
+import { forceReleaseScanDispatch } from '@/apis/mark/scanner-dispatch'
 import { message } from 'ant-design-vue'
 import { reactive, ref, watch } from 'vue'
-import { forceReleaseScanDispatch } from '@/apis/mark/scanner-dispatch'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { showUserError } from '@/utils/error-handler'
 
@@ -13,7 +13,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "released": []
+  released: []
 }>()
 
 const submitting = ref(false)
@@ -87,11 +87,11 @@ async function handleSubmit() {
 <style scoped>
 .scan-dispatch-force-release__hint {
   margin: 0 0 8px;
-  color: var(--nybc-text-secondary, #595959);
+  color: var(--dp-text-secondary);
 }
 .scan-dispatch-force-release__warn {
   margin: 0 0 12px;
   font-size: 13px;
-  color: #d48806;
+  color: var(--ant-color-warning);
 }
 </style>

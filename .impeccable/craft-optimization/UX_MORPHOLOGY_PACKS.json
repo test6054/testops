@@ -1,0 +1,164 @@
+[
+  {
+    "id": "as-is",
+    "name": "AS-IS · 现网",
+    "kind": "基线",
+    "rival": "—",
+    "summary": "旅程壳 + 沉浸批阅 + 扫描绑定，视觉偏 Ant 默认后台。",
+    "changes": [
+      "无结构性改造"
+    ],
+    "surfaces": [
+      "overview"
+    ],
+    "recommend": false
+  },
+  {
+    "id": "M1",
+    "name": "M1 · 题包批改工作站（Gradescope 形态）",
+    "kind": "批改核心",
+    "rival": "Gradescope",
+    "summary": "固定三区：卷面 | 动态量表/给分 | 底栏（上一/下一未阅/问题卷）。心智从「整卷」切到「按题队列」。",
+    "changes": [
+      "强化 GradingWorkspaceLayout 右栏为 Rubric/给分器主区",
+      "底栏：Next Ungraded · 进度计数 · 快捷分值",
+      "题纲轨显示已阅/未阅/我的均分",
+      "匿名批改开关与「按班级段」过滤（能力需后端已有则接线）"
+    ],
+    "surfaces": [
+      "grade-triptych"
+    ],
+    "recommend": true
+  },
+  {
+    "id": "M2",
+    "name": "M2 · 全屏给分板（智学/好分数形态）",
+    "kind": "批改核心",
+    "rival": "智学网 · 好分数",
+    "summary": "任务列表进全屏；左侧笔迹工具（标优/标错/问题卷）；右侧大号打分板+步长；隐藏次要 chrome。",
+    "changes": [
+      "批改任务中心（我的任务 / 他人进度）",
+      "打分板组件：步长、全对/全错、常用分快选",
+      "工具轨：画笔/清除/标优/标错/问题卷（映射现有标记能力）",
+      "科组长监控入口挂同一壳"
+    ],
+    "surfaces": [
+      "grade-scorepad"
+    ],
+    "recommend": true
+  },
+  {
+    "id": "M3",
+    "name": "M3 · 阅卷作战室（进度协同）",
+    "kind": "管理监控",
+    "rival": "智学科组长监控 · 好分数实时进度",
+    "summary": "一人一张作战图：本人进度、同科进度、异常积压、预计完工；表格+热力而非装饰 KPI。",
+    "changes": [
+      "review-progress 重构为作战室首屏",
+      "SignalBand 仅放可下钻指标",
+      "他人进度条 / 题包堵塞榜",
+      "异常队列一跳进复核"
+    ],
+    "surfaces": [
+      "ops-warroom"
+    ],
+    "recommend": true
+  },
+  {
+    "id": "M4",
+    "name": "M4 · 扫描作业指挥台",
+    "kind": "扫描链",
+    "rival": "好分数扫描云处理 · 讯飞异常监控",
+    "summary": "教师台与 Kiosk 统一指挥语言：进纸/绑定/异常三位一体，异常秒级队列。",
+    "changes": [
+      "scan-ops 与 teacher 批次详情统一 IA",
+      "异常类型墙 + 一键指派",
+      "Kiosk accent 并入教师台家族（系统一致，非换皮）",
+      "绑定质量信号进 ContextBar"
+    ],
+    "surfaces": [
+      "scan-command"
+    ],
+    "recommend": true
+  },
+  {
+    "id": "M5",
+    "name": "M5 · 考后一张行动页（学情闭环）",
+    "kind": "考后闭环",
+    "rival": "智学学情分析主价值",
+    "summary": "发布后默认落「行动页」：分布、薄弱点、需讲评题、导出；AI 分析不是孤岛 Tab。",
+    "changes": [
+      "成绩发布成功态 → 行动页而不是回列表",
+      "AI analysis tabs 与行动页共用指标卡片",
+      "讲评/优秀卷/典型错出口可视"
+    ],
+    "surfaces": [
+      "postexam-action"
+    ],
+    "recommend": true
+  },
+  {
+    "id": "M6",
+    "name": "M6 · 考试控制台（Workflow UI）",
+    "kind": "主考事务",
+    "rival": "好分数考试开关/统分/发布 · finesse workflow-ui",
+    "summary": "发布/密封/统分等后果型提交：编号区段 + 预检清单 + sticky 提交条（对标 workflow-ui）。",
+    "changes": [
+      "成绩发布/扫描封锁走预检卡",
+      "derived totals（缺考/未绑/未阅阻断）",
+      "draft vs commit 语言统一"
+    ],
+    "surfaces": [
+      "workflow-console"
+    ],
+    "recommend": true
+  },
+  {
+    "id": "M7",
+    "name": "M7 · 旅程瘦身 + 任务中心",
+    "kind": "信息架构",
+    "rival": "智学顶栏模块清晰 · Gradescope 作业内题纲",
+    "summary": "六程保留，但日常教师默认进「我的阅卷任务」；旅程变成考试主考视图，减少双入口散。",
+    "changes": [
+      "教师首页任务中心置顶",
+      "exam-workspace 旅程对主考/管理员加重",
+      "批改任务深链直达 M1/M2"
+    ],
+    "surfaces": [
+      "task-hub"
+    ],
+    "recommend": true
+  },
+  {
+    "id": "M8",
+    "name": "M8 · 三域可识别壳（非换品牌色）",
+    "kind": "多产品域",
+    "rival": "—（平台型）+ finesse rail tint",
+    "summary": "阅卷 / 质量 / 档案袋用不同 rail/substrate 提示域，不用紫光或第二全站主色。",
+    "changes": [
+      "DualDomainSideNav 域 tint",
+      "QualityScope / PortfolioScope 背景层级差异",
+      "档案袋驾驶舱取消彩虹 KPI"
+    ],
+    "surfaces": [
+      "domain-shell"
+    ],
+    "recommend": false
+  },
+  {
+    "id": "M9",
+    "name": "M9 · 工艺 substrate（附属层）",
+    "kind": "视觉工艺",
+    "rival": "Linear 工艺 / finesse product substrate",
+    "summary": "仅在形态包选定后叠加：tinted page、hairline、阴影层级、幽灵 token 清理。单独做无解决产品差距。",
+    "changes": [
+      "ui-tokens substrate",
+      "去表外包大阴影",
+      "清理幽灵 token"
+    ],
+    "surfaces": [
+      "overview"
+    ],
+    "recommend": false
+  }
+]

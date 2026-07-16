@@ -2,7 +2,9 @@
   <AiAnalysisSection title="AI 课程目标达成度分析">
     <template #actions>
       <AiAnalysisHistorySelect v-model="historySelectedId" :rows="historyRows" :loading="loading" />
-      <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 查看历史 </UiButton>
+      <UiButton variant="outline" size="sm" :loading="loading" @click="reload()">
+        查看历史
+      </UiButton>
       <UiButton variant="primary" size="sm" :loading="generating" @click="handleGenerate">
         生成达成度分析
       </UiButton>
@@ -10,12 +12,7 @@
 
     <UiSkeletonState v-if="loading || generating" variant="card" compact />
     <div v-else class="ai-analysis-section__body ai-analysis-section__body--flush">
-      <SignalBand
-        v-if="record"
-        :metrics="achievementSignalMetrics"
-        compact
-        variant="inline"
-      />
+      <SignalBand v-if="record" :metrics="achievementSignalMetrics" compact variant="inline" />
 
       <p v-if="record?.achievementSummary" class="ai-analysis-summary">
         {{ record.achievementSummary }}
@@ -76,17 +73,18 @@ import type {
   CourseAchievementItemResponse,
   CourseObjectiveAchievementResponse,
 } from '@/apis/mark/cross-exam-analysis'
-import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
-import { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
 import {
   CourseObjectiveDimensionDescription,
   generateAchievement,
   listAchievements,
 } from '@/apis/mark/cross-exam-analysis'
+import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { formatSemester } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisHistorySelect from '@/components/mark/analysis/AiAnalysisHistorySelect.vue'
@@ -99,7 +97,6 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
 import { loadExamsForCourseAcademicYearSemester } from '@/composables/useCrossExamDefaultScope'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { formatSemester } from '@/types/enums/semester-enum'
 import {
   buildOptionalAcademicYearSemesterQuery,
   buildRequiredAcademicYearSemesterQuery,
@@ -156,13 +153,14 @@ const examSelectScopeReferenceDepartmentId = computed(
 
 const scopedExamIds = ref<string[]>([])
 
-const scopeReady = computed(
-  () => Boolean(effectiveCourseId.value && effectiveAcademicYear.value && effectiveSemester.value),
+const scopeReady = computed(() =>
+  Boolean(effectiveCourseId.value && effectiveAcademicYear.value && effectiveSemester.value),
 )
 
 /** 按 Tab 范围同步本课程本学期全部考核环节。 */
 async function syncScopedExams(): Promise<void> {
-  if (!scopeReady.value) {
+  const semester = effectiveSemester.value
+  if (!scopeReady.value || !semester) {
     scopedExamIds.value = []
     return
   }
@@ -170,7 +168,7 @@ async function syncScopedExams(): Promise<void> {
     const exams = await loadExamsForCourseAcademicYearSemester(
       effectiveCourseId.value,
       effectiveAcademicYear.value,
-      effectiveSemester.value,
+      semester,
       {
         classId: examSelectScopeClassId.value,
         referenceDepartmentId: examSelectScopeReferenceDepartmentId.value,
@@ -179,8 +177,7 @@ async function syncScopedExams(): Promise<void> {
     scopedExamIds.value = exams
       .map((exam) => exam.examId)
       .filter((examId): examId is string => Boolean(examId))
-  }
-  catch (error) {
+  } catch (error) {
     scopedExamIds.value = []
     showUserError(error, '考核环节加载失败')
   }
@@ -196,13 +193,14 @@ const {
 } = useAiAnalysisHistoryPicker<CourseObjectiveAchievementResponse>()
 
 watch(
-  () => [
-    props.scopeOrgCourseId,
-    props.scopeAcademicYear,
-    props.scopeSemester,
-    props.scopeOrgClassId,
-    props.scopeReferenceDepartmentId,
-  ] as const,
+  () =>
+    [
+      props.scopeOrgCourseId,
+      props.scopeAcademicYear,
+      props.scopeSemester,
+      props.scopeOrgClassId,
+      props.scopeReferenceDepartmentId,
+    ] as const,
   async () => {
     clearHistory()
     await syncScopedExams()
@@ -367,11 +365,9 @@ async function reload(options?: { silent?: boolean }): Promise<void> {
     if (!options?.silent && count === 0) {
       message.info('暂无历史记录')
     }
-  }
-  catch (e) {
+  } catch (e) {
     showUserError(e, '课程达成度分析加载失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }

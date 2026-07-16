@@ -7,18 +7,18 @@ import type { PageResult, QueryDto } from '@/types'
 import type { PageRegisterStateCode } from '@/types/enums/page-register-state-enum'
 import type { ScanBatchQualityFlagCode } from '@/types/enums/scan-batch-quality-flag-enum'
 import type { ScanDispatchTicketStatusCode } from '@/types/enums/scan-dispatch-ticket-status-enum'
-import type { ScanOperationActionCode } from '@/types/enums/scan-operation-action-enum'
-import type { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
-import type { ScannerExceptionItemKindCode } from '@/types/enums/scanner-exception-item-kind-enum'
-import http from '@/config/axios'
 import {
   ALL_SCAN_DISPATCH_TICKET_STATUS_CODES,
   ScanDispatchTicketStatusDescription,
 } from '@/types/enums/scan-dispatch-ticket-status-enum'
+import type { ScanOperationActionCode } from '@/types/enums/scan-operation-action-enum'
 import {
   ALL_SCAN_OPERATION_ACTION_CODES,
   ScanOperationActionDescription,
 } from '@/types/enums/scan-operation-action-enum'
+import type { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
+import type { ScannerExceptionItemKindCode } from '@/types/enums/scanner-exception-item-kind-enum'
+import http from '@/config/axios'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
@@ -98,8 +98,6 @@ export interface ScanDispatchCreateRequest {
   catalogCode?: string
   materialType?: ArchiveMaterialTypeCode
   archiveBatchMode?: string
-  physicalStorageLocation?: string
-  physicalLocationNote?: string
   generateTraceLabel?: boolean
   teacherId?: string
   collectMode?: PortfolioCollectModeCode
@@ -174,6 +172,8 @@ export interface ScannerExceptionDashboardItemVO {
   volumeId?: string
   scanBatchId?: string
   examId?: string
+  /** 试卷实例 ID（BINDING_CONFLICT 条目） */
+  paperInstanceId?: string
   ticketStatus?: ScanDispatchTicketStatusCode
   workOrderStatus?: ScanWorkOrderStatusCode
   batchQualityFlag?: ScanBatchQualityFlagCode

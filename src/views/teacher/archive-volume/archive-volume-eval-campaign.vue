@@ -11,7 +11,6 @@
           <UiButton variant="ghost" size="sm" @click="goList">
             {{ backButtonLabel }}
           </UiButton>
-          <UiButton variant="outline" size="sm" @click="goReadinessMatrix"> 就绪度矩阵 </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -22,7 +21,8 @@
 
     <WorkbenchSurfaceCard flush>
       <UiAlertStrip tone="info" dense class="archive-eval-campaign__domain-hint">
-        本页为<strong>课程考核归档材料</strong>，用于本科教学评估迎检。OBE 达成度、间接评价与认证证据请在
+        本页为<strong>课程考核归档材料</strong>，用于本科教学评估迎检。OBE
+        达成度、间接评价与认证证据请在
         <RouterLink :to="{ name: 'QualityDashboard' }">「质量评价」</RouterLink>
         工作台处理。
       </UiAlertStrip>
@@ -86,8 +86,8 @@
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
                 v-if="
-                  record.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE
-                    && canExportCampaign
+                  record.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE &&
+                  canExportCampaign
                 "
                 :items="buildCampaignActions(record)"
                 split
@@ -150,7 +150,10 @@
             <template v-else-if="column.key === 'course'">
               <div>{{ record.teachingClassName || record.archiveTitle || '—' }}</div>
               <div
-                v-if="record.scopeMatchKind === ArchiveEvaluationCampaignScopeMatchKindCode.CROSS_TERM_REMEDIATION"
+                v-if="
+                  record.scopeMatchKind ===
+                  ArchiveEvaluationCampaignScopeMatchKindCode.CROSS_TERM_REMEDIATION
+                "
                 class="link-cell__sub"
               >
                 跨学期收集中
@@ -214,7 +217,9 @@
       </div>
 
       <div v-else class="archive-eval-campaign__pane">
-        <p class="archive-eval-campaign__mixed-hint">院系范围内仍待复核的疑似混扫批次，点击档案号进入卷详情 scan-review Tab。</p>
+        <p class="archive-eval-campaign__mixed-hint">
+          院系范围内仍待复核的疑似混扫批次，点击档案号进入卷详情 scan-review Tab。
+        </p>
         <div class="archive-eval-campaign__mixed-toolbar">
           <a-select
             v-model:value="mixedFilterForm.departmentId"
@@ -308,17 +313,6 @@ import type {
   ArchiveEvaluationVolumeReadinessResponse,
   ArchiveSuspectedMixedScanBatchItemVO,
 } from '@/apis/mark/archive-volume'
-import type {
-  BadgeTone,
-  UiSectionTabItem,
-  UiTableRowActionItem,
-} from '@/components/ui-guide/ui/types'
-import type {SemesterCode} from '@/types/enums/semester-enum';
-import type { SignalMetric } from '@/types/workbench'
-import { message, Modal } from 'ant-design-vue'
-import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
-import { ArchiveDutyTypeCode } from '@/apis/mark/archive-config'
 import {
   ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
   ArchiveEvaluationCampaignStatusCode,
@@ -331,6 +325,18 @@ import {
   pageSuspectedMixedScanBatches,
   resolveEvaluationCampaignByVolume,
 } from '@/apis/mark/archive-volume'
+import type {
+  BadgeTone,
+  UiSectionTabItem,
+  UiTableRowActionItem,
+} from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { message, Modal } from 'ant-design-vue'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { ArchiveDutyTypeCode } from '@/apis/mark/archive-config'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import ArchiveEvalCampaignScopeSummary from '@/components/archive-volume/ArchiveEvalCampaignScopeSummary.vue'
 import ArchiveReadinessRateBar from '@/components/archive-volume/ArchiveReadinessRateBar.vue'
@@ -349,15 +355,12 @@ import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { runArchiveEvaluationExportFlow } from '@/composables/useArchiveEvaluationExportFlow'
 import { ArchiveVolumeDetailTabKey } from '@/constants/archive-volume-detail-tabs'
 import { DEFAULT_LIST_PAGE_SIZE, EXPORT_PAGE_SIZE } from '@/constants/pagination'
-import {
-  ArchiveEvaluationCampaignScopeMatchKindCode,
-} from '@/types/enums/archive-evaluation-campaign-scope-match-kind-enum'
+import { ArchiveEvaluationCampaignScopeMatchKindCode } from '@/types/enums/archive-evaluation-campaign-scope-match-kind-enum'
 import {
   ArchiveEvaluationDimensionReadyCode,
   ArchiveEvaluationDimensionReadyDescription,
   ArchiveEvaluationDimensionReadyTone,
 } from '@/types/enums/archive-evaluation-dimension-ready-enum'
-import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -400,7 +403,7 @@ const mixedFilterForm = reactive<{
   academicYear?: string
   semester?: SemesterCode
 }>({})
-const mixedDepartmentOptions = ref<Array<{ value: string, label: string }>>([])
+const mixedDepartmentOptions = ref<Array<{ value: string; label: string }>>([])
 
 const focusVolumeId = computed(() => {
   const volumeId = route.query.volumeId
@@ -544,10 +547,6 @@ function goList(): void {
   void router.push({ name: 'TeacherArchiveVolumeList' })
 }
 
-function goReadinessMatrix(): void {
-  void router.push({ name: 'TeacherArchiveVolumeReadinessMatrix' })
-}
-
 function buildCampaignActions(_record: ArchiveEvaluationCampaignResponse): UiTableRowActionItem[] {
   return [
     { key: 'export-catalog', label: '目录包', tone: 'primary' },
@@ -565,9 +564,10 @@ function handleCampaignAction(key: string, record: ArchiveEvaluationCampaignResp
   }
 }
 
-function resolveReadinessTargetTab(
-  record: ArchiveEvaluationVolumeReadinessResponse,
-): { tab: ArchiveVolumeDetailTabKey, remediationTaskId?: string } {
+function resolveReadinessTargetTab(record: ArchiveEvaluationVolumeReadinessResponse): {
+  tab: ArchiveVolumeDetailTabKey
+  remediationTaskId?: string
+} {
   if (!record.overallReady && (record.openRemediationTaskCount ?? 0) > 0) {
     return {
       tab: ArchiveVolumeDetailTabKey.MATERIALS,
@@ -610,7 +610,11 @@ function handleReadinessAction(
     return
   }
   if (key === 'remediation' && record.primaryOpenRemediationTaskId) {
-    goVolumeDetail(record.volumeId, ArchiveVolumeDetailTabKey.MATERIALS, record.primaryOpenRemediationTaskId)
+    goVolumeDetail(
+      record.volumeId,
+      ArchiveVolumeDetailTabKey.MATERIALS,
+      record.primaryOpenRemediationTaskId,
+    )
     return
   }
   if (key === 'detail') {
@@ -665,7 +669,12 @@ async function loadCampaignOptions(): Promise<void> {
   campaignOptionLoading.value = true
   try {
     campaignSelectOptions.value = await loadAllCampaignOptions()
-    if (!focusVolumeId.value && !fromVolumeResolve.value && !selectedCampaignId.value && campaignSelectOptions.value.length > 0) {
+    if (
+      !focusVolumeId.value &&
+      !fromVolumeResolve.value &&
+      !selectedCampaignId.value &&
+      campaignSelectOptions.value.length > 0
+    ) {
       selectedCampaignId.value = campaignSelectOptions.value[0].campaignId
       if (activeTab.value === 'readiness') {
         void loadReadinessVolumes()
@@ -702,10 +711,10 @@ async function bootstrapFromVolumeQuery(volumeId: string): Promise<void> {
       scopeSummary.value = null
       return
     }
-    const autoPick
-      = !resolveResult.truncated
-        && resolveResult.campaigns.length === 1
-        && resolveResult.suggestedCampaignId
+    const autoPick =
+      !resolveResult.truncated &&
+      resolveResult.campaigns.length === 1 &&
+      resolveResult.suggestedCampaignId
     if (autoPick) {
       selectedCampaignId.value = resolveResult.suggestedCampaignId
       readinessPagination.pageNum = 1
@@ -751,7 +760,7 @@ async function loadCampaigns(): Promise<void> {
   }
 }
 
-function handleCampaignPageChange(page: { current: number, pageSize: number }): void {
+function handleCampaignPageChange(page: { current: number; pageSize: number }): void {
   campaignPagination.pageNum = page.current
   campaignPagination.pageSize = page.pageSize
   void loadCampaigns()
@@ -808,9 +817,8 @@ function parseEvalCampaignTab(value: unknown): EvalCampaignTabKey {
 async function loadMixedDepartmentOptions(): Promise<void> {
   const departments = await departmentCatalogApi.list()
   const scopeIds = listScopedDepartmentIds.value
-  const scoped = scopeIds.length > 0
-    ? departments.filter((item) => scopeIds.includes(item.id))
-    : departments
+  const scoped =
+    scopeIds.length > 0 ? departments.filter((item) => scopeIds.includes(item.id)) : departments
   mixedDepartmentOptions.value = scoped.map((item) => ({
     value: item.id,
     label: item.deptName,
@@ -865,8 +873,6 @@ async function loadMixedBatches(): Promise<void> {
     mixedPagination.pageSize = result.pageSize
   } catch (error) {
     showUserError(error, '待复核批次加载失败')
-    mixedRows.value = []
-    mixedPagination.total = 0
   } finally {
     mixedLoading.value = false
   }

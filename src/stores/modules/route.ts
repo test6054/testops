@@ -1,9 +1,11 @@
 import type { Ref } from 'vue'
+import { ref, watch } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
+import type { PortfolioWorkShellCode } from '@/apis/portfolio/types'
 import { cloneDeep } from 'lodash-es'
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
 import XEUtils from 'xe-utils'
+import { readPortfolioWorkShellCode } from '@/composables/usePortfolioReviewAccess'
 import { passesPortfolioReviewerGate } from '@/router/permission'
 import { commonRoutes } from '@/router/routes/common'
 import { portfolioRoutes } from '@/router/routes/portfolio'
@@ -95,6 +97,7 @@ const storeSetup = (): RouteStoreState => {
     const authStore = useAuthStore()
     const userRole = authStore.userRole
     const userIsTenantAdmin = userStore.isTenantAdmin
+    const currentPortfolioWorkShell = readPortfolioWorkShellCode()
 
     // 根据用户角色选择对应的路由
     let roleRoutes: RouteRecordRaw[]
@@ -111,7 +114,12 @@ const storeSetup = (): RouteStoreState => {
       roleRoutes = [...commonRoutes]
     }
 
-    const filteredRoutes = filterRoutesByPermission(roleRoutes, userRole, userIsTenantAdmin)
+    const filteredRoutes = filterRoutesByPermission(
+      roleRoutes,
+      userRole,
+      userIsTenantAdmin,
+      currentPortfolioWorkShell,
+    )
     const flatRoutes = flatMultiLevelRoutes(cloneDeep(filteredRoutes))
     setRoutes(filteredRoutes)
     return flatRoutes
@@ -125,36 +133,51 @@ const storeSetup = (): RouteStoreState => {
     routes: RouteRecordRaw[],
     userRole: string,
     userIsTenantAdmin: boolean,
+    currentPortfolioWorkShell: PortfolioWorkShellCode | '',
   ): RouteRecordRaw[] => {
     return routes
       .filter((route) => {
-        if (route.meta?.requireTenantAdmin) {
-          return passesTenantAdminRouteGate(userRole, userIsTenantAdmin)
+        if (
+          route.meta?.requireTenantAdmin
+          && !passesTenantAdminRouteGate(userRole, userIsTenantAdmin)
+        ) {
+          return false
         }
 
-        if (userRole === RoleEnum.SUPER_ADMIN) {
-          return true
-        }
-
-        // 检查路由权限
-        const roles = resolveRouteRoles(route)
-        if (roles) {
-          const hasRolePermission = roles.includes(userRole)
-          if (!hasRolePermission) {
-            return false
+        if (userRole !== RoleEnum.SUPER_ADMIN) {
+          // 检查路由权限
+          const roles = resolveRouteRoles(route)
+          if (roles) {
+            const hasRolePermission = roles.includes(userRole)
+            if (!hasRolePermission) {
+              return false
+            }
           }
         }
 
         // 档案审核台由服务端审核范围投影决定，教研室负责人须为具备受管教研室的 SCH_TECH。
         if (route.meta?.requirePortfolioReviewer) {
-          return passesPortfolioReviewerGate(userRole as RoleEnum, userIsTenantAdmin)
+          if (!passesPortfolioReviewerGate(userRole as RoleEnum, userIsTenantAdmin)) {
+            return false
+          }
+        }
+
+        const portfolioWorkShells = route.meta?.portfolioWorkShells
+        if (portfolioWorkShells) {
+          return currentPortfolioWorkShell !== ''
+            && portfolioWorkShells.includes(currentPortfolioWorkShell)
         }
 
         return true
       })
       .map((route) => {
         const filteredChildren = route.children
-          ? filterRoutesByPermission(route.children, userRole, userIsTenantAdmin)
+          ? filterRoutesByPermission(
+              route.children,
+              userRole,
+              userIsTenantAdmin,
+              currentPortfolioWorkShell,
+            )
           : undefined
 
         const result: RouteRecordRaw = {

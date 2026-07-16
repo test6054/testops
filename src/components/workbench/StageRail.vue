@@ -44,7 +44,9 @@
         >
           <div
             class="stage-rail-panel__progress-bar"
-            :style="{ width: `${Math.min(Math.max(stage.progress, 0), 100)}%` }"
+            :style="{
+              transform: `scaleX(${Math.max(0, Math.min(1, (stage.progress ?? 0) / 100))})`,
+            }"
           />
         </div>
       </div>
@@ -65,10 +67,10 @@
 <script lang="ts" setup>
 import type { UiArrowTimelineStage } from '@/components/ui-guide/ui/types'
 import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
+import { WORKBENCH_STAGE_TO_TIMELINE } from '@/types/workbench'
 import CheckOutlined from '@ant-design/icons-vue/CheckOutlined'
 import { computed } from 'vue'
 import UiArrowTimeline from '@/components/ui-guide/ui/UiArrowTimeline.vue'
-import { WORKBENCH_STAGE_TO_TIMELINE } from '@/types/workbench'
 
 defineOptions({
   name: 'StageRail',
@@ -272,10 +274,12 @@ function handlePanelSelect(stage: WorkbenchStage) {
 }
 
 .stage-rail-panel__progress-bar {
+  width: 100%;
   height: 100%;
   border-radius: var(--dp-radius-full);
   background: var(--dp-blue-500);
-  transition: width var(--dp-duration-slow) ease;
+  transform-origin: left center;
+  transition: transform var(--dp-duration-slow) ease;
 }
 
 .stage-rail-panel__item--completed .stage-rail-panel__progress-bar {

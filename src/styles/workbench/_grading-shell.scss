@@ -226,7 +226,7 @@
 :global(.material-status-icon) {
   width: 14px;
   height: 14px;
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -413,7 +413,7 @@
 :global(.score-gate__check) {
   width: 20px;
   height: 20px;
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -510,7 +510,7 @@
 :global(.self-check-mark) {
   width: 18px;
   height: 18px;
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
   display: inline-flex;
   align-items: center;
   justify-content: center;

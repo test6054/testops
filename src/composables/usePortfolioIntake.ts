@@ -1,17 +1,17 @@
 import type { Ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import type {
   PortfolioArchiveRecordFieldInput,
   PortfolioMaterialIntakeStatusVO,
 } from '@/apis/portfolio/types'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { portfolioIntakeApi } from '@/apis/portfolio/intake'
 import {
   PortfolioArchiveRecordStatusCode,
   PortfolioMaterialIntakeStageCode,
   PortfolioMaterialTypeCode,
 } from '@/apis/portfolio/types'
+import { message } from 'ant-design-vue'
+import { useRoute, useRouter } from 'vue-router'
+import { portfolioIntakeApi } from '@/apis/portfolio/intake'
 import { AiTaskStatusCode } from '@/apis/quality/types'
 import { usePolling } from '@/composables/usePolling'
 import { showUserError } from '@/utils/error-handler'
@@ -29,10 +29,6 @@ const POLLING_AI_STATUSES: AiTaskStatusCode[] = [
 
 function readRouteQueryString(value: unknown): string {
   return typeof value === 'string' ? value : ''
-}
-
-function readDemoModeFromRoute(value: unknown): boolean {
-  return value === '1' || value === 'true'
 }
 
 function inferMaterialType(fileName?: string): PortfolioMaterialTypeCode {
@@ -60,10 +56,6 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
   const evidenceRefs = reactive<Record<string, string>>({})
   const intakeRequestToken = ref(0)
 
-  const demoMode = computed(
-    () => readDemoModeFromRoute(route.query.demoMode) || status.value?.demoMode === true,
-  )
-
   const teacherRequest = computed(() =>
     targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
   )
@@ -84,29 +76,29 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     }
     const stage = status.value.stage
     if (
-      stage === PortfolioMaterialIntakeStageCode.SUBMITTED
-      || stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW
-      || stage === PortfolioMaterialIntakeStageCode.CANDIDATES_REJECTED
+      stage === PortfolioMaterialIntakeStageCode.SUBMITTED ||
+      stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW ||
+      stage === PortfolioMaterialIntakeStageCode.CANDIDATES_REJECTED
     ) {
       return true
     }
     if (
-      stage === PortfolioMaterialIntakeStageCode.OCR_PENDING
-      || stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
+      stage === PortfolioMaterialIntakeStageCode.OCR_PENDING ||
+      stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
     ) {
       return true
     }
     return (
-      status.value.recordStatus === PortfolioArchiveRecordStatusCode.PENDING_CONFIRM
-      || status.value.recordStatus === PortfolioArchiveRecordStatusCode.OFFICIAL
+      status.value.recordStatus === PortfolioArchiveRecordStatusCode.PENDING_CONFIRM ||
+      status.value.recordStatus === PortfolioArchiveRecordStatusCode.OFFICIAL
     )
   })
 
   const aiCandidateReadOnly = computed(() => {
     const stage = status.value?.stage
     if (
-      stage === PortfolioMaterialIntakeStageCode.SUBMITTED
-      || stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW
+      stage === PortfolioMaterialIntakeStageCode.SUBMITTED ||
+      stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW
     ) {
       return true
     }
@@ -114,6 +106,9 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
   })
 
   const readOnly = fieldReadOnly
+  const writePending = computed(
+    () => saving.value || submitting.value || reassigning.value || loading.value,
+  )
 
   function resetIntakeContext() {
     intakeRequestToken.value += 1
@@ -170,7 +165,6 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
         ...teacherRequest.value,
         materialId: materialId.value || undefined,
         aiTaskId: taskId.value || undefined,
-        demoMode: demoMode.value || undefined,
       })
       if (intakeRequestToken.value !== requestToken) {
         return
@@ -192,31 +186,26 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     fileNodeId?: string
     materialTitle?: string
     fileName?: string
-    demoMode?: boolean
     /** 显式 true 时重新提交 AI；AI_FAILED 阶段默认不自动提交 */
     submitAi?: boolean
   }) {
+    if (writePending.value) {
+      message.warning('材料采集操作正在处理，请勿重复提交')
+      return
+    }
     if (!targetTeacherId.value) {
       message.error('请先选择教师')
       return
     }
     const requestToken = intakeRequestToken.value
-    const effectiveDemoMode = options?.demoMode ?? demoMode.value
     const effectiveCategoryId = categoryId.value || undefined
     const aiFailedStage = status.value?.stage === PortfolioMaterialIntakeStageCode.AI_FAILED
-    const shouldSubmitAi
-      = options?.submitAi === true
-        || (options?.submitAi !== false
-          && !effectiveDemoMode
-          && Boolean(effectiveCategoryId)
-          && !aiFailedStage)
+    const shouldSubmitAi =
+      options?.submitAi === true ||
+      (options?.submitAi !== false && Boolean(effectiveCategoryId) && !aiFailedStage)
     loading.value = true
     try {
-      let frozenProviderChain: string | undefined
-      if (!effectiveDemoMode) {
-        const chainResult = await portfolioIntakeApi.getProviderChain()
-        frozenProviderChain = chainResult.providerChain
-      }
+      const chainResult = await portfolioIntakeApi.getProviderChain()
       const result = await portfolioIntakeApi.start({
         ...teacherRequest.value,
         materialId: materialId.value || undefined,
@@ -225,8 +214,7 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
         materialTitle: options?.materialTitle,
         materialType: inferMaterialType(options?.fileName ?? options?.materialTitle),
         submitAi: shouldSubmitAi,
-        demoMode: effectiveDemoMode || undefined,
-        frozenProviderChain,
+        frozenProviderChain: chainResult.providerChain,
       })
       if (intakeRequestToken.value !== requestToken) {
         return
@@ -270,6 +258,10 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
   }
 
   async function saveDraft() {
+    if (writePending.value) {
+      message.warning('材料采集操作正在处理，请勿重复提交')
+      return
+    }
     if (fieldReadOnly.value) {
       message.warning('当前阶段不可保存草稿，请先完成 AI 候选确认或等待处理结束')
       return
@@ -290,7 +282,6 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
         recordId: archiveRecordId.value || undefined,
         categoryId: categoryId.value,
         fields: buildFieldInputs(),
-        demoMode: demoMode.value || undefined,
       })
       if (intakeRequestToken.value !== requestToken) {
         return
@@ -311,6 +302,10 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
 
   /** 恢复候选均驳回材料，保留原作废档案证据并回到可重新选择分类的待采集状态。 */
   async function restartRejectedCandidates() {
+    if (writePending.value) {
+      message.warning('材料采集操作正在处理，请勿重复提交')
+      return
+    }
     if (!status.value) {
       return
     }
@@ -338,6 +333,10 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
   }
 
   async function submitIntake() {
+    if (writePending.value) {
+      message.warning('材料采集操作正在处理，请勿重复提交')
+      return
+    }
     if (fieldReadOnly.value) {
       message.warning('当前阶段不可提交，请先完成 AI 候选确认或等待处理结束')
       return
@@ -358,7 +357,6 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
         recordId: archiveRecordId.value || undefined,
         categoryId: categoryId.value,
         fields: buildFieldInputs(),
-        demoMode: demoMode.value || undefined,
       })
       if (intakeRequestToken.value !== requestToken) {
         return
@@ -379,6 +377,10 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
   }
 
   async function reassignCategory(targetCategoryId: string) {
+    if (writePending.value) {
+      message.warning('材料采集操作正在处理，请勿重复提交')
+      return
+    }
     if (!status.value?.materialId) {
       message.warning('请先登记材料后再重分类')
       return
@@ -480,6 +482,7 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     saving,
     submitting,
     reassigning,
+    writePending,
     status,
     categoryId,
     materialId,
@@ -491,7 +494,6 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     fieldReadOnly,
     aiCandidateReadOnly,
     shouldPoll,
-    demoMode,
     refreshStatus,
     startIntake,
     saveDraft,

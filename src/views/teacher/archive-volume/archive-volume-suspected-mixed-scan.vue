@@ -78,9 +78,9 @@
 <script lang="ts" setup>
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveSuspectedMixedScanBatchItemVO } from '@/apis/mark/archive-volume'
+import { pageSuspectedMixedScanBatches } from '@/apis/mark/archive-volume'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { pageSuspectedMixedScanBatches } from '@/apis/mark/archive-volume'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -114,7 +114,7 @@ const {
 const loading = ref(false)
 const rows = ref<SuspectedMixedScanRow[]>([])
 const filterDepartmentId = ref<string>()
-const allDepartmentOptions = ref<Array<{ value: string, label: string }>>([])
+const allDepartmentOptions = ref<Array<{ value: string; label: string }>>([])
 const pagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 
 const showDepartmentFilter = computed(() => listScopedDepartmentIds.value.length > 0)
@@ -169,8 +169,6 @@ async function loadRows(): Promise<void> {
     pagination.pageNum = page.pageNum
     pagination.pageSize = page.pageSize
   } catch (error) {
-    rows.value = []
-    pagination.total = 0
     showUserError(error, '混扫待办加载失败')
   } finally {
     loading.value = false
@@ -182,7 +180,7 @@ function handleFilterChange(): void {
   void loadRows()
 }
 
-function handlePageChange(page: { current: number, pageSize: number }): void {
+function handlePageChange(page: { current: number; pageSize: number }): void {
   pagination.pageNum = page.current
   pagination.pageSize = page.pageSize
   void loadRows()

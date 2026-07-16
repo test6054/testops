@@ -83,7 +83,6 @@ function resolveAppraisalStepDone(
       destructionStatus === ArchiveDestructionStatusCode.APPROVED
       || destructionStatus === ArchiveDestructionStatusCode.EXECUTING
       || destructionStatus === ArchiveDestructionStatusCode.EXECUTED
-      || destructionStatus === ArchiveDestructionStatusCode.SUPERVISED
       || destructionStatus === ArchiveDestructionStatusCode.LEDGER_ARCHIVED
       || destructionStatus === ArchiveDestructionStatusCode.FAILED
     )
@@ -92,13 +91,11 @@ function resolveAppraisalStepDone(
     return (
       destructionStatus === ArchiveDestructionStatusCode.EXECUTING
       || destructionStatus === ArchiveDestructionStatusCode.EXECUTED
-      || destructionStatus === ArchiveDestructionStatusCode.SUPERVISED
       || destructionStatus === ArchiveDestructionStatusCode.LEDGER_ARCHIVED
     )
   }
   return (
-    destructionStatus === ArchiveDestructionStatusCode.SUPERVISED
-    || destructionStatus === ArchiveDestructionStatusCode.LEDGER_ARCHIVED
+    destructionStatus === ArchiveDestructionStatusCode.LEDGER_ARCHIVED
   )
 }
 
@@ -171,7 +168,6 @@ function resolveDestructionStepDone(
       destructionStatus === ArchiveDestructionStatusCode.APPROVED
       || destructionStatus === ArchiveDestructionStatusCode.EXECUTING
       || destructionStatus === ArchiveDestructionStatusCode.EXECUTED
-      || destructionStatus === ArchiveDestructionStatusCode.SUPERVISED
       || destructionStatus === ArchiveDestructionStatusCode.LEDGER_ARCHIVED
       || destructionStatus === ArchiveDestructionStatusCode.FAILED
     )
@@ -180,12 +176,10 @@ function resolveDestructionStepDone(
     return (
       destructionStatus === ArchiveDestructionStatusCode.EXECUTING
       || destructionStatus === ArchiveDestructionStatusCode.EXECUTED
-      || destructionStatus === ArchiveDestructionStatusCode.SUPERVISED
       || destructionStatus === ArchiveDestructionStatusCode.LEDGER_ARCHIVED
     )
   }
-  return destructionStatus === ArchiveDestructionStatusCode.SUPERVISED
-    || destructionStatus === ArchiveDestructionStatusCode.LEDGER_ARCHIVED
+  return destructionStatus === ArchiveDestructionStatusCode.LEDGER_ARCHIVED
 }
 
 /** 销毁子链 lifecycle-pipe，与鉴定 Panel 销毁区步骤同源。 */
@@ -213,6 +207,12 @@ export function buildArchiveDestructionLifecycleSteps(
     }
     else if (index === activeIndex) {
       if (definition.key === 'execute' && destructionStatus === ArchiveDestructionStatusCode.FAILED) {
+        status = 'warn'
+      }
+      else if (
+        definition.key === 'approve'
+        && destructionStatus === ArchiveDestructionStatusCode.REJECTED
+      ) {
         status = 'warn'
       }
       else {

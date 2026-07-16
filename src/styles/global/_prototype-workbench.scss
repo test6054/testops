@@ -87,6 +87,7 @@
 }
 
 :global(.workbench-score-bar-item__track) {
+  position: relative;
   flex: 1;
   height: 24px;
   background: var(--dp-surface-subtle);
@@ -95,18 +96,26 @@
 }
 
 :global(.workbench-score-bar-item__fill) {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--dp-radius-control);
+  transform-origin: left center;
+  transition: transform var(--dp-duration-normal) ease;
+}
+
+:global(.workbench-score-bar-item__value) {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  min-width: 40px;
-  height: 100%;
   padding-right: var(--dp-space-2);
-  border-radius: var(--dp-radius-control);
   font-size: var(--dp-type-hint-size);
   font-weight: var(--dp-font-weight-title);
   font-variant-numeric: tabular-nums;
   color: #fff;
-  transition: width var(--dp-duration-normal) ease;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
 }
 
 :global(.workbench-score-bar-item__fill--primary) {
@@ -214,10 +223,12 @@
 }
 
 :global(.exam-status-card__progress-fill) {
+  width: 100%;
   height: 100%;
   border-radius: inherit;
   background: var(--ant-color-primary);
-  transition: width var(--dp-duration-normal) ease;
+  transform-origin: left center;
+  transition: transform var(--dp-duration-normal) ease;
 }
 
 :global(.exam-status-card__stats) {
@@ -664,7 +675,7 @@
 :global(.material-status-icon) {
   width: 14px;
   height: 14px;
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -760,15 +771,18 @@
 }
 
 :global(.approval-card--pending) {
-  border-left: 3px solid var(--dp-orange-500);
+  border-color: var(--dp-orange-500);
+  background: color-mix(in srgb, var(--dp-orange-500) 8%, var(--dp-surface));
 }
 
 :global(.approval-card--approved) {
-  border-left: 3px solid var(--dp-green-600);
+  border-color: var(--dp-green-600);
+  background: color-mix(in srgb, var(--dp-green-600) 8%, var(--dp-surface));
 }
 
 :global(.approval-card--rejected) {
-  border-left: 3px solid var(--dp-red-600);
+  border-color: var(--dp-red-600);
+  background: color-mix(in srgb, var(--dp-red-600) 8%, var(--dp-surface));
 }
 
 :global(.approval-card__head) {
@@ -848,7 +862,7 @@
 :global(.score-gate__check) {
   width: 20px;
   height: 20px;
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -945,7 +959,7 @@
 :global(.self-check-mark) {
   width: 18px;
   height: 18px;
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -984,10 +998,9 @@
   justify-content: space-between;
   gap: var(--dp-space-3);
   padding: var(--dp-space-3);
-  border: 1px solid var(--dp-border-light);
-  border-left: 3px solid var(--dp-orange-500);
+  border: 1px solid var(--dp-orange-500);
   border-radius: var(--dp-radius-sm);
-  background: var(--dp-surface);
+  background: color-mix(in srgb, var(--dp-orange-500) 8%, var(--dp-surface));
 }
 
 :global(.submit-task-row__main) {
@@ -1019,11 +1032,11 @@
   padding: var(--dp-space-2) var(--dp-space-3);
   background: var(--dp-surface-sunken);
   border-radius: var(--dp-radius-control);
-  border-left: 3px solid var(--dp-primary-light);
+  border: 1px solid var(--dp-primary-light);
 }
 
 :global(.archive-search-snippet-block--plain) {
-  border-left-color: var(--dp-border);
+  border-color: var(--dp-border);
 }
 
 :global(.archive-search-snippet-mark) {

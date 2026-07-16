@@ -1,17 +1,16 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {Dayjs} from 'dayjs';
+import type { Dayjs } from 'dayjs'
+import dayjs from 'dayjs'
 import type {
+  PortfolioEthicsConstraintStatusVO,
   PortfolioEthicsReviewLogVO,
   PortfolioEthicsSanctionVO,
 } from '@/apis/portfolio/ethics-sanction'
-import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
-import { DatePicker, Input, message, Select, Textarea } from 'ant-design-vue'
-import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioEthicsSanctionApi } from '@/apis/portfolio/ethics-sanction'
+import { DatePicker, Input, message, Select, Textarea } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
@@ -56,7 +55,10 @@ const detailOpen = ref(false)
 const editingId = ref<string | undefined>()
 const reviewTarget = ref<PortfolioEthicsSanctionVO | null>(null)
 const detailRow = ref<PortfolioEthicsSanctionVO | null>(null)
+const constraintStatus = ref<PortfolioEthicsConstraintStatusVO | null>(null)
 const reviewLogs = ref<PortfolioEthicsReviewLogVO[]>([])
+const requestToken = ref(0)
+const detailRequestToken = ref(0)
 
 const query = reactive({
   pageNum: 1,
@@ -94,28 +96,24 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 200 },
 ]
 
-const pagination = computed(() => ({
-  current: query.pageNum,
-  pageSize: query.pageSize,
-  total: total.value,
-}))
+const writing = computed(() => saving.value || reviewing.value)
 
-const statusFilterOptions = ALL_PORTFOLIO_ETHICS_SANCTION_STATUS_CODES.map(code => ({
+const statusFilterOptions = ALL_PORTFOLIO_ETHICS_SANCTION_STATUS_CODES.map((code) => ({
   value: code,
   label: PortfolioEthicsSanctionStatusDescription[code],
 }))
 
-const eventOptions = ALL_PORTFOLIO_ETHICS_EVENT_TYPE_CODES.map(code => ({
+const eventOptions = ALL_PORTFOLIO_ETHICS_EVENT_TYPE_CODES.map((code) => ({
   value: code,
   label: PortfolioEthicsEventTypeDescription[code],
 }))
 
-const impactOptions = ALL_PORTFOLIO_ETHICS_IMPACT_SCOPE_CODES.map(code => ({
+const impactOptions = ALL_PORTFOLIO_ETHICS_IMPACT_SCOPE_CODES.map((code) => ({
   value: code,
   label: PortfolioEthicsImpactScopeDescription[code],
 }))
 
-const conclusionOptions = ALL_PORTFOLIO_ETHICS_REVIEW_CONCLUSION_CODES.map(code => ({
+const conclusionOptions = ALL_PORTFOLIO_ETHICS_REVIEW_CONCLUSION_CODES.map((code) => ({
   value: code,
   label: PortfolioEthicsReviewConclusionDescription[code],
 }))
@@ -171,12 +169,14 @@ function resetForm() {
 }
 
 function openCreate() {
+  if (writing.value) return
   editingId.value = undefined
   resetForm()
   editorOpen.value = true
 }
 
 function openEdit(row: PortfolioEthicsSanctionVO) {
+  if (writing.value) return
   if (row.sanctionStatus !== PortfolioEthicsSanctionStatusCode.IN_EFFECT) {
     message.warning('仅处分期内记录可编辑')
     return
@@ -195,6 +195,7 @@ function openEdit(row: PortfolioEthicsSanctionVO) {
 }
 
 function openReview(row: PortfolioEthicsSanctionVO) {
+  if (writing.value) return
   if (row.sanctionStatus !== PortfolioEthicsSanctionStatusCode.PENDING_REVIEW) {
     message.warning('仅期满待复核记录可提交结论')
     return
@@ -207,41 +208,73 @@ function openReview(row: PortfolioEthicsSanctionVO) {
 }
 
 async function openDetail(row: PortfolioEthicsSanctionVO) {
+  const currentToken = detailRequestToken.value + 1
+  detailRequestToken.value = currentToken
   detailOpen.value = true
   detailRow.value = null
+  constraintStatus.value = null
   reviewLogs.value = []
   try {
-    detailRow.value = await portfolioEthicsSanctionApi.get({ id: row.id })
-    reviewLogs.value = await portfolioEthicsSanctionApi.listReviewLogs({ id: row.id })
+    const [nextDetail, nextConstraint] = await Promise.all([
+      portfolioEthicsSanctionApi.get({ id: row.id }),
+      portfolioEthicsSanctionApi.getConstraint({ teacherId: row.teacherId }),
+    ])
+    if (detailRequestToken.value !== currentToken) {
+      return
+    }
+    const nextLogs = await portfolioEthicsSanctionApi.listReviewLogs({ id: row.id })
+    if (detailRequestToken.value !== currentToken) {
+      return
+    }
+    detailRow.value = nextDetail
+    constraintStatus.value = nextConstraint
+    reviewLogs.value = nextLogs
   } catch (error) {
+    if (detailRequestToken.value !== currentToken) {
+      return
+    }
     showUserError(error, '加载处分详情失败')
     detailOpen.value = false
   }
 }
 
 async function loadPage() {
+  const currentToken = requestToken.value + 1
+  requestToken.value = currentToken
+  const request = {
+    pageNum: query.pageNum,
+    pageSize: query.pageSize,
+    teacherId: query.teacherId.trim() || undefined,
+    sanctionStatus: query.sanctionStatus,
+  }
   beginLoad()
   loading.value = true
   try {
-    const result = await portfolioEthicsSanctionApi.page({
-      pageNum: query.pageNum,
-      pageSize: query.pageSize,
-      teacherId: query.teacherId.trim() || undefined,
-      sanctionStatus: query.sanctionStatus,
-    })
+    const result = await portfolioEthicsSanctionApi.page(request)
+    if (requestToken.value !== currentToken) {
+      return
+    }
     rows.value = result.list ?? []
     total.value = result.total ?? 0
-  
+
     okLoad()
   } catch (error) {
+    if (requestToken.value !== currentToken) {
+      return
+    }
+    rows.value = []
+    total.value = 0
     failLoad()
     showUserError(error, '加载师德处分失败')
   } finally {
-    loading.value = false
+    if (requestToken.value === currentToken) {
+      loading.value = false
+    }
   }
 }
 
 async function saveSanction() {
+  if (writing.value) return
   if (!form.teacherId.trim()) {
     message.error('请填写教师用户 ID')
     return
@@ -250,9 +283,13 @@ async function saveSanction() {
     message.error('请选择处分起止日期')
     return
   }
-  if (!form.handlingBasis.trim() || !form.releaseCondition.trim()
-    || !form.reviewDepartment.trim() || !form.publicSummary.trim()) {
-    message.error('处理依据、解除条件、复核')
+  if (
+    !form.handlingBasis.trim() ||
+    !form.releaseCondition.trim() ||
+    !form.reviewDepartment.trim() ||
+    !form.publicSummary.trim()
+  ) {
+    message.error('请填写处理依据、解除条件、复核部门和公开摘要')
     return
   }
   saving.value = true
@@ -281,9 +318,11 @@ async function saveSanction() {
 }
 
 async function submitReview() {
-  if (!reviewTarget.value) return
-  if (reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND
-    && !reviewForm.newSanctionEndDate) {
+  if (!reviewTarget.value || writing.value) return
+  if (
+    reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND &&
+    !reviewForm.newSanctionEndDate
+  ) {
     message.error('延长处分须选择新的结束日期')
     return
   }
@@ -305,10 +344,9 @@ async function submitReview() {
   }
 }
 
-function onTableChange(changeEvent: UiDataTableChangeEvent) {
-  const { pageNum, pageSize } = readUiDataTablePagination(changeEvent, DEFAULT_LIST_PAGE_SIZE)
-  query.pageNum = pageNum
-  query.pageSize = pageSize
+function handlePageChange(page: { current: number; pageSize: number }) {
+  query.pageNum = page.current
+  query.pageSize = page.pageSize
   void loadPage()
 }
 
@@ -329,12 +367,10 @@ onMounted(() => {
         layout="workbench"
         show-title
         title="师德处分"
-        subtitle="登记处分、期满复核；不得"
+        subtitle="登记处分、期满复核；约束结果按有效状态实时生效"
       >
         <template #actions>
-          <UiButton @click="openCreate">
-            登记处分
-          </UiButton>
+          <UiButton @click="openCreate"> 登记处分 </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -354,20 +390,21 @@ onMounted(() => {
           style="width: 160px"
           :options="statusFilterOptions"
         />
-        <UiButton variant="soft" @click="search">
-          查询
-        </UiButton>
+        <UiButton variant="soft" @click="search"> 查询 </UiButton>
       </div>
       <a-spin :spinning="loading">
         <UiEmpty v-if="!loading && !rows.length" description="暂无师德处分记录" />
         <UiDataTable
+          v-model:current="query.pageNum"
+          v-model:page-size="query.pageSize"
           :load-error="loadError"
           v-else
           row-key="id"
           :columns="columns"
           :data-source="rows"
-          :pagination="pagination"
-          @change="onTableChange"
+          pagination-mode="server"
+          :total="total"
+          @page-change="handlePageChange"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'eventType'">
@@ -390,9 +427,7 @@ onMounted(() => {
               </UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiButton size="sm" variant="soft" @click="openDetail(record)">
-                详情
-              </UiButton>
+              <UiButton size="sm" variant="soft" @click="openDetail(record)"> 详情 </UiButton>
               <UiButton
                 v-if="record.sanctionStatus === 'IN_EFFECT'"
                 size="sm"
@@ -440,12 +475,8 @@ onMounted(() => {
         <Textarea v-model:value="form.detailDescription" :rows="3" />
       </div>
       <template #footer>
-        <UiButton variant="soft" @click="editorOpen = false">
-          取消
-        </UiButton>
-        <UiButton :loading="saving" @click="saveSanction">
-          保存
-        </UiButton>
+        <UiButton variant="soft" @click="editorOpen = false"> 取消 </UiButton>
+        <UiButton :loading="saving" @click="saveSanction"> 保存 </UiButton>
       </template>
     </UiDrawer>
 
@@ -464,17 +495,22 @@ onMounted(() => {
         <Textarea v-model:value="reviewForm.reviewOpinion" :rows="3" />
       </div>
       <template #footer>
-        <UiButton variant="soft" @click="reviewOpen = false">
-          取消
-        </UiButton>
-        <UiButton :loading="reviewing" @click="submitReview">
-          提交结论
-        </UiButton>
+        <UiButton variant="soft" @click="reviewOpen = false"> 取消 </UiButton>
+        <UiButton :loading="reviewing" @click="submitReview"> 提交结论 </UiButton>
       </template>
     </UiDrawer>
 
     <UiDrawer v-model:open="detailOpen" title="处分详情" width="560">
       <div v-if="detailRow" class="ethics-admin__form">
+        <section v-if="constraintStatus" class="ethics-admin__constraint">
+          <strong>教师当前聚合约束</strong>
+          <UiTag :tone="constraintStatus.constrained ? 'red' : 'green'">
+            {{ constraintStatus.constrained ? '约束生效' : '当前无约束' }}
+          </UiTag>
+          <span>有效处分 {{ constraintStatus.activeSanctionCount }} 条</span>
+          <span>红线系数 {{ constraintStatus.redlineCoefficient }}</span>
+          <p v-if="constraintStatus.publicSummary">{{ constraintStatus.publicSummary }}</p>
+        </section>
         <p>状态：{{ statusLabel(detailRow.sanctionStatus) }}</p>
         <p>事件：{{ eventLabel(detailRow.eventType) }}</p>
         <p>依据：{{ detailRow.handlingBasis }}</p>
@@ -485,15 +521,15 @@ onMounted(() => {
         <p>公开摘要：{{ detailRow.publicSummary }}</p>
         <p>敏感明细：{{ detailRow.detailDescription || '—' }}</p>
         <p v-if="detailRow.lastReviewConclusion">
-          最近结论：{{ conclusionLabel(detailRow.lastReviewConclusion) }}
-          · {{ detailRow.lastReviewOpinion || '无意见' }}
+          最近结论：{{ conclusionLabel(detailRow.lastReviewConclusion) }} ·
+          {{ detailRow.lastReviewOpinion || '无意见' }}
         </p>
         <h4>复核历史</h4>
         <UiEmpty v-if="!reviewLogs.length" description="尚无复核记录" />
         <ul v-else class="ethics-admin__logs">
           <li v-for="log in reviewLogs" :key="log.id">
-            {{ log.createTime }} · {{ conclusionLabel(log.reviewConclusion) }}
-            · {{ log.fromStatus }} → {{ log.toStatus }}
+            {{ log.createTime }} · {{ conclusionLabel(log.reviewConclusion) }} ·
+            {{ log.fromStatus }} → {{ log.toStatus }}
             <span v-if="log.newEndDate"> · 结束日 {{ log.newEndDate }}</span>
           </li>
         </ul>
@@ -517,6 +553,19 @@ onMounted(() => {
 .ethics-admin__form label {
   font-size: 13px;
   color: var(--dp-text-secondary, #64748b);
+}
+.ethics-admin__constraint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--dp-border-subtle);
+}
+.ethics-admin__constraint p {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--dp-text-secondary);
 }
 .ethics-admin__logs {
   margin: 0;

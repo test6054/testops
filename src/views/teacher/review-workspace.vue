@@ -87,7 +87,9 @@
                 当前第 {{ currentQueueIndex }} 份，剩余
                 {{ Math.max(0, queueTotal - currentQueueIndex) }} 份待复核
               </span>
-              <span class="review-workspace__keyboard-hint">J/K 或 ←/→ 切换份数 · 0-9 快捷给分</span>
+              <span class="review-workspace__keyboard-hint"
+                >J/K 或 ←/→ 切换份数 · 0-9 快捷给分</span
+              >
             </div>
             <a-progress
               :percent="queueProgressPercent"
@@ -104,7 +106,7 @@
                 size="small"
                 style="width: 80px"
                 @update:value="
-                  (value) => {
+                  (value: number | string | null) => {
                     jumpTarget = typeof value === 'number' ? value : null
                   }
                 "
@@ -424,24 +426,12 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { AnnotationResponse } from '@/apis/mark/exam-annotation'
+import { listAnnotations } from '@/apis/mark/exam-annotation'
 import type {
   AiAbilityCode,
   AiExecutionStatusCode,
   ExamQuestionAiExecutionItemResponse,
 } from '@/apis/mark/exam-grade'
-import type { ReviewTaskDetailResponse, ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
-import type { ObjectiveComparePolicyCode } from '@/apis/mark/exam-standard-answer'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
-import EditOutlined from '@ant-design/icons-vue/EditOutlined'
-import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
-import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
-import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { listAnnotations } from '@/apis/mark/exam-annotation'
 import {
   AI_ABILITY_TONE,
   AI_EXECUTION_STATUS_TONE,
@@ -452,6 +442,7 @@ import {
   rejectQuestionGrade,
   rescoreQuestionByAi,
 } from '@/apis/mark/exam-grade'
+import type { ReviewTaskDetailResponse, ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
 import {
   claimReviewTask,
   getReviewTaskDetail,
@@ -462,7 +453,18 @@ import {
   ReviewTaskStatusDescription,
   ReviewTaskTypeCode,
 } from '@/apis/mark/exam-review-task'
+import type { ObjectiveComparePolicyCode } from '@/apis/mark/exam-standard-answer'
 import { ObjectiveComparePolicyDescription } from '@/apis/mark/exam-standard-answer'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
+import EditOutlined from '@ant-design/icons-vue/EditOutlined'
+import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
+import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
+import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import ExperienceAssistBadge from '@/components/mark/ExperienceAssistBadge.vue'
 import GradingImmersionChrome from '@/components/mark/GradingImmersionChrome.vue'
 import GradingImmersionSection from '@/components/mark/GradingImmersionSection.vue'
@@ -663,10 +665,10 @@ const pipelineCurrentIndex = ref(0)
  */
 async function loadReviewQueue(): Promise<void> {
   if (
-    !examId.value
-    || !detail.value?.layoutQuestionId
-    || !detail.value.reviewType
-    || !detail.value.gradeSource
+    !examId.value ||
+    !detail.value?.layoutQuestionId ||
+    !detail.value.reviewType ||
+    !detail.value.gradeSource
   ) {
     reviewQueue.value = []
     return
@@ -819,8 +821,8 @@ const canRescoreByAi = computed<boolean>(() => {
   if (!examId.value) return false
   if (!detail.value) return false
   return (
-    detail.value.status === ReviewTaskStatusCode.PENDING
-    || detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
+    detail.value.status === ReviewTaskStatusCode.PENDING ||
+    detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
   )
 })
 
@@ -834,9 +836,9 @@ async function loadTask(): Promise<void> {
   try {
     const loadedDetail = await loadReviewTaskDetail()
     if (
-      generation !== loadTaskGeneration
-      || expectedExamId !== examId.value
-      || expectedTaskId !== taskId.value
+      generation !== loadTaskGeneration ||
+      expectedExamId !== examId.value ||
+      expectedTaskId !== taskId.value
     ) {
       return
     }
@@ -891,8 +893,8 @@ async function loadReviewTaskDetail(): Promise<ReviewTaskDetailResponse> {
     reviewTaskId: taskId.value,
   })
   if (
-    preview.status !== ReviewTaskStatusCode.PENDING
-    && preview.status !== ReviewTaskStatusCode.IN_PROGRESS
+    preview.status !== ReviewTaskStatusCode.PENDING &&
+    preview.status !== ReviewTaskStatusCode.IN_PROGRESS
   ) {
     return preview
   }
@@ -908,9 +910,10 @@ async function loadReviewTaskDetail(): Promise<ReviewTaskDetailResponse> {
     if (!isBusinessConflict(error)) {
       throw error
     }
-    const heldByOther = preview.status === ReviewTaskStatusCode.IN_PROGRESS
-      && !!preview.assignedTeacherUserId
-      && preview.assignedTeacherUserId !== currentUserId.value
+    const heldByOther =
+      preview.status === ReviewTaskStatusCode.IN_PROGRESS &&
+      !!preview.assignedTeacherUserId &&
+      preview.assignedTeacherUserId !== currentUserId.value
     if (heldByOther && isExamOwner.value) {
       ownerOverrideMode.value = true
       claimBlockedByOther.value = false
@@ -1185,8 +1188,8 @@ async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
   }
   const fullScore = detail.value.fullScore
   const teacherReviewScore = gradeForm.teacherReviewScore
-  const ratio
-    = fullScore && fullScore > 0 && typeof teacherReviewScore === 'number'
+  const ratio =
+    fullScore && fullScore > 0 && typeof teacherReviewScore === 'number'
       ? `${Math.round((teacherReviewScore / fullScore) * 100)}%`
       : '-'
   // 取下一份模式下额外提示队列剩余信息，让教师清楚复核会继续
@@ -1239,8 +1242,10 @@ async function submitGrade(): Promise<boolean> {
       message.warning('最终成绩已确认/发布/更正，不能再改题分')
       return false
     }
-    if (readBusinessResultCode(error) === ResultCode.PARAM_ERROR
-      && getUserErrorMessage(error, '').includes('主考代办')) {
+    if (
+      readBusinessResultCode(error) === ResultCode.PARAM_ERROR &&
+      getUserErrorMessage(error, '').includes('主考代办')
+    ) {
       message.warning(getUserErrorMessage(error, '主考代办须填写代办原因'))
       return false
     }
@@ -1300,8 +1305,10 @@ async function handleReject(): Promise<void> {
       message.warning('最终成绩已确认/发布/更正，不能再改题分')
       return
     }
-    if (readBusinessResultCode(error) === ResultCode.PARAM_ERROR
-      && getUserErrorMessage(error, '').includes('主考代办')) {
+    if (
+      readBusinessResultCode(error) === ResultCode.PARAM_ERROR &&
+      getUserErrorMessage(error, '').includes('主考代办')
+    ) {
       message.warning(getUserErrorMessage(error, '主考代办须填写代办原因'))
       return
     }

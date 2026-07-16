@@ -1,34 +1,28 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioExpertAssignmentReviewBundleVO } from '@/apis/portfolio/expert-assignment'
-import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import type { PortfolioPublicExpertReviewBundleVO } from '@/apis/portfolio/public-expert'
 import { portfolioPublicExpertApi } from '@/apis/portfolio/public-expert'
+import { onMounted, ref } from 'vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { showUserError } from '@/utils/error-handler'
 
-const route = useRoute()
 const loading = ref(false)
 const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
-const bundle = ref<PortfolioExpertAssignmentReviewBundleVO | null>(null)
+const bundle = ref<PortfolioPublicExpertReviewBundleVO | null>(null)
+const errorMessage = ref('')
+const requestToken = ref(0)
 
-const tenantId = computed(() => {
-  const value = route.query.tenantId
-  return typeof value === 'string' ? value : undefined
-})
-
-const accessToken = computed(() => {
-  const value = route.query.accessToken
-  return typeof value === 'string' ? value : undefined
-})
+const publicLinkParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+const tenantId = publicLinkParams.get('tenantId') || undefined
+const accessToken = publicLinkParams.get('accessToken') || undefined
 
 const subjectTeacherColumns: ColumnsType = [
   { title: '被评教师', dataIndex: 'maskedDisplayName', key: 'maskedDisplayName' },
-  { title: '教师 ID', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },
 ]
 
 const materialColumns: ColumnsType = [
@@ -43,25 +37,32 @@ const materialColumns: ColumnsType = [
 ]
 
 async function loadBundle() {
-  if (!tenantId.value || !accessToken.value) {
+  if (!tenantId || !accessToken) {
     bundle.value = null
+    errorMessage.value = '审阅链接缺少租户或访问令牌，请联系授权管理员重新获取。'
     return
   }
+  const currentToken = requestToken.value + 1
+  requestToken.value = currentToken
   beginLoad()
   loading.value = true
+  errorMessage.value = ''
   try {
-    bundle.value = await portfolioPublicExpertApi.reviewBundle({
-      tenantId: tenantId.value,
-      accessToken: accessToken.value,
+    const result = await portfolioPublicExpertApi.reviewBundle({
+      tenantId,
+      accessToken,
     })
-  
+    if (requestToken.value !== currentToken) return
+    bundle.value = result
     okLoad()
   } catch (error) {
+    if (requestToken.value !== currentToken) return
     failLoad()
     bundle.value = null
-    showUserError(error, '加载失败')
+    errorMessage.value = '授权无效、已过期或已被吊销，请联系授权管理员。'
+    showUserError(error, '加载外部专家授权失败')
   } finally {
-    loading.value = false
+    if (requestToken.value === currentToken) loading.value = false
   }
 }
 
@@ -95,7 +96,7 @@ onMounted(() => {
           :data-source="bundle.subjectTeachers"
           :show-pagination="false"
           :total="bundle.subjectTeachers.length"
-          row-key="teacherUserId"
+          row-key="subjectRef"
           size="small"
           flat
           empty-kind="first-run"
@@ -104,7 +105,7 @@ onMounted(() => {
         <h4 class="public-expert-review__section-title">授权材料清单</h4>
         <UiDataTable
           :load-error="loadError"
-          row-key="archiveRecordId"
+          row-key="materialRef"
           :columns="materialColumns"
           :data-source="bundle.materials"
           :pagination="false"
@@ -119,7 +120,15 @@ onMounted(() => {
           </template>
         </UiDataTable>
       </template>
-      <UiEmpty v-else title="暂无内容" />
+      <UiEmpty
+        v-else
+        :title="errorMessage ? '无法打开审阅包' : '暂无内容'"
+        :description="errorMessage || '当前授权没有可审阅材料。'"
+      >
+        <template v-if="tenantId && accessToken" #action>
+          <UiButton :loading="loading" @click="loadBundle">重试</UiButton>
+        </template>
+      </UiEmpty>
     </UiCard>
   </div>
 </template>

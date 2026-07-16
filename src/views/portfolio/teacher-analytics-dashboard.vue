@@ -4,27 +4,28 @@ import type {
   PortfolioDualTeacherApplicationStatusCode,
   PortfolioKeyTeacherRegistryStatusCode,
 } from '@/apis/portfolio/enums'
-import type { PortfolioDeptStructureStatVO } from '@/apis/portfolio/teacher'
-import type {
-  PortfolioDoubleDutyAnalyticsVO,
-  PortfolioDualTeacherAnalyticsVO,
-  PortfolioExternalTeacherStatsVO,
-} from '@/apis/portfolio/teacher-platform'
-import type { PortfolioCockpitSummaryVO } from '@/apis/portfolio/types'
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { portfolioCockpitApi } from '@/apis/portfolio/cockpit'
 import {
   PortfolioCompletenessLevelCode,
   PortfolioDualTeacherApplicationStatusDescription,
   PortfolioKeyTeacherRegistryStatusDescription,
 } from '@/apis/portfolio/enums'
+import type { PortfolioDeptStructureStatVO } from '@/apis/portfolio/teacher'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
+import type {
+  PortfolioDoubleDutyAnalyticsVO,
+  PortfolioDualTeacherAnalyticsVO,
+  PortfolioExternalTeacherStatsVO,
+} from '@/apis/portfolio/teacher-platform'
 import {
   portfolioDoubleDutyApi,
   portfolioDualTeacherApi,
   portfolioExternalTeacherApi,
 } from '@/apis/portfolio/teacher-platform'
+import type { PortfolioCockpitSummaryVO } from '@/apis/portfolio/types'
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { portfolioCockpitApi } from '@/apis/portfolio/cockpit'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -41,6 +42,8 @@ const schoolSummary = ref<PortfolioCockpitSummaryVO | null>(null)
 const dualStats = ref<PortfolioDualTeacherAnalyticsVO | null>(null)
 const doubleDutyStats = ref<PortfolioDoubleDutyAnalyticsVO | null>(null)
 const externalStats = ref<PortfolioExternalTeacherStatsVO | null>(null)
+const loadFailed = ref(false)
+const requestToken = ref(0)
 
 const deptColumns: ColumnsType = [
   { title: '院系', dataIndex: 'departmentName', key: 'departmentName' },
@@ -93,13 +96,32 @@ const completenessDistributionRows: Array<{
     | 'completenessPendingCount'
     | 'completenessSevereCount'
 }> = [
-  { key: PortfolioCompletenessLevelCode.COMPLETE, label: '完整', summaryKey: 'completenessCompleteCount' },
-  { key: PortfolioCompletenessLevelCode.BASIC, label: '基本完整', summaryKey: 'completenessBasicCount' },
-  { key: PortfolioCompletenessLevelCode.PENDING, label: '待补充', summaryKey: 'completenessPendingCount' },
-  { key: PortfolioCompletenessLevelCode.SEVERE, label: '严重缺失', summaryKey: 'completenessSevereCount' },
+  {
+    key: PortfolioCompletenessLevelCode.COMPLETE,
+    label: '完整',
+    summaryKey: 'completenessCompleteCount',
+  },
+  {
+    key: PortfolioCompletenessLevelCode.BASIC,
+    label: '基本完整',
+    summaryKey: 'completenessBasicCount',
+  },
+  {
+    key: PortfolioCompletenessLevelCode.PENDING,
+    label: '待补充',
+    summaryKey: 'completenessPendingCount',
+  },
+  {
+    key: PortfolioCompletenessLevelCode.SEVERE,
+    label: '严重缺失',
+    summaryKey: 'completenessSevereCount',
+  },
 ]
 
-function distributionCount(summary: PortfolioCockpitSummaryVO, key: (typeof completenessDistributionRows)[number]['summaryKey']): number {
+function distributionCount(
+  summary: PortfolioCockpitSummaryVO,
+  key: (typeof completenessDistributionRows)[number]['summaryKey'],
+): number {
   return summary[key] ?? 0
 }
 
@@ -111,7 +133,15 @@ function goTeacherDirectory(completenessLevel: PortfolioCompletenessLevelCode) {
 }
 
 async function loadAll() {
+  const currentToken = requestToken.value + 1
+  requestToken.value = currentToken
   loading.value = true
+  loadFailed.value = false
+  deptStats.value = null
+  schoolSummary.value = null
+  dualStats.value = null
+  doubleDutyStats.value = null
+  externalStats.value = null
   try {
     const [dept, school, dual, doubleDuty, external] = await Promise.all([
       portfolioTeacherApi.deptStructureStats(),
@@ -120,15 +150,24 @@ async function loadAll() {
       portfolioDoubleDutyApi.analyticsStats(),
       portfolioExternalTeacherApi.stats(),
     ])
+    if (requestToken.value !== currentToken) {
+      return
+    }
     deptStats.value = dept
     schoolSummary.value = school
     dualStats.value = dual
     doubleDutyStats.value = doubleDuty
     externalStats.value = external
   } catch (error) {
+    if (requestToken.value !== currentToken) {
+      return
+    }
+    loadFailed.value = true
     showUserError(error)
   } finally {
-    loading.value = false
+    if (requestToken.value === currentToken) {
+      loading.value = false
+    }
   }
 }
 
@@ -137,11 +176,15 @@ onMounted(loadAll)
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="师资分析看板" subtitle="院系结构 · 档案完整度 · 五框架 · 双师 · 外聘" />
+    <ContextBar title="师资分析看板" subtitle="院系结构 · 档案完整度 · 五框架 · 双师 · 外聘">
+      <template #actions>
+        <UiButton :loading="loading" @click="loadAll">刷新</UiButton>
+      </template>
+    </ContextBar>
     <a-spin :spinning="loading">
       <UiEmpty
         v-if="!loading && !deptStats && !dualStats && !externalStats && !schoolSummary"
-        description="暂无师资分析数据"
+        :description="loadFailed ? '师资分析数据加载失败' : '暂无师资分析数据'"
       />
       <div v-else class="grid">
         <UiCard v-if="schoolSummary" title="全校档案完整度与五框架">
@@ -159,22 +202,26 @@ onMounted(loadAll)
           <UiStatPanel
             :items="[
               ...(schoolSummary.courseArchiveFrameworkSlotTotal
-                ? [{
-                  key: 'framework',
-                  label: `${schoolSummary.currentAcademicYear ?? '本学年'} 五框架`,
-                  value: String(schoolSummary.courseArchiveFrameworkSlotDone ?? 0),
-                  unit: `/${schoolSummary.courseArchiveFrameworkSlotTotal ?? 0}`,
-                  tone: 'blue' as const,
-                }]
+                ? [
+                    {
+                      key: 'framework',
+                      label: `${schoolSummary.currentAcademicYear ?? '本学年'} 五框架`,
+                      value: String(schoolSummary.courseArchiveFrameworkSlotDone ?? 0),
+                      unit: `/${schoolSummary.courseArchiveFrameworkSlotTotal ?? 0}`,
+                      tone: 'blue' as const,
+                    },
+                  ]
                 : []),
               ...(schoolSummary.courseArchiveFullyCompleteCount != null
-                ? [{
-                  key: 'fullyComplete',
-                  label: '齐备课程',
-                  value: String(schoolSummary.courseArchiveFullyCompleteCount),
-                  unit: '门',
-                  tone: 'green' as const,
-                }]
+                ? [
+                    {
+                      key: 'fullyComplete',
+                      label: '齐备课程',
+                      value: String(schoolSummary.courseArchiveFullyCompleteCount),
+                      unit: '门',
+                      tone: 'green' as const,
+                    },
+                  ]
                 : []),
             ]"
             :columns="2"

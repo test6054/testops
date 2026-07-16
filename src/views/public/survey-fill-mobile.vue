@@ -133,7 +133,12 @@
         }"
       >
         <div class="m-survey__progress">
-          <div class="m-survey__progress-bar" :style="{ transform: `scaleX(${Math.max(0, Math.min(Number(progressPercent), 100)) / 100})` }" />
+          <div
+            class="m-survey__progress-bar"
+            :style="{
+              transform: `scaleX(${Math.max(0, Math.min(Number(progressPercent), 100)) / 100})`,
+            }"
+          />
           <span class="m-survey__progress-text">{{ currentIndex + 1 }} / {{ totalCount }}</span>
           <div class="m-survey__height-toggle">
             <button
@@ -650,7 +655,7 @@ async function handleSubmit() {
   padding: 2px;
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid var(--survey-border);
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
 }
 
 .m-survey__height-btn {
@@ -660,7 +665,7 @@ async function handleSubmit() {
   font-size: 11px;
   line-height: 1;
   padding: 6px 10px;
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
   cursor: pointer;
 }
 
@@ -953,8 +958,7 @@ async function handleSubmit() {
   gap: 12px;
   padding: 12px 20px;
   padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(8px);
+  background: var(--survey-surface);
   border-top: 1px solid var(--survey-border-light);
   z-index: 20;
 }

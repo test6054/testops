@@ -160,6 +160,7 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   PortfolioTeacherDirectory: () => import('@/views/portfolio/teacher-directory.vue'),
   PortfolioAiCandidateConfirm: () => import('@/views/portfolio/teacher-intake.vue'),
   PortfolioAiOrchestration: () => import('@/views/portfolio/ai-orchestration.vue'),
+  PortfolioAiFourAssistants: () => import('@/views/portfolio/ai-four-assistants.vue'),
   PortfolioDepartmentReview: () => import('@/views/portfolio/department-review.vue'),
   PortfolioIndicatorPlatform: () => import('@/views/portfolio/indicator-platform-admin.vue'),
   PortfolioIndicatorTenant: () => import('@/views/portfolio/indicator-tenant-admin.vue'),

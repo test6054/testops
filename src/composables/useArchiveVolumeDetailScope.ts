@@ -1,9 +1,9 @@
 import type { Ref } from 'vue'
+import { computed, reactive } from 'vue'
 import type {
   ArchiveVolumeCapabilitiesVO,
   ArchiveVolumeDetailResponse,
 } from '@/apis/mark/archive-volume'
-import { computed, reactive } from 'vue'
 import { canSubmitArchiveVolumeDetail } from '@/composables/useArchiveVolumeSubmitGate'
 import { ArchiveCatalogStatusCode } from '@/types/enums/archive-catalog-status-enum'
 import { ArchiveVolumeStatusCode } from '@/types/enums/archive-volume-status-enum'
@@ -23,12 +23,12 @@ const EMPTY_CAPABILITIES: ArchiveVolumeCapabilitiesVO = {
 
 function volumeAcceptsSubmitStatus(status?: ArchiveVolumeStatusCode): boolean {
   return (
-    status === ArchiveVolumeStatusCode.COLLECTING
-    || status === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED
+    status === ArchiveVolumeStatusCode.COLLECTING ||
+    status === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED
   )
 }
 
-/** 成绩确认/同步仅收材前阶段；与后端 confirmScoreCompletion / syncTeachingAffairsScoreCompletion 一致。 */
+/** 人工成绩确认仅收材前阶段；教务成绩由 internal API 回写。 */
 function volumeAcceptsScoreCompletion(status?: ArchiveVolumeStatusCode): boolean {
   return status === ArchiveVolumeStatusCode.DRAFT || status === ArchiveVolumeStatusCode.COLLECTING
 }
@@ -59,8 +59,8 @@ export function useArchiveVolumeDetailScope(
     if (!d || !volumeAcceptsSubmitStatus(d.volume.volumeStatus)) return false
     if (capabilities.value.canSubmitVolume === true) return true
     return (
-      capabilities.value.member === true
-      && (capabilities.value.canScan === true || capabilities.value.canEditCatalog === true)
+      capabilities.value.member === true &&
+      (capabilities.value.canScan === true || capabilities.value.canEditCatalog === true)
     )
   })
 
@@ -73,8 +73,8 @@ export function useArchiveVolumeDetailScope(
   const canEditCatalog = computed(() => {
     const d = detail.value
     return (
-      capabilities.value.canEditCatalog === true
-      && d?.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
+      capabilities.value.canEditCatalog === true &&
+      d?.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
     )
   })
 

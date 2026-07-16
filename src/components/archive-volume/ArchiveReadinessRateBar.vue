@@ -4,7 +4,9 @@
       <div
         class="archive-readiness-rate__fill"
         :class="{ 'archive-readiness-rate__fill--done': normalizedPercent >= 100 }"
-        :style="{ width: `${normalizedPercent}%` }"
+        :style="{
+          transform: `scaleX(${Math.max(0, Math.min(1, normalizedPercent / 100))})`,
+        }"
       />
     </div>
     <span
@@ -55,9 +57,11 @@ const displayPercent = computed(() => {
 
 .archive-readiness-rate__fill {
   height: 100%;
+  width: 100%;
+  transform-origin: left center;
   border-radius: 2px;
   background: var(--dp-warning);
-  transition: width 200ms ease;
+  transition: transform 200ms ease;
 }
 
 .archive-readiness-rate__fill--done {

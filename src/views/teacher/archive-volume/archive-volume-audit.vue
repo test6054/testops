@@ -16,7 +16,7 @@
       v-if="loadFailed"
       description="审计事件加载失败"
       action-label="重试"
-      @action="() => loadEvents()"
+      @action="() => initPage()"
     />
 
     <WorkbenchSurfaceCard v-else flush>
@@ -79,15 +79,16 @@ import type {
   ArchiveVolumeAuditEventResponse,
   ArchiveVolumeEventTypeCode,
 } from '@/apis/mark/archive-volume'
+import {
+  ARCHIVE_VOLUME_EVENT_TYPE_OPTIONS,
+  getArchiveGlobalAuditEventStats,
+  pageArchiveGlobalAuditEvents,
+} from '@/apis/mark/archive-volume'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  ARCHIVE_VOLUME_EVENT_TYPE_OPTIONS,
-  getArchiveAuditEventStats,
-  pageArchiveAuditEvents,
-} from '@/apis/mark/archive-volume'
+import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -97,6 +98,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import {
   archiveVolumeEventTypeLabel,
@@ -108,6 +110,13 @@ import { formatDateTime } from '@/utils/format'
 defineOptions({ name: 'TeacherArchiveVolumeAudit' })
 
 const router = useRouter()
+const {
+  grantsLoadFailed,
+  globalAuditScopedDepartmentIds,
+  filterGlobalAuditDepartmentOptions,
+  canViewGlobalAudit,
+  loadGrants,
+} = useArchiveDutyAccess()
 const loading = ref(false)
 const loadFailed = ref(false)
 const events = ref<ArchiveVolumeAuditEventResponse[]>([])
@@ -121,13 +130,12 @@ const signalMetrics = computed<SignalMetric[]>(() =>
 )
 
 interface ArchiveVolumeAuditFilterForm extends Record<string, unknown> {
-  volumeId: string
+  departmentId?: string
   eventType?: ArchiveVolumeEventTypeCode
 }
 
-const filterForm = reactive<ArchiveVolumeAuditFilterForm>({
-  volumeId: '',
-})
+const filterForm = reactive<ArchiveVolumeAuditFilterForm>({})
+const departmentOptions = ref<Array<{ value: string; label: string }>>([])
 const filterModel = computed<Record<string, unknown>>({
   get: () => filterForm,
   set: (value) => {
@@ -135,8 +143,15 @@ const filterModel = computed<Record<string, unknown>>({
   },
 })
 
-const filterFields: FilterField[] = [
-  { key: 'volumeId', label: '任务 ID', type: 'input', placeholder: '归档任务 ID' },
+const filterFields = computed<FilterField[]>(() => [
+  {
+    key: 'departmentId',
+    label: '学院',
+    type: 'select',
+    options: filterGlobalAuditDepartmentOptions(departmentOptions.value),
+    allowClear: globalAuditScopedDepartmentIds.value.length !== 1,
+    disabled: globalAuditScopedDepartmentIds.value.length === 1,
+  },
   {
     key: 'eventType',
     label: '事件类型',
@@ -144,7 +159,7 @@ const filterFields: FilterField[] = [
     options: ARCHIVE_VOLUME_EVENT_TYPE_OPTIONS,
     allowClear: true,
   },
-]
+])
 
 const columns: ColumnsType<ArchiveVolumeAuditEventResponse> = [
   { title: '事件类型', key: 'eventType', dataIndex: 'eventType', width: 160, fixed: 'left' },
@@ -157,23 +172,19 @@ const columns: ColumnsType<ArchiveVolumeAuditEventResponse> = [
 ]
 
 async function loadAuditStats() {
-  try {
-    const stats = await getArchiveAuditEventStats({
-      volumeId: filterForm.volumeId.trim() || undefined,
-      eventType: filterForm.eventType,
-    })
-    auditEventCount.value = stats.eventCount
-  } catch {
-    auditEventCount.value = 0
-  }
+  const stats = await getArchiveGlobalAuditEventStats({
+    departmentId: filterForm.departmentId,
+    eventType: filterForm.eventType,
+  })
+  auditEventCount.value = stats.eventCount
 }
 
 async function loadEvents() {
   loading.value = true
   loadFailed.value = false
   try {
-    const result = await pageArchiveAuditEvents({
-      volumeId: filterForm.volumeId.trim() || undefined,
+    const result = await pageArchiveGlobalAuditEvents({
+      departmentId: filterForm.departmentId,
       eventType: filterForm.eventType,
       pageNum: pagination.pageNum,
       pageSize: pagination.pageSize,
@@ -200,7 +211,10 @@ function handleSearch() {
 }
 
 function handleReset() {
-  filterForm.volumeId = ''
+  filterForm.departmentId =
+    globalAuditScopedDepartmentIds.value.length === 1
+      ? globalAuditScopedDepartmentIds.value[0]
+      : undefined
   filterForm.eventType = undefined
   pagination.pageNum = 1
   void loadEvents()
@@ -217,7 +231,26 @@ function goList() {
   void router.push({ name: 'TeacherArchiveVolumeList' })
 }
 
+async function initPage() {
+  await loadGrants()
+  if (grantsLoadFailed.value || !canViewGlobalAudit.value) {
+    loadFailed.value = true
+    return
+  }
+  try {
+    const departments = await departmentCatalogApi.list()
+    departmentOptions.value = departments.map((item) => ({ value: item.id, label: item.deptName }))
+    if (globalAuditScopedDepartmentIds.value.length === 1) {
+      filterForm.departmentId = globalAuditScopedDepartmentIds.value[0]
+    }
+    await loadEvents()
+  } catch (error) {
+    loadFailed.value = true
+    showUserError(error, '初始化全局审计失败')
+  }
+}
+
 onMounted(() => {
-  void loadEvents()
+  void initPage()
 })
 </script>

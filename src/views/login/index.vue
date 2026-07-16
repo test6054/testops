@@ -22,20 +22,6 @@
         <div class="login-brand__layout">
           <div class="login-brand__content-row">
             <div class="login-brand__capability-column">
-              <ul class="login-brand__highlights" aria-label="阅卷主链路">
-                <li class="login-brand__highlight">
-                  <span class="login-brand__highlight-step">1</span>
-                  <span class="login-brand__highlight-text">扫描录入：纸质答卷影像化入库</span>
-                </li>
-                <li class="login-brand__highlight">
-                  <span class="login-brand__highlight-step">2</span>
-                  <span class="login-brand__highlight-text">教师复核：识别结果确认与批注</span>
-                </li>
-                <li class="login-brand__highlight">
-                  <span class="login-brand__highlight-step">3</span>
-                  <span class="login-brand__highlight-text">成绩发布：复核通过后向学生公布</span>
-                </li>
-              </ul>
               <div class="login-brand__hero">
                 <div class="login-brand__visual">
                   <img
@@ -49,11 +35,11 @@
 
             <section class="login-panel">
               <div class="login-panel__header">
-                <h3 class="login-panel__title">登录教学质量中心</h3>
+                <h3 class="login-panel__title">欢迎登录</h3>
                 <p v-if="isSubdomain && subdomainTenant" class="login-panel__subtitle">
                   {{ subdomainTenant.tenantName }}
                 </p>
-                <p v-else class="login-panel__subtitle">请选择登录方式并完成身份验证。</p>
+                <p v-else class="login-panel__subtitle">请选择登录方式</p>
               </div>
 
               <div class="login-panel__surface">
@@ -83,7 +69,8 @@
                     <CasLogin
                       v-if="activeTab === '3'"
                       :tenant-id="casTenantId"
-                      :display-name="casDisplayName"
+                      :subdomain-mode="false"
+                      @tenant-ready="onCasTenantReady"
                     />
                   </div>
                 </div>
@@ -101,11 +88,10 @@
 </template>
 
 <script lang="ts" setup>
-import type { SsoConfigResponse } from '@/apis/sso'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { getCasLoginUrl, getSsoConfig } from '@/apis/sso'
-import loginHeroVisual from '@/assets/login/login-hero-visual.svg'
+import { getCasLoginUrl } from '@/apis/sso'
+import loginHeroVisual from '@/assets/login/login-hero-visual.png'
 import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiStateBlock from '@/components/ui-guide/ui/UiStateBlock.vue'
 import { resetAuthState } from '@/config/axios/auth-state'
@@ -124,31 +110,31 @@ const appStore = useAppStore()
 
 const isSubdomain = ref(false)
 const activeTab = ref('1')
-const studentPrefill = ref<{ studentNo: string, password: string }>({ studentNo: '', password: '' })
+const studentPrefill = ref<{ studentNo: string; password: string }>({ studentNo: '', password: '' })
 
-const ssoConfig = ref<SsoConfigResponse | null>(null)
-const casEnabled = computed(() => ssoConfig.value?.casEnabled ?? false)
-const casDisplayName = computed(() => ssoConfig.value?.casDisplayName || '统一认证')
+/** CAS 回跳或深链带来的预置租户；无子域时由 CasLogin 内选校解析 */
 const casTenantId = ref<string>('')
-const isCasCallback = ref(false)
+const casTabLabel = ref('统一认证')
 const copyright = computed(() => appStore.getCopyright())
 
-const loginTabItems = computed(() => {
-  const items: { value: string, label: string }[] = [
-    { value: '1', label: '账号登录' },
-    { value: '2', label: '学号登录' },
-  ]
-  if (casEnabled.value) {
-    items.push({ value: '3', label: casDisplayName.value })
-  }
-  return items
-})
+const loginTabItems = computed(() => [
+  { value: '1', label: '账号登录' },
+  { value: '2', label: '学号登录' },
+  { value: '3', label: casTabLabel.value },
+])
 
-function switchToStudentTab(val: { studentNo: string, password: string }) {
+function switchToStudentTab(val: { studentNo: string; password: string }) {
   activeTab.value = '2'
   studentPrefill.value = {
     studentNo: val.studentNo,
     password: val.password,
+  }
+}
+
+function onCasTenantReady(payload: { tenantId: string; casEnabled: boolean; displayName: string }) {
+  casTenantId.value = payload.tenantId
+  if (payload.displayName) {
+    casTabLabel.value = payload.displayName
   }
 }
 
@@ -157,7 +143,6 @@ function checkCasCallback(): boolean {
   const tenantId = queryString(route.query.tenantId)
 
   if (ticket && tenantId) {
-    isCasCallback.value = true
     casTenantId.value = tenantId
     activeTab.value = '3'
     return true
@@ -194,44 +179,33 @@ async function triggerAutoCasLogin() {
   }
 
   activeTab.value = '3'
-  window.location.href = await getCasLoginUrl(casTenantId.value)
-}
-
-async function fetchSsoConfig() {
-  const tenantId = casTenantId.value || (await resolveCurrentTenantId())
-
-  if (!tenantId) {
-    ssoConfig.value = { casEnabled: false, casDisplayName: '统一认证' }
-    return
+  const loginUrl = await getCasLoginUrl(casTenantId.value)
+  if (!loginUrl) {
+    throw new Error('统一认证暂不可用')
   }
-
-  try {
-    const config = await getSsoConfig(tenantId)
-    ssoConfig.value = config
-
-    if (config.casEnabled) {
-      casTenantId.value = tenantId
-    }
-  } catch (error) {
-    ssoConfig.value = null
-    showUserError(error, '登录方式配置加载失败')
-  }
+  window.location.href = loginUrl
 }
 
 onMounted(async () => {
   resetAuthState()
 
   const isCasReturn = checkCasCallback()
+  const seedTenantId = casTenantId.value || (await resolveCurrentTenantId())
+  if (seedTenantId) {
+    casTenantId.value = seedTenantId
+  }
 
-  await fetchSsoConfig()
-
-  if (isCasReturn && casEnabled.value) {
+  if (isCasReturn) {
     activeTab.value = '3'
     return
   }
 
-  if (casEnabled.value && shouldAutoTriggerCas()) {
-    await triggerAutoCasLogin()
+  if (seedTenantId && shouldAutoTriggerCas()) {
+    try {
+      await triggerAutoCasLogin()
+    } catch (error) {
+      showUserError(error, '自动跳转统一认证失败')
+    }
   }
 })
 </script>
@@ -258,7 +232,7 @@ onMounted(async () => {
 }
 
 .login-page {
-  --login-bg: var(--ant-color-bg-layout);
+  --login-bg: #ffffff;
   --login-surface: var(--ant-color-bg-container);
   --login-text: var(--dp-text-primary);
   --login-muted: var(--dp-text-secondary);
@@ -271,7 +245,6 @@ onMounted(async () => {
   height: auto;
   padding: 24px 36px 18px;
   overflow: visible;
-  /* 企业 SaaS 风格：单层柔和背景，去 radial-gradient / glow / 网格底纹 */
   background: var(--login-bg);
 }
 
@@ -345,7 +318,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   flex: 1;
-  width: min(1180px, 100%);
+  width: min(1320px, 100%);
   margin: 0 auto;
   justify-content: center;
   align-self: center;
@@ -355,8 +328,8 @@ onMounted(async () => {
 
 .login-brand__content-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 420px;
-  gap: 56px;
+  grid-template-columns: minmax(0, 1.35fr) 400px;
+  gap: 28px;
   min-height: 0;
   align-items: center;
 }
@@ -364,54 +337,23 @@ onMounted(async () => {
 .login-brand__capability-column {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-}
-
-.login-brand__highlights {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.login-brand__highlight {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.login-brand__highlight-step {
-  display: inline-flex;
-  align-items: center;
+  min-height: 0;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: rgba(37, 99, 235, 0.1);
-  color: var(--login-accent);
-  font-size: 12px;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
-.login-brand__highlight-text {
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--login-muted);
 }
 
 .login-brand__hero {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100%;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
 }
 
 .login-brand__visual {
-  width: min(700px, 100%);
-  height: clamp(280px, 54vh, 560px);
+  width: 100%;
+  max-width: none;
+  height: clamp(480px, 78vh, 820px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -419,14 +361,17 @@ onMounted(async () => {
 
 .login-brand__visual-image {
   display: block;
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center left;
+  transform: scale(1.08);
+  transform-origin: center center;
 }
 
 .login-panel {
   position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -436,7 +381,7 @@ onMounted(async () => {
   gap: 0;
   border-radius: var(--dp-radius-panel);
   background: transparent;
-  box-shadow: none;
+  box-shadow: var(--dp-shadow-md);
   backdrop-filter: none;
 }
 
@@ -585,8 +530,13 @@ onMounted(async () => {
 
   .login-brand__visual {
     width: 100%;
-    height: min(440px, 52vw);
-    max-width: 720px;
+    height: min(560px, 72vw);
+    max-width: none;
+  }
+
+  .login-brand__visual-image {
+    transform: scale(1.04);
+    object-position: center;
   }
 }
 

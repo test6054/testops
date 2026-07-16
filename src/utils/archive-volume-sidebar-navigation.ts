@@ -13,7 +13,7 @@ export interface ArchiveVolumeSidebarNavGroupView {
 }
 
 /**
- * 将后端 chainSteps 转为竞品式阶段分组侧栏；过滤 ocr-search 与未达阶段的 Tab。
+ * 将后端 chainSteps 与卷内工具入口转为阶段分组侧栏，并按卷状态渐进披露。
  */
 export function buildArchiveVolumeSidebarNavGroups(
   tabs: ArchiveVolumeSidebarTab[],
@@ -21,13 +21,10 @@ export function buildArchiveVolumeSidebarNavGroups(
   departmentReviewEnabled?: boolean,
 ): ArchiveVolumeSidebarNavGroupView[] {
   const visibleTabs = tabs.filter((tab) => {
-    if (tab.key === 'ocr-search') {
-      return false
-    }
     if (tab.key === 'department-review' && departmentReviewEnabled === false) {
-      const inReviewFlow
-        = volumeStatus === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING
-          || volumeStatus === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED
+      const inReviewFlow =
+        volumeStatus === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING ||
+        volumeStatus === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED
       if (!inReviewFlow) {
         return false
       }

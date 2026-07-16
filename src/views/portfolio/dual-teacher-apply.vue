@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { PortfolioDualTeacherApplicationVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   PortfolioDualTeacherApplicationStatusCode,
   PortfolioDualTeacherApplicationStatusDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -30,6 +30,7 @@ const attachmentInputRef = ref<HTMLInputElement | null>(null)
 const uploading = ref(false)
 const application = ref<PortfolioDualTeacherApplicationVO | null>(null)
 const applicationRequestToken = ref(0)
+const operationPending = computed(() => saving.value || submitting.value || uploading.value)
 
 const form = reactive({
   id: '',
@@ -40,6 +41,10 @@ const form = reactive({
 
 /** 申请单作用域变化时清空旧表单，避免旧加载结果回写当前申请页。 */
 function resetApplicationContext() {
+  applicationRequestToken.value += 1
+  saving.value = false
+  submitting.value = false
+  uploading.value = false
   application.value = null
   form.id = ''
   form.certLevel = ''
@@ -52,7 +57,7 @@ function statusLabel(status: PortfolioDualTeacherApplicationVO['applicationStatu
   return strictEnumLabel(PortfolioDualTeacherApplicationStatusDescription, status, '双师申请状态')
 }
 
-const canEdit = () => {
+const canEdit = computed(() => {
   const status = application.value?.applicationStatus
   if (!status) {
     return true
@@ -61,13 +66,13 @@ const canEdit = () => {
     return !form.id
   }
   return (
-    status === PortfolioDualTeacherApplicationStatusCode.DRAFT
-    || status === PortfolioDualTeacherApplicationStatusCode.COLLEGE_RETURNED
-    || status === PortfolioDualTeacherApplicationStatusCode.ACADEMIC_RETURNED
+    status === PortfolioDualTeacherApplicationStatusCode.DRAFT ||
+    status === PortfolioDualTeacherApplicationStatusCode.COLLEGE_RETURNED ||
+    status === PortfolioDualTeacherApplicationStatusCode.ACADEMIC_RETURNED
   )
-}
+})
 
-const canSubmit = () => canEdit()
+const canSubmit = computed(() => canEdit.value && !operationPending.value)
 
 async function loadMine() {
   const currentToken = ++applicationRequestToken.value
@@ -113,6 +118,10 @@ async function loadMine() {
       fileName: fileNodeId,
     }))
   } catch (error) {
+    if (currentToken !== applicationRequestToken.value) {
+      return
+    }
+    resetApplicationContext()
     showUserError(error)
   }
 }
@@ -130,14 +139,20 @@ async function onAttachmentPick(event: Event) {
   if (!files?.length) {
     return
   }
+  if (!canEdit.value || operationPending.value) {
+    input.value = ''
+    return
+  }
   uploading.value = true
   try {
     for (const file of Array.from(files)) {
       const uploaded = await stageBusinessFile(FileUploadSceneKey.PORTFOLIO_MATERIAL, file)
-      attachmentItems.value = [
-        ...attachmentItems.value,
-        { fileNodeId: uploaded.id, fileName: uploaded.nodeName },
-      ]
+      if (!attachmentItems.value.some((item) => item.fileNodeId === uploaded.id)) {
+        attachmentItems.value = [
+          ...attachmentItems.value,
+          { fileNodeId: uploaded.id, fileName: uploaded.nodeName },
+        ]
+      }
     }
     message.success('附件已上传')
   } catch (error) {
@@ -149,6 +164,9 @@ async function onAttachmentPick(event: Event) {
 }
 
 function removeAttachment(fileNodeId: string) {
+  if (!canEdit.value || operationPending.value) {
+    return
+  }
   attachmentItems.value = attachmentItems.value.filter((item) => item.fileNodeId !== fileNodeId)
 }
 
@@ -176,6 +194,9 @@ async function saveDraft() {
     message.warning('未获取当前用户')
     return
   }
+  if (!canEdit.value || operationPending.value) {
+    return
+  }
   saving.value = true
   try {
     await persistDraft()
@@ -193,8 +214,16 @@ async function submitApplication() {
     message.warning('未获取当前用户')
     return
   }
-  if (!canEdit()) {
+  if (!canEdit.value || operationPending.value) {
     message.warning('当前状态不可提交')
+    return
+  }
+  if (!form.certLevel.trim()) {
+    message.warning('请填写认定等级')
+    return
+  }
+  if (!/^\d{4}$/.test(form.certYear.trim())) {
+    message.warning('认定年度须为 4 位自然年')
     return
   }
   submitting.value = true
@@ -210,7 +239,14 @@ async function submitApplication() {
   }
 }
 
-onMounted(loadMine)
+watch(
+  currentUserId,
+  () => {
+    resetApplicationContext()
+    void loadMine()
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -224,16 +260,20 @@ onMounted(loadMine)
         <span>状态 {{ statusLabel(application.applicationStatus) }}</span>
       </div>
       <a-form layout="vertical" class="form">
-        <a-form-item label="认定等级">
-          <a-input v-model:value="form.certLevel" :disabled="!canEdit()" placeholder="如 高级" />
+        <a-form-item label="认定等级" required>
+          <a-input
+            v-model:value="form.certLevel"
+            :disabled="!canEdit || operationPending"
+            placeholder="如 高级"
+          />
         </a-form-item>
-        <a-form-item label="认定年度">
-          <a-input v-model:value="form.certYear" :disabled="!canEdit()" />
+        <a-form-item label="认定年度" required>
+          <a-input v-model:value="form.certYear" :disabled="!canEdit || operationPending" />
         </a-form-item>
         <a-form-item label="企业实践天数">
           <a-input-number
             v-model:value="form.enterprisePracticeDays"
-            :disabled="!canEdit()"
+            :disabled="!canEdit || operationPending"
             :min="0"
             style="width: 100%"
           />
@@ -247,24 +287,30 @@ onMounted(loadMine)
             multiple
             @change="onAttachmentPick"
           />
-          <UiButton :loading="uploading" :disabled="!canEdit()" @click="openAttachmentPicker">
+          <UiButton
+            :loading="uploading"
+            :disabled="!canEdit || operationPending"
+            @click="openAttachmentPicker"
+          >
             上传附件
           </UiButton>
           <ul v-if="attachmentItems.length" class="attachment-list">
             <li v-for="item in attachmentItems" :key="item.fileNodeId">
               <span>{{ item.fileName }}</span>
-              <a v-if="canEdit()" @click="removeAttachment(item.fileNodeId)">移除</a>
+              <a v-if="canEdit && !operationPending" @click="removeAttachment(item.fileNodeId)"
+                >移除</a
+              >
             </li>
           </ul>
         </a-form-item>
         <div class="actions">
-          <UiButton :loading="saving" :disabled="!canEdit()" @click="saveDraft">
+          <UiButton :loading="saving" :disabled="!canEdit || operationPending" @click="saveDraft">
             保存草稿
           </UiButton>
           <UiButton
             variant="primary"
             :loading="submitting"
-            :disabled="!canSubmit()"
+            :disabled="!canSubmit"
             @click="submitApplication"
           >
             提交审核

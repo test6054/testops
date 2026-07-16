@@ -92,14 +92,6 @@ export const constantRoutes: RouteRecordRaw[] = [
         },
       },
       {
-        path: 'step',
-        redirect: '/scanner-kiosk/exam/setup',
-        meta: {
-          title: '准备扫描',
-          requiresAuth: false,
-        },
-      },
-      {
         path: 'setup',
         name: 'ScannerExamKioskSetup',
         component: () => import('@/views/scanner-kiosk/stages/SetupStage.vue'),
@@ -136,27 +128,6 @@ export const constantRoutes: RouteRecordRaw[] = [
         },
       },
     ],
-  },
-  {
-    // 兼容旧直达路径：重定向到 exam 子树
-    path: '/scanner-kiosk/setup',
-    redirect: '/scanner-kiosk/exam/setup',
-  },
-  {
-    path: '/scanner-kiosk/scanning',
-    redirect: '/scanner-kiosk/exam/scanning',
-  },
-  {
-    path: '/scanner-kiosk/review',
-    redirect: '/scanner-kiosk/exam/review',
-  },
-  {
-    path: '/scanner-kiosk/history',
-    redirect: '/scanner-kiosk/exam/history',
-  },
-  {
-    path: '/scanner-kiosk/step',
-    redirect: '/scanner-kiosk/exam/setup',
   },
   {
     path: '/scanner-kiosk/archive/session',
@@ -200,6 +171,15 @@ export const constantRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/public/survey-fill.vue'),
     meta: {
       title: '问卷填写',
+      requiresAuth: false,
+    },
+  },
+  {
+    path: '/portfolio/public/expert-review',
+    name: 'PortfolioPublicExpertReview',
+    component: () => import('@/views/public/portfolio-expert-review.vue'),
+    meta: {
+      title: '外部专家脱敏审阅',
       requiresAuth: false,
     },
   },

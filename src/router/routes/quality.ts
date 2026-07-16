@@ -335,6 +335,21 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
     },
   },
   {
+    path: 'archive-destruction-ledger',
+    name: 'QualityArchiveDestructionLedger',
+    component: () => import('@/views/quality/archive-destruction-ledger.vue'),
+    meta: {
+      title: '销毁清册',
+      roles: ALL_ROLES,
+      icon: 'file-excel',
+      hideInMenu: false,
+      menuTier: 'secondary',
+      keepAlive: true,
+      ...SCOPE_ACCREDITATION,
+      ...OUTPUT_GROUP,
+    },
+  },
+  {
     path: 'ai-task',
     name: 'QualityAiTask',
     component: () => import('@/views/quality/ai-task.vue'),
@@ -350,22 +365,6 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
     },
   },
 
-  {
-    path: 'archive-platform-templates',
-    name: 'AdminArchivePlatformTemplates',
-    component: () => import('@/views/teacher/archive-platform-template-admin.vue'),
-    meta: {
-      title: '归档模板配置',
-      roles: ALL_ROLES,
-      requireTenantAdmin: true,
-      icon: 'database',
-      hideInMenu: false,
-      menuTier: 'secondary',
-      keepAlive: true,
-      ...SCOPE_NONE,
-      ...ADMIN_GROUP,
-    },
-  },
   {
     path: 'accreditation-standard',
     name: 'QualityAccreditationStandard',

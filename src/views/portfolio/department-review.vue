@@ -6,6 +6,14 @@ import type {
   PortfolioMaterialRiskLevelCode,
   PortfolioReviewActionTypeCode,
 } from '@/apis/portfolio/enums'
+import {
+  PortfolioArchiveRecordSourceTypeDescription,
+  PortfolioArchiveRecordStatusDescription,
+  PortfolioMaterialRiskLevelDescription,
+  PortfolioReviewActionTypeDescription,
+  PortfolioReviewTaskStatusCode,
+  PortfolioReviewTaskStatusDescription,
+} from '@/apis/portfolio/enums'
 import type {
   PortfolioAiAnalysisDetailVO,
   PortfolioArchiveCategoryTreeNodeVO,
@@ -15,20 +23,6 @@ import type {
   PortfolioReviewTaskPageRequest,
   PortfolioReviewTaskSummaryVO,
 } from '@/apis/portfolio/types'
-import type { BadgeTone, FilterField, FilterOption } from '@/components/ui-guide/ui/types'
-import { Input, message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
-import {
-  PortfolioArchiveRecordSourceTypeDescription,
-  PortfolioArchiveRecordStatusDescription,
-  PortfolioMaterialRiskLevelDescription,
-  PortfolioReviewActionTypeDescription,
-  PortfolioReviewTaskStatusCode,
-  PortfolioReviewTaskStatusDescription,
-} from '@/apis/portfolio/enums'
-import { portfolioReviewApi } from '@/apis/portfolio/review'
 import {
   PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
   PORTFOLIO_DEFAULT_AUDIT_FLOW_CODE,
@@ -36,6 +30,12 @@ import {
   PORTFOLIO_REVIEW_TASK_STATUS_TONE,
   PORTFOLIO_SCHOOL_REVIEW_FLOW_CODE,
 } from '@/apis/portfolio/types'
+import type { BadgeTone, FilterField, FilterOption } from '@/components/ui-guide/ui/types'
+import { Input, message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
+import { portfolioReviewApi } from '@/apis/portfolio/review'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
@@ -158,7 +158,7 @@ const filterModel = computed<Record<string, unknown>>({
   },
 })
 
-const categoryOptions = ref<{ label: string, value: string }[]>([])
+const categoryOptions = ref<{ label: string; value: string }[]>([])
 
 const filterFields = computed<FilterField[]>(() => [
   {
@@ -236,6 +236,9 @@ const logPageSize = ref(DEFAULT_LIST_PAGE_SIZE)
 const logTotal = ref(0)
 const detailLoading = ref(false)
 const actionSubmitting = ref(false)
+const reviewWriting = computed(
+  () => actionSubmitting.value || batchSubmitting.value || batchRejectSubmitting.value,
+)
 const approveOpinion = ref('')
 const rejectReason = ref('')
 const dismissReason = ref('')
@@ -255,6 +258,7 @@ function resetReviewDetailContext() {
   fieldRequestToken.value += 1
   logRequestToken.value += 1
   aiPreReviewRequestToken.value += 1
+  detailLoading.value = false
   drawerOpen.value = false
   activeRow.value = null
   recordDetail.value = null
@@ -287,6 +291,7 @@ async function loadCategories() {
     if (currentToken !== categoryRequestToken.value) {
       return
     }
+    categoryOptions.value = []
     showUserError(error, '加载档案分类失败')
   }
 }
@@ -300,8 +305,7 @@ function reviewRecordFieldValue(fieldCode: string): string | undefined {
   }
   const fromDetail = recordDetail.value?.fields
     ?.find((item) => item.fieldCode === fieldCode)
-    ?.fieldValue
-?.trim()
+    ?.fieldValue?.trim()
   if (fromDetail) {
     return fromDetail
   }
@@ -337,15 +341,16 @@ function goTeacherPortfolioPage(path: string, teacherId: string) {
   })
 }
 
-const showCourseArchiveLink = computed(() =>
-  activeRow.value?.teacherId != null
-  && isPortfolioCourseFrameworkCategoryCode(activeRow.value.categoryCode),
+const showCourseArchiveLink = computed(
+  () =>
+    activeRow.value?.teacherId != null &&
+    isPortfolioCourseFrameworkCategoryCode(activeRow.value.categoryCode),
 )
 
 function flattenCategoryTree(
   nodes: PortfolioArchiveCategoryTreeNodeVO[],
-): { label: string, value: string }[] {
-  const options: { label: string, value: string }[] = []
+): { label: string; value: string }[] {
+  const options: { label: string; value: string }[] = []
   for (const node of nodes) {
     options.push({ label: node.categoryName, value: node.id })
     if (node.children?.length) {
@@ -383,6 +388,10 @@ async function loadPage() {
     if (currentToken !== pageRequestToken.value) {
       return
     }
+    rows.value = []
+    pageTotal.value = 0
+    selectedRowKeys.value = []
+    resetReviewDetailContext()
     showUserError(error, '加载审核待办失败')
   } finally {
     if (currentToken === pageRequestToken.value) {
@@ -392,12 +401,20 @@ async function loadPage() {
 }
 
 function handleSearch() {
+  if (actionSubmitting.value || batchSubmitting.value || batchRejectSubmitting.value) {
+    message.warning('审核操作处理中，请稍后切换筛选')
+    return
+  }
   pageNum.value = 1
   resetReviewDetailContext()
   void loadPage()
 }
 
-function handlePageChange(event: { current: number, pageSize: number }) {
+function handlePageChange(event: { current: number; pageSize: number }) {
+  if (actionSubmitting.value || batchSubmitting.value || batchRejectSubmitting.value) {
+    message.warning('审核操作处理中，请稍后翻页')
+    return
+  }
   pageNum.value = event.current
   pageSize.value = event.pageSize
   resetReviewDetailContext()
@@ -410,16 +427,25 @@ async function loadFieldPage() {
   }
   const requestTaskId = activeRow.value.id
   const currentToken = ++fieldRequestToken.value
-  const page = await portfolioReviewApi.pageArchiveRecordFields({
-    archiveRecordId: activeRow.value.archiveRecordId,
-    pageNum: fieldPageNum.value,
-    pageSize: fieldPageSize.value,
-  })
-  if (currentToken !== fieldRequestToken.value || activeRow.value?.id !== requestTaskId) {
-    return
+  try {
+    const page = await portfolioReviewApi.pageArchiveRecordFields({
+      archiveRecordId: activeRow.value.archiveRecordId,
+      pageNum: fieldPageNum.value,
+      pageSize: fieldPageSize.value,
+    })
+    if (currentToken !== fieldRequestToken.value || activeRow.value?.id !== requestTaskId) {
+      return
+    }
+    fieldRows.value = page.list
+    fieldTotal.value = page.total
+  } catch (error) {
+    if (currentToken !== fieldRequestToken.value || activeRow.value?.id !== requestTaskId) {
+      return
+    }
+    fieldRows.value = []
+    fieldTotal.value = 0
+    showUserError(error, '加载档案字段失败')
   }
-  fieldRows.value = page.list
-  fieldTotal.value = page.total
 }
 
 async function loadLogPage() {
@@ -428,31 +454,44 @@ async function loadLogPage() {
   }
   const requestTaskId = activeRow.value.id
   const currentToken = ++logRequestToken.value
-  const page = await portfolioReviewApi.pageLogs({
-    reviewTaskId: activeRow.value.id,
-    pageNum: logPageNum.value,
-    pageSize: logPageSize.value,
-  })
-  if (currentToken !== logRequestToken.value || activeRow.value?.id !== requestTaskId) {
-    return
+  try {
+    const page = await portfolioReviewApi.pageLogs({
+      reviewTaskId: activeRow.value.id,
+      pageNum: logPageNum.value,
+      pageSize: logPageSize.value,
+    })
+    if (currentToken !== logRequestToken.value || activeRow.value?.id !== requestTaskId) {
+      return
+    }
+    logRows.value = page.list
+    logTotal.value = page.total
+  } catch (error) {
+    if (currentToken !== logRequestToken.value || activeRow.value?.id !== requestTaskId) {
+      return
+    }
+    logRows.value = []
+    logTotal.value = 0
+    showUserError(error, '加载审核日志失败')
   }
-  logRows.value = page.list
-  logTotal.value = page.total
 }
 
-function handleFieldPageChange(event: { current: number, pageSize: number }) {
+function handleFieldPageChange(event: { current: number; pageSize: number }) {
   fieldPageNum.value = event.current
   fieldPageSize.value = event.pageSize
   void loadFieldPage()
 }
 
-function handleLogPageChange(event: { current: number, pageSize: number }) {
+function handleLogPageChange(event: { current: number; pageSize: number }) {
   logPageNum.value = event.current
   logPageSize.value = event.pageSize
   void loadLogPage()
 }
 
 async function openDetail(row: PortfolioReviewTaskSummaryVO) {
+  if (actionSubmitting.value || batchSubmitting.value || batchRejectSubmitting.value) {
+    message.warning('审核操作处理中，请稍后查看其他任务')
+    return
+  }
   const currentToken = ++detailRequestToken.value
   fieldRequestToken.value += 1
   logRequestToken.value += 1
@@ -489,9 +528,9 @@ async function openDetail(row: PortfolioReviewTaskSummaryVO) {
         const aiRequestToken = ++aiPreReviewRequestToken.value
         const aiDetail = await portfolioReviewApi.getAiPreReview(row.id)
         if (
-          aiRequestToken !== aiPreReviewRequestToken.value
-          || currentToken !== detailRequestToken.value
-          || activeRow.value?.id !== row.id
+          aiRequestToken !== aiPreReviewRequestToken.value ||
+          currentToken !== detailRequestToken.value ||
+          activeRow.value?.id !== row.id
         ) {
           return
         }
@@ -520,7 +559,12 @@ async function openDetail(row: PortfolioReviewTaskSummaryVO) {
 }
 
 async function handleApprove() {
-  if (!activeRow.value) {
+  if (
+    !activeRow.value ||
+    actionSubmitting.value ||
+    batchSubmitting.value ||
+    batchRejectSubmitting.value
+  ) {
     return
   }
   actionSubmitting.value = true
@@ -540,7 +584,14 @@ async function handleApprove() {
 }
 
 async function handleReject() {
-  if (!activeRow.value || !rejectReason.value.trim() || !returnDeadline.value.trim()) {
+  if (
+    !activeRow.value ||
+    actionSubmitting.value ||
+    batchSubmitting.value ||
+    batchRejectSubmitting.value ||
+    !rejectReason.value.trim() ||
+    !returnDeadline.value.trim()
+  ) {
     message.warning('请填写退回原因与重提期限')
     return
   }
@@ -562,7 +613,13 @@ async function handleReject() {
 }
 
 async function handleDismiss() {
-  if (!activeRow.value || !dismissReason.value.trim()) {
+  if (
+    !activeRow.value ||
+    actionSubmitting.value ||
+    batchSubmitting.value ||
+    batchRejectSubmitting.value ||
+    !dismissReason.value.trim()
+  ) {
     message.warning('请填写驳回依据')
     return
   }
@@ -591,6 +648,9 @@ async function handleDismiss() {
 }
 
 async function handleBatchApprove() {
+  if (actionSubmitting.value || batchSubmitting.value || batchRejectSubmitting.value) {
+    return
+  }
   if (!selectedRowKeys.value.length) {
     message.warning('请选择可批量通过的待审任务')
     return
@@ -609,6 +669,9 @@ async function handleBatchApprove() {
 }
 
 async function handleBatchReject() {
+  if (actionSubmitting.value || batchSubmitting.value || batchRejectSubmitting.value) {
+    return
+  }
   if (!selectedRowKeys.value.length) {
     message.warning('请选择可批量退回的待审任务')
     return
@@ -637,7 +700,13 @@ async function handleBatchReject() {
 }
 
 async function handleEscalate() {
-  if (!activeRow.value || !escalateReason.value.trim()) {
+  if (
+    !activeRow.value ||
+    actionSubmitting.value ||
+    batchSubmitting.value ||
+    batchRejectSubmitting.value ||
+    !escalateReason.value.trim()
+  ) {
     message.warning('请填写转复审原因')
     return
   }
@@ -704,27 +773,32 @@ watch(
       <div class="review-toolbar">
         <UiButton
           :loading="batchSubmitting"
-          :disabled="!selectedRowKeys.length"
+          :disabled="!selectedRowKeys.length || reviewWriting"
           @click="handleBatchApprove"
         >
           批量通过（{{ selectedRowKeys.length }}）
         </UiButton>
         <UiButton
           :loading="batchRejectSubmitting"
-          :disabled="!selectedRowKeys.length"
+          :disabled="!selectedRowKeys.length || reviewWriting"
           @click="handleBatchReject"
         >
           批量退回（{{ selectedRowKeys.length }}）
         </UiButton>
       </div>
       <div v-if="selectedRowKeys.length" class="review-batch-reject">
-        <Input v-model:value="batchRejectReason" placeholder="批量退回原因" />
+        <Input
+          v-model:value="batchRejectReason"
+          :disabled="reviewWriting"
+          placeholder="批量退回原因"
+        />
         <UiDatePicker
           v-model="batchReturnDeadline"
           show-time
           format="YYYY-MM-DD HH:mm:ss"
           value-format="YYYY-MM-DD HH:mm:ss"
           placeholder="重提期限"
+          :disabled="reviewWriting"
           style="width: 100%"
         />
       </div>
@@ -747,7 +821,7 @@ watch(
             selectedRowKeys = keys
           },
           getCheckboxProps: (record: PortfolioReviewTaskSummaryVO) => ({
-            disabled: !record.batchApproveAllowed,
+            disabled: reviewWriting || !record.batchApproveAllowed,
           }),
         }"
       >
@@ -834,7 +908,9 @@ watch(
           </UiButton>
           <UiButton
             variant="ghost"
-            @click="goTeacherPortfolioPage('/portfolio/teacher/extension-activity', activeRow.teacherId)"
+            @click="
+              goTeacherPortfolioPage('/portfolio/teacher/extension-activity', activeRow.teacherId)
+            "
           >
             教学拓展
           </UiButton>
@@ -896,25 +972,34 @@ watch(
           </template>
         </UiDataTable>
         <div v-if="showReviewActions" class="review-actions">
-          <Input v-model:value="approveOpinion" placeholder="通过意见（可选）" />
+          <Input
+            v-model:value="approveOpinion"
+            :disabled="reviewWriting"
+            placeholder="通过意见（可选）"
+          />
           <div class="review-actions__row">
             <UiButton :loading="actionSubmitting" @click="handleApprove"> 通过 </UiButton>
           </div>
           <template v-if="activeRow.escalateAllowed">
-            <Input v-model:value="escalateReason" placeholder="转复审原因" />
+            <Input
+              v-model:value="escalateReason"
+              :disabled="reviewWriting"
+              placeholder="转复审原因"
+            />
             <UiButton :loading="actionSubmitting" @click="handleEscalate"> 转复审 </UiButton>
           </template>
-          <Input v-model:value="rejectReason" placeholder="退回原因" />
+          <Input v-model:value="rejectReason" :disabled="reviewWriting" placeholder="退回原因" />
           <UiDatePicker
             v-model="returnDeadline"
             show-time
             format="YYYY-MM-DD HH:mm:ss"
             value-format="YYYY-MM-DD HH:mm:ss"
             placeholder="重提期限"
+            :disabled="reviewWriting"
             style="width: 100%"
           />
           <UiButton :loading="actionSubmitting" @click="handleReject"> 退回修改 </UiButton>
-          <Input v-model:value="dismissReason" placeholder="驳回依据" />
+          <Input v-model:value="dismissReason" :disabled="reviewWriting" placeholder="驳回依据" />
           <UiButton status="danger" :loading="actionSubmitting" @click="handleDismiss">
             驳回
           </UiButton>

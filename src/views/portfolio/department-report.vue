@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { PortfolioDoubleHighMonitorVO } from '@/apis/portfolio/double-high'
+import { portfolioDoubleHighApi } from '@/apis/portfolio/double-high'
 import type { PortfolioCompletenessLevelCode } from '@/apis/portfolio/enums'
+import { PortfolioCompletenessLevelDescription } from '@/apis/portfolio/enums'
 import type { PortfolioDeptOneTableSummaryVO } from '@/apis/portfolio/teacher'
+import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { portfolioDoubleHighApi } from '@/apis/portfolio/double-high'
-import { PortfolioCompletenessLevelDescription } from '@/apis/portfolio/enums'
-import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
@@ -30,6 +30,8 @@ const applying = ref(false)
 const previewLoading = ref(false)
 const deptSummary = ref<PortfolioDeptOneTableSummaryVO | null>(null)
 const doubleHighMonitor = ref<PortfolioDoubleHighMonitorVO | null>(null)
+const reportContextToken = ref(0)
+const previewRequestToken = ref(0)
 const filter = reactive({
   departmentId: undefined as string | undefined,
   planYear: String(new Date().getFullYear()),
@@ -62,12 +64,34 @@ const completenessOptions = computed(() =>
   })),
 )
 
-watch(() => filter.departmentId, () => {
-  filter.portfolioOrgId = undefined
-  filter.teachingGroupId = undefined
-  deptSummary.value = null
-  doubleHighMonitor.value = null
-})
+const busy = computed(() => applying.value || previewLoading.value)
+
+watch(
+  () => filter.departmentId,
+  () => {
+    filter.portfolioOrgId = undefined
+    filter.teachingGroupId = undefined
+  },
+)
+
+watch(
+  () => [
+    filter.departmentId,
+    filter.planYear,
+    filter.portfolioOrgId,
+    filter.teachingGroupId,
+    filter.completenessLevel,
+    filter.constructionPeriodLabel,
+    filter.baselinePeriodLabel,
+  ],
+  () => {
+    reportContextToken.value += 1
+    previewRequestToken.value += 1
+    previewLoading.value = false
+    deptSummary.value = null
+    doubleHighMonitor.value = null
+  },
+)
 
 const previewStats = computed(() => {
   if (!deptSummary.value) {
@@ -115,12 +139,18 @@ async function loadPreview() {
     return
   }
   if (filter.baselinePeriodLabel.trim() && !filter.constructionPeriodLabel.trim()) {
-    message.warning('填写基线周期时必须同时指')
+    message.warning('填写基线周期时必须同时指定建设周期')
     return
   }
+  if (busy.value) {
+    return
+  }
+  const contextToken = reportContextToken.value
+  const requestToken = previewRequestToken.value + 1
+  previewRequestToken.value = requestToken
+  const payload = buildExportPayload()
   previewLoading.value = true
   try {
-    const payload = buildExportPayload()
     const [summary, monitor] = await Promise.all([
       portfolioTeacherApi.getDeptOneTableSummary({
         departmentId: payload.departmentId,
@@ -136,14 +166,22 @@ async function loadPreview() {
         baselinePeriodLabel: payload.baselinePeriodLabel,
       }),
     ])
+    if (reportContextToken.value !== contextToken || previewRequestToken.value !== requestToken) {
+      return
+    }
     deptSummary.value = summary
     doubleHighMonitor.value = monitor
   } catch (error) {
+    if (reportContextToken.value !== contextToken || previewRequestToken.value !== requestToken) {
+      return
+    }
     deptSummary.value = null
     doubleHighMonitor.value = null
     showUserError(error, '加载失败')
   } finally {
-    previewLoading.value = false
+    if (reportContextToken.value === contextToken && previewRequestToken.value === requestToken) {
+      previewLoading.value = false
+    }
   }
 }
 
@@ -157,21 +195,35 @@ async function applyExport() {
     return
   }
   if (filter.baselinePeriodLabel.trim() && !filter.constructionPeriodLabel.trim()) {
-    message.warning('填写基线周期时必须同时指')
+    message.warning('填写基线周期时必须同时指定建设周期')
     return
   }
+  if (busy.value) {
+    return
+  }
+  const contextToken = reportContextToken.value
+  const payload = buildExportPayload()
+  const exportPurpose = filter.exportPurpose.trim()
   applying.value = true
   try {
     await portfolioTeacherApi.applyDeptReportExport({
-      ...buildExportPayload(),
-      exportPurpose: filter.exportPurpose.trim(),
+      ...payload,
+      exportPurpose,
     })
+    if (reportContextToken.value !== contextToken) {
+      return
+    }
     message.success('已提交导出审批')
     void router.push({ name: 'PortfolioExportApprovalMine' })
   } catch (error) {
+    if (reportContextToken.value !== contextToken) {
+      return
+    }
     showUserError(error, '提交审批失败')
   } finally {
-    applying.value = false
+    if (reportContextToken.value === contextToken) {
+      applying.value = false
+    }
   }
 }
 
@@ -199,18 +251,19 @@ onMounted(() => {
             :options="departmentOptions"
             placeholder="请选择院系"
             allow-search
+            :disabled="busy"
           />
         </label>
         <label class="report-filter__field">
           <span>规划年度</span>
-          <UiInput v-model="filter.planYear" placeholder="如 2026" />
+          <UiInput v-model="filter.planYear" :disabled="busy" placeholder="如 2026" />
         </label>
         <label class="report-filter__field">
           <span>专业群/组织</span>
           <UiSelect
             v-model="filter.portfolioOrgId"
             :options="portfolioOrgOptions"
-            :disabled="!filter.departmentId"
+            :disabled="busy || !filter.departmentId"
             placeholder="全部"
             allow-clear
             allow-search
@@ -221,7 +274,7 @@ onMounted(() => {
           <UiSelect
             v-model="filter.teachingGroupId"
             :options="teachingGroupOptions"
-            :disabled="!filter.departmentId"
+            :disabled="busy || !filter.departmentId"
             placeholder="全部"
             allow-clear
             allow-search
@@ -234,27 +287,39 @@ onMounted(() => {
             :options="completenessOptions"
             placeholder="全部"
             allow-clear
+            :disabled="busy"
           />
         </label>
         <label class="report-filter__field">
           <span>建设周期</span>
-          <UiInput v-model="filter.constructionPeriodLabel" placeholder="如 2025-2026" />
+          <UiInput
+            v-model="filter.constructionPeriodLabel"
+            :disabled="busy"
+            placeholder="如 2025-2026"
+          />
         </label>
         <label class="report-filter__field">
           <span>双高基线周期</span>
-          <UiInput v-model="filter.baselinePeriodLabel" placeholder="如 2024-2025" />
+          <UiInput
+            v-model="filter.baselinePeriodLabel"
+            :disabled="busy"
+            placeholder="如 2024-2025"
+          />
         </label>
         <label class="report-filter__field report-filter__field--wide">
           <span>导出用途</span>
-          <UiInput v-model="filter.exportPurpose" placeholder="导出审批用途说明" />
+          <UiInput v-model="filter.exportPurpose" :disabled="busy" placeholder="导出审批用途说明" />
         </label>
         <div class="report-filter__actions">
-          <UiButton variant="secondary" :loading="previewLoading" @click="loadPreview">
+          <UiButton
+            variant="secondary"
+            :loading="previewLoading"
+            :disabled="busy"
+            @click="loadPreview"
+          >
             预览摘要
           </UiButton>
-          <UiButton :loading="applying" @click="applyExport">
-            提交审批
-          </UiButton>
+          <UiButton :loading="applying" :disabled="busy" @click="applyExport"> 提交审批 </UiButton>
         </div>
       </div>
     </UiCard>

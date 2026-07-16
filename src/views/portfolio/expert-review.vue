@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioExpertAssignmentReviewBundleVO } from '@/apis/portfolio/expert-assignment'
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { portfolioExpertAssignmentApi } from '@/apis/portfolio/expert-assignment'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -19,6 +19,8 @@ const router = useRouter()
 const loading = ref(false)
 const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 const bundle = ref<PortfolioExpertAssignmentReviewBundleVO | null>(null)
+const errorMessage = ref('')
+const requestToken = ref(0)
 
 const accessToken = computed(() => {
   const token = route.query.accessToken
@@ -30,10 +32,12 @@ const assignmentId = computed(() => {
   return typeof id === 'string' ? id : undefined
 })
 
-const subjectTeacherColumns: ColumnsType = [
+const subjectTeacherColumns = computed<ColumnsType>(() => [
   { title: '被评教师', dataIndex: 'maskedDisplayName', key: 'maskedDisplayName' },
-  { title: '教师 ID', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },
-]
+  ...(!bundle.value?.maskRequired
+    ? [{ title: '教师 ID', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 }]
+    : []),
+])
 
 const materialColumns: ColumnsType = [
   { title: '教师', dataIndex: 'maskedTeacherLabel', key: 'maskedTeacherLabel', width: 140 },
@@ -49,23 +53,31 @@ const materialColumns: ColumnsType = [
 async function loadBundle() {
   if (!accessToken.value && !assignmentId.value) {
     bundle.value = null
+    errorMessage.value = '缺少外部专家授权上下文。'
     return
+  }
+  const currentToken = requestToken.value + 1
+  requestToken.value = currentToken
+  const request = {
+    accessToken: accessToken.value,
+    assignmentId: assignmentId.value,
   }
   beginLoad()
   loading.value = true
+  errorMessage.value = ''
   try {
-    bundle.value = await portfolioExpertAssignmentApi.reviewBundle({
-      accessToken: accessToken.value,
-      assignmentId: assignmentId.value,
-    })
-  
+    const result = await portfolioExpertAssignmentApi.reviewBundle(request)
+    if (requestToken.value !== currentToken) return
+    bundle.value = result
     okLoad()
   } catch (error) {
+    if (requestToken.value !== currentToken) return
     failLoad()
     bundle.value = null
-    showUserError(error, '加载失败')
+    errorMessage.value = '授权无效、已过期、已被吊销或当前账号无权审阅。'
+    showUserError(error, '加载专家审阅包失败')
   } finally {
-    loading.value = false
+    if (requestToken.value === currentToken) loading.value = false
   }
 }
 
@@ -82,22 +94,20 @@ function goEvaluationFill() {
 onMounted(() => {
   void loadBundle()
 })
+
+watch(
+  () => [route.query.accessToken, route.query.assignmentId],
+  () => {
+    void loadBundle()
+  },
+)
 </script>
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar
-      title="外部专家脱敏审阅"
-      subtitle="只读审阅正式档案材料；填分请进入评价填报"
-    >
+    <ContextBar title="外部专家脱敏审阅" subtitle="只读审阅正式档案材料；填分请进入评价填报">
       <template #extra>
-        <UiButton
-          v-if="bundle"
-          variant="primary"
-          @click="goEvaluationFill"
-        >
-          去评价填报
-        </UiButton>
+        <UiButton v-if="bundle" variant="primary" @click="goEvaluationFill"> 去评价填报 </UiButton>
       </template>
     </ContextBar>
     <UiCard :loading="loading">
@@ -143,7 +153,15 @@ onMounted(() => {
           </template>
         </UiDataTable>
       </template>
-      <UiEmpty v-else title="暂无内容" />
+      <UiEmpty
+        v-else
+        :title="errorMessage ? '无法打开审阅包' : '暂无内容'"
+        :description="errorMessage || '当前授权没有可审阅材料。'"
+      >
+        <template #action>
+          <UiButton :loading="loading" @click="loadBundle">重试</UiButton>
+        </template>
+      </UiEmpty>
     </UiCard>
   </StageWorkbenchShell>
 </template>

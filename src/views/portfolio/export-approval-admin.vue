@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioExportApprovalVO } from '@/apis/portfolio/governance'
-import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import type { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
+import { PortfolioExportTypeDescription } from '@/types/enums/portfolio-export-type-enum'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -15,13 +14,13 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import {
   ALL_PORTFOLIO_EXPORT_APPROVAL_STATUS_CODES,
   PortfolioExportApprovalStatusCode,
   PortfolioExportApprovalStatusDescription,
 } from '@/types/enums/portfolio-export-approval-status-enum'
-import { PortfolioExportTypeDescription } from '@/types/enums/portfolio-export-type-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -31,9 +30,13 @@ interface ExportFilterModel extends Record<string, unknown> {
 }
 
 const loading = ref(false)
+const loadError = ref(false)
+const requestToken = ref(0)
 const rows = ref<PortfolioExportApprovalVO[]>([])
 const total = ref(0)
-const approveLoading = ref(false)
+const operationKey = ref('')
+const writing = computed(() => Boolean(operationKey.value))
+const approveLoading = computed(() => Boolean(operationKey.value))
 const rejectModalOpen = ref(false)
 const rejectReason = ref('')
 const pendingRow = ref<PortfolioExportApprovalVO | null>(null)
@@ -86,12 +89,16 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 140 },
 ]
 
-const pagination = computed(() => ({
-  current: query.pageNum,
-  pageSize: query.pageSize,
-  total: total.value,
-  showSizeChanger: true,
-}))
+/** 导出审批状态写必须串行，避免同一待办被批准和驳回两次推进。 */
+function beginOperation(key: string): boolean {
+  if (writing.value) return false
+  operationKey.value = key
+  return true
+}
+
+function endOperation(key: string) {
+  if (operationKey.value === key) operationKey.value = ''
+}
 
 function exportTypeLabel(code: string): string {
   return strictEnumLabel(
@@ -124,22 +131,29 @@ function approvalStatusTone(code: string): 'blue' | 'green' | 'red' | 'gray' {
 }
 
 async function loadPage() {
+  const currentToken = requestToken.value + 1
+  requestToken.value = currentToken
+  const request = {
+    pageNum: query.pageNum,
+    pageSize: query.pageSize,
+    approvalStatus: filterForm.approvalStatus,
+    applicantUserId: filterForm.applicantUserId?.trim() || undefined,
+  }
   loading.value = true
+  loadError.value = false
   try {
-    const result = await portfolioSecurityApi.pageExport({
-      pageNum: query.pageNum,
-      pageSize: query.pageSize,
-      approvalStatus: filterForm.approvalStatus,
-      applicantUserId: filterForm.applicantUserId?.trim() || undefined,
-    })
+    const result = await portfolioSecurityApi.pageExport(request)
+    if (requestToken.value !== currentToken) return
     rows.value = result.list ?? []
     total.value = result.total ?? 0
   } catch (error) {
+    if (requestToken.value !== currentToken) return
     rows.value = []
     total.value = 0
+    loadError.value = true
     showUserError(error, '加载导出审批失败')
   } finally {
-    loading.value = false
+    if (requestToken.value === currentToken) loading.value = false
   }
 }
 
@@ -148,27 +162,38 @@ function onSearch() {
   void loadPage()
 }
 
-function onTableChange(changeEvent: UiDataTableChangeEvent) {
-  const { pageNum, pageSize } = readUiDataTablePagination(changeEvent, DEFAULT_LIST_PAGE_SIZE)
-  query.pageNum = pageNum
-  query.pageSize = pageSize
+function onPageChange(page: { current: number; pageSize: number }) {
+  query.pageNum = page.current
+  query.pageSize = page.pageSize
   void loadPage()
 }
 
 async function approveRow(row: PortfolioExportApprovalVO) {
-  approveLoading.value = true
+  const approvalId = row.id
+  const operation = `approve:${approvalId}`
+  if (!beginOperation(operation)) return
+  const confirmed = await confirmAsync({
+    title: '确认批准敏感数据导出？',
+    content: `批准后申请人可按「${exportTypeLabel(row.exportType)}」用途下载数据，操作将写入审计日志。`,
+    type: 'warning',
+  })
+  if (!confirmed) {
+    endOperation(operation)
+    return
+  }
   try {
-    await portfolioSecurityApi.approveExport({ id: row.id, approved: true })
+    await portfolioSecurityApi.approveExport({ id: approvalId, approved: true })
     message.success('已批准导出申请')
     await loadPage()
   } catch (error) {
     showUserError(error, '批准失败')
   } finally {
-    approveLoading.value = false
+    endOperation(operation)
   }
 }
 
 function openRejectModal(row: PortfolioExportApprovalVO) {
+  if (writing.value) return
   pendingRow.value = row
   rejectReason.value = ''
   rejectModalOpen.value = true
@@ -183,20 +208,23 @@ async function submitReject() {
     message.warning('请填写驳回原因')
     return
   }
-  approveLoading.value = true
+  const approvalId = pendingRow.value.id
+  const operation = `reject:${approvalId}`
+  if (!beginOperation(operation)) return
   try {
     await portfolioSecurityApi.approveExport({
-      id: pendingRow.value.id,
+      id: approvalId,
       approved: false,
       rejectReason: reason,
     })
     message.success('已驳回导出申请')
     rejectModalOpen.value = false
+    pendingRow.value = null
     await loadPage()
   } catch (error) {
     showUserError(error, '驳回失败')
   } finally {
-    approveLoading.value = false
+    endOperation(operation)
   }
 }
 
@@ -218,12 +246,16 @@ onMounted(() => {
     <UiCard>
       <UiFilterBar v-model="filterModel" :fields="filterFields" @search="onSearch" />
       <UiDataTable
+        v-model:current="query.pageNum"
+        v-model:page-size="query.pageSize"
         row-key="id"
         :columns="columns"
         :data-source="rows"
         :loading="loading"
-        :pagination="pagination"
-        @change="onTableChange"
+        :load-error="loadError"
+        pagination-mode="server"
+        :total="total"
+        @page-change="onPageChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'exportType'">
@@ -238,8 +270,8 @@ onMounted(() => {
             <UiTableActions
               v-if="record.approvalStatus === PortfolioExportApprovalStatusCode.PENDING"
               :items="[
-                { key: 'approve', label: '批准' },
-                { key: 'reject', label: '驳回', tone: 'danger' },
+                { key: 'approve', label: '批准', disabled: writing },
+                { key: 'reject', label: '驳回', tone: 'danger', disabled: writing },
               ]"
               @action="(key) => (key === 'approve' ? approveRow(record) : openRejectModal(record))"
             />
@@ -257,9 +289,18 @@ onMounted(() => {
       v-model:open="rejectModalOpen"
       title="驳回导出申请"
       :confirm-loading="approveLoading"
+      :closable="!writing"
+      :mask-closable="!writing"
+      :keyboard="!writing"
+      :cancel-button-props="{ disabled: writing }"
       @ok="submitReject"
     >
-      <a-textarea v-model:value="rejectReason" placeholder="请填写驳回原因" :rows="4" />
+      <a-textarea
+        v-model:value="rejectReason"
+        placeholder="请填写驳回原因"
+        :rows="4"
+        :disabled="writing"
+      />
     </a-modal>
   </StageWorkbenchShell>
 </template>

@@ -11,6 +11,9 @@ export interface ArchivePlatformTemplateSetResponse {
   examForm?: ArchiveExamFormCode
   description?: string
   releaseTag?: string
+  defaultPermanentRetention?: boolean
+  defaultRetentionYears?: number
+  retentionPolicyLabel?: string
   /** 模板作用域，平台模板固定 PLATFORM */
   templateScope: ArchiveTemplateScopeCode
 }
@@ -114,9 +117,8 @@ export interface ArchiveTenantTemplateSetSaveRequest {
   templateSetCode: string
   templateSetName: string
   examForm: ArchiveExamFormCode
-  defaultPermanentRetention?: boolean
+  defaultPermanentRetention: boolean
   defaultRetentionYears?: number
-  retentionPolicyLabel?: string
   materialItems: ArchiveTenantTemplateMaterialItemRequest[]
   selfCheckItems: ArchiveTenantTemplateSelfCheckItemRequest[]
 }
@@ -142,14 +144,10 @@ export interface ArchivePlatformTemplateSetSaveRequest {
   examForm: ArchiveExamFormCode
   description?: string
   releaseTag: string
+  defaultPermanentRetention: boolean
+  defaultRetentionYears?: number
   materialItems: ArchivePlatformTemplateMaterialItemRequest[]
   selfCheckItems: ArchivePlatformTemplateSelfCheckItemRequest[]
-}
-
-export interface ArchivePlatformTemplateInitializeResponse {
-  beforeSetCount?: number
-  afterSetCount?: number
-  seeded?: boolean
 }
 
 export {
@@ -234,13 +232,6 @@ export function saveArchivePlatformTemplateSet(
   request: ArchivePlatformTemplateSetSaveRequest,
 ): Promise<void> {
   return http.post<void>('/api/mark/archive-volumes/platform-template/save', request)
-}
-
-export function initializeArchivePlatformTemplateDefaults(): Promise<ArchivePlatformTemplateInitializeResponse> {
-  return http.post<ArchivePlatformTemplateInitializeResponse>(
-    '/api/mark/archive-volumes/platform-template/initialize-defaults',
-    {},
-  )
 }
 
 export function getArchiveTenantSetupReadiness(): Promise<ArchiveTenantSetupReadinessResponse> {

@@ -1,6 +1,18 @@
 <template>
   <UiAlertStrip
-    v-if="loading"
+    v-if="loadFailed"
+    tone="warning"
+    title="归档启用检查失败"
+    description="无法确认当前租户的归档配置，请重试后再新建归档任务。"
+    dense
+    class="archive-setup-guide-banner"
+  >
+    <template #actions>
+      <UiButton size="sm" variant="outline" @click="emit('retry')">重新检查</UiButton>
+    </template>
+  </UiAlertStrip>
+  <UiAlertStrip
+    v-else-if="loading"
     tone="info"
     title="归档启用检查"
     description="正在检查租户归档配置…"
@@ -47,6 +59,11 @@ defineOptions({ name: 'ArchiveSetupGuideBanner' })
 const props = defineProps<{
   readiness: ArchiveTenantSetupReadinessResponse | null
   loading: boolean
+  loadFailed: boolean
+}>()
+
+const emit = defineEmits<{
+  retry: []
 }>()
 
 const router = useRouter()

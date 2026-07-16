@@ -13,7 +13,7 @@
     <p v-if="fileName" class="archive-material-tag-modal__hint">材料：{{ fileName }}</p>
     <a-form layout="vertical">
       <a-form-item label="自由标签" tooltip="回车或逗号分隔；最多 32 个，单个不超过 64 字">
-        <ArchiveMaterialTagSelect v-model="tagValues" />
+        <ArchiveMaterialTagSelect v-model="tagValues" :volume-id="volumeId" />
       </a-form-item>
     </a-form>
   </UiDrawer>
@@ -33,13 +33,14 @@ defineOptions({ name: 'ArchiveVolumeMaterialTagModal' })
 const props = defineProps<{
   open: boolean
   materialId?: string
+  volumeId?: string
   fileName?: string
   initialTags?: string[]
 }>()
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "success": []
+  success: []
 }>()
 
 const saving = ref(false)

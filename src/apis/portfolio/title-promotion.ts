@@ -85,10 +85,11 @@ export const portfolioTitlePromotionApi = {
     pageSize?: number
     taskStatus?: PortfolioTitlePromotionTaskStatusCode
     reviewYear?: string
-  }) => http.post<PageResult<PortfolioTitlePromotionTaskVO>>('/api/portfolio/title-promotion/task/page', data),
-
-  getTask: (data: { id: string }) =>
-    http.post<PortfolioTitlePromotionTaskVO>('/api/portfolio/title-promotion/task/get', data),
+  }) =>
+    http.post<PageResult<PortfolioTitlePromotionTaskVO>>(
+      '/api/portfolio/title-promotion/task/page',
+      data,
+    ),
 
   saveTask: (data: PortfolioTitlePromotionTaskSaveRequest) =>
     http.post<string>('/api/portfolio/title-promotion/task/save', data),
@@ -111,9 +112,6 @@ export const portfolioTitlePromotionApi = {
       data,
     ),
 
-  getApplication: (data: { id: string }) =>
-    http.post<PortfolioTitlePromotionApplicationVO>('/api/portfolio/title-promotion/application/get', data),
-
   saveDraft: (data: PortfolioTitlePromotionApplicationSaveRequest) =>
     http.post<PortfolioTitlePromotionApplicationVO>(
       '/api/portfolio/title-promotion/application/save-draft',
@@ -127,45 +125,48 @@ export const portfolioTitlePromotionApi = {
     ),
 
   submit: (data: { id: string }) =>
-    http.post<PortfolioTitlePromotionApplicationVO>('/api/portfolio/title-promotion/application/submit', data),
+    http.post<PortfolioTitlePromotionApplicationVO>(
+      '/api/portfolio/title-promotion/application/submit',
+      data,
+    ),
 
-  collegeApprove: (data: { id: string, opinion?: string }) =>
+  collegeApprove: (data: { id: string; opinion?: string }) =>
     http.post<PortfolioTitlePromotionApplicationVO>(
       '/api/portfolio/title-promotion/application/college-approve',
       data,
     ),
 
-  collegeReturn: (data: { id: string, opinion?: string }) =>
+  collegeReturn: (data: { id: string; opinion?: string }) =>
     http.post<PortfolioTitlePromotionApplicationVO>(
       '/api/portfolio/title-promotion/application/college-return',
       data,
     ),
 
-  hrApprove: (data: { id: string, opinion?: string }) =>
+  hrApprove: (data: { id: string; opinion?: string }) =>
     http.post<PortfolioTitlePromotionApplicationVO>(
       '/api/portfolio/title-promotion/application/hr-approve',
       data,
     ),
 
-  hrReturn: (data: { id: string, opinion?: string }) =>
+  hrReturn: (data: { id: string; opinion?: string }) =>
     http.post<PortfolioTitlePromotionApplicationVO>(
       '/api/portfolio/title-promotion/application/hr-return',
       data,
     ),
 
-  hrReject: (data: { id: string, opinion?: string }) =>
+  hrReject: (data: { id: string; opinion?: string }) =>
     http.post<PortfolioTitlePromotionApplicationVO>(
       '/api/portfolio/title-promotion/application/hr-reject',
       data,
     ),
 
-  expertReview: (data: { id: string, opinion?: string, approve: boolean }) =>
+  expertReview: (data: { id: string; opinion?: string; approve: boolean }) =>
     http.post<PortfolioTitlePromotionApplicationVO>(
       '/api/portfolio/title-promotion/application/expert-review',
       data,
     ),
 
-  startPublicity: (data: { id: string, days: number, remark?: string }) =>
+  startPublicity: (data: { id: string; days: number; remark?: string }) =>
     http.post<PortfolioTitlePromotionApplicationVO>(
       '/api/portfolio/title-promotion/application/start-publicity',
       data,

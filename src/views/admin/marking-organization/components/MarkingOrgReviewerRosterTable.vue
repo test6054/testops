@@ -36,7 +36,9 @@
             <div class="org-roster__bar">
               <div
                 class="org-roster__bar-fill"
-                :style="{ width: `${record.completionPercent}%` }"
+                :style="{
+                  transform: `scaleX(${Math.max(0, Math.min(1, record.completionPercent / 100))})`,
+                }"
               />
             </div>
             <span>{{ record.completionLabel }}</span>
@@ -108,7 +110,7 @@ const columns: ColumnType<RosterRow>[] = [
   { title: '平均用时', dataIndex: 'avgTimeLabel', key: 'avgTimeLabel', width: 96, align: 'right' },
 ]
 
-function formatConsistency(value: number | null | undefined): { label: string, warn: boolean } {
+function formatConsistency(value: number | null | undefined): { label: string; warn: boolean } {
   if (value == null || Number.isNaN(value)) {
     return { label: '—', warn: false }
   }
@@ -119,7 +121,7 @@ function formatConsistency(value: number | null | undefined): { label: string, w
   }
 }
 
-function formatCompletion(total: number, submitted: number): { percent: number, label: string } {
+function formatCompletion(total: number, submitted: number): { percent: number; label: string } {
   if (total <= 0) {
     return { percent: 0, label: '—' }
   }
@@ -219,8 +221,11 @@ const rows = computed((): RosterRow[] => {
   }
 
   &__bar-fill {
+    width: 100%;
     height: 100%;
     background: var(--dp-color-primary);
+    transform-origin: left center;
+    transition: transform 0.2s ease;
   }
 
   &__warn {

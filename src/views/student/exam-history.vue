@@ -97,6 +97,13 @@
 <script lang="ts" setup>
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { StudentExamItemVO, StudentExamStatsResponse } from '@/apis/mark/student-exam'
+import {
+  canSubmitReview,
+  getMyExamStats,
+  pageMyExams,
+  ReviewWindowPolicyStatusDescription,
+  STUDENT_REVIEW_WINDOW_STATUS_TONE,
+} from '@/apis/mark/student-exam'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import { onActivated, onMounted, ref } from 'vue'
@@ -107,13 +114,6 @@ import {
   FinalScoreStatusCode,
   FinalScoreStatusDescription,
 } from '@/apis/mark/final-score-status'
-import {
-  canSubmitReview,
-  getMyExamStats,
-  pageMyExams,
-  ReviewWindowPolicyStatusDescription,
-  STUDENT_REVIEW_WINDOW_STATUS_TONE,
-} from '@/apis/mark/student-exam'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -295,7 +295,7 @@ onMounted(reloadPage)
 onActivated(reloadPage)
 </script>
 
-<style scoped lang="less">
+<style scoped>
 .exam-history-page__table-card {
   margin-top: 0;
 }
@@ -313,11 +313,11 @@ onActivated(reloadPage)
   color: var(--nybc-primary);
   cursor: pointer;
   text-align: left;
+}
 
-  &:disabled {
-    color: inherit;
-    cursor: default;
-  }
+.link-cell:disabled {
+  color: inherit;
+  cursor: default;
 }
 
 .link-cell__sub {

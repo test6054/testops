@@ -11,7 +11,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "rejected": []
+  rejected: []
 }>()
 
 const reason = ref('')
@@ -61,6 +61,8 @@ async function submit() {
       <a-textarea
         v-model:value="reason"
         :rows="4"
+        :maxlength="500"
+        show-count
         placeholder="例如：缺页、扫描模糊、材料类型不符"
       />
     </a-form-item>

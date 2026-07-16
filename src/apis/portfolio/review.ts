@@ -21,8 +21,7 @@ import http from '@/config/axios'
 const BASE = '/api/portfolio/review'
 
 export const portfolioReviewApi = {
-  getAccessScope: () =>
-    http.post<PortfolioReviewAccessScopeVO>(`${BASE}/access-scope`, {}),
+  getAccessScope: () => http.post<PortfolioReviewAccessScopeVO>(`${BASE}/access-scope`, {}),
   pageTasks: (data: PortfolioReviewTaskPageRequest) =>
     http.post<PageResult<PortfolioReviewTaskSummaryVO>>(`${BASE}/task/page`, data),
   approve: (data: PortfolioReviewTaskApproveRequest) =>
@@ -36,8 +35,6 @@ export const portfolioReviewApi = {
     http.post<number>(`${BASE}/task/batch-reject`, data),
   escalate: (data: PortfolioReviewTaskEscalateRequest) =>
     http.post<void>(`${BASE}/task/escalate`, data),
-  listLogs: (reviewTaskId: string) =>
-    http.post<PortfolioReviewLogVO[]>(`${BASE}/log/list`, { id: reviewTaskId }),
   pageLogs: (data: PortfolioReviewLogPageRequest) =>
     http.post<PageResult<PortfolioReviewLogVO>>(`${BASE}/log/page`, data),
   pageArchiveRecordFields: (data: PortfolioReviewArchiveRecordFieldPageRequest) =>

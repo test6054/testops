@@ -46,20 +46,34 @@
         前往考试统计维护映射
       </RouterLink>
     </p>
+    <UiAlertStrip
+      v-if="materialStatsLoadFailed"
+      tone="warning"
+      title="材料统计加载失败"
+      description="列表仍可使用，就绪数量暂不可用。"
+    >
+      <template #actions>
+        <UiButton size="sm" variant="outline" @click="loadMaterialStats">重新加载</UiButton>
+      </template>
+    </UiAlertStrip>
     <UiDataTable
       v-model:current="pageNum"
       v-model:page-size="pageSize"
       pagination-mode="server"
       :columns="materialColumns"
-      :data-source="materials"
+      :data-source="materialsLoadFailed ? [] : materials"
       :loading="materialsLoading"
       :total="pageTotal"
       flat
       row-key="materialId"
       size="middle"
       empty-description="该目录项下暂无材料"
+      :load-error="materialsLoadFailed"
       @page-change="handlePageChange"
     >
+      <template v-if="materialsLoadFailed" #empty-action>
+        <UiButton size="sm" variant="outline" @click="loadMaterials">重新加载</UiButton>
+      </template>
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'materialType'">
           {{ materialTypeLabel(record.materialType) }}
@@ -178,7 +192,7 @@
           <a-input v-model:value="uploadForm.makeupRound" placeholder="如 补考1" />
         </a-form-item>
         <a-form-item label="自由标签" tooltip="回车或逗号分隔；与目录编码并用，便于检索">
-          <ArchiveMaterialTagSelect v-model="uploadForm.tags" />
+          <ArchiveMaterialTagSelect v-model="uploadForm.tags" :volume-id="volumeId" />
         </a-form-item>
         <a-form-item label="扫描文件" required>
           <UiPlatformFileField
@@ -245,6 +259,7 @@
     <ArchiveVolumeMaterialTagModal
       v-model:open="tagModalOpen"
       :material-id="tagEditMaterial?.materialId"
+      :volume-id="volumeId"
       :file-name="tagEditMaterial?.fileName"
       :initial-tags="tagEditMaterial?.tags"
       @success="emitRefreshed"
@@ -256,6 +271,7 @@
       :material-type="scanDispatchMaterialType"
       :archive-batch-mode="scanDispatchQuery?.batchMode"
       :archive-title="detail.volume.archiveTitle"
+      :physical-storage-location="detail.volume.physicalStorageLocation"
       :initial-material-tags="uploadForm.tags"
       :return-to="scanDispatchQuery?.returnTo"
       @created="handleDispatchCreated"
@@ -273,28 +289,17 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchiveMaterialSubmissionStatusCode,
-  ArchiveMaterialTypeCode,
   ArchiveVolumeDetailResponse,
   ArchiveVolumeMaterialResponse,
   ArchiveVolumeMaterialStatsResponse,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
-import {
-  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
-  ArchiveMaterialOcrStatusCode,
-  ArchiveMaterialOcrStatusDescription,
-} from '@/apis/mark/archive-ocr-status'
 import {
   ALL_ARCHIVE_MATERIAL_TYPE_CODES,
   ARCHIVE_MATERIAL_TYPE_OPTIONS,
   ArchiveElectronicOriginalStatusCode,
   ArchiveMaterialMediaTypeCode,
   ArchiveMaterialSortRuleCode,
+  ArchiveMaterialTypeCode,
   ArchiveMaterialTypeDescription,
   ArchiveSharedMaterialRefTypeCode,
   generateArchiveVolumeCourseObjectiveReport,
@@ -305,6 +310,18 @@ import {
   registerArchiveVolumeMaterial,
   triggerArchiveVolumeMaterialOcr,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
+import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
+import {
+  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
+  ArchiveMaterialOcrStatusCode,
+  ArchiveMaterialOcrStatusDescription,
+} from '@/apis/mark/archive-ocr-status'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import FilePreviewDialog from '@/components/FilePreviewDialog.vue'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
@@ -328,7 +345,6 @@ import ArchiveMaterialTagSelect from '@/views/teacher/archive-volume/components/
 import ArchiveVolumeMaterialOcrDetailModal from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialOcrDetailModal.vue'
 import ArchiveVolumeMaterialTagModal from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialTagModal.vue'
 import ScanDispatchDialog from '@/views/teacher/archive-volume/components/ScanDispatchDialog.vue'
-import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 
 defineOptions({ name: 'ArchiveVolumeMaterialTablePanel' })
 
@@ -340,7 +356,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  "refreshed": [options?: { silent?: boolean }]
+  refreshed: [options?: { silent?: boolean }]
   'ocr-completed-stale': []
 }>()
 
@@ -367,7 +383,9 @@ const pageSize = ref(20)
 const pageTotal = ref(0)
 const materials = ref<ArchiveVolumeMaterialResponse[]>([])
 const materialsLoading = ref(false)
+const materialsLoadFailed = ref(false)
 const materialStats = ref<ArchiveVolumeMaterialStatsResponse | null>(null)
+const materialStatsLoadFailed = ref(false)
 
 const scanDispatchMaterialType = computed(() =>
   ALL_ARCHIVE_MATERIAL_TYPE_CODES.find((code) => code === scanDispatchQuery.value?.materialType),
@@ -441,6 +459,7 @@ async function loadMaterials(): Promise<void> {
   if (!props.volumeId) {
     materials.value = []
     pageTotal.value = 0
+    materialsLoadFailed.value = false
     return
   }
   materialsLoading.value = true
@@ -453,7 +472,9 @@ async function loadMaterials(): Promise<void> {
     })
     materials.value = result.list
     pageTotal.value = result.total
+    materialsLoadFailed.value = false
   } catch (error) {
+    materialsLoadFailed.value = true
     showUserError(error, '加载归档材料失败')
   } finally {
     materialsLoading.value = false
@@ -463,11 +484,14 @@ async function loadMaterials(): Promise<void> {
 async function loadMaterialStats(): Promise<void> {
   if (!props.volumeId) {
     materialStats.value = null
+    materialStatsLoadFailed.value = false
     return
   }
   try {
     materialStats.value = await getArchiveVolumeMaterialStats({ volumeId: props.volumeId })
+    materialStatsLoadFailed.value = false
   } catch (error) {
+    materialStatsLoadFailed.value = true
     showUserError(error, '加载材料统计失败')
   }
 }
@@ -522,14 +546,14 @@ const courseObjectiveMappingHint = computed(() => {
   const goalTotal = props.detail.courseObjectiveTotalGoalCount
   const goalCovered = props.detail.courseObjectiveCoveredGoalCount
   if (
-    total != null
-    && mapped != null
-    && total > 0
-    && mapped >= total
-    && goalTotal != null
-    && goalCovered != null
-    && goalTotal > 0
-    && goalCovered < goalTotal
+    total != null &&
+    mapped != null &&
+    total > 0 &&
+    mapped >= total &&
+    goalTotal != null &&
+    goalCovered != null &&
+    goalTotal > 0 &&
+    goalCovered < goalTotal
   ) {
     return `quality 课程目标覆盖 ${goalCovered}/${goalTotal} 未完成，须确保每个课程目标至少映射一题后再生成达成度报告。`
   }
@@ -542,7 +566,10 @@ const courseObjectiveMappingHint = computed(() => {
 async function handleGenerateExamAnalysis(): Promise<void> {
   generatingExamAnalysis.value = true
   try {
-    await generateArchiveVolumeExamAnalysisReport(props.volumeId)
+    const expectedMaterialId = props.detail.materials.find(
+      (item) => item.materialType === ArchiveMaterialTypeCode.EXAM_ANALYSIS,
+    )?.materialId
+    await generateArchiveVolumeExamAnalysisReport({ volumeId: props.volumeId, expectedMaterialId })
     message.success('试卷分析报告已生成并登记')
     emitRefreshed()
   } catch (error) {
@@ -559,7 +586,13 @@ async function handleGenerateCourseObjective(): Promise<void> {
   }
   generatingCourseObjective.value = true
   try {
-    await generateArchiveVolumeCourseObjectiveReport(props.volumeId)
+    const expectedMaterialId = props.detail.materials.find(
+      (item) => item.materialType === ArchiveMaterialTypeCode.COURSE_OBJECTIVE_REPORT,
+    )?.materialId
+    await generateArchiveVolumeCourseObjectiveReport({
+      volumeId: props.volumeId,
+      expectedMaterialId,
+    })
     message.success('课程目标达成报告已生成并登记')
     emitRefreshed()
   } catch (error) {
@@ -612,9 +645,9 @@ async function handleDownloadMaterial(material: ArchiveVolumeMaterialResponse): 
 
 function canViewMaterialOcr(material: ArchiveVolumeMaterialResponse): boolean {
   return (
-    material.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED
-    || material.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED
-    || material.ocrStatus === ArchiveMaterialOcrStatusCode.RUNNING
+    material.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED ||
+    material.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED ||
+    material.ocrStatus === ArchiveMaterialOcrStatusCode.RUNNING
   )
 }
 
@@ -942,6 +975,6 @@ async function submitSharedRef() {
 }
 
 .archive-volume-material-table__status-icon--purple {
-  background: #722ed1;
+  background: var(--dp-purple-700);
 }
 </style>

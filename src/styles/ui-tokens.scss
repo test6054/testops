@@ -254,7 +254,7 @@
   --scan-canvas-bg: #f1f3f7;
   --scan-canvas-border: #dde2ea;
   --scan-paper-shadow: 0 6px 24px rgba(15, 23, 42, 0.12);
-  --scan-toolbar-bg: rgba(255, 255, 255, 0.94);
-  --scan-toolbar-border: #e2e8f0;
+  --scan-toolbar-bg: var(--dp-surface);
+  --scan-toolbar-border: var(--dp-border);
 }
 }

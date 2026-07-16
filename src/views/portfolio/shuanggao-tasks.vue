@@ -4,13 +4,11 @@ import type {
   PortfolioDoubleHighEvidenceArchiveVO,
   PortfolioDoubleHighTaskVO,
 } from '@/apis/portfolio/double-high'
-import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
+import { portfolioDoubleHighApi } from '@/apis/portfolio/double-high'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { portfolioDoubleHighApi } from '@/apis/portfolio/double-high'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -25,6 +23,7 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
   flattenPortfolioOrgOptionsUnderDepartment,
   usePortfolioOrgTree,
@@ -86,11 +85,19 @@ const createForm = reactive({
   periodStartDate: undefined as string | undefined,
   periodEndDate: undefined as string | undefined,
   acceptanceCriteria: '',
-  stages: [{ stageIndex: 1, stageName: '阶段一', stageDeadline: undefined }] as CreateStageFormItem[],
+  stages: [
+    { stageIndex: 1, stageName: '阶段一', stageDeadline: undefined },
+  ] as CreateStageFormItem[],
 })
 const detailOpen = ref(false)
 const detailLoading = ref(false)
 const detailTask = ref<PortfolioDoubleHighTaskVO | null>(null)
+const pageRequestToken = ref(0)
+const detailRequestToken = ref(0)
+const evidenceRequestToken = ref(0)
+const busy = computed(
+  () => actionLoading.value || actionOpen.value || createOpen.value || detailOpen.value,
+)
 
 const filterForm = reactive<TaskFilterModel>({})
 const currentUserId = computed(() => userStore.userInfo.userId || '')
@@ -166,7 +173,9 @@ const evidenceOptions = computed(() =>
       item.recordTitle || item.archiveRecordId,
       item.academicYear,
       item.hasDownloadableFile ? undefined : '缺附件',
-    ].filter(Boolean).join(' · '),
+    ]
+      .filter(Boolean)
+      .join(' · '),
     disabled: !item.hasDownloadableFile,
   })),
 )
@@ -181,19 +190,17 @@ const query = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
 const columns: ColumnsType = [
   { title: '任务编码', dataIndex: 'taskCode', key: 'taskCode', width: 140 },
   { title: '任务标题', dataIndex: 'taskTitle', key: 'taskTitle', ellipsis: true },
-  { title: '建设周期', dataIndex: 'constructionPeriodLabel', key: 'constructionPeriodLabel', width: 120 },
+  {
+    title: '建设周期',
+    dataIndex: 'constructionPeriodLabel',
+    key: 'constructionPeriodLabel',
+    width: 120,
+  },
   { title: '状态', key: 'taskStatus', width: 110 },
   { title: '阶段', key: 'stageProgress', width: 90 },
   { title: '验收包', key: 'acceptancePackage', width: 120 },
   { title: '操作', key: 'actions', width: 220 },
 ]
-
-const pagination = computed(() => ({
-  current: query.pageNum,
-  pageSize: query.pageSize,
-  total: total.value,
-  showSizeChanger: true,
-}))
 
 function taskStatusLabel(code: string): string {
   return strictEnumLabel(
@@ -224,7 +231,7 @@ function isTaskResponsible(row: PortfolioDoubleHighTaskVO): boolean {
 
 /** 按责任人/治理角色裁剪操作：责任人不可见审核入口，非责任人不可见实施动作。 */
 function rowActions(row: PortfolioDoubleHighTaskVO) {
-  const items: Array<{ key: string, label: string, tone?: 'danger' }> = [
+  const items: Array<{ key: string; label: string; tone?: 'danger' }> = [
     { key: 'detail', label: '阶段明细' },
   ]
   const responsible = isTaskResponsible(row)
@@ -238,9 +245,9 @@ function rowActions(row: PortfolioDoubleHighTaskVO) {
     items.push({ key: 'submit', label: '提交阶段' })
   }
   if (
-    (row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_SUBMITTED
-      || row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_REVIEWING)
-    && !responsible
+    (row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_SUBMITTED ||
+      row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_REVIEWING) &&
+    !responsible
   ) {
     if (row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_SUBMITTED) {
       items.push({ key: 'enterReview', label: '进入审核' })
@@ -254,38 +261,49 @@ function rowActions(row: PortfolioDoubleHighTaskVO) {
     items.push({ key: 'downloadAcceptance', label: '下载验收包' })
   }
   if (
-    row.taskStatus !== PortfolioDoubleHighTaskStatusCode.ARCHIVED
-    && row.taskStatus !== PortfolioDoubleHighTaskStatusCode.VOID
+    row.taskStatus !== PortfolioDoubleHighTaskStatusCode.ARCHIVED &&
+    row.taskStatus !== PortfolioDoubleHighTaskStatusCode.VOID
   ) {
     items.push({ key: 'void', label: '作废', tone: 'danger' })
   }
-  return items
+  return items.map((item) => ({ ...item, disabled: busy.value }))
 }
 
 async function loadPage() {
+  const currentToken = pageRequestToken.value + 1
+  pageRequestToken.value = currentToken
+  const request = {
+    pageNum: query.pageNum,
+    pageSize: query.pageSize,
+    taskStatus: filterForm.taskStatus,
+    keyword: filterForm.keyword?.trim() || undefined,
+    constructionPeriodLabel: filterForm.constructionPeriodLabel?.trim() || undefined,
+    departmentId: filterForm.departmentId || undefined,
+    portfolioOrgId: filterForm.portfolioOrgId || undefined,
+  }
   beginLoad()
   loading.value = true
   try {
-    const result = await portfolioDoubleHighApi.pageTasks({
-      pageNum: query.pageNum,
-      pageSize: query.pageSize,
-      taskStatus: filterForm.taskStatus,
-      keyword: filterForm.keyword?.trim() || undefined,
-      constructionPeriodLabel: filterForm.constructionPeriodLabel?.trim() || undefined,
-      departmentId: filterForm.departmentId || undefined,
-      portfolioOrgId: filterForm.portfolioOrgId || undefined,
-    })
+    const result = await portfolioDoubleHighApi.pageTasks(request)
+    if (pageRequestToken.value !== currentToken) {
+      return
+    }
     rows.value = result.list ?? []
     total.value = result.total ?? 0
-  
+
     okLoad()
   } catch (error) {
+    if (pageRequestToken.value !== currentToken) {
+      return
+    }
     failLoad()
     rows.value = []
     total.value = 0
     showUserError(error, '加载双高任务失败')
   } finally {
-    loading.value = false
+    if (pageRequestToken.value === currentToken) {
+      loading.value = false
+    }
   }
 }
 
@@ -294,23 +312,34 @@ function onSearch() {
   void loadPage()
 }
 
-function onTableChange(changeEvent: UiDataTableChangeEvent) {
-  const { pageNum, pageSize } = readUiDataTablePagination(changeEvent, DEFAULT_LIST_PAGE_SIZE)
-  query.pageNum = pageNum
-  query.pageSize = pageSize
+function handlePageChange(page: { current: number; pageSize: number }) {
+  query.pageNum = page.current
+  query.pageSize = page.pageSize
   void loadPage()
 }
 
 async function openTaskDetailById(taskId: string) {
+  const currentToken = detailRequestToken.value + 1
+  detailRequestToken.value = currentToken
   detailOpen.value = true
   detailLoading.value = true
+  detailTask.value = null
   try {
-    detailTask.value = await portfolioDoubleHighApi.getTask({ id: taskId })
+    const nextDetail = await portfolioDoubleHighApi.getTask({ id: taskId })
+    if (detailRequestToken.value !== currentToken) {
+      return
+    }
+    detailTask.value = nextDetail
   } catch (error) {
+    if (detailRequestToken.value !== currentToken) {
+      return
+    }
     detailTask.value = null
     showUserError(error, '加载阶段明细失败')
   } finally {
-    detailLoading.value = false
+    if (detailRequestToken.value === currentToken) {
+      detailLoading.value = false
+    }
   }
 }
 
@@ -318,7 +347,8 @@ function resetCreateForm() {
   createForm.taskCode = ''
   createForm.taskTitle = ''
   createForm.taskSource = '校级双高'
-  createForm.departmentId = typeof route.query.departmentId === 'string' ? route.query.departmentId : undefined
+  createForm.departmentId =
+    typeof route.query.departmentId === 'string' ? route.query.departmentId : undefined
   createForm.portfolioOrgId = undefined
   createForm.constructionPeriodLabel = ''
   createForm.baselinePeriodLabel = ''
@@ -329,13 +359,20 @@ function resetCreateForm() {
 }
 
 function openCreateModal() {
+  if (busy.value) {
+    return
+  }
   resetCreateForm()
   createOpen.value = true
 }
 
 function addCreateStage() {
   const nextIndex = createForm.stages.length + 1
-  createForm.stages.push({ stageIndex: nextIndex, stageName: `阶段${nextIndex}`, stageDeadline: undefined })
+  createForm.stages.push({
+    stageIndex: nextIndex,
+    stageName: `阶段${nextIndex}`,
+    stageDeadline: undefined,
+  })
 }
 
 function removeCreateStage(index: number) {
@@ -350,6 +387,9 @@ function removeCreateStage(index: number) {
 }
 
 async function handleAction(key: string, row: PortfolioDoubleHighTaskVO) {
+  if (busy.value) {
+    return
+  }
   actionLoading.value = true
   try {
     if (key === 'detail') {
@@ -370,9 +410,19 @@ async function handleAction(key: string, row: PortfolioDoubleHighTaskVO) {
       selectedArchiveIds.value = []
       actionOpen.value = true
       evidenceLoading.value = true
+      const evidenceToken = evidenceRequestToken.value + 1
+      evidenceRequestToken.value = evidenceToken
       try {
-        evidenceArchives.value = await portfolioDoubleHighApi.listEvidenceArchives({ id: row.id }) ?? []
+        const nextArchives =
+          (await portfolioDoubleHighApi.listEvidenceArchives({ id: row.id })) ?? []
+        if (evidenceRequestToken.value !== evidenceToken || activeTask.value?.id !== row.id) {
+          return
+        }
+        evidenceArchives.value = nextArchives
       } catch (error) {
+        if (evidenceRequestToken.value !== evidenceToken || activeTask.value?.id !== row.id) {
+          return
+        }
         evidenceArchives.value = []
         showUserError(error, '加载失败')
       } finally {
@@ -397,6 +447,15 @@ async function handleAction(key: string, row: PortfolioDoubleHighTaskVO) {
       actionOpen.value = true
       return
     } else if (key === 'archive') {
+      const confirmed = await confirmAsync({
+        title: '确认归档双高任务',
+        content: `确认归档「${row.taskTitle}」？归档后任务进入终态，不再接受阶段材料。`,
+        type: 'warning',
+        okText: '确认归档',
+      })
+      if (!confirmed) {
+        return
+      }
       await portfolioDoubleHighApi.archiveTask({ id: row.id })
       message.success('任务已归档')
     } else if (key === 'void') {
@@ -415,21 +474,22 @@ async function handleAction(key: string, row: PortfolioDoubleHighTaskVO) {
 }
 
 async function submitActionModal() {
-  if (!activeTask.value) {
+  if (!activeTask.value || actionLoading.value) {
     return
   }
   actionLoading.value = true
   try {
     if (actionMode.value === 'submit') {
       if (selectedArchiveIds.value.length === 0) {
-        message.warning('请至少选择一条正式档案作')
+        message.warning('请至少选择一条正式档案作为阶段佐证')
         return
       }
       const missingFile = evidenceArchives.value.filter(
-        item => selectedArchiveIds.value.includes(item.archiveRecordId) && !item.hasDownloadableFile,
+        (item) =>
+          selectedArchiveIds.value.includes(item.archiveRecordId) && !item.hasDownloadableFile,
       )
       if (missingFile.length > 0) {
-        message.warning('所选正式档案缺少可下载附')
+        message.warning('所选正式档案缺少可下载附件，请先补齐材料')
         return
       }
       await portfolioDoubleHighApi.submitStage({
@@ -472,6 +532,9 @@ async function submitActionModal() {
 }
 
 async function submitCreate() {
+  if (actionLoading.value) {
+    return
+  }
   const taskCode = createForm.taskCode.trim()
   const taskTitle = createForm.taskTitle.trim()
   if (!taskCode || !taskTitle) {
@@ -499,11 +562,11 @@ async function submitCreate() {
     stageName: stage.stageName.trim() || `阶段${index + 1}`,
     stageDeadline: stage.stageDeadline || undefined,
   }))
-  if (stages.some(stage => !stage.stageName)) {
+  if (stages.some((stage) => !stage.stageName)) {
     message.warning('请填写阶段名称')
     return
   }
-  if (stages.some(stage => !stage.stageDeadline)) {
+  if (stages.some((stage) => !stage.stageDeadline)) {
     message.warning('请为每个阶段设置截止日')
     return
   }
@@ -546,33 +609,42 @@ onMounted(() => {
   })
 })
 
-watch(() => filterForm.departmentId, () => {
-  filterForm.portfolioOrgId = undefined
-})
+watch(
+  () => filterForm.departmentId,
+  () => {
+    filterForm.portfolioOrgId = undefined
+  },
+)
 
-watch(() => createForm.departmentId, () => {
-  createForm.portfolioOrgId = undefined
-})
+watch(
+  () => createForm.departmentId,
+  () => {
+    createForm.portfolioOrgId = undefined
+  },
+)
 </script>
 
 <template>
   <StageWorkbenchShell title="双高任务台账">
     <template #context>
-      <ContextBar title="双高建设任务" subtitle="发布→认领→实施→阶段提" />
+      <ContextBar title="双高建设任务" subtitle="发布→认领→实施→阶段提交→审核→验收归档" />
     </template>
     <UiCard>
       <div class="shuanggao-tasks__toolbar">
-        <UiButton @click="openCreateModal">发布任务</UiButton>
+        <UiButton :disabled="busy" @click="openCreateModal">发布任务</UiButton>
       </div>
       <UiFilterBar v-model="filterModel" :fields="filterFields" @search="onSearch" />
       <UiDataTable
+        v-model:current="query.pageNum"
+        v-model:page-size="query.pageSize"
         row-key="id"
         :columns="columns"
         :data-source="rows"
         :loading="loading"
         :load-error="loadError"
-        :pagination="pagination"
-        @change="onTableChange"
+        pagination-mode="server"
+        :total="total"
+        @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'taskStatus'">
@@ -660,7 +732,11 @@ watch(() => createForm.departmentId, () => {
         </label>
         <label class="create-form__field create-form__field--full">
           <span>验收标准</span>
-          <UiTextarea v-model="createForm.acceptanceCriteria" :rows="2" placeholder="验收口径说明" />
+          <UiTextarea
+            v-model="createForm.acceptanceCriteria"
+            :rows="2"
+            placeholder="验收口径说明"
+          />
         </label>
         <div class="create-form__stages">
           <div class="create-form__stages-head">
@@ -683,9 +759,12 @@ watch(() => createForm.departmentId, () => {
     <a-drawer v-model:open="detailOpen" title="双高任务阶段明细" width="520">
       <a-spin :spinning="detailLoading">
         <template v-if="detailTask">
-          <p class="shuanggao-tasks__detail-title">{{ detailTask.taskCode }} · {{ detailTask.taskTitle }}</p>
+          <p class="shuanggao-tasks__detail-title">
+            {{ detailTask.taskCode }} · {{ detailTask.taskTitle }}
+          </p>
           <p class="shuanggao-tasks__detail-meta">
-            状态 {{ taskStatusLabel(detailTask.taskStatus) }} · 进度 {{ detailTask.currentStageIndex }}/{{ detailTask.totalStageCount }}
+            状态 {{ taskStatusLabel(detailTask.taskStatus) }} · 进度
+            {{ detailTask.currentStageIndex }}/{{ detailTask.totalStageCount }}
           </p>
           <p class="shuanggao-tasks__detail-meta shuanggao-tasks__detail-meta--spaced">
             建设周期 {{ detailTask.constructionPeriodLabel }}
@@ -694,15 +773,24 @@ watch(() => createForm.departmentId, () => {
             </template>
           </p>
           <ul class="shuanggao-tasks__stage-list">
-            <li v-for="stage in detailTask.stages" :key="stage.id" class="shuanggao-tasks__stage-item">
-              <div class="shuanggao-tasks__stage-name">阶段 {{ stage.stageIndex }} · {{ stage.stageName }}</div>
+            <li
+              v-for="stage in detailTask.stages"
+              :key="stage.id"
+              class="shuanggao-tasks__stage-item"
+            >
+              <div class="shuanggao-tasks__stage-name">
+                阶段 {{ stage.stageIndex }} · {{ stage.stageName }}
+              </div>
               <div class="shuanggao-tasks__stage-meta">
-                截止：{{ stage.stageDeadline || '未设' }}
-                · 审核：{{ stage.reviewStatus || '未提交' }}
+                截止：{{ stage.stageDeadline || '未设' }} · 审核：{{
+                  stage.reviewStatus || '未提交'
+                }}
                 <span v-if="stage.submitTime"> · 提交 {{ stage.submitTime }}</span>
                 <span v-if="stage.reviewedTime"> · 审核 {{ stage.reviewedTime }}</span>
               </div>
-              <p v-if="stage.reviewComment" class="shuanggao-tasks__stage-comment">意见：{{ stage.reviewComment }}</p>
+              <p v-if="stage.reviewComment" class="shuanggao-tasks__stage-comment">
+                意见：{{ stage.reviewComment }}
+              </p>
             </li>
           </ul>
         </template>
@@ -711,7 +799,9 @@ watch(() => createForm.departmentId, () => {
     </a-drawer>
     <a-modal
       v-model:open="actionOpen"
-      :title="actionMode === 'submit' ? '提交阶段材料' : actionMode === 'void' ? '作废任务' : '阶段审核'"
+      :title="
+        actionMode === 'submit' ? '提交阶段材料' : actionMode === 'void' ? '作废任务' : '阶段审核'
+      "
       :confirm-loading="actionLoading"
       @ok="submitActionModal"
     >
@@ -862,4 +952,3 @@ watch(() => createForm.departmentId, () => {
   margin-bottom: var(--dp-space-3);
 }
 </style>
-

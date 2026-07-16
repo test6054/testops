@@ -2,11 +2,7 @@
   <AiAnalysisSection title="AI 学期能力成长曲线">
     <template #actions>
       <AiAnalysisHistorySelect v-model="historySelectedId" :rows="historyRows" :loading="loading" />
-      <UiRadioGroup
-        v-model="form.examScopeMode"
-        size="sm"
-        :options="examScopeModeOptions"
-      />
+      <UiRadioGroup v-model="form.examScopeMode" size="sm" :options="examScopeModeOptions" />
       <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 查看历史 </UiButton>
       <UiButton variant="primary" size="sm" :loading="generating" @click="handleGenerate">
         生成成长曲线
@@ -129,15 +125,6 @@ import type {
   SemesterAbilityGrowthResponse,
   SemesterGrowthTrendCode,
 } from '@/apis/mark/cross-exam-analysis'
-import type { ExamSummaryResponse } from '@/apis/mark/exam'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import {
-  AnalysisScopeTypeCode,
-  AnalysisScopeTypeDescription,
-} from '@/apis/mark/analysis-scope-type'
 import {
   generateClassGrowth,
   listCommonClassScopes,
@@ -145,6 +132,16 @@ import {
   SEMESTER_GROWTH_TREND_TONE,
   SemesterGrowthTrendDescription,
 } from '@/apis/mark/cross-exam-analysis'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
+import type { BadgeTone, FilterField, UiSelectOption } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { formatSemester } from '@/types/enums/semester-enum'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import {
+  AnalysisScopeTypeCode,
+  AnalysisScopeTypeDescription,
+} from '@/apis/mark/analysis-scope-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisHistorySelect from '@/components/mark/analysis/AiAnalysisHistorySelect.vue'
@@ -159,7 +156,6 @@ import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { formatSemester } from '@/types/enums/semester-enum'
 import {
   buildRequiredAcademicYearSemesterQuery,
   ensureRequiredAcademicYearSemester,
@@ -204,10 +200,10 @@ const props = withDefaults(
   },
 )
 
-const examScopeModeOptions = [
+const examScopeModeOptions: UiSelectOption[] = [
   { label: '自动选考', value: 'AUTO' },
   { label: '手动选考', value: 'MANUAL' },
-] as const
+]
 
 interface SemesterGrowthForm {
   examScopeMode: 'AUTO' | 'MANUAL'
@@ -246,7 +242,7 @@ const historyRows = computed(() =>
 )
 
 const selectedExams = ref<ExamSummaryResponse[]>([])
-const classOptions = ref<{ label: string, value: string }[]>([])
+const classOptions = ref<{ label: string; value: string }[]>([])
 const classLoading = ref(false)
 const loading = ref(false)
 const generating = ref(false)
@@ -340,8 +336,8 @@ const showGrowthFilterBar = computed(
   () => form.examScopeMode === 'MANUAL' || showGrowthClassField.value,
 )
 
-const growthExamSelectReady = computed(
-  () => Boolean(effectiveTeachingAcademicYear.value && effectiveTeachingSemester.value),
+const growthExamSelectReady = computed(() =>
+  Boolean(effectiveTeachingAcademicYear.value && effectiveTeachingSemester.value),
 )
 
 const growthFilterFields = computed<FilterField[]>(() => {
@@ -533,7 +529,12 @@ watch(
 )
 
 async function reload(): Promise<void> {
-  if (!ensureRequiredAcademicYearSemester(effectiveTeachingAcademicYear.value, effectiveTeachingSemester.value)) {
+  if (
+    !ensureRequiredAcademicYearSemester(
+      effectiveTeachingAcademicYear.value,
+      effectiveTeachingSemester.value,
+    )
+  ) {
     return
   }
   const termQuery = buildRequiredAcademicYearSemesterQuery(
@@ -565,7 +566,12 @@ async function reload(): Promise<void> {
 }
 
 async function handleGenerate(): Promise<void> {
-  if (!ensureRequiredAcademicYearSemester(effectiveTeachingAcademicYear.value, effectiveTeachingSemester.value)) {
+  if (
+    !ensureRequiredAcademicYearSemester(
+      effectiveTeachingAcademicYear.value,
+      effectiveTeachingSemester.value,
+    )
+  ) {
     return
   }
   const termQuery = buildRequiredAcademicYearSemesterQuery(

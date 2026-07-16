@@ -164,7 +164,7 @@ const copyright = computed(() => appStore.getCopyright())
   align-items: center;
   min-height: 36px;
   padding: 0 14px;
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
   font-size: 12px;
   line-height: 1;
   font-weight: 700;
@@ -190,7 +190,7 @@ const copyright = computed(() => appStore.getCopyright())
   align-items: center;
   min-height: 34px;
   padding: 0 14px;
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;

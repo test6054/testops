@@ -30,7 +30,23 @@
       </section>
 
       <section v-else-if="settingsTab === 'duty'" class="archive-volume-settings__panel">
-        <UiForm :disabled="dutyLoading || saving">
+        <UiEmpty v-if="dutyLoadFailed || departmentLoadFailed" description="职责授权配置加载失败">
+          <template #action>
+            <UiButton
+              size="sm"
+              variant="outline"
+              @click="
+                () => {
+                  loadDepartments()
+                  loadDutyGrants()
+                }
+              "
+            >
+              重新加载
+            </UiButton>
+          </template>
+        </UiEmpty>
+        <UiForm v-else :disabled="dutyLoading || saving">
           <WorkbenchSurfaceCard flush>
             <template #head>
               <span>档案管理岗位</span>
@@ -101,7 +117,12 @@
       </section>
 
       <section v-else-if="settingsTab === 'security'" class="archive-volume-settings__panel">
-        <UiForm :disabled="policyLoading || saving">
+        <UiEmpty v-if="policyLoadFailed" description="密级策略加载失败">
+          <template #action>
+            <UiButton size="sm" variant="outline" @click="loadPolicy">重新加载</UiButton>
+          </template>
+        </UiEmpty>
+        <UiForm v-else :disabled="policyLoading || saving">
           <WorkbenchSurfaceCard flush>
             <template #head>
               <span>密级访问矩阵</span>
@@ -164,7 +185,14 @@
       </section>
 
       <section v-else-if="settingsTab === 'collaboration'" class="archive-volume-settings__panel">
-        <UiForm :disabled="collaborationLoading || saving">
+        <UiEmpty v-if="collaborationLoadFailed" description="协作策略加载失败">
+          <template #action>
+            <UiButton size="sm" variant="outline" @click="loadCollaborationPolicy">
+              重新加载
+            </UiButton>
+          </template>
+        </UiEmpty>
+        <UiForm v-else :disabled="collaborationLoading || saving">
           <WorkbenchSurfaceCard flush>
             <template #head>
               <span>协作与提交策略</span>
@@ -219,7 +247,26 @@
       </section>
 
       <section v-else-if="settingsTab === 'deadline'" class="archive-volume-settings__panel">
-        <UiForm :disabled="deadlineLoading || saving">
+        <UiEmpty
+          v-if="deadlineLoadFailed || departmentLoadFailed"
+          description="归档时限策略加载失败"
+        >
+          <template #action>
+            <UiButton
+              size="sm"
+              variant="outline"
+              @click="
+                () => {
+                  loadDepartments()
+                  loadDeadlinePolicy()
+                }
+              "
+            >
+              重新加载
+            </UiButton>
+          </template>
+        </UiEmpty>
+        <UiForm v-else :disabled="deadlineLoading || saving">
           <WorkbenchSurfaceCard flush>
             <template #head>
               <span>归档时限策略</span>
@@ -324,10 +371,6 @@ import type {
   ArchiveSecurityPolicyItemRequest,
   ArchiveTenantCollaborationPolicySaveRequest,
 } from '@/apis/mark/archive-config'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onActivated, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   ARCHIVE_DUTY_TYPE_OPTIONS,
   ArchiveDutyTypeCode,
@@ -340,11 +383,16 @@ import {
   saveArchiveDutyGrants,
   saveArchiveSecurityPolicy,
 } from '@/apis/mark/archive-config'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onActivated, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import { ARCHIVE_SECURITY_LEVEL_OPTIONS } from '@/apis/mark/archive-volume'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
@@ -403,6 +451,11 @@ const dutyLoading = ref(false)
 const policyLoading = ref(false)
 const deadlineLoading = ref(false)
 const collaborationLoading = ref(false)
+const dutyLoadFailed = ref(false)
+const policyLoadFailed = ref(false)
+const deadlineLoadFailed = ref(false)
+const collaborationLoadFailed = ref(false)
+const departmentLoadFailed = ref(false)
 const dutyRows = ref<DutyRow[]>([])
 const policyRows = ref<PolicyRow[]>([])
 const deadlineRows = ref<DeadlineRow[]>([])
@@ -422,7 +475,7 @@ const kioskHubListModeOptions = ALL_ARCHIVE_KIOSK_HUB_LIST_MODE_CODES.map((value
   value,
   label: strictEnumLabel(ArchiveKioskHubListModeDescription, value, '一体机 Hub 列表模式'),
 }))
-const departmentOptions = ref<Array<{ value: string, label: string }>>([])
+const departmentOptions = ref<Array<{ value: string; label: string }>>([])
 const tenantTemplateSetCount = ref(0)
 
 function goArchiveList() {
@@ -456,9 +509,9 @@ function validateDutyRows(): boolean {
       return false
     }
     if (
-      !row.tenantWide
-      && !row.scopeDepartmentId
-      && row.dutyType !== ArchiveDutyTypeCode.VOLUME_OWNER
+      !row.tenantWide &&
+      !row.scopeDepartmentId &&
+      row.dutyType !== ArchiveDutyTypeCode.VOLUME_OWNER
     ) {
       message.warning('非全校授权须选择院系')
       return false
@@ -565,6 +618,7 @@ async function loadTemplateSetStats() {
 }
 
 async function loadDepartments() {
+  departmentLoadFailed.value = false
   try {
     const departments = await departmentCatalogApi.list()
     departmentOptions.value = departments.map((item) => ({
@@ -572,6 +626,7 @@ async function loadDepartments() {
       label: item.deptName,
     }))
   } catch (error) {
+    departmentLoadFailed.value = true
     showUserError(error)
   }
 }
@@ -639,9 +694,11 @@ function validateDeadlineRows(): boolean {
 
 async function loadCollaborationPolicy() {
   collaborationLoading.value = true
+  collaborationLoadFailed.value = false
   try {
     collaborationForm.value = await getArchiveCollaborationPolicy()
   } catch (error) {
+    collaborationLoadFailed.value = true
     showUserError(error, '加载协作策略失败')
   } finally {
     collaborationLoading.value = false
@@ -649,6 +706,7 @@ async function loadCollaborationPolicy() {
 }
 
 async function saveCollaborationPolicyForm() {
+  if (collaborationLoadFailed.value) return
   saving.value = true
   try {
     await saveArchiveCollaborationPolicy({ ...collaborationForm.value })
@@ -663,6 +721,7 @@ async function saveCollaborationPolicyForm() {
 
 async function loadDeadlinePolicy() {
   deadlineLoading.value = true
+  deadlineLoadFailed.value = false
   try {
     const policies = await listArchiveDeadlinePolicy()
     if (policies.length === 0) {
@@ -682,14 +741,15 @@ async function loadDeadlinePolicy() {
       deadlineRows.value.unshift(buildDefaultDeadlineRow(true))
     }
   } catch (error) {
+    deadlineLoadFailed.value = true
     showUserError(error, '加载时限策略失败')
-    deadlineRows.value = [buildDefaultDeadlineRow(true)]
   } finally {
     deadlineLoading.value = false
   }
 }
 
 async function saveDeadlinePolicyRows() {
+  if (deadlineLoadFailed.value || departmentLoadFailed.value) return
   if (!validateDeadlineRows()) return
   saving.value = true
   try {
@@ -713,6 +773,7 @@ async function saveDeadlinePolicyRows() {
 
 async function loadDutyGrants() {
   dutyLoading.value = true
+  dutyLoadFailed.value = false
   try {
     const grants = await listArchiveDutyGrants()
     dutyRows.value = grants.map((item) => ({
@@ -723,8 +784,8 @@ async function loadDutyGrants() {
       tenantWide: item.tenantWide,
     }))
   } catch (error) {
+    dutyLoadFailed.value = true
     showUserError(error, '加载职责授权失败')
-    dutyRows.value = []
   } finally {
     dutyLoading.value = false
   }
@@ -732,6 +793,7 @@ async function loadDutyGrants() {
 
 async function loadPolicy() {
   policyLoading.value = true
+  policyLoadFailed.value = false
   try {
     const policies = await listArchiveSecurityPolicy()
     policyRows.value = policies.map((item) => ({
@@ -740,14 +802,15 @@ async function loadPolicy() {
       maxSecurityLevel: item.maxSecurityLevel,
     }))
   } catch (error) {
+    policyLoadFailed.value = true
     showUserError(error, '加载密级策略失败')
-    policyRows.value = []
   } finally {
     policyLoading.value = false
   }
 }
 
 async function saveDutyGrants() {
+  if (dutyLoadFailed.value || departmentLoadFailed.value) return
   if (!validateDutyRows()) return
   saving.value = true
   try {
@@ -769,6 +832,7 @@ async function saveDutyGrants() {
 }
 
 async function saveSecurityPolicyRows() {
+  if (policyLoadFailed.value) return
   if (policyRows.value.length === 0) {
     message.warning('至少保留一条密级策略')
     return
@@ -778,6 +842,11 @@ async function saveSecurityPolicyRows() {
       message.warning('密级策略须完整填写职责类型与最高密级')
       return
     }
+  }
+  const dutyTypes = policyRows.value.map((row) => row.dutyType)
+  if (new Set(dutyTypes).size !== dutyTypes.length) {
+    message.warning('同一职责类型只能配置一条密级策略')
+    return
   }
   saving.value = true
   try {

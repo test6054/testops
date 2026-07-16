@@ -1,20 +1,8 @@
 import type { ExamQuestionCourseGoalMappingStatusCode } from '@/types/enums/exam-question-course-goal-mapping-status-enum'
+import type { QuestionTypeCode } from '@/types/enums/question-type-enum'
 import http from '@/config/axios'
 
 const BASE = '/api/mark/exams/question-course-goal-mappings'
-
-export interface ExamQuestionCourseGoalMappingVO {
-  id: string
-  examId: string
-  layoutQuestionId: string
-  qualityCourseGoalId: string
-  weight: number
-  questionNo?: string
-  questionType?: string
-  questionFullScore?: number
-  goalCode?: string
-  goalName?: string
-}
 
 export interface QualityCourseGoalForMarkVO {
   goalId: string
@@ -37,7 +25,7 @@ export interface CourseObjectiveMappingReadinessVO {
 export interface ExamQuestionCourseGoalMappingWorkspaceRowVO {
   layoutQuestionId: string
   questionNo: string
-  questionType?: string
+  questionType?: QuestionTypeCode
   questionStem?: string
   questionFullScore?: number
   sortNo?: number
@@ -75,18 +63,6 @@ export function loadExamQuestionCourseGoalMappingWorkspace(
   examId: string,
 ): Promise<ExamQuestionCourseGoalMappingWorkspaceVO> {
   return http.post<ExamQuestionCourseGoalMappingWorkspaceVO>(`${BASE}/workspace`, { examId })
-}
-
-export function listExamQuestionCourseGoalMappings(
-  examId: string,
-): Promise<ExamQuestionCourseGoalMappingVO[]> {
-  return http.post<ExamQuestionCourseGoalMappingVO[]>(`${BASE}/list`, { examId })
-}
-
-export function listExamCourseGoalsForMapping(
-  examId: string,
-): Promise<QualityCourseGoalForMarkVO[]> {
-  return http.post<QualityCourseGoalForMarkVO[]>(`${BASE}/course-goals/list`, { examId })
 }
 
 export function saveExamQuestionCourseGoalMapping(

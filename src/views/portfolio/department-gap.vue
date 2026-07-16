@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioGapTaskStatusCode } from '@/apis/portfolio/enums'
+import { PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import type { PortfolioGapTaskSummaryVO } from '@/apis/portfolio/types'
 import { DatePicker, Input, message } from 'ant-design-vue'
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import { portfolioGapApi } from '@/apis/portfolio/gap'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -33,6 +33,9 @@ const rows = ref<PortfolioGapTaskSummaryVO[]>([])
 const pageNum = ref(1)
 const pageSize = ref(10)
 const pageTotal = ref(0)
+const requestToken = ref(0)
+
+const writing = computed(() => Boolean(urgingId.value || extendingId.value))
 
 function gapCourseScopeLabel(row: PortfolioGapTaskSummaryVO): string {
   if (!row.courseCode) {
@@ -59,23 +62,39 @@ const columns: ColumnsType<PortfolioGapTaskSummaryVO> = [
 ]
 
 async function loadPage() {
+  const currentToken = requestToken.value + 1
+  requestToken.value = currentToken
+  const request = {
+    openOnly: true,
+    pageNum: pageNum.value,
+    pageSize: pageSize.value,
+  }
   loading.value = true
   try {
-    const page = await portfolioGapApi.pageTasks({
-      openOnly: true,
-      pageNum: pageNum.value,
-      pageSize: pageSize.value,
-    })
+    const page = await portfolioGapApi.pageTasks(request)
+    if (requestToken.value !== currentToken) {
+      return
+    }
     rows.value = page.list
     pageTotal.value = page.total
   } catch (error) {
+    if (requestToken.value !== currentToken) {
+      return
+    }
+    rows.value = []
+    pageTotal.value = 0
     showUserError(error, '加载补采任务失败')
   } finally {
-    loading.value = false
+    if (requestToken.value === currentToken) {
+      loading.value = false
+    }
   }
 }
 
 async function urgeTask(row: PortfolioGapTaskSummaryVO) {
+  if (writing.value) {
+    return
+  }
   urgingId.value = row.id
   try {
     await portfolioGapApi.urgeTask({ gapTaskId: row.id })
@@ -99,12 +118,18 @@ async function extendTask() {
     message.warning('请填写新的截止时间和延期理由')
     return
   }
-  extendingId.value = extendingTask.value.id
+  if (writing.value) {
+    return
+  }
+  const gapTaskId = extendingTask.value.id
+  const dueTime = extensionForm.dueTime
+  const reason = extensionForm.reason.trim()
+  extendingId.value = gapTaskId
   try {
     await portfolioGapApi.extendTask({
-      gapTaskId: extendingTask.value.id,
-      dueTime: extensionForm.dueTime,
-      reason: extensionForm.reason.trim(),
+      gapTaskId,
+      dueTime,
+      reason,
     })
     message.success('延期已生效，教师已收到新的补采期限')
     extendDialogOpen.value = false
@@ -164,8 +189,8 @@ void loadPage()
             <UiTableActions
               :items="[
                 { key: 'view', label: '查看' },
-                { key: 'urge', label: '催办', disabled: urgingId === record.id },
-                { key: 'extend', label: '延期', disabled: extendingId === record.id },
+                { key: 'urge', label: '催办', disabled: writing },
+                { key: 'extend', label: '延期', disabled: writing },
               ]"
               split
               @action="(key) => handleGapRowAction(key, record)"
@@ -175,18 +200,29 @@ void loadPage()
       </UiDataTable>
       <UiEmpty v-else description="暂无开放补采任务" />
     </UiCard>
-    <a-modal v-model:open="extendDialogOpen" title="延期补采任务" :confirm-loading="Boolean(extendingId)" @ok="extendTask">
+    <a-modal
+      v-model:open="extendDialogOpen"
+      title="延期补采任务"
+      :confirm-loading="Boolean(extendingId)"
+      @ok="extendTask"
+    >
       <a-form layout="vertical">
         <a-form-item label="新的截止时间" required>
           <DatePicker
             v-model:value="extensionForm.dueTime"
             show-time
             value-format="YYYY-MM-DD HH:mm:ss"
+            :disabled="writing"
             style="width: 100%"
           />
         </a-form-item>
         <a-form-item label="延期理由" required>
-          <Input v-model:value="extensionForm.reason" :maxlength="500" show-count />
+          <Input
+            v-model:value="extensionForm.reason"
+            :maxlength="500"
+            :disabled="writing"
+            show-count
+          />
         </a-form-item>
       </a-form>
     </a-modal>

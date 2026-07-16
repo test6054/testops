@@ -5,8 +5,10 @@ import type {
   PortfolioArchiveRecordSaveDraftRequest,
   PortfolioArchiveRecordSubmitRequest,
   PortfolioArchiveRecordSummaryVO,
-  PortfolioArchiveRecordVersionVO,
   PortfolioArchiveRecordWriteResultVO,
+  PortfolioArchiveSupportMaterialAddLocalRequest,
+  PortfolioArchiveSupportMaterialLinkSyncRequest,
+  PortfolioArchiveSupportMaterialVO,
   PortfolioArchiveTimelineItemVO,
   PortfolioArchiveTimelineRequest,
   PortfolioTeacherOneTableGetRequest,
@@ -40,15 +42,21 @@ export const portfolioArchiveApi = {
         teacherId,
       },
     ),
-  listVersionHistory: (id: string) =>
-    http.post<PortfolioArchiveRecordVersionVO[]>('/api/portfolio/archive/record/version-history', {
-      id,
-    }),
   compareVersions: (leftRecordId: string, rightRecordId: string) =>
     http.post<PortfolioArchiveRecordCompareVO>('/api/portfolio/archive/record/compare', {
       leftRecordId,
       rightRecordId,
     }),
+  listSupportMaterials: (archiveRecordId: string) =>
+    http.post<PortfolioArchiveSupportMaterialVO[]>('/api/portfolio/archive/support-material/list', {
+      archiveRecordId,
+    }),
+  addLocalSupportMaterial: (data: PortfolioArchiveSupportMaterialAddLocalRequest) =>
+    http.post<string>('/api/portfolio/archive/support-material/add-local', data),
+  linkSyncSupportMaterial: (data: PortfolioArchiveSupportMaterialLinkSyncRequest) =>
+    http.post<string>('/api/portfolio/archive/support-material/link-sync', data),
+  deleteSupportMaterial: (id: string, archiveRecordId: string) =>
+    http.post<void>('/api/portfolio/archive/support-material/delete', { id, archiveRecordId }),
   getOneTable: (data: PortfolioTeacherOneTableGetRequest = {}) =>
     http.post<PortfolioTeacherOneTableVO>('/api/portfolio/teacher-one-table/get', data),
 }

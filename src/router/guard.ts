@@ -1,5 +1,6 @@
 import type { NavigationGuardReturn, RouteLocationNormalized, Router } from 'vue-router'
 import type { SeoMeta } from '@/utils/seo'
+import { applySeoMeta } from '@/utils/seo'
 import NProgress from 'nprogress'
 import {
   ensurePortfolioReviewAccessLoaded,
@@ -26,7 +27,6 @@ import {
   resolveQualityPlanGateRedirect,
   routeRequiresPlanConfirmed,
 } from '@/utils/quality-plan-guard'
-import { applySeoMeta } from '@/utils/seo'
 import { getRoutePreloadManager } from './preload-strategy'
 import 'nprogress/nprogress.css'
 
@@ -135,19 +135,29 @@ async function runProtectedRouteGuard(to: RouteLocationNormalized): Promise<Navi
   }
 
   const routeStore = useRouteStore()
-  const permissionVersionChanged = permissionVersionBeforeRefresh !== userStore.userInfo.permissionVersion
+  const permissionVersionChanged =
+    permissionVersionBeforeRefresh !== userStore.userInfo.permissionVersion
   if (permissionVersionChanged) {
     resetPortfolioReviewAccessCache()
   }
   const userRole = authStore.userRole
   const reviewAccessBeforeLoad = readPortfolioReviewAccessProjection()
   let reviewAccessChanged = false
-  if (userRole && isValidRole(userRole) && (isPortfolioRoute(to.path) || userRole === RoleEnum.SCH_TECH)) {
-    const reviewAccessScope = await ensurePortfolioReviewAccessLoaded(isPortfolioRoute(to.path))
-    reviewAccessChanged = reviewAccessScope !== null
-      && reviewAccessBeforeLoad !== readPortfolioReviewAccessProjection()
+  if (
+    userRole &&
+    isValidRole(userRole) &&
+    (isPortfolioRoute(to.path) || userRole === RoleEnum.SCH_TECH)
+  ) {
+    const reviewAccessScope = await ensurePortfolioReviewAccessLoaded(permissionVersionChanged)
+    reviewAccessChanged =
+      reviewAccessScope !== null && reviewAccessBeforeLoad !== readPortfolioReviewAccessProjection()
   }
-  if (!hasMenuFlag || routeStore.asyncRoutes.length === 0 || permissionVersionChanged || reviewAccessChanged) {
+  if (
+    !hasMenuFlag ||
+    routeStore.asyncRoutes.length === 0 ||
+    permissionVersionChanged ||
+    reviewAccessChanged
+  ) {
     try {
       await routeStore.generateMenus()
       hasMenuFlag = true
@@ -164,9 +174,9 @@ async function runProtectedRouteGuard(to: RouteLocationNormalized): Promise<Navi
     return getDefaultRoute(authStore.userRole)
   }
 
-  const needsSecurityRefresh
-    = to.path !== '/change-password'
-      && (!userStore.userInfo.forcePasswordChange || !userStore.userInfo.currentLoginProviderType)
+  const needsSecurityRefresh =
+    to.path !== '/change-password' &&
+    (!userStore.userInfo.forcePasswordChange || !userStore.userInfo.currentLoginProviderType)
 
   if (needsSecurityRefresh) {
     try {
@@ -208,16 +218,18 @@ async function runProtectedRouteGuard(to: RouteLocationNormalized): Promise<Navi
   if (isQualityEvaluationRoute(to.path) && routeRequiresPlanConfirmed(to.matched)) {
     const planOk = await ensureQualityPlanConfirmedForNavigation(to.matched)
     if (!planOk) {
-      return resolveQualityPlanGateRedirect(to.matched) ?? {
-        name: 'QualityTrainingPlanWorkbench',
-      }
+      return (
+        resolveQualityPlanGateRedirect(to.matched) ?? {
+          name: 'QualityTrainingPlanWorkbench',
+        }
+      )
     }
   }
 }
 
 async function runBeforeEachWithTimeout(
   task: () => Promise<NavigationGuardReturn>,
-): Promise<{ timedOut: true } | { timedOut: false, result: NavigationGuardReturn }> {
+): Promise<{ timedOut: true } | { timedOut: false; result: NavigationGuardReturn }> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined
   try {
     return await Promise.race([
@@ -255,9 +267,10 @@ export const setupRouterGuard = (router: Router) => {
       return
     }
 
-    const guardOutcome = routeRequiresPlanConfirmed(to.matched) || isPortfolioRoute(to.path)
-      ? { timedOut: false as const, result: await runProtectedRouteGuard(to) }
-      : await runBeforeEachWithTimeout(() => runProtectedRouteGuard(to))
+    const guardOutcome =
+      routeRequiresPlanConfirmed(to.matched) || isPortfolioRoute(to.path)
+        ? { timedOut: false as const, result: await runProtectedRouteGuard(to) }
+        : await runBeforeEachWithTimeout(() => runProtectedRouteGuard(to))
     if (guardOutcome.timedOut) {
       message.warning('网络较慢，页面已先行展示，部分数据仍在加载')
       schedulePostTimeoutAuthRecovery(to)

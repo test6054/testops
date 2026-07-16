@@ -1,16 +1,15 @@
 import type { ComputedRef, InjectionKey, Ref } from 'vue'
+import { computed, inject, provide, ref, watch } from 'vue'
 import type {
   ArchiveVolumeDetailResponse,
   ArchiveVolumeNavChainStepVO,
   ArchiveVolumeNextStepActionVO,
 } from '@/apis/mark/archive-volume'
-import { computed, inject, provide, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { getArchiveVolumeDetail } from '@/apis/mark/archive-volume'
+import { useRoute, useRouter } from 'vue-router'
 import {
   ARCHIVE_VOLUME_DETAIL_SECTION_TABS,
   ARCHIVE_VOLUME_DETAIL_TAB_KEYS,
-  ARCHIVE_VOLUME_LEGACY_OCR_SEARCH_TAB,
 } from '@/constants/archive-volume-detail-tabs'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 
@@ -35,8 +34,8 @@ export interface ArchiveVolumeWorkbenchContext {
   syncActiveTabFromNavigation: (options?: { preserveUserTab?: boolean }) => void
 }
 
-export const ARCHIVE_VOLUME_WORKBENCH_CONTEXT_KEY: InjectionKey<ArchiveVolumeWorkbenchContext>
-  = Symbol('archiveVolumeWorkbenchContext')
+export const ARCHIVE_VOLUME_WORKBENCH_CONTEXT_KEY: InjectionKey<ArchiveVolumeWorkbenchContext> =
+  Symbol('archiveVolumeWorkbenchContext')
 
 export function provideArchiveVolumeWorkbenchContext(): ArchiveVolumeWorkbenchContext {
   const route = useRoute()
@@ -59,12 +58,15 @@ export function provideArchiveVolumeWorkbenchContext(): ArchiveVolumeWorkbenchCo
   const sidebarTabs = computed((): ArchiveVolumeSidebarTab[] => {
     const chain = navigationChainSteps.value
     if (chain.length) {
-      return chain.map((step) => ({
-        key: step.tabKey,
-        label: step.label,
-        chainStatus: step.chainStatus,
-        badge: step.badgeCount && step.badgeCount > 0 ? step.badgeCount : undefined,
-      }))
+      return [
+        { key: 'ocr-search', label: '卷内检索' },
+        ...chain.map((step) => ({
+          key: step.tabKey,
+          label: step.label,
+          chainStatus: step.chainStatus,
+          badge: step.badgeCount && step.badgeCount > 0 ? step.badgeCount : undefined,
+        })),
+      ]
     }
     return ARCHIVE_VOLUME_DETAIL_SECTION_TABS.map((item) => ({
       key: item.key,
@@ -79,25 +81,7 @@ export function provideArchiveVolumeWorkbenchContext(): ArchiveVolumeWorkbenchCo
     return navigationChainSteps.value.some((step) => step.tabKey === tabKey)
   }
 
-  function redirectLegacyOcrSearchTab(): boolean {
-    const raw = route.query.tab
-    if (raw !== ARCHIVE_VOLUME_LEGACY_OCR_SEARCH_TAB) {
-      return false
-    }
-    if (!volumeId.value) {
-      return false
-    }
-    void router.replace({
-      name: 'TeacherArchiveVolumeSearch',
-      query: { volumeId: volumeId.value },
-    })
-    return true
-  }
-
   function syncActiveTabFromNavigation(options?: { preserveUserTab?: boolean }): void {
-    if (redirectLegacyOcrSearchTab()) {
-      return
-    }
     const raw = route.query.tab
     if (typeof raw === 'string' && isValidDetailTab(raw)) {
       activeTab.value = raw
@@ -113,9 +97,6 @@ export function provideArchiveVolumeWorkbenchContext(): ArchiveVolumeWorkbenchCo
   }
 
   function resolveInitialTab(): void {
-    if (redirectLegacyOcrSearchTab()) {
-      return
-    }
     const raw = route.query.tab
     if (typeof raw !== 'string') {
       return
@@ -180,10 +161,6 @@ export function provideArchiveVolumeWorkbenchContext(): ArchiveVolumeWorkbenchCo
   watch(
     () => route.query.tab,
     (raw) => {
-      if (raw === ARCHIVE_VOLUME_LEGACY_OCR_SEARCH_TAB) {
-        redirectLegacyOcrSearchTab()
-        return
-      }
       if (typeof raw === 'string' && isValidDetailTab(raw)) {
         activeTab.value = raw
       }

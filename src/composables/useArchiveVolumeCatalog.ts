@@ -3,9 +3,6 @@ import type {
   ArchiveVolumeCatalogLineVO,
   ArchiveVolumeCatalogResponse
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { computed, ref } from 'vue'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   ArchiveCatalogStatusCode,
   confirmArchiveVolumeCatalog,
@@ -14,6 +11,9 @@ import {
   getArchiveVolumeCatalog,
   saveArchiveVolumeCatalog
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, ref } from 'vue'
+import { downloadFile } from '@/apis/edu/file-management'
 import { showUserError } from '@/utils/error-handler'
 
 /**
@@ -21,6 +21,7 @@ import { showUserError } from '@/utils/error-handler'
  */
 export function useArchiveVolumeCatalog(volumeId: () => string) {
   const loading = ref(false)
+  const loadFailed = ref(false)
   const saving = ref(false)
   const confirming = ref(false)
   const exporting = ref(false)
@@ -36,12 +37,13 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
     if (!id) return
     loading.value = true
     try {
-      catalog.value = await getArchiveVolumeCatalog(id)
-      editableLines.value = (catalog.value.lines ?? []).map(line => ({ ...line }))
+      const loadedCatalog = await getArchiveVolumeCatalog(id)
+      catalog.value = loadedCatalog
+      editableLines.value = (loadedCatalog.lines ?? []).map(line => ({ ...line }))
+      loadFailed.value = false
     }
     catch (error) {
-      catalog.value = null
-      editableLines.value = []
+      loadFailed.value = true
       showUserError(error, '加载归档目录失败')
     }
     finally {
@@ -52,11 +54,16 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
   async function generateDraft() {
     const id = volumeId()
     if (!id) return
+    const revision = catalog.value?.catalogRevision
+    if (!revision || loadFailed.value) {
+      message.error('目录状态已失效，请重新加载后再操作')
+      return
+    }
     saving.value = true
     try {
-      catalog.value = await generateArchiveVolumeCatalogDraft(id)
-      editableLines.value = (catalog.value.lines ?? []).map(line => ({ ...line }))
+      await generateArchiveVolumeCatalogDraft(id, revision)
       message.success('目录草稿已生成')
+      await loadCatalog()
     }
     catch (error) {
       showUserError(error)
@@ -88,6 +95,11 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
   async function saveCatalog() {
     const id = volumeId()
     if (!id) return
+    const revision = catalog.value?.catalogRevision
+    if (!revision || loadFailed.value) {
+      message.error('目录状态已失效，请重新加载后再操作')
+      return
+    }
     if (editableLines.value.some(line => !line.title?.trim())) {
       message.error('目录题名不能为空')
       return
@@ -96,11 +108,11 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
     try {
       await saveArchiveVolumeCatalog({
         volumeId: id,
+        expectedCatalogRevision: revision,
         lines: buildSaveLines(),
       })
-      catalog.value = await getArchiveVolumeCatalog(id)
-      editableLines.value = (catalog.value.lines ?? []).map(line => ({ ...line }))
       message.success('目录已保存')
+      await loadCatalog()
     }
     catch (error) {
       showUserError(error)
@@ -113,12 +125,16 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
   async function confirmCatalog() {
     const id = volumeId()
     if (!id) return
+    const revision = catalog.value?.catalogRevision
+    if (!revision || loadFailed.value) {
+      message.error('目录状态已失效，请重新加载后再操作')
+      return
+    }
     confirming.value = true
     try {
-      await confirmArchiveVolumeCatalog(id)
-      catalog.value = await getArchiveVolumeCatalog(id)
-      editableLines.value = (catalog.value.lines ?? []).map(line => ({ ...line }))
+      await confirmArchiveVolumeCatalog(id, revision)
       message.success('目录已确认')
+      await loadCatalog()
     }
     catch (error) {
       showUserError(error)
@@ -151,6 +167,7 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
 
   return {
     loading,
+    loadFailed,
     saving,
     confirming,
     exporting,

@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ExcelImportRowDiagnostic } from '@/apis/platform/types'
-import type { PortfolioDevelopmentPlanHistoryImportBatchStatusCode } from '@/apis/portfolio/enums'
 import type { PortfolioTenantIndicatorConfigVO } from '@/apis/portfolio/indicator-types'
+import type {
+  PortfolioAchievementGapAnalysisVO,
+  PortfolioNationalAchievementCatalogVO,
+} from '@/apis/portfolio/national-achievement'
+import { portfolioNationalAchievementApi } from '@/apis/portfolio/national-achievement'
 import type {
   PortfolioDevelopmentPlanAchievementAttainmentItemVO,
   PortfolioDevelopmentPlanCompletionVO,
@@ -12,15 +16,20 @@ import type {
   PortfolioDevelopmentPlanOrgStatVO,
   PortfolioDevelopmentPlanVO,
   PortfolioDevelopmentPlanYearStatVO,
+  PortfolioPlanningSyncConfigSaveRequest,
+  PortfolioPlanningSyncConfigVO,
 } from '@/apis/portfolio/teacher-platform'
+import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
+import { ReloadOutlined, SaveOutlined, UploadOutlined } from '@ant-design/icons-vue'
+import { message, Modal } from 'ant-design-vue'
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
   PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_OPTIONS,
   PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
+  PortfolioDevelopmentPlanHistoryImportBatchStatusCode,
   PortfolioDevelopmentPlanHistoryImportBatchStatusDescription,
   PortfolioDevelopmentPlanItemStatusCode,
   PortfolioDevelopmentPlanItemStatusDescription,
@@ -30,7 +39,6 @@ import {
   PortfolioDevelopmentPlanTypeDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
-import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -43,6 +51,17 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { useQueryTable } from '@/composables/useQueryTable'
+import { PortfolioImportQualityGradeDescription } from '@/types/enums/portfolio-import-quality-grade-enum'
+import {
+  ALL_PORTFOLIO_PLANNING_SYNC_CONFLICT_STRATEGY_CODES,
+  PortfolioPlanningSyncConflictStrategyCode,
+  PortfolioPlanningSyncConflictStrategyDescription,
+} from '@/types/enums/portfolio-planning-sync-conflict-strategy-enum'
+import {
+  ALL_PORTFOLIO_PLANNING_SYNC_ORG_SCOPE_CODES,
+  PortfolioPlanningSyncOrgScopeCode,
+  PortfolioPlanningSyncOrgScopeDescription,
+} from '@/types/enums/portfolio-planning-sync-org-scope-enum'
 import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -50,6 +69,63 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 const historyImportModalOpen = ref(false)
 const historyBatchDetailOpen = ref(false)
 const historyBatchDetail = ref<PortfolioDevelopmentPlanHistoryImportBatchVO | null>(null)
+const historyBatchDetailLoading = ref(false)
+const historyBatchDetailRequestToken = ref(0)
+const historyConfigLoading = ref(false)
+const historyConfigSaving = ref(false)
+const historyRollbackBatchId = ref('')
+const historySyncConfig = ref<PortfolioPlanningSyncConfigVO | null>(null)
+const currentYear = new Date().getFullYear()
+const minimumHistoryYear = 1900
+const maximumHistoryYear = currentYear
+
+const historySyncForm = reactive<PortfolioPlanningSyncConfigSaveRequest>({
+  yearFrom: currentYear - 9,
+  yearTo: currentYear,
+  orgScopeType: PortfolioPlanningSyncOrgScopeCode.SCHOOL,
+  planType: PortfolioDevelopmentPlanTypeCode.TEACHER,
+  conflictStrategy: PortfolioPlanningSyncConflictStrategyCode.SKIP,
+  fieldMapping: {
+    ownerUserIdColumn: '负责人用户ID',
+    planYearColumn: '规划年度',
+    itemTitleColumn: '明细标题',
+    itemGoalColumn: '明细目标',
+    completionPercentColumn: '完成百分比',
+    itemStatusColumn: '明细状态',
+  },
+  enabled: true,
+})
+
+const historyOrgScopeOptions = ALL_PORTFOLIO_PLANNING_SYNC_ORG_SCOPE_CODES.map((value) => ({
+  value,
+  label: PortfolioPlanningSyncOrgScopeDescription[value],
+}))
+const historyConflictStrategyOptions = ALL_PORTFOLIO_PLANNING_SYNC_CONFLICT_STRATEGY_CODES.map(
+  (value) => ({
+    value,
+    label: PortfolioPlanningSyncConflictStrategyDescription[value],
+  }),
+)
+const historyPlanTypeOptions = [
+  { value: PortfolioDevelopmentPlanTypeCode.TEACHER, label: '教师年度规划' },
+]
+
+const historyWriteBusy = computed(
+  () =>
+    historyConfigLoading.value ||
+    historyConfigSaving.value ||
+    Boolean(historyRollbackBatchId.value) ||
+    historyImportModalOpen.value,
+)
+const historyImportAvailable = computed(
+  () => Boolean(historySyncConfig.value?.enabled) && !historyConfigLoading.value,
+)
+const historyImportContext = computed(() => ({
+  expectedConfigUpdateToken: historySyncConfig.value?.updateToken,
+  confirmManualConflicts:
+    historySyncConfig.value?.conflictStrategy ===
+    PortfolioPlanningSyncConflictStrategyCode.MANUAL_CONFIRM,
+}))
 const {
   loading: historyBatchLoading,
   rows: historyBatchRows,
@@ -66,7 +142,7 @@ const historyBatchColumns: ColumnsType = [
   { title: '成功', dataIndex: 'successRows', key: 'successRows', width: 72 },
   { title: '失败', dataIndex: 'failedRows', key: 'failedRows', width: 72 },
   { title: '状态', dataIndex: 'batchStatus', key: 'batchStatus', width: 96 },
-  { title: '操作', key: 'actions', width: 72 },
+  { title: '操作', key: 'actions', width: 128 },
 ]
 
 function historyBatchStatusLabel(
@@ -79,23 +155,206 @@ function historyBatchStatusLabel(
   )
 }
 
+function historyBatchStatusTone(status: PortfolioDevelopmentPlanHistoryImportBatchStatusCode) {
+  switch (status) {
+    case PortfolioDevelopmentPlanHistoryImportBatchStatusCode.COMPLETED:
+      return 'green' as const
+    case PortfolioDevelopmentPlanHistoryImportBatchStatusCode.STAGED:
+      return 'orange' as const
+    case PortfolioDevelopmentPlanHistoryImportBatchStatusCode.FAILED:
+      return 'red' as const
+    case PortfolioDevelopmentPlanHistoryImportBatchStatusCode.ROLLED_BACK:
+      return 'gray' as const
+    default:
+      return 'blue' as const
+  }
+}
+
 async function openHistoryBatchDetail(id: string) {
+  const requestToken = ++historyBatchDetailRequestToken.value
   historyBatchDetailOpen.value = true
   historyBatchDetail.value = null
+  historyBatchDetailLoading.value = true
   try {
-    historyBatchDetail.value = await portfolioDevelopmentPlanApi.historyImportBatchGet({ id })
+    const detail = await portfolioDevelopmentPlanApi.historyImportBatchGet({ id })
+    if (requestToken === historyBatchDetailRequestToken.value) {
+      historyBatchDetail.value = detail
+    }
   } catch (error) {
-    showUserError(error)
+    if (requestToken === historyBatchDetailRequestToken.value) {
+      showUserError(error)
+    }
+  } finally {
+    if (requestToken === historyBatchDetailRequestToken.value) {
+      historyBatchDetailLoading.value = false
+    }
   }
 }
 
 async function handleHistoryImportSuccess() {
-  historyImportModalOpen.value = false
   await Promise.all([loadHistoryImportBatches(), loadPage()])
 }
 
+function applyHistorySyncConfig(config: PortfolioPlanningSyncConfigVO | null) {
+  historySyncConfig.value = config
+  if (!config) {
+    return
+  }
+  historySyncForm.id = config.id
+  historySyncForm.yearFrom = config.yearFrom
+  historySyncForm.yearTo = config.yearTo
+  historySyncForm.orgScopeType = config.orgScopeType
+  historySyncForm.portfolioOrgId = config.portfolioOrgId
+  historySyncForm.planType = config.planType
+  historySyncForm.conflictStrategy = config.conflictStrategy
+  historySyncForm.enabled = config.enabled
+  Object.assign(historySyncForm.fieldMapping, config.fieldMapping)
+}
+
+async function loadHistorySyncConfig() {
+  historyConfigLoading.value = true
+  try {
+    applyHistorySyncConfig(await portfolioDevelopmentPlanApi.getHistorySyncConfig())
+  } catch (error) {
+    showUserError(error)
+  } finally {
+    historyConfigLoading.value = false
+  }
+}
+
+async function saveHistorySyncConfig() {
+  if (
+    historySyncForm.yearFrom < minimumHistoryYear ||
+    historySyncForm.yearTo > maximumHistoryYear
+  ) {
+    message.warning(`历史规划年度须在 ${minimumHistoryYear} 年至 ${maximumHistoryYear} 年之间`)
+    return
+  }
+  if (historySyncForm.yearFrom > historySyncForm.yearTo) {
+    message.warning('起始年度不能晚于结束年度')
+    return
+  }
+  if (historySyncForm.yearTo - historySyncForm.yearFrom + 1 > 10) {
+    message.warning('同步年度区间最多 10 年')
+    return
+  }
+  if (
+    historySyncForm.orgScopeType === PortfolioPlanningSyncOrgScopeCode.ORG_UNIT &&
+    !historySyncForm.portfolioOrgId
+  ) {
+    message.warning('请选择同步组织范围')
+    return
+  }
+  const fieldMapping: PortfolioPlanningSyncConfigSaveRequest['fieldMapping'] = {
+    ownerUserIdColumn: historySyncForm.fieldMapping.ownerUserIdColumn.trim(),
+    planYearColumn: historySyncForm.fieldMapping.planYearColumn.trim(),
+    itemTitleColumn: historySyncForm.fieldMapping.itemTitleColumn.trim(),
+    itemGoalColumn: historySyncForm.fieldMapping.itemGoalColumn.trim(),
+    completionPercentColumn: historySyncForm.fieldMapping.completionPercentColumn.trim(),
+    itemStatusColumn: historySyncForm.fieldMapping.itemStatusColumn.trim(),
+  }
+  if (Object.values(fieldMapping).some((value) => !value)) {
+    message.warning('字段映射列名不能为空')
+    return
+  }
+  historyConfigSaving.value = true
+  try {
+    const saved = await portfolioDevelopmentPlanApi.saveHistorySyncConfig({
+      ...historySyncForm,
+      portfolioOrgId:
+        historySyncForm.orgScopeType === PortfolioPlanningSyncOrgScopeCode.ORG_UNIT
+          ? historySyncForm.portfolioOrgId
+          : undefined,
+      fieldMapping,
+    })
+    applyHistorySyncConfig(saved)
+    message.success('历史规划同步设置已保存')
+  } catch (error) {
+    showUserError(error)
+  } finally {
+    historyConfigSaving.value = false
+  }
+}
+
+function openHistoryImport() {
+  if (!historySyncConfig.value) {
+    message.warning('请先保存历史规划同步设置')
+    return
+  }
+  if (!historySyncConfig.value.enabled) {
+    message.warning('请先启用历史规划同步设置')
+    return
+  }
+  historyImportModalOpen.value = true
+}
+
+function canRollbackHistoryBatch(status: PortfolioDevelopmentPlanHistoryImportBatchStatusCode) {
+  return (
+    status === PortfolioDevelopmentPlanHistoryImportBatchStatusCode.COMPLETED ||
+    status === PortfolioDevelopmentPlanHistoryImportBatchStatusCode.STAGED
+  )
+}
+
+function buildHistoryBatchActions(
+  record: PortfolioDevelopmentPlanHistoryImportBatchVO,
+): UiTableRowActionItem[] {
+  return [
+    { key: 'detail', label: '详情' },
+    {
+      key: 'rollback',
+      label: '回滚',
+      tone: 'danger',
+      hidden: !canRollbackHistoryBatch(record.batchStatus),
+      disabled: historyWriteBusy.value,
+    },
+  ]
+}
+
+function handleHistoryBatchAction(
+  key: string,
+  record: PortfolioDevelopmentPlanHistoryImportBatchVO,
+) {
+  if (key === 'detail') {
+    void openHistoryBatchDetail(record.id)
+    return
+  }
+  if (key !== 'rollback' || !canRollbackHistoryBatch(record.batchStatus)) {
+    return
+  }
+  Modal.confirm({
+    title: '回滚历史规划导入批次',
+    content: `确认回滚批次「${record.batchNo}」？本批次导入的历史规划及明细将被删除。`,
+    okText: '确认回滚',
+    okType: 'danger',
+    cancelText: '取消',
+    async onOk() {
+      historyRollbackBatchId.value = record.id
+      try {
+        await portfolioDevelopmentPlanApi.rollbackHistoryImportBatch({ id: record.id })
+        message.success('历史规划导入批次已回滚')
+        if (historyBatchDetail.value?.id === record.id) {
+          historyBatchDetailOpen.value = false
+          historyBatchDetail.value = null
+        }
+        await Promise.all([loadHistoryImportBatches(), loadPage()])
+      } catch (error) {
+        showUserError(error)
+        throw error
+      } finally {
+        historyRollbackBatchId.value = ''
+      }
+    },
+  })
+}
+
 const historyBatchDiagnosticColumns: ColumnsType<ExcelImportRowDiagnostic> = [
-  { title: '行号', dataIndex: 'rowIndex', key: 'rowIndex', width: 72 },
+  {
+    title: '行号',
+    dataIndex: 'rowIndex',
+    key: 'rowIndex',
+    width: 72,
+    customRender: ({ text }) => (Number(text) > 0 ? String(text) : '批次'),
+  },
   { title: '处理说明', dataIndex: 'invalidReason', key: 'invalidReason' },
 ]
 
@@ -109,24 +368,39 @@ const historyBatchDetailDiagnostics = computed<ExcelImportRowDiagnostic[]>(() =>
     if (!Array.isArray(parsed)) {
       return [{ rowIndex: 1, valid: false, invalidReason: '导入错误报告格式异常' }]
     }
-    return parsed.map((item, index) => {
+    const diagnostics: ExcelImportRowDiagnostic[] = []
+    parsed.forEach((item, index) => {
       if (typeof item !== 'object' || item === null) {
-        return {
+        diagnostics.push({
           rowIndex: index + 1,
           valid: false,
           invalidReason: '导入错误报告明细格式异常',
-        }
+        })
+        return
       }
-      const rowIndex
-        = 'rowIndex' in item && typeof item.rowIndex === 'number' ? item.rowIndex : index + 1
-      const message
-        = 'message' in item && typeof item.message === 'string' ? item.message : '导入失败'
-      return {
-        rowIndex,
-        valid: false,
-        invalidReason: message,
+      const message =
+        'message' in item && typeof item.message === 'string' ? item.message : '导入失败'
+      const errorCode =
+        'conflictAction' in item && typeof item.conflictAction === 'string'
+          ? item.conflictAction
+          : undefined
+      const rowIndexes =
+        'rowIndexes' in item && Array.isArray(item.rowIndexes)
+          ? (item.rowIndexes as unknown[]).filter(
+              (rowIndex: unknown): rowIndex is number => typeof rowIndex === 'number',
+            )
+          : []
+      if (rowIndexes.length) {
+        rowIndexes.forEach((rowIndex: number) => {
+          diagnostics.push({ rowIndex, valid: false, invalidReason: message, errorCode })
+        })
+        return
       }
+      const rowIndex =
+        'rowIndex' in item && typeof item.rowIndex === 'number' ? item.rowIndex : -(index + 1)
+      diagnostics.push({ rowIndex, valid: false, invalidReason: message, errorCode })
     })
+    return diagnostics
   } catch {
     return [{ rowIndex: 1, valid: false, invalidReason: '导入错误报告不是合法 JSON' }]
   }
@@ -149,10 +423,20 @@ const pendingLocatePlanId = ref('')
 const selectedPlanId = ref('')
 const itemLoading = ref(false)
 const itemSaving = ref(false)
+const achievementCatalogLoading = ref(false)
+const achievementCatalogs = ref<PortfolioNationalAchievementCatalogVO[]>([])
+const achievementOperationItemId = ref('')
+const gapOpen = ref(false)
+const gapLoading = ref(false)
+const gap = ref<PortfolioAchievementGapAnalysisVO | null>(null)
 const planItemsRequestToken = ref(0)
 
 interface DevelopmentPlanItemEditorRow extends PortfolioDevelopmentPlanItemSaveRequest {
   rowKey: string
+  catalogName?: string
+  achievementLinkStatus?: string
+  achievementCompletionRate?: string
+  achievementMissingCount?: number
 }
 
 const planItems = ref<DevelopmentPlanItemEditorRow[]>([])
@@ -227,11 +511,12 @@ const orgColumns: ColumnsType = [
 const itemColumns: ColumnsType = [
   { title: '标题', dataIndex: 'itemTitle', key: 'itemTitle', width: 160 },
   { title: '目标', dataIndex: 'itemGoal', key: 'itemGoal', width: 160 },
+  { title: '成果目标', key: 'achievementCatalog', width: 200 },
   { title: '指标', dataIndex: 'indicatorCode', key: 'indicatorCode', width: 100 },
   { title: '里程碑', dataIndex: 'milestoneText', key: 'milestoneText', width: 160 },
   { title: '完成率', dataIndex: 'completionPercent', key: 'completionPercent', width: 88 },
   { title: '状态', dataIndex: 'itemStatus', key: 'itemStatus', width: 100 },
-  { title: '操作', key: 'itemActions', width: 72 },
+  { title: '操作', key: 'itemActions', width: 140 },
 ]
 
 const indicatorConfigs = ref<PortfolioTenantIndicatorConfigVO[]>([])
@@ -243,12 +528,38 @@ const indicatorOptions = computed(() =>
       label: `${item.indicatorName} (${item.indicatorCode})`,
     })),
 )
+const achievementCatalogOptions = computed(() =>
+  achievementCatalogs.value.map((item) => ({
+    value: item.id,
+    label: `${item.catalogName} · ${item.levelCode}`,
+  })),
+)
 
 async function loadIndicatorConfigs() {
   try {
     indicatorConfigs.value = await portfolioIndicatorTenantApi.listConfig()
   } catch (error) {
     showUserError(error)
+  }
+}
+
+async function loadAchievementCatalogs() {
+  achievementCatalogLoading.value = true
+  try {
+    const firstPage = await portfolioNationalAchievementApi.pageCatalog({
+      pageNum: 1,
+      pageSize: 200,
+      enabled: true,
+    })
+    achievementCatalogs.value = firstPage.list ?? []
+    if ((firstPage.total ?? 0) > achievementCatalogs.value.length) {
+      throw new Error('启用的成果目录超过 200 条，请先在成果治理页收敛目录或增加精确检索')
+    }
+  } catch (error) {
+    achievementCatalogs.value = []
+    showUserError(error, '加载成果目录失败')
+  } finally {
+    achievementCatalogLoading.value = false
   }
 }
 
@@ -259,8 +570,8 @@ const selectedPlan = computed(
 const planItemEditable = computed(() => {
   const status = selectedPlan.value?.planStatus
   return (
-    status === PortfolioDevelopmentPlanStatusCode.DRAFT
-    || status === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
+    status === PortfolioDevelopmentPlanStatusCode.DRAFT ||
+    status === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
   )
 })
 
@@ -346,8 +657,8 @@ async function openPlanFromQuery() {
     }
   }
   if (
-    target?.planStatus === PortfolioDevelopmentPlanStatusCode.DRAFT
-    || target?.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
+    target?.planStatus === PortfolioDevelopmentPlanStatusCode.DRAFT ||
+    target?.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
   ) {
     activeTab.value = 'plans'
   }
@@ -388,8 +699,8 @@ function buildDevelopmentPlanRowActions(
 ): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = []
   if (
-    record.planStatus === PortfolioDevelopmentPlanStatusCode.DRAFT
-    || record.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
+    record.planStatus === PortfolioDevelopmentPlanStatusCode.DRAFT ||
+    record.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
   ) {
     actions.push({ key: 'submit', label: '提交', tone: 'primary' })
   }
@@ -449,6 +760,8 @@ function openPlanItems(planId: string) {
 function createEmptyPlanItem(): DevelopmentPlanItemEditorRow {
   return {
     rowKey: `new-${Date.now()}-${planItems.value.length}`,
+    id: undefined,
+    catalogId: undefined,
     itemTitle: '',
     itemGoal: '',
     indicatorCode: '',
@@ -461,6 +774,12 @@ function createEmptyPlanItem(): DevelopmentPlanItemEditorRow {
 function toEditableItem(item: PortfolioDevelopmentPlanItemVO): DevelopmentPlanItemEditorRow {
   return {
     rowKey: item.id ?? `item-${item.sortOrder ?? 0}-${item.itemTitle}`,
+    id: item.id,
+    catalogId: item.catalogId,
+    catalogName: item.catalogName,
+    achievementLinkStatus: item.achievementLinkStatus,
+    achievementCompletionRate: item.achievementCompletionRate,
+    achievementMissingCount: item.achievementMissingCount,
     itemTitle: item.itemTitle,
     itemGoal: item.itemGoal,
     indicatorCode: item.indicatorCode,
@@ -520,6 +839,8 @@ async function savePlanItems() {
       return
     }
     items.push({
+      id: item.id,
+      catalogId: item.catalogId,
       itemTitle,
       itemGoal: item.itemGoal?.trim() || undefined,
       indicatorCode: item.indicatorCode?.trim() || undefined,
@@ -545,16 +866,64 @@ async function savePlanItems() {
   }
 }
 
+async function linkAchievement(item: DevelopmentPlanItemEditorRow) {
+  if (!item.id) {
+    message.warning('请先保存规划明细，再建立成果关联')
+    return
+  }
+  if (!item.catalogId) {
+    message.warning('请选择成果目标')
+    return
+  }
+  const itemId = item.id
+  achievementOperationItemId.value = itemId
+  try {
+    await portfolioNationalAchievementApi.link({ planItemId: itemId, catalogId: item.catalogId })
+    message.success('成果目标已关联')
+    await loadPlanItems()
+  } catch (error) {
+    showUserError(error, '关联成果目标失败')
+  } finally {
+    achievementOperationItemId.value = ''
+  }
+}
+
+async function openAchievementGap(item: DevelopmentPlanItemEditorRow) {
+  if (!item.id || !item.catalogId) {
+    message.warning('当前规划明细尚未关联成果目标')
+    return
+  }
+  gapOpen.value = true
+  gap.value = null
+  gapLoading.value = true
+  try {
+    gap.value = await portfolioNationalAchievementApi.gapAnalysis({ planItemId: item.id })
+    await loadPlanItems()
+  } catch (error) {
+    gapOpen.value = false
+    showUserError(error, '加载成果差距失败')
+  } finally {
+    gapLoading.value = false
+  }
+}
+
 onMounted(async () => {
   await loadTree()
-  await loadIndicatorConfigs()
+  await Promise.all([loadIndicatorConfigs(), loadAchievementCatalogs()])
   pendingLocatePlanId.value = typeof route.query.planId === 'string' ? route.query.planId : ''
   await loadPage()
   if (showAdminStats.value) {
-    void loadHistoryImportBatches()
+    await Promise.all([loadHistoryImportBatches(), loadHistorySyncConfig()])
   }
   await openPlanFromQuery()
   scrollToHighlightedPlan()
+})
+
+watch(historyBatchDetailOpen, (open) => {
+  if (!open) {
+    historyBatchDetailRequestToken.value += 1
+    historyBatchDetailLoading.value = false
+  }
 })
 
 watch(
@@ -593,7 +962,9 @@ watch(
           placeholder="年度"
         />
         <UiButton @click="loadPage"> 刷新 </UiButton>
-        <span v-if="showAdminStats" class="stats">{{ form.planYear }} 年已通过 {{ approvedCount }} 项</span>
+        <span v-if="showAdminStats" class="stats"
+          >{{ form.planYear }} 年已通过 {{ approvedCount }} 项</span
+        >
       </div>
       <a-tabs v-model:active-key="activeTab">
         <a-tab-pane key="plans" tab="规划管理">
@@ -705,6 +1076,31 @@ watch(
                 />
                 <span v-else>{{ record.indicatorCode || '—' }}</span>
               </template>
+              <template v-else-if="column.key === 'achievementCatalog'">
+                <a-select
+                  v-if="planItemEditable"
+                  v-model:value="record.catalogId"
+                  style="width: 100%"
+                  allow-clear
+                  show-search
+                  option-filter-prop="label"
+                  :loading="achievementCatalogLoading"
+                  :options="achievementCatalogOptions"
+                  placeholder="选择成果模板"
+                />
+                <div v-else class="development-plan-admin__achievement-cell">
+                  <span>{{ record.catalogName || '未关联' }}</span>
+                  <UiTag
+                    v-if="record.achievementLinkStatus"
+                    :tone="record.achievementLinkStatus === 'LOCKED' ? 'green' : 'blue'"
+                  >
+                    {{ record.achievementLinkStatus === 'LOCKED' ? '已锁定' : '草稿关联' }}
+                  </UiTag>
+                  <span v-if="record.achievementCompletionRate != null"
+                    >完成度 {{ record.achievementCompletionRate }}%</span
+                  >
+                </div>
+              </template>
               <template v-else-if="column.key === 'milestoneText'">
                 <input
                   v-if="planItemEditable"
@@ -740,9 +1136,25 @@ watch(
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'itemActions'">
-                <UiButton v-if="planItemEditable" size="sm" @click="removePlanItemRow(index)">
-                  删除
-                </UiButton>
+                <div class="development-plan-admin__item-actions">
+                  <UiButton
+                    v-if="planItemEditable && record.id && record.catalogId"
+                    size="sm"
+                    :loading="achievementOperationItemId === record.id"
+                    @click="linkAchievement(record)"
+                  >
+                    关联
+                  </UiButton>
+                  <UiButton
+                    v-if="record.id && record.catalogId"
+                    size="sm"
+                    @click="openAchievementGap(record)"
+                    >差距</UiButton
+                  >
+                  <UiButton v-if="planItemEditable" size="sm" @click="removePlanItemRow(index)"
+                    >删除</UiButton
+                  >
+                </div>
               </template>
             </template>
           </UiDataTable>
@@ -754,9 +1166,11 @@ watch(
             <span>待审 {{ completion.pendingPlanCount }}</span>
             <span>退回 {{ completion.returnedPlanCount }}</span>
             <span>审批完成率 {{ completion.completionRatePercent }}%</span>
-            <span>明细项 {{ completion.completedPlanItemCount }}/{{
-              completion.totalPlanItemCount
-            }}</span>
+            <span
+              >明细项 {{ completion.completedPlanItemCount }}/{{
+                completion.totalPlanItemCount
+              }}</span
+            >
             <span>明细完成率 {{ completion.planItemCompletionRatePercent }}%</span>
             <span>平均完成度 {{ completion.averageItemCompletionPercent }}%</span>
           </div>
@@ -799,72 +1213,248 @@ watch(
           </UiDataTable>
         </a-tab-pane>
         <a-tab-pane v-if="showAdminStats" key="history-import" tab="历史规划导入">
-          <UiCard title="Excel 批量导入">
-            <p class="history-import-hint">
-              下载模板后批量补录 HISTORICAL 只读规划；列含规划标题、规划年度、负责人用户
-              ID、所属组织 ID。
-            </p>
-            <UiButton variant="primary" @click="historyImportModalOpen = true">
-              打开导入向导
-            </UiButton>
-            <UiButton :loading="historyBatchLoading" @click="loadHistoryImportBatches">
-              刷新批次
-            </UiButton>
-          </UiCard>
-          <UiDataTable
-            v-model:current="historyBatchPageNum"
-            v-model:page-size="historyBatchPageSize"
-            pagination-mode="server"
-            :total="historyBatchPageTotal"
-            :columns="historyBatchColumns"
-            :data-source="historyBatchRows"
-            :loading="historyBatchLoading"
-            row-key="id"
-            style="margin-top: 16px"
-            @page-change="handleHistoryBatchPageChange"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'batchStatus'">
-                {{ historyBatchStatusLabel(record.batchStatus) }}
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <UiTableActions
-                  :items="[{ key: 'detail', label: '详情' }]"
-                  split
-                  @action="() => openHistoryBatchDetail(record.id)"
+          <section class="history-settings" aria-labelledby="history-settings-title">
+            <div class="history-section-heading">
+              <div>
+                <h3 id="history-settings-title">同步设置</h3>
+                <p v-if="historySyncConfig?.updateTime">
+                  最近更新 {{ historySyncConfig.updateTime }}
+                </p>
+              </div>
+              <a-switch
+                v-model:checked="historySyncForm.enabled"
+                checked-children="启用"
+                un-checked-children="停用"
+                :disabled="historyWriteBusy"
+              />
+            </div>
+            <a-form layout="vertical" class="history-settings-grid">
+              <a-form-item label="起始年度" required>
+                <a-input-number
+                  v-model:value="historySyncForm.yearFrom"
+                  :min="minimumHistoryYear"
+                  :max="maximumHistoryYear"
+                  :disabled="historyWriteBusy"
+                  style="width: 100%"
                 />
+              </a-form-item>
+              <a-form-item label="结束年度" required>
+                <a-input-number
+                  v-model:value="historySyncForm.yearTo"
+                  :min="minimumHistoryYear"
+                  :max="maximumHistoryYear"
+                  :disabled="historyWriteBusy"
+                  style="width: 100%"
+                />
+              </a-form-item>
+              <a-form-item label="组织范围" required>
+                <a-select
+                  v-model:value="historySyncForm.orgScopeType"
+                  :options="historyOrgScopeOptions"
+                  :disabled="historyWriteBusy"
+                />
+              </a-form-item>
+              <a-form-item
+                v-if="historySyncForm.orgScopeType === PortfolioPlanningSyncOrgScopeCode.ORG_UNIT"
+                label="指定组织"
+                required
+              >
+                <a-select
+                  v-model:value="historySyncForm.portfolioOrgId"
+                  show-search
+                  option-filter-prop="label"
+                  :options="portfolioOrgOptions()"
+                  :disabled="historyWriteBusy"
+                  placeholder="选择档案组织"
+                />
+              </a-form-item>
+              <a-form-item label="规划类型" required>
+                <a-select
+                  v-model:value="historySyncForm.planType"
+                  :options="historyPlanTypeOptions"
+                  disabled
+                />
+              </a-form-item>
+              <a-form-item label="冲突策略" required>
+                <a-select
+                  v-model:value="historySyncForm.conflictStrategy"
+                  :options="historyConflictStrategyOptions"
+                  :disabled="historyWriteBusy"
+                />
+              </a-form-item>
+            </a-form>
+            <h4>Excel 字段映射</h4>
+            <div class="history-field-grid">
+              <a-input
+                v-model:value="historySyncForm.fieldMapping.ownerUserIdColumn"
+                addon-before="负责人标识"
+                :disabled="historyWriteBusy"
+              />
+              <a-input
+                v-model:value="historySyncForm.fieldMapping.planYearColumn"
+                addon-before="规划年度"
+                :disabled="historyWriteBusy"
+              />
+              <a-input
+                v-model:value="historySyncForm.fieldMapping.itemTitleColumn"
+                addon-before="明细标题"
+                :disabled="historyWriteBusy"
+              />
+              <a-input
+                v-model:value="historySyncForm.fieldMapping.itemGoalColumn"
+                addon-before="明细目标"
+                :disabled="historyWriteBusy"
+              />
+              <a-input
+                v-model:value="historySyncForm.fieldMapping.completionPercentColumn"
+                addon-before="完成百分比"
+                :disabled="historyWriteBusy"
+              />
+              <a-input
+                v-model:value="historySyncForm.fieldMapping.itemStatusColumn"
+                addon-before="明细状态"
+                :disabled="historyWriteBusy"
+              />
+            </div>
+            <div class="history-section-actions">
+              <UiButton
+                variant="primary"
+                :loading="historyConfigSaving"
+                :disabled="historyWriteBusy && !historyConfigSaving"
+                @click="saveHistorySyncConfig"
+              >
+                <SaveOutlined />
+                保存设置
+              </UiButton>
+            </div>
+          </section>
+          <section class="history-batches" aria-labelledby="history-batches-title">
+            <div class="history-section-heading">
+              <div>
+                <h3 id="history-batches-title">导入批次</h3>
+                <p>历史规划仅以 HISTORICAL 状态写入档案袋。</p>
+              </div>
+              <div class="history-section-actions">
+                <UiButton
+                  variant="primary"
+                  :disabled="historyWriteBusy || !historyImportAvailable"
+                  @click="openHistoryImport"
+                >
+                  <UploadOutlined />
+                  导入 Excel
+                </UiButton>
+                <UiButton
+                  :loading="historyBatchLoading"
+                  :disabled="historyWriteBusy"
+                  @click="loadHistoryImportBatches"
+                >
+                  <ReloadOutlined />
+                  刷新
+                </UiButton>
+              </div>
+            </div>
+            <UiDataTable
+              v-model:current="historyBatchPageNum"
+              v-model:page-size="historyBatchPageSize"
+              pagination-mode="server"
+              :total="historyBatchPageTotal"
+              :columns="historyBatchColumns"
+              :data-source="historyBatchRows"
+              :loading="historyBatchLoading"
+              row-key="id"
+              style="margin-top: 16px"
+              @page-change="handleHistoryBatchPageChange"
+            >
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'batchStatus'">
+                  <UiTag :tone="historyBatchStatusTone(record.batchStatus)">
+                    {{ historyBatchStatusLabel(record.batchStatus) }}
+                  </UiTag>
+                </template>
+                <template v-else-if="column.key === 'actions'">
+                  <UiTableActions
+                    :items="buildHistoryBatchActions(record)"
+                    split
+                    @action="(key) => handleHistoryBatchAction(key, record)"
+                  />
+                </template>
               </template>
-            </template>
-          </UiDataTable>
+            </UiDataTable>
+          </section>
         </a-tab-pane>
       </a-tabs>
     </UiCard>
+    <a-drawer v-model:open="gapOpen" title="成果目标差距" width="560">
+      <a-spin :spinning="gapLoading">
+        <template v-if="gap">
+          <p class="development-plan-admin__gap-target">
+            {{ gap.catalogName }} · 完成度 {{ gap.completionRate }}%
+          </p>
+          <p>{{ gap.targetSummary }}</p>
+          <UiCard title="当前缺口">
+            <UiEmpty v-if="gap.missingItems.length === 0" description="当前标准要求均已满足" />
+            <div
+              v-for="item in gap.missingItems"
+              :key="item.requirementCode"
+              class="development-plan-admin__gap-item"
+            >
+              <strong>{{ item.requirementTitle }}</strong>
+              <span>{{ item.suggestCollectHint }}</span>
+            </div>
+          </UiCard>
+          <UiCard title="已满足证据">
+            <UiEmpty v-if="gap.satisfiedItems.length === 0" description="尚无满足项" />
+            <div
+              v-for="item in gap.satisfiedItems"
+              :key="item.requirementCode"
+              class="development-plan-admin__gap-item"
+            >
+              <strong>{{ item.requirementTitle }}</strong>
+              <span>{{ item.evidenceType }} · {{ item.evidenceMatchValue }}</span>
+            </div>
+          </UiCard>
+        </template>
+      </a-spin>
+    </a-drawer>
     <UiPlatformExcelImportModal
       v-model:open="historyImportModalOpen"
       :scene-key="ExcelImportSceneKey.PORTFOLIO_DEVELOPMENT_PLAN_HISTORY"
       entity-label="历史发展规划"
+      :context="historyImportContext"
+      preview-before-commit
+      allow-partial-commit
+      allow-manual-conflict-commit
       @success="handleHistoryImportSuccess"
     />
     <a-drawer v-model:open="historyBatchDetailOpen" title="导入批次详情" width="480">
-      <template v-if="historyBatchDetail">
-        <p>批次号 {{ historyBatchDetail.batchNo }}</p>
-        <p>文件 {{ historyBatchDetail.fileName ?? '—' }}</p>
-        <p>
-          总行 {{ historyBatchDetail.totalRows ?? 0 }} · 成功
-          {{ historyBatchDetail.successRows ?? 0 }} · 失败 {{ historyBatchDetail.failedRows ?? 0 }}
-        </p>
-        <p>状态 {{ historyBatchStatusLabel(historyBatchDetail.batchStatus) }}</p>
-        <UiDataTable
-          v-if="historyBatchDetailDiagnostics.length"
-          pagination-mode="client"
-          :columns="historyBatchDiagnosticColumns"
-          :data-source="historyBatchDetailDiagnostics"
-          :show-pagination="false"
-          row-key="rowIndex"
-          size="small"
-          flat
-        />
-      </template>
+      <a-spin :spinning="historyBatchDetailLoading">
+        <template v-if="historyBatchDetail">
+          <p>批次号 {{ historyBatchDetail.batchNo }}</p>
+          <p>文件 {{ historyBatchDetail.fileName ?? '—' }}</p>
+          <p>
+            总行 {{ historyBatchDetail.totalRows ?? 0 }} · 成功
+            {{ historyBatchDetail.successRows ?? 0 }} · 失败
+            {{ historyBatchDetail.failedRows ?? 0 }}
+          </p>
+          <p>状态 {{ historyBatchStatusLabel(historyBatchDetail.batchStatus) }}</p>
+          <p v-if="historyBatchDetail.qualityGrade">
+            质量等级 {{ PortfolioImportQualityGradeDescription[historyBatchDetail.qualityGrade] }} ·
+            通过率 {{ historyBatchDetail.passRate ?? 0 }}% · 教师匹配率
+            {{ historyBatchDetail.teacherMatchRate ?? 0 }}% · 字段可用率
+            {{ historyBatchDetail.fieldUsableRate ?? 0 }}%
+          </p>
+          <UiDataTable
+            v-if="historyBatchDetailDiagnostics.length"
+            pagination-mode="client"
+            :columns="historyBatchDiagnosticColumns"
+            :data-source="historyBatchDetailDiagnostics"
+            :show-pagination="false"
+            row-key="rowIndex"
+            size="small"
+            flat
+          />
+        </template>
+      </a-spin>
     </a-drawer>
   </StageWorkbenchShell>
 </template>
@@ -904,10 +1494,67 @@ watch(
   gap: 16px;
   font-size: 14px;
 }
-.history-import-hint {
-  margin: 0 0 12px;
-  color: var(--dp-text-secondary);
+.history-settings,
+.history-batches {
+  padding-block: 8px 24px;
+}
+.history-batches {
+  border-top: 1px solid var(--dp-border-subtle);
+  padding-top: 24px;
+}
+.history-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.history-section-heading h3,
+.history-settings h4 {
+  margin: 0;
+  color: var(--dp-text-primary);
+  font-size: 16px;
+  font-weight: 600;
+}
+.history-settings h4 {
+  margin-bottom: 12px;
   font-size: 14px;
+}
+.history-section-heading p {
+  margin: 4px 0 0;
+  color: var(--dp-text-secondary);
+  font-size: 13px;
+}
+.history-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 16px;
+}
+.history-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+.history-section-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+@media (max-width: 960px) {
+  .history-settings-grid,
+  .history-field-grid {
+    grid-template-columns: 1fr;
+  }
+  .history-section-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .history-section-actions {
+    justify-content: flex-start;
+  }
 }
 :deep(.development-plan-admin__row-active) {
   background: var(--ant-color-primary-bg);

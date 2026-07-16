@@ -1,21 +1,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-status'
-import type { PortfolioMaterialStatusCode } from '@/apis/portfolio/enums'
-import type {
-  PortfolioMaterialSaveRequest,
-  PortfolioMaterialSearchResponse,
-  PortfolioMaterialVO,
-} from '@/apis/portfolio/types'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { Input, message } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   ARCHIVE_MATERIAL_OCR_STATUS_TONE,
   ArchiveMaterialOcrStatusDescription,
 } from '@/apis/mark/archive-ocr-status'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import type { PortfolioMaterialStatusCode } from '@/apis/portfolio/enums'
 import {
   PORTFOLIO_MATERIAL_STATUS_OPTIONS,
   PORTFOLIO_MATERIAL_TYPE_OPTIONS,
@@ -23,8 +13,18 @@ import {
   PortfolioMaterialTypeCode,
   PortfolioMaterialTypeDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioMaterialApi } from '@/apis/portfolio/material'
+import type {
+  PortfolioMaterialSaveRequest,
+  PortfolioMaterialSearchResponse,
+  PortfolioMaterialVO,
+} from '@/apis/portfolio/types'
 import { PORTFOLIO_MATERIAL_STATUS_TONE } from '@/apis/portfolio/types'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import { Input, message } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -107,7 +107,9 @@ const searchColumns: ColumnsType<PortfolioMaterialSearchResponse> = [
 ]
 
 const loading = ref(false)
-const saving = ref(false)
+const operationKey = ref('')
+const writing = computed(() => Boolean(operationKey.value))
+const saving = computed(() => operationKey.value.startsWith('save:'))
 const searchLoading = ref(false)
 const rows = ref<PortfolioMaterialVO[]>([])
 const searchRows = ref<PortfolioMaterialSearchResponse[]>([])
@@ -215,11 +217,13 @@ function handleSearch() {
 }
 
 function openCreateModal() {
+  if (writing.value) return
   resetFormContext()
   formModalOpen.value = true
 }
 
 function openEditModal(row: PortfolioMaterialVO) {
+  if (writing.value) return
   editingId.value = row.id
   form.materialType = row.materialType
   form.materialTitle = row.materialTitle ?? ''
@@ -230,6 +234,7 @@ function openEditModal(row: PortfolioMaterialVO) {
 }
 
 async function submitForm() {
+  if (writing.value) return
   if (!form.materialTitle.trim()) {
     message.warning('请填写材料标题')
     return
@@ -238,41 +243,57 @@ async function submitForm() {
     message.warning('请上传材料文件')
     return
   }
-  saving.value = true
+  const scopeTeacherId = targetTeacherId.value
+  const scopeToken = requestToken.value
+  const targetId = editingId.value
+  const operation = `save:${targetId ?? 'new'}`
+  operationKey.value = operation
   try {
     await portfolioMaterialApi.save({
-      ...(editingId.value ? { id: editingId.value } : {}),
-      ...(targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}),
+      ...(targetId ? { id: targetId } : {}),
+      ...(scopeTeacherId ? { teacherId: scopeTeacherId } : {}),
       materialType: form.materialType,
       materialTitle: form.materialTitle.trim(),
       fileNodeId: form.fileNodeId,
       categoryCode: form.categoryCode?.trim() || undefined,
     })
-    message.success(editingId.value ? '材料已更新' : '材料已登记')
+    if (requestToken.value !== scopeToken || targetTeacherId.value !== scopeTeacherId) return
+    message.success(targetId ? '材料已更新' : '材料已登记')
     formModalOpen.value = false
     await loadPage()
   } catch (error) {
+    if (requestToken.value !== scopeToken || targetTeacherId.value !== scopeTeacherId) return
     showUserError(error, '保存材料失败')
   } finally {
-    saving.value = false
+    if (operationKey.value === operation) operationKey.value = ''
   }
 }
 
 async function deleteMaterial(row: PortfolioMaterialVO) {
+  if (writing.value) return
+  const scopeTeacherId = targetTeacherId.value
+  const scopeToken = requestToken.value
+  const operation = `delete:${row.id}`
+  operationKey.value = operation
   const confirmed = await confirmAsync({
     title: '删除材料',
-    content: `确认删除「${row.materialTitle ?? row.id}」？`,
+    content: `确认删除「${row.materialTitle ?? row.id}」？删除后该材料不再出现在材料库、OCR 检索和后续 AI 复用中；已经挂入档案的支撑材料快照仍会保留。`,
     type: 'error',
   })
   if (!confirmed) {
+    if (operationKey.value === operation) operationKey.value = ''
     return
   }
   try {
     await portfolioMaterialApi.delete(row.id)
+    if (requestToken.value !== scopeToken || targetTeacherId.value !== scopeTeacherId) return
     message.success('材料已删除')
     await loadPage()
   } catch (error) {
+    if (requestToken.value !== scopeToken || targetTeacherId.value !== scopeTeacherId) return
     showUserError(error, '删除材料失败')
+  } finally {
+    if (operationKey.value === operation) operationKey.value = ''
   }
 }
 
@@ -377,14 +398,19 @@ function openIntakeReassign(row: PortfolioMaterialVO) {
 function buildMaterialRowActions(row: PortfolioMaterialVO): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = []
   if (canReassignPortfolioMaterial(row)) {
-    actions.push({ key: 'reassign', label: '重分类' })
+    actions.push({ key: 'reassign', label: '重分类', disabled: writing.value })
   }
   actions.push(
-    { key: 'aiExtract', label: 'AI 抽取' },
-    { key: 'aiAsk', label: '智能问数' },
-    { key: 'aiPolicy', label: '政策核验' },
-    { key: 'edit', label: '编辑' },
-    { key: 'delete', label: '删除', tone: 'danger' },
+    { key: 'aiExtract', label: 'AI 抽取', disabled: writing.value },
+    { key: 'aiAsk', label: '智能问数', disabled: writing.value },
+    { key: 'aiPolicy', label: '政策核验', disabled: writing.value },
+    { key: 'edit', label: '编辑', disabled: writing.value },
+    {
+      key: 'delete',
+      label: operationKey.value === `delete:${row.id}` ? '删除中' : '删除',
+      tone: 'danger',
+      disabled: writing.value,
+    },
   )
   return actions
 }
@@ -436,8 +462,12 @@ watch(
   <StageWorkbenchShell>
     <ContextBar title="材料库" description="教师佐证材料登记、OCR 检索与复用">
       <template #actions>
-        <UiButton variant="primary" @click="openCreateModal"> 登记材料 </UiButton>
-        <UiButton :loading="loading" @click="() => void loadPage()"> 刷新 </UiButton>
+        <UiButton variant="primary" :disabled="writing" @click="openCreateModal">
+          登记材料
+        </UiButton>
+        <UiButton :loading="loading" :disabled="writing" @click="() => void loadPage()">
+          刷新
+        </UiButton>
       </template>
     </ContextBar>
 
@@ -536,6 +566,9 @@ watch(
       ok-text="保存"
       cancel-text="取消"
       :confirm-loading="saving"
+      :closable="!writing"
+      :mask-closable="!writing"
+      :keyboard="!writing"
       @ok="() => void submitForm()"
       @cancel="resetFormContext"
     >

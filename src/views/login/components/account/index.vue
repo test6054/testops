@@ -31,6 +31,7 @@
 
     <div class="remember-row">
       <UiCheckbox v-model="loginConfig.rememberMe">记住我</UiCheckbox>
+      <RouterLink class="forgot-link" to="/forgot-password">忘记密码？</RouterLink>
     </div>
 
     <!-- 学号格式智能提示 -->
@@ -295,6 +296,22 @@ onMounted(() => {
 
 .remember-row {
   margin-top: -8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.forgot-link {
+  flex-shrink: 0;
+  color: var(--ant-color-primary);
+  font-size: 13px;
+  line-height: 1.5;
+  text-decoration: none;
+
+  &:hover {
+    color: var(--ant-color-primary-hover, var(--ant-color-primary));
+  }
 }
 
 .student-hint {

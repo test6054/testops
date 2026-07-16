@@ -11,9 +11,9 @@
           <UiButton variant="ghost" size="sm" @click="goRemediationList">返回整改列表</UiButton>
           <UiButton
             v-if="
-              taskDetail
-                && canActOnTask
-                && taskDetail.taskStatus === ArchiveRemediationStatusCode.OPEN
+              taskDetail &&
+              showAssigneeActions &&
+              taskDetail.taskStatus === ArchiveRemediationStatusCode.OPEN
             "
             variant="primary"
             size="sm"
@@ -24,9 +24,9 @@
           </UiButton>
           <UiButton
             v-if="
-              taskDetail
-                && canActOnTask
-                && taskDetail.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
+              taskDetail &&
+              showAssigneeActions &&
+              taskDetail.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
             "
             variant="primary"
             size="sm"
@@ -69,11 +69,13 @@
           <span>
             关联归档任务:
             <UiTextAction
+              v-if="!isSupervisionRead"
               tone="primary"
               @click="goVolumeDetail(taskDetail.volumeId, undefined, taskDetail.diagnosticCode)"
             >
               {{ volumeArchiveNo || taskDetail.volumeId }}
             </UiTextAction>
+            <span v-else>{{ volumeArchiveNo || taskDetail.volumeId }}</span>
           </span>
           <span v-if="taskDetail.diagnosticCode">
             诊断编码:
@@ -89,7 +91,9 @@
         </template>
         <template #toolbar>
           <div class="archive-remediation-detail__flow-toolbar">
-            <span class="archive-remediation-detail__flow-hint">OPEN → IN_PROGRESS → RESUBMITTED → CLOSED</span>
+            <span class="archive-remediation-detail__flow-hint"
+              >OPEN → IN_PROGRESS → RESUBMITTED → CLOSED</span
+            >
             <div class="archive-remediation-detail__completion">
               <span class="archive-remediation-detail__completion-label">任务进度</span>
               <ArchiveReadinessRateBar :percent="taskCompletionPercent" />
@@ -201,9 +205,12 @@
             v-if="taskDetail.verifierNickName || taskDetail.verifiedTime"
             class="archive-remediation-detail__verify-meta"
           >
-            <span v-if="taskDetail.verifierNickName">验证人: {{ taskDetail.verifierNickName }}</span>
+            <span v-if="taskDetail.verifierNickName"
+              >验证人: {{ taskDetail.verifierNickName }}</span
+            >
             <span v-if="taskDetail.verifiedTime">
-              · {{ formatDateTime(taskDetail.verifiedTime) }}</span>
+              · {{ formatDateTime(taskDetail.verifiedTime) }}</span
+            >
           </p>
         </div>
       </WorkbenchSurfaceCard>
@@ -274,15 +281,6 @@
             >
               复检关闭
             </UiButton>
-            <UiButton
-              v-if="taskDetail.taskStatus !== ArchiveRemediationStatusCode.CLOSED"
-              size="sm"
-              variant="outline"
-              :loading="updating"
-              @click="advanceStatus(ArchiveRemediationStatusCode.CLOSED)"
-            >
-              关闭任务
-            </UiButton>
           </template>
           <template v-else-if="showAssigneeActions">
             <UiButton
@@ -304,8 +302,8 @@
           </template>
           <UiButton
             v-if="
-              taskDetail.taskStatus === ArchiveRemediationStatusCode.OPEN
-                || taskDetail.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
+              taskDetail.taskStatus === ArchiveRemediationStatusCode.OPEN ||
+              taskDetail.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
             "
             size="sm"
             variant="outline"
@@ -358,10 +356,12 @@
       @confirm="submitCloseWithVerification"
     >
       <a-form layout="vertical">
-        <a-form-item label="验证备注">
+        <a-form-item label="验证备注" required>
           <a-textarea
             v-model:value="closeVerifyComment"
             :rows="3"
+            :maxlength="1000"
+            show-count
             placeholder="填写协调人验证意见"
           />
         </a-form-item>
@@ -380,12 +380,6 @@ import type {
   ArchiveRemediationPriorityCode,
   ArchiveRemediationTaskResponse,
 } from '@/apis/mark/archive-volume'
-import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   ARCHIVE_REMEDIATION_EVIDENCE_STATUS_TONE,
   ARCHIVE_REMEDIATION_STATUS_TONE,
@@ -396,9 +390,19 @@ import {
   getEvaluationCampaign,
   getRemediationStatsByCampaign,
   getRemediationTask,
+  getSupervisionArchiveVolumeDetail,
+  getSupervisionCampaign,
+  getSupervisionRemediationStatsByCampaign,
+  getSupervisionRemediationTask,
   registerRemediationEvidence,
   updateRemediationTask,
 } from '@/apis/mark/archive-volume'
+import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import ArchiveLifecyclePipe from '@/components/archive-volume/ArchiveLifecyclePipe.vue'
 import ArchiveReadinessRateBar from '@/components/archive-volume/ArchiveReadinessRateBar.vue'
@@ -460,6 +464,7 @@ const campaignSummary = ref<ArchiveEvaluationCampaignResponse | null>(null)
 const campaignTaskStats = ref<ArchiveRemediationByCampaignStatsVO | null>(null)
 
 const taskId = computed(() => String(route.params.taskId ?? ''))
+const isSupervisionRead = computed(() => route.query.scope === 'supervision')
 
 const contextSubtitle = computed(() => {
   const parts: string[] = ['整改任务']
@@ -558,7 +563,7 @@ const lifecycleSteps = computed(() => {
 const campaignName = computed(() => campaignSummary.value?.campaignName)
 
 const showCoordinatorActions = computed(() =>
-  taskVolumeDepartmentId.value
+  !isSupervisionRead.value && taskVolumeDepartmentId.value
     ? canManageRemediationAsCoordinator({ departmentId: taskVolumeDepartmentId.value })
     : false,
 )
@@ -567,7 +572,7 @@ const isCurrentAssignee = computed(
   () => taskDetail.value?.assigneeUserId === userStore.userInfo.userId,
 )
 
-const showAssigneeActions = computed(() => isCurrentAssignee.value && !showCoordinatorActions.value)
+const showAssigneeActions = computed(() => !isSupervisionRead.value && isCurrentAssignee.value)
 
 const canActOnTask = computed(() => showCoordinatorActions.value || showAssigneeActions.value)
 
@@ -596,8 +601,8 @@ const showVerifierPanel = computed(() => {
   const task = taskDetail.value
   if (!task) return false
   if (
-    task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED
-    || task.taskStatus === ArchiveRemediationStatusCode.CLOSED
+    task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED ||
+    task.taskStatus === ArchiveRemediationStatusCode.CLOSED
   ) {
     return Boolean(task.verificationComment || task.verifierNickName || task.verifiedTime)
   }
@@ -670,6 +675,11 @@ async function loadCampaignContext(campaignId?: string) {
     campaignTaskStats.value = null
     return
   }
+  if (isSupervisionRead.value) {
+    campaignSummary.value = await getSupervisionCampaign(campaignId)
+    campaignTaskStats.value = await getSupervisionRemediationStatsByCampaign({ campaignId })
+    return
+  }
   campaignSummary.value = await getEvaluationCampaign(campaignId)
   campaignTaskStats.value = await getRemediationStatsByCampaign({ campaignId })
 }
@@ -679,9 +689,13 @@ async function loadTask() {
   loading.value = true
   loadFailed.value = false
   try {
-    taskDetail.value = await getRemediationTask(taskId.value)
+    taskDetail.value = isSupervisionRead.value
+      ? await getSupervisionRemediationTask(taskId.value)
+      : await getRemediationTask(taskId.value)
     editAssigneeUserId.value = taskDetail.value.assigneeUserId
-    const volumeDetail = await getArchiveVolumeDetail(taskDetail.value.volumeId)
+    const volumeDetail = isSupervisionRead.value
+      ? await getSupervisionArchiveVolumeDetail(taskDetail.value.volumeId)
+      : await getArchiveVolumeDetail(taskDetail.value.volumeId)
     volumeArchiveNo.value = volumeDetail.volume.archiveNo ?? ''
     taskVolumeDepartmentId.value = volumeDetail.volume.departmentId
     await loadCampaignContext(taskDetail.value.campaignId)
@@ -736,12 +750,16 @@ function openCloseVerifyModal() {
 
 async function submitCloseWithVerification() {
   if (!taskDetail.value) return
+  if (!closeVerifyComment.value.trim()) {
+    message.warning('请填写验证备注')
+    return
+  }
   updating.value = true
   try {
     taskDetail.value = await updateRemediationTask({
       taskId: taskDetail.value.taskId,
       taskStatus: ArchiveRemediationStatusCode.CLOSED,
-      verificationComment: closeVerifyComment.value.trim() || undefined,
+      verificationComment: closeVerifyComment.value.trim(),
     })
     message.success('整改任务已关闭')
     closeVerifyModalOpen.value = false
@@ -756,7 +774,10 @@ async function submitCloseWithVerification() {
 }
 
 function goRemediationList() {
-  void router.push({ name: 'TeacherArchiveVolumeList', query: { tab: 'remediation' } })
+  void router.push({
+    name: 'TeacherArchiveVolumeList',
+    query: { tab: isSupervisionRead.value ? 'supervision' : 'remediation' },
+  })
 }
 
 function goVolumeDetail(

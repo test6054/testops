@@ -1,10 +1,12 @@
 import type {
   PortfolioAiAnalysisDetailVO,
   PortfolioAiAnalysisPageRequest,
+  PortfolioAiAnalysisReviewRequest,
   PortfolioAiAnalysisSummaryVO,
   PortfolioAiJobPageRequest,
   PortfolioAiJobSubmitRequest,
   PortfolioAiJobSubmitVO,
+  PortfolioAiJobSummaryVO,
   PortfolioCandidateConfirmRequest,
   PortfolioCandidateFieldVO,
 } from '@/apis/portfolio/types'
@@ -19,11 +21,10 @@ export const portfolioAiJobApi = {
     http.post<PortfolioAiJobSubmitVO>(`${BASE}/submit`, data),
   get: (id: string) => http.post<AiTaskVO>(`${BASE}/get`, { id }),
   page: (data: PortfolioAiJobPageRequest) =>
-    http.post<PageResult<AiTaskVO>>(`${BASE}/page`, data),
+    http.post<PageResult<PortfolioAiJobSummaryVO>>(`${BASE}/page`, data),
   listCandidates: (id: string) =>
     http.post<PortfolioCandidateFieldVO[]>(`${BASE}/candidate/list`, { id }),
-  confirm: (data: PortfolioCandidateConfirmRequest) =>
-    http.post<void>(`${BASE}/confirm`, data),
+  confirm: (data: PortfolioCandidateConfirmRequest) => http.post<void>(`${BASE}/confirm`, data),
   getAnalysis: (id: string) =>
     http.post<PortfolioAiAnalysisDetailVO>(`${BASE}/analysis/get`, { id }),
   getAnalysisByTask: (id: string) =>
@@ -32,4 +33,6 @@ export const portfolioAiJobApi = {
     http.post<PortfolioAiAnalysisDetailVO>(`${BASE}/analysis/report/get`, { id }),
   pageAnalysis: (data: PortfolioAiAnalysisPageRequest) =>
     http.post<PageResult<PortfolioAiAnalysisSummaryVO>>(`${BASE}/analysis/page`, data),
+  reviewAnalysis: (data: PortfolioAiAnalysisReviewRequest) =>
+    http.post<PortfolioAiAnalysisDetailVO>(`${BASE}/analysis/review`, data),
 }

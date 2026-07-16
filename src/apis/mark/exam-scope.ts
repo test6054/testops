@@ -34,15 +34,6 @@ export interface ExamCandidateResponse {
   removalBlockReason?: string
 }
 
-/** 考试范围全量保存请求 - 对应 ExamScopeSaveRequest */
-export interface ExamScopeSaveRequest {
-  examId: string
-  classIds: string[]
-  /** 参考班级维护上下文院系 ID */
-  referenceDepartmentId?: string
-  candidates: ExamCandidateRosterRequest[]
-}
-
 /** 增量合并考生名册 */
 export interface ExamCandidateMergeRequest {
   examId: string
@@ -109,11 +100,6 @@ export interface ExamCandidateQueryRequest extends QueryDto {
   keyword?: string
 }
 
-/** 全量保存考试班级范围与考生名册。 */
-export function saveExamScope(request: ExamScopeSaveRequest): Promise<boolean> {
-  return http.post<boolean>('/api/mark/exams/scope/save', request)
-}
-
 /** 按当前库内活动名册与请求班级范围做整表对齐保存。 */
 export function saveCurrentExamScope(request: ExamClassScopeSaveRequest): Promise<boolean> {
   return http.post<boolean>('/api/mark/exams/scope/save-current', request)
@@ -176,4 +162,3 @@ export function pageExamCandidates(
 ): Promise<PageResult<ExamCandidateResponse>> {
   return http.post<PageResult<ExamCandidateResponse>>('/api/mark/exams/candidates', request)
 }
-

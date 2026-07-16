@@ -1,8 +1,9 @@
 import { ArchiveVolumeStatusCode } from '@/types/enums/archive-volume-status-enum'
 
-/** 详情侧栏 Tab 键；与后端 ArchiveVolumeNavigationSummaryAssembler.CHAIN_TAB_KEYS 对齐。 */
+/** 详情侧栏 Tab 键；生命周期键与后端 chainSteps 对齐，ocr-search 是卷内工具入口。 */
 export const ARCHIVE_VOLUME_SIDEBAR_TAB_KEYS = [
   'materials',
+  'ocr-search',
   'scores',
   'integrity',
   'department-review',
@@ -25,6 +26,11 @@ export interface ArchiveVolumeSidebarNavGroup {
 }
 
 export const ARCHIVE_VOLUME_SIDEBAR_NAV_GROUPS: ArchiveVolumeSidebarNavGroup[] = [
+  {
+    key: 'tools',
+    label: '卷内工具',
+    tabKeys: ['ocr-search'],
+  },
   {
     key: 'collect',
     label: '材料收齐',
@@ -59,6 +65,7 @@ export const ARCHIVE_VOLUME_SIDEBAR_NAV_GROUPS: ArchiveVolumeSidebarNavGroup[] =
 
 const COLLECTING_VISIBLE_TABS: ReadonlySet<ArchiveVolumeSidebarTabKey> = new Set([
   'materials',
+  'ocr-search',
   'scores',
   'integrity',
   'department-review',

@@ -116,7 +116,9 @@
           <span class="countdown-text">{{
             countdown > 0 ? `${countdown}秒后可重新发送` : ''
           }}</span>
-          <a :class="{ disabled: countdown > 0 }" @click="countdown <= 0 && resendCode()">重新发送</a>
+          <a :class="{ disabled: countdown > 0 }" @click="countdown <= 0 && resendCode()"
+            >重新发送</a
+          >
         </div>
         <div class="step-buttons">
           <UiButton type="submit" variant="primary" size="lg" block :loading="loading">
@@ -152,7 +154,9 @@
           <div
             class="strength-fill"
             :class="`strength-${passwordStrength}`"
-            :style="{ width: `${(passwordStrength / 5) * 100}%` }"
+            :style="{
+              transform: `scaleX(${Math.max(0, Math.min(1, passwordStrength / 5))})`,
+            }"
           />
         </div>
         <span class="strength-text">{{ passwordStrengthText }}</span>
@@ -356,8 +360,8 @@ const maskEmail = (email: string) => {
   if (!email) return ''
   const [username, domain] = email.split('@')
   if (!username || !domain) return email
-  const maskedUsername
-    = username.length > 2 ? username.substring(0, 2) + '*'.repeat(username.length - 2) : username
+  const maskedUsername =
+    username.length > 2 ? username.substring(0, 2) + '*'.repeat(username.length - 2) : username
   return `${maskedUsername}@${domain}`
 }
 
@@ -578,15 +582,17 @@ onUnmounted(() => {
   flex: 1;
   height: 4px;
   background: var(--dp-gray-100);
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
   overflow: hidden;
 }
 
 .strength-fill {
+  width: 100%;
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
+  transform-origin: left center;
   transition:
-    width 0.3s,
+    transform 0.3s,
     background-color 0.3s;
 
   &.strength-1 {

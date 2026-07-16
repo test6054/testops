@@ -131,10 +131,7 @@
               : `还有 ${publishSecondaryGateKeys.length} 项发布条件`
           }}
         </button>
-        <span
-          v-if="!publishSecondaryGatesExpanded"
-          class="score-publish__more-gates-summary"
-        >
+        <span v-if="!publishSecondaryGatesExpanded" class="score-publish__more-gates-summary">
           {{ publishSecondaryGateSummary }}
         </span>
       </div>
@@ -467,23 +464,16 @@ import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
 import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
 import type { ExamDetailResponse } from '@/apis/mark/exam'
+import { getExamDetail } from '@/apis/mark/exam'
 import type { ExamPaperScoreResponse, ExamQuestionScoreResponse } from '@/apis/mark/exam-grade'
+import { getPaperScore } from '@/apis/mark/exam-grade'
 import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
+import { getScorePanel } from '@/apis/mark/exam-progress'
 import type {
   ExamScoreSummaryItemResponse,
   FinalScoreBatchPublishResponse,
   FinalScoreRiskOverviewResponse,
 } from '@/apis/mark/exam-score'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { ScoreStatusTabKey } from '@/utils/score-workbench-analytics'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { repairScoreZeroFinalScores } from '@/apis/mark/absence'
-import { getExamDetail } from '@/apis/mark/exam'
-import { getPaperScore } from '@/apis/mark/exam-grade'
-import { getScorePanel } from '@/apis/mark/exam-progress'
 import {
   batchPublishFinalScores,
   getFinalScoreRiskOverview,
@@ -491,6 +481,18 @@ import {
   publishFinalScore,
   withdrawFinalScore,
 } from '@/apis/mark/exam-score'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { ScoreStatusTabKey } from '@/utils/score-workbench-analytics'
+import {
+  buildScoreBulkPublishModalStatItems,
+  buildScoreConfirmStatusTabItems,
+  SCORE_STATUS_TAB_ALL,
+} from '@/utils/score-workbench-analytics'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { repairScoreZeroFinalScores } from '@/apis/mark/absence'
 import {
   FINAL_SCORE_STATUS_TONE,
   FinalScoreStatusCode,
@@ -522,11 +524,6 @@ import { showUserError } from '@/utils/error-handler'
 import { buildExamScoreSummaryTableColumns } from '@/utils/exam-score-summary-table-columns'
 import { formatDateTime } from '@/utils/format'
 import { isExamScoresFullyPublished } from '@/utils/score-release-readiness'
-import {
-  buildScoreBulkPublishModalStatItems,
-  buildScoreConfirmStatusTabItems,
-  SCORE_STATUS_TAB_ALL,
-} from '@/utils/score-workbench-analytics'
 import { buildScorePublishSignalMetrics } from '@/utils/score-workbench-signal'
 import { toSignalMetrics } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -598,7 +595,7 @@ const showIncompleteClassChip = computed(
 const correctedRepublishNotice = computed(() => {
   const count = finalScoreOverview.value?.correctedCount ?? 0
   if (count <= 0) {
-    return null
+    return undefined
   }
   return `有 ${count} 名考生成绩处于「已更正」状态，学生端不可见。请筛选后逐份重新发布。`
 })
@@ -606,11 +603,11 @@ const correctedRepublishNotice = computed(() => {
 const blockedDelayedAutoConfirmNotice = computed(() => {
   const panel = scorePanel.value
   if (!panel || panel.manualFinalScoreConfirmRequired) {
-    return null
+    return undefined
   }
   const blocked = panel.blockedDelayedFinalScoreConfirmCount
   if (blocked <= 0) {
-    return null
+    return undefined
   }
   return `有 ${blocked} 份答卷延迟自动确认连续失败。已确认卷仍可单卷发布；未确认卷请回成绩确认页逐份确认，或查看批改进度中的任务诊断。`
 })
@@ -736,11 +733,7 @@ async function handleRepairScoreZero(): Promise<void> {
         ? `已补齐 ${result.repairedCount} 条计零终分`
         : '本场无待补齐的计零缺考',
     )
-    await Promise.all([
-      loadCandidates(),
-      loadFinalScoreOverview(),
-      refreshPendingAbsenceCount(),
-    ])
+    await Promise.all([loadCandidates(), loadFinalScoreOverview(), refreshPendingAbsenceCount()])
   } catch (error) {
     showUserError(error, '补齐计零终分失败')
   } finally {
@@ -838,7 +831,7 @@ function handleStatusTabChange(tabKey: Key): void {
   void loadCandidates()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void loadCandidates()
@@ -856,12 +849,7 @@ const publishRiskBlocked = computed(() => {
 })
 
 /** 发布闸门：只置顶一条阻断，其余折叠，避免告警墙淹没「全场发布」。 */
-type PublishGateKey
-  = | 'delayedAutoConfirm'
-    | 'pendingAbsence'
-    | 'scoreZero'
-    | 'risk'
-    | 'corrected'
+type PublishGateKey = 'delayedAutoConfirm' | 'pendingAbsence' | 'scoreZero' | 'risk' | 'corrected'
 
 const PUBLISH_GATE_LABEL: Record<PublishGateKey, string> = {
   delayedAutoConfirm: '延迟自动确认失败',
@@ -913,10 +901,10 @@ function bulkModalValueClass(valClass?: string): string | undefined {
 
 const canBulkPublish = computed(
   () =>
-    Boolean(selectedExamId.value)
-    && publishableOverviewCount.value > 0
-    && finalScoreOverview.value?.readyToPublish === true
-    && (finalScoreOverview.value?.blockedCount ?? 0) === 0,
+    Boolean(selectedExamId.value) &&
+    publishableOverviewCount.value > 0 &&
+    finalScoreOverview.value?.readyToPublish === true &&
+    (finalScoreOverview.value?.blockedCount ?? 0) === 0,
 )
 
 const bulkOpen = ref(false)
@@ -1005,15 +993,15 @@ function canPublish(record: ExamScoreSummaryItemResponse): boolean {
   // 单卷发布不要求全场 readyToPublish；缺考等场级阻断仍在 handlePublish 门禁校验。
   const s = record.finalScoreStatus
   return (
-    s === FinalScoreStatusCode.CONFIRMED
-    || s === FinalScoreStatusCode.WITHDRAWN
-    || s === FinalScoreStatusCode.CORRECTED
+    s === FinalScoreStatusCode.CONFIRMED ||
+    s === FinalScoreStatusCode.WITHDRAWN ||
+    s === FinalScoreStatusCode.CORRECTED
   )
 }
 function publishButtonLabel(record: ExamScoreSummaryItemResponse): string {
   // WITHDRAWN / CORRECTED 均为学生端不可见后的再发；文案须引导「重新发布」。
-  return record.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN
-    || record.finalScoreStatus === FinalScoreStatusCode.CORRECTED
+  return record.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN ||
+    record.finalScoreStatus === FinalScoreStatusCode.CORRECTED
     ? '重新发布'
     : '发布'
 }
@@ -1130,7 +1118,10 @@ const paperTotalScoreCorrectionNotice = computed(() => {
   const score = paperScore.value
   if (!score) return null
   // 题分之和与官方考试分不一致时始终提示；不依赖「最近一条更正是否为总分」。
-  if (score.questionScoreSumMatchesExamScore !== false && !score.latestTotalScoreCorrectionApplied) {
+  if (
+    score.questionScoreSumMatchesExamScore !== false &&
+    !score.latestTotalScoreCorrectionApplied
+  ) {
     return null
   }
   const examScore = score.examScore
@@ -1140,7 +1131,6 @@ const paperTotalScoreCorrectionNotice = computed(() => {
   }
   return `本卷官方考试分 ${examScore}，题分明细合计 ${questionSum}（可不一致）。题目列表展示原复核分，不以题分之和覆盖官方分。`
 })
-
 
 const paperItemColumns: ColumnType<ExamQuestionScoreResponse>[] = [
   { title: '题号', key: 'questionNo', width: 80, fixed: 'left' },

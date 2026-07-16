@@ -1,11 +1,6 @@
 import type { PortfolioHonorLevelCode } from '@/types/enums/portfolio-honor-level-enum'
 import http from '@/config/axios'
 
-export interface PortfolioPresetCategoryVO {
-  categoryCode: string
-  categoryName: string
-}
-
 export interface PortfolioTeacherHonorVO {
   id: string
   teacherUserId: string
@@ -26,6 +21,14 @@ export interface PortfolioTeacherHonorCategoryVO {
   categoryCode: string
   categoryName: string
   preset?: boolean
+}
+
+export interface PortfolioHonorArchivePrepareVO {
+  honorRecordId: string
+  archiveRecordId: string
+  categoryId: string
+  archiveRecordStatus: string
+  missingRequiredFieldCodes: string[]
 }
 
 export interface PortfolioTeacherHonorListRequest {
@@ -75,6 +78,9 @@ export const portfolioTeacherHonorApi = {
     http.post<string>('/api/portfolio/teacher-honor/category/create', request),
   deleteCategory: (request: PortfolioTeacherHonorCategoryDeleteRequest) =>
     http.post<void>('/api/portfolio/teacher-honor/category/delete', request),
-  presetCategories: () =>
-    http.post<PortfolioPresetCategoryVO[]>('/api/portfolio/teacher-honor/preset-categories', {}),
+  prepareArchiveDraft: (data: { id: string }) =>
+    http.post<PortfolioHonorArchivePrepareVO>(
+      '/api/portfolio/teacher-honor/prepare-archive-draft',
+      data,
+    ),
 }

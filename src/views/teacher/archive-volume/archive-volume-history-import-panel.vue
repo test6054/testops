@@ -16,7 +16,7 @@
     <UiAlertStrip
       tone="info"
       title="导入流程"
-      description="1. 下载 MARK_PAPER_ARCHIVE_HISTORY 模板；2. 按模板填写历史纸质档案任务与材料信息；3. 上传 Excel，平台按批次返回成功/失败条数；4. 失败行见批次诊断明细，修正后重新导入。"
+      description="下载导入模板后按归档卷填写。同一归档卷包含多份材料时，各行填写相同的「同卷标识」；任一材料失败时整卷不入库。"
       dense
       class="archive-volume-history-import__flow"
     />
@@ -32,6 +32,7 @@
       v-model:open="importModalOpen"
       :scene-key="ExcelImportSceneKey.MARK_PAPER_ARCHIVE_HISTORY"
       entity-label="历史纸质档案"
+      :requirements="importRequirements"
       @success="handleImportSuccess"
     />
   </WorkbenchSurfaceCard>
@@ -63,6 +64,11 @@ const emit = defineEmits<{
 const importModalOpen = ref(false)
 const lastResult = ref<ArchiveExternalImportResultVO | null>(null)
 const lastFailureSummaries = ref<string[]>([])
+const importRequirements = [
+  '「院系ID」必填；院系名称和教学班名称由系统根据编号核验并写入。',
+  '同一归档卷的多行材料须填写相同的「同卷标识」，卷级信息保持一致；非永久保管时须填写「保管年限」。',
+  '系统按归档卷整组导入；组内任一材料校验失败时，不创建该卷及其材料，并清理本次临时文件。',
+]
 
 function handleImportSuccess(result: ExcelImportResult): void {
   importModalOpen.value = false

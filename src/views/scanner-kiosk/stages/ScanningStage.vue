@@ -54,8 +54,8 @@ const canvasEmptyTitle = computed(() => {
       : '正在连接扫描仪…'
   }
   if (
-    job.value?.status === LocalScanJobStatusCode.UPLOADING
-    || job.value?.status === LocalScanJobStatusCode.RETRYING
+    job.value?.status === LocalScanJobStatusCode.UPLOADING ||
+    job.value?.status === LocalScanJobStatusCode.RETRYING
   ) {
     return '扫描页上传中…'
   }
@@ -72,8 +72,8 @@ const canvasEmptyHint = computed(() => {
     return '扫描仪正在采集影像，首张完成后将自动显示预览。'
   }
   if (
-    job.value?.status === LocalScanJobStatusCode.UPLOADING
-    || job.value?.status === LocalScanJobStatusCode.RETRYING
+    job.value?.status === LocalScanJobStatusCode.UPLOADING ||
+    job.value?.status === LocalScanJobStatusCode.RETRYING
   ) {
     return job.value.message || '上传完成后可在右侧缩略图查看各页。'
   }
@@ -127,7 +127,7 @@ const imageTransform = computed(
 )
 const imageFilter = computed(() => (grayscale.value ? 'grayscale(1)' : 'none'))
 
-const isPageException = (page: { status: string, diagnostic?: string }) =>
+const isPageException = (page: { status: string; diagnostic?: string }) =>
   page.status === LocalScanPageStatusCode.FAILED || Boolean(page.diagnostic)
 
 const currentIndex = computed(() => {
@@ -658,7 +658,7 @@ onMounted(() => {
 }
 .state-dot.state-warning {
   background: var(--kiosk-warning);
-  box-shadow: 0 0 0 var(--kiosk-led-ring) rgba(245, 158, 11, 0.2);
+  box-shadow: 0 0 0 var(--kiosk-led-ring) var(--kiosk-warning-soft);
 }
 .state-dot.state-muted {
   background: var(--kiosk-neutral);
@@ -700,7 +700,7 @@ onMounted(() => {
   flex: 1;
   height: 8px;
   background: var(--kiosk-neutral-soft);
-  border-radius: var(--kiosk-radius-pill);
+  border-radius: var(--kiosk-radius-lg);
   overflow: hidden;
 }
 .progress-fill {
@@ -708,7 +708,7 @@ onMounted(() => {
   width: 100%;
   transform-origin: left center;
   background: var(--kiosk-primary);
-  border-radius: var(--kiosk-radius-pill);
+  border-radius: var(--kiosk-radius-lg);
   transition: transform var(--kiosk-dur-base) var(--kiosk-easing);
 }
 .progress-pct {
@@ -751,7 +751,7 @@ onMounted(() => {
   height: 32px;
   padding: 0 var(--kiosk-space-3);
   border: 1px solid var(--kiosk-warning);
-  border-radius: var(--kiosk-radius-pill);
+  border-radius: var(--kiosk-radius-lg);
   background: var(--kiosk-warning-soft);
   color: var(--kiosk-warning);
   font-size: var(--kiosk-fz-body);
@@ -770,7 +770,7 @@ onMounted(() => {
   height: 32px;
   background: var(--kiosk-warning-soft);
   color: var(--kiosk-warning);
-  border-radius: var(--kiosk-radius-pill);
+  border-radius: var(--kiosk-radius-lg);
   font-size: var(--kiosk-fz-label);
   font-weight: var(--kiosk-fw-medium);
 }
@@ -827,7 +827,7 @@ onMounted(() => {
   max-width: calc(100% - var(--kiosk-space-6) * 2);
   max-height: calc(100% - var(--kiosk-space-6) * 2);
   background: var(--kiosk-surface);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--kiosk-shadow-3);
   user-select: none;
   transform-origin: center center;
   transition:
@@ -889,9 +889,9 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: var(--kiosk-space-2);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid color-mix(in srgb, var(--kiosk-ink-on-canvas) 16%, transparent);
   border-radius: var(--kiosk-radius-md);
-  background: rgba(255, 255, 255, 0.06);
+  background: color-mix(in srgb, var(--kiosk-ink-on-canvas) 6%, transparent);
   color: var(--kiosk-ink-on-canvas);
   font-size: var(--kiosk-fz-body);
   font-weight: var(--kiosk-fw-medium);
@@ -903,8 +903,8 @@ onMounted(() => {
 }
 
 .canvas-empty-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.24);
+  background: color-mix(in srgb, var(--kiosk-ink-on-canvas) 12%, transparent);
+  border-color: color-mix(in srgb, var(--kiosk-ink-on-canvas) 24%, transparent);
 }
 
 .canvas-empty-btn:disabled {
@@ -933,10 +933,9 @@ onMounted(() => {
   align-items: center;
   gap: var(--kiosk-space-2);
   padding: var(--kiosk-space-2) var(--kiosk-space-3);
-  background: rgba(20, 27, 45, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--kiosk-radius-pill);
-  backdrop-filter: blur(8px);
+  background: var(--kiosk-canvas-soft);
+  border: 1px solid color-mix(in srgb, var(--kiosk-ink-on-canvas) 12%, transparent);
+  border-radius: var(--kiosk-radius-lg);
   z-index: 10;
 }
 
@@ -949,7 +948,7 @@ onMounted(() => {
 .tool-divider {
   width: 1px;
   height: 28px;
-  background: rgba(255, 255, 255, 0.15);
+  background: color-mix(in srgb, var(--kiosk-ink-on-canvas) 18%, transparent);
   margin: 0 var(--kiosk-space-1);
 }
 
@@ -968,7 +967,7 @@ onMounted(() => {
   transition: background var(--kiosk-dur-fast) var(--kiosk-easing);
 }
 .tool-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--kiosk-ink-on-canvas) 8%, transparent);
 }
 .tool-btn:disabled {
   cursor: not-allowed;
@@ -1083,7 +1082,7 @@ onMounted(() => {
 .thumb.active button {
   border-color: var(--kiosk-primary);
   background: var(--kiosk-primary-soft);
-  box-shadow: 0 0 0 2px rgba(31, 95, 255, 0.2);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--kiosk-primary) 20%, transparent);
 }
 .thumb.exception button {
   border-color: var(--kiosk-danger);
@@ -1091,7 +1090,7 @@ onMounted(() => {
   background: var(--kiosk-danger-soft);
 }
 .thumb.exception.active button {
-  box-shadow: 0 0 0 2px rgba(197, 38, 62, 0.2);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--kiosk-danger) 20%, transparent);
 }
 
 .thumb-no {

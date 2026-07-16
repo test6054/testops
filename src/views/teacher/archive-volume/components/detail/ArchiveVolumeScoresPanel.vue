@@ -36,24 +36,6 @@
       </div>
     </div>
 
-    <div v-if="canSyncTeachingAffairs" class="archive-volume-scores-panel__sync-form">
-      <h3 class="archive-volume-scores-panel__subheading">教务成绩完成同步</h3>
-      <a-form layout="vertical" class="archive-volume-scores-panel__sync-fields">
-        <a-form-item label="外部同步单号" required>
-          <a-input v-model:value="teachingAffairsSyncNo" placeholder="教务系统业务单号" />
-        </a-form-item>
-        <a-form-item label="来源系统" required>
-          <a-input v-model:value="teachingAffairsSourceSystem" placeholder="如 TEACHING_AFFAIRS" />
-        </a-form-item>
-        <a-form-item label="成绩证明文件 ID">
-          <a-input v-model:value="teachingAffairsProofFileId" placeholder="上传后填写 fileId" />
-        </a-form-item>
-        <UiButton size="sm" :loading="teachingAffairsSyncing" @click="handleSyncTeachingAffairs">
-          同步教务成绩完成
-        </UiButton>
-      </a-form>
-    </div>
-
     <div class="archive-volume-scores-panel__materials">
       <h3 class="archive-volume-scores-panel__subheading">成绩证明材料</h3>
       <UiDataTable
@@ -61,15 +43,19 @@
         v-model:page-size="pageSize"
         pagination-mode="server"
         :columns="scoreMaterialColumns"
-        :data-source="scoreMaterials"
+        :data-source="materialsLoadFailed ? [] : scoreMaterials"
         :loading="materialsLoading"
         :total="pageTotal"
         flat
         row-key="materialId"
         size="middle"
         empty-description="暂无成绩证明材料"
+        :load-error="materialsLoadFailed"
         @page-change="handlePageChange"
       >
+        <template v-if="materialsLoadFailed" #empty-action>
+          <UiButton size="sm" variant="outline" @click="loadScoreMaterials">重新加载</UiButton>
+        </template>
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'materialType'">
             {{ materialTypeLabel(record.materialType) }}
@@ -102,9 +88,6 @@ import type {
   ArchiveVolumeExamGateResponse,
   ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   ArchiveMaterialTypeCode,
   ArchiveMaterialTypeDescription,
@@ -114,8 +97,10 @@ import {
   confirmArchiveVolumeScoreCompletion,
   getArchiveVolumeExamGate,
   pageArchiveVolumeMaterials,
-  syncTeachingAffairsScoreCompletion,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { ARCHIVE_TEACHING_AFFAIRS_SCORE_COMPLETION_HINT } from '@/apis/mark/teaching-affairs-sync'
 import ArchiveExamScoreGatePanel from '@/components/archive-volume/ArchiveExamScoreGatePanel.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -135,7 +120,6 @@ const props = defineProps<{
   volumeId: string
   detail: ArchiveVolumeDetailResponse
   canConfirmScoreCompletion: boolean
-  canSyncTeachingAffairs: boolean
 }>()
 
 const emit = defineEmits<{
@@ -150,22 +134,19 @@ const SCORE_MATERIAL_TYPES: ArchiveMaterialTypeCode[] = [
 ]
 
 const scoreConfirmSubmitting = ref(false)
-const teachingAffairsSyncing = ref(false)
 const gateLoading = ref(false)
 const examGate = ref<ArchiveVolumeExamGateResponse | null>(null)
-const teachingAffairsSyncNo = ref('')
-const teachingAffairsSourceSystem = ref(ArchiveScoreSourceCode.TEACHING_AFFAIRS)
-const teachingAffairsProofFileId = ref('')
 const scoreMaterials = ref<ArchiveVolumeMaterialResponse[]>([])
 const materialsLoading = ref(false)
+const materialsLoadFailed = ref(false)
 const pageNum = ref(1)
 const pageSize = ref(DEFAULT_LIST_PAGE_SIZE)
 const pageTotal = ref(0)
 
 const showExamGate = computed(
   () =>
-    props.detail.volume.scoreSource === ArchiveScoreSourceCode.MARK_INTERNAL
-    && !!props.detail.volume.examId,
+    props.detail.volume.scoreSource === ArchiveScoreSourceCode.MARK_INTERNAL &&
+    !!props.detail.volume.examId,
 )
 
 const showTeachingAffairsGate = computed(
@@ -174,8 +155,8 @@ const showTeachingAffairsGate = computed(
 
 const teachingAffairsGatePassed = computed(
   () =>
-    props.detail.volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.COMPLETED
-    || props.detail.volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.VERIFIED,
+    props.detail.volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.COMPLETED ||
+    props.detail.volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.VERIFIED,
 )
 
 const teachingAffairsGateLabel = computed(() => {
@@ -188,8 +169,8 @@ const teachingAffairsGateLabel = computed(() => {
 const completionTone = computed((): BadgeTone => {
   const code = props.detail.volume.scoreCompletionStatus
   if (
-    code === ArchiveScoreCompletionStatusCode.COMPLETED
-    || code === ArchiveScoreCompletionStatusCode.VERIFIED
+    code === ArchiveScoreCompletionStatusCode.COMPLETED ||
+    code === ArchiveScoreCompletionStatusCode.VERIFIED
   ) {
     return 'green'
   }
@@ -233,6 +214,7 @@ async function loadScoreMaterials(): Promise<void> {
   if (!props.volumeId) {
     scoreMaterials.value = []
     pageTotal.value = 0
+    materialsLoadFailed.value = false
     return
   }
   materialsLoading.value = true
@@ -245,16 +227,16 @@ async function loadScoreMaterials(): Promise<void> {
     })
     scoreMaterials.value = result.list
     pageTotal.value = result.total
+    materialsLoadFailed.value = false
   } catch (error) {
-    scoreMaterials.value = []
-    pageTotal.value = 0
+    materialsLoadFailed.value = true
     showUserError(error, '加载成绩证明材料失败')
   } finally {
     materialsLoading.value = false
   }
 }
 
-function handlePageChange(event: { current: number, pageSize: number }): void {
+function handlePageChange(event: { current: number; pageSize: number }): void {
   pageNum.value = event.current
   pageSize.value = event.pageSize
   void loadScoreMaterials()
@@ -283,7 +265,6 @@ async function handleConfirmScoreCompletion() {
   try {
     await confirmArchiveVolumeScoreCompletion({
       volumeId: props.volumeId,
-      scoreCompletionStatus: ArchiveScoreCompletionStatusCode.COMPLETED,
     })
     message.success('成绩完成状态已确认')
     emit('refreshed')
@@ -291,32 +272,6 @@ async function handleConfirmScoreCompletion() {
     showUserError(error)
   } finally {
     scoreConfirmSubmitting.value = false
-  }
-}
-
-async function handleSyncTeachingAffairs() {
-  if (!props.volumeId) return
-  const externalSyncNo = teachingAffairsSyncNo.value.trim()
-  const externalSourceSystem = teachingAffairsSourceSystem.value.trim()
-  if (!externalSyncNo || !externalSourceSystem) {
-    message.warning('请填写外部同步单号与来源系统')
-    return
-  }
-  teachingAffairsSyncing.value = true
-  try {
-    await syncTeachingAffairsScoreCompletion({
-      volumeId: props.volumeId,
-      externalSyncNo,
-      externalSourceSystem,
-      scoreCompletionStatus: ArchiveScoreCompletionStatusCode.COMPLETED,
-      scoreProofFileId: teachingAffairsProofFileId.value.trim() || undefined,
-    })
-    message.success('教务成绩完成状态已同步')
-    emit('refreshed')
-  } catch (error) {
-    showUserError(error)
-  } finally {
-    teachingAffairsSyncing.value = false
   }
 }
 

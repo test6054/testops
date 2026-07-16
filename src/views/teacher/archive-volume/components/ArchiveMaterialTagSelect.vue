@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { loadArchiveMaterialTagOptions } from '@/composables/useArchiveMaterialTagOptions'
+import { showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'ArchiveMaterialTagSelect' })
 
@@ -16,6 +17,8 @@ const props = withDefaults(
     suggestLimit?: number
     /** 检索筛选用 true，仅返回当前可见范围标签；卷内登记用 false */
     searchScopeOnly?: boolean
+    /** 卷内登记或维护标签时的归档卷 ID */
+    volumeId?: string
   }>(),
   {
     placeholder: '输入标签后回车',
@@ -28,26 +31,34 @@ const props = withDefaults(
 
 const tagOptions = ref<string[]>([])
 const searching = ref(false)
+let searchGeneration = 0
 
 async function handleSearch(keyword: string) {
+  const generation = ++searchGeneration
   searching.value = true
   try {
-    tagOptions.value = await loadArchiveMaterialTagOptions(
+    const tags = await loadArchiveMaterialTagOptions(
       keyword,
       props.suggestLimit,
       props.searchScopeOnly,
+      props.volumeId,
     )
+    if (generation === searchGeneration) {
+      tagOptions.value = tags
+    }
+  } catch (error) {
+    if (generation === searchGeneration) {
+      showUserError(error, '加载材料标签建议失败')
+    }
   } finally {
-    searching.value = false
+    if (generation === searchGeneration) {
+      searching.value = false
+    }
   }
 }
 
 onMounted(() => {
-  void loadArchiveMaterialTagOptions(undefined, props.suggestLimit, props.searchScopeOnly).then(
-    (tags) => {
-      tagOptions.value = tags
-    },
-  )
+  void handleSearch('')
 })
 </script>
 

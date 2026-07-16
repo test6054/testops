@@ -12,12 +12,6 @@ export interface MarkOcrConfigResponse {
   lastHealthMessage?: string
 }
 
-export interface MarkOcrConfigSaveRequest {
-  tenantId: string
-  providerType: MarkOcrProviderTypeCode
-  enabled: boolean
-}
-
 export interface MarkOcrConfigHealthCheckRequest {
   tenantId: string
 }
@@ -29,13 +23,14 @@ export interface MarkOcrConfigHealthCheckResponse {
 }
 
 export function getCurrentMarkOcrConfig(tenantId?: string): Promise<MarkOcrConfigResponse> {
-  return http.post<MarkOcrConfigResponse>('/api/mark/ocr/config/current', tenantId ? { tenantId } : {})
-}
-
-export function saveMarkOcrConfig(request: MarkOcrConfigSaveRequest): Promise<string> {
-  return http.post<string>('/api/mark/ocr/config/save', request)
+  return http.post<MarkOcrConfigResponse>(
+    '/api/mark/ocr/config/current',
+    tenantId ? { tenantId } : {},
+  )
 }
 
 export function checkMarkOcrHealth(tenantId: string): Promise<MarkOcrConfigHealthCheckResponse> {
-  return http.post<MarkOcrConfigHealthCheckResponse>('/api/mark/ocr/config/health-check', { tenantId })
+  return http.post<MarkOcrConfigHealthCheckResponse>('/api/mark/ocr/config/health-check', {
+    tenantId,
+  })
 }

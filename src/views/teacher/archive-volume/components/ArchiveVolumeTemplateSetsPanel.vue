@@ -9,7 +9,14 @@
 
     <section v-if="activeScopeTab === 'PLATFORM'" class="archive-template-sets-panel__section">
       <WorkbenchSurfaceCard flush>
+        <UiEmpty
+          v-if="templateSetsLoadFailed"
+          description="归档模板套加载失败"
+          action-label="重新加载"
+          @action="loadTemplateSets"
+        />
         <UiDataTable
+          v-else
           pagination-mode="none"
           :columns="platformColumns"
           :data-source="platformSets"
@@ -45,7 +52,7 @@
             </template>
           </template>
         </UiDataTable>
-        <div class="archive-template-sets-panel__copy-bar">
+        <div v-if="!templateSetsLoadFailed" class="archive-template-sets-panel__copy-bar">
           <div class="archive-template-sets-panel__copy-all">
             <span class="archive-template-sets-panel__copy-all-label">目标前缀</span>
             <a-input
@@ -65,7 +72,14 @@
 
     <section v-else class="archive-template-sets-panel__section">
       <WorkbenchSurfaceCard flush>
+        <UiEmpty
+          v-if="templateSetsLoadFailed"
+          description="归档模板套加载失败"
+          action-label="重新加载"
+          @action="loadTemplateSets"
+        />
         <UiDataTable
+          v-else
           pagination-mode="none"
           :columns="tenantColumns"
           :data-source="tenantSets"
@@ -230,7 +244,14 @@
       <p v-if="auditTarget" class="archive-template-sets-panel__audit-meta">
         模板套：{{ auditTarget.templateSetName || auditTarget.templateSetCode }}
       </p>
+      <UiEmpty
+        v-if="auditLoadFailed"
+        description="模板版本历史加载失败"
+        action-label="重新加载"
+        @action="loadAuditRows"
+      />
       <UiDataTable
+        v-else
         v-model:current="auditPagination.pageNum"
         v-model:page-size="auditPagination.pageSize"
         pagination-mode="server"
@@ -274,14 +295,6 @@ import type {
   ArchiveTenantTemplateAuditItemVO,
   ArchiveTenantTemplateSetResponse,
 } from '@/apis/mark/archive-platform-template'
-import type { ArchiveExamFormCode } from '@/apis/mark/archive-volume'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type {
-  ArchiveTemplateMaterialEditRow,
-  ArchiveTemplateSelfCheckEditRow,
-} from '@/views/teacher/archive-volume/components/archive-template-editor-types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   copyAllArchivePlatformTemplatesToTenant,
   copyArchivePlatformTemplateToTenant,
@@ -293,13 +306,22 @@ import {
   resyncArchiveTenantTemplateSet,
   saveArchiveTenantTemplateSet,
 } from '@/apis/mark/archive-platform-template'
+import type { ArchiveExamFormCode } from '@/apis/mark/archive-volume'
+import { ArchiveExamFormDescription } from '@/apis/mark/archive-volume'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type {
+  ArchiveTemplateMaterialEditRow,
+  ArchiveTemplateSelfCheckEditRow,
+} from '@/views/teacher/archive-volume/components/archive-template-editor-types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   ArchiveTemplateScopeCode,
   archiveTemplateScopeLabel,
   archiveTemplateScopeTone,
 } from '@/apis/mark/archive-template-scope'
-import { ArchiveExamFormDescription } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
@@ -324,6 +346,7 @@ const scopeTabItems = [
 ]
 const templateSets = ref<ArchiveTenantTemplateSetResponse[]>([])
 const templateSetsLoading = ref(false)
+const templateSetsLoadFailed = ref(false)
 const platformSets = computed(() =>
   templateSets.value.filter((item) => item.templateScope === 'PLATFORM'),
 )
@@ -350,6 +373,7 @@ const copySource = ref<ArchiveTenantTemplateSetResponse | null>(null)
 const resyncTarget = ref<ArchiveTenantTemplateSetResponse | null>(null)
 const auditOpen = ref(false)
 const auditLoading = ref(false)
+const auditLoadFailed = ref(false)
 const auditTarget = ref<ArchiveTenantTemplateSetResponse | null>(null)
 const auditRows = ref<ArchiveTenantTemplateAuditItemVO[]>([])
 const restoringAuditId = ref('')
@@ -496,8 +520,9 @@ async function loadTemplateSets() {
   templateSetsLoading.value = true
   try {
     templateSets.value = await listArchiveTenantTemplateSets()
+    templateSetsLoadFailed.value = false
   } catch (error) {
-    templateSets.value = []
+    templateSetsLoadFailed.value = true
     showUserError(error, '加载归档模板套失败')
   } finally {
     templateSetsLoading.value = false
@@ -525,14 +550,10 @@ async function openReadOnlyPreview(templateSetCode: string) {
     const detail = await getArchiveTenantTemplateSetDetail({ templateSetCode })
     previewForkSourceSetCode.value = detail.forkSourceSetCode
     if (detail.forkSourceSetCode) {
-      try {
-        const platformPreview = await previewArchivePlatformTemplateSet({
-          sourceSetCode: detail.forkSourceSetCode,
-        })
-        previewCategoryGroupMap.value = buildCategoryGroupMap(platformPreview)
-      } catch {
-        previewCategoryGroupMap.value = new Map()
-      }
+      const platformPreview = await previewArchivePlatformTemplateSet({
+        sourceSetCode: detail.forkSourceSetCode,
+      })
+      previewCategoryGroupMap.value = buildCategoryGroupMap(platformPreview)
     }
     previewData.value = toPreviewResponseFromTenantDetail(detail)
   } catch (error) {
@@ -555,12 +576,8 @@ async function loadCategoryGroups(forkSourceSetCode?: string) {
     categoryGroupMap.value = new Map()
     return
   }
-  try {
-    const preview = await previewArchivePlatformTemplateSet({ sourceSetCode: forkSourceSetCode })
-    categoryGroupMap.value = buildCategoryGroupMap(preview)
-  } catch {
-    categoryGroupMap.value = new Map()
-  }
+  const preview = await previewArchivePlatformTemplateSet({ sourceSetCode: forkSourceSetCode })
+  categoryGroupMap.value = buildCategoryGroupMap(preview)
 }
 
 async function loadTenantSetDetail(templateSetCode: string) {
@@ -606,8 +623,8 @@ function findTenantSetByPlatformSource(sourceSetCode: string) {
   return (
     templateSets.value.find(
       (item) => item.templateScope === 'TENANT' && item.forkSourceSetCode === sourceSetCode,
-    )
-    ?? templateSets.value.find(
+    ) ??
+    templateSets.value.find(
       (item) => item.templateScope === 'TENANT' && item.templateSetCode === sourceSetCode,
     )
   )
@@ -624,6 +641,7 @@ async function openPlatformTemplate(record: ArchiveTenantTemplateSetResponse) {
 }
 
 function openCopyModal(record: ArchiveTenantTemplateSetResponse, defaultTargetSetCode = '') {
+  if (templateSetsLoadFailed.value) return
   copySource.value = record
   copyTargetSetCode.value = defaultTargetSetCode
   copyOverride.value = false
@@ -631,6 +649,10 @@ function openCopyModal(record: ArchiveTenantTemplateSetResponse, defaultTargetSe
 }
 
 async function submitCopy() {
+  if (templateSetsLoadFailed.value) {
+    message.warning('请先重新加载归档模板套')
+    return
+  }
   if (!copySource.value) return
   const targetSetCode = copyTargetSetCode.value.trim()
   if (!targetSetCode) {
@@ -656,6 +678,10 @@ async function submitCopy() {
 }
 
 async function submitCopyAll() {
+  if (templateSetsLoadFailed.value) {
+    message.warning('请先重新加载归档模板套')
+    return
+  }
   const targetPrefix = copyAllPrefix.value.trim()
   if (!targetPrefix) {
     message.warning('请填写目标前缀')
@@ -677,6 +703,7 @@ async function submitCopyAll() {
 }
 
 function openResyncModal(record: ArchiveTenantTemplateSetResponse) {
+  if (templateSetsLoadFailed.value) return
   resyncTarget.value = record
   resyncConfirmCode.value = ''
   resyncOpen.value = true
@@ -716,6 +743,9 @@ function handleTenantTemplateRowAction(key: string, record: ArchiveTenantTemplat
 async function openAuditDrawer(record: ArchiveTenantTemplateSetResponse): Promise<void> {
   auditTarget.value = record
   auditPagination.pageNum = 1
+  auditRows.value = []
+  auditPagination.total = 0
+  auditLoadFailed.value = false
   auditOpen.value = true
   await loadAuditRows()
 }
@@ -737,23 +767,23 @@ async function loadAuditRows(): Promise<void> {
     auditPagination.total = page.total
     auditPagination.pageNum = page.pageNum
     auditPagination.pageSize = page.pageSize
+    auditLoadFailed.value = false
   } catch (error) {
-    auditRows.value = []
-    auditPagination.total = 0
+    auditLoadFailed.value = true
     showUserError(error, '加载模板版本历史失败')
   } finally {
     auditLoading.value = false
   }
 }
 
-function handleAuditPageChange(page: { current: number, pageSize: number }): void {
+function handleAuditPageChange(page: { current: number; pageSize: number }): void {
   auditPagination.pageNum = page.current
   auditPagination.pageSize = page.pageSize
   void loadAuditRows()
 }
 
 async function submitRestoreFromAudit(auditId: string): Promise<void> {
-  if (!auditTarget.value) {
+  if (!auditTarget.value || auditLoadFailed.value || templateSetsLoadFailed.value) {
     return
   }
   const templateSetCode = auditTarget.value.templateSetCode
@@ -779,7 +809,7 @@ async function submitRestoreFromAudit(auditId: string): Promise<void> {
 }
 
 async function submitResync() {
-  if (!resyncTarget.value || !canSubmitResync.value) return
+  if (!resyncTarget.value || !canSubmitResync.value || templateSetsLoadFailed.value) return
   resyncLoading.value = true
   try {
     await resyncArchiveTenantTemplateSet({
@@ -798,7 +828,7 @@ async function submitResync() {
 }
 
 async function saveTenantSet() {
-  if (!selectedSetCode.value) return
+  if (!selectedSetCode.value || templateSetsLoadFailed.value) return
   if (!editorMeta.examForm) {
     message.warning('模板集缺少考核形式，无法保存')
     return
@@ -821,11 +851,27 @@ async function saveTenantSet() {
       return
     }
   }
+  const materialKeys = new Set<string>()
+  for (const row of materialRows.value) {
+    const key = materialKey(row.materialType, row.catalogCode?.trim())
+    if (materialKeys.has(key)) {
+      message.warning(`材料目录项重复：${row.catalogName.trim()}`)
+      return
+    }
+    materialKeys.add(key)
+  }
+  const selfCheckTexts = new Set<string>()
   for (const row of selfCheckRows.value) {
     if (!row.itemText?.trim()) {
       message.warning('自查项文本不能为空')
       return
     }
+    const itemText = row.itemText.trim()
+    if (selfCheckTexts.has(itemText)) {
+      message.warning(`自查项重复：${itemText}`)
+      return
+    }
+    selfCheckTexts.add(itemText)
   }
   saving.value = true
   try {

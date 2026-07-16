@@ -10,6 +10,10 @@
 
     <WorkbenchSurfaceCard flush>
       <UiSkeletonState v-if="loading" variant="card" compact />
+      <div v-else-if="loadFailed" class="archive-access-pending__load-error">
+        <p>待审批查阅申请加载失败</p>
+        <UiButton size="sm" variant="outline" @click="loadRecords">重试</UiButton>
+      </div>
       <UiEmpty v-else-if="records.length === 0" description="暂无待审批查阅申请" />
       <div v-else class="archive-access-pending__list">
         <article
@@ -43,9 +47,11 @@
             <template v-if="rejectingId === record.accessRecordId">
               <a-textarea
                 v-model:value="rejectComment"
+                :maxlength="500"
                 :rows="2"
                 placeholder="填写驳回原因"
                 class="approval-card__reject-input"
+                show-count
               />
               <div class="approval-card__action-row">
                 <UiButton size="sm" variant="outline" :loading="submitting" @click="cancelReject">
@@ -64,9 +70,11 @@
             <template v-else-if="approvingId === record.accessRecordId">
               <a-textarea
                 v-model:value="approveComment"
+                :maxlength="500"
                 :rows="2"
                 placeholder="可选审批意见"
                 class="approval-card__reject-input"
+                show-count
               />
               <div class="approval-card__action-row">
                 <UiButton size="sm" variant="outline" @click="cancelApprove">取消</UiButton>
@@ -97,14 +105,14 @@
 
 <script lang="ts" setup>
 import type { ArchiveVolumeAccessRecordResponse } from '@/apis/mark/archive-volume'
-import message from 'ant-design-vue/es/message'
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   approveArchiveVolumeAccess,
   listPendingArchiveAccessRecords,
   rejectArchiveVolumeAccess,
 } from '@/apis/mark/archive-volume'
+import message from 'ant-design-vue/es/message'
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -128,6 +136,7 @@ const router = useRouter()
 const { canApproveAccessForVolume } = useArchiveDutyAccess()
 
 const loading = ref(false)
+const loadFailed = ref(false)
 const submitting = ref(false)
 const records = ref<ArchiveVolumeAccessRecordResponse[]>([])
 const approvingId = ref('')
@@ -145,9 +154,11 @@ function canApprove(record: ArchiveVolumeAccessRecordResponse): boolean {
 async function loadRecords(): Promise<void> {
   loading.value = true
   try {
-    records.value = await listPendingArchiveAccessRecords()
+    const result = await listPendingArchiveAccessRecords()
+    records.value = result
+    loadFailed.value = false
   } catch (error) {
-    records.value = []
+    loadFailed.value = true
     showUserError(error, '待审批查阅列表加载失败')
   } finally {
     loading.value = false
@@ -235,5 +246,17 @@ onMounted(() => {
   flex-direction: column;
   gap: var(--dp-space-2);
   padding: var(--dp-space-3) 0;
+}
+
+.archive-access-pending__load-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dp-space-3);
+}
+
+.archive-access-pending__load-error p {
+  margin: 0;
+  color: var(--dp-text-secondary);
 }
 </style>

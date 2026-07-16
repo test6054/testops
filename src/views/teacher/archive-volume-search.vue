@@ -17,41 +17,49 @@
       <template #toolbar>
         <div class="archive-search-toolbar">
           <div class="archive-search-toolbar__profiles">
-            <a-select
-              v-model:value="selectedProfileId"
-              allow-clear
-              class="archive-search-toolbar__profile-select"
-              :loading="profilesLoading"
-              placeholder="已保存检索"
-              :options="profileOptions"
-            />
-            <UiButton
-              variant="outline"
-              size="sm"
-              :disabled="!selectedProfileId"
-              @click="applySelectedProfile"
-            >
-              加载
-            </UiButton>
-            <UiButton
-              variant="outline"
-              size="sm"
-              :disabled="!selectedOwnedProfile"
-              @click="openSaveProfileModal('update')"
-            >
-              更新方案
-            </UiButton>
-            <UiButton variant="outline" size="sm" @click="openSaveProfileModal('saveAs')">
-              另存为
-            </UiButton>
-            <UiButton
-              variant="ghost"
-              size="sm"
-              :disabled="!selectedOwnedProfile"
-              @click="handleDeleteProfile"
-            >
-              删除
-            </UiButton>
+            <template v-if="profilesLoadFailed">
+              <span class="archive-search-toolbar__profile-error">已保存检索加载失败</span>
+              <UiButton variant="outline" size="sm" @click="loadSearchProfiles">
+                重新加载
+              </UiButton>
+            </template>
+            <template v-else>
+              <a-select
+                v-model:value="selectedProfileId"
+                allow-clear
+                class="archive-search-toolbar__profile-select"
+                :loading="profilesLoading"
+                placeholder="已保存检索"
+                :options="profileOptions"
+              />
+              <UiButton
+                variant="outline"
+                size="sm"
+                :disabled="!selectedProfileId"
+                @click="applySelectedProfile"
+              >
+                加载
+              </UiButton>
+              <UiButton
+                variant="outline"
+                size="sm"
+                :disabled="!selectedOwnedProfile"
+                @click="openSaveProfileModal('update')"
+              >
+                更新方案
+              </UiButton>
+              <UiButton variant="outline" size="sm" @click="openSaveProfileModal('saveAs')">
+                另存为
+              </UiButton>
+              <UiButton
+                variant="ghost"
+                size="sm"
+                :disabled="!selectedOwnedProfile"
+                @click="handleDeleteProfile"
+              >
+                删除
+              </UiButton>
+            </template>
           </div>
           <div class="archive-search-primary">
             <div class="archive-search-primary__field archive-search-primary__field--keyword">
@@ -247,8 +255,12 @@
         size="middle"
         :empty-kind="tableEmptyKind"
         :empty-description="tableEmptyDescription"
+        :load-error="searchLoadFailed"
         @page-change="loadHits"
       >
+        <template v-if="searchLoadFailed" #empty-action>
+          <UiButton size="sm" variant="outline" @click="loadHits">重新检索</UiButton>
+        </template>
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'archive'">
             <button type="button" class="link-cell" @click="goDetail(record.volumeId)">
@@ -337,6 +349,7 @@
     <ArchiveVolumeMaterialTagModal
       v-model:open="tagModalOpen"
       :material-id="tagModalMaterialId"
+      :volume-id="tagModalVolumeId"
       :file-name="tagModalFileName"
       :initial-tags="tagModalTags"
       @success="handleTagModalSuccess"
@@ -378,21 +391,6 @@ import type {
   ArchiveVolumeSearchRequest,
   ArchiveVolumeSearchResponse,
 } from '@/apis/mark/archive-volume'
-import type { CourseListVO, TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import type { AcademicYearSemesterTripleFilterState } from '@/utils/academic-year-semester-triple-filter'
-import type { MarkExamSelectOption } from '@/utils/mark-exam-option'
-import { message, Modal } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import {
-  ARCHIVE_MATERIAL_OCR_STATUS_OPTIONS,
-  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
-  ArchiveMaterialOcrStatusCode,
-  ArchiveMaterialOcrStatusDescription,
-} from '@/apis/mark/archive-ocr-status'
 import {
   ARCHIVE_MATERIAL_TYPE_OPTIONS,
   ArchiveMaterialTypeDescription,
@@ -402,8 +400,32 @@ import {
   searchArchiveVolumes,
   triggerArchiveVolumeMaterialOcr,
 } from '@/apis/mark/archive-volume'
-import { ExamStatusCode, getExamDetail, pageExams } from '@/apis/mark/exam'
+import type { CourseListVO, TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
 import { courseCatalogApi, departmentCatalogApi } from '@/apis/quality/user-catalog'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import type { AcademicYearSemesterTripleFilterState } from '@/utils/academic-year-semester-triple-filter'
+import {
+  applyAcademicYearStartYearChange,
+  buildTriplePeriodQuery,
+  createAcademicYearSemesterTripleDefaults,
+  ensureTriplePeriodPair,
+  parseTripleFromAcademicYear,
+} from '@/utils/academic-year-semester-triple-filter'
+import type { MarkExamSelectOption } from '@/utils/mark-exam-option'
+import { examSummaryFromDetail, toMarkExamSelectOption } from '@/utils/mark-exam-option'
+import { message, Modal } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  ARCHIVE_MATERIAL_OCR_STATUS_OPTIONS,
+  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
+  ArchiveMaterialOcrStatusCode,
+  ArchiveMaterialOcrStatusDescription,
+} from '@/apis/mark/archive-ocr-status'
+import { ExamStatusCode, getExamDetail, pageExams } from '@/apis/mark/exam'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -416,18 +438,9 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearStartOptions } from '@/utils/academic-year'
-import {
-  applyAcademicYearStartYearChange,
-  buildTriplePeriodQuery,
-  createAcademicYearSemesterTripleDefaults,
-  ensureTriplePeriodPair,
-  parseTripleFromAcademicYear,
-} from '@/utils/academic-year-semester-triple-filter'
 import { highlightArchiveSearchSnippet } from '@/utils/archive-search-snippet'
 import { showUserError } from '@/utils/error-handler'
-import { examSummaryFromDetail, toMarkExamSelectOption } from '@/utils/mark-exam-option'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ArchiveMaterialTagSelect from '@/views/teacher/archive-volume/components/ArchiveMaterialTagSelect.vue'
 import ArchiveVolumeMaterialOcrDetailContent from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialOcrDetailContent.vue'
@@ -458,6 +471,8 @@ const router = useRouter()
 const route = useRoute()
 const loading = ref(false)
 const profilesLoading = ref(false)
+const profilesLoadFailed = ref(false)
+const searchLoadFailed = ref(false)
 const saveProfileLoading = ref(false)
 const saveProfileModalOpen = ref(false)
 const saveProfileMode = ref<'update' | 'saveAs'>('saveAs')
@@ -469,12 +484,13 @@ const ocrInlinePageNo = ref<number>()
 const ocrInlineFileName = ref<string>()
 const tagModalOpen = ref(false)
 const tagModalMaterialId = ref<string>()
+const tagModalVolumeId = ref<string>()
 const tagModalFileName = ref<string>()
 const tagModalTags = ref<string[]>([])
 const hits = ref<ArchiveVolumeSearchResponse[]>([])
 const searchHitVolumeCount = ref(0)
-const departmentOptions = ref<Array<{ value: string, label: string }>>([])
-const courseOptions = ref<Array<{ value: string, label: string }>>([])
+const departmentOptions = ref<Array<{ value: string; label: string }>>([])
+const courseOptions = ref<Array<{ value: string; label: string }>>([])
 const examOptions = ref<MarkExamSelectOption[]>([])
 const examLoading = ref(false)
 const examSearching = ref(false)
@@ -583,6 +599,9 @@ const tableEmptyKind = computed(() => {
 })
 
 const tableEmptyDescription = computed(() => {
+  if (searchLoadFailed.value) {
+    return '材料检索失败，请重新检索'
+  }
   if (!hasSearchCriterion()) {
     return '填写学号、档案号、目录编码或 OCR 关键词开始检索'
   }
@@ -609,29 +628,29 @@ function formatTerm(academicYear?: string, semester?: SemesterCode) {
 
 const hasAdvancedCriterion = computed(() =>
   Boolean(
-    filterForm.catalogCode.trim()
-    || filterForm.catalogNameKeyword.trim()
-    || filterForm.tagAny.length > 0
-    || filterForm.fileNameKeyword.trim()
-    || filterForm.classNameKeyword.trim()
-    || filterForm.departmentId
-    || filterForm.courseId
-    || filterForm.examId
-    || filterForm.ocrStatus
-    || filterForm.materialType
-    || filterForm.academicYearStartYear != null
-    || filterForm.semester,
+    filterForm.catalogCode.trim() ||
+    filterForm.catalogNameKeyword.trim() ||
+    filterForm.tagAny.length > 0 ||
+    filterForm.fileNameKeyword.trim() ||
+    filterForm.classNameKeyword.trim() ||
+    filterForm.departmentId ||
+    filterForm.courseId ||
+    filterForm.examId ||
+    filterForm.ocrStatus ||
+    filterForm.materialType ||
+    filterForm.academicYearStartYear != null ||
+    filterForm.semester,
   ),
 )
 
 function hasSearchCriterion(): boolean {
   return Boolean(
-    filterForm.keyword.trim()
-    || filterForm.studentNo.trim()
-    || filterForm.studentNameKeyword.trim()
-    || filterForm.archiveKeyword.trim()
-    || filterForm.volumeId
-    || hasAdvancedCriterion.value,
+    filterForm.keyword.trim() ||
+    filterForm.studentNo.trim() ||
+    filterForm.studentNameKeyword.trim() ||
+    filterForm.archiveKeyword.trim() ||
+    filterForm.volumeId ||
+    hasAdvancedCriterion.value,
   )
 }
 
@@ -757,7 +776,9 @@ async function loadSearchProfiles() {
   profilesLoading.value = true
   try {
     searchProfiles.value = await listArchiveVolumeSearchProfiles()
+    profilesLoadFailed.value = false
   } catch (error) {
+    profilesLoadFailed.value = true
     showUserError(error)
   } finally {
     profilesLoading.value = false
@@ -769,6 +790,7 @@ async function loadHits() {
     hits.value = []
     pagination.total = 0
     searchHitVolumeCount.value = 0
+    searchLoadFailed.value = false
     return
   }
   if (!ensureTriplePeriodPair(filterForm)) {
@@ -782,7 +804,12 @@ async function loadHits() {
     pagination.pageNum = result.pageNum
     pagination.pageSize = result.pageSize
     searchHitVolumeCount.value = result.hitVolumeCount ?? 0
+    searchLoadFailed.value = false
   } catch (error) {
+    hits.value = []
+    pagination.total = 0
+    searchHitVolumeCount.value = 0
+    searchLoadFailed.value = true
     showUserError(error, '材料检索失败')
   } finally {
     loading.value = false
@@ -807,6 +834,7 @@ function clearVolumeScope() {
   pagination.pageNum = 1
   pagination.total = 0
   searchHitVolumeCount.value = 0
+  searchLoadFailed.value = false
 }
 
 function handleReset() {
@@ -834,6 +862,7 @@ function handleReset() {
   pagination.pageNum = 1
   pagination.total = 0
   searchHitVolumeCount.value = 0
+  searchLoadFailed.value = false
 }
 
 function highlightSnippet(snippet: string): string {
@@ -848,8 +877,8 @@ function buildArchiveSearchRowActions(record: ArchiveVolumeSearchResponse): UiTa
   if (record.canMaintainMaterial) {
     actions.push({ key: 'edit-tags', label: '编辑标签', tone: 'primary' })
     if (
-      record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED
-      || record.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED
+      record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED ||
+      record.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED
     ) {
       actions.push({ key: 'retry-ocr', label: '重跑 OCR', tone: 'primary' })
     }
@@ -890,6 +919,7 @@ function handleArchiveSearchAction(key: string, record: ArchiveVolumeSearchRespo
 
 function openMaterialTagModal(record: ArchiveVolumeSearchResponse): void {
   tagModalMaterialId.value = record.materialId
+  tagModalVolumeId.value = record.volumeId
   tagModalFileName.value = record.fileName
   tagModalTags.value = [...(record.tags ?? [])]
   tagModalOpen.value = true
@@ -911,9 +941,9 @@ async function handleRetryMaterialOcr(record: ArchiveVolumeSearchResponse): Prom
 
 function canViewMaterialOcr(record: ArchiveVolumeSearchResponse): boolean {
   return (
-    record.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED
-    || record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED
-    || record.ocrStatus === ArchiveMaterialOcrStatusCode.RUNNING
+    record.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED ||
+    record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED ||
+    record.ocrStatus === ArchiveMaterialOcrStatusCode.RUNNING
   )
 }
 
@@ -936,6 +966,10 @@ function closeOcrInlinePanel(): void {
 }
 
 function openSaveProfileModal(mode: 'update' | 'saveAs') {
+  if (profilesLoadFailed.value) {
+    message.warning('请先重新加载已保存检索')
+    return
+  }
   if (!hasSearchCriterion()) {
     message.warning('请至少填写一项检索条件后再保存')
     return
@@ -952,6 +986,7 @@ function openSaveProfileModal(mode: 'update' | 'saveAs') {
 }
 
 async function handleSaveProfile() {
+  if (profilesLoadFailed.value) return
   const profileName = saveProfileForm.profileName.trim()
   if (!profileName) {
     message.warning('请填写方案名称')
@@ -1072,6 +1107,10 @@ onMounted(async () => {
 }
 .archive-search-toolbar__profile-select {
   min-width: 220px;
+}
+.archive-search-toolbar__profile-error {
+  color: var(--dp-text-secondary);
+  font-size: 13px;
 }
 
 .archive-search-primary {

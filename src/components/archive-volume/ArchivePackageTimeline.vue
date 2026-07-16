@@ -80,7 +80,7 @@ function dotClass(status: ArchiveVolumeExamArchivePackageTimelineStepVO['stepSta
   width: 8px;
   height: 8px;
   margin-top: 6px;
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
 }
 
 .archive-package-timeline__dot--done {

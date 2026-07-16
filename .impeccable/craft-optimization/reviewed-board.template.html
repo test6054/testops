@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>阅卷中心前端审查板</title>
+  <style>
+    :root{--blue:#1677ff;--blue-soft:#e6f4ff;--text:rgba(0,0,0,.88);--muted:rgba(0,0,0,.62);--line:#e8e8e8;--soft:#f5f5f5;--white:#fefefe;--danger:#cf1322;--warning:#ad6800;--success:#237804}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--text);font:14px/1.55 "PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif;background:var(--soft)}button,input,select,textarea{font:inherit}button{cursor:pointer}code{font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;color:#0958d9;word-break:break-all}
+    .topbar{position:sticky;top:0;z-index:20;height:56px;display:flex;align-items:center;gap:20px;padding:0 24px;background:var(--white);border-bottom:1px solid var(--line)}.brand{font-size:16px;font-weight:650}.topbar nav{display:flex;gap:4px;overflow:auto}.topbar a{padding:7px 10px;color:var(--muted);text-decoration:none;border-radius:4px;white-space:nowrap}.topbar a:hover,.topbar a:focus-visible{color:var(--blue);background:var(--blue-soft);outline:none}
+    main{max-width:1560px;margin:0 auto;padding:24px}.section{margin-bottom:24px;padding:20px;background:var(--white);border:1px solid var(--line);border-radius:8px}.section-head{display:flex;justify-content:space-between;gap:24px;align-items:flex-start;margin-bottom:16px}.section h1,.section h2,.section h3{margin:0}.section h1{font-size:22px}.section h2{font-size:18px}.lead{max-width:960px;margin:8px 0 0;color:var(--muted)}
+    .stats{display:flex;flex-wrap:wrap;gap:1px;margin-bottom:16px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}.stat{min-width:150px;flex:1;padding:14px 16px;background:var(--white)}.stat b{display:block;font-size:22px;font-variant-numeric:tabular-nums}.stat span{color:var(--muted);font-size:12px}
+    .decision-table,.audit-table{width:100%;border-collapse:collapse}.decision-table th,.decision-table td,.audit-table th,.audit-table td{padding:10px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}.decision-table th,.audit-table th{font-size:12px;color:var(--muted);font-weight:600;background:#fafafa}.decision-table td:first-child{width:76px;font-weight:650}.keep{color:var(--success)}.fix{color:var(--warning)}.reject{color:var(--danger)}
+    .comparison{display:grid;grid-template-columns:1fr 1fr;gap:12px}.panel{min-width:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--white)}.panel-head{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted)}.panel-body{padding:14px;background:#fafafa}.mock-app{border:1px solid #d9d9d9;background:var(--white);border-radius:6px;overflow:hidden}.mock-scope{display:flex;align-items:center;gap:8px;min-height:44px;padding:7px 12px;border-bottom:1px solid var(--line)}.mock-title{position:relative;padding:12px 14px;border-bottom:1px solid var(--line)}.mock-title h4{margin:0 0 4px;font-size:15px}.meta{font-size:12px;color:var(--muted)}.actions{margin-left:auto;display:flex;flex-wrap:wrap;gap:6px}.mock-title .actions{position:absolute;right:12px;top:10px}.btn{height:30px;padding:0 10px;border:1px solid #d9d9d9;border-radius:4px;background:var(--white)}.btn.primary{color:var(--white);border-color:var(--blue);background:var(--blue)}.tag{display:inline-flex;align-items:center;height:24px;padding:0 7px;border:1px solid #91caff;border-radius:4px;color:#0958d9;background:var(--blue-soft);font-size:12px}.select{display:flex;align-items:center;min-width:190px;height:30px;padding:0 9px;border:1px solid #d9d9d9;border-radius:4px;background:var(--white)}
+    .mock-content{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:12px;padding:12px;background:var(--soft)}.surface{padding:12px;border:1px solid var(--line);border-radius:6px;background:var(--white)}.surface h5{margin:0 0 10px;font-size:13px}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.metric{padding:10px;border:1px solid var(--line);border-radius:6px}.metric b{display:block;font-size:20px}.metric span{font-size:11px;color:var(--muted)}.todo{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}.todo:last-child{border:0}.notice{margin:10px 0;padding:10px 12px;border:1px solid #ffe58f;border-radius:6px;background:#fffbe6}.bad-stack{display:grid;gap:8px}.button-wall{display:flex;align-content:flex-start;flex-wrap:wrap;gap:6px;padding:10px;background:var(--white);border:1px solid var(--line);border-radius:6px}
+    .flow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid var(--line)}.step{padding:5px 8px;color:var(--muted)}.step.active{color:var(--blue);font-weight:650;border-bottom:2px solid var(--blue)}.quality-content{padding:12px;background:var(--soft)}.gate{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #ffccc7;border-radius:6px;background:#fff2f0}.gate .actions{margin-left:auto}
+    .assistant-layout{display:grid;grid-template-columns:180px minmax(0,1fr) 260px;min-height:300px}.task-rail{padding:10px;border-right:1px solid var(--line)}.task{display:block;width:100%;padding:9px 10px;border:0;border-radius:4px;text-align:left;background:transparent}.task.active{color:var(--blue);background:var(--blue-soft);font-weight:650}.editor{padding:14px}.editor textarea{width:100%;min-height:150px;padding:10px;border:1px solid #d9d9d9;border-radius:4px;resize:vertical}.history{padding:14px;border-left:1px solid var(--line);background:#fafafa}.history-item{padding:9px 0;border-bottom:1px solid var(--line)}
+    .rules{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}.rule{padding:12px 14px;background:var(--white)}.rule b{display:block;margin-bottom:3px}.rule span{color:var(--muted);font-size:12px}
+    .filters{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.filters input,.filters select{height:32px;padding:0 10px;border:1px solid #d9d9d9;border-radius:4px;background:var(--white)}.filters input{min-width:300px}.table-wrap{max-height:680px;overflow:auto;border:1px solid var(--line);border-radius:6px}.audit-table{font-size:12px}.audit-table th{position:sticky;top:0;z-index:1}.audit-table td{line-height:1.55}.audit-table td:nth-child(1){width:76px}.audit-table td:nth-child(3){max-width:360px}.audit-table td:last-child{min-width:430px}.status{display:inline-flex;align-items:center;min-width:42px;height:22px;justify-content:center;padding:0 6px;border:1px solid #d9d9d9;border-radius:4px;background:#fafafa;font-size:11px}.status.danger{color:var(--danger);border-color:#ffccc7;background:#fff2f0}.status.warning{color:var(--warning);border-color:#ffe58f;background:#fffbe6}.status.hold{color:var(--success);border-color:#b7eb8f;background:#f6ffed}.avoid{color:var(--muted)}.number{font-variant-numeric:tabular-nums;font-weight:650}
+    @media(max-width:1000px){main{padding:14px}.comparison{grid-template-columns:1fr}.mock-content{grid-template-columns:1fr}.assistant-layout{grid-template-columns:1fr}.task-rail,.history{border:0;border-bottom:1px solid var(--line)}.metrics{grid-template-columns:repeat(2,1fr)}.rules{grid-template-columns:1fr}.topbar{padding:0 14px}.section{padding:14px}.audit-table td:last-child{min-width:320px}.mock-title .actions{position:static;margin-top:8px}}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">阅卷中心前端审查板</div>
+    <nav><a href="#decisions">结论</a><a href="#portfolio">档案袋</a><a href="#quality">质量评价</a><a href="#assistants">AI 助手</a><a href="#files">Vue 文件</a><a href="#components">组件</a></nav>
+  </header>
+  <main>
+    <section class="section" id="decisions">
+      <div class="section-head"><div><h1>逐项复核后的优化结论</h1><p class="lead">审查以当前 Vue 源码和组件引用为准。Impeccable 负责产品批评，Finesse 负责高密度工作台检查，TasteSkill 只识别模板化和装饰性 AI 痕迹。实现仍服从 frontend-design-mark。</p></div></div>
+      <div class="stats">
+        <div class="stat"><b>__FILE_TOTAL__</b><span>Vue 文件</span></div><div class="stat"><b>__COMPONENT_TOTAL__</b><span>组件</span></div><div class="stat"><b>__FILE_P0__</b><span>文件级必改</span></div><div class="stat"><b>__COMP_REWORK__</b><span>组件重做</span></div><div class="stat"><b>__COMP_DEAD__</b><span>零引用待核</span></div>
+      </div>
+      <table class="decision-table"><thead><tr><th>结论</th><th>旧建议</th><th>复核结果</th><th>依据</th></tr></thead><tbody>
+        <tr><td class="keep">保留</td><td>教师范围设为档案袋全域真源</td><td>普通教师默认本人，管理员选择教师；页面不再重复身份。</td><td>PortfolioScopeHeader 与 usePortfolioPageScope 已承担范围合同。</td></tr>
+        <tr><td class="keep">保留</td><td>质量评价按专业、培养方案、学期、课程组织</td><td>范围和方案确认门禁继续由 QualityScopeChrome 统一负责。</td><td>质量评价不是按教师代办切换的档案袋页面。</td></tr>
+        <tr><td class="fix">修正</td><td>给分器改成大号数字宫格</td><td>保留数值输入精调和已有快捷分，只增强满分、步长与提交去向。</td><td>源码已具备快捷分和评分三元信息，强制宫格会增加熟练教师操作成本。</td></tr>
+        <tr><td class="fix">修正</td><td>所有图表改为四级蓝阶</td><td>容器和品牌主色统一，数据系列按达成、偏差、风险等语义着色。</td><td>单色化会损失质量评价和风险图表的辨识度。</td></tr>
+        <tr><td class="reject">否决</td><td>整页灰底、白卡漂浮的通用 SaaS substrate</td><td>保持现有浅色工作台和白色工作面，只治理间距、边界和嵌套卡片。</td><td>frontend-design-mark 明确白色工作面；通用 Finesse substrate 不覆盖项目规则。</td></tr>
+        <tr><td class="reject">否决</td><td>页内长条解释代办、数据锁定和隔离机制</td><td>身份在范围条出现一次；写操作风险仅在确认动作中说明。</td><td>常驻解释重复、占空间，并让用户承担系统内部实现语言。</td></tr>
+      </tbody></table>
+    </section>
+
+    <section class="section" id="portfolio">
+      <div class="section-head"><div><h2>教学档案袋：本人和管理员代办</h2><p class="lead">左侧按当前源码结构还原，右侧只改变信息层级和责任归属，不发明业务字段。</p></div></div>
+      <div class="comparison">
+        <article class="panel"><div class="panel-head"><strong>当前结构</strong><span>身份与入口重复</span></div><div class="panel-body"><div class="mock-app">
+          <div class="mock-scope"><span>工作台</span><span class="tag">教师办理</span><span>教师范围</span><div class="select">张三 · T2021001</div></div>
+          <div class="mock-title"><h4>教师首页</h4><div class="actions"><button class="btn primary">材料采集</button><button class="btn">审核进度</button><button class="btn">我的档案</button><button class="btn">更多入口</button><button class="btn">刷新</button></div></div>
+          <div class="mock-content"><div class="bad-stack"><div class="surface"><h5>档案状态</h5><div class="metrics"><div class="metric"><b>61%</b><span>完整度</span></div><div class="metric"><b>3</b><span>待办</span></div><div class="metric"><b>2</b><span>打回</span></div><div class="metric"><b>1</b><span>审核中</span></div></div></div><div class="surface"><h5>待办聚合</h5><div class="todo"><span>补充课程考核材料</span><button class="btn">处理</button></div><div class="todo"><span>确认退回纠错</span><button class="btn">处理</button></div></div></div><div class="button-wall"><button class="btn">资格与认定</button><button class="btn">课程档案</button><button class="btn">职称材料包</button><button class="btn">教学理念</button><button class="btn">获奖情况</button><button class="btn">教师画像</button><button class="btn">更多</button></div></div>
+        </div></div></article>
+        <article class="panel"><div class="panel-head"><strong>复核后方案</strong><span>范围单一真源</span></div><div class="panel-body"><div class="mock-app">
+          <div class="mock-scope"><span>教师范围</span><div class="select">张三 · T2021001 · 计算机学院</div><span class="tag">代办</span><button class="btn">回本人</button></div>
+          <div class="mock-title"><h4>教师首页</h4><div class="meta">2025-2026 学年</div><div class="actions"><button class="btn primary">材料采集</button><button class="btn">审核进度</button><button class="btn">刷新</button></div></div>
+          <div class="mock-content"><div><div class="surface"><h5>档案状态</h5><div class="todo"><span><strong>完整度 61%</strong><br><span class="meta">必填分类 8 / 12 · 2 项材料待补</span></span><button class="btn">查看缺口</button></div></div><div class="surface" style="margin-top:12px"><h5>待办</h5><div class="todo"><span>补充课程考核材料<br><span class="meta">数据结构 · 截止 7 月 18 日</span></span><button class="btn primary">处理</button></div><div class="todo"><span>确认退回纠错<br><span class="meta">获奖材料 · 退回原因已记录</span></span><button class="btn">处理</button></div></div></div><div class="surface"><h5>档案入口</h5><div class="todo"><span>我的档案</span><button class="btn">进入</button></div><div class="todo"><span>课程档案</span><button class="btn">进入</button></div><div class="todo"><span>教师画像</span><button class="btn">进入</button></div></div></div>
+        </div></div></article>
+      </div>
+    </section>
+
+    <section class="section" id="quality">
+      <div class="section-head"><div><h2>质量评价：范围和评价闭环</h2><p class="lead">质量评价不使用教师范围。用户先确认评价范围和方案，再进入证据、评价结果与改进任务。</p></div></div>
+      <div class="comparison">
+        <article class="panel"><div class="panel-head"><strong>当前风险</strong><span>范围分散，模块同权</span></div><div class="panel-body"><div class="mock-app"><div class="mock-scope"><span>专业</span><div class="select">计算机科学与技术</div><span>学年</span><div class="select">2025-2026</div></div><div class="flow"><span class="step active">评价执行</span><span class="step">体系建模</span><span class="step">数据导入</span><span class="step">AI 配置</span><span class="step">系统管理</span></div><div class="quality-content"><div class="notice">当前培养方案尚未确认。请先进入方案管理完成确认后再继续。</div><div class="metrics" style="margin-top:12px"><div class="metric"><b>84%</b><span>达成度</span></div><div class="metric"><b>12</b><span>课程</span></div><div class="metric"><b>7</b><span>待改进</span></div><div class="metric"><b>3</b><span>报告</span></div></div></div></div></div></article>
+        <article class="panel"><div class="panel-head"><strong>复核后方案</strong><span>先范围，后闭环</span></div><div class="panel-body"><div class="mock-app"><div class="mock-scope"><span>专业与方案</span><div class="select">计算机科学与技术 · 2024 版</div><span>学年学期</span><div class="select">2025-2026 · 第一学期</div><span>课程</span><div class="select">全部课程</div></div><div class="flow"><span class="step active">证据</span><span class="step">评价</span><span class="step">结论</span><span class="step">改进</span></div><div class="quality-content"><div class="gate"><span><strong>培养方案尚未确认</strong><br><span class="meta">确认前不生成课程目标达成评价。</span></span><div class="actions"><button class="btn primary">前往确认方案</button></div></div><div class="surface" style="margin-top:12px"><h5>当前评价范围</h5><div class="todo"><span>课程目标证据</span><span class="meta">8 门课程待采集</span></div><div class="todo"><span>间接评价问卷</span><span class="meta">2 份待发布</span></div><div class="todo"><span>改进任务</span><span class="meta">方案确认后生成</span></div></div></div></div></div></article>
+      </div>
+    </section>
+
+    <section class="section" id="assistants">
+      <div class="section-head"><div><h2>AI 四助手：从四页表单改为一条任务流</h2><p class="lead">AI 只生成草稿和建议。教师负责确认，管理员不能替教师无感写入档案。</p></div></div>
+      <div class="comparison">
+        <article class="panel"><div class="panel-head"><strong>当前结构</strong><span>四组页签与长表单堆叠</span></div><div class="panel-body"><div class="mock-app"><div class="flow"><span class="step active">理念助手</span><span class="step">总结助手</span><span class="step">画像助手</span><span class="step">材料助手</span></div><div class="quality-content"><div class="surface"><h5>生成参数</h5><div class="notice">请先从档案袋顶部教师范围中选择目标教师。</div><div class="button-wall"><div class="select">学年</div><div class="select">材料范围</div><div class="select">生成模板</div><button class="btn primary">生成</button></div></div><div class="surface" style="margin-top:12px"><h5>生成历史</h5><div class="todo"><span>2026-07-12 · 教学理念</span><button class="btn">查看</button></div></div></div></div></div></article>
+        <article class="panel"><div class="panel-head"><strong>复核后方案</strong><span>任务轨与人工确认</span></div><div class="panel-body"><div class="mock-app"><div class="assistant-layout"><div class="task-rail"><button class="task active">教学理念草稿</button><button class="task">年度工作总结</button><button class="task">教师画像解读</button><button class="task">材料分类建议</button></div><div class="editor"><h5>教学理念草稿</h5><p class="meta">基于当前教师已确认的档案材料生成。</p><textarea>坚持以课程目标和学生学习证据为依据，持续调整教学活动与评价方式。</textarea><div class="actions" style="margin-top:10px"><button class="btn">重新生成</button><button class="btn primary">提交教师确认</button></div></div><aside class="history"><h5>历史版本</h5><div class="history-item">7 月 12 日<br><span class="meta">教师已确认</span></div><div class="history-item">7 月 8 日<br><span class="meta">草稿未写入</span></div></aside></div></div></div></article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><div><h2>统一去 AI 化门槛</h2><p class="lead">这些规则适用于后续所有页面和组件优化。</p></div></div>
+      <div class="rules"><div class="rule"><b>身份只出现一次</b><span>本人、管理员选人、代办状态集中在域范围组件。</span></div><div class="rule"><b>提示只陈述事实</b><span>不用温馨提示、不会串数、操作将记入等系统自证文案。</span></div><div class="rule"><b>指标必须可行动</b><span>数字必须能下钻到队列、问题或证据，否则不进入首屏。</span></div><div class="rule"><b>卡片必须有业务边界</b><span>实体摘要、任务组和独立工具可以用卡片，普通分区用标题和留白。</span></div><div class="rule"><b>一个页面一个主动作</b><span>次要动作按状态放在行内、抽屉或对应工作壳。</span></div><div class="rule"><b>AI 不替代责任人</b><span>建议、草稿和评分提示必须经过责任人确认后写入。</span></div></div>
+    </section>
+
+    <section class="section" id="files">
+      <div class="section-head"><div><h2>Vue 文件逐项审查</h2><p class="lead">每条记录包含当前源码证据、职责归属、具体动作和禁改项。</p></div></div>
+      <div class="filters"><input id="fileSearch" type="search" placeholder="搜索文件、证据或优化动作"><select id="fileLevel"><option value="">全部级别</option><option>P0</option><option>P1</option><option>P2</option><option>P3</option><option>HOLD</option></select><select id="fileDomain"><option value="">全部域</option></select><span id="fileCount" class="meta"></span></div>
+      <div class="table-wrap"><table class="audit-table" id="fileTable"><thead><tr><th>级别</th><th>文件</th><th>源码证据</th><th>审查结论</th></tr></thead><tbody>__FILE_ROWS__</tbody></table></div>
+    </section>
+    <section class="section" id="components">
+      <div class="section-head"><div><h2>组件逐项审查</h2><p class="lead">零引用仅代表待核；共享组件修改前必须检查调用面。</p></div></div>
+      <div class="filters"><input id="componentSearch" type="search" placeholder="搜索组件、职责或禁改项"><select id="componentLevel"><option value="">全部状态</option><option>REWORK</option><option>TUNE</option><option>DEAD</option><option>OK</option><option>HOLD</option></select><select id="componentDomain"><option value="">全部包</option></select><span id="componentCount" class="meta"></span></div>
+      <div class="table-wrap"><table class="audit-table" id="componentTable"><thead><tr><th>状态</th><th>组件</th><th>引用</th><th>源码证据</th><th>审查结论</th></tr></thead><tbody>__COMPONENT_ROWS__</tbody></table></div>
+    </section>
+  </main>
+  <script>
+    function bindTable(tableId, searchId, levelId, domainId, countId) {
+      const table = document.getElementById(tableId)
+      const search = document.getElementById(searchId)
+      const level = document.getElementById(levelId)
+      const domain = document.getElementById(domainId)
+      const count = document.getElementById(countId)
+      const rows = Array.from(table.querySelectorAll('tbody tr'))
+      Array.from(new Set(rows.map(function (row) { return row.dataset.domain }))).sort().forEach(function (value) {
+        const option = document.createElement('option')
+        option.value = value
+        option.textContent = value
+        domain.appendChild(option)
+      })
+      function apply() {
+        const query = search.value.trim().toLowerCase()
+        let visible = 0
+        rows.forEach(function (row) {
+          const show = (!level.value || row.dataset.level === level.value)
+            && (!domain.value || row.dataset.domain === domain.value)
+            && (!query || row.dataset.query.toLowerCase().includes(query))
+          row.hidden = !show
+          if (show) visible += 1
+        })
+        count.textContent = '显示 ' + visible + ' / ' + rows.length
+      }
+      search.addEventListener('input', apply)
+      level.addEventListener('change', apply)
+      domain.addEventListener('change', apply)
+      apply()
+    }
+    bindTable('fileTable', 'fileSearch', 'fileLevel', 'fileDomain', 'fileCount')
+    bindTable('componentTable', 'componentSearch', 'componentLevel', 'componentDomain', 'componentCount')
+  </script>
+</body>
+</html>

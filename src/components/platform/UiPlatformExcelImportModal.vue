@@ -13,7 +13,9 @@
   >
     <div v-if="phase === 'upload'" class="platform-excel-import-modal__upload">
       <div v-if="!props.hideTemplateDownload" class="platform-excel-import-modal__template">
-        <span class="platform-excel-import-modal__template-text">请先下载模板，按格式填写后上传</span>
+        <span class="platform-excel-import-modal__template-text"
+          >请先下载模板，按格式填写后上传</span
+        >
         <UiButton
           variant="outline"
           size="sm"
@@ -40,7 +42,9 @@
       >
         <UploadOutlined class="platform-excel-import-modal__dropzone-icon" />
         <p class="platform-excel-import-modal__dropzone-hint">
-          拖拽文件到此处，或<span class="platform-excel-import-modal__dropzone-link">点击选择文件</span>
+          拖拽文件到此处，或<span class="platform-excel-import-modal__dropzone-link"
+            >点击选择文件</span
+          >
         </p>
         <p class="platform-excel-import-modal__dropzone-desc">
           支持 .xlsx、.xls，单文件不超过 30MB
@@ -76,6 +80,7 @@
         </div>
       </div>
       <UiDataTable
+        v-if="rosterPreviewRows.length"
         pagination-mode="client"
         :columns="rosterPreviewColumns"
         :data-source="pagedRosterPreviewRows"
@@ -119,6 +124,22 @@
           </template>
         </template>
       </UiDataTable>
+      <UiDataTable
+        v-else-if="previewDiagnostics.length"
+        pagination-mode="client"
+        :columns="errorColumns"
+        :data-source="previewDiagnostics"
+        :show-pagination="false"
+        row-key="rowIndex"
+        size="small"
+        flat
+        :sticky-header="false"
+      />
+      <UiAlertStrip
+        v-else
+        tone="success"
+        :title="`${props.entityLabel}文件校验通过，可以确认导入`"
+      />
     </div>
     <div v-else class="platform-excel-import-modal__result">
       <div class="platform-excel-import-modal__summary">
@@ -126,7 +147,9 @@
         <div class="platform-excel-import-modal__summary-stats">
           <span>总计 {{ result?.totalRows ?? 0 }}</span>
           <span class="is-success">成功 {{ result?.successRows ?? 0 }}</span>
-          <span v-if="result?.createdCount != null" class="is-success">新建 {{ result.createdCount }}</span>
+          <span v-if="result?.createdCount != null" class="is-success"
+            >新建 {{ result.createdCount }}</span
+          >
           <span v-if="result?.updatedCount != null">更新 {{ result.updatedCount }}</span>
           <span class="is-fail">失败 {{ result?.errorRows ?? 0 }}</span>
         </div>
@@ -157,20 +180,20 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
+import { resolveFileStageSceneForExcel } from '@/apis/platform/scene-keys'
 import type {
   ExcelImportResult,
   ExcelImportRosterPreviewRow,
   ExcelImportRowDiagnostic,
   PlatformJsonObject,
 } from '@/apis/platform/types'
+import { ExcelImportExecutionMode } from '@/apis/platform/types'
 import { FileOutlined, UploadOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { downloadFile } from '@/apis/edu/file-management'
 import { downloadExcelImportTemplate, submitExcelImport } from '@/apis/platform/excel-import'
 import { stagePlatformFile } from '@/apis/platform/file'
-import { resolveFileStageSceneForExcel } from '@/apis/platform/scene-keys'
-import { ExcelImportExecutionMode } from '@/apis/platform/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -192,8 +215,12 @@ const props = defineProps<{
   requirements?: string[]
   hideTemplateDownload?: boolean
   templateHint?: string
-  /** 先 preview（commit=false）再 confirm commit；用于 MARK_ROSTER_EXCEL */
+  /** 先 preview（commit=false）再 confirm commit。 */
   previewBeforeCommit?: boolean
+  /** 预校验存在错误行时，仍允许提交其余可导入行。 */
+  allowPartialCommit?: boolean
+  /** 预校验包含 MANUAL_CONFIRM 冲突时，允许用户明确确认覆盖。 */
+  allowManualConflictCommit?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -250,13 +277,29 @@ const okDisabled = computed(() => {
   if (phase.value === 'preview') {
     const errorRows = previewSnapshot.value?.errorRows ?? 0
     const successRows = previewSnapshot.value?.successRows ?? 0
-    return errorRows > 0 || successRows === 0
+    if (errorRows === 0) {
+      return successRows === 0
+    }
+    if (props.allowPartialCommit && successRows > 0) {
+      return false
+    }
+    return !(
+      props.allowManualConflictCommit &&
+      previewDiagnostics.value.some((item) => item.errorCode === 'MANUAL_CONFIRM')
+    )
   }
   return !stagedFileNodeId.value
 })
 
 const errorColumns: ColumnsType<ExcelImportRowDiagnostic> = [
-  { title: '行号', dataIndex: 'rowIndex', key: 'rowIndex', width: 80, align: 'right' },
+  {
+    title: '行号',
+    dataIndex: 'rowIndex',
+    key: 'rowIndex',
+    width: 80,
+    align: 'right',
+    customRender: ({ text }) => (Number(text) > 0 ? String(text) : '批次'),
+  },
   { title: '处理说明', dataIndex: 'invalidReason', key: 'invalidReason', align: 'left' },
 ]
 
@@ -269,6 +312,14 @@ const rosterPreviewColumns: ColumnsType<ExcelImportRosterPreviewRow> = [
 ]
 
 const rosterPreviewRows = computed(() => previewSnapshot.value?.rosterPreviewRows ?? [])
+const previewDiagnostics = computed(() =>
+  (previewSnapshot.value?.diagnostics ?? [])
+    .filter((row) => row.valid === false)
+    .map((row) => ({
+      ...row,
+      invalidReason: getUserProcessFailureMessage(row.invalidReason, '该行数据未通过校验'),
+    })),
+)
 
 const pagedRosterPreviewRows = computed(() => {
   const start = (rosterPreviewPage.value - 1) * rosterPreviewPageSize.value
@@ -421,16 +472,16 @@ async function handleOk() {
     if (props.previewBeforeCommit && phase.value === 'preview') {
       const importResult = await submitImport(true)
       if (!importResult) return
-      if ((importResult.errorRows ?? 0) > 0) {
-        previewSnapshot.value = importResult
-        rosterPreviewPage.value = 1
-        message.error('名册存在错误行，未写入')
-        return
-      }
       result.value = importResult
       phase.value = 'result'
       emit('success', importResult)
-      message.success('名册已导入，缺失学生已创建')
+      if ((importResult.errorRows ?? 0) === 0) {
+        message.success(`${props.entityLabel}已导入`)
+      } else {
+        message.warning(
+          `${props.entityLabel}导入完成：成功 ${importResult.successRows ?? 0} 条，失败 ${importResult.errorRows ?? 0} 条`,
+        )
+      }
       return
     }
     const commit = !props.previewBeforeCommit
@@ -442,7 +493,7 @@ async function handleOk() {
       phase.value = 'preview'
       if ((importResult.errorRows ?? 0) > 0) {
         message.warning(
-          `预览完成：${importResult.successRows ?? 0} 可导入，${importResult.errorRows ?? 0} 错误`,
+          `预览完成：${importResult.successRows ?? 0} 条可直接导入，${importResult.errorRows ?? 0} 条需处理或确认`,
         )
       }
       return
@@ -450,8 +501,8 @@ async function handleOk() {
     result.value = importResult
     phase.value = 'result'
     if (
-      (importResult.successRows ?? 0) > 0
-      || importResult.executionMode === ExcelImportExecutionMode.ASYNC
+      (importResult.successRows ?? 0) > 0 ||
+      importResult.executionMode === ExcelImportExecutionMode.ASYNC
     ) {
       emit('success', importResult)
     }
@@ -465,9 +516,7 @@ async function handleOk() {
       )
     }
   } catch (error) {
-    message.error(
-      getUserErrorMessage(error, phase.value === 'preview' ? '导入考生名册失败' : '导入失败'),
-    )
+    message.error(getUserErrorMessage(error, `导入${props.entityLabel}失败`))
   } finally {
     submitting.value = false
   }

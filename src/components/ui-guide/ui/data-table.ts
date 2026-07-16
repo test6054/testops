@@ -189,7 +189,7 @@ const RESPONSIVE_HIDE_BELOW_MD_KEYS = new Set([
   'examName',
 ])
 
-type ColumnWithMeta<RecordType> = ColumnType<RecordType> & {
+export type UiDataTableColumn<RecordType> = ColumnType<RecordType> & {
   meta?: UiDataTableColumnMeta
 }
 
@@ -271,7 +271,7 @@ function shouldHideResponsiveColumn<RecordType>(
   viewport: UiDataTableViewportFlags,
   options?: UiDataTableResponsiveOptions,
 ): boolean {
-  const withMeta = column as ColumnWithMeta<RecordType>
+  const withMeta = column as UiDataTableColumn<RecordType>
   const hideBelow = withMeta.meta?.hideBelow
     ?? (options?.infer === false ? undefined : inferDataTableColumnHideBelow(column))
   if (!hideBelow) {
@@ -294,22 +294,17 @@ export function filterResponsiveDataTableColumns<RecordType>(
   return columns.filter((column) => !shouldHideResponsiveColumn(column, viewport, options))
 }
 
-type ColumnWithMetaLegacy<RecordType> = ColumnType<RecordType> & {
-  meta?: UiDataTableColumnMeta
-}
-
 /**
  * 构造数值列：右对齐并标记 meta.numeric，便于批量 normalize。
  */
 export function buildNumericColumn<RecordType = Record<string, unknown>>(
-  column: ColumnType<RecordType>,
-): ColumnType<RecordType> {
-  const withMeta = column as ColumnWithMetaLegacy<RecordType>
-  const enriched: ColumnWithMeta<RecordType> = {
+  column: UiDataTableColumn<RecordType>,
+): UiDataTableColumn<RecordType> {
+  const enriched: UiDataTableColumn<RecordType> = {
     ...column,
     align: column.align ?? 'right',
     meta: {
-      ...withMeta.meta,
+      ...column.meta,
       numeric: true,
     },
   }
@@ -320,11 +315,11 @@ export function buildNumericColumn<RecordType = Record<string, unknown>>(
  * 归一单列定义：操作列居中、数值列右对齐、minWidth 注入单元格 style。
  */
 export function normalizeDataTableColumn<RecordType = Record<string, unknown>>(
-  column: ColumnType<RecordType> | ColumnWithMetaLegacy<RecordType>,
-): ColumnType<RecordType> {
+  column: UiDataTableColumn<RecordType>,
+): UiDataTableColumn<RecordType> {
   const columnKey = resolveColumnKey(column)
   const withMinWidth = injectColumnMinWidth(column)
-  const withMeta = withMinWidth as ColumnWithMetaLegacy<RecordType>
+  const withMeta = withMinWidth as UiDataTableColumn<RecordType>
   const alignRight = withMeta.meta?.numeric || withMinWidth.align === 'right'
   if (columnKey === 'actions') {
     return {

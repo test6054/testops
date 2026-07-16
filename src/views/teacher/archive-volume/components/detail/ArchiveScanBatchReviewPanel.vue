@@ -2,17 +2,20 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { Key } from 'ant-design-vue/es/table/interface'
 import type { ArchiveScanBatchSnapshotItemVO } from '@/apis/mark/archive-volume'
-import { message, Modal } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
+  batchConfirmNormalArchiveScanBatches,
   batchDiscardArchiveScanBatches,
-  batchRetryArchiveScanBatches,
   pageArchiveScanBatchSnapshots,
   SCAN_BATCH_QUALITY_FLAG_TONE,
   ScanBatchQualityFlagCode,
   ScanBatchQualityFlagDescription,
 } from '@/apis/mark/archive-volume'
-import { ScanWorkOrderStatusDescription } from '@/apis/mark/scanner-work-order'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import {
+  ScanWorkOrderStatusCode,
+  ScanWorkOrderStatusDescription,
+} from '@/apis/mark/scanner-work-order'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -37,6 +40,12 @@ const errorMessage = ref('')
 const pagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 const rows = ref<ArchiveScanBatchSnapshotItemVO[]>([])
 const selectedRowKeys = ref<string[]>([])
+const actionModalOpen = ref(false)
+const pendingAction = ref<'confirm-normal' | 'discard'>('confirm-normal')
+const actionReason = ref('')
+const actionLabel = computed(() =>
+  pendingAction.value === 'confirm-normal' ? '确认正常' : '批量作废',
+)
 
 const columns: ColumnsType<ArchiveScanBatchSnapshotItemVO> = [
   { title: '批次号', key: 'batchExternalNo', dataIndex: 'batchExternalNo', width: 140 },
@@ -61,6 +70,11 @@ const rowSelection = computed(() =>
         onChange: (keys: Key[]) => {
           selectedRowKeys.value = keys.map(String)
         },
+        getCheckboxProps: (record: ArchiveScanBatchSnapshotItemVO) => ({
+          disabled:
+            record.workOrderStatus !== ScanWorkOrderStatusCode.COMMITTED ||
+            record.batchQualityFlag !== ScanBatchQualityFlagCode.SUSPECTED_MIXED,
+        }),
       }
     : undefined,
 )
@@ -82,46 +96,63 @@ async function loadRows() {
     selectedRowKeys.value = []
   } catch (error) {
     errorMessage.value = getUserErrorMessage(error)
-    rows.value = []
-    pagination.total = 0
   } finally {
     loading.value = false
   }
 }
 
-async function runBatchAction(action: 'retry' | 'discard') {
+function openBatchAction(action: 'confirm-normal' | 'discard') {
   if (selectedRowKeys.value.length === 0) {
     message.warning('请先选择批次')
     return
   }
-  const label = action === 'retry' ? '重试合成' : '批量作废'
-  Modal.confirm({
-    title: `确认${label}`,
-    content: `将对 ${selectedRowKeys.value.length} 个疑似混扫批次执行${label}`,
-    okText: '确认',
-    cancelText: '取消',
-    onOk: async () => {
-      actionLoading.value = true
-      try {
-        const payload = {
-          volumeId: props.volumeId,
-          workOrderIds: selectedRowKeys.value,
-        }
-        if (action === 'retry') {
-          await batchRetryArchiveScanBatches(payload)
-        } else {
-          await batchDiscardArchiveScanBatches(payload)
-        }
-        message.success(`${label}已提交`)
-        emit('refreshed')
-        await loadRows()
-      } catch (error) {
-        message.error(getUserErrorMessage(error))
-      } finally {
-        actionLoading.value = false
-      }
-    },
-  })
+  pendingAction.value = action
+  actionReason.value = ''
+  actionModalOpen.value = true
+}
+
+async function submitBatchAction() {
+  const reason = actionReason.value.trim()
+  if (!reason) {
+    message.warning('请填写处置说明')
+    return
+  }
+  const selectedRows = rows.value.filter(
+    (row) => row.sourceBatchId && selectedRowKeys.value.includes(String(row.sourceBatchId)),
+  )
+  if (
+    selectedRows.length !== selectedRowKeys.value.length ||
+    selectedRows.some(
+      (row) =>
+        row.workOrderStatus !== ScanWorkOrderStatusCode.COMMITTED ||
+        row.batchQualityFlag !== ScanBatchQualityFlagCode.SUSPECTED_MIXED,
+    )
+  ) {
+    message.warning('选中批次状态已变化，请刷新后重新选择')
+    return
+  }
+  actionLoading.value = true
+  try {
+    const payload = {
+      volumeId: props.volumeId,
+      workOrderIds: selectedRowKeys.value,
+      actionReason: reason,
+    }
+    if (pendingAction.value === 'confirm-normal') {
+      await batchConfirmNormalArchiveScanBatches(payload)
+    } else {
+      await batchDiscardArchiveScanBatches(payload)
+    }
+    message.success(`${actionLabel.value}完成`)
+    actionModalOpen.value = false
+    actionReason.value = ''
+    emit('refreshed')
+    await loadRows()
+  } catch (error) {
+    message.error(getUserErrorMessage(error))
+  } finally {
+    actionLoading.value = false
+  }
 }
 
 onMounted(() => {
@@ -133,7 +164,7 @@ onMounted(() => {
   <WorkbenchSurfaceCard flush class="archive-scan-batch-review">
     <template #head>
       <p class="archive-scan-batch-review__hint">
-        仅展示质检标记为疑似混扫的批次，支持批量重试合成或作废退回。
+        仅展示质检标记为疑似混扫的已提交批次，可确认正常或作废对应卷内材料。
       </p>
     </template>
     <template v-if="canReview" #toolbar>
@@ -142,16 +173,16 @@ onMounted(() => {
         variant="outline"
         :disabled="selectedRowKeys.length === 0"
         :loading="actionLoading"
-        @click="runBatchAction('retry')"
+        @click="openBatchAction('confirm-normal')"
       >
-        批量重试
+        确认正常
       </UiButton>
       <UiButton
         size="sm"
         variant="ghost"
         :disabled="selectedRowKeys.length === 0"
         :loading="actionLoading"
-        @click="runBatchAction('discard')"
+        @click="openBatchAction('discard')"
       >
         批量作废
       </UiButton>
@@ -195,7 +226,11 @@ onMounted(() => {
         </template>
         <template v-else-if="column.key === 'workOrderStatus'">
           {{
-            strictEnumLabel(ScanWorkOrderStatusDescription, record.workOrderStatus, 'workOrderStatus')
+            strictEnumLabel(
+              ScanWorkOrderStatusDescription,
+              record.workOrderStatus,
+              'workOrderStatus',
+            )
           }}
         </template>
         <template v-else-if="column.key === 'updateTime'">
@@ -206,6 +241,24 @@ onMounted(() => {
         </template>
       </template>
     </UiDataTable>
+    <a-modal
+      v-model:open="actionModalOpen"
+      :title="`${actionLabel}疑似混扫批次`"
+      ok-text="确认执行"
+      cancel-text="取消"
+      :confirm-loading="actionLoading"
+      :mask-closable="!actionLoading"
+      @ok="submitBatchAction"
+    >
+      <p>本次将处理 {{ selectedRowKeys.length }} 个批次，操作按整批事务执行。</p>
+      <a-textarea
+        v-model:value="actionReason"
+        :maxlength="200"
+        :rows="3"
+        show-count
+        placeholder="请填写处置判断与依据"
+      />
+    </a-modal>
   </WorkbenchSurfaceCard>
 </template>
 
@@ -213,10 +266,10 @@ onMounted(() => {
 .archive-scan-batch-review__hint {
   margin: 0;
   font-size: 13px;
-  color: var(--nybc-text-secondary, #595959);
+  color: var(--dp-text-secondary);
 }
 .archive-scan-batch-review__error {
   margin: 0 0 12px;
-  color: #cf1322;
+  color: var(--ant-color-error);
 }
 </style>

@@ -57,11 +57,6 @@ export interface PrintPackageItemVO {
   status: PrintPackageItemStatusCode
 }
 
-export interface PrintPackageQueryRequest {
-  examId: string
-  printPackageId?: string
-}
-
 export interface ExamPrintPackageResponse {
   printPackageId: string
   examId: string
@@ -94,10 +89,6 @@ export interface PrintPackageItemPageRequest extends QueryDto {
 export function isLayoutNotReadyError(error: MarkBusinessError): boolean {
   const code = error.code ?? error.response?.data?.code
   return Number(code) === LAYOUT_NOT_READY_CODE
-}
-
-export function getPrintPackage(request: PrintPackageQueryRequest): Promise<ExamPrintPackageResponse> {
-  return http.post<ExamPrintPackageResponse>('/api/mark/exams/print-package/detail', request)
 }
 
 export function generatePrintPackage(request: PrintPackageGenerateRequest): Promise<string> {

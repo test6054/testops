@@ -2,8 +2,8 @@
   <WorkbenchSurfaceCard class="archive-volume-transfer-panel">
     <UiAlertStrip
       v-if="
-        detail.volume.transferStatus === ArchiveTransferStatusCode.REJECTED
-          && detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
+        detail.volume.transferStatus === ArchiveTransferStatusCode.REJECTED &&
+        detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
       "
       tone="info"
       title="移交已退回"
@@ -24,21 +24,36 @@
     <template #toolbar>
       <div
         v-if="
-          canReviewTransfer
-            && detail.volume.transferStatus === ArchiveTransferStatusCode.PENDING_REVIEW
+          canReviewTransfer &&
+          detail.volume.transferStatus === ArchiveTransferStatusCode.PENDING_REVIEW
         "
         class="archive-volume-transfer-panel__actions"
       >
-        <UiButton size="sm" :loading="approvingTransfer" @click="handleApproveTransfer">
+        <UiButton
+          size="sm"
+          :loading="approvingTransfer"
+          :disabled="rejectingTransfer"
+          @click="handleApproveTransfer"
+        >
           验收通过
         </UiButton>
-        <UiButton v-if="canRejectTransfer" size="sm" variant="outline" @click="openRejectTransfer">
+        <UiButton
+          v-if="canRejectTransfer"
+          size="sm"
+          variant="outline"
+          :disabled="approvingTransfer"
+          @click="openRejectTransfer"
+        >
           退回补正
         </UiButton>
       </div>
     </template>
 
     <UiSkeletonState v-if="historyLoading" variant="card" compact />
+    <div v-else-if="historyLoadFailed" class="archive-volume-transfer-panel__load-error">
+      <span>移交记录加载失败</span>
+      <UiButton size="sm" variant="outline" @click="loadTransferRecords">重试</UiButton>
+    </div>
     <UiEmpty v-else-if="transferRecords.length === 0" description="暂无移交流程记录" />
     <div v-else class="archive-volume-transfer-panel__list">
       <article
@@ -85,7 +100,7 @@
     >
       <a-form layout="vertical">
         <a-form-item label="退回原因" required>
-          <a-textarea v-model:value="rejectTransferReason" :rows="3" />
+          <a-textarea v-model:value="rejectTransferReason" :rows="3" :maxlength="500" show-count />
         </a-form-item>
       </a-form>
     </UiDrawer>
@@ -97,10 +112,6 @@ import type {
   ArchiveVolumeDetailResponse,
   ArchiveVolumeTransferRecordResponse,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { onMounted, ref } from 'vue'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   approveArchiveVolumeTransfer,
   ARCHIVE_TRANSFER_STATUS_TONE,
@@ -110,6 +121,10 @@ import {
   listArchiveVolumeTransferRecords,
   rejectArchiveVolumeTransfer,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { onMounted, ref } from 'vue'
+import { downloadFile } from '@/apis/edu/file-management'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -139,6 +154,7 @@ const rejectingTransfer = ref(false)
 const rejectTransferOpen = ref(false)
 const rejectTransferReason = ref('')
 const historyLoading = ref(false)
+const historyLoadFailed = ref(false)
 const transferRecords = ref<ArchiveVolumeTransferRecordResponse[]>([])
 
 function transferStatusLabel(code: ArchiveTransferStatusCode) {
@@ -165,9 +181,9 @@ function transferCardClass(status?: ArchiveTransferStatusCode): string {
 }
 
 function formatRecordTime(record: ArchiveVolumeTransferRecordResponse): string {
-  const time
-    = record.transferStatus === ArchiveTransferStatusCode.APPROVED
-      || record.transferStatus === ArchiveTransferStatusCode.REJECTED
+  const time =
+    record.transferStatus === ArchiveTransferStatusCode.APPROVED ||
+    record.transferStatus === ArchiveTransferStatusCode.REJECTED
       ? record.reviewedTime
       : record.submitTime
   return time ? formatDateTime(time) : '—'
@@ -175,8 +191,8 @@ function formatRecordTime(record: ArchiveVolumeTransferRecordResponse): string {
 
 function formatRecordActor(record: ArchiveVolumeTransferRecordResponse): string {
   if (
-    record.transferStatus === ArchiveTransferStatusCode.APPROVED
-    || record.transferStatus === ArchiveTransferStatusCode.REJECTED
+    record.transferStatus === ArchiveTransferStatusCode.APPROVED ||
+    record.transferStatus === ArchiveTransferStatusCode.REJECTED
   ) {
     return record.reviewerUserNickName || '验收人'
   }
@@ -185,11 +201,12 @@ function formatRecordActor(record: ArchiveVolumeTransferRecordResponse): string 
 
 async function loadTransferRecords() {
   historyLoading.value = true
+  historyLoadFailed.value = false
   try {
     transferRecords.value = await listArchiveVolumeTransferRecords(props.volumeId)
   } catch (error) {
     showUserError(error)
-    transferRecords.value = []
+    historyLoadFailed.value = true
   } finally {
     historyLoading.value = false
   }

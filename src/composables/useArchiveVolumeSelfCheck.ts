@@ -1,13 +1,13 @@
 import type { ArchiveVolumeSelfCheckItemVO, ArchiveVolumeSelfCheckListResponse } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { computed, ref } from 'vue'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   ArchiveSelfCheckStatusCode,
   checkArchiveVolumeSelfCheckItem,
   exportArchiveVolumeSelfCheck,
   listArchiveVolumeSelfCheckItems
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, ref } from 'vue'
+import { downloadFile } from '@/apis/edu/file-management'
 import { showUserError } from '@/utils/error-handler'
 
 /**
@@ -15,6 +15,7 @@ import { showUserError } from '@/utils/error-handler'
  */
 export function useArchiveVolumeSelfCheck(volumeId: () => string) {
   const loading = ref(false)
+  const loadFailed = ref(false)
   const checking = ref(false)
   const exporting = ref(false)
   const selfCheck = ref<ArchiveVolumeSelfCheckListResponse | null>(null)
@@ -34,9 +35,10 @@ export function useArchiveVolumeSelfCheck(volumeId: () => string) {
     loading.value = true
     try {
       selfCheck.value = await listArchiveVolumeSelfCheckItems(id)
+      loadFailed.value = false
     }
     catch (error) {
-      selfCheck.value = null
+      loadFailed.value = true
       showUserError(error, '加载自查清单失败')
     }
     finally {
@@ -47,6 +49,10 @@ export function useArchiveVolumeSelfCheck(volumeId: () => string) {
   async function toggleItem(item: ArchiveVolumeSelfCheckItemVO, checked: boolean) {
     const id = volumeId()
     if (!id) return
+    if (loadFailed.value) {
+      message.error('自查清单状态已失效，请重新加载后再操作')
+      return
+    }
     checking.value = true
     try {
       await checkArchiveVolumeSelfCheckItem({
@@ -54,11 +60,10 @@ export function useArchiveVolumeSelfCheck(volumeId: () => string) {
         templateItemId: item.templateItemId,
         checked,
       })
-      selfCheck.value = await listArchiveVolumeSelfCheckItems(id)
+      await loadSelfCheck()
     }
     catch (error) {
       showUserError(error)
-      await loadSelfCheck()
     }
     finally {
       checking.value = false
@@ -88,6 +93,7 @@ export function useArchiveVolumeSelfCheck(volumeId: () => string) {
 
   return {
     loading,
+    loadFailed,
     checking,
     exporting,
     selfCheck,

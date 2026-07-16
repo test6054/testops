@@ -179,8 +179,13 @@
         <a-form-item label="责任人" required>
           <ArchiveDutyUserSelect v-model:value="delayAllowForm.responsibleUserId" />
         </a-form-item>
-        <a-form-item label="缺失说明">
-          <a-textarea v-model:value="delayAllowForm.missingReason" :rows="2" />
+        <a-form-item label="缺失说明" required>
+          <a-textarea
+            v-model:value="delayAllowForm.missingReason"
+            :maxlength="500"
+            :rows="2"
+            show-count
+          />
         </a-form-item>
       </a-form>
     </UiDrawer>
@@ -201,7 +206,7 @@
           {{ waiveMissingTarget ? materialTypeLabel(waiveMissingTarget.materialType) : '—' }}
         </a-form-item>
         <a-form-item label="豁免原因" required>
-          <a-textarea v-model:value="waiveMissingReason" :rows="3" />
+          <a-textarea v-model:value="waiveMissingReason" :maxlength="500" :rows="3" show-count />
         </a-form-item>
       </a-form>
     </UiDrawer>
@@ -219,7 +224,7 @@
     >
       <a-form layout="vertical">
         <a-form-item label="豁免原因" required>
-          <a-textarea v-model:value="waiveIntegrityReason" :rows="3" />
+          <a-textarea v-model:value="waiveIntegrityReason" :maxlength="500" :rows="3" show-count />
         </a-form-item>
       </a-form>
     </UiDrawer>
@@ -239,11 +244,13 @@
         <a-form-item label="当前密级">
           {{ securityLevelLabel(detail.volume.securityLevel!) }}
         </a-form-item>
-        <a-form-item label="确认说明">
+        <a-form-item label="确认说明" required>
           <a-textarea
             v-model:value="confirmSecurityMarkReason"
+            :maxlength="500"
             :rows="3"
             placeholder="如：教学档案内部定密，卷内材料密级一致"
+            show-count
           />
         </a-form-item>
       </a-form>
@@ -269,7 +276,12 @@
           />
         </a-form-item>
         <a-form-item label="变更原因" required>
-          <a-textarea v-model:value="updateSecurityLevelForm.reason" :rows="3" />
+          <a-textarea
+            v-model:value="updateSecurityLevelForm.reason"
+            :maxlength="500"
+            :rows="3"
+            show-count
+          />
         </a-form-item>
       </a-form>
     </UiDrawer>
@@ -284,9 +296,6 @@ import type {
   ArchiveSecurityLevelCode,
   ArchiveVolumeDetailResponse,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref } from 'vue'
 import {
   allowArchiveMaterialDelay,
   ARCHIVE_INTEGRITY_STATUS_TONE,
@@ -295,12 +304,14 @@ import {
   ArchiveMaterialTypeDescription,
   ArchiveSecurityLevelDescription,
   checkArchiveVolumeFourProperty,
-  checkArchiveVolumeIntegrity,
   confirmArchiveVolumeSecurityMark,
   updateArchiveVolumeSecurityLevel,
   waiveArchiveMaterialMissing,
   waiveArchiveVolumeIntegrity,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref } from 'vue'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -332,8 +343,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  "refreshed": []
-  'integrity-checked': [result: Awaited<ReturnType<typeof checkArchiveVolumeIntegrity>>]
+  refreshed: []
   'four-property-checked': [result: Awaited<ReturnType<typeof checkArchiveVolumeFourProperty>>]
   'run-integrity-check': []
   'open-sign-off': []
@@ -387,10 +397,10 @@ const missingColumns: ColumnsType<ArchiveIntegrityMissingItemVO> = [
 
 function isArchiveIntegrityMissingItem(record: unknown): record is ArchiveIntegrityMissingItemVO {
   return (
-    typeof record === 'object'
-    && record !== null
-    && 'materialType' in record
-    && 'catalogCode' in record
+    typeof record === 'object' &&
+    record !== null &&
+    'materialType' in record &&
+    'catalogCode' in record
   )
 }
 
@@ -430,11 +440,16 @@ function openConfirmSecurityMarkModal() {
 }
 
 async function submitConfirmSecurityMark() {
+  if (!confirmSecurityMarkReason.value.trim()) {
+    message.warning('请填写定密确认说明')
+    return
+  }
   confirmingSecurityMark.value = true
   try {
     await confirmArchiveVolumeSecurityMark({
       volumeId: props.volumeId,
-      reason: confirmSecurityMarkReason.value.trim() || undefined,
+      securityLevel: props.detail.volume.securityLevel!,
+      reason: confirmSecurityMarkReason.value.trim(),
     })
     message.success('密级定密已确认')
     confirmSecurityMarkOpen.value = false
@@ -457,6 +472,10 @@ async function submitUpdateSecurityLevel() {
     message.warning('请选择新密级')
     return
   }
+  if (updateSecurityLevelForm.securityLevel === props.detail.volume.securityLevel) {
+    message.warning('新密级不能与当前密级相同')
+    return
+  }
   if (!updateSecurityLevelForm.reason.trim()) {
     message.warning('请填写变更原因')
     return
@@ -465,6 +484,7 @@ async function submitUpdateSecurityLevel() {
   try {
     await updateArchiveVolumeSecurityLevel({
       volumeId: props.volumeId,
+      expectedSecurityLevel: props.detail.volume.securityLevel!,
       securityLevel: updateSecurityLevelForm.securityLevel,
       reason: updateSecurityLevelForm.reason.trim(),
     })
@@ -510,6 +530,10 @@ async function submitDelayAllow() {
     message.warning('请选择延迟补交责任人')
     return
   }
+  if (!delayAllowForm.missingReason.trim()) {
+    message.warning('请填写缺失说明')
+    return
+  }
   delayAllowSubmitting.value = true
   try {
     await allowArchiveMaterialDelay({
@@ -518,13 +542,11 @@ async function submitDelayAllow() {
       catalogCode: delayAllowTarget.value.catalogCode,
       delayAllowedTime: delayAllowForm.deadline,
       delayResponsibleUserId: delayAllowForm.responsibleUserId,
-      missingReason: delayAllowForm.missingReason.trim() || undefined,
+      missingReason: delayAllowForm.missingReason.trim(),
     })
     message.success('已登记延迟补交')
     delayAllowOpen.value = false
     emit('refreshed')
-    const result = await checkArchiveVolumeIntegrity(props.volumeId)
-    emit('integrity-checked', result)
   } catch (error) {
     showUserError(error)
   } finally {
@@ -555,8 +577,6 @@ async function submitWaiveMissing() {
     message.success('已授权材料缺失豁免')
     waiveMissingOpen.value = false
     emit('refreshed')
-    const result = await checkArchiveVolumeIntegrity(props.volumeId)
-    emit('integrity-checked', result)
   } catch (error) {
     showUserError(error)
   } finally {

@@ -300,15 +300,6 @@ import type {
   ExportTaskResponse,
   ExportTaskStatusSummaryResponse,
 } from '@/apis/mark/exam-export'
-import type { ExamTemplateResponse } from '@/apis/mark/exam-layout-question'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   ALL_EXPORT_SCOPE_CODES,
   ALL_EXPORT_TASK_STATUS_CODES,
@@ -326,7 +317,16 @@ import {
   getExportTaskStatusSummary,
   listExportTasks,
 } from '@/apis/mark/exam-export'
+import type { ExamTemplateResponse } from '@/apis/mark/exam-layout-question'
 import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -391,7 +391,7 @@ const loading = ref(false)
 const loadFailed = ref(false)
 const downloadingId = ref<string | undefined>(undefined)
 const questionOptions = ref<
-  Array<{ value: string, label: string, disabled?: boolean, title?: string }>
+  Array<{ value: string; label: string; disabled?: boolean; title?: string }>
 >([])
 const layoutSummary = ref<ExamTemplateResponse | null>(null)
 const layoutRoiGap = computed(() => {
@@ -534,8 +534,8 @@ function activeTasksHiddenByStatusFilter(): boolean {
 function listHasActiveExportTask(taskList: ExportTaskResponse[]): boolean {
   return taskList.some(
     (task) =>
-      task.taskStatus === ExportTaskStatusCode.PENDING
-      || task.taskStatus === ExportTaskStatusCode.GENERATING,
+      task.taskStatus === ExportTaskStatusCode.PENDING ||
+      task.taskStatus === ExportTaskStatusCode.GENERATING,
   )
 }
 
@@ -631,7 +631,7 @@ function handleTaskFilterReset(): void {
   void loadTasks()
 }
 
-function handleTaskPageChange(page: { current: number, pageSize: number }): void {
+function handleTaskPageChange(page: { current: number; pageSize: number }): void {
   taskPagination.pageNum = page.current
   taskPagination.pageSize = page.pageSize
   void loadTasks()
@@ -687,11 +687,13 @@ function firstSupportedExportScope(exportType: ExportTypeCode): ExportScopeCode 
   return EXPORT_SCOPE_SUPPORT_MATRIX[exportType][0]
 }
 
-const exportScopeOptions = computed(() => ALL_EXPORT_SCOPE_CODES.map((code) => ({
-  value: code,
-  label: exportScopeLabel(code),
-  disabled: !isExportScopeSupported(createForm.exportType, code),
-})))
+const exportScopeOptions = computed(() =>
+  ALL_EXPORT_SCOPE_CODES.map((code) => ({
+    value: code,
+    label: exportScopeLabel(code),
+    disabled: !isExportScopeSupported(createForm.exportType, code),
+  })),
+)
 
 const exportConstraintHint = computed(() => {
   if (createForm.exportType === ExportTypeCode.ANALYSIS_REPORT) {
@@ -773,8 +775,8 @@ function exportTaskFailureMessageText(task: ExportTaskResponse): string | undefi
 }
 
 function clippedExportTaskFailureMessage(task: ExportTaskResponse): string {
-  const messageText
-    = exportTaskFailureMessageText(task) ?? '导出任务未完成，请查看失败原因后重新发起导出'
+  const messageText =
+    exportTaskFailureMessageText(task) ?? '导出任务未完成，请查看失败原因后重新发起导出'
   return messageText.length > 24 ? `${messageText.slice(0, 24)}…` : messageText
 }
 
@@ -942,10 +944,10 @@ async function loadQuestionOptions(examId: string | undefined): Promise<void> {
     }
     questionOptions.value = [...buildExamLayoutQuestionOptions(template.questions)].sort(
       (left, right) => {
-        const leftSort
-          = template.questions.find((q) => q.layoutQuestionId === left.value)?.sortNo ?? 0
-        const rightSort
-          = template.questions.find((q) => q.layoutQuestionId === right.value)?.sortNo ?? 0
+        const leftSort =
+          template.questions.find((q) => q.layoutQuestionId === left.value)?.sortNo ?? 0
+        const rightSort =
+          template.questions.find((q) => q.layoutQuestionId === right.value)?.sortNo ?? 0
         return leftSort - rightSort
       },
     )
@@ -1191,7 +1193,7 @@ onBeforeUnmount(() => {
 }
 
 .error-text {
-  color: var(--ant-color-error-active, var(--ant-color-error));
+  color: var(--ant-color-error);
   font-size: 12px;
 }
 

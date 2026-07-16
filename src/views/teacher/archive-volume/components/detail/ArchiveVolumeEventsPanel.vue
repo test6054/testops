@@ -4,8 +4,14 @@
       <div class="archive-volume-events-panel__head">
         <h3 class="archive-volume-events-panel__title">审计事件</h3>
         <div class="archive-volume-events-panel__actions">
-          <span class="archive-volume-events-panel__count">{{ events.length }} 条记录</span>
-          <UiButton size="sm" variant="ghost" :loading="exporting" @click="handleExport">
+          <span class="archive-volume-events-panel__count">当前显示 {{ events.length }} 条</span>
+          <UiButton
+            size="sm"
+            variant="ghost"
+            :loading="exporting"
+            :disabled="events.length === 0"
+            @click="handleExport"
+          >
             导出
           </UiButton>
         </div>
@@ -17,10 +23,10 @@
 
 <script setup lang="ts">
 import type { ArchiveVolumeDetailResponse } from '@/apis/mark/archive-volume'
+import { exportArchiveVolumeEvents } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
 import { ref } from 'vue'
 import { downloadFile } from '@/apis/edu/file-management'
-import { exportArchiveVolumeEvents } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { showUserError } from '@/utils/error-handler'

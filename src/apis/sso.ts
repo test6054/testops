@@ -15,17 +15,16 @@ import http from '@/config/axios'
 
 
 /**
- * SSO配置响应
- * 注意：字段名与后端 SsoConfigController 返回保持一致
+ * SSO配置响应 — 与后端 AuthSsoConfigVO 逐字段一致
  */
-export interface SsoConfigResponse {
-  /** 是否启用CAS单点登录（后端字段名: enabled） */
-  casEnabled: boolean
+export interface AuthSsoConfigVO {
+  /** 是否已开通且可发起统一认证跳转 */
+  enabled: boolean
   /** SSO类型（CAS/SAML等） */
   type?: string
   /** CAS显示名称（如"统一认证"） */
   casDisplayName?: string
-  /** CAS登录端点 */
+  /** CAS登录引导端点路径 */
   casLoginEndpoint?: string
 }
 
@@ -146,31 +145,14 @@ export function isCasProfileCompletionResponse(
 ): response is CasProfileCompletionResponse {
   return hasProfileCompletionStatus(response)
 }
-/** 后端 SSO 配置响应承载 */
-interface SsoConfigResponseCarrier {
-  enabled?: boolean
-  type?: string
-  casDisplayName?: string
-  casLoginEndpoint?: string
-}
-
-
 /**
  * 获取租户的SSO配置
  * 用于判断当前租户是否启用CAS单点登录
  *
  * @param tenantId 租户ID（后端必填）
  */
-export function getSsoConfig(tenantId: string): Promise<SsoConfigResponse> {
-  return http.get<SsoConfigResponseCarrier>('/api/auth/sso-config', { params: { tenantId } }).then((res) => {
-    // 后端返回 { enabled, type, casLoginEndpoint }，转换为前端期望格式
-    return {
-      casEnabled: res.enabled ?? false,
-      type: res.type,
-      casDisplayName: res.casDisplayName || '统一认证',
-      casLoginEndpoint: res.casLoginEndpoint
-    }
-  })
+export function getSsoConfig(tenantId: string): Promise<AuthSsoConfigVO> {
+  return http.get<AuthSsoConfigVO>('/api/auth/sso-config', { params: { tenantId } })
 }
 
 

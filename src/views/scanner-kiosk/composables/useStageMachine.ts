@@ -2,7 +2,7 @@
  * 扫描一体机阶段状态机（三阶段主链 + 独立历史页）
  *
  * 主链：准备 → 扫描中 → 复核
- * 历史：侧栏入口进入 /scanner-kiosk/history，不参与 StageBar
+ * 历史批次通过考试扫描子树的 history 阶段进入，不参与 StageBar。
  */
 
 import type { ExamKioskWorkflow } from './useExamKioskWorkflow'

@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   CourseObjectiveMappingReadinessVO,
   ExamQuestionCourseGoalMappingWorkspaceRowVO,
   QualityCourseGoalForMarkVO,
 } from '@/apis/mark/exam-question-course-goal-mapping'
+import type { UiDataTableColumn } from '@/components/ui-guide/ui/data-table'
+import { buildNumericColumn } from '@/components/ui-guide/ui/data-table'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, reactive } from 'vue'
 import ExamQuestionIdentityCells from '@/components/mark/analysis/ExamQuestionIdentityCells.vue'
-import { buildNumericColumn } from '@/components/ui-guide/ui/data-table'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -38,7 +38,7 @@ const props = defineProps<{
   readiness?: CourseObjectiveMappingReadinessVO | null
   courseGoals: QualityCourseGoalForMarkVO[]
   rows: MappingEditableRow[]
-  goalOptions: Array<{ value: string, label: string }>
+  goalOptions: Array<{ value: string; label: string }>
 }>()
 
 const emit = defineEmits<{
@@ -109,10 +109,11 @@ const readinessMetrics = computed<SignalMetric[]>(() => {
       key: 'mapped',
       label: '已映射',
       value: `${readiness.mappedQuestionCount ?? 0}/${readiness.totalQuestionCount ?? 0}`,
-      tone: (readiness.mappedQuestionCount ?? 0) >= (readiness.totalQuestionCount ?? 0)
-        && (readiness.totalQuestionCount ?? 0) > 0
-        ? 'green'
-        : 'orange',
+      tone:
+        (readiness.mappedQuestionCount ?? 0) >= (readiness.totalQuestionCount ?? 0) &&
+        (readiness.totalQuestionCount ?? 0) > 0
+          ? 'green'
+          : 'orange',
     },
     {
       key: 'goal-covered',
@@ -136,12 +137,17 @@ const filteredRows = computed(() => {
   return props.rows.filter((row) => row.mappingStatus === filterForm.mappingStatus)
 })
 
-const columns: ColumnType<MappingEditableRow>[] = [
+const columns: UiDataTableColumn<MappingEditableRow>[] = [
   ...buildExamQuestionIdentityColumns<MappingEditableRow>(),
   { title: '映射状态', key: 'mappingStatus', width: 96 },
   { title: '课程目标', key: 'goal', width: 240 },
   buildNumericColumn({ title: '支撑权重', key: 'weight', width: 96, meta: { hideBelow: 'lg' } }),
-  buildNumericColumn({ title: '达成阈值', key: 'goalThresholdValue', width: 96, meta: { hideBelow: 'lg' } }),
+  buildNumericColumn({
+    title: '达成阈值',
+    key: 'goalThresholdValue',
+    width: 96,
+    meta: { hideBelow: 'lg' },
+  }),
   buildNumericColumn({
     title: '计分贡献',
     key: 'weightedScoreContribution',
@@ -214,16 +220,22 @@ function handleFilterReset(): void {
       <template #bodyCell="{ column, record }">
         <ExamQuestionIdentityCells
           v-if="
-            column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.questionType
-              || column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.questionStem
-              || column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.fullScore
+            column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.questionType ||
+            column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.questionStem ||
+            column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.fullScore
           "
           :column-key="String(column.key)"
           :record="record"
         />
         <template v-else-if="column.key === 'mappingStatus'">
           <UiTag
-            :tone="strictEnumTone(EXAM_QUESTION_COURSE_GOAL_MAPPING_STATUS_TONE, record.mappingStatus, '映射状态')"
+            :tone="
+              strictEnumTone(
+                EXAM_QUESTION_COURSE_GOAL_MAPPING_STATUS_TONE,
+                record.mappingStatus,
+                '映射状态',
+              )
+            "
             size="sm"
           >
             {{ mappingStatusLabel(record.mappingStatus) }}
@@ -240,10 +252,7 @@ function handleFilterReset(): void {
             option-filter-prop="label"
             @change="() => handleGoalChange(record)"
           />
-          <div
-            v-if="record.goalCode && record.goalName"
-            class="exam-goal-mapping-table__goal-meta"
-          >
+          <div v-if="record.goalCode && record.goalName" class="exam-goal-mapping-table__goal-meta">
             {{ record.goalCode }} · {{ record.goalName }}
           </div>
         </template>

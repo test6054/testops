@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TaskStatusCode } from '@/apis/mark/task-status'
+import { TaskStatusDescription } from '@/apis/mark/task-status'
 /**
  * Stage 3 - 澶嶆牳涓庡紓甯稿缃?
  *
@@ -20,7 +21,6 @@ import {
 } from '@ant-design/icons-vue'
 import { computed, ref, watch } from 'vue'
 import { LocalScanPageStatusCode } from '@/apis/mark/scanner-agent-local'
-import { TaskStatusDescription } from '@/apis/mark/task-status'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { ExamScannerPageRegistrationStatusCode } from '@/types/enums/exam-scanner-page-registration-status-enum'
 import { ScanAttentionTypeCode } from '@/types/enums/scan-attention-type-enum'
@@ -102,11 +102,11 @@ const ledgerAttentionTodos = computed<ReviewItem[]>(() => {
       ? ledger.items.find((item) => item.localPageId === att.pageId)
       : undefined
     const pageNo = pageItem?.pageNo ?? 0
-    const bindingConflictWithoutPage
-      = !att.pageId && att.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT
+    const bindingConflictWithoutPage =
+      !att.pageId && att.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT
     if (pageNo <= 0 && !bindingConflictWithoutPage) continue
-    const titlePrefix
-      = pageNo > 0
+    const titlePrefix =
+      pageNo > 0
         ? workflow.scanPageDisplayTitleByNo(pageNo)
         : att.paperInstanceId
           ? `答卷 ${att.paperInstanceId}`
@@ -117,8 +117,8 @@ const ledgerAttentionTodos = computed<ReviewItem[]>(() => {
       type: 'attention',
       title: `${titlePrefix} · ${workflow.attentionTypeText(att.attentionType)}`,
       description:
-        att.diagnostic
-        || workflow.registrationStatusText(
+        att.diagnostic ||
+        workflow.registrationStatusText(
           pageItem?.registrationStatus ?? ExamScannerPageRegistrationStatusCode.PENDING,
         ),
       detail: workflow.formatTime(att.updateTime),
@@ -157,8 +157,8 @@ const registeredPages = computed<ReviewItem[]>(() => {
   return ledger.items
     .filter(
       (item) =>
-        item.registrationStatus !== ExamScannerPageRegistrationStatusCode.DISCARDED
-        && item.registrationStatus !== ExamScannerPageRegistrationStatusCode.SUPERSEDED,
+        item.registrationStatus !== ExamScannerPageRegistrationStatusCode.DISCARDED &&
+        item.registrationStatus !== ExamScannerPageRegistrationStatusCode.SUPERSEDED,
     )
     .filter((item) => !issuePageNos.has(item.pageNo))
     .map((item): ReviewItem => ({
@@ -186,17 +186,17 @@ const selectedItem = computed<ReviewItem | null>(() => {
   if (!workflow.previewPageNo.value) return null
   const pageNo = workflow.previewPageNo.value
   return (
-    reviewItems.value.find((item) => item.pageNo === pageNo)
-    ?? registeredPages.value.find((item) => item.pageNo === pageNo)
-    ?? localBrowsablePages.value.find((item) => item.pageNo === pageNo)
-    ?? null
+    reviewItems.value.find((item) => item.pageNo === pageNo) ??
+    registeredPages.value.find((item) => item.pageNo === pageNo) ??
+    localBrowsablePages.value.find((item) => item.pageNo === pageNo) ??
+    null
   )
 })
 
 const showBindingPanel = computed(
   () =>
-    selectedItem.value?.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT
-    && Boolean(selectedItem.value?.paperInstanceId),
+    selectedItem.value?.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT &&
+    Boolean(selectedItem.value?.paperInstanceId),
 )
 
 function isReviewItemActive(item: ReviewItem): boolean {
@@ -212,8 +212,8 @@ function selectItem(item: ReviewItem) {
     workflow.previewPageNo.value = 0
     return
   }
-  selectedBindingPaperInstanceId.value
-    = item.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT
+  selectedBindingPaperInstanceId.value =
+    item.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT
       ? (item.paperInstanceId ?? '')
       : ''
   workflow.previewPageNo.value = item.pageNo
@@ -381,7 +381,7 @@ const registerProgressText = computed(() => {
           :key="item.key"
           class="issue-item"
           :class="{
-            'active': isReviewItemActive(item),
+            active: isReviewItemActive(item),
             'item-failed': item.type === 'page-failed',
             'item-attention': item.type === 'attention',
           }"
@@ -394,7 +394,9 @@ const registerProgressText = computed(() => {
             <div class="issue-item-text">
               <strong>{{ item.title }}</strong>
               <span>{{ item.description }}</span>
-              <small v-if="item.processingStatus">处理任务：{{ processingStatusLabel(item.processingStatus) }}</small>
+              <small v-if="item.processingStatus"
+                >处理任务：{{ processingStatusLabel(item.processingStatus) }}</small
+              >
               <small v-if="item.detail">{{ item.detail }}</small>
             </div>
           </button>
@@ -571,11 +573,11 @@ const registerProgressText = computed(() => {
           type="button"
           class="op-btn op-btn--danger"
           :disabled="
-            !selectedItem
-              || selectedItem.source !== 'ledger'
-              || selectedItem.pageNo <= 0
-              || !selectedItem.localPageId
-              || !workflow.canDiscardLedgerPage.value
+            !selectedItem ||
+            selectedItem.source !== 'ledger' ||
+            selectedItem.pageNo <= 0 ||
+            !selectedItem.localPageId ||
+            !workflow.canDiscardLedgerPage.value
           "
           :title="
             selectedItem
@@ -774,7 +776,7 @@ const registerProgressText = computed(() => {
 .issue-item.active button {
   border-color: var(--kiosk-primary);
   background: var(--kiosk-primary-soft);
-  box-shadow: 0 0 0 2px rgba(31, 95, 255, 0.18);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--kiosk-primary) 18%, transparent);
 }
 .issue-item.item-failed button {
   border-color: var(--kiosk-danger);
@@ -869,7 +871,7 @@ const registerProgressText = computed(() => {
   max-width: calc(100% - var(--kiosk-space-6) * 2);
   max-height: calc(100% - var(--kiosk-space-6) * 2);
   background: var(--kiosk-surface);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--kiosk-shadow-3);
   user-select: none;
 }
 
@@ -905,11 +907,10 @@ const registerProgressText = computed(() => {
   align-items: center;
   gap: var(--kiosk-space-3);
   padding: var(--kiosk-space-2) var(--kiosk-space-4);
-  background: rgba(20, 27, 45, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--kiosk-canvas-soft);
+  border: 1px solid color-mix(in srgb, var(--kiosk-ink-on-canvas) 14%, transparent);
   border-radius: var(--kiosk-radius-md);
   color: var(--kiosk-ink-on-canvas);
-  backdrop-filter: blur(8px);
 }
 .banner-no {
   font-size: var(--kiosk-fz-h3);
@@ -984,7 +985,7 @@ const registerProgressText = computed(() => {
 
 .op-btn--danger {
   background: var(--kiosk-danger-soft);
-  border-color: rgba(197, 38, 62, 0.3);
+  border-color: color-mix(in srgb, var(--kiosk-danger) 30%, transparent);
   color: var(--kiosk-danger);
 }
 .op-btn--danger:hover:not(:disabled) {
@@ -1003,9 +1004,9 @@ const registerProgressText = computed(() => {
 .page-register-block {
   margin-bottom: var(--kiosk-space-3);
   padding: var(--kiosk-space-3);
-  border: 1px solid rgba(212, 136, 6, 0.35);
+  border: 1px solid color-mix(in srgb, var(--kiosk-warning) 35%, transparent);
   border-radius: var(--kiosk-radius-md);
-  background: rgba(250, 173, 20, 0.08);
+  background: var(--kiosk-warning-soft);
 }
 .page-register-block__title {
   margin: 0 0 var(--kiosk-space-2);

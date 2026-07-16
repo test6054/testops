@@ -25,17 +25,36 @@
         <UiButton
           variant="outline"
           :loading="restartingRejected"
+          :disabled="writePending"
           @click="handleRestartRejected"
         >
           恢复重新采集
         </UiButton>
       </div>
       <div v-else-if="!readOnly" class="portfolio-intake-panel__actions">
-        <UiButton variant="outline" :loading="scanOpening" @click="openScan"> 一体机扫描 </UiButton>
-        <UiButton v-if="showRegisterStart" :loading="starting" @click="handleStart">
+        <UiButton
+          variant="outline"
+          :loading="scanOpening"
+          :disabled="writePending"
+          @click="openScan"
+        >
+          一体机扫描
+        </UiButton>
+        <UiButton
+          v-if="showRegisterStart"
+          :loading="starting"
+          :disabled="writePending"
+          @click="handleStart"
+        >
           登记并开始处理
         </UiButton>
-        <UiButton v-if="showRetryAi" variant="outline" :loading="retryingAi" @click="handleRetryAi">
+        <UiButton
+          v-if="showRetryAi"
+          variant="outline"
+          :loading="retryingAi"
+          :disabled="writePending"
+          @click="handleRetryAi"
+        >
           重新 AI 抽取
         </UiButton>
       </div>
@@ -75,7 +94,7 @@
           variant="outline"
           size="sm"
           :loading="reassigning"
-          :disabled="!reassignReady"
+          :disabled="!reassignReady || writePending"
           @click="handleReassign"
         >
           重分类
@@ -127,8 +146,12 @@
     <UiCard title="归档动作" class="portfolio-intake-panel__section">
       <p v-if="archiveActionHint" class="portfolio-intake-panel__meta">{{ archiveActionHint }}</p>
       <div v-if="!readOnly" class="portfolio-intake-panel__actions">
-        <UiButton variant="outline" :loading="saving" @click="saveDraft"> 保存草稿 </UiButton>
-        <UiButton :loading="submitting" @click="handleSubmit"> 提交审核 </UiButton>
+        <UiButton variant="outline" :loading="saving" :disabled="writePending" @click="saveDraft">
+          保存草稿
+        </UiButton>
+        <UiButton :loading="submitting" :disabled="writePending" @click="handleSubmit">
+          提交审核
+        </UiButton>
       </div>
     </UiCard>
     <ScanDispatchResultDialog
@@ -143,6 +166,7 @@
 import type { BadgeTone, UiAlertStripTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
+import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -176,7 +200,6 @@ import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 
 defineOptions({ name: 'PortfolioMaterialIntakePanel' })
 
@@ -202,6 +225,7 @@ const {
   saving,
   submitting,
   reassigning,
+  writePending,
   status,
   categoryId,
   materialId,
@@ -210,7 +234,6 @@ const {
   fieldValues,
   readOnly,
   aiCandidateReadOnly,
-  demoMode,
   refreshStatus,
   startIntake,
   saveDraft,
@@ -235,16 +258,18 @@ const editableFields = computed(() =>
 const materialRegistered = computed(() => Boolean(materialId.value || status.value?.materialId))
 
 const showRegisterStart = computed(() => {
-  return !(
-    status.value?.stage === PortfolioMaterialIntakeStageCode.AI_FAILED && materialRegistered.value
+  if (!materialRegistered.value || !status.value) {
+    return true
+  }
+  return (
+    status.value.stage === PortfolioMaterialIntakeStageCode.CATEGORY_PENDING ||
+    status.value.stage === PortfolioMaterialIntakeStageCode.UPLOADED
   )
 })
 
 const showRetryAi = computed(
   () =>
-    !demoMode.value
-    && status.value?.stage === PortfolioMaterialIntakeStageCode.AI_FAILED
-    && Boolean(categoryId.value),
+    status.value?.stage === PortfolioMaterialIntakeStageCode.AI_FAILED && Boolean(categoryId.value),
 )
 
 const showRestartRejected = computed(
@@ -256,8 +281,8 @@ const reassignBlocked = computed(() => {
     return false
   }
   return (
-    status.value.stage === PortfolioMaterialIntakeStageCode.OCR_PENDING
-    || status.value.stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
+    status.value.stage === PortfolioMaterialIntakeStageCode.OCR_PENDING ||
+    status.value.stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
   )
 })
 
@@ -267,16 +292,16 @@ const reassignAllowed = computed(() => {
   }
   const recordStatus = status.value.recordStatus
   return (
-    recordStatus === PortfolioArchiveRecordStatusCode.DRAFT
-    || recordStatus === PortfolioArchiveRecordStatusCode.RETURNED
+    recordStatus === PortfolioArchiveRecordStatusCode.DRAFT ||
+    recordStatus === PortfolioArchiveRecordStatusCode.RETURNED
   )
 })
 
 const reassignReady = computed(
   () =>
-    reassignAllowed.value
-    && Boolean(categoryIdModel.value)
-    && categoryIdModel.value !== status.value?.categoryId,
+    reassignAllowed.value &&
+    Boolean(categoryIdModel.value) &&
+    categoryIdModel.value !== status.value?.categoryId,
 )
 
 const clearedFieldsHint = computed(() => {
@@ -358,14 +383,14 @@ const archiveActionHint = computed(() => {
     return '请先登记材料'
   }
   if (
-    status.value.recordStatus === PortfolioArchiveRecordStatusCode.PENDING_CONFIRM
-    || (status.value.pendingCandidateCount ?? 0) > 0
+    status.value.recordStatus === PortfolioArchiveRecordStatusCode.PENDING_CONFIRM ||
+    (status.value.pendingCandidateCount ?? 0) > 0
   ) {
     return '请先确认 AI 候选字段后再保存或提交'
   }
   if (
-    status.value.stage === PortfolioMaterialIntakeStageCode.OCR_PENDING
-    || status.value.stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
+    status.value.stage === PortfolioMaterialIntakeStageCode.OCR_PENDING ||
+    status.value.stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
   ) {
     return '材料处理中，请等待完成后再保存或提交'
   }
@@ -385,8 +410,8 @@ const archiveActionHint = computed(() => {
     return '审核已退回，请修改字段后保存并重新提交'
   }
   if (
-    status.value.stage === PortfolioMaterialIntakeStageCode.SUBMITTED
-    || status.value.stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW
+    status.value.stage === PortfolioMaterialIntakeStageCode.SUBMITTED ||
+    status.value.stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW
   ) {
     return '材料已提交，可在审核进度页查看状态'
   }
@@ -427,7 +452,6 @@ async function handleStart() {
       fileNodeId: fileNodeId.value,
       materialTitle: materialTitle.value.trim() || fileName.value,
       fileName: fileName.value,
-      demoMode: demoMode.value,
     })
   } finally {
     starting.value = false
@@ -459,7 +483,8 @@ const restartingRejected = ref(false)
 async function handleRestartRejected() {
   const confirmed = await confirmAsync({
     title: '恢复重新采集',
-    content: '将保留原 AI 候选和作废档案作为审计依据，并解除该材料的作废关联。恢复后请重新选择分类并开始采集。',
+    content:
+      '将保留原 AI 候选和作废档案作为审计依据，并解除该材料的作废关联。恢复后请重新选择分类并开始采集。',
     type: 'warning',
   })
   if (!confirmed) {

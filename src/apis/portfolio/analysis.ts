@@ -1,3 +1,5 @@
+import type { PortfolioArchiveBagExportResultVO } from '@/apis/portfolio/bag-types'
+import type { PortfolioPortraitDimensionCode } from '@/apis/portfolio/enums'
 import type {
   PortfolioTeacherPkCompareVO,
   PortfolioTeacherRecommendPkCompareRequest,
@@ -5,7 +7,6 @@ import type {
 import type {
   PortfolioCockpitSummaryVO,
   PortfolioTeacherCompletenessGetRequest,
-  PortfolioTeacherCompletenessVO,
   PortfolioTeacherPortraitCohortCompareVO,
   PortfolioTeacherPortraitGetRequest,
   PortfolioTeacherPortraitIndicatorDetailRequest,
@@ -17,7 +18,7 @@ import type {
   PortfolioTeacherProgressCockpitVO,
   PortfolioTeacherWorkbenchSummaryVO,
 } from '@/apis/portfolio/types'
-import type { PageResult } from '@/types'
+import type { IdRequest, PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 export interface PortfolioAnalysisAlertVO {
@@ -118,6 +119,22 @@ export interface PortfolioAnalysisAnnualReportVO {
   createTime: string
 }
 
+export interface PortfolioTeacherPkSessionCreateRequest {
+  teacherUserIds: string[]
+  dimensionCodes: PortfolioPortraitDimensionCode[]
+  sessionPurpose: string
+  maskMode: boolean
+}
+
+export interface PortfolioTeacherPkSessionVO {
+  id: string
+  sessionPurpose: string
+  teacherCount: number
+  maskMode: boolean
+  createUser: string
+  createTime: string
+}
+
 export const portfolioAnalysisApi = {
   getWorkbenchSummary: (data: PortfolioTeacherCompletenessGetRequest = {}) =>
     http.post<PortfolioTeacherWorkbenchSummaryVO>(
@@ -129,8 +146,6 @@ export const portfolioAnalysisApi = {
       '/api/portfolio/analysis/progress-cockpit/get',
       data,
     ),
-  getCompleteness: (data: PortfolioTeacherCompletenessGetRequest = {}) =>
-    http.post<PortfolioTeacherCompletenessVO>('/api/portfolio/analysis/completeness/get', data),
   getPortrait: (data: PortfolioTeacherPortraitGetRequest = {}) =>
     http.post<PortfolioTeacherPortraitVO>('/api/portfolio/portrait/teacher/get', data),
   getPortraitCohortCompare: (data: PortfolioTeacherPortraitGetRequest = {}) =>
@@ -180,7 +195,18 @@ export const portfolioAnalysisApi = {
     ),
   pkCompare: (data: PortfolioTeacherRecommendPkCompareRequest) =>
     http.post<PortfolioTeacherPkCompareVO>('/api/portfolio/analysis/pk/compare', data),
-  generateAnnualReport: (data: { teacherId: string, reportYear: string }) =>
+  createPkSession: (data: PortfolioTeacherPkSessionCreateRequest) =>
+    http.post<PortfolioTeacherPkCompareVO>('/api/portfolio/analysis/pk/session/create', data),
+  getPkSession: (data: IdRequest) =>
+    http.post<PortfolioTeacherPkCompareVO>('/api/portfolio/analysis/pk/session/get', data),
+  pagePkSessions: (data: QueryDto & { mineOnly?: boolean }) =>
+    http.post<PageResult<PortfolioTeacherPkSessionVO>>(
+      '/api/portfolio/analysis/pk/session/page',
+      data,
+    ),
+  exportPkSession: (data: { sessionId: string; maskMode?: boolean }) =>
+    http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/analysis/pk/export', data),
+  generateAnnualReport: (data: { teacherId: string; reportYear: string }) =>
     http.post<PortfolioAnalysisAnnualReportVO>(
       '/api/portfolio/analysis/report/annual/generate',
       data,
@@ -198,7 +224,7 @@ export const portfolioAnalysisApi = {
       '/api/portfolio/analysis/report/annual/page',
       data,
     ),
-  resolvePortraitAlert: (data: { alertId: string, alertStatus: string, resolveRemark?: string }) =>
+  resolvePortraitAlert: (data: { alertId: string; alertStatus: string; resolveRemark?: string }) =>
     http.post<void>('/api/portfolio/analysis/alert/resolve', data),
   resolveComplianceAlert: (data: {
     alertId: string

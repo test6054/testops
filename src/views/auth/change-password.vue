@@ -58,7 +58,9 @@
                 <div
                   class="strength-fill"
                   :class="`strength-${passwordStrength}`"
-                  :style="{ width: `${(passwordStrength / 5) * 100}%` }"
+                  :style="{
+                    transform: `scaleX(${Math.max(0, Math.min(1, passwordStrength / 5))})`,
+                  }"
                 />
               </div>
               <span class="strength-text">{{ passwordStrengthText }}</span>
@@ -148,6 +150,7 @@
 
 <script lang="ts" setup>
 import type { PasswordHistoryDto } from '@/apis/edu/user-management'
+import { getPasswordHistory } from '@/apis/edu/user-management'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import MinusCircleOutlined from '@ant-design/icons-vue/MinusCircleOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -157,7 +160,6 @@ import dayjs from 'dayjs'
 import { computed, onActivated, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { changePassword } from '@/apis/auth'
-import { getPasswordHistory } from '@/apis/edu/user-management'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -409,15 +411,17 @@ onActivated(() => {
   flex: 1;
   height: 4px;
   background: var(--ant-color-fill-secondary);
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
   overflow: hidden;
 }
 
 .strength-fill {
+  width: 100%;
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
+  transform-origin: left center;
   transition:
-    width 0.3s,
+    transform 0.3s,
     background-color 0.3s;
 
   &.strength-0 {

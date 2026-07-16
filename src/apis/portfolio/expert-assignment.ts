@@ -7,7 +7,7 @@ export interface PortfolioExpertAssignmentVO {
   expertUserId: string
   subjectTeacherIdsJson: string
   materialScopeJson: string
-  accessToken: string
+  accessToken?: string
   maskRequired: boolean
   assignmentStatus: string
   expireTime: string
@@ -62,11 +62,16 @@ export const portfolioExpertAssignmentApi = {
     evaluationTaskId?: string
     expertUserId?: string
     assignmentStatus?: string
-  }) => http.post<PageResult<PortfolioExpertAssignmentVO>>('/api/portfolio/expert-assignment/page', data),
-  get: (data: { id: string }) =>
-    http.post<PortfolioExpertAssignmentVO>('/api/portfolio/expert-assignment/get', data),
+  }) =>
+    http.post<PageResult<PortfolioExpertAssignmentVO>>(
+      '/api/portfolio/expert-assignment/page',
+      data,
+    ),
   revoke: (data: { id: string }) =>
     http.post<PortfolioExpertAssignmentVO>('/api/portfolio/expert-assignment/revoke', data),
-  reviewBundle: (data: { accessToken?: string, assignmentId?: string }) =>
-    http.post<PortfolioExpertAssignmentReviewBundleVO>('/api/portfolio/expert-assignment/review-bundle', data),
+  reviewBundle: (data: { accessToken?: string; assignmentId?: string }) =>
+    http.post<PortfolioExpertAssignmentReviewBundleVO>(
+      '/api/portfolio/expert-assignment/review-bundle',
+      data,
+    ),
 }

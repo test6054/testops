@@ -4,12 +4,12 @@ import type {
   PortfolioCourseArchiveCourseVO,
   PortfolioCourseArchiveFrameworkVO,
 } from '@/apis/portfolio/course-archive'
+import { portfolioCourseArchiveApi } from '@/apis/portfolio/course-archive'
 import type { PortfolioTeacherCustomCategoryVO } from '@/apis/portfolio/teacher-custom-category'
-import { Form, Input, message, Modal } from 'ant-design-vue'
+import { portfolioTeacherCustomCategoryApi } from '@/apis/portfolio/teacher-custom-category'
+import { Form, Input, message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { portfolioCourseArchiveApi } from '@/apis/portfolio/course-archive'
-import { portfolioTeacherCustomCategoryApi } from '@/apis/portfolio/teacher-custom-category'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -17,6 +17,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
@@ -57,7 +58,7 @@ const displayedCourses = computed(() => {
     if (code && item.courseCode !== code) {
       return false
     }
-    return !(semester && item.semester !== semester);
+    return !(semester && item.semester !== semester)
   })
 })
 
@@ -85,10 +86,10 @@ const customColumns: ColumnsType = [
 
 /** 路由 query 决定课程档案上下文；缺省时也必须清空旧筛选，避免复用页残留。 */
 function applyRouteQueryFilters() {
-  academicYearFilter.value
-    = typeof route.query.academicYear === 'string' ? route.query.academicYear : ''
-  highlightCourseCode.value
-    = typeof route.query.courseCode === 'string' ? route.query.courseCode : ''
+  academicYearFilter.value =
+    typeof route.query.academicYear === 'string' ? route.query.academicYear : ''
+  highlightCourseCode.value =
+    typeof route.query.courseCode === 'string' ? route.query.courseCode : ''
   semesterFilter.value = typeof route.query.semester === 'string' ? route.query.semester : ''
 }
 
@@ -102,6 +103,12 @@ function scopeTeacherId() {
 function resetOverviewContext() {
   courses.value = []
   customCategories.value = []
+  overviewSummary.value = {
+    taughtCourseCount: 0,
+    fullyCompleteCourseCount: 0,
+    frameworkSlotDone: 0,
+    frameworkSlotTotal: 0,
+  }
   loadFailed.value = false
 }
 
@@ -113,6 +120,7 @@ async function loadOverview() {
     customLoading.value = false
     return
   }
+  resetOverviewContext()
   loading.value = true
   customLoading.value = true
   loadFailed.value = false
@@ -212,30 +220,36 @@ async function createCustomCategory() {
   }
 }
 
-function confirmDeleteCustomCategory(row: PortfolioTeacherCustomCategoryVO) {
+async function confirmDeleteCustomCategory(row: PortfolioTeacherCustomCategoryVO) {
   if (readonlyMode.value) {
     message.warning('管理员查看模式下不可删除分类')
     return
   }
-  Modal.confirm({
+  if (deletingCategoryId.value) return
+  const categoryId = row.categoryId
+  const scopeToken = overviewRequestToken.value
+  deletingCategoryId.value = categoryId
+  const confirmed = await confirmAsync({
     title: '删除自建分类',
     content: `确认删除「${row.categoryName}」？分类下已有档案记录时无法删除。`,
-    okText: '删除',
-    okType: 'danger',
-    cancelText: '取消',
-    async onOk() {
-      deletingCategoryId.value = row.categoryId
-      try {
-        await portfolioTeacherCustomCategoryApi.delete({ categoryId: row.categoryId })
-        message.success('自建分类已删除')
-        await loadOverview()
-      } catch (error) {
-        showUserError(error)
-      } finally {
-        deletingCategoryId.value = ''
-      }
-    },
+    type: 'error',
+    okText: '确认删除',
   })
+  if (!confirmed || overviewRequestToken.value !== scopeToken) {
+    if (deletingCategoryId.value === categoryId) deletingCategoryId.value = ''
+    return
+  }
+  try {
+    await portfolioTeacherCustomCategoryApi.delete({ categoryId })
+    if (overviewRequestToken.value !== scopeToken) return
+    message.success('自建分类已删除')
+    await loadOverview()
+  } catch (error) {
+    if (overviewRequestToken.value !== scopeToken) return
+    showUserError(error)
+  } finally {
+    if (deletingCategoryId.value === categoryId) deletingCategoryId.value = ''
+  }
 }
 
 usePortfolioScopedLoader(loadOverview, () => targetTeacherId.value)

@@ -6,6 +6,27 @@
       compact
       class="archive-supervision-panel__top-signal"
     />
+    <UiAlertStrip
+      v-if="summaryStatsLoadFailed"
+      tone="warning"
+      title="督导概览计数加载失败"
+      description="列表与矩阵仍可分别查询。"
+    >
+      <template #actions>
+        <UiButton
+          size="sm"
+          variant="outline"
+          @click="
+            () => {
+              void loadRemediationStats()
+              void loadSupervisionVolumeStats()
+            }
+          "
+        >
+          重新加载
+        </UiButton>
+      </template>
+    </UiAlertStrip>
 
     <UiSectionTabs v-model="activeTab" :items="supervisionTabItems" compact />
 
@@ -40,7 +61,7 @@
           v-model:page-size="volumePagination.pageSize"
           pagination-mode="server"
           :columns="volumeColumns"
-          :data-source="volumes"
+          :data-source="volumeLoadFailed ? [] : volumes"
           :loading="volumeLoading"
           :total="volumePagination.total"
           flat
@@ -48,8 +69,12 @@
           sticky-header
           row-key="volumeId"
           size="middle"
+          :load-error="volumeLoadFailed"
           @page-change="loadVolumes"
         >
+          <template v-if="volumeLoadFailed" #empty-action>
+            <UiButton size="sm" variant="outline" @click="loadVolumes">重新加载</UiButton>
+          </template>
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'archive'">
               <button type="button" class="link-cell" @click="openDetail(record.volumeId)">
@@ -124,6 +149,9 @@
           </div>
         </template>
         <UiSkeletonState v-if="statsLoading" variant="card" compact />
+        <UiEmpty v-else-if="statsLoadFailed" description="就绪矩阵加载失败">
+          <UiButton size="sm" variant="outline" @click="loadReadinessPreview">重新加载</UiButton>
+        </UiEmpty>
         <template v-else>
           <SignalBand
             v-if="matrixPreviewRows.length"
@@ -186,7 +214,7 @@
           v-model:page-size="remediationPagination.pageSize"
           pagination-mode="server"
           :columns="remediationColumns"
-          :data-source="remediationTasks"
+          :data-source="remediationLoadFailed ? [] : remediationTasks"
           :loading="remediationLoading"
           :total="remediationPagination.total"
           flat
@@ -194,8 +222,12 @@
           sticky-header
           row-key="taskId"
           size="middle"
+          :load-error="remediationLoadFailed"
           @page-change="loadRemediation"
         >
+          <template v-if="remediationLoadFailed" #empty-action>
+            <UiButton size="sm" variant="outline" @click="loadRemediation">重新加载</UiButton>
+          </template>
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'taskStatus'">
               <UiTag :tone="remediationStatusTone(record.taskStatus)" size="sm">
@@ -215,7 +247,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
-                :items="[{ key: 'handle', label: '去处理' }]"
+                :items="[{ key: 'handle', label: '查看整改' }]"
                 split
                 @action="() => goRemediationTaskDetail(record)"
               />
@@ -270,7 +302,7 @@
           v-model:page-size="campaignPagination.pageSize"
           pagination-mode="server"
           :columns="campaignColumns"
-          :data-source="campaigns"
+          :data-source="campaignLoadFailed ? [] : campaigns"
           :loading="campaignLoading"
           :total="campaignPagination.total"
           flat
@@ -278,8 +310,13 @@
           sticky-header
           row-key="campaignId"
           size="middle"
+          :load-error="campaignLoadFailed"
           @page-change="loadCampaigns"
-        />
+        >
+          <template v-if="campaignLoadFailed" #empty-action>
+            <UiButton size="sm" variant="outline" @click="loadCampaigns">重新加载</UiButton>
+          </template>
+        </UiDataTable>
       </WorkbenchSurfaceCard>
     </section>
   </div>
@@ -315,7 +352,7 @@
         v-model:page-size="detailMaterialPagination.pageSize"
         pagination-mode="server"
         :columns="materialColumns"
-        :data-source="detailMaterials"
+        :data-source="detailMaterialLoadFailed ? [] : detailMaterials"
         :loading="detailMaterialLoading"
         :total="detailMaterialPagination.total"
         flat
@@ -323,8 +360,12 @@
         sticky-header
         row-key="materialId"
         size="small"
+        :load-error="detailMaterialLoadFailed"
         @page-change="loadDetailMaterials"
       >
+        <template v-if="detailMaterialLoadFailed" #empty-action>
+          <UiButton size="sm" variant="outline" @click="loadDetailMaterials">重新加载</UiButton>
+        </template>
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'tags'">
             <template v-if="record.tags?.length">
@@ -353,6 +394,8 @@
         <a-textarea
           v-model:value="markProblemDescription"
           :rows="4"
+          :maxlength="2000"
+          show-count
           placeholder="描述督导发现的问题"
         />
       </a-form-item>
@@ -384,16 +427,10 @@ import type {
   ArchiveVolumeSourceTypeCode,
   ArchiveVolumeStatusCode,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
   ARCHIVE_VOLUME_STATUS_TONE,
+  ArchiveEvaluationCampaignStatusCode,
   ArchiveEvaluationCampaignStatusDescription,
   ArchiveIntegrityStatusDescription,
   ArchiveMaterialTypeDescription,
@@ -413,10 +450,19 @@ import {
   pageSupervisionReadinessMatrixPreview,
   pageSupervisionRemediationTasks,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { SemesterOptions } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
@@ -427,7 +473,6 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { runArchiveEvaluationExportFlow } from '@/composables/useArchiveEvaluationExportFlow'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearStartOptions } from '@/utils/academic-year'
 import {
   applyAcademicYearStartYearChange,
@@ -459,9 +504,15 @@ const supervisionTabItems = [
   { key: 'campaign', label: '评估批次' },
 ]
 const volumeLoading = ref(false)
+const volumeLoadFailed = ref(false)
 const statsLoading = ref(false)
+const statsLoadFailed = ref(false)
 const remediationLoading = ref(false)
+const remediationLoadFailed = ref(false)
 const campaignLoading = ref(false)
+const campaignLoadFailed = ref(false)
+const remediationStatsLoadFailed = ref(false)
+const volumeStatsLoadFailed = ref(false)
 const detailLoading = ref(false)
 const detailOpen = ref(false)
 const markProblemOpen = ref(false)
@@ -486,7 +537,11 @@ const detail = ref<ArchiveVolumeDetailResponse | null>(null)
 const detailMaterials = ref<ArchiveVolumeMaterialResponse[]>([])
 const detailMaterialPagination = reactive({ pageNum: 1, pageSize: 10, total: 0 })
 const detailMaterialLoading = ref(false)
+const detailMaterialLoadFailed = ref(false)
 const detailVolumeId = ref('')
+const summaryStatsLoadFailed = computed(
+  () => remediationStatsLoadFailed.value || volumeStatsLoadFailed.value,
+)
 
 const panelSignalMetrics = computed<SignalMetric[]>(() => [
   {
@@ -627,10 +682,12 @@ const statsMetrics = computed<SignalMetric[]>(() => {
 })
 
 const campaignSelectOptions = computed(() =>
-  campaigns.value.map((item) => ({
-    value: item.campaignId,
-    label: item.campaignName,
-  })),
+  campaigns.value
+    .filter((item) => item.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE)
+    .map((item) => ({
+      value: item.campaignId,
+      label: item.campaignName,
+    })),
 )
 
 const exportCampaignLabel = computed(() => {
@@ -675,6 +732,7 @@ function goRemediationTaskDetail(task: ArchiveRemediationTaskResponse) {
   void router.push({
     name: 'TeacherArchiveVolumeRemediationDetail',
     params: { taskId: task.taskId },
+    query: { scope: 'supervision' },
   })
 }
 
@@ -754,7 +812,9 @@ async function loadVolumes() {
     volumePagination.total = result.total
     volumePagination.pageNum = result.pageNum
     volumePagination.pageSize = result.pageSize
+    volumeLoadFailed.value = false
   } catch (error) {
+    volumeLoadFailed.value = true
     showUserError(error)
   } finally {
     volumeLoading.value = false
@@ -807,10 +867,9 @@ async function loadReadinessPreview() {
     previewPagination.total = page.total
     if (page.pageNum != null) previewPagination.pageNum = page.pageNum
     if (page.pageSize != null) previewPagination.pageSize = page.pageSize
+    statsLoadFailed.value = false
   } catch (error) {
-    previewStats.value = null
-    previewRows.value = []
-    previewPagination.total = 0
+    statsLoadFailed.value = true
     showUserError(error, '加载就绪矩阵失败')
   } finally {
     statsLoading.value = false
@@ -821,8 +880,9 @@ async function loadRemediationStats(): Promise<void> {
   try {
     const stats = await getSupervisionRemediationStats()
     remediationOpenCount.value = stats.openTaskCount
+    remediationStatsLoadFailed.value = false
   } catch {
-    remediationOpenCount.value = 0
+    remediationStatsLoadFailed.value = true
   }
 }
 
@@ -830,8 +890,9 @@ async function loadSupervisionVolumeStats(): Promise<void> {
   try {
     const stats = await getSupervisionVolumeStats()
     supervisionVolumeCount.value = stats.supervisionVolumeCount
+    volumeStatsLoadFailed.value = false
   } catch {
-    supervisionVolumeCount.value = 0
+    volumeStatsLoadFailed.value = true
   }
 }
 
@@ -846,7 +907,9 @@ async function loadRemediation() {
     remediationPagination.total = page.total
     if (page.pageNum != null) remediationPagination.pageNum = page.pageNum
     if (page.pageSize != null) remediationPagination.pageSize = page.pageSize
+    remediationLoadFailed.value = false
   } catch (error) {
+    remediationLoadFailed.value = true
     showUserError(error)
   } finally {
     remediationLoading.value = false
@@ -864,7 +927,9 @@ async function loadCampaigns() {
     campaignPagination.total = page.total
     if (page.pageNum != null) campaignPagination.pageNum = page.pageNum
     if (page.pageSize != null) campaignPagination.pageSize = page.pageSize
+    campaignLoadFailed.value = false
   } catch (error) {
+    campaignLoadFailed.value = true
     showUserError(error)
   } finally {
     campaignLoading.value = false
@@ -875,6 +940,7 @@ async function loadDetailMaterials(): Promise<void> {
   if (!detailVolumeId.value) {
     detailMaterials.value = []
     detailMaterialPagination.total = 0
+    detailMaterialLoadFailed.value = false
     return
   }
   detailMaterialLoading.value = true
@@ -886,11 +952,11 @@ async function loadDetailMaterials(): Promise<void> {
     })
     detailMaterials.value = page.list
     detailMaterialPagination.total = page.total
+    detailMaterialLoadFailed.value = false
     if (page.pageNum != null) detailMaterialPagination.pageNum = page.pageNum
     if (page.pageSize != null) detailMaterialPagination.pageSize = page.pageSize
   } catch (error) {
-    detailMaterials.value = []
-    detailMaterialPagination.total = 0
+    detailMaterialLoadFailed.value = true
     showUserError(error, '材料清单加载失败')
   } finally {
     detailMaterialLoading.value = false

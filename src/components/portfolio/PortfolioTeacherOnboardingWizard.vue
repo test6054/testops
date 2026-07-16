@@ -81,16 +81,13 @@
         <UiAlertStrip
           v-if="currentStep === 4 && !templateReady"
           tone="warning"
-          title="模板尚未就绪，可跳过示范采集"
+          title="模板尚未就绪，请联系管理员发布档案模板"
         />
       </UiCard>
 
       <div class="portfolio-onboarding-wizard__actions">
         <UiButton variant="ghost" @click="handleDismiss"> 稍后继续 </UiButton>
         <UiButton v-if="currentStep > 1" variant="outline" @click="prevStep"> 上一步 </UiButton>
-        <UiButton v-if="currentStep === 4 && templateReady" variant="outline" @click="goDemoIntake">
-          示范采集
-        </UiButton>
         <UiButton v-if="currentStep < 5" @click="nextStep"> 下一步 </UiButton>
         <UiButton v-else :loading="completing" @click="handleComplete"> 完成引导 </UiButton>
       </div>
@@ -159,13 +156,13 @@ const fieldPreviewColumns: ColumnsType = [
 ]
 
 const stepTitle = computed(() => {
-  const titles = ['欢迎', '浏览分类', '认识规格', '示范采集', '完成引导']
+  const titles = ['欢迎', '浏览分类', '认识规格', '材料采集', '完成引导']
   return `步骤 ${currentStep.value} · ${titles[currentStep.value - 1]}`
 })
 
 function mapTreeNodes(
   nodes: PortfolioArchiveCategoryTreeNodeVO[],
-): Array<{ key: string, title: string, children?: ReturnType<typeof mapTreeNodes> }> {
+): Array<{ key: string; title: string; children?: ReturnType<typeof mapTreeNodes> }> {
   return nodes.map((node) => ({
     key: node.id,
     title: node.categoryName,
@@ -243,8 +240,8 @@ async function loadReviewContent() {
 async function loadCategoryTree() {
   const requestToken = onboardingRequestToken.value
   try {
-    const nextCategoryTree
-      = (await portfolioArchiveTemplateApi.listCategoryTree({
+    const nextCategoryTree =
+      (await portfolioArchiveTemplateApi.listCategoryTree({
         teacherId: targetTeacherId.value || undefined,
       })) ?? []
     if (onboardingRequestToken.value !== requestToken) {
@@ -285,18 +282,18 @@ async function loadPreviewFields(categoryId: string) {
   try {
     const published = await portfolioArchiveTemplateApi.listPublishedFields({ categoryId })
     if (
-      onboardingRequestToken.value !== requestToken
-      || previewFieldRequestToken.value !== fieldRequestToken
-      || previewCategoryId.value !== categoryId
+      onboardingRequestToken.value !== requestToken ||
+      previewFieldRequestToken.value !== fieldRequestToken ||
+      previewCategoryId.value !== categoryId
     ) {
       return
     }
     previewFields.value = published.targetFields
   } catch (error) {
     if (
-      onboardingRequestToken.value !== requestToken
-      || previewFieldRequestToken.value !== fieldRequestToken
-      || previewCategoryId.value !== categoryId
+      onboardingRequestToken.value !== requestToken ||
+      previewFieldRequestToken.value !== fieldRequestToken ||
+      previewCategoryId.value !== categoryId
     ) {
       return
     }
@@ -352,16 +349,6 @@ async function handleComplete() {
   } finally {
     completing.value = false
   }
-}
-
-function goDemoIntake() {
-  void router.push({
-    path: '/portfolio/teacher/intake',
-    query: {
-      ...(targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}),
-      demoMode: '1',
-    },
-  })
 }
 
 watch(previewCategoryId, (value) => {

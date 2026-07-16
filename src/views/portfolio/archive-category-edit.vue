@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type {
   PortfolioArchiveRecordFieldInput,
+  PortfolioArchiveRecordVersionVO,
   PortfolioTargetFieldDefinition,
 } from '@/apis/portfolio/types'
+import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -12,7 +14,7 @@ import {
   PortfolioArchiveRecordStatusCode,
   PortfolioArchiveRecordStatusDescription,
 } from '@/apis/portfolio/enums'
-import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
+import PortfolioArchiveVersionComparePanel from '@/components/portfolio/PortfolioArchiveVersionComparePanel.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -39,6 +41,8 @@ const recordId = ref<string>()
 const recordStatus = ref<PortfolioArchiveRecordStatusCode>()
 const latestRejectReason = ref<string>()
 const latestReturnDeadline = ref<string>()
+const versionHistory = ref<PortfolioArchiveRecordVersionVO[]>([])
+const versionCompareOpen = ref(false)
 const fieldDefs = ref<PortfolioTargetFieldDefinition[]>([])
 const fieldValues = reactive<Record<string, string>>({})
 const evidenceRefs = reactive<Record<string, string>>({})
@@ -68,11 +72,20 @@ const teacherRequest = computed(() =>
 )
 
 const editableFields = computed(() => fieldDefs.value.filter((item) => !item.readonly))
+const writeInProgress = computed(() => saving.value || submitting.value)
 const recordEditable = computed(
   () =>
-    !recordStatus.value
-    || recordStatus.value === PortfolioArchiveRecordStatusCode.DRAFT
-    || recordStatus.value === PortfolioArchiveRecordStatusCode.RETURNED,
+    !recordStatus.value ||
+    recordStatus.value === PortfolioArchiveRecordStatusCode.DRAFT ||
+    recordStatus.value === PortfolioArchiveRecordStatusCode.RETURNED,
+)
+const writeDisabled = computed(
+  () =>
+    loading.value ||
+    writeInProgress.value ||
+    !recordEditable.value ||
+    !categoryId.value ||
+    (canPickTeachers.value && !targetTeacherId.value),
 )
 
 const statusHint = computed(() => {
@@ -96,25 +109,35 @@ const statusHint = computed(() => {
   return ''
 })
 
-async function applyRecordDetail(id: string) {
-  recordId.value = id
+async function applyRecordDetail(id: string, requestToken: number): Promise<boolean> {
   const detail = await portfolioArchiveApi.getRecord(id)
+  if (scopeRequestToken.value !== requestToken) {
+    return false
+  }
+  recordId.value = id
   recordStatus.value = detail.recordStatus
   latestRejectReason.value = detail.latestRejectReason
   latestReturnDeadline.value = detail.latestReturnDeadline
+  versionHistory.value = detail.versionHistory ?? []
   for (const field of detail.fields) {
     fieldValues[field.fieldCode] = field.fieldValue ?? ''
     evidenceRefs[field.fieldCode] = field.evidenceRef ?? ''
   }
+  return true
 }
 
 function resetFormState() {
   scopeRequestToken.value += 1
+  loading.value = false
+  saving.value = false
+  submitting.value = false
   recordId.value = undefined
   categoryName.value = ''
   recordStatus.value = undefined
   latestRejectReason.value = undefined
   latestReturnDeadline.value = undefined
+  versionHistory.value = []
+  versionCompareOpen.value = false
   fieldDefs.value = []
   for (const key of Object.keys(fieldValues)) {
     delete fieldValues[key]
@@ -178,8 +201,8 @@ function buildReturnQuery(): Record<string, string> {
 }
 
 function returnToArchiveSource() {
-  const path
-    = fromPage.value === 'courseArchive'
+  const path =
+    fromPage.value === 'courseArchive'
       ? '/portfolio/teacher/course-archive'
       : fromPage.value === 'trainingExtension'
         ? '/portfolio/teacher/extension-activity'
@@ -191,14 +214,12 @@ function returnToArchiveSource() {
 }
 
 async function loadPage() {
-  const requestToken = scopeRequestToken.value + 1
-  scopeRequestToken.value = requestToken
+  resetFormState()
+  const requestToken = scopeRequestToken.value
   if (!categoryId.value || (canPickTeachers.value && !targetTeacherId.value)) {
-    resetFormState()
     return
   }
   loading.value = true
-  resetFormState()
   try {
     const published = await portfolioArchiveTemplateApi.listPublishedFields({
       categoryId: categoryId.value,
@@ -221,8 +242,7 @@ async function loadPage() {
       evidenceRefs[field.fieldCode] = ''
     }
     if (queryRecordId.value) {
-      await applyRecordDetail(queryRecordId.value)
-      if (scopeRequestToken.value !== requestToken) {
+      if (!(await applyRecordDetail(queryRecordId.value, requestToken))) {
         return
       }
       mergeCourseArchiveRouteDefaults()
@@ -237,8 +257,7 @@ async function loadPage() {
     })
     const draft = draftPage.list[0]
     if (draft) {
-      await applyRecordDetail(draft.id)
-      if (scopeRequestToken.value !== requestToken) {
+      if (!(await applyRecordDetail(draft.id, requestToken))) {
         return
       }
       mergeCourseArchiveRouteDefaults()
@@ -253,8 +272,7 @@ async function loadPage() {
     })
     const returned = returnedPage.list[0]
     if (returned) {
-      await applyRecordDetail(returned.id)
-      if (scopeRequestToken.value !== requestToken) {
+      if (!(await applyRecordDetail(returned.id, requestToken))) {
         return
       }
       mergeCourseArchiveRouteDefaults()
@@ -282,6 +300,9 @@ function buildFieldInputs(): PortfolioArchiveRecordFieldInput[] {
 }
 
 async function handleSaveDraft() {
+  if (writeDisabled.value) {
+    return
+  }
   const requestToken = scopeRequestToken.value
   saving.value = true
   try {
@@ -310,6 +331,16 @@ async function handleSaveDraft() {
 }
 
 async function handleSubmit() {
+  if (writeDisabled.value) {
+    return
+  }
+  const missingRequiredField = editableFields.value.find(
+    (field) => field.required && !fieldValues[field.fieldCode]?.trim(),
+  )
+  if (missingRequiredField) {
+    message.warning(`请填写${missingRequiredField.fieldLabel}`)
+    return
+  }
   const requestToken = scopeRequestToken.value
   submitting.value = true
   try {
@@ -359,19 +390,18 @@ usePortfolioScopedLoader(
         :title="categoryName ? `${categoryName} · 分类填报` : '分类填报'"
       >
         <template #actions>
-          <UiButton @click="goBack"> 返回档案 </UiButton>
+          <UiButton :disabled="writeInProgress" @click="goBack"> 返回档案 </UiButton>
           <UiButton
-            :loading="saving"
-            :disabled="loading || !recordEditable"
-            @click="handleSaveDraft"
+            v-if="versionHistory.length >= 2"
+            :disabled="writeInProgress"
+            @click="versionCompareOpen = true"
           >
+            版本对比
+          </UiButton>
+          <UiButton :loading="saving" :disabled="writeDisabled" @click="handleSaveDraft">
             保存草稿
           </UiButton>
-          <UiButton
-            :loading="submitting"
-            :disabled="loading || !recordEditable"
-            @click="handleSubmit"
-          >
+          <UiButton :loading="submitting" :disabled="writeDisabled" @click="handleSubmit">
             提交审核
           </UiButton>
         </template>
@@ -402,12 +432,12 @@ usePortfolioScopedLoader(
           >
             <a-input
               v-model:value="fieldValues[field.fieldCode]"
-              :disabled="!recordEditable"
+              :disabled="!recordEditable || writeInProgress"
               :placeholder="field.required ? '必填' : '选填'"
             />
             <a-input
               v-model:value="evidenceRefs[field.fieldCode]"
-              :disabled="!recordEditable"
+              :disabled="!recordEditable || writeInProgress"
               class="archive-category-edit__evidence"
               placeholder="证据引用（可选）"
             />
@@ -416,6 +446,11 @@ usePortfolioScopedLoader(
       </UiCard>
       <UiEmpty v-else description="该分类暂无可手工编辑字段" />
     </a-spin>
+    <PortfolioArchiveVersionComparePanel
+      v-model:open="versionCompareOpen"
+      :versions="versionHistory"
+      :default-right-id="recordId"
+    />
   </StageWorkbenchShell>
 </template>
 

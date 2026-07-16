@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioMaskRuleVO } from '@/apis/portfolio/governance'
-import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioSecurityApi } from '@/apis/portfolio/governance'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -32,6 +30,9 @@ import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const loading = ref(false)
+const loadError = ref(false)
+const requestToken = ref(0)
+const saving = ref(false)
 const rows = ref<PortfolioMaskRuleVO[]>([])
 const total = ref(0)
 const editorOpen = ref(false)
@@ -52,12 +53,6 @@ const columns: ColumnsType = [
   { title: '状态', key: 'enabled', width: 80 },
   { title: '更新时间', dataIndex: 'updateTime', key: 'updateTime', width: 170 },
 ]
-
-const pagination = computed(() => ({
-  current: query.pageNum,
-  pageSize: query.pageSize,
-  total: total.value,
-}))
 
 function fieldLabel(code: string) {
   return strictEnumLabel(
@@ -84,41 +79,51 @@ function strategyLabel(code: string) {
 }
 
 async function loadPage() {
+  const currentToken = requestToken.value + 1
+  requestToken.value = currentToken
+  const request = { pageNum: query.pageNum, pageSize: query.pageSize }
   loading.value = true
+  loadError.value = false
   try {
-    const result = await portfolioSecurityApi.pageMaskRule({
-      pageNum: query.pageNum,
-      pageSize: query.pageSize,
-    })
+    const result = await portfolioSecurityApi.pageMaskRule(request)
+    if (requestToken.value !== currentToken) return
     rows.value = result.list ?? []
     total.value = result.total ?? 0
   } catch (error) {
+    if (requestToken.value !== currentToken) return
+    rows.value = []
+    total.value = 0
+    loadError.value = true
     showUserError(error, '加载脱敏规则失败')
   } finally {
-    loading.value = false
+    if (requestToken.value === currentToken) loading.value = false
   }
 }
 
 async function saveRule() {
+  if (saving.value) return
+  saving.value = true
+  const request = {
+    fieldType: form.fieldType,
+    exportScope: form.exportScope,
+    maskStrategy: form.maskStrategy,
+    enabled: form.enabled,
+  }
   try {
-    await portfolioSecurityApi.saveMaskRule({
-      fieldType: form.fieldType,
-      exportScope: form.exportScope,
-      maskStrategy: form.maskStrategy,
-      enabled: form.enabled,
-    })
+    await portfolioSecurityApi.saveMaskRule(request)
     message.success('脱敏规则已保存')
     editorOpen.value = false
     await loadPage()
   } catch (error) {
     showUserError(error, '保存脱敏规则失败')
+  } finally {
+    saving.value = false
   }
 }
 
-function onTableChange(changeEvent: UiDataTableChangeEvent) {
-  const { pageNum, pageSize } = readUiDataTablePagination(changeEvent, DEFAULT_LIST_PAGE_SIZE)
-  query.pageNum = pageNum
-  query.pageSize = pageSize
+function onPageChange(page: { current: number; pageSize: number }) {
+  query.pageNum = page.current
+  query.pageSize = page.pageSize
   void loadPage()
 }
 
@@ -138,14 +143,20 @@ onMounted(() => {
       />
     </template>
     <UiCard>
-      <UiButton class="mask-rule-admin__add" @click="editorOpen = true"> 新增规则 </UiButton>
+      <UiButton class="mask-rule-admin__add" :disabled="saving" @click="editorOpen = true">
+        配置规则
+      </UiButton>
       <UiDataTable
+        v-model:current="query.pageNum"
+        v-model:page-size="query.pageSize"
         row-key="id"
         :columns="columns"
         :data-source="rows"
         :loading="loading"
-        :pagination="pagination"
-        @change="onTableChange"
+        :load-error="loadError"
+        pagination-mode="server"
+        :total="total"
+        @page-change="onPageChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'fieldType'">
@@ -165,7 +176,16 @@ onMounted(() => {
         </template>
       </UiDataTable>
     </UiCard>
-    <a-modal v-model:open="editorOpen" title="保存脱敏规则" @ok="saveRule">
+    <a-modal
+      v-model:open="editorOpen"
+      title="配置脱敏规则"
+      :confirm-loading="saving"
+      :closable="!saving"
+      :mask-closable="!saving"
+      :keyboard="!saving"
+      :cancel-button-props="{ disabled: saving }"
+      @ok="saveRule"
+    >
       <a-select
         v-model:value="form.fieldType"
         class="mask-rule-admin__field"
@@ -175,6 +195,7 @@ onMounted(() => {
             label: PortfolioMaskFieldTypeDescription[c],
           }))
         "
+        :disabled="saving"
       />
       <a-select
         v-model:value="form.exportScope"
@@ -185,6 +206,7 @@ onMounted(() => {
             label: PortfolioMaskExportScopeDescription[c],
           }))
         "
+        :disabled="saving"
       />
       <a-select
         v-model:value="form.maskStrategy"
@@ -195,8 +217,14 @@ onMounted(() => {
             label: PortfolioMaskStrategyDescription[c],
           }))
         "
+        :disabled="saving"
       />
-      <a-switch v-model:checked="form.enabled" checked-children="启用" un-checked-children="停用" />
+      <a-switch
+        v-model:checked="form.enabled"
+        checked-children="启用"
+        un-checked-children="停用"
+        :disabled="saving"
+      />
     </a-modal>
   </StageWorkbenchShell>
 </template>

@@ -1,8 +1,15 @@
 <template>
   <aside class="archive-volume-material-tree">
-    <UiEmpty v-if="catalogLoadFailed" description="目录加载失败" />
+    <UiEmpty v-if="catalogLoadFailed" description="目录加载失败">
+      <UiTextAction tone="primary" @click="loadCatalogLines">重新加载</UiTextAction>
+    </UiEmpty>
     <UiEmpty v-else-if="!treeGroups.length" description="暂无目录项" />
     <div v-else class="catalog-tree">
+      <UiAlertStrip v-if="materialStatsLoadFailed" tone="warning" title="就绪统计加载失败">
+        <template #actions>
+          <UiTextAction tone="primary" @click="loadMaterialStats">重新加载</UiTextAction>
+        </template>
+      </UiAlertStrip>
       <template v-for="group in treeGroups" :key="group.category">
         <div class="catalog-category">{{ group.category }}</div>
         <button
@@ -48,14 +55,16 @@ import type {
   ArchiveVolumeCatalogLineVO,
   ArchiveVolumeMaterialCatalogReadySummaryVO,
 } from '@/apis/mark/archive-volume'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   ArchiveMaterialTypeDescription,
   getArchiveVolumeCatalog,
   getArchiveVolumeMaterialStats,
 } from '@/apis/mark/archive-volume'
+import { computed, onMounted, ref, watch } from 'vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { ALL_ARCHIVE_MATERIAL_TYPE_CODES } from '@/types/enums/archive-material-type-enum'
 import {
   archiveMissingItemTargetsCatalogKey,
@@ -101,6 +110,7 @@ interface CatalogTreeGroup {
 const catalogLines = ref<ArchiveVolumeCatalogLineVO[]>([])
 const catalogLoadFailed = ref(false)
 const catalogSummaries = ref<ArchiveVolumeMaterialCatalogReadySummaryVO[]>([])
+const materialStatsLoadFailed = ref(false)
 
 function materialTypeLabel(code: ArchiveMaterialTypeCode) {
   return strictEnumLabel(ArchiveMaterialTypeDescription, code, 'materialType')
@@ -210,13 +220,15 @@ function selectEntry(key: string) {
 async function loadMaterialStats(): Promise<void> {
   if (!props.volumeId) {
     catalogSummaries.value = []
+    materialStatsLoadFailed.value = false
     return
   }
   try {
     const stats = await getArchiveVolumeMaterialStats({ volumeId: props.volumeId })
     catalogSummaries.value = stats.catalogSummaries
+    materialStatsLoadFailed.value = false
   } catch (error) {
-    catalogSummaries.value = []
+    materialStatsLoadFailed.value = true
     showUserError(error, '加载材料统计失败')
   }
 }

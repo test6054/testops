@@ -15,13 +15,13 @@ import AccreditationSupportPanel from '@/components/quality/accreditation/Accred
 import SelfAssessmentReportPanel from '@/components/quality/accreditation/SelfAssessmentReportPanel.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageRail from '@/components/workbench/StageRail.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useAccreditationWorkbench } from '@/composables/useAccreditationWorkbench'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 
@@ -52,16 +52,16 @@ const evidenceCount = ref(0)
 
 const cyclePanelRef = ref<InstanceType<typeof AccreditationCyclePanel>>()
 const annualPanelRef = ref<InstanceType<typeof AccreditationAnnualPanel>>()
-const annualReportMaterialPanelRef
-  = ref<InstanceType<typeof AccreditationAnnualReportMaterialPanel>>()
+const annualReportMaterialPanelRef =
+  ref<InstanceType<typeof AccreditationAnnualReportMaterialPanel>>()
 const onsitePanelRef = ref<InstanceType<typeof AccreditationOnsitePanel>>()
 const supportPanelRef = ref<InstanceType<typeof AccreditationSupportPanel>>()
 const evidencePanelRef = ref<InstanceType<typeof AccreditationEvidencePanel>>()
 
 function readinessReady(itemKey: string): boolean {
   return (
-    cockpit.value?.conclusionReadinessItems?.find((item) => item.itemKey === itemKey)?.ready
-    === true
+    cockpit.value?.conclusionReadinessItems?.find((item) => item.itemKey === itemKey)?.ready ===
+    true
   )
 }
 
@@ -81,25 +81,25 @@ const ceeaa2024CheckItems = computed(() => {
       label: '4.2 培养目标·为党育人',
       desc: '培养目标应符合"为党育人、为国育才"总要求',
       passed:
-        readinessReady('GRADUATION_REQUIREMENT_READY')
-        && readinessReady('PROGRAM_QUALITY_REPORT_READY'),
+        readinessReady('GRADUATION_REQUIREMENT_READY') &&
+        readinessReady('PROGRAM_QUALITY_REPORT_READY'),
     },
     {
       key: '4.3-graduate',
       label: '4.3 毕业要求·工程报国',
       desc: '毕业要求应包含工程伦理和职业规范（含工程报国意识）',
       passed:
-        readinessReady('GRADUATION_REQUIREMENT_READY')
-        && readinessReady('ACHIEVEMENT_RESULT_READY'),
+        readinessReady('GRADUATION_REQUIREMENT_READY') &&
+        readinessReady('ACHIEVEMENT_RESULT_READY'),
     },
     {
       key: '4.4-curriculum',
       label: '4.4 课程体系·价值导向',
       desc: '课程设置和教学实施应体现正确的价值导向',
       passed:
-        readinessReady('ENABLED_QUALITY_COURSE_READY')
-        && readinessReady('COURSE_GOAL_READY')
-        && readinessReady('SUPPORT_MATRIX_READY'),
+        readinessReady('ENABLED_QUALITY_COURSE_READY') &&
+        readinessReady('COURSE_GOAL_READY') &&
+        readinessReady('SUPPORT_MATRIX_READY'),
     },
     {
       key: '4.5-faculty',
@@ -118,9 +118,9 @@ const ceeaa2024CheckItems = computed(() => {
       label: '4.7 持续改进·达成度闭环',
       desc: '"评价→分析→改进→再评价"闭环机制',
       passed:
-        readinessReady('ACHIEVEMENT_RESULT_READY')
-        && readinessReady('IMPROVEMENT_TASK_CLOSED')
-        && c?.annualReportMaterialsReady === true,
+        readinessReady('ACHIEVEMENT_RESULT_READY') &&
+        readinessReady('IMPROVEMENT_TASK_CLOSED') &&
+        c?.annualReportMaterialsReady === true,
     },
   ]
 })
@@ -136,6 +136,21 @@ const signalMetrics = computed(() => {
 })
 
 const annualCourseCoverages = computed(() => cockpit.value?.annualCourseCoverages || [])
+
+const showAllCeeaaChecks = ref(false)
+
+const ceeaaPendingItems = computed(() => ceeaa2024CheckItems.value.filter((item) => !item.passed))
+
+const ceeaaPassedCount = computed(
+  () => ceeaa2024CheckItems.value.length - ceeaaPendingItems.value.length,
+)
+
+const visibleCeeaaCheckItems = computed(() => {
+  if (showAllCeeaaChecks.value || ceeaaPendingItems.value.length === 0) {
+    return ceeaa2024CheckItems.value
+  }
+  return ceeaaPendingItems.value
+})
 
 async function refreshAll() {
   await reloadCockpit(true)
@@ -244,15 +259,36 @@ onActivated(() => {
     <UiEmpty v-if="!hasScope" description="请选择专业与培养方案" class="acc-empty" />
 
     <template v-else>
-      <!-- CEEAA 2024 标准对齐检查面板 -->
-      <UiCard v-if="activeCycle" class="acc-standard-check">
-        <template #title>
-          <SafetyCertificateOutlined />
-          <span>CEEAA 2024 标准对齐检查</span>
+      <WorkbenchSurfaceCard v-if="activeCycle" class="acc-standard-check">
+        <template #head>
+          <div class="acc-standard-check__head">
+            <div class="acc-standard-check__title">
+              <SafetyCertificateOutlined />
+              <span>CEEAA 2024 标准对齐</span>
+            </div>
+            <div class="acc-standard-check__summary">
+              <UiTag :tone="ceeaaPendingItems.length ? 'orange' : 'green'" size="sm">
+                已覆盖 {{ ceeaaPassedCount }}/{{ ceeaa2024CheckItems.length }}
+              </UiTag>
+              <UiButton
+                v-if="ceeaaPendingItems.length > 0"
+                variant="ghost"
+                size="sm"
+                @click="showAllCeeaaChecks = !showAllCeeaaChecks"
+              >
+                {{
+                  showAllCeeaaChecks ? '仅看待完善' : `还有 ${ceeaaPendingItems.length} 项待完善`
+                }}
+              </UiButton>
+            </div>
+          </div>
         </template>
-        <div class="acc-standard-check__grid">
+        <p v-if="ceeaaPendingItems.length === 0" class="acc-standard-check__ok">
+          当前周期标准检查项均已覆盖，可继续下方认证工作。
+        </p>
+        <div v-else class="acc-standard-check__grid">
           <button
-            v-for="item in ceeaa2024CheckItems"
+            v-for="item in visibleCeeaaCheckItems"
             :key="item.key"
             type="button"
             class="acc-standard-check__item"
@@ -280,7 +316,7 @@ onActivated(() => {
             }}
           </span>
         </div>
-      </UiCard>
+      </WorkbenchSurfaceCard>
 
       <a-tabs v-model:active-key="activeTab" class="acc-tabs">
         <a-tab-pane key="cycle" tab="认证周期">
@@ -407,10 +443,30 @@ onActivated(() => {
 .acc-standard-check {
   margin-bottom: 12px;
 }
-.acc-standard-check :deep(.ui-card__header) {
+.acc-standard-check__head {
   display: flex;
-  gap: 8px;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+.acc-standard-check__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.acc-standard-check__summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.acc-standard-check__ok {
+  margin: 0;
+  font-size: 13px;
+  color: var(--dp-text-secondary);
 }
 .acc-standard-check__grid {
   display: grid;
@@ -424,26 +480,21 @@ onActivated(() => {
   align-items: center;
   padding: 8px;
   border: 1px solid var(--dp-border);
-  border-radius: 4px;
+  border-radius: var(--dp-radius-control);
   background: var(--dp-surface);
   text-align: left;
   width: 100%;
 
-  &--actionable {
-    cursor: pointer;
-    transition:
-      border-color 0.2s ease,
-      box-shadow 0.2s ease;
-
-    &:hover {
-      border-color: var(--ant-color-primary-border);
-      box-shadow: var(--dp-shadow-sm);
-    }
-  }
-
   &:disabled {
     cursor: default;
   }
+}
+.acc-standard-check__item--actionable {
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+.acc-standard-check__item--actionable:hover {
+  border-color: var(--ant-color-primary-border);
 }
 .acc-standard-check__label {
   font-weight: 600;
@@ -471,13 +522,13 @@ onActivated(() => {
 }
 .acc-course-coverage__title {
   font-weight: 600;
-  color: rgba(0, 0, 0, 0.72);
+  color: var(--dp-text-secondary);
 }
 .acc-course-coverage__item {
   padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(15, 118, 110, 0.08);
-  color: #0f766e;
+  border-radius: var(--dp-radius-full);
+  background: color-mix(in srgb, var(--ant-color-success) 12%, transparent);
+  color: var(--ant-color-success);
 }
 .acc-tabs :deep(.ant-tabs-nav) {
   margin-bottom: 12px;

@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
-import { computed } from 'vue'
 import {
   templateParamFieldsForRuleType,
   templateParamLabel,
 } from '@/utils/indicator-template-params'
+import { computed } from 'vue'
 
 const props = defineProps<{
   ruleType: string
   params: PortfolioIndicatorTemplateParams
+  disabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -40,6 +41,7 @@ function patch(key: keyof PortfolioIndicatorTemplateParams, value: string | numb
       <a-input-number
         :value="params[field]"
         :step="field === 'targetRatio' || field === 'weight' ? 0.01 : 1"
+        :disabled="props.disabled"
         style="width: 100%"
         @update:value="patch(field, $event)"
       />

@@ -2,12 +2,14 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioCorrectionRequestStatusCode } from '@/apis/portfolio/enums'
+import { PortfolioCorrectionRequestStatusDescription } from '@/apis/portfolio/enums'
 import type {
   PortfolioCorrectionDetailVO,
   PortfolioCorrectionSummaryVO,
   PortfolioTargetFieldDefinition,
   PortfolioTeacherOneTableCategoryVO,
 } from '@/apis/portfolio/types'
+import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
@@ -15,8 +17,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
-import { PortfolioCorrectionRequestStatusDescription } from '@/apis/portfolio/enums'
-import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -70,6 +70,8 @@ const categoryRequestToken = ref(0)
 const fieldRequestToken = ref(0)
 const correctionListRequestToken = ref(0)
 const detailRequestToken = ref(0)
+const scopeRequestToken = ref(0)
+const formEpoch = ref(0)
 const categories = ref<PortfolioTeacherOneTableCategoryVO[]>([])
 const publishedFields = ref<PortfolioTargetFieldDefinition[]>([])
 const drawerOpen = ref(false)
@@ -129,9 +131,10 @@ function resetDetailContext() {
 
 /** 路由深链是纠错上下文真源；切换记录时必须清空旧表单，避免误提到上一条档案。 */
 function applyRoutePrefill() {
+  formEpoch.value += 1
   form.categoryId = typeof route.query.categoryId === 'string' ? route.query.categoryId : ''
-  form.archiveRecordId
-    = typeof route.query.archiveRecordId === 'string' ? route.query.archiveRecordId : ''
+  form.archiveRecordId =
+    typeof route.query.archiveRecordId === 'string' ? route.query.archiveRecordId : ''
   form.fieldCode = typeof route.query.fieldCode === 'string' ? route.query.fieldCode : ''
   form.fieldLabel = typeof route.query.fieldLabel === 'string' ? route.query.fieldLabel : ''
   form.wrongValue = typeof route.query.wrongValue === 'string' ? route.query.wrongValue : ''
@@ -141,19 +144,31 @@ function applyRoutePrefill() {
 }
 
 async function loadPublishedFields(categoryId: string, archiveRecordId?: string) {
+  const currentScopeToken = scopeRequestToken.value
   const currentToken = ++fieldRequestToken.value
   if (!categoryId) {
     publishedFields.value = []
     return
   }
   try {
-    const published = await portfolioArchiveTemplateApi.listPublishedFields({ categoryId, archiveRecordId })
-    if (currentToken !== fieldRequestToken.value || form.categoryId !== categoryId) {
+    const published = await portfolioArchiveTemplateApi.listPublishedFields({
+      categoryId,
+      archiveRecordId,
+    })
+    if (
+      scopeRequestToken.value !== currentScopeToken ||
+      currentToken !== fieldRequestToken.value ||
+      form.categoryId !== categoryId
+    ) {
       return
     }
     publishedFields.value = published.targetFields
   } catch (error) {
-    if (currentToken !== fieldRequestToken.value || form.categoryId !== categoryId) {
+    if (
+      scopeRequestToken.value !== currentScopeToken ||
+      currentToken !== fieldRequestToken.value ||
+      form.categoryId !== categoryId
+    ) {
       return
     }
     publishedFields.value = []
@@ -162,6 +177,7 @@ async function loadPublishedFields(categoryId: string, archiveRecordId?: string)
 }
 
 async function loadCategories() {
+  const currentScopeToken = scopeRequestToken.value
   const currentToken = ++categoryRequestToken.value
   if (canPickTeachers.value && !targetTeacherId.value) {
     categories.value = []
@@ -170,7 +186,10 @@ async function loadCategories() {
   }
   try {
     const vo = await portfolioArchiveApi.getOneTable(teacherRequest.value)
-    if (currentToken !== categoryRequestToken.value) {
+    if (
+      scopeRequestToken.value !== currentScopeToken ||
+      currentToken !== categoryRequestToken.value
+    ) {
       return
     }
     categories.value = vo.categories
@@ -189,14 +208,20 @@ async function loadCategories() {
     form.archiveRecordId = ''
     publishedFields.value = []
   } catch (error) {
-    if (currentToken !== categoryRequestToken.value) {
+    if (
+      scopeRequestToken.value !== currentScopeToken ||
+      currentToken !== categoryRequestToken.value
+    ) {
       return
     }
+    categories.value = []
+    publishedFields.value = []
     showUserError(error, '加载档案分类失败')
   }
 }
 
 async function loadCorrections() {
+  const currentScopeToken = scopeRequestToken.value
   const currentToken = ++correctionListRequestToken.value
   if (canPickTeachers.value && !targetTeacherId.value) {
     rows.value = []
@@ -210,64 +235,99 @@ async function loadCorrections() {
       pageNum: pageNum.value,
       pageSize: pageSize.value,
     })
-    if (currentToken !== correctionListRequestToken.value) {
+    if (
+      scopeRequestToken.value !== currentScopeToken ||
+      currentToken !== correctionListRequestToken.value
+    ) {
       return
     }
     rows.value = page.list
     pageTotal.value = page.total
   } catch (error) {
-    if (currentToken !== correctionListRequestToken.value) {
+    if (
+      scopeRequestToken.value !== currentScopeToken ||
+      currentToken !== correctionListRequestToken.value
+    ) {
       return
     }
+    rows.value = []
+    pageTotal.value = 0
     showUserError(error, '加载纠错列表失败')
   } finally {
-    if (currentToken === correctionListRequestToken.value) {
+    if (
+      scopeRequestToken.value === currentScopeToken &&
+      currentToken === correctionListRequestToken.value
+    ) {
       loading.value = false
     }
   }
 }
 
 async function openDetail(id: string) {
+  const currentScopeToken = scopeRequestToken.value
   const currentToken = ++detailRequestToken.value
   drawerOpen.value = true
   detail.value = null
   detailLoading.value = true
   try {
     const nextDetail = await portfolioCorrectionApi.getCorrection(id)
-    if (currentToken !== detailRequestToken.value) {
+    if (
+      scopeRequestToken.value !== currentScopeToken ||
+      currentToken !== detailRequestToken.value
+    ) {
       return
     }
     detail.value = nextDetail
   } catch (error) {
-    if (currentToken !== detailRequestToken.value) {
+    if (
+      scopeRequestToken.value !== currentScopeToken ||
+      currentToken !== detailRequestToken.value
+    ) {
       return
     }
     showUserError(error, '加载纠错详情失败')
   } finally {
-    if (currentToken === detailRequestToken.value) {
+    if (
+      scopeRequestToken.value === currentScopeToken &&
+      currentToken === detailRequestToken.value
+    ) {
       detailLoading.value = false
     }
   }
 }
 
 async function handleSubmit() {
-  if (!form.categoryId || !form.fieldCode.trim() || !form.expectedValue.trim() || !form.reason.trim()) {
+  if (submitting.value || (canPickTeachers.value && !targetTeacherId.value)) {
+    return
+  }
+  if (
+    !form.categoryId ||
+    !form.fieldCode.trim() ||
+    !form.expectedValue.trim() ||
+    !form.reason.trim()
+  ) {
     message.warning('请填写分类、字段、期望正确值与纠错原因')
     return
   }
+  const currentScopeToken = scopeRequestToken.value
+  const currentFormEpoch = formEpoch.value
+  const request = {
+    ...teacherRequest.value,
+    categoryId: form.categoryId,
+    archiveRecordId: form.archiveRecordId || undefined,
+    fieldCode: form.fieldCode.trim(),
+    fieldLabel: form.fieldLabel.trim() || undefined,
+    wrongValue: form.wrongValue.trim() || undefined,
+    expectedValue: form.expectedValue.trim(),
+    reason: form.reason.trim(),
+    evidenceRef: form.evidenceRef.trim() || undefined,
+  }
   submitting.value = true
   try {
-    await portfolioCorrectionApi.submit({
-      ...teacherRequest.value,
-      categoryId: form.categoryId,
-      archiveRecordId: form.archiveRecordId || undefined,
-      fieldCode: form.fieldCode.trim(),
-      fieldLabel: form.fieldLabel.trim() || undefined,
-      wrongValue: form.wrongValue.trim() || undefined,
-      expectedValue: form.expectedValue.trim(),
-      reason: form.reason.trim(),
-      evidenceRef: form.evidenceRef.trim() || undefined,
-    })
+    await portfolioCorrectionApi.submit(request)
+    if (scopeRequestToken.value !== currentScopeToken || formEpoch.value !== currentFormEpoch) {
+      return
+    }
     message.success('纠错申请已提交')
     form.fieldCode = ''
     form.fieldLabel = ''
@@ -278,13 +338,18 @@ async function handleSubmit() {
     pageNum.value = 1
     await loadCorrections()
   } catch (error) {
+    if (scopeRequestToken.value !== currentScopeToken || formEpoch.value !== currentFormEpoch) {
+      return
+    }
     showUserError(error, '提交纠错失败')
   } finally {
-    submitting.value = false
+    if (scopeRequestToken.value === currentScopeToken) {
+      submitting.value = false
+    }
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   pageNum.value = page.current
   pageSize.value = page.pageSize
   void loadCorrections()
@@ -314,10 +379,22 @@ function openCorrectionDetail(row: PortfolioCorrectionSummaryVO): void {
 
 usePortfolioScopedLoader(
   () => {
+    scopeRequestToken.value += 1
+    categoryRequestToken.value += 1
     fieldRequestToken.value += 1
     correctionListRequestToken.value += 1
+    loading.value = false
+    submitting.value = false
+    categories.value = []
+    publishedFields.value = []
+    rows.value = []
+    pageTotal.value = 0
+    applyRoutePrefill()
     pageNum.value = 1
     resetDetailContext()
+    if (canPickTeachers.value && !targetTeacherId.value) {
+      return
+    }
     void loadCategories()
     void loadCorrections()
   },
@@ -365,6 +442,7 @@ watch(
               v-model:value="form.categoryId"
               :options="categoryOptions"
               placeholder="选择分类"
+              :disabled="submitting"
               @change="onCategoryChange"
             />
           </a-form-item>
@@ -375,20 +453,21 @@ watch(
               placeholder="选择已发布模板字段"
               show-search
               option-filter-prop="label"
+              :disabled="submitting"
               @change="onFieldChange"
             />
           </a-form-item>
           <a-form-item label="当前错误值">
-            <a-input v-model:value="form.wrongValue" />
+            <a-input v-model:value="form.wrongValue" :disabled="submitting" />
           </a-form-item>
           <a-form-item label="期望正确值" required>
-            <a-input v-model:value="form.expectedValue" />
+            <a-input v-model:value="form.expectedValue" :disabled="submitting" />
           </a-form-item>
           <a-form-item label="纠错原因" required>
-            <a-textarea v-model:value="form.reason" :rows="3" />
+            <a-textarea v-model:value="form.reason" :rows="3" :disabled="submitting" />
           </a-form-item>
           <a-form-item label="佐证引用">
-            <a-input v-model:value="form.evidenceRef" />
+            <a-input v-model:value="form.evidenceRef" :disabled="submitting" />
           </a-form-item>
           <UiButton :loading="submitting" @click="handleSubmit"> 提交纠错 </UiButton>
         </a-form>

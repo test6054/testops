@@ -1,21 +1,22 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentPlanStatusCode } from '@/apis/portfolio/enums'
-import type {
-  PortfolioDeptOneTableSummaryVO,
-  PortfolioDeptOneTableTeacherRowVO,
-} from '@/apis/portfolio/teacher'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
   PortfolioCompletenessLevelCode,
   PortfolioCompletenessLevelDescription,
   PortfolioDevelopmentPlanStatusDescription,
 } from '@/apis/portfolio/enums'
+import type {
+  PortfolioDeptOneTableSummaryVO,
+  PortfolioDeptOneTableTeacherRowVO,
+  PortfolioDeptTeacherSegmentItemVO,
+} from '@/apis/portfolio/teacher'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import MarkChartCard from '@/components/chart/MarkChartCard.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -43,6 +44,7 @@ const exporting = ref(false)
 const summaryRequestToken = ref(0)
 const teacherRequestToken = ref(0)
 const summary = ref<PortfolioDeptOneTableSummaryVO | null>(null)
+const teacherSegments = ref<PortfolioDeptTeacherSegmentItemVO[]>([])
 const teacherRows = ref<PortfolioDeptOneTableTeacherRowVO[]>([])
 const teacherTotal = ref(0)
 interface PortfolioDepartmentOneTableFilter {
@@ -168,6 +170,7 @@ async function loadSummary() {
   const currentToken = ++summaryRequestToken.value
   if (!filter.departmentId) {
     summary.value = null
+    teacherSegments.value = []
     teacherRows.value = []
     teacherTotal.value = 0
     loading.value = false
@@ -180,15 +183,21 @@ async function loadSummary() {
     completenessLevel: completenessLevelFilter.value || undefined,
   }
   try {
-    const nextSummary = await portfolioTeacherApi.getDeptOneTableSummary(request)
+    const [nextSummary, segmentSummary] = await Promise.all([
+      portfolioTeacherApi.getDeptOneTableSummary(request),
+      portfolioTeacherApi.getDeptTeacherSegments({ departmentId: filter.departmentId }),
+    ])
     if (currentToken !== summaryRequestToken.value) {
       return
     }
     summary.value = nextSummary
+    teacherSegments.value = segmentSummary.segments ?? []
   } catch (error) {
     if (currentToken !== summaryRequestToken.value) {
       return
     }
+    summary.value = null
+    teacherSegments.value = []
     showUserError(error)
   } finally {
     if (currentToken === summaryRequestToken.value) {
@@ -226,6 +235,8 @@ async function loadTeachers() {
     if (currentToken !== teacherRequestToken.value) {
       return
     }
+    teacherRows.value = []
+    teacherTotal.value = 0
     showUserError(error)
   } finally {
     if (currentToken === teacherRequestToken.value) {
@@ -242,6 +253,9 @@ async function reloadAll() {
 }
 
 function applyCompletenessFilter(level: PortfolioCompletenessLevelCode | '') {
+  if (exporting.value) {
+    return
+  }
   completenessLevelFilter.value = level
   teacherQuery.pageNum = 1
   const query: Record<string, string> = {}
@@ -273,12 +287,26 @@ async function exportDeptOneTable() {
     message.warning('请先选择院系')
     return
   }
+  if (exporting.value) {
+    return
+  }
+  const departmentId = filter.departmentId
+  const planYear = filter.planYear.trim() || undefined
+  const completenessLevel = completenessLevelFilter.value || undefined
   exporting.value = true
   try {
     const result = await portfolioTeacherApi.exportDeptOneTable({
-      departmentId: filter.departmentId,
-      planYear: filter.planYear.trim() || undefined,
+      departmentId,
+      planYear,
+      completenessLevel,
     })
+    if (
+      filter.departmentId !== departmentId ||
+      (filter.planYear.trim() || undefined) !== planYear ||
+      (completenessLevelFilter.value || undefined) !== completenessLevel
+    ) {
+      return
+    }
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 行`)
   } catch (error) {
@@ -292,7 +320,7 @@ function structureCount(key: (typeof titleStructureRows)[number]['key']) {
   return summary.value?.[key] ?? 0
 }
 
-function handleTeacherPageChange(page: { current: number, pageSize: number }) {
+function handleTeacherPageChange(page: { current: number; pageSize: number }) {
   teacherQuery.pageNum = page.current
   teacherQuery.pageSize = page.pageSize
   void loadTeachers()
@@ -358,8 +386,8 @@ onMounted(async () => {
   await loadTree()
   const queryDepartmentId = readRouteStringParam(route.query.departmentId)
   if (
-    queryDepartmentId
-    && departmentOptions.value.some((option) => option.value === queryDepartmentId)
+    queryDepartmentId &&
+    departmentOptions.value.some((option) => option.value === queryDepartmentId)
   ) {
     filter.departmentId = queryDepartmentId
   }
@@ -425,9 +453,11 @@ watch(
           style="width: 240px"
           :options="departmentOptions"
           allow-clear
+          :disabled="exporting"
         />
         <a-input
           v-model:value="filter.planYear"
+          :disabled="exporting"
           placeholder="规划年度（可选）"
           style="width: 140px"
         />
@@ -501,6 +531,25 @@ watch(
               </a-descriptions-item>
             </template>
           </a-descriptions>
+          <div v-if="teacherSegments.length" class="teacher-segments" aria-label="教师行动分层">
+            <section v-for="segment in teacherSegments" :key="segment.segmentCode">
+              <div>
+                <span>{{ segment.segmentLabel }}</span>
+                <strong>{{ segment.teacherCount }}</strong>
+              </div>
+              <div v-if="segment.sampleTeacherUserIds.length" class="teacher-segments__samples">
+                <button
+                  v-for="teacherId in segment.sampleTeacherUserIds"
+                  :key="teacherId"
+                  type="button"
+                  @click="goTeacherHome(teacherId)"
+                >
+                  {{ teacherId }}
+                </button>
+              </div>
+              <span v-else>暂无命中教师</span>
+            </section>
+          </div>
           <div class="detail-grid">
             <UiCard title="职称结构">
               <UiDataTable
@@ -611,6 +660,40 @@ watch(
   gap: 16px;
   margin-top: 16px;
 }
+.teacher-segments {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.teacher-segments section {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--dp-border, #e8e8e8);
+  border-radius: 6px;
+}
+.teacher-segments section > div:first-child {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.teacher-segments strong {
+  font-size: 20px;
+}
+.teacher-segments__samples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.teacher-segments__samples button {
+  padding: 0;
+  border: 0;
+  color: var(--ant-color-primary);
+  background: transparent;
+  cursor: pointer;
+}
 .completeness-distribution {
   display: inline-flex;
   flex-wrap: wrap;
@@ -635,7 +718,8 @@ watch(
   color: var(--dp-text-secondary);
 }
 @media (max-width: 960px) {
-  .detail-grid {
+  .detail-grid,
+  .teacher-segments {
     grid-template-columns: 1fr;
   }
 }

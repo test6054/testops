@@ -4,13 +4,11 @@
  */
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioTeacherPageRequest, PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
-import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -25,6 +23,7 @@ import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { usePortfolioStore } from '@/stores/modules/portfolio'
 import { showUserError } from '@/utils/error-handler'
 
+const route = useRoute()
 const router = useRouter()
 const portfolioStore = usePortfolioStore()
 const { loadTree, treeRoots, departmentOptions, portfolioOrgOptions } = usePortfolioOrgTree()
@@ -34,6 +33,7 @@ const loading = ref(false)
 const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 const list = ref<PortfolioTeacherSummaryVO[]>([])
 const total = ref(0)
+const requestToken = ref(0)
 
 const query = reactive<PortfolioTeacherPageRequest>({
   pageNum: 1,
@@ -86,7 +86,10 @@ const filterFields = computed<FilterField[]>(() => {
     options: portfolioOrgOptions().map((item) => ({ label: item.label, value: item.value })),
     allowClear: true,
   })
-  if (accessScope.value?.teachingGroupLeader && (accessScope.value.managedTeachingGroupIds?.length ?? 0) > 1) {
+  if (
+    accessScope.value?.teachingGroupLeader &&
+    (accessScope.value.managedTeachingGroupIds?.length ?? 0) > 1
+  ) {
     const groupOptions = flattenTeachingGroupOptions(
       treeRoots.value,
       accessScope.value.managedTeachingGroupIds,
@@ -113,27 +116,42 @@ const columns: ColumnsType = [
 ]
 
 async function loadPage() {
+  const currentToken = requestToken.value + 1
+  requestToken.value = currentToken
+  const request = { ...query }
   beginLoad()
   loading.value = true
   try {
-    const page = await portfolioTeacherApi.page({ ...query })
+    const page = await portfolioTeacherApi.page(request)
+    if (requestToken.value !== currentToken) {
+      return
+    }
     list.value = page.list ?? []
     total.value = page.total ?? 0
-  
     okLoad()
   } catch (error) {
+    if (requestToken.value !== currentToken) {
+      return
+    }
+    list.value = []
+    total.value = 0
     failLoad()
     showUserError(error, '加载失败')
   } finally {
-    loading.value = false
+    if (requestToken.value === currentToken) {
+      loading.value = false
+    }
   }
 }
 
 function handleSearch(values: Record<string, unknown>) {
   filterForm.searchText = typeof values.searchText === 'string' ? values.searchText : ''
-  filterForm.departmentId = typeof values.departmentId === 'string' ? values.departmentId : undefined
-  filterForm.portfolioOrgId = typeof values.portfolioOrgId === 'string' ? values.portfolioOrgId : undefined
-  filterForm.teachingGroupId = typeof values.teachingGroupId === 'string' ? values.teachingGroupId : undefined
+  filterForm.departmentId =
+    typeof values.departmentId === 'string' ? values.departmentId : undefined
+  filterForm.portfolioOrgId =
+    typeof values.portfolioOrgId === 'string' ? values.portfolioOrgId : undefined
+  filterForm.teachingGroupId =
+    typeof values.teachingGroupId === 'string' ? values.teachingGroupId : undefined
   query.pageNum = 1
   query.searchText = filterForm.searchText || undefined
   query.departmentId = filterForm.departmentId
@@ -142,15 +160,10 @@ function handleSearch(values: Record<string, unknown>) {
   void loadPage()
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   void loadPage()
-}
-
-function onTableChange(changeEvent: UiDataTableChangeEvent) {
-  const { pageNum, pageSize } = readUiDataTablePagination(changeEvent, DEFAULT_LIST_PAGE_SIZE)
-  handlePageChange({ current: pageNum, pageSize })
 }
 
 function rowActions(_record: PortfolioTeacherSummaryVO): UiTableRowActionItem[] {
@@ -204,13 +217,18 @@ function handleAction(key: string, record: PortfolioTeacherSummaryVO) {
 onMounted(async () => {
   await ensureLoaded()
   await loadTree(false)
-  if (accessScope.value?.teachingGroupLeader && accessScope.value.reviewerDepartmentId) {
+  const requestedDepartmentId =
+    typeof route.query.departmentId === 'string' ? route.query.departmentId : undefined
+  if (accessScope.value?.tenantWide && requestedDepartmentId) {
+    query.departmentId = requestedDepartmentId
+    filterForm.departmentId = requestedDepartmentId
+  } else if (accessScope.value?.teachingGroupLeader && accessScope.value.reviewerDepartmentId) {
     query.departmentId = accessScope.value.reviewerDepartmentId
     filterForm.departmentId = accessScope.value.reviewerDepartmentId
   }
   if (
-    accessScope.value?.teachingGroupLeader
-    && (accessScope.value.managedTeachingGroupIds?.length ?? 0) === 1
+    accessScope.value?.teachingGroupLeader &&
+    (accessScope.value.managedTeachingGroupIds?.length ?? 0) === 1
   ) {
     query.teachingGroupId = accessScope.value.managedTeachingGroupIds![0]
     filterForm.teachingGroupId = accessScope.value.managedTeachingGroupIds![0]
@@ -233,19 +251,17 @@ onMounted(async () => {
     <UiCard title="权限范围内教师">
       <UiFilterBar :fields="filterFields" :model="filterForm" @search="handleSearch" />
       <UiDataTable
+        v-model:current="query.pageNum"
+        v-model:page-size="query.pageSize"
         row-key="userId"
         :columns="columns"
         :data-source="list"
         :loading="loading"
         :load-error="loadError"
-        :pagination="{
-          current: query.pageNum,
-          pageSize: query.pageSize,
-          total,
-          showSizeChanger: true,
-        }"
+        pagination-mode="server"
+        :total="total"
         style="margin-top: 12px"
-        @change="onTableChange"
+        @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'completeness'">

@@ -4,9 +4,9 @@ import type {
   PortfolioTeachingPhilosophySaveRequest,
   PortfolioTeachingPhilosophyVO,
 } from '@/apis/portfolio/teaching-philosophy'
+import { portfolioTeachingPhilosophyApi } from '@/apis/portfolio/teaching-philosophy'
 import { Form, Input, message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
-import { portfolioTeachingPhilosophyApi } from '@/apis/portfolio/teaching-philosophy'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -28,6 +28,7 @@ const loadFailed = ref(false)
 const rows = ref<PortfolioTeachingPhilosophyVO[]>([])
 const modalOpen = ref(false)
 const editing = ref<PortfolioTeachingPhilosophyVO | null>(null)
+const deletingId = ref('')
 const requestToken = ref(0)
 
 const form = reactive<PortfolioTeachingPhilosophySaveRequest>({
@@ -60,6 +61,9 @@ async function loadList() {
   const currentToken = requestToken.value + 1
   requestToken.value = currentToken
   if (canPickTeachers.value && !targetTeacherId.value) {
+    loading.value = false
+    saving.value = false
+    loadFailed.value = false
     rows.value = []
     return
   }
@@ -75,6 +79,7 @@ async function loadList() {
     if (requestToken.value !== currentToken) {
       return
     }
+    rows.value = []
     loadFailed.value = true
     showUserError(error)
   } finally {
@@ -116,34 +121,46 @@ async function save() {
 }
 
 async function remove(row: PortfolioTeachingPhilosophyVO) {
-  if (readonlyMode.value) {
+  if (readonlyMode.value || deletingId.value) {
     return
   }
+  const teacherId = scopeTeacherId()
+  const operationToken = requestToken.value
   const confirmed = await confirmAsync({
     title: '删除教学理念',
     content: `确认删除 ${row.academicYear} 学年记录？`,
   })
-  if (!confirmed) {
+  if (!confirmed || requestToken.value !== operationToken) {
     return
   }
+  deletingId.value = row.id
   try {
-    await portfolioTeachingPhilosophyApi.delete({ id: row.id, teacherId: scopeTeacherId() })
+    await portfolioTeachingPhilosophyApi.delete({ id: row.id, teacherId })
+    if (requestToken.value !== operationToken) return
     message.success('已删除')
     await loadList()
   } catch (error) {
+    if (requestToken.value !== operationToken) return
     showUserError(error)
+  } finally {
+    if (deletingId.value === row.id) deletingId.value = ''
   }
 }
 
-usePortfolioScopedLoader(loadList, () => targetTeacherId.value)
 watch(
   () => targetTeacherId.value,
   () => {
     requestToken.value += 1
+    loading.value = false
+    saving.value = false
+    deletingId.value = ''
+    loadFailed.value = false
+    rows.value = []
     modalOpen.value = false
     resetEditorContext()
   },
 )
+usePortfolioScopedLoader(loadList, () => targetTeacherId.value)
 </script>
 
 <template>
@@ -168,7 +185,14 @@ watch(
             <UiButton variant="ghost" @click="openModal(record)">
               {{ readonlyMode ? '查看' : '编辑' }}
             </UiButton>
-            <UiButton v-if="!readonlyMode" variant="ghost" danger @click="remove(record)">
+            <UiButton
+              v-if="!readonlyMode"
+              variant="ghost"
+              danger
+              :loading="deletingId === record.id"
+              :disabled="Boolean(deletingId)"
+              @click="remove(record)"
+            >
               删除
             </UiButton>
           </template>

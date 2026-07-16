@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import type { ArchiveVolumeMemberDisplayVO } from '@/apis/mark/archive-volume'
+import { addArchiveVolumeMember, removeArchiveVolumeMember } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
 import { ref, watch } from 'vue'
-import { addArchiveVolumeMember, removeArchiveVolumeMember } from '@/apis/mark/archive-volume'
+import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
   ArchiveVolumeMemberRoleCode,
   archiveVolumeMemberRoleLabel,
@@ -18,7 +20,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [boolean]
-  "changed": []
+  changed: []
 }>()
 
 const addUserId = ref('')
@@ -63,6 +65,14 @@ async function handleAdd() {
 
 async function handleRemove(member: ArchiveVolumeMemberDisplayVO) {
   if (!member.memberId) return
+  const confirmed = await confirmAsync({
+    title: '移除协作老师？',
+    content: `将移除「${member.userName ?? member.userId}」在当前归档卷中的协作权限。`,
+    type: 'warning',
+    okText: '移除',
+    cancelText: '取消',
+  })
+  if (!confirmed) return
   submitting.value = true
   try {
     await removeArchiveVolumeMember({ volumeId: props.volumeId, memberId: member.memberId })
@@ -103,7 +113,11 @@ const roleOptions = [
       </div>
     </div>
     <div class="member-add">
-      <a-input v-model:value="addUserId" placeholder="用户 ID" />
+      <ArchiveDutyUserSelect
+        v-model:value="addUserId"
+        placeholder="选择本租户协作老师"
+        :disabled="submitting"
+      />
       <a-select
         v-model:value="addRole"
         :options="roleOptions"
@@ -116,7 +130,7 @@ const roleOptions = [
         :loading="submitting"
         @click="handleAdd"
       >
-        添加
+        添加或更新
       </UiButton>
     </div>
   </a-drawer>

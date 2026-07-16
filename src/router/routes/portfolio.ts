@@ -3,6 +3,7 @@
  * 与质量评价 /quality 平级，独立 Layout 域；API 前缀 /api/portfolio/*
  */
 import type { RouteRecordRaw } from 'vue-router'
+import type { PortfolioWorkShellCode } from '@/apis/portfolio/types'
 import { RoleEnum } from '@/utils/permission'
 import { PORTFOLIO_ROUTE_PREFIX } from '@/utils/portfolio-route'
 
@@ -16,11 +17,17 @@ const PORTFOLIO_ADMIN_ROUTE_META = {
 }
 
 const PORTFOLIO_TEACHER_MENU_GROUP = 'portfolio-teacher'
+const TEACHER_WORK_SHELLS: PortfolioWorkShellCode[] = ['TEACHER']
+const DEPARTMENT_REVIEW_WORK_SHELLS: PortfolioWorkShellCode[] = ['DEPARTMENT_REVIEW']
+const SCHOOL_GOVERNANCE_WORK_SHELLS: PortfolioWorkShellCode[] = ['SCHOOL_GOVERNANCE']
+const CONFIGURATION_WORK_SHELLS: PortfolioWorkShellCode[] = ['CONFIGURATION']
+
 const portfolioTeacherMenuMeta = {
   menuGroup: PORTFOLIO_TEACHER_MENU_GROUP,
   menuGroupTitle: '教师自助',
   menuGroupIcon: 'user',
   menuGroupOrder: 1,
+  portfolioWorkShells: TEACHER_WORK_SHELLS,
 }
 
 const PORTFOLIO_ORG_MENU_GROUP = 'portfolio-org'
@@ -29,6 +36,16 @@ const portfolioOrgMenuMeta = {
   menuGroupTitle: '组织与模板',
   menuGroupIcon: 'apartment',
   menuGroupOrder: 2,
+  portfolioWorkShells: CONFIGURATION_WORK_SHELLS,
+}
+
+const PORTFOLIO_DEPARTMENT_MENU_GROUP = 'portfolio-department'
+const portfolioDepartmentMenuMeta = {
+  menuGroup: PORTFOLIO_DEPARTMENT_MENU_GROUP,
+  menuGroupTitle: '院系审核',
+  menuGroupIcon: 'audit',
+  menuGroupOrder: 1,
+  portfolioWorkShells: DEPARTMENT_REVIEW_WORK_SHELLS,
 }
 
 const PORTFOLIO_DUAL_TEACHER_MENU_GROUP = 'portfolio-dual-teacher'
@@ -37,6 +54,7 @@ const portfolioDualTeacherMenuMeta = {
   menuGroupTitle: '双师管理',
   menuGroupIcon: 'team',
   menuGroupOrder: 3,
+  portfolioWorkShells: SCHOOL_GOVERNANCE_WORK_SHELLS,
 }
 
 /** 侧栏「发展指标」分组 */
@@ -46,6 +64,7 @@ const indicatorMenuMeta = {
   menuGroupTitle: '发展指标',
   menuGroupIcon: 'bar-chart',
   menuGroupOrder: 4,
+  portfolioWorkShells: CONFIGURATION_WORK_SHELLS,
 }
 
 const PORTFOLIO_EVALUATION_MENU_GROUP = 'portfolio-evaluation'
@@ -54,6 +73,7 @@ const portfolioEvaluationMenuMeta = {
   menuGroupTitle: '多元评价',
   menuGroupIcon: 'form',
   menuGroupOrder: 5,
+  portfolioWorkShells: SCHOOL_GOVERNANCE_WORK_SHELLS,
 }
 
 const PORTFOLIO_RESOURCE_MENU_GROUP = 'portfolio-resource'
@@ -61,7 +81,17 @@ const portfolioResourceMenuMeta = {
   menuGroup: PORTFOLIO_RESOURCE_MENU_GROUP,
   menuGroupTitle: '专项资源库',
   menuGroupIcon: 'database',
+  menuGroupOrder: 7,
+  portfolioWorkShells: SCHOOL_GOVERNANCE_WORK_SHELLS,
+}
+
+const PORTFOLIO_GOVERNANCE_MENU_GROUP = 'portfolio-governance'
+const portfolioGovernanceMenuMeta = {
+  menuGroup: PORTFOLIO_GOVERNANCE_MENU_GROUP,
+  menuGroupTitle: '专项治理',
+  menuGroupIcon: 'control',
   menuGroupOrder: 6,
+  portfolioWorkShells: SCHOOL_GOVERNANCE_WORK_SHELLS,
 }
 
 const PORTFOLIO_ANALYTICS_MENU_GROUP = 'portfolio-analytics'
@@ -69,7 +99,8 @@ const portfolioAnalyticsMenuMeta = {
   menuGroup: PORTFOLIO_ANALYTICS_MENU_GROUP,
   menuGroupTitle: '师资分析',
   menuGroupIcon: 'bar-chart',
-  menuGroupOrder: 7,
+  menuGroupOrder: 8,
+  portfolioWorkShells: SCHOOL_GOVERNANCE_WORK_SHELLS,
 }
 
 const PORTFOLIO_SECURITY_MENU_GROUP = 'portfolio-security'
@@ -77,7 +108,8 @@ const portfolioSecurityMenuMeta = {
   menuGroup: PORTFOLIO_SECURITY_MENU_GROUP,
   menuGroupTitle: '权限与审计',
   menuGroupIcon: 'safety',
-  menuGroupOrder: 8,
+  menuGroupOrder: 9,
+  portfolioWorkShells: CONFIGURATION_WORK_SHELLS,
 }
 
 /** 侧栏次要入口：默认收进分组「更多」 */
@@ -187,8 +219,9 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           title: '我的导出申请',
           roles: ALL_ROLES,
           icon: 'download',
-          hideInMenu: true,
+          hideInMenu: false,
           keepAlive: true,
+          ...portfolioTeacherMenuMeta,
         },
       },
       {
@@ -462,7 +495,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           hideInMenu: false,
           ...MENU_SECONDARY,
           keepAlive: true,
-          ...portfolioOrgMenuMeta,
+          ...portfolioGovernanceMenuMeta,
         },
       },
       {
@@ -588,6 +621,19 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'teacher/ai-assistants',
+        name: 'PortfolioAiFourAssistants',
+        component: () => import('@/views/portfolio/ai-four-assistants.vue'),
+        meta: {
+          title: 'AI 四类助手',
+          roles: ALL_ROLES,
+          icon: 'bulb',
+          hideInMenu: false,
+          keepAlive: true,
+          ...portfolioTeacherMenuMeta,
+        },
+      },
+      {
         path: 'ai-orchestration',
         name: 'PortfolioAiOrchestration',
         component: () => import('@/views/portfolio/ai-orchestration.vue'),
@@ -596,9 +642,8 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           roles: ALL_ROLES,
           icon: 'message',
           hideInMenu: false,
-          ...MENU_SECONDARY,
           keepAlive: true,
-          ...portfolioOrgMenuMeta,
+          ...portfolioTeacherMenuMeta,
         },
       },
       {
@@ -612,7 +657,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           icon: 'audit',
           hideInMenu: false,
           keepAlive: true,
-          ...portfolioOrgMenuMeta,
+          ...portfolioDepartmentMenuMeta,
         },
       },
       {
@@ -627,7 +672,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           hideInMenu: false,
           ...MENU_SECONDARY,
           keepAlive: true,
-          ...portfolioAnalyticsMenuMeta,
+          ...portfolioDepartmentMenuMeta,
         },
       },
       {
@@ -642,7 +687,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           hideInMenu: false,
           ...MENU_SECONDARY,
           keepAlive: true,
-          ...portfolioOrgMenuMeta,
+          ...portfolioDepartmentMenuMeta,
         },
       },
       {
@@ -657,7 +702,37 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           hideInMenu: false,
           ...MENU_SECONDARY,
           keepAlive: true,
-          ...portfolioEvaluationMenuMeta,
+          ...portfolioDepartmentMenuMeta,
+        },
+      },
+      {
+        path: 'department/title-promotion-review',
+        name: 'PortfolioDepartmentTitlePromotionReview',
+        component: () => import('@/views/portfolio/title-promotion-admin.vue'),
+        meta: {
+          title: '职称申报院审',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'solution',
+          hideInMenu: false,
+          ...MENU_SECONDARY,
+          keepAlive: true,
+          ...portfolioDepartmentMenuMeta,
+        },
+      },
+      {
+        path: 'department/dual-teacher-review',
+        name: 'PortfolioDepartmentDualTeacherReview',
+        component: () => import('@/views/portfolio/dual-teacher-admin.vue'),
+        meta: {
+          title: '双师认定院审',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'team',
+          hideInMenu: false,
+          ...MENU_SECONDARY,
+          keepAlive: true,
+          ...portfolioDepartmentMenuMeta,
         },
       },
       {
@@ -674,6 +749,125 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'school/double-high/tasks',
+        name: 'PortfolioDoubleHighTasks',
+        component: () => import('@/views/portfolio/shuanggao-tasks.vue'),
+        meta: {
+          title: '双高任务台账',
+          ...PORTFOLIO_ADMIN_ROUTE_META,
+          icon: 'schedule',
+          hideInMenu: false,
+          keepAlive: true,
+          ...portfolioGovernanceMenuMeta,
+        },
+      },
+      {
+        path: 'school/double-high/monitor',
+        name: 'PortfolioDoubleHighMonitor',
+        component: () => import('@/views/portfolio/shuanggao-monitor.vue'),
+        meta: {
+          title: '双高建设监测',
+          ...PORTFOLIO_ADMIN_ROUTE_META,
+          icon: 'line-chart',
+          hideInMenu: false,
+          ...MENU_SECONDARY,
+          keepAlive: true,
+          ...portfolioGovernanceMenuMeta,
+        },
+      },
+      {
+        path: 'school/title-promotion',
+        name: 'PortfolioTitlePromotionAdmin',
+        component: () => import('@/views/portfolio/title-promotion-admin.vue'),
+        meta: {
+          title: '职称申报治理',
+          ...PORTFOLIO_ADMIN_ROUTE_META,
+          icon: 'solution',
+          hideInMenu: false,
+          ...MENU_SECONDARY,
+          keepAlive: true,
+          ...portfolioGovernanceMenuMeta,
+        },
+      },
+      {
+        path: 'school/ethics-sanction',
+        name: 'PortfolioEthicsSanctionAdmin',
+        component: () => import('@/views/portfolio/ethics-sanction-admin.vue'),
+        meta: {
+          title: '师德处分',
+          ...PORTFOLIO_ADMIN_ROUTE_META,
+          icon: 'safety',
+          hideInMenu: false,
+          ...MENU_SECONDARY,
+          keepAlive: true,
+          ...portfolioGovernanceMenuMeta,
+        },
+      },
+      {
+        path: 'school/compliance-threshold',
+        name: 'PortfolioComplianceThresholdAdmin',
+        component: () => import('@/views/portfolio/compliance-threshold-admin.vue'),
+        meta: {
+          title: '结构合规阈值',
+          ...PORTFOLIO_ADMIN_ROUTE_META,
+          icon: 'control',
+          hideInMenu: false,
+          ...MENU_SECONDARY,
+          keepAlive: true,
+          ...portfolioGovernanceMenuMeta,
+        },
+      },
+      {
+        path: 'school/reporting',
+        name: 'PortfolioReportingAdmin',
+        component: () => import('@/views/portfolio/reporting-admin.vue'),
+        meta: {
+          title: '上级报送共享',
+          ...PORTFOLIO_ADMIN_ROUTE_META,
+          icon: 'cloud-upload',
+          hideInMenu: false,
+          ...MENU_SECONDARY,
+          keepAlive: true,
+          ...portfolioGovernanceMenuMeta,
+        },
+      },
+      {
+        path: 'school/expert-assignment',
+        name: 'PortfolioExpertAssignmentAdmin',
+        component: () => import('@/views/portfolio/expert-assignment-admin.vue'),
+        meta: {
+          title: '外部专家授权',
+          ...PORTFOLIO_ADMIN_ROUTE_META,
+          icon: 'user-add',
+          hideInMenu: false,
+          ...MENU_SECONDARY,
+          keepAlive: true,
+          ...portfolioGovernanceMenuMeta,
+        },
+      },
+      {
+        path: 'expert/review',
+        name: 'PortfolioExpertReview',
+        component: () => import('@/views/portfolio/expert-review.vue'),
+        meta: {
+          title: '外部专家脱敏审阅',
+          roles: ALL_ROLES,
+          hideInMenu: true,
+          keepAlive: false,
+        },
+      },
+      {
+        path: 'expert/evaluation-fill',
+        name: 'PortfolioExpertEvaluationFill',
+        component: () => import('@/views/portfolio/evaluation-fill-admin.vue'),
+        meta: {
+          title: '外部专家评价填报',
+          roles: ALL_ROLES,
+          hideInMenu: true,
+          keepAlive: false,
+        },
+      },
+      {
         path: 'admin/correction',
         name: 'PortfolioCorrectionAdmin',
         component: () => import('@/views/portfolio/correction-admin.vue'),
@@ -684,7 +878,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           hideInMenu: false,
           ...MENU_SECONDARY,
           keepAlive: true,
-          ...portfolioOrgMenuMeta,
+          ...portfolioDepartmentMenuMeta,
         },
       },
       {
@@ -810,7 +1004,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           hideInMenu: false,
           ...MENU_SECONDARY,
           keepAlive: true,
-          ...indicatorMenuMeta,
+          ...portfolioTeacherMenuMeta,
         },
       },
       {
@@ -873,7 +1067,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/portfolio/development-plan-admin.vue'),
         meta: {
           title: '教师年度规划',
-          ...PORTFOLIO_ADMIN_ROUTE_META,
+          roles: ALL_ROLES,
           icon: 'calendar',
           hideInMenu: false,
           keepAlive: true,
@@ -881,33 +1075,33 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         },
       },
       {
-        path: 'admin/development-plan-department',
+        path: 'department/development-plan',
         name: 'PortfolioDevelopmentPlanDepartmentAdmin',
         component: () => import('@/views/portfolio/development-plan-department-admin.vue'),
         meta: {
           title: '部门年度规划',
-          ...PORTFOLIO_ADMIN_ROUTE_META,
+          roles: ALL_ROLES,
           requirePortfolioReviewer: true,
           icon: 'cluster',
           hideInMenu: false,
           ...MENU_SECONDARY,
           keepAlive: true,
-          ...portfolioResourceMenuMeta,
+          ...portfolioDepartmentMenuMeta,
         },
       },
       {
-        path: 'admin/development-plan-review',
+        path: 'department/development-plan-review',
         name: 'PortfolioDevelopmentPlanReview',
         component: () => import('@/views/portfolio/development-plan-review.vue'),
         meta: {
           title: '规划审核',
-          ...PORTFOLIO_ADMIN_ROUTE_META,
+          roles: ALL_ROLES,
           requirePortfolioReviewer: true,
           icon: 'audit',
           hideInMenu: false,
           ...MENU_SECONDARY,
           keepAlive: true,
-          ...portfolioResourceMenuMeta,
+          ...portfolioDepartmentMenuMeta,
         },
       },
       {
@@ -977,7 +1171,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           hideInMenu: false,
           ...MENU_SECONDARY,
           keepAlive: true,
-          ...portfolioResourceMenuMeta,
+          ...portfolioOrgMenuMeta,
         },
       },
       {
@@ -991,7 +1185,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           hideInMenu: false,
           ...MENU_SECONDARY,
           keepAlive: true,
-          ...portfolioResourceMenuMeta,
+          ...portfolioOrgMenuMeta,
         },
       },
       {
@@ -1106,17 +1300,18 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         },
       },
       {
-        path: 'admin/dept-one-table',
+        path: 'department/dept-one-table',
         name: 'PortfolioDeptOneTable',
         component: () => import('@/views/portfolio/dept-one-table.vue'),
         meta: {
           title: '部门一张表',
-          ...PORTFOLIO_ADMIN_ROUTE_META,
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
           icon: 'table',
           hideInMenu: false,
           ...MENU_SECONDARY,
           keepAlive: true,
-          ...portfolioOrgMenuMeta,
+          ...portfolioDepartmentMenuMeta,
         },
       },
       {
@@ -1180,11 +1375,12 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         meta: {
           title: '院系报告',
           roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
           icon: 'file-text',
           hideInMenu: false,
           ...MENU_SECONDARY,
           keepAlive: true,
-          ...portfolioAnalyticsMenuMeta,
+          ...portfolioDepartmentMenuMeta,
         },
       },
       {
@@ -1197,9 +1393,8 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           requirePortfolioReviewer: true,
           icon: 'dashboard',
           hideInMenu: false,
-          ...MENU_SECONDARY,
           keepAlive: true,
-          ...portfolioAnalyticsMenuMeta,
+          ...portfolioDepartmentMenuMeta,
         },
       },
       {
@@ -1211,7 +1406,6 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'dashboard',
           hideInMenu: false,
-          ...MENU_SECONDARY,
           keepAlive: true,
           ...portfolioAnalyticsMenuMeta,
         },
@@ -1228,7 +1422,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           ...MENU_SECONDARY,
           keepAlive: true,
           portfolioDomain: true,
-          ...portfolioEvaluationMenuMeta,
+          ...portfolioOrgMenuMeta,
         },
       },
       {

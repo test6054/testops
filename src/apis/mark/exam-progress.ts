@@ -8,17 +8,18 @@ import type { QuestionTypeCode } from './question-type'
 import type { MarkTeacherDashboardPendingTodoItemVO } from './teacher-dashboard'
 import type { PageResult, QueryDto } from '@/types'
 import type { ExamScanMonitorSignalActionKeyCode } from '@/types/enums/exam-scan-monitor-signal-action-key-enum'
+import { isExamScanMonitorSignalActionKeyCode } from '@/types/enums/exam-scan-monitor-signal-action-key-enum'
 import type { ExamScanMonitorSignalCode } from '@/types/enums/exam-scan-monitor-signal-code-enum'
+import { isExamScanMonitorSignalCode } from '@/types/enums/exam-scan-monitor-signal-code-enum'
 import type { ExamScanMonitorSignalToneCode } from '@/types/enums/exam-scan-monitor-signal-tone-enum'
+import { isExamScanMonitorSignalToneCode } from '@/types/enums/exam-scan-monitor-signal-tone-enum'
 import type { WorkbenchNextActionKeyCode } from '@/types/enums/exam-workbench-next-action-key-enum'
 import type { ExamWorkbenchStageKeyCode } from '@/types/enums/exam-workbench-stage-key-enum'
 import type { WorkbenchStageStatusCode } from '@/types/enums/exam-workbench-stage-status-enum'
 import type { LedgerStatusCode } from '@/types/enums/ledger-status-enum'
-import http from '@/config/axios'
-import { isExamScanMonitorSignalActionKeyCode } from '@/types/enums/exam-scan-monitor-signal-action-key-enum'
-import { isExamScanMonitorSignalCode } from '@/types/enums/exam-scan-monitor-signal-code-enum'
-import { isExamScanMonitorSignalToneCode } from '@/types/enums/exam-scan-monitor-signal-tone-enum'
 import { ALL_LEDGER_STATUS_CODES } from '@/types/enums/ledger-status-enum'
+import http from '@/config/axios'
+import type { ExamPrepScenarioGuideResponse } from '@/apis/mark/exam'
 
 export {
   ALL_EXAM_SCAN_MONITOR_SIGNAL_ACTION_KEY_CODES,
@@ -182,8 +183,6 @@ export interface ExamWorkbenchDashboardPanelResponse {
   qualityDimensionItems: ExamWorkbenchQualityDimensionItemResponse[]
 }
 
-import type { ExamPrepScenarioGuideResponse } from '@/apis/mark/exam'
-
 /** 考试工作台阶段快照 - 对应 ExamWorkbenchStageSnapshotResponse */
 export interface ExamWorkbenchStageSnapshotResponse {
   examId: string
@@ -211,11 +210,6 @@ export interface ExamWorkbenchStageSnapshotResponse {
   manualFinalScoreConfirmRequired: boolean
   /** 延迟自动确认与撤回窗口（分钟） */
   delayedFinalScoreConfirmMinutes: number
-}
-
-/** 批量阅卷进度响应 */
-export interface MarkingProgressBatchResponse {
-  items: MarkingProgressResponse[]
 }
 
 /** 查询考试工作台阶段快照。 */
@@ -248,17 +242,6 @@ export function getReviewQuestionProgressSummary(
     '/api/mark/exams/marking-progress/review-questions/summary',
     { examId },
   )
-}
-
-/** 批量查询阅卷进度（考试工作台列表聚合，一次请求）。 */
-export async function batchGetMarkingProgress(
-  examIds: string[],
-): Promise<MarkingProgressResponse[]> {
-  const response = await http.post<MarkingProgressBatchResponse>(
-    '/api/mark/exams/marking-progress/batch',
-    { examIds },
-  )
-  return response.items
 }
 
 /** 阅卷进度看板面板 - 对应 ExamWorkbenchMarkingProgressPanelResponse */
@@ -425,8 +408,8 @@ function parseScanMonitorLedgerStatus(value: unknown): LedgerStatusCode | undefi
     return undefined
   }
   if (
-    typeof value !== 'string'
-    || !(ALL_LEDGER_STATUS_CODES as readonly string[]).includes(value)
+    typeof value !== 'string' ||
+    !(ALL_LEDGER_STATUS_CODES as readonly string[]).includes(value)
   ) {
     throw new Error(`枚举合同不同步：ledgerStatus=${String(value)}`)
   }

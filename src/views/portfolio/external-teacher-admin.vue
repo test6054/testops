@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { ExcelImportRowDiagnostic } from '@/apis/platform/types'
 import type { PortfolioExternalTeacherImportBatchStatusCode } from '@/apis/portfolio/enums'
+import {
+  PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS,
+  PortfolioExternalTeacherDataStatusCode,
+  PortfolioExternalTeacherDataStatusDescription,
+  PortfolioExternalTeacherImportBatchStatusDescription,
+} from '@/apis/portfolio/enums'
 import type {
   PortfolioExternalTeacherImportBatchVO,
   PortfolioExternalTeacherPageRequest,
@@ -8,17 +15,11 @@ import type {
   PortfolioExternalTeacherStatsVO,
   PortfolioExternalTeacherVO,
 } from '@/apis/portfolio/teacher-platform'
+import { portfolioExternalTeacherApi } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import {
-  PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS,
-  PortfolioExternalTeacherDataStatusCode,
-  PortfolioExternalTeacherDataStatusDescription,
-  PortfolioExternalTeacherImportBatchStatusDescription,
-} from '@/apis/portfolio/enums'
-import { portfolioExternalTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -32,6 +33,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQueryTable } from '@/composables/useQueryTable'
+import { PortfolioImportQualityGradeDescription } from '@/types/enums/portfolio-import-quality-grade-enum'
 import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -49,11 +51,11 @@ const importModalOpen = ref(false)
 type ExternalTeacherFilters = Pick<
   PortfolioExternalTeacherPageRequest,
   'dataStatus' | 'teachSubject' | 'teacherSource' | 'contractStatus'
->
-& Record<string, unknown>
+> &
+  Record<string, unknown>
 
-const { loading, rows, pageNum, pageSize, pageTotal, filters, loadPage, search, handlePageChange }
-  = useQueryTable<PortfolioExternalTeacherVO, ExternalTeacherFilters>(
+const { loading, rows, pageNum, pageSize, pageTotal, filters, loadPage, search, handlePageChange } =
+  useQueryTable<PortfolioExternalTeacherVO, ExternalTeacherFilters>(
     (params) =>
       portfolioExternalTeacherApi.page({
         pageNum: params.pageNum,
@@ -141,6 +143,46 @@ const batchColumns: ColumnsType<PortfolioExternalTeacherImportBatchVO> = [
   { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 160 },
   { title: '操作', key: 'actions', width: 72 },
 ]
+
+const batchDiagnosticColumns: ColumnsType<ExcelImportRowDiagnostic> = [
+  {
+    title: '行号',
+    dataIndex: 'rowIndex',
+    key: 'rowIndex',
+    width: 72,
+    customRender: ({ text }) => (Number(text) > 0 ? String(text) : '批次'),
+  },
+  { title: '处理说明', dataIndex: 'invalidReason', key: 'invalidReason' },
+]
+
+const batchDetailDiagnostics = computed<ExcelImportRowDiagnostic[]>(() => {
+  const raw = batchDetail.value?.errorReportJson
+  if (!raw) {
+    return []
+  }
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) {
+      return [{ rowIndex: -1, valid: false, invalidReason: '导入错误报告格式异常' }]
+    }
+    return parsed.map((item, index) => {
+      if (typeof item !== 'object' || item === null) {
+        return {
+          rowIndex: -(index + 1),
+          valid: false,
+          invalidReason: '导入错误报告明细格式异常',
+        }
+      }
+      const rowIndex =
+        'rowIndex' in item && typeof item.rowIndex === 'number' ? item.rowIndex : -(index + 1)
+      const invalidReason =
+        'message' in item && typeof item.message === 'string' ? item.message : '导入失败'
+      return { rowIndex, valid: false, invalidReason }
+    })
+  } catch {
+    return [{ rowIndex: -1, valid: false, invalidReason: '导入错误报告不是合法 JSON' }]
+  }
+})
 
 const contractStatusStatsColumns: ColumnsType = [
   { title: '合同状态', dataIndex: 'dimensionCode', key: 'dimensionCode' },
@@ -670,7 +712,10 @@ onMounted(async () => {
             />
           </a-form-item>
           <a-form-item label="数据状态">
-            <a-select v-model:value="form.dataStatus" :options="PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS" />
+            <a-select
+              v-model:value="form.dataStatus"
+              :options="PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS"
+            />
           </a-form-item>
           <a-form-item label="附件材料">
             <input
@@ -704,7 +749,22 @@ onMounted(async () => {
         <p>文件 {{ batchDetail.fileName ?? '—' }}</p>
         <p>成功 {{ batchDetail.successRows ?? 0 }} · 失败 {{ batchDetail.failedRows ?? 0 }}</p>
         <p>状态 {{ batchStatusLabel(batchDetail.batchStatus) }}</p>
+        <p v-if="batchDetail.qualityGrade">
+          质量等级 {{ PortfolioImportQualityGradeDescription[batchDetail.qualityGrade] }} · 通过率
+          {{ batchDetail.passRate ?? 0 }}% · 教师匹配率 {{ batchDetail.teacherMatchRate ?? 0 }}% ·
+          字段可用率 {{ batchDetail.fieldUsableRate ?? 0 }}%
+        </p>
         <p v-if="batchDetail.createTime">创建时间 {{ batchDetail.createTime }}</p>
+        <UiDataTable
+          v-if="batchDetailDiagnostics.length"
+          pagination-mode="client"
+          :columns="batchDiagnosticColumns"
+          :data-source="batchDetailDiagnostics"
+          :show-pagination="false"
+          row-key="rowIndex"
+          size="small"
+          flat
+        />
       </template>
     </a-drawer>
   </StageWorkbenchShell>

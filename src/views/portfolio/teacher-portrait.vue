@@ -5,31 +5,32 @@ import type {
   PortfolioAnalysisTrainingRecommendVO,
   PortfolioPortraitCreditCurveVO,
 } from '@/apis/portfolio/analysis'
-import type { PortfolioPortraitDimensionCode } from '@/apis/portfolio/enums'
-import type { PortfolioDevelopmentPlanCompletionVO } from '@/apis/portfolio/teacher-platform'
-import type {
-  PortfolioTeacherPortraitCohortCompareVO,
-  PortfolioTeacherPortraitIndicatorDetailVO,
-  PortfolioTeacherPortraitTrendVO,
-  PortfolioTeacherPortraitVO,
-} from '@/apis/portfolio/types'
-import type { PortfolioSuggestionTypeCode } from '@/types/enums/portfolio-suggestion-type-enum'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
+import type { PortfolioPortraitDimensionCode } from '@/apis/portfolio/enums'
 import {
   PortfolioArchiveRecordStatusDescription,
   PortfolioPortraitDimensionReadinessCode,
   PortfolioPortraitDimensionReadinessDescription,
   PortfolioPortraitIndicatorEvidenceTypeDescription,
 } from '@/apis/portfolio/enums'
+import type { PortfolioDevelopmentPlanCompletionVO } from '@/apis/portfolio/teacher-platform'
 import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
+import type {
+  PortfolioTeacherPortraitCohortCompareVO,
+  PortfolioTeacherPortraitIndicatorDetailVO,
+  PortfolioTeacherPortraitTrendVO,
+  PortfolioTeacherPortraitVO,
+} from '@/apis/portfolio/types'
 import {
   PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
   PORTFOLIO_PORTRAIT_DIMENSION_READINESS_TONE,
 } from '@/apis/portfolio/types'
+import type { PortfolioSuggestionTypeCode } from '@/types/enums/portfolio-suggestion-type-enum'
+import { PortfolioSuggestionTypeDescription } from '@/types/enums/portfolio-suggestion-type-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import MarkChartCard from '@/components/chart/MarkChartCard.vue'
 import UiAlert from '@/components/ui-guide/ui/Alert.vue'
@@ -52,7 +53,6 @@ import {
   PortfolioPortraitCohortTypeDescription,
 } from '@/types/enums/portfolio-portrait-cohort-type-enum'
 import { PortfolioPortraitStageDescription } from '@/types/enums/portfolio-portrait-stage-code-enum'
-import { PortfolioSuggestionTypeDescription } from '@/types/enums/portfolio-suggestion-type-enum'
 import {
   PortfolioTrainingRecommendStatusCode,
   PortfolioTrainingRecommendStatusDescription,
@@ -87,6 +87,8 @@ const creditCurve = ref<PortfolioPortraitCreditCurveVO | null>(null)
 const planYear = String(new Date().getFullYear())
 const cohortType = ref<PortfolioPortraitCohortTypeCode>(PortfolioPortraitCohortTypeCode.DEPARTMENT)
 const portraitRequestToken = ref(0)
+const cohortRequestToken = ref(0)
+const detailRequestToken = ref(0)
 const trainingRecommendationActionId = ref('')
 
 const cohortTabItems = ALL_PORTFOLIO_PORTRAIT_COHORT_TYPE_CODES.map((code) => ({
@@ -170,12 +172,17 @@ const creditCurveOption = computed((): EChartsCoreOption => {
 
 /** 教师范围变化后必须清空旧指标明细抽屉，避免继续展示上一位教师的画像证据。 */
 function resetIndicatorDetailContext() {
+  detailRequestToken.value += 1
+  detailLoading.value = false
   detailOpen.value = false
   indicatorDetail.value = null
 }
 
 function resetPortraitBundleContext() {
   portraitRequestToken.value += 1
+  cohortRequestToken.value += 1
+  loading.value = false
+  trainingRecommendationActionId.value = ''
   resetIndicatorDetailContext()
   portraitAbsent.value = false
   portrait.value = null
@@ -211,15 +218,32 @@ function registerRecommendedTraining(item: PortfolioAnalysisTrainingRecommendVO)
 }
 
 async function dismissTrainingRecommendation(item: PortfolioAnalysisTrainingRecommendVO) {
-  trainingRecommendationActionId.value = item.id
+  const recommendationId = item.id
+  const requestToken = portraitRequestToken.value
+  trainingRecommendationActionId.value = recommendationId
   try {
-    await portfolioAnalysisApi.dismissTrainingRecommendation({ recommendationId: item.id })
-    item.recommendStatus = PortfolioTrainingRecommendStatusCode.DISMISSED
+    await portfolioAnalysisApi.dismissTrainingRecommendation({ recommendationId })
+    if (portraitRequestToken.value !== requestToken) {
+      return
+    }
+    const currentItem = trainingRecommendations.value.find((row) => row.id === recommendationId)
+    if (!currentItem) {
+      return
+    }
+    currentItem.recommendStatus = PortfolioTrainingRecommendStatusCode.DISMISSED
     message.success('已忽略培训推荐')
   } catch (error) {
+    if (portraitRequestToken.value !== requestToken) {
+      return
+    }
     showUserError(error, '忽略培训推荐失败')
   } finally {
-    trainingRecommendationActionId.value = ''
+    if (
+      portraitRequestToken.value === requestToken &&
+      trainingRecommendationActionId.value === recommendationId
+    ) {
+      trainingRecommendationActionId.value = ''
+    }
   }
 }
 
@@ -228,14 +252,17 @@ async function loadCohortCompare() {
     return
   }
   const requestToken = portraitRequestToken.value
+  const cohortToken = cohortRequestToken.value + 1
+  cohortRequestToken.value = cohortToken
+  const request = buildCohortRequest()
   try {
-    const nextCohort = await portfolioAnalysisApi.getPortraitCohortCompare(buildCohortRequest())
-    if (portraitRequestToken.value !== requestToken) {
+    const nextCohort = await portfolioAnalysisApi.getPortraitCohortCompare(request)
+    if (portraitRequestToken.value !== requestToken || cohortRequestToken.value !== cohortToken) {
       return
     }
     cohort.value = nextCohort
   } catch (error) {
-    if (portraitRequestToken.value !== requestToken) {
+    if (portraitRequestToken.value !== requestToken || cohortRequestToken.value !== cohortToken) {
       return
     }
     cohort.value = null
@@ -272,6 +299,8 @@ async function loadSecondaryPortraitData() {
     return
   }
   const requestToken = portraitRequestToken.value
+  const cohortToken = cohortRequestToken.value + 1
+  cohortRequestToken.value = cohortToken
   const request = buildPortraitRequest()
   const teacherId = targetTeacherId.value
   const settled = await Promise.allSettled([
@@ -288,11 +317,13 @@ async function loadSecondaryPortraitData() {
   if (portraitRequestToken.value !== requestToken) {
     return
   }
-  if (cohortSettled.status === 'fulfilled') {
-    cohort.value = cohortSettled.value
-  } else {
-    cohort.value = null
-    showUserError(cohortSettled.reason, '加载同群体对比失败')
+  if (cohortRequestToken.value === cohortToken) {
+    if (cohortSettled.status === 'fulfilled') {
+      cohort.value = cohortSettled.value
+    } else {
+      cohort.value = null
+      showUserError(cohortSettled.reason, '加载同群体对比失败')
+    }
   }
   if (trendSettled.status === 'fulfilled') {
     trend.value = trendSettled.value
@@ -364,6 +395,8 @@ async function loadPortraitBundle() {
 
 async function openIndicatorDetail(dimensionCode: PortfolioPortraitDimensionCode) {
   const requestToken = portraitRequestToken.value
+  const detailToken = detailRequestToken.value + 1
+  detailRequestToken.value = detailToken
   detailOpen.value = true
   indicatorDetail.value = null
   detailLoading.value = true
@@ -372,18 +405,18 @@ async function openIndicatorDetail(dimensionCode: PortfolioPortraitDimensionCode
       ...buildPortraitRequest(),
       dimensionCode,
     })
-    if (portraitRequestToken.value !== requestToken) {
+    if (portraitRequestToken.value !== requestToken || detailRequestToken.value !== detailToken) {
       return
     }
     indicatorDetail.value = nextIndicatorDetail
   } catch (error) {
-    if (portraitRequestToken.value !== requestToken) {
+    if (portraitRequestToken.value !== requestToken || detailRequestToken.value !== detailToken) {
       return
     }
     showUserError(error, '加载指标明细失败')
     detailOpen.value = false
   } finally {
-    if (portraitRequestToken.value === requestToken) {
+    if (portraitRequestToken.value === requestToken && detailRequestToken.value === detailToken) {
       detailLoading.value = false
     }
   }
@@ -419,7 +452,13 @@ watch(cohortType, () => {
     <template #context>
       <ContextBar show-title layout="workbench" title="教师画像">
         <template #actions>
-          <UiButton :loading="loading" @click="loadPortraitBundle"> 刷新 </UiButton>
+          <UiButton
+            :loading="loading"
+            :disabled="canPickTeachers && !targetTeacherId"
+            @click="loadPortraitBundle"
+          >
+            刷新
+          </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -625,17 +664,22 @@ watch(cohortType, () => {
               <p>{{ item.recommendReason }}</p>
               <div
                 v-if="
-                  item.recommendStatus === PortfolioTrainingRecommendStatusCode.PENDING
-                    && !canPickTeachers
+                  item.recommendStatus === PortfolioTrainingRecommendStatusCode.PENDING &&
+                  !canPickTeachers
                 "
                 class="teacher-portrait__insight-actions"
               >
-                <UiButton variant="ghost" @click="registerRecommendedTraining(item)">
+                <UiButton
+                  variant="ghost"
+                  :disabled="Boolean(trainingRecommendationActionId)"
+                  @click="registerRecommendedTraining(item)"
+                >
                   登记培训
                 </UiButton>
                 <UiButton
                   variant="ghost"
                   :loading="trainingRecommendationActionId === item.id"
+                  :disabled="Boolean(trainingRecommendationActionId)"
                   @click="dismissTrainingRecommendation(item)"
                 >
                   忽略

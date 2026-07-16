@@ -3,14 +3,14 @@
  *
  * 业务链：
  *   1. createExportTask 教师/管理员触发，写入任务（PENDING）
- *   2. 后端 worker / 调度器 读取 PENDING → 调用 startExportTask 标记 GENERATING
- *   3. worker 生成文件、上传到 edu-storage → completeExportTask 写 fileId/fileSize
- *   4. 异常路径走 failExportTask 写 errorMessage
+ *   2. 后端 worker / 调度器读取 PENDING 并推进 GENERATING
+ *   3. worker 生成文件、上传到 edu-storage 并写入 fileId/fileSize
+ *   4. 异常路径由后端写入 errorMessage
  *   5. 前端轮询 listExportTasks / getExportTask 看进度，COMPLETED 后用 fileId 走通用下载链
  *
  * 注意：
  *   - 与 edu-user 通用导出中心（`@/apis/edu/export.ts`）严格区分。
- *   - start/complete/fail 三个端点保留以备运维或 worker 调用，前端 UI 不直接暴露。
+ *   - 浏览器只创建和查询任务，不暴露 worker 状态推进接口。
  *   - taskId / fileId 仅作为内部接口参数使用，页面展示使用考试名称、范围名称和文件名。
  */
 import type { PageResult, QueryDto } from '@/types'
@@ -106,20 +106,6 @@ export interface ExportDetailRequest {
   taskId: string
 }
 
-/** 导出任务完成请求 - 对应 ExportCompleteRequest */
-export interface ExportCompleteRequest {
-  taskId: string
-  fileId: string
-  fileName: string
-  fileSize: number
-}
-
-/** 导出任务失败请求 - 对应 ExportFailRequest */
-export interface ExportFailRequest {
-  taskId: string
-  errorMessage: string
-}
-
 /** 导出任务范围明细响应 - 对应 ExportScopeItemResponse */
 export interface ExportScopeItemResponse {
   scopeType: ExportScopeCode
@@ -181,28 +167,4 @@ export function getExportTaskStatusSummary(examId: string): Promise<ExportTaskSt
  */
 export function getExportTask(request: ExportDetailRequest): Promise<ExportTaskResponse> {
   return http.post<ExportTaskResponse>('/api/mark/exams/export/detail', request)
-}
-
-/**
- * 标记导出任务进入生成阶段（仅 worker / 运维使用）
- * POST /api/mark/exams/export/start
- */
-export function startExportTask(request: ExportDetailRequest): Promise<ExportTaskResponse> {
-  return http.post<ExportTaskResponse>('/api/mark/exams/export/start', request)
-}
-
-/**
- * 标记导出任务完成并写入文件元信息（仅 worker / 运维使用）
- * POST /api/mark/exams/export/complete
- */
-export function completeExportTask(request: ExportCompleteRequest): Promise<ExportTaskResponse> {
-  return http.post<ExportTaskResponse>('/api/mark/exams/export/complete', request)
-}
-
-/**
- * 标记导出任务失败（仅 worker / 运维使用）
- * POST /api/mark/exams/export/fail
- */
-export function failExportTask(request: ExportFailRequest): Promise<ExportTaskResponse> {
-  return http.post<ExportTaskResponse>('/api/mark/exams/export/fail', request)
 }

@@ -19,6 +19,8 @@ export interface PortfolioIntegrationFieldMappingVO {
   targetFieldCode: string
   targetCategoryCode?: string
   dictionaryCode?: string
+  transformType?: string
+  transformExpr?: string
   enabled: boolean
 }
 
@@ -80,6 +82,56 @@ export interface PortfolioConflictTicketVO {
   resolveRemark?: string
 }
 
+export interface PortfolioIntegrationMessageInboxVO {
+  id: string
+  datasourceConfigId: string
+  channelCode: string
+  messageKey: string
+  payloadJson: string
+  processStatus: string
+  processMessage?: string
+  retryCount: number
+  processedTime?: string
+  createTime?: string
+}
+
+export interface PortfolioIntegrationCleanLogVO {
+  id: string
+  syncTaskId: string
+  datasourceConfigId: string
+  channelCode: string
+  sourceFieldCode: string
+  targetFieldCode: string
+  rawValue?: string
+  cleanedValue?: string
+  transformType?: string
+  cleanAction?: string
+  detailMessage?: string
+  createTime?: string
+}
+
+export interface PortfolioCourseCodeMapVO {
+  id: string
+  sourceSystemCode: string
+  sourceCourseCode: string
+  sourceCourseName?: string
+  canonicalCourseCode: string
+  canonicalCourseName: string
+  enabled: boolean
+  remark?: string
+  updateTime?: string
+}
+
+export interface PortfolioIntegrationDictEntryVO {
+  id: string
+  dictionaryCode: string
+  sourceValue: string
+  targetValue: string
+  enabled: boolean
+  remark?: string
+  updateTime?: string
+}
+
 const BASE = '/api/portfolio/integration'
 
 export const portfolioIntegrationApi = {
@@ -109,6 +161,8 @@ export const portfolioIntegrationApi = {
     targetFieldCode: string
     targetCategoryCode?: string
     dictionaryCode?: string
+    transformType?: string
+    transformExpr?: string
     enabled: boolean
   }) {
     return http.post<number>(`${BASE}/mapping/save`, data)
@@ -127,16 +181,16 @@ export const portfolioIntegrationApi = {
   }) {
     return http.post<PageResult<PortfolioIntegrationSyncTaskVO>>(`${BASE}/sync/log/page`, data)
   },
-  pageIdentityUnmatched(data: { pageNum: number, pageSize: number, status?: string }) {
+  pageIdentityUnmatched(data: { pageNum: number; pageSize: number; status?: string }) {
     return http.post<PageResult<PortfolioIdentityUnmatchedVO>>(
       `${BASE}/identity/unmatched/page`,
       data,
     )
   },
-  pageConflict(data: { pageNum: number, pageSize: number, ticketStatus?: string }) {
+  pageConflict(data: { pageNum: number; pageSize: number; ticketStatus?: string }) {
     return http.post<PageResult<PortfolioConflictTicketVO>>(`${BASE}/conflict/page`, data)
   },
-  resolveConflict(data: { conflictTicketId: string, action: string, resolveRemark?: string }) {
+  resolveConflict(data: { conflictTicketId: string; action: string; resolveRemark?: string }) {
     return http.post<void>(`${BASE}/conflict/resolve`, data)
   },
   resolveIdentityUnmatched(data: {
@@ -147,6 +201,62 @@ export const portfolioIntegrationApi = {
     resolveRemark?: string
   }) {
     return http.post<void>(`${BASE}/identity/unmatched/resolve`, data)
+  },
+  pageFailedMessages(data: { pageNum: number; pageSize: number; datasourceConfigId: string }) {
+    return http.post<PageResult<PortfolioIntegrationMessageInboxVO>>(
+      `${BASE}/message/failed/page`,
+      data,
+    )
+  },
+  requeueFailedMessage(data: {
+    messageInboxId: string
+    processMessage?: string
+    correctedPayloadJson?: string
+    triggerSync?: boolean
+  }) {
+    return http.post<void>(`${BASE}/message/requeue`, data)
+  },
+  pageCleanLog(data: { pageNum: number; pageSize: number; datasourceConfigId?: string }) {
+    return http.post<PageResult<PortfolioIntegrationCleanLogVO>>(`${BASE}/clean-log/page`, data)
+  },
+  pageCourseCodeMap(data: {
+    pageNum: number
+    pageSize: number
+    sourceSystemCode?: string
+    keyword?: string
+  }) {
+    return http.post<PageResult<PortfolioCourseCodeMapVO>>(`${BASE}/course-code-map/page`, data)
+  },
+  saveCourseCodeMap(data: {
+    id?: string
+    sourceSystemCode: string
+    sourceCourseCode: string
+    sourceCourseName?: string
+    canonicalCourseCode: string
+    canonicalCourseName: string
+    enabled: boolean
+    remark?: string
+  }) {
+    return http.post<string>(`${BASE}/course-code-map/save`, data)
+  },
+  deleteCourseCodeMap(id: string) {
+    return http.post<void>(`${BASE}/course-code-map/delete`, { id })
+  },
+  pageDictEntry(data: { pageNum: number; pageSize: number; dictionaryCode?: string }) {
+    return http.post<PageResult<PortfolioIntegrationDictEntryVO>>(`${BASE}/dict-entry/page`, data)
+  },
+  saveDictEntry(data: {
+    id?: string
+    dictionaryCode: string
+    sourceValue: string
+    targetValue: string
+    enabled: boolean
+    remark?: string
+  }) {
+    return http.post<string>(`${BASE}/dict-entry/save`, data)
+  },
+  deleteDictEntry(id: string) {
+    return http.post<void>(`${BASE}/dict-entry/delete`, { id })
   },
   healthDashboard() {
     return http.post<PortfolioIntegrationHealthDashboardVO>(`${BASE}/health/dashboard`, {})

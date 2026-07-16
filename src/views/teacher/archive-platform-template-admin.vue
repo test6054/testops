@@ -5,6 +5,11 @@ import type {
   ArchivePlatformTemplateSetResponse,
   ArchivePlatformTemplateSetSaveRequest,
 } from '@/apis/mark/archive-platform-template'
+import {
+  listArchivePlatformTemplateSets,
+  previewArchivePlatformTemplateSet,
+  saveArchivePlatformTemplateSet,
+} from '@/apis/mark/archive-platform-template'
 import type {
   ArchiveTemplateMaterialEditRow,
   ArchiveTemplateSelfCheckEditRow,
@@ -12,17 +17,12 @@ import type {
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
-  initializeArchivePlatformTemplateDefaults,
-  listArchivePlatformTemplateSets,
-  previewArchivePlatformTemplateSet,
-  saveArchivePlatformTemplateSet,
-} from '@/apis/mark/archive-platform-template'
-import {
   archiveTemplateScopeLabel,
   archiveTemplateScopeTone,
 } from '@/apis/mark/archive-template-scope'
 import { ARCHIVE_EXAM_FORM_OPTIONS, ArchiveExamFormDescription } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
@@ -45,8 +45,8 @@ const pageTitle = '归档模板配置'
 
 const platformSets = ref<ArchivePlatformTemplateSetResponse[]>([])
 const loading = ref(false)
+const loadFailed = ref(false)
 const saving = ref(false)
-const seeding = ref(false)
 const detailLoading = ref(false)
 const editorDrawerOpen = ref(false)
 const editorSetCode = ref('')
@@ -57,6 +57,8 @@ const editorMeta = reactive({
   examForm: ArchiveExamFormCode.WRITTEN_EXAM,
   description: '',
   releaseTag: '',
+  defaultPermanentRetention: false,
+  defaultRetentionYears: undefined as number | undefined,
 })
 
 const materialRows = ref<ArchiveTemplateMaterialEditRow[]>([])
@@ -71,6 +73,7 @@ const platformColumns: ColumnsType<ArchivePlatformTemplateSetResponse> = [
   { title: '套编码', dataIndex: 'setCode', key: 'setCode', width: 180 },
   { title: '名称', dataIndex: 'setName', key: 'setName', ellipsis: true },
   { title: '考核形式', key: 'examForm', width: 100 },
+  { title: '保管期限', key: 'retention', width: 100 },
   { title: '发版标签', key: 'releaseTag', width: 120 },
   { title: '操作', key: 'actions', width: 100, align: 'center' },
 ]
@@ -78,6 +81,13 @@ const platformColumns: ColumnsType<ArchivePlatformTemplateSetResponse> = [
 function examFormLabel(code?: ArchiveExamFormCode) {
   if (!code) return '—'
   return strictEnumLabel(ArchiveExamFormDescription, code, 'examForm')
+}
+
+function retentionLabel(record: ArchivePlatformTemplateSetResponse) {
+  if (record.retentionPolicyLabel) return record.retentionPolicyLabel
+  if (record.defaultPermanentRetention) return '永久'
+  if (record.defaultRetentionYears != null) return `${record.defaultRetentionYears}年`
+  return '—'
 }
 
 function resetEditor() {
@@ -88,11 +98,14 @@ function resetEditor() {
   editorMeta.examForm = ArchiveExamFormCode.WRITTEN_EXAM
   editorMeta.description = ''
   editorMeta.releaseTag = ''
+  editorMeta.defaultPermanentRetention = false
+  editorMeta.defaultRetentionYears = undefined
   materialRows.value = []
   selfCheckRows.value = []
 }
 
 function openCreateEditor() {
+  if (loadFailed.value) return
   resetEditor()
   editorDrawerOpen.value = true
   editorMeta.releaseTag = new Date().toISOString().slice(0, 10)
@@ -125,6 +138,8 @@ async function openEditEditor(setCode: string) {
     editorMeta.examForm = set.examForm ?? ArchiveExamFormCode.WRITTEN_EXAM
     editorMeta.description = set.description ?? ''
     editorMeta.releaseTag = set.releaseTag ?? ''
+    editorMeta.defaultPermanentRetention = set.defaultPermanentRetention === true
+    editorMeta.defaultRetentionYears = set.defaultRetentionYears
     materialRows.value = preview.materialItems.map((item, index) => mapMaterialRow(item, index))
     selfCheckRows.value = preview.selfCheckItems.map((item, index) => ({
       rowKey: `self-${index}`,
@@ -144,32 +159,20 @@ async function loadPlatformSets() {
   loading.value = true
   try {
     platformSets.value = await listArchivePlatformTemplateSets()
+    loadFailed.value = false
   } catch (error) {
-    platformSets.value = []
+    loadFailed.value = true
     showUserError(error, '加载平台模板失败')
   } finally {
     loading.value = false
   }
 }
 
-async function submitInitializeDefaults() {
-  seeding.value = true
-  try {
-    const result = await initializeArchivePlatformTemplateDefaults()
-    if (result.seeded) {
-      message.success(`已写入默认模板，当前共 ${result.afterSetCount ?? 0} 套`)
-    } else {
-      message.info(`默认模板已存在，当前共 ${result.afterSetCount ?? 0} 套`)
-    }
-    await loadPlatformSets()
-  } catch (error) {
-    showUserError(error, '初始化默认模板失败')
-  } finally {
-    seeding.value = false
-  }
-}
-
 async function submitSave() {
+  if (loadFailed.value) {
+    message.warning('请先重新加载平台模板')
+    return
+  }
   const setCode = editorMeta.setCode.trim()
   const setName = editorMeta.setName.trim()
   const releaseTag = editorMeta.releaseTag.trim()
@@ -181,12 +184,46 @@ async function submitSave() {
     message.warning('材料项与自查项均不能为空')
     return
   }
+  if (!editorMeta.defaultPermanentRetention && editorMeta.defaultRetentionYears == null) {
+    message.warning('请填写保管年限或勾选永久')
+    return
+  }
+  const materialKeys = new Set<string>()
+  for (const row of materialRows.value) {
+    if (!row.catalogName?.trim()) {
+      message.warning('材料目录名称不能为空')
+      return
+    }
+    const key = `${row.materialType}:${row.catalogCode?.trim() ?? ''}`
+    if (materialKeys.has(key)) {
+      message.warning(`材料目录项重复：${row.catalogName.trim()}`)
+      return
+    }
+    materialKeys.add(key)
+  }
+  const selfCheckTexts = new Set<string>()
+  for (const row of selfCheckRows.value) {
+    const itemText = row.itemText?.trim()
+    if (!itemText) {
+      message.warning('自查项文本不能为空')
+      return
+    }
+    if (selfCheckTexts.has(itemText)) {
+      message.warning(`自查项重复：${itemText}`)
+      return
+    }
+    selfCheckTexts.add(itemText)
+  }
   const payload: ArchivePlatformTemplateSetSaveRequest = {
     setCode,
     setName,
     examForm: editorMeta.examForm,
     description: editorMeta.description.trim() || undefined,
     releaseTag,
+    defaultPermanentRetention: editorMeta.defaultPermanentRetention,
+    defaultRetentionYears: editorMeta.defaultPermanentRetention
+      ? undefined
+      : editorMeta.defaultRetentionYears,
     materialItems: materialRows.value.map((item) => ({
       materialType: item.materialType,
       catalogCode: item.catalogCode?.trim() || undefined,
@@ -236,18 +273,32 @@ onMounted(loadPlatformSets)
         </template>
         <template #toolbar>
           <div class="archive-platform-admin__toolbar-row">
-            <span v-if="platformSets.length === 0" class="archive-platform-admin__hint">尚未配置任何平台模板</span>
+            <span v-if="loadFailed" class="archive-platform-admin__hint">平台模板加载失败</span>
+            <span v-else-if="platformSets.length === 0" class="archive-platform-admin__hint"
+              >尚未配置任何平台模板</span
+            >
             <span v-else class="archive-platform-admin__hint">共 {{ platformSets.length }} 套</span>
             <div class="archive-platform-admin__actions">
-              <UiButton size="sm" :loading="seeding" @click="submitInitializeDefaults">
-                初始化默认模板
-              </UiButton>
-              <UiButton size="sm" variant="primary" @click="openCreateEditor">新建模板套</UiButton>
+              <UiButton
+                size="sm"
+                variant="primary"
+                :disabled="loadFailed || loading"
+                @click="openCreateEditor"
+                >新建模板套</UiButton
+              >
             </div>
           </div>
         </template>
 
+        <UiEmpty
+          v-if="loadFailed"
+          description="平台模板加载失败"
+          action-label="重新加载"
+          @action="loadPlatformSets"
+        />
+
         <UiDataTable
+          v-else
           pagination-mode="none"
           :columns="platformColumns"
           :data-source="platformSets"
@@ -256,7 +307,7 @@ onMounted(loadPlatformSets)
           flat
           row-key="setCode"
           size="middle"
-          empty-description="暂无平台模板，请先初始化默认模板或新建"
+          empty-description="暂无平台模板，请新建模板套"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'templateScope'">
@@ -266,6 +317,9 @@ onMounted(loadPlatformSets)
             </template>
             <template v-else-if="column.key === 'examForm'">
               {{ examFormLabel(record.examForm) }}
+            </template>
+            <template v-else-if="column.key === 'retention'">
+              {{ retentionLabel(record) }}
             </template>
             <template v-else-if="column.key === 'releaseTag'">
               <UiTag v-if="record.releaseTag" tone="blue" size="sm">{{ record.releaseTag }}</UiTag>
@@ -291,7 +345,7 @@ onMounted(loadPlatformSets)
         :saving="saving"
         mode="platform"
         save-label="保存模板"
-        empty-description="暂无材料项与自查项，请先初始化默认模板"
+        empty-description="暂无材料项与自查项"
         @save="submitSave"
         @cancel="resetEditor"
       >
@@ -320,6 +374,19 @@ onMounted(loadPlatformSets)
             <label class="archive-template-editor__field">
               <span>发版标签</span>
               <a-input v-model:value="editorMeta.releaseTag" placeholder="如 2026-06-30" />
+            </label>
+            <label class="archive-template-editor__field">
+              <span>保管期限</span>
+              <div class="archive-template-editor__retention">
+                <a-input-number
+                  v-model:value="editorMeta.defaultRetentionYears"
+                  :min="1"
+                  :max="100"
+                  :disabled="editorMeta.defaultPermanentRetention"
+                />
+                <span>年</span>
+                <a-checkbox v-model:checked="editorMeta.defaultPermanentRetention">永久</a-checkbox>
+              </div>
             </label>
             <label class="archive-template-editor__field archive-template-editor__field--wide">
               <span>说明</span>
@@ -353,6 +420,11 @@ onMounted(loadPlatformSets)
 }
 .archive-platform-admin__actions {
   display: flex;
+  gap: 8px;
+}
+.archive-template-editor__retention {
+  display: flex;
+  align-items: center;
   gap: 8px;
 }
 </style>

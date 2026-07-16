@@ -61,7 +61,7 @@ onMounted(() => {
   top: -100px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 9999;
+  z-index: calc(var(--dp-z-modal) + 20);
   padding: var(--dp-space-3) var(--dp-space-5);
   background-color: var(--ant-color-primary);
   color: var(--ant-color-white);

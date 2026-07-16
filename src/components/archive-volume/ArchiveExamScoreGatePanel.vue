@@ -167,7 +167,7 @@ defineExpose({
 .archive-exam-score-gate-panel__check {
   width: 22px;
   height: 22px;
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
   display: inline-flex;
   align-items: center;
   justify-content: center;

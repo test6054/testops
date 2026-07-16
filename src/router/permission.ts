@@ -271,6 +271,9 @@ export function requiresAuth(path: string): boolean {
   if (path.startsWith('/survey/')) {
     return false
   }
+  if (path === '/portfolio/public/expert-review') {
+    return false
+  }
   // /scanner-kiosk 部署在一体机本地浏览器，统一走 Agent push_token，不走教师 JWT。
   if (path === '/scanner-kiosk' || path.startsWith('/scanner-kiosk/')) {
     return false

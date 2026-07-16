@@ -4,11 +4,11 @@ import type {
   PortfolioTeachingExtensionActivityVO,
   PortfolioTeachingExtensionCategoryVO,
 } from '@/apis/portfolio/teaching-extension'
-import { DatePicker, Form, Input, InputNumber, message, Modal } from 'ant-design-vue'
+import { portfolioTeachingExtensionApi } from '@/apis/portfolio/teaching-extension'
+import { DatePicker, Form, Input, InputNumber, message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { portfolioTeachingExtensionApi } from '@/apis/portfolio/teaching-extension'
 import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -50,6 +50,7 @@ const categories = ref<PortfolioTeachingExtensionCategoryVO[]>([])
 const modalOpen = ref(false)
 const categoryModalOpen = ref(false)
 const editing = ref<PortfolioTeachingExtensionActivityVO | null>(null)
+const deletingActivityId = ref('')
 const deletingCategoryId = ref('')
 const uploadingFile = ref(false)
 const attachmentInputRef = ref<HTMLInputElement | null>(null)
@@ -80,9 +81,9 @@ const isTraining = computed(() => form.activityKind === PortfolioTeachingExtensi
 
 function canEditActivity(row: PortfolioTeachingExtensionActivityVO) {
   return (
-    !row.archiveRecordId
-    || row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.DRAFT
-    || row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.RETURNED
+    !row.archiveRecordId ||
+    row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.DRAFT ||
+    row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.RETURNED
   )
 }
 
@@ -169,6 +170,13 @@ async function loadData() {
   const currentToken = requestToken.value + 1
   requestToken.value = currentToken
   if (canPickTeachers.value && !targetTeacherId.value) {
+    loading.value = false
+    categoryLoading.value = false
+    saving.value = false
+    creatingCategory.value = false
+    uploadingFile.value = false
+    submittingTrainingId.value = ''
+    loadFailed.value = false
     rows.value = []
     categories.value = []
     return
@@ -187,10 +195,10 @@ async function loadData() {
     rows.value = activityRows
     categories.value = categoryRows
     if (
-      typeof route.query.recommendationId === 'string'
-      && !recommendationIntentConsumed.value
-      && !readonlyMode.value
-      && !modalOpen.value
+      typeof route.query.recommendationId === 'string' &&
+      !recommendationIntentConsumed.value &&
+      !readonlyMode.value &&
+      !modalOpen.value
     ) {
       openModal()
     }
@@ -198,6 +206,8 @@ async function loadData() {
     if (requestToken.value !== currentToken) {
       return
     }
+    rows.value = []
+    categories.value = []
     loadFailed.value = true
     showUserError(error)
   } finally {
@@ -230,10 +240,10 @@ function openModal(row?: PortfolioTeachingExtensionActivityVO) {
   form.fileId = row?.fileId || ''
   form.attachmentName = row?.fileId ? `附件 ${row.fileId}` : ''
   if (!row && !recommendationIntentConsumed.value) {
-    form.trainingRecommendationId
-      = typeof route.query.recommendationId === 'string' ? route.query.recommendationId : ''
-    form.activityName
-      = typeof route.query.activityName === 'string' ? route.query.activityName : form.activityName
+    form.trainingRecommendationId =
+      typeof route.query.recommendationId === 'string' ? route.query.recommendationId : ''
+    form.activityName =
+      typeof route.query.activityName === 'string' ? route.query.activityName : form.activityName
     recommendationIntentConsumed.value = true
   }
   modalOpen.value = true
@@ -269,22 +279,29 @@ async function saveActivity() {
 }
 
 async function removeActivity(row: PortfolioTeachingExtensionActivityVO) {
-  if (readonlyMode.value) {
+  if (readonlyMode.value || deletingActivityId.value || submittingTrainingId.value) {
     return
   }
+  const teacherId = scopeTeacherId()
+  const operationToken = requestToken.value
   const confirmed = await confirmAsync({
     title: '删除活动',
     content: `确认删除「${row.activityName}」？`,
   })
-  if (!confirmed) {
+  if (!confirmed || requestToken.value !== operationToken) {
     return
   }
+  deletingActivityId.value = row.id
   try {
-    await portfolioTeachingExtensionApi.delete({ id: row.id, teacherId: scopeTeacherId() })
+    await portfolioTeachingExtensionApi.delete({ id: row.id, teacherId })
+    if (requestToken.value !== operationToken) return
     message.success('已删除')
     await loadData()
   } catch (error) {
+    if (requestToken.value !== operationToken) return
     showUserError(error)
+  } finally {
+    if (deletingActivityId.value === row.id) deletingActivityId.value = ''
   }
 }
 
@@ -337,32 +354,35 @@ async function createCategory() {
   }
 }
 
-function confirmDeleteCategory(row: PortfolioTeachingExtensionCategoryVO) {
-  if (readonlyMode.value || row.preset || !row.id) {
+async function confirmDeleteCategory(row: PortfolioTeachingExtensionCategoryVO) {
+  if (readonlyMode.value || row.preset || !row.id || deletingCategoryId.value) {
     return
   }
-  Modal.confirm({
+  const categoryId = row.id
+  const teacherId = scopeTeacherId()
+  const operationToken = requestToken.value
+  deletingCategoryId.value = categoryId
+  const confirmed = await confirmAsync({
     title: '删除自建分类',
     content: `确认删除「${row.categoryName}」？分类仍被活动引用时无法删除。`,
-    okText: '删除',
-    okType: 'danger',
-    cancelText: '取消',
-    async onOk() {
-      deletingCategoryId.value = row.id!
-      try {
-        await portfolioTeachingExtensionApi.deleteCategory({
-          id: row.id!,
-          teacherId: scopeTeacherId(),
-        })
-        message.success('自建分类已删除')
-        await loadData()
-      } catch (error) {
-        showUserError(error)
-      } finally {
-        deletingCategoryId.value = ''
-      }
-    },
+    type: 'error',
+    okText: '确认删除',
   })
+  if (!confirmed || requestToken.value !== operationToken) {
+    if (deletingCategoryId.value === categoryId) deletingCategoryId.value = ''
+    return
+  }
+  try {
+    await portfolioTeachingExtensionApi.deleteCategory({ id: categoryId, teacherId })
+    if (requestToken.value !== operationToken) return
+    message.success('自建分类已删除')
+    await loadData()
+  } catch (error) {
+    if (requestToken.value !== operationToken) return
+    showUserError(error)
+  } finally {
+    if (deletingCategoryId.value === categoryId) deletingCategoryId.value = ''
+  }
 }
 
 function openAttachmentPicker() {
@@ -394,17 +414,28 @@ async function onAttachmentPick(event: Event) {
   }
 }
 
-usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
 watch(
   () => targetTeacherId.value,
   () => {
     requestToken.value += 1
+    loading.value = false
+    categoryLoading.value = false
+    saving.value = false
+    creatingCategory.value = false
+    submittingTrainingId.value = ''
+    deletingActivityId.value = ''
+    deletingCategoryId.value = ''
+    uploadingFile.value = false
+    loadFailed.value = false
+    rows.value = []
+    categories.value = []
     modalOpen.value = false
     categoryModalOpen.value = false
     resetForm()
     recommendationIntentConsumed.value = false
   },
 )
+usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
 </script>
 
 <template>
@@ -470,9 +501,9 @@ watch(
               </UiButton>
               <UiButton
                 v-if="
-                  !readonlyMode
-                    && record.activityKind === PortfolioTeachingExtensionKindCode.TRAINING
-                    && !record.archiveRecordId
+                  !readonlyMode &&
+                  record.activityKind === PortfolioTeachingExtensionKindCode.TRAINING &&
+                  !record.archiveRecordId
                 "
                 variant="ghost"
                 :loading="submittingTrainingId === record.id"
@@ -501,6 +532,8 @@ watch(
                 v-if="!readonlyMode && !record.archiveRecordId"
                 variant="ghost"
                 danger
+                :loading="deletingActivityId === record.id"
+                :disabled="Boolean(deletingActivityId) || Boolean(submittingTrainingId)"
                 @click="removeActivity(record)"
               >
                 删除

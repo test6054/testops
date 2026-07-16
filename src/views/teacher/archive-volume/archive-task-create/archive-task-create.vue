@@ -15,6 +15,25 @@
       dense
       class="create-layout__submit-error"
     />
+    <UiAlertStrip
+      v-if="ac.templateLoadFailed.value"
+      tone="error"
+      title="目录模板加载失败"
+      description="无法确认当前租户可用的目录模板，归档任务暂不可创建。"
+      dense
+      class="create-layout__submit-error"
+    >
+      <template #actions>
+        <UiButton
+          size="sm"
+          variant="outline"
+          :loading="ac.templateLoading.value"
+          @click="ac.loadTemplateSets"
+        >
+          重新加载
+        </UiButton>
+      </template>
+    </UiAlertStrip>
     <a-spin :spinning="ac.submitting.value" tip="正在创建…">
       <TaskProvenanceStep @select="handleProvenanceSelect" @batch-excel="ac.goBatchExcelImport" />
       <TaskBasicInfoStep
@@ -39,7 +58,7 @@
       <UiButton variant="ghost" @click="ac.handleGoBack">取消</UiButton>
       <UiButton
         :loading="ac.submitting.value"
-        :disabled="ac.submitting.value"
+        :disabled="ac.submitting.value || ac.templateLoading.value || ac.templateLoadFailed.value"
         @click="handleSubmit"
       >
         <template v-if="!ac.submitting.value" #icon><SaveOutlined /></template>
@@ -77,8 +96,9 @@ provide(archiveTaskCreateBasicFormKey, ac.basicForm)
 provide(archiveTaskCreatePlanFormKey, ac.planForm)
 provide(archiveTaskCreateWizardStateKey, ac.wizardState)
 
-function handleProvenanceSelect(provenance: ArchiveTaskProvenanceCode): void {
-  ac.selectProvenanceAndContinue(provenance)
+async function handleProvenanceSelect(provenance: ArchiveTaskProvenanceCode): Promise<void> {
+  await ac.selectProvenanceAndContinue(provenance)
+  if (ac.wizardState.provenance !== provenance) return
   scrollToSection('archive-task-basic')
 }
 

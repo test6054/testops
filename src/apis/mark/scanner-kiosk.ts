@@ -779,8 +779,6 @@ export interface ScanDispatchAdhocTicketCreateRequest {
   volumeId?: string
   scannerDeviceId: string
   scannerStationId: string
-  physicalStorageLocation?: string
-  physicalLocationNote?: string
   catalogCode?: string
   materialType?: ArchiveMaterialTypeCode
   archiveBatchMode?: string

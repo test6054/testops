@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TreeProps } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PortfolioOrgAliasSaveRequest,
@@ -9,7 +10,6 @@ import type {
   PortfolioOrgTreeNodeVO,
   PortfolioOrgUnitSaveRequest,
 } from '@/apis/portfolio/types'
-import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
   PORTFOLIO_ORG_UNIT_TYPE_OPTIONS,
@@ -49,11 +49,11 @@ interface TreeNode {
 
 function isTreeNode(value: unknown): value is TreeNode {
   return (
-    typeof value === 'object'
-    && value !== null
-    && 'key' in value
-    && 'title' in value
-    && 'raw' in value
+    typeof value === 'object' &&
+    value !== null &&
+    'key' in value &&
+    'title' in value &&
+    'raw' in value
   )
 }
 
@@ -75,7 +75,10 @@ const canManageTenant = computed(() =>
     isTenantAdmin: userStore.isTenantAdmin,
   }),
 )
-const syncing = ref(false)
+const operationKey = ref('')
+const writing = computed(() => Boolean(operationKey.value))
+const syncing = computed(() => operationKey.value === 'org:sync')
+const syncLogRequestToken = ref(0)
 const syncDiagnostics = ref<PortfolioOrgSyncInvalidUnitVO[]>([])
 const lastSyncLog = ref<PortfolioOrgSyncLogVO | null>(null)
 const treeData = ref<TreeNode[]>([])
@@ -100,6 +103,22 @@ const aliasEditor = reactive<PortfolioOrgAliasSaveRequest>({
   aliasName: '',
   remark: '',
 })
+const interactionLocked = computed(() => writing.value || unitVisible.value || aliasVisible.value)
+
+/** 组织配置写操作必须串行，避免树节点、扩展组织与历史名称并发改写。 */
+function beginOperation(key: string): boolean {
+  if (writing.value) {
+    return false
+  }
+  operationKey.value = key
+  return true
+}
+
+function endOperation(key: string) {
+  if (operationKey.value === key) {
+    operationKey.value = ''
+  }
+}
 
 function nodeTypeLabel(nodeType?: PortfolioOrgTreeNodeVO['nodeType']) {
   if (!nodeType) {
@@ -170,9 +189,14 @@ async function loadLatestSync() {
   if (!canManageTenant.value) {
     return
   }
+  const currentToken = syncLogRequestToken.value + 1
+  syncLogRequestToken.value = currentToken
   try {
-    lastSyncLog.value = await portfolioOrgApi.syncLatest()
+    const result = await portfolioOrgApi.syncLatest()
+    if (syncLogRequestToken.value !== currentToken) return
+    lastSyncLog.value = result
   } catch (error) {
+    if (syncLogRequestToken.value !== currentToken) return
     showUserError(error, '读取同步审计失败')
     lastSyncLog.value = null
   }
@@ -196,7 +220,8 @@ const contextSubtitle = computed(() => {
 })
 
 async function handleSync() {
-  syncing.value = true
+  const operation = 'org:sync'
+  if (!beginOperation(operation)) return
   try {
     const result = await portfolioOrgApi.sync()
     syncDiagnostics.value = result.invalidPortfolioOrgUnits ?? []
@@ -209,7 +234,7 @@ async function handleSync() {
   } catch (error) {
     showUserError(error, '组织校验失败')
   } finally {
-    syncing.value = false
+    endOperation(operation)
   }
 }
 
@@ -229,6 +254,9 @@ function findTreeNode(nodes: TreeNode[], key: string): TreeNode | null {
 }
 
 const onSelect: TreeProps['onSelect'] = (_keys, info) => {
+  if (interactionLocked.value) {
+    return
+  }
   if (!info.node) {
     selectedNode.value = null
     return
@@ -294,13 +322,13 @@ function openUnitEditor(mode: 'create' | 'edit') {
     unitEditor.orgName = ''
     unitEditor.orgCode = ''
     unitEditor.parentPortfolioOrgId = selectedNode.value?.portfolioOrgId
-    unitEditor.anchorDepartmentId
-      = selectedRaw.value?.anchorDepartmentId
-        ?? (selectedRaw.value?.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.DEPARTMENT
+    unitEditor.anchorDepartmentId =
+      selectedRaw.value?.anchorDepartmentId ??
+      (selectedRaw.value?.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.DEPARTMENT
         ? selectedRaw.value.id
         : undefined)
-    unitEditor.anchorMajorId
-      = selectedRaw.value?.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.MAJOR
+    unitEditor.anchorMajorId =
+      selectedRaw.value?.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.MAJOR
         ? selectedRaw.value.id
         : selectedRaw.value?.anchorMajorId
     unitEditor.sortOrder = 0
@@ -311,24 +339,36 @@ function openUnitEditor(mode: 'create' | 'edit') {
 }
 
 async function submitUnit() {
+  const orgName = unitEditor.orgName.trim()
+  if (!orgName) {
+    message.warning('请填写扩展组织名称')
+    return
+  }
+  const targetId = unitEditor.id || 'new'
+  const operation = `unit:save:${targetId}`
+  if (!beginOperation(operation)) return
+  const request: PortfolioOrgUnitSaveRequest = {
+    id: unitEditor.id,
+    orgType: unitEditor.orgType,
+    orgCode: unitEditor.orgCode?.trim() || undefined,
+    orgName,
+    parentPortfolioOrgId: unitEditor.parentPortfolioOrgId,
+    anchorDepartmentId: unitEditor.anchorDepartmentId,
+    anchorMajorId: unitEditor.anchorMajorId,
+    sortOrder: unitEditor.sortOrder,
+    status: unitEditor.status,
+    leaderUserId: unitEditor.leaderUserId?.trim() || undefined,
+  }
   try {
-    await portfolioOrgApi.saveUnit({
-      id: unitEditor.id,
-      orgType: unitEditor.orgType,
-      orgCode: unitEditor.orgCode?.trim() || undefined,
-      orgName: unitEditor.orgName.trim(),
-      parentPortfolioOrgId: unitEditor.parentPortfolioOrgId,
-      anchorDepartmentId: unitEditor.anchorDepartmentId,
-      anchorMajorId: unitEditor.anchorMajorId,
-      sortOrder: unitEditor.sortOrder,
-      status: unitEditor.status,
-      leaderUserId: unitEditor.leaderUserId?.trim() || undefined,
-    })
+    await portfolioOrgApi.saveUnit(request)
     message.success(unitMode.value === 'edit' ? '扩展组织已更新' : '扩展组织已创建')
     unitVisible.value = false
+    syncDiagnostics.value = []
     await refreshTree()
   } catch (error) {
     showUserError(error, '保存扩展组织失败')
+  } finally {
+    endOperation(operation)
   }
 }
 
@@ -338,16 +378,29 @@ async function deleteSelectedUnit() {
     message.warning('请选择专业群或教研室等扩展组织节点')
     return
   }
-  if (!(await confirmAsync({ content: '确认删除该扩展组织？', type: 'error' }))) {
+  const operation = `unit:delete:${unitId}`
+  if (!beginOperation(operation)) return
+  const orgName = selectedRaw.value?.name || unitId
+  if (
+    !(await confirmAsync({
+      title: '确认删除扩展组织？',
+      content: `删除「${orgName}」后，该组织将从档案范围和历史名称维护中移除。`,
+      type: 'error',
+    }))
+  ) {
+    endOperation(operation)
     return
   }
   try {
     await portfolioOrgApi.deleteUnit(unitId)
     message.success('已删除')
     selectedNode.value = null
+    syncDiagnostics.value = []
     await refreshTree()
   } catch (error) {
     showUserError(error, '删除失败')
+  } finally {
+    endOperation(operation)
   }
 }
 
@@ -392,34 +445,60 @@ function openAliasEditor(mode: 'create' | 'edit', row?: PortfolioOrgAliasVO) {
 }
 
 async function submitAlias() {
+  const aliasName = aliasEditor.aliasName.trim()
+  if (!aliasName) {
+    message.warning('请填写历史名称')
+    return
+  }
+  if (
+    aliasEditor.effectiveFrom &&
+    aliasEditor.effectiveTo &&
+    aliasEditor.effectiveFrom > aliasEditor.effectiveTo
+  ) {
+    message.warning('生效截止日期不能早于生效起始日期')
+    return
+  }
+  const targetId = aliasEditor.id || `${aliasEditor.targetType}:${aliasEditor.targetId}`
+  const operation = `alias:save:${targetId}`
+  if (!beginOperation(operation)) return
+  const request: PortfolioOrgAliasSaveRequest = {
+    id: aliasEditor.id,
+    targetType: aliasEditor.targetType,
+    targetId: aliasEditor.targetId,
+    aliasName,
+    effectiveFrom: aliasEditor.effectiveFrom,
+    effectiveTo: aliasEditor.effectiveTo,
+    remark: aliasEditor.remark?.trim() || undefined,
+  }
   try {
-    await portfolioOrgApi.saveAlias({
-      id: aliasEditor.id,
-      targetType: aliasEditor.targetType,
-      targetId: aliasEditor.targetId,
-      aliasName: aliasEditor.aliasName.trim(),
-      effectiveFrom: aliasEditor.effectiveFrom,
-      effectiveTo: aliasEditor.effectiveTo,
-      remark: aliasEditor.remark?.trim() || undefined,
-    })
+    await portfolioOrgApi.saveAlias(request)
     message.success(aliasMode.value === 'edit' ? '历史名称已更新' : '历史名称已添加')
     aliasVisible.value = false
     await refreshTree()
   } catch (error) {
     showUserError(error, '保存历史名称失败')
+  } finally {
+    endOperation(operation)
   }
 }
 
 async function deleteAlias(row: PortfolioOrgAliasVO) {
+  const aliasId = row.id
+  const aliasName = row.aliasName
+  const operation = `alias:delete:${aliasId}`
+  if (!beginOperation(operation)) return
   if (!(await confirmAsync({ content: `确认删除历史名称「${row.aliasName}」？`, type: 'error' }))) {
+    endOperation(operation)
     return
   }
   try {
-    await portfolioOrgApi.deleteAlias(row.id)
+    await portfolioOrgApi.deleteAlias(aliasId)
     message.success('已删除')
     await refreshTree()
   } catch (error) {
-    showUserError(error, '删除历史名称失败')
+    showUserError(error, `删除历史名称「${aliasName}」失败`)
+  } finally {
+    endOperation(operation)
   }
 }
 
@@ -434,23 +513,32 @@ onMounted(async () => {
     <template #context>
       <ContextBar layout="workbench" show-title title="组织管理" :subtitle="contextSubtitle">
         <template #actions>
-          <UiButton v-if="canManageTenant" :loading="syncing" @click="handleSync">
+          <UiButton
+            v-if="canManageTenant"
+            :loading="syncing"
+            :disabled="interactionLocked"
+            @click="handleSync"
+          >
             校验主数据挂接
           </UiButton>
           <UiButton
             v-if="canManageTenant"
             variant="primary"
-            :disabled="!selectedNode"
+            :disabled="!selectedNode || interactionLocked || loading"
             @click="openUnitEditor('create')"
           >
             新增扩展组织
           </UiButton>
-          <UiButton v-if="canManageTenant && canManageUnit" @click="openUnitEditor('edit')">
+          <UiButton
+            v-if="canManageTenant && canManageUnit"
+            :disabled="interactionLocked || loading"
+            @click="openUnitEditor('edit')"
+          >
             编辑扩展组织
           </UiButton>
           <UiButton
             v-if="canManageTenant"
-            :disabled="!canManageAlias"
+            :disabled="!canManageAlias || interactionLocked || loading"
             @click="openAliasEditor('create')"
           >
             添加历史名称
@@ -458,7 +546,8 @@ onMounted(async () => {
           <UiButton
             v-if="canManageTenant"
             status="danger"
-            :disabled="!canManageUnit"
+            :loading="operationKey.startsWith('unit:delete:')"
+            :disabled="!canManageUnit || interactionLocked || loading"
             @click="deleteSelectedUnit"
           >
             删除扩展组织
@@ -480,6 +569,7 @@ onMounted(async () => {
           :tree-data="treeData"
           default-expand-all
           block-node
+          :disabled="interactionLocked"
           @select="onSelect"
         />
         <UiEmpty v-else description="暂无组织数据，请联系学校管理员校验主数据挂接" />
@@ -539,8 +629,8 @@ onMounted(async () => {
                 <UiTableActions
                   v-if="canManageTenant"
                   :items="[
-                    { key: 'edit', label: '编辑' },
-                    { key: 'delete', label: '删除', tone: 'danger' },
+                    { key: 'edit', label: '编辑', disabled: interactionLocked },
+                    { key: 'delete', label: '删除', tone: 'danger', disabled: interactionLocked },
                   ]"
                   split
                   @action="(key) => handleOrgAliasAction(key, record)"
@@ -558,6 +648,11 @@ onMounted(async () => {
     <a-modal
       v-model:open="unitVisible"
       :title="unitMode === 'edit' ? '编辑扩展组织' : '新增扩展组织'"
+      :confirm-loading="operationKey.startsWith('unit:save:')"
+      :closable="!writing"
+      :mask-closable="!writing"
+      :keyboard="!writing"
+      :cancel-button-props="{ disabled: writing }"
       @ok="submitUnit"
     >
       <a-form layout="vertical">
@@ -565,14 +660,14 @@ onMounted(async () => {
           <a-select
             v-model:value="unitEditor.orgType"
             :options="PORTFOLIO_ORG_UNIT_TYPE_OPTIONS"
-            :disabled="unitMode === 'edit'"
+            :disabled="unitMode === 'edit' || writing"
           />
         </a-form-item>
         <a-form-item label="名称" required>
-          <a-input v-model:value="unitEditor.orgName" />
+          <a-input v-model:value="unitEditor.orgName" :disabled="writing" />
         </a-form-item>
         <a-form-item label="编码">
-          <a-input v-model:value="unitEditor.orgCode" />
+          <a-input v-model:value="unitEditor.orgCode" :disabled="writing" />
         </a-form-item>
         <a-form-item v-if="unitEditor.anchorDepartmentId" label="挂接院系">
           <a-input :value="unitEditor.anchorDepartmentId" disabled />
@@ -588,6 +683,7 @@ onMounted(async () => {
             placeholder="搜索教师姓名或工号"
             :filter-option="false"
             :options="teacherOptions"
+            :disabled="writing"
             @search="searchTeachers"
           />
         </a-form-item>
@@ -596,6 +692,11 @@ onMounted(async () => {
     <a-modal
       v-model:open="aliasVisible"
       :title="aliasMode === 'edit' ? '编辑历史名称' : '添加历史名称'"
+      :confirm-loading="operationKey.startsWith('alias:save:')"
+      :closable="!writing"
+      :mask-closable="!writing"
+      :keyboard="!writing"
+      :cancel-button-props="{ disabled: writing }"
       @ok="submitAlias"
     >
       <a-form layout="vertical">
@@ -612,16 +713,24 @@ onMounted(async () => {
           />
         </a-form-item>
         <a-form-item label="历史名称" required>
-          <a-input v-model:value="aliasEditor.aliasName" />
+          <a-input v-model:value="aliasEditor.aliasName" :disabled="writing" />
         </a-form-item>
         <a-form-item label="生效起始">
-          <a-input v-model:value="aliasEditor.effectiveFrom" placeholder="YYYY-MM-DD" />
+          <a-input
+            v-model:value="aliasEditor.effectiveFrom"
+            placeholder="YYYY-MM-DD"
+            :disabled="writing"
+          />
         </a-form-item>
         <a-form-item label="生效截止">
-          <a-input v-model:value="aliasEditor.effectiveTo" placeholder="YYYY-MM-DD" />
+          <a-input
+            v-model:value="aliasEditor.effectiveTo"
+            placeholder="YYYY-MM-DD"
+            :disabled="writing"
+          />
         </a-form-item>
         <a-form-item label="备注">
-          <a-input v-model:value="aliasEditor.remark" />
+          <a-input v-model:value="aliasEditor.remark" :disabled="writing" />
         </a-form-item>
       </a-form>
     </a-modal>

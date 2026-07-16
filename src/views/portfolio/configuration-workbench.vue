@@ -12,7 +12,6 @@ const configurationSections = [
     actions: [
       { label: '组织与名册', routeName: 'PortfolioOrgAdmin' },
       { label: '数据集成中心', routeName: 'PortfolioIntegrationDashboard' },
-      { label: '专业群档案袋', routeName: 'PortfolioMajorGroupPortfolio' },
     ],
   },
   {
@@ -62,7 +61,11 @@ function openConfiguration(routeName: string) {
       <ContextBar show-title layout="workbench" title="档案袋配置中心" />
     </template>
     <section class="configuration-workbench">
-      <section v-for="section in configurationSections" :key="section.title" class="configuration-workbench__section">
+      <section
+        v-for="section in configurationSections"
+        :key="section.title"
+        class="configuration-workbench__section"
+      >
         <h2>{{ section.title }}</h2>
         <div class="configuration-workbench__actions">
           <UiButton

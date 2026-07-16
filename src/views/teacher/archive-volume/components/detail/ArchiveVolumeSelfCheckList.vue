@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import type { ArchiveSelfCheckStatusCode } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { computed, onMounted } from 'vue'
 import {
   ARCHIVE_SELF_CHECK_STATUS_TONE,
   ArchiveSelfCheckStatusDescription,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { computed, onMounted } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveVolumeSelfCheck } from '@/composables/useArchiveVolumeSelfCheck'
@@ -32,12 +33,13 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  "refreshed": []
+  refreshed: []
   'open-sign-off': []
 }>()
 
 const {
   loading,
+  loadFailed,
   checking,
   exporting,
   items,
@@ -65,8 +67,8 @@ async function handleToggle(templateItemId: string, checked: boolean) {
   emit('refreshed')
 }
 
-function handleRowClick(item: { templateItemId: string, checked?: boolean }) {
-  if (props.readonly || checking.value) return
+function handleRowClick(item: { templateItemId: string; checked?: boolean }) {
+  if (props.readonly || checking.value || loadFailed.value) return
   void handleToggle(item.templateItemId, !item.checked)
 }
 
@@ -104,12 +106,27 @@ defineExpose({ loadSelfCheck })
           v-if="!readonly && allRequiredChecked"
           size="sm"
           variant="primary"
+          :disabled="loadFailed"
           @click="emit('open-sign-off')"
         >
           进入签字确认
         </UiButton>
       </div>
     </div>
+
+    <UiAlertStrip
+      v-if="loadFailed"
+      tone="error"
+      title="自查清单加载失败"
+      description="当前保留的是上次成功加载的内容，重新加载成功前不能勾选或进入签字确认。"
+      :inline="false"
+    >
+      <template #actions>
+        <UiButton size="sm" variant="outline" :loading="loading" @click="loadSelfCheck">
+          重新加载
+        </UiButton>
+      </template>
+    </UiAlertStrip>
 
     <UiSkeletonState v-if="loading" variant="card" compact />
 
@@ -120,7 +137,7 @@ defineExpose({ loadSelfCheck })
         v-for="item in items"
         :key="item.templateItemId"
         class="self-check-row"
-        :class="{ 'self-check-row--interactive': !readonly && !checking }"
+        :class="{ 'self-check-row--interactive': !readonly && !checking && !loadFailed }"
         @click="handleRowClick(item)"
       >
         <span

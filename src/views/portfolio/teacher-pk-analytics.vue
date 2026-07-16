@@ -1,8 +1,15 @@
 <script setup lang="ts">
-import type { PortfolioTeacherPkCompareVO } from '@/apis/portfolio/teacher-platform'
-import type { PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { PortfolioTeacherPkSessionVO } from '@/apis/portfolio/analysis'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
+import type {
+  PortfolioTeacherPkCompareTeacherVO,
+  PortfolioTeacherPkCompareVO,
+} from '@/apis/portfolio/teacher-platform'
+import type { PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
+import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
+import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { PORTFOLIO_PK_COMPARE_DEFAULT_DIMENSIONS } from '@/apis/portfolio/enums'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
@@ -11,34 +18,71 @@ import {
 } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
+import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import {
   portfolioTeacherSelectOptionsFromSummaries,
   resolvePortfolioTeacherDisplayName,
 } from '@/utils/portfolio-teacher-display'
 
-const loading = ref(false)
+const operation = ref<'preview' | 'create' | 'detail' | 'export' | null>(null)
+const historyLoading = ref(false)
 const teachers = ref<PortfolioTeacherSummaryVO[]>([])
 const selectedTeacherIds = ref<string[]>([])
+const sessionPurpose = ref('')
+const maskMode = ref(true)
 const pkResult = ref<PortfolioTeacherPkCompareVO | null>(null)
+const sessionRows = ref<PortfolioTeacherPkSessionVO[]>([])
+const sessionTotal = ref(0)
+const query = reactive({
+  pageNum: 1,
+  pageSize: DEFAULT_LIST_PAGE_SIZE,
+})
 let teacherSearchTimer: ReturnType<typeof setTimeout> | null = null
+let historyRequestToken = 0
+let detailRequestToken = 0
 
 const teacherOptions = computed(() => portfolioTeacherSelectOptionsFromSummaries(teachers.value))
+const operationPending = computed(() => operation.value !== null)
+const historyPagination = computed(() => ({
+  current: query.pageNum,
+  pageSize: query.pageSize,
+  total: sessionTotal.value,
+  showSizeChanger: true,
+}))
+const historyColumns: ColumnsType = [
+  { title: '对比用途', dataIndex: 'sessionPurpose', key: 'sessionPurpose', ellipsis: true },
+  { title: '教师数', dataIndex: 'teacherCount', key: 'teacherCount', width: 90 },
+  { title: '展示范围', key: 'maskMode', width: 110 },
+  { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
+  { title: '操作', key: 'actions', width: 130 },
+]
 
-function resolveTeacherTitle(teacherUserId: string): string {
-  const teacher = teachers.value.find((item) => item.userId === teacherUserId)
-  if (!teacher) {
-    return `教师 ${teacherUserId}`
+function resolveTeacherTitle(teacher: PortfolioTeacherPkCompareTeacherVO): string {
+  if (teacher.displayName?.trim()) {
+    return teacher.teacherNumber?.trim()
+      ? `${teacher.displayName} · ${teacher.teacherNumber}`
+      : teacher.displayName
   }
-  const displayName = resolvePortfolioTeacherDisplayName(teacher)
+  const catalogTeacher = teachers.value.find((item) => item.userId === teacher.teacherUserId)
+  if (!catalogTeacher) {
+    return `教师 ${teacher.teacherUserId}`
+  }
+  const displayName = resolvePortfolioTeacherDisplayName(catalogTeacher)
   if (!displayName) {
-    return `教师 ${teacherUserId}`
+    return `教师 ${teacher.teacherUserId}`
   }
-  return teacher.teacherNumber?.trim() ? `${displayName} · ${teacher.teacherNumber}` : displayName
+  return catalogTeacher.teacherNumber?.trim()
+    ? `${displayName} · ${catalogTeacher.teacherNumber}`
+    : displayName
 }
 
 function mergeTeacherOptions(rows: PortfolioTeacherSummaryVO[]) {
@@ -71,30 +115,154 @@ function handleTeacherSearch(value: string) {
   }, QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS)
 }
 
-async function runPkCompare() {
+function validateTeacherSelection(): boolean {
   if (selectedTeacherIds.value.length < 2 || selectedTeacherIds.value.length > 5) {
     message.warning('请选择 2–5 名教师')
+    return false
+  }
+  return true
+}
+
+async function previewPkCompare() {
+  if (!validateTeacherSelection() || operationPending.value) {
     return
   }
-  loading.value = true
-  pkResult.value = null
+  operation.value = 'preview'
   try {
     pkResult.value = await portfolioAnalysisApi.pkCompare({
       teacherUserIds: selectedTeacherIds.value,
       dimensionCodes: PORTFOLIO_PK_COMPARE_DEFAULT_DIMENSIONS,
+      maskMode: maskMode.value,
     })
   } catch (error) {
-    showUserError(error, '教师 PK 对比失败')
+    showUserError(error, '教师 PK 预览失败')
   } finally {
-    loading.value = false
+    operation.value = null
+  }
+}
+
+async function createPkSession() {
+  if (!validateTeacherSelection() || operationPending.value) {
+    return
+  }
+  const purpose = sessionPurpose.value.trim()
+  if (!purpose) {
+    message.warning('请填写对比用途')
+    return
+  }
+  operation.value = 'create'
+  try {
+    pkResult.value = await portfolioAnalysisApi.createPkSession({
+      teacherUserIds: selectedTeacherIds.value,
+      dimensionCodes: PORTFOLIO_PK_COMPARE_DEFAULT_DIMENSIONS,
+      sessionPurpose: purpose,
+      maskMode: maskMode.value,
+    })
+    message.success('对比会话已保存')
+    query.pageNum = 1
+    await loadSessionPage()
+  } catch (error) {
+    showUserError(error, '保存教师 PK 会话失败')
+  } finally {
+    operation.value = null
+  }
+}
+
+async function loadSessionPage() {
+  const token = ++historyRequestToken
+  historyLoading.value = true
+  try {
+    const page = await portfolioAnalysisApi.pagePkSessions({
+      pageNum: query.pageNum,
+      pageSize: query.pageSize,
+      mineOnly: true,
+    })
+    if (token !== historyRequestToken) {
+      return
+    }
+    sessionRows.value = page.list ?? []
+    sessionTotal.value = page.total ?? 0
+  } catch (error) {
+    if (token === historyRequestToken) {
+      sessionRows.value = []
+      sessionTotal.value = 0
+      showUserError(error, '加载 PK 会话历史失败')
+    }
+  } finally {
+    if (token === historyRequestToken) {
+      historyLoading.value = false
+    }
+  }
+}
+
+function handleHistoryTableChange(event: UiDataTableChangeEvent) {
+  const { pageNum, pageSize } = readUiDataTablePagination(event, DEFAULT_LIST_PAGE_SIZE)
+  query.pageNum = pageNum
+  query.pageSize = pageSize
+  void loadSessionPage()
+}
+
+async function restoreSession(row: PortfolioTeacherPkSessionVO) {
+  if (operationPending.value) {
+    return
+  }
+  const token = ++detailRequestToken
+  operation.value = 'detail'
+  try {
+    const detail = await portfolioAnalysisApi.getPkSession({ id: row.id })
+    if (token !== detailRequestToken) {
+      return
+    }
+    pkResult.value = detail
+    sessionPurpose.value = detail.sessionPurpose ?? row.sessionPurpose
+    maskMode.value = detail.maskMode ?? row.maskMode
+  } catch (error) {
+    if (token === detailRequestToken) {
+      showUserError(error, '恢复 PK 会话失败')
+    }
+  } finally {
+    if (token === detailRequestToken) {
+      operation.value = null
+    }
+  }
+}
+
+async function exportSession(row: PortfolioTeacherPkSessionVO) {
+  if (operationPending.value) {
+    return
+  }
+  operation.value = 'export'
+  try {
+    const result = await portfolioAnalysisApi.exportPkSession({
+      sessionId: row.id,
+      maskMode: row.maskMode,
+    })
+    await downloadPortfolioExcelExport(result)
+    message.success('已开始下载 PK 对比报告')
+  } catch (error) {
+    showUserError(error, '导出 PK 对比报告失败')
+  } finally {
+    operation.value = null
+  }
+}
+
+function handleSessionAction(action: string, row: PortfolioTeacherPkSessionVO) {
+  if (action === 'restore') {
+    void restoreSession(row)
+    return
+  }
+  if (action === 'export') {
+    void exportSession(row)
   }
 }
 
 onMounted(() => {
-  void loadTeachers()
+  void Promise.all([loadTeachers(), loadSessionPage()])
 })
 
 onUnmounted(() => {
+  historyRequestToken++
+  detailRequestToken++
   if (teacherSearchTimer) {
     clearTimeout(teacherSearchTimer)
     teacherSearchTimer = null
@@ -109,70 +277,222 @@ onUnmounted(() => {
         layout="workbench"
         show-title
         title="教师 PK 对比"
-        subtitle="多维画像分横向对比"
+        subtitle="多维画像与正式档案材料横向对比"
       />
     </template>
-    <UiCard title="对比范围">
-      <a-select
-        v-model:value="selectedTeacherIds"
-        mode="multiple"
-        placeholder="选择 2–5 名教师"
-        :options="teacherOptions"
-        class="teacher-pk__field"
-        show-search
-        :filter-option="false"
-        option-label-prop="label"
-        @focus="() => loadTeachers()"
-        @search="handleTeacherSearch"
-      />
-      <UiButton variant="primary" :loading="loading" @click="runPkCompare"> 开始对比 </UiButton>
-    </UiCard>
-    <a-spin :spinning="loading">
-      <UiEmpty v-if="!loading && !pkResult" description="选择教师后发起对比" />
-      <div v-else-if="pkResult" class="teacher-pk__grid">
-        <UiCard
-          v-for="teacher in pkResult.teachers"
-          :key="teacher.teacherUserId"
-          :title="resolveTeacherTitle(teacher.teacherUserId)"
+
+    <div class="teacher-pk__stack">
+      <UiCard title="新建对比会话">
+        <div class="teacher-pk__form">
+          <label class="teacher-pk__field teacher-pk__field--teachers">
+            <span>对比教师</span>
+            <a-select
+              v-model:value="selectedTeacherIds"
+              mode="multiple"
+              placeholder="选择 2–5 名教师"
+              :options="teacherOptions"
+              show-search
+              :filter-option="false"
+              option-label-prop="label"
+              :disabled="operationPending"
+              @focus="() => loadTeachers()"
+              @search="handleTeacherSearch"
+            />
+          </label>
+          <label class="teacher-pk__field teacher-pk__field--purpose">
+            <span>对比用途</span>
+            <a-input
+              v-model:value="sessionPurpose"
+              :maxlength="200"
+              placeholder="如：2026 年校级教学名师候选人评议"
+              :disabled="operationPending"
+            />
+          </label>
+          <label class="teacher-pk__mask">
+            <a-switch v-model:checked="maskMode" :disabled="operationPending" />
+            <span>脱敏展示</span>
+          </label>
+          <div class="teacher-pk__actions">
+            <UiButton
+              variant="outline"
+              :loading="operation === 'preview'"
+              :disabled="operationPending"
+              @click="previewPkCompare"
+            >
+              仅预览
+            </UiButton>
+            <UiButton
+              variant="primary"
+              :loading="operation === 'create'"
+              :disabled="operationPending"
+              @click="createPkSession"
+            >
+              保存并生成对比
+            </UiButton>
+          </div>
+        </div>
+      </UiCard>
+
+      <a-spin
+        :spinning="operation === 'preview' || operation === 'create' || operation === 'detail'"
+      >
+        <UiEmpty v-if="!pkResult" description="选择教师后生成对比" />
+        <section v-else class="teacher-pk__result" aria-label="教师 PK 对比结果">
+          <div class="teacher-pk__result-head">
+            <div>
+              <strong>{{ pkResult.sessionPurpose || '即时对比预览' }}</strong>
+              <span>{{ pkResult.comparedTime }}</span>
+            </div>
+            <UiTag :tone="pkResult.maskMode ? 'blue' : 'gray'">
+              {{ pkResult.maskMode ? '已脱敏' : '实名结果' }}
+            </UiTag>
+          </div>
+          <div class="teacher-pk__grid">
+            <UiCard
+              v-for="teacher in pkResult.teachers"
+              :key="teacher.teacherUserId"
+              :title="resolveTeacherTitle(teacher)"
+            >
+              <div class="teacher-pk__archive-count">
+                正式档案 {{ teacher.officialArchiveCount }} 份
+              </div>
+              <table class="teacher-pk__table">
+                <thead>
+                  <tr>
+                    <th>维度</th>
+                    <th>得分</th>
+                    <th>依据</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="dimension in teacher.dimensionRows" :key="dimension.dimensionCode">
+                    <td>{{ dimension.dimensionLabel }}</td>
+                    <td>{{ dimension.dimensionScore }}</td>
+                    <td>{{ dimension.evidenceSummary || '—' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div v-if="teacher.materialRefs?.length" class="teacher-pk__materials">
+                <span>材料引用</span>
+                <ul>
+                  <li v-for="material in teacher.materialRefs" :key="material.recordId">
+                    {{ material.categoryName }} · {{ material.updateTime }}
+                  </li>
+                </ul>
+              </div>
+            </UiCard>
+          </div>
+        </section>
+      </a-spin>
+
+      <UiCard title="我的对比会话">
+        <UiDataTable
+          row-key="id"
+          :columns="historyColumns"
+          :data-source="sessionRows"
+          :loading="historyLoading"
+          :pagination="historyPagination"
+          @change="handleHistoryTableChange"
         >
-          <table class="teacher-pk__table">
-            <thead>
-              <tr>
-                <th>维度</th>
-                <th>得分</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in teacher.dimensionRows" :key="row.dimensionCode">
-                <td>{{ row.dimensionLabel }}</td>
-                <td>{{ row.dimensionScore }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </UiCard>
-      </div>
-    </a-spin>
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'maskMode'">
+              <UiTag :tone="record.maskMode ? 'blue' : 'gray'">
+                {{ record.maskMode ? '脱敏' : '实名' }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiTableActions
+                :items="[
+                  { key: 'restore', label: '查看', disabled: operationPending },
+                  { key: 'export', label: '导出', disabled: operationPending },
+                ]"
+                @action="(action) => handleSessionAction(action, record)"
+              />
+            </template>
+          </template>
+          <template #emptyText>
+            <UiEmpty description="暂无已保存的对比会话" />
+          </template>
+        </UiDataTable>
+      </UiCard>
+    </div>
   </StageWorkbenchShell>
 </template>
 
 <style scoped>
+.teacher-pk__stack {
+  display: grid;
+  gap: 16px;
+}
+
+.teacher-pk__form {
+  display: grid;
+  grid-template-columns: minmax(320px, 1.4fr) minmax(260px, 1fr) auto auto;
+  gap: 16px;
+  align-items: end;
+}
+
 .teacher-pk__field {
-  width: 100%;
-  max-width: 480px;
-  margin-right: 8px;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--dp-text-secondary);
+  font-size: 13px;
+}
+
+.teacher-pk__mask {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  white-space: nowrap;
+}
+
+.teacher-pk__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.teacher-pk__result {
+  display: grid;
+  gap: 12px;
+}
+
+.teacher-pk__result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.teacher-pk__result-head > div {
+  display: grid;
+  gap: 4px;
+}
+
+.teacher-pk__result-head span {
+  color: var(--dp-text-secondary);
+  font-size: 13px;
 }
 
 .teacher-pk__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 16px;
-  margin-top: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+.teacher-pk__archive-count {
+  margin-bottom: 8px;
+  color: var(--dp-text-secondary);
+  font-size: 13px;
 }
 
 .teacher-pk__table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  table-layout: fixed;
+  font-size: 13px;
 }
 
 .teacher-pk__table th,
@@ -180,5 +500,56 @@ onUnmounted(() => {
   padding: 8px;
   border-bottom: 1px solid var(--dp-border, #f0f0f0);
   text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.teacher-pk__table th:nth-child(1) {
+  width: 26%;
+}
+
+.teacher-pk__table th:nth-child(2) {
+  width: 18%;
+}
+
+.teacher-pk__materials {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  color: var(--dp-text-secondary);
+  font-size: 12px;
+}
+
+.teacher-pk__materials ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+@media (max-width: 1180px) {
+  .teacher-pk__form {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .teacher-pk__form {
+    grid-template-columns: 1fr;
+  }
+
+  .teacher-pk__actions {
+    justify-content: stretch;
+  }
+
+  .teacher-pk__actions > * {
+    flex: 1;
+  }
+
+  .teacher-pk__result-head {
+    align-items: flex-start;
+  }
 }
 </style>

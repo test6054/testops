@@ -4,11 +4,35 @@ import type { PortfolioReportingScopeTypeCode } from '@/types/enums/portfolio-re
 import type { PortfolioReportingTaskStatusCode } from '@/types/enums/portfolio-reporting-task-status-enum'
 import http from '@/config/axios'
 
+export const PortfolioReportingShareFieldCode = {
+  TEACHER_LABEL: 'teacherLabel',
+  TEACHER_USER_ID: 'teacherUserId',
+  TEACHER_NUMBER: 'teacherNumber',
+  OFFICIAL_ARCHIVE_COUNT: 'officialArchiveCount',
+} as const
+
+export type PortfolioReportingShareFieldCodeValue =
+  (typeof PortfolioReportingShareFieldCode)[keyof typeof PortfolioReportingShareFieldCode]
+
+export const PortfolioReportingShareFieldDescription: Record<
+  PortfolioReportingShareFieldCodeValue,
+  string
+> = {
+  [PortfolioReportingShareFieldCode.TEACHER_LABEL]: '教师标识',
+  [PortfolioReportingShareFieldCode.TEACHER_USER_ID]: '教师用户 ID',
+  [PortfolioReportingShareFieldCode.TEACHER_NUMBER]: '工号',
+  [PortfolioReportingShareFieldCode.OFFICIAL_ARCHIVE_COUNT]: '正式档案数',
+}
+
+export const ALL_PORTFOLIO_REPORTING_SHARE_FIELD_CODES = Object.values(
+  PortfolioReportingShareFieldCode,
+)
+
 export interface PortfolioReportingTaskVO {
   id: string
   taskTitle: string
   reportPurpose: string
-  shareFields: string[]
+  shareFields: PortfolioReportingShareFieldCodeValue[]
   scopeType: PortfolioReportingScopeTypeCode
   departmentId?: string
   maskMode: boolean
@@ -28,7 +52,7 @@ export interface PortfolioReportingPreviewVO {
   taskId: string
   teacherCount: number
   officialArchiveCount: number
-  shareFields: string[]
+  shareFields: PortfolioReportingShareFieldCodeValue[]
   maskMode: boolean
   dataScopeNote: string
 }
@@ -36,7 +60,7 @@ export interface PortfolioReportingPreviewVO {
 export interface PortfolioReportingTaskCreateRequest {
   taskTitle: string
   reportPurpose: string
-  shareFields: string[]
+  shareFields: PortfolioReportingShareFieldCodeValue[]
   scopeType: PortfolioReportingScopeTypeCode
   departmentId?: string
   maskMode?: boolean
@@ -55,12 +79,10 @@ export const portfolioReportingApi = {
     http.post<PortfolioReportingTaskVO>('/api/portfolio/reporting/request-approval', data),
   approve: (data: { id: string }) =>
     http.post<PortfolioReportingTaskVO>('/api/portfolio/reporting/approve', data),
-  reject: (data: { id: string, rejectReason: string }) =>
+  reject: (data: { id: string; rejectReason: string }) =>
     http.post<PortfolioReportingTaskVO>('/api/portfolio/reporting/reject', data),
   download: (data: { id: string }) =>
     http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/reporting/download', data),
   page: (data: PortfolioReportingTaskPageRequest) =>
     http.post<PageResult<PortfolioReportingTaskVO>>('/api/portfolio/reporting/task/page', data),
-  get: (data: { id: string }) =>
-    http.post<PortfolioReportingTaskVO>('/api/portfolio/reporting/task/get', data),
 }

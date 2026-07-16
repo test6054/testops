@@ -4,19 +4,20 @@ import type {
   PortfolioIndicatorEngineReadinessVO,
   PortfolioPublishImpactReportVO,
 } from '@/apis/portfolio/indicator-types'
-import { message } from 'ant-design-vue'
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import {
   PF_SCENE_CODE_OPTIONS,
   PfIndicatorBusinessReferenceSceneDescription,
   PfSceneCode,
 } from '@/apis/portfolio/indicator-types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -25,26 +26,71 @@ const router = useRouter()
 const sceneCode = ref<PfSceneCode>(PfSceneCode.PERFORMANCE)
 const academicYear = ref('2025-2026')
 const step = ref(1)
-const trialing = ref(false)
-const previewing = ref(false)
-const publishing = ref(false)
-const enabling = ref(false)
+const operationKey = ref('')
+const writing = computed(() => Boolean(operationKey.value))
+const trialing = computed(() => operationKey.value === 'trial')
+const previewing = computed(() => operationKey.value === 'impact')
+const publishing = computed(() => operationKey.value === 'publish')
+const enabling = computed(() => operationKey.value === 'enable-all')
+const exporting = computed(() => operationKey.value === 'export-impact')
 const impactReportId = ref('')
 const trialPassed = ref(false)
 const readiness = ref<PortfolioIndicatorEngineReadinessVO | null>(null)
 const impactReport = ref<PortfolioPublishImpactReportVO | null>(null)
 const impactSummary = ref<PortfolioImpactIndicatorSummaryDto | null>(null)
+const readinessError = ref('')
+const readinessRequestToken = ref(0)
+const workflowSceneCode = ref<PfSceneCode | null>(null)
+
+/** 发布向导各状态动作必须串行，确保试算、影响报告和发布使用同一业务上下文。 */
+function beginOperation(key: string): boolean {
+  if (writing.value) return false
+  operationKey.value = key
+  return true
+}
+
+function endOperation(key: string) {
+  if (operationKey.value === key) operationKey.value = ''
+}
+
+function resetWorkflow() {
+  trialPassed.value = false
+  workflowSceneCode.value = null
+  impactReportId.value = ''
+  impactReport.value = null
+  impactSummary.value = null
+  step.value = 1
+}
 
 async function loadReadiness() {
+  const currentToken = readinessRequestToken.value + 1
+  readinessRequestToken.value = currentToken
+  readinessError.value = ''
   try {
-    readiness.value = await portfolioIndicatorTenantApi.referenceStatus()
+    const result = await portfolioIndicatorTenantApi.referenceStatus()
+    if (readinessRequestToken.value !== currentToken) return
+    readiness.value = result
   } catch (error) {
-    showUserError(error)
+    if (readinessRequestToken.value !== currentToken) return
+    readiness.value = null
+    readinessError.value = '指标就绪状态加载失败，请刷新重试'
+    showUserError(error, '加载指标就绪状态失败')
   }
 }
 
 async function enableAllIndicators() {
-  enabling.value = true
+  const operation = 'enable-all'
+  if (!beginOperation(operation)) return
+  if (
+    !(await confirmAsync({
+      title: '确认启用全部平台指标？',
+      content: '将启用当前租户可用的 T001-T100 平台指标，后续仍需按场景试算并发布。',
+      type: 'warning',
+    }))
+  ) {
+    endOperation(operation)
+    return
+  }
   try {
     const result = await portfolioIndicatorTenantApi.enableAllConfig()
     message.success(`已启用 ${result.enabledCount} 项指标`)
@@ -52,25 +98,30 @@ async function enableAllIndicators() {
   } catch (error) {
     showUserError(error)
   } finally {
-    enabling.value = false
+    endOperation(operation)
   }
 }
 
 async function runTrial() {
-  trialing.value = true
+  const targetSceneCode = sceneCode.value
+  const operation = 'trial'
+  if (!beginOperation(operation)) return
+  resetWorkflow()
   try {
-    const model = await portfolioIndicatorTenantApi.trialModel({ sceneCode: sceneCode.value })
+    const model = await portfolioIndicatorTenantApi.trialModel({ sceneCode: targetSceneCode })
+    if (sceneCode.value !== targetSceneCode) return
     trialPassed.value = Boolean(model.trialPassed)
     if (!trialPassed.value) {
       message.error('试算未通过，无法进入影响分析')
       return
     }
+    workflowSceneCode.value = targetSceneCode
     step.value = 2
     message.success('试算通过')
   } catch (error) {
     showUserError(error)
   } finally {
-    trialing.value = false
+    endOperation(operation)
   }
 }
 
@@ -111,41 +162,84 @@ function readOptionalNumber(
 }
 
 async function runImpactPreview() {
-  previewing.value = true
+  if (!trialPassed.value || workflowSceneCode.value !== sceneCode.value) {
+    message.warning('请先对当前场景执行并通过试算')
+    resetWorkflow()
+    return
+  }
+  const targetSceneCode = sceneCode.value
+  const operation = 'impact'
+  if (!beginOperation(operation)) return
   try {
-    impactReportId.value = await portfolioIndicatorTenantApi.impactPreview({
-      sceneCode: sceneCode.value,
+    const reportId = await portfolioIndicatorTenantApi.impactPreview({
+      sceneCode: targetSceneCode,
     })
-    impactReport.value = await portfolioIndicatorTenantApi.getImpactReport({
-      id: impactReportId.value,
+    const report = await portfolioIndicatorTenantApi.getImpactReport({
+      id: reportId,
     })
-    if (!parseImpactSummary(impactReport.value)) {
+    if (sceneCode.value !== targetSceneCode || workflowSceneCode.value !== targetSceneCode) return
+    if (!parseImpactSummary(report)) {
+      impactReportId.value = ''
+      impactReport.value = null
       message.error('影响分析摘要解析失败，请重新生成影响分析')
       return
     }
+    impactReportId.value = reportId
+    impactReport.value = report
     step.value = 3
     message.success('影响分析完成')
   } catch (error) {
+    impactReportId.value = ''
+    impactReport.value = null
+    impactSummary.value = null
     showUserError(error)
   } finally {
-    previewing.value = false
+    endOperation(operation)
   }
 }
 
 async function publish() {
-  publishing.value = true
+  const targetSceneCode = sceneCode.value
+  const targetAcademicYear = academicYear.value.trim()
+  const targetImpactReportId = impactReportId.value
+  if (
+    !trialPassed.value ||
+    workflowSceneCode.value !== targetSceneCode ||
+    !targetImpactReportId ||
+    !impactReport.value
+  ) {
+    message.warning('当前场景尚未完成试算和影响分析')
+    resetWorkflow()
+    return
+  }
+  if (!/^\d{4}-\d{4}$/.test(targetAcademicYear)) {
+    message.warning('学年格式应为 YYYY-YYYY')
+    return
+  }
+  const operation = 'publish'
+  if (!beginOperation(operation)) return
+  if (
+    !(await confirmAsync({
+      title: '确认发布指标模型？',
+      content: `将按 ${targetAcademicYear} 发布当前场景模型并形成正式快照，请确认影响报告已审阅。`,
+      type: 'warning',
+    }))
+  ) {
+    endOperation(operation)
+    return
+  }
   try {
     const snapshotId = await portfolioIndicatorTenantApi.publishModel({
-      sceneCode: sceneCode.value,
-      impactReportId: impactReportId.value,
-      academicYear: academicYear.value,
+      sceneCode: targetSceneCode,
+      impactReportId: targetImpactReportId,
+      academicYear: targetAcademicYear,
     })
     message.success(`发布成功，快照 ID：${snapshotId}`)
-    router.push({ name: 'PortfolioIndicatorHistory' })
+    await router.push({ name: 'PortfolioIndicatorHistory' })
   } catch (error) {
     showUserError(error)
   } finally {
-    publishing.value = false
+    endOperation(operation)
   }
 }
 
@@ -153,14 +247,19 @@ async function exportImpact() {
   if (!impactReportId.value) {
     return
   }
+  const reportId = impactReportId.value
+  const operation = 'export-impact'
+  if (!beginOperation(operation)) return
   try {
     const result = await portfolioIndicatorTenantApi.exportImpactReport({
-      id: impactReportId.value,
+      id: reportId,
     })
     await downloadPortfolioIndicatorExcelExport(result)
     message.success('影响报告已导出')
   } catch (error) {
     showUserError(error)
+  } finally {
+    endOperation(operation)
   }
 }
 
@@ -173,9 +272,12 @@ onMounted(loadReadiness)
       <ContextBar show-title layout="workbench" title="规则发布向导" />
     </template>
     <UiCard title="指标工程贯通">
+      <p v-if="readinessError" class="readiness-error">{{ readinessError }}</p>
       <div v-if="readiness" class="readiness">
-        <span>已启用 {{ readiness.enabledIndicatorCount }} /
-          {{ readiness.platformIndicatorCount }}</span>
+        <span
+          >已启用 {{ readiness.enabledIndicatorCount }} /
+          {{ readiness.platformIndicatorCount }}</span
+        >
         <span
           v-for="scene in readiness.sceneStatuses"
           :key="scene.referenceScene"
@@ -190,7 +292,12 @@ onMounted(loadReadiness)
           }}：{{ scene.referencedIndicatorCount }}
         </span>
       </div>
-      <UiButton variant="outline" :loading="enabling" @click="enableAllIndicators">
+      <UiButton
+        variant="outline"
+        :loading="enabling"
+        :disabled="writing"
+        @click="enableAllIndicators"
+      >
         启用 T001–T100
       </UiButton>
     </UiCard>
@@ -201,15 +308,35 @@ onMounted(loadReadiness)
         <a-step title="发布" />
       </a-steps>
       <div class="toolbar">
-        <a-select v-model:value="sceneCode" :options="PF_SCENE_CODE_OPTIONS" style="width: 140px" />
-        <a-input v-model:value="academicYear" placeholder="学年" style="width: 140px" />
+        <a-select
+          v-model:value="sceneCode"
+          :options="PF_SCENE_CODE_OPTIONS"
+          style="width: 140px"
+          :disabled="writing"
+          @change="resetWorkflow"
+        />
+        <a-input
+          v-model:value="academicYear"
+          placeholder="学年"
+          style="width: 140px"
+          :disabled="writing"
+        />
       </div>
       <div v-if="step === 1" class="actions">
-        <UiButton variant="primary" :loading="trialing" @click="runTrial"> 执行试算 </UiButton>
+        <UiButton variant="primary" :loading="trialing" :disabled="writing" @click="runTrial">
+          执行试算
+        </UiButton>
       </div>
       <div v-else-if="step === 2" class="actions">
-        <UiButton @click="router.push({ name: 'PortfolioIndicatorOps' })"> 计分与审计 </UiButton>
-        <UiButton :loading="previewing" variant="primary" @click="runImpactPreview">
+        <UiButton :disabled="writing" @click="router.push({ name: 'PortfolioIndicatorOps' })">
+          计分与审计
+        </UiButton>
+        <UiButton
+          :loading="previewing"
+          :disabled="writing"
+          variant="primary"
+          @click="runImpactPreview"
+        >
           生成影响报告
         </UiButton>
       </div>
@@ -229,8 +356,17 @@ onMounted(loadReadiness)
             <pre class="impact-json">{{ impactReport.indicatorSummaryJson }}</pre>
           </a-collapse-panel>
         </a-collapse>
-        <UiButton variant="primary" :loading="publishing" @click="publish"> 确认发布 </UiButton>
-        <UiButton v-if="impactReportId" @click="exportImpact"> 导出影响报告 </UiButton>
+        <UiButton variant="primary" :loading="publishing" :disabled="writing" @click="publish">
+          确认发布
+        </UiButton>
+        <UiButton
+          v-if="impactReportId"
+          :loading="exporting"
+          :disabled="writing"
+          @click="exportImpact"
+        >
+          导出影响报告
+        </UiButton>
       </div>
     </UiCard>
   </StageWorkbenchShell>
@@ -250,6 +386,10 @@ onMounted(loadReadiness)
   flex-wrap: wrap;
   margin-bottom: 12px;
   font-size: 13px;
+}
+.readiness-error {
+  margin: 0 0 12px;
+  color: var(--ant-color-error);
 }
 .scene-tag {
   color: var(--dp-text-secondary);

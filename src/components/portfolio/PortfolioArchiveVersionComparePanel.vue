@@ -5,17 +5,16 @@ import type {
   PortfolioArchiveRecordFieldDiffVO,
   PortfolioArchiveRecordVersionVO,
 } from '@/apis/portfolio/types'
+import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, ref, watch } from 'vue'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { PortfolioArchiveRecordStatusDescription } from '@/apis/portfolio/enums'
-import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
-import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import {
   PORTFOLIO_ARCHIVE_FIELD_DIFF_CHANGE_TYPE_TONE,
   PortfolioArchiveFieldDiffChangeTypeCode,
@@ -33,20 +32,17 @@ const props = defineProps<{
 }>()
 
 const loading = ref(false)
-const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 const leftId = ref('')
 const rightId = ref('')
 const compareResult = ref<PortfolioArchiveRecordCompareVO | null>(null)
 const onlyChanged = ref(true)
 
 const sortedVersions = computed(() =>
-  [...props.versions].sort(
-    (a, b) => (b.documentVersionNo ?? 0) - (a.documentVersionNo ?? 0),
-  ),
+  [...props.versions].sort((a, b) => (b.documentVersionNo ?? 0) - (a.documentVersionNo ?? 0)),
 )
 
 const versionOptions = computed(() =>
-  sortedVersions.value.map(item => ({
+  sortedVersions.value.map((item) => ({
     value: item.id,
     label: `v${item.documentVersionNo ?? 1} · ${strictEnumLabel(PortfolioArchiveRecordStatusDescription, item.recordStatus, '档案记录状态')} · ${item.updateTime ?? ''}`,
   })),
@@ -57,8 +53,10 @@ const displayDiffs = computed(() => {
   if (!onlyChanged.value) {
     return rows
   }
-  return rows.filter((row: PortfolioArchiveRecordFieldDiffVO) =>
-    row.changeType !== PortfolioArchiveFieldDiffChangeTypeCode.UNCHANGED)
+  return rows.filter(
+    (row: PortfolioArchiveRecordFieldDiffVO) =>
+      row.changeType !== PortfolioArchiveFieldDiffChangeTypeCode.UNCHANGED,
+  )
 })
 
 const columns: ColumnsType = [
@@ -91,12 +89,10 @@ async function runCompare() {
   loading.value = true
   try {
     compareResult.value = await portfolioArchiveApi.compareVersions(leftId.value, rightId.value)
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error)
     compareResult.value = null
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -184,7 +180,6 @@ function changeTypeTone(code: string): BadgeTone {
     </p>
     <a-spin :spinning="loading">
       <UiDataTable
-        :load-error="loadError"
         v-if="displayDiffs.length"
         row-key="fieldCode"
         size="small"

@@ -46,27 +46,8 @@ export function listMarkOcrPaperSlices(
   return http.post<MarkOcrPaperSliceVO[]>('/api/mark/ocr/paper-slices', request)
 }
 
-export function recognizeMarkOcr(request: MarkOcrRecognizeRequest): Promise<MarkOcrRecognizeResponse> {
+export function recognizeMarkOcr(
+  request: MarkOcrRecognizeRequest,
+): Promise<MarkOcrRecognizeResponse> {
   return http.post<MarkOcrRecognizeResponse>('/api/mark/ocr/recognize', request)
-}
-
-export interface ExamRecognitionSubmitRequest {
-  examId: string
-  paperInstanceId: string
-  layoutQuestionId: string
-  responseSliceId: string
-  recognizedAnswer?: string
-  engineTraceId?: string
-  diagnostic?: string
-  diagnosticCode?: string
-  diagnosticMessage?: string
-  preprocessSummary?: string
-  ocrScene: string
-  manualReviewRequired: boolean
-  emptyAnswer: boolean
-}
-
-/** POST /api/mark/exams/recognition/submit */
-export function submitRecognition(request: ExamRecognitionSubmitRequest): Promise<string> {
-  return http.post<string>('/api/mark/exams/recognition/submit', request)
 }

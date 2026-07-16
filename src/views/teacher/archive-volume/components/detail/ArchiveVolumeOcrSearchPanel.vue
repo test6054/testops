@@ -36,7 +36,7 @@
 
     <div v-if="searched" class="archive-volume-ocr-search__results">
       <p class="archive-volume-ocr-search__result-meta">{{ hitPageTotal }} 条匹配 · 当前归档任务</p>
-      <UiEmpty v-if="!loading && hits.length === 0" description="本卷无匹配结果">
+      <UiEmpty v-if="!loading && hits.length === 0 && !hitsLoadFailed" description="本卷无匹配结果">
         <UiTextAction tone="primary" @click="goGlobalSearch">切换全局检索</UiTextAction>
       </UiEmpty>
       <UiDataTable
@@ -45,14 +45,18 @@
         v-model:page-size="hitPageSize"
         pagination-mode="server"
         :columns="hitColumns"
-        :data-source="hits"
+        :data-source="hitsLoadFailed ? [] : hits"
         :loading="loading"
         :total="hitPageTotal"
         :show-header="false"
         flat
         row-key="materialId"
+        :load-error="hitsLoadFailed"
         @page-change="loadHits"
       >
+        <template v-if="hitsLoadFailed" #empty-action>
+          <UiButton size="sm" variant="outline" @click="loadHits">重新检索</UiButton>
+        </template>
         <template #bodyCell="{ record }">
           <div class="archive-volume-ocr-search__hit-item">
             <div class="archive-volume-ocr-search__hit-head">
@@ -96,6 +100,11 @@
 
     <div v-else class="archive-volume-ocr-search__empty">
       <UiEmpty description="输入关键词搜索本卷所有 OCR 识别文本" />
+      <UiAlertStrip v-if="materialStatsLoadFailed" tone="warning" title="OCR 统计加载失败">
+        <template #actions>
+          <UiButton size="sm" variant="outline" @click="loadMaterialStats">重新加载</UiButton>
+        </template>
+      </UiAlertStrip>
       <div class="archive-volume-ocr-search__overview-head">
         <span class="archive-volume-ocr-search__overview-title">材料 OCR 状态</span>
         <UiButton
@@ -113,7 +122,7 @@
         v-model:page-size="overviewPageSize"
         pagination-mode="server"
         :columns="overviewColumns"
-        :data-source="ocrMaterials"
+        :data-source="overviewLoadFailed ? [] : ocrMaterials"
         :loading="overviewLoading"
         :total="overviewPageTotal"
         :sticky-header="false"
@@ -121,8 +130,12 @@
         row-key="materialId"
         size="middle"
         empty-description="暂无可检索材料"
+        :load-error="overviewLoadFailed"
         @page-change="loadOcrMaterials"
       >
+        <template v-if="overviewLoadFailed" #empty-action>
+          <UiButton size="sm" variant="outline" @click="loadOcrMaterials">重新加载</UiButton>
+        </template>
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'materialType'">
             {{ materialTypeLabel(record.materialType) }}
@@ -168,14 +181,6 @@ import type {
   ArchiveVolumeMaterialStatsResponse,
   ArchiveVolumeSearchResponse,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import {
-  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
-  ArchiveMaterialOcrStatusCode,
-  ArchiveMaterialOcrStatusDescription,
-} from '@/apis/mark/archive-ocr-status'
 import {
   ArchiveMaterialTypeDescription,
   batchTriggerArchiveVolumeMaterialOcr,
@@ -184,9 +189,18 @@ import {
   searchArchiveVolumes,
   triggerArchiveVolumeMaterialOcr,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
+  ArchiveMaterialOcrStatusCode,
+  ArchiveMaterialOcrStatusDescription,
+} from '@/apis/mark/archive-ocr-status'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -204,13 +218,14 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  "refreshed": [options?: { silent?: boolean }]
+  refreshed: [options?: { silent?: boolean }]
   'navigate-materials': []
 }>()
 
 const router = useRouter()
 const keyword = ref('')
 const loading = ref(false)
+const hitsLoadFailed = ref(false)
 const batchOcrSubmitting = ref(false)
 const searched = ref(false)
 const hits = ref<ArchiveVolumeSearchResponse[]>([])
@@ -221,8 +236,10 @@ const overviewPageNum = ref(1)
 const overviewPageSize = ref(20)
 const overviewPageTotal = ref(0)
 const overviewLoading = ref(false)
+const overviewLoadFailed = ref(false)
 const ocrMaterials = ref<ArchiveVolumeMaterialResponse[]>([])
 const materialStats = ref<ArchiveVolumeMaterialStatsResponse | null>(null)
+const materialStatsLoadFailed = ref(false)
 const ocrDetailOpen = ref(false)
 const ocrDetailMaterialId = ref('')
 const ocrDetailInitialPageNo = ref<number>()
@@ -243,12 +260,15 @@ const pendingOcrCount = computed(() => materialStats.value?.ocrOverview.pendingO
 async function loadMaterialStats(): Promise<void> {
   if (!props.volumeId) {
     materialStats.value = null
+    materialStatsLoadFailed.value = false
     return
   }
   try {
     materialStats.value = await getArchiveVolumeMaterialStats({ volumeId: props.volumeId })
+    materialStatsLoadFailed.value = false
   } catch (error) {
     materialStats.value = null
+    materialStatsLoadFailed.value = true
     showUserError(error, '加载 OCR 统计失败')
   }
 }
@@ -257,6 +277,7 @@ async function loadOcrMaterials(): Promise<void> {
   if (!props.volumeId) {
     ocrMaterials.value = []
     overviewPageTotal.value = 0
+    overviewLoadFailed.value = false
     return
   }
   overviewLoading.value = true
@@ -269,7 +290,9 @@ async function loadOcrMaterials(): Promise<void> {
     })
     ocrMaterials.value = result.list
     overviewPageTotal.value = result.total
+    overviewLoadFailed.value = false
   } catch (error) {
+    overviewLoadFailed.value = true
     showUserError(error, '加载 OCR 材料失败')
   } finally {
     overviewLoading.value = false
@@ -298,27 +321,27 @@ function highlightSnippet(snippet: string): string {
 
 function canViewMaterialOcr(record: ArchiveVolumeSearchResponse): boolean {
   return (
-    record.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED
-    || record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED
-    || record.ocrStatus === ArchiveMaterialOcrStatusCode.RUNNING
+    record.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED ||
+    record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED ||
+    record.ocrStatus === ArchiveMaterialOcrStatusCode.RUNNING
   )
 }
 
 function canViewMaterialOcrMaterial(record: ArchiveVolumeMaterialResponse): boolean {
   return (
-    record.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED
-    || record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED
-    || record.ocrStatus === ArchiveMaterialOcrStatusCode.RUNNING
+    record.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED ||
+    record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED ||
+    record.ocrStatus === ArchiveMaterialOcrStatusCode.RUNNING
   )
 }
 
 function canTriggerMaterialOcr(record: ArchiveVolumeMaterialResponse): boolean {
   return (
-    props.canRegisterMaterial
-    && Boolean(record.fileId)
-    && (record.ocrStatus === ArchiveMaterialOcrStatusCode.PENDING
-      || record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED
-      || !record.ocrStatus)
+    props.canRegisterMaterial &&
+    Boolean(record.fileId) &&
+    (record.ocrStatus === ArchiveMaterialOcrStatusCode.PENDING ||
+      record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED ||
+      !record.ocrStatus)
   )
 }
 
@@ -343,6 +366,7 @@ async function loadHits(): Promise<void> {
     hits.value = []
     hitPageTotal.value = 0
     searched.value = false
+    hitsLoadFailed.value = false
     return
   }
   loading.value = true
@@ -358,10 +382,13 @@ async function loadHits(): Promise<void> {
     hitPageNum.value = result.pageNum
     hitPageSize.value = result.pageSize
     searched.value = true
+    hitsLoadFailed.value = false
   } catch (error) {
     showUserError(error, '卷内检索失败')
     hits.value = []
     hitPageTotal.value = 0
+    searched.value = true
+    hitsLoadFailed.value = true
   } finally {
     loading.value = false
   }

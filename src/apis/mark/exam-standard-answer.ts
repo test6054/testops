@@ -42,27 +42,6 @@ export interface ExamQuestionDeclaredOptionRequest {
   sortNo: number
 }
 
-/** 标准答案保存请求 - 对应 ExamStandardAnswerSaveRequest */
-export interface ExamStandardAnswerSaveRequest {
-  examId: string
-  layoutQuestionId: string
-  /**
-   * 文本类策略填写；选择集合、数值容差和 AI 评分策略由结构化字段承接。
-   * 主观题 standardAnswer 一律可选。
-   */
-  standardAnswer?: string
-  declaredOptions?: ExamQuestionDeclaredOptionRequest[]
-  choiceOptions?: ExamQuestionStandardAnswerOptionRequest[]
-  answerExplain?: string
-  comparePolicy?: ObjectiveComparePolicyCode
-  numericExpectedValue?: number
-  numericTolerance?: number
-  numericUnit?: string
-  gradingRubric?: string
-  aiHint?: string
-  effectiveNow: boolean
-}
-
 /** 标准答案查询请求 - 对应 ExamStandardAnswerQueryRequest */
 export interface ExamStandardAnswerQueryRequest {
   examId: string
@@ -99,11 +78,6 @@ export interface ExamStandardAnswerResponse {
   gradingRubric?: string
   aiHint?: string
   effectiveStatus?: EffectiveStatusCode
-}
-
-/** 保存题目标准答案。 */
-export function saveStandardAnswer(request: ExamStandardAnswerSaveRequest): Promise<string> {
-  return http.post<string>('/api/mark/exams/standard-answer/save', request)
 }
 
 /** 查询题目当前标准答案。 */

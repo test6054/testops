@@ -21,6 +21,8 @@ export interface ExamGradeConfirmRequest {
   teacherReviewScore: number
   commentText?: string
   annotationText?: string
+  /** 主考接管他人 IN_PROGRESS 复核任务时的强制审计原因 */
+  ownerOverrideReason?: string
 }
 
 /** 试卷题目得分明细 - 对应 ExamQuestionScoreDto */

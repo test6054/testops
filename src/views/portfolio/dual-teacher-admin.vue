@@ -4,6 +4,7 @@ import type {
   PortfolioDualTeacherApplicationVO,
   PortfolioDualTeacherEligibilityFreezeVO,
 } from '@/apis/portfolio/teacher-platform'
+import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { message, Modal } from 'ant-design-vue'
 import { computed, onMounted, ref } from 'vue'
@@ -12,7 +13,6 @@ import {
   PortfolioDualTeacherApplicationStatusCode,
   PortfolioDualTeacherApplicationStatusDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -21,6 +21,7 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioReviewAccess } from '@/composables/usePortfolioReviewAccess'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { useAuthStore } from '@/stores/modules/auth'
@@ -34,6 +35,10 @@ const authStore = useAuthStore()
 const userStore = useUserStore()
 const { accessScope, ensureLoaded } = usePortfolioReviewAccess()
 const collegeEligibilityById = ref<Record<string, PortfolioDualTeacherEligibilityFreezeVO>>({})
+const previewingId = ref('')
+const workflowId = ref('')
+const exporting = ref(false)
+const writing = computed(() => Boolean(previewingId.value || workflowId.value) || exporting.value)
 /** 双师院审：受管教研室负责人或租户全校范围（与后端 assertCanCollegeReviewDualTeacher 一致） */
 const canCollegeReview = computed(() => {
   const scope = accessScope.value
@@ -80,12 +85,23 @@ const columns: ColumnsType = [
 ]
 
 async function previewEligibility(id: string) {
+  if (writing.value) {
+    return
+  }
+  previewingId.value = id
   try {
     const preview = await portfolioDualTeacherApi.previewEligibilityGate({ id })
+    if (previewingId.value !== id) {
+      return
+    }
     collegeEligibilityById.value = { ...collegeEligibilityById.value, [id]: preview }
     showEligibilityPreviewModal(preview)
   } catch (error) {
     showUserError(error)
+  } finally {
+    if (previewingId.value === id) {
+      previewingId.value = ''
+    }
   }
 }
 
@@ -119,15 +135,15 @@ function buildDualTeacherRowActions(
 ): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = []
   if (
-    record.applicationStatus === PortfolioDualTeacherApplicationStatusCode.DRAFT
-    || record.applicationStatus === 'COLLEGE_RETURNED'
-    || record.applicationStatus === 'ACADEMIC_RETURNED'
+    record.applicationStatus === PortfolioDualTeacherApplicationStatusCode.DRAFT ||
+    record.applicationStatus === 'COLLEGE_RETURNED' ||
+    record.applicationStatus === 'ACADEMIC_RETURNED'
   ) {
     actions.push({ key: 'submit', label: '提交' })
   }
   if (
-    canCollegeReview.value
-    && record.applicationStatus === PortfolioDualTeacherApplicationStatusCode.COLLEGE_PENDING
+    canCollegeReview.value &&
+    record.applicationStatus === PortfolioDualTeacherApplicationStatusCode.COLLEGE_PENDING
   ) {
     actions.push({ key: 'preview', label: '预览资格' })
   }
@@ -135,8 +151,8 @@ function buildDualTeacherRowActions(
     actions.push({ key: 'collegeApprove', label: '院审通过', tone: 'primary' })
   }
   if (
-    canCollegeReview.value
-    && record.applicationStatus === PortfolioDualTeacherApplicationStatusCode.COLLEGE_PENDING
+    canCollegeReview.value &&
+    record.applicationStatus === PortfolioDualTeacherApplicationStatusCode.COLLEGE_PENDING
   ) {
     actions.push({ key: 'collegeReturn', label: '院审退回' })
   }
@@ -144,22 +160,25 @@ function buildDualTeacherRowActions(
     actions.push({ key: 'academicApprove', label: '教务通过', tone: 'primary' })
   }
   if (
-    canAcademicReview.value
-    && record.applicationStatus === PortfolioDualTeacherApplicationStatusCode.ACADEMIC_PENDING
+    canAcademicReview.value &&
+    record.applicationStatus === PortfolioDualTeacherApplicationStatusCode.ACADEMIC_PENDING
   ) {
     actions.push({ key: 'academicReturn', label: '教务退回' })
     actions.push({ key: 'academicReject', label: '教务驳回', tone: 'danger' })
   }
-  return actions
+  return actions.map((action) => ({
+    ...action,
+    disabled: action.disabled || writing.value,
+  }))
 }
 
-type DualTeacherWorkflowAction
-  = | 'submit'
-    | 'collegeApprove'
-    | 'collegeReturn'
-    | 'academicApprove'
-    | 'academicReturn'
-    | 'academicReject'
+type DualTeacherWorkflowAction =
+  | 'submit'
+  | 'collegeApprove'
+  | 'collegeReturn'
+  | 'academicApprove'
+  | 'academicReturn'
+  | 'academicReject'
 
 function handleDualTeacherRowAction(key: string, record: PortfolioDualTeacherApplicationVO): void {
   if (key === 'preview') {
@@ -179,6 +198,21 @@ async function runWorkflow(
     | 'academicReject',
   id: string,
 ) {
+  if (writing.value) {
+    return
+  }
+  if (action === 'academicReject') {
+    const confirmed = await confirmAsync({
+      title: '确认驳回双师认定',
+      content: '驳回后本次申请终止，教师须重新发起认定申请。',
+      type: 'warning',
+      okText: '确认驳回',
+    })
+    if (!confirmed || writing.value) {
+      return
+    }
+  }
+  workflowId.value = id
   try {
     if (action === 'submit') {
       await portfolioDualTeacherApi.submit({ id })
@@ -193,25 +227,35 @@ async function runWorkflow(
     } else {
       await portfolioDualTeacherApi.academicReject({ id })
     }
+    collegeEligibilityById.value = {}
     message.success('操作成功')
     await loadPage()
   } catch (error) {
     showUserError(error)
+  } finally {
+    workflowId.value = ''
   }
 }
 
 async function exportRoster() {
+  if (writing.value) {
+    return
+  }
+  exporting.value = true
   try {
     const result = await portfolioDualTeacherApi.exportRoster()
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error)
+  } finally {
+    exporting.value = false
   }
 }
 
 async function handleImportSuccess() {
   importModalOpen.value = false
+  collegeEligibilityById.value = {}
   await loadPage()
 }
 </script>
@@ -221,11 +265,26 @@ async function handleImportSuccess() {
     <template #context>
       <ContextBar show-title layout="workbench" title="双师认定台账">
         <template #actions>
-          <UiButton size="sm" variant="outline" @click="loadPage"> 刷新 </UiButton>
-          <UiButton v-if="canExport" size="sm" variant="outline" @click="importModalOpen = true">
+          <UiButton size="sm" variant="outline" :disabled="writing" @click="loadPage">
+            刷新
+          </UiButton>
+          <UiButton
+            v-if="canExport"
+            size="sm"
+            variant="outline"
+            :disabled="writing"
+            @click="importModalOpen = true"
+          >
             Excel 导入
           </UiButton>
-          <UiButton v-if="canExport" size="sm" variant="primary" @click="exportRoster">
+          <UiButton
+            v-if="canExport"
+            size="sm"
+            variant="primary"
+            :loading="exporting"
+            :disabled="writing"
+            @click="exportRoster"
+          >
             导出台账
           </UiButton>
         </template>
@@ -265,10 +324,11 @@ async function handleImportSuccess() {
             </UiTag>
             <span
               v-else-if="
-                record.applicationStatus
-                  === PortfolioDualTeacherApplicationStatusCode.COLLEGE_PENDING
+                record.applicationStatus ===
+                PortfolioDualTeacherApplicationStatusCode.COLLEGE_PENDING
               "
-            >待院审冻结</span>
+              >待院审冻结</span
+            >
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions

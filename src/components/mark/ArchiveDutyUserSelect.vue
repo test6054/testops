@@ -5,7 +5,7 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { UserDetailDto, UserListItemDto } from '@/apis/edu/admin-user'
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { getTenantUserDetail, getTenantUserList } from '@/apis/edu/tenant-user-management'
 import { showUserError } from '@/utils/error-handler'
 
@@ -14,12 +14,14 @@ interface Props {
   placeholder?: string
   allowClear?: boolean
   disabled?: boolean
+  excludedUserIds?: string[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
   placeholder: '请选择用户',
   allowClear: true,
   disabled: false,
+  excludedUserIds: () => [],
 })
 
 const emit = defineEmits<{
@@ -29,6 +31,10 @@ const emit = defineEmits<{
 const options = ref<UserListItemDto[]>([])
 const loading = ref(false)
 const internalValue = ref<string | undefined>(props.value ?? undefined)
+const visibleOptions = computed(() => {
+  const excluded = new Set(props.excludedUserIds)
+  return options.value.filter((item) => !excluded.has(item.id))
+})
 
 watch(
   () => props.value,
@@ -134,7 +140,12 @@ defineExpose({ reload: loadOptions, hydrateById })
     @search="handleSearch"
     @change="handleChange"
   >
-    <a-select-option v-for="opt in options" :key="opt.id" :value="opt.id" :label="userLabel(opt)">
+    <a-select-option
+      v-for="opt in visibleOptions"
+      :key="opt.id"
+      :value="opt.id"
+      :label="userLabel(opt)"
+    >
       {{ userLabel(opt) }}
       <span v-if="opt.departmentName || opt.department" class="archive-duty-user-select__dept">
         {{ opt.departmentName || opt.department }}

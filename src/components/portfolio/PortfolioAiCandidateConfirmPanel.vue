@@ -38,12 +38,13 @@
           <template v-else-if="column.key === 'candidateValue'">
             <template
               v-if="
-                rowNeedsManualFill(record)
-                  && record.confirmStatus !== PortfolioCandidateConfirmStatusCode.CONFIRMED
+                rowNeedsManualFill(record) &&
+                record.confirmStatus !== PortfolioCandidateConfirmStatusCode.CONFIRMED
               "
             >
               <a-input
                 v-model:value="correctedValues[record.id]"
+                :disabled="readonly || confirming"
                 placeholder="补全真实值（不可含 [姓名] 等占位符）"
               />
               <div class="portfolio-ai-candidate-panel__placeholder-hint">
@@ -70,8 +71,8 @@
                   label: '驳回',
                   tone: 'danger',
                   hidden:
-                    record.confirmStatus === PortfolioCandidateConfirmStatusCode.CONFIRMED
-                    || record.confirmStatus === PortfolioCandidateConfirmStatusCode.REJECTED,
+                    record.confirmStatus === PortfolioCandidateConfirmStatusCode.CONFIRMED ||
+                    record.confirmStatus === PortfolioCandidateConfirmStatusCode.REJECTED,
                   disabled: readonly || confirming,
                 },
               ]"
@@ -92,6 +93,7 @@
 <script lang="ts" setup>
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioCandidateFieldVO } from '@/apis/portfolio/types'
+import { PORTFOLIO_CANDIDATE_CONFIRM_STATUS_TONE } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
@@ -100,7 +102,6 @@ import {
   PortfolioCandidateConfirmStatusCode,
   PortfolioCandidateConfirmStatusDescription,
 } from '@/apis/portfolio/enums'
-import { PORTFOLIO_CANDIDATE_CONFIRM_STATUS_TONE } from '@/apis/portfolio/types'
 import { AiTaskStatusCode } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -140,24 +141,30 @@ const candidateRows = ref<PortfolioCandidateFieldVO[]>([])
 const correctedValues = reactive<Record<string, string>>({})
 const taskStatus = ref<AiTaskStatusCode>()
 const candidateRequestToken = ref(0)
+const candidateContextToken = ref(0)
 
 const manualFillPendingCount = computed(
   () =>
     candidateRows.value.filter(
       (item) =>
-        item.manualFillRequired
-        || item.confirmStatus === PortfolioCandidateConfirmStatusCode.NEEDS_MANUAL_FILL,
+        item.confirmStatus !== PortfolioCandidateConfirmStatusCode.CONFIRMED &&
+        item.confirmStatus !== PortfolioCandidateConfirmStatusCode.REJECTED &&
+        (item.manualFillRequired ||
+          item.confirmStatus === PortfolioCandidateConfirmStatusCode.NEEDS_MANUAL_FILL),
     ).length,
 )
 
 const pendingTaskPolling = computed(
   () =>
-    taskStatus.value === AiTaskStatusCode.PENDING
-    || taskStatus.value === AiTaskStatusCode.PROCESSING,
+    taskStatus.value === AiTaskStatusCode.PENDING ||
+    taskStatus.value === AiTaskStatusCode.PROCESSING,
 )
 
 function resetCandidateContext() {
+  candidateContextToken.value += 1
   candidateRequestToken.value += 1
+  loading.value = false
+  confirming.value = false
   candidateRows.value = []
   taskStatus.value = undefined
   for (const key of Object.keys(correctedValues)) {
@@ -183,8 +190,8 @@ function candidateStatusTone(row: PortfolioCandidateFieldVO): BadgeTone {
 
 function rowNeedsManualFill(row: PortfolioCandidateFieldVO): boolean {
   return (
-    Boolean(row.manualFillRequired)
-    || row.confirmStatus === PortfolioCandidateConfirmStatusCode.NEEDS_MANUAL_FILL
+    Boolean(row.manualFillRequired) ||
+    row.confirmStatus === PortfolioCandidateConfirmStatusCode.NEEDS_MANUAL_FILL
   )
 }
 
@@ -197,8 +204,8 @@ function canConfirmRow(row: PortfolioCandidateFieldVO): boolean {
     return false
   }
   if (
-    row.confirmStatus === PortfolioCandidateConfirmStatusCode.CONFIRMED
-    || row.confirmStatus === PortfolioCandidateConfirmStatusCode.REJECTED
+    row.confirmStatus === PortfolioCandidateConfirmStatusCode.CONFIRMED ||
+    row.confirmStatus === PortfolioCandidateConfirmStatusCode.REJECTED
   ) {
     return false
   }
@@ -210,8 +217,9 @@ function canConfirmRow(row: PortfolioCandidateFieldVO): boolean {
 }
 
 async function loadCandidates() {
-  const requestToken = candidateRequestToken.value
-  if (!props.taskId) {
+  const requestToken = ++candidateRequestToken.value
+  const requestTaskId = props.taskId
+  if (!requestTaskId) {
     if (candidateRequestToken.value === requestToken) {
       candidateRows.value = []
       taskStatus.value = undefined
@@ -220,16 +228,16 @@ async function loadCandidates() {
   }
   loading.value = true
   try {
-    const detail = await portfolioAiJobApi.get(props.taskId)
+    const detail = await portfolioAiJobApi.get(requestTaskId)
     if (candidateRequestToken.value !== requestToken) {
       return
     }
     taskStatus.value = detail.status
-    if (detail.status !== 'SUCCEEDED') {
+    if (detail.status !== AiTaskStatusCode.SUCCEEDED) {
       candidateRows.value = []
       return
     }
-    const rows = (await portfolioAiJobApi.listCandidates(props.taskId)) ?? []
+    const rows = (await portfolioAiJobApi.listCandidates(requestTaskId)) ?? []
     if (candidateRequestToken.value !== requestToken) {
       return
     }
@@ -243,6 +251,8 @@ async function loadCandidates() {
     if (candidateRequestToken.value !== requestToken) {
       return
     }
+    candidateRows.value = []
+    taskStatus.value = undefined
     showUserError(error, '加载候选字段失败')
   } finally {
     if (candidateRequestToken.value === requestToken) {
@@ -252,10 +262,11 @@ async function loadCandidates() {
 }
 
 async function confirmCandidate(row: PortfolioCandidateFieldVO) {
-  if (!canConfirmRow(row)) {
+  if (confirming.value || !canConfirmRow(row)) {
     message.error('请先补全真实候选值后再确认')
     return
   }
+  const contextToken = candidateContextToken.value
   confirming.value = true
   try {
     await portfolioAiJobApi.confirm({
@@ -264,22 +275,42 @@ async function confirmCandidate(row: PortfolioCandidateFieldVO) {
       confirmStatus: PortfolioCandidateConfirmStatusCode.CONFIRMED,
       correctedCandidateValue: rowNeedsManualFill(row) ? correctedValueFor(row).trim() : undefined,
     })
+    if (candidateContextToken.value !== contextToken) {
+      return
+    }
     message.success(`已确认字段：${row.fieldLabel}`)
     await loadCandidates()
+    if (candidateContextToken.value !== contextToken) {
+      return
+    }
     emit('confirmed')
   } catch (error) {
+    if (candidateContextToken.value !== contextToken) {
+      return
+    }
     showUserError(error, '确认候选字段失败')
   } finally {
-    confirming.value = false
+    if (candidateContextToken.value === contextToken) {
+      confirming.value = false
+    }
   }
 }
 
 async function rejectCandidate(row: PortfolioCandidateFieldVO) {
+  if (
+    confirming.value ||
+    props.readonly ||
+    row.confirmStatus === PortfolioCandidateConfirmStatusCode.CONFIRMED ||
+    row.confirmStatus === PortfolioCandidateConfirmStatusCode.REJECTED
+  ) {
+    return
+  }
   void confirmAsync({
     title: '驳回该候选字段？',
     content: `字段「${row.fieldLabel}」将标记为已驳回，不会进入入档链。`,
     type: 'warning',
     onOk: async () => {
+      const contextToken = candidateContextToken.value
       confirming.value = true
       try {
         await portfolioAiJobApi.confirm({
@@ -287,13 +318,24 @@ async function rejectCandidate(row: PortfolioCandidateFieldVO) {
           aiTaskId: row.aiTaskId,
           confirmStatus: PortfolioCandidateConfirmStatusCode.REJECTED,
         })
+        if (candidateContextToken.value !== contextToken) {
+          return
+        }
         message.success(`已驳回字段：${row.fieldLabel}`)
         await loadCandidates()
+        if (candidateContextToken.value !== contextToken) {
+          return
+        }
         emit('confirmed')
       } catch (error) {
+        if (candidateContextToken.value !== contextToken) {
+          return
+        }
         showUserError(error, '驳回候选字段失败')
       } finally {
-        confirming.value = false
+        if (candidateContextToken.value === contextToken) {
+          confirming.value = false
+        }
       }
     },
   })
@@ -305,11 +347,16 @@ function handleCandidateRowAction(key: string, row: PortfolioCandidateFieldVO) {
 }
 
 async function confirmAllEligible() {
+  if (confirming.value || props.readonly) {
+    return
+  }
   const eligible = candidateRows.value.filter(canConfirmRow)
   if (eligible.length === 0) {
     message.info('没有可自动确认的字段')
     return
   }
+  const contextToken = candidateContextToken.value
+  let confirmedCount = 0
   confirming.value = true
   try {
     for (const row of eligible) {
@@ -321,15 +368,30 @@ async function confirmAllEligible() {
           ? correctedValueFor(row).trim()
           : undefined,
       })
+      if (candidateContextToken.value !== contextToken) {
+        return
+      }
+      confirmedCount += 1
     }
     message.success(`已确认 ${eligible.length} 个字段`)
     await loadCandidates()
+    if (candidateContextToken.value !== contextToken) {
+      return
+    }
     emit('confirmed')
   } catch (error) {
-    showUserError(error, '批量确认候选字段失败')
+    if (candidateContextToken.value !== contextToken) {
+      return
+    }
+    if (confirmedCount > 0) {
+      message.warning(`已确认 ${confirmedCount} 个字段，其余字段未完成`)
+    }
+    showUserError(error, confirmedCount > 0 ? '部分候选字段确认失败' : '批量确认候选字段失败')
     await loadCandidates()
   } finally {
-    confirming.value = false
+    if (candidateContextToken.value === contextToken) {
+      confirming.value = false
+    }
   }
 }
 

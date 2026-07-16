@@ -326,7 +326,7 @@ const openExportTaskCenter = () => {
   font-size: 8px;
   font-weight: 700;
   line-height: 14px;
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
   text-align: center;
   border: 1.5px solid var(--ant-color-bg-container);
   font-variant-numeric: tabular-nums;

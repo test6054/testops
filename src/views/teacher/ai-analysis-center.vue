@@ -2,8 +2,10 @@
 import type { Key } from 'ant-design-vue/es/_util/type'
 import type { MarkClassOption } from '@/composables/useMarkExamRoster'
 import type { SignalMetric } from '@/types/workbench'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -119,7 +121,14 @@ function handleClusterDataChanged(): void {
       <SignalBand variant="tiles" compact :metrics="headerSignalMetrics" />
     </template>
 
-    <UiEmpty v-if="overviewLoadFailed" description="AI 分析中心概览加载失败" />
+    <UiEmpty v-if="overviewLoadFailed" description="AI 分析中心概览加载失败">
+      <template #action>
+        <UiButton size="sm" variant="outline" @click="refreshAnalysis">
+          <ReloadOutlined />
+          重新加载
+        </UiButton>
+      </template>
+    </UiEmpty>
 
     <template v-else>
       <ExamWorkspaceJourneySubNav v-if="examLocked" />

@@ -13,6 +13,12 @@ import type {
   EvaluationWorkgroupVO,
   WorkgroupMember,
 } from '@/apis/quality/evaluation-workgroup'
+import {
+  evaluationWorkgroupApi,
+  WORKGROUP_MEMBER_ROLE_OPTIONS,
+  WorkgroupMemberRoleCode,
+  WorkgroupMemberRoleDescription,
+} from '@/apis/quality/evaluation-workgroup'
 import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -20,12 +26,6 @@ import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
-import {
-  evaluationWorkgroupApi,
-  WORKGROUP_MEMBER_ROLE_OPTIONS,
-  WorkgroupMemberRoleCode,
-  WorkgroupMemberRoleDescription,
-} from '@/apis/quality/evaluation-workgroup'
 import {
   WORKGROUP_LEVEL_OPTIONS,
   WorkgroupLevelCode,
@@ -62,8 +62,8 @@ const route = useRoute()
 /** 教学档案袋 /portfolio 域独立壳层；质量评价 /quality 仍走 OBE scope 加载 */
 const isPortfolioDomain = computed(
   () =>
-    props.domainShell === 'portfolio'
-    || (props.domainShell !== 'quality' && Boolean(route.meta.portfolioDomain)),
+    props.domainShell === 'portfolio' ||
+    (props.domainShell !== 'quality' && Boolean(route.meta.portfolioDomain)),
 )
 
 interface EvaluationWorkgroupFilterModel {
@@ -119,6 +119,8 @@ function workgroupLevelLabel(value: WorkgroupLevelCode): string {
 const list = ref<EvaluationWorkgroupVO[]>([])
 const total = ref(0)
 const loading = ref(false)
+const loadError = ref(false)
+const requestToken = ref(0)
 
 const query = reactive<EvaluationWorkgroupQueryRequest>({
   pageNum: 1,
@@ -143,7 +145,20 @@ const editor = reactive<EvaluationWorkgroupEditor>({
   responsibility: '',
   enabled: true,
 })
-const submitting = ref(false)
+const operationKey = ref('')
+const writing = computed(() => Boolean(operationKey.value))
+const submitting = computed(() => operationKey.value.startsWith('save:'))
+
+/** 工作组保存和删除必须串行，避免成员覆盖导入与表单提交交叉写入。 */
+function beginOperation(key: string): boolean {
+  if (writing.value) return false
+  operationKey.value = key
+  return true
+}
+
+function endOperation(key: string) {
+  if (operationKey.value === key) operationKey.value = ''
+}
 
 function createEmptyMember(): WorkgroupMember {
   return {
@@ -155,9 +170,14 @@ function createEmptyMember(): WorkgroupMember {
 }
 
 async function loadList() {
+  const currentToken = requestToken.value + 1
+  requestToken.value = currentToken
+  const request = { ...query }
   loading.value = true
+  loadError.value = false
   try {
-    const page = await evaluationWorkgroupApi.page({ ...query })
+    const page = await evaluationWorkgroupApi.page(request)
+    if (requestToken.value !== currentToken) return
     list.value = page.list
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
@@ -166,12 +186,18 @@ async function loadList() {
       query.pageNum -= 1
       await loadList()
     }
+  } catch (error) {
+    if (requestToken.value !== currentToken) return
+    list.value = []
+    total.value = 0
+    loadError.value = true
+    showUserError(error, '加载评价工作组失败')
   } finally {
-    loading.value = false
+    if (requestToken.value === currentToken) loading.value = false
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -201,6 +227,7 @@ function handleFilterProgramChange(value: string | null) {
 }
 
 function openCreate() {
+  if (interactionLocked.value) return
   editorMode.value = 'create'
   Object.assign(editor, {
     id: undefined,
@@ -217,6 +244,7 @@ function openCreate() {
 }
 
 function openEdit(record: EvaluationWorkgroupVO) {
+  if (interactionLocked.value) return
   editorMode.value = 'edit'
   Object.assign(editor, {
     id: record.id,
@@ -247,8 +275,8 @@ function handleEditorProgramChange(value: string | null) {
 
 function getEditorConvenerId(): string | null {
   return (
-    editor.members.find((member) => member.role === WorkgroupMemberRoleCode.CONVENER)?.userId
-    ?? null
+    editor.members.find((member) => member.role === WorkgroupMemberRoleCode.CONVENER)?.userId ??
+    null
   )
 }
 
@@ -354,24 +382,27 @@ async function submitEditor() {
     responsibility: editor.responsibility?.trim() || undefined,
     enabled: editor.enabled,
   }
-  submitting.value = true
+  const operation = `save:${editor.id || editor.workgroupCode}`
+  if (!beginOperation(operation)) return
   try {
     if (editorMode.value === 'create') await evaluationWorkgroupApi.create(request)
     else await evaluationWorkgroupApi.update(request)
     message.success('已保存')
     editorVisible.value = false
     await loadList()
+  } catch (error) {
+    showUserError(error, '保存评价工作组失败')
   } finally {
-    submitting.value = false
+    endOperation(operation)
   }
 }
 
 function buildWorkgroupActions(_record: EvaluationWorkgroupVO): UiTableRowActionItem[] {
   return [
-    { key: 'members', label: '成员' },
-    { key: 'import', label: 'Excel 导入' },
-    { key: 'edit', label: '编辑' },
-    { key: 'delete', label: '删除', tone: 'danger' },
+    { key: 'members', label: '成员', disabled: interactionLocked.value },
+    { key: 'import', label: 'Excel 导入', disabled: interactionLocked.value },
+    { key: 'edit', label: '编辑', disabled: interactionLocked.value },
+    { key: 'delete', label: '删除', tone: 'danger', disabled: interactionLocked.value },
   ]
 }
 
@@ -393,15 +424,27 @@ function handleWorkgroupAction(key: string, record: EvaluationWorkgroupVO): void
 }
 
 async function handleDelete(record: EvaluationWorkgroupVO) {
-  void confirmAsync({
+  const workgroupId = record.id
+  const operation = `delete:${workgroupId}`
+  if (!beginOperation(operation)) return
+  const confirmed = await confirmAsync({
     title: `删除工作组 ${record.workgroupName}？`,
+    content: '删除后该工作组将不能再参与评价任务编组，已有业务引用会由后端阻止删除。',
     type: 'error',
-    onOk: async () => {
-      await evaluationWorkgroupApi.delete(record.id)
-      message.success('已删除')
-      await loadList()
-    },
   })
+  if (!confirmed) {
+    endOperation(operation)
+    return
+  }
+  try {
+    await evaluationWorkgroupApi.delete(workgroupId)
+    message.success('已删除')
+    await loadList()
+  } catch (error) {
+    showUserError(error, '删除评价工作组失败')
+  } finally {
+    endOperation(operation)
+  }
 }
 
 /* ========== 工作组成员 Excel 导入与查看 ========== */
@@ -411,6 +454,9 @@ const importTargetWorkgroup = ref<EvaluationWorkgroupVO | null>(null)
 const membersDrawerVisible = ref(false)
 const membersDrawerTarget = ref<EvaluationWorkgroupVO | null>(null)
 const membersDrawerRows = computed(() => membersDrawerTarget.value?.members ?? [])
+const interactionLocked = computed(
+  () => writing.value || editorVisible.value || importVisible.value || membersDrawerVisible.value,
+)
 
 const memberColumns: ColumnsType = [
   { title: '工号', dataIndex: 'userCode', key: 'userCode', width: 140 },
@@ -433,18 +479,20 @@ function memberCountOf(record: EvaluationWorkgroupVO): number {
 
 function convenerNameOf(record: EvaluationWorkgroupVO): string {
   return (
-    record.convenerUserName
-    ?? record.members?.find((member) => member.role === WorkgroupMemberRoleCode.CONVENER)?.userName
-    ?? '—'
+    record.convenerUserName ??
+    record.members?.find((member) => member.role === WorkgroupMemberRoleCode.CONVENER)?.userName ??
+    '—'
   )
 }
 
 function openImportMembers(record: EvaluationWorkgroupVO) {
+  if (interactionLocked.value) return
   importTargetWorkgroup.value = record
   importVisible.value = true
 }
 
 function openMembersDrawer(record: EvaluationWorkgroupVO) {
+  if (interactionLocked.value) return
   membersDrawerTarget.value = record
   membersDrawerVisible.value = true
 }
@@ -500,7 +548,9 @@ onActivated(() => {
           <UiTag tone="blue" size="sm"> 教学档案袋 </UiTag>
         </template>
         <template #actions>
-          <UiButton variant="primary" size="sm" @click="openCreate"> 新建工作组 </UiButton>
+          <UiButton variant="primary" size="sm" :disabled="interactionLocked" @click="openCreate">
+            新建工作组
+          </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -510,7 +560,9 @@ onActivated(() => {
     <UiCard class="detail-table-card ewg__table-card">
       <template #title>工作组台账</template>
       <template v-if="!isPortfolioDomain" #extra>
-        <UiButton variant="primary" size="sm" @click="openCreate">新建工作组</UiButton>
+        <UiButton variant="primary" size="sm" :disabled="interactionLocked" @click="openCreate"
+          >新建工作组</UiButton
+        >
       </template>
 
       <UiFilterBar
@@ -536,6 +588,8 @@ onActivated(() => {
         :columns="columns"
         :data-source="list"
         :loading="loading"
+        :load-error="loadError"
+        pagination-mode="server"
         row-key="id"
         size="middle"
         :total="total"
@@ -577,6 +631,10 @@ onActivated(() => {
       v-model:open="editorVisible"
       :title="editorMode === 'create' ? '新建工作组' : '编辑工作组'"
       :confirm-loading="submitting"
+      :closable="!writing"
+      :mask-closable="!writing"
+      :keyboard="!writing"
+      :cancel-button-props="{ disabled: writing }"
       width="720px"
       @ok="submitEditor"
     >
@@ -587,13 +645,13 @@ onActivated(() => {
               <a-select
                 v-model:value="editor.levelCode"
                 :options="WORKGROUP_LEVEL_OPTIONS"
-                :disabled="editorMode === 'edit'"
+                :disabled="editorMode === 'edit' || writing"
               />
             </a-form-item>
           </a-col>
           <a-col :span="12">
             <a-form-item label="启用状态">
-              <a-switch v-model:checked="editor.enabled" />
+              <a-switch v-model:checked="editor.enabled" :disabled="writing" />
             </a-form-item>
           </a-col>
         </a-row>
@@ -601,22 +659,26 @@ onActivated(() => {
           <a-input
             v-model:value="editor.workgroupCode"
             :maxlength="64"
-            :disabled="editorMode === 'edit'"
+            :disabled="editorMode === 'edit' || writing"
             placeholder="租户内唯一编码"
           />
         </a-form-item>
         <a-form-item label="名称" required>
-          <a-input v-model:value="editor.workgroupName" :maxlength="128" />
+          <a-input v-model:value="editor.workgroupName" :maxlength="128" :disabled="writing" />
         </a-form-item>
         <a-form-item label="专业大类" required>
           <ProgramSelector
             :value="editor.programId || null"
-            :disabled="editorMode === 'edit'"
+            :disabled="editorMode === 'edit' || writing"
             @change="handleEditorProgramChange"
           />
         </a-form-item>
         <a-form-item label="召集人" required>
-          <TeacherSelector :value="getEditorConvenerId()" @change="handleEditorConvenerChange" />
+          <TeacherSelector
+            :value="getEditorConvenerId()"
+            :disabled="writing"
+            @change="handleEditorConvenerChange"
+          />
         </a-form-item>
         <a-form-item label="职责说明">
           <a-textarea
@@ -624,13 +686,16 @@ onActivated(() => {
             :maxlength="1000"
             :rows="3"
             show-count
+            :disabled="writing"
           />
         </a-form-item>
         <a-form-item label="成员清单">
           <div class="ewg__member-editor">
             <div class="ewg__member-editor-header">
               <p class="ewg__member-editor-tip">支持逐行录入，也可在保存后通过 Excel 覆盖导入。</p>
-              <UiButton variant="outline" size="sm" @click="appendMember">新增成员</UiButton>
+              <UiButton variant="outline" size="sm" :disabled="writing" @click="appendMember"
+                >新增成员</UiButton
+              >
             </div>
             <div
               v-for="(member, index) in editor.members"
@@ -639,16 +704,27 @@ onActivated(() => {
             >
               <a-row :gutter="12">
                 <a-col :span="5">
-                  <a-input v-model:value="member.userCode" :maxlength="64" placeholder="工号" />
+                  <a-input
+                    v-model:value="member.userCode"
+                    :maxlength="64"
+                    placeholder="工号"
+                    :disabled="writing"
+                  />
                 </a-col>
                 <a-col :span="5">
-                  <a-input v-model:value="member.userName" :maxlength="64" placeholder="姓名" />
+                  <a-input
+                    v-model:value="member.userName"
+                    :maxlength="64"
+                    placeholder="姓名"
+                    :disabled="writing"
+                  />
                 </a-col>
                 <a-col :span="5">
                   <a-select
                     v-model:value="member.role"
                     :options="WORKGROUP_MEMBER_ROLE_OPTIONS"
                     placeholder="角色"
+                    :disabled="writing"
                   />
                 </a-col>
                 <a-col :span="7">
@@ -656,12 +732,13 @@ onActivated(() => {
                     v-model:value="member.note"
                     :maxlength="255"
                     placeholder="备注：单位 / 联系方式 / 组织角色"
+                    :disabled="writing"
                   />
                 </a-col>
                 <a-col :span="2" class="ewg__member-row-action">
                   <UiTextAction
                     tone="danger"
-                    :disabled="editor.members.length !== 1"
+                    :disabled="editor.members.length === 1 || writing"
                     @click="removeMember(index)"
                   >
                     删除
@@ -693,6 +770,8 @@ onActivated(() => {
       :title="`成员清单（${membersDrawerTarget?.workgroupName || ''}）`"
       :width="720"
       placement="right"
+      :closable="!writing"
+      :mask-closable="!writing"
     >
       <UiEmpty v-if="!membersDrawerRows.length" description="该工作组尚无成员" />
       <UiDataTable

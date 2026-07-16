@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationModeCode } from '@/apis/portfolio/enums'
+import {
+  PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES,
+  PortfolioEvaluationModeDescription,
+} from '@/apis/portfolio/enums'
 import type {
   PortfolioEvaluationEntrySummaryItemVO,
   PortfolioEvaluationEntrySummaryVO,
@@ -9,17 +13,14 @@ import type {
   PortfolioEvaluationSubjectTeacherOptionVO,
   PortfolioEvaluationTaskVO,
 } from '@/apis/portfolio/teacher-platform'
-import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import {
-  PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES,
-  PortfolioEvaluationModeDescription,
-} from '@/apis/portfolio/enums'
 import {
   portfolioEvaluationEntryApi,
   portfolioEvaluationTaskApi,
 } from '@/apis/portfolio/teacher-platform'
+import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -35,12 +36,16 @@ import { buildEmptyPageResult } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
+const route = useRoute()
+const isExternalExpertFill = computed(() => route.name === 'PortfolioExpertEvaluationFill')
 const activeTab = ref('fill')
 const loading = ref(false)
 const saving = ref(false)
 const exporting = ref(false)
 const tasks = ref<PortfolioEvaluationTaskVO[]>([])
-const selectedTaskId = ref('')
+const selectedTaskId = ref(
+  typeof route.query.evaluationTaskId === 'string' ? route.query.evaluationTaskId : '',
+)
 const summary = ref<PortfolioEvaluationEntrySummaryVO | null>(null)
 const subjectTeacherOptions = ref<PortfolioEvaluationSubjectTeacherOptionVO[]>([])
 const indicatorOptions = ref<PortfolioEvaluationIndicatorOptionVO[]>([])
@@ -225,6 +230,10 @@ async function loadEntries() {
 }
 
 async function loadSummary() {
+  if (isExternalExpertFill.value) {
+    summary.value = null
+    return
+  }
   if (!selectedTaskId.value) {
     summary.value = null
     return
@@ -427,7 +436,7 @@ onMounted(async () => {
             </template>
           </UiDataTable>
         </a-tab-pane>
-        <a-tab-pane key="summary" tab="汇总分析">
+        <a-tab-pane v-if="!isExternalExpertFill" key="summary" tab="汇总分析">
           <div v-if="summary" class="summary-meta">
             <span>条目 {{ summary.entryCount }}</span>
             <span>平均分 {{ summary.averageScore }}</span>

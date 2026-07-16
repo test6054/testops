@@ -24,7 +24,9 @@
               <div
                 class="ongoing-exam-card__progress-fill"
                 :class="progressFillClass(exam)"
-                :style="{ width: `${Math.min(exam.progressPercent ?? 0, 100)}%` }"
+                :style="{
+                  transform: `scaleX(${Math.max(0, Math.min(1, (exam.progressPercent ?? 0) / 100))})`,
+                }"
               />
             </div>
             <div class="ongoing-exam-card__progress-label">
@@ -254,9 +256,11 @@ function progressFillClass(exam: MarkTeacherDashboardOngoingExamItemVO): string 
 
 .ongoing-exam-card__progress-fill {
   height: 100%;
+  width: 100%;
+  transform-origin: left center;
   border-radius: inherit;
   background: var(--ant-color-primary);
-  transition: width var(--dp-duration-slow) ease;
+  transition: transform var(--dp-duration-slow) ease;
 }
 
 .ongoing-exam-card__progress-fill--success {

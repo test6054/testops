@@ -50,7 +50,11 @@
             :label-col="labelCol"
             :wrapper-col="wrapperCol"
           >
-            <a-select v-model:value="planForm.scoreSource" :options="scoreSourceOptions" />
+            <a-select
+              :value="planForm.scoreSource"
+              :options="scoreSourceOptions"
+              @change="handleScoreSourceChange"
+            />
           </a-form-item>
         </a-col>
       </a-row>
@@ -64,7 +68,10 @@
             :label-col="labelCol"
             :wrapper-col="wrapperCol"
           >
-            <a-select v-model:value="planForm.securityLevel" :options="ARCHIVE_SECURITY_LEVEL_OPTIONS" />
+            <a-select
+              v-model:value="planForm.securityLevel"
+              :options="ARCHIVE_SECURITY_LEVEL_OPTIONS"
+            />
           </a-form-item>
         </a-col>
         <a-col :span="12">
@@ -112,7 +119,7 @@
       <a-form-item
         v-if="requiresScoreProof"
         label="成绩证明"
-        tooltip="教务或线下确认成绩时须上传成绩证明文件。"
+        tooltip="线下成绩已核实时可上传成绩证明；未上传时任务保持待确认。"
       >
         <div class="score-proof-field">
           <a-upload
@@ -137,16 +144,17 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { Dayjs } from 'dayjs'
-import type { ArchiveExamFormCode } from '@/apis/mark/archive-volume'
-import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
-import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
-import { computed, ref, watch } from 'vue'
+import type { ArchiveExamFormCode } from '@/apis/mark/archive-volume'
 import {
   ARCHIVE_EXAM_FORM_OPTIONS,
   ARCHIVE_SECURITY_LEVEL_OPTIONS,
   ArchiveScoreSourceDescription,
+  discardArchiveTaskScoreProof,
 } from '@/apis/mark/archive-volume'
+import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
+import { message } from 'ant-design-vue'
+import { computed, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { TeacherSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -177,7 +185,7 @@ const emit = defineEmits<{
     code: string | null,
     name: string,
     examForm?: ArchiveExamFormCode,
-    retention?: { defaultPermanentRetention?: boolean, defaultRetentionYears?: number },
+    retention?: { defaultPermanentRetention?: boolean; defaultRetentionYears?: number },
   ]
   'responsible-change': [userId: string | null, nickName: string]
   'update:plan-form-ref': [form: FormInstance | undefined]
@@ -192,9 +200,7 @@ const formRef = ref<FormInstance>()
 const scoreProofUploading = ref(false)
 
 const requiresScoreProof = computed(
-  () =>
-    planForm.scoreSource === ArchiveScoreSourceCode.TEACHING_AFFAIRS
-    || planForm.scoreSource === ArchiveScoreSourceCode.OFFLINE_CONFIRMED,
+  () => planForm.scoreSource === ArchiveScoreSourceCode.OFFLINE_CONFIRMED,
 )
 
 async function handleScoreProofBeforeUpload(file: File): Promise<boolean> {
@@ -205,6 +211,15 @@ async function handleScoreProofBeforeUpload(file: File): Promise<boolean> {
       message.error('上传未返回文件 ID')
       return false
     }
+    const previousFileId = planForm.scoreProofFileId
+    if (previousFileId) {
+      try {
+        await discardArchiveTaskScoreProof(previousFileId)
+      } catch (error) {
+        await discardArchiveTaskScoreProof(node.id)
+        throw error
+      }
+    }
     planForm.scoreProofFileId = node.id
     message.success('成绩证明已上传')
   } catch (error) {
@@ -213,6 +228,21 @@ async function handleScoreProofBeforeUpload(file: File): Promise<boolean> {
     scoreProofUploading.value = false
   }
   return false
+}
+
+async function handleScoreSourceChange(value: SelectValue): Promise<void> {
+  const nextSource = String(value) as ArchiveScoreSourceCode
+  if (nextSource === planForm.scoreSource) return
+  if (nextSource !== ArchiveScoreSourceCode.OFFLINE_CONFIRMED && planForm.scoreProofFileId) {
+    try {
+      await discardArchiveTaskScoreProof(planForm.scoreProofFileId)
+      planForm.scoreProofFileId = null
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '清理临时成绩证明失败')
+      return
+    }
+  }
+  planForm.scoreSource = nextSource
 }
 
 const archiveDueOverrideValue = computed({

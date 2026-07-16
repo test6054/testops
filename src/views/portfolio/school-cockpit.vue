@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import type { PortfolioSchoolPortraitCockpitVO } from '@/apis/portfolio/analysis'
+import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
+import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import type { PortfolioComplianceScopeTypeCode } from '@/types/enums/portfolio-compliance-scope-type-enum'
+import { PortfolioComplianceScopeTypeDescription } from '@/types/enums/portfolio-compliance-scope-type-enum'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -17,8 +19,6 @@ import {
   PortfolioAlertStatusCode,
   PortfolioAlertStatusDescription,
 } from '@/types/enums/portfolio-alert-status-enum'
-import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
-import { PortfolioComplianceScopeTypeDescription } from '@/types/enums/portfolio-compliance-scope-type-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioCockpitAskPanel from '@/views/portfolio/components/PortfolioCockpitAskPanel.vue'
@@ -30,6 +30,8 @@ function readRouteStringParam(value: unknown): string {
 const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
+const loadError = ref(false)
+const requestToken = ref(0)
 const cockpit = ref<PortfolioSchoolPortraitCockpitVO | null>(null)
 const deepLinkTaskId = computed(() => readRouteStringParam(route.query.taskId))
 
@@ -63,7 +65,8 @@ const signals = computed<SignalMetric[]>(() => {
       value: summary.courseArchiveFrameworkSlotDone ?? 0,
       unit: `/${summary.courseArchiveFrameworkSlotTotal ?? 0}`,
       tone:
-        (summary.courseArchiveFrameworkSlotDone ?? 0) >= (summary.courseArchiveFrameworkSlotTotal ?? 0)
+        (summary.courseArchiveFrameworkSlotDone ?? 0) >=
+        (summary.courseArchiveFrameworkSlotTotal ?? 0)
           ? 'green'
           : 'orange',
       clickable: true,
@@ -114,10 +117,7 @@ function goTeacherAnalytics() {
 }
 
 function handleSignalMetricClick(key: string) {
-  if (
-    key === 'courseArchive'
-    || key.startsWith('completeness')
-  ) {
+  if (key === 'courseArchive' || key.startsWith('completeness')) {
     goTeacherAnalytics()
   }
 }
@@ -153,15 +153,22 @@ function scopeTypeLabel(code: string): string {
 }
 
 async function loadCockpit() {
+  const currentToken = requestToken.value + 1
+  requestToken.value = currentToken
   loading.value = true
+  loadError.value = false
   cockpit.value = null
   try {
-    cockpit.value = await portfolioAnalysisApi.getSchoolPortraitCockpit()
+    const result = await portfolioAnalysisApi.getSchoolPortraitCockpit()
+    if (requestToken.value !== currentToken) return
+    cockpit.value = result
   } catch (error) {
+    if (requestToken.value !== currentToken) return
     cockpit.value = null
+    loadError.value = true
     showUserError(error, '加载学校驾驶舱失败')
   } finally {
-    loading.value = false
+    if (requestToken.value === currentToken) loading.value = false
   }
 }
 
@@ -180,9 +187,8 @@ onMounted(() => {
         subtitle="全校师资与结构合规概览"
       >
         <template #actions>
-          <UiButton @click="goTeacherAnalytics">
-            师资分析看板
-          </UiButton>
+          <UiButton @click="goTeacherAnalytics"> 师资分析看板 </UiButton>
+          <UiButton :loading="loading" @click="loadCockpit">刷新</UiButton>
         </template>
       </ContextBar>
     </template>
@@ -195,7 +201,10 @@ onMounted(() => {
       />
     </template>
     <a-spin :spinning="loading">
-      <UiEmpty v-if="!loading && !cockpit" description="暂无学校驾驶舱数据" />
+      <UiEmpty
+        v-if="!loading && !cockpit"
+        :description="loadError ? '学校驾驶舱加载失败，请重试' : '暂无学校驾驶舱数据'"
+      />
       <template v-else-if="cockpit">
         <UiCard
           v-if="openComplianceAlerts.length"

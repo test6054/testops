@@ -11,18 +11,19 @@ import type {
   PortfolioPublishImpactReportVO,
   PortfolioTenantConfigAuditLogVO,
 } from '@/apis/portfolio/indicator-types'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import {
   PF_IMPACT_REPORT_STATUS_TONE,
   PF_SCORE_RULE_TYPE_OPTIONS,
   PfImpactReportStatusDescription,
   PfSceneCodeDescription,
 } from '@/apis/portfolio/indicator-types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
+import { defaultTemplateParams, serializeTemplateParams } from '@/utils/indicator-template-params'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import PortfolioIndicatorExplainDrawer from '@/components/portfolio/PortfolioIndicatorExplainDrawer.vue'
 import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/PortfolioIndicatorTemplateParamsForm.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -33,9 +34,9 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
-import { defaultTemplateParams, serializeTemplateParams } from '@/utils/indicator-template-params'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -53,8 +54,24 @@ function impactReportStatusTone(value: PfImpactReportStatusCode): BadgeTone {
 
 const activeTab = ref('trial')
 const route = useRoute()
-const loading = ref(false)
-const computing = ref(false)
+const operationKey = ref('')
+const operating = computed(() => Boolean(operationKey.value))
+const computing = computed(() => operationKey.value.startsWith('compute:'))
+const loadState = reactive({
+  compute: false,
+  audit: false,
+  eval: false,
+  impact: false,
+  collect: false,
+})
+const loadError = reactive({
+  compute: false,
+  audit: false,
+  eval: false,
+  impact: false,
+  collect: false,
+})
+const requestToken = reactive({ compute: 0, audit: 0, eval: 0, impact: 0, collect: 0, explain: 0 })
 const computeResult = ref<PortfolioIndicatorScoreComputeResult | null>(null)
 const explainOpen = ref(false)
 const explainText = ref('')
@@ -95,11 +112,23 @@ const auditTotal = ref(0)
 const evalTotal = ref(0)
 const impactTotal = ref(0)
 const collectTeacherId = ref('')
+const collectContextTeacherId = ref('')
 const collectSummary = ref<PortfolioIndicatorAutoCollectSummaryResponse | null>(null)
 const collectItems = ref<PortfolioIndicatorCollectedValueVO[]>([])
 const collectTotal = ref(0)
 const collectPageNum = ref(1)
 const collectPageSize = ref(DEFAULT_LIST_PAGE_SIZE)
+
+/** 运维动作必须串行，避免试算、正式计分、采集与导出跨上下文覆盖结果。 */
+function beginOperation(key: string): boolean {
+  if (operating.value) return false
+  operationKey.value = key
+  return true
+}
+
+function endOperation(key: string) {
+  if (operationKey.value === key) operationKey.value = ''
+}
 const collectColumns: ColumnsType = [
   { title: '指标', dataIndex: 'indicatorCode', key: 'indicatorCode', width: 88 },
   { title: '通道', dataIndex: 'channelCode', key: 'channelCode', width: 120 },
@@ -140,18 +169,28 @@ const impactColumns: ColumnsType = [
 ]
 
 function showComputeResult(result: PortfolioIndicatorScoreComputeResult) {
+  requestToken.explain++
   computeResult.value = result
   explainText.value = result.explainText
   explainStructJson.value = result.explainStructJson
 }
 
 async function runTrial() {
-  computing.value = true
+  const operation = 'compute:trial'
+  if (!beginOperation(operation)) return
+  const request = {
+    ...trialForm,
+    indicatorCode: trialForm.indicatorCode.trim(),
+    paramsJson: serializeTemplateParams(trialParams.value),
+  }
+  if (!request.indicatorCode) {
+    message.warning('请填写指标编码')
+    endOperation(operation)
+    return
+  }
+  computeResult.value = null
   try {
-    const result = await portfolioIndicatorTenantApi.computeTrial({
-      ...trialForm,
-      paramsJson: serializeTemplateParams(trialParams.value),
-    })
+    const result = await portfolioIndicatorTenantApi.computeTrial(request)
     showComputeResult(result)
     message.success(
       result.finalScore != null ? `试算得分 ${result.finalScore}` : '试算完成，待审核',
@@ -159,14 +198,43 @@ async function runTrial() {
   } catch (error) {
     showUserError(error)
   } finally {
-    computing.value = false
+    endOperation(operation)
   }
 }
 
 async function runSnapshotCompute() {
-  computing.value = true
+  const request = {
+    teacherId: snapshotForm.teacherId.trim(),
+    snapshotId: snapshotForm.snapshotId.trim(),
+    indicatorCode: snapshotForm.indicatorCode.trim(),
+    rawValue: snapshotForm.rawValue,
+  }
+  if (!request.teacherId || !request.snapshotId || !request.indicatorCode) {
+    message.warning('请填写教师、快照和指标编码')
+    return
+  }
+  const operation = `compute:snapshot:${request.snapshotId}:${request.teacherId}:${request.indicatorCode}`
+  if (!beginOperation(operation)) return
+  const confirmed = await confirmAsync({
+    title: '确认执行正式计分？',
+    content: `将按正式快照 ${request.snapshotId} 为教师 ${request.teacherId} 的指标 ${request.indicatorCode} 写入计分日志；该结果会进入画像与审计链。`,
+    type: 'warning',
+    okText: '确认计分',
+  })
+  if (!confirmed) {
+    endOperation(operation)
+    return
+  }
+  computeResult.value = null
   try {
-    const result = await portfolioIndicatorTenantApi.computeSnapshot({ ...snapshotForm })
+    const result = await portfolioIndicatorTenantApi.computeSnapshot(request)
+    if (
+      snapshotForm.snapshotId.trim() !== request.snapshotId ||
+      snapshotForm.teacherId.trim() !== request.teacherId ||
+      snapshotForm.indicatorCode.trim() !== request.indicatorCode
+    ) {
+      return
+    }
     showComputeResult(result)
     message.success(
       result.finalScore != null ? `正式计分 ${result.finalScore}` : '计分完成，待审核',
@@ -175,59 +243,91 @@ async function runSnapshotCompute() {
   } catch (error) {
     showUserError(error)
   } finally {
-    computing.value = false
+    endOperation(operation)
   }
 }
 
 async function loadComputeLogs() {
-  loading.value = true
+  const currentToken = ++requestToken.compute
+  const request = { ...pageQuery }
+  loadState.compute = true
+  loadError.compute = false
   try {
-    const page = await portfolioIndicatorTenantApi.pageComputeLog(pageQuery)
+    const page = await portfolioIndicatorTenantApi.pageComputeLog(request)
+    if (requestToken.compute !== currentToken) return
     computeLogs.value = page.list
     computeTotal.value = page.total
   } catch (error) {
-    showUserError(error)
+    if (requestToken.compute !== currentToken) return
+    computeLogs.value = []
+    computeTotal.value = 0
+    loadError.compute = true
+    showUserError(error, '加载计分日志失败')
   } finally {
-    loading.value = false
+    if (requestToken.compute === currentToken) loadState.compute = false
   }
 }
 
 async function loadAuditLogs() {
-  loading.value = true
+  const currentToken = ++requestToken.audit
+  const request = { ...pageQuery }
+  loadState.audit = true
+  loadError.audit = false
   try {
-    const page = await portfolioIndicatorTenantApi.pageAuditLog(pageQuery)
+    const page = await portfolioIndicatorTenantApi.pageAuditLog(request)
+    if (requestToken.audit !== currentToken) return
     auditLogs.value = page.list
     auditTotal.value = page.total
   } catch (error) {
-    showUserError(error)
+    if (requestToken.audit !== currentToken) return
+    auditLogs.value = []
+    auditTotal.value = 0
+    loadError.audit = true
+    showUserError(error, '加载配置审计失败')
   } finally {
-    loading.value = false
+    if (requestToken.audit === currentToken) loadState.audit = false
   }
 }
 
 async function loadEvalLogs() {
-  loading.value = true
+  const currentToken = ++requestToken.eval
+  const request = { ...pageQuery }
+  loadState.eval = true
+  loadError.eval = false
   try {
-    const page = await portfolioIndicatorTenantApi.pageEvalLog(pageQuery)
+    const page = await portfolioIndicatorTenantApi.pageEvalLog(request)
+    if (requestToken.eval !== currentToken) return
     evalLogs.value = page.list
     evalTotal.value = page.total
   } catch (error) {
-    showUserError(error)
+    if (requestToken.eval !== currentToken) return
+    evalLogs.value = []
+    evalTotal.value = 0
+    loadError.eval = true
+    showUserError(error, '加载资格评估日志失败')
   } finally {
-    loading.value = false
+    if (requestToken.eval === currentToken) loadState.eval = false
   }
 }
 
 async function loadImpactReports() {
-  loading.value = true
+  const currentToken = ++requestToken.impact
+  const request = { ...pageQuery }
+  loadState.impact = true
+  loadError.impact = false
   try {
-    const page = await portfolioIndicatorTenantApi.pageImpactReport(pageQuery)
+    const page = await portfolioIndicatorTenantApi.pageImpactReport(request)
+    if (requestToken.impact !== currentToken) return
     impactReports.value = page.list
     impactTotal.value = page.total
   } catch (error) {
-    showUserError(error)
+    if (requestToken.impact !== currentToken) return
+    impactReports.value = []
+    impactTotal.value = 0
+    loadError.impact = true
+    showUserError(error, '加载影响报告失败')
   } finally {
-    loading.value = false
+    if (requestToken.impact === currentToken) loadState.impact = false
   }
 }
 
@@ -237,16 +337,20 @@ async function openExplain(
   teacherId: string,
   text?: string,
 ) {
+  const currentToken = ++requestToken.explain
   explainText.value = text ?? ''
   explainStructJson.value = ''
   try {
-    explainStructJson.value = await portfolioIndicatorTenantApi.getExplain({
+    const result = await portfolioIndicatorTenantApi.getExplain({
       logId,
       logType,
       teacherId,
     })
+    if (requestToken.explain !== currentToken) return
+    explainStructJson.value = result
     explainOpen.value = true
   } catch (error) {
+    if (requestToken.explain !== currentToken) return
     showUserError(error)
   }
 }
@@ -256,85 +360,114 @@ async function exportSnapshotDiff() {
     message.warning('请填写两个快照 ID')
     return
   }
+  const snapshotIdA = diffForm.snapshotIdA.trim()
+  const snapshotIdB = diffForm.snapshotIdB.trim()
+  const operation = `export:diff:${snapshotIdA}:${snapshotIdB}`
+  if (!beginOperation(operation)) return
   try {
     const result = await portfolioIndicatorTenantApi.exportSnapshotDiff({
-      snapshotIdA: diffForm.snapshotIdA,
-      snapshotIdB: diffForm.snapshotIdB,
+      snapshotIdA,
+      snapshotIdB,
     })
     await downloadPortfolioIndicatorExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条差异`)
   } catch (error) {
     showUserError(error)
+  } finally {
+    endOperation(operation)
   }
 }
 
 async function exportImpact(id: string) {
+  const operation = `export:impact:${id}`
+  if (!beginOperation(operation)) return
   try {
     const result = await portfolioIndicatorTenantApi.exportImpactReport({ id })
     await downloadPortfolioIndicatorExcelExport(result)
     message.success('影响报告已导出')
   } catch (error) {
     showUserError(error)
+  } finally {
+    endOperation(operation)
   }
 }
 
 async function runAutoCollect() {
-  if (!collectTeacherId.value.trim()) {
+  const teacherId = collectTeacherId.value.trim()
+  if (!teacherId) {
     message.warning('请填写教师 ID')
     return
   }
-  loading.value = true
+  const operation = `collect:${teacherId}`
+  if (!beginOperation(operation)) return
+  const currentToken = ++requestToken.collect
+  loadState.collect = true
+  loadError.collect = false
   try {
-    collectSummary.value = await portfolioIndicatorTenantApi.getAutoCollectSummary({
-      teacherId: collectTeacherId.value.trim(),
-    })
+    const summary = await portfolioIndicatorTenantApi.getAutoCollectSummary({ teacherId })
+    if (requestToken.collect !== currentToken || collectTeacherId.value.trim() !== teacherId) return
+    collectContextTeacherId.value = teacherId
+    collectSummary.value = summary
     collectPageNum.value = 1
     await loadCollectPage()
     message.success(
       `采集 ${collectSummary.value.collectedCount} 条，跳过 ${collectSummary.value.skippedCount} 条`,
     )
   } catch (error) {
+    if (requestToken.collect !== currentToken) return
+    collectContextTeacherId.value = ''
     collectSummary.value = null
     collectItems.value = []
     collectTotal.value = 0
+    loadError.collect = true
     showUserError(error)
   } finally {
-    loading.value = false
+    if (requestToken.collect === currentToken) loadState.collect = false
+    endOperation(operation)
   }
 }
 
 async function loadCollectPage() {
-  if (!collectTeacherId.value.trim() || !collectSummary.value) {
+  const teacherId = collectContextTeacherId.value
+  const currentToken = ++requestToken.collect
+  if (!teacherId || !collectSummary.value) {
     collectItems.value = []
     collectTotal.value = 0
     return
   }
-  loading.value = true
+  const request = {
+    teacherId,
+    pageNum: collectPageNum.value,
+    pageSize: collectPageSize.value,
+  }
+  loadState.collect = true
+  loadError.collect = false
   try {
-    const result = await portfolioIndicatorTenantApi.pageAutoCollectItems({
-      teacherId: collectTeacherId.value.trim(),
-      pageNum: collectPageNum.value,
-      pageSize: collectPageSize.value,
-    })
+    const result = await portfolioIndicatorTenantApi.pageAutoCollectItems(request)
+    if (requestToken.collect !== currentToken || collectContextTeacherId.value !== teacherId) return
     collectItems.value = result.list
     collectTotal.value = result.total
   } catch (error) {
+    if (requestToken.collect !== currentToken) return
     collectItems.value = []
     collectTotal.value = 0
+    loadError.collect = true
     showUserError(error)
   } finally {
-    loading.value = false
+    if (requestToken.collect === currentToken) loadState.collect = false
   }
 }
 
-function handleCollectPageChange(event: { current: number, pageSize: number }) {
+function handleCollectPageChange(event: { current: number; pageSize: number }) {
   collectPageNum.value = event.current
   collectPageSize.value = event.pageSize
   void loadCollectPage()
 }
 
 function onTabChange(key: string | number) {
+  if (operating.value) return
   activeTab.value = String(key)
+  computeResult.value = null
   pageQuery.pageNum = 1
   if (activeTab.value === 'compute-log') {
     loadComputeLogs()
@@ -347,7 +480,7 @@ function onTabChange(key: string | number) {
   }
 }
 
-function handlePageChange(event: { current: number, pageSize: number }) {
+function handlePageChange(event: { current: number; pageSize: number }) {
   pageQuery.pageNum = event.current
   pageQuery.pageSize = event.pageSize
   if (activeTab.value === 'compute-log') {
@@ -363,6 +496,7 @@ function handlePageChange(event: { current: number, pageSize: number }) {
 
 /** 快照深链是运维页上下文真源；同页切换快照时必须同步，避免继续操作旧快照。 */
 function syncSnapshotFromRoute() {
+  computeResult.value = null
   const snapshotId = route.query.snapshotId
   if (typeof snapshotId === 'string' && snapshotId) {
     snapshotForm.snapshotId = snapshotId
@@ -371,6 +505,17 @@ function syncSnapshotFromRoute() {
   }
   snapshotForm.snapshotId = ''
 }
+
+watch(collectTeacherId, (value) => {
+  if (value.trim() === collectContextTeacherId.value) return
+  requestToken.collect++
+  collectContextTeacherId.value = ''
+  collectSummary.value = null
+  collectItems.value = []
+  collectTotal.value = 0
+  loadState.collect = false
+  loadError.collect = false
+})
 
 onMounted(() => {
   syncSnapshotFromRoute()
@@ -399,33 +544,43 @@ watch(
               :options="PF_SCORE_RULE_TYPE_OPTIONS"
               placeholder="规则类型"
               style="width: 160px"
+              :disabled="operating"
             />
-            <a-input v-model:value="trialForm.indicatorCode" placeholder="指标编码" />
+            <a-input
+              v-model:value="trialForm.indicatorCode"
+              placeholder="指标编码"
+              :disabled="operating"
+            />
             <a-input-number
               v-model:value="trialForm.rawValue"
               placeholder="原始值"
               style="width: 120px"
+              :disabled="operating"
             />
             <a-switch
               v-model:checked="trialForm.auditRequired"
               checked-children="需审核"
               un-checked-children="免审"
+              :disabled="operating"
             />
             <a-switch
               v-model:checked="trialForm.auditApproved"
               checked-children="已通过"
               un-checked-children="未通过"
+              :disabled="operating"
             />
           </div>
           <PortfolioIndicatorTemplateParamsForm
             :rule-type="trialForm.ruleType"
             :params="trialParams"
+            :disabled="operating"
             style="margin-top: 12px"
             @update:params="trialParams = $event"
           />
           <UiButton
             variant="primary"
             :loading="computing"
+            :disabled="operating"
             style="margin-top: 12px"
             @click="runTrial"
           >
@@ -437,18 +592,32 @@ watch(
             审核状态由服务端档案与审核事实决定，正式计分不接受客户端 audit 覆盖。
           </p>
           <div class="form-grid">
-            <a-input v-model:value="snapshotForm.teacherId" placeholder="教师 ID" />
-            <a-input v-model:value="snapshotForm.snapshotId" placeholder="快照 ID" />
-            <a-input v-model:value="snapshotForm.indicatorCode" placeholder="指标编码" />
+            <a-input
+              v-model:value="snapshotForm.teacherId"
+              placeholder="教师 ID"
+              :disabled="operating"
+            />
+            <a-input
+              v-model:value="snapshotForm.snapshotId"
+              placeholder="快照 ID"
+              :disabled="operating"
+            />
+            <a-input
+              v-model:value="snapshotForm.indicatorCode"
+              placeholder="指标编码"
+              :disabled="operating"
+            />
             <a-input-number
               v-model:value="snapshotForm.rawValue"
               placeholder="原始值"
               style="width: 120px"
+              :disabled="operating"
             />
           </div>
           <UiButton
             variant="primary"
             :loading="computing"
+            :disabled="operating"
             style="margin-top: 12px"
             @click="runSnapshotCompute"
           >
@@ -457,20 +626,38 @@ watch(
         </a-tab-pane>
         <a-tab-pane key="diff" tab="快照对比">
           <div class="form-grid">
-            <a-input v-model:value="diffForm.snapshotIdA" placeholder="快照 A ID" />
-            <a-input v-model:value="diffForm.snapshotIdB" placeholder="快照 B ID" />
-            <UiButton @click="exportSnapshotDiff"> 导出差异 CSV </UiButton>
+            <a-input
+              v-model:value="diffForm.snapshotIdA"
+              placeholder="快照 A ID"
+              :disabled="operating"
+            />
+            <a-input
+              v-model:value="diffForm.snapshotIdB"
+              placeholder="快照 B ID"
+              :disabled="operating"
+            />
+            <UiButton
+              :loading="operationKey.startsWith('export:diff:')"
+              :disabled="operating"
+              @click="exportSnapshotDiff"
+            >
+              导出差异 CSV
+            </UiButton>
           </div>
         </a-tab-pane>
         <a-tab-pane key="compute-log" tab="计分日志">
-          <UiEmpty v-if="!loading && computeLogs.length === 0" description="当前筛选无运维任务" />
+          <UiEmpty
+            v-if="!loadState.compute && !loadError.compute && computeLogs.length === 0"
+            description="暂无计分日志"
+          />
           <UiDataTable
             v-model:current="pageQuery.pageNum"
             v-model:page-size="pageQuery.pageSize"
             pagination-mode="server"
             :columns="computeColumns"
             :data-source="computeLogs"
-            :loading="loading"
+            :loading="loadState.compute"
+            :load-error="loadError.compute"
             :total="computeTotal"
             row-key="id"
             @page-change="handlePageChange"
@@ -489,28 +676,36 @@ watch(
           </UiDataTable>
         </a-tab-pane>
         <a-tab-pane key="audit-log" tab="配置审计">
-          <UiEmpty v-if="!loading && auditLogs.length === 0" description="当前筛选无运维任务" />
+          <UiEmpty
+            v-if="!loadState.audit && !loadError.audit && auditLogs.length === 0"
+            description="暂无配置审计"
+          />
           <UiDataTable
             v-model:current="pageQuery.pageNum"
             v-model:page-size="pageQuery.pageSize"
             pagination-mode="server"
             :columns="auditColumns"
             :data-source="auditLogs"
-            :loading="loading"
+            :loading="loadState.audit"
+            :load-error="loadError.audit"
             :total="auditTotal"
             row-key="id"
             @page-change="handlePageChange"
           />
         </a-tab-pane>
         <a-tab-pane key="eval-log" tab="资格评估日志">
-          <UiEmpty v-if="!loading && evalLogs.length === 0" description="当前筛选无运维任务" />
+          <UiEmpty
+            v-if="!loadState.eval && !loadError.eval && evalLogs.length === 0"
+            description="暂无资格评估日志"
+          />
           <UiDataTable
             v-model:current="pageQuery.pageNum"
             v-model:page-size="pageQuery.pageSize"
             pagination-mode="server"
             :columns="evalColumns"
             :data-source="evalLogs"
-            :loading="loading"
+            :loading="loadState.eval"
+            :load-error="loadError.eval"
             :total="evalTotal"
             row-key="id"
             @page-change="handlePageChange"
@@ -536,8 +731,17 @@ watch(
         </a-tab-pane>
         <a-tab-pane key="collect" tab="来源采集">
           <div class="form-grid">
-            <a-input v-model:value="collectTeacherId" placeholder="教师 userId" />
-            <UiButton variant="primary" :loading="loading" @click="runAutoCollect">
+            <a-input
+              v-model:value="collectTeacherId"
+              placeholder="教师 userId"
+              :disabled="operating"
+            />
+            <UiButton
+              variant="primary"
+              :loading="operationKey.startsWith('collect:')"
+              :disabled="operating"
+              @click="runAutoCollect"
+            >
               执行自动采集
             </UiButton>
           </div>
@@ -551,7 +755,8 @@ watch(
             pagination-mode="server"
             :columns="collectColumns"
             :data-source="collectItems"
-            :loading="loading"
+            :loading="loadState.collect"
+            :load-error="loadError.collect"
             :total="collectTotal"
             row-key="indicatorCode"
             style="margin-top: 12px"
@@ -567,14 +772,18 @@ watch(
           </UiDataTable>
         </a-tab-pane>
         <a-tab-pane key="impact" tab="影响报告">
-          <UiEmpty v-if="!loading && impactReports.length === 0" description="当前筛选无运维任务" />
+          <UiEmpty
+            v-if="!loadState.impact && !loadError.impact && impactReports.length === 0"
+            description="暂无影响报告"
+          />
           <UiDataTable
             v-model:current="pageQuery.pageNum"
             v-model:page-size="pageQuery.pageSize"
             pagination-mode="server"
             :columns="impactColumns"
             :data-source="impactReports"
-            :loading="loading"
+            :loading="loadState.impact"
+            :load-error="loadError.impact"
             :total="impactTotal"
             row-key="id"
             @page-change="handlePageChange"
@@ -590,7 +799,7 @@ watch(
               </template>
               <template v-else-if="column.key === 'actions'">
                 <UiTableActions
-                  :items="[{ key: 'export', label: '导出' }]"
+                  :items="[{ key: 'export', label: '导出', disabled: operating }]"
                   split
                   @action="() => exportImpact(record.id)"
                 />

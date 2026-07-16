@@ -29,7 +29,9 @@
           <div class="org-group-progress__bar">
             <div
               class="org-group-progress__bar-fill"
-              :style="{ width: `${progressPercent(group.id)}%` }"
+              :style="{
+                transform: `scaleX(${Math.max(0, Math.min(1, progressPercent(group.id) / 100))})`,
+              }"
             />
           </div>
           <span class="org-group-progress__percent">{{ progressPercent(group.id) }}%</span>
@@ -47,11 +49,11 @@
 
 <script lang="ts" setup>
 import type { QuestionMarkingGroupResponse } from '@/apis/mark/marking-organization'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import {
   QUESTION_GROUP_STATUS_TONE,
   QuestionMarkingGroupStatusDescription,
 } from '@/apis/mark/marking-organization'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -182,9 +184,11 @@ function groupStatusLabel(status: QuestionMarkingGroupStatusCode): string {
 
   &__bar-fill {
     height: 100%;
+    width: 100%;
+    transform-origin: left center;
     border-radius: 2px;
     background: var(--dp-color-primary);
-    transition: width 0.2s ease;
+    transition: transform 0.2s ease;
   }
 
   &__percent {

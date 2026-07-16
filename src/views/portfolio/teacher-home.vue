@@ -4,7 +4,7 @@ import type {
   PortfolioTeacherWorkbenchSummaryVO,
   PortfolioTodoSummaryVO,
 } from '@/apis/portfolio/types'
-import type { SignalMetric } from '@/types/workbench'
+import { PORTFOLIO_COMPLETENESS_LEVEL_TONE } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -14,16 +14,15 @@ import {
   PortfolioPortraitDimensionReadinessCode,
 } from '@/apis/portfolio/enums'
 import { portfolioTodoApi } from '@/apis/portfolio/todo'
-import { PORTFOLIO_COMPLETENESS_LEVEL_TONE } from '@/apis/portfolio/types'
 import PortfolioProgressCockpitBand from '@/components/portfolio/PortfolioProgressCockpitBand.vue'
 import PortfolioProgressCompareDrawer from '@/components/portfolio/PortfolioProgressCompareDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
-import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
@@ -37,7 +36,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const route = useRoute()
 const router = useRouter()
-const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
+const { targetTeacherId, canPickTeachers, currentUserId } = usePortfolioPageScope()
 
 const loading = ref(false)
 const portrait = ref<PortfolioTeacherPortraitVO | null>(null)
@@ -48,6 +47,7 @@ const workbenchSummary = ref<PortfolioTeacherWorkbenchSummaryVO | null>(null)
 const workbenchSummaryLoading = ref(false)
 const compareDrawerOpen = ref(false)
 const cockpitBandRef = ref<InstanceType<typeof PortfolioProgressCockpitBand> | null>(null)
+const acknowledgingTodoKey = ref('')
 
 function todoCourseScopeLabel(item: PortfolioTodoSummaryVO): string {
   if (!item.courseCode) {
@@ -71,38 +71,21 @@ const completenessPercentText = computed(() => {
   return `${workbenchSummary.value.completenessPercent}%`
 })
 
-const portraitStatItems = computed((): SignalMetric[] => {
-  if (!portrait.value) {
-    return []
-  }
-  const row = portrait.value
-  return [
-    {
-      key: 'composite',
-      label: '综合画像',
-      value: String(row.compositeScore),
-      unit: '分',
-      tone: 'blue',
-    },
-    { key: 'core', label: '发展核心', value: String(row.developmentCoreScore), unit: '分' },
-    { key: 'teaching', label: '教学能力', value: String(row.teachingScore), unit: '分' },
-    { key: 'research', label: '科研教研', value: String(row.researchScore), unit: '分' },
-    { key: 'training', label: '培训发展', value: String(row.trainingScore), unit: '分' },
-    { key: 'practice', label: '企业实践', value: String(row.practiceScore), unit: '分' },
-  ]
-})
-
 const portraitDataInsufficient = computed(() => {
   if (!portrait.value) {
     return false
   }
   return (
-    portrait.value.officialRecordCount === 0
-    && portrait.value.dimensions.every(
+    portrait.value.officialRecordCount === 0 &&
+    portrait.value.dimensions.every(
       (item) => item.readiness === PortfolioPortraitDimensionReadinessCode.PENDING,
     )
   )
 })
+
+const canManageOwnPrivacy = computed(() =>
+  Boolean(targetTeacherId.value && targetTeacherId.value === currentUserId.value),
+)
 
 /** 教师首页切换目标教师时必须让旧首页请求失效，避免上一位教师画像/待办回填当前首页。 */
 function resetHomeContext() {
@@ -232,9 +215,9 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     ? { teacherId: targetTeacherId.value }
     : {}
   if (
-    item.archiveRecordId
-    && (item.todoType === PortfolioTodoTypeCode.ARCHIVE_RETURNED
-      || item.todoType === PortfolioTodoTypeCode.ARCHIVE_DRAFT)
+    item.archiveRecordId &&
+    (item.todoType === PortfolioTodoTypeCode.ARCHIVE_RETURNED ||
+      item.todoType === PortfolioTodoTypeCode.ARCHIVE_DRAFT)
   ) {
     query.recordId = item.archiveRecordId
   }
@@ -260,8 +243,8 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     return
   }
   if (
-    item.todoType === PortfolioTodoTypeCode.CORRECTION_REJECTED
-    || item.todoType === PortfolioTodoTypeCode.CORRECTION_IN_PROGRESS
+    item.todoType === PortfolioTodoTypeCode.CORRECTION_REJECTED ||
+    item.todoType === PortfolioTodoTypeCode.CORRECTION_IN_PROGRESS
   ) {
     if (item.categoryId) {
       query.categoryId = item.categoryId
@@ -273,8 +256,8 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     return
   }
   if (
-    item.todoType === PortfolioTodoTypeCode.GAP_PENDING
-    || item.todoType === PortfolioTodoTypeCode.GAP_RETURNED
+    item.todoType === PortfolioTodoTypeCode.GAP_PENDING ||
+    item.todoType === PortfolioTodoTypeCode.GAP_RETURNED
   ) {
     void router.push({
       path: `/portfolio/teacher/gap/${item.refId}`,
@@ -283,8 +266,8 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     return
   }
   if (
-    item.todoType === PortfolioTodoTypeCode.EVALUATION_MATERIAL_CONFIRM
-    || item.todoType === PortfolioTodoTypeCode.EVALUATION_RETURNED_SUPPLEMENT
+    item.todoType === PortfolioTodoTypeCode.EVALUATION_MATERIAL_CONFIRM ||
+    item.todoType === PortfolioTodoTypeCode.EVALUATION_RETURNED_SUPPLEMENT
   ) {
     void router.push({
       path: '/portfolio/teacher/evaluation',
@@ -301,14 +284,14 @@ function openTodo(item: PortfolioTodoSummaryVO) {
   }
   if (item.todoType === PortfolioTodoTypeCode.DEVELOPMENT_PLAN_REVIEW) {
     void router.push({
-      path: '/portfolio/admin/development-plan-review',
+      path: '/portfolio/department/development-plan-review',
       query: { ...query, planId: item.refId },
     })
     return
   }
   if (
-    item.todoType === PortfolioTodoTypeCode.DUAL_TEACHER_DRAFT
-    || item.todoType === PortfolioTodoTypeCode.DUAL_TEACHER_RETURNED
+    item.todoType === PortfolioTodoTypeCode.DUAL_TEACHER_DRAFT ||
+    item.todoType === PortfolioTodoTypeCode.DUAL_TEACHER_RETURNED
   ) {
     void router.push({ path: '/portfolio/scene/dual-teacher', query })
     return
@@ -326,10 +309,41 @@ function openTodo(item: PortfolioTodoSummaryVO) {
   void router.push({ path: '/portfolio/teacher/archive', query })
 }
 
+async function acknowledgeRejectedCorrection(item: PortfolioTodoSummaryVO) {
+  if (item.todoType !== PortfolioTodoTypeCode.CORRECTION_REJECTED || acknowledgingTodoKey.value) {
+    return
+  }
+  const confirmed = await confirmAsync({
+    title: '确认已知悉纠错驳回结果',
+    content: '确认后该提醒将从待办中移除；纠错工单及驳回意见仍会保留。',
+    type: 'warning',
+    okText: '确认知悉',
+  })
+  if (!confirmed) return
+  const operationKey = `${item.todoType}:${item.refId}`
+  acknowledgingTodoKey.value = operationKey
+  try {
+    await portfolioTodoApi.completeTodo({ todoType: item.todoType, refId: item.refId })
+    message.success('已确认知悉')
+    await Promise.all([loadTodos(), loadWorkbenchSummary()])
+  } catch (error) {
+    showUserError(error, '确认待办失败')
+  } finally {
+    if (acknowledgingTodoKey.value === operationKey) acknowledgingTodoKey.value = ''
+  }
+}
+
 function goCorrection() {
   void router.push({
     path: '/portfolio/teacher/correction',
     query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+  })
+}
+
+function goPrivacySettings() {
+  void router.push({
+    path: '/portfolio/teacher/privacy-consent',
+    query: { teacherId: targetTeacherId.value, mode: 'manage' },
   })
 }
 
@@ -378,8 +392,8 @@ function handleCockpitMetricClick(key: string, context?: { academicYear?: string
     void (async () => {
       const cachedGapTodo = todos.value.find(
         (item) =>
-          item.todoType === PortfolioTodoTypeCode.GAP_PENDING
-          || item.todoType === PortfolioTodoTypeCode.GAP_RETURNED,
+          item.todoType === PortfolioTodoTypeCode.GAP_PENDING ||
+          item.todoType === PortfolioTodoTypeCode.GAP_RETURNED,
       )
       if (cachedGapTodo) {
         openTodo(cachedGapTodo)
@@ -527,7 +541,19 @@ onUnmounted(() => {
     <template #context>
       <ContextBar show-title layout="workbench" title="教师首页">
         <template #actions>
-          <UiButton v-if="!loading" @click="reloadHomeData"> 刷新 </UiButton>
+          <template v-if="!(canPickTeachers && !targetTeacherId)">
+            <UiButton variant="primary" size="sm" @click="goIntake">材料采集</UiButton>
+            <UiButton size="sm" @click="goReviewStatus">审核进度</UiButton>
+            <UiButton size="sm" @click="goArchive">我的档案</UiButton>
+            <UiButton
+              variant="outline"
+              size="sm"
+              @click="moreHomeActionsOpen = !moreHomeActionsOpen"
+            >
+              {{ moreHomeActionsOpen ? '收起入口' : '更多入口' }}
+            </UiButton>
+          </template>
+          <UiButton v-if="!loading" size="sm" @click="reloadHomeData">刷新</UiButton>
         </template>
       </ContextBar>
     </template>
@@ -544,122 +570,126 @@ onUnmounted(() => {
       <UiEmpty description="请从教师名册选择目标教师，或在 URL 携带 teacherId 参数" />
     </div>
 
-    <div v-else class="teacher-home__grid">
-      <UiCard
-        :title="
-          workbenchSummary?.currentAcademicYear
-            ? `${workbenchSummary.currentAcademicYear} 档案完整度`
-            : '档案完整度'
-        "
-        class="teacher-home__card"
-      >
-        <a-spin :spinning="workbenchSummaryLoading">
-          <template v-if="workbenchSummary">
-            <div class="teacher-home__completeness-head">
-              <span class="teacher-home__percent">{{ completenessPercentText }}</span>
-              <UiTag
-                v-if="workbenchSummary.completenessLevel"
-                :tone="
-                  strictEnumTone(
-                    PORTFOLIO_COMPLETENESS_LEVEL_TONE,
-                    workbenchSummary.completenessLevel,
-                    '档案完整度等级',
-                  )
-                "
-              >
-                {{
-                  strictEnumLabel(
-                    PortfolioCompletenessLevelDescription,
-                    workbenchSummary.completenessLevel,
-                    '档案完整度等级',
-                  )
-                }}
-              </UiTag>
-            </div>
-            <p class="teacher-home__meta">
-              必填分类 {{ workbenchSummary.requiredCategoryDone ?? 0 }} /
-              {{ workbenchSummary.requiredCategoryTotal ?? 0 }}
-            </p>
-            <p class="teacher-home__meta">
-              荣誉 {{ workbenchSummary.honorTotalCount ?? 0 }} 条 · 拓展活动
-              {{ workbenchSummary.extensionActivityTotalCount ?? 0 }} 条
-            </p>
-            <p
-              v-if="(workbenchSummary.courseArchiveTaughtCourseCount ?? 0) > 0"
-              class="teacher-home__meta teacher-home__meta--link"
-              @click="goCourseArchiveWithAcademicYear(workbenchSummary?.currentAcademicYear)"
-            >
-              本学年讲授 {{ workbenchSummary.courseArchiveTaughtCourseCount }} 门 · 五框架齐备
-              {{ workbenchSummary.courseArchiveFullyCompleteCount ?? 0 }} 门（{{
-                workbenchSummary.courseArchiveFrameworkSlotDone ?? 0
-              }}/{{ workbenchSummary.courseArchiveFrameworkSlotTotal ?? 0 }}）
-            </p>
-            <p
-              v-if="
-                workbenchSummary.completenessPercent === 0
-                  && (workbenchSummary.requiredCategoryDone ?? 0) === 0
-              "
-              class="teacher-home__onboarding"
-            >
-              数据不足，请先完成建档
-            </p>
-          </template>
-          <UiEmpty v-else-if="!workbenchSummaryLoading" description="尚未生成档案完整度" />
-        </a-spin>
-      </UiCard>
+    <div v-else class="teacher-home__layout">
+      <div v-if="moreHomeActionsOpen" class="teacher-home__actions">
+        <UiButton size="sm" @click="goDualTeacherApply">资格与认定</UiButton>
+        <UiButton size="sm" @click="goCourseArchive">课程档案</UiButton>
+        <UiButton size="sm" @click="goPromotionScene">职称材料包</UiButton>
+        <UiButton size="sm" @click="goTeachingPhilosophy">教学理念</UiButton>
+        <UiButton size="sm" @click="goHonor">获奖情况</UiButton>
+        <UiButton size="sm" @click="goExtensionActivity">教学拓展</UiButton>
+        <UiButton size="sm" @click="goProfile">个人资料</UiButton>
+        <UiButton size="sm" @click="goPortrait">教师画像</UiButton>
+        <UiButton size="sm" @click="goCorrection">我的纠错</UiButton>
+        <UiButton size="sm" @click="goOneTable">教师一张表</UiButton>
+        <UiButton v-if="canManageOwnPrivacy" size="sm" @click="goPrivacySettings"
+          >隐私设置</UiButton
+        >
+      </div>
 
-      <UiCard title="画像摘要" class="teacher-home__card">
-        <template #extra>
-          <UiButton
-            variant="ghost"
-            size="sm"
-            :disabled="!portrait && !portraitAbsent"
-            @click="goPortrait"
-          >
-            查看画像
-          </UiButton>
+      <WorkbenchSurfaceCard class="teacher-home__status">
+        <template #head>
+          <div class="teacher-home__panel-head">
+            <h3 class="teacher-home__panel-title">
+              {{
+                workbenchSummary?.currentAcademicYear
+                  ? `${workbenchSummary.currentAcademicYear} 档案状态`
+                  : '档案状态'
+              }}
+            </h3>
+            <UiButton
+              variant="ghost"
+              size="sm"
+              :disabled="!portrait && !portraitAbsent"
+              @click="goPortrait"
+            >
+              查看画像
+            </UiButton>
+          </div>
         </template>
-        <a-spin :spinning="loading">
-          <SignalBand v-if="portrait" :metrics="portraitStatItems" variant="inline" compact />
-          <p v-if="portrait" class="teacher-home__meta">
-            正式档案 {{ portrait.officialRecordCount }} 条
-            <template v-if="portrait.computedTime"> · 更新于 {{ portrait.computedTime }} </template>
-          </p>
-          <p v-if="portrait && portraitDataInsufficient" class="teacher-home__onboarding">
-            画像数据不足，请先完成建档
-          </p>
-          <UiEmpty v-else-if="portraitAbsent && !loading" description="尚未生成画像快照" />
+        <a-spin :spinning="workbenchSummaryLoading || loading">
+          <div class="teacher-home__status-grid">
+            <section class="teacher-home__status-block">
+              <template v-if="workbenchSummary">
+                <div class="teacher-home__completeness-head">
+                  <span class="teacher-home__percent">{{ completenessPercentText }}</span>
+                  <UiTag
+                    v-if="workbenchSummary.completenessLevel"
+                    :tone="
+                      strictEnumTone(
+                        PORTFOLIO_COMPLETENESS_LEVEL_TONE,
+                        workbenchSummary.completenessLevel,
+                        '档案完整度等级',
+                      )
+                    "
+                  >
+                    {{
+                      strictEnumLabel(
+                        PortfolioCompletenessLevelDescription,
+                        workbenchSummary.completenessLevel,
+                        '档案完整度等级',
+                      )
+                    }}
+                  </UiTag>
+                </div>
+                <p class="teacher-home__meta">
+                  必填分类 {{ workbenchSummary.requiredCategoryDone ?? 0 }} /
+                  {{ workbenchSummary.requiredCategoryTotal ?? 0 }} · 荣誉
+                  {{ workbenchSummary.honorTotalCount ?? 0 }} · 拓展
+                  {{ workbenchSummary.extensionActivityTotalCount ?? 0 }}
+                </p>
+                <p
+                  v-if="(workbenchSummary.courseArchiveTaughtCourseCount ?? 0) > 0"
+                  class="teacher-home__meta teacher-home__meta--link"
+                  @click="goCourseArchiveWithAcademicYear(workbenchSummary?.currentAcademicYear)"
+                >
+                  本学年讲授 {{ workbenchSummary.courseArchiveTaughtCourseCount }} 门 · 五框架齐备
+                  {{ workbenchSummary.courseArchiveFullyCompleteCount ?? 0 }} 门（{{
+                    workbenchSummary.courseArchiveFrameworkSlotDone ?? 0
+                  }}/{{ workbenchSummary.courseArchiveFrameworkSlotTotal ?? 0 }}）
+                </p>
+                <p
+                  v-if="
+                    workbenchSummary.completenessPercent === 0 &&
+                    (workbenchSummary.requiredCategoryDone ?? 0) === 0
+                  "
+                  class="teacher-home__onboarding"
+                >
+                  数据不足，请先完成建档
+                </p>
+              </template>
+              <UiEmpty v-else-if="!workbenchSummaryLoading" description="尚未生成档案完整度" />
+            </section>
+            <section class="teacher-home__status-block">
+              <template v-if="portrait">
+                <p class="teacher-home__portrait-score">
+                  综合画像 {{ portrait.compositeScore }}
+                  <span class="teacher-home__portrait-unit">分</span>
+                </p>
+                <p class="teacher-home__meta">
+                  正式档案 {{ portrait.officialRecordCount }} 条
+                  <template v-if="portrait.computedTime">
+                    · 更新于 {{ portrait.computedTime }}
+                  </template>
+                </p>
+                <p v-if="portraitDataInsufficient" class="teacher-home__onboarding">
+                  画像数据不足，请先完成建档
+                </p>
+              </template>
+              <UiEmpty v-else-if="portraitAbsent && !loading" description="尚未生成画像快照" />
+            </section>
+          </div>
         </a-spin>
-      </UiCard>
+      </WorkbenchSurfaceCard>
 
-      <UiCard title="今日任务入口" class="teacher-home__card teacher-home__card--actions">
-        <div class="teacher-home__actions">
-          <UiButton variant="primary" @click="goIntake"> 材料采集 </UiButton>
-          <UiButton @click="goReviewStatus"> 审核进度 </UiButton>
-          <UiButton @click="goArchive"> 我的档案 </UiButton>
-          <UiButton @click="goDualTeacherApply"> 资格与认定 </UiButton>
-          <UiButton @click="goCourseArchive"> 课程档案 </UiButton>
-          <UiButton variant="outline" @click="moreHomeActionsOpen = !moreHomeActionsOpen">
-            {{ moreHomeActionsOpen ? '收起更多' : '更多入口' }}
-          </UiButton>
-        </div>
-        <div v-if="moreHomeActionsOpen" class="teacher-home__actions teacher-home__actions--more">
-          <UiButton @click="goPromotionScene"> 职称材料包 </UiButton>
-          <UiButton @click="goTeachingPhilosophy"> 教学理念 </UiButton>
-          <UiButton @click="goHonor"> 获奖情况 </UiButton>
-          <UiButton @click="goExtensionActivity"> 教学拓展 </UiButton>
-          <UiButton @click="goProfile"> 个人资料 </UiButton>
-          <UiButton @click="goPortrait"> 教师画像 </UiButton>
-          <UiButton @click="goCorrection"> 我的纠错 </UiButton>
-          <UiButton @click="goOneTable"> 教师一张表 </UiButton>
-        </div>
-      </UiCard>
-
-      <UiCard title="待办聚合" class="teacher-home__card">
-        <template #extra>
-          <span v-if="workbenchSummary" class="teacher-home__meta">
-            未完成 {{ workbenchSummary.pendingTodoCount }} 项
-          </span>
+      <WorkbenchSurfaceCard class="teacher-home__todos">
+        <template #head>
+          <div class="teacher-home__panel-head">
+            <h3 class="teacher-home__panel-title">待办聚合</h3>
+            <span v-if="workbenchSummary" class="teacher-home__todo-count">
+              未完成 {{ workbenchSummary.pendingTodoCount }} 项
+            </span>
+          </div>
         </template>
         <a-spin :spinning="todoLoading || workbenchSummaryLoading">
           <ul v-if="todos.length" class="teacher-home__todo-list">
@@ -679,6 +709,18 @@ onUnmounted(() => {
                 课程 {{ todoCourseScopeLabel(item) }}
               </p>
               <p v-if="item.dueTime" class="teacher-home__meta">截止 {{ item.dueTime }}</p>
+              <UiButton
+                v-if="
+                  item.todoType === PortfolioTodoTypeCode.CORRECTION_REJECTED && canManageOwnPrivacy
+                "
+                size="sm"
+                variant="soft"
+                :loading="acknowledgingTodoKey === `${item.todoType}:${item.refId}`"
+                :disabled="Boolean(acknowledgingTodoKey)"
+                @click.stop="acknowledgeRejectedCorrection(item)"
+              >
+                确认知悉
+              </UiButton>
             </li>
           </ul>
           <UiEmpty
@@ -686,21 +728,45 @@ onUnmounted(() => {
             description="当前无未完成待办。若刚提交材料请刷新；缺口与退回会出现在此列表，不会被隐藏。"
           />
         </a-spin>
-      </UiCard>
+      </WorkbenchSurfaceCard>
     </div>
   </StageWorkbenchShell>
   <PortfolioProgressCompareDrawer v-model:open="compareDrawerOpen" :teacher-id="targetTeacherId" />
 </template>
 
 <style scoped lang="scss">
-.teacher-home__grid {
+.teacher-home__layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-4);
+  min-width: 0;
+}
+
+.teacher-home__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dp-space-2);
+  padding: var(--dp-space-2) 0;
+}
+
+.teacher-home__panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dp-space-3);
+  width: 100%;
+}
+
+.teacher-home__panel-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.teacher-home__status-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--dp-space-4);
-}
-
-.teacher-home__card--actions {
-  grid-column: span 1;
 }
 
 .teacher-home__completeness-head {
@@ -710,15 +776,29 @@ onUnmounted(() => {
 }
 
 .teacher-home__percent {
-  font-size: 32px;
+  font-size: 28px;
   font-weight: var(--dp-font-weight-semibold);
   line-height: 1.2;
   color: var(--dp-text-primary);
 }
 
+.teacher-home__portrait-score {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--dp-text-primary);
+}
+
+.teacher-home__portrait-unit {
+  margin-left: 2px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--dp-text-muted);
+}
+
 .teacher-home__meta {
-  margin: var(--dp-space-3) 0 0;
-  font-size: 14px;
+  margin: var(--dp-space-2) 0 0;
+  font-size: 13px;
   color: var(--dp-text-secondary);
 }
 .teacher-home__meta--link {
@@ -731,20 +811,13 @@ onUnmounted(() => {
 
 .teacher-home__onboarding {
   margin: var(--dp-space-2) 0 0;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--ant-color-warning);
 }
 
-.teacher-home__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--dp-space-2);
-}
-
-.teacher-home__actions--more {
-  margin-top: var(--dp-space-3);
-  padding-top: var(--dp-space-3);
-  border-top: 1px solid var(--ant-color-border-secondary);
+.teacher-home__todo-count {
+  font-size: 13px;
+  color: var(--dp-text-muted);
 }
 
 .teacher-home__todo-list {
@@ -773,7 +846,7 @@ onUnmounted(() => {
 }
 
 @media (max-width: 960px) {
-  .teacher-home__grid {
+  .teacher-home__status-grid {
     grid-template-columns: 1fr;
   }
 }

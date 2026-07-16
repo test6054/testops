@@ -54,6 +54,22 @@ export interface PortfolioPolicyDocumentDownloadVO {
   auditLogId: string
 }
 
+export interface PortfolioPolicyTextDiffHunkVO {
+  changeType: 'EQUAL' | 'DELETE' | 'INSERT'
+  leftLineNo?: number
+  rightLineNo?: number
+  text: string
+}
+
+export interface PortfolioPolicyDocumentCompareVO {
+  leftDocument: PortfolioPolicyDocumentVO
+  rightDocument: PortfolioPolicyDocumentVO
+  leftFullText: string
+  rightFullText: string
+  changedLineCount: number
+  hunks: PortfolioPolicyTextDiffHunkVO[]
+}
+
 export const portfolioPolicyApi = {
   save: (data: {
     id?: string
@@ -83,16 +99,20 @@ export const portfolioPolicyApi = {
     http.post<PageResult<PortfolioPolicyDocumentVO>>('/api/portfolio/policy-document/page', data),
   get: (data: { id: string }) =>
     http.post<PortfolioPolicyDocumentDetailVO>('/api/portfolio/policy-document/get', data),
-  search: (data: { pageNum: number, pageSize: number, keyword: string }) =>
+  search: (data: { pageNum: number; pageSize: number; keyword: string }) =>
     http.post<PageResult<PortfolioPolicyDocumentSearchVO>>(
       '/api/portfolio/policy-document/search',
       data,
     ),
   preview: (data: { id: string }) =>
-    http.post<{ id: string, documentTitle: string, documentCode: string, fullTextContent: string }>(
-      '/api/portfolio/policy-document/preview',
-      data,
-    ),
+    http.post<{
+      id: string
+      documentTitle: string
+      documentCode: string
+      documentStatus: string
+      fullTextContent: string
+      attachmentFileId?: string
+    }>('/api/portfolio/policy-document/preview', data),
   download: (data: { id: string }) =>
     http.post<PortfolioPolicyDocumentDownloadVO>('/api/portfolio/policy-document/download', data),
   supersede: (data: {
@@ -122,4 +142,6 @@ export const portfolioPolicyApi = {
       '/api/portfolio/policy-document/mapping/save',
       data,
     ),
+  compare: (data: { leftDocumentId: string; rightDocumentId: string }) =>
+    http.post<PortfolioPolicyDocumentCompareVO>('/api/portfolio/policy-document/compare', data),
 }

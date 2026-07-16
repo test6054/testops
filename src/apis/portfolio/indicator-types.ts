@@ -1,42 +1,42 @@
 import type { PageResult, QueryDto } from '@/types'
 import type { PfEligibilityAuditStatusCode } from '@/types/enums/pf-eligibility-audit-status-enum'
-import type { PfEligibilityNodeTypeCode } from '@/types/enums/pf-eligibility-node-type-enum'
-import type { PfIndicatorBusinessReferenceSceneCode } from '@/types/enums/pf-indicator-business-reference-scene-enum'
-import type { PfIndicatorDataSourceChannelCode } from '@/types/enums/pf-indicator-data-source-channel-enum'
-import type { PfIndicatorStatusCode } from '@/types/enums/pf-indicator-status-enum'
-import type { PfModelStatusCode } from '@/types/enums/pf-model-status-enum'
-import type { PfScoreRuleTypeCode } from '@/types/enums/pf-score-rule-type-enum'
-import type { PortfolioIndicatorDefinitionTreeNodeTypeCode } from '@/types/enums/portfolio-indicator-definition-tree-node-type-enum'
 import {
   ALL_PF_ELIGIBILITY_AUDIT_STATUS_CODES,
   PfEligibilityAuditStatusDescription,
 } from '@/types/enums/pf-eligibility-audit-status-enum'
+import type { PfEligibilityNodeTypeCode } from '@/types/enums/pf-eligibility-node-type-enum'
 import {
   ALL_PF_ELIGIBILITY_NODE_TYPE_CODES,
   PfEligibilityNodeTypeDescription,
 } from '@/types/enums/pf-eligibility-node-type-enum'
-import { PfImpactReportStatusCode } from '@/types/enums/pf-impact-report-status-enum'
+import type { PfIndicatorBusinessReferenceSceneCode } from '@/types/enums/pf-indicator-business-reference-scene-enum'
+import type { PfIndicatorDataSourceChannelCode } from '@/types/enums/pf-indicator-data-source-channel-enum'
 import {
   ALL_PF_INDICATOR_DATA_SOURCE_CHANNEL_CODES,
   PfIndicatorDataSourceChannelDescription,
 } from '@/types/enums/pf-indicator-data-source-channel-enum'
+import type { PfIndicatorStatusCode } from '@/types/enums/pf-indicator-status-enum'
 import {
   ALL_PF_INDICATOR_STATUS_CODES,
   PfIndicatorStatusDescription,
 } from '@/types/enums/pf-indicator-status-enum'
+import type { PfModelStatusCode } from '@/types/enums/pf-model-status-enum'
 import {
   ALL_PF_MODEL_STATUS_CODES,
   PfModelStatusDescription,
 } from '@/types/enums/pf-model-status-enum'
+import type { PfScoreRuleTypeCode } from '@/types/enums/pf-score-rule-type-enum'
+import {
+  ALL_PF_SCORE_RULE_TYPE_CODES,
+  PfScoreRuleTypeDescription,
+} from '@/types/enums/pf-score-rule-type-enum'
+import type { PortfolioIndicatorDefinitionTreeNodeTypeCode } from '@/types/enums/portfolio-indicator-definition-tree-node-type-enum'
+import { PfImpactReportStatusCode } from '@/types/enums/pf-impact-report-status-enum'
 import {
   ALL_PF_SCENE_CODES,
   PfSceneCode,
   PfSceneCodeDescription,
 } from '@/types/enums/pf-scene-code-enum'
-import {
-  ALL_PF_SCORE_RULE_TYPE_CODES,
-  PfScoreRuleTypeDescription,
-} from '@/types/enums/pf-score-rule-type-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
@@ -45,8 +45,8 @@ export {
   PfEligibilityAuditStatusDescription,
 } from '@/types/enums/pf-eligibility-audit-status-enum'
 
-export const PF_SCENE_CODE_OPTIONS: Array<{ value: PfSceneCode, label: string }>
-  = ALL_PF_SCENE_CODES.map((value) => ({
+export const PF_SCENE_CODE_OPTIONS: Array<{ value: PfSceneCode; label: string }> =
+  ALL_PF_SCENE_CODES.map((value) => ({
     value,
     label: strictEnumLabel(PfSceneCodeDescription, value, '指标场景编码'),
   }))
@@ -57,8 +57,8 @@ export {
   PfEligibilityNodeTypeDescription,
 } from '@/types/enums/pf-eligibility-node-type-enum'
 
-export const PF_INDICATOR_STATUS_OPTIONS: Array<{ value: PfIndicatorStatusCode, label: string }>
-  = ALL_PF_INDICATOR_STATUS_CODES.map((value) => ({
+export const PF_INDICATOR_STATUS_OPTIONS: Array<{ value: PfIndicatorStatusCode; label: string }> =
+  ALL_PF_INDICATOR_STATUS_CODES.map((value) => ({
     value,
     label: strictEnumLabel(PfIndicatorStatusDescription, value, '指标状态'),
   }))
@@ -84,8 +84,8 @@ export {
   PfIndicatorBusinessReferenceSceneDescription,
 } from '@/types/enums/pf-indicator-business-reference-scene-enum'
 
-export const PF_SCORE_RULE_TYPE_OPTIONS: Array<{ value: PfScoreRuleTypeCode, label: string }>
-  = ALL_PF_SCORE_RULE_TYPE_CODES.map((value) => ({
+export const PF_SCORE_RULE_TYPE_OPTIONS: Array<{ value: PfScoreRuleTypeCode; label: string }> =
+  ALL_PF_SCORE_RULE_TYPE_CODES.map((value) => ({
     value,
     label: strictEnumLabel(PfScoreRuleTypeDescription, value, '计分规则类型'),
   }))
@@ -96,8 +96,8 @@ export {
   PfIndicatorDataSourceChannelDescription,
 } from '@/types/enums/pf-indicator-data-source-channel-enum'
 
-export const PF_MODEL_STATUS_OPTIONS: Array<{ value: PfModelStatusCode, label: string }>
-  = ALL_PF_MODEL_STATUS_CODES.map((value) => ({
+export const PF_MODEL_STATUS_OPTIONS: Array<{ value: PfModelStatusCode; label: string }> =
+  ALL_PF_MODEL_STATUS_CODES.map((value) => ({
     value,
     label: strictEnumLabel(PfModelStatusDescription, value, '场景模型状态'),
   }))
@@ -179,13 +179,6 @@ export interface PortfolioIndicatorRuleTemplateSaveRequest {
   paramsJson: string
   description?: string
   status?: PfIndicatorStatusCode
-}
-
-export interface PortfolioIndicatorRuleBindingSaveRequest {
-  id?: string
-  indicatorCode: string
-  templateId: string
-  bindingPriority?: number
 }
 
 export interface PortfolioIndustryPackVO {
@@ -706,7 +699,6 @@ export interface PortfolioIndicatorPlatformApi {
     data: PortfolioIndicatorRuleTemplatePageRequest,
   ) => Promise<PageResult<PortfolioIndicatorRuleTemplateVO>>
   saveTemplate: (data: PortfolioIndicatorRuleTemplateSaveRequest) => Promise<string>
-  saveBinding: (data: PortfolioIndicatorRuleBindingSaveRequest) => Promise<string>
   listIndustryPack: () => Promise<PortfolioIndustryPackVO[]>
   saveIndustryPack: (data: PortfolioIndustryPackSaveRequest) => Promise<string>
   importSeed: () => Promise<PortfolioIndicatorPlatformSeedResultVO>
@@ -729,7 +721,6 @@ export interface PortfolioIndicatorTenantApi {
   trialModel: (data: PortfolioSceneCodeRequest) => Promise<PortfolioTenantSceneModelVO>
   publishModel: (data: PortfolioTenantSceneModelPublishRequest) => Promise<string>
   freezeModel: (data: PortfolioSceneCodeRequest) => Promise<void>
-  ruleHistory: (data: PortfolioSceneCodeRequest) => Promise<PortfolioRulePublishSnapshotVO[]>
   pageRuleHistory: (
     data: PortfolioRuleHistoryPageRequest,
   ) => Promise<PageResult<PortfolioRulePublishSnapshotVO>>

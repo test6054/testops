@@ -82,7 +82,7 @@ function formatEventDesc(event: ArchiveVolumeExamArchivePackageEventVO): string 
   width: 8px;
   height: 8px;
   margin-top: 6px;
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
   background: var(--dp-green-600);
 }
 

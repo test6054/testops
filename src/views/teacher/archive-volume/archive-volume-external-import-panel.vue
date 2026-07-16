@@ -14,7 +14,7 @@
     <UiAlertStrip
       tone="info"
       title="导入流程"
-      description="1. 填写来源系统（导入上下文 sourceSystem）；2. 确认导入类型为任务材料（VOLUME_MATERIAL）；3. 下载 MARK_ARCHIVE_EXTERNAL 模板，按「导入数据」表填写；4. 上传 Excel，平台返回批次号与成功/失败条数。"
+      description="填写来源系统后下载导入模板。同一归档卷包含多份材料时，各行填写相同的「同卷标识」；系统按归档卷校验并导入，任一材料失败时整卷不入库。"
       dense
       class="archive-volume-external-import__flow"
     />
@@ -51,6 +51,7 @@
       :scene-key="ExcelImportSceneKey.MARK_ARCHIVE_EXTERNAL"
       entity-label="归档任务外部数据"
       :context="importContext"
+      :requirements="importRequirements"
       @success="handleImportSuccess"
     />
   </WorkbenchSurfaceCard>
@@ -58,12 +59,12 @@
 
 <script setup lang="ts">
 import type { ArchiveExternalImportResultVO } from '@/apis/mark/archive-volume'
-import type { ExcelImportResult } from '@/apis/platform/types'
-import { computed, ref } from 'vue'
 import {
   ArchiveExternalImportTypeCode,
   ArchiveExternalImportTypeDescription,
 } from '@/apis/mark/archive-volume'
+import type { ExcelImportResult } from '@/apis/platform/types'
+import { computed, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -103,6 +104,12 @@ const importTypeOptions = [
       '归档外部导入类型',
     ),
   },
+]
+
+const importRequirements = [
+  '「院系ID」必填；院系名称和教学班名称由系统根据编号核验并写入。',
+  '同一归档卷的多行材料须填写相同的「同卷标识」，且学年、课程、院系、模板、密级和保管期限保持一致。',
+  '系统按归档卷整组导入；组内任一材料校验失败时，不创建该卷及其材料，并清理本次临时文件。',
 ]
 
 const importContext = computed(() => ({

@@ -31,7 +31,6 @@ import type {
   PortfolioIndicatorPlatformSeedResultVO,
   PortfolioIndicatorPlatformSummaryVO,
   PortfolioIndicatorReferenceStatusVO,
-  PortfolioIndicatorRuleBindingSaveRequest,
   PortfolioIndicatorRuleTemplatePageRequest,
   PortfolioIndicatorRuleTemplateSaveRequest,
   PortfolioIndicatorRuleTemplateVO,
@@ -82,8 +81,6 @@ export const portfolioIndicatorPlatformApi: PortfolioIndicatorPlatformApi = {
     http.post<PageResult<PortfolioIndicatorRuleTemplateVO>>(`${PLATFORM}/template/page`, data),
   saveTemplate: (data: PortfolioIndicatorRuleTemplateSaveRequest) =>
     http.post<string>(`${PLATFORM}/template/save`, data),
-  saveBinding: (data: PortfolioIndicatorRuleBindingSaveRequest) =>
-    http.post<string>(`${PLATFORM}/binding/save`, data),
   listIndustryPack: () =>
     http.post<PortfolioIndustryPackVO[]>(`${PLATFORM}/industry-pack/list`, {}),
   saveIndustryPack: (data: PortfolioIndustryPackSaveRequest) =>
@@ -136,8 +133,6 @@ export const portfolioIndicatorTenantApi: PortfolioIndicatorTenantApi = {
     http.post<string>(`${TENANT}/model/publish`, data),
   freezeModel: (data: PortfolioSceneCodeRequest) =>
     http.post<void>(`${TENANT}/model/freeze`, data),
-  ruleHistory: (data: PortfolioSceneCodeRequest) =>
-    http.post<PortfolioRulePublishSnapshotVO[]>(`${TENANT}/rule/history`, data),
   pageRuleHistory: (data: PortfolioRuleHistoryPageRequest) =>
     http.post<PageResult<PortfolioRulePublishSnapshotVO>>(`${TENANT}/rule/history/page`, data),
   retroactiveGet: (data: PortfolioRuleRetroactiveGetRequest) =>

@@ -39,9 +39,26 @@ export function readPortfolioWorkShellRoute(): string {
   return sessionStorage.getItem(PORTFOLIO_WORK_SHELL_ROUTE_STORAGE_KEY) || ''
 }
 
+/** 校验教学档案袋工作壳编码是否属于后端 PortfolioWorkShellEnum 的受控值。 */
+export function isPortfolioWorkShellCode(value: unknown): value is PortfolioWorkShellCode {
+  return (
+    value === 'TEACHER' ||
+    value === 'DEPARTMENT_REVIEW' ||
+    value === 'SCHOOL_GOVERNANCE' ||
+    value === 'CONFIGURATION'
+  )
+}
+
 /** 读取服务端最后一次确认的默认工作壳编码，菜单投影不得从用户角色键反推。 */
-export function readPortfolioWorkShellCode(): string {
-  return sessionStorage.getItem(PORTFOLIO_WORK_SHELL_STORAGE_KEY) || ''
+export function readPortfolioWorkShellCode(): PortfolioWorkShellCode | '' {
+  const workShell = sessionStorage.getItem(PORTFOLIO_WORK_SHELL_STORAGE_KEY)
+  if (!workShell) {
+    return ''
+  }
+  if (isPortfolioWorkShellCode(workShell)) {
+    return workShell
+  }
+  throw new Error(`教学档案袋工作壳编码不受支持：${workShell}`)
 }
 
 /** 读取会话中的审核台菜单投影，用于识别组织范围变更后是否需要重建菜单。 */
@@ -72,7 +89,9 @@ export function selectPortfolioWorkShell(workShell: PortfolioWorkShellCode): str
 /**
  * 加载并缓存档案审核台访问范围；供路由门禁与审核页筛选器复用。
  */
-export async function ensurePortfolioReviewAccessLoaded(forceRefresh = false): Promise<PortfolioReviewAccessScopeVO | null> {
+export async function ensurePortfolioReviewAccessLoaded(
+  forceRefresh = false,
+): Promise<PortfolioReviewAccessScopeVO | null> {
   if (accessScope.value && !forceRefresh) {
     return accessScope.value
   }
@@ -80,6 +99,18 @@ export async function ensurePortfolioReviewAccessLoaded(forceRefresh = false): P
     loadPromise = portfolioReviewApi
       .getAccessScope()
       .then((scope) => {
+        const selectedWorkShell = readPortfolioWorkShellCode()
+        const selectedWorkShellRoute = selectedWorkShell
+          ? scope.workShellRoutes?.[selectedWorkShell]
+          : undefined
+        if (
+          selectedWorkShell &&
+          selectedWorkShellRoute &&
+          scope.availableWorkShells?.includes(selectedWorkShell)
+        ) {
+          scope.defaultWorkShell = selectedWorkShell
+          scope.defaultWorkShellRoute = selectedWorkShellRoute
+        }
         accessScope.value = scope
         writePortfolioReviewAccessFlag(Boolean(scope.reviewAccess))
         sessionStorage.removeItem(PORTFOLIO_WORK_SHELL_STORAGE_KEY)
@@ -88,7 +119,10 @@ export async function ensurePortfolioReviewAccessLoaded(forceRefresh = false): P
           sessionStorage.setItem(PORTFOLIO_WORK_SHELL_STORAGE_KEY, scope.defaultWorkShell)
         }
         if (scope.defaultWorkShellRoute) {
-          sessionStorage.setItem(PORTFOLIO_WORK_SHELL_ROUTE_STORAGE_KEY, scope.defaultWorkShellRoute)
+          sessionStorage.setItem(
+            PORTFOLIO_WORK_SHELL_ROUTE_STORAGE_KEY,
+            scope.defaultWorkShellRoute,
+          )
         }
         return scope
       })

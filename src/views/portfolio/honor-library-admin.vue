@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioHonorStatsVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { PortfolioDevelopmentRecordTypeCode } from '@/apis/portfolio/enums'
-import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -14,6 +14,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showUserError } from '@/utils/error-handler'
@@ -22,6 +23,8 @@ import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 const importModalOpen = ref(false)
 const stats = ref<PortfolioHonorStatsVO | null>(null)
 const statsRequestToken = ref(0)
+const operationKey = ref('')
+const writing = computed(() => Boolean(operationKey.value) || importModalOpen.value)
 const honorImportContext = { defaultRecordType: PortfolioDevelopmentRecordTypeCode.HONOR }
 const honorImportRequirements = [
   'recordType 须为 HONOR（模板已预填）',
@@ -46,8 +49,8 @@ const form = reactive({
   categoryCode: '',
   descriptionText: '',
 })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
-  = usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
+  usePortfolioTeacherSearch()
 const {
   loading,
   rows,
@@ -97,6 +100,7 @@ const {
 )
 
 async function saveRecord() {
+  if (writing.value) return
   if (!form.recordTitle.trim()) {
     message.warning('请填写荣誉标题')
     return
@@ -105,6 +109,7 @@ async function saveRecord() {
     message.warning('荣誉条目须选择所属教师')
     return
   }
+  operationKey.value = 'save'
   try {
     await portfolioDevelopmentRecordApi.save({
       recordType: PortfolioDevelopmentRecordTypeCode.HONOR,
@@ -127,16 +132,30 @@ async function saveRecord() {
     await loadPage()
   } catch (error) {
     showUserError(error)
+  } finally {
+    if (operationKey.value === 'save') operationKey.value = ''
   }
 }
 
-async function removeRecord(id: string) {
+async function removeRecord(id: string, title: string) {
+  if (writing.value) return
+  const operation = `delete:${id}`
+  operationKey.value = operation
   try {
+    const confirmed = await confirmAsync({
+      title: '确认删除荣誉记录？',
+      content: `确认删除「${title}」？删除后该记录不再参与教师画像、统计和档案归集。`,
+      type: 'error',
+      okText: '确认删除',
+    })
+    if (!confirmed) return
     await portfolioDevelopmentRecordApi.delete({ id })
     message.success('已删除')
     await loadPage()
   } catch (error) {
     showUserError(error)
+  } finally {
+    if (operationKey.value === operation) operationKey.value = ''
   }
 }
 
@@ -185,9 +204,9 @@ async function exportHonor() {
           value-format="YYYY-MM-DD"
           placeholder="截止日期"
         />
-        <UiButton @click="search"> 查询 </UiButton>
-        <UiButton @click="exportHonor"> 导出 </UiButton>
-        <UiButton @click="importModalOpen = true"> 批量导入 </UiButton>
+        <UiButton :disabled="writing" @click="search"> 查询 </UiButton>
+        <UiButton :disabled="writing" @click="exportHonor"> 导出 </UiButton>
+        <UiButton :disabled="writing" @click="importModalOpen = true"> 批量导入 </UiButton>
       </div>
       <div class="form-row">
         <a-input v-model:value="form.recordTitle" placeholder="荣誉标题" style="width: 180px" />
@@ -208,7 +227,14 @@ async function exportHonor() {
           value-format="YYYY-MM-DD"
           placeholder="日期"
         />
-        <UiButton variant="primary" @click="saveRecord"> 新增 </UiButton>
+        <UiButton
+          variant="primary"
+          :loading="operationKey === 'save'"
+          :disabled="writing"
+          @click="saveRecord"
+        >
+          新增
+        </UiButton>
       </div>
       <UiEmpty
         v-if="!loading && rows.length === 0"
@@ -232,9 +258,16 @@ async function exportHonor() {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
-              :items="[{ key: 'delete', label: '删除', tone: 'danger' }]"
+              :items="[
+                {
+                  key: 'delete',
+                  label: operationKey === `delete:${record.id}` ? '删除中' : '删除',
+                  tone: 'danger',
+                  disabled: writing,
+                },
+              ]"
               split
-              @action="() => removeRecord(record.id)"
+              @action="() => removeRecord(record.id, record.recordTitle)"
             />
           </template>
         </template>

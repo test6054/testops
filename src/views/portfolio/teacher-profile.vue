@@ -1,20 +1,27 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
+  PortfolioTeacherAcademicAppointmentVO,
+  PortfolioTeacherAcademicExperienceVO,
+  PortfolioTeacherEducationVO,
   PortfolioTeacherProfileVO,
   PortfolioTeacherTaughtCourseSaveRequest,
   PortfolioTeacherTaughtCourseVO,
 } from '@/apis/portfolio/teacher-profile'
+import { portfolioTeacherProfileApi } from '@/apis/portfolio/teacher-profile'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { TeacherTaughtCourseSourceTypeCode } from '@/types/enums/teacher-taught-course-source-type-enum'
-import { Form, Input, InputNumber, message } from 'ant-design-vue'
+import { TeacherTaughtCourseSourceTypeDescription } from '@/types/enums/teacher-taught-course-source-type-enum'
+import { PlusOutlined } from '@ant-design/icons-vue'
+import { DatePicker, Form, Input, InputNumber, message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { portfolioTeacherCohortProfileApi } from '@/apis/portfolio/teacher-cohort-profile'
-import { portfolioTeacherProfileApi } from '@/apis/portfolio/teacher-profile'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -23,7 +30,6 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { TeacherTaughtCourseSourceTypeDescription } from '@/types/enums/teacher-taught-course-source-type-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -38,9 +44,39 @@ const profile = ref<PortfolioTeacherProfileVO | null>(null)
 const courses = ref<PortfolioTeacherTaughtCourseVO[]>([])
 const courseTotal = ref(0)
 const coursePageNum = ref(1)
+const coursePageSize = ref(DEFAULT_LIST_PAGE_SIZE)
 const courseModalOpen = ref(false)
 const editingCourse = ref<PortfolioTeacherTaughtCourseVO | null>(null)
+const courseDeletingId = ref('')
 const requestToken = ref(0)
+const courseRequestToken = ref(0)
+const cvRequestToken = ref(0)
+const cvLoading = ref(false)
+const cvSaving = ref(false)
+const cvDeletingKey = ref('')
+const cvModalOpen = ref(false)
+const cvKind = ref<CvKind>('education')
+const cvEditingId = ref('')
+const educations = ref<PortfolioTeacherEducationVO[]>([])
+const academicExperiences = ref<PortfolioTeacherAcademicExperienceVO[]>([])
+const academicAppointments = ref<PortfolioTeacherAcademicAppointmentVO[]>([])
+
+type CvKind = 'education' | 'academicExperience' | 'academicAppointment'
+type CvRecord =
+  | PortfolioTeacherEducationVO
+  | PortfolioTeacherAcademicExperienceVO
+  | PortfolioTeacherAcademicAppointmentVO
+
+const cvForm = reactive({
+  schoolName: '',
+  departmentMajor: '',
+  degreeName: '',
+  organizationUnit: '',
+  positionTitle: '',
+  professionalTitle: '',
+  startYearMonth: '',
+  endYearMonth: '',
+})
 
 const profileForm = reactive({
   researchDirection: '',
@@ -60,6 +96,14 @@ const courseForm = reactive<PortfolioTeacherTaughtCourseSaveRequest>({
 })
 
 const readonlyProfile = computed(() => canPickTeachers.value && !!targetTeacherId.value)
+const courseWriteBusy = computed(() => courseSaving.value || Boolean(courseDeletingId.value))
+const cvWriteBusy = computed(() => cvSaving.value || Boolean(cvDeletingKey.value))
+const cvModalTitle = computed(() => {
+  const action = cvEditingId.value ? '编辑' : '新增'
+  if (cvKind.value === 'education') return `${action}主要学历`
+  if (cvKind.value === 'academicExperience') return `${action}主要学术经历`
+  return `${action}教学学术任（兼）职`
+})
 
 const courseColumns: ColumnsType = [
   { title: '课程编码', dataIndex: 'courseCode', key: 'courseCode', width: 120 },
@@ -77,6 +121,30 @@ const courseColumns: ColumnsType = [
   { title: '人数', dataIndex: 'studentCount', key: 'studentCount', width: 72, align: 'right' },
   { title: '来源', dataIndex: 'sourceType', key: 'sourceType', width: 96 },
   { title: '操作', key: 'actions', width: 88 },
+]
+
+const educationColumns: ColumnsType = [
+  { title: '学校', dataIndex: 'schoolName', key: 'schoolName' },
+  { title: '系或专业', dataIndex: 'departmentMajor', key: 'departmentMajor' },
+  { title: '学位', dataIndex: 'degreeName', key: 'degreeName', width: 120 },
+  { title: '起止年月', key: 'period', width: 160 },
+  { title: '来源', dataIndex: 'sourceType', key: 'sourceType', width: 96 },
+  { title: '操作', key: 'actions', width: 112 },
+]
+const academicExperienceColumns: ColumnsType = [
+  { title: '单位', dataIndex: 'organizationUnit', key: 'organizationUnit' },
+  { title: '职务', dataIndex: 'positionTitle', key: 'positionTitle', width: 140 },
+  { title: '职称', dataIndex: 'professionalTitle', key: 'professionalTitle', width: 140 },
+  { title: '起止年月', key: 'period', width: 160 },
+  { title: '来源', dataIndex: 'sourceType', key: 'sourceType', width: 96 },
+  { title: '操作', key: 'actions', width: 112 },
+]
+const academicAppointmentColumns: ColumnsType = [
+  { title: '单位', dataIndex: 'organizationUnit', key: 'organizationUnit' },
+  { title: '职务', dataIndex: 'positionTitle', key: 'positionTitle' },
+  { title: '起止年月', key: 'period', width: 160 },
+  { title: '来源', dataIndex: 'sourceType', key: 'sourceType', width: 96 },
+  { title: '操作', key: 'actions', width: 112 },
 ]
 
 function sourceLabel(sourceType: TeacherTaughtCourseSourceTypeCode) {
@@ -99,16 +167,21 @@ function resetCourseEditorContext() {
 async function loadProfile() {
   const currentToken = requestToken.value + 1
   requestToken.value = currentToken
+  const teacherId = targetTeacherId.value
   if (canPickTeachers.value && !targetTeacherId.value) {
+    loading.value = false
+    courseLoading.value = false
+    loadFailed.value = false
     profile.value = null
     courses.value = []
+    courseTotal.value = 0
     return
   }
   loading.value = true
   loadFailed.value = false
   try {
     const nextProfile = await portfolioTeacherProfileApi.get({
-      teacherId: targetTeacherId.value || undefined,
+      teacherId: teacherId || undefined,
     })
     if (requestToken.value !== currentToken) {
       return
@@ -116,17 +189,23 @@ async function loadProfile() {
     profile.value = nextProfile
     profileForm.researchDirection = profile.value.researchDirection || ''
     profileForm.teachingGroupName = profile.value.teachingGroupName || ''
-    if (canPickTeachers.value && targetTeacherId.value) {
-      const cohortProfile = await portfolioTeacherCohortProfileApi.get(targetTeacherId.value)
+    if (canPickTeachers.value && teacherId) {
+      const cohortProfile = await portfolioTeacherCohortProfileApi.get(teacherId)
+      if (requestToken.value !== currentToken) {
+        return
+      }
       cohortProfileForm.jobLevel = cohortProfile.jobLevel || ''
       cohortProfileForm.majorGroupCode = cohortProfile.majorGroupCode || ''
       cohortProfileForm.majorGroupName = cohortProfile.majorGroupName || ''
     }
-    await loadCourses(currentToken)
+    await Promise.all([loadCourses(), loadCvRecords()])
   } catch (error) {
     if (requestToken.value !== currentToken) {
       return
     }
+    profile.value = null
+    courses.value = []
+    courseTotal.value = 0
     loadFailed.value = true
     showUserError(error)
   } finally {
@@ -137,46 +216,277 @@ async function loadProfile() {
 }
 
 async function saveCohortProfile() {
-  if (!targetTeacherId.value) return
+  if (!targetTeacherId.value || savingCohortProfile.value) return
+  const scopeToken = requestToken.value
+  const teacherId = targetTeacherId.value
   savingCohortProfile.value = true
   try {
     await portfolioTeacherCohortProfileApi.save({
-      teacherId: targetTeacherId.value,
+      teacherId,
       jobLevel: cohortProfileForm.jobLevel.trim() || undefined,
       majorGroupCode: cohortProfileForm.majorGroupCode.trim() || undefined,
       majorGroupName: cohortProfileForm.majorGroupName.trim() || undefined,
     })
+    if (requestToken.value !== scopeToken || targetTeacherId.value !== teacherId) {
+      return
+    }
     message.success('画像对标主数据已保存')
   } catch (error) {
+    if (requestToken.value !== scopeToken || targetTeacherId.value !== teacherId) {
+      return
+    }
     showUserError(error)
   } finally {
-    savingCohortProfile.value = false
+    if (requestToken.value === scopeToken && targetTeacherId.value === teacherId) {
+      savingCohortProfile.value = false
+    }
   }
 }
 
-async function loadCourses(currentToken = requestToken.value) {
+async function loadCourses() {
+  const scopeToken = requestToken.value
+  const currentToken = courseRequestToken.value + 1
+  courseRequestToken.value = currentToken
+  const request = {
+    teacherId: targetTeacherId.value || undefined,
+    pageNum: coursePageNum.value,
+    pageSize: coursePageSize.value,
+  }
   courseLoading.value = true
   try {
-    const page = await portfolioTeacherProfileApi.pageTaughtCourses({
-      teacherId: targetTeacherId.value || undefined,
-      pageNum: coursePageNum.value,
-      pageSize: DEFAULT_LIST_PAGE_SIZE,
-    })
-    if (requestToken.value !== currentToken) {
+    const page = await portfolioTeacherProfileApi.pageTaughtCourses(request)
+    if (requestToken.value !== scopeToken || courseRequestToken.value !== currentToken) {
       return
     }
     courses.value = page.list
     courseTotal.value = page.total
   } catch (error) {
-    if (requestToken.value !== currentToken) {
+    if (requestToken.value !== scopeToken || courseRequestToken.value !== currentToken) {
       return
     }
+    courses.value = []
+    courseTotal.value = 0
     showUserError(error)
   } finally {
-    if (requestToken.value === currentToken) {
+    if (requestToken.value === scopeToken && courseRequestToken.value === currentToken) {
       courseLoading.value = false
     }
   }
+}
+
+/** 教师履历三类列表必须按同一教师 Scope 原子替换，任一失败时不保留上一位教师数据。 */
+async function loadCvRecords() {
+  const scopeToken = requestToken.value
+  const currentToken = ++cvRequestToken.value
+  const teacherId = targetTeacherId.value
+  cvLoading.value = true
+  try {
+    const request = { teacherId: teacherId || undefined }
+    const [nextEducations, nextExperiences, nextAppointments] = await Promise.all([
+      portfolioTeacherProfileApi.listEducations(request),
+      portfolioTeacherProfileApi.listAcademicExperiences(request),
+      portfolioTeacherProfileApi.listAcademicAppointments(request),
+    ])
+    if (
+      requestToken.value !== scopeToken ||
+      cvRequestToken.value !== currentToken ||
+      targetTeacherId.value !== teacherId
+    ) {
+      return
+    }
+    educations.value = nextEducations
+    academicExperiences.value = nextExperiences
+    academicAppointments.value = nextAppointments
+  } catch (error) {
+    if (
+      requestToken.value !== scopeToken ||
+      cvRequestToken.value !== currentToken ||
+      targetTeacherId.value !== teacherId
+    ) {
+      return
+    }
+    educations.value = []
+    academicExperiences.value = []
+    academicAppointments.value = []
+    showUserError(error)
+  } finally {
+    if (cvRequestToken.value === currentToken && targetTeacherId.value === teacherId) {
+      cvLoading.value = false
+    }
+  }
+}
+
+function resetCvEditor() {
+  cvEditingId.value = ''
+  cvForm.schoolName = ''
+  cvForm.departmentMajor = ''
+  cvForm.degreeName = ''
+  cvForm.organizationUnit = ''
+  cvForm.positionTitle = ''
+  cvForm.professionalTitle = ''
+  cvForm.startYearMonth = ''
+  cvForm.endYearMonth = ''
+}
+
+function openCvModal(kind: CvKind, row?: CvRecord) {
+  if (readonlyProfile.value || cvWriteBusy.value) {
+    return
+  }
+  resetCvEditor()
+  cvKind.value = kind
+  cvEditingId.value = row?.id ?? ''
+  cvForm.startYearMonth = row?.startYearMonth ?? ''
+  cvForm.endYearMonth = row?.endYearMonth ?? ''
+  if (kind === 'education' && row && 'schoolName' in row) {
+    cvForm.schoolName = row.schoolName
+    cvForm.departmentMajor = row.departmentMajor ?? ''
+    cvForm.degreeName = row.degreeName
+  } else if (row && 'organizationUnit' in row) {
+    cvForm.organizationUnit = row.organizationUnit
+    cvForm.positionTitle = row.positionTitle ?? ''
+    cvForm.professionalTitle = 'professionalTitle' in row ? (row.professionalTitle ?? '') : ''
+  }
+  cvModalOpen.value = true
+}
+
+function validateCvForm(): boolean {
+  if (!cvForm.startYearMonth) {
+    message.warning('请选择开始年月')
+    return false
+  }
+  if (cvForm.endYearMonth && cvForm.endYearMonth < cvForm.startYearMonth) {
+    message.warning('结束年月不能早于开始年月')
+    return false
+  }
+  if (cvKind.value === 'education') {
+    if (!cvForm.schoolName.trim() || !cvForm.degreeName.trim()) {
+      message.warning('请填写学校和学位')
+      return false
+    }
+    return true
+  }
+  if (!cvForm.organizationUnit.trim()) {
+    message.warning('请填写单位')
+    return false
+  }
+  if (cvKind.value === 'academicAppointment' && !cvForm.positionTitle.trim()) {
+    message.warning('请填写职务')
+    return false
+  }
+  return true
+}
+
+/** 履历保存绑定打开弹窗时的教师 Scope，响应返回后不得改写已切换教师的新页面。 */
+async function saveCvRecord() {
+  if (!validateCvForm() || cvWriteBusy.value) {
+    return
+  }
+  const scopeToken = requestToken.value
+  const teacherId = targetTeacherId.value
+  cvSaving.value = true
+  try {
+    const base = {
+      id: cvEditingId.value || undefined,
+      startYearMonth: cvForm.startYearMonth,
+      endYearMonth: cvForm.endYearMonth || undefined,
+    }
+    if (cvKind.value === 'education') {
+      await portfolioTeacherProfileApi.saveEducation({
+        ...base,
+        schoolName: cvForm.schoolName.trim(),
+        departmentMajor: cvForm.departmentMajor.trim() || undefined,
+        degreeName: cvForm.degreeName.trim(),
+      })
+    } else if (cvKind.value === 'academicExperience') {
+      await portfolioTeacherProfileApi.saveAcademicExperience({
+        ...base,
+        organizationUnit: cvForm.organizationUnit.trim(),
+        positionTitle: cvForm.positionTitle.trim() || undefined,
+        professionalTitle: cvForm.professionalTitle.trim() || undefined,
+      })
+    } else {
+      await portfolioTeacherProfileApi.saveAcademicAppointment({
+        ...base,
+        organizationUnit: cvForm.organizationUnit.trim(),
+        positionTitle: cvForm.positionTitle.trim(),
+      })
+    }
+    if (requestToken.value !== scopeToken || targetTeacherId.value !== teacherId) {
+      return
+    }
+    cvModalOpen.value = false
+    resetCvEditor()
+    message.success('履历记录已保存')
+    await loadCvRecords()
+  } catch (error) {
+    if (requestToken.value === scopeToken && targetTeacherId.value === teacherId) {
+      showUserError(error)
+    }
+  } finally {
+    if (requestToken.value === scopeToken && targetTeacherId.value === teacherId) {
+      cvSaving.value = false
+    }
+  }
+}
+
+function buildCvActions(row: CvRecord): UiTableRowActionItem[] {
+  const editable = row.sourceType === 'MANUAL' && !readonlyProfile.value
+  return [
+    { key: 'edit', label: '编辑', hidden: !editable, disabled: cvWriteBusy.value },
+    {
+      key: 'delete',
+      label: '删除',
+      tone: 'danger',
+      hidden: !editable,
+      disabled: cvWriteBusy.value,
+    },
+  ]
+}
+
+async function handleCvAction(key: string, kind: CvKind, row: CvRecord) {
+  if (key === 'edit') {
+    openCvModal(kind, row)
+    return
+  }
+  if (key !== 'delete' || row.sourceType !== 'MANUAL' || readonlyProfile.value) {
+    return
+  }
+  const confirmed = await confirmAsync({
+    title: '删除履历记录',
+    content: '确认删除这条手工维护的履历记录？',
+  })
+  if (!confirmed || cvWriteBusy.value) {
+    return
+  }
+  const scopeToken = requestToken.value
+  const teacherId = targetTeacherId.value
+  cvDeletingKey.value = `${kind}:${row.id}`
+  try {
+    if (kind === 'education') {
+      await portfolioTeacherProfileApi.deleteEducation({ id: row.id })
+    } else if (kind === 'academicExperience') {
+      await portfolioTeacherProfileApi.deleteAcademicExperience({ id: row.id })
+    } else {
+      await portfolioTeacherProfileApi.deleteAcademicAppointment({ id: row.id })
+    }
+    if (requestToken.value !== scopeToken || targetTeacherId.value !== teacherId) {
+      return
+    }
+    message.success('履历记录已删除')
+    await loadCvRecords()
+  } catch (error) {
+    if (requestToken.value === scopeToken && targetTeacherId.value === teacherId) {
+      showUserError(error)
+    }
+  } finally {
+    if (requestToken.value === scopeToken && targetTeacherId.value === teacherId) {
+      cvDeletingKey.value = ''
+    }
+  }
+}
+
+function cvPeriod(row: CvRecord) {
+  return `${row.startYearMonth} 至 ${row.endYearMonth || '至今'}`
 }
 
 async function saveProfile() {
@@ -244,36 +554,70 @@ async function removeCourse(row: PortfolioTeacherTaughtCourseVO) {
     message.warning('教务同步课程不可删除')
     return
   }
+  if (readonlyProfile.value || courseWriteBusy.value) return
+  const operationToken = courseRequestToken.value
   const confirmed = await confirmAsync({
     title: '删除手工讲授课程',
     content: `确认删除 ${row.courseName}（${row.academicYear} ${row.semester}）？`,
   })
-  if (!confirmed) {
+  if (!confirmed || courseRequestToken.value !== operationToken) {
     return
   }
+  courseDeletingId.value = row.id
   try {
     await portfolioTeacherProfileApi.deleteTaughtCourse({ id: row.id })
+    if (courseRequestToken.value !== operationToken) return
     message.success('已删除')
     await loadCourses()
   } catch (error) {
+    if (courseRequestToken.value !== operationToken) return
     showUserError(error)
+  } finally {
+    if (courseDeletingId.value === row.id) courseDeletingId.value = ''
   }
 }
 
-function onCoursePageChange(pageEvent: { current: number, pageSize: number }) {
+function onCoursePageChange(pageEvent: { current: number; pageSize: number }) {
   coursePageNum.value = pageEvent.current
+  coursePageSize.value = pageEvent.pageSize
   void loadCourses()
 }
 
-usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
 watch(
   () => targetTeacherId.value,
   () => {
     requestToken.value += 1
+    courseRequestToken.value += 1
+    cvRequestToken.value += 1
+    loading.value = false
+    courseLoading.value = false
+    cvLoading.value = false
+    savingProfile.value = false
+    savingCohortProfile.value = false
+    courseSaving.value = false
+    courseDeletingId.value = ''
+    cvSaving.value = false
+    cvDeletingKey.value = ''
+    loadFailed.value = false
+    profile.value = null
+    courses.value = []
+    courseTotal.value = 0
+    educations.value = []
+    academicExperiences.value = []
+    academicAppointments.value = []
+    coursePageNum.value = 1
+    profileForm.researchDirection = ''
+    profileForm.teachingGroupName = ''
+    cohortProfileForm.jobLevel = ''
+    cohortProfileForm.majorGroupCode = ''
+    cohortProfileForm.majorGroupName = ''
     courseModalOpen.value = false
+    cvModalOpen.value = false
     resetCourseEditorContext()
+    resetCvEditor()
   },
 )
+usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
 </script>
 
 <template>
@@ -352,14 +696,13 @@ watch(
           <UiButton v-if="!readonlyProfile" @click="openCourseModal()"> 手工补充 </UiButton>
         </template>
         <UiDataTable
+          v-model:current="coursePageNum"
+          v-model:page-size="coursePageSize"
           :columns="courseColumns"
           :data-source="courses"
           :loading="courseLoading"
-          :pagination="{
-            current: coursePageNum,
-            total: courseTotal,
-            pageSize: DEFAULT_LIST_PAGE_SIZE,
-          }"
+          pagination-mode="server"
+          :total="courseTotal"
           row-key="id"
           @page-change="onCoursePageChange"
         >
@@ -371,6 +714,7 @@ watch(
               <UiButton
                 v-if="record.sourceType === 'MANUAL' && !readonlyProfile"
                 variant="ghost"
+                :disabled="courseWriteBusy"
                 @click="openCourseModal(record)"
               >
                 编辑
@@ -379,6 +723,8 @@ watch(
                 v-if="record.sourceType === 'MANUAL' && !readonlyProfile"
                 variant="ghost"
                 status="danger"
+                :loading="courseDeletingId === record.id"
+                :disabled="courseWriteBusy"
                 @click="removeCourse(record)"
               >
                 删除
@@ -386,6 +732,101 @@ watch(
             </template>
           </template>
         </UiDataTable>
+      </UiCard>
+
+      <UiCard title="学历与学术履历" class="mt-16">
+        <a-tabs>
+          <a-tab-pane key="education" tab="主要学历">
+            <div v-if="!readonlyProfile" class="cv-actions">
+              <UiButton :disabled="cvWriteBusy" @click="openCvModal('education')">
+                <PlusOutlined />
+                新增学历
+              </UiButton>
+            </div>
+            <UiDataTable
+              pagination-mode="none"
+              :columns="educationColumns"
+              :data-source="educations"
+              :loading="cvLoading"
+              :show-pagination="false"
+              row-key="id"
+              flat
+            >
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'period'">{{ cvPeriod(record) }}</template>
+                <template v-else-if="column.key === 'sourceType'">
+                  <UiTag>{{ sourceLabel(record.sourceType) }}</UiTag>
+                </template>
+                <template v-else-if="column.key === 'actions'">
+                  <UiTableActions
+                    :items="buildCvActions(record)"
+                    @action="(key) => handleCvAction(key, 'education', record)"
+                  />
+                </template>
+              </template>
+            </UiDataTable>
+          </a-tab-pane>
+          <a-tab-pane key="academic-experience" tab="主要学术经历">
+            <div v-if="!readonlyProfile" class="cv-actions">
+              <UiButton :disabled="cvWriteBusy" @click="openCvModal('academicExperience')">
+                <PlusOutlined />
+                新增经历
+              </UiButton>
+            </div>
+            <UiDataTable
+              pagination-mode="none"
+              :columns="academicExperienceColumns"
+              :data-source="academicExperiences"
+              :loading="cvLoading"
+              :show-pagination="false"
+              row-key="id"
+              flat
+            >
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'period'">{{ cvPeriod(record) }}</template>
+                <template v-else-if="column.key === 'sourceType'">
+                  <UiTag>{{ sourceLabel(record.sourceType) }}</UiTag>
+                </template>
+                <template v-else-if="column.key === 'actions'">
+                  <UiTableActions
+                    :items="buildCvActions(record)"
+                    @action="(key) => handleCvAction(key, 'academicExperience', record)"
+                  />
+                </template>
+              </template>
+            </UiDataTable>
+          </a-tab-pane>
+          <a-tab-pane key="academic-appointment" tab="教学学术任（兼）职">
+            <div v-if="!readonlyProfile" class="cv-actions">
+              <UiButton :disabled="cvWriteBusy" @click="openCvModal('academicAppointment')">
+                <PlusOutlined />
+                新增任职
+              </UiButton>
+            </div>
+            <UiDataTable
+              pagination-mode="none"
+              :columns="academicAppointmentColumns"
+              :data-source="academicAppointments"
+              :loading="cvLoading"
+              :show-pagination="false"
+              row-key="id"
+              flat
+            >
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'period'">{{ cvPeriod(record) }}</template>
+                <template v-else-if="column.key === 'sourceType'">
+                  <UiTag>{{ sourceLabel(record.sourceType) }}</UiTag>
+                </template>
+                <template v-else-if="column.key === 'actions'">
+                  <UiTableActions
+                    :items="buildCvActions(record)"
+                    @action="(key) => handleCvAction(key, 'academicAppointment', record)"
+                  />
+                </template>
+              </template>
+            </UiDataTable>
+          </a-tab-pane>
+        </a-tabs>
       </UiCard>
     </template>
   </StageWorkbenchShell>
@@ -421,6 +862,63 @@ watch(
       </Form.Item>
     </Form>
   </a-modal>
+
+  <a-modal
+    v-model:open="cvModalOpen"
+    :title="cvModalTitle"
+    :confirm-loading="cvSaving"
+    :mask-closable="false"
+    @ok="saveCvRecord"
+    @cancel="resetCvEditor"
+  >
+    <Form layout="vertical">
+      <template v-if="cvKind === 'education'">
+        <Form.Item label="学校" required>
+          <Input v-model:value="cvForm.schoolName" :disabled="cvWriteBusy" />
+        </Form.Item>
+        <Form.Item label="系或专业">
+          <Input v-model:value="cvForm.departmentMajor" :disabled="cvWriteBusy" />
+        </Form.Item>
+        <Form.Item label="学位" required>
+          <Input v-model:value="cvForm.degreeName" :disabled="cvWriteBusy" />
+        </Form.Item>
+      </template>
+      <template v-else>
+        <Form.Item label="单位" required>
+          <Input v-model:value="cvForm.organizationUnit" :disabled="cvWriteBusy" />
+        </Form.Item>
+        <Form.Item label="职务" :required="cvKind === 'academicAppointment'">
+          <Input v-model:value="cvForm.positionTitle" :disabled="cvWriteBusy" />
+        </Form.Item>
+        <Form.Item v-if="cvKind === 'academicExperience'" label="职称">
+          <Input v-model:value="cvForm.professionalTitle" :disabled="cvWriteBusy" />
+        </Form.Item>
+      </template>
+      <div class="cv-period-grid">
+        <Form.Item label="开始年月" required>
+          <DatePicker
+            v-model:value="cvForm.startYearMonth"
+            picker="month"
+            value-format="YYYY-MM"
+            format="YYYY-MM"
+            :disabled="cvWriteBusy"
+            class="w-full"
+          />
+        </Form.Item>
+        <Form.Item label="结束年月">
+          <DatePicker
+            v-model:value="cvForm.endYearMonth"
+            picker="month"
+            value-format="YYYY-MM"
+            format="YYYY-MM"
+            allow-clear
+            :disabled="cvWriteBusy"
+            class="w-full"
+          />
+        </Form.Item>
+      </div>
+    </Form>
+  </a-modal>
 </template>
 
 <style scoped>
@@ -439,5 +937,21 @@ watch(
 }
 .w-full {
   width: 100%;
+}
+.cv-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+.cv-period-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+@media (max-width: 640px) {
+  .profile-readonly-grid,
+  .cv-period-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

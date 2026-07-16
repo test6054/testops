@@ -1,23 +1,23 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
+  PortfolioPolicyDocumentCompareVO,
   PortfolioPolicyDocumentDetailVO,
   PortfolioPolicyDocumentVO,
   PortfolioPolicyIndicatorMappingVO,
 } from '@/apis/portfolio/policy'
-import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
+import { portfolioPolicyApi } from '@/apis/portfolio/policy'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { portfolioPolicyApi } from '@/apis/portfolio/policy'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import {
   ALL_PORTFOLIO_POLICY_DOCUMENT_STATUS_CODES,
@@ -33,6 +33,11 @@ import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const loading = ref(false)
+const loadError = ref(false)
+const pageRequestToken = ref(0)
+const previewRequestToken = ref(0)
+const detailRequestToken = ref(0)
+const editorRequestToken = ref(0)
 const rows = ref<PortfolioPolicyDocumentVO[]>([])
 const total = ref(0)
 const editorOpen = ref(false)
@@ -40,8 +45,15 @@ const previewOpen = ref(false)
 const previewText = ref('')
 const detailOpen = ref(false)
 const supersedeOpen = ref(false)
+const compareOpen = ref(false)
+const compareLoading = ref(false)
+const compareResult = ref<PortfolioPolicyDocumentCompareVO | null>(null)
+const compareLeftId = ref('')
+const compareRightId = ref('')
 const detailLoading = ref(false)
-const mappingSaving = ref(false)
+const operationKey = ref('')
+const writing = computed(() => Boolean(operationKey.value))
+const mappingSaving = computed(() => operationKey.value.startsWith('mapping:save:'))
 const detail = ref<PortfolioPolicyDocumentDetailVO | null>(null)
 const supersedeSourceId = ref('')
 const editingId = ref<string | undefined>(undefined)
@@ -126,12 +138,16 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 240 },
 ]
 
-const pagination = computed(() => ({
-  current: query.pageNum,
-  pageSize: query.pageSize,
-  total: total.value,
-  showSizeChanger: true,
-}))
+/** 政策发布、修订与指标映射写操作必须串行，避免同一政策被跨弹窗并发改写。 */
+function beginOperation(key: string): boolean {
+  if (writing.value) return false
+  operationKey.value = key
+  return true
+}
+
+function endOperation(key: string) {
+  if (operationKey.value === key) operationKey.value = ''
+}
 
 function levelLabel(code: string) {
   return strictEnumLabel(
@@ -150,25 +166,35 @@ function statusLabel(code: string) {
 }
 
 async function loadPage() {
+  const currentToken = pageRequestToken.value + 1
+  pageRequestToken.value = currentToken
+  const request = {
+    pageNum: query.pageNum,
+    pageSize: query.pageSize,
+    policyLevel: filterForm.policyLevel,
+    documentStatus: filterForm.documentStatus,
+    documentTitle: filterForm.documentTitle.trim() || undefined,
+  }
   loading.value = true
+  loadError.value = false
   try {
-    const result = await portfolioPolicyApi.page({
-      pageNum: query.pageNum,
-      pageSize: query.pageSize,
-      policyLevel: filterForm.policyLevel,
-      documentStatus: filterForm.documentStatus,
-      documentTitle: filterForm.documentTitle.trim() || undefined,
-    })
+    const result = await portfolioPolicyApi.page(request)
+    if (pageRequestToken.value !== currentToken) return
     rows.value = result.list ?? []
     total.value = result.total ?? 0
   } catch (error) {
+    if (pageRequestToken.value !== currentToken) return
+    rows.value = []
+    total.value = 0
+    loadError.value = true
     showUserError(error, '加载政策文件失败')
   } finally {
-    loading.value = false
+    if (pageRequestToken.value === currentToken) loading.value = false
   }
 }
 
 function openCreate() {
+  if (writing.value) return
   editingId.value = undefined
   form.documentCode = ''
   form.documentTitle = ''
@@ -180,42 +206,104 @@ function openCreate() {
   editorOpen.value = true
 }
 
-async function saveDraft() {
+async function openEdit(row: PortfolioPolicyDocumentVO) {
+  if (writing.value) return
+  const currentToken = editorRequestToken.value + 1
+  editorRequestToken.value = currentToken
   try {
-    await portfolioPolicyApi.save({
-      id: editingId.value,
-      documentCode: form.documentCode.trim(),
-      documentTitle: form.documentTitle.trim(),
-      policyLevel: form.policyLevel,
-      topicCategory: form.topicCategory.trim(),
-      publishOrg: form.publishOrg.trim() || undefined,
-      publishDate: form.publishDate,
-      fullTextContent: form.fullTextContent,
-    })
+    const result = await portfolioPolicyApi.get({ id: row.id })
+    if (editorRequestToken.value !== currentToken) return
+    editingId.value = result.document.id
+    form.documentCode = result.document.documentCode
+    form.documentTitle = result.document.documentTitle
+    form.policyLevel = result.document.policyLevel as PortfolioPolicyLevelCode
+    form.topicCategory = result.document.topicCategory
+    form.publishOrg = result.document.publishOrg ?? ''
+    form.publishDate = result.document.publishDate
+    form.fullTextContent = result.fullTextContent
+    editorOpen.value = true
+  } catch (error) {
+    if (editorRequestToken.value !== currentToken) return
+    showUserError(error, '加载政策草稿失败')
+  }
+}
+
+async function saveDraft() {
+  const documentCode = form.documentCode.trim()
+  const documentTitle = form.documentTitle.trim()
+  const topicCategory = form.topicCategory.trim()
+  if (
+    !documentCode ||
+    !documentTitle ||
+    !topicCategory ||
+    !form.publishDate ||
+    !form.fullTextContent.trim()
+  ) {
+    message.warning('请完整填写文号、标题、主题分类、发布日期和政策全文')
+    return
+  }
+  const operation = `document:save:${editingId.value || 'new'}`
+  if (!beginOperation(operation)) return
+  const request = {
+    id: editingId.value,
+    documentCode,
+    documentTitle,
+    policyLevel: form.policyLevel,
+    topicCategory,
+    publishOrg: form.publishOrg.trim() || undefined,
+    publishDate: form.publishDate,
+    fullTextContent: form.fullTextContent,
+  }
+  try {
+    await portfolioPolicyApi.save(request)
     message.success('政策草稿已保存')
     editorOpen.value = false
     await loadPage()
   } catch (error) {
     showUserError(error, '保存政策失败')
+  } finally {
+    endOperation(operation)
   }
 }
 
 async function publishRow(row: PortfolioPolicyDocumentVO) {
+  const documentId = row.id
+  const operation = `document:publish:${documentId}`
+  if (!beginOperation(operation)) return
+  if (
+    !(await confirmAsync({
+      title: '确认发布政策？',
+      content: `发布「${row.documentTitle}」后将作为有效政策参与指标核验和教师问数。`,
+      type: 'warning',
+    }))
+  ) {
+    endOperation(operation)
+    return
+  }
   try {
-    await portfolioPolicyApi.publish({ id: row.id })
+    await portfolioPolicyApi.publish({ id: documentId })
     message.success('政策已发布')
     await loadPage()
   } catch (error) {
     showUserError(error, '发布政策失败')
+  } finally {
+    endOperation(operation)
   }
 }
 
 async function previewRow(row: PortfolioPolicyDocumentVO) {
+  const currentToken = previewRequestToken.value + 1
+  previewRequestToken.value = currentToken
+  previewText.value = ''
   try {
     const result = await portfolioPolicyApi.preview({ id: row.id })
+    if (previewRequestToken.value !== currentToken) return
     previewText.value = result.fullTextContent
     previewOpen.value = true
   } catch (error) {
+    if (previewRequestToken.value !== currentToken) return
+    previewText.value = ''
+    previewOpen.value = false
     showUserError(error, '预览政策失败')
   }
 }
@@ -238,18 +326,51 @@ function resetDetailContext() {
 }
 
 async function openDetail(row: PortfolioPolicyDocumentVO) {
+  const currentToken = detailRequestToken.value + 1
+  detailRequestToken.value = currentToken
+  const documentId = row.id
   resetDetailContext()
   detailLoading.value = true
   detailOpen.value = true
   try {
-    detail.value = await portfolioPolicyApi.get({ id: row.id })
+    const result = await portfolioPolicyApi.get({ id: documentId })
+    if (detailRequestToken.value !== currentToken) return
+    detail.value = result
     resetMappingRows(detail.value.mappings ?? [])
+    const versions = detail.value.versionHistory
+    compareRightId.value = detail.value.document.id
+    compareLeftId.value = versions.find((item) => item.id !== compareRightId.value)?.id ?? ''
   } catch (error) {
+    if (detailRequestToken.value !== currentToken) return
     resetDetailContext()
     detailOpen.value = false
     showUserError(error, '加载政策详情失败')
   } finally {
-    detailLoading.value = false
+    if (detailRequestToken.value === currentToken) detailLoading.value = false
+  }
+}
+
+async function compareVersions() {
+  if (!compareLeftId.value || !compareRightId.value) {
+    message.warning('请选择左右两个政策版本')
+    return
+  }
+  if (compareLeftId.value === compareRightId.value) {
+    message.warning('左右版本不能相同')
+    return
+  }
+  compareLoading.value = true
+  compareResult.value = null
+  try {
+    compareResult.value = await portfolioPolicyApi.compare({
+      leftDocumentId: compareLeftId.value,
+      rightDocumentId: compareRightId.value,
+    })
+    compareOpen.value = true
+  } catch (error) {
+    showUserError(error, '对比政策版本失败')
+  } finally {
+    compareLoading.value = false
   }
 }
 
@@ -262,10 +383,30 @@ function addMappingRow() {
   })
 }
 
+function removeMappingRow(index: number) {
+  mappingRows.value.splice(index, 1)
+  if (!mappingRows.value.length) resetMappingRows()
+}
+
 async function saveMappings() {
   if (!detail.value?.document.id) {
     return
   }
+  const incomplete = mappingRows.value.some(
+    (item) =>
+      Boolean(
+        item.clauseCode.trim() ||
+        item.clauseTitle.trim() ||
+        item.indicatorCode.trim() ||
+        item.materialRequirement.trim(),
+      ) &&
+      (!item.clauseCode.trim() || !item.clauseTitle.trim() || !item.indicatorCode.trim()),
+  )
+  if (incomplete) {
+    message.warning('每条指标映射必须完整填写条款编码、条款标题和指标编码')
+    return
+  }
+  const policyDocumentId = detail.value.document.id
   const mappings = mappingRows.value
     .filter((item) => item.clauseCode.trim() && item.indicatorCode.trim())
     .map((item) => ({
@@ -274,24 +415,29 @@ async function saveMappings() {
       indicatorCode: item.indicatorCode.trim(),
       materialRequirement: item.materialRequirement.trim() || undefined,
     }))
-  mappingSaving.value = true
+  const operation = `mapping:save:${policyDocumentId}`
+  if (!beginOperation(operation)) return
   try {
     await portfolioPolicyApi.saveMapping({
-      policyDocumentId: detail.value.document.id,
+      policyDocumentId,
       mappings,
     })
     message.success('指标映射已保存')
-    detail.value = await portfolioPolicyApi.get({ id: detail.value.document.id })
-    resetMappingRows(detail.value.mappings ?? [])
+    const refreshed = await portfolioPolicyApi.get({ id: policyDocumentId })
+    if (detail.value?.document.id === policyDocumentId) {
+      detail.value = refreshed
+      resetMappingRows(refreshed.mappings ?? [])
+    }
     await loadPage()
   } catch (error) {
     showUserError(error, '保存指标映射失败')
   } finally {
-    mappingSaving.value = false
+    endOperation(operation)
   }
 }
 
 function openSupersede(row: PortfolioPolicyDocumentVO) {
+  if (writing.value) return
   supersedeSourceId.value = row.id
   supersedeForm.documentCode = row.documentCode
   supersedeForm.documentTitle = `${row.documentTitle}（修订）`
@@ -307,22 +453,41 @@ async function submitSupersede() {
   if (!supersedeSourceId.value) {
     return
   }
+  const sourceDocumentId = supersedeSourceId.value
+  const documentCode = supersedeForm.documentCode.trim()
+  const documentTitle = supersedeForm.documentTitle.trim()
+  const topicCategory = supersedeForm.topicCategory.trim()
+  if (
+    !documentCode ||
+    !documentTitle ||
+    !topicCategory ||
+    !supersedeForm.publishDate ||
+    !supersedeForm.fullTextContent.trim()
+  ) {
+    message.warning('请完整填写修订版文号、标题、主题分类、发布日期和全文')
+    return
+  }
+  const operation = `document:supersede:${sourceDocumentId}`
+  if (!beginOperation(operation)) return
+  const request = {
+    sourceDocumentId,
+    documentCode,
+    documentTitle,
+    policyLevel: supersedeForm.policyLevel,
+    topicCategory,
+    publishOrg: supersedeForm.publishOrg.trim() || undefined,
+    publishDate: supersedeForm.publishDate,
+    fullTextContent: supersedeForm.fullTextContent,
+  }
   try {
-    await portfolioPolicyApi.supersede({
-      sourceDocumentId: supersedeSourceId.value,
-      documentCode: supersedeForm.documentCode.trim(),
-      documentTitle: supersedeForm.documentTitle.trim(),
-      policyLevel: supersedeForm.policyLevel,
-      topicCategory: supersedeForm.topicCategory.trim(),
-      publishOrg: supersedeForm.publishOrg.trim() || undefined,
-      publishDate: supersedeForm.publishDate,
-      fullTextContent: supersedeForm.fullTextContent,
-    })
+    await portfolioPolicyApi.supersede(request)
     message.success('政策修订版已创建')
     supersedeOpen.value = false
     await loadPage()
   } catch (error) {
     showUserError(error, '创建修订版失败')
+  } finally {
+    endOperation(operation)
   }
 }
 
@@ -331,10 +496,9 @@ function onSearch() {
   void loadPage()
 }
 
-function onTableChange(changeEvent: UiDataTableChangeEvent) {
-  const { pageNum, pageSize } = readUiDataTablePagination(changeEvent, DEFAULT_LIST_PAGE_SIZE)
-  query.pageNum = pageNum
-  query.pageSize = pageSize
+function onPageChange(page: { current: number; pageSize: number }) {
+  query.pageNum = page.current
+  query.pageSize = page.pageSize
   void loadPage()
 }
 
@@ -351,15 +515,19 @@ onMounted(() => {
     <UiCard>
       <div class="policy-admin__toolbar">
         <UiFilterBar v-model="filterModel" :fields="filterFields" @search="onSearch" />
-        <UiButton @click="openCreate"> 新建政策 </UiButton>
+        <UiButton :disabled="writing" @click="openCreate"> 新建政策 </UiButton>
       </div>
       <UiDataTable
+        v-model:current="query.pageNum"
+        v-model:page-size="query.pageSize"
         row-key="id"
         :columns="columns"
         :data-source="rows"
         :loading="loading"
-        :pagination="pagination"
-        @change="onTableChange"
+        :load-error="loadError"
+        pagination-mode="server"
+        :total="total"
+        @page-change="onPageChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'policyLevel'">
@@ -371,18 +539,22 @@ onMounted(() => {
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
               :items="[
-                { key: 'detail', label: '详情' },
-                { key: 'preview', label: '预览' },
+                { key: 'detail', label: '详情', disabled: writing },
+                { key: 'preview', label: '预览', disabled: writing },
                 ...(record.documentStatus === PortfolioPolicyDocumentStatusCode.DRAFT
-                  ? [{ key: 'publish', label: '发布' }]
+                  ? [
+                      { key: 'edit', label: '编辑', disabled: writing },
+                      { key: 'publish', label: '发布', disabled: writing },
+                    ]
                   : []),
                 ...(record.documentStatus === PortfolioPolicyDocumentStatusCode.EFFECTIVE
-                  ? [{ key: 'supersede', label: '修订' }]
+                  ? [{ key: 'supersede', label: '修订', disabled: writing }]
                   : []),
               ]"
               @action="
                 (key) => {
                   if (key === 'publish') publishRow(record)
+                  else if (key === 'edit') openEdit(record)
                   else if (key === 'detail') openDetail(record)
                   else if (key === 'supersede') openSupersede(record)
                   else previewRow(record)
@@ -393,9 +565,28 @@ onMounted(() => {
         </template>
       </UiDataTable>
     </UiCard>
-    <a-modal v-model:open="editorOpen" title="政策文件草稿" @ok="saveDraft">
-      <a-input v-model:value="form.documentCode" placeholder="文号" class="policy-admin__field" />
-      <a-input v-model:value="form.documentTitle" placeholder="标题" class="policy-admin__field" />
+    <a-modal
+      v-model:open="editorOpen"
+      title="政策文件草稿"
+      :confirm-loading="operationKey.startsWith('document:save:')"
+      :closable="!writing"
+      :mask-closable="!writing"
+      :keyboard="!writing"
+      :cancel-button-props="{ disabled: writing }"
+      @ok="saveDraft"
+    >
+      <a-input
+        v-model:value="form.documentCode"
+        placeholder="文号"
+        class="policy-admin__field"
+        :disabled="writing"
+      />
+      <a-input
+        v-model:value="form.documentTitle"
+        placeholder="标题"
+        class="policy-admin__field"
+        :disabled="writing"
+      />
       <a-select
         v-model:value="form.policyLevel"
         class="policy-admin__field"
@@ -405,18 +596,32 @@ onMounted(() => {
             label: PortfolioPolicyLevelDescription[c],
           }))
         "
+        :disabled="writing"
       />
       <a-input
         v-model:value="form.topicCategory"
         placeholder="主题分类"
         class="policy-admin__field"
+        :disabled="writing"
+      />
+      <a-input
+        v-model:value="form.publishOrg"
+        placeholder="发布机构（可选）"
+        class="policy-admin__field"
+        :disabled="writing"
       />
       <a-input
         v-model:value="form.publishDate"
         placeholder="发布日期 YYYY-MM-DD"
         class="policy-admin__field"
+        :disabled="writing"
       />
-      <a-textarea v-model:value="form.fullTextContent" placeholder="全文内容" :rows="6" />
+      <a-textarea
+        v-model:value="form.fullTextContent"
+        placeholder="全文内容"
+        :rows="6"
+        :disabled="writing"
+      />
     </a-modal>
     <a-modal v-model:open="previewOpen" title="政策预览" :footer="null">
       <pre class="policy-admin__preview">{{ previewText }}</pre>
@@ -426,6 +631,8 @@ onMounted(() => {
       title="政策详情"
       width="760px"
       :footer="null"
+      :closable="!writing"
+      :mask-closable="!writing"
       @cancel="resetDetailContext"
     >
       <a-spin :spinning="detailLoading">
@@ -450,16 +657,57 @@ onMounted(() => {
           </dl>
           <h4 class="policy-admin__section-title">指标映射</h4>
           <div v-for="(row, index) in mappingRows" :key="index" class="policy-admin__mapping-row">
-            <a-input v-model:value="row.clauseCode" placeholder="条款编码" />
-            <a-input v-model:value="row.clauseTitle" placeholder="条款标题" />
-            <a-input v-model:value="row.indicatorCode" placeholder="指标编码" />
-            <a-input v-model:value="row.materialRequirement" placeholder="材料要求" />
+            <a-input v-model:value="row.clauseCode" placeholder="条款编码" :disabled="writing" />
+            <a-input v-model:value="row.clauseTitle" placeholder="条款标题" :disabled="writing" />
+            <a-input v-model:value="row.indicatorCode" placeholder="指标编码" :disabled="writing" />
+            <a-input
+              v-model:value="row.materialRequirement"
+              placeholder="材料要求"
+              :disabled="writing"
+            />
+            <UiButton
+              size="sm"
+              status="danger"
+              variant="ghost"
+              :disabled="writing"
+              @click="removeMappingRow(index)"
+            >
+              删除
+            </UiButton>
           </div>
           <div class="policy-admin__mapping-actions">
-            <UiButton @click="addMappingRow">新增映射</UiButton>
-            <UiButton :loading="mappingSaving" @click="saveMappings">保存映射</UiButton>
+            <UiButton :disabled="writing" @click="addMappingRow">新增映射</UiButton>
+            <UiButton :loading="mappingSaving" :disabled="writing" @click="saveMappings"
+              >保存映射</UiButton
+            >
           </div>
           <h4 v-if="detail.versionHistory.length" class="policy-admin__section-title">版本历史</h4>
+          <div v-if="detail.versionHistory.length > 1" class="policy-admin__compare-bar">
+            <a-select
+              v-model:value="compareLeftId"
+              :options="
+                detail.versionHistory.map((item) => ({
+                  value: item.id,
+                  label: `v${item.versionNo} · ${item.documentTitle}`,
+                }))
+              "
+              :disabled="compareLoading"
+            />
+            <span>对比</span>
+            <a-select
+              v-model:value="compareRightId"
+              :options="
+                detail.versionHistory.map((item) => ({
+                  value: item.id,
+                  label: `v${item.versionNo} · ${item.documentTitle}`,
+                }))
+              "
+              :disabled="compareLoading"
+            />
+            <UiButton size="sm" :loading="compareLoading" @click="compareVersions"
+              >查看差异</UiButton
+            >
+          </div>
           <ul v-if="detail.versionHistory.length" class="policy-admin__version-list">
             <li v-for="item in detail.versionHistory" :key="item.id">
               v{{ item.versionNo }} · {{ item.documentTitle }} ·
@@ -469,16 +717,47 @@ onMounted(() => {
         </template>
       </a-spin>
     </a-modal>
-    <a-modal v-model:open="supersedeOpen" title="创建政策修订版" @ok="submitSupersede">
+    <a-modal v-model:open="compareOpen" title="政策版本差异" width="900px" :footer="null">
+      <template v-if="compareResult">
+        <p class="policy-admin__compare-summary">
+          v{{ compareResult.leftDocument.versionNo }} → v{{
+            compareResult.rightDocument.versionNo
+          }}， 变更 {{ compareResult.changedLineCount }} 行
+        </p>
+        <ol class="policy-admin__diff">
+          <li
+            v-for="(hunk, index) in compareResult.hunks"
+            :key="`${hunk.changeType}-${hunk.leftLineNo}-${hunk.rightLineNo}-${index}`"
+            :class="`policy-admin__diff--${hunk.changeType.toLowerCase()}`"
+          >
+            <span>{{ hunk.leftLineNo ?? '·' }}</span>
+            <span>{{ hunk.rightLineNo ?? '·' }}</span>
+            <code>{{ hunk.text || ' ' }}</code>
+          </li>
+        </ol>
+      </template>
+    </a-modal>
+    <a-modal
+      v-model:open="supersedeOpen"
+      title="创建政策修订版"
+      :confirm-loading="operationKey.startsWith('document:supersede:')"
+      :closable="!writing"
+      :mask-closable="!writing"
+      :keyboard="!writing"
+      :cancel-button-props="{ disabled: writing }"
+      @ok="submitSupersede"
+    >
       <a-input
         v-model:value="supersedeForm.documentCode"
         placeholder="文号"
         class="policy-admin__field"
+        :disabled="writing"
       />
       <a-input
         v-model:value="supersedeForm.documentTitle"
         placeholder="标题"
         class="policy-admin__field"
+        :disabled="writing"
       />
       <a-select
         v-model:value="supersedeForm.policyLevel"
@@ -489,18 +768,32 @@ onMounted(() => {
             label: PortfolioPolicyLevelDescription[c],
           }))
         "
+        :disabled="writing"
       />
       <a-input
         v-model:value="supersedeForm.topicCategory"
         placeholder="主题分类"
         class="policy-admin__field"
+        :disabled="writing"
+      />
+      <a-input
+        v-model:value="supersedeForm.publishOrg"
+        placeholder="发布机构（可选）"
+        class="policy-admin__field"
+        :disabled="writing"
       />
       <a-input
         v-model:value="supersedeForm.publishDate"
         placeholder="发布日期 YYYY-MM-DD"
         class="policy-admin__field"
+        :disabled="writing"
       />
-      <a-textarea v-model:value="supersedeForm.fullTextContent" placeholder="修订全文" :rows="6" />
+      <a-textarea
+        v-model:value="supersedeForm.fullTextContent"
+        placeholder="修订全文"
+        :rows="6"
+        :disabled="writing"
+      />
     </a-modal>
   </StageWorkbenchShell>
 </template>
@@ -545,7 +838,7 @@ onMounted(() => {
 }
 .policy-admin__mapping-row {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
   gap: 8px;
   margin-bottom: 8px;
 }
@@ -558,5 +851,45 @@ onMounted(() => {
   margin: 0;
   padding-left: 16px;
   font-size: 13px;
+}
+.policy-admin__compare-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.policy-admin__compare-summary {
+  margin: 0 0 10px;
+  color: var(--dp-text-secondary, #666);
+}
+.policy-admin__diff {
+  max-height: 560px;
+  padding: 0;
+  margin: 0;
+  overflow: auto;
+  font-size: 12px;
+  list-style: none;
+}
+.policy-admin__diff li {
+  display: grid;
+  grid-template-columns: 44px 44px minmax(0, 1fr);
+  min-height: 28px;
+  border-bottom: 1px solid var(--dp-border, #f0f0f0);
+}
+.policy-admin__diff li > * {
+  padding: 5px 8px;
+  overflow-wrap: anywhere;
+}
+.policy-admin__diff--insert {
+  background: #f0f9f2;
+}
+.policy-admin__diff--delete {
+  background: #fff2f0;
+}
+@media (max-width: 720px) {
+  .policy-admin__compare-bar {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

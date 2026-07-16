@@ -4,15 +4,16 @@ import type {
   ArchiveCatalogStatusCode,
   ArchiveVolumeCatalogLineVO,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { computed, onMounted } from 'vue'
 import {
   ARCHIVE_CATALOG_STATUS_TONE,
   ArchiveCatalogStatusDescription,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { computed, onMounted } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -34,6 +35,7 @@ const emit = defineEmits<{
 
 const {
   loading,
+  loadFailed,
   saving,
   confirming,
   exporting,
@@ -156,7 +158,7 @@ defineExpose({ loadCatalog })
           size="sm"
           variant="outline"
           :loading="saving"
-          :disabled="isConfirmed"
+          :disabled="isConfirmed || loadFailed"
           @click="handleGenerateDraft"
         >
           生成草稿
@@ -165,7 +167,7 @@ defineExpose({ loadCatalog })
           size="sm"
           variant="outline"
           :loading="saving"
-          :disabled="isConfirmed || editableLines.length === 0"
+          :disabled="isConfirmed || loadFailed || editableLines.length === 0"
           @click="handleSave"
         >
           保存
@@ -174,7 +176,7 @@ defineExpose({ loadCatalog })
           size="sm"
           variant="primary"
           :loading="confirming"
-          :disabled="isConfirmed || editableLines.length === 0"
+          :disabled="isConfirmed || loadFailed || editableLines.length === 0"
           @click="handleConfirm"
         >
           确认目录
@@ -190,6 +192,20 @@ defineExpose({ loadCatalog })
         </UiButton>
       </div>
     </template>
+
+    <UiAlertStrip
+      v-if="loadFailed"
+      tone="error"
+      title="目录加载失败"
+      description="当前保留的是上次成功加载的内容，重新加载成功前不能编辑或确认。"
+      :inline="false"
+    >
+      <template #actions>
+        <UiButton size="sm" variant="outline" :loading="loading" @click="loadCatalog">
+          重新加载
+        </UiButton>
+      </template>
+    </UiAlertStrip>
 
     <UiSkeletonState v-if="loading" variant="card" compact />
 

@@ -1,4 +1,5 @@
 import type { ColumnType } from 'ant-design-vue/es/table'
+import type { QuestionTypeCode } from '@/types/enums/question-type-enum'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import { buildNumericColumn } from '@/components/ui-guide/ui/data-table'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -6,7 +7,7 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 /** AI 分析中心制卷题目表格统一身份字段 */
 export interface ExamQuestionIdentityRow {
   questionNo: string
-  questionType?: string
+  questionType?: QuestionTypeCode
   questionStem?: string
   fullScore?: number
 }
@@ -53,7 +54,7 @@ export function buildExamQuestionIdentityColumns<
   ]
 }
 
-export function questionTypeLabel(code?: string): string {
+export function questionTypeLabel(code?: QuestionTypeCode): string {
   if (!code) {
     return '—'
   }

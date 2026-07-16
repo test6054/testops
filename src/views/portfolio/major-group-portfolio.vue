@@ -1,22 +1,20 @@
 <script setup lang="ts">
-import type { Key } from 'ant-design-vue/es/_util/type'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PortfolioMajorGroupPeriodCompareVO,
   PortfolioMajorGroupPortfolioSectionItemVO,
-  PortfolioMajorGroupPortfolioVO
+  PortfolioMajorGroupPortfolioVO,
 } from '@/apis/portfolio/governance'
+import { portfolioMajorGroupApi } from '@/apis/portfolio/governance'
 import type { PortfolioOrgTreeNodeVO } from '@/apis/portfolio/types'
-import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
+import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { PortfolioOrgUnitTypeCode } from '@/apis/portfolio/enums'
-import { portfolioMajorGroupApi } from '@/apis/portfolio/governance'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -26,12 +24,14 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { PortfolioAlertStatusCode, PortfolioAlertStatusDescription } from '@/types/enums/portfolio-alert-status-enum'
-import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
+import {
+  PortfolioAlertStatusCode,
+  PortfolioAlertStatusDescription,
+} from '@/types/enums/portfolio-alert-status-enum'
 import {
   ALL_PORTFOLIO_MAJOR_GROUP_SECTION_CODES,
   PortfolioMajorGroupSectionCode,
-  PortfolioMajorGroupSectionDescription
+  PortfolioMajorGroupSectionDescription,
 } from '@/types/enums/portfolio-major-group-section-code-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -41,7 +41,7 @@ function readRouteStringParam(value: unknown): string {
 }
 
 function flattenMajorGroupOptions(roots: PortfolioOrgTreeNodeVO[]) {
-  const result: { value: string, label: string }[] = []
+  const result: { value: string; label: string }[] = []
   function walk(nodes: PortfolioOrgTreeNodeVO[], prefix = '') {
     for (const node of nodes) {
       const label = prefix ? `${prefix} / ${node.name}` : node.name
@@ -68,6 +68,7 @@ const exportLoading = ref(false)
 const portfolioRequestToken = ref(0)
 const sectionRequestToken = ref(0)
 const compareRequestToken = ref(0)
+const exportRequestToken = ref(0)
 const portfolio = ref<PortfolioMajorGroupPortfolioVO | null>(null)
 const activeSection = ref<PortfolioMajorGroupSectionCode>(PortfolioMajorGroupSectionCode.ARCHIVE)
 const sectionItems = ref<PortfolioMajorGroupPortfolioSectionItemVO[]>([])
@@ -87,7 +88,7 @@ const sectionFilter = reactive({
 })
 
 const tabItems = computed(() =>
-  ALL_PORTFOLIO_MAJOR_GROUP_SECTION_CODES.map(code => ({
+  ALL_PORTFOLIO_MAJOR_GROUP_SECTION_CODES.map((code) => ({
     key: code,
     label: PortfolioMajorGroupSectionDescription[code],
   })),
@@ -109,7 +110,9 @@ const summaryStats = computed(() => {
 })
 
 const openComplianceAlerts = computed(() =>
-  (portfolio.value?.complianceAlerts ?? []).filter(item => item.alertStatus === PortfolioAlertStatusCode.OPEN),
+  (portfolio.value?.complianceAlerts ?? []).filter(
+    (item) => item.alertStatus === PortfolioAlertStatusCode.OPEN,
+  ),
 )
 
 const sectionColumns: ColumnsType = [
@@ -119,13 +122,6 @@ const sectionColumns: ColumnsType = [
   { title: '周期', dataIndex: 'periodLabel', key: 'periodLabel', width: 120 },
   { title: '状态', dataIndex: 'statusLabel', key: 'statusLabel', width: 100 },
 ]
-
-const sectionPagination = computed(() => ({
-  current: sectionFilter.pageNum,
-  pageSize: sectionFilter.pageSize,
-  total: sectionTotal.value,
-  showSizeChanger: true,
-}))
 
 function sectionLabel(code: PortfolioMajorGroupSectionCode): string {
   return PortfolioMajorGroupSectionDescription[code]
@@ -140,12 +136,17 @@ function complianceTypeLabel(code: string): string {
 }
 
 function alertStatusLabel(code: string): string {
-  return strictEnumLabel(PortfolioAlertStatusDescription, code as PortfolioAlertStatusCode, '预警状态')
+  return strictEnumLabel(
+    PortfolioAlertStatusDescription,
+    code as PortfolioAlertStatusCode,
+    '预警状态',
+  )
 }
 
 async function loadPortfolio() {
   const currentToken = ++portfolioRequestToken.value
   if (!portfolioOrgId.value) {
+    loading.value = false
     portfolio.value = null
     sectionItems.value = []
     sectionTotal.value = 0
@@ -153,7 +154,9 @@ async function loadPortfolio() {
   }
   loading.value = true
   try {
-    const nextPortfolio = await portfolioMajorGroupApi.getPortfolio({ portfolioOrgId: portfolioOrgId.value })
+    const nextPortfolio = await portfolioMajorGroupApi.getPortfolio({
+      portfolioOrgId: portfolioOrgId.value,
+    })
     if (currentToken !== portfolioRequestToken.value) {
       return
     }
@@ -174,6 +177,7 @@ async function loadPortfolio() {
 async function loadSection() {
   const currentToken = ++sectionRequestToken.value
   if (!portfolioOrgId.value || activeSection.value === PortfolioMajorGroupSectionCode.OVERVIEW) {
+    sectionLoading.value = false
     sectionItems.value = []
     sectionTotal.value = 0
     return
@@ -219,24 +223,39 @@ async function submitExport() {
     message.warning('请填写导出用途')
     return
   }
+  if (exportLoading.value) {
+    return
+  }
+  const orgId = portfolioOrgId.value
+  const currentToken = exportRequestToken.value + 1
+  exportRequestToken.value = currentToken
   exportLoading.value = true
   try {
     await portfolioMajorGroupApi.exportPortfolio({
-      portfolioOrgId: portfolioOrgId.value,
+      portfolioOrgId: orgId,
       exportPurpose: purpose,
     })
+    if (exportRequestToken.value !== currentToken || portfolioOrgId.value !== orgId) {
+      return
+    }
     message.success('导出审批申请已提交')
     exportModalOpen.value = false
   } catch (error) {
+    if (exportRequestToken.value !== currentToken || portfolioOrgId.value !== orgId) {
+      return
+    }
     showUserError(error, '提交导出审批失败')
   } finally {
-    exportLoading.value = false
+    if (exportRequestToken.value === currentToken && portfolioOrgId.value === orgId) {
+      exportLoading.value = false
+    }
   }
 }
 
 async function comparePeriods() {
   const currentToken = ++compareRequestToken.value
   if (!portfolioOrgId.value) {
+    compareLoading.value = false
     return
   }
   compareLoading.value = true
@@ -263,21 +282,15 @@ async function comparePeriods() {
   }
 }
 
-function onSectionTabChange(key: Key) {
-  activeSection.value = String(key) as PortfolioMajorGroupSectionCode
-  sectionFilter.pageNum = 1
-}
-
-function onSectionTableChange(changeEvent: UiDataTableChangeEvent) {
-  const { pageNum, pageSize } = readUiDataTablePagination(changeEvent, DEFAULT_LIST_PAGE_SIZE)
-  sectionFilter.pageNum = pageNum
-  sectionFilter.pageSize = pageSize
+function onSectionPageChange(page: { current: number; pageSize: number }) {
+  sectionFilter.pageNum = page.current
+  sectionFilter.pageSize = page.pageSize
 }
 
 /** 路由深链必须驱动当前专业群上下文，避免同页切换后仍停留在旧专业群。 */
 function syncPortfolioOrgFromRoute() {
   const queryOrgId = readRouteStringParam(route.query.portfolioOrgId)
-  if (queryOrgId && majorGroupOptions.value.some(option => option.value === queryOrgId)) {
+  if (queryOrgId && majorGroupOptions.value.some((option) => option.value === queryOrgId)) {
     portfolioOrgId.value = queryOrgId
   }
 }
@@ -286,17 +299,40 @@ watch(portfolioOrgId, () => {
   portfolioRequestToken.value += 1
   sectionRequestToken.value += 1
   compareRequestToken.value += 1
+  exportRequestToken.value += 1
+  loading.value = false
+  sectionLoading.value = false
+  compareLoading.value = false
+  exportLoading.value = false
+  portfolio.value = null
+  sectionItems.value = []
+  sectionTotal.value = 0
+  const sectionAlreadyFirstPage = sectionFilter.pageNum === 1
   sectionFilter.pageNum = 1
   periodCompare.value = null
   void loadPortfolio()
-  void loadSection()
+  if (sectionAlreadyFirstPage) {
+    void loadSection()
+  }
 })
 
 watch(activeSection, () => {
   sectionRequestToken.value += 1
-  sectionFilter.pageNum = 1
-  void loadSection()
+  if (sectionFilter.pageNum === 1) {
+    void loadSection()
+  } else {
+    sectionFilter.pageNum = 1
+  }
 })
+
+watch(
+  () => [periodForm.baselinePeriodYear, periodForm.comparePeriodYear],
+  () => {
+    compareRequestToken.value += 1
+    compareLoading.value = false
+    periodCompare.value = null
+  },
+)
 
 watch(
   () => [sectionFilter.pageNum, sectionFilter.pageSize],
@@ -335,12 +371,9 @@ watch(
           class="major-group-portfolio__field"
           placeholder="选择专业群"
           :options="majorGroupOptions"
+          :disabled="exportLoading"
         />
-        <UiButton
-          v-if="portfolioOrgId"
-          :loading="exportLoading"
-          @click="openExportModal"
-        >
+        <UiButton v-if="portfolioOrgId" :loading="exportLoading" @click="openExportModal">
           申请导出
         </UiButton>
       </div>
@@ -352,25 +385,51 @@ watch(
         <UiStatPanel title="群像指标" :items="summaryStats" />
         <UiCard title="建设周期对比" class="major-group-portfolio__compare">
           <div class="major-group-portfolio__compare-bar">
-            <a-input v-model:value="periodForm.baselinePeriodYear" placeholder="基线年度" class="major-group-portfolio__year" />
+            <a-input
+              v-model:value="periodForm.baselinePeriodYear"
+              placeholder="基线年度"
+              class="major-group-portfolio__year"
+            />
             <span>对比</span>
-            <a-input v-model:value="periodForm.comparePeriodYear" placeholder="对比年度" class="major-group-portfolio__year" />
+            <a-input
+              v-model:value="periodForm.comparePeriodYear"
+              placeholder="对比年度"
+              class="major-group-portfolio__year"
+            />
             <UiButton :loading="compareLoading" @click="comparePeriods">对比</UiButton>
           </div>
           <dl v-if="periodCompare" class="major-group-portfolio__compare-result">
             <div>
               <dt>正式档案</dt>
-              <dd>{{ periodCompare.baselineOfficialArchiveCount }} → {{ periodCompare.compareOfficialArchiveCount }}（{{ periodCompare.officialArchiveCountDelta >= 0 ? '+' : '' }}{{ periodCompare.officialArchiveCountDelta }}）</dd>
+              <dd>
+                {{ periodCompare.baselineOfficialArchiveCount }} →
+                {{ periodCompare.compareOfficialArchiveCount }}（{{
+                  periodCompare.officialArchiveCountDelta >= 0 ? '+' : ''
+                }}{{ periodCompare.officialArchiveCountDelta }}）
+              </dd>
             </div>
             <div>
               <dt>发展规划</dt>
-              <dd>{{ periodCompare.baselineDevelopmentPlanCount }} → {{ periodCompare.compareDevelopmentPlanCount }}（{{ periodCompare.developmentPlanCountDelta >= 0 ? '+' : '' }}{{ periodCompare.developmentPlanCountDelta }}）</dd>
+              <dd>
+                {{ periodCompare.baselineDevelopmentPlanCount }} →
+                {{ periodCompare.compareDevelopmentPlanCount }}（{{
+                  periodCompare.developmentPlanCountDelta >= 0 ? '+' : ''
+                }}{{ periodCompare.developmentPlanCountDelta }}）
+              </dd>
             </div>
           </dl>
         </UiCard>
-        <UiCard v-if="openComplianceAlerts.length" title="结构合规预警" class="major-group-portfolio__compliance">
+        <UiCard
+          v-if="openComplianceAlerts.length"
+          title="结构合规预警"
+          class="major-group-portfolio__compliance"
+        >
           <ul class="major-group-portfolio__alert-list">
-            <li v-for="item in openComplianceAlerts" :key="item.id" class="major-group-portfolio__alert-item">
+            <li
+              v-for="item in openComplianceAlerts"
+              :key="item.id"
+              class="major-group-portfolio__alert-item"
+            >
               <div class="major-group-portfolio__alert-head">
                 <strong>{{ complianceTypeLabel(item.alertType) }}</strong>
                 <UiTag tone="red">
@@ -382,27 +441,28 @@ watch(
           </ul>
         </UiCard>
         <UiCard title="分区块">
-          <UiSectionTabs
-            v-model="activeSection"
-            :items="tabItems"
-            @update:model-value="onSectionTabChange"
-          />
+          <UiSectionTabs v-model="activeSection" :items="tabItems" />
           <template v-if="activeSection === PortfolioMajorGroupSectionCode.OVERVIEW">
             <ul class="major-group-portfolio__section-summary">
               <li v-for="item in portfolio.sections" :key="item.sectionCode">
-                <strong>{{ sectionLabel(item.sectionCode as PortfolioMajorGroupSectionCode) }}</strong>
+                <strong>{{
+                  sectionLabel(item.sectionCode as PortfolioMajorGroupSectionCode)
+                }}</strong>
                 <span>{{ item.itemCount }} 条</span>
               </li>
             </ul>
           </template>
           <UiDataTable
             v-else
+            v-model:current="sectionFilter.pageNum"
+            v-model:page-size="sectionFilter.pageSize"
             row-key="businessId"
             :columns="sectionColumns"
             :data-source="sectionItems"
             :loading="sectionLoading"
-            :pagination="sectionPagination"
-            @change="onSectionTableChange"
+            pagination-mode="server"
+            :total="sectionTotal"
+            @page-change="onSectionPageChange"
           />
         </UiCard>
       </template>

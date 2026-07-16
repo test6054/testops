@@ -177,16 +177,6 @@ export function pageStudentWrongBook(
 
 // ─── 答案确认生效 ─────────────────────────────────
 
-/** 答案确认生效请求 - 对应 AnswerEffectiveConfirmRequest */
-export interface AnswerEffectiveConfirmRequest {
-  examId: string
-  layoutQuestionId: string
-  standardAnswerId?: string
-  comparePolicy?: ObjectiveComparePolicyCode
-  aiReviewHintId?: string
-  knowledgePointIds?: string[]
-}
-
 /** 答案确认生效配置 - 对应 ExamAnswerEffectiveConfig */
 export interface ExamAnswerEffectiveConfig {
   id?: string
@@ -217,19 +207,6 @@ export interface AnswerEffectiveCorrectionRequest {
   aiHint?: string
   aiReviewHintId?: string
   knowledgePointIds?: string[]
-}
-
-/**
- * 确认标准答案生效；已有批改结果时自动创建重判计划
- * POST /api/exam/question-analysis/answer-effective/confirm
- */
-export function confirmAnswerEffective(
-  request: AnswerEffectiveConfirmRequest,
-): Promise<ExamAnswerEffectiveConfig> {
-  return http.post<ExamAnswerEffectiveConfig>(
-    '/api/exam/question-analysis/answer-effective/confirm',
-    request,
-  )
 }
 
 export function getEffectiveAnswerConfig(params: {

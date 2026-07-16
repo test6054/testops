@@ -44,10 +44,10 @@
 
 <script setup lang="ts">
 import type { UiSidebarNavItem } from '@/components/ui-guide/ui/UiSidebarNav.vue'
+import UiSidebarNav from '@/components/ui-guide/ui/UiSidebarNav.vue'
 import ArrowLeftOutlined from '@ant-design/icons-vue/ArrowLeftOutlined'
 import { provide, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiSidebarNav from '@/components/ui-guide/ui/UiSidebarNav.vue'
 import { createFormScrollContainerKey } from './create-form-context'
 
 defineOptions({ name: 'CreateFormPageShell' })
@@ -60,7 +60,7 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{
-  "back": []
+  back: []
   'nav-select': [sectionKey: string]
 }>()
 
@@ -69,5 +69,5 @@ provide(createFormScrollContainerKey, scrollContainerRef)
 </script>
 
 <style lang="scss">
-@import '@/styles/create-form-page.scss';
+@use '@/styles/create-form-page';
 </style>

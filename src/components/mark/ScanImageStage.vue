@@ -336,8 +336,8 @@ watch(
 
 .scan-stage__roi {
   position: absolute;
-  border: 2px dashed var(--ant-color-primary, #1677ff);
-  background: rgba(22, 119, 255, 0.08);
+  border: 2px dashed var(--ant-color-primary);
+  background: color-mix(in srgb, var(--ant-color-primary) 8%, transparent);
   pointer-events: none;
   border-radius: 2px;
 }
@@ -355,7 +355,6 @@ watch(
   border: 1px solid var(--scan-toolbar-border);
   border-radius: var(--dp-radius-panel);
   box-shadow: var(--dp-shadow-sm);
-  backdrop-filter: blur(6px);
 }
 
 .scan-stage__group {
@@ -387,7 +386,7 @@ watch(
 }
 .scan-stage__btn:hover:not(:disabled) {
   background: var(--dp-surface-subtle);
-  color: var(--ant-color-primary, #1677ff);
+  color: var(--ant-color-primary);
 }
 .scan-stage__btn:disabled {
   cursor: not-allowed;

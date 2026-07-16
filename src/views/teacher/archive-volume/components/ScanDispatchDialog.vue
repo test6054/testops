@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
 import type { ScanDispatchTicketStatusCode } from '@/apis/mark/scanner-dispatch'
+import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scanner-dispatch'
 import { message } from 'ant-design-vue'
 import { reactive, ref, watch } from 'vue'
-import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scanner-dispatch'
 import { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -16,6 +16,7 @@ const props = defineProps<{
   materialType?: ArchiveMaterialTypeCode
   archiveBatchMode?: string
   archiveTitle?: string
+  physicalStorageLocation?: string
   initialMaterialTags?: string[]
   /** PC 详情页回跳路径，写入 Kiosk 派单 URL 供 commit 后返回 */
   returnTo?: string
@@ -23,7 +24,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "created": [
+  created: [
     payload: {
       ticketId: string
       kioskUrl: string
@@ -36,15 +37,11 @@ const emit = defineEmits<{
 
 const submitting = ref(false)
 interface ScanDispatchForm {
-  physicalStorageLocation: string
-  physicalLocationNote: string
   generateTraceLabel: boolean
   materialTags: string[]
 }
 
 const form = reactive<ScanDispatchForm>({
-  physicalStorageLocation: '',
-  physicalLocationNote: '',
   generateTraceLabel: true,
   materialTags: [],
 })
@@ -53,8 +50,6 @@ watch(
   () => props.open,
   (open) => {
     if (open) {
-      form.physicalStorageLocation = ''
-      form.physicalLocationNote = ''
       form.generateTraceLabel = true
       form.materialTags = [...(props.initialMaterialTags ?? [])]
     }
@@ -62,8 +57,8 @@ watch(
 )
 
 async function handleSubmit() {
-  if (!form.physicalStorageLocation.trim()) {
-    message.warning('请填写档案柜位')
+  if (!props.physicalStorageLocation?.trim()) {
+    message.warning('请先登记归档卷柜位')
     return
   }
   if (!props.materialType) {
@@ -78,8 +73,6 @@ async function handleSubmit() {
       catalogCode: props.catalogCode,
       materialType: props.materialType,
       archiveBatchMode: props.archiveBatchMode,
-      physicalStorageLocation: form.physicalStorageLocation.trim(),
-      physicalLocationNote: form.physicalLocationNote.trim() || undefined,
       generateTraceLabel: form.generateTraceLabel,
       materialTags: form.materialTags.length > 0 ? form.materialTags : undefined,
     })
@@ -119,14 +112,11 @@ async function handleSubmit() {
   >
     <p v-if="archiveTitle" class="scan-dispatch-dialog__hint">卷：{{ archiveTitle }}</p>
     <a-form layout="vertical">
-      <a-form-item label="档案柜位" required>
-        <a-input v-model:value="form.physicalStorageLocation" placeholder="例如 A区-03柜-2层" />
-      </a-form-item>
-      <a-form-item label="柜位说明">
-        <a-input v-model:value="form.physicalLocationNote" placeholder="可选补充说明" />
+      <a-form-item label="当前柜位">
+        {{ physicalStorageLocation || '尚未登记' }}
       </a-form-item>
       <a-form-item label="材料标签" tooltip="扫描 commit 登记时写入材料，便于后续检索">
-        <ArchiveMaterialTagSelect v-model="form.materialTags" />
+        <ArchiveMaterialTagSelect v-model="form.materialTags" :volume-id="volumeId" />
       </a-form-item>
       <a-form-item>
         <a-checkbox v-model:checked="form.generateTraceLabel">生成追溯标签 PDF</a-checkbox>

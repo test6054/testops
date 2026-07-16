@@ -10,6 +10,7 @@ import type {
 } from '@/apis/portfolio/types'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { UserStatusEnum } from '@/types/enums/user-status'
+import { getUserStatusLabel, USER_STATUS_FILTER_OPTIONS } from '@/types/enums/user-status'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -39,7 +40,6 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
-import { getUserStatusLabel, USER_STATUS_FILTER_OPTIONS } from '@/types/enums/user-status'
 import { showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -190,15 +190,22 @@ const identityColumns: ColumnsType = [
 const list = ref<PortfolioTeacherSummaryVO[]>([])
 const total = ref(0)
 const loading = ref(false)
+const loadError = ref(false)
+const pageRequestToken = ref(0)
+const operationKey = ref('')
+const writing = computed(() => Boolean(operationKey.value))
+const exporting = computed(() => operationKey.value === 'roster:export')
 
 const detailVisible = ref(false)
 const detail = ref<PortfolioTeacherDetailVO | null>(null)
 const salarySummary = ref('')
 const librarySummary = ref('')
+const extensionLoadError = ref(false)
 const detailRequestToken = ref(0)
 
 const identityVisible = ref(false)
 const identityMode = ref<'create' | 'edit'>('create')
+const interactionLocked = computed(() => writing.value || identityVisible.value)
 const identityEditor = reactive<PortfolioTeacherIdentitySaveRequest>({
   teacherUserId: undefined,
   identityType: PortfolioTeacherIdentityTypeCode.INDUSTRY_MENTOR,
@@ -207,6 +214,17 @@ const identityEditor = reactive<PortfolioTeacherIdentitySaveRequest>({
   displayName: '',
   enterpriseName: '',
 })
+
+/** 名册身份维护和导出必须串行，避免跨教师上下文提交。 */
+function beginOperation(key: string): boolean {
+  if (writing.value) return false
+  operationKey.value = key
+  return true
+}
+
+function endOperation(key: string) {
+  if (operationKey.value === key) operationKey.value = ''
+}
 
 function identityTypeLabel(type?: PortfolioTeacherIdentityVO['identityType']) {
   if (!type) {
@@ -257,18 +275,28 @@ function resetDetailContext() {
   detail.value = null
   salarySummary.value = ''
   librarySummary.value = ''
+  extensionLoadError.value = false
 }
 
 async function loadPage() {
+  const currentToken = pageRequestToken.value + 1
+  pageRequestToken.value = currentToken
+  const request = { ...query }
   loading.value = true
+  loadError.value = false
   try {
-    const page = await portfolioTeacherApi.page({ ...query })
+    const page = await portfolioTeacherApi.page(request)
+    if (pageRequestToken.value !== currentToken) return
     list.value = page.list
     total.value = page.total
   } catch (error) {
+    if (pageRequestToken.value !== currentToken) return
+    list.value = []
+    total.value = 0
+    loadError.value = true
     showUserError(error, '加载教师名册失败')
   } finally {
-    loading.value = false
+    if (pageRequestToken.value === currentToken) loading.value = false
   }
 }
 
@@ -285,7 +313,7 @@ function handleSearch() {
   loadPage()
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadPage()
@@ -304,7 +332,7 @@ function buildTeacherDirectoryRowActions(
     actions.push({ key: 'intake', label: '材料采集' })
   }
   actions.push({ key: 'identity', label: '身份' })
-  return actions
+  return actions.map((item) => ({ ...item, disabled: interactionLocked.value }))
 }
 
 function handleTeacherDirectoryAction(key: string, record: PortfolioTeacherSummaryVO): void {
@@ -340,6 +368,7 @@ async function openDetail(row: PortfolioTeacherSummaryVO) {
   detail.value = null
   salarySummary.value = ''
   librarySummary.value = ''
+  extensionLoadError.value = false
   try {
     const nextDetail = await portfolioTeacherApi.get(row.userId)
     if (detailRequestToken.value !== requestToken) {
@@ -377,12 +406,14 @@ async function loadTeacherExtensions(userId: string, requestToken = detailReques
       return
     }
     librarySummary.value = `在借 ${libStats.activeBorrowCount} · 逾期 ${libStats.overdueCount}`
-  } catch {
+  } catch (error) {
     if (detailRequestToken.value !== requestToken) {
       return
     }
     salarySummary.value = ''
     librarySummary.value = ''
+    extensionLoadError.value = true
+    showUserError(error, '加载教师工资与借阅摘要失败')
   }
 }
 
@@ -393,21 +424,27 @@ async function reloadDetail() {
   const userId = detail.value.userId
   const requestToken = detailRequestToken.value + 1
   detailRequestToken.value = requestToken
-  detail.value = await portfolioTeacherApi.get(userId)
-  if (detailRequestToken.value !== requestToken) {
-    return
+  try {
+    detail.value = await portfolioTeacherApi.get(userId)
+    if (detailRequestToken.value !== requestToken) {
+      return
+    }
+    await loadTeacherExtensions(userId, requestToken)
+  } catch (error) {
+    if (detailRequestToken.value !== requestToken) return
+    showUserError(error, '刷新教师详情失败')
   }
-  await loadTeacherExtensions(userId, requestToken)
 }
 
-function openIdentityCreate(context: { userId: string, nickName?: string, departmentId?: string }) {
+function openIdentityCreate(context: { userId: string; nickName?: string; departmentId?: string }) {
+  if (interactionLocked.value) return
   identityMode.value = 'create'
   identityEditor.teacherUserId = context.userId
   identityEditor.id = undefined
   identityEditor.identityType = PortfolioTeacherIdentityTypeCode.INDUSTRY_MENTOR
   identityEditor.identityStatus = PortfolioTeacherIdentityStatusCode.ACTIVE
   identityEditor.appointmentNo = ''
-  identityEditor.displayName = context.nickName!
+  identityEditor.displayName = context.nickName ?? ''
   identityEditor.enterpriseName = ''
   identityEditor.anchorDepartmentId = context.departmentId
   identityEditor.anchorPortfolioOrgId = undefined
@@ -418,7 +455,7 @@ function openIdentityCreate(context: { userId: string, nickName?: string, depart
 }
 
 function openIdentityEdit(identity: PortfolioTeacherIdentityVO) {
-  if (!detail.value) {
+  if (!detail.value || interactionLocked.value) {
     return
   }
   identityMode.value = 'edit'
@@ -438,29 +475,48 @@ function openIdentityEdit(identity: PortfolioTeacherIdentityVO) {
 }
 
 async function submitIdentity() {
+  const teacherUserId = identityEditor.teacherUserId
+  if (!teacherUserId) {
+    message.warning('教师身份上下文已失效，请重新打开')
+    return
+  }
+  if (
+    identityEditor.validFrom &&
+    identityEditor.validTo &&
+    identityEditor.validFrom > identityEditor.validTo
+  ) {
+    message.warning('有效截止日期不能早于有效起始日期')
+    return
+  }
+  const targetId = identityEditor.id || 'new'
+  const operation = `identity:save:${targetId}`
+  if (!beginOperation(operation)) return
+  const request: PortfolioTeacherIdentitySaveRequest = {
+    id: identityEditor.id,
+    teacherUserId,
+    identityType: identityEditor.identityType,
+    identityStatus: identityEditor.identityStatus,
+    appointmentNo: identityEditor.appointmentNo?.trim() || undefined,
+    displayName: identityEditor.displayName?.trim() || undefined,
+    enterpriseName: identityEditor.enterpriseName?.trim() || undefined,
+    anchorDepartmentId: identityEditor.anchorDepartmentId,
+    anchorPortfolioOrgId: identityEditor.anchorPortfolioOrgId,
+    titleAtIdentity: identityEditor.titleAtIdentity?.trim() || undefined,
+    validFrom: identityEditor.validFrom,
+    validTo: identityEditor.validTo,
+  }
   try {
-    await portfolioTeacherApi.saveIdentity({
-      id: identityEditor.id,
-      teacherUserId: identityEditor.teacherUserId,
-      identityType: identityEditor.identityType,
-      identityStatus: identityEditor.identityStatus,
-      appointmentNo: identityEditor.appointmentNo?.trim() || undefined,
-      displayName: identityEditor.displayName?.trim() || undefined,
-      enterpriseName: identityEditor.enterpriseName?.trim() || undefined,
-      anchorDepartmentId: identityEditor.anchorDepartmentId,
-      anchorPortfolioOrgId: identityEditor.anchorPortfolioOrgId,
-      titleAtIdentity: identityEditor.titleAtIdentity?.trim() || undefined,
-      validFrom: identityEditor.validFrom,
-      validTo: identityEditor.validTo,
-    })
+    await portfolioTeacherApi.saveIdentity(request)
     message.success(identityMode.value === 'edit' ? '身份已更新' : '身份已保存')
     identityVisible.value = false
     await loadPage()
-    if (detailVisible.value && detail.value?.userId === identityEditor.teacherUserId) {
+    if (detailVisible.value && detail.value?.userId === teacherUserId) {
       await reloadDetail()
     }
   } catch (error) {
     showUserError(error, '保存身份失败')
+  } finally {
+    endOperation(operation)
   }
 }
 
@@ -493,12 +549,17 @@ function openOneTable(userId: string) {
 }
 
 async function exportRoster() {
+  const operation = 'roster:export'
+  if (!beginOperation(operation)) return
+  const request = { ...query }
   try {
-    const result = await portfolioTeacherApi.exportRoster({ ...query })
+    const result = await portfolioTeacherApi.exportRoster(request)
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error)
+  } finally {
+    endOperation(operation)
   }
 }
 
@@ -526,7 +587,9 @@ onMounted(async () => {
     />
     <UiCard>
       <div class="list-toolbar">
-        <UiButton @click="exportRoster"> 导出名册 </UiButton>
+        <UiButton :loading="exporting" :disabled="interactionLocked" @click="exportRoster">
+          导出名册
+        </UiButton>
       </div>
       <UiDataTable
         v-model:current="query.pageNum"
@@ -535,6 +598,7 @@ onMounted(async () => {
         :columns="listColumns"
         :data-source="list"
         :loading="loading"
+        :load-error="loadError"
         :total="total"
         row-key="userId"
         @page-change="handlePageChange"
@@ -584,6 +648,8 @@ onMounted(async () => {
       title="教师详情"
       width="640"
       hide-footer
+      :closable="!interactionLocked"
+      :mask-closable="!interactionLocked"
       @close="resetDetailContext"
     >
       <template v-if="detail">
@@ -624,10 +690,14 @@ onMounted(async () => {
             {{ librarySummary }}
           </a-descriptions-item>
         </a-descriptions>
+        <p v-if="extensionLoadError" class="teacher-directory__extension-error">
+          工资与借阅摘要加载失败，主档案信息不受影响。
+        </p>
         <div class="teacher-directory__identity-header">
           <h4>扩展身份</h4>
           <UiButton
             size="sm"
+            :disabled="interactionLocked"
             @click="
               openIdentityCreate({
                 userId: detail.userId,
@@ -665,7 +735,7 @@ onMounted(async () => {
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
-                :items="[{ key: 'edit', label: '编辑' }]"
+                :items="[{ key: 'edit', label: '编辑', disabled: interactionLocked }]"
                 split
                 @action="() => openIdentityEdit(record)"
               />
@@ -680,6 +750,11 @@ onMounted(async () => {
     <a-modal
       v-model:open="identityVisible"
       :title="identityMode === 'edit' ? '编辑教师身份' : '新增教师身份'"
+      :confirm-loading="operationKey.startsWith('identity:save:')"
+      :closable="!writing"
+      :mask-closable="!writing"
+      :keyboard="!writing"
+      :cancel-button-props="{ disabled: writing }"
       @ok="submitIdentity"
     >
       <a-form layout="vertical">
@@ -687,28 +762,31 @@ onMounted(async () => {
           <a-select
             v-model:value="identityEditor.identityType"
             :options="PORTFOLIO_TEACHER_IDENTITY_TYPE_OPTIONS"
+            :disabled="writing"
           />
         </a-form-item>
         <a-form-item label="身份状态" required>
           <a-select
             v-model:value="identityEditor.identityStatus"
             :options="PORTFOLIO_TEACHER_IDENTITY_STATUS_OPTIONS"
+            :disabled="writing"
           />
         </a-form-item>
         <a-form-item label="聘任编号">
-          <a-input v-model:value="identityEditor.appointmentNo" />
+          <a-input v-model:value="identityEditor.appointmentNo" :disabled="writing" />
         </a-form-item>
         <a-form-item label="展示名称">
-          <a-input v-model:value="identityEditor.displayName" />
+          <a-input v-model:value="identityEditor.displayName" :disabled="writing" />
         </a-form-item>
         <a-form-item label="企业/单位">
-          <a-input v-model:value="identityEditor.enterpriseName" />
+          <a-input v-model:value="identityEditor.enterpriseName" :disabled="writing" />
         </a-form-item>
         <a-form-item label="归属院系">
           <a-select
             v-model:value="identityEditor.anchorDepartmentId"
             allow-clear
             :options="departmentOptions()"
+            :disabled="writing"
           />
         </a-form-item>
         <a-form-item label="归属扩展组织 ID">
@@ -716,16 +794,25 @@ onMounted(async () => {
             v-model:value="identityEditor.anchorPortfolioOrgId"
             allow-clear
             :options="portfolioOrgOptions()"
+            :disabled="writing"
           />
         </a-form-item>
         <a-form-item label="该身份下职称/职务">
-          <a-input v-model:value="identityEditor.titleAtIdentity" />
+          <a-input v-model:value="identityEditor.titleAtIdentity" :disabled="writing" />
         </a-form-item>
         <a-form-item label="有效起始">
-          <a-input v-model:value="identityEditor.validFrom" placeholder="YYYY-MM-DD" />
+          <a-input
+            v-model:value="identityEditor.validFrom"
+            placeholder="YYYY-MM-DD"
+            :disabled="writing"
+          />
         </a-form-item>
         <a-form-item label="有效截止">
-          <a-input v-model:value="identityEditor.validTo" placeholder="YYYY-MM-DD" />
+          <a-input
+            v-model:value="identityEditor.validTo"
+            placeholder="YYYY-MM-DD"
+            :disabled="writing"
+          />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -747,5 +834,10 @@ onMounted(async () => {
     font-size: 16px;
     font-weight: 600;
   }
+}
+.teacher-directory__extension-error {
+  margin: 12px 0 0;
+  color: var(--ant-color-error);
+  font-size: 13px;
 }
 </style>

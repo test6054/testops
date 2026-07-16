@@ -1,12 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationTaskStatusCode } from '@/apis/portfolio/enums'
-import type { PortfolioTenantIndicatorConfigVO } from '@/apis/portfolio/indicator-types'
-import type { PortfolioEvaluationSubjectTeacherOptionVO } from '@/apis/portfolio/teacher-platform'
-import type { PortfolioEvaluationMaterialPreviewVO } from '@/apis/portfolio/types'
-import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import {
   PORTFOLIO_EVALUATION_MODE_OPTIONS,
   PORTFOLIO_EVALUATION_TASK_STATUS_OPTIONS,
@@ -14,11 +8,23 @@ import {
   PortfolioEvaluationModeCode,
   PortfolioEvaluationModeDescription,
   PortfolioEvaluationTaskStatusDescription,
+  PortfolioEvaluationTeacherNoticeStatusCode,
+  PortfolioEvaluationTeacherNoticeStatusDescription,
 } from '@/apis/portfolio/enums'
+import type { PortfolioTenantIndicatorConfigVO } from '@/apis/portfolio/indicator-types'
+import type { PortfolioEvaluationSubjectTeacherOptionVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
+import type {
+  PortfolioEvaluationMaterialPreviewVO,
+  PortfolioEvaluationTeacherNoticeVO,
+} from '@/apis/portfolio/types'
+import { PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE } from '@/apis/portfolio/types'
+import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
+import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
-import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
-import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
 import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -28,6 +34,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showUserError } from '@/utils/error-handler'
 import { loadAllPages } from '@/utils/load-all-pages'
@@ -36,13 +43,19 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const workgroups = ref<EvaluationWorkgroupVO[]>([])
 const indicatorConfigs = ref<PortfolioTenantIndicatorConfigVO[]>([])
-const previewTeacherOptions = ref<Array<{ value: string, label: string }>>([])
+const previewTeacherOptions = ref<Array<{ value: string; label: string }>>([])
 const previewOpen = ref(false)
 const previewLoading = ref(false)
 const previewTaskId = ref('')
 const previewTeacherId = ref('')
 const preview = ref<PortfolioEvaluationMaterialPreviewVO | null>(null)
+const previewNotice = ref<PortfolioEvaluationTeacherNoticeVO | null>(null)
 const previewRequestToken = ref(0)
+const returnReason = ref('')
+const returnDueTime = ref('')
+const returning = ref(false)
+const taskOperationKey = ref('')
+const taskWriting = computed(() => Boolean(taskOperationKey.value))
 
 const categoryColumns = [
   { title: '分类', dataIndex: 'categoryName', key: 'categoryName' },
@@ -145,6 +158,25 @@ function taskStatusTone(status: PortfolioEvaluationTaskStatusCode) {
   return strictEnumTone(PORTFOLIO_EVALUATION_TASK_STATUS_TONE, status, '多元评价任务状态')
 }
 
+function noticeStatusLabel(status: PortfolioEvaluationTeacherNoticeStatusCode): string {
+  return strictEnumLabel(
+    PortfolioEvaluationTeacherNoticeStatusDescription,
+    status,
+    '评价材料通知状态',
+  )
+}
+
+function noticeStatusTone(status: PortfolioEvaluationTeacherNoticeStatusCode) {
+  return strictEnumTone(PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE, status, '评价材料通知状态')
+}
+
+function canReturnNotice(notice: PortfolioEvaluationTeacherNoticeVO | null): boolean {
+  return (
+    notice?.noticeStatus === PortfolioEvaluationTeacherNoticeStatusCode.MATERIAL_CONFIRM ||
+    notice?.noticeStatus === PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED
+  )
+}
+
 function workgroupName(id?: string) {
   if (!id) {
     return '—'
@@ -169,8 +201,9 @@ async function loadWorkgroups() {
 
 async function loadIndicatorConfigs() {
   try {
-    indicatorConfigs.value = (await portfolioIndicatorTenantApi.listConfig())
-      .filter((item) => item.enabled === true)
+    indicatorConfigs.value = (await portfolioIndicatorTenantApi.listConfig()).filter(
+      (item) => item.enabled === true,
+    )
   } catch (error) {
     showUserError(error, '加载可回流指标失败')
   }
@@ -190,6 +223,9 @@ async function openMaterialPreview(taskId: string) {
   previewTeacherId.value = ''
   previewTeacherOptions.value = []
   preview.value = null
+  previewNotice.value = null
+  returnReason.value = ''
+  returnDueTime.value = ''
   previewOpen.value = true
   previewLoading.value = true
   try {
@@ -213,6 +249,7 @@ async function openMaterialPreview(taskId: string) {
     previewTeacherOptions.value = []
     previewTeacherId.value = ''
     preview.value = null
+    previewNotice.value = null
     showUserError(error, '加载任务参评教师失败')
   } finally {
     if (currentToken === previewRequestToken.value && previewTaskId.value === taskId) {
@@ -229,42 +266,97 @@ async function loadMaterialPreview() {
   }
   const taskId = previewTaskId.value
   const teacherId = previewTeacherId.value
+  preview.value = null
+  previewNotice.value = null
+  returnReason.value = ''
+  returnDueTime.value = ''
   previewLoading.value = true
   try {
-    const nextPreview = await portfolioEvaluationNoticeApi.materialPreview({
-      evaluationTaskId: taskId,
-      teacherId,
-    })
+    const [nextPreview, noticePage] = await Promise.all([
+      portfolioEvaluationNoticeApi.materialPreview({
+        evaluationTaskId: taskId,
+        teacherId,
+      }),
+      portfolioEvaluationNoticeApi.pageNotices({
+        pageNum: 1,
+        pageSize: 10,
+        evaluationTaskId: taskId,
+        teacherId,
+      }),
+    ])
     if (
-      currentToken !== previewRequestToken.value
-      || previewTaskId.value !== taskId
-      || previewTeacherId.value !== teacherId
+      currentToken !== previewRequestToken.value ||
+      previewTaskId.value !== taskId ||
+      previewTeacherId.value !== teacherId
     ) {
       return
     }
     preview.value = nextPreview
+    previewNotice.value = noticePage.list?.[0] ?? null
+    returnDueTime.value = previewNotice.value?.dueTime ?? nextPreview.endTime ?? ''
   } catch (error) {
     if (
-      currentToken !== previewRequestToken.value
-      || previewTaskId.value !== taskId
-      || previewTeacherId.value !== teacherId
+      currentToken !== previewRequestToken.value ||
+      previewTaskId.value !== taskId ||
+      previewTeacherId.value !== teacherId
     ) {
       return
     }
     preview.value = null
+    previewNotice.value = null
     showUserError(error, '加载材料预览失败')
   } finally {
     if (
-      currentToken === previewRequestToken.value
-      && previewTaskId.value === taskId
-      && previewTeacherId.value === teacherId
+      currentToken === previewRequestToken.value &&
+      previewTaskId.value === taskId &&
+      previewTeacherId.value === teacherId
     ) {
       previewLoading.value = false
     }
   }
 }
 
+async function returnMaterialForSupplement() {
+  const notice = previewNotice.value
+  const reason = returnReason.value.trim()
+  if (!notice || !canReturnNotice(notice)) {
+    message.warning('当前材料通知状态不可退回')
+    return
+  }
+  if (!reason) {
+    message.warning('请填写退回补充原因')
+    return
+  }
+  const confirmed = await confirmAsync({
+    title: '确认退回教师补充材料？',
+    content: '退回后教师须按原因补充材料并重新确认，当前已确认状态将失效。',
+    type: 'warning',
+  })
+  if (!confirmed) return
+
+  const noticeId = notice.id
+  const taskId = previewTaskId.value
+  const teacherId = previewTeacherId.value
+  returning.value = true
+  try {
+    const updated = await portfolioEvaluationNoticeApi.returnNotice({
+      noticeId,
+      returnReason: reason,
+      dueTime: returnDueTime.value || undefined,
+    })
+    if (previewTaskId.value !== taskId || previewTeacherId.value !== teacherId) return
+    previewNotice.value = updated
+    returnReason.value = ''
+    message.success('已退回教师补充材料')
+  } catch (error) {
+    showUserError(error, '退回补充失败')
+  } finally {
+    returning.value = false
+  }
+}
+
 async function createTask() {
+  if (taskWriting.value) return
   if (!form.taskName.trim()) {
     message.warning('请填写任务名称')
     return
@@ -273,7 +365,10 @@ async function createTask() {
     message.warning('请选择评价工作组')
     return
   }
-  if (form.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON && !form.targetIndicatorCode.trim()) {
+  if (
+    form.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON &&
+    !form.targetIndicatorCode.trim()
+  ) {
     message.warning('按人评价须填写画像回流目标指标编码')
     return
   }
@@ -285,13 +380,15 @@ async function createTask() {
     message.warning('请填写结束时间')
     return
   }
+  taskOperationKey.value = 'create'
   try {
     await portfolioEvaluationTaskApi.create({
       taskName: form.taskName.trim(),
       evaluationMode: form.evaluationMode,
-      targetIndicatorCode: form.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON
-        ? form.targetIndicatorCode.trim()
-        : undefined,
+      targetIndicatorCode:
+        form.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON
+          ? form.targetIndicatorCode.trim()
+          : undefined,
       workgroupId: form.workgroupId,
       startTime: form.startTime,
       endTime: form.endTime,
@@ -305,16 +402,30 @@ async function createTask() {
     await loadPage()
   } catch (error) {
     showUserError(error)
+  } finally {
+    if (taskOperationKey.value === 'create') taskOperationKey.value = ''
   }
 }
 
 async function publishTask(id: string) {
+  if (taskWriting.value) return
+  const operation = `publish:${id}`
+  taskOperationKey.value = operation
   try {
+    const confirmed = await confirmAsync({
+      title: '确认发布评价任务？',
+      content: '发布后将生成参评教师通知并开放材料确认与评价填报，任务基础范围不可按草稿方式修改。',
+      type: 'warning',
+      okText: '确认发布',
+    })
+    if (!confirmed) return
     await portfolioEvaluationTaskApi.publish({ id })
     message.success('任务已发布')
     await loadPage()
   } catch (error) {
     showUserError(error)
+  } finally {
+    if (taskOperationKey.value === operation) taskOperationKey.value = ''
   }
 }
 
@@ -339,30 +450,46 @@ onMounted(async () => {
     <template #context>
       <ContextBar show-title layout="workbench" title="多元评价任务">
         <template #actions>
-          <UiButton @click="exportExcel"> 导出 Excel </UiButton>
+          <UiButton :disabled="taskWriting" @click="exportExcel"> 导出 Excel </UiButton>
         </template>
       </ContextBar>
     </template>
     <UiCard>
       <div class="form-row">
-        <input v-model="form.taskName" class="input input--wide" placeholder="任务名称" />
+        <input
+          v-model="form.taskName"
+          class="input input--wide"
+          placeholder="任务名称"
+          :disabled="taskWriting"
+        />
         <a-select
           v-model:value="form.evaluationMode"
           placeholder="评价模式"
           style="width: 120px"
           :options="PORTFOLIO_EVALUATION_MODE_OPTIONS"
+          :disabled="taskWriting"
         />
         <a-select
           v-if="form.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON"
           v-model:value="form.targetIndicatorCode"
           placeholder="选择画像回流指标"
           style="width: 180px"
+          :disabled="taskWriting"
         >
-          <a-select-option v-for="indicator in indicatorConfigs" :key="indicator.indicatorCode" :value="indicator.indicatorCode">
+          <a-select-option
+            v-for="indicator in indicatorConfigs"
+            :key="indicator.indicatorCode"
+            :value="indicator.indicatorCode"
+          >
             {{ indicator.indicatorName || indicator.indicatorCode }}
           </a-select-option>
         </a-select>
-        <a-select v-model:value="form.workgroupId" placeholder="评价工作组" style="width: 200px">
+        <a-select
+          v-model:value="form.workgroupId"
+          placeholder="评价工作组"
+          style="width: 200px"
+          :disabled="taskWriting"
+        >
           <a-select-option v-for="wg in workgroups" :key="wg.id" :value="wg.id">
             {{ wg.workgroupName }}
           </a-select-option>
@@ -372,14 +499,23 @@ onMounted(async () => {
           value-format="YYYY-MM-DD HH:mm:ss"
           show-time
           placeholder="开始时间"
+          :disabled="taskWriting"
         />
         <a-date-picker
           v-model:value="form.endTime"
           value-format="YYYY-MM-DD HH:mm:ss"
           show-time
           placeholder="结束时间"
+          :disabled="taskWriting"
         />
-        <UiButton variant="primary" @click="createTask"> 创建任务 </UiButton>
+        <UiButton
+          variant="primary"
+          :loading="taskOperationKey === 'create'"
+          :disabled="taskWriting"
+          @click="createTask"
+        >
+          创建任务
+        </UiButton>
       </div>
       <div class="filter-row">
         <a-select
@@ -390,7 +526,7 @@ onMounted(async () => {
           :options="PORTFOLIO_EVALUATION_TASK_STATUS_OPTIONS"
           @change="search"
         />
-        <UiButton @click="search"> 查询 </UiButton>
+        <UiButton :disabled="taskWriting" @click="search"> 查询 </UiButton>
       </div>
       <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无评价任务" />
       <UiDataTable
@@ -429,8 +565,9 @@ onMounted(async () => {
                   key: 'publish',
                   label: '发布',
                   hidden: record.taskStatus === 'PUBLISHED' || record.taskStatus === 'CLOSED',
+                  disabled: taskWriting,
                 },
-                { key: 'preview', label: '材料预览' },
+                { key: 'preview', label: '材料预览', disabled: taskWriting },
               ]"
               split
               @action="
@@ -450,15 +587,22 @@ onMounted(async () => {
           :options="previewTeacherOptions"
           style="width: 240px"
           option-label-prop="label"
+          :disabled="returning"
         />
-        <UiButton variant="primary" :loading="previewLoading" @click="loadMaterialPreview">
+        <UiButton
+          variant="primary"
+          :loading="previewLoading"
+          :disabled="returning"
+          @click="loadMaterialPreview"
+        >
           加载预览
         </UiButton>
       </div>
       <template v-if="preview">
         <p class="evaluation-task-admin__preview-meta">
           任务：{{ preview.taskName }} · 完整度 {{ preview.completenessPercent }}% · 必填分类
-          {{ preview.requiredCategoryDone }} / {{ preview.requiredCategoryTotal }}{{ evaluationCourseArchiveMeta(preview) }}
+          {{ preview.requiredCategoryDone }} / {{ preview.requiredCategoryTotal
+          }}{{ evaluationCourseArchiveMeta(preview) }}
         </p>
         <UiDataTable
           v-if="preview.categories?.length"
@@ -483,6 +627,44 @@ onMounted(async () => {
           </template>
         </UiDataTable>
         <UiEmpty v-else description="暂无分类明细" />
+        <div v-if="previewNotice" class="evaluation-task-admin__notice">
+          <div class="evaluation-task-admin__notice-meta">
+            <span>材料通知</span>
+            <UiTag :tone="noticeStatusTone(previewNotice.noticeStatus)">
+              {{ noticeStatusLabel(previewNotice.noticeStatus) }}
+            </UiTag>
+            <span>截止：{{ previewNotice.dueTime ?? '—' }}</span>
+          </div>
+          <template v-if="canReturnNotice(previewNotice)">
+            <a-textarea
+              v-model:value="returnReason"
+              :rows="3"
+              placeholder="填写需补充的材料与原因"
+              :disabled="returning"
+            />
+            <div class="evaluation-task-admin__return-actions">
+              <a-date-picker
+                v-model:value="returnDueTime"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                show-time
+                placeholder="补充截止时间"
+                :disabled="returning"
+              />
+              <UiButton
+                variant="outline"
+                status="warning"
+                :loading="returning"
+                @click="returnMaterialForSupplement"
+              >
+                退回补充
+              </UiButton>
+            </div>
+          </template>
+          <p v-else-if="previewNotice.returnReason" class="evaluation-task-admin__return-reason">
+            退回原因：{{ previewNotice.returnReason }}
+          </p>
+        </div>
+        <UiEmpty v-else description="该教师当前没有评价材料通知" />
       </template>
     </a-modal>
   </StageWorkbenchShell>
@@ -516,5 +698,27 @@ onMounted(async () => {
   margin: 0 0 12px;
   font-size: 13px;
   color: var(--nybc-text-secondary, #666);
+}
+.evaluation-task-admin__notice {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ant-color-border-secondary);
+}
+.evaluation-task-admin__notice-meta,
+.evaluation-task-admin__return-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.evaluation-task-admin__return-actions {
+  justify-content: flex-end;
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+.evaluation-task-admin__return-reason {
+  margin: 12px 0 0;
+  color: var(--dp-text-secondary);
 }
 </style>

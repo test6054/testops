@@ -22,7 +22,9 @@
               <div class="exam-status-card__progress-track">
                 <div
                   class="exam-status-card__progress-fill"
-                  :style="{ width: `${markingPercent}%` }"
+                  :style="{
+                    transform: `scaleX(${Math.max(0, Math.min(1, markingPercent / 100))})`,
+                  }"
                 />
               </div>
             </div>
@@ -34,7 +36,9 @@
               <div>
                 <div class="exam-status-card__stat-value exam-status-card__stat-value--green">
                   {{ markingProgress?.gradablePaperCount ?? 0 }}
-                  <span class="exam-status-card__stat-sub">/{{ markingProgress?.paperCount ?? 0 }}</span>
+                  <span class="exam-status-card__stat-sub"
+                    >/{{ markingProgress?.paperCount ?? 0 }}</span
+                  >
                 </div>
                 <div class="exam-status-card__stat-label">可阅卷</div>
               </div>
@@ -128,7 +132,9 @@
                   <div
                     class="exam-overview-dash__quality-fill"
                     :class="qualityFillClass(item.consistencyRate)"
-                    :style="{ width: `${Math.min(item.consistencyRate, 100)}%` }"
+                    :style="{
+                      transform: `scaleX(${Math.max(0, Math.min(1, item.consistencyRate / 100))})`,
+                    }"
                   />
                 </div>
                 <span class="exam-overview-dash__quality-rate">{{ item.consistencyRate }}%</span>
@@ -292,8 +298,8 @@ const examMeta = computed(() => {
   const term = [props.detail.academicYear, formatSemester(props.detail.semester)]
     .filter(Boolean)
     .join(' · ')
-  const time
-    = props.detail.examStartTime && props.detail.examEndTime
+  const time =
+    props.detail.examStartTime && props.detail.examEndTime
       ? `${formatDateTime(props.detail.examStartTime)} — ${formatDateTime(props.detail.examEndTime)}`
       : ''
   return [term, time].filter(Boolean).join(' | ')
@@ -382,9 +388,12 @@ function qualityFillClass(rate: number): string {
   }
 
   &__quality-fill {
+    width: 100%;
     height: 100%;
     background: var(--ant-color-primary);
     border-radius: inherit;
+    transform-origin: left center;
+    transition: transform var(--dp-duration-normal) ease;
 
     &--green {
       background: var(--dp-green-500);

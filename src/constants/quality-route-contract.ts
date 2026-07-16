@@ -10,7 +10,7 @@ export interface QualityRouteContractEntry {
   qualityGate?: QualityGate
 }
 
-/** 26 条叶子路由 scopeProfile / qualityGate 契约表 */
+/** 质量评价叶子路由 scopeProfile / qualityGate 契约表 */
 export const QUALITY_ROUTE_CONTRACT: QualityRouteContractEntry[] = [
   { name: 'QualityDashboard', scopeProfile: 'plan-period' },
   { name: 'QualityAccreditationCockpit', scopeProfile: 'accreditation' },
@@ -30,7 +30,6 @@ export const QUALITY_ROUTE_CONTRACT: QualityRouteContractEntry[] = [
   { name: 'QualityReport', scopeProfile: 'plan-period', qualityGate: 'plan-confirmed' },
   { name: 'QualityArchive', scopeProfile: 'accreditation' },
   { name: 'QualityAiTask', scopeProfile: 'plan-period' },
-  { name: 'AdminArchivePlatformTemplates', scopeProfile: 'none' },
   { name: 'QualityAccreditationStandard', scopeProfile: 'none' },
   { name: 'QualityProfessionAlgorithmTemplate', scopeProfile: 'none' },
   { name: 'QualityScaleConversionRule', scopeProfile: 'none' },

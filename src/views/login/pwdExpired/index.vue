@@ -114,7 +114,7 @@ const logo = computed(() => appStore.getLogo())
     &-box {
       width: 100%;
       display: flex;
-      z-index: 999;
+      z-index: var(--dp-z-fixed);
     }
   }
 
@@ -175,12 +175,12 @@ const logo = computed(() => appStore.getLogo())
     position: fixed;
     top: 20px;
     right: 30px;
-    z-index: 999;
+    z-index: var(--dp-z-fixed);
   }
 
   // 新增弹窗层级设置
   .ant-modal-wrap {
-    z-index: 1000;
+    z-index: var(--dp-z-sticky);
   }
 
   .footer {
@@ -188,7 +188,7 @@ const logo = computed(() => appStore.getLogo())
     box-sizing: border-box;
     position: absolute;
     bottom: 10px;
-    z-index: 999;
+    z-index: var(--dp-z-fixed);
 
     .icp-info {
       .text {
@@ -224,7 +224,7 @@ const logo = computed(() => appStore.getLogo())
       position: fixed;
       top: 20px;
       left: 30px;
-      z-index: 9999;
+      z-index: calc(var(--dp-z-modal) + 20);
       color: var(--ant-color-text);
       font-weight: 500;
       font-size: 20px;
@@ -245,7 +245,7 @@ const logo = computed(() => appStore.getLogo())
       width: 400px; // 原来有 login-left 的时候宽度较大，现在调整为登录框本身的宽度
       max-width: 90vw;
       display: flex;
-      z-index: 999;
+      z-index: var(--dp-z-fixed);
       box-shadow: var(--dp-shadow-card);
       border-radius: var(--dp-radius-panel);
       overflow: hidden;
@@ -366,12 +366,12 @@ const logo = computed(() => appStore.getLogo())
     position: fixed;
     top: 20px;
     right: 30px;
-    z-index: 999;
+    z-index: var(--dp-z-fixed);
   }
 
   // 新增弹窗层级设置
   .ant-modal-wrap {
-    z-index: 1000;
+    z-index: var(--dp-z-sticky);
   }
 
   .footer {
@@ -379,7 +379,7 @@ const logo = computed(() => appStore.getLogo())
     box-sizing: border-box;
     position: absolute;
     bottom: 10px;
-    z-index: 999;
+    z-index: var(--dp-z-fixed);
 
     .icp-info {
       .text {

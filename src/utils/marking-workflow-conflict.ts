@@ -5,6 +5,8 @@ import { getUserErrorMessage, readBusinessResultCode } from '@/utils/error-handl
 export const MarkingConflictHint = {
   MULTI_RESPONSE_SLICE: '多个有效作答切片',
   WITHDRAW_SCORE_CONFIRM_LOCK: '成绩确认处理中',
+  FINAL_SCORE_CONFIRM_LOCK: '成绩确认处理中',
+  FINAL_SCORE_WRITE_BLOCKED: '最终成绩已确认、发布或更正，不能再',
   FORMAL_START_PENDING_REVIEW: '待复核题目',
   LAYOUT_DETECT_IN_FLIGHT: '正在识别题目',
 } as const
@@ -25,6 +27,16 @@ export function isMultiResponseSliceConflict(error: unknown): boolean {
 export function isWithdrawScoreConfirmLockConflict(error: unknown): boolean {
   return isBusinessConflict(error)
     && conflictMessageIncludes(error, MarkingConflictHint.WITHDRAW_SCORE_CONFIRM_LOCK)
+}
+
+export function isFinalScoreConfirmLockConflict(error: unknown): boolean {
+  return isBusinessConflict(error)
+    && conflictMessageIncludes(error, MarkingConflictHint.FINAL_SCORE_CONFIRM_LOCK)
+}
+
+export function isScoreWriteBlockedByFinalScoreGate(error: unknown): boolean {
+  return isBusinessConflict(error)
+    && conflictMessageIncludes(error, MarkingConflictHint.FINAL_SCORE_WRITE_BLOCKED)
 }
 
 export function isFormalStartPendingReviewConflict(error: unknown): boolean {

@@ -4,8 +4,8 @@
       <ContextBar
         layout="workbench"
         show-title
-        title="迎评统计"
-        subtitle="历史归档迎评驾驶舱 · 院系完成率与缺项分布"
+        title="归档统计与清册"
+        subtitle="迎评统计与销毁治理按岗位职责分别授权"
       >
         <template #actions>
           <UiButton variant="ghost" size="sm" @click="goList">返回列表</UiButton>
@@ -37,6 +37,17 @@
           @search="loadStatistics"
           @reset="handleReset"
         />
+        <UiAlertStrip
+          v-if="statisticsSummaryLoadFailed"
+          tone="error"
+          title="统计摘要加载失败"
+          description="已保留上次成功结果，请重试当前筛选条件。"
+          class="archive-volume-statistics__error"
+        >
+          <template #actions>
+            <UiButton size="sm" variant="outline" @click="loadStatistics">重新加载</UiButton>
+          </template>
+        </UiAlertStrip>
 
         <div v-if="statisticsSummary" class="archive-volume-statistics__export">
           <UiButton
@@ -54,6 +65,13 @@
         <div v-else-if="statisticsSummary" class="archive-volume-statistics__grid">
           <WorkbenchSurfaceCard flush>
             <template #head>院系完成率</template>
+            <UiAlertStrip v-if="departmentLoadFailed" tone="error" title="院系完成率加载失败">
+              <template #actions>
+                <UiButton size="sm" variant="outline" @click="loadDepartmentCompletions">
+                  重新加载
+                </UiButton>
+              </template>
+            </UiAlertStrip>
             <UiDataTable
               v-model:current="deptPagination.pageNum"
               v-model:page-size="deptPagination.pageSize"
@@ -72,6 +90,13 @@
 
           <WorkbenchSurfaceCard flush>
             <template #head>缺项材料分布</template>
+            <UiAlertStrip v-if="missingLoadFailed" tone="error" title="缺项材料分布加载失败">
+              <template #actions>
+                <UiButton size="sm" variant="outline" @click="loadMissingMaterials">
+                  重新加载
+                </UiButton>
+              </template>
+            </UiAlertStrip>
             <UiDataTable
               v-model:current="missingPagination.pageNum"
               v-model:page-size="missingPagination.pageSize"
@@ -162,11 +187,6 @@ import type {
   ArchiveVolumeDestructionLedgerRowResponse,
   ArchiveVolumeStatisticsSummaryVO,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   ARCHIVE_DESTRUCTION_STATUS_TONE,
   ArchiveDestructionStatusDescription,
@@ -178,11 +198,17 @@ import {
   pageStatisticsDepartmentCompletions,
   pageStatisticsMissingMaterials,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
@@ -208,25 +234,39 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'TeacherArchiveVolumeStatistics' })
 
 const router = useRouter()
-const { grantsLoadFailed, listScopedDepartmentIds, filterListDepartmentOptions, loadGrants }
-  = useArchiveDutyAccess()
+const {
+  grantsLoadFailed,
+  statisticsScopedDepartmentIds,
+  destructionLedgerScopedDepartmentIds,
+  filterStatisticsDepartmentOptions,
+  filterDestructionLedgerDepartmentOptions,
+  canViewStatisticsKpi,
+  canViewDestructionLedger,
+  loadGrants,
+} = useArchiveDutyAccess()
 
 const statsTab = ref('overview')
-const statsTabs = [
-  { key: 'overview', label: '迎评统计' },
-  { key: 'destruction', label: '销毁清册' },
-]
+const statsTabs = computed(() => {
+  const items: Array<{ key: string; label: string }> = []
+  if (canViewStatisticsKpi.value) items.push({ key: 'overview', label: '迎评统计' })
+  if (canViewDestructionLedger.value) items.push({ key: 'destruction', label: '销毁清册' })
+  return items
+})
 const loading = ref(false)
 const deptLoading = ref(false)
 const missingLoading = ref(false)
 const exportOverviewLoading = ref(false)
 const exportDestructionLoading = ref(false)
 const destructionLoading = ref(false)
+const pageInitialized = ref(false)
+const statisticsSummaryLoadFailed = ref(false)
+const departmentLoadFailed = ref(false)
+const missingLoadFailed = ref(false)
 const statisticsSummary = ref<ArchiveVolumeStatisticsSummaryVO | null>(null)
 const departmentRows = ref<ArchiveDepartmentCompletionVO[]>([])
 const missingRows = ref<ArchiveMissingMaterialStatVO[]>([])
 const destructionRows = ref<ArchiveVolumeDestructionLedgerRowResponse[]>([])
-const departmentOptions = ref<Array<{ value: string, label: string }>>([])
+const departmentOptions = ref<Array<{ value: string; label: string }>>([])
 
 interface ArchiveVolumeStatisticsFilterForm extends Record<string, unknown> {
   academicYearStartYear: number | undefined
@@ -266,9 +306,17 @@ const destructionPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE
 const deptPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 const missingPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 
-const scopedDepartmentOptions = computed(() => filterListDepartmentOptions(departmentOptions.value))
+const scopedDepartmentOptions = computed(() =>
+  filterStatisticsDepartmentOptions(departmentOptions.value),
+)
+const destructionDepartmentOptions = computed(() =>
+  filterDestructionLedgerDepartmentOptions(departmentOptions.value),
+)
 
-const departmentFilterDisabled = computed(() => listScopedDepartmentIds.value.length === 1)
+const departmentFilterDisabled = computed(() => statisticsScopedDepartmentIds.value.length === 1)
+const destructionDepartmentFilterDisabled = computed(
+  () => destructionLedgerScopedDepartmentIds.value.length === 1,
+)
 
 const filterFields = computed<FilterField[]>(() => [
   ...buildAcademicYearSemesterTripleFilterFields(),
@@ -287,9 +335,9 @@ const destructionFilterFields = computed<FilterField[]>(() => [
     key: 'departmentId',
     label: '学院',
     type: 'select',
-    options: scopedDepartmentOptions.value,
-    allowClear: !departmentFilterDisabled.value,
-    disabled: departmentFilterDisabled.value,
+    options: destructionDepartmentOptions.value,
+    allowClear: !destructionDepartmentFilterDisabled.value,
+    disabled: destructionDepartmentFilterDisabled.value,
   },
   { key: 'keyword', label: '关键词', type: 'input', placeholder: '档案号 / 标题' },
 ])
@@ -298,7 +346,12 @@ const deptColumns: ColumnsType<ArchiveDepartmentCompletionVO> = [
   { title: '院系', dataIndex: 'departmentName' },
   { title: '总数', dataIndex: 'totalCount', width: 80 },
   { title: '已入库', dataIndex: 'storedCount', width: 80 },
-  { title: '完成率', dataIndex: 'completionRate', width: 100 },
+  {
+    title: '完成率',
+    dataIndex: 'completionRate',
+    width: 100,
+    customRender: ({ text }) => formatCompletionRate(Number(text)),
+  },
 ]
 
 const missingColumns: ColumnsType<ArchiveMissingMaterialStatVO> = [
@@ -346,7 +399,7 @@ const overviewAnalyticsCards = computed<OverviewAnalyticsCard[]>(() => {
     return []
   }
   const summary = statisticsSummary.value
-  const avgCompletionRate = Math.round(summary.avgCompletionRate)
+  const avgCompletionRate = Math.round(summary.avgCompletionRate * 100)
   return [
     {
       key: 'total',
@@ -404,6 +457,10 @@ const overviewAnalyticsCards = computed<OverviewAnalyticsCard[]>(() => {
   ]
 })
 
+function formatCompletionRate(rate: number): string {
+  return `${Math.round(rate * 100)}%`
+}
+
 function handleSignalMetricClick(key: string) {
   if (key === 'overdue') {
     void router.push({ name: 'TeacherArchiveVolumeList', query: { tab: 'archive' } })
@@ -435,11 +492,13 @@ function destructionStatusTone(code: ArchiveDestructionStatusCode): BadgeTone {
 }
 
 function applyScopedDepartmentDefault() {
-  const scopeIds = listScopedDepartmentIds.value
+  const scopeIds = statisticsScopedDepartmentIds.value
   if (scopeIds.length === 1) {
     filterForm.departmentId = scopeIds[0]
-    destructionFilterForm.departmentId = scopeIds[0]
   }
+  const destructionScopeIds = destructionLedgerScopedDepartmentIds.value
+  destructionFilterForm.departmentId =
+    destructionScopeIds.length === 1 ? destructionScopeIds[0] : undefined
 }
 
 async function loadDepartments() {
@@ -472,6 +531,7 @@ async function loadDepartmentCompletions() {
     return
   }
   deptLoading.value = true
+  departmentLoadFailed.value = false
   try {
     const result = await pageStatisticsDepartmentCompletions({
       ...request,
@@ -483,8 +543,7 @@ async function loadDepartmentCompletions() {
     deptPagination.pageNum = result.pageNum
     deptPagination.pageSize = result.pageSize
   } catch (error) {
-    departmentRows.value = []
-    deptPagination.total = 0
+    departmentLoadFailed.value = true
     showUserError(error, '加载院系完成率失败')
   } finally {
     deptLoading.value = false
@@ -497,6 +556,7 @@ async function loadMissingMaterials() {
     return
   }
   missingLoading.value = true
+  missingLoadFailed.value = false
   try {
     const result = await pageStatisticsMissingMaterials({
       ...request,
@@ -508,8 +568,7 @@ async function loadMissingMaterials() {
     missingPagination.pageNum = result.pageNum
     missingPagination.pageSize = result.pageSize
   } catch (error) {
-    missingRows.value = []
-    missingPagination.total = 0
+    missingLoadFailed.value = true
     showUserError(error, '加载缺项材料分布失败')
   } finally {
     missingLoading.value = false
@@ -525,17 +584,14 @@ async function loadStatistics() {
     return
   }
   loading.value = true
+  statisticsSummaryLoadFailed.value = false
   deptPagination.pageNum = 1
   missingPagination.pageNum = 1
   try {
     statisticsSummary.value = await getArchiveVolumeStatisticsSummary(request)
     await Promise.all([loadDepartmentCompletions(), loadMissingMaterials()])
   } catch (error) {
-    statisticsSummary.value = null
-    departmentRows.value = []
-    missingRows.value = []
-    deptPagination.total = 0
-    missingPagination.total = 0
+    statisticsSummaryLoadFailed.value = true
     showUserError(error, '加载迎评统计失败')
   } finally {
     loading.value = false
@@ -565,8 +621,11 @@ async function loadDestructionLedger() {
 function handleReset() {
   resetAcademicYearSemesterTriple(filterForm, true)
   filterForm.departmentId = departmentFilterDisabled.value
-    ? listScopedDepartmentIds.value[0]
+    ? statisticsScopedDepartmentIds.value[0]
     : undefined
+  statisticsSummaryLoadFailed.value = false
+  departmentLoadFailed.value = false
+  missingLoadFailed.value = false
   statisticsSummary.value = null
   departmentRows.value = []
   missingRows.value = []
@@ -578,9 +637,10 @@ function handleReset() {
 
 function handleDestructionReset() {
   destructionFilterForm.keyword = ''
-  destructionFilterForm.departmentId = departmentFilterDisabled.value
-    ? listScopedDepartmentIds.value[0]
-    : undefined
+  destructionFilterForm.departmentId =
+    destructionLedgerScopedDepartmentIds.value.length === 1
+      ? destructionLedgerScopedDepartmentIds.value[0]
+      : undefined
   destructionPagination.pageNum = 1
   destructionRows.value = []
   destructionPagination.total = 0
@@ -627,7 +687,12 @@ async function exportDestructionExcel() {
 }
 
 watch(statsTab, (tab) => {
-  if (tab === 'destruction' && destructionRows.value.length === 0 && !grantsLoadFailed.value) {
+  if (
+    pageInitialized.value &&
+    tab === 'destruction' &&
+    destructionRows.value.length === 0 &&
+    !grantsLoadFailed.value
+  ) {
     void loadDestructionLedger()
   }
 })
@@ -644,10 +709,24 @@ async function initPage() {
   if (grantsLoadFailed.value) {
     return
   }
+  if (!canViewStatisticsKpi.value && !canViewDestructionLedger.value) {
+    showUserError(new Error('缺少归档统计或销毁清册职责'))
+    void router.replace({ name: 'TeacherArchiveVolumeList' })
+    return
+  }
+  statsTab.value = canViewStatisticsKpi.value ? 'overview' : 'destruction'
   await loadDepartments()
-  if (filterForm.academicYearStartYear != null && filterForm.semester) {
+  if (
+    canViewStatisticsKpi.value &&
+    filterForm.academicYearStartYear != null &&
+    filterForm.semester
+  ) {
     await loadStatistics()
   }
+  if (statsTab.value === 'destruction') {
+    await loadDestructionLedger()
+  }
+  pageInitialized.value = true
 }
 
 onMounted(() => {
@@ -662,6 +741,10 @@ onMounted(() => {
 }
 
 .archive-volume-statistics__export {
+  margin-top: var(--dp-space-2);
+}
+
+.archive-volume-statistics__error {
   margin-top: var(--dp-space-2);
 }
 

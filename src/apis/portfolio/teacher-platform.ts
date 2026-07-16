@@ -27,14 +27,17 @@ import type {
 import type { AiTaskStatusCode } from '@/apis/quality/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { PortfolioArchiveScoreRuleTypeCode } from '@/types/enums/portfolio-archive-score-rule-type-enum'
-import type { PortfolioPortraitTemplateStatusCode } from '@/types/enums/portfolio-portrait-template-status-enum'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import http from '@/config/axios'
-import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import {
   ALL_PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_CODES,
   PortfolioArchiveScoreRuleTypeDescription,
 } from '@/types/enums/portfolio-archive-score-rule-type-enum'
+import type { PortfolioImportQualityGradeCode } from '@/types/enums/portfolio-import-quality-grade-enum'
+import type { PortfolioPlanningSyncConflictStrategyCode } from '@/types/enums/portfolio-planning-sync-conflict-strategy-enum'
+import type { PortfolioPlanningSyncOrgScopeCode } from '@/types/enums/portfolio-planning-sync-org-scope-enum'
+import type { PortfolioPortraitTemplateStatusCode } from '@/types/enums/portfolio-portrait-template-status-enum'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import http from '@/config/axios'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export const portfolioArchiveBagApi = {
@@ -44,8 +47,6 @@ export const portfolioArchiveBagApi = {
     http.post<PortfolioArchiveBagPreviewVO>('/api/portfolio/archive/bag/preview', data),
   buildMaterialPackage: (data: PortfolioArchiveBagTeacherRequest = {}) =>
     http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/material-package/build', data),
-  exportBag: (data: PortfolioArchiveBagTeacherRequest = {}) =>
-    http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/archive/bag/export', data),
   computeScore: (data: PortfolioArchiveScoreComputeRequest = {}) =>
     http.post<PortfolioArchiveScoreResultVO>('/api/portfolio/archive-score/compute', data),
 }
@@ -280,6 +281,11 @@ export interface PortfolioExternalTeacherImportBatchVO {
   successRows?: number
   failedRows?: number
   batchStatus: PortfolioExternalTeacherImportBatchStatusCode
+  errorReportJson?: string
+  passRate?: number
+  teacherMatchRate?: number
+  fieldUsableRate?: number
+  qualityGrade?: PortfolioImportQualityGradeCode
   createTime?: string
 }
 
@@ -348,6 +354,11 @@ export interface PortfolioDevelopmentPlanVO {
 export interface PortfolioDevelopmentPlanItemVO {
   id?: string
   planId?: string
+  catalogId?: string
+  catalogName?: string
+  achievementLinkStatus?: string
+  achievementCompletionRate?: string
+  achievementMissingCount?: number
   itemTitle: string
   itemGoal?: string
   indicatorCode?: string
@@ -358,6 +369,8 @@ export interface PortfolioDevelopmentPlanItemVO {
 }
 
 export interface PortfolioDevelopmentPlanItemSaveRequest {
+  id?: string
+  catalogId?: string
   itemTitle: string
   itemGoal?: string
   indicatorCode?: string
@@ -406,16 +419,23 @@ export interface PortfolioDevelopmentPlanHistoryImportBatchVO {
   failedRows?: number
   batchStatus: PortfolioDevelopmentPlanHistoryImportBatchStatusCode
   errorReportJson?: string
+  syncConfigId?: string
+  importedPlanIdsJson?: string
+  overwrittenPlanSnapshotsJson?: string
+  passRate?: number
+  teacherMatchRate?: number
+  fieldUsableRate?: number
+  qualityGrade?: PortfolioImportQualityGradeCode
   createTime?: string
 }
 
 export interface PortfolioDevelopmentPlanHistoryImportResultVO {
-  batchId: string
-  batchNo: string
+  batchId?: string
+  batchNo?: string
   totalRows: number
   successRows: number
   failedRows: number
-  batchStatus: PortfolioDevelopmentPlanHistoryImportBatchStatusCode
+  batchStatus?: PortfolioDevelopmentPlanHistoryImportBatchStatusCode
   errorReportJson?: string
 }
 
@@ -439,9 +459,31 @@ export interface PortfolioDevelopmentPlanStatsRequest {
   planType?: PortfolioDevelopmentPlanTypeCode
 }
 
-export interface PortfolioDevelopmentPlanHistoryImportConfirmRequest {
-  sourceFileId: string
-  fileName?: string
+export interface PortfolioPlanningSyncFieldMapping {
+  ownerUserIdColumn: string
+  planYearColumn: string
+  itemTitleColumn: string
+  itemGoalColumn: string
+  completionPercentColumn: string
+  itemStatusColumn: string
+}
+
+export interface PortfolioPlanningSyncConfigSaveRequest {
+  id?: string
+  yearFrom: number
+  yearTo: number
+  orgScopeType: PortfolioPlanningSyncOrgScopeCode
+  portfolioOrgId?: string
+  planType: PortfolioDevelopmentPlanTypeCode
+  conflictStrategy: PortfolioPlanningSyncConflictStrategyCode
+  fieldMapping: PortfolioPlanningSyncFieldMapping
+  enabled: boolean
+}
+
+export interface PortfolioPlanningSyncConfigVO extends PortfolioPlanningSyncConfigSaveRequest {
+  id: string
+  updateTime: string
+  updateToken: string
 }
 
 export interface PortfolioDevelopmentPlanItemBatchSaveRequest {
@@ -505,11 +547,18 @@ export const portfolioDevelopmentPlanApi = {
       '/api/portfolio/development-plan/export-excel',
       data,
     ),
-  confirmHistoryImport: (data: PortfolioDevelopmentPlanHistoryImportConfirmRequest) =>
-    http.post<PortfolioDevelopmentPlanHistoryImportResultVO>(
-      '/api/portfolio/development-plan/history-import/confirm',
+  getHistorySyncConfig: () =>
+    http.post<PortfolioPlanningSyncConfigVO | null>(
+      '/api/portfolio/development-plan/history-import/config/get',
+      {},
+    ),
+  saveHistorySyncConfig: (data: PortfolioPlanningSyncConfigSaveRequest) =>
+    http.post<PortfolioPlanningSyncConfigVO>(
+      '/api/portfolio/development-plan/history-import/config/save',
       data,
     ),
+  rollbackHistoryImportBatch: (data: { id: string }) =>
+    http.post<void>('/api/portfolio/development-plan/history-import/import-batch/rollback', data),
   historyImportBatchPage: (data: QueryDto = { pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE }) =>
     http.post<PageResult<PortfolioDevelopmentPlanHistoryImportBatchVO>>(
       '/api/portfolio/development-plan/history-import/import-batch/page',
@@ -628,8 +677,6 @@ export const portfolioDevelopmentRecordApi = {
       '/api/portfolio/development-record/page',
       data,
     ),
-  get: (data: { id: string }) =>
-    http.post<PortfolioDevelopmentRecordVO>('/api/portfolio/development-record/get', data),
   save: (data: PortfolioDevelopmentRecordSaveRequest) =>
     http.post<string>('/api/portfolio/development-record/save', data),
   delete: (data: { id: string }) =>
@@ -700,8 +747,6 @@ export interface PortfolioKeyTeacherSaveRequest {
 export const portfolioKeyTeacherApi = {
   page: (data: PortfolioKeyTeacherPageRequest) =>
     http.post<PageResult<PortfolioKeyTeacherRegistryVO>>('/api/portfolio/key-teacher/page', data),
-  get: (data: { id: string }) =>
-    http.post<PortfolioKeyTeacherRegistryVO>('/api/portfolio/key-teacher/get', data),
   save: (data: PortfolioKeyTeacherSaveRequest) =>
     http.post<string>('/api/portfolio/key-teacher/save', data),
   revoke: (data: { id: string }) => http.post<void>('/api/portfolio/key-teacher/revoke', data),
@@ -765,8 +810,6 @@ export interface PortfolioDoubleDutySaveRequest {
 export const portfolioDoubleDutyApi = {
   page: (data: PortfolioDoubleDutyPageRequest) =>
     http.post<PageResult<PortfolioDoubleDutyRegistryVO>>('/api/portfolio/double-duty/page', data),
-  get: (data: { id: string }) =>
-    http.post<PortfolioDoubleDutyRegistryVO>('/api/portfolio/double-duty/get', data),
   save: (data: PortfolioDoubleDutySaveRequest) =>
     http.post<string>('/api/portfolio/double-duty/save', data),
   revoke: (data: { id: string }) => http.post<void>('/api/portfolio/double-duty/revoke', data),
@@ -953,15 +996,31 @@ export interface PortfolioTeacherPkCompareDimensionRowVO {
   dimensionCode: PortfolioPortraitDimensionCode
   dimensionLabel: string
   dimensionScore: number
+  evidenceSummary?: string
+}
+
+export interface PortfolioTeacherPkMaterialRefVO {
+  recordId: string
+  categoryName: string
+  updateTime: string
 }
 
 export interface PortfolioTeacherPkCompareTeacherVO {
   teacherUserId: string
+  displayName?: string
+  teacherNumber?: string
+  officialArchiveCount: number
+  materialRefs: PortfolioTeacherPkMaterialRefVO[]
   dimensionRows: PortfolioTeacherPkCompareDimensionRowVO[]
 }
 
 export interface PortfolioTeacherPkCompareVO {
+  sessionId?: string
+  sessionPurpose?: string
+  maskMode?: boolean
+  dimensionCodes: PortfolioPortraitDimensionCode[]
   teachers: PortfolioTeacherPkCompareTeacherVO[]
+  comparedTime: string
 }
 
 export interface PortfolioTeacherRecommendRunPageRequest extends QueryDto {
@@ -977,6 +1036,7 @@ export interface PortfolioTeacherRecommendCandidatePageRequest extends QueryDto 
 export interface PortfolioTeacherRecommendPkCompareRequest {
   teacherUserIds: string[]
   dimensionCodes: PortfolioPortraitDimensionCode[]
+  maskMode?: boolean
 }
 
 export interface PortfolioTeacherRecommendRuleSaveRequest {
@@ -1157,8 +1217,6 @@ export const portfolioEvaluationTaskApi = {
     http.post<string>('/api/portfolio/evaluation-task/create', data),
   publish: (data: { id: string }) =>
     http.post<void>('/api/portfolio/evaluation-task/publish', data),
-  get: (data: { id: string }) =>
-    http.post<PortfolioEvaluationTaskVO>('/api/portfolio/evaluation-task/get', data),
   fillContext: (data: { id: string }) =>
     http.post<PortfolioEvaluationTaskFillContextVO>(
       '/api/portfolio/evaluation-task/fill-context',

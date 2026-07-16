@@ -5,15 +5,17 @@ import type {
   ArchiveTaskCreateSectionKey,
   ArchiveTaskCreateWizardState,
 } from './archive-task-create-context'
+import { ARCHIVE_TASK_CREATE_SECTION_ORDER } from './archive-task-create-context'
 import type { ArchiveTenantTemplateSetResponse } from '@/apis/mark/archive-platform-template'
+import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import {
   ArchiveScoreSourceCode,
   ArchiveSecurityLevelCode,
   createArchiveTask,
+  discardArchiveTaskScoreProof,
 } from '@/apis/mark/archive-volume'
 import { useUserStore } from '@/stores/modules/user'
 import { ArchiveTaskProvenanceCode } from '@/types/enums/archive-task-provenance-enum'
@@ -23,7 +25,6 @@ import {
   parseAcademicYearStart,
 } from '@/utils/academic-year'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
-import { ARCHIVE_TASK_CREATE_SECTION_ORDER } from './archive-task-create-context'
 
 export type {
   ArchiveTaskCreateBasicForm,
@@ -75,14 +76,15 @@ export function useArchiveTaskCreate() {
   const submitting = ref(false)
   const submitErrorMessage = ref('')
   const templateLoading = ref(false)
+  const templateLoadFailed = ref(false)
   const templateSets = ref<ArchiveTenantTemplateSetResponse[]>([])
   const activeSection = ref<ArchiveTaskCreateSectionKey>('archive-task-provenance')
   const basicFormRef = ref<FormInstance>()
   const planFormRef = ref<FormInstance>()
 
   const defaultTerm = getDefaultAcademicYearAndSemester()
-  const defaultStartYear
-    = parseAcademicYearStart(defaultTerm.academicYear) ?? new Date().getFullYear()
+  const defaultStartYear =
+    parseAcademicYearStart(defaultTerm.academicYear) ?? new Date().getFullYear()
 
   const wizardState = reactive<ArchiveTaskCreateWizardState>({
     provenance: parseRouteProvenance(route.query.provenance),
@@ -117,6 +119,7 @@ export function useArchiveTaskCreate() {
 
   const basicRules: Record<string, Rule[]> = {
     courseId: [{ required: true, message: '请选择课程', trigger: 'change' }],
+    departmentId: [{ required: true, message: '请选择院系', trigger: 'change' }],
     archiveTitle: [
       { required: true, message: '请输入归档标题', trigger: 'blur' },
       { max: 512, message: '归档标题最多 512 个字符', trigger: 'blur' },
@@ -164,9 +167,14 @@ export function useArchiveTaskCreate() {
     return wizardState.provenance
   })
 
-  function applyProvenanceDefaults(provenance: ArchiveTaskProvenanceCode): void {
+  async function applyProvenanceDefaults(provenance: ArchiveTaskProvenanceCode): Promise<boolean> {
+    const nextScoreSource = defaultScoreSourceForProvenance(provenance)
+    if (nextScoreSource !== ArchiveScoreSourceCode.OFFLINE_CONFIRMED) {
+      if (!(await discardStagedScoreProof())) return false
+    }
     wizardState.provenance = provenance
-    planForm.scoreSource = defaultScoreSourceForProvenance(provenance)
+    planForm.scoreSource = nextScoreSource
+    return true
   }
 
   function setCourseSelection(courseId: string | null, courseName: string): void {
@@ -201,7 +209,7 @@ export function useArchiveTaskCreate() {
     code: string | null,
     name: string,
     examForm?: ArchiveTaskCreatePlanForm['examForm'],
-    retention?: { defaultPermanentRetention?: boolean, defaultRetentionYears?: number },
+    retention?: { defaultPermanentRetention?: boolean; defaultRetentionYears?: number },
   ): void {
     planForm.templateSetCode = code
     planForm.templateSetName = name
@@ -212,8 +220,8 @@ export function useArchiveTaskCreate() {
       planForm.permanentRetention = true
       planForm.retentionYears = undefined
     } else if (
-      retention?.defaultPermanentRetention === false
-      && retention.defaultRetentionYears != null
+      retention?.defaultPermanentRetention === false &&
+      retention.defaultRetentionYears != null
     ) {
       planForm.permanentRetention = false
       planForm.retentionYears = retention.defaultRetentionYears
@@ -228,8 +236,8 @@ export function useArchiveTaskCreate() {
     planForm.responsibleUserName = nickName
   }
 
-  function selectProvenanceAndContinue(provenance: ArchiveTaskProvenanceCode): void {
-    applyProvenanceDefaults(provenance)
+  async function selectProvenanceAndContinue(provenance: ArchiveTaskProvenanceCode): Promise<void> {
+    if (!(await applyProvenanceDefaults(provenance))) return
     activeSection.value = 'archive-task-basic'
   }
 
@@ -242,11 +250,12 @@ export function useArchiveTaskCreate() {
 
   async function loadTemplateSets(): Promise<void> {
     templateLoading.value = true
+    templateLoadFailed.value = false
     try {
       templateSets.value = await listArchiveTenantTemplateSets()
     } catch (error) {
       showUserError(error, '加载目录模板套失败')
-      templateSets.value = []
+      templateLoadFailed.value = true
     } finally {
       templateLoading.value = false
     }
@@ -316,6 +325,13 @@ export function useArchiveTaskCreate() {
 
   async function handleCreateTask(): Promise<ArchiveTaskCreateSectionKey | null> {
     submitErrorMessage.value = ''
+    if (templateLoading.value || templateLoadFailed.value) {
+      void message.error(
+        templateLoading.value ? '目录模板正在加载，请稍候' : '目录模板加载失败，请重新加载',
+      )
+      activeSection.value = 'archive-task-plan'
+      return 'archive-task-plan'
+    }
     if (!(await validateProvenanceStep())) {
       activeSection.value = 'archive-task-provenance'
       return 'archive-task-provenance'
@@ -330,10 +346,15 @@ export function useArchiveTaskCreate() {
       void message.warning('请先完善归档方案')
       return 'archive-task-plan'
     }
-    if (!basicForm.courseId || !planForm.templateSetCode || !wizardState.provenance) {
+    if (
+      !basicForm.courseId ||
+      !basicForm.departmentId ||
+      !planForm.templateSetCode ||
+      !wizardState.provenance
+    ) {
       void message.error('请完善必填项')
       if (!wizardState.provenance) return 'archive-task-provenance'
-      if (!basicForm.courseId) return 'archive-task-basic'
+      if (!basicForm.courseId || !basicForm.departmentId) return 'archive-task-basic'
       return 'archive-task-plan'
     }
     submitting.value = true
@@ -348,19 +369,17 @@ export function useArchiveTaskCreate() {
         semester: basicForm.semester,
         examForm: planForm.examForm,
         scoreSource: planForm.scoreSource,
-        scoreCompletionStatus: planForm.scoreCompletionStatus,
         scoreProofFileId: planForm.scoreProofFileId ?? undefined,
         securityLevel: planForm.securityLevel,
         teachingClassId: basicForm.teachingClassId ?? undefined,
-        departmentId: basicForm.departmentId ?? undefined,
-        teachingClassName: basicForm.teachingClassName.trim() || undefined,
-        departmentName: basicForm.departmentName.trim() || undefined,
+        departmentId: basicForm.departmentId,
         relatedExamId: basicForm.relatedExamId ?? undefined,
         retentionYears: planForm.permanentRetention ? undefined : planForm.retentionYears,
         permanentRetention: planForm.permanentRetention,
         responsibleUserId: planForm.responsibleUserId ?? undefined,
         archiveDueTimeOverride: planForm.archiveDueTimeOverride,
       })
+      planForm.scoreProofFileId = null
       void message.success('归档任务创建成功')
       void router.push({ name: 'TeacherArchiveVolumeDetail', params: { volumeId } })
       return null
@@ -373,16 +392,32 @@ export function useArchiveTaskCreate() {
     }
   }
 
-  function handleGoBack(): void {
+  async function discardStagedScoreProof(): Promise<boolean> {
+    const fileId = planForm.scoreProofFileId
+    if (!fileId) return true
+    try {
+      await discardArchiveTaskScoreProof(fileId)
+      planForm.scoreProofFileId = null
+      return true
+    } catch (error) {
+      showUserError(error, '清理临时成绩证明失败')
+      return false
+    }
+  }
+
+  async function handleGoBack(): Promise<void> {
+    if (!(await discardStagedScoreProof())) return
     void router.push({ name: 'TeacherArchiveVolumeList' })
   }
 
+  onBeforeRouteLeave(async () => discardStagedScoreProof())
+
   watch(
     () => route.query.provenance,
-    (raw) => {
+    async (raw) => {
       const parsed = parseRouteProvenance(raw)
       if (parsed) {
-        applyProvenanceDefaults(parsed)
+        await applyProvenanceDefaults(parsed)
       }
     },
   )
@@ -400,7 +435,9 @@ export function useArchiveTaskCreate() {
     submitting,
     submitErrorMessage,
     templateLoading,
+    templateLoadFailed,
     templateSetOptions,
+    loadTemplateSets,
     activeSection,
     basicFormRef,
     planFormRef,

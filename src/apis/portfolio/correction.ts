@@ -1,6 +1,7 @@
 import type {
   PortfolioCorrectionDetailVO,
   PortfolioCorrectionHandleRequest,
+  PortfolioCorrectionImpactVO,
   PortfolioCorrectionPageRequest,
   PortfolioCorrectionSubmitRequest,
   PortfolioCorrectionSummaryVO,
@@ -19,4 +20,12 @@ export const portfolioCorrectionApi = {
     http.post<PortfolioCorrectionDetailVO>('/api/portfolio/correction/get', { id }),
   handleCorrection: (data: PortfolioCorrectionHandleRequest) =>
     http.post<PortfolioCorrectionDetailVO>('/api/portfolio/correction/handle', data),
+  getImpact: (correctionRequestId: string) =>
+    http.post<PortfolioCorrectionImpactVO>('/api/portfolio/correction/impact/get', {
+      correctionRequestId,
+    }),
+  recomputeImpact: (correctionRequestId: string) =>
+    http.post<PortfolioCorrectionImpactVO>('/api/portfolio/correction/impact/recompute', {
+      correctionRequestId,
+    }),
 }

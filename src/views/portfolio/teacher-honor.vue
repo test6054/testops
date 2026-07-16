@@ -4,10 +4,11 @@ import type {
   PortfolioTeacherHonorCategoryVO,
   PortfolioTeacherHonorVO,
 } from '@/apis/portfolio/teacher-honor'
-import { DatePicker, Form, Input, message, Modal } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioTeacherHonorApi } from '@/apis/portfolio/teacher-honor'
+import { DatePicker, Form, Input, message } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -29,6 +30,7 @@ import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
+const router = useRouter()
 
 const loading = ref(false)
 const categoryLoading = ref(false)
@@ -40,10 +42,12 @@ const categories = ref<PortfolioTeacherHonorCategoryVO[]>([])
 const modalOpen = ref(false)
 const categoryModalOpen = ref(false)
 const editing = ref<PortfolioTeacherHonorVO | null>(null)
+const deletingHonorId = ref('')
 const deletingCategoryId = ref('')
 const uploadingFile = ref(false)
 const attachmentInputRef = ref<HTMLInputElement | null>(null)
 const requestToken = ref(0)
+const preparingArchiveId = ref('')
 
 const form = reactive({
   recordTitle: '',
@@ -73,7 +77,7 @@ const honorColumns: ColumnsType = [
   { title: '等级', key: 'levelCode', width: 88 },
   { title: '授予单位', dataIndex: 'awardUnit', key: 'awardUnit', width: 140 },
   { title: '获得日期', dataIndex: 'recordDate', key: 'recordDate', width: 110 },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '操作', key: 'actions', width: 210 },
 ]
 
 const categoryColumns: ColumnsType = [
@@ -107,6 +111,12 @@ async function loadData() {
   const currentToken = requestToken.value + 1
   requestToken.value = currentToken
   if (canPickTeachers.value && !targetTeacherId.value) {
+    loading.value = false
+    categoryLoading.value = false
+    saving.value = false
+    creatingCategory.value = false
+    uploadingFile.value = false
+    loadFailed.value = false
     rows.value = []
     categories.value = []
     return
@@ -128,6 +138,8 @@ async function loadData() {
     if (requestToken.value !== currentToken) {
       return
     }
+    rows.value = []
+    categories.value = []
     loadFailed.value = true
     showUserError(error)
   } finally {
@@ -181,22 +193,56 @@ async function saveHonor() {
 }
 
 async function removeHonor(row: PortfolioTeacherHonorVO) {
-  if (readonlyMode.value) {
+  if (readonlyMode.value || deletingHonorId.value || preparingArchiveId.value) {
     return
   }
+  const teacherId = scopeTeacherId()
+  const operationToken = requestToken.value
   const confirmed = await confirmAsync({
     title: '删除荣誉',
     content: `确认删除「${row.recordTitle}」？`,
   })
-  if (!confirmed) {
+  if (!confirmed || requestToken.value !== operationToken) {
     return
   }
+  deletingHonorId.value = row.id
   try {
-    await portfolioTeacherHonorApi.delete({ id: row.id, teacherId: scopeTeacherId() })
+    await portfolioTeacherHonorApi.delete({ id: row.id, teacherId })
+    if (requestToken.value !== operationToken) return
     message.success('已删除')
     await loadData()
   } catch (error) {
+    if (requestToken.value !== operationToken) return
     showUserError(error)
+  } finally {
+    if (deletingHonorId.value === row.id) deletingHonorId.value = ''
+  }
+}
+
+async function prepareArchiveDraft(row: PortfolioTeacherHonorVO) {
+  if (readonlyMode.value || preparingArchiveId.value) {
+    return
+  }
+  if (!row.fileId) {
+    message.warning('请先编辑荣誉并上传证明材料')
+    return
+  }
+  preparingArchiveId.value = row.id
+  try {
+    const result = await portfolioTeacherHonorApi.prepareArchiveDraft({ id: row.id })
+    message.success(
+      result.missingRequiredFieldCodes.length
+        ? `档案草稿已准备，尚有 ${result.missingRequiredFieldCodes.length} 个必填字段待完善`
+        : '档案草稿已准备',
+    )
+    await router.push({
+      path: `/portfolio/teacher/archive/${result.categoryId}`,
+      query: { recordId: result.archiveRecordId },
+    })
+  } catch (error) {
+    showUserError(error, '准备荣誉档案草稿失败')
+  } finally {
+    preparingArchiveId.value = ''
   }
 }
 
@@ -226,29 +272,35 @@ async function createCategory() {
   }
 }
 
-function confirmDeleteCategory(row: PortfolioTeacherHonorCategoryVO) {
-  if (readonlyMode.value || row.preset || !row.id) {
+async function confirmDeleteCategory(row: PortfolioTeacherHonorCategoryVO) {
+  if (readonlyMode.value || row.preset || !row.id || deletingCategoryId.value) {
     return
   }
-  Modal.confirm({
+  const categoryId = row.id
+  const teacherId = scopeTeacherId()
+  const operationToken = requestToken.value
+  deletingCategoryId.value = categoryId
+  const confirmed = await confirmAsync({
     title: '删除自建分类',
     content: `确认删除「${row.categoryName}」？分类仍被荣誉引用时无法删除。`,
-    okText: '删除',
-    okType: 'danger',
-    cancelText: '取消',
-    async onOk() {
-      deletingCategoryId.value = row.id!
-      try {
-        await portfolioTeacherHonorApi.deleteCategory({ id: row.id!, teacherId: scopeTeacherId() })
-        message.success('自建分类已删除')
-        await loadData()
-      } catch (error) {
-        showUserError(error)
-      } finally {
-        deletingCategoryId.value = ''
-      }
-    },
+    type: 'error',
+    okText: '确认删除',
   })
+  if (!confirmed || requestToken.value !== operationToken) {
+    if (deletingCategoryId.value === categoryId) deletingCategoryId.value = ''
+    return
+  }
+  try {
+    await portfolioTeacherHonorApi.deleteCategory({ id: categoryId, teacherId })
+    if (requestToken.value !== operationToken) return
+    message.success('自建分类已删除')
+    await loadData()
+  } catch (error) {
+    if (requestToken.value !== operationToken) return
+    showUserError(error)
+  } finally {
+    if (deletingCategoryId.value === categoryId) deletingCategoryId.value = ''
+  }
 }
 
 function openAttachmentPicker() {
@@ -280,16 +332,26 @@ async function onAttachmentPick(event: Event) {
   }
 }
 
-usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
 watch(
   () => targetTeacherId.value,
   () => {
     requestToken.value += 1
+    loading.value = false
+    categoryLoading.value = false
+    saving.value = false
+    creatingCategory.value = false
+    deletingHonorId.value = ''
+    deletingCategoryId.value = ''
+    uploadingFile.value = false
+    loadFailed.value = false
+    rows.value = []
+    categories.value = []
     modalOpen.value = false
     categoryModalOpen.value = false
     resetForm()
   },
 )
+usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
 </script>
 
 <template>
@@ -318,7 +380,23 @@ watch(
               <UiButton variant="ghost" @click="openModal(record)">
                 {{ readonlyMode ? '查看' : '编辑' }}
               </UiButton>
-              <UiButton v-if="!readonlyMode" variant="ghost" danger @click="removeHonor(record)">
+              <UiButton
+                v-if="!readonlyMode"
+                variant="ghost"
+                :loading="preparingArchiveId === record.id"
+                :disabled="Boolean(preparingArchiveId)"
+                @click="prepareArchiveDraft(record)"
+              >
+                归入档案
+              </UiButton>
+              <UiButton
+                v-if="!readonlyMode"
+                variant="ghost"
+                danger
+                :loading="deletingHonorId === record.id"
+                :disabled="Boolean(deletingHonorId) || Boolean(preparingArchiveId)"
+                @click="removeHonor(record)"
+              >
                 删除
               </UiButton>
             </template>

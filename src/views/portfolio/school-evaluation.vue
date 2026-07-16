@@ -4,6 +4,10 @@ import type {
   PortfolioEvaluationTaskVO,
   PortfolioEvaluationWorkgroupOptionVO,
 } from '@/apis/portfolio/teacher-platform'
+import {
+  portfolioEvaluationTaskApi,
+  portfolioEvaluationWorkgroupApi,
+} from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { Input, message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
@@ -18,10 +22,6 @@ import {
   PortfolioEvaluationTaskStatusDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
-import {
-  portfolioEvaluationTaskApi,
-  portfolioEvaluationWorkgroupApi,
-} from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -31,6 +31,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -49,9 +50,9 @@ const ADVANCE_ACTIONS: Partial<
 
 function canArchiveTask(task: PortfolioEvaluationTaskVO): boolean {
   return (
-    (task.taskStatus === PortfolioEvaluationTaskStatusCode.PUBLICITY
-      || task.taskStatus === PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING)
-    && task.publicityExpiredAwaitingArchive === true
+    (task.taskStatus === PortfolioEvaluationTaskStatusCode.PUBLICITY ||
+      task.taskStatus === PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING) &&
+    task.publicityExpiredAwaitingArchive === true
   )
 }
 
@@ -86,6 +87,8 @@ function taskStatusTone(status: PortfolioEvaluationTaskStatusCode) {
 const loading = ref(false)
 const advancingId = ref('')
 const archivingId = ref('')
+const publishing = ref(false)
+const requestToken = ref(0)
 const router = useRouter()
 const rows = ref<PortfolioEvaluationTaskVO[]>([])
 const pageNum = ref(1)
@@ -97,6 +100,10 @@ const createModalOpen = ref(false)
 const creating = ref(false)
 const workgroupsLoading = ref(false)
 const workgroups = ref<PortfolioEvaluationWorkgroupOptionVO[]>([])
+const writing = computed(
+  () =>
+    creating.value || Boolean(advancingId.value) || Boolean(archivingId.value) || publishing.value,
+)
 const publishForm = reactive({
   publicityTitle: '',
   startTime: '',
@@ -135,22 +142,35 @@ const archiveReminderText = computed(() => {
 })
 
 async function loadPage() {
+  const currentToken = requestToken.value + 1
+  requestToken.value = currentToken
+  const request = { pageNum: pageNum.value, pageSize: pageSize.value }
   loading.value = true
   try {
-    const page = await portfolioEvaluationTaskApi.page({
-      pageNum: pageNum.value,
-      pageSize: pageSize.value,
-    })
+    const page = await portfolioEvaluationTaskApi.page(request)
+    if (requestToken.value !== currentToken) {
+      return
+    }
     rows.value = page.list
     pageTotal.value = page.total
   } catch (error) {
+    if (requestToken.value !== currentToken) {
+      return
+    }
+    rows.value = []
+    pageTotal.value = 0
     showUserError(error, '加载评价任务失败')
   } finally {
-    loading.value = false
+    if (requestToken.value === currentToken) {
+      loading.value = false
+    }
   }
 }
 
 async function openCreateModal() {
+  if (writing.value) {
+    return
+  }
   createModalOpen.value = true
   workgroupsLoading.value = true
   try {
@@ -168,13 +188,21 @@ async function openCreateModal() {
 }
 
 async function submitCreateTask() {
-  if (!createForm.taskName.trim() || !createForm.workgroupId || !createForm.startTime || !createForm.endTime) {
+  if (writing.value) {
+    return
+  }
+  if (
+    !createForm.taskName.trim() ||
+    !createForm.workgroupId ||
+    !createForm.startTime ||
+    !createForm.endTime
+  ) {
     message.warning('请填写任务名称、工作组和评价时间窗')
     return
   }
   if (
-    createForm.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON
-    && !createForm.targetIndicatorCode.trim()
+    createForm.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON &&
+    !createForm.targetIndicatorCode.trim()
   ) {
     message.warning('按人评价须填写画像回流目标指标编码')
     return
@@ -220,6 +248,9 @@ async function advanceTask(
   if (!action) {
     return
   }
+  if (writing.value) {
+    return
+  }
   advancingId.value = row.id
   try {
     await portfolioEvaluationPublicityApi.advanceTask({ taskId: row.id, action })
@@ -233,6 +264,18 @@ async function advanceTask(
 }
 
 async function archiveTask(row: PortfolioEvaluationTaskVO) {
+  if (writing.value) {
+    return
+  }
+  const confirmed = await confirmAsync({
+    title: '确认归档评价任务',
+    content: `确认归档「${row.taskName}」？归档后任务不再接受新的评价与异议。`,
+    type: 'warning',
+    okText: '确认归档',
+  })
+  if (!confirmed || writing.value) {
+    return
+  }
   archivingId.value = row.id
   try {
     await portfolioEvaluationPublicityApi.archiveTask(row.id)
@@ -253,6 +296,9 @@ function goObjectionHandling(row: PortfolioEvaluationTaskVO) {
 }
 
 function openPublishModal(row: PortfolioEvaluationTaskVO) {
+  if (writing.value) {
+    return
+  }
   publishTarget.value = row
   publishForm.publicityTitle = `${row.taskName} 结果公示`
   publishForm.startTime = ''
@@ -272,18 +318,28 @@ async function submitPublish() {
     message.warning('请填写公示起止时间')
     return
   }
+  if (writing.value) {
+    return
+  }
+  const evaluationTaskId = publishTarget.value.id
+  const publicityTitle = publishForm.publicityTitle.trim()
+  const startTime = publishForm.startTime
+  const endTime = publishForm.endTime
+  publishing.value = true
   try {
     await portfolioEvaluationPublicityApi.publishPublicity({
-      evaluationTaskId: publishTarget.value.id,
-      publicityTitle: publishForm.publicityTitle.trim(),
-      startTime: publishForm.startTime,
-      endTime: publishForm.endTime,
+      evaluationTaskId,
+      publicityTitle,
+      startTime,
+      endTime,
     })
     message.success('公示已发布')
     publishModalOpen.value = false
     await loadPage()
   } catch (error) {
     showUserError(error, '发布公示失败')
+  } finally {
+    publishing.value = false
   }
 }
 
@@ -296,16 +352,16 @@ function buildTaskRowActions(row: PortfolioEvaluationTaskVO): UiTableRowActionIt
       key: 'advance',
       label: advanceActionLabel(advance),
       tone: 'primary',
-      disabled: advancingId.value === row.id,
+      disabled: writing.value,
     })
   }
   if (row.taskStatus === PortfolioEvaluationTaskStatusCode.SUSPENDED) {
-    actions.push({ key: 'resume', label: '恢复任务', tone: 'primary', disabled: advancingId.value === row.id })
+    actions.push({ key: 'resume', label: '恢复任务', tone: 'primary', disabled: writing.value })
   } else if (canSuspendTask(row)) {
-    actions.push({ key: 'suspend', label: '暂停任务', tone: 'danger', disabled: advancingId.value === row.id })
+    actions.push({ key: 'suspend', label: '暂停任务', tone: 'danger', disabled: writing.value })
   }
   if (row.taskStatus === PortfolioEvaluationTaskStatusCode.RESULT_SUMMARY) {
-    actions.push({ key: 'publish', label: '发布公示', tone: 'primary' })
+    actions.push({ key: 'publish', label: '发布公示', tone: 'primary', disabled: writing.value })
   }
   if (row.taskStatus === PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING) {
     actions.push({ key: 'objection', label: '处理异议', tone: 'primary' })
@@ -315,7 +371,7 @@ function buildTaskRowActions(row: PortfolioEvaluationTaskVO): UiTableRowActionIt
       key: 'archive',
       label: '归档',
       tone: 'primary',
-      disabled: archivingId.value === row.id,
+      disabled: writing.value,
     })
   }
   return actions
@@ -436,11 +492,20 @@ void loadPage()
       :confirm-loading="creating"
       @ok="() => void submitCreateTask()"
     >
-      <Input v-model:value="createForm.taskName" class="school-evaluation__field" placeholder="任务名称" />
+      <Input
+        v-model:value="createForm.taskName"
+        class="school-evaluation__field"
+        placeholder="任务名称"
+      />
       <a-select
         v-model:value="createForm.workgroupId"
         :loading="workgroupsLoading"
-        :options="workgroups.map((item) => ({ value: item.id, label: `${item.workgroupName}（${item.workgroupCode}）` }))"
+        :options="
+          workgroups.map((item) => ({
+            value: item.id,
+            label: `${item.workgroupName}（${item.workgroupCode}）`,
+          }))
+        "
         placeholder="选择启用的评价工作组"
         class="school-evaluation__field"
       />

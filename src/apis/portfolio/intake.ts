@@ -17,7 +17,6 @@ export interface PortfolioMaterialIntakeStartRequest {
   materialTitle?: string
   materialType?: PortfolioMaterialTypeCode
   submitAi?: boolean
-  demoMode?: boolean
   frozenProviderChain?: string
 }
 
@@ -25,7 +24,6 @@ export interface PortfolioMaterialIntakeGetStatusRequest {
   teacherId?: string
   materialId?: string
   aiTaskId?: string
-  demoMode?: boolean
 }
 
 export interface PortfolioMaterialIntakeSaveDraftRequest {
@@ -34,7 +32,6 @@ export interface PortfolioMaterialIntakeSaveDraftRequest {
   recordId?: string
   categoryId: string
   fields: PortfolioArchiveRecordFieldInput[]
-  demoMode?: boolean
 }
 
 export interface PortfolioMaterialIntakeSubmitRequest {
@@ -43,7 +40,6 @@ export interface PortfolioMaterialIntakeSubmitRequest {
   recordId?: string
   categoryId: string
   fields: PortfolioArchiveRecordFieldInput[]
-  demoMode?: boolean
 }
 
 export interface PortfolioMaterialReassignCategoryRequest {

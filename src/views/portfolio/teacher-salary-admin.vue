@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import { message } from 'ant-design-vue'
-import { reactive } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { portfolioTeacherSalaryApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -9,6 +9,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showUserError } from '@/utils/error-handler'
@@ -27,16 +28,26 @@ const form = reactive<{
   performanceAmount: undefined,
   allowanceAmount: undefined,
 })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
-  = usePortfolioTeacherSearch()
-const { loading, rows, pageNum, pageSize, pageTotal, loadPage, handlePageChange } = useQueryTable(
-  portfolioTeacherSalaryApi.page,
-  {
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
+  usePortfolioTeacherSearch()
+const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange } =
+  useQueryTable(portfolioTeacherSalaryApi.page, {
     onLoaded: (list) => {
       void hydrateTeacherLabels(list.map((row) => row.teacherUserId ?? ''))
     },
-  },
-)
+  })
+const operationKey = ref('')
+const operating = computed(() => Boolean(operationKey.value))
+
+function beginOperation(key: string): boolean {
+  if (operating.value) return false
+  operationKey.value = key
+  return true
+}
+
+function endOperation(key: string) {
+  if (operationKey.value === key) operationKey.value = ''
+}
 
 const columns: ColumnsType = [
   { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },
@@ -70,15 +81,26 @@ async function saveSalary() {
     message.warning('请选择教师并填写薪酬月份')
     return
   }
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(form.salaryMonth.trim())) {
+    message.warning('薪酬月份格式应为 yyyy-MM')
+    return
+  }
+  if (form.baseAmount == null && form.performanceAmount == null && form.allowanceAmount == null) {
+    message.warning('请至少填写一项薪酬金额')
+    return
+  }
+  const operation = 'salary:save'
+  if (!beginOperation(operation)) return
+  const request = {
+    teacherUserId: form.teacherUserId,
+    salaryMonth: form.salaryMonth.trim(),
+    baseAmount: form.baseAmount,
+    performanceAmount: form.performanceAmount,
+    allowanceAmount: form.allowanceAmount,
+    dataSource: 'MANUAL',
+  }
   try {
-    await portfolioTeacherSalaryApi.save({
-      teacherUserId: form.teacherUserId,
-      salaryMonth: form.salaryMonth.trim(),
-      baseAmount: form.baseAmount,
-      performanceAmount: form.performanceAmount,
-      allowanceAmount: form.allowanceAmount,
-      dataSource: 'MANUAL',
-    })
+    await portfolioTeacherSalaryApi.save(request)
     message.success('已保存')
     form.teacherUserId = ''
     form.salaryMonth = ''
@@ -88,16 +110,32 @@ async function saveSalary() {
     await loadPage()
   } catch (error) {
     showUserError(error)
+  } finally {
+    endOperation(operation)
   }
 }
 
 async function exportCsv() {
+  const operation = 'salary:export'
+  if (!beginOperation(operation)) return
+  if (
+    !(await confirmAsync({
+      title: '确认导出教师薪酬？',
+      content: '导出文件包含敏感薪酬数据，操作将写入审计记录，请确认用途和保管范围。',
+      type: 'warning',
+    }))
+  ) {
+    endOperation(operation)
+    return
+  }
   try {
     const result = await portfolioTeacherSalaryApi.export()
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error)
+  } finally {
+    endOperation(operation)
   }
 }
 </script>
@@ -117,28 +155,50 @@ async function exportCsv() {
           style="width: 220px"
           :filter-option="false"
           :options="teacherOptions"
+          :disabled="operating"
           @search="searchTeachers"
         />
-        <a-input v-model:value="form.salaryMonth" placeholder="月份 yyyy-MM" style="width: 120px" />
+        <a-input
+          v-model:value="form.salaryMonth"
+          placeholder="月份 yyyy-MM"
+          style="width: 120px"
+          :disabled="operating"
+        />
         <a-input-number
           v-model:value="form.baseAmount"
           placeholder="基本工资"
           style="width: 100px"
+          :disabled="operating"
         />
         <a-input-number
           v-model:value="form.performanceAmount"
           placeholder="绩效工资"
           style="width: 100px"
+          :disabled="operating"
         />
         <a-input-number
           v-model:value="form.allowanceAmount"
           placeholder="津贴"
           style="width: 100px"
+          :disabled="operating"
         />
-        <UiButton variant="primary" @click="saveSalary"> 录入 </UiButton>
-        <UiButton @click="exportCsv"> 导出 </UiButton>
+        <UiButton
+          variant="primary"
+          :loading="operationKey === 'salary:save'"
+          :disabled="operating"
+          @click="saveSalary"
+        >
+          录入
+        </UiButton>
+        <UiButton
+          :loading="operationKey === 'salary:export'"
+          :disabled="operating"
+          @click="exportCsv"
+        >
+          导出
+        </UiButton>
       </div>
-      <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无薪酬档案" />
+      <UiEmpty v-if="!loading && !loadError && rows.length === 0" description="暂无薪酬档案" />
       <UiDataTable
         v-model:current="pageNum"
         v-model:page-size="pageSize"
@@ -147,6 +207,7 @@ async function exportCsv() {
         :columns="columns"
         :data-source="rows"
         :loading="loading"
+        :load-error="loadError"
         row-key="id"
         style="margin-top: 16px"
         @page-change="handlePageChange"

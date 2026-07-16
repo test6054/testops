@@ -3,13 +3,13 @@ import type {
   ArchivePhysicalLocationResponse,
   ArchiveVolumeDetailResponse,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   ArchiveSecurityLevelDescription,
   listArchivePhysicalLocationHistory,
   updateArchiveVolumePhysicalLocation,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -29,6 +29,7 @@ const emit = defineEmits<{
 
 const submitting = ref(false)
 const historyLoading = ref(false)
+const historyLoadFailed = ref(false)
 const locationHistory = ref<ArchivePhysicalLocationResponse[]>([])
 const form = reactive({
   building: '',
@@ -69,10 +70,12 @@ watch(
 async function loadLocationHistory() {
   historyLoading.value = true
   try {
-    locationHistory.value = await listArchivePhysicalLocationHistory({
+    const records = await listArchivePhysicalLocationHistory({
       volumeId: props.volumeId,
       limit: 20,
     })
+    locationHistory.value = records
+    historyLoadFailed.value = false
     if (!form.building && !form.cabinet && locationHistory.value.length > 0) {
       const latest = locationHistory.value[0]
       applyStructuredLocation({
@@ -85,7 +88,7 @@ async function loadLocationHistory() {
     }
   } catch (error) {
     showUserError(error)
-    locationHistory.value = []
+    historyLoadFailed.value = true
   } finally {
     historyLoading.value = false
   }
@@ -102,6 +105,7 @@ async function handleSave() {
   try {
     await updateArchiveVolumePhysicalLocation({
       volumeId: props.volumeId,
+      expectedPhysicalLocationId: props.detail.volume.physicalLocationId ?? null,
       building,
       room: form.room.trim() || undefined,
       cabinet,
@@ -180,12 +184,22 @@ onMounted(() => {
       <a-row :gutter="12">
         <a-col :span="12">
           <a-form-item label="楼宇/库区" required>
-            <a-input v-model:value="form.building" placeholder="例如 A区" :disabled="!canEdit" />
+            <a-input
+              v-model:value="form.building"
+              :maxlength="128"
+              placeholder="例如 A区"
+              :disabled="!canEdit"
+            />
           </a-form-item>
         </a-col>
         <a-col :span="12">
           <a-form-item label="房间/库室">
-            <a-input v-model:value="form.room" placeholder="例如 03室" :disabled="!canEdit" />
+            <a-input
+              v-model:value="form.room"
+              :maxlength="128"
+              placeholder="例如 03室"
+              :disabled="!canEdit"
+            />
           </a-form-item>
         </a-col>
         <a-col :span="12">
@@ -196,7 +210,12 @@ onMounted(() => {
               'archive-volume-physical-location__field--filled': Boolean(form.cabinet.trim()),
             }"
           >
-            <a-input v-model:value="form.cabinet" placeholder="例如 03柜" :disabled="!canEdit" />
+            <a-input
+              v-model:value="form.cabinet"
+              :maxlength="128"
+              placeholder="例如 03柜"
+              :disabled="!canEdit"
+            />
           </a-form-item>
         </a-col>
         <a-col :span="12">
@@ -206,15 +225,22 @@ onMounted(() => {
               'archive-volume-physical-location__field--filled': Boolean(form.slot.trim()),
             }"
           >
-            <a-input v-model:value="form.slot" placeholder="例如 2层" :disabled="!canEdit" />
+            <a-input
+              v-model:value="form.slot"
+              :maxlength="128"
+              placeholder="例如 2层"
+              :disabled="!canEdit"
+            />
           </a-form-item>
         </a-col>
       </a-row>
       <a-form-item label="柜位说明">
         <a-input
           v-model:value="form.physicalLocationNote"
+          :maxlength="512"
           placeholder="可选补充说明"
           :disabled="!canEdit"
+          show-count
         />
       </a-form-item>
       <p v-if="!canEdit" class="archive-volume-physical-location__readonly">
@@ -224,6 +250,10 @@ onMounted(() => {
     <section class="archive-volume-physical-location__timeline">
       <h3 class="archive-volume-physical-location__timeline-title">位置变更历史</h3>
       <UiSkeletonState v-if="historyLoading" variant="card" compact />
+      <div v-else-if="historyLoadFailed" class="archive-volume-physical-location__history-error">
+        <p>位置变更历史加载失败</p>
+        <UiButton size="sm" variant="outline" @click="loadLocationHistory">重试</UiButton>
+      </div>
       <div
         v-else-if="locationHistory.length > 0"
         class="audit-timeline archive-volume-physical-location__audit"
@@ -299,7 +329,7 @@ onMounted(() => {
 }
 .archive-volume-physical-location__field--filled :deep(.ant-input) {
   border-color: var(--dp-primary);
-  background: color-mix(in srgb, var(--dp-primary) 4%, #fff);
+  background: color-mix(in srgb, var(--dp-primary) 4%, var(--ant-color-bg-container));
 }
 .archive-volume-physical-location__field--filled :deep(.ant-form-item-label > label) {
   color: var(--dp-primary);
@@ -314,5 +344,17 @@ onMounted(() => {
   margin: 0;
   font-size: 13px;
   color: var(--nybc-text-secondary, #8c8c8c);
+}
+
+.archive-volume-physical-location__history-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dp-space-3);
+}
+
+.archive-volume-physical-location__history-error p {
+  margin: 0;
+  color: var(--dp-text-secondary);
 }
 </style>

@@ -4,14 +4,14 @@ import type {
   PortfolioArchiveScoreRuleSaveRequest,
   PortfolioArchiveScoreRuleVO,
 } from '@/apis/portfolio/teacher-platform'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import {
   PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_OPTIONS,
   portfolioArchiveScoreApi,
   PortfolioArchiveScoreRuleTypeCode,
   PortfolioArchiveScoreRuleTypeDescription,
 } from '@/apis/portfolio/teacher-platform'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -24,7 +24,11 @@ import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const loading = ref(false)
-const saving = ref(false)
+const loadError = ref('')
+const requestToken = ref(0)
+const operationKey = ref('')
+const writing = computed(() => Boolean(operationKey.value))
+const saving = computed(() => operationKey.value.startsWith('save:'))
 const rows = ref<PortfolioArchiveScoreRuleVO[]>([])
 const modalOpen = ref(false)
 const editingId = ref<string>()
@@ -60,18 +64,38 @@ function resetForm() {
   form.officialOnly = 1
 }
 
+/** 评分规则写操作必须串行，避免保存与删除交叉覆盖规则集。 */
+function beginOperation(key: string): boolean {
+  if (writing.value) return false
+  operationKey.value = key
+  return true
+}
+
+function endOperation(key: string) {
+  if (operationKey.value === key) operationKey.value = ''
+}
+
 async function loadRules() {
+  const currentToken = requestToken.value + 1
+  requestToken.value = currentToken
   loading.value = true
+  loadError.value = ''
   try {
-    rows.value = await portfolioArchiveScoreApi.listRules()
+    const result = await portfolioArchiveScoreApi.listRules()
+    if (requestToken.value !== currentToken) return
+    rows.value = result
   } catch (error) {
-    showUserError(error)
+    if (requestToken.value !== currentToken) return
+    rows.value = []
+    loadError.value = '评分规则加载失败，请重试'
+    showUserError(error, '加载评分规则失败')
   } finally {
-    loading.value = false
+    if (requestToken.value === currentToken) loading.value = false
   }
 }
 
 function openCreate() {
+  if (writing.value) return
   resetForm()
   modalOpen.value = true
 }
@@ -87,6 +111,7 @@ function handleArchiveScoreRuleAction(key: string, row: PortfolioArchiveScoreRul
 }
 
 function openEdit(row: PortfolioArchiveScoreRuleVO) {
+  if (writing.value) return
   editingId.value = row.id
   form.id = row.id
   form.categoryId = row.categoryId
@@ -98,35 +123,57 @@ function openEdit(row: PortfolioArchiveScoreRuleVO) {
   modalOpen.value = true
 }
 
+function handleRuleTypeChange() {
+  if (form.ruleType !== PortfolioArchiveScoreRuleTypeCode.CATEGORY) {
+    form.categoryId = undefined
+  }
+}
+
 async function handleSave() {
   if (!form.ruleName.trim() || form.scorePoints === undefined) {
     message.warning('请填写规则名称与分值')
     return
   }
-  saving.value = true
+  const categoryId = form.categoryId?.trim()
+  if (form.ruleType === PortfolioArchiveScoreRuleTypeCode.CATEGORY && !categoryId) {
+    message.warning('分类归档计分规则必须填写分类 ID')
+    return
+  }
+  const operation = `save:${form.id || 'new'}`
+  if (!beginOperation(operation)) return
+  const request: PortfolioArchiveScoreRuleSaveRequest = {
+    id: form.id,
+    categoryId:
+      form.ruleType === PortfolioArchiveScoreRuleTypeCode.CATEGORY ? categoryId : undefined,
+    ruleType: form.ruleType,
+    ruleName: form.ruleName.trim(),
+    scorePoints: form.scorePoints,
+    weight: form.weight,
+    officialOnly: form.officialOnly,
+  }
   try {
-    await portfolioArchiveScoreApi.saveRule({
-      id: form.id,
-      categoryId: form.categoryId || undefined,
-      ruleType: form.ruleType,
-      ruleName: form.ruleName.trim(),
-      scorePoints: form.scorePoints,
-      weight: form.weight,
-      officialOnly: form.officialOnly,
-    })
+    await portfolioArchiveScoreApi.saveRule(request)
     message.success('规则已保存')
     modalOpen.value = false
     await loadRules()
   } catch (error) {
     showUserError(error)
   } finally {
-    saving.value = false
+    endOperation(operation)
   }
 }
 
 async function handleDelete(id: string) {
-  const ok = await confirmAsync({ title: '确认删除该评分规则？', type: 'error' })
+  const operation = `delete:${id}`
+  if (!beginOperation(operation)) return
+  const target = rows.value.find((item) => item.id === id)
+  const ok = await confirmAsync({
+    title: '确认删除评分规则？',
+    content: `删除「${target?.ruleName || id}」后，后续正式档案计分将不再应用该规则。`,
+    type: 'error',
+  })
   if (!ok) {
+    endOperation(operation)
     return
   }
   try {
@@ -135,6 +182,8 @@ async function handleDelete(id: string) {
     await loadRules()
   } catch (error) {
     showUserError(error)
+  } finally {
+    endOperation(operation)
   }
 }
 
@@ -148,14 +197,15 @@ onMounted(loadRules)
     </template>
     <UiCard>
       <div class="toolbar">
-        <UiButton @click="loadRules"> 刷新 </UiButton>
-        <UiButton variant="primary" @click="openCreate"> 新增规则 </UiButton>
+        <UiButton :loading="loading" :disabled="writing" @click="loadRules"> 刷新 </UiButton>
+        <UiButton variant="primary" :disabled="writing" @click="openCreate"> 新增规则 </UiButton>
       </div>
-      <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无档案计分规则" />
+      <UiEmpty v-if="!loading && !loadError && rows.length === 0" description="暂无档案计分规则" />
       <UiDataTable
         :columns="columns"
         :data-source="rows"
         :loading="loading"
+        :load-error="Boolean(loadError)"
         row-key="id"
         style="margin-top: 16px"
       >
@@ -166,8 +216,8 @@ onMounted(loadRules)
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
               :items="[
-                { key: 'edit', label: '编辑' },
-                { key: 'delete', label: '删除', tone: 'danger' },
+                { key: 'edit', label: '编辑', disabled: writing },
+                { key: 'delete', label: '删除', tone: 'danger', disabled: writing },
               ]"
               split
               @action="(key) => handleArchiveScoreRuleAction(key, record)"
@@ -181,25 +231,42 @@ onMounted(loadRules)
       v-model:open="modalOpen"
       :title="editingId ? '编辑评分规则' : '新增评分规则'"
       :confirm-loading="saving"
+      :closable="!writing"
+      :mask-closable="!writing"
+      :keyboard="!writing"
+      :cancel-button-props="{ disabled: writing }"
       ok-text="保存"
       cancel-text="取消"
       @ok="handleSave"
     >
       <a-form layout="vertical">
         <a-form-item label="规则类型" required>
-          <a-select v-model:value="form.ruleType" :options="PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_OPTIONS" />
+          <a-select
+            v-model:value="form.ruleType"
+            :options="PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_OPTIONS"
+            :disabled="writing"
+            @change="handleRuleTypeChange"
+          />
         </a-form-item>
         <a-form-item label="规则名称" required>
-          <a-input v-model:value="form.ruleName" />
+          <a-input v-model:value="form.ruleName" :disabled="writing" />
         </a-form-item>
-        <a-form-item label="分类 ID（CATEGORY 类型必填）">
-          <a-input v-model:value="form.categoryId" placeholder="档案分类 ID" />
+        <a-form-item
+          v-if="form.ruleType === PortfolioArchiveScoreRuleTypeCode.CATEGORY"
+          label="分类 ID"
+          required
+        >
+          <a-input v-model:value="form.categoryId" placeholder="档案分类 ID" :disabled="writing" />
         </a-form-item>
         <a-form-item label="分值" required>
-          <a-input-number v-model:value="form.scorePoints" style="width: 100%" />
+          <a-input-number
+            v-model:value="form.scorePoints"
+            style="width: 100%"
+            :disabled="writing"
+          />
         </a-form-item>
         <a-form-item label="权重">
-          <a-input-number v-model:value="form.weight" style="width: 100%" />
+          <a-input-number v-model:value="form.weight" style="width: 100%" :disabled="writing" />
         </a-form-item>
         <a-form-item label="仅 OFFICIAL 计分">
           <a-select
@@ -208,6 +275,7 @@ onMounted(loadRules)
               { value: 1, label: '是' },
               { value: 0, label: '否' },
             ]"
+            :disabled="writing"
           />
         </a-form-item>
       </a-form>

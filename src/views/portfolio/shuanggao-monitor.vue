@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { PortfolioDoubleHighMonitorVO } from '@/apis/portfolio/double-high'
+import { portfolioDoubleHighApi } from '@/apis/portfolio/double-high'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { portfolioDoubleHighApi } from '@/apis/portfolio/double-high'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -36,6 +36,7 @@ const filterForm = reactive<MonitorFilterModel>({})
 const monitor = ref<PortfolioDoubleHighMonitorVO | null>(null)
 const signals = ref<SignalMetric[]>([])
 const syncingFromRoute = ref(false)
+const requestToken = ref(0)
 
 const portfolioOrgOptions = computed(() => {
   if (!filterForm.departmentId) {
@@ -227,8 +228,9 @@ function handleShuanggaoSignalClick(key: string): void {
     return
   }
   if (key === 'index' || key === 'baseline' || key === 'valueAdded') {
-    const el = document.querySelector('.shuanggao-monitor__meta')?.closest('.ui-card, .ant-card')
-      ?? document.querySelector('.shuanggao-monitor__meta')
+    const el =
+      document.querySelector('.shuanggao-monitor__meta')?.closest('.ui-card, .ant-card') ??
+      document.querySelector('.shuanggao-monitor__meta')
     if (el instanceof HTMLElement) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
@@ -236,39 +238,56 @@ function handleShuanggaoSignalClick(key: string): void {
 }
 
 async function loadMonitor() {
+  const currentToken = requestToken.value + 1
+  requestToken.value = currentToken
   beginLoad()
   const constructionPeriodLabel = filterForm.constructionPeriodLabel?.trim() || ''
   const baselinePeriodLabel = filterForm.baselinePeriodLabel?.trim() || ''
   if (baselinePeriodLabel && !constructionPeriodLabel) {
-    message.warning('填写基线周期时必须同时指')
+    loading.value = false
+    monitor.value = null
+    signals.value = []
+    message.warning('填写基线周期时必须同时指定建设周期')
     return
   }
   if (baselinePeriodLabel && filterForm.portfolioOrgId) {
-    message.warning('专业群监测暂不支持基线对')
+    loading.value = false
+    monitor.value = null
+    signals.value = []
+    message.warning('专业群监测暂不支持基线周期对比')
     return
+  }
+  const request = {
+    departmentId: filterForm.departmentId || undefined,
+    portfolioOrgId: filterForm.portfolioOrgId || undefined,
+    constructionPeriodLabel: constructionPeriodLabel || undefined,
+    baselinePeriodLabel: baselinePeriodLabel || undefined,
   }
   loading.value = true
   try {
-    monitor.value = await portfolioDoubleHighApi.getMonitor({
-      departmentId: filterForm.departmentId || undefined,
-      portfolioOrgId: filterForm.portfolioOrgId || undefined,
-      constructionPeriodLabel: constructionPeriodLabel || undefined,
-      baselinePeriodLabel: baselinePeriodLabel || undefined,
-    })
-    if (!monitor.value) {
+    const nextMonitor = await portfolioDoubleHighApi.getMonitor(request)
+    if (requestToken.value !== currentToken) {
+      return
+    }
+    monitor.value = nextMonitor
+    if (!nextMonitor) {
       signals.value = []
       return
     }
-    signals.value = buildSignals(monitor.value)
-  
+    signals.value = buildSignals(nextMonitor)
     okLoad()
   } catch (error) {
+    if (requestToken.value !== currentToken) {
+      return
+    }
     failLoad()
     monitor.value = null
     signals.value = []
     showUserError(error, '加载双高监测失败')
   } finally {
-    loading.value = false
+    if (requestToken.value === currentToken) {
+      loading.value = false
+    }
   }
 }
 
@@ -283,17 +302,23 @@ onMounted(() => {
   })
 })
 
-watch(() => route.query, () => {
-  syncScopeFromRoute()
-  void loadMonitor()
-})
+watch(
+  () => route.query,
+  () => {
+    syncScopeFromRoute()
+    void loadMonitor()
+  },
+)
 
-watch(() => filterForm.departmentId, (next, prev) => {
-  if (syncingFromRoute.value || next === prev) {
-    return
-  }
-  filterForm.portfolioOrgId = undefined
-})
+watch(
+  () => filterForm.departmentId,
+  (next, prev) => {
+    if (syncingFromRoute.value || next === prev) {
+      return
+    }
+    filterForm.portfolioOrgId = undefined
+  },
+)
 </script>
 
 <template>
@@ -315,15 +340,16 @@ watch(() => filterForm.departmentId, (next, prev) => {
     <template v-else>
       <UiCard title="建设指数概览">
         <p class="shuanggao-monitor__meta">
-          统计口径：{{ monitor.statisticScopeLabel }}
-          · 建设周期：{{ monitor.constructionPeriodLabel || '未指定（全量任务）' }}
+          统计口径：{{ monitor.statisticScopeLabel }} · 建设周期：{{
+            monitor.constructionPeriodLabel || '未指定（全量任务）'
+          }}
         </p>
-        <p class="shuanggao-monitor__meta">
-          数据截止：{{ monitor.dataCutoffTime }}
-        </p>
+        <p class="shuanggao-monitor__meta">数据截止：{{ monitor.dataCutoffTime }}</p>
         <p v-if="monitor.baselinePeriodLabel" class="shuanggao-monitor__meta">
           基线周期：{{ monitor.baselinePeriodLabel }}
-          <template v-if="monitor.periodValueAdded != null"> · 周期增值：{{ monitor.periodValueAdded }}</template>
+          <template v-if="monitor.periodValueAdded != null">
+            · 周期增值：{{ monitor.periodValueAdded }}</template
+          >
         </p>
       </UiCard>
       <UiCard title="七维贡献">

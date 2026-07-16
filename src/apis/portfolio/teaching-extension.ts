@@ -2,11 +2,6 @@ import type { PortfolioArchiveRecordStatusCode } from '@/types/enums/portfolio-a
 import type { PortfolioTeachingExtensionKindCode } from '@/types/enums/portfolio-teaching-extension-kind-enum'
 import http from '@/config/axios'
 
-export interface PortfolioPresetCategoryVO {
-  categoryCode: string
-  categoryName: string
-}
-
 export interface PortfolioTeachingExtensionActivityVO {
   id: string
   teacherUserId: string
@@ -103,9 +98,4 @@ export const portfolioTeachingExtensionApi = {
     http.post<string>('/api/portfolio/teaching-extension/category/create', request),
   deleteCategory: (request: PortfolioTeachingExtensionCategoryDeleteRequest) =>
     http.post<void>('/api/portfolio/teaching-extension/category/delete', request),
-  presetCategories: () =>
-    http.post<PortfolioPresetCategoryVO[]>(
-      '/api/portfolio/teaching-extension/preset-categories',
-      {},
-    ),
 }

@@ -1,6 +1,5 @@
-import { computed, inject, onActivated, onMounted, watch } from 'vue'
+import { computed, onActivated, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { portfolioLayoutScopeProvidedKey } from '@/composables/portfolio-layout-context'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { usePortfolioStore } from '@/stores/modules/portfolio'
 
@@ -8,7 +7,6 @@ import { usePortfolioStore } from '@/stores/modules/portfolio'
 export function usePortfolioPageScope() {
   const route = useRoute()
   const portfolioStore = usePortfolioStore()
-  const layoutScopeProvided = inject(portfolioLayoutScopeProvidedKey, undefined)
   const { canPickTeachers, canReviewPortfolio, resolveDefaultTeacherId, currentUserId } = usePortfolioTeacherAccess()
 
   const queryTeacherId = computed(() =>
@@ -36,15 +34,12 @@ export function usePortfolioPageScope() {
 
   const scopeReady = computed(() => !canPickTeachers.value || Boolean(targetTeacherId.value))
 
-  const showPageScopeHeader = !layoutScopeProvided?.value
-
   return {
     targetTeacherId,
     scopeReady,
     scopeTeacherIdFromUrlRejected,
     canPickTeachers,
     currentUserId,
-    showPageScopeHeader,
     portfolioStore,
   }
 }

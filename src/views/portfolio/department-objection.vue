@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationObjectionSummaryVO } from '@/apis/portfolio/types'
+import {
+  PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
+  PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE,
+} from '@/apis/portfolio/types'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { Input, InputNumber, message, Select } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
@@ -14,10 +18,6 @@ import {
   PortfolioEvaluationObjectionTypeDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
-import {
-  PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
-  PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE,
-} from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -65,8 +65,8 @@ function actionTone(action: PortfolioEvaluationObjectionHandleActionCode) {
 
 function requiresDangerConfirm(action: PortfolioEvaluationObjectionHandleActionCode): boolean {
   return (
-    action === PortfolioEvaluationObjectionHandleActionCode.REVOKE
-    || action === PortfolioEvaluationObjectionHandleActionCode.RE_REVIEW
+    action === PortfolioEvaluationObjectionHandleActionCode.REVOKE ||
+    action === PortfolioEvaluationObjectionHandleActionCode.RE_REVIEW
   )
 }
 
@@ -83,8 +83,8 @@ const STATUS_FILTER_OPTIONS: Array<{
 
 function requiresCorrectedScore(objectionType: PortfolioEvaluationObjectionTypeCode): boolean {
   return (
-    objectionType === PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE
-    || objectionType === PortfolioEvaluationObjectionTypeCode.SCORE_DISPUTE
+    objectionType === PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE ||
+    objectionType === PortfolioEvaluationObjectionTypeCode.SCORE_DISPUTE
   )
 }
 
@@ -95,6 +95,8 @@ const rows = ref<PortfolioEvaluationObjectionSummaryVO[]>([])
 const pageNum = ref(1)
 const pageSize = ref(10)
 const pageTotal = ref(0)
+const pageRequestToken = ref(0)
+const reviewContextToken = ref(0)
 const reviewDrawerOpen = ref(false)
 const reviewTarget = ref<PortfolioEvaluationObjectionSummaryVO | null>(null)
 const reviewForm = reactive({
@@ -115,8 +117,8 @@ const showCorrectedScore = computed(() => {
     return false
   }
   return (
-    reviewForm.action === PortfolioEvaluationObjectionHandleActionCode.CORRECT
-    && requiresCorrectedScore(reviewTarget.value.objectionType)
+    reviewForm.action === PortfolioEvaluationObjectionHandleActionCode.CORRECT &&
+    requiresCorrectedScore(reviewTarget.value.objectionType)
   )
 })
 
@@ -150,26 +152,40 @@ async function downloadEvidence(row: PortfolioEvaluationObjectionSummaryVO) {
 }
 
 async function loadPage() {
+  const currentToken = pageRequestToken.value + 1
+  pageRequestToken.value = currentToken
+  const request = {
+    ...(evaluationTaskId.value ? { evaluationTaskId: evaluationTaskId.value } : {}),
+    ...(objectionStatusFilter.value ? { objectionStatus: objectionStatusFilter.value } : {}),
+    pageNum: pageNum.value,
+    pageSize: pageSize.value,
+  }
   loading.value = true
   try {
-    const page = await portfolioEvaluationPublicityApi.pageObjections({
-      ...(evaluationTaskId.value ? { evaluationTaskId: evaluationTaskId.value } : {}),
-      ...(objectionStatusFilter.value ? { objectionStatus: objectionStatusFilter.value } : {}),
-      pageNum: pageNum.value,
-      pageSize: pageSize.value,
-    })
+    const page = await portfolioEvaluationPublicityApi.pageObjections(request)
+    if (pageRequestToken.value !== currentToken) {
+      return
+    }
     rows.value = page.list
     pageTotal.value = page.total
     if (
-      reviewTarget.value
-      && !rows.value.some((item) => item.objectionId === reviewTarget.value?.objectionId)
+      reviewTarget.value &&
+      !rows.value.some((item) => item.objectionId === reviewTarget.value?.objectionId)
     ) {
       resetReviewContext()
     }
   } catch (error) {
+    if (pageRequestToken.value !== currentToken) {
+      return
+    }
+    rows.value = []
+    pageTotal.value = 0
+    resetReviewContext()
     showUserError(error, '加载公示异议失败')
   } finally {
-    loading.value = false
+    if (pageRequestToken.value === currentToken) {
+      loading.value = false
+    }
   }
 }
 
@@ -186,38 +202,56 @@ async function submitReview() {
     message.warning('修正评价结果时须填写修正得分')
     return
   }
-  if (requiresDangerConfirm(reviewForm.action)) {
+  if (handlingId.value) {
+    return
+  }
+  const contextToken = reviewContextToken.value
+  const objectionId = reviewTarget.value.objectionId
+  const action = reviewForm.action
+  const request = {
+    objectionId,
+    action,
+    handleOpinion: opinion,
+    ...(reviewForm.correctedScore != null ? { correctedScore: reviewForm.correctedScore } : {}),
+  }
+  handlingId.value = objectionId
+  if (requiresDangerConfirm(action)) {
     const confirmed = await confirmAsync({
       type: 'error',
       title:
-        reviewForm.action === PortfolioEvaluationObjectionHandleActionCode.REVOKE
+        action === PortfolioEvaluationObjectionHandleActionCode.REVOKE
           ? '确认撤销评价结论？'
           : '确认退回重新评审？',
       content:
-        reviewForm.action === PortfolioEvaluationObjectionHandleActionCode.REVOKE
+        action === PortfolioEvaluationObjectionHandleActionCode.REVOKE
           ? `将撤销${reviewTarget.value.indicatorCode ? `指标“${reviewTarget.value.indicatorCode}”的` : '该教师全部'}当前评价条目并重算画像，操作不可自动恢复。`
           : `将关闭公示、撤销${reviewTarget.value.indicatorCode ? `指标“${reviewTarget.value.indicatorCode}”的` : '该教师全部'}评价条目并回退任务至专家评审，需重新组织评审。`,
       okText: '确认提交',
     })
-    if (!confirmed) {
+    if (!confirmed || reviewContextToken.value !== contextToken) {
+      if (reviewContextToken.value === contextToken && handlingId.value === objectionId) {
+        handlingId.value = ''
+      }
       return
     }
   }
-  handlingId.value = reviewTarget.value.objectionId
   try {
-    await portfolioEvaluationPublicityApi.handleObjection({
-      objectionId: reviewTarget.value.objectionId,
-      action: reviewForm.action,
-      ...(opinion ? { handleOpinion: opinion } : {}),
-      ...(reviewForm.correctedScore != null ? { correctedScore: reviewForm.correctedScore } : {}),
-    })
+    await portfolioEvaluationPublicityApi.handleObjection(request)
+    if (reviewContextToken.value !== contextToken) {
+      return
+    }
     message.success('复核完成')
     resetReviewContext()
     await loadPage()
   } catch (error) {
+    if (reviewContextToken.value !== contextToken) {
+      return
+    }
     showUserError(error, '复核异议失败')
   } finally {
-    handlingId.value = ''
+    if (reviewContextToken.value === contextToken && handlingId.value === objectionId) {
+      handlingId.value = ''
+    }
   }
 }
 
@@ -234,6 +268,12 @@ function openReviewDrawer(row: PortfolioEvaluationObjectionSummaryVO) {
 watch(
   () => route.query.evaluationTaskId,
   (value) => {
+    reviewContextToken.value += 1
+    pageRequestToken.value += 1
+    loading.value = false
+    handlingId.value = ''
+    rows.value = []
+    pageTotal.value = 0
     evaluationTaskId.value = typeof value === 'string' ? value : ''
     pageNum.value = 1
     resetReviewContext()
@@ -272,7 +312,7 @@ function buildObjectionRowActions(
       key: 'review',
       label: '复核',
       tone: 'primary',
-      disabled: handlingId.value === row.objectionId,
+      disabled: Boolean(handlingId.value),
     },
   ]
 }
@@ -294,9 +334,12 @@ void loadPage()
           v-model:value="objectionStatusFilter"
           class="department-objection__status-filter"
           :options="STATUS_FILTER_OPTIONS"
+          :disabled="Boolean(handlingId)"
           @change="onStatusFilterChange"
         />
-        <UiButton :loading="loading" @click="() => void loadPage()"> 刷新 </UiButton>
+        <UiButton :loading="loading" :disabled="Boolean(handlingId)" @click="() => void loadPage()">
+          刷新
+        </UiButton>
       </template>
     </ContextBar>
 
@@ -380,6 +423,7 @@ void loadPage()
         v-model:value="reviewForm.action"
         class="department-objection__field"
         :options="HANDLE_ACTION_OPTIONS.map((value) => ({ value, label: actionLabel(value) }))"
+        :disabled="Boolean(handlingId)"
         placeholder="复核结论"
       />
       <InputNumber
@@ -389,16 +433,20 @@ void loadPage()
         :min="0"
         :max="100"
         :precision="2"
+        :disabled="Boolean(handlingId)"
         placeholder="修正得分"
         style="width: 100%"
       />
       <Input.TextArea
         v-model:value="reviewForm.handleOpinion"
         :rows="4"
+        :disabled="Boolean(handlingId)"
         placeholder="请填写复核意见"
       />
       <template #footer>
-        <UiButton variant="ghost" @click="reviewDrawerOpen = false"> 取消 </UiButton>
+        <UiButton variant="ghost" :disabled="Boolean(handlingId)" @click="reviewDrawerOpen = false">
+          取消
+        </UiButton>
         <UiButton
           variant="primary"
           :loading="handlingId === reviewTarget?.objectionId"

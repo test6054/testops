@@ -106,17 +106,19 @@ import type {
   ArchiveEvaluationCampaignResponse,
   ArchiveReadinessCellVO,
   ArchiveReadinessMatrixMetaResponse,
-  ArchiveReadinessMatrixRowVO, ArchiveReadinessTermColumnVO 
+  ArchiveReadinessMatrixRowVO,
+  ArchiveReadinessTermColumnVO,
+} from '@/apis/mark/archive-volume'
+import {
+  getSupervisionReadinessMatrixMeta,
+  pageSupervisionCampaigns,
+  pageSupervisionReadinessMatrix,
 } from '@/apis/mark/archive-volume'
 import type { SemesterCode } from '@/types/enums/semester-enum'
+import { formatAcademicYearSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  getSupervisionReadinessMatrixMeta,
-  pageEvaluationCampaigns,
-  pageSupervisionReadinessMatrix,
-} from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -126,7 +128,6 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { DEFAULT_LIST_PAGE_SIZE, EXPORT_PAGE_SIZE } from '@/constants/pagination'
-import { formatAcademicYearSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearStartOptions } from '@/utils/academic-year'
 import {
   applyAcademicYearStartYearChange,
@@ -243,10 +244,10 @@ function termKey(columnKey: string) {
 
 function isArchiveReadinessCell(value: unknown): value is ArchiveReadinessCellVO {
   return (
-    typeof value === 'object'
-    && value !== null
-    && 'storedCount' in value
-    && 'totalVolumeCount' in value
+    typeof value === 'object' &&
+    value !== null &&
+    'storedCount' in value &&
+    'totalVolumeCount' in value
   )
 }
 
@@ -362,7 +363,7 @@ async function loadCampaignOptions(): Promise<void> {
     const all: ArchiveEvaluationCampaignResponse[] = []
     let pageNum = 1
     while (true) {
-      const page = await pageEvaluationCampaigns({ pageNum, pageSize: EXPORT_PAGE_SIZE })
+      const page = await pageSupervisionCampaigns({ pageNum, pageSize: EXPORT_PAGE_SIZE })
       all.push(...page.list)
       if (all.length >= page.total) {
         break

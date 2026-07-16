@@ -5,29 +5,39 @@ import type {
   PortfolioArchiveBagPreviewVO,
   PortfolioArchiveScoreResultVO,
 } from '@/apis/portfolio/bag-types'
-import type { PortfolioArchiveRecordSourceTypeCode } from '@/apis/portfolio/enums'
-import type {
-  PortfolioArchiveRecordDetailVO,
-  PortfolioArchiveRecordSummaryVO,
-  PortfolioArchiveTimelineItemVO,
-  PortfolioCompletenessLevelCode,
-  PortfolioTeacherOneTableCategoryVO,
-} from '@/apis/portfolio/types'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { message } from 'ant-design-vue'
-import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { PortfolioArchiveBagSourceTypeDescription } from '@/apis/portfolio/bag-types'
+import type { PortfolioArchiveRecordSourceTypeCode } from '@/apis/portfolio/enums'
 import {
   PortfolioArchiveRecordSourceTypeDescription,
   PortfolioArchiveRecordStatusCode,
   PortfolioArchiveRecordStatusDescription,
+  PortfolioArchiveSupportMaterialSourceTypeDescription,
   PortfolioCompletenessLevelDescription,
 } from '@/apis/portfolio/enums'
+import type {
+  PortfolioArchiveRecordDetailVO,
+  PortfolioArchiveRecordSummaryVO,
+  PortfolioArchiveSupportMaterialVO,
+  PortfolioArchiveTimelineItemVO,
+  PortfolioCompletenessLevelCode,
+  PortfolioMaterialVO,
+  PortfolioTeacherOneTableCategoryVO,
+} from '@/apis/portfolio/types'
+import {
+  PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
+  PORTFOLIO_COMPLETENESS_LEVEL_TONE,
+} from '@/apis/portfolio/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { SemesterOptions } from '@/types/enums/semester-enum'
+import { message } from 'ant-design-vue'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioArchiveApi } from '@/apis/portfolio/archive'
+import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import { portfolioArchiveBagApi } from '@/apis/portfolio/teacher-platform'
-import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE, PORTFOLIO_COMPLETENESS_LEVEL_TONE } from '@/apis/portfolio/types'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -36,13 +46,15 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
-import { SemesterOptions } from '@/types/enums/semester-enum'
+import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -60,6 +72,16 @@ function archiveRecordSourceTypeLabel(sourceType: PortfolioArchiveRecordSourceTy
     PortfolioArchiveRecordSourceTypeDescription,
     sourceType,
     '档案记录来源类型',
+  )
+}
+
+function supportMaterialSourceTypeLabel(
+  sourceType: PortfolioArchiveSupportMaterialVO['sourceType'],
+): string {
+  return strictEnumLabel(
+    PortfolioArchiveSupportMaterialSourceTypeDescription,
+    sourceType,
+    '档案支撑材料来源类型',
   )
 }
 
@@ -83,10 +105,13 @@ function completenessLevelTone(level?: PortfolioCompletenessLevelCode): BadgeTon
   return strictEnumTone(PORTFOLIO_COMPLETENESS_LEVEL_TONE, level, '档案完整度分级')
 }
 
-function bagCompletenessHeadline(preview: PortfolioArchiveBagPreviewVO | PortfolioArchiveBagAssembleVO): string {
-  const level = 'completenessLevel' in preview && preview.completenessLevel
-    ? completenessLevelLabel(preview.completenessLevel)
-    : ''
+function bagCompletenessHeadline(
+  preview: PortfolioArchiveBagPreviewVO | PortfolioArchiveBagAssembleVO,
+): string {
+  const level =
+    'completenessLevel' in preview && preview.completenessLevel
+      ? completenessLevelLabel(preview.completenessLevel)
+      : ''
   const percent = preview.completenessPercent ?? '—'
   return level ? `${percent}% · ${level}` : `${percent}%`
 }
@@ -140,9 +165,16 @@ const fieldColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 88 },
 ]
 
+const materialLibraryColumns: ColumnsType<PortfolioMaterialVO> = [
+  { title: '材料标题', dataIndex: 'materialTitle', key: 'materialTitle' },
+  { title: '分类编码', dataIndex: 'categoryCode', key: 'categoryCode', width: 130 },
+  { title: '操作', key: 'actions', width: 88 },
+]
+
 const route = useRoute()
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
+const { currentUserId } = usePortfolioTeacherAccess()
 
 const oneTableLoading = ref(false)
 const recordLoading = ref(false)
@@ -164,7 +196,24 @@ const scoreResult = ref<PortfolioArchiveScoreResultVO | null>(null)
 const scoreLoading = ref(false)
 const exportConfirmOpen = ref(false)
 const requestToken = ref(0)
+const oneTableRequestToken = ref(0)
 const recordRequestToken = ref(0)
+const timelineRequestToken = ref(0)
+const detailRequestToken = ref(0)
+const supportMaterialRequestToken = ref(0)
+const supportMaterialWriting = ref(false)
+const localMaterialModalOpen = ref(false)
+const localMaterialTitle = ref('')
+const localMaterialFileNodeId = ref<string>()
+const localMaterialFileName = ref<string>()
+const localMaterialFileSize = ref<number>()
+const materialLibraryModalOpen = ref(false)
+const materialLibraryLoading = ref(false)
+const materialLibraryRows = ref<PortfolioMaterialVO[]>([])
+const materialLibraryPageNum = ref(1)
+const materialLibraryPageSize = ref(10)
+const materialLibraryTotal = ref(0)
+const materialLibraryRequestToken = ref(0)
 const bagFilter = ref<{
   academicYear: string
   semester: SemesterCode | undefined
@@ -208,8 +257,45 @@ function resetArchiveDerivedContext() {
   exportConfirmOpen.value = false
 }
 
+/** 教师 Scope 变化时立即清空全部旧教师状态，并使所有在途读取失效。 */
+function resetTeacherArchiveContext() {
+  requestToken.value += 1
+  oneTableRequestToken.value += 1
+  recordRequestToken.value += 1
+  timelineRequestToken.value += 1
+  detailRequestToken.value += 1
+  supportMaterialRequestToken.value += 1
+  materialLibraryRequestToken.value += 1
+  oneTableLoading.value = false
+  recordLoading.value = false
+  timelineLoading.value = false
+  detailLoading.value = false
+  supportMaterialWriting.value = false
+  materialLibraryLoading.value = false
+  revisionLoading.value = false
+  scoreLoading.value = false
+  bagLoading.value = false
+  categories.value = []
+  selectedCategoryId.value = undefined
+  records.value = []
+  pageTotal.value = 0
+  timeline.value = []
+  drawerOpen.value = false
+  recordDetail.value = null
+  localMaterialModalOpen.value = false
+  localMaterialTitle.value = ''
+  localMaterialFileNodeId.value = undefined
+  localMaterialFileName.value = undefined
+  localMaterialFileSize.value = undefined
+  materialLibraryModalOpen.value = false
+  materialLibraryRows.value = []
+  materialLibraryTotal.value = 0
+  resetArchiveDerivedContext()
+}
+
 async function loadOneTable() {
-  const currentToken = requestToken.value
+  const currentScopeToken = requestToken.value
+  const currentToken = ++oneTableRequestToken.value
   if (!canLoadTeacherArchive.value) {
     categories.value = []
     selectedCategoryId.value = undefined
@@ -219,23 +305,25 @@ async function loadOneTable() {
   oneTableLoading.value = true
   try {
     const vo = await portfolioArchiveApi.getOneTable(teacherRequest.value)
-    if (requestToken.value !== currentToken) {
+    if (requestToken.value !== currentScopeToken || oneTableRequestToken.value !== currentToken) {
       return
     }
     categories.value = vo.categories
     if (
-      selectedCategoryId.value
-      && !categories.value.some((item) => item.categoryId === selectedCategoryId.value)
+      selectedCategoryId.value &&
+      !categories.value.some((item) => item.categoryId === selectedCategoryId.value)
     ) {
       selectedCategoryId.value = undefined
     }
   } catch (error) {
-    if (requestToken.value !== currentToken) {
+    if (requestToken.value !== currentScopeToken || oneTableRequestToken.value !== currentToken) {
       return
     }
+    categories.value = []
+    selectedCategoryId.value = undefined
     showUserError(error, '加载教师一张表失败')
   } finally {
-    if (requestToken.value === currentToken) {
+    if (requestToken.value === currentScopeToken && oneTableRequestToken.value === currentToken) {
       oneTableLoading.value = false
     }
   }
@@ -273,6 +361,8 @@ async function loadRecords() {
     if (requestToken.value !== currentScopeToken || recordRequestToken.value !== currentToken) {
       return
     }
+    records.value = []
+    pageTotal.value = 0
     showUserError(error, '加载档案记录失败')
   } finally {
     if (requestToken.value === currentScopeToken && recordRequestToken.value === currentToken) {
@@ -282,7 +372,8 @@ async function loadRecords() {
 }
 
 async function loadTimeline() {
-  const currentToken = requestToken.value
+  const currentScopeToken = requestToken.value
+  const currentToken = ++timelineRequestToken.value
   if (!canLoadTeacherArchive.value) {
     timeline.value = []
     return
@@ -293,48 +384,56 @@ async function loadTimeline() {
       ...teacherRequest.value,
       limit: 30,
     })
-    if (requestToken.value !== currentToken) {
+    if (requestToken.value !== currentScopeToken || timelineRequestToken.value !== currentToken) {
       return
     }
     timeline.value = nextTimeline
   } catch (error) {
-    if (requestToken.value !== currentToken) {
+    if (requestToken.value !== currentScopeToken || timelineRequestToken.value !== currentToken) {
       return
     }
+    timeline.value = []
     showUserError(error, '加载成长时间轴失败')
   } finally {
-    if (requestToken.value === currentToken) {
+    if (requestToken.value === currentScopeToken && timelineRequestToken.value === currentToken) {
       timelineLoading.value = false
     }
   }
 }
 
 async function openRecordById(recordId: string) {
-  const currentToken = requestToken.value
+  if (!canLoadTeacherArchive.value) {
+    drawerOpen.value = false
+    recordDetail.value = null
+    return
+  }
+  const currentScopeToken = requestToken.value
+  const currentToken = ++detailRequestToken.value
   drawerOpen.value = true
   recordDetail.value = null
   detailLoading.value = true
   try {
     const nextRecordDetail = await portfolioArchiveApi.getRecord(recordId)
-    if (requestToken.value !== currentToken) {
+    if (requestToken.value !== currentScopeToken || detailRequestToken.value !== currentToken) {
       return
     }
     recordDetail.value = nextRecordDetail
     if (
-      recordDetail.value?.categoryId
-      && selectedCategoryId.value !== recordDetail.value.categoryId
+      recordDetail.value?.categoryId &&
+      selectedCategoryId.value !== recordDetail.value.categoryId
     ) {
       selectedCategoryId.value = recordDetail.value.categoryId
       pageNum.value = 1
       await loadRecords()
     }
   } catch (error) {
-    if (requestToken.value !== currentToken) {
+    if (requestToken.value !== currentScopeToken || detailRequestToken.value !== currentToken) {
       return
     }
+    recordDetail.value = null
     showUserError(error, '加载档案详情失败')
   } finally {
-    if (requestToken.value === currentToken) {
+    if (requestToken.value === currentScopeToken && detailRequestToken.value === currentToken) {
       detailLoading.value = false
     }
   }
@@ -346,31 +445,237 @@ const canCreateRevision = computed(() => {
   if (!recordDetail.value) {
     return false
   }
+  const viewedTeacherId = targetTeacherId.value || currentUserId.value
+  if (!viewedTeacherId || viewedTeacherId !== currentUserId.value) {
+    return false
+  }
   return (
-    recordDetail.value.recordStatus === PortfolioArchiveRecordStatusCode.OFFICIAL
-    || recordDetail.value.recordStatus === PortfolioArchiveRecordStatusCode.SUPERSEDED
+    recordDetail.value.recordStatus === PortfolioArchiveRecordStatusCode.OFFICIAL ||
+    recordDetail.value.recordStatus === PortfolioArchiveRecordStatusCode.SUPERSEDED
   )
 })
+
+const canManageSupportMaterials = computed(() => {
+  if (!recordDetail.value || recordDetail.value.teacherId !== currentUserId.value) {
+    return false
+  }
+  return (
+    recordDetail.value.recordStatus === PortfolioArchiveRecordStatusCode.DRAFT ||
+    recordDetail.value.recordStatus === PortfolioArchiveRecordStatusCode.RETURNED
+  )
+})
+
+/** 写操作后按当前档案记录刷新支撑材料，并拒绝旧教师 Scope 或旧版本响应回写。 */
+async function refreshSupportMaterials(archiveRecordId: string) {
+  const currentScopeToken = requestToken.value
+  const currentToken = ++supportMaterialRequestToken.value
+  const rows = await portfolioArchiveApi.listSupportMaterials(archiveRecordId)
+  if (
+    requestToken.value !== currentScopeToken ||
+    supportMaterialRequestToken.value !== currentToken ||
+    recordDetail.value?.id !== archiveRecordId
+  ) {
+    return
+  }
+  recordDetail.value.supportMaterials = rows
+}
+
+function openLocalMaterialModal() {
+  localMaterialTitle.value = ''
+  localMaterialFileNodeId.value = undefined
+  localMaterialFileName.value = undefined
+  localMaterialFileSize.value = undefined
+  localMaterialModalOpen.value = true
+}
+
+/** 将平台暂存文件正式挂接到当前草稿档案。 */
+async function addLocalSupportMaterial() {
+  const archiveRecordId = recordDetail.value?.id
+  const materialTitle = localMaterialTitle.value.trim()
+  if (!archiveRecordId || !canManageSupportMaterials.value) {
+    message.warning('当前档案不可维护支撑材料')
+    return
+  }
+  if (supportMaterialWriting.value) {
+    return
+  }
+  if (!materialTitle) {
+    message.warning('请填写材料标题')
+    return
+  }
+  if (!localMaterialFileNodeId.value) {
+    message.warning('请先上传材料文件')
+    return
+  }
+  supportMaterialWriting.value = true
+  try {
+    await portfolioArchiveApi.addLocalSupportMaterial({
+      archiveRecordId,
+      materialTitle,
+      fileNodeId: localMaterialFileNodeId.value,
+    })
+    await refreshSupportMaterials(archiveRecordId)
+    localMaterialModalOpen.value = false
+    message.success('支撑材料已添加')
+  } catch (error) {
+    showUserError(error, '添加支撑材料失败')
+  } finally {
+    supportMaterialWriting.value = false
+  }
+}
+
+/** 加载当前档案所属教师的材料库，用于选择可关联文件。 */
+async function loadMaterialLibrary() {
+  const detail = recordDetail.value
+  if (!detail || !canManageSupportMaterials.value) {
+    return
+  }
+  const currentScopeToken = requestToken.value
+  const archiveRecordId = detail.id
+  const currentToken = ++materialLibraryRequestToken.value
+  materialLibraryLoading.value = true
+  try {
+    const page = await portfolioMaterialApi.page({
+      teacherId: detail.teacherId,
+      pageNum: materialLibraryPageNum.value,
+      pageSize: materialLibraryPageSize.value,
+    })
+    if (
+      requestToken.value !== currentScopeToken ||
+      materialLibraryRequestToken.value !== currentToken ||
+      recordDetail.value?.id !== archiveRecordId
+    ) {
+      return
+    }
+    materialLibraryRows.value = page.list
+    materialLibraryTotal.value = page.total
+  } catch (error) {
+    if (
+      requestToken.value === currentScopeToken &&
+      materialLibraryRequestToken.value === currentToken
+    ) {
+      materialLibraryRows.value = []
+      materialLibraryTotal.value = 0
+      showUserError(error, '加载材料库失败')
+    }
+  } finally {
+    if (
+      requestToken.value === currentScopeToken &&
+      materialLibraryRequestToken.value === currentToken
+    ) {
+      materialLibraryLoading.value = false
+    }
+  }
+}
+
+function openMaterialLibraryModal() {
+  materialLibraryPageNum.value = 1
+  materialLibraryModalOpen.value = true
+  void loadMaterialLibrary()
+}
+
+function handleMaterialLibraryPageChange(page: { current: number; pageSize: number }) {
+  materialLibraryPageNum.value = page.current
+  materialLibraryPageSize.value = page.pageSize
+  void loadMaterialLibrary()
+}
+
+/** 将教师材料库条目关联为当前草稿档案的支撑材料。 */
+async function linkSupportMaterial(material: PortfolioMaterialVO) {
+  const archiveRecordId = recordDetail.value?.id
+  if (!archiveRecordId || !canManageSupportMaterials.value) {
+    message.warning('当前档案不可维护支撑材料')
+    return
+  }
+  if (supportMaterialWriting.value) {
+    return
+  }
+  supportMaterialWriting.value = true
+  try {
+    await portfolioArchiveApi.linkSyncSupportMaterial({
+      archiveRecordId,
+      linkedMaterialId: material.id,
+    })
+    await refreshSupportMaterials(archiveRecordId)
+    materialLibraryModalOpen.value = false
+    message.success('材料库条目已关联')
+  } catch (error) {
+    showUserError(error, '关联材料失败')
+  } finally {
+    supportMaterialWriting.value = false
+  }
+}
+
+/** 下载支撑材料对应的平台文件节点。 */
+async function downloadSupportMaterial(material: PortfolioArchiveSupportMaterialVO) {
+  if (!material.fileNodeId) {
+    message.warning('该支撑材料没有可下载文件')
+    return
+  }
+  await handleDownloadFile({
+    fileId: material.fileNodeId,
+    fileName: material.fileName || material.materialTitle,
+  })
+}
+
+/** 删除当前草稿档案与支撑材料的关联。 */
+async function deleteSupportMaterial(material: PortfolioArchiveSupportMaterialVO) {
+  const archiveRecordId = recordDetail.value?.id
+  if (!archiveRecordId || !canManageSupportMaterials.value) {
+    message.warning('当前档案不可维护支撑材料')
+    return
+  }
+  if (supportMaterialWriting.value) {
+    return
+  }
+  const confirmed = await confirmAsync({
+    title: '删除支撑材料',
+    content: `确认删除「${material.materialTitle}」？`,
+    type: 'error',
+  })
+  if (!confirmed) {
+    return
+  }
+  supportMaterialWriting.value = true
+  try {
+    await portfolioArchiveApi.deleteSupportMaterial(material.id, archiveRecordId)
+    await refreshSupportMaterials(archiveRecordId)
+    message.success('支撑材料已删除')
+  } catch (error) {
+    showUserError(error, '删除支撑材料失败')
+  } finally {
+    supportMaterialWriting.value = false
+  }
+}
 
 async function createRevision() {
   if (!recordDetail.value) {
     return
   }
+  const currentScopeToken = requestToken.value
   revisionLoading.value = true
   try {
     const result = await portfolioArchiveApi.createRevision(
       recordDetail.value.id,
       targetTeacherId.value || undefined,
     )
+    if (requestToken.value !== currentScopeToken) {
+      return
+    }
     message.success('修订草稿已创建')
     await loadRecords()
     if (result.recordId) {
       void openRecordById(result.recordId)
     }
   } catch (error) {
+    if (requestToken.value !== currentScopeToken) {
+      return
+    }
     showUserError(error, '创建修订草稿失败')
   } finally {
-    revisionLoading.value = false
+    if (requestToken.value === currentScopeToken) {
+      revisionLoading.value = false
+    }
   }
 }
 
@@ -398,7 +703,7 @@ function selectCategory(categoryId: string) {
   void loadRecords()
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   pageNum.value = page.current
   pageSize.value = page.pageSize
   void loadRecords()
@@ -458,6 +763,7 @@ async function refreshBagScore(silent = false) {
     if (requestToken.value !== currentToken) {
       return
     }
+    scoreResult.value = null
     showUserError(error, '计算档案袋评分失败')
   } finally {
     if (requestToken.value === currentToken) {
@@ -489,6 +795,7 @@ async function assembleBag() {
     if (requestToken.value !== currentToken) {
       return
     }
+    bagSummary.value = null
     showUserError(error, '汇聚档案袋失败')
   } finally {
     if (requestToken.value === currentToken) {
@@ -515,6 +822,7 @@ async function previewBag(): Promise<boolean> {
     if (requestToken.value !== currentToken) {
       return false
     }
+    bagPreview.value = null
     showUserError(error, '加载档案袋预览失败')
     return false
   } finally {
@@ -555,6 +863,9 @@ async function confirmExportBag() {
       fileId: result.fileNodeId,
       fileName: result.fileName,
     })
+    if (requestToken.value !== currentToken) {
+      return
+    }
     exportConfirmOpen.value = false
     await previewBag()
   } catch (error) {
@@ -598,9 +909,8 @@ async function openRecordFromRouteQuery() {
 
 usePortfolioScopedLoader(
   async () => {
-    requestToken.value += 1
+    resetTeacherArchiveContext()
     pageNum.value = 1
-    resetArchiveDerivedContext()
     await reloadAll()
     await openRecordFromRouteQuery()
   },
@@ -620,18 +930,34 @@ watch(
     <template #context>
       <ContextBar show-title layout="workbench" title="我的档案">
         <template #actions>
-          <UiButton :loading="scoreLoading" @click="computeArchiveScore"> 档案评分 </UiButton>
-          <UiButton :loading="bagLoading" @click="previewBag"> 结构化预览 </UiButton>
-          <UiButton :loading="bagLoading" @click="assembleBag"> 汇聚预览 </UiButton>
-          <UiButton :loading="bagLoading" variant="primary" @click="exportBag">
+          <UiButton
+            :loading="scoreLoading"
+            :disabled="!canLoadTeacherArchive"
+            @click="computeArchiveScore"
+          >
+            档案评分
+          </UiButton>
+          <UiButton :loading="bagLoading" :disabled="!canLoadTeacherArchive" @click="previewBag">
+            结构化预览
+          </UiButton>
+          <UiButton :loading="bagLoading" :disabled="!canLoadTeacherArchive" @click="assembleBag">
+            汇聚预览
+          </UiButton>
+          <UiButton
+            :loading="bagLoading"
+            :disabled="!canLoadTeacherArchive"
+            variant="primary"
+            @click="exportBag"
+          >
             导出材料包
           </UiButton>
-          <UiButton @click="goCorrection"> 我的纠错 </UiButton>
+          <UiButton :disabled="!canLoadTeacherArchive" @click="goCorrection"> 我的纠错 </UiButton>
           <UiButton v-if="selectedCategoryId" @click="goCategoryEdit(selectedCategoryId)">
             分类填报
           </UiButton>
           <UiButton
             :loading="oneTableLoading || recordLoading || timelineLoading"
+            :disabled="!canLoadTeacherArchive"
             @click="reloadAll"
           >
             刷新
@@ -677,7 +1003,8 @@ watch(
         </UiTag>
       </div>
       <p>
-        已归档 {{ bagSummary.archivedCategoryCount }} 类 · 开放补采 {{ bagSummary.openGapTaskCount }} 项
+        已归档 {{ bagSummary.archivedCategoryCount }} 类 · 开放补采
+        {{ bagSummary.openGapTaskCount }} 项
         <template v-if="bagSummary.preview && bagCourseArchiveLabel(bagSummary.preview)">
           · {{ bagCourseArchiveLabel(bagSummary.preview) }}
         </template>
@@ -900,6 +1227,7 @@ watch(
               </template>
               <template v-else-if="column.key === 'actions'">
                 <UiTableActions
+                  v-if="recordDetail.recordStatus === PortfolioArchiveRecordStatusCode.OFFICIAL"
                   :items="[{ key: 'correct', label: '发起纠错' }]"
                   split
                   @action="
@@ -910,9 +1238,147 @@ watch(
             </template>
           </UiDataTable>
           <UiEmpty v-else description="暂无字段快照" />
+          <section class="teacher-archive__support-materials">
+            <div class="teacher-archive__support-materials-head">
+              <h4 class="teacher-archive__version-title">支撑材料</h4>
+              <div
+                v-if="canManageSupportMaterials"
+                class="teacher-archive__support-material-actions"
+              >
+                <UiButton
+                  size="sm"
+                  variant="outline"
+                  :disabled="supportMaterialWriting"
+                  @click="openMaterialLibraryModal"
+                >
+                  关联材料库
+                </UiButton>
+                <UiButton
+                  size="sm"
+                  :disabled="supportMaterialWriting"
+                  @click="openLocalMaterialModal"
+                >
+                  上传材料
+                </UiButton>
+              </div>
+            </div>
+            <ul v-if="recordDetail.supportMaterials.length" class="teacher-archive__support-list">
+              <li
+                v-for="material in recordDetail.supportMaterials"
+                :key="material.id"
+                class="teacher-archive__support-item"
+              >
+                <div class="teacher-archive__support-main">
+                  <span class="teacher-archive__support-title">{{ material.materialTitle }}</span>
+                  <span class="teacher-archive__support-meta">
+                    {{ supportMaterialSourceTypeLabel(material.sourceType) }}
+                    <template v-if="material.fileName"> · {{ material.fileName }}</template>
+                    <template v-if="material.createTime"> · {{ material.createTime }}</template>
+                  </span>
+                </div>
+                <div class="teacher-archive__support-row-actions">
+                  <UiTextAction
+                    size="sm"
+                    :disabled="!material.fileNodeId"
+                    @click="downloadSupportMaterial(material)"
+                  >
+                    下载
+                  </UiTextAction>
+                  <UiTextAction
+                    v-if="canManageSupportMaterials"
+                    tone="danger"
+                    size="sm"
+                    :disabled="supportMaterialWriting"
+                    @click="deleteSupportMaterial(material)"
+                  >
+                    删除
+                  </UiTextAction>
+                </div>
+              </li>
+            </ul>
+            <UiEmpty v-else description="暂无支撑材料" />
+          </section>
         </template>
       </a-spin>
     </UiDrawer>
+
+    <a-modal
+      v-model:open="localMaterialModalOpen"
+      title="上传支撑材料"
+      ok-text="确认添加"
+      cancel-text="取消"
+      :confirm-loading="supportMaterialWriting"
+      :mask-closable="!supportMaterialWriting"
+      @ok="addLocalSupportMaterial"
+    >
+      <div class="teacher-archive__material-form">
+        <label class="teacher-archive__material-label" for="archive-support-material-title">
+          材料标题
+        </label>
+        <a-input
+          id="archive-support-material-title"
+          v-model:value="localMaterialTitle"
+          :disabled="supportMaterialWriting"
+          :maxlength="200"
+          placeholder="填写可识别的材料标题"
+        />
+        <span class="teacher-archive__material-label">材料文件</span>
+        <UiPlatformFileField
+          v-model:file-node-id="localMaterialFileNodeId"
+          v-model:file-name="localMaterialFileName"
+          v-model:file-size="localMaterialFileSize"
+          :scene-key="FileUploadSceneKey.PORTFOLIO_MATERIAL"
+          :disabled="supportMaterialWriting"
+          button-text="选择文件"
+        />
+      </div>
+    </a-modal>
+
+    <a-modal
+      v-model:open="materialLibraryModalOpen"
+      title="关联材料库"
+      width="720px"
+      :footer="null"
+      :mask-closable="!supportMaterialWriting"
+    >
+      <UiDataTable
+        v-model:current="materialLibraryPageNum"
+        v-model:page-size="materialLibraryPageSize"
+        pagination-mode="server"
+        row-key="id"
+        size="small"
+        :columns="materialLibraryColumns"
+        :data-source="materialLibraryRows"
+        :loading="materialLibraryLoading"
+        :total="materialLibraryTotal"
+        :show-size-changer="false"
+        flat
+        @page-change="handleMaterialLibraryPageChange"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'actions'">
+            <UiTextAction
+              size="table"
+              tone="primary"
+              :disabled="
+                supportMaterialWriting ||
+                !record.fileNodeId ||
+                recordDetail?.supportMaterials.some((item) => item.linkedMaterialId === record.id)
+              "
+              @click="linkSupportMaterial(record)"
+            >
+              {{
+                recordDetail?.supportMaterials.some((item) => item.linkedMaterialId === record.id)
+                  ? '已关联'
+                  : record.fileNodeId
+                    ? '关联'
+                    : '无文件'
+              }}
+            </UiTextAction>
+          </template>
+        </template>
+      </UiDataTable>
+    </a-modal>
 
     <a-modal
       v-model:open="exportConfirmOpen"
@@ -1055,6 +1521,82 @@ watch(
 
 .teacher-archive__correcting-tag {
   margin-left: var(--dp-space-2);
+}
+
+.teacher-archive__support-materials {
+  margin-top: var(--dp-space-4);
+  padding-top: var(--dp-space-3);
+  border-top: 1px solid var(--ant-color-border-secondary);
+}
+
+.teacher-archive__support-materials-head,
+.teacher-archive__support-item,
+.teacher-archive__support-row-actions {
+  display: flex;
+  align-items: center;
+}
+
+.teacher-archive__support-materials-head {
+  justify-content: space-between;
+  gap: var(--dp-space-3);
+  margin-bottom: var(--dp-space-2);
+}
+
+.teacher-archive__support-materials-head .teacher-archive__version-title {
+  margin: 0;
+}
+
+.teacher-archive__support-material-actions,
+.teacher-archive__support-row-actions {
+  display: flex;
+  gap: var(--dp-space-2);
+}
+
+.teacher-archive__support-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.teacher-archive__support-item {
+  justify-content: space-between;
+  gap: var(--dp-space-3);
+  min-height: 52px;
+  padding: var(--dp-space-2) 0;
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+}
+
+.teacher-archive__support-main {
+  min-width: 0;
+}
+
+.teacher-archive__support-title,
+.teacher-archive__support-meta {
+  display: block;
+}
+
+.teacher-archive__support-title {
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  font-weight: var(--dp-font-weight-medium);
+}
+
+.teacher-archive__support-meta {
+  margin-top: var(--dp-space-1);
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  color: var(--dp-text-secondary);
+}
+
+.teacher-archive__material-form {
+  display: grid;
+  gap: var(--dp-space-2);
+}
+
+.teacher-archive__material-label {
+  margin-top: var(--dp-space-2);
+  font-size: 13px;
+  font-weight: var(--dp-font-weight-medium);
 }
 
 .teacher-archive__score-list {

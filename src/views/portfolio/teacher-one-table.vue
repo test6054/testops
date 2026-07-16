@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioTeacherIdentityTypeCode } from '@/apis/portfolio/enums'
-import type {
-  PortfolioDeptStructureStatVO,
-  PortfolioTeacherOneTableSummaryVO,
-} from '@/apis/portfolio/teacher'
+import {
+  PortfolioCompletenessLevelDescription,
+  PortfolioTeacherIdentityTypeDescription,
+} from '@/apis/portfolio/enums'
+import type { PortfolioTeacherOneTableSummaryVO } from '@/apis/portfolio/teacher'
+import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import { message } from 'ant-design-vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { PortfolioCompletenessLevelDescription, PortfolioTeacherIdentityTypeDescription } from '@/apis/portfolio/enums'
-import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import { PORTFOLIO_COMPLETENESS_LEVEL_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -33,7 +33,6 @@ const loading = ref(false)
 const exporting = ref(false)
 const loadFailed = ref(false)
 const summary = ref<PortfolioTeacherOneTableSummaryVO | null>(null)
-const deptStats = ref<PortfolioDeptStructureStatVO | null>(null)
 const requestToken = ref(0)
 
 const categoryColumns: ColumnsType = [
@@ -43,21 +42,20 @@ const categoryColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 180 },
 ]
 
-const deptStructureColumns: ColumnsType = [
-  { title: '院系', dataIndex: 'departmentName', key: 'departmentName' },
-  { title: '人数', dataIndex: 'teacherCount', key: 'teacherCount', width: 88, align: 'right' },
-]
-
 async function loadSummary() {
   const currentToken = requestToken.value + 1
   requestToken.value = currentToken
   if (canPickTeachers.value && !targetTeacherId.value) {
+    loading.value = false
+    exporting.value = false
+    loadFailed.value = false
     summary.value = null
-    deptStats.value = null
     return
   }
+  exporting.value = false
   loading.value = true
   loadFailed.value = false
+  summary.value = null
   try {
     const nextSummary = await portfolioTeacherApi.getOneTableSummary({
       teacherId: targetTeacherId.value || undefined,
@@ -65,16 +63,12 @@ async function loadSummary() {
     if (requestToken.value !== currentToken) {
       return
     }
-    const nextDeptStats = await portfolioTeacherApi.deptStructureStats()
-    if (requestToken.value !== currentToken) {
-      return
-    }
     summary.value = nextSummary
-    deptStats.value = nextDeptStats
   } catch (error) {
     if (requestToken.value !== currentToken) {
       return
     }
+    summary.value = null
     loadFailed.value = true
     showUserError(error)
   } finally {
@@ -107,9 +101,15 @@ function completenessSummaryText(summaryData: PortfolioTeacherOneTableSummaryVO)
     return '—'
   }
   const level = summaryData.completenessLevel
-    ? strictEnumLabel(PortfolioCompletenessLevelDescription, summaryData.completenessLevel, '档案完整度分级')
+    ? strictEnumLabel(
+        PortfolioCompletenessLevelDescription,
+        summaryData.completenessLevel,
+        '档案完整度分级',
+      )
     : ''
-  return level ? `${summaryData.completenessPercent}% · ${level}` : `${summaryData.completenessPercent}%`
+  return level
+    ? `${summaryData.completenessPercent}% · ${level}`
+    : `${summaryData.completenessPercent}%`
 }
 
 function courseArchiveSummaryText(summaryData: PortfolioTeacherOneTableSummaryVO): string {
@@ -151,17 +151,30 @@ async function exportOneTable() {
     message.warning('请先选择目标教师')
     return
   }
+  const scopeToken = requestToken.value
+  const teacherId = targetTeacherId.value
   exporting.value = true
   try {
     const result = await portfolioTeacherApi.exportOneTable({
-      teacherId: targetTeacherId.value || undefined,
+      teacherId: teacherId || undefined,
     })
+    if (requestToken.value !== scopeToken || targetTeacherId.value !== teacherId) {
+      return
+    }
     await downloadPortfolioExcelExport(result)
+    if (requestToken.value !== scopeToken || targetTeacherId.value !== teacherId) {
+      return
+    }
     message.success(`已导出 ${result.rowCount} 行`)
   } catch (error) {
+    if (requestToken.value !== scopeToken || targetTeacherId.value !== teacherId) {
+      return
+    }
     showUserError(error)
   } finally {
-    exporting.value = false
+    if (requestToken.value === scopeToken && targetTeacherId.value === teacherId) {
+      exporting.value = false
+    }
   }
 }
 
@@ -179,8 +192,15 @@ usePortfolioScopedLoader(
       <ContextBar show-title layout="workbench" title="教师一张表">
         <template #actions>
           <UiButton
+            :loading="loading"
+            :disabled="exporting || (canPickTeachers && !targetTeacherId)"
+            @click="loadSummary"
+          >
+            刷新
+          </UiButton>
+          <UiButton
             :loading="exporting"
-            :disabled="canPickTeachers && !targetTeacherId"
+            :disabled="loading || (canPickTeachers && !targetTeacherId)"
             @click="exportOneTable"
           >
             导出一张表
@@ -292,20 +312,6 @@ usePortfolioScopedLoader(
           </template>
         </UiDataTable>
       </UiCard>
-      <UiCard v-if="deptStats" title="院系师资结构" style="margin-top: 16px">
-        <p class="dept-total">教师总数 {{ deptStats.totalTeacherCount }}</p>
-        <UiDataTable
-          :columns="deptStructureColumns"
-          :data-source="deptStats.departments"
-          row-key="departmentId"
-          size="small"
-          flat
-          pagination-mode="none"
-          :show-pagination="false"
-          :sticky-header="false"
-          :total="deptStats.departments.length"
-        />
-      </UiCard>
     </a-spin>
   </StageWorkbenchShell>
 </template>
@@ -322,9 +328,5 @@ usePortfolioScopedLoader(
   padding-left: 18px;
   font-size: 14px;
   line-height: 1.6;
-}
-.dept-total {
-  margin: 0 0 8px;
-  font-size: 14px;
 }
 </style>

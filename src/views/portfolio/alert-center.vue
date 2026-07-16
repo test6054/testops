@@ -4,32 +4,31 @@ import type {
   PortfolioAnalysisAlertVO,
   PortfolioAnalysisComplianceAlertVO,
 } from '@/apis/portfolio/analysis'
-import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
+import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import type { PortfolioAlertTypeCode } from '@/types/enums/portfolio-alert-type-enum'
+import {
+  ALL_PORTFOLIO_ALERT_TYPE_CODES,
+  PortfolioAlertTypeDescription,
+} from '@/types/enums/portfolio-alert-type-enum'
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
+import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import {
   ALL_PORTFOLIO_ALERT_STATUS_CODES,
   PortfolioAlertStatusCode,
   PortfolioAlertStatusDescription,
 } from '@/types/enums/portfolio-alert-status-enum'
-import {
-  ALL_PORTFOLIO_ALERT_TYPE_CODES,
-  PortfolioAlertTypeDescription,
-} from '@/types/enums/portfolio-alert-type-enum'
-import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import {
   PortfolioComplianceScopeTypeCode,
   PortfolioComplianceScopeTypeDescription,
@@ -45,7 +44,9 @@ const tabItems = [
 
 const portraitLoading = ref(false)
 const complianceLoading = ref(false)
-const actionLoading = ref(false)
+const actionId = ref('')
+const portraitLoadFailed = ref(false)
+const complianceLoadFailed = ref(false)
 const portraitRequestToken = ref(0)
 const complianceRequestToken = ref(0)
 const portraitAlerts = ref<PortfolioAnalysisAlertVO[]>([])
@@ -54,8 +55,8 @@ const portraitTotal = ref(0)
 const complianceTotal = ref(0)
 const loading = computed(
   () =>
-    actionLoading.value
-    || (activeTab.value === 'portrait' ? portraitLoading.value : complianceLoading.value),
+    Boolean(actionId.value) ||
+    (activeTab.value === 'portrait' ? portraitLoading.value : complianceLoading.value),
 )
 
 const portraitFilter = reactive({
@@ -115,20 +116,6 @@ const complianceColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 180 },
 ]
 
-const portraitPagination = computed(() => ({
-  current: portraitFilter.pageNum,
-  pageSize: portraitFilter.pageSize,
-  total: portraitTotal.value,
-  showSizeChanger: true,
-}))
-
-const compliancePagination = computed(() => ({
-  current: complianceFilter.pageNum,
-  pageSize: complianceFilter.pageSize,
-  total: complianceTotal.value,
-  showSizeChanger: true,
-}))
-
 function alertTypeLabel(code: string): string {
   return strictEnumLabel(
     PortfolioAlertTypeDescription,
@@ -174,6 +161,7 @@ function alertStatusTone(code: string): 'red' | 'orange' | 'green' | 'gray' {
 async function loadPortraitAlerts() {
   const currentToken = ++portraitRequestToken.value
   portraitLoading.value = true
+  portraitLoadFailed.value = false
   portraitAlerts.value = []
   portraitTotal.value = 0
   try {
@@ -194,6 +182,7 @@ async function loadPortraitAlerts() {
     }
     portraitAlerts.value = []
     portraitTotal.value = 0
+    portraitLoadFailed.value = true
     showUserError(error, '加载画像预警失败')
   } finally {
     if (currentToken === portraitRequestToken.value) {
@@ -205,6 +194,7 @@ async function loadPortraitAlerts() {
 async function loadComplianceAlerts() {
   const currentToken = ++complianceRequestToken.value
   complianceLoading.value = true
+  complianceLoadFailed.value = false
   complianceAlerts.value = []
   complianceTotal.value = 0
   try {
@@ -225,6 +215,7 @@ async function loadComplianceAlerts() {
     }
     complianceAlerts.value = []
     complianceTotal.value = 0
+    complianceLoadFailed.value = true
     showUserError(error, '加载合规预警失败')
   } finally {
     if (currentToken === complianceRequestToken.value) {
@@ -241,17 +232,15 @@ function reloadActiveTab() {
   void loadComplianceAlerts()
 }
 
-function onPortraitTableChange(changeEvent: UiDataTableChangeEvent) {
-  const { pageNum, pageSize } = readUiDataTablePagination(changeEvent, DEFAULT_LIST_PAGE_SIZE)
-  portraitFilter.pageNum = pageNum
-  portraitFilter.pageSize = pageSize
+function onPortraitPageChange(page: { current: number; pageSize: number }) {
+  portraitFilter.pageNum = page.current
+  portraitFilter.pageSize = page.pageSize
   void loadPortraitAlerts()
 }
 
-function onComplianceTableChange(changeEvent: UiDataTableChangeEvent) {
-  const { pageNum, pageSize } = readUiDataTablePagination(changeEvent, DEFAULT_LIST_PAGE_SIZE)
-  complianceFilter.pageNum = pageNum
-  complianceFilter.pageSize = pageSize
+function onCompliancePageChange(page: { current: number; pageSize: number }) {
+  complianceFilter.pageNum = page.current
+  complianceFilter.pageSize = page.pageSize
   void loadComplianceAlerts()
 }
 
@@ -273,7 +262,21 @@ async function resolvePortraitAlert(
   row: PortfolioAnalysisAlertVO,
   alertStatus: PortfolioAlertStatusCode,
 ) {
-  actionLoading.value = true
+  if (actionId.value) {
+    return
+  }
+  if (alertStatus === PortfolioAlertStatusCode.RESOLVED) {
+    const confirmed = await confirmAsync({
+      title: '确认关闭画像预警',
+      content: `确认关闭“${row.alertTitle}”？关闭表示该预警已完成处置。`,
+      type: 'warning',
+      okText: '确认关闭',
+    })
+    if (!confirmed || actionId.value) {
+      return
+    }
+  }
+  actionId.value = row.id
   try {
     await portfolioAnalysisApi.resolvePortraitAlert({
       alertId: row.id,
@@ -286,7 +289,9 @@ async function resolvePortraitAlert(
   } catch (error) {
     showUserError(error, '画像预警处置失败')
   } finally {
-    actionLoading.value = false
+    if (actionId.value === row.id) {
+      actionId.value = ''
+    }
   }
 }
 
@@ -294,7 +299,21 @@ async function resolveComplianceAlert(
   row: PortfolioAnalysisComplianceAlertVO,
   alertStatus: PortfolioAlertStatusCode,
 ) {
-  actionLoading.value = true
+  if (actionId.value) {
+    return
+  }
+  if (alertStatus === PortfolioAlertStatusCode.RESOLVED) {
+    const confirmed = await confirmAsync({
+      title: '确认关闭合规预警',
+      content: `确认关闭“${row.alertSummary}”？关闭表示该预警已完成处置。`,
+      type: 'warning',
+      okText: '确认关闭',
+    })
+    if (!confirmed || actionId.value) {
+      return
+    }
+  }
+  actionId.value = row.id
   try {
     await portfolioAnalysisApi.resolveComplianceAlert({
       alertId: row.id,
@@ -307,7 +326,9 @@ async function resolveComplianceAlert(
   } catch (error) {
     showUserError(error, '合规预警处置失败')
   } finally {
-    actionLoading.value = false
+    if (actionId.value === row.id) {
+      actionId.value = ''
+    }
   }
 }
 
@@ -348,11 +369,15 @@ onMounted(() => {
           <a-button @click="resetPortraitFilter"> 重置 </a-button>
         </div>
         <UiDataTable
+          v-model:current="portraitFilter.pageNum"
+          v-model:page-size="portraitFilter.pageSize"
           row-key="id"
           :columns="portraitColumns"
           :data-source="portraitAlerts"
-          :pagination="portraitPagination"
-          @change="onPortraitTableChange"
+          pagination-mode="server"
+          :total="portraitTotal"
+          :load-error="portraitLoadFailed"
+          @page-change="onPortraitPageChange"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'teacher'">
@@ -379,14 +404,16 @@ onMounted(() => {
             >
               <UiButton
                 size="sm"
-                :loading="loading"
+                :loading="actionId === record.id"
+                :disabled="Boolean(actionId)"
                 @click="resolvePortraitAlert(record, PortfolioAlertStatusCode.ACKNOWLEDGED)"
               >
                 已知晓
               </UiButton>
               <UiButton
                 size="sm"
-                :loading="loading"
+                :loading="actionId === record.id"
+                :disabled="Boolean(actionId)"
                 @click="resolvePortraitAlert(record, PortfolioAlertStatusCode.RESOLVED)"
               >
                 关闭
@@ -394,7 +421,7 @@ onMounted(() => {
             </template>
           </template>
           <template #emptyText>
-            <UiEmpty description="暂无画像预警" />
+            <UiEmpty :description="portraitLoadFailed ? '画像预警加载失败' : '暂无画像预警'" />
           </template>
         </UiDataTable>
       </UiCard>
@@ -418,11 +445,15 @@ onMounted(() => {
           <a-button @click="resetComplianceFilter"> 重置 </a-button>
         </div>
         <UiDataTable
+          v-model:current="complianceFilter.pageNum"
+          v-model:page-size="complianceFilter.pageSize"
           row-key="id"
           :columns="complianceColumns"
           :data-source="complianceAlerts"
-          :pagination="compliancePagination"
-          @change="onComplianceTableChange"
+          pagination-mode="server"
+          :total="complianceTotal"
+          :load-error="complianceLoadFailed"
+          @page-change="onCompliancePageChange"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'scopeType'">
@@ -430,8 +461,8 @@ onMounted(() => {
             </template>
             <template v-else-if="column.key === 'department'">
               {{
-                record.departmentName
-                  || (record.departmentId ? `院系 ${record.departmentId}` : '全校')
+                record.departmentName ||
+                (record.departmentId ? `院系 ${record.departmentId}` : '全校')
               }}
             </template>
             <template v-else-if="column.key === 'alertType'">
@@ -449,14 +480,16 @@ onMounted(() => {
             >
               <UiButton
                 size="sm"
-                :loading="loading"
+                :loading="actionId === record.id"
+                :disabled="Boolean(actionId)"
                 @click="resolveComplianceAlert(record, PortfolioAlertStatusCode.ACKNOWLEDGED)"
               >
                 已知晓
               </UiButton>
               <UiButton
                 size="sm"
-                :loading="loading"
+                :loading="actionId === record.id"
+                :disabled="Boolean(actionId)"
                 @click="resolveComplianceAlert(record, PortfolioAlertStatusCode.RESOLVED)"
               >
                 关闭
@@ -464,7 +497,7 @@ onMounted(() => {
             </template>
           </template>
           <template #emptyText>
-            <UiEmpty description="暂无合规预警" />
+            <UiEmpty :description="complianceLoadFailed ? '合规预警加载失败' : '暂无合规预警'" />
           </template>
         </UiDataTable>
       </UiCard>

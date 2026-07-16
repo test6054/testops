@@ -1,10 +1,5 @@
 <template>
-  <div
-    v-if="steps.length > 0"
-    class="archive-lifecycle-pipe"
-    role="list"
-    aria-label="归档生命周期"
-  >
+  <div v-if="steps.length > 0" class="archive-lifecycle-pipe" role="list" aria-label="归档生命周期">
     <template v-for="(step, index) in steps" :key="step.key">
       <div
         v-if="index > 0"
@@ -97,7 +92,7 @@ function connectorClass(index: number): string {
 .archive-lifecycle-pipe__dot {
   width: 32px;
   height: 32px;
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
   display: flex;
   align-items: center;
   justify-content: center;

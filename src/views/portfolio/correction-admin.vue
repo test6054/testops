@@ -1,16 +1,24 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioCorrectionSummaryVO } from '@/apis/portfolio/types'
+import type {
+  PortfolioCorrectionImpactVO,
+  PortfolioCorrectionSummaryVO,
+} from '@/apis/portfolio/types'
+import {
+  PORTFOLIO_CORRECTION_IMPACT_RECOMPUTE_STATUS_TONE,
+  PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE,
+} from '@/apis/portfolio/types'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { Input, message } from 'ant-design-vue'
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
 import {
   PortfolioCorrectionHandleActionCode,
+  PortfolioCorrectionImpactRecomputeStatusCode,
+  PortfolioCorrectionImpactRecomputeStatusDescription,
   PortfolioCorrectionRequestStatusCode,
   PortfolioCorrectionRequestStatusDescription,
 } from '@/apis/portfolio/enums'
-import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -31,6 +39,22 @@ function statusTone(status: PortfolioCorrectionRequestStatusCode) {
   return strictEnumTone(PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE, status, '纠错工单状态')
 }
 
+function impactStatusLabel(status: PortfolioCorrectionImpactRecomputeStatusCode): string {
+  return strictEnumLabel(
+    PortfolioCorrectionImpactRecomputeStatusDescription,
+    status,
+    '纠错影响重算状态',
+  )
+}
+
+function impactStatusTone(status: PortfolioCorrectionImpactRecomputeStatusCode) {
+  return strictEnumTone(
+    PORTFOLIO_CORRECTION_IMPACT_RECOMPUTE_STATUS_TONE,
+    status,
+    '纠错影响重算状态',
+  )
+}
+
 const loading = ref(false)
 const handlingId = ref('')
 const rows = ref<PortfolioCorrectionSummaryVO[]>([])
@@ -40,6 +64,15 @@ const pageTotal = ref(0)
 const rejectDrawerOpen = ref(false)
 const rejectTarget = ref<PortfolioCorrectionSummaryVO | null>(null)
 const rejectForm = reactive({ handleOpinion: '' })
+const listRequestToken = ref(0)
+const impactDrawerOpen = ref(false)
+const impactLoading = ref(false)
+const impactRecomputing = ref(false)
+const impactDetail = ref<PortfolioCorrectionImpactVO | null>(null)
+const impactTarget = ref<PortfolioCorrectionSummaryVO | null>(null)
+const impactRequestToken = ref(0)
+
+const operationPending = computed(() => Boolean(handlingId.value) || impactRecomputing.value)
 
 const columns: ColumnsType<PortfolioCorrectionSummaryVO> = [
   { title: '教师', key: 'teacherName', width: 120, fixed: 'left' },
@@ -47,7 +80,7 @@ const columns: ColumnsType<PortfolioCorrectionSummaryVO> = [
   { title: '字段', dataIndex: 'fieldLabel', key: 'fieldLabel', width: 120 },
   { title: '状态', key: 'requestStatus', width: 110 },
   { title: '原因', dataIndex: 'reason', key: 'reason' },
-  { title: '操作', key: 'actions', width: 220 },
+  { title: '操作', key: 'actions', width: 260 },
 ]
 
 /** 列表刷新或处理完成后必须清空失效的驳回上下文，避免继续操作旧工单。 */
@@ -58,21 +91,31 @@ function resetRejectContext() {
 }
 
 async function loadPage() {
+  const currentToken = ++listRequestToken.value
   loading.value = true
   try {
     const page = await portfolioCorrectionApi.pageCorrections({
       pageNum: pageNum.value,
       pageSize: pageSize.value,
     })
+    if (currentToken !== listRequestToken.value) {
+      return
+    }
     rows.value = page.list
     pageTotal.value = page.total
     if (rejectTarget.value && !rows.value.some((item) => item.id === rejectTarget.value?.id)) {
       resetRejectContext()
     }
   } catch (error) {
-    showUserError(error, '加载纠错工单失败')
+    if (currentToken === listRequestToken.value) {
+      rows.value = []
+      pageTotal.value = 0
+      showUserError(error, '加载纠错工单失败')
+    }
   } finally {
-    loading.value = false
+    if (currentToken === listRequestToken.value) {
+      loading.value = false
+    }
   }
 }
 
@@ -81,6 +124,9 @@ async function handleRow(
   action: PortfolioCorrectionHandleActionCode,
   handleOpinion?: string,
 ) {
+  if (operationPending.value) {
+    return
+  }
   handlingId.value = row.id
   try {
     await portfolioCorrectionApi.handleCorrection({
@@ -118,7 +164,7 @@ async function submitReject() {
 
 /** 组装纠错工单行内操作。 */
 function buildCorrectionRowActions(row: PortfolioCorrectionSummaryVO): UiTableRowActionItem[] {
-  const busy = handlingId.value === row.id
+  const busy = operationPending.value
   const actions: UiTableRowActionItem[] = []
   if (row.requestStatus === PortfolioCorrectionRequestStatusCode.SUBMITTED) {
     actions.push({
@@ -143,7 +189,63 @@ function buildCorrectionRowActions(row: PortfolioCorrectionSummaryVO): UiTableRo
       disabled: busy,
     })
   }
+  if (row.requestStatus === PortfolioCorrectionRequestStatusCode.CLOSED) {
+    actions.push({ key: 'impact', label: '影响报告', tone: 'primary', disabled: busy })
+  }
   return actions
+}
+
+/** 打开已关闭纠错工单的影响范围与重算结果。 */
+async function openImpact(row: PortfolioCorrectionSummaryVO) {
+  const currentToken = ++impactRequestToken.value
+  impactTarget.value = row
+  impactDetail.value = null
+  impactDrawerOpen.value = true
+  impactLoading.value = true
+  try {
+    const detail = await portfolioCorrectionApi.getImpact(row.id)
+    if (currentToken !== impactRequestToken.value || impactTarget.value?.id !== row.id) {
+      return
+    }
+    impactDetail.value = detail
+  } catch (error) {
+    if (currentToken === impactRequestToken.value && impactTarget.value?.id === row.id) {
+      showUserError(error, '加载纠错影响报告失败')
+    }
+  } finally {
+    if (currentToken === impactRequestToken.value) {
+      impactLoading.value = false
+    }
+  }
+}
+
+/** 对待重算或失败报告执行人工重试，并以服务端最新状态刷新抽屉。 */
+async function recomputeImpact() {
+  const target = impactTarget.value
+  if (!target || !impactDetail.value || operationPending.value) {
+    return
+  }
+  if (!impactDetail.value.retryAllowed) {
+    return
+  }
+  impactRecomputing.value = true
+  try {
+    impactDetail.value = await portfolioCorrectionApi.recomputeImpact(target.id)
+    message.success('纠错影响重算完成')
+  } catch (error) {
+    showUserError(error, '纠错影响重算失败')
+    await openImpact(target)
+  } finally {
+    impactRecomputing.value = false
+  }
+}
+
+function resetImpactContext() {
+  impactRequestToken.value += 1
+  impactDrawerOpen.value = false
+  impactLoading.value = false
+  impactDetail.value = null
+  impactTarget.value = null
 }
 
 function handleCorrectionRowAction(key: string, row: PortfolioCorrectionSummaryVO): void {
@@ -162,6 +264,9 @@ function handleCorrectionRowAction(key: string, row: PortfolioCorrectionSummaryV
       break
     case 'close':
       void handleRow(row, PortfolioCorrectionHandleActionCode.CLOSE)
+      break
+    case 'impact':
+      void openImpact(row)
       break
   }
 }
@@ -226,6 +331,77 @@ void loadPage()
         </UiButton>
       </template>
     </UiDrawer>
+
+    <UiDrawer
+      v-model:open="impactDrawerOpen"
+      title="纠错影响报告"
+      width="620"
+      hide-footer
+      @close="resetImpactContext"
+    >
+      <a-spin :spinning="impactLoading">
+        <template v-if="impactDetail">
+          <div class="correction-admin__impact-head">
+            <UiTag :tone="impactStatusTone(impactDetail.recomputeStatus)">
+              {{ impactStatusLabel(impactDetail.recomputeStatus) }}
+            </UiTag>
+            <UiButton
+              v-if="impactDetail.retryAllowed"
+              size="sm"
+              :loading="impactRecomputing"
+              :disabled="operationPending && !impactRecomputing"
+              @click="recomputeImpact"
+            >
+              {{
+                impactDetail.recomputeStatus === PortfolioCorrectionImpactRecomputeStatusCode.FAILED
+                  ? '重新重算'
+                  : impactDetail.recomputeStatus ===
+                      PortfolioCorrectionImpactRecomputeStatusCode.RUNNING
+                    ? '接管重试'
+                    : '执行重算'
+              }}
+            </UiButton>
+          </div>
+          <p class="correction-admin__impact-summary">{{ impactDetail.impactSummary }}</p>
+          <dl class="correction-admin__impact-grid">
+            <dt>开始时间</dt>
+            <dd>{{ impactDetail.recomputeStartedTime || '尚未开始' }}</dd>
+            <dt>完成时间</dt>
+            <dd>{{ impactDetail.recomputeTime || '尚未完成' }}</dd>
+            <dt>受影响指标</dt>
+            <dd>
+              <div
+                v-if="impactDetail.affectedIndicatorCodes.length"
+                class="correction-admin__tag-list"
+              >
+                <UiTag v-for="code in impactDetail.affectedIndicatorCodes" :key="code" tone="blue">
+                  {{ code }}
+                </UiTag>
+              </div>
+              <span v-else>无</span>
+            </dd>
+            <dt>评价任务</dt>
+            <dd>
+              <div
+                v-if="impactDetail.affectedEvaluationTaskIds.length"
+                class="correction-admin__tag-list"
+              >
+                <UiTag v-for="id in impactDetail.affectedEvaluationTaskIds" :key="id" tone="gray">
+                  {{ id }}
+                </UiTag>
+              </div>
+              <span v-else>无</span>
+            </dd>
+          </dl>
+          <p v-if="impactDetail.recomputeResult" class="correction-admin__impact-result">
+            {{ impactDetail.recomputeResult }}
+          </p>
+          <p v-if="impactDetail.failureReason" class="correction-admin__impact-failure">
+            {{ impactDetail.failureReason }}
+          </p>
+        </template>
+      </a-spin>
+    </UiDrawer>
   </StageWorkbenchShell>
 </template>
 
@@ -234,5 +410,57 @@ void loadPage()
   margin: 0 0 var(--dp-space-3);
   font-size: 14px;
   color: var(--dp-text-secondary);
+}
+
+.correction-admin__impact-head,
+.correction-admin__tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dp-space-2);
+}
+
+.correction-admin__impact-head {
+  justify-content: space-between;
+}
+
+.correction-admin__impact-summary,
+.correction-admin__impact-result,
+.correction-admin__impact-failure {
+  margin: var(--dp-space-3) 0 0;
+  padding: var(--dp-space-3);
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: var(--dp-radius-control);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.correction-admin__impact-result {
+  border-color: var(--ant-color-success-border);
+  background: var(--ant-color-success-bg);
+}
+
+.correction-admin__impact-failure {
+  border-color: var(--ant-color-error-border);
+  background: var(--ant-color-error-bg);
+  color: var(--ant-color-error);
+}
+
+.correction-admin__impact-grid {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: var(--dp-space-2) var(--dp-space-3);
+  margin: var(--dp-space-4) 0 0;
+  font-size: 13px;
+}
+
+.correction-admin__impact-grid dt {
+  color: var(--dp-text-secondary);
+}
+
+.correction-admin__impact-grid dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 </style>

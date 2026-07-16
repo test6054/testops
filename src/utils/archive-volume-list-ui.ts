@@ -5,18 +5,15 @@ import {
   ArchiveVolumeStatusCode
 } from '@/apis/mark/archive-volume'
 
-/** 归档时限临期天数（列表 Badge 展示） */
-export const ARCHIVE_DUE_SOON_LEAD_DAYS = 30
-
 /** 判断归档截止是否已逾期 */
 export function isArchiveDueOverdue(archiveDueTime?: string): boolean {
   if (!archiveDueTime) return false
   return new Date(archiveDueTime).getTime() < Date.now()
 }
 
-/** 判断归档截止是否临期（未逾期且在 leadDays 内） */
-export function isArchiveDueSoon(archiveDueTime?: string, leadDays = ARCHIVE_DUE_SOON_LEAD_DAYS): boolean {
-  if (!archiveDueTime || isArchiveDueOverdue(archiveDueTime)) return false
+/** 按后端院系时限策略判断归档截止是否临期。 */
+export function isArchiveDueSoon(archiveDueTime: string | undefined, leadDays: number | undefined): boolean {
+  if (!archiveDueTime || leadDays == null || leadDays <= 0 || isArchiveDueOverdue(archiveDueTime)) return false
   const dueMs = new Date(archiveDueTime).getTime()
   const leadMs = leadDays * 24 * 60 * 60 * 1000
   return dueMs - Date.now() <= leadMs

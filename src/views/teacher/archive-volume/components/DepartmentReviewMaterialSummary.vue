@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { ArchiveVolumeDetailResponse } from '@/apis/mark/archive-volume'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   ArchiveCatalogStatusDescription,
   ArchiveVolumeSubmitChecklistPhaseDescription,
   getArchiveVolumeMaterialStats,
 } from '@/apis/mark/archive-volume'
+import { computed, onMounted, ref, watch } from 'vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import {
@@ -33,6 +33,7 @@ const ARCHIVE_SELF_CHECK_STATUS_TONE = {
 } as const
 
 const materialCount = ref<number | null>(null)
+const materialCountLoadFailed = ref(false)
 
 const catalogLabel = computed(() => {
   const status = props.detail.catalogStatus
@@ -85,13 +86,16 @@ const missingItems = computed(() => props.detail.latestIntegrityCheck?.missingIt
 async function loadMaterialCount(): Promise<void> {
   if (!props.volumeId) {
     materialCount.value = null
+    materialCountLoadFailed.value = false
     return
   }
   try {
     const stats = await getArchiveVolumeMaterialStats({ volumeId: props.volumeId })
     materialCount.value = stats.volumeSummary.totalCount
+    materialCountLoadFailed.value = false
   } catch (error) {
     materialCount.value = null
+    materialCountLoadFailed.value = true
     showUserError(error, '加载材料统计失败')
   }
 }
@@ -112,12 +116,18 @@ onMounted(() => {
   <section class="dept-review-summary">
     <div class="dept-review-summary__head">
       <span class="dept-review-summary__title">材料与提交前摘要</span>
-      <span class="dept-review-summary__hint">院系档案员审核前可在此核对完整性，无需进入详情逐 Tab 切换</span>
+      <span class="dept-review-summary__hint"
+        >院系档案员审核前可在此核对完整性，无需进入详情逐 Tab 切换</span
+      >
     </div>
     <dl class="dept-review-summary__grid">
       <div class="dept-review-summary__item">
         <dt>已登记材料</dt>
-        <dd>{{ materialCount ?? '—' }} 件</dd>
+        <dd v-if="materialCountLoadFailed">
+          加载失败
+          <UiTextAction tone="primary" @click="loadMaterialCount">重试</UiTextAction>
+        </dd>
+        <dd v-else>{{ materialCount ?? '—' }} 件</dd>
       </div>
       <div class="dept-review-summary__item">
         <dt>编目</dt>

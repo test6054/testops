@@ -8,6 +8,10 @@
     </template>
 
     <UiSkeletonState v-if="accessLoading" variant="card" compact />
+    <div v-else-if="accessLoadFailed" class="archive-volume-access-panel__load-error">
+      <p>查阅记录加载失败</p>
+      <UiButton size="sm" variant="outline" @click="loadAccessRecords">重试</UiButton>
+    </div>
     <UiEmpty v-else-if="accessRecords.length === 0" description="暂无查阅记录" />
     <div v-else class="archive-volume-access-panel__list">
       <article
@@ -72,17 +76,19 @@
 
         <div
           v-if="
-            record.accessStatus === ArchiveAccessStatusCode.PENDING
-              && canApproveAccessRecord(record)
+            record.accessStatus === ArchiveAccessStatusCode.PENDING &&
+            canApproveAccessRecord(record)
           "
           class="approval-card__actions"
         >
           <template v-if="rejectingRecordId === record.accessRecordId">
             <a-textarea
               v-model:value="rejectAccessComment"
+              :maxlength="500"
               :rows="2"
               placeholder="填写驳回原因"
               class="approval-card__reject-input"
+              show-count
             />
             <div class="approval-card__action-row">
               <UiButton
@@ -106,9 +112,11 @@
           <template v-else-if="approvingRecordId === record.accessRecordId">
             <a-textarea
               v-model:value="approveAccessComment"
+              :maxlength="500"
               :rows="2"
               placeholder="可选审批意见"
               class="approval-card__reject-input"
+              show-count
             />
             <div class="approval-card__action-row">
               <UiButton size="sm" variant="outline" @click="cancelApprove">取消</UiButton>
@@ -131,15 +139,32 @@
 
         <div
           v-if="
-            record.accessStatus === ArchiveAccessStatusCode.ACTIVE
-              && record.applicantUserId === currentUserId
+            record.accessStatus === ArchiveAccessStatusCode.ACTIVE &&
+            record.applicantUserId === currentUserId
           "
           class="approval-card__actions"
         >
-          <UiButton size="sm" variant="outline" @click="handleAccessDownload(record)">
+          <a-select
+            v-if="!record.materialId"
+            v-model:value="activeMaterialSelections[record.accessRecordId]"
+            :options="materialOptions"
+            placeholder="选择要查阅的材料"
+            class="approval-card__material-select"
+          />
+          <UiButton
+            size="sm"
+            variant="outline"
+            :disabled="!resolveAccessMaterialId(record)"
+            @click="handleAccessDownload(record)"
+          >
             下载材料
           </UiButton>
-          <UiButton size="sm" variant="outline" @click="handleAccessPreview(record)">
+          <UiButton
+            size="sm"
+            variant="outline"
+            :disabled="!resolveAccessMaterialId(record)"
+            @click="handleAccessPreview(record)"
+          >
             在线预览
           </UiButton>
         </div>
@@ -158,8 +183,17 @@
       @confirm="submitAccessRequest"
     >
       <a-form layout="vertical">
+        <a-form-item label="查阅范围" required>
+          <a-select v-model:value="accessRequestMaterialId" :options="accessScopeOptions" />
+        </a-form-item>
         <a-form-item label="查阅原因" required>
-          <a-textarea v-model:value="accessReason" :rows="3" placeholder="说明查阅用途" />
+          <a-textarea
+            v-model:value="accessReason"
+            :maxlength="500"
+            :rows="3"
+            placeholder="说明查阅用途"
+            show-count
+          />
         </a-form-item>
       </a-form>
     </UiDrawer>
@@ -195,9 +229,8 @@
 import type {
   ArchiveVolumeAccessReadPageRequest,
   ArchiveVolumeAccessRecordResponse,
+  ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import {
   approveArchiveVolumeAccess,
   ArchiveAccessStatusCode,
@@ -208,6 +241,8 @@ import {
   rejectArchiveVolumeAccess,
   requestArchiveVolumeAccess,
 } from '@/apis/mark/archive-volume'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -231,9 +266,11 @@ const props = defineProps<{
   canRequestAccess: boolean
   canApproveAccessRecord: (record: ArchiveVolumeAccessRecordResponse) => boolean
   currentUserId: string
+  materials: ArchiveVolumeMaterialResponse[]
 }>()
 
 const accessLoading = ref(false)
+const accessLoadFailed = ref(false)
 const accessSubmitting = ref(false)
 const approvingRecordId = ref('')
 const rejectingRecordId = ref('')
@@ -250,21 +287,40 @@ const readPageForm = reactive<ArchiveVolumeAccessReadPageRequest>({
 const accessRecords = ref<ArchiveVolumeAccessRecordResponse[]>([])
 const accessModalOpen = ref(false)
 const accessReason = ref('')
+const accessRequestMaterialId = ref('')
+const activeMaterialSelections = reactive<Record<string, string | undefined>>({})
+
+const materialOptions = computed(() =>
+  props.materials
+    .filter((material) => Boolean(material.materialId && material.fileId))
+    .map((material) => ({
+      value: material.materialId,
+      label: material.fileName || material.catalogCode || material.materialType,
+    })),
+)
+
+const accessScopeOptions = computed(() => [
+  { value: '', label: '整卷全部材料' },
+  ...materialOptions.value,
+])
 
 async function loadAccessRecords() {
   if (!props.volumeId) return
   accessLoading.value = true
   try {
-    accessRecords.value = await listArchiveVolumeAccessRecords(props.volumeId)
+    const records = await listArchiveVolumeAccessRecords(props.volumeId)
+    accessRecords.value = records
+    accessLoadFailed.value = false
   } catch (error) {
     showUserError(error)
+    accessLoadFailed.value = true
   } finally {
     accessLoading.value = false
   }
 }
 
 async function handleAccessDownload(record: ArchiveVolumeAccessRecordResponse) {
-  const materialId = record.materialId
+  const materialId = resolveAccessMaterialId(record)
   const downloadToken = record.downloadToken
   if (!materialId) {
     message.error('查阅记录未绑定材料，无法下载')
@@ -288,7 +344,7 @@ async function handleAccessDownload(record: ArchiveVolumeAccessRecordResponse) {
 }
 
 async function handleAccessPreview(record: ArchiveVolumeAccessRecordResponse) {
-  const materialId = record.materialId
+  const materialId = resolveAccessMaterialId(record)
   const downloadToken = record.downloadToken
   if (!materialId) {
     message.error('查阅记录未绑定材料，无法预览')
@@ -365,7 +421,12 @@ async function submitReadPage() {
 
 function openAccessRequest() {
   accessReason.value = ''
+  accessRequestMaterialId.value = ''
   accessModalOpen.value = true
+}
+
+function resolveAccessMaterialId(record: ArchiveVolumeAccessRecordResponse): string | undefined {
+  return record.materialId || activeMaterialSelections[record.accessRecordId]
 }
 
 async function submitAccessRequest() {
@@ -377,6 +438,7 @@ async function submitAccessRequest() {
   try {
     await requestArchiveVolumeAccess({
       volumeId: props.volumeId,
+      materialId: accessRequestMaterialId.value || undefined,
       accessReason: accessReason.value.trim(),
     })
     message.success('查阅申请已提交')
@@ -466,6 +528,22 @@ defineExpose({ loadAccessRecords })
   justify-content: space-between;
   gap: var(--dp-space-3);
   width: 100%;
+}
+
+.archive-volume-access-panel__load-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dp-space-3);
+}
+
+.archive-volume-access-panel__load-error p {
+  margin: 0;
+  color: var(--dp-text-secondary);
+}
+
+.approval-card__material-select {
+  min-width: 220px;
 }
 
 .archive-volume-access-panel__title {

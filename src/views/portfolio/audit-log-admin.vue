@@ -1,25 +1,25 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioAuditLogVO } from '@/apis/portfolio/governance'
-import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
-import type { PortfolioAuditActionTypeCode } from '@/types/enums/portfolio-audit-action-type-enum'
-import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioSecurityApi } from '@/apis/portfolio/governance'
+import type { PortfolioAuditActionTypeCode } from '@/types/enums/portfolio-audit-action-type-enum'
+import {
+  ALL_PORTFOLIO_AUDIT_ACTION_TYPE_CODES,
+  PortfolioAuditActionTypeDescription,
+} from '@/types/enums/portfolio-audit-action-type-enum'
+import { computed, onMounted, reactive, ref } from 'vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import {
-  ALL_PORTFOLIO_AUDIT_ACTION_TYPE_CODES,
-  PortfolioAuditActionTypeDescription,
-} from '@/types/enums/portfolio-audit-action-type-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const loading = ref(false)
+const loadError = ref(false)
+const requestToken = ref(0)
 const rows = ref<PortfolioAuditLogVO[]>([])
 const total = ref(0)
 
@@ -60,12 +60,6 @@ const columns: ColumnsType = [
   { title: '摘要', dataIndex: 'actionSummary', key: 'actionSummary', ellipsis: true },
 ]
 
-const pagination = computed(() => ({
-  current: query.pageNum,
-  pageSize: query.pageSize,
-  total: total.value,
-}))
-
 function actionLabel(code: string) {
   return strictEnumLabel(
     PortfolioAuditActionTypeDescription,
@@ -75,20 +69,29 @@ function actionLabel(code: string) {
 }
 
 async function loadPage() {
+  const currentToken = requestToken.value + 1
+  requestToken.value = currentToken
+  const request = {
+    pageNum: query.pageNum,
+    pageSize: query.pageSize,
+    actionType: filterForm.actionType,
+    operatorUserId: filterForm.operatorUserId.trim() || undefined,
+  }
   loading.value = true
+  loadError.value = false
   try {
-    const result = await portfolioSecurityApi.pageAudit({
-      pageNum: query.pageNum,
-      pageSize: query.pageSize,
-      actionType: filterForm.actionType,
-      operatorUserId: filterForm.operatorUserId.trim() || undefined,
-    })
+    const result = await portfolioSecurityApi.pageAudit(request)
+    if (requestToken.value !== currentToken) return
     rows.value = result.list ?? []
     total.value = result.total ?? 0
   } catch (error) {
+    if (requestToken.value !== currentToken) return
+    rows.value = []
+    total.value = 0
+    loadError.value = true
     showUserError(error, '加载审计日志失败')
   } finally {
-    loading.value = false
+    if (requestToken.value === currentToken) loading.value = false
   }
 }
 
@@ -97,10 +100,9 @@ function onSearch() {
   void loadPage()
 }
 
-function onTableChange(changeEvent: UiDataTableChangeEvent) {
-  const { pageNum, pageSize } = readUiDataTablePagination(changeEvent, DEFAULT_LIST_PAGE_SIZE)
-  query.pageNum = pageNum
-  query.pageSize = pageSize
+function onPageChange(page: { current: number; pageSize: number }) {
+  query.pageNum = page.current
+  query.pageSize = page.pageSize
   void loadPage()
 }
 
@@ -122,12 +124,16 @@ onMounted(() => {
     <UiCard>
       <UiFilterBar v-model="filterModel" :fields="filterFields" @search="onSearch" />
       <UiDataTable
+        v-model:current="query.pageNum"
+        v-model:page-size="query.pageSize"
         row-key="id"
         :columns="columns"
         :data-source="rows"
         :loading="loading"
-        :pagination="pagination"
-        @change="onTableChange"
+        :load-error="loadError"
+        pagination-mode="server"
+        :total="total"
+        @page-change="onPageChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'actionType'">

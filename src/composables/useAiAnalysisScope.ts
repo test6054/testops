@@ -1,15 +1,15 @@
 import type { ComputedRef, InjectionKey, Ref } from 'vue'
+import { computed, inject, provide, ref, watch } from 'vue'
 import type { AiAnalysisCenterOverviewResponse } from '@/apis/mark/analysis-center'
+import { loadAiAnalysisCenterOverview } from '@/apis/mark/analysis-center'
 import type { ExamSummaryResponse } from '@/apis/mark/exam'
+import { getExamDetail, pageExams } from '@/apis/mark/exam'
 import type { CourseListVO } from '@/apis/quality/user-catalog'
+import { courseCatalogApi } from '@/apis/quality/user-catalog'
 import type { MarkClassOption } from '@/composables/useMarkExamRoster'
 import type { SemesterCode } from '@/types/enums/semester-enum'
-import { computed, inject, provide, ref, watch } from 'vue'
-import { loadAiAnalysisCenterOverview } from '@/apis/mark/analysis-center'
-import { getExamDetail, pageExams } from '@/apis/mark/exam'
-import { courseCatalogApi } from '@/apis/quality/user-catalog'
-import { MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE } from '@/composables/useMarkExamSelector'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
+import { MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE } from '@/composables/useMarkExamSelector'
 import { generateAcademicYearOptions, getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
 import { showUserError } from '@/utils/error-handler'
 import { examSummaryFromDetail } from '@/utils/mark-exam-option'
@@ -115,6 +115,8 @@ export function useAiAnalysisScope() {
   const overviewLoading = ref(false)
   const overviewLoadFailed = ref(false)
   const reloadToken = ref(0)
+  let examRequestSequence = 0
+  let overviewRequestSequence = 0
 
   const academicYearOptions = computed(() =>
     generateAcademicYearOptions().map(year => ({ label: year, value: year })),
@@ -269,10 +271,11 @@ export function useAiAnalysisScope() {
   }
 
   async function loadOverview() {
+    const requestSequence = ++overviewRequestSequence
     overviewLoading.value = true
     overviewLoadFailed.value = false
     try {
-      overview.value = await loadAiAnalysisCenterOverview({
+      const nextOverview = await loadAiAnalysisCenterOverview({
         academicYear: academicYear.value,
         semester: semester.value,
         courseId: examFilterCourseId.value ?? scopeCourseId.value,
@@ -280,14 +283,23 @@ export function useAiAnalysisScope() {
         referenceDepartmentId: referenceDepartmentId.value,
         examId: examId.value,
       })
+      if (requestSequence !== overviewRequestSequence) {
+        return
+      }
+      overview.value = nextOverview
     }
     catch (error) {
+      if (requestSequence !== overviewRequestSequence) {
+        return
+      }
       overview.value = null
       overviewLoadFailed.value = true
       showUserError(error, 'AI 分析中心概览加载失败')
     }
     finally {
-      overviewLoading.value = false
+      if (requestSequence === overviewRequestSequence) {
+        overviewLoading.value = false
+      }
     }
   }
 
@@ -310,11 +322,18 @@ export function useAiAnalysisScope() {
   }
 
   async function loadExams(keyword?: string) {
+    const requestSequence = ++examRequestSequence
     examsLoading.value = true
     try {
       const page = await pageExams(buildExamPageQuery(1, keyword))
+      if (requestSequence !== examRequestSequence) {
+        return
+      }
       exams.value = page.list
       await syncPinnedExam(examId.value)
+      if (requestSequence !== examRequestSequence) {
+        return
+      }
       const mergedExams = pinnedExam.value
         ? [pinnedExam.value, ...exams.value.filter(exam => exam.examId !== pinnedExam.value!.examId)]
         : exams.value
@@ -325,11 +344,16 @@ export function useAiAnalysisScope() {
       }
     }
     catch (error) {
+      if (requestSequence !== examRequestSequence) {
+        return
+      }
       exams.value = []
       showUserError(error, '考试列表加载失败')
     }
     finally {
-      examsLoading.value = false
+      if (requestSequence === examRequestSequence) {
+        examsLoading.value = false
+      }
     }
   }
 
@@ -341,6 +365,17 @@ export function useAiAnalysisScope() {
 
   watch([academicYear, semester, referenceDepartmentId, classId, examFilterCourseId], () => {
     void loadExams()
+  }, { immediate: true })
+
+  watch([
+    academicYear,
+    semester,
+    referenceDepartmentId,
+    classId,
+    examFilterCourseId,
+    scopeCourseId,
+    examId,
+  ], () => {
     void loadOverview()
   }, { immediate: true })
 
@@ -428,10 +463,6 @@ export function useAiAnalysisScope() {
       examId.value = id
     }
   }, { immediate: true })
-
-  watch([examFilterCourseId, examId, scopeCourseId, referenceDepartmentId], () => {
-    void loadOverview()
-  })
 
   watch(examId, (id) => {
     if (lockExamId?.value && id !== lockExamId.value) {

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import type { PortfolioAiAnalysisDetailVO, PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
+import type { PortfolioAiAnalysisDetailVO, PortfolioAiJobSummaryVO } from '@/apis/portfolio/types'
+import { PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
@@ -14,12 +15,11 @@ import {
 } from '@/apis/portfolio/enums'
 import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
-import { PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE } from '@/apis/portfolio/types'
 import { AiTaskStatusCode } from '@/apis/quality/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
-import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -28,6 +28,8 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
+import { AiTaskStatusDescription } from '@/types/enums/ai-task-status-enum'
+import { PortfolioAiTaskTypeDescription } from '@/types/enums/portfolio-ai-task-type-enum'
 import { showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -47,11 +49,17 @@ const loading = ref(false)
 const polling = ref(false)
 const selectedTeacherProgramId = ref<string>()
 const registeredMaterialId = ref<string>()
+const registeredMaterialFileNodeId = ref<string>()
+const registeredMaterialType = ref<PortfolioMaterialTypeCode>()
 const materialFileNodeId = ref<string>()
 const materialFileName = ref<string>()
 const materialType = ref<PortfolioMaterialTypeCode>(PortfolioMaterialTypeCode.DOCUMENT)
 const analysisDetail = ref<PortfolioAiAnalysisDetailVO | null>(null)
-const teacherOptions = ref<PortfolioTeacherSummaryVO[]>([])
+const materialTaskRows = ref<PortfolioAiJobSummaryVO[]>([])
+const materialTaskLoading = ref(false)
+const materialTaskPage = ref(1)
+const materialTaskPageSize = ref(10)
+const materialTaskTotal = ref(0)
 const orchestrationToken = ref(0)
 
 const askForm = reactive({
@@ -97,6 +105,8 @@ const policyConclusionTone = computed<BadgeTone>(() => {
 /** 清空当前教师绑定的材料上下文，避免跨教师残留旧材料。 */
 function resetMaterialContext() {
   registeredMaterialId.value = undefined
+  registeredMaterialFileNodeId.value = undefined
+  registeredMaterialType.value = undefined
   materialFileNodeId.value = undefined
   materialFileName.value = undefined
   materialType.value = PortfolioMaterialTypeCode.DOCUMENT
@@ -110,9 +120,52 @@ function resetAnalysisContext() {
 /** 教师范围切换后重置本页上下文，确保材料、专业、结果都回到当前教师。 */
 function resetTeacherScopeContext() {
   orchestrationToken.value += 1
+  loading.value = false
+  polling.value = false
   selectedTeacherProgramId.value = undefined
   resetMaterialContext()
   resetAnalysisContext()
+  materialTaskRows.value = []
+  materialTaskTotal.value = 0
+  materialTaskPage.value = 1
+  askForm.userQuestion = ''
+  policyForm.policyClauseText = ''
+  policyForm.teacherProfileSummary = ''
+  policyForm.attachMaterial = true
+}
+
+/** 分页读取当前教师的材料 AI 任务，供失败追踪和异步结果回看。 */
+async function loadMaterialTasks() {
+  if (!targetTeacherId.value) {
+    materialTaskRows.value = []
+    materialTaskTotal.value = 0
+    return
+  }
+  const taskToken = orchestrationToken.value
+  materialTaskLoading.value = true
+  try {
+    const page = await portfolioAiJobApi.page({
+      teacherId: targetTeacherId.value,
+      pageNum: materialTaskPage.value,
+      pageSize: materialTaskPageSize.value,
+    })
+    if (orchestrationToken.value !== taskToken) return
+    materialTaskRows.value = page.list
+    materialTaskTotal.value = page.total
+  } catch (error) {
+    if (orchestrationToken.value !== taskToken) return
+    materialTaskRows.value = []
+    materialTaskTotal.value = 0
+    showUserError(error, '加载材料 AI 任务失败')
+  } finally {
+    if (orchestrationToken.value === taskToken) materialTaskLoading.value = false
+  }
+}
+
+function handleMaterialTaskPageChange(page: number, pageSize: number) {
+  materialTaskPage.value = page
+  materialTaskPageSize.value = pageSize
+  void loadMaterialTasks()
 }
 
 function isAnalysisType(type: PortfolioAiAnalysisTypeCode) {
@@ -122,8 +175,8 @@ function isAnalysisType(type: PortfolioAiAnalysisTypeCode) {
 const supportedOrchestrationAnalysis = computed(() => {
   const type = analysisDetail.value?.analysisType
   return (
-    type === PortfolioAiAnalysisTypeCode.MATERIAL_QA
-    || type === PortfolioAiAnalysisTypeCode.POLICY_MATCH
+    type === PortfolioAiAnalysisTypeCode.MATERIAL_QA ||
+    type === PortfolioAiAnalysisTypeCode.POLICY_MATCH
   )
 })
 
@@ -142,14 +195,6 @@ async function loadTeacherProgram() {
       return
     }
     selectedTeacherProgramId.value = detail.programId
-    const page = await portfolioTeacherApi.page({
-      pageNum: 1,
-      pageSize: QUALITY_SELECTOR_PAGE_SIZE,
-    })
-    if (orchestrationToken.value !== requestToken) {
-      return
-    }
-    teacherOptions.value = page.list
   } catch (error) {
     if (orchestrationToken.value !== requestToken) {
       return
@@ -182,6 +227,8 @@ async function loadRegisteredMaterial(materialId: string) {
       return
     }
     registeredMaterialId.value = material.id
+    registeredMaterialFileNodeId.value = material.fileNodeId
+    registeredMaterialType.value = material.materialType
     materialFileNodeId.value = material.fileNodeId
     materialFileName.value = material.materialTitle ?? material.fileNodeId
     materialType.value = material.materialType
@@ -194,8 +241,12 @@ async function loadRegisteredMaterial(materialId: string) {
   }
 }
 
-async function ensureMaterialRegistered(): Promise<string | null> {
-  if (registeredMaterialId.value) {
+async function ensureMaterialRegistered(taskToken: number): Promise<string | null> {
+  if (
+    registeredMaterialId.value &&
+    registeredMaterialFileNodeId.value === materialFileNodeId.value &&
+    registeredMaterialType.value === materialType.value
+  ) {
     return registeredMaterialId.value
   }
   if (!targetTeacherId.value || !materialFileNodeId.value) {
@@ -203,13 +254,21 @@ async function ensureMaterialRegistered(): Promise<string | null> {
     return null
   }
   const materialTitle = materialFileName.value?.trim() || 'AI编排材料'
+  const teacherId = targetTeacherId.value
+  const fileNodeId = materialFileNodeId.value
+  const currentMaterialType = materialType.value
   const materialId = await portfolioMaterialApi.save({
-    teacherId: targetTeacherId.value,
-    materialType: materialType.value,
+    teacherId,
+    materialType: currentMaterialType,
     materialTitle,
-    fileNodeId: materialFileNodeId.value,
+    fileNodeId,
   })
+  if (orchestrationToken.value !== taskToken || targetTeacherId.value !== teacherId) {
+    return null
+  }
   registeredMaterialId.value = materialId
+  registeredMaterialFileNodeId.value = fileNodeId
+  registeredMaterialType.value = currentMaterialType
   return materialId
 }
 
@@ -288,7 +347,7 @@ async function submitAsk() {
   const taskToken = orchestrationToken.value
   resetAnalysisContext()
   try {
-    const materialId = await ensureMaterialRegistered()
+    const materialId = await ensureMaterialRegistered(taskToken)
     if (!materialId) {
       return
     }
@@ -345,7 +404,7 @@ async function submitPolicyCheck() {
     let materialId: string | undefined
     let fileNodeId: string | undefined
     if (policyForm.attachMaterial && materialFileNodeId.value) {
-      const registeredMaterialId = await ensureMaterialRegistered()
+      const registeredMaterialId = await ensureMaterialRegistered(taskToken)
       if (!registeredMaterialId) {
         return
       }
@@ -425,7 +484,7 @@ watch(
 watch(
   () => targetTeacherId.value,
   (teacherId, previousTeacherId) => {
-    if (!teacherId || teacherId === previousTeacherId) {
+    if (teacherId === previousTeacherId) {
       return
     }
     resetTeacherScopeContext()
@@ -434,7 +493,7 @@ watch(
 
 usePortfolioScopedLoader(
   () => {
-    void loadTeacherProgram()
+    void Promise.all([loadTeacherProgram(), loadMaterialTasks()])
     const materialId = readRouteStringParam(route.query.materialId)
     if (materialId) {
       void loadRegisteredMaterial(materialId)
@@ -442,12 +501,6 @@ usePortfolioScopedLoader(
   },
   () => targetTeacherId.value,
 )
-
-onMounted(() => {
-  if (scopeReady.value) {
-    void loadTeacherProgram()
-  }
-})
 </script>
 
 <template>
@@ -460,6 +513,7 @@ onMounted(() => {
       <a-select
         v-model:value="materialType"
         class="ai-orchestration__field"
+        :disabled="loading || polling"
         :options="[
           { value: PortfolioMaterialTypeCode.DOCUMENT, label: '文档' },
           { value: 'CERTIFICATE', label: '证书' },
@@ -470,19 +524,71 @@ onMounted(() => {
         v-model:file-name="materialFileName"
         :scene-key="FileUploadSceneKey.PORTFOLIO_MATERIAL"
         label="材料文件"
+        :disabled="loading || polling"
       />
       <p v-if="registeredMaterialId" class="ai-orchestration__hint">
         已绑定材料库记录 #{{ registeredMaterialId }}
       </p>
     </UiCard>
 
+    <UiCard title="材料 AI 任务">
+      <div class="ai-orchestration__task-toolbar">
+        <UiButton variant="outline" :loading="materialTaskLoading" @click="loadMaterialTasks">
+          刷新任务
+        </UiButton>
+      </div>
+      <a-spin :spinning="materialTaskLoading">
+        <UiEmpty
+          v-if="!materialTaskLoading && materialTaskRows.length === 0"
+          description="暂无材料 AI 任务"
+        />
+        <ul v-else class="ai-orchestration__task-list">
+          <li v-for="task in materialTaskRows" :key="task.id">
+            <div>
+              <strong>{{ PortfolioAiTaskTypeDescription[task.taskType] }}</strong>
+              <span class="ai-orchestration__meta">
+                #{{ task.id }} · {{ task.createTime || '时间未记录' }}</span
+              >
+            </div>
+            <UiTag
+              :tone="
+                task.status === AiTaskStatusCode.SUCCEEDED
+                  ? 'green'
+                  : task.status === AiTaskStatusCode.FAILED
+                    ? 'red'
+                    : 'blue'
+              "
+            >
+              {{ AiTaskStatusDescription[task.status] }}
+            </UiTag>
+            <p v-if="task.failureReason" class="ai-orchestration__task-failure">
+              {{ task.failureReason }}
+            </p>
+          </li>
+        </ul>
+        <a-pagination
+          v-if="materialTaskTotal > materialTaskPageSize"
+          :current="materialTaskPage"
+          :page-size="materialTaskPageSize"
+          :total="materialTaskTotal"
+          size="small"
+          @change="handleMaterialTaskPageChange"
+        />
+      </a-spin>
+    </UiCard>
+
     <UiCard title="任务类型">
       <div class="ai-orchestration__tabs">
-        <UiButton :variant="activeTab === 'ask' ? 'primary' : 'outline'" @click="activeTab = 'ask'">
+        <UiButton
+          :variant="activeTab === 'ask' ? 'primary' : 'outline'"
+          :disabled="loading || polling"
+          @click="activeTab = 'ask'"
+        >
           材料智能问数
         </UiButton>
         <UiButton
           :variant="activeTab === 'policy' ? 'primary' : 'outline'"
+          :disabled="loading || polling"
           @click="activeTab = 'policy'"
         >
           政策专项核验
@@ -495,9 +601,15 @@ onMounted(() => {
         v-model:value="askForm.userQuestion"
         class="ai-orchestration__field"
         :rows="4"
+        :disabled="loading || polling"
         placeholder="基于材料内容提问，例如：该教师近一年有哪些省级以上荣誉？"
       />
-      <UiButton variant="primary" :loading="loading || polling" @click="() => void submitAsk()">
+      <UiButton
+        variant="primary"
+        :loading="loading || polling"
+        :disabled="!canOperate || loading || polling"
+        @click="() => void submitAsk()"
+      >
         提交问数
       </UiButton>
     </UiCard>
@@ -507,21 +619,24 @@ onMounted(() => {
         v-model:value="policyForm.policyClauseText"
         class="ai-orchestration__field"
         :rows="4"
+        :disabled="loading || polling"
         placeholder="粘贴待核验的政策条款全文"
       />
       <a-textarea
         v-model:value="policyForm.teacherProfileSummary"
         class="ai-orchestration__field"
         :rows="2"
+        :disabled="loading || polling"
         placeholder="教师档案摘要（可选）"
       />
       <label class="ai-orchestration__checkbox">
-        <input v-model="policyForm.attachMaterial" type="checkbox" />
+        <input v-model="policyForm.attachMaterial" type="checkbox" :disabled="loading || polling" />
         附带材料文件作为佐证
       </label>
       <UiButton
         variant="primary"
         :loading="loading || polling"
+        :disabled="!canOperate || loading || polling"
         @click="() => void submitPolicyCheck()"
       >
         提交核验
@@ -628,6 +743,28 @@ onMounted(() => {
   margin: 8px 0 0;
   font-size: 13px;
   color: var(--dp-text-secondary);
+}
+.ai-orchestration__task-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+.ai-orchestration__task-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+}
+.ai-orchestration__task-list li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--dp-border-subtle);
+}
+.ai-orchestration__task-failure {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--dp-danger);
 }
 .ai-orchestration__checkbox {
   display: flex;

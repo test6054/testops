@@ -1,18 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationObjectionHandleActionCode } from '@/apis/portfolio/enums'
-import type {
-  PortfolioEvaluationMaterialCategoryItemVO,
-  PortfolioEvaluationMaterialPreviewVO,
-  PortfolioEvaluationPublicityListItemVO,
-  PortfolioEvaluationTeacherNoticeVO,
-  PortfolioEvaluationTeacherResultSummaryVO,
-} from '@/apis/portfolio/types'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { Input, message, Select } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   PORTFOLIO_EVALUATION_OBJECTION_TYPE_OPTIONS,
   PortfolioEvaluationObjectionHandleActionDescription,
@@ -22,14 +10,26 @@ import {
   PortfolioEvaluationTeacherNoticeStatusCode,
   PortfolioEvaluationTeacherNoticeStatusDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
-import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
+import type {
+  PortfolioEvaluationMaterialCategoryItemVO,
+  PortfolioEvaluationMaterialPreviewVO,
+  PortfolioEvaluationPublicityListItemVO,
+  PortfolioEvaluationTeacherNoticeVO,
+  PortfolioEvaluationTeacherResultSummaryVO,
+} from '@/apis/portfolio/types'
 import {
   PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
   PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE,
   PORTFOLIO_EVALUATION_PUBLICITY_STATUS_TONE,
   PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE,
 } from '@/apis/portfolio/types'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import { Input, message, Select } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
+import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -101,6 +101,7 @@ const { currentUserId, canPickTeachers } = usePortfolioTeacherAccess()
 const loading = ref(false)
 const publicityLoading = ref(false)
 const resultLoading = ref(false)
+const previewLoading = ref(false)
 const confirming = ref(false)
 const submittingObjection = ref(false)
 const notices = ref<PortfolioEvaluationTeacherNoticeVO[]>([])
@@ -121,6 +122,10 @@ const objectionForm = reactive({
 const objectionEvidenceFileNodeId = ref('')
 const objectionEvidenceFileName = ref('')
 const evaluationRequestToken = ref(0)
+const noticeRequestToken = ref(0)
+const publicityRequestToken = ref(0)
+const resultRequestToken = ref(0)
+const previewRequestToken = ref(0)
 
 const objectionIndicatorOptions = computed(() => {
   const indicatorCodes = new Set<string>()
@@ -134,13 +139,14 @@ const objectionIndicatorOptions = computed(() => {
     label: indicatorCode,
   }))
 })
-const scoreOrResultDispute = computed(() => (
-  objectionForm.objectionType === PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE
-  || objectionForm.objectionType === PortfolioEvaluationObjectionTypeCode.SCORE_DISPUTE
-))
-const showObjectionIndicatorSelect = computed(() => (
-  scoreOrResultDispute.value && objectionIndicatorOptions.value.length > 0
-))
+const scoreOrResultDispute = computed(
+  () =>
+    objectionForm.objectionType === PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE ||
+    objectionForm.objectionType === PortfolioEvaluationObjectionTypeCode.SCORE_DISPUTE,
+)
+const showObjectionIndicatorSelect = computed(
+  () => scoreOrResultDispute.value && objectionIndicatorOptions.value.length > 0,
+)
 const deepLinkedEvaluationTaskId = computed(() =>
   typeof route.query.evaluationTaskId === 'string' ? route.query.evaluationTaskId : '',
 )
@@ -219,7 +225,18 @@ const resultColumns: ColumnsType<
 
 function resetEvaluationContext() {
   evaluationRequestToken.value += 1
+  noticeRequestToken.value += 1
+  publicityRequestToken.value += 1
+  resultRequestToken.value += 1
+  previewRequestToken.value += 1
+  loading.value = false
+  publicityLoading.value = false
+  resultLoading.value = false
+  previewLoading.value = false
+  confirming.value = false
+  submittingObjection.value = false
   notices.value = []
+  pageTotal.value = 0
   publicityRows.value = []
   resultSummary.value = null
   preview.value = null
@@ -238,9 +255,9 @@ function canViewerSubmitObjection(record: PortfolioEvaluationPublicityListItemVO
     return false
   }
   return !(
-    canPickTeachers.value
-    && targetTeacherId.value
-    && targetTeacherId.value !== currentUserId.value
+    canPickTeachers.value &&
+    targetTeacherId.value &&
+    targetTeacherId.value !== currentUserId.value
   )
 }
 
@@ -250,7 +267,15 @@ function publicityRowKey(record: unknown): string {
 }
 
 async function loadNotices() {
-  const requestToken = evaluationRequestToken.value
+  const scopeToken = evaluationRequestToken.value
+  const requestToken = noticeRequestToken.value + 1
+  noticeRequestToken.value = requestToken
+  if (canPickTeachers.value && !targetTeacherId.value) {
+    loading.value = false
+    notices.value = []
+    pageTotal.value = 0
+    return
+  }
   loading.value = true
   preview.value = null
   try {
@@ -261,7 +286,7 @@ async function loadNotices() {
       pageSize: pageSize.value,
       locateNoticeId: routeNoticeId || undefined,
     })
-    if (evaluationRequestToken.value !== requestToken) {
+    if (evaluationRequestToken.value !== scopeToken || noticeRequestToken.value !== requestToken) {
       return
     }
     notices.value = page.list
@@ -274,26 +299,40 @@ async function loadNotices() {
       await loadPreview(selectedNoticeId.value)
     }
   } catch (error) {
-    if (evaluationRequestToken.value !== requestToken) {
+    if (evaluationRequestToken.value !== scopeToken || noticeRequestToken.value !== requestToken) {
       return
     }
+    notices.value = []
+    pageTotal.value = 0
+    selectedNoticeId.value = ''
+    preview.value = null
     showUserError(error, '加载评价待办失败')
   } finally {
-    if (evaluationRequestToken.value === requestToken) {
+    if (evaluationRequestToken.value === scopeToken && noticeRequestToken.value === requestToken) {
       loading.value = false
     }
   }
 }
 
 async function loadPublicity() {
-  const requestToken = evaluationRequestToken.value
+  const scopeToken = evaluationRequestToken.value
+  const requestToken = publicityRequestToken.value + 1
+  publicityRequestToken.value = requestToken
+  if (canPickTeachers.value && !targetTeacherId.value) {
+    publicityLoading.value = false
+    publicityRows.value = []
+    return
+  }
   publicityLoading.value = true
   resultSummary.value = null
   try {
     const rows = await portfolioEvaluationPublicityApi.listPublicity(
       targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
     )
-    if (evaluationRequestToken.value !== requestToken) {
+    if (
+      evaluationRequestToken.value !== scopeToken ||
+      publicityRequestToken.value !== requestToken
+    ) {
       return
     }
     publicityRows.value = rows
@@ -306,58 +345,83 @@ async function loadPublicity() {
       await loadResultSummary(matchedRow.evaluationTaskId)
     }
   } catch (error) {
-    if (evaluationRequestToken.value !== requestToken) {
+    if (
+      evaluationRequestToken.value !== scopeToken ||
+      publicityRequestToken.value !== requestToken
+    ) {
       return
     }
+    publicityRows.value = []
     showUserError(error, '加载评价公示失败')
   } finally {
-    if (evaluationRequestToken.value === requestToken) {
+    if (
+      evaluationRequestToken.value === scopeToken &&
+      publicityRequestToken.value === requestToken
+    ) {
       publicityLoading.value = false
     }
   }
 }
 
 async function loadResultSummary(evaluationTaskId: string) {
-  const requestToken = evaluationRequestToken.value
+  const scopeToken = evaluationRequestToken.value
+  const requestToken = resultRequestToken.value + 1
+  resultRequestToken.value = requestToken
   resultLoading.value = true
   try {
     const nextSummary = await portfolioEvaluationPublicityApi.summarizeTeacherResult({
       evaluationTaskId,
       ...(targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}),
     })
-    if (evaluationRequestToken.value !== requestToken) {
+    if (evaluationRequestToken.value !== scopeToken || resultRequestToken.value !== requestToken) {
       return
     }
     resultSummary.value = nextSummary
   } catch (error) {
-    if (evaluationRequestToken.value !== requestToken) {
+    if (evaluationRequestToken.value !== scopeToken || resultRequestToken.value !== requestToken) {
       return
     }
     resultSummary.value = null
     showUserError(error, '加载评价结果失败')
   } finally {
-    if (evaluationRequestToken.value === requestToken) {
+    if (evaluationRequestToken.value === scopeToken && resultRequestToken.value === requestToken) {
       resultLoading.value = false
     }
   }
 }
 
 async function loadPreview(noticeId: string) {
-  const requestToken = evaluationRequestToken.value
+  const scopeToken = evaluationRequestToken.value
+  const requestToken = previewRequestToken.value + 1
+  previewRequestToken.value = requestToken
   const notice = notices.value.find((item) => item.id === noticeId)
   if (!notice) {
     preview.value = null
     return
   }
   selectedNoticeId.value = noticeId
-  const nextPreview = await portfolioEvaluationNoticeApi.materialPreview({
+  preview.value = null
+  previewLoading.value = true
+  const request = {
     evaluationTaskId: notice.evaluationTaskId,
     ...(targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}),
-  })
-  if (evaluationRequestToken.value !== requestToken) {
-    return
   }
-  preview.value = nextPreview
+  try {
+    const nextPreview = await portfolioEvaluationNoticeApi.materialPreview(request)
+    if (evaluationRequestToken.value !== scopeToken || previewRequestToken.value !== requestToken) {
+      return
+    }
+    preview.value = nextPreview
+  } catch (error) {
+    if (evaluationRequestToken.value !== scopeToken || previewRequestToken.value !== requestToken) {
+      return
+    }
+    showUserError(error, '加载参评材料预览失败')
+  } finally {
+    if (evaluationRequestToken.value === scopeToken && previewRequestToken.value === requestToken) {
+      previewLoading.value = false
+    }
+  }
 }
 
 async function confirmSelected() {
@@ -365,9 +429,10 @@ async function confirmSelected() {
     return
   }
   const requestToken = evaluationRequestToken.value
+  const noticeId = selectedNotice.value.id
   confirming.value = true
   try {
-    await portfolioEvaluationNoticeApi.confirmMaterial({ noticeId: selectedNotice.value.id })
+    await portfolioEvaluationNoticeApi.confirmMaterial({ noticeId })
     if (evaluationRequestToken.value !== requestToken) {
       return
     }
@@ -456,13 +521,19 @@ function goArchive() {
 
 /** 组装评价待办行内操作。 */
 function buildNoticeRowActions(record: PortfolioEvaluationTeacherNoticeVO): UiTableRowActionItem[] {
-  const actions: UiTableRowActionItem[] = [{ key: 'preview', label: '预览材料' }]
+  const actions: UiTableRowActionItem[] = [
+    {
+      key: 'preview',
+      label: '预览材料',
+      disabled: previewLoading.value || confirming.value,
+    },
+  ]
   if (record.noticeStatus !== PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED) {
     actions.push({
       key: 'confirm',
       label: '确认材料',
       tone: 'primary',
-      disabled: confirming.value && selectedNoticeId.value === record.id,
+      disabled: confirming.value || previewLoading.value,
     })
   }
   return actions
@@ -515,6 +586,9 @@ usePortfolioScopedLoader(
   () => {
     resetEvaluationContext()
     pageNum.value = 1
+    if (canPickTeachers.value && !targetTeacherId.value) {
+      return
+    }
     void loadNotices()
     void loadPublicity()
   },
@@ -571,9 +645,16 @@ watch(
   <StageWorkbenchShell>
     <ContextBar title="我的评价" description="参评材料确认、完整度预览与结果公示">
       <template #actions>
-        <UiButton variant="ghost" @click="goArchive"> 查看档案 </UiButton>
+        <UiButton
+          variant="ghost"
+          :disabled="canPickTeachers && !targetTeacherId"
+          @click="goArchive"
+        >
+          查看档案
+        </UiButton>
         <UiButton
           :loading="loading || publicityLoading"
+          :disabled="canPickTeachers && !targetTeacherId"
           @click="
             () => {
               void loadNotices()
@@ -586,201 +667,223 @@ watch(
       </template>
     </ContextBar>
 
-    <UiCard title="评价待办">
-      <UiDataTable
-        v-if="notices.length || loading"
-        v-model:current="pageNum"
-        v-model:page-size="pageSize"
-        pagination-mode="server"
-        :columns="noticeColumns"
-        :data-source="notices"
-        :loading="loading"
-        :total="pageTotal"
-        row-key="id"
-        @page-change="() => void loadNotices()"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'noticeStatus'">
-            <UiTag :tone="noticeStatusTone(record.noticeStatus)">
-              {{ noticeStatusLabel(record.noticeStatus) }}
-            </UiTag>
-          </template>
-          <template v-else-if="column.key === 'actions'">
-            <UiTableActions
-              :items="buildNoticeRowActions(record)"
-              @action="(key) => handleNoticeRowAction(key, record)"
-            />
-          </template>
-        </template>
-      </UiDataTable>
-      <UiEmpty v-else description="暂无评价待办" />
-    </UiCard>
+    <UiEmpty
+      v-if="canPickTeachers && !targetTeacherId"
+      description="请从顶部教师范围选择目标教师"
+    />
 
-    <UiCard v-if="preview" title="材料清单预览" class="teacher-evaluation__block">
-      <p class="teacher-evaluation__meta">
-        任务：{{ preview.taskName }} · 完整度 {{ preview.completenessPercent }}% · 必填分类
-        {{ preview.requiredCategoryDone }} / {{ preview.requiredCategoryTotal }}{{ evaluationCourseArchiveMeta(preview) }}
-      </p>
-      <p v-if="preview.endTime" class="teacher-evaluation__meta">评价截止 {{ preview.endTime }}</p>
-      <UiDataTable
-        v-if="preview.categories?.length"
-        :row-key="evaluationMaterialRowKey"
-        size="small"
-        pagination-mode="none"
-        :columns="categoryColumns"
-        :data-source="preview.categories"
-        :show-pagination="false"
-        :sticky-header="false"
-        flat
-        class="teacher-evaluation__category-table"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'courseScope'">
-            {{ evaluationMaterialCourseScopeLabel(record) }}
-          </template>
-          <template v-else-if="column.key === 'completed'">
-            <UiTag :tone="record.completed ? 'green' : 'orange'">
-              {{ record.completed ? '已完成' : '未完成' }}
-            </UiTag>
-          </template>
-        </template>
-      </UiDataTable>
-      <UiEmpty v-else description="暂无分类明细" />
-    </UiCard>
-
-    <UiCard title="评价公示" class="teacher-evaluation__block">
-      <UiDataTable
-        v-if="publicityRows.length || publicityLoading"
-        :columns="publicityColumns"
-        :data-source="publicityRows"
-        :loading="publicityLoading"
-        :row-key="publicityRowKey"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'publicityStatus'">
-            <UiTag :tone="publicityStatusTone(record.publicityStatus)">
-              {{ publicityStatusLabel(record.publicityStatus) }}
-            </UiTag>
-          </template>
-          <template v-else-if="column.key === 'publicityWindow'">
-            {{ record.startTime }} — {{ record.endTime }}
-          </template>
-          <template v-else-if="column.key === 'objectionStatus'">
-            <template v-if="record.handleAction">
-              <UiTag :tone="handleActionTone(record.handleAction)">
-                {{ handleActionLabel(record.handleAction) }}
+    <template v-else>
+      <UiCard title="评价待办">
+        <UiDataTable
+          v-if="notices.length || loading"
+          v-model:current="pageNum"
+          v-model:page-size="pageSize"
+          pagination-mode="server"
+          :columns="noticeColumns"
+          :data-source="notices"
+          :loading="loading"
+          :total="pageTotal"
+          row-key="id"
+          @page-change="() => void loadNotices()"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'noticeStatus'">
+              <UiTag :tone="noticeStatusTone(record.noticeStatus)">
+                {{ noticeStatusLabel(record.noticeStatus) }}
               </UiTag>
-              <p v-if="record.handleOpinion" class="teacher-evaluation__handle-opinion">
-                {{ record.handleOpinion }}
-              </p>
             </template>
-            <UiTag
-              v-else-if="record.objectionStatus"
-              :tone="objectionStatusTone(record.objectionStatus)"
-            >
-              {{ objectionStatusLabel(record.objectionStatus) }}
-            </UiTag>
-            <span v-else>—</span>
+            <template v-else-if="column.key === 'actions'">
+              <UiTableActions
+                :items="buildNoticeRowActions(record)"
+                @action="(key) => handleNoticeRowAction(key, record)"
+              />
+            </template>
           </template>
-          <template v-else-if="column.key === 'actions'">
-            <UiTableActions
-              :items="buildPublicityRowActions(record)"
-              @action="(key) => handlePublicityRowAction(key, record)"
+        </UiDataTable>
+        <UiEmpty v-else description="暂无评价待办" />
+      </UiCard>
+
+      <UiCard
+        v-if="preview || previewLoading"
+        title="材料清单预览"
+        class="teacher-evaluation__block"
+      >
+        <a-spin :spinning="previewLoading">
+          <template v-if="preview">
+            <p class="teacher-evaluation__meta">
+              任务：{{ preview.taskName }} · 完整度 {{ preview.completenessPercent }}% · 必填分类
+              {{ preview.requiredCategoryDone }} / {{ preview.requiredCategoryTotal
+              }}{{ evaluationCourseArchiveMeta(preview) }}
+            </p>
+            <p v-if="preview.endTime" class="teacher-evaluation__meta">
+              评价截止 {{ preview.endTime }}
+            </p>
+            <UiDataTable
+              v-if="preview.categories?.length"
+              :row-key="evaluationMaterialRowKey"
+              size="small"
+              pagination-mode="none"
+              :columns="categoryColumns"
+              :data-source="preview.categories"
+              :show-pagination="false"
+              :sticky-header="false"
+              flat
+              class="teacher-evaluation__category-table"
+            >
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'courseScope'">
+                  {{ evaluationMaterialCourseScopeLabel(record) }}
+                </template>
+                <template v-else-if="column.key === 'completed'">
+                  <UiTag :tone="record.completed ? 'green' : 'orange'">
+                    {{ record.completed ? '已完成' : '未完成' }}
+                  </UiTag>
+                </template>
+              </template>
+            </UiDataTable>
+            <UiEmpty v-else description="暂无分类明细" />
+          </template>
+        </a-spin>
+      </UiCard>
+
+      <UiCard title="评价公示" class="teacher-evaluation__block">
+        <UiDataTable
+          v-if="publicityRows.length || publicityLoading"
+          :columns="publicityColumns"
+          :data-source="publicityRows"
+          :loading="publicityLoading"
+          :row-key="publicityRowKey"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'publicityStatus'">
+              <UiTag :tone="publicityStatusTone(record.publicityStatus)">
+                {{ publicityStatusLabel(record.publicityStatus) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'publicityWindow'">
+              {{ record.startTime }} — {{ record.endTime }}
+            </template>
+            <template v-else-if="column.key === 'objectionStatus'">
+              <template v-if="record.handleAction">
+                <UiTag :tone="handleActionTone(record.handleAction)">
+                  {{ handleActionLabel(record.handleAction) }}
+                </UiTag>
+                <p v-if="record.handleOpinion" class="teacher-evaluation__handle-opinion">
+                  {{ record.handleOpinion }}
+                </p>
+              </template>
+              <UiTag
+                v-else-if="record.objectionStatus"
+                :tone="objectionStatusTone(record.objectionStatus)"
+              >
+                {{ objectionStatusLabel(record.objectionStatus) }}
+              </UiTag>
+              <span v-else>—</span>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiTableActions
+                :items="buildPublicityRowActions(record)"
+                @action="(key) => handlePublicityRowAction(key, record)"
+              />
+            </template>
+          </template>
+        </UiDataTable>
+        <UiEmpty v-else description="暂无公示" />
+      </UiCard>
+
+      <UiCard
+        v-if="resultSummary || resultLoading"
+        title="评价结果与依据"
+        class="teacher-evaluation__block"
+      >
+        <a-spin :spinning="resultLoading">
+          <template v-if="resultSummary">
+            <p class="teacher-evaluation__meta">
+              任务：{{ resultSummary.taskName }} · 条目 {{ resultSummary.entryCount ?? 0 }} 条
+              <template v-if="resultSummary.averageScore != null">
+                · 平均分 {{ resultSummary.averageScore }}
+              </template>
+              <template v-if="resultSummary.completenessPercent != null">
+                · 完整度 {{ resultSummary.completenessPercent }}%
+              </template>
+              <template v-if="resultSummary.requiredCategoryTotal != null">
+                · 必填分类 {{ resultSummary.requiredCategoryDone }} /
+                {{ resultSummary.requiredCategoryTotal }}
+              </template>
+            </p>
+            <UiDataTable
+              v-if="resultSummary.entries?.length"
+              row-key="entryId"
+              size="small"
+              pagination-mode="none"
+              :columns="resultColumns"
+              :data-source="resultSummary.entries"
+              :show-pagination="false"
+              :sticky-header="false"
+              flat
+              class="teacher-evaluation__result-table"
+            />
+            <UiEmpty v-else description="暂无评价依据明细" />
+            <UiDataTable
+              v-if="resultSummary.materialCategories?.length"
+              :row-key="evaluationMaterialRowKey"
+              size="small"
+              pagination-mode="none"
+              :columns="categoryColumns"
+              :data-source="resultSummary.materialCategories"
+              :show-pagination="false"
+              :sticky-header="false"
+              flat
+              class="teacher-evaluation__category-table"
             />
           </template>
-        </template>
-      </UiDataTable>
-      <UiEmpty v-else description="暂无公示" />
-    </UiCard>
+        </a-spin>
+      </UiCard>
 
-    <UiCard
-      v-if="resultSummary || resultLoading"
-      title="评价结果与依据"
-      class="teacher-evaluation__block"
-    >
-      <a-spin :spinning="resultLoading">
-        <template v-if="resultSummary">
-          <p class="teacher-evaluation__meta">
-            任务：{{ resultSummary.taskName }} · 条目 {{ resultSummary.entryCount ?? 0 }} 条
-            <template v-if="resultSummary.averageScore != null">
-              · 平均分 {{ resultSummary.averageScore }}
-            </template>
-            <template v-if="resultSummary.completenessPercent != null">
-              · 完整度 {{ resultSummary.completenessPercent }}%
-            </template>
-            <template v-if="resultSummary.requiredCategoryTotal != null">
-              · 必填分类 {{ resultSummary.requiredCategoryDone }} /
-              {{ resultSummary.requiredCategoryTotal }}
-            </template>
-          </p>
-          <UiDataTable
-            v-if="resultSummary.entries?.length"
-            row-key="entryId"
-            size="small"
-            pagination-mode="none"
-            :columns="resultColumns"
-            :data-source="resultSummary.entries"
-            :show-pagination="false"
-            :sticky-header="false"
-            flat
-            class="teacher-evaluation__result-table"
-          />
-          <UiEmpty v-else description="暂无评价依据明细" />
-          <UiDataTable
-            v-if="resultSummary.materialCategories?.length"
-            :row-key="evaluationMaterialRowKey"
-            size="small"
-            pagination-mode="none"
-            :columns="categoryColumns"
-            :data-source="resultSummary.materialCategories"
-            :show-pagination="false"
-            :sticky-header="false"
-            flat
-            class="teacher-evaluation__category-table"
-          />
-        </template>
-      </a-spin>
-    </UiCard>
-
-    <a-modal
-      v-model:open="objectionModalOpen"
-      title="提交公示异议"
-      ok-text="提交"
-      cancel-text="取消"
-      :confirm-loading="submittingObjection"
-      @ok="() => void submitObjection()"
-    >
-      <p v-if="objectionTarget" class="teacher-evaluation__meta">
-        {{ objectionTarget.taskName }} · {{ objectionTarget.publicityTitle }}
-      </p>
-      <Select
-        v-model:value="objectionForm.objectionType"
-        class="teacher-evaluation__form-field"
-        :options="PORTFOLIO_EVALUATION_OBJECTION_TYPE_OPTIONS"
-        placeholder="异议类型"
-      />
-      <Select
-        v-if="showObjectionIndicatorSelect"
-        v-model:value="objectionForm.indicatorCode"
-        class="teacher-evaluation__form-field"
-        :options="objectionIndicatorOptions"
-        placeholder="请选择争议指标"
-      />
-      <Input.TextArea
-        v-model:value="objectionForm.objectionReason"
-        class="teacher-evaluation__form-field"
-        :rows="4"
-        placeholder="异议理由"
-      />
-      <UiPlatformFileField
-        v-model:file-node-id="objectionEvidenceFileNodeId"
-        v-model:file-name="objectionEvidenceFileName"
-        class="teacher-evaluation__form-field"
-        :scene-key="FileUploadSceneKey.PORTFOLIO_MATERIAL"
-        accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
-        button-text="上传佐证材料"
-      />
-    </a-modal>
+      <a-modal
+        v-model:open="objectionModalOpen"
+        title="提交公示异议"
+        ok-text="提交"
+        cancel-text="取消"
+        :confirm-loading="submittingObjection"
+        @ok="() => void submitObjection()"
+      >
+        <p v-if="objectionTarget" class="teacher-evaluation__meta">
+          {{ objectionTarget.taskName }} · {{ objectionTarget.publicityTitle }}
+        </p>
+        <Select
+          v-model:value="objectionForm.objectionType"
+          class="teacher-evaluation__form-field"
+          :options="PORTFOLIO_EVALUATION_OBJECTION_TYPE_OPTIONS"
+          placeholder="异议类型"
+          :disabled="submittingObjection"
+        />
+        <Select
+          v-if="showObjectionIndicatorSelect"
+          v-model:value="objectionForm.indicatorCode"
+          class="teacher-evaluation__form-field"
+          :options="objectionIndicatorOptions"
+          placeholder="请选择争议指标"
+          :disabled="submittingObjection"
+        />
+        <Input.TextArea
+          v-model:value="objectionForm.objectionReason"
+          class="teacher-evaluation__form-field"
+          :rows="4"
+          placeholder="异议理由"
+          :disabled="submittingObjection"
+        />
+        <UiPlatformFileField
+          v-model:file-node-id="objectionEvidenceFileNodeId"
+          v-model:file-name="objectionEvidenceFileName"
+          class="teacher-evaluation__form-field"
+          :scene-key="FileUploadSceneKey.PORTFOLIO_MATERIAL"
+          accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+          button-text="上传佐证材料"
+          :disabled="submittingObjection"
+        />
+      </a-modal>
+    </template>
   </StageWorkbenchShell>
 </template>
 

@@ -61,9 +61,9 @@
 <script lang="ts" setup>
 import type { ColProps } from 'ant-design-vue/es/grid'
 import type { CSSProperties } from 'vue'
+import { computed, ref, watch } from 'vue'
 import LeftOutlined from '@ant-design/icons-vue/LeftOutlined'
 import RightOutlined from '@ant-design/icons-vue/RightOutlined'
-import { computed, ref, watch } from 'vue'
 import { useBreakpoint, useDevice } from '@/hooks'
 
 defineOptions({ name: 'GiPageLayout' })
@@ -215,7 +215,7 @@ watch(
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 999;
+  z-index: var(--dp-z-dropdown);
   border: 1px solid var(--ant-color-border-secondary);
   box-sizing: border-box;
   background-color: var(--ant-color-bg-container);
@@ -235,7 +235,7 @@ watch(
   left: 0;
   right: 0;
   bottom: 0;
-  backdrop-filter: blur(20px);
+  background: color-mix(in srgb, var(--dp-surface) 82%, transparent);
   z-index: 20;
 }
 

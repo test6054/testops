@@ -73,6 +73,8 @@ declare module 'vue-router' {
     requireTenantAdmin?: boolean
     /** 是否需要档案审核台权限（院系负责人/租户管理员） */
     requirePortfolioReviewer?: boolean
+    /** 教学档案袋侧栏所属工作壳；只控制服务端授权后的菜单投影，不替代 API 权限。 */
+    portfolioWorkShells?: import('@/apis/portfolio/types').PortfolioWorkShellCode[]
     /** 是否始终显示为子菜单（即使只有一个子路由） */
     alwaysShow?: boolean
     /** 内部标记：无可见子路由 */

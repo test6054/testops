@@ -151,6 +151,8 @@ export interface ReviewTaskDetailResponse {
   aiDiagnostic?: string
   commentText?: string
   status: ReviewTaskStatusCode
+  /** 当前认领教师用户 ID；PENDING 未领取时为空 */
+  assignedTeacherUserId?: string
   /** 制卷形态: ANSWER_SHEET / FULL_PAPER */
   materialLayoutMode?: string
   /** 复核任务类型编码 */

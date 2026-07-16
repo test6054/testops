@@ -276,6 +276,23 @@ export const teacherRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'archive-platform-templates',
+        name: 'AdminArchivePlatformTemplates',
+        component: () => import('@/views/teacher/archive-platform-template-admin.vue'),
+        meta: {
+          title: '归档模板配置',
+          roles: ALL_TEACHER_ROLES,
+          requireTenantAdmin: true,
+          icon: 'database',
+          hideInMenu: false,
+          keepAlive: true,
+          menuGroup: 'quality-admin',
+          menuGroupTitle: '系统管理',
+          menuGroupIcon: 'setting',
+          menuGroupOrder: 5,
+        },
+      },
+      {
         path: 'ai-analysis-center',
         name: 'TeacherAiAnalysisCenter',
         component: () => import('@/views/teacher/ai-analysis-center.vue'),

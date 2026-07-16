@@ -10,7 +10,8 @@
 
     <template v-else-if="detail">
       <UiAlertStrip tone="info" dense class="archive-volume-detail__alert">
-        本页为<strong>课程考核归档材料</strong>，用于本科教学评估迎检。OBE 达成度、间接评价与认证证据请在
+        本页为<strong>课程考核归档材料</strong>，用于本科教学评估迎检。OBE
+        达成度、间接评价与认证证据请在
         <RouterLink :to="{ name: 'QualityDashboard' }">「质量评价」</RouterLink>
         工作台处理。
         <template v-if="detail.capabilityDeniedHint">
@@ -53,9 +54,9 @@
       />
       <UiAlertStrip
         v-if="
-          isArchiveGateVisible('fourProperty')
-            && !detail.latestFourPropertyCheck
-            && detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
+          isArchiveGateVisible('fourProperty') &&
+          !detail.latestFourPropertyCheck &&
+          detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
         "
         tone="warning"
         title="尚未执行四性检测"
@@ -99,10 +100,10 @@
       />
       <UiAlertStrip
         v-else-if="
-          isArchiveGateVisible('fourProperty')
-            && detail.latestFourPropertyCheck
-            && !detail.latestFourPropertyCheck.overallPassed
-            && detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
+          isArchiveGateVisible('fourProperty') &&
+          detail.latestFourPropertyCheck &&
+          !detail.latestFourPropertyCheck.overallPassed &&
+          detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
         "
         tone="warning"
         title="四性检测未通过"
@@ -149,8 +150,8 @@
           </UiButton>
           <UiButton
             v-if="
-              canAdvanceRemediation
-                && focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.OPEN
+              canAdvanceRemediation &&
+              focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.OPEN
             "
             size="sm"
             variant="outline"
@@ -161,8 +162,8 @@
           </UiButton>
           <UiButton
             v-if="
-              canAdvanceRemediation
-                && focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
+              canAdvanceRemediation &&
+              focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
             "
             size="sm"
             variant="outline"
@@ -172,53 +173,12 @@
             标记已重提
           </UiButton>
           <UiButton
-            v-if="
-              canManageCoordinatorRemediation
-                && focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.OPEN
-            "
-            size="sm"
-            variant="outline"
-            :loading="remediationUpdating"
-            @click="advanceRemediation(ArchiveRemediationStatusCode.IN_PROGRESS)"
-          >
-            开始处理
-          </UiButton>
-          <UiButton
-            v-if="
-              canManageCoordinatorRemediation
-                && focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
-            "
-            size="sm"
-            variant="outline"
-            :loading="remediationUpdating"
-            @click="advanceRemediation(ArchiveRemediationStatusCode.RESUBMITTED)"
-          >
-            标记已重提
-          </UiButton>
-          <UiButton
-            v-if="
-              canManageCoordinatorRemediation
-                && focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED
-            "
-            size="sm"
-            variant="outline"
-            :loading="remediationUpdating"
-            @click="advanceRemediation(ArchiveRemediationStatusCode.CLOSED)"
-          >
-            复检关闭
-          </UiButton>
-          <UiButton
-            v-if="
-              canManageCoordinatorRemediation
-                && (focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.OPEN
-                  || focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS)
-            "
+            v-if="canManageCoordinatorRemediation"
             size="sm"
             variant="ghost"
-            :loading="remediationUpdating"
-            @click="advanceRemediation(ArchiveRemediationStatusCode.CLOSED)"
+            @click="openRemediationTaskDetail"
           >
-            关闭
+            整改任务详情
           </UiButton>
         </template>
       </UiAlertStrip>
@@ -237,10 +197,7 @@
         </template>
       </UiAlertStrip>
 
-      <div
-        v-if="archiveSecondaryGateKeys.length > 0"
-        class="archive-volume-detail__more-gates"
-      >
+      <div v-if="archiveSecondaryGateKeys.length > 0" class="archive-volume-detail__more-gates">
         <button
           type="button"
           class="archive-volume-detail__more-gates-toggle"
@@ -284,8 +241,17 @@
         @back-to-list="goBack"
       >
         <template #actions>
-          <UiButton variant="ghost" size="sm" @click="taskSettingsOpen = true">任务设置</UiButton>
-          <UiButton variant="ghost" size="sm" @click="goVolumeSearch">卷内检索</UiButton>
+          <UiButton
+            v-if="detailScope.capabilities.canUpdateArchiveDueTime === true"
+            variant="ghost"
+            size="sm"
+            @click="taskSettingsOpen = true"
+          >
+            任务设置
+          </UiButton>
+          <UiButton variant="ghost" size="sm" @click="setActiveTab('ocr-search')"
+            >卷内检索</UiButton
+          >
           <UiButton
             v-if="detailScope.canRunIntegrityCheck"
             variant="outline"
@@ -410,7 +376,14 @@
           :volume-id="volumeId"
           :detail="detail"
           :can-confirm-score-completion="canConfirmScoreCompletion"
-          :can-sync-teaching-affairs="canSyncTeachingAffairs"
+          @refreshed="loadDetail"
+        />
+
+        <ArchiveVolumeOcrSearchPanel
+          v-else-if="activeTab === 'ocr-search'"
+          :volume-id="volumeId"
+          :can-register-material="detailScope.canRegisterMaterial"
+          @navigate-materials="setActiveTab('materials')"
           @refreshed="loadDetail"
         />
 
@@ -427,7 +400,6 @@
           :can-edit-self-check="detailScope.canEditSelfCheck"
           @run-integrity-check="runIntegrityCheck"
           @refreshed="loadDetail"
-          @integrity-checked="integrityResult = $event"
           @four-property-checked="fourPropertyResult = $event"
           @open-sign-off="selfCheckModalOpen = true"
         />
@@ -455,6 +427,7 @@
           :can-request-access="canRequestAccess"
           :can-approve-access-record="canApproveAccessRecord"
           :current-user-id="currentUserId"
+          :materials="detail.materials"
         />
 
         <ArchiveVolumeAppraisalPanel
@@ -560,11 +533,6 @@ import type {
   ArchiveVolumeDetailResponse,
   ArchiveVolumeSubmitChecklistItemVO,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   ARCHIVE_REMEDIATION_STATUS_TONE,
   ArchiveIntegrityStatusCode,
@@ -582,6 +550,11 @@ import {
   submitArchiveVolume,
   updateRemediationTask,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import ArchiveLifecyclePipe from '@/components/archive-volume/ArchiveLifecyclePipe.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -627,6 +600,7 @@ import ArchiveVolumeIntegrityPanel from '@/views/teacher/archive-volume/componen
 import ArchiveVolumeMaterialTablePanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialTablePanel.vue'
 import ArchiveVolumeMaterialTreePanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialTreePanel.vue'
 import ArchiveVolumeNextStepsPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeNextStepsPanel.vue'
+import ArchiveVolumeOcrSearchPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeOcrSearchPanel.vue'
 import ArchiveVolumePhysicalLocationPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumePhysicalLocationPanel.vue'
 import ArchiveVolumeScoresPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeScoresPanel.vue'
 import ArchiveVolumeSubmitChecklistModal from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeSubmitChecklistModal.vue'
@@ -658,13 +632,13 @@ const {
 } = useArchiveDutyAccess()
 const currentUserId = computed(() => String(userStore.userInfo?.userId ?? ''))
 const canApproveDestruction = computed(() =>
-  canApproveDestructionForDepartment(detail.value?.departmentId),
+  canApproveDestructionForDepartment(detail.value?.volume.departmentId),
 )
 const canReviewTransfer = computed(() =>
-  canReviewTransferForDepartment(detail.value?.departmentId),
+  canReviewTransferForDepartment(detail.value?.volume.departmentId),
 )
 const canRejectTransfer = computed(() =>
-  canRejectTransferForDepartment(detail.value?.departmentId),
+  canRejectTransferForDepartment(detail.value?.volume.departmentId),
 )
 
 const detailScope = useArchiveVolumeDetailScope(detail, currentUserId)
@@ -711,23 +685,6 @@ const contextBarSubtitle = computed(() => {
   return archiveNo ? `${prefix} · ${archiveNo}` : prefix
 })
 
-const canSyncTeachingAffairs = computed(() => {
-  const detailValue = detail.value
-  if (!detailScope.canRegisterMaterial || !detailValue) return false
-  const volume = detailValue.volume
-  if (volume.scoreSource === 'MARK_INTERNAL') return false
-  if (
-    volume.volumeStatus !== ArchiveVolumeStatusCode.DRAFT
-    && volume.volumeStatus !== ArchiveVolumeStatusCode.COLLECTING
-  ) {
-    return false
-  }
-  return (
-    volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.PENDING
-    || volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.NOT_REQUIRED
-  )
-})
-
 const displayedIntegrityResult = computed(
   () => integrityResult.value ?? detail.value?.latestIntegrityCheck ?? null,
 )
@@ -766,15 +723,12 @@ const canConfirmScoreCompletion = computed(() => {
   if (!d) return false
   const vol = d.volume
   if (!detailScope.volumeAcceptsScoreCompletion(vol.volumeStatus)) return false
-  const canManageScores
-    = detailScope.capabilities.canManageMaterials === true
-      || detailScope.capabilities.canSubmitVolume === true
-      || detailScope.capabilities.canManageCollaborators === true
+  const canManageScores =
+    detailScope.capabilities.canManageMaterials === true ||
+    detailScope.capabilities.canSubmitVolume === true ||
+    detailScope.capabilities.canManageCollaborators === true
   if (!canManageScores) return false
-  if (
-    vol.scoreSource !== ArchiveScoreSourceCode.TEACHING_AFFAIRS
-    && vol.scoreSource !== ArchiveScoreSourceCode.OFFLINE_CONFIRMED
-  ) {
+  if (vol.scoreSource !== ArchiveScoreSourceCode.OFFLINE_CONFIRMED) {
     return false
   }
   return vol.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.PENDING
@@ -815,14 +769,14 @@ const showAppraisalGuidanceStrip = computed(() => {
 })
 
 /** 归档条件闸门：只置顶一条「下一必做」，其余折叠，避免迎检告警墙。 */
-type ArchiveGateKey
-  = | 'checklistFail'
-    | 'grantsFail'
-    | 'remediation'
-    | 'appraisal'
-    | 'integrity'
-    | 'fourProperty'
-    | 'scoreSubmit'
+type ArchiveGateKey =
+  | 'checklistFail'
+  | 'grantsFail'
+  | 'remediation'
+  | 'appraisal'
+  | 'integrity'
+  | 'fourProperty'
+  | 'scoreSubmit'
 
 const ARCHIVE_GATE_LABEL: Record<ArchiveGateKey, string> = {
   checklistFail: '待办清单加载失败',
@@ -844,18 +798,15 @@ const showIntegrityGate = computed(() => {
 const showFourPropertyGate = computed(() => {
   const d = detail.value
   if (!d) return false
-  if (
-    !d.latestFourPropertyCheck
-    && d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
-  ) {
+  if (!d.latestFourPropertyCheck && d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING) {
     return true
   }
   if (d.fourPropertyStale) return true
   if (showSecurityFourPropertyAlert.value || showReliabilityFourPropertyAlert.value) return true
   return (
-    !!d.latestFourPropertyCheck
-    && !d.latestFourPropertyCheck.overallPassed
-    && d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
+    !!d.latestFourPropertyCheck &&
+    !d.latestFourPropertyCheck.overallPassed &&
+    d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
   )
 })
 
@@ -924,8 +875,8 @@ const remediationOpenDescription = computed(() => {
   const d = detail.value
   if (task) {
     if (
-      task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED
-      && task.assigneeUserId === currentUserId.value
+      task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED &&
+      task.assigneeUserId === currentUserId.value
     ) {
       return '材料已重提，等待院系协调人复检关闭'
     }
@@ -941,22 +892,24 @@ const remediationOpenDescription = computed(() => {
     if (task.createUserId) {
       const creator = remediationCreatorLabel(task)
       parts.push(
-        task.createTime ? `发现人 ${creator} · ${formatDateTime(task.createTime)}` : `发现人 ${creator}`,
+        task.createTime
+          ? `发现人 ${creator} · ${formatDateTime(task.createTime)}`
+          : `发现人 ${creator}`,
       )
     }
     if (
-      d?.hasBlockingRemediationForSubmit
-      && d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
-      && detailScope.canSubmitVolume
+      d?.hasBlockingRemediationForSubmit &&
+      d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING &&
+      detailScope.canSubmitVolume
     ) {
       parts.push('须关闭整改任务后再提交归档')
     }
     return parts.join(' · ')
   }
   if (
-    d?.hasBlockingRemediationForSubmit
-    && d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
-    && detailScope.canSubmitVolume
+    d?.hasBlockingRemediationForSubmit &&
+    d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING &&
+    detailScope.canSubmitVolume
   ) {
     return '存在未关闭整改任务，须关闭后再提交归档'
   }
@@ -1028,14 +981,14 @@ const canEditPhysicalLocation = computed(() => {
   return d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
 })
 
-const canReviewScanBatches = computed(() => detailScope.capabilities.canManageMaterials === true)
+const canReviewScanBatches = computed(() => detailScope.capabilities.canReviewScanBatches === true)
 
 const canAdvanceRemediation = computed(() => {
   const task = focusedRemediationTask.value
   if (
-    !task
-    || task.taskStatus === ArchiveRemediationStatusCode.CLOSED
-    || task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED
+    !task ||
+    task.taskStatus === ArchiveRemediationStatusCode.CLOSED ||
+    task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED
   ) {
     return false
   }
@@ -1046,9 +999,9 @@ const canManageCoordinatorRemediation = computed(() => {
   const d = detail.value
   const task = focusedRemediationTask.value
   if (
-    !d?.hasOpenRemediationTask
-    || !task
-    || task.taskStatus === ArchiveRemediationStatusCode.CLOSED
+    !d?.hasOpenRemediationTask ||
+    !task ||
+    task.taskStatus === ArchiveRemediationStatusCode.CLOSED
   ) {
     return false
   }
@@ -1187,14 +1140,6 @@ function goBack() {
   void router.push({ name: 'TeacherArchiveVolumeList' })
 }
 
-function goVolumeSearch() {
-  if (!volumeId.value) return
-  void router.push({
-    name: 'TeacherArchiveVolumeSearch',
-    query: { volumeId: volumeId.value },
-  })
-}
-
 function syncFocusedRemediationTaskFromDetail() {
   const raw = route.query.remediationTaskId
   if (typeof raw === 'string' && raw) {
@@ -1233,6 +1178,15 @@ async function advanceRemediation(taskStatus: ArchiveRemediationStatusCode) {
   } finally {
     remediationUpdating.value = false
   }
+}
+
+function openRemediationTaskDetail() {
+  const taskId = focusedRemediationTask.value?.taskId
+  if (!taskId) return
+  void router.push({
+    name: 'TeacherArchiveVolumeRemediationDetail',
+    params: { taskId },
+  })
 }
 
 onMounted(() => {
