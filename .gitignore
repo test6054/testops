@@ -11,6 +11,9 @@ node_modules
 dist*
 dist-ssr
 coverage
+coverage-utils-*
+tests/
+vitest.config.ts
 *.local
 .code-review-graph/
 # Editor directories and files
